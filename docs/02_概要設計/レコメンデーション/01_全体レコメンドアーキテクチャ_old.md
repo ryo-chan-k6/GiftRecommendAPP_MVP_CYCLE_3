@@ -4,9 +4,54 @@
 
 まず全体像です。
 
-<img src="./img/レコメンドアーキテクチャ.drawio.svg" alt="全体レコメンドアーキテクチャ図" width="800">
+```mermaid
+flowchart TB
+    U[ユーザー入力] --> A[1. User Context / Intent Input]
+    A --> B[2. User Meaning Estimation]
+    B --> C[3. Hard Filter]
+    C --> D[4. Candidate Retrieval]
+    D --> E[5. Meaning Matching]
+    E --> F[6. Final Ranking]
+    F --> G[7. Recommendation Result]
+    G --> H[8. Explanation Generation]
+    G --> I[9. User Action Logging]
 
-[参照元SVG: レコメンドアーキテクチャ.drawio.svg](./img/レコメンドアーキテクチャ.drawio.svg)
+    subgraph InputLayer[入力レイヤ]
+        A
+    end
+
+    subgraph MeaningLayer[意味推定レイヤ]
+        B
+    end
+
+    subgraph RetrievalLayer[候補生成レイヤ]
+        C
+        D
+    end
+
+    subgraph RankingLayer[評価・順位付けレイヤ]
+        E
+        F
+    end
+
+    subgraph OutputLayer[出力・学習レイヤ]
+        G
+        H
+        I
+    end
+
+    J[Relationship / Occasion Rules] --> B
+    K[Hint Dictionary / Semantic Concept] --> B
+    L[Item Meaning Store] --> D
+    L --> E
+    M[Popularity / Risk Signals] --> F
+    N[Recommendation Logs / Evaluation Data] --> O[10. Offline Evaluation / Tuning]
+    I --> N
+    O --> J
+    O --> K
+    O --> L
+    O --> M
+```
 
 ---
 
@@ -50,71 +95,6 @@
 # 2. 各モジュールの役割
 
 ---
-
-=================================================★メンテ中★=====================================
-
-| レイヤID | レイヤ名                | 処理 | 処理概要 |
-| :------- | ----------------------- | ---- | -------- |
-|          | 入力パース              |      |          |
-|          | User Meaning Estimation |      |          |
-|          | Item Meaning Estimation |      |          |
-|          | Candidate Retrieval     |      |          |
-|          | Matching                |      |          |
-|          | Ranking                 |      |          |
-|          | Result                  |      |          |
-
-## ユーザー関連
-
-### 入力
-
-- ユーザー入力
-  - Structured Text
-  - Free Text
-
-### 入力データ事前処理
-
-- 内部用入力パラメータ（Relationship × Occasionペア）生成
-- Free Textパース
-
-### 推定処理
-
-- ユーザー意図補助の意味的コンテキスト生成（キーワード結合）
-- ユーザー意図意味ベクトル生成（embedding）
-- Hint Dictionary更新
-- Free Text意味推定（Hint Dictionary）
-- Free Text→Gift Meaning Feature推定
-- Social, Symbolic推定（ユーザー意図補助）
-- Gift Meaning Feature推定（ギフト文脈要素別）
-  - ルールベース推定
-    - Relationship
-    - Occasion
-    - Relationship × Occasion
-- Gift Meaning Feature推定（ギフト文脈）
-- Social, Symbolic推定（ユーザー）
-- Gift Meaning推定（ユーザー）
-- 商品の意味的コンテキスト生成（キーワード結合）
-- 商品ハードフィルタ（金額、NG条件など）
-- 商品キーワードパース
-- 商品キーワード抽出
-  - テキストシグナル抽出
-  - メタデータシグナル抽出
-  - 画像シグナル抽出
-  - レビューシグナル抽出
-- Semantic Conctpt Spaceへの射影（キーワード→Gift Meaning Feature Spaceへ接続するための中間層）
-- 商品意味ベクトル生成（embedding）
-- 意味的一致商品抽出（Semantic Retrieval）
-- Gift Meaning Feature推定（商品）
-- 各Feature値比較（ベクトル距離計算）
-- Social Match度計算
-- Symbolic Match度計算
-- 贈答リスク許容度計算
-- コンテキストスコア計算
-- スコア補正値計算
-  - popularuty_adjust計算
-  - risk_penalty計算
-- 最終スコア計算
-- 最終ランキング導出
-- 説明文生成
 
 ## 2-1. 1. User Context / Intent Input
 
@@ -511,7 +491,7 @@ Offline Evaluation / Tuning は Recommendation Logs に依存しています。
 このサービスの全体像は、
 
 - ユーザー意図を Meaning に変換し
-- 商品の Meaning **と照合し**
+- 商品の Meaning と照合し
 - popularity / risk も加味して
 - 推薦結果を出し
 - ログを蓄積して改善する
