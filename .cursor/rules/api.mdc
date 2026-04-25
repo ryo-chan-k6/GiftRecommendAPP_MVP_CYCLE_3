@@ -1,0 +1,312 @@
+---
+description: API設計・API実装・API仕様整合に関するルールを定義する
+globs:
+  - "apps/api/**"
+  - "packages/sdk/**"
+  - "**/openapi/**"
+  - "**/*api*"
+  - "**/*controller*"
+  - "**/*route*"
+alwaysApply: true
+---
+
+# API Rules
+
+## 1. 目的
+
+本ルールは、Gift Recommendation Service の API において以下を保証することを目的とする：
+
+- API仕様書と実装の整合
+- request / response / error の一貫性
+- DB設計・Reco・UIとの整合
+- runId を含む Observability の成立
+- テスト可能かつ継続運用可能な API 構造の維持
+
+---
+
+## 2. APIの責務
+
+APIの責務は以下に限定する：
+
+- HTTPリクエスト受付
+- バリデーション
+- 認証認可
+- ユースケース起動
+- Reco / DB / 外部システムとの調停
+- レスポンス返却
+
+### MUST
+
+- MUST APIを業務処理の正式な入口とする
+- MUST request / response の責務を明確にする
+
+### MUST NOT
+
+- MUST NOT 画面ロジックを持たせる
+- MUST NOT RecoコアロジックをAPI層へ埋め込む
+- MUST NOT DBテーブル都合をそのまま外部IFに露出する
+
+---
+
+## 3. 作業前参照ルール
+
+### MUST
+
+API設計またはAPI実装前に、必ず以下を参照する：
+
+- API仕様書
+- モジュール別入出力定義表
+- テーブル一覧
+- カラム定義表
+- エラーメッセージ設計書
+- 画面設計書
+- 画面イベント一覧
+- Observability方針書
+- テスト方針書
+- テスト計画書
+
+---
+
+## 4. 仕様正本ルール
+
+### MUST
+
+- MUST repo内docsのAPI仕様書を正本とする
+- MUST API変更時は仕様書を同じPRで更新する
+- MUST OpenAPIまたはそれに準ずる定義と整合を取る
+
+### MUST NOT
+
+- MUST NOT 実装だけ先に変更して仕様を後追いにする
+- MUST NOT 口頭・会話ベースの暗黙仕様でAPIを確定する
+
+---
+
+## 5. request設計ルール
+
+### MUST
+
+- MUST request はユースケース起点で設計する
+- MUST 入力項目の意味を明確にする
+- MUST バリデーション可能な形で定義する
+
+### SHOULD
+
+- SHOULD UI入力と内部処理入力を必要に応じて分離する
+- SHOULD 省略可能項目と必須項目を明示する
+
+### MUST NOT
+
+- MUST NOT DBカラムをそのまま request にコピーする
+- MUST NOT 意味が曖昧なパラメータ名を使う
+
+---
+
+## 6. response設計ルール
+
+### MUST
+
+- MUST response は利用者（UI / 外部利用）に必要な意味単位で返す
+- MUST 内部処理都合の中間データを不用意に露出しない
+- MUST 主要な識別子・状態・結果を明確に返す
+
+### SHOULD
+
+- SHOULD recommendation_run や trace 用識別子を返却可能にする
+- SHOULD クライアントが扱いやすい構造にする
+
+### MUST NOT
+
+- MUST NOT テーブル構造をそのまま露出する
+- MUST NOT 内部専用の中間スコアを無制限に露出する
+- MUST NOT UIが不要な内部属性を返す
+
+---
+
+## 7. エラー設計ルール
+
+### MUST
+
+- MUST エラー時のHTTPステータスを定義する
+- MUST エラーコードを設計する
+- MUST 利用者向けメッセージと内部向け切り分け情報を分ける
+
+### SHOULD
+
+- SHOULD バリデーションエラー / 業務エラー / システムエラー を区別する
+- SHOULD 再試行可否が判断できる設計にする
+
+### MUST NOT
+
+- MUST NOT すべてを500にまとめる
+- MUST NOT 内部例外文言をそのまま外部に返す
+
+---
+
+## 8. Reco連携ルール
+
+### MUST
+
+- MUST APIはRecoを直接の業務責務として呼び出してよい
+- MUST API層はRecoの結果を適切に整形して返す
+- MUST recommendation_run 単位で処理を追跡可能にする
+
+### MUST NOT
+
+- MUST NOT Reco内部の scoring / ranking ロジックをAPI層で再実装する
+- MUST NOT Reco内部構造を前提にUIへ直接露出する
+
+---
+
+## 9. 永続化との整合
+
+### MUST
+
+- MUST APIがどのテーブルへ read / write するか意識する
+- MUST recommendation_run / result / feedback 等の永続化責務を明確にする
+- MUST 正本 / 派生 / ログ / 評価 の区分を崩さない
+
+### SHOULD
+
+- SHOULD request受付単位と永続化単位が一致しているか確認する
+
+### MUST NOT
+
+- MUST NOT 保存責務が曖昧なままAPIを作る
+- MUST NOT 一時データと正本データを混同する
+
+---
+
+## 10. Observabilityルール
+
+### MUST
+
+- MUST 重要APIは runId または trace識別子で追跡可能にする
+- MUST request受付 / 正常終了 / 異常終了を観測可能にする
+- MUST 主要メトリクスを取得可能にする
+
+### 重要観点
+
+- request件数
+- 失敗件数
+- レスポンス時間
+- recommendation_run件数
+- validation error件数
+- upstream（Reco / DB）失敗件数
+
+### MUST NOT
+
+- MUST NOT 成功時・失敗時のどちらかしか観測できないAPIを作る
+
+---
+
+## 11. テスト整合ルール
+
+### MUST
+
+API変更時は最低限以下を確認する：
+
+- request バリデーション
+- response 形式
+- 正常系
+- 代表異常系
+- エラーコード / ステータス
+- runIdやログ出力
+- DB / Reco連携成立
+
+### SHOULD
+
+- SHOULD Integrationテストを追加または更新する
+
+---
+
+## 12. 層構造ルール
+
+API内部では以下の責務分離を守る：
+
+- routes
+- controllers
+- usecases
+- services
+- repositories
+- clients
+- schemas
+
+### MUST
+
+- MUST routes はルーティング定義に限定する
+- MUST controllers は入出力制御に限定する
+- MUST usecases は業務処理の流れ制御を担う
+- MUST repositories はDBアクセスを担う
+- MUST clients は外部連携を担う
+- MUST schemas は request / response / validation を定義する
+
+### MUST NOT
+
+- MUST NOT routes に業務ロジックを書く
+- MUST NOT controllers に複雑な分岐を書く
+- MUST NOT repositories にHTTP都合を持ち込む
+
+---
+
+## 13. 命名ルール
+
+### MUST
+
+- MUST request / response / dto / schema の役割が分かる命名にする
+- MUST APIパス、操作名、DTO名を一貫させる
+
+### SHOULD
+
+- SHOULD 業務用語と一致させる
+- SHOULD 曖昧な略称を避ける
+
+---
+
+## 14. docs更新ルール
+
+### MUST
+
+以下に該当する場合、docs更新を必須とする：
+
+- エンドポイント追加
+- request / response 変更
+- エラー仕様変更
+- 認証認可変更
+- Reco連携方針変更
+- 永続化責務変更
+- Observability前提変更
+
+---
+
+## 15. SDK / クライアント整合
+
+### MUST
+
+- MUST API変更時はSDKや呼び出し側影響を確認する
+- MUST Web側呼び出しへの影響を意識する
+
+### MUST NOT
+
+- MUST NOT API仕様変更を下流影響未確認で行う
+
+---
+
+## 16. 禁止事項
+
+### NEVER
+
+- NEVER API仕様書未参照でAPIを設計する
+- NEVER request / response を推測で補完する
+- NEVER エラー設計なしでAPIを完成扱いにする
+- NEVER runIdやログを考慮しない
+- NEVER DB都合の生構造をそのまま返す
+- NEVER Reco内部ロジックをAPI層に持ち込む
+
+---
+
+## 17. 最重要ルール
+
+👉 APIは業務入口であり、内部都合の露出場所ではない  
+👉 仕様書と同時に更新しろ  
+👉 追跡できないAPIを作るな

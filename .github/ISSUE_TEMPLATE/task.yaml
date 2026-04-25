@@ -1,0 +1,183 @@
+name: 通常作業
+description: 機能追加・設計書更新・リファクタ・設定変更などの通常作業
+title: "[Task]: "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 通常作業Issue
+        Feature / Docs / Refactor / Chore / TechDebt などの通常作業で使用する。
+        GitHub Projectsで管理できるよう、優先度・対象領域・工数目安を必ず入力する。
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: 作業種別
+      description: このIssueの作業種別を選択する
+      options:
+        - Feature
+        - Docs
+        - Refactor
+        - Chore
+        - TechDebt
+    validations:
+      required: true
+
+  - type: dropdown
+    id: target_area
+    attributes:
+      label: 対象領域
+      description: 主な変更対象を選択する
+      multiple: true
+      options:
+        - docs
+        - web
+        - api
+        - reco
+        - batch
+        - database
+        - observability
+        - test
+        - ci-cd
+        - github
+        - infra
+        - packages
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 優先度
+      description: ProjectsのPriority管理に利用する
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: 工数目安
+      description: ProjectsのEstimate管理に利用する
+      options:
+        - XS（〜1h）
+        - S（半日）
+        - M（1日）
+        - L（2〜3日）
+        - XL（それ以上）
+    validations:
+      required: false
+
+  - type: input
+    id: sprint
+    attributes:
+      label: Sprint（任意）
+      description: ProjectsのSprint管理に利用する
+      placeholder: Sprint-1
+
+  - type: dropdown
+    id: initial_status
+    attributes:
+      label: 初期ステータス
+      description: Projects上の初期状態
+      options:
+        - Backlog
+        - Ready
+    validations:
+      required: true
+
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的
+      description: この作業で何を達成するか
+      placeholder: 例）Cursor運用に移行するため、各アプリREADMEを整備する
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・理由
+      description: なぜこの作業が必要か
+      placeholder: 例）docs正本運用に移行するため、各ディレクトリの責務を明確にする必要がある
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 作業範囲
+      description: 対象ファイル・対象ドキュメント・対象機能を書く
+      placeholder: |
+        - README.md
+        - apps/web/README.md
+        - apps/api/README.md
+        - .cursor/rules/*
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 参照すべきdocs
+      description: 作業前に参照すべき正本docsを列挙する
+      placeholder: |
+        - docs/p4_5_横断設計/DevOps方針書.md
+        - docs/p4_5_横断設計/リポジトリ戦略設計書.md
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 完了条件
+      description: このIssueをDoneにできる条件を書く
+      placeholder: |
+        - [ ] 対象ファイルが作成・更新されている
+        - [ ] docs正本と矛盾していない
+        - [ ] 不要ファイルが含まれていない
+    validations:
+      required: true
+
+  - type: textarea
+    id: test_check
+    attributes:
+      label: テスト・確認観点
+      description: 実施すべき確認内容を書く
+      placeholder: |
+        - [ ] Markdown表示崩れがない
+        - [ ] ディレクトリ構成と一致している
+        - [ ] Cursor rules と矛盾していない
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 作業前チェック
+      options:
+        - label: docsを正本として扱う
+          required: true
+        - label: 1 Issue = 1責務になっている
+          required: true
+        - label: 変更対象と影響範囲を明確にした
+          required: true
+
+  - type: checkboxes
+    id: pr_checklist
+    attributes:
+      label: PR作成前チェック
+      options:
+        - label: docsと整合している
+          required: false
+        - label: 変更は1責務である
+          required: false
+        - label: 不要ファイルが含まれていない
+          required: false
+        - label: テスト・確認を実施した
+          required: false

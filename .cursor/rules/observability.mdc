@@ -1,0 +1,296 @@
+---
+description: Observability（監視・トレース・メトリクス・分布観測）に関する実装ルールを定義する
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.py"
+  - "**/api/**"
+  - "**/reco/**"
+  - "**/batch/**"
+  - "**/observability/**"
+alwaysApply: true
+---
+
+# Observability Rules
+
+## 1. 目的
+
+本ルールは、以下を保証することを目的とする：
+
+- 障害発生時に追跡可能であること
+- レコメンド品質を評価・改善できること
+- run単位で処理を観測できること
+- ログ / メトリクス / 分布 / ダッシュボードの整合を保つこと
+
+Observabilityは単なる監視ではなく、
+本プロジェクトでは「改善可能性を担保するための必須機能」として扱う。
+
+---
+
+## 2. 基本原則
+
+### MUST
+
+- MUST すべての重要処理を観測可能にする
+- MUST runIdで追跡可能にする
+- MUST ログ・メトリクス・分布観測のいずれかを考慮する
+- MUST MVPでもObservabilityを省略しない
+
+---
+
+## 3. 監視レイヤ
+
+本プロジェクトでは以下の4レイヤで監視・観測を行う：
+
+| レイヤ      | 内容                                   |
+| ----------- | -------------------------------------- |
+| System      | インフラ・稼働状態                     |
+| Application | API / Reco / Batch の処理状態          |
+| Business    | ユーザー操作・推薦実行・フィードバック |
+| Model       | スコア・特徴量・分布・評価指標         |
+
+---
+
+## 4. runIdルール（最重要）
+
+### MUST
+
+- MUST recommendation_run または runId を処理の中心追跡単位とする
+- MUST API → Reco → Batch で runId を伝播させる
+- MUST ログ・メトリクス・イベントに runId を付与可能にする
+
+---
+
+### MUST NOT
+
+- MUST NOT runIdなしで重要処理を完結させる
+- MUST NOT 後から追跡できない処理を実装する
+
+---
+
+## 5. ログルール
+
+### MUST
+
+- MUST 重要イベントをログ出力する
+- MUST 失敗時だけでなく、主要成功イベントも記録する
+- MUST ログは後から分析可能な構造にする
+
+---
+
+### 重要ログ対象
+
+- recommendation request 受付
+- recommendation_run 開始 / 終了
+- 候補抽出開始 / 終了
+- スコア計算開始 / 終了
+- 結果確定
+- フィードバック登録
+- Batch job 開始 / 終了 / 失敗
+- 外部API取得失敗
+- DB更新失敗
+
+---
+
+### SHOULD
+
+- SHOULD 構造化ログを採用する
+- SHOULD エラーログには原因切り分けに必要な属性を含める
+
+---
+
+## 6. メトリクスルール
+
+### MUST
+
+- MUST 主要処理はメトリクス化を検討する
+- MUST 少なくとも件数・失敗数・処理時間を観測可能にする
+
+---
+
+### 必須観点
+
+- APIリクエスト件数
+- API失敗件数
+- recommendation_run件数
+- recommendation_run失敗件数
+- レコメンド処理時間
+- 候補件数
+- 結果返却件数
+- Batch job実行件数
+- Batch job失敗件数
+
+---
+
+### SHOULD
+
+- SHOULD ラベルを過剰に増やしすぎない
+- SHOULD 集計しやすい粒度に保つ
+
+---
+
+## 7. 分布観測ルール
+
+### MUST
+
+- MUST 特徴量分布を観測可能にする
+- MUST スコア分布を観測可能にする
+- MUST 異常値・偏りを検出できる形で保持する
+
+---
+
+### 対象例
+
+- user_feature 分布
+- item_feature 分布
+- recommendation score 分布
+- candidate件数分布
+- ranking score内訳分布
+
+---
+
+### SHOULD
+
+- SHOULD μ / σ / p50 / p95 などの統計量を取れるようにする
+- SHOULD 比較可能な単位（期間 / version / run群）で保持する
+
+---
+
+## 8. ダッシュボード / 可視化ルール
+
+### MUST
+
+- MUST 主要なログ・メトリクス・分布は可視化可能にする
+- MUST MVPでも最低限のダッシュボード確認を可能にする
+
+---
+
+### 可視化対象
+
+- API稼働状況
+- recommendation_run件数 / 失敗数
+- 処理時間
+- score分布
+- feature分布
+- Batch失敗状況
+
+---
+
+### MUST NOT
+
+- MUST NOT 収集だけして確認手段を持たない状態にする
+
+---
+
+## 9. テーブル・永続化との整合
+
+### MUST
+
+- MUST ログ設計書と整合する
+- MUST テーブル設計時に観測用途テーブルを考慮する
+- MUST metric_log / event_log / distribution_stat との整合を確認する
+
+---
+
+### 関連対象
+
+- recommendation_run_event_log
+- metric_log
+- user_interaction_log
+- feature_distribution_stat
+- score_distribution_stat
+- offline_eval_result
+- recommendation_feedback
+- human_eval_result
+
+---
+
+## 10. API実装時ルール
+
+### MUST
+
+- MUST request受付 / 正常終了 / 異常終了を観測可能にする
+- MUST API失敗時に切り分け可能な情報を残す
+- MUST runIdをレスポンスまたは内部追跡で利用可能にする
+
+---
+
+## 11. Reco実装時ルール
+
+### MUST
+
+- MUST retrieval / scoring / ranking の各フェーズを観測可能にする
+- MUST score計算の異常を追跡可能にする
+- MUST モデル / semantic config version を観測可能にする
+
+---
+
+## 12. Batch実装時ルール
+
+### MUST
+
+- MUST job開始 / 終了 / 失敗を記録する
+- MUST 再実行判断に必要な情報を残す
+- MUST pipeline_job_run 等と整合する
+
+---
+
+## 13. テストとの整合
+
+### MUST
+
+- MUST テストでObservability成立を確認する
+- MUST runId追跡可能性を確認する
+- MUST メトリクス出力を確認する
+- MUST 分布確認可能性を確認する
+
+---
+
+## 14. CI/CDとの整合
+
+### MUST
+
+- MUST CI/CD方針と整合する
+- MUST デプロイ後にObservability確認を行う前提で設計する
+
+---
+
+### MUST NOT
+
+- MUST NOT 観測不能な状態で本番反映前提の実装を行う
+
+---
+
+## 15. 命名・実装ルール
+
+### MUST
+
+- MUST ログ・メトリクス名は一貫した命名を使う
+- MUST 意味の分からない省略名を使わない
+
+---
+
+### SHOULD
+
+- SHOULD recommendation / batch / api などの領域が分かる命名にする
+- SHOULD event名・metric名は継続利用前提で安定させる
+
+---
+
+## 16. 禁止事項
+
+### NEVER
+
+- NEVER runIdなしで重要処理を実装する
+- NEVER エラー時しかログを残さない
+- NEVER メトリクスなしで重要処理を実装する
+- NEVER 分布観測を後回し前提にする
+- NEVER 観測できないレコメンドロジックを作る
+
+---
+
+## 17. 最重要ルール
+
+👉 見えない処理を作るな  
+👉 runで追跡できない処理を作るな  
+👉 改善できない状態で実装を終えるな

@@ -1,0 +1,103 @@
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Windows
+Desktop.ini
+
+# VSCode
+.vscode/
+
+# JetBrains
+.idea/
+
+# =========================
+# Node.js / pnpm
+# =========================
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python build
+build/
+dist/
+*.egg-info/
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs / temp
+# =========================
+logs/
+*.log
+tmp/
+temp/
+
+# =========================
+# Coverage / test artifacts
+# =========================
+coverage/
+.coverage
+htmlcov/
+
+# =========================
+# Misc
+# =========================
+*.swp
+*.swo
+*.tmp
+
+# =========================
+# Cursor / AI関連（必要に応じて）
+# =========================
+.cursor/cache/
+.cursor/tmp/
+
+# rules は管理対象
+!.cursor/rules/
+
+# =========================
+# Database / local dev
+# =========================
+*.sqlite
+*.db
+
+# =========================
+# Docker（必要に応じて）
+# =========================
+docker-compose.override.yml

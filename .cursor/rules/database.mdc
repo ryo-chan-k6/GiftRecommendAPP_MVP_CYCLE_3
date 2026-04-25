@@ -1,0 +1,210 @@
+---
+description: テーブル設計およびDB関連実装の整合ルールを定義する
+globs:
+  - "**/*.sql"
+  - "**/schema/**"
+  - "**/migrations/**"
+  - "**/db/**"
+alwaysApply: true
+---
+
+# Database Rules
+
+## 1. 目的
+
+本ルールは、以下を防止する：
+
+- テーブル定義の抜け漏れ
+- 設計書との不整合
+- ログ / 評価 / Observabilityの欠落
+- version管理の未考慮
+
+---
+
+## 2. 基本原則
+
+### MUST
+
+- MUST 論理ERと整合する
+- MUST 正本 / 派生 / ログ / 評価 を区分する
+- MUST 再現性を担保する設計にする
+- MUST run単位で追跡可能にする
+
+---
+
+## 3. 作業前チェック（最重要）
+
+テーブル設計前に必ず以下を参照する：
+
+### MUST
+
+- 論理ER
+- テーブル設計方針書
+- ログ設計書
+- Observability方針書
+- 非機能要件定義書
+- OL/BT責務整理表
+
+---
+
+## 4. 必須テーブル考慮
+
+以下は必ず考慮すること：
+
+### Version管理
+
+- semantic_config
+- semantic_config_version
+- model_version
+
+---
+
+### 実行単位
+
+- recommendation_run
+
+👉 すべての処理はrun単位で追跡可能にする
+
+---
+
+### ログ / 観測
+
+- recommendation_run_event_log
+- metric_log
+- user_interaction_log
+
+---
+
+### 分布 / 評価
+
+- feature_distribution_stat
+- score_distribution_stat
+- offline_eval_result
+
+---
+
+## 5. データ分類ルール
+
+### MUST
+
+テーブルは以下のいずれかに分類する：
+
+| 区分   | 内容           |
+| ------ | -------------- |
+| 正本   | 業務データ     |
+| 派生   | 再計算可能     |
+| ログ   | イベント・履歴 |
+| 評価   | 分析・指標     |
+| ワーク | 一時データ     |
+
+---
+
+### MUST
+
+- MUST 正本と派生を混ぜない
+- MUST 再生成可能なものは派生にする
+
+---
+
+## 6. run単位設計
+
+### MUST
+
+- MUST recommendation_run を基準に設計する
+- MUST runIdで全データを追跡可能にする
+
+---
+
+### MUST NOT
+
+- MUST NOT runと紐づかない評価・ログを作る
+
+---
+
+## 7. Observability対応
+
+### MUST
+
+- MUST ログを出力可能にする
+- MUST メトリクス取得可能にする
+- MUST 分布分析可能にする
+
+---
+
+### MUST NOT
+
+- MUST NOT 観測できない処理を作る
+
+---
+
+## 8. OL / BT責務
+
+### MUST
+
+- MUST OLとBTの更新責務を明示する
+- MUST バッチで再生成可能にする
+
+---
+
+## 9. 整合チェック
+
+以下を必ず確認する：
+
+### MUST
+
+- ERと一致している
+- APIと整合している
+- Batchと整合している
+- ログ設計と一致している
+
+---
+
+## 10. 命名ルール
+
+### MUST
+
+- snake_caseを使用する
+- 意味のある名前にする
+
+---
+
+### SHOULD
+
+- prefixを揃える
+- 一貫した命名を使う
+
+---
+
+## 11. Migrationルール
+
+### MUST
+
+- MUST すべてMigrationで管理する
+- MUST 直接DDL変更しない
+
+---
+
+### SHOULD
+
+- SHOULD 差分で管理する
+- SHOULD ロールバック可能にする
+
+---
+
+## 12. 禁止事項
+
+### NEVER
+
+- NEVER 論理ER未参照でテーブル作成
+- NEVER version管理を無視
+- NEVER runIdを持たない設計
+- NEVER 観測不可な設計
+- NEVER 正本と派生を混在
+
+---
+
+## 13. 最重要ルール
+
+👉 ERを見ずにテーブルを作るな  
+👉 runで追跡できない設計を作るな  
+👉 観測できないデータ構造を作るな

@@ -1,0 +1,336 @@
+---
+description: システム構造、責務境界、依存方向に関する実装ルールを定義する
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.py"
+  - "apps/**"
+  - "packages/**"
+alwaysApply: true
+---
+
+# Architecture Rules
+
+## 1. 目的
+
+本ルールは、Gift Recommendation Service の実装において以下を防止することを目的とする：
+
+- 責務境界の崩壊
+- 層をまたいだ直接依存
+- 一時的な都合による構造汚染
+- 正本設計と実装構造の乖離
+
+---
+
+## 2. システム構成の前提
+
+本プロジェクトは以下の実行単位で構成される：
+
+- Web
+- API
+- Reco
+- Batch
+
+また、共通資産は packages に配置する。
+
+### MUST
+
+- MUST Web / API / Reco / Batch の責務を明確に分離する
+- MUST apps と packages の役割を混同しない
+
+---
+
+## 3. 各コンポーネントの責務
+
+## 3.1 Web
+
+Web の責務は以下に限定する：
+
+- UI表示
+- ユーザー入力受付
+- 画面遷移
+- API呼び出し
+- 画面状態管理
+
+### MUST NOT
+
+- MUST NOT Recoロジックを持たせる
+- MUST NOT DBへ直接アクセスする
+- MUST NOT Batch都合の処理を持たせる
+
+---
+
+## 3.2 API
+
+API の責務は以下に限定する：
+
+- HTTPリクエスト受付
+- バリデーション
+- 認証認可
+- ユースケース起動
+- Reco / DB / 外部連携の調停
+- レスポンス返却
+
+### MUST
+
+- MUST APIを業務処理の正式な入口とする
+
+### MUST NOT
+
+- MUST NOT 画面ロジックを持たせる
+- MUST NOT Reco内部アルゴリズムを埋め込む
+- MUST NOT Batch処理を直接持たせる
+
+---
+
+## 3.3 Reco
+
+Reco の責務は以下に限定する：
+
+- 候補取得
+- 特徴量処理
+- スコア計算
+- ランキング
+- レコメンド結果生成
+
+### MUST
+
+- MUST レコメンド固有ロジックをRecoに集約する
+
+### MUST NOT
+
+- MUST NOT 画面都合の整形を主責務にする
+- MUST NOT APIルーティング責務を持つ
+- MUST NOT Batch専用の取得ロジックを混在させる
+
+---
+
+## 3.4 Batch
+
+Batch の責務は以下に限定する：
+
+- データ取得
+- ETL
+- 集計
+- 定期更新
+- 再計算
+- 評価系バッチ
+
+### MUST
+
+- MUST 冪等性を考慮する
+- MUST 再実行性を考慮する
+
+### MUST NOT
+
+- MUST NOT OLリクエスト前提の同期処理を持つ
+- MUST NOT 画面導線に依存する
+
+---
+
+## 3.5 packages
+
+packages の責務は以下に限定する：
+
+- 共通型
+- 共通ユーティリティ
+- 共通設定
+- 共通SDK
+
+### MUST
+
+- MUST 複数コンポーネントから再利用されるもののみ置く
+
+### MUST NOT
+
+- MUST NOT 特定アプリ固有の業務ロジックを置く
+- MUST NOT app都合の一時コードを共通化する
+
+---
+
+## 4. 依存方向ルール（最重要）
+
+許可される基本依存方向は以下とする：
+
+```text
+apps → packages
+packages → packages（最小限）
+```
+
+### MUST NOT
+
+- MUST NOT packages → apps
+- MUST NOT web → reco 直接依存
+- MUST NOT web → DB 直接依存
+- MUST NOT web → batch 直接依存
+- MUST NOT reco → web 依存
+- MUST NOT batch → web 依存
+
+---
+
+## 5. 典型的な連携ルール
+
+### 正常な連携
+
+- Web → API
+- API → Reco
+- API → DB / Repository
+- Batch → DB
+- Reco → Repository / Feature Store / packages
+- apps → packages
+
+### 禁止される連携
+
+- Web → Reco
+- Web → DB
+- Batch → Web
+- packages → apps
+- UI層 → Reco内部構造
+
+---
+
+## 6. 層構造ルール（API）
+
+API内部では以下の層構造を基本とする：
+
+- routes
+- controllers
+- usecases
+- services
+- repositories / clients
+
+### MUST
+
+- MUST routes はルーティング定義に限定する
+- MUST controllers は入出力制御に限定する
+- MUST usecases は業務処理の流れ制御を担う
+- MUST repositories は永続化アクセスを担う
+- MUST clients は外部システム接続を担う
+
+### MUST NOT
+
+- MUST NOT routes に業務ロジックを書く
+- MUST NOT controllers に複雑な業務ロジックを書く
+- MUST NOT repositories に画面都合やAPI都合を持ち込む
+
+---
+
+## 7. 層構造ルール（Reco）
+
+Reco内部では以下の責務分離を基本とする：
+
+- usecases
+- retrievers
+- scorers
+- rankers
+- repositories
+- feature_store
+- modules
+
+### MUST
+
+- MUST retrieval / scoring / ranking の責務を分離する
+- MUST スコア計算は明示的なモジュールに置く
+- MUST バージョン・設定参照を考慮する
+
+### MUST NOT
+
+- MUST NOT すべてを1ファイルに集約する
+- MUST NOT API都合の処理をRecoコアに混ぜる
+
+---
+
+## 8. Batch設計ルール
+
+### MUST
+
+- MUST collector / transformer / loader / job を分離する
+- MUST 取得・変換・反映を責務分離する
+- MUST 冪等性を考慮する
+
+### MUST NOT
+
+- MUST NOT 1処理に全責務を混ぜる
+- MUST NOT 再実行時に不整合を起こす構造にする
+
+---
+
+## 9. docs正本との整合
+
+### MUST
+
+- MUST アーキテクチャ変更時はdocsを更新する
+- MUST docsと矛盾する構造変更をしない
+
+### MUST NOT
+
+- MUST NOT 実装先行で構造変更を確定させる
+
+---
+
+## 10. 共通化ルール
+
+### MUST
+
+共通化は以下を満たす場合のみ行う：
+
+- 2箇所以上で再利用される見込みが高い
+- 同一責務である
+- 依存方向を悪化させない
+- 将来も共通資産として成立する
+
+### MUST NOT
+
+- MUST NOT 「たまたま似ている」だけで共通化する
+- MUST NOT 業務差分を隠して共通化する
+
+---
+
+## 11. 構造変更時ルール
+
+### MUST
+
+構造変更時には以下を確認する：
+
+- docs更新が必要か
+- 依存方向が崩れていないか
+- API / Reco / Batch / Web の責務が変わっていないか
+- packages に逃がしすぎていないか
+
+---
+
+## 12. AI実装時のルール
+
+### MUST
+
+- MUST 実装前に関連docsを参照する
+- MUST 責務境界を意識してファイル配置する
+- MUST 既存構造に合わせて実装する
+
+### MUST NOT
+
+- MUST NOT 近道のために直接依存を追加する
+- MUST NOT 一時対応を恒久構造に混ぜる
+
+---
+
+## 13. 禁止事項
+
+### NEVER
+
+- NEVER WebからRecoへ直接依存する
+- NEVER packagesに業務ロジックを集約しすぎる
+- NEVER APIの外で業務入口を増やす
+- NEVER docsと乖離した構造変更を行う
+- NEVER Batch都合をOLへ持ち込む
+- NEVER UI都合をRecoコアへ持ち込む
+
+---
+
+## 14. 最重要ルール
+
+👉 責務をまたぐ近道を作るな
+
+👉 依存方向を壊すな
+
+👉 docsと違う構造を実装するな

@@ -1,0 +1,158 @@
+name: 設計レビュー・整合確認
+description: docs正本の整合確認、設計レビュー、棚卸し
+title: "[Design Review]: "
+labels: ["design-review", "docs"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 設計レビュー・整合確認Issue
+        複数docsの整合確認、設計漏れ確認、実装設計前レビューに使用する。
+        Projectsでレビュー対象・優先度・進捗を管理する。
+
+  - type: dropdown
+    id: review_scope
+    attributes:
+      label: レビュー対象
+      description: レビュー対象領域を選択する
+      multiple: true
+      options:
+        - architecture
+        - database
+        - api
+        - batch
+        - frontend-ui
+        - observability
+        - testing
+        - ci-cd
+        - github
+        - docs-all
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 優先度
+      description: ProjectsのPriority管理に利用する
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: 工数目安
+      description: ProjectsのEstimate管理に利用する
+      options:
+        - XS（〜1h）
+        - S（半日）
+        - M（1日）
+        - L（2〜3日）
+        - XL（それ以上）
+    validations:
+      required: false
+
+  - type: input
+    id: sprint
+    attributes:
+      label: Sprint（任意）
+      description: ProjectsのSprint管理に利用する
+      placeholder: Sprint-1
+
+  - type: dropdown
+    id: initial_status
+    attributes:
+      label: 初期ステータス
+      description: Projects上の初期状態
+      options:
+        - Backlog
+        - Ready
+    validations:
+      required: true
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: レビュー目的
+      description: 何を確認したいか
+      placeholder: 例）テーブル一覧作成前に、論理ER・ログ設計・Observability方針との整合を確認する
+    validations:
+      required: true
+
+  - type: textarea
+    id: target_docs
+    attributes:
+      label: 対象docs
+      description: 確認対象のdocsを列挙する
+      placeholder: |
+        - docs/p4_論理設計/論理ER.md
+        - docs/p4_5_横断設計/ログ設計書.md
+        - docs/p4_5_横断設計/Observability方針書.md
+    validations:
+      required: true
+
+  - type: textarea
+    id: related_outputs
+    attributes:
+      label: 関連成果物
+      description: このレビューが影響する成果物を書く
+      placeholder: |
+        - テーブル一覧
+        - カラム定義表
+        - 物理ER図
+        - DDL
+    validations:
+      required: false
+
+  - type: textarea
+    id: check_points
+    attributes:
+      label: 確認観点
+      description: 何を観点にレビューするか
+      placeholder: |
+        - [ ] テーブル抜け漏れがない
+        - [ ] OL/BT責務と矛盾しない
+        - [ ] Observability観点が欠落していない
+        - [ ] downstream成果物に影響が整理されている
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_output
+    attributes:
+      label: 期待する成果
+      description: このレビューで何を出すか
+      placeholder: |
+        - 整合確認結果
+        - 修正対象一覧
+        - 後続Issue一覧
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 完了条件
+      placeholder: |
+        - [ ] レビュー結果が記録されている
+        - [ ] 必要な修正Issueが起票されている
+        - [ ] docs更新要否が判断されている
+        - [ ] 後続成果物への影響が整理されている
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: レビュー前チェック
+      options:
+        - label: 対象docsを明示した
+          required: true
+        - label: 確認観点を明示した
+          required: true
+        - label: 期待する成果を明示した
+          required: true

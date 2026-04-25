@@ -1,0 +1,355 @@
+---
+description: Batch / ETL / 定期処理 / 再計算処理に関する設計・実装ルールを定義する
+globs:
+  - "apps/batch/**"
+  - "**/*batch*"
+  - "**/*job*"
+  - "**/*collector*"
+  - "**/*transformer*"
+  - "**/*loader*"
+alwaysApply: true
+---
+
+# Batch Rules
+
+## 1. 目的
+
+本ルールは、Gift Recommendation Service の Batch / ETL / 定期処理において以下を保証することを目的とする：
+
+- OL / BT 責務境界を維持する
+- 取得 / 変換 / 反映の責務を分離する
+- 冪等性と再実行性を担保する
+- 実行履歴を追跡可能にする
+- 正本 / 派生 / 評価 / ログ更新を適切に分離する
+- Observability を成立させる
+
+---
+
+## 2. Batchの責務
+
+Batch の責務は以下に限定する：
+
+- 外部データ取得
+- データ変換
+- 正本更新
+- 派生データ再計算
+- 集計
+- 評価用データ生成
+- 定期メンテナンス処理
+
+### MUST
+
+- MUST Batch固有の重処理をBatchへ集約する
+- MUST OLで扱うべきでない重い処理をBatch側で吸収する
+
+### MUST NOT
+
+- MUST NOT 画面導線に依存する
+- MUST NOT ユーザー同期応答前提の責務を持つ
+- MUST NOT UI都合の処理を持ち込む
+
+---
+
+## 3. 作業前参照ルール
+
+### MUST
+
+Batch設計またはBatch実装前に、必ず以下を参照する：
+
+- バッチ仕様書
+- OL/BT責務整理表
+- データ供給前提整理表
+- テーブル一覧
+- カラム定義表（存在する場合）
+- テーブル設計方針書
+- ログ設計書
+- Observability方針書
+- テスト方針書 / テスト計画書
+
+---
+
+## 4. 責務分離ルール
+
+Batch内部では、以下の責務を分離すること：
+
+- jobs
+- collectors
+- transformers
+- loaders
+- repositories
+- lib / config
+
+### MUST
+
+- MUST collector / transformer / loader / job を分離する
+- MUST 取得・変換・反映を同一責務にしない
+
+### MUST NOT
+
+- MUST NOT 1つの関数・ファイルに全責務を詰め込む
+- MUST NOT 取得しながら直接複雑な正本更新を行う構造にする
+
+---
+
+## 5. job の責務
+
+job の責務は以下に限定する：
+
+- 処理単位の開始
+- 処理順制御
+- 依存関係制御
+- 実行結果集約
+- 実行履歴記録
+
+### MUST
+
+- MUST job は orchestration に集中する
+- MUST 詳細変換・永続化ロジックを直接持ちすぎない
+
+---
+
+## 6. collector の責務
+
+collector の責務は以下に限定する：
+
+- 外部API / 外部ソースからのデータ取得
+- 取得失敗の検知
+- 生データ返却
+
+### MUST
+
+- MUST collector は取得に集中する
+- MUST 取得時点の外部レスポンスを必要に応じて台帳化できるようにする
+
+### MUST NOT
+
+- MUST NOT collector 内で複雑なDB更新を行う
+- MUST NOT collector 内で業務変換を完結させる
+
+---
+
+## 7. transformer の責務
+
+transformer の責務は以下に限定する：
+
+- 生データを内部形式へ変換
+- バリデーション補助
+- 正本反映前の整形
+
+### MUST
+
+- MUST transformer は変換責務に限定する
+- MUST 正本更新可否の判断を明確にする
+
+### MUST NOT
+
+- MUST NOT transformer で直接DB更新する
+- MUST NOT collector / loader の責務を混ぜる
+
+---
+
+## 8. loader の責務
+
+loader の責務は以下に限定する：
+
+- DB反映
+- upsert / insert / update / archive
+- 永続化成否の返却
+
+### MUST
+
+- MUST loader は永続化責務を担う
+- MUST 正本 / 派生 / ログ / 評価 の反映先を意識する
+
+### MUST NOT
+
+- MUST NOT 外部データ取得責務を持つ
+- MUST NOT 複雑な業務判定を過剰に持つ
+
+---
+
+## 9. OL / BT責務ルール
+
+### MUST
+
+- MUST OLとBTの更新責務を明確に分ける
+- MUST 「重い再計算」「一括更新」「集計」は原則BTとする
+- MUST OLリクエスト時の同期処理を不要にBatchへ逃がさない
+
+### MUST NOT
+
+- MUST NOT BT都合をOL APIへ持ち込む
+- MUST NOT OLで再計算すべきでない処理を同期実行する
+
+---
+
+## 10. 冪等性ルール（最重要）
+
+### MUST
+
+- MUST 冪等性を考慮して実装する
+- MUST 同一入力で再実行しても整合性が崩れないようにする
+- MUST 二重反映を防ぐ
+
+### SHOULD
+
+- SHOULD natural key / external id / hash / run単位などを活用する
+- SHOULD upsertやledger管理を検討する
+
+### MUST NOT
+
+- MUST NOT 再実行で重複データを量産する
+- MUST NOT 途中失敗で不整合が残る構造にする
+
+---
+
+## 11. 再実行性ルール
+
+### MUST
+
+- MUST 失敗後に再実行可能な構造にする
+- MUST どこまで処理済みか判断できるようにする
+- MUST job単位で開始・終了・失敗を追跡可能にする
+
+### SHOULD
+
+- SHOULD pipeline_job_run や類似実行管理と整合する
+- SHOULD ingest ledger や source台帳と整合する
+
+---
+
+## 12. データ分類ルール
+
+### MUST
+
+Batchで扱うデータは以下を区別する：
+
+- 正本
+- 派生
+- ログ
+- 評価
+- ワーク / 一時
+
+### MUST NOT
+
+- MUST NOT 正本更新と派生再計算を曖昧にする
+- MUST NOT ログ更新と正本更新を同一責務のように扱う
+
+---
+
+## 13. Version管理ルール
+
+### MUST
+
+- MUST semantic_config / semantic_config_version を意識する
+- MUST model_version を意識する
+- MUST 再計算対象データがどの version に基づくか追跡可能にする
+
+### MUST NOT
+
+- MUST NOT どの version 由来か不明な派生データを作る
+
+---
+
+## 14. Observabilityルール
+
+### MUST
+
+- MUST job開始 / 終了 / 失敗を観測可能にする
+- MUST runId または job実行識別子で追跡可能にする
+- MUST 失敗原因の切り分けに必要なログを残す
+- MUST 件数・失敗数・処理時間を把握可能にする
+
+### SHOULD
+
+- SHOULD 処理件数、成功件数、失敗件数、スキップ件数を記録する
+- SHOULD 再実行判断に必要な情報を残す
+
+### MUST NOT
+
+- MUST NOT 失敗した事実しか分からないログにする
+- MUST NOT 途中まで処理した状態が追えない構造にする
+
+---
+
+## 15. テスト整合ルール
+
+### MUST
+
+Batch変更時は最低限以下を確認する：
+
+- 冪等性
+- 再実行性
+- 入力 / 変換 / 反映の整合
+- 正本更新結果
+- 失敗時ログ
+- job実行履歴
+- 必要メトリクス出力
+
+### SHOULD
+
+- SHOULD Batchテストを独立観点で設計する
+- SHOULD 小さい入力データセットで再現可能にする
+
+---
+
+## 16. Migration / スキーマ整合
+
+### MUST
+
+- MUST DB変更を伴う場合は migration 方針と整合する
+- MUST テーブル一覧 / カラム定義 / DDL と整合を取る
+- MUST 正本 / 派生 / ログ / 評価 の配置を崩さない
+
+---
+
+## 17. docs更新ルール
+
+### MUST
+
+以下に該当する場合、docs更新を必須とする：
+
+- バッチ処理フロー変更
+- 更新対象テーブル変更
+- ETL責務変更
+- 冪等性前提変更
+- 実行順序変更
+- Observability前提変更
+
+---
+
+## 18. AI実装時ルール
+
+### MUST
+
+- MUST 取得・変換・反映を分離して実装する
+- MUST 冪等性・再実行性を常に検討する
+- MUST どのテーブルを read / write するか明示する
+- MUST docsと整合する
+
+### MUST NOT
+
+- MUST NOT 最短実装のために責務を混ぜる
+- MUST NOT ログやjob管理を後回し前提にする
+
+---
+
+## 19. 禁止事項
+
+### NEVER
+
+- NEVER 取得 / 変換 / 反映を1責務にまとめる
+- NEVER 冪等性を考慮しない
+- NEVER 再実行不能なBatchを作る
+- NEVER 正本更新責務を曖昧にする
+- NEVER job実行履歴を残さない
+- NEVER version不明な派生データを作る
+- NEVER 観測できないBatchを作る
+
+---
+
+## 20. 最重要ルール
+
+👉 取得・変換・反映を混ぜるな  
+👉 冪等性と再実行性を最初から考えろ  
+👉 どこまで処理できたか分からないBatchを作るな

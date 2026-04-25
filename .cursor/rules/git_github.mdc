@@ -1,0 +1,432 @@
+---
+description: Git / GitHub 運用ルール（Issue, Branch, PR, docs更新, merge, release）を定義する
+globs:
+  - ".github/**"
+  - "**/*.md"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.py"
+alwaysApply: true
+---
+
+# Git / GitHub Rules
+
+## 1. 目的
+
+本ルールは、Gift Recommendation Service の開発において以下を保証することを目的とする：
+
+- 変更理由をIssue単位で追跡可能にする
+- ブランチ運用を統一する
+- PR品質を一定に保つ
+- docs正本運用をGit運用に組み込む
+- main / develop の役割を守る
+- リリースの安全性を担保する
+
+---
+
+## 2. 基本原則
+
+### MUST
+
+- MUST すべての変更をIssue起点で行う
+- MUST 1 Issue = 1責務 とする
+- MUST 1 PR = 1目的 とする
+- MUST 設計変更がある場合はdocsを同一PRで更新する
+- MUST ブランチ戦略設計書と整合する
+
+---
+
+### MUST NOT
+
+- MUST NOT 思いつきで直接main/developへコミットする
+- MUST NOT 複数責務を1PRに混在させる
+- MUST NOT docs更新が必要な変更をコードだけで終える
+
+---
+
+## 3. ブランチ戦略
+
+本プロジェクトの永続ブランチは以下とする：
+
+- main
+- develop
+
+作業ブランチは以下を利用する：
+
+- feature/\*
+- fix/\*
+- hotfix/\*
+- docs/\*
+- refactor/\*
+- chore/\*
+
+---
+
+## 4. ブランチ作成ルール
+
+### MUST
+
+- MUST 作業ブランチはIssue起点で作成する
+- MUST ブランチ名にIssue番号を含める
+- MUST type/issue-番号-要約 の形式を使う
+
+---
+
+### 形式
+
+```text
+<type>/issue-<番号>-<summary>
+```
+
+---
+
+### 例
+
+```
+feature/issue-123-add-top-k
+fix/issue-205-fix-score-rounding
+docs/issue-301-update-devops-policy
+refactor/issue-410-split-api-usecase
+chore/issue-512-update-eslint-config
+hotfix/issue-601-fix-prod-timeout
+```
+
+---
+
+### MUST NOT
+
+- MUST NOT Issue番号なしでブランチを作る
+- MUST NOT summaryなしでブランチを作る
+- MUST NOT 曖昧な名前を使う
+
+---
+
+## 5. Issueルール
+
+### MUST
+
+- MUST すべての変更にIssueを紐づける
+- MUST Issueには責務を1つだけ持たせる
+- MUST 実装前にIssueの目的を明確にする
+
+---
+
+### Issue種別
+
+- Feature
+- Task
+- Bug
+- TechDebt
+
+---
+
+### MUST NOT
+
+- MUST NOT 「API改善」など抽象的すぎるIssueにする
+- MUST NOT 設計変更と無関係な大量作業を1 Issueにまとめる
+
+---
+
+## 6. PRルール
+
+### MUST
+
+- MUST すべての作業ブランチはPR経由でマージする
+- MUST PRにIssue番号を記載する
+- MUST PRに変更目的を書く
+- MUST PRに影響範囲を書く
+- MUST docs更新有無を書く
+- MUST 動作確認内容を書く
+
+---
+
+### PRに含めるべき項目
+
+- 関連Issue番号
+- 変更目的
+- 変更対象（web/api/reco/batch/docs 等）
+- docs更新有無
+- テスト / 動作確認内容
+- 影響範囲
+- 未解決事項（ある場合）
+
+---
+
+### SHOULD
+
+- SHOULD PRは小さく保つ
+- SHOULD レビューしやすい単位に分ける
+
+---
+
+### MUST NOT
+
+- MUST NOT 変更意図が分からないPRを作る
+- MUST NOT docs変更の有無を省略する
+- MUST NOT 大規模変更を理由なく1PRにまとめる
+
+---
+
+## 7. docs正本連携
+
+### MUST
+
+- MUST docsは正本として扱う
+- MUST 設計変更がある場合はdocsを同じPRで更新する
+- MUST docs未更新の仕様変更を許可しない
+
+---
+
+### docs更新が必要な例
+
+- API仕様変更
+- DB設計変更
+- Batch仕様変更
+- アーキテクチャ変更
+- ブランチ戦略 / DevOps / CI/CD方針変更
+- テスト前提変更
+- Observability設計変更
+
+---
+
+### MUST NOT
+
+- MUST NOT 「あとでNotionに反映するだけ」で済ませる
+- MUST NOT repo内docsを後回しにする
+
+---
+
+## 8. マージルール
+
+### MUST
+
+- MUST 作業ブランチは原則 develop にマージする
+- MUST develop から main に反映する
+- MUST hotfix は main 起点で作成し、反映後に develop にも取り込む
+
+---
+
+### マージ方法
+
+- 原則として Squash Merge を使用する
+
+---
+
+### 理由
+
+- ブランチ内の細かい試行錯誤コミットを整理できる
+- develop / main の履歴を意味単位で維持できる
+
+---
+
+### MUST NOT
+
+- MUST NOT main に直接コミットする
+- MUST NOT develop を壊れた状態で長く放置する
+
+---
+
+## 9. main / develop ルール
+
+## 9.1 main
+
+### MUST
+
+- MUST main は常に本番反映可能状態を保つ
+- MUST 直接pushしない
+- MUST 本番相当の安定状態のみ反映する
+
+---
+
+## 9.2 develop
+
+### MUST
+
+- MUST develop は統合確認ブランチとして使う
+- MUST 最低限動く状態を維持する
+
+---
+
+### MUST NOT
+
+- MUST NOT develop を未完成の大型変更の置き場にする
+- MUST NOT 長期間の壊れた統合状態を放置する
+
+---
+
+## 10. hotfixルール
+
+### MUST
+
+- MUST hotfix は main から切る
+- MUST 本番影響の大きい不具合に限定する
+- MUST 修正範囲は最小限にする
+- MUST main 反映後に develop に取り込む
+
+---
+
+### hotfix対象例
+
+- API停止
+- 主要画面表示不能
+- DB更新不整合
+- 推薦ロジック重大破綻
+- セキュリティ重大不具合
+
+---
+
+## 11. コミットルール
+
+### MUST
+
+- MUST 意味の分かる単位でコミットする
+- MUST 最終的なPRで変更意図が分かるようにする
+
+---
+
+### 推奨prefix
+
+- feat:
+- fix:
+- docs:
+- refactor:
+- test:
+- chore:
+
+---
+
+### SHOULD
+
+- SHOULD 作業中は細かくコミットしてよい
+- SHOULD ブランチ内で実験コミットを恐れない
+
+---
+
+### MUST NOT
+
+- MUST NOT 意味不明なコミットメッセージを残す
+- MUST NOT unrelated changes を同一コミットに混ぜる
+
+---
+
+## 11.1 コミットメッセージ生成ルール（Cursor利用）
+
+### 方針
+
+- Cursorの「generate commit message」機能を利用してコミットメッセージを生成する
+- 手動記述は原則行わない（例外を除く）
+
+---
+
+### MUST
+
+- MUST 生成されたコミットメッセージは日本語とする
+- MUST コミットメッセージ（タイトル/本文）は、日本語文字（ひらがな・カタカナ・漢字）を最低1文字以上含める
+- MUST 英語のみのコミットメッセージを禁止する（例: "feat: add api endpoint" は不可）
+- MUST 変更内容が一目で分かる内容にする
+- MUST 1コミット1責務の内容と一致させる
+- MUST コミット内容とメッセージの不一致がないことを確認する
+
+### 最優先ルール
+
+- 生成結果が英語になった場合は、そのままコミットしてはならない
+- 生成結果を日本語へ修正するか、再生成して日本語化してからコミットする
+
+---
+
+### SHOULD
+
+- SHOULD 変更内容の要約を先頭に書く
+- SHOULD 必要に応じて対象領域（api, reco, batch, web, docsなど）を含める
+
+---
+
+### 推奨フォーマット
+
+```text
+<種別>: <変更概要>
+
+例:
+feat: レコメンドAPIのtop_k対応を追加
+fix: スコア計算の丸め誤差を修正
+docs: DevOps方針書を更新
+refactor: APIのusecase分割
+```
+
+---
+
+## 12. GitHub設定前提
+
+### MUST
+
+- MUST branch protection を前提にする
+- MUST CI成功をマージ条件にする
+- MUST PRベース運用を前提にする
+
+---
+
+### SHOULD
+
+- SHOULD PR template を利用する
+- SHOULD docs更新確認項目を含める
+
+---
+
+## 13. リリース前提
+
+### MUST
+
+- MUST main 反映前に最低限の確認を行う
+- MUST build / test / docs / Observability の状態を確認する
+
+---
+
+### 最低限の確認項目
+
+- build成功
+- lint / test成功
+- API疎通確認
+- 主要導線確認
+- docs更新確認
+- runId追跡可能
+- メトリクス / ログ確認可能
+
+---
+
+## 14. AI利用時ルール
+
+### MUST
+
+- MUST AIにIssue番号・ブランチ前提を守らせる
+- MUST docs更新が必要かをAIに判断させる
+- MUST PR対象の変更範囲を明示させる
+
+---
+
+### MUST NOT
+
+- MUST NOT AIが勝手にmain前提で作業する
+- MUST NOT docs更新義務を無視する
+
+---
+
+## 15. 禁止事項
+
+### NEVER
+
+- NEVER 直接mainへコミットする
+- NEVER Issueなしで作業を開始する
+- NEVER docs更新が必要な変更をコードだけで終える
+- NEVER 複数責務を1PRに詰め込む
+- NEVER hotfixを便利な近道として使う
+- NEVER developを壊れたまま放置する
+
+---
+
+## 16. 最重要ルール
+
+👉 すべての変更はIssue起点で行え
+
+👉 docs変更が必要なら同じPRで更新せよ
+
+👉 mainは守れ、developは汚しすぎるな
