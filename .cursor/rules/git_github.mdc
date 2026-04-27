@@ -58,6 +58,7 @@ alwaysApply: true
 - hotfix/\*
 - docs/\*
 - refactor/\*
+- test/\*
 - chore/\*
 
 ---
@@ -75,7 +76,7 @@ alwaysApply: true
 ### 形式
 
 ```text
-<type>/issue-<番号>-<summary>
+{type}/{issue-number}-{summary}
 ```
 
 ---
@@ -83,12 +84,12 @@ alwaysApply: true
 ### 例
 
 ```
-feature/issue-123-add-top-k
-fix/issue-205-fix-score-rounding
-docs/issue-301-update-devops-policy
-refactor/issue-410-split-api-usecase
-chore/issue-512-update-eslint-config
-hotfix/issue-601-fix-prod-timeout
+feature/123-add-top-k
+fix/205-fix-score-rounding
+docs/301-update-devops-policy
+refactor/410-split-api-usecase
+chore/512-update-eslint-config
+hotfix/601-fix-prod-timeout
 ```
 
 ---
@@ -113,10 +114,8 @@ hotfix/issue-601-fix-prod-timeout
 
 ### Issue種別
 
-- Feature
+- Epic
 - Task
-- Bug
-- TechDebt
 
 ---
 
@@ -286,7 +285,7 @@ hotfix/issue-601-fix-prod-timeout
 
 ### 推奨prefix
 
-- feat:
+- feature:
 - fix:
 - docs:
 - refactor:
@@ -322,7 +321,7 @@ hotfix/issue-601-fix-prod-timeout
 
 - MUST 生成されたコミットメッセージは日本語とする
 - MUST コミットメッセージ（タイトル/本文）は、日本語文字（ひらがな・カタカナ・漢字）を最低1文字以上含める
-- MUST 英語のみのコミットメッセージを禁止する（例: "feat: add api endpoint" は不可）
+- MUST 英語のみのコミットメッセージを禁止する（例: "feature: add api endpoint" は不可）
 - MUST 変更内容が一目で分かる内容にする
 - MUST 1コミット1責務の内容と一致させる
 - MUST コミット内容とメッセージの不一致がないことを確認する
