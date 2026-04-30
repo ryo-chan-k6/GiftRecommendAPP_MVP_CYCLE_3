@@ -18,6 +18,29 @@
   - Open = Backlog / Ready / Doing / Blocked / Review
   - Close = Done
 
+### 作成原則
+
+- すべての作業はIssue起点
+- 成果物一覧から生成
+- 1 Issue = 1 責務
+
+### Titleルール
+
+```text
+[<UNIT>:<AREA>]<概要>
+```
+
+#### 例
+
+```text
+[EPIC:API] レコメンド取得API
+[TASK:API] レコメンド取得API設計
+[EPIC:WEB] 検索画面UI
+[TASK:WEB] 検索画面UI設計
+```
+
+---
+
 ## Issue本文記載方針
 
 - 以下の項目はProjectsで管理するため、Issue本文には重複して記載しない
@@ -26,11 +49,16 @@
   - Start Date / Due Date
   - Estimate
 
-- Issue本文には以下のみ記載する
+- 本文には下記を記載する。
   - 目的
-  - 背景
-  - 作業範囲
+  - 背景・理由
+  - 成果物
+    - 対象ファイル・対象ドキュメント・対象機能を列挙する
+  - 参照すべきdocs
+    - 作業前に参照すべき正本docsを列挙する
   - 完了条件
+  - 確認観点
+- 詳細はIssueテンプレート定義ファイルを参照すること
 
 ## Issueフィールド定義
 
@@ -43,18 +71,46 @@
 | Relationships | Issue間の依存関係（親子・関連）    | ◎          | タスクの分解・依存関係管理に使用。親Issue（Epic的）とIssueで階層構造を明示。（さらにSub-issueを用いて、タスク（Issue）と成果物（Sub-issue）の階層構造を管理する。）AIエージェントによるタスク分解にも活用。 | Parent: #1 → Child: #2                  |
 | Development   | ブランチ・PRとの連携               | ◎          | Issue起点でブランチを作成する（`{type}/{issue-number}-{summary}`）。PRは必ずIssueと紐付ける。完了時はIssueをClose。                                                                                         | feature/12-add-user-auth                |
 
-### Issue Labels一覧
+## Issue Labels定義
 
-- web
-- api
-- reco
-- batch
-- database
-- infra
-- docs
-- ci-cd
-- test
-- github
+- メタデータとて、下記ラベル分類をIssue Labelsに定義し、運用する
+- 各ラベル分類の必須制約は下記のとおり
+  - unit：必須（1つ）
+  - type：必須（1つ）
+  - area：必須（1つ以上　※原則1つ）
+
+### 作業単位（unit）
+
+```
+unit: epic
+unit: task
+```
+
+### 作業種別（type）
+
+```
+type: feature
+type: fix
+type: docs
+type: refactor
+type: chore
+type: test
+type: hotfix
+type: spike
+```
+
+### 対象領域（area）
+
+```
+area: web
+area: api
+area: reco
+area: batch
+area: db
+area: docs
+area: infra
+area: project
+```
 
 ## Development運用ルール
 
