@@ -1,0 +1,448 @@
+name: Create branch from issue
+
+on:
+  issues:
+    types:
+      - opened
+      - labeled
+      - unlabeled
+      - edited
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 対象 Issue 番号
+        required: true
+      dry_run:
+        description: true ならブランチ操作・Issue コメントを行わない（ログのみ）
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: create-branch-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or sync work branch
+        uses: actions/github-script@v8
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const BASE_BRANCH = "develop";
+            const NO_BRANCH_LABEL = "no-branch";
+
+            const TYPE_MAP = {
+              "type: feature": "feature",
+              "type: fix": "fix",
+              "type: docs": "docs",
+              "type: refactor": "refactor",
+              "type: chore": "chore",
+              "type: test": "test",
+              "type: hotfix": "hotfix",
+              "type: spike": "spike",
+            };
+
+            const UNIT_MAP = {
+              "unit: epic": "epic",
+              "unit: task": "task",
+            };
+
+            function sanitizeSlug(raw) {
+              if (!raw || typeof raw !== "string") return "";
+              let s = raw.trim().replace(/^["']|["']$/g, "");
+              s = s.toLowerCase();
+              s = s.replace(/\s+/g, "-");
+              s = s.replace(/[^a-z0-9-]/g, "");
+              s = s.replace(/-+/g, "-");
+              s = s.replace(/^-+|-+$/g, "");
+              if (s.length > 48) s = s.slice(0, 48).replace(/-+$/g, "");
+              return s;
+            }
+
+            async function summarizeTitle(title, issueNum, apiKey) {
+              const fallback = `issue-${issueNum}`;
+              if (!apiKey) return fallback;
+              try {
+                const controller = new AbortController();
+                const t = setTimeout(() => controller.abort(), 25_000);
+                const res = await fetch("https://api.openai.com/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                      {
+                        role: "system",
+                        content:
+                          "Reply with ONLY a short English kebab-case slug (a-z and hyphens) summarizing the GitHub issue title. No quotes, no punctuation, no explanation. Max 40 characters.",
+                      },
+                      { role: "user", content: title },
+                    ],
+                    temperature: 0.2,
+                    max_tokens: 60,
+                  }),
+                  signal: controller.signal,
+                });
+                clearTimeout(t);
+                if (!res.ok) return fallback;
+                const data = await res.json();
+                const text = data.choices?.[0]?.message?.content;
+                if (!text || typeof text !== "string") return fallback;
+                const slug = sanitizeSlug(text);
+                return slug || fallback;
+              } catch {
+                return fallback;
+              }
+            }
+
+            async function listBranchesMatchingIssue(github, owner, repo, issueNum) {
+              const re = new RegExp(`^.+/(epic|task)-${issueNum}-`);
+              const names = [];
+              let page = 1;
+              for (;;) {
+                const { data } = await github.rest.repos.listBranches({
+                  owner,
+                  repo,
+                  per_page: 100,
+                  page,
+                });
+                for (const b of data) {
+                  if (re.test(b.name)) names.push(b.name);
+                }
+                if (data.length < 100) break;
+                page += 1;
+              }
+              return names;
+            }
+
+            async function hasOpenPrForHead(github, owner, repo, branchName) {
+              const head = `${owner}:${branchName}`;
+              const { data } = await github.rest.pulls.list({
+                owner,
+                repo,
+                state: "open",
+                head,
+                per_page: 5,
+              });
+              return data.length > 0;
+            }
+
+            async function safeRenameBranch(github, owner, repo, oldName, newName) {
+              const refOld = `heads/${oldName}`;
+              const refNew = `heads/${newName}`;
+              try {
+                await github.rest.git.getRef({ owner, repo, ref: refNew });
+                throw new Error(`target_branch_exists:${newName}`);
+              } catch (e) {
+                if (e.message === `target_branch_exists:${newName}`) throw e;
+                if (e.status !== 404) throw e;
+              }
+
+              const { data: oldRef } = await github.rest.git.getRef({ owner, repo, ref: refOld });
+              const initialSha = oldRef.object.sha;
+
+              await github.rest.git.createRef({
+                owner,
+                repo,
+                ref: `refs/heads/${newName}`,
+                sha: initialSha,
+              });
+
+              const { data: created } = await github.rest.git.getRef({ owner, repo, ref: refNew });
+              if (created.object.sha !== initialSha) {
+                await github.rest.git.deleteRef({ owner, repo, ref: refNew }).catch(() => {});
+                throw new Error("new_ref_verification_failed");
+              }
+
+              const { data: oldAgain } = await github.rest.git.getRef({ owner, repo, ref: refOld });
+              if (oldAgain.object.sha !== initialSha) {
+                await github.rest.git.deleteRef({ owner, repo, ref: refNew }).catch(() => {});
+                throw new Error("old_branch_moved_abort");
+              }
+
+              await github.rest.git.deleteRef({ owner, repo, ref: refOld });
+            }
+
+            function triggerLabel() {
+              if (context.eventName === "workflow_dispatch") {
+                const dr = context.payload.inputs?.dry_run === "true" ? " (dry_run)" : "";
+                return `workflow_dispatch${dr}`;
+              }
+              return `issues.${context.payload.action}`;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const dryRun =
+              context.eventName === "workflow_dispatch" &&
+              String(context.payload.inputs?.dry_run || "") === "true";
+
+            let issueNumber;
+            if (context.eventName === "workflow_dispatch") {
+              issueNumber = parseInt(String(context.payload.inputs.issue_number), 10);
+              if (!Number.isFinite(issueNumber) || issueNumber < 1) {
+                core.setFailed("Invalid issue_number");
+                return;
+              }
+            } else {
+              issueNumber = context.payload.issue?.number;
+              if (!issueNumber) {
+                core.setFailed("Missing issue number in payload");
+                return;
+              }
+            }
+
+            const { data: issue } = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+
+            if (issue.state !== "open") {
+              core.info(`Issue #${issueNumber} is not open; skipping.`);
+              return;
+            }
+
+            const labelNames = (issue.labels || [])
+              .map((l) => (typeof l === "string" ? l : l.name))
+              .filter(Boolean);
+
+            if (labelNames.includes(NO_BRANCH_LABEL)) {
+              core.info(`Issue #${issueNumber} has ${NO_BRANCH_LABEL}; skipping.`);
+              return;
+            }
+
+            const units = labelNames.filter((n) => n.startsWith("unit:"));
+            const types = labelNames.filter((n) => n.startsWith("type:"));
+
+            async function postComment(body) {
+              if (dryRun) {
+                core.info(`[dry_run] Would comment on #${issueNumber}:\n${body}`);
+                return;
+              }
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }
+
+            function errorComment(reasonLines) {
+              return (
+                "ブランチを自動作成できませんでした。\n\n理由：\n" +
+                reasonLines.map((l) => `- ${l}`).join("\n") +
+                "\n\n対応：\n" +
+                "- ラベル（`unit:*` と `type:*` をそれぞれ1つ、`no-branch` で除外）を確認してください。"
+              );
+            }
+
+            if (units.length !== 1) {
+              let reason;
+              if (units.length === 0) reason = "`unit:*` ラベルが設定されていません。";
+              else reason = "`unit:*` ラベルが複数付与されています。";
+              await postComment(errorComment([reason]));
+              return;
+            }
+
+            if (types.length !== 1) {
+              let reason;
+              if (types.length === 0) reason = "`type:*` ラベルが設定されていません。";
+              else reason = "`type:*` ラベルが複数付与されています。";
+              await postComment(errorComment([reason]));
+              return;
+            }
+
+            const unitLabel = units[0];
+            const typeLabel = types[0];
+            const unit = UNIT_MAP[unitLabel];
+            const branchType = TYPE_MAP[typeLabel];
+
+            if (!unit) {
+              await postComment(
+                errorComment([
+                  `\`unit:*\` が許可された値ではありません（\`${unitLabel}\`）。\`unit: epic\` または \`unit: task\` を付与してください。`,
+                ]),
+              );
+              return;
+            }
+
+            if (!branchType) {
+              await postComment(
+                errorComment([
+                  `\`type:*\` が許可された値ではありません（\`${typeLabel}\`）。仕様の type ラベルを1つ付与してください。`,
+                ]),
+              );
+              return;
+            }
+
+            const apiKey = process.env.OPENAI_API_KEY || "";
+            let summary = await summarizeTitle(issue.title || "", issueNumber, apiKey);
+            summary = sanitizeSlug(summary) || `issue-${issueNumber}`;
+
+            const expectedBranch = `${branchType}/${unit}-${issueNumber}-${summary}`;
+
+            let baseSha;
+            try {
+              const { data: base } = await github.rest.repos.getBranch({
+                owner,
+                repo,
+                branch: BASE_BRANCH,
+              });
+              baseSha = base.commit.sha;
+            } catch (e) {
+              if (e.status === 404) {
+                core.setFailed(`Base branch '${BASE_BRANCH}' not found`);
+                return;
+              }
+              throw e;
+            }
+
+            const matching = await listBranchesMatchingIssue(github, owner, repo, issueNumber);
+
+            if (matching.length >= 2) {
+              await postComment(
+                [
+                  "対応するbranchが複数存在します。",
+                  "",
+                  "検出されたbranch：",
+                  ...matching.map((b) => `- \`${b}\``),
+                  "",
+                  "対応：不要なbranchを削除し、1つに統一してください。",
+                ].join("\n"),
+              );
+              return;
+            }
+
+            const trig = triggerLabel();
+
+            if (matching.length === 0) {
+              if (dryRun) {
+                core.info(`[dry_run] Would create branch ${expectedBranch} from ${BASE_BRANCH}@${baseSha}`);
+                return;
+              }
+              try {
+                await github.rest.git.createRef({
+                  owner,
+                  repo,
+                  ref: `refs/heads/${expectedBranch}`,
+                  sha: baseSha,
+                });
+              } catch (e) {
+                if (e.status === 422) {
+                  try {
+                    const { data: existing } = await github.rest.git.getRef({
+                      owner,
+                      repo,
+                      ref: `heads/${expectedBranch}`,
+                    });
+                    if (existing.object.sha === baseSha) {
+                      await postComment(
+                        [
+                          "対応ブランチは既に存在します。",
+                          "",
+                          `- Branch: \`${expectedBranch}\``,
+                        ].join("\n"),
+                      );
+                      return;
+                    }
+                  } catch (_) {
+                    /* fall through */
+                  }
+                }
+                throw e;
+              }
+
+              await postComment(
+                [
+                  "ブランチを自動作成しました。",
+                  "",
+                  `- Branch: \`${expectedBranch}\``,
+                  `- Base: \`${BASE_BRANCH}\``,
+                  `- Trigger: \`${trig}\``,
+                ].join("\n"),
+              );
+              return;
+            }
+
+            const existingBranch = matching[0];
+
+            if (existingBranch === expectedBranch) {
+              await postComment(
+                [
+                  "対応ブランチは既に存在します。",
+                  "",
+                  `- Branch: \`${expectedBranch}\``,
+                ].join("\n"),
+              );
+              return;
+            }
+
+            const prOpen = await hasOpenPrForHead(github, owner, repo, existingBranch);
+            if (prOpen) {
+              await postComment(
+                [
+                  "ブランチ名を自動更新できません（オープンな PR が既存ブランチに紐づいています）。",
+                  "",
+                  `- 既存 Branch: \`${existingBranch}\``,
+                  `- 期待する Branch: \`${expectedBranch}\``,
+                  "",
+                  "PR を閉じるかブランチを手動で調整したうえで、再実行してください。",
+                ].join("\n"),
+              );
+              return;
+            }
+
+            if (dryRun) {
+              core.info(`[dry_run] Would rename ${existingBranch} -> ${expectedBranch}`);
+              return;
+            }
+
+            try {
+              await safeRenameBranch(github, owner, repo, existingBranch, expectedBranch);
+            } catch (e) {
+              if (e.message === "old_branch_moved_abort") {
+                await postComment(
+                  [
+                    "ブランチ名の自動変更を中断しました（処理中に既存ブランチが更新されました）。",
+                    "",
+                    "既存ブランチはそのままです。内容を確認のうえ、手動で対応してください。",
+                  ].join("\n"),
+                );
+                return;
+              }
+              if (String(e.message || "").startsWith("target_branch_exists:")) {
+                await postComment(
+                  [
+                    "ブランチ名を自動変更できませんでした（同名のブランチが既に存在します）。",
+                    "",
+                    `- 期待する Branch: \`${expectedBranch}\``,
+                  ].join("\n"),
+                );
+                return;
+              }
+              throw e;
+            }
+
+            await postComment(
+              [
+                "ブランチ名を更新しました（ラベル／タイトルに合わせて再生成）。",
+                "",
+                `- Branch: \`${expectedBranch}\``,
+                `- Base: \`${BASE_BRANCH}\`（起点コミットは従来ブランチと同一）`,
+                `- Trigger: \`${trig}\``,
+              ].join("\n"),
+            );
