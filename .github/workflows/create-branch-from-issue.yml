@@ -1,3 +1,11 @@
+# -----------------------------------------------------------------------------
+# Issue のラベルに基づき作業ブランチを作成・リネームするワークフロー
+#
+# 正本: docs/00_共通/プロジェクト運用ルール/GitHub Actions仕様書/ブランチ自動作成ワークフロー.md
+# - 新規: GraphQL createLinkedBranch（Issue Development / linked branch）
+# - リネーム: 方針A — deleteLinkedBranch → createLinkedBranch → 旧 ref 削除（SHA 検証）
+# -----------------------------------------------------------------------------
+
 name: Create branch from issue
 
 on:
@@ -17,11 +25,15 @@ on:
         required: false
         default: "false"
 
+# contents: GraphQL createLinkedBranch / Git ref
+# issues:   Issue コメント
+# pull-requests: オープン PR の head 判定
 permissions:
   contents: write
   issues: write
   pull-requests: read
 
+# 同一 Issue のイベントを直列化（進行中ジョブは打ち切らない）
 concurrency:
   group: create-branch-${{ github.event.issue.number || github.event.inputs.issue_number }}
   cancel-in-progress: false
@@ -30,6 +42,7 @@ jobs:
   create-branch:
     runs-on: ubuntu-latest
     steps:
+      # 実装言語: Node 上の JavaScript（actions/github-script）
       - name: Create or sync work branch
         uses: actions/github-script@v8
         env:
@@ -37,6 +50,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            // =============================================================================
+            // 定数・マッピング（仕様書のラベル名・ベースブランチと一致させる）
+            // =============================================================================
             const BASE_BRANCH = "develop";
             const NO_BRANCH_LABEL = "no-branch";
 
@@ -56,6 +72,16 @@ jobs:
               "unit: task": "task",
             };
 
+            /** GraphQL 例外からメッセージを取り出す */
+            function graphqlFirstErrorMessage(err) {
+              if (Array.isArray(err?.errors) && err.errors[0]?.message) return err.errors[0].message;
+              if (Array.isArray(err?.response?.errors) && err.response.errors[0]?.message) {
+                return err.response.errors[0].message;
+              }
+              return String(err?.message || err);
+            }
+
+            // --- Issue タイトル → summary（OpenAI + sanitize） ---
             function sanitizeSlug(raw) {
               if (!raw || typeof raw !== "string") return "";
               let s = raw.trim().replace(/^["']|["']$/g, "");
@@ -107,6 +133,7 @@ jobs:
               }
             }
 
+            // --- REST: リポジトリの全ブランチをページングし、Issue 番号パターンに一致するものだけ返す ---
             async function listBranchesMatchingIssue(github, owner, repo, issueNum) {
               const re = new RegExp(`^.+/(epic|task)-${issueNum}-`);
               const names = [];
@@ -139,42 +166,159 @@ jobs:
               return data.length > 0;
             }
 
-            async function safeRenameBranch(github, owner, repo, oldName, newName) {
-              const refOld = `heads/${oldName}`;
-              const refNew = `heads/${newName}`;
-              try {
-                await github.rest.git.getRef({ owner, repo, ref: refNew });
-                throw new Error(`target_branch_exists:${newName}`);
-              } catch (e) {
-                if (e.message === `target_branch_exists:${newName}`) throw e;
-                if (e.status !== 404) throw e;
+            function normalizeRefShortName(refName) {
+              if (!refName) return "";
+              return String(refName).replace(/^refs\/heads\//, "");
+            }
+
+            /** Issue の Node ID・repo Node ID・linkedBranches を取得 */
+            async function fetchIssueGraphqlContext(github, owner, repo, issueNumber) {
+              const data = await github.graphql(
+                `query($owner: String!, $repo: String!, $issue: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    id
+                    issue(number: $issue) {
+                      id
+                      linkedBranches(first: 20) {
+                        nodes {
+                          id
+                          ref { name }
+                        }
+                      }
+                    }
+                  }
+                }`,
+                { owner, repo, issue: issueNumber },
+              );
+              const repoNode = data.repository;
+              if (!repoNode?.issue || !repoNode.issue.id) {
+                throw new Error("graphql_issue_not_found");
               }
+              return {
+                repositoryId: repoNode.id,
+                issueId: repoNode.issue.id,
+                linkedBranches: repoNode.issue.linkedBranches?.nodes || [],
+              };
+            }
+
+            function findLinkedBranchId(linkedBranchNodes, shortBranchName) {
+              for (const node of linkedBranchNodes) {
+                if (normalizeRefShortName(node.ref?.name) === shortBranchName) return node.id;
+              }
+              return null;
+            }
+
+            async function gqlCreateLinkedBranch(github, issueId, repositoryId, oid, name) {
+              await github.graphql(
+                `mutation($input: CreateLinkedBranchInput!) {
+                  createLinkedBranch(input: $input) {
+                    linkedBranch { id }
+                  }
+                }`,
+                { input: { issueId, repositoryId, oid, name } },
+              );
+            }
+
+            async function gqlDeleteLinkedBranch(github, linkedBranchId) {
+              await github.graphql(
+                `mutation($input: DeleteLinkedBranchInput!) {
+                  deleteLinkedBranch(input: $input) {
+                    clientMutationId
+                  }
+                }`,
+                { input: { linkedBranchId } },
+              );
+            }
+
+            async function cleanupNewBranchAfterFailedRename(github, owner, repo, refNew, createdLinkedId) {
+              if (createdLinkedId) {
+                try {
+                  await gqlDeleteLinkedBranch(github, createdLinkedId);
+                } catch (_) {}
+              }
+              try {
+                await github.rest.git.deleteRef({ owner, repo, ref: refNew });
+              } catch (_) {}
+            }
+
+            /**
+             * 方針A: deleteLinkedBranch(任意) → createLinkedBranch → 旧 ref 削除
+             */
+            async function renameBranchWithLinkedIssue(
+              github,
+              owner,
+              repo,
+              issueId,
+              repositoryId,
+              linkedBranchNodes,
+              existingBranch,
+              expectedBranch,
+            ) {
+              const refOld = `heads/${existingBranch}`;
+              const refNew = `heads/${expectedBranch}`;
 
               const { data: oldRef } = await github.rest.git.getRef({ owner, repo, ref: refOld });
               const initialSha = oldRef.object.sha;
 
-              await github.rest.git.createRef({
-                owner,
-                repo,
-                ref: `refs/heads/${newName}`,
-                sha: initialSha,
-              });
+              const oldLinkedId = findLinkedBranchId(linkedBranchNodes, existingBranch);
+              if (oldLinkedId) {
+                await gqlDeleteLinkedBranch(github, oldLinkedId);
+              }
+
+              let createdLinkedId = null;
+              try {
+                const createData = await github.graphql(
+                  `mutation($input: CreateLinkedBranchInput!) {
+                    createLinkedBranch(input: $input) {
+                      linkedBranch { id }
+                    }
+                  }`,
+                  {
+                    input: {
+                      issueId,
+                      repositoryId,
+                      oid: initialSha,
+                      name: expectedBranch,
+                    },
+                  },
+                );
+                createdLinkedId = createData?.createLinkedBranch?.linkedBranch?.id || null;
+              } catch (e) {
+                const msg = graphqlFirstErrorMessage(e);
+                if (msg.includes("already exists") || msg.includes("Could not create")) {
+                  try {
+                    const { data: ex } = await github.rest.git.getRef({ owner, repo, ref: refNew });
+                    if (ex.object.sha === initialSha) {
+                      const { data: oldCheck } = await github.rest.git.getRef({ owner, repo, ref: refOld });
+                      if (oldCheck.object.sha === initialSha) {
+                        await github.rest.git.deleteRef({ owner, repo, ref: refOld });
+                      }
+                      return { kind: "idempotent" };
+                    }
+                  } catch (_) {
+                    /* fall through */
+                  }
+                }
+                throw e;
+              }
 
               const { data: created } = await github.rest.git.getRef({ owner, repo, ref: refNew });
               if (created.object.sha !== initialSha) {
-                await github.rest.git.deleteRef({ owner, repo, ref: refNew }).catch(() => {});
+                await cleanupNewBranchAfterFailedRename(github, owner, repo, refNew, createdLinkedId);
                 throw new Error("new_ref_verification_failed");
               }
 
               const { data: oldAgain } = await github.rest.git.getRef({ owner, repo, ref: refOld });
               if (oldAgain.object.sha !== initialSha) {
-                await github.rest.git.deleteRef({ owner, repo, ref: refNew }).catch(() => {});
+                await cleanupNewBranchAfterFailedRename(github, owner, repo, refNew, createdLinkedId);
                 throw new Error("old_branch_moved_abort");
               }
 
               await github.rest.git.deleteRef({ owner, repo, ref: refOld });
+              return { kind: "renamed" };
             }
 
+            // --- Issue コメント用トリガー表記 ---
             function triggerLabel() {
               if (context.eventName === "workflow_dispatch") {
                 const dr = context.payload.inputs?.dry_run === "true" ? " (dry_run)" : "";
@@ -329,20 +473,36 @@ jobs:
 
             const trig = triggerLabel();
 
+            // GraphQL: Issue / Repository の Node ID（createLinkedBranch 必須）
+            let gqlCtx;
+            try {
+              gqlCtx = await fetchIssueGraphqlContext(github, owner, repo, issueNumber);
+            } catch (e) {
+              if (String(e.message) === "graphql_issue_not_found") {
+                await postComment(errorComment(["GraphQL で Issue を解決できませんでした。"]));
+                return;
+              }
+              throw e;
+            }
+            const { issueId, repositoryId, linkedBranches } = gqlCtx;
+
+            // --- 該当ブランチ 0 件: createLinkedBranch のみ（REST createRef は使わない） ---
             if (matching.length === 0) {
               if (dryRun) {
-                core.info(`[dry_run] Would create branch ${expectedBranch} from ${BASE_BRANCH}@${baseSha}`);
+                core.info(
+                  `[dry_run] Would createLinkedBranch #${issueNumber} name=${expectedBranch} oid=${baseSha}`,
+                );
                 return;
               }
               try {
-                await github.rest.git.createRef({
-                  owner,
-                  repo,
-                  ref: `refs/heads/${expectedBranch}`,
-                  sha: baseSha,
-                });
+                await gqlCreateLinkedBranch(github, issueId, repositoryId, baseSha, expectedBranch);
               } catch (e) {
-                if (e.status === 422) {
+                const msg = graphqlFirstErrorMessage(e);
+                if (
+                  msg.includes("already exists") ||
+                  msg.includes("Could not create") ||
+                  e.status === 422
+                ) {
                   try {
                     const { data: existing } = await github.rest.git.getRef({
                       owner,
@@ -363,12 +523,13 @@ jobs:
                     /* fall through */
                   }
                 }
+                core.error("createLinkedBranch failed");
                 throw e;
               }
 
               await postComment(
                 [
-                  "ブランチを自動作成しました。",
+                  "ブランチを自動作成しました（Issue の Development にリンク済みです）。",
                   "",
                   `- Branch: \`${expectedBranch}\``,
                   `- Base: \`${BASE_BRANCH}\``,
@@ -380,6 +541,7 @@ jobs:
 
             const existingBranch = matching[0];
 
+            // --- 1 件・名前一致: 冪等 ---
             if (existingBranch === expectedBranch) {
               await postComment(
                 [
@@ -391,6 +553,7 @@ jobs:
               return;
             }
 
+            // --- 1 件・名前不一致: PR があるとリネームしない ---
             const prOpen = await hasOpenPrForHead(github, owner, repo, existingBranch);
             if (prOpen) {
               await postComment(
@@ -407,12 +570,34 @@ jobs:
             }
 
             if (dryRun) {
-              core.info(`[dry_run] Would rename ${existingBranch} -> ${expectedBranch}`);
+              core.info(
+                `[dry_run] Would rename (linked) ${existingBranch} -> ${expectedBranch} (方針A)`,
+              );
               return;
             }
 
+            // --- 方針A リネーム ---
             try {
-              await safeRenameBranch(github, owner, repo, existingBranch, expectedBranch);
+              const result = await renameBranchWithLinkedIssue(
+                github,
+                owner,
+                repo,
+                issueId,
+                repositoryId,
+                linkedBranches,
+                existingBranch,
+                expectedBranch,
+              );
+              if (result.kind === "idempotent") {
+                await postComment(
+                  [
+                    "対応ブランチは既に存在します。",
+                    "",
+                    `- Branch: \`${expectedBranch}\``,
+                  ].join("\n"),
+                );
+                return;
+              }
             } catch (e) {
               if (e.message === "old_branch_moved_abort") {
                 await postComment(
@@ -424,7 +609,8 @@ jobs:
                 );
                 return;
               }
-              if (String(e.message || "").startsWith("target_branch_exists:")) {
+              const msg = graphqlFirstErrorMessage(e);
+              if (msg.includes("already exists") || msg.includes("Could not create")) {
                 await postComment(
                   [
                     "ブランチ名を自動変更できませんでした（同名のブランチが既に存在します）。",
@@ -439,7 +625,7 @@ jobs:
 
             await postComment(
               [
-                "ブランチ名を更新しました（ラベル／タイトルに合わせて再生成）。",
+                "ブランチ名を更新しました（ラベル／タイトルに合わせて再生成。Issue の Development 向けリンクを更新）。",
                 "",
                 `- Branch: \`${expectedBranch}\``,
                 `- Base: \`${BASE_BRANCH}\`（起点コミットは従来ブランチと同一）`,
