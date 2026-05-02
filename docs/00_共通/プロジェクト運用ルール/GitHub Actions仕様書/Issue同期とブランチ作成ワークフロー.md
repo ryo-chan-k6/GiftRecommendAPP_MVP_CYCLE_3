@@ -6,6 +6,8 @@
 
 実装ファイル：`.github/workflows/issue-opened-sync-metadata-and-branch.yml`（表示名: **Issue metadata sync and create branch**）
 
+Project の **Phase / Priority / Area** を Issue 本文から同期する処理は別ワークフロー（`.github/workflows/issue-opened-set-project-fields-from-issue-body.yml`）。仕様の正本は [Issue作成時Projectフィールド同期ワークフロー.md](./Issue作成時Projectフィールド同期ワークフロー.md)。フィールド一覧は [Projects運用ルール](../Projects運用ルール.md) を参照。
+
 ### 1.1 目的（2段階）
 
 1. **Issue メタデータ同期（Step 1）**  
