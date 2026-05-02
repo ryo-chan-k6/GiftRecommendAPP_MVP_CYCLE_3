@@ -190,6 +190,20 @@ jobs:
               });
             }
 
+            /** Octokit / fetch 由来のエラーから status とレスポンス本文（先頭のみ）を整形 */
+            function formatApiError(e) {
+              const status = e?.status ?? e?.response?.status;
+              const lines = [`status: ${status != null ? status : "unknown"}`];
+              lines.push(`message: ${String(e?.message || e)}`);
+              const data = e?.response?.data;
+              if (data !== undefined && data !== null) {
+                let s = typeof data === "string" ? data : JSON.stringify(data);
+                if (s.length > 1200) s = `${s.slice(0, 1200)}...(truncated)`;
+                lines.push(`response_body: ${s}`);
+              }
+              return lines.join("\n");
+            }
+
             const sections = parseFormSections(bodyText);
             const desired = buildDesiredLabels(sections);
 
@@ -285,18 +299,29 @@ jobs:
                   if (parent.state !== "open") {
                     await postComment(`⚠️ 親Issue #${pnum} が Open ではないため、Sub-issue の紐づけをスキップしました。`);
                   } else if (!dryRun) {
+                    // REST の sub_issue_id は Issue の number ではなく id（数値 ID）を渡す（公式: "The id of the sub-issue"）。
                     await github.request("POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues", {
                       owner,
                       repo,
                       issue_number: pnum,
-                      sub_issue_id: issueNumber,
+                      sub_issue_id: issue.id,
                     });
                   } else {
-                    core.info(`[dry_run] Would POST sub_issue parent=#${pnum} child=#${issueNumber}`);
+                    core.info(
+                      `[dry_run] Would POST sub_issue parent=#${pnum} child=#${issueNumber} sub_issue_id=${issue.id}`,
+                    );
                   }
                 } catch (e) {
+                  const detail = formatApiError(e);
+                  core.error(`Sub-issue link failed: ${detail}`);
                   await postComment(
-                    `⚠️ 親子（Sub-issue）の紐づけに失敗しました（親 #${pnum}）。手動で Relationships を設定してください。\n\n${String(e?.message || e)}`,
+                    [
+                      `⚠️ 親子（Sub-issue）の紐づけに失敗しました（親 #${pnum}、子 #${issueNumber}、sub_issue_id=${issue.id}）。手動で Relationships を設定してください。`,
+                      "",
+                      "```",
+                      detail,
+                      "```",
+                    ].join("\n"),
                   );
                 }
               }
