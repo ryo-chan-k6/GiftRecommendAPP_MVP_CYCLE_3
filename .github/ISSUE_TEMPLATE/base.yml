@@ -99,7 +99,7 @@ body:
       options:
         - label: blocked
           required: false
-        - label: risk: high
+        - label: "risk: high"
           required: false
         - label: no-branch
           required: false
