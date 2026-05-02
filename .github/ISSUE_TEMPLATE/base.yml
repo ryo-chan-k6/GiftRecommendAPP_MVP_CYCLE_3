@@ -1,17 +1,17 @@
-name: Task
+name: Base
 description: 設計・実装・ドキュメント更新などの通常作業
-title: "[Task]: "
+title: "[Epic/Task]: "
 labels: []
 body:
   - type: markdown
     attributes:
       value: |
-        ## Task Issue
+        ## Base Issue
         通常作業用のIssue。
         進捗・優先度・日付・EstimateはProjectsで管理する。
         Issue本文には、目的・背景・作業範囲・完了条件を記載する。
 
-        > このIssueは、作成後にGitHub Actionsで本文のメタ情報を読み取り、Issue Labelsへ自動連携する。
+        > このIssueは、作成後に GitHub Actions（Issue metadata sync and create branch）で本文を読み取り、**Labels・Milestone・親子（Sub-issue）** を同期したうえで、作業ブランチを作成します。
 
   - type: dropdown
     id: unit
@@ -28,8 +28,28 @@ body:
     id: parent_issue
     attributes:
       label: 親Issue
-      description: 紐づくEpicまたは親Issue番号を書く。親がない場合は「なし」と記載する。
+      description: 紐づくEpicまたは親Issue番号を書く。親がない場合は「なし」と記載する。`#番号` があると Actions が親に Sub-issue として紐づけます。
       placeholder: "#12 / なし"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: project_phase
+    attributes:
+      label: プロジェクト工程
+      description: リポジトリの Milestone タイトルと完全一致する値を選ぶ。該当 Milestone が無い場合は GitHub 上で作成するか「なし」を選ぶ。Issue運用ルールの Milestone 利用方針に従う。
+      options:
+        - なし
+        - 事業構想工程完了
+        - ドメイン探索工程完了
+        - ドメイン要件定義工程完了
+        - ドメインモデル設計工程完了
+        - アプリケーション設計工程完了
+        - 実装設計工程完了
+        - 開発工程完了
+        - 結合・総合テスト工程完了
+        - リリース工程完了
+        - 運用・改善工程完了
     validations:
       required: true
 

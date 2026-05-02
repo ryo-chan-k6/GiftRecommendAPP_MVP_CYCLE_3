@@ -1,7 +1,7 @@
-# Create branch from issue — `issues` イベント（自動実行）検証結果
+# Issue metadata sync and create branch — `issues` イベント（自動実行）検証結果
 
-対象ワークフロー: [`.github/workflows/create-branch-from-issue.yml`](../create-branch-from-issue.yml)  
-正本仕様: `docs/00_共通/プロジェクト運用ルール/GitHub Actions仕様書/ブランチ自動作成ワークフロー.md`  
+対象ワークフロー: [`.github/workflows/issue-opened-sync-metadata-and-branch.yml`](../issue-opened-sync-metadata-and-branch.yml)  
+正本仕様: `docs/00_共通/プロジェクト運用ルール/GitHub Actions仕様書/Issue同期とブランチ作成ワークフロー.md`  
 検証実施: GitHub Actions 上の実ラン（`gh` CLI で Run / Issue コメント / GraphQL を確認）  
 記録日時（GitHub 上の Run 基準）: 2026-05-01 07:22–07:25 UTC 前後
 
@@ -65,7 +65,7 @@ Issue #11 の `linkedBranches`（検証時点）:
 ## 5. 再検証コマンド例（メンテ用）
 
 ```bash
-gh run list --workflow="Create branch from issue" --limit 15 --json databaseId,conclusion,event,displayTitle,url
+gh run list --workflow="Issue metadata sync and create branch" --limit 15 --json databaseId,conclusion,event,displayTitle,url
 gh run view <RUN_ID> --json conclusion,event,url,jobs
 gh api repos/<owner>/<repo>/issues/11/comments --jq '.[].body'
 ```
