@@ -1,8 +1,7 @@
 name: Task
 description: 設計・実装・ドキュメント更新などの通常作業
 title: "[Task]: "
-labels:
-  - task
+labels: []
 body:
   - type: markdown
     attributes:
@@ -12,12 +11,25 @@ body:
         進捗・優先度・日付・EstimateはProjectsで管理する。
         Issue本文には、目的・背景・作業範囲・完了条件を記載する。
 
+        > このIssueは、作成後にGitHub Actionsで本文のメタ情報を読み取り、Issue Labelsへ自動連携する。
+
+  - type: dropdown
+    id: unit
+    attributes:
+      label: 作業単位
+      description: Issueの粒度を選択する。ブランチ命名のunitに利用する。
+      options:
+        - epic
+        - task
+    validations:
+      required: true
+
   - type: input
     id: parent_issue
     attributes:
       label: 親Issue
-      description: 紐づくEpicまたは親Issue番号を書く
-      placeholder: "#12"
+      description: 紐づくEpicまたは親Issue番号を書く。親がない場合は「なし」と記載する。
+      placeholder: "#12 / なし"
     validations:
       required: true
 
@@ -25,14 +37,16 @@ body:
     id: work_type
     attributes:
       label: 作業種別
-      description: 作業内容の分類を選択する
+      description: 作業内容の分類を選択する。Issue Labelの type:* に連携する。
       options:
         - feature
         - fix
         - docs
         - refactor
-        - test
         - chore
+        - test
+        - hotfix
+        - spike
     validations:
       required: true
 
@@ -40,21 +54,55 @@ body:
     id: area
     attributes:
       label: 対象領域
-      description: 主な変更対象を選択する
+      description: 主な変更対象を選択する。Issue Labelの area:* に連携する。
       multiple: true
       options:
         - web
         - api
         - reco
         - batch
-        - database
-        - infra
+        - db
         - docs
-        - ci-cd
-        - test
-        - github
+        - infra
+        - project
     validations:
       required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 優先度
+      description: Issue Labelの priority:* に連携する。
+      options:
+        - high
+        - medium
+        - low
+    validations:
+      required: true
+
+  - type: dropdown
+    id: owner_mode
+    attributes:
+      label: 作業主体
+      description: AI主導か人主導かを選択する。Issue Labelの ai-agent / human-led に連携する。
+      options:
+        - ai-agent
+        - human-led
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: options
+    attributes:
+      label: 補助ラベル
+      description: 必要に応じて選択する。
+      options:
+        - label: blocked
+          required: false
+        - label: risk: high
+          required: false
+        - label: no-branch
+          required: false
 
   - type: textarea
     id: purpose
