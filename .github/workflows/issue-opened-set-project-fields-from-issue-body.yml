@@ -1,0 +1,317 @@
+# -----------------------------------------------------------------------------
+# Task Issue フォーム本文から ProjectV2 の Phase / Priority / Area を更新する
+# （Issue→Project への紐づけは別経路で行われる前提。アイテム出現まで短いリトライする）
+#
+# 正本: docs/00_共通/プロジェクト運用ルール/GitHub Actions仕様書/Issue作成時Projectフィールド同期ワークフロー.md
+# Project 定数は update-projects-status-by-planned-start.yml と揃えること
+# -----------------------------------------------------------------------------
+
+name: Set project Phase Priority Area from issue body
+
+on:
+  issues:
+    types:
+      - opened
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-fields-from-body-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  set-project-fields:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Project Phase Priority Area from Task form body
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN }}
+          script: |
+            const PROJECT_OWNER = "ryo-chan-k6";
+            const PROJECT_NUMBER = 1; // ← update-projects-status-by-planned-start.yml と揃える
+            const REPOSITORY_NAME_WITH_OWNER = "ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3";
+
+            const PHASE_FIELD_NAME = "Phase";
+            const PRIORITY_FIELD_NAME = "Priority";
+            const AREA_FIELD_NAME = "Area";
+
+            const MAX_FIND_ATTEMPTS = 10;
+            const FIND_DELAY_MS = 2000;
+
+            const [repoOwner, repoName] = REPOSITORY_NAME_WITH_OWNER.split("/");
+            const issueNumber = context.payload.issue?.number;
+            const bodyText = context.payload.issue?.body || "";
+
+            if (!issueNumber) {
+              core.setFailed("Missing issue number");
+              return;
+            }
+
+            if (!bodyText.includes("### 作業単位")) {
+              core.info("Not a Task form issue (no ### 作業単位); skipping Project field sync.");
+              return;
+            }
+
+            const AREA_KEYS = new Set(["web", "api", "reco", "batch", "db", "docs", "infra", "project"]);
+
+            function parseFormSections(body) {
+              const sections = {};
+              const lines = (body || "").split(/\r?\n/);
+              let key = null;
+              const buf = [];
+              function flush() {
+                if (key !== null) sections[key] = buf.join("\n").trim();
+                buf.length = 0;
+              }
+              for (const raw of lines) {
+                const m = /^### (.+)$/.exec(raw);
+                if (m) {
+                  flush();
+                  key = m[1].trim();
+                } else {
+                  buf.push(raw);
+                }
+              }
+              flush();
+              return sections;
+            }
+
+            function firstLine(s) {
+              const t = (s || "").trim();
+              const i = t.indexOf("\n");
+              return i === -1 ? t : t.slice(0, i).trim();
+            }
+
+            function parseAreas(raw) {
+              const t = (raw || "").trim();
+              if (!t) return [];
+              const parts = t.split(/[\n,，、]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+              const out = [];
+              for (const p of parts) {
+                if (AREA_KEYS.has(p)) out.push(p);
+              }
+              return [...new Set(out)];
+            }
+
+            function sleep(ms) {
+              return new Promise((r) => setTimeout(r, ms));
+            }
+
+            function findOption(field, candidates) {
+              if (!field?.options) return null;
+              for (const c of candidates) {
+                const hit = field.options.find((o) => o.name === c);
+                if (hit) return hit;
+              }
+              return null;
+            }
+
+            const projectItemsQuery = `
+              query($owner: String!, $number: Int!, $after: String) {
+                user(login: $owner) {
+                  projectV2(number: $number) {
+                    id
+                    fields(first: 100) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options {
+                            id
+                            name
+                          }
+                        }
+                      }
+                    }
+                    items(first: 100, after: $after) {
+                      nodes {
+                        id
+                        content {
+                          ... on Issue {
+                            number
+                            repository {
+                              nameWithOwner
+                            }
+                          }
+                        }
+                      }
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            const updateMutation = `
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(
+                  input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: { singleSelectOptionId: $optionId }
+                  }
+                ) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }
+            `;
+
+            async function loadProjectMeta(github) {
+              const res = await github.graphql(projectItemsQuery, {
+                owner: PROJECT_OWNER,
+                number: PROJECT_NUMBER,
+                after: null,
+              });
+              const project = res.user?.projectV2;
+              if (!project) throw new Error(`projectV2 not found: user ${PROJECT_OWNER} #${PROJECT_NUMBER}`);
+              const fields = project.fields.nodes.filter((f) => f.options);
+              const phaseField = fields.find((f) => f.name === PHASE_FIELD_NAME);
+              const priorityField = fields.find((f) => f.name === PRIORITY_FIELD_NAME);
+              const areaField = fields.find((f) => f.name === AREA_FIELD_NAME);
+              return { projectId: project.id, phaseField, priorityField, areaField };
+            }
+
+            async function findItemIdForIssue(github, issueNum) {
+              let after = null;
+              for (;;) {
+                const res = await github.graphql(projectItemsQuery, {
+                  owner: PROJECT_OWNER,
+                  number: PROJECT_NUMBER,
+                  after,
+                });
+                const project = res.user.projectV2;
+                for (const item of project.items.nodes) {
+                  const issue = item.content;
+                  if (!issue) continue;
+                  if (issue.repository?.nameWithOwner !== REPOSITORY_NAME_WITH_OWNER) continue;
+                  if (issue.number === issueNum) return item.id;
+                }
+                if (!project.items.pageInfo.hasNextPage) break;
+                after = project.items.pageInfo.endCursor;
+              }
+              return null;
+            }
+
+            async function findItemIdWithRetry(github) {
+              for (let attempt = 1; attempt <= MAX_FIND_ATTEMPTS; attempt++) {
+                const id = await findItemIdForIssue(github, issueNumber);
+                if (id) {
+                  core.info(`Found project item for issue #${issueNumber} on attempt ${attempt}`);
+                  return id;
+                }
+                core.info(`Project item for #${issueNumber} not found (attempt ${attempt}/${MAX_FIND_ATTEMPTS})`);
+                if (attempt < MAX_FIND_ATTEMPTS) await sleep(FIND_DELAY_MS);
+              }
+              return null;
+            }
+
+            async function postIssueComment(body) {
+              try {
+                await github.rest.issues.createComment({
+                  owner: repoOwner,
+                  repo: repoName,
+                  issue_number: issueNumber,
+                  body,
+                });
+              } catch (e) {
+                core.warning(`Could not post issue comment: ${e.message}`);
+              }
+            }
+
+            const sections = parseFormSections(bodyText);
+
+            const { projectId, phaseField, priorityField, areaField } = await loadProjectMeta(github);
+
+            if (!phaseField) core.warning(`Project field not found: ${PHASE_FIELD_NAME}`);
+            if (!priorityField) core.warning(`Project field not found: ${PRIORITY_FIELD_NAME}`);
+            if (!areaField) core.warning(`Project field not found: ${AREA_FIELD_NAME}`);
+
+            const itemId = await findItemIdWithRetry(github);
+            if (!itemId) {
+              await postIssueComment(
+                [
+                  "⚠️ GitHub Project にこの Issue のアイテムが見つかりませんでした（リトライ上限まで待機）。",
+                  "自動紐づけの遅延が長い場合は、手動で Project に追加したうえで Actions から再実行する拡張を検討してください。",
+                ].join("\n"),
+              );
+              core.warning("Project item not found for issue within retry window; exiting without failure.");
+              return;
+            }
+
+            const updates = [];
+
+            const phaseLine = firstLine(sections["プロジェクト工程"]);
+            if (phaseField && phaseLine && phaseLine !== "なし") {
+              const opt = phaseField.options.find((o) => o.name === phaseLine);
+              if (opt) {
+                await github.graphql(updateMutation, {
+                  projectId,
+                  itemId,
+                  fieldId: phaseField.id,
+                  optionId: opt.id,
+                });
+                updates.push(`Phase → \`${opt.name}\``);
+              } else {
+                const sample = phaseField.options.slice(0, 12).map((o) => o.name).join(", ");
+                await postIssueComment(
+                  `⚠️ Project の **Phase** に本文「${phaseLine}」と一致する選択肢がありません。Project の Phase オプション名を Issue テンプレの「プロジェクト工程」と揃えてください。\n\n（例: ${sample}）`,
+                );
+              }
+            }
+
+            const pv = firstLine(sections["優先度"]).toLowerCase();
+            if (priorityField && (pv === "high" || pv === "medium" || pv === "low")) {
+              const cap = pv.charAt(0).toUpperCase() + pv.slice(1);
+              const candidates = [`priority: ${pv}`, pv, cap, pv.toUpperCase(), `Priority: ${cap}`];
+              const opt = findOption(priorityField, candidates);
+              if (opt) {
+                await github.graphql(updateMutation, {
+                  projectId,
+                  itemId,
+                  fieldId: priorityField.id,
+                  optionId: opt.id,
+                });
+                updates.push(`Priority → \`${opt.name}\``);
+              } else {
+                const sample = priorityField.options.map((o) => o.name).join(", ");
+                await postIssueComment(
+                  `⚠️ Project の **Priority** に本文「${pv}」に対応する選択肢がありません。次のいずれかと一致するよう Project を調整してください: \`${candidates.join("`, `")}\`。\n\n（現在の Project オプション: ${sample}）`,
+                );
+              }
+            }
+
+            const areas = parseAreas(sections["対象領域"]);
+            const areaSlug = areas[0];
+            if (areaField && areaSlug) {
+              const cap = areaSlug.charAt(0).toUpperCase() + areaSlug.slice(1);
+              const candidates = [areaSlug, `area: ${areaSlug}`, cap, `area: ${cap}`];
+              const opt = findOption(areaField, candidates);
+              if (opt) {
+                await github.graphql(updateMutation, {
+                  projectId,
+                  itemId,
+                  fieldId: areaField.id,
+                  optionId: opt.id,
+                });
+                updates.push(`Area → \`${opt.name}\``);
+              } else {
+                const sample = areaField.options.map((o) => o.name).join(", ");
+                await postIssueComment(
+                  `⚠️ Project の **Area** に本文の領域「${areaSlug}」に対応する選択肢がありません。次のいずれかと一致するよう Project を調整してください: \`${candidates.join("`, `")}\`。\n\n（現在の Project オプション: ${sample}）`,
+                );
+              }
+            }
+
+            if (updates.length) {
+              core.info(`Updated project fields for #${issueNumber}: ${updates.join("; ")}`);
+            } else {
+              core.info(`No Phase/Priority/Area updates applied for #${issueNumber} (skipped or no matching options).`);
+            }
