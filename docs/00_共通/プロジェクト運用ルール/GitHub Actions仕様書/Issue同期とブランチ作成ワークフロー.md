@@ -12,7 +12,7 @@
    Task 用 Issue フォーム（`.github/ISSUE_TEMPLATE/base.yml`）から作成された Issue の本文（`### 見出し` 形式）を読み取り、次を自動設定する。
    - **Labels**: `unit:*` / `type:*` / `area:*` / `priority:*` / `ai-agent` / `human-led` / 補助（`blocked` / `risk: high` / `no-branch`）
    - **Milestone**: ドロップダウン値がリポジトリのオープンな Milestone タイトルと一致する場合に紐づけ。「なし」で Milestone を外す。
-   - **Relationships（Sub-issue）**: 親 Issue 欄の `#番号` を親とみなし、REST `POST .../issues/{parent}/sub_issues` で子（当該 Issue）を追加する。
+   - **Relationships（Sub-issue）**: 親 Issue 欄の `#番号` を親の **Issue `number`** として解釈し、REST `POST .../issues/{parent_number}/sub_issues` で子を追加する。ボディの `sub_issue_id` は **`#` 表示番号ではなく**、子 Issue の REST オブジェクトの **`id`（数値 ID）** を渡す（GitHub API 仕様）。
 2. **作業ブランチの作成・リネーム（Step 2）**  
    Issue の状態・**同期後の**ラベル情報に基づき、作業用ブランチを作成またはリネームする。
 
@@ -71,7 +71,7 @@ on:
 | ラベル合成 | フォームから算出した **管轄ラベル**（上記プレフィックスおよび補助ラベル）を置き換え、それ以外の既存ラベルは維持する。 |
 | unit/type 検証 | フォームから `unit:*` および `type:*` がそれぞれ1つに確定できない場合はラベル・Milestone・親子の同期を行わない（警告ログ）。 |
 | Milestone | セクション「プロジェクト工程」が存在し、先頭行が `なし` なら Milestone 解除。それ以外はオープンな Milestone のタイトルと **完全一致** で解決。見つからない場合は Issue コメントで警告（ブランチ処理は続行）。 |
-| 親子 | 親Issue欄に `#数字` があれば親番号として Sub-issue を登録。自分自身・親が Open でない・API 失敗時はコメントで通知しブランチ処理は続行。 |
+| 親子 | 親Issue欄の `#数字` で親の `number` を決定し、子は `issues.get` の **`id`** を `sub_issue_id` に渡して Sub-issue を登録。自分自身・親が Open でない・API 失敗時はコメントで通知しブランチ処理は続行。API 失敗時のコメントには **`status` とレスポンス本文の先頭**を含め、原因切り分けに使う。 |
 | dry_run | `workflow_dispatch` の `dry_run=true` のとき、Step 1 も API 呼び出しを行わずログのみ。 |
 
 ### Issue フォーム本文のパース
