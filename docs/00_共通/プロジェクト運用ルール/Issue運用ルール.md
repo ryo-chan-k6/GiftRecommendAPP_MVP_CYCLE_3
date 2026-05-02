@@ -58,7 +58,8 @@
     - 作業前に参照すべき正本docsを列挙する
   - 完了条件
   - 確認観点
-- 詳細はIssueテンプレート定義ファイルを参照すること
+- 詳細はIssueテンプレート定義ファイル（`.github/ISSUE_TEMPLATE/base.yml`）を参照すること
+- Task テンプレートから作成した Issue については、Actions ワークフロー **Issue metadata sync and create branch** が本文を読み取り、Labels・Milestone・親子（Sub-issue）を同期する（仕様は `GitHub Actions仕様書/Issue同期とブランチ作成ワークフロー.md`）。
 
 ## Issueフィールド定義
 

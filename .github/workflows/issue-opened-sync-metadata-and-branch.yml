@@ -1,12 +1,12 @@
 # -----------------------------------------------------------------------------
-# Issue のラベルに基づき作業ブランチを作成・リネームするワークフロー
+# Issue フォーム本文からラベル・Milestone・親子（Sub-issue）を同期し、続けて作業ブランチを作成・リネームする
 #
-# 正本: docs/00_共通/プロジェクト運用ルール/GitHub Actions仕様書/ブランチ自動作成ワークフロー.md
-# - 新規: GraphQL createLinkedBranch（Issue Development / linked branch）
-# - リネーム: 方針A — deleteLinkedBranch → createLinkedBranch → 旧 ref 削除（SHA 検証）
+# 正本: docs/00_共通/プロジェクト運用ルール/GitHub Actions仕様書/Issue同期とブランチ作成ワークフロー.md
+# Step1: メタデータ同期（issues.opened または workflow_dispatch + sync_metadata）
+# Step2: GraphQL createLinkedBranch / 方針A リネーム（従来どおり）
 # -----------------------------------------------------------------------------
 
-name: Create branch from issue
+name: Issue metadata sync and create branch
 
 on:
   issues:
@@ -24,6 +24,10 @@ on:
         description: true ならブランチ操作・Issue コメントを行わない（ログのみ）
         required: false
         default: "false"
+      sync_metadata:
+        description: true なら Step1 で本文からラベル等を同期する（手動再実行時。既定は false）
+        required: false
+        default: "false"
 
 # contents: GraphQL createLinkedBranch / Git ref
 # issues:   Issue コメント
@@ -35,14 +39,272 @@ permissions:
 
 # 同一 Issue のイベントを直列化（進行中ジョブは打ち切らない）
 concurrency:
-  group: create-branch-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  group: issue-sync-branch-${{ github.event.issue.number || github.event.inputs.issue_number }}
   cancel-in-progress: false
 
 jobs:
   create-branch:
     runs-on: ubuntu-latest
     steps:
-      # 実装言語: Node 上の JavaScript（actions/github-script）
+      - name: Sync issue metadata from Task form body
+        if: ${{ (github.event_name == 'issues' && github.event.action == 'opened') || (github.event_name == 'workflow_dispatch' && github.event.inputs.sync_metadata == 'true') }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const dryRun =
+              context.eventName === "workflow_dispatch" &&
+              String(context.payload.inputs?.dry_run || "") === "true";
+
+            let issueNumber;
+            let bodyText = "";
+            if (context.eventName === "workflow_dispatch") {
+              issueNumber = parseInt(String(context.payload.inputs.issue_number), 10);
+              if (!Number.isFinite(issueNumber) || issueNumber < 1) {
+                core.setFailed("Invalid issue_number");
+                return;
+              }
+              const { data: issue } = await github.rest.issues.get({
+                owner,
+                repo,
+                issue_number: issueNumber,
+              });
+              bodyText = issue.body || "";
+            } else {
+              issueNumber = context.payload.issue?.number;
+              bodyText = context.payload.issue?.body || "";
+            }
+
+            if (!bodyText.includes("### 作業単位")) {
+              core.info("Task issue form marker not found; skipping metadata sync.");
+              return;
+            }
+
+            const AREA_KEYS = new Set(["web", "api", "reco", "batch", "db", "docs", "infra", "project"]);
+
+            function parseFormSections(body) {
+              const sections = {};
+              const lines = (body || "").split(/\r?\n/);
+              let key = null;
+              const buf = [];
+              function flush() {
+                if (key !== null) sections[key] = buf.join("\n").trim();
+                buf.length = 0;
+              }
+              for (const raw of lines) {
+                const m = /^### (.+)$/.exec(raw);
+                if (m) {
+                  flush();
+                  key = m[1].trim();
+                } else {
+                  buf.push(raw);
+                }
+              }
+              flush();
+              return sections;
+            }
+
+            function firstLine(s) {
+              const t = (s || "").trim();
+              const i = t.indexOf("\n");
+              return i === -1 ? t : t.slice(0, i).trim();
+            }
+
+            function parseAreas(raw) {
+              const t = (raw || "").trim();
+              if (!t) return [];
+              const parts = t.split(/[\n,，、]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+              const out = [];
+              for (const p of parts) {
+                if (AREA_KEYS.has(p)) out.push(p);
+              }
+              return [...new Set(out)];
+            }
+
+            function parseCheckedCheckboxLabels(text) {
+              const out = [];
+              for (const line of (text || "").split(/\r?\n/)) {
+                const m = /^\s*-\s*\[x\]\s*(.+)$/i.exec(line);
+                if (m) out.push(m[1].trim());
+              }
+              return out;
+            }
+
+            function isManagedLabel(name) {
+              if (!name) return false;
+              if (/^(unit|type|area|priority):/.test(name)) return true;
+              return ["ai-agent", "human-led", "blocked", "risk: high", "no-branch"].includes(name);
+            }
+
+            function buildDesiredLabels(sections) {
+              const labels = [];
+
+              const unit = firstLine(sections["作業単位"]).toLowerCase();
+              if (unit === "epic") labels.push("unit: epic");
+              else if (unit === "task") labels.push("unit: task");
+
+              const wt = firstLine(sections["作業種別"]).toLowerCase();
+              const typeMap = new Set(["feature", "fix", "docs", "refactor", "chore", "test", "hotfix", "spike"]);
+              if (typeMap.has(wt)) labels.push(`type: ${wt}`);
+
+              for (const a of parseAreas(sections["対象領域"])) {
+                labels.push(`area: ${a}`);
+              }
+
+              const pr = firstLine(sections["優先度"]).toLowerCase();
+              if (pr === "high" || pr === "medium" || pr === "low") {
+                labels.push(`priority: ${pr}`);
+              }
+
+              const ownerMode = firstLine(sections["作業主体"]).toLowerCase();
+              if (ownerMode === "ai-agent" || ownerMode === "human-led") {
+                labels.push(ownerMode);
+              }
+
+              const checked = parseCheckedCheckboxLabels(sections["補助ラベル"]);
+              const optMap = {
+                blocked: "blocked",
+                "risk: high": "risk: high",
+                "no-branch": "no-branch",
+              };
+              for (const c of checked) {
+                if (optMap[c]) labels.push(optMap[c]);
+              }
+
+              return labels;
+            }
+
+            async function postComment(body) {
+              if (dryRun) {
+                core.info(`[dry_run] Would comment:\n${body}`);
+                return;
+              }
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body,
+              });
+            }
+
+            const sections = parseFormSections(bodyText);
+            const desired = buildDesiredLabels(sections);
+
+            if (desired.filter((l) => l.startsWith("unit:")).length !== 1) {
+              core.warning("Form unit invalid or missing; skipping label/milestone/parent sync.");
+              return;
+            }
+            if (desired.filter((l) => l.startsWith("type:")).length !== 1) {
+              core.warning("Form work_type invalid or missing; skipping label/milestone/parent sync.");
+              return;
+            }
+
+            const { data: issue } = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: issueNumber,
+            });
+            if (issue.state !== "open") {
+              core.info("Issue not open; skipping metadata sync.");
+              return;
+            }
+
+            const current = (issue.labels || [])
+              .map((l) => (typeof l === "string" ? l : l.name))
+              .filter(Boolean);
+            const kept = current.filter((n) => !isManagedLabel(n));
+            const merged = [...new Set([...kept, ...desired])];
+
+            if (!dryRun) {
+              await github.rest.issues.setLabels({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                labels: merged,
+              });
+            } else {
+              core.info(`[dry_run] setLabels: ${JSON.stringify(merged)}`);
+            }
+
+            if ("プロジェクト工程" in sections) {
+              const msRaw = firstLine(sections["プロジェクト工程"]);
+              if (msRaw === "なし") {
+                if (!dryRun) {
+                  await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: issueNumber,
+                    milestone: null,
+                  });
+                } else {
+                  core.info("[dry_run] Would clear milestone");
+                }
+              } else if (msRaw) {
+                const { data: milestones } = await github.rest.issues.listMilestones({
+                  owner,
+                  repo,
+                  state: "open",
+                  per_page: 100,
+                });
+                const hit = milestones.find((m) => m.title === msRaw);
+                if (hit) {
+                  if (!dryRun) {
+                    await github.rest.issues.update({
+                      owner,
+                      repo,
+                      issue_number: issueNumber,
+                      milestone: hit.number,
+                    });
+                  } else {
+                    core.info(`[dry_run] Would set milestone #${hit.number} ${hit.title}`);
+                  }
+                } else {
+                  await postComment(
+                    `⚠️ Milestone「${msRaw}」がオープンな Milestone に見つかりません。GitHub の Milestones を作成するか、Issue テンプレートの選択肢をリポジトリと揃えてください。`,
+                  );
+                }
+              }
+            }
+
+            const parentRaw = (sections["親Issue"] || "").trim();
+            const pm = parentRaw.match(/#(\d+)/);
+            if (pm) {
+              const pnum = parseInt(pm[1], 10);
+              if (pnum === issueNumber) {
+                await postComment("⚠️ 親Issue に自分自身の番号が指定されているため、親子の紐づけはスキップしました。");
+              } else {
+                try {
+                  const { data: parent } = await github.rest.issues.get({
+                    owner,
+                    repo,
+                    issue_number: pnum,
+                  });
+                  if (parent.state !== "open") {
+                    await postComment(`⚠️ 親Issue #${pnum} が Open ではないため、Sub-issue の紐づけをスキップしました。`);
+                  } else if (!dryRun) {
+                    await github.request("POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues", {
+                      owner,
+                      repo,
+                      issue_number: pnum,
+                      sub_issue_id: issueNumber,
+                    });
+                  } else {
+                    core.info(`[dry_run] Would POST sub_issue parent=#${pnum} child=#${issueNumber}`);
+                  }
+                } catch (e) {
+                  await postComment(
+                    `⚠️ 親子（Sub-issue）の紐づけに失敗しました（親 #${pnum}）。手動で Relationships を設定してください。\n\n${String(e?.message || e)}`,
+                  );
+                }
+              }
+            }
+
+            core.info(`Metadata sync done for #${issueNumber} (${merged.length} labels).`);
+
+      # Step 2: 実装言語 Node（actions/github-script）。Step1 後は issues.get で最新ラベルを参照する。
       - name: Create or sync work branch
         uses: actions/github-script@v8
         env:
@@ -50,6 +312,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            // Step 2: ラベル同期後の Issue を issues.get で取得し、linked branch を作成・リネームする。
             // =============================================================================
             // 定数・マッピング（仕様書のラベル名・ベースブランチと一致させる）
             // =============================================================================
