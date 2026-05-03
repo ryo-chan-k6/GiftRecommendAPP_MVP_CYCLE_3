@@ -108,6 +108,16 @@ jobs:
               return null;
             }
 
+            /** Issue 本文と Project Phase オプション名の末尾「工程完了」を繰り返し除去し、同一キー同士で照合する */
+            const PHASE_SUFFIX = "工程完了";
+            function normalizePhaseKey(s) {
+              let t = (s || "").trim();
+              while (t.endsWith(PHASE_SUFFIX)) {
+                t = t.slice(0, -PHASE_SUFFIX.length).trim();
+              }
+              return t;
+            }
+
             const projectItemsQuery = `
               query($owner: String!, $number: Int!, $after: String) {
                 user(login: $owner) {
@@ -250,7 +260,10 @@ jobs:
 
             const phaseLine = firstLine(sections["プロジェクト工程"]);
             if (phaseField && phaseLine && phaseLine !== "なし") {
-              const opt = phaseField.options.find((o) => o.name === phaseLine);
+              const phaseKey = normalizePhaseKey(phaseLine);
+              const opt =
+                phaseKey &&
+                phaseField.options.find((o) => normalizePhaseKey(o.name) === phaseKey);
               if (opt) {
                 await github.graphql(updateMutation, {
                   projectId,
@@ -262,7 +275,7 @@ jobs:
               } else {
                 const sample = phaseField.options.slice(0, 12).map((o) => o.name).join(", ");
                 await postIssueComment(
-                  `⚠️ Project の **Phase** に本文「${phaseLine}」と一致する選択肢がありません。Project の Phase オプション名を Issue テンプレの「プロジェクト工程」と揃えてください。\n\n（例: ${sample}）`,
+                  `⚠️ Project の **Phase** に、本文「${phaseLine}」に対応する選択肢がありません（末尾の「工程完了」を除いた一致でも見つかりませんでした）。Project の Phase オプションと「プロジェクト工程」の対応を確認してください。\n\n（例: ${sample}）`,
                 );
               }
             }
