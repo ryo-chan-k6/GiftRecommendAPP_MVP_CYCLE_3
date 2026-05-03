@@ -67,7 +67,7 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 - セクションキー: `プロジェクト工程`（見出し `### プロジェクト工程`）
 - **先頭行のみ**を使用する。
 - 先頭行が **`なし`** の場合、**Phase フィールドは更新しない**（既存値のまま）。
-- それ以外は、Project の Phase オプションの **`name` と完全一致**するオプションを選ぶ。見つからない場合は Issue に警告コメントし、Phase は更新しない。
+- それ以外は、**Issue 先頭行**と **Project の各 Phase オプション `name`** の双方から、末尾の **`工程完了` を繰り返し除去**した文字列（正規化キー）が **等しい**オプションを選ぶ。更新 API に渡す `singleSelectOptionId` は、マッチしたオプションの実 ID（Project 上の表示名は変更しない）。正規化キーが空、またはどのオプションとも一致しない場合は Issue に警告コメントし、Phase は更新しない。
 
 ### 6.2 Priority
 
@@ -98,13 +98,14 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 | 状況 | 挙動 |
 | ---- | ---- |
 | Project フィールド名が見つからない | 警告ログ（該当フィールドの更新はスキップ） |
-| Phase / Priority / Area のオプションが本文と一致しない | Issue コメントで通知（オプション名の一部を例示） |
+| Phase / Priority / Area のオプションが本文と一致しない（Phase は末尾 `工程完了` 除去後も不一致） | Issue コメントで通知（オプション名の一部を例示） |
 | Project アイテムがリトライ後も見つからない | Issue コメントで通知、ジョブは成功扱いで終了 |
 | `issues.createComment` が権限等で失敗 | 警告ログのみ |
 
 ## 10. 運用上の必須事項
 
-- GitHub Project 上の **Phase / Priority / Area の各オプション名**を、Issue テンプレートの選択肢および [Issue Label定義](../Issue%20Label定義.md) の表記（例: `priority: high`, `area: web`）と **揃える**こと。
+- **Phase**: Issue の「プロジェクト工程」と Project の Phase は、末尾 **`工程完了` の有無の差**をワークフローが正規化して照合する。運用ルール（例: Project 側が「テンプレ表記 + 工程完了」）に沿った対応であれば、**テンプレと Project のラベル文字列を無理に同一にする必要はない**。
+- **Priority / Area**: GitHub Project 上の各オプション名を、Issue テンプレートの選択肢および [Issue Label定義](../Issue%20Label定義.md) の表記（例: `priority: high`, `area: web`）と **揃える**こと（実装は候補名のいずれかとの一致で解決する）。
 - `PROJECTS_TOKEN` には、対象リポジトリで Issue コメントが可能なスコープを含めること（失敗時通知のため）。
 
 ## 11. 関連ドキュメント
