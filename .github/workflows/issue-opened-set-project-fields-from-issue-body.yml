@@ -30,7 +30,7 @@ jobs:
           github-token: ${{ secrets.PROJECTS_TOKEN }}
           script: |
             const PROJECT_OWNER = "ryo-chan-k6";
-            const PROJECT_NUMBER = 1; // ← update-projects-status-by-planned-start.yml と揃える
+            const PROJECT_NUMBER = 4; // users/<owner>/projects/<N> の N。他の Projects 連携ワークフローと揃える
             const REPOSITORY_NAME_WITH_OWNER = "ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3";
 
             const PHASE_FIELD_NAME = "Phase";
