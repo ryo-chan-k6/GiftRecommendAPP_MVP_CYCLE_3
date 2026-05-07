@@ -61,7 +61,7 @@ on:
 
 補足：
 
-- **Step 1（メタデータ同期）**が実行されるのは `issues.opened`、または `workflow_dispatch` で `sync_metadata` が `true` のときのみ。それ以外の Issue イベントでは Step 1 はスキップし、Step 2（ブランチ処理）のみ行う。
+- **Step 1（メタデータ同期）**は `issues.opened` と `issues.edited` で実行される。`workflow_dispatch` では `sync_metadata` が `true` のときのみ実行される。`labeled` / `unlabeled` では Step 1 はスキップし、Step 2（ブランチ処理）のみ行う。
 - ProjectsのStatus変更を直接トリガーにするのはGitHub Actions標準では扱いづらいため、初期運用では対象外とする。
 - Status連動が必要な場合は、別途Projects連携ワークフローで対応する。
 
