@@ -652,13 +652,65 @@ jobs:
               .map((l) => (typeof l === "string" ? l : l.name))
               .filter(Boolean);
 
+            function parseFormSections(body) {
+              const sections = {};
+              const lines = (body || "").split(/\r?\n/);
+              let key = null;
+              const buf = [];
+              function flush() {
+                if (key !== null) sections[key] = buf.join("\n").trim();
+                buf.length = 0;
+              }
+              for (const raw of lines) {
+                const m = /^### (.+)$/.exec(raw);
+                if (m) {
+                  flush();
+                  key = m[1].trim();
+                } else {
+                  buf.push(raw);
+                }
+              }
+              flush();
+              return sections;
+            }
+
+            function parseCheckedCheckboxLabels(text) {
+              const out = [];
+              for (const line of (text || "").split(/\r?\n/)) {
+                const m = /^\s*-\s*\[x\]\s*(.+)$/i.exec(line);
+                if (m) out.push(m[1].trim());
+              }
+              return out;
+            }
+
+            const sectionsForDebug = parseFormSections(issue.body || "");
+            const checkedAssistLabels = parseCheckedCheckboxLabels(sectionsForDebug["補助ラベル"] || "");
+            const includesNoBranchLabel = labelNames.includes(NO_BRANCH_LABEL);
+            const includesNoBranchInBody = checkedAssistLabels.includes(NO_BRANCH_LABEL);
+
+            // #region agent log
+            fetch('http://127.0.0.1:7881/ingest/8e6290eb-08aa-445b-90d1-893cb4094c59',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'584762'},body:JSON.stringify({sessionId:'584762',runId:'run1',hypothesisId:'H1',location:'issue-opened-sync-metadata-and-branch.yml:step2:afterIssueGet',message:'Step2 issue snapshot',data:{eventName:context.eventName,action:context.payload.action||null,issueNumber,labelNames,includesNoBranchLabel},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            // #region agent log
+            fetch('http://127.0.0.1:7881/ingest/8e6290eb-08aa-445b-90d1-893cb4094c59',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'584762'},body:JSON.stringify({sessionId:'584762',runId:'run1',hypothesisId:'H2',location:'issue-opened-sync-metadata-and-branch.yml:step2:bodyCheckboxParse',message:'Body checkbox parse result',data:{issueNumber,checkedAssistLabels,includesNoBranchInBody},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            // #region agent log
+            fetch('http://127.0.0.1:7881/ingest/8e6290eb-08aa-445b-90d1-893cb4094c59',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'584762'},body:JSON.stringify({sessionId:'584762',runId:'run1',hypothesisId:'H3',location:'issue-opened-sync-metadata-and-branch.yml:step2:noBranchGate',message:'No-branch gate inputs',data:{issueNumber,includesNoBranchLabel,includesNoBranchInBody,noBranchLabelConstant:NO_BRANCH_LABEL},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+
             if (labelNames.includes(NO_BRANCH_LABEL)) {
+              // #region agent log
+              fetch('http://127.0.0.1:7881/ingest/8e6290eb-08aa-445b-90d1-893cb4094c59',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'584762'},body:JSON.stringify({sessionId:'584762',runId:'run1',hypothesisId:'H4',location:'issue-opened-sync-metadata-and-branch.yml:step2:noBranchGateTaken',message:'No-branch skip branch creation',data:{issueNumber,labelNames,checkedAssistLabels,eventName:context.eventName,action:context.payload.action||null},timestamp:Date.now()})}).catch(()=>{});
+              // #endregion
               core.info(`Issue #${issueNumber} has ${NO_BRANCH_LABEL}; skipping.`);
               return;
             }
 
             const units = labelNames.filter((n) => n.startsWith("unit:"));
             const types = labelNames.filter((n) => n.startsWith("type:"));
+            // #region agent log
+            fetch('http://127.0.0.1:7881/ingest/8e6290eb-08aa-445b-90d1-893cb4094c59',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'584762'},body:JSON.stringify({sessionId:'584762',runId:'run1',hypothesisId:'H5',location:'issue-opened-sync-metadata-and-branch.yml:step2:unitTypeCounts',message:'Unit/type labels after no-branch gate',data:{issueNumber,units,types},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
 
             async function postComment(body) {
               if (dryRun) {
