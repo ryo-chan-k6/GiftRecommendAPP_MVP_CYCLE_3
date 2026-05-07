@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Sync issue metadata from Task form body
-        if: ${{ (github.event_name == 'issues' && github.event.action == 'opened') || (github.event_name == 'workflow_dispatch' && github.event.inputs.sync_metadata == 'true') }}
+        if: ${{ (github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'edited')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.sync_metadata == 'true') }}
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
