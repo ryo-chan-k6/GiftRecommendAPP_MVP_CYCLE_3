@@ -687,6 +687,15 @@ jobs:
             const checkedAssistLabels = parseCheckedCheckboxLabels(sectionsForDebug["補助ラベル"] || "");
             const includesNoBranchLabel = labelNames.includes(NO_BRANCH_LABEL);
             const includesNoBranchInBody = checkedAssistLabels.includes(NO_BRANCH_LABEL);
+            core.info(
+              `[debug/H1] event=${context.eventName}.${context.payload.action || "n/a"} issue=${issueNumber} labels=${JSON.stringify(labelNames)} includesNoBranchLabel=${includesNoBranchLabel}`,
+            );
+            core.info(
+              `[debug/H2] issue=${issueNumber} checkedAssistLabels=${JSON.stringify(checkedAssistLabels)} includesNoBranchInBody=${includesNoBranchInBody}`,
+            );
+            core.info(
+              `[debug/H3] issue=${issueNumber} noBranchConst=${NO_BRANCH_LABEL} includesNoBranchLabel=${includesNoBranchLabel} includesNoBranchInBody=${includesNoBranchInBody}`,
+            );
 
             // #region agent log
             fetch('http://127.0.0.1:7881/ingest/8e6290eb-08aa-445b-90d1-893cb4094c59',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'584762'},body:JSON.stringify({sessionId:'584762',runId:'run1',hypothesisId:'H1',location:'issue-opened-sync-metadata-and-branch.yml:step2:afterIssueGet',message:'Step2 issue snapshot',data:{eventName:context.eventName,action:context.payload.action||null,issueNumber,labelNames,includesNoBranchLabel},timestamp:Date.now()})}).catch(()=>{});
@@ -699,6 +708,9 @@ jobs:
             // #endregion
 
             if (labelNames.includes(NO_BRANCH_LABEL)) {
+              core.info(
+                `[debug/H4] no-branch gate taken issue=${issueNumber} event=${context.eventName}.${context.payload.action || "n/a"} labels=${JSON.stringify(labelNames)} checkedAssistLabels=${JSON.stringify(checkedAssistLabels)}`,
+              );
               // #region agent log
               fetch('http://127.0.0.1:7881/ingest/8e6290eb-08aa-445b-90d1-893cb4094c59',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'584762'},body:JSON.stringify({sessionId:'584762',runId:'run1',hypothesisId:'H4',location:'issue-opened-sync-metadata-and-branch.yml:step2:noBranchGateTaken',message:'No-branch skip branch creation',data:{issueNumber,labelNames,checkedAssistLabels,eventName:context.eventName,action:context.payload.action||null},timestamp:Date.now()})}).catch(()=>{});
               // #endregion
@@ -708,6 +720,9 @@ jobs:
 
             const units = labelNames.filter((n) => n.startsWith("unit:"));
             const types = labelNames.filter((n) => n.startsWith("type:"));
+            core.info(
+              `[debug/H5] issue=${issueNumber} units=${JSON.stringify(units)} types=${JSON.stringify(types)}`,
+            );
             // #region agent log
             fetch('http://127.0.0.1:7881/ingest/8e6290eb-08aa-445b-90d1-893cb4094c59',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'584762'},body:JSON.stringify({sessionId:'584762',runId:'run1',hypothesisId:'H5',location:'issue-opened-sync-metadata-and-branch.yml:step2:unitTypeCounts',message:'Unit/type labels after no-branch gate',data:{issueNumber,units,types},timestamp:Date.now()})}).catch(()=>{});
             // #endregion
