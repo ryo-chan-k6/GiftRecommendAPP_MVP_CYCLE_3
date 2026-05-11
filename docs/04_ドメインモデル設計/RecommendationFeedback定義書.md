@@ -382,7 +382,7 @@ sequenceDiagram
     participant Eval as Evaluation
 
     User->>Web: Feedback入力
-    Web->>API: POST /recommendations/{result_id}/feedback
+    Web->>API: POST /api/v1/recommendation-results/{resultId}/feedback
     API->>API: Feedback Validation
     API->>DB: Recommendation Feedback保存
     API-->>Web: 登録結果返却
@@ -741,8 +741,8 @@ API仕様書では、以下を具体化する。
 
 | API                                          | 内容                                 |
 | -------------------------------------------- | ------------------------------------ |
-| `POST /recommendations/{result_id}/feedback` | Feedback登録                         |
-| `GET /recommendations/{result_id}/feedback`  | Feedback取得。MVPでは管理・debug用途 |
+| `POST /api/v1/recommendation-results/{resultId}/feedback` | Feedback登録                         |
+| `GET /api/v1/recommendation-results/{resultId}/feedback`  | Feedback取得。MVPでは管理・debug用途 |
 | Error Response                               | Feedback登録エラー形式               |
 | OpenAPI Schema                               | Recommendation FeedbackのJSON Schema |
 
