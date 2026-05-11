@@ -172,7 +172,7 @@
 
 ```mermaid
 flowchart TD
-    A[web: レコメンド実行] --> B[api: POST /recommendations]
+    A[web: レコメンド実行] --> B[api: POST /api/v1/recommendations]
     B --> C[trace_id / request_id生成]
     C --> D[recommendation_request作成]
     D --> E[api -> reco 呼び出し]
@@ -1408,7 +1408,7 @@ sequenceDiagram
     participant Reco as reco
     participant DB as database
 
-    Web->>API: POST /recommendations
+    Web->>API: POST /api/v1/recommendations
     API->>API: trace_id / request_id生成
     API->>DB: recommendation_request作成
     API->>Reco: 推薦実行依頼 trace_id付き

@@ -212,8 +212,8 @@ APIはバージョンを含むBase Pathを持つ。
 | リソース名     | 複数形を基本とする     | `/items`                                |
 | 単語区切り     | kebab-case             | `/recommendation-results`               |
 | ID指定         | path parameter         | `/items/{itemId}`                       |
-| 複雑な検索条件 | POST + request body    | `/recommendations`                      |
-| 単純な参照条件 | GET + query parameter  | `/items/{itemId}`                       |
+| 複雑な検索条件 | POST + request body    | `/api/v1/recommendations`               |
+| 単純な参照条件 | GET + query parameter  | `/api/v1/items/{itemId}`                |
 | 内部API        | `/internal` 配下に配置 | `/internal/reco/v1/recommendations/run` |
 
 ---
@@ -1315,6 +1315,10 @@ API仕様書.md では、APIごとに以下を定義する。
 | Health Check   | GET    | `/api/v1/health`                                     | 対象    | API稼働確認              |
 | レコメンド実行 | POST   | `/api/v1/recommendations`                            | 対象    | 推薦条件入力から結果生成 |
 | 商品詳細取得   | GET    | `/api/v1/items/{itemId}`                             | 対象    | 商品詳細画面表示         |
+| Relationshipマスタ取得 | GET    | `/api/v1/masters/relationships`                | 対象    | 関係性マスタ参照         |
+| Occasionマスタ取得     | GET    | `/api/v1/masters/occasions`                  | 対象    | 用途マスタ参照           |
+| Semantic設定取得       | GET    | `/api/v1/masters/semantic-configs`         | 対象    | Semantic設定参照       |
+| Featureルール取得      | GET    | `/api/v1/masters/feature-rules`             | 対象    | Featureルール参照        |
 | Feedback送信   | POST   | `/api/v1/recommendation-results/{resultId}/feedback` | 対象    | 推薦結果へのFeedback     |
 
 ---
@@ -1336,10 +1340,11 @@ API仕様書.md では、APIごとに以下を定義する。
 | ---------------------------- | ------ | ----------------------------------------------- | -------------------- |
 | レコメンド履歴一覧           | GET    | `/api/v1/recommendation-history`                | 認証導入後           |
 | レコメンド履歴詳細           | GET    | `/api/v1/recommendation-results/{resultId}`     | 認証導入後           |
-| 人手評価タスク一覧           | GET    | `/api/v1/evaluation-tasks`                      | 管理・評価機能導入後 |
-| 人手評価登録                 | POST   | `/api/v1/evaluation-tasks/{taskId}/evaluations` | 管理・評価機能導入後 |
-| 管理ダッシュボードメトリクス | GET    | `/api/v1/admin/metrics`                         | 管理画面導入後       |
-| ログ検索                     | GET    | `/api/v1/admin/logs`                            | 管理画面導入後       |
+| 人手評価タスク一覧           | GET    | `/api/v1/admin/evaluation-tasks`                      | 管理・評価機能導入後 |
+| 人手評価登録                 | POST   | `/api/v1/admin/evaluation-tasks/{taskId}/evaluations` | 管理・評価機能導入後 |
+| Reco品質メトリクス取得       | GET    | `/api/v1/admin/reco-metrics`                          | 管理画面導入後       |
+| エラーログ検索               | GET    | `/api/v1/admin/error-logs`                            | 管理画面導入後       |
+| Batch実行履歴取得            | GET    | `/api/v1/admin/batch-runs`                            | 管理画面導入後       |
 
 ---
 
@@ -1394,6 +1399,10 @@ MVPで優先的に定義するAPIは以下である。
 | `GET /api/v1/health`                                      | API稼働確認      |
 | `POST /api/v1/recommendations`                            | レコメンド実行   |
 | `GET /api/v1/items/{itemId}`                              | 商品詳細取得     |
+| `GET /api/v1/masters/relationships`                       | Relationshipマスタ取得 |
+| `GET /api/v1/masters/occasions`                           | Occasionマスタ取得     |
+| `GET /api/v1/masters/semantic-configs`                    | Semantic設定取得       |
+| `GET /api/v1/masters/feature-rules`                       | Featureルール取得      |
 | `POST /api/v1/recommendation-results/{resultId}/feedback` | Feedback送信     |
 | `GET /internal/reco/v1/health`                            | Reco稼働確認     |
 | `POST /internal/reco/v1/recommendations/run`              | Reco内部推薦実行 |
