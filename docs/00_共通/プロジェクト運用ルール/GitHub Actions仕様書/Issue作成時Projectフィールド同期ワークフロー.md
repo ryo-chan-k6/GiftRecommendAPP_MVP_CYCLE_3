@@ -113,3 +113,4 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 - [Projects運用ルール.md](../Projects運用ルール.md) … Projects フィールド一覧・Area 凡例
 - [Issue同期とブランチ作成ワークフロー.md](./Issue同期とブランチ作成ワークフロー.md) … 同一 Issue 作成フロー上の別ワークフロー（ラベル・Milestone・ブランチ）
 - [update-projects-status-by-planned-start.yml](../../../../.github/workflows/update-projects-status-by-planned-start.yml) … Project 定数の正本（揃え先）
+- [Planned Startに基づくStatus自動更新ワークフロー.md](./Planned%20Startに基づくStatus自動更新ワークフロー.md) … Planned Start 到来時の Backlog→Todo 自動更新
