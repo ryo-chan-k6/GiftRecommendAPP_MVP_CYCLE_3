@@ -12,14 +12,14 @@
     - ツールはIssueをProjectsと紐づけて、Projects連携時にStart Date, Due Dateなどの予実管理用フィールドを設定するイメージ。
     - 成果物単位で予実管理したい場合は、Sub-issueを作成し、タスク（Issue）の子要素として管理する。
 
-## Projcetsフィールド定義
+## Projectsフィールド定義
 
 | フィールド           | 概要                                               | 凡例                                                        |
 | -------------------- | -------------------------------------------------- | ----------------------------------------------------------- |
 | Title                | タスク名                                           | -                                                           |
 | Phase                | プロジェクト工程                                   | [プロジェクト工程定義.md](../プロジェクト工程定義.md)を参照 |
 | Priority             | 優先度                                             | 下記参照                                                    |
-| Status               | 状況                                               | Backlog/Ready/Doing/Blocked/Review/Done                     |
+| Status               | 状況                                               | Backlog/Todo/In progress/AI Review/Human Review/Done        |
 | Planned Start        | 予定開始日                                         | 2026/4/25                                                   |
 | Due Date             | 予定終了日                                         | 2026/4/26                                                   |
 | Actual Start         | 実績開始日                                         | 2026/4/25                                                   |
@@ -35,6 +35,10 @@
 Task Issue 作成時に Project の **Phase / Priority / Area** を本文から同期するワークフローの **仕様の正本**は次とする（実装・トリガー・パース・リトライ・エラー処理の詳細はこちら）。
 
 - [Issue作成時Projectフィールド同期ワークフロー](./GitHub%20Actions仕様書/Issue作成時Projectフィールド同期ワークフロー.md)
+
+また、**Planned Start** と **Status（Backlog/Todo）** に基づき、毎日 JST 0:00 に Backlog を Todo へ自動昇格するワークフローの **仕様の正本**は次とする。
+
+- [Planned Startに基づくStatus自動更新ワークフロー](./GitHub%20Actions仕様書/Planned%20Startに基づくStatus自動更新ワークフロー.md)
 
 ---
 
@@ -56,16 +60,17 @@ Task Issue 作成時に Project の **Phase / Priority / Area** を本文から�
 ```mermaid
 stateDiagram-v2
     [*] --> Backlog
-    Backlog --> Ready
-    Ready --> Doing
-    Doing --> Review
-    Review --> Done
+    Backlog --> Todo: Planned Start が JST 当日以前（GitHub Actions）
+    Todo --> InProgress: 着手
+    InProgress --> AIReview
+    AIReview --> HumanReview
+    HumanReview --> Done
 
-    Doing --> Blocked
-    Blocked --> Doing
-
-    Review --> Doing : 修正戻り
+    HumanReview --> InProgress: 修正戻り
+    AIReview --> InProgress: 修正戻り
 ```
+
+※ 図中の状態 ID は Mermaid 上の識別子であり、Project の **Status** 表示名（`In progress` 等）とは別。実際の列値は上表のとおり。
 
 ### Area定義
 
