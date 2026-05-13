@@ -4,7 +4,7 @@
 
 本方針書は、Gift Recommendation Service の開発・テスト・デプロイを自動化し、**品質と開発速度を両立するCI/CD方針**を定義する。
 
-本方針書の目的は以下である。
+そのため、CI・CDでは以下を実現する。
 
 ```text
 - 品質ゲートを自動化する
@@ -18,7 +18,89 @@
 
 ---
 
-## 2. 前提
+## 2. 本ドキュメントの位置づけ
+
+| 成果物                             | 役割                                                                                |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| DevOps方針書                       | 開発・設計・テスト・リリース・運用全体の上位方針を定義する                          |
+| CI・CD方針書                       | GitHub Actionsを中心に、CI/CDのトリガー、ジョブ、品質ゲート、デプロイ方針を定義する |
+| テスト方針書                       | テスト全体の思想、対象範囲、品質方針を定義する                                      |
+| テスト定義書                       | テストレベル、テスト種別、テスト対象、観点を定義する                                |
+| 全体テスト計画書                   | テストフェーズの順序、開始条件、終了条件、品質ゲートを定義する                      |
+| バッチ実行スケジュール設計書       | 日次・週次・手動Batch workflowの実行順序とスケジュールを定義する                    |
+| プロジェクトディレクトリ構成定義書 | repo内のコード、docs、tests、db、workflowの配置方針を定義する                       |
+
+---
+
+## 3. 前提
+
+| 項目               | 内容                                                          |
+| ------------------ | ------------------------------------------------------------- |
+| Repository         | monorepo                                                      |
+| CI/CD基盤          | GitHub Actions                                                |
+| 開発体制           | 個人開発                                                      |
+| 正本               | repo内docs                                                    |
+| 副本               | Notion                                                        |
+| 実装コンポーネント | web / api / reco / batch                                      |
+| 共通ロジック       | packages/shared-logic                                         |
+| DB                 | PostgreSQL / pgvector                                         |
+| Batch実行          | GitHub Actions                                                |
+| ブランチ           | main / develop / feature / fix / docs / test / chore / hotfix |
+| 本番デプロイ       | MVPでは半自動                                                 |
+| 技術検証           | 実API疎通・性能フィジビリティは通常CIとは分離                 |
+| Observability      | MVPから品質ゲートに含める                                     |
+
+---
+
+## 4. CI/CD基本方針
+
+| 方針                            | 内容                                                                |
+| ------------------------------- | ------------------------------------------------------------------- |
+| CIは品質ゲート                  | PR、develop、main反映時に品質を自動確認する                         |
+| CDは安全な反映制御              | 自動反映だけでなく、環境別の承認・確認を含める                      |
+| MVPは半自動CD                   | production反映は人間の承認を必須とする                              |
+| monorepo前提で分割検証          | web / api / reco / batch / shared / dbごとに必要な検証を行う        |
+| docs正本と連動                  | 仕様変更時はdocs差分をCI確認対象に含める                            |
+| 外部API実疎通は通常CIに含めない | 外部API依存でCIが不安定になるため、技術検証workflowとして分離する   |
+| 性能リスクは前倒し検証          | performance feasibilityは技術検証または手動workflowで早期確認する   |
+| Observabilityを後付けにしない   | trace_id、run_id、batch_run_id、error_log、metricを確認対象に含める |
+| Batch本番実行はpush起動しない   | schedule / workflow_dispatch / workflow_call を基本とする           |
+| secretを安全に扱う              | GitHub Secrets / Environments を利用し、ログには出力しない          |
+
+---
+
+## 5. CI/CD全体像
+
+### 5.1 開発〜本番反映フロー
+
+```mermaid
+flowchart TD
+    A[Issue化] --> B[Branch作成]
+    B --> C[docs正本更新]
+    C --> D[Cursor実装]
+    D --> E[ローカル確認]
+    E --> F[PR作成]
+    F --> G[PR CI]
+    G --> H{PR品質ゲート通過?}
+    H -- No --> I[修正]
+    I --> C
+    H -- Yes --> J[レビュー]
+    J --> K[developへマージ]
+    K --> L[develop CI]
+    L --> M[dev環境反映]
+    M --> N[統合確認]
+    N --> O[staging反映]
+    O --> P[システム/非機能/品質評価/受入確認]
+    P --> Q{リリース判定OK?}
+    Q -- No --> R[修正Issue化]
+    R --> B
+    Q -- Yes --> S[mainへマージ]
+    S --> T[main CI]
+    T --> U[production手動承認]
+    U --> V[production反映]
+    V --> W[Post Deploy Check]
+    W --> X[監視・改善]
+```
 
 | 項目                | 内容                          |
 | ------------------- | ----------------------------- |
@@ -36,7 +118,89 @@
 
 ---
 
-## 3. CI/CD基本方針
+## 6. 環境定義
+
+| 環境       | 用途                                     | 反映契機                    | 承認             |
+| ---------- | ---------------------------------------- | --------------------------- | ---------------- |
+| local      | 開発、単体確認、技術検証の一部           | 開発者任意                  | 不要             |
+| CI         | PR / merge時の自動品質ゲート             | GitHub Actions              | 不要             |
+| dev        | develop統合後の開発統合確認              | develop merge後             | 原則不要         |
+| staging    | システムテスト、非機能テスト、受入前確認 | 手動またはworkflow_dispatch | 必要に応じて承認 |
+| production | 本番                                     | main反映後、手動承認        | 必須             |
+
+---
+
+## 7. ブランチ別CI/CD方針
+
+| ブランチ   | CI                   | CD                 | 方針                       |
+| ---------- | -------------------- | ------------------ | -------------------------- |
+| feature/\* | 実行                 | なし               | PR品質ゲート用             |
+| fix/\*     | 実行                 | なし               | 不具合修正の品質確認       |
+| docs/\*    | docs check中心に実行 | なし               | docs正本更新確認           |
+| test/\*    | テスト関連CIを実行   | なし               | テスト追加・修正確認       |
+| chore/\*   | 変更内容に応じて実行 | なし               | CI、設定、依存関係変更確認 |
+| develop    | 実行                 | dev反映            | 統合確認用                 |
+| main       | 実行                 | production反映候補 | 本番反映対象               |
+| hotfix/\*  | 最小必須CIを優先実行 | production反映候補 | 緊急修正用                 |
+
+---
+
+## 8. CIトリガー方針
+
+| トリガー            | 対象                                          | 用途                                                |
+| ------------------- | --------------------------------------------- | --------------------------------------------------- |
+| pull_request        | feature / fix / docs / test / chore → develop | PR品質ゲート                                        |
+| push                | develop                                       | develop統合後CI、dev反映                            |
+| push                | main                                          | main CI、production反映候補作成                     |
+| workflow_dispatch   | 任意                                          | 手動CI、技術検証、性能フィジビリティ、Batch手動実行 |
+| schedule            | Batch親workflow                               | 日次・週次Batch実行                                 |
+| workflow_call       | Batch子workflow                               | 親workflowから子workflowを呼び出す                  |
+| repository_dispatch | 将来候補                                      | 外部イベント連携                                    |
+
+---
+
+## 9. CIジョブ構成
+
+### 9.1 CI全体ジョブ
+
+```mermaid
+flowchart TD
+    A[CI Start] --> B[changed files検出]
+    B --> C[setup]
+    C --> D[secret scan]
+    C --> E[docs impact check]
+    C --> F[web CI]
+    C --> G[api CI]
+    C --> H[reco CI]
+    C --> I[batch CI]
+    C --> J[shared CI]
+    C --> K[db CI]
+    C --> L[contract CI]
+    F --> M[CI結果集約]
+    G --> M
+    H --> M
+    I --> M
+    J --> M
+    K --> M
+    L --> M
+    D --> M
+    E --> M
+    M --> N{成功?}
+    N -- Yes --> O[Merge可能]
+    N -- No --> P[修正必須]
+```
+
+### 9.2 共通ジョブ
+
+| ジョブ            | 内容                                       |
+| ----------------- | ------------------------------------------ |
+| changed-files     | 変更ファイルを検出し、必要なCIのみ実行する |
+| setup-node        | Node.js / pnpmセットアップ                 |
+| setup-python      | Python / uv または pip セットアップ        |
+| cache             | pnpm / Python dependency cache             |
+| secret-scan       | secret混入チェック                         |
+| docs-impact-check | code変更に対するdocs更新有無の確認         |
+| summary           | CI結果をPR上で確認できる形に集約           |
 
 ### 3.1 基本方針
 
@@ -50,9 +214,15 @@
 | API契約の整合を重視する                 | OpenAPIと生成APIクライアントの乖離をCIで検知する                |
 | Observability成立をリリース条件に含める | 出した後に追跡できる状態をデプロイ条件とする                    |
 
----
+| 項目     | 内容                                                       |
+| -------- | ---------------------------------------------------------- |
+| 対象     | apps/web                                                   |
+| 実行契機 | web配下、shared-types、contracts、docsの関連変更           |
+| 主な検証 | install、lint、typecheck、build、unit test、component test |
+| 外部通信 | 原則Mock                                                   |
+| 失敗時   | PRマージ不可                                               |
 
-### 3.2 事実と推論
+### 10.2 api CI
 
 #### 事実
 
@@ -76,7 +246,7 @@ CI/CDは軽量でよいが、以下は必須とする。
 - リリース後に観測できること
 ```
 
----
+### 10.5 shared CI
 
 ## 4. パイプライン全体像
 
@@ -133,7 +303,7 @@ CIの目的は以下である。
 - PRのマージ可否判断を支援する
 ```
 
----
+### 10.7 contract CI
 
 ## 5.2 実行タイミング
 
@@ -182,7 +352,7 @@ CIの目的は以下である。
 | generated client | Orval生成APIクライアントの型検証 |
 | shared-types     | 共通型の型検証                   |
 
----
+技術検証テストは、通常のPR CIには含めない。
 
 ### 5.3.4 Unitテスト
 
@@ -194,7 +364,13 @@ CIの目的は以下である。
 | batch        | 変換処理、差分判定、ジョブ単位処理               |
 | shared-logic | Feature / Semantic / Embedding関連の共通ロジック |
 
----
+```text
+- 外部APIのrate limitに影響を受ける
+- API Keyが必要になる
+- 外部サービス障害によりCIが不安定になる
+- 実行コストが発生する可能性がある
+- 実レスポンスは検証タイミングによって変化する
+```
 
 ### 5.3.5 Integrationテスト
 
@@ -207,7 +383,7 @@ CIの目的は以下である。
 | batch-db             | BatchからDBへの反映               |
 | batch-object-storage | Raw保存・取得の確認               |
 
----
+### 12.2 性能フィジビリティ
 
 ### 5.3.6 OpenAPI検証
 
@@ -228,7 +404,14 @@ OpenAPI定義をCIで検証する。
 - Orval生成に必要な形式を満たしていること
 ```
 
----
+```text
+- api response latency
+- reco pipeline duration
+- pgvector search duration
+- batch chunk processing duration
+- item feature generation duration
+- item embedding generation duration
+```
 
 ### 5.3.7 Orval生成検証
 
@@ -263,7 +446,8 @@ apps/web/src/generated/api/
 apps/api/src/generated/reco-client/
 ```
 
----
+docsはrepo内を正本とする。
+そのため、仕様変更・IF変更・DB変更・Batch変更・テスト方針変更がある場合は、CIでdocs差分を確認対象に含める。
 
 ### 5.3.9 code-definitions検証
 
@@ -290,7 +474,7 @@ MVP初期では、まず構文チェックを対象とする。
 
 高度な整合性チェックは、後続で段階的に追加する。
 
----
+### 13.3 docs checkの扱い
 
 ### 5.3.10 基盤チェック
 
@@ -317,7 +501,7 @@ ObservabilityはMVPでも重要なため、基本チェックをCIまたは統�
 | batch log             | バッチ実行結果を追跡できること     |
 | metrics               | 最低限の処理結果を確認できること   |
 
----
+### 14.2 CDで確認すること
 
 ## 5.4 CI成功条件
 
@@ -337,7 +521,7 @@ CI成功条件は以下とする。
 - 必須Observability基本チェックが成功している
 ```
 
----
+### 14.3 リリースNG条件
 
 ## 6. CD（継続的デリバリー / デプロイ）
 
@@ -353,7 +537,32 @@ CI成功条件は以下とする。
 
 ---
 
-## 6.2 デプロイ対象
+## 15. CD方針
+
+### 15.1 CD全体方針
+
+MVPでは、productionへの完全自動デプロイは行わない。
+以下の半自動CDを採用する。
+
+```text
+develop merge
+  ↓
+dev deploy
+  ↓
+統合確認
+  ↓
+staging deploy
+  ↓
+システムテスト / 非機能テスト / 品質評価 / 受入確認
+  ↓
+main merge
+  ↓
+production deploy approval
+  ↓
+production deploy
+  ↓
+post deploy check
+```
 
 | コンポーネント | デプロイ方針                               |
 | -------------- | ------------------------------------------ |
@@ -364,22 +573,36 @@ CI成功条件は以下とする。
 | Database       | migrationを明示的に実行                    |
 | Object Storage | 設定変更時のみ反映                         |
 
----
+| 項目     | 内容                                |
+| -------- | ----------------------------------- |
+| 契機     | developへのmerge                    |
+| 実行     | 自動または半自動                    |
+| 目的     | 統合確認                            |
+| 必須条件 | develop CI成功                      |
+| 確認内容 | API疎通、DB接続、Reco疎通、基本ログ |
 
-## 6.3 環境構成
+### 15.3 staging環境反映
 
-| 環境        | 用途     |
-| ----------- | -------- |
-| local       | 開発     |
-| develop相当 | 統合確認 |
-| production  | 本番     |
+| 項目     | 内容                                                         |
+| -------- | ------------------------------------------------------------ |
+| 契機     | workflow_dispatch または release candidate作成               |
+| 実行     | 半自動                                                       |
+| 目的     | リリース前確認                                               |
+| 必須条件 | develop CI成功、dev確認完了                                  |
+| 確認内容 | システムテスト、非機能テスト、レコメンド品質評価、受入前確認 |
 
 MVPでは、環境数を増やしすぎない。  
 ただし、本番反映前の統合確認が必要な場合は、develop相当環境を利用する。
 
 ---
 
-## 6.4 デプロイフロー
+| 項目     | 内容                                              |
+| -------- | ------------------------------------------------- |
+| 契機     | mainへのmerge後                                   |
+| 実行     | 手動承認付き                                      |
+| 目的     | 本番反映                                          |
+| 必須条件 | main CI成功、staging確認完了、受入判断OK          |
+| 確認内容 | health check、主要導線、Observability、error rate |
 
 ### develop反映フロー
 
@@ -446,7 +669,13 @@ ObservabilityはCDの品質ゲートの一部とする。
 - 推薦品質の評価に必要な情報が残っているか
 ```
 
----
+| トリガー          | 用途                               |
+| ----------------- | ---------------------------------- |
+| schedule          | 日次・週次Batchの定期実行          |
+| workflow_dispatch | 手動実行、再実行、技術検証         |
+| workflow_call     | 親workflowから子workflowを呼び出す |
+| pull_request      | Batchコードのテスト、dry-run       |
+| push              | 原則、本番Batch実行には使わない    |
 
 ## 7.2 デプロイ後確認
 
@@ -462,7 +691,15 @@ ObservabilityはCDの品質ゲートの一部とする。
 - 必要なmetricsが取得できる
 ```
 
----
+| 子workflow                         | 用途                                    |
+| ---------------------------------- | --------------------------------------- |
+| batch-rakuten-genre-sync.yml       | 楽天ジャンルマスタ同期                  |
+| batch-rakuten-ranking-snapshot.yml | ランキングスナップショット取得          |
+| batch-rakuten-item-import.yml      | 商品疑似差分取得〜Item反映              |
+| batch-item-meaning-generation.yml  | Item Semantic / Feature / Embedding生成 |
+| batch-distribution-metrics.yml     | 分布メトリクス集計                      |
+| batch-offline-evaluation.yml       | Offline Evaluation                      |
+| batch-retry-failed-items.yml       | 失敗Item再実行                          |
 
 ## 7.3 リリース不可条件
 
@@ -478,7 +715,7 @@ ObservabilityはCDの品質ゲートの一部とする。
 - generated配下が手動編集されている
 ```
 
----
+Batch workflow間の依存関係は、親workflow内の `jobs.needs` または `workflow_call` により制御する。
 
 ## 8. ブランチ戦略との連携
 
@@ -525,7 +762,7 @@ ObservabilityはCDの品質ゲートの一部とする。
 | docs   | 必要最小限の修正を同時に行う |
 | 目的   | 本番障害・緊急修正対応       |
 
----
+### 18.2 CDで確認すること
 
 ## 9. docs正本との連携
 
@@ -545,7 +782,7 @@ CI/CDでは、以下のような変更がある場合にdocs更新漏れを確�
 - 運用ルール変更
 ```
 
----
+### 18.3 破壊的変更方針
 
 ## 9.2 チェック例
 
@@ -592,7 +829,7 @@ test
 | `apps/web/src/generated/api/`         | 生成物差分確認、typecheck         |
 | `apps/api/src/generated/reco-client/` | 導入後に生成物差分確認、typecheck |
 
----
+### 19.2 禁止事項
 
 ## 10.3 運用ルール
 
@@ -614,7 +851,7 @@ test
 
 CIでは、MVP初期は構文・重複・必須項目のチェックを中心に行う。
 
----
+### 22.1 CI失敗
 
 ## 11.2 CI対象
 
@@ -626,7 +863,14 @@ CIでは、MVP初期は構文・重複・必須項目のチェックを中心に
 | `packages/code-definitions/batch/`       | batch job type等の確認                 |
 | `packages/code-definitions/error/`       | error_codeの確認                       |
 
----
+```text
+- production反映を停止
+- deploy logを確認
+- 影響範囲を確認
+- 必要に応じてrollback
+- Issue化
+- 再発防止としてテストまたはCIを追加
+```
 
 ## 11.3 将来拡張
 
@@ -639,7 +883,7 @@ CIでは、MVP初期は構文・重複・必須項目のチェックを中心に
 - status / phase と状態遷移設計の整合性チェック
 ```
 
----
+### 22.4 Batch失敗
 
 ## 12. 自動化範囲
 
@@ -716,7 +960,7 @@ GitHub Actions workflowファイルは、`.github/workflows/` 直下に配置す
 | `tech-verify-*.yml`      | 技術検証               |
 | `perf-feasibility-*.yml` | 性能フィジビリティ検証 |
 
----
+### 23.3 Hotfix時のCI
 
 ## 13.3 親workflow / 子workflow方針
 
@@ -745,7 +989,19 @@ GitHub Actions workflowファイルは、`.github/workflows/` 直下に配置す
 | generated差分検出        | 生成物更新漏れとして修正必須、マージ禁止   |
 | code-definitions検証失敗 | コード定義修正必須、マージ禁止             |
 
----
+```text
+.github/workflows/
+├─ ci.yml
+├─ ci-web.yml
+├─ ci-api.yml
+├─ ci-reco.yml
+├─ ci-batch.yml
+├─ ci-shared.yml
+├─ ci-db.yml
+├─ ci-contract.yml
+├─ ci-docs.yml
+└─ ci-security.yml
+```
 
 ## 14.2 デプロイ失敗
 
@@ -757,7 +1013,18 @@ GitHub Actions workflowファイルは、`.github/workflows/` 直下に配置す
 | migration失敗         | ロールバックまたは復旧手順実施 |
 | post deploy check失敗 | リリース完了扱いにしない       |
 
----
+### 24.3 技術検証 workflow
+
+```text
+.github/workflows/
+├─ tech-verify-rakuten-api.yml
+├─ tech-verify-external-ai.yml
+├─ tech-verify-pgvector.yml
+├─ perf-feasibility-api.yml
+├─ perf-feasibility-reco.yml
+├─ perf-feasibility-batch.yml
+└─ perf-feasibility-db.yml
+```
 
 ## 14.3 Observability不備
 
@@ -791,7 +1058,17 @@ GitHub Actions workflowファイルは、`.github/workflows/` 直下に配置す
 
 ## 16. 結論
 
-本CI/CD方針は以下を採用する。
+| 領域          | 拡張内容                                      |
+| ------------- | --------------------------------------------- |
+| CI高速化      | path filter、matrix最適化、cache強化          |
+| CD高度化      | staging自動反映、本番承認フロー強化           |
+| Release       | tag、release note、自動changelog              |
+| Test          | E2E自動化、回帰テスト拡充、性能テスト定期実行 |
+| Observability | dashboard、alert、SLO連携                     |
+| Security      | SAST、dependency scan、container scan         |
+| Docs          | docs-code整合チェック自動化                   |
+| Batch         | retry policy高度化、失敗通知、再実行UI        |
+| Deployment    | Blue-Green、Canary、feature flag              |
 
 ```text
 軽量CI
