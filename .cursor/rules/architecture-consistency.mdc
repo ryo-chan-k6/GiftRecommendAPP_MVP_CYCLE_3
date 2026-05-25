@@ -1,0 +1,563 @@
+---
+description: "AIレビュー、設計変更、横断影響確認時に参照するアーキテクチャ整合性ルール。方針書、設計書、ディレクトリ構成、モジュール責務、API、DB、CI/CD、テスト、実装の整合性を確認する。"
+globs: []
+alwaysApply: false
+---
+
+# architecture-consistency
+
+## 1. 目的
+
+このRuleは、Gift Recommendation Service プロジェクトにおいて、方針書、設計書、ディレクトリ構成、ソースコード、API、DB、CI/CD、テストの整合性を確認するためのルールを定義する。
+
+AI Agentは、AI Review、設計変更、実装変更、横断影響確認を行う際に、本Ruleを参照する。
+
+本Ruleでは、以下を目的とする。
+
+- 開発方針書と実装の不整合を防ぐ
+- アーキテクチャ方針とディレクトリ構成の不整合を防ぐ
+- モジュール責務定義と実装責務の不一致を防ぐ
+- API設計方針とAPI実装の不整合を防ぐ
+- データモデル、論理ER、物理ER、DDL、実装の不整合を防ぐ
+- DevOps方針、CI/CD方針、GitHub Actions workflowの不整合を防ぐ
+- テスト計画書とテスト実装の不整合を防ぐ
+- `out_of_scope` の設計変更が通常Taskへ混入することを防ぐ
+- 横断影響がある変更を適切に検知し、必要に応じて別Task化する
+
+本Ruleは、アーキテクチャそのものの正本ではない。
+アーキテクチャ判断は、正本docs、Task Definition、Issue、PR、Human Reviewに基づいて行う。
+
+---
+
+## 2. 適用対象
+
+このRuleは、主に以下に適用する。
+
+- AI Review
+- PRレビュー
+- 設計変更
+- 実装変更
+- モジュール追加・修正
+- API追加・修正
+- DB設計変更
+- バッチ設計変更
+- GitHub Actions workflow変更
+- CI/CD設定変更
+- ディレクトリ構成変更
+- OpenAPI / Orval / generated 影響確認
+- テスト計画・テスト実装の整合性確認
+- 複数docsまたは複数アプリケーションにまたがる横断影響確認
+
+対象ファイルの例は以下とする。
+
+```text
+docs/**/*.md
+apps/**/*.ts
+apps/**/*.tsx
+apps/**/*.js
+apps/**/*.jsx
+apps/**/*.py
+packages/**/*.ts
+packages/**/*.tsx
+openapi/**/*.yaml
+openapi/**/*.yml
+.github/**/*.yml
+.github/**/*.yaml
+scripts/**
+```
+ただし、本Ruleは `Agent Requested` として扱う。
+
+特定ファイル編集時の自動適用ではなく、AI Agentが設計・実装・レビュー上の整合性確認が必要と判断した場合に参照する。
+
+---
+
+## 3. 必須ルール
+
+### 3.1 正本docsを優先する
+
+AI Agentは、アーキテクチャ整合性を確認する際、正本docsを優先する。
+
+古いチャット内容、作業途中のメモ、未レビューの提案、PRコメントだけを正本として扱ってはならない。
+
+正本docsと実装が矛盾している場合は、どちらを正とするかをAI Agentが独断で確定してはならない。
+
+不整合として報告し、人間へ確認する。
+
+### 3.2 設計レイヤーの責務を混同しない
+
+AI Agentは、設計レイヤーごとの責務を混同してはならない。
+
+| レイヤー           | 主な責務                                |
+| ------------------ | --------------------------------------- |
+| 事業・MVP方針      | 何を作るか、何をMVP対象にするか         |
+| ドメイン設計       | 業務概念、集約、正本、状態、制約        |
+| アーキテクチャ設計 | システム構成、責務分割、依存方向        |
+| API設計            | 外部・内部I/F、URL、request / response  |
+| データ設計         | エンティティ、テーブル、正本/派生、履歴 |
+| バッチ設計         | データ取得、加工、同期、評価、定期実行  |
+| DevOps設計         | GitHub、CI/CD、環境、運用自動化         |
+| テスト設計         | テスト観点、範囲、実行方針、品質確認    |
+| 実装               | 設計を満たすコード・設定・テスト        |
+
+実装都合だけでドメイン責務やアーキテクチャ方針を変更してはならない。
+
+### 3.3 ユビキタス言語とドメイン責務を守る
+
+AI Agentは、ドメイン中核概念を正本docsに従って扱う。
+
+特に以下の概念は、設計・実装・テスト間で意味を変えてはならない。
+
+- Gift Meaning
+- Gift Meaning Space
+- Social
+- Symbolic
+- Feature
+- Context
+- Relationship
+- Occasion
+- Semantic Concept
+- Semantic Map
+- Hint
+- Feature Hint Dictionary
+- User Meaning
+- Item Meaning
+- Retrieval
+- Matching
+- Ranking
+- Context Score
+- λ_ctx
+- Risk
+- Popularity
+
+用語の表記・意味判断が必要な場合は、`terminology.mdc` を併用する。
+
+### 3.4 システム構成とディレクトリ構成を一致させる
+
+AI Agentは、設計上のシステム構成と実ファイル配置を一致させる。
+
+代表的なアプリケーション構成は以下を前提に確認する。
+
+```
+apps/
+├─ web/
+├─ api/
+├─ reco/
+└─ batch/
+```
+実装ファイルを追加・移動する場合は、対象コンポーネントの責務と配置先が一致しているか確認する。
+
+配置先が判断できない場合は、人間へ確認する。
+
+### 3.5 モジュール責務定義と実装責務を一致させる
+
+AI Agentは、モジュール一覧、モジュール概要設計、機能×モジュール対応表と実装責務を一致させる。
+
+以下を守る。
+
+- 既存モジュールの責務に反する処理を追加しない
+- 1つのモジュールへ複数責務を過剰に混在させない
+- 呼び出し元・呼び出し先の責務境界を崩さない
+- domain / application / infrastructure の依存方向を逆転させない
+- UI都合の処理をdomainへ混入させない
+- 外部I/F都合の処理をドメイン概念として扱わない
+- バッチ都合の処理をOL処理へ混入させない
+
+モジュール責務を変更する必要がある場合は、関連docs更新とHuman Reviewを必要とする。
+
+### 3.6 API設計方針とAPI実装を一致させる
+
+AI Agentは、API設計標準、API一覧、API仕様、OpenAPI定義、API実装、API client利用側の整合性を確認する。
+
+以下を守る。
+
+- API pathがAPI設計方針と矛盾していない
+- HTTP methodがAPI設計方針と矛盾していない
+- request / response schemaがAPI仕様と一致している
+- OpenAPI定義と実装が一致している
+- generated / API clientと利用側実装が一致している
+- Public API / Internal API の責務が混在していない
+- 実装コンポーネント名をURLに出す方針が、正本docsと矛盾していない
+- Contract変更を通常Taskに無断で混在させていない
+
+API contract関連の詳細確認は `api-contract.mdc` を併用する。
+
+### 3.6.1 API Epic 配下 Task は API 層に限定する（識別子単位 Epic）
+
+`[Epic]API-PUB-NNN` / `[Epic]API-INT-NNN` 配下の Task は、**API 層（route / controller / application service / mapper / validator / api-client / openapi 定義）に限定**する（[成果物一覧×Task Definition化方針書](../../docs/00_共通/AIエージェント運用/成果物一覧×Task%20Definition化方針書.md) §3.5）。
+
+- API-PUB-NNN Epic 配下 Task の差分は、原則として `apps/api/**` + `apps/web/src/lib/api-client/**` + `openapi/paths/**` + `docs/06_実装設計/api/**` に限定する
+- API-INT-NNN Epic 配下 Task の差分は、`apps/reco/src/app/**`（エンドポイント層）+ `openapi/internal/**` + `docs/06_実装設計/api/**` に限定する
+- **呼び出すモジュール（`apps/reco/src/modules/**` 等）の実装変更は、API Epic 配下 Task では行わない**。対象 `[Epic]MOD-RECO-NNN:{Recoモジュール名}` 配下の別 Task として切り出し、API Epic の `dependencies.epics` に追加する
+- 同様に、画面 Epic（`[Epic]SCR-NNN`）配下 Task は `apps/web/src/app/**` + `apps/web/src/features/**` に限定し、API 実装は別 Epic（`[Epic]API-PUB-NNN`）配下とする
+
+Task / PR の差分が API Epic 配下なのに `apps/reco/src/modules/**` を含む場合、AI Review は `request_changes` または `blocked` とし、別 Epic へ切り出すよう指摘する（[`.cursor/commands/review-pr.md`](../commands/review-pr.md) §6.1）。
+
+### 3.6.2 Reco個別モジュール Epic の境界
+
+`[Epic]MOD-RECO-NNN:{Recoモジュール名}` は、Recoモジュール一覧に定義された個別モジュールの仕様・実装・単体テストを扱う。
+
+- `epic_scope.allowed_paths`: `apps/reco/**` の該当モジュール範囲、および対応するモジュール仕様書・テスト範囲に限定する
+- エンドポイント層（`apps/reco/src/app/**`）は API-INT-NNN Epic 配下の Task が扱う。`MOD-RECO-NNN` 配下 Task で編集してはならない
+- API Epic 配下 Task が Recoモジュール実装を触る必要がある場合は、該当 `MOD-RECO-NNN` Epic 配下の Task に分離する
+
+### 3.7 データ設計と実装を一致させる
+
+AI Agentは、データモデル、論理ER、物理ER、テーブル設計方針、DDL、実装の整合性を確認する。
+
+以下を守る。
+
+- テーブル名・カラム名が正本docsと一致している
+- 正本データと派生データの扱いが設計方針と一致している
+- 集約・エンティティ・値オブジェクトとテーブル設計が矛盾していない
+- 履歴・状態・ログ・メトリクスの責務が混在していない
+- 外部IDと内部IDの扱いが設計方針と一致している
+- FKを張る/張らない方針がテーブル設計方針と一致している
+- DDL変更が実装・テスト・seed・migrationへ反映されている
+- DB変更の影響範囲がPRに明示されている
+
+DB設計変更を伴う場合は、関連docsと実装を同時に確認する。
+
+### 3.8 OL / BT責務を混同しない
+
+AI Agentは、OL処理とBT処理の責務を混同してはならない。
+
+| 区分 | 主な責務                                             |
+| ---- | ---------------------------------------------------- |
+| OL   | ユーザー操作、即時応答、API経由の同期処理            |
+| BT   | データ取得、特徴量生成、評価、集計、定期・非同期処理 |
+
+以下を確認する。
+
+- APIで実行すべき処理とバッチで実行すべき処理が混在していないか
+- バッチ処理をPublic APIの責務として扱っていないか
+- 定期実行・大量処理・再実行性が必要な処理をOLへ混入していないか
+- ユーザー応答に必要な処理と事前計算すべき処理を区別しているか
+- GitHub Actionsで実行する処理とAPIで実行する処理の境界が明確か
+
+### 3.9 DevOps方針とGitHub Actions workflowを一致させる
+
+AI Agentは、DevOps方針書、CI/CD方針書、GitHub Actions workflow、scriptsの整合性を確認する。
+
+以下を守る。
+
+- workflow triggerがCI/CD方針と一致している
+- 実行対象ブランチがブランチ運用ルールと一致している
+- develop / main の扱いが運用方針と一致している
+- テスト、lint、build、docs checkの実行タイミングが方針と一致している
+- secretsの参照方法がsecurity方針と一致している
+- GitHub Actionsで実行するbatch処理がバッチ設計方針と一致している
+- workflow変更の影響範囲がPRに明示されている
+
+GitHub運用の詳細は `github-operation.mdc` を併用する。
+
+### 3.10 テスト計画とテスト実装を一致させる
+
+AI Agentは、全体テスト計画書、各テスト方針、テストコード、CI実行結果の整合性を確認する。
+
+以下を守る。
+
+- 実装変更に対して必要なテストが追加・修正されている
+- テスト名から検証内容が分かる
+- 正常系、異常系、境界値の必要性が検討されている
+- API contract変更に対してAPI client生成・検証が行われている
+- テスト未実施の場合、理由がPRに明示されている
+- テスト計画書と実際のテスト対象が矛盾していない
+
+テスト詳細は `testing.mdc` を併用する。
+
+### 3.11 横断影響を検知する
+
+AI Agentは、変更が複数領域に影響する場合、横断影響として扱う。
+
+横断影響の例は以下とする。
+
+- OpenAPI変更
+- Orval設定変更
+- generated変更
+- DB schema変更
+- migration追加
+- CI/CD workflow変更
+- ディレクトリ構成変更
+- 共通型変更
+- 共通Rule変更
+- Task Definition schema変更
+- API path / response schema変更
+- モジュール責務変更
+- ユビキタス言語変更
+
+横断影響がある場合は、通常Taskに混在させず、必要に応じて別Task化または `ai-logs/cross-cutting/` への記録を検討する。
+
+### 3.12 `out_of_scope` を守る
+
+AI Agentは、Task Definition、Issue、PRに定義された `out_of_scope` を守る。
+
+以下を行ってはならない。
+
+- scope外の設計変更をついでに混入する
+- 関連するからという理由だけで別領域を修正する
+- Human承認なしに影響範囲を拡大する
+- PR内で複数目的の変更を混在させる
+
+scope外変更が必要な場合は、別Task化を提案する。
+
+### 3.13 docs / code / test の更新漏れを防ぐ
+
+AI Agentは、設計・実装・テストのいずれかを変更する場合、関連領域の更新要否を確認する。
+
+| 変更内容     | 確認する関連領域                                         |
+| ------------ | -------------------------------------------------------- |
+| 設計変更     | docs / code / test / API / DB                            |
+| コード変更   | docs / API / test / CI                                   |
+| API変更      | API仕様 / OpenAPI / generated / web / api / reco / batch |
+| DB変更       | 論理ER / 物理ER / DDL / migration / seed / test          |
+| workflow変更 | DevOps方針 / CI/CD方針 / secrets / branch運用            |
+| テスト変更   | テスト計画 / 実装仕様 / CI実行結果                       |
+
+更新不要と判断する場合も、PR本文で理由を説明できる状態にする。
+
+### 3.14 既存方針を覆す変更をAI Agentだけで確定しない
+
+以下の変更は、Human Reviewを必須とする。
+
+- アーキテクチャ構成の変更
+- アプリケーション責務分割の変更
+- ドメインモデルの変更
+- データ正本方針の変更
+- API設計方針の変更
+- DB設計方針の変更
+- CI/CD方針の変更
+- セキュリティ方針の変更
+- Feature追加
+- MVP対象範囲の変更
+- 既存RuleのAlways化
+- 複数docsへ影響する用語変更
+
+AI Agentは、比較案・推奨案を提示してよい。
+
+ただし、確定判断は人間に委ねる。
+
+---
+
+## 4. 確認観点
+
+### 4.1 設計変更確認
+
+設計変更時は、以下を確認する。
+
+- 変更対象の正本docsは明確か
+- 変更理由は明確か
+- 上位方針と矛盾していないか
+- 関連docsへの影響があるか
+- 機能一覧・モジュール一覧への影響があるか
+- API一覧・API仕様への影響があるか
+- データモデル・論理ER・物理ERへの影響があるか
+- テスト計画への影響があるか
+- DevOps / CI/CD / workflowへの影響があるか
+- `out_of_scope` に該当しないか
+
+### 4.2 実装変更確認
+
+実装変更時は、以下を確認する。
+
+- 実装対象コンポーネントが正しいか
+- ディレクトリ配置が方針と一致しているか
+- モジュール責務と実装責務が一致しているか
+- 依存方向が逆転していないか
+- ドメインロジックがUI / infraへ漏れていないか
+- infra都合がdomainへ混入していないか
+- 型定義と実装が一致しているか
+- エラー処理方針が既存実装と整合しているか
+- docs更新が必要か
+- テスト追加・修正が必要か
+
+### 4.3 API変更確認
+
+API変更時は、以下を確認する。
+
+- API設計標準と矛盾していないか
+- API一覧と整合しているか
+- request / response schemaが仕様と一致しているか
+- OpenAPI定義への影響があるか
+- Orval / generatedへの影響があるか
+- web / api / reco / batch の利用側影響があるか
+- Contract Taskとして分離すべきか
+- 破壊的変更があるか
+
+### 4.4 DB変更確認
+
+DB変更時は、以下を確認する。
+
+- データモデルと矛盾していないか
+- 論理ERと矛盾していないか
+- 物理ERと矛盾していないか
+- DDL / migrationが必要か
+- 既存データへの影響があるか
+- 正本/派生の扱いが正しいか
+- 履歴・ログ・メトリクスの責務が混在していないか
+- アプリケーション実装への影響があるか
+- テストデータ・seedへの影響があるか
+
+### 4.5 Batch / DevOps変更確認
+
+Batch / DevOps変更時は、以下を確認する。
+
+- バッチ設計方針と一致しているか
+- GitHub Actions実行方針と一致しているか
+- workflow配置が `.github/workflows/` として妥当か
+- 実行タイミングがCI/CD方針と一致しているか
+- secrets参照が安全か
+- retry / 再実行性 / 失敗時通知が考慮されているか
+- batch処理とAPI処理の責務が混在していないか
+
+### 4.6 AI Review確認
+
+AI Review時は、以下を確認する。
+
+- Issue目的と差分が一致しているか
+- Task Definitionのscope内か
+- `out_of_scope` の変更が混在していないか
+- 正本docsと矛盾していないか
+- モジュール責務と差分が一致しているか
+- API / DB / CI/CD / generated への影響が明示されているか
+- テスト結果または未実施理由が明示されているか
+- Human Reviewで確認すべき設計判断が明示されているか
+- 別Task化すべき横断影響がないか
+- **API/モジュール境界**: API Epic 配下 Task の差分が `apps/reco/src/modules/**` 等のモジュール実装を含んでいないか（§3.6.1）
+- **画面/API境界**: 画面 Epic 配下 Task の差分が `apps/api/**` を含んでいないか（§3.6.1）
+- **エンドポイント/モジュール境界**: `MOD-RECO-NNN` Epic 配下 Task の差分が `apps/reco/src/app/**`（API-INT エンドポイント層）を含んでいないか（§3.6.2）
+- Parent Epic の `epic_scope.allowed_paths` 内に差分が収まっているか
+
+---
+
+## 5. 禁止事項
+
+AI Agentは、以下を行ってはならない。
+
+- 正本docsと矛盾する設計・実装を確認なしに進めること
+- 古いチャット内容をアーキテクチャ判断の正本として扱うこと
+- Task Definitionのscope外の設計変更を混入すること
+- `out_of_scope` の変更を通常Taskへ混入すること
+- モジュール責務を確認せずに処理を追加すること
+- domain / application / infrastructure の依存方向を逆転させること
+- UI都合の処理をdomainへ混入すること
+- infra都合の処理をdomainへ混入すること
+- OL処理とBT処理の責務を混同すること
+- API設計方針と矛盾するAPIを追加すること
+- OpenAPI / generated / API clientへの影響を無視すること
+- DB設計方針と矛盾するテーブル・カラムを追加すること
+- DevOps方針と矛盾するworkflowを追加すること
+- テスト計画と矛盾するテスト対象・テスト方針を追加すること
+- 横断影響がある変更をPR本文に明示しないこと
+- Feature追加をHuman承認なしに行うこと
+- MVP対象範囲をHuman承認なしに変更すること
+- 既存アーキテクチャ方針をAI Agentだけで覆すこと
+- secret、APIキー、token、password、cookie、session情報をdocs、code、workflow、PRへ記載すること
+
+---
+
+## 6. 停止条件
+
+AI Agentは、以下の場合、作業を停止して人間へ確認する。
+
+- 正本docs間でアーキテクチャ方針が矛盾している
+- 設計書と実装のどちらを正とすべきか判断できない
+- ディレクトリ構成と実ファイル配置が矛盾している
+- モジュール責務が不明確である
+- 依存方向を逆転させないと実装できない
+- API設計方針と実装要件が矛盾している
+- OpenAPI / generated / API clientへ影響するが、Contract Task化すべきか判断できない
+- DB変更が必要だが、論理ER / 物理ER / DDLの正本が不明確である
+- OL / BTのどちらの責務か判断できない
+- API Epic 配下 Task の差分にモジュール実装変更（`apps/reco/src/modules/**` 等）が含まれている
+- 画面 Epic 配下 Task の差分に API 実装変更（`apps/api/**`）が含まれている
+- `MOD-RECO-NNN` Epic 配下 Task の差分に API-INT エンドポイント層変更（`apps/reco/src/app/**`）が含まれている
+- workflow変更がDevOps方針またはCI/CD方針と矛盾する
+- テスト方針と実装変更が矛盾している
+- `out_of_scope` の変更が必要になった
+- 横断影響が大きく、PRを分割すべきか判断が必要である
+- Feature追加やMVP対象変更が必要に見える
+- secretや認証情報が含まれている可能性がある
+- Human Reviewを省略しないと進められない状態になっている
+
+---
+
+## 7. 人間へ確認する条件
+
+AI Agentは、以下の場合、人間へ確認・報告する。
+
+- アーキテクチャ方針を変更すべき場合
+- モジュール責務を変更すべき場合
+- ディレクトリ構成を変更すべき場合
+- API設計方針を変更すべき場合
+- DB設計方針を変更すべき場合
+- OL / BT責務を変更すべき場合
+- DevOps / CI/CD方針を変更すべき場合
+- テスト計画を変更すべき場合
+- Feature追加が必要に見える場合
+- MVP対象範囲を変更すべき場合
+- Contract Taskを別途作成すべき場合
+- 横断影響ログを残すべき場合
+- 既存PRを分割すべき場合
+- 正本docsの更新順序を判断すべき場合
+- Human Reviewで重点確認すべき設計判断がある場合
+
+確認時は、以下を整理して提示する。
+
+- 確認が必要な理由
+- 現在確認できている事実
+- AI Agentの推論
+- 選択肢
+- 推奨案
+- 判断しない場合のリスク
+
+---
+
+## 8. 関連ドキュメント
+
+以下の正本ドキュメントと整合させる。
+
+| ドキュメント                       | 役割                                                  |
+| ---------------------------------- | ----------------------------------------------------- |
+| 開発方針書                         | 開発全体の基本方針                                    |
+| システム論理構成図                 | 論理的なシステム構成                                  |
+| システム物理構成図                 | 物理的な配置・サービス構成                            |
+| プロジェクトディレクトリ構成定義書 | `docs/`, `apps/`, `.cursor/`, `prompts/` 等の配置方針 |
+| ドメイン概念一覧                   | ドメイン概念の定義                                    |
+| ドメイン概念連関図                 | ドメイン概念間の関係                                  |
+| ユビキタス言語集                   | ドメイン用語・運用用語の定義                          |
+| 正本定義表                         | 情報ごとの正本関係                                    |
+| リソース責務定義表                 | リソースごとの責務                                    |
+| 機能一覧                           | 機能名・機能分類の定義                                |
+| モジュール一覧                     | モジュール名・責務の定義                              |
+| 機能×モジュール対応表              | 機能とモジュールの対応                                |
+| モジュール別入出力定義表           | モジュールごとのI/F                                   |
+| OL/BT責務整理表                    | OL処理とBT処理の責務分担                              |
+| API設計標準                        | API設計方針                                           |
+| API一覧                            | APIの一覧・分類                                       |
+| API仕様書                          | request / response / error の仕様                     |
+| テーブル設計方針書                 | DB物理設計方針                                        |
+| 論理ER                             | 論理データ構造                                        |
+| 物理ER                             | 物理データ構造                                        |
+| DDL                                | DB実体定義                                            |
+| バッチ設計方針書                   | batch処理の設計方針                                   |
+| DevOps方針書                       | DevOps運用方針                                        |
+| CI・CD方針書                       | CI/CDの基本方針                                       |
+| 全体テスト計画書                   | テスト全体方針                                        |
+| AIエージェント共通Rules設計書      | `.cursor/rules/` の設計正本                           |
+| Task Definition設計書              | 個別作業条件の構造                                    |
+| AIレビュー運用設計書               | AI Reviewの品質観点                                   |
+
+関連Ruleは以下とする。
+
+| Rule                    | 関係                                        |
+| ----------------------- | ------------------------------------------- |
+| `project-operation.mdc` | 正本関係、scope、人間判断などの全体原則     |
+| `docs-consistency.mdc`  | docs整合性、配置、Markdown品質              |
+| `terminology.mdc`       | 用語揺れ確認                                |
+| `github-operation.mdc`  | Issue / Projects / Branch / PR運用          |
+| `api-contract.mdc`      | API / OpenAPI / Orval / generated整合性確認 |
+| `code-consistency.mdc`  | ソースファイル間の責務・型・I/F整合性       |
+| `testing.mdc`           | テスト観点・テスト結果確認                  |
+| `ai-review.mdc`         | AI Review時の確認観点                       |
+| `security.mdc`          | secret、権限、危険操作の禁止                |
+| `worktree.mdc`          | worktree並列作業時の安全確認                |

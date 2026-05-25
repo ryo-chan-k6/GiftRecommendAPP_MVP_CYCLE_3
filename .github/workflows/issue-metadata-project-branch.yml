@@ -1,0 +1,535 @@
+name: Issue metadata project and branch sync
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - reopened
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 対象Issue番号
+        required: true
+      dry_run:
+        description: trueの場合は更新せずログのみ出力する
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: issue-metadata-project-branch-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync issue metadata, Project fields, and work branch
+        uses: actions/github-script@v8
+        env:
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const dryRun =
+              context.eventName === "workflow_dispatch" &&
+              String(context.payload.inputs?.dry_run || "") === "true";
+
+            const projectOwner = process.env.PROJECT_OWNER || owner;
+            const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
+            const statusInitial = "In Progress";
+            const areaKeys = new Set(["web", "api", "reco", "batch", "db", "docs", "infra", "project"]);
+            const typeKeys = new Set(["feature", "fix", "docs", "refactor", "chore", "test", "hotfix", "spike"]);
+            const priorityKeys = new Set(["critical", "high", "medium", "low"]);
+
+            function parseFormSections(body) {
+              const sections = {};
+              const lines = String(body || "").split(/\r?\n/);
+              let key = null;
+              const buf = [];
+              function flush() {
+                if (key !== null) sections[key] = buf.join("\n").trim();
+                buf.length = 0;
+              }
+              for (const raw of lines) {
+                const match = /^### (.+)$/.exec(raw);
+                if (match) {
+                  flush();
+                  key = match[1].trim();
+                } else {
+                  buf.push(raw);
+                }
+              }
+              flush();
+              return sections;
+            }
+
+            function firstLine(value) {
+              const text = String(value || "").trim();
+              if (!text) return "";
+              return text.split(/\r?\n/)[0].trim();
+            }
+
+            function parseListValues(value) {
+              return String(value || "")
+                .split(/[\n,，、]+/)
+                .map((item) => item.replace(/^[-*]\s*/, "").trim())
+                .filter(Boolean);
+            }
+
+            function parseCheckedLabels(value) {
+              const out = [];
+              for (const line of String(value || "").split(/\r?\n/)) {
+                const match = /^\s*-\s*\[x\]\s*(.+)$/i.exec(line);
+                if (match) out.push(match[1].trim());
+              }
+              return out;
+            }
+
+            function isChecked(value, label) {
+              return parseCheckedLabels(value).includes(label);
+            }
+
+            function sanitizeBranchPart(value) {
+              return String(value || "")
+                .trim()
+                .toLowerCase()
+                .replace(/^["']|["']$/g, "")
+                .replace(/\s+/g, "-")
+                .replace(/[^a-z0-9-]/g, "")
+                .replace(/-+/g, "-")
+                .replace(/^-+|-+$/g, "")
+                .slice(0, 64)
+                .replace(/-+$/g, "");
+            }
+
+            function managedLabel(name) {
+              return /^(unit|type|area|priority):/.test(name || "");
+            }
+
+            function buildLabels(sections) {
+              const labels = [];
+              const unit = firstLine(sections["作業単位"]).toLowerCase();
+              if (unit === "epic" || unit === "task") labels.push(`unit: ${unit}`);
+
+              const type = firstLine(sections["作業種別"]).toLowerCase();
+              if (typeKeys.has(type)) labels.push(`type: ${type}`);
+
+              const priority = firstLine(sections["優先度"]).toLowerCase();
+              if (priorityKeys.has(priority)) labels.push(`priority: ${priority}`);
+
+              for (const area of parseListValues(sections["対象領域"]).map((v) => v.toLowerCase())) {
+                if (areaKeys.has(area)) labels.push(`area: ${area}`);
+              }
+              return [...new Set(labels)];
+            }
+
+            async function getIssue(issueNumber) {
+              const { data } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
+              return data;
+            }
+
+            async function comment(issueNumber, body) {
+              if (dryRun) {
+                core.info(`[dry_run] comment on #${issueNumber}:\n${body}`);
+                return;
+              }
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
+            }
+
+            async function syncLabels(issueNumber, issue, desired) {
+              const current = (issue.labels || [])
+                .map((label) => (typeof label === "string" ? label : label.name))
+                .filter(Boolean);
+              const kept = current.filter((label) => !managedLabel(label) && label !== "no-branch");
+              const merged = [...new Set([...kept, ...desired])];
+              if (dryRun) {
+                core.info(`[dry_run] setLabels(${issueNumber}): ${JSON.stringify(merged)}`);
+                return;
+              }
+              await github.rest.issues.setLabels({ owner, repo, issue_number: issueNumber, labels: merged });
+            }
+
+            async function syncMilestone(issueNumber, sections) {
+              const raw = firstLine(sections["Milestone"] || sections["プロジェクト工程"]);
+              if (!raw) return;
+              if (raw === "なし" || raw === "未定") {
+                if (!dryRun) await github.rest.issues.update({ owner, repo, issue_number: issueNumber, milestone: null });
+                return;
+              }
+              const { data: milestones } = await github.rest.issues.listMilestones({
+                owner,
+                repo,
+                state: "open",
+                per_page: 100,
+              });
+              const hit = milestones.find((milestone) => milestone.title === raw);
+              if (!hit) {
+                await comment(issueNumber, `Milestone \`${raw}\` が見つかりません。Milestone名またはIssue本文を確認してください。`);
+                return;
+              }
+              if (!dryRun) await github.rest.issues.update({ owner, repo, issue_number: issueNumber, milestone: hit.number });
+            }
+
+            async function linkParentIssue(issueNumber, issue, sections) {
+              const parentRaw = firstLine(sections["親Issue"]);
+              const match = /#(\d+)/.exec(parentRaw);
+              if (!match) return;
+              const parentNumber = Number(match[1]);
+              if (!parentNumber || parentNumber === issueNumber) return;
+              try {
+                if (dryRun) {
+                  core.info(`[dry_run] link sub-issue parent=#${parentNumber} child=#${issueNumber}`);
+                  return;
+                }
+                await github.request("POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues", {
+                  owner,
+                  repo,
+                  issue_number: parentNumber,
+                  sub_issue_id: issue.id,
+                });
+              } catch (error) {
+                core.warning(`Could not link sub-issue: ${error.message}`);
+              }
+            }
+
+            async function loadProject() {
+              if (!projectNumber) return null;
+              const query = `
+                query($owner: String!, $number: Int!) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      id
+                      fields(first: 100) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options { id name }
+                          }
+                          ... on ProjectV2Field {
+                            id
+                            name
+                            dataType
+                          }
+                        }
+                      }
+                    }
+                  }
+                }`;
+              const data = await github.graphql(query, { owner: projectOwner, number: projectNumber });
+              return data.user?.projectV2 || null;
+            }
+
+            async function getIssueNodeId(issueNumber) {
+              const query = `
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $number) { id }
+                  }
+                }`;
+              const data = await github.graphql(query, { owner, repo, number: issueNumber });
+              return data.repository?.issue?.id || null;
+            }
+
+            async function ensureProjectItem(project, issueNodeId) {
+              const mutation = `
+                mutation($projectId: ID!, $contentId: ID!) {
+                  addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                    item { id }
+                  }
+                }`;
+              try {
+                const data = await github.graphql(mutation, { projectId: project.id, contentId: issueNodeId });
+                return data.addProjectV2ItemById?.item?.id || null;
+              } catch (error) {
+                const message = String(error.message || error);
+                if (!message.includes("already exists")) throw error;
+              }
+
+              const query = `
+                query($owner: String!, $number: Int!, $after: String) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      items(first: 100, after: $after) {
+                        nodes {
+                          id
+                          content {
+                            ... on Issue { id }
+                          }
+                        }
+                        pageInfo { hasNextPage endCursor }
+                      }
+                    }
+                  }
+                }`;
+              let after = null;
+              for (;;) {
+                const data = await github.graphql(query, { owner: projectOwner, number: projectNumber, after });
+                const items = data.user?.projectV2?.items;
+                const hit = items?.nodes?.find((item) => item.content?.id === issueNodeId);
+                if (hit) return hit.id;
+                if (!items?.pageInfo?.hasNextPage) return null;
+                after = items.pageInfo.endCursor;
+              }
+            }
+
+            function fieldByName(project, name) {
+              return project.fields.nodes.find((field) => field.name === name);
+            }
+
+            function optionFor(field, values) {
+              if (!field?.options) return null;
+              const candidates = values.filter(Boolean).map(String);
+              return field.options.find((option) => candidates.includes(option.name));
+            }
+
+            async function updateSingleSelect(project, itemId, fieldName, values) {
+              const field = fieldByName(project, fieldName);
+              const option = optionFor(field, values);
+              if (!field || !option) return false;
+              const mutation = `
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId,
+                    itemId: $itemId,
+                    fieldId: $fieldId,
+                    value: { singleSelectOptionId: $optionId }
+                  }) { projectV2Item { id } }
+                }`;
+              if (!dryRun) await github.graphql(mutation, { projectId: project.id, itemId, fieldId: field.id, optionId: option.id });
+              return true;
+            }
+
+            async function updateDate(project, itemId, fieldName, value) {
+              const field = fieldByName(project, fieldName);
+              const date = firstLine(value);
+              if (!field || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+              const mutation = `
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $date: Date!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId,
+                    itemId: $itemId,
+                    fieldId: $fieldId,
+                    value: { date: $date }
+                  }) { projectV2Item { id } }
+                }`;
+              if (!dryRun) await github.graphql(mutation, { projectId: project.id, itemId, fieldId: field.id, date });
+              return true;
+            }
+
+            async function syncProjectFields(issueNumber, sections) {
+              let project;
+              try {
+                project = await loadProject();
+              } catch (error) {
+                core.warning(`Could not load ProjectV2: ${error.message}`);
+                return;
+              }
+              if (!project) return;
+              const issueNodeId = await getIssueNodeId(issueNumber);
+              if (!issueNodeId) return;
+              let itemId;
+              try {
+                itemId = await ensureProjectItem(project, issueNodeId);
+              } catch (error) {
+                core.warning(`Could not add/find ProjectV2 item: ${error.message}`);
+                return;
+              }
+              if (!itemId) return;
+
+              const priority = firstLine(sections["優先度"]).toLowerCase();
+              const area = parseListValues(sections["対象領域"])[0]?.toLowerCase();
+              const phase = firstLine(sections["プロジェクト工程"]);
+              await updateSingleSelect(project, itemId, "Status", [statusInitial]);
+              await updateSingleSelect(project, itemId, "Phase", [phase, phase.replace(/工程完了$/, "")]);
+              await updateSingleSelect(project, itemId, "Priority", [priority, `priority: ${priority}`, priority.toUpperCase(), priority[0]?.toUpperCase() + priority.slice(1)]);
+              await updateSingleSelect(project, itemId, "Area", [area, `area: ${area}`, area?.[0]?.toUpperCase() + area?.slice(1)]);
+              await updateDate(project, itemId, "Planned Start", sections["Planned Start"]);
+              await updateDate(project, itemId, "Due Date", sections["Due Date"]);
+            }
+
+            async function createBranch(issueNumber, sections) {
+              if (isChecked(sections["Branch作成制御"], "no-branch")) {
+                core.info("Issue body has no-branch checked; branch creation skipped.");
+                return;
+              }
+
+              const unit = firstLine(sections["作業単位"]).toLowerCase();
+              const type = firstLine(sections["作業種別"]).toLowerCase();
+              const summary = sanitizeBranchPart(firstLine(sections["Branch summary"]));
+              if (!["epic", "task"].includes(unit) || !typeKeys.has(type) || !summary) {
+                await comment(issueNumber, "Branch作成に必要な `作業単位` / `作業種別` / `Branch summary` を解決できませんでした。");
+                return;
+              }
+
+              const branchName = `${type}/${unit}-${issueNumber}-${summary}`;
+              let baseBranch = "develop";
+              if (unit === "task") {
+                baseBranch = firstLine(sections["Parent Epic Branch"]);
+                if (!baseBranch) {
+                  await comment(issueNumber, "Task Branchのbaseになる `Parent Epic Branch` が未記載のため、Branch作成を停止しました。");
+                  return;
+                }
+              }
+
+              try {
+                await github.rest.git.getRef({ owner, repo, ref: `heads/${branchName}` });
+                core.info(`Branch already exists: ${branchName}`);
+                return;
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+
+              let base;
+              try {
+                const { data } = await github.rest.repos.getBranch({ owner, repo, branch: baseBranch });
+                base = data;
+              } catch (error) {
+                await comment(issueNumber, `Base Branch \`${baseBranch}\` が見つからないため、Branch作成を停止しました。`);
+                return;
+              }
+
+              if (dryRun) {
+                core.info(`[dry_run] create branch ${branchName} from ${baseBranch}@${base.commit.sha}`);
+                return;
+              }
+              const query = `
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    id
+                    issue(number: $number) { id }
+                  }
+                }`;
+              const graph = await github.graphql(query, { owner, repo, number: issueNumber });
+              const repositoryId = graph.repository?.id;
+              const issueId = graph.repository?.issue?.id;
+              if (!repositoryId || !issueId) {
+                await comment(issueNumber, "Issue linked branch作成に必要なRepository IDまたはIssue IDを解決できませんでした。");
+                return;
+              }
+              const mutation = `
+                mutation($input: CreateLinkedBranchInput!) {
+                  createLinkedBranch(input: $input) {
+                    linkedBranch { id }
+                  }
+                }`;
+              await github.graphql(mutation, {
+                input: {
+                  issueId,
+                  repositoryId,
+                  oid: base.commit.sha,
+                  name: branchName,
+                },
+              });
+              await comment(issueNumber, [`Branchを作成しました。`, "", `- Branch: \`${branchName}\``, `- Base: \`${baseBranch}\``].join("\n"));
+            }
+
+            let issueNumber;
+            if (context.eventName === "workflow_dispatch") {
+              issueNumber = Number(context.payload.inputs.issue_number);
+            } else {
+              issueNumber = context.payload.issue?.number;
+            }
+            if (!issueNumber) {
+              core.setFailed("Issue number is missing.");
+              return;
+            }
+
+            const issue = await getIssue(issueNumber);
+            if (issue.pull_request) {
+              core.info("This is a pull request issue object; skipped.");
+              return;
+            }
+            const sections = parseFormSections(issue.body || "");
+            if (!sections["作業単位"]) {
+              core.info("Issue form marker not found; skipped.");
+              return;
+            }
+
+            const labels = buildLabels(sections);
+            if (!labels.some((label) => label.startsWith("unit:")) || !labels.some((label) => label.startsWith("type:"))) {
+              await comment(issueNumber, "`作業単位` または `作業種別` を解決できないため、メタデータ同期を停止しました。");
+              return;
+            }
+
+            await syncLabels(issueNumber, issue, labels);
+            await syncMilestone(issueNumber, sections);
+            await linkParentIssue(issueNumber, issue, sections);
+            await syncProjectFields(issueNumber, sections);
+            await createBranch(issueNumber, sections);
+
+      - name: Send Slack issue-created notification
+        if: ${{ github.event_name == 'issues' && github.event.action == 'opened' }}
+        uses: actions/github-script@v8
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const path = require("path");
+            const slack = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/slack-notify.cjs"));
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue = context.payload.issue;
+            const channel = process.env.SLACK_CHANNEL_ID_DEVOPS || "";
+            const threadKey = slack.buildThreadKey({ owner, repo, kind: "issue", number: issue.number });
+            const comments = await slack.listIssueComments({ github, owner, repo, issueNumber: issue.number });
+            const threadTs = slack.findThreadTsFromComments(comments, threadKey, channel);
+
+            const text = slack.buildSlackText({
+              level: "info",
+              title: "Issueを作成しました",
+              summary: issue.title,
+              fields: {
+                Issue: `#${issue.number}`,
+                Status: "In Progress",
+                Repository: `${owner}/${repo}`,
+              },
+              links: {
+                Issue: issue.html_url,
+              },
+              humanAction: "必要に応じてIssue本文と作成されたBranch / Project項目を確認してください。",
+            });
+
+            const result = await slack.postSlackMessage({
+              token: process.env.SLACK_BOT_TOKEN,
+              channel,
+              text,
+              threadTs,
+            });
+
+            if (result.ok && result.ts && !threadTs) {
+              await slack.upsertThreadMarkerComment({
+                github,
+                owner,
+                repo,
+                issueNumber: issue.number,
+                threadKey,
+                channel: result.channel || channel,
+                ts: result.ts,
+                comments,
+              });
+            }
+
+            await core.summary
+              .addHeading("Slack Issue通知")
+              .addRaw(`result: ${result.ok ? "ok" : "failed"}\n\n`)
+              .addRaw(result.error ? `error: \`${result.error}\`\n` : "")
+              .write();
+
+            if (!result.ok) {
+              core.warning(`Slack notification failed: ${result.error || "unknown"}`);
+            }

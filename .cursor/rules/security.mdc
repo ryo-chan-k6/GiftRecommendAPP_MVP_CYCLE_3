@@ -1,0 +1,714 @@
+---
+description: "secret、認証情報、権限、危険操作、本番影響のある変更を作成・修正・レビューする際に参照するセキュリティルール。APIキー、token、.env、権限昇格、破壊的操作、外部公開、ログ出力を確認する。"
+globs:
+  - "**/.env*"
+  - ".github/**/*.yml"
+  - ".github/**/*.yaml"
+  - "apps/**/*.ts"
+  - "apps/**/*.tsx"
+  - "apps/**/*.js"
+  - "apps/**/*.jsx"
+  - "apps/**/*.py"
+  - "packages/**/*.ts"
+  - "packages/**/*.tsx"
+  - "scripts/**"
+  - "openapi/**/*.yaml"
+  - "openapi/**/*.yml"
+  - "docs/**/*.md"
+alwaysApply: false
+---
+
+# security
+
+## 1. 目的
+
+このRuleは、Gift Recommendation Service プロジェクトにおいて、secret、認証情報、権限、危険操作、本番影響のある変更を安全に扱うためのルールを定義する。
+
+AI Agentは、コード、docs、workflow、scripts、OpenAPI、設定ファイル、PR、Issue、ログを作成・修正・レビューする際に、本Ruleを参照する。
+
+本Ruleでは、以下を目的とする。
+
+- secretや認証情報の漏えいを防ぐ
+- `.env` の値を誤って出力・保存・commitすることを防ぐ
+- 認証・認可の迂回を防ぐ
+- 過剰な権限付与を防ぐ
+- 本番環境や重要データに影響する危険操作をAI Agentが独断で実行することを防ぐ
+- ログ、コメント、テストデータ、docsへの機密情報混入を防ぐ
+- 外部API、DB、CI/CD、GitHub Actionsの安全性を確認する
+- Human判断が必要なsecurity判断を明確にする
+
+本Ruleは、セキュリティ設計そのものの正本ではない。
+認証・認可、secret管理、権限設計、環境分離、運用方針の正本は、関連docsとHuman判断に従う。
+
+---
+
+## 2. 適用対象
+
+このRuleは、以下に適用する。
+
+```text
+**/.env*
+.github/**/*.yml
+.github/**/*.yaml
+apps/**/*.ts
+apps/**/*.tsx
+apps/**/*.js
+apps/**/*.jsx
+apps/**/*.py
+packages/**/*.ts
+packages/**/*.tsx
+scripts/**
+openapi/**/*.yaml
+openapi/**/*.yml
+docs/**/*.md
+```
+主な対象作業は以下とする。
+
+- secret、APIキー、token、password、cookie、session情報の扱い
+- `.env`, `.env.local`, `.env.example` の作成・修正
+- GitHub Actions workflowの作成・修正
+- GitHub Secrets / Variables の参照
+- 外部API連携処理の作成・修正
+- DB接続処理の作成・修正
+- 認証・認可処理の作成・修正
+- ログ出力処理の作成・修正
+- エラー処理の作成・修正
+- テストfixture / mock / seed の作成・修正
+- docs、Issue、PR、Slack通知、ai-logsへの記載
+- 本番環境、develop、main、production DB、外部サービスへ影響する操作
+
+以下は本Rule単独では判断しない。
+
+- 認証・認可設計そのものの採否
+- 本番運用上の最終判断
+- secretローテーション手順の最終判断
+- インシデント対応方針の最終判断
+- 法務・規約・規制に関わる最終判断
+
+これらはHuman判断を必要とする。
+
+---
+
+## 3. 必須ルール
+
+### 3.1 secretを出力・保存・commitしない
+
+AI Agentは、secretや認証情報を出力・保存・commitしてはならない。
+
+禁止対象は以下を含む。
+
+- APIキー
+- access token
+- refresh token
+- password
+- cookie
+- session情報
+- private key
+- client secret
+- database URLの実値
+- Supabase keyの実値
+- OpenAI API keyの実値
+- GitHub tokenの実値
+- OAuth secretの実値
+- webhook secretの実値
+- Authorization headerの実値
+- `.env` に記載された実値
+
+例示が必要な場合は、必ずダミー値を使用する。
+
+```
+OPENAI_API_KEY=your_openai_api_key_here
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+DATABASE_URL=postgresql://user:password@host:5432/db
+```
+実値らしき文字列を発見した場合は、作業を停止し、人間へ報告する。
+
+### 3.2 `.env` と `.env.example` を区別する
+
+AI Agentは、`.env` 系ファイルの扱いを区別する。
+
+| ファイル           | 扱い                                     |
+| ------------------ | ---------------------------------------- |
+| `.env`             | 実値を含む可能性があるためcommit禁止     |
+| `.env.local`       | 実値を含む可能性があるためcommit禁止     |
+| `.env.development` | 実値を含む可能性があるため原則commit禁止 |
+| `.env.production`  | 実値を含む可能性があるためcommit禁止     |
+| `.env.example`     | ダミー値・key名のみ記載可能              |
+| `.env.sample`      | ダミー値・key名のみ記載可能              |
+
+`.env.example` や `.env.sample` には、実値を書いてはならない。
+
+記載してよいのは以下である。
+
+- 環境変数名
+- 用途説明
+- ダミー値
+- 未設定時の挙動説明
+- local setup用の注意事項
+
+### 3.3 環境変数名は記載してよいが、値は記載しない
+
+AI Agentは、環境変数名をdocs、README、コメントに記載してよい。
+
+記載可能な例：
+
+```
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+OPENAI_API_KEY
+DATABASE_URL
+RECO_BASE_URL
+```
+ただし、実値、実URL、実token、実passwordを記載してはならない。
+
+外部公開されない前提のPR本文、Issueコメント、ai-logsであっても同様に実値を記載してはならない。
+
+### 3.4 GitHub ActionsではSecretsを安全に参照する
+
+AI Agentは、GitHub Actions workflowを作成・修正する場合、secretをGitHub Secretsから参照する。
+
+許容例：
+
+```
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+禁止例：
+
+```
+env:
+  OPENAI_API_KEY: sk-xxxxxxxxxxxxxxxx
+```
+以下を確認する。
+
+- secret実値をworkflowに直書きしていないか
+- `secrets.*` の参照名が妥当か
+- logsにsecretが出力されないか
+- debug commandで環境変数をdumpしていないか
+- pull_request from forkでsecretを不用意に渡していないか
+- job権限が過剰でないか
+- production相当の操作にHuman承認が必要か
+
+### 3.5 GitHub Actions permissionsを最小化する
+
+AI Agentは、GitHub Actions workflowのpermissionsを必要最小限にする。
+
+必要がない限り、広い権限を付与してはならない。
+
+避ける例：
+
+```
+permissions: write-all
+```
+推奨例：
+
+```
+permissions:
+  contents: read
+  pull-requests: write
+```
+ただし、必要な権限はworkflowの目的によって異なる。
+
+権限判断が難しい場合は、人間へ確認する。
+
+### 3.6 認証・認可を迂回しない
+
+AI Agentは、実装・テスト・デバッグ目的で認証・認可を迂回してはならない。
+
+禁止例：
+
+- 認証チェックを一時的に無効化する
+- userIdを固定値で扱う
+- roleを強制的にadmin扱いにする
+- middlewareを通さずに保護対象処理を呼び出す
+- 本来server側で検証すべき権限をclient側だけで判定する
+- テスト都合で本番コードにbackdoorを追加する
+
+認証・認可を変更する必要がある場合は、Human Reviewを必須とする。
+
+### 3.7 権限を過剰に付与しない
+
+AI Agentは、ユーザー、service role、API key、GitHub token、DB user、workflow tokenに過剰な権限を付与してはならない。
+
+以下を確認する。
+
+- read権限で足りる処理にwrite権限を与えていないか
+- 特定scopeで足りる処理にadmin権限を与えていないか
+- service role keyをclient側で使っていないか
+- public clientにsecret相当のkeyを渡していないか
+- batch専用権限をwebやapiに流用していないか
+- GitHub Actions tokenに不要なwrite権限を与えていないか
+
+権限昇格が必要な場合は、人間へ確認する。
+
+### 3.8 client側にsecretを置かない
+
+AI Agentは、browserで実行されるコードにsecretを置いてはならない。
+
+対象例：
+
+```
+apps/web
+Next.js Client Component
+browser bundle
+public directory
+frontend environment variables
+```
+以下を禁止する。
+
+- API key実値をclient codeへ直書きする
+- service role keyをclientへ渡す
+- private tokenをbrowserで利用する
+- secretを`NEXT_PUBLIC_`付き環境変数にする
+- secretをlocalStorage / sessionStorage / cookieへ不用意に保存する
+- secretをconsoleに出す
+
+client側で必要な値は、公開可能な値かどうかを確認する。
+
+### 3.9 ログに機密情報を出力しない
+
+AI Agentは、ログ、エラー、console、print、debug出力に機密情報を出してはならない。
+
+禁止対象は以下を含む。
+
+- APIキー
+- token
+- password
+- cookie
+- session
+- Authorization header
+- request header全体
+- `.env` の値
+- DB接続文字列
+- 個人情報
+- 外部APIの認証情報
+- stack traceに含まれるsecret
+
+ログ出力が必要な場合は、maskingまたはredactionを行う。
+
+例：
+
+```
+logger.info("OpenAI API request failed", {
+  status,
+  requestId,
+});
+```
+禁止例：
+
+```
+logger.error("OpenAI API request failed", {
+  apiKey:process.env.OPENAI_API_KEY,
+});
+```
+### 3.10 エラー応答に内部情報を出さない
+
+AI Agentは、ユーザー向けerror responseに内部情報を出してはならない。
+
+禁止対象は以下を含む。
+
+- stack trace
+- SQL
+- DB接続情報
+- secret
+- 内部path
+- private IP
+- 外部APIの生レスポンス
+- 認証・認可の内部判定詳細
+- 実装上の例外メッセージ全文
+
+ユーザー向けには安全なメッセージを返し、詳細は安全にmaskされたログへ出す。
+
+### 3.11 外部入力を検証する
+
+AI Agentは、外部入力を処理する場合、validationを確認する。
+
+対象は以下を含む。
+
+- API request body
+- query parameter
+- path parameter
+- form input
+- file upload
+- webhook payload
+- external API response
+- batch input
+- CSV / JSON input
+- environment variable
+
+以下を確認する。
+
+- 型検証
+- required / optional
+- nullable
+- 文字列長
+- 数値範囲
+- enum
+- URL形式
+- 日付形式
+- 配列サイズ
+- unexpected field
+- injectionリスク
+
+validation方針が不明確な場合は、人間へ確認する。
+
+### 3.12 DB操作は安全性を確認する
+
+AI Agentは、DB操作を追加・修正する場合、安全性を確認する。
+
+以下を確認する。
+
+- SQL injectionリスクがないか
+- parameter bindingを使っているか
+- delete / truncate / dropなどの破壊的操作がないか
+- update条件が広すぎないか
+- migrationが既存データへ与える影響が明確か
+- production DBへ直接影響しないか
+- service role keyの使用箇所が妥当か
+- 権限境界を越えていないか
+- seed / fixtureに本番データを使っていないか
+
+破壊的DB操作が必要な場合は、人間へ確認する。
+
+### 3.13 外部API利用時は安全性を確認する
+
+AI Agentは、外部APIを利用するコードを追加・修正する場合、安全性を確認する。
+
+以下を確認する。
+
+- API keyをserver側で扱っているか
+- client側へsecretが漏れていないか
+- timeoutが設定されているか
+- retry方針が妥当か
+- rate limitを考慮しているか
+- request / response logにsecretが出ないか
+- 外部APIレスポンスを信用しすぎていないか
+- error時にsecretや内部情報を返していないか
+- 利用規約やコスト影響に関わる変更ではないか
+
+### 3.14 テストデータ・fixtureに実データを使わない
+
+AI Agentは、テストデータ、fixture、mock、seedに実データやsecretを使ってはならない。
+
+禁止対象は以下を含む。
+
+- 実ユーザー情報
+- 実メールアドレス
+- 実電話番号
+- 実住所
+- 実cookie
+- 実token
+- 実API responseの認証情報付きコピー
+- 本番DB dump
+- 個人を特定できる情報
+
+テストデータは、匿名化または完全なダミーデータを使用する。
+
+### 3.15 docs・Issue・PR・ai-logsに機密情報を記載しない
+
+AI Agentは、docs、Issue、PR、Slack通知、ai-logsに機密情報を記載してはならない。
+
+特に以下に注意する。
+
+- エラー調査ログ
+- 実行コマンド結果
+- CI log抜粋
+- API request / response例
+- `.env` 設定例
+- debug出力
+- incident記録
+- cross-cutting log
+
+記録が必要な場合は、機密情報をmaskする。
+
+例：
+
+```
+Authorization: Bearer ***REDACTED***
+DATABASE_URL=***REDACTED***
+```
+### 3.16 危険操作はHuman承認を必要とする
+
+AI Agentは、危険操作を独断で実行してはならない。
+
+危険操作の例は以下とする。
+
+- main / developへの直接push
+- PRのmerge
+- 本番deploy
+- 本番DB変更
+- 本番データ削除
+- migration実行
+- secret更新
+- secret削除
+- GitHub Secrets変更
+- 権限昇格
+- 外部APIの課金影響が大きい実行
+- 大量リクエスト実行
+- `rm -rf` などの広範囲削除
+- `drop table`
+- `truncate`
+- 全件update / delete
+- force push
+- history rewrite
+
+AI Agentは、危険操作の必要性、影響、代替案、リスクを整理し、人間に確認する。
+
+### 3.17 依存パッケージ追加時は安全性を確認する
+
+AI Agentは、新しいnpm / Python packageなどの依存を追加する場合、安全性を確認する。
+
+以下を確認する。
+
+- 本当に新規依存が必要か
+- 既存依存で代替できないか
+- メンテナンス状況に問題がないか
+- ライセンス上の懸念がないか
+- 依存追加によりbundle sizeやattack surfaceが増えすぎないか
+- postinstall scriptなど危険な挙動がないか
+- lockfile差分が妥当か
+
+依存追加の妥当性が判断できない場合は、人間へ確認する。
+
+### 3.18 CORS・公開範囲を確認する
+
+AI Agentは、CORS、公開endpoint、公開ディレクトリ、公開環境変数を変更する場合、安全性を確認する。
+
+以下を確認する。
+
+- CORSが過剰に許可されていないか
+- を使ってよい箇所か
+- 認証が必要なAPIが公開されていないか
+- Internal APIをPublic APIとして公開していないか
+- public directoryに機密ファイルを置いていないか
+- OpenAPI上で公開してよいAPIか
+- 管理用endpointが外部公開されていないか
+
+### 3.19 AI Agentはsecretの値を推測・復元しない
+
+AI Agentは、secretの値を推測、復元、生成、補完してはならない。
+
+以下を禁止する。
+
+- 伏せ字のsecretを推測する
+- tokenの一部から全文を復元しようとする
+- `.env` の実値を過去ログから探す
+- 実APIキーの形式に似せた値を生成する
+- 認証回避のための値を作る
+
+必要なのはsecret名・設定先・取得方法の説明までであり、実値は人間が安全な方法で管理する。
+
+---
+
+## 4. 確認観点
+
+### 4.1 secret確認
+
+作成・修正・レビュー時は、secretについて以下を確認する。
+
+- APIキー実値が含まれていないか
+- token実値が含まれていないか
+- password実値が含まれていないか
+- cookie / session情報が含まれていないか
+- private keyが含まれていないか
+- `.env` の値が含まれていないか
+- Authorization headerの実値が含まれていないか
+- DB接続文字列の実値が含まれていないか
+- docs、comments、logs、tests、fixturesに混入していないか
+
+### 4.2 `.env` 確認
+
+`.env` 系ファイルを扱う場合は、以下を確認する。
+
+- 実値をcommit対象にしていないか
+- `.env.example` にはダミー値のみが記載されているか
+- 必要な環境変数名が不足していないか
+- 値ではなくkey名だけをdocsに記載しているか
+- `.gitignore` で実値ファイルが除外されているか
+- `NEXT_PUBLIC_` にsecret相当の値を入れていないか
+
+### 4.3 workflow確認
+
+GitHub Actions workflowを扱う場合は、以下を確認する。
+
+- secretを直書きしていないか
+- `secrets.*` を安全に参照しているか
+- permissionsが過剰でないか
+- pull_request from forkでsecretを渡していないか
+- debug logでsecretを出力していないか
+- production相当の操作にHuman承認が必要か
+- workflow triggerが意図より広すぎないか
+- branch条件が運用方針と一致しているか
+
+### 4.4 code確認
+
+コードを扱う場合は、以下を確認する。
+
+- client側にsecretを置いていないか
+- 認証・認可を迂回していないか
+- 権限チェックが不足していないか
+- 外部入力validationがあるか
+- SQL injectionリスクがないか
+- ログに機密情報を出していないか
+- error responseに内部情報を出していないか
+- 外部API呼び出しのtimeout / retryが妥当か
+- 危険操作がHuman承認なしに実行されないか
+
+### 4.5 docs / Issue / PR / logs確認
+
+docs、Issue、PR、Slack通知、ai-logsを扱う場合は、以下を確認する。
+
+- secretや認証情報を記載していないか
+- 実API request / responseに機密情報が含まれていないか
+- CI log抜粋にsecretが含まれていないか
+- エラー情報に内部情報が含まれていないか
+- `.env` の実値を記載していないか
+- incidentやcross-cutting logに機密情報が残っていないか
+- maskまたはredactionされているか
+
+### 4.6 test確認
+
+テストコードを扱う場合は、以下を確認する。
+
+- fixtureに実データを使っていないか
+- mockに実tokenや実API responseを含めていないか
+- 本番DBや本番APIに接続していないか
+- 本番secretを使っていないか
+- テスト用の環境変数がダミー値か
+- テストログに機密情報が出ていないか
+
+### 4.7 review確認
+
+AI Review時は、以下を確認する。
+
+- secret混入がないか
+- 認証・認可の迂回がないか
+- 権限が過剰でないか
+- 危険操作が含まれていないか
+- 本番影響がないか
+- Human承認が必要なsecurity判断が明示されているか
+- 不明点をAI Agentが独断で確定していないか
+
+---
+
+## 5. 禁止事項
+
+AI Agentは、以下を行ってはならない。
+
+- secret、APIキー、token、password、cookie、session情報を出力・保存・commitすること
+- `.env` の実値をdocs、code、workflow、Issue、PR、logsに記載すること
+- `.env.example` に実値を記載すること
+- GitHub Actions workflowにsecretを直書きすること
+- client側コードにsecretを配置すること
+- service role keyをclient側で利用すること
+- `NEXT_PUBLIC_` 環境変数にsecretを入れること
+- 認証・認可を一時的に無効化すること
+- 権限を過剰に付与すること
+- `permissions: write-all` を理由なく設定すること
+- 外部入力をvalidationなしに信頼すること
+- SQL injectionリスクのある実装を追加すること
+- ログにAuthorization headerやsecretを出力すること
+- error responseにstack traceや内部情報を返すこと
+- 本番DB、本番API、本番secretに依存するテストを書くこと
+- fixtureやseedに実データを使うこと
+- main / developへ直接pushすること
+- PRをAI判断だけでmergeすること
+- 本番deploy、本番DB変更、secret更新などの危険操作をAI判断だけで実行すること
+- secretの値を推測・復元・生成すること
+- Human判断が必要なsecurity方針をAI Agentだけで確定すること
+
+---
+
+## 6. 停止条件
+
+AI Agentは、以下の場合、作業を停止して人間へ確認する。
+
+- secretや認証情報が含まれている可能性がある
+- `.env` の実値が含まれている可能性がある
+- secretをcommit対象に含めている可能性がある
+- client側にsecretが必要に見える
+- service role keyをclient側で使う必要がありそうに見える
+- 認証・認可を無効化しないと作業が進まない
+- 権限昇格が必要である
+- GitHub Actions permissionsの妥当性が判断できない
+- production相当の環境へ影響する可能性がある
+- 本番DB変更、本番データ削除、migration実行が必要に見える
+- 破壊的DB操作が必要に見える
+- 外部APIへ大量リクエストが必要に見える
+- API keyやtokenのローテーションが必要に見える
+- セキュリティ方針の変更が必要である
+- secret漏えいの可能性がある
+- Human Reviewを省略しないと進められない状態になっている
+
+---
+
+## 7. 人間へ確認する条件
+
+AI Agentは、以下の場合、人間へ確認・報告する。
+
+- secret管理方法を変更すべき場合
+- 新しいsecretを追加すべき場合
+- GitHub Secrets / Variablesの追加・変更が必要な場合
+- 権限追加・権限昇格が必要な場合
+- 認証・認可仕様を変更すべき場合
+- CORSや公開範囲を変更すべき場合
+- 本番環境へ影響する可能性がある場合
+- production DB、production API、production deployに関わる場合
+- 破壊的操作を実行すべきか判断が必要な場合
+- 外部API利用量やコストが大きく変わる場合
+- secret漏えいの可能性があり、ローテーション判断が必要な場合
+- セキュリティincidentとして記録すべき場合
+- security方針をdocsへ反映すべき場合
+- Human Reviewで重点確認すべきsecurity判断がある場合
+
+確認時は、以下を整理して提示する。
+
+- 確認が必要な理由
+- 現在確認できている事実
+- AI Agentの推論
+- 選択肢
+- 推奨案
+- 判断しない場合のリスク
+
+---
+
+## 8. 関連ドキュメント
+
+以下の正本ドキュメントと整合させる。
+
+| ドキュメント                  | 役割                                        |
+| ----------------------------- | ------------------------------------------- |
+| 非機能要件定義書              | security、可用性、運用要件の上位方針        |
+| セキュリティ設計書            | 認証・認可、secret管理、権限方針            |
+| 開発方針書                    | 開発全体の基本方針                          |
+| DevOps方針書                  | 環境、CI/CD、運用自動化方針                 |
+| CI・CD方針書                  | GitHub Actions、test、build、deploy方針     |
+| API設計標準                   | API設計、認証・認可、error response方針     |
+| API仕様書                     | APIごとの認証・認可、request / response仕様 |
+| OpenAPI定義                   | 機械可読なAPI contract                      |
+| テーブル設計方針書            | DB物理設計、権限、正本/派生方針             |
+| バッチ設計方針書              | batch処理、外部API、secret、再実行性方針    |
+| AIログ運用ルール              | incident / cross-cutting logの記録方針      |
+| Issue運用ルール               | Issue本文・ラベル・no-branch（本文のみ）運用 |
+| Projects運用ルール            | Projects Status管理                         |
+| ブランチ運用ルール            | Branch命名・base・PR target                 |
+| AIレビュー運用設計書          | AI Review時のsecurity確認観点               |
+| Task Definition設計書         | 個別作業条件の構造                          |
+| AIエージェント共通Rules設計書 | `.cursor/rules/` の設計正本                 |
+
+関連Ruleは以下とする。
+
+| Rule                           | 関係                                       |
+| ------------------------------ | ------------------------------------------ |
+| `project-operation.mdc`        | 正本関係、scope、人間判断などの全体原則    |
+| `github-operation.mdc`         | Issue / Projects / Branch / PR運用         |
+| `docs-consistency.mdc`         | docs整合性、配置、Markdown品質             |
+| `terminology.mdc`              | security関連用語の表記統一                 |
+| `architecture-consistency.mdc` | security方針と設計・実装の横断整合性       |
+| `code-consistency.mdc`         | コード上のsecret、認証・認可、ログ出力確認 |
+| `api-contract.mdc`             | API認証・認可、error response、OpenAPI確認 |
+| `testing.mdc`                  | テストデータ、fixture、mockの安全性確認    |
+| `ai-review.mdc`                | Human Review前のsecurity確認               |
+| `worktree.mdc`                 | worktree並列作業時の安全確認               |

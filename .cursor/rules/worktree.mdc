@@ -1,0 +1,603 @@
+---
+description: "git worktreeを利用して複数Issue・複数AI Agentの並列作業を行う際に参照する安全運用ルール。worktree、Branch、Issue、PR、対象ファイル、未コミット差分、削除・cleanupの安全確認を定義する。"
+globs: []
+alwaysApply: false
+---
+
+# worktree
+
+## 1. 目的
+
+このRuleは、Gift Recommendation Service プロジェクトにおいて、git worktreeを利用した並列作業を安全に行うためのルールを定義する。
+
+git worktreeは、1つのGitリポジトリに対して複数の作業ディレクトリを作成し、異なるBranchを同時に扱うための仕組みである。
+
+AI Agentは、複数Issue、複数Branch、複数AI Agentによる並列作業を行う際に、本Ruleを参照する。
+
+本Ruleでは、以下を目的とする。
+
+- Issue / Branch / worktree の対応関係を明確にする
+- 複数AI Agentが同じ作業領域や同じファイルを同時に編集することを防ぐ
+- 誤ったBranch、誤ったworktreeでの作業を防ぐ
+- main / develop への直接変更を防ぐ
+- 未コミット差分、未追跡ファイル、conflictを見落とした削除・cleanupを防ぐ
+- PR作成前後の作業場所と差分を明確にする
+- worktree削除時の事故を防ぐ
+
+本Ruleは、git worktree操作の安全確認を定義するものであり、Branch運用、PR運用、commit message、AI Reviewの詳細は関連Ruleに従う。
+
+---
+
+## 2. 適用対象
+
+このRuleは、主に以下に適用する。
+
+- git worktreeを利用する作業
+- 複数Issueの並列作業
+- 複数AI Agentによる並列作業
+- Branch作成
+- 作業用worktree作成
+- worktree内でのコード・docs修正
+- worktree内でのテスト実行
+- worktree内でのcommit
+- worktree内からのPR作成
+- worktree削除
+- worktree cleanup
+- conflict解消
+- 未コミット差分確認
+- 既存worktreeの状態確認
+
+対象Commandの例は以下とする。
+
+- `/start-epic`
+- `/start-task`
+- `/work-issue`
+- `/create-pr`
+- `/review-pr`
+- `/fix-review-comments`
+- `/create-contract-task`
+
+対象となるGit操作の例は以下とする。
+
+```bash
+git worktree list
+git worktree add
+git worktree remove
+git worktree prune
+git status
+git branch
+git switch
+git fetch
+git pull
+git diff
+git add
+git commit
+git push
+```
+---
+
+## 3. 必須ルール
+
+### 3.1 1 Issue = 1 Branch = 1 worktree を基本とする
+
+git worktreeを利用する場合、原則として以下の対応関係で管理する。
+
+```
+1 Issue = 1 Branch = 1 worktree
+```
+AI Agentは、1つのworktreeで複数Issueの作業を混在させてはならない。
+
+例外が必要な場合は、人間へ確認する。
+
+### 3.2 worktree作成前にIssueとBranchを確認する
+
+AI Agentは、worktree作成前に以下を確認する。
+
+- 対象Issue
+- Issue種別
+- 対象Branch名
+- Branch base
+- PR target
+- 親Epic Branchの有無
+- Issue 本文の `no-branch` チェック有無
+- Task Definitionの `target files`
+- Task Definitionの `exclusive files`
+- Task Definitionの `out_of_scope`
+- 既存worktreeの有無
+
+Branch base / PR targetは `github-operation.mdc` を正とする。
+
+特に、Task Branchを `develop` から直接作成してはならない。
+
+Task Branchは、親Epic Branchから作成する。
+
+### 3.3 作業前にworktree一覧を確認する
+
+AI Agentは、worktreeを作成・利用する前に、既存worktreeを確認する。
+
+```
+git worktree list
+```
+以下を確認する。
+
+- 同じBranchを使用中のworktreeがないか
+- 同じIssueのworktreeが既に存在しないか
+- 不要な古いworktreeが残っていないか
+- 作業対象Branchとworktree pathが対応しているか
+- main / develop のworktreeで作業しようとしていないか
+
+同じBranchが別worktreeで使用中の場合、無理に同じBranchをcheckoutしてはならない。
+
+### 3.4 作業ディレクトリを明確にする
+
+AI Agentは、作業開始時に現在の作業ディレクトリとBranchを確認する。
+
+```
+pwd
+git branch--show-current
+git status--short
+```
+以下を確認する。
+
+- 意図したworktree内にいるか
+- 意図したBranchにいるか
+- 未コミット差分がないか
+- 未追跡ファイルがないか
+- conflict中でないか
+
+作業ディレクトリやBranchが不明確な場合、作業を進めてはならない。
+
+### 3.5 worktree pathはBranchと対応させる
+
+worktree pathは、対象BranchやIssueが分かる名前にする。
+
+推奨例：
+
+```
+../gift-reco-worktrees/docs-task-123-ai-rules-update
+../gift-reco-worktrees/feature-task-124-recommendation-api
+../gift-reco-worktrees/test-task-125-reco-ranking-test
+```
+避ける例：
+
+```
+../work
+../tmp
+../test
+../new
+../作業中
+```
+worktree pathには、原則として以下を含める。
+
+- type
+- unit
+- Issue番号
+- english-summary
+
+path名は、英数字、ハイフン、アンダースコアを基本とする。
+
+日本語、空白、記号を多用してはならない。
+
+### 3.6 main / develop のworktreeでは直接作業しない
+
+AI Agentは、main / develop のworktreeで直接作業してはならない。
+
+以下を禁止する。
+
+- mainで直接編集する
+- developで直接編集する
+- mainへ直接commitする
+- developへ直接commitする
+- mainへ直接pushする
+- developへ直接pushする
+
+main / develop はbase branchとして扱い、作業は必ずIssueに対応するBranch / worktreeで行う。
+
+### 3.7 worktreeごとに対象ファイルを守る
+
+AI Agentは、Task Definitionの対象ファイルを守る。
+
+確認対象は以下とする。
+
+- `target files`
+- `exclusive files`
+- `output files`
+- `out_of_scope`
+
+複数worktreeで並列作業する場合、特に `exclusive files` の重複を確認する。
+
+同じファイルを複数worktreeで同時編集する可能性がある場合は、作業を進める前に人間へ確認する。
+
+### 3.8 共有ファイルの同時編集を避ける
+
+以下のファイルは横断影響が大きいため、複数worktreeでの同時編集に注意する。
+
+```
+package.json
+pnpm-lock.yaml
+tsconfig.json
+orval.config.*
+openapi/**/*.yaml
+openapi/**/*.yml
+.github/**/*.yml
+.github/**/*.yaml
+.cursor/rules/**
+.cursor/agents/**
+.cursor/commands/**
+prompts/**
+docs/プロジェクトディレクトリ構成定義書.md
+```
+これらを変更する場合は、他worktreeの作業と競合しないか確認する。
+
+横断影響がある場合は、`architecture-consistency.mdc`、`api-contract.mdc`、`github-operation.mdc` を併用する。
+
+### 3.9 worktree内の環境差分を意識する
+
+worktreeごとに作業ディレクトリが異なるため、以下を確認する。
+
+- dependenciesがinstall済みか
+- `node_modules` の有無
+- Python仮想環境の有無
+- `.env` の有無
+- generatedファイルの有無
+- build artifactの有無
+- local cacheの有無
+
+`.env` 実値ファイルをworktreeへコピーする場合は、人間が安全に行う。
+
+AI Agentは `.env` の実値を表示・保存・commitしてはならない。
+
+`.env.example` は参照してよいが、実値を含めてはならない。
+
+### 3.10 commit前にworktree状態を確認する
+
+AI Agentは、commit前に以下を確認する。
+
+```
+git status--short
+gitdiff--name-only
+gitdiff--check
+```
+確認観点は以下とする。
+
+- 意図したファイルだけが変更されているか
+- scope外ファイルが含まれていないか
+- secretが含まれていないか
+- conflict markerが残っていないか
+- 不要なdebug codeが残っていないか
+- generated差分が妥当か
+- 改行・空白だけの不要差分がないか
+
+commit messageの詳細は `git-commit-message.mdc` を参照する。
+
+### 3.11 PR作成前にBranchと差分を確認する
+
+AI Agentは、PR作成前に以下を確認する。
+
+```
+git branch--show-current
+git status--short
+gitdiff--name-only <PR-target>...HEAD
+```
+以下を確認する。
+
+- 現在BranchがPR対象Branchか
+- PR targetが正しいか
+- Task PRが親Epic Branchへ向いているか
+- Epic PRがdevelopへ向いているか
+- 差分がIssue / Task Definitionのscope内か
+- 未コミット差分が残っていないか
+- テスト結果または未実施理由を説明できるか
+
+PR作成・更新の詳細は `github-operation.mdc` を参照する。
+
+### 3.12 worktree削除前に未保存差分を確認する
+
+AI Agentは、worktree削除前に必ず状態を確認する。
+
+```
+git status--short
+git log--oneline--decorate-5
+```
+以下のいずれかに該当する場合、worktreeを削除してはならない。
+
+- 未コミット差分がある
+- 未追跡ファイルがある
+- conflict中である
+- pushしていないcommitがある
+- PR未作成である
+- PRがHuman Review中である
+- PR merge状況が不明である
+- 削除対象worktreeか判断できない
+
+削除してよいか判断できない場合は、人間へ確認する。
+
+### 3.13 `git worktree prune` は慎重に扱う
+
+AI Agentは、`git worktree prune` を安易に実行してはならない。
+
+実行前に以下を確認する。
+
+```
+git worktree list
+```
+`prune` が必要に見える場合でも、以下を整理して人間へ確認する。
+
+- なぜpruneが必要か
+- どのworktree情報が壊れているか
+- 実体ディレクトリが存在するか
+- 未保存差分が残っていないか
+- 他AI Agentが利用中でないか
+
+### 3.14 conflict解消は独断で進めない
+
+worktree間やBranch間でconflictが発生した場合、AI Agentは独断で解消してはならない。
+
+以下を確認する。
+
+- conflict対象ファイル
+- conflictの原因
+- どちらの変更が正本か
+- 両方の変更を統合すべきか
+- 片方を破棄すべきか
+- 関連Issue / PR
+- 関連docs
+- Human判断が必要か
+
+conflict解消方針を推測するしかない場合は、作業を停止する。
+
+### 3.15 複数AI Agent作業時は作業領域を分離する
+
+複数AI Agentが並列作業する場合、AI Agentごとにworktreeを分離する。
+
+以下を守る。
+
+- 同じworktreeを複数AI Agentで同時に使わない
+- 同じBranchを複数worktreeで同時に編集しない
+- 同じファイルを複数AI Agentで同時に編集しない
+- `exclusive files` の重複を確認する
+- PR targetとmerge順序を確認する
+- generatedやlockfileなどの横断ファイルは同時編集しない
+
+並列作業で競合が予想される場合は、人間へ確認する。
+
+### 3.16 cleanupはPR状態を確認してから行う
+
+worktreeやBranchのcleanupは、PR状態を確認してから行う。
+
+以下を確認する。
+
+- PRが作成済みか
+- PRがmerge済みか
+- PRがclose済みか
+- 対応IssueがDoneか
+- 必要なcommitがremoteへpush済みか
+- 未保存差分がないか
+- 人間が削除を了承しているか
+
+AI Agentは、PR merge前のworktreeを独断で削除してはならない。
+
+### 3.17 secretをworktree間でコピーしない
+
+AI Agentは、secretや `.env` 実値をworktree間でコピーしてはならない。
+
+禁止対象は以下を含む。
+
+- `.env`
+- `.env.local`
+- `.env.production`
+- API key
+- token
+- password
+- private key
+- database URL
+- service role key
+
+必要な場合は、人間が安全な方法で設定する。
+
+secret管理の詳細は `security.mdc` を参照する。
+
+---
+
+## 4. 確認観点
+
+### 4.1 worktree作成前確認
+
+worktree作成前に、以下を確認する。
+
+- 対象Issueが明確か
+- Issue種別が明確か
+- Branch名が決まっているか
+- Branch baseが正しいか
+- PR targetが正しいか
+- 親Epic Branchが存在するか
+- Issue 本文の `no-branch` が解除されているか
+- 既存worktreeと重複していないか
+- `target files` が明確か
+- `exclusive files` が明確か
+- 他worktreeと編集対象が競合しないか
+
+### 4.2 作業開始時確認
+
+作業開始時に、以下を確認する。
+
+- 現在の作業ディレクトリが正しいか
+- 現在Branchが正しいか
+- main / develop で直接作業していないか
+- 未コミット差分がないか
+- 未追跡ファイルがないか
+- conflict中でないか
+- dependenciesやlocal環境が必要か
+- `.env` 実値を扱っていないか
+
+### 4.3 作業中確認
+
+作業中に、以下を確認する。
+
+- Task Definitionのscope内に収まっているか
+- `exclusive files` を侵害していないか
+- 横断ファイルを変更していないか
+- 他worktreeの作業と競合していないか
+- generatedやlockfileの差分が意図どおりか
+- secretやdebug codeが混入していないか
+- テスト実行場所が正しいworktreeか
+
+### 4.4 commit前確認
+
+commit前に、以下を確認する。
+
+- 現在Branchが正しいか
+- 差分がIssue / Task Definitionのscope内か
+- 不要なファイルが含まれていないか
+- 未追跡ファイルを見落としていないか
+- conflict markerが残っていないか
+- secretが含まれていないか
+- テスト結果または未実施理由が説明できるか
+- commit messageがルールに従っているか
+
+### 4.5 PR作成前確認
+
+PR作成前に、以下を確認する。
+
+- PR targetが正しいか
+- Task PRが親Epic Branchへ向いているか
+- Epic PRがdevelopへ向いているか
+- 未push commitがないか
+- 未コミット差分がないか
+- PR本文にworktree由来の注意事項が必要か
+- Human Reviewで確認すべき競合リスクがあるか
+
+### 4.6 cleanup前確認
+
+worktree削除・cleanup前に、以下を確認する。
+
+- 対象worktreeが正しいか
+- 未コミット差分がないか
+- 未追跡ファイルがないか
+- pushしていないcommitがないか
+- PR状態が明確か
+- Issue状態が明確か
+- 他AI Agentが使用中でないか
+- 人間確認が必要な状態ではないか
+
+---
+
+## 5. 禁止事項
+
+AI Agentは、worktree運用時に以下を行ってはならない。
+
+- 1つのworktreeで複数Issueの作業を混在させること
+- 同じworktreeを複数AI Agentで同時に使うこと
+- 同じBranchを複数AI Agentで同時に編集すること
+- main / develop のworktreeで直接作業すること
+- main / developへ直接commitすること
+- main / developへ直接pushすること
+- Issue 本文で `no-branch` がチェックされている Issue で worktree を作成すること
+- Task Branchをdevelopから直接作成すること
+- Task PRをdevelopへ直接向けること
+- 現在のworktree / Branchを確認せずに編集すること
+- 未コミット差分を確認せずにBranch操作すること
+- 未コミット差分があるworktreeを削除すること
+- 未追跡ファイルがあるworktreeを削除すること
+- pushしていないcommitがあるworktreeを削除すること
+- PR状態不明のworktreeを削除すること
+- `git worktree prune` を確認なしに実行すること
+- conflict解消方針を推測だけで決めること
+- 横断ファイルを複数worktreeで同時編集すること
+- secretや `.env` 実値をworktree間でコピーすること
+- force push、history rewrite、Branch削除をHuman承認なしに行うこと
+- cleanupをAI Agentの独断で実施すること
+
+---
+
+## 6. 停止条件
+
+AI Agentは、以下の場合、作業を停止して人間へ確認する。
+
+- 対象Issueが不明である
+- Branch baseが不明である
+- PR targetが不明である
+- 親Epic Branchが存在しない
+- Issue 本文の `no-branch` 状態が不明である
+- 同じBranchが別worktreeで使用中である
+- 現在のworktreeが正しいか判断できない
+- 現在Branchが正しいか判断できない
+- main / developで作業している可能性がある
+- 未コミット差分があるが、自分の作業か判断できない
+- 未追跡ファイルがあるが、必要か判断できない
+- conflictが発生している
+- `exclusive files` が他Taskと重複している
+- 横断ファイルの同時編集が発生している
+- generatedやlockfileの差分が意図どおりか判断できない
+- worktreeを削除してよいか判断できない
+- pushしていないcommitがある
+- PR状態が不明である
+- secretや `.env` 実値が含まれている可能性がある
+- force push、Branch削除、history rewriteが必要に見える
+
+---
+
+## 7. 人間へ確認する条件
+
+AI Agentは、以下の場合、人間へ確認・報告する。
+
+- worktreeを新規作成してよいか判断が必要な場合
+- Issue 本文の `no-branch` を解除してよいか判断が必要な場合
+- 親Epic Branchを作成すべき場合
+- Branch base / PR targetが不明確な場合
+- 複数worktreeで対象ファイルが競合する場合
+- `exclusive files` が重複する場合
+- package lock、OpenAPI、generated、workflowなど横断ファイルを変更する場合
+- conflict解消方針を決める必要がある場合
+- worktree削除・cleanupを実施すべき場合
+- pushしていないcommitの扱いを判断する必要がある場合
+- PR分割やmerge順序の判断が必要な場合
+- secretや `.env` 実値の混入可能性がある場合
+- force push、Branch削除、history rewriteが必要に見える場合
+
+確認時は、以下を整理して提示する。
+
+- 確認が必要な理由
+- 現在確認できている事実
+- AI Agentの推論
+- 選択肢
+- 推奨案
+- 判断しない場合のリスク
+
+---
+
+## 8. 関連ドキュメント
+
+以下の正本ドキュメントと整合させる。
+
+| ドキュメント                               | 役割                                                  |
+| ------------------------------------------ | ----------------------------------------------------- |
+| worktree運用ルール                         | git worktreeを利用した並列作業の運用方針              |
+| AIエージェント活用型\_開発運用フロー設計書 | AI運用全体の流れ                                      |
+| AIエージェント体制・責務定義               | Agentごとの責務                                       |
+| Commands設計書                             | `.cursor/commands/` の設計                            |
+| Task Definition設計書                      | 個別作業条件の構造                                    |
+| Issue運用ルール                            | Issue本文・ラベル・no-branch（本文のみ）運用          |
+| Projects運用ルール                         | Projects Status管理                                   |
+| ブランチ運用ルール                         | Branch命名・base・PR target                           |
+| AIレビュー運用設計書                       | AI Reviewの品質観点                                   |
+| AIログ運用ルール                           | cross-cutting log / incident logの利用範囲            |
+| Slack通知運用設計書                        | 作業開始・完了・確認事項の通知方針                    |
+| プロジェクトディレクトリ構成定義書         | `docs/`, `apps/`, `.cursor/`, `prompts/` 等の配置方針 |
+| AIエージェント共通Rules設計書              | `.cursor/rules/` の設計正本                           |
+
+関連Ruleは以下とする。
+
+| Rule                           | 関係                                        |
+| ------------------------------ | ------------------------------------------- |
+| `project-operation.mdc`        | 正本関係、scope、人間判断などの全体原則     |
+| `github-operation.mdc`         | Issue / Projects / Branch / PR運用          |
+| `git-commit-message.mdc`       | commit message詳細ルール                    |
+| `docs-consistency.mdc`         | docs整合性、配置、Markdown品質              |
+| `terminology.mdc`              | 用語揺れ確認                                |
+| `architecture-consistency.mdc` | 方針書・設計書・実装の横断整合性            |
+| `code-consistency.mdc`         | ソースファイル間の責務・型・I/F整合性       |
+| `api-contract.mdc`             | API / OpenAPI / Orval / generated整合性確認 |
+| `testing.mdc`                  | テスト観点・テスト結果確認                  |
+| `ai-review.mdc`                | AI Review時の確認観点                       |
+| `security.mdc`                 | secret、権限、危険操作の禁止                |

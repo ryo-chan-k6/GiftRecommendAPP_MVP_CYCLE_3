@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-002-recommendation-input-screen-spec"
+  title: "SCR-002:レコメンド条件入力画面仕様書作成"
+  summary: "SCR-002（レコメンド条件入力画面）の画面仕様書（SCR-002_レコメンド条件入力画面画面仕様書.md）を、画面一覧・画面遷移図・Recommendation Request定義書・API一覧に基づいて作成する。"
+
+parent:
+  epic_issue: "[Epic]Web画面実装設計"
+  epic_issue_number: "#301" # 参照配置値。GitHub 実在は /start-task §5.1 で確認
+  epic_branch: "feature/epic-301-web-screens"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、web 実装・E2E テスト設計の前提となる画面仕様書を作成する。
+  本Taskでは、画面一覧の SCR-002（レコメンド条件入力画面）を対象に、表示項目・入力項目・画面状態・遷移・利用 API を整理する。
+
+objective: |
+  SCR-002（レコメンド条件入力画面）について、実装・レビューが可能な粒度の画面仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-002 の画面仕様書を新規作成する（成果物: SCR-002_レコメンド条件入力画面画面仕様書.md）"
+  - "画面目的・対象ユーザー・表示・入力項目を整理する"
+  - "画面状態（ローディング・エラー等）と遷移を整理する"
+  - "利用 API・マスタ取得・バリデーション方針を整理する"
+
+out_of_scope:
+  - "他画面（SCR-001 以外の全画面）の画面仕様書作成"
+  - "個別API仕様書の作成・更新"
+  - "OpenAPI / generated / ソースコード実装"
+  - "認証・認可方式そのものの変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-002 の画面ID・画面名・MVP対象・概要を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "遷移元・遷移先・画面状態を確認するため"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "入力項目・バリデーションのドメイン正本を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "画面から呼び出す API（マスタ取得・レコメンド実行等）を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能一覧.md"
+      required: false
+      purpose: "画面が対応する機能範囲を確認するため"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/screen-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-002 画面仕様書"
+  - "表示・入力項目定義"
+  - "画面遷移・利用 API 整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md が作成されている"
+  - "prompts/templates/docs/screen-spec.md の章構成に準拠している"
+  - "画面一覧の SCR-002 と矛盾する画面ID・画面名・MVP対象を定義していない"
+  - "Recommendation Request定義書と入力項目が整合している"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-scr-002-recommendation-input-screen-spec"
+  base: "feature/epic-301-web-screens"
+  target: "feature/epic-301-web-screens"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics: []  # 依存Epic [Epic]API-PUB-002:レコメンド実行 の実Issue番号確定後に追加する。
+  issues: []
+  prs: []
+  tasks:
+    - "画面一覧が作成済みであること"
+    - "画面遷移図が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+  manual_checks:
+    - "画面一覧の SCR-002 と整合していること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs作成Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面一覧の SCR-002 と整合しているか"
+    - "命名が Task Definition設計書 §15.3 に従っているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "画面仕様書 Task 命名規則（§15.3）の試作検証用。"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-002 が存在しない場合"
+
+notes:
+  - "本Taskは画面仕様書作成の試作Taskである。命名の正本は Task Definition設計書 §15.1（共通）・§15.3（画面）。"
+  - "Issueタイトル: [Task]SCR-002:レコメンド条件入力画面仕様書作成"
