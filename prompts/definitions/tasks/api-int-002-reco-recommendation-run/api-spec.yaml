@@ -1,0 +1,318 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-002-reco-recommendation-run-api-spec"
+  title: "API-INT-002:Reco推薦実行API仕様書作成"
+  summary: "API-INT-002（Reco推薦実行 / Internal API）の個別API仕様書（API-INT-002_Reco推薦実行API仕様書.md）を、API設計方針書・API一覧・Recommendation Request/Result定義書・エラーコード定義書に基づいて作成する。"
+
+parent:
+  epic_issue: "[Epic]レコメンド実行API"
+  epic_issue_number: "#300" # 参照配置値。GitHub 実在は /start-task §5.1 で確認。未作成時は実番号へ更新
+  epic_branch: "feature/epic-300-recommendation-run-api"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  06_実装設計において、API実装・OpenAPI定義・Orval生成・画面設計・テスト設計の前提となる個別API仕様書を作成する。
+  本Taskでは、API一覧の API-INT-002（Reco推薦実行 / Internal API）を対象に、api→reco 間の Request / Response / Error / Validation / 処理概要 / provider-consumer 影響を整理する。
+  API-PUB-002（Public API / レコメンド実行）は本Taskの対象外とし、別Taskで仕様化する。
+
+objective: |
+  API-INT-002（Reco推薦実行 / Internal API、`POST /internal/reco/v1/recommendations/run`）について、実装・OpenAPI化・Contract Task化・レビューが可能な粒度の個別API仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/api-spec.md に準拠する。
+
+scope:
+  - "API-INT-002（Reco推薦実行 / Internal API）の個別API仕様書を新規作成する（成果物ファイル名: API-INT-002_Reco推薦実行API仕様書.md）"
+  - "API基本情報を定義する"
+  - "Request Header / Path Parameters / Query Parameters / Request Bodyを整理する"
+  - "Response Header / Status Code / Response Bodyを整理する"
+  - "Error Response仕様を整理する"
+  - "バリデーション仕様を整理する"
+  - "処理概要をMermaidまたは文章で整理する"
+  - "Request / Response と内部DTO・ドメイン定義とのマッピングを整理する"
+  - "provider / consumer 影響を整理する"
+  - "OpenAPI / Orval / generated 方針を整理する"
+  - "セキュリティ仕様・非機能仕様・ログ監視・テスト観点を整理する"
+  - "未決事項・人間判断が必要な事項を明記する"
+
+out_of_scope:
+  - "API-PUB-002（Public API / レコメンド実行 / `POST /api/v1/recommendations`）の個別API仕様書作成"
+  - "web 向け Public API の Request / Response / Error 定義（Public 側は別Task）"
+  - "OpenAPI定義ファイルの作成・更新"
+  - "Orval設定ファイルの作成・更新"
+  - "generated API clientの再生成"
+  - "apps/api の実装"
+  - "apps/web の実装"
+  - "apps/reco の実装"
+  - "DB schema変更"
+  - "DDL作成・変更"
+  - "認証・認可方式そのものの変更"
+  - "API一覧全体の再設計"
+  - "レコメンドアルゴリズムの変更"
+  - "Recommendation Request / Result定義書そのものの変更"
+  - "画面仕様書の作成"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "URL設計、HTTPメソッド、認証、エラー、バージョニング等のAPI設計方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-INT-002 の endpoint、API種別（Internal API）、MVP対象、api→reco 連携を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "Error Response、HTTP Status、ユーザー向け表示方針を確認するため"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "認証・認可設計書（文書名）に基づき、認証要否、認可条件、APIアクセス制御方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能一覧.md"
+      required: true
+      purpose: "レコメンド実行APIが対応する機能とMVP対象範囲を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "API provider / reco provider / consumer の責務境界を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "レコメンド実行APIと関連モジュールの対応を確認するため"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "レコメンド実行APIのRequest構造を定義するため"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "レコメンド実行APIのResponse構造を定義するため"
+    - path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
+      required: false
+      purpose: "候補抽出・Hard Filter・予算条件・NG条件の処理概要を確認するため"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: false
+      purpose: "意味一致度・context_score算出の処理概要を確認するため"
+    - path: "docs/04_ドメインモデル設計/Ranking定義書.md"
+      required: false
+      purpose: "最終順位決定・top_k・diversity等の処理概要を確認するため"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: false
+      purpose: "推薦理由をResponseに含める場合の項目・禁止表現・根拠を確認するため"
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/非機能要件定義書（目次）.md"
+      required: false
+      purpose: "レスポンスタイム、可用性、セキュリティ等の非機能要件を確認するため（詳細は同ディレクトリ配下の各要件文書を参照）"
+  templates:
+    - path: "prompts/templates/docs/api-spec.md"
+      required: true
+      purpose: "個別API仕様書を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-INT-002（Reco推薦実行）個別API仕様書（ファイル名: API-INT-002_Reco推薦実行API仕様書.md）"
+  - "Request / Response / Error Response定義"
+  - "Validation仕様"
+  - "provider / consumer 影響整理"
+  - "OpenAPI / Orval / generated 方針整理"
+  - "未決事項・人間判断事項の整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md が作成されている"
+  - "prompts/templates/docs/api-spec.md の章構成に準拠している"
+  - "API設計方針書と矛盾するURL、HTTP Method、認証、Error形式を定義していない"
+  - "API一覧の API-INT-002 と矛盾する endpoint、HTTP Method、API種別（Internal API）、MVP対象範囲を定義していない"
+  - "Recommendation Request定義書に基づいてRequest Bodyが整理されている"
+  - "Recommendation Result定義書に基づいてResponse Bodyが整理されている"
+  - "Error Responseとエラーコードがエラーコード定義書と整合している"
+  - "provider / consumer の影響が記載されている"
+  - "OpenAPI / Orval / generated の扱いが記載されている"
+  - "本Task内でOpenAPI、Orval、generated、実装ファイルを変更していない"
+  - "未決事項がある場合、未決事項として明記されている"
+  - "secret、APIキー、.env実値、接続文字列の実値を含んでいない"
+  - "Human Reviewで確認してほしい事項が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-api-int-002-reco-recommendation-run-api-spec"
+  base: "feature/epic-300-recommendation-run-api"
+  target: "feature/epic-300-recommendation-run-api"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics: []  # 親Epic [Epic]API-INT-002:Reco推薦実行 が新規作成された時点で更新。依存Epicは MOD-RECO（実Issue番号確定後に追加）。
+  issues: []
+  prs: []
+  tasks:
+    - "API設計方針書が作成済みであること"
+    - "API一覧が作成済みであること"
+    - "Recommendation Request定義書が作成済みであること"
+    - "Recommendation Result定義書が作成済みであること"
+    - "エラーコード定義書が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "template conformity check"
+    - "api design consistency check"
+    - "api list consistency check"
+    - "request response consistency check"
+    - "error response consistency check"
+    - "contract impact check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md"
+  manual_checks:
+    - "api-spec.md の章構成に準拠していることを確認する"
+    - "API設計方針書と矛盾がないことを確認する"
+    - "API一覧の API-INT-002 と endpoint / method / API種別（Internal API）/ MVP対象 が一致していることを確認する"
+    - "Recommendation Request定義書とRequest Bodyが整合していることを確認する"
+    - "Recommendation Result定義書とResponse Bodyが整合していることを確認する"
+    - "エラーコード定義書とError Responseが整合していることを確認する"
+    - "provider / consumer 影響が記載されていることを確認する"
+    - "OpenAPI / Orval / generated の変更を本Taskに含めていないことを確認する"
+    - "secret、APIキー、.env実値、接続文字列の実値が含まれていないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs作成Taskであり、source code変更を含まないため対象外"
+    "integration test": "docs作成Taskであり、実装変更を含まないため対象外"
+    "e2e test": "docs作成Taskであり、画面実装・API実装を含まないため対象外"
+    "contract test": "OpenAPI定義、provider実装、consumer実装、generated変更を含まないため対象外。ただしcontract impact checkは必須確認とする"
+    "typecheck": "source code変更を含まないため対象外"
+    "build": "source code変更を含まないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "個別API仕様書として粒度が過不足ないか"
+    - "API一覧の API-INT-002 と内容が整合しているか"
+    - "API設計方針書とURL、Method、認証、Error形式が整合しているか"
+    - "Request / Response項目がRecommendation Request / Result定義書と整合しているか"
+    - "provider / consumer 影響が明確か"
+    - "OpenAPI / Orval / generated変更がContract Taskとして分離されているか"
+    - "未決事項が隠れずに明記されているか"
+    - "secretや.env実値が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常のdocs作成作業はai-logsに保存しない。ただし、必須input不足、作業停止、OpenAPI / Orval / generated など横断影響が判明した場合は、必要に応じてincidentまたはcross-cuttingとして記録する。"
+
+risk_points:
+  - "API一覧とRecommendation Request / Result定義書の粒度が一致しない可能性がある"
+  - "レコメンド実行APIのResponseにreason、score、items等をどこまで含めるか判断が必要になる可能性がある"
+  - "API仕様作成中にOpenAPI変更・generated差分が必要と判明する可能性がある"
+  - "providerであるapps/apiと内部reco APIの責務境界が曖昧になる可能性がある"
+  - "認証・認可仕様が未確定の場合、API仕様の確定が止まる可能性がある"
+
+human_decision_points:
+  - "API-INT-002 の正式 Endpoint（`POST /internal/reco/v1/recommendations/run`）と api→reco の責務境界を確認する"
+  - "本Taskが Internal API（API-INT-002）のみを対象とし、API-PUB-002 は別Taskとする方針を確認する"
+  - "Request Bodyに含める入力条件の最終範囲を確認する"
+  - "Response Bodyに含めるscore、reason、debug情報、trace情報の範囲を確認する"
+  - "MVPでreasonを必須項目にするか任意項目にするかを確認する"
+  - "OpenAPI / Orval / generated更新を後続Contract Taskとして分離するか確認する"
+  - "出力ファイル名（API-INT-002_Reco推薦実行API仕様書.md）が他API仕様書の命名規則（{API-ID}_{機能名}API仕様書.md）と整合するか確認する"
+
+stop_conditions:
+  - "必須 `input.docs` が存在しない場合"
+  - "必須 `input.templates` が存在しない場合"
+  - "必須 `input.docs` 間に矛盾があり、AI Agentだけで判断できない場合"
+  - "API一覧に API-INT-002（Reco推薦実行）が存在しない場合"
+  - "正式Endpoint、HTTP Method、API種別が確定できない場合"
+  - "Recommendation Request / Result定義書とAPI仕様の対応が確定できない場合"
+  - "OpenAPI変更が必要になった場合"
+  - "Orval再生成が必要になった場合"
+  - "generatedファイルの手動編集が必要に見える場合"
+  - "DB schema変更が必要になった場合"
+  - "認証・認可仕様変更が必要になった場合"
+  - "secretや.env実値を扱う必要が出た場合"
+  - "scope外の実装作業が必要になった場合"
+
+notes:
+  - "本Taskは個別API仕様書作成の試作Taskである。"
+  - "このTaskでTask Definitionのフォーマット・粒度・review観点を検証し、改善点をschema / example / README / 他Definitionへ反映する。"
+  - "OpenAPI、Orval、generated、provider実装、consumer実装は本Taskでは扱わない。必要になった場合はContract Taskとして分離する。"
+  - "出力先は docs/06_実装設計/api/ に配置する（プロジェクトディレクトリ構成定義書 §10.5 に準拠）。命名規則の正本は Task Definition設計書 §15.1（共通）・§15.2（個別API仕様書）。本Task: ファイル名 API-INT-002_Reco推薦実行API仕様書.md、task.title API-INT-002:Reco推薦実行API仕様書作成、Issue [Task]API-INT-002:Reco推薦実行API仕様書作成、Branch english-summary に api-int-002（kebab-case）を含める。"
+  - "正本構造は Task Definition設計書 §9.1（実運用YAML）・§10（必須項目）・§11以降（項目定義）を参照する。"
+  - "/start-task dry-run チェックリスト: (1) schema / 必須項目妥当性 (2) 必須 input.docs 存在 (3) parent.epic_issue_number 配置値に対する GitHub 実在確認（結果: 存在/未検出/未確認。blocking 依存なし） (4) parent.epic_branch 実在確認 (5) API一覧の API-INT-002 が対象 (6) Issue本文に GitHub Label 一覧を含めない (7) project.fields.status を正本パス (8) 付与 Label サマリ 4 種のみ。改善点・次 Action で「#300 未存在」禁止・§5.1 標準手順を用いる"

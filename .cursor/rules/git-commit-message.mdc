@@ -1,0 +1,555 @@
+---
+description: "Git commitを作成・レビューする際に参照するコミットメッセージルール。日本語コミットメッセージ、type、scope、Issue番号、本文、フッター、禁止表現、commit-msg hookとの整合性を定義する。"
+globs: []
+alwaysApply: false
+---
+
+# git-commit-message
+
+## 1. 目的
+
+このRuleは、Gift Recommendation Service プロジェクトにおいて、AI AgentがGit commitを作成・レビューする際のコミットメッセージルールを定義する。
+
+AI Agentは、commit作成時、commit message生成時、commit message修正時、PR作成前の差分確認時に、本Ruleを参照する。
+
+本Ruleでは、以下を目的とする。
+
+- コミットメッセージを日本語で統一する
+- 変更内容が後から追跡しやすい形式にする
+- Issue、Branch、PRとの対応関係を分かりやすくする
+- Cursor等の自動生成メッセージが英語のまま残ることを防ぐ
+- 意味のないコミットメッセージを防ぐ
+- commit-msg hookによる機械的チェックと整合させる
+- Human Review時に変更意図を理解しやすくする
+
+本Ruleは、commit messageの詳細ルールを定義する。
+GitHub上のIssue / Projects / Branch / PR運用は `github-operation.mdc` を正とする。
+
+---
+
+## 2. 適用対象
+
+このRuleは、以下に適用する。
+
+- Git commit作成
+- Git commit message生成
+- Git commit message修正
+- Cursorの `Generate Commit Message` 利用後の確認
+- AI Agentによるcommit実行
+- PR作成前のcommit確認
+- AI Reviewでのcommit確認
+- `.githooks/commit-msg` の仕様確認
+- commit message関連docsの作成・修正
+
+対象Commandの例は以下とする。
+
+- `/start-epic`
+- `/start-task`
+- `/work-issue`
+- `/create-pr`
+- `/fix-review-comments`
+- `/create-contract-task`
+
+対象外は以下とする。
+
+- PR title
+- PR body
+- Issue title
+- Issue body
+- Branch name
+- Git tag message
+- Release note
+
+ただし、上記もcommit messageと意味が矛盾しないように確認する。
+
+---
+
+## 3. 必須ルール
+
+### 3.1 コミットメッセージは日本語を基本とする
+
+AI Agentは、コミットメッセージを日本語で作成する。
+
+ただし、以下は英語のままでよい。
+
+- type
+- scope
+- ファイル名
+- ディレクトリ名
+- Branch名
+- Issue番号
+- API path
+- HTTP method
+- コマンド
+- 関数名
+- 型名
+- 変数名
+- ライブラリ名
+- 技術用語として英語表記が自然なもの
+
+禁止例：
+
+```text
+docs: update ai rules
+fix: fix bug
+feat: add recommendation api
+```
+
+推奨例：
+
+```
+docs: AI Agent共通Rulesのdocs整合性ルールを追加
+fix: Recommendation Requestのbudget未指定時の判定を修正
+feat: レコメンド実行APIの入力バリデーションを追加
+```
+
+### 3.2 コミットメッセージ形式を統一する
+
+コミットメッセージの1行目は、以下の形式を基本とする。
+
+```
+<type>: <日本語の変更概要>
+```
+
+scopeを付ける場合は、以下の形式とする。
+
+```
+<type>(<scope>): <日本語の変更概要>
+```
+
+例：
+
+```
+docs: AI Review Ruleを追加
+docs(rules): git-commit-message.mdcを追加
+fix(api): Recommendation Requestの必須項目判定を修正
+test(reco): Ranking計算の境界値テストを追加
+```
+
+### 3.3 typeを正しく選択する
+
+`type` は、変更内容に応じて以下から選択する。
+
+| type       | 用途                                 |
+| ---------- | ------------------------------------ |
+| `feat`     | 機能追加                             |
+| `fix`      | 不具合修正                           |
+| `docs`     | ドキュメント変更                     |
+| `refactor` | 挙動を変えないコード改善             |
+| `test`     | テスト追加・修正                     |
+| `chore`    | 設定、依存、雑務、生成、メンテナンス |
+| `ci`       | CI/CD、GitHub Actions関連            |
+| `build`    | build設定、package、lockfile関連     |
+| `style`    | フォーマット変更のみ                 |
+| `perf`     | 性能改善                             |
+| `revert`   | 変更取り消し                         |
+
+判断に迷う場合は、以下を優先する。
+
+| 変更内容           | type                                                         |
+| ------------------ | ------------------------------------------------------------ |
+| docsのみ           | `docs`                                                       |
+| テストのみ         | `test`                                                       |
+| GitHub Actions     | `ci`                                                         |
+| packageやlockfile  | `build`                                                      |
+| `.cursor/rules`    | `docs` または `chore`。運用ルール文書として扱う場合は `docs` |
+| 設定ファイル       | `chore`                                                      |
+| バグ修正           | `fix`                                                        |
+| 新規機能           | `feat`                                                       |
+| 挙動変更なしの整理 | `refactor`                                                   |
+
+### 3.4 scopeは必要な場合のみ付ける
+
+`scope` は、変更対象が明確になる場合のみ付ける。
+
+代表的なscope例は以下とする。
+
+| scope      | 対象                |
+| ---------- | ------------------- |
+| `web`      | `apps/web`          |
+| `api`      | `apps/api`          |
+| `reco`     | `apps/reco`         |
+| `batch`    | `apps/batch`        |
+| `rules`    | `.cursor/rules`     |
+| `agents`   | `.cursor/agents`    |
+| `commands` | `.cursor/commands`  |
+| `prompts`  | `prompts`           |
+| `docs`     | `docs`              |
+| `openapi`  | `openapi`           |
+| `ci`       | `.github/workflows` |
+| `db`       | DB、DDL、migration  |
+| `test`     | テスト関連          |
+
+scopeを無理に付ける必要はない。
+
+scopeを付ける場合は、変更対象と矛盾しないようにする。
+
+### 3.5 変更概要は「何を変更したか」が分かる表現にする
+
+1行目の変更概要は、後から履歴を見たときに変更内容が分かる表現にする。
+
+推奨例：
+
+```
+docs: security.mdcを追加
+docs(rules): code-consistency.mdcにコメント記載方針を追加
+fix(api): budgetMax未指定時のフィルタ条件を修正
+test(reco): λ_ctx算出の境界値テストを追加
+ci: PR作成時のdocs検証workflowを追加
+```
+
+避ける例：
+
+```
+docs: 修正
+fix: バグ修正
+chore: 対応
+update
+wip
+作業中
+temp
+```
+
+### 3.6 1 commit = 1つの意味ある変更単位にする
+
+AI Agentは、1つのcommitに無関係な変更を混在させてはならない。
+
+推奨する単位は以下とする。
+
+- 1つのRule追加
+- 1つのdocs修正
+- 1つのAPI仕様変更
+- 1つの実装修正
+- 1つのテスト追加
+- 1つの設定変更
+
+避ける例：
+
+- docs修正、API実装、DB変更、テスト修正を1commitに混在させる
+- 無関係なformat差分を混ぜる
+- 別Issueの修正を混ぜる
+- ついでのリファクタリングを混ぜる
+
+複数の意味ある変更がある場合は、commitを分ける。
+
+### 3.7 Issue番号を必要に応じて本文またはフッターに記載する
+
+Issueとの対応を明確にする必要がある場合、commit message本文またはフッターにIssue番号を記載してよい。
+
+例：
+
+```
+docs: git-commit-message.mdcを追加
+
+AI Agentがcommitを作成する際の日本語メッセージ形式、
+type、scope、禁止事項を定義する。
+
+Related to #123
+```
+
+ただし、Task PRではIssue自動クローズに依存しない方針のため、安易に `Closes #<Issue番号>` を使わない。
+
+Task Issueとの関連は、PR本文・commitフッターともに原則として `Related to` を使う。`Refs` は使用しない。
+
+```
+Related to #123
+```
+
+Epic Issue向けの `Closes` を使うかどうかは、Issue運用・PR運用に従う。
+
+### 3.8 破壊的変更は明示する
+
+破壊的変更を含む場合は、commit messageで明示する。
+
+1行目に `!` を付ける形式を使用してよい。
+
+```
+feat(api)!: Recommendation Resultのresponse schemaを変更
+```
+
+本文またはフッターに `BREAKING CHANGE:` を記載する。
+
+```
+BREAKING CHANGE: recommendation result itemsのscore構造を変更したため、web側の参照実装更新が必要。
+```
+
+破壊的変更を含むcommitは、Human Reviewを必須とする。
+
+### 3.9 Cursorの自動生成結果をそのまま信用しない
+
+Cursor等の `Generate Commit Message` を利用してよい。
+
+ただし、生成結果が英語、曖昧、過剰、または実差分と不一致の場合は、AI Agentまたは人間が修正する。
+
+特に以下を確認する。
+
+- 日本語になっているか
+- typeが正しいか
+- 変更内容と一致しているか
+- 大げさな表現になっていないか
+- 事実と異なる内容を含んでいないか
+- secretやファイル内容の不適切な抜粋が含まれていないか
+
+英語のみの自動生成メッセージをそのままcommitしてはならない。
+
+### 3.10 commit前に差分を確認する
+
+AI Agentは、commit messageを作る前に差分を確認する。
+
+最低限、以下を確認する。
+
+```
+git status--short
+gitdiff--name-only
+gitdiff--check
+```
+
+確認観点は以下とする。
+
+- 変更ファイルが意図どおりか
+- scope外の変更が混入していないか
+- 未追跡ファイルを見落としていないか
+- conflict markerが残っていないか
+- 不要なdebug codeが残っていないか
+- secretや認証情報が含まれていないか
+- generated差分が意図どおりか
+
+### 3.11 staged差分とcommit messageを一致させる
+
+AI Agentは、staged差分とcommit messageを一致させる。
+
+以下を禁止する。
+
+- stagedしていない変更をcommit messageに含める
+- staged差分に含まれる重要変更をcommit messageに書かない
+- 実際にはdocsのみなのに `feat` とする
+- 実際には破壊的変更があるのに明示しない
+- 実際にはテスト未追加なのに「テスト追加」と書く
+
+commit messageは、実際にcommitされる差分を説明する。
+
+### 3.12 commit bodyは必要な場合のみ記載する
+
+commit bodyは必須ではない。
+
+ただし、以下の場合は本文を記載する。
+
+- 変更理由の説明が必要
+- 影響範囲の説明が必要
+- 破壊的変更がある
+- 複数ファイルにまたがる意味ある変更
+- 設計判断が含まれる
+- generated差分の理由説明が必要
+- 後から履歴を見たときに1行では意図が分かりにくい
+
+本文には、以下を簡潔に記載する。
+
+- なぜ変更したか
+- 何を変更したか
+- どの範囲に影響するか
+- 注意点
+- 関連Issue
+
+### 3.13 commit-msg hookと整合させる
+
+最終的な機械的チェックは `.githooks/commit-msg` を正とする。
+
+AI Agentは、commit messageを作成する際に、commit-msg hookで拒否されない形式にする。
+
+最低限、以下を満たす。
+
+- `<type>: <summary>` または `<type>(<scope>): <summary>` 形式
+- typeが許可値に含まれる
+- summaryが空でない
+- 英語のみのsummaryではない
+- 禁止語だけのsummaryではない
+- secretらしき文字列を含まない
+
+hook仕様を変更する必要がある場合は、人間へ確認する。
+
+### 3.14 AI Agentが勝手にcommit履歴を改変しない
+
+AI Agentは、Human承認なしにcommit履歴を破壊的に変更してはならない。
+
+禁止対象は以下を含む。
+
+- force push
+- rebaseによる公開済み履歴変更
+- commit amend
+- reset hard
+- squash
+- cherry-pick
+- revert
+- branch削除
+
+ただし、人間が明示的に指示した場合は、影響範囲を確認したうえで対応する。
+
+---
+
+## 4. 確認観点
+
+### 4.1 commit前確認
+
+commit前に以下を確認する。
+
+- 現在Branchが正しいか
+- main / developに直接commitしようとしていないか
+- `git status --short` を確認したか
+- staged差分が意図どおりか
+- scope外ファイルが含まれていないか
+- secretが含まれていないか
+- conflict markerが残っていないか
+- generated差分が妥当か
+- commit messageが差分内容と一致しているか
+
+### 4.2 type確認
+
+typeについて以下を確認する。
+
+- 変更内容とtypeが一致しているか
+- docs変更なのに `feat` になっていないか
+- workflow変更なのに `docs` になっていないか
+- package変更なのに `chore` / `build` の判断が妥当か
+- bug修正なのに `refactor` になっていないか
+- 破壊的変更がある場合に `!` または `BREAKING CHANGE:` があるか
+
+### 4.3 summary確認
+
+summaryについて以下を確認する。
+
+- 日本語を基本としているか
+- 変更内容が具体的か
+- 「修正」「対応」「更新」だけになっていないか
+- 実差分と一致しているか
+- 過剰に長くないか
+- 句点を付けすぎていないか
+- secretや不適切な情報が含まれていないか
+
+### 4.4 body / footer確認
+
+body / footerを記載する場合は、以下を確認する。
+
+- 変更理由が明確か
+- 影響範囲が明確か
+- Issue番号が正しいか
+- `Related to` / `Closes` の使い分けが運用方針と一致しているか（Task Issueでは `Refs` を使わない）
+- 破壊的変更の説明があるか
+- 未確認事項を事実として書いていないか
+- secretや内部情報が含まれていないか
+
+### 4.5 Cursor自動生成結果確認
+
+Cursor等で自動生成したcommit messageは、以下を確認する。
+
+- 英語のみになっていないか
+- typeが正しいか
+- summaryが曖昧でないか
+- 差分にない内容を含んでいないか
+- 差分の重要点が抜けていないか
+- Human Reviewで理解しやすいか
+
+---
+
+## 5. 禁止事項
+
+AI Agentは、commit message作成時に以下を行ってはならない。
+
+- 英語のみのcommit messageを作成すること
+- `update`、`fix`、`wip`、`temp` など意味の薄いmessageを作成すること
+- `修正`、`対応`、`更新` だけのsummaryにすること
+- 実差分と一致しないcommit messageを作成すること
+- stagedされていない変更をcommit messageに書くこと
+- 破壊的変更を明示しないこと
+- Task PRで安易に `Closes #<Task Issue番号>` を使うこと
+- Issue番号を誤って記載すること
+- secret、APIキー、token、password、cookie、session情報をcommit messageに含めること
+- `.env` の値をcommit messageに含めること
+- 自動生成された英語messageを確認せずにcommitすること
+- main / developへ直接commitすること
+- scope外変更をcommitに混入させること
+- 無関係な変更を1commitにまとめること
+- Human承認なしにforce push、amend、rebase、reset、squash、履歴改変を行うこと
+- commit-msg hookを回避すること
+- `-no-verify` をHuman承認なしに使用すること
+
+---
+
+## 6. 停止条件
+
+AI Agentは、以下の場合、commit作成を停止して人間へ確認する。
+
+- 現在Branchが正しいか判断できない
+- main / developにcommitしようとしている可能性がある
+- staged差分にscope外ファイルが含まれている
+- staged差分にsecretや認証情報が含まれている可能性がある
+- commit messageのtypeを判断できない
+- 破壊的変更かどうか判断できない
+- Issue番号が不明または矛盾している
+- `Related to` / `Closes` の使い分けが判断できない
+- generated差分を同じcommitに含めるべきか判断できない
+- lockfile差分を含めるべきか判断できない
+- 複数の意味ある変更が混在しており、commit分割が必要に見える
+- commit-msg hookの失敗理由が判断できない
+- `-no-verify` を使わないとcommitできない
+- amend、rebase、squash、force pushなど履歴操作が必要に見える
+
+---
+
+## 7. 人間へ確認する条件
+
+AI Agentは、以下の場合、人間へ確認・報告する。
+
+- commitを分割すべきか判断が必要な場合
+- commit messageのtype判断が必要な場合
+- 破壊的変更として扱うべきか判断が必要な場合
+- `Closes` または `Related to` を使ってよいか判断が必要な場合
+- generated差分を含めるべきか判断が必要な場合
+- lockfile差分を含めるべきか判断が必要な場合
+- commit-msg hookの仕様を変更すべき場合
+- `-no-verify` を使う必要がありそうな場合
+- commit履歴を修正すべき場合
+- squash / rebase / amend / revert / cherry-pick / force push が必要に見える場合
+- Human Reviewで重点確認すべきcommit履歴上の懸念がある場合
+
+確認時は、以下を整理して提示する。
+
+- 確認が必要な理由
+- 現在確認できている事実
+- AI Agentの推論
+- 選択肢
+- 推奨案
+- 判断しない場合のリスク
+
+---
+
+## 8. 関連ドキュメント
+
+以下の正本ドキュメントと整合させる。
+
+| ドキュメント                               | 役割                                     |
+| ------------------------------------------ | ---------------------------------------- |
+| ブランチ運用ルール                         | Branch命名・base・PR target              |
+| Issue運用ルール                            | Issue本文・ラベル・no-branch運用         |
+| Projects運用ルール                         | Projects Status管理                      |
+| AIエージェント活用型\_開発運用フロー設計書 | AI運用全体の流れ                         |
+| Commands設計書                             | `.cursor/commands/` の設計               |
+| Task Definition設計書                      | 個別作業条件の構造                       |
+| AIレビュー運用設計書                       | AI Reviewの品質観点                      |
+| worktree運用ルール                         | git worktreeを利用した並列作業の運用方針 |
+| DevOps方針書                               | 開発運用方針                             |
+| CI・CD方針書                               | CI/CDの基本方針                          |
+| AIエージェント共通Rules設計書              | `.cursor/rules/` の設計正本              |
+
+関連Ruleは以下とする。
+
+| Rule                    | 関係                                    |
+| ----------------------- | --------------------------------------- |
+| `project-operation.mdc` | 正本関係、scope、人間判断などの全体原則 |
+| `github-operation.mdc`  | Issue / Projects / Branch / PR運用      |
+| `worktree.mdc`          | worktree並列作業時の安全確認            |
+| `ai-review.mdc`         | PR作成前後のAI Review                   |
+| `security.mdc`          | secret、権限、危険操作の禁止            |
+| `code-consistency.mdc`  | staged差分のコード整合性確認            |
+| `docs-consistency.mdc`  | docs差分の整合性確認                    |
+| `api-contract.mdc`      | generated / OpenAPI差分確認             |
+| `testing.mdc`           | test差分・テスト結果確認                |

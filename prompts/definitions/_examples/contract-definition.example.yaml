@@ -1,0 +1,353 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-recommendation-api-response-reason"
+  title: "レコメンドAPI response reason項目追加"
+  summary: "レコメンド結果表示に必要なreason項目をresponse schemaへ追加し、OpenAPIとgenerated clientを更新する"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "implementation"
+  related_issue: "#102"
+  related_pr: null
+  related_task_definition: "prompts/definitions/tasks/recommendation-result/implementation.yaml"
+  related_review: null
+  reason: "画面実装Taskで、レコメンド理由表示に必要なresponse項目がAPI仕様に不足していることが判明したため"
+
+commands:
+  primary: "/create-contract-task"
+  allowed:
+    - "/create-contract-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    pr: "/create-pr"
+    review: "/review-pr"
+    blocked: null
+
+agent:
+  primary: "contract-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+
+change:
+  api_name: "Recommendation API"
+  api_kind: "public"
+  endpoint: "POST /api/v1/recommendations"
+  method: "POST"
+  change_type: "add_response_field"
+  breaking_change: false
+  backward_compatibility: "compatible"
+  reason: "レコメンド理由表示に必要なreason項目をresponseへ追加するため"
+
+scope:
+  - "API仕様書のRecommendation API response schemaを更新する"
+  - "OpenAPI components schemaを更新する"
+  - "Orvalでgenerated API clientを再生成する"
+  - "provider / consumer 影響を確認する"
+  - "contract testを更新する"
+
+out_of_scope:
+  - "レコメンドアルゴリズム変更"
+  - "DB schema変更"
+  - "画面UIデザイン変更"
+  - "unrelated endpoint の修正"
+  - "認証認可仕様変更"
+
+input:
+  docs:
+    - path: "docs/04_論理設計/API設計方針書.md"
+      required: true
+      purpose: "API設計方針を確認するため"
+    - path: "docs/05_実装設計/API仕様書.md"
+      required: true
+      purpose: "対象API仕様を確認するため"
+  templates:
+    - path: "prompts/templates/docs/api-spec.md"
+      required: true
+      purpose: "API仕様書を標準フォーマットで更新するため"
+      applies_to:
+        - "docs/05_実装設計/API仕様書.md"
+  files:
+    - path: "apps/api/src/routes/recommendations.ts"
+      required: true
+      purpose: "provider実装の影響確認"
+    - path: "apps/web/src/features/recommendations/"
+      required: false
+      purpose: "consumer側の型利用箇所を確認するため"
+  issues:
+    - "#102"
+  prs: []
+  openapi:
+    path: "docs/openapi/openapi.yaml"
+    required: true
+  orval:
+    path: "orval.config.ts"
+    required: true
+  generated:
+    paths:
+      - "apps/web/src/generated/api/"
+    required: true
+
+output:
+  docs:
+    - path: "docs/05_実装設計/API仕様書.md"
+      action: "update"
+      required: true
+      template: "prompts/templates/docs/api-spec.md"
+  files:
+    - path: "apps/api/src/routes/recommendations.ts"
+      action: "update"
+      required: true
+  openapi:
+    - path: "docs/openapi/openapi.yaml"
+      action: "update"
+      required: true
+  orval: []
+  generated:
+    - path: "apps/web/src/generated/api/"
+      action: "regenerate"
+      required: true
+  tests:
+    - path: "apps/api/tests/contract/recommendations.test.ts"
+      action: "update"
+      required: true
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/cross-cutting/"
+
+impact:
+  api_design:
+    affected: true
+    note: "API設計方針そのものは変更しないが、方針に沿ったresponse項目追加であることを確認する"
+  api_list:
+    affected: false
+    note: "既存endpointのschema追加のみで、API一覧へのendpoint追加は不要"
+  api_spec:
+    affected: true
+    note: "Recommendation API response schemaを更新する"
+  openapi:
+    affected: true
+    note: "components schemaを更新する"
+  orval:
+    affected: true
+    note: "OpenAPI変更後にclient再生成が必要"
+  generated:
+    affected: true
+    note: "generated API clientに型差分が出る"
+  provider:
+    affected: true
+    note: "apps/api のresponse生成処理にreason項目追加が必要"
+  consumer:
+    affected: true
+    note: "apps/web の型利用箇所でreason項目を参照できるか確認する"
+  tests:
+    affected: true
+    note: "contract testとtypecheckが必要"
+  docs:
+    affected: true
+    note: "API仕様書を更新する"
+  db:
+    affected: false
+    note: "DB schema変更なし"
+  cicd:
+    affected: false
+    note: "CI定義変更なし"
+  security:
+    affected: false
+    note: "認証認可仕様変更なし"
+
+provider_consumer:
+  providers:
+    - name: "apps/api"
+      affected: true
+      responsibility: "Recommendation API provider"
+      required_changes:
+        - "response schemaにreason項目を追加する"
+        - "API実装でreason項目を返却する"
+        - "contract testでresponse項目を検証する"
+  consumers:
+    - name: "apps/web"
+      affected: true
+      responsibility: "Recommendation API consumer"
+      required_changes:
+        - "generated clientの型差分を確認する"
+        - "reason項目を画面表示に利用する場合の型参照を確認する"
+  compatibility_notes:
+    - "response field追加のため、既存consumerへの破壊的影響は低い"
+    - "ただし、reason項目を必須扱いにする場合は、既存データや既存consumerへの影響確認が必要"
+  rollout_order:
+    - "API仕様書更新"
+    - "OpenAPI更新"
+    - "provider実装更新"
+    - "Orval再生成"
+    - "consumer型確認"
+    - "contract test実行"
+    - "typecheck実行"
+
+generation_policy:
+  generated_expected: true
+  manual_edit_allowed: false
+  source_files:
+    - "docs/openapi/openapi.yaml"
+  regenerate_commands:
+    - "pnpm orval"
+  output_paths:
+    - "apps/web/src/generated/api/"
+  verification_commands:
+    - "pnpm typecheck"
+    - "pnpm test"
+
+deliverables:
+  - "Contract Task Issue"
+  - "契約変更影響分析"
+  - "更新済みAPI仕様書"
+  - "更新済みOpenAPI定義"
+  - "再生成済みAPI client"
+  - "更新済みcontract test"
+
+acceptance_criteria:
+  - "契約変更の目的がIssue本文に記載されている"
+  - "API仕様書が更新されている"
+  - "OpenAPI定義が更新されている"
+  - "generated API clientが再生成されている"
+  - "generatedファイルを手動編集していない"
+  - "provider / consumer の影響確認が完了している"
+  - "contract testが実行または未実施理由付きで整理されている"
+  - "破壊的変更有無と後方互換性が明記されている"
+  - "Human Reviewで確認してほしい事項が整理されている"
+  - "指定された文書テンプレートに沿ってAPI仕様書が更新されている"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-recommendation-api-response-reason"
+  base: "feature/epic-200-recommendation-api"
+  target: "feature/epic-200-recommendation-api"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "contract"
+  area: "api"
+
+dependencies:
+  issues:
+    - "#102"
+  prs: []
+  tasks:
+    - "task-recommendation-result-implementation"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/openapi/openapi.yaml"
+    - "apps/web/src/generated/api/"
+  conflict_risk: "medium"
+  generated_impact: true
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "OpenAPI validation"
+    - "Orval generation"
+    - "typecheck"
+    - "contract test"
+  commands:
+    - "pnpm openapi:validate"
+    - "pnpm orval"
+    - "pnpm typecheck"
+    - "pnpm test"
+  manual_checks:
+    - "generated差分がOpenAPI変更と対応していることを確認する"
+    - "provider / consumer の影響範囲を確認する"
+    - "breaking change有無とbackward compatibilityの記載を確認する"
+    - "指定された文書テンプレートの章構成に沿ってAPI仕様書が更新されていることを確認する"
+  not_required:
+    - "e2e test"
+  skip_reason:
+    "e2e test": "契約変更Taskでは、まずcontract testとtypecheckを優先するため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "`work_mode` と `branch.no_branch` が Task Definition設計書 §16.2 の標準値と一致しているか"
+    - "通常Taskから契約変更が分離されているか"
+    - "OpenAPI / Orval / generated の影響が整理されているか"
+    - "generatedファイルを手動編集していないか"
+    - "provider / consumer の影響が整理されているか"
+    - "破壊的変更有無が明記されているか"
+    - "後方互換性の判断根拠が明記されているか"
+    - "指定された文書テンプレートに沿ってdocs成果物が更新されているか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "OpenAPI / Orval / generated への横断影響があるため、必要に応じてcross-cuttingログ候補とする"
+
+risk_points:
+  - "OpenAPIとprovider実装が不一致になる可能性"
+  - "generated API client差分によりconsumer側で型エラーが発生する可能性"
+  - "通常Taskにcontract変更が混在する可能性"
+  - "response field追加を互換変更として扱えるかの判断を誤る可能性"
+
+human_decision_points:
+  - "response field追加を後方互換性ありとして扱ってよいか"
+  - "consumer側修正を同一Contract Taskに含めるか"
+  - "reason項目を必須項目として扱うか、任意項目として扱うか"
+
+stop_conditions:
+  - "`work_mode` が未定義、または `work_mode` と `branch.no_branch` が §16.2 標準値と矛盾し、`human_decision_points` に理由がない場合"
+  - "契約変更の目的が不明な場合"
+  - "対象APIが不明な場合"
+  - "破壊的変更の可能性がある場合"
+  - "Public APIの後方互換性判断が必要な場合"
+  - "OpenAPI変更方針が不明な場合"
+  - "Orval再生成方針が不明な場合"
+  - "generatedファイルの手動編集が必要に見える場合"
+  - "provider / consumer の影響範囲が不明な場合"
+  - "DB schema変更が必要になった場合"
+  - "secretや.env実値を扱う必要がある場合"
+  - "security上の懸念がある場合"
+  - "Human Reviewを省略する必要があるように見える場合"
+  - "指定された文書テンプレートが存在しない場合"
+  - "input.templates と output.docs[].template が矛盾している場合"
+
+notes:
+  - "Contract Taskでは、OpenAPIを生成元、generated API clientを派生物として扱う"
+  - "Slack通知は正本ではない。契約変更の正本はIssue、PR、docsとする"
+  - "このファイルはContract Definitionの記入例であり、実Taskの正本ではない"
