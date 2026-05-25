@@ -51,6 +51,27 @@ jobs:
             const areaKeys = new Set(["web", "api", "reco", "batch", "db", "docs", "infra", "project"]);
             const typeKeys = new Set(["feature", "fix", "docs", "refactor", "chore", "test", "hotfix", "spike"]);
             const priorityKeys = new Set(["critical", "high", "medium", "low"]);
+            const phaseAliases = new Map([
+              ["事業構想", "01_事業構想"],
+              ["ドメイン探索", "02_ドメイン探索"],
+              ["ドメイン要件定義", "03_ドメイン要件定義"],
+              ["ドメインモデル設計", "04_ドメインモデル設計"],
+              ["アプリケーション設計", "05_アプリケーション設計"],
+              ["実装設計", "06_実装設計"],
+              ["開発", "07_開発・単体テスト"],
+              ["開発・単体テスト", "07_開発・単体テスト"],
+              ["結合・総合テスト", "08_モジュール結合テスト"],
+              ["モジュール結合テスト", "08_モジュール結合テスト"],
+              ["コンポーネント結合テスト", "09_コンポーネント結合テスト"],
+              ["システムテスト", "10_システムテスト"],
+              ["非機能テスト", "11_非機能テスト"],
+              ["レコメンド品質評価テスト", "12_レコメンド品質評価テスト"],
+              ["受入テスト", "13_受入テスト"],
+              ["リリース", "14_リリース"],
+              ["運用・改善", "15_運用・改善"],
+              ["PoC", "90_PoC"],
+              ["90_PoC", "90_PoC"],
+            ]);
 
             function parseFormSections(body) {
               const sections = {};
@@ -78,6 +99,37 @@ jobs:
               const text = String(value || "").trim();
               if (!text) return "";
               return text.split(/\r?\n/)[0].trim();
+            }
+
+            function todayJstYmd(date = new Date()) {
+              return new Intl.DateTimeFormat("en-CA", {
+                timeZone: "Asia/Tokyo",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              }).format(date);
+            }
+
+            function stripPhaseSuffix(value) {
+              let text = firstLine(value);
+              while (text.endsWith("工程完了")) {
+                text = text.slice(0, -"工程完了".length).trim();
+              }
+              return text;
+            }
+
+            function normalizePhaseOptionCandidates(value) {
+              const raw = firstLine(value);
+              if (!raw || raw === "なし" || raw === "未定") return [];
+              const stripped = stripPhaseSuffix(raw);
+              const withoutPrefix = stripped.replace(/^\d{2}_/, "");
+              const formal = phaseAliases.get(stripped) || phaseAliases.get(withoutPrefix) || (/^\d{2}_/.test(stripped) ? stripped : "");
+              const candidates = [raw, stripped, withoutPrefix, formal];
+              if (formal) {
+                candidates.push(`${formal}工程完了`);
+                candidates.push(`${formal.replace(/^\d{2}_/, "")}工程完了`);
+              }
+              return [...new Set(candidates.filter(Boolean))];
             }
 
             function parseListValues(value) {
@@ -243,6 +295,13 @@ jobs:
             }
 
             async function ensureProjectItem(project, issueNodeId) {
+              if (dryRun) {
+                const existingItemId = await findProjectItem(project, issueNodeId);
+                if (existingItemId) return existingItemId;
+                core.info("[dry_run] Project item would be added if it does not exist.");
+                return "dry-run-project-item";
+              }
+
               const mutation = `
                 mutation($projectId: ID!, $contentId: ID!) {
                   addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
@@ -257,6 +316,10 @@ jobs:
                 if (!message.includes("already exists")) throw error;
               }
 
+              return await findProjectItem(project, issueNodeId);
+            }
+
+            async function findProjectItem(project, issueNodeId) {
               const query = `
                 query($owner: String!, $number: Int!, $after: String) {
                   user(login: $owner) {
@@ -352,17 +415,41 @@ jobs:
               const area = parseListValues(sections["対象領域"])[0]?.toLowerCase();
               const phase = firstLine(sections["プロジェクト工程"]);
               await updateSingleSelect(project, itemId, "Status", [statusInitial]);
-              await updateSingleSelect(project, itemId, "Phase", [phase, phase.replace(/工程完了$/, "")]);
+              await updateSingleSelect(project, itemId, "Phase", normalizePhaseOptionCandidates(phase));
               await updateSingleSelect(project, itemId, "Priority", [priority, `priority: ${priority}`, priority.toUpperCase(), priority[0]?.toUpperCase() + priority.slice(1)]);
               await updateSingleSelect(project, itemId, "Area", [area, `area: ${area}`, area?.[0]?.toUpperCase() + area?.slice(1)]);
               await updateDate(project, itemId, "Planned Start", sections["Planned Start"]);
               await updateDate(project, itemId, "Due Date", sections["Due Date"]);
             }
 
+            async function syncActualStart(issueNumber, date) {
+              let project;
+              try {
+                project = await loadProject();
+              } catch (error) {
+                core.warning(`Could not load ProjectV2 for Actual Start: ${error.message}`);
+                return;
+              }
+              if (!project) return;
+              const issueNodeId = await getIssueNodeId(issueNumber);
+              if (!issueNodeId) return;
+              let itemId;
+              try {
+                itemId = await ensureProjectItem(project, issueNodeId);
+              } catch (error) {
+                core.warning(`Could not add/find ProjectV2 item for Actual Start: ${error.message}`);
+                return;
+              }
+              if (!itemId) return;
+              if (dryRun) core.info(`[dry_run] update Actual Start to ${date}`);
+              const updated = await updateDate(project, itemId, "Actual Start", date);
+              if (!updated) core.warning("Project field `Actual Start` was not updated. Field missing or date format invalid.");
+            }
+
             async function createBranch(issueNumber, sections) {
               if (isChecked(sections["Branch作成制御"], "no-branch")) {
                 core.info("Issue body has no-branch checked; branch creation skipped.");
-                return;
+                return { created: false, reason: "no-branch" };
               }
 
               const unit = firstLine(sections["作業単位"]).toLowerCase();
@@ -370,7 +457,7 @@ jobs:
               const summary = sanitizeBranchPart(firstLine(sections["Branch summary"]));
               if (!["epic", "task"].includes(unit) || !typeKeys.has(type) || !summary) {
                 await comment(issueNumber, "Branch作成に必要な `作業単位` / `作業種別` / `Branch summary` を解決できませんでした。");
-                return;
+                return { created: false, reason: "invalid-branch-input" };
               }
 
               const branchName = `${type}/${unit}-${issueNumber}-${summary}`;
@@ -379,14 +466,14 @@ jobs:
                 baseBranch = firstLine(sections["Parent Epic Branch"]);
                 if (!baseBranch) {
                   await comment(issueNumber, "Task Branchのbaseになる `Parent Epic Branch` が未記載のため、Branch作成を停止しました。");
-                  return;
+                  return { created: false, reason: "missing-parent-epic-branch" };
                 }
               }
 
               try {
                 await github.rest.git.getRef({ owner, repo, ref: `heads/${branchName}` });
                 core.info(`Branch already exists: ${branchName}`);
-                return;
+                return { created: false, reason: "already-exists", branchName };
               } catch (error) {
                 if (error.status !== 404) throw error;
               }
@@ -397,12 +484,12 @@ jobs:
                 base = data;
               } catch (error) {
                 await comment(issueNumber, `Base Branch \`${baseBranch}\` が見つからないため、Branch作成を停止しました。`);
-                return;
+                return { created: false, reason: "missing-base-branch", branchName };
               }
 
               if (dryRun) {
                 core.info(`[dry_run] create branch ${branchName} from ${baseBranch}@${base.commit.sha}`);
-                return;
+                return { created: true, dryRun: true, branchName };
               }
               const query = `
                 query($owner: String!, $repo: String!, $number: Int!) {
@@ -416,7 +503,7 @@ jobs:
               const issueId = graph.repository?.issue?.id;
               if (!repositoryId || !issueId) {
                 await comment(issueNumber, "Issue linked branch作成に必要なRepository IDまたはIssue IDを解決できませんでした。");
-                return;
+                return { created: false, reason: "missing-graphql-id", branchName };
               }
               const mutation = `
                 mutation($input: CreateLinkedBranchInput!) {
@@ -433,6 +520,7 @@ jobs:
                 },
               });
               await comment(issueNumber, [`Branchを作成しました。`, "", `- Branch: \`${branchName}\``, `- Base: \`${baseBranch}\``].join("\n"));
+              return { created: true, branchName };
             }
 
             let issueNumber;
@@ -467,7 +555,10 @@ jobs:
             await syncMilestone(issueNumber, sections);
             await linkParentIssue(issueNumber, issue, sections);
             await syncProjectFields(issueNumber, sections);
-            await createBranch(issueNumber, sections);
+            const branchResult = await createBranch(issueNumber, sections);
+            if (branchResult?.created) {
+              await syncActualStart(issueNumber, todayJstYmd());
+            }
 
       - name: Send Slack issue-created notification
         if: ${{ github.event_name == 'issues' && github.event.action == 'opened' }}
