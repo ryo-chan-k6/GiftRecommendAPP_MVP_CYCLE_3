@@ -6,33 +6,37 @@
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 実装ファイル | `.github/workflows/issue-opened-set-project-fields-from-issue-body.yml` |
-| Actions 表示名 | **Set project Phase Priority Area from issue body** |
+| 実装ファイル | `.github/workflows/issue-metadata-project-branch.yml` |
+| Actions 表示名 | **Issue metadata project and branch sync** |
 | 正本 | 本ドキュメント（運用の数値・定数は実装 YAML と一致させる） |
 
 ## 2. 目的と対象外
 
 ### 2.1 目的
 
-Task 用 Issue フォーム（`.github/ISSUE_TEMPLATE/base.yml`）から Issue が **`issues.opened`** されたタイミングで、Issue 本文を読み取り、既に Project に存在するアイテムに対して、次の **シングルセレクト** フィールドを更新する。
+Issue フォーム（`.github/ISSUE_TEMPLATE/epic.yml` / `task.yml` / `contract-task.yml`）から Issue が作成または再同期されたタイミングで、Issue 本文を読み取り、ProjectV2 アイテムを追加または取得して次のフィールドを更新する。
 
 | Project フィールド名 | 更新内容の由来 |
 | -------------------- | -------------- |
+| Status | 固定値 `In Progress` |
 | Phase | 本文セクション `### プロジェクト工程` の先頭行 |
 | Priority | 本文セクション `### 優先度` の先頭行 |
 | Area | 本文セクション `### 対象領域`（複数時は先頭 1 件のみ） |
+| Planned Start | 本文セクション `### Planned Start` |
+| Due Date | 本文セクション `### Due Date` |
+| Actual Start | Branch新規作成成功時のJST当日 |
 
 ### 2.2 対象外
 
-- **Issue を Project に追加する処理**（アイテムの新規作成・紐づけ）は本ワークフローでは行わない。GitHub の既定ワークフローやリポジトリ設定など **別経路で既に Project に載る**前提とする。
-- Status / Planned Start / Due Date 等、上記 3 フィールド以外の Project フィールドは更新しない。
+- 既存Branchが既にある場合、`Actual Start` は上書きしない。
+- `no-branch` チェック時およびBranch作成失敗時、`Actual Start` は設定しない。
 
 ## 3. トリガー・権限・並行制御
 
 | 項目 | 内容 |
 | ---- | ---- |
-| `on` | `issues.types: [opened]` |
-| `permissions` | `contents: read`（API 実行は `PROJECTS_TOKEN`） |
+| `on` | `issues.types: [opened, edited, reopened]` / `workflow_dispatch` |
+| `permissions` | `contents: write`, `issues: write`（API 実行は `PROJECTS_TOKEN` 優先、未設定時は `GITHUB_TOKEN`） |
 | `concurrency` | `project-fields-from-body-${{ github.event.issue.number }}`（同一 Issue の同時実行を直列化、`cancel-in-progress: false`） |
 
 ## 4. シークレット・定数
@@ -49,9 +53,13 @@ Task 用 Issue フォーム（`.github/ISSUE_TEMPLATE/base.yml`）から Issue �
 
 フィールド名定数（Project 上の列名と一致させる）:
 
+- `Status`
 - `Phase`
 - `Priority`
 - `Area`
+- `Planned Start`
+- `Due Date`
+- `Actual Start`
 
 ## 5. 対象 Issue の判定
 
@@ -66,8 +74,10 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 
 - セクションキー: `プロジェクト工程`（見出し `### プロジェクト工程`）
 - **先頭行のみ**を使用する。
-- 先頭行が **`なし`** の場合、**Phase フィールドは更新しない**（既存値のまま）。
-- それ以外は、**Issue 先頭行**と **Project の各 Phase オプション `name`** の双方から、末尾の **`工程完了` を繰り返し除去**した文字列（正規化キー）が **等しい**オプションを選ぶ。更新 API に渡す `singleSelectOptionId` は、マッチしたオプションの実 ID（Project 上の表示名は変更しない）。正規化キーが空、またはどのオプションとも一致しない場合は Issue に警告コメントし、Phase は更新しない。
+- 先頭行が **`なし`** または **`未定`** の場合、**Phase フィールドは更新しない**（既存値のまま）。
+- Issue テンプレートはProjects正式値（例: `06_実装設計`）を使う。
+- 旧テンプレート由来のMilestone風表記（例: `実装設計工程完了`）は、workflow側で互換候補としてProjects Phase正式値へ正規化する。
+- 旧テンプレートの `結合・総合テスト工程完了` は、互換上 `08_モジュール結合テスト` を候補にする。より詳細なPhaseへ分ける必要がある場合は、人間がIssue本文を正式値へ修正して再実行する。
 
 ### 6.2 Priority
 
@@ -84,27 +94,29 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 
 ## 7. Project アイテムの特定とリトライ
 
-- GraphQL で `user(login:).projectV2(number:)` の `items` をページングし、`content` が当該リポジトリの Issue かつ **`number` が一致**するノードの `item.id` を取得する。
-- Issue の Project 紐づけが **作成直後に遅延**する場合があるため、一定回数・一定間隔で **再検索**する（実装の定数: 最大試行回数・待機ミリ秒）。
-- 最後まで見つからない場合は **Issue にコメント**し、ジョブは **失敗にしない**（警告ログで終了）。
+- GraphQL `addProjectV2ItemById` でIssueをProjectV2へ追加する。
+- 既にProjectV2上に存在する場合は、`items` をページングして当該Issueの `item.id` を取得する。
+- `dry_run=true` の場合はProjectV2への追加・更新を行わず、既存アイテムがなければdry run用の仮IDで後続ログ確認のみ行う。
 
 ## 8. GraphQL 操作
 
-1. **参照**: 同一クエリで `projectId`、各 Single select フィールドの `id` と `options { id, name }`、および `items` のページを取得する。
-2. **更新**: `updateProjectV2ItemFieldValue` に `singleSelectOptionId` を渡し、Phase / Priority / Area をそれぞれ必要なものだけ更新する。
+1. **参照**: `projectId`、各フィールドの `id` と Single select の `options { id, name }` を取得する。
+2. **追加・特定**: `addProjectV2ItemById` でIssueをProjectV2へ追加し、既存時は `items` をページングして `item.id` を取得する。
+3. **更新**: `updateProjectV2ItemFieldValue` に `singleSelectOptionId` または `date` を渡し、Status / Phase / Priority / Area / Planned Start / Due Date / Actual Start を必要なタイミングで更新する。
 
 ## 9. エラー・通知
 
 | 状況 | 挙動 |
 | ---- | ---- |
 | Project フィールド名が見つからない | 警告ログ（該当フィールドの更新はスキップ） |
-| Phase / Priority / Area のオプションが本文と一致しない（Phase は末尾 `工程完了` 除去後も不一致） | Issue コメントで通知（オプション名の一部を例示） |
-| Project アイテムがリトライ後も見つからない | Issue コメントで通知、ジョブは成功扱いで終了 |
+| Phase / Priority / Area のオプションが本文と一致しない | 該当フィールドの更新をスキップし、必要に応じて警告ログまたはIssueコメントで通知 |
+| Project アイテムを追加・特定できない | 警告ログを出し、Projectフィールド同期をスキップ |
 | `issues.createComment` が権限等で失敗 | 警告ログのみ |
 
 ## 10. 運用上の必須事項
 
-- **Phase**: Issue の「プロジェクト工程」と Project の Phase は、末尾 **`工程完了` の有無の差**をワークフローが正規化して照合する。運用ルール（例: Project 側が「テンプレ表記 + 工程完了」）に沿った対応であれば、**テンプレと Project のラベル文字列を無理に同一にする必要はない**。
+- **Phase**: Issue の「プロジェクト工程」と Project の Phase は、Projects正式値（例: `06_実装設計`）に揃える。旧Issue本文に残るMilestone風表記はworkflow側で互換正規化する。
+- **Actual Start**: Branchが新規作成された場合のみJST当日を設定する。既存Branch、`no-branch`、Branch作成失敗時は上書きしない。
 - **Priority / Area**: GitHub Project 上の各オプション名を、Issue テンプレートの選択肢および [Issue Label定義](../Issue%20Label定義.md) の表記（例: `priority: high`, `area: web`）と **揃える**こと（実装は候補名のいずれかとの一致で解決する）。
 - `PROJECTS_TOKEN` には、対象リポジトリで Issue コメントが可能なスコープを含めること（失敗時通知のため）。
 
