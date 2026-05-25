@@ -1,0 +1,292 @@
+name: PR review status sync
+
+on:
+  issue_comment:
+    types:
+      - created
+      - edited
+  pull_request_review:
+    types:
+      - submitted
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 対象PR番号
+        required: true
+      review_result:
+        description: Review Result（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）
+        required: true
+      dry_run:
+        description: trueの場合は更新せずログのみ出力する
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: pr-review-status-sync-${{ github.event.issue.number || github.event.inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  sync-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync Project Status from AI Review result
+        uses: actions/github-script@v8
+        env:
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
+          SLACK_MENTION_HUMAN_REVIEW: ${{ vars.SLACK_MENTION_HUMAN_REVIEW }}
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const path = require("path");
+            const slack = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/slack-notify.cjs"));
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const repositoryFullName = `${owner}/${repo}`;
+            const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+            const dryRun =
+              context.eventName === "workflow_dispatch" &&
+              String(context.payload.inputs?.dry_run || "") === "true";
+            const projectOwner = process.env.PROJECT_OWNER || owner;
+            const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
+
+            function reviewResultFromBody(body) {
+              return slack.normalizeReviewResult(body);
+            }
+
+            function nextStatusFromReviewResult(result, body) {
+              return slack.statusFromReviewResult(result, body);
+            }
+
+            function relatedIssueNumber(prBody) {
+              const text = String(prBody || "");
+              const related = /Related to\s+#(\d+)/i.exec(text);
+              if (related) return Number(related[1]);
+              const closes = /(Closes|Close|Closed|Fixes|Fix)\s+#(\d+)/i.exec(text);
+              if (closes) return Number(closes[2]);
+              return 0;
+            }
+
+            async function comment(issueNumber, body) {
+              if (dryRun) {
+                core.info(`[dry_run] comment on #${issueNumber}:\n${body}`);
+                return;
+              }
+              await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
+            }
+
+            async function loadProject() {
+              const query = `
+                query($owner: String!, $number: Int!) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      id
+                      fields(first: 100) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options { id name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }`;
+              const data = await github.graphql(query, { owner: projectOwner, number: projectNumber });
+              return data.user?.projectV2 || null;
+            }
+
+            async function issueNodeId(issueNumber) {
+              const query = `
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $number) { id }
+                  }
+                }`;
+              const data = await github.graphql(query, { owner, repo, number: issueNumber });
+              return data.repository?.issue?.id || null;
+            }
+
+            async function findProjectItem(issueId) {
+              const query = `
+                query($owner: String!, $number: Int!, $after: String) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      items(first: 100, after: $after) {
+                        nodes {
+                          id
+                          content {
+                            ... on Issue { id }
+                          }
+                        }
+                        pageInfo { hasNextPage endCursor }
+                      }
+                    }
+                  }
+                }`;
+              let after = null;
+              for (;;) {
+                const data = await github.graphql(query, { owner: projectOwner, number: projectNumber, after });
+                const items = data.user?.projectV2?.items;
+                const hit = items?.nodes?.find((item) => item.content?.id === issueId);
+                if (hit) return hit.id;
+                if (!items?.pageInfo?.hasNextPage) return null;
+                after = items.pageInfo.endCursor;
+              }
+            }
+
+            async function updateStatus(project, itemId, statusName) {
+              const statusField = project.fields.nodes.find((field) => field.name === "Status");
+              const option = statusField?.options?.find((candidate) => candidate.name === statusName);
+              if (!statusField || !option) {
+                throw new Error(`Project Status option not found: ${statusName}`);
+              }
+              const mutation = `
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId,
+                    itemId: $itemId,
+                    fieldId: $fieldId,
+                    value: { singleSelectOptionId: $optionId }
+                  }) { projectV2Item { id } }
+                }`;
+              if (dryRun) {
+                core.info(`[dry_run] update status: ${statusName}`);
+                return;
+              }
+              await github.graphql(mutation, {
+                projectId: project.id,
+                itemId,
+                fieldId: statusField.id,
+                optionId: option.id,
+              });
+            }
+
+            let prNumber;
+            let reviewResult;
+            let reviewBody = "";
+            if (context.eventName === "workflow_dispatch") {
+              prNumber = Number(context.payload.inputs.pr_number);
+              reviewBody = String(context.payload.inputs.review_result || "");
+              reviewResult = reviewResultFromBody(reviewBody);
+              if (!reviewResult) reviewResult = String(context.payload.inputs.review_result || "");
+            } else if (context.eventName === "pull_request_review") {
+              const review = context.payload.review;
+              if (review?.state !== "changes_requested") {
+                core.info("Pull request review is not changes_requested; skipped.");
+                return;
+              }
+              prNumber = context.payload.pull_request?.number;
+              reviewResult = "request_changes";
+              reviewBody = review.body || "";
+            } else {
+              const issue = context.payload.issue;
+              if (!issue?.pull_request) {
+                core.info("Comment is not on a pull request; skipped.");
+                return;
+              }
+              prNumber = issue.number;
+              reviewBody = context.payload.comment?.body || "";
+              reviewResult = reviewResultFromBody(reviewBody);
+            }
+
+            const nextStatus = nextStatusFromReviewResult(reviewResult, reviewBody);
+            if (!nextStatus) {
+              core.info("Review Result marker not found; skipped.");
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            if (pr.head?.repo?.full_name !== repositoryFullName) {
+              core.info("PR from fork is out of scope for initial Slack notification workflow; skipped.");
+              return;
+            }
+            const taskIssueNumber = relatedIssueNumber(pr.body || "");
+            if (!taskIssueNumber) {
+              core.setFailed("PR本文から対象Issueを解決できませんでした。`Related to #<Task Issue番号>` または `Closes #<Epic Issue番号>` を記載してください。");
+              return;
+            }
+
+            const project = await loadProject();
+            if (!project) {
+              core.setFailed("ProjectV2を解決できませんでした。");
+              return;
+            }
+            const id = await issueNodeId(taskIssueNumber);
+            if (!id) {
+              core.setFailed(`Issue #${taskIssueNumber} のNode IDを解決できませんでした。`);
+              return;
+            }
+            const itemId = await findProjectItem(id);
+            if (!itemId) {
+              core.setFailed(`Issue #${taskIssueNumber} のProject itemを解決できませんでした。`);
+              return;
+            }
+
+            await updateStatus(project, itemId, nextStatus);
+            await comment(prNumber, `Project Status更新意図: Issue #${taskIssueNumber} を \`${nextStatus}\` へ更新しました（Review Result: \`${reviewResult}\`）。`);
+
+            const channel = process.env.SLACK_CHANNEL_ID_DEVOPS || "";
+            const threadKey = slack.buildThreadKey({ owner, repo, kind: "pr", number: prNumber });
+            const comments = await slack.listIssueComments({ github, owner, repo, issueNumber: prNumber });
+            const threadTs = slack.findThreadTsFromComments(comments, threadKey, channel);
+            const level = slack.notificationLevelFromReviewResult(reviewResult);
+            const mention = nextStatus === "Human Review" ? process.env.SLACK_MENTION_HUMAN_REVIEW || "" : "";
+            const title = nextStatus === "Human Review" ? "Human Reviewをお願いします" : "AIレビューが完了しました";
+            const text = slack.buildSlackText({
+              level,
+              title,
+              summary: `Review Result: ${reviewResult}`,
+              mention,
+              fields: {
+                PR: `#${prNumber}`,
+                Issue: `#${taskIssueNumber}`,
+                "Next Status": nextStatus,
+              },
+              links: {
+                PR: pr.html_url,
+                Issue: `${serverUrl}/${repositoryFullName}/issues/${taskIssueNumber}`,
+              },
+              humanAction: nextStatus === "Human Review" ? "PRのHuman Reviewをお願いします。" : "修正要否または人間判断事項をPRで確認してください。",
+            });
+            const result = await slack.postSlackMessage({
+              token: process.env.SLACK_BOT_TOKEN,
+              channel,
+              text,
+              threadTs,
+              replyBroadcast: nextStatus === "Human Review",
+              dryRun,
+            });
+            if (result.ok && result.ts && !threadTs) {
+              await slack.upsertThreadMarkerComment({
+                github,
+                owner,
+                repo,
+                issueNumber: prNumber,
+                threadKey,
+                channel: result.channel || channel,
+                ts: result.ts,
+                comments,
+                dryRun,
+              });
+            }
+
+            await core.summary
+              .addHeading("PRレビュー Status / Slack通知")
+              .addRaw(`PR: #${prNumber}\n\nIssue: #${taskIssueNumber}\n\nReview Result: \`${reviewResult}\`\n\nNext Status: \`${nextStatus}\`\n\nSlack: ${result.ok ? "ok" : "failed"}\n`)
+              .addRaw(result.error ? `\nSlack error: \`${result.error}\`\n` : "")
+              .write();
+            if (!result.ok) {
+              core.warning(`Slack notification failed: ${result.error || "unknown"}`);
+            }

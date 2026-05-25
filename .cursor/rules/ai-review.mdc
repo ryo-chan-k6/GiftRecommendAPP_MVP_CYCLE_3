@@ -1,0 +1,578 @@
+---
+description: "PR作成後またはHuman Review前にAI Reviewを行う際に参照するレビュー運用ルール。Issue、Task Definition、docs、code、API、DB、test、security、PR本文の整合性を確認する。"
+globs: []
+alwaysApply: false
+---
+
+# ai-review
+
+## 1. 目的
+
+このRuleは、Gift Recommendation Service プロジェクトにおいて、AI AgentがPR差分をレビューする際の共通ルールを定義する。
+
+AI Reviewは、Human Review前に実施する事前レビューである。
+
+AI Agentは、PR差分、Issue、Task Definition、docs、code、API、DB、test、CI/CD、security観点を確認し、Human Reviewへ進めてよい状態かを判断する。
+
+本Ruleでは、以下を目的とする。
+
+- Issue目的とPR差分の不一致を検知する
+- Task Definitionのscope逸脱を検知する
+- docs、code、API、DB、test、CI/CDの更新漏れを検知する
+- secretや危険操作の混入を検知する
+- Human Review前に修正すべき事項を整理する
+- Humanが重点確認すべき論点を明確にする
+- AI AgentがPR merge判断を代行することを防ぐ
+
+AI Reviewは、Human Reviewを置き換えるものではない。  
+AI Agentは、レビュー結果、懸念、推奨修正、Human確認事項を提示するまでを担当する。
+
+---
+
+## 2. 適用対象
+
+このRuleは、主に以下に適用する。
+
+- `/review-pr`
+- `/create-pr`
+- `/fix-review-comments`
+- PR作成後のセルフレビュー
+- Human Review前のAI Review
+- PR差分の再レビュー
+- レビューコメント対応後の確認
+- Issue / Task Definition / PR差分の整合性確認
+- docs / code / API / DB / test / CI/CD / security をまたぐ横断レビュー
+
+対象ファイルは限定しない。
+
+AI Reviewでは、PR差分に応じて以下のRuleを併用する。
+
+| 対象                      | 併用Rule                       |
+| ------------------------- | ------------------------------ |
+| GitHub運用                | `github-operation.mdc`         |
+| docs                      | `docs-consistency.mdc`         |
+| 用語                      | `terminology.mdc`              |
+| アーキテクチャ            | `architecture-consistency.mdc` |
+| code                      | `code-consistency.mdc`         |
+| API / OpenAPI / generated | `api-contract.mdc`             |
+| test                      | `testing.mdc`                  |
+| security                  | `security.mdc`                 |
+| worktree                  | `worktree.mdc`                 |
+
+---
+
+## 3. 必須ルール
+
+### 3.1 IssueとPR差分の整合性を確認する
+
+AI Agentは、PR差分が対象Issueの目的と一致しているか確認する。
+
+以下を確認する。
+
+- PRが対象Issueに紐づいているか
+- Issueの目的とPR差分が一致しているか
+- Issueの作業範囲を満たしているか
+- Issueにない作業が混入していないか
+- Issueのcompletion criteriaを満たしているか
+- Issueのout of scopeを侵害していないか
+
+IssueなしのPR、またはIssue目的と差分が一致しないPRは、Human Reviewへ進めてはならない。
+
+識別子付き Task の PR では、親 Epic の `epic_scope.allowed_paths` 内に差分 path が収まっていること、および PR / Issue の識別子 prefix が親 Epic と一致していることを必須確認する。詳細は [AIレビュー運用設計書](../../docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md) §13.2、実行手順は `.cursor/commands/review-pr.md` §6.1 を正とする。
+
+### 3.2 Task Definitionとの整合性を確認する
+
+AI Agentは、Task Definitionが存在する場合、PR差分とTask Definitionの整合性を確認する。
+
+以下を確認する。
+
+- `title`
+- `phase`
+- `input docs`
+- `output files`
+- `target files`
+- `exclusive files`
+- `out of scope`
+- `review points`
+- `completion criteria`
+- `operation_logging`
+
+PR差分がTask Definitionのscopeを超えている場合は、修正または別Task化を提案する。
+
+### 3.3 Branch / PR targetの整合性を確認する
+
+AI Agentは、BranchとPR targetがGitHub運用ルールに従っているか確認する。
+
+以下を確認する。
+
+- Branch名が命名規則に従っているか
+- Branch type / unit / Issue番号が正しいか
+- Epic Branchは `develop` から作成されているか
+- Epic PRは `develop` へ向いているか
+- Task Branchは親Epic Branchから作成されているか
+- Task PRは親Epic Branchへ向いているか
+- Task PRが `develop` へ直接向いていないか
+- Issue 本文で `no-branch` がチェックされている Issue で Branch が作成されていないか
+
+GitHub運用の詳細は `github-operation.mdc` を併用する。
+
+### 3.4 PR本文の必要項目を確認する
+
+AI Agentは、PR本文に必要項目が記載されているか確認する。
+
+最低限、以下を確認する。
+
+| 項目             | 確認内容                                                    |
+| ---------------- | ----------------------------------------------------------- |
+| 概要             | 何を変更したか                                              |
+| 対象Issue        | 関連Issue番号が明記されているか                             |
+| 作業範囲         | 実施した作業が明確か                                        |
+| 変更ファイル     | 主要な変更ファイルが明確か                                  |
+| 完了条件         | completion criteriaとの対応が明確か                         |
+| 確認結果         | 実施した確認・テストが明確か                                |
+| 未実施事項       | 未実施理由が明確か                                          |
+| 影響範囲         | docs / code / API / DB / CI/CD / generated への影響が明確か |
+| AI Review結果    | AI Reviewの要約が記載可能か                                 |
+| Human Review観点 | 人間に確認してほしい事項が明確か                            |
+
+PR本文が不十分な場合は、Human Review前に修正を提案する。
+
+### 3.5 docs整合性を確認する
+
+AI Agentは、PR差分にdocs変更が含まれる場合、docs整合性を確認する。
+
+以下を確認する。
+
+- 正本docsと矛盾していないか
+- 関連docsと矛盾していないか
+- 配置先ディレクトリが適切か
+- 章立てが自然か
+- Markdown表が崩れていないか
+- Mermaid構文が破綻していないか
+- 古い工程ディレクトリ名を使っていないか
+- 用語揺れがないか
+- 未確定事項を決定事項として記載していないか
+
+docs確認の詳細は `docs-consistency.mdc` を併用する。
+
+### 3.6 用語整合性を確認する
+
+AI Agentは、PR差分に含まれる用語が正本docsと一致しているか確認する。
+
+以下を確認する。
+
+- ドメイン用語がユビキタス言語集と一致しているか
+- 機能名・モジュール名が既存docsと一致しているか
+- Projects Status表記が正しいか
+- Issue unit / type 表記が正しいか
+- Branch type / unit 表記が正しいか
+- Rule名、Agent名、Command名が正しいか
+- OpenAPI / Orval / generated などの表記が正しいか
+- 正本docsにない略称を導入していないか
+
+用語確認の詳細は `terminology.mdc` を併用する。
+
+### 3.7 アーキテクチャ整合性を確認する
+
+AI Agentは、PR差分がアーキテクチャ方針と整合しているか確認する。
+
+以下を確認する。
+
+- システム構成とディレクトリ構成が一致しているか
+- コンポーネント責務が守られているか
+- モジュール責務が守られているか
+- domain / application / infrastructure の依存方向が逆転していないか
+- OL / BT責務が混同されていないか
+- API / DB / CI/CD / test への横断影響が明示されているか
+- 既存方針を覆す変更がHuman承認なしに混入していないか
+
+アーキテクチャ確認の詳細は `architecture-consistency.mdc` を併用する。
+
+### 3.8 code整合性を確認する
+
+AI Agentは、PR差分にコード変更が含まれる場合、コード整合性を確認する。
+
+以下を確認する。
+
+- 呼び出し元・呼び出し先のI/Fが一致しているか
+- 型定義と実装が一致しているか
+- `null` / `undefined` / `None` / empty の扱いが明確か
+- エラー処理が既存方針と一致しているか
+- 依存方向が逆転していないか
+- 既存責務に反する処理を混在させていないか
+- generatedファイルを手動編集していないか
+- 不要な共通化・過剰抽象化をしていないか
+- 必要なコメントがあり、古いコメントが残っていないか
+- secretや一時的なdebug codeが混入していないか
+
+コード確認の詳細は `code-consistency.mdc` を併用する。
+
+### 3.9 API contract整合性を確認する
+
+AI Agentは、PR差分にAPI contract変更が含まれる場合、API contract整合性を確認する。
+
+以下を確認する。
+
+- API設計標準と矛盾していないか
+- API仕様書とOpenAPI定義が一致しているか
+- OpenAPI変更とgenerated差分が対応しているか
+- Orval設定変更の影響が明示されているか
+- generatedファイルを手動編集していないか
+- API client利用側への影響が確認されているか
+- 破壊的変更が明示されているか
+- Contract Task化または別PR化の要否が判断されているか
+
+API contract確認の詳細は `api-contract.mdc` を併用する。
+
+### 3.10 DB変更の整合性を確認する
+
+AI Agentは、PR差分にDB変更が含まれる場合、データ設計と実装の整合性を確認する。
+
+以下を確認する。
+
+- 論理ERと矛盾していないか
+- 物理ERと矛盾していないか
+- DDL / migrationが必要か
+- テーブル設計方針と一致しているか
+- 正本/派生の扱いが一致しているか
+- 既存データへの影響が明示されているか
+- repository / query / seed / fixture / testへの影響が確認されているか
+
+DB変更が大きい場合は、別Task化またはHuman Review重点確認を提案する。
+
+### 3.11 test整合性を確認する
+
+AI Agentは、PR差分に対してテストが妥当か確認する。
+
+以下を確認する。
+
+- 実装変更に対応するテストが追加・修正されているか
+- 正常系、異常系、境界値が必要に応じて検討されているか
+- テスト名から検証内容が分かるか
+- mock / fixture が適切か
+- 本番API、本番DB、本番secretへ依存していないか
+- flaky testを作っていないか
+- skip / only が残っていないか
+- テスト結果または未実施理由がPR本文に記載されているか
+
+テスト確認の詳細は `testing.mdc` を併用する。
+
+### 3.12 CI/CD・workflow整合性を確認する
+
+AI Agentは、PR差分にCI/CDやworkflow変更が含まれる場合、運用方針と整合しているか確認する。
+
+以下を確認する。
+
+- workflow triggerがCI/CD方針と一致しているか
+- 対象branchがブランチ運用ルールと一致しているか
+- `.github/workflows/` 配下に配置されているか
+- secrets参照が安全か
+- テスト、lint、build、docs checkの実行タイミングが妥当か
+- バッチ実行がバッチ設計方針と一致しているか
+- 失敗時の扱いが明確か
+- workflow変更の影響範囲がPR本文に明示されているか
+
+### 3.13 security観点を確認する
+
+AI Agentは、PR差分にsecurity上の問題がないか確認する。
+
+以下を確認する。
+
+- secret、APIキー、token、password、cookie、session情報が含まれていないか
+- `.env` の値が出力されていないか
+- 認証・認可を迂回していないか
+- 権限を過剰に付与していないか
+- ログに機密情報を出していないか
+- 外部入力を検証せずに使用していないか
+- 危険操作をHuman承認なしに実行していないか
+- 本番環境へ影響する変更が混入していないか
+
+security確認の詳細は `security.mdc` を併用する。
+
+### 3.14 横断影響を確認する
+
+AI Agentは、PR差分が複数領域に影響する場合、横断影響として扱う。
+
+横断影響の例は以下とする。
+
+- OpenAPI変更
+- Orval設定変更
+- generated変更
+- DB schema変更
+- migration追加
+- CI/CD workflow変更
+- ディレクトリ構成変更
+- 共通型変更
+- 共通Rule変更
+- Task Definition schema変更
+- API path / response schema変更
+- モジュール責務変更
+- ユビキタス言語変更
+
+横断影響が大きい場合は、PR分割、別Task化、または `ai-logs/cross-cutting/` への記録を検討する。
+
+ただし、`ai-logs/` は通常作業ログ置き場ではない。
+
+### 3.15 レビュー結果を重要度付きで整理する
+
+AI Agentは、レビュー結果を重要度付きで整理する。
+
+| 区分       | 意味                                           |
+| ---------- | ---------------------------------------------- |
+| `Blocker`  | Human Reviewへ進める前に必ず解消すべき重大問題 |
+| `Must`     | このPR内で修正すべき問題                       |
+| `Should`   | 修正推奨だが、判断により後続Task化可能な問題   |
+| `Nit`      | 軽微な改善提案                                 |
+| `Question` | 判断・確認が必要な事項                         |
+
+レビューコメントでは、可能な限り以下を明示する。
+
+- 指摘対象
+- 問題の理由
+- 影響
+- 修正案
+- 関連Ruleまたは関連docs
+- Human判断が必要か
+
+### 3.16 事実と推論を区別する
+
+AI Agentは、レビュー結果において事実と推論を区別する。
+
+| 区分   | 内容                                                             |
+| ------ | ---------------------------------------------------------------- |
+| 事実   | PR差分、Issue、Task Definition、docs、実行結果から確認できる内容 |
+| 推論   | 事実から導いた影響、懸念、改善提案                               |
+| 未確認 | 追加確認が必要な内容                                             |
+
+未確認事項を事実として断定してはならない。
+
+### 3.17 AI Review結果の結論を明示する
+
+AI Agentは、AI Review結果として、Human Reviewへ進めてよいかを明示する。
+
+結論は以下のいずれかとする。
+
+| 結論                   | 意味                                        |
+| ---------------------- | ------------------------------------------- |
+| `Human Reviewへ進行可` | Blocker / Must がなく、人間確認へ進められる |
+| `修正後に再AI Review`  | Blocker / Must があり、修正後に再確認が必要 |
+| `Human判断待ち`        | AI Agentだけでは判断できない論点がある      |
+
+AI Agentは、この結論をPR merge判断として扱ってはならない。  
+merge判断はHumanが行う。
+
+---
+
+## 4. 確認観点
+
+### 4.1 PR全体確認
+
+AI Reviewでは、PR全体について以下を確認する。
+
+- 対象Issueが明確か
+- Task Definitionがあるか
+- PR差分がIssue目的と一致しているか
+- completion criteriaを満たしているか
+- out of scopeの変更が混入していないか
+- PR本文に必要項目が記載されているか
+- Human Reviewで確認すべき事項が明示されているか
+
+### 4.2 差分確認
+
+PR差分について以下を確認する。
+
+- 変更ファイルがscope内か
+- 変更量がPR目的に対して過大でないか
+- 無関係な整形差分が混入していないか
+- generated差分が妥当か
+- 既存挙動を破壊していないか
+- コメントと実装が矛盾していないか
+- 不要な一時ファイルが含まれていないか
+
+### 4.3 docs確認
+
+docs変更について以下を確認する。
+
+- 正本docsと矛盾していないか
+- 関連docsと矛盾していないか
+- 章構成が自然か
+- Markdown表・Mermaidが破綻していないか
+- 用語揺れがないか
+- 古い工程ディレクトリ名が残っていないか
+- 未確定事項を決定事項として書いていないか
+
+### 4.4 code確認
+
+code変更について以下を確認する。
+
+- 責務分離が守られているか
+- 依存方向が逆転していないか
+- 呼び出し元・呼び出し先のI/Fが一致しているか
+- 型定義と実装が一致しているか
+- error handlingが既存方針と一致しているか
+- null / undefined / None / emptyの扱いが明確か
+- コメントが適切か
+- secretやdebug codeが混入していないか
+
+### 4.5 API / DB確認
+
+API / DB変更について以下を確認する。
+
+- API仕様書とOpenAPIが一致しているか
+- generated差分が妥当か
+- API client利用側が更新されているか
+- 破壊的変更が明示されているか
+- DB設計docsと実装が一致しているか
+- migration / seed / fixture / testへの影響が確認されているか
+
+### 4.6 test確認
+
+test変更またはtest未実施について以下を確認する。
+
+- 実装変更に対応するテストがあるか
+- テスト観点が妥当か
+- 正常系・異常系・境界値が必要に応じて検討されているか
+- テストがCIで安定実行できるか
+- テスト結果がPR本文に記載されているか
+- 未実施理由が妥当か
+
+### 4.7 security確認
+
+security観点では以下を確認する。
+
+- secretが含まれていないか
+- `.env` の値が含まれていないか
+- 認証・認可が迂回されていないか
+- 権限が過剰でないか
+- ログに機密情報が出ていないか
+- 本番環境へ影響する危険操作が含まれていないか
+
+### 4.8 Human Review引き渡し確認
+
+Human Reviewへ進める前に以下を確認する。
+
+- Blocker / Must が残っていないか
+- Human判断が必要な事項が整理されているか
+- テスト結果または未実施理由が記載されているか
+- 影響範囲が明示されているか
+- PR本文がレビュー可能な状態か
+- merge判断をAI Agentが行っていないか
+
+---
+
+## 5. 禁止事項
+
+AI Agentは、AI Review時に以下を行ってはならない。
+
+- Human Reviewを省略すること
+- PR merge判断を行うこと
+- PRをAI判断だけでmergeすること
+- Human承認なしにDone扱いすること
+- Issue目的と無関係な差分を見逃すこと
+- Task Definitionのscope外変更を許容すること
+- out of scopeの変更を許容すること
+- PR targetの誤りを見逃すこと
+- Task PRが `develop` へ向いている状態を許容すること
+- generatedファイルの手動編集を許容すること
+- API contract変更の利用側影響を無視すること
+- DB変更のdocs / migration / test影響を無視すること
+- テスト未実施理由がない状態でHuman Reviewへ進めること
+- secretや認証情報の混入を見逃すこと
+- 未確認事項を事実として断定すること
+- 好みだけの指摘をBlockerとして扱うこと
+- レビューコメントで抽象的な指摘だけを行い、修正案を示さないこと
+- AI Review結果をmerge許可として扱うこと
+
+---
+
+## 6. 停止条件
+
+AI Agentは、以下の場合、AI Reviewを停止して人間へ確認する。
+
+- 対象Issueが不明である
+- Task Definitionが必要だが確認できない
+- IssueとPR差分が大きく矛盾している
+- PR targetが明らかに誤っている
+- Task PRが `develop` へ向いている
+- scope外変更が大きく、PR分割が必要に見える
+- 正本docsとPR差分のどちらを正とすべきか判断できない
+- API contract変更があるが、Contract Task化すべきか判断できない
+- DB変更があるが、関連docsやmigrationの正が判断できない
+- generated差分が意図したものか判断できない
+- CI / test失敗の原因が特定できない
+- secretや認証情報が含まれている可能性がある
+- 破壊的変更を採用すべきか判断が必要である
+- Human Reviewを省略しなければ進められない状態になっている
+
+---
+
+## 7. 人間へ確認する条件
+
+AI Agentは、以下の場合、人間へ確認・報告する。
+
+- PRをHuman Reviewへ進めてよいか判断できない場合
+- PRを分割すべきか判断が必要な場合
+- Issueのscope変更が必要な場合
+- Task Definitionの変更が必要な場合
+- 正本docsの更新順序を判断すべき場合
+- アーキテクチャ方針を変更すべき場合
+- API contract変更を採用すべき場合
+- DB変更を採用すべき場合
+- テスト未実施を許容すべき場合
+- CI失敗を許容してHuman Reviewへ進めるべきか判断が必要な場合
+- cross-cutting logを残すべき場合
+- 破壊的変更を含む場合
+- secret混入の可能性がある場合
+- Human Reviewで重点確認すべき設計・実装判断がある場合
+
+確認時は、以下を整理して提示する。
+
+- 確認が必要な理由
+- 現在確認できている事実
+- AI Agentの推論
+- 選択肢
+- 推奨案
+- 判断しない場合のリスク
+
+---
+
+## 8. 関連ドキュメント
+
+以下の正本ドキュメントと整合させる。
+
+| ドキュメント                               | 役割                                                  |
+| ------------------------------------------ | ----------------------------------------------------- |
+| AIレビュー運用設計書                       | AI Reviewの品質観点                                   |
+| AIエージェント活用型\_開発運用フロー設計書 | AI運用全体の流れ                                      |
+| AIエージェント体制・責務定義               | Agentごとの責務                                       |
+| Task Definition設計書                      | 個別作業条件の構造                                    |
+| Issue運用ルール                            | Issue本文・ラベル・no-branch（本文のみ）運用          |
+| Projects運用ルール                         | Projects Status管理                                   |
+| ブランチ運用ルール                         | Branch命名・base・PR target                           |
+| プロジェクトディレクトリ構成定義書         | `docs/`, `apps/`, `.cursor/`, `prompts/` 等の配置方針 |
+| AIログ運用ルール                           | cross-cutting logの利用範囲                           |
+| Slack通知運用設計書                        | AI Review結果の通知方針                               |
+| 開発方針書                                 | 開発全体の基本方針                                    |
+| システム論理構成図                         | 論理的なシステム構成                                  |
+| システム物理構成図                         | 物理的な配置・サービス構成                            |
+| ユビキタス言語集                           | ドメイン用語・運用用語の定義                          |
+| API設計標準                                | API設計方針                                           |
+| API仕様書                                  | request / response / error の仕様                     |
+| OpenAPI定義                                | 機械可読なAPI contract                                |
+| 全体テスト計画書                           | テスト全体方針                                        |
+| AIエージェント共通Rules設計書              | `.cursor/rules/` の設計正本                           |
+
+関連Ruleは以下とする。
+
+| Rule                           | 関係                                        |
+| ------------------------------ | ------------------------------------------- |
+| `project-operation.mdc`        | 正本関係、scope、人間判断などの全体原則     |
+| `github-operation.mdc`         | Issue / Projects / Branch / PR運用          |
+| `docs-consistency.mdc`         | docs整合性、配置、Markdown品質              |
+| `terminology.mdc`              | 用語揺れ確認                                |
+| `architecture-consistency.mdc` | 方針書・設計書・実装の横断整合性            |
+| `code-consistency.mdc`         | ソースファイル間の責務・型・I/F整合性       |
+| `api-contract.mdc`             | API / OpenAPI / Orval / generated整合性確認 |
+| `testing.mdc`                  | テスト観点・テスト結果確認                  |
+| `security.mdc`                 | secret、権限、危険操作の禁止                |
+| `worktree.mdc`                 | worktree並列作業時の安全確認                |

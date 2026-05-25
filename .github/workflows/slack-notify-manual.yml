@@ -1,0 +1,165 @@
+name: Slack manual notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      notification_type:
+        description: 通知種別
+        required: true
+        type: choice
+        options:
+          - human_decision_required
+          - incident_detected
+          - cross_cutting_impact
+          - review_fix_completed
+          - work_summary
+      level:
+        description: 通知レベル（空欄なら通知種別から自動設定）
+        required: false
+        default: ""
+      title:
+        description: 通知タイトル
+        required: true
+      summary:
+        description: 概要
+        required: true
+      issue_number:
+        description: 関連Issue番号（任意）
+        required: false
+        default: ""
+      pr_number:
+        description: 関連PR番号（任意）
+        required: false
+        default: ""
+      human_action:
+        description: 人間に必要な対応
+        required: false
+        default: ""
+      ai_log_path:
+        description: 関連ai-log path（任意）
+        required: false
+        default: ""
+      dry_run:
+        description: trueの場合はSlack送信・コメント作成を行わない
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: slack-notify-manual-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send manual Slack notification
+        uses: actions/github-script@v8
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
+          SLACK_MENTION_HUMAN_REVIEW: ${{ vars.SLACK_MENTION_HUMAN_REVIEW }}
+          SLACK_MENTION_INCIDENT: ${{ vars.SLACK_MENTION_INCIDENT }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const path = require("path");
+            const slack = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/slack-notify.cjs"));
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const repositoryFullName = `${owner}/${repo}`;
+            const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+            const inputs = context.payload.inputs || {};
+            const dryRun = String(inputs.dry_run || "") === "true";
+            const channel = process.env.SLACK_CHANNEL_ID_DEVOPS || "";
+
+            function defaultLevel(type) {
+              if (type === "incident_detected") return "error";
+              if (type === "cross_cutting_impact") return "warning";
+              if (type === "human_decision_required") return "action_required";
+              return "info";
+            }
+
+            function mentionFor(type, level) {
+              if (type === "incident_detected" || level === "error") return process.env.SLACK_MENTION_INCIDENT || "";
+              if (type === "human_decision_required" || level === "action_required") return process.env.SLACK_MENTION_HUMAN_REVIEW || "";
+              return "";
+            }
+
+            const type = inputs.notification_type;
+            const level = inputs.level || defaultLevel(type);
+            const issueNumber = Number(inputs.issue_number || "0");
+            const prNumber = Number(inputs.pr_number || "0");
+            const targetNumber = prNumber || issueNumber;
+            const targetKind = prNumber ? "pr" : issueNumber ? "issue" : "";
+            const threadKey = targetKind
+              ? slack.buildThreadKey({ owner, repo, kind: targetKind, number: targetNumber })
+              : "";
+
+            let comments = [];
+            let threadTs = "";
+            if (targetNumber) {
+              comments = await slack.listIssueComments({ github, owner, repo, issueNumber: targetNumber });
+              threadTs = slack.findThreadTsFromComments(comments, threadKey, channel);
+            }
+
+            const links = {};
+            if (issueNumber) links.Issue = `${serverUrl}/${repositoryFullName}/issues/${issueNumber}`;
+            if (prNumber) links.PR = `${serverUrl}/${repositoryFullName}/pull/${prNumber}`;
+            if (inputs.ai_log_path) links["ai-log"] = inputs.ai_log_path;
+
+            const text = slack.buildSlackText({
+              level,
+              title: inputs.title,
+              summary: inputs.summary,
+              mention: mentionFor(type, level),
+              fields: {
+                Type: type,
+                Issue: issueNumber ? `#${issueNumber}` : "",
+                PR: prNumber ? `#${prNumber}` : "",
+                "ai-log": inputs.ai_log_path || "",
+              },
+              humanAction: inputs.human_action,
+              links,
+            });
+
+            const result = await slack.postSlackMessage({
+              token: process.env.SLACK_BOT_TOKEN,
+              channel,
+              text,
+              threadTs,
+              replyBroadcast: level === "error" || level === "action_required",
+              dryRun,
+            });
+
+            if (result.ok && result.ts && targetNumber && !threadTs) {
+              await slack.upsertThreadMarkerComment({
+                github,
+                owner,
+                repo,
+                issueNumber: targetNumber,
+                threadKey,
+                channel: result.channel || channel,
+                ts: result.ts,
+                comments,
+                dryRun,
+              });
+            }
+
+            await core.summary
+              .addHeading("Slack手動通知")
+              .addRaw(`type: \`${type}\`\n\nlevel: \`${level}\`\n\nSlack: ${result.ok ? "ok" : "failed"}\n`)
+              .addRaw(result.error ? `\nSlack error: \`${result.error}\`\n` : "")
+              .write();
+
+            if (!result.ok) {
+              core.warning(`Slack notification failed: ${result.error || "unknown"}`);
+            }
+

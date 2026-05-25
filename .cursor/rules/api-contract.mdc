@@ -1,0 +1,567 @@
+---
+description: "API仕様、OpenAPI、Orval、generated、API client、利用側実装を作成・修正・レビューする際に参照するAPI contract整合性ルール。Contract変更、生成物、利用側影響、破壊的変更、横断影響を確認する。"
+globs:
+  - "docs/**/*API*.md"
+  - "openapi/**/*.yaml"
+  - "openapi/**/*.yml"
+  - "apps/**/generated/**"
+  - "apps/**/api-client/**"
+  - "orval.config.*"
+alwaysApply: false
+---
+
+# api-contract
+
+## 1. 目的
+
+このRuleは、Gift Recommendation Service プロジェクトにおいて、API仕様、OpenAPI、Orval、generated、API client、利用側実装の整合性を確認するためのルールを定義する。
+
+AI Agentは、API contractに関わるdocs、OpenAPI定義、Orval設定、generated、API client、利用側実装を作成・修正・レビューする際に、本Ruleを参照する。
+
+本Ruleでは、以下を目的とする。
+
+- API設計書とOpenAPI定義の不整合を防ぐ
+- OpenAPI変更とgenerated差分の不整合を防ぐ
+- Orval生成物の手動編集を防ぐ
+- API client利用側への破壊的影響を検知する
+- web / api / reco / batch の利用側影響を確認する
+- Contract変更を通常Taskへ無断混在させることを防ぐ
+- 必要に応じてContract Task化する
+- 横断影響がある場合にcross-cutting logを検討する
+- API contract変更に対するテスト更新漏れを防ぐ
+
+本Ruleは、API仕様そのものの正本ではない。  
+API仕様の正本は、API設計標準、API一覧、API仕様書、OpenAPI定義、関連docsに従う。
+
+---
+
+## 2. 適用対象
+
+このRuleは、以下に適用する。
+
+```text
+docs/**/*API*.md
+openapi/**/*.yaml
+openapi/**/*.yml
+apps/**/generated/**
+apps/**/api-client/**
+orval.config.*
+```
+主な対象作業は以下とする。
+
+- API設計書の作成・修正
+- API一覧の作成・修正
+- API仕様書の作成・修正
+- OpenAPI定義の作成・修正
+- Orval設定の作成・修正
+- generatedファイルの差分確認
+- API clientの生成・利用確認
+- web / api / reco / batch 側のAPI利用実装修正
+- API contract変更を伴うPRレビュー
+- Contract Taskの作成判断
+- cross-cutting logの記録判断
+
+以下は本Rule単独では判断しない。
+
+- GitHub Branch / PR運用の詳細
+- コード責務分離の詳細
+- テスト観点の詳細妥当性
+- secret / 権限 / 危険操作の詳細判断
+- アーキテクチャ方針そのものの変更判断
+
+必要に応じて、関連Ruleを併用する。
+
+---
+
+## 3. 必須ルール
+
+### 3.1 API contractの正本関係を確認する
+
+AI Agentは、API contractを扱う際に、以下の正本関係を確認する。
+
+| 対象               | 確認対象                              |
+| ------------------ | ------------------------------------- |
+| API設計方針        | API設計標準                           |
+| API一覧            | API一覧                               |
+| API詳細仕様        | API仕様書                             |
+| 機械可読なI/F定義  | OpenAPI定義                           |
+| API client生成設定 | Orval設定                             |
+| 生成結果           | generated                             |
+| 利用側実装         | web / api / reco / batch の該当コード |
+
+API仕様書とOpenAPI定義が矛盾している場合は、AI Agentが独断でどちらかを正として修正してはならない。  
+不整合として報告し、人間へ確認する。
+
+### 3.2 API設計標準に従う
+
+AI Agentは、APIを追加・修正する場合、API設計標準に従う。
+
+以下を確認する。
+
+- API pathが設計方針と一致しているか
+- HTTP methodが設計方針と一致しているか
+- Public API / Internal API の区分が明確か
+- request parameterの置き場所が妥当か
+- query parameterとrequest bodyの使い分けが妥当か
+- response schemaが仕様と一致しているか
+- error responseが仕様と一致しているか
+- API versionの扱いが既存方針と一致しているか
+- 認証・認可が必要なAPIで方針漏れがないか
+
+API path方針、HTTP method方針、Public / Internalの責務境界は、このRule内で新たに決めない。  
+正本docsに従う。
+
+### 3.3 API仕様書とOpenAPI定義を一致させる
+
+AI Agentは、API仕様書とOpenAPI定義を一致させる。
+
+以下を確認する。
+
+- path
+- HTTP method
+- summary / description
+- request headers
+- path parameters
+- query parameters
+- request body
+- response status code
+- response body
+- error response
+- schema required / optional
+- enum / literal value
+- nullable
+- array / object構造
+- example
+- operationId
+- tags
+
+API仕様書だけを修正してOpenAPI定義を放置してはならない。  
+OpenAPI定義だけを修正してAPI仕様書を放置してはならない。
+
+ただし、Taskのscope外で両方を更新できない場合は、勝手にscopeを広げず、不整合または別Task候補として報告する。
+
+### 3.4 OpenAPI変更とgenerated差分を対応させる
+
+AI Agentは、OpenAPI定義を変更した場合、generated差分の要否を確認する。
+
+以下を確認する。
+
+- Orval生成対象に含まれるAPIか
+- API client生成が必要か
+- generated差分がOpenAPI変更内容と一致しているか
+- generated差分が過剰に発生していないか
+- generated差分に意図しないAPI変更が混入していないか
+- generated差分によって利用側実装が壊れていないか
+- 生成コマンドは正本docsまたはpackage scriptsに定義されたものを使っているか
+
+OpenAPI変更があるのにgenerated差分がない場合は、生成漏れまたは生成対象外の可能性を確認する。
+
+generated差分があるのにOpenAPI変更がない場合は、生成環境差分、設定差分、既存生成物の不整合を疑い、人間へ確認する。
+
+### 3.5 Orval生成物を手動編集しない
+
+AI Agentは、Orvalなどにより生成されたgeneratedファイルを原則として手動編集してはならない。
+
+generatedファイルに不整合がある場合は、以下を確認する。
+
+- OpenAPI定義
+- Orval設定
+- 生成コマンド
+- 生成対象
+- 生成後の差分
+- 利用側実装
+
+generatedファイルそのものを直接修正する必要があるように見える場合は、作業を停止し、人間へ確認する。
+
+### 3.6 Orval設定変更の影響を確認する
+
+AI Agentは、`orval.config.*` を変更する場合、影響範囲を確認する。
+
+以下を確認する。
+
+- 生成対象APIが変わるか
+- 生成先ディレクトリが変わるか
+- client形式が変わるか
+- schema生成形式が変わるか
+- mock生成などの設定が変わるか
+- 既存import pathに影響があるか
+- web / api / reco / batch の利用側に影響があるか
+- CIで生成確認が必要か
+- generated差分が妥当か
+
+Orval設定変更は横断影響になりやすいため、通常Taskに無断で混在させてはならない。
+
+### 3.7 API client利用側への影響を確認する
+
+AI Agentは、API contract変更時に利用側実装への影響を確認する。
+
+確認対象は以下を含む。
+
+```text
+apps/web
+apps/api
+apps/reco
+apps/batch
+packages
+```
+以下を確認する。
+
+- request生成箇所が変更後schemaに対応しているか
+- response参照箇所が変更後schemaに対応しているか
+- optional / nullableの扱いが変わっていないか
+- enum追加・削除により分岐漏れがないか
+- status code変更によりエラー処理が壊れていないか
+- generated API clientのimport pathが変わっていないか
+- hooks / client関数名が変わっていないか
+- 型エラーが発生していないか
+- テストが変更後I/Fに対応しているか
+
+利用側影響を確認できない場合は、PR本文に未確認事項として明示し、人間へ確認する。
+
+### 3.8 破壊的変更を明示する
+
+AI Agentは、API contract変更が破壊的変更に該当するか確認する。
+
+破壊的変更の例は以下とする。
+
+- path変更
+- HTTP method変更
+- request必須項目の追加
+- request項目の削除
+- request項目の型変更
+- response項目の削除
+- response項目の型変更
+- response構造の変更
+- enum値の削除・意味変更
+- status codeの変更
+- error response形式の変更
+- 認証・認可要件の変更
+- operationId変更によりgenerated API client名が変わる変更
+
+破壊的変更がある場合、AI Agentは独断で通常Taskへ混在させてはならない。  
+Contract Task化、別PR化、またはHuman Reviewでの重点確認を提案する。
+
+### 3.9 Contract変更を通常Taskに混在させない
+
+AI Agentは、API contract変更を通常Taskに無断で混在させてはならない。
+
+以下に該当する場合は、Contract変更として扱う。
+
+- API仕様書の変更
+- API一覧の変更
+- OpenAPI定義の変更
+- Orval設定の変更
+- generated差分の発生
+- API clientの関数名・型・import path変更
+- request / response schema変更
+- Public API / Internal APIの責務変更
+- 利用側に破壊的影響がある変更
+
+通常Taskの中でContract変更が必要になった場合は、以下のいずれかを検討する。
+
+- Contract Taskを別途作成する
+- 既存Taskのscope変更を人間へ確認する
+- PRを分割する
+- cross-cutting logへ記録する
+
+### 3.10 `/create-contract-task` の利用を検討する
+
+AI Agentは、API contract変更が独立Taskとして扱うべき内容である場合、`/create-contract-task` の利用を検討する。
+
+Contract Task化を検討する例は以下とする。
+
+- OpenAPI定義変更が必要
+- Orval設定変更が必要
+- generated差分が発生する
+- web / api / reco / batch にまたがる修正が必要
+- 破壊的変更を含む
+- API仕様書と実装の不整合を解消する
+- 複数PRにまたがる移行が必要
+- Human ReviewでAPI方針判断が必要
+
+Contract Task化する場合は、Issue、Task Definition、PR本文で影響範囲を明確にする。
+
+### 3.11 cross-cutting logを検討する
+
+AI Agentは、API contract変更が横断影響を持つ場合、`ai-logs/cross-cutting/` への記録を検討する。
+
+記録を検討する例は以下とする。
+
+- OpenAPI変更により複数appへ影響する
+- Orval設定変更によりgenerated全体へ影響する
+- API client生成方針が変わる
+- 既存API path / schema方針を変更する
+- Contract変更が複数Issue / PRにまたがる
+- 人間判断が必要なAPI設計上の論点がある
+
+ただし、`ai-logs/` は通常作業ログ置き場ではない。  
+横断影響や判断履歴として残す必要がある場合に限定する。
+
+### 3.12 API関連用語を統一する
+
+AI Agentは、API contract関連の用語を正本docsと一致させる。
+
+代表的な表記は以下とする。
+
+| 正            |
+| ------------- |
+| OpenAPI       |
+| Orval         |
+| generated     |
+| API client    |
+| Contract Task |
+| API設計標準   |
+| API仕様       |
+| API定義       |
+| request       |
+| response      |
+| schema        |
+| operationId   |
+
+用語判断が必要な場合は、`terminology.mdc` を併用する。
+
+### 3.13 テスト更新要否を確認する
+
+AI Agentは、API contract変更時にテスト更新要否を確認する。
+
+以下の場合は、テスト追加・修正を検討する。
+
+- API pathを変更した
+- request schemaを変更した
+- response schemaを変更した
+- error responseを変更した
+- status codeを変更した
+- API clientの関数名・型が変わった
+- 利用側実装を修正した
+- generated差分が発生した
+- 認証・認可に関わるAPI変更を行った
+
+テスト詳細は `testing.mdc` を併用する。
+
+### 3.14 secretや認証情報を出力しない
+
+AI Agentは、API contract関連ファイル、generated、API client、PR本文、Issue本文、logsにsecretや認証情報を記載してはならない。
+
+禁止対象は以下を含む。
+
+- APIキー
+- token
+- password
+- cookie
+- session情報
+- `.env` の値
+- Authorization headerの実値
+- 外部サービスの認証情報
+- Supabase keyなどのsecret実値
+- OpenAI API keyなどのsecret実値
+
+例示が必要な場合は、必ずダミー値を使用する。
+
+---
+
+## 4. 確認観点
+
+### 4.1 API仕様書確認
+
+API仕様書を作成・修正・レビューする場合は、以下を確認する。
+
+- API設計標準と矛盾していないか
+- API一覧と矛盾していないか
+- pathが正しいか
+- HTTP methodが正しいか
+- Public API / Internal APIの区分が正しいか
+- request parameterの定義が明確か
+- response schemaの定義が明確か
+- error responseの定義が明確か
+- OpenAPI定義へ反映されているか
+- 利用側影響が明示されているか
+- 破壊的変更が明示されているか
+
+### 4.2 OpenAPI確認
+
+OpenAPI定義を作成・修正・レビューする場合は、以下を確認する。
+
+- YAML構文が成立しているか
+- path / methodがAPI仕様書と一致しているか
+- operationIdが一意か
+- tagsが妥当か
+- request schemaがAPI仕様書と一致しているか
+- response schemaがAPI仕様書と一致しているか
+- required / optionalが正しいか
+- nullableが正しいか
+- enumが正しいか
+- exampleが古くないか
+- error responseが定義されているか
+- generated差分が必要か
+
+### 4.3 Orval確認
+
+Orval設定を作成・修正・レビューする場合は、以下を確認する。
+
+- 入力OpenAPI定義が正しいか
+- 出力先が正しいか
+- 生成形式が既存方針と一致しているか
+- generatedのimport pathに影響があるか
+- web / api / reco / batchの利用側に影響があるか
+- CIで生成確認が必要か
+- 設定変更の理由がPR本文に明示されているか
+
+### 4.4 generated確認
+
+generated差分を確認する場合は、以下を確認する。
+
+- 手動編集ではなく生成コマンドによる差分か
+- OpenAPI変更とgenerated差分が対応しているか
+- 意図しない大量差分が発生していないか
+- operationId変更による関数名変更があるか
+- schema名変更があるか
+- 型のoptional / nullableが変わっていないか
+- import pathが変わっていないか
+- 利用側の型エラーが発生していないか
+- generated差分をPRに含めるべきか判断されているか
+
+### 4.5 利用側実装確認
+
+API client利用側を確認する場合は、以下を確認する。
+
+- request構築が変更後schemaと一致しているか
+- response参照が変更後schemaと一致しているか
+- error handlingが変更後仕様と一致しているか
+- status code分岐が変更後仕様と一致しているか
+- optional / nullableの扱いが安全か
+- enum分岐に漏れがないか
+- 旧API client関数を参照していないか
+- テストが変更後contractを前提にしているか
+
+### 4.6 PR確認
+
+API contract変更を含むPRでは、以下を確認する。
+
+- Contract変更であることがPR本文に明示されているか
+- 対象IssueまたはTask Definitionのscope内か
+- API仕様書、OpenAPI、generated、利用側実装の対応が明示されているか
+- 破壊的変更の有無が明示されているか
+- テスト結果または未実施理由が明示されているか
+- web / api / reco / batchへの影響が明示されているか
+- Contract Task化または別PR化の要否が判断されているか
+- Human Reviewで確認すべき論点が明示されているか
+
+---
+
+## 5. 禁止事項
+
+AI Agentは、API contract関連作業で以下を行ってはならない。
+
+- API設計標準と矛盾するAPI仕様を確認なしに作成すること
+- API仕様書とOpenAPI定義を矛盾させること
+- OpenAPI変更後にgenerated差分の要否を確認しないこと
+- generatedファイルを手動編集すること
+- Orval設定変更の利用側影響を確認しないこと
+- API client利用側への破壊的影響を無視すること
+- Contract変更を通常Taskへ無断で混在させること
+- 破壊的変更をPR本文に明示しないこと
+- Public API / Internal APIの責務を混在させること
+- request / response schemaのrequired / optional / nullableを曖昧にすること
+- enum変更による分岐影響を確認しないこと
+- error response形式の変更を利用側へ反映しないこと
+- generated差分だけを見てOpenAPI定義を確認しないこと
+- OpenAPI定義だけを見て利用側実装を確認しないこと
+- テスト更新要否を確認しないこと
+- secret、APIキー、token、password、cookie、session情報をdocs、OpenAPI、generated、API client、PR、Issue、logsへ記載すること
+- `.env` の値を記載すること
+- Human承認なしにAPI設計方針を変更すること
+
+---
+
+## 6. 停止条件
+
+AI Agentは、以下の場合、作業を停止して人間へ確認する。
+
+- API仕様書とOpenAPI定義が矛盾している
+- API設計標準と実装要件が矛盾している
+- Public API / Internal APIの区分が判断できない
+- request / response schemaの正が判断できない
+- required / optional / nullableの扱いが判断できない
+- path、HTTP method、status codeを変更する必要がある
+- operationId変更によりgenerated API client名が変わる
+- generatedファイルを手動編集しないと進められないように見える
+- Orval設定変更の影響範囲が特定できない
+- web / api / reco / batchへの利用側影響が特定できない
+- 破壊的変更を含む可能性がある
+- Contract Task化すべきか判断できない
+- 通常Taskのscope外でAPI contract変更が必要になった
+- cross-cutting logを残すべきか判断が必要である
+- secretや認証情報が含まれている可能性がある
+- Human Reviewを省略しないと進められない状態になっている
+
+---
+
+## 7. 人間へ確認する条件
+
+AI Agentは、以下の場合、人間へ確認・報告する。
+
+- API設計方針を変更すべき場合
+- API pathを変更すべき場合
+- HTTP methodを変更すべき場合
+- Public API / Internal APIの区分判断が必要な場合
+- request / response schemaの変更判断が必要な場合
+- required / optional / nullableの扱いを決める必要がある場合
+- 破壊的変更を採用すべきか判断が必要な場合
+- OpenAPI定義とAPI仕様書のどちらを正とするか判断が必要な場合
+- Orval設定変更が必要な場合
+- generated差分が意図通りか判断が必要な場合
+- 利用側実装の修正範囲を判断する必要がある場合
+- Contract Taskを作成すべき場合
+- PRを分割すべき場合
+- cross-cutting logを残すべき場合
+- Human Reviewで重点確認すべきAPI contract判断がある場合
+
+確認時は、以下を整理して提示する。
+
+- 確認が必要な理由
+- 現在確認できている事実
+- AI Agentの推論
+- 選択肢
+- 推奨案
+- 判断しない場合のリスク
+
+---
+
+## 8. 関連ドキュメント
+
+以下の正本ドキュメントと整合させる。
+
+| ドキュメント                       | 役割                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| API設計標準                        | API設計方針                                                          |
+| API一覧                            | APIの一覧・分類                                                      |
+| API仕様書                          | request / response / error の仕様                                    |
+| OpenAPI定義                        | 機械可読なAPI contract                                               |
+| Orval設定                          | API client生成設定                                                   |
+| プロジェクトディレクトリ構成定義書 | `openapi/`, `apps/**/generated/`, `apps/**/api-client/` 等の配置方針 |
+| システム論理構成図                 | web / api / reco / batch の論理構成                                  |
+| システム物理構成図                 | 物理的な配置・サービス構成                                           |
+| モジュール別入出力定義表           | モジュールごとのI/F                                                  |
+| OL/BT責務整理表                    | OL処理とBT処理の責務分担                                             |
+| DevOps方針書                       | 開発運用方針                                                         |
+| CI・CD方針書                       | CI/CDの基本方針                                                      |
+| 全体テスト計画書                   | テスト全体方針                                                       |
+| AIログ運用ルール                   | cross-cutting logの利用方針                                          |
+| Task Definition設計書              | 個別作業条件の構造                                                   |
+| AIレビュー運用設計書               | AI Reviewの品質観点                                                  |
+| AIエージェント共通Rules設計書      | `.cursor/rules/` の設計正本                                          |
+
+関連Ruleは以下とする。
+
+| Rule                           | 関係                                    |
+| ------------------------------ | --------------------------------------- |
+| `project-operation.mdc`        | 正本関係、scope、人間判断などの全体原則 |
+| `docs-consistency.mdc`         | docs整合性、配置、Markdown品質          |
+| `terminology.mdc`              | API関連用語の表記統一                   |
+| `architecture-consistency.mdc` | 方針書・設計書・実装の横断整合性        |
+| `code-consistency.mdc`         | ソースファイル間の責務・型・I/F整合性   |
+| `testing.mdc`                  | API contract変更時のテスト観点          |
+| `ai-review.mdc`                | AI Review時の確認観点                   |
+| `github-operation.mdc`         | Issue / Projects / Branch / PR運用      |
+| `security.mdc`                 | secret、権限、危険操作の禁止            |
+| `worktree.mdc`                 | worktree並列作業時の安全確認            |

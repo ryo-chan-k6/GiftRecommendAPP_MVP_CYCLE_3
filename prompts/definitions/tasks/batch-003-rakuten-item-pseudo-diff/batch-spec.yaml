@@ -1,0 +1,179 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-003-rakuten-item-pseudo-diff-batch-spec"
+  title: "BATCH-003:楽天商品疑似差分取得バッチ仕様書作成"
+  summary: "BATCH-003（楽天商品疑似差分取得Batch）のバッチ仕様書（BATCH-003_楽天商品疑似差分取得バッチ仕様書.md）を、バッチ処理一覧・バッチ設計方針書・外部商品データ連携設計書に基づいて作成する。"
+
+parent:
+  epic_issue: "[Epic]外部商品データ連携バッチ"
+  epic_issue_number: "#302" # 参照配置値。GitHub 実在は /start-task §5.1 で確認
+  epic_branch: "feature/epic-302-external-product-batch"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、batch 実装・運用の前提となるバッチ仕様書を作成する。
+  本Taskでは、バッチ処理一覧の BATCH-003（楽天商品疑似差分取得Batch）を対象に、処理概要・入出力・依存・冪等性・ログを整理する。
+  Batch ID の正本はバッチ処理一覧の `BATCH-*` とする（`BT-*` は Task タイトルに使用しない）。
+
+objective: |
+  BATCH-003（楽天商品疑似差分取得Batch）について、実装・レビューが可能な粒度のバッチ仕様書を作成する。
+
+scope:
+  - "BATCH-003 のバッチ仕様書を新規作成する（成果物: BATCH-003_楽天商品疑似差分取得バッチ仕様書.md）"
+  - "処理概要・実行トリガー・入出力リソースを整理する"
+  - "先行・後続 Batch・冪等キー・ログ・エラーコード参照を整理する"
+
+out_of_scope:
+  - "他 Batch のバッチ仕様書作成"
+  - "Python 実装・GitHub Actions workflow YAML の作成"
+  - "DB schema 変更"
+  - "楽天 API 契約変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-003 の Batch ID・処理概要・入出力・依存を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "実行方式・Raw/Staging・ログ方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "楽天 API 連携・取得方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: false
+      purpose: "GRS-BAT-* 等のエラー参照を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      action: "create"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-003 バッチ仕様書"
+  - "入出力・依存 Batch 整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md が作成されている"
+  - "バッチ処理一覧の BATCH-003 と矛盾する Batch ID・処理概要を定義していない"
+  - "Task タイトル・ファイル名が §15.4（BATCH-* 正本）に従っている"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-batch-003-rakuten-item-pseudo-diff-batch-spec"
+  base: "feature/epic-302-external-product-batch"
+  target: "feature/epic-302-external-product-batch"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics: []  # バッチは原則独立。依存Epicが必要になった場合のみ追加する（成果物化方針書 §3.5.3）。
+  issues: []
+  prs: []
+  tasks:
+    - "バッチ処理一覧が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "バッチ処理一覧の BATCH-003 と整合していること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs作成Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "バッチ処理一覧の BATCH-003 と整合しているか"
+    - "命名が Task Definition設計書 §15.4 に従っているか（BATCH-*、BT-* 不使用）"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "バッチ仕様書 Task 命名規則（§15.4）の試作検証用。"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "バッチ処理一覧に BATCH-003 が存在しない場合"
+
+notes:
+  - "本Taskはバッチ仕様書作成の試作Taskである。命名の正本は Task Definition設計書 §15.1（共通）・§15.4（バッチ）。Batch ID 正本はバッチ処理一覧の BATCH-*。"
+  - "Issueタイトル: [Task]BATCH-003:楽天商品疑似差分取得バッチ仕様書作成"

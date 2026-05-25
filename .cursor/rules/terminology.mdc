@@ -1,0 +1,751 @@
+---
+description: "docs、prompts、GitHub関連定義ファイルを作成・修正・レビューする際に参照する用語統一ルール。ドメイン用語、機能名、モジュール名、運用用語、Status、label、Branch表記の揺れを防止する。"
+globs:
+  - "docs/**/*.md"
+  - "prompts/**/*.md"
+  - "prompts/**/*.yaml"
+  - "prompts/**/*.yml"
+  - ".github/**/*.md"
+  - ".github/**/*.yml"
+  - ".github/**/*.yaml"
+alwaysApply: false
+---
+
+# terminology
+
+## 1. 目的
+
+このRuleは、Gift Recommendation Service プロジェクトにおいて、用語揺れを防止し、ドメイン用語、機能名、モジュール名、運用用語の表記を統一するためのルールを定義する。
+
+AI Agentは、docs、prompts、GitHub関連定義ファイルを作成・修正・レビューする際に、本Ruleを参照し、以下を確認する。
+
+- ドメイン用語の表記が統一されているか
+- 機能名・モジュール名の表記が統一されているか
+- Projects Status名の表記が統一されているか
+- Issue unit / type の表記が統一されているか
+- Branch type / unit の表記が統一されているか
+- 日本語名と英語名の対応が崩れていないか
+- 大文字・小文字、スペース、ハイフン、アンダースコアの表記揺れがないか
+- 略称を使う場合、正本docsと整合しているか
+
+本Ruleは、用語一覧そのものの正本ではない。
+用語定義の正本は、用語集、ユビキタス言語集、各設計書、各運用ルールに従う。
+
+---
+
+## 2. 適用対象
+
+このRuleは、以下に適用する。
+
+- `docs/**/*.md`
+- `prompts/**/*.md`
+- `prompts/**/*.yaml`
+- `prompts/**/*.yml`
+- `.github/**/*.md`
+- `.github/**/*.yml`
+- `.github/**/*.yaml`
+- Issue template
+- PR template
+- Task Definition
+- Review Definition
+- GitHub Actions workflow
+- AI Agent向けprompt
+- docs成果物内の表、図、本文、Mermaid、コードブロック内コメント
+
+対象外は以下とする。
+
+- ソースコード本体の命名
+- DB物理名の命名
+- API pathの命名
+- OpenAPI schema名の命名
+- generatedファイル
+- 外部サービス固有の正式名称
+
+ただし、対象外ファイルであっても、docsやpromptsに記載する説明文と用語整合が必要な場合は、本Ruleを参考にする。
+
+---
+
+## 3. 必須ルール
+
+### 3.1 正本の用語を優先する
+
+AI Agentは、用語判断に迷った場合、以下を優先して確認する。
+
+| 優先 | 確認対象                           |
+| ---: | ---------------------------------- |
+|    1 | 用語集                             |
+|    2 | ユビキタス言語集                   |
+|    3 | 正本定義表                         |
+|    4 | ドメイン概念一覧                   |
+|    5 | 機能一覧                           |
+|    6 | モジュール一覧                     |
+|    7 | API設計標準                        |
+|    8 | テーブル設計方針書                 |
+|    9 | AIエージェント運用関連docs         |
+|   10 | 既存docsで一貫して使われている表記 |
+
+正本docsとチャット内容が矛盾する場合は、正本docsを優先する。
+
+### 3.2 用語を勝手に言い換えない
+
+AI Agentは、正本docsで定義済みの用語を勝手に言い換えてはならない。
+
+禁止例：
+
+| 正                          | 禁止例                                     |
+| --------------------------- | ------------------------------------------ |
+| Gift Recommendation Service | Gift Reco Service / Gift Recommend Service |
+| Recommendation Request      | Recommend Request / Recommendation Input   |
+| Recommendation Result       | Recommend Result / Reco Result             |
+| Gift Meaning                | Gift Sense / Gift Value                    |
+| Gift Meaning Space          | Gift Meaning Mapと無断で置換               |
+| Task Definition             | Task Spec / Task定義書と無断で置換         |
+| AI Review                   | AIレビュー工程 / 自動レビューと無断で置換  |
+| Human Review                | 人間確認 / 手動レビューと無断で置換        |
+
+ただし、正本docsで日本語名・英語名の対応が明示されている場合は、文脈に応じて併記してよい。
+
+### 3.3 日本語名と英語名の対応を崩さない
+
+日本語名と英語名が対応している用語は、対応関係を崩してはならない。
+
+例：
+
+| 日本語名           | 英語名                     |
+| ------------------ | -------------------------- |
+| レコメンド入力条件 | Recommendation Request     |
+| レコメンド実行     | Recommendation Run         |
+| レコメンド結果     | Recommendation Result      |
+| レコメンド結果商品 | Recommendation Result Item |
+| タスク定義         | Task Definition            |
+| AIレビュー         | AI Review                  |
+| 人間レビュー       | Human Review               |
+| 作業計画           | Issue                      |
+| レビュー正本       | PR                         |
+| 成果物正本         | docs                       |
+
+同じ文書内で、同一概念に対して複数の日本語名・英語名を混在させてはならない。
+
+### 3.4 ドメイン用語の表記を統一する
+
+Gift Recommendation Service のドメイン用語は、正本docsに従って表記する。
+
+代表的な用語は以下とする。
+
+| 用語                        | 扱い                         |
+| --------------------------- | ---------------------------- |
+| Gift Recommendation Service | サービス名                   |
+| Gift Meaning                | 贈答意味モデルの中核概念     |
+| Gift Meaning Space          | Social × Symbolic の意味空間 |
+| Social                      | 儀礼性・安全性寄りの意味軸   |
+| Symbolic                    | 感情・特別感寄りの意味軸     |
+| feature                     | 特徴量                       |
+| semantic concept            | 意味概念                     |
+| Feature Hint Dictionary     | feature補正用の辞書          |
+| Recommendation Request      | レコメンド入力条件           |
+| Recommendation Run          | レコメンド実行               |
+| Recommendation Result       | レコメンド結果               |
+| Recommendation Result Item  | レコメンド結果商品           |
+
+正本docsで英語表記が採用されている概念は、無理に日本語化しない。
+
+### 3.5 feature名の表記を統一する
+
+Gift Meaningのfeature名は、正本docsに従って表記する。
+
+代表的なfeatureは以下とする。
+
+| 区分     | feature                 |
+| -------- | ----------------------- |
+| Social   | `formality`             |
+| Social   | `safety`                |
+| Social   | `brand_appropriateness` |
+| Symbolic | `emotion`               |
+| Symbolic | `novelty`               |
+| Symbolic | `intimacy`              |
+| Symbolic | `symbolic_identity`     |
+| Symbolic | `story_richness`        |
+
+feature名は、原則として snake_case の物理名をそのまま使用する。
+
+禁止例：
+
+| 正                      | 禁止例                                       |
+| ----------------------- | -------------------------------------------- |
+| `brand_appropriateness` | `brandAppropriateness` / `brand appropriate` |
+| `symbolic_identity`     | `symbolicIdentity` / `symbolic id`           |
+| `story_richness`        | `storyRichness` / `story`                    |
+
+### 3.6 機能名・モジュール名の表記を統一する
+
+AI Agentは、機能名・モジュール名を既存の機能一覧、モジュール一覧、機能×モジュール対応表に合わせる。
+
+以下を守る。
+
+- 同一機能を複数名称で呼ばない
+- 同一モジュールを複数名称で呼ばない
+- 日本語名と英語名の対応を崩さない
+- 物理名と論理名を混同しない
+- 略称を新しく作らない
+- 既存docsと異なる命名を導入する場合は、人間へ確認する
+
+### 3.7 Projects Status名を統一する
+
+Projects Statusは、以下を正とする。
+
+| Status         |
+| -------------- |
+| `Backlog`      |
+| `Todo`         |
+| `In Progress`  |
+| `AI Review`    |
+| `Human Review` |
+| `Done`         |
+
+禁止例：
+
+```text id="32tjtz"
+In progress
+In-Progress
+in progress
+AIレビュー
+HumanReview
+Human review
+完了
+Done済み
+```
+
+本文で説明する場合も、Status値そのものは正しい表記を使用する。
+
+### 3.8 Issue unit / type の表記を統一する
+
+Issue unitは、以下を正とする。
+
+| unit   | 意味       |
+| ------ | ---------- |
+| `epic` | Epic Issue |
+| `task` | Task Issue |
+
+Issue typeは、以下を標準とする。
+
+| type       | 意味             |
+| ---------- | ---------------- |
+| `feature`  | 機能追加         |
+| `fix`      | 不具合修正       |
+| `docs`     | ドキュメント変更 |
+| `refactor` | リファクタリング |
+| `chore`    | 雑務・設定変更   |
+| `test`     | テスト追加・修正 |
+| `hotfix`   | 緊急修正         |
+| `spike`    | 調査・検証       |
+
+GitHub labelとして記載する場合は、`unit: task`、`type: docs` のように、既存のlabel命名に合わせる。
+
+### 3.9 Branch type / unit の表記を統一する
+
+Branch名は、以下の形式を正とする。
+
+```
+<type>/<unit>-<issue番号>-<english-summary>
+```
+
+`type` と `unit` は、Issue labelと整合させる。
+
+例：
+
+```
+feature/epic-101-recommendation-api
+docs/task-111-recommendation-api-design
+feature/task-112-recommendation-api-implementation
+test/task-113-recommendation-api-unit-test
+```
+
+Branch名では、以下を避ける。
+
+- 日本語を含める
+- スペースを含める
+- 大文字を混在させる
+- Issue番号を省略する
+- `unit` を省略する
+- `type` とIssue labelを矛盾させる
+
+### 3.9.1 成果物識別子（Task / Issue 命名）
+
+識別子付き Task の表記は [Task Definition設計書](../../docs/00_共通/AIエージェント運用/Task Definition設計書.md) §15 を正とする。
+
+| 種別 | 識別子名 | 形式例 | 正本一覧 |
+| ---- | -------- | ------ | -------- |
+| 個別API仕様書 | API-ID | `API-INT-002` | API一覧 |
+| 画面仕様書 | 画面ID | `SCR-002` | 画面一覧 |
+| バッチ仕様書 | Batch ID | `BATCH-003` | バッチ処理一覧 |
+
+- Issue / `task.title`: `{識別子}:{概要}`（半角コロン、コロン前後にスペースなし）
+- 成果物ファイル: `{識別子}_{名称}.md`（アンダースコア区切り）
+- Branch / `task.id`: 識別子を kebab-case で含める（例: `api-int-002`、`scr-002`、`batch-003`）
+- バッチの Task タイトルには `BATCH-*` を用い、`BT-*`（処理構成定義書の分類ID）は使用しない
+
+### 3.10 Command名を統一する
+
+Command名は、`.cursor/commands/` の定義に合わせる。
+
+代表的なCommandは以下とする。
+
+Command
+
+---
+
+```
+/start-task
+```
+
+---
+
+```
+/work-issue
+```
+
+---
+
+```
+/create-pr
+```
+
+---
+
+```
+/review-pr
+```
+
+---
+
+```
+/fix-review-comments
+```
+
+---
+
+```
+/create-contract-task
+```
+
+---
+
+禁止例：
+
+```
+/startTask
+/work_issue
+/createPR
+/review
+/fix-comments
+```
+
+### 3.11 Agent名を統一する
+
+Agent名は、AI Agent定義設計書および `.cursor/agents/` の定義に合わせる。
+
+代表的なAgentは以下とする。
+
+Agent
+
+---
+
+Orchestrator AI
+
+---
+
+Worker AI
+
+---
+
+Reviewer AI
+
+---
+
+Docs Reviewer AI
+
+---
+
+Test AI
+
+---
+
+Contract AI
+
+---
+
+Fixer AI
+
+---
+
+Support AI
+
+---
+
+禁止例：
+
+```
+Orchestrator
+WorkerAgent
+Review AI
+Docs AI
+Contract Reviewer
+```
+
+### 3.12 Rule名を統一する
+
+Rule名は、`.cursor/rules/` のファイル名に合わせる。
+
+代表的なRuleは以下とする。
+
+Rule
+
+---
+
+```
+project-operation.mdc
+```
+
+---
+
+```
+github-operation.mdc
+```
+
+---
+
+```
+docs-consistency.mdc
+```
+
+---
+
+```
+terminology.mdc
+```
+
+---
+
+```
+architecture-consistency.mdc
+```
+
+---
+
+```
+code-consistency.mdc
+```
+
+---
+
+```
+api-contract.mdc
+```
+
+---
+
+```
+testing.mdc
+```
+
+---
+
+```
+ai-review.mdc
+```
+
+---
+
+```
+security.mdc
+```
+
+---
+
+```
+worktree.mdc
+```
+
+---
+
+```
+git-commit-message.mdc
+```
+
+---
+
+Rule名を本文で参照する場合は、拡張子 `.mdc` を含めることを基本とする。
+
+### 3.13 ディレクトリ名・ファイル名の表記を統一する
+
+ディレクトリ名・ファイル名は、実ファイルと一致させる。
+
+代表的なディレクトリは以下とする。
+
+```
+docs/
+.cursor/rules/
+.cursor/agents/
+.cursor/commands/
+prompts/definitions/
+prompts/templates/
+ai-logs/
+.github/
+.githooks/
+```
+
+工程ディレクトリは、[プロジェクトディレクトリ構成定義書.md](../../docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md)を正とする。
+
+### 3.14 OpenAPI / Orval / generated の表記を統一する
+
+API contract関連の用語は、以下の表記を基本とする。
+
+正
+
+---
+
+OpenAPI
+
+---
+
+Orval
+
+---
+
+generated
+
+---
+
+API client
+
+---
+
+Contract Task
+
+---
+
+API設計標準
+
+---
+
+API仕様
+
+---
+
+API定義
+
+---
+
+禁止例：
+
+```
+open API
+ORVAL
+generate files
+自動生成物ファイル群
+APIクライアント定義書き出し
+```
+
+ただし、外部ツールやライブラリの正式名称は、その公式表記を優先する。
+
+### 3.15 略称を無断で増やさない
+
+AI Agentは、正本docsに存在しない略称を新しく導入してはならない。
+
+略称を使う場合は、以下を守る。
+
+- 初出で正式名称を併記する
+- 既存docsで使われている略称と一致させる
+- 複数の意味を持つ略称を避ける
+- 読み手が推測しないと分からない略称を避ける
+
+例：
+
+| 許容                        | 避ける |
+| --------------------------- | ------ |
+| AI Review                   | AIR    |
+| Task Definition             | TD     |
+| Gift Recommendation Service | GRS    |
+| Recommendation Request      | RR     |
+
+略称を定着させたい場合は、用語集または関連docsの更新を検討する。
+
+### 3.16 表記スタイルを統一する
+
+AI Agentは、同一文書内で以下の表記を混在させない。
+
+| 観点               | 統一方針                                              |
+| ------------------ | ----------------------------------------------------- |
+| 英語の大文字小文字 | 正本docsの表記に合わせる                              |
+| スペース           | `In Progress`, `AI Review` のように正本表記に合わせる |
+| ハイフン           | file / branch / command名では既存ルールに合わせる     |
+| アンダースコア     | DB物理名、feature名、設定keyでは既存ルールに合わせる  |
+| 日本語・英語併記   | 初出または定義表で併記し、本文ではどちらかに寄せる    |
+| カタカナ表記       | 既存docsの表記に合わせる                              |
+
+---
+
+## 4. 確認観点
+
+### 4.1 docs確認
+
+docsを作成・修正・レビューする場合は、以下を確認する。
+
+- 同一概念に複数名称を使っていないか
+- 日本語名と英語名の対応が崩れていないか
+- 既存の用語集・定義書と矛盾していないか
+- Projects Statusの表記が正しいか
+- Issue unit / type の表記が正しいか
+- Branch type / unit の表記が正しいか
+- Command名、Agent名、Rule名が正しいか
+- ディレクトリ名・ファイル名が実体と一致しているか
+- 古い工程ディレクトリ名を使っていないか
+- 略称を無断で増やしていないか
+
+### 4.2 prompts確認
+
+promptsを作成・修正・レビューする場合は、以下を確認する。
+
+- Task Definitionのkey名が既存schemaと一致しているか
+- `workstream`, `phase`, `output_files`, `target_files`, `exclusive_files`, `out_of_scope`, `review_points`, `completion_criteria`, `operation_logging` の表記が揺れていないか
+- 識別子付き Task / Epic で `dependencies.epics`, `epic_scope.allowed_paths`, `epic_scope.forbidden_paths` が Task Definition設計書 §10 と整合しているか
+- Issue / PR / Slack / ai-logs の役割表現が正しいか
+- Agent名・Command名が正しいか
+- AI Agentに渡す指示内で正本用語を崩していないか
+- YAML keyに日本語やスペースを混在させていないか
+
+### 4.3 GitHub関連ファイル確認
+
+`.github/**` 配下のファイルを作成・修正・レビューする場合は、以下を確認する。
+
+- Issue templateのlabel名が既存運用と一致しているか
+- Projects Status名が正しいか
+- workflow名、job名、step名が過度に揺れていないか
+- Branch type / unit の説明が正しいか
+- `no-branch` の表記が統一されているか
+- `AI Review` / `Human Review` の表記が統一されているか
+- `Closes` / `Related to` の使い分け説明が既存方針と矛盾していないか（Task PRでは `Refs` を使わない）
+
+### 4.4 Mermaid確認
+
+Mermaid図を含む場合は、以下を確認する。
+
+- ノードラベルの用語が本文と一致しているか
+- 同一概念を図と本文で別名にしていないか
+- 英語名・日本語名の対応が崩れていないか
+- Statusや工程名が正しい表記になっているか
+- 古い工程ディレクトリ名を使っていないか
+
+### 4.5 表確認
+
+Markdown表を含む場合は、以下を確認する。
+
+- 同じ列名を別表で別名にしていないか
+- `名称`, `論理名`, `物理名`, `概要`, `分類`, `MVP対象` などの列名が既存docsと整合しているか
+- 日本語名と英語名を対応づける表で、片方だけ更新漏れしていないか
+- Status、type、unitなどの列値が正しい表記になっているか
+
+---
+
+## 5. 禁止事項
+
+AI Agentは、以下を行ってはならない。
+
+- 正本docsと異なる用語を確認なしに導入すること
+- 同一概念に複数名称を混在させること
+- 日本語名と英語名の対応を崩すこと
+- Projects Statusに独自表記を作ること
+- Issue unit / type に独自値を作ること
+- Branch type / unit に独自値を作ること
+- Command名、Agent名、Rule名を省略・改変すること
+- 正本docsにない略称を無断で作ること
+- 古い工程ディレクトリ名を新規docsやpromptsに記載すること
+- `In Progress`, `AI Review`, `Human Review` の大文字・スペース表記を崩すこと
+- `no-branch` を `no branch`, `nobranch`, `No Branch` などに揺らすこと
+- `OpenAPI`, `Orval`, `generated` の表記を無断で変えること
+- 物理名、論理名、日本語表示名を混同すること
+- 外部サービスやライブラリの正式名称を誤表記すること
+- 用語集・定義書を確認せずに用語定義を断定すること
+- 用語一覧そのものの正本をこのRuleに作り込むこと
+
+---
+
+## 6. 停止条件
+
+AI Agentは、以下の場合、作業を停止して人間へ確認する。
+
+- 正本docs間で用語定義が矛盾している
+- 同じ概念に対して複数の正本候補がある
+- 用語集と個別設計書で表記が異なる
+- 日本語名と英語名の対応が判断できない
+- 既存docsにない新しい用語を導入する必要がある
+- 略称を使わないと文書が著しく読みにくくなるが、正本docsに略称がない
+- Projects Status、Issue unit / type、Branch type / unitに新しい値が必要に見える
+- 工程名・ディレクトリ名の新旧表記が混在している
+- API、DB、コード、docsで同一概念の名称が一致していない
+- 外部サービスやライブラリの正式名称が判断できない
+- 用語変更が複数docs、Issue template、workflow、promptへ横断影響する
+
+---
+
+## 7. 人間へ確認する条件
+
+AI Agentは、以下の場合、人間へ確認・報告する。
+
+- 新しいドメイン用語を追加すべき場合
+- 既存用語を改名すべき場合
+- 日本語名・英語名・物理名の対応を変更すべき場合
+- 用語集またはユビキタス言語集の更新が必要な場合
+- 複数docsで用語揺れを一括修正すべき場合
+- 新しいProjects Status、Issue type、Branch typeが必要な場合
+- 略称を正式採用すべきか判断が必要な場合
+- 外部サービス名、ライブラリ名、技術名の公式表記確認が必要な場合
+- 用語変更がAPI、DB、OpenAPI、generated、workflowへ影響する場合
+- Human Reviewで重点確認すべき用語判断がある場合
+
+確認時は、以下を整理して提示する。
+
+- 確認が必要な理由
+- 現在確認できている事実
+- AI Agentの推論
+- 選択肢
+- 推奨案
+- 判断しない場合のリスク
+
+---
+
+## 8. 関連ドキュメント
+
+以下の正本ドキュメントと整合させる。
+
+| ドキュメント                       | 役割                             |
+| ---------------------------------- | -------------------------------- |
+| 用語集                             | ドメイン用語・運用用語の定義     |
+| ユビキタス言語集                   | DDD上の共通言語定義（`docs/02_ドメイン探索/ユビキタス言語集.md`） |
+| 正本定義表                         | 情報ごとの正本関係               |
+| ドメイン概念一覧                   | ドメイン概念の定義               |
+| 機能一覧                           | 機能名・機能分類の定義           |
+| モジュール一覧                     | モジュール名・責務の定義         |
+| 機能×モジュール対応表              | 機能とモジュールの対応           |
+| API設計標準                        | API関連用語・URL・I/F方針        |
+| テーブル設計方針書                 | DB物理名・論理名の方針           |
+| プロジェクトディレクトリ構成定義書 | ディレクトリ名・配置方針         |
+| Issue運用ルール                    | Issue unit / type / label の定義 |
+| Projects運用ルール                 | Projects Status の定義           |
+| ブランチ運用ルール                 | Branch type / unit / 命名規則    |
+| AI Agent定義設計書                 | Agent名・責務の定義              |
+| Commands設計書                     | Command名・用途の定義            |
+| Task Definition設計書              | Task Definition key・構造の定義  |
+| AIエージェント共通Rules設計書      | `.cursor/rules/` の設計正本      |
+
+関連Ruleは以下とする。
+
+| Rule                           | 関係                                        |
+| ------------------------------ | ------------------------------------------- |
+| `project-operation.mdc`        | 正本関係、scope、人間判断などの全体原則     |
+| `docs-consistency.mdc`         | docs整合性、配置、Markdown品質              |
+| `github-operation.mdc`         | Issue / Projects / Branch / PR運用          |
+| `architecture-consistency.mdc` | 方針書・設計書・実装の整合性確認            |
+| `api-contract.mdc`             | API / OpenAPI / Orval / generated整合性確認 |
+| `ai-review.mdc`                | AI Review時の確認観点                       |
+| `security.mdc`                 | secret、権限、危険操作の禁止                |

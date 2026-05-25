@@ -1,0 +1,354 @@
+name: Contract Task Issue
+description: API contract / OpenAPI / Orval / generated 影響を扱うContract Task Issueを作成する
+title: "[Task]"
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Contract Task Issue
+        Contract Task Issueは、API contract、OpenAPI、Orval、generated、provider / consumer影響を通常Taskから分離して管理する作業計画です。
+        破壊的変更、DB schema変更、security影響がある場合は、人間判断を必須にしてください。
+
+  - type: input
+    id: unit
+    attributes:
+      label: 作業単位
+      description: Contract TaskはTask Issueとして扱います。
+      value: task
+    validations:
+      required: true
+
+  - type: input
+    id: contract_marker
+    attributes:
+      label: Contract Task
+      description: workflow / reviewerがContract Taskを識別するための固定値です。
+      value: "true"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: work_mode
+    attributes:
+      label: 作業主体
+      description: Issue作成後のBranch作成タイミングを判断するための運用区分です。
+      options:
+        - ai-agent
+        - human-led
+    validations:
+      required: true
+
+  - type: input
+    id: definition_path
+    attributes:
+      label: Definition
+      description: 対応するContract Definitionのpathを記載してください。
+      placeholder: prompts/definitions/cross-cutting/<theme>/contract-task.yaml
+    validations:
+      required: true
+
+  - type: input
+    id: contract_id
+    attributes:
+      label: Contract ID
+      description: Contract Definitionの `contract.id` を記載してください。
+      placeholder: contract-recommendation-api
+    validations:
+      required: true
+
+  - type: input
+    id: source
+    attributes:
+      label: 発生元
+      description: 発見元のIssue / PR / Task Definitionなどを記載してください。
+      placeholder: "#123 / PR #456 / prompts/definitions/..."
+    validations:
+      required: true
+
+  - type: input
+    id: parent_issue
+    attributes:
+      label: 親Issue
+      description: Parent Epic Issue番号を `#123` 形式で記載してください。
+      placeholder: "#123"
+    validations:
+      required: true
+
+  - type: input
+    id: parent_epic_branch
+    attributes:
+      label: Parent Epic Branch
+      description: Contract Task Branchのbase / PR targetになるParent Epic Branch名を記載してください。
+      placeholder: feature/epic-123-recommendation-api
+    validations:
+      required: true
+
+  - type: dropdown
+    id: project_phase
+    attributes:
+      label: プロジェクト工程
+      description: Project Phase / Milestone同期に使う工程を選択してください。
+      options:
+        - 実装設計工程完了
+        - 開発工程完了
+        - アプリケーション設計工程完了
+        - 結合・総合テスト工程完了
+        - 運用・改善工程完了
+        - なし
+    validations:
+      required: true
+
+  - type: dropdown
+    id: work_type
+    attributes:
+      label: 作業種別
+      description: workflowが `type:*` Labelを導出するための値です。
+      options:
+        - chore
+        - docs
+        - feature
+        - fix
+        - refactor
+        - test
+        - spike
+        - hotfix
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 対象領域
+      description: workflowが `area:*` Labelを導出するための値です。
+      multiple: true
+      options:
+        - api
+        - reco
+        - web
+        - batch
+        - db
+        - docs
+        - infra
+        - project
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 優先度
+      description: workflowが `priority:*` LabelおよびProject Priorityを導出するための値です。
+      options:
+        - critical
+        - high
+        - medium
+        - low
+    validations:
+      required: true
+
+  - type: input
+    id: planned_start
+    attributes:
+      label: Planned Start
+      description: ProjectのPlanned Startへ同期する日付です。未定の場合は `未定` と記載してください。
+      placeholder: "2026-05-25 / 未定"
+    validations:
+      required: true
+
+  - type: input
+    id: due_date
+    attributes:
+      label: Due Date
+      description: ProjectのDue Dateへ同期する日付です。未定の場合は `未定` と記載してください。
+      placeholder: "2026-05-27 / 未定"
+    validations:
+      required: true
+
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone
+      description: 紐づけるMilestone名を記載してください。不要な場合は `なし` と記載してください。
+      placeholder: 実装設計工程完了 / なし
+      value: なし
+    validations:
+      required: true
+
+  - type: input
+    id: branch_summary
+    attributes:
+      label: Branch summary
+      description: Branch名末尾に使う英語kebab-caseの概要です。
+      placeholder: recommendation-api-contract
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: no_branch
+    attributes:
+      label: Branch作成制御
+      description: Issue作成時点でContract Task Branchを作成しない場合のみチェックしてください。GitHub Labelには同期しません。
+      options:
+        - label: no-branch
+          required: false
+
+  - type: textarea
+    id: change
+    attributes:
+      label: 契約変更内容
+      description: API名、Endpoint、Method、変更種別、破壊的変更有無、変更理由を記載してください。
+      placeholder: |
+        API名:
+        API種別:
+        Endpoint:
+        Method:
+        変更種別:
+        破壊的変更:
+        後方互換性:
+        変更理由:
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: scope
+      description: 今回実施することを箇条書きで記載してください。
+      placeholder: |
+        - 
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: out_of_scope
+      description: 今回実施しないことを箇条書きで記載してください。
+      placeholder: |
+        - 
+    validations:
+      required: true
+
+  - type: textarea
+    id: input_contract
+    attributes:
+      label: input contract files
+      description: 参照するAPI設計書、OpenAPI、Orval、generated、利用側実装を記載してください。
+      placeholder: |
+        docs:
+          - docs/...
+        openapi:
+          - openapi/...
+        orval:
+          - ...
+        generated:
+          - ...
+        consumers:
+          - apps/web/...
+    validations:
+      required: true
+
+  - type: textarea
+    id: output_contract
+    attributes:
+      label: output contract files
+      description: 作成・更新するdocs、OpenAPI、Orval、generated、テストを記載してください。
+      placeholder: |
+        docs:
+          - docs/...
+        openapi:
+          - openapi/...
+        generated:
+          - ...
+        tests:
+          - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影響範囲
+      description: provider / consumer、DB、CI/CD、securityなどの影響を記載してください。不明な項目は不明と記載してください。
+      placeholder: |
+        provider:
+        consumer:
+        OpenAPI:
+        Orval:
+        generated:
+        DB:
+        CI/CD:
+        security:
+    validations:
+      required: true
+
+  - type: textarea
+    id: generation_policy
+    attributes:
+      label: generated / 再生成方針
+      description: generated差分、生成元、再生成コマンド、検証コマンドを記載してください。
+      placeholder: |
+        generated差分想定:
+        手動編集許可: false
+        生成元:
+        再生成コマンド:
+        検証コマンド:
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 完了条件
+      description: Contract Taskを完了できる条件をチェックリストで記載してください。
+      placeholder: |
+        - [ ] 
+    validations:
+      required: true
+
+  - type: textarea
+    id: test_policy
+    attributes:
+      label: テスト・検証方針
+      description: 必要なContract Test、schema検証、生成確認、未実施時の理由を記載してください。
+      placeholder: |
+        required:
+          - 
+        commands:
+          - 
+        not_required:
+          - 
+    validations:
+      required: true
+
+  - type: textarea
+    id: review_points
+    attributes:
+      label: 確認観点
+      description: Contract Review / AI Review / Human Reviewで確認すべき観点を記載してください。
+      placeholder: |
+        - 
+    validations:
+      required: true
+
+  - type: textarea
+    id: human_decision_points
+    attributes:
+      label: Human Reviewで確認してほしいこと
+      description: 人間判断が必要な事項を記載してください。ない場合は `なし` と記載してください。
+      placeholder: |
+        - なし
+    validations:
+      required: true
+
+  - type: textarea
+    id: operation_logging
+    attributes:
+      label: operation_logging
+      description: ai-logs記録要否と理由を記載してください。横断影響がある場合は `ai-logs/cross-cutting/` 候補を明示してください。
+      placeholder: |
+        level: cross-cutting
+        reason: API contract / generated 影響を記録するため
+    validations:
+      required: true

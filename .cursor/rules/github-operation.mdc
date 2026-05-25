@@ -1,0 +1,573 @@
+---
+description: "GitHub上のIssue、Projects、Branch、PR運用をAI Agentが扱う際に参照する運用ルール。Issue作成、Project同期、Branch作成、PR作成、AI Review、Human Reviewの基本方針を定義する。"
+globs: []
+alwaysApply: false
+---
+
+# github-operation
+
+## 1. 目的
+
+このRuleは、Gift Recommendation Service プロジェクトにおいて、AI AgentがGitHub上のIssue、Projects、Branch、PRを扱う際の共通運用ルールを定義する。
+
+AI Agentは、Issue作成、Project登録、Branch作成、作業実施、PR作成、AI Review、Human Reviewへの引き渡しを行う際に、本Ruleを参照する。
+
+本Ruleでは、以下を目的とする。
+
+- Issue / Projects / Branch / PR の役割を明確にする
+- Issue種別に応じたBranch base / PR targetを守る
+- Task Branchから `develop` へ直接PRを作成することを防ぐ
+- `no-branch` 運用の逸脱を防ぐ
+- AI Review / Human Review の運用を統一する
+- PR merge判断をHumanに限定する
+
+コミットメッセージの詳細ルールは `git-commit-message.mdc` を正とする。
+worktree利用時の安全確認は `worktree.mdc` を正とする。
+
+---
+
+## 2. 適用対象
+
+このRuleは、主に以下に適用する。
+
+- `/start-epic`
+- `/start-task`
+- `/work-issue`
+- `/create-pr`
+- `/review-pr`
+- `/fix-review-comments`
+- `/create-contract-task`
+- Issue作成・更新
+- Projects登録・同期
+- Branch作成
+- PR作成・更新
+- PRレビュー
+- GitHub Actions / scripts / Issue template / PR template の変更
+- `.github/**` 配下の変更
+- GitHub運用に関わるdocs変更
+
+---
+
+## 3. 必須ルール
+
+### 3.1 GitHub上の役割分担を守る
+
+AI Agentは、以下の役割分担を守る。
+
+| 対象     | 役割                                |
+| -------- | ----------------------------------- |
+| Issue    | 作業計画                            |
+| Projects | 進捗・予定・実績管理                |
+| Branch   | 作業実体                            |
+| PR       | 作業結果・レビュー正本              |
+| docs     | 成果物正本                          |
+| Slack    | 通知・サマリ                        |
+| ai-logs  | Issue化前・例外・横断影響・実験ログ |
+
+Issue、PR、docsの役割を混同してはならない。
+
+PR本文やIssueコメントに重要な設計変更を書いただけで、docsへ反映しない状態を成果物完了として扱ってはならない。
+
+### 3.2 基本対応関係を守る
+
+本プロジェクトでは、原則として以下の対応関係で作業を管理する。
+
+```text
+1 Issue = 1 Projects Task = 1 Branch = 1 PR
+```
+
+例外が必要な場合は、AI Agentが独断で分割・統合せず、人間へ確認する。
+
+### 3.3 Issue種別を明確にする
+
+Issueは、原則として以下の2種類で扱う。
+
+| Issue種別  | 役割                                                                |
+| ---------- | ------------------------------------------------------------------- |
+| Epic Issue | 親Issue。**成果物識別子単位**（原則）または ID 未整備領域の機能・領域単位（例外） |
+| Task Issue | 子Issue。実作業単位を管理する                                       |
+
+Issueタイトルは、原則として以下の形式を使用する。`[Epic]` / `[Task]` の直後に半角スペースを入れない。識別子付き Epic / Task は **`{識別子}:{概要}`** の形式とし、コロン前後にスペースを入れない。
+
+```
+[Epic]{識別子}:{概要}      （識別子付き Epic: 原則）
+[Epic]<機能・領域名>       （例外: ID 未整備領域）
+[Task]{識別子}:{概要}      （識別子付き Task）
+[Task]<概要>               （識別子なし Task）
+```
+
+例：
+
+```
+[Epic]API-PUB-002:レコメンド実行
+[Epic]SCR-002:レコメンド条件入力画面
+[Epic]MOD-RECO-001:Recommendation Orchestrator
+[Epic]GitHub Projects自動化
+[Task]API-INT-002:Reco推薦実行API仕様書作成
+```
+
+成果物識別子（API-ID・画面ID・Batch ID 等）を含む Task / Epic のタイトルは、`[Epic]` / `[Task]` 直後から `{識別子}:{概要}` とする（プレフィックス後・コロン前後とも半角スペースなし）。**識別子付き Task の先頭識別子は、Parent Epic Issue タイトルの先頭識別子と一致**する必要がある（[成果物一覧×Task Definition化方針書](../../docs/00_共通/AIエージェント運用/成果物一覧×Task%20Definition化方針書.md) §3.5、Task Definition設計書 §15.0）。詳細は Issue運用ルール §5.3、Task Definition設計書 §15.1（共通）・§15.2〜§15.4（種別）を参照する。
+
+Issue種別、Issueタイトル、Issueラベル、Branch名のunitが矛盾している場合、または **Task / Parent Epic の識別子 prefix が一致しない場合**は、作業を進める前に確認する。
+
+### 3.4 Projects Statusを統一する
+
+ProjectsのStatusは、以下を正とする。
+
+| Status         | 意味             |
+| -------------- | ---------------- |
+| `Backlog`      | 未着手・将来作業 |
+| `Todo`         | 着手可能         |
+| `In Progress`  | 作業中           |
+| `AI Review`    | AIレビュー中     |
+| `Human Review` | 人間レビュー待ち |
+| `Done`         | 完了             |
+
+表記ゆれを作ってはならない。
+
+禁止例：
+
+```
+In progress
+In-Progress
+Review
+HumanReview
+Done済み
+```
+
+### 3.5 Projects Status遷移を守る
+
+基本のStatus遷移は以下とする。
+
+```
+Backlog
+  ↓
+Todo
+  ↓
+In Progress
+  ↓
+AI Review
+  ↓
+Human Review
+  ↓
+Done
+```
+
+AI ReviewまたはHuman Reviewで修正が必要な場合は、以下のように戻す。
+
+```
+AI Review / Human Review
+  ↓ 修正依頼
+In Progress
+  ↓ 修正対応
+AI Review
+```
+
+AI Agentは、Human Reviewを省略してDoneへ進めてはならない。
+
+### 3.6 Issue本文にProjects同期項目を持たせる
+
+AI AgentがIssueを作成・更新する場合、Projects同期に必要な項目をIssue本文に持たせる。
+
+最低限、以下を確認する。
+
+| 項目                  | 内容                                                                          |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `unit`                | `epic` または `task`                                                          |
+| `type`                | `feature`, `fix`, `docs`, `refactor`, `chore`, `test`, `hotfix`, `spike` など |
+| `workstream`          | 作業領域（Projects 同期用。Task Definition の識別子スラッグ・`epic_scope` とは別概念） |
+| `phase`               | 工程                                                                          |
+| `planned_start`       | 着手予定日                                                                    |
+| `due_date`            | 期限                                                                          |
+| `branch_required`     | Branch作成対象か                                                              |
+| `parent_epic`         | Taskの場合の親Epic                                                            |
+| `output_files`        | 成果物・変更対象                                                              |
+| `completion_criteria` | 完了条件                                                                      |
+
+Projects項目とIssue本文が矛盾する場合は、AI Agentが独断で片方を正として更新してはならない。
+
+不整合として報告し、人間へ確認する。
+
+### 3.7 人主導運用とAI主導運用を区別する
+
+人主導タスク運用では、主に以下を守る。
+
+- 人間がIssueテンプレートを使ってIssueを作成する
+- 未来着手予定のIssueも作成してよい
+- Issue作成時は原則 Issue本文の `no-branch` をチェックする
+- Issue作成時点ではBranchを自動作成しない
+- 着手タイミングで Issue本文の `no-branch` チェックを解除する
+- `no-branch` チェック解除後、Issue同期とBranch作成ワークフローによりBranchを作成する
+
+AI主導タスク運用では、主に以下を守る。
+
+- 人間が `/start-task @definition` で依頼する
+- AI AgentがTask Definitionを読む
+- AI AgentがIssueを作成する
+- Issue作成後、Projectへ追加する
+- 原則として、Issue作成時にBranchも作成する
+- AI Agentが作業、commit、PR作成、AI Reviewまで進める
+- Human Reviewとmerge判断は人間が実施する
+
+AI Agentは、人主導運用のIssueに対して、Issue本文の `no-branch` がチェックされている状態で勝手にBranchを作成してはならない。
+
+### 3.8 Branch命名規則を守る
+
+Branch名は、以下の形式を標準とする。
+
+```
+<type>/<unit>-<issue番号>-<english-summary>
+```
+
+例：
+
+```
+feature/epic-101-recommendation-api
+docs/task-111-recommendation-api-design
+feature/task-112-recommendation-api-implementation
+test/task-113-recommendation-api-unit-test
+```
+
+`type` はIssueラベル `type: xxx` から取得する。
+
+使用例：
+
+| type       | 用途             |
+| ---------- | ---------------- |
+| `feature`  | 機能追加         |
+| `fix`      | 不具合修正       |
+| `docs`     | ドキュメント変更 |
+| `refactor` | リファクタリング |
+| `chore`    | 雑務・設定変更   |
+| `test`     | テスト追加・修正 |
+| `hotfix`   | 緊急修正         |
+| `spike`    | 調査・検証       |
+
+`unit` はIssueラベル `unit: xxx` から取得する。
+
+使用値は以下とする。
+
+| unit   | 用途       |
+| ------ | ---------- |
+| `epic` | Epic Issue |
+| `task` | Task Issue |
+
+IssueラベルとBranch名が矛盾している場合は、作業を進める前に確認する。
+
+### 3.9 Branch base / PR targetを守る
+
+Branch base / PR target は以下を正とする。
+
+| Issue種別 | Branch base   | PR target     |
+| --------- | ------------- | ------------- |
+| Epic      | `develop`     | `develop`     |
+| Task      | 親Epic Branch | 親Epic Branch |
+
+Task Branchから `develop` へ直接PRを作成してはならない。
+
+Task Branchは、必ず親Epic Branchから作成する。
+
+```
+親Epic Branch
+  └─ Task Branch
+```
+
+Epic Branchは、原則として `develop` から作成する。
+
+```
+develop
+  └─ Epic Branch
+```
+
+Task Branchの作成時に親Epic Branchが存在しない場合、AI Agentは独断で `develop` からTask Branchを作成してはならない。
+
+親Epic Issue / Branch については、Task Definition の `parent.*` を**配置値**として扱い、`/start-task` §5.1 で **実在確認**する。報告は `存在` / `未検出` / `未確認` とし、`parent.epic_issue_number` の「未存在」と混同しない。未検出時は `/start-epic` で親 Epic を新規作成するか、既存 Epic の実番号へ `parent` を更新する（`.cursor/commands/start-epic.md`、`.cursor/commands/start-task.md` §5.1 標準手順）。
+
+### 3.10 PR本文に必要項目を記載する
+
+AI AgentがPRを作成する場合、PR本文には最低限以下を記載する。
+
+| 項目             | 内容                                                |
+| ---------------- | --------------------------------------------------- |
+| 概要             | 何を変更したか                                      |
+| 対象Issue        | 関連Issue番号                                       |
+| 作業範囲         | 実施した作業                                        |
+| 変更ファイル     | 主要な変更ファイル                                  |
+| 完了条件         | completion criteriaとの対応                         |
+| 確認結果         | 実施した確認・テスト                                |
+| 未実施事項       | 未実施の場合の理由                                  |
+| 影響範囲         | docs / code / API / DB / CI/CD / generated への影響 |
+| AI Review結果    | AI Reviewの要約                                     |
+| Human Review観点 | 人間に確認してほしい事項                            |
+
+### 3.11 Task PRで `Closes` に依存しない
+
+Task PRでは、`Closes #<Task Issue番号>` に依存してはならない。
+
+Task PRは親Epic Branchへ向けるため、GitHubの自動クローズ挙動に依存すると、Issueクローズのタイミングや意図が不明確になる可能性がある。
+
+Task PRでは、原則として以下のように関連Issueとして記載する。表記は `Refs` ではなく `Related to` に統一する（正本: Task Definition設計書 §22・§39、`prompts/templates/pr/task-pr.md`）。
+
+```
+Related to #<Task Issue番号>
+```
+
+Task IssueをいつDoneにするかは、Projects StatusとHuman Review判断に従う。
+
+### 3.12 PR merge判断はHumanに限定する
+
+PRのmerge判断は、必ずHumanが行う。
+
+AI Agentは、以下を行ってはならない。
+
+- PRを自己判断でmergeする
+- Human Review前にDone扱いにする
+- Human Reviewを省略する
+- merge済みとして作業完了報告する
+
+AI Agentは、Human Reviewへ進める準備が整ったことを報告するまでを担当する。
+
+### 3.13 AI ReviewをHuman Review前に実施する
+
+AI Reviewは、Human Review前に行う事前レビューである。
+
+AI Reviewでは、最低限以下を確認する。
+
+- Issue目的との整合
+- Task Definitionとの整合
+- completion criteriaとの整合
+- review pointsとの整合
+- Branch名の整合
+- PR targetの整合
+- 変更ファイルの妥当性
+- out of scopeの混入有無
+- docs正本との整合
+- テスト結果または未実施理由
+- secret混入有無
+- generated / OpenAPI / DB / CI/CD への横断影響
+- Human Reviewへ進めてよいか
+
+詳細なAI Review観点は `ai-review.mdc` を参照する。
+
+AI Reviewで問題がない場合、Projects Statusを `Human Review` へ進める。
+
+AI Reviewで修正が必要な場合、Projects Statusを `In Progress` へ戻す。
+
+AI Reviewが完了していない状態で `Human Review` へ進めてはならない。
+
+### 3.14 no-branch運用を守る
+
+`no-branch` は、Issue作成時点ではBranchを作成しないことを示す。
+
+主に、人主導タスク運用で未来着手予定のIssueを作成する場合に利用する。
+
+`no-branch` はIssue本文のチェック項目のみで扱う。GitHub Label `no-branch` は定義しない・付与しない。
+
+AI Agentは、Issue本文の `no-branch` チェック状態を推測で変更してはならない。解除してよいか判断できない場合は、人間へ確認する。
+
+Branch作成は、原則として `no-branch` が解除されてから行う。
+
+### 3.15 コミットメッセージ詳細は専用Ruleを参照する
+
+`github-operation.mdc` は、Issue / Projects / Branch / PRを中心としたGitHub運用ルールを定義する。
+
+コミットメッセージの詳細ルールは、専用Ruleである `git-commit-message.mdc` を正とする。
+
+AI Agentがcommitを作成する場合は、必ず `git-commit-message.mdc` を参照する。
+
+最低限、以下は守る。
+
+- コミットメッセージは日本語を基本とする
+- 形式は `<type>: <日本語の変更概要>` を標準とする
+- 英語のみのコミットメッセージは禁止する
+- Cursorの `Generate Commit Message` の日本語化は保証しない
+- 自動生成結果が英語の場合は、人間またはAI Agentが日本語へ修正する
+- 最終的な強制は `.githooks/commit-msg` で行う
+
+---
+
+## 4. 確認観点
+
+### 4.1 Issue確認
+
+GitHub運用時は、Issueについて以下を確認する。
+
+- Issueが存在するか
+- Issue種別がEpic / Taskのどちらか
+- Issueタイトルが適切か
+- Issue本文に作業範囲が記載されているか
+- completion criteriaが明確か
+- out of scopeが明確か
+- Projects同期項目があるか
+- `no-branch` の有無が明確か
+- 親Epicが必要なTask Issueで、親Epicが指定されているか
+- **識別子付き Epic** の場合、`epic_scope.allowed_paths` と `dependencies.epics` がIssue本文に記載されているか（成果物化方針書 §3.5、`prompts/templates/issue/epic-issue.md` §5.3 / §5.4）
+- **識別子付き Task** の場合、Task タイトル先頭識別子と Parent Epic Issue タイトル先頭識別子が一致しているか
+- **識別子付き Task** の場合、`output.files` / `parallel_control.exclusive_files` が Parent Epic の `epic_scope.allowed_paths` 内に収まっているか
+
+### 4.2 Projects確認
+
+GitHub運用時は、Projectsについて以下を確認する。
+
+- Projectへ登録されているか
+- Statusが正しいか
+- Planned Startがあるか
+- Due Dateがあるか
+- Issue本文とProjects項目が矛盾していないか
+
+### 4.3 Branch確認
+
+GitHub運用時は、Branchについて以下を確認する。
+
+- Branch名が命名規則に従っているか
+- typeがIssueラベルと一致しているか
+- unitがIssue種別と一致しているか
+- Issue番号がBranch名に含まれているか
+- Epic Branchは `develop` から作成されているか
+- Task Branchは親Epic Branchから作成されているか
+- Issue本文の `no-branch` がチェックされたIssueでBranchを作成していないか
+
+### 4.4 PR確認
+
+GitHub運用時は、PRについて以下を確認する。
+
+- PR targetが正しいか
+- PR本文に必要項目があるか
+- 関連Issueが明記されているか
+- Task PRで `Related to #<Task Issue番号>` が記載されているか
+- Task PRで `Closes #<Task Issue番号>` に依存していないか
+- AI Review結果が記載されているか
+- Human Review観点が記載されているか
+- テスト結果または未実施理由が記載されているか
+- out of scopeの変更が混入していないか
+- generated / OpenAPI / DB / CI/CD など横断影響が明示されているか
+- **識別子付き Task の PR** では、差分 path がすべて Parent Epic の `epic_scope.allowed_paths` 内に収まっているか（[`.cursor/commands/review-pr.md`](../commands/review-pr.md) §6.1）
+
+### 4.5 AI Review確認
+
+AI Review時は、以下を確認する。
+
+- Issue目的と変更内容が一致しているか
+- Task Definitionと変更内容が一致しているか
+- completion criteriaを満たしているか
+- review pointsに対する確認が行われているか
+- Branch名とPR targetが正しいか
+- Human Reviewへ進めてよい状態か
+- Humanが重点確認すべき事項が明示されているか
+
+---
+
+## 5. 禁止事項
+
+AI Agentは、以下を行ってはならない。
+
+- Issueなしで作業Branchを作成すること
+- Issue本文の `no-branch` がチェックされたIssueでBranchを作成すること
+- Task Branchを `develop` から直接作成すること
+- Task PRを `develop` へ向けること
+- Epic PRを親Epic Branchへ向けること
+- Issueラベルと矛盾するBranch名を作成すること
+- Projects Statusに独自表記を作ること
+- AI Reviewを省略してHuman Reviewへ進めること
+- Human Reviewを省略してDoneへ進めること
+- AI判断だけでPRをmergeすること
+- main / developへ直接pushすること
+- Task PRで `Closes #<Task Issue番号>` に依存すること
+- out of scopeの変更をPRに混入させること
+- 識別子付き Task の PR で、Parent Epic の `epic_scope.allowed_paths` 外の path 変更を含めること
+- 識別子付き Task で、Parent Epic と識別子 prefix が一致しない状態のまま Task を進めること
+- generatedファイル、OpenAPI、DB、CI/CDなど横断影響がある変更を通常Taskに無断で混在させること
+- secretや認証情報をIssue、PR、commit、Slack通知、ai-logsへ記載すること
+- コミットメッセージ詳細ルールをこのRuleへ過剰に重複定義すること
+- worktree安全確認の詳細をこのRuleへ重複定義すること
+
+---
+
+## 6. 停止条件
+
+AI Agentは、以下の場合、作業を停止して人間へ確認する。
+
+- Issueが存在しない
+- Issue種別が判断できない
+- 親Epicが必要だが指定されていない
+- 親Epic Branchが存在しない
+- Branch baseが判断できない
+- PR targetが判断できない
+- Issue本文とProjects項目が矛盾している
+- IssueラベルとBranch名が矛盾している
+- Issue本文の `no-branch` チェック状態とBranch作成状態が矛盾している
+- Task DefinitionとIssue内容が矛盾している
+- Task PRを `develop` に向ける必要がありそうに見える
+- Epic PR以外で `develop` へのPRが必要に見える
+- PR merge判断が必要である
+- main / developへの直接pushが必要に見える
+- secretや認証情報が含まれている可能性がある
+- 横断影響が大きく、別Task化すべきか判断が必要である
+- conflictの解消方針を推測するしかない
+- Human Reviewを省略しなければ進められない状態になっている
+
+---
+
+## 7. 人間へ確認する条件
+
+AI Agentは、以下の場合、人間へ確認・報告する。
+
+- Branchを作成してよいか判断できない場合
+- `no-branch` を解除してよいか判断できない場合
+- 親Epic Branchが未作成の場合
+- Issue本文とProjects項目が矛盾している場合
+- Branch名を変更すべきか判断が必要な場合
+- PR targetが不明確な場合
+- Task PRを親Epic Branch以外へ向ける必要がありそうな場合
+- PR merge判断が必要な場合
+- PRを分割すべき変更が混在している場合
+- generated / OpenAPI / DB / CI/CD など横断影響がある場合
+- Human Reviewで確認すべきリスクがある場合
+- Issueを新規作成すべき作業を発見した場合
+- 既存Issueのscope変更が必要な場合
+
+確認時は、以下を整理して提示する。
+
+- 確認が必要な理由
+- 現在確認できている事実
+- AI Agentの推論
+- 選択肢
+- 推奨案
+- 判断しない場合のリスク
+
+---
+
+## 8. 関連ドキュメント
+
+以下の正本ドキュメントと整合させる。
+
+| ドキュメント                               | 役割                                         |
+| ------------------------------------------ | -------------------------------------------- |
+| AIエージェント活用型\_開発運用フロー設計書 | AI運用全体の流れ                             |
+| AIエージェント体制・責務定義               | Agentごとの責務                              |
+| Commands設計書                             | `.cursor/commands/` の設計                   |
+| Task Definition設計書                      | 個別作業条件の構造                           |
+| Prompts運用ルール                          | `prompts/` 配下の配置・命名                  |
+| AIレビュー運用設計書                       | AI Reviewの品質観点                          |
+| AIログ運用ルール                           | `ai-logs/` の利用範囲                        |
+| Slack通知運用設計書                        | Slack通知タイミング・文面                    |
+| worktree運用ルール                         | 並列作業時の作業領域分離                     |
+| Issue運用ルール                            | Issue本文・ラベル・no-branch運用             |
+| Projects運用ルール                         | Projects Status管理                          |
+| ブランチ運用ルール                         | Branch命名・base・PR target                  |
+| プロジェクトディレクトリ構成定義書         | `docs/`, `prompts/`, `.cursor/` 等の配置方針 |
+| AIエージェント共通Rules設計書              | `.cursor/rules/` の設計正本                  |
+
+関連Ruleは以下とする。
+
+| Rule                           | 関係                                    |
+| ------------------------------ | --------------------------------------- |
+| `project-operation.mdc`        | 正本関係、scope、人間判断などの全体原則 |
+| `git-commit-message.mdc`       | コミットメッセージ詳細ルール            |
+| `ai-review.mdc`                | AI Review時の詳細確認観点               |
+| `docs-consistency.mdc`         | docs変更時の整合性確認                  |
+| `architecture-consistency.mdc` | 設計・実装・運用方針の整合性確認        |
+| `api-contract.mdc`             | OpenAPI / Orval / generated影響確認     |
+| `testing.mdc`                  | テスト観点・テスト結果確認              |
+| `security.mdc`                 | secret、権限、危険操作の禁止            |
+| `worktree.mdc`                 | worktree並列作業時の安全確認            |

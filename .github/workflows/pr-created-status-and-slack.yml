@@ -1,0 +1,244 @@
+name: PR created status and Slack notification
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 対象PR番号
+        required: true
+      dry_run:
+        description: trueの場合は更新せずログのみ出力する
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: pr-created-status-and-slack-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  sync-status-and-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Project Status and notify Slack
+        uses: actions/github-script@v8
+        env:
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const path = require("path");
+            const slack = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/slack-notify.cjs"));
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const repositoryFullName = `${owner}/${repo}`;
+            const projectOwner = process.env.PROJECT_OWNER || owner;
+            const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
+            const dryRun =
+              context.eventName === "workflow_dispatch" &&
+              String(context.payload.inputs?.dry_run || "") === "true";
+
+            async function loadProject() {
+              const query = `
+                query($owner: String!, $number: Int!) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      id
+                      fields(first: 100) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options { id name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }`;
+              const data = await github.graphql(query, { owner: projectOwner, number: projectNumber });
+              return data.user?.projectV2 || null;
+            }
+
+            async function issueNodeId(issueNumber) {
+              const query = `
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $number) { id }
+                  }
+                }`;
+              const data = await github.graphql(query, { owner, repo, number: issueNumber });
+              return data.repository?.issue?.id || null;
+            }
+
+            async function findProjectItem(issueId) {
+              const query = `
+                query($owner: String!, $number: Int!, $after: String) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      items(first: 100, after: $after) {
+                        nodes {
+                          id
+                          content { ... on Issue { id } }
+                        }
+                        pageInfo { hasNextPage endCursor }
+                      }
+                    }
+                  }
+                }`;
+              let after = null;
+              for (;;) {
+                const data = await github.graphql(query, { owner: projectOwner, number: projectNumber, after });
+                const items = data.user?.projectV2?.items;
+                const hit = items?.nodes?.find((item) => item.content?.id === issueId);
+                if (hit) return hit.id;
+                if (!items?.pageInfo?.hasNextPage) return null;
+                after = items.pageInfo.endCursor;
+              }
+            }
+
+            async function updateStatus(project, itemId, statusName) {
+              const field = project.fields.nodes.find((candidate) => candidate.name === "Status");
+              const option = field?.options?.find((candidate) => candidate.name === statusName);
+              if (!field || !option) throw new Error(`Project Status option not found: ${statusName}`);
+              const mutation = `
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId,
+                    itemId: $itemId,
+                    fieldId: $fieldId,
+                    value: { singleSelectOptionId: $optionId }
+                  }) { projectV2Item { id } }
+                }`;
+              if (dryRun) {
+                core.info(`[dry_run] update status: ${statusName}`);
+                return;
+              }
+              await github.graphql(mutation, {
+                projectId: project.id,
+                itemId,
+                fieldId: field.id,
+                optionId: option.id,
+              });
+            }
+
+            let prNumber;
+            if (context.eventName === "workflow_dispatch") {
+              prNumber = Number(context.payload.inputs.pr_number);
+            } else {
+              const pr = context.payload.pull_request;
+              if (pr.head?.repo?.full_name !== repositoryFullName) {
+                core.info("PR from fork is out of scope for initial Slack notification workflow; skipped.");
+                return;
+              }
+              prNumber = pr.number;
+            }
+            if (!prNumber) {
+              core.setFailed("PR number is missing.");
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            if (pr.head?.repo?.full_name !== repositoryFullName) {
+              core.info("PR from fork is out of scope for initial Slack notification workflow; skipped.");
+              return;
+            }
+
+            const issueNumber = slack.relatedIssueNumber(pr.body || "");
+            if (!issueNumber) {
+              core.setFailed("PR本文から対象Issueを解決できませんでした。`Related to #<Task Issue番号>` または `Closes #<Epic Issue番号>` を記載してください。");
+              return;
+            }
+
+            const project = await loadProject();
+            if (!project) {
+              core.setFailed("ProjectV2を解決できませんでした。");
+              return;
+            }
+            const id = await issueNodeId(issueNumber);
+            if (!id) {
+              core.setFailed(`Issue #${issueNumber} のNode IDを解決できませんでした。`);
+              return;
+            }
+            const itemId = await findProjectItem(id);
+            if (!itemId) {
+              core.setFailed(`Issue #${issueNumber} のProject itemを解決できませんでした。`);
+              return;
+            }
+
+            await updateStatus(project, itemId, "AI Review");
+
+            const channel = process.env.SLACK_CHANNEL_ID_DEVOPS || "";
+            const threadKey = slack.buildThreadKey({ owner, repo, kind: "pr", number: prNumber });
+            const comments = await slack.listIssueComments({ github, owner, repo, issueNumber: prNumber });
+            const threadTs = slack.findThreadTsFromComments(comments, threadKey, channel);
+            const text = slack.buildSlackText({
+              level: "info",
+              title: "PRを作成しました",
+              summary: pr.title,
+              fields: {
+                PR: `#${prNumber}`,
+                Issue: `#${issueNumber}`,
+                Branch: pr.head.ref,
+                Target: pr.base.ref,
+                "Next Status": "AI Review",
+              },
+              links: {
+                PR: pr.html_url,
+                Issue: `${context.serverUrl}/${repositoryFullName}/issues/${issueNumber}`,
+              },
+              humanAction: "AI Reviewを実施します。",
+            });
+            const result = await slack.postSlackMessage({
+              token: process.env.SLACK_BOT_TOKEN,
+              channel,
+              text,
+              threadTs,
+              dryRun,
+            });
+            if (result.ok && result.ts && !threadTs) {
+              await slack.upsertThreadMarkerComment({
+                github,
+                owner,
+                repo,
+                issueNumber: prNumber,
+                threadKey,
+                channel: result.channel || channel,
+                ts: result.ts,
+                comments,
+                dryRun,
+              });
+            }
+
+            if (!dryRun) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: `Project Status更新意図: Issue #${issueNumber} を \`AI Review\` へ更新しました。`,
+              });
+            }
+
+            await core.summary
+              .addHeading("PR作成時 Status / Slack通知")
+              .addRaw(`PR: #${prNumber}\n\nIssue: #${issueNumber}\n\nStatus: \`AI Review\`\n\nSlack: ${result.ok ? "ok" : "failed"}\n`)
+              .addRaw(result.error ? `\nSlack error: \`${result.error}\`\n` : "")
+              .write();
+            if (!result.ok) {
+              core.warning(`Slack notification failed: ${result.error || "unknown"}`);
+            }
+

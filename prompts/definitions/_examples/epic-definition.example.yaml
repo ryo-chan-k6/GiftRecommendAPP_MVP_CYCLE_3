@@ -1,0 +1,185 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-002-recommendation-input"
+  title: "SCR-002:レコメンド条件入力画面"
+  summary: "SCR-002（レコメンド条件入力画面）に関する設計・開発・単体テストを管理するEpic"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  SCR-002（レコメンド条件入力画面）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  子 Task は画面仕様書・実装・テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+
+objective: |
+  Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  develop への統合は Epic PR のみで行う。
+
+scope:
+  - "SCR-002 に関する子 Task の作業単位を整理する"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針を整理する"
+
+out_of_scope:
+  - "各子 Task の詳細作業（子 Task Definition で定義する）"
+  - "本番リリース作業"
+  - "単一 Task で完結すべき docs 作成・実装"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/画面一覧.md"
+      required: true
+      purpose: "対象画面 SCR-002 の位置づけを確認するため"
+    - path: "docs/05_アプリケーション設計/画面遷移図.md"
+      required: false
+      purpose: "前後画面との遷移関係を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（Issue または docs への整理）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]SCR-002:レコメンド条件入力画面 形式である（§15.0）"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+
+epic_scope:
+  artifact_id: "SCR-002"
+  allowed_paths:
+    - "docs/06_実装設計/web/SCR-002_*"
+    - "apps/web/**"
+    - "prompts/definitions/tasks/scr-002-recommendation-input/**"
+    - "prompts/definitions/reviews/scr-002-recommendation-input/**"
+  forbidden_paths: []
+  child_task_areas:
+    - "screen-spec"
+    - "implementation"
+    - "unit-test"
+
+branch:
+  no_branch: false
+  name: "feature/epic-<issue-number>-scr-002-recommendation-input"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "web"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic の scope が広すぎないか確認する"
+    - "子 Task に分割可能な粒度か確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が広すぎないか"
+    - "epic_scope.allowed_paths が SCR-002 配下 Task に妥当か"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Epic は作業計画を Issue、統合を Epic PR で管理する"
+
+risk_points:
+  - "Epic scope が広すぎて子 Task 分割が遅れる可能性"
+  - "Task PR を develop に直接向けてしまう運用ミス"
+
+human_decision_points:
+  - "子 Task の分割粒度（設計 / 実装 / テストの切り方）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "Epic を Task PR の target にしてしまう設計が必要になった場合"
+
+notes:
+  - "Epic は作業管理単位であり、成果物 docs の正本は子 Task で作成する"
+  - "このファイルは Epic Definition の記入例であり、実 Epic の正本ではない"
+  - "正本構造は Task Definition設計書 §9.1・§10、_schemas/epic-definition.schema.md を参照する"
