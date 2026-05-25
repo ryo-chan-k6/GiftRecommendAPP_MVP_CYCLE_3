@@ -10,6 +10,10 @@ body:
         Task Issueは、1 Task = 1 Branch = 1 PRを基本とする作業計画の正本です。
         Task BranchはParent Epic Branchから作成し、Task PRはParent Epic Branchへ向けます。
 
+        ---
+
+        ## 1. 基本情報
+
   - type: input
     id: unit
     attributes:
@@ -65,6 +69,13 @@ body:
       placeholder: feature/epic-123-recommendation-input
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 2. Project / schedule
 
   - type: dropdown
     id: project_phase
@@ -158,15 +169,38 @@ body:
     validations:
       required: true
 
-  - type: input
+  - type: dropdown
     id: milestone
     attributes:
       label: Milestone
-      description: 紐づけるMilestone名を記載してください。不要な場合は `なし` と記載してください。
-      placeholder: 実装設計工程完了 / なし
-      value: なし
+      description: 紐づけるMilestoneを選択してください。不要な場合は `なし` を選択してください。
+      options:
+        - 事業構想工程完了
+        - ドメイン探索工程完了
+        - ドメイン要件定義工程完了
+        - ドメインモデル設計工程完了
+        - アプリケーション設計工程完了
+        - 実装設計工程完了
+        - 開発・単体テスト工程完了
+        - モジュール結合テスト工程完了
+        - コンポーネント結合テスト工程完了
+        - システムテスト工程完了
+        - 非機能テスト工程完了
+        - レコメンド品質評価テスト工程完了
+        - 受入テスト工程完了
+        - リリース工程完了
+        - 運用・改善サイクル
+        - なし
+      default: 15
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 3. Branch作成
 
   - type: input
     id: branch_summary
@@ -185,6 +219,13 @@ body:
       options:
         - label: no-branch
           required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 4. 作業内容
 
   - type: textarea
     id: background
@@ -221,6 +262,13 @@ body:
         - 
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 5. 入出力
 
   - type: textarea
     id: input_docs
@@ -287,6 +335,13 @@ body:
         扱い: generatedファイルは手動編集しない
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 6. 完了・レビュー
 
   - type: textarea
     id: acceptance_criteria
