@@ -20,17 +20,18 @@ Branch 作成抑止（no-branch）の**正本**は [Issue運用ルール](../../
 
 実装ファイル：`.github/workflows/issue-metadata-project-branch.yml`（表示名: **Issue metadata project and branch sync**）
 
-Project の **Status / Phase / Priority / Area / Planned Start / Due Date** は、同workflowがIssue本文から同期する。フィールド一覧は [Projects運用ルール](../Projects運用ルール.md) を参照。
+Project の **Status / Phase / Priority / Area / Planned Start / Due Date / Actual Start** は、同workflowがIssue本文およびBranch作成結果から同期する。フィールド一覧は [Projects運用ルール](../Projects運用ルール.md) を参照。
 
 ### 1.1 目的（2段階）
 
 1. **Issue メタデータ同期（Step 1）**  
    Issue フォーム（`.github/ISSUE_TEMPLATE/epic.yml` / `task.yml` / `contract-task.yml`）から作成された Issue の本文（`### 見出し` 形式）を読み取り、次を自動設定する。
    - **Labels**: `unit:*` / `type:*` / `area:*` / `priority:*`。※`no-branch` Label は運用方針上付与しない（§0）
-   - **Milestone**: ドロップダウン値がリポジトリのオープンな Milestone タイトルと一致する場合に紐づけ。「なし」で Milestone を外す。
+   - **Milestone**: `Milestone` 入力値がリポジトリのオープンな Milestone タイトルと一致する場合に紐づけ。「なし」で Milestone を外す。
+   - **Project fields**: Status / Phase / Priority / Area / Planned Start / Due Date を同期する。Phase はProjects正式値を優先し、旧テンプレート由来の `実装設計工程完了` などは互換正規化する。
    - **Relationships（Sub-issue）**: 親 Issue 欄の `#番号` を親の **Issue `number`** として解釈し、REST `POST .../issues/{parent_number}/sub_issues` で子を追加する。ボディの `sub_issue_id` は **`#` 表示番号ではなく**、子 Issue の REST オブジェクトの **`id`（数値 ID）** を渡す（GitHub API 仕様）。
 2. **作業ブランチの作成（Step 2）**  
-   Issue の状態・ラベル（`unit` / `type`）・**Issue 本文の no-branch チェック**に基づき、作業用ブランチを作成する。
+   Issue の状態・ラベル（`unit` / `type`）・**Issue 本文の no-branch チェック**に基づき、作業用ブランチを作成する。Branchを新規作成した場合のみ、Project `Actual Start` にJST当日を設定する。
 
 併せて、作成した作業ブランチを **Issue の Development（リンク済みブランチ）として表示可能な状態** にすることを要件とする。単に Git の `refs/heads/...` を追加するだけでは Development に表示されない場合があるため、Issue との **linked branch** を張る API（後述の GraphQL `createLinkedBranch` 等）を用いる。
 
@@ -38,7 +39,7 @@ Project の **Status / Phase / Priority / Area / Planned Start / Due Date** は�
 
 Step 1 が `GITHUB_TOKEN` で Issue を更新しても、同一リポジトリ内の別ワークフロー実行は原則 **自動では起動しない**（GitHub の制限）。そのため **`issues.opened` の同一実行内**で Step 1 の直後に Step 2 を走らせ、ラベル付与後のブランチ作成を完結させる。
 
-人が UI でラベルを変更した場合は従来どおり `labeled` / `unlabeled` / `edited` で本ワークフローが再実行され、Step 1 は条件によりスキップされ、Step 2 のみが評価される。
+人が UI でIssue本文を編集した場合は `edited` で本ワークフローが再実行され、本文からメタデータ同期とBranch作成条件を再評価する。
 
 対象リポジトリ：
 
@@ -53,7 +54,8 @@ GiftRecommendAPP_MVP_CYCLE_3
 | トリガー        | 内容                                         |
 | --------------- | -------------------------------------------- |
 | Issue作成       | Issueが新規作成された場合                    |
-| Issueラベル変更 | `unit:*` / `type:*` 等が付与・変更された場合 |
+| Issue編集       | Issue本文が編集された場合                    |
+| Issue再オープン | Issueが再オープンされた場合                  |
 | 手動実行        | GitHub Actions画面から再実行する場合         |
 
 GitHub Actions上の想定：
@@ -63,19 +65,17 @@ on:
   issues:
     types:
       - opened
-      - labeled
-      - unlabeled
       - edited
+      - reopened
   workflow_dispatch:
     inputs:
       issue_number: ...
       dry_run: ...
-      sync_metadata: ...  # true のときのみ Step 1 を実行（既定 false）
 ```
 
 補足：
 
-- **Step 1（メタデータ同期）**は `issues.opened` と `issues.edited` で実行される。`workflow_dispatch` では `sync_metadata` が `true` のときのみ実行される。`labeled` / `unlabeled` では Step 1 はスキップし、Step 2（ブランチ処理）のみ行う。
+- **Step 1（メタデータ同期）**は `issues.opened` / `issues.edited` / `issues.reopened` / `workflow_dispatch` で実行される。Issueフォーム本文を解決できない場合はスキップする。
 - ProjectsのStatus変更を直接トリガーにするのはGitHub Actions標準では扱いづらいため、初期運用では対象外とする。
 - Status連動が必要な場合は、別途Projects連携ワークフローで対応する。
 
@@ -86,7 +86,8 @@ on:
 | 対象本文 | Issue 本文に `### 作業単位` が含まれる場合のみ Task フォームとみなし同期する。含まれない場合は no-op（手動作成 Issue 等）。 |
 | ラベル合成 | フォームから算出した **管轄ラベル**（上記プレフィックスおよび補助ラベル）を置き換え、それ以外の既存ラベルは維持する。 |
 | unit/type 検証 | フォームから `unit:*` および `type:*` がそれぞれ1つに確定できない場合はラベル・Milestone・親子の同期を行わない（警告ログ）。 |
-| Milestone | セクション「プロジェクト工程」が存在し、先頭行が `なし` なら Milestone 解除。それ以外はオープンな Milestone のタイトルと **完全一致** で解決。見つからない場合は Issue コメントで警告（ブランチ処理は続行）。 |
+| Milestone | セクション「Milestone」が存在し、先頭行が `なし` なら Milestone 解除。それ以外はオープンな Milestone のタイトルと **完全一致** で解決。見つからない場合は Issue コメントで警告（ブランチ処理は続行）。 |
+| Project fields | `Status` を `In Progress` にし、`Phase` / `Priority` / `Area` / `Planned Start` / `Due Date` を同期する。`Phase` は `06_実装設計` などの正式値を優先し、旧Milestone風表記も互換候補として扱う。 |
 | 親子 | 親Issue欄の `#数字` で親の `number` を決定し、子は `issues.get` の **`id`** を `sub_issue_id` に渡して Sub-issue を登録。自分自身・親が Open でない・API 失敗時はコメントで通知しブランチ処理は続行。API 失敗時のコメントには **`status` とレスポンス本文の先頭**を含め、原因切り分けに使う。 |
 | dry_run | `workflow_dispatch` の `dry_run=true` のとき、Step 1 も API 呼び出しを行わずログのみ。 |
 
@@ -96,9 +97,11 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 
 - **対象領域（複数選択）**: 改行・カンマ・読点で分割し、`area:*` に変換する。実際のレンダリングが変わった場合はサンプル Issue の本文を確認してパーサを調整する。
 
-### Milestone とテンプレートの運用
+### Project Phase / Milestone とテンプレートの運用
 
-Issue テンプレートの「プロジェクト工程」ドロップダウン `options` は、リポジトリの **オープンな Milestone タイトル** と一致させること。Milestone を追加・改名したら **テンプレートも追随**する。
+Issue テンプレートの「プロジェクト工程」ドロップダウン `options` は、Projects `Phase` の正式値（例: `06_実装設計`）と一致させること。Milestone は別入力 `Milestone` で扱う。
+
+既存Issue本文に旧テンプレートの `実装設計工程完了` のようなMilestone風表記が残る場合、workflowは互換候補を生成して正式Phase値へ正規化する。旧テンプレートの `結合・総合テスト工程完了` は互換上 `08_モジュール結合テスト` を候補にするため、より詳細なPhaseへ分ける必要がある場合はIssue本文を正式値へ修正して再実行する。
 
 ## 3. 対象スコープ
 
@@ -219,6 +222,7 @@ flowchart TD
     H -- No --> J[developの最新SHA取得]
     J --> K[リンク付きブランチ作成]
     K --> L[Issueへ作成結果コメント]
+    L --> M[Project Actual StartをJST当日へ更新]
 
     H -- Yes --> N[何もしない（終了）]
 ```
@@ -234,6 +238,7 @@ flowchart TD
 | 既存確認     | 下記の`既存確認処理詳細`を参照                                                                                                                               |
 | base取得     | `develop` の最新commit SHAを取得                                                                                                                             |
 | branch作成   | ブランチ命名ルールに従った名称で **Issue にリンクした作業ブランチ** を作成する（GraphQL `createLinkedBranch` 等。単なる `git.createRef` のみとしない）。 |
+| Actual Start同期 | Branchを新規作成した場合のみ、Project `Actual Start` をJST当日に更新する。既存Branch、`no-branch`、Branch作成失敗時は上書きしない。 |
 | 結果通知     | Issueにコメント投稿                                                                                                                                          |
 | 警告通知     | 自動作成できない場合はIssueに警告コメント投稿                                                                                                                |
 
@@ -345,6 +350,7 @@ sanitizeルール：
 | ------------------ | ---------------- |
 | Git branch         | 作業用ブランチ（リモート ref） |
 | Issue とブランチの関連 | Issue の **Development** に、当該作業ブランチが linked branch として表示される状態 |
+| Project item       | Branch新規作成時に `Actual Start` がJST当日へ更新された状態 |
 | Issue comment      | 作成結果コメント |
 | GitHub Actions log | 実行ログ         |
 

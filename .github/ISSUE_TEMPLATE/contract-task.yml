@@ -10,6 +10,10 @@ body:
         Contract Task Issueは、API contract、OpenAPI、Orval、generated、provider / consumer影響を通常Taskから分離して管理する作業計画です。
         破壊的変更、DB schema変更、security影響がある場合は、人間判断を必須にしてください。
 
+        ---
+
+        ## 1. 基本情報
+
   - type: input
     id: unit
     attributes:
@@ -84,17 +88,35 @@ body:
     validations:
       required: true
 
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 2. Project / schedule
+
   - type: dropdown
     id: project_phase
     attributes:
       label: プロジェクト工程
       description: Project Phase / Milestone同期に使う工程を選択してください。
       options:
-        - 実装設計工程完了
-        - 開発工程完了
-        - アプリケーション設計工程完了
-        - 結合・総合テスト工程完了
-        - 運用・改善工程完了
+        - 01_事業構想
+        - 02_ドメイン探索
+        - 03_ドメイン要件定義
+        - 04_ドメインモデル設計
+        - 05_アプリケーション設計
+        - 06_実装設計
+        - 07_開発・単体テスト
+        - 08_モジュール結合テスト
+        - 09_コンポーネント結合テスト
+        - 10_システムテスト
+        - 11_非機能テスト
+        - 12_レコメンド品質評価テスト
+        - 13_受入テスト
+        - 14_リリース
+        - 15_運用・改善
+        - 90_PoC
         - なし
     validations:
       required: true
@@ -165,15 +187,38 @@ body:
     validations:
       required: true
 
-  - type: input
+  - type: dropdown
     id: milestone
     attributes:
       label: Milestone
-      description: 紐づけるMilestone名を記載してください。不要な場合は `なし` と記載してください。
-      placeholder: 実装設計工程完了 / なし
-      value: なし
+      description: 紐づけるMilestoneを選択してください。不要な場合は `なし` を選択してください。
+      options:
+        - 事業構想工程完了
+        - ドメイン探索工程完了
+        - ドメイン要件定義工程完了
+        - ドメインモデル設計工程完了
+        - アプリケーション設計工程完了
+        - 実装設計工程完了
+        - 開発・単体テスト工程完了
+        - モジュール結合テスト工程完了
+        - コンポーネント結合テスト工程完了
+        - システムテスト工程完了
+        - 非機能テスト工程完了
+        - レコメンド品質評価テスト工程完了
+        - 受入テスト工程完了
+        - リリース工程完了
+        - 運用・改善サイクル
+        - なし
+      default: 15
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 3. Branch作成
 
   - type: input
     id: branch_summary
@@ -192,6 +237,13 @@ body:
       options:
         - label: no-branch
           required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 4. Contract変更内容
 
   - type: textarea
     id: change
@@ -229,6 +281,13 @@ body:
         - 
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 5. Contract入出力・影響
 
   - type: textarea
     id: input_contract
@@ -296,6 +355,13 @@ body:
         検証コマンド:
     validations:
       required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+
+        ## 6. 完了・レビュー
 
   - type: textarea
     id: acceptance_criteria
