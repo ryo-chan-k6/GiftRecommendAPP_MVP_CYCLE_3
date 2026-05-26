@@ -1,0 +1,249 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-api-int-002-reco-recommendation-run"
+  title: "API-INT-002:Reco推薦実行"
+  summary: "API-INT-002（Reco推薦実行 / Internal API、POST /internal/reco/v1/recommendations/run）に関するAPI仕様書・OpenAPI（internal）連携・recoエンドポイント実装・単体テストを管理するEpic。apps/api から呼ばれ、Recoモジュール群（MOD-RECO-001 等）を駆動してRecommendation Resultを返す。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/create-contract-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計において、API-INT-002（Reco推薦実行 / Internal API）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  本 API は apps/api → apps/reco 間の内部 API であり、Recommendation Request を受け取り、Recoモジュール群（MOD-RECO-001 推薦実行制御を起点とする推薦パイプライン）を駆動して Recommendation Result を返す。
+  本 Epic は apps/reco の **エンドポイント層**（`apps/reco/src/app/**`）の責務に限定し、推薦ロジックそのもの（Orchestrator / Retrieval / Matching / Ranking / Reason 生成）の変更は依存 Epic（[Epic]MOD-RECO-001 等）配下の Task として扱う。
+  子 Task は Internal API 仕様書・OpenAPI（internal）連携（Contract Task として分離想定）・reco エンドポイント実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+
+objective: |
+  API-INT-002 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths（apps/reco/src/app 等のエンドポイント層）から外れないことをガードする。
+  推薦ロジックそのもの（apps/reco/src/modules 等）の変更は依存 Epic（[Epic]MOD-RECO-001 等）配下の Task として切る運用を明示する。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "API-INT-002 に関する子 Task の作業単位を整理する（API仕様書 / OpenAPI連携 / reco エンドポイント実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/api-int-002-reco-recommendation-run/**）を整理する"
+  - "依存 Epic（MOD-RECO-001）の Status を子 Task 開始前に確認する運用を明示する"
+  - "OpenAPI（internal）/ 内部 API client（apps/api 側）への影響整理を Contract Task として分離する方針を明示する"
+
+out_of_scope:
+  - "API-PUB-002（レコメンド実行 / Public API）の仕様・実装変更（[Epic]API-PUB-002 で扱う）"
+  - "Recoモジュール本体の設計・実装（[Epic]MOD-RECO-001 等で扱う）"
+  - "画面（SCR-002 等）の設計・実装"
+  - "Batch 実装"
+  - "DB schema 変更"
+  - "認証・認可方式そのものの変更"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-INT-002 の endpoint / API種別（Internal API）/ Method / MVP対象 / 関連モジュールを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Internal API の URL 設計・Method・認証・Error 形式・バージョニングの方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001（推薦実行制御）を起点とする推薦パイプラインの責務境界とエンドポイント層との関係を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "API-INT-002 / MOD-API-005 / MOD-RECO-001 の接続と Reco Ranking 責務分離（MOD-RECO-019 / 020）を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "Internal API の Error Response / GRS-REC-* / GRS-LLM-* 等の参照を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "Internal API の phase_log / error_log / metric / trace_id 方針を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）・API-INT Epic の典型 allowed_paths / forbidden_paths（§3.5.2）を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）・個別API Task 命名（§15.2）を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]API-INT-002:Reco推薦実行）"
+  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-api-int-002-reco-recommendation-run）"
+  - "子 Task 候補一覧（API仕様書 / OpenAPI / reco エンドポイント実装 / 単体テスト）"
+  - "epic_scope.allowed_paths / forbidden_paths による配下 Task のファイル境界宣言（推薦ロジック層を forbidden 化）"
+  - "依存 Epic（MOD-RECO-001）の参照"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]API-INT-002:Reco推薦実行 形式である（Task Definition設計書 §15.0）"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位（API仕様書 / OpenAPI / reco エンドポイント実装 / 単体テスト）が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が apps/reco エンドポイント層・openapi/internal 配下・docs/06_実装設計/api/API-INT-002_* に限定されている"
+  - "epic_scope.forbidden_paths に apps/reco/src/modules/** など推薦ロジック本体が明示されている（成果物化方針書 §3.5.2）"
+  - "依存 Epic に MOD-RECO-001 が dependencies.epics として記載されている（Issue 番号確定後に追記）"
+
+branch:
+  no_branch: false
+  name: "feature/epic-<issue-number>-api-int-002-reco-recommendation-run"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: "API-INT-002"
+  allowed_paths:
+    - "docs/06_実装設計/api/API-INT-002_*"
+    - "apps/reco/src/app/recommendations/**"
+    - "apps/api/src/lib/reco-client/**"
+    - "openapi/internal/recommendations/**"
+    - "openapi/internal/components/schemas/recommendation/**"
+    - "prompts/definitions/tasks/api-int-002-reco-recommendation-run/**"
+    - "prompts/definitions/reviews/api-int-002-reco-recommendation-run/**"
+  forbidden_paths:
+    - "apps/reco/src/modules/**"
+    - "apps/reco/src/domain/**"
+    - "apps/api/src/app/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "openapi/paths/**"
+    - "db/**"
+  child_task_areas:
+    - "api-spec"
+    - "openapi"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics: []  # 依存Epic: [Epic]MOD-RECO-001:Recommendation Orchestrator（実Issue番号確定後に追加）。成果物化方針書 §3.5.3。
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "medium"
+  contract_impact: true
+  generated_impact: true
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が Internal API エンドポイント層に閉じているか確認する"
+    - "apps/reco/src/modules 等の推薦ロジック本体を変更する Task が混入していないか確認する"
+    - "子 Task に分割可能な粒度か確認する"
+    - "依存 Epic [Epic]MOD-RECO-001 の有無を確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "contract test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+    "contract test": "OpenAPI（internal）変更を伴う子 Task でのみ実施するため、Epic 直下では対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が Internal API エンドポイント層に閉じているか（推薦ロジック本体を含めていないか）"
+    - "epic_scope.allowed_paths / forbidden_paths が成果物化方針書 §3.5.2 の API-INT 例と整合しているか"
+    - "依存 Epic [Epic]MOD-RECO-001 が dependencies.epics に追記される運用が明示されているか"
+    - "OpenAPI（internal）変更を Contract Task として分離する方針が明示されているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: true
+  reason: "本 Epic は OpenAPI（internal）/ apps/api 側 reco-client / Recoモジュール群との境界に影響するため、横断影響が判明した時点で ai-logs/cross-cutting への記録余地を残す。"
+
+risk_points:
+  - "apps/reco/src/modules（推薦ロジック本体）の変更が誤って配下 Task に混入し scope 越境する可能性"
+  - "OpenAPI（internal）変更を通常 Task に混入させ Contract Task 分離を逃す可能性"
+  - "依存 Epic [Epic]MOD-RECO-001 が未起票のまま子 Task を開始する運用ミス"
+  - "Task PR を誤って develop へ直接向けてしまう運用ミス"
+
+human_decision_points:
+  - "依存 Epic [Epic]MOD-RECO-001 の Issue 番号確定タイミング"
+  - "OpenAPI（internal）変更を Contract Task として分離するタイミング"
+  - "子 Task の分割粒度（API仕様書 / OpenAPI / 実装 / 単体テストの切り方）"
+  - "Internal API Response に含める score / reason / debug 情報の範囲（API-PUB-002 と MOD-RECO の責務境界）"
+  - "apps/reco を常駐 FastAPI 等のサービスとして扱う前提（API一覧 §API-INT-001 のメモ）に関する変更要否"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "API一覧に API-INT-002 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "Task PR の target が develop に向く設計が必要になった場合"
+  - "apps/reco/src/modules 配下への変更を本 Epic 配下 Task で実施する必要が出た場合（[Epic]MOD-RECO-001 等へ切り出す）"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、API仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "命名の正本は Task Definition設計書 §15.0（Epic タイトル規約）・§15.2（個別API Task）"
+  - "本 Epic 配下の最初の子 Task は prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml"
+  - "依存 Epic Issue 番号は実 Issue 起票後に dependencies.epics へ追記する（成果物化方針書 §3.5.3）"
+  - "OpenAPI（internal）/ generated 変更を伴う子 Task は Contract Definition として分離する（成果物化方針書 §3）"

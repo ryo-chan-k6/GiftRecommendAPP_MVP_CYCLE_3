@@ -70,6 +70,13 @@ review:
 
 work_mode: "ai-agent"
 
+branch:
+  no_branch:
+  name:
+  base:
+  target:
+  worktree_required:
+
 target:
   pr:
   issue:
@@ -151,11 +158,49 @@ outputs:
   create_follow_up_issue:
   ai_logs:
 
+project:
+  project_name:
+  fields:
+    phase:
+    status:
+    priority:
+    planned_start:
+    due_date:
+
+issue:
+  unit:
+  type:
+  area:
+
+dependencies:
+  epics:
+  issues:
+  prs:
+  tasks:
+  blocking:
+
+parallel_control:
+  depends_on:
+  blocks:
+  exclusive_files:
+  conflict_risk:
+  generated_impact:
+  contract_impact:
+  db_impact:
+
+test_policy:
+  required:
+  commands:
+  manual_checks:
+  not_required:
+  skip_reason:
+
 operation_logging:
   level:
   ai_logs:
   reason:
 
+risk_points:
 human_decision_points:
 stop_conditions:
 notes:
@@ -191,7 +236,14 @@ notes:
 | `result_policy`               | 必須     | レビュー結果分類          |
 | `status_policy`               | 必須     | Status更新意図            |
 | `outputs.pr_comment_template` | 必須     | PRコメントテンプレート    |
+| `branch.no_branch`            | 必須     | Reviewでは原則 `true`     |
+| `project.project_name`        | 必須     | Project同期項目           |
+| `issue.unit` / `issue.type` / `issue.area` | 必須 | Issue同期分類             |
+| `dependencies`                | 必須     | 関連Issue / PR / Task     |
+| `parallel_control`            | 必須     | 差分・並列作業制御        |
+| `test_policy`                 | 必須     | レビュー時の検証方針      |
 | `operation_logging.level`     | 必須     | AIログ運用レベル          |
+| `risk_points`                 | 推奨     | レビュー上のリスク観点    |
 | `human_decision_points`       | 必須     | 人間判断事項              |
 | `stop_conditions`             | 必須     | 停止条件                  |
 
@@ -248,12 +300,12 @@ work_mode: "ai-agent"
 | 配置   | `review` ブロック直後（推奨）  |
 | 許容値 | `human-led`, `ai-agent`        |
 
-| `work_mode`   | `branch.no_branch` 標準値 | 説明                                                       |
-| ------------- | ------------------------- | ---------------------------------------------------------- |
-| `human-led`   | `true`                    | 未来着手Issue。着手まで Branch 作成を遅延                  |
-| `ai-agent`    | `false`                   | Issue 作成後に Branch 作成まで進める（Task / Contract 標準） |
+| `work_mode`   | `branch.no_branch` 標準値 | 説明                                                        |
+| ------------- | ------------------------- | ----------------------------------------------------------- |
+| `human-led`   | `true`                    | 人間主導でレビュー予定を管理する                            |
+| `ai-agent`    | `true`                    | `/review-pr` は既存PRを確認するCommandであり新規Branchを作らない |
 
-**Review Definition の補足:** `/review-pr` のみで利用し Issue を新規作成しない場合は `branch` ブロックを省略してよい。Issue 作成や `/start-task` 連携時は `branch` を記載し、PRレビューで新規 Branch を作らない場合は `ai-agent` + `no_branch: true` とし、`human_decision_points` に理由を明記する（§19.5）。
+**Review Definition の補足:** 最新構造では `/review-pr` のみで利用する場合も `branch` ブロックを記載し、`branch.no_branch: true` とする。Review Definitionはレビュー条件を定義するものであり、Task Issue / Branch を新規作成する作業定義ではない。
 
 `/review-pr` では、記載がある `work_mode` と `branch.no_branch` の整合を確認する。
 
@@ -1053,9 +1105,9 @@ AIが独断で判断してはいけない論点を明示する。
 
 ---
 
-## 19.5 `branch`（任意）
+## 19.5 `branch`
 
-Issue 作成・`/start-task` 連携時のみ記載する。`/review-pr` のみの Review Definition では省略可。
+Review Definitionでは、既存PRをレビューする前提を明確にするため `branch` を記載する。原則として新規Branchを作成しないため、`branch.no_branch: true` とする。
 
 ```yaml
 branch:
@@ -1063,11 +1115,15 @@ branch:
   name: null
   base: null
   target: null
+  worktree_required: false
 ```
 
 | 項目        | 必須     | 内容                                                        |
 | ----------- | -------- | ----------------------------------------------------------- |
-| `no_branch` | 条件付き | `branch` 記載時は必須。`work_mode` 標準値と一致必須（§16.2） |
+| `no_branch` | 必須     | Review Definitionでは原則 `true`                            |
+| `name`      | 必須     | Review用Branchは作成しないため `null`                       |
+| `base`      | 必須     | Review用Branchは作成しないため `null`                       |
+| `target`    | 必須     | Review用Branchは作成しないため `null`                       |
 
 `review_points.branch` は PR の Branch 運用確認観点であり、本ブロックとは別物とする。
 
@@ -1125,6 +1181,13 @@ review:
   status: "draft"
 
 work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
 
 target:
   pr: null
@@ -1193,8 +1256,10 @@ input:
     required: false
     source: "github_actions"
   templates:
-    pr_comment: "prompts/templates/review/ai-review-comment.md"
-    slack: null
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: null
+    deliverables: []
 
 review_points:
   common:
@@ -1264,6 +1329,48 @@ outputs:
     required: false
     path: null
 
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definitionのacceptance_criteriaを満たしているか確認する"
+    - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
+  not_required: []
+  skip_reason: {}
+
 operation_logging:
   level: "standard"
   ai_logs:
@@ -1272,6 +1379,8 @@ operation_logging:
     cross_cutting: false
     experiments: false
   reason: "通常PRレビューのため、レビュー結果はPRコメントを正本とする"
+
+risk_points: []
 
 human_decision_points: []
 
@@ -1382,8 +1491,15 @@ input:
     required: false
     source: "not_required"
   templates:
-    pr_comment: "prompts/templates/review/ai-review-comment.md"
-    slack: "prompts/templates/slack/ai-review-result.md"
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables:
+      - path: "prompts/templates/docs/screen-spec.md"
+        required: true
+        purpose: "Task成果物が指定テンプレートに沿って作成されているか確認するため"
+        applies_to:
+          - "docs/05_実装設計/画面仕様書/SCR-002 レコメンド条件入力画面仕様書.md"
 
 review_points:
   common:
@@ -1461,6 +1577,53 @@ outputs:
     required: false
     path: null
 
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics: []
+  issues:
+    - "#102"
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definitionのacceptance_criteriaを満たしているか確認する"
+    - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definitionはレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
 operation_logging:
   level: "standard"
   ai_logs:
@@ -1469,6 +1632,10 @@ operation_logging:
     cross_cutting: false
     experiments: false
   reason: "通常PRレビューのため、レビュー結果はPRコメントを正本とする"
+
+risk_points:
+  - "Task Definitionのscope外変更を見落とす可能性"
+  - "PR本文の未実施テスト理由不足を見落とす可能性"
 
 human_decision_points:
   - "画面仕様がMVP範囲として妥当か"
@@ -1500,7 +1667,7 @@ Review Definition作成・修正時は、以下を確認する。
 - `schema_version` がある
 - `definition_type: review` である
 - `work_mode` がある（`human-led` または `ai-agent`）
-- `branch` を記載している場合、`work_mode` と `branch.no_branch` が §16.2 の標準値と一致している（例外時は `human_decision_points` に理由必須）
+- `branch` があり、`branch.no_branch: true` である
 - `review.id` がある
 - `review.title` がある
 - `review.type` がある
@@ -1517,7 +1684,13 @@ Review Definition作成・修正時は、以下を確認する。
 - `result_policy` がある
 - `status_policy` がある
 - `outputs.pr_comment_template` がある
+- `project.project_name` と `project.fields` がある
+- `issue.unit` / `issue.type` / `issue.area` がある
+- `dependencies` がある
+- `parallel_control` がある
+- `test_policy` がある
 - `operation_logging.level` がある
+- `risk_points` がある
 - `stop_conditions` がある
 
 ---

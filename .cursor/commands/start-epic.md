@@ -154,16 +154,53 @@ Task Definition設計書 §15.0 / [成果物一覧×Task Definition化方針書]
 - テンプレート: `prompts/templates/issue/epic-issue.md`
 - Issue タイトル: `[Epic]` + `epic.title`（**直後に半角スペースを入れない**。Task Definition設計書 §15.0）
 - Issue 本文に GitHub Label 一覧は**含めない**（`unit` / `type` / `area` / `priority` は本文分類と workflow 導出）
+- Issue 本文の `Planned Start` / `Due Date` は、Issue作成時点のJST日付で明示的に埋める。`project.fields.planned_start` / `project.fields.due_date` に `{{issue_created_date}}` / `{{issue_created_date+2d}}` が指定されている場合、またはAI主導Epicで未指定の場合、テンプレートへプレースホルダを残さず以下の解決後値を入れる。
+
+| 項目 | 解決値 | 形式 |
+| ---- | ------ | ---- |
+| `project.fields.planned_start` | Issue作成日（JST） | `YYYY-MM-DD` |
+| `project.fields.due_date` | Issue作成日（JST） + 2日 | `YYYY-MM-DD` |
+
+明示的な日付がDefinitionに指定されている場合はその値を使用する。ただし、AI主導Epicで標準値と異なる場合は、チャット出力のProject同期項目に「Definition明示値」として根拠を残す。日付計算に失敗した場合はIssue作成前に停止し、未解決プレースホルダをIssue本文へ出力しない。
 
 ### 8. Epic Issue を作成する
 
-dry-run 指定時は作成せず、生成予定本文と同期項目をチャットに出力する。
+dry-run 指定時は作成せず、dry-run実行日のJST日付をIssue作成予定日として `Planned Start` / `Due Date` を解決し、生成予定本文と同期項目をチャットに出力する。実作成時は実行日のJST日付で再計算する。
+
+### 8.5 実Issue番号を関連Definitionへ反映する
+
+Epic Issue 作成に成功した場合、AI Agent は GitHub が返した**実 Issue 番号**を関連 Definition へ反映する。`branch.no_branch: false` の場合は、§13 で Epic Branch 作成に成功した後、確定した Epic Branch 名もあわせて反映する。
+
+反映してよい値は、以下で実在確認できたものに限定する。
+
+| 値 | 確認方法 |
+| ---- | -------- |
+| Epic Issue 番号 | `gh issue view <番号>` または Issue 作成結果 URL |
+| Epic Branch 名 | `git branch -a` または `git ls-remote --heads origin <branch>` |
+
+反映対象は以下。
+
+| 対象Definition | 反映項目 |
+| -------------- | -------- |
+| 配下 Task Definition | `parent.epic_issue_number` / `parent.epic_branch` |
+| 本 Epic に依存する Task / Epic Definition | `dependencies.epics` |
+| 必要に応じた Review Definition | `target.parent_epic_issue` / `target.parent_epic_branch` |
+
+ガード条件:
+
+- 実 Issue 番号を推測で記入しない。
+- Issue タイトル検索で複数候補が出た場合は更新せず、人間確認へ回す。
+- Epic Branch が未作成または未確認の場合、`parent.epic_branch` / `target.parent_epic_branch` は更新せず、人間確認へ回す。
+- `dependencies.epics` に同じ Issue 番号を重複追加しない。
+- 対象 Definition が特定できない場合は、チャットで「未反映項目」として明示する。
+- dry-run では Definition を更新せず、反映予定の項目だけを出力する。
+- `.env` 実値、token、secret を表示・保存しない。
 
 ### 9. Project へ追加する
 
 ### 10. Project フィールドを同期する
 
-`project.fields` の更新意図を明示する。成功時は `Todo` → `In Progress` へ進める意図を出す（Projects 正本は GitHub Projects）。
+`project.fields` の更新意図を明示する。`planned_start` / `due_date` は §7 で解決した日付を同期対象とし、Issue本文・Project同期意図・dry-run出力で同じ値を使用する。成功時は `Todo` → `In Progress` へ進める意図を出す（Projects 正本は GitHub Projects）。
 
 ### 11. Label を同期する
 
@@ -235,6 +272,7 @@ Slack通知運用設計書に従う。
 - `dependencies.epics` が API-PUB / API-INT / SCR Epic で未記載
 - `work_mode` と `branch.no_branch` が §17.2 と矛盾し、`human_decision_points` に理由がない
 - Branch base / target が Epic として `develop` でない（人間判断なしの例外を認めない）
+- Issue本文の `Planned Start` / `Due Date` をJST日付へ解決できない、または `{{issue_created_date}}` / `{{issue_created_date+2d}}` が本文に残る
 - 横断影響（OpenAPI / Orval / generated）を Epic に無断で混在させている
 - secret や権限に関わる不明点がある
 

@@ -6,10 +6,12 @@ task:
   title: "SCR-002:レコメンド条件入力画面仕様書作成"
   summary: "SCR-002（レコメンド条件入力画面）の画面仕様書（SCR-002_レコメンド条件入力画面画面仕様書.md）を、画面一覧・画面遷移図・Recommendation Request定義書・API一覧に基づいて作成する。"
 
+work_mode: "ai-agent"
+
 parent:
-  epic_issue: "[Epic]Web画面実装設計"
-  epic_issue_number: "#301" # 参照配置値。GitHub 実在は /start-task §5.1 で確認
-  epic_branch: "feature/epic-301-web-screens"
+  epic_issue: "[Epic]SCR-002:レコメンド条件入力画面"
+  epic_issue_number: null  # 実Issue起票後に追記。/start-task §5.1 で GitHub 実在確認。
+  epic_branch: "feature/epic-<issue-number>-scr-002-recommendation-input"
   related_issues: []
   related_prs: []
 
@@ -50,10 +52,11 @@ scope:
   - "利用 API・マスタ取得・バリデーション方針を整理する"
 
 out_of_scope:
-  - "他画面（SCR-001 以外の全画面）の画面仕様書作成"
-  - "個別API仕様書の作成・更新"
+  - "他画面（SCR-002 以外の全画面）の画面仕様書作成"
+  - "個別API仕様書の作成・更新（API-PUB-002 / API-PUB-005〜008 等は別Task）"
   - "OpenAPI / generated / ソースコード実装"
   - "認証・認可方式そのものの変更"
+  - "Recommendation Request 定義書そのものの変更"
 
 input:
   docs:
@@ -69,6 +72,15 @@ input:
     - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
       required: true
       purpose: "画面から呼び出す API（マスタ取得・レコメンド実行等）を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "SCR-002 と API-PUB-002 / API-PUB-005〜008 / 関連画面状態の対応を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: false
+      purpose: "入力エラー・APIエラーの表示方針とエラーコード分類を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+      purpose: "trace_id 表示候補や画面から見えるエラー追跡情報の扱いを確認するため"
     - path: "docs/05_アプリケーション設計/アプリ/機能一覧.md"
       required: false
       purpose: "画面が対応する機能範囲を確認するため"
@@ -102,19 +114,21 @@ deliverables:
   - "SCR-002 画面仕様書"
   - "表示・入力項目定義"
   - "画面遷移・利用 API 整理"
+  - "入力エラー・APIエラー表示方針"
 
 acceptance_criteria:
   - "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md が作成されている"
   - "prompts/templates/docs/screen-spec.md の章構成に準拠している"
   - "画面一覧の SCR-002 と矛盾する画面ID・画面名・MVP対象を定義していない"
   - "Recommendation Request定義書と入力項目が整合している"
+  - "入力エラー・APIエラー表示方針がエラーコード定義書 / ログ・Observability設計書と矛盾していない"
   - "secret、APIキー、.env実値を含んでいない"
 
 branch:
   no_branch: false
   name: "docs/task-<issue-number>-scr-002-recommendation-input-screen-spec"
-  base: "feature/epic-301-web-screens"
-  target: "feature/epic-301-web-screens"
+  base: "feature/epic-<issue-number>-scr-002-recommendation-input"
+  target: "feature/epic-<issue-number>-scr-002-recommendation-input"
   worktree_required: false
 
 project:
@@ -169,6 +183,8 @@ review:
   ai_review_required: true
   review_points:
     - "画面一覧の SCR-002 と整合しているか"
+    - "機能×モジュール対応表の SCR-002 / API-PUB-002 / API-PUB-005〜008 の対応と矛盾していないか"
+    - "入力エラー・APIエラー表示方針がエラーコード定義書 / ログ・Observability設計書と矛盾していないか"
     - "命名が Task Definition設計書 §15.3 に従っているか"
   specialist_reviews:
     docs: true
@@ -192,3 +208,6 @@ stop_conditions:
 notes:
   - "本Taskは画面仕様書作成の試作Taskである。命名の正本は Task Definition設計書 §15.1（共通）・§15.3（画面）。"
   - "Issueタイトル: [Task]SCR-002:レコメンド条件入力画面仕様書作成"
+  - "親Epicは [Epic]SCR-002:レコメンド条件入力画面（識別子単位Epic方針 / 成果物化方針書 §3.5）。実Issue起票後に parent.epic_issue_number / branch.base / branch.target を実値へ更新する。"
+  - "依存Epicは [Epic]API-PUB-002:レコメンド実行。実Issue起票後に dependencies.epics へ追記する（成果物化方針書 §3.5.3）。"
+  - "Epic Definition の正本は prompts/definitions/epics/scr-002-recommendation-input/epic.yaml。"
