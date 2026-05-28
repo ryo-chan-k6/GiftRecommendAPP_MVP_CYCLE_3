@@ -68,7 +68,7 @@ on:
 1. checkout
 2. 入力検証 (Command レジストリ参照 / definition パス prefix / 実ファイル存在 / definition_type 整合 / run_mode==dry-run)
 3. プロンプト組み立て (builder スクリプト呼び出し、secret マスク)
-4. Cursor SDK で Cloud Agent 起動 (Agent.prompt + cloud: { repos: [{ url, ref }] }, autoCreatePR: false)
+4. Cursor SDK で Cloud Agent 起動 (Agent.create + agent.send + cloud: { repos: [{ url, branch }] }, autoCreatePR: false)
 5. post-run 検証 (Issue / PR / Branch 新規作成監視 → 違反検知時は job 失敗)
 6. Job Summary 出力 ($GITHUB_STEP_SUMMARY、secret スキャナ通過後)
 ```
