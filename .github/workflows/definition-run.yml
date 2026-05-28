@@ -211,7 +211,7 @@ jobs:
                   repos: [
                     {
                       url: process.env.REPO_URL,
-                      ref: request.ref,
+                      branch: request.ref,
                     },
                   ],
                   autoCreatePR: false,
