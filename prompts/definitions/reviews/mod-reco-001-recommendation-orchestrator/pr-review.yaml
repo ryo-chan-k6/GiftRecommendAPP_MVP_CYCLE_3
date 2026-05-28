@@ -22,9 +22,9 @@ target:
   issue: null  # 対応 Task Issue 番号を起票後に追記
   task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
   source_branch: "docs/task-<issue-number>-mod-reco-001-recommendation-orchestrator-module-spec"
-  target_branch: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
-  parent_epic_issue: "#259"
-  parent_epic_branch: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  target_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  parent_epic_issue: "#260"
+  parent_epic_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
 
 commands:
   primary: "/review-pr"
@@ -74,7 +74,7 @@ input:
     required: true
   diff:
     required: true
-    compare_with: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+    compare_with: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
   docs:
     - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
       required: true
@@ -157,7 +157,7 @@ review_points:
     - "secret や .env 実値が含まれていないか"
   branch:
     - "Task Branch から develop へ直接 PR していないか"
-    - "PR target が親 Epic Branch（feature/epic-259-mod-reco-001-recommendation-orchestrator）であるか"
+    - "PR target が親 Epic Branch（feature/epic-260-mod-reco-001-recommendation-orchestrator）であるか"
     - "Task PR で Related to #<Task Issue番号> が使われているか"
     - "Task PR で Closes #<Task Issue番号> を使っていないか"
   project:
