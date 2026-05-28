@@ -94,7 +94,7 @@ output:
 
 deliverables:
   - "Epic Issue（タイトル: [Epic]MOD-RECO-001:Recommendation Orchestrator）"
-  - "Epic Branch（develop 起点 / feature/epic-259-mod-reco-001-recommendation-orchestrator）"
+  - "Epic Branch（develop 起点 / feature/epic-260-mod-reco-001-recommendation-orchestrator）"
   - "子 Task 候補一覧（モジュール仕様書 / 実装 / 単体テスト）"
   - "epic_scope.allowed_paths / forbidden_paths による配下 Task のファイル境界宣言（API エンドポイント層を forbidden 化）"
 
@@ -110,7 +110,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  name: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
   base: "develop"
   target: "develop"
   worktree_required: false
