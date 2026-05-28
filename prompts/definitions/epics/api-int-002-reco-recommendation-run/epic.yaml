@@ -29,7 +29,7 @@ agent:
     - "reviewer-ai"
 
 background: |
-  06_実装設計において、API-INT-002（Reco推薦実行 / Internal API）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  06_実装設計および 07_開発・単体テストにおいて、API-INT-002（Reco推薦実行 / Internal API）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。Epic の Projects Phase は完了ゲート（07）、子 Task で成果物工程（06 / 07）を管理する。
   本 API は apps/api → apps/reco 間の内部 API であり、Recommendation Request を受け取り、Recoモジュール群（MOD-RECO-001 推薦実行制御を起点とする推薦パイプライン）を駆動して Recommendation Result を返す。
   本 Epic は apps/reco の **エンドポイント層**（`apps/reco/src/app/**`）の責務に限定し、推薦ロジックそのもの（Orchestrator / Retrieval / Matching / Ranking / Reason 生成）の変更は依存 Epic（[Epic]MOD-RECO-001 等）配下の Task として扱う。
   子 Task は Internal API 仕様書・OpenAPI（internal）連携（Contract Task として分離想定）・reco エンドポイント実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
@@ -128,7 +128,7 @@ branch:
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
-    phase: "06_実装設計"
+    phase: "07_開発・単体テスト"
     status: "Todo"
     priority: "high"
     planned_start: null

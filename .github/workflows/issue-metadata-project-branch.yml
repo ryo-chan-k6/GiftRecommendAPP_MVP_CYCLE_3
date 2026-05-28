@@ -5,7 +5,6 @@ on:
     types:
       - opened
       - edited
-      - reopened
   workflow_dispatch:
     inputs:
       issue_number:
@@ -47,7 +46,7 @@ jobs:
 
             const projectOwner = process.env.PROJECT_OWNER || owner;
             const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
-            const statusInitial = "In Progress";
+            const statusOptions = new Set(["Backlog", "Todo", "In Progress", "AI Review", "Human Review", "Done"]);
             const areaKeys = new Set(["web", "api", "reco", "batch", "db", "docs", "infra", "project"]);
             const typeKeys = new Set(["feature", "fix", "docs", "refactor", "chore", "test", "hotfix", "spike"]);
             const priorityKeys = new Set(["critical", "high", "medium", "low"]);
@@ -99,6 +98,12 @@ jobs:
               const text = String(value || "").trim();
               if (!text) return "";
               return text.split(/\r?\n/)[0].trim();
+            }
+
+            function parseIsoDate(value) {
+              const text = firstLine(value);
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+              return text;
             }
 
             function todayJstYmd(date = new Date()) {
@@ -163,6 +168,16 @@ jobs:
                 .replace(/^-+|-+$/g, "")
                 .slice(0, 64)
                 .replace(/-+$/g, "");
+            }
+
+            function resolveInitialStatus(sections) {
+              const explicit = firstLine(sections["初期Status"]);
+              if (statusOptions.has(explicit)) return explicit;
+              const workMode = firstLine(sections["作業主体"]).toLowerCase();
+              if (workMode === "ai-agent") return "Todo";
+              const planned = parseIsoDate(sections["Planned Start"]);
+              if (!planned) return "Backlog";
+              return planned <= todayJstYmd() ? "Todo" : "Backlog";
             }
 
             function managedLabel(name) {
@@ -347,6 +362,23 @@ jobs:
               }
             }
 
+            async function getFieldDateValue(project, itemId, fieldName) {
+              const query = `
+                query($projectId: ID!, $itemId: ID!, $fieldName: String!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      item(id: $itemId) {
+                        fieldValueByName(name: $fieldName) {
+                          ... on ProjectV2ItemFieldDateValue { date }
+                        }
+                      }
+                    }
+                  }
+                }`;
+              const data = await github.graphql(query, { projectId: project.id, itemId, fieldName });
+              return data.node?.item?.fieldValueByName?.date || "";
+            }
+
             function fieldByName(project, name) {
               return project.fields.nodes.find((field) => field.name === name);
             }
@@ -391,7 +423,7 @@ jobs:
               return true;
             }
 
-            async function syncProjectFields(issueNumber, sections) {
+            async function syncProjectFields(issueNumber, sections, shouldSyncStatus) {
               let project;
               try {
                 project = await loadProject();
@@ -414,7 +446,10 @@ jobs:
               const priority = firstLine(sections["優先度"]).toLowerCase();
               const area = parseListValues(sections["対象領域"])[0]?.toLowerCase();
               const phase = firstLine(sections["プロジェクト工程"]);
-              await updateSingleSelect(project, itemId, "Status", [statusInitial]);
+              if (shouldSyncStatus) {
+                const initialStatus = resolveInitialStatus(sections);
+                await updateSingleSelect(project, itemId, "Status", [initialStatus]);
+              }
               await updateSingleSelect(project, itemId, "Phase", normalizePhaseOptionCandidates(phase));
               await updateSingleSelect(project, itemId, "Priority", [priority, `priority: ${priority}`, priority.toUpperCase(), priority[0]?.toUpperCase() + priority.slice(1)]);
               await updateSingleSelect(project, itemId, "Area", [area, `area: ${area}`, area?.[0]?.toUpperCase() + area?.slice(1)]);
@@ -422,7 +457,7 @@ jobs:
               await updateDate(project, itemId, "Due Date", sections["Due Date"]);
             }
 
-            async function syncActualStart(issueNumber, date) {
+            async function syncActualStart(issueNumber, date, onlyIfEmpty = false) {
               let project;
               try {
                 project = await loadProject();
@@ -441,9 +476,38 @@ jobs:
                 return;
               }
               if (!itemId) return;
+              if (onlyIfEmpty) {
+                const current = await getFieldDateValue(project, itemId, "Actual Start");
+                if (current) {
+                  core.info(`Actual Start already set: ${current}`);
+                  return;
+                }
+              }
               if (dryRun) core.info(`[dry_run] update Actual Start to ${date}`);
               const updated = await updateDate(project, itemId, "Actual Start", date);
               if (!updated) core.warning("Project field `Actual Start` was not updated. Field missing or date format invalid.");
+            }
+
+            async function syncStatusInProgress(issueNumber) {
+              let project;
+              try {
+                project = await loadProject();
+              } catch (error) {
+                core.warning(`Could not load ProjectV2 for Status sync: ${error.message}`);
+                return;
+              }
+              if (!project) return;
+              const issueNodeId = await getIssueNodeId(issueNumber);
+              if (!issueNodeId) return;
+              let itemId;
+              try {
+                itemId = await ensureProjectItem(project, issueNodeId);
+              } catch (error) {
+                core.warning(`Could not add/find ProjectV2 item for Status sync: ${error.message}`);
+                return;
+              }
+              if (!itemId) return;
+              await updateSingleSelect(project, itemId, "Status", ["In Progress"]);
             }
 
             async function createBranch(issueNumber, sections) {
@@ -554,16 +618,22 @@ jobs:
             await syncLabels(issueNumber, issue, labels);
             await syncMilestone(issueNumber, sections);
             await linkParentIssue(issueNumber, issue, sections);
-            await syncProjectFields(issueNumber, sections);
+            const isIssueOpened = context.eventName === "issues" && context.payload.action === "opened";
+            await syncProjectFields(issueNumber, sections, isIssueOpened);
             const branchResult = await createBranch(issueNumber, sections);
             if (branchResult?.created) {
+              await syncStatusInProgress(issueNumber);
               await syncActualStart(issueNumber, todayJstYmd());
+            } else if (isIssueOpened && firstLine(sections["作業主体"]).toLowerCase() === "ai-agent") {
+              await syncActualStart(issueNumber, todayJstYmd(), true);
             }
 
       - name: Send Slack issue-created notification
         if: ${{ github.event_name == 'issues' && github.event.action == 'opened' }}
         uses: actions/github-script@v8
         env:
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
         with:
@@ -580,13 +650,74 @@ jobs:
             const comments = await slack.listIssueComments({ github, owner, repo, issueNumber: issue.number });
             const threadTs = slack.findThreadTsFromComments(comments, threadKey, channel);
 
+            async function getIssueProjectStatus(issueNumber) {
+              const projectOwner = process.env.PROJECT_OWNER || owner;
+              const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
+              const queryProject = `
+                query($owner: String!, $number: Int!) {
+                  user(login: $owner) {
+                    projectV2(number: $number) { id }
+                  }
+                }`;
+              const projectData = await github.graphql(queryProject, { owner: projectOwner, number: projectNumber });
+              const projectId = projectData.user?.projectV2?.id;
+              if (!projectId) return "";
+              const queryIssue = `
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) { issue(number: $number) { id } }
+                }`;
+              const issueData = await github.graphql(queryIssue, { owner, repo, number: issueNumber });
+              const issueId = issueData.repository?.issue?.id;
+              if (!issueId) return "";
+              const queryItems = `
+                query($owner: String!, $number: Int!, $after: String) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      items(first: 100, after: $after) {
+                        nodes { id content { ... on Issue { id } } }
+                        pageInfo { hasNextPage endCursor }
+                      }
+                    }
+                  }
+                }`;
+              let after = null;
+              let itemId = "";
+              for (;;) {
+                const data = await github.graphql(queryItems, { owner: projectOwner, number: projectNumber, after });
+                const items = data.user?.projectV2?.items;
+                const hit = items?.nodes?.find((item) => item.content?.id === issueId);
+                if (hit) {
+                  itemId = hit.id;
+                  break;
+                }
+                if (!items?.pageInfo?.hasNextPage) break;
+                after = items.pageInfo.endCursor;
+              }
+              if (!itemId) return "";
+              const queryStatus = `
+                query($projectId: ID!, $itemId: ID!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      item(id: $itemId) {
+                        fieldValueByName(name: "Status") {
+                          ... on ProjectV2ItemFieldSingleSelectValue { name }
+                        }
+                      }
+                    }
+                  }
+                }`;
+              const statusData = await github.graphql(queryStatus, { projectId, itemId });
+              return statusData.node?.item?.fieldValueByName?.name || "";
+            }
+
+            const projectStatus = await getIssueProjectStatus(issue.number);
             const text = slack.buildSlackText({
               level: "info",
               title: "Issueを作成しました",
               summary: issue.title,
               fields: {
                 Issue: `#${issue.number}`,
-                Status: "In Progress",
+                Status: projectStatus || "不明",
                 Repository: `${owner}/${repo}`,
               },
               links: {

@@ -29,7 +29,7 @@ agent:
     - "reviewer-ai"
 
 background: |
-  06_実装設計において、API-PUB-002（レコメンド実行 / Public API）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  06_実装設計および 07_開発・単体テストにおいて、API-PUB-002（レコメンド実行 / Public API）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。Epic の Projects Phase は完了ゲート（07）、子 Task で成果物工程（06 / 07）を管理する。
   本 API は web 向けに `POST /api/v1/recommendations` を提供し、Recommendation Request を受け取り、apps/api → apps/reco（API-INT-002）への内部呼び出しを経て Recommendation Result を返す MVP の中核 API である。
   子 Task は Public API 仕様書・OpenAPI 連携（Contract Task として分離想定）・apps/api 実装・apps/web の API client 利用・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
 
@@ -126,7 +126,7 @@ branch:
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
-    phase: "06_実装設計"
+    phase: "07_開発・単体テスト"
     status: "Todo"
     priority: "high"
     planned_start: null

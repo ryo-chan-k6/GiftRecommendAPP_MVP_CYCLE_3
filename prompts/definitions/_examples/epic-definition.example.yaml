@@ -106,7 +106,7 @@ branch:
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
-    phase: "06_実装設計"
+    phase: "07_開発・単体テスト"
     status: "Todo"
     priority: "high"
     planned_start: null

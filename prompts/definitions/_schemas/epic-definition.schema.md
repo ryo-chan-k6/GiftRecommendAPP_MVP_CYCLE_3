@@ -265,6 +265,25 @@ issue:
 
 ---
 
+### 6.4.1 `project.fields`（Epic）
+
+| 項目 | 識別子単位 Epic | 機能・領域単位 Epic（例外） |
+| ---- | --------------- | --------------------------- |
+| `fields.phase` | 原則 `07_開発・単体テスト`（完了ゲート） | Epic Definition で指定。Issue 本文に理由を明記 |
+| Issue 本文 Milestone（`/start-epic`） | 原則 `開発・単体テスト工程完了` | Definition / 対象領域に応じて指定 |
+
+Epic の `Phase` は「配下の唯一の docs 工程」ではない。`06_実装設計` の仕様書と `07_開発・単体テスト` の実装は**子 Task の `project.fields.phase`** で管理する（[Projects運用ルール](../../../docs/00_共通/プロジェクト管理/Projects運用ルール.md) §6.1）。
+
+`child_task_areas` と子 Task の推奨 Phase の対応例:
+
+| `child_task_areas` | 子 Task の推奨 `fields.phase` |
+| ------------------ | --------------------------- |
+| `api-spec`, `module-spec`, `screen-spec`, `batch-spec` | `06_実装設計` |
+| `implementation`, `api-client`, `unit-test` | `07_開発・単体テスト` |
+| `openapi` | Contract Task として分離する場合は別途。それ以外は `06_実装設計` 寄り |
+
+---
+
 ### 6.5 `epic_scope`
 
 `epic_scope` は、Epic 配下 Task が触ってよい**ファイル境界の宣言**である。AI 自動フローでの scope 越境を防ぐガードレールとして、`/start-task` の事前検査および `/review-pr` の差分検査で参照される（成果物化方針書 §3.5、[`.cursor/commands/start-task.md`](../../../.cursor/commands/start-task.md)）。
@@ -367,6 +386,7 @@ API Epic の典型依存:
 | `epic_scope.artifact_id` | 識別子付き Epic では正本一覧（API一覧 / 画面一覧 / バッチ処理一覧 / モジュール一覧 / Recoモジュール一覧）に存在するか |
 | `epic_scope.allowed_paths` | 空配列でないか。glob として妥当か |
 | `dependencies.epics` | API-PUB / API-INT / SCR Epic で記載されているか。配列内の Issue 番号が実在するか |
+| `project.fields.phase` | 識別子単位 Epic では原則 `07_開発・単体テスト` か（完了ゲート）。`06_実装設計` のみは不整合 |
 | secret | secret が含まれていないか |
 
 Prompts運用ルール §29 も参照する。

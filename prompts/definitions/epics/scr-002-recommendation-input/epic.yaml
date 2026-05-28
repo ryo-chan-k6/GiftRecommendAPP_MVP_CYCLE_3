@@ -27,7 +27,7 @@ agent:
     - "reviewer-ai"
 
 background: |
-  06_実装設計において、SCR-002（レコメンド条件入力画面）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  06_実装設計および 07_開発・単体テストにおいて、SCR-002（レコメンド条件入力画面）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。Epic の Projects Phase は完了ゲート（07）、子 Task で成果物工程（06 / 07）を管理する。
   本画面は贈答相手・用途・予算・好み・避けたい条件・NG条件を入力し、API-PUB-002（レコメンド実行）を呼び出す MVP の中核入力画面である。
   子 Task は画面仕様書・実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
 
@@ -114,7 +114,7 @@ branch:
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
-    phase: "06_実装設計"
+    phase: "07_開発・単体テスト"
     status: "Todo"
     priority: "high"
     planned_start: null

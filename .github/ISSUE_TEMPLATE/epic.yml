@@ -91,7 +91,7 @@ body:
     id: project_phase
     attributes:
       label: プロジェクト工程
-      description: Project Phase / Milestone同期に使う工程を選択してください。
+      description: Projects Phase に同期する値。識別子単位 Epic（API/SCR/BATCH/MOD）は原則 07_開発・単体テスト（完了ゲート）。子 Task の成果物工程（06/07）は各 Task Issue で設定する。
       options:
         - 01_事業構想
         - 02_ドメイン探索
@@ -110,6 +110,7 @@ body:
         - 15_運用・改善
         - 90_PoC
         - なし
+      default: 6
     validations:
       required: true
 
@@ -201,7 +202,7 @@ body:
         - リリース工程完了
         - 運用・改善サイクル
         - なし
-      default: 15
+      default: 6
     validations:
       required: true
 

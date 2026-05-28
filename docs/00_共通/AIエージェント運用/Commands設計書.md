@@ -70,6 +70,7 @@ Definitionは、AIエージェントに対して「何を対象に、どの条�
 Commandは、AI作業の開始・継続・レビュー・修正を制御する。
 
 Commandは、Project管理やGitHub運用のすべてを直接担うものではない。
+Commandは Issue の起票・更新を起点とし、Projects同期やBranch作成などの後続処理は GitHub Actions workflow（仕様書で定義されたハーネス）に委譲する。
 
 | 領域          | Commandの責務                                                  |
 | ------------- | -------------------------------------------------------------- |
@@ -237,6 +238,12 @@ Command実行時は、以下を共通原則とする。
 | 生成物手動編集禁止 | Orval等のgeneratedファイルを直接編集しない |
 | Secret禁止         | secretやAPIキーを出力しない                |
 | 明示トリガー       | Status変更だけでAI作業開始とみなさない     |
+
+Command実行時の補足:
+
+- Agent は `gh project item-edit` 等で Projects を直接更新しない。
+- Agent は `git push` のみで Branch運用状態を確定しない。
+- Issue作成・更新後の同期結果は workflow 実行結果を確認する。
 
 ---
 
@@ -1252,7 +1259,57 @@ Commandを追加する場合は、以下を定義する。
 
 ---
 
-## 29. 関連ドキュメント
+## 29. Definition Run（通称）と外部トリガによる実行
+
+### 29.1 通称: Definition Run
+
+本プロジェクトでは、`/<Command> @<Definition>` の組み合わせで実行する 1 回の AI 作業単位を **Definition Run** と呼ぶ。
+
+Definition Run の例:
+
+| 呼び出し | 意味 |
+| -------- | ---- |
+| `/start-epic @prompts/definitions/epics/scr-002-recommendation-input/epic.yaml` | SCR-002 Epic Definition の Definition Run |
+| `/start-task @prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml` | screen-spec Task Definition の Definition Run |
+
+Cursor IDE のチャット欄から直接実行することが基本だが、後述する外部トリガからも実行できる。
+
+### 29.2 外部トリガによる実行（GitHub Actions / 将来 Slack）
+
+Definition Run は、Cursor IDE 以外からも実行できる。MVP では GitHub Actions の `workflow_dispatch` / `repository_dispatch` をトリガに、Cursor Cloud Agent 上で Definition Run を実行する Harness を提供する。
+
+| トリガ | 経路 | フェーズ |
+| ------ | ---- | -------- |
+| Cursor IDE | チャット → ローカル Agent / Cloud Agent | 既存 |
+| `workflow_dispatch` | GitHub Actions UI / `gh workflow run` → Cloud Agent | MVP |
+| `repository_dispatch` | 外部システム → GitHub API → Cloud Agent | MVP |
+| Slack | Slack → `repository_dispatch` 発火 → 上記経路 | Phase C（後続） |
+
+正本仕様は [Definition Run Harness ワークフロー仕様書](../../06_実装設計/github_actions/Definition%20Run%20Harness%E3%83%AF%E3%83%BC%E3%82%AF%E3%83%95%E3%83%AD%E3%83%BC%E4%BB%95%E6%A7%98%E6%9B%B8.md) とする。
+
+### 29.3 外部実行時の制約
+
+外部トリガで実行する場合も、本ドキュメント §4 / §10 と各 Command の手順（`.cursor/commands/<command>.md`）に従う。特に以下を守る。
+
+- `run_mode=dry-run` の場合、Issue / Branch / Project / PR / Label / Definition への書き込みを行わない（`gh` CLI / `git push` / GitHub API の write 系操作は全面禁止）
+- Projects 同期・Branch 作成・PR 作成は本 Harness 自身では行わず、Issue 起票後の既存 workflow に委譲する（§4 / §10）
+- secret / API キー / `.env` 実値は出力・log・Summary に出さない
+- 違反は Harness の post-run 検証で検知されジョブが失敗する
+
+### 29.4 MVP 対応範囲
+
+| 項目 | MVP の扱い |
+| ---- | ---------- |
+| 対応 Command | `/start-epic` のみ |
+| `run_mode` | `dry-run` のみ |
+| Slack 入力 | 未対応（Phase C） |
+| `live-run` | 未対応（Phase D。Environments approval 等の承認ゲート追加が前提） |
+
+他 Command（`/start-task` 等）への横展開は、Harness 側の Command レジストリへの追記と各 Command の md への「Definition Run としての外部実行」節の複製で行う（Harness 仕様書 §14 横展開チェックリスト）。
+
+---
+
+## 30. 関連ドキュメント
 
 | ドキュメント                               | 役割                                     |
 | ------------------------------------------ | ---------------------------------------- |
@@ -1268,10 +1325,11 @@ Commandを追加する場合は、以下を定義する。
 | Projects運用ルール                         | Status、Phase、予定・実績管理を定義      |
 | ブランチ運用ルール                         | Branch命名、Branch base、PR targetを定義 |
 | GitHub Actionsワークフロー仕様書           | Command後続の自動化処理を定義            |
+| Definition Run Harnessワークフロー仕様書   | 外部トリガから Cursor Cloud Agent に Definition Run を依頼する Harness を定義 |
 
 ---
 
-## 30. 一言まとめ
+## 31. 一言まとめ
 
 Commandは、AIエージェントに対する作業開始・作業継続・レビュー・修正の操作インタフェースである。
 

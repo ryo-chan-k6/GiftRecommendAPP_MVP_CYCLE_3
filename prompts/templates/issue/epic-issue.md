@@ -14,47 +14,54 @@
 
 ---
 
-## 2. Project同期項目
+## 2. Issue運用メタデータ
 
-| 項目 | 内容 |
-| ---- | ---- |
-| Project | `{{project.project_name}}` |
-| 初期Status | `{{project.fields.status}}` |
-| Phase | `{{project.fields.phase}}` |
-| Priority | `{{project.fields.priority}}` |
-| Area | `{{project.fields.area}}` |
-| Planned Start | `{{project.fields.planned_start}}` |
-| Due Date | `{{project.fields.due_date}}` |
-| Milestone | `{{milestone.name}}` |
+Issue同期・Project同期・Branch作成に使う機械可読ブロック。`###` 見出し名を変更しない。
 
----
+### 作業単位
+{{issue.unit}}
 
-## 3. Issue同期項目
+### 作業種別
+{{issue.type}}
 
-GitHub Labelは本文に列挙しない。workflowが以下の値から `unit:*` / `type:*` / `area:*` / `priority:*` を導出する。
+### 作業主体
+{{work_mode}}
 
-| 項目 | 内容 |
-| ---- | ---- |
-| unit | `{{issue.unit}}` |
-| type | `{{issue.type}}` |
-| area | `{{issue.area}}` |
-| priority | `{{project.fields.priority}}` |
+### 初期Status
+{{project.fields.status}}
 
----
+### プロジェクト工程
+{{project.fields.phase}}
 
-## 4. Branch / PR 方針
+### 優先度
+{{project.fields.priority}}
 
+### 対象領域
+{{issue.area}}
+
+### Planned Start
+{{project.fields.planned_start}}
+
+### Due Date
+{{project.fields.due_date}}
+
+### Milestone
+{{milestone.name}}
+
+### 親Issue
+{{parent.issue}}
+
+### Branch summary
+{{branch.summary}}
+
+### Branch作成制御
 - [{{#if branch.no_branch}}x{{else}} {{/if}}] no-branch
 
-| 項目 | 内容 |
-| ---- | ---- |
-| Branch名 | `{{branch.name}}` |
-| Branch summary | `{{branch.summary}}` |
-| Branch base | `{{branch.base}}` |
-| PR target | `{{branch.target}}` |
-| worktree要否 | `{{branch.worktree_required}}` |
+### Branch base
+{{branch.base}}
 
-`no-branch` はIssue本文チェックのみを正本とする。GitHub Label `no-branch` は定義しない・付与しない。
+### PR target
+{{branch.target}}
 
 ---
 

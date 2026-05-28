@@ -163,6 +163,15 @@ Task Definition設計書 §15.0 / [成果物一覧×Task Definition化方針書]
 
 明示的な日付がDefinitionに指定されている場合はその値を使用する。ただし、AI主導Epicで標準値と異なる場合は、チャット出力のProject同期項目に「Definition明示値」として根拠を残す。日付計算に失敗した場合はIssue作成前に停止し、未解決プレースホルダをIssue本文へ出力しない。
 
+識別子単位 Epic（§1.5）では、Project 同期の既定を以下とする（[Projects運用ルール](../../docs/00_共通/プロジェクト管理/Projects運用ルール.md) §6.1）。
+
+| 項目 | 識別子単位 Epic の既定 | 備考 |
+| ---- | ---------------------- | ---- |
+| `project.fields.phase` | `07_開発・単体テスト` | Epic 完了ゲート。Definition が `06_実装設計` のみの場合は停止し、Definition 修正または例外理由を `human_decision_points` に記載 |
+| Issue 本文 `Milestone`（テンプレート `{{milestone.name}}`） | `開発・単体テスト工程完了` | `project.fields.phase` と整合 |
+
+機能・領域単位 Epic（例外）では、Definition の `project.fields.phase` と Milestone をそのまま使用し、Issue 本文 §2.1 に例外理由を明記する。
+
 ### 8. Epic Issue を作成する
 
 dry-run 指定時は作成せず、dry-run実行日のJST日付をIssue作成予定日として `Planned Start` / `Due Date` を解決し、生成予定本文と同期項目をチャットに出力する。実作成時は実行日のJST日付で再計算する。
@@ -285,6 +294,46 @@ Slack通知運用設計書に従う。
 - Task PR / Epic PR の作成（`/create-pr` の責務）
 - PR merge 判断
 - 親 Epic の実在確認（本 Command が親 Epic を新規作成する）
+
+---
+
+## dry-run 実行時
+
+実際の Issue / Branch / Project / Slack / ファイル変更を行わない rehearsal では、以下を出力する。
+
+1. 生成される Epic Issue タイトル（`[Epic]` + `epic.title`、識別子付き Epic は `{識別子}:{概要}` 形式）
+2. 生成される Epic Issue 本文（§7 の日付解決を適用し、`Planned Start` は dry-run 実行日のJST日付、`Due Date` は dry-run 実行日のJST日付 + 2日。Issue 本文に GitHub Label 一覧は含めない。Issue 運用メタデータは [Issue運用ルール](../../docs/00_共通/プロジェクト管理/Issue運用ルール.md) §10 の `###` 見出し形式に従う）
+3. 付与予定 Label（`unit` / `type` / `area` / `priority` のみ。Issue 本文とは別）
+4. 想定 Epic Branch 名（`branch.no_branch: false` の場合のみ。base / target は `develop`）
+5. Project 更新意図（`project.fields.*` を明示。識別子単位 Epic は §7 の既定に従い `phase=07_開発・単体テスト` / Milestone=`開発・単体テスト工程完了` を示す）
+6. §1.5 の識別子実在確認結果（`存在` / `未検出` / `未確認`）
+7. 配下 Task 起票案内（`/start-task @<task-definition>`）
+8. Definition / Template / Commands 運用上の改善点（任意）
+
+dry-run でも §1.5 の識別子実在確認を実施する。dry-run では Issue / Branch / Project / Slack / Definition への書き込みを行わない。
+
+---
+
+## Definition Run としての外部実行
+
+本 Command は、Cursor IDE からの直接実行に加え、外部トリガ（GitHub Actions + Cursor Cloud Agent）からも実行できる。詳細仕様は [Definition Run Harness ワークフロー仕様書](../../docs/06_実装設計/github_actions/Definition%20Run%20Harness%E3%83%AF%E3%83%BC%E3%82%AF%E3%83%95%E3%83%AD%E3%83%BC%E4%BB%95%E6%A7%98%E6%9B%B8.md)（以下「Harness 仕様書」）を正本とする。
+
+### 外部実行時に守る条件
+
+- `run_mode=dry-run` の場合、Issue / Branch / Project / PR / Label / Definition への書き込みを行わない。`gh` CLI / `git push` / GitHub API の write 系操作は全面禁止
+- 本 Command 手順（§1〜§15）に従い、dry-run 出力は本 md 「dry-run 実行時」セクションのフォーマットで返す
+- Projects 同期・Branch 作成・PR 作成は本 Command（および Harness）では行わない。これらは Issue 起票後の既存 workflow（`.github/workflows/issue-metadata-project-branch.yml` 等）に委譲する（[Commands設計書](../../docs/00_共通/AIエージェント運用/Commands設計書.md) §4 / §10）
+- `gh project item-edit` 等で Projects を直接更新しない
+- `git push` のみで Branch 運用状態を確定しない
+- secret / API キー / `.env` 実値を表示・保存しない
+
+### 違反検知
+
+Harness 仕様書 §10.2 の post-run 検証が、ジョブ開始時刻以降の Issue / PR / Branch 新規作成を検知する。dry-run で違反が検出されるとジョブは失敗扱いとなり、Job Summary の `Guard Violations` 欄に違反内容が列挙される。
+
+### 横展開時のメモ
+
+他 Command（`/start-task` 等）を Harness で外部実行可能にする際は、本セクション（「dry-run 実行時」「Definition Run としての外部実行」）と同等の文面を `.cursor/commands/<command>.md` に複製する。Harness 側は `COMMAND_REGISTRY` に行を追加するだけで済む（Harness 仕様書 §14 横展開チェックリスト）。
 
 ---
 
