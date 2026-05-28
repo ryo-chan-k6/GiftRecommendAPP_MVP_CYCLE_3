@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
-  epic_issue_number: 259
-  epic_branch: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  epic_issue_number: 260
+  epic_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
   related_issues: []
   related_prs: []
 
@@ -170,8 +170,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   name: "docs/task-<issue-number>-mod-reco-001-recommendation-orchestrator-module-spec"
-  base: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
-  target: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  base: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  target: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
   worktree_required: false
 
 project:

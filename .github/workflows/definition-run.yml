@@ -159,7 +159,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::cursor-stream"
-          node <<'EOF'
+          node --input-type=commonjs <<'EOF'
           const path = require("node:path");
           const fs = require("node:fs");
           const builder = require(
@@ -167,148 +167,156 @@ jobs:
           );
           const { Agent, CursorAgentError } = require("@cursor/sdk");
 
-          const requestPath = path.join(process.env.RUNNER_TEMP, "definition-run-request.json");
-          const request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
-          const tempDir = process.env.RUNNER_TEMP;
-          const resultPath = path.join(tempDir, "definition-run-result.json");
-          const transcriptPath = path.join(tempDir, "definition-run-transcript.log");
+          async function main() {
+            const requestPath = path.join(process.env.RUNNER_TEMP, "definition-run-request.json");
+            const request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
+            const tempDir = process.env.RUNNER_TEMP;
+            const resultPath = path.join(tempDir, "definition-run-result.json");
+            const transcriptPath = path.join(tempDir, "definition-run-transcript.log");
 
-          const startedAt = new Date().toISOString();
-          console.log(
-            builder.decisionLine("invoke", {
-              command: request.command,
-              run_mode: request.run_mode,
-              ref: request.ref,
-            }),
-          );
-
-          if (!process.env.CURSOR_API_KEY) {
-            console.error("::error::missing_cursor_api_key");
-            process.exit(1);
-          }
-
-          const transcriptStream = fs.createWriteStream(transcriptPath, { flags: "a" });
-          function appendTranscript(line) {
-            transcriptStream.write(line + "\n");
-          }
-          function logEvent(label, payload) {
-            const text = builder.maskSecrets(JSON.stringify(payload));
-            console.log(`[${label}] ${text}`);
-            appendTranscript(`[${label}] ${text}`);
-          }
-
-          let agent;
-          let agentIdLogged = "";
-          let runId = "";
-          let finalStatus = "error";
-          let finalResultText = "";
-          try {
-            agent = await Agent.create({
-              apiKey: process.env.CURSOR_API_KEY,
-              model: { id: "auto" },
-              cloud: {
-                repos: [
-                  {
-                    url: process.env.REPO_URL,
-                    ref: request.ref,
-                  },
-                ],
-                autoCreatePR: false,
-                skipReviewerRequest: true,
-              },
-            });
-            agentIdLogged = agent.agentId || "";
+            const startedAt = new Date().toISOString();
             console.log(
-              builder.decisionLine("agent-created", { agent_id: agentIdLogged, ref: request.ref }),
-            );
-
-            const run = await agent.send(request.prompt);
-            runId = run.id || "";
-            console.log(builder.decisionLine("run-sent", { run_id: runId }));
-
-            for await (const event of run.stream()) {
-              const type = event && event.type ? event.type : "unknown";
-              if (type === "assistant" && event.message && Array.isArray(event.message.content)) {
-                for (const block of event.message.content) {
-                  if (block && block.type === "text" && block.text) {
-                    const masked = builder.maskSecrets(block.text);
-                    process.stdout.write(masked);
-                    appendTranscript(masked);
-                  } else {
-                    logEvent("assistant-block", { type: block && block.type });
-                  }
-                }
-              } else if (type === "tool_use" || type === "tool_result") {
-                logEvent(type, {
-                  name: event && event.name,
-                  status: event && event.status,
-                });
-              } else if (type === "error") {
-                logEvent("error", event);
-              } else {
-                logEvent(type, {});
-              }
-            }
-
-            const result = await run.wait();
-            finalStatus = result && result.status ? result.status : "unknown";
-            finalResultText = result && result.result ? String(result.result) : "";
-            console.log(
-              builder.decisionLine("run-finished", {
-                status: finalStatus,
-                agent_id: agentIdLogged,
-                run_id: runId,
+              builder.decisionLine("invoke", {
+                command: request.command,
+                run_mode: request.run_mode,
+                ref: request.ref,
               }),
             );
-          } catch (error) {
-            if (error instanceof CursorAgentError) {
-              console.error(
-                `::error::cursor_agent_error message=${builder.maskSecrets(error.message)} retryable=${error.isRetryable}`,
-              );
-              fs.writeFileSync(
-                resultPath,
-                JSON.stringify({
-                  status: "startup_failed",
-                  error: builder.maskSecrets(error.message),
-                  retryable: Boolean(error.isRetryable),
-                  agent_id: agentIdLogged,
-                  run_id: runId,
-                  started_at: startedAt,
-                  finished_at: new Date().toISOString(),
-                }),
-                "utf8",
-              );
+
+            if (!process.env.CURSOR_API_KEY) {
+              console.error("::error::missing_cursor_api_key");
               process.exit(1);
             }
-            throw error;
-          } finally {
-            if (agent && agent[Symbol.asyncDispose]) {
-              try {
-                await agent[Symbol.asyncDispose]();
-              } catch {
-                // ignore disposal errors
-              }
+
+            const transcriptStream = fs.createWriteStream(transcriptPath, { flags: "a" });
+            function appendTranscript(line) {
+              transcriptStream.write(line + "\n");
             }
-            transcriptStream.end();
+            function logEvent(label, payload) {
+              const text = builder.maskSecrets(JSON.stringify(payload));
+              console.log(`[${label}] ${text}`);
+              appendTranscript(`[${label}] ${text}`);
+            }
+
+            let agent;
+            let agentIdLogged = "";
+            let runId = "";
+            let finalStatus = "error";
+            let finalResultText = "";
+            try {
+              agent = await Agent.create({
+                apiKey: process.env.CURSOR_API_KEY,
+                model: { id: "auto" },
+                cloud: {
+                  repos: [
+                    {
+                      url: process.env.REPO_URL,
+                      ref: request.ref,
+                    },
+                  ],
+                  autoCreatePR: false,
+                  skipReviewerRequest: true,
+                },
+              });
+              agentIdLogged = agent.agentId || "";
+              console.log(
+                builder.decisionLine("agent-created", { agent_id: agentIdLogged, ref: request.ref }),
+              );
+
+              const run = await agent.send(request.prompt);
+              runId = run.id || "";
+              console.log(builder.decisionLine("run-sent", { run_id: runId }));
+
+              for await (const event of run.stream()) {
+                const type = event && event.type ? event.type : "unknown";
+                if (type === "assistant" && event.message && Array.isArray(event.message.content)) {
+                  for (const block of event.message.content) {
+                    if (block && block.type === "text" && block.text) {
+                      const masked = builder.maskSecrets(block.text);
+                      process.stdout.write(masked);
+                      appendTranscript(masked);
+                    } else {
+                      logEvent("assistant-block", { type: block && block.type });
+                    }
+                  }
+                } else if (type === "tool_use" || type === "tool_result") {
+                  logEvent(type, {
+                    name: event && event.name,
+                    status: event && event.status,
+                  });
+                } else if (type === "error") {
+                  logEvent("error", event);
+                } else {
+                  logEvent(type, {});
+                }
+              }
+
+              const result = await run.wait();
+              finalStatus = result && result.status ? result.status : "unknown";
+              finalResultText = result && result.result ? String(result.result) : "";
+              console.log(
+                builder.decisionLine("run-finished", {
+                  status: finalStatus,
+                  agent_id: agentIdLogged,
+                  run_id: runId,
+                }),
+              );
+            } catch (error) {
+              if (error instanceof CursorAgentError) {
+                console.error(
+                  `::error::cursor_agent_error message=${builder.maskSecrets(error.message)} retryable=${error.isRetryable}`,
+                );
+                fs.writeFileSync(
+                  resultPath,
+                  JSON.stringify({
+                    status: "startup_failed",
+                    error: builder.maskSecrets(error.message),
+                    retryable: Boolean(error.isRetryable),
+                    agent_id: agentIdLogged,
+                    run_id: runId,
+                    started_at: startedAt,
+                    finished_at: new Date().toISOString(),
+                  }),
+                  "utf8",
+                );
+                process.exit(1);
+              }
+              throw error;
+            } finally {
+              if (agent && agent[Symbol.asyncDispose]) {
+                try {
+                  await agent[Symbol.asyncDispose]();
+                } catch {
+                  // ignore disposal errors
+                }
+              }
+              transcriptStream.end();
+            }
+
+            fs.writeFileSync(
+              resultPath,
+              JSON.stringify({
+                status: finalStatus,
+                result: builder.maskSecrets(finalResultText),
+                agent_id: agentIdLogged,
+                run_id: runId,
+                started_at: startedAt,
+                finished_at: new Date().toISOString(),
+              }),
+              "utf8",
+            );
+
+            if (finalStatus !== "finished") {
+              console.error(`::error::run_failed status=${finalStatus} run_id=${runId}`);
+              process.exit(2);
+            }
           }
 
-          fs.writeFileSync(
-            resultPath,
-            JSON.stringify({
-              status: finalStatus,
-              result: builder.maskSecrets(finalResultText),
-              agent_id: agentIdLogged,
-              run_id: runId,
-              started_at: startedAt,
-              finished_at: new Date().toISOString(),
-            }),
-            "utf8",
-          );
-
-          if (finalStatus !== "finished") {
-            console.error(`::error::run_failed status=${finalStatus} run_id=${runId}`);
-            process.exit(2);
-          }
+          main().catch((error) => {
+            const message = error && error.message ? error.message : String(error);
+            console.error(`::error::invoke_failed message=${builder.maskSecrets(message)}`);
+            process.exit(1);
+          });
           EOF
           echo "::endgroup::"
 
