@@ -1,0 +1,189 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-directory-architecture-redesign-definition-update"
+  title: "recoディレクトリ構成全面再設計:Definition群更新"
+  summary: "正本docs更新後の方針に基づき、epic/task/review definition の path 規約を `src/reco` 前提へ更新する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]recoディレクトリ構成全面再設計"
+  epic_issue_number: 264
+  epic_branch: "refactor/epic-264-reco-directory-architecture-redesign"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed: ["/start-task", "/work-issue", "/create-pr", "/summarize-work"]
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["support-ai"]
+  review: ["reviewer-ai", "docs-reviewer-ai", "contract-ai"]
+
+background: |
+  docsだけ更新しても definition 群が旧パスのままでは `/start-task` と `/review-pr` の判定で誤差が残る。
+
+objective: |
+  `prompts/definitions` 配下の path 関連定義を新方針へ統一し、運用上の判定条件を一致させる。
+
+scope:
+  - "epic definition の `epic_scope.allowed_paths` / `forbidden_paths` を更新する"
+  - "task definition の `scope` / `out_of_scope` / `branch` / `review_points` の旧パス記載を更新する"
+  - "review definition の境界判定観点を更新する"
+  - "MOD-RECO-001 配下定義で Orchestrator 正式配置を反映する"
+
+out_of_scope:
+  - "正本docs本文の更新"
+  - "実装コード変更"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Definition構造の制約を満たすため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "epic_scope の境界ルールに準拠するため"
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      required: true
+      purpose: "判定条件との整合を保つため"
+  templates: []
+  files:
+    - path: "prompts/definitions/epics/"
+      required: true
+      purpose: "更新対象"
+    - path: "prompts/definitions/tasks/"
+      required: true
+      purpose: "更新対象"
+    - path: "prompts/definitions/reviews/"
+      required: true
+      purpose: "更新対象"
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/**/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/**.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/**.yaml"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "epic/task/review definition の path 規約更新差分"
+  - "MOD-RECO-001 の正式配置反映差分"
+
+acceptance_criteria:
+  - "関連 definition で旧 reco パス表記が残存していない"
+  - "`API-INT-*` / `MOD-RECO-*` の境界定義が正本docsと整合している"
+  - "開始系コマンドとレビュー系コマンドの判定前提と矛盾しない"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-reco-directory-architecture-redesign-definition-update"
+  base: "refactor/epic-264-reco-directory-architecture-redesign"
+  target: "refactor/epic-264-reco-directory-architecture-redesign"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "critical"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "task-reco-directory-architecture-redesign-docs-update"
+  blocking: true
+
+parallel_control:
+  depends_on: ["task-reco-directory-architecture-redesign-docs-update"]
+  blocks: []
+  exclusive_files:
+    - "prompts/definitions/epics/"
+    - "prompts/definitions/tasks/"
+    - "prompts/definitions/reviews/"
+  conflict_risk: "high"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required: ["definition lint", "consistency check"]
+  commands: []
+  manual_checks:
+    - "更新した definition が schema 必須項目を満たしていることを確認する"
+    - "親Epicの境界ルールと子Task/reviewの境界ルールが一致することを確認する"
+  not_required: ["unit test", "integration test"]
+  skip_reason:
+    "unit test": "definition更新Taskのため対象外"
+    "integration test": "definition更新Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "definition構造と必須項目を満たしているか"
+    - "境界判定ロジックに矛盾がないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "運用定義群への横断更新で影響範囲が広いため cross_cutting を有効化する。"
+
+risk_points:
+  - "一部Definitionの更新漏れで運用不整合が残る可能性"
+  - "schema違反で `/start-task` が停止する可能性"
+
+human_decision_points:
+  - "旧パスとの互換注記をどのDefinitionまで残すか"
+
+stop_conditions:
+  - "正本docs更新が未完了の場合"
+  - "必須 input.docs が存在しない場合"
+  - "scope外の実装変更が必要になった場合"
+
+notes:
+  - "親Epic起票後に `parent.epic_issue_number` と branch の実番号を反映する"

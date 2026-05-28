@@ -637,7 +637,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             const path = require("path");
             const slack = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/slack-notify.cjs"));
@@ -653,61 +653,68 @@ jobs:
             async function getIssueProjectStatus(issueNumber) {
               const projectOwner = process.env.PROJECT_OWNER || owner;
               const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
-              const queryProject = `
-                query($owner: String!, $number: Int!) {
-                  user(login: $owner) {
-                    projectV2(number: $number) { id }
-                  }
-                }`;
-              const projectData = await github.graphql(queryProject, { owner: projectOwner, number: projectNumber });
-              const projectId = projectData.user?.projectV2?.id;
-              if (!projectId) return "";
-              const queryIssue = `
-                query($owner: String!, $repo: String!, $number: Int!) {
-                  repository(owner: $owner, name: $repo) { issue(number: $number) { id } }
-                }`;
-              const issueData = await github.graphql(queryIssue, { owner, repo, number: issueNumber });
-              const issueId = issueData.repository?.issue?.id;
-              if (!issueId) return "";
-              const queryItems = `
-                query($owner: String!, $number: Int!, $after: String) {
-                  user(login: $owner) {
-                    projectV2(number: $number) {
-                      items(first: 100, after: $after) {
-                        nodes { id content { ... on Issue { id } } }
-                        pageInfo { hasNextPage endCursor }
-                      }
-                    }
-                  }
-                }`;
-              let after = null;
-              let itemId = "";
-              for (;;) {
-                const data = await github.graphql(queryItems, { owner: projectOwner, number: projectNumber, after });
-                const items = data.user?.projectV2?.items;
-                const hit = items?.nodes?.find((item) => item.content?.id === issueId);
-                if (hit) {
-                  itemId = hit.id;
-                  break;
-                }
-                if (!items?.pageInfo?.hasNextPage) break;
-                after = items.pageInfo.endCursor;
+              async function resolveProjectId(login, number) {
+                const query = `
+                  query($owner: String!, $number: Int!) {
+                    user(login: $owner) { projectV2(number: $number) { id } }
+                    organization(login: $owner) { projectV2(number: $number) { id } }
+                  }`;
+                const data = await github.graphql(query, { owner: login, number });
+                return data.user?.projectV2?.id || data.organization?.projectV2?.id || "";
               }
-              if (!itemId) return "";
-              const queryStatus = `
-                query($projectId: ID!, $itemId: ID!) {
-                  node(id: $projectId) {
-                    ... on ProjectV2 {
-                      item(id: $itemId) {
-                        fieldValueByName(name: "Status") {
-                          ... on ProjectV2ItemFieldSingleSelectValue { name }
+              try {
+                const projectId = await resolveProjectId(projectOwner, projectNumber);
+                if (!projectId) return "";
+                const queryIssue = `
+                  query($owner: String!, $repo: String!, $number: Int!) {
+                    repository(owner: $owner, name: $repo) { issue(number: $number) { id } }
+                  }`;
+                const issueData = await github.graphql(queryIssue, { owner, repo, number: issueNumber });
+                const issueId = issueData.repository?.issue?.id;
+                if (!issueId) return "";
+                const queryItems = `
+                  query($projectId: ID!, $after: String) {
+                    node(id: $projectId) {
+                      ... on ProjectV2 {
+                        items(first: 100, after: $after) {
+                          nodes { id content { ... on Issue { id } } }
+                          pageInfo { hasNextPage endCursor }
                         }
                       }
                     }
+                  }`;
+                let after = null;
+                let itemId = "";
+                for (;;) {
+                  const data = await github.graphql(queryItems, { projectId, after });
+                  const items = data.node?.items;
+                  const hit = items?.nodes?.find((item) => item.content?.id === issueId);
+                  if (hit) {
+                    itemId = hit.id;
+                    break;
                   }
-                }`;
-              const statusData = await github.graphql(queryStatus, { projectId, itemId });
-              return statusData.node?.item?.fieldValueByName?.name || "";
+                  if (!items?.pageInfo?.hasNextPage) break;
+                  after = items.pageInfo.endCursor;
+                }
+                if (!itemId) return "";
+                const queryStatus = `
+                  query($projectId: ID!, $itemId: ID!) {
+                    node(id: $projectId) {
+                      ... on ProjectV2 {
+                        item(id: $itemId) {
+                          fieldValueByName(name: "Status") {
+                            ... on ProjectV2ItemFieldSingleSelectValue { name }
+                          }
+                        }
+                      }
+                    }
+                  }`;
+                const statusData = await github.graphql(queryStatus, { projectId, itemId });
+                return statusData.node?.item?.fieldValueByName?.name || "";
+              } catch (error) {
+                core.warning(`Project status lookup skipped: ${error.message}`);
+                return "";
+              }
             }
 
             const projectStatus = await getIssueProjectStatus(issue.number);
