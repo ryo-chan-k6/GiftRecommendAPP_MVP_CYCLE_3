@@ -127,7 +127,7 @@ output:
 
 deliverables:
   - "Epic Issue（タイトル: [Epic]recoディレクトリ構成全面再設計）"
-  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-reco-directory-architecture-redesign）"
+  - "Epic Branch（develop 起点 / refactor/epic-264-reco-directory-architecture-redesign）"
   - "`apps/reco/src/reco/**` 統一方針を明記した正本docs更新"
   - "`API-INT-*` / `MOD-RECO-*` の `allowed_paths` / `forbidden_paths` 統一ルール"
   - "MOD-RECO-001 Orchestrator の正式配置（`application/orchestrators`）の明文化"
@@ -145,7 +145,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-reco-directory-architecture-redesign"
+  name: "refactor/epic-264-reco-directory-architecture-redesign"
   base: "develop"
   target: "develop"
   worktree_required: false

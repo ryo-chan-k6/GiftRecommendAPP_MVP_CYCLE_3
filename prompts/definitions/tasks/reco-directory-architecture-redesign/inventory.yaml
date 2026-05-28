@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-directory-architecture-redesign-inventory"
+  title: "recoディレクトリ構成全面再設計:不整合棚卸し"
+  summary: "`apps/reco` のパス表記揺れ（`src/reco` / `src/modules` / `src/app`）を docs・definitions・commands から棚卸しし、更新対象一覧を作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]recoディレクトリ構成全面再設計"
+  epic_issue_number: 264
+  epic_branch: "refactor/epic-264-reco-directory-architecture-redesign"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  親Epicで `src/reco` 統一方針を採用したため、既存の表記揺れを先に棚卸ししないと後続タスクで更新漏れが発生する。
+  本Taskは更新作業そのものではなく、更新対象の網羅性確保を目的とする。
+
+objective: |
+  docs / prompts / command 定義に存在する reco パス不整合を一覧化し、後続タスクの更新順序と対象範囲を確定する。
+
+scope:
+  - "docs/ 配下で `apps/reco` 関連パス表記を検索し、`src/reco` 方針との不一致を抽出する"
+  - "prompts/definitions 配下で `epic_scope` / `branch` / `review_points` のパス表記を抽出する"
+  - "不整合を分類（正本矛盾 / 運用ルール矛盾 / 参照メモ）して棚卸し表を作成する"
+  - "後続タスクへの引き継ぎ用に優先度と更新順序を定義する"
+
+out_of_scope:
+  - "棚卸し結果に基づく正本docs更新"
+  - "Task / Review Definition の実更新"
+  - "実装コードの変更"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "正本の reco ディレクトリ構成を基準として参照するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "epic_scope の既存運用記述を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Definition 記載ルール上の必須要件を確認するため"
+  templates:
+    - path: "prompts/templates/docs/inventory-sheet.md"
+      required: false
+      purpose: "棚卸し表テンプレートとして利用可能な場合に使用する"
+      applies_to:
+        - "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      action: "create"
+      required: true
+      template: null
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "recoディレクトリ構成不整合棚卸し一覧"
+  - "更新対象の優先度分類"
+  - "後続タスクへの更新順序提案"
+
+acceptance_criteria:
+  - "`docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md` が作成されている"
+  - "不整合が出典ファイル単位で列挙されている"
+  - "各不整合に対して更新対象タスク（docs-update / definition-update 等）が紐付いている"
+  - "実装変更を伴う項目が混在していない"
+
+branch:
+  no_branch: false
+  name: "docs/task-265-reco-directory-architecture-redesign-inventory"
+  base: "refactor/epic-264-reco-directory-architecture-redesign"
+  target: "refactor/epic-264-reco-directory-architecture-redesign"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "inventory completeness check"
+  commands: []
+  manual_checks:
+    - "正本docsと運用docsを横断して検索漏れがないことを確認する"
+    - "抽出結果に重複・誤分類がないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs棚卸しTaskのため対象外"
+    "integration test": "docs棚卸しTaskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "不整合抽出範囲が十分か"
+    - "後続タスクへの引き継ぎ情報が明確か"
+    - "scope外の更新作業を含めていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "正本docs・definitionに横断影響する棚卸しのため cross_cutting を有効化する。"
+
+risk_points:
+  - "検索漏れにより後続更新で整合性欠落が残る可能性"
+  - "不整合分類が曖昧だとタスク分解が不安定になる可能性"
+
+human_decision_points:
+  - "不整合の優先順位（即時修正 / 後続修正 / 記録のみ）の最終判断"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "正本docs間で方針が矛盾し棚卸し基準が確定できない場合"
+  - "scope外の実装変更が必要になった場合"
+
+notes:
+  - "親Epic起票後に `parent.epic_issue_number` と branch の実番号を反映する"

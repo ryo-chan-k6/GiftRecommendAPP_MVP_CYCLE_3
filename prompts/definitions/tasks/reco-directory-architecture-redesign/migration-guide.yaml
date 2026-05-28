@@ -1,0 +1,173 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-directory-architecture-redesign-migration-guide"
+  title: "recoディレクトリ構成全面再設計:移行ガイド作成"
+  summary: "旧表記から `src/reco` 統一方針へ移行するための実行手順・凍結ルール・完了判定を文書化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]recoディレクトリ構成全面再設計"
+  epic_issue_number: 264
+  epic_branch: "refactor/epic-264-reco-directory-architecture-redesign"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed: ["/start-task", "/work-issue", "/create-pr", "/summarize-work"]
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["support-ai"]
+  review: ["reviewer-ai", "docs-reviewer-ai"]
+
+background: |
+  方針更新後に移行ガイドがないと、後続Taskで旧ルール混在が再発する。
+
+objective: |
+  旧表記から新方針への移行を段階実施できるよう、手順・責任・判定条件を明確化する。
+
+scope:
+  - "移行対象（docs / definitions / command運用）の一覧化"
+  - "段階移行手順（先行更新・追随更新・完了確認）の定義"
+  - "移行期間中の凍結ルールと例外運用の定義"
+  - "Done 判定基準とチェックリストの定義"
+
+out_of_scope:
+  - "移行作業そのものの実施"
+  - "実装コード変更"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      required: true
+      purpose: "移行対象の根拠とするため"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "移行先の正本定義を参照するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成移行ガイド.md"
+      action: "create"
+      required: true
+      template: null
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "recoディレクトリ構成移行ガイド"
+  - "移行チェックリスト"
+  - "例外運用ルール"
+
+acceptance_criteria:
+  - "移行対象・移行順序・完了判定が文書化されている"
+  - "移行期間の凍結ルールと例外条件が明記されている"
+  - "後続タスクが参照可能な粒度である"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-reco-directory-architecture-redesign-migration-guide"
+  base: "refactor/epic-264-reco-directory-architecture-redesign"
+  target: "refactor/epic-264-reco-directory-architecture-redesign"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "task-reco-directory-architecture-redesign-inventory"
+    - "task-reco-directory-architecture-redesign-target-architecture"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-reco-directory-architecture-redesign-inventory"
+    - "task-reco-directory-architecture-redesign-target-architecture"
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/recoディレクトリ構成移行ガイド.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required: ["docs review", "migration flow check"]
+  commands: []
+  manual_checks:
+    - "移行手順が時系列で破綻していないことを確認する"
+    - "完了判定が検証可能なチェック項目になっていることを確認する"
+  not_required: ["unit test", "integration test"]
+  skip_reason:
+    "unit test": "移行ガイド作成Taskのため対象外"
+    "integration test": "移行ガイド作成Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "移行手順が実務で実行可能か"
+    - "例外運用が曖昧でないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "移行手順は複数成果物に横断影響するため cross_cutting を有効化する。"
+
+risk_points:
+  - "移行手順不足で旧表記再流入が発生する可能性"
+
+human_decision_points:
+  - "移行期限と凍結開始時期"
+  - "例外申請の承認フロー"
+
+stop_conditions:
+  - "棚卸し結果またはターゲット定義が未確定の場合"
+  - "必須 input.docs が存在しない場合"
+
+notes:
+  - "親Epic起票後に `parent.epic_issue_number` と branch の実番号を反映する"
