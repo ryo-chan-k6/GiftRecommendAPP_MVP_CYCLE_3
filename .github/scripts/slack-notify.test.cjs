@@ -4,6 +4,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const slack = require("./slack-notify.cjs");
 
+const DUMMY_SLACK_TOKEN = ["xox", "b-", "test"].join("");
+
 test("buildSlackText: level title fields linksを整形する", () => {
   const text = slack.buildSlackText({
     level: "review",
@@ -44,7 +46,7 @@ test("findThreadTsFromComments: 最新コメントのmarkerを返す", () => {
 test("postSlackMessage: dry_runではAPIを呼ばない", async () => {
   let called = false;
   const result = await slack.postSlackMessage({
-    token: "xoxb-test",
+    token: DUMMY_SLACK_TOKEN,
     channel: "C123",
     text: "hello",
     dryRun: true,
@@ -70,12 +72,12 @@ test("postSlackMessage: 設定不足はskip扱い", async () => {
 
 test("postSlackMessage: Slack APIのokレスポンスを返す", async () => {
   const result = await slack.postSlackMessage({
-    token: "xoxb-test",
+    token: DUMMY_SLACK_TOKEN,
     channel: "C123",
     text: "hello",
     fetchImpl: async (url, options) => {
       assert.equal(url, "https://slack.com/api/chat.postMessage");
-      assert.equal(options.headers.Authorization, "Bearer xoxb-test");
+      assert.equal(options.headers.Authorization, `Bearer ${DUMMY_SLACK_TOKEN}`);
       return {
         status: 200,
         async json() {

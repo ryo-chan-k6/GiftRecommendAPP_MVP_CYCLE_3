@@ -248,7 +248,7 @@ Definitionに依存Issue、依存PR、親Epic、依存Epicが指定されてい�
 
 1. **親 Epic Issue が未作成の場合**: `parent.epic_issue` のタイトル（例: `[Epic]レコメンド実行API`）で Epic Issue を作成し、発行された**実 Issue 番号**を Task Definition の `parent.epic_issue_number` に反映する。あわせて `parent.epic_branch` をブランチ運用ルールに従い作成する。
 2. **既に親 Epic Issue が存在する場合**: その**実 Issue 番号**（および必要なら `epic_issue` / `epic_branch`）で Task Definition の `parent` を更新する。配置値と実番号の不一致を解消する。
-3. Definition 反映後、`/start-task` を再実行し、§5.1 で実在確認結果が `存在` になることを確認するから Branch 作成・`/work-issue` へ進む。
+3. Definition 反映後、`/start-task` を再実行し、§5.1 で実在確認結果が `存在` になることを確認してから Branch 作成・`/work-issue` へ進む。
 
 #### 5.2 識別子・スコープ整合チェック（識別子付き Task）
 
@@ -351,6 +351,15 @@ Issue本文には、少なくとも以下を含める。
 - Project同期項目（`project.project_name` / `project.fields.*`）
 - Human Review要否
 
+`Planned Start` / `Due Date` は、Issue本文生成時にAI Agentが明示的な日付へ解決する。`project.fields.planned_start` / `project.fields.due_date` に `{{issue_created_date}}` / `{{issue_created_date+2d}}` が指定されている場合、またはAI主導Taskで未指定の場合、Issue本文にはプレースホルダを残さず以下を入れる。
+
+| 項目 | 解決値 | 形式 |
+| ---- | ------ | ---- |
+| `project.fields.planned_start` | Issue作成日（JST） | `YYYY-MM-DD` |
+| `project.fields.due_date` | Issue作成日（JST） + 2日 | `YYYY-MM-DD` |
+
+明示的な日付がDefinitionに指定されている場合はその値を使用する。ただし、AI主導Taskで標準値と異なる場合は、チャット出力のProject同期項目に「Definition明示値」として根拠を残す。日付計算に失敗した場合はIssue作成前に停止し、未解決プレースホルダをIssue本文へ出力しない。
+
 ---
 
 ### 9. Issueを作成する
@@ -358,6 +367,38 @@ Issue本文には、少なくとも以下を含める。
 Issue本文をもとにGitHub Issueを作成する。
 
 Issue作成後、Issue番号を後続処理で利用する。
+
+### 9.5 実Task Issue番号を関連Definitionへ反映する
+
+Task Issue 作成に成功した場合、AI Agent は GitHub が返した**実 Issue 番号**を関連 Definition へ反映する。
+
+反映してよい値は、以下で実在確認できたものに限定する。
+
+| 値 | 確認方法 |
+| ---- | -------- |
+| Task Issue 番号 | `gh issue view <番号>` または Issue 作成結果 URL |
+| 親 Epic Issue 番号 | `gh issue view <番号>` |
+| 親 Epic Branch 名 | `git branch -a` または `git ls-remote --heads origin <branch>` |
+
+反映対象は以下。
+
+| 対象Definition | 反映項目 |
+| -------------- | -------- |
+| 対応 Review Definition | `target.issue` / `input.issue.number` |
+| 対応 Review Definition | `target.parent_epic_issue` / `target.parent_epic_branch` |
+| Task Definition | `parent.epic_issue_number` / `parent.epic_branch`（未反映または実値不一致の場合のみ） |
+| 依存関係が確定した Task Definition | `dependencies.epics` |
+
+ガード条件:
+
+- Issue 番号を推測で記入しない。
+- Issue タイトル検索で複数候補が出た場合は更新せず、人間確認へ回す。
+- `parent.epic_issue_number` が `null` のまま、または親 Epic Branch が未確認のまま Branch 作成へ進まない。
+- `target.issue` / `input.issue.number` に別 Task Issue 番号が入っている場合は上書きせず、人間確認へ回す。
+- `dependencies.epics` に同じ Issue 番号を重複追加しない。
+- 対象 Review Definition が存在しない場合は、チャットで「未反映項目」として明示し、必要なら Review Definition 作成を後続Task候補にする。
+- dry-run では Definition を更新せず、反映予定の項目だけを出力する。
+- `.env` 実値、token、secret を表示・保存しない。
 
 ---
 
@@ -373,7 +414,7 @@ Projectが不明な場合は停止し、人間確認へ回す。
 
 DefinitionまたはProject運用ルールに従い、Projectフィールドを同期する。
 
-同期元は Task Definition の `project.fields` とする。`project` 直下に `status` / `phase` / `priority` を置かない（正本は `project.fields.status` 等）。
+同期元は Task Definition の `project.fields` とする。ただし、`planned_start` / `due_date` は §8 で解決した日付を同期対象とし、Issue本文・Project同期意図・dry-run出力で同じ値を使用する。`project` 直下に `status` / `phase` / `priority` を置かない（正本は `project.fields.status` 等）。
 
 同期対象の例。
 
@@ -549,6 +590,7 @@ Slack通知は正本ではない。
 - 識別子付き Task で `output.files` / `parallel_control.exclusive_files` が親 Epic の `epic_scope.allowed_paths` 外を含む
 - Projectが不明
 - Label判断に必要な情報が不足している
+- Issue本文の `Planned Start` / `Due Date` をJST日付へ解決できない、または `{{issue_created_date}}` / `{{issue_created_date+2d}}` が本文に残る
 - Branch baseが不明
 - no-branch判定ができない
 - 横断影響が大きく、人間判断が必要
@@ -673,10 +715,10 @@ Issue作成前に停止する場合は、以下の形式で出力する。
 実際の Issue / Branch / Project / Slack / ファイル変更を行わない rehearsal では、以下を出力する。
 
 1. 生成される Task Issue タイトル
-2. 生成される Task Issue 本文（§12 は Issue同期項目のみ。GitHub Label 一覧は含めない）
+2. 生成される Task Issue 本文（§8 の日付解決を適用し、`Planned Start` はdry-run実行日のJST日付、`Due Date` はdry-run実行日のJST日付 + 2日を明示する。§12 は Issue同期項目のみ。GitHub Label 一覧は含めない）
 3. 付与予定 Label（`unit` / `type` / `area` / `priority` のみ。Issue 本文とは別。`ai-agent` / `human-led` は含めない）
 4. 想定 Branch 名
-5. Project 更新意図（`project.fields.*` を明示）
+5. Project 更新意図（`project.fields.*` を明示。`planned_start` / `due_date` はIssue本文と同じ解決後日付を示す）
 6. 親 Epic / Branch 存在チェック（§5.1。表の列は「配置値」「実在確認結果」）
 7. 次 Action（親 Epic 未検出時は §5.1「親 Epic 未検出時の標準手順」をそのまま用いる）
 8. Definition / Template / Commands 運用上の改善点（任意。`#300 未存在` 等の禁止表現を使わない）

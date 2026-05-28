@@ -22,7 +22,6 @@ on:
   pull_request:
     types:
       - opened
-      - reopened
   workflow_dispatch:
 ```
 

@@ -68,6 +68,8 @@
 
 「呼び出すモジュール側のファイルを API Epic 子 Task が触る場合は、必ず該当 `MOD-*` モジュール Epic配下の Task として別途切る」を原則とする。API Epic 配下 Task の差分が `epic_scope.allowed_paths` 外に出るとき、AI Agent は作業を停止し、`human_decision_points` に理由を残す。
 
+識別子単位 Epic は `06_実装設計` の仕様書と `07_開発・単体テスト` の実装を一気通貫で束ねる。GitHub Projects の Epic `Phase` は完了ゲートとして原則 `07_開発・単体テスト` とし、仕様書フェーズの進捗は子 Task の `Phase`（`06_実装設計`）で追う（[Projects運用ルール](../プロジェクト管理/Projects運用ルール.md) §6.1）。
+
 ### 3.5.2 識別子単位 Epic と `epic_scope.allowed_paths`
 
 | 成果物識別子 | Epic タイトル | 配下 Task の典型 | `epic_scope.allowed_paths` 例 |
@@ -121,7 +123,7 @@ flowchart LR
 | P4    | ドメインモデル設計   | 推薦ロジック変更時にTask化。Request / Retrieval / Matching / Ranking / Result / Reason / Feedback / Evaluationは個別Task化しやすい | 高     |
 | P5    | アプリケーション設計 | 後続06_実装設計のinputになるため、未整備・修正があれば優先Task化                                                                   | 高     |
 | 06_実装設計 | 実装設計       | 現時点の主対象。画面、API、DB、バッチ、基盤を実Task Definition化する                                                               | 最高   |
-| P7    | 開発                 | 06_実装設計完了後に、機能・モジュール単位でTask Definition化する                                                                   | 高     |
+| P7    | 開発・単体テスト     | 識別子単位 Epic 配下では子 Task として 07 を個別管理。Epic の Projects Phase は完了ゲート（原則 07）。横断の 07 専用 Task は必要に応じて別途 Task 化 | 高     |
 | P8    | 結合・総合テスト     | テスト計画・ケース・結果記録単位でTask化                                                                                           | 中     |
 | P9    | リリース             | リリース前に手順書・チェックリスト単位でTask化                                                                                     | 中     |
 | P10   | 運用・改善           | MVPリリース後に分析・改善単位でTask化                                                                                              | 中     |

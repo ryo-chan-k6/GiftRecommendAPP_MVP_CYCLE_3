@@ -77,6 +77,18 @@ Epic Issueは、配下Taskの作業計画、依存関係、統合状況、およ
 
 Epic 境界を超えるファイル変更（例: API Epic 配下 Task が `apps/reco/**` のモジュール実装を編集する）は、別 `MOD-*` Epic（例: `MOD-RECO-001`）配下の Task として切り出す。
 
+#### 4.1.1 Projects Phase / Milestone（識別子単位 Epic）
+
+識別子単位 Epic は、`06_実装設計` の仕様書成果物と `07_開発・単体テスト` の実装・単体テスト成果物を**一気通貫で束ねる**コンテナである。GitHub Projects の `Phase` は 1 Issue あたり 1 値のため、Epic と子 Task で `Phase` の意味を分ける（[Projects運用ルール](./Projects運用ルール.md) §6.1 を正本とする）。
+
+| 項目 | 識別子単位 Epic | 子 Task Issue |
+| ---- | --------------- | ------------- |
+| Phase の意味 | Epic 完了ゲート（原則 `07_開発・単体テスト`） | 主成果物の工程（仕様書 Task → `06_実装設計`、実装・UT Task → `07_開発・単体テスト`） |
+| Milestone | 完了ゲートに整合（原則 `開発・単体テスト工程完了`） | 成果物工程に整合 |
+| docs 配置 | Epic 本文で対象工程（06 / 07）を明示。配置正本は各 Task の成果物工程に従う | Task Definition の `output` / `project.fields.phase` に従う |
+
+Epic Definition（`/start-epic`）では `project.fields.phase` を原則 `07_開発・単体テスト` とする。機能・領域単位 Epic（例外）は Epic Definition で個別に指定し、Issue 本文に理由を明記する。
+
 ---
 
 ### 4.2 Task Issue
@@ -297,6 +309,9 @@ Projectsの各フィールドは、同期後はProjectsを正本とする。
 
 ただし、Issue作成時の同期入力として、Issue本文にも必要項目を記載する。
 
+Issue本文のうち、workflowが機械的に参照する同期入力ブロックを本運用では **Issue運用メタデータ** と呼ぶ。  
+Issue運用メタデータは `###` 見出し単位（例: `### 作業単位`）で記述し、人主導テンプレートとAI作成Issueで同じ構造を使う。
+
 ---
 
 ## 10. Issue本文に含める項目
@@ -326,6 +341,19 @@ Issue本文には、原則として以下を含める。
 | 作業内容      | 確認観点          | レビュー・自己確認観点            |
 | AI運用        | operation_logging | AIログ作成レベル（Task Definition では `operation_logging.level`） |
 | AI運用        | 補足指示          | AI作業時の制約・注意点            |
+
+---
+
+## 10.1 初回同期と継続同期の分離
+
+Issue運用メタデータに基づく同期は、以下の方針で運用する。
+
+| 区分 | トリガー | Status | 補足 |
+| ---- | -------- | ------ | ---- |
+| 初回同期 | `issues.opened` | 初期Statusを同期してよい | `ai-agent` では原則 `no-branch: false` のため、同一runでBranch作成後に `In Progress` へ遷移してよい |
+| 継続同期 | `issues.edited` | 同期対象外 | `Phase` / `Priority` / `Area` / `Planned Start` / `Due Date`、Label、Milestone、親子のみ更新する |
+
+`issues.edited` では `Status` / `Actual Start` / `Actual End` を更新しない。
 
 ---
 
@@ -526,6 +554,9 @@ Issue 本文から以下を **Projects（ProjectV2）** へ同期する。同期
 | Area          | Projects Area          |
 | Planned Start | Projects Planned Start |
 | Due Date      | Projects Due Date      |
+
+`Status` は初回同期（`issues.opened`）のみに同期し、継続同期（`issues.edited`）では更新しない。  
+`Actual Start` / `Actual End` は Issue 本文編集では同期せず、Projects運用ルールで定義されたイベント（Branch作成、作業開始、PR merge / Issue close 等）で更新する。
 
 Priority / Area は、Issue Label の `priority:*` / `area:*` と値を揃える運用とするが、**同期先は Projects フィールド**である（Label への付与は §16.2）。
 
@@ -740,13 +771,28 @@ AI作成Issueでは、以下を原則とする。
 - Issue本文にProject同期項目を記載せず、Project同期不能なIssueを作成すること
 - IssueをProjectに手動追加する運用を正とすること
 - GitHub側のProject自動追加設定に依存すること
+- Issueを再オープンして作業を戻すこと（修正が必要な場合は新しいTask Issueを作成する）
 - PRをIssueに紐づけずに作成すること
 - Slack通知だけで作業記録を完結させること
 - Issueに残すべき作業計画をPRやSlackのみに記録すること
 
 ---
 
-## 26. 関連ドキュメント
+## 26. ロールアウト方針（Issue運用メタデータ）
+
+Issue運用メタデータ（`###` 見出し形式）への統一は、以下の範囲で実施する。
+
+| 対象 | 方針 |
+| ---- | ---- |
+| 新規Issue | 本ルールを適用する |
+| 既存Issue（通常） | 非移行とし、既存運用のまま扱う |
+| Issue #259 | 削除して最新形式で再作成する |
+
+既存Issueを一括移行しない。必要な個別Issueのみ、人間判断で再作成または更新する。
+
+---
+
+## 27. 関連ドキュメント
 
 | ドキュメント                                       | 役割                                             |
 | -------------------------------------------------- | ------------------------------------------------ |
@@ -764,7 +810,7 @@ AI作成Issueでは、以下を原則とする。
 
 ---
 
-## 27. 一言まとめ
+## 28. 一言まとめ
 
 Issueは、すべての作業の起点であり、作業計画の正本である。
 

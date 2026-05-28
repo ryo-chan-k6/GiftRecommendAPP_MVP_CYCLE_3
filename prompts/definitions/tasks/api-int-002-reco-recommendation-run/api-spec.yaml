@@ -4,12 +4,14 @@ definition_type: "task"
 task:
   id: "task-api-int-002-reco-recommendation-run-api-spec"
   title: "API-INT-002:Reco推薦実行API仕様書作成"
-  summary: "API-INT-002（Reco推薦実行 / Internal API）の個別API仕様書（API-INT-002_Reco推薦実行API仕様書.md）を、API設計方針書・API一覧・Recommendation Request/Result定義書・エラーコード定義書に基づいて作成する。"
+  summary: "API-INT-002（Reco推薦実行 / Internal API）の個別API仕様書（API-INT-002_Reco推薦実行API仕様書.md）を、API設計方針書・API一覧・Recommendation Request/Result定義書・エラーコード定義書・ログ・Observability設計書に基づいて作成する。"
+
+work_mode: "ai-agent"
 
 parent:
-  epic_issue: "[Epic]レコメンド実行API"
-  epic_issue_number: "#300" # 参照配置値。GitHub 実在は /start-task §5.1 で確認。未作成時は実番号へ更新
-  epic_branch: "feature/epic-300-recommendation-run-api"
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: null  # 実Issue起票後に追記。/start-task §5.1 で GitHub 実在確認。
+  epic_branch: "feature/epic-<issue-number>-api-int-002-reco-recommendation-run"
   related_issues: []
   related_prs: []
 
@@ -88,6 +90,9 @@ input:
     - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
       required: true
       purpose: "Error Response、HTTP Status、ユーザー向け表示方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "API-INT-002 の phase_log / error_log / metric / trace_id 対象を仕様書へ反映するため"
     - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
       required: true
       purpose: "認証・認可設計書（文書名）に基づき、認証要否、認可条件、APIアクセス制御方針を確認するため"
@@ -151,6 +156,7 @@ deliverables:
   - "API-INT-002（Reco推薦実行）個別API仕様書（ファイル名: API-INT-002_Reco推薦実行API仕様書.md）"
   - "Request / Response / Error Response定義"
   - "Validation仕様"
+  - "trace_id / log / metric 方針"
   - "provider / consumer 影響整理"
   - "OpenAPI / Orval / generated 方針整理"
   - "未決事項・人間判断事項の整理"
@@ -163,6 +169,7 @@ acceptance_criteria:
   - "Recommendation Request定義書に基づいてRequest Bodyが整理されている"
   - "Recommendation Result定義書に基づいてResponse Bodyが整理されている"
   - "Error Responseとエラーコードがエラーコード定義書と整合している"
+  - "trace_id / phase_log / error_log / metric 方針がログ・Observability設計書と整合している"
   - "provider / consumer の影響が記載されている"
   - "OpenAPI / Orval / generated の扱いが記載されている"
   - "本Task内でOpenAPI、Orval、generated、実装ファイルを変更していない"
@@ -173,8 +180,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   name: "docs/task-<issue-number>-api-int-002-reco-recommendation-run-api-spec"
-  base: "feature/epic-300-recommendation-run-api"
-  target: "feature/epic-300-recommendation-run-api"
+  base: "feature/epic-<issue-number>-api-int-002-reco-recommendation-run"
+  target: "feature/epic-<issue-number>-api-int-002-reco-recommendation-run"
   worktree_required: false
 
 project:
@@ -315,4 +322,7 @@ notes:
   - "OpenAPI、Orval、generated、provider実装、consumer実装は本Taskでは扱わない。必要になった場合はContract Taskとして分離する。"
   - "出力先は docs/06_実装設計/api/ に配置する（プロジェクトディレクトリ構成定義書 §10.5 に準拠）。命名規則の正本は Task Definition設計書 §15.1（共通）・§15.2（個別API仕様書）。本Task: ファイル名 API-INT-002_Reco推薦実行API仕様書.md、task.title API-INT-002:Reco推薦実行API仕様書作成、Issue [Task]API-INT-002:Reco推薦実行API仕様書作成、Branch english-summary に api-int-002（kebab-case）を含める。"
   - "正本構造は Task Definition設計書 §9.1（実運用YAML）・§10（必須項目）・§11以降（項目定義）を参照する。"
-  - "/start-task dry-run チェックリスト: (1) schema / 必須項目妥当性 (2) 必須 input.docs 存在 (3) parent.epic_issue_number 配置値に対する GitHub 実在確認（結果: 存在/未検出/未確認。blocking 依存なし） (4) parent.epic_branch 実在確認 (5) API一覧の API-INT-002 が対象 (6) Issue本文に GitHub Label 一覧を含めない (7) project.fields.status を正本パス (8) 付与 Label サマリ 4 種のみ。改善点・次 Action で「#300 未存在」禁止・§5.1 標準手順を用いる"
+  - "親Epicは [Epic]API-INT-002:Reco推薦実行（識別子単位Epic方針 / 成果物化方針書 §3.5）。実Issue起票後に parent.epic_issue_number / branch.base / branch.target を実値へ更新する。"
+  - "依存Epicは [Epic]MOD-RECO-001:Recommendation Orchestrator（および必要に応じて他 MOD-RECO-* Epic）。実Issue起票後に dependencies.epics へ追記する（成果物化方針書 §3.5.3）。"
+  - "Epic Definition の正本は prompts/definitions/epics/api-int-002-reco-recommendation-run/epic.yaml。"
+  - "/start-task dry-run チェックリスト: (1) schema / 必須項目妥当性 (2) 必須 input.docs 存在 (3) parent.epic_issue_number が null の場合は Epic Issue 起票が先行必要 (4) parent.epic_branch 実在確認 (5) API一覧の API-INT-002 が対象 (6) Issue本文に GitHub Label 一覧を含めない (7) project.fields.status を正本パス (8) 付与 Label サマリ 4 種のみ。"

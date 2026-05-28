@@ -139,6 +139,18 @@ ProjectsのPhaseフィールドでは、以下の値を正式値として利用�
 
 `90_PoC` は、PoC Issue を管理する場合に Phase として設定してよい。成果物は `docs/90_PoC/` に配置し、Phase 値 `90_PoC` と対応させる。
 
+### 6.1 Issue種別ごとのPhaseの意味
+
+`Phase` の解釈は Issue 種別で異なる。工程番号（06 / 07 等）と docs ディレクトリの対応は [プロジェクト工程定義](./プロジェクト工程定義.md) を正とする。
+
+| Issue種別 | Phase の意味 | 識別子単位 Epic の原則値 |
+| --------- | ------------ | ------------------------ |
+| Task Issue | 当該 Task の**主成果物**が属する工程（成果物工程） | （該当なし） |
+| 識別子単位 Epic Issue | Epic を **Done** とみなす**完了ゲート工程**（配下の最遅工程） | `07_開発・単体テスト` |
+| 機能・領域単位 Epic Issue（例外） | Epic Definition で指定する完了ゲート工程 | Definition に従う |
+
+識別子単位 Epic（API-PUB / API-INT / SCR / BATCH / MOD-*）は、配下に `06_実装設計` の仕様書成果物と `07_開発・単体テスト` の実装・単体テスト成果物を束ねる。Epic の `Phase` は「現在どの docs フォルダか」ではなく、**Epic クローズ条件の工程**を表す。仕様書フェーズの進捗は、子 Task の `Phase` と `docs/06_実装設計/` で追う。
+
 ---
 
 ## 7. Priority定義
@@ -255,7 +267,7 @@ AI主導タスクでは、Task DefinitionまたはAI作成Issue本文から以�
 | ------------- | ------------------- |
 | Planned Start | Issue作成日         |
 | Due Date      | Planned Start + 2日 |
-| Actual Start  | Branch作成日        |
+| Actual Start  | Issue作成日（`issues.opened`、未設定時のみ） |
 | Actual End    | Done更新日          |
 
 AI主導タスクは、原則として即時着手するため、Issue作成後にBranch作成まで進め、StatusをIn Progressへ更新する。Issue作成からBranch作成までの流れは [Issue運用ルール](./Issue運用ルール.md) §8 を参照する。
@@ -269,8 +281,10 @@ Milestoneは、マスタスケジュール粒度の工程管理に利用する�
 | 項目      | 方針                                      |
 | --------- | ----------------------------------------- |
 | Milestone | 工程完了単位で設定する                    |
-| Phase     | Issueが属する工程を表すProjectsフィールド |
-| 関係      | PhaseとMilestoneは整合するように設定する  |
+| Phase     | Issue種別に応じた工程（§6.1）。Task は成果物工程、識別子単位 Epic は完了ゲート工程 |
+| 関係      | Task Issue では Phase と Milestone を整合させる。識別子単位 Epic では完了ゲートの Phase と Milestone を整合させる |
+
+識別子単位 Epic では、原則として `Phase = 07_開発・単体テスト` と `Milestone = 開発・単体テスト工程完了` を設定する（§6.1）。子 Task の Milestone は、当該 Task の成果物工程に応じて `実装設計工程完了` または `開発・単体テスト工程完了` 等とする。
 
 ### 12.1 Milestone例
 
@@ -345,7 +359,7 @@ no-branch および Branch 作成タイミングは [Issue運用ルール](./Iss
 | 初期Status    | 原則 Todo → Branch 作成後に In Progress         |
 | Planned Start | Issue 作成日                                    |
 | Due Date      | Issue 作成日 + 2日                              |
-| Actual Start  | Branch 作成時                                   |
+| Actual Start  | Issue 作成時（`issues.opened`）に未設定なら設定 |
 | Actual End    | Done 更新時                                     |
 | Status遷移    | Todo → In Progress（Branch 作成）→ AI Review → Human Review → Done |
 
@@ -358,7 +372,7 @@ Branch 作成および no-branch の扱いは [Issue運用ルール](./Issue運�
 | 初期Status        | 原則 Backlog                   | 原則 Todo → Branch 後 In Progress |
 | Planned Start     | Issue 本文の値を同期           | Issue 作成日                       |
 | Due Date          | Issue 本文の値を同期           | Issue 作成日 + 2日                 |
-| Actual Start      | Branch 作成時                  | Branch 作成時                      |
+| Actual Start      | Branch 作成時                  | Issue 作成時（`issues.opened`）    |
 | Actual End        | Done 更新時                    | Done 更新時                        |
 | レビュー時Status  | AI Review → Human Review       | AI Review → Human Review           |
 | Done 更新トリガー | PR merge / Issue close 時      | PR merge / Issue close 時          |
@@ -387,7 +401,8 @@ Issue本文から Projects へ同期する項目の一覧は、[Issue運用ル�
 
 AI主導タスクでは、Task Definition または AI 作成 Issue 本文に基づき、§14.2 の Projects フィールド初期値を同期する。
 
-Status は Branch 作成後に In Progress とする。
+Status は初回同期で初期値を設定し、Branch 作成後に In Progress とする。  
+`issues.edited` で Status は更新しない（同期対象外）。
 
 ---
 
@@ -407,6 +422,8 @@ Projects運用に関係するGitHub Actions workflowは、仕様書を作成し�
 | PR merge時Status更新ワークフロー                | PR mergeまたはIssue close時にStatusをDoneへ更新する              |
 
 Branch 作成 workflow の詳細は [ブランチ運用ルール](./ブランチ運用ルール.md) および Issue同期とブランチ作成ワークフロー仕様書を参照する。
+
+Issue再オープンは運用対象外とし、Issue系workflowの `issues.reopened` は採用しない。
 
 ### 16.2 Workflow仕様書の配置
 

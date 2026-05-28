@@ -1,0 +1,476 @@
+name: Definition Run Harness
+
+on:
+  repository_dispatch:
+    types:
+      - definition-run
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 実行する Cursor Command（MVP は start-epic のみ）
+        required: true
+        type: choice
+        options:
+          - start-epic
+      definition:
+        description: 対象 Definition のリポジトリ相対パス（prompts/definitions/ 配下）
+        required: true
+      run_mode:
+        description: 実行モード（MVP は dry-run のみ受理）
+        required: true
+        type: choice
+        default: dry-run
+        options:
+          - dry-run
+          - live-run
+      request_issue:
+        description: 関連 Issue 番号（任意、トレース用）
+        required: false
+        default: ""
+      requested_by:
+        description: 依頼者識別子（任意、監査用）
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: definition-run-${{ github.event.client_payload.definition || inputs.definition }}
+  cancel-in-progress: false
+
+jobs:
+  definition-run:
+    name: Definition Run (Cursor Cloud Agent)
+    runs-on: ubuntu-latest
+    env:
+      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Resolve inputs
+        id: resolve
+        env:
+          PAYLOAD_COMMAND: ${{ github.event.client_payload.command }}
+          PAYLOAD_DEFINITION: ${{ github.event.client_payload.definition }}
+          PAYLOAD_RUN_MODE: ${{ github.event.client_payload.run_mode }}
+          PAYLOAD_REQUEST_ISSUE: ${{ github.event.client_payload.request_issue }}
+          PAYLOAD_REQUESTED_BY: ${{ github.event.client_payload.requested_by }}
+          INPUT_COMMAND: ${{ inputs.command }}
+          INPUT_DEFINITION: ${{ inputs.definition }}
+          INPUT_RUN_MODE: ${{ inputs.run_mode }}
+          INPUT_REQUEST_ISSUE: ${{ inputs.request_issue }}
+          INPUT_REQUESTED_BY: ${{ inputs.requested_by }}
+        run: |
+          set -euo pipefail
+          echo "::group::resolve-inputs"
+          COMMAND="${PAYLOAD_COMMAND:-${INPUT_COMMAND:-}}"
+          DEFINITION="${PAYLOAD_DEFINITION:-${INPUT_DEFINITION:-}}"
+          RUN_MODE="${PAYLOAD_RUN_MODE:-${INPUT_RUN_MODE:-}}"
+          REQUEST_ISSUE="${PAYLOAD_REQUEST_ISSUE:-${INPUT_REQUEST_ISSUE:-}}"
+          REQUESTED_BY="${PAYLOAD_REQUESTED_BY:-${INPUT_REQUESTED_BY:-${GITHUB_ACTOR:-}}}"
+          echo "decision: resolve event=${GITHUB_EVENT_NAME} command=${COMMAND} run_mode=${RUN_MODE}"
+          echo "command=${COMMAND}" >> "$GITHUB_OUTPUT"
+          echo "definition=${DEFINITION}" >> "$GITHUB_OUTPUT"
+          echo "run_mode=${RUN_MODE}" >> "$GITHUB_OUTPUT"
+          echo "request_issue=${REQUEST_ISSUE}" >> "$GITHUB_OUTPUT"
+          echo "requested_by=${REQUESTED_BY}" >> "$GITHUB_OUTPUT"
+          echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          echo "::endgroup::"
+
+      - name: Validate inputs and build prompt
+        id: validate
+        env:
+          INPUT_COMMAND: ${{ steps.resolve.outputs.command }}
+          INPUT_DEFINITION: ${{ steps.resolve.outputs.definition }}
+          INPUT_RUN_MODE: ${{ steps.resolve.outputs.run_mode }}
+          INPUT_REQUEST_ISSUE: ${{ steps.resolve.outputs.request_issue }}
+          INPUT_REQUESTED_BY: ${{ steps.resolve.outputs.requested_by }}
+        run: |
+          set -euo pipefail
+          echo "::group::validate-and-build-prompt"
+          node <<'EOF'
+          const path = require("node:path");
+          const fs = require("node:fs");
+          const builder = require(
+            path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/definition-run-prompt-builder.cjs"),
+          );
+
+          const rawInput = {
+            command: process.env.INPUT_COMMAND,
+            definition: process.env.INPUT_DEFINITION,
+            run_mode: process.env.INPUT_RUN_MODE,
+            request_issue: process.env.INPUT_REQUEST_ISSUE,
+            requested_by: process.env.INPUT_REQUESTED_BY,
+          };
+
+          try {
+            const request = builder.buildDefinitionRunRequest(rawInput, {
+              workspace: process.env.GITHUB_WORKSPACE,
+            });
+            const summary = builder.summarizeForLog(request);
+            console.log(
+              builder.decisionLine("validated", {
+                command: summary.command,
+                run_mode: summary.run_mode,
+                definition_type: summary.definition_type,
+              }),
+            );
+            console.log("summary:", JSON.stringify(summary));
+            fs.writeFileSync(
+              path.join(process.env.RUNNER_TEMP, "definition-run-request.json"),
+              JSON.stringify(request),
+              "utf8",
+            );
+          } catch (error) {
+            const code = error && error.code ? error.code : "unknown_error";
+            const message = error && error.message ? error.message : String(error);
+            console.error(`::error::validation_failed code=${code} message=${message}`);
+            process.exit(1);
+          }
+          EOF
+          echo "::endgroup::"
+
+      - name: Install Cursor SDK
+        env:
+          NPM_CONFIG_FUND: "false"
+          NPM_CONFIG_AUDIT: "false"
+        run: |
+          set -euo pipefail
+          echo "::group::install-cursor-sdk"
+          echo "decision: install-sdk package=@cursor/sdk"
+          npm install --no-save --no-audit --no-fund @cursor/sdk
+          echo "::endgroup::"
+
+      - name: Invoke Cursor Cloud Agent
+        id: invoke
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "::group::cursor-stream"
+          node <<'EOF'
+          const path = require("node:path");
+          const fs = require("node:fs");
+          const builder = require(
+            path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/definition-run-prompt-builder.cjs"),
+          );
+          const { Agent, CursorAgentError } = require("@cursor/sdk");
+
+          const requestPath = path.join(process.env.RUNNER_TEMP, "definition-run-request.json");
+          const request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
+          const tempDir = process.env.RUNNER_TEMP;
+          const resultPath = path.join(tempDir, "definition-run-result.json");
+          const transcriptPath = path.join(tempDir, "definition-run-transcript.log");
+
+          const startedAt = new Date().toISOString();
+          console.log(
+            builder.decisionLine("invoke", {
+              command: request.command,
+              run_mode: request.run_mode,
+              ref: request.ref,
+            }),
+          );
+
+          if (!process.env.CURSOR_API_KEY) {
+            console.error("::error::missing_cursor_api_key");
+            process.exit(1);
+          }
+
+          const transcriptStream = fs.createWriteStream(transcriptPath, { flags: "a" });
+          function appendTranscript(line) {
+            transcriptStream.write(line + "\n");
+          }
+          function logEvent(label, payload) {
+            const text = builder.maskSecrets(JSON.stringify(payload));
+            console.log(`[${label}] ${text}`);
+            appendTranscript(`[${label}] ${text}`);
+          }
+
+          let agent;
+          let agentIdLogged = "";
+          let runId = "";
+          let finalStatus = "error";
+          let finalResultText = "";
+          try {
+            agent = await Agent.create({
+              apiKey: process.env.CURSOR_API_KEY,
+              model: { id: "auto" },
+              cloud: {
+                repos: [
+                  {
+                    url: process.env.REPO_URL,
+                    ref: request.ref,
+                  },
+                ],
+                autoCreatePR: false,
+                skipReviewerRequest: true,
+              },
+            });
+            agentIdLogged = agent.agentId || "";
+            console.log(
+              builder.decisionLine("agent-created", { agent_id: agentIdLogged, ref: request.ref }),
+            );
+
+            const run = await agent.send(request.prompt);
+            runId = run.id || "";
+            console.log(builder.decisionLine("run-sent", { run_id: runId }));
+
+            for await (const event of run.stream()) {
+              const type = event && event.type ? event.type : "unknown";
+              if (type === "assistant" && event.message && Array.isArray(event.message.content)) {
+                for (const block of event.message.content) {
+                  if (block && block.type === "text" && block.text) {
+                    const masked = builder.maskSecrets(block.text);
+                    process.stdout.write(masked);
+                    appendTranscript(masked);
+                  } else {
+                    logEvent("assistant-block", { type: block && block.type });
+                  }
+                }
+              } else if (type === "tool_use" || type === "tool_result") {
+                logEvent(type, {
+                  name: event && event.name,
+                  status: event && event.status,
+                });
+              } else if (type === "error") {
+                logEvent("error", event);
+              } else {
+                logEvent(type, {});
+              }
+            }
+
+            const result = await run.wait();
+            finalStatus = result && result.status ? result.status : "unknown";
+            finalResultText = result && result.result ? String(result.result) : "";
+            console.log(
+              builder.decisionLine("run-finished", {
+                status: finalStatus,
+                agent_id: agentIdLogged,
+                run_id: runId,
+              }),
+            );
+          } catch (error) {
+            if (error instanceof CursorAgentError) {
+              console.error(
+                `::error::cursor_agent_error message=${builder.maskSecrets(error.message)} retryable=${error.isRetryable}`,
+              );
+              fs.writeFileSync(
+                resultPath,
+                JSON.stringify({
+                  status: "startup_failed",
+                  error: builder.maskSecrets(error.message),
+                  retryable: Boolean(error.isRetryable),
+                  agent_id: agentIdLogged,
+                  run_id: runId,
+                  started_at: startedAt,
+                  finished_at: new Date().toISOString(),
+                }),
+                "utf8",
+              );
+              process.exit(1);
+            }
+            throw error;
+          } finally {
+            if (agent && agent[Symbol.asyncDispose]) {
+              try {
+                await agent[Symbol.asyncDispose]();
+              } catch {
+                // ignore disposal errors
+              }
+            }
+            transcriptStream.end();
+          }
+
+          fs.writeFileSync(
+            resultPath,
+            JSON.stringify({
+              status: finalStatus,
+              result: builder.maskSecrets(finalResultText),
+              agent_id: agentIdLogged,
+              run_id: runId,
+              started_at: startedAt,
+              finished_at: new Date().toISOString(),
+            }),
+            "utf8",
+          );
+
+          if (finalStatus !== "finished") {
+            console.error(`::error::run_failed status=${finalStatus} run_id=${runId}`);
+            process.exit(2);
+          }
+          EOF
+          echo "::endgroup::"
+
+      - name: Post-run verification
+        if: always()
+        id: postverify
+        env:
+          STARTED_AT: ${{ steps.resolve.outputs.started_at }}
+          RUN_MODE: ${{ steps.resolve.outputs.run_mode }}
+          RUN_ACTOR: ${{ github.actor }}
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const path = require("path");
+            const fs = require("fs");
+            const post = require(
+              path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/definition-run-post-verify.cjs"),
+            );
+            const builder = require(
+              path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/definition-run-prompt-builder.cjs"),
+            );
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const startedAt = process.env.STARTED_AT;
+            const runMode = process.env.RUN_MODE || "dry-run";
+            const runActor = process.env.RUN_ACTOR || "";
+            console.log(
+              builder.decisionLine("post-verify-start", {
+                started_at: startedAt,
+                run_mode: runMode,
+                run_actor: runActor,
+              }),
+            );
+
+            const result = await post.runPostVerify({
+              octokit: github,
+              owner,
+              repo,
+              startedAt,
+              runMode,
+              runActor,
+            });
+            console.log(
+              builder.decisionLine("post-verify-done", {
+                violations: result.counts.violations,
+                issues: result.counts.issues,
+                prs: result.counts.pull_requests,
+                branches: result.counts.branches,
+              }),
+            );
+
+            fs.writeFileSync(
+              path.join(process.env.RUNNER_TEMP, "definition-run-post-verify.json"),
+              JSON.stringify(result),
+              "utf8",
+            );
+
+            core.setOutput("violations", String(result.counts.violations));
+
+            if (result.counts.violations > 0) {
+              core.setFailed(`post-run verify detected ${result.counts.violations} violation(s)`);
+            }
+
+      - name: Write Job Summary
+        if: always()
+        env:
+          STARTED_AT: ${{ steps.resolve.outputs.started_at }}
+          REQUESTED_BY: ${{ steps.resolve.outputs.requested_by }}
+          REQUEST_ISSUE: ${{ steps.resolve.outputs.request_issue }}
+          COMMAND: ${{ steps.resolve.outputs.command }}
+          DEFINITION: ${{ steps.resolve.outputs.definition }}
+          RUN_MODE: ${{ steps.resolve.outputs.run_mode }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const path = require("path");
+            const fs = require("fs");
+            const builder = require(
+              path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/definition-run-prompt-builder.cjs"),
+            );
+            const post = require(
+              path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/definition-run-post-verify.cjs"),
+            );
+
+            function safeRead(file) {
+              try {
+                return fs.readFileSync(file, "utf8");
+              } catch {
+                return "";
+              }
+            }
+            function safeJson(file) {
+              const text = safeRead(file);
+              if (!text) return null;
+              try {
+                return JSON.parse(text);
+              } catch {
+                return null;
+              }
+            }
+
+            const tempDir = process.env.RUNNER_TEMP;
+            const resultJson = safeJson(path.join(tempDir, "definition-run-result.json"));
+            const verifyJson = safeJson(path.join(tempDir, "definition-run-post-verify.json"));
+            const transcript = safeRead(path.join(tempDir, "definition-run-transcript.log"));
+
+            const headerRows = [
+              ["status", resultJson ? resultJson.status : "not_run"],
+              ["command", process.env.COMMAND || "-"],
+              ["definition", process.env.DEFINITION || "-"],
+              ["run_mode", process.env.RUN_MODE || "-"],
+              ["requested_by", process.env.REQUESTED_BY || "-"],
+              [
+                "request_issue",
+                process.env.REQUEST_ISSUE ? `#${process.env.REQUEST_ISSUE}` : "-",
+              ],
+            ];
+
+            const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+            const repoFull = process.env.GITHUB_REPOSITORY || "";
+            const runId = process.env.GITHUB_RUN_ID || "";
+            const actionsRunUrl = repoFull && runId ? `${serverUrl}/${repoFull}/actions/runs/${runId}` : "";
+
+            const ids = [
+              `- agent.id: ${resultJson && resultJson.agent_id ? resultJson.agent_id : "-"}`,
+              `- run.id: ${resultJson && resultJson.run_id ? resultJson.run_id : "-"}`,
+              `- Cursor dashboard: https://cursor.com/dashboard/agents`,
+              `- Actions run: ${actionsRunUrl || "-"}`,
+            ];
+
+            const guardMarkdown = builder.maskSecrets(
+              verifyJson
+                ? post.formatViolationsMarkdown(verifyJson)
+                : "### Guard Violations (post-run)\n- not_run\n",
+            );
+
+            const transcriptHead = transcript
+              ? builder.maskSecrets(transcript.split(/\r?\n/).slice(0, 40).join("\n"))
+              : "(no transcript captured)";
+
+            const timings = [];
+            if (process.env.STARTED_AT) timings.push(`- started: ${process.env.STARTED_AT}`);
+            if (resultJson && resultJson.finished_at) timings.push(`- finished: ${resultJson.finished_at}`);
+
+            await core.summary
+              .addHeading("Definition Run Result")
+              .addTable([
+                [
+                  { data: "項目", header: true },
+                  { data: "値", header: true },
+                ],
+                ...headerRows.map(([k, v]) => [String(k), String(v)]),
+              ])
+              .addHeading("IDs", 3)
+              .addRaw(ids.join("\n") + "\n")
+              .addHeading("Guard Violations (post-run)", 3)
+              .addRaw(guardMarkdown + "\n")
+              .addHeading("Result (head 40 lines)", 3)
+              .addCodeBlock(transcriptHead, "text")
+              .addRaw("\n... (truncated, see Actions log for full output)\n")
+              .addHeading("Timings", 3)
+              .addRaw(timings.join("\n") + "\n")
+              .write();

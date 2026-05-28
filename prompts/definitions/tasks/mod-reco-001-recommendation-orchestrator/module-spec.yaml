@@ -1,0 +1,304 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-recommendation-orchestrator-module-spec"
+  title: "MOD-RECO-001:Recommendation Orchestratorモジュール仕様書作成"
+  summary: "MOD-RECO-001（Recommendation Orchestrator / 推薦実行制御）のモジュール仕様書（MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md）を、Recoモジュール一覧・モジュール一覧・処理構成定義書・Retrieval/Matching/Ranking/Reason生成定義書に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 259
+  epic_branch: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、apps/reco 実装・単体テスト設計の前提となる Recoモジュール仕様書を作成する。
+  本Taskでは、Recoモジュール一覧の MOD-RECO-001（Recommendation Orchestrator / 推薦実行制御、分類: 実行制御、処理種別: OL、MVP対象: ○）を対象に、責務・入出力・処理フロー・依存モジュール（MOD-RECO-002〜029）・例外処理・ログ・テスト観点を整理する。
+  本Taskは Orchestrator モジュール本体に責務を限定し、API-INT-002 エンドポイント層（apps/reco/src/app/**）や、他 Recoモジュール（MOD-RECO-002〜029）本体の設計は別Task / 別 Epic として扱う。
+
+objective: |
+  MOD-RECO-001（Recommendation Orchestrator）について、apps/reco 実装・単体テスト・レビューが可能な粒度のモジュール仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/module-spec.md に準拠する。
+
+scope:
+  - "MOD-RECO-001 のモジュール仕様書を新規作成する（成果物ファイル名: MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md）"
+  - "モジュール基本情報（モジュールID / モジュール名 / 物理名 Recommendation Orchestrator / 分類: 実行制御 / 処理種別: OL / 配置予定パス / 所属 Epic / MVP対象 / 主な呼び出し元 / 主な呼び出し先）を定義する"
+  - "主責務・対象外責務を整理する"
+  - "入力（Recommendation Request / Config Version 等）と出力（Recommendation Result / Phase Log / Error Log）を整理する"
+  - "依存モジュール（MOD-RECO-002〜029）の呼び出し方向・用途・失敗時の扱いを整理する"
+  - "処理仕様（Mermaid 全体フロー、処理ステップ表）を整理する"
+  - "状態（実行中 / 成功 / 失敗 / リトライ）と例外（Error Code / 発生条件 / 呼び出し元への返却 / ログ方針）を整理する"
+  - "ログ・メトリクス（recommendation_latency_ms / phase_duration_ms / candidate_count 等）を整理する"
+  - "性能・非機能（レイテンシ / タイムアウト / リトライ / 並列実行）方針を整理する"
+  - "テスト観点（正常系 / 境界値 / 例外系 / 依存モジュール失敗 / DBログ）を整理する"
+  - "未決事項・人間判断が必要な事項を明記する"
+
+out_of_scope:
+  - "他 Recoモジュール（MOD-RECO-002〜029）本体のモジュール仕様書作成"
+  - "Batch 側 Recoモジュール（MOD-RECO-026 Item Semantic Generator / MOD-RECO-027 Item Feature Generator 等、処理種別 BT）の仕様化"
+  - "API-INT-002（Reco推薦実行 / Internal API）エンドポイント層の設計・実装"
+  - "API-PUB-002（Public API）の設計・実装"
+  - "apps/reco の実装"
+  - "apps/api の実装"
+  - "apps/web の実装"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 変更"
+  - "DDL 作成・変更"
+  - "推薦アルゴリズムそのもの（Retrieval / Matching / Ranking ロジック）の変更"
+  - "Recoモジュール一覧そのものの変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001 のモジュール名（推薦実行制御）/ 物理名（Recommendation Orchestrator）/ 分類（実行制御）/ 処理種別（OL）/ MVP対象（○）と、呼び出す MOD-RECO-002〜029 の責務境界・処理順序を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001 がモジュール一覧全体の中で占める位置・呼び出し元（MOD-API-005 Reco Client）を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "MOD-RECO-001 の API-INT-002 からの呼び出し関係と、推薦パイプライン内の MOD-RECO-019 / MOD-RECO-020 責務分離を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: false
+      purpose: "Online / Batch 分離方針と推薦パイプライン処理順序の前提を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/処理フロー概要図.md"
+      required: false
+      purpose: "推薦実行の全体処理フローと Orchestrator の起動位置を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "Orchestrator 内例外の Error Code（GRS-REC-* / GRS-LLM-* / GRS-DB-* 等）参照と、呼び出し元への返却方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+      purpose: "Phase Log / Error Log / Metric の出力方針・保存先を確認するため"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "Orchestrator が受け取る Recommendation Request の構造を確認するため"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "Orchestrator が返却する Recommendation Result の構造を確認するため"
+    - path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
+      required: false
+      purpose: "Pre Hard Filter / Retrieval / Post Hard Filter の処理順序前提を確認するため"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: false
+      purpose: "意味一致度・context_score 算出の処理順序前提を確認するため"
+    - path: "docs/04_ドメインモデル設計/Ranking定義書.md"
+      required: false
+      purpose: "final_score・順位決定の処理順序前提を確認するため"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: false
+      purpose: "Reason 生成の呼び出し順序と Response への含め方を確認するため"
+  templates:
+    - path: "prompts/templates/docs/module-spec.md"
+      required: true
+      purpose: "モジュール仕様書を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/module-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-001（Recommendation Orchestrator）モジュール仕様書（ファイル名: MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md）"
+  - "責務（主責務 / 対象外責務）"
+  - "入出力定義"
+  - "依存モジュール（MOD-RECO-002〜029）整理"
+  - "処理フロー（Mermaid）/ 処理ステップ"
+  - "状態・例外整理"
+  - "ログ・メトリクス整理"
+  - "性能・非機能方針"
+  - "テスト観点"
+  - "未決事項・人間判断事項の整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md が作成されている"
+  - "prompts/templates/docs/module-spec.md の章構成（§1〜§19）に準拠している"
+  - "Recoモジュール一覧の MOD-RECO-001 と矛盾するモジュール名・物理名・分類・処理種別・MVP対象を定義していない"
+  - "モジュール一覧の MOD-RECO-001 行と整合している"
+  - "API-INT-002 エンドポイント層（apps/reco/src/app/**）の変更を本仕様書の責務範囲に含めていない（module-spec.md §4 注記準拠）"
+  - "他 Recoモジュール（MOD-RECO-002〜029）の本体仕様を本仕様書に内包していない"
+  - "依存モジュール（MOD-RECO-002〜029）の呼び出し方向・用途・失敗時の扱いが整理されている"
+  - "Ranking の責務分離（MOD-RECO-019 Final Score Calculator / MOD-RECO-020 Final Ranker）が Recoモジュール一覧・機能×モジュール対応表と整合している"
+  - "Phase Log / Error Log の出力タイミングが整理されている"
+  - "Task タイトル・成果物ファイル名が Task Definition設計書 §15.1（共通命名）に従っている"
+  - "未決事項がある場合、未決事項として明記されている"
+  - "secret、APIキー、.env 実値、接続文字列の実値を含んでいない"
+  - "Human Review で確認してほしい事項が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-mod-reco-001-recommendation-orchestrator-module-spec"
+  base: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  target: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []  # 親Epic [Epic]MOD-RECO-001:Recommendation Orchestrator（実Issue番号確定後に追加）。MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。
+  issues: []
+  prs: []
+  tasks:
+    - "Recoモジュール一覧が作成済みであること"
+    - "モジュール一覧が作成済みであること"
+    - "RecommendationRequest定義書が作成済みであること"
+    - "RecommendationResult定義書が作成済みであること"
+    - "エラーコード定義書が作成済みであること"
+    - "ログ・Observability設計書が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "template conformity check"
+    - "module list consistency check"
+    - "scope boundary check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+  manual_checks:
+    - "module-spec.md の章構成に準拠していることを確認する"
+    - "Recoモジュール一覧の MOD-RECO-001 行（モジュール名・物理名・分類・処理種別・MVP対象）と整合していることを確認する"
+    - "モジュール一覧の MOD-RECO-001 行と整合していることを確認する"
+    - "API-INT-002 エンドポイント層（apps/reco/src/app/**）の変更を内包していないことを確認する"
+    - "他 Recoモジュール（MOD-RECO-002〜029）本体の仕様を内包していないことを確認する"
+    - "依存モジュール（MOD-RECO-002〜029）の呼び出し方向・用途・失敗時の扱いが記載されていることを確認する"
+    - "secret、APIキー、.env 実値、接続文字列の実値が含まれていないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs作成Taskであり、source code変更を含まないため対象外"
+    "integration test": "docs作成Taskであり、実装変更を含まないため対象外"
+    "e2e test": "docs作成Taskであり、画面実装・API実装を含まないため対象外"
+    "contract test": "本Taskは MOD-RECO（API contract への直接影響なし）のため対象外"
+    "typecheck": "source code 変更を含まないため対象外"
+    "build": "source code 変更を含まないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "モジュール仕様書として粒度が過不足ないか"
+    - "Recoモジュール一覧 / モジュール一覧の MOD-RECO-001 と整合しているか"
+    - "Orchestrator の責務が実行制御に限定され、他モジュール本体の仕様が混入していないか"
+    - "API-INT-002 エンドポイント層（apps/reco/src/app/**）の変更を含めていないか"
+    - "依存モジュール（MOD-RECO-002〜029）の呼び出し関係・失敗時の扱いが明確か"
+    - "Phase Log / Error Log の出力方針が明確か"
+    - "Task タイトル・成果物ファイル名が §15.1 に従っているか"
+    - "未決事項が隠れずに明記されているか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "Recoモジュール仕様書 Task の初期試作のため experiments を有効化。本Task単体では API contract / generated 影響を持たないため cross_cutting は無効。"
+
+risk_points:
+  - "Orchestrator の責務として Phase Log / Error Handling / Retry をどこまで含めるかで他モジュール（MOD-RECO-024 Reco Error Handler / MOD-RECO-028 Phase Log Writer）との責務境界が曖昧になる可能性"
+  - "Orchestrator の物理配置パスが未確定（apps/reco/src/modules/recommendation-orchestrator/** を想定）"
+  - "推薦パイプライン全体の処理順序が他定義書（処理構成定義書 / 処理フロー概要図 / Retrieval/Matching/Ranking 定義書）と微妙に乖離する可能性"
+  - "MOD-RECO-001 だけでなく MOD-RECO-002（Run Recorder）/ MOD-RECO-003（Config Version Resolver）等の呼び出し順序を仕様化する範囲が広がる可能性"
+
+human_decision_points:
+  - "Orchestrator の責務範囲（Phase Log / Error Handling / Retry / Config 解決をどこまで内包するか）の最終確認"
+  - "Orchestrator の物理配置パス（apps/reco/src/modules/recommendation-orchestrator/**）の最終確認"
+  - "MOD-RECO-002（Run Recorder）/ MOD-RECO-003（Config Version Resolver）等の呼び出しを本仕様書で詳述するか、別 MOD-RECO-* Task に委ねるかの線引き"
+  - "推薦パイプライン全体の処理順序が複数の定義書（処理構成定義書 / 処理フロー概要図 / Recoモジュール一覧 §5）の間で矛盾している場合の優先順位"
+
+stop_conditions:
+  - "必須 `input.docs` が存在しない場合"
+  - "必須 `input.templates` が存在しない場合"
+  - "必須 `input.docs` 間に矛盾があり、AI Agent だけで判断できない場合"
+  - "Recoモジュール一覧に MOD-RECO-001 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "Orchestrator の責務境界（API エンドポイント層 / 他 Recoモジュール本体との切り分け）が確定できない場合"
+  - "DB schema 変更が必要になった場合"
+  - "OpenAPI 変更が必要になった場合"
+  - "secret や .env 実値を扱う必要が出た場合"
+  - "scope 外の実装作業が必要になった場合"
+  - "本Task差分が親 Epic [Epic]MOD-RECO-001 の epic_scope.allowed_paths から外れた場合"
+
+notes:
+  - "本Taskは Recoモジュール仕様書作成の初期試作 Task である。"
+  - "命名の正本は Task Definition設計書 §15.1（共通命名）。本Task: ファイル名 MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md、task.title MOD-RECO-001:Recommendation Orchestratorモジュール仕様書作成、Issue [Task]MOD-RECO-001:Recommendation Orchestratorモジュール仕様書作成、Branch english-summary に mod-reco-001（kebab-case）を含める。"
+  - "本Taskは API contract に直接影響しない。OpenAPI / generated 変更を伴う Task は本 Epic 配下ではなく [Epic]API-INT-002 配下 Task として扱う（成果物化方針書 §3.5.2）。"
+  - "出力先は docs/06_実装設計/reco/ に配置する。"
+  - "module-spec.md §4 注記（MOD-RECO-* では apps/reco/src/app/** の API-INT エンドポイント層を対象に含めない）を本仕様書でも明示する。"

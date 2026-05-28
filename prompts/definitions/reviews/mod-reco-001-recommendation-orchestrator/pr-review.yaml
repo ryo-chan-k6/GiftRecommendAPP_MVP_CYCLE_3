@@ -1,0 +1,322 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-recommendation-orchestrator-pr"
+  title: "MOD-RECO-001 Recommendation Orchestratorモジュール仕様書 PRレビュー"
+  summary: "MOD-RECO-001（Recommendation Orchestrator / 推薦実行制御）モジュール仕様書作成 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: null  # 対応 Task Issue 番号を起票後に追記
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+  source_branch: "docs/task-<issue-number>-mod-reco-001-recommendation-orchestrator-module-spec"
+  target_branch: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  parent_epic_issue: "#259"
+  parent_epic_branch: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-259-mod-reco-001-recommendation-orchestrator"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001 行（モジュール名 / 物理名 / 分類 / 処理種別 / MVP対象）および MOD-RECO-002〜029 との責務境界整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001 の呼び出し元（MOD-API-005 Reco Client）等の整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "MOD-RECO-001 の API-INT-002 からの呼び出し関係と推薦パイプライン内の責務分離との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "Orchestrator 内例外の Error Code 参照整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+      purpose: "Phase Log / Error Log / Metric 方針との整合確認"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: false
+      purpose: "Orchestrator が受け取る Request 構造との整合確認"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: false
+      purpose: "Orchestrator が返却する Result 構造との整合確認"
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables:
+      - path: "prompts/templates/docs/module-spec.md"
+        required: true
+        purpose: "Task成果物が指定テンプレート（module-spec.md）に沿って作成されているか確認するため"
+        applies_to:
+          - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+
+review_points:
+  common:
+    - "Task Definition（module-spec.yaml）の scope を満たしているか"
+    - "out_of_scope（他 MOD-RECO-* 本体 / API-INT-002 エンドポイント層 / Batch 側 MOD-RECO-* / 実装）の変更が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に変更内容、検証結果、未実施事項が記載されているか"
+    - "Human Review観点が明記されているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+    - "Task PR で Closes #<Task Issue番号> を使っていないか（Related to を使用）"
+  docs:
+    - "指定された文書テンプレート（prompts/templates/docs/module-spec.md）の章構成（§1〜§19）に沿って作成されているか"
+    - "モジュール仕様書が docs/06_実装設計/reco/MOD-RECO-001_*.md に作成されているか"
+    - "モジュール基本情報（モジュールID / モジュール名 推薦実行制御 / 物理名 Recommendation Orchestrator / 分類 実行制御 / 処理種別 OL / MVP対象 ○）が記載されているか"
+    - "主責務 / 対象外責務 / 入出力 / 依存モジュール / 処理フロー（Mermaid）/ 状態・例外 / ログ・メトリクス / 性能・非機能 / テスト観点が後続実装可能な粒度で記載されているか"
+    - "Recoモジュール一覧 / モジュール一覧 の MOD-RECO-001 行と整合しているか"
+    - "依存モジュール（MOD-RECO-002〜029）の呼び出し方向・用途・失敗時の扱いが整理されているか"
+    - "Ranking の責務分離（MOD-RECO-019 Final Score Calculator / MOD-RECO-020 Final Ranker）が Recoモジュール一覧・機能×モジュール対応表と整合しているか"
+    - "Orchestrator の責務が実行制御に限定され、他モジュール（特に MOD-RECO-024 Reco Error Handler / MOD-RECO-028 Phase Log Writer）の本体仕様を内包していないか"
+    - "module-spec.md §4 注記（MOD-RECO-* では apps/reco/src/app/** の API-INT エンドポイント層を対象に含めない）が反映されているか"
+    - "用語揺れがないか"
+    - "Notion 転記を想定した Markdown 体裁になっているか"
+    - "Task タイトル・成果物ファイル名が §15.1 に従っているか"
+  source: []
+  tests:
+    - "docs 作成 Task として必要な manual check が記載されているか"
+    - "未実施テストの理由が PR 本文に記載されているか"
+  api_contract:
+    - "OpenAPI 変更が混在していないか（MOD-RECO Epic は API contract への直接影響なし）"
+    - "API 仕様書本体の変更が混在していないか"
+  db:
+    - "DB schema 変更が混在していないか"
+    - "migration 変更が混在していないか"
+  generated:
+    - "generated ファイルを手動編集していないか"
+  cicd: []
+  security:
+    - "secret や .env 実値が含まれていないか"
+  branch:
+    - "Task Branch から develop へ直接 PR していないか"
+    - "PR target が親 Epic Branch（feature/epic-259-mod-reco-001-recommendation-orchestrator）であるか"
+    - "Task PR で Related to #<Task Issue番号> が使われているか"
+    - "Task PR で Closes #<Task Issue番号> を使っていないか"
+  project:
+    - "レビュー結果に応じた Status 更新意図が明確か"
+  epic_scope:
+    - "PR差分が親Epic [Epic]MOD-RECO-001:Recommendation Orchestrator の epic_scope.allowed_paths 内に収まっているか"
+    - "epic_scope.forbidden_paths（apps/reco/src/app / apps/reco/src/modules の他モジュール配下 / apps/api / apps/web / apps/batch / openapi / db）への変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Reviewで確認してほしい事項が明記されている"
+    - "AI Review結果をPRコメントに記録できる形式になっている"
+    - "Task Definition で文書テンプレート（module-spec.md）が指定されているため、成果物がそのテンプレートに沿っている"
+    - "親Epic の epic_scope.allowed_paths から外れる差分がない"
+    - "API-INT-002 エンドポイント層の変更を含めていない"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "epic_scope.allowed_paths から外れる差分がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な docs 不備がある"
+      - "PR 本文に必要情報が不足している"
+      - "検証結果または未実施理由が不足している"
+      - "テンプレート（module-spec.md）準拠が一部欠落している"
+      - "Recoモジュール一覧との整合が一部欠落している"
+  needs_human_decision:
+    conditions:
+      - "Orchestrator の責務範囲（Phase Log / Error Handling / Retry / Config 解決をどこまで内包するか）の判断が必要"
+      - "Orchestrator の物理配置パスの判断が必要"
+      - "MOD-RECO-002 / 003 等の呼び出しをどこまで本仕様書で詳述するかの判断が必要"
+      - "scope 外変更を同一 PR に含めるべきか判断が必要"
+      - "未実施テストを許容して Human Review へ進めてよいか判断が必要"
+  split_required:
+    conditions:
+      - "API-INT-002 エンドポイント層の変更が混在している（[Epic]API-INT-002 配下 Task へ切り出す）"
+      - "他 MOD-RECO-* 本体の変更が混在している（該当 MOD-RECO-* Epic 配下 Task へ切り出す）"
+      - "epic_scope.allowed_paths から外れる差分がある"
+      - "別 Issue 化すべき設計変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+      - "Task 成果物に指定された文書テンプレート（module-spec.md）を確認できない"
+      - "親 Epic Issue / Branch が存在しない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definitionのacceptance_criteriaを満たしているか確認する"
+    - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
+    - "API-INT-002 エンドポイント層や他 MOD-RECO-* 本体変更が混在していないか確認する"
+    - "Task成果物が module-spec.md の章構成に沿っているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definitionはレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "本 Task は MOD-RECO（API contract / generated 影響なし）。通常PRレビュー結果はPRコメントを正本とする。"
+
+risk_points:
+  - "MOD-RECO-001 の責務を超えて他 MOD-RECO-* 本体仕様を内包する可能性"
+  - "API-INT-002 エンドポイント層の変更を MOD-RECO-001 Task に混在させる可能性"
+  - "推薦パイプライン順序や責務境界のHuman判断事項をAIだけで確定してしまう可能性"
+
+human_decision_points:
+  - "Orchestrator の責務範囲（Phase Log / Error Handling / Retry / Config 解決の内包範囲）"
+  - "Orchestrator の物理配置パス（apps/reco/src/modules/recommendation-orchestrator/**）"
+  - "MOD-RECO-002（Run Recorder）/ MOD-RECO-003（Config Version Resolver）等の呼び出しを本仕様書で詳述する範囲"
+  - "推薦パイプライン処理順序が複数定義書（処理構成定義書 / 処理フロー概要図 / Recoモジュール一覧 §5）間で矛盾する場合の優先順位"
+  - "未実施テストの理由を許容して Human Review へ進めてよいか"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "API-INT-002 エンドポイント層の変更が混在している場合"
+  - "他 MOD-RECO-* 本体の変更が混在している場合"
+  - "DB schema 変更が混在している場合"
+  - "generated ファイルの手動編集が疑われる場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+  - "AI が merge 判断を行う必要がある場合"
+  - "指定された文書テンプレート（module-spec.md）が存在しない場合"
+  - "PR差分が親Epic の epic_scope.allowed_paths から外れている場合"
+
+notes:
+  - "本Taskは docs 作成 Task のため、source code 変更は原則 scope 外とする"
+  - "対応 Task Definition: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+  - "対応 Epic Definition: prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+  - "MOD-RECO Epic は API contract / generated 影響を持たない。API-INT エンドポイント層変更は別 Epic（[Epic]API-INT-002）配下 Task として扱う（成果物化方針書 §3.5.2）。"
+  - "review.target / input.issue.number / input.pr.number は実 PR / Issue 起票後に追記する"

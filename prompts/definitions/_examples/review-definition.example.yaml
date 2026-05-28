@@ -8,6 +8,15 @@ review:
   type: "task_pr_review"
   status: "ready"
 
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
 target:
   pr: null
   issue: "#102"
@@ -181,6 +190,53 @@ outputs:
     required: false
     path: null
 
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics: []
+  issues:
+    - "#102"
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definitionのacceptance_criteriaを満たしているか確認する"
+    - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definitionはレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
 operation_logging:
   level: "standard"
   ai_logs:
@@ -189,6 +245,10 @@ operation_logging:
     cross_cutting: false
     experiments: false
   reason: "通常PRレビューのため、レビュー結果はPRコメントを正本とする"
+
+risk_points:
+  - "Task Definitionのscope外変更を見落とす可能性"
+  - "PR本文の未実施テスト理由不足を見落とす可能性"
 
 human_decision_points:
   - "画面仕様がMVP範囲として妥当か"

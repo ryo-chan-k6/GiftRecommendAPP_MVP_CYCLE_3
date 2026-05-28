@@ -577,6 +577,7 @@ Epic の粒度・タイトル形式は、[成果物一覧×Task Definition化方
 Epic Definition では次を必須とする（schema 詳細は `prompts/definitions/_schemas/epic-definition.schema.md` §4）:
 
 - 識別子付き Epic では、`task.title`（または `epic.title`）が `{識別子}:{概要}` 形式である
+- `project.fields.phase` は完了ゲートとして原則 `07_開発・単体テスト`（§18・§19）
 - `epic_scope.allowed_paths` に配下 Task が触ってよいファイル境界を列挙する
 - 依存 Epic がある場合、`dependencies.epics` に **Epic Issue 番号配列**で明示する
 
@@ -712,6 +713,8 @@ work_mode: "ai-agent"
 
 §9.1 実運用YAMLでは、GitHub Projects へ同期する項目を `project` ブロックで定義する。
 
+Task Definition（子 Task）の例:
+
 ```yaml
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
@@ -723,10 +726,23 @@ project:
     due_date: null
 ```
 
+Epic Definition（識別子単位 Epic）の例:
+
+```yaml
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+```
+
 | 項目                   | 説明                                                                 |
 | ---------------------- | -------------------------------------------------------------------- |
 | `project_name`         | Project名                                                            |
-| `fields.phase`         | プロジェクト工程（Projects運用ルール §6 正式値）                     |
+| `fields.phase`         | Projects運用ルール §6 正式値。Task は**成果物工程**、識別子単位 Epic は**完了ゲート工程**（原則 `07_開発・単体テスト`）。§19・[Projects運用ルール](../プロジェクト管理/Projects運用ルール.md) §6.1 参照 |
 | `fields.status`        | 初期Status（`Todo` 等。`/start-task` 成功時は `In Progress` へ進める意図を出す） |
 | `fields.priority`      | 優先度（Label `priority:*` の導出元でもある）                          |
 | `fields.planned_start` | 着手予定日                                                           |
@@ -761,6 +777,8 @@ project:
 15_運用・改善
 90_PoC
 ```
+
+`definition_type: epic` かつ識別子単位 Epic（§15.0）では、`fields.phase` は原則 `07_開発・単体テスト` とする。子 Task は仕様書系で `06_実装設計`、実装・単体テスト系で `07_開発・単体テスト` を個別に指定する。機能・領域単位 Epic（例外）は Epic Definition で完了ゲートを個別指定し、Issue 本文に理由を明記する。
 
 ---
 
@@ -1264,7 +1282,7 @@ github:
       - "priority: high"
     no_branch: false
   project:
-    phase: "06_実装設計"
+    phase: "07_開発・単体テスト"
     priority: "high"
     area: "web"
     estimate: "L"
