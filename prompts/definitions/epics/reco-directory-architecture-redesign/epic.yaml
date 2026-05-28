@@ -1,0 +1,274 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-directory-architecture-redesign"
+  title: "recoディレクトリ構成全面再設計"
+  summary: "`apps/reco` のディレクトリ構成を `src/reco` 系に統一し、`API-INT-*` / `MOD-RECO-*` の境界・Definition運用・AI Review観点を正本docs/definitionへ反映するためのEpic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  現状の `apps/reco` には、正本docs・Task Definition・Review Definition・Command運用の間でパス表記揺れ（`src/reco/**` / `src/modules/**` / `src/app/**`）が残っている。
+  この揺れにより、`API-INT-*` と `MOD-RECO-*` の責務境界判定、`epic_scope.allowed_paths`/`forbidden_paths` 判定、AI Reviewの停止条件判定が不安定になるリスクがある。
+  本Epicでは `src/reco` 統一方針を採用し、特に API-INT エンドポイント層は `apps/reco/src/reco/api/**`、MOD-RECO-001 Orchestrator は `apps/reco/src/reco/application/orchestrators/recommendation_orchestrator.py` を正式配置として確定する。
+
+objective: |
+  `apps/reco` のディレクトリ構成・責務境界を正本docsで再定義し、関連 Definition（epic/task/review）と運用ルール（command/review観点）を一貫させる。
+  後続の MOD-RECO / API-INT 系 Task が path 境界で迷わず起票・実装・レビューできる状態を作る。
+
+scope:
+  - "`apps/reco/src/reco/**` を前提にしたレイヤー責務（api/application/pipeline/domain/infrastructure/config）を定義する"
+  - "API-INT 境界を `apps/reco/src/reco/api/**` に統一する"
+  - "MOD-RECO-001 の正式配置を `apps/reco/src/reco/application/orchestrators/recommendation_orchestrator.py` として定義する"
+  - "正本docs（ディレクトリ構成・成果物化方針・Task Definition設計・Commands設計・AIレビュー運用）を整合更新する"
+  - "関連 Definition（epic/task/review）の `epic_scope.allowed_paths` / `forbidden_paths` を統一方針に合わせる"
+  - "移行ガイド（旧パス記載の棚卸し・更新順序・完了判定）を整備する"
+  - "本Epic配下の子Task分割方針（棚卸し / 構成定義 / docs更新 / definition更新 / 移行ガイド / パイロット確認）を整理する"
+
+out_of_scope:
+  - "推薦アルゴリズム仕様変更（Retrieval / Matching / Ranking ロジック変更）"
+  - "API request/response schema の仕様変更"
+  - "OpenAPI / Orval / generated の更新"
+  - "DB schema 変更・migration 作成"
+  - "web/api/batch の機能追加・不具合修正"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "`apps/reco` の正本ディレクトリ構成（`src/reco/**`）を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位Epicの `epic_scope.allowed_paths` 方針と `MOD-RECO-*` / `API-INT-*` 境界方針を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic/Task Definition 構造・命名・境界条件を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      required: true
+      purpose: "Command 上の境界判定（`/start-task` / `/review-pr`）との整合を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "AI Review における API境界 / モジュール境界の判定基準を更新するため"
+    - path: "docs/00_共通/プロジェクト管理/Issue運用ルール.md"
+      required: true
+      purpose: "Epic/Task 境界の運用規則と矛盾しないようにするため"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001 を含むモジュール責務と命名を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "Recoモジュール責務境界（Orchestrator含む）を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "prompts/definitions/epics/**/epic.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/tasks/**.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/**.yaml"
+      action: "update"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]recoディレクトリ構成全面再設計）"
+  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-reco-directory-architecture-redesign）"
+  - "`apps/reco/src/reco/**` 統一方針を明記した正本docs更新"
+  - "`API-INT-*` / `MOD-RECO-*` の `allowed_paths` / `forbidden_paths` 統一ルール"
+  - "MOD-RECO-001 Orchestrator の正式配置（`application/orchestrators`）の明文化"
+  - "移行ガイドと子Task分割計画"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Epic Branch が develop から作成されている"
+  - "正本docs間で `apps/reco` パス定義の矛盾が解消されている"
+  - "`API-INT-*` 境界が `apps/reco/src/reco/api/**` として統一されている"
+  - "MOD-RECO-001 Orchestrator の正式配置が `apps/reco/src/reco/application/orchestrators/recommendation_orchestrator.py` で一致している"
+  - "関連 Definition の path 規約が新方針と整合している"
+  - "後続子Taskが新方針で起票可能な状態になっている"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop の方針が維持されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-<issue-number>-reco-directory-architecture-redesign"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "critical"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "refactor"
+  area: "reco"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+    - "docs/00_共通/AIエージェント運用/Commands設計書.md"
+    - "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+    - "prompts/definitions/epics/**/epic.yaml"
+    - "prompts/definitions/tasks/**.yaml"
+    - "prompts/definitions/reviews/**.yaml"
+  forbidden_paths:
+    - "apps/reco/**"
+    - "apps/api/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "inventory"
+    - "target-architecture"
+    - "docs-update"
+    - "definition-update"
+    - "migration-guide"
+    - "pilot-validation"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "definition consistency check"
+    - "scope boundary check"
+  commands: []
+  manual_checks:
+    - "更新した正本docs間で `apps/reco` パス定義が矛盾していないことを確認する"
+    - "`API-INT-*` と `MOD-RECO-*` の allowed/forbidden が境界として機能することを確認する"
+    - "MOD-RECO-001 の正式配置パスが docs / definitions で一致することを確認する"
+    - "旧パス（`src/modules` / `src/app`）の残存箇所が移行ガイドに明示されていることを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "本Epicは設計・運用定義更新が主対象であり、実装コード変更を含まないため"
+    "integration test": "本Epicは設計・運用定義更新が主対象であり、実行系変更を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "`src/reco` 統一方針が正本docs全体で一貫しているか"
+    - "`API-INT-*`（api層）と `MOD-RECO-*`（モジュール層）の責務境界が明確か"
+    - "MOD-RECO-001 Orchestrator の正式配置が実装設計方針として妥当か"
+    - "Definition更新が `start-epic` / `start-task` / `review-pr` の停止条件と整合しているか"
+    - "scope外（実装・OpenAPI・DB）変更が混入していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "複数正本docsとdefinition群に横断影響する再設計のため cross_cutting を有効化。初期再設計検証のため experiments も有効化。"
+
+risk_points:
+  - "正本docsの更新順序を誤ると一時的に整合性が崩れる可能性"
+  - "Definition更新漏れにより AI Review が誤判定する可能性"
+  - "境界定義が曖昧なまま子Taskが進むと再び path 表記揺れが発生する可能性"
+
+human_decision_points:
+  - "application と pipeline の責務境界（順序制御 vs ステージ処理）をどこまで厳密に分離するか"
+  - "境界跨ぎの例外（緊急修正時）の運用手順をどう定義するか"
+  - "既存Definition群の更新を一括で行うか、段階適用で行うか"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "正本docs間で `apps/reco` パス方針が矛盾し、優先順位を決定できない場合"
+  - "scope外の実装変更（apps/openapi/db）が必須になった場合"
+  - "API contract / generated 変更が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "本Epicは機能・領域単位 Epic のため `epic_scope.artifact_id` は空文字とする"
+  - "Issue本文には機能・領域単位 Epic である旨（識別子単位 Epic の例外）を明記する"
+  - "子Taskの最初は不整合棚卸し Task とし、以降の docs/definition 更新順序を確定する"
