@@ -1,0 +1,204 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-directory-architecture-redesign-docs-update"
+  title: "recoディレクトリ構成全面再設計:正本docs更新"
+  summary: "ターゲット構成定義に基づき、正本docs（ディレクトリ構成・運用設計）を整合更新する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]recoディレクトリ構成全面再設計"
+  epic_issue_number: 264
+  epic_branch: "refactor/epic-264-reco-directory-architecture-redesign"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed: ["/start-task", "/work-issue", "/create-pr", "/summarize-work"]
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["support-ai"]
+  review: ["reviewer-ai", "docs-reviewer-ai"]
+
+background: |
+  ターゲット構成を正本docsに反映しない限り、定義更新やレビュー運用の基準が固定できない。
+
+objective: |
+  `apps/reco/src/reco/**` 統一方針を正本docsへ反映し、関連運用設計との矛盾を解消する。
+
+scope:
+  - "ディレクトリ構成定義書を更新する"
+  - "成果物化方針書の `API-INT-*` / `MOD-RECO-*` 境界記述を更新する"
+  - "Task Definition設計書の path 例・検査観点を更新する"
+  - "Commands設計書 / AIレビュー運用設計書の境界判定記述を更新する"
+
+out_of_scope:
+  - "prompts/definitions YAML の実更新"
+  - "実装コード変更"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成ターゲット定義.md"
+      required: true
+      purpose: "更新方針の基準として参照するため"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "正本更新対象"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "正本更新対象"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "正本更新対象"
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      required: true
+      purpose: "運用判定記述の更新対象"
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "レビュー判定記述の更新対象"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      action: "update"
+      required: true
+      template: null
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "正本docs5件の整合更新"
+  - "`src/reco` 統一方針の明文化"
+  - "境界判定記述の一貫化"
+
+acceptance_criteria:
+  - "更新対象5件が矛盾なく更新されている"
+  - "`API-INT` 境界が `apps/reco/src/reco/api/**` で統一されている"
+  - "MOD-RECO-001 Orchestrator 正式配置が正本docsに反映されている"
+  - "旧表記の扱い（置換 / 例外）が明示されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-reco-directory-architecture-redesign-docs-update"
+  base: "refactor/epic-264-reco-directory-architecture-redesign"
+  target: "refactor/epic-264-reco-directory-architecture-redesign"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "critical"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "task-reco-directory-architecture-redesign-target-architecture"
+  blocking: true
+
+parallel_control:
+  depends_on: ["task-reco-directory-architecture-redesign-target-architecture"]
+  blocks: []
+  exclusive_files:
+    - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+    - "docs/00_共通/AIエージェント運用/Commands設計書.md"
+    - "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+  conflict_risk: "high"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required: ["docs review", "cross-doc consistency check"]
+  commands: []
+  manual_checks:
+    - "更新対象docs間で同一概念の表記揺れがないことを確認する"
+    - "旧表記が残る場合は理由と移行方針が記載されていることを確認する"
+  not_required: ["unit test", "integration test"]
+  skip_reason:
+    "unit test": "docs更新Taskのため対象外"
+    "integration test": "docs更新Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "正本docsとして整合しているか"
+    - "運用ルールの実行可能性を損なっていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "複数正本docsへの同時反映で横断影響が大きいため cross_cutting を有効化する。"
+
+risk_points:
+  - "更新漏れにより正本docs間で再矛盾が発生する可能性"
+  - "運用ルールだけ先行更新すると定義ファイルとの整合が崩れる可能性"
+
+human_decision_points:
+  - "旧表記を完全置換するか、互換注記期間を設けるか"
+
+stop_conditions:
+  - "ターゲット構成定義が未確定の場合"
+  - "必須 input.docs が存在しない場合"
+  - "scope外のコード変更が必要になった場合"
+
+notes:
+  - "親Epic起票後に `parent.epic_issue_number` と branch の実番号を反映する"

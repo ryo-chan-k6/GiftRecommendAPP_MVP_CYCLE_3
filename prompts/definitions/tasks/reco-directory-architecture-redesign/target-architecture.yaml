@@ -1,0 +1,171 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-directory-architecture-redesign-target-architecture"
+  title: "recoディレクトリ構成全面再設計:ターゲット構成定義"
+  summary: "`apps/reco/src/reco/**` 統一方針に基づくレイヤー責務、境界ルール、アンチパターンをターゲット構成として定義する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]recoディレクトリ構成全面再設計"
+  epic_issue_number: 264
+  epic_branch: "refactor/epic-264-reco-directory-architecture-redesign"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed: ["/start-task", "/work-issue", "/create-pr", "/summarize-work"]
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["support-ai"]
+  review: ["reviewer-ai", "docs-reviewer-ai"]
+
+background: |
+  不整合棚卸しの結果を踏まえ、更新先ドキュメントに反映する前に、reco のターゲット構成を1つに確定する必要がある。
+
+objective: |
+  `api/application/pipeline/domain/infrastructure/config` の責務を明文化し、
+  `API-INT-*` と `MOD-RECO-*` の境界判定基準を確定する。
+
+scope:
+  - "レイヤー責務マトリクスを定義する"
+  - "パス境界ルール（allowed/forbidden テンプレ）を定義する"
+  - "MOD-RECO-001 の正式配置を文書化する"
+  - "アンチパターンと例外運用方針を整理する"
+
+out_of_scope:
+  - "正本docsへの反映作業"
+  - "definitionsの実更新"
+  - "実装コードの変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "正本構成を基準に責務を定義するため"
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      required: true
+      purpose: "棚卸し済み不整合をターゲット構成で解消可能か検証するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成ターゲット定義.md"
+      action: "create"
+      required: true
+      template: null
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "recoディレクトリ構成ターゲット定義"
+  - "責務マトリクス"
+  - "境界判定テンプレ"
+
+acceptance_criteria:
+  - "ターゲット構成が `src/reco` 前提で一意に定義されている"
+  - "`API-INT-*` / `MOD-RECO-*` 境界が明文化されている"
+  - "MOD-RECO-001 Orchestrator 配置が正式パスで定義されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-reco-directory-architecture-redesign-target-architecture"
+  base: "refactor/epic-264-reco-directory-architecture-redesign"
+  target: "refactor/epic-264-reco-directory-architecture-redesign"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "critical"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: ["task-reco-directory-architecture-redesign-inventory"]
+  blocking: true
+
+parallel_control:
+  depends_on: ["task-reco-directory-architecture-redesign-inventory"]
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/recoディレクトリ構成ターゲット定義.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required: ["docs review", "consistency check"]
+  commands: []
+  manual_checks:
+    - "責務が重複・欠落なく定義されていることを確認する"
+    - "境界ルールが後続定義更新に転用可能な粒度であることを確認する"
+  not_required: ["unit test", "integration test"]
+  skip_reason:
+    "unit test": "設計定義Taskのため対象外"
+    "integration test": "設計定義Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "レイヤー責務が明確か"
+    - "境界判定ルールが実運用可能か"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "後続docs/definition更新の基準となるため cross_cutting を有効化する。"
+
+risk_points:
+  - "責務定義が曖昧だと後続更新で再度揺れが発生する可能性"
+
+human_decision_points:
+  - "application と pipeline の最終境界線"
+  - "例外運用（緊急修正時の境界跨ぎ）の許容範囲"
+
+stop_conditions:
+  - "棚卸し結果が未確定の場合"
+  - "必須 input.docs が存在しない場合"
+  - "正本docs間の矛盾解消方針が確定できない場合"
+
+notes:
+  - "親Epic起票後に `parent.epic_issue_number` と branch の実番号を反映する"

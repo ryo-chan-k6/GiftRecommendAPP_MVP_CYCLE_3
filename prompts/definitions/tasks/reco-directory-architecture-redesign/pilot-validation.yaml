@@ -1,0 +1,185 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-directory-architecture-redesign-pilot-validation"
+  title: "recoディレクトリ構成全面再設計:パイロット検証"
+  summary: "再設計方針を MOD-RECO-001 系定義に適用し、起票・レビュー運用が成立するかを検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]recoディレクトリ構成全面再設計"
+  epic_issue_number: 264
+  epic_branch: "refactor/epic-264-reco-directory-architecture-redesign"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed: ["/start-task", "/work-issue", "/create-pr", "/summarize-work"]
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["support-ai", "orchestrator-ai"]
+  review: ["reviewer-ai", "docs-reviewer-ai", "test-ai"]
+
+background: |
+  方針・docs・definition を更新しても、実際の Task 起票/レビュー運用で成立しなければ再設計は完了できない。
+
+objective: |
+  MOD-RECO-001 周辺をパイロット対象に、境界判定・Issue起票・レビュー観点が新方針で動作することを確認する。
+
+scope:
+  - "MOD-RECO-001 関連 definition を新方針で検証する"
+  - "想定される `/start-task` 実行時の停止条件・判定条件を確認する"
+  - "`/review-pr` 観点で境界違反が検知可能かを確認する"
+  - "検証結果を docs に記録し、残課題を整理する"
+
+out_of_scope:
+  - "実装コード変更"
+  - "本番運用への即時反映"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      required: true
+      purpose: "コマンド判定条件を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "レビュー判定条件を確認するため"
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成ターゲット定義.md"
+      required: true
+      purpose: "検証基準を確認するため"
+  templates: []
+  files:
+    - path: "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+      required: true
+      purpose: "パイロット対象定義"
+    - path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+      required: true
+      purpose: "パイロット対象定義"
+    - path: "prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/pr-review.yaml"
+      required: true
+      purpose: "パイロット対象定義"
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成パイロット検証結果.md"
+      action: "create"
+      required: true
+      template: null
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "パイロット検証結果ドキュメント"
+  - "残課題一覧"
+  - "本番展開可否の判断材料"
+
+acceptance_criteria:
+  - "境界判定の検証観点が記録されている"
+  - "コマンド運用上の問題点があれば再現条件付きで記録されている"
+  - "残課題と対応方針が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-reco-directory-architecture-redesign-pilot-validation"
+  base: "refactor/epic-264-reco-directory-architecture-redesign"
+  target: "refactor/epic-264-reco-directory-architecture-redesign"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "task-reco-directory-architecture-redesign-docs-update"
+    - "task-reco-directory-architecture-redesign-definition-update"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-reco-directory-architecture-redesign-docs-update"
+    - "task-reco-directory-architecture-redesign-definition-update"
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/recoディレクトリ構成パイロット検証結果.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required: ["review simulation", "boundary validation"]
+  commands: []
+  manual_checks:
+    - "新方針で `/start-task` の想定入力が成立することを確認する"
+    - "新方針で `/review-pr` の境界観点が適用可能なことを確認する"
+  not_required: ["unit test", "integration test"]
+  skip_reason:
+    "unit test": "運用検証Taskのため対象外"
+    "integration test": "運用検証Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "検証観点が十分か"
+    - "残課題の記述が具体的か"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "再設計方針の運用検証であり、結果を後続運用に反映するため incidents/cross_cutting/experiments を有効化する。"
+
+risk_points:
+  - "検証対象が狭いと本番展開時に想定外が残る可能性"
+
+human_decision_points:
+  - "残課題を許容して段階適用するか、追加修正後に適用するか"
+
+stop_conditions:
+  - "docs-update または definition-update が未完了の場合"
+  - "必須 input が存在しない場合"
+  - "実装変更なしでは検証不能な不具合が判明した場合"
+
+notes:
+  - "親Epic起票後に `parent.epic_issue_number` と branch の実番号を反映する"
