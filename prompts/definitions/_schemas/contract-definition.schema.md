@@ -153,8 +153,6 @@ generation_policy:
 deliverables:
 acceptance_criteria:
 
-work_mode: "ai-agent"
-
 branch:
   no_branch:
   name:
@@ -177,6 +175,7 @@ issue:
   area:
 
 dependencies:
+  epics:
   issues:
   prs:
   tasks:
@@ -248,6 +247,7 @@ notes:
 | `issue.unit`                   | 必須 | 作業管理分類（issue同期項目） |
 | `issue.type`                   | 必須 | 作業種別（issue同期項目）  |
 | `issue.area`                   | 必須 | 作業対象領域（issue同期項目） |
+| `dependencies.epics`           | 必須 | 依存Epic Issue番号配列（空配列可） |
 | `parallel_control`             | 必須 | 並列作業制御               |
 | `test_policy`                  | 必須 | テスト・検証方針           |
 | `review.human_review_required` | 必須 | Human Review要否           |
@@ -865,9 +865,9 @@ Branch方針を定義する。`no_branch` は §16.1 `work_mode` の標準値と
 ```yaml
 branch:
   no_branch: false
-  name: "contract/issue-210-recommendation-api-orval"
-  base: "epic/recommendation-api"
-  target: "epic/recommendation-api"
+  name: "feature/task-<issue-number>-recommendation-api-orval"
+  base: "feature/epic-<issue-number>-recommendation-api"
+  target: "feature/epic-<issue-number>-recommendation-api"
   worktree_required: true
 ```
 
@@ -908,9 +908,11 @@ Issueに同期する分類を定義する。正本は Task Definition設計書 �
 ```yaml
 issue:
   unit: "task"
-  type: "contract"
+  type: "feature"
   area: "api"
 ```
+
+`issue.type` は GitHub Label / Branch type に同期する通常の作業種別を記載する。契約変更種別は `contract.type` に記載し、`issue.type: "contract"` は使用しない。
 
 ---
 
@@ -920,6 +922,8 @@ issue:
 
 ```yaml
 dependencies:
+  epics:
+    - "#300"
   issues:
     - "#102"
   prs:
@@ -929,7 +933,7 @@ dependencies:
   blocking: true
 ```
 
-契約変更に依存する通常Taskがある場合、依存関係を明示する。
+契約変更に依存するEpic / 通常Taskがある場合、依存関係を明示する。`dependencies.epics` は空配列でも明示する。
 
 ---
 
@@ -1240,6 +1244,7 @@ issue:
   area: ""
 
 dependencies:
+  epics: []
   issues: []
   prs: []
   tasks: []
@@ -1512,9 +1517,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "contract/issue-210-recommendation-api-response-reason"
-  base: "epic/recommendation-api"
-  target: "epic/recommendation-api"
+  name: "feature/task-<issue-number>-recommendation-api-response-reason"
+  base: "feature/epic-<issue-number>-recommendation-api"
+  target: "feature/epic-<issue-number>-recommendation-api"
   worktree_required: true
 
 project:
@@ -1528,10 +1533,12 @@ project:
 
 issue:
   unit: "task"
-  type: "contract"
+  type: "feature"
   area: "api"
 
 dependencies:
+  epics:
+    - "#300"
   issues:
     - "#102"
   prs: []
@@ -1645,6 +1652,8 @@ Contract Definition作成・修正時は、以下を確認する。
 - `provider_consumer` が定義されている
 - `generation_policy` が定義されている
 - `acceptance_criteria` がある
+- `issue.type` が通常の作業種別（`feature` / `docs` / `test` 等）であり、契約変更種別を `issue.type` に入れていない
+- `dependencies.epics` がある（空配列可）
 - `test_policy` がある
 - `review.human_review_required` がある
 - `operation_logging.level` がある

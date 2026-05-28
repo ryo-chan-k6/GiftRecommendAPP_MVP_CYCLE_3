@@ -1,0 +1,153 @@
+name: Update project Status from Planned Start
+
+on:
+  schedule:
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-status-by-planned-start
+  cancel-in-progress: false
+
+jobs:
+  update-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Promote Backlog to Todo from Planned Start
+        uses: actions/github-script@v8
+        env:
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          REPOSITORY_NAME_WITH_OWNER: ${{ github.repository }}
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const path = require("path");
+            const policy = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/planned-start-status-policy.cjs"));
+
+            const owner = process.env.PROJECT_OWNER || context.repo.owner;
+            const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
+            const repositoryFullName = process.env.REPOSITORY_NAME_WITH_OWNER || context.repo.owner + "/" + context.repo.repo;
+            const todayYmd = policy.todayJstYmd();
+
+            const queryProject = `
+              query($owner: String!, $number: Int!) {
+                user(login: $owner) {
+                  projectV2(number: $number) {
+                    id
+                    fields(first: 100) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options { id name }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+            const projectData = await github.graphql(queryProject, { owner, number: projectNumber });
+            const project = projectData.user?.projectV2;
+            if (!project) {
+              core.setFailed("ProjectV2を解決できませんでした。");
+              return;
+            }
+
+            const statusField = project.fields.nodes.find((f) => f.name === "Status");
+            const todoOption = statusField?.options?.find((opt) => String(opt.name || "").toLowerCase() === "todo");
+            if (!statusField || !todoOption) {
+              core.setFailed("Project Status フィールドまたは Todo オプションを解決できませんでした。");
+              return;
+            }
+
+            const queryItems = `
+              query($owner: String!, $number: Int!, $after: String) {
+                user(login: $owner) {
+                  projectV2(number: $number) {
+                    items(first: 100, after: $after) {
+                      nodes {
+                        id
+                        content {
+                          ... on Issue {
+                            number
+                            repository { nameWithOwner }
+                          }
+                        }
+                        fieldValues(first: 50) {
+                          nodes {
+                            ... on ProjectV2ItemFieldSingleSelectValue {
+                              field { ... on ProjectV2FieldCommon { name } }
+                              name
+                            }
+                            ... on ProjectV2ItemFieldDateValue {
+                              field { ... on ProjectV2FieldCommon { name } }
+                              date
+                            }
+                          }
+                        }
+                      }
+                      pageInfo { hasNextPage endCursor }
+                    }
+                  }
+                }
+              }`;
+
+            const mutation = `
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId,
+                  itemId: $itemId,
+                  fieldId: $fieldId,
+                  value: { singleSelectOptionId: $optionId }
+                }) { projectV2Item { id } }
+              }`;
+
+            let after = null;
+            const updatedIssueNumbers = [];
+            for (;;) {
+              const data = await github.graphql(queryItems, { owner, number: projectNumber, after });
+              const items = data.user?.projectV2?.items;
+              for (const item of items?.nodes || []) {
+                const issue = item.content;
+                if (!issue || issue.repository?.nameWithOwner !== repositoryFullName) continue;
+
+                let statusName = "";
+                let plannedStart = "";
+                for (const value of item.fieldValues?.nodes || []) {
+                  const fieldName = value?.field?.name;
+                  if (fieldName === "Status" && typeof value.name === "string") statusName = value.name;
+                  if (fieldName === "Planned Start" && typeof value.date === "string") plannedStart = value.date;
+                }
+
+                const shouldUpdate = policy.shouldPromoteFromBacklogToTodo({
+                  statusOptionName: statusName,
+                  plannedStartYmd: plannedStart,
+                  todayYmd,
+                });
+                if (!shouldUpdate) continue;
+
+                await github.graphql(mutation, {
+                  projectId: project.id,
+                  itemId: item.id,
+                  fieldId: statusField.id,
+                  optionId: todoOption.id,
+                });
+                updatedIssueNumbers.push(`#${issue.number}`);
+              }
+
+              if (!items?.pageInfo?.hasNextPage) break;
+              after = items.pageInfo.endCursor;
+            }
+
+            await core.summary
+              .addHeading("Planned Start Status update")
+              .addRaw(`today_jst: ${todayYmd}\n\n`)
+              .addRaw(`updated_count: ${updatedIssueNumbers.length}\n\n`)
+              .addRaw(`updated_issues: ${updatedIssueNumbers.join(", ") || "(none)"}\n`)
+              .write();

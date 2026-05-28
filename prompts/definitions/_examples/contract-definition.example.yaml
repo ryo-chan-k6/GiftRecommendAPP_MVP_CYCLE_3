@@ -249,10 +249,12 @@ project:
 
 issue:
   unit: "task"
-  type: "contract"
+  type: "feature"
   area: "api"
 
 dependencies:
+  epics:
+    - "#300"
   issues:
     - "#102"
   prs: []

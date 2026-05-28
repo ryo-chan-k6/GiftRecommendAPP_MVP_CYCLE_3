@@ -14,28 +14,28 @@
 
 ### 2.1 目的
 
-Issue フォーム（`.github/ISSUE_TEMPLATE/epic.yml` / `task.yml` / `contract-task.yml`）から Issue が作成または再同期されたタイミングで、Issue 本文を読み取り、ProjectV2 アイテムを追加または取得して次のフィールドを更新する。
+Issue運用メタデータを持つ Issue が作成または再同期されたタイミングで、Issue 本文を読み取り、ProjectV2 アイテムを追加または取得して次のフィールドを更新する。
 
 | Project フィールド名 | 更新内容の由来 |
 | -------------------- | -------------- |
-| Status | 固定値 `In Progress` |
+| Status | `issues.opened` の初回同期時のみ、Issue運用メタデータの初期Statusを反映 |
 | Phase | 本文セクション `### プロジェクト工程` の先頭行 |
 | Priority | 本文セクション `### 優先度` の先頭行 |
 | Area | 本文セクション `### 対象領域`（複数時は先頭 1 件のみ） |
 | Planned Start | 本文セクション `### Planned Start` |
 | Due Date | 本文セクション `### Due Date` |
-| Actual Start | Branch新規作成成功時のJST当日 |
+| Actual Start | `ai-agent` は `issues.opened` 時にJST当日（未設定時のみ）、`human-led` はBranch新規作成時 |
 
 ### 2.2 対象外
 
-- 既存Branchが既にある場合、`Actual Start` は上書きしない。
+- 既存値がある場合、`Actual Start` は上書きしない。
 - `no-branch` チェック時およびBranch作成失敗時、`Actual Start` は設定しない。
 
 ## 3. トリガー・権限・並行制御
 
 | 項目 | 内容 |
 | ---- | ---- |
-| `on` | `issues.types: [opened, edited, reopened]` / `workflow_dispatch` |
+| `on` | `issues.types: [opened, edited]` / `workflow_dispatch` |
 | `permissions` | `contents: write`, `issues: write`（API 実行は `PROJECTS_TOKEN` 優先、未設定時は `GITHUB_TOKEN`） |
 | `concurrency` | `project-fields-from-body-${{ github.event.issue.number }}`（同一 Issue の同時実行を直列化、`cancel-in-progress: false`） |
 
@@ -63,7 +63,7 @@ Issue フォーム（`.github/ISSUE_TEMPLATE/epic.yml` / `task.yml` / `contract-
 
 ## 5. 対象 Issue の判定
 
-- イベント payload の Issue 本文に **`### 作業単位`** が含まれる場合のみ、Task フォーム由来とみなし処理する。
+- イベント payload の Issue 本文に **`### 作業単位`** が含まれる場合のみ、Issue運用メタデータを持つIssueとして処理する。
 - 含まれない場合は **スキップ**（手動作成 Issue 等）。ジョブは成功終了とする。
 
 ## 6. 本文パース
@@ -102,7 +102,7 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 
 1. **参照**: `projectId`、各フィールドの `id` と Single select の `options { id, name }` を取得する。
 2. **追加・特定**: `addProjectV2ItemById` でIssueをProjectV2へ追加し、既存時は `items` をページングして `item.id` を取得する。
-3. **更新**: `updateProjectV2ItemFieldValue` に `singleSelectOptionId` または `date` を渡し、Status / Phase / Priority / Area / Planned Start / Due Date / Actual Start を必要なタイミングで更新する。
+3. **更新**: `updateProjectV2ItemFieldValue` に `singleSelectOptionId` または `date` を渡し、`issues.opened` では初期Status / Phase / Priority / Area / Planned Start / Due Date を更新し、`issues.edited` では Status を除く同項目を更新する。Actual Startは作業主体ルールに従って更新する。
 
 ## 9. エラー・通知
 
@@ -115,8 +115,9 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 
 ## 10. 運用上の必須事項
 
-- **Phase**: Issue の「プロジェクト工程」と Project の Phase は、Projects正式値（例: `06_実装設計`）に揃える。旧Issue本文に残るMilestone風表記はworkflow側で互換正規化する。
-- **Actual Start**: Branchが新規作成された場合のみJST当日を設定する。既存Branch、`no-branch`、Branch作成失敗時は上書きしない。
+- **Phase**: Issue の「プロジェクト工程」と Project の Phase は、Projects正式値（例: `06_実装設計`、`07_開発・単体テスト`）に揃える。識別子単位 Epic Issue は完了ゲートとして原則 `07_開発・単体テスト`（[Projects運用ルール](../../00_共通/プロジェクト管理/Projects運用ルール.md) §6.1）。子 Task は成果物工程に応じて 06 または 07。旧Issue本文に残るMilestone風表記はworkflow側で互換正規化する。
+- **Status**: 継続同期（`issues.edited`）では更新しない。
+- **Actual Start**: `ai-agent` は `issues.opened` でJST当日を設定（未設定時のみ）。`human-led` はBranch新規作成時のみ設定する。既存値は上書きしない。
 - **Priority / Area**: GitHub Project 上の各オプション名を、Issue テンプレートの選択肢および [Issue Label定義](../Issue%20Label定義.md) の表記（例: `priority: high`, `area: web`）と **揃える**こと（実装は候補名のいずれかとの一致で解決する）。
 - `PROJECTS_TOKEN` には、対象リポジトリで Issue コメントが可能なスコープを含めること（失敗時通知のため）。
 

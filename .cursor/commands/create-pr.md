@@ -331,6 +331,36 @@ PR作成時に確認すること。
 - Human Review観点が記載されているか
 - Issue close / Projects Done を自動closeキーワードに依存していないか
 
+### 11.5 実PR番号をReview Definitionへ反映する
+
+PR 作成に成功した場合、AI Agent は GitHub が返した**実 PR 番号**を対応 Review Definition へ反映する。
+
+反映してよい値は、以下で実在確認できたものに限定する。
+
+| 値 | 確認方法 |
+| ---- | -------- |
+| PR 番号 | `gh pr view <番号>` または PR 作成結果 URL |
+| Task Issue 番号 | PR本文の `Related to #<Task Issue番号>` と `gh issue view <番号>` |
+| PR target | `gh pr view <番号> --json baseRefName,headRefName` |
+
+反映対象は以下。
+
+| 対象Definition | 反映項目 |
+| -------------- | -------- |
+| 対応 Review Definition | `target.pr` / `input.pr.number` |
+| 対応 Review Definition | `target.issue` / `input.issue.number`（未反映の場合のみ） |
+| 対応 Review Definition | `target.source_branch` / `target.target_branch`（実Branchと不一致の場合のみ、人間確認後に反映） |
+
+ガード条件:
+
+- PR 番号を推測で記入しない。
+- `target.pr` / `input.pr.number` に別 PR 番号が入っている場合は上書きせず、人間確認へ回す。
+- `target.issue` / `input.issue.number` と PR本文の `Related to #...` が不一致の場合は更新せず、人間確認へ回す。
+- PR target が Task Definition の `branch.target` または Review Definition の `target.target_branch` と不一致の場合は更新せず、PR作成結果を停止扱いで報告する。
+- 対応 Review Definition が存在しない場合は、チャットで「未反映項目」として明示し、`/review-pr @<definition> #<PR番号>` の形で次Actionを提示する。
+- dry-run では Definition を更新せず、反映予定の項目だけを出力する。
+- `.env` 実値、token、secret を表示・保存しない。
+
 ---
 
 ### 12. Project Statusを AI Review へ進める

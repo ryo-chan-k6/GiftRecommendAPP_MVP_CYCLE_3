@@ -125,6 +125,32 @@ PRレビュー時は、特に以下を重視する。
 
 PRが存在しない、または対象PRを特定できない場合は停止する。
 
+### 1.5 Review Definition の実番号反映状態を確認する
+
+Review Definition に `target.pr` / `input.pr.number` / `target.issue` / `input.issue.number` がある場合、PR・Issue の実在と対応を確認する。
+
+確認観点は以下。
+
+| 項目 | 確認内容 |
+| ---- | -------- |
+| `target.pr` / `input.pr.number` | `gh pr view <番号>` で実在するか、コマンド引数の PR 番号と一致するか |
+| `target.issue` / `input.issue.number` | `gh issue view <番号>` で実在するか、PR本文の `Related to #<Task Issue番号>` と一致するか |
+| `target.source_branch` | PR の `headRefName` と一致するか |
+| `target.target_branch` | PR の `baseRefName` と一致するか |
+| `parent_epic_issue` / `parent_epic_branch` | Task PR の親 Epic と一致するか |
+
+ガード条件:
+
+- Review Definition の PR番号・Issue番号を推測で補完しない。
+- コマンド引数の PR 番号と `target.pr` / `input.pr.number` が不一致の場合はレビューを停止する。
+- `target.issue` / `input.issue.number` と PR本文の `Related to #...` が不一致の場合はレビューを停止する。
+- `target.pr` / `input.pr.number` が `null` で、コマンド引数に PR 番号がある場合は、その番号を今回レビューの確認対象として利用してよい。ただし、Review Definition への永続反映は `/create-pr` の責務として「未反映項目」に記録する。
+- `target.issue` / `input.issue.number` が `null` で、PR本文から Task Issue 番号を一意に特定できる場合は、今回レビューの確認対象として利用してよい。ただし、Review Definition への永続反映は `/start-task` または `/create-pr` の責務として「未反映項目」に記録する。
+- PR本文に `Related to #...` が複数ある、または Task Issue を一意に特定できない場合はレビューを停止し、人間確認へ回す。
+- `.env` 実値、token、secret を表示・保存しない。
+
+`/review-pr` はレビュー Command であり、Review Definition の永続更新は原則として行わない。永続反映が必要な場合は、`/start-task` または `/create-pr` の番号反映手順へ戻す。
+
 ---
 
 ### 2. 対象Issueを確認する
