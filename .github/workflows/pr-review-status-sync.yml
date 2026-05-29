@@ -1,9 +1,9 @@
 name: PR review status sync
 
 on:
-  issue_comment:
+  repository_dispatch:
     types:
-      - created
+      - ai_review_status_sync
   pull_request_review:
     types:
       - submitted
@@ -26,8 +26,8 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: pr-review-status-sync-${{ github.event.issue.number || github.event.inputs.pr_number }}
-  cancel-in-progress: true
+  group: pr-review-status-sync-${{ github.event.client_payload.pr_number || github.event.inputs.pr_number || github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
   sync-status:
@@ -194,11 +194,26 @@ jobs:
             let route = "";
 
             if (context.eventName === "workflow_dispatch") {
-              route = "dispatch";
+              route = "workflow_dispatch";
               prNumber = Number(context.payload.inputs.pr_number);
               reviewBody = String(context.payload.inputs.review_result || "");
               reviewResult = slack.normalizeReviewResult(reviewBody);
               if (!reviewResult) reviewResult = String(context.payload.inputs.review_result || "");
+            } else if (context.eventName === "repository_dispatch") {
+              route = "repository_dispatch";
+              const payload = context.payload.client_payload || {};
+              prNumber = Number(payload.pr_number);
+              reviewBody = String(payload.review_body || "");
+              reviewResult = slack.normalizeKnownReviewToken(payload.review_result || "");
+              if (!reviewResult) {
+                reviewResult = slack.normalizeReviewResult(String(payload.review_result || ""));
+              }
+              if (!prNumber || !reviewResult) {
+                core.setFailed(
+                  "client_payload requires pr_number and review_result (approve_for_human_review / request_changes / ...).",
+                );
+                return;
+              }
             } else if (context.eventName === "pull_request_review") {
               route = "human_review";
               const review = context.payload.review;
@@ -210,27 +225,8 @@ jobs:
               reviewResult = "request_changes";
               reviewBody = review.body || "";
             } else {
-              route = "ai_review_comment";
-              const issue = context.payload.issue;
-              if (!issue?.pull_request) {
-                core.info("Comment is not on a pull request; skipped.");
-                return;
-              }
-              const commentBody = context.payload.comment?.body || "";
-              if (slack.isAutomationBypassComment(commentBody)) {
-                return skipWithSummary("automation_comment", { PR: `#${issue.number}` });
-              }
-              if (!slack.isAiReviewResultComment(commentBody)) {
-                return skipWithSummary("not_ai_review_comment", { PR: `#${issue.number}` });
-              }
-              prNumber = issue.number;
-              reviewBody = commentBody;
-              const extracted = slack.extractReviewResultFromAiComment(commentBody);
-              if (!extracted.ok) {
-                core.setFailed(`Review Result parse failed: ${extracted.reason}`);
-                return;
-              }
-              reviewResult = extracted.value;
+              core.setFailed(`Unsupported event: ${context.eventName}`);
+              return;
             }
 
             const nextStatus = nextStatusFromReviewResult(reviewResult, reviewBody);
