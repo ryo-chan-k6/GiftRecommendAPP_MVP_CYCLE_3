@@ -136,21 +136,19 @@ jobs:
               }
             }
 
-            async function readProjectItemStatus(projectId, itemId) {
+            async function readProjectItemStatus(itemId) {
               const query = `
-                query($projectId: ID!, $itemId: ID!) {
-                  node(id: $projectId) {
-                    ... on ProjectV2 {
-                      item(id: $itemId) {
-                        fieldValueByName(name: "Status") {
-                          ... on ProjectV2ItemFieldSingleSelectValue { name }
-                        }
+                query($itemId: ID!) {
+                  node(id: $itemId) {
+                    ... on ProjectV2Item {
+                      fieldValueByName(name: "Status") {
+                        ... on ProjectV2ItemFieldSingleSelectValue { name }
                       }
                     }
                   }
                 }`;
-              const data = await github.graphql(query, { projectId, itemId });
-              return data.node?.item?.fieldValueByName?.name || "";
+              const data = await github.graphql(query, { itemId });
+              return data.node?.fieldValueByName?.name || "";
             }
 
             async function updateStatus(project, itemId, statusName) {
@@ -267,7 +265,7 @@ jobs:
               return;
             }
 
-            const currentStatus = await readProjectItemStatus(project.id, itemId);
+            const currentStatus = await readProjectItemStatus(itemId);
             const expectedCurrent =
               route === "human_review"
                 ? slack.expectedCurrentStatusForHumanReview()
