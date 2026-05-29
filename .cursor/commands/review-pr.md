@@ -454,6 +454,44 @@ AIレビュー結果をPRへ記録する。
 - follow-up Issue候補
 - Human Review観点
 
+PR コメントは [ai-review-comment.md](../../prompts/templates/review/ai-review-comment.md) 形式とする。特に §1 の `Review Result` 行と §22 の `次Status` を省略しない。
+
+---
+
+### 15.5 Projects Status 同期を起動する（必須）
+
+PR コメント投稿後、**必ず 1 回** [PR review status sync](../../.github/workflows/pr-review-status-sync.yml) を `repository_dispatch` で起動する。
+
+Status 更新はコメント投稿では自動検知しない。dispatch 忘れは Projects Status が `AI Review` のまま残る。
+
+```bash
+node .github/scripts/dispatch-pr-review-status-sync.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --review-result <approve_for_human_review|request_changes|needs_human_decision|split_required|blocked>
+```
+
+`needs_human_decision` で PR コメント §22 の `次Status` が `In Progress` のときは、コメント本文を渡す。
+
+```bash
+node .github/scripts/dispatch-pr-review-status-sync.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --review-result needs_human_decision \
+  --review-body-file /path/to/ai-review-comment.md
+```
+
+代替（`gh` のみ）:
+
+```bash
+gh api repos/<owner>/<repo>/dispatches \
+  -f event_type=ai_review_status_sync \
+  -f "client_payload[pr_number]=<PR番号>" \
+  -f "client_payload[review_result]=<Review Result>"
+```
+
+dispatch が失敗した場合は、PR コメントは残るが Status は更新されない。ログを確認し、修正後に `workflow_dispatch` または dispatch を再実行する。
+
 ---
 
 ### 16. 指摘なしなら Human Review へ進める
@@ -521,6 +559,7 @@ Status更新は、Commandが直接確定するのではなく、GitHub Actions�
 - 横断影響が確認されている
 - 前段成果物の修正要否が確認されている
 - PRへAIレビュー結果が記録されている
+- `repository_dispatch`（`ai_review_status_sync`）を 1 回起動している
 - 修正要否が明確である
 - Human Reviewへ進めてよいか判断できる
 - 指摘がある場合、修正対象が明確である
@@ -590,9 +629,7 @@ Status更新は、Commandが直接確定するのではなく、GitHub Actions�
 | split_required           | `In Progress`                       |
 | blocked                  | `In Progress`                       |
 
-Status更新は、Commandが直接確定するのではなく、[PRレビュー完了時Status更新ワークフロー仕様書](../../docs/06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md) が実施する。`/review-pr` は更新意図として明確に出力する。
-
-PR コメントは [ai-review-comment.md](../../prompts/templates/review/ai-review-comment.md) 形式とする。特に §1 の `Review Result` 行と §22 の `次Status` を省略しない（workflow の機械判定に使用する）。
+Status更新は、Commandが直接確定するのではなく、[PRレビュー完了時Status更新ワークフロー仕様書](../../docs/06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md) が実施する。`/review-pr` は §15.5 の **repository_dispatch を 1 回** 呼び出し、更新意図を PR コメントにも明記する。
 
 ---
 
