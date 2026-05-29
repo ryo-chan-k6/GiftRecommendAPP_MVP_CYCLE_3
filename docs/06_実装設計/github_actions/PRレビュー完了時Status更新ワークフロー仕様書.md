@@ -73,6 +73,8 @@ Status の正式値は [Projects運用ルール.md](../../00_共通/プロジェ
 
 PR コメント経路では、**Pull Request** に紐づく Issue コメントのみを処理する（通常 Issue コメントはスキップ）。
 
+ジョブ条件 `if: github.event_name != 'issue_comment' || github.event.issue.pull_request` により、通常 Issue への `issue_comment` では **ワークフロー Run 自体を起動しない**（Issue metadata が付ける Branch 通知・Slack marker 等による無駄 Run を防ぐ）。
+
 ### 3.1 再実行ループ防止（必須）
 
 過去に、Status 更新後の **運用確認コメント** 本文へ `approve_for_human_review` 等を埋め込んだことで、`issue_comment` が連鎖しワークフローが多数回実行された。以下を実装の必須要件とする。
