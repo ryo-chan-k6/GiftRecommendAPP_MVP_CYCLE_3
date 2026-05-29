@@ -4,7 +4,6 @@ on:
   issue_comment:
     types:
       - created
-      - edited
   pull_request_review:
     types:
       - submitted
@@ -28,7 +27,7 @@ permissions:
 
 concurrency:
   group: pr-review-status-sync-${{ github.event.issue.number || github.event.inputs.pr_number }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   sync-status:
@@ -60,21 +59,12 @@ jobs:
             const projectOwner = process.env.PROJECT_OWNER || owner;
             const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
 
-            function reviewResultFromBody(body) {
-              return slack.normalizeReviewResult(body);
-            }
-
             function nextStatusFromReviewResult(result, body) {
               return slack.statusFromReviewResult(result, body);
             }
 
             function relatedIssueNumber(prBody) {
-              const text = String(prBody || "");
-              const related = /Related to\s+#(\d+)/i.exec(text);
-              if (related) return Number(related[1]);
-              const closes = /(Closes|Close|Closed|Fixes|Fix)\s+#(\d+)/i.exec(text);
-              if (closes) return Number(closes[2]);
-              return 0;
+              return slack.relatedIssueNumber(prBody);
             }
 
             async function comment(issueNumber, body) {
@@ -146,6 +136,23 @@ jobs:
               }
             }
 
+            async function readProjectItemStatus(projectId, itemId) {
+              const query = `
+                query($projectId: ID!, $itemId: ID!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      item(id: $itemId) {
+                        fieldValueByName(name: "Status") {
+                          ... on ProjectV2ItemFieldSingleSelectValue { name }
+                        }
+                      }
+                    }
+                  }
+                }`;
+              const data = await github.graphql(query, { projectId, itemId });
+              return data.node?.item?.fieldValueByName?.name || "";
+            }
+
             async function updateStatus(project, itemId, statusName) {
               const statusField = project.fields.nodes.find((field) => field.name === "Status");
               const option = statusField?.options?.find((candidate) => candidate.name === statusName);
@@ -173,15 +180,28 @@ jobs:
               });
             }
 
+            function skipWithSummary(reason, details = {}) {
+              core.info(`Skipped: ${reason}`);
+              const lines = [`Skipped: ${reason}`];
+              for (const [key, value] of Object.entries(details)) {
+                if (value !== undefined && value !== "") lines.push(`${key}: ${value}`);
+              }
+              return core.summary.addRaw(lines.join("\n") + "\n").write();
+            }
+
             let prNumber;
             let reviewResult;
             let reviewBody = "";
+            let route = "";
+
             if (context.eventName === "workflow_dispatch") {
+              route = "dispatch";
               prNumber = Number(context.payload.inputs.pr_number);
               reviewBody = String(context.payload.inputs.review_result || "");
-              reviewResult = reviewResultFromBody(reviewBody);
+              reviewResult = slack.normalizeReviewResult(reviewBody);
               if (!reviewResult) reviewResult = String(context.payload.inputs.review_result || "");
             } else if (context.eventName === "pull_request_review") {
+              route = "human_review";
               const review = context.payload.review;
               if (review?.state !== "changes_requested") {
                 core.info("Pull request review is not changes_requested; skipped.");
@@ -191,14 +211,27 @@ jobs:
               reviewResult = "request_changes";
               reviewBody = review.body || "";
             } else {
+              route = "ai_review_comment";
               const issue = context.payload.issue;
               if (!issue?.pull_request) {
                 core.info("Comment is not on a pull request; skipped.");
                 return;
               }
+              const commentBody = context.payload.comment?.body || "";
+              if (slack.isAutomationBypassComment(commentBody)) {
+                return skipWithSummary("automation_comment", { PR: `#${issue.number}` });
+              }
+              if (!slack.isAiReviewResultComment(commentBody)) {
+                return skipWithSummary("not_ai_review_comment", { PR: `#${issue.number}` });
+              }
               prNumber = issue.number;
-              reviewBody = context.payload.comment?.body || "";
-              reviewResult = reviewResultFromBody(reviewBody);
+              reviewBody = commentBody;
+              const extracted = slack.extractReviewResultFromAiComment(commentBody);
+              if (!extracted.ok) {
+                core.setFailed(`Review Result parse failed: ${extracted.reason}`);
+                return;
+              }
+              reviewResult = extracted.value;
             }
 
             const nextStatus = nextStatusFromReviewResult(reviewResult, reviewBody);
@@ -234,8 +267,35 @@ jobs:
               return;
             }
 
+            const currentStatus = await readProjectItemStatus(project.id, itemId);
+            const expectedCurrent =
+              route === "human_review"
+                ? slack.expectedCurrentStatusForHumanReview()
+                : slack.expectedCurrentStatusForAiReview(reviewResult);
+
+            if (expectedCurrent && currentStatus && !slack.statusNamesEqual(currentStatus, expectedCurrent)) {
+              return skipWithSummary("current_status_mismatch", {
+                PR: `#${prNumber}`,
+                Issue: `#${taskIssueNumber}`,
+                "Current Status": currentStatus,
+                "Expected Status": expectedCurrent,
+                "Next Status": nextStatus,
+              });
+            }
+
+            if (currentStatus && slack.statusNamesEqual(currentStatus, nextStatus)) {
+              return skipWithSummary("already_at_next_status", {
+                PR: `#${prNumber}`,
+                Issue: `#${taskIssueNumber}`,
+                Status: currentStatus,
+              });
+            }
+
             await updateStatus(project, itemId, nextStatus);
-            await comment(prNumber, `Project Status更新意図: Issue #${taskIssueNumber} を \`${nextStatus}\` へ更新しました（Review Result: \`${reviewResult}\`）。`);
+            await comment(
+              prNumber,
+              slack.buildStatusSyncConfirmationComment({ taskIssueNumber, nextStatus }),
+            );
 
             const channel = process.env.SLACK_CHANNEL_ID_DEVOPS || "";
             const threadKey = slack.buildThreadKey({ owner, repo, kind: "pr", number: prNumber });
@@ -247,7 +307,7 @@ jobs:
             const text = slack.buildSlackText({
               level,
               title,
-              summary: `Review Result: ${reviewResult}`,
+              summary: `Review Result: ${slack.reviewResultLabelForHumans(reviewResult)}`,
               mention,
               fields: {
                 PR: `#${prNumber}`,
@@ -284,7 +344,9 @@ jobs:
 
             await core.summary
               .addHeading("PRレビュー Status / Slack通知")
-              .addRaw(`PR: #${prNumber}\n\nIssue: #${taskIssueNumber}\n\nReview Result: \`${reviewResult}\`\n\nNext Status: \`${nextStatus}\`\n\nSlack: ${result.ok ? "ok" : "failed"}\n`)
+              .addRaw(
+                `PR: #${prNumber}\n\nIssue: #${taskIssueNumber}\n\nRoute: \`${route}\`\n\nReview Result: \`${reviewResult}\`\n\nCurrent Status: \`${currentStatus || "unknown"}\`\n\nNext Status: \`${nextStatus}\`\n\nSlack: ${result.ok ? "ok" : "failed"}\n`,
+              )
               .addRaw(result.error ? `\nSlack error: \`${result.error}\`\n` : "")
               .write();
             if (!result.ok) {
