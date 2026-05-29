@@ -64,14 +64,26 @@ Status の正式値は [Projects運用ルール.md](../../00_共通/プロジェ
 
 | 項目                       | 内容                                                                               |
 | ------------------------ | -------------------------------------------------------------------------------- |
-| `on.issue_comment`       | `types: [created]`。PR Issue コメント（AI Review 結果）を対象                                |
+| `on.issue_comment`       | `types: [created]` のみ。PR Issue コメント（AI Review 結果）を対象。**`edited` は対象外**（Slack thread marker 更新等による再実行を防ぐ） |
 | `on.pull_request_review` | `types: [submitted]`。`state: changes_requested` を Human 経路で処理                    |
-| `on.workflow_dispatch`   | 手動実行（検証・再実行用）。入力: Issue 番号、経路、Review Result 等                                    |
+| `on.workflow_dispatch`   | 手動実行（検証・再実行用）。入力: PR 番号、Review Result 等                                    |
 | `permissions`            | `contents: read`、`issues: write`、`pull-requests: read`（PR・コメント参照）。Project API は `PROJECTS_TOKEN` |
-| `concurrency`            | `project-status-by-pr-review`（同一 Project 更新の競合を直列化。`cancel-in-progress: false`）  |
+| `concurrency`            | `pr-review-status-sync-<PR番号>`（同一 PR の更新を直列化。**`cancel-in-progress: true`** で重複 Run を抑止）  |
 
 
 PR コメント経路では、**Pull Request** に紐づく Issue コメントのみを処理する（通常 Issue コメントはスキップ）。
+
+### 3.1 再実行ループ防止（必須）
+
+過去に、Status 更新後の **運用確認コメント** 本文へ `approve_for_human_review` 等を埋め込んだことで、`issue_comment` が連鎖しワークフローが多数回実行された。以下を実装の必須要件とする。
+
+| 対策 | 内容 |
+| ---- | ---- |
+| 運用コメントのバイパス | `Project Status更新意図:` で始まるコメント、Slack thread marker コメントは **AI 経路の対象外**（成功終了・処理なし） |
+| §6.1 の厳格適用 | AI Review 結果は [ai-review-comment.md](../../../prompts/templates/review/ai-review-comment.md) 形式（`## 1. レビュー結果` 等）のみ処理。全文部分一致は使わない |
+| 確認コメント | Status 更新後の PR コメントに **Review Result の enum 文字列を含めない** |
+| 冪等（§5.3） | GraphQL で現在 Status を読み、前提不一致・次 Status と同一なら更新・確認コメント・Slack を行わない |
+| 並行制御 | 同一 PR で `cancel-in-progress: true` |
 
 ## 4. シークレット・定数
 
@@ -163,13 +175,21 @@ Human 経路では Review Result のパースは行わないため、本節は A
 
 ## 6. 機械判定: Review Result の抽出（AI 経路）
 
+### 6.0 処理対象外コメント（バイパス）
+
+次の PR コメントは **AI 経路の入力に使わない**。ジョブは成功終了し、Summary に skipped 理由を記録する。
+
+| 条件 | 例 |
+| ---- | --- |
+| 本文が `Project Status更新意図:` で始まる | 本ワークフローが Status 更新後に投稿する確認コメント |
+| Slack thread marker コメント | `<!-- slack-thread:v1 ... -->` を含むコメント |
+
 ### 6.1 AI Review コメントの識別
 
-次のいずれかを満たすコメントを AI Review 結果とみなす。
+§6.0 に該当しないうえで、次のいずれかを満たすコメントを AI Review 結果とみなす。
 
 - 本文に見出し `## 1. レビュー結果` または `## 22. Status更新意図` が含まれる
-- 表形式で `Review Result` 行が存在し、次のいずれかの値が記載されている  
-`approve_for_human_review` / `request_changes` / `needs_human_decision` / `split_required` / `blocked`
+- 表形式で `Review Result` 行が存在し、§1 の表セルから許容値が **1 件** 抽出できる
 
 Bot 投稿・人間投稿を問わない。フォーマットが [ai-review-comment.md](../../../prompts/templates/review/ai-review-comment.md) に従っていることを前提とする。
 
@@ -179,9 +199,12 @@ Bot 投稿・人間投稿を問わない。フォーマットが [ai-review-comm
 
 §6.1 に該当するコメントについて、次の優先順位で **1 件に定まる** 値を得る。定まらない場合は §5.4 のパース失敗とする。
 
-1. `Review Result | \``` 形式の表セル（§1 の表）`
-2. `### レビュー結果分類` 直下の単独行
-3. `approve_for_human_review` 等のキーワード（フォールバック。**複数一致** または **許容値以外** はパース失敗）
+1. `Review Result | \`` 形式の表セル（§1 の表）
+2. `### レビュー結果分類` 直下の単一行
+
+**禁止**: コメント全文への `approve_for_human_review` 等の部分一致フォールバック（運用確認コメント・分類表の列挙と誤判定し、再実行ループの原因になる）。
+
+§6.1 に該当するが 1・2 で値が定まらない、または複数定まる場合は §5.4 のパース失敗とする。
 
 ### 6.3 次Status の明示（needs_human_decision 用）
 
@@ -205,14 +228,15 @@ Bot 投稿・人間投稿を問わない。フォーマットが [ai-review-comm
 ## 7. 処理概要
 
 1. イベント種別に応じて AI 経路または Human 経路を選択する
-2. `actions/checkout` で `pr-review-status-policy.cjs` を読み込む
+2. `actions/checkout` で `.github/scripts/slack-notify.cjs` を読み込む（§6 識別・§5.3 照合・確認コメント文案）
 3. GraphQL で Project の **Status** フィールド ID と遷移先オプション ID を解決する
-4. 対象 Issue の Project item を特定し、現在 Status を読む
-5. §5 の遷移表に従い次 Status を決定する（§5.3 のスキップ条件に該当すれば更新せず記録）
+4. 対象 Issue の Project item を特定し、**現在 Status** を `fieldValueByName(name: "Status")` で読む
+5. §5 の遷移表に従い次 Status を決定する（§5.3 のスキップ条件に該当すれば更新・確認コメント・Slack を行わず記録）
 6. `updateProjectV2ItemFieldValue` で Status を更新する
-7. Review Resultに応じてSlack通知を送信する
-8. ジョブサマリーに Issue 番号・経路・Review Result・更新前後 Status・Slack通知結果を出力する
-9. §5.4 に該当した場合は `core.setFailed` し、Summary に PR 番号・Issue 番号（解決できた場合）・失敗理由・コメント URL を出力する
+7. PR に確認コメントを 1 件投稿する（`Project Status更新意図: Issue #<n> を \`<次Status>\` へ更新しました。`。**Review Result enum は含めない**）
+8. Review Result に応じて Slack 通知を送信する（Slack 本文の Review Result は人間向けラベル可）
+9. ジョブサマリーに Issue 番号・経路・Review Result・更新前後 Status・Slack 通知結果を出力する
+10. §5.4 に該当した場合は `core.setFailed` し、Summary に PR 番号・Issue 番号（解決できた場合）・失敗理由・コメント URL を出力する
 
 ## 8. GraphQL
 
@@ -230,7 +254,7 @@ Bot 投稿・人間投稿を問わない。フォーマットが [ai-review-comm
 | ----------------------------------------------------- | ----------------------------------------------- |
 | Project が取得できない                                       | `core.setFailed` でジョブ失敗                         |
 | `Status` フィールドまたは遷移先オプションが見つからない                      | `core.setFailed` でジョブ失敗                         |
-| AI 判定に非該当のコメント（§6.1 未満足）                              | ジョブ成功（処理なし）                                     |
+| AI 判定に非該当のコメント（§6.0 バイパス・§6.1 未満足）                   | ジョブ成功（Summary に skipped）                           |
 | 正当スキップのみで更新 0 件（§5.3）                                 | ジョブ成功（Summary に 0 件・skipped 内訳）                 |
 | AI Review 結果コメントと判定したが Review Result を一意に抽出できない（§5.4） | `core.setFailed`（Summary に PR 番号・失敗理由・コメント URL） |
 | AI Review 結果コメントと判定したが Task Issue を解決できない（§5.4）       | `core.setFailed`（Summary に PR 番号・失敗理由・コメント URL） |
@@ -244,7 +268,8 @@ Slack通知に失敗しても、Projects Status の更新は取り消さない�
 ## 10. 運用上の必須事項
 
 - Project の Status に **AI Review** / **Human Review** / **In Progress** が存在し、表示名が [Projects運用ルール.md](../../00_共通/プロジェクト管理/Projects運用ルール.md) §9 と一致すること
-- `/review-pr` は PR コメントを [ai-review-comment.md](../../../prompts/templates/review/ai-review-comment.md) 形式で投稿すること（Review Result 行を省略しない）
+- `/review-pr` は PR コメントを [ai-review-comment.md](../../../prompts/templates/review/ai-review-comment.md) 形式で投稿すること（Review Result 行を省略しない）。**運用確認コメントと混同しない**
+- 本ワークフローが投稿する確認コメントを手動編集して Review Result 行を足さないこと（再実行ループの原因になる）
 - PR 本文に Task Issue への参照（`Related to #<n>` 等）を含めること（§6.4）。不足時はワークフローが失敗する
 - 本ワークフローが **失敗（赤）** した場合は、Summary の PR・失敗理由を確認し、テンプレート・コメント・Issue 参照を修正してから再実行すること
 - `PROJECTS_TOKEN` には対象 Project の読み書きに必要なスコープを付与すること

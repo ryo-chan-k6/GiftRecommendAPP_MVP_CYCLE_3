@@ -104,6 +104,91 @@ test("Review Result: 英語と日本語を正規化する", () => {
   assert.equal(slack.notificationLevelFromReviewResult("blocked"), "error");
 });
 
+const SAMPLE_AI_REVIEW = `# AI Review Result
+
+## 1. レビュー結果
+
+| 項目          | 内容                     |
+| ------------- | ------------------------ |
+| Review Result | \`approve_for_human_review\` |
+| 対象PR        | \`268\`                  |
+
+### Review Result の分類
+
+| 分類                       | 意味 |
+| approve_for_human_review | Human Review |
+
+## 22. Status更新意図
+
+| 次Status   | \`Human Review\` |
+`;
+
+test("isAutomationBypassComment: Status同期・Slack markerを除外する", () => {
+  assert.equal(
+    slack.isAutomationBypassComment(
+      "Project Status更新意図: Issue #265 を `Human Review` へ更新しました（Review Result: `approve_for_human_review`）。",
+    ),
+    true,
+  );
+  assert.equal(slack.isAutomationBypassComment(slack.buildThreadMarkerCommentBody({
+    threadKey: "pr:o/r#1",
+    channel: "C1",
+    ts: "1.000",
+  })), true);
+  assert.equal(slack.isAutomationBypassComment(SAMPLE_AI_REVIEW), false);
+});
+
+test("isAiReviewResultComment: AI Reviewテンプレのみtrue", () => {
+  assert.equal(slack.isAiReviewResultComment(SAMPLE_AI_REVIEW), true);
+  assert.equal(
+    slack.isAiReviewResultComment("Project Status更新意図: Issue #1 を `Human Review` へ更新しました。"),
+    false,
+  );
+  assert.equal(slack.isAiReviewResultComment("random approve_for_human_review mention"), false);
+});
+
+test("extractReviewResultFromAiComment: §1表から一意に抽出する", () => {
+  const extracted = slack.extractReviewResultFromAiComment(SAMPLE_AI_REVIEW);
+  assert.equal(extracted.ok, true);
+  assert.equal(extracted.value, "approve_for_human_review");
+});
+
+test("extractReviewResultFromAiComment: 運用確認コメントは対象外", () => {
+  const extracted = slack.extractReviewResultFromAiComment(
+    "Project Status更新意図: Issue #265 を `Human Review` へ更新しました（Review Result: approve_for_human_review）。",
+  );
+  assert.equal(extracted.ok, false);
+  assert.equal(extracted.reason, "not_ai_review_comment");
+});
+
+test("buildStatusSyncConfirmationComment: Review Result enumを含めない", () => {
+  const body = slack.buildStatusSyncConfirmationComment({ taskIssueNumber: 265, nextStatus: "Human Review" });
+  assert.match(body, /^Project Status更新意図:/);
+  assert.equal(body.includes("approve_for_human_review"), false);
+  assert.equal(slack.isAutomationBypassComment(body), true);
+});
+
+test("statusNamesEqual: 大文字小文字を無視する", () => {
+  assert.equal(slack.statusNamesEqual("AI Review", "ai review"), true);
+  assert.equal(slack.statusNamesEqual("Human Review", "In Progress"), false);
+});
+
+test("expectedCurrentStatusForAiReview: AI Review前提", () => {
+  assert.equal(slack.expectedCurrentStatusForAiReview("approve_for_human_review"), "AI Review");
+});
+
+test("ループ再現: AI Review1回+確認コメントは追加トリガにならない", () => {
+  const ai = SAMPLE_AI_REVIEW;
+  const confirm = slack.buildStatusSyncConfirmationComment({
+    taskIssueNumber: 265,
+    nextStatus: "Human Review",
+  });
+  assert.equal(slack.isAiReviewResultComment(ai), true);
+  assert.equal(slack.isAiReviewResultComment(confirm), false);
+  assert.equal(slack.isAutomationBypassComment(confirm), true);
+  assert.equal(slack.extractReviewResultFromAiComment(confirm).ok, false);
+});
+
 test("upsertThreadMarkerComment: 既存markerがあれば更新する", async () => {
   const calls = [];
   const github = {
