@@ -85,6 +85,15 @@ Definitionなしでの実行は原則禁止する。
 
 ## 処理手順
 
+### 0. Machine account 認証（GitHub 書き込み前・必須）
+
+push / commit の前に bot 認証を確認する（[github-operation.mdc](../../.cursor/rules/github-operation.mdc) §3.16）。
+
+```bash
+node .github/scripts/gh-bot-auth.cjs verify
+eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+```
+
 ### 1. Issueを確認する
 
 対象Issueを確認し、以下を整理する。

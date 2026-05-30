@@ -595,6 +595,7 @@ PRはレビュー正本であり、作業結果、確認結果、AIレビュー�
 ### 16.5 処理
 
 ````
+0. machine account 認証を確認する（`gh-bot-auth.cjs verify` + `print-setup`）。PR author が bot であること
 1. 対象Issueを確認する
 2. 作業Branchを確認する
 3. Task Branchが親Epic Branchの最新状態を取り込んでいるか確認する
@@ -707,6 +708,7 @@ PR番号を併記してもよい。
 ### 17.5 処理
 
 ```text
+0. machine account 認証を確認する（`gh-bot-auth.cjs`）
 1. PRを確認する
 2. 対象Issueを確認する
 3. Task Definitionを確認する
@@ -795,6 +797,7 @@ AI Review 完了後の Projects Status 更新は [PR Review Status Sync](../../0
 | 完了確認 | 同一 CLI の `--verify` |
 | recovery | `--dispatch-only`（コメント投稿済み時） |
 | Harness | `review-pr` + `live-run` 完了後、post-run 検証で dispatch 忘れを **ジョブ失敗** |
+| Machine account | dispatch / PR コメント投稿前に `GH_BOT_TOKEN` で bot 認証（[AI機械アカウント運用設計書](./AI機械アカウント運用設計書.md)） |
 
 詳細手順は `.cursor/commands/review-pr.md` §15.5 を正本とする。
 

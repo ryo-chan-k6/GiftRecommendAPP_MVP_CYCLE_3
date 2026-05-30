@@ -1,0 +1,7 @@
+{
+  "machine_account_login": "okuri-ai-bot",
+  "human_reviewer_login": "ryo-chan-k6",
+  "token_env_var": "GH_BOT_TOKEN",
+  "env_file": "~/.config/gift-recommend/gh-bot.env",
+  "repository": "ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3"
+}
