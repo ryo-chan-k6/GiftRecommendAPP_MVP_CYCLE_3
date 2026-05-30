@@ -228,3 +228,50 @@ test("listIssuesCreatedSince: octokit 経由で PR 以外の Issue のみ返す"
   assert.equal(called[0].owner, "o");
   assert.equal(called[0].since, "2026-01-01T00:00:00.000Z");
 });
+
+test("runPostVerify: review-pr live-run で dispatch 欠落は violation", async () => {
+  const result = await post.runPostVerify({
+    owner: "o",
+    repo: "r",
+    startedAt: "2026-01-01T00:00:00.000Z",
+    runMode: "live-run",
+    runActor: "agent",
+    command: "review-pr",
+    targetPr: "282",
+    token: "t",
+    listIssues: async () => [],
+    listPulls: async () => [],
+    listBranches: async () => [],
+    verifyImpl: async () => ({
+      ok: false,
+      reason: "dispatch_missing",
+      message: "missing",
+      recovery_command: "node ... --dispatch-only",
+    }),
+  });
+  assert.equal(result.counts.violations, 1);
+  assert.equal(result.violations[0].type, "review_dispatch");
+  assert.equal(result.dispatch_verify.ok, false);
+});
+
+test("runPostVerify: review-pr live-run で dispatch 済みなら violation なし", async () => {
+  const result = await post.runPostVerify({
+    owner: "o",
+    repo: "r",
+    startedAt: "2026-01-01T00:00:00.000Z",
+    runMode: "live-run",
+    runActor: "agent",
+    command: "review-pr",
+    targetPr: "282",
+    token: "t",
+    listIssues: async () => [],
+    listPulls: async () => [],
+    listBranches: async () => [],
+    verifyImpl: async () => ({
+      ok: true,
+      dispatch_run_id: 1,
+    }),
+  });
+  assert.equal(result.counts.violations, 0);
+  assert.equal(result.dispatch_verify.ok, true);
+});

@@ -725,13 +725,14 @@ PR番号を併記してもよい。
 13. 横断影響を確認する
 14. 前段成果物の修正が必要か確認する
 15. レビューコメントを作成する
-16. AIレビュー結果をPRへ記録する
-17. 指摘なしなら Human Review へ進める
-18. 指摘ありなら In Progress へ戻す判断材料を出す
+16. AIレビュー結果をPRへ記録する（live-run / IDE 実行時）
+17. **`publish-ai-review-and-dispatch.cjs` で Status dispatch を 1 回実行する**（§17.10）
+18. 指摘なしなら Human Review へ進める
+19. 指摘ありなら In Progress へ戻す判断材料を出す
 
 ```
 
-正本手順の詳細は `.cursor/commands/review-pr.md` とする。
+正本手順の詳細は `.cursor/commands/review-pr.md` とする。Status 同期の CLI 正本は §17.10。
 
 前段成果物の修正が必要な場合は、以下の基準で扱う。
 
@@ -767,6 +768,7 @@ PR番号を併記してもよい。
 ### 17.8 成功条件
 
 - PRへAIレビュー結果が記録されている
+- **`publish-ai-review-and-dispatch.cjs` によりコメント投稿と `repository_dispatch` が 1 回完了している**（または `--verify` で dispatch 済みを確認済み）
 - 修正要否が明確である
 - Human Reviewへ進めてよいか判断できる
 - 指摘がある場合、修正対象が明確である
@@ -781,6 +783,20 @@ PR番号を併記してもよい。
 - 識別子付き Task PR で差分 path が親 Epic の `epic_scope.allowed_paths` 外を含む（`blocked`）
 - 識別子 prefix が親 Epic と不一致（`blocked`）
 - `MOD-RECO-NNN` Epic 配下で `apps/reco/src/app/**` に差分がある（`blocked`）
+
+### 17.10 Status 同期（dispatch 忘れ防止）
+
+AI Review 完了後の Projects Status 更新は [PR Review Status Sync](../../06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md) が担う。`/review-pr` は **コメント投稿と dispatch を分離しない**。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 正本 CLI | `.github/scripts/publish-ai-review-and-dispatch.cjs` |
+| 推奨 | `--comment-file` で ai-review-comment 形式を渡し、コメント + dispatch を 1 回実行 |
+| 完了確認 | 同一 CLI の `--verify` |
+| recovery | `--dispatch-only`（コメント投稿済み時） |
+| Harness | `review-pr` + `live-run` 完了後、post-run 検証で dispatch 忘れを **ジョブ失敗** |
+
+詳細手順は `.cursor/commands/review-pr.md` §15.5 を正本とする。
 
 ---
 

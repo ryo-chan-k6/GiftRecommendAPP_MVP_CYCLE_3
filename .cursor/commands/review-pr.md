@@ -804,6 +804,44 @@ approve_for_human_review / request_changes / needs_human_decision / split_requir
 ```
 ---
 
+## dry-run 実行時
+
+Definition Run Harness 等で `run_mode=dry-run` の場合、PR への書き込み・Status 更新は行わない。以下を出力する。
+
+1. レビュー結果分類（Review Result）
+2. ai-review-comment.md 形式の **投稿予定コメント全文**（§1 `Review Result` / §22 `次Status` を含む）
+3. 実行予定の `publish-ai-review-and-dispatch.cjs` コマンド例（`--repository` / `--pr` / `--comment-file`）
+4. Status更新意図（現在 Status → 次 Status）
+5. 次に実行する Command（`/fix-review-comments` 等）
+
+dry-run では `gh pr comment` / `repository_dispatch` / Projects 直接更新を行わない。
+
+---
+
+## Definition Run としての外部実行
+
+本 Command は Cursor IDE に加え、Definition Run Harness からも実行できる。正本は [Definition Run Harness ワークフロー仕様書](../../docs/06_実装設計/github_actions/Definition%20Run%20Harness%E3%83%AF%E3%83%BC%E3%82%AF%E3%83%95%E3%83%AD%E3%83%BC%E4%BB%95%E6%A7%98%E6%9B%B8.md) とする。
+
+### 外部実行時に守る条件
+
+| run_mode | 挙動 |
+| -------- | ---- |
+| `dry-run` | レビュー結果を「dry-run 実行時」フォーマットで出力。PR コメント・dispatch・Status 更新は **禁止** |
+| `live-run` | 本 md 手順に従い、完了時 **必ず** `publish-ai-review-and-dispatch.cjs` を 1 回実行 |
+
+Harness 入力:
+
+| 入力 | 必須 | 説明 |
+| ---- | ---- | ---- |
+| `command` | 必須 | `review-pr` |
+| `definition` | 必須 | `prompts/definitions/` 配下の review Definition |
+| `run_mode` | 必須 | `dry-run` または `live-run` |
+| `target_pr` | live-run 時必須 | 対象 PR 番号 |
+
+live-run 完了後、Harness post-run 検証が dispatch 忘れを検知する。違反時は Guard Violations に `review_dispatch` が列挙され、ジョブは失敗する。
+
+---
+
 ## 出力ルール
 
 - 事実と推論を分けて書く
