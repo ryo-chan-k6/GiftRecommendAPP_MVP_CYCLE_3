@@ -74,6 +74,7 @@ jobs:
           PAYLOAD_REQUEST_ISSUE: ${{ github.event.client_payload.request_issue }}
           PAYLOAD_REQUESTED_BY: ${{ github.event.client_payload.requested_by }}
           PAYLOAD_TARGET_PR: ${{ github.event.client_payload.target_pr }}
+          PAYLOAD_REF: ${{ github.event.client_payload.ref }}
           INPUT_COMMAND: ${{ inputs.command }}
           INPUT_DEFINITION: ${{ inputs.definition }}
           INPUT_RUN_MODE: ${{ inputs.run_mode }}
@@ -89,13 +90,16 @@ jobs:
           REQUEST_ISSUE="${PAYLOAD_REQUEST_ISSUE:-${INPUT_REQUEST_ISSUE:-}}"
           REQUESTED_BY="${PAYLOAD_REQUESTED_BY:-${INPUT_REQUESTED_BY:-${GITHUB_ACTOR:-}}}"
           TARGET_PR="${PAYLOAD_TARGET_PR:-${INPUT_TARGET_PR:-}}"
-          echo "decision: resolve event=${GITHUB_EVENT_NAME} command=${COMMAND} run_mode=${RUN_MODE} target_pr=${TARGET_PR:-}"
+          PAYLOAD_REF_VALUE="${PAYLOAD_REF:-}"
+          REF="${PAYLOAD_REF_VALUE:-develop}"
+          echo "decision: resolve event=${GITHUB_EVENT_NAME} command=${COMMAND} run_mode=${RUN_MODE} target_pr=${TARGET_PR:-} ref=${REF}"
           echo "command=${COMMAND}" >> "$GITHUB_OUTPUT"
           echo "definition=${DEFINITION}" >> "$GITHUB_OUTPUT"
           echo "run_mode=${RUN_MODE}" >> "$GITHUB_OUTPUT"
           echo "request_issue=${REQUEST_ISSUE}" >> "$GITHUB_OUTPUT"
           echo "requested_by=${REQUESTED_BY}" >> "$GITHUB_OUTPUT"
           echo "target_pr=${TARGET_PR}" >> "$GITHUB_OUTPUT"
+          echo "ref=${REF}" >> "$GITHUB_OUTPUT"
           echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           echo "::endgroup::"
 
@@ -108,6 +112,7 @@ jobs:
           INPUT_REQUEST_ISSUE: ${{ steps.resolve.outputs.request_issue }}
           INPUT_REQUESTED_BY: ${{ steps.resolve.outputs.requested_by }}
           INPUT_TARGET_PR: ${{ steps.resolve.outputs.target_pr }}
+          INPUT_REF: ${{ steps.resolve.outputs.ref }}
         run: |
           set -euo pipefail
           echo "::group::validate-and-build-prompt"
@@ -125,6 +130,7 @@ jobs:
             request_issue: process.env.INPUT_REQUEST_ISSUE,
             requested_by: process.env.INPUT_REQUESTED_BY,
             target_pr: process.env.INPUT_TARGET_PR,
+            ref: process.env.INPUT_REF,
           };
 
           try {

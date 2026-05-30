@@ -145,7 +145,7 @@ function validateRunMode(runMode, registryEntry) {
   return trimmed;
 }
 
-function validateDefinitionPath(definition, { workspace } = {}) {
+function validateDefinitionPath(definition, { workspace, allowMissingOnDisk = false } = {}) {
   ensurePresent("definition", definition);
   const trimmed = String(definition).trim();
   const normalized = trimmed.replace(/\\/g, "/").replace(/^\.\//, "");
@@ -178,6 +178,9 @@ function validateDefinitionPath(definition, { workspace } = {}) {
       exists = false;
     }
     if (!exists) {
+      if (allowMissingOnDisk) {
+        return { definition: normalized, absolutePath: absolute };
+      }
       throw new ValidationError("definition_not_found", `definition file does not exist: ${normalized}`);
     }
   }
@@ -266,17 +269,22 @@ function buildPrompt({ command, definition, run_mode, output_section, target_pr 
 function buildDefinitionRunRequest(rawInput = {}, { workspace, fsImpl } = {}) {
   const { command, registry } = validateCommand(rawInput.command);
   const runMode = validateRunMode(rawInput.run_mode, registry);
-  const { definition, absolutePath } = validateDefinitionPath(rawInput.definition, { workspace });
-  const detectedType = workspace
-    ? validateDefinitionType(absolutePath, registry.definition_type, { fsImpl })
-    : registry.definition_type;
+  const ref = String(rawInput.ref || registry.default_ref || "develop").trim();
+  const allowMissingOnDisk = Boolean(ref && ref !== String(registry.default_ref || "develop").trim());
+  const { definition, absolutePath } = validateDefinitionPath(rawInput.definition, {
+    workspace,
+    allowMissingOnDisk,
+  });
+  let detectedType = registry.definition_type;
+  if (workspace && !allowMissingOnDisk) {
+    detectedType = validateDefinitionType(absolutePath, registry.definition_type, { fsImpl });
+  }
   const requestedBy = sanitizeRequestedBy(rawInput.requested_by);
   const requestIssue = sanitizeRequestIssue(rawInput.request_issue);
   const targetPr = sanitizeTargetPr(rawInput.target_pr);
   if (registry.requires_target_pr_on_live_run && runMode === "live-run" && !targetPr) {
     throw new ValidationError("missing_target_pr", "target_pr is required for review-pr live-run.");
   }
-  const ref = String(rawInput.ref || registry.default_ref || "develop").trim();
 
   const prompt = buildPrompt({
     command,

@@ -36,10 +36,12 @@ PR open / fix-ready (ready_for_ai_review)
 ## 4. Review Definition 解決順
 
 1. CLI `--definition` 明示指定
-2. PR / Issue 本文の `/review-pr @path` または `Review Definition:` 行
-3. Branch summary から `prompts/definitions/_e2e/{summary}/pr-review.yaml`
+2. PR / Issue 本文の `/review-pr @path` または `Review Definition:` / ディレクトリヒント行
+3. Branch summary から `prompts/definitions/_e2e/{summary}/pr-review.yaml`（**develop 上に存在する場合**）
 4. Task Definition と同ディレクトリの `pr-review.yaml`
-5. 全 `pr-review.yaml` スキャン（Issue 番号 / task_definition リンク / summary 一致でスコアリング）
+5. 全 `pr-review.yaml` スキャン（Issue 番号 / task_definition リンク / summary 一致でスコアリング。**score ≥ 40 のみ採用**）
+6. **fallback:** PR changed files API から `prompts/definitions/**/pr-review.yaml` を抽出（develop 未マージの Definition 向け）
+7. fallback 時は Harness dispatch に **PR head ref** を渡し、Cursor Agent が PR Branch を clone する
 
 解決不能・曖昧な場合は dispatch ステップが **失敗** し、Job Summary / Actions log に recovery コマンドを残す。
 
