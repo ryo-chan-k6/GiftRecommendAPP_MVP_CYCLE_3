@@ -13,7 +13,8 @@ Slack通知の文面・通知レベルは [Slack通知運用設計書](../../00_
 | ---- | ---- |
 | 実装ファイル | `.github/workflows/pr-created-status-and-slack.yml` |
 | 共通script | `.github/scripts/slack-notify.cjs` |
-| Actions表示名 | `PR created status and Slack notification` |
+| Actions表示名 | `PR Created Status Sync` |
+| Run 名（一覧） | `pr-created · pr-open · PR #n` |
 
 ## 3. トリガー
 

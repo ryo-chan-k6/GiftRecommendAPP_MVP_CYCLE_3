@@ -18,7 +18,7 @@ Branch 作成抑止（no-branch）の**正本**は [Issue運用ルール](../../
 
 本ワークフローは **GitHub Actions** を利用して実装する。
 
-実装ファイル：`.github/workflows/issue-metadata-project-branch.yml`（表示名: **Issue metadata project and branch sync**）
+実装ファイル：`.github/workflows/issue-metadata-project-branch.yml`（表示名: **Issue Metadata Sync**、Run 名: `issue-meta · …`）
 
 Project の **Status / Phase / Priority / Area / Planned Start / Due Date / Actual Start** は、同workflowがIssue本文およびBranch作成結果から同期する。フィールド一覧は [Projects運用ルール](../Projects運用ルール.md) を参照。
 
