@@ -1,0 +1,76 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-review-fix-patterns-e2e-pr"
+  title: "Human Review 指摘対応パターン E2E PRレビュー"
+  summary: "review-fix-patterns-e2e 検証 PR の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/_e2e/review-fix-patterns-e2e/task.yaml"
+  source_branch: null
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support: ["support-ai"]
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: false
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/_e2e/review-fix-patterns-e2e/task.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
