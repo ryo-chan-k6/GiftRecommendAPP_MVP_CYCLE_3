@@ -456,13 +456,48 @@ AIレビュー結果をPRへ記録する。
 
 PR コメントは [ai-review-comment.md](../../prompts/templates/review/ai-review-comment.md) 形式とする。特に §1 の `Review Result` 行と §22 の `次Status` を省略しない。
 
+**dispatch 忘れ防止**: コメント投稿と Status 同期 dispatch は **1 コマンド** で行う（§15.5）。分離実行は recovery 時のみ。
+
 ---
 
-### 15.5 Projects Status 同期を起動する（必須）
+### 15.5 Projects Status 同期を起動する（必須・1コマンド）
 
-PR コメント投稿後、**必ず 1 回** [PR review status sync](../../.github/workflows/pr-review-status-sync.yml) を `repository_dispatch` で起動する。
-
+PR コメント投稿と `repository_dispatch` は **必ず同一コマンド** で実行する。  
 Status 更新はコメント投稿では自動検知しない。dispatch 忘れは Projects Status が `AI Review` のまま残る。
+
+**推奨（コメント + dispatch を原子的に実行）:**
+
+```bash
+node .github/scripts/publish-ai-review-and-dispatch.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --comment-file /path/to/ai-review-comment.md
+```
+
+`Review Result` はコメント §1 から自動抽出される。`needs_human_decision` で §22 `次Status` が `In Progress` のときは、コメント全文を `review_body` として dispatch に渡す。
+
+**完了確認（dispatch 忘れチェック）:**
+
+```bash
+node .github/scripts/publish-ai-review-and-dispatch.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --verify
+```
+
+`ok: false` かつ `reason: dispatch_missing` の場合は、出力された `recovery_command` を実行する。
+
+**Recovery（コメント投稿済み・dispatch のみ再実行）:**
+
+```bash
+node .github/scripts/publish-ai-review-and-dispatch.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --comment-file /path/to/ai-review-comment.md \
+  --dispatch-only
+```
+
+**低レベル API（非推奨・分離実行）:**
 
 ```bash
 node .github/scripts/dispatch-pr-review-status-sync.cjs \
@@ -471,26 +506,9 @@ node .github/scripts/dispatch-pr-review-status-sync.cjs \
   --review-result <approve_for_human_review|request_changes|needs_human_decision|split_required|blocked>
 ```
 
-`needs_human_decision` で PR コメント §22 の `次Status` が `In Progress` のときは、コメント本文を渡す。
+`needs_human_decision` で PR コメント §22 の `次Status` が `In Progress` のときは `--review-body-file` を付ける。
 
-```bash
-node .github/scripts/dispatch-pr-review-status-sync.cjs \
-  --repository <owner>/<repo> \
-  --pr <PR番号> \
-  --review-result needs_human_decision \
-  --review-body-file /path/to/ai-review-comment.md
-```
-
-代替（`gh` のみ）:
-
-```bash
-gh api repos/<owner>/<repo>/dispatches \
-  -f event_type=ai_review_status_sync \
-  -f "client_payload[pr_number]=<PR番号>" \
-  -f "client_payload[review_result]=<Review Result>"
-```
-
-dispatch が失敗した場合は、PR コメントは残るが Status は更新されない。ログを確認し、修正後に `workflow_dispatch` または dispatch を再実行する。
+dispatch が失敗した場合は、PR コメントは残るが Status は更新されない。`--dispatch-only` または `workflow_dispatch` で再実行する。
 
 ---
 
@@ -559,7 +577,7 @@ Status更新は、Commandが直接確定するのではなく、GitHub Actions�
 - 横断影響が確認されている
 - 前段成果物の修正要否が確認されている
 - PRへAIレビュー結果が記録されている
-- `repository_dispatch`（`ai_review_status_sync`）を 1 回起動している
+- `publish-ai-review-and-dispatch.cjs` で **コメント投稿 + repository_dispatch を 1 回** 実行している（または `--verify` で dispatch 済みを確認済み）
 - 修正要否が明確である
 - Human Reviewへ進めてよいか判断できる
 - 指摘がある場合、修正対象が明確である
@@ -629,7 +647,7 @@ Status更新は、Commandが直接確定するのではなく、GitHub Actions�
 | split_required           | `In Progress`                       |
 | blocked                  | `In Progress`                       |
 
-Status更新は、Commandが直接確定するのではなく、[PRレビュー完了時Status更新ワークフロー仕様書](../../docs/06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md) が実施する。`/review-pr` は §15.5 の **repository_dispatch を 1 回** 呼び出し、更新意図を PR コメントにも明記する。
+Status更新は、Commandが直接確定するのではなく、[PRレビュー完了時Status更新ワークフロー仕様書](../../docs/06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md) が実施する。`/review-pr` は §15.5 の **`publish-ai-review-and-dispatch.cjs` を 1 回** 呼び出し（コメント + dispatch）、更新意図を PR コメントにも明記する。
 
 ---
 
