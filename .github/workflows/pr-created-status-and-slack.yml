@@ -32,6 +32,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Update Project Status and notify Slack
+        id: sync-status
         uses: actions/github-script@v8
         env:
           PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
@@ -110,6 +111,16 @@ jobs:
                 if (!items?.pageInfo?.hasNextPage) return null;
                 after = items.pageInfo.endCursor;
               }
+            }
+
+            async function markDispatchAiReview(prNumber, issueNumber) {
+              if (dryRun) {
+                core.setOutput("dispatch_ai_review", "false");
+                return;
+              }
+              core.setOutput("dispatch_ai_review", "true");
+              core.setOutput("pr_number", String(prNumber));
+              core.setOutput("issue_number", String(issueNumber));
             }
 
             async function updateStatus(project, itemId, statusName) {
@@ -202,7 +213,7 @@ jobs:
                 PR: pr.html_url,
                 Issue: `${context.serverUrl}/${repositoryFullName}/issues/${issueNumber}`,
               },
-              humanAction: "AI Reviewを実施します。",
+              humanAction: "Definition Run Harness により AI Review を自動実行します。",
             });
             const result = await slack.postSlackMessage({
               token: process.env.SLACK_BOT_TOKEN,
@@ -243,3 +254,23 @@ jobs:
               core.warning(`Slack notification failed: ${result.error || "unknown"}`);
             }
 
+            await markDispatchAiReview(prNumber, issueNumber);
+
+      - name: Setup Node
+        if: steps.sync-status.outputs.dispatch_ai_review == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Dispatch AI Review via Definition Run Harness
+        if: steps.sync-status.outputs.dispatch_ai_review == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/dispatch-review-pr-harness.cjs \
+            --repository "${{ github.repository }}" \
+            --pr "${{ steps.sync-status.outputs.pr_number }}" \
+            --issue "${{ steps.sync-status.outputs.issue_number }}" \
+            --requested-by "pr-created-status-sync" \
+            --context "pr-created"

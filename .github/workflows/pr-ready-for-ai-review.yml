@@ -36,6 +36,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Update Project Status and notify Slack
+        id: sync-status
         uses: actions/github-script@v8
         env:
           PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
@@ -65,6 +66,21 @@ jobs:
                 if (value !== undefined && value !== "") lines.push(`${key}: ${value}`);
               }
               return core.summary.addRaw(lines.join("\n") + "\n").write();
+            }
+
+            function markDispatchAiReview(prNumber, issueNumber) {
+              if (dryRun) {
+                core.setOutput("dispatch_ai_review", "false");
+                return;
+              }
+              core.setOutput("dispatch_ai_review", "true");
+              core.setOutput("pr_number", String(prNumber));
+              core.setOutput("issue_number", String(issueNumber));
+            }
+
+            async function skipWithSummaryAndMaybeDispatch(reason, details, prNumber, issueNumber, dispatchReview) {
+              await skipWithSummary(reason, details);
+              if (dispatchReview) await markDispatchAiReview(prNumber, issueNumber);
             }
 
             async function loadProject() {
@@ -227,11 +243,17 @@ jobs:
 
             if (expectedCurrent && currentStatus && !slack.statusNamesEqual(currentStatus, expectedCurrent)) {
               if (slack.statusNamesEqual(currentStatus, nextStatus)) {
-                return skipWithSummary("already_at_next_status", {
-                  PR: `#${prNumber}`,
-                  Issue: `#${issueNumber}`,
-                  Status: currentStatus,
-                });
+                return skipWithSummaryAndMaybeDispatch(
+                  "already_at_next_status",
+                  {
+                    PR: `#${prNumber}`,
+                    Issue: `#${issueNumber}`,
+                    Status: currentStatus,
+                  },
+                  prNumber,
+                  issueNumber,
+                  true,
+                );
               }
               return skipWithSummary("current_status_mismatch", {
                 PR: `#${prNumber}`,
@@ -243,11 +265,17 @@ jobs:
             }
 
             if (currentStatus && slack.statusNamesEqual(currentStatus, nextStatus)) {
-              return skipWithSummary("already_at_next_status", {
-                PR: `#${prNumber}`,
-                Issue: `#${issueNumber}`,
-                Status: currentStatus,
-              });
+              return skipWithSummaryAndMaybeDispatch(
+                "already_at_next_status",
+                {
+                  PR: `#${prNumber}`,
+                  Issue: `#${issueNumber}`,
+                  Status: currentStatus,
+                },
+                prNumber,
+                issueNumber,
+                true,
+              );
             }
 
             await updateStatus(project, itemId, nextStatus);
@@ -272,7 +300,7 @@ jobs:
                 PR: pr.html_url,
                 Issue: `${serverUrl}/${repositoryFullName}/issues/${issueNumber}`,
               },
-              humanAction: "/review-pr を実行してください。",
+              humanAction: "Definition Run Harness により AI Review を自動実行します。",
             });
             const result = await slack.postSlackMessage({
               token: process.env.SLACK_BOT_TOKEN,
@@ -302,3 +330,25 @@ jobs:
             if (!result.ok) {
               core.warning(`Slack notification failed: ${result.error || "unknown"}`);
             }
+
+            await markDispatchAiReview(prNumber, issueNumber);
+
+      - name: Setup Node
+        if: steps.sync-status.outputs.dispatch_ai_review == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Dispatch AI Review via Definition Run Harness
+        if: steps.sync-status.outputs.dispatch_ai_review == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/dispatch-review-pr-harness.cjs \
+            --repository "${{ github.repository }}" \
+            --pr "${{ steps.sync-status.outputs.pr_number }}" \
+            --issue "${{ steps.sync-status.outputs.issue_number }}" \
+            --requested-by "pr-ready-for-ai-review-status-sync" \
+            --context "fix-ready" \
+            --fix-outcome "ready_for_ai_review"

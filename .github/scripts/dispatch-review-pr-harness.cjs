@@ -1,0 +1,325 @@
+"use strict";
+
+const slack = require("./slack-notify.cjs");
+const resolver = require("./resolve-review-definition.cjs");
+const harness = require("./dispatch-definition-run.cjs");
+
+function nonEmpty(value) {
+  return String(value || "").trim();
+}
+
+function resolveRepository({ owner, repo, repository }) {
+  if (owner && repo) return { owner: nonEmpty(owner), repo: nonEmpty(repo) };
+  const full = nonEmpty(repository) || nonEmpty(process.env.GITHUB_REPOSITORY);
+  if (!full || !full.includes("/")) {
+    throw new Error("repository is required (--owner/--repo or GITHUB_REPOSITORY)");
+  }
+  const [resolvedOwner, resolvedRepo] = full.split("/", 2);
+  return { owner: resolvedOwner, repo: resolvedRepo };
+}
+
+function authHeaders(token) {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+}
+
+async function fetchJson(url, token, fetchImpl) {
+  const send = fetchImpl || global.fetch;
+  const response = await send(url, { headers: authHeaders(token) });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`GitHub API failed: HTTP ${response.status} ${text}`.trim());
+  }
+  return response.json();
+}
+
+async function loadPullRequest({ owner, repo, prNumber, token, fetchImpl }) {
+  return fetchJson(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+    token,
+    fetchImpl,
+  );
+}
+
+async function loadIssue({ owner, repo, issueNumber, token, fetchImpl }) {
+  return fetchJson(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+    token,
+    fetchImpl,
+  );
+}
+
+function shouldSkipForContext({ context, fixOutcome }) {
+  const ctx = nonEmpty(context);
+  if (ctx === "fix-ready") {
+    const normalized = slack.normalizeKnownFixOutcome(fixOutcome) || "ready_for_ai_review";
+    return normalized !== "ready_for_ai_review"
+      ? { skip: true, reason: "fix_outcome_not_ready_for_ai_review", fix_outcome: normalized }
+      : { skip: false };
+  }
+  return { skip: false };
+}
+
+function buildRecoveryCommand({ owner, repo, prNumber, definition, issueNumber, requestedBy }) {
+  const parts = [
+    "node .github/scripts/dispatch-review-pr-harness.cjs",
+    `--repository ${owner}/${repo}`,
+    `--pr ${prNumber}`,
+  ];
+  if (definition) parts.push(`--definition ${definition}`);
+  if (issueNumber) parts.push(`--issue ${issueNumber}`);
+  if (requestedBy) parts.push(`--requested-by ${requestedBy}`);
+  return parts.join(" \\\n  ");
+}
+
+async function dispatchReviewPrHarness({
+  owner,
+  repo,
+  repository,
+  prNumber,
+  issueNumber,
+  definition,
+  requestedBy,
+  context,
+  fixOutcome,
+  workspaceRoot,
+  token,
+  dryRun,
+  fetchImpl,
+}) {
+  const resolvedRepo = resolveRepository({ owner, repo, repository });
+  const authToken = nonEmpty(token) || nonEmpty(process.env.GITHUB_TOKEN) || nonEmpty(process.env.GH_TOKEN);
+  if (!authToken) {
+    throw new Error("GITHUB_TOKEN or GH_TOKEN is required");
+  }
+
+  const contextGate = shouldSkipForContext({ context, fixOutcome });
+  if (contextGate.skip) {
+    return { ok: true, skipped: true, ...contextGate };
+  }
+
+  const pr = Number(prNumber);
+  if (!Number.isInteger(pr) || pr <= 0) {
+    throw new Error(`Invalid pr_number: ${prNumber}`);
+  }
+
+  const pull = await loadPullRequest({
+    owner: resolvedRepo.owner,
+    repo: resolvedRepo.repo,
+    prNumber: pr,
+    token: authToken,
+    fetchImpl,
+  });
+
+  const repositoryFullName = `${resolvedRepo.owner}/${resolvedRepo.repo}`;
+  if (pull.head?.repo?.full_name !== repositoryFullName) {
+    return { ok: true, skipped: true, reason: "fork_pr" };
+  }
+
+  const relatedIssue =
+    Number(issueNumber) ||
+    Number(slack.relatedIssueNumber(pull.body || "")) ||
+    resolver.parseBranchRef(pull.head?.ref || "")?.issueNumber ||
+    null;
+
+  let issueBody = "";
+  if (relatedIssue) {
+    const issue = await loadIssue({
+      owner: resolvedRepo.owner,
+      repo: resolvedRepo.repo,
+      issueNumber: relatedIssue,
+      token: authToken,
+      fetchImpl,
+    });
+    issueBody = issue.body || "";
+  }
+
+  const workspace = nonEmpty(workspaceRoot) || process.cwd();
+  const reviewResolution = resolver.resolveReviewDefinition({
+    workspaceRoot: workspace,
+    prBody: pull.body || "",
+    issueBody,
+    headRef: pull.head?.ref || "",
+    issueNumber: relatedIssue,
+    definitionOverride: definition,
+  });
+
+  if (!reviewResolution.ok) {
+    return {
+      ok: false,
+      reason: reviewResolution.reason,
+      pr_number: String(pr),
+      issue_number: relatedIssue ? String(relatedIssue) : null,
+      details: reviewResolution,
+      recovery_command: buildRecoveryCommand({
+        owner: resolvedRepo.owner,
+        repo: resolvedRepo.repo,
+        prNumber: pr,
+        issueNumber: relatedIssue,
+        requestedBy,
+      }),
+    };
+  }
+
+  const aiReviewGate = resolver.resolveAiReviewRequired({
+    workspaceRoot: workspace,
+    reviewDefinitionPath: reviewResolution.path,
+  });
+  if (aiReviewGate.ok && aiReviewGate.required === false) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: "ai_review_not_required",
+      review_definition: reviewResolution.path,
+      task_definition: aiReviewGate.task_definition || null,
+    };
+  }
+
+  const dispatchResult = await harness.dispatchDefinitionRun({
+    owner: resolvedRepo.owner,
+    repo: resolvedRepo.repo,
+    command: "review-pr",
+    definition: reviewResolution.path,
+    runMode: "live-run",
+    targetPr: String(pr),
+    requestIssue: relatedIssue ? String(relatedIssue) : "",
+    requestedBy: nonEmpty(requestedBy) || nonEmpty(context) || "ai-review-auto-dispatch",
+    workspaceRoot: workspace,
+    token: authToken,
+    dryRun,
+    fetchImpl,
+  });
+
+  return {
+    ok: true,
+    pr_number: String(pr),
+    issue_number: relatedIssue ? String(relatedIssue) : null,
+    review_definition: reviewResolution.path,
+    review_definition_source: reviewResolution.source,
+    ai_review_required: true,
+    dispatch: dispatchResult,
+  };
+}
+
+function parseCliArgs(argv) {
+  const args = argv.slice(2);
+  const options = {
+    owner: "",
+    repo: "",
+    repository: "",
+    prNumber: "",
+    issueNumber: "",
+    definition: "",
+    requestedBy: "",
+    context: "",
+    fixOutcome: "",
+    workspaceRoot: "",
+    dryRun: false,
+  };
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--dry-run") {
+      options.dryRun = true;
+      continue;
+    }
+    if (arg === "--owner") {
+      options.owner = args[++i] || "";
+      continue;
+    }
+    if (arg === "--repo") {
+      options.repo = args[++i] || "";
+      continue;
+    }
+    if (arg === "--repository" || arg === "-R") {
+      options.repository = args[++i] || "";
+      continue;
+    }
+    if (arg === "--pr" || arg === "--pr-number") {
+      options.prNumber = args[++i] || "";
+      continue;
+    }
+    if (arg === "--issue" || arg === "--request-issue") {
+      options.issueNumber = args[++i] || "";
+      continue;
+    }
+    if (arg === "--definition") {
+      options.definition = args[++i] || "";
+      continue;
+    }
+    if (arg === "--requested-by") {
+      options.requestedBy = args[++i] || "";
+      continue;
+    }
+    if (arg === "--context") {
+      options.context = args[++i] || "";
+      continue;
+    }
+    if (arg === "--fix-outcome") {
+      options.fixOutcome = args[++i] || "";
+      continue;
+    }
+    if (arg === "--workspace") {
+      options.workspaceRoot = args[++i] || "";
+      continue;
+    }
+    if (arg === "--help" || arg === "-h") {
+      options.help = true;
+      continue;
+    }
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+  return options;
+}
+
+function printHelp() {
+  process.stdout.write(`Usage:
+  node .github/scripts/dispatch-review-pr-harness.cjs \\
+    --repository owner/repo \\
+    --pr <number> \\
+    [--definition prompts/definitions/.../pr-review.yaml] \\
+    [--issue <number>] [--requested-by <id>] \\
+    [--context pr-created|fix-ready] [--fix-outcome ready_for_ai_review] \\
+    [--workspace <path>] [--dry-run]
+
+Resolves Review Definition and dispatches Definition Run Harness (review-pr live-run).
+`);
+}
+
+async function main() {
+  const options = parseCliArgs(process.argv);
+  if (options.help) {
+    printHelp();
+    return;
+  }
+  const result = await dispatchReviewPrHarness({
+    owner: options.owner,
+    repo: options.repo,
+    repository: options.repository,
+    prNumber: options.prNumber,
+    issueNumber: options.issueNumber,
+    definition: options.definition,
+    requestedBy: options.requestedBy,
+    context: options.context,
+    fixOutcome: options.fixOutcome,
+    workspaceRoot: options.workspaceRoot,
+    dryRun: options.dryRun,
+  });
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  if (result.ok === false) process.exitCode = 1;
+}
+
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  dispatchReviewPrHarness,
+  shouldSkipForContext,
+  buildRecoveryCommand,
+};
