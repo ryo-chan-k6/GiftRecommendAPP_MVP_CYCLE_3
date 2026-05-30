@@ -24,7 +24,7 @@
 
 | Phase | パターン | Pass | 備考 |
 |-------|---------|------|------|
-| 1 | A-1 | | Human Review 指摘 → `/fix-review-comments` 直接実行 |
+| 1 | A-1 | Pass | fix-ready dispatch run `26689853765` → `AI Review` |
 | 2 | A-2 | | |
 | 3 | B | | |
 | 4 | C | | |
