@@ -142,4 +142,58 @@ test("dispatchReviewPrHarness: 解決成功時に definition-run を dispatch", 
   assert.equal(dispatchBody.client_payload.command, "review-pr");
   assert.equal(dispatchBody.client_payload.definition, reviewPath);
   assert.equal(dispatchBody.client_payload.target_pr, "10");
+  assert.equal(dispatchBody.client_payload.ref, "docs/task-9-sample");
+});
+
+test("dispatchReviewPrHarness: local 解決失敗時 PR files から fallback", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dispatch-auto-"));
+  write(
+    path.join(root, "prompts/definitions/reviews/sample-a/pr-review.yaml"),
+    'definition_type: "review"\n',
+  );
+  write(
+    path.join(root, "prompts/definitions/reviews/sample-b/pr-review.yaml"),
+    'definition_type: "review"\n',
+  );
+
+  let dispatchBody = null;
+  const result = await auto.dispatchReviewPrHarness({
+    owner: "o",
+    repo: "r",
+    prNumber: 290,
+    issueNumber: 289,
+    requestedBy: "test",
+    workspaceRoot: root,
+    token: "token",
+    fetchImpl: async (url, init) => {
+      if (url.includes("/pulls/290/files")) {
+        return jsonResponse([
+          { filename: "prompts/definitions/_e2e/review-fix-patterns-e2e/pr-review.yaml" },
+        ]);
+      }
+      if (url.includes("/pulls/290") && !url.includes("/files")) {
+        return jsonResponse({
+          number: 290,
+          body: "Related to #289\nTask / Review Definition: `prompts/definitions/_e2e/review-fix-patterns-e2e/`",
+          head: { ref: "docs/task-289-review-fix-patterns-e2e", repo: { full_name: "o/r" } },
+        });
+      }
+      if (url.includes("/issues/289")) {
+        return jsonResponse({ body: "" });
+      }
+      if (url.endsWith("/dispatches") && init?.method === "POST") {
+        dispatchBody = JSON.parse(init.body);
+        return { ok: true, status: 204, text: async () => "" };
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.review_definition_source, "pr_changed_files");
+  assert.equal(
+    result.review_definition,
+    "prompts/definitions/_e2e/review-fix-patterns-e2e/pr-review.yaml",
+  );
+  assert.equal(dispatchBody.client_payload.ref, "docs/task-289-review-fix-patterns-e2e");
 });

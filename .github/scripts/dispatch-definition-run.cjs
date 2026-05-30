@@ -26,6 +26,7 @@ function buildClientPayload({
   requestIssue,
   requestedBy,
   workspaceRoot,
+  ref,
 }) {
   const cmd = nonEmpty(command) || "review-pr";
   const def = nonEmpty(definition);
@@ -43,6 +44,7 @@ function buildClientPayload({
       target_pr: nonEmpty(targetPr),
       request_issue: nonEmpty(requestIssue),
       requested_by: nonEmpty(requestedBy),
+      ref: nonEmpty(ref),
     },
     { workspace: nonEmpty(workspaceRoot) || process.cwd() },
   );
@@ -58,6 +60,8 @@ function buildClientPayload({
   if (issue) payload.request_issue = issue;
   const by = nonEmpty(requestedBy);
   if (by) payload.requested_by = by;
+  const branchRef = nonEmpty(ref);
+  if (branchRef) payload.ref = branchRef;
   return payload;
 }
 
@@ -76,6 +80,7 @@ async function dispatchDefinitionRun({
   requestIssue,
   requestedBy,
   workspaceRoot,
+  ref,
   token,
   dryRun,
   fetchImpl,
@@ -94,6 +99,7 @@ async function dispatchDefinitionRun({
     requestIssue,
     requestedBy,
     workspaceRoot: workspace,
+    ref,
   });
 
   if (dryRun) {
@@ -152,6 +158,7 @@ function parseCliArgs(argv) {
     targetPr: "",
     requestIssue: "",
     requestedBy: "",
+    ref: "",
     dryRun: false,
   };
   for (let i = 0; i < args.length; i += 1) {
@@ -196,6 +203,10 @@ function parseCliArgs(argv) {
       options.requestedBy = args[++i] || "";
       continue;
     }
+    if (arg === "--ref") {
+      options.ref = args[++i] || "";
+      continue;
+    }
     if (arg === "--help" || arg === "-h") {
       options.help = true;
       continue;
@@ -212,7 +223,7 @@ function printHelp() {
     --target-pr <number> \\
     [--command review-pr] [--run-mode live-run] \\
     [--request-issue <number>] [--requested-by <id>] \\
-    [--repository owner/repo] [--dry-run]
+    [--ref <git-ref>] [--repository owner/repo] [--dry-run]
 
 Dispatches repository event "${EVENT_TYPE}" to run Definition Run Harness.
 `);
