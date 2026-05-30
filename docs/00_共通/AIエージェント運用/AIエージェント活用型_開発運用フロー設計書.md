@@ -677,7 +677,7 @@ AIに修正作業を開始させるには、明示的な作業着手トリガー
 4. Fixer AIがPRコメント・Issue本文・Definitionを読み込む
 5. 同一Branchで修正する
 6. commitしてPRを更新する
-7. Projects Statusを AI Review へ戻す
+7. Projects Statusを AI Review へ戻す（`ready_for_ai_review` 時は `publish-fix-complete-and-dispatch.cjs`）
 ```
 
 ---

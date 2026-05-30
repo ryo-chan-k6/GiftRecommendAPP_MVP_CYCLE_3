@@ -104,6 +104,7 @@ token実値、Authorization header、Slack API request body中のsecretは出力
 | -------- | ---- |
 | `.github/workflows/issue-metadata-project-branch.yml` | Issue作成通知 |
 | `.github/workflows/pr-created-status-and-slack.yml` | PR作成通知、AI Review遷移通知 |
+| `.github/workflows/pr-ready-for-ai-review.yml` | fix 完了後の再 AI Review 通知、In Progress → AI Review |
 | `.github/workflows/pr-review-status-sync.yml` | AI Review完了通知、Human Review依頼、修正必要通知 |
 | `.github/workflows/pr-merged-done-and-slack.yml` | PR merge / Done通知 |
 | `.github/workflows/slack-notify-manual.yml` | 人間判断、incident、横断影響、レビュー指摘対応完了 |

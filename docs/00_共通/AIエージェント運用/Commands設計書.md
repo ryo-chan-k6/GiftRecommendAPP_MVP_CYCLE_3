@@ -253,20 +253,20 @@ Commandは、GitHub ProjectsのStatus遷移と連動する。
 
 Statusの正本はGitHub Projectsとする。
 
-| Command                 | 主なStatus影響                                    |
-| ----------------------- | ------------------------------------------------- |
-| `/start-epic`           | `Todo` → `In Progress`                            |
-| `/start-task`           | `Todo` → `In Progress`                            |
-| `/work-issue`           | `Todo` または `In Progress` → `In Progress`       |
-| `/create-pr`            | `In Progress` → `AI Review`                       |
-| `/review-pr`            | `AI Review` → `Human Review` または `In Progress` |
-| `/fix-review-comments`  | `In Progress` → `AI Review`                       |
-| `/create-contract-task` | 新規Issue作成後、原則 `Todo` → `In Progress`      |
-| `/summarize-work`       | 原則Status変更なし                                |
+| Command                 | 主なStatus影響                                    | 正本 CLI / トリガー |
+| ----------------------- | ------------------------------------------------- | ------------------- |
+| `/start-epic`           | `Todo` → `In Progress`                            | Branch 作成 workflow |
+| `/start-task`           | `Todo` → `In Progress`                            | Branch 作成 workflow |
+| `/work-issue`           | `Todo` または `In Progress` → `In Progress`       | — |
+| `/create-pr`            | `In Progress` → `AI Review`                       | PR open workflow |
+| `/review-pr`            | `AI Review` → `Human Review` または `In Progress` | `publish-ai-review-and-dispatch.cjs` |
+| `/fix-review-comments`  | `In Progress` → `AI Review`（完了時）             | `publish-fix-complete-and-dispatch.cjs` |
+| `/create-contract-task` | 新規Issue作成後、原則 `Todo` → `In Progress`      | Branch 作成 workflow |
+| `/summarize-work`       | 原則Status変更なし                                | — |
 
 Status更新は、Command実行結果に基づいてGitHub ActionsまたはGitHub運用スクリプトが実施する。
 
-Commandは、Status更新の意図を明確に出力する。
+Commandは、Status更新の意図を明確に出力する（Fix Outcome / Review Result）。
 
 ### 11.1 Issue close / Done制御
 
@@ -869,7 +869,7 @@ PR番号を併記してもよい。
 9. commitを追加する
 10. PR本文またはPRコメントを更新する
 11. 修正サマリを記録する
-12. Statusを AI Review へ戻す判断材料を出す
+12. Statusを AI Review へ戻す（Fix Outcome に応じ §18.10）
 13. 必要に応じてSlack通知を作成する
 
 ```
@@ -911,6 +911,23 @@ PR番号を併記してもよい。
 - 親Epic Branchとの最新化で競合が発生している
 - 後続Taskへの影響が大きい
 - 人間判断なしに進めると危険である
+
+### 18.10 Status 同期（dispatch 忘れ防止）
+
+Fix 完了後（Fix Outcome = `ready_for_ai_review`）の Projects Status 更新は [PR再AI Review待ちStatus更新ワークフロー](../../06_実装設計/github_actions/PR再AI%20Review待ちStatus更新ワークフロー仕様書.md) が担う。`/fix-review-comments` は **コメント投稿と dispatch を分離しない**。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 正本 CLI | `.github/scripts/publish-fix-complete-and-dispatch.cjs` |
+| PR コメント正本 | `prompts/templates/review/fix-complete-comment.md` |
+| 推奨 | `--comment-file` で fix-complete-comment 形式を渡し、コメント + dispatch を 1 回実行 |
+| 完了確認 | 同一 CLI の `--verify` |
+| recovery | `--dispatch-only`（コメント投稿済み時）または `workflow_dispatch`（PR Ready For AI Review Status Sync） |
+| Machine account | dispatch / PR コメント投稿前に `GH_BOT_TOKEN` で bot 認証 |
+
+`split_required` / `partial_fix` / `blocked` 等では dispatch **しない**（Status は `In Progress` 維持）。
+
+詳細手順は `.cursor/commands/fix-review-comments.md` §12.5 を正本とする。
 
 ---
 

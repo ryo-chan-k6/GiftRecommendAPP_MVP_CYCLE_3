@@ -291,7 +291,7 @@ commit作成前に以下を確認する。
 
 ### 10. PR本文またはPRコメントを更新する
 
-修正内容に応じて、PR本文またはPRコメントを更新する。
+修正内容に応じて、PR コメントを更新する。再 AI Review 可能な場合は [fix-complete-comment.md](../../prompts/templates/review/fix-complete-comment.md) 形式で投稿する（§12.5 の dispatch 正本）。
 
 記載内容は以下。
 
@@ -350,20 +350,74 @@ PR本文の作業結果・テスト結果が古くなっている場合は、必
 ```
 ---
 
-### 12. Statusを AI Review へ戻す判断材料を出す
+### 12. Statusを AI Review へ戻す
 
-修正対応が完了し、再レビュー可能な状態であれば、Project Statusを `AI Review` へ戻す意図を出力する。
+Fix Outcome に応じて Status 更新を行う。
 
-`/fix-review-comments` の主なStatus影響は以下。
+| 状況                   | Fix Outcome            | Status更新                         |
+| ---------------------- | ---------------------- | ---------------------------------- |
+| 指摘対応完了           | `ready_for_ai_review`  | `In Progress` → `AI Review`（§12.5） |
+| 一部対応・人間判断待ち | `partial_fix` 等       | 原則 `In Progress` のまま          |
+| 別Issue化が必要        | `split_required`       | 原則 `In Progress` のまま          |
+| 対応不能               | `blocked` 等           | 原則 `In Progress` のまま          |
 
-| 状況                   | Status更新意図                            |
-| ---------------------- | ----------------------------------------- |
-| 指摘対応完了           | `In Progress` → `AI Review`               |
-| 一部対応・人間判断待ち | 原則 `In Progress` のまま                 |
-| 別Issue化が必要        | 原則 `In Progress` のまま                 |
-| 対応不能               | 原則 `In Progress` または運用ルールに従う |
+`ready_for_ai_review` 以外の場合は PR コメントのみ投稿し、**dispatch は実行しない**。
 
-Status更新は、Commandが直接確定するのではなく、GitHub Actionsまたは運用スクリプトが実施できるよう、更新意図として明確に出力する。
+---
+
+### 12.5 Projects Status 同期を起動する（`ready_for_ai_review` 時・必須）
+
+Fix 完了コメント投稿と `repository_dispatch` は **必ず同一 CLI** で実行する（`/review-pr` の §15.5 と同型）。  
+Status 更新はコメント投稿では自動検知しない。dispatch 忘れは Projects Status が `In Progress` のまま残る。
+
+**前提:** bot 認証（§0）済み、`GH_BOT_TOKEN` または `GITHUB_TOKEN` が利用可能であること。
+
+**推奨（コメント + dispatch を原子的に実行）:**
+
+```bash
+node .github/scripts/publish-fix-complete-and-dispatch.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --comment-file path/to/fix-complete-comment.md
+```
+
+`Fix Outcome` はコメント §1 から自動抽出される。`ready_for_ai_review` のときのみ [PR再AI Review待ちStatus更新ワークフロー](../../docs/06_実装設計/github_actions/PR再AI%20Review待ちStatus更新ワークフロー仕様書.md) が dispatch される。
+
+**完了確認（dispatch 忘れチェック）:**
+
+```bash
+node .github/scripts/publish-fix-complete-and-dispatch.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --verify
+```
+
+`ok: false` かつ `reason: dispatch_missing` の場合は、出力された `recovery_command` を実行する。
+
+**Recovery（コメント投稿済み・dispatch のみ再実行）:**
+
+```bash
+node .github/scripts/publish-fix-complete-and-dispatch.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --comment-file path/to/fix-complete-comment.md \
+  --dispatch-only
+```
+
+**手動 recovery（workflow_dispatch）:**
+
+Actions → **PR Ready For AI Review Status Sync** → `pr_number` を指定して Run workflow。
+
+**低レベル API（非推奨・分離実行）:**
+
+```bash
+node .github/scripts/dispatch-pr-ready-for-ai-review.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --fix-outcome ready_for_ai_review
+```
+
+dispatch が失敗した場合は、PR コメントは残るが Status は更新されない。`--dispatch-only` または `workflow_dispatch` で再実行する。
 
 ---
 
@@ -430,7 +484,7 @@ Slack通知は正本ではない。
 - 修正commitが作成されている
 - 未対応の指摘がある場合、理由が明記されている
 - 再レビュー可能な状態になっている
-- Statusを `AI Review` へ戻す意図が明確である
+- `ready_for_ai_review` の場合、`publish-fix-complete-and-dispatch.cjs` で dispatch 済み（または `--verify` で確認済み）
 - 次Commandとして `/review-pr` へ進める状態になっている
 
 ---
@@ -490,15 +544,14 @@ Slack通知は正本ではない。
 
 `/fix-review-comments` のStatus影響は以下とする。
 
-| 状況                   | Status更新意図                   |
-| ---------------------- | -------------------------------- |
-| 指摘対応完了           | `In Progress` → `AI Review`      |
-| 一部対応・人間判断待ち | `In Progress` のまま             |
-| 別Issue化が必要        | `In Progress` のまま             |
-| Contract Task化が必要  | `In Progress` のまま             |
-| 修正不能               | 運用ルールに従い、人間確認へ回す |
+| 状況                   | Fix Outcome           | Status更新                         |
+| ---------------------- | --------------------- | ---------------------------------- |
+| 指摘対応完了           | `ready_for_ai_review` | `In Progress` → `AI Review`（§12.5） |
+| 一部対応・人間判断待ち | `partial_fix` 等      | 原則 `In Progress` のまま          |
+| 別Issue化が必要        | `split_required`      | 原則 `In Progress` のまま          |
+| 修正不能               | `blocked` 等          | 運用ルールに従い、人間確認へ回す   |
 
-Status更新は、Commandが直接確定するのではなく、GitHub Actionsまたは運用スクリプトが実施できるよう、更新意図として明確に出力する。
+`ready_for_ai_review` の場合、§12.5 の **`publish-fix-complete-and-dispatch.cjs` を 1 回** 実行する。それ以外は PR コメントのみとし、dispatch しない。
 
 ---
 
@@ -598,7 +651,10 @@ Slack通知は正本ではない。
 -
 
 ### Status更新意図
-In Progress → AI Review
+In Progress → AI Review（`ready_for_ai_review` 時は §12.5 で workflow dispatch）
+
+### Fix Outcome
+ready_for_ai_review
 
 ### 次に実行するCommand
 /review-pr @<definition> #<PR番号>
