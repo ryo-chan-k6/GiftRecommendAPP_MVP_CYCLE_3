@@ -227,3 +227,33 @@ test("upsertThreadMarkerComment: 既存markerがあれば更新する", async ()
   assert.match(calls[0][1].body, /ts=2.000/);
 });
 
+const SAMPLE_FIX_COMPLETE = `# Fix Review Comments Result
+
+## 1. 対応結果
+
+| 項目 | 内容 |
+| ---- | ---- |
+| Fix Outcome | \`ready_for_ai_review\` |
+| 対象PR | \`#10\` |
+
+## 12. Status更新意図
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 次Status | \`AI Review\` |
+`;
+
+test("isFixCompleteResultComment: fix-complete形式を識別する", () => {
+  assert.equal(slack.isFixCompleteResultComment(SAMPLE_FIX_COMPLETE), true);
+  assert.equal(slack.extractFixOutcomeFromComment(SAMPLE_FIX_COMPLETE).value, "ready_for_ai_review");
+});
+
+test("extractFixOutcomeFromComment: split_requiredはdispatch対象外", () => {
+  const body = SAMPLE_FIX_COMPLETE.replace("ready_for_ai_review", "split_required");
+  assert.equal(slack.extractFixOutcomeFromComment(body).value, "split_required");
+});
+
+test("expectedCurrentStatusForFixComplete: In Progressを前提とする", () => {
+  assert.equal(slack.expectedCurrentStatusForFixComplete(), "In Progress");
+});
+

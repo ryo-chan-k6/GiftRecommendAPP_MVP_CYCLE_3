@@ -8,6 +8,7 @@
 | [Planned Startに基づくStatus自動更新ワークフロー.md](./Planned%20Startに基づくStatus自動更新ワークフロー.md) | `update-projects-status-by-planned-start.yml` | Backlog → Todo |
 | [Slack通知共通ワークフロー仕様書.md](./Slack通知共通ワークフロー仕様書.md) | `slack-notify-manual.yml` / `.github/scripts/slack-notify.cjs` | Slack通知の共通仕様・手動通知 |
 | [PR作成時Status更新ワークフロー仕様書.md](./PR作成時Status更新ワークフロー仕様書.md) | `pr-created-status-and-slack.yml` | PR作成時の `AI Review` 更新・Slack通知 |
+| [PR再AI Review待ちStatus更新ワークフロー仕様書.md](./PR%E5%86%8DAI%20Review%E5%BE%85%E3%81%A1Status%E6%9B%B4%E6%96%B0%E3%83%AF%E3%83%BC%E3%82%AF%E3%83%95%E3%83%AD%E3%83%BC%E4%BB%81%E6%A7%98%E6%9B%B8.md) | `pr-ready-for-ai-review.yml` | fix 完了後の `In Progress` → `AI Review` 更新・Slack通知 |
 | [PRレビュー完了時Status更新ワークフロー仕様書.md](./PRレビュー完了時Status更新ワークフロー仕様書.md) | `pr-review-status-sync.yml` | AI/Human レビュー完了時の Status 更新・Slack通知 |
 | [PR merge時Status更新ワークフロー仕様書.md](./PR%20merge時Status更新ワークフロー仕様書.md) | `pr-merged-done-and-slack.yml` | PR merge 時の `Done` 更新・Issue close・Slack通知 |
 | [Definition Run Harnessワークフロー仕様書.md](./Definition%20Run%20Harness%E3%83%AF%E3%83%BC%E3%82%AF%E3%83%95%E3%83%AD%E3%83%BC%E4%BB%95%E6%A7%98%E6%9B%B8.md) | `definition-run.yml` / `.github/scripts/definition-run-prompt-builder.cjs` / `.github/scripts/definition-run-post-verify.cjs` | 外部トリガから Cursor Cloud Agent に Definition Run を依頼する Harness（MVP: `/start-epic` dry-run のみ） |

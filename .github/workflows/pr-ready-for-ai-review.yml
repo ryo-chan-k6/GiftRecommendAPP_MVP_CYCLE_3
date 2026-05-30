@@ -1,0 +1,304 @@
+name: PR Ready For AI Review Status Sync
+
+run-name: "fix-ready · ${{ github.event_name == 'repository_dispatch' && 'dispatch' || 'manual' }} · PR #${{ github.event.client_payload.pr_number || github.event.inputs.pr_number }} · ${{ github.event.client_payload.fix_outcome || github.event.inputs.fix_outcome || 'ready_for_ai_review' }}"
+
+on:
+  repository_dispatch:
+    types:
+      - fix_ready_for_ai_review
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 対象PR番号
+        required: true
+      fix_outcome:
+        description: Fix Outcome（ready_for_ai_review のみ Status 更新）
+        required: false
+        default: "ready_for_ai_review"
+      dry_run:
+        description: trueの場合は更新せずログのみ出力する
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: pr-ready-for-ai-review-${{ github.event.client_payload.pr_number || github.event.inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  sync-status-and-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Update Project Status and notify Slack
+        uses: actions/github-script@v8
+        env:
+          PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const path = require("path");
+            const slack = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/slack-notify.cjs"));
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const repositoryFullName = `${owner}/${repo}`;
+            const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+            const projectOwner = process.env.PROJECT_OWNER || owner;
+            const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
+            const dryRun =
+              context.eventName === "workflow_dispatch" &&
+              String(context.payload.inputs?.dry_run || "") === "true";
+
+            function skipWithSummary(reason, details = {}) {
+              core.info(`Skipped: ${reason}`);
+              const lines = [`Skipped: ${reason}`];
+              for (const [key, value] of Object.entries(details)) {
+                if (value !== undefined && value !== "") lines.push(`${key}: ${value}`);
+              }
+              return core.summary.addRaw(lines.join("\n") + "\n").write();
+            }
+
+            async function loadProject() {
+              const query = `
+                query($owner: String!, $number: Int!) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      id
+                      fields(first: 100) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options { id name }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }`;
+              const data = await github.graphql(query, { owner: projectOwner, number: projectNumber });
+              return data.user?.projectV2 || null;
+            }
+
+            async function issueNodeId(issueNumber) {
+              const query = `
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $number) { id }
+                  }
+                }`;
+              const data = await github.graphql(query, { owner, repo, number: issueNumber });
+              return data.repository?.issue?.id || null;
+            }
+
+            async function findProjectItem(issueId) {
+              const query = `
+                query($owner: String!, $number: Int!, $after: String) {
+                  user(login: $owner) {
+                    projectV2(number: $number) {
+                      items(first: 100, after: $after) {
+                        nodes {
+                          id
+                          content { ... on Issue { id } }
+                        }
+                        pageInfo { hasNextPage endCursor }
+                      }
+                    }
+                  }
+                }`;
+              let after = null;
+              for (;;) {
+                const data = await github.graphql(query, { owner: projectOwner, number: projectNumber, after });
+                const items = data.user?.projectV2?.items;
+                const hit = items?.nodes?.find((item) => item.content?.id === issueId);
+                if (hit) return hit.id;
+                if (!items?.pageInfo?.hasNextPage) return null;
+                after = items.pageInfo.endCursor;
+              }
+            }
+
+            async function readProjectItemStatus(itemId) {
+              const query = `
+                query($itemId: ID!) {
+                  node(id: $itemId) {
+                    ... on ProjectV2Item {
+                      fieldValueByName(name: "Status") {
+                        ... on ProjectV2ItemFieldSingleSelectValue { name }
+                      }
+                    }
+                  }
+                }`;
+              const data = await github.graphql(query, { itemId });
+              return data.node?.fieldValueByName?.name || "";
+            }
+
+            async function updateStatus(project, itemId, statusName) {
+              const field = project.fields.nodes.find((candidate) => candidate.name === "Status");
+              const option = field?.options?.find((candidate) => candidate.name === statusName);
+              if (!field || !option) throw new Error(`Project Status option not found: ${statusName}`);
+              const mutation = `
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId,
+                    itemId: $itemId,
+                    fieldId: $fieldId,
+                    value: { singleSelectOptionId: $optionId }
+                  }) { projectV2Item { id } }
+                }`;
+              if (dryRun) {
+                core.info(`[dry_run] update status: ${statusName}`);
+                return;
+              }
+              await github.graphql(mutation, {
+                projectId: project.id,
+                itemId,
+                fieldId: field.id,
+                optionId: option.id,
+              });
+            }
+
+            let prNumber;
+            let fixOutcome = "ready_for_ai_review";
+
+            if (context.eventName === "workflow_dispatch") {
+              prNumber = Number(context.payload.inputs.pr_number);
+              fixOutcome = slack.normalizeKnownFixOutcome(context.payload.inputs.fix_outcome || "") || "ready_for_ai_review";
+            } else if (context.eventName === "repository_dispatch") {
+              const payload = context.payload.client_payload || {};
+              prNumber = Number(payload.pr_number);
+              fixOutcome = slack.normalizeKnownFixOutcome(payload.fix_outcome || "") || "ready_for_ai_review";
+            } else {
+              core.setFailed(`Unsupported event: ${context.eventName}`);
+              return;
+            }
+
+            if (fixOutcome !== "ready_for_ai_review") {
+              return skipWithSummary("fix_outcome_not_ready_for_ai_review", {
+                PR: `#${prNumber}`,
+                "Fix Outcome": fixOutcome,
+              });
+            }
+
+            if (!prNumber) {
+              core.setFailed("PR number is missing.");
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            if (pr.head?.repo?.full_name !== repositoryFullName) {
+              core.info("PR from fork is out of scope; skipped.");
+              return;
+            }
+
+            const issueNumber = slack.relatedIssueNumber(pr.body || "");
+            if (!issueNumber) {
+              core.setFailed("PR本文から対象Issueを解決できませんでした。`Related to #<Task Issue番号>` または `Closes #<Epic Issue番号>` を記載してください。");
+              return;
+            }
+
+            const project = await loadProject();
+            if (!project) {
+              core.setFailed("ProjectV2を解決できませんでした。");
+              return;
+            }
+            const id = await issueNodeId(issueNumber);
+            if (!id) {
+              core.setFailed(`Issue #${issueNumber} のNode IDを解決できませんでした。`);
+              return;
+            }
+            const itemId = await findProjectItem(id);
+            if (!itemId) {
+              core.setFailed(`Issue #${issueNumber} のProject itemを解決できませんでした。`);
+              return;
+            }
+
+            const currentStatus = await readProjectItemStatus(itemId);
+            const expectedCurrent = slack.expectedCurrentStatusForFixComplete();
+            const nextStatus = "AI Review";
+
+            if (expectedCurrent && currentStatus && !slack.statusNamesEqual(currentStatus, expectedCurrent)) {
+              if (slack.statusNamesEqual(currentStatus, nextStatus)) {
+                return skipWithSummary("already_at_next_status", {
+                  PR: `#${prNumber}`,
+                  Issue: `#${issueNumber}`,
+                  Status: currentStatus,
+                });
+              }
+              return skipWithSummary("current_status_mismatch", {
+                PR: `#${prNumber}`,
+                Issue: `#${issueNumber}`,
+                "Current Status": currentStatus,
+                "Expected Status": expectedCurrent,
+                "Next Status": nextStatus,
+              });
+            }
+
+            if (currentStatus && slack.statusNamesEqual(currentStatus, nextStatus)) {
+              return skipWithSummary("already_at_next_status", {
+                PR: `#${prNumber}`,
+                Issue: `#${issueNumber}`,
+                Status: currentStatus,
+              });
+            }
+
+            await updateStatus(project, itemId, nextStatus);
+
+            const channel = process.env.SLACK_CHANNEL_ID_DEVOPS || "";
+            const threadKey = slack.buildThreadKey({ owner, repo, kind: "pr", number: prNumber });
+            const comments = await slack.listIssueComments({ github, owner, repo, issueNumber: prNumber });
+            const threadTs = slack.findThreadTsFromComments(comments, threadKey, channel);
+            const text = slack.buildSlackText({
+              level: "info",
+              title: "再AI Review可能",
+              summary: pr.title,
+              fields: {
+                PR: `#${prNumber}`,
+                Issue: `#${issueNumber}`,
+                Branch: pr.head.ref,
+                Target: pr.base.ref,
+                "Fix Outcome": slack.fixOutcomeLabelForHumans(fixOutcome),
+                "Next Status": nextStatus,
+              },
+              links: {
+                PR: pr.html_url,
+                Issue: `${serverUrl}/${repositoryFullName}/issues/${issueNumber}`,
+              },
+              humanAction: "/review-pr を実行してください。",
+            });
+            const result = await slack.postSlackMessage({
+              token: process.env.SLACK_BOT_TOKEN,
+              channel,
+              text,
+              threadTs,
+              dryRun,
+            });
+
+            if (!dryRun) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: slack.buildStatusSyncConfirmationComment({
+                  taskIssueNumber: issueNumber,
+                  nextStatus,
+                }),
+              });
+            }
+
+            await core.summary
+              .addHeading("Fix完了後 Status / Slack通知")
+              .addRaw(`PR: #${prNumber}\n\nIssue: #${issueNumber}\n\nStatus: \`${nextStatus}\`\n\nSlack: ${result.ok ? "ok" : "failed"}\n`)
+              .addRaw(result.error ? `\nSlack error: \`${result.error}\`\n` : "")
+              .write();
+            if (!result.ok) {
+              core.warning(`Slack notification failed: ${result.error || "unknown"}`);
+            }
