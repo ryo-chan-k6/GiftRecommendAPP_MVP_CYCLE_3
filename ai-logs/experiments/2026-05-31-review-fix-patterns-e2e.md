@@ -24,7 +24,7 @@
 
 | Phase | パターン | Pass | 備考 |
 |-------|---------|------|------|
-| 1 | A-1 | Pass | fix-ready dispatch run `26689853765` → `AI Review` |
+| 1 | A-1 | Pass | 2nd cycle: fix-ready `26690802305` → Harness `26690807047` → `approve_for_human_review` → `Human Review` |
 | 2 | A-2 | | |
 | 3 | B | | |
 | 4 | C | | |
