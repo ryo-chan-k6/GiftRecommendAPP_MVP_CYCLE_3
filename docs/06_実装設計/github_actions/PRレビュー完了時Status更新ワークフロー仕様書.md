@@ -8,7 +8,7 @@
 | 項目              | 内容                                                            |
 | --------------- | ------------------------------------------------------------- |
 | 実装ファイル          | `.github/workflows/pr-review-status-sync.yml` |
-| 判定ロジック（単体テスト対象） | workflow内ロジック、`.github/scripts/slack-notify.cjs`、`.github/scripts/dispatch-pr-review-status-sync.cjs` |
+| 判定ロジック（単体テスト対象） | workflow内ロジック、`.github/scripts/slack-notify.cjs`、`.github/scripts/dispatch-pr-review-status-sync.cjs`、`.github/scripts/publish-ai-review-and-dispatch.cjs` |
 | Actions 表示名     | **PR Review Status Sync**                      |
 | Run 名（一覧）     | `status-sync · {dispatch\|human-review\|manual} · PR #n · {review_result\|state}` |
 | 正本              | 本ドキュメント（運用の数値・定数は実装 YAML と一致させる）                              |
@@ -77,7 +77,7 @@ Status の正式値は [Projects運用ルール.md](../../00_共通/プロジェ
 | 項目 | 内容 |
 | ---- | ---- |
 | イベント種別 | `ai_review_status_sync` |
-| 起動主体 | `/review-pr` 完了後の Agent、`node .github/scripts/dispatch-pr-review-status-sync.cjs`、または `gh api .../dispatches` |
+| 起動主体 | `/review-pr` 完了後の Agent（**`publish-ai-review-and-dispatch.cjs` 推奨**）、`dispatch-pr-review-status-sync.cjs`、または `gh api .../dispatches` |
 | Run 数 | **AI Review 1 回につき dispatch 1 回 → Workflow Run 1 回** |
 
 `client_payload`（必須キー）:
@@ -214,7 +214,12 @@ Human 経路では Review Result のパースは行わないため、本節は A
 
 ### 6.4 dispatch ヘルパー
 
-[`.github/scripts/dispatch-pr-review-status-sync.cjs`](../../../.github/scripts/dispatch-pr-review-status-sync.cjs) が `repository_dispatch` を 1 回 POST する。`/review-pr` §15.5 から利用する。
+| スクリプト | 用途 |
+| ---------- | ---- |
+| [`.github/scripts/publish-ai-review-and-dispatch.cjs`](../../../.github/scripts/publish-ai-review-and-dispatch.cjs) | **推奨**。AI Review コメント投稿 + `repository_dispatch` を 1 コマンドで実行。`--verify` で dispatch 忘れを検査 |
+| [`.github/scripts/dispatch-pr-review-status-sync.cjs`](../../../.github/scripts/dispatch-pr-review-status-sync.cjs) | dispatch のみ（recovery / 低レベル API） |
+
+`/review-pr` §15.5 から **`publish-ai-review-and-dispatch.cjs` を正本** とする。
 
 ## 7. 処理概要
 
@@ -259,8 +264,9 @@ Slack通知に失敗しても、Projects Status の更新は取り消さない�
 ## 10. 運用上の必須事項
 
 - Project の Status に **AI Review** / **Human Review** / **In Progress** が存在し、表示名が [Projects運用ルール.md](../../00_共通/プロジェクト管理/Projects運用ルール.md) §9 と一致すること
-- `/review-pr` は PR コメント投稿後に **必ず** `dispatch-pr-review-status-sync.cjs`（または同等の `repository_dispatch`）を **1 回** 実行すること
+- `/review-pr` は **`publish-ai-review-and-dispatch.cjs`**（コメント + dispatch）を **1 回** 実行すること。完了前に `--verify` で dispatch 済みを確認してもよい
 - PR コメントは [ai-review-comment.md](../../../prompts/templates/review/ai-review-comment.md) 形式で投稿すること（人間・監査用。Status 同期のトリガには使わない）
+- dispatch 忘れ時は `--dispatch-only` または `workflow_dispatch` で再実行する
 - PR 本文に Task Issue への参照（`Related to #<n>` 等）を含めること（§6.4）。不足時はワークフローが失敗する
 - 本ワークフローが **失敗（赤）** した場合は、Summary の PR・失敗理由を確認し、テンプレート・コメント・Issue 参照を修正してから再実行すること
 - `PROJECTS_TOKEN` には対象 Project の読み書きに必要なスコープを付与すること
