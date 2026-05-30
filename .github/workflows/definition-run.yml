@@ -1,5 +1,7 @@
 name: Definition Run Harness
 
+run-name: "definition-run · ${{ github.event.client_payload.command || inputs.command || 'unknown' }} · PR #${{ github.event.client_payload.target_pr || inputs.target_pr || 'n/a' }} · ${{ github.event.client_payload.run_mode || inputs.run_mode || 'dry-run' }}"
+
 on:
   repository_dispatch:
     types:

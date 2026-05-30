@@ -797,6 +797,7 @@ AI Review 完了後の Projects Status 更新は [PR Review Status Sync](../../0
 | 完了確認 | 同一 CLI の `--verify` |
 | recovery | `--dispatch-only`（コメント投稿済み時） |
 | Harness | `review-pr` + `live-run` 完了後、post-run 検証で dispatch 忘れを **ジョブ失敗** |
+| Status=`AI Review` 自動起動 | `pr-created-status-and-slack.yml` / `pr-ready-for-ai-review.yml` が `dispatch-review-pr-harness.cjs` で Harness を dispatch（[AI Review自動起動ワークフロー連携仕様書](../../06_実装設計/github_actions/AI%20Review自動起動ワークフロー連携仕様書.md)） |
 | Machine account | dispatch / PR コメント投稿前に `GH_BOT_TOKEN` で bot 認証（[AI機械アカウント運用設計書](./AI機械アカウント運用設計書.md)） |
 
 詳細手順は `.cursor/commands/review-pr.md` §15.5 を正本とする。

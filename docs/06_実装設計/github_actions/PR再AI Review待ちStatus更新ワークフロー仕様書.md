@@ -15,6 +15,8 @@ Status の正式値は [Projects運用ルール](../../00_共通/プロジェク
 | 実装ファイル | `.github/workflows/pr-ready-for-ai-review.yml` |
 | dispatch CLI | `.github/scripts/dispatch-pr-ready-for-ai-review.cjs` |
 | 正本 CLI（コメント + dispatch） | `.github/scripts/publish-fix-complete-and-dispatch.cjs` |
+| AI Review 自動起動 CLI | `.github/scripts/dispatch-review-pr-harness.cjs` |
+| Review Definition 解決 | `.github/scripts/resolve-review-definition.cjs` |
 | PR コメント正本 | [fix-complete-comment.md](../../../prompts/templates/review/fix-complete-comment.md) |
 | 共通 script | `.github/scripts/slack-notify.cjs` |
 | Actions 表示名 | `PR Ready For AI Review Status Sync` |
@@ -74,7 +76,7 @@ on:
 | タイトル | 再AI Review可能 |
 | 必須リンク | PR、Issue |
 | 次 Status | `AI Review` |
-| humanAction | `/review-pr` を実行 |
+| humanAction | Definition Run Harness により AI Review を自動実行 |
 | thread 単位 | PR（既存 thread marker があれば返信） |
 
 PR 初回作成時の「PRを作成しました」とは **文面を分離** する。
@@ -82,6 +84,7 @@ PR 初回作成時の「PRを作成しました」とは **文面を分離** す
 ## 7. 運用上の必須事項
 
 - `/fix-review-comments` は Fix Outcome = `ready_for_ai_review` のとき **必ず** `publish-fix-complete-and-dispatch.cjs` を 1 回実行する（[fix-review-comments.md](../../../.cursor/commands/fix-review-comments.md) §12.5）
+- Status が `AI Review` になったら、workflow が **Definition Run Harness**（`review-pr` / `live-run`）を自動起動する（[AI Review自動起動ワークフロー連携仕様書.md](./AI%20Review自動起動ワークフロー連携仕様書.md)）
 - `split_required` / `partial_fix` 等では dispatch **しない**（Status は `In Progress` 維持）
 - dispatch 忘れ時は `--verify` / `--dispatch-only` / `workflow_dispatch` で recovery
 - 人間が手動修正した場合（パターン B）は Fixer CLI を実行せず、**workflow_dispatch** または手動 Status 更新 + `/review-pr`

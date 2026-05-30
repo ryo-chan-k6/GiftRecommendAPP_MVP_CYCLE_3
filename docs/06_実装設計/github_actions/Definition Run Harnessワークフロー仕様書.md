@@ -306,8 +306,8 @@ Definition Run Harness が live-run で Issue を起票した後、以下の既�
 | --- | --- | --- |
 | Issue メタデータ → Project 同期 | `.github/workflows/issue-metadata-project-branch.yml` | Issue 本文に Issue 運用メタデータを正しく埋めて作成のみ |
 | Issue → Branch 作成 | 同上 | Issue 本文 no-branch チェックを正しく設定 |
-| PR 作成時 Status / Slack | `.github/workflows/pr-created-status-and-slack.yml` | PR 作成のみ |
-| fix 完了後 Status / Slack | `.github/workflows/pr-ready-for-ai-review.yml` | **`publish-fix-complete-and-dispatch.cjs` で dispatch**（Fixer 実行） |
+| PR 作成時 Status / Slack | `.github/workflows/pr-created-status-and-slack.yml` | PR 作成のみ。**完了後** `dispatch-review-pr-harness.cjs` で Harness 自動起動 |
+| fix 完了後 Status / Slack | `.github/workflows/pr-ready-for-ai-review.yml` | **`publish-fix-complete-and-dispatch.cjs` で dispatch**（Fixer 実行）。**完了後** Harness 自動起動 |
 | PR レビュー → Status | `.github/workflows/pr-review-status-sync.yml` | **`publish-ai-review-and-dispatch.cjs` で dispatch**（Agent 実行）。Harness live-run 後は post-verify で dispatch 忘れを検証 |
 | PR merge → Done / Slack | `.github/workflows/pr-merged-done-and-slack.yml` | merge は人間判断（AI 不可） |
 | 手動 Slack 通知 | `.github/workflows/slack-notify-manual.yml` | 必要時に `workflow_dispatch` |
