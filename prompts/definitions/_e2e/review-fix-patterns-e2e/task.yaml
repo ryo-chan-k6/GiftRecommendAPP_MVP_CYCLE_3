@@ -1,0 +1,81 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-review-fix-patterns-e2e"
+  title: "Human Review 指摘対応パターン E2E 検証"
+  summary: "A-1 / A-2 / B / C の fix-review-comments 運用を1 PR で検証する"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: "develop"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/review-pr"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["fixer-ai", "reviewer-ai"]
+  review: ["reviewer-ai"]
+
+background: |
+  Human Review 指摘後の fix-review-comments 運用（A-1 / A-2 / B / C）を検証する。
+
+objective: |
+  1 本の bot author PR で Phase 0〜4 を順に検証し、Status 連動と Command 分岐を確認する。
+
+scope:
+  - "ai-logs/experiments/ に検証ログを記録する"
+  - "prompts/definitions/_e2e/review-fix-patterns-e2e/ の Definition を維持する"
+
+out_of_scope:
+  - "OpenAPI 変更"
+  - "実装コード変更"
+  - "別 Issue への scope 外混在"
+
+branch:
+  no_branch: false
+  name: null
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+input:
+  docs: []
+  files:
+    - path: "ai-logs/experiments/2026-05-31-review-fix-patterns-e2e.md"
+      required: true
+      purpose: "検証ログ正本"
+
+output:
+  docs: []
+  files:
+    - path: "ai-logs/experiments/2026-05-31-review-fix-patterns-e2e.md"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "Phase 0 で PR が Human Review に到達している"
+  - "bot author PR で Request changes が可能"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+
+operation_logging:
+  level: "minimal"
