@@ -24,7 +24,13 @@
 
 | Phase | パターン | Pass | 備考 |
 |-------|---------|------|------|
-| 1 | A-1 | | |
+| 1 | A-1 | | Human Review 指摘 → `/fix-review-comments` 直接実行 |
 | 2 | A-2 | | |
 | 3 | B | | |
 | 4 | C | | |
+
+## Phase A-1 テストコメント
+
+> 検証用テストコメント（Human Review 指摘「なにかしらのテストコメントを追加してください」への対応）
+
+Phase A-1 では、人間 Reviewer（`ryo-chan-k6`）の Request changes に対し、Fixer が同一 Branch で修正し `publish-fix-complete-and-dispatch.cjs` により Status を `AI Review` へ戻す。
