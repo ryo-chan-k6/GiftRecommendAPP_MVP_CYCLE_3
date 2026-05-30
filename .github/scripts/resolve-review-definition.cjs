@@ -46,6 +46,52 @@ function extractDefinitionPathsFromText(text) {
   return [...paths];
 }
 
+function extractDefinitionDirectoryHintsFromText(text) {
+  const hints = new Set();
+  const body = String(text || "");
+
+  for (const match of body.matchAll(/`(prompts\/definitions\/[^`\s#]+)\/?`/g)) {
+    hints.add(match[1].replace(/\/$/, ""));
+  }
+
+  for (const match of body.matchAll(/(?:Task \/ Review Definition|Review Definition)\s*:\s*`?(prompts\/definitions\/[^`\s#]+)\/?`?/gi)) {
+    hints.add(match[1].replace(/\/$/, ""));
+  }
+
+  return [...hints];
+}
+
+function reviewDefinitionCandidatesFromDirectoryHints(directoryHints) {
+  const paths = new Set();
+  for (const dir of directoryHints) {
+    const normalized = nonEmpty(dir).replace(/\\/g, "/").replace(/\/$/, "");
+    if (!normalized.startsWith(DEFINITION_ROOT)) continue;
+    paths.add(`${normalized}/${REVIEW_FILE_NAME}`);
+  }
+  return [...paths];
+}
+
+function pickReviewDefinitionFromChangedFiles(changedFiles, branchInfo) {
+  const reviewFiles = (changedFiles || [])
+    .map((entry) => (typeof entry === "string" ? entry : entry?.filename || ""))
+    .filter((filename) => filename.startsWith(DEFINITION_ROOT) && filename.endsWith(`/${REVIEW_FILE_NAME}`));
+
+  if (reviewFiles.length === 1) {
+    return reviewFiles[0];
+  }
+
+  if (branchInfo?.summary) {
+    const summaryMatches = reviewFiles.filter((filename) =>
+      filename.toLowerCase().includes(`/${branchInfo.summary}/`),
+    );
+    if (summaryMatches.length === 1) {
+      return summaryMatches[0];
+    }
+  }
+
+  return "";
+}
+
 function readFileSafe(filePath) {
   try {
     return fs.readFileSync(filePath, "utf8");
@@ -209,6 +255,10 @@ function resolveReviewDefinition({
   const fromText = [
     ...extractDefinitionPathsFromText(prBody),
     ...extractDefinitionPathsFromText(issueBody),
+    ...reviewDefinitionCandidatesFromDirectoryHints([
+      ...extractDefinitionDirectoryHintsFromText(prBody),
+      ...extractDefinitionDirectoryHintsFromText(issueBody),
+    ]),
   ];
   const validFromText = fromText.filter((candidate) => fileExists(path.join(workspace, candidate)));
   if (validFromText.length === 1) {
@@ -256,14 +306,29 @@ function resolveReviewDefinition({
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score);
 
-  if (scored.length === 1 || (scored.length > 1 && scored[0].score > scored[1].score)) {
-    return { ok: true, path: scored[0].path, source: "scan", score: scored[0].score };
+  const strongMatches = scored.filter((entry) => entry.score >= 40);
+
+  if (
+    strongMatches.length === 1 ||
+    (strongMatches.length > 1 && strongMatches[0].score > strongMatches[1].score)
+  ) {
+    return { ok: true, path: strongMatches[0].path, source: "scan", score: strongMatches[0].score };
   }
-  if (scored.length > 1 && scored[0].score === scored[1].score) {
+  if (strongMatches.length > 1 && strongMatches[0].score === strongMatches[1].score) {
     return {
       ok: false,
       reason: "ambiguous_review_definition",
-      paths: scored.slice(0, 5).map((entry) => entry.path),
+      paths: strongMatches.slice(0, 5).map((entry) => entry.path),
+    };
+  }
+
+  if (scored.length > 0) {
+    return {
+      ok: false,
+      reason: "review_definition_not_found",
+      headRef,
+      issueNumber: resolvedIssueNumber,
+      hint: "Review Definition is not on the default branch. Resolve from PR head via changed files or explicit path.",
     };
   }
 
@@ -294,6 +359,9 @@ module.exports = {
   REVIEW_FILE_NAME,
   parseBranchRef,
   extractDefinitionPathsFromText,
+  extractDefinitionDirectoryHintsFromText,
+  reviewDefinitionCandidatesFromDirectoryHints,
+  pickReviewDefinitionFromChangedFiles,
   extractTaskDefinitionPath,
   extractAiReviewRequired,
   listReviewDefinitionFiles,

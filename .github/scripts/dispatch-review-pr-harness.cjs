@@ -36,6 +36,87 @@ async function fetchJson(url, token, fetchImpl) {
   return response.json();
 }
 
+async function loadPullRequestFiles({ owner, repo, prNumber, token, fetchImpl }) {
+  const files = [];
+  let page = 1;
+  const send = fetchImpl || global.fetch;
+
+  for (;;) {
+    const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100&page=${page}`;
+    const response = await send(url, { headers: authHeaders(token) });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`GitHub API failed: HTTP ${response.status} ${text}`.trim());
+    }
+    const batch = await response.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    files.push(...batch);
+    if (batch.length < 100) break;
+    page += 1;
+  }
+
+  return files;
+}
+
+async function resolveReviewDefinitionForPull({
+  workspaceRoot,
+  pull,
+  issueBody,
+  issueNumber,
+  definitionOverride,
+  owner,
+  repo,
+  token,
+  fetchImpl,
+}) {
+  const headRef = pull.head?.ref || "";
+  const branchInfo = resolver.parseBranchRef(headRef);
+  let reviewResolution = resolver.resolveReviewDefinition({
+    workspaceRoot,
+    prBody: pull.body || "",
+    issueBody,
+    headRef,
+    issueNumber,
+    definitionOverride,
+  });
+
+  if (reviewResolution.ok) {
+    return reviewResolution;
+  }
+
+  const shouldFallback =
+    reviewResolution.reason === "ambiguous_review_definition" ||
+    reviewResolution.reason === "review_definition_not_found" ||
+    reviewResolution.reason === "ambiguous_definition_in_text";
+
+  if (!shouldFallback) {
+    return reviewResolution;
+  }
+
+  const fromPrFiles = resolver.pickReviewDefinitionFromChangedFiles(
+    await loadPullRequestFiles({ owner, repo, prNumber: pull.number, token, fetchImpl }),
+    branchInfo,
+  );
+  if (fromPrFiles) {
+    return { ok: true, path: fromPrFiles, source: "pr_changed_files" };
+  }
+
+  const directoryCandidates = resolver.reviewDefinitionCandidatesFromDirectoryHints([
+    ...resolver.extractDefinitionDirectoryHintsFromText(pull.body || ""),
+    ...resolver.extractDefinitionDirectoryHintsFromText(issueBody),
+  ]);
+  if (branchInfo?.summary) {
+    directoryCandidates.push(`${resolver.DEFINITION_ROOT}_e2e/${branchInfo.summary}/${resolver.REVIEW_FILE_NAME}`);
+  }
+
+  const uniqueCandidates = [...new Set(directoryCandidates)];
+  if (uniqueCandidates.length === 1) {
+    return { ok: true, path: uniqueCandidates[0], source: "pr_body_directory_hint" };
+  }
+
+  return reviewResolution;
+}
+
 async function loadPullRequest({ owner, repo, prNumber, token, fetchImpl }) {
   return fetchJson(
     `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
@@ -138,13 +219,17 @@ async function dispatchReviewPrHarness({
   }
 
   const workspace = nonEmpty(workspaceRoot) || process.cwd();
-  const reviewResolution = resolver.resolveReviewDefinition({
+  const headRef = pull.head?.ref || "";
+  const reviewResolution = await resolveReviewDefinitionForPull({
     workspaceRoot: workspace,
-    prBody: pull.body || "",
+    pull,
     issueBody,
-    headRef: pull.head?.ref || "",
     issueNumber: relatedIssue,
     definitionOverride: definition,
+    owner: resolvedRepo.owner,
+    repo: resolvedRepo.repo,
+    token: authToken,
+    fetchImpl,
   });
 
   if (!reviewResolution.ok) {
@@ -168,7 +253,11 @@ async function dispatchReviewPrHarness({
     workspaceRoot: workspace,
     reviewDefinitionPath: reviewResolution.path,
   });
-  if (aiReviewGate.ok && aiReviewGate.required === false) {
+  const skipAiReview =
+    aiReviewGate.ok &&
+    aiReviewGate.required === false &&
+    aiReviewGate.source === "task_definition";
+  if (skipAiReview) {
     return {
       ok: true,
       skipped: true,
@@ -188,6 +277,7 @@ async function dispatchReviewPrHarness({
     requestIssue: relatedIssue ? String(relatedIssue) : "",
     requestedBy: nonEmpty(requestedBy) || nonEmpty(context) || "ai-review-auto-dispatch",
     workspaceRoot: workspace,
+    ref: headRef,
     token: authToken,
     dryRun,
     fetchImpl,
@@ -199,6 +289,7 @@ async function dispatchReviewPrHarness({
     issue_number: relatedIssue ? String(relatedIssue) : null,
     review_definition: reviewResolution.path,
     review_definition_source: reviewResolution.source,
+    harness_ref: headRef || null,
     ai_review_required: true,
     dispatch: dispatchResult,
   };

@@ -68,3 +68,35 @@ test("resolveAiReviewRequired: false のとき required=false", () => {
   });
   assert.equal(gate.required, false);
 });
+
+test("pickReviewDefinitionFromChangedFiles: PR diff から pr-review を選ぶ", () => {
+  const path = resolver.pickReviewDefinitionFromChangedFiles(
+    [
+      { filename: "prompts/definitions/_e2e/review-fix-patterns-e2e/pr-review.yaml" },
+      { filename: "prompts/definitions/_e2e/review-fix-patterns-e2e/task.yaml" },
+    ],
+    { summary: "review-fix-patterns-e2e" },
+  );
+  assert.equal(path, "prompts/definitions/_e2e/review-fix-patterns-e2e/pr-review.yaml");
+});
+
+test("resolveReviewDefinition: develop に無い場合は weak scan で not_found", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-review-"));
+  write(
+    path.join(root, "prompts/definitions/reviews/sample-a/pr-review.yaml"),
+    'definition_type: "review"\n',
+  );
+  write(
+    path.join(root, "prompts/definitions/reviews/sample-b/pr-review.yaml"),
+    'definition_type: "review"\n',
+  );
+
+  const result = resolver.resolveReviewDefinition({
+    workspaceRoot: root,
+    headRef: "docs/task-289-review-fix-patterns-e2e",
+    issueNumber: 289,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "review_definition_not_found");
+});
