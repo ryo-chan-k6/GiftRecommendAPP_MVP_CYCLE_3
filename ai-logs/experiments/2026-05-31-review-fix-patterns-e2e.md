@@ -34,3 +34,15 @@
 > 検証用テストコメント（Human Review 指摘「なにかしらのテストコメントを追加してください」への対応）
 
 Phase A-1 では、人間 Reviewer（`ryo-chan-k6`）の Request changes に対し、Fixer が同一 Branch で修正し `publish-fix-complete-and-dispatch.cjs` により Status を `AI Review` へ戻す。
+
+## Phase A-1 再検証（Human Review 17:24:54 対応）
+
+> 運用フロー再検証用コメント（Human Review「再度検証用コメントを追加してください」への対応）
+
+2 回目の Request changes（2026-05-30T17:24:54Z）に対し、Fixer が同一 Branch で再検証用節を追加し、`publish-fix-complete-and-dispatch.cjs` により Status を `AI Review` へ戻す。
+
+| 項目 | 値 |
+|------|-----|
+| Human Review | `CHANGES_REQUESTED` @ 2026-05-30T17:24:54Z |
+| AI Review (2nd) | `request_changes` @ 2026-05-30T17:44:03Z |
+| Fix Outcome | `ready_for_ai_review` |
