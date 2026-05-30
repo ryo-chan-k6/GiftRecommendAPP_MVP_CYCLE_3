@@ -168,3 +168,48 @@ test("verifyAiReviewDispatch: AI Reviewコメントなし", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.reason, "no_ai_review_comment");
 });
+
+test("verifyAiReviewDispatch: sinceIso より前のコメントは無視する", async () => {
+  const result = await publish.verifyAiReviewDispatch({
+    repository: "o/r",
+    prNumber: 10,
+    token: "t",
+    sinceIso: "2026-05-30T12:00:00Z",
+    listComments: async () => [
+      {
+        body: SAMPLE_COMMENT,
+        created_at: "2026-05-30T00:00:00Z",
+        html_url: "https://example.com/c/old",
+      },
+    ],
+    listRuns: async () => [
+      {
+        id: 99,
+        display_title: "status-sync · dispatch · PR #10 · approve_for_human_review",
+        created_at: "2026-05-30T00:00:05Z",
+        status: "completed",
+        conclusion: "success",
+        html_url: "https://example.com/run/99",
+      },
+    ],
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "no_ai_review_comment_since_run");
+});
+
+test("findLatestAiReviewComment: sinceIso 以降の最新を返す", () => {
+  const comments = [
+    {
+      body: SAMPLE_COMMENT,
+      created_at: "2026-05-30T00:00:00Z",
+    },
+    {
+      body: SAMPLE_COMMENT.replace("approve_for_human_review", "request_changes"),
+      created_at: "2026-05-30T13:00:00Z",
+    },
+  ];
+  const latest = publish.findLatestAiReviewComment(comments, {
+    sinceIso: "2026-05-30T12:00:00Z",
+  });
+  assert.equal(latest.created_at, "2026-05-30T13:00:00Z");
+});
