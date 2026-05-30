@@ -12,7 +12,8 @@ Task Issueの完了制御は、PR本文の自動closeキーワードだけに依
 | ---- | ---- |
 | 実装ファイル | `.github/workflows/pr-merged-done-and-slack.yml` |
 | 共通script | `.github/scripts/slack-notify.cjs` |
-| Actions表示名 | `PR merged Done and Slack notification` |
+| Actions表示名 | `PR Merged Done Sync` |
+| Run 名（一覧） | `pr-merged · pr-closed · PR #n · {merged\|closed\|manual}` |
 
 ## 3. トリガー
 

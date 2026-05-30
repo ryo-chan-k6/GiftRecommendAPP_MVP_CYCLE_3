@@ -1,4 +1,6 @@
-name: Issue metadata project and branch sync
+name: Issue Metadata Sync
+
+run-name: issue-meta · ${{ github.event_name == 'issues' && format('issue-{0}', github.event.action) || 'manual' }} · #${{ github.event.issue.number || github.event.inputs.issue_number }}
 
 on:
   issues:

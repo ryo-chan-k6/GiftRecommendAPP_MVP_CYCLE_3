@@ -1,4 +1,6 @@
-name: PR created status and Slack notification
+name: PR Created Status Sync
+
+run-name: pr-created · pr-open · PR #${{ github.event.pull_request.number || github.event.inputs.pr_number }}
 
 on:
   pull_request:
