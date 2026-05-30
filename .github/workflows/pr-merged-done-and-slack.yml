@@ -1,6 +1,6 @@
 name: PR Merged Done Sync
 
-run-name: pr-merged · pr-closed · PR #${{ github.event.pull_request.number || github.event.inputs.pr_number }} · ${{ github.event_name == 'workflow_dispatch' && 'manual' || (github.event.pull_request.merged && 'merged' || 'closed') }}
+run-name: "pr-merged · pr-closed · PR #${{ github.event.pull_request.number || github.event.inputs.pr_number }} · ${{ github.event_name == 'workflow_dispatch' && 'manual' || (github.event.pull_request.merged && 'merged' || 'closed') }}"
 
 on:
   pull_request:

@@ -1,6 +1,6 @@
 name: PR Review Status Sync
 
-run-name: status-sync · ${{ github.event_name == 'repository_dispatch' && 'dispatch' || github.event_name == 'pull_request_review' && 'human-review' || 'manual' }} · PR #${{ github.event.client_payload.pr_number || github.event.pull_request.number || github.event.inputs.pr_number }} · ${{ github.event.client_payload.review_result || github.event.inputs.review_result || github.event.review.state || 'n/a' }}
+run-name: "status-sync · ${{ github.event_name == 'repository_dispatch' && 'dispatch' || github.event_name == 'pull_request_review' && 'human-review' || 'manual' }} · PR #${{ github.event.client_payload.pr_number || github.event.pull_request.number || github.event.inputs.pr_number }} · ${{ github.event.client_payload.review_result || github.event.inputs.review_result || github.event.review.state || 'n/a' }}"
 
 on:
   repository_dispatch:
