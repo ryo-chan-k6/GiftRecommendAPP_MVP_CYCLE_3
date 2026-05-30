@@ -172,6 +172,7 @@ async function runReviewPrDispatchVerify({
   repo,
   targetPr,
   token,
+  startedAt,
   fetchImpl,
   verifyImpl,
 }) {
@@ -187,9 +188,10 @@ async function runReviewPrDispatchVerify({
         repo,
         prNumber: targetPr,
         token,
+        sinceIso: startedAt,
         fetchImpl,
       }));
-  return verify({ owner, repo, prNumber: targetPr, token, fetchImpl });
+  return verify({ owner, repo, prNumber: targetPr, token, sinceIso: startedAt, fetchImpl });
 }
 
 function describeBranchViolation(branch, runActor) {
@@ -260,6 +262,7 @@ async function runPostVerify({
       repo,
       targetPr,
       token,
+      startedAt,
       fetchImpl,
       verifyImpl,
     });
