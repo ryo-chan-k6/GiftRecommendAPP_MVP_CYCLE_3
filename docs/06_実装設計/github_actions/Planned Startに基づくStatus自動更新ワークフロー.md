@@ -8,7 +8,8 @@
 | ---- | ---- |
 | 実装ファイル | `.github/workflows/update-projects-status-by-planned-start.yml` |
 | 判定ロジック（単体テスト対象） | `.github/scripts/planned-start-status-policy.cjs` |
-| Actions 表示名 | **Update project Status from Planned Start** |
+| Actions 表示名 | **Planned Start Status Sync** |
+| Run 名（一覧） | `planned-start · {schedule\|manual}` |
 | 正本 | 本ドキュメント（運用の数値・定数は実装 YAML と一致させる） |
 
 ## 2. 目的と対象外

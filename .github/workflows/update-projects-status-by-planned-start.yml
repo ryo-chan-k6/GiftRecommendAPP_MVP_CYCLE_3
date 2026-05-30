@@ -1,4 +1,6 @@
-name: Update project Status from Planned Start
+name: Planned Start Status Sync
+
+run-name: planned-start · ${{ github.event_name == 'schedule' && 'schedule' || 'manual' }}
 
 on:
   schedule:

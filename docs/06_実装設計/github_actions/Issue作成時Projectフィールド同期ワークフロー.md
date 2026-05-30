@@ -7,7 +7,8 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 実装ファイル | `.github/workflows/issue-metadata-project-branch.yml` |
-| Actions 表示名 | **Issue metadata project and branch sync** |
+| Actions 表示名 | **Issue Metadata Sync** |
+| Run 名（一覧） | `issue-meta · issue-{opened\|edited} · #n` |
 | 正本 | 本ドキュメント（運用の数値・定数は実装 YAML と一致させる） |
 
 ## 2. 目的と対象外

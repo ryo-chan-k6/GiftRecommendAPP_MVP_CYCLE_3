@@ -9,7 +9,8 @@
 | --------------- | ------------------------------------------------------------- |
 | 実装ファイル          | `.github/workflows/pr-review-status-sync.yml` |
 | 判定ロジック（単体テスト対象） | workflow内ロジック、`.github/scripts/slack-notify.cjs`、`.github/scripts/dispatch-pr-review-status-sync.cjs` |
-| Actions 表示名     | **PR review status sync**                      |
+| Actions 表示名     | **PR Review Status Sync**                      |
+| Run 名（一覧）     | `status-sync · {dispatch\|human-review\|manual} · PR #n · {review_result\|state}` |
 | 正本              | 本ドキュメント（運用の数値・定数は実装 YAML と一致させる）                              |
 
 
