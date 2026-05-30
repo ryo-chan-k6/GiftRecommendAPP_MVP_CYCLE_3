@@ -319,6 +319,15 @@ Closes #<Epic Issue番号>
 
 確認が完了した場合、PRを作成する。
 
+**Machine account 認証（必須）:** PR open 前に bot 認証を確認する（[github-operation.mdc](../../.cursor/rules/github-operation.mdc) §3.16、[AI機械アカウント運用設計書](../../docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md)）。
+
+```bash
+node .github/scripts/gh-bot-auth.cjs verify
+eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+```
+
+PR 作成後、`gh pr view <番号> --json author --jq .author.login` が `.github/ai-bot-account.json` の `machine_account_login` であることを確認する。
+
 PR作成時に確認すること。
 
 - PR titleが適切か

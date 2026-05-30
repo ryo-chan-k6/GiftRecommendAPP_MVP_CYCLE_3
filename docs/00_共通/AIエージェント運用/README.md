@@ -76,6 +76,7 @@ Slackは通知・サマリ用途であり、作業計画や成果物の正本に
 | `Task Definition設計書.md`                     | AIへの個別作業依頼条件の構造を定義する                      |
 | `Prompts運用ルール.md`                         | `prompts/` 配下の管理・命名・利用ルールを定義する           |
 | `AIレビュー運用設計書.md`                      | AI Reviewの観点、出力、PR反映方針を定義する                 |
+| `AI機械アカウント運用設計書.md`                | machine account / PAT / Human Review 分離を定義する         |
 | `AIログ運用ルール.md`                          | `ai-logs/` の記録対象、粒度、命名規則を定義する             |
 | `Slack通知運用設計書.md`                       | Slack通知タイミング、通知内容、通知先を定義する             |
 | `worktree運用ルール.md`                        | AI並列作業時のworktree配置・削除・競合回避を定義する        |

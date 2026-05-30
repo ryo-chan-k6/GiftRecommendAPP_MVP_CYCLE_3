@@ -384,6 +384,31 @@ AI Agentがcommitを作成する場合は、必ず `git-commit-message.mdc` を�
 - 自動生成結果が英語の場合は、人間またはAI Agentが日本語へ修正する
 - 最終的な強制は `.githooks/commit-msg` で行う
 
+### 3.16 Machine Account 認証（Human Review 前提）
+
+AI Agent が GitHub へ **書き込む** 操作（commit / push / Issue 作成 / PR 作成 / AI Review dispatch）を行う前に、**machine account**（`.github/ai-bot-account.json` の `machine_account_login`、現行: `okuri-ai-bot`）として認証すること。
+
+| 操作 | 認証 |
+| ---- | ---- |
+| commit / push / `gh issue create` / `gh pr create` | machine account PAT（`GH_BOT_TOKEN`） |
+| Human Review（Approve / Request changes）/ merge | 人間アカウント（`ryo-chan-k6`）。bot 認証を使わない |
+
+**作業開始前（必須）:**
+
+```bash
+node .github/scripts/gh-bot-auth.cjs verify
+eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+```
+
+- PAT は **machine account で発行した Classic PAT**（`repo`）。人間アカウントの PAT では PR author が人間になり、Human Review 正式経路が使えない。
+- PAT は `~/.config/gift-recommend/gh-bot.env` に保管（`.github/gh-bot.env.example` 参照）。リポジトリに commit しない。
+- 詳細は [AI機械アカウント運用設計書](../../docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md) を正とする。
+
+**禁止:**
+
+- 人間 PAT のまま `gh pr create` すること
+- machine account で Approve / Request changes / merge すること
+
 ---
 
 ## 4. 確認観点
@@ -478,6 +503,8 @@ AI Agentは、以下を行ってはならない。
 - 識別子付き Task で、Parent Epic と識別子 prefix が一致しない状態のまま Task を進めること
 - generatedファイル、OpenAPI、DB、CI/CDなど横断影響がある変更を通常Taskに無断で混在させること
 - secretや認証情報をIssue、PR、commit、Slack通知、ai-logsへ記載すること
+- 人間 PAT のまま PR を open すること（Human Review 不可になる）
+- machine account PAT（`GH_BOT_TOKEN`）をリポジトリへ commit すること
 - コミットメッセージ詳細ルールをこのRuleへ過剰に重複定義すること
 - worktree安全確認の詳細をこのRuleへ重複定義すること
 
@@ -549,6 +576,7 @@ AI Agentは、以下の場合、人間へ確認・報告する。
 | Task Definition設計書                      | 個別作業条件の構造                           |
 | Prompts運用ルール                          | `prompts/` 配下の配置・命名                  |
 | AIレビュー運用設計書                       | AI Reviewの品質観点                          |
+| AI機械アカウント運用設計書                 | machine account / PAT / Human Review 分離   |
 | AIログ運用ルール                           | `ai-logs/` の利用範囲                        |
 | Slack通知運用設計書                        | Slack通知タイミング・文面                    |
 | worktree運用ルール                         | 並列作業時の作業領域分離                     |
