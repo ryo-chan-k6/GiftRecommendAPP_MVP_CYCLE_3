@@ -15,6 +15,14 @@ const COMMAND_REGISTRY = Object.freeze({
     live_run_supported: false,
     output_section: "dry-run 実行時",
   }),
+  "review-pr": Object.freeze({
+    definition_type: "review",
+    default_ref: "develop",
+    dry_run_supported: true,
+    live_run_supported: true,
+    output_section: "dry-run 実行時",
+    requires_target_pr_on_live_run: true,
+  }),
 });
 
 const SUPPORTED_RUN_MODES = Object.freeze(["dry-run", "live-run"]);
@@ -79,6 +87,20 @@ function sanitizeRequestIssue(value) {
   const numeric = Number(text.replace(/^#/, ""));
   if (!Number.isFinite(numeric) || numeric <= 0 || numeric > DEFAULT_REQUEST_ISSUE_MAX) {
     throw new ValidationError("invalid_request_issue", "request_issue is out of range.");
+  }
+  return String(numeric);
+}
+
+function sanitizeTargetPr(value) {
+  if (value == null) return "";
+  const text = String(value).trim();
+  if (!text) return "";
+  if (!/^\#?\d+$/.test(text)) {
+    throw new ValidationError("invalid_target_pr", "target_pr must be a positive integer or #<num>.");
+  }
+  const numeric = Number(text.replace(/^#/, ""));
+  if (!Number.isFinite(numeric) || numeric <= 0 || numeric > DEFAULT_REQUEST_ISSUE_MAX) {
+    throw new ValidationError("invalid_target_pr", "target_pr is out of range.");
   }
   return String(numeric);
 }
@@ -194,8 +216,8 @@ function validateDefinitionType(absolutePath, expectedType, { fsImpl = fs } = {}
   return actual;
 }
 
-function buildPrompt({ command, definition, run_mode, output_section }) {
-  return [
+function buildPrompt({ command, definition, run_mode, output_section, target_pr }) {
+  const lines = [
     "このリポジトリで Definition Run を実行する。",
     "",
     "遵守:",
@@ -206,6 +228,11 @@ function buildPrompt({ command, definition, run_mode, output_section }) {
     `実行コマンド: /${command}`,
     `対象Definition: @${definition}`,
     `run_mode: ${run_mode}`,
+  ];
+  if (target_pr) {
+    lines.push(`対象PR: #${target_pr}`);
+  }
+  lines.push(
     "",
     "run_mode が dry-run の場合、Issue / Branch / Project / PR / Label / Definition への",
     "あらゆる書き込みを行わない。gh CLI / git push / GitHub API の write 系操作は全面禁止。",
@@ -213,9 +240,27 @@ function buildPrompt({ command, definition, run_mode, output_section }) {
     "`git push` のみで Branch 運用状態を確定しない。",
     "Issue 作成・更新後の同期は既存 workflow が行うため、Harness は同期処理を行わない。",
     "",
+  );
+  if (command === "review-pr" && run_mode === "live-run") {
+    lines.push(
+      "live-run 完了時は .cursor/commands/review-pr.md §15.5 に従い、",
+      "必ず publish-ai-review-and-dispatch.cjs で PR コメント投稿と Status dispatch を 1 回実行する。",
+      "分離実行（コメントのみ / dispatch のみ）は recovery 時のみ。",
+      "Harness post-run 検証で dispatch 忘れがあるとジョブは失敗する。",
+      "",
+    );
+  }
+  if (command === "review-pr" && run_mode === "dry-run") {
+    lines.push(
+      "dry-run では PR コメント投稿・repository_dispatch・Projects Status 更新を行わない。",
+      "",
+    );
+  }
+  lines.push(
     `結果は .cursor/commands/${command}.md の「${output_section}」セクションのフォーマットで出力する。`,
     "",
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
 function buildDefinitionRunRequest(rawInput = {}, { workspace, fsImpl } = {}) {
@@ -227,6 +272,10 @@ function buildDefinitionRunRequest(rawInput = {}, { workspace, fsImpl } = {}) {
     : registry.definition_type;
   const requestedBy = sanitizeRequestedBy(rawInput.requested_by);
   const requestIssue = sanitizeRequestIssue(rawInput.request_issue);
+  const targetPr = sanitizeTargetPr(rawInput.target_pr);
+  if (registry.requires_target_pr_on_live_run && runMode === "live-run" && !targetPr) {
+    throw new ValidationError("missing_target_pr", "target_pr is required for review-pr live-run.");
+  }
   const ref = String(rawInput.ref || registry.default_ref || "develop").trim();
 
   const prompt = buildPrompt({
@@ -234,6 +283,7 @@ function buildDefinitionRunRequest(rawInput = {}, { workspace, fsImpl } = {}) {
     definition,
     run_mode: runMode,
     output_section: registry.output_section,
+    target_pr: targetPr,
   });
 
   const maskedPrompt = maskSecrets(prompt);
@@ -246,6 +296,7 @@ function buildDefinitionRunRequest(rawInput = {}, { workspace, fsImpl } = {}) {
     run_mode: runMode,
     requested_by: requestedBy,
     request_issue: requestIssue,
+    target_pr: targetPr,
     ref,
     output_section: registry.output_section,
     prompt: maskedPrompt,
@@ -263,6 +314,7 @@ function summarizeForLog(request) {
     ref: request.ref,
     requested_by: request.requested_by || "-",
     request_issue: request.request_issue || "-",
+    target_pr: request.target_pr || "-",
     output_section: request.output_section,
     allowed_commands: listAllowedCommands(),
   };

@@ -25,7 +25,7 @@ Definition Run の通称・Command 定義・Task Definition 構造の正本は�
 | workflow | `.github/workflows/definition-run.yml` | `repository_dispatch` / `workflow_dispatch` トリガ、入力検証、Cursor SDK 呼び出し、post-run 検証、Job Summary 出力 |
 | 共通 script | `.github/scripts/definition-run-prompt-builder.cjs` | Command レジストリ、入力検証、プロンプト組み立て、secret マスク |
 | 単体テスト | `.github/scripts/definition-run-prompt-builder.test.cjs` | builder の正常系・異常系・secret マスクの検証 |
-| 共通 script | `.github/scripts/definition-run-post-verify.cjs` | 実行後の Issue / PR / Branch 新規作成検知、違反判定、Job Summary 用 Markdown 生成 |
+| 共通 script | `.github/scripts/definition-run-post-verify.cjs` | 実行後の Issue / PR / Branch 新規作成検知、**review-pr dispatch 忘れ検証**、違反判定、Job Summary 用 Markdown 生成 |
 | 単体テスト | `.github/scripts/definition-run-post-verify.test.cjs` | post-verify の正常系・違反検出系の検証 |
 | Actions 表示名 | `Definition Run Harness` | |
 
@@ -56,10 +56,11 @@ on:
 
 | 項目 | 必須 | 値 | 説明 |
 | ---- | ---- | ---- | ---- |
-| `command` | 必須 | `start-epic`（MVP）／ 将来 `start-task` 等 | Command レジストリに登録された値のみ受理。それ以外は失敗 |
+| `command` | 必須 | `start-epic`（dry-run のみ）／ `review-pr`（dry-run / live-run）／ 将来 `start-task` 等 | Command レジストリに登録された値のみ受理。それ以外は失敗 |
 | `definition` | 必須 | リポジトリ相対パス | `prompts/definitions/` 配下に限定。実ファイル存在を検証 |
-| `run_mode` | 必須 | `dry-run` | MVP は `dry-run` のみ受理。`live-run` は **必ず失敗** |
+| `run_mode` | 必須 | `dry-run` / `live-run` | Command ごとに supported を参照。`start-epic` は `dry-run` のみ。`review-pr` は両方可 |
 | `request_issue` | 任意 | 数値 | トレース相関キー。Job Summary 冒頭に表示するのみ（Issue へのコメント投稿はしない） |
+| `target_pr` | 条件付き必須 | 数値 | **`review-pr` + `live-run` 時は必須**。post-run で dispatch 忘れ検証に使用 |
 | `requested_by` | 任意 | 自由文字列 | 監査用識別子（Slack user / GitHub user 等）。Job Summary に表示。改行・長さ制限あり |
 
 ## 5. 処理フロー
@@ -84,6 +85,7 @@ on:
 | permissions | `pull-requests: read` | post-verify で PR 一覧取得 |
 | Secret | `CURSOR_API_KEY` | Cursor SDK の認証。workflow env のみで使用、プロンプト・log・Summary には絶対に出さない |
 | Token | `GITHUB_TOKEN` | post-verify で gh API を叩く（read のみ。write 全廃） |
+| permissions | `actions: read` | review-pr post-verify で workflow runs 参照 |
 
 write 系権限は MVP 段階で **付与しない**。Cloud Agent が誤って書き込みを試みても物理的に成功しない構造とする。
 
@@ -305,7 +307,7 @@ Definition Run Harness が live-run で Issue を起票した後、以下の既�
 | Issue メタデータ → Project 同期 | `.github/workflows/issue-metadata-project-branch.yml` | Issue 本文に Issue 運用メタデータを正しく埋めて作成のみ |
 | Issue → Branch 作成 | 同上 | Issue 本文 no-branch チェックを正しく設定 |
 | PR 作成時 Status / Slack | `.github/workflows/pr-created-status-and-slack.yml` | PR 作成のみ |
-| PR レビュー → Status | `.github/workflows/pr-review-status-sync.yml` | レビュー操作のみ |
+| PR レビュー → Status | `.github/workflows/pr-review-status-sync.yml` | **`publish-ai-review-and-dispatch.cjs` で dispatch**（Agent 実行）。Harness live-run 後は post-verify で dispatch 忘れを検証 |
 | PR merge → Done / Slack | `.github/workflows/pr-merged-done-and-slack.yml` | merge は人間判断（AI 不可） |
 | 手動 Slack 通知 | `.github/workflows/slack-notify-manual.yml` | 必要時に `workflow_dispatch` |
 
