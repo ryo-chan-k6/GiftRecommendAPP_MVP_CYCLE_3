@@ -7,16 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       command:
-        description: 実行する Cursor Command（MVP は start-epic のみ）
+        description: 実行する Cursor Command
         required: true
         type: choice
         options:
           - start-epic
+          - review-pr
       definition:
         description: 対象 Definition のリポジトリ相対パス（prompts/definitions/ 配下）
         required: true
       run_mode:
-        description: 実行モード（MVP は dry-run のみ受理）
+        description: 実行モード（start-epic は dry-run のみ。review-pr は live-run 可）
         required: true
         type: choice
         default: dry-run
@@ -31,11 +32,16 @@ on:
         description: 依頼者識別子（任意、監査用）
         required: false
         default: ""
+      target_pr:
+        description: review-pr live-run 時の対象 PR 番号（必須）
+        required: false
+        default: ""
 
 permissions:
   contents: read
   issues: read
   pull-requests: read
+  actions: read
 
 concurrency:
   group: definition-run-${{ github.event.client_payload.definition || inputs.definition }}
@@ -65,11 +71,13 @@ jobs:
           PAYLOAD_RUN_MODE: ${{ github.event.client_payload.run_mode }}
           PAYLOAD_REQUEST_ISSUE: ${{ github.event.client_payload.request_issue }}
           PAYLOAD_REQUESTED_BY: ${{ github.event.client_payload.requested_by }}
+          PAYLOAD_TARGET_PR: ${{ github.event.client_payload.target_pr }}
           INPUT_COMMAND: ${{ inputs.command }}
           INPUT_DEFINITION: ${{ inputs.definition }}
           INPUT_RUN_MODE: ${{ inputs.run_mode }}
           INPUT_REQUEST_ISSUE: ${{ inputs.request_issue }}
           INPUT_REQUESTED_BY: ${{ inputs.requested_by }}
+          INPUT_TARGET_PR: ${{ inputs.target_pr }}
         run: |
           set -euo pipefail
           echo "::group::resolve-inputs"
@@ -78,12 +86,14 @@ jobs:
           RUN_MODE="${PAYLOAD_RUN_MODE:-${INPUT_RUN_MODE:-}}"
           REQUEST_ISSUE="${PAYLOAD_REQUEST_ISSUE:-${INPUT_REQUEST_ISSUE:-}}"
           REQUESTED_BY="${PAYLOAD_REQUESTED_BY:-${INPUT_REQUESTED_BY:-${GITHUB_ACTOR:-}}}"
-          echo "decision: resolve event=${GITHUB_EVENT_NAME} command=${COMMAND} run_mode=${RUN_MODE}"
+          TARGET_PR="${PAYLOAD_TARGET_PR:-${INPUT_TARGET_PR:-}}"
+          echo "decision: resolve event=${GITHUB_EVENT_NAME} command=${COMMAND} run_mode=${RUN_MODE} target_pr=${TARGET_PR:-}"
           echo "command=${COMMAND}" >> "$GITHUB_OUTPUT"
           echo "definition=${DEFINITION}" >> "$GITHUB_OUTPUT"
           echo "run_mode=${RUN_MODE}" >> "$GITHUB_OUTPUT"
           echo "request_issue=${REQUEST_ISSUE}" >> "$GITHUB_OUTPUT"
           echo "requested_by=${REQUESTED_BY}" >> "$GITHUB_OUTPUT"
+          echo "target_pr=${TARGET_PR}" >> "$GITHUB_OUTPUT"
           echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           echo "::endgroup::"
 
@@ -95,6 +105,7 @@ jobs:
           INPUT_RUN_MODE: ${{ steps.resolve.outputs.run_mode }}
           INPUT_REQUEST_ISSUE: ${{ steps.resolve.outputs.request_issue }}
           INPUT_REQUESTED_BY: ${{ steps.resolve.outputs.requested_by }}
+          INPUT_TARGET_PR: ${{ steps.resolve.outputs.target_pr }}
         run: |
           set -euo pipefail
           echo "::group::validate-and-build-prompt"
@@ -111,6 +122,7 @@ jobs:
             run_mode: process.env.INPUT_RUN_MODE,
             request_issue: process.env.INPUT_REQUEST_ISSUE,
             requested_by: process.env.INPUT_REQUESTED_BY,
+            target_pr: process.env.INPUT_TARGET_PR,
           };
 
           try {
@@ -327,6 +339,8 @@ jobs:
           STARTED_AT: ${{ steps.resolve.outputs.started_at }}
           RUN_MODE: ${{ steps.resolve.outputs.run_mode }}
           RUN_ACTOR: ${{ github.actor }}
+          COMMAND: ${{ steps.resolve.outputs.command }}
+          TARGET_PR: ${{ steps.resolve.outputs.target_pr }}
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -345,11 +359,15 @@ jobs:
             const startedAt = process.env.STARTED_AT;
             const runMode = process.env.RUN_MODE || "dry-run";
             const runActor = process.env.RUN_ACTOR || "";
+            const command = process.env.COMMAND || "";
+            const targetPr = process.env.TARGET_PR || "";
             console.log(
               builder.decisionLine("post-verify-start", {
                 started_at: startedAt,
                 run_mode: runMode,
                 run_actor: runActor,
+                command,
+                target_pr: targetPr || "-",
               }),
             );
 
@@ -360,6 +378,9 @@ jobs:
               startedAt,
               runMode,
               runActor,
+              command,
+              targetPr,
+              token: process.env.GITHUB_TOKEN,
             });
             console.log(
               builder.decisionLine("post-verify-done", {

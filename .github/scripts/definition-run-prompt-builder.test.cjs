@@ -53,8 +53,27 @@ function writeEpicDefinition(root, relPath = "prompts/definitions/epics/sample/e
   return relPath;
 }
 
-test("listAllowedCommands: MVPでは start-epic のみ", () => {
-  assert.deepEqual(builder.listAllowedCommands(), ["start-epic"]);
+function writeReviewDefinition(root, relPath = "prompts/definitions/_examples/review-definition.example.yaml", body) {
+  const fullPath = path.join(root, relPath);
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  fs.writeFileSync(
+    fullPath,
+    body ||
+      [
+        'schema_version: "1.0"',
+        'definition_type: "review"',
+        "review:",
+        '  id: "review-sample"',
+        '  title: "sample review"',
+        "",
+      ].join("\n"),
+    "utf8",
+  );
+  return relPath;
+}
+
+test("listAllowedCommands: start-epic と review-pr", () => {
+  assert.deepEqual(builder.listAllowedCommands(), ["start-epic", "review-pr"]);
 });
 
 test("validateCommand: 未登録 Command は unsupported_command", () => {
@@ -324,7 +343,57 @@ test("summarizeForLog: 必要フィールドだけ返す", () => {
     assert.equal(summary.command, "start-epic");
     assert.equal(summary.run_mode, "dry-run");
     assert.equal(summary.definition_type, "epic");
-    assert.deepEqual(summary.allowed_commands, ["start-epic"]);
+    assert.deepEqual(summary.allowed_commands, ["start-epic", "review-pr"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("review-pr: live-run は target_pr 必須", () => {
+  const root = withTempWorkspace((dir) => writeReviewDefinition(dir));
+  try {
+    assert.throws(
+      () =>
+        builder.buildDefinitionRunRequest(
+          {
+            command: "review-pr",
+            definition: "prompts/definitions/_examples/review-definition.example.yaml",
+            run_mode: "live-run",
+          },
+          { workspace: root },
+        ),
+      (err) => err instanceof builder.ValidationError && err.code === "missing_target_pr",
+    );
+    const request = builder.buildDefinitionRunRequest(
+      {
+        command: "review-pr",
+        definition: "prompts/definitions/_examples/review-definition.example.yaml",
+        run_mode: "live-run",
+        target_pr: "282",
+      },
+      { workspace: root },
+    );
+    assert.equal(request.target_pr, "282");
+    assert.match(request.prompt, /publish-ai-review-and-dispatch/);
+    assert.match(request.prompt, /対象PR: #282/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("review-pr: dry-run は target_pr なしでも受理", () => {
+  const root = withTempWorkspace((dir) => writeReviewDefinition(dir));
+  try {
+    const request = builder.buildDefinitionRunRequest(
+      {
+        command: "review-pr",
+        definition: "prompts/definitions/_examples/review-definition.example.yaml",
+        run_mode: "dry-run",
+      },
+      { workspace: root },
+    );
+    assert.equal(request.run_mode, "dry-run");
+    assert.match(request.prompt, /PR コメント投稿・repository_dispatch・Projects Status 更新を行わない/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

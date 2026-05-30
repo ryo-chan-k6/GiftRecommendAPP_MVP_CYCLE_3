@@ -154,6 +154,44 @@ function describePullViolation(pull, runActor) {
   };
 }
 
+function describeReviewDispatchViolation({ prNumber, verifyResult }) {
+  return {
+    type: "review_dispatch",
+    number: Number(prNumber),
+    title: verifyResult.reason || verifyResult.message || "dispatch_missing",
+    url: verifyResult.latest_ai_review_comment_url || verifyResult.recovery_command || "",
+    created_at: verifyResult.latest_ai_review_comment_at || "",
+    actor_login: "-",
+    actor_type: "review_dispatch",
+    recovery_command: verifyResult.recovery_command || "",
+  };
+}
+
+async function runReviewPrDispatchVerify({
+  owner,
+  repo,
+  targetPr,
+  token,
+  fetchImpl,
+  verifyImpl,
+}) {
+  if (!targetPr) {
+    return { ok: true, skipped: true, reason: "no_target_pr" };
+  }
+  const publish = require("./publish-ai-review-and-dispatch.cjs");
+  const verify =
+    verifyImpl ||
+    ((options) =>
+      publish.verifyAiReviewDispatch({
+        owner,
+        repo,
+        prNumber: targetPr,
+        token,
+        fetchImpl,
+      }));
+  return verify({ owner, repo, prNumber: targetPr, token, fetchImpl });
+}
+
 function describeBranchViolation(branch, runActor) {
   const login = branch.author_login || branch.committer_login || "";
   const actorType = classifyActor({ login, runActor });
@@ -175,6 +213,11 @@ async function runPostVerify({
   startedAt,
   runMode,
   runActor,
+  command,
+  targetPr,
+  token,
+  fetchImpl,
+  verifyImpl,
   listIssues = listIssuesCreatedSince,
   listPulls = listPullsCreatedSince,
   listBranches = listBranchesCreatedSince,
@@ -210,9 +253,29 @@ async function runPostVerify({
     });
   }
 
+  let dispatchVerify = null;
+  if (String(command || "").trim() === "review-pr" && mode === "live-run" && targetPr) {
+    dispatchVerify = await runReviewPrDispatchVerify({
+      owner,
+      repo,
+      targetPr,
+      token,
+      fetchImpl,
+      verifyImpl,
+    });
+    if (!dispatchVerify.ok && !dispatchVerify.skipped) {
+      violations.push(
+        describeReviewDispatchViolation({ prNumber: targetPr, verifyResult: dispatchVerify }),
+      );
+    }
+  }
+
   return {
     started_at: toIsoZulu(startedAt),
     run_mode: mode,
+    command: String(command || "").trim() || undefined,
+    target_pr: targetPr || undefined,
+    dispatch_verify: dispatchVerify || undefined,
     counts: {
       issues: issues.length,
       pull_requests: pulls.length,
@@ -236,6 +299,11 @@ function formatViolationsMarkdown(result) {
   );
   if (!result.violations.length) {
     lines.push("- result: None");
+    if (result.dispatch_verify && result.dispatch_verify.ok) {
+      lines.push(
+        `- review_dispatch: ok (PR #${result.target_pr || "-"}, run ${result.dispatch_verify.dispatch_run_id || "-"})`,
+      );
+    }
     return `${lines.join("\n")}\n`;
   }
   lines.push("");
@@ -245,7 +313,9 @@ function formatViolationsMarkdown(result) {
     const identifier =
       violation.type === "branch"
         ? `\`${violation.name}\` (${(violation.sha || "").slice(0, 7)})`
-        : `#${violation.number} ${violation.title || ""}`.trim();
+        : violation.type === "review_dispatch"
+          ? `PR #${violation.number} ${violation.title || ""}`.trim()
+          : `#${violation.number} ${violation.title || ""}`.trim();
     const actor = `${violation.actor_login || "-"} (${violation.actor_type})`;
     const url = violation.url || "-";
     lines.push(
@@ -263,12 +333,14 @@ module.exports = {
   describeBranchViolation,
   describeIssueViolation,
   describePullViolation,
+  describeReviewDispatchViolation,
   formatViolationsMarkdown,
   listBranchesCreatedSince,
   listIssuesCreatedSince,
   listPullsCreatedSince,
   parseDate,
   runPostVerify,
+  runReviewPrDispatchVerify,
   shouldFlagInDryRun,
   toIsoZulu,
 };
