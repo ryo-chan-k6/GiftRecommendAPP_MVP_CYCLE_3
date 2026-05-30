@@ -51,6 +51,7 @@ workflow permissionsは必要最小限にする。
 5. Projects Statusを `AI Review` へ更新する。
 6. Slackに `[info] PRを作成しました` を送信する。
 7. Slack APIの戻り値 `ts` をPRコメントのthread markerに保存する。
+8. Review Definition を解決し、Definition Run Harness（`review-pr` / `live-run`）を `repository_dispatch` で起動する（[AI Review自動起動](./AI%20Review自動起動ワークフロー連携仕様書.md)）。
 
 ## 6. スキップ条件
 
