@@ -4,6 +4,9 @@ const MARKER_PREFIX = "slack-thread:v1";
 const SLACK_POST_MESSAGE_URL = "https://slack.com/api/chat.postMessage";
 const AI_REVIEW_HEADING_1 = "## 1. レビュー結果";
 const AI_REVIEW_HEADING_22 = "## 22. Status更新意図";
+const FIX_COMPLETE_TITLE = "# Fix Review Comments Result";
+const FIX_COMPLETE_HEADING_1 = "## 1. 対応結果";
+const FIX_COMPLETE_HEADING_12 = "## 12. Status更新意図";
 const AUTOMATION_STATUS_COMMENT_PREFIX = "Project Status更新意図:";
 const SLACK_THREAD_MARKER_NOTE = "Slack thread marker for GitHub Actions automation.";
 const KNOWN_REVIEW_RESULTS = [
@@ -11,6 +14,13 @@ const KNOWN_REVIEW_RESULTS = [
   "request_changes",
   "needs_human_decision",
   "split_required",
+  "blocked",
+];
+const KNOWN_FIX_OUTCOMES = [
+  "ready_for_ai_review",
+  "needs_human_decision",
+  "split_required",
+  "partial_fix",
   "blocked",
 ];
 
@@ -258,6 +268,19 @@ function normalizeKnownReviewToken(value) {
   return "";
 }
 
+function normalizeKnownFixOutcome(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const lowered = text.toLowerCase().replace(/\s+/g, "_");
+  for (const item of KNOWN_FIX_OUTCOMES) {
+    if (lowered === item) return item;
+  }
+  if (text.includes("再AI Review可能")) return "ready_for_ai_review";
+  if (text.includes("Human判断待ち")) return "needs_human_decision";
+  if (text.includes("別Issue化")) return "split_required";
+  return "";
+}
+
 function normalizeReviewResult(value) {
   const direct = normalizeKnownReviewToken(value);
   if (direct) return direct;
@@ -344,6 +367,55 @@ function expectedCurrentStatusForHumanReview() {
   return "Human Review";
 }
 
+function hasFixCompleteResultHeading(body) {
+  const text = String(body || "");
+  return text.includes(FIX_COMPLETE_HEADING_1) || text.includes(FIX_COMPLETE_TITLE);
+}
+
+function hasFixOutcomeTableRow(body) {
+  return /\|\s*Fix Outcome\s*\|/i.test(String(body || ""));
+}
+
+function extractFixOutcomeTableCell(body) {
+  const text = String(body || "");
+  const backtick = /\|\s*Fix Outcome\s*\|\s*`([^`]+)`\s*\|/i.exec(text);
+  if (backtick) return normalizeKnownFixOutcome(backtick[1]);
+  const plain = /\|\s*Fix Outcome\s*\|\s*([^\n|]+?)\s*\|/i.exec(text);
+  if (plain) return normalizeKnownFixOutcome(plain[1]);
+  return "";
+}
+
+function isFixCompleteResultComment(body) {
+  if (isAutomationBypassComment(body)) return false;
+  const text = String(body || "");
+  if (hasFixCompleteResultHeading(text)) return true;
+  if (!hasFixOutcomeTableRow(text)) return false;
+  return Boolean(extractFixOutcomeTableCell(text));
+}
+
+function extractFixOutcomeFromComment(body) {
+  if (!isFixCompleteResultComment(body)) {
+    return { ok: false, reason: "not_fix_complete_comment" };
+  }
+  const outcome = extractFixOutcomeTableCell(body);
+  if (!outcome) return { ok: false, reason: "fix_outcome_not_found" };
+  return { ok: true, value: outcome };
+}
+
+function expectedCurrentStatusForFixComplete() {
+  return "In Progress";
+}
+
+function fixOutcomeLabelForHumans(fixOutcome) {
+  const normalized = normalizeKnownFixOutcome(fixOutcome);
+  if (normalized === "ready_for_ai_review") return "再AI Review可能";
+  if (normalized === "needs_human_decision") return "Human判断待ち";
+  if (normalized === "split_required") return "別Issue化が必要";
+  if (normalized === "partial_fix") return "一部対応・再レビュー不可";
+  if (normalized === "blocked") return "blocked";
+  return normalized || "不明";
+}
+
 function buildStatusSyncConfirmationComment({ taskIssueNumber, nextStatus }) {
   return `Project Status更新意図: Issue #${taskIssueNumber} を \`${nextStatus}\` へ更新しました。`;
 }
@@ -382,8 +454,12 @@ module.exports = {
   MARKER_PREFIX,
   AI_REVIEW_HEADING_1,
   AI_REVIEW_HEADING_22,
+  FIX_COMPLETE_TITLE,
+  FIX_COMPLETE_HEADING_1,
+  FIX_COMPLETE_HEADING_12,
   AUTOMATION_STATUS_COMMENT_PREFIX,
   KNOWN_REVIEW_RESULTS,
+  KNOWN_FIX_OUTCOMES,
   buildSlackText,
   buildThreadKey,
   buildThreadMarker,
@@ -395,6 +471,7 @@ module.exports = {
   postSlackMessage,
   relatedIssueNumber,
   normalizeKnownReviewToken,
+  normalizeKnownFixOutcome,
   normalizeReviewResult,
   isAutomationBypassComment,
   isAiReviewResultComment,
@@ -402,6 +479,11 @@ module.exports = {
   statusNamesEqual,
   expectedCurrentStatusForAiReview,
   expectedCurrentStatusForHumanReview,
+  hasFixCompleteResultHeading,
+  isFixCompleteResultComment,
+  extractFixOutcomeFromComment,
+  expectedCurrentStatusForFixComplete,
+  fixOutcomeLabelForHumans,
   buildStatusSyncConfirmationComment,
   reviewResultLabelForHumans,
   statusFromReviewResult,

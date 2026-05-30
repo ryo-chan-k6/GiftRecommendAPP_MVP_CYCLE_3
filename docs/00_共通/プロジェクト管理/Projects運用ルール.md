@@ -498,7 +498,8 @@ Actual Startが未設定の場合は、同時にActual Startを設定する。
 
 以下の場合、StatusをAI Reviewへ更新する。
 
-- PRが作成された
+- PRが作成された（[PR作成時Status更新ワークフロー](./PR作成時Status更新・Slack通知ワークフロー仕様書.md)）
+- `/fix-review-comments` 完了後、Fix Outcome が `ready_for_ai_review` である（[PR再AI Review待ちStatus更新ワークフロー](./PR再AI%20Review待ちStatus更新ワークフロー仕様書.md)）
 - AIレビュー依頼が開始された
 
 ### 17.4 AI Review → Human Review
@@ -582,6 +583,7 @@ no-branch、Branch、PR に関する禁止事項は [Issue運用ルール](./Iss
 | Issue同期とブランチ作成ワークフロー仕様書             | no-branch制御とBranch作成を定義                             |
 | Planned Startに基づくStatus自動更新ワークフロー仕様書 | BacklogからTodoへの自動更新を定義                           |
 | PR作成時Status更新ワークフロー仕様書                  | PR作成時のAI Review更新を定義                               |
+| PR再AI Review待ちStatus更新ワークフロー仕様書         | fix 完了後の In Progress → AI Review 更新を定義             |
 | PRレビュー完了時Status更新ワークフロー仕様書          | AI/Humanレビュー完了時のStatus更新（双方向）を定義          |
 | PR merge時Status更新ワークフロー仕様書                | Done更新とActual End設定を定義                              |
 
