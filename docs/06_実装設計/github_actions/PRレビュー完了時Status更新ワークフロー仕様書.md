@@ -271,6 +271,7 @@ Slack通知に失敗しても、Projects Status の更新は取り消さない�
 - 本ワークフローが **失敗（赤）** した場合は、Summary の PR・失敗理由を確認し、テンプレート・コメント・Issue 参照を修正してから再実行すること
 - `PROJECTS_TOKEN` には対象 Project の読み書きに必要なスコープを付与すること
 - Human Review 指摘は GitHub 上の **Request changes**（`changes_requested`）で行うこと（コメントのみでは本経路は動作しない）
+- AI Agent の PR は **machine account**（`.github/ai-bot-account.json`）が author であること。author が人間の場合、Human Review 正式操作（Approve / Request changes）ができない
 
 ## 11. 関連ドキュメント
 
