@@ -411,6 +411,8 @@ Human Review
 
 どちらの運用でも、Human Reviewと人間によるmerge判断を省略してはならない。
 
+**Machine account:** AI Agent の commit / push / PR 作成は `okuri-ai-bot`（Classic PAT）で行い、Human Review / merge は `ryo-chan-k6` が行う。詳細は [AI機械アカウント運用設計書](docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md) および `.github/ai-bot-account.json`。
+
 ---
 
 ## 12. GitHub運用方針
@@ -1125,6 +1127,7 @@ PR作成前に、以下を確認する。
 [ ] PR本文に影響範囲が記載されている
 [ ] PR本文にHuman Review観点が記載されている
 [ ] AI Reviewを実行できる状態である
+[ ] PR author が machine account（`.github/ai-bot-account.json`）である
 ```
 
 ---

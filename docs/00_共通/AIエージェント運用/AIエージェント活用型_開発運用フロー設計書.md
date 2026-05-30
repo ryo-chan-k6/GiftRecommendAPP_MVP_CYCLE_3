@@ -607,6 +607,10 @@ AIレビュー完了時の Projects Status 更新は [PRレビュー完了時Sta
 
 人間レビューは、最終品質判断として実施する。
 
+**実施者:** `ryo-chan-k6`（Personal account）。PR author（machine account `okuri-ai-bot`）とは別アカウントとする（[AI機械アカウント運用設計書](./AI機械アカウント運用設計書.md)）。
+
+**GitHub 操作:** Human Review 指摘は PR Review の **Request changes** で行う（Conversation コメントのみでは Status 連動しない）。
+
 人間レビューでは、主に以下を確認する。
 
 - 方針として妥当か
