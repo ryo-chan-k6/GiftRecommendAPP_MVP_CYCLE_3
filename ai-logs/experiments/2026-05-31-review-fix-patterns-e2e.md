@@ -53,6 +53,12 @@ Phase A-1 では、人間 Reviewer（`ryo-chan-k6`）の Request changes に対�
 
 Phase A-2 では、人間 Reviewer が Request changes した後、**Orchestrator AI への自然言語依頼**（`/fix-review-comments` 直接実行ではない）を経て Fixer が同一 Branch で修正し、`publish-fix-complete-and-dispatch.cjs` により Status を `AI Review` へ戻す。
 
+## Phase B テストコメント（手動修正）
+
+> 手動修正への対応
+
+Phase B用の検証用コメントです。
+
 | 項目 | 値 |
 |------|-----|
 | Human Review | `CHANGES_REQUESTED` @ 2026-05-31T15:21:39Z |
