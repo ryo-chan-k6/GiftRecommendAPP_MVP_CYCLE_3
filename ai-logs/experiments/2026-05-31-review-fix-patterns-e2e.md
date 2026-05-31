@@ -26,8 +26,8 @@
 |-------|---------|------|------|
 | 1 | A-1 | Pass | 2nd cycle: fix-ready `26690802305` → Harness `26690807047` → `approve_for_human_review` → `Human Review` |
 | 2 | A-2 | Pass | Orchestrator 経由 fix → fix-ready dispatch → `AI Review` |
-| 3 | B | | |
-| 4 | C | | |
+| 3 | B | Pass | 手動 commit `6f1695e` → fix-ready `26717154277` → Harness bot fallback 手動 recovery → `approve_for_human_review` |
+| 4 | C | Pass | Human 混在 Request changes → `split_required`・dispatch スキップ・`In Progress` 維持 |
 
 ## Phase A-1 テストコメント
 
@@ -61,6 +61,21 @@ Phase B用の検証用コメントです。
 
 | 項目 | 値 |
 |------|-----|
-| Human Review | `CHANGES_REQUESTED` @ 2026-05-31T15:21:39Z |
-| トリガー | Orchestrator 経由（自然言語依頼 → Fixer 実行） |
-| Fix Outcome | `ready_for_ai_review` |
+| Human Review | `CHANGES_REQUESTED` @ 2026-05-31T15:41:13Z |
+| トリガー | 手動 commit（`publish-fix-complete` 不使用）→ workflow_dispatch fix-ready |
+| Fix Outcome | N/A（Human 手動修正） |
+| AI Review | `approve_for_human_review`（Harness run `26718407804` + bot 手動 publish） |
+
+## Phase C テストコメント（scope 内 + scope 外混在）
+
+> Phase C E2E: Human Review 指摘が scope 内と out_of_scope に混在するケース
+
+| 項目 | 値 |
+|------|-----|
+| Human Review | `CHANGES_REQUESTED` @ 2026-05-31T16:56:22Z（混在指摘） |
+| Status Sync | `Human Review` → `In Progress`（run `26718728717`） |
+| Fixer 実行 | `/fix-review-comments` 相当（Fix Outcome 判定のみ・コード変更なし） |
+| Fix Outcome | `split_required` |
+| dispatch | **スキップ**（`publish-fix-complete-and-dispatch.cjs` → `dispatch_skipped: true`） |
+| 期待 Status | `In Progress` 維持 |
+| Fix コメント | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/pull/290#issuecomment-4587416405 |
