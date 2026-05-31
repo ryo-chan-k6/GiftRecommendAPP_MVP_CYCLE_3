@@ -6,6 +6,7 @@ const publish = require("./publish-ai-review-and-dispatch.cjs");
 
 const LOG_LINE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}T[^\s]+\s+/;
 const TRANSCRIPT_STOP_RE = /^---$|^### \d+\./;
+const REVIEW_SECTION_HEADING = slack.AI_REVIEW_HEADING_1;
 
 function nonEmpty(value) {
   return String(value || "").trim();
@@ -15,30 +16,50 @@ function stripLogPrefix(line) {
   return String(line || "").replace(LOG_LINE_PREFIX_RE, "");
 }
 
+function isValidAiReviewCommentBody(body) {
+  return Boolean(body) && slack.isAiReviewResultComment(body);
+}
+
+function ensureAiReviewResultHeading(body) {
+  const text = String(body || "").trim();
+  if (!text) return "";
+  if (text.includes("# AI Review Result")) return text;
+  return `# AI Review Result\n\n${text}`;
+}
+
+function extractBlockFromStart(stripped, startIdx) {
+  const block = [];
+  for (let i = startIdx; i < stripped.length; i += 1) {
+    const line = stripped[i];
+    if (
+      i > startIdx &&
+      (TRANSCRIPT_STOP_RE.test(line.trim()) ||
+        line.includes("publish-ai-review-and-dispatch.cjs") ||
+        line.includes("publish-ai-review-harness-fallback.cjs"))
+    ) {
+      break;
+    }
+    block.push(line);
+  }
+  return block.join("\n").trim();
+}
+
 function extractAiReviewCommentBlocks(transcript) {
   const lines = String(transcript || "").split(/\r?\n/);
   const stripped = lines.map(stripLogPrefix);
   const blocks = [];
 
   for (let idx = 0; idx < stripped.length; idx += 1) {
-    if (stripped[idx].trim() !== "# AI Review Result") continue;
+    const trimmed = stripped[idx].trim();
+    if (trimmed !== "# AI Review Result" && trimmed !== REVIEW_SECTION_HEADING) continue;
 
-    const block = [];
-    for (let i = idx; i < stripped.length; i += 1) {
-      const line = stripped[i];
-      if (
-        i > idx &&
-        (TRANSCRIPT_STOP_RE.test(line.trim()) ||
-          line.includes("publish-ai-review-and-dispatch.cjs") ||
-          line.includes("publish-ai-review-harness-fallback.cjs"))
-      ) {
-        break;
-      }
-      block.push(line);
+    if (trimmed === REVIEW_SECTION_HEADING) {
+      const lookback = stripped.slice(Math.max(0, idx - 5), idx).map((line) => line.trim());
+      if (lookback.includes("# AI Review Result")) continue;
     }
 
-    const body = block.join("\n").trim();
-    if (slack.isAiReviewResultComment(body)) {
+    const body = ensureAiReviewResultHeading(extractBlockFromStart(stripped, idx));
+    if (isValidAiReviewCommentBody(body)) {
       blocks.push(body);
     }
   }
@@ -46,9 +67,61 @@ function extractAiReviewCommentBlocks(transcript) {
   return blocks;
 }
 
-function extractLatestAiReviewCommentFromTranscript(transcript) {
+function collectUniqueReviewResults(text) {
+  const found = new Set();
+  const normalized = String(text || "");
+
+  const tableRe = /\|\s*Review Result\s*\|\s*`?([^|\n`]+)`?\s*\|/gi;
+  let match;
+  while ((match = tableRe.exec(normalized)) !== null) {
+    const token = slack.normalizeReviewResult(match[1]);
+    if (token) found.add(token);
+  }
+
+  for (const item of slack.KNOWN_REVIEW_RESULTS) {
+    if (new RegExp(`\\b${item}\\b`).test(normalized)) {
+      found.add(item);
+    }
+  }
+
+  const prose = slack.normalizeReviewResult(normalized);
+  if (prose) found.add(prose);
+
+  return [...found];
+}
+
+function synthesizeAiReviewComment({ reviewResult, prNumber }) {
+  const token = slack.normalizeReviewResult(reviewResult);
+  if (!token) return "";
+  const nextStatus = slack.statusFromReviewResult(token, "") || "Human Review";
+  const prLabel = prNumber ? `#${Number(prNumber)}` : "-";
+  const body = `# AI Review Result
+
+## 1. レビュー結果
+
+| 項目          | 内容                     |
+| ------------- | ------------------------ |
+| Review Result | \`${token}\` |
+| 対象PR        | \`${prLabel}\` |
+
+## 22. Status更新意図
+
+| 次Status   | \`${nextStatus}\` |
+
+<!-- harness-fallback: synthesized from agent transcript -->
+`;
+  return isValidAiReviewCommentBody(body) ? body : "";
+}
+
+function extractLatestAiReviewCommentFromTranscript(transcript, { prNumber } = {}) {
   const blocks = extractAiReviewCommentBlocks(transcript);
-  return blocks.length ? blocks[blocks.length - 1] : "";
+  if (blocks.length) return blocks[blocks.length - 1];
+
+  const unique = collectUniqueReviewResults(transcript);
+  if (unique.length === 1) {
+    return synthesizeAiReviewComment({ reviewResult: unique[0], prNumber });
+  }
+  return "";
 }
 
 function readResultTextFromJson(resultJsonPath) {
@@ -62,7 +135,12 @@ function readResultTextFromJson(resultJsonPath) {
   }
 }
 
-function extractLatestAiReviewCommentFromSources({ transcriptText, transcriptPath, resultJsonPath }) {
+function extractLatestAiReviewCommentFromSources({
+  transcriptText,
+  transcriptPath,
+  resultJsonPath,
+  prNumber,
+}) {
   const transcript =
     nonEmpty(transcriptText) ||
     (transcriptPath && fs.existsSync(transcriptPath)
@@ -70,7 +148,7 @@ function extractLatestAiReviewCommentFromSources({ transcriptText, transcriptPat
       : "");
   const resultText = readResultTextFromJson(resultJsonPath);
   const combined = [transcript, resultText].filter(Boolean).join("\n");
-  return extractLatestAiReviewCommentFromTranscript(combined);
+  return extractLatestAiReviewCommentFromTranscript(combined, { prNumber });
 }
 
 async function publishAiReviewHarnessFallback({
@@ -132,6 +210,7 @@ async function publishAiReviewHarnessFallback({
     transcriptText: transcript,
     transcriptPath: "",
     resultJsonPath,
+    prNumber,
   });
   if (!commentBody) {
     return {
@@ -156,6 +235,7 @@ async function publishAiReviewHarnessFallback({
     ok: true,
     skipped: false,
     reason: "published",
+    synthesized: commentBody.includes("harness-fallback: synthesized"),
     prior_verify: verify,
     publish: publishResult,
   };
@@ -254,6 +334,9 @@ if (require.main === module) {
 
 module.exports = {
   LOG_LINE_PREFIX_RE,
+  REVIEW_SECTION_HEADING,
+  collectUniqueReviewResults,
+  synthesizeAiReviewComment,
   extractAiReviewCommentBlocks,
   extractLatestAiReviewCommentFromTranscript,
   extractLatestAiReviewCommentFromSources,

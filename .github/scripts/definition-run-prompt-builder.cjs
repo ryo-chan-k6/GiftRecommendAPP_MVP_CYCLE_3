@@ -250,6 +250,9 @@ function buildPrompt({ command, definition, run_mode, output_section, target_pr 
       "必ず publish-ai-review-and-dispatch.cjs で PR コメント投稿と Status dispatch を 1 回実行する。",
       "分離実行（コメントのみ / dispatch のみ）は recovery 時のみ。",
       "Harness post-run 検証で dispatch 忘れがあるとジョブは失敗する。",
+      "PR コメント本文は prompts/templates/review/ai-review-comment.md に従い、",
+      "先頭に `# AI Review Result` と §1 の `| Review Result |` 行を必ず含める。",
+      "Harness bot fallback は prose のみでは抽出できない場合がある。",
       "",
     );
   }
