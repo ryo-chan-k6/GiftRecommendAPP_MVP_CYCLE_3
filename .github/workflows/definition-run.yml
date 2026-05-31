@@ -340,6 +340,26 @@ jobs:
           EOF
           echo "::endgroup::"
 
+      - name: Publish AI Review (bot fallback)
+        if: success() && steps.resolve.outputs.command == 'review-pr' && steps.resolve.outputs.run_mode == 'live-run'
+        env:
+          GH_BOT_TOKEN: ${{ secrets.GH_BOT_TOKEN }}
+          TARGET_PR: ${{ steps.resolve.outputs.target_pr }}
+          STARTED_AT: ${{ steps.resolve.outputs.started_at }}
+        run: |
+          set -euo pipefail
+          echo "::group::publish-ai-review-bot-fallback"
+          if [ -z "${GH_BOT_TOKEN:-}" ]; then
+            echo "::error::missing_gh_bot_token secret is required for review-pr live-run publish fallback"
+            exit 1
+          fi
+          node .github/scripts/publish-ai-review-harness-fallback.cjs \
+            --repository "${{ github.repository }}" \
+            --pr "${TARGET_PR}" \
+            --transcript "${RUNNER_TEMP}/definition-run-transcript.log" \
+            --since "${STARTED_AT}"
+          echo "::endgroup::"
+
       - name: Post-run verification
         if: always()
         id: postverify
