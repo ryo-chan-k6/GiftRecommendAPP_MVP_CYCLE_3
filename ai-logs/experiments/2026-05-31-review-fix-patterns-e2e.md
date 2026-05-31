@@ -25,7 +25,7 @@
 | Phase | パターン | Pass | 備考 |
 |-------|---------|------|------|
 | 1 | A-1 | Pass | 2nd cycle: fix-ready `26690802305` → Harness `26690807047` → `approve_for_human_review` → `Human Review` |
-| 2 | A-2 | | |
+| 2 | A-2 | Pass | Orchestrator 経由 fix → fix-ready dispatch → `AI Review` |
 | 3 | B | | |
 | 4 | C | | |
 
