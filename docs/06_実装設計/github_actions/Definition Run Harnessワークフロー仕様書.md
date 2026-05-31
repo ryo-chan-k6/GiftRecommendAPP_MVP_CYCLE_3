@@ -70,8 +70,9 @@ on:
 2. 入力検証 (Command レジストリ参照 / definition パス prefix / 実ファイル存在 / definition_type 整合 / run_mode==dry-run)
 3. プロンプト組み立て (builder スクリプト呼び出し、secret マスク)
 4. Cursor SDK で Cloud Agent 起動 (Agent.create + agent.send + cloud: { repos: [{ url, startingRef }] }, autoCreatePR: false)
-5. post-run 検証 (Issue / PR / Branch 新規作成監視 → 違反検知時は job 失敗)
-6. Job Summary 出力 ($GITHUB_STEP_SUMMARY、secret スキャナ通過後)
+5. **review-pr live-run のみ:** transcript から AI Review コメントを抽出し `GH_BOT_TOKEN` で `publish-ai-review-and-dispatch.cjs` を実行（bot fallback）
+6. post-run 検証 (Issue / PR / Branch 新規作成監視 → 違反検知時は job 失敗)
+7. Job Summary 出力 ($GITHUB_STEP_SUMMARY、secret スキャナ通過後)
 ```
 
 各ステップは `::group::<step-name>` で折り畳み、冒頭に「決定的な1行」を出力する（例: `decision: validated allowed_command=start-epic`）。
@@ -84,6 +85,7 @@ on:
 | permissions | `issues: read` | post-verify で Issue 一覧取得 |
 | permissions | `pull-requests: read` | post-verify で PR 一覧取得 |
 | Secret | `CURSOR_API_KEY` | Cursor SDK の認証。workflow env のみで使用、プロンプト・log・Summary には絶対に出さない |
+| Secret | `GH_BOT_TOKEN` | **`review-pr` + `live-run` 時**の `publish-ai-review-and-dispatch.cjs` bot fallback（Cloud Agent は PR コメント POST 不可） |
 | Token | `GITHUB_TOKEN` | post-verify で gh API を叩く（read のみ。write 全廃） |
 | permissions | `actions: read` | review-pr post-verify で workflow runs 参照 |
 
