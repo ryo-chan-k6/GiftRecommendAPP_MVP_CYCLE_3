@@ -165,3 +165,71 @@ test("publishAiReviewHarnessFallback: result.json から transcript 不足を補
   assert.equal(result.reason, "published");
   assert.equal(calls.filter((c) => c.method === "POST").length, 2);
 });
+
+test("extractLatestAiReviewCommentFromTranscript: prose の単一トークンから合成", () => {
+  const transcript = [
+    "レビュー結論は approve_for_human_review です。",
+    "Human Review へ進めて問題ありません。",
+  ].join("\n");
+  const body = fallback.extractLatestAiReviewCommentFromTranscript(transcript, { prNumber: 290 });
+  assert.match(body, /# AI Review Result/);
+  assert.match(body, /approve_for_human_review/);
+  assert.match(body, /harness-fallback: synthesized/);
+});
+
+test("extractLatestAiReviewCommentFromTranscript: ## 1. レビュー結果 見出しから抽出", () => {
+  const transcript = [
+    "## 1. レビュー結果",
+    "",
+    "| 項目          | 内容                       |",
+    "| Review Result | `request_changes` |",
+    "",
+    "## 22. Status更新意図",
+    "| 次Status   | `In Progress` |",
+  ].join("\n");
+  const body = fallback.extractLatestAiReviewCommentFromTranscript(transcript);
+  assert.match(body, /# AI Review Result/);
+  assert.match(body, /request_changes/);
+});
+
+test("collectUniqueReviewResults: 複数トークンは合成しない", () => {
+  const unique = fallback.collectUniqueReviewResults(
+    "approve_for_human_review と request_changes が混在",
+  );
+  assert.equal(unique.length, 2);
+});
+
+test("publishAiReviewHarnessFallback: prose transcript から publish する", async () => {
+  const calls = [];
+  const result = await fallback.publishAiReviewHarnessFallback({
+    repository: "o/r",
+    prNumber: 290,
+    sinceIso: "2026-05-31T15:27:52Z",
+    token: "bot-token",
+    transcriptText: "結論: approve_for_human_review。scope 内修正は完了。",
+    fetchImpl: async (url, options) => {
+      calls.push({ url, method: options && options.method });
+      if (url.includes("/issues/290/comments") && (!options || !options.method || options.method === "GET")) {
+        return { ok: true, json: async () => [] };
+      }
+      if (url.includes("/issues/290/comments") && options.method === "POST") {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ html_url: "https://example.com/c/4", id: 4 }),
+        };
+      }
+      if (url.includes("/dispatches")) {
+        return { ok: true, status: 204, text: async () => "" };
+      }
+      if (url.includes("/actions/workflows/pr-review-status-sync.yml/runs")) {
+        return { ok: true, json: async () => ({ workflow_runs: [] }) };
+      }
+      throw new Error(url);
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.reason, "published");
+  assert.equal(result.synthesized, true);
+  assert.equal(calls.filter((c) => c.method === "POST").length, 2);
+});
