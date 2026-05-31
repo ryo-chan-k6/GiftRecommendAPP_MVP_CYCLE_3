@@ -28,6 +28,7 @@
 | 2 | A-2 | Pass | Orchestrator 経由 fix → fix-ready dispatch → `AI Review` |
 | 3 | B | Pass | 手動 commit `6f1695e` → fix-ready `26717154277` → Harness bot fallback 手動 recovery → `approve_for_human_review` |
 | 4 | C | Pass | Human 混在 Request changes → `split_required`・dispatch スキップ・`In Progress` 維持 |
+| 4b | C-2 | | split #296 → scope 内再指摘 → `ready_for_ai_review` |
 
 ## Phase A-1 テストコメント
 
@@ -79,3 +80,15 @@ Phase B用の検証用コメントです。
 | dispatch | **スキップ**（`publish-fix-complete-and-dispatch.cjs` → `dispatch_skipped: true`） |
 | 期待 Status | `In Progress` 維持 |
 | Fix コメント | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/pull/290#issuecomment-4587416405 |
+
+## Phase C-2 テストコメント（split 後・scope 内再指摘）
+
+> Phase C リカバリ: scope 外を #296 に split し、Human Review を scope 内のみに再整理したうえでの fix サイクル
+
+| 項目 | 値 |
+|------|-----|
+| split 先 Issue | #296（`apps/reco` デバッグ log・scope 外） |
+| Human 判断コメント | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/pull/290#issuecomment-4587431255 |
+| Human Review（scope 内のみ） | `CHANGES_REQUESTED`（Phase C-2 再指摘） |
+| 対応内容 | 本節の追加（scope 内・検証ログのみ） |
+| Fix Outcome | `ready_for_ai_review`（予定） |
