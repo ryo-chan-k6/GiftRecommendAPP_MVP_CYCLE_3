@@ -82,6 +82,34 @@ async function listPullsCreatedSince({ octokit, owner, repo, since }) {
   );
 }
 
+async function resolveTargetPrHeadRef({
+  octokit,
+  owner,
+  repo,
+  targetPr,
+  getPullImpl,
+} = {}) {
+  const prNumber = Number(targetPr);
+  if (!owner || !repo || !prNumber) return "";
+  const getPull =
+    getPullImpl ||
+    (async () => {
+      if (!octokit?.rest?.pulls?.get) return null;
+      const res = await octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: prNumber,
+      });
+      return res.data;
+    });
+  try {
+    const pull = await getPull({ owner, repo, pull_number: prNumber });
+    return (pull && pull.head && pull.head.ref) || "";
+  } catch {
+    return "";
+  }
+}
+
 async function listBranchesCreatedSince({ octokit, owner, repo, since }) {
   if (!octokit) return [];
   const cutoff = parseDate(since);
@@ -223,6 +251,7 @@ async function runPostVerify({
   listIssues = listIssuesCreatedSince,
   listPulls = listPullsCreatedSince,
   listBranches = listBranchesCreatedSince,
+  getPullImpl,
 } = {}) {
   if (!owner || !repo) {
     throw new Error("owner / repo are required");
@@ -235,6 +264,21 @@ async function runPostVerify({
   const pulls = await listPulls({ octokit, owner, repo, since: startedAt });
   const branches = await listBranches({ octokit, owner, repo, since: startedAt });
 
+  let excludedPrHeadRef = "";
+  if (String(command || "").trim() === "review-pr" && targetPr) {
+    excludedPrHeadRef = await resolveTargetPrHeadRef({
+      octokit,
+      owner,
+      repo,
+      targetPr,
+      getPullImpl,
+    });
+  }
+  const branchCandidates =
+    excludedPrHeadRef && branches.length
+      ? branches.filter((branch) => branch.name !== excludedPrHeadRef)
+      : branches;
+
   const candidates = [
     ...issues.map((item) => describeIssueViolation(item, runActor)),
     ...pulls.map((item) => describePullViolation(item, runActor)),
@@ -243,7 +287,16 @@ async function runPostVerify({
 
   let violations = [];
   if (mode === "dry-run") {
-    violations = candidates.filter((candidate) => shouldFlagInDryRun({ actorType: candidate.actor_type }));
+    violations = candidates.filter((candidate) => {
+      if (
+        candidate.type === "branch" &&
+        excludedPrHeadRef &&
+        candidate.name === excludedPrHeadRef
+      ) {
+        return false;
+      }
+      return shouldFlagInDryRun({ actorType: candidate.actor_type });
+    });
   } else {
     // live-run の actor 区別ロジックは Phase D で有効化する。
     // 想定: automation 由来は許容、definition-run 由来のうち Branch / PR 作成は違反。
@@ -251,6 +304,13 @@ async function runPostVerify({
     violations = candidates.filter((candidate) => {
       if (candidate.type === "issue") return false; // Issue 起票は許容
       if (candidate.actor_type === "automation") return false;
+      if (
+        candidate.type === "branch" &&
+        excludedPrHeadRef &&
+        candidate.name === excludedPrHeadRef
+      ) {
+        return false;
+      }
       return true;
     });
   }
@@ -279,10 +339,11 @@ async function runPostVerify({
     command: String(command || "").trim() || undefined,
     target_pr: targetPr || undefined,
     dispatch_verify: dispatchVerify || undefined,
+    excluded_pr_head_ref: excludedPrHeadRef || undefined,
     counts: {
       issues: issues.length,
       pull_requests: pulls.length,
-      branches: branches.length,
+      branches: branchCandidates.length,
       violations: violations.length,
     },
     candidates,
@@ -342,6 +403,7 @@ module.exports = {
   listIssuesCreatedSince,
   listPullsCreatedSince,
   parseDate,
+  resolveTargetPrHeadRef,
   runPostVerify,
   runReviewPrDispatchVerify,
   shouldFlagInDryRun,
