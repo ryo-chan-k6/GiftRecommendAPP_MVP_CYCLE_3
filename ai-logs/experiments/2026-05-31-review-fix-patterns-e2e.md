@@ -28,7 +28,7 @@
 | 2 | A-2 | Pass | Orchestrator 経由 fix → fix-ready dispatch → `AI Review` |
 | 3 | B | Pass | 手動 commit `6f1695e` → fix-ready `26717154277` → Harness bot fallback 手動 recovery → `approve_for_human_review` |
 | 4 | C | Pass | Human 混在 Request changes → `split_required`・dispatch スキップ・`In Progress` 維持 |
-| 4b | C-2 | | split #296 → scope 内再指摘 → `ready_for_ai_review` |
+| 4b | C-2 | Pass | split #296 → scope 内再指摘 → fix-ready `26718896018` → Harness `26718901254` |
 
 ## Phase A-1 テストコメント
 
@@ -91,4 +91,7 @@ Phase B用の検証用コメントです。
 | Human 判断コメント | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/pull/290#issuecomment-4587431255 |
 | Human Review（scope 内のみ） | `CHANGES_REQUESTED`（Phase C-2 再指摘） |
 | 対応内容 | 本節の追加（scope 内・検証ログのみ） |
-| Fix Outcome | `ready_for_ai_review`（予定） |
+| Fix Outcome | `ready_for_ai_review` |
+| fix-ready dispatch | run `26718896018` success |
+| Harness 自動起動 | run `26718901254` |
+| Fix コメント | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/pull/290#issuecomment-4587432245 |
