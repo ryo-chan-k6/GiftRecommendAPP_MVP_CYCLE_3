@@ -117,3 +117,51 @@ test("publishAiReviewHarnessFallback: transcript から publish する", async (
   assert.equal(result.reason, "published");
   assert.equal(calls.filter((c) => c.method === "POST").length, 2);
 });
+
+test("publishAiReviewHarnessFallback: result.json から transcript 不足を補完", async () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "harness-fallback-"));
+  const resultPath = path.join(dir, "definition-run-result.json");
+  fs.writeFileSync(
+    resultPath,
+    JSON.stringify({ status: "finished", result: SAMPLE_COMMENT }),
+    "utf8",
+  );
+
+  const calls = [];
+  const result = await fallback.publishAiReviewHarnessFallback({
+    repository: "o/r",
+    prNumber: 290,
+    sinceIso: "2026-05-31T15:27:52Z",
+    token: "bot-token",
+    transcriptText: "",
+    resultJsonPath: resultPath,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, method: options && options.method });
+      if (url.includes("/issues/290/comments") && (!options || !options.method || options.method === "GET")) {
+        return { ok: true, json: async () => [] };
+      }
+      if (url.includes("/issues/290/comments") && options.method === "POST") {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ html_url: "https://example.com/c/3", id: 3 }),
+        };
+      }
+      if (url.includes("/dispatches")) {
+        return { ok: true, status: 204, text: async () => "" };
+      }
+      if (url.includes("/actions/workflows/pr-review-status-sync.yml/runs")) {
+        return { ok: true, json: async () => ({ workflow_runs: [] }) };
+      }
+      throw new Error(url);
+    },
+  });
+
+  fs.rmSync(dir, { recursive: true, force: true });
+  assert.equal(result.ok, true);
+  assert.equal(result.reason, "published");
+  assert.equal(calls.filter((c) => c.method === "POST").length, 2);
+});

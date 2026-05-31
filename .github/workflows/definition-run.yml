@@ -38,6 +38,10 @@ on:
         description: review-pr live-run 時の対象 PR 番号（必須）
         required: false
         default: ""
+      ref:
+        description: Cloud Agent の startingRef（PR Branch 限定 Definition 時は PR head ref を指定）
+        required: false
+        default: "develop"
 
 permissions:
   contents: read
@@ -81,6 +85,7 @@ jobs:
           INPUT_REQUEST_ISSUE: ${{ inputs.request_issue }}
           INPUT_REQUESTED_BY: ${{ inputs.requested_by }}
           INPUT_TARGET_PR: ${{ inputs.target_pr }}
+          INPUT_REF: ${{ inputs.ref }}
         run: |
           set -euo pipefail
           echo "::group::resolve-inputs"
@@ -91,7 +96,7 @@ jobs:
           REQUESTED_BY="${PAYLOAD_REQUESTED_BY:-${INPUT_REQUESTED_BY:-${GITHUB_ACTOR:-}}}"
           TARGET_PR="${PAYLOAD_TARGET_PR:-${INPUT_TARGET_PR:-}}"
           PAYLOAD_REF_VALUE="${PAYLOAD_REF:-}"
-          REF="${PAYLOAD_REF_VALUE:-develop}"
+          REF="${PAYLOAD_REF_VALUE:-${INPUT_REF:-develop}}"
           echo "decision: resolve event=${GITHUB_EVENT_NAME} command=${COMMAND} run_mode=${RUN_MODE} target_pr=${TARGET_PR:-} ref=${REF}"
           echo "command=${COMMAND}" >> "$GITHUB_OUTPUT"
           echo "definition=${DEFINITION}" >> "$GITHUB_OUTPUT"
@@ -274,6 +279,10 @@ jobs:
               const result = await run.wait();
               finalStatus = result && result.status ? result.status : "unknown";
               finalResultText = result && result.result ? String(result.result) : "";
+              if (finalResultText) {
+                const maskedResult = builder.maskSecrets(finalResultText);
+                appendTranscript(maskedResult);
+              }
               console.log(
                 builder.decisionLine("run-finished", {
                   status: finalStatus,
@@ -346,6 +355,7 @@ jobs:
           GH_BOT_TOKEN: ${{ secrets.GH_BOT_TOKEN }}
           TARGET_PR: ${{ steps.resolve.outputs.target_pr }}
           STARTED_AT: ${{ steps.resolve.outputs.started_at }}
+          RESULT_JSON: ${{ runner.temp }}/definition-run-result.json
         run: |
           set -euo pipefail
           echo "::group::publish-ai-review-bot-fallback"
@@ -357,6 +367,7 @@ jobs:
             --repository "${{ github.repository }}" \
             --pr "${TARGET_PR}" \
             --transcript "${RUNNER_TEMP}/definition-run-transcript.log" \
+            --result-json "${RESULT_JSON}" \
             --since "${STARTED_AT}"
           echo "::endgroup::"
 
