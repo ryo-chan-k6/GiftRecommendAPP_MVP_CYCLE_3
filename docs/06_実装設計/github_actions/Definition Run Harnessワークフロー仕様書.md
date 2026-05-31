@@ -61,7 +61,10 @@ on:
 | `run_mode` | 必須 | `dry-run` / `live-run` | Command ごとに supported を参照。`start-epic` は `dry-run` のみ。`review-pr` は両方可 |
 | `request_issue` | 任意 | 数値 | トレース相関キー。Job Summary 冒頭に表示するのみ（Issue へのコメント投稿はしない） |
 | `target_pr` | 条件付き必須 | 数値 | **`review-pr` + `live-run` 時は必須**。post-run で dispatch 忘れ検証に使用 |
+| `ref` | 任意 | git ref | Cloud Agent の `startingRef`。`repository_dispatch` では PR head ref を渡す。**`workflow_dispatch` 手動実行時**に PR Branch 限定 Definition を使う場合は PR head ref を指定（未指定時 `develop`） |
 | `requested_by` | 任意 | 自由文字列 | 監査用識別子（Slack user / GitHub user 等）。Job Summary に表示。改行・長さ制限あり |
+
+**Definition 実ファイル検証:** `ref !== develop` の場合、checkout 上に Definition が無くても入力検証は通過する（Agent は `startingRef` 上で実行）。`ref=develop` のまま PR Branch 限定 Definition を指定すると `definition_not_found` で失敗する。
 
 ## 5. 処理フロー
 
@@ -70,7 +73,7 @@ on:
 2. 入力検証 (Command レジストリ参照 / definition パス prefix / 実ファイル存在 / definition_type 整合 / run_mode==dry-run)
 3. プロンプト組み立て (builder スクリプト呼び出し、secret マスク)
 4. Cursor SDK で Cloud Agent 起動 (Agent.create + agent.send + cloud: { repos: [{ url, startingRef }] }, autoCreatePR: false)
-5. **review-pr live-run のみ:** transcript から AI Review コメントを抽出し `GH_BOT_TOKEN` で `publish-ai-review-and-dispatch.cjs` を実行（bot fallback）
+5. **review-pr live-run のみ:** transcript（および Agent `run.result`）から AI Review コメントを抽出し `GH_BOT_TOKEN` で `publish-ai-review-and-dispatch.cjs` を実行（bot fallback）
 6. post-run 検証 (Issue / PR / Branch 新規作成監視 → 違反検知時は job 失敗)
 7. Job Summary 出力 ($GITHUB_STEP_SUMMARY、secret スキャナ通過後)
 ```
