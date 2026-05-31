@@ -28,7 +28,7 @@
 | 2 | A-2 | Pass | Orchestrator 経由 fix → fix-ready dispatch → `AI Review` |
 | 3 | B | Pass | 手動 commit `6f1695e` → fix-ready `26717154277` → Harness bot fallback 手動 recovery → `approve_for_human_review` |
 | 4 | C | Pass | Human 混在 Request changes → `split_required`・dispatch スキップ・`In Progress` 維持 |
-| 4b | C-2 | Pass | split #296 → scope 内再指摘 → fix-ready `26718896018` → Harness `26718901254` |
+| 4b | C-2 | Pass | split #296 → scope 内再指摘 → fix-ready `26718896018` → Harness 初回 `26718901254` fail → infra #297 → Harness 再実行 `26719359246` success |
 
 ## Phase A-1 テストコメント
 
@@ -95,3 +95,16 @@ Phase B用の検証用コメントです。
 | fix-ready dispatch | run `26718896018` success |
 | Harness 自動起動 | run `26718901254` |
 | Fix コメント | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/pull/290#issuecomment-4587432245 |
+
+### Phase C-2 Harness 失敗・インフラ改修・再検証
+
+| 項目 | 値 |
+|------|-----|
+| 初回 Harness 失敗 run | `26718901254` |
+| 根本原因 | (1) transcript に `# AI Review Result` / Review Result 表がなく bot fallback が `no_comment_in_transcript` (2) post-verify が PR head branch の並行 push を branch violation 扱い |
+| インフラ PR | #297（develop マージ済み） |
+| fix-ready 再 dispatch | run `26719313872` → `current_status_mismatch` で Harness dispatch スキップ（Status が `In Progress` / `AI Review` 以外） |
+| Harness 直接 recovery | workflow_dispatch run `26719359246` success（`ref=docs/task-289-review-fix-patterns-e2e`） |
+| bot fallback | success（post-verify violations=0） |
+| AI Review 結果 | `approve_for_human_review` @ 2026-05-31T17:25:58Z |
+| 次ステップ | Human Review → Approve → merge #290 → Issue #289 Done |
