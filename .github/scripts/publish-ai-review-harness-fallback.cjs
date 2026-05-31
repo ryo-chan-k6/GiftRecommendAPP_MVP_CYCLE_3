@@ -51,6 +51,28 @@ function extractLatestAiReviewCommentFromTranscript(transcript) {
   return blocks.length ? blocks[blocks.length - 1] : "";
 }
 
+function readResultTextFromJson(resultJsonPath) {
+  const filePath = nonEmpty(resultJsonPath);
+  if (!filePath || !fs.existsSync(filePath)) return "";
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return nonEmpty(parsed && parsed.result);
+  } catch {
+    return "";
+  }
+}
+
+function extractLatestAiReviewCommentFromSources({ transcriptText, transcriptPath, resultJsonPath }) {
+  const transcript =
+    nonEmpty(transcriptText) ||
+    (transcriptPath && fs.existsSync(transcriptPath)
+      ? fs.readFileSync(transcriptPath, "utf8")
+      : "");
+  const resultText = readResultTextFromJson(resultJsonPath);
+  const combined = [transcript, resultText].filter(Boolean).join("\n");
+  return extractLatestAiReviewCommentFromTranscript(combined);
+}
+
 async function publishAiReviewHarnessFallback({
   owner,
   repo,
@@ -58,6 +80,7 @@ async function publishAiReviewHarnessFallback({
   prNumber,
   transcriptPath,
   transcriptText,
+  resultJsonPath,
   sinceIso,
   token,
   dryRun,
@@ -96,7 +119,7 @@ async function publishAiReviewHarnessFallback({
     (transcriptPath && fs.existsSync(transcriptPath)
       ? fs.readFileSync(transcriptPath, "utf8")
       : "");
-  if (!transcript) {
+  if (!transcript && !readResultTextFromJson(resultJsonPath)) {
     return {
       ok: false,
       reason: "transcript_missing",
@@ -105,7 +128,11 @@ async function publishAiReviewHarnessFallback({
     };
   }
 
-  const commentBody = extractLatestAiReviewCommentFromTranscript(transcript);
+  const commentBody = extractLatestAiReviewCommentFromSources({
+    transcriptText: transcript,
+    transcriptPath: "",
+    resultJsonPath,
+  });
   if (!commentBody) {
     return {
       ok: false,
@@ -143,6 +170,7 @@ function parseCliArgs(argv) {
     prNumber: "",
     transcriptPath: "",
     sinceIso: "",
+    resultJsonPath: "",
     dryRun: false,
   };
   for (let i = 0; i < args.length; i += 1) {
@@ -175,6 +203,10 @@ function parseCliArgs(argv) {
       options.sinceIso = args[++i] || "";
       continue;
     }
+    if (arg === "--result-json") {
+      options.resultJsonPath = args[++i] || "";
+      continue;
+    }
     if (arg === "--help" || arg === "-h") {
       options.help = true;
       continue;
@@ -191,6 +223,7 @@ function printHelp() {
     --pr <number> \\
     --transcript /path/to/definition-run-transcript.log \\
     [--since <harness-started-at-iso>] \\
+    [--result-json /path/to/definition-run-result.json] \\
     [--dry-run]
 
 Publishes AI Review comment + status-sync when Cloud Agent cannot use GH_BOT_TOKEN.
@@ -223,5 +256,7 @@ module.exports = {
   LOG_LINE_PREFIX_RE,
   extractAiReviewCommentBlocks,
   extractLatestAiReviewCommentFromTranscript,
+  extractLatestAiReviewCommentFromSources,
+  readResultTextFromJson,
   publishAiReviewHarnessFallback,
 };
