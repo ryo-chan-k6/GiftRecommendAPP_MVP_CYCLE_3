@@ -12,7 +12,7 @@
 
 | 優先 | 候補 | Definition配置候補 | 使用テンプレート | 出力docs | 主なinput docs |
 | ---: | ---- | ------------------ | ---------------- | -------- | -------------- |
-| 1 | `API-INT-002:Reco推薦実行API仕様書作成` | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml` | `prompts/templates/docs/api-spec.md` | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md` | `docs/05_アプリケーション設計/アプリ/api/API一覧.md` / `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` / Recommendation Request / Recommendation Result関連docs |
+| 1 | `API-INT-002:Reco推薦実行API仕様書作成` | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml` | `api-contract-spec.md` + `api-implementation-spec.md` | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md` | `docs/05_アプリケーション設計/アプリ/api/API一覧.md` / `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` / Recommendation Request / Recommendation Result関連docs |
 | 2 | `SCR-002:レコメンド条件入力画面仕様書作成` | `prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml` | `prompts/templates/docs/screen-spec.md` | `docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md` | `docs/05_アプリケーション設計/アプリ/web/画面一覧.md` / `docs/05_アプリケーション設計/アプリ/web/画面遷移図.md` / API仕様書 |
 | 3 | `BATCH-003:楽天商品疑似差分取得バッチ仕様書作成` | `prompts/definitions/tasks/batch-003-rakuten-item-pseudo-diff/batch-spec.yaml` | `prompts/templates/docs/batch-spec.md` | `docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md` | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` / `docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md` / `docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md` |
 

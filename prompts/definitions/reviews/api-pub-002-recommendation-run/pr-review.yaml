@@ -118,9 +118,14 @@ input:
       pr_comment: "prompts/templates/review/ai-review-comment.md"
       slack: "prompts/templates/slack/ai-review-result.md"
     deliverables:
-      - path: "prompts/templates/docs/api-spec.md"
+      - path: "prompts/templates/docs/api-contract-spec.md"
         required: true
-        purpose: "Task成果物が指定テンプレート（api-spec.md）に沿って作成されているか確認するため"
+        purpose: "Task成果物の契約面が api-contract-spec.md に沿って作成されているか確認するため"
+        applies_to:
+          - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
+      - path: "prompts/templates/docs/api-implementation-spec.md"
+        required: true
+        purpose: "Task成果物の実装面が api-implementation-spec.md に沿って作成されているか確認するため"
         applies_to:
           - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
 
@@ -134,7 +139,7 @@ review_points:
     - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
     - "Task PR で Closes #<Task Issue番号> を使っていないか（Related to を使用）"
   docs:
-    - "指定された文書テンプレート（prompts/templates/docs/api-spec.md）の章構成（§1〜§19）に沿って作成されているか"
+    - "指定された文書テンプレート（api-contract-spec.md の契約面章・api-implementation-spec.md の実装面章）に沿って作成されているか"
     - "API仕様書が docs/06_実装設計/api/API-PUB-002_*.md に作成されているか"
     - "API基本情報（API ID / API種別 Public / Method POST / Endpoint /api/v1/recommendations / Provider apps/api / Consumer apps/web / MVP対象）が記載されているか"
     - "Request / Response / Error Response / Validation / 処理概要が後続実装可能な粒度で記載されているか"
@@ -183,7 +188,7 @@ acceptance_check:
     - "PR本文に実施済み検証と未実施テストの理由が記載されている"
     - "Human Reviewで確認してほしい事項が明記されている"
     - "AI Review結果をPRコメントに記録できる形式になっている"
-    - "Task Definition で文書テンプレート（api-spec.md）が指定されているため、成果物がそのテンプレートに沿っている"
+    - "Task Definition で文書テンプレート（api-contract-spec.md / api-implementation-spec.md）が指定されているため、成果物がそのテンプレートに沿っている"
     - "親Epic の epic_scope.allowed_paths から外れる差分がない"
     - "OpenAPI / generated 変更を Contract Task として分離する方針が明記されている"
 
@@ -200,7 +205,7 @@ result_policy:
       - "同一 Branch で修正可能な docs 不備がある"
       - "PR 本文に必要情報が不足している"
       - "検証結果または未実施理由が不足している"
-      - "テンプレート（api-spec.md）準拠が一部欠落している"
+      - "テンプレート（api-contract-spec.md / api-implementation-spec.md）準拠が一部欠落している"
       - "Recommendation Request / Result 定義書との整合が一部欠落している"
   needs_human_decision:
     conditions:
@@ -222,7 +227,7 @@ result_policy:
       - "Task Definition が存在しない"
       - "Issue と PR の対応が不明"
       - "secret や .env 実値の混入が疑われる"
-      - "Task 成果物に指定された文書テンプレート（api-spec.md）を確認できない"
+      - "Task 成果物に指定された文書テンプレート（api-contract-spec.md / api-implementation-spec.md）を確認できない"
       - "親 Epic Issue / Branch が存在しない"
 
 status_policy:
@@ -285,7 +290,7 @@ test_policy:
     - "Task Definitionのacceptance_criteriaを満たしているか確認する"
     - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
     - "OpenAPI / Orval / generated 変更が混在していないか確認する"
-    - "Task成果物が api-spec.md の章構成に沿っているか確認する"
+    - "Task成果物が api-contract-spec.md / api-implementation-spec.md の章構成に沿っているか確認する"
   not_required:
     - "unit test"
   skip_reason:
@@ -324,7 +329,7 @@ stop_conditions:
   - "secret や .env 実値の混入が疑われる場合"
   - "Human Review を省略する前提になっている場合"
   - "AI が merge 判断を行う必要がある場合"
-  - "指定された文書テンプレート（api-spec.md）が存在しない場合"
+  - "指定された文書テンプレート（api-contract-spec.md / api-implementation-spec.md）が存在しない場合"
   - "PR差分が親Epic の epic_scope.allowed_paths から外れている場合"
 
 notes:

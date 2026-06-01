@@ -1,0 +1,128 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-spec-deprecation-reference-update"
+  title: "api-spec.md即時廃止と全参照の横断是正"
+  summary: "Human Review（PR #306）で決定した api-spec.md 即時廃止に従い、テンプレート本体を削除し、全参照を api-contract-spec.md / api-implementation-spec.md へ是正する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-contract-impl-task-separation"
+  epic_issue_number: "#300"
+  epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "contract-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  PR #306（テンプレ2分割）の Human Review で api-spec.md の即時廃止が決定した。
+  本体削除と約10箇所の参照是正は横断影響のため本Taskで実施する。
+
+objective: |
+  prompts/templates/docs/api-spec.md を削除し、参照している定義・正本docsを分割テンプレートへ適切に振り分けて是正する。
+
+scope:
+  - "api-spec.md の削除"
+  - "api-int-002 / api-pub-002 の task + review 定義のテンプレート参照是正"
+  - "contract-definition.schema.md のテンプレート参照是正"
+  - "prompts/README.md / 06-implementation-design-template-trial-definitions.md の是正"
+  - "成果物一覧×Task Definition化方針書 / Task Definition設計書 の是正"
+
+out_of_scope:
+  - "apps/** / openapi/** / packages/** 実装"
+  - "Contract Gate / Command修正（後続Task）"
+  - "doc-template-split.yaml / contract-impl-doc-template-split レビュー定義の履歴記述変更"
+
+input:
+  files:
+    - path: "prompts/templates/docs/api-contract-spec.md"
+      required: true
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      required: true
+  issues:
+    - "#309"
+  prs: []
+
+output:
+  files:
+    - path: "prompts/templates/docs/api-spec.md"
+      action: "delete"
+      required: true
+    - path: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/api-int-002-reco-recommendation-run/pr-review.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/api-pub-002-recommendation-run/pr-review.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/_schemas/contract-definition.schema.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/contract-impl-task-separation/api-spec-deprecation-reference-update.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "api-spec.md が削除されている"
+  - "全参照が api-contract-spec.md / api-implementation-spec.md に是正されている"
+
+acceptance_criteria:
+  - "prompts/templates/docs/api-spec.md が存在しない"
+  - "grep で templates/docs/api-spec.md 参照が残っていない（履歴Task定義 doc-template-split.yaml を除く）"
+  - "api-int-002 / api-pub-002 が契約面+実装面テンプレートを参照している"
+  - "正本docs（方針書・設計書）が分割後方針と整合している"
+  - "scope外変更が含まれていない"
+
+branch:
+  name: "refactor/task-309-api-spec-deprecation-reference-update"
+  base: "refactor/epic-300-contract-impl-task-separation"
+  target: "refactor/epic-300-contract-impl-task-separation"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "api-spec.md 削除と参照是正が完了しているか"
+    - "個別API仕様書Taskの1成果物統合方針が明確か"
+    - "scope外変更が混入していないか"
+  specialist_reviews:
+    docs: true
+    contract: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
