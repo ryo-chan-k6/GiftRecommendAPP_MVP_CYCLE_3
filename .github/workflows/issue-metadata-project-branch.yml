@@ -46,8 +46,64 @@ jobs:
               context.eventName === "workflow_dispatch" &&
               String(context.payload.inputs?.dry_run || "") === "true";
 
+            const path = require("path");
+            const { createProjectV2Client } = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              ".github/scripts/project-v2-utils.cjs",
+            ));
+
             const projectOwner = process.env.PROJECT_OWNER || owner;
             const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
+            const projectV2 = createProjectV2Client({
+              github,
+              projectOwner,
+              projectNumber,
+              dryRun,
+            });
+
+            function failProjectSync(message) {
+              core.setFailed(message);
+              throw new Error(message);
+            }
+
+            async function requireProject(contextLabel) {
+              let project;
+              try {
+                project = await projectV2.loadProject();
+              } catch (error) {
+                failProjectSync(`Could not load ProjectV2 (${contextLabel}): ${error.message}`);
+              }
+              if (!project) {
+                failProjectSync(
+                  `ProjectV2を解決できませんでした（${contextLabel}）。owner=${projectOwner} number=${projectNumber}`,
+                );
+              }
+              return project;
+            }
+
+            async function requireIssueNodeId(issueNumber, contextLabel) {
+              const issueNodeId = await projectV2.getRepositoryIssueNodeId(owner, repo, issueNumber);
+              if (!issueNodeId) {
+                failProjectSync(`Issue #${issueNumber} のNode IDを解決できませんでした（${contextLabel}）。`);
+              }
+              return issueNodeId;
+            }
+
+            async function requireProjectItem(project, issueNodeId, issueNumber, contextLabel) {
+              let itemId;
+              try {
+                itemId = await projectV2.ensureProjectItem(project, issueNodeId);
+              } catch (error) {
+                failProjectSync(
+                  `Could not add/find ProjectV2 item for Issue #${issueNumber}（${contextLabel}）: ${error.message}`,
+                );
+              }
+              if (!itemId) {
+                failProjectSync(`Issue #${issueNumber} のProject itemを確保できませんでした（${contextLabel}）。`);
+              }
+              return itemId;
+            }
+
             const statusOptions = new Set(["Backlog", "Todo", "In Progress", "AI Review", "Human Review", "Done"]);
             const areaKeys = new Set(["web", "api", "reco", "batch", "db", "docs", "infra", "project"]);
             const typeKeys = new Set(["feature", "fix", "docs", "refactor", "chore", "test", "hotfix", "spike"]);
@@ -272,244 +328,57 @@ jobs:
               }
             }
 
-            async function loadProject() {
-              if (!projectNumber) return null;
-              const query = `
-                query($owner: String!, $number: Int!) {
-                  user(login: $owner) {
-                    projectV2(number: $number) {
-                      id
-                      fields(first: 100) {
-                        nodes {
-                          ... on ProjectV2SingleSelectField {
-                            id
-                            name
-                            options { id name }
-                          }
-                          ... on ProjectV2Field {
-                            id
-                            name
-                            dataType
-                          }
-                        }
-                      }
-                    }
-                  }
-                }`;
-              const data = await github.graphql(query, { owner: projectOwner, number: projectNumber });
-              return data.user?.projectV2 || null;
-            }
-
-            async function getIssueNodeId(issueNumber) {
-              const query = `
-                query($owner: String!, $repo: String!, $number: Int!) {
-                  repository(owner: $owner, name: $repo) {
-                    issue(number: $number) { id }
-                  }
-                }`;
-              const data = await github.graphql(query, { owner, repo, number: issueNumber });
-              return data.repository?.issue?.id || null;
-            }
-
-            async function ensureProjectItem(project, issueNodeId) {
-              if (dryRun) {
-                const existingItemId = await findProjectItem(project, issueNodeId);
-                if (existingItemId) return existingItemId;
-                core.info("[dry_run] Project item would be added if it does not exist.");
-                return "dry-run-project-item";
-              }
-
-              const mutation = `
-                mutation($projectId: ID!, $contentId: ID!) {
-                  addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
-                    item { id }
-                  }
-                }`;
-              try {
-                const data = await github.graphql(mutation, { projectId: project.id, contentId: issueNodeId });
-                return data.addProjectV2ItemById?.item?.id || null;
-              } catch (error) {
-                const message = String(error.message || error);
-                if (!message.includes("already exists")) throw error;
-              }
-
-              return await findProjectItem(project, issueNodeId);
-            }
-
-            async function findProjectItem(project, issueNodeId) {
-              const query = `
-                query($owner: String!, $number: Int!, $after: String) {
-                  user(login: $owner) {
-                    projectV2(number: $number) {
-                      items(first: 100, after: $after) {
-                        nodes {
-                          id
-                          content {
-                            ... on Issue { id }
-                          }
-                        }
-                        pageInfo { hasNextPage endCursor }
-                      }
-                    }
-                  }
-                }`;
-              let after = null;
-              for (;;) {
-                const data = await github.graphql(query, { owner: projectOwner, number: projectNumber, after });
-                const items = data.user?.projectV2?.items;
-                const hit = items?.nodes?.find((item) => item.content?.id === issueNodeId);
-                if (hit) return hit.id;
-                if (!items?.pageInfo?.hasNextPage) return null;
-                after = items.pageInfo.endCursor;
-              }
-            }
-
-            async function getFieldDateValue(project, itemId, fieldName) {
-              const query = `
-                query($projectId: ID!, $itemId: ID!, $fieldName: String!) {
-                  node(id: $projectId) {
-                    ... on ProjectV2 {
-                      item(id: $itemId) {
-                        fieldValueByName(name: $fieldName) {
-                          ... on ProjectV2ItemFieldDateValue { date }
-                        }
-                      }
-                    }
-                  }
-                }`;
-              const data = await github.graphql(query, { projectId: project.id, itemId, fieldName });
-              return data.node?.item?.fieldValueByName?.date || "";
-            }
-
-            function fieldByName(project, name) {
-              return project.fields.nodes.find((field) => field.name === name);
-            }
-
-            function optionFor(field, values) {
-              if (!field?.options) return null;
-              const candidates = values.filter(Boolean).map(String);
-              return field.options.find((option) => candidates.includes(option.name));
-            }
-
-            async function updateSingleSelect(project, itemId, fieldName, values) {
-              const field = fieldByName(project, fieldName);
-              const option = optionFor(field, values);
-              if (!field || !option) return false;
-              const mutation = `
-                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
-                  updateProjectV2ItemFieldValue(input: {
-                    projectId: $projectId,
-                    itemId: $itemId,
-                    fieldId: $fieldId,
-                    value: { singleSelectOptionId: $optionId }
-                  }) { projectV2Item { id } }
-                }`;
-              if (!dryRun) await github.graphql(mutation, { projectId: project.id, itemId, fieldId: field.id, optionId: option.id });
-              return true;
-            }
-
-            async function updateDate(project, itemId, fieldName, value) {
-              const field = fieldByName(project, fieldName);
-              const date = firstLine(value);
-              if (!field || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-              const mutation = `
-                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $date: Date!) {
-                  updateProjectV2ItemFieldValue(input: {
-                    projectId: $projectId,
-                    itemId: $itemId,
-                    fieldId: $fieldId,
-                    value: { date: $date }
-                  }) { projectV2Item { id } }
-                }`;
-              if (!dryRun) await github.graphql(mutation, { projectId: project.id, itemId, fieldId: field.id, date });
-              return true;
-            }
-
             async function syncProjectFields(issueNumber, sections, shouldSyncStatus) {
-              let project;
-              try {
-                project = await loadProject();
-              } catch (error) {
-                core.warning(`Could not load ProjectV2: ${error.message}`);
-                return;
-              }
-              if (!project) return;
-              const issueNodeId = await getIssueNodeId(issueNumber);
-              if (!issueNodeId) return;
-              let itemId;
-              try {
-                itemId = await ensureProjectItem(project, issueNodeId);
-              } catch (error) {
-                core.warning(`Could not add/find ProjectV2 item: ${error.message}`);
-                return;
-              }
-              if (!itemId) return;
+              const project = await requireProject("syncProjectFields");
+              const issueNodeId = await requireIssueNodeId(issueNumber, "syncProjectFields");
+              const itemId = await requireProjectItem(project, issueNodeId, issueNumber, "syncProjectFields");
 
               const priority = firstLine(sections["優先度"]).toLowerCase();
               const area = parseListValues(sections["対象領域"])[0]?.toLowerCase();
               const phase = firstLine(sections["プロジェクト工程"]);
               if (shouldSyncStatus) {
                 const initialStatus = resolveInitialStatus(sections);
-                await updateSingleSelect(project, itemId, "Status", [initialStatus]);
+                await projectV2.updateSingleSelect(project, itemId, "Status", [initialStatus]);
               }
-              await updateSingleSelect(project, itemId, "Phase", normalizePhaseOptionCandidates(phase));
-              await updateSingleSelect(project, itemId, "Priority", [priority, `priority: ${priority}`, priority.toUpperCase(), priority[0]?.toUpperCase() + priority.slice(1)]);
-              await updateSingleSelect(project, itemId, "Area", [area, `area: ${area}`, area?.[0]?.toUpperCase() + area?.slice(1)]);
-              await updateDate(project, itemId, "Planned Start", sections["Planned Start"]);
-              await updateDate(project, itemId, "Due Date", sections["Due Date"]);
+              await projectV2.updateSingleSelect(project, itemId, "Phase", normalizePhaseOptionCandidates(phase));
+              await projectV2.updateSingleSelect(project, itemId, "Priority", [
+                priority,
+                `priority: ${priority}`,
+                priority.toUpperCase(),
+                priority[0]?.toUpperCase() + priority.slice(1),
+              ]);
+              await projectV2.updateSingleSelect(project, itemId, "Area", [
+                area,
+                `area: ${area}`,
+                area?.[0]?.toUpperCase() + area?.slice(1),
+              ]);
+              await projectV2.updateDate(project, itemId, "Planned Start", sections["Planned Start"]);
+              await projectV2.updateDate(project, itemId, "Due Date", sections["Due Date"]);
             }
 
             async function syncActualStart(issueNumber, date, onlyIfEmpty = false) {
-              let project;
-              try {
-                project = await loadProject();
-              } catch (error) {
-                core.warning(`Could not load ProjectV2 for Actual Start: ${error.message}`);
-                return;
-              }
-              if (!project) return;
-              const issueNodeId = await getIssueNodeId(issueNumber);
-              if (!issueNodeId) return;
-              let itemId;
-              try {
-                itemId = await ensureProjectItem(project, issueNodeId);
-              } catch (error) {
-                core.warning(`Could not add/find ProjectV2 item for Actual Start: ${error.message}`);
-                return;
-              }
-              if (!itemId) return;
+              const project = await requireProject("Actual Start");
+              const issueNodeId = await requireIssueNodeId(issueNumber, "Actual Start");
+              const itemId = await requireProjectItem(project, issueNodeId, issueNumber, "Actual Start");
               if (onlyIfEmpty) {
-                const current = await getFieldDateValue(project, itemId, "Actual Start");
+                const current = await projectV2.getFieldDateValue(itemId, "Actual Start");
                 if (current) {
                   core.info(`Actual Start already set: ${current}`);
                   return;
                 }
               }
               if (dryRun) core.info(`[dry_run] update Actual Start to ${date}`);
-              const updated = await updateDate(project, itemId, "Actual Start", date);
-              if (!updated) core.warning("Project field `Actual Start` was not updated. Field missing or date format invalid.");
+              const updated = await projectV2.updateDate(project, itemId, "Actual Start", date);
+              if (!updated) {
+                core.warning("Project field `Actual Start` was not updated. Field missing or date format invalid.");
+              }
             }
 
             async function syncStatusInProgress(issueNumber) {
-              let project;
-              try {
-                project = await loadProject();
-              } catch (error) {
-                core.warning(`Could not load ProjectV2 for Status sync: ${error.message}`);
-                return;
-              }
-              if (!project) return;
-              const issueNodeId = await getIssueNodeId(issueNumber);
-              if (!issueNodeId) return;
-              let itemId;
-              try {
-                itemId = await ensureProjectItem(project, issueNodeId);
-              } catch (error) {
-                core.warning(`Could not add/find ProjectV2 item for Status sync: ${error.message}`);
-                return;
-              }
-              if (!itemId) return;
-              await updateSingleSelect(project, itemId, "Status", ["In Progress"]);
+              const project = await requireProject("Status In Progress");
+              const issueNodeId = await requireIssueNodeId(issueNumber, "Status In Progress");
+              const itemId = await requireProjectItem(project, issueNodeId, issueNumber, "Status In Progress");
+              await projectV2.updateSingleSelect(project, itemId, "Status", ["In Progress"]);
             }
 
             async function createBranch(issueNumber, sections) {
@@ -643,6 +512,10 @@ jobs:
           script: |
             const path = require("path");
             const slack = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/slack-notify.cjs"));
+            const { createProjectV2Client } = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              ".github/scripts/project-v2-utils.cjs",
+            ));
 
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -652,74 +525,17 @@ jobs:
             const comments = await slack.listIssueComments({ github, owner, repo, issueNumber: issue.number });
             const threadTs = slack.findThreadTsFromComments(comments, threadKey, channel);
 
-            async function getIssueProjectStatus(issueNumber) {
-              const projectOwner = process.env.PROJECT_OWNER || owner;
-              const projectNumber = Number(process.env.PROJECT_NUMBER || "4");
-              async function resolveProjectId(login, number) {
-                const query = `
-                  query($owner: String!, $number: Int!) {
-                    user(login: $owner) { projectV2(number: $number) { id } }
-                    organization(login: $owner) { projectV2(number: $number) { id } }
-                  }`;
-                const data = await github.graphql(query, { owner: login, number });
-                return data.user?.projectV2?.id || data.organization?.projectV2?.id || "";
-              }
-              try {
-                const projectId = await resolveProjectId(projectOwner, projectNumber);
-                if (!projectId) return "";
-                const queryIssue = `
-                  query($owner: String!, $repo: String!, $number: Int!) {
-                    repository(owner: $owner, name: $repo) { issue(number: $number) { id } }
-                  }`;
-                const issueData = await github.graphql(queryIssue, { owner, repo, number: issueNumber });
-                const issueId = issueData.repository?.issue?.id;
-                if (!issueId) return "";
-                const queryItems = `
-                  query($projectId: ID!, $after: String) {
-                    node(id: $projectId) {
-                      ... on ProjectV2 {
-                        items(first: 100, after: $after) {
-                          nodes { id content { ... on Issue { id } } }
-                          pageInfo { hasNextPage endCursor }
-                        }
-                      }
-                    }
-                  }`;
-                let after = null;
-                let itemId = "";
-                for (;;) {
-                  const data = await github.graphql(queryItems, { projectId, after });
-                  const items = data.node?.items;
-                  const hit = items?.nodes?.find((item) => item.content?.id === issueId);
-                  if (hit) {
-                    itemId = hit.id;
-                    break;
-                  }
-                  if (!items?.pageInfo?.hasNextPage) break;
-                  after = items.pageInfo.endCursor;
-                }
-                if (!itemId) return "";
-                const queryStatus = `
-                  query($projectId: ID!, $itemId: ID!) {
-                    node(id: $projectId) {
-                      ... on ProjectV2 {
-                        item(id: $itemId) {
-                          fieldValueByName(name: "Status") {
-                            ... on ProjectV2ItemFieldSingleSelectValue { name }
-                          }
-                        }
-                      }
-                    }
-                  }`;
-                const statusData = await github.graphql(queryStatus, { projectId, itemId });
-                return statusData.node?.item?.fieldValueByName?.name || "";
-              } catch (error) {
-                core.warning(`Project status lookup skipped: ${error.message}`);
-                return "";
-              }
+            const projectV2 = createProjectV2Client({
+              github,
+              projectOwner: process.env.PROJECT_OWNER || owner,
+              projectNumber: Number(process.env.PROJECT_NUMBER || "4"),
+            });
+            let projectStatus = "";
+            try {
+              projectStatus = await projectV2.readIssueStatus(owner, repo, issue.number);
+            } catch (error) {
+              core.warning(`Project status lookup skipped: ${error.message}`);
             }
-
-            const projectStatus = await getIssueProjectStatus(issue.number);
             const text = slack.buildSlackText({
               level: "info",
               title: "Issueを作成しました",

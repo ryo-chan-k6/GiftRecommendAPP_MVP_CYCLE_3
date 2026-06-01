@@ -12,7 +12,7 @@ Slack通知の文面・通知レベルは [Slack通知運用設計書](../../00_
 | 項目 | 内容 |
 | ---- | ---- |
 | 実装ファイル | `.github/workflows/pr-created-status-and-slack.yml` |
-| 共通script | `.github/scripts/slack-notify.cjs` |
+| 共通script | `.github/scripts/slack-notify.cjs` / `.github/scripts/project-v2-utils.cjs` |
 | Actions表示名 | `PR Created Status Sync` |
 | Run 名（一覧） | `pr-created · pr-open · PR #n` |
 
@@ -47,7 +47,7 @@ workflow permissionsは必要最小限にする。
 1. PR番号を取得する。
 2. PR from forkの場合はスキップする。
 3. PR本文から `Related to #<Issue番号>` または `Closes #<Issue番号>` を抽出する。
-4. 対象IssueのProject itemを取得する。
+4. 対象IssueのProject itemを **取得または追加** する（`project-v2-utils.cjs` の `ensureProjectItem`。未登録時は追加し、反映遅延時はリトライする）。
 5. Projects Statusを `AI Review` へ更新する。
 6. Slackに `[info] PRを作成しました` を送信する。
 7. Slack APIの戻り値 `ts` をPRコメントのthread markerに保存する。

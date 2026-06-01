@@ -15,4 +15,6 @@
 | [Definition Run Harnessワークフロー仕様書.md](./Definition%20Run%20Harness%E3%83%AF%E3%83%BC%E3%82%AF%E3%83%95%E3%83%AD%E3%83%BC%E4%BB%95%E6%A7%98%E6%9B%B8.md) | `definition-run.yml` / `.github/scripts/definition-run-prompt-builder.cjs` / `.github/scripts/definition-run-post-verify.cjs` | 外部トリガから Cursor Cloud Agent に Definition Run を依頼する Harness（現行: `/start-epic` dry-run + `/review-pr` live-run） |
 | [Definition Run Harness Slack起点dry-run受入チェックリスト.md](./Definition%20Run%20Harness%20Slack%E8%B5%B7%E7%82%B9dry-run%E5%8F%97%E5%85%A5%E3%83%81%E3%82%A7%E3%83%83%E3%82%AF%E3%83%AA%E3%82%B9%E3%83%88.md) | `definition-run.yml`（運用受入） | Slack -> `repository_dispatch` -> Harness の運用導線を受け入れるための判定基準 |
 
+ProjectV2 の参照・item 追加・フィールド更新の共通実装は [.github/scripts/project-v2-utils.cjs](../../../.github/scripts/project-v2-utils.cjs) を正とする（Issue Metadata / PR Status 系 workflow で利用）。
+
 運用ルールの正本は [Projects運用ルール.md](../../00_共通/プロジェクト管理/Projects運用ルール.md) §16 を参照する。
