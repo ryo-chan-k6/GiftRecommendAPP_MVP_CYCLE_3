@@ -100,3 +100,169 @@ test("resolveReviewDefinition: develop に無い場合は weak scan で not_foun
   assert.equal(result.ok, false);
   assert.equal(result.reason, "review_definition_not_found");
 });
+
+test("extractTargetIssueNumber: target.issue の scalar 形式を解釈する", () => {
+  const issue = resolver.extractTargetIssueNumber(
+    'definition_type: "review"\ntarget:\n  pr: 315\n  issue: 314\n',
+  );
+  assert.equal(issue, 314);
+});
+
+test("extractTargetIssueNumber: target.issue.number の nested 形式を解釈する", () => {
+  const issue = resolver.extractTargetIssueNumber(
+    'definition_type: "review"\ntarget:\n  issue:\n    number: 300\n',
+  );
+  assert.equal(issue, 300);
+});
+
+test("resolveReviewDefinition: Epic Branch は epic/pr-review 慣例パスを優先する", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-review-epic-"));
+  write(
+    path.join(root, "prompts/definitions/reviews/contract-impl-task-separation/command-update/pr-review.yaml"),
+    [
+      'definition_type: "review"',
+      "review:",
+      '  type: "task_pr_review"',
+      "target:",
+      "  pr: 315",
+      "  issue: 314",
+      '  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/command-update.yaml"',
+    ].join("\n"),
+  );
+  write(
+    path.join(root, "prompts/definitions/reviews/contract-impl-task-separation/contract-gate/pr-review.yaml"),
+    [
+      'definition_type: "review"',
+      "review:",
+      '  type: "task_pr_review"',
+      "target:",
+      "  pr: 312",
+      "  issue: 311",
+      '  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/contract-gate.yaml"',
+    ].join("\n"),
+  );
+  write(
+    path.join(root, "prompts/definitions/reviews/contract-impl-task-separation/epic/pr-review.yaml"),
+    [
+      'definition_type: "review"',
+      "review:",
+      '  type: "epic_pr_review"',
+      "target:",
+      "  pr: 320",
+      "  issue:",
+      "    number: 300",
+      '  task_definition: "prompts/definitions/epics/contract-impl-task-separation/epic.yaml"',
+    ].join("\n"),
+  );
+
+  const result = resolver.resolveReviewDefinition({
+    workspaceRoot: root,
+    headRef: "refactor/epic-300-contract-impl-task-separation",
+    issueNumber: 300,
+    prNumber: 320,
+    prBody: "Closes #300",
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(
+    result.path,
+    "prompts/definitions/reviews/contract-impl-task-separation/epic/pr-review.yaml",
+  );
+  assert.equal(result.source, "epic_review_convention");
+});
+
+test("resolveReviewDefinition: Epic Branch で epic/pr-review が無い場合は task 定義を同点化しない", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-review-epic-"));
+  write(
+    path.join(root, "prompts/definitions/reviews/contract-impl-task-separation/command-update/pr-review.yaml"),
+    [
+      'definition_type: "review"',
+      "review:",
+      '  type: "task_pr_review"',
+      "target:",
+      "  pr: 315",
+      "  issue: 314",
+      '  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/command-update.yaml"',
+    ].join("\n"),
+  );
+  write(
+    path.join(root, "prompts/definitions/reviews/contract-impl-task-separation/contract-gate/pr-review.yaml"),
+    [
+      'definition_type: "review"',
+      "review:",
+      '  type: "task_pr_review"',
+      "target:",
+      "  pr: 312",
+      "  issue: 311",
+      '  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/contract-gate.yaml"',
+    ].join("\n"),
+  );
+  write(
+    path.join(root, "prompts/definitions/reviews/api-spec-deprecation-reference-update/pr-review.yaml"),
+    [
+      'definition_type: "review"',
+      "review:",
+      '  type: "task_pr_review"',
+      "target:",
+      "  pr: 310",
+      "  issue: 309",
+      '  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/api-spec-deprecation-reference-update.yaml"',
+    ].join("\n"),
+  );
+
+  const result = resolver.resolveReviewDefinition({
+    workspaceRoot: root,
+    headRef: "refactor/epic-300-contract-impl-task-separation",
+    issueNumber: 300,
+    prNumber: 320,
+    prBody: "Closes #300",
+  });
+
+  assert.equal(result.ok, false);
+  assert.notEqual(result.reason, "ambiguous_review_definition");
+  assert.equal(result.reason, "review_definition_not_found");
+  assert.match(result.hint || "", /epic\/pr-review\.yaml/);
+});
+
+test("resolveReviewDefinition: Task Branch は target.issue / target.pr で一意解決する", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-review-task-"));
+  write(
+    path.join(root, "prompts/definitions/reviews/contract-impl-task-separation/command-update/pr-review.yaml"),
+    [
+      'definition_type: "review"',
+      "review:",
+      '  type: "task_pr_review"',
+      "target:",
+      "  pr: 315",
+      "  issue: 314",
+      '  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/command-update.yaml"',
+    ].join("\n"),
+  );
+  write(
+    path.join(root, "prompts/definitions/reviews/contract-impl-task-separation/contract-gate/pr-review.yaml"),
+    [
+      'definition_type: "review"',
+      "review:",
+      '  type: "task_pr_review"',
+      "target:",
+      "  pr: 312",
+      "  issue: 311",
+      '  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/contract-gate.yaml"',
+    ].join("\n"),
+  );
+
+  const result = resolver.resolveReviewDefinition({
+    workspaceRoot: root,
+    headRef: "refactor/task-314-command-update",
+    issueNumber: 314,
+    prNumber: 315,
+    prBody: "Related to #314",
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(
+    result.path,
+    "prompts/definitions/reviews/contract-impl-task-separation/command-update/pr-review.yaml",
+  );
+  assert.equal(result.source, "scan");
+});
