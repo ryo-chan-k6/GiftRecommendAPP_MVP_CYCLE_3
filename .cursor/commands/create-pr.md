@@ -157,10 +157,11 @@ Task Branchから `develop` へ直接PRを作成しない。
 
 | PR種別    | PR target        | Issue参照                               |
 | --------- | ---------------- | --------------------------------------- |
-| Task PR   | 親Epic Branch    | `Related to #<Task Issue番号>`          |
+| Task PR   | 親Epic Branch    | `Related to #<Task Issue番号>` のみ（**先頭行推奨**） |
 | Epic PR   | `develop`        | 必要に応じて `Closes #<Epic Issue番号>` |
 | Hotfix PR | 運用ルールに従う | Issue運用ルールに従う                   |
 
+Task PR では **`Closes #<Task Issue番号>` を記載しない**（`pr-created` 等の workflow が Task Issue を誤って close する、および Projects 完了制御と競合するため）。  
 Task Issueの close / Projects Done 更新は、PR本文の `Closes #...` に依存しない。  
 Task Issueの完了制御は、Task PRが親Epic Branchへmergeされた時点でGitHub Actions workflowにより明示的に行う。
 
@@ -183,8 +184,11 @@ Task Definitionを読み込み、以下を確認する。
 - acceptance_criteria
 - test_policy
 - human_review_required
+- `contract_gate`（Implementation Task で Gate 通過済みか PR 本文に明記する）
 
 IssueとDefinitionの内容が矛盾する場合は、PR作成を停止する。
+
+Implementation Task で `packages/contracts/**` または `apps/**/generated/**` の差分があるが、同一 Branch に先行 Contract 変更がない場合は、Contract Gate 未充足の可能性があるため PR 作成を停止し `/create-contract-task` を検討する。
 
 ---
 
@@ -199,7 +203,8 @@ IssueとDefinitionの内容が矛盾する場合は、PR作成を停止する。
 - out_of_scopeの変更が含まれていないか
 - secretや`.env`実値が含まれていないか
 - generatedファイルを手動編集していないか
-- API contract変更が混在していないか
+- API contract変更が混在していないか（契約変更は Contract Task / 先行 Contract PR に分離されているか）
+- API docs が `api-contract-spec.md` / `api-implementation-spec.md` の意図した面のみを更新しているか（廃止済み `api-spec.md` を復活させていないか）
 - DB schema変更が混在していないか
 - CI/CD設定変更が混在していないか
 - docsとsource codeの整合性が取れているか
