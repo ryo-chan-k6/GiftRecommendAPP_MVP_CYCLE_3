@@ -29,7 +29,7 @@
 | 3 | B | Pass | 手動 commit `6f1695e` → fix-ready `26717154277` → Harness bot fallback 手動 recovery → `approve_for_human_review` |
 | 4 | C | Pass | Human 混在 Request changes → `split_required`・dispatch スキップ・`In Progress` 維持 |
 | 4b | C-2 | Pass | split #296 → scope 内再指摘 → Harness recovery `26719359246` → `approve_for_human_review` |
-| 5 | Final (A-2) | 進行中 | Orchestrator 経由で develop 取り込み + 検証完了節 → fix-ready → Human Approve → merge |
+| 5 | Final (A-2) | Pass | Orchestrator → develop merge + Phase Final 節 → fix-ready `26730573732` → Harness recovery `26730645657` → `approve_for_human_review` |
 
 ## Phase A-1 テストコメント
 
