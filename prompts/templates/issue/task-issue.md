@@ -96,6 +96,34 @@ Issue同期・Project同期・Branch作成に使う機械可読ブロック。`#
 
 ---
 
+## 8.5 contract_gate（Implementation Task・該当時）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| required | `{{contract_gate.required}}` |
+| gate_id | `{{contract_gate.gate_id}}` |
+
+### prerequisite_contract_tasks
+
+{{#each contract_gate.prerequisite_contract_tasks}}
+- issue: `{{issue}}`
+  - definition: `{{definition}}`
+{{/each}}
+
+### verify_at
+
+{{#each contract_gate.verify_at}}
+- {{this}}
+{{/each}}
+
+### blocked_message
+
+{{contract_gate.blocked_message}}
+
+`required: true` の場合、Gate未通過時は作業を開始しない。正本は `docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md` §4。
+
+---
+
 ## 9. 入力資料
 
 ### 9.1 input docs

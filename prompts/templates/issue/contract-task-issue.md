@@ -103,6 +103,27 @@ Issue同期・Project同期・Branch作成に使う機械可読ブロック。`#
 
 ---
 
+## 7.5 implementation_gate
+
+| 項目 | 内容 |
+| ---- | ---- |
+| enabled | `{{implementation_gate.enabled}}` |
+| gate_id | `{{implementation_gate.gate_id}}` |
+
+### prerequisite_checks
+
+{{#each implementation_gate.prerequisite_checks}}
+- {{this}}
+{{/each}}
+
+### releases_implementation_for
+
+{{implementation_gate.releases_implementation_for}}
+
+Contract Task マージ後、上記 Gate を満たした Implementation Task の開始を許可する。正本は `docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md` §5.1。
+
+---
+
 ## 8. 入力資料
 
 ### 8.1 input docs

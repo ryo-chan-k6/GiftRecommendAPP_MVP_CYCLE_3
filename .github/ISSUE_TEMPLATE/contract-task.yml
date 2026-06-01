@@ -298,7 +298,8 @@ body:
         docs:
           - docs/...
         openapi:
-          - openapi/...
+          - packages/contracts/openapi/public-api.yaml
+          - packages/contracts/openapi/internal-reco-api.yaml
         orval:
           - ...
         generated:
@@ -317,7 +318,8 @@ body:
         docs:
           - docs/...
         openapi:
-          - openapi/...
+          - packages/contracts/openapi/public-api.yaml
+          - packages/contracts/openapi/internal-reco-api.yaml
         generated:
           - ...
         tests:
@@ -339,6 +341,23 @@ body:
         DB:
         CI/CD:
         security:
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_gate
+    attributes:
+      label: implementation_gate
+      description: Contract Task 完了時に解放する Implementation Task を記載。正本は Contract Gate運用設計書 §5.1。
+      placeholder: |
+        enabled: true
+        gate_id: contract-<api-id-kebab>
+        prerequisite_checks:
+          - openapi_merged_to_epic_branch
+          - orval_regenerated_if_generated_impact
+          - human_review_if_breaking_change
+        releases_implementation_for:
+          - Implementation tasks consuming the updated generated client
     validations:
       required: true
 
