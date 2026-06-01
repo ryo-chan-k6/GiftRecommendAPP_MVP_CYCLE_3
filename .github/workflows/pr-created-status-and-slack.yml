@@ -64,7 +64,7 @@ jobs:
               dryRun,
             });
 
-            async function markDispatchAiReview(prNumber, issueNumber) {
+            async function markDispatchAiReview(prNumber, issueNumber, pr) {
               if (dryRun) {
                 core.setOutput("dispatch_ai_review", "false");
                 return;
@@ -72,6 +72,8 @@ jobs:
               core.setOutput("dispatch_ai_review", "true");
               core.setOutput("pr_number", String(prNumber));
               core.setOutput("issue_number", String(issueNumber));
+              core.setOutput("pr_head_sha", pr.head.sha);
+              core.setOutput("pr_head_ref", pr.head.ref);
             }
 
             let prNumber;
@@ -184,7 +186,13 @@ jobs:
               core.warning(`Slack notification failed: ${result.error || "unknown"}`);
             }
 
-            await markDispatchAiReview(prNumber, issueNumber);
+            await markDispatchAiReview(prNumber, issueNumber, pr);
+
+      - name: Checkout PR head for Review Definition resolution
+        if: steps.sync-status.outputs.dispatch_ai_review == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.sync-status.outputs.pr_head_sha }}
 
       - name: Setup Node
         if: steps.sync-status.outputs.dispatch_ai_review == 'true'
