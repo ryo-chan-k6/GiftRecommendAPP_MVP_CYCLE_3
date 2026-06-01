@@ -108,8 +108,16 @@ Human Review → 人間による merge 判断
 ```text
 /create-contract-task @<contract-definition.yaml>
   ↓
-/work-issue → /create-pr → /review-pr
+Contract PR を親 Epic Branch へ merge
+  ↓
+Contract Gate 通過確認（/work-issue 手順・設計書 §4）
+  ↓
+/work-issue @<implementation-task-definition.yaml>
+  ↓
+/create-pr → /review-pr → Human Review
 ```
+
+Contract Gate の正本は [Contract Gate運用設計書](../docs/00_共通/AIエージェント運用/Contract%20Gate運用設計書.md)。Implementation Task は Gate 未通過で開始しない。
 
 ---
 
