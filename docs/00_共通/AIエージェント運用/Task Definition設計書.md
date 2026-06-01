@@ -618,7 +618,7 @@ Epic Definition では次を必須とする（schema 詳細は `prompts/definiti
 - ファイル名の `{API-ID}` は API一覧表記どおり（アンダースコア区切りは機能名との境界のみ）。
 - 調査例: `rg -F '[Task]API-INT-002:'` / `gh issue list --search 'API-INT-002: in:title'`
 - 試作例: `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml`
-- テンプレート: `prompts/templates/docs/api-spec.md`
+- テンプレート: `prompts/templates/docs/api-contract-spec.md` + `api-implementation-spec.md`（1成果物に統合）
 
 ### 15.3 画面仕様書Taskの命名（推奨）
 

@@ -589,7 +589,7 @@ input:
       required: true
       purpose: "対象API仕様を確認するため"
   templates:
-    - path: "prompts/templates/docs/api-spec.md"
+    - path: "prompts/templates/docs/api-contract-spec.md"
       required: true
       purpose: "API仕様書を標準フォーマットで更新するため"
       applies_to:
@@ -631,7 +631,7 @@ input:
 
 ````yaml
 templates:
-  - path: "prompts/templates/docs/api-spec.md"
+  - path: "prompts/templates/docs/api-contract-spec.md"
     required: true
     purpose: "API仕様書を標準フォーマットで更新するため"
     applies_to:
@@ -649,7 +649,7 @@ output:
     - path: "docs/05_実装設計/API仕様書.md"
       action: "update"
       required: true
-      template: "prompts/templates/docs/api-spec.md"
+      template: "prompts/templates/docs/api-contract-spec.md"
   files:
     - path: "apps/api/src/routes/recommendations.ts"
       action: "update"
@@ -693,7 +693,7 @@ docs:
   - path: "docs/05_実装設計/API仕様書.md"
     action: "update"
     required: true
-    template: "prompts/templates/docs/api-spec.md"
+    template: "prompts/templates/docs/api-contract-spec.md"
 ```
 
 ### 15.2 `output.generated`
@@ -1398,7 +1398,7 @@ output:
     - path: "docs/05_実装設計/API仕様書.md"
       action: "update"
       required: true
-      template: "prompts/templates/docs/api-spec.md"
+      template: "prompts/templates/docs/api-contract-spec.md"
   files:
     - path: "apps/api/src/routes/recommendations.ts"
       action: "update"
