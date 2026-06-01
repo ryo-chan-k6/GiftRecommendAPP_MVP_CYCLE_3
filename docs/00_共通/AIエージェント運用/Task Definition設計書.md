@@ -619,6 +619,7 @@ Epic Definition では次を必須とする（schema 詳細は `prompts/definiti
 - 調査例: `rg -F '[Task]API-INT-002:'` / `gh issue list --search 'API-INT-002: in:title'`
 - 試作例: `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml`
 - テンプレート: `prompts/templates/docs/api-contract-spec.md` + `api-implementation-spec.md`（1成果物に統合）
+- Contract Gate: [Contract Gate運用設計書](./Contract%20Gate運用設計書.md)（Implementation 開始前の必須条件。schema: `contract_gate` / `implementation_gate`）
 
 ### 15.3 画面仕様書Taskの命名（推奨）
 
