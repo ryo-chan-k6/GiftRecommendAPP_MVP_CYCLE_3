@@ -252,6 +252,11 @@ function buildPrompt({ command, definition, run_mode, output_section, target_pr 
       "Harness post-run 検証で dispatch 忘れがあるとジョブは失敗する。",
       "PR コメント本文は prompts/templates/review/ai-review-comment.md に従い、",
       "先頭に `# AI Review Result` と §1 の `| Review Result |` 行を必ず含める。",
+      "Harness では Cloud Agent から GitHub への書き込みはできず、",
+      "Harness が Agent の最終出力テキストから AI Review コメントを再構成して投稿する。",
+      "そのため AI Review コメント本文（ai-review-comment.md の全セクション）を",
+      "最終出力に省略せず逐語で出力する。`...` 等の省略、`/tmp` 等ローカルファイルへの退避、",
+      "「全文は … を参照」のような参照で本文を代替してはならない。",
       "Harness bot fallback は prose のみでは抽出できない場合がある。",
       "",
     );
