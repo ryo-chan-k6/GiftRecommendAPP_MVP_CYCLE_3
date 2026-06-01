@@ -76,9 +76,9 @@ input:
       required: true
       purpose: "対象API仕様を確認するため"
   templates:
-    - path: "prompts/templates/docs/api-spec.md"
+    - path: "prompts/templates/docs/api-contract-spec.md"
       required: true
-      purpose: "API仕様書を標準フォーマットで更新するため"
+      purpose: "API契約仕様書（契約面）を標準フォーマットで更新するため"
       applies_to:
         - "docs/05_実装設計/API仕様書.md"
   files:
@@ -92,7 +92,7 @@ input:
     - "#102"
   prs: []
   openapi:
-    path: "docs/openapi/openapi.yaml"
+    path: "packages/contracts/openapi/public-api.yaml"
     required: true
   orval:
     path: "orval.config.ts"
@@ -107,13 +107,13 @@ output:
     - path: "docs/05_実装設計/API仕様書.md"
       action: "update"
       required: true
-      template: "prompts/templates/docs/api-spec.md"
+      template: "prompts/templates/docs/api-contract-spec.md"
   files:
     - path: "apps/api/src/routes/recommendations.ts"
       action: "update"
       required: true
   openapi:
-    - path: "docs/openapi/openapi.yaml"
+    - path: "packages/contracts/openapi/public-api.yaml"
       action: "update"
       required: true
   orval: []
@@ -202,7 +202,7 @@ generation_policy:
   generated_expected: true
   manual_edit_allowed: false
   source_files:
-    - "docs/openapi/openapi.yaml"
+    - "packages/contracts/openapi/public-api.yaml"
   regenerate_commands:
     - "pnpm orval"
   output_paths:
@@ -210,6 +210,20 @@ generation_policy:
   verification_commands:
     - "pnpm typecheck"
     - "pnpm test"
+
+implementation_gate:
+  enabled: true
+  gate_id: "contract-recommendation-api-reason-field"
+  prerequisite_checks:
+    - "contract_pr_merged_to_parent_epic_branch"
+    - "openapi_in_packages_contracts"
+    - "orval_regenerated_if_generated_impact"
+    - "generated_not_manually_edited"
+    - "human_review_if_breaking_change"
+  releases_implementation_for:
+    - "task-recommendation-result-implementation（reason 表示の Implementation Task）"
+  notes:
+    - "gate_id は対応 Implementation Task の contract_gate.gate_id と一致させる"
 
 deliverables:
   - "Contract Task Issue"
@@ -266,7 +280,7 @@ parallel_control:
   depends_on: []
   blocks: []
   exclusive_files:
-    - "docs/openapi/openapi.yaml"
+    - "packages/contracts/openapi/public-api.yaml"
     - "apps/web/src/generated/api/"
   conflict_risk: "medium"
   generated_impact: true

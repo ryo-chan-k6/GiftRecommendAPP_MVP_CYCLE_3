@@ -1,0 +1,167 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-contract-impl-issue-pr-template-and-design-docs"
+  title: "Issue/PRテンプレ・設計書へのContract/Implementation分離反映"
+  summary: "Contract Gate・api-contract/api-implementation テンプレ分割を Issue/PR テンプレートと正本設計書に反映し、Command（Task4）とのギャップを解消する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-contract-impl-task-separation"
+  epic_issue_number: "#300"
+  epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+  next:
+    success: "/create-pr"
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Task1–4（パス標準化、テンプレ2分割、Contract Gate、Command反映）は完了済み。
+  Issue/PR テンプレート本体と設計書には contract_gate / implementation_gate の記載枠が未反映のため、
+  Command 手順とテンプレート間で運用ギャップが残る。
+
+objective: |
+  Contract/Implementation 分離と Contract Gate を、Issue/PR テンプレートおよび正本設計書へ反映し、
+  AI 起票・PR 作成時に Gate 確認とテンプレ使い分けが自然に行える状態にする。
+
+scope:
+  - "prompts/templates/issue/task-issue.md に contract_gate セクション追加"
+  - "prompts/templates/issue/contract-task-issue.md に implementation_gate セクション追加"
+  - "prompts/templates/pr/task-pr.md に Contract Gate 確認・docs テンプレ分離観点追加"
+  - "prompts/templates/pr/contract-pr.md に implementation_gate / Gate 解放記載追加"
+  - ".github/ISSUE_TEMPLATE/task.yml に contract_gate 入力（条件付き）追加"
+  - ".github/ISSUE_TEMPLATE/contract-task.yml の OpenAPI 正本パス是正 + implementation_gate 追加"
+  - "Contract Gate運用設計書 §8 更新"
+  - "AIエージェント活用型_開発運用フロー設計書のテンプレ・Gate 反映"
+  - "Task Definition設計書・Issue運用ルール・Prompts運用ルールの更新"
+  - "prompts/README.md のテンプレ一覧更新"
+  - "本 Task / Review Definition 作成"
+
+out_of_scope:
+  - ".cursor/commands/** の修正（Task4 完了済み）"
+  - "GitHub Actions / workflow 変更"
+  - "apps/** / packages/** / OpenAPI 実体 / generated"
+  - "Commands設計書の全面改訂"
+  - "Issueテンプレート設計書・PRテンプレート設計書の新規作成"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/AIエージェント活用型_開発運用フロー設計書.md"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+  issues:
+    - "#300"
+    - "#314"
+
+output:
+  files:
+    - path: "prompts/templates/issue/task-issue.md"
+      action: "update"
+      required: true
+    - path: "prompts/templates/issue/contract-task-issue.md"
+      action: "update"
+      required: true
+    - path: "prompts/templates/pr/task-pr.md"
+      action: "update"
+      required: true
+    - path: "prompts/templates/pr/contract-pr.md"
+      action: "update"
+      required: true
+    - path: ".github/ISSUE_TEMPLATE/task.yml"
+      action: "update"
+      required: true
+    - path: ".github/ISSUE_TEMPLATE/contract-task.yml"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/AIエージェント活用型_開発運用フロー設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/プロジェクト管理/Issue運用ルール.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/Prompts運用ルール.md"
+      action: "update"
+      required: true
+    - path: "prompts/README.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/contract-impl-task-separation/issue-pr-template-and-design-docs.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Contract Gate / テンプレ分離を反映した Issue/PR テンプレート"
+  - "正本設計書の更新"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "task-issue.md / task-pr.md が create-pr / work-issue / review-pr Command と矛盾しない"
+  - "Implementation Task Issue 本文に contract_gate 記載枠がある"
+  - "Contract Task Issue 本文に implementation_gate 記載枠がある"
+  - "task-pr.md に Contract Gate 通過確認セクションがある"
+  - "contract-task.yml の OpenAPI placeholder が packages/contracts/openapi/ を正とする"
+  - "廃止済み api-spec.md への誘導がテンプレートに残らない"
+  - "Contract Gate運用設計書 §8 が Task5 完了状態を反映する"
+  - ".cursor/commands/** を変更していない"
+
+branch:
+  name: "refactor/task-318-issue-pr-template-and-design-docs"
+  base: "refactor/epic-300-contract-impl-task-separation"
+  target: "refactor/epic-300-contract-impl-task-separation"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
+
+parallel_control:
+  depends_on:
+    - "task-contract-impl-command-update"
+  exclusive_files:
+    - "prompts/templates/issue/**"
+    - "prompts/templates/pr/**"
+    - ".github/ISSUE_TEMPLATE/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Command（Task4）とテンプレートの Gate 記載が整合しているか"
+    - "api-contract-spec / api-implementation-spec の使い分けが PR テンプレに反映されているか"
+    - "scope 外（commands / workflow / 実装）が含まれていないか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false

@@ -240,6 +240,7 @@ notes:
 | `impact`                       | 必須 | 影響範囲                   |
 | `provider_consumer`            | 必須 | provider / consumer 影響   |
 | `generation_policy`            | 必須 | generatedファイルの扱い    |
+| `implementation_gate`          | 条件付き | `generated_expected: true` 時は推奨。Implementation 解放条件 |
 | `deliverables`                 | 必須 | 成果物                     |
 | `acceptance_criteria`          | 必須 | 完了条件                   |
 | `branch`                       | 必須 | Branch方針                 |
@@ -589,7 +590,7 @@ input:
       required: true
       purpose: "対象API仕様を確認するため"
   templates:
-    - path: "prompts/templates/docs/api-spec.md"
+    - path: "prompts/templates/docs/api-contract-spec.md"
       required: true
       purpose: "API仕様書を標準フォーマットで更新するため"
       applies_to:
@@ -603,7 +604,7 @@ input:
   prs:
     - "#203"
   openapi:
-    path: "docs/openapi/openapi.yaml"
+    path: "packages/contracts/openapi/public-api.yaml"
     required: true
   orval:
     path: "orval.config.ts"
@@ -631,7 +632,7 @@ input:
 
 ````yaml
 templates:
-  - path: "prompts/templates/docs/api-spec.md"
+  - path: "prompts/templates/docs/api-contract-spec.md"
     required: true
     purpose: "API仕様書を標準フォーマットで更新するため"
     applies_to:
@@ -649,13 +650,13 @@ output:
     - path: "docs/05_実装設計/API仕様書.md"
       action: "update"
       required: true
-      template: "prompts/templates/docs/api-spec.md"
+      template: "prompts/templates/docs/api-contract-spec.md"
   files:
     - path: "apps/api/src/routes/recommendations.ts"
       action: "update"
       required: false
   openapi:
-    - path: "docs/openapi/openapi.yaml"
+    - path: "packages/contracts/openapi/public-api.yaml"
       action: "update"
       required: true
   orval:
@@ -693,7 +694,7 @@ docs:
   - path: "docs/05_実装設計/API仕様書.md"
     action: "update"
     required: true
-    template: "prompts/templates/docs/api-spec.md"
+    template: "prompts/templates/docs/api-contract-spec.md"
 ```
 
 ### 15.2 `output.generated`
@@ -798,7 +799,7 @@ generation_policy:
   generated_expected: true
   manual_edit_allowed: false
   source_files:
-    - "docs/openapi/openapi.yaml"
+    - "packages/contracts/openapi/public-api.yaml"
   regenerate_commands:
     - "pnpm orval"
   output_paths:
@@ -819,6 +820,39 @@ generation_policy:
 
 `manual_edit_allowed: true` は原則禁止する。  
 必要に見える場合は停止し、人間確認へ回す。
+
+---
+
+## 18.5 `implementation_gate`
+
+Contract Task 完了後に解放する **Implementation Task** の前提（Contract Gate）を定義する。
+
+正本: [Contract Gate運用設計書](../../../docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md)
+
+```yaml
+implementation_gate:
+  enabled: true
+  gate_id: "contract-api-pub-002-recommendations"
+  prerequisite_checks:
+    - "contract_pr_merged_to_parent_epic_branch"
+    - "openapi_in_packages_contracts"
+    - "orval_regenerated_if_generated_impact"
+    - "generated_not_manually_edited"
+    - "human_review_if_breaking_change"
+  releases_implementation_for:
+    - "Implementation Task that consumes generated client for this API"
+  notes: []
+```
+
+| 項目 | 必須 | 内容 |
+| ---- | ---- | ---- |
+| `enabled` | 必須 | Gate を有効化するか。`generated_expected: true` の Contract Task では原則 `true` |
+| `gate_id` | 条件付き | Gate 識別子。対応する Implementation Task の `contract_gate.gate_id` と一致させる |
+| `prerequisite_checks` | 推奨 | §4 必須チェックのうち本 Contract Task で担保する項目 |
+| `releases_implementation_for` | 推奨 | 解放対象の Implementation Task の説明（Issue / Definition 参照可） |
+| `notes` | 任意 | 補足 |
+
+Contract Task の PR が親 Epic Branch にマージされた時点で、対応する `gate_id` の Implementation Task は Gate 確認（`/start-task` / `/work-issue`）へ進める。Gate 確認手順の Command 反映は別 Task で行う。
 
 ---
 
@@ -1218,6 +1252,13 @@ generation_policy:
   output_paths: []
   verification_commands: []
 
+implementation_gate:
+  enabled: false
+  gate_id: null
+  prerequisite_checks: []
+  releases_implementation_for: []
+  notes: []
+
 deliverables: []
 
 acceptance_criteria: []
@@ -1383,7 +1424,7 @@ input:
     - "#102"
   prs: []
   openapi:
-    path: "docs/openapi/openapi.yaml"
+    path: "packages/contracts/openapi/public-api.yaml"
     required: true
   orval:
     path: "orval.config.ts"
@@ -1398,13 +1439,13 @@ output:
     - path: "docs/05_実装設計/API仕様書.md"
       action: "update"
       required: true
-      template: "prompts/templates/docs/api-spec.md"
+      template: "prompts/templates/docs/api-contract-spec.md"
   files:
     - path: "apps/api/src/routes/recommendations.ts"
       action: "update"
       required: true
   openapi:
-    - path: "docs/openapi/openapi.yaml"
+    - path: "packages/contracts/openapi/public-api.yaml"
       action: "update"
       required: true
   orval: []
@@ -1488,7 +1529,7 @@ generation_policy:
   generated_expected: true
   manual_edit_allowed: false
   source_files:
-    - "docs/openapi/openapi.yaml"
+    - "packages/contracts/openapi/public-api.yaml"
   regenerate_commands:
     - "pnpm orval"
   output_paths:
@@ -1550,7 +1591,7 @@ parallel_control:
   depends_on: []
   blocks: []
   exclusive_files:
-    - "docs/openapi/openapi.yaml"
+    - "packages/contracts/openapi/public-api.yaml"
     - "apps/web/src/generated/api/"
   conflict_risk: "medium"
   generated_impact: true

@@ -44,8 +44,8 @@
 | 設計書         | 1成果物 = 1Task                | `task-definition`     | 成果物別テンプレート                    | 認証・認可設計書、ログ設計書など       |
 | 図・構成図     | 1成果物 = 1Task                | `task-definition`     | Mermaid / draw.io方針が必要             | システム構成図、遷移図、依存関係図など |
 | 画面設計書     | 1画面 = 1Task                  | `task-definition`     | `prompts/templates/docs/screen-spec.md` | 画面一覧・画面遷移図をinputにする。命名は Task Definition設計書 §15.3 |
-| API仕様書      | 1 API = 1Task                  | `task-definition`     | `prompts/templates/docs/api-spec.md`    | OpenAPI変更を伴う場合はContract Task化。命名は §15.2 |
-| OpenAPI定義書  | 1 API変更単位 = 1Contract Task | `contract-definition` | `prompts/templates/docs/openapi-spec.md` | generated影響あり                      |
+| API仕様書      | 1 API = 1Task                  | `task-definition`     | `api-contract-spec.md` + `api-implementation-spec.md`（1成果物に統合） | OpenAPI変更を伴う場合はContract Task化。命名は §15.2 |
+| OpenAPI定義書  | 1 API変更単位 = 1Contract Task | `contract-definition` | `prompts/templates/docs/openapi-spec.md` | generated影響あり。完了後は [Contract Gate運用設計書](./Contract%20Gate運用設計書.md) を満たして Implementation 開始 |
 | バッチ仕様書   | 1バッチ = 1Task                | `task-definition`     | `prompts/templates/docs/batch-spec.md`   | バッチ処理一覧をinputにする。Batch ID 正本は `BATCH-*`（§15.4） |
 | テーブル定義書 | 1テーブル = 1Task              | `task-definition`     | `prompts/templates/docs/table-spec.md`   | テーブル一覧の物理テーブル名をTask識別子とし、物理ER・論理ERをinputにする |
 | DDL            | 1変更単位 = 1Task              | `task-definition`     | `.sql`                                  | migration方針と連動                    |
@@ -136,7 +136,7 @@ flowchart LR
 
 | 優先 | 成果物               | Task化単位                 | 使用テンプレート | 主なinput docs                                                       |
 | ---- | -------------------- | -------------------------- | ---------------- | -------------------------------------------------------------------- |
-| 1    | API仕様書            | 1 API = 1Task              | `api-spec.md`    | API設計方針書、API一覧、機能一覧、モジュール一覧、エラーコード定義書。命名 §15.2 |
+| 1    | API仕様書            | 1 API = 1Task              | `api-contract-spec.md` + `api-implementation-spec.md` | API設計方針書、API一覧、機能一覧、モジュール一覧、エラーコード定義書。命名 §15.2 |
 | 2    | 画面設計書           | 1画面 = 1Task              | `screen-spec.md` | 画面一覧、画面遷移図、API一覧、API仕様書。命名 §15.3               |
 | 3    | OpenAPI定義書        | 1 API変更 = 1Contract Task | `openapi-spec.md` | API仕様書、API設計方針書、エラーコード定義書                         |
 | 4    | 物理ER               | 1成果物 = 1Task            | `physical-er-spec.md` | 論理ER、テーブル一覧、正本定義表                                 |
@@ -155,7 +155,7 @@ flowchart LR
 
 | 候補                  | 推奨度 | 理由                                                                 |
 | --------------------- | ------ | -------------------------------------------------------------------- |
-| 個別API仕様書作成Task | 高     | `api-spec.md` が作成済みで、Contract Taskとの接続も確認しやすい      |
+| 個別API仕様書作成Task | 高     | `api-contract-spec.md` / `api-implementation-spec.md` が作成済みで、Contract Taskとの接続も確認しやすい |
 | 画面設計書作成Task    | 高     | `screen-spec.md` が作成済みで、画面・API連携のTask設計を検証しやすい |
 | 物理ER作成Task        | 中     | `physical-er-spec.md` は作成済みだが、DB全体影響が大きいため先に一覧整備が必要 |
 | OpenAPI定義書作成Task | 中     | `openapi-spec.md` は作成済み。Contract Definition検証にはよいが、最初の通常Taskとしては重い |
@@ -238,7 +238,7 @@ output:
 | 優先 | 仕様書種別 | 現状 | 基準テンプレート | Definition雛形パス例 | 識別子 |
 | ---- | ---------- | ---- | ---------------- | -------------------- | ------ |
 | 1 | 画面仕様書 | 作成済み例あり | `prompts/templates/docs/screen-spec.md` | `prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml` | `SCR-*` |
-| 2 | API仕様書 | 作成済み例あり | `prompts/templates/docs/api-spec.md` | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml` | `API-PUB-*` / `API-INT-*` |
+| 2 | API仕様書 | 作成済み例あり | `api-contract-spec.md` + `api-implementation-spec.md` | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml` | `API-PUB-*` / `API-INT-*` |
 | 3 | Recoモジュール仕様書 | 追加候補 | `prompts/templates/docs/module-spec.md` | `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml` | `MOD-RECO-*` |
 | 4 | バッチ仕様書 | 作成済み例あり | `prompts/templates/docs/batch-spec.md` | `prompts/definitions/tasks/batch-003-rakuten-item-pseudo-diff/batch-spec.yaml` | `BATCH-*` |
 | 5 | DBテーブル定義書 | 追加候補 | `prompts/templates/docs/table-spec.md` | `prompts/definitions/tasks/recommendation-request-table/table-spec.yaml` | 物理テーブル名 |
@@ -269,7 +269,8 @@ output:
 
 | テンプレート | 対象成果物 |
 | ------------ | ---------- |
-| `prompts/templates/docs/api-spec.md` | API仕様書 |
+| `prompts/templates/docs/api-contract-spec.md` | API契約仕様書（契約面） |
+| `prompts/templates/docs/api-implementation-spec.md` | API実装仕様書（実装面） |
 | `prompts/templates/docs/screen-spec.md` | 画面仕様書 |
 | `prompts/templates/docs/batch-spec.md` | バッチ仕様書 |
 | `prompts/templates/docs/module-spec.md` | Recoモジュール仕様書 |

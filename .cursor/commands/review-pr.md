@@ -284,6 +284,28 @@ PR diffを確認し、変更内容を分類する。
 
 `MOD-RECO-NNN` 個別モジュール Epic 配下の Task で `apps/reco/src/app/**`（API-INT エンドポイント層）に差分が出ている場合も同様に `blocked` とする（エンドポイント層は API-INT-NNN Epic の `allowed_paths`）。
 
+#### 6.2 Contract Gate（Implementation Task）
+
+Task Definition に `contract_gate.required: true`、または `output.generated` / `apps/**` 変更を伴う場合は、[Contract Gate運用設計書](../../docs/00_共通/AIエージェント運用/Contract%20Gate運用設計書.md) §4 に照らして確認する。
+
+- 先行 Contract PR が親 Epic Branch にマージ済みであること
+- OpenAPI 正本 `packages/contracts/openapi/` と generated 差分の整合
+- Implementation PR に契約変更が混在していないこと
+- `breaking_change` 時の Human Review 完了
+
+未充足なら `request_changes` または `blocked` とし、Fixer では Contract 混在修正を scope 外として `/create-contract-task` を提案する。
+
+#### 6.3 API docs テンプレート分離
+
+API 系 docs 差分がある場合:
+
+| 面 | 正本テンプレート |
+| ---- | ---------------- |
+| 契約面 | `prompts/templates/docs/api-contract-spec.md` / `openapi-spec.md` |
+| 実装面 | `prompts/templates/docs/api-implementation-spec.md` |
+
+廃止済み `prompts/templates/docs/api-spec.md` の復活・参照は `request_changes` とする。
+
 ---
 
 ### 7. `output.docs`を確認する

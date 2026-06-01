@@ -500,7 +500,7 @@ Issue本文の no-branch チェック
 Branch作成 workflow が Issue 本文を読み取り Branch 作成要否を判定
 ```
 
-workflow / Issue テンプレートの実装は後続タスクとする（現行 `.github` は旧仕様の場合あり）。
+Issue / PR テンプレートは `prompts/templates/issue/**`・`prompts/templates/pr/**` および `.github/ISSUE_TEMPLATE/**` を正とし、Contract Gate（`contract_gate` / `implementation_gate`）は [Contract Gate運用設計書](./Contract%20Gate運用設計書.md) §5 に従って記載する（Epic #300 Task5 反映済み）。
 
 ### 18.1 人主導タスク
 
@@ -838,7 +838,11 @@ OpenAPI / Orval / generated は横断影響が大きいため、通常の個別�
 | generated差分        | Contract専用Taskで生成・検証する                    |
 | API client利用側修正 | 影響範囲に応じて個別TaskまたはContract Taskに含める |
 
-### 30.2 横断影響ログ
+### 30.2 Contract Gate
+
+Implementation Task 開始前の必須条件（Contract Gate）は [Contract Gate運用設計書](./Contract%20Gate運用設計書.md) を正とする。Issue / PR テンプレート（`task-issue.md` / `task-pr.md` / `contract-task-issue.md` / `contract-pr.md`）および `.github/ISSUE_TEMPLATE/**` に記載枠を設ける。
+
+### 30.3 横断影響ログ
 
 複数Taskに影響する場合は、必要に応じて `ai-logs/cross-cutting/` に影響分析を記録する。
 

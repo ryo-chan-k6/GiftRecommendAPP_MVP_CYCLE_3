@@ -747,6 +747,8 @@ Issue本文には、以下を含める（`prompts/templates/issue/task-issue.md`
 - 確認観点
 - 並列作業・競合管理
 - AI運用補助項目
+- contract_gate（Implementation Task・`required: true` 時。`task-issue.md` §8.5）
+- implementation_gate（Contract Task。`contract-task-issue.md` §7.5）
 
 **GitHub Label は Issue 本文に列挙しない。** Definition の `issue.unit` / `issue.type` / `issue.area` および `project.fields.priority` から、`/start-task` 等が `unit: *` / `type: *` / `area: *` / `priority: *` を導出し、Issue 作成時に GitHub の Label として付与する（Task Definition設計書 §14、§36）。
 
@@ -777,6 +779,8 @@ PR本文には、以下を含める。
 - 作業サマリ
 - 対象Issue
 - 関連Epic
+- Contract Gate 確認（該当時。`task-pr.md` §8.5）
+- docs テンプレ使い分け（`api-contract-spec.md` / `api-implementation-spec.md`。`api-spec.md` は使用しない）
 - 変更内容
 - 作成・更新した成果物
 - 実施した確認

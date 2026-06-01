@@ -46,7 +46,7 @@ background: |
 
 objective: |
   API-PUB-002（レコメンド実行 / Public API、`POST /api/v1/recommendations`）について、apps/api 実装・OpenAPI 化・Contract Task 化・apps/web の api-client 利用・レビューが可能な粒度の個別API仕様書を作成する。
-  作成する仕様書は prompts/templates/docs/api-spec.md に準拠する。
+  作成する仕様書は prompts/templates/docs/api-contract-spec.md（契約面）および prompts/templates/docs/api-implementation-spec.md（実装面）に準拠し、1成果物ファイルに統合する。
 
 scope:
   - "API-PUB-002（レコメンド実行 / Public API）の個別API仕様書を新規作成する（成果物ファイル名: API-PUB-002_レコメンド実行API仕様書.md）"
@@ -59,16 +59,16 @@ scope:
   - "処理概要（apps/api 受付 → MOD-API-002 Validator → MOD-API-003 Application Service → MOD-API-004 Request Repository → MOD-API-005 Reco Client → API-INT-002 呼び出し → MOD-API-006 Response Mapper → web 返却）を Mermaid または文章で整理する"
   - "Request / Response と内部DTO・Recommendation Request / Result 定義のマッピングを整理する"
   - "provider（apps/api）/ consumer（apps/web）影響を整理する"
-  - "OpenAPI / Orval / generated 方針（paths/recommendations 配下、api-client 再生成）を整理する"
+  - "OpenAPI / Orval / generated 方針（packages/contracts/openapi/public-api.yaml、apps/web/src/generated/api/ 再生成）を整理する"
   - "セキュリティ仕様・非機能仕様・ログ監視・テスト観点を整理する"
   - "未決事項・人間判断が必要な事項を明記する"
 
 out_of_scope:
   - "API-INT-002（Reco推薦実行 / Internal API、`POST /internal/reco/v1/recommendations/run`）の個別API仕様書作成"
   - "Reco モジュール（MOD-RECO-001〜029）本体の設計・実装"
-  - "OpenAPI定義ファイル（openapi/paths/recommendations 等）の作成・更新"
+  - "OpenAPI定義ファイル（packages/contracts/openapi/public-api.yaml 等）の作成・更新"
   - "Orval設定ファイル（orval.config.ts）の作成・更新"
-  - "generated API client（apps/web/src/lib/api-client/recommendations/generated/**）の再生成"
+  - "generated API client（apps/web/src/generated/api/）の再生成"
   - "apps/api の実装"
   - "apps/web の実装（画面側 SCR-002 等）"
   - "apps/reco の実装"
@@ -126,9 +126,14 @@ input:
       required: false
       purpose: "レスポンスタイム、可用性、セキュリティ等の非機能要件を確認するため（詳細は同ディレクトリ配下の各要件文書を参照）"
   templates:
-    - path: "prompts/templates/docs/api-spec.md"
+    - path: "prompts/templates/docs/api-contract-spec.md"
       required: true
-      purpose: "個別API仕様書を標準フォーマットで作成するため"
+      purpose: "個別API仕様書の契約面（Request/Response/Error/Validation/互換性）を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      required: true
+      purpose: "個別API仕様書の実装面（処理フロー/マッピング/provider-consumer/ログ/結合テスト）を標準フォーマットで作成するため"
       applies_to:
         - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
   files: []
@@ -140,7 +145,7 @@ output:
     - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
       action: "create"
       required: true
-      template: "prompts/templates/docs/api-spec.md"
+      template: "prompts/templates/docs/api-contract-spec.md"
   files: []
   tests: []
   generated:
@@ -163,7 +168,7 @@ deliverables:
 
 acceptance_criteria:
   - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md が作成されている"
-  - "prompts/templates/docs/api-spec.md の章構成（§1〜§19）に準拠している"
+  - "prompts/templates/docs/api-contract-spec.md の契約面章および api-implementation-spec.md の実装面章に準拠している"
   - "API設計方針書と矛盾する URL / HTTP Method / 認証 / Error 形式を定義していない"
   - "API一覧の API-PUB-002 と矛盾する endpoint / HTTP Method / API種別（Public API）/ MVP対象 / Provider / Consumer / 関連画面 を定義していない"
   - "Recommendation Request 定義書に基づいて Request Body が整理されている"
@@ -237,7 +242,7 @@ test_policy:
   commands:
     - "markdownlint docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
   manual_checks:
-    - "api-spec.md の章構成に準拠していることを確認する"
+    - "api-contract-spec.md / api-implementation-spec.md の章構成に準拠していることを確認する"
     - "API設計方針書と矛盾がないことを確認する"
     - "API一覧の API-PUB-002 と endpoint / method / API種別（Public API）/ MVP対象 / Provider / Consumer / 関連画面 が一致していることを確認する"
     - "Recommendation Request 定義書と Request Body が整合していることを確認する"

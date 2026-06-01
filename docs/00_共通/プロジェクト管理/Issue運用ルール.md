@@ -701,6 +701,8 @@ GitHub UIから人間がIssueを作成するためのテンプレートは、以
 - unit
 - Branch summary
 - 親Epic
+- contract_gate（Implementation Task・該当時。`task.yml` / `task-issue.md` §8.5）
+- implementation_gate（Contract Task。`contract-task.yml` / `contract-task-issue.md` §7.5）
 - 作業範囲
 - 参照docs
 - 成果物
