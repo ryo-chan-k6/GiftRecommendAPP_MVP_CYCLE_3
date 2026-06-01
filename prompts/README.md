@@ -1361,8 +1361,10 @@ Templateを作成・修正した場合は、以下を確認する。
 | Example           | `prompts/definitions/_examples/review-definition.example.yaml`   | Review Definition記入例           |
 | Example           | `prompts/definitions/_examples/contract-definition.example.yaml` | Contract Definition記入例         |
 | Issue Template    | `prompts/templates/issue/epic-issue.md`                          | Epic Issue本文                    |
-| Issue Template    | `prompts/templates/issue/task-issue.md`                          | Task Issue本文                    |
-| Issue Template    | `prompts/templates/issue/contract-task-issue.md`                 | Contract Task Issue本文           |
+| Issue Template    | `prompts/templates/issue/task-issue.md`                          | Task Issue本文（§8.5 `contract_gate`） |
+| Issue Template    | `prompts/templates/issue/contract-task-issue.md`                 | Contract Task Issue本文（§7.5 `implementation_gate`） |
+| PR Template       | `prompts/templates/pr/task-pr.md`                                | Task PR本文（§8.5 Contract Gate 確認） |
+| PR Template       | `prompts/templates/pr/contract-pr.md`                            | Contract PR本文（§13.5 Gate 解放） |
 | PR Template       | `prompts/templates/pr/epic-pr.md`                                | Epic PR本文                       |
 | PR Template       | `prompts/templates/pr/task-pr.md`                                | Task PR本文                       |
 | PR Template       | `prompts/templates/pr/contract-pr.md`                            | Contract Task PR本文              |

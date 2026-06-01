@@ -180,6 +180,27 @@ generatedファイルは手動編集しない。
 
 ---
 
+## 13.5 implementation_gate / Gate 解放
+
+| 項目 | 内容 |
+| ---- | ---- |
+| gate_id | `{{implementation_gate.gate_id}}` |
+| enabled | `{{implementation_gate.enabled}}` |
+
+### prerequisite_checks（マージ前確認）
+
+{{#each implementation_gate.prerequisite_checks}}
+- [ ] {{this}}
+{{/each}}
+
+### 解放対象 Implementation Task
+
+{{implementation_gate.releases_implementation_for}}
+
+本 Contract PR マージ後、上記 Implementation Task は Contract Gate §4 を満たせば開始可能。
+
+---
+
 ## 14. Status更新意図
 
 | 項目 | 内容 |
