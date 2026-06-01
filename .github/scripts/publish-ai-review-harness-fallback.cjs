@@ -115,7 +115,9 @@ function synthesizeAiReviewComment({ reviewResult, prNumber }) {
 
 function extractLatestAiReviewCommentFromTranscript(transcript, { prNumber } = {}) {
   const blocks = extractAiReviewCommentBlocks(transcript);
-  if (blocks.length) return blocks[blocks.length - 1];
+  // 切り詰め（本文退避・省略）ブロックは投稿せず、合成フォールバックへ回す。
+  const usableBlocks = blocks.filter((block) => !publish.isTruncatedAiReviewComment(block));
+  if (usableBlocks.length) return usableBlocks[usableBlocks.length - 1];
 
   const unique = collectUniqueReviewResults(transcript);
   if (unique.length === 1) {

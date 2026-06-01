@@ -376,6 +376,8 @@ test("review-pr: live-run は target_pr 必須", () => {
     assert.equal(request.target_pr, "282");
     assert.match(request.prompt, /publish-ai-review-and-dispatch/);
     assert.match(request.prompt, /対象PR: #282/);
+    assert.match(request.prompt, /逐語で出力/);
+    assert.match(request.prompt, /本文を代替してはならない/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

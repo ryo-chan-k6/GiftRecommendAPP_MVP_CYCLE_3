@@ -166,6 +166,37 @@ test("publishAiReviewHarnessFallback: result.json から transcript 不足を補
   assert.equal(calls.filter((c) => c.method === "POST").length, 2);
 });
 
+test("extractLatestAiReviewCommentFromTranscript: 切り詰めブロックは採用せず合成へ", () => {
+  const truncated = `# AI Review Result
+
+## 1. レビュー結果
+
+| 項目          | 内容                       |
+| ------------- | -------------------------- |
+| Review Result | \`approve_for_human_review\` |
+...
+
+（全文は \`/tmp/ai-review-comment-302.md\` を参照）`;
+  const body = fallback.extractLatestAiReviewCommentFromTranscript(truncated, { prNumber: 302 });
+  assert.doesNotMatch(body, /\/tmp\//);
+  assert.match(body, /harness-fallback: synthesized/);
+  assert.match(body, /approve_for_human_review/);
+});
+
+test("extractLatestAiReviewCommentFromTranscript: 完全ブロックがあれば切り詰めより優先", () => {
+  const truncated = `# AI Review Result
+
+## 1. レビュー結果
+
+| Review Result | \`request_changes\` |
+...
+（全文は \`/tmp/x.md\` を参照）`;
+  const transcript = `${SAMPLE_COMMENT}\n---\n${truncated}`;
+  const body = fallback.extractLatestAiReviewCommentFromTranscript(transcript);
+  assert.doesNotMatch(body, /\/tmp\//);
+  assert.match(body, /## 22\. Status更新意図/);
+});
+
 test("extractLatestAiReviewCommentFromTranscript: prose の単一トークンから合成", () => {
   const transcript = [
     "レビュー結論は approve_for_human_review です。",
