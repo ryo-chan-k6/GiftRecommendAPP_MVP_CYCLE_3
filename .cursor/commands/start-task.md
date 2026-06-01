@@ -73,6 +73,7 @@ Definitionなしでの実行は原則禁止する。
 - `.cursor/rules/security.mdc`
 - `.cursor/rules/worktree.mdc`
 - `.cursor/rules/git-commit-message.mdc`
+- [Contract Gate運用設計書](../../docs/00_共通/AIエージェント運用/Contract%20Gate運用設計書.md)（`contract_gate` / `output.generated` を含む Task の場合）
 
 対象作業に関係しないRulesは詳細確認を省略してよい。
 
@@ -150,6 +151,8 @@ Task Definition設計書に従い、schema妥当性を確認する。
 - `acceptance_criteria` が検証可能な形で書かれているか
 - `dependencies` が未解決のままになっていないか
 - `operation_logging` の扱いが明確か
+- `contract_gate`（`required` / `prerequisite_contract_tasks`）が Implementation Task 向けに妥当か
+- `output.generated` と `contract_gate` の組み合わせが矛盾していないか
 
 不備がある場合は、Issue作成前フィードバックとして整理し、Issue作成へ進まない。
 
@@ -200,6 +203,18 @@ Definitionに依存Issue、依存PR、親Epic、依存Epicが指定されてい�
 - Task Branchのbaseが親Epic Branchでよいか
 
 依存Issue / PRが未完了で開始不可の場合は停止する。依存 Epic が `Done` でない場合は、`human_decision_points` への理由記載がなければ停止し、人間確認へ回す。
+
+#### 5.2 Contract Gate（Implementation Task）の前提を確認する
+
+Task Definition に `contract_gate.required: true` がある場合、または `output.generated.expected: true` / `apps/**` 変更を伴う Implementation Task の場合は、[Contract Gate運用設計書](../../docs/00_共通/AIエージェント運用/Contract%20Gate運用設計書.md) を参照する。
+
+| 確認 | 扱い |
+| ---- | ---- |
+| `contract_gate.prerequisite_contract_tasks` が列挙されている | 先行 Contract Task Issue / PR の完了・親 Epic Branch へのマージを `/work-issue` 前に確認する旨を Issue 起票サマリに含める |
+| Gate 未充足のまま実装を開始しそう | Issue 作成は進めてよいが、**実作業（`/work-issue`）は Gate 通過まで開始しない** |
+| 契約変更を本 Task に混在させる必要がある | 停止し `/create-contract-task` を検討する |
+
+`/start-task` では Gate の事実確認（マージ済み PR・generated 差分）までは必須としない。詳細チェックは `/work-issue` が担う。
 
 親Epic Issue / 親Epic Branch の存在確認結果は、**Issue本文には記載せず**、以下の出力形式でチャット（および必要に応じて dry-run 結果）へ明示する。
 

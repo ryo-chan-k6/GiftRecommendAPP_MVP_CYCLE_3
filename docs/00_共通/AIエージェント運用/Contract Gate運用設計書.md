@@ -16,7 +16,7 @@ Contract Gate を満たさない状態で Implementation Task を開始しては
 | `prompts/definitions/_schemas/contract-definition.schema.md` | Contract Definition の `implementation_gate` |
 | `prompts/definitions/_schemas/task-definition.schema.md` | Implementation Task の `contract_gate` |
 
-Command への具体的な手順反映は、Epic #300 の「Command修正」Task で行う。本書は**条件の正本**とする。
+Command への手順反映は `.cursor/commands/`（`/start-task`・`/work-issue`・`/create-pr`・`/review-pr`・`/create-contract-task`）を正とする。本書は**条件の正本**とする。
 
 ---
 
@@ -143,8 +143,8 @@ flowchart TD
 | ---- | ---- |
 | Epic | #300 API契約・実装Task分離方針の整合 |
 | 先行 Task | パス標準化、テンプレ分割、api-spec 廃止 |
-| 本書を反映する Task | Contract Gate 定義（schema / 本設計書） |
-| 後続 Task | Command 修正（`/start-task` 等への手順反映） |
+| 本書を反映する Task | Contract Gate 定義（schema / 本設計書）、Command 修正 |
+| 後続 Task | Issue/PR テンプレ・設計書反映 |
 
 ---
 
