@@ -195,6 +195,18 @@ function describeReviewDispatchViolation({ prNumber, verifyResult }) {
   };
 }
 
+function describeReviewCommentTruncatedViolation({ prNumber, verifyResult }) {
+  return {
+    type: "review_comment_truncated",
+    number: Number(prNumber),
+    title: "ai_review_comment_truncated",
+    url: verifyResult.latest_ai_review_comment_url || "",
+    created_at: verifyResult.latest_ai_review_comment_at || "",
+    actor_login: "-",
+    actor_type: "review_comment_truncated",
+  };
+}
+
 async function runReviewPrDispatchVerify({
   owner,
   repo,
@@ -330,6 +342,11 @@ async function runPostVerify({
       violations.push(
         describeReviewDispatchViolation({ prNumber: targetPr, verifyResult: dispatchVerify }),
       );
+    } else if (dispatchVerify.ok && dispatchVerify.latest_ai_review_comment_truncated) {
+      // dispatch は成立しているが、投稿済みコメント本文が切り詰められている。
+      violations.push(
+        describeReviewCommentTruncatedViolation({ prNumber: targetPr, verifyResult: dispatchVerify }),
+      );
     }
   }
 
@@ -377,7 +394,7 @@ function formatViolationsMarkdown(result) {
     const identifier =
       violation.type === "branch"
         ? `\`${violation.name}\` (${(violation.sha || "").slice(0, 7)})`
-        : violation.type === "review_dispatch"
+        : violation.type === "review_dispatch" || violation.type === "review_comment_truncated"
           ? `PR #${violation.number} ${violation.title || ""}`.trim()
           : `#${violation.number} ${violation.title || ""}`.trim();
     const actor = `${violation.actor_login || "-"} (${violation.actor_type})`;
@@ -398,6 +415,7 @@ module.exports = {
   describeIssueViolation,
   describePullViolation,
   describeReviewDispatchViolation,
+  describeReviewCommentTruncatedViolation,
   formatViolationsMarkdown,
   listBranchesCreatedSince,
   listIssuesCreatedSince,

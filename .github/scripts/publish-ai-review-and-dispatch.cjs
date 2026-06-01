@@ -7,8 +7,27 @@ const dispatch = require("./dispatch-pr-review-status-sync.cjs");
 const STATUS_SYNC_WORKFLOW_FILE = "pr-review-status-sync.yml";
 const DISPATCH_RUN_TITLE_RE = /status-sync · dispatch · PR #(\d+)/;
 
+// Cloud Agent が本文を自身のサンドボックスへ退避し、コメント本文を省略・参照で
+// 代替してしまう切り詰めパターン。これらを含む本文は不完全とみなし投稿を拒否する。
+const TRUNCATION_PATTERNS = Object.freeze([
+  // ローカル一時ファイル参照（例: /tmp/ai-review-comment-302.md）
+  /(?:^|[\s`(（])\/(?:tmp|var\/folders|private\/tmp)\/[^\s`)）]+\.(?:md|markdown|txt)/i,
+  // 「全文は … を参照」のような本文退避表現
+  /全文[はを][\s\S]{0,40}参照/,
+  /(?:full\s+(?:text|body|version)|complete\s+(?:text|body))[\s\S]{0,40}(?:see|refer)/i,
+  // 省略を示す単独の三点リーダ行
+  /^\s*(?:\.{3}|…|\.{3}\s*\(.*\)|…\s*\(.*\))\s*$/m,
+]);
+
 function nonEmpty(value) {
   return String(value || "").trim();
+}
+
+// AI Review コメント本文が切り詰め（本文退避・省略）されているかを判定する。
+function isTruncatedAiReviewComment(body) {
+  const text = String(body || "");
+  if (!text) return false;
+  return TRUNCATION_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 function resolveRepository({ owner, repo, repository }) {
@@ -137,6 +156,12 @@ async function publishAiReviewAndDispatch({
   if (!dispatchOnly) {
     if (!slack.isAiReviewResultComment(body)) {
       throw new Error("Comment is not ai-review-comment format. Use prompts/templates/review/ai-review-comment.md.");
+    }
+    if (isTruncatedAiReviewComment(body)) {
+      throw new Error(
+        "Comment appears truncated (local file reference / omission marker). " +
+          "Post the full AI Review comment body verbatim, not a /tmp reference or summary.",
+      );
     }
     commentResult = await postPullRequestComment({
       owner: resolved.owner,
@@ -310,6 +335,7 @@ async function verifyAiReviewDispatch({
     pr_number: String(prNumber),
     latest_ai_review_comment_url: latestAiComment.html_url || "",
     latest_ai_review_comment_at: latestAiComment.created_at || "",
+    latest_ai_review_comment_truncated: isTruncatedAiReviewComment(latestAiComment.body || ""),
     dispatch_run_id: matchedRun.id,
     dispatch_run_url: matchedRun.html_url || "",
     dispatch_run_title: matchedRun.display_title || matchedRun.name || "",
@@ -438,6 +464,8 @@ if (require.main === module) {
 module.exports = {
   STATUS_SYNC_WORKFLOW_FILE,
   DISPATCH_RUN_TITLE_RE,
+  TRUNCATION_PATTERNS,
+  isTruncatedAiReviewComment,
   resolveReviewResult,
   postPullRequestComment,
   publishAiReviewAndDispatch,
