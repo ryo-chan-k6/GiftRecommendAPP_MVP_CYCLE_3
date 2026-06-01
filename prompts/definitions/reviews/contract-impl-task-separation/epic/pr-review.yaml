@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-contract-impl-task-separation-epic-pr"
+  title: "API契約・実装Task分離Epic PRレビュー"
+  summary: "Epic #300 統合PR（develop 向け）の AI Review。子Task 6件の成果物統合・scope・完了条件を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+target:
+  pr: 320
+  issue:
+    number: 300
+  task_definition: "prompts/definitions/epics/contract-impl-task-separation/epic.yaml"
+  source_branch: "refactor/epic-300-contract-impl-task-separation"
+  target_branch: "develop"
+
+review_scope:
+  docs: true
+  project_operation: true
+  contract: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/contract-impl-task-separation/epic.yaml"
+    required: true
+  issue:
+    number: 300
+    required: true
+
+review_points:
+  common:
+    - "Epic Definition scope / out_of_scope を満たしているか"
+    - "forbidden_paths（apps / openapi / packages / db）への変更がないか"
+    - "子Task 6件が Epic Branch に統合されているか"
+    - "Task PR target=Epic Branch / Epic PR target=develop の方針が維持されているか"
+    - "Closes #300 が PR 本文にあるか"
+  docs:
+    - "OpenAPI正本=packages/contracts/ が正本docs・テンプレ・Gate設計書で一貫しているか"
+    - "Contract Task / Implementation Task の責務分離が反映されているか"
+    - "api-spec.md が廃止され api-contract-spec / api-implementation-spec へ誘導されているか"
+  contract:
+    - "Contract Gate 条件が Command / schema / テンプレで一致しているか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "scope外変更が混入していない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+
+issue:
+  unit: "epic"
+  type: "refactor"
+  area: "docs"
