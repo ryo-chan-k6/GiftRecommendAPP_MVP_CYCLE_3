@@ -125,9 +125,39 @@ function extractTargetIssueNumber(reviewContent) {
   const block = issueBlock ? issueBlock[0] : reviewContent;
   const issueSection = /issue:\s*[\s\S]*?(?=\n\s{0,2}[a-z_]+:|\s*$)/i.exec(block);
   const scoped = issueSection ? issueSection[0] : block;
-  const value = extractYamlScalar(scoped, "number");
+  const nestedValue = extractYamlScalar(scoped, "number");
+  const nestedParsed = Number(nestedValue);
+  if (Number.isInteger(nestedParsed) && nestedParsed > 0) {
+    return nestedParsed;
+  }
+  const scalarMatch = /^\s*issue:\s*(\d+)\s*$/m.exec(block);
+  if (scalarMatch) {
+    const scalarParsed = Number(scalarMatch[1]);
+    if (Number.isInteger(scalarParsed) && scalarParsed > 0) {
+      return scalarParsed;
+    }
+  }
+  return null;
+}
+
+function extractTargetPrNumber(reviewContent) {
+  const targetBlock = /target:\s*[\s\S]*?(?=\n[a-z_]+:|\n\S|\s*$)/i.exec(String(reviewContent || ""));
+  const block = targetBlock ? targetBlock[0] : reviewContent;
+  const value = extractYamlScalar(block, "pr");
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function extractReviewType(reviewContent) {
+  const reviewBlock = /review:\s*[\s\S]*?(?=\n[a-z_]+:|\n\S|\s*$)/i.exec(String(reviewContent || ""));
+  const block = reviewBlock ? reviewBlock[0] : reviewContent;
+  return extractYamlScalar(block, "type");
+}
+
+function epicReviewConventionPath(summary) {
+  const normalized = nonEmpty(summary).toLowerCase();
+  if (!normalized) return "";
+  return `${DEFINITION_ROOT}reviews/${normalized}/epic/${REVIEW_FILE_NAME}`;
 }
 
 function extractAiReviewRequired(taskContent) {
@@ -208,7 +238,10 @@ function findTaskDefinitionBySummary(workspaceRoot, summary) {
   return matches;
 }
 
-function scoreReviewCandidate(relativePath, { issueNumber, branchInfo, taskDefinitionPath, workspaceRoot }) {
+function scoreReviewCandidate(
+  relativePath,
+  { issueNumber, prNumber, branchInfo, taskDefinitionPath, workspaceRoot },
+) {
   const absolute = path.join(workspaceRoot, relativePath);
   const content = readFileSafe(absolute);
   if (!content.includes('definition_type: "review"') && !content.includes("definition_type: review")) {
@@ -217,16 +250,28 @@ function scoreReviewCandidate(relativePath, { issueNumber, branchInfo, taskDefin
 
   let score = 1;
   const targetIssue = extractTargetIssueNumber(content);
+  const targetPr = extractTargetPrNumber(content);
   const linkedTask = extractTaskDefinitionPath(content);
+  const reviewType = extractReviewType(content);
 
   if (issueNumber && targetIssue === issueNumber) score += 100;
+  if (prNumber && targetPr === prNumber) score += 100;
   if (taskDefinitionPath && linkedTask === taskDefinitionPath) score += 100;
 
   if (branchInfo?.summary) {
     const summary = branchInfo.summary;
-    if (relativePath.toLowerCase().includes(`/${summary}/`)) score += 40;
-    if (linkedTask.toLowerCase().includes(`/${summary}/`) || linkedTask.toLowerCase().includes(`/${summary}.`)) {
-      score += 40;
+    if (branchInfo.unit === "epic") {
+      const epicReviewPath = epicReviewConventionPath(summary);
+      if (relativePath === epicReviewPath) score += 40;
+      if (linkedTask.toLowerCase().includes(`/epics/${summary}/`)) score += 40;
+      if (reviewType === "epic_pr_review") score += 30;
+      if (reviewType === "task_pr_review") score -= 20;
+    } else {
+      if (relativePath.toLowerCase().includes(`/${summary}/`)) score += 40;
+      if (linkedTask.toLowerCase().includes(`/${summary}/`) || linkedTask.toLowerCase().includes(`/${summary}.`)) {
+        score += 40;
+      }
+      if (reviewType === "task_pr_review") score += 10;
     }
   }
 
@@ -239,6 +284,7 @@ function resolveReviewDefinition({
   issueBody = "",
   headRef = "",
   issueNumber = null,
+  prNumber = null,
   definitionOverride = "",
   taskDefinitionOverride = "",
 }) {
@@ -270,6 +316,15 @@ function resolveReviewDefinition({
 
   const branchInfo = parseBranchRef(headRef);
   const resolvedIssueNumber = issueNumber || branchInfo?.issueNumber || null;
+  const resolvedPrNumber =
+    Number.isInteger(Number(prNumber)) && Number(prNumber) > 0 ? Number(prNumber) : null;
+
+  if (branchInfo?.unit === "epic" && branchInfo.summary) {
+    const epicReviewPath = epicReviewConventionPath(branchInfo.summary);
+    if (fileExists(path.join(workspace, epicReviewPath))) {
+      return { ok: true, path: epicReviewPath, source: "epic_review_convention" };
+    }
+  }
 
   const taskOverride = normalizePath(taskDefinitionOverride);
   const taskCandidates = new Set();
@@ -298,6 +353,7 @@ function resolveReviewDefinition({
       path: relativePath,
       score: scoreReviewCandidate(relativePath, {
         issueNumber: resolvedIssueNumber,
+        prNumber: resolvedPrNumber,
         branchInfo,
         taskDefinitionPath: [...taskCandidates][0] || "",
         workspaceRoot: workspace,
@@ -315,24 +371,43 @@ function resolveReviewDefinition({
     return { ok: true, path: strongMatches[0].path, source: "scan", score: strongMatches[0].score };
   }
   if (strongMatches.length > 1 && strongMatches[0].score === strongMatches[1].score) {
+    const hint =
+      branchInfo?.unit === "epic" && branchInfo.summary
+        ? `Epic Branch では ${epicReviewConventionPath(branchInfo.summary)} を作成するか、PR 本文に Review Definition パスを明示してください。`
+        : undefined;
     return {
       ok: false,
       reason: "ambiguous_review_definition",
       paths: strongMatches.slice(0, 5).map((entry) => entry.path),
+      hint,
     };
   }
 
   if (scored.length > 0) {
+    const hint =
+      branchInfo?.unit === "epic" && branchInfo.summary
+        ? `Epic Branch では ${epicReviewConventionPath(branchInfo.summary)} を作成するか、PR 本文に Review Definition パスを明示してください。`
+        : undefined;
     return {
       ok: false,
       reason: "review_definition_not_found",
       headRef,
       issueNumber: resolvedIssueNumber,
-      hint: "Review Definition is not on the default branch. Resolve from PR head via changed files or explicit path.",
+      hint,
+      note: "Review Definition is not on the default branch. Resolve from PR head via changed files or explicit path.",
     };
   }
 
-  return { ok: false, reason: "review_definition_not_found", headRef, issueNumber: resolvedIssueNumber };
+  return {
+    ok: false,
+    reason: "review_definition_not_found",
+    headRef,
+    issueNumber: resolvedIssueNumber,
+    hint:
+      branchInfo?.unit === "epic" && branchInfo.summary
+        ? `Epic Branch では ${epicReviewConventionPath(branchInfo.summary)} を作成するか、PR 本文に Review Definition パスを明示してください。`
+        : undefined,
+  };
 }
 
 function resolveAiReviewRequired({ workspaceRoot, reviewDefinitionPath, taskDefinitionPath = "" }) {
@@ -363,8 +438,13 @@ module.exports = {
   reviewDefinitionCandidatesFromDirectoryHints,
   pickReviewDefinitionFromChangedFiles,
   extractTaskDefinitionPath,
+  extractTargetIssueNumber,
+  extractTargetPrNumber,
+  extractReviewType,
+  epicReviewConventionPath,
   extractAiReviewRequired,
   listReviewDefinitionFiles,
+  scoreReviewCandidate,
   resolveReviewDefinition,
   resolveAiReviewRequired,
   siblingReviewDefinitionForTask,
