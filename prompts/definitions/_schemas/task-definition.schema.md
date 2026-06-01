@@ -160,6 +160,16 @@ parallel_control:
   contract_impact: false
   db_impact: false
 
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at:
+    - "/start-task"
+    - "/work-issue"
+  checks: []
+  blocked_message: null
+
 test_policy:
   required: []
   commands: []
@@ -236,6 +246,7 @@ Task Definition設計書 **§10 必須項目** に準拠する。
 | `dependencies.epics`           | 識別子付きTaskでは必須 | 依存 Epic Issue 番号配列（成果物化方針書 §3.5.3） |
 | `parallel_control`             | 必須           | 並列作業制御                      |
 | `parallel_control.exclusive_files` | 識別子付きTaskでは推奨 | 親 Epic の `epic_scope.allowed_paths` 内に収まること |
+| `contract_gate`                | 条件付き       | Implementation Task で契約前提が必要な場合（§23.5） |
 | `test_policy`                  | 必須           | テスト・検証方針                  |
 | `review.human_review_required` | 必須           | Human Review要否                  |
 | `review.ai_review_required`    | 必須           | AI Review要否                     |
@@ -985,6 +996,41 @@ parallel_control:
 
 ---
 
+## 23.5 `contract_gate`
+
+Implementation Task 開始前の **Contract Gate**（先行 Contract Task 完了・OpenAPI / generated 整合）を定義する。
+
+正本: [Contract Gate運用設計書](../../../docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md)
+
+```yaml
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at:
+    - "/start-task"
+    - "/work-issue"
+  checks:
+    - "contract_pr_merged_to_parent_epic_branch"
+    - "openapi_in_packages_contracts"
+    - "orval_regenerated_if_generated_impact"
+    - "generated_not_manually_edited"
+  blocked_message: "Contract Gate未通過。先行 Contract Task のマージと OpenAPI/generated を確認してください。"
+```
+
+| 項目 | 必須 | 内容 |
+| ---- | ---- | ---- |
+| `required` | 必須 | Gate 確認が必要か。`output.generated.expected: true` または `apps/**` 実装変更では原則 `true` |
+| `gate_id` | 条件付き | 対応 Contract Definition の `implementation_gate.gate_id` と一致 |
+| `prerequisite_contract_tasks` | 条件付き | 先行 Contract Task（Issue 番号・Definition path） |
+| `verify_at` | 推奨 | 確認する Command（手順反映は Command 修正 Task で詳細化） |
+| `checks` | 推奨 | 本 Task で実施する Gate チェック項目 |
+| `blocked_message` | 任意 | Gate 未通過時に表示する停止メッセージ |
+
+`required: true` の場合、Agent は Gate 未通過と判断したら作業を開始してはならない。Command へのチェックリスト埋め込みは Epic #300 の Command 修正 Task の scope とする。
+
+---
+
 ## 24. `test_policy`
 
 テスト・検証方針を定義する。
@@ -1259,6 +1305,16 @@ parallel_control:
   generated_impact: false
   contract_impact: false
   db_impact: false
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at:
+    - "/start-task"
+    - "/work-issue"
+  checks: []
+  blocked_message: null
 
 test_policy:
   required: []

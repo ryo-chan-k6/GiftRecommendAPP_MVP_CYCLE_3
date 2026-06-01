@@ -45,7 +45,7 @@
 | 図・構成図     | 1成果物 = 1Task                | `task-definition`     | Mermaid / draw.io方針が必要             | システム構成図、遷移図、依存関係図など |
 | 画面設計書     | 1画面 = 1Task                  | `task-definition`     | `prompts/templates/docs/screen-spec.md` | 画面一覧・画面遷移図をinputにする。命名は Task Definition設計書 §15.3 |
 | API仕様書      | 1 API = 1Task                  | `task-definition`     | `api-contract-spec.md` + `api-implementation-spec.md`（1成果物に統合） | OpenAPI変更を伴う場合はContract Task化。命名は §15.2 |
-| OpenAPI定義書  | 1 API変更単位 = 1Contract Task | `contract-definition` | `prompts/templates/docs/openapi-spec.md` | generated影響あり                      |
+| OpenAPI定義書  | 1 API変更単位 = 1Contract Task | `contract-definition` | `prompts/templates/docs/openapi-spec.md` | generated影響あり。完了後は [Contract Gate運用設計書](./Contract%20Gate運用設計書.md) を満たして Implementation 開始 |
 | バッチ仕様書   | 1バッチ = 1Task                | `task-definition`     | `prompts/templates/docs/batch-spec.md`   | バッチ処理一覧をinputにする。Batch ID 正本は `BATCH-*`（§15.4） |
 | テーブル定義書 | 1テーブル = 1Task              | `task-definition`     | `prompts/templates/docs/table-spec.md`   | テーブル一覧の物理テーブル名をTask識別子とし、物理ER・論理ERをinputにする |
 | DDL            | 1変更単位 = 1Task              | `task-definition`     | `.sql`                                  | migration方針と連動                    |
