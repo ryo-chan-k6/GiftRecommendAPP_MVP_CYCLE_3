@@ -60,6 +60,7 @@ Definitionなしでの実行は原則禁止する。
 - `.cursor/rules/security.mdc`
 - `.cursor/rules/worktree.mdc`
 - `.cursor/rules/git-commit-message.mdc`
+- [Contract Gate運用設計書](../../docs/00_共通/AIエージェント運用/Contract%20Gate運用設計書.md)（`contract_gate.required: true` または generated / apps 変更 Task）
 
 対象作業に関係しないRulesは詳細確認を省略してよい。  
 ただし、docs、source code、test、API contract、DB schema、generated、CI/CD、Branch、securityに影響する場合は、関連Rulesを必ず確認する。
@@ -154,6 +155,26 @@ IssueとTask Definitionの内容が矛盾する場合は、推測で進めず停
 - 他Taskの作業Branchと混同していないか
 
 Branchが存在しない、baseが誤っている、または対象Issueとの対応が不明な場合は停止する。
+
+---
+
+### 3.5 Contract Gateを確認する（Implementation Task）
+
+Task Definition の `contract_gate.required: true`、または `output.generated.expected: true` / `apps/**` を変更する Implementation Task では、作業開始前に [Contract Gate運用設計書](../../docs/00_共通/AIエージェント運用/Contract%20Gate運用設計書.md) §4 の必須チェックを確認する。
+
+| No | チェック | 未充足時 |
+| --: | -------- | -------- |
+| 1 | 先行 Contract Task の PR が **親 Epic Branch にマージ済み** | 停止。Contract 完了を待つ |
+| 2 | OpenAPI 正本が `packages/contracts/openapi/*.yaml` に反映済み | 停止 |
+| 3 | generated 影響がある場合、Orval 再生成差分が Contract PR に含まれる | 停止 |
+| 4 | generated を手動編集していない | 停止 |
+| 5 | `breaking_change: true` の場合、Contract PR の Human Review 完了 | 停止・人間判断待ち |
+| 6 | `contract_gate.prerequisite_contract_tasks` / `parallel_control.depends_on` の依存 Task 完了 | 停止 |
+
+未通過時は `contract_gate.blocked_message`（定義にある場合）を出力し、実装・docs 作成に進まない。  
+純粋な docs Task（`apps/**` / `packages/**` / generated 実体を変更しない）で `contract_gate.required: false` の場合は本節を省略してよい。
+
+契約面 docs は `prompts/templates/docs/api-contract-spec.md` / `openapi-spec.md`、実装面は `api-implementation-spec.md` を正とする（廃止済み `api-spec.md` は新規作成に使わない）。
 
 ---
 
