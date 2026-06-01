@@ -27,51 +27,60 @@ function createProjectV2Client(options) {
     findRetryDelayMs = DEFAULT_FIND_RETRY_DELAY_MS,
   } = options;
 
-  async function loadProject() {
-    if (!projectNumber) return null;
+  const projectFieldsSelection = `
+    id
+    fields(first: 100) {
+      nodes {
+        ... on ProjectV2SingleSelectField {
+          id
+          name
+          options { id name }
+        }
+        ... on ProjectV2Field {
+          id
+          name
+          dataType
+        }
+      }
+    }`;
+
+  async function loadProjectFromUser() {
     const query = `
       query($owner: String!, $number: Int!) {
         user(login: $owner) {
           projectV2(number: $number) {
-            id
-            fields(first: 100) {
-              nodes {
-                ... on ProjectV2SingleSelectField {
-                  id
-                  name
-                  options { id name }
-                }
-                ... on ProjectV2Field {
-                  id
-                  name
-                  dataType
-                }
-              }
-            }
-          }
-        }
-        organization(login: $owner) {
-          projectV2(number: $number) {
-            id
-            fields(first: 100) {
-              nodes {
-                ... on ProjectV2SingleSelectField {
-                  id
-                  name
-                  options { id name }
-                }
-                ... on ProjectV2Field {
-                  id
-                  name
-                  dataType
-                }
-              }
-            }
+            ${projectFieldsSelection}
           }
         }
       }`;
     const data = await github.graphql(query, { owner: projectOwner, number: projectNumber });
-    return data.user?.projectV2 || data.organization?.projectV2 || null;
+    return data.user?.projectV2 || null;
+  }
+
+  async function loadProjectFromOrganization() {
+    const query = `
+      query($owner: String!, $number: Int!) {
+        organization(login: $owner) {
+          projectV2(number: $number) {
+            ${projectFieldsSelection}
+          }
+        }
+      }`;
+    try {
+      const data = await github.graphql(query, { owner: projectOwner, number: projectNumber });
+      return data.organization?.projectV2 || null;
+    } catch (error) {
+      const message = String(error.message || error);
+      if (message.includes("Could not resolve to an Organization")) return null;
+      throw error;
+    }
+  }
+
+  async function loadProject() {
+    if (!projectNumber) return null;
+    const fromUser = await loadProjectFromUser();
+    if (fromUser) return fromUser;
+    return loadProjectFromOrganization();
   }
 
   async function getRepositoryIssueNodeId(owner, repo, issueNumber) {
