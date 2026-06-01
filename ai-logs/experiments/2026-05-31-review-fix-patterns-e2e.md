@@ -28,7 +28,8 @@
 | 2 | A-2 | Pass | Orchestrator 経由 fix → fix-ready dispatch → `AI Review` |
 | 3 | B | Pass | 手動 commit `6f1695e` → fix-ready `26717154277` → Harness bot fallback 手動 recovery → `approve_for_human_review` |
 | 4 | C | Pass | Human 混在 Request changes → `split_required`・dispatch スキップ・`In Progress` 維持 |
-| 4b | C-2 | Pass | split #296 → scope 内再指摘 → fix-ready `26718896018` → Harness 初回 `26718901254` fail → infra #297 → Harness 再実行 `26719359246` success |
+| 4b | C-2 | Pass | split #296 → scope 内再指摘 → Harness recovery `26719359246` → `approve_for_human_review` |
+| 5 | Final (A-2) | 進行中 | Orchestrator 経由で develop 取り込み + 検証完了節 → fix-ready → Human Approve → merge |
 
 ## Phase A-1 テストコメント
 
@@ -108,3 +109,24 @@ Phase B用の検証用コメントです。
 | bot fallback | success（post-verify violations=0） |
 | AI Review 結果 | `approve_for_human_review` @ 2026-05-31T17:25:58Z |
 | 次ステップ | Human Review → Approve → merge #290 → Issue #289 Done |
+
+## Phase Final（Orchestrator 経由・検証完了）
+
+> E2E 検証を Phase A-2 パターン（Orchestrator 自然言語依頼 → Fixer → fix-ready）で完了させる。
+
+| 項目 | 値 |
+|------|-----|
+| Orchestrator 依頼 | Issue #289 検証完了のため develop 取り込み + 本節追加 + Issue #289 reopen |
+| Human Review 指摘 | Phase C-2 後 `approve_for_human_review`（AI Review @ 2026-05-31T17:25:58Z）— merge 前 develop 同期が必要 |
+| Fixer 対応 | `origin/develop` merge（`a492023`）+ Phase Final 節追加 |
+| Issue #289 | reopen（2026-06-01） |
+| Fix Outcome | `ready_for_ai_review`（publish 後に記録） |
+| 期待フロー | fix-ready dispatch → Harness → `approve_for_human_review` → Human Approve → merge #290 |
+
+### Phase Final 完了条件
+
+- [x] Phase 0〜C-2 Pass 記録済み
+- [x] develop 取り込み（merge commit 後に記録）
+- [ ] fix-ready → Harness → AI Review Pass
+- [ ] Human Review Approve
+- [ ] PR #290 merge → Issue #289 Done
