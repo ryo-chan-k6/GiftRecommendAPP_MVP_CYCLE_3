@@ -2,14 +2,14 @@ schema_version: "1.0"
 definition_type: "review"
 
 review:
-  id: "review-contract-impl-contract-gate-pr"
+  id: "review-contract-impl-task-separation-contract-gate-pr"
   title: "Contract Gate定義 PRレビュー"
   summary: "Contract Gate 正本・schema・記入例 Task の PR を AI Review する"
   type: "task_pr_review"
   status: "ready"
 
 target:
-  pr: 0
+  pr: 312
   issue: 311
   task_definition: "prompts/definitions/tasks/contract-impl-task-separation/contract-gate.yaml"
   source_branch: "refactor/task-311-contract-gate-definition"
