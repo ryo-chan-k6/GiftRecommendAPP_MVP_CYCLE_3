@@ -144,6 +144,77 @@ function shouldSkipForContext({ context, fixOutcome }) {
   return { skip: false };
 }
 
+const HARNESS_AUTO_DISPATCH_CONTEXTS = Object.freeze(["pr-created", "fix-ready"]);
+
+const INFRA_HARNESS_SKIP_LABELS = Object.freeze([
+  "type: infra",
+  "type:infra",
+  "area: infra",
+  "area:infra",
+]);
+
+const AUTOMATION_ONLY_CHANGED_FILE_PREFIXES = Object.freeze([".github/"]);
+
+function normalizeLabelNames(labels) {
+  return (labels || []).map((item) => String(item.name || item).trim().toLowerCase()).filter(Boolean);
+}
+
+function hasInfraHarnessSkipLabel(labels) {
+  const names = normalizeLabelNames(labels);
+  return names.some((name) => INFRA_HARNESS_SKIP_LABELS.includes(name));
+}
+
+function changedFilesAreAutomationOnly(files) {
+  const paths = (files || [])
+    .map((item) => String(item.filename || item.path || item).trim())
+    .filter(Boolean);
+  if (!paths.length) return false;
+  return paths.every((filePath) =>
+    AUTOMATION_ONLY_CHANGED_FILE_PREFIXES.some((prefix) => filePath.startsWith(prefix)),
+  );
+}
+
+function isHarnessAutoDispatchContext(context) {
+  return HARNESS_AUTO_DISPATCH_CONTEXTS.includes(nonEmpty(context));
+}
+
+function shouldSkipHarnessAutoDispatch({ context, pullLabels, issueLabels, changedFiles }) {
+  if (!isHarnessAutoDispatchContext(context)) {
+    return { skip: false };
+  }
+
+  if (hasInfraHarnessSkipLabel(pullLabels) || hasInfraHarnessSkipLabel(issueLabels)) {
+    return { skip: true, reason: "infra_pr" };
+  }
+
+  if (changedFilesAreAutomationOnly(changedFiles)) {
+    return { skip: true, reason: "automation_only_changes" };
+  }
+
+  return { skip: false };
+}
+
+function buildHarnessDirectRecoveryCommand({
+  owner,
+  repo,
+  prNumber,
+  definition,
+  issueNumber,
+  headRef,
+}) {
+  const parts = [
+    "gh workflow run \"Definition Run Harness\"",
+    `-f command=review-pr`,
+    `-f definition=${definition || "prompts/definitions/<path>/pr-review.yaml"}`,
+    "-f run_mode=live-run",
+    `-f target_pr=${prNumber}`,
+  ];
+  if (issueNumber) parts.push(`-f request_issue=${issueNumber}`);
+  if (headRef) parts.push(`-f ref=${headRef}`);
+  parts.push(`--repo ${owner}/${repo}`);
+  return parts.join(" \\\n  ");
+}
+
 function buildRecoveryCommand({ owner, repo, prNumber, definition, issueNumber, requestedBy }) {
   const parts = [
     "node .github/scripts/dispatch-review-pr-harness.cjs",
@@ -207,6 +278,7 @@ async function dispatchReviewPrHarness({
     null;
 
   let issueBody = "";
+  let issueLabels = [];
   if (relatedIssue) {
     const issue = await loadIssue({
       owner: resolvedRepo.owner,
@@ -216,6 +288,45 @@ async function dispatchReviewPrHarness({
       fetchImpl,
     });
     issueBody = issue.body || "";
+    issueLabels = issue.labels || [];
+  }
+
+  let pullLabels = pull.labels || [];
+  let changedFiles = [];
+  if (isHarnessAutoDispatchContext(context)) {
+    if (!pullLabels.length) {
+      const pullIssue = await loadIssue({
+        owner: resolvedRepo.owner,
+        repo: resolvedRepo.repo,
+        issueNumber: pr,
+        token: authToken,
+        fetchImpl,
+      });
+      pullLabels = pullIssue.labels || [];
+    }
+    changedFiles = await loadPullRequestFiles({
+      owner: resolvedRepo.owner,
+      repo: resolvedRepo.repo,
+      prNumber: pr,
+      token: authToken,
+      fetchImpl,
+    });
+  }
+
+  const infraSkip = shouldSkipHarnessAutoDispatch({
+    context,
+    pullLabels,
+    issueLabels,
+    changedFiles,
+  });
+  if (infraSkip.skip) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: infraSkip.reason,
+      pr_number: String(pr),
+      issue_number: relatedIssue ? String(relatedIssue) : null,
+    };
   }
 
   const workspace = nonEmpty(workspaceRoot) || process.cwd();
@@ -410,7 +521,15 @@ if (require.main === module) {
 }
 
 module.exports = {
-  dispatchReviewPrHarness,
-  shouldSkipForContext,
+  AUTOMATION_ONLY_CHANGED_FILE_PREFIXES,
+  HARNESS_AUTO_DISPATCH_CONTEXTS,
+  INFRA_HARNESS_SKIP_LABELS,
+  buildHarnessDirectRecoveryCommand,
   buildRecoveryCommand,
+  changedFilesAreAutomationOnly,
+  dispatchReviewPrHarness,
+  hasInfraHarnessSkipLabel,
+  isHarnessAutoDispatchContext,
+  shouldSkipForContext,
+  shouldSkipHarnessAutoDispatch,
 };

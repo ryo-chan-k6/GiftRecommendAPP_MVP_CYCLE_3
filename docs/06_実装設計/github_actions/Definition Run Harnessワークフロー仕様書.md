@@ -339,7 +339,44 @@ Definition Run Harness が live-run で Issue を起票した後、以下の既�
 
 live-run を解禁する場合のみ、`live_run_supported: true` 化 + 権限・ref 設計 + 承認ゲート（GitHub Environments approval）+ post-verify の許容ルール更新を別 PR で行う。
 
-## 15. 動作確認手順（MVP 受入）
+## 15. review-pr live-run recovery
+
+### 15.1 fix-ready `current_status_mismatch` 後
+
+[PR再AI Review待ちStatus更新ワークフロー仕様書](./PR再AI%20Review待ちStatus更新ワークフロー仕様書.md) §5.3 を正本とする。  
+fix-ready 再実行では Harness は起動しない。**Definition Run Harness を直接 dispatch** する。
+
+```bash
+gh workflow run "Definition Run Harness" \
+  -f command=review-pr \
+  -f definition=prompts/definitions/<path>/pr-review.yaml \
+  -f run_mode=live-run \
+  -f target_pr=<PR番号> \
+  -f request_issue=<Task Issue番号> \
+  -f requested_by=harness-recovery \
+  -f ref=<PR head ref> \
+  --repo <owner>/<repo>
+```
+
+### 15.2 bot fallback / post-verify 失敗後
+
+1. Actions log で fallback 理由（`no_comment_in_transcript` 等）と post-verify violations を確認
+2. インフラ改修 PR で fallback / post-verify を修正（develop マージ）
+3. §15.1 の **Harness 直接 dispatch** で再実行（`ref` に PR head ref を必ず指定）
+
+### 15.3 手動 CLI（`--context` なし）
+
+```bash
+node .github/scripts/dispatch-review-pr-harness.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --issue <Task Issue番号> \
+  --definition prompts/definitions/<path>/pr-review.yaml
+```
+
+`--context pr-created|fix-ready` を付けない限り、インフラ PR skip（§ [AI Review自動起動](./AI%20Review自動起動ワークフロー連携仕様書.md) §5）は適用されない。
+
+## 16. 動作確認手順（MVP 受入）
 
 1. `secrets.CURSOR_API_KEY` を設定
 2. Actions UI から `workflow_dispatch` で次を実行
@@ -356,7 +393,7 @@ live-run を解禁する場合のみ、`live_run_supported: true` 化 + 権限�
 10. post-run 検証の発火確認: dry-run プロンプトを意図的に外して試験 Issue を作る再現テストで、Guard Violations に検出され job が失敗すること（受入時に手動で1回）
 11. `CURSOR_API_KEY` や類似 secret が Job Summary / Actions log に出ていないこと
 
-## 16. 関連ドキュメント
+## 17. 関連ドキュメント
 
 | ドキュメント | 役割 |
 | --- | --- |

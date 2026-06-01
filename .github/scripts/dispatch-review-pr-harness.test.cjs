@@ -197,3 +197,89 @@ test("dispatchReviewPrHarness: local 解決失敗時 PR files から fallback", 
   );
   assert.equal(dispatchBody.client_payload.ref, "docs/task-289-review-fix-patterns-e2e");
 });
+
+test("shouldSkipHarnessAutoDispatch: type: infra ラベルで skip", () => {
+  const result = auto.shouldSkipHarnessAutoDispatch({
+    context: "pr-created",
+    pullLabels: [{ name: "type: infra" }],
+    issueLabels: [],
+    changedFiles: [{ filename: "apps/web/foo.ts" }],
+  });
+  assert.equal(result.skip, true);
+  assert.equal(result.reason, "infra_pr");
+});
+
+test("shouldSkipHarnessAutoDispatch: .github/ のみ変更で skip", () => {
+  const result = auto.shouldSkipHarnessAutoDispatch({
+    context: "fix-ready",
+    pullLabels: [],
+    issueLabels: [],
+    changedFiles: [{ filename: ".github/scripts/foo.cjs" }],
+  });
+  assert.equal(result.skip, true);
+  assert.equal(result.reason, "automation_only_changes");
+});
+
+test("shouldSkipHarnessAutoDispatch: 手動 CLI（context なし）は skip しない", () => {
+  const result = auto.shouldSkipHarnessAutoDispatch({
+    context: "",
+    pullLabels: [{ name: "type: infra" }],
+    issueLabels: [],
+    changedFiles: [{ filename: ".github/workflows/foo.yml" }],
+  });
+  assert.equal(result.skip, false);
+});
+
+test("dispatchReviewPrHarness: automation_only_changes は skipped", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dispatch-auto-"));
+  const reviewPath = "prompts/definitions/_e2e/sample/pr-review.yaml";
+  write(path.join(root, reviewPath), 'definition_type: "review"\n');
+
+  const result = await auto.dispatchReviewPrHarness({
+    owner: "o",
+    repo: "r",
+    prNumber: 297,
+    issueNumber: 289,
+    definition: reviewPath,
+    context: "pr-created",
+    workspaceRoot: root,
+    token: "token",
+    fetchImpl: async (url) => {
+      if (url.includes("/pulls/297/files")) {
+        return jsonResponse([{ filename: ".github/scripts/dispatch-review-pr-harness.cjs" }]);
+      }
+      if (url.includes("/pulls/297")) {
+        return jsonResponse({
+          body: "Related to #289",
+          head: { ref: "fix/harness", repo: { full_name: "o/r" } },
+          labels: [],
+        });
+      }
+      if (url.includes("/issues/289")) {
+        return jsonResponse({ body: "", labels: [{ name: "type: docs" }] });
+      }
+      if (url.includes("/issues/297")) {
+        return jsonResponse({ body: "Related to #289", labels: [] });
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "automation_only_changes");
+});
+
+test("buildHarnessDirectRecoveryCommand: workflow_dispatch コマンドを生成", () => {
+  const cmd = auto.buildHarnessDirectRecoveryCommand({
+    owner: "o",
+    repo: "r",
+    prNumber: 290,
+    definition: "prompts/definitions/_e2e/review-fix-patterns-e2e/pr-review.yaml",
+    issueNumber: 289,
+    headRef: "docs/task-289-review-fix-patterns-e2e",
+  });
+  assert.match(cmd, /gh workflow run "Definition Run Harness"/);
+  assert.match(cmd, /target_pr=290/);
+  assert.match(cmd, /ref=docs\/task-289-review-fix-patterns-e2e/);
+});
