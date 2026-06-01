@@ -29,6 +29,7 @@
 | 3 | B | Pass | 手動 commit `6f1695e` → fix-ready `26717154277` → Harness bot fallback 手動 recovery → `approve_for_human_review` |
 | 4 | C | Pass | Human 混在 Request changes → `split_required`・dispatch スキップ・`In Progress` 維持 |
 | 4b | C-2 | Pass | split #296 → scope 内再指摘 → Harness recovery `26719359246` → `approve_for_human_review` |
+| 4c | C-split (#296) | Pass | split トラッキング Issue 化のみ・実装 PR なし → Issue #296 close（2026-06-01） |
 | 5 | Final (A-2) | Pass | Orchestrator → develop merge + Phase Final 節 → fix-ready `26730573732` → Harness recovery `26730645657` → `approve_for_human_review` |
 
 ## Phase A-1 テストコメント
@@ -97,6 +98,24 @@ Phase B用の検証用コメントです。
 | Harness 自動起動 | run `26718901254` |
 | Fix コメント | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/pull/290#issuecomment-4587432245 |
 
+## Issue #296（Phase C split トラッキング）
+
+> Phase C `split_required` で切り出した scope 外 Task の **Issue 化のみ** を検証。実装 PR・AI/Human Review は本 E2E スコープ外。
+
+| 項目 | 値 |
+|------|-----|
+| Issue | #296 |
+| タイトル | apps/reco デバッグ log（scope 外） |
+| 分割元 | #289 / PR #290 Phase C |
+| 作成契機 | Fix Outcome `split_required` + Human 判断（PR #290 コメント） |
+| AI Review required | `false`（Task 定義どおり） |
+| Human Review required | `false`（トラッキング用） |
+| Branch | 未作成（Issue 化のみ・workflow 対象外） |
+| 実装 PR | **なし**（別 Task 化の運用確認が目的） |
+| 完了操作 | Orchestrator 判断 → 検証ログ記録 → Issue #296 close |
+| クローズ日 | 2026-06-01 |
+| 備考 | 将来 `apps/reco` 実装が必要なら **新規 Task / PR** として起票 |
+
 ### Phase C-2 Harness 失敗・インフラ改修・再検証
 
 | 項目 | 値 |
@@ -120,13 +139,16 @@ Phase B用の検証用コメントです。
 | Human Review 指摘 | Phase C-2 後 `approve_for_human_review`（AI Review @ 2026-05-31T17:25:58Z）— merge 前 develop 同期が必要 |
 | Fixer 対応 | `origin/develop` merge（`a492023`）+ Phase Final 節追加 |
 | Issue #289 | reopen（2026-06-01） |
-| Fix Outcome | `ready_for_ai_review`（publish 後に記録） |
-| 期待フロー | fix-ready dispatch → Harness → `approve_for_human_review` → Human Approve → merge #290 |
+| Fix Outcome | `ready_for_ai_review`（fix-ready `26730573732`） |
+| Harness | recovery `26730645657` success（fix-ready `current_status_mismatch` 後） |
+| AI Review | `approve_for_human_review` @ 2026-06-01T01:38:29Z |
+| Status Sync | `26730716539` → `Human Review` |
+| 次ステップ | **Human Review Approve → merge #290 → Issue #289 Done** |
 
 ### Phase Final 完了条件
 
 - [x] Phase 0〜C-2 Pass 記録済み
-- [x] develop 取り込み（merge commit 後に記録）
-- [ ] fix-ready → Harness → AI Review Pass
+- [x] develop 取り込み（merge `a492023`）
+- [x] fix-ready → Harness → AI Review Pass
 - [ ] Human Review Approve
 - [ ] PR #290 merge → Issue #289 Done
