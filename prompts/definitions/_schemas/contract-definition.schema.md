@@ -603,7 +603,7 @@ input:
   prs:
     - "#203"
   openapi:
-    path: "docs/openapi/openapi.yaml"
+    path: "packages/contracts/openapi/public-api.yaml"
     required: true
   orval:
     path: "orval.config.ts"
@@ -655,7 +655,7 @@ output:
       action: "update"
       required: false
   openapi:
-    - path: "docs/openapi/openapi.yaml"
+    - path: "packages/contracts/openapi/public-api.yaml"
       action: "update"
       required: true
   orval:
@@ -798,7 +798,7 @@ generation_policy:
   generated_expected: true
   manual_edit_allowed: false
   source_files:
-    - "docs/openapi/openapi.yaml"
+    - "packages/contracts/openapi/public-api.yaml"
   regenerate_commands:
     - "pnpm orval"
   output_paths:
@@ -1383,7 +1383,7 @@ input:
     - "#102"
   prs: []
   openapi:
-    path: "docs/openapi/openapi.yaml"
+    path: "packages/contracts/openapi/public-api.yaml"
     required: true
   orval:
     path: "orval.config.ts"
@@ -1404,7 +1404,7 @@ output:
       action: "update"
       required: true
   openapi:
-    - path: "docs/openapi/openapi.yaml"
+    - path: "packages/contracts/openapi/public-api.yaml"
       action: "update"
       required: true
   orval: []
@@ -1488,7 +1488,7 @@ generation_policy:
   generated_expected: true
   manual_edit_allowed: false
   source_files:
-    - "docs/openapi/openapi.yaml"
+    - "packages/contracts/openapi/public-api.yaml"
   regenerate_commands:
     - "pnpm orval"
   output_paths:
@@ -1550,7 +1550,7 @@ parallel_control:
   depends_on: []
   blocks: []
   exclusive_files:
-    - "docs/openapi/openapi.yaml"
+    - "packages/contracts/openapi/public-api.yaml"
     - "apps/web/src/generated/api/"
   conflict_risk: "medium"
   generated_impact: true
