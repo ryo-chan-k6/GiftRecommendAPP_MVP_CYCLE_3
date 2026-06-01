@@ -57,9 +57,39 @@ on:
 | 条件 | 挙動 |
 | ---- | ---- |
 | `fix_outcome` ≠ `ready_for_ai_review` | スキップ |
-| 現在 Status が `In Progress` でない（かつ `AI Review` でもない） | スキップ（冪等・誤更新防止） |
-| 次 Status が現在 Status と同一（既に `AI Review`） | スキップ |
+| 現在 Status が `In Progress` でない（かつ `AI Review` でもない） | スキップ（冪等・誤更新防止）。**Harness dispatch も行わない** |
+| 次 Status が現在 Status と同一（既に `AI Review`） | Status 更新スキップ。**Harness dispatch は実行** |
 | PR from fork | スキップ |
+
+### 5.3 fix-ready `current_status_mismatch` 時の Harness recovery
+
+fix-ready が `current_status_mismatch` でスキップされた場合、Projects Status は `In Progress` / `AI Review` 以外（例: `Human Review`）に留まる。  
+このとき **fix-ready の再実行では Harness は起動しない**（意図した冪等ガード）。
+
+**正本 recovery:** Definition Run Harness を **直接** `workflow_dispatch` する（Status 更新は不要）。
+
+```bash
+gh workflow run "Definition Run Harness" \
+  -f command=review-pr \
+  -f definition=prompts/definitions/<path>/pr-review.yaml \
+  -f run_mode=live-run \
+  -f target_pr=<PR番号> \
+  -f request_issue=<Task Issue番号> \
+  -f requested_by=fix-ready-harness-recovery \
+  -f ref=<PR head ref> \
+  --repo <owner>/<repo>
+```
+
+| 項目 | 必須 | 備考 |
+| ---- | ---- | ---- |
+| `definition` | 必須 | 対象 PR の Review Definition パス |
+| `target_pr` | 必須 | 対象 PR 番号 |
+| `ref` | **PR Branch 限定 Definition 時は必須** | PR head ref。未指定時 `develop` 固定となり `definition_not_found` になりうる |
+| `request_issue` | 推奨 | トレース用 |
+
+代替: `node .github/scripts/dispatch-review-pr-harness.cjs` を **`--context` なし**（手動 recovery）で実行してもよい（[Definition Run Harness recovery](./Definition%20Run%20Harness%E3%83%AF%E3%83%BC%E3%82%AF%E3%83%95%E3%83%AD%E3%83%BC%E4%BB%98%E6%A7%98%E6%9B%B8.md) §15 参照）。
+
+**典型シナリオ:** Phase C-2 等で fix-ready 後に Harness が失敗し、Status が `Human Review` 等に遷移したまま fix-ready を再実行した場合（E2E run `26719313872`）。
 
 ### 5.2 ジョブ失敗
 
@@ -87,6 +117,7 @@ PR 初回作成時の「PRを作成しました」とは **文面を分離** す
 - Status が `AI Review` になったら、workflow が **Definition Run Harness**（`review-pr` / `live-run`）を自動起動する（[AI Review自動起動ワークフロー連携仕様書.md](./AI%20Review自動起動ワークフロー連携仕様書.md)）
 - `split_required` / `partial_fix` 等では dispatch **しない**（Status は `In Progress` 維持）
 - dispatch 忘れ時は `--verify` / `--dispatch-only` / `workflow_dispatch` で recovery
+- fix-ready が `current_status_mismatch` で Harness dispatch をスキップした場合は [§5.3](./PR再AI%20Review待ちStatus更新ワークフロー仕様書.md#53-fix-ready-current_status_mismatch-時の-harness-recovery) の **Harness 直接 dispatch** を使う（fix-ready 再実行では解消しない）
 - 人間が手動修正した場合（パターン B）は Fixer CLI を実行せず、**workflow_dispatch** または手動 Status 更新 + `/review-pr`
 - Machine account PAT（`GH_BOT_TOKEN`）で PR コメント投稿・dispatch すること
 
