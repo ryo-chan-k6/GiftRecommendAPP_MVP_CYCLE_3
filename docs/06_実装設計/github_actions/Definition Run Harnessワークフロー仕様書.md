@@ -61,7 +61,10 @@ on:
 | `run_mode` | 必須 | `dry-run` / `live-run` | Command ごとに supported を参照。`start-epic` は `dry-run` のみ。`review-pr` は両方可 |
 | `request_issue` | 任意 | 数値 | トレース相関キー。Job Summary 冒頭に表示するのみ（Issue へのコメント投稿はしない） |
 | `target_pr` | 条件付き必須 | 数値 | **`review-pr` + `live-run` 時は必須**。post-run で dispatch 忘れ検証に使用 |
+| `ref` | 任意 | git ref | Cloud Agent の `startingRef`。`repository_dispatch` では PR head ref を渡す。**`workflow_dispatch` 手動実行時**に PR Branch 限定 Definition を使う場合は PR head ref を指定（未指定時 `develop`） |
 | `requested_by` | 任意 | 自由文字列 | 監査用識別子（Slack user / GitHub user 等）。Job Summary に表示。改行・長さ制限あり |
+
+**Definition 実ファイル検証:** `ref !== develop` の場合、checkout 上に Definition が無くても入力検証は通過する（Agent は `startingRef` 上で実行）。`ref=develop` のまま PR Branch 限定 Definition を指定すると `definition_not_found` で失敗する。
 
 ## 5. 処理フロー
 
@@ -70,8 +73,9 @@ on:
 2. 入力検証 (Command レジストリ参照 / definition パス prefix / 実ファイル存在 / definition_type 整合 / run_mode==dry-run)
 3. プロンプト組み立て (builder スクリプト呼び出し、secret マスク)
 4. Cursor SDK で Cloud Agent 起動 (Agent.create + agent.send + cloud: { repos: [{ url, startingRef }] }, autoCreatePR: false)
-5. post-run 検証 (Issue / PR / Branch 新規作成監視 → 違反検知時は job 失敗)
-6. Job Summary 出力 ($GITHUB_STEP_SUMMARY、secret スキャナ通過後)
+5. **review-pr live-run のみ:** transcript（および Agent `run.result`）から AI Review コメントを抽出し `GH_BOT_TOKEN` で `publish-ai-review-and-dispatch.cjs` を実行（bot fallback）
+6. post-run 検証 (Issue / PR / Branch 新規作成監視 → 違反検知時は job 失敗)
+7. Job Summary 出力 ($GITHUB_STEP_SUMMARY、secret スキャナ通過後)
 ```
 
 各ステップは `::group::<step-name>` で折り畳み、冒頭に「決定的な1行」を出力する（例: `decision: validated allowed_command=start-epic`）。
@@ -84,6 +88,7 @@ on:
 | permissions | `issues: read` | post-verify で Issue 一覧取得 |
 | permissions | `pull-requests: read` | post-verify で PR 一覧取得 |
 | Secret | `CURSOR_API_KEY` | Cursor SDK の認証。workflow env のみで使用、プロンプト・log・Summary には絶対に出さない |
+| Secret | `GH_BOT_TOKEN` | **`review-pr` + `live-run` 時**の `publish-ai-review-and-dispatch.cjs` bot fallback（Cloud Agent は PR コメント POST 不可） |
 | Token | `GITHUB_TOKEN` | post-verify で gh API を叩く（read のみ。write 全廃） |
 | permissions | `actions: read` | review-pr post-verify で workflow runs 参照 |
 
@@ -306,8 +311,8 @@ Definition Run Harness が live-run で Issue を起票した後、以下の既�
 | --- | --- | --- |
 | Issue メタデータ → Project 同期 | `.github/workflows/issue-metadata-project-branch.yml` | Issue 本文に Issue 運用メタデータを正しく埋めて作成のみ |
 | Issue → Branch 作成 | 同上 | Issue 本文 no-branch チェックを正しく設定 |
-| PR 作成時 Status / Slack | `.github/workflows/pr-created-status-and-slack.yml` | PR 作成のみ |
-| fix 完了後 Status / Slack | `.github/workflows/pr-ready-for-ai-review.yml` | **`publish-fix-complete-and-dispatch.cjs` で dispatch**（Fixer 実行） |
+| PR 作成時 Status / Slack | `.github/workflows/pr-created-status-and-slack.yml` | PR 作成のみ。**完了後** `dispatch-review-pr-harness.cjs` で Harness 自動起動 |
+| fix 完了後 Status / Slack | `.github/workflows/pr-ready-for-ai-review.yml` | **`publish-fix-complete-and-dispatch.cjs` で dispatch**（Fixer 実行）。**完了後** Harness 自動起動 |
 | PR レビュー → Status | `.github/workflows/pr-review-status-sync.yml` | **`publish-ai-review-and-dispatch.cjs` で dispatch**（Agent 実行）。Harness live-run 後は post-verify で dispatch 忘れを検証 |
 | PR merge → Done / Slack | `.github/workflows/pr-merged-done-and-slack.yml` | merge は人間判断（AI 不可） |
 | 手動 Slack 通知 | `.github/workflows/slack-notify-manual.yml` | 必要時に `workflow_dispatch` |
@@ -334,7 +339,44 @@ Definition Run Harness が live-run で Issue を起票した後、以下の既�
 
 live-run を解禁する場合のみ、`live_run_supported: true` 化 + 権限・ref 設計 + 承認ゲート（GitHub Environments approval）+ post-verify の許容ルール更新を別 PR で行う。
 
-## 15. 動作確認手順（MVP 受入）
+## 15. review-pr live-run recovery
+
+### 15.1 fix-ready `current_status_mismatch` 後
+
+[PR再AI Review待ちStatus更新ワークフロー仕様書](./PR再AI%20Review待ちStatus更新ワークフロー仕様書.md) §5.3 を正本とする。  
+fix-ready 再実行では Harness は起動しない。**Definition Run Harness を直接 dispatch** する。
+
+```bash
+gh workflow run "Definition Run Harness" \
+  -f command=review-pr \
+  -f definition=prompts/definitions/<path>/pr-review.yaml \
+  -f run_mode=live-run \
+  -f target_pr=<PR番号> \
+  -f request_issue=<Task Issue番号> \
+  -f requested_by=harness-recovery \
+  -f ref=<PR head ref> \
+  --repo <owner>/<repo>
+```
+
+### 15.2 bot fallback / post-verify 失敗後
+
+1. Actions log で fallback 理由（`no_comment_in_transcript` 等）と post-verify violations を確認
+2. インフラ改修 PR で fallback / post-verify を修正（develop マージ）
+3. §15.1 の **Harness 直接 dispatch** で再実行（`ref` に PR head ref を必ず指定）
+
+### 15.3 手動 CLI（`--context` なし）
+
+```bash
+node .github/scripts/dispatch-review-pr-harness.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --issue <Task Issue番号> \
+  --definition prompts/definitions/<path>/pr-review.yaml
+```
+
+`--context pr-created|fix-ready` を付けない限り、インフラ PR skip（§ [AI Review自動起動](./AI%20Review自動起動ワークフロー連携仕様書.md) §5）は適用されない。
+
+## 16. 動作確認手順（MVP 受入）
 
 1. `secrets.CURSOR_API_KEY` を設定
 2. Actions UI から `workflow_dispatch` で次を実行
@@ -351,7 +393,7 @@ live-run を解禁する場合のみ、`live_run_supported: true` 化 + 権限�
 10. post-run 検証の発火確認: dry-run プロンプトを意図的に外して試験 Issue を作る再現テストで、Guard Violations に検出され job が失敗すること（受入時に手動で1回）
 11. `CURSOR_API_KEY` や類似 secret が Job Summary / Actions log に出ていないこと
 
-## 16. 関連ドキュメント
+## 17. 関連ドキュメント
 
 | ドキュメント | 役割 |
 | --- | --- |
