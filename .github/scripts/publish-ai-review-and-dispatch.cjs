@@ -212,11 +212,19 @@ async function listStatusSyncDispatchRuns({ owner, repo, token, fetchImpl, perPa
   return data.workflow_runs || [];
 }
 
-function findLatestAiReviewComment(comments) {
+function findLatestAiReviewComment(comments, { sinceIso } = {}) {
+  const since = sinceIso ? new Date(sinceIso).getTime() : NaN;
   const sorted = [...(comments || [])].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
-  return sorted.find((comment) => slack.isAiReviewResultComment(comment.body || ""));
+  return sorted.find((comment) => {
+    if (!slack.isAiReviewResultComment(comment.body || "")) return false;
+    if (!Number.isNaN(since)) {
+      const created = new Date(comment.created_at).getTime();
+      if (Number.isNaN(created) || created < since) return false;
+    }
+    return true;
+  });
 }
 
 function findDispatchRunAfterComment({ runs, prNumber, sinceIso }) {
@@ -238,6 +246,7 @@ async function verifyAiReviewDispatch({
   repository,
   prNumber,
   token,
+  sinceIso,
   fetchImpl,
   listComments = listIssueComments,
   listRuns = listStatusSyncDispatchRuns,
@@ -255,12 +264,14 @@ async function verifyAiReviewDispatch({
     token: authToken,
     fetchImpl,
   });
-  const latestAiComment = findLatestAiReviewComment(comments);
+  const latestAiComment = findLatestAiReviewComment(comments, { sinceIso });
   if (!latestAiComment) {
     return {
       ok: false,
-      reason: "no_ai_review_comment",
-      message: "No AI Review comment found on PR.",
+      reason: sinceIso ? "no_ai_review_comment_since_run" : "no_ai_review_comment",
+      message: sinceIso
+        ? "No AI Review comment found on PR since harness started."
+        : "No AI Review comment found on PR.",
     };
   }
 
