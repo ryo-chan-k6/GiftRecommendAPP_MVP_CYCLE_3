@@ -20,6 +20,77 @@ const SAMPLE_COMMENT = `# AI Review Result
 | 次Status   | \`Human Review\` |
 `;
 
+const TRUNCATED_COMMENT = `# AI Review Result
+
+## 1. レビュー結果
+
+| 項目          | 内容                       |
+| ------------- | -------------------------- |
+| Review Result | \`approve_for_human_review\` |
+| 対象PR        | \`302\`                    |
+...
+
+（全文は \`/tmp/ai-review-comment-302.md\` を参照）
+`;
+
+test("isTruncatedAiReviewComment: ローカルファイル参照/省略を検出する", () => {
+  assert.equal(publish.isTruncatedAiReviewComment(TRUNCATED_COMMENT), true);
+  assert.equal(publish.isTruncatedAiReviewComment(SAMPLE_COMMENT), false);
+});
+
+test("isTruncatedAiReviewComment: 全文参照表現を検出する", () => {
+  assert.equal(
+    publish.isTruncatedAiReviewComment("# AI Review Result\n全文は別ファイルを参照"),
+    true,
+  );
+});
+
+test("publishAiReviewAndDispatch: 切り詰め本文は投稿を拒否する", async () => {
+  await assert.rejects(
+    () =>
+      publish.publishAiReviewAndDispatch({
+        repository: "o/r",
+        prNumber: 10,
+        commentBody: TRUNCATED_COMMENT,
+        token: "t",
+        fetchImpl: async () => {
+          throw new Error("must not be called");
+        },
+      }),
+    (error) => {
+      assert.match(error.message, /truncated/i);
+      return true;
+    },
+  );
+});
+
+test("verifyAiReviewDispatch: 切り詰めコメントは truncated フラグを返す", async () => {
+  const result = await publish.verifyAiReviewDispatch({
+    repository: "o/r",
+    prNumber: 10,
+    token: "t",
+    listComments: async () => [
+      {
+        body: TRUNCATED_COMMENT,
+        created_at: "2026-05-30T00:00:00Z",
+        html_url: "https://example.com/c/1",
+      },
+    ],
+    listRuns: async () => [
+      {
+        id: 99,
+        display_title: "status-sync · dispatch · PR #10 · approve_for_human_review",
+        created_at: "2026-05-30T00:00:05Z",
+        status: "completed",
+        conclusion: "success",
+        html_url: "https://example.com/run/99",
+      },
+    ],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.latest_ai_review_comment_truncated, true);
+});
+
 test("resolveReviewResult: コメントからReview Resultを抽出する", () => {
   const value = publish.resolveReviewResult({ commentBody: SAMPLE_COMMENT });
   assert.equal(value, "approve_for_human_review");

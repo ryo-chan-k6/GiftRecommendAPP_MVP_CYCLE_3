@@ -73,8 +73,8 @@ on:
 2. 入力検証 (Command レジストリ参照 / definition パス prefix / 実ファイル存在 / definition_type 整合 / run_mode==dry-run)
 3. プロンプト組み立て (builder スクリプト呼び出し、secret マスク)
 4. Cursor SDK で Cloud Agent 起動 (Agent.create + agent.send + cloud: { repos: [{ url, startingRef }] }, autoCreatePR: false)
-5. **review-pr live-run のみ:** transcript（および Agent `run.result`）から AI Review コメントを抽出し `GH_BOT_TOKEN` で `publish-ai-review-and-dispatch.cjs` を実行（bot fallback）
-6. post-run 検証 (Issue / PR / Branch 新規作成監視 → 違反検知時は job 失敗)
+5. **review-pr live-run のみ:** transcript（および Agent `run.result`）から AI Review コメントを抽出し `GH_BOT_TOKEN` で `publish-ai-review-and-dispatch.cjs` を実行（bot fallback）。**切り詰め本文（`/tmp` 等ローカルファイル参照・「全文は … を参照」・省略マーカー）は投稿前に拒否し、抽出対象からも除外する**
+6. post-run 検証 (Issue / PR / Branch 新規作成監視、**コメント本文の切り詰め検知** → 違反検知時は job 失敗)
 7. Job Summary 出力 ($GITHUB_STEP_SUMMARY、secret スキャナ通過後)
 ```
 
@@ -371,6 +371,17 @@ gh workflow run "Definition Run Harness" \
 4. post-verify は `review-pr` 実行時に `target_pr` の head branch を違反判定から除外する
 5. インフラ改修 PR で fallback / post-verify を修正（develop マージ）
 6. §15.1 の **Harness 直接 dispatch** で再実行（`ref` に PR head ref を必ず指定）
+
+### 15.2.1 AI Review コメント本文の完全性
+
+Harness live-run では Cloud Agent から GitHub へ書き込めないため、**Agent の最終出力テキストが投稿本文の元**になる。Agent が本文を自サンドボックス（`/tmp` 等）へ退避し、コメントを `（全文は /tmp/... を参照）` のような参照や `...` 省略で代替すると、Human Review に必要なレビュー観点・判定理由が GitHub コメントへ載らない。これを防ぐため以下を実装する。
+
+| レイヤ | 挙動 |
+| ------ | ---- |
+| プロンプト（`definition-run-prompt-builder.cjs`） | review-pr live-run で「コメント本文を ai-review-comment.md の全セクション分、省略せず逐語出力」「`/tmp` 退避・参照・省略での代替禁止」を指示 |
+| 投稿（`publish-ai-review-and-dispatch.cjs`） | `isTruncatedAiReviewComment` で切り詰め本文を検出し、投稿前に拒否（`TRUNCATION_PATTERNS`: ローカル一時ファイル参照 / 「全文は … を参照」/ 単独の三点リーダ行） |
+| fallback 抽出（`publish-ai-review-harness-fallback.cjs`） | transcript から抽出したブロックのうち切り詰めブロックを除外。残らない場合は synthetic comment へフォールバック |
+| post-verify（`definition-run-post-verify.cjs`） | dispatch 成立後も投稿済みコメントが切り詰めなら `review_comment_truncated` 違反として job を失敗させる |
 
 ### 15.3 手動 CLI（`--context` なし）
 
