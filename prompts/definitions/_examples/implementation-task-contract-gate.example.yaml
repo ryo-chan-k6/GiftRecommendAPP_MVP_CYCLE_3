@@ -1,0 +1,35 @@
+# 記入例: generated / apps 実装を伴う Implementation Task の contract_gate
+# 正本: prompts/definitions/_schemas/task-definition.schema.md §23.5
+#       docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md
+
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-example-implementation-with-contract-gate"
+  title: "（例）Contract Gate前提の実装Task"
+  summary: "先行 Contract Task 完了後にのみ開始する Implementation Task の contract_gate 記入例"
+
+contract_gate:
+  required: true
+  gate_id: "contract-recommendation-api-reason-field"
+  prerequisite_contract_tasks:
+    - issue: "#<Contract Task Issue番号>"
+      definition: "prompts/definitions/cross-cutting/<theme>/contract-task.yaml"
+  verify_at:
+    - "/start-task"
+    - "/work-issue"
+  checks:
+    - "contract_pr_merged_to_parent_epic_branch"
+    - "openapi_in_packages_contracts"
+    - "orval_regenerated_if_generated_impact"
+    - "generated_not_manually_edited"
+    - "human_review_if_breaking_change"
+  blocked_message: "Contract Gate未通過。先行 Contract Task のマージと OpenAPI/generated を確認してください。"
+
+output:
+  generated:
+    expected: true
+    paths:
+      - "apps/web/src/generated/api/"
+    handling: "do_not_edit_manually"

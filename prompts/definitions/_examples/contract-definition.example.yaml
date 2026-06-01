@@ -211,6 +211,20 @@ generation_policy:
     - "pnpm typecheck"
     - "pnpm test"
 
+implementation_gate:
+  enabled: true
+  gate_id: "contract-recommendation-api-reason-field"
+  prerequisite_checks:
+    - "contract_pr_merged_to_parent_epic_branch"
+    - "openapi_in_packages_contracts"
+    - "orval_regenerated_if_generated_impact"
+    - "generated_not_manually_edited"
+    - "human_review_if_breaking_change"
+  releases_implementation_for:
+    - "task-recommendation-result-implementation（reason 表示の Implementation Task）"
+  notes:
+    - "gate_id は対応 Implementation Task の contract_gate.gate_id と一致させる"
+
 deliverables:
   - "Contract Task Issue"
   - "契約変更影響分析"

@@ -143,6 +143,8 @@ epic_scope:
     - "docs/00_共通/AIエージェント運用/AIエージェント活用型_開発運用フロー設計書.md"
     - "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
     - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+    - "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
     - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
     - "docs/00_共通/プロジェクト管理/Issue運用ルール.md"
     - "docs/00_共通/プロジェクト管理/Projects運用ルール.md"

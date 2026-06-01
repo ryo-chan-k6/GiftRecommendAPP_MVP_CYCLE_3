@@ -1,0 +1,138 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-contract-impl-contract-gate"
+  title: "Contract Gate定義（schema・設計書）"
+  summary: "Implementation Task 開始前の必須条件（Contract Gate）を正本設計書・Task/Contract Definition schema・記入例に定義する。Command への手順反映は後続Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-contract-impl-task-separation"
+  epic_issue_number: "#300"
+  epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+  next:
+    success: "/create-pr"
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Contract Task / Implementation Task 分離において、Implementation 開始前に満たすべき条件（Contract Gate）が未定義だった。
+  本Taskでは正本設計書と schema / 記入例を整備する。/start-task 等へのチェックリスト埋め込みは Command 修正 Task の scope。
+
+objective: |
+  Contract Gate 通過条件を docs 正本と contract-definition / task-definition schema に定義し、
+  Implementation Task が確定済み契約・generated を前提に開始できる状態にする。
+
+scope:
+  - "Contract Gate運用設計書（正本）の新規作成"
+  - "contract-definition.schema.md に implementation_gate セクション追加"
+  - "task-definition.schema.md に contract_gate セクション追加"
+  - "contract-definition.example.yaml / implementation-task-contract-gate.example.yaml の記入例"
+  - "成果物一覧×Task Definition化方針書・Task Definition設計書への参照追記"
+  - "epic.yaml epic_scope.allowed_paths への正本設計書追加"
+
+out_of_scope:
+  - ".cursor/commands/** の修正（後続 Command 修正 Task）"
+  - "Issue/PR テンプレート修正（後続 Task）"
+  - "apps/** / packages/** 実装"
+  - "OpenAPI / generated 実体の作成"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+  issues:
+    - "#300"
+    - "#310"
+
+output:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/_schemas/contract-definition.schema.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/_schemas/task-definition.schema.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/_examples/contract-definition.example.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/_examples/implementation-task-contract-gate.example.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/contract-impl-task-separation/contract-gate.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/contract-impl-task-separation/epic.yaml"
+      action: "update"
+      required: true
+
+deliverables:
+  - "Contract Gate運用設計書（正本）"
+  - "implementation_gate / contract_gate の schema 定義"
+  - "記入例 YAML"
+
+acceptance_criteria:
+  - "Contract Gate運用設計書が Gate 必須チェック（§4）を定義している"
+  - "contract-definition.schema.md に implementation_gate がある"
+  - "task-definition.schema.md に contract_gate がある"
+  - "記入例が schema と整合している"
+  - "Command ファイルを変更していない（scope外）"
+  - "Task PR target が refactor/epic-300-contract-impl-task-separation である"
+
+branch:
+  name: "refactor/task-311-contract-gate-definition"
+  base: "refactor/epic-300-contract-impl-task-separation"
+  target: "refactor/epic-300-contract-impl-task-separation"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
+
+parallel_control:
+  depends_on:
+    - "task-api-spec-deprecation-reference-update"
+  blocks:
+    - "task-contract-impl-command-update"
+  exclusive_files:
+    - "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+    - "prompts/definitions/_schemas/contract-definition.schema.md"
+    - "prompts/definitions/_schemas/task-definition.schema.md"
+  conflict_risk: "low"
+  contract_impact: true
+  generated_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Gate 条件が Orval 前提運用と整合しているか"
+    - "schema と正本設計書が矛盾していないか"
+    - "Command 修正が scope 外であること"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
