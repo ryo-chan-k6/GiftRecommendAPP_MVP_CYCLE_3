@@ -1183,6 +1183,8 @@ Task Definitionは、Issue本文の生成元として利用する。
 | `review.review_points` | 確認観点 |
 | `parallel_control.*` | 並列作業・競合管理 |
 | `human_decision_points` | 人間判断事項 |
+| `contract_gate.*`（Implementation Task） | `task-issue.md` §8.5 |
+| `implementation_gate.*`（Contract Task） | `contract-task-issue.md` §7.5 |
 
 Task Definition → Issue本文 → label同期 → branch workflow の順で制御する。
 
@@ -1200,6 +1202,8 @@ Task Definitionは、PR本文作成時にも利用する。
 | `acceptance_criteria` | 完了条件チェック |
 | `review.review_points` | レビュー観点 |
 | `test_policy.manual_checks` | 実施した確認 |
+| `contract_gate.*`（該当時） | `task-pr.md` §8.5 Contract Gate 確認 |
+| `implementation_gate.*`（Contract Task） | `contract-pr.md` §13.5 Gate 解放 |
 | `parallel_control.*` | 横断影響・競合確認 |
 | `human_decision_points` | 人間確認事項 |
 

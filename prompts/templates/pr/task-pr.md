@@ -122,6 +122,32 @@ generatedファイルは手動編集しない。
 
 ---
 
+## 8.5 Contract Gate 確認（該当時）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| Gate必須 | `{{contract_gate.required}}` |
+| gate_id | `{{contract_gate.gate_id}}` |
+
+### 通過確認
+
+- [ ] 先行 Contract Task の PR が親 Epic Branch にマージ済み
+- [ ] OpenAPI 正本（`packages/contracts/openapi/`）が Contract PR と整合
+- [ ] generated 影響時は Orval 再生成済み（手動編集なし）
+- [ ] 契約 docs は `api-contract-spec.md` / `openapi-spec.md` を正本とする（`api-spec.md` は使用しない）
+- [ ] 破壊的変更時は Contract PR の Human Review 完了
+
+Gate未通過のまま Implementation を進めていないこと。
+
+### docs テンプレ使い分け
+
+| 種別 | テンプレート |
+| ---- | ------------ |
+| 契約面 | `prompts/templates/docs/**/api-contract-spec.md` |
+| 実装面 | `prompts/templates/docs/**/api-implementation-spec.md` |
+
+---
+
 ## 9. API / DB / Contract / security 影響
 
 | 観点 | 影響有無 | 補足 |

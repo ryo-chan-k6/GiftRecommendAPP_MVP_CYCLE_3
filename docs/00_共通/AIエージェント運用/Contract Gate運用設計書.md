@@ -143,8 +143,8 @@ flowchart TD
 | ---- | ---- |
 | Epic | #300 API契約・実装Task分離方針の整合 |
 | 先行 Task | パス標準化、テンプレ分割、api-spec 廃止 |
-| 本書を反映する Task | Contract Gate 定義（schema / 本設計書）、Command 修正 |
-| 後続 Task | Issue/PR テンプレ・設計書反映 |
+| 本書を反映する Task | Contract Gate 定義（schema / 本設計書）、Command 修正、Issue/PR テンプレ・設計書反映（#318） |
+| Epic 完了条件 | Command / Issue / PR テンプレートが分離方針と整合（Task5 反映後） |
 
 ---
 
@@ -153,3 +153,4 @@ flowchart TD
 | 日付 | 変更内容 | 関連 |
 | ---- | -------- | ---- |
 | 2026-06-01 | 初版作成（Contract Gate 正本） | Epic #300 Task Contract Gate |
+| 2026-06-01 | §8 更新（Task5 Issue/PR テンプレ・設計書反映） | Epic #300 Task #318 |
