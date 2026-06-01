@@ -1,0 +1,268 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-contract-impl-doc-template-split-pr"
+  title: "API docsテンプレート Contract/Implementation 2分割 PRレビュー"
+  summary: "api-spec.md を契約面/実装面の2テンプレートへ分割するTaskのPRをAI Reviewする"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 0
+  issue: 304
+  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/doc-template-split.yaml"
+  source_branch: "refactor/task-304-contract-impl-doc-template-split"
+  target_branch: "refactor/epic-300-contract-impl-task-separation"
+  parent_epic_issue: "[Epic]API契約・実装Task分離方針の整合"
+  parent_epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/contract-impl-task-separation/doc-template-split.yaml"
+    required: true
+  issue:
+    number: 304
+    required: true
+  pr:
+    number: 0
+    required: true
+  diff:
+    required: true
+    compare_with: "refactor/epic-300-contract-impl-task-separation"
+  docs: []
+  files:
+    - path: "prompts/templates/docs/api-contract-spec.md"
+      required: true
+      purpose: "契約面テンプレートが契約面のみで構成されているか確認"
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      required: true
+      purpose: "実装面テンプレートが実装面のみで構成されているか確認"
+    - path: "prompts/templates/docs/api-spec.md"
+      required: true
+      purpose: "分割告知（段階移行）が追記され両テンプレートへ誘導しているか確認"
+    - path: "prompts/templates/docs/openapi-spec.md"
+      required: true
+      purpose: "OpenAPI定義書との役割関係が整合しているか確認"
+    - path: "prompts/definitions/_examples/contract-definition.example.yaml"
+      required: true
+      purpose: "成果物テンプレート参照が api-contract-spec.md に更新されているか確認"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（doc-template-split.yaml）の scope を満たしているか"
+    - "out_of_scope（api-spec.md即時削除・他Epic参照書き換え・Contract Gate・Command修正・実装）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に変更内容・検証結果・未実施事項・残リスクが記載されているか"
+    - "Human Review観点が明記されているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+    - "Task PR で Related to #304 を使用し、Closes を使っていないか"
+  docs:
+    - "契約面/実装面の章が重複・欠落なく分割されているか"
+    - "openapi-spec.md との役割関係が両テンプレートに明記されているか"
+    - "Markdown構成・用語が既存テンプレートと整合しているか"
+  source: []
+  tests:
+    - "テンプレート存在・参照チェックが PR 本文に示されているか"
+    - "未実施テスト（unit / integration）の理由が PR 本文に記載されているか"
+  api_contract:
+    - "契約面テンプレートが OpenAPI（packages/contracts/）反映方針と整合しているか"
+    - "Contract Task と Implementation Task の責務分離が反映されているか"
+  db: []
+  generated: []
+  cicd: []
+  security:
+    - "secret や .env 実値が含まれていないか"
+  branch:
+    - "PR target が親 Epic Branch（refactor/epic-300-contract-impl-task-separation）であるか"
+    - "Task PR で Related to #304 が使われているか"
+  project:
+    - "レビュー結果に応じた Status 更新意図が明確か"
+  epic_scope:
+    - "PR差分が親Epic の epic_scope.allowed_paths 内に収まっているか"
+    - "epic_scope.forbidden_paths（apps/** / openapi/** / packages/** / db/**）への変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "api-spec.md 即時廃止可否が Human Review 事項として明示されている"
+    - "AI Review結果をPRコメントに記録できる形式になっている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "epic_scope.allowed_paths から外れる差分がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能なテンプレート不備がある"
+      - "PR 本文に必要情報が不足している"
+  needs_human_decision:
+    conditions:
+      - "api-spec.md の即時廃止 / 段階移行の判断が必要"
+      - "契約面/実装面の分割粒度に方針判断が必要"
+  split_required:
+    conditions:
+      - "Contract Gate・Command修正・他Epic参照書き換えが混在している（後続Taskへ分離）"
+      - "epic_scope.allowed_paths から外れる差分がある"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/contract-impl-task-separation/doc-template-split.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "template section consistency check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definitionのacceptance_criteriaを満たしているか確認する"
+    - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
+    - "契約面/実装面の分割が重複・欠落なく行われているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definitionはレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "テンプレート分割は後続Task・複数定義へ横断影響するため、判明した影響は ai-logs/cross-cutting へ記録余地を残す。通常PRレビュー結果はPRコメントを正本とする。"
+
+risk_points:
+  - "契約面/実装面の分割境界が曖昧でレビュー観点がぶれる可能性"
+  - "他Epic定義の api-spec.md 参照が未是正のまま残る点（後続Taskで一括是正）"
+
+human_decision_points:
+  - "api-spec.md を即時廃止するか段階移行のまま残すか"
+  - "契約面/実装面の章分割粒度"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "diff を確認できない場合"
+  - "scope外（実装・他Epic参照・api-spec.md削除）の変更が混在している場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+
+notes:
+  - "本Taskは docsテンプレートの分割Taskのため、source code 変更は scope 外とする"
+  - "対応 Task Definition: prompts/definitions/tasks/contract-impl-task-separation/doc-template-split.yaml"
+  - "対応 Epic Definition: prompts/definitions/epics/contract-impl-task-separation/epic.yaml"
+  - "target.pr / input.pr.number はPR作成後に実番号へ更新する。"

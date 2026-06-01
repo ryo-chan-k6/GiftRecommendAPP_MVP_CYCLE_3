@@ -1,0 +1,204 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-contract-impl-doc-template-split"
+  title: "API docsテンプレートのContract/Implementation 2分割"
+  summary: "api-spec.md を契約面(api-contract-spec.md)と実装面(api-implementation-spec.md)に分割し、Contract Task / Implementation Task が別々の成果物テンプレートを使えるようにする。既存参照は段階移行で残置する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-contract-impl-task-separation"
+  epic_issue_number: "#300"
+  epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "contract-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  現行の prompts/templates/docs/api-spec.md は、API契約面（API基本情報・Request/Response/Error・Validation）と
+  実装面（処理概要・内部DTOマッピング・provider/consumer実装影響・ログ・テスト観点）を1テンプレートに混在させており、
+  Contract Task / Implementation Task の責務分離（Orval前提運用）と整合しない。
+  OpenAPI定義書(openapi-spec.md)は既に契約側のテンプレートとして存在する。
+
+objective: |
+  API系docsテンプレートを Contract仕様（契約面）と Implementation仕様（実装面）に分割し、
+  Contract Task と Implementation Task が別々の成果物テンプレートを使えるようにする。
+  既存参照(api-spec.md)は段階移行で壊さない。
+
+scope:
+  - "prompts/templates/docs/api-contract-spec.md を新規作成（契約面）"
+  - "prompts/templates/docs/api-implementation-spec.md を新規作成（実装面）"
+  - "prompts/templates/docs/api-spec.md 冒頭に分割告知（段階移行）を追記し両テンプレートへ誘導する"
+  - "prompts/definitions/_examples/contract-definition.example.yaml の成果物テンプレート参照を api-contract-spec.md に更新する"
+  - "各テンプレートで openapi-spec.md との役割関係を明記する"
+
+out_of_scope:
+  - "api-spec.md の即時削除（即時廃止可否はHuman判断）"
+  - "他Epic定義（api-int-002 / api-pub-002 / scr-002）の template 参照書き換え（後続の横断一括是正）"
+  - "Contract Gate 定義（後続Task）"
+  - "Command修正（後続Task）"
+  - "実際のAPI仕様書docs本体・OpenAPI実体・generated・apps実装"
+
+input:
+  docs: []
+  files:
+    - path: "prompts/templates/docs/api-spec.md"
+      required: true
+      purpose: "分割元テンプレート（契約面/実装面の章を確認）"
+    - path: "prompts/templates/docs/openapi-spec.md"
+      required: true
+      purpose: "OpenAPI定義書テンプレートとの役割関係を確認するため"
+    - path: "prompts/definitions/_examples/contract-definition.example.yaml"
+      required: true
+      purpose: "Contract定義の成果物テンプレート参照を確認・更新するため"
+    - path: "prompts/definitions/tasks/contract-impl-task-separation/path-standardization.yaml"
+      required: true
+      purpose: "正本パス基準（generated出力先・wrapper）を参照するため"
+  issues:
+    - "#304"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "prompts/templates/docs/api-contract-spec.md"
+      action: "create"
+      required: true
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      action: "create"
+      required: true
+    - path: "prompts/templates/docs/api-spec.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/_examples/contract-definition.example.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/contract-impl-task-separation/doc-template-split.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "api-contract-spec.md が契約面のみで作成されている"
+  - "api-implementation-spec.md が実装面のみで作成されている"
+  - "api-spec.md に分割告知（段階移行）が追記されている"
+  - "contract-definition.example.yaml の成果物テンプレート参照が api-contract-spec.md に更新されている"
+
+acceptance_criteria:
+  - "api-contract-spec.md に契約面（基本情報/Request/Response/Error/Validation/互換性/OpenAPI反映方針）が含まれる"
+  - "api-implementation-spec.md に実装面（処理フロー/内部DTOマッピング/provider・consumer実装影響/ログ/結合テスト観点）が含まれる"
+  - "両テンプレートに openapi-spec.md との役割関係が明記されている"
+  - "api-spec.md 冒頭に分割告知があり両テンプレートへ誘導している"
+  - "scope外（api-spec.md削除・他Epic参照・実装）変更が含まれていない"
+  - "Task PR target が refactor/epic-300-contract-impl-task-separation である"
+
+branch:
+  no_branch: false
+  name: "refactor/task-304-contract-impl-doc-template-split"
+  base: "refactor/epic-300-contract-impl-task-separation"
+  target: "refactor/epic-300-contract-impl-task-separation"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
+
+parallel_control:
+  depends_on:
+    - "task-contract-impl-path-standardization"
+  blocks: []
+  exclusive_files:
+    - "prompts/templates/docs/api-spec.md"
+    - "prompts/templates/docs/api-contract-spec.md"
+    - "prompts/templates/docs/api-implementation-spec.md"
+    - "prompts/definitions/_examples/contract-definition.example.yaml"
+  conflict_risk: "low"
+  contract_impact: true
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "template section consistency check"
+  commands:
+    - "ls prompts/templates/docs/api-contract-spec.md prompts/templates/docs/api-implementation-spec.md"
+    - "rg -n 'api-contract-spec.md|api-implementation-spec.md' prompts/templates/docs/api-spec.md prompts/definitions/_examples/contract-definition.example.yaml"
+  manual_checks:
+    - "契約面/実装面の章が重複・欠落なく分割されていることを確認する"
+    - "openapi-spec.md との役割関係が両テンプレートに明記されていることを確認する"
+    - "scope外変更（api-spec.md削除・他Epic参照・実装）が無いことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docsテンプレートの分割であり実装コード変更を含まないため"
+    "integration test": "実行系変更を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Contract / Implementation の章分割粒度が妥当か"
+    - "api-spec.md を即時廃止するか段階移行のまま残すか"
+    - "openapi-spec.md との役割関係が明確か"
+    - "scope外変更が混入していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "テンプレート分割は複数定義・後続Taskへ横断影響するため cross_cutting として共有する。"
+
+stop_conditions:
+  - "契約面/実装面の分割境界に設計判断が必要で推測するしかない場合"
+  - "scope外（他Epic参照・api-spec.md削除）変更が必須になった場合"
+
+notes:
+  - "api-spec.md は後方互換のため残置する。即時廃止可否は Human Review で判断する。"
+  - "他Epic定義（api-int-002 / api-pub-002 / scr-002）の api-spec.md 参照は本Taskのscope外であり、後続の横断一括是正で扱う。"
+  - "contract-definition.example.yaml の出力docパス（05_実装設計/API仕様書.md）の工程ディレクトリ名・ファイル名是正は本Taskのscope外（template参照のみ更新）。"
