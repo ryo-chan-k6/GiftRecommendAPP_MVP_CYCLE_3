@@ -1,0 +1,270 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-contract-impl-path-standardization-pr"
+  title: "API契約パス標準化 PRレビュー"
+  summary: "OpenAPI正本=packages/contracts/ 統一に伴うパス標準化 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 302
+  issue: 301
+  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/path-standardization.yaml"
+  source_branch: "refactor/task-301-contract-impl-path-standardization"
+  target_branch: "refactor/epic-300-contract-impl-task-separation"
+  parent_epic_issue: "[Epic]API契約・実装Task分離方針の整合"
+  parent_epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/contract-impl-task-separation/path-standardization.yaml"
+    required: true
+  issue:
+    number: 301
+    required: true
+  pr:
+    number: 302
+    required: true
+  diff:
+    required: true
+    compare_with: "refactor/epic-300-contract-impl-task-separation"
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "OpenAPI / generated / Orval の正本パス（§8.1・§22・§24）との整合確認"
+    - path: "ai-logs/human-decisions/2026-06-01-openapi-contract-home-packages-contracts.md"
+      required: true
+      purpose: "OpenAPI正本=packages/contracts/ の人間判断との整合確認"
+  files:
+    - path: "prompts/definitions/_schemas/contract-definition.schema.md"
+      required: true
+      purpose: "OpenAPI参照が packages/contracts/openapi/public-api.yaml に統一されているか確認"
+    - path: "prompts/definitions/_examples/contract-definition.example.yaml"
+      required: true
+      purpose: "OpenAPI参照が packages/contracts/openapi/public-api.yaml に統一されているか確認"
+    - path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+      required: true
+      purpose: "root openapi/paths・lib/api-client/.../generated 参照が正規パスへ是正されているか確認"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（path-standardization.yaml）の scope を満たしているか"
+    - "out_of_scope（実装・generated実体・他Epic境界・テンプレート分割・Contract Gate・Command修正）の変更が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に変更内容・検証結果・未実施事項・残リスクが記載されているか"
+    - "Human Review観点が明記されているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+    - "Task PR で Related to #301 を使用し、Closes を使っていないか"
+  docs:
+    - "正本パス基準（path_standard）が構成定義書 §8.1・§22・§24 と一致しているか"
+    - "用語揺れがないか"
+  source: []
+  tests:
+    - "パス整合チェック（docs/openapi/openapi.yaml / root openapi/paths / lib/api-client の残存なし）が示されているか"
+    - "未実施テスト（unit / integration）の理由が PR 本文に記載されているか"
+  api_contract:
+    - "OpenAPI正本が packages/contracts/openapi/*.yaml に統一されているか"
+    - "generated参照が apps/web/src/generated/api/・apps/api/src/generated/reco-client/ に統一されているか"
+    - "Orval設定参照が orval.config.ts であるか"
+    - "実際の OpenAPI / Orval / generated 実体の作成・生成が混在していないか"
+  db: []
+  generated:
+    - "generated ファイルを手動編集していないか（本PRは定義・テンプレートのパス是正のみ）"
+  cicd: []
+  security:
+    - "secret や .env 実値が含まれていないか"
+  branch:
+    - "PR target が親 Epic Branch（refactor/epic-300-contract-impl-task-separation）であるか"
+    - "Task PR で Related to #301 が使われているか"
+  project:
+    - "レビュー結果に応じた Status 更新意図が明確か"
+  epic_scope:
+    - "PR差分が親Epic の epic_scope.allowed_paths 内に収まっているか"
+    - "epic_scope.forbidden_paths（apps/** / openapi/** / packages/** / db/**）への変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "残存する横断不整合（他Epicの root openapi/paths・lib/api-client）が PR で明示されている"
+    - "AI Review結果をPRコメントに記録できる形式になっている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "epic_scope.allowed_paths から外れる差分がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能なパス不備がある"
+      - "PR 本文に必要情報が不足している"
+  needs_human_decision:
+    conditions:
+      - "残存横断不整合の一括是正範囲の判断が必要"
+      - "OpenAPI 単一ファイル / per-resource 構成の判断が必要"
+  split_required:
+    conditions:
+      - "テンプレート分割・Contract Gate・Command修正が混在している（後続Taskへ分離）"
+      - "epic_scope.allowed_paths から外れる差分がある"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/contract-impl-task-separation/path-standardization.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "path consistency check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definitionのacceptance_criteriaを満たしているか確認する"
+    - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
+    - "OpenAPI / generated / Orval パスが構成定義書と一致しているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definitionはレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "OpenAPI・正本docs横断のパス是正PRであり、残存横断不整合が判明した場合は ai-logs/cross-cutting へ記録余地を残す。通常PRレビュー結果はPRコメントを正本とする。"
+
+risk_points:
+  - "パス是正が一部のみで横断不整合が残る可能性"
+  - "他Epic境界・方針書・rule への scope外変更が混在する可能性"
+
+human_decision_points:
+  - "残存する横断不整合（他Epicの root openapi/paths・lib/api-client）の一括是正範囲"
+  - "OpenAPI を単一ファイル（public-api.yaml）に統一するか per-resource 構成も許容するか"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "diff を確認できない場合"
+  - "scope外（実装・generated実体・他Epic境界）の変更が混在している場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+
+notes:
+  - "本Taskは定義・テンプレートのパス是正Taskのため、source code 変更は scope 外とする"
+  - "対応 Task Definition: prompts/definitions/tasks/contract-impl-task-separation/path-standardization.yaml"
+  - "対応 Epic Definition: prompts/definitions/epics/contract-impl-task-separation/epic.yaml"
+  - "残存横断不整合は後続Taskで一括是正する方針（Epic #300 人間判断で承認済み）。"

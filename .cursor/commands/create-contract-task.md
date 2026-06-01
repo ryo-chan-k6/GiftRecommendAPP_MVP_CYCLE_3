@@ -66,6 +66,7 @@ Definitionなしでの実行は原則禁止する。
 - `.cursor/rules/worktree.mdc`
 - `.cursor/rules/git-commit-message.mdc`
 - `prompts/definitions/_schemas/contract-definition.schema.md`（§16.1 `work_mode`）
+- [Contract Gate運用設計書](../../docs/00_共通/AIエージェント運用/Contract%20Gate運用設計書.md)
 
 契約変更Task作成時は、特に以下を重視する。
 
@@ -103,6 +104,8 @@ Definitionなしでの実行は原則禁止する。
 Contract Definitionを読み込み、契約変更の対象を確認する。
 
 `prompts/definitions/_schemas/contract-definition.schema.md` **§6.3** および [Task Definition設計書](../../docs/00_共通/AIエージェント運用/Task Definition設計書.md) **§16.2** に従い、`work_mode` と `branch.no_branch` の整合を確認する（不一致時は停止、または `human_decision_points` に理由必須）。
+
+`implementation_gate`（schema §18.5）が有効な場合、Contract PR マージ後に解放する Implementation Task（`gate_id`・`releases_implementation_for`）を Issue 本文と影響分析に記載する。成果物テンプレートは契約面 `api-contract-spec.md` / `openapi-spec.md` を正とする。
 
 確認観点は以下。
 

@@ -618,7 +618,8 @@ Epic Definition では次を必須とする（schema 詳細は `prompts/definiti
 - ファイル名の `{API-ID}` は API一覧表記どおり（アンダースコア区切りは機能名との境界のみ）。
 - 調査例: `rg -F '[Task]API-INT-002:'` / `gh issue list --search 'API-INT-002: in:title'`
 - 試作例: `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml`
-- テンプレート: `prompts/templates/docs/api-spec.md`
+- テンプレート: `prompts/templates/docs/api-contract-spec.md` + `api-implementation-spec.md`（1成果物に統合）
+- Contract Gate: [Contract Gate運用設計書](./Contract%20Gate運用設計書.md)（Implementation 開始前の必須条件。schema: `contract_gate` / `implementation_gate`）
 
 ### 15.3 画面仕様書Taskの命名（推奨）
 
@@ -1182,6 +1183,8 @@ Task Definitionは、Issue本文の生成元として利用する。
 | `review.review_points` | 確認観点 |
 | `parallel_control.*` | 並列作業・競合管理 |
 | `human_decision_points` | 人間判断事項 |
+| `contract_gate.*`（Implementation Task） | `task-issue.md` §8.5 |
+| `implementation_gate.*`（Contract Task） | `contract-task-issue.md` §7.5 |
 
 Task Definition → Issue本文 → label同期 → branch workflow の順で制御する。
 
@@ -1199,6 +1202,8 @@ Task Definitionは、PR本文作成時にも利用する。
 | `acceptance_criteria` | 完了条件チェック |
 | `review.review_points` | レビュー観点 |
 | `test_policy.manual_checks` | 実施した確認 |
+| `contract_gate.*`（該当時） | `task-pr.md` §8.5 Contract Gate 確認 |
+| `implementation_gate.*`（Contract Task） | `contract-pr.md` §13.5 Gate 解放 |
 | `parallel_control.*` | 横断影響・競合確認 |
 | `human_decision_points` | 人間確認事項 |
 

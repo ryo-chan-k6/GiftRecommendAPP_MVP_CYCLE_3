@@ -1,0 +1,139 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-contract-impl-command-update"
+  title: "Contract/Implementation分離のCommand反映"
+  summary: "Contract Gate・api-contract/api-implementation テンプレ分割を /start-task・/work-issue・/create-pr・/review-pr・/create-contract-task に反映する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-contract-impl-task-separation"
+  epic_issue_number: "#300"
+  epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+  next:
+    success: "/create-pr"
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Contract Gate 正本・schema（Task3）および docs テンプレ2分割（Task2）は整備済み。
+  Command 手順には未反映のため、Implementation 開始前チェックや PR 本文規約が運用とずれる。
+
+objective: |
+  主要 Command に Contract Gate 確認手順、Contract/Implementation 責務分離、
+  api-contract-spec / api-implementation-spec の使い分けを埋め込み、Orval 前提運用を実行可能にする。
+
+scope:
+  - ".cursor/commands/start-task.md への contract_gate 確認・参照追記"
+  - ".cursor/commands/work-issue.md への Contract Gate 必須チェック手順追加"
+  - ".cursor/commands/create-pr.md への Related to 規約・契約混在禁止の明記"
+  - ".cursor/commands/review-pr.md への Contract Gate / テンプレ分離レビュー観点追加"
+  - ".cursor/commands/create-contract-task.md への implementation_gate 連携追記"
+  - ".cursor/commands/README.md のフロー説明更新"
+  - "Contract Gate運用設計書 §8 後続 Task 表記の更新"
+  - "本 Task の Definition / Review Definition 作成"
+
+out_of_scope:
+  - "Issue/PR テンプレート本体の修正（後続 Task5）"
+  - "Commands設計書の全面改訂（必要最小限の参照のみ可）"
+  - "GitHub Actions / workflow 変更"
+  - "apps/** / packages/** 実装"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+  issues:
+    - "#300"
+    - "#311"
+
+output:
+  files:
+    - path: ".cursor/commands/start-task.md"
+      action: "update"
+      required: true
+    - path: ".cursor/commands/work-issue.md"
+      action: "update"
+      required: true
+    - path: ".cursor/commands/create-pr.md"
+      action: "update"
+      required: true
+    - path: ".cursor/commands/review-pr.md"
+      action: "update"
+      required: true
+    - path: ".cursor/commands/create-contract-task.md"
+      action: "update"
+      required: true
+    - path: ".cursor/commands/README.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/contract-impl-task-separation/command-update.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Contract Gate / テンプレ分離を反映した Command 手順"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "work-issue に Contract Gate 未通過時の停止手順がある"
+  - "create-pr に Task PR の Related to のみ（Closes 禁止）が明記されている"
+  - "review-pr に contract_gate と api-contract/api-implementation 観点がある"
+  - "Issue/PR テンプレートファイルを変更していない"
+  - "Task PR target が refactor/epic-300-contract-impl-task-separation である"
+
+branch:
+  name: "refactor/task-314-command-update"
+  base: "refactor/epic-300-contract-impl-task-separation"
+  target: "refactor/epic-300-contract-impl-task-separation"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
+
+parallel_control:
+  depends_on:
+    - "task-contract-impl-contract-gate"
+  blocks:
+    - "task-contract-impl-issue-pr-template-and-design-docs"
+  exclusive_files:
+    - ".cursor/commands/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Contract Gate運用設計書と Command 手順が矛盾していないか"
+    - "scope 外（workflow・テンプレ・実装）が含まれていないか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false

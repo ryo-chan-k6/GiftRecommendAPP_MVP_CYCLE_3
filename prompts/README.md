@@ -623,7 +623,8 @@ prompts/templates/docs/
 ```text
 prompts/templates/docs/
 ├─ screen-spec.md
-├─ api-spec.md
+├─ api-contract-spec.md
+├─ api-implementation-spec.md
 ├─ batch-spec.md
 ├─ module-spec.md
 ├─ table-spec.md
@@ -1360,8 +1361,10 @@ Templateを作成・修正した場合は、以下を確認する。
 | Example           | `prompts/definitions/_examples/review-definition.example.yaml`   | Review Definition記入例           |
 | Example           | `prompts/definitions/_examples/contract-definition.example.yaml` | Contract Definition記入例         |
 | Issue Template    | `prompts/templates/issue/epic-issue.md`                          | Epic Issue本文                    |
-| Issue Template    | `prompts/templates/issue/task-issue.md`                          | Task Issue本文                    |
-| Issue Template    | `prompts/templates/issue/contract-task-issue.md`                 | Contract Task Issue本文           |
+| Issue Template    | `prompts/templates/issue/task-issue.md`                          | Task Issue本文（§8.5 `contract_gate`） |
+| Issue Template    | `prompts/templates/issue/contract-task-issue.md`                 | Contract Task Issue本文（§7.5 `implementation_gate`） |
+| PR Template       | `prompts/templates/pr/task-pr.md`                                | Task PR本文（§8.5 Contract Gate 確認） |
+| PR Template       | `prompts/templates/pr/contract-pr.md`                            | Contract PR本文（§13.5 Gate 解放） |
 | PR Template       | `prompts/templates/pr/epic-pr.md`                                | Epic PR本文                       |
 | PR Template       | `prompts/templates/pr/task-pr.md`                                | Task PR本文                       |
 | PR Template       | `prompts/templates/pr/contract-pr.md`                            | Contract Task PR本文              |
@@ -1382,8 +1385,9 @@ Templateを作成・修正した場合は、以下を確認する。
 
 | 優先 | 作成物                                                  | 目的                                        |
 | ---: | ------------------------------------------------------- | ------------------------------------------- |
-|    1 | `prompts/templates/docs/api-spec.md`                    | API仕様書の標準テンプレートを定義する       |
-|    2 | `prompts/templates/slack/contract-task-created.md`      | Contract Task作成通知を標準化する           |
+|    1 | `prompts/templates/docs/api-contract-spec.md`           | API契約仕様書（契約面）の標準テンプレート   |
+|    2 | `prompts/templates/docs/api-implementation-spec.md`     | API実装仕様書（実装面）の標準テンプレート   |
+|    3 | `prompts/templates/slack/contract-task-created.md`      | Contract Task作成通知を標準化する           |
 |    3 | `prompts/templates/slack/review-fix-completed.md`       | レビュー指摘対応完了通知を標準化する        |
 |    4 | `prompts/templates/feedback/blocked-feedback.md`        | blocked時のフィードバック形式を標準化する   |
 |    5 | `prompts/templates/feedback/split-required-feedback.md` | 別Issue化が必要な場合の通知形式を標準化する |

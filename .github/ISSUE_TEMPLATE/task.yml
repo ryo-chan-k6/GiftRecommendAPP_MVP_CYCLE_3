@@ -325,6 +325,24 @@ body:
       required: true
 
   - type: textarea
+    id: contract_gate
+    attributes:
+      label: contract_gate（Implementation Task・該当時）
+      description: Contract Gate が必須の Task のみ記載。不要な場合は `required: false` と記載してください。正本は Contract Gate運用設計書 §5.2。
+      placeholder: |
+        required: false
+        gate_id:
+        prerequisite_contract_tasks:
+          - issue: "#<Contract Task Issue>"
+            definition: prompts/definitions/.../contract-task.yaml
+        verify_at:
+          - /start-task
+          - /work-issue
+        blocked_message: Contract Gate未通過。先行 Contract Task のマージと generated 再生成を確認してください。
+    validations:
+      required: true
+
+  - type: textarea
     id: generated
     attributes:
       label: generated files

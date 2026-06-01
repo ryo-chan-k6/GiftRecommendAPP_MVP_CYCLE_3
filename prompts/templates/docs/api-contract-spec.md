@@ -1,4 +1,11 @@
-# {{api.name}} API仕様書
+# {{api.name}} API契約仕様書
+
+> このテンプレートは **Contract Task** の成果物（API契約面）用である。
+> 実装面（処理フロー・内部DTOマッピング・provider/consumer実装影響・ログ・テスト観点）は `api-implementation-spec.md` を、OpenAPI定義そのものは `openapi-spec.md` を使用する。
+> 役割分担:
+> - `api-contract-spec.md`（本書）: 人間可読の**API契約**（I/Fの確定面）。Contract Task で確定し、Implementation Task の前提（Contract Gate）となる。
+> - `openapi-spec.md`: 機械可読の **OpenAPI定義**（Orval生成入力）。正本は `packages/contracts/openapi/*.yaml`。
+> - `api-implementation-spec.md`: 確定済み契約・generated を前提とした**実装仕様**。
 
 ## 1. ドキュメント情報
 
@@ -228,147 +235,21 @@ Request Bodyがない場合は `なし` と記載する。
 
 ---
 
-## 10. 処理概要
+## 10. OpenAPI / generated 反映方針
 
-### 10.1 処理フロー
+| 項目 | 内容 |
+| ---- | ---- |
+| OpenAPI正本 | `{{openapi.path}}`（正本は `packages/contracts/openapi/*.yaml`） |
+| components schema | `{{openapi.schema_name}}` |
+| Orval設定 | `orval.config.ts` |
+| generated出力先 | `{{generated.output_path}}`（web: `apps/web/src/generated/api/` / api: `apps/api/src/generated/reco-client/`） |
+| OpenAPI定義書 | `openapi-spec.md`（機械可読定義） |
 
-```mermaid
-flowchart TD
-{{process.flow}}
-```
-
-### 10.2 処理詳細
-
-{{#each process.steps}}
-
-- {{this}}
-  {{/each}}
-
-{{#unless process.steps}}
-
-- なし
-  {{/unless}}
+generatedファイルは手動編集しない。本契約が確定（Contract Gate通過）した後に Implementation Task を開始する。
 
 ---
 
-## 11. データ項目マッピング
-
-### 11.1 Request Mapping
-
-| Request項目 | 内部項目 / DTO | 変換内容 | 備考 |
-| ----------- | -------------- | -------- | ---- |
-
-{{#each mapping.request}}
-| `{{request_field}}` | `{{internal_field}}` | {{transform}} | {{note}} |
-{{/each}}
-
-{{#unless mapping.request}}
-| - | - | なし | - |
-{{/unless}}
-
-### 11.2 Response Mapping
-
-| 内部項目 / DTO | Response項目 | 変換内容 | 備考 |
-| -------------- | ------------ | -------- | ---- |
-
-{{#each mapping.response}}
-| `{{internal_field}}` | `{{response_field}}` | {{transform}} | {{note}} |
-{{/each}}
-
-{{#unless mapping.response}}
-| - | - | なし | - |
-{{/unless}}
-
----
-
-## 12. provider / consumer 影響
-
-### 12.1 provider
-
-| 項目     | 内容                                  |
-| -------- | ------------------------------------- |
-| provider | `{{provider.name}}`                   |
-| 責務     | {{provider.responsibility}}           |
-| 影響有無 | `{{provider.affected}}`               |
-| 必要対応 | {{provider.required_changes_summary}} |
-
-{{#each provider.required_changes}}
-
-- {{this}}
-  {{/each}}
-
-{{#unless provider.required_changes}}
-
-- なし
-  {{/unless}}
-
-### 12.2 consumer
-
-| 項目     | 内容                                  |
-| -------- | ------------------------------------- |
-| consumer | `{{consumer.name}}`                   |
-| 責務     | {{consumer.responsibility}}           |
-| 影響有無 | `{{consumer.affected}}`               |
-| 必要対応 | {{consumer.required_changes_summary}} |
-
-{{#each consumer.required_changes}}
-
-- {{this}}
-  {{/each}}
-
-{{#unless consumer.required_changes}}
-
-- なし
-  {{/unless}}
-
----
-
-## 13. ログ・監視
-
-| 種別           | 内容                   | 出力タイミング                | 備考                        |
-| -------------- | ---------------------- | ----------------------------- | --------------------------- |
-| API access log | {{logging.access_log}} | {{logging.access_log_timing}} | {{logging.access_log_note}} |
-| error log      | {{logging.error_log}}  | {{logging.error_log_timing}}  | {{logging.error_log_note}}  |
-| audit log      | {{logging.audit_log}}  | {{logging.audit_log_timing}}  | {{logging.audit_log_note}}  |
-| metric         | {{logging.metric}}     | {{logging.metric_timing}}     | {{logging.metric_note}}     |
-
----
-
-## 14. テスト観点
-
-|  No | 観点                | 確認内容                          | 種別                   |
-| --: | ------------------- | --------------------------------- | ---------------------- |
-|   1 | 正常系              | {{test_points.normal}}            | contract / integration |
-|   2 | validation error    | {{test_points.validation_error}}  | contract               |
-|   3 | auth error          | {{test_points.auth_error}}        | contract               |
-|   4 | permission error    | {{test_points.permission_error}}  | contract               |
-|   5 | permission error    | {{test_points.permission_error}}  | contract               |
-|   6 | unexpected error    | {{test_points.unexpected_error}}  | integration            |
-|   7 | generated client    | {{test_points.generated_client}}  | typecheck              |
-|   8 | provider / consumer | {{test_points.provider_consumer}} | manual                 |
-
----
-
-## 15. 変更管理
-
-### 15.1 変更履歴
-
-| 日付 | 変更内容 | 関連Issue / PR |
-| ---- | -------- | -------------- |
-
-{{#each change_history}}
-| {{date}} | {{description}} | {{reference}} |
-{{/each}}
-
-{{#unless change_history}}
-| - | 初版 | - |
-{{/unless}}
-
-### 15.2 変更理由
-
-{{change_management.reason}}
-
-### 15.3 互換性メモ
+## 11. 互換性・破壊的変更
 
 | 項目       | 内容                                       |
 | ---------- | ------------------------------------------ |
@@ -386,7 +267,7 @@ flowchart TD
 - なし
   {{/unless}}
 
-### 15.4 rollout order
+### 11.1 rollout order
 
 {{#each compatibility.rollout_order}}
 
@@ -400,7 +281,36 @@ flowchart TD
 
 ---
 
-## 16. 未決事項
+## 12. 契約面テスト観点
+
+|  No | 観点             | 確認内容                         | 種別      |
+| --: | ---------------- | -------------------------------- | --------- |
+|   1 | 正常系           | {{test_points.normal}}           | contract  |
+|   2 | validation error | {{test_points.validation_error}} | contract  |
+|   3 | auth error       | {{test_points.auth_error}}       | contract  |
+|   4 | permission error | {{test_points.permission_error}} | contract  |
+|   5 | generated client | {{test_points.generated_client}} | typecheck |
+
+> 実装結合・異常系の統合テスト観点は `api-implementation-spec.md` に記載する。
+
+---
+
+## 13. 変更履歴
+
+| 日付 | 変更内容 | 関連Issue / PR |
+| ---- | -------- | -------------- |
+
+{{#each change_history}}
+| {{date}} | {{description}} | {{reference}} |
+{{/each}}
+
+{{#unless change_history}}
+| - | 初版 | - |
+{{/unless}}
+
+---
+
+## 14. 未決事項
 
 |  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
@@ -415,7 +325,7 @@ flowchart TD
 
 ---
 
-## 17. 関連資料
+## 15. 関連資料
 
 | 種別 | パス / URL | 用途 |
 | ---- | ---------- | ---- |
@@ -430,7 +340,7 @@ flowchart TD
 
 ---
 
-## 18. レビュー観点
+## 16. レビュー観点
 
 {{#each review_points}}
 
@@ -439,17 +349,17 @@ flowchart TD
 
 {{#unless review_points}}
 
-- API仕様がAPI設計方針と整合している
-- Request / Response / Error Response が明確である
-- provider / consumer の影響が整理されている
-- OpenAPI定義への反映要否が明確である
+- API契約（Request / Response / Error / Validation）が明確で確定可能である
+- API設計方針・API一覧と整合している
+- OpenAPI（`packages/contracts/openapi/*.yaml`）への反映方針が明確である
 - 破壊的変更有無と後方互換性が明記されている
+- 実装詳細（内部DTO・処理フロー）を含めず契約面に限定している
 - secretや`.env`実値が含まれていない
   {{/unless}}
 
 ---
 
-## 19. 備考
+## 17. 備考
 
 {{#each notes}}
 
