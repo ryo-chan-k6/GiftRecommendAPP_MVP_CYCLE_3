@@ -77,6 +77,7 @@ async function resolveReviewDefinitionForPull({
     issueBody,
     headRef,
     issueNumber,
+    prNumber: pull.number,
     definitionOverride,
   });
 
