@@ -1,0 +1,254 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-contract-impl-task-separation"
+  title: "API契約・実装Task分離方針の整合"
+  summary: "Orval利用を前提に、API契約に関わる作業をContract Taskとして分離し、Implementation Taskと責務を分けるため、正本docs・テンプレート・Command・schema/exampleを整合させるEpic。OpenAPI契約定義の正本を packages/contracts/ に統一する（人間判断確定済み）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  現行のAI主導運用フローは、機能ごとに「実装設計→開発→単体テスト」を並列実施する想定だが、MVPではOrvalによる自動生成（OpenAPI→generated client）を前提とするため、API系作業を単純に並列化すると OpenAPI / Orval / generated の扱いが曖昧になる。
+  また、現状の正本では OpenAPI契約定義の配置が `openapi/`（構成定義書本文）・`packages/contracts/`（同書 §別表）・`docs/openapi/`（contract schema/example）・`apps/web/src/lib/api-client/.../generated`（API-PUB-002 Task）と複数系統に分裂しており、Contract Task / Implementation Task の責務分離を運用に落とし込めていない。
+
+objective: |
+  Orval前提の運用フローと整合するよう、API契約作業を前段の Contract Task として切り出し、Implementation Task は確定済み契約・generated を前提に並列実施できる状態にする。
+  そのために、(1) パス標準化（OpenAPI正本=packages/contracts/、generated出力先、Orval設定）、(2) docsテンプレートのContract/Implementation分割、(3) Contract Gate定義、(4) 各Command修正、(5) Issue/PRテンプレ・設計書反映 を、正本docs・定義・テンプレート間で一貫させる。
+
+scope:
+  - "OpenAPI契約定義の正本を packages/contracts/ に統一し、generated出力先（apps/web/src/generated/api/・apps/api/src/generated/reco-client/）・Orval設定（orval.config.ts）のパスを正本docs/定義/テンプレートで一致させる"
+  - "API系docsテンプレートを Contract仕様書（api-contract-spec.md）と Implementation仕様書（api-implementation-spec.md）に分割し、既存 api-spec.md の役割を整理する"
+  - "Contract Gate（Implementation Task開始前の必須充足条件）を Command / schema / 設計書に定義する"
+  - "/start-task・/work-issue・/create-pr・/review-pr に Contract/Implementation分離とContract Gate確認を反映する"
+  - "Issue/PRテンプレート・開発運用フロー設計書・Task Definition設計書へ分離方針を反映する"
+  - "本Epic配下の子Task分割（パス標準化 / テンプレート分割 / Contract Gate / Command修正 / テンプレ・設計書反映）を直列マージ前提で整理する"
+
+out_of_scope:
+  - "実際の OpenAPI 定義ファイル（packages/contracts/ 配下）の新規作成・実装"
+  - "Orval設定ファイル（orval.config.ts）の実装"
+  - "generated client の生成・配置"
+  - "apps/web・apps/api・apps/reco・apps/batch のソースコード実装"
+  - "レコメンドアルゴリズム・API request/response 仕様そのものの変更"
+  - "DB schema 変更・migration 作成"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/AIエージェント活用型_開発運用フロー設計書.md"
+      required: true
+      purpose: "AI主導運用フロー全体と Contract Task の位置づけを確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Task / Contract Definition の構造・命名・並列制御を確認するため"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "OpenAPI / Orval / generated の配置正本（packages/contracts/ 統一方針）を確認・是正するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "API系成果物の Contract / Implementation 分類方針を確認するため"
+    - path: "docs/00_共通/プロジェクト管理/Issue運用ルール.md"
+      required: true
+      purpose: "Epic/Task 境界・命名・no-branch 運用と矛盾しないようにするため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/00_共通/AIエージェント活用型_開発運用フロー設計書.md"
+      action: "update"
+      required: false
+      template: null
+  files:
+    - path: "prompts/templates/docs/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/_schemas/**"
+      action: "update"
+      required: false
+    - path: ".cursor/commands/**"
+      action: "update"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]API契約・実装Task分離方針の整合）"
+  - "Epic Branch（develop 起点 / refactor/epic-<issue>-contract-impl-task-separation）"
+  - "OpenAPI正本=packages/contracts/ に統一した正本docs/定義/テンプレート"
+  - "api-contract-spec.md / api-implementation-spec.md テンプレートと api-spec.md の役割整理"
+  - "Contract Gate 定義（Command / schema / 設計書）"
+  - "Contract/Implementation 分離を反映した各Command・Issue/PRテンプレート"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Epic Branch が develop から作成されている"
+  - "OpenAPI / Orval / generated のパスが正本docs・定義・テンプレート間で一致している（OpenAPI正本=packages/contracts/）"
+  - "Contract Task / Implementation Task の責務分離が関連docsに反映されている"
+  - "api-contract-spec.md / api-implementation-spec.md の作成要否が判断・反映されている"
+  - "Contract Gate 通過条件が Command / schema に定義されている"
+  - "Task PR target は親Epic Branch、Epic PR target は develop の方針が維持されている"
+  - "scope外（実装・OpenAPI実体・generated・DB）変更が混入していない"
+
+branch:
+  no_branch: false
+  name: "refactor/epic-<issue-number>-contract-impl-task-separation"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "refactor"
+  area: "docs"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/00_共通/AIエージェント運用/AIエージェント活用型_開発運用フロー設計書.md"
+    - "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+    - "docs/00_共通/プロジェクト管理/Issue運用ルール.md"
+    - "docs/00_共通/プロジェクト管理/Projects運用ルール.md"
+    - "prompts/templates/docs/**"
+    - "prompts/templates/issue/**"
+    - "prompts/templates/pr/**"
+    - "prompts/definitions/_schemas/**"
+    - "prompts/definitions/_examples/**"
+    - "prompts/definitions/tasks/api-int-002-reco-recommendation-run/**"
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/**"
+    - "prompts/definitions/epics/contract-impl-task-separation/**"
+    - "prompts/definitions/tasks/contract-impl-task-separation/**"
+    - "prompts/definitions/reviews/contract-impl-task-separation/**"
+    - ".cursor/commands/**"
+    - "ai-logs/human-decisions/**"
+  forbidden_paths:
+    - "apps/**"
+    - "openapi/**"
+    - "packages/**"
+    - "db/**"
+  child_task_areas:
+    - "path-standardization"
+    - "doc-template-split"
+    - "contract-gate"
+    - "command-update"
+    - "issue-pr-template-and-design-docs"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+    - "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+    - "prompts/definitions/_schemas/contract-definition.schema.md"
+  conflict_risk: "high"
+  contract_impact: true
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "definition consistency check"
+    - "scope boundary check"
+    - "path consistency check"
+  commands: []
+  manual_checks:
+    - "OpenAPI / Orval / generated のパスが正本docs・定義・テンプレート間で矛盾しないことを確認する"
+    - "Contract Task / Implementation Task の責務が混同されていないことを確認する"
+    - "Contract Gate 条件が Command と schema で一致していることを確認する"
+    - "scope外（実装・OpenAPI実体・generated・DB）変更が含まれていないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "本Epicは運用docs・定義・テンプレート更新が主対象であり、実装コード変更を含まないため"
+    "integration test": "本Epicは運用docs・定義・テンプレート更新が主対象であり、実行系変更を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "OpenAPI正本=packages/contracts/ 方針が正本docs全体で一貫しているか"
+    - "Contract Task / Implementation Task の責務境界が明確か"
+    - "Contract Gate 条件が運用上機能するか"
+    - "Command / Issue / PR テンプレートが分離方針と整合しているか"
+    - "scope外（実装・OpenAPI実体・generated・DB）変更が混入していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "複数正本docs・定義・テンプレートに横断影響するため cross_cutting を有効化。OpenAPI正本変更は human-decision として別途記録する。"
+
+risk_points:
+  - "正本docsの更新順序を誤ると一時的にパス定義が不整合になる可能性"
+  - "Contract Gate 定義が曖昧だと Implementation Task が契約未確定のまま進む可能性"
+  - "テンプレート分割により既存進行中Task（API-INT-002 / API-PUB-002）が一時的に旧テンプレ参照になる可能性"
+
+human_decision_points:
+  - "OpenAPI契約定義の正本を packages/contracts/ に統一する（確定済み: 2026-06-01 ryo-chan-k6）"
+  - "既存 api-spec.md を即時廃止するか段階移行とするか"
+  - "Task worktree をフル並列にするか直列マージにするか（確定済み: 直列マージ）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "正本docs間でパス方針が矛盾し、優先順位を決定できない場合"
+  - "scope外の実装変更（apps / openapi実体 / generated / db）が必須になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "本Epicは機能・領域単位 Epic のため epic_scope.artifact_id は空文字とする。Issue本文に識別子単位Epicの例外である旨を明記する。"
+  - "子Taskは直列マージを前提とし、順序は パス標準化 → テンプレート分割 → Contract Gate → Command修正 → Issue/PRテンプレ・設計書反映 とする。"
+  - "OpenAPI正本=packages/contracts/ の人間判断は ai-logs/human-decisions/ に記録する。"
