@@ -9,7 +9,7 @@ review:
   status: "ready"
 
 target:
-  pr: 0
+  pr: 315
   issue: 314
   task_definition: "prompts/definitions/tasks/contract-impl-task-separation/command-update.yaml"
   source_branch: "refactor/task-314-command-update"
