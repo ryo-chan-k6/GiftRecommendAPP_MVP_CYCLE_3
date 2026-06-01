@@ -4,7 +4,7 @@
 
 本仕様書は、Slack や GitHub Actions などの外部トリガから Definition Run（`/start-epic` / `/start-task` 等の Cursor Command を Definition と組み合わせて実行する単位）を Cursor Cloud Agent に依頼するための GitHub Actions Harness を定義する。
 
-本 Harness は、1 Command（MVP では `/start-epic`）で framework を確立し、他 Command への横展開を「Command レジストリへの追記 + 軽微な差分」で済む構造にする。
+本 Harness は、`/start-epic` dry-run と `/review-pr` live-run で framework を確立し、他 Command への横展開を「Command レジストリへの追記 + 軽微な差分」で済む構造にする。
 
 更新系処理（Projects 同期・Branch 作成・PR 操作）は本 Harness 自身では行わず、Issue 起票後の既存 workflow に委譲する。本方針は [Commands設計書](../../00_共通/AIエージェント運用/Commands設計書.md) §4 / §10 に従う（§13 参照）。
 
@@ -136,7 +136,7 @@ COMMAND_REGISTRY = {
 | `definition_type` | Definition YAML の `definition_type` と一致すること（`epic` / `task` / `review` 等） |
 | `default_ref` | Cloud Agent が clone する ref。dry-run はリポジトリ既定で可、live-run 時は要設計 |
 | `dry_run_supported` | dry-run を許可するか |
-| `live_run_supported` | live-run を許可するか（MVP は全て `false`） |
+| `live_run_supported` | live-run を許可するか（現行は `review-pr` のみ `true`） |
 | `output_section` | `.cursor/commands/<command>.md` の dry-run 出力セクション名 |
 
 ## 8. プロンプト雛形
@@ -238,8 +238,9 @@ Issue 作成・更新後の同期は既存 workflow が行うため、Harness �
 
 1. ジョブ開始時刻を `started_at` として記録
 2. Cloud Agent 完了後、`started_at` 以降に作成された Issue / PR / Branch の有無を gh API で確認
-3. MVP（dry-run）の違反検知ルール:
+3. 違反検知ルール:
    - dry-run なのに新規 Issue / PR / Branch が作成されていたら **違反**
+   - `review-pr` 実行時は `target_pr` の head branch を branch 監視対象から除外する（対象 PR ブランチへの並行 push を誤検知しないため）
    - 違反内容（種別・番号・URL・作成時刻・actor）を Job Summary の Guard Violations 欄に列挙
    - 検出時は `process.exit(1)` で job を失敗扱いにする
 4. 違反がなければ `violations: []` を Job Summary に記録
@@ -267,12 +268,16 @@ MVP 段階ではこの actor 判別ロジックを **コメントだけ書いて
 - 入力 `requested_by` 等の自由文字列も builder で長さ制限・改行除去
 - Job Summary 出力直前に Markdown 全体を secret スキャナ（既知パターン正規表現）に通してから書き出す
 
-## 11. dry-run / live-run の取り扱い（将来）
+## 11. dry-run / live-run の取り扱い
 
-| run_mode | MVP の扱い | Phase D 以降の扱い |
-| -------- | ---------- | ------------------ |
-| `dry-run` | 受理。書き込み全面禁止 | 引き続き受理 |
-| `live-run` | **必ず失敗**（許可リスト外） | Command レジストリの `live_run_supported: true` 化 + 権限・ref 設計 + GitHub Environments approval + post-verify の許容ルール更新を別 PR で行う |
+| command | `run_mode` | 現行の扱い |
+| ------- | ---------- | ---------- |
+| `start-epic` | `dry-run` | 受理。書き込み全面禁止 |
+| `start-epic` | `live-run` | 不許可（失敗） |
+| `review-pr` | `dry-run` | 受理。通常は検証用途 |
+| `review-pr` | `live-run` | 受理。bot fallback + post-verify を実行 |
+
+`review-pr` 以外の command で live-run を解禁する場合は、Command レジストリの `live_run_supported: true` 化 + 権限・ref 設計 + GitHub Environments approval + post-verify 許容ルール更新を別 PR で行う。
 
 ## 12. 失敗・停止条件
 
@@ -283,7 +288,7 @@ MVP 段階ではこの actor 判別ロジックを **コメントだけ書いて
 - `definition` が `prompts/definitions/` prefix 外
 - `definition` の実ファイルが存在しない
 - `definition` YAML の `definition_type` がレジストリ定義と一致しない
-- `run_mode` がレジストリで supported でない（MVP は `live-run` 指定で失敗）
+- `run_mode` がレジストリで supported でない（例: `start-epic` の `live-run` 指定で失敗）
 - Cursor SDK 呼び出しで `CursorAgentError` が thrown された（`error.isRetryable` を Summary に記録）
 - Cursor SDK の `result.status === "error"`（run は実行されたが失敗）
 - post-verify で違反が検出された
@@ -360,9 +365,12 @@ gh workflow run "Definition Run Harness" \
 
 ### 15.2 bot fallback / post-verify 失敗後
 
-1. Actions log で fallback 理由（`no_comment_in_transcript` 等）と post-verify violations を確認
-2. インフラ改修 PR で fallback / post-verify を修正（develop マージ）
-3. §15.1 の **Harness 直接 dispatch** で再実行（`ref` に PR head ref を必ず指定）
+1. Actions log で fallback 理由（`transcript_missing` / `no_comment_in_transcript` 等）と post-verify violations を確認
+2. fallback は transcript に AI Review コメントが見つからない場合、`run.result` の Review Result も参照して synthetic comment を生成する（Review Result が一意な場合のみ）
+3. synthetic で投稿されたコメントには `harness-fallback: synthesized` マーカーを付与する
+4. post-verify は `review-pr` 実行時に `target_pr` の head branch を違反判定から除外する
+5. インフラ改修 PR で fallback / post-verify を修正（develop マージ）
+6. §15.1 の **Harness 直接 dispatch** で再実行（`ref` に PR head ref を必ず指定）
 
 ### 15.3 手動 CLI（`--context` なし）
 
@@ -376,7 +384,7 @@ node .github/scripts/dispatch-review-pr-harness.cjs \
 
 `--context pr-created|fix-ready` を付けない限り、インフラ PR skip（§ [AI Review自動起動](./AI%20Review自動起動ワークフロー連携仕様書.md) §5）は適用されない。
 
-## 16. 動作確認手順（MVP 受入）
+## 16. 動作確認手順（現行受入）
 
 1. `secrets.CURSOR_API_KEY` を設定
 2. Actions UI から `workflow_dispatch` で次を実行
@@ -387,11 +395,12 @@ node .github/scripts/dispatch-review-pr-harness.cjs \
 6. dry-run 出力（生成予定 Issue 本文）が以下の policy に整合していること
    - **Issue 運用メタデータ形式**（`###` 見出し単位）で出力されている（[Issue運用ルール](../../00_共通/プロジェクト管理/Issue運用ルール.md) §10）
    - 識別子単位 Epic の場合、`project.fields.phase` が `07_開発・単体テスト`、Milestone が `開発・単体テスト工程完了` になっている（[Projects運用ルール](../../00_共通/プロジェクト管理/Projects運用ルール.md) §6.1、[.cursor/commands/start-epic.md](../../../.cursor/commands/start-epic.md) §7）
-7. `command=start-task` を指定したジョブが **必ず失敗** すること（MVP 未対応）
-8. `run_mode=live-run` を指定したジョブが **必ず失敗** すること
-9. 不許可 Command（例: `merge-pr`）や不正パスが **必ず失敗** すること
-10. post-run 検証の発火確認: dry-run プロンプトを意図的に外して試験 Issue を作る再現テストで、Guard Violations に検出され job が失敗すること（受入時に手動で1回）
-11. `CURSOR_API_KEY` や類似 secret が Job Summary / Actions log に出ていないこと
+7. `command=start-task` を指定したジョブが **必ず失敗** すること（未対応）
+8. `command=start-epic` で `run_mode=live-run` を指定したジョブが **必ず失敗** すること
+9. `command=review-pr` + `run_mode=live-run` + `target_pr=<番号>` で実行し、bot fallback / post-verify が正常完走すること
+10. 不許可 Command（例: `merge-pr`）や不正パスが **必ず失敗** すること
+11. post-run 検証の発火確認: dry-run プロンプトを意図的に外して試験 Issue を作る再現テストで、Guard Violations に検出され job が失敗すること（受入時に手動で1回）
+12. `CURSOR_API_KEY` や類似 secret が Job Summary / Actions log に出ていないこと
 
 ## 17. 関連ドキュメント
 
