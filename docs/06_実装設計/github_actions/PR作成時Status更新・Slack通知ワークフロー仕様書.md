@@ -61,6 +61,7 @@ workflow permissionsは必要最小限にする。
 | PR本文からIssue番号を解決できない | ジョブ失敗 |
 | 対象IssueがProjectに存在しない | ジョブ失敗 |
 | Slack設定不足 | Status更新は行い、Slack通知のみスキップ |
+| インフラ PR（`type: infra` 等）または `.github/` のみ変更 | Status 更新は行う。**Harness 自動起動はスキップ**（[AI Review自動起動](./AI%20Review自動起動ワークフロー連携仕様書.md) §5） |
 
 ## 7. 通知内容
 

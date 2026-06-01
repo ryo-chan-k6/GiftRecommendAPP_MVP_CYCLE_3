@@ -53,6 +53,10 @@ PR open / fix-ready (ready_for_ai_review)
 | PR from fork | 既存 Status workflow と同様 |
 | `fix_outcome` ≠ `ready_for_ai_review` | fix-ready 経路のみ |
 | Task Definition で `review.ai_review_required: false` | AI Review 省略 |
+| PR / 関連 Issue に `type: infra` または `area: infra` ラベル | インフラ PR（CI / workflow 改修）。自動 dispatch 対象外 |
+| 変更ファイルが `.github/` 配下のみ（自動 dispatch 経路） | workflow / script 改修 PR。ラベル未付与でも skip（例: PR #297） |
+
+インフラ PR では Status=`AI Review` 更新は行っても Harness 自動起動は **しない**。AI Review が必要な場合は手動で `/review-pr` または Harness `workflow_dispatch` を実行する。
 
 ## 6. 前提
 
