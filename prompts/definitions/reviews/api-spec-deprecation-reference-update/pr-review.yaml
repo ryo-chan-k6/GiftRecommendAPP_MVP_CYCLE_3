@@ -14,7 +14,7 @@ branch:
   no_branch: true
 
 target:
-  pr: 0
+  pr: 310
   issue: 309
   task_definition: "prompts/definitions/tasks/contract-impl-task-separation/api-spec-deprecation-reference-update.yaml"
   source_branch: "refactor/task-309-api-spec-deprecation-reference-update"
@@ -44,7 +44,7 @@ input:
     number: 309
     required: true
   pr:
-    number: 0
+    number: 310
     required: true
 
 review_points:
