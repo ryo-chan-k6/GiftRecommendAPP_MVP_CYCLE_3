@@ -199,6 +199,6 @@ stop_conditions:
   - "scope外（他Epic参照・api-spec.md削除）変更が必須になった場合"
 
 notes:
-  - "api-spec.md は後方互換のため残置する。即時廃止可否は Human Review で判断する。"
-  - "他Epic定義（api-int-002 / api-pub-002 / scr-002）の api-spec.md 参照は本Taskのscope外であり、後続の横断一括是正で扱う。"
+  - "api-spec.md は本Taskでは残置するが、Human Review（PR #306）で即時廃止が決定済み。本体削除と全参照是正は横断一括是正Task #309（Epic #300直下）で #306 マージ後に実施する。"
+  - "他Epic定義（api-int-002 / api-pub-002 / scr-002）の api-spec.md 参照は本Taskのscope外であり、横断一括是正Task #309 で扱う。"
   - "contract-definition.example.yaml の出力docパス（05_実装設計/API仕様書.md）の工程ディレクトリ名・ファイル名是正は本Taskのscope外（template参照のみ更新）。"

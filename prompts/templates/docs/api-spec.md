@@ -10,7 +10,7 @@
 > | OpenAPI定義（機械可読・Orval入力） | `openapi-spec.md` | Contract Task |
 >
 > **新規の Contract / Implementation Task は上記の分割テンプレートを使用すること。**
-> 本テンプレート（`api-spec.md`）は既存参照との後方互換のため当面残置する（即時廃止可否はHuman Reviewで判断）。以降の章は移行期の参考とする。
+> **本テンプレート（`api-spec.md`）は即時廃止が決定済み**（PR #306 Human Review）。本体削除と全参照の横断是正は Epic #300 の横断一括是正Task **#309** で実施する。以降の章は削除までの参考とする。
 
 ## 1. ドキュメント情報
 
