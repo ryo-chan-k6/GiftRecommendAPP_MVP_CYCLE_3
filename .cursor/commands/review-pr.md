@@ -847,7 +847,9 @@ Harness 入力:
 | `run_mode` | 必須 | `dry-run` または `live-run` |
 | `target_pr` | live-run 時必須 | 対象 PR 番号 |
 
-live-run 完了後、Harness post-run 検証が dispatch 忘れを検知する。違反時は Guard Violations に `review_dispatch` が列挙され、ジョブは失敗する。
+Harness live-run では Cloud Agent から GitHub へ書き込めず、Harness が **Agent の最終出力テキストから AI Review コメントを再構成して投稿**する。そのため AI Review コメント本文（[ai-review-comment.md](../../prompts/templates/review/ai-review-comment.md) の全セクション）を **省略せず逐語で出力**する。`...` 等の省略・`/tmp` 等ローカルファイルへの退避・「全文は … を参照」のような参照で本文を代替しない（本文退避は投稿スクリプトが拒否する）。
+
+live-run 完了後、Harness post-run 検証が dispatch 忘れと **コメント本文の切り詰め**を検知する。違反時は Guard Violations に `review_dispatch` / `review_comment_truncated` が列挙され、ジョブは失敗する。
 
 ---
 
