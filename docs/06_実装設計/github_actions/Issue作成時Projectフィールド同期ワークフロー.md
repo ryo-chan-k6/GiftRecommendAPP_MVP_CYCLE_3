@@ -7,6 +7,7 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 実装ファイル | `.github/workflows/issue-metadata-project-branch.yml` |
+| 共通 script | `.github/scripts/project-v2-utils.cjs` |
 | Actions 表示名 | **Issue Metadata Sync** |
 | Run 名（一覧） | `issue-meta · issue-{opened\|edited} · #n` |
 | 正本 | 本ドキュメント（運用の数値・定数は実装 YAML と一致させる） |
@@ -111,7 +112,9 @@ GitHub Issue forms は各フィールドを `### {フィールドのラベル}` 
 | ---- | ---- |
 | Project フィールド名が見つからない | 警告ログ（該当フィールドの更新はスキップ） |
 | Phase / Priority / Area のオプションが本文と一致しない | 該当フィールドの更新をスキップし、必要に応じて警告ログまたはIssueコメントで通知 |
-| Project アイテムを追加・特定できない | 警告ログを出し、Projectフィールド同期をスキップ |
+| ProjectV2 を解決できない | ジョブ失敗（`core.setFailed`） |
+| Issue の Node ID を解決できない | ジョブ失敗 |
+| Project アイテムを追加・特定できない | ジョブ失敗（後続 PR Status 連鎖への影響を防ぐ） |
 | `issues.createComment` が権限等で失敗 | 警告ログのみ |
 
 ## 10. 運用上の必須事項
