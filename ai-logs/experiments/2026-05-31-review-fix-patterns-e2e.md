@@ -150,5 +150,5 @@ Phase B用の検証用コメントです。
 - [x] Phase 0〜C-2 Pass 記録済み
 - [x] develop 取り込み（merge `a492023`）
 - [x] fix-ready → Harness → AI Review Pass
-- [ ] Human Review Approve
-- [ ] PR #290 merge → Issue #289 Done
+- [x] Human Review Approve
+- [x] PR #290 merge → Issue #289 Done
