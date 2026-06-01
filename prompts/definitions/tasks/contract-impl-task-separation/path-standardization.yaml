@@ -1,0 +1,210 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-contract-impl-path-standardization"
+  title: "API契約パス標準化（OpenAPI正本=packages/contracts/ 統一）"
+  summary: "OpenAPI / Orval / generated のパスを、構成定義書（§8.1・§22）を正本として正本docs・定義・テンプレート間で一致させる。Contract Task / Implementation Task 分離の前提となるパス基準を確定する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-contract-impl-task-separation"
+  epic_issue_number: "#300"
+  epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "contract-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  OpenAPI契約定義の参照が `openapi/`（ルート）・`packages/contracts/`・`docs/openapi/`・`apps/web/src/lib/api-client/.../generated` の複数系統に分裂している。
+  構成定義書 §8.1・§22・§24 は既に `packages/contracts/openapi/*.yaml`（OpenAPI正本）・`apps/web/src/generated/api/`・`apps/api/src/generated/reco-client/`（generated）・`orval.config.ts`（Orval設定）を正本として定義しており、これを基準に他参照を是正する。
+
+objective: |
+  構成定義書を正本として、Contract定義テンプレート（schema/example）と API-PUB-002 仕様Taskの OpenAPI / generated 参照を正規パスへ統一し、パス基準を明文化する。
+
+scope:
+  - "contract-definition.schema.md の OpenAPI参照を packages/contracts/openapi/public-api.yaml に統一する"
+  - "contract-definition.example.yaml の OpenAPI参照を packages/contracts/openapi/public-api.yaml に統一する"
+  - "api-pub-002-recommendation-run/api-spec.yaml の OpenAPI参照（openapi/paths）・generated参照（lib/api-client/.../generated）を正規パスへ是正する"
+  - "正本パス基準（OpenAPI / Orval / generated / wrapper）を本Definitionに明記する"
+
+out_of_scope:
+  - "実際の packages/contracts/ 配下 OpenAPI ファイル・orval.config.ts・generated の作成/生成"
+  - "他Epic定義（scr-002 / api-int-002 epic.yaml）の epic_scope.allowed_paths / forbidden_paths 修正"
+  - "成果物一覧×Task Definition化方針書・architecture-consistency.mdc の root openapi/paths・lib/api-client 記載修正"
+  - "docsテンプレート2分割・Contract Gate・Command修正（後続Task）"
+  - "apps/** 実装・DB変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "OpenAPI / generated / Orval の正本パス（§8.1・§22・§24）を確認するため"
+  files:
+    - path: "prompts/definitions/_schemas/contract-definition.schema.md"
+      required: true
+      purpose: "Contract定義テンプレートの OpenAPI参照を確認・是正するため"
+    - path: "prompts/definitions/_examples/contract-definition.example.yaml"
+      required: true
+      purpose: "Contract定義例の OpenAPI参照を確認・是正するため"
+    - path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+      required: true
+      purpose: "API-PUB-002 仕様Taskの OpenAPI / generated 参照を確認・是正するため"
+    - path: "ai-logs/human-decisions/2026-06-01-openapi-contract-home-packages-contracts.md"
+      required: true
+      purpose: "OpenAPI正本=packages/contracts/ の人間判断を確認するため"
+  issues:
+    - "#301"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/_schemas/contract-definition.schema.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/_examples/contract-definition.example.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/contract-impl-task-separation/path-standardization.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Contract定義 schema/example の OpenAPI参照が packages/contracts/openapi/public-api.yaml に統一されている"
+  - "api-pub-002 api-spec.yaml の OpenAPI / generated 参照が正規パスへ是正されている"
+  - "正本パス基準が本Definition（path_standard）に明記されている"
+
+acceptance_criteria:
+  - "contract-definition.schema.md に docs/openapi/openapi.yaml 参照が残っていない"
+  - "contract-definition.example.yaml に docs/openapi/openapi.yaml 参照が残っていない"
+  - "api-pub-002 api-spec.yaml に root openapi/paths・lib/api-client/.../generated 参照が残っていない"
+  - "正本パス基準が構成定義書 §8.1・§22 と一致している"
+  - "scope外（実装・generated実体・他Epic境界）変更が含まれていない"
+  - "Task PR target が refactor/epic-300-contract-impl-task-separation である"
+
+branch:
+  no_branch: false
+  name: "refactor/task-301-contract-impl-path-standardization"
+  base: "refactor/epic-300-contract-impl-task-separation"
+  target: "refactor/epic-300-contract-impl-task-separation"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-contract-impl-doc-template-split"
+  exclusive_files:
+    - "prompts/definitions/_schemas/contract-definition.schema.md"
+    - "prompts/definitions/_examples/contract-definition.example.yaml"
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+  conflict_risk: "medium"
+  contract_impact: true
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "path consistency check"
+  commands:
+    - "rg -n 'docs/openapi/openapi.yaml' prompts/definitions/_schemas/contract-definition.schema.md prompts/definitions/_examples/contract-definition.example.yaml || echo 'no docs/openapi reference (OK)'"
+  manual_checks:
+    - "OpenAPI正本パスが packages/contracts/openapi/*.yaml で一致していることを確認する"
+    - "generated参照が apps/web/src/generated/api/ ・ apps/api/src/generated/reco-client/ で一致していることを確認する"
+    - "scope外の他Epic境界・方針書・ruleを変更していないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "定義・テンプレートのパス是正であり、実装コード変更を含まないため"
+    "integration test": "実行系変更を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "OpenAPI / generated / Orval パスが構成定義書と一致しているか"
+    - "scope外（他Epic境界・方針書・rule・実装）変更が混入していないか"
+    - "残存する横断不整合（他Epicの root openapi/paths・lib/api-client）が PR で明示されているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "OpenAPI・正本docs横断のパス是正であり、残存横断不整合を cross_cutting として共有するため。"
+
+path_standard:
+  source_of_truth: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md §8.1・§22・§24"
+  openapi:
+    public_api: "packages/contracts/openapi/public-api.yaml"
+    internal_reco_api: "packages/contracts/openapi/internal-reco-api.yaml"
+    shared_schemas: "packages/contracts/schemas/"
+  orval_config: "orval.config.ts"
+  generated:
+    web: "apps/web/src/generated/api/"
+    api_reco_client: "apps/api/src/generated/reco-client/"
+  client_wrapper:
+    web: "apps/web/src/lib/"
+    api_reco_client: "apps/api/src/infrastructure/reco-client/"
+
+stop_conditions:
+  - "構成定義書とパス参照の矛盾解消方針を推測するしかない場合"
+  - "scope外の他Epic境界変更が必須になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "構成定義書 §8.1・§22・§24 は既に packages/contracts/ を正本としており本Taskでは変更しない。"
+  - "他Epic定義（scr-002 / api-int-002 epic.yaml）・成果物一覧×Task Definition化方針書・architecture-consistency.mdc に残る root `openapi/paths/**` と `apps/web/src/lib/api-client/**` は、本Taskのscope外。これらは epic_scope 境界・per-resource OpenAPI 採否・wrapper層命名の判断を伴うため、人間判断としてEpic #300 で扱う。"
+  - "lib/ は構成定義書上 wrapper層（generatedを利用）であり generated 実体ではない点を区別する。"
