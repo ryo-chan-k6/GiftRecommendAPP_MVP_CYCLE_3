@@ -1337,10 +1337,10 @@ Definition Run は、Cursor IDE 以外からも実行できる。MVP では GitH
 
 | 項目 | MVP の扱い |
 | ---- | ---------- |
-| 対応 Command | `/start-epic` のみ |
-| `run_mode` | `dry-run` のみ |
+| 対応 Command | `/start-epic`（dry-run） / `/review-pr`（dry-run / live-run） |
+| `run_mode` | Command レジストリ準拠（`start-epic` は `dry-run` のみ、`review-pr` は `dry-run` / `live-run`） |
 | Slack 入力 | 未対応（Phase C） |
-| `live-run` | 未対応（Phase D。Environments approval 等の承認ゲート追加が前提） |
+| `live-run` | `review-pr` は対応済み。他 command は未対応（Phase D。Environments approval 等の承認ゲート追加が前提） |
 
 他 Command（`/start-task` 等）への横展開は、Harness 側の Command レジストリへの追記と各 Command の md への「Definition Run としての外部実行」節の複製で行う（Harness 仕様書 §14 横展開チェックリスト）。
 
