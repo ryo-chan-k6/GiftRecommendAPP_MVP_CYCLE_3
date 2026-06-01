@@ -1,0 +1,76 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-spec-deprecation-reference-update-pr"
+  title: "api-spec.md即時廃止と全参照横断是正 PRレビュー"
+  summary: "api-spec.md 削除と全参照是正 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+
+target:
+  pr: 0
+  issue: 309
+  task_definition: "prompts/definitions/tasks/contract-impl-task-separation/api-spec-deprecation-reference-update.yaml"
+  source_branch: "refactor/task-309-api-spec-deprecation-reference-update"
+  target_branch: "refactor/epic-300-contract-impl-task-separation"
+  parent_epic_issue: "[Epic]API契約・実装Task分離方針の整合"
+  parent_epic_branch: "refactor/epic-300-contract-impl-task-separation"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    contract: "contract-ai"
+
+review_scope:
+  docs: true
+  api_contract: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/contract-impl-task-separation/api-spec-deprecation-reference-update.yaml"
+    required: true
+  issue:
+    number: 309
+    required: true
+  pr:
+    number: 0
+    required: true
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "api-spec.md が削除され参照が是正されているか"
+    - "Related to #309 が PR 本文にあるか"
+  docs:
+    - "正本docs・定義が分割テンプレート方針と整合しているか"
+    - "個別API仕様書Taskの1成果物統合方針が明確か"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "scope 外変更がない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "docs"
