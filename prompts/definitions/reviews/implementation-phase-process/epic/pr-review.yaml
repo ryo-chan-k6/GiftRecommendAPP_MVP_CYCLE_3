@@ -9,7 +9,7 @@ review:
   status: "ready"
 
 target:
-  pr: null
+  pr: 347
   issue:
     number: 338
   task_definition: "prompts/definitions/epics/implementation-phase-process/epic.yaml"
