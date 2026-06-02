@@ -1,0 +1,235 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-directory-structure-doc-audit"
+  title: "構成定義書 再点検・更新（OpenAPIレイアウト方針含む）"
+  summary: "monorepo 全体の配置正本を点検し、プロジェクトディレクトリ構成定義書を更新する。OpenAPI 正本パス・generated 配置・reco src/reco 方針・Phase1 向け OpenAPI ファイルレイアウト方針節を明文化する（実 YAML 作成は Phase1）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-directory-structure-review"
+  epic_issue: "[Epic]directory-structure-review:ディレクトリ構成再検討"
+  epic_issue_number: 348
+  epic_branch: "refactor/epic-348-directory-structure-review"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase0 子Task ①。L1 実装フェーズ実行プロセス設計書 §6.1 の「構成定義書 再点検・更新」に対応。
+  #300 で OpenAPI 正本=packages/contracts/ は確定済みだが、構成定義書内の表記曖昧さ（§8.1 相対パス表記等）と、per-resource OpenAPI（openapi/paths）vs 集約 YAML の採否は Phase0 で方針節として確定し、実ファイルは Phase1 とする。
+
+objective: |
+  プロジェクトディレクトリ構成定義書を monorepo 現状・前提 Epic 結論と整合するよう更新し、後続 Task ②③・Phase1 Contract Task のパス基準の正本とする。
+  あわせて OpenAPI ファイルレイアウト方針（集約 YAML 正本 vs リソース別分割の扱い）を方針節として記載する。
+
+scope:
+  - "プロジェクトディレクトリ構成定義書の全体像・§8.1 packages/contracts・generated・reco src/reco の再点検と是正"
+  - "OpenAPI レイアウト方針節の新設（正本=packages/contracts/openapi/*.yaml、per-resource 分割の Phase1 扱い）"
+  - "前提 Epic 取り込み節または変更履歴（#300 human-decision、reco 棚卸し参照）"
+  - "recoディレクトリ構成不整合棚卸し.md のステータス更新（①完了・②③へ引き継ぎ）"
+  - "Phase0 パス基準一覧（path_standard 相当）を構成定義書または本 Task Definition notes に明記"
+
+out_of_scope:
+  - "AGENTS.md・prompts/definitions・.cursor/rules の更新（Task ②③）"
+  - "apps/** / packages/** 実体・orval.config.ts の変更"
+  - "packages/contracts/openapi/*.yaml の新規作成・更新（Phase1）"
+  - "ルート openapi/ ディレクトリの物理移動"
+  - "物理ディレクトリの一括リネーム"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase0 Task ① の位置づけ"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "更新対象正本"
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      required: true
+      purpose: "reco 不整合の取り込み元"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: false
+      purpose: "OpenAPI 正本パスとの整合確認"
+  files:
+    - path: "ai-logs/human-decisions/2026-06-01-openapi-contract-home-packages-contracts.md"
+      required: true
+      purpose: "OpenAPI 正本の人間判断"
+    - path: "prompts/definitions/tasks/contract-impl-task-separation/path-standardization.yaml"
+      required: false
+      purpose: "path_standard 参照（#300）"
+
+output:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      action: "update"
+      required: false
+      template: null
+  files:
+    - path: "prompts/definitions/tasks/directory-structure-review/directory-structure-doc-audit.yaml"
+      action: "update"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "更新版 プロジェクトディレクトリ構成定義書"
+  - "OpenAPI レイアウト方針節（Phase1 着手条件として参照可能）"
+  - "Phase0 パス基準（OpenAPI / generated / reco）の正本化"
+
+acceptance_criteria:
+  - "構成定義書にルート openapi/ を正本として読める記述が残っていない（packages/contracts/ 基準に統一）"
+  - "generated 配置（apps/web/src/generated/api/・apps/api/src/generated/reco-client/）が §22 等で一貫している"
+  - "reco は apps/reco/src/reco/** を正とし、API-INT=api層・MOD-RECO=application 層の配置が記載されている"
+  - "OpenAPI レイアウト方針節が存在し、実ファイル作成は Phase1 であることが明記されている"
+  - "apps/** / packages/** / orval.config.ts の差分が含まれていない"
+  - "Task PR target が親 Epic Branch である"
+
+branch:
+  no_branch: false
+  name: "refactor/task-349-directory-structure-doc-audit"
+  base: "refactor/epic-348-directory-structure-review"
+  target: "refactor/epic-348-directory-structure-review"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "project"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-agents-definitions-openapi-path-align"
+    - "task-definitions-generated-and-epic-scope-align"
+  exclusive_files:
+    - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+  conflict_risk: "medium"
+  contract_impact: true
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "path consistency check"
+  commands: []
+  manual_checks:
+    - "構成定義書 §5 全体像にルート openapi/ がないこと"
+    - "§8.1 のパス表記が packages/contracts/ 配下であることが明示されていること"
+    - "OpenAPI レイアウト方針節を読めば Phase1 で何を作るか判断できること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs 更新 Task のため"
+    "integration test": "実行系変更を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "前提 Epic 結論と矛盾しないか"
+    - "OpenAPI レイアウト方針が Phase1 Contract Task に十分か"
+    - "物理移動を要求する記述になっていないか（方針のみ）"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "正本構成定義の横断更新のため cross_cutting。"
+
+path_standard:
+  source_of_truth: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md（本Task完了後）"
+  openapi:
+    public_api: "packages/contracts/openapi/public-api.yaml"
+    internal_reco_api: "packages/contracts/openapi/internal-reco-api.yaml"
+    shared_schemas: "packages/contracts/schemas/"
+  orval_config: "orval.config.ts"
+  generated:
+    web: "apps/web/src/generated/api/"
+    api_reco_client: "apps/api/src/generated/reco-client/"
+  client_wrapper:
+    web: "apps/web/src/lib/"
+    api_reco_client: "apps/api/src/infrastructure/reco-client/"
+  reco:
+    api_int_layer: "apps/reco/src/reco/api/**"
+    mod_reco_orchestrator: "apps/reco/src/reco/application/orchestrators/recommendation_orchestrator.py"
+
+openapi_layout_policy:
+  phase0_output: "docs_only"
+  canonical_root: "packages/contracts/"
+  phase1_creates_files: true
+  decision_options:
+    - id: "aggregated_yaml"
+      description: "public-api.yaml / internal-reco-api.yaml の集約ファイルを正本とする（現行 §8.1 ツリー想定）"
+    - id: "per_resource_under_contracts"
+      description: "packages/contracts/openapi/paths/<resource>/ 等で分割し、ビルドまたは Orval 入力で集約する"
+  human_decision_required_before_phase1: true
+  notes: "本Taskでは採否を方針節に記載し、未確定の場合は選択肢と推奨案を明示して Human Review とする。実 YAML・orval 変更は Phase1。"
+
+stop_conditions:
+  - "構成定義書の矛盾解消に物理移動が必須と判明した場合（Human 判断へ）"
+  - "OpenAPI レイアウト方針を AI だけで確定できない場合"
+  - "正本docs間で優先順位を決定できない場合"
+
+notes:
+  - "Issue タイトル案: [Task]directory-structure-review:構成定義書 再点検・更新"
+  - "親 Epic: [Epic]directory-structure-review:ディレクトリ構成再検討。Phase0 ①/③。"
+  - "本ファイルは Definition 草案。起票前に epic_issue_number / branch 名を更新する。"

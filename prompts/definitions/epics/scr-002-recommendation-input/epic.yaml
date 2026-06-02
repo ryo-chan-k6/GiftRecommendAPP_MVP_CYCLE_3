@@ -131,8 +131,8 @@ epic_scope:
     - "docs/06_実装設計/web/SCR-002_*"
     - "apps/web/src/app/recommendations/**"
     - "apps/web/src/features/recommendation-input/**"
-    - "apps/web/src/lib/api-client/recommendations/**"
-    - "apps/web/src/lib/api-client/masters/**"
+    - "apps/web/src/generated/api/**"
+    - "apps/web/src/lib/**"
     - "prompts/definitions/tasks/scr-002-recommendation-input/**"
     - "prompts/definitions/reviews/scr-002-recommendation-input/**"
   forbidden_paths:

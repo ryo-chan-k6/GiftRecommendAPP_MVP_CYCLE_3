@@ -1,0 +1,179 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-directory-structure-review-epic-pr"
+  title: "ディレクトリ構成再検討 Epic PRレビュー"
+  summary: "Phase0 Epic 統合PR（develop 向け）の AI Review。子Task 3 件の成果物統合・epic_scope・Phase0 完了条件を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 356
+  issue:
+    number: 348
+  task_definition: "prompts/definitions/epics/directory-structure-review/epic.yaml"
+  source_branch: "refactor/epic-348-directory-structure-review"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]directory-structure-review:ディレクトリ構成再検討"
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-epic"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/directory-structure-review/epic.yaml"
+    required: true
+  issue:
+    number: 348
+    required: true
+  pr:
+    number: 356
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "OpenAPI レイアウト方針節・§8.1.2"
+    - path: "docs/00_共通/プロジェクト管理/Phase0-ディレクトリ構成再検討-完了チェックリスト.md"
+      required: true
+      purpose: "Phase0 完了ゲート"
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      required: true
+      purpose: "引き継ぎ・migration-guide 委譲確認"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Epic Definition scope / out_of_scope を満たしているか"
+    - "epic_scope.forbidden_paths（apps / packages / db / orval.config.ts / openapi 実体）への変更がないか"
+    - "子Task 3 件（#349/#351, #352/#353, #354/#355）が Epic Branch に直列 MERGE されているか"
+    - "Task PR target=Epic Branch / Epic PR target=develop の方針が維持されているか"
+    - "Closes #348 が PR 本文にあるか"
+    - "Human 判断（物理移動は Phase1・migration-guide は Phase0 対象外・Phase1 着手は Human 明示依頼まで）が PR で明示されているか"
+  docs:
+    - "プロジェクトディレクトリ構成定義書に OpenAPI レイアウト方針節が存在するか"
+    - "AGENTS.md にルート openapi/ が残っていないか"
+    - "成果物化方針書・Task Definition設計書・AIレビュー運用・Commands が src/reco 基準に更新されているか"
+    - "Phase0 完了チェックリスト §2 が子 Task merge 済みと一致しているか"
+  contract:
+    - "識別子 Epic（API-PUB/INT、SCR、MOD-RECO）の epic_scope が packages/contracts・generated 正本と一致しているか"
+    - "architecture-consistency.mdc が Task ② 内容と一致しているか"
+  security:
+    - "secret / .env 実値がないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "migration-guide（棚卸し No.6–7）が Phase0 Epic PR に含まれていない"
+    - "reco-directory-architecture-redesign Epic 旧表記整理は Phase1 横断へ委譲されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "scope 外（apps/packages/generated 実体）変更が混入していない"
+      - "子Task 3 件の PR がすべて MERGED である"
+  request_changes:
+    conditions:
+      - "docs/definitions のパス残存を同一 Branch で修正可能"
+  needs_human_decision:
+    conditions:
+      - "物理ディレクトリ再構成が Epic PR に混入している可能性"
+  split_required:
+    conditions:
+      - "Phase1 実装・Contract 変更が混在"
+  blocked:
+    conditions:
+      - "target.pr 未設定（起票前）"
+      - "Closes #348 が PR 本文にない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "refactor"
+  area: "project"
+
+notes:
+  - "Epic Issue #348 / Epic PR 起票後に target.pr を更新する。"
+  - "子Task: #349 PR #351, #352 PR #353, #354 PR #355。"

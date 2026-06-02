@@ -163,7 +163,8 @@ review_points:
     - "レビュー結果に応じた Status 更新意図が明確か"
   epic_scope:
     - "PR差分が親Epic [Epic]SCR-002:レコメンド条件入力画面 の epic_scope.allowed_paths 内に収まっているか"
-    - "epic_scope.forbidden_paths（apps/api / apps/reco / apps/batch / openapi / db）への変更が混入していないか"
+    - "epic_scope.allowed_paths の generated（apps/web/src/generated/api/**）と wrapper（apps/web/src/lib/**）の区別が epic_scope と一致しているか"
+    - "epic_scope.forbidden_paths（apps/api / apps/reco / apps/batch / openapi/** / db）への変更が混入していないか"
 
 acceptance_check:
   use_task_acceptance_criteria: true

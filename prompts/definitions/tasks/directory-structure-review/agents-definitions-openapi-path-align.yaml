@@ -1,0 +1,247 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-agents-definitions-openapi-path-align"
+  title: "AGENTS・運用docs・rules・reco Definition のパス整合"
+  summary: "Task ① で確定したパス基準に合わせ、AGENTS.md・成果物化方針書・Task Definition/AI Review/Commands 設計書・architecture-consistency.mdc および reco 関連 Definition の旧 openapi/・src/app・src/modules 表記を是正する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-directory-structure-review"
+  epic_issue: "[Epic]directory-structure-review:ディレクトリ構成再検討"
+  epic_issue_number: 348
+  epic_branch: "refactor/epic-348-directory-structure-review"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase0 子Task ②。#300 path-standardization で意図的に残した横断不整合（成果物化方針書・architecture-consistency.mdc）と、reco 棚卸し No.1–5（Epic #264 残作業の吸収）を扱う。
+  識別子 Epic の epic_scope.allowed_paths（openapi/paths・lib/api-client）の全面更新は Task ③ が担当。本 Task は AGENTS・運用 docs・rules・reco 系 Task/Module 定義の境界説明を先に揃える。
+
+objective: |
+  AGENTS.md および運用正本 docs / rules からルート openapi/・旧 reco パス・旧 API 境界表記を除去し、Task ① の構成定義書・OpenAPI レイアウト方針節と矛盾しない状態にする。
+
+scope:
+  - "AGENTS.md リポジトリ構成例の openapi/ 削除と packages/contracts/ への置換"
+  - "成果物一覧×Task Definition化方針書の openapi/paths・lib/api-client・reco src/app 表記の是正"
+  - "Task Definition設計書・AIレビュー運用設計書・Commands設計書の reco 境界（src/reco/api）への更新"
+  - "architecture-consistency.mdc の API 境界パス（openapi/paths → packages/contracts、reco src/app → src/reco/api）の是正"
+  - "mod-reco-001 / api-int-002 の Task 定義（module-spec 等）の reco 境界注記の更新"
+  - "recoディレクトリ構成不整合棚卸し.md の ② 完了ステータス更新"
+
+out_of_scope:
+  - "api-pub-002 / api-int-002 / scr-002 の epic.yaml epic_scope 全面更新（Task ③）"
+  - "api-pub-002 / scr-002 の pr-review.yaml の generated 観点（Task ③）"
+  - "プロジェクトディレクトリ構成定義書の本文変更（Task ① 完了版を正とし、矛盾があれば Task ① へ差し戻し）"
+  - "apps/** / packages/** / orval.config.ts の変更"
+  - "Epic #264 の Issue 再開"
+
+input:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "Task ① 更新後の正本パス"
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      required: true
+      purpose: "reco 是正対象一覧"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "§3.5 パス表記の更新対象"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "MOD-RECO / API-INT 境界"
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "レビュー境界観点"
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      required: true
+      purpose: "Command 停止条件の境界"
+  files:
+    - path: "AGENTS.md"
+      required: true
+      purpose: "ルート openapi/ 表記の除去"
+    - path: ".cursor/rules/architecture-consistency.mdc"
+      required: true
+      purpose: "横断 API 境界 rule の是正"
+    - path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+      required: true
+      purpose: "reco 境界注記"
+    - path: "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+      required: false
+      purpose: "背景・notes のみ（allowed_paths は Task ③）"
+    - path: "prompts/definitions/epics/api-int-002-reco-recommendation-run/epic.yaml"
+      required: false
+      purpose: "背景・notes のみ（allowed_paths は Task ③）"
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "AGENTS.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      action: "update"
+      required: false
+      template: null
+  files:
+    - path: ".cursor/rules/architecture-consistency.mdc"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "AGENTS.md の packages/contracts/ 整合"
+  - "運用 docs 5 件のパス・境界整合"
+  - "architecture-consistency.mdc の API/reco 境界整合"
+  - "reco 棚卸し高優先項目（docs/運用ルール/module-spec）の反映"
+
+acceptance_criteria:
+  - "AGENTS.md にルート openapi/ ディレクトリの記載がない"
+  - "成果物化方針書に root openapi/paths が正本として残っていない（packages/contracts 基準または Task ① 方針節への参照）"
+  - "Task Definition設計書・AIレビュー運用・Commands の reco 境界が apps/reco/src/reco/api/** 基準である"
+  - "architecture-consistency.mdc の API-PUB/API-INT 境界が packages/contracts と src/reco/api 基準である"
+  - "module-spec.yaml の API-INT 除外パスが src/reco/api 基準である"
+  - "api-pub-002 / scr-002 epic.yaml の allowed_paths は本Taskでは変更していない（Task ③ へ委譲が PR で明示されている）"
+  - "apps/** / packages/** 差分がない"
+
+branch:
+  no_branch: false
+  name: "refactor/task-352-agents-definitions-openapi-path-align"
+  base: "refactor/epic-348-directory-structure-review"
+  target: "refactor/epic-348-directory-structure-review"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "project"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "task-directory-structure-doc-audit"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "task-directory-structure-doc-audit"
+  blocks:
+    - "task-definitions-generated-and-epic-scope-align"
+  exclusive_files:
+    - "AGENTS.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - ".cursor/rules/architecture-consistency.mdc"
+  conflict_risk: "high"
+  contract_impact: true
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "path consistency check"
+  commands: []
+  manual_checks:
+    - "rg 'openapi/paths' AGENTS.md docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md .cursor/rules/architecture-consistency.mdc でヒットが意図どおりか確認"
+    - "rg 'src/app' docs/00_共通/AIエージェント運用/Task Definition設計書.md で reco 文脈の旧表記が残っていないこと"
+    - "Task ③ 対象ファイル（api-pub-002 epic.yaml 等）を本 PR で変更していないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs・rules 更新 Task のため"
+    "integration test": "実行系変更を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Task ① 構成定義書・OpenAPI 方針節と矛盾していないか"
+    - "reco #264 吸収方針どおり docs/運用ルールが更新されているか"
+    - "Task ③ への委譲が PR 本文で明示されているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "横断 docs・rules 更新。"
+
+stop_conditions:
+  - "Task ① 未 merge で構成定義書正本が確定していない場合"
+  - "epic_scope 変更が必要と判明し Task ③ と統合すべき場合（Human 判断）"
+  - "物理移動が必要と判明した場合"
+
+notes:
+  - "Issue タイトル案: [Task]directory-structure-review:AGENTS・運用docs・rules のパス整合"
+  - "親 Epic: directory-structure-review。Phase0 ②/③。Epic #264 残作業は本 Task に吸収。"
+  - "本ファイルは Definition 草案。"

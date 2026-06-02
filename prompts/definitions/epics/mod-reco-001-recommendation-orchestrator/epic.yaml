@@ -29,7 +29,7 @@ agent:
 background: |
   06_実装設計および 07_開発・単体テストにおいて、MOD-RECO-001（Recommendation Orchestrator）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。Epic の Projects Phase は完了ゲート（07）、子 Task で成果物工程（06 / 07）を管理する。
   本モジュールは Recoモジュール一覧 §4 の起点モジュール（分類: 実行制御、処理種別: OL、MVP対象 ○）であり、API-INT-002 から呼ばれて推薦パイプライン全体（MOD-RECO-002〜MOD-RECO-029）の実行順序・エラー伝播・Phase Log を制御する。
-  本 Epic は **Recoモジュール本体**（`apps/reco/src/modules/recommendation-orchestrator/**` 想定）の責務に限定し、Internal API のエンドポイント層（`apps/reco/src/app/**`）の変更は依存 Epic（[Epic]API-INT-002）配下の Task として扱う。
+  本 Epic は **Recoモジュール本体**（`apps/reco/src/reco/application/recommendation-orchestrator/**` 想定）の責務に限定し、Internal API のエンドポイント層（`apps/reco/src/reco/api/**`）の変更は依存 Epic（[Epic]API-INT-002）配下の Task として扱う。
   子 Task は Orchestrator モジュール仕様書・実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
 
 objective: |
@@ -105,8 +105,8 @@ acceptance_criteria:
   - "Branch base / PR target が develop である"
   - "配下 Task の作業単位（モジュール仕様書 / 実装 / 単体テスト）が整理されている"
   - "子 Task の PR target が親 Epic Branch である方針が明記されている"
-  - "epic_scope.allowed_paths が apps/reco/** から `apps/reco/src/app/**`（エンドポイント層）を除いた範囲と整合している（成果物化方針書 §3.5.2）"
-  - "epic_scope.forbidden_paths に apps/reco/src/app/** が明示されている"
+  - "epic_scope.allowed_paths が apps/reco/src/reco/application/** 等のモジュール層と整合している（成果物化方針書 §3.5.2）"
+  - "epic_scope.forbidden_paths に apps/reco/src/reco/api/** が明示されている"
 
 branch:
   no_branch: false
@@ -133,17 +133,20 @@ epic_scope:
   artifact_id: "MOD-RECO-001"
   allowed_paths:
     - "docs/06_実装設計/reco/MOD-RECO-001_*"
-    - "apps/reco/src/modules/recommendation-orchestrator/**"
-    - "apps/reco/src/domain/recommendation/**"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/**"
+    - "apps/reco/src/reco/domain/**"
+    - "apps/reco/src/reco/pipeline/**"
     - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/**"
     - "prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/**"
   forbidden_paths:
+    - "apps/reco/src/reco/api/**"
+    - "apps/reco/src/reco/application/user-meaning/**"
+    - "apps/reco/src/reco/application/retrieval/**"
+    - "apps/reco/src/reco/application/matching/**"
+    - "apps/reco/src/reco/application/ranking/**"
+    - "apps/reco/src/reco/application/reason/**"
+    - "apps/reco/src/modules/**"
     - "apps/reco/src/app/**"
-    - "apps/reco/src/modules/user-meaning/**"
-    - "apps/reco/src/modules/retrieval/**"
-    - "apps/reco/src/modules/matching/**"
-    - "apps/reco/src/modules/ranking/**"
-    - "apps/reco/src/modules/reason/**"
     - "apps/api/**"
     - "apps/web/**"
     - "apps/batch/**"
@@ -175,7 +178,7 @@ test_policy:
   commands: []
   manual_checks:
     - "Epic scope が Orchestrator モジュール本体に閉じているか確認する"
-    - "apps/reco/src/app（API エンドポイント層）への変更が混入していないか確認する"
+    - "apps/reco/src/reco/api（API エンドポイント層）への変更が混入していないか確認する"
     - "他 Recoモジュール（MOD-RECO-002〜029）本体への変更が混入していないか確認する"
     - "子 Task に分割可能な粒度か確認する"
   not_required:
@@ -209,13 +212,13 @@ operation_logging:
   reason: "識別子単位 Epic Definition の初期試作のため experiments を有効化。MOD-* Epic は API contract / generated 影響を持たないため cross_cutting は無効。"
 
 risk_points:
-  - "apps/reco/src/app（エンドポイント層）への変更が誤って配下 Task に混入し scope 越境する可能性"
+  - "apps/reco/src/reco/api（エンドポイント層）への変更が誤って配下 Task に混入し scope 越境する可能性"
   - "他 Recoモジュール（MOD-RECO-002〜029）本体への変更が誤って配下 Task に混入する可能性"
   - "Task PR を誤って develop へ直接向けてしまう運用ミス"
 
 human_decision_points:
   - "Orchestrator の責務として Phase Log / Error Handling / Retry をどこまで含めるか（MOD-RECO-024 Reco Error Handler / MOD-RECO-028 Phase Log Writer との責務境界）"
-  - "Orchestrator の物理配置パス（apps/reco/src/modules/recommendation-orchestrator/**）を採用するか他案を採用するか"
+  - "Orchestrator の物理配置パス（apps/reco/src/reco/application/recommendation-orchestrator/**）を採用するか他案を採用するか"
   - "子 Task の分割粒度（モジュール仕様書 / 実装 / 単体テストの切り方）"
 
 stop_conditions:
@@ -223,7 +226,7 @@ stop_conditions:
   - "Recoモジュール一覧に MOD-RECO-001 が存在しない場合、または MVP対象が ○ ではない場合"
   - "epic_scope.allowed_paths が空または未記載の場合"
   - "Task PR の target が develop に向く設計が必要になった場合"
-  - "apps/reco/src/app 配下への変更を本 Epic 配下 Task で実施する必要が出た場合（[Epic]API-INT-002 配下 Task へ切り出す）"
+  - "apps/reco/src/reco/api 配下への変更を本 Epic 配下 Task で実施する必要が出た場合（[Epic]API-INT-002 配下 Task へ切り出す）"
   - "他 Recoモジュール（MOD-RECO-002〜029）本体への変更を本 Epic 配下 Task で実施する必要が出た場合（該当 MOD-* Epic 配下 Task へ切り出す）"
   - "secret / .env 実値の記載が必要に見える場合"
 
