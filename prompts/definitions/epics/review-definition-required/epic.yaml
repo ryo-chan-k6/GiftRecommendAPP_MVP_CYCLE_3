@@ -1,0 +1,205 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-ai-review-def-required"
+  title: "AI Review 3点セット必須化（Review Definition 前提整備）"
+  summary: "Epic/Task 起票時に Review Definition（pr-review.yaml）作成が漏れ、PR作成後の AI Review 自動dispatch（pr-created）が review_definition_not_found で失敗した事象（PR #340）の恒久対応A/B/Cを管理する。成果物識別子に紐づかない機能・領域単位Epic（例外）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  AI主導でEpic/Taskを起票する際、Epic Definition と Task Definition は作成されたが、Review Definition（prompts/definitions/reviews/<workstream>/pr-review.yaml）の作成が漏れていた。
+  その結果、PR作成後の pr-created workflow が AI Review を自動dispatchしようとした際に、dispatch-review-pr-harness.cjs / resolve-review-definition.cjs が Review Definition を解決できず review_definition_not_found で失敗した（PR #340）。
+  Review Definition は default branch ではなく PR head（変更ファイル）または規約パスから解決される必要があり、起票時点で「Epic / Task / Review Definition」3点セットが揃っていないと同種の失敗が再発する。
+
+objective: |
+  恒久対応A（3点セット必須の規約明文化）・B（create-pr の hard stop）・C（テンプレ/scaffold整備）を実施し、Review Definition 作成漏れによる AI Review 自動dispatch失敗を構造的に防止する。
+
+scope:
+  - "恒久対応A: ai-review.mdc / start-epic.md / start-task.md / AIレビュー運用設計書 への3点セット必須の明文化"
+  - "恒久対応B: create-pr.md への Review Definition 未解決時 hard stop（停止条件・処理手順・出力ルール）の追加"
+  - "恒久対応C: prompts/README.md / _examples への3点セット運用・配置・PR head 同梱ガイドの整備"
+
+out_of_scope:
+  - "dispatch-review-pr-harness.cjs / resolve-review-definition.cjs などスクリプトのロジック変更"
+  - ".github/workflows/** の変更"
+  - "本件（プロジェクト段取りと計画 / Epic #338・Task #339）のDefinition・docsの変更"
+  - "apps/** / packages/** / db/** / openapi/** の変更"
+  - "AI Review 観点そのもの（docs/code/test 等）の品質基準変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "AI Review運用の正本。自動dispatch前提の追記先"
+    - path: ".cursor/rules/ai-review.mdc"
+      required: true
+      purpose: "AI Review共通Rule。3点セット必須観点の追加先"
+    - path: ".cursor/commands/create-pr.md"
+      required: true
+      purpose: "hard stop 追加先"
+    - path: "prompts/README.md"
+      required: true
+      purpose: "3点セット運用ガイドの追加先"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]AI Review 3点セット必須化（Review Definition 前提整備）/ #341）"
+  - "Epic Branch（develop 起点 / chore/epic-341-review-definition-required）"
+  - "子Task候補一覧（implement-review-definition-mandate）"
+  - "epic_scope.allowed_paths による配下Taskのファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている（#341）"
+  - "Epic Branch が develop から作成されている（chore/epic-341-review-definition-required）"
+  - "Branch base / PR target が develop である"
+  - "配下Taskの作業単位（implement-review-definition-mandate）が整理されている"
+  - "子TaskのPR targetが親Epic Branchである方針が明記されている"
+
+branch:
+  no_branch: false
+  name: "chore/epic-341-review-definition-required"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-06-02"
+    due_date: "2026-06-04"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "project"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - ".cursor/rules/ai-review.mdc"
+    - ".cursor/commands/start-epic.md"
+    - ".cursor/commands/start-task.md"
+    - ".cursor/commands/create-pr.md"
+    - "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+    - "prompts/README.md"
+    - "prompts/definitions/_examples/review-definition.example.yaml"
+    - "prompts/definitions/epics/review-definition-required/**"
+    - "prompts/definitions/tasks/review-definition-required/**"
+    - "prompts/definitions/reviews/review-definition-required/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/**"
+    - "db/**"
+    - "openapi/**"
+    - ".github/workflows/**"
+  child_task_areas:
+    - "ai-workflow"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "機能・領域単位Epic（artifact_id 空）であることを明示しているか"
+    - "子Taskに分割可能な粒度か確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epicの作業範囲が恒久対応A/B/C（Rule/Command/docs/テンプレ改善）に閉じているか"
+    - "epic_scope.allowed_paths が .cursor / docs/00_共通 / prompts の対象に閉じているか"
+    - "scriptsやworkflowのロジック変更を含んでいないか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常のRule/Command/docs改善作業のため、ai-logsへの保存は行わない。作業計画はIssue、統合はEpic PRを正本とする。"
+
+risk_points:
+  - "Rule/Command/docs間で重複・矛盾を生む運用ミス"
+  - "Task PR を誤って develop へ直接向けてしまう運用ミス"
+
+human_decision_points:
+  - "hard stop（B）の停止条件の厳しさが運用に合うか"
+  - "3点セット必須化（A）の例外（ai_review_required: false 時）の扱いが妥当か"
+
+stop_conditions:
+  - "既存workflow/スクリプトのロジック変更が必要になった場合（本Epicのscope外）"
+  - "正本docs間で矛盾が見つかり、方針変更の判断が必要になった場合"
+
+notes:
+  - "本Epicは機能・領域単位Epic（例外 / artifact_id 空）。成果物化方針書 §3.5.1 の例外に該当する。"
+  - "Epic Issue: #341。Epic Branch: chore/epic-341-review-definition-required。"
+  - "本Epic配下の子Taskは prompts/definitions/tasks/review-definition-required/implement-review-definition-mandate.yaml。"
+  - "本件（プロジェクト段取りと計画 / Epic #338）とは独立したEpicである。"

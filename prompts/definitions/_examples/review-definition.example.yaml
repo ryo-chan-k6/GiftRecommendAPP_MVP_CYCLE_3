@@ -1,3 +1,11 @@
+# Review Definition 記入例（AI Review 3点セットの1つ）。
+# 配置（規約）: prompts/definitions/reviews/<workstream>/pr-review.yaml
+#   （または Task Definition と同ディレクトリの pr-review.yaml）
+# 重要: AI Review 自動dispatch（pr-created）は Review Definition を default branch ではなく
+#   PR head（変更ファイル）または規約パスから解決する（.github/scripts/resolve-review-definition.cjs）。
+#   review.ai_review_required: true の Task では、本ファイルを対象 Task と同じ workstream に作成し、
+#   Task Branch（PR head）へ commit して PR の変更ファイルに含めること。未作成だと review_definition_not_found で失敗する。
+# 詳細: prompts/README.md §14.0 / .cursor/rules/ai-review.mdc §3.18・§3.19
 schema_version: "1.0"
 definition_type: "review"
 
