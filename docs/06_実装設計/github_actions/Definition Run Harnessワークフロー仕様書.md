@@ -395,7 +395,20 @@ node .github/scripts/dispatch-review-pr-harness.cjs \
 
 `--context pr-created|fix-ready` を付けない限り、インフラ PR skip（§ [AI Review自動起動](./AI%20Review自動起動ワークフロー連携仕様書.md) §5）は適用されない。
 
-## 16. 動作確認手順（現行受入）
+## 16. Fixer auto-dispatch（Epic #308）
+
+Request changes 契機の Fixer harness 自動 dispatch の設計正本は [Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) とする。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| dispatch スクリプト（Task2） | `.github/scripts/dispatch-fix-review-harness.cjs` |
+| workflow 統合（Task3） | `.github/workflows/pr-review-status-sync.yml` |
+| Harness command | `fix-review-comments`（live-run 解禁は Task2 でレジストリ確認） |
+| recovery | dispatch 失敗時は **手動 CLI**（§15.3 と同型の `recovery_command`。workflow 自動リトライは採用しない） |
+
+Fixer dispatch 失敗時の Harness 直接 dispatch recovery は、Task2 完了後に本節へ追記する。
+
+## 17. 動作確認手順（現行受入）
 
 1. `secrets.CURSOR_API_KEY` を設定
 2. Actions UI から `workflow_dispatch` で次を実行
@@ -413,10 +426,11 @@ node .github/scripts/dispatch-review-pr-harness.cjs \
 11. post-run 検証の発火確認: dry-run プロンプトを意図的に外して試験 Issue を作る再現テストで、Guard Violations に検出され job が失敗すること（受入時に手動で1回）
 12. `CURSOR_API_KEY` や類似 secret が Job Summary / Actions log に出ていないこと
 
-## 17. 関連ドキュメント
+## 18. 関連ドキュメント
 
 | ドキュメント | 役割 |
 | --- | --- |
+| [Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) | Request changes 契機の Fixer harness 自動 dispatch 設計 |
 | [Commands設計書](../../00_共通/AIエージェント運用/Commands設計書.md) | Command 仕様（Definition Run 通称・外部トリガ節を含む） |
 | [Task Definition設計書](../../00_共通/AIエージェント運用/Task%20Definition設計書.md) | Definition 構造 |
 | [.cursor/commands/start-epic.md](../../../.cursor/commands/start-epic.md) | start-epic の手順（dry-run 出力フォーマット含む） |
