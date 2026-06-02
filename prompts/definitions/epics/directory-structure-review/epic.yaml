@@ -120,7 +120,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "refactor/epic-<issue-number>-directory-structure-review"
+  name: "refactor/epic-348-directory-structure-review"
   base: "develop"
   target: "develop"
   worktree_required: true
