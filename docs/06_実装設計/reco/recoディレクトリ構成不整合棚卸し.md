@@ -33,12 +33,14 @@
 
 ## 5. 更新順序（引き継ぎ）
 
-1. `definition-update`（高優先）  
-   Epic/Task Definition の `allowed_paths` / `forbidden_paths` / review points を `src/reco` 基準へ統一する。
-2. `docs-update`（中優先）  
-   Task Definition設計書・AIレビュー運用設計書の境界説明を `src/reco` 基準へ更新する。
-3. `migration-guide`（低優先）  
-   旧表記を残す必要がある箇所を「移行履歴/参照メモ」に限定し、現行ルール本文から分離する。
+| 順 | 作業 | Phase0 Task | 状態 |
+| --- | --- | --- | --- |
+| 0 | 構成定義書・OpenAPI レイアウト方針・§7.3.1 境界 | `[Task]directory-structure-review:構成定義書 再点検・更新`（#349） | 実施中 |
+| 1 | `definition-update`（高優先）— 識別子 Epic `epic_scope` | `[Task]directory-structure-review:識別子Epic epic_scope・generated 整合` | 未着手（③） |
+| 2 | `docs-update`（中優先）— 運用設計書・AGENTS・rules | `[Task]directory-structure-review:AGENTS・運用docs・rules のパス整合` | 未着手（②） |
+| 3 | `migration-guide`（低優先）— 参照メモの整理 | ③ または Epic PR 本文 | 未着手 |
+
+Epic #264（recoディレクトリ構成全面再設計）の残作業は Epic #348（directory-structure-review）に吸収済み（Human 判断 2026-06-02）。
 
 ## 6. scope外明示
 
