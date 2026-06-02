@@ -6,7 +6,7 @@ review:
   title: "AGENTS・運用docs・rules パス整合 PRレビュー"
   summary: "Phase0 Task ②（AGENTS・運用docs・rules・reco Definition パス整合）の PR を AI Review する"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,11 +18,11 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 353
   issue:
-    number: null
+    number: 352
   task_definition: "prompts/definitions/tasks/directory-structure-review/agents-definitions-openapi-path-align.yaml"
-  source_branch: "refactor/task-<issue-number>-agents-definitions-openapi-path-align"
+  source_branch: "refactor/task-352-agents-definitions-openapi-path-align"
   target_branch: "refactor/epic-348-directory-structure-review"
   parent_epic_issue: "[Epic]directory-structure-review:ディレクトリ構成再検討"
   parent_epic_branch: "refactor/epic-348-directory-structure-review"
@@ -68,10 +68,10 @@ input:
     path: "prompts/definitions/tasks/directory-structure-review/agents-definitions-openapi-path-align.yaml"
     required: true
   issue:
-    number: null
+    number: 352
     required: true
   pr:
-    number: null
+    number: 353
     required: true
   diff:
     required: true

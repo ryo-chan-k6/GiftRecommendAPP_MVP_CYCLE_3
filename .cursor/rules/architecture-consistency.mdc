@@ -185,19 +185,19 @@ API contract関連の詳細確認は `api-contract.mdc` を併用する。
 
 `[Epic]API-PUB-NNN` / `[Epic]API-INT-NNN` 配下の Task は、**API 層（route / controller / application service / mapper / validator / api-client / openapi 定義）に限定**する（[成果物一覧×Task Definition化方針書](../../docs/00_共通/AIエージェント運用/成果物一覧×Task%20Definition化方針書.md) §3.5）。
 
-- API-PUB-NNN Epic 配下 Task の差分は、原則として `apps/api/**` + `apps/web/src/lib/api-client/**` + `openapi/paths/**` + `docs/06_実装設計/api/**` に限定する
-- API-INT-NNN Epic 配下 Task の差分は、`apps/reco/src/app/**`（エンドポイント層）+ `openapi/internal/**` + `docs/06_実装設計/api/**` に限定する
-- **呼び出すモジュール（`apps/reco/src/modules/**` 等）の実装変更は、API Epic 配下 Task では行わない**。対象 `[Epic]MOD-RECO-NNN:{Recoモジュール名}` 配下の別 Task として切り出し、API Epic の `dependencies.epics` に追加する
+- API-PUB-NNN Epic 配下 Task の差分は、原則として `apps/api/**` + `apps/web/src/generated/api/**` + `apps/web/src/lib/**`（wrapper）+ `packages/contracts/openapi/**` + `docs/06_実装設計/api/**` に限定する
+- API-INT-NNN Epic 配下 Task の差分は、`apps/reco/src/reco/api/**`（エンドポイント層）+ `packages/contracts/openapi/**` + `docs/06_実装設計/api/**` に限定する
+- **呼び出すモジュール（`apps/reco/src/reco/application/**` 等）の実装変更は、API Epic 配下 Task では行わない**。対象 `[Epic]MOD-RECO-NNN:{Recoモジュール名}` 配下の別 Task として切り出し、API Epic の `dependencies.epics` に追加する
 - 同様に、画面 Epic（`[Epic]SCR-NNN`）配下 Task は `apps/web/src/app/**` + `apps/web/src/features/**` に限定し、API 実装は別 Epic（`[Epic]API-PUB-NNN`）配下とする
 
-Task / PR の差分が API Epic 配下なのに `apps/reco/src/modules/**` を含む場合、AI Review は `request_changes` または `blocked` とし、別 Epic へ切り出すよう指摘する（[`.cursor/commands/review-pr.md`](../commands/review-pr.md) §6.1）。
+Task / PR の差分が API Epic 配下なのに `apps/reco/src/reco/application/**` 等のモジュール実装を含む場合、AI Review は `request_changes` または `blocked` とし、別 Epic へ切り出すよう指摘する（[`.cursor/commands/review-pr.md`](../commands/review-pr.md) §6.1）。
 
 ### 3.6.2 Reco個別モジュール Epic の境界
 
 `[Epic]MOD-RECO-NNN:{Recoモジュール名}` は、Recoモジュール一覧に定義された個別モジュールの仕様・実装・単体テストを扱う。
 
 - `epic_scope.allowed_paths`: `apps/reco/**` の該当モジュール範囲、および対応するモジュール仕様書・テスト範囲に限定する
-- エンドポイント層（`apps/reco/src/app/**`）は API-INT-NNN Epic 配下の Task が扱う。`MOD-RECO-NNN` 配下 Task で編集してはならない
+- エンドポイント層（`apps/reco/src/reco/api/**`）は API-INT-NNN Epic 配下の Task が扱う。`MOD-RECO-NNN` 配下 Task で編集してはならない
 - API Epic 配下 Task が Recoモジュール実装を触る必要がある場合は、該当 `MOD-RECO-NNN` Epic 配下の Task に分離する
 
 ### 3.7 データ設計と実装を一致させる
@@ -422,9 +422,9 @@ AI Review時は、以下を確認する。
 - テスト結果または未実施理由が明示されているか
 - Human Reviewで確認すべき設計判断が明示されているか
 - 別Task化すべき横断影響がないか
-- **API/モジュール境界**: API Epic 配下 Task の差分が `apps/reco/src/modules/**` 等のモジュール実装を含んでいないか（§3.6.1）
+- **API/モジュール境界**: API Epic 配下 Task の差分が `apps/reco/src/reco/application/**` 等のモジュール実装を含んでいないか（§3.6.1）
 - **画面/API境界**: 画面 Epic 配下 Task の差分が `apps/api/**` を含んでいないか（§3.6.1）
-- **エンドポイント/モジュール境界**: `MOD-RECO-NNN` Epic 配下 Task の差分が `apps/reco/src/app/**`（API-INT エンドポイント層）を含んでいないか（§3.6.2）
+- **エンドポイント/モジュール境界**: `MOD-RECO-NNN` Epic 配下 Task の差分が `apps/reco/src/reco/api/**`（API-INT エンドポイント層）を含んでいないか（§3.6.2）
 - Parent Epic の `epic_scope.allowed_paths` 内に差分が収まっているか
 
 ---
@@ -468,9 +468,9 @@ AI Agentは、以下の場合、作業を停止して人間へ確認する。
 - OpenAPI / generated / API clientへ影響するが、Contract Task化すべきか判断できない
 - DB変更が必要だが、論理ER / 物理ER / DDLの正本が不明確である
 - OL / BTのどちらの責務か判断できない
-- API Epic 配下 Task の差分にモジュール実装変更（`apps/reco/src/modules/**` 等）が含まれている
+- API Epic 配下 Task の差分にモジュール実装変更（`apps/reco/src/reco/application/**` 等）が含まれている
 - 画面 Epic 配下 Task の差分に API 実装変更（`apps/api/**`）が含まれている
-- `MOD-RECO-NNN` Epic 配下 Task の差分に API-INT エンドポイント層変更（`apps/reco/src/app/**`）が含まれている
+- `MOD-RECO-NNN` Epic 配下 Task の差分に API-INT エンドポイント層変更（`apps/reco/src/reco/api/**`）が含まれている
 - workflow変更がDevOps方針またはCI/CD方針と矛盾する
 - テスト方針と実装変更が矛盾している
 - `out_of_scope` の変更が必要になった

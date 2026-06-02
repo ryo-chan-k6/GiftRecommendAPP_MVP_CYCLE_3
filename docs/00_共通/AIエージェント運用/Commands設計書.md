@@ -718,7 +718,7 @@ PR番号を併記してもよい。
 7. 識別子付き Task PR の場合、親 Epic スコープ越境を検査する（成果物一覧×Task Definition化方針書 §3.5、AIレビュー運用設計書 §13.2）
    - PR 差分 path が親 Epic epic_scope.allowed_paths 内か
    - PR / Issue 識別子 prefix と親 Epic 識別子 prefix の一致
-   - MOD-RECO-NNN 配下 Task で apps/reco/src/app/** に差分がある場合は blocked
+   - MOD-RECO-NNN 配下 Task で apps/reco/src/reco/api/** に差分がある場合は blocked
 8. output_docsを確認する
 9. 完了条件を満たしているか確認する
 10. 確認観点を満たしているか確認する
@@ -784,7 +784,7 @@ PR番号を併記してもよい。
 - レビュー前提となる成果物が欠落している
 - 識別子付き Task PR で差分 path が親 Epic の `epic_scope.allowed_paths` 外を含む（`blocked`）
 - 識別子 prefix が親 Epic と不一致（`blocked`）
-- `MOD-RECO-NNN` Epic 配下で `apps/reco/src/app/**` に差分がある（`blocked`）
+- `MOD-RECO-NNN` Epic 配下で `apps/reco/src/reco/api/**` に差分がある（`blocked`）
 
 ### 17.10 Status 同期（dispatch 忘れ防止）
 

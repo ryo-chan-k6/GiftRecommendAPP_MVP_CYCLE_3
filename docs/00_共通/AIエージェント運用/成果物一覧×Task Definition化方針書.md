@@ -74,11 +74,11 @@
 
 | 成果物識別子 | Epic タイトル | 配下 Task の典型 | `epic_scope.allowed_paths` 例 |
 | ------------ | ------------- | ---------------- | ----------------------------- |
-| `API-PUB-NNN` | `[Epic]API-PUB-NNN:{機能名}` | API仕様書・OpenAPI・実装・単体テスト（api 層のみ） | `apps/api/src/app/<resource>/**`、`apps/web/src/lib/api-client/<resource>/**`、`openapi/paths/<resource>/**` |
-| `API-INT-NNN` | `[Epic]API-INT-NNN:{機能名}` | 同上（reco エンドポイント層のみ） | `apps/reco/src/app/<endpoint>/**`、`openapi/internal/<endpoint>/**` |
+| `API-PUB-NNN` | `[Epic]API-PUB-NNN:{機能名}` | API仕様書・OpenAPI・実装・単体テスト（api 層のみ） | `apps/api/src/app/<resource>/**`、`apps/web/src/generated/api/**`、`apps/web/src/lib/**`（wrapper）、`packages/contracts/openapi/**` |
+| `API-INT-NNN` | `[Epic]API-INT-NNN:{機能名}` | 同上（reco エンドポイント層のみ） | `apps/reco/src/reco/api/**`、`packages/contracts/openapi/**` |
 | `SCR-NNN` | `[Epic]SCR-NNN:{画面名}` | 画面仕様書・実装・テスト | `apps/web/src/app/<route>/**`、`apps/web/src/features/<feature>/**` |
 | `BATCH-NNN` | `[Epic]BATCH-NNN:{バッチ名}` | バッチ仕様書・実装・テスト | `apps/batch/src/<batch>/**`、`.github/workflows/batch-<batch>*.yml` |
-| `MOD-RECO-NNN` | `[Epic]MOD-RECO-NNN:{Recoモジュール名}` | Recoモジュール仕様・実装・単体テスト | `apps/reco/**` の該当モジュール範囲（エンドポイント層 `apps/reco/src/app/**` を**除く**） |
+| `MOD-RECO-NNN` | `[Epic]MOD-RECO-NNN:{Recoモジュール名}` | Recoモジュール仕様・実装・単体テスト | `apps/reco/src/reco/application/**` 等の該当モジュール範囲（エンドポイント層 `apps/reco/src/reco/api/**` を**除く**） |
 | `MOD-API-NNN` / `MOD-BATCH-NNN` | `[Epic]{MOD-ID}:{モジュール名}` | API / Batch モジュール仕様・実装・単体テスト | `apps/api/**` / `apps/batch/**` の該当モジュール範囲 |
 | 例外（DevOps 等） | `[Epic]<機能・領域名>` | 既存方針 | 個別記載（範囲が広い場合は明示注記） |
 
@@ -106,7 +106,7 @@ flowchart LR
 
 | 区分 | 内容 |
 | ---- | ---- |
-| 配下 Task の対象 | `apps/api/src/app/recommendations/` 配下の route / controller / application service / validator / mapper / reco-client、`apps/web/src/lib/api-client/recommendations/**`、`openapi/paths/recommendations/**`、上記の単体テスト |
+| 配下 Task の対象 | `apps/api/src/app/recommendations/` 配下の route / controller / application service / validator / mapper / reco-client、`apps/web/src/generated/api/**`、`apps/web/src/lib/**`（wrapper）、`packages/contracts/openapi/**`（Contract Task）、上記の単体テスト |
 | 配下 Task の対象外 | `apps/reco/**`（モジュール実装）、`apps/web/src/app/**`（画面実装）、`apps/batch/**`（バッチ実装） |
 | 依存 Epic | `[Epic]API-INT-002:Reco推薦実行`、`[Epic]MOD-RECO-001:Recommendation Orchestrator` |
 | 典型子 Task | `[Task]API-PUB-002:レコメンド実行API仕様書作成` / `[Task]API-PUB-002:レコメンド実行OpenAPI定義` / `[Task]API-PUB-002:レコメンド実行API実装` / `[Task]API-PUB-002:レコメンド実行API単体テスト` |
