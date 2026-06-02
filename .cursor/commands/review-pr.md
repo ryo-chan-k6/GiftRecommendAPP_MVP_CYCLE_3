@@ -143,7 +143,7 @@ Review Definition に `target.pr` / `input.pr.number` / `target.issue` / `input.
 | 項目 | 確認内容 |
 | ---- | -------- |
 | `target.pr` / `input.pr.number` | `gh pr view <番号>` で実在するか、コマンド引数の PR 番号と一致するか |
-| `target.issue` / `input.issue.number` | `gh issue view <番号>` で実在するか、PR本文の `Related to #<Task Issue番号>` と一致するか |
+| `target.issue` / `input.issue.number` | `gh issue view <番号>` で実在するか、Review種別に応じて PR本文の参照（Task: `Related to #...` / Epic: `Closes #...`）と一致するか |
 | `target.source_branch` | PR の `headRefName` と一致するか |
 | `target.target_branch` | PR の `baseRefName` と一致するか |
 | `parent_epic_issue` / `parent_epic_branch` | Task PR の親 Epic と一致するか |
@@ -152,10 +152,11 @@ Review Definition に `target.pr` / `input.pr.number` / `target.issue` / `input.
 
 - Review Definition の PR番号・Issue番号を推測で補完しない。
 - コマンド引数の PR 番号と `target.pr` / `input.pr.number` が不一致の場合はレビューを停止する。
-- `target.issue` / `input.issue.number` と PR本文の `Related to #...` が不一致の場合はレビューを停止する。
+- `target.issue` / `input.issue.number` と PR本文の参照が不一致の場合はレビューを停止する（Task: `Related to #...` / Epic: `Closes #...`）。
 - `target.pr` / `input.pr.number` が `null` で、コマンド引数に PR 番号がある場合は、その番号を今回レビューの確認対象として利用してよい。ただし、Review Definition への永続反映は `/create-pr` の責務として「未反映項目」に記録する。
-- `target.issue` / `input.issue.number` が `null` で、PR本文から Task Issue 番号を一意に特定できる場合は、今回レビューの確認対象として利用してよい。ただし、Review Definition への永続反映は `/start-task` または `/create-pr` の責務として「未反映項目」に記録する。
-- PR本文に `Related to #...` が複数ある、または Task Issue を一意に特定できない場合はレビューを停止し、人間確認へ回す。
+- `target.issue` / `input.issue.number` が `null` で、PR本文から Issue 番号を一意に特定できる場合は、今回レビューの確認対象として利用してよい。ただし、Review Definition への永続反映は `/start-task` または `/create-pr` の責務として「未反映項目」に記録する。
+- PR本文から Issue を一意に特定できない（Task: `Related to` が複数/欠落、Epic: `Closes` が複数/欠落）場合はレビューを停止し、人間確認へ回す。
+- `review.type: epic_pr_review` の場合、Task 向け Review Definition（`task_pr_review`）を適用していないことを確認する。不一致の場合は `blocked` とする。
 - `.env` 実値、token、secret を表示・保存しない。
 
 `/review-pr` はレビュー Command であり、Review Definition の永続更新は原則として行わない。永続反映が必要な場合は、`/start-task` または `/create-pr` の番号反映手順へ戻す。
@@ -187,6 +188,14 @@ Related to #<Task Issue番号>
 ```
 Task PRでは、原則として `Closes #<Task Issue番号>` を使用しない。  
 Task Issueの close / Projects Done は、PR merge時のGitHub Actions workflowで制御される前提とする。
+
+Epic PRの場合、PR本文には原則として以下が記載されていることを確認する。
+
+```text
+Closes #<Epic Issue番号>
+```
+
+Epic PRで `Related to #<Task Issue番号>` のみを参照している場合、Issue対応が曖昧になるため `blocked` または `request_changes` とする。
 
 ---
 
