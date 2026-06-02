@@ -235,6 +235,7 @@ Issue 本文の no-branch チェックボックスに `branch.no_branch` を反�
 - 作成した Epic Issue 番号・Epic Branch 名
 - 配下 Task 起票: `/start-task @<task-definition>`（`parent.epic_issue_number` に**実番号**を反映した Task Definition を使用）
 - Epic PR は配下 Task 完了後に `develop` 向け（本 Command では作成しない）
+- **AI Review 3点セットの前提**: 配下 Task が AI Review 対象（`review.ai_review_required: true`）になる場合、Task 起票〜PR 作成（`/create-pr`）までに、対象 Task の Review Definition（`prompts/definitions/reviews/<workstream>/pr-review.yaml`、または Task Definition と同ディレクトリの `pr-review.yaml`）を作成し、Task Branch（PR head）へ含める必要がある。あわせて Epic PR を `develop` へ作成する前に、Epic 向け Review Definition（`prompts/definitions/reviews/<workstream>/epic/pr-review.yaml`）を作成し、Epic Branch（PR head）へ含める。Review Definition が default branch にしか無い／未作成の場合、PR 作成後の AI Review 自動dispatch（`pr-created`）が `review_definition_not_found` または `blocked` で失敗する（[ai-review.mdc](../../.cursor/rules/ai-review.mdc) §3.18・§3.19、[AIレビュー運用設計書](../../docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md) §5.1）。
 
 ### 15. 必要に応じて Slack 通知を作成する
 

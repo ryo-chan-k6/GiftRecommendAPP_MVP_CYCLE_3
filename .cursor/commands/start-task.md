@@ -549,6 +549,19 @@ Branch作成で競合や前提不整合が発生した場合は、推測で解�
 
 後続Commandは原則として `/work-issue @<definition>` とする。
 
+**AI Review 3点セットの前提（Review Definition）**
+
+`review.ai_review_required: true` のTaskでは、`/create-pr` 前に対象Taskの **Review Definition** を作成し、Task Branch（PR head）へ commit して PR の変更ファイルに含める。
+
+| 配置（規約） | 解決経路 |
+| ------------ | -------- |
+| `prompts/definitions/reviews/<workstream>/pr-review.yaml`（workstream は Task Definition の `tasks/<workstream>/` と一致） | workstream 規約パス |
+| Task Definition と同ディレクトリの `pr-review.yaml` | sibling |
+
+PR作成後の AI Review 自動dispatch（`pr-created`）は、Review Definition を **default branch ではなく PR head（変更ファイル）または規約パス** から解決する（`.github/scripts/resolve-review-definition.cjs`）。Review Definition が未作成、または PR head に含まれていない場合、`review_definition_not_found` で失敗する。
+
+`review.ai_review_required: false` のTaskでは Review Definition を必須としないが、その理由を Task Definition に明示し、Human Review は省略しない。正本は [ai-review.mdc](../../.cursor/rules/ai-review.mdc) §3.18・§3.19、[AIレビュー運用設計書](../../docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md) §5.1 とする。
+
 ---
 
 ### 17. 必要に応じてSlack通知を作成する
@@ -588,6 +601,7 @@ Slack通知は正本ではない。
 - no-branchの場合、Branchを作成しない理由が明記されている
 - 作業開始可能な場合、Statusを `In Progress` へ進める意図が明確である
 - Worker AIへ引き継ぐ情報が整理されている
+- `review.ai_review_required: true` のTaskでは、`/create-pr` 前に Review Definition を作成し PR head へ含める前提が引き継がれている（`false` の場合は理由が明示されている）
 - 必要に応じてSlack通知サマリが作成されている
 - Issue化前に停止した場合、停止理由と人間確認事項が明確である
 
@@ -769,3 +783,4 @@ dry-run でも §5.1 の実在確認を実施する。結果は `存在` / `未�
 - Slack通知だけで作業記録を完結させない
 - Issue本文に GitHub Label 名の一覧を記載しない（`issue` 同期項目と `project.fields` のみ）
 - `project.status` のように `project.fields` 配下でない Project 項目パスを正本として扱わない
+- `review.ai_review_required: true` のTaskでは、Review Definition（`reviews/<workstream>/pr-review.yaml` または Task Definition の sibling）を `/create-pr` 前に作成し PR head へ含める前提を引き継ぐ（[ai-review.mdc](../../.cursor/rules/ai-review.mdc) §3.18・§3.19）
