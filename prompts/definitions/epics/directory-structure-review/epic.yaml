@@ -1,0 +1,265 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-directory-structure-review"
+  title: "directory-structure-review:ディレクトリ構成再検討"
+  summary: "L2 Phase0。monorepo 全体のディレクトリ・配置正本を点検し、OpenAPI正本（packages/contracts/）・generated 配置・reco src/reco 統一・AGENTS/Definitions/rules のパス整合を確定する。物理ディレクトリ移動・実装変更は別Taskとする。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  実装フェーズ実行プロセス設計書（L1 #338 merge 済み）に基づき、Phase0「ディレクトリ構成再検討」を L2 で実行する。
+  前提 Epic の結論を取り込む。
+  - contract-impl-task-separation（#300 merge 済み）: OpenAPI 正本=packages/contracts/、Contract/Implementation 分離。横断 Epic の allowed_paths 残件は Phase0 へ委譲。
+  - reco-directory-architecture-redesign（#264 CLOSE）: 棚卸しのみ develop 反映。残作業（definition/docs 更新）は本 Epic Task ②へ吸収（Human 判断 2026-06-02）。
+  既知不整合: AGENTS.md のルート openapi/ 表記、識別子 Epic の openapi/paths・lib/api-client、generated 正本パス、reco の src/app / src/modules 旧表記。
+
+objective: |
+  Phase0 完了時点で、正本docs・AGENTS.md・prompts/definitions・.cursor/rules が単一のパス基準で矛盾なく参照でき、Phase1（API Contract 基盤）以降の Task 起票に使える allowed_paths / forbidden_paths が確定している状態にする。
+  破壊的な物理再構成が必要と判明した場合は作業を停止し Human 判断へ回す。
+
+scope:
+  - "構成定義書の再点検・更新（OpenAPI レイアウト方針節の追記を含む）"
+  - "AGENTS.md・正本運用 docs・.cursor/rules の旧 openapi/ 等のパス整合"
+  - "reco 棚卸し結論（src/reco 統一）の docs / 運用ルールへの反映（Epic #264 残作業の吸収）"
+  - "識別子 Epic / Task / Review Definition の generated 配置・epic_scope.allowed_paths 整合"
+  - "子Task 3 件（①構成定義書 → ②AGENTS/definitions/rules → ③epic_scope/generated）の直列マージ"
+  - "Epic PR 用 Review Definition（prompts/definitions/reviews/directory-structure-review/epic/pr-review.yaml）の整備"
+
+out_of_scope:
+  - "apps/** / packages/**（contracts 実体・generated 実体・orval.config.ts）の変更"
+  - "ルート openapi/ ディレクトリの物理作成・削除・移動"
+  - "Orval 実行・generated ファイルの生成"
+  - "DB schema 変更・migration"
+  - "Phase1〜4 の API Contract / DB / 環境 / 各アプリ実装・単体テスト"
+  - "reco Epic #264 の Issue 再開（残作業は本 Epic に吸収済み）"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase0 スコープ・Task 分割・停止条件の正本"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "配置・OpenAPI/generated の正本"
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      required: true
+      purpose: "reco パス不整合の取り込み元"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: false
+      purpose: "Phase1 前提の OpenAPI 正本パス確認"
+  templates: []
+  files:
+    - path: "ai-logs/human-decisions/2026-06-01-openapi-contract-home-packages-contracts.md"
+      required: true
+      purpose: "OpenAPI 正本=packages/contracts/ の人間判断"
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "AGENTS.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/**"
+      action: "update"
+      required: false
+    - path: ".cursor/rules/architecture-consistency.mdc"
+      action: "update"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]directory-structure-review:ディレクトリ構成再検討）"
+  - "Epic Branch（develop 起点 / refactor/epic-<issue>-directory-structure-review）"
+  - "更新版 プロジェクトディレクトリ構成定義書（OpenAPI レイアウト方針節含む）"
+  - "AGENTS.md / 運用 docs / rules / 識別子 Epic Definition のパス整合"
+  - "Phase0 完了判定チェックリスト（Epic PR 本文または子Task ③）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Epic Branch が develop から作成されている"
+  - "子Task 3 件が Epic Branch に直列マージされている"
+  - "正本docs・AGENTS.md・Definitions・architecture-consistency.mdc 間で OpenAPI/generated/reco パスが矛盾しない"
+  - "ルート openapi/ 表記が AGENTS・方針書・識別子 Epic から除去または正規パスへ置換されている"
+  - "generated 正本（apps/web/src/generated/api/・apps/api/src/generated/reco-client/）が epic_scope に反映されている"
+  - "reco src/reco 統一方針が棚卸し結論と一致している"
+  - "物理ディレクトリ移動・apps/packages 実装変更が混入していない"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+
+branch:
+  no_branch: false
+  name: "refactor/epic-<issue-number>-directory-structure-review"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "refactor"
+  area: "project"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+    - "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+    - "docs/00_共通/AIエージェント運用/Commands設計書.md"
+    - "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+    - "AGENTS.md"
+    - "prompts/definitions/epics/directory-structure-review/**"
+    - "prompts/definitions/tasks/directory-structure-review/**"
+    - "prompts/definitions/reviews/directory-structure-review/**"
+    - "prompts/definitions/epics/api-int-002-reco-recommendation-run/**"
+    - "prompts/definitions/epics/api-pub-002-recommendation-run/**"
+    - "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/**"
+    - "prompts/definitions/epics/scr-002-recommendation-input/**"
+    - "prompts/definitions/tasks/api-int-002-reco-recommendation-run/**"
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/**"
+    - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/**"
+    - "prompts/definitions/reviews/api-int-002-reco-recommendation-run/**"
+    - "prompts/definitions/reviews/api-pub-002-recommendation-run/**"
+    - "prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/**"
+    - "prompts/definitions/reviews/scr-002-recommendation-input/**"
+    - ".cursor/rules/architecture-consistency.mdc"
+    - "ai-logs/human-decisions/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/**"
+    - "db/**"
+    - "orval.config.ts"
+    - "openapi/**"
+  child_task_areas:
+    - "directory-structure-doc-audit"
+    - "agents-definitions-openapi-path-align"
+    - "definitions-generated-and-epic-scope-align"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+    - "AGENTS.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - ".cursor/rules/architecture-consistency.mdc"
+  conflict_risk: "high"
+  contract_impact: true
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "definition consistency check"
+    - "scope boundary check"
+    - "path consistency check"
+  commands: []
+  manual_checks:
+    - "OpenAPI 正本が packages/contracts/openapi/*.yaml で一貫していること"
+    - "generated 正本パスが構成定義書と一致していること"
+    - "reco 境界が src/reco/api と src/reco/application で一貫していること"
+    - "forbidden_paths（apps/packages/db/orval/openapi 実体）への変更がないこと"
+    - "子Task が ①→②→③ の順で merge されていること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs・定義・rules 更新が主対象であり、実装コード変更を含まないため"
+    "integration test": "実行系・generated 生成を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Phase0 スコープ（docs/AGENTS/Definitions/rules のみ）を満たしているか"
+    - "前提 Epic（#300 / reco 棚卸し）の結論が取り込まれているか"
+    - "OpenAPI レイアウト方針節が Phase1 着手条件として十分か"
+    - "物理再構成の必要性が顕在化した場合、停止・Human 判断が記録されているか"
+    - "scope 外（apps/packages/generated 実体）変更が混入していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "横断パス整合のため cross_cutting を有効化。破壊的再構成の判断は human-decisions へ。"
+
+risk_points:
+  - "構成定義書と識別子 Epic の更新順序を誤ると一時的不整合が残る"
+  - "per-resource OpenAPI 採否の判断が Phase1 まで持ち越されると Contract Task がブロックされる"
+  - "Task ②③ が同一 epic yaml を触るため並列 merge すると conflict しやすい"
+
+human_decision_points:
+  - "Phase0 は docs/AGENTS/Definitions/rules のみとし、物理ディレクトリ移動は別 Epic/Task（確定済み: 2026-06-02）"
+  - "reco Epic #264 残作業は Phase0 Task ②へ吸収し #264 は再開しない（確定済み: 2026-06-02）"
+  - "子Task は 3 分割・直列マージ（確定済み: 2026-06-02）"
+  - "OpenAPI ファイルレイアウト方針は Task ① の構成定義書に方針節として明記し、実ファイル作成は Phase1（確定済み: 2026-06-02）"
+
+stop_conditions:
+  - "正本docs間で矛盾があり、方針変更の Human 判断が必要な場合"
+  - "物理ディレクトリ再構成（ルート openapi/ 廃止に伴う移動等）が必須と判明した場合"
+  - "scope 外の apps/** / packages/** 変更が必須になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "本Epicは機能・領域単位 Epic（artifact_id 空）。Issue 本文に例外である旨を明記する。"
+  - "workstream_key: directory-structure-review。L2 Phase0 の正本 Epic。"
+  - "子Task 実行順: ① directory-structure-doc-audit → ② agents-definitions-openapi-path-align → ③ definitions-generated-and-epic-scope-align（直列・worktree 分離）。"
+  - "Epic PR Review: prompts/definitions/reviews/directory-structure-review/epic/pr-review.yaml（起票後に target.pr / issue.number を更新）。"
+  - "本ファイルは Definition 草案。commit・/start-epic は Human 承認後。"

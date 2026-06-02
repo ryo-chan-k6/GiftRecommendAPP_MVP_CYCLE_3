@@ -1,0 +1,268 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-definitions-generated-and-epic-scope-align"
+  title: "識別子 Epic の generated 配置・epic_scope 整合"
+  summary: "Task ①② のパス基準に合わせ、API-PUB-002 / API-INT-002 / SCR-002 / MOD-RECO-001 の epic.yaml・関連 pr-review.yaml の allowed_paths / forbidden_paths を packages/contracts・generated・src/reco 基準へ更新し、Phase0 完了チェックリストを整備する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-directory-structure-review"
+  epic_issue: "[Epic]directory-structure-review:ディレクトリ構成再検討"
+  epic_issue_number: null
+  epic_branch: "refactor/epic-<issue-number>-directory-structure-review"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "contract-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase0 子Task ③。#300 path-standardization で scope 外とした識別子 Epic の epic_scope（root openapi/paths、lib/api-client/.../generated）を是正する。
+  generated 実体は触らず、Definition 上のパスのみ packages/contracts/openapi/*・apps/web/src/generated/api/・apps/api/src/generated/reco-client/・wrapper 層（lib/・infrastructure/reco-client/）を区別して記載する。
+
+objective: |
+  識別子単位 Epic の epic_scope.allowed_paths / forbidden_paths および Review Definition の forbidden 観点を Phase0 パス基準と一致させ、Phase1 Contract Task 起票時の scope 逸脱を防ぐ。
+  Epic 完了時の Phase0 チェックリストを PR 本文または docs 節として残す。
+
+scope:
+  - "api-pub-002-recommendation-run/epic.yaml の allowed_paths（openapi/paths → packages/contracts、lib/api-client → generated+wrapper 方針）"
+  - "api-int-002-reco-recommendation-run/epic.yaml の allowed_paths（src/app → src/reco/api、openapi/internal → packages/contracts）"
+  - "scr-002-recommendation-input/epic.yaml の lib/api-client → generated 方針への整合"
+  - "mod-reco-001-recommendation-orchestrator/epic.yaml の src/modules → src/reco/application 基準への整合"
+  - "上記 Epic に対応する pr-review.yaml の forbidden_paths 観点の更新"
+  - "api-pub-002 api-spec.yaml の参照パス最終確認（#300 済み分の残差分があれば是正）"
+  - "Phase0 完了チェックリスト（手動確認項目）の作成"
+
+out_of_scope:
+  - "AGENTS.md・成果物化方針書・architecture-consistency.mdc（Task ② 完了版を正とする）"
+  - "プロジェクトディレクトリ構成定義書の本文変更"
+  - "packages/contracts/openapi/*.yaml の作成・更新"
+  - "orval.config.ts 変更・generated ファイル生成"
+  - "apps/** の実装変更"
+  - "新規 API 契約仕様の内容変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "Task ① 正本"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "Task ② 更新後の Epic 粒度表"
+  files:
+    - path: "prompts/definitions/epics/api-pub-002-recommendation-run/epic.yaml"
+      required: true
+    - path: "prompts/definitions/epics/api-int-002-reco-recommendation-run/epic.yaml"
+      required: true
+    - path: "prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+      required: true
+    - path: "prompts/definitions/reviews/api-pub-002-recommendation-run/pr-review.yaml"
+      required: true
+    - path: "prompts/definitions/reviews/api-int-002-reco-recommendation-run/pr-review.yaml"
+      required: true
+    - path: "prompts/definitions/reviews/scr-002-recommendation-input/pr-review.yaml"
+      required: false
+    - path: "prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/pr-review.yaml"
+      required: false
+    - path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+      required: false
+    - path: "prompts/definitions/tasks/directory-structure-review/directory-structure-doc-audit.yaml"
+      required: true
+      purpose: "path_standard 参照"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/api-pub-002-recommendation-run/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/api-int-002-reco-recommendation-run/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/api-pub-002-recommendation-run/pr-review.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/api-int-002-reco-recommendation-run/pr-review.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/scr-002-recommendation-input/pr-review.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/pr-review.yaml"
+      action: "update"
+      required: false
+    - path: "docs/00_共通/プロジェクト管理/Phase0-ディレクトリ構成再検討-完了チェックリスト.md"
+      action: "create"
+      required: false
+      template: null
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "識別子 Epic 4 件の epic_scope 整合"
+  - "関連 pr-review.yaml の forbidden 観点整合"
+  - "Phase0 完了チェックリスト（任意 docs）"
+
+acceptance_criteria:
+  - "api-pub-002 epic.yaml に root openapi/paths・lib/api-client/.../generated 参照が残っていない"
+  - "api-int-002 epic.yaml のエンドポイント層が apps/reco/src/reco/api/** である"
+  - "mod-reco-001 epic.yaml のモジュール層が apps/reco/src/reco/application/**（orchestrator 正式配置）基準である"
+  - "scr-002 epic.yaml の API client パスが generated 正本方針と矛盾しない"
+  - "pr-review.yaml の forbidden_paths 説明が更新後 epic_scope と一致している"
+  - "Phase0 完了チェックリストが存在し、Phase1 着手前確認に使える"
+  - "apps/** / packages/** / generated 実体の差分がない"
+
+branch:
+  no_branch: false
+  name: "refactor/task-<issue-number>-definitions-generated-epic-scope-align"
+  base: "refactor/epic-<issue-number>-directory-structure-review"
+  target: "refactor/epic-<issue-number>-directory-structure-review"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "project"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "task-agents-definitions-openapi-path-align"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "task-directory-structure-doc-audit"
+    - "task-agents-definitions-openapi-path-align"
+  blocks: []
+  exclusive_files:
+    - "prompts/definitions/epics/api-pub-002-recommendation-run/epic.yaml"
+    - "prompts/definitions/epics/api-int-002-reco-recommendation-run/epic.yaml"
+    - "prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
+    - "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+  conflict_risk: "high"
+  contract_impact: true
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "definition consistency check"
+    - "path consistency check"
+  commands: []
+  manual_checks:
+    - "rg 'openapi/paths' prompts/definitions/epics/api-pub-002-reco-recommendation-run/ prompts/definitions/epics/api-int-002-reco-recommendation-run/ || echo OK"
+    - "rg 'lib/api-client' prompts/definitions/epics/ --glob '**/epic.yaml' で意図残のみか確認"
+    - "epic_scope と pr-review forbidden 説明の突合"
+  not_required:
+    - "unit test"
+    - "orval generate"
+  skip_reason:
+    "unit test": "Definition 更新のみ"
+    "orval generate": "generated 実体は Phase1"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "allowed_paths が Contract Gate・Phase1 と矛盾しないか"
+    - "generated と wrapper（lib/・infrastructure/）の区別が epic_scope で明確か"
+    - "Task ② との重複変更がないか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "識別子 Epic 横断の epic_scope 更新。"
+
+epic_scope_alignment:
+  api_pub_002:
+    remove:
+      - "openapi/paths/**"
+      - "openapi/components/**"
+    add:
+      - "packages/contracts/openapi/**"
+      - "packages/contracts/schemas/**"
+      - "apps/web/src/generated/api/**"
+      - "apps/web/src/lib/**"
+  api_int_002:
+    remove:
+      - "apps/reco/src/app/**"
+      - "openapi/internal/**"
+      - "openapi/paths/**"
+    add:
+      - "apps/reco/src/reco/api/**"
+      - "packages/contracts/openapi/**"
+  scr_002:
+    align_generated: "apps/web/src/generated/api/**"
+  mod_reco_001:
+    remove:
+      - "apps/reco/src/modules/**"
+    add:
+      - "apps/reco/src/reco/application/**"
+      - "apps/reco/src/reco/domain/**"
+      - "apps/reco/src/reco/pipeline/**"
+
+stop_conditions:
+  - "Task ① OpenAPI レイアウト方針が未確定のまま per-resource パスを epic_scope に確定できない場合"
+  - "epic_scope 変更が Contract 破壊と判断される場合（Human 判断）"
+
+notes:
+  - "Issue タイトル案: [Task]directory-structure-review:識別子Epic epic_scope・generated 整合"
+  - "親 Epic: directory-structure-review。Phase0 ③/③。Phase0 完了ゲート。"
+  - "Phase0 チェックリスト docs は任意。Epic PR 本文に含めても可。"
+  - "本ファイルは Definition 草案。"
