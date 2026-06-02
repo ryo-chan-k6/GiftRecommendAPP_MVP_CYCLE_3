@@ -40,7 +40,7 @@ Status の正式値は [Projects運用ルール.md](../../00_共通/プロジェ
 | ------------------------------------------------------------- | ---------------------------------- |
 | PR 作成時に Status を **AI Review** へ更新                            | PR作成時Status更新ワークフロー（別仕様書・後続作成）     |
 | PR merge / Issue close 時に Status を **Done** へ更新、Actual End 設定 | PR merge時Status更新ワークフロー（別仕様書・後続作成） |
-| Fixer AI による修正コミット、再 AI Review の実施                            | `/fix-review-comments`、Reviewer AI |
+| Fixer AI による修正コミット、再 AI Review の実施 | `/fix-review-comments`、Reviewer AI（**request_changes 初回**は本 workflow が Fixer harness を自動 dispatch。再指摘・skip 時は [Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) §4.3） |
 | ai-logs 記録                                                       | AIログ運用ルール                                  |
 | Phase / Priority / Area / 日付フィールドの更新                          | 各同期 workflow                       |
 
@@ -54,11 +54,11 @@ Status の正式値は [Projects運用ルール.md](../../00_共通/プロジェ
 | ------------------------------ | --------------------------------------- |
 | Projects Status の更新            | 本ワークフロー                                 |
 | AI Review 結果の PR コメント投稿        | Reviewer AI（`/review-pr`）               |
-| 修正着手（同一 Branch）                | Fixer AI / 人間（`/fix-review-comments` 等） |
+| 修正着手（同一 Branch）                | Fixer AI / 人間（`/fix-review-comments` 等）。**初回** `request_changes` / `changes_requested` 時は本 workflow が Fixer harness を自動 dispatch |
 | 修正必要・Human Review 依頼の Slack 通知 | 本ワークフローとSlack通知共通script             |
 
 
-本ワークフローは **Status 更新とSlack通知** を行う。Command 起票は行わない。
+本ワークフローは **Status 更新とSlack通知** を行う。`request_changes` / `changes_requested` の **初回** Status 更新成功後、Fixer harness を条件付き dispatch する（§7.1）。Command 起票は Fixer harness 側が担う。
 
 ## 3. トリガー・権限・並行制御
 
@@ -173,7 +173,7 @@ Human Review で承認された場合、本ワークフローは Status を変�
 | ----------------------- | -------------- |
 | 対象 Issue が Project に未追加 | スキップ（ログに理由）    |
 | 現在 Status が前提と不一致       | スキップ（冪等・誤更新防止） |
-| 次 Status が現在 Status と同一 | スキップ           |
+| 次 Status が現在 Status と同一 | スキップ。**Fixer auto-dispatch も行わない**（`already_at_next_status`。再指摘時は [Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) §4.3） |
 
 
 ### 5.4 AI 経路の致命的エラー（ジョブ失敗）
@@ -233,6 +233,26 @@ Human 経路では Review Result のパースは行わないため、本節は A
 8. Review Result に応じて Slack 通知を送信する（Slack 本文の Review Result は人間向けラベル可）
 9. ジョブサマリーに Issue 番号・経路・Review Result・更新前後 Status・Slack 通知結果を出力する
 10. §5.4 に該当した場合は `core.setFailed` し、Summary に PR 番号・Issue 番号（解決できた場合）・失敗理由・コメント URL を出力する
+11. §7.1: `request_changes` かつ Status 更新 path を完走した場合、Fixer harness dispatch step を実行する
+
+### 7.1 Fixer harness 自動 dispatch（Epic #308）
+
+[Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) §5 を正本とする。同一 job 内 2 step 構成。
+
+| Step | 内容 |
+| ---- | ---- |
+| Step 1（`id: sync-status`） | §7 の Status 更新・Slack・確認コメント。`reviewResult === request_changes` かつ `dry_run` でないとき `dispatch_fixer=true` を output |
+| Step 2 | PR head checkout（Task Definition 解決用） |
+| Step 3 | `node .github/scripts/dispatch-fix-review-harness.cjs --context request-changes --requested-by pr-review-status-sync` |
+
+| 条件 | Fixer dispatch |
+| ---- | -------------- |
+| `request_changes` / `changes_requested` かつ Status 更新 path 完走 | **実行** |
+| §5.3 スキップ（`already_at_next_status` 等） | **実行しない** |
+| `approve_for_human_review` / `split_required` / `blocked` 等 | **実行しない** |
+| `workflow_dispatch` で `dry_run=true` | **実行しない** |
+
+dispatch step 失敗時は job failure（赤）。recovery は [Definition Run Harnessワークフロー仕様書](./Definition%20Run%20Harnessワークフロー仕様書.md) §16.1。
 
 ## 8. GraphQL
 
@@ -276,6 +296,8 @@ Slack通知に失敗しても、Projects Status の更新は取り消さない�
 ## 11. 関連ドキュメント
 
 - [Projects運用ルール.md](../../00_共通/プロジェクト管理/Projects運用ルール.md) … Status 定義・§17 詳細ルール
+- [Fixer自動dispatch設計書.md](./Fixer自動dispatch設計書.md) … request_changes 契機の Fixer dispatch・再指摘運用
+- [Definition Run Harnessワークフロー仕様書.md](./Definition%20Run%20Harnessワークフロー仕様書.md) … §16 Fixer recovery
 - [AIレビュー運用設計書.md](../../00_共通/AIエージェント運用/AIレビュー運用設計書.md) … Review Result と Status の対応
 - [Issue運用ルール.md](../../00_共通/プロジェクト管理/Issue運用ルール.md) … Issue と PR の関係
 - [review-pr.md](../../../.cursor/commands/review-pr.md) … Status 更新意図の出力

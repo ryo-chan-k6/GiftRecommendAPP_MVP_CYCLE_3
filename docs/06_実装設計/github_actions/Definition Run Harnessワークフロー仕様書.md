@@ -318,7 +318,7 @@ Definition Run Harness が live-run で Issue を起票した後、以下の既�
 | Issue → Branch 作成 | 同上 | Issue 本文 no-branch チェックを正しく設定 |
 | PR 作成時 Status / Slack | `.github/workflows/pr-created-status-and-slack.yml` | PR 作成のみ。**完了後** `dispatch-review-pr-harness.cjs` で Harness 自動起動 |
 | fix 完了後 Status / Slack | `.github/workflows/pr-ready-for-ai-review.yml` | **`publish-fix-complete-and-dispatch.cjs` で dispatch**（Fixer 実行）。**完了後** Harness 自動起動 |
-| PR レビュー → Status | `.github/workflows/pr-review-status-sync.yml` | **`publish-ai-review-and-dispatch.cjs` で dispatch**（Agent 実行）。Harness live-run 後は post-verify で dispatch 忘れを検証 |
+| PR レビュー → Status | `.github/workflows/pr-review-status-sync.yml` | **`publish-ai-review-and-dispatch.cjs` で dispatch**（Agent 実行）。`request_changes` 時は **完了後** `dispatch-fix-review-harness.cjs` で Fixer harness 自動起動（§16） |
 | PR merge → Done / Slack | `.github/workflows/pr-merged-done-and-slack.yml` | merge は人間判断（AI 不可） |
 | 手動 Slack 通知 | `.github/workflows/slack-notify-manual.yml` | 必要時に `workflow_dispatch` |
 
@@ -401,12 +401,59 @@ Request changes 契機の Fixer harness 自動 dispatch の設計正本は [Fixe
 
 | 項目 | 内容 |
 | ---- | ---- |
-| dispatch スクリプト（Task2） | `.github/scripts/dispatch-fix-review-harness.cjs` |
-| workflow 統合（Task3） | `.github/workflows/pr-review-status-sync.yml` |
-| Harness command | `fix-review-comments`（live-run 解禁は Task2 でレジストリ確認） |
-| recovery | dispatch 失敗時は **手動 CLI**（§15.3 と同型の `recovery_command`。workflow 自動リトライは採用しない） |
+| dispatch スクリプト | `.github/scripts/dispatch-fix-review-harness.cjs`（Task #324） |
+| workflow 統合 | `.github/workflows/pr-review-status-sync.yml`（Task #326） |
+| Harness command | `fix-review-comments`（`definition-run-prompt-builder.cjs` レジストリ live-run 解禁済み） |
+| dispatch 契機 | AI Review `request_changes` / Human Review `changes_requested` |
+| context | `request-changes`（`--context request-changes`） |
+| recovery（dispatch 失敗） | **手動 CLI**（§16.1）。workflow 自動リトライは採用しない |
+| 再指摘（`already_at_next_status`） | Fixer auto-dispatch **しない**（§16.3） |
 
-Fixer dispatch 失敗時の Harness 直接 dispatch recovery は、Task2 完了後に本節へ追記する。
+### 16.1 dispatch 失敗時（`dispatch-fix-review-harness.cjs`）
+
+[Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) §8.1 に従う。`pr-review-status-sync` の dispatch step が失敗（job 赤）した場合:
+
+1. Actions log の JSON から `recovery_command` を確認する
+2. ローカルまたは CI 外で以下を実行する（Task Definition 解決に PR head が必要な場合は `--definition` を明示）
+
+```bash
+node .github/scripts/dispatch-fix-review-harness.cjs \
+  --repository <owner>/<repo> \
+  --pr <PR番号> \
+  --issue <Task Issue番号> \
+  --requested-by manual-recovery \
+  --context request-changes
+```
+
+Task Definition が解決できない場合は `--definition prompts/definitions/tasks/<path>/task.yaml` を追加する。
+
+**採用しない:** workflow 再実行による暗黙リトライ、別 `workflow_dispatch` による自動 recovery。
+
+### 16.2 Harness job 失敗（dispatch 成功後）
+
+Fixer harness live-run（`command=fix-review-comments`）が失敗した場合は §12 の一般失敗扱いとする。recovery は Harness を直接再 dispatch する。
+
+```bash
+gh workflow run "Definition Run Harness" \
+  -f command=fix-review-comments \
+  -f definition=prompts/definitions/tasks/<path>/task.yaml \
+  -f run_mode=live-run \
+  -f target_pr=<PR番号> \
+  -f request_issue=<Task Issue番号> \
+  -f requested_by=harness-recovery \
+  -f ref=<PR head ref> \
+  --repo <owner>/<repo>
+```
+
+`ref` には PR head ref を必ず指定する（Task Definition 解決・修正対象 branch の一致のため）。
+
+### 16.3 再指摘時（`already_at_next_status`）
+
+[PRレビュー完了時Status更新ワークフロー仕様書](./PRレビュー完了時Status更新ワークフロー仕様書.md) §5.3 の正当スキップ（Status が既に `In Progress`）では、Fixer dispatch step も **実行されない**。
+
+再指摘で Fixer が必要な場合は §16.1 の **手動 CLI** を用いる。fix-ready 側の `already_at_next_status` 時 dispatch（再 AI Review）は本節の対象外。
+
+Human 判断確定: Task #328（PR #327 AI Review §8.1）。詳細は [Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) §4.3。
 
 ## 17. 動作確認手順（現行受入）
 
