@@ -1,0 +1,202 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-agents-definitions-openapi-path-align-pr"
+  title: "AGENTS・運用docs・rules パス整合 PRレビュー"
+  summary: "Phase0 Task ②（AGENTS・運用docs・rules・reco Definition パス整合）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 353
+  issue:
+    number: 352
+  task_definition: "prompts/definitions/tasks/directory-structure-review/agents-definitions-openapi-path-align.yaml"
+  source_branch: "refactor/task-352-agents-definitions-openapi-path-align"
+  target_branch: "refactor/epic-348-directory-structure-review"
+  parent_epic_issue: "[Epic]directory-structure-review:ディレクトリ構成再検討"
+  parent_epic_branch: "refactor/epic-348-directory-structure-review"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/directory-structure-review/agents-definitions-openapi-path-align.yaml"
+    required: true
+  issue:
+    number: 352
+    required: true
+  pr:
+    number: 353
+    required: true
+  diff:
+    required: true
+    compare_with: "refactor/epic-348-directory-structure-review"
+  docs:
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "Task ① 完了版（§8.1.1・§8.1.2）との整合"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "§3.5 パス表記の是正確認"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "reco 境界（src/reco/api）確認"
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "レビュー境界観点の更新確認"
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      required: true
+      purpose: "Command 停止条件の境界確認"
+    - path: "docs/06_実装設計/reco/recoディレクトリ構成不整合棚卸し.md"
+      required: true
+      purpose: "② 完了ステータス確認"
+  files:
+    - path: "AGENTS.md"
+      required: true
+      purpose: "ルート openapi/ 除去・packages/contracts 整合"
+    - path: ".cursor/rules/architecture-consistency.mdc"
+      required: true
+      purpose: "API/reco 境界パスの是正確認"
+    - path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+      required: true
+      purpose: "reco 境界注記の更新確認"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（agents-definitions-openapi-path-align.yaml）の scope を満たしているか"
+    - "Task ① merge 後の構成定義書（§8.1.2）と矛盾していないか"
+    - "out_of_scope（識別子 Epic epic_scope 全面更新・構成定義書本文・apps/packages）が混在していないか"
+    - "Task ③ へ委譲すべき変更（api-pub-002 / scr-002 epic.yaml）が PR で明示されているか"
+    - "PR target が refactor/epic-348-directory-structure-review であるか"
+    - "PR author が okuri-ai-bot であるか"
+  docs:
+    - "AGENTS.md にルート openapi/ が残っていないか"
+    - "成果物化方針書の root openapi/paths が packages/contracts 基準に是正されているか"
+    - "運用設計書 3 件の reco 境界が apps/reco/src/reco/api 基準か"
+  source: []
+  tests:
+    - "rg によるパス残存チェック結果が PR 本文にあるか"
+  api_contract:
+    - "OpenAPI 実ファイル変更が混入していないか"
+  generated:
+    - "lib/api-client を generated 正本と誤って epic_scope に書き換えていないか（Task ③ 担当の明示）"
+  security:
+    - "secret / .env 実値がないか"
+  epic_scope:
+    - "api-pub-002 / api-int-002 / scr-002 の epic.yaml を本 Task で変更していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "reco 棚卸し No.1–5 の docs/運用ルール反映が完了している"
+    - "Task ③ 委譲が PR 本文で明示されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "Task ① 正本と矛盾しない"
+  request_changes:
+    conditions:
+      - "パス表記の残存を同一 Branch で修正可能"
+  needs_human_decision:
+    conditions:
+      - "Task ③ と統合すべき epic_scope 変更が必要"
+  split_required:
+    conditions:
+      - "識別子 Epic epic_scope 変更が混在"
+  blocked:
+    conditions:
+      - "Task ① が未 merge"
+      - "target.pr / issue.number 未設定（起票前）"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "project"
+
+notes:
+  - "Task ② Issue / PR 起票後に status: ready、target.pr / issue.number / source_branch を更新する。"
+  - "前提: Task ①（#349）が Epic Branch に merge 済みであること。"

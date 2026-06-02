@@ -83,8 +83,8 @@ AI Agentは、リポジトリ内のdocsと運用ルールを正本として扱�
 │  ├─ reco/
 │  └─ batch/
 ├─ packages/
+│  └─ contracts/          # OpenAPI 正本（packages/contracts/openapi/*.yaml）
 ├─ docs/
-├─ openapi/
 ├─ prompts/
 │  ├─ definitions/
 │  └─ templates/
