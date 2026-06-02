@@ -119,9 +119,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "refactor/task-<issue-number>-directory-structure-doc-audit"
-  base: "refactor/epic-<issue-number>-directory-structure-review"
-  target: "refactor/epic-<issue-number>-directory-structure-review"
+  name: "refactor/task-349-directory-structure-doc-audit"
+  base: "refactor/epic-348-directory-structure-review"
+  target: "refactor/epic-348-directory-structure-review"
   worktree_required: true
 
 project:
