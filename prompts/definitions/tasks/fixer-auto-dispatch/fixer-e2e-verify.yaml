@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-fixer-e2e-verify"
+  title: "Fixer auto-dispatch E2E検証用（一時Task）"
+  summary: "Epic #308 merge 後の Fixer dispatch workflow E2E 検証専用。成果物は experiments ログのみ。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-fixer-auto-dispatch"
+  epic_issue_number: "#308"
+  epic_branch: "develop"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+  next:
+    success: null
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+
+objective: |
+  Fixer auto-dispatch の workflow E2E 検証用 Task Definition。
+  Harness は本 Definition を参照して fix-review-comments を実行する。
+
+scope:
+  - "E2E 検証のみ"
+
+out_of_scope:
+  - "本番機能変更"
+
+output:
+  files: []
+
+branch:
+  name: "feature/task-<issue-number>-fixer-e2e-verify"
+  base: "develop"
+  target: "develop"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "docs"
+
+review:
+  human_review_required: false
+  ai_review_required: false
+
+notes:
+  - "検証完了後に Issue/PR/branch をクローズする"
