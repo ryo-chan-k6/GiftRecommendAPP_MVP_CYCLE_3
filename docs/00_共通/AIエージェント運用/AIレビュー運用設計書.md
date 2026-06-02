@@ -464,7 +464,7 @@ AI Reviewでは、PRの変更種別に関わらず、以下の整合性確認を
 | -------- | ---- |
 | allowed_paths | PR 差分の全 path が親 Epic Definition の `epic_scope.allowed_paths` の glob に収まっているか |
 | 識別子 prefix | PR タイトル / 関連 Issue タイトル先頭の識別子と、親 Epic 識別子が一致しているか |
-| API / モジュール境界 | API Epic 配下 Task が `apps/reco/**` のモジュール実装を含まないか。`MOD-RECO-NNN` 配下 Task が `apps/reco/src/app/**`（API-INT エンドポイント層）を含まないか |
+| API / モジュール境界 | API Epic 配下 Task が `apps/reco/src/reco/application/**` 等のモジュール実装を含まないか。`MOD-RECO-NNN` 配下 Task が `apps/reco/src/reco/api/**`（API-INT エンドポイント層）を含まないか |
 
 正本: [成果物一覧×Task Definition化方針書](./成果物一覧×Task%20Definition化方針書.md) §3.5、[Commands設計書](./Commands設計書.md) §17、[`.cursor/commands/review-pr.md`](../../../.cursor/commands/review-pr.md) §6.1。
 
@@ -472,7 +472,7 @@ AI Reviewでは、PRの変更種別に関わらず、以下の整合性確認を
 
 - 差分 path が `allowed_paths` 外を含む
 - 識別子 prefix が親 Epic と不一致
-- `MOD-RECO-NNN` Epic 配下で `apps/reco/src/app/**` に差分がある
+- `MOD-RECO-NNN` Epic 配下で `apps/reco/src/reco/api/**` に差分がある
 
 ---
 

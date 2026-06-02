@@ -674,7 +674,7 @@ Epic Definition では次を必須とする（schema 詳細は `prompts/definiti
 **モジュール識別子 Epic の方針**
 
 - Epic タイトル: `[Epic]{MOD-ID}:{モジュール名}`（例: `[Epic]MOD-RECO-001:Recommendation Orchestrator`）
-- `epic_scope.allowed_paths`: 該当モジュールの実装・テスト・仕様書に限定する。`MOD-RECO-NNN` では `apps/reco/**` の該当モジュール範囲を対象とし、エンドポイント層 `apps/reco/src/app/**` は API-INT-NNN Epic 配下とする
+- `epic_scope.allowed_paths`: 該当モジュールの実装・テスト・仕様書に限定する。`MOD-RECO-NNN` では `apps/reco/src/reco/application/**` 等の該当モジュール範囲を対象とし、エンドポイント層 `apps/reco/src/reco/api/**` は API-INT-NNN Epic 配下とする
 - 配下 Task タイトル: `[Task]{MOD-ID}:{モジュール名}{作業内容}`（例: `[Task]MOD-RECO-001:Recommendation Orchestrator仕様書作成`）
 - API Epic（API-PUB-NNN / API-INT-NNN）配下 Task が `apps/reco/**` など該当モジュール範囲を触る必要がある場合は、対象 `MOD-*` Epic 配下の Task として切り出し、API Epic の `dependencies.epics` に対象 Epic Issue 番号を追加する
 

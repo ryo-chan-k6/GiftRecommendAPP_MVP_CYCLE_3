@@ -40,7 +40,7 @@ agent:
 background: |
   06_実装設計において、apps/reco 実装・単体テスト設計の前提となる Recoモジュール仕様書を作成する。
   本Taskでは、Recoモジュール一覧の MOD-RECO-001（Recommendation Orchestrator / 推薦実行制御、分類: 実行制御、処理種別: OL、MVP対象: ○）を対象に、責務・入出力・処理フロー・依存モジュール（MOD-RECO-002〜029）・例外処理・ログ・テスト観点を整理する。
-  本Taskは Orchestrator モジュール本体に責務を限定し、API-INT-002 エンドポイント層（apps/reco/src/app/**）や、他 Recoモジュール（MOD-RECO-002〜029）本体の設計は別Task / 別 Epic として扱う。
+  本Taskは Orchestrator モジュール本体に責務を限定し、API-INT-002 エンドポイント層（apps/reco/src/reco/api/**）や、他 Recoモジュール（MOD-RECO-002〜029）本体の設計は別Task / 別 Epic として扱う。
 
 objective: |
   MOD-RECO-001（Recommendation Orchestrator）について、apps/reco 実装・単体テスト・レビューが可能な粒度のモジュール仕様書を作成する。
@@ -157,7 +157,7 @@ acceptance_criteria:
   - "prompts/templates/docs/module-spec.md の章構成（§1〜§19）に準拠している"
   - "Recoモジュール一覧の MOD-RECO-001 と矛盾するモジュール名・物理名・分類・処理種別・MVP対象を定義していない"
   - "モジュール一覧の MOD-RECO-001 行と整合している"
-  - "API-INT-002 エンドポイント層（apps/reco/src/app/**）の変更を本仕様書の責務範囲に含めていない（module-spec.md §4 注記準拠）"
+  - "API-INT-002 エンドポイント層（apps/reco/src/reco/api/**）の変更を本仕様書の責務範囲に含めていない（module-spec.md §4 注記準拠）"
   - "他 Recoモジュール（MOD-RECO-002〜029）の本体仕様を本仕様書に内包していない"
   - "依存モジュール（MOD-RECO-002〜029）の呼び出し方向・用途・失敗時の扱いが整理されている"
   - "Ranking の責務分離（MOD-RECO-019 Final Score Calculator / MOD-RECO-020 Final Ranker）が Recoモジュール一覧・機能×モジュール対応表と整合している"
@@ -225,7 +225,7 @@ test_policy:
     - "module-spec.md の章構成に準拠していることを確認する"
     - "Recoモジュール一覧の MOD-RECO-001 行（モジュール名・物理名・分類・処理種別・MVP対象）と整合していることを確認する"
     - "モジュール一覧の MOD-RECO-001 行と整合していることを確認する"
-    - "API-INT-002 エンドポイント層（apps/reco/src/app/**）の変更を内包していないことを確認する"
+    - "API-INT-002 エンドポイント層（apps/reco/src/reco/api/**）の変更を内包していないことを確認する"
     - "他 Recoモジュール（MOD-RECO-002〜029）本体の仕様を内包していないことを確認する"
     - "依存モジュール（MOD-RECO-002〜029）の呼び出し方向・用途・失敗時の扱いが記載されていることを確認する"
     - "secret、APIキー、.env 実値、接続文字列の実値が含まれていないことを確認する"
@@ -251,7 +251,7 @@ review:
     - "モジュール仕様書として粒度が過不足ないか"
     - "Recoモジュール一覧 / モジュール一覧の MOD-RECO-001 と整合しているか"
     - "Orchestrator の責務が実行制御に限定され、他モジュール本体の仕様が混入していないか"
-    - "API-INT-002 エンドポイント層（apps/reco/src/app/**）の変更を含めていないか"
+    - "API-INT-002 エンドポイント層（apps/reco/src/reco/api/**）の変更を含めていないか"
     - "依存モジュール（MOD-RECO-002〜029）の呼び出し関係・失敗時の扱いが明確か"
     - "Phase Log / Error Log の出力方針が明確か"
     - "Task タイトル・成果物ファイル名が §15.1 に従っているか"
@@ -301,4 +301,4 @@ notes:
   - "命名の正本は Task Definition設計書 §15.1（共通命名）。本Task: ファイル名 MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md、task.title MOD-RECO-001:Recommendation Orchestratorモジュール仕様書作成、Issue [Task]MOD-RECO-001:Recommendation Orchestratorモジュール仕様書作成、Branch english-summary に mod-reco-001（kebab-case）を含める。"
   - "本Taskは API contract に直接影響しない。OpenAPI / generated 変更を伴う Task は本 Epic 配下ではなく [Epic]API-INT-002 配下 Task として扱う（成果物化方針書 §3.5.2）。"
   - "出力先は docs/06_実装設計/reco/ に配置する。"
-  - "module-spec.md §4 注記（MOD-RECO-* では apps/reco/src/app/** の API-INT エンドポイント層を対象に含めない）を本仕様書でも明示する。"
+  - "module-spec.md §4 注記（MOD-RECO-* では apps/reco/src/reco/api/** の API-INT エンドポイント層を対象に含めない）を本仕様書でも明示する。"
