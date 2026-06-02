@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 355
   issue:
     number: 354
   task_definition: "prompts/definitions/tasks/directory-structure-review/definitions-generated-and-epic-scope-align.yaml"
@@ -71,7 +71,7 @@ input:
     number: 354
     required: true
   pr:
-    number: null
+    number: 355
     required: true
   diff:
     required: true
