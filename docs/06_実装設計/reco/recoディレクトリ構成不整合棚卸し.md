@@ -36,8 +36,8 @@
 | 順 | 作業 | Phase0 Task | 状態 |
 | --- | --- | --- | --- |
 | 0 | 構成定義書・OpenAPI レイアウト方針・§7.3.1 境界 | `[Task]directory-structure-review:構成定義書 再点検・更新`（#349） | **完了**（PR #351 merge） |
-| 1 | `definition-update`（高優先）— 識別子 Epic `epic_scope` | `[Task]directory-structure-review:識別子Epic epic_scope・generated 整合` | 未着手（③） |
-| 2 | `docs-update`（中優先）— 運用設計書・AGENTS・rules | `[Task]directory-structure-review:AGENTS・運用docs・rules のパス整合`（#352） | **PR #353**（AI Review 待ち） |
+| 1 | `definition-update`（高優先）— 識別子 Epic `epic_scope` | `[Task]directory-structure-review:識別子Epic epic_scope・generated 整合`（#354） | **作業中** |
+| 2 | `docs-update`（中優先）— 運用設計書・AGENTS・rules | `[Task]directory-structure-review:AGENTS・運用docs・rules のパス整合`（#352） | **完了**（PR #353 merge） |
 | 3 | `migration-guide`（低優先）— 参照メモの整理 | ③ または Epic PR 本文 | 未着手 |
 
 Epic #264（recoディレクトリ構成全面再設計）の残作業は Epic #348（directory-structure-review）に吸収済み（Human 判断 2026-06-02）。
