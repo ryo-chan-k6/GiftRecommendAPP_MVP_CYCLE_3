@@ -1,0 +1,170 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-fixer-dispatch-script"
+  title: "Fixer dispatchスクリプト実装（dispatch-fix-review-harness.cjs）"
+  summary: "Request changes 契機の Fixer harness 自動 dispatch 用スクリプトと Task Definition 解決・単体テストを実装する。workflow 統合は Task3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-fixer-auto-dispatch"
+  epic_issue_number: "#308"
+  epic_branch: "feature/epic-308-fixer-auto-dispatch"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #308 Task2。Task #322 で Fixer auto-dispatch 設計正本を確定済み。
+  dispatch-review-pr-harness.cjs と対称に、fix-review-comments harness を dispatch する
+  dispatch-fix-review-harness.cjs を実装する。
+  Definition Run Harness レジストリに fix-review-comments live-run を解禁する。
+
+objective: |
+  Task Definition 解決・skip 条件・recovery_command 出力を含む dispatch スクリプトと単体テストを追加し、
+  Task3（pr-review-status-sync 統合）の前提を整える。
+
+scope:
+  - "resolve-task-definition.cjs（Task Definition 解決）"
+  - "dispatch-fix-review-harness.cjs（Fixer harness dispatch）"
+  - "dispatch-fix-review-harness.test.cjs"
+  - "resolve-task-definition.test.cjs（必要最小限）"
+  - "definition-run-prompt-builder.cjs への fix-review-comments レジストリ追加"
+  - "definition-run-prompt-builder.test.cjs 更新"
+  - "dispatch-review-pr-harness.cjs の request-changes context 対応（infra skip 共通化）"
+
+out_of_scope:
+  - "pr-review-status-sync.yml 変更（Task3）"
+  - "Fixer 修正ロジック（fix-review-comments Command 本体）の変更"
+  - "apps/** / packages/** 実装"
+  - "Harness 仕様書の Task4 反映"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+      required: true
+  files:
+    - path: ".github/scripts/dispatch-review-pr-harness.cjs"
+      required: true
+    - path: ".github/scripts/dispatch-definition-run.cjs"
+      required: true
+    - path: ".github/scripts/resolve-review-definition.cjs"
+      required: true
+    - path: ".github/scripts/definition-run-prompt-builder.cjs"
+      required: true
+  issues:
+    - "#308"
+    - "#322"
+  prs:
+    - "#323"
+
+output:
+  files:
+    - path: ".github/scripts/resolve-task-definition.cjs"
+      action: "create"
+      required: true
+    - path: ".github/scripts/dispatch-fix-review-harness.cjs"
+      action: "create"
+      required: true
+    - path: ".github/scripts/dispatch-fix-review-harness.test.cjs"
+      action: "create"
+      required: true
+    - path: ".github/scripts/definition-run-prompt-builder.cjs"
+      action: "update"
+      required: true
+  tests:
+    - path: ".github/scripts/dispatch-fix-review-harness.test.cjs"
+      required: true
+    - path: ".github/scripts/resolve-task-definition.test.cjs"
+      required: true
+
+deliverables:
+  - "dispatch-fix-review-harness.cjs"
+  - "resolve-task-definition.cjs"
+  - "単体テスト（node --test）"
+
+acceptance_criteria:
+  - "dispatch-fix-review-harness.cjs が Task Definition を解決して fix-review-comments live-run を dispatch できる"
+  - "skip 条件（fork / infra / automation_only）が dispatch-review-pr-harness と整合している"
+  - "dispatch 失敗時に recovery_command を JSON 出力する"
+  - "definition-run-prompt-builder に fix-review-comments live-run が登録されている"
+  - "node --test .github/scripts/dispatch-fix-review-harness.test.cjs が pass する"
+  - "workflow ファイル変更が含まれていない"
+
+branch:
+  name: "feature/task-<issue-number>-fixer-dispatch-script"
+  base: "feature/epic-308-fixer-auto-dispatch"
+  target: "feature/epic-308-fixer-auto-dispatch"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "infra"
+
+parallel_control:
+  depends_on:
+    - "task-fixer-auto-dispatch-design"
+  blocks:
+    - "task-fixer-workflow-integration"
+  exclusive_files:
+    - ".github/scripts/dispatch-fix-review-harness.cjs"
+    - ".github/scripts/resolve-task-definition.cjs"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "dispatch-review-pr-harness.cjs との対称性"
+    - "skip / recovery の設計書整合"
+    - "fix-review-comments レジストリ解禁の妥当性"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  required:
+    - "node --test .github/scripts/dispatch-fix-review-harness.test.cjs"
+    - "node --test .github/scripts/resolve-task-definition.test.cjs"
+  commands:
+    - "node --test .github/scripts/dispatch-fix-review-harness.test.cjs"
+    - "node --test .github/scripts/resolve-task-definition.test.cjs"
+  manual_checks: []
+  not_required:
+    - "apps integration test"
+  skip_reason:
+    "apps integration test": "CI/harness スクリプト領域のみ"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+
+notes:
+  - "設計正本: docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md §6〜§8"
+  - "Task3 で pr-review-status-sync.yml から本スクリプトを呼び出す"

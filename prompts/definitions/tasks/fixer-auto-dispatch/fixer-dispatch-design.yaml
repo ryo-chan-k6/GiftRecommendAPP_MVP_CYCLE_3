@@ -1,0 +1,153 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-fixer-auto-dispatch-design"
+  title: "Fixer auto-dispatch設計（条件・skip・recovery）"
+  summary: "Request changes 契機の Fixer harness 自動 dispatch について、契機・skip 条件・recovery（手動 CLI）・workflow 統合点を正本設計書に定義する。実装・workflow 変更は後続 Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-fixer-auto-dispatch"
+  epic_issue_number: "#308"
+  epic_branch: "feature/epic-308-fixer-auto-dispatch"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #308 では Request changes 後の Fixer（/fix-review-comments）自動 dispatch を整備する。
+  Human 判断（2026-06-02）により、AI Review の request_changes と Human Review の changes_requested の双方を dispatch 契機とする。
+  dispatch 失敗時の recovery は手動 CLI のみ（workflow 自動リトライは採用しない）。
+  本 Task は設計正本のみ。スクリプト実装・workflow 統合は後続 Task。
+
+objective: |
+  Fixer auto-dispatch の契機・skip 条件・failure/recovery・workflow 統合点を設計書に定義し、
+  後続 Task（dispatch スクリプト / pr-review-status-sync 統合）の実装前提を確定する。
+
+scope:
+  - "Fixer auto-dispatch 設計書（正本）の新規作成"
+  - "dispatch 契機（AI request_changes / Human changes_requested）の route 整理"
+  - "skip 条件（infra-only、scope外指摘、Human 判断必須、needs_human_decision 等）の定義"
+  - "failure 時挙動（job failure、Harness 未起動、先行 Status step 完了済みの nuance）"
+  - "recovery 方針（手動 CLI、recovery_command 形式）"
+  - "pr-created / fix-ready との対称性整理"
+  - "Definition Run Harness 仕様書への相互参照追記"
+  - "子 Task 2〜4 への引き渡し観点の整理"
+
+out_of_scope:
+  - "dispatch-fix-review-harness.cjs の実装（Task2）"
+  - "pr-review-status-sync.yml の workflow 変更（Task3）"
+  - "Fixer 修正ロジック（fix-review-comments Command）の変更"
+  - "apps/** / packages/** 実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/github_actions/PRレビューStatus同期ワークフロー仕様書.md"
+      required: false
+      purpose: "request_changes 契機の現行 Status 同期を確認（存在しない場合は pr-review-status-sync.yml を正とする）"
+    - path: "docs/00_共通/AIエージェント運用/AIエージェント活用型_開発運用フロー設計書.md"
+      required: true
+  files:
+    - path: ".github/workflows/pr-review-status-sync.yml"
+      required: true
+    - path: ".github/workflows/pr-created-status-and-slack.yml"
+      required: true
+      purpose: "2 step 構成（Status → dispatch）の参照実装"
+    - path: ".github/scripts/dispatch-review-pr-harness.cjs"
+      required: true
+  issues:
+    - "#308"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+      action: "create"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "prompts/definitions/tasks/fixer-auto-dispatch/fixer-dispatch-design.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Fixer auto-dispatch 設計書（正本）"
+  - "Harness 仕様書への相互参照"
+
+acceptance_criteria:
+  - "AI Review request_changes と Human changes_requested の双方が dispatch 契機として設計書に記載されている"
+  - "skip 条件が列挙され、dispatch-review-pr-harness の skip パターンと整合している"
+  - "dispatch 失敗時は job failure・Harness 未起動・手動 CLI recovery と記載されている"
+  - "pr-review-status-sync への 2 step 統合方針が記載されている"
+  - "fix-ready → 再 AI Review 連鎖への退行がないことが記載されている"
+  - "workflow / スクリプトの実装変更が含まれていない（設計のみ）"
+  - "Task PR target が feature/epic-308-fixer-auto-dispatch である"
+
+branch:
+  name: "feature/task-<issue-number>-fixer-dispatch-design"
+  base: "feature/epic-308-fixer-auto-dispatch"
+  target: "feature/epic-308-fixer-auto-dispatch"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "infra"
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-fixer-dispatch-script"
+    - "task-fixer-workflow-integration"
+  exclusive_files:
+    - "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Human 判断（AI request_changes 対象、手動 CLI recovery）が設計書に反映されているか"
+    - "skip 条件が安全か（scope外・Human 判断必須の誤 dispatch を防げるか）"
+    - "実装 Task へ引き渡せる粒度か"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+
+notes:
+  - "Human 判断正本: ai-logs/human-decisions/2026-06-02-fixer-auto-dispatch-ai-review-request-changes.md"
+  - "PRレビューStatus同期ワークフロー仕様書が無い場合は pr-review-status-sync.yml を正として設計書にパスを明記する"

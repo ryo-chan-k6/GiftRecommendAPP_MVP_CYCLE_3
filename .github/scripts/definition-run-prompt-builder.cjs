@@ -23,6 +23,14 @@ const COMMAND_REGISTRY = Object.freeze({
     output_section: "dry-run 実行時",
     requires_target_pr_on_live_run: true,
   }),
+  "fix-review-comments": Object.freeze({
+    definition_type: "task",
+    default_ref: "develop",
+    dry_run_supported: true,
+    live_run_supported: true,
+    output_section: "dry-run 実行時",
+    requires_target_pr_on_live_run: true,
+  }),
 });
 
 const SUPPORTED_RUN_MODES = Object.freeze(["dry-run", "live-run"]);
