@@ -6,14 +6,14 @@ review:
   title: "ディレクトリ構成再検討 Epic PRレビュー"
   summary: "Phase0 Epic 統合PR（develop 向け）の AI Review。子Task 3 件の成果物統合・epic_scope・Phase0 完了条件を横断確認する。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 target:
   pr: null
   issue:
-    number: null
+    number: 348
   task_definition: "prompts/definitions/epics/directory-structure-review/epic.yaml"
-  source_branch: "refactor/epic-<issue-number>-directory-structure-review"
+  source_branch: "refactor/epic-348-directory-structure-review"
   target_branch: "develop"
 
 review_scope:

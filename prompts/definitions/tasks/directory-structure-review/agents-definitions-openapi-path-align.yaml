@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-directory-structure-review"
   epic_issue: "[Epic]directory-structure-review:ディレクトリ構成再検討"
-  epic_issue_number: null
-  epic_branch: "refactor/epic-<issue-number>-directory-structure-review"
+  epic_issue_number: 348
+  epic_branch: "refactor/epic-348-directory-structure-review"
   related_issues: []
   related_prs: []
 
