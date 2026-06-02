@@ -72,8 +72,8 @@ function writeReviewDefinition(root, relPath = "prompts/definitions/_examples/re
   return relPath;
 }
 
-test("listAllowedCommands: start-epic と review-pr", () => {
-  assert.deepEqual(builder.listAllowedCommands(), ["start-epic", "review-pr"]);
+test("listAllowedCommands: start-epic / review-pr / fix-review-comments", () => {
+  assert.deepEqual(builder.listAllowedCommands(), ["start-epic", "review-pr", "fix-review-comments"]);
 });
 
 test("validateCommand: 未登録 Command は unsupported_command", () => {
@@ -343,7 +343,7 @@ test("summarizeForLog: 必要フィールドだけ返す", () => {
     assert.equal(summary.command, "start-epic");
     assert.equal(summary.run_mode, "dry-run");
     assert.equal(summary.definition_type, "epic");
-    assert.deepEqual(summary.allowed_commands, ["start-epic", "review-pr"]);
+    assert.deepEqual(summary.allowed_commands, ["start-epic", "review-pr", "fix-review-comments"]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

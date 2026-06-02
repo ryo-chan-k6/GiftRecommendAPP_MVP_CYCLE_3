@@ -432,6 +432,7 @@ function resolveAiReviewRequired({ workspaceRoot, reviewDefinitionPath, taskDefi
 module.exports = {
   DEFINITION_ROOT,
   REVIEW_FILE_NAME,
+  findTaskDefinitionBySummary,
   parseBranchRef,
   extractDefinitionPathsFromText,
   extractDefinitionDirectoryHintsFromText,
