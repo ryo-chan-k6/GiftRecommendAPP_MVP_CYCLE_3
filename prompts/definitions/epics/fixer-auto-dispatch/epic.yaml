@@ -1,0 +1,241 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-fixer-auto-dispatch"
+  title: "Request changes時のFixer自動起動（AI Review/Fix工程の自動化対称化）"
+  summary: "Request changes（AI Review / Human Review）を契機に Fixer harness（/fix-review-comments）を自動 dispatch し、PR Created → AI Review 自動化と対称な Fix 工程を整備する infra Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  現行の AI 運用フローでは PR 作成 → AI Review は Definition Run Harness で自動 dispatch されるが、
+  Request changes 後の Fixer（/fix-review-comments）は人手起動のままである。
+  pr-review-status-sync.yml は changes_requested で Status を In Progress に更新するが、Fixer harness を dispatch しない。
+  修正完了 → 再 AI Review は publish-fix-complete-and-dispatch.cjs / pr-ready-for-ai-review.yml で自動化済み。
+  実例: PR #306（Human Request changes 後、Fixer 未自動起動）。
+  本 Epic は Epic #300 作業中に発見した自動化の隙間を恒久対応する。
+
+objective: |
+  Request changes を契機に Fixer 工程を自動起動できる仕組みを設計・実装する。
+  AI Review の `request_changes` と Human Review の `changes_requested` の双方を dispatch 契機とする（Human 判断確定済み: 2026-06-02）。
+  自動 dispatch 条件 / skip 条件（infra-only、scope外指摘、Human 判断必須等）を定義し、
+  既存 harness（definition-run / dispatch-review-pr-harness 相当）と整合させる。
+  Human-in-the-loop が必要な判断点（scope外・設計変更・Contract/DB 等）は自動化しない。
+
+scope:
+  - "AI Review の Review Result `request_changes`（`ai_review_status_sync` / repository_dispatch 経由）を Fixer auto-dispatch 契機に含める"
+  - "Human Review の `changes_requested`（`pull_request_review` 経由）を Fixer auto-dispatch 契機に含める"
+  - "Fixer harness 自動 dispatch の設計（条件・skip・recovery）"
+  - "dispatch スクリプト追加と単体テスト"
+  - "pr-review-status-sync.yml（または同等 workflow）への dispatch ステップ追加"
+  - "Definition Run Harness 仕様書への反映"
+  - "Epic / Task / Review Definition の整備"
+  - "子 Task 分割（設計 → 実装 → テスト → docs）"
+
+out_of_scope:
+  - "Fixer の修正ロジック本体（fix-review-comments Command の Agent 責務）の変更"
+  - "AI Review コメント出力是正（Epic #303 完了済み）"
+  - "レコメンド本体 / API 仕様 / DB 変更"
+  - "apps/** / packages/** / openapi 実体"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      required: true
+      purpose: "Harness dispatch / fix-ready 連鎖の正本を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/AIエージェント活用型_開発運用フロー設計書.md"
+      required: true
+      purpose: "Fix 工程と Status 遷移の運用フローを確認するため"
+    - path: "docs/00_共通/プロジェクト管理/Issue運用ルール.md"
+      required: true
+      purpose: "Epic / Branch / no-branch 運用を確認するため"
+  templates: []
+  files:
+    - path: ".github/workflows/pr-review-status-sync.yml"
+      required: true
+      purpose: "Request changes 契機の現行 Status 同期を確認するため"
+    - path: ".github/workflows/pr-ready-for-ai-review.yml"
+      required: true
+      purpose: "fix-ready 側の対称実装を確認するため"
+    - path: ".github/scripts/dispatch-review-pr-harness.cjs"
+      required: true
+      purpose: "AI Review 側 dispatch パターンの参照実装"
+  issues:
+    - "#308"
+    - "#303"
+  prs:
+    - "#306"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: ".github/scripts/dispatch-fix-review-harness.cjs"
+      action: "create"
+      required: true
+    - path: ".github/workflows/pr-review-status-sync.yml"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Fixer auto-dispatch 設計（skip 条件・recovery 含む）"
+  - "dispatch-fix-review-harness.cjs と単体テスト"
+  - "pr-review-status-sync への harness dispatch 統合"
+  - "Harness 仕様書更新"
+
+acceptance_criteria:
+  - "Epic Issue #308 が no-branch 解除済みである"
+  - "Epic Branch が develop から作成されている"
+  - "Request changes 後に Fixer harness が条件付きで自動 dispatch される"
+  - "skip 条件（infra-only / scope外 / Human 判断必須）が定義・実装されている"
+  - "fix-ready → 再 AI Review 連鎖に退行がない"
+  - "単体テストが追加され CI で pass する"
+  - "scope 外（apps / API 実装）変更が混入していない"
+
+branch:
+  no_branch: false
+  name: "feature/epic-308-fixer-auto-dispatch"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "infra"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - ".github/scripts/**"
+    - ".github/workflows/pr-review-status-sync.yml"
+    - ".github/workflows/definition-run.yml"
+    - "docs/06_実装設計/github_actions/**"
+    - "prompts/definitions/epics/fixer-auto-dispatch/**"
+    - "prompts/definitions/tasks/fixer-auto-dispatch/**"
+    - "prompts/definitions/reviews/fixer-auto-dispatch/**"
+    - "ai-logs/human-decisions/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "fixer-dispatch-design"
+    - "fixer-dispatch-script"
+    - "workflow-integration"
+    - "harness-docs"
+
+dependencies:
+  epics:
+    - issue: 303
+      reason: "同一 harness 運用基盤。dispatch / publish パターンの参照"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/pr-review-status-sync.yml"
+    - ".github/scripts/dispatch-review-pr-harness.cjs"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test for dispatch script"
+    - "workflow dry-run or integration verification"
+  commands:
+    - "node --test .github/scripts/dispatch-fix-review-harness.test.cjs"
+  manual_checks:
+    - "Request changes → Fixer dispatch → fix-ready → 再 AI Review の一連動作を確認する"
+    - "infra-only PR で skip されることを確認する"
+  not_required:
+    - "apps integration test"
+  skip_reason:
+    "apps integration test": "本 Epic は CI/harness 領域のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "自動 dispatch 条件 / skip 条件が安全か"
+    - "Human-in-the-loop が必要なケースを誤って自動化していないか"
+    - "AI Review 側（pr-created / fix-ready）との対称性"
+    - "workflow scope（workflow push）の運用パターン"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: true
+  reason: "Harness / workflow 横断変更のため"
+
+risk_points:
+  - "Fixer 自動起動が scope 外修正を誘発する可能性"
+  - "#303 / #321 で整備した harness との競合"
+  - "workflow 変更は Human push（workflow scope）が必要"
+
+human_decision_points:
+  - "AI Review の request_changes も自動 Fixer 対象にする（確定済み: 2026-06-02 ryo-chan-k6。Human Review の changes_requested と同等に dispatch）"
+  - "Fixer dispatch 失敗時の recovery（確定済み: 2026-06-02 ryo-chan-k6。dispatch 失敗=workflow job failure・Fixer Harness 未起動。recovery は手動 CLI のみ。自動リトライ / 別 workflow_dispatch は採用しない）"
+
+stop_conditions:
+  - "Fixer 修正ロジック本体の変更が必須になった場合"
+  - "API / DB / generated 横断変更が必須になった場合"
+  - "secret / 権限不足で workflow 変更を push できない場合"
+
+notes:
+  - "本Epicは機能・領域単位 Epic（識別子なし）。Epic #308 Issue を正本とする。"
+  - "Fixer dispatch 契機: (1) AI Review `request_changes` → pr-review-status-sync route=repository_dispatch、(2) Human Review `changes_requested` → route=human_review。詳細は ai-logs/human-decisions/2026-06-02-fixer-auto-dispatch-ai-review-request-changes.md"
+  - "子 Task 想定順: 設計 → dispatch スクリプト → workflow 統合 → 仕様書反映"
+  - "recovery: dispatch 失敗時は手動 CLI のみ（ai-logs/human-decisions/2026-06-02-fixer-auto-dispatch-ai-review-request-changes.md §7.1）"
+  - "workflow ファイル変更は Human（workflow scope）push + bot PR 作成（パターン C）を想定"

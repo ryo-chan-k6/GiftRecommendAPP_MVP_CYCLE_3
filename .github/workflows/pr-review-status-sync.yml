@@ -38,6 +38,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Sync Project Status from AI Review result
+        id: sync-status
         uses: actions/github-script@v8
         env:
           PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
@@ -94,6 +95,19 @@ jobs:
                 if (value !== undefined && value !== "") lines.push(`${key}: ${value}`);
               }
               return core.summary.addRaw(lines.join("\n") + "\n").write();
+            }
+
+            async function markDispatchFixer({ prNumber, taskIssueNumber, pr, reviewResult }) {
+              const normalized = slack.normalizeKnownReviewToken(reviewResult || "");
+              if (dryRun || normalized !== "request_changes") {
+                core.setOutput("dispatch_fixer", "false");
+                return;
+              }
+              core.setOutput("dispatch_fixer", "true");
+              core.setOutput("pr_number", String(prNumber));
+              core.setOutput("issue_number", String(taskIssueNumber));
+              core.setOutput("pr_head_sha", pr.head.sha);
+              core.setOutput("pr_head_ref", pr.head.ref);
             }
 
             let prNumber;
@@ -259,3 +273,35 @@ jobs:
             if (!result.ok) {
               core.warning(`Slack notification failed: ${result.error || "unknown"}`);
             }
+
+            await markDispatchFixer({
+              prNumber,
+              taskIssueNumber,
+              pr,
+              reviewResult,
+            });
+
+      - name: Checkout PR head for Task Definition resolution
+        if: steps.sync-status.outputs.dispatch_fixer == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.sync-status.outputs.pr_head_sha }}
+
+      - name: Setup Node
+        if: steps.sync-status.outputs.dispatch_fixer == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Dispatch Fixer via Definition Run Harness
+        if: steps.sync-status.outputs.dispatch_fixer == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/dispatch-fix-review-harness.cjs \
+            --repository "${{ github.repository }}" \
+            --pr "${{ steps.sync-status.outputs.pr_number }}" \
+            --issue "${{ steps.sync-status.outputs.issue_number }}" \
+            --requested-by "pr-review-status-sync" \
+            --context "request-changes"

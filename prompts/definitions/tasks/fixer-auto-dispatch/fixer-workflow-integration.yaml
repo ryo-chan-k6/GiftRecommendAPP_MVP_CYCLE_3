@@ -1,0 +1,145 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-fixer-workflow-integration"
+  title: "pr-review-status-sync Fixer dispatch 統合（2 step 化）"
+  summary: "request_changes 契機に pr-review-status-sync.yml から dispatch-fix-review-harness.cjs を呼び出す 2 step 構成を実装する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-fixer-auto-dispatch"
+  epic_issue_number: "#308"
+  epic_branch: "feature/epic-308-fixer-auto-dispatch"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #308 Task3。Task2 で dispatch-fix-review-harness.cjs を実装済み。
+  設計書 §5 に従い、pr-review-status-sync を pr-created と同型の 2 step（Status → Fixer dispatch）に拡張する。
+
+objective: |
+  AI Review request_changes / Human changes_requested 経路で Status 更新後に
+  Fixer harness を条件付き自動 dispatch する workflow 統合を完了する。
+
+scope:
+  - "pr-review-status-sync.yml の 2 step 化（dispatch_fixer 出力 + checkout + dispatch step）"
+  - "request_changes のみ Fixer dispatch（split_required / blocked / needs_human_decision は対象外）"
+  - "dry_run 時は Fixer dispatch しない"
+
+out_of_scope:
+  - "Fixer 修正ロジック変更"
+  - "dispatch-fix-review-harness.cjs の機能追加（Task2 完了済み）"
+  - "Harness 仕様書・運用 docs 反映（Task4）"
+  - "apps/** / packages/** 実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+      required: true
+  files:
+    - path: ".github/workflows/pr-review-status-sync.yml"
+      required: true
+    - path: ".github/workflows/pr-created-status-and-slack.yml"
+      required: true
+      purpose: "2 step 参照実装"
+    - path: ".github/scripts/dispatch-fix-review-harness.cjs"
+      required: true
+  issues:
+    - "#308"
+    - "#324"
+  prs:
+    - "#325"
+
+output:
+  files:
+    - path: ".github/workflows/pr-review-status-sync.yml"
+      action: "update"
+      required: true
+
+deliverables:
+  - "pr-review-status-sync 2 step Fixer dispatch 統合"
+
+acceptance_criteria:
+  - "reviewResult が request_changes のときのみ dispatch_fixer=true となる"
+  - "Status 更新後に dispatch-fix-review-harness.cjs が --context request-changes で呼ばれる"
+  - "PR head checkout 後に Task Definition 解決が可能"
+  - "dry_run 時は Fixer dispatch step が実行されない"
+  - "fix-ready / pr-created 側に退行がない"
+
+branch:
+  name: "feature/task-<issue-number>-fixer-workflow-integration"
+  base: "feature/epic-308-fixer-auto-dispatch"
+  target: "feature/epic-308-fixer-auto-dispatch"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "infra"
+
+parallel_control:
+  depends_on:
+    - "task-fixer-dispatch-script"
+  blocks:
+    - "task-fixer-harness-docs"
+  exclusive_files:
+    - ".github/workflows/pr-review-status-sync.yml"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "request_changes 以外で Fixer が dispatch されないか"
+    - "Status 更新 → dispatch の順序が設計書どおりか"
+    - "workflow push 権限・運用パターン"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  required:
+    - "workflow YAML 目視（2 step 条件・context 引数）"
+    - "node --test .github/scripts/dispatch-fix-review-harness.test.cjs（回帰）"
+  commands:
+    - "node --test .github/scripts/dispatch-fix-review-harness.test.cjs"
+  manual_checks:
+    - "request_changes 経路で dispatch step が有効になることを YAML 上確認"
+  not_required:
+    - "workflow E2E（merge 後）"
+  skip_reason:
+    "workflow E2E（merge 後）": "infra PR の live E2E は merge 後・Task4 で確認"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+
+notes:
+  - "workflow 変更は bot push 不可の場合 Human push + bot PR（パターン C）"
+  - "設計正本: Fixer自動dispatch設計書 §5"
