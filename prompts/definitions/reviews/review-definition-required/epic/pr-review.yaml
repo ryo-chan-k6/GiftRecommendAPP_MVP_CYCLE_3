@@ -1,0 +1,61 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-ai-review-def-required-epic-pr"
+  title: "AI Review 3点セット必須化 Epic PRレビュー"
+  summary: "Epic #341 の develop 向け統合PR（#344）を AI Review する"
+  type: "epic_pr_review"
+  status: "ready"
+
+target:
+  pr: 344
+  issue:
+    number: 341
+  task_definition: "prompts/definitions/epics/review-definition-required/epic.yaml"
+  source_branch: "chore/epic-341-review-definition-required"
+  target_branch: "develop"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/review-definition-required/epic.yaml"
+    required: true
+  issue:
+    number: 341
+    required: true
+  pr:
+    number: 344
+    required: true
+
+review_points:
+  common:
+    - "Epic PRに対して epic_pr_review が適用されているか（task_pr_review ではない）"
+    - "target.pr / target.issue / source_branch / target_branch が実PRと一致しているか"
+    - "PR本文に Closes #341 があるか"
+    - "scope/out_of_scope と epic_scope.allowed_paths を満たしているか"
+  docs:
+    - "Task向けに導入した3点セット必須化が Epic PR 向けにも明文化されているか"
+    - "create-pr / review-pr のガードが Epic PR でも機能する記述になっているか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "scope外変更がない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "project"
