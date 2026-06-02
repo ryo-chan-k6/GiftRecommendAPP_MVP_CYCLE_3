@@ -1001,6 +1001,46 @@ NG: contract-definition.exmaple.yaml
 
 ## 14. 標準的な作業フロー
 
+### 14.0 AI Review 3点セット（Epic / Task / Review Definition）必須
+
+新しい workstream で AI主導Epic / Task を起票し、PR を AI Review へ進める場合は、原則として以下の **3点セット** を同じ workstream に揃える。Review Definition の作成漏れは、PR 作成後の AI Review 自動dispatch（`pr-created`）を `review_definition_not_found` で失敗させる（実例: PR #340）。
+
+| Definition | 配置（規約） | 作成タイミング |
+| ---------- | ------------ | -------------- |
+| Epic Definition | `prompts/definitions/epics/<workstream>/epic.yaml` | `/start-epic` 前 |
+| Task Definition | `prompts/definitions/tasks/<workstream>/<phase>.yaml` | `/start-task` 前 |
+| Review Definition（Task PR） | `prompts/definitions/reviews/<workstream>/pr-review.yaml`（または Task Definition と同ディレクトリの `pr-review.yaml`） | `/create-pr` 前（Task PR） |
+| Review Definition（Epic PR） | `prompts/definitions/reviews/<workstream>/epic/pr-review.yaml` | Epic PR 作成前 |
+
+記入例（scaffold の起点）は以下を複製して使う。
+
+```text
+prompts/definitions/_examples/epic-definition.example.yaml    → epics/<workstream>/epic.yaml
+prompts/definitions/_examples/task-definition.example.yaml    → tasks/<workstream>/<phase>.yaml
+prompts/definitions/_examples/review-definition.example.yaml  → reviews/<workstream>/pr-review.yaml
+```
+
+**Review Definition を PR head へ同梱する。** AI Review 自動dispatch（`pr-created` / Definition Run Harness）は、Review Definition を **default branch ではなく PR head（変更ファイル）または規約パス** から解決する（正本: `.github/scripts/resolve-review-definition.cjs`）。主な解決順序は以下。
+
+1. PR / Issue 本文に明示された Review Definition パス（`/review-pr @<path>` 等）
+2. Epic branch の場合、`prompts/definitions/reviews/<workstream>/epic/pr-review.yaml`
+3. Task Definition と同ディレクトリの `pr-review.yaml`（sibling）
+4. workstream 規約パス `prompts/definitions/reviews/<workstream>/pr-review.yaml`（workstream は `tasks/<workstream>/` と一致）
+5. Issue 番号・PR 番号・branch summary・`target` によるスコアリング走査
+
+そのため、Review Definition は対象PR（Task/Epic）と同じ workstream に作成し、PR head へ commit して PR の変更ファイルに含める。Epic PR では Task 向け Review Definition の流用を許容しない。
+
+| `review.ai_review_required`（Task Definition） | Review Definition | AI Review 自動dispatch |
+| ----------------------------------------------- | ----------------- | ---------------------- |
+| `true`（既定） | **必須**（PR head へ同梱） | 実行 |
+| `false` | 不要（理由を Task Definition に明示） | スキップ（Human Review は省略しない） |
+
+Epic PR では、`review.ai_review_required` の値に関わらず、Epic 向け Review Definition（`reviews/<workstream>/epic/pr-review.yaml`）を必須とする。
+
+関連: 規約・確認観点は [ai-review.mdc](../.cursor/rules/ai-review.mdc) §3.18・§3.19、起票手順は [start-task.md](../.cursor/commands/start-task.md) / [start-epic.md](../.cursor/commands/start-epic.md)、hard stop は [create-pr.md](../.cursor/commands/create-pr.md) §5.5、運用前提は [AIレビュー運用設計書](../docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md) §5.1 を正とする。
+
+---
+
 ### 14.1 AI主導Epic / Task開始
 
 親 Epic 未作成時は先に Epic を起票する。

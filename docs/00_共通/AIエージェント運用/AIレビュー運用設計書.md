@@ -107,6 +107,42 @@ AI Review
 
 ---
 
+## 5.1 AIレビュー自動dispatchの前提（Review Definition 3点セット必須）
+
+PR作成後のAIレビュー自動dispatch（`pr-created` workflow / Definition Run Harness）は、対象PRに対応する **Review Definition** を解決して `/review-pr` を起動する。この解決が成立するためには、AI主導Epic / Taskの起票時点で以下の **3点セット** が揃っている必要がある。
+
+| Definition | 配置（規約） | 役割 |
+| ---------- | ------------ | ---- |
+| Epic Definition | `prompts/definitions/epics/<workstream>/epic.yaml` | Epic単位の作業範囲・`epic_scope.allowed_paths` |
+| Task Definition | `prompts/definitions/tasks/<workstream>/<phase>.yaml` | Task単位の作業条件・scope・`review.ai_review_required` |
+| Review Definition（Task PR） | `prompts/definitions/reviews/<workstream>/pr-review.yaml`（または Task Definition と同ディレクトリの `pr-review.yaml`） | Task PR向けAIレビューの観点・対象・結果方針 |
+| Review Definition（Epic PR） | `prompts/definitions/reviews/<workstream>/epic/pr-review.yaml` | Epic PR向けAIレビューの観点・対象・結果方針 |
+
+### 5.1.1 Review Definition の解決元
+
+Review Definition は **default branch ではなく PR head（変更ファイル）または規約パス** から解決される（正本: `.github/scripts/resolve-review-definition.cjs`）。主な解決順序は以下とする。
+
+1. PR / Issue 本文に明示された Review Definition パス（`/review-pr @<path>`、`Review Definition: <path>` 等）
+2. Epic branch の場合、`prompts/definitions/reviews/<workstream>/epic/pr-review.yaml`
+3. Task Definition と同ディレクトリの `pr-review.yaml`（sibling）
+4. workstream 規約パス `prompts/definitions/reviews/<workstream>/pr-review.yaml`（workstream は `tasks/<workstream>/` と一致）
+5. Issue 番号・PR 番号・branch summary・`target` によるスコアリング走査
+
+したがって、Review Definition は **対象PR（Task/Epic）と同じ workstream に作成し、PR head へ commit して PR の変更ファイルに含める**。Epic PR では Task 向け Review Definition の流用を許容しない。
+
+### 5.1.2 未整備時の挙動と必須化
+
+Review Definition が未作成、または PR head に含まれていない（default branch にしか存在しない）場合、自動dispatchは `review_definition_not_found` で失敗する（実例: PR #340）。再発防止のため、以下を運用前提（必須）とする。
+
+- `review.ai_review_required: true` のTaskでは、`/create-pr` 前に対象Taskの Review Definition を作成し、PR head へ含める。
+- Epic PR では、`/create-pr` 前に Epic 向け Review Definition（`reviews/<workstream>/epic/pr-review.yaml`）を作成し、PR head へ含める。
+- `/create-pr` は、Task/Epicいずれでも、必要な Review Definition が PR head（変更ファイル）からも規約パスからも解決できない場合は PR作成を停止する（正本: [create-pr.md](../../../.cursor/commands/create-pr.md) 停止条件）。
+- `review.ai_review_required: false` のTaskでは Review Definition を必須としない（自動dispatchをスキップ）。ただし理由を Task Definition に明示し、Human Review は省略しない。
+
+3点セットの作成・配置・PR head 同梱の運用ガイドは [prompts/README.md](../../../prompts/README.md)、AIレビュー時の確認観点は [ai-review.mdc](../../../.cursor/rules/ai-review.mdc) §3.18・§3.19 を併せて参照する。
+
+---
+
 ## 6. Projects Statusとの関係
 
 AIレビューは、GitHub ProjectsのStatusと連動する。

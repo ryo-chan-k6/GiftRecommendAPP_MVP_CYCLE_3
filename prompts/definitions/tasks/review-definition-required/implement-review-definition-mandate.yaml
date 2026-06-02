@@ -1,0 +1,239 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-ai-review-def-mandate"
+  title: "AI Review Definition 必須化（規約A・停止条件B・テンプレC）"
+  summary: "Review Definition 作成漏れによる AI Review 自動dispatch失敗（PR #340 / review_definition_not_found）の恒久対応として、3点セット必須の規約明文化（A）・create-pr の hard stop（B）・テンプレ/scaffold整備（C）を実施する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]AI Review 3点セット必須化（Review Definition 前提整備）"
+  epic_issue_number: 341
+  epic_branch: "chore/epic-341-review-definition-required"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic/Task 起票時に Review Definition（pr-review.yaml）作成が漏れ、PR作成後の AI Review 自動dispatch（pr-created）が review_definition_not_found で失敗した（PR #340 / 親Epic #341）。
+  resolve-review-definition.cjs は Review Definition を PR head（変更ファイル）・規約パス（reviews/<workstream>/pr-review.yaml）・Task Definition の sibling 等から解決するため、3点セットが揃っていないと再発する。
+
+objective: |
+  恒久対応A（3点セット必須の規約明文化）・B（create-pr の hard stop）・C（テンプレ/scaffold整備）を実施し、Review Definition 作成漏れを構造的に防止する。
+
+scope:
+  - "A: .cursor/rules/ai-review.mdc に Review Definition 3点セット必須の観点と停止条件を追加"
+  - "A: .cursor/commands/start-epic.md に Epic配下Taskの3点セット前提を追記"
+  - "A: .cursor/commands/start-task.md に Review Definition 作成・PR head 同梱の前提を追記"
+  - "A: docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md に自動dispatchの Review Definition 解決前提を追記"
+  - "B: .cursor/commands/create-pr.md に ai_review_required かつ Review Definition 未解決時の hard stop を追加"
+  - "C: prompts/README.md に3点セット運用・配置・PR head 同梱ガイドを追加"
+  - "C: prompts/definitions/_examples/review-definition.example.yaml の配置・PR head 同梱注記の補強"
+  - "本Epic/Taskを再現する Epic Definition / Task Definition / Review Definition の作成（3点セット自体のドッグフーディング）"
+
+out_of_scope:
+  - "dispatch-review-pr-harness.cjs / resolve-review-definition.cjs のロジック変更"
+  - ".github/workflows/** の変更"
+  - "本件（Epic #338 / Task #339）のDefinition・docsの変更"
+  - "apps/** / packages/** / db/** / openapi/** の変更"
+  - "AI Review 観点そのものの品質基準変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "AI Review運用の正本。自動dispatch前提の追記先"
+    - path: ".cursor/rules/ai-review.mdc"
+      required: true
+      purpose: "AI Review共通Rule。3点セット必須観点の追加先"
+    - path: ".cursor/commands/create-pr.md"
+      required: true
+      purpose: "hard stop 追加先"
+    - path: "prompts/README.md"
+      required: true
+      purpose: "3点セット運用ガイドの追加先"
+    - path: ".github/scripts/resolve-review-definition.cjs"
+      required: false
+      purpose: "Review Definition 解決順序を正確に記述するための参照（変更しない）"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      action: "modify"
+      required: true
+      template: null
+  files:
+    - path: ".cursor/rules/ai-review.mdc"
+      action: "modify"
+      required: true
+    - path: ".cursor/commands/start-epic.md"
+      action: "modify"
+      required: true
+    - path: ".cursor/commands/start-task.md"
+      action: "modify"
+      required: true
+    - path: ".cursor/commands/create-pr.md"
+      action: "modify"
+      required: true
+    - path: "prompts/README.md"
+      action: "modify"
+      required: true
+    - path: "prompts/definitions/_examples/review-definition.example.yaml"
+      action: "modify"
+      required: false
+    - path: "prompts/definitions/epics/review-definition-required/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/review-definition-required/implement-review-definition-mandate.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/review-definition-required/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "3点セット必須の規約明文化（A）"
+  - "create-pr の Review Definition 未解決 hard stop（B）"
+  - "3点セット運用ガイド／テンプレ補強（C）"
+  - "Epic / Task / Review Definition の3点セット（ドッグフーディング）"
+
+acceptance_criteria:
+  - "ai-review.mdc に Review Definition 3点セット必須の観点と停止条件が追加されている（A）"
+  - "start-epic.md / start-task.md に3点セット前提が明文化されている（A）"
+  - "create-pr.md に ai_review_required かつ Review Definition 未解決時の hard stop（停止条件・処理手順・出力ルール）が追加されている（B）"
+  - "AIレビュー運用設計書に自動dispatchの Review Definition 解決前提（PR head 同梱 / 規約パス）が追記されている（A）"
+  - "prompts/README.md に3点セット運用・配置・PR head 同梱ガイドが追加されている（C）"
+  - "本Task内で Epic/Task/Review Definition の3点セットが作成され、Review Definition が PR head（本Task Branch）に同梱されている"
+  - "既存Rule/Command/docsと矛盾せず、用語整合が取れている"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "chore/task-342-review-definition-mandate"
+  base: "chore/epic-341-review-definition-required"
+  target: "chore/epic-341-review-definition-required"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-06-02"
+    due_date: "2026-06-04"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "project"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".cursor/rules/ai-review.mdc"
+    - ".cursor/commands/start-epic.md"
+    - ".cursor/commands/start-task.md"
+    - ".cursor/commands/create-pr.md"
+    - "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+    - "prompts/README.md"
+    - "prompts/definitions/_examples/review-definition.example.yaml"
+    - "prompts/definitions/epics/review-definition-required/epic.yaml"
+    - "prompts/definitions/tasks/review-definition-required/implement-review-definition-mandate.yaml"
+    - "prompts/definitions/reviews/review-definition-required/pr-review.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "ai-review.mdc / create-pr.md / start-epic.md / start-task.md / AIレビュー運用設計書 / README の記述が相互に矛盾しないこと"
+    - "resolve-review-definition.cjs の解決順序と docs の記述が整合していること"
+    - "本Task の Review Definition が PR head で解決可能（changed files / workstream convention）であること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Rule/Command/docs/テンプレ改善Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "A/B/Cが相互に矛盾せず一貫しているか"
+    - "既存Rule/Command/docs正本との整合（重複・矛盾がないか）"
+    - "hard stop（B）の停止条件・処理手順・出力ルールが create-pr.md 全体と整合しているか"
+    - "用語整合（terminology.mdc）"
+    - "scriptsやworkflowのロジック変更を含んでいないか（scope外）"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常のRule/Command/docs改善作業のため、ai-logsへの保存は行わない。"
+
+stop_conditions:
+  - "既存workflow/スクリプトのロジック変更が必要になった場合（scope外）"
+  - "正本docs間で矛盾が見つかり方針変更判断が必要になった場合"
+
+notes:
+  - "Issueタイトル: [Task]AI Review Definition 必須化（規約A・停止条件B・テンプレC）"
+  - "親Epic: [Epic]AI Review 3点セット必須化（Review Definition 前提整備）（#341 / 機能・領域単位Epic）。"
+  - "Task Issue: #342。Task Branch: chore/task-342-review-definition-mandate。PR target は親Epic Branch。"
+  - "Epic Definition の正本は prompts/definitions/epics/review-definition-required/epic.yaml。"
+  - "本Task は3点セット必須化のドッグフーディングとして、自身の Review Definition を PR head に同梱する。"
