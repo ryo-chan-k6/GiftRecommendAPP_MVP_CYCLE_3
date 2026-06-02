@@ -145,7 +145,7 @@ function shouldSkipForContext({ context, fixOutcome }) {
   return { skip: false };
 }
 
-const HARNESS_AUTO_DISPATCH_CONTEXTS = Object.freeze(["pr-created", "fix-ready"]);
+const HARNESS_AUTO_DISPATCH_CONTEXTS = Object.freeze(["pr-created", "fix-ready", "request-changes"]);
 
 const INFRA_HARNESS_SKIP_LABELS = Object.freeze([
   "type: infra",
