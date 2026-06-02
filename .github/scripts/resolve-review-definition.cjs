@@ -160,6 +160,51 @@ function epicReviewConventionPath(summary) {
   return `${DEFINITION_ROOT}reviews/${normalized}/epic/${REVIEW_FILE_NAME}`;
 }
 
+function workstreamReviewConventionPath(taskDefinitionPath) {
+  const taskPath = normalizePath(taskDefinitionPath);
+  if (!taskPath.startsWith(`${DEFINITION_ROOT}tasks/`)) return "";
+  const segments = taskPath.split("/");
+  const tasksIndex = segments.indexOf("tasks");
+  if (tasksIndex < 0 || tasksIndex + 1 >= segments.length) return "";
+  const workstream = segments[tasksIndex + 1];
+  if (!workstream) return "";
+  return `${DEFINITION_ROOT}reviews/${workstream}/${REVIEW_FILE_NAME}`;
+}
+
+function resolveReviewDefinitionFromTaskPath(taskDefinitionPath, workspaceRoot) {
+  const workspace = nonEmpty(workspaceRoot) || process.cwd();
+  const taskPath = normalizePath(taskDefinitionPath);
+  if (!taskPath) {
+    return { ok: false, reason: "task_definition_missing" };
+  }
+  const absoluteTask = path.join(workspace, taskPath);
+  if (!fileExists(absoluteTask)) {
+    return { ok: false, reason: "task_definition_missing", path: taskPath };
+  }
+
+  const sibling = siblingReviewDefinitionForTask(taskPath, workspace);
+  if (sibling) {
+    return { ok: true, path: sibling, source: "task_sibling", task_definition: taskPath };
+  }
+
+  const workstreamReview = workstreamReviewConventionPath(taskPath);
+  if (workstreamReview && fileExists(path.join(workspace, workstreamReview))) {
+    return {
+      ok: true,
+      path: workstreamReview,
+      source: "workstream_review_convention",
+      task_definition: taskPath,
+    };
+  }
+
+  return {
+    ok: false,
+    reason: "review_definition_not_found",
+    task_definition: taskPath,
+    hint: `Task Definition と同ディレクトリの ${REVIEW_FILE_NAME}、または ${workstreamReviewConventionPath(taskPath) || "reviews/<workstream>/pr-review.yaml"} を作成してください。`,
+  };
+}
+
 function extractAiReviewRequired(taskContent) {
   const reviewBlock = /review:\s*[\s\S]*?(?=\n[a-z_]+:|\n\S|\s*$)/i.exec(String(taskContent || ""));
   const block = reviewBlock ? reviewBlock[0] : taskContent;
@@ -335,6 +380,10 @@ function resolveReviewDefinition({
     for (const taskPath of findTaskDefinitionBySummary(workspace, branchInfo.summary)) {
       taskCandidates.add(taskPath);
     }
+    const taskResolver = require("./resolve-task-definition.cjs");
+    for (const taskPath of taskResolver.findTaskDefinitionByFilenameSummary(workspace, branchInfo.summary)) {
+      taskCandidates.add(taskPath);
+    }
     const e2eReview = `${DEFINITION_ROOT}_e2e/${branchInfo.summary}/${REVIEW_FILE_NAME}`;
     if (fileExists(path.join(workspace, e2eReview))) {
       return { ok: true, path: e2eReview, source: "e2e_branch_summary" };
@@ -342,9 +391,20 @@ function resolveReviewDefinition({
   }
 
   for (const taskPath of taskCandidates) {
-    const sibling = siblingReviewDefinitionForTask(taskPath, workspace);
-    if (sibling) {
-      return { ok: true, path: sibling, source: "task_sibling", task_definition: taskPath };
+    const fromTask = resolveReviewDefinitionFromTaskPath(taskPath, workspace);
+    if (fromTask.ok) {
+      return fromTask;
+    }
+  }
+
+  if (resolvedIssueNumber) {
+    const taskResolver = require("./resolve-task-definition.cjs");
+    const byIssue = taskResolver.listTaskDefinitionsByIssueNumber(workspace, resolvedIssueNumber);
+    if (byIssue.length === 1) {
+      const fromTask = resolveReviewDefinitionFromTaskPath(byIssue[0], workspace);
+      if (fromTask.ok) {
+        return { ...fromTask, source: "task_issue_sibling" };
+      }
     }
   }
 
@@ -443,6 +503,8 @@ module.exports = {
   extractTargetPrNumber,
   extractReviewType,
   epicReviewConventionPath,
+  workstreamReviewConventionPath,
+  resolveReviewDefinitionFromTaskPath,
   extractAiReviewRequired,
   listReviewDefinitionFiles,
   scoreReviewCandidate,

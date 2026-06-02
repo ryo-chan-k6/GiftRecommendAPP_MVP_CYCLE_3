@@ -228,11 +228,21 @@ function fromSummaryCandidates(workspaceRoot, { issueNumber, branchInfo }) {
   return results.sort((a, b) => b.score - a.score);
 }
 
+function listTaskDefinitionsByIssueNumber(workspaceRoot, issueNumber) {
+  const parsed = Number(issueNumber);
+  if (!Number.isInteger(parsed) || parsed <= 0) return [];
+  return fromSummaryCandidates(workspaceRoot, { issueNumber: parsed, branchInfo: null })
+    .filter((entry) => entry.score >= 100)
+    .map((entry) => entry.path);
+}
+
 module.exports = {
   DEFINITION_ROOT,
   extractTaskDefinitionPathsFromText,
   hasTaskDefinitionType,
   isTaskDefinitionPath,
   pickTaskDefinitionFromChangedFiles,
+  findTaskDefinitionByFilenameSummary,
+  listTaskDefinitionsByIssueNumber,
   resolveTaskDefinition,
 };
