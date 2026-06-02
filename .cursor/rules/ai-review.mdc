@@ -361,6 +361,42 @@ AI Agentは、AI Review結果として、Human Reviewへ進めてよいかを明
 AI Agentは、この結論をPR merge判断として扱ってはならない。  
 merge判断はHumanが行う。
 
+### 3.18 Review Definition（AI Review 3点セット）の存在を前提とする
+
+AI主導でEpic / Taskを起票し、PRをAI Reviewへ進める場合、AI Agentは以下の **3点セット** が揃っていることを前提とする。
+
+| Definition | 配置（規約） | 役割 |
+| ---------- | ------------ | ---- |
+| Epic Definition | `prompts/definitions/epics/<workstream>/epic.yaml` | Epic単位の作業範囲・allowed_paths |
+| Task Definition | `prompts/definitions/tasks/<workstream>/<phase>.yaml` | Task単位の作業条件・scope・`review.ai_review_required` |
+| Review Definition | `prompts/definitions/reviews/<workstream>/pr-review.yaml`（または Task Definition と同ディレクトリの `pr-review.yaml`） | AI Reviewの観点・対象・結果方針 |
+
+PR作成後のAI Review自動dispatch（`pr-created`）は、Review Definitionを **default branch ではなく PR head（変更ファイル）または規約パス** から解決する（`.github/scripts/resolve-review-definition.cjs`）。解決順序の要点は以下とする。
+
+1. PR / Issue 本文に明示された Review Definition パス（`/review-pr @<path>` 等）
+2. Task Definition と同ディレクトリの `pr-review.yaml`（sibling）
+3. workstream 規約パス `prompts/definitions/reviews/<workstream>/pr-review.yaml`
+4. Issue 番号・PR 番号・branch summary・`target` による走査スコアリング
+
+したがって、Review Definition は **対象Taskと同じ workstream に作成し、PR head（Task Branch）へ commit して PR の変更ファイルに含める**。default branch にしか存在しない、または未作成の場合、自動dispatchは `review_definition_not_found` で失敗する。
+
+例外として、Task Definition の `review.ai_review_required: false` が設定されている場合は、AI Review自動dispatchをスキップしてよい（その場合でも Human Review は省略しない）。
+
+AI Reviewでは、以下を確認する。
+
+- 対象Taskに対応する Review Definition が存在し、PR head（変更ファイル）または規約パスから解決可能か
+- Review Definition の `target.task_definition` / `target.issue` が対象PRのTask・Issueと一致しているか
+- `review.ai_review_required: false` でないのに Review Definition が未作成のまま、AI Reviewを省略していないか
+
+### 3.19 Epic / Task 起票時の3点セット前提
+
+AI Agentが `/start-epic` / `/start-task` でEpic / Taskを起票する場合、PR作成（`/create-pr`）までに、対象Taskに対応する Review Definition を作成して Task Branch（PR head）へ含める前提とする。
+
+- Epic起票時（`/start-epic`）: 配下Taskが AI Review対象（`ai_review_required: true`）になる場合、Task起票・PR作成までに Review Definition を用意する必要があることを後続案内に含める。
+- Task起票時（`/start-task`）: `ai_review_required: true` のTaskでは、`/create-pr` 前に Review Definition を作成し PR head へ commit する。`ai_review_required: false` の場合は理由をDefinitionに明示する。
+
+詳細手順は `.cursor/commands/start-epic.md` / `.cursor/commands/start-task.md` / `.cursor/commands/create-pr.md`、運用前提は [AIレビュー運用設計書](../../docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md) §5.1 を正とする。
+
 ---
 
 ## 4. 確認観点
@@ -503,6 +539,7 @@ AI Agentは、以下の場合、AI Reviewを停止して人間へ確認する。
 - secretや認証情報が含まれている可能性がある
 - 破壊的変更を採用すべきか判断が必要である
 - Human Reviewを省略しなければ進められない状態になっている
+- 対象Taskが AI Review対象（`ai_review_required: true`）であるのに、Review Definition が PR head（変更ファイル）からも規約パスからも解決できない（§3.18）
 
 ---
 

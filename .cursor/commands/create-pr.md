@@ -192,6 +192,35 @@ Implementation Task で `packages/contracts/**` または `apps/**/generated/**`
 
 ---
 
+### 5.5 Review Definition の解決可否を確認する（AI Review 前提・hard stop）
+
+Task Definition の `review.ai_review_required` を確認する。
+
+| `ai_review_required` | 扱い |
+| -------------------- | ---- |
+| `true`（既定） | PR head（本 Branch の変更ファイル）または規約パスから Review Definition が解決できることを必須とする |
+| `false` | Review Definition を必須としない（AI Review 自動dispatch はスキップ）。ただし Task Definition に理由が明示されていること。Human Review は省略しない |
+
+`ai_review_required: true` の場合、PR 作成前に、対象 Task に対応する **Review Definition** が以下のいずれかで解決可能かを確認する（正本: `.github/scripts/resolve-review-definition.cjs`、観点: [ai-review.mdc](../../.cursor/rules/ai-review.mdc) §3.18）。
+
+1. 本 Branch の変更ファイルに `prompts/definitions/reviews/<workstream>/pr-review.yaml`（または Task Definition と同ディレクトリの `pr-review.yaml`）が含まれている
+2. 上記が workstream 規約パス（`tasks/<workstream>/` と一致する `reviews/<workstream>/pr-review.yaml`）に存在する
+3. PR 本文に Review Definition パスを明示する（`/review-pr @<path>` 等）
+
+確認例（PR head の状態で実行。Review Definition が本 Branch の差分に含まれているかを確認する）:
+
+```bash
+git diff --name-only <親Epic Branch>...HEAD | grep -E 'prompts/definitions/reviews/.+/pr-review\.yaml$'
+```
+
+解決ロジック（`resolve-review-definition.cjs`）は CLI ではなくモジュールであり、`pr-created` workflow / Definition Run Harness から呼び出される。`/create-pr` 時点では、上記のように Review Definition が PR head の差分に含まれること（または規約パスに存在し PR 本文で明示されること）を確認する。
+
+**hard stop**: `ai_review_required: true`（または未指定で既定 `true`）であるにもかかわらず、Review Definition が PR head（変更ファイル）からも規約パスからも解決できない場合は、**PR 作成を停止する**。Review Definition が default branch にしか無い／未作成のままでは、PR 作成後の AI Review 自動dispatch（`pr-created`）が `review_definition_not_found` で失敗するため、PR 作成前に作成して本 Branch（PR head）へ commit する。
+
+`ai_review_required: false` の場合は本 hard stop の対象外とするが、Task Definition に理由が明示されていることを確認する。
+
+---
+
 ### 6. diffを確認する
 
 作業Branchのdiffを確認する。
@@ -441,6 +470,7 @@ PR作成後、次Commandとして `/review-pr @<definition>` を提示する。
 - PR本文がテンプレートに沿っている
 - 変更内容が整理されている
 - 変更ファイルが整理されている
+- `review.ai_review_required: true` の場合、対応する Review Definition が PR head（変更ファイル）または規約パスから解決可能である（§5.5）
 - テスト結果が記載されている
 - 未実施事項がある場合、その理由と残リスクが記載されている
 - レビュー観点が記載されている
@@ -478,6 +508,7 @@ PR作成後、次Commandとして `/review-pr @<definition>` を提示する。
 - 完了条件を満たしていない
 - PR本文に必要な情報を生成できない
 - 前段成果物の大きな修正が必要であり、現在のTask内で扱うべきか判断できない
+- Task Definition の `review.ai_review_required` が `true`（または未指定で既定 `true`）であるのに、対応する Review Definition が PR head（変更ファイル）からも規約パスからも解決できない（§5.5。`false` の場合は対象外）
 - Human Reviewを省略する前提になっている
 - AIがmerge判断を行う必要がある
 
@@ -688,6 +719,7 @@ PR作成を停止する場合は、以下の形式で出力する。
 - PR本文に変更内容、テスト結果、未実施事項、レビュー観点を記載する
 - 実施していないテストを実施済みと書かない
 - Definitionのscope外変更をPRに含めない
+- `review.ai_review_required: true` のTaskで Review Definition が PR head から解決できない場合はPRを作成せず停止する（§5.5）
 - generatedファイルを手動編集しない
 - secret、APIキー、`.env`実値を出力しない
 - Human Reviewを省略しない
