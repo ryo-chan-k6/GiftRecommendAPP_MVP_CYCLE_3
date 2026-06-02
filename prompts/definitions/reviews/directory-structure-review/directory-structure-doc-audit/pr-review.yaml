@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 351
   issue:
     number: 349
   task_definition: "prompts/definitions/tasks/directory-structure-review/directory-structure-doc-audit.yaml"
@@ -71,7 +71,7 @@ input:
     number: 349
     required: true
   pr:
-    number: null
+    number: 351
     required: true
   diff:
     required: true
@@ -193,4 +193,4 @@ issue:
   area: "project"
 
 notes:
-  - "PR 再作成後に target.pr を実番号へ更新する（okuri-ai-bot author）。"
+  - "PR #351（author: okuri-ai-bot）。旧 #350 は close 済み。"
