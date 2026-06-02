@@ -221,6 +221,26 @@ git diff --name-only <親Epic Branch>...HEAD | grep -E 'prompts/definitions/revi
 
 ---
 
+### 5.6 Epic PR の Review Definition を確認する（AI Review 前提・hard stop）
+
+Epic PR（PR target が `develop` で、Epic Definition を入力として作成する場合）では、Task 向け Review Definition とは別に、Epic PR 向け Review Definition を必須とする。
+
+| PR種別 | 必須 Review Definition |
+| ------ | ---------------------- |
+| Task PR | `prompts/definitions/reviews/<workstream>/pr-review.yaml`（または Task Definition sibling） |
+| Epic PR | `prompts/definitions/reviews/<workstream>/epic/pr-review.yaml` |
+
+Epic PR の場合、以下を確認する。
+
+1. 本 Branch の変更ファイル、または規約パスに `prompts/definitions/reviews/<workstream>/epic/pr-review.yaml` が存在する
+2. Review Definition の `review.type` が `epic_pr_review` である
+3. Review Definition の `target.issue` が Epic Issue と一致する
+4. PR 本文が Epic PR 規約（`Closes #<Epic Issue番号>`）と整合する
+
+**hard stop**: Epic PR で上記が満たせない場合は PR 作成を停止する。Task 向け Review Definition（`.../pr-review.yaml`）のみで Epic PR を作成してはならない。
+
+---
+
 ### 6. diffを確認する
 
 作業Branchのdiffを確認する。
@@ -471,6 +491,7 @@ PR作成後、次Commandとして `/review-pr @<definition>` を提示する。
 - 変更内容が整理されている
 - 変更ファイルが整理されている
 - `review.ai_review_required: true` の場合、対応する Review Definition が PR head（変更ファイル）または規約パスから解決可能である（§5.5）
+- Epic PR の場合、`prompts/definitions/reviews/<workstream>/epic/pr-review.yaml` が解決可能である（§5.6）
 - テスト結果が記載されている
 - 未実施事項がある場合、その理由と残リスクが記載されている
 - レビュー観点が記載されている
@@ -509,6 +530,7 @@ PR作成後、次Commandとして `/review-pr @<definition>` を提示する。
 - PR本文に必要な情報を生成できない
 - 前段成果物の大きな修正が必要であり、現在のTask内で扱うべきか判断できない
 - Task Definition の `review.ai_review_required` が `true`（または未指定で既定 `true`）であるのに、対応する Review Definition が PR head（変更ファイル）からも規約パスからも解決できない（§5.5。`false` の場合は対象外）
+- Epic PR で、`prompts/definitions/reviews/<workstream>/epic/pr-review.yaml` が未作成・未解決、または `review.type: epic_pr_review` を満たさない
 - Human Reviewを省略する前提になっている
 - AIがmerge判断を行う必要がある
 
@@ -720,6 +742,7 @@ PR作成を停止する場合は、以下の形式で出力する。
 - 実施していないテストを実施済みと書かない
 - Definitionのscope外変更をPRに含めない
 - `review.ai_review_required: true` のTaskで Review Definition が PR head から解決できない場合はPRを作成せず停止する（§5.5）
+- Epic PR では Task 向け Review Definition を流用せず、Epic 向け `.../epic/pr-review.yaml` が解決できない場合はPRを作成せず停止する（§5.6）
 - generatedファイルを手動編集しない
 - secret、APIキー、`.env`実値を出力しない
 - Human Reviewを省略しない
