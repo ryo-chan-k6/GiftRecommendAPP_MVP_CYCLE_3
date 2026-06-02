@@ -1,0 +1,168 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-fixer-harness-docs"
+  title: "Fixer auto-dispatch Harness 仕様書・運用 docs 反映"
+  summary: "Task2〜3 実装完了後、Fixer auto-dispatch の recovery・再指摘運用（already_at_next_status）を含め Harness 仕様書・関連 docs を正本反映する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-fixer-auto-dispatch"
+  epic_issue_number: "#308"
+  epic_branch: "feature/epic-308-fixer-auto-dispatch"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #308 Task4。Task2（dispatch スクリプト）・Task3（pr-review-status-sync 統合）は merge 済み。
+  PR #327 AI Review §8.1 で、`already_at_next_status` 時に Fixer auto-dispatch が skip される挙動が指摘された。
+  Human 判断（2026-06-02）: 再指摘時の運用方針は Task4 で検討・決定し docs に明記する（workflow 変更は本 Task の判断結果に従う）。
+
+objective: |
+  Fixer auto-dispatch の実装完了状態を Harness 仕様書・設計書・PR review 仕様書に反映し、
+  dispatch 失敗 recovery および再指摘（already_at_next_status）運用方針を正本として確定する。
+
+scope:
+  - "Definition Run Harnessワークフロー仕様書 §16 の Task2〜3 完了反映（recovery CLI 詳細）"
+  - "Fixer自動dispatch設計書の実装完了反映（§8.3、再指摘運用 §4.3 追加）"
+  - "PRレビュー完了時Status更新ワークフロー仕様書への Fixer dispatch step 追記"
+  - "already_at_next_status 時の Fixer dispatch 運用方針の決定と docs 明記"
+
+out_of_scope:
+  - "dispatch-fix-review-harness.cjs の機能変更（Task2 完了済み）"
+  - "pr-review-status-sync.yml の workflow 変更（Task3 完了済み。本 Task で運用方針決定の結果、workflow 変更が必要と判断した場合は別 Task 化）"
+  - "Fixer 修正ロジック（fix-review-comments Command）の変更"
+  - "apps/** / packages/** 実装"
+  - "Epic #308 → develop 向け Epic PR（Epic 完了 Task）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md"
+      required: true
+  files:
+    - path: ".github/workflows/pr-review-status-sync.yml"
+      required: true
+    - path: ".github/scripts/dispatch-fix-review-harness.cjs"
+      required: true
+  issues:
+    - "#308"
+    - "#326"
+  prs:
+    - "#327"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/fixer-auto-dispatch/fixer-harness-docs.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Harness 仕様書 §16 完了反映"
+  - "Fixer 設計書の実装完了・再指摘運用追記"
+  - "PR review 仕様書への Fixer dispatch 追記"
+
+acceptance_criteria:
+  - "Harness 仕様書 §16 に dispatch-fix-review-harness recovery CLI が記載されている"
+  - "Fixer 設計書に Task2〜3 完了状態と already_at_next_status 運用方針が記載されている"
+  - "PR review 仕様書に request_changes 時の Fixer dispatch step が記載されている"
+  - "already_at_next_status 時の Fixer dispatch 方針が Human 判断として docs に確定記載されている"
+  - "workflow / スクリプトの実装変更が含まれていない（docs のみ）"
+  - "fix-ready → 再 AI Review 連鎖への退行記載が維持されている"
+
+branch:
+  name: "feature/task-<issue-number>-fixer-harness-docs"
+  base: "feature/epic-308-fixer-auto-dispatch"
+  target: "feature/epic-308-fixer-auto-dispatch"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+parallel_control:
+  depends_on:
+    - "task-fixer-workflow-integration"
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+    - "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+    - "docs/06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Task2〜3 実装と docs の整合"
+    - "already_at_next_status 運用方針の明確さ"
+    - "recovery CLI の正確性"
+    - "fix-ready 連鎖退行なし"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+test_policy:
+  required:
+    - "docs 目視（recovery コマンド・skip 条件・step 順序）"
+  commands: []
+  manual_checks:
+    - "Fixer 設計書と Harness §16 の相互参照が双方向であること"
+  not_required:
+    - "workflow E2E"
+    - "node --test"
+  skip_reason:
+    "workflow E2E": "docs のみ Task"
+    "node --test": "実装変更なし"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+
+human_decision_points:
+  - "already_at_next_status 時の Fixer dispatch（PR #327 AI Review §8.1）: **現行実装を維持**（Status 更新 skip と同時に Fixer auto-dispatch も行わない）。再指摘で Fixer が必要な場合は **手動 CLI**（dispatch-fix-review-harness.cjs）のみ。workflow 変更（fix-ready 同型の skip 時 dispatch）は **採用しない**（2026-06-02 Human 判断・Task4 で確定）"
+
+notes:
+  - "設計正本: Fixer自動dispatch設計書"
+  - "PR #327 AI Review §8.1 の optional 改善は本 Task で運用方針として確定"
+  - "Epic #308 最終 Task。完了後 Epic PR（develop 向け）を Human が判断"
