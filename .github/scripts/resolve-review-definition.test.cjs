@@ -224,6 +224,22 @@ test("resolveReviewDefinition: Epic Branch で epic/pr-review が無い場合は
   assert.match(result.hint || "", /epic\/pr-review\.yaml/);
 });
 
+test("resolveReviewDefinitionFromTaskPath: workstream review 慣例パスを解決する", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-review-"));
+  const taskPath = "prompts/definitions/tasks/sample-workstream/my-task.yaml";
+  const reviewPath = "prompts/definitions/reviews/sample-workstream/pr-review.yaml";
+  write(path.join(root, taskPath), 'definition_type: "task"\n');
+  write(
+    path.join(root, reviewPath),
+    `definition_type: "review"\ntarget:\n  task_definition: "${taskPath}"\n`,
+  );
+
+  const result = resolver.resolveReviewDefinitionFromTaskPath(taskPath, root);
+  assert.equal(result.ok, true);
+  assert.equal(result.path, reviewPath);
+  assert.equal(result.source, "workstream_review_convention");
+});
+
 test("resolveReviewDefinition: Task Branch は target.issue / target.pr で一意解決する", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-review-task-"));
   write(

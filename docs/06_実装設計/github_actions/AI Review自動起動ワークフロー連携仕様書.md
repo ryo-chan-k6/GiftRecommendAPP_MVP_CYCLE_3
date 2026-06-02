@@ -38,12 +38,20 @@ PR open / fix-ready (ready_for_ai_review)
 1. CLI `--definition` 明示指定
 2. PR / Issue 本文の `/review-pr @path` または `Review Definition:` / ディレクトリヒント行
 3. Branch summary から `prompts/definitions/_e2e/{summary}/pr-review.yaml`（**develop 上に存在する場合**）
-4. Task Definition と同ディレクトリの `pr-review.yaml`
+4. Task Definition 候補（branch summary ディレクトリ / **filename summary** / Issue 番号 `task-{n}` パス）から、同ディレクトリの `pr-review.yaml` または `prompts/definitions/reviews/{workstream}/pr-review.yaml`
 5. 全 `pr-review.yaml` スキャン（Issue 番号 / task_definition リンク / summary 一致でスコアリング。**score ≥ 40 のみ採用**）
-6. **fallback:** PR changed files API から `prompts/definitions/**/pr-review.yaml` を抽出（develop 未マージの Definition 向け）
+6. **fallback（`dispatch-review-pr-harness.cjs`）:**
+   - PR changed files から **Task Definition** を解決し、`review.ai_review_required: false` なら **AI Review を skip（job 成功）**
+   - 同一 Task から sibling / workstream review を再試行
+   - PR changed files から `pr-review.yaml` を抽出
 7. fallback 時は Harness dispatch に **PR head ref** を渡し、Cursor Agent が PR Branch を clone する
 
-解決不能・曖昧な場合は dispatch ステップが **失敗** し、Job Summary / Actions log に recovery コマンドを残す。
+解決不能・曖昧かつ AI Review 必須の場合は dispatch ステップが **失敗** し、Job Summary / Actions log に recovery コマンドを残す。
+
+### 4.1 Branch summary と Task ファイル名の不一致
+
+Issue 運用メタデータの `Branch summary`（例: `fixer-e2e-ai`）と Task Definition ファイル名（例: `fixer-e2e-verify.yaml`）が一致しない場合、手順 4 の summary 一致だけでは解決できない。  
+このとき手順 6 の **PR changed files による Task 解決** または PR 本文での Definition 明示が必要である（PR #333 / Issue #336 参照）。
 
 ## 5. スキップ条件（dispatch しない・ジョブ成功）
 

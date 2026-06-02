@@ -2,6 +2,7 @@
 
 const slack = require("./slack-notify.cjs");
 const resolver = require("./resolve-review-definition.cjs");
+const taskResolver = require("./resolve-task-definition.cjs");
 const harness = require("./dispatch-definition-run.cjs");
 
 function nonEmpty(value) {
@@ -58,6 +59,53 @@ async function loadPullRequestFiles({ owner, repo, prNumber, token, fetchImpl })
   return files;
 }
 
+function buildAiReviewNotRequiredSkip({ taskDefinitionPath, gate }) {
+  return {
+    ok: true,
+    skipped: true,
+    reason: "ai_review_not_required",
+    task_definition: taskDefinitionPath,
+    ai_review_gate: gate,
+  };
+}
+
+async function resolveTaskDefinitionForPull({
+  workspaceRoot,
+  pull,
+  issueBody,
+  issueNumber,
+  owner,
+  repo,
+  token,
+  fetchImpl,
+}) {
+  const headRef = pull.head?.ref || "";
+  const branchInfo = resolver.parseBranchRef(headRef);
+  let taskResolution = taskResolver.resolveTaskDefinition({
+    workspaceRoot,
+    prBody: pull.body || "",
+    issueBody,
+    headRef,
+    issueNumber,
+  });
+
+  if (!taskResolution.ok) {
+    const changedFiles = await loadPullRequestFiles({
+      owner,
+      repo,
+      prNumber: pull.number,
+      token,
+      fetchImpl,
+    });
+    const fromPrFiles = taskResolver.pickTaskDefinitionFromChangedFiles(changedFiles, branchInfo);
+    if (fromPrFiles) {
+      taskResolution = { ok: true, path: fromPrFiles, source: "pr_changed_files" };
+    }
+  }
+
+  return taskResolution;
+}
+
 async function resolveReviewDefinitionForPull({
   workspaceRoot,
   pull,
@@ -94,6 +142,45 @@ async function resolveReviewDefinitionForPull({
     return reviewResolution;
   }
 
+  const taskResolution = await resolveTaskDefinitionForPull({
+    workspaceRoot,
+    pull,
+    issueBody,
+    issueNumber,
+    owner,
+    repo,
+    token,
+    fetchImpl,
+  });
+
+  let taskReviewFailure;
+  if (taskResolution.ok) {
+    const aiReviewGate = resolver.resolveAiReviewRequired({
+      workspaceRoot,
+      reviewDefinitionPath: "",
+      taskDefinitionPath: taskResolution.path,
+    });
+    if (
+      aiReviewGate.ok &&
+      aiReviewGate.required === false &&
+      aiReviewGate.source === "task_definition"
+    ) {
+      return buildAiReviewNotRequiredSkip({
+        taskDefinitionPath: taskResolution.path,
+        gate: aiReviewGate,
+      });
+    }
+
+    const fromTask = resolver.resolveReviewDefinitionFromTaskPath(
+      taskResolution.path,
+      workspaceRoot,
+    );
+    if (fromTask.ok) {
+      return { ...fromTask, task_definition: taskResolution.path };
+    }
+    taskReviewFailure = fromTask;
+  }
+
   const fromPrFiles = resolver.pickReviewDefinitionFromChangedFiles(
     await loadPullRequestFiles({ owner, repo, prNumber: pull.number, token, fetchImpl }),
     branchInfo,
@@ -113,6 +200,18 @@ async function resolveReviewDefinitionForPull({
   const uniqueCandidates = [...new Set(directoryCandidates)];
   if (uniqueCandidates.length === 1) {
     return { ok: true, path: uniqueCandidates[0], source: "pr_body_directory_hint" };
+  }
+
+  if (taskResolution.ok) {
+    return {
+      ok: false,
+      reason: "review_definition_not_found",
+      task_definition: taskResolution.path,
+      details: reviewResolution,
+      hint:
+        taskReviewFailure?.hint ||
+        "Task Definition は解決できましたが Review Definition がありません。pr-review.yaml を追加するか、review.ai_review_required: false にしてください。",
+    };
   }
 
   return reviewResolution;
@@ -343,6 +442,14 @@ async function dispatchReviewPrHarness({
     token: authToken,
     fetchImpl,
   });
+
+  if (reviewResolution.skipped) {
+    return {
+      ...reviewResolution,
+      pr_number: String(pr),
+      issue_number: relatedIssue ? String(relatedIssue) : null,
+    };
+  }
 
   if (!reviewResolution.ok) {
     return {
