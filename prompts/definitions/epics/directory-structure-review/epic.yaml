@@ -34,7 +34,7 @@ background: |
   前提 Epic の結論を取り込む。
   - contract-impl-task-separation（#300 merge 済み）: OpenAPI 正本=packages/contracts/、Contract/Implementation 分離。横断 Epic の allowed_paths 残件は Phase0 へ委譲。
   - reco-directory-architecture-redesign（#264 CLOSE）: 棚卸しのみ develop 反映。残作業（definition/docs 更新）は本 Epic Task ②へ吸収（Human 判断 2026-06-02）。
-  既知不整合: AGENTS.md のルート openapi/ 表記、識別子 Epic の openapi/paths・lib/api-client、generated 正本パス、reco の src/app / src/modules 旧表記。
+  Phase0 子Task 3 件（#349/#351, #352/#353, #354/#355）merge 後: 正本 docs・AGENTS・運用 rules・識別子 Epic epic_scope は Phase0 パス基準に整合。残件: 物理移動・generated 実体・migration-guide（棚卸し No.6–7）は Phase1 以降。Phase1 着手は Human 明示依頼まで行わない（Human 判断 2026-06-03）。
 
 objective: |
   Phase0 完了時点で、正本docs・AGENTS.md・prompts/definitions・.cursor/rules が単一のパス基準で矛盾なく参照でき、Phase1（API Contract 基盤）以降の Task 起票に使える allowed_paths / forbidden_paths が確定している状態にする。
