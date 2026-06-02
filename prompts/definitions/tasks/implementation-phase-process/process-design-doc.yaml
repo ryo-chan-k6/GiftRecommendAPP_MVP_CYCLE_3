@@ -1,0 +1,214 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-implementation-phase-process-design-doc"
+  title: "実装フェーズ実行プロセス設計書の作成と既存正本への統合"
+  summary: "06_実装設計〜07_開発・単体テストの実行プロセス（考え方・段取り Phase0-4・Epic/Task分割・並列方針・L2実行の進め方）を正本ドキュメント化し、既存正本（工程定義 / 成果物化方針書）から相互参照を追加して統合する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]実装フェーズ実行プロセス設計"
+  epic_issue_number: 338
+  epic_branch: "docs/epic-338-implementation-phase-process"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  実装設計〜単体テストの進め方が複数の正本docs・チャットに分散しており、Phase順序・Epic/Task分割・並列方針を一望できる正本が存在しない（親Epic #338）。
+
+objective: |
+  実装フェーズ実行プロセス設計書（新規正本）を作成し、Phase0〜4（4a共通基盤先行 / 4b個別縦割り）のEpic/Task分割・依存・並列方針とL2実行の進め方を一覧化する。
+  あわせて既存正本から相互参照を追加して統合する。
+
+scope:
+  - "新規正本 実装フェーズ実行プロセス設計書.md の作成（考え方/原則＋段取りPhase0-4/4a-4b＋Phase別Epic/Task分割表＋L2実行の進め方）"
+  - "本Epic/Taskを再現するための Epic Definition / Task Definition の作成"
+  - "既存正本（工程定義 / 成果物化方針書）への相互参照リンク追加"
+
+out_of_scope:
+  - "Phase0〜4の実作業そのもの（ディレクトリ再編 / API Contract / DB / 環境 / 各アプリ実装・単体テスト）"
+  - "個別PhaseのEpic/Task Definitionの量産"
+  - "apps/** / packages/** / db/** / openapi/** の変更"
+  - "既存正本の方針そのものの変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/プロジェクト工程定義.md"
+      required: true
+      purpose: "工程06→07の正本順序・相互参照先"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "§3.5 / §5 のTask化方針・Epic依存"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "配置先方針（apps/packages/db/openapi）"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: false
+      purpose: "Phase1 Contract Gate前提"
+  templates:
+    - path: "prompts/templates/issue/epic-issue.md"
+      required: true
+      purpose: "Epic Issue本文構造の参照"
+      applies_to: []
+    - path: "prompts/templates/issue/task-issue.md"
+      required: true
+      purpose: "Task Issue本文構造の参照"
+      applies_to: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      action: "create"
+      required: true
+      template: null
+    - path: "docs/00_共通/プロジェクト管理/プロジェクト工程定義.md"
+      action: "modify"
+      required: true
+      template: null
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      action: "modify"
+      required: true
+      template: null
+  files:
+    - path: "prompts/definitions/epics/implementation-phase-process/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/implementation-phase-process/process-design-doc.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "実装フェーズ実行プロセス設計書（新規正本）"
+  - "Phase0〜4のEpic/Task分割表（依存・並列方針）"
+  - "Epic Definition / Task Definition"
+  - "既存正本への相互参照"
+
+acceptance_criteria:
+  - "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md が作成され、考え方・段取り（Phase0-4/4a-4b）・L2実行の進め方を含む"
+  - "Phase0〜4のEpic/Task候補・依存・並列方針が一覧化されている"
+  - "Epic Definition / Task Definition が作成されている"
+  - "既存正本（工程定義 / 成果物化方針書）から新規設計書への相互参照が追加されている"
+  - "用語・正本関係の整合が取れている"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-339-process-design-doc"
+  base: "docs/epic-338-implementation-phase-process"
+  target: "docs/epic-338-implementation-phase-process"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-06-02"
+    due_date: "2026-06-04"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "project"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+    - "docs/00_共通/プロジェクト管理/プロジェクト工程定義.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - "prompts/definitions/epics/implementation-phase-process/epic.yaml"
+    - "prompts/definitions/tasks/implementation-phase-process/process-design-doc.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "既存正本（工程定義06→07、成果物化方針書§3.5/§5）と整合していること"
+    - "相互参照リンクが有効であること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs作成・修正Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "既存正本との整合（工程定義06→07、成果物化方針書§3.5/§5）"
+    - "用語整合（terminology.mdc）"
+    - "重複記載の抑制と相互参照の妥当性"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常のdocs作業のため、ai-logsへの保存は行わない。"
+
+stop_conditions:
+  - "正本docs間で矛盾が見つかり方針変更判断が必要になった場合"
+  - "既存正本の方針そのものを変更する必要が生じた場合"
+
+notes:
+  - "Issueタイトル: [Task]実装フェーズ実行プロセス設計書の作成と既存正本への統合"
+  - "親Epic: [Epic]実装フェーズ実行プロセス設計（#338 / 機能・領域単位Epic）。"
+  - "Task Issue: #339。Task Branch: docs/task-339-process-design-doc。PR target は親Epic Branch。"
+  - "Epic Definition の正本は prompts/definitions/epics/implementation-phase-process/epic.yaml。"

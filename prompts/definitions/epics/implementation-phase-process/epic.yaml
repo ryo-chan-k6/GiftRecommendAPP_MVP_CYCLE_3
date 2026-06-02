@@ -1,0 +1,197 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-implementation-phase-process"
+  title: "実装フェーズ実行プロセス設計"
+  summary: "06_実装設計〜07_開発・単体テストの実行プロセス（考え方・段取り Phase0-4・Epic/Task分割・並列方針）を正本ドキュメント化し、既存正本へ統合するEpic。成果物識別子に紐づかない機能・領域単位Epic（例外）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  実装設計（06）から単体テスト（07）までの進め方が、個別チャット・一時メモ・複数の正本docs（工程定義 / 成果物一覧×Task Definition化方針書 / Contract Gate運用設計書 / ディレクトリ構成定義書 等）に分散しており、Phase順序・Epic/Task分割・並列方針を一望できる正本が存在しない。
+  個人開発でも再利用できる「設計・開発プロセスの考え方＋段取り」を1つの正本にまとめ、今後のCycleでも参照できる資産にする。
+
+objective: |
+  実装フェーズ実行プロセス設計書（新規正本）を作成し、Phase0〜4（4a共通基盤先行 / 4b個別縦割り）のEpic/Task分割・依存・並列方針とL2実行の進め方を一覧化する。
+  既存正本（工程定義 / 成果物化方針書）から本設計書を相互参照し、重複を抑制して統合する。
+
+scope:
+  - "実装フェーズ実行プロセス設計書（新規正本）の作成"
+  - "Phase0〜4のEpic/Task候補・依存・並列方針の一覧化（設計書内）"
+  - "L2実行の進め方（Command/Definition・マルチエージェント運用）の方針記載"
+  - "既存正本への相互参照リンク追加（統合）"
+
+out_of_scope:
+  - "Phase0〜4の実作業（ディレクトリ再編 / API Contract / DB / 環境 / 各アプリ実装・単体テスト）そのもの"
+  - "個別PhaseのEpic/Task Definitionの量産"
+  - "apps/** / packages/** / db/** / openapi/** の変更"
+  - "既存正本の方針そのものの変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/プロジェクト工程定義.md"
+      required: true
+      purpose: "工程06→07の正本順序確認・相互参照先"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "§3.5 / §5 のTask化方針・Epic依存の正本確認"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "配置先（apps/packages/db/openapi）方針確認"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: false
+      purpose: "Phase1のContract Gate前提確認"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]実装フェーズ実行プロセス設計 / #338）"
+  - "Epic Branch（develop 起点 / docs/epic-338-implementation-phase-process）"
+  - "子Task候補一覧（process-design-doc）"
+  - "epic_scope.allowed_paths による配下Taskのファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている（#338）"
+  - "Epic Branch が develop から作成されている（docs/epic-338-implementation-phase-process）"
+  - "Branch base / PR target が develop である"
+  - "配下Taskの作業単位（process-design-doc）が整理されている"
+  - "子TaskのPR targetが親Epic Branchである方針が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/epic-338-implementation-phase-process"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-06-02"
+    due_date: "2026-06-04"
+
+issue:
+  unit: "epic"
+  type: "docs"
+  area: "project"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+    - "docs/00_共通/プロジェクト管理/プロジェクト工程定義.md"
+    - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+    - "prompts/definitions/epics/implementation-phase-process/**"
+    - "prompts/definitions/tasks/implementation-phase-process/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/**"
+    - "db/**"
+    - "openapi/**"
+  child_task_areas:
+    - "process-design"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "機能・領域単位Epic（artifact_id 空）であることを明示しているか"
+    - "子Taskに分割可能な粒度か確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epicの作業範囲がプロセス正本化・統合に閉じているか"
+    - "epic_scope.allowed_paths が docs/00_共通 と prompts/definitions の対象に閉じているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常のdocs作業のため、ai-logsへの保存は行わない。作業計画はIssue、統合はEpic PRを正本とする。"
+
+risk_points:
+  - "既存正本の方針を、確認なしに変更してしまう運用ミス"
+  - "Task PR を誤って develop へ直接向けてしまう運用ミス"
+
+human_decision_points:
+  - "新規設計書の配置先・文書名（docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md）の妥当性"
+  - "Phase0〜4のEpic/Task分割粒度・並列方針が個人開発運用に合うか"
+
+stop_conditions:
+  - "正本docs間で矛盾が見つかり、方針変更の判断が必要になった場合"
+  - "既存正本の方針そのものを変更する必要が生じた場合"
+
+notes:
+  - "本Epicは機能・領域単位Epic（例外 / artifact_id 空）。成果物化方針書 §3.5.1 の例外に該当する。"
+  - "Epic Issue: #338。Epic Branch: docs/epic-338-implementation-phase-process。"
+  - "本Epic配下の子Taskは prompts/definitions/tasks/implementation-phase-process/process-design-doc.yaml。"
