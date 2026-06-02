@@ -36,11 +36,14 @@ background: |
 
 objective: |
   Request changes を契機に Fixer 工程を自動起動できる仕組みを設計・実装する。
+  AI Review の `request_changes` と Human Review の `changes_requested` の双方を dispatch 契機とする（Human 判断確定済み: 2026-06-02）。
   自動 dispatch 条件 / skip 条件（infra-only、scope外指摘、Human 判断必須等）を定義し、
   既存 harness（definition-run / dispatch-review-pr-harness 相当）と整合させる。
-  Human-in-the-loop が必要な判断点は自動化しない。
+  Human-in-the-loop が必要な判断点（scope外・設計変更・Contract/DB 等）は自動化しない。
 
 scope:
+  - "AI Review の Review Result `request_changes`（`ai_review_status_sync` / repository_dispatch 経由）を Fixer auto-dispatch 契機に含める"
+  - "Human Review の `changes_requested`（`pull_request_review` 経由）を Fixer auto-dispatch 契機に含める"
   - "Fixer harness 自動 dispatch の設計（条件・skip・recovery）"
   - "dispatch スクリプト追加と単体テスト"
   - "pr-review-status-sync.yml（または同等 workflow）への dispatch ステップ追加"
@@ -147,6 +150,7 @@ epic_scope:
     - "prompts/definitions/epics/fixer-auto-dispatch/**"
     - "prompts/definitions/tasks/fixer-auto-dispatch/**"
     - "prompts/definitions/reviews/fixer-auto-dispatch/**"
+    - "ai-logs/human-decisions/**"
   forbidden_paths:
     - "apps/**"
     - "packages/**"
@@ -221,7 +225,7 @@ risk_points:
   - "workflow 変更は Human push（workflow scope）が必要"
 
 human_decision_points:
-  - "AI Review の request_changes も自動 Fixer 対象にするか（Human Review のみか）"
+  - "AI Review の request_changes も自動 Fixer 対象にする（確定済み: 2026-06-02 ryo-chan-k6。Human Review の changes_requested と同等に dispatch）"
   - "Fixer dispatch 失敗時の recovery（手動 / workflow_dispatch）方針"
 
 stop_conditions:
@@ -231,5 +235,6 @@ stop_conditions:
 
 notes:
   - "本Epicは機能・領域単位 Epic（識別子なし）。Epic #308 Issue を正本とする。"
+  - "Fixer dispatch 契機: (1) AI Review `request_changes` → pr-review-status-sync route=repository_dispatch、(2) Human Review `changes_requested` → route=human_review。詳細は ai-logs/human-decisions/2026-06-02-fixer-auto-dispatch-ai-review-request-changes.md"
   - "子 Task 想定順: 設計 → dispatch スクリプト → workflow 統合 → 仕様書反映"
   - "workflow ファイル変更は Human（workflow scope）push + bot PR 作成（パターン C）を想定"
