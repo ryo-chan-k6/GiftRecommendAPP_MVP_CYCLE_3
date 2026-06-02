@@ -1,0 +1,73 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-directory-structure-review-epic-pr"
+  title: "ディレクトリ構成再検討 Epic PRレビュー"
+  summary: "Phase0 Epic 統合PR（develop 向け）の AI Review。子Task 3 件の成果物統合・epic_scope・Phase0 完了条件を横断確認する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/epics/directory-structure-review/epic.yaml"
+  source_branch: "refactor/epic-<issue-number>-directory-structure-review"
+  target_branch: "develop"
+
+review_scope:
+  docs: true
+  project_operation: true
+  contract: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/directory-structure-review/epic.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+
+review_points:
+  common:
+    - "Epic Definition scope / out_of_scope を満たしているか"
+    - "epic_scope.forbidden_paths（apps / packages / db / orval.config.ts / openapi 実体）への変更がないか"
+    - "子Task 3 件（①構成定義書 ②AGENTS/docs/rules ③epic_scope）が Epic Branch に直列 MERGE されているか"
+    - "Task PR target=Epic Branch / Epic PR target=develop の方針が維持されているか"
+    - "Closes #<epic-issue> が PR 本文にあるか"
+    - "Human 判断（物理移動は別Task・reco #264 吸収・OpenAPI 方針節は Phase1 実ファイル）が PR で明示されているか"
+  docs:
+    - "プロジェクトディレクトリ構成定義書に OpenAPI レイアウト方針節が存在するか"
+    - "AGENTS.md にルート openapi/ が残っていないか"
+    - "成果物化方針書・Task Definition設計書・AIレビュー運用・Commands が src/reco 基準に更新されているか"
+    - "recoディレクトリ構成不整合棚卸し.md の引き継ぎステータスが妥当か"
+  contract:
+    - "識別子 Epic（API-PUB/INT、SCR、MOD-RECO）の epic_scope が packages/contracts・generated 正本と一致しているか"
+    - "architecture-consistency.mdc が Task ② 内容と一致しているか"
+    - "Phase0 完了チェックリスト（Task ③）が Phase1 着手前に使えるか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "scope 外（apps/packages/generated 実体）変更が混入していない"
+      - "子Task 3 件の PR がすべて MERGED である"
+      - "物理ディレクトリ再構成の必須判断が未解決のまま merge されていない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+
+issue:
+  unit: "epic"
+  type: "refactor"
+  area: "project"
+
+notes:
+  - "起票後に target.pr・issue.number・status: ready を更新する。"
+  - "子Task Issue/PR 番号は result_policy 条件に追記する。"
+  - "本ファイルは Definition 草案（/start-epic 前）。"
