@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 356
   issue:
     number: 348
   task_definition: "prompts/definitions/epics/directory-structure-review/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 348
     required: true
   pr:
-    number: null
+    number: 356
     required: true
   diff:
     required: true
