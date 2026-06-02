@@ -120,6 +120,7 @@ epic_scope:
     - "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
     - "prompts/definitions/epics/implementation-phase-process/**"
     - "prompts/definitions/tasks/implementation-phase-process/**"
+    - "prompts/definitions/reviews/implementation-phase-process/**"
   forbidden_paths:
     - "apps/**"
     - "packages/**"
