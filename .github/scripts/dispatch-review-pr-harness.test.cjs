@@ -270,6 +270,51 @@ test("dispatchReviewPrHarness: automation_only_changes は skipped", async () =>
   assert.equal(result.reason, "automation_only_changes");
 });
 
+test("dispatchReviewPrHarness: PR333再現 — task diff + ai_review_not_required で skip", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "dispatch-auto-"));
+  const taskPath = "prompts/definitions/tasks/fixer-auto-dispatch/fixer-e2e-verify.yaml";
+  write(
+    path.join(root, taskPath),
+    ['definition_type: "task"', "review:", "  ai_review_required: false"].join("\n"),
+  );
+
+  const result = await auto.dispatchReviewPrHarness({
+    owner: "o",
+    repo: "r",
+    prNumber: 333,
+    issueNumber: 331,
+    context: "pr-created",
+    requestedBy: "pr-created-status-sync",
+    workspaceRoot: root,
+    token: "token",
+    fetchImpl: async (url) => {
+      if (url.includes("/pulls/333/files")) {
+        return jsonResponse([
+          { filename: taskPath },
+          { filename: "ai-logs/experiments/2026-06-02-fixer-auto-dispatch-e2e.md" },
+        ]);
+      }
+      if (url.includes("/pulls/333") && !url.includes("/files")) {
+        return jsonResponse({
+          number: 333,
+          body: "Related to #331",
+          head: { ref: "feature/task-331-fixer-e2e-ai", repo: { full_name: "o/r" } },
+          labels: [{ name: "type: test" }, { name: "area: docs" }],
+        });
+      }
+      if (url.includes("/issues/331")) {
+        return jsonResponse({ body: "### Branch summary\nfixer-e2e-ai", labels: [{ name: "area: docs" }] });
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "ai_review_not_required");
+  assert.equal(result.task_definition, taskPath);
+});
+
 test("buildHarnessDirectRecoveryCommand: workflow_dispatch コマンドを生成", () => {
   const cmd = auto.buildHarnessDirectRecoveryCommand({
     owner: "o",
