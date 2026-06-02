@@ -9,7 +9,7 @@ PR 作成 → AI Review 自動化（`pr-created` → `dispatch-review-pr-harness
 | 項目 | 内容 |
 | ---- | ---- |
 | Epic Issue | #308 |
-| 関連 Task | #322（本設計書） / 後続: dispatch スクリプト・workflow 統合 |
+| 関連 Task | #322（設計） / #324（スクリプト） / #326（workflow） / #328（docs 反映） |
 | Human 判断ログ | `ai-logs/human-decisions/2026-06-02-fixer-auto-dispatch-ai-review-request-changes.md` |
 
 実装（スクリプト・workflow 変更）は本書の後続 Task で行う。本書は **設計のみ** を正本とする。
@@ -22,7 +22,7 @@ PR 作成 → AI Review 自動化（`pr-created` → `dispatch-review-pr-harness
 | ---- | ------ | ---- |
 | PR 作成 → AI Review | 自動 | `pr-created-status-and-slack.yml` → `dispatch-review-pr-harness.cjs` |
 | Request changes → Status `In Progress` | 自動 | `pr-review-status-sync.yml` |
-| **Request changes → Fixer** | **未自動（人手 `/fix-review-comments`）** | `.cursor/commands/fix-review-comments.md` |
+| **Request changes → Fixer** | **自動（Task #326）** | `pr-review-status-sync.yml` → `dispatch-fix-review-harness.cjs` |
 | fix 完了 → 再 AI Review | 自動 | `publish-fix-complete-and-dispatch.cjs` → `pr-ready-for-ai-review.yml` |
 
 実例: PR #306（Human Request changes 後、Status のみ更新、Fixer 未起動）。
@@ -35,6 +35,7 @@ PR 作成 → AI Review 自動化（`pr-created` → `dispatch-review-pr-harness
 | -------- | ---- | ------ |
 | dispatch 契機 | **AI Review `request_changes` と Human Review `changes_requested` の双方** | 2026-06-02 |
 | dispatch 失敗時 recovery | **手動 CLI のみ**（workflow 自動リトライ / 別 `workflow_dispatch` は採用しない） | 2026-06-02 |
+| 再指摘時（`already_at_next_status`） | **Fixer auto-dispatch しない**（現行 workflow 維持）。必要時は **手動 CLI** | 2026-06-02（Task #328） |
 
 ---
 
@@ -62,9 +63,25 @@ Fixer auto-dispatch は **`request_changes` に相当する指摘** を契機と
 | `split_required` | `In Progress` | 別 Issue 化が必要。Fixer 自動起動は scope 外修正を誘発しうる |
 | `blocked` | `In Progress` | 前提不足。Fixer では解消不能 |
 
+### 4.3 再指摘時（`already_at_next_status`）
+
+[PRレビュー完了時 Status 更新ワークフロー](./PRレビュー完了時Status更新ワークフロー仕様書.md) §5.3 の **次 Status が現在 Status と同一** のとき、Status 更新・Slack・確認コメントを skip する（`already_at_next_status`）。
+
+| 項目 | 方針（Human 判断確定: Task #328） |
+| ---- | --------------------------------- |
+| Fixer auto-dispatch | **行わない**（Step1 が早期 return するため `markDispatchFixer` 未到達） |
+| workflow 変更 | **採用しない**（fix-ready の `skipWithSummaryAndMaybeDispatch` 同型の skip 時 dispatch は導入しない） |
+| recovery | 再指摘で Fixer が必要な場合、**手動 CLI**（[§8.2](#82-recoveryhuman-判断確定)） |
+
+**理由（要約）:**
+
+- 冪等性: 重複 `request_changes` / `changes_requested` イベントによる Fixer の二重起動を防ぐ
+- recovery 方針との整合: dispatch 失敗・skip いずれも手動 CLI に集約
+- fix-ready との非対称: fix 完了イベントは Status が既に `AI Review` でも再 AI Review dispatch が必要な場合がある。request_changes 再受信は Status 更新不要＝自動 Fixer も起動しない
+
 ---
 
-## 5. workflow 統合方針（Task3 実装前提）
+## 5. workflow 統合方針（Task3 実装済み）
 
 ### 5.1 2 step 構成（pr-created と同型）
 
@@ -88,7 +105,7 @@ Fixer 完了後の **再 AI Review** は既存の `fix-ready` → `pr-ready-for-
 
 ---
 
-## 6. dispatch スクリプト（Task2 実装前提）
+## 6. dispatch スクリプト（Task2 実装済み）
 
 ### 6.1 新規スクリプト
 
@@ -164,7 +181,7 @@ node .github/scripts/dispatch-fix-review-harness.cjs \
 
 ### 8.3 Harness job 失敗（dispatch 成功後）
 
-Definition Run Harness 本体が失敗した場合は [Definition Run Harnessワークフロー仕様書](./Definition%20Run%20Harnessワークフロー仕様書.md) §15 に従う。Fixer 用の recovery は Task2 で Harness command 登録状況に合わせて §15 派生節を追加する。
+Definition Run Harness 本体が失敗した場合は [Definition Run Harnessワークフロー仕様書](./Definition%20Run%20Harnessワークフロー仕様書.md) §16.2 に従う（Fixer harness live-run の recovery）。
 
 ---
 
@@ -189,13 +206,14 @@ sequenceDiagram
 
 ---
 
-## 10. 後続 Task への引き渡し
+## 10. Task 完了状況
 
-| Task | 内容 | 本書の参照章 |
-| ---- | ---- | ------------ |
-| Task2 | `dispatch-fix-review-harness.cjs` + 単体テスト | §6, §7, §8 |
-| Task3 | `pr-review-status-sync.yml` 2 step 化 | §5 |
-| Task4 | Harness 仕様書・運用 docs 反映 | §8.3, 本書全体 |
+| Task | Issue | 内容 | 状態 |
+| ---- | ----- | ---- | ---- |
+| Task1 設計 | #322 | 本設計書 | 完了 |
+| Task2 スクリプト | #324 | `dispatch-fix-review-harness.cjs` + 単体テスト | 完了 |
+| Task3 workflow | #326 | `pr-review-status-sync.yml` 2 step 化 | 完了 |
+| Task4 docs | #328 | Harness 仕様書・運用 docs 反映 | 完了 |
 
 ---
 
@@ -216,3 +234,4 @@ sequenceDiagram
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-06-02 | 初版（Task #322）。Human 判断（AI request_changes 対象、手動 CLI recovery）反映 |
+| 2026-06-02 | Task #328。実装完了反映、`already_at_next_status` 運用方針（§4.3）追加 |
