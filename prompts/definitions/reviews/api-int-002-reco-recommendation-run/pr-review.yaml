@@ -178,7 +178,7 @@ review_points:
     - "レビュー結果に応じた Status 更新意図が明確か"
   epic_scope:
     - "PR差分が親Epic [Epic]API-INT-002:Reco推薦実行 の epic_scope.allowed_paths 内に収まっているか"
-    - "epic_scope.forbidden_paths（apps/reco/src/modules / apps/reco/src/domain / apps/api/src/app / apps/web / apps/batch / openapi/paths / db）への変更が混入していないか"
+    - "epic_scope.forbidden_paths（apps/reco/src/reco/application / apps/reco/src/reco/domain / apps/reco/src/reco/pipeline / apps/reco/src/modules / apps/reco/src/app / apps/api/src/app / apps/web / apps/batch / openapi/** / db）への変更が混入していないか"
 
 acceptance_check:
   use_task_acceptance_criteria: true
@@ -321,7 +321,7 @@ stop_conditions:
   - "Task Definition が存在しない場合"
   - "Issue と PR の対応が不明な場合"
   - "diff を確認できない場合"
-  - "Reco モジュール本体（apps/reco/src/modules / apps/reco/src/domain）の変更が混在している場合"
+  - "Reco モジュール本体（apps/reco/src/reco/application / apps/reco/src/reco/domain / apps/reco/src/reco/pipeline）の変更が混在している場合"
   - "API-PUB-002 側の本体変更が混在している場合"
   - "OpenAPI（internal）変更が混在している場合（Contract Task として分離）"
   - "DB schema 変更が混在している場合"

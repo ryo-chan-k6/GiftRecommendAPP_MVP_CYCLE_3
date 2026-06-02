@@ -142,9 +142,10 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-PUB-002_*"
     - "apps/api/src/app/recommendations/**"
-    - "apps/web/src/lib/api-client/recommendations/**"
-    - "openapi/paths/recommendations/**"
-    - "openapi/components/schemas/recommendation/**"
+    - "packages/contracts/openapi/**"
+    - "packages/contracts/schemas/**"
+    - "apps/web/src/generated/api/**"
+    - "apps/web/src/lib/**"
     - "prompts/definitions/tasks/api-pub-002-recommendation-run/**"
     - "prompts/definitions/reviews/api-pub-002-recommendation-run/**"
   forbidden_paths:
@@ -152,7 +153,8 @@ epic_scope:
     - "apps/batch/**"
     - "apps/web/src/app/**"
     - "apps/web/src/features/**"
-    - "openapi/internal/**"
+    - "openapi/**"
+    - "apps/web/src/lib/api-client/**"
     - "db/**"
   child_task_areas:
     - "api-spec"
