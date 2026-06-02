@@ -226,7 +226,7 @@ risk_points:
 
 human_decision_points:
   - "AI Review の request_changes も自動 Fixer 対象にする（確定済み: 2026-06-02 ryo-chan-k6。Human Review の changes_requested と同等に dispatch）"
-  - "Fixer dispatch 失敗時の recovery（手動 / workflow_dispatch）方針"
+  - "Fixer dispatch 失敗時の recovery（確定済み: 2026-06-02 ryo-chan-k6。dispatch 失敗=workflow job failure・Fixer Harness 未起動。recovery は手動 CLI のみ。自動リトライ / 別 workflow_dispatch は採用しない）"
 
 stop_conditions:
   - "Fixer 修正ロジック本体の変更が必須になった場合"
@@ -237,4 +237,5 @@ notes:
   - "本Epicは機能・領域単位 Epic（識別子なし）。Epic #308 Issue を正本とする。"
   - "Fixer dispatch 契機: (1) AI Review `request_changes` → pr-review-status-sync route=repository_dispatch、(2) Human Review `changes_requested` → route=human_review。詳細は ai-logs/human-decisions/2026-06-02-fixer-auto-dispatch-ai-review-request-changes.md"
   - "子 Task 想定順: 設計 → dispatch スクリプト → workflow 統合 → 仕様書反映"
+  - "recovery: dispatch 失敗時は手動 CLI のみ（ai-logs/human-decisions/2026-06-02-fixer-auto-dispatch-ai-review-request-changes.md §7.1）"
   - "workflow ファイル変更は Human（workflow scope）push + bot PR 作成（パターン C）を想定"

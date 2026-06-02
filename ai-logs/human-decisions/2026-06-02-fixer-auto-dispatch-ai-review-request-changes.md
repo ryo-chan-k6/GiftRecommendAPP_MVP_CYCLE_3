@@ -77,7 +77,18 @@ Fixer 自動化の契機範囲は運用フロー全体に影響し、AI Review �
 
 ## 7. 未確定事項（別 Human 判断）
 
-- Fixer dispatch 失敗時の recovery（手動 CLI / `workflow_dispatch`）方針
+（なし — 2026-06-02 時点で Epic #308 着手前判断は確定済み）
+
+---
+
+## 7.1 Fixer dispatch 失敗時の recovery（確定: 2026-06-02）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 判断 | dispatch 失敗時は **手動 CLI** で recovery。workflow 自動リトライ / 別 `workflow_dispatch` は採用しない |
+| 前提 | dispatch 失敗 → `process.exitCode=1` → job failure → Fixer Definition Run Harness は未 dispatch |
+| nuance | 同一 job 内の先行 step（Status `In Progress` 等）は完了済みの可能性あり |
+| 実装 | `dispatch-fix-review-harness.cjs` が `recovery_command` を JSON 出力（`dispatch-review-pr-harness.cjs` と同型） |
 
 ---
 
