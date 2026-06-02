@@ -1,0 +1,284 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-ai-review-def-mandate-pr"
+  title: "AI Review Definition 必須化 PRレビュー"
+  summary: "Review Definition 必須化（規約A・停止条件B・テンプレC）Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 342
+  task_definition: "prompts/definitions/tasks/review-definition-required/implement-review-definition-mandate.yaml"
+  source_branch: "chore/task-342-review-definition-mandate"
+  target_branch: "chore/epic-341-review-definition-required"
+  parent_epic_issue: "[Epic]AI Review 3点セット必須化（Review Definition 前提整備）"
+  parent_epic_branch: "chore/epic-341-review-definition-required"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/review-definition-required/implement-review-definition-mandate.yaml"
+    required: true
+  issue:
+    number: 342
+    required: true
+  pr:
+    number: null
+    required: false
+  diff:
+    required: true
+    compare_with: "chore/epic-341-review-definition-required"
+  docs:
+    - path: ".cursor/rules/ai-review.mdc"
+      required: true
+      purpose: "恒久対応A（3点セット必須観点・停止条件）の確認"
+    - path: ".cursor/commands/create-pr.md"
+      required: true
+      purpose: "恒久対応B（hard stop）の確認"
+    - path: ".cursor/commands/start-epic.md"
+      required: true
+      purpose: "恒久対応A（Epic配下Taskの3点セット前提）の確認"
+    - path: ".cursor/commands/start-task.md"
+      required: true
+      purpose: "恒久対応A（Review Definition 作成・PR head 同梱）の確認"
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "恒久対応A（自動dispatch前提）の確認"
+    - path: "prompts/README.md"
+      required: true
+      purpose: "恒久対応C（3点セット運用ガイド）の確認"
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（implement-review-definition-mandate.yaml）の scope を満たしているか"
+    - "out_of_scope（scripts/workflowロジック変更 / Epic #338・#339 / apps・packages・db・openapi 変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に変更内容、検証結果、未実施事項が記載されているか"
+    - "Human Review観点が明記されているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+    - "Task PR で Closes #<Task Issue番号> を使っていないか（Related to を使用）"
+  docs:
+    - "恒久対応A: ai-review.mdc に Review Definition 3点セット必須の観点・停止条件が追加されているか"
+    - "恒久対応A: start-epic.md / start-task.md に3点セット前提（Review Definition の PR head 同梱）が明文化されているか"
+    - "恒久対応A: AIレビュー運用設計書に自動dispatchの Review Definition 解決前提が追記されているか"
+    - "恒久対応B: create-pr.md の hard stop（停止条件・処理手順・出力ルール）が一貫しているか"
+    - "恒久対応C: prompts/README.md に3点セット運用・配置・PR head 同梱ガイドが追加されているか"
+    - "resolve-review-definition.cjs の解決順序（changed files / workstream convention / sibling）と docs の記述が整合しているか"
+    - "ドメイン用語・運用用語に揺れがないか（terminology.mdc）"
+    - "相互参照リンクが有効か（リンク切れがないか）"
+  source: []
+  tests:
+    - "docs/Rule/Command 改善 Task として必要な manual check（整合確認 / 用語整合 / 解決可否確認）が記載されているか"
+    - "未実施テストの理由が PR 本文に記載されているか"
+  api_contract: []
+  db: []
+  generated:
+    - "generated ファイルを手動編集していないか（本Taskは generated 影響なし想定）"
+  cicd:
+    - ".github/workflows/** を変更していないか（scope外）"
+  security:
+    - "secret や .env 実値が含まれていないか"
+  branch:
+    - "Task Branch から develop へ直接 PR していないか"
+    - "PR target が親 Epic Branch（chore/epic-341-review-definition-required）であるか"
+    - "Task PR で Related to #342 が使われているか"
+    - "Task PR で Closes #342 を使っていないか"
+  project:
+    - "レビュー結果に応じた Status 更新意図が明確か"
+  epic_scope:
+    - "PR差分が親Epic [Epic]AI Review 3点セット必須化 の epic_scope.allowed_paths 内に収まっているか"
+    - "epic_scope.forbidden_paths（apps / packages / db / openapi / .github/workflows）への変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Reviewで確認してほしい事項が明記されている"
+    - "AI Review結果をPRコメントに記録できる形式になっている"
+    - "親Epic の epic_scope.allowed_paths から外れる差分がない"
+    - "本Task の Review Definition が PR head で解決可能であること（ドッグフーディング成立）"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "epic_scope.allowed_paths から外れる差分がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な docs/Rule/Command 不備がある"
+      - "PR 本文に必要情報が不足している"
+      - "相互参照リンク切れ・用語揺れ・記述の不整合がある"
+  needs_human_decision:
+    conditions:
+      - "hard stop（B）の停止条件の厳しさの妥当性判断が必要"
+      - "3点セット必須化（A）の例外（ai_review_required: false 時）の扱いの妥当性判断が必要"
+  split_required:
+    conditions:
+      - "scripts/workflowロジック変更が混在している"
+      - "epic_scope.allowed_paths から外れる差分がある"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+      - "親 Epic Issue / Branch が存在しない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "project"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/review-definition-required/implement-review-definition-mandate.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definitionのacceptance_criteriaを満たしているか確認する"
+    - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
+    - "A/B/C の記述が相互に整合し、resolve-review-definition.cjs の挙動と矛盾しないか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definitionはレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常PRレビューのため、レビュー結果はPRコメントを正本とする"
+
+risk_points:
+  - "Rule/Command/docs間で重複・矛盾を生む可能性"
+  - "解決順序の記述が実装（resolve-review-definition.cjs）とずれる可能性"
+
+human_decision_points:
+  - "hard stop（B）の停止条件の厳しさが運用に合うか"
+  - "3点セット必須化（A）の例外（ai_review_required: false 時）の扱いが妥当か"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+  - "AI が merge 判断を行う必要がある場合"
+  - "PR差分が親Epic の epic_scope.allowed_paths から外れている場合"
+
+notes:
+  - "本Taskは Rule/Command/docs/テンプレ改善 Task のため、source code 変更は scope 外とする"
+  - "対応 Task Definition: prompts/definitions/tasks/review-definition-required/implement-review-definition-mandate.yaml"
+  - "対応 Epic Definition: prompts/definitions/epics/review-definition-required/epic.yaml"
+  - "本 Review Definition は PR head（chore/task-342-review-definition-mandate）に同梱し、AI Review 自動dispatch（pickReviewDefinitionFromChangedFiles / workstream convention）が解決できるようにしている。これが恒久対応A/B/Cのドッグフーディングである。"
