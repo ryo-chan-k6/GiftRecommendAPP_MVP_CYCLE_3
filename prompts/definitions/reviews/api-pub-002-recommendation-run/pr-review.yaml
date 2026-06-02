@@ -180,7 +180,7 @@ review_points:
     - "レビュー結果に応じた Status 更新意図が明確か"
   epic_scope:
     - "PR差分が親Epic [Epic]API-PUB-002:レコメンド実行 の epic_scope.allowed_paths 内に収まっているか"
-    - "epic_scope.forbidden_paths（apps/reco / apps/batch / apps/web/src/app / openapi/internal / db）への変更が混入していないか"
+    - "epic_scope.forbidden_paths（apps/reco / apps/batch / apps/web/src/app / openapi/** / apps/web/src/lib/api-client/** / db）への変更が混入していないか"
 
 acceptance_check:
   use_task_acceptance_criteria: true
