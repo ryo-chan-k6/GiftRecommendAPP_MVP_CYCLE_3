@@ -18,11 +18,11 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null  # 対応 Task Issue 番号を起票後に追記
+  pr: 359
+  issue: 358
   task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
-  source_branch: "docs/task-<issue-number>-api-pub-002-recommendation-run-api-spec"
-  target_branch: "feature/epic-<issue-number>-api-pub-002-recommendation-run"
+  source_branch: "docs/task-358-api-pub-002-recommendation-run-api-spec"
+  target_branch: "feature/epic-357-api-pub-002-recommendation-run"
   parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
   parent_epic_branch: "feature/epic-<issue-number>-api-pub-002-recommendation-run"
 
@@ -67,14 +67,14 @@ input:
     path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
     required: true
   issue:
-    number: null
+    number: 358
     required: true
   pr:
-    number: null
+    number: 359
     required: true
   diff:
     required: true
-    compare_with: "feature/epic-<issue-number>-api-pub-002-recommendation-run"
+    compare_with: "feature/epic-357-api-pub-002-recommendation-run"
   docs:
     - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
       required: true
