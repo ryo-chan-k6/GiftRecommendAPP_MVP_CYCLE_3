@@ -3,8 +3,8 @@ definition_type: "review"
 
 review:
   id: "review-api-pub-002-recommendation-run-pr"
-  title: "API-PUB-002 レコメンド実行API仕様書 PRレビュー"
-  summary: "API-PUB-002（レコメンド実行 / Public API）API仕様書作成 Task の PR を AI Review する"
+  title: "API-PUB-002 レコメンド実行API契約仕様書 PRレビュー"
+  summary: "API-PUB-002（レコメンド実行 / Public API）API契約仕様書作成 Task（api-contract-spec.yaml）の PR を AI Review する"
   type: "task_pr_review"
   status: "ready"
 
@@ -20,7 +20,7 @@ branch:
 target:
   pr: null
   issue: null  # 対応 Task Issue 番号を起票後に追記
-  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
   source_branch: "docs/task-<issue-number>-api-pub-002-recommendation-run-api-spec"
   target_branch: "feature/epic-<issue-number>-api-pub-002-recommendation-run"
   parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
@@ -64,7 +64,7 @@ review_scope:
 
 input:
   task_definition:
-    path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+    path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
     required: true
   issue:
     number: null
@@ -76,9 +76,9 @@ input:
     required: true
     compare_with: "feature/epic-<issue-number>-api-pub-002-recommendation-run"
   docs:
-    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
       required: true
-      purpose: "作成成果物の内容確認"
+      purpose: "作成成果物（契約面）の内容確認"
     - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
       required: true
       purpose: "API-PUB-002 行（endpoint / Method / API種別 / Provider / Consumer / MVP対象 / 関連画面 / 関連エラーコード）との整合確認"
@@ -120,18 +120,13 @@ input:
     deliverables:
       - path: "prompts/templates/docs/api-contract-spec.md"
         required: true
-        purpose: "Task成果物の契約面が api-contract-spec.md に沿って作成されているか確認するため"
+        purpose: "Task成果物が api-contract-spec.md に沿って作成されているか確認するため"
         applies_to:
-          - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
-      - path: "prompts/templates/docs/api-implementation-spec.md"
-        required: true
-        purpose: "Task成果物の実装面が api-implementation-spec.md に沿って作成されているか確認するため"
-        applies_to:
-          - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API仕様書.md"
+          - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
 
 review_points:
   common:
-    - "Task Definition（api-spec.yaml）の scope を満たしているか"
+    - "Task Definition（api-contract-spec.yaml）の scope を満たしているか"
     - "out_of_scope（API-INT-002 / Reco モジュール / OpenAPI / 実装 / 他API）の変更が混在していないか"
     - "acceptance_criteria を満たしているか"
     - "PR本文に変更内容、検証結果、未実施事項が記載されているか"
@@ -139,10 +134,11 @@ review_points:
     - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
     - "Task PR で Closes #<Task Issue番号> を使っていないか（Related to を使用）"
   docs:
-    - "指定された文書テンプレート（api-contract-spec.md の契約面章・api-implementation-spec.md の実装面章）に沿って作成されているか"
-    - "API仕様書が docs/06_実装設計/api/API-PUB-002_*.md に作成されているか"
+    - "指定された文書テンプレート（api-contract-spec.md）に沿って作成されているか"
+    - "API契約仕様書が docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md に作成されているか"
+    - "実装面（api-implementation-spec.md 相当の処理フロー・MOD-API 詳細）が混入していないか"
     - "API基本情報（API ID / API種別 Public / Method POST / Endpoint /api/v1/recommendations / Provider apps/api / Consumer apps/web / MVP対象）が記載されているか"
-    - "Request / Response / Error Response / Validation / 処理概要が後続実装可能な粒度で記載されているか"
+    - "Request / Response / Error Response / Validation が Contract Gate / OpenAPI Task の入力として確定可能な粒度で記載されているか"
     - "Request Body が Recommendation Request 定義書と整合しているか"
     - "Response Body が Recommendation Result 定義書と整合しているか"
     - "0件結果を正常系として返す方針（API一覧 §API-PUB-002 メモ）が記載されているか"
@@ -188,7 +184,7 @@ acceptance_check:
     - "PR本文に実施済み検証と未実施テストの理由が記載されている"
     - "Human Reviewで確認してほしい事項が明記されている"
     - "AI Review結果をPRコメントに記録できる形式になっている"
-    - "Task Definition で文書テンプレート（api-contract-spec.md / api-implementation-spec.md）が指定されているため、成果物がそのテンプレートに沿っている"
+    - "Task Definition で文書テンプレート（api-contract-spec.md）が指定されているため、成果物が契約面テンプレートに沿っている"
     - "親Epic の epic_scope.allowed_paths から外れる差分がない"
     - "OpenAPI / generated 変更を Contract Task として分離する方針が明記されている"
 
@@ -205,7 +201,7 @@ result_policy:
       - "同一 Branch で修正可能な docs 不備がある"
       - "PR 本文に必要情報が不足している"
       - "検証結果または未実施理由が不足している"
-      - "テンプレート（api-contract-spec.md / api-implementation-spec.md）準拠が一部欠落している"
+      - "テンプレート（api-contract-spec.md）準拠が一部欠落している"
       - "Recommendation Request / Result 定義書との整合が一部欠落している"
   needs_human_decision:
     conditions:
@@ -227,7 +223,7 @@ result_policy:
       - "Task Definition が存在しない"
       - "Issue と PR の対応が不明"
       - "secret や .env 実値の混入が疑われる"
-      - "Task 成果物に指定された文書テンプレート（api-contract-spec.md / api-implementation-spec.md）を確認できない"
+      - "Task 成果物に指定された文書テンプレート（api-contract-spec.md）を確認できない"
       - "親 Epic Issue / Branch が存在しない"
 
 status_policy:
@@ -266,7 +262,7 @@ dependencies:
   issues: []
   prs: []
   tasks:
-    - "prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
   blocking: false
 
 parallel_control:
@@ -290,7 +286,7 @@ test_policy:
     - "Task Definitionのacceptance_criteriaを満たしているか確認する"
     - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
     - "OpenAPI / Orval / generated 変更が混在していないか確認する"
-    - "Task成果物が api-contract-spec.md / api-implementation-spec.md の章構成に沿っているか確認する"
+    - "Task成果物が api-contract-spec.md の章構成に沿っているか確認する"
   not_required:
     - "unit test"
   skip_reason:
@@ -329,12 +325,12 @@ stop_conditions:
   - "secret や .env 実値の混入が疑われる場合"
   - "Human Review を省略する前提になっている場合"
   - "AI が merge 判断を行う必要がある場合"
-  - "指定された文書テンプレート（api-contract-spec.md / api-implementation-spec.md）が存在しない場合"
+  - "指定された文書テンプレート（api-contract-spec.md）が存在しない場合"
   - "PR差分が親Epic の epic_scope.allowed_paths から外れている場合"
 
 notes:
   - "本Taskは docs 作成 Task のため、source code 変更は原則 scope 外とする"
-  - "対応 Task Definition: prompts/definitions/tasks/api-pub-002-recommendation-run/api-spec.yaml"
+  - "対応 Task Definition: prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
   - "対応 Epic Definition: prompts/definitions/epics/api-pub-002-recommendation-run/epic.yaml"
   - "OpenAPI / Orval / generated 変更は Contract Task として分離する（成果物化方針書 §3）。Review でこの分離方針逸脱を検出した場合は split_required へ。"
   - "review.target / input.issue.number / input.pr.number は実 PR / Issue 起票後に追記する"
