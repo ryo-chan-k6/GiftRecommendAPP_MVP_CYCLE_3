@@ -1,0 +1,184 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-002-reason-summary-reason-data-required-scope-spike-pr"
+  title: "API-INT-002 reasonSummary/reasonData必須範囲 spike PRレビュー"
+  summary: "Issue #376（reasonSummary / reasonData 必須・任意確定）spike Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "human-led"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 376
+  task_definition: "prompts/definitions/tasks/api-int-002-reason-summary-reason-data-required-scope/spike.yaml"
+  source_branch: "spike/task-376-api-int-002-reason-summary-reason-data-required-scope"
+  target_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  parent_epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  parent_epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: false
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-int-002-reason-summary-reason-data-required-scope/spike.yaml"
+    required: true
+  issue:
+    number: 376
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-366-api-int-002-reco-recommendation-run"
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "§7.3.2 reason 項目・reasonData スキーマ・§14.1 確定反映の確認"
+    - path: "ai-logs/human-decisions/2026-06-05-api-int-002-reason-summary-reason-data-required-scope.md"
+      required: true
+      purpose: "Human 判断記録と契約仕様書の一致確認"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "reasonData スキーマと Reason 生成出力（§5）の整合確認"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "reason_status・Reason 失敗時 Item 存続（§11.2）の整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "§21.3 reasonData の Public 非表面化方針の確認"
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition（spike.yaml）の scope を満たしているか"
+    - "out_of_scope（実装・OpenAPI・generated）の変更が混在していないか"
+    - "PR 本文に Task Definition パスが記載されているか"
+    - "PR target が親 Epic Branch であるか"
+    - "Closes #376 の使用が妥当か（spike 完了として）"
+  docs:
+    - "reasonSummary / reasonData の必須・任意が human-decisions と §7.3 で一致しているか"
+    - "Reason 生成のみ失敗時の reasonSummary 省略ルールと reasonStatus 値域が明記されているか"
+    - "reasonData スキーマ（主要フィールド・camelCase 対応）が Reason生成定義書 §5 と矛盾しないか"
+    - "Run レベル reasonData と Item レベル reason フィールドの責務境界が明確か"
+    - "Public Response へ reasonData をそのまま返さない方針が維持されているか"
+    - "§14 No.4 が §14.1 確定済みへ移動しているか"
+    - "§14 No.3（#375 scoreBreakdown）との記述矛盾がないか"
+  api_contract:
+    - "契約仕様書の reason 関連記述が OpenAPI 未変更方針（別 Contract Task）と整合しているか"
+    - "required / optional / nullable の表記が §7.3 表と例示 JSON で一貫しているか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "Human 判断内容が docs と human-decisions で一貫している"
+    - "OpenAPI（internal-reco-api.yaml）の変更が含まれていない"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "Human 判断が human-decisions に記録されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な docs 不備がある"
+      - "PR 本文に Definition または検証記載が不足している"
+      - "human-decisions と契約仕様書の記述が不一致"
+  needs_human_decision:
+    conditions:
+      - "reasonSummary / reasonData の必須度そのものの再判断が必要"
+      - "reasonData スキーマ範囲の設計判断が PR 内で未確定のまま"
+  blocked:
+    conditions:
+      - "Task Definition が解決できない"
+      - "OpenAPI または apps/** の変更が含まれている"
+      - "secret 混入の疑い"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  ai_logs:
+    required: false
+    path: null
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "spike docs 反映。レビュー結果は PR コメントを正本とする。"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/api-int-002-reason-summary-reason-data-required-scope/spike.yaml"
+  - "PR 作成後に target.pr / input.pr.number を実 PR 番号へ更新する（create-pr §11.5）"
+  - "OpenAPI 反映は #373 と同様に別 Contract Task とする"
