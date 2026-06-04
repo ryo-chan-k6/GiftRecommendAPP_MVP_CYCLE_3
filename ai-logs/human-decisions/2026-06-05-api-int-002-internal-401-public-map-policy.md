@@ -12,7 +12,7 @@
 | 発生元        | spike Task（human-led） |
 | 関連Issue     | `#374` |
 | 親 Epic       | `#366` |
-| 関連PR        | （spike PR 作成後に追記） |
+| 関連PR        | `#377` |
 | 重要度        | `high` |
 | 状態          | `resolved` |
 
