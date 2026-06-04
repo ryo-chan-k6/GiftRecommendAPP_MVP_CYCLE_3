@@ -27,7 +27,7 @@ PRはレビュー正本であり、作業結果、変更差分、確認結果、
 例：
 
 ```text
-/create-pr @prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml
+/create-pr @prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml
 ```
 Definitionなしでの実行は原則禁止する。
 

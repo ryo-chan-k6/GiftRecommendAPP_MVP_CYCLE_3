@@ -64,11 +64,28 @@ test("publishAiReviewAndDispatch: 切り詰め本文は投稿を拒否する", a
   );
 });
 
+function mockStatusSyncFetchImpl() {
+  return async (url) => {
+    if (String(url).includes("/actions/runs/99/jobs")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          jobs: [{ name: "sync-project-status", status: "completed", conclusion: "success" }],
+        }),
+      };
+    }
+    throw new Error(`unexpected url: ${url}`);
+  };
+}
+
 test("verifyAiReviewDispatch: 切り詰めコメントは truncated フラグを返す", async () => {
   const result = await publish.verifyAiReviewDispatch({
     repository: "o/r",
     prNumber: 10,
     token: "t",
+    pollMaxWaitMs: 0,
+    fetchImpl: mockStatusSyncFetchImpl(),
     listComments: async () => [
       {
         body: TRUNCATED_COMMENT,
@@ -187,6 +204,8 @@ test("verifyAiReviewDispatch: dispatch済みならok", async () => {
     repository: "o/r",
     prNumber: 10,
     token: "t",
+    pollMaxWaitMs: 0,
+    fetchImpl: mockStatusSyncFetchImpl(),
     listComments: async () => [
       {
         body: SAMPLE_COMMENT,
@@ -214,6 +233,7 @@ test("verifyAiReviewDispatch: コメントのみでdispatch欠落", async () => 
     repository: "o/r",
     prNumber: 10,
     token: "t",
+    pollMaxWaitMs: 0,
     listComments: async () => [
       {
         body: SAMPLE_COMMENT,
@@ -233,6 +253,7 @@ test("verifyAiReviewDispatch: AI Reviewコメントなし", async () => {
     repository: "o/r",
     prNumber: 10,
     token: "t",
+    pollMaxWaitMs: 0,
     listComments: async () => [{ body: "hello", created_at: "2026-05-30T00:00:00Z" }],
     listRuns: async () => [],
   });
@@ -245,6 +266,7 @@ test("verifyAiReviewDispatch: sinceIso より前のコメントは無視する",
     repository: "o/r",
     prNumber: 10,
     token: "t",
+    pollMaxWaitMs: 0,
     sinceIso: "2026-05-30T12:00:00Z",
     listComments: async () => [
       {

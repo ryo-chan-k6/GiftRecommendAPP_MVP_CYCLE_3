@@ -98,9 +98,12 @@ jobs:
               return;
             }
 
-            const issueNumber = slack.relatedIssueNumber(pr.body || "");
+            const issueNumber = slack.resolveStatusSyncTargetIssue({
+              prBody: pr.body || "",
+              headRef: pr.head?.ref || "",
+            });
             if (!issueNumber) {
-              core.setFailed("PR本文から対象Issueを解決できませんでした。`Related to #<Task Issue番号>` または `Closes #<Epic Issue番号>` を記載してください。");
+              core.setFailed("PR本文から対象Issueを解決できませんでした。Task Branch では `## 2. 対象Issue` に `Related to #<Task Issue番号>` を記載してください。");
               return;
             }
 
