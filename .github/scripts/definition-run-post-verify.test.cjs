@@ -334,3 +334,39 @@ test("runPostVerify: review-pr live-run は対象 PR head branch の commit 更�
   assert.equal(result.violations[0].type, "branch");
   assert.equal(result.violations[0].name, "feature/unrelated");
 });
+
+test("runPostVerify: fix-review-comments live-run は対象 PR head branch の commit 更新を違反にしない", async () => {
+  const result = await post.runPostVerify({
+    octokit: {},
+    owner: "o",
+    repo: "r",
+    startedAt: "2026-01-01T00:00:00.000Z",
+    runMode: "live-run",
+    runActor: "agent",
+    command: "fix-review-comments",
+    targetPr: "359",
+    token: "t",
+    getPullImpl: async () => ({
+      head: { ref: "docs/task-358-api-pub-002-recommendation-run-api-spec" },
+    }),
+    listIssues: async () => [],
+    listPulls: async () => [],
+    listBranches: async () => [
+      buildBranch({
+        name: "docs/task-358-api-pub-002-recommendation-run-api-spec",
+        login: "okuri-ai-bot",
+        committed_at: "2026-01-01T00:04:00.000Z",
+      }),
+      buildBranch({
+        name: "feature/unrelated",
+        login: "agent",
+        committed_at: "2026-01-01T00:05:00.000Z",
+      }),
+    ],
+  });
+  assert.equal(result.excluded_pr_head_ref, "docs/task-358-api-pub-002-recommendation-run-api-spec");
+  assert.equal(result.counts.branches, 1);
+  assert.equal(result.counts.violations, 1);
+  assert.equal(result.violations[0].type, "branch");
+  assert.equal(result.violations[0].name, "feature/unrelated");
+});
