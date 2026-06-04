@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-04                                |
-| 更新日         | 2026-06-04（AI Review 指摘反映）          |
+| 更新日         | 2026-06-04（Human Review 指摘・未決事項 Issue 化） |
 
 ---
 
@@ -521,17 +521,20 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | ---- | -------- | -------------- |
 | 2026-06-04 | 初版（契約面のみ。Task #368 / 分離後モデル） | #368 |
 | 2026-06-04 | AI Review 指摘反映（`resultItems` / Result Status / Error / Validation / Observability 等） | #368 / #369 |
+| 2026-06-04 | Human Review 指摘対応：§14 未決事項を個別 Issue 化（#373〜#376） | #368 / #372 |
 
 ---
 
 ## 14. 未決事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `warnings` / `metricSummary` のスキーマ詳細 | API一覧は概要のみ。配列要素の構造を OpenAPI で固定する必要がある | Human + Contract Task | OpenAPI Task 前 | §7.3.1 |
-| 2 | Internal 401 の Public へのマップ方針 | `GRS-AUTH-*` を web に露出しない変換ルール | Human + api 実装 Task | 実装仕様書作成時 | §8.2 |
-| 3 | `scoreBreakdown` / `debug_payload` の返却条件 | evaluation / `includeDebugInfo` 時の必須度 | Human Review | Contract Gate 前 | Recommendation Result 定義書 §9.2 参照 |
-| 4 | `reasonSummary` / `reasonData` の必須/任意（Internal） | Reason 生成のみ失敗時の省略可否、`reasonData` スキーマ | Human Review | Contract Gate 前 | Reason生成定義書・API-PUB-002 参照 |
+本節の論点は **人間判断待ち** として個別 Issue で管理する（作業計画の正本は Issue。契約仕様書は論点の参照先）。
+
+| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 | 追跡 Issue |
+| --: | ---- | ---------------- | ------ | ---- | ---- | ---------- |
+| 1 | `warnings` / `metricSummary` のスキーマ詳細 | API一覧は概要のみ。配列要素の構造を OpenAPI で固定する必要がある | Human + Contract Task | OpenAPI Task 前 | §7.3.1 | #373 |
+| 2 | Internal 401 の Public へのマップ方針 | `GRS-AUTH-*` を web に露出しない変換ルール | Human + api 実装 Task | 実装仕様書作成時 | §8.2 | #374 |
+| 3 | `scoreBreakdown` / `debug_payload` の返却条件 | evaluation / `includeDebugInfo` 時の必須度 | Human Review | Contract Gate 前 | Recommendation Result 定義書 §9.2 参照 | #375 |
+| 4 | `reasonSummary` / `reasonData` の必須/任意（Internal） | Reason 生成のみ失敗時の省略可否、`reasonData` スキーマ | Human Review | Contract Gate 前 | Reason生成定義書・API-PUB-002 参照 | #376 |
 
 ---
 
