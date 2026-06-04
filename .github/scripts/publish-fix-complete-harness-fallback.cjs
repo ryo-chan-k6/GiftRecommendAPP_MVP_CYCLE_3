@@ -5,7 +5,8 @@ const slack = require("./slack-notify.cjs");
 const publish = require("./publish-fix-complete-and-dispatch.cjs");
 
 const LOG_LINE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}T[^\s]+\s+/;
-const TRANSCRIPT_STOP_RE = /^---$|^### \d+\.|^## \d+\./;
+// review-pr fallback と同型（`^## \d+\.` は使わない）。§12 境界のみ ## で止める。
+const TRANSCRIPT_STOP_RE = /^---$|^### \d+\.|^## 12\./;
 const FIX_COMPLETE_TITLE = slack.FIX_COMPLETE_TITLE;
 const FIX_COMMAND_RESULT_HEADING = "## fix-review-comments 実行結果";
 
