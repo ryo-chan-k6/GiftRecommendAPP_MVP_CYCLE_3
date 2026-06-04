@@ -250,6 +250,6 @@ stop_conditions:
 notes:
   - "Epic は作業管理単位であり、API仕様書本体・実装・テストの正本は子 Task で作成する"
   - "命名の正本は Task Definition設計書 §15.0（Epic タイトル規約）・§15.2（個別API Task）"
-  - "本 Epic 配下の最初の子 Task は prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml"
+  - "本 Epic 配下の契約面 Task 正本は prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml"
   - "依存 Epic Issue 番号は実 Issue 起票後に dependencies.epics へ追記する（成果物化方針書 §3.5.3）"
   - "OpenAPI（internal）/ generated 変更を伴う子 Task は Contract Definition として分離する（成果物化方針書 §3）"

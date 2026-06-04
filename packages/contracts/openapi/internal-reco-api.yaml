@@ -1,0 +1,532 @@
+openapi: 3.0.3
+info:
+  title: Gift Recommendation Service Internal Reco API
+  version: 1.0.0
+  description: |
+    api（apps/api）→ reco（apps/reco）向け Internal API 契約正本。
+    MVP 対象: API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）。
+servers:
+  - url: /
+    description: Base URL は環境変数で定義（パスを正とする）
+paths:
+  /internal/reco/v1/recommendations/run:
+    post:
+      operationId: runRecoRecommendation
+      tags:
+        - RecoRecommendations
+      summary: Reco推薦実行（API-INT-002）
+      description: |
+        正規化済み Recommendation Request に基づき推薦パイプラインを実行する。
+        Provider: apps/reco / Consumer: apps/api。
+      security:
+        - InternalApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/XInternalApiKey"
+        - $ref: "#/components/parameters/XTraceIdRequired"
+        - $ref: "#/components/parameters/XRequestIdRequired"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoRecommendationRunRequest"
+            examples:
+              default:
+                $ref: "#/components/examples/RecoRecommendationRunRequestExample"
+      responses:
+        "200":
+          description: 処理成功（推薦結果あり、または 0 件の正常系）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoRecommendationRunSuccessResponse"
+              examples:
+                completed:
+                  $ref: "#/components/examples/RecoRecommendationRunSuccessCompletedExample"
+                empty:
+                  $ref: "#/components/examples/RecoRecommendationRunSuccessEmptyExample"
+        "400":
+          description: Request 不正
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "401":
+          description: Internal API Key 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "422":
+          description: 業務的 Validation 失敗
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー（Reco パイプライン失敗等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "502":
+          description: 外部依存エラー（LLM / Embedding 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "504":
+          description: タイムアウト
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+components:
+  securitySchemes:
+    InternalApiKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Api-Key
+      description: Internal API 保護用キー（値は環境変数で管理。本契約に実値を記載しない）
+
+  parameters:
+    XInternalApiKey:
+      name: X-Internal-Api-Key
+      in: header
+      required: true
+      description: Internal API 保護用キー
+      schema:
+        type: string
+    XTraceIdRequired:
+      name: X-Trace-Id
+      in: header
+      required: true
+      description: 横断追跡 ID（Public API 側で生成または引き継ぎ）
+      schema:
+        type: string
+        example: "550e8400-e29b-41d4-a716-446655440000"
+    XRequestIdRequired:
+      name: X-Request-Id
+      in: header
+      required: true
+      description: API リクエスト ID（api 側で生成）
+      schema:
+        type: string
+        example: "req_01HZYX"
+
+  schemas:
+    RelationshipInput:
+      type: object
+      required:
+        - relationshipCode
+      properties:
+        relationshipCode:
+          type: string
+          example: "boss"
+        relationshipLabel:
+          type: string
+          maxLength: 50
+          example: "上司"
+
+    OccasionInput:
+      type: object
+      required:
+        - occasionCode
+      properties:
+        occasionCode:
+          type: string
+          example: "thanks"
+        occasionLabel:
+          type: string
+          maxLength: 50
+          example: "お礼"
+
+    BudgetInput:
+      type: object
+      properties:
+        budgetMin:
+          type: integer
+          minimum: 0
+          example: 3000
+        budgetMax:
+          type: integer
+          minimum: 0
+          example: 5000
+        currency:
+          type: string
+          example: "JPY"
+        taxIncluded:
+          type: boolean
+          example: true
+
+    PreferredConditionInput:
+      type: object
+      properties:
+        preferredText:
+          type: string
+          maxLength: 500
+
+    NonPreferredConditionInput:
+      type: object
+      properties:
+        nonPreferredText:
+          type: string
+          maxLength: 500
+
+    NgConditionInput:
+      type: object
+      properties:
+        ngText:
+          type: string
+          maxLength: 300
+
+    ExecutionMode:
+      type: string
+      enum:
+        - ui
+        - evaluation
+        - batch
+
+    ExecutionInput:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          $ref: "#/components/schemas/ExecutionMode"
+        topK:
+          type: integer
+          minimum: 1
+          maximum: 50
+          example: 10
+        candidateLimit:
+          type: integer
+          minimum: 1
+          example: 50
+        includeReason:
+          type: boolean
+          example: true
+        includeDebugInfo:
+          type: boolean
+          example: false
+        evalCaseId:
+          type: string
+          description: mode=evaluation 時に使用
+        semanticConfigVersionId:
+          type: string
+        modelVersionId:
+          type: string
+
+    NormalizedRecommendationRequest:
+      type: object
+      required:
+        - relationship
+        - occasion
+        - execution
+      description: api 側で検証・正規化済みの推薦条件
+      properties:
+        relationship:
+          $ref: "#/components/schemas/RelationshipInput"
+        occasion:
+          $ref: "#/components/schemas/OccasionInput"
+        budget:
+          $ref: "#/components/schemas/BudgetInput"
+        preferredCondition:
+          $ref: "#/components/schemas/PreferredConditionInput"
+        nonPreferredCondition:
+          $ref: "#/components/schemas/NonPreferredConditionInput"
+        ngCondition:
+          $ref: "#/components/schemas/NgConditionInput"
+        freeText:
+          type: string
+          maxLength: 800
+        execution:
+          $ref: "#/components/schemas/ExecutionInput"
+
+    RecoRecommendationRunRequest:
+      type: object
+      required:
+        - recommendationRequestId
+        - recommendationRequest
+      properties:
+        recommendationRequestId:
+          type: string
+          description: api が永続化した推薦リクエスト ID
+          example: "request_001"
+        recommendationRequest:
+          $ref: "#/components/schemas/NormalizedRecommendationRequest"
+
+    ResultStatus:
+      type: string
+      enum:
+        - completed
+        - empty
+        - partial
+
+    CandidateCounts:
+      type: object
+      properties:
+        retrievalCount:
+          type: integer
+          example: 120
+        matchingCount:
+          type: integer
+          example: 45
+        rankingCount:
+          type: integer
+          example: 10
+
+    ScoreBreakdown:
+      type: object
+      additionalProperties: true
+      description: スコア内訳（evaluation / includeDebugInfo 時は推奨。詳細キーは実装 Task で確定）
+
+    ReasonBadge:
+      type: object
+      properties:
+        label:
+          type: string
+        code:
+          type: string
+
+    InternalRecommendationResultItem:
+      type: object
+      required:
+        - recommendationResultItemId
+        - itemId
+        - rank
+        - itemName
+        - itemPrice
+        - itemUrl
+        - contextScore
+        - finalScore
+      description: Internal 向け推薦結果 Item（内部スコアを含む）
+      properties:
+        recommendationResultItemId:
+          type: string
+          example: "result_item_001"
+        itemId:
+          type: string
+          example: "item_001"
+        rank:
+          type: integer
+          minimum: 1
+          example: 1
+        itemName:
+          type: string
+          example: "上品な焼き菓子ギフトセット"
+        itemPrice:
+          type: integer
+          example: 4320
+        itemUrl:
+          type: string
+          format: uri
+          example: "https://example.com/item/001"
+        itemImageUrl:
+          type: string
+          format: uri
+        itemCatchcopy:
+          type: string
+        shopName:
+          type: string
+          example: "Example Shop"
+        contextScore:
+          type: number
+          format: float
+          example: 0.82
+        popularityScore:
+          type: number
+          format: float
+          example: 0.64
+        riskPenalty:
+          type: number
+          format: float
+          example: 0.08
+        finalScore:
+          type: number
+          format: float
+          example: 0.78
+        scoreBreakdown:
+          $ref: "#/components/schemas/ScoreBreakdown"
+        reasonSummary:
+          type: string
+        reasonBadges:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReasonBadge"
+        cautionNote:
+          type: string
+
+    RecoRunMetadata:
+      type: object
+      additionalProperties: true
+      description: バージョン・mode 等（evaluation 時は推奨）
+      properties:
+        mode:
+          type: string
+          example: "ui"
+
+    MetricSummary:
+      type: object
+      additionalProperties: true
+      description: Reco 品質メトリクス用サマリ（詳細キーは OpenAPI Task / Human Review で確定）
+
+    RecoRecommendationRunResponseData:
+      type: object
+      required:
+        - recommendationRunId
+        - recommendationResultId
+        - recommendationRequestId
+        - resultStatus
+        - topK
+        - resultItemCount
+        - fallbackUsed
+        - items
+      properties:
+        recommendationRunId:
+          type: string
+          example: "run_001"
+        recommendationResultId:
+          type: string
+          example: "result_001"
+        recommendationRequestId:
+          type: string
+          example: "request_001"
+        resultStatus:
+          $ref: "#/components/schemas/ResultStatus"
+        topK:
+          type: integer
+          example: 10
+        resultItemCount:
+          type: integer
+          example: 2
+        fallbackUsed:
+          type: boolean
+          example: false
+        displayMessage:
+          type: string
+        candidateCounts:
+          $ref: "#/components/schemas/CandidateCounts"
+        warnings:
+          type: array
+          items:
+            type: string
+          description: 警告コードまたはメッセージ（要素構造は Human Review で確定）
+          example: []
+        metricSummary:
+          $ref: "#/components/schemas/MetricSummary"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InternalRecommendationResultItem"
+        metadata:
+          $ref: "#/components/schemas/RecoRunMetadata"
+
+    RecoRecommendationRunSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/RecoRecommendationRunResponseData"
+            meta:
+              $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+  examples:
+    RecoRecommendationRunRequestExample:
+      value:
+        recommendationRequestId: "request_001"
+        recommendationRequest:
+          relationship:
+            relationshipCode: "boss"
+            relationshipLabel: "上司"
+          occasion:
+            occasionCode: "thanks"
+            occasionLabel: "お礼"
+          budget:
+            budgetMin: 3000
+            budgetMax: 5000
+            currency: "JPY"
+            taxIncluded: true
+          preferredCondition:
+            preferredText: "上品で、感謝が伝わるもの"
+          nonPreferredCondition:
+            nonPreferredText: "カジュアルすぎるものは避けたい"
+          ngCondition:
+            ngText: "アルコールはNG"
+          freeText: "退職する上司に、お礼として失礼がなく、少し気の利いたものを贈りたい"
+          execution:
+            mode: "ui"
+            topK: 10
+            candidateLimit: 50
+            includeReason: true
+            includeDebugInfo: false
+
+    RecoRecommendationRunSuccessCompletedExample:
+      value:
+        data:
+          recommendationRunId: "run_001"
+          recommendationResultId: "result_001"
+          recommendationRequestId: "request_001"
+          resultStatus: "completed"
+          topK: 10
+          resultItemCount: 2
+          fallbackUsed: false
+          candidateCounts:
+            retrievalCount: 120
+            matchingCount: 45
+            rankingCount: 10
+          warnings: []
+          items:
+            - recommendationResultItemId: "result_item_001"
+              itemId: "item_001"
+              rank: 1
+              itemName: "上品な焼き菓子ギフトセット"
+              itemPrice: 4320
+              itemUrl: "https://example.com/item/001"
+              itemImageUrl: "https://example.com/item/001.jpg"
+              shopName: "Example Shop"
+              contextScore: 0.82
+              popularityScore: 0.64
+              riskPenalty: 0.08
+              finalScore: 0.78
+              reasonSummary: "上司へのお礼として失礼がなく、上品さと感謝の伝わりやすさのバランスが良いため候補にしています。"
+          metadata:
+            mode: "ui"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-04T12:00:00+09:00"
+
+    RecoRecommendationRunSuccessEmptyExample:
+      value:
+        data:
+          recommendationRunId: "run_002"
+          recommendationResultId: "result_002"
+          recommendationRequestId: "request_002"
+          resultStatus: "empty"
+          topK: 10
+          resultItemCount: 0
+          fallbackUsed: false
+          displayMessage: "条件に合う商品が見つかりませんでした。"
+          candidateCounts:
+            retrievalCount: 0
+            matchingCount: 0
+            rankingCount: 0
+          warnings:
+            - "NO_CANDIDATES_AFTER_RETRIEVAL"
+          items: []
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440001"
+          requestId: "req_01HZYY"
+          generatedAt: "2026-06-04T12:01:00+09:00"
+          resultCode: "GRS-REC-001"

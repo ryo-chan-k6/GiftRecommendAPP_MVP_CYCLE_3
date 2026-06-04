@@ -32,13 +32,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sync-status:
+  sync-project-status:
     runs-on: ubuntu-latest
+    outputs:
+      dispatch_fixer: ${{ steps.sync-project-status.outputs.dispatch_fixer }}
+      pr_number: ${{ steps.sync-project-status.outputs.pr_number }}
+      issue_number: ${{ steps.sync-project-status.outputs.issue_number }}
+      pr_head_sha: ${{ steps.sync-project-status.outputs.pr_head_sha }}
+      pr_head_ref: ${{ steps.sync-project-status.outputs.pr_head_ref }}
     steps:
       - uses: actions/checkout@v5
 
       - name: Sync Project Status from AI Review result
-        id: sync-status
+        id: sync-project-status
         uses: actions/github-script@v8
         env:
           PROJECT_OWNER: ${{ vars.PROJECT_OWNER }}
@@ -76,8 +82,8 @@ jobs:
               return slack.statusFromReviewResult(result, body);
             }
 
-            function relatedIssueNumber(prBody) {
-              return slack.relatedIssueNumber(prBody);
+            function resolveTargetIssueNumber(prBody, headRef) {
+              return slack.resolveStatusSyncTargetIssue({ prBody, headRef });
             }
 
             async function comment(issueNumber, body) {
@@ -162,9 +168,9 @@ jobs:
               core.info("PR from fork is out of scope for initial Slack notification workflow; skipped.");
               return;
             }
-            const taskIssueNumber = relatedIssueNumber(pr.body || "");
+            const taskIssueNumber = resolveTargetIssueNumber(pr.body || "", pr.head?.ref || "");
             if (!taskIssueNumber) {
-              core.setFailed("PR本文から対象Issueを解決できませんでした。`Related to #<Task Issue番号>` または `Closes #<Epic Issue番号>` を記載してください。");
+              core.setFailed("PR本文から対象Issueを解決できませんでした。Task Branch では `## 2. 対象Issue` に `Related to #<Task Issue番号>` を記載してください。");
               return;
             }
 
@@ -281,27 +287,69 @@ jobs:
               reviewResult,
             });
 
+  dispatch-fixer:
+    needs: sync-project-status
+    if: needs.sync-project-status.outputs.dispatch_fixer == 'true'
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout PR head for Task Definition resolution
-        if: steps.sync-status.outputs.dispatch_fixer == 'true'
         uses: actions/checkout@v5
         with:
-          ref: ${{ steps.sync-status.outputs.pr_head_sha }}
+          ref: ${{ needs.sync-project-status.outputs.pr_head_sha }}
 
       - name: Setup Node
-        if: steps.sync-status.outputs.dispatch_fixer == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: "24"
 
       - name: Dispatch Fixer via Definition Run Harness
-        if: steps.sync-status.outputs.dispatch_fixer == 'true'
+        id: dispatch-fixer-run
         env:
           GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           node .github/scripts/dispatch-fix-review-harness.cjs \
             --repository "${{ github.repository }}" \
-            --pr "${{ steps.sync-status.outputs.pr_number }}" \
-            --issue "${{ steps.sync-status.outputs.issue_number }}" \
+            --pr "${{ needs.sync-project-status.outputs.pr_number }}" \
+            --issue "${{ needs.sync-project-status.outputs.issue_number }}" \
             --requested-by "pr-review-status-sync" \
             --context "request-changes"
+
+      - name: Notify Slack on Fixer dispatch failure
+        if: failure()
+        uses: actions/github-script@v8
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const path = require("path");
+            const slack = require(path.join(process.env.GITHUB_WORKSPACE, ".github/scripts/slack-notify.cjs"));
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = Number("${{ needs.sync-project-status.outputs.pr_number }}");
+            const issueNumber = Number("${{ needs.sync-project-status.outputs.issue_number }}");
+            const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            const channel = process.env.SLACK_CHANNEL_ID_DEVOPS || "";
+            const threadKey = slack.buildThreadKey({ owner, repo, kind: "pr", number: prNumber });
+            const comments = await slack.listIssueComments({ github, owner, repo, issueNumber: prNumber });
+            const threadTs = slack.findThreadTsFromComments(comments, threadKey, channel);
+            const text = slack.buildFixerDispatchFailureSlackText({
+              prNumber,
+              issueNumber,
+              reason: "task_definition_not_found 等（Actions ログの JSON を確認）",
+              prUrl: pr.html_url,
+              issueUrl: `${serverUrl}/${owner}/${repo}/issues/${issueNumber}`,
+            });
+            const result = await slack.postSlackMessage({
+              token: process.env.SLACK_BOT_TOKEN,
+              channel,
+              text,
+              threadTs,
+            });
+            if (!result.ok) {
+              core.warning(`Slack notification failed: ${result.error || "unknown"}`);
+            }
+            await core.summary.addHeading("Fixer dispatch failure").addRaw(text).write();
