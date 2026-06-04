@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-04                                |
-| 更新日         | 2026-06-05（§14 No.2 確定：Internal 401 Public マップ方針 #374） |
+| 更新日         | 2026-06-05（§14 No.1 確定 #373、No.2 Internal 認証 Public マップ確定 #374） |
 
 ---
 
@@ -218,7 +218,7 @@ Recommendation Request 定義書 **§6**（データ項目定義）および **�
 | `recommendationRunId` | Response `data.recommendationRunId` | `true`（成功時） | 推薦 Run 追跡。phase_log / metric の相関キー |
 | `recommendationRequestId` | Request Body / Response `data.recommendationRequestId` | `true` | 推薦リクエスト ID |
 | `recommendationResultId` | Response `data.recommendationResultId` | `true`（成功時） | 推薦結果 ID |
-| phase / metric 詳細 | Response `metricSummary` 等（任意） | `false` | 契約上は概要のみ。キー構造は OpenAPI Task で確定（§14 未決事項） |
+| phase / metric 詳細 | Response `metricSummary` 等（任意） | `false` | Run 単位サマリ。キー構造は §7.3.4〜§7.3.5。詳細記録はログ・Observability設計書を正本とする |
 
 ---
 
@@ -266,11 +266,13 @@ Recommendation Request 定義書 **§6**（データ項目定義）および **�
 | `candidateCounts.retrievalCount` | `integer` | `false` | Retrieval 候補数 | - |
 | `candidateCounts.matchingCount` | `integer` | `false` | Matching 通過数 | - |
 | `candidateCounts.rankingCount` | `integer` | `false` | Ranking 対象数 | - |
-| `warnings` | `array` | `false` | 警告一覧 | 0 件・Feature 偏り等（文字列またはコードオブジェクト。OpenAPI Task で確定） |
-| `metricSummary` | `object` | `false` | Reco 品質メトリクス用サマリ | 契約上は任意。詳細キーは OpenAPI Task で確定 |
+| `warnings` | `array` | `false` | 警告一覧 | 要素は `WarningItem`（§7.3.4）。MVP コードは §7.3.6 |
+| `metricSummary` | `object` | `false` | Reco 品質メトリクス用サマリ | `MetricSummary`（§7.3.5）。任意 |
 | `reasonData` | `object` | `false` | Reason 生成結果（内部） | API設計方針書 §21.3。Public へは api が必要項目のみ抽出 |
 | `resultItems` | `array` | `true` | 推薦結果 Item 一覧 | API設計方針書 §21.3 の `resultItems`。0 件時は **空配列 `[]`** |
 | `metadata` | `object` | `false` | バージョン・mode 等 | `evaluation` 時は推奨 |
+
+**Transient（永続化しない）:** `warnings` / `metricSummary` は **本 API Response に限る Transient フィールド**とする。Recommendation Result 定義書・DB には保存しない（観測・分析の正本はログ・Observability設計書および metric 集計）。api は Public Response へ渡さない（API設計方針書 §21.3）。
 
 #### 7.3.2 `data.resultItems[]`（1 件あたり）
 
@@ -312,6 +314,51 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | `generatedAt` | `string` | `false` | 生成日時（ISO 8601） | - |
 | `resultCode` | `string` | `false` | 業務結果コード | 0 件時は `GRS-REC-001`（§7.4.2） |
 
+#### 7.3.4 `WarningItem`（`warnings[]` 要素）
+
+| フィールド | 型 | 必須 | 内容 |
+| ---------- | -- | ---- | ---- |
+| `code` | `string` | `true` | 警告コード（`SCREAMING_SNAKE_CASE`）。MVP 一覧は §7.3.6 |
+| `severity` | `string` | `false` | `info` / `warn`。未指定時は reco 実装で `warn` 想定 |
+| `message` | `string` | `false` | 運用・デバッグ向け補足。Public へは渡さない |
+
+**`warnings` と `meta.resultCode` の責務分離**
+
+| 項目 | 役割 |
+| ---- | ---- |
+| `meta.resultCode`（例: `GRS-REC-001`） | 業務結果（0 件正常系など）。api が Public 変換時に参照 |
+| `warnings[]` | パイプライン診断ヒント。HTTP 200 のまま返しうる。未知の `code` は api/reco とも処理継続（ログ・集計のみ） |
+
+**拡張方針:** MVP 稼働後のコード追加は、(1) 本書 §7.3.6 への追記 (2) OpenAPI `WarningCode` enum の拡張（後方互換的追加）(3) 未知コードの tolerant 処理、とする。
+
+#### 7.3.5 `MetricSummary`（`metricSummary`）
+
+Run 単位の品質サマリ。API一覧（API-INT-002）のメトリクス列およびログ・Observability設計書 §11.2 に整合する。**`candidateCounts` はフェーズ別件数、`metricSummary` は時間・分布**と役割を分ける。
+
+| フィールド | 型 | 必須 | 内容 |
+| ---------- | -- | ---- | ---- |
+| `recommendationLatencyMs` | `integer` | `false` | 推薦全体の処理時間（ms） |
+| `phaseDurationMs` | `object` | `false` | フェーズ別処理時間（ms）。キー例: `retrieval`, `matching`, `ranking`, `reason` |
+| `featureDistribution` | `object` | `false` | Feature 名 → `{ mean, p95 }`（数値 0〜1 想定）。分布 JSON 全体は載せない |
+
+`phaseDurationMs` / `featureDistribution` のキーは MVP では上記を推奨とし、追加キーは optional で許容する（§11 後方互換）。
+
+#### 7.3.6 MVP 警告コード一覧
+
+| code | 発生条件（契約上） | severity | 備考 |
+| ---- | ------------------ | -------- | ---- |
+| `NO_CANDIDATES_AFTER_RETRIEVAL` | Retrieval 後に候補 0 → `resultItemCount: 0` | `warn` | §7.4.2 0 件例 |
+| `LOW_CANDIDATES_AFTER_MATCHING` | Matching 後候補が閾値未満（件数は 1 以上） | `warn` | 閾値・発火条件は reco 実装 Task |
+| `FEATURE_DISTRIBUTION_SKEW` | User / Item Feature 分布の偏り検知 | `warn` | Observability の分布異常 warn と対応。閾値は reco 実装 Task |
+
+#### 7.3.7 内部コードと API `warnings.code` の対照
+
+Retrieval 等の**モジュール内部** `error_code` と、本 API の `warnings[].code` は別体系とする。
+
+| 内部（例） | API `warnings.code`（例） | 備考 |
+| ---------- | ------------------------- | ---- |
+| `RETRIEVAL_NO_CANDIDATES`（Retrieval定義書 §19） | `NO_CANDIDATES_AFTER_RETRIEVAL` | reco 実装でマッピング。契約上は API コードを正とする |
+
 ### 7.4 Response Example
 
 #### 7.4.1 推薦結果あり（200）
@@ -332,6 +379,19 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
       "rankingCount": 10
     },
     "warnings": [],
+    "metricSummary": {
+      "recommendationLatencyMs": 842,
+      "phaseDurationMs": {
+        "retrieval": 120,
+        "matching": 210,
+        "ranking": 95,
+        "reason": 380
+      },
+      "featureDistribution": {
+        "formality": { "mean": 0.62, "p95": 0.88 },
+        "emotion": { "mean": 0.55, "p95": 0.79 }
+      }
+    },
     "resultItems": [
       {
         "recommendationResultItemId": "result_item_001",
@@ -383,7 +443,21 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
       "matchingCount": 0,
       "rankingCount": 0
     },
-    "warnings": ["NO_CANDIDATES_AFTER_RETRIEVAL"],
+    "warnings": [
+      {
+        "code": "NO_CANDIDATES_AFTER_RETRIEVAL",
+        "severity": "warn"
+      }
+    ],
+    "metricSummary": {
+      "recommendationLatencyMs": 310,
+      "phaseDurationMs": {
+        "retrieval": 95,
+        "matching": 0,
+        "ranking": 0,
+        "reason": 0
+      }
+    },
     "resultItems": []
   },
   "meta": {
@@ -409,7 +483,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 {
   "error": {
     "code": "GRS-REC-002",
-    "message": "レコメンド処理に失敗しました。",
+    "message": "レコメンド処理に失敗しました。時間を置いて再度お試しください。",
     "details": []
   },
   "meta": {
@@ -502,6 +576,12 @@ api 側で実施済みの業務 Validation（未対応組み合わせ等）を r
 
 本 Task では YAML / generated の**実変更は行わない**。本契約仕様書を OpenAPI（internal）Contract Task の入力正本とする。
 
+OpenAPI Contract Task で反映する差分（#373 確定分）:
+
+- `WarningItem` schema、`warnings` を `WarningItem[]` に変更
+- `MetricSummary` の固定 properties（`recommendationLatencyMs` / `phaseDurationMs` / `featureDistribution`）
+- 0 件例: `resultStatus: completed`（`empty` は 0 件正規系に使わない）、`warnings` をオブジェクト配列に合わせる
+
 Contract Gate 通過後に Implementation Task（`api-implementation-spec`）および apps/reco・apps/api 実装 Task を開始する。
 
 ---
@@ -525,7 +605,8 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
 | 1 | 正常系 | 必須 Header + Body で 200、`resultItems` が 1 件以上、内部スコア項目（`contextScore` / `socialMatch` 等）あり | contract |
-| 2 | 0 件正常系 | 200、`resultItems: []`、`resultItemCount: 0`、`resultStatus: completed`、`meta.resultCode: GRS-REC-001` | contract |
+| 2 | 0 件正常系 | 200、`resultItems: []`、`resultItemCount: 0`、`resultStatus: completed`、`warnings[].code`（例: `NO_CANDIDATES_AFTER_RETRIEVAL`）、`meta.resultCode: GRS-REC-001` | contract |
+| 8 | warnings / metricSummary | `WarningItem` 形式、`metricSummary` の mean/p95（任意項目） | contract |
 | 3 | validation error | `recommendationRequestId` 欠落で 400 | contract |
 | 4 | auth error | `X-Internal-Api-Key` 欠落・不正で 401 | contract |
 | 5 | permission error | 権限不足相当で 403（`GRS-AUTH-002` 等） | contract |
@@ -543,6 +624,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 2026-06-04 | 初版（契約面のみ。Task #368 / 分離後モデル） | #368 |
 | 2026-06-04 | AI Review 指摘反映（`resultItems` / Result Status / Error / Validation / Observability 等） | #368 / #369 |
 | 2026-06-04 | Human Review 指摘対応：§14 未決事項を個別 Issue 化（#373〜#376） | #368 / #372 |
+| 2026-06-05 | §14 No.1 確定：`warnings`（`WarningItem`）/ `metricSummary`（mean・p95）、Transient 注記、MVP 警告コード 3 件 | #373 |
 | 2026-06-05 | §14 No.2 確定：Internal 認証エラーの Public マップ（§8.2.1、#374） | #374 |
 
 ---
@@ -555,13 +637,15 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 
 | No | 論点 | 確定内容 | 反映箇所 | 追跡 Issue |
 | --: | ---- | -------- | -------- | ---------- |
-| 2 | Internal 401 の Public へのマップ方針 | `GRS-AUTH-*` は Public 非露出。api→web は **500 + `GRS-REC-002`**。内部は error_log に原文保持 | §8.2.1 | #374 |
+| 1 | `warnings` / `metricSummary` のスキーマ詳細 | `warnings`: `WarningItem[]`（`code` 必須）。`metricSummary`: `recommendationLatencyMs` / `phaseDurationMs` / `featureDistribution`（`mean`, `p95` のみ）。Transient（DB 非永続）。0 件は `resultStatus: completed` | §7.3.4〜§7.3.7 | #373 |
+| 2 | Internal 401/403（`GRS-AUTH-*`）の Public マップ方針 | `GRS-AUTH-*` は Public 非露出。api→web は **500 + `GRS-REC-002`**。内部は error_log に原文保持 | §8.2.1 | #374 |
+
+OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract Task** とする。
 
 ### 14.2 未決（人間判断待ち）
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 | 追跡 Issue |
 | --: | ---- | ---------------- | ------ | ---- | ---- | ---------- |
-| 1 | `warnings` / `metricSummary` のスキーマ詳細 | API一覧は概要のみ。配列要素の構造を OpenAPI で固定する必要がある | Human + Contract Task | OpenAPI Task 前 | §7.3.1 | #373 |
 | 3 | `scoreBreakdown` / `debug_payload` の返却条件 | evaluation / `includeDebugInfo` 時の必須度 | Human Review | Contract Gate 前 | Recommendation Result 定義書 §9.2 参照 | #375 |
 | 4 | `reasonSummary` / `reasonData` の必須/任意（Internal） | Reason 生成のみ失敗時の省略可否、`reasonData` スキーマ | Human Review | Contract Gate 前 | Reason生成定義書・API-PUB-002 参照 | #376 |
 
@@ -602,7 +686,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 
 - 正式 Endpoint（`POST /internal/reco/v1/recommendations/run`）と api→reco I/F 境界
 - Request Body に `recommendationRequestId` + 正規化済み `recommendationRequest` を含める方針
-- Internal Response に含める score / warnings / metricSummary の範囲（§14 未決事項）
+- Internal Response の `warnings` / `metricSummary` が §7.3.4〜§7.3.7 と一致しているか（#373 確定分）
 - OpenAPI Contract Task への分離方針（`internal-reco-api.yaml`）
 - 上流 API-PUB-002 契約仕様書との整合（0 件・reason・予算任意化）
 
