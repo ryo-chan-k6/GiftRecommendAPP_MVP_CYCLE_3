@@ -27,6 +27,8 @@ Definition Run の通称・Command 定義・Task Definition 構造の正本は�
 | 単体テスト | `.github/scripts/definition-run-prompt-builder.test.cjs` | builder の正常系・異常系・secret マスクの検証 |
 | 共通 script | `.github/scripts/definition-run-post-verify.cjs` | 実行後の Issue / PR / Branch 新規作成検知、**review-pr dispatch 忘れ検証**、違反判定、Job Summary 用 Markdown 生成 |
 | 単体テスト | `.github/scripts/definition-run-post-verify.test.cjs` | post-verify の正常系・違反検出系の検証 |
+| 共通 script | `.github/scripts/publish-fix-complete-harness-fallback.cjs` | **fix-review-comments live-run** 時の fix-complete 投稿・fix-ready dispatch bot fallback |
+| 単体テスト | `.github/scripts/publish-fix-complete-harness-fallback.test.cjs` | fix-complete fallback の抽出・publish 検証 |
 | Actions 表示名 | `Definition Run Harness` | |
 
 ## 3. トリガ
@@ -73,8 +75,9 @@ on:
 2. 入力検証 (Command レジストリ参照 / definition パス prefix / 実ファイル存在 / definition_type 整合 / run_mode==dry-run)
 3. プロンプト組み立て (builder スクリプト呼び出し、secret マスク)
 4. Cursor SDK で Cloud Agent 起動 (Agent.create + agent.send + cloud: { repos: [{ url, startingRef }] }, autoCreatePR: false)
-5. **review-pr live-run のみ:** transcript（および Agent `run.result`）から AI Review コメントを抽出し `GH_BOT_TOKEN` で `publish-ai-review-and-dispatch.cjs` を実行（bot fallback）。**切り詰め本文（`/tmp` 等ローカルファイル参照・「全文は … を参照」・省略マーカー）は投稿前に拒否し、抽出対象からも除外する**
-6. post-run 検証 (Issue / PR / Branch 新規作成監視、**コメント本文の切り詰め検知** → 違反検知時は job 失敗)
+5. **review-pr live-run:** transcript（および Agent `run.result`）から AI Review コメントを抽出し `GH_BOT_TOKEN` で `publish-ai-review-and-dispatch.cjs` を実行（bot fallback）。**切り詰め本文（`/tmp` 等ローカルファイル参照・「全文は … を参照」・省略マーカー）は投稿前に拒否し、抽出対象からも除外する**
+5b. **fix-review-comments live-run:** transcript（および Agent `run.result`）から fix-complete コメントを抽出し `GH_BOT_TOKEN` で `publish-fix-complete-and-dispatch.cjs` を実行（bot fallback）。Fix Outcome が `ready_for_ai_review` のときのみ投稿・fix-ready dispatch する
+6. post-run 検証 (Issue / PR / Branch 新規作成監視、**review-pr 時のコメント切り詰め検知** → 違反検知時は job 失敗)
 7. Job Summary 出力 ($GITHUB_STEP_SUMMARY、secret スキャナ通過後)
 ```
 
@@ -88,7 +91,7 @@ on:
 | permissions | `issues: read` | post-verify で Issue 一覧取得 |
 | permissions | `pull-requests: read` | post-verify で PR 一覧取得 |
 | Secret | `CURSOR_API_KEY` | Cursor SDK の認証。workflow env のみで使用、プロンプト・log・Summary には絶対に出さない |
-| Secret | `GH_BOT_TOKEN` | **`review-pr` + `live-run` 時**の `publish-ai-review-and-dispatch.cjs` bot fallback（Cloud Agent は PR コメント POST 不可） |
+| Secret | `GH_BOT_TOKEN` | **`review-pr` / `fix-review-comments` + `live-run` 時**の bot fallback（`publish-ai-review-and-dispatch.cjs` / `publish-fix-complete-and-dispatch.cjs`。Cloud Agent は PR コメント POST 不可） |
 | Token | `GITHUB_TOKEN` | post-verify で gh API を叩く（read のみ。write 全廃） |
 | permissions | `actions: read` | review-pr post-verify で workflow runs 参照 |
 
@@ -240,7 +243,7 @@ Issue 作成・更新後の同期は既存 workflow が行うため、Harness �
 2. Cloud Agent 完了後、`started_at` 以降に作成された Issue / PR / Branch の有無を gh API で確認
 3. 違反検知ルール:
    - dry-run なのに新規 Issue / PR / Branch が作成されていたら **違反**
-   - `review-pr` 実行時は `target_pr` の head branch を branch 監視対象から除外する（対象 PR ブランチへの並行 push を誤検知しないため）
+   - `review-pr` / `fix-review-comments` 実行時は `target_pr` の head branch を branch 監視対象から除外する（対象 PR ブランチへの push を誤検知しないため）
    - 違反内容（種別・番号・URL・作成時刻・actor）を Job Summary の Guard Violations 欄に列挙
    - 検出時は `process.exit(1)` で job を失敗扱いにする
 4. 違反がなければ `violations: []` を Job Summary に記録
@@ -432,6 +435,10 @@ Task Definition が解決できない場合は `--definition prompts/definitions
 ### 16.2 Harness job 失敗（dispatch 成功後）
 
 Fixer harness live-run（`command=fix-review-comments`）が失敗した場合は §12 の一般失敗扱いとする。recovery は Harness を直接再 dispatch する。
+
+**post-verify の Branch 違反（PR head への push）:** Task #360 以前は `fix-review-comments` で head branch 除外がなく、Agent 成功後も job が失敗し得た。修正後は §10.2 と同様に除外する。
+
+**Fix 完了未投稿:** Cloud Agent は `GITHUB_TOKEN`（read）で PR コメント・dispatch 不可。Harness は `publish-fix-complete-harness-fallback.cjs`（`GH_BOT_TOKEN`）で fix-complete 投稿と fix-ready dispatch を行う。未設定時は step が失敗する（`review-pr` bot fallback と同型）。
 
 ```bash
 gh workflow run "Definition Run Harness" \

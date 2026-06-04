@@ -5,6 +5,12 @@ const ALLOWED_AUTOMATION_ACTORS = Object.freeze([
   "github-actions",
 ]);
 
+/** live-run で target PR head への push を誤検知しない command */
+const COMMANDS_EXCLUDING_TARGET_PR_HEAD_REF = Object.freeze([
+  "review-pr",
+  "fix-review-comments",
+]);
+
 const DEFAULT_BRANCH_PROTECTED_PATTERNS = Object.freeze([
   /^refs\/heads\/main$/,
   /^refs\/heads\/develop$/,
@@ -277,7 +283,8 @@ async function runPostVerify({
   const branches = await listBranches({ octokit, owner, repo, since: startedAt });
 
   let excludedPrHeadRef = "";
-  if (String(command || "").trim() === "review-pr" && targetPr) {
+  const cmd = String(command || "").trim();
+  if (COMMANDS_EXCLUDING_TARGET_PR_HEAD_REF.includes(cmd) && targetPr) {
     excludedPrHeadRef = await resolveTargetPrHeadRef({
       octokit,
       owner,
