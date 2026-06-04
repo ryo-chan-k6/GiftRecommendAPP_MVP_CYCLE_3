@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-02                                |
-| 更新日         | 2026-06-03                                |
+| 更新日         | 2026-06-04                                |
 
 ---
 
@@ -113,22 +113,22 @@ Recommendation Request 定義書 §7.1（UI 向け）に準拠。フィールド
 | ---- | -- | ---- | ---- | ---- | -- |
 | `relationship` | `object` | `true` | 贈答相手（関係性） | `relationshipCode` 必須。`relationshipLabel` は表示用で任意 | 下記 Example |
 | `relationship.relationshipCode` | `string` | `true` | 関係性コード | マスタ（API-PUB-005）のコード体系に整合 | `boss` |
-| `relationship.relationshipLabel` | `string` | `false` | 関係性表示名 | - | `上司` |
+| `relationship.relationshipLabel` | `string` | `false` | 関係性表示名 | 最大 **50** 文字（マスタコードが正） | `上司` |
 | `occasion` | `object` | `true` | ギフト用途 | `occasionCode` 必須 | - |
 | `occasion.occasionCode` | `string` | `true` | 用途コード | マスタ（API-PUB-006）のコード体系に整合 | `thanks` |
-| `occasion.occasionLabel` | `string` | `false` | 用途表示名 | - | `お礼` |
+| `occasion.occasionLabel` | `string` | `false` | 用途表示名 | 最大 **50** 文字（マスタコードが正） | `お礼` |
 | `budget` | `object` | `false` | 予算条件 | `budgetMin` / `budgetMax` は 0 以上。両方指定時は `budgetMin <= budgetMax` | - |
 | `budget.budgetMin` | `integer` | `false` | 予算下限（JPY） | 0 以上 | `3000` |
 | `budget.budgetMax` | `integer` | `false` | 予算上限（JPY） | 0 以上 | `5000` |
 | `budget.currency` | `string` | `false` | 通貨 | MVP は `JPY` 固定想定 | `JPY` |
 | `budget.taxIncluded` | `boolean` | `false` | 税込みフラグ | - | `true` |
 | `preferredCondition` | `object` | `false` | 好み・期待する方向性 | `preferredText` を含む | - |
-| `preferredCondition.preferredText` | `string` | `false` | 好みテキスト | 最大文字数は **未決**（§14 参照） | `上品で感謝が伝わるもの` |
+| `preferredCondition.preferredText` | `string` | `false` | 好みテキスト | 最大 **500** 文字 | `上品で感謝が伝わるもの` |
 | `nonPreferredCondition` | `object` | `false` | 避けたい傾向 | `nonPreferredText` を含む | - |
-| `nonPreferredCondition.nonPreferredText` | `string` | `false` | 避けたい条件テキスト | 最大文字数は **未決** | `カジュアルすぎるものは避けたい` |
+| `nonPreferredCondition.nonPreferredText` | `string` | `false` | 避けたい条件テキスト | 最大 **500** 文字 | `カジュアルすぎるものは避けたい` |
 | `ngCondition` | `object` | `false` | 絶対 NG 条件 | `ngText` を含む | - |
-| `ngCondition.ngText` | `string` | `false` | NG テキスト | 最大文字数は **未決** | `アルコールはNG` |
-| `freeText` | `string` | `false` | 自由記述 | 最大文字数は **未決** | `退職する上司へのお礼` |
+| `ngCondition.ngText` | `string` | `false` | NG テキスト | 最大 **300** 文字 | `アルコールはNG` |
+| `freeText` | `string` | `false` | 自由記述 | 最大 **800** 文字 | `退職する上司へのお礼` |
 | `execution` | `object` | `true` | 実行条件 | `mode` 必須 | - |
 | `execution.mode` | `string` | `true` | 実行モード | `ui` / `evaluation` / `batch`。Public MVP 画面は **`ui` のみ** | `ui` |
 | `execution.topK` | `integer` | `false` | 画面返却件数 | 1〜50。未指定時デフォルト **10** | `10` |
@@ -212,7 +212,7 @@ Recommendation Request 定義書 §7.1（UI 向け）に準拠。フィールド
 | `recommendationResultId` | `string` | `true` | 推薦結果 ID | Feedback（API-PUB-004）の前提 |
 | `recommendationRequestId` | `string` | `true` | 推薦リクエスト ID | - |
 | `recommendationRunId` | `string` | `true` | 推薦実行 ID | - |
-| `resultStatus` | `string` | `true` | 結果状態 | `completed` / `empty` 等（enum は OpenAPI Task で確定） |
+| `resultStatus` | `string` | `true` | 結果状態 | enum: `completed` / `empty` / `partial`（OpenAPI Task で固定） |
 | `topK` | `integer` | `true` | 要求返却件数 | Request の `execution.topK` を反映 |
 | `resultItemCount` | `integer` | `true` | 返却 Item 件数 | 0 件時は `0` |
 | `fallbackUsed` | `boolean` | `true` | Fallback 利用有無 | MVP では原則 `false` |
@@ -234,7 +234,7 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 | `itemImageUrl` | `string` | `false` | 代表画像 URL | なしの場合は画面側でプレースホルダ |
 | `itemCatchcopy` | `string` | `false` | キャッチコピー | - |
 | `shopName` | `string` | `false` | 店舗名 | - |
-| `reasonSummary` | `string` | `false` | 推薦理由（短文） | `includeReason=true` 時は原則返却 |
+| `reasonSummary` | `string` | `false` | 推薦理由（短文） | 契約上は任意。`includeReason=true` 時は原則返却・画面表示するが、Reason 生成のみ失敗し Response 本体は完成した場合は省略可（§14.1 No.3） |
 | `reasonBadges` | `array` | `false` | 理由バッジ | 画面仕様に合わせて任意 |
 | `cautionNote` | `string` | `false` | 注意表示 | 任意 |
 
@@ -247,7 +247,7 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 | `traceId` | `string` | `true` | 横断追跡 ID | Header `X-Trace-Id` を引き継ぎまたは生成 |
 | `requestId` | `string` | `true` | API リクエスト ID | - |
 | `generatedAt` | `string` | `false` | 生成日時（ISO 8601） | - |
-| `resultCode` | `string` | `false` | 業務結果コード | 0 件時に `GRS-REC-001` を載せる案（§14 未決） |
+| `resultCode` | `string` | `false` | 業務結果コード | 0 件時は `GRS-REC-001`（§7.4.2） |
 
 ### 7.4 Response Example
 
@@ -309,7 +309,7 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 }
 ```
 
-> `meta.resultCode` に `GRS-REC-001` を載せるか、`data` のみで表現するかは §14 で Human 確認する。HTTP Status は常に 200 とする。
+> 0 件時は `data.resultStatus: "empty"`、`data.displayMessage`、`meta.resultCode: "GRS-REC-001"` を組み合わせて表現する（§14.1 No.2）。HTTP Status は常に 200 とする。
 
 ---
 
@@ -342,8 +342,7 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 
 | Status | Error Code | 発生条件 | Response概要 | ユーザー向け表示 |
 | -----: | ---------- | -------- | ------------ | ---------------- |
-| 400 | `GRS-REQ-001` | 推薦条件が不正（型・形式） | Validation 失敗 | 条件を確認してください。 |
-| 400 | `GRS-REQ-003` | 予算条件不足（業務ルール上必須とする場合） | 予算未指定 | 予算を入力してください。 |
+| 400 | `GRS-REQ-001` | 推薦条件が不正（型・形式・文字数超過等） | Validation 失敗 | 条件を確認してください。 |
 | 400 | `GRS-REQ-004` | 関係性未指定 | 必須項目不足 | 贈る相手を選択してください。 |
 | 400 | `GRS-REQ-005` | 用途未指定 | 必須項目不足 | ギフトの用途を選択してください。 |
 | 422 | `GRS-REQ-002` | 未対応の条件組み合わせ | 業務 Validation | この条件では現在レコメンドできません。 |
@@ -373,7 +372,10 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 | `execution.topK` | 指定時 1〜50 | `GRS-REQ-001` | 条件を確認してください。 |
 | `budget.budgetMin` / `budget.budgetMax` | 指定時 0 以上、かつ min ≤ max | `GRS-REQ-001` | 条件を確認してください。 |
 | `execution.candidateLimit` | 指定時 `topK` 以上 | `GRS-REQ-001` | 条件を確認してください。 |
+| テキスト最大長 | §6.4 の `maxLength` を超過しないこと | `GRS-REQ-001` | 条件を確認してください。 |
 | JSON 形式 | パース可能であること | `GRS-REQ-001` | 条件を確認してください。 |
+
+`budget` は業務必須としない（Human Review #359 反映）。`GRS-REQ-003`（予算未指定）は本 API では返却しない。
 
 ドメイン定義書 §8.3 の条件矛盾（preferred と NG の競合等）は、api 側で **警告または NG 優先** とする。HTTP 422 / `GRS-REQ-006` への落とし込みは実装仕様書 Task で詳細化する。
 
@@ -432,18 +434,23 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-02 | 初版（契約面のみ。Task #358 / 分離後モデル） | #358 |
+| 2026-06-04 | Human Review #359 反映（maxLength / 0件表現 / reasonSummary / resultStatus enum / 予算任意化） | #359 |
 
 ---
 
 ## 14. 未決事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 自由入力・好み/NG テキストの最大文字数 | API設計方針は制限を求めるがドメイン定義に数値なし | Human | - | OpenAPI `maxLength` に反映 |
-| 2 | 0 件時の `GRS-REC-001` の載せ方 | `meta.resultCode` vs `data` のみ | Human | - | エラーコード定義書は HTTP 200 + 業務コード |
-| 3 | `reasonSummary` の必須/任意 | Reason 生成失敗時の Response 形 | Human | - | 部分成功の許容 |
-| 4 | `resultStatus` enum 値 | `completed` / `empty` / `partial` 等 | Human | - | OpenAPI enum で固定 |
-| 5 | 予算の業務必須化 | `GRS-REQ-003` をいつ返すか | Human | - | 画面 UX と整合 |
+現時点の未決事項はなし（Human Review #359 で §14.1 の論点を確定済み）。
+
+### 14.1 Human Review 反映済み判断（PR #359）
+
+| No | 論点 | 確定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | 自由入力・好み/NG テキストの最大文字数 | `preferredText` / `nonPreferredText`: **500**、`ngText`: **300**、`freeText`: **800**、`relationshipLabel` / `occasionLabel`: **50** | §6.4・§9。OpenAPI `maxLength` に反映 |
+| 2 | 0 件時の `GRS-REC-001` の載せ方 | `meta.resultCode: "GRS-REC-001"` + `data.resultStatus: "empty"` + `data.displayMessage` | §7.4.2。HTTP Status は 200 |
+| 3 | `reasonSummary` の必須/任意 | 契約上は**任意**。原則は画面表示するが、Reason 生成のみ失敗し Response 本体は完成した場合は省略し、レコメンド結果はユーザーに表示する | §7.3.2 |
+| 4 | `resultStatus` enum 値 | `completed` / `empty` / `partial` | OpenAPI enum で固定 |
+| 5 | 予算の業務必須化 | **業務必須化しない**。`GRS-REQ-003` は本 API の Error 一覧から除外 | `budget` は Request 上 optional のまま |
 
 ---
 
@@ -473,10 +480,8 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 ### 16.1 Human Review で確認してほしいこと
 
 - 正式 Endpoint（`POST /api/v1/recommendations`）と MVP 非認証方針の最終確認
-- Response に含める `reasonSummary` の必須/任意（Reason 生成失敗時の扱い）
-- 0 件時の表現（`meta.resultCode: GRS-REC-001` を載せるか、§14 No.2）
-- 自由入力・好み/NG テキストの最大文字数（§14 No.1）
 - OpenAPI Contract Task への分離方針の確認
+- §14.1 の Human Review 反映内容が意図どおりか（再レビュー時）
 
 ---
 
