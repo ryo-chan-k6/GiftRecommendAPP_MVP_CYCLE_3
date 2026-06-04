@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-04                                |
-| 更新日         | 2026-06-05（§14 No.1 確定：`warnings` / `metricSummary` スキーマ。Issue #373） |
+| 更新日         | 2026-06-05（§14 No.3 確定：`scoreBreakdown` / `debugPayload` 返却条件。Issue #375） |
 
 ---
 
@@ -270,9 +270,18 @@ Recommendation Request 定義書 **§6**（データ項目定義）および **�
 | `metricSummary` | `object` | `false` | Reco 品質メトリクス用サマリ | `MetricSummary`（§7.3.5）。任意 |
 | `reasonData` | `object` | `false` | Reason 生成結果（内部） | API設計方針書 §21.3。Public へは api が必要項目のみ抽出 |
 | `resultItems` | `array` | `true` | 推薦結果 Item 一覧 | API設計方針書 §21.3 の `resultItems`。0 件時は **空配列 `[]`** |
-| `metadata` | `object` | `false` | バージョン・mode 等 | `evaluation` 時は推奨 |
+| `metadata` | `object` | `false` | バージョン・mode・debug 情報等 | `mode` は Request を反映。`debugPayload` は §7.3.8 参照 |
 
 **Transient（永続化しない）:** `warnings` / `metricSummary` は **本 API Response に限る Transient フィールド**とする。Recommendation Result 定義書・DB には保存しない（観測・分析の正本はログ・Observability設計書および metric 集計）。api は Public Response へ渡さない（API設計方針書 §21.3）。
+
+**`data.metadata`（Run 単位）**
+
+| フィールド | 型 | 必須 | 内容 | 備考 |
+| ---------- | -- | ---- | ---- | ---- |
+| `mode` | `string` | `false` | Request の `execution.mode` | `ui` / `evaluation` / `batch` |
+| `debugPayload` | `object` | `false` | 評価・デバッグ用 Run 単位情報 | Recommendation Result 定義書 `debug_payload` の API マッピング。§7.3.8 |
+
+`debugPayload` は **open object**（追加キー許容）。MVP 推奨キー: `evalCaseId`, `semanticConfigVersionId`, `modelVersionId`, `rankingConfigVersionId`, `phaseSummary`。詳細スキーマ固定は OpenAPI / 実装 Task とする。
 
 #### 7.3.2 `data.resultItems[]`（1 件あたり）
 
@@ -295,7 +304,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | `popularityScore` | `number` | `false` | 人気補助スコア | - |
 | `riskPenalty` | `number` | `false` | リスクペナルティ | - |
 | `finalScore` | `number` | `true` | 最終スコア | Public では非返却 |
-| `scoreBreakdown` | `object` | `false` | スコア内訳 | `includeDebugInfo=true` または evaluation 時は推奨 |
+| `scoreBreakdown` | `object` | `false` | スコア内訳 | debug返却条件（§7.3.8）を満たすとき**推奨**（契約上必須ではない） |
 | `reasonSummary` | `string` | `false` | 推薦理由（短文） | `includeReason=true` 時は原則返却。生成のみ失敗時は `reasonStatus` で管理し省略可 |
 | `recommendationReasonId` | `string` | `false` | 推薦理由 ID | Reason 生成成功時 |
 | `reasonStatus` | `string` | `false` | Reason 生成状態 | 生成失敗・省略時の状態管理 |
@@ -303,7 +312,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | `cautionNote` | `string` | `false` | 注意表示 | 任意 |
 | `isFallback` | `boolean` | `false` | Fallback 候補か | Recommendation Result 定義書 §6.2 |
 
-**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` 等を Public Response から除外する（API設計方針書 §21.3、API-PUB-002 契約仕様書（未作成）参照）。
+**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` / `metadata.debugPayload` 等を Public Response から除外する（API設計方針書 §21.3、API-PUB-002 契約仕様書（未作成）参照）。
 
 #### 7.3.3 `meta`
 
@@ -358,6 +367,48 @@ Retrieval 等の**モジュール内部** `error_code` と、本 API の `warnin
 | 内部（例） | API `warnings.code`（例） | 備考 |
 | ---------- | ------------------------- | ---- |
 | `RETRIEVAL_NO_CANDIDATES`（Retrieval定義書 §19） | `NO_CANDIDATES_AFTER_RETRIEVAL` | reco 実装でマッピング。契約上は API コードを正とする |
+
+#### 7.3.8 `scoreBreakdown` / `debugPayload` 返却条件（#375 確定）
+
+Recommendation Result 定義書 §9.2・§13.1 および Human 判断記録（`ai-logs/human-decisions/2026-06-05-api-int-002-score-breakdown-debug-return-policy.md`）に整合する。
+
+**用語: debug返却条件**
+
+以下のいずれかを満たす Request 条件。`batch` mode 単独では debug返却条件を満たさない（Offline Evaluation は `mode=evaluation` を使用。インターフェース一覧 IF-SHARED-004 参照）。
+
+```text
+execution.mode = evaluation
+OR execution.includeDebugInfo = true
+```
+
+**返却条件マトリクス**
+
+| mode | includeDebugInfo | `resultItems[].scoreBreakdown` | `data.metadata.debugPayload` |
+| ---- | ---------------- | ------------------------------ | ---------------------------- |
+| ui | false | 省略 | 省略 |
+| ui | true | 推奨 | 推奨 |
+| evaluation | false / true | 推奨 | 推奨 |
+| batch | false | 省略 | 省略 |
+| batch | true | 推奨 | 推奨 |
+
+**必須度:** 上記「推奨」は契約上**必須ではない**。欠落しても HTTP **200** を維持する（Validation エラーにしない）。
+
+**欠落時の tolerant 処理**
+
+| 項目 | 方針 |
+| ---- | ---- |
+| HTTP Status | 200 維持 |
+| 内部記録 | Recommendation Result 定義書 §13.1 `SCORE_BREAKDOWN_MISSING` 相当を **phase_log / error_log** に記録 |
+| `warnings[]` | **載せない**（§7.3.4 のパイプライン品質診断用途と分離） |
+
+**ドメイン ↔ API マッピング**
+
+| ドメイン（Recommendation Result） | Internal API |
+| ----------------------------------- | ------------ |
+| `score_breakdown`（Item 単位） | `data.resultItems[].scoreBreakdown` |
+| `debug_payload`（Run 単位） | `data.metadata.debugPayload` |
+
+`scoreBreakdown` の JSON 内部キー詳細は Ranking 定義書・実装 Task で確定する（本契約では open object として扱う）。
 
 ### 7.4 Response Example
 
@@ -561,6 +612,11 @@ OpenAPI Contract Task で反映する差分（#373 確定分）:
 - `MetricSummary` の固定 properties（`recommendationLatencyMs` / `phaseDurationMs` / `featureDistribution`）
 - 0 件例: `resultStatus: completed`（`empty` は 0 件正規系に使わない）、`warnings` をオブジェクト配列に合わせる
 
+OpenAPI Contract Task で反映する差分（#375 確定分・本 Task では YAML 未変更）:
+
+- `metadata.debugPayload`（open object・optional）
+- `scoreBreakdown` の返却条件を description で §7.3.8 参照
+
 Contract Gate 通過後に Implementation Task（`api-implementation-spec`）および apps/reco・apps/api 実装 Task を開始する。
 
 ---
@@ -586,6 +642,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 1 | 正常系 | 必須 Header + Body で 200、`resultItems` が 1 件以上、内部スコア項目（`contextScore` / `socialMatch` 等）あり | contract |
 | 2 | 0 件正常系 | 200、`resultItems: []`、`resultItemCount: 0`、`resultStatus: completed`、`warnings[].code`（例: `NO_CANDIDATES_AFTER_RETRIEVAL`）、`meta.resultCode: GRS-REC-001` | contract |
 | 8 | warnings / metricSummary | `WarningItem` 形式、`metricSummary` の mean/p95（任意項目） | contract |
+| 9 | scoreBreakdown / debugPayload | debug返却条件（§7.3.8）を満たす Request で `scoreBreakdown` / `metadata.debugPayload` が推奨返却。欠落時も 200、`warnings` 非追加 | contract |
 | 3 | validation error | `recommendationRequestId` 欠落で 400 | contract |
 | 4 | auth error | `X-Internal-Api-Key` 欠落・不正で 401 | contract |
 | 5 | permission error | 権限不足相当で 403（`GRS-AUTH-002` 等） | contract |
@@ -604,6 +661,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 2026-06-04 | AI Review 指摘反映（`resultItems` / Result Status / Error / Validation / Observability 等） | #368 / #369 |
 | 2026-06-04 | Human Review 指摘対応：§14 未決事項を個別 Issue 化（#373〜#376） | #368 / #372 |
 | 2026-06-05 | §14 No.1 確定：`warnings`（`WarningItem`）/ `metricSummary`（mean・p95）、Transient 注記、MVP 警告コード 3 件 | #373 |
+| 2026-06-05 | §14 No.3 確定：`scoreBreakdown` / `debugPayload` 返却条件、§7.3.8、`metadata.debugPayload` マッピング | #375 |
 
 ---
 
@@ -611,11 +669,12 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 
 本節の論点は **人間判断待ち** として個別 Issue で管理する（作業計画の正本は Issue。契約仕様書は論点の参照先）。
 
-### 14.1 確定済み（#373）
+### 14.1 確定済み（#373 / #375）
 
 | No | 論点 | 決定内容 | 参照 |
 | --: | ---- | -------- | ---- |
 | 1 | `warnings` / `metricSummary` のスキーマ詳細 | `warnings`: `WarningItem[]`（`code` 必須）。`metricSummary`: `recommendationLatencyMs` / `phaseDurationMs` / `featureDistribution`（`mean`, `p95` のみ）。Transient（DB 非永続）。0 件は `resultStatus: completed` | §7.3.4〜§7.3.7 |
+| 3 | `scoreBreakdown` / `debug_payload` の返却条件 | debug返却条件 = `mode=evaluation` OR `includeDebugInfo=true`。両フィールドは**推奨**（必須ではない）。`debug_payload` → `data.metadata.debugPayload`。欠落時はログのみ・200 継続。`batch`+`includeDebugInfo=false` は省略 | §7.3.8 |
 
 OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract Task** とする。
 
@@ -624,7 +683,6 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 | 追跡 Issue |
 | --: | ---- | ---------------- | ------ | ---- | ---- | ---------- |
 | 2 | Internal 401 の Public へのマップ方針 | `GRS-AUTH-*` を web に露出しない変換ルール | Human + api 実装 Task | 実装仕様書作成時 | §8.2 | #374 |
-| 3 | `scoreBreakdown` / `debug_payload` の返却条件 | evaluation / `includeDebugInfo` 時の必須度 | Human Review | Contract Gate 前 | Recommendation Result 定義書 §9.2 参照 | #375 |
 | 4 | `reasonSummary` / `reasonData` の必須/任意（Internal） | Reason 生成のみ失敗時の省略可否、`reasonData` スキーマ | Human Review | Contract Gate 前 | Reason生成定義書・API-PUB-002 参照 | #376 |
 
 ---
@@ -665,6 +723,7 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
 - 正式 Endpoint（`POST /internal/reco/v1/recommendations/run`）と api→reco I/F 境界
 - Request Body に `recommendationRequestId` + 正規化済み `recommendationRequest` を含める方針
 - Internal Response の `warnings` / `metricSummary` が §7.3.4〜§7.3.7 と一致しているか（#373 確定分）
+- `scoreBreakdown` / `metadata.debugPayload` の返却条件が §7.3.8 と human-decisions で一致しているか（#375 確定分）
 - OpenAPI Contract Task への分離方針（`internal-reco-api.yaml`）
 - 上流 API-PUB-002 契約仕様書との整合（0 件・reason・予算任意化）
 
