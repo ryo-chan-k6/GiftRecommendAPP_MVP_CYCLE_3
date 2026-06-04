@@ -37,6 +37,25 @@ test("extractLatestFixCompleteCommentFromTranscript: テンプレート形式を
   assert.match(body, /ready_for_ai_review/);
 });
 
+test("extractLatestFixCompleteCommentFromTranscript: テンプレート全文をログ prefix 付きで抽出", () => {
+  const transcript = [
+    "2026-06-04T07:43:39.0581671Z # Fix Review Comments Result",
+    "2026-06-04T07:43:39.0886163Z",
+    "2026-06-04T07:43:39.0886163Z ## 1. 対応結果",
+    "2026-06-04T07:43:39.3669029Z | Fix Outcome | `ready_for_ai_review` |",
+    "2026-06-04T07:43:39.7288016Z | 対象PR | `#359` |",
+    "2026-06-04T07:43:46.4693163Z ## 12. Status更新意図",
+    "2026-06-04T07:43:46.5199719Z | 次Status | `AI Review` |",
+    "2026-06-04T07:43:46.5199719Z ---",
+  ].join("\n");
+  const body = fallback.extractLatestFixCompleteCommentFromTranscript(transcript, {
+    prNumber: 359,
+  });
+  assert.match(body, /Fix Review Comments Result/);
+  assert.match(body, /ready_for_ai_review/);
+  assert.doesNotMatch(body, /harness-fallback: synthesized/);
+});
+
 test("extractLatestFixCompleteCommentFromTranscript: Command 出力形式から合成", () => {
   const body = fallback.extractLatestFixCompleteCommentFromTranscript(COMMAND_OUTPUT, {
     prNumber: 359,

@@ -46,7 +46,7 @@ Organization 移行は MVP Cycle 3 では行わない。bot は **Collaborator�
 
 ## 5. AI Agent 作業前の必須手順
 
-GitHub へ **書き込む** 操作（commit / push / `gh issue create` / `gh pr create` / `publish-ai-review-and-dispatch.cjs`）の前:
+GitHub へ **書き込む** 操作（commit / push / `gh issue create` / `gh pr create` / **既存 PR への追加 push** / `gh pr edit` / `publish-ai-review-and-dispatch.cjs` / `publish-fix-complete-and-dispatch.cjs`）の前:
 
 ```bash
 node .github/scripts/gh-bot-auth.cjs verify
@@ -71,7 +71,7 @@ commit author は bot 名義に揃える（`print-git-user` の JSON を `git -c
 
 ## 7. 禁止事項
 
-- 人間 PAT で AI 作業用 PR を open すること（author が人間になり Human Review 不可）
+- 人間 PAT で AI 作業用 PR を open・更新すること（author が人間になり Human Review の Approve / Request changes 不可）
 - `GH_BOT_TOKEN` を Issue / PR / docs / リポジトリに記載すること
 - machine account で Human Review（Approve / Request changes）すること
 - machine account で merge すること
