@@ -93,7 +93,12 @@ push / commit の前に bot 認証を確認する（[github-operation.mdc](../..
 ```bash
 node .github/scripts/gh-bot-auth.cjs verify
 eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+GIT_USER_JSON="$(node .github/scripts/gh-bot-auth.cjs print-git-user)"
+GIT_NAME="$(node -e "console.log(JSON.parse(process.argv[1]).name)" "$GIT_USER_JSON")"
+GIT_EMAIL="$(node -e "console.log(JSON.parse(process.argv[1]).email)" "$GIT_USER_JSON")"
 ```
+
+commit は **必ず** bot 名義（例: `git -c user.name="$GIT_NAME" -c user.email="$GIT_EMAIL" commit ...`）。push は `GH_BOT_TOKEN` を `GH_TOKEN` に export した状態で行う。人間アカウントの `gh auth login` のまま push しない（PR author が人間になり Human Review 不可）。
 
 ### 1. Issueを確認する
 

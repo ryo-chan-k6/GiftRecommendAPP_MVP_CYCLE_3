@@ -382,6 +382,14 @@ eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
 
 PR 作成後、`gh pr view <番号> --json author --jq .author.login` が `.github/ai-bot-account.json` の `machine_account_login` であることを確認する。
 
+**PR 作成後の更新（必須）:** レビュー指摘対応や本文修正で **追加 commit / push** する場合も、§11 と同様に `GH_BOT_TOKEN`（`okuri-ai-bot`）を用いる。人間アカウントで push すると author が人間のまままたは混在し、`ryo-chan-k6` が Request changes / Approve できなくなる。
+
+```bash
+# push 例（token は print-setup 後の GH_TOKEN=GH_BOT_TOKEN を使用）
+git push "https://x-access-token:${GH_BOT_TOKEN}@github.com/<owner>/<repo>.git" HEAD:<branch>
+# または gh auth が bot のとき: git push origin HEAD:<branch>
+```
+
 PR作成時に確認すること。
 
 - PR titleが適切か

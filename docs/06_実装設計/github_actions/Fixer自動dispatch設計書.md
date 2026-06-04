@@ -183,6 +183,11 @@ node .github/scripts/dispatch-fix-review-harness.cjs \
 
 Definition Run Harness 本体が失敗した場合は [Definition Run Harnessワークフロー仕様書](./Definition%20Run%20Harnessワークフロー仕様書.md) §16.2 に従う（Fixer harness live-run の recovery）。
 
+| 失敗種別 | 典型原因 | recovery |
+| -------- | -------- | -------- |
+| post-verify Branch 違反 | （修正前）PR head への正当 push を誤検知 | develop に Task #360 修正を取り込み再 dispatch |
+| Agent 成功・fix-complete 未投稿 | Cloud Agent の GitHub write 不可 | Harness `publish-fix-complete-harness-fallback`（`GH_BOT_TOKEN`）または手動 `publish-fix-complete-and-dispatch.cjs` / fix-ready workflow_dispatch |
+
 ---
 
 ## 9. Status 遷移（参考）
