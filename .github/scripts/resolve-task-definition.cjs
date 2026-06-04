@@ -94,6 +94,16 @@ function findTaskDefinitionByFilenameSummary(workspaceRoot, summary) {
   return matches;
 }
 
+function preferContractSpecDefinitionPath(paths) {
+  const list = [...new Set(paths || [])];
+  if (list.length <= 1) return list[0] || "";
+  const contractPaths = list.filter((candidate) =>
+    /\/api-contract-spec\.ya?ml$/i.test(candidate),
+  );
+  if (contractPaths.length === 1) return contractPaths[0];
+  return "";
+}
+
 function pickTaskDefinitionFromChangedFiles(changedFiles, branchInfo) {
   const taskFiles = (changedFiles || [])
     .map((entry) => (typeof entry === "string" ? entry : entry?.filename || ""))
@@ -102,6 +112,9 @@ function pickTaskDefinitionFromChangedFiles(changedFiles, branchInfo) {
   if (taskFiles.length === 1) {
     return taskFiles[0];
   }
+
+  const contractPick = preferContractSpecDefinitionPath(taskFiles);
+  if (contractPick) return contractPick;
 
   if (branchInfo?.summary) {
     const summary = branchInfo.summary.toLowerCase();
@@ -112,6 +125,8 @@ function pickTaskDefinitionFromChangedFiles(changedFiles, branchInfo) {
     if (summaryMatches.length === 1) {
       return summaryMatches[0];
     }
+    const contractFromSummary = preferContractSpecDefinitionPath(summaryMatches);
+    if (contractFromSummary) return contractFromSummary;
   }
 
   return "";
@@ -153,12 +168,24 @@ function resolveTaskDefinition({
   }
 
   const branchInfo = resolver.parseBranchRef(headRef);
-  const resolvedIssueNumber = issueNumber || branchInfo?.issueNumber || null;
+  let resolvedIssueNumber = issueNumber || branchInfo?.issueNumber || null;
+  if (
+    branchInfo?.unit === "task" &&
+    branchInfo.issueNumber > 0 &&
+    issueNumber &&
+    branchInfo.issueNumber !== issueNumber
+  ) {
+    resolvedIssueNumber = branchInfo.issueNumber;
+  }
 
   if (branchInfo?.summary) {
     const fromSummary = resolver.findTaskDefinitionBySummary(workspace, branchInfo.summary);
     if (fromSummary.length === 1) {
       return { ok: true, path: fromSummary[0], source: "branch_summary" };
+    }
+    const contractFromSummary = preferContractSpecDefinitionPath(fromSummary);
+    if (contractFromSummary) {
+      return { ok: true, path: contractFromSummary, source: "branch_summary_contract_spec" };
     }
     if (fromSummary.length > 1) {
       return { ok: false, reason: "ambiguous_task_definition_by_summary", paths: fromSummary };
@@ -167,6 +194,10 @@ function resolveTaskDefinition({
     const fromFilename = findTaskDefinitionByFilenameSummary(workspace, branchInfo.summary);
     if (fromFilename.length === 1) {
       return { ok: true, path: fromFilename[0], source: "branch_summary_filename" };
+    }
+    const contractFromFilename = preferContractSpecDefinitionPath(fromFilename);
+    if (contractFromFilename) {
+      return { ok: true, path: contractFromFilename, source: "branch_summary_filename_contract_spec" };
     }
     if (fromFilename.length > 1) {
       return { ok: false, reason: "ambiguous_task_definition_by_summary", paths: fromFilename };
@@ -180,6 +211,10 @@ function resolveTaskDefinition({
 
   if (scored.length === 1) {
     return { ok: true, path: scored[0].path, source: "scan", score: scored[0].score };
+  }
+  const contractFromScored = preferContractSpecDefinitionPath(scored.map((entry) => entry.path));
+  if (contractFromScored) {
+    return { ok: true, path: contractFromScored, source: "scan_contract_spec" };
   }
 
   return {
