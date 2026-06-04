@@ -1,0 +1,171 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-definition-run-fix-review-post-verify-and-fallback"
+  title: "Definition Run:fix-review-comments post-verify除外とFix完了bot fallback"
+  summary: "fix-review-comments live-run で PR head branch push を post-verify 誤検知しないよう除外し、Fix 完了コメント・fix-ready dispatch を review-pr 対称の Harness bot fallback で自動化する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - 360
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  PR #359 / Harness run 26937995112 で、Fixer Cloud Agent は finished かつ PR head へ push 済みだが、
+  post-verify が fix-review-comments 時に PR head branch 更新を Branch 違反と誤判定して job が失敗した。
+  また Cloud Agent は GITHUB_TOKEN read のみのため fix-complete 投稿・fix-ready dispatch が未実施だった。
+  review-pr には post-verify head 除外と publish-ai-review-harness-fallback があるが、fix-review-comments には未整備。
+
+objective: |
+  fix-review-comments live-run の正常系（同一 PR head への push）で Harness が成功完走し、
+  Fix Outcome ready_for_ai_review 時に bot fallback 経由で fix-complete 投稿と fix-ready dispatch が行われるようにする。
+
+scope:
+  - "definition-run-post-verify.cjs（fix-review-comments + target_pr 時の head branch 除外）"
+  - "definition-run-post-verify.test.cjs"
+  - "publish-fix-complete-harness-fallback.cjs（新規）"
+  - "publish-fix-complete-harness-fallback.test.cjs（新規）"
+  - "definition-run.yml（Fix 完了 bot fallback ステップ）"
+  - "Definition Run Harnessワークフロー仕様書 §10.2 / §16"
+  - "Fixer自動dispatch設計書（bot fallback 追記）"
+  - "prompts/definitions/tasks/definition-run-harness/fix-review-post-verify-and-fallback.yaml（本 Task）"
+
+out_of_scope:
+  - "apps/** / packages/**"
+  - "fix-review-comments Command 本体（.cursor/commands）の出力形式変更"
+  - "post-verify の Phase D actor 区別ロジック全面有効化"
+  - "review-pr の既存 fallback / post-verify 挙動変更（回帰防止のため最小差分）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+      required: true
+  files:
+    - path: ".github/scripts/definition-run-post-verify.cjs"
+      required: true
+    - path: ".github/scripts/publish-ai-review-harness-fallback.cjs"
+      required: true
+    - path: ".github/scripts/publish-fix-complete-and-dispatch.cjs"
+      required: true
+    - path: ".github/workflows/definition-run.yml"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Fixer自動dispatch設計書.md"
+      action: "update"
+      required: true
+  files:
+    - path: ".github/scripts/definition-run-post-verify.cjs"
+      action: "update"
+      required: true
+    - path: ".github/scripts/publish-fix-complete-harness-fallback.cjs"
+      action: "create"
+      required: true
+    - path: ".github/workflows/definition-run.yml"
+      action: "update"
+      required: true
+
+deliverables:
+  - "fix-review-comments live-run の post-verify 誤検知解消"
+  - "Fix 完了 Harness bot fallback"
+  - "単体テスト"
+
+acceptance_criteria:
+  - "fix-review-comments + target_pr live-run で PR head branch への commit 更新が violation にならない"
+  - "別 branch への更新は引き続き violation"
+  - "fix-review-comments live-run 成功後、GH_BOT_TOKEN 設定時に publish-fix-complete-harness-fallback が fix-complete 投稿と fix-ready dispatch を行う（verify 済みなら skip）"
+  - "node --test で post-verify / fix-complete fallback テストが pass"
+  - "Harness 仕様書に fix-review-comments の head 除外と bot fallback が記載されている"
+
+branch:
+  name: "fix/task-360-definition-run-fix-review-harness"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "infra"
+
+project:
+  fields:
+    status: "Todo"
+    phase: "06_実装設計"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+milestone:
+  name: null
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "review-pr との対称性（head 除外・bot fallback）"
+    - "別 branch 新規作成は引き続き違反"
+    - "fix-complete コメント形式（テンプレート / Command 出力）の抽出"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  required:
+    - "node --test .github/scripts/definition-run-post-verify.test.cjs"
+    - "node --test .github/scripts/publish-fix-complete-harness-fallback.test.cjs"
+  commands:
+    - "node --test .github/scripts/definition-run-post-verify.test.cjs"
+    - "node --test .github/scripts/publish-fix-complete-harness-fallback.test.cjs"
+  manual_checks:
+    - "develop merge 後、request_changes 経路で Harness fix-review-comments が Guard Violations None で完走すること（任意・別検証）"
+  not_required:
+    - "apps integration test"
+  skip_reason:
+    "apps integration test": "Harness スクリプト・workflow のみ"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+
+notes:
+  - "事象: Actions run 26937995112（PR #359）"
+  - "正本: Definition Run Harnessワークフロー仕様書 §10.2 / §16"
