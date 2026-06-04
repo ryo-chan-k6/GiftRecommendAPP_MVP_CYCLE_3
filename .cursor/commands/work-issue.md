@@ -24,7 +24,7 @@ Issue作成・Branch作成が未完了の場合は、原則として `/start-tas
 例：
 
 ```text
-/work-issue @prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml
+/work-issue @prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml
 ```
 Definitionなしでの実行は原則禁止する。
 

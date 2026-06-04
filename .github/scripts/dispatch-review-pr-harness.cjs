@@ -4,6 +4,7 @@ const slack = require("./slack-notify.cjs");
 const resolver = require("./resolve-review-definition.cjs");
 const taskResolver = require("./resolve-task-definition.cjs");
 const harness = require("./dispatch-definition-run.cjs");
+const requestIssueResolver = require("./resolve-harness-request-issue.cjs");
 
 function nonEmpty(value) {
   return String(value || "").trim();
@@ -371,11 +372,14 @@ async function dispatchReviewPrHarness({
     return { ok: true, skipped: true, reason: "fork_pr" };
   }
 
-  const relatedIssue =
-    Number(issueNumber) ||
-    Number(slack.relatedIssueNumber(pull.body || "")) ||
-    resolver.parseBranchRef(pull.head?.ref || "")?.issueNumber ||
-    null;
+  const workspace = nonEmpty(workspaceRoot) || process.cwd();
+  let relatedIssue =
+    requestIssueResolver.resolveHarnessRequestIssue({
+      workspaceRoot: workspace,
+      pull,
+      issueNumberArg: issueNumber,
+      reviewDefinitionPath: definition,
+    }) || null;
 
   let issueBody = "";
   let issueLabels = [];
@@ -429,7 +433,6 @@ async function dispatchReviewPrHarness({
     };
   }
 
-  const workspace = nonEmpty(workspaceRoot) || process.cwd();
   const headRef = pull.head?.ref || "";
   const reviewResolution = await resolveReviewDefinitionForPull({
     workspaceRoot: workspace,
@@ -485,6 +488,14 @@ async function dispatchReviewPrHarness({
       task_definition: aiReviewGate.task_definition || null,
     };
   }
+
+  relatedIssue =
+    requestIssueResolver.resolveHarnessRequestIssue({
+      workspaceRoot: workspace,
+      pull,
+      issueNumberArg: issueNumber,
+      reviewDefinitionPath: reviewResolution.path,
+    }) || relatedIssue;
 
   const dispatchResult = await harness.dispatchDefinitionRun({
     owner: resolvedRepo.owner,

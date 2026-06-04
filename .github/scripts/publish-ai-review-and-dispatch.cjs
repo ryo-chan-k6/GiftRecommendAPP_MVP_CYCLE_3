@@ -5,7 +5,10 @@ const slack = require("./slack-notify.cjs");
 const dispatch = require("./dispatch-pr-review-status-sync.cjs");
 
 const STATUS_SYNC_WORKFLOW_FILE = "pr-review-status-sync.yml";
+const STATUS_SYNC_PROJECT_JOB_NAME = "sync-project-status";
 const DISPATCH_RUN_TITLE_RE = /status-sync · dispatch · PR #(\d+)/;
+const STATUS_SYNC_VERIFY_POLL_MS = 5000;
+const STATUS_SYNC_VERIFY_MAX_WAIT_MS = 120000;
 
 // Cloud Agent が本文を自身のサンドボックスへ退避し、コメント本文を省略・参照で
 // 代替してしまう切り詰めパターン。これらを含む本文は不完全とみなし投稿を拒否する。
@@ -252,17 +255,75 @@ function findLatestAiReviewComment(comments, { sinceIso } = {}) {
   });
 }
 
-function findDispatchRunAfterComment({ runs, prNumber, sinceIso }) {
+function filterDispatchRunsAfterComment({ runs, prNumber, sinceIso }) {
   const since = new Date(sinceIso).getTime();
   const pr = String(prNumber);
-  return (runs || []).find((run) => {
+  return (runs || []).filter((run) => {
     const title = String(run.display_title || run.name || "");
     const match = DISPATCH_RUN_TITLE_RE.exec(title);
     if (!match || match[1] !== pr) return false;
     const created = new Date(run.created_at).getTime();
     if (Number.isNaN(created) || created < since) return false;
-    return run.status === "completed" && run.conclusion === "success";
+    return true;
   });
+}
+
+async function fetchWorkflowRunJobs({ owner, repo, runId, token, fetchImpl }) {
+  const send = fetchImpl || global.fetch;
+  const response = await send(
+    `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/jobs`,
+    { headers: authHeaders(token) },
+  );
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Failed to list workflow jobs: HTTP ${response.status} ${text}`.trim());
+  }
+  const data = await response.json();
+  return data.jobs || [];
+}
+
+async function statusSyncProjectJobSucceeded({ owner, repo, run, token, fetchImpl }) {
+  if (!run || run.status !== "completed") return false;
+  try {
+    const jobs = await fetchWorkflowRunJobs({
+      owner,
+      repo,
+      runId: run.id,
+      token,
+      fetchImpl,
+    });
+    const syncJob = jobs.find((job) => job.name === STATUS_SYNC_PROJECT_JOB_NAME);
+    if (syncJob) {
+      return syncJob.status === "completed" && syncJob.conclusion === "success";
+    }
+  } catch {
+    // workflow jobs API が利用できない場合は workflow 全体の conclusion にフォールバック
+  }
+  return run.conclusion === "success";
+}
+
+async function findDispatchRunAfterComment({
+  owner,
+  repo,
+  runs,
+  prNumber,
+  sinceIso,
+  token,
+  fetchImpl,
+}) {
+  const candidates = filterDispatchRunsAfterComment({ runs, prNumber, sinceIso }).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  for (const run of candidates) {
+    if (await statusSyncProjectJobSucceeded({ owner, repo, run, token, fetchImpl })) {
+      return run;
+    }
+  }
+  return null;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function verifyAiReviewDispatch({
@@ -273,6 +334,7 @@ async function verifyAiReviewDispatch({
   token,
   sinceIso,
   fetchImpl,
+  pollMaxWaitMs = STATUS_SYNC_VERIFY_MAX_WAIT_MS,
   listComments = listIssueComments,
   listRuns = listStatusSyncDispatchRuns,
 }) {
@@ -301,17 +363,29 @@ async function verifyAiReviewDispatch({
   }
 
   const extracted = slack.extractReviewResultFromAiComment(latestAiComment.body || "");
-  const runs = await listRuns({
-    owner: resolved.owner,
-    repo: resolved.repo,
-    token: authToken,
-    fetchImpl,
-  });
-  const matchedRun = findDispatchRunAfterComment({
-    runs,
-    prNumber,
-    sinceIso: latestAiComment.created_at,
-  });
+  const sinceForRuns = latestAiComment.created_at;
+  const waitMs = Number.isFinite(pollMaxWaitMs) ? Math.max(0, pollMaxWaitMs) : STATUS_SYNC_VERIFY_MAX_WAIT_MS;
+  const deadline = Date.now() + waitMs;
+  let matchedRun = null;
+  do {
+    const runs = await listRuns({
+      owner: resolved.owner,
+      repo: resolved.repo,
+      token: authToken,
+      fetchImpl,
+    });
+    matchedRun = await findDispatchRunAfterComment({
+      owner: resolved.owner,
+      repo: resolved.repo,
+      runs,
+      prNumber,
+      sinceIso: sinceForRuns,
+      token: authToken,
+      fetchImpl,
+    });
+    if (matchedRun || waitMs === 0 || Date.now() >= deadline) break;
+    await sleep(STATUS_SYNC_VERIFY_POLL_MS);
+  } while (Date.now() <= deadline);
 
   if (!matchedRun) {
     const recovery = buildRecoveryCommand({
