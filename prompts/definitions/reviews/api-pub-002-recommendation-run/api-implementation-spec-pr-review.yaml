@@ -1,0 +1,106 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-implementation-spec-pr"
+  title: "API-PUB-002 レコメンド実行API実装仕様書 PRレビュー"
+  summary: "API-PUB-002 実装仕様書作成 Task（#364）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue:
+    number: 364
+  task_definition: null
+  source_branch: "docs/task-364-api-pub-002-recommendation-run-api-spec"
+  target_branch: "feature/epic-357-api-pub-002-recommendation-run"
+  parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  parent_epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  issue:
+    number: 364
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-357-api-pub-002-recommendation-run"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+  templates:
+    deliverables:
+      - path: "prompts/templates/docs/api-implementation-spec.md"
+        required: true
+        applies_to:
+          - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+
+review_points:
+  common:
+    - "契約仕様書（PR #359）と矛盾する Public I/F 再定義がないか"
+    - "OpenAPI / apps 実装が混入していないか"
+    - "epic_scope 内の docs のみか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "実装仕様書が api-implementation-spec テンプレートに沿っている"
+      - "契約仕様書への参照が正しい"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+notes:
+  - "Task Definition は Epic 分割モデルに合わせ Issue #364 で実装仕様書のみ作成"
