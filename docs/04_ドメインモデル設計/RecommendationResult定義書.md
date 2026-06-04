@@ -470,6 +470,8 @@ flowchart TD
 | `debug_payload`             | evaluation / debug modeのみ返却     |
 | `version情報`               | evaluation / debug modeでは返却推奨 |
 
+> **debug mode / debug返却条件（API-INT-002）:** 本表の「debug時」「evaluation / debug mode」は、API-INT-002 契約仕様書 §7.3.8 の **debug返却条件**（`execution.mode = evaluation` OR `execution.includeDebugInfo = true`）に対応する。`score_breakdown` は `data.resultItems[].scoreBreakdown`、`debug_payload` は `data.metadata.debugPayload` にマッピングする（Issue #375）。
+
 ---
 
 ## 10. DB・実装上の扱い
