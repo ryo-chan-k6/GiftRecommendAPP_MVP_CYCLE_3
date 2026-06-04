@@ -371,6 +371,26 @@ jobs:
             --since "${STARTED_AT}"
           echo "::endgroup::"
 
+      - name: Publish Fix complete (bot fallback)
+        if: success() && steps.resolve.outputs.command == 'fix-review-comments' && steps.resolve.outputs.run_mode == 'live-run'
+        env:
+          GH_BOT_TOKEN: ${{ secrets.GH_BOT_TOKEN }}
+          TARGET_PR: ${{ steps.resolve.outputs.target_pr }}
+          RESULT_JSON: ${{ runner.temp }}/definition-run-result.json
+        run: |
+          set -euo pipefail
+          echo "::group::publish-fix-complete-bot-fallback"
+          if [ -z "${GH_BOT_TOKEN:-}" ]; then
+            echo "::error::missing_gh_bot_token secret is required for fix-review-comments live-run publish fallback"
+            exit 1
+          fi
+          node .github/scripts/publish-fix-complete-harness-fallback.cjs \
+            --repository "${{ github.repository }}" \
+            --pr "${TARGET_PR}" \
+            --transcript "${RUNNER_TEMP}/definition-run-transcript.log" \
+            --result-json "${RESULT_JSON}"
+          echo "::endgroup::"
+
       - name: Post-run verification
         if: always()
         id: postverify
