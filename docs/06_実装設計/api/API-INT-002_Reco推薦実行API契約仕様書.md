@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-04                                |
-| 更新日         | 2026-06-04                                |
+| 更新日         | 2026-06-04（AI Review 指摘反映）          |
 
 ---
 
@@ -83,7 +83,8 @@ api が Public API（API-PUB-002）で Recommendation Request を受け付け・
 | ---- | ---- |
 | 上流 API ID | `API-PUB-002`（レコメンド実行） |
 | Method / Endpoint | `POST` `/api/v1/recommendations` |
-| 契約正本 | `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` |
+| 契約正本（現時点） | `docs/05_アプリケーション設計/アプリ/api/API一覧.md`（API-PUB-002 行）、`docs/05_アプリケーション設計/アプリ/api/API設計方針書.md` §21（Public / Internal 境界） |
+| 契約仕様書（未作成） | `API-PUB-002_レコメンド実行API契約仕様書.md` は別 Task 成果物。本 Task では参照のみとし、未作成ファイルを正本として記載しない |
 | 本書との境界 | Request/Response の **Internal 向け I/F** のみ本書で定義。api による Public↔Internal 変換・エラー整形は実装仕様書 Task で定義 |
 
 ---
@@ -127,32 +128,36 @@ api が保存済みの Recommendation Request を **正規化済み JSON** と�
 
 #### 6.4.2 `recommendationRequest`（検証済み推薦条件）
 
-Recommendation Request 定義書 §7 および API-PUB-002 契約仕様書の Request Body に準拠。api 側で Public 入力を検証・正規化した後の確定値を渡す。
+Recommendation Request 定義書 **§6**（データ項目定義）および **§8.2**（値域チェック）に準拠。api 側で Public 入力を検証・正規化した後の確定値を渡す。物理名（snake_case）から Internal I/F 用 camelCase へマッピングする。
 
 | 項目 | 型 | 必須 | 内容 | 制約 | 例 |
 | ---- | -- | ---- | ---- | ---- | -- |
 | `relationship` | `object` | `true` | 贈答相手（関係性） | `relationshipCode` 必須 | - |
 | `relationship.relationshipCode` | `string` | `true` | 関係性コード | マスタコード体系に整合 | `boss` |
-| `relationship.relationshipLabel` | `string` | `false` | 関係性表示名 | 最大 **50** 文字 | `上司` |
+| `relationship.relationshipLabel` | `string` | `false` | 関係性表示名 | api 側で正規化済み | `上司` |
 | `occasion` | `object` | `true` | ギフト用途 | `occasionCode` 必須 | - |
 | `occasion.occasionCode` | `string` | `true` | 用途コード | マスタコード体系に整合 | `thanks` |
-| `occasion.occasionLabel` | `string` | `false` | 用途表示名 | 最大 **50** 文字 | `お礼` |
+| `occasion.occasionLabel` | `string` | `false` | 用途表示名 | api 側で正規化済み | `お礼` |
 | `budget` | `object` | `false` | 予算条件 | `budgetMin` / `budgetMax` は 0 以上。両方指定時は `budgetMin <= budgetMax` | - |
 | `budget.budgetMin` | `integer` | `false` | 予算下限（JPY） | 0 以上 | `3000` |
 | `budget.budgetMax` | `integer` | `false` | 予算上限（JPY） | 0 以上 | `5000` |
 | `budget.currency` | `string` | `false` | 通貨 | MVP は `JPY` 固定想定 | `JPY` |
 | `budget.taxIncluded` | `boolean` | `false` | 税込みフラグ | - | `true` |
 | `preferredCondition` | `object` | `false` | 好み・期待する方向性 | - | - |
-| `preferredCondition.preferredText` | `string` | `false` | 好みテキスト | 最大 **500** 文字 | `上品で感謝が伝わるもの` |
+| `preferredCondition.preferredText` | `string` | `false` | 好みテキスト | api 側で正規化済み | `上品で感謝が伝わるもの` |
+| `preferredCondition.preferredKeywords` | `array` | `false` | 好みキーワード | 要素は `string` | `["上品", "感謝"]` |
 | `nonPreferredCondition` | `object` | `false` | 避けたい傾向 | - | - |
-| `nonPreferredCondition.nonPreferredText` | `string` | `false` | 避けたい条件テキスト | 最大 **500** 文字 | `カジュアルすぎるものは避けたい` |
+| `nonPreferredCondition.nonPreferredText` | `string` | `false` | 避けたい条件テキスト | api 側で正規化済み | `カジュアルすぎるものは避けたい` |
+| `nonPreferredCondition.nonPreferredKeywords` | `array` | `false` | 避けたいキーワード | 要素は `string` | `["カジュアルすぎる"]` |
 | `ngCondition` | `object` | `false` | 絶対 NG 条件 | - | - |
-| `ngCondition.ngText` | `string` | `false` | NG テキスト | 最大 **300** 文字 | `アルコールはNG` |
-| `freeText` | `string` | `false` | 自由記述 | 最大 **800** 文字 | `退職する上司へのお礼` |
+| `ngCondition.ngText` | `string` | `false` | NG テキスト | api 側で正規化済み | `アルコールはNG` |
+| `ngCondition.ngKeywords` | `array` | `false` | NG キーワード | 要素は `string` | `["アルコール"]` |
+| `ngCondition.ngCategories` | `array` | `false` | NG カテゴリ | 要素は `string` | `["alcohol"]` |
+| `freeText` | `string` | `false` | 自由記述 | api 側で正規化済み | `退職する上司へのお礼` |
 | `execution` | `object` | `true` | 実行条件 | `mode` 必須 | - |
 | `execution.mode` | `string` | `true` | 実行モード | `ui` / `evaluation` / `batch` | `ui` |
 | `execution.topK` | `integer` | `false` | 返却件数 | 1〜50。未指定時デフォルト **10**（ui） | `10` |
-| `execution.candidateLimit` | `integer` | `false` | 候補抽出上限 | `topK` 以上。未指定時デフォルト **50**（ui） | `50` |
+| `execution.candidateLimit` | `integer` | `false` | 候補抽出上限 | **`topK` 以上**（Recommendation Request §8.2）。未指定時デフォルト **50**（ui） | `50` |
 | `execution.includeReason` | `boolean` | `false` | 推薦理由を含めるか | ui ではデフォルト **true** | `true` |
 | `execution.includeDebugInfo` | `boolean` | `false` | デバッグ情報 | `evaluation` 等で **true** 可。ui では **false** 想定 | `false` |
 | `execution.evalCaseId` | `string` | `false` | 評価ケース ID | `mode=evaluation` 時に使用 | - |
@@ -202,6 +207,19 @@ Recommendation Request 定義書 §7 および API-PUB-002 契約仕様書の Re
 }
 ```
 
+### 6.6 Observability（契約露出範囲）
+
+契約上、Request / Response に含める（または Header で往復する）識別子は以下とする。access_log / phase_log / error_log / metric の**実装・記録詳細**は実装仕様書 Task で扱う（ログ・Observability設計書を正本とする）。
+
+| 項目 | 露出箇所 | 必須 | 内容 |
+| ---- | -------- | ---- | ---- |
+| `traceId` | Request Header `X-Trace-Id` / Response `meta.traceId` | `true` | 横断追跡 ID。api から reco へ引き継ぎ、Response で一致させる |
+| `requestId` | Request Header `X-Request-Id` / Response `meta.requestId` | `true` | API リクエスト ID |
+| `recommendationRunId` | Response `data.recommendationRunId` | `true`（成功時） | 推薦 Run 追跡。phase_log / metric の相関キー |
+| `recommendationRequestId` | Request Body / Response `data.recommendationRequestId` | `true` | 推薦リクエスト ID |
+| `recommendationResultId` | Response `data.recommendationResultId` | `true`（成功時） | 推薦結果 ID |
+| phase / metric 詳細 | Response `metricSummary` 等（任意） | `false` | 契約上は概要のみ。キー構造は OpenAPI Task で確定（§14 未決事項） |
+
 ---
 
 ## 7. Response仕様
@@ -219,10 +237,11 @@ Recommendation Request 定義書 §7 および API-PUB-002 契約仕様書の Re
 | 200 | 処理成功（推薦結果あり、または 0 件の正常系） | 推薦パイプラインが完了し Response を返却できる場合 |
 | 400 | Request 不正 | 必須項目欠落・型不正・値域違反等 |
 | 401 | 認証失敗 | `X-Internal-Api-Key` 不正または未指定 |
+| 403 | 権限不足 | Internal API への不正アクセス・操作拒否（`GRS-AUTH-002` 等） |
 | 422 | 業務的 Validation 失敗 | 未対応条件・実行不可な条件組み合わせ等 |
 | 500 | 内部エラー | Reco パイプライン失敗（`GRS-REC-002` 等） |
 | 502 | 外部依存エラー | LLM / Embedding / 外部 API 失敗 |
-| 503 | 一時利用不可 | DB 接続失敗等 |
+| 503 | 一時利用不可 | DB 接続失敗等（`GRS-COM-003`） |
 | 504 | タイムアウト | 推薦処理タイムアウト（`GRS-REC-101`） |
 
 **0 件結果:** HTTP **200**。異常終了ではない（エラーコード定義書 `GRS-REC-001` 補足、API設計方針書 §9.2）。
@@ -238,7 +257,7 @@ Recommendation Request 定義書 §7 および API-PUB-002 契約仕様書の Re
 | `recommendationRunId` | `string` | `true` | 推薦実行 ID | reco 側で生成 |
 | `recommendationResultId` | `string` | `true` | 推薦結果 ID | - |
 | `recommendationRequestId` | `string` | `true` | 推薦リクエスト ID | Request と一致 |
-| `resultStatus` | `string` | `true` | 結果状態 | enum: `completed` / `empty` / `partial` |
+| `resultStatus` | `string` | `true` | 結果状態 | Recommendation Result 定義書 §7 準拠。MVP 返却値: `completed` / `completed_with_fallback` / `partial`。0 件も `completed`（`resultItemCount: 0`） |
 | `topK` | `integer` | `true` | 要求返却件数 | Request の `execution.topK` を反映 |
 | `resultItemCount` | `integer` | `true` | 返却 Item 件数 | 0 件時は `0` |
 | `fallbackUsed` | `boolean` | `true` | Fallback 利用有無 | MVP では原則 `false` |
@@ -249,10 +268,11 @@ Recommendation Request 定義書 §7 および API-PUB-002 契約仕様書の Re
 | `candidateCounts.rankingCount` | `integer` | `false` | Ranking 対象数 | - |
 | `warnings` | `array` | `false` | 警告一覧 | 0 件・Feature 偏り等（文字列またはコードオブジェクト。OpenAPI Task で確定） |
 | `metricSummary` | `object` | `false` | Reco 品質メトリクス用サマリ | 契約上は任意。詳細キーは OpenAPI Task で確定 |
-| `items` | `array` | `true` | 推薦結果 Item 一覧 | 0 件時は **空配列 `[]`** |
+| `reasonData` | `object` | `false` | Reason 生成結果（内部） | API設計方針書 §21.3。Public へは api が必要項目のみ抽出 |
+| `resultItems` | `array` | `true` | 推薦結果 Item 一覧 | API設計方針書 §21.3 の `resultItems`。0 件時は **空配列 `[]`** |
 | `metadata` | `object` | `false` | バージョン・mode 等 | `evaluation` 時は推奨 |
 
-#### 7.3.2 `data.items[]`（1 件あたり）
+#### 7.3.2 `data.resultItems[]`（1 件あたり）
 
 Internal API では API設計方針書 §21.3 に従い、Public より多くの内部項目を返してよい。
 
@@ -268,15 +288,20 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | `itemCatchcopy` | `string` | `false` | キャッチコピー | - |
 | `shopName` | `string` | `false` | 店舗名 | - |
 | `contextScore` | `number` | `true` | 意味一致スコア | Public では非返却 |
+| `socialMatch` | `number` | `false` | Social 軸一致度 | Recommendation Result 定義書 §6.2 |
+| `symbolicMatch` | `number` | `false` | Symbolic 軸一致度 | 同上 |
 | `popularityScore` | `number` | `false` | 人気補助スコア | - |
 | `riskPenalty` | `number` | `false` | リスクペナルティ | - |
 | `finalScore` | `number` | `true` | 最終スコア | Public では非返却 |
 | `scoreBreakdown` | `object` | `false` | スコア内訳 | `includeDebugInfo=true` または evaluation 時は推奨 |
-| `reasonSummary` | `string` | `false` | 推薦理由（短文） | `includeReason=true` 時は原則返却。生成のみ失敗時は省略可 |
+| `reasonSummary` | `string` | `false` | 推薦理由（短文） | `includeReason=true` 時は原則返却。生成のみ失敗時は `reasonStatus` で管理し省略可 |
+| `recommendationReasonId` | `string` | `false` | 推薦理由 ID | Reason 生成成功時 |
+| `reasonStatus` | `string` | `false` | Reason 生成状態 | 生成失敗・省略時の状態管理 |
 | `reasonBadges` | `array` | `false` | 理由バッジ | 任意 |
 | `cautionNote` | `string` | `false` | 注意表示 | 任意 |
+| `isFallback` | `boolean` | `false` | Fallback 候補か | Recommendation Result 定義書 §6.2 |
 
-**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` 等を Public Response から除外する（API-PUB-002 契約仕様書 §7.3.2 参照）。
+**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` 等を Public Response から除外する（API設計方針書 §21.3、API-PUB-002 契約仕様書（未作成）参照）。
 
 #### 7.3.3 `meta`
 
@@ -307,7 +332,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
       "rankingCount": 10
     },
     "warnings": [],
-    "items": [
+    "resultItems": [
       {
         "recommendationResultItemId": "result_item_001",
         "itemId": "item_001",
@@ -318,10 +343,14 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
         "itemImageUrl": "https://example.com/item/001.jpg",
         "shopName": "Example Shop",
         "contextScore": 0.82,
+        "socialMatch": 0.86,
+        "symbolicMatch": 0.76,
         "popularityScore": 0.64,
         "riskPenalty": 0.08,
         "finalScore": 0.78,
-        "reasonSummary": "上司へのお礼として失礼がなく、上品さと感謝の伝わりやすさのバランスが良いため候補にしています。"
+        "isFallback": false,
+        "reasonSummary": "上司へのお礼として失礼がなく、上品さと感謝の伝わりやすさのバランスが良いため候補にしています。",
+        "reasonStatus": "completed"
       }
     ],
     "metadata": {
@@ -344,7 +373,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
     "recommendationRunId": "run_002",
     "recommendationResultId": "result_002",
     "recommendationRequestId": "request_002",
-    "resultStatus": "empty",
+    "resultStatus": "completed",
     "topK": 10,
     "resultItemCount": 0,
     "fallbackUsed": false,
@@ -355,7 +384,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
       "rankingCount": 0
     },
     "warnings": ["NO_CANDIDATES_AFTER_RETRIEVAL"],
-    "items": []
+    "resultItems": []
   },
   "meta": {
     "traceId": "550e8400-e29b-41d4-a716-446655440001",
@@ -366,7 +395,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 }
 ```
 
-> 0 件時は `data.resultStatus: "empty"`、`meta.resultCode: "GRS-REC-001"` を組み合わせる。HTTP Status は常に 200。
+> 0 件時は `data.resultStatus: "completed"`、`data.resultItemCount: 0`、`data.resultItems: []`、`meta.resultCode: "GRS-REC-001"` を組み合わせる。HTTP Status は常に 200（`empty` は Result Status 値として使用しない）。
 
 ---
 
@@ -392,10 +421,13 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 
 ### 8.2 Error一覧（本 API で想定する代表）
 
-| Status | Error Code | 発生条件 | Response概要 | api 側での扱い（参考） |
-| -----: | ---------- | -------- | ------------ | ---------------------- |
-| 401 | `GRS-AUTH-001` | Internal API Key 不正 | 認証失敗 | Public には露出しない。api 実装仕様書でマップ方針を確定 |
+| Status | Error Code | 発生条件 | Response概要 | ユーザー向け表示 |
+| -----: | ---------- | -------- | ------------ | ---------------- |
+| 401 | `GRS-AUTH-001` | Internal API Key 不正 | 認証失敗 | Public には露出しない（api 実装仕様書でマップ方針を確定） |
 | 401 | `GRS-AUTH-004` | 内部認証情報なし | 認証情報不足 | 同上 |
+| 403 | `GRS-AUTH-002` | 許可されない操作 | 権限不足 | Public には露出しない |
+| 403 | `GRS-AUTH-003` | Public 向け API への不正アクセス相当 | 操作不可 | 同上 |
+| 403 | `GRS-AUTH-005` | Batch 操作の外部実行 | 操作不可 | 同上 |
 | 400 | `GRS-REQ-001` | 正規化済み Request の契約違反 | Validation 失敗 | Public `GRS-REQ-001` 等へ変換 |
 | 422 | `GRS-REQ-002` | 未対応の条件組み合わせ | 業務 Validation | Public 422 へ伝播可 |
 | 422 | `GRS-REQ-006` | 条件が厳しすぎる | 業務 Validation | 同上 |
@@ -407,6 +439,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | 500 | `GRS-DB-001`〜`006` | DB 障害 | 永続化失敗 | Public 500 |
 | 502 | `GRS-LLM-100`〜`104` | LLM / Embedding 失敗 | 外部依存 | Public 502 |
 | 504 | `GRS-LLM-101` | LLM タイムアウト | タイムアウト | Public 504 |
+| 503 | `GRS-COM-003` | 一時的利用不可（DB 接続失敗等） | サービス一時停止 | Public 503 へ集約可 |
 
 `GRS-REC-001` は **HTTP 200** の正常系（0 件）として扱い、§7.4.2 を参照。エラー Response 一覧には含めない。
 
@@ -424,8 +457,8 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | `recommendationRequest.occasion.occasionCode` | 必須・非空 | `GRS-REQ-001` | 推薦条件が不正です。 |
 | `recommendationRequest.execution.mode` | 必須。enum 整合 | `GRS-REQ-001` | 実行モードが不正です。 |
 | `recommendationRequest.execution.topK` | 指定時 1〜50 | `GRS-REQ-001` | 返却件数が不正です。 |
+| `recommendationRequest.execution.candidateLimit` | 指定時 **`topK` 以上**（Recommendation Request §8.2） | `GRS-REQ-001` | 候補抽出上限が不正です。 |
 | `recommendationRequest.budget.*` | 指定時 0 以上、min ≤ max | `GRS-REQ-001` | 予算条件が不正です。 |
-| テキスト最大長 | §6.4.2 の上限を超過しない | `GRS-REQ-001` | 推薦条件が不正です。 |
 | `X-Internal-Api-Key` | 必須・検証成功 | `GRS-AUTH-001` / `GRS-AUTH-004` | 認証に失敗しました。 |
 | `X-Trace-Id` / `X-Request-Id` | 必須・非空 | `GRS-REQ-001` | 追跡 ID が不正です。 |
 | JSON 形式 | パース可能 | `GRS-REQ-001` | リクエスト形式が不正です。 |
@@ -443,7 +476,7 @@ api 側で実施済みの業務 Validation（未対応組み合わせ等）を r
 | Path | `/internal/reco/v1/recommendations/run` |
 | components schema | `RecoRecommendationRunRequest` / `RecoRecommendationRunResponse` 等（OpenAPI Task で命名確定） |
 | Orval設定 | リポジトリ正本 `orval.config.ts` |
-| generated出力先（api→reco） | `apps/api/src/generated/reco-client/` |
+| generated出力先（api→reco） | `apps/api/src/generated/reco-client/`（**Consumer は apps/api のみ**。`apps/web` は Internal API 非利用のため generated 対象外） |
 | OpenAPI定義書 | `openapi-spec.md` テンプレ準拠の Contract Task 成果物 |
 
 本 Task では YAML / generated の**実変更は行わない**。本契約仕様書を OpenAPI（internal）Contract Task の入力正本とする。
@@ -470,12 +503,13 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 
 | No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
-| 1 | 正常系 | 必須 Header + Body で 200、`items` が 1 件以上、内部スコア項目あり | contract |
-| 2 | 0 件正常系 | 200、`items: []`、`resultItemCount: 0`、`meta.resultCode: GRS-REC-001` | contract |
-| 3 | 認証 error | `X-Internal-Api-Key` 欠落・不正で 401 | contract |
-| 4 | validation error | `recommendationRequestId` 欠落で 400 | contract |
-| 5 | trace 伝播 | `X-Trace-Id` 指定時に `meta.traceId` が一致 | contract |
-| 6 | generated client | OpenAPI 生成後、型が Request/Response と一致 | typecheck |
+| 1 | 正常系 | 必須 Header + Body で 200、`resultItems` が 1 件以上、内部スコア項目（`contextScore` / `socialMatch` 等）あり | contract |
+| 2 | 0 件正常系 | 200、`resultItems: []`、`resultItemCount: 0`、`resultStatus: completed`、`meta.resultCode: GRS-REC-001` | contract |
+| 3 | validation error | `recommendationRequestId` 欠落で 400 | contract |
+| 4 | auth error | `X-Internal-Api-Key` 欠落・不正で 401 | contract |
+| 5 | permission error | 権限不足相当で 403（`GRS-AUTH-002` 等） | contract |
+| 6 | trace 伝播 | `X-Trace-Id` 指定時に `meta.traceId` が一致 | contract |
+| 7 | generated client | OpenAPI 生成後、型が Request/Response と一致（`apps/api` reco-client） | typecheck |
 
 実装結合・パイプライン障害シミュレーションは実装仕様書・単体テスト Task で扱う。
 
@@ -486,6 +520,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-04 | 初版（契約面のみ。Task #368 / 分離後モデル） | #368 |
+| 2026-06-04 | AI Review 指摘反映（`resultItems` / Result Status / Error / Validation / Observability 等） | #368 / #369 |
 
 ---
 
@@ -496,7 +531,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 1 | `warnings` / `metricSummary` のスキーマ詳細 | API一覧は概要のみ。配列要素の構造を OpenAPI で固定する必要がある | Human + Contract Task | OpenAPI Task 前 | §7.3.1 |
 | 2 | Internal 401 の Public へのマップ方針 | `GRS-AUTH-*` を web に露出しない変換ルール | Human + api 実装 Task | 実装仕様書作成時 | §8.2 |
 | 3 | `scoreBreakdown` / `debug_payload` の返却条件 | evaluation / `includeDebugInfo` 時の必須度 | Human Review | Contract Gate 前 | Recommendation Result 定義書 §9.2 参照 |
-| 4 | `reasonSummary` の必須/任意（Internal） | Reason 生成のみ失敗時の省略可否 | Human Review | Contract Gate 前 | API-PUB-002 と整合 |
+| 4 | `reasonSummary` / `reasonData` の必須/任意（Internal） | Reason 生成のみ失敗時の省略可否、`reasonData` スキーマ | Human Review | Contract Gate 前 | Reason生成定義書・API-PUB-002 参照 |
 
 ---
 
@@ -514,7 +549,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | Reason生成 | `docs/04_ドメインモデル設計/Reason生成定義書.md` | reason 項目 |
 | Recoモジュール一覧 | `docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` | MOD-RECO-001 参照 |
 | 機能×モジュール対応表 | `docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md` | MOD-API-005 / MOD-RECO-001 |
-| 上流 Public API | `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` | web↔api 契約 |
+| 上流 Public API | `docs/05_アプリケーション設計/アプリ/api/API一覧.md`（API-PUB-002 行）、`docs/05_アプリケーション設計/アプリ/api/API設計方針書.md` §21 | web↔api 契約（契約仕様書は未作成） |
 | Task Definition | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml` | #368 scope |
 | 実装仕様（別Task） | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-implementation-spec.yaml`（予定） | Phase4 |
 
