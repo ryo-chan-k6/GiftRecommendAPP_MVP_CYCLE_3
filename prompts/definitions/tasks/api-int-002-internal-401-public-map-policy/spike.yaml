@@ -1,0 +1,206 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-002-internal-401-public-map-policy"
+  title: "API-INT-002:Internal401のPublicマップ方針確定"
+  summary: "API-INT-002 契約仕様書 §14 No.2（Internal 401 / GRS-AUTH-* の Public マップ）を Human 判断で確定し、契約仕様書 §8.2.1・human-decisions へ反映する（docs のみ。実装・OpenAPI 変更は対象外）。"
+
+work_mode: "human-led"
+
+parent:
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: 366
+  epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  related_issues:
+    - 368
+    - 372
+  related_prs:
+    - 372
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "orchestrator-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  API-INT-002 契約仕様書 §14 の未決事項 No.2（Internal 401 の Public へのマップ方針）を個別 Issue #374 で管理する。
+  api→reco の Internal 認証失敗（GRS-AUTH-001 / 004 等）を、Public API（API-PUB-002）へどう変換するかを確定する。
+  MVP では Public API は匿名利用のため、GRS-AUTH-* を web に露出しない。
+
+objective: |
+  Internal GRS-AUTH-*（401/403）の Public マップ方針を Human 判断で確定し、正本 docs へ反映する。
+  確定方針（案A）: Public は HTTP 500 + GRS-REC-002。error_log に原文 GRS-AUTH-* を保持。MVP の API-PUB-002 では Public 401 を定義しない。
+
+scope:
+  - "確定マップを API-INT-002 契約仕様書 §8.2 / §8.2.1 に記載する"
+  - "§14 No.2 を確定済み（§14.1）へ移し、未決一覧から除外する"
+  - "ai-logs/human-decisions/ に判断記録を作成する"
+  - "インターフェース一覧 §15 に補足を追記する（任意・最小）"
+  - "Issue #374 完了条件（人間判断・docs 反映）を満たす"
+
+out_of_scope:
+  - "apps/api の Error Handler 実装（MOD-API-013）"
+  - "OpenAPI（internal-reco-api.yaml / Public）の変更"
+  - "API-PUB-002 契約仕様書の新規作成（参照追記のみ可）"
+  - "apps/reco / apps/web の実装変更"
+  - "認証・認可方式そのものの変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "§8.2 / §14 No.2 の正本。マップ方針を追記する"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-AUTH-* / GRS-REC-002 のユーザー向け文言・retryable を確認する"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "MVP 匿名 Public・Internal API 保護方針を確認する"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: false
+      purpose: "Internal IF → Public 変換方針の横断参照"
+  templates: []
+  files: []
+  issues:
+    - number: 374
+      required: true
+      purpose: "作業計画・完了条件の正本"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      action: "update"
+      required: false
+  files:
+    - path: "ai-logs/human-decisions/2026-06-05-api-int-002-internal-401-public-map-policy.md"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/2026-06-05-api-int-002-internal-401-public-map-policy.md"
+
+deliverables:
+  - "Internal 401 Public マップ方針の確定（500 + GRS-REC-002、GRS-AUTH-* 非露出）"
+  - "API-INT-002 契約仕様書 §8.2.1 および §14.1 への反映"
+  - "Human 判断記録（ai-logs/human-decisions）"
+
+acceptance_criteria:
+  - "人間判断により方針（案A）が確定している"
+  - "契約仕様書 §8.2.1 に Public マップ表が記載されている"
+  - "§14 No.2 が確定済みとして整理されている"
+  - "ai-logs/human-decisions/ に決定記録がある"
+  - "Public レスポンスに GRS-AUTH-* を返さない方針が明記されている"
+  - "error_log に原文 GRS-AUTH-* を保持する方針が明記されている"
+  - "scope 外（実装・OpenAPI）の変更が含まれていない"
+  - "secret や .env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "spike/task-<issue-number>-api-int-002-internal-401-public-map-policy"
+  base: "feature/epic-366-api-int-002-reco-recommendation-run"
+  target: "feature/epic-366-api-int-002-reco-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - 368
+    - 372
+  prs:
+    - 372
+  tasks:
+    - "API-INT-002 契約仕様書（#368 / #372）が存在すること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "§8.2.1 のマップ表が Issue #374 確定方針と一致していること"
+    - "§14.1 に No.2 が移動していること"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs のみの spike Task のため"
+    "integration test": "実装変更を含まないため"
+    "typecheck": "source 変更を含まないため"
+    "build": "source 変更を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "確定マップ（500 + GRS-REC-002）が §8.2.1 と human-decisions で一致しているか"
+    - "GRS-AUTH-* が Public に露出しないことが明記されているか"
+    - "実装・OpenAPI が scope 外であること"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+    human_decisions: true
+  reason: "Human 判断の正本は ai-logs/human-decisions とする。"
+
+notes:
+  - "作業計画の正本は Issue #374"
+  - "Review Definition: prompts/definitions/reviews/api-int-002-internal-401-public-map-policy/pr-review.yaml"
