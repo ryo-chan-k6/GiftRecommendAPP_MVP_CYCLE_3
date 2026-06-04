@@ -1,0 +1,95 @@
+openapi: 3.0.3
+info:
+  title: Gift Recommendation Service - Common Schemas
+  version: 1.0.0
+  description: |
+    Meta / Error / Success envelope の共通 schema 正本。
+    API 別 OpenAPI から `$ref` で参照する。
+paths: {}
+components:
+  schemas:
+    Meta:
+      type: object
+      description: 横断追跡・リクエスト識別・業務結果コード（API設計方針 §8.2）
+      required:
+        - traceId
+        - requestId
+      properties:
+        traceId:
+          type: string
+          description: 横断追跡 ID（Header X-Trace-Id を引き継ぎまたは生成）
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        requestId:
+          type: string
+          description: API リクエスト ID
+          example: "req_01HZYX"
+        generatedAt:
+          type: string
+          format: date-time
+          description: 生成日時（ISO 8601）
+          example: "2026-06-04T12:00:00+09:00"
+        resultCode:
+          type: string
+          description: 業務結果コード（0 件正常系では GRS-REC-001 等）
+          example: "GRS-REC-001"
+
+    ErrorDetail:
+      type: object
+      description: フィールド単位の Validation 詳細
+      properties:
+        field:
+          type: string
+          description: 対象フィールド（ドット区切り）
+          example: "relationship.relationshipCode"
+        message:
+          type: string
+          description: 詳細メッセージ
+          example: "relationshipCode is required"
+
+    ErrorBody:
+      type: object
+      description: エラー本体（API設計方針・エラーコード定義書に整合）
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: エラーコード（GRS-*）
+          example: "GRS-REQ-004"
+        message:
+          type: string
+          description: ユーザー向けまたは API 向けメッセージ
+          example: "贈る相手を選択してください。"
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+          description: Validation 詳細（任意）
+
+    ErrorResponse:
+      type: object
+      description: エラー時 Response（error + meta。data は返さない）
+      required:
+        - error
+        - meta
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    SuccessEnvelope:
+      type: object
+      description: |
+        成功時 Response の共通パターン（data + meta）。
+        各 API は data に固有 schema を allOf で合成する。
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: object
+          description: 成功時ペイロード（API ごとに schema を上書き定義）
+        meta:
+          $ref: "#/components/schemas/Meta"
