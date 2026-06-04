@@ -90,10 +90,28 @@ test("postSlackMessage: Slack APIのokレスポンスを返す", async () => {
   assert.equal(result.ts, "1710000000.000100");
 });
 
-test("relatedIssueNumber: Related toを優先する", () => {
-  assert.equal(slack.relatedIssueNumber("Related to #123\nCloses #999"), 123);
-  assert.equal(slack.relatedIssueNumber("Closes #45"), 45);
-  assert.equal(slack.relatedIssueNumber("no issue"), 0);
+test("relatedIssueNumberFromBody: Related toを優先する", () => {
+  assert.equal(slack.relatedIssueNumberFromBody("Related to #123\nCloses #999"), 123);
+  assert.equal(slack.relatedIssueNumberFromBody("Closes #45"), 45);
+  assert.equal(slack.relatedIssueNumberFromBody("no issue"), 0);
+});
+
+test("resolveStatusSyncTargetIssue: Task Branch は Epic Related to より Task Issue を優先", () => {
+  const prBody = [
+    "## 2. 対象Issue",
+    "",
+    "Related to #368",
+    "",
+    "Related to #366（親 Epic）",
+  ].join("\n");
+  const headRef = "docs/task-368-api-int-002-reco-recommendation-run-api-contract-spec";
+  assert.equal(slack.resolveStatusSyncTargetIssue({ prBody, headRef }), 368);
+});
+
+test("resolveStatusSyncTargetIssue: Epic Branch は Epic Issue を返す", () => {
+  const prBody = "Related to #366\nRelated to #357";
+  const headRef = "feature/epic-366-api-int-002-reco-recommendation-run";
+  assert.equal(slack.resolveStatusSyncTargetIssue({ prBody, headRef }), 366);
 });
 
 test("Review Result: 英語と日本語を正規化する", () => {

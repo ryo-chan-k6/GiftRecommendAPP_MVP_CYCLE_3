@@ -1,0 +1,434 @@
+openapi: 3.0.3
+info:
+  title: Gift Recommendation Service Public API
+  version: 1.0.0
+  description: |
+    web（apps/web）向け Public API 契約正本。
+    MVP 対象: API-PUB-002 レコメンド実行（POST /api/v1/recommendations）。
+servers:
+  - url: /
+    description: Base URL は環境変数で定義（パスを正とする）
+paths:
+  /api/v1/recommendations:
+    post:
+      operationId: runRecommendation
+      tags:
+        - Recommendations
+      summary: レコメンド実行（API-PUB-002）
+      description: |
+        贈答条件に基づくギフト推薦を実行する。候補 0 件も HTTP 200 で返す。
+        MVP は非認証。Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationRunRequest"
+            examples:
+              default:
+                $ref: "#/components/examples/RecommendationRunRequestExample"
+      responses:
+        "200":
+          description: 処理成功（推薦結果あり、または 0 件の正常系）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationRunSuccessResponse"
+              examples:
+                completed:
+                  $ref: "#/components/examples/RecommendationRunSuccessCompletedExample"
+                empty:
+                  $ref: "#/components/examples/RecommendationRunSuccessEmptyExample"
+        "400":
+          description: Request 不正（Validation エラー）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "409":
+          description: Run 状態不整合
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "422":
+          description: 業務的 Validation 失敗
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "502":
+          description: 外部依存エラー（Reco / LLM 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "504":
+          description: タイムアウト
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    XTraceId:
+      name: X-Trace-Id
+      in: header
+      required: false
+      description: 横断追跡 ID。未指定時は api 側で生成
+      schema:
+        type: string
+        example: "550e8400-e29b-41d4-a716-446655440000"
+    XRequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: API リクエスト ID。未指定時は api 側で生成
+      schema:
+        type: string
+        example: "req_01HZYX"
+
+  schemas:
+    RelationshipInput:
+      type: object
+      required:
+        - relationshipCode
+      properties:
+        relationshipCode:
+          type: string
+          description: 関係性コード（マスタ API-PUB-005 に整合）
+          example: "boss"
+        relationshipLabel:
+          type: string
+          maxLength: 50
+          description: 関係性表示名（任意）
+          example: "上司"
+
+    OccasionInput:
+      type: object
+      required:
+        - occasionCode
+      properties:
+        occasionCode:
+          type: string
+          description: 用途コード（マスタ API-PUB-006 に整合）
+          example: "thanks"
+        occasionLabel:
+          type: string
+          maxLength: 50
+          description: 用途表示名（任意）
+          example: "お礼"
+
+    BudgetInput:
+      type: object
+      properties:
+        budgetMin:
+          type: integer
+          minimum: 0
+          description: 予算下限（JPY）
+          example: 3000
+        budgetMax:
+          type: integer
+          minimum: 0
+          description: 予算上限（JPY）
+          example: 5000
+        currency:
+          type: string
+          description: 通貨（MVP は JPY 想定）
+          example: "JPY"
+        taxIncluded:
+          type: boolean
+          example: true
+
+    PreferredConditionInput:
+      type: object
+      properties:
+        preferredText:
+          type: string
+          maxLength: 500
+          example: "上品で、感謝が伝わるもの"
+
+    NonPreferredConditionInput:
+      type: object
+      properties:
+        nonPreferredText:
+          type: string
+          maxLength: 500
+          example: "カジュアルすぎるものは避けたい"
+
+    NgConditionInput:
+      type: object
+      properties:
+        ngText:
+          type: string
+          maxLength: 300
+          example: "アルコールはNG"
+
+    ExecutionMode:
+      type: string
+      enum:
+        - ui
+        - evaluation
+        - batch
+      description: 実行モード。Public MVP 画面は ui のみ
+
+    ExecutionInput:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          $ref: "#/components/schemas/ExecutionMode"
+        topK:
+          type: integer
+          minimum: 1
+          maximum: 50
+          description: 画面返却件数（未指定時デフォルト 10）
+          example: 10
+        candidateLimit:
+          type: integer
+          minimum: 1
+          description: 候補抽出上限（topK 以上。ui 未指定時デフォルト 50）
+          example: 50
+        includeReason:
+          type: boolean
+          description: 推薦理由を含めるか（ui デフォルト true）
+          example: true
+        includeDebugInfo:
+          type: boolean
+          description: Public MVP では false 想定
+          example: false
+
+    RecommendationRunRequest:
+      type: object
+      required:
+        - relationship
+        - occasion
+        - execution
+      properties:
+        relationship:
+          $ref: "#/components/schemas/RelationshipInput"
+        occasion:
+          $ref: "#/components/schemas/OccasionInput"
+        budget:
+          $ref: "#/components/schemas/BudgetInput"
+        preferredCondition:
+          $ref: "#/components/schemas/PreferredConditionInput"
+        nonPreferredCondition:
+          $ref: "#/components/schemas/NonPreferredConditionInput"
+        ngCondition:
+          $ref: "#/components/schemas/NgConditionInput"
+        freeText:
+          type: string
+          maxLength: 800
+          example: "退職する上司に、お礼として失礼がなく、少し気の利いたものを贈りたい"
+        execution:
+          $ref: "#/components/schemas/ExecutionInput"
+
+    ResultStatus:
+      type: string
+      enum:
+        - completed
+        - empty
+        - partial
+      description: 結果状態
+
+    ReasonBadge:
+      type: object
+      properties:
+        label:
+          type: string
+        code:
+          type: string
+
+    PublicRecommendationResultItem:
+      type: object
+      required:
+        - recommendationResultItemId
+        - itemId
+        - rank
+        - itemName
+        - itemPrice
+        - itemUrl
+      description: |
+        Public 向け推薦結果 Item。内部スコア・スコア内訳は返却しない（API設計方針 §18.4）。
+      properties:
+        recommendationResultItemId:
+          type: string
+          example: "result_item_001"
+        itemId:
+          type: string
+          example: "item_001"
+        rank:
+          type: integer
+          minimum: 1
+          example: 1
+        itemName:
+          type: string
+          example: "上品な焼き菓子ギフトセット"
+        itemPrice:
+          type: integer
+          description: 価格（JPY）
+          example: 4320
+        itemUrl:
+          type: string
+          format: uri
+          example: "https://example.com/item/001"
+        itemImageUrl:
+          type: string
+          format: uri
+          example: "https://example.com/item/001.jpg"
+        itemCatchcopy:
+          type: string
+        shopName:
+          type: string
+          example: "Example Shop"
+        reasonSummary:
+          type: string
+          description: 推薦理由（短文）。includeReason=true 時は原則返却、生成のみ失敗時は省略可
+        reasonBadges:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReasonBadge"
+        cautionNote:
+          type: string
+
+    RecommendationRunResponseData:
+      type: object
+      required:
+        - recommendationResultId
+        - recommendationRequestId
+        - recommendationRunId
+        - resultStatus
+        - topK
+        - resultItemCount
+        - fallbackUsed
+        - items
+      properties:
+        recommendationResultId:
+          type: string
+          example: "result_001"
+        recommendationRequestId:
+          type: string
+          example: "request_001"
+        recommendationRunId:
+          type: string
+          example: "run_001"
+        resultStatus:
+          $ref: "#/components/schemas/ResultStatus"
+        topK:
+          type: integer
+          example: 10
+        resultItemCount:
+          type: integer
+          description: 返却 Item 件数（0 件時は 0）
+          example: 2
+        fallbackUsed:
+          type: boolean
+          example: false
+        displayMessage:
+          type: string
+          description: 画面向け補足（0 件時等）
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicRecommendationResultItem"
+
+    RecommendationRunSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/RecommendationRunResponseData"
+            meta:
+              $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+  examples:
+    RecommendationRunRequestExample:
+      value:
+        relationship:
+          relationshipCode: "boss"
+          relationshipLabel: "上司"
+        occasion:
+          occasionCode: "thanks"
+          occasionLabel: "お礼"
+        budget:
+          budgetMin: 3000
+          budgetMax: 5000
+          currency: "JPY"
+          taxIncluded: true
+        preferredCondition:
+          preferredText: "上品で、感謝が伝わるもの"
+        nonPreferredCondition:
+          nonPreferredText: "カジュアルすぎるものは避けたい"
+        ngCondition:
+          ngText: "アルコールはNG"
+        freeText: "退職する上司に、お礼として失礼がなく、少し気の利いたものを贈りたい"
+        execution:
+          mode: "ui"
+          topK: 10
+          candidateLimit: 50
+          includeReason: true
+          includeDebugInfo: false
+
+    RecommendationRunSuccessCompletedExample:
+      value:
+        data:
+          recommendationResultId: "result_001"
+          recommendationRequestId: "request_001"
+          recommendationRunId: "run_001"
+          resultStatus: "completed"
+          topK: 10
+          resultItemCount: 2
+          fallbackUsed: false
+          items:
+            - recommendationResultItemId: "result_item_001"
+              itemId: "item_001"
+              rank: 1
+              itemName: "上品な焼き菓子ギフトセット"
+              itemPrice: 4320
+              itemUrl: "https://example.com/item/001"
+              itemImageUrl: "https://example.com/item/001.jpg"
+              shopName: "Example Shop"
+              reasonSummary: "上司へのお礼として失礼がなく、上品さと感謝の伝わりやすさのバランスが良いため候補にしています。"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-02T12:00:00+09:00"
+
+    RecommendationRunSuccessEmptyExample:
+      value:
+        data:
+          recommendationResultId: "result_002"
+          recommendationRequestId: "request_002"
+          recommendationRunId: "run_002"
+          resultStatus: "empty"
+          topK: 10
+          resultItemCount: 0
+          fallbackUsed: false
+          displayMessage: "条件に合う商品が見つかりませんでした。条件を変更して再度お試しください。"
+          items: []
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440001"
+          requestId: "req_01HZYY"
+          generatedAt: "2026-06-02T12:01:00+09:00"
+          resultCode: "GRS-REC-001"
