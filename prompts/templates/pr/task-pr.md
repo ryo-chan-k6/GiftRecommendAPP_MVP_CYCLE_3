@@ -21,6 +21,14 @@ Related to #{{issue.number}}
 
 Task PRでは原則として `Closes #{{issue.number}}` を使用しない。Task IssueのDone / closeはPR merge時workflowで制御する。
 
+Projects Status 同期は **§2 の Task Issue**（Branch 名の `task-<番号>` と一致）を対象とする。親 Epic や横断 Epic は §2.1 に記載し、**`Related to #<Epic>` は付けない**（誤って Epic が Status 更新対象になるのを防ぐ）。
+
+### 2.1 親 Epic・横断参照（Status 対象外）
+
+| 種別 | 参照 |
+| ---- | ---- |
+| Parent Epic | {{parent.epic_issue}}（`Related to` は使用しない） |
+
 ---
 
 ## 3. 対応内容
