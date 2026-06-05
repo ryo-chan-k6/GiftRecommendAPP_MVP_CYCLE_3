@@ -136,6 +136,8 @@ Task Definition設計書 §15.0 / [成果物一覧×Task Definition化方針書]
 | PR target | `develop` |
 | 配下 Task PR target | 本 Epic Branch |
 
+**Phase1 マイルストーン Epic（機能・領域単位・例外）:** Phase1 の `develop` 反映専用 Epic（例: `phase1-api-contract-foundation`）は識別子 Epic とは別に起票する。識別子 Epic の Phase1 成果はマイルストーン Epic Branch へ統合し、マイルストーン Epic PR のみが `develop` を更新する。識別子 Epic の `develop` merge は Phase4b 縦串完了時（[実装フェーズ実行プロセス設計書](../../docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md) §6.2）。マイルストーン Epic 起票時は `reviews/<workstream>/epic/pr-review.yaml` の有無を確認し、未作成なら PR 作成前に追加する。
+
 `branch.no_branch` と `work_mode` が §17.2 と矛盾する場合は、`human_decision_points` に理由がなければ停止する。
 
 ### 5. Issue 化可能か判断する
