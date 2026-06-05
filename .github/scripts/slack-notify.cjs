@@ -1,6 +1,9 @@
 "use strict";
 
+const resolver = require("./resolve-review-definition.cjs");
+
 const MARKER_PREFIX = "slack-thread:v1";
+const STATUS_SYNC_TARGET_SECTION_RE = /##\s*2\.\s*対象Issue\b/i;
 const SLACK_POST_MESSAGE_URL = "https://slack.com/api/chat.postMessage";
 const AI_REVIEW_HEADING_1 = "## 1. レビュー結果";
 const AI_REVIEW_HEADING_22 = "## 22. Status更新意図";
@@ -246,13 +249,49 @@ async function postSlackMessage({ token, channel, text, threadTs, replyBroadcast
   }
 }
 
-function relatedIssueNumber(prBody) {
+function relatedIssueNumberFromBody(prBody) {
   const text = String(prBody || "");
   const related = /Related to\s+#(\d+)/i.exec(text);
   if (related) return Number(related[1]);
   const closes = /\b(Closes|Close|Closed|Fixes|Fix)\s+#(\d+)/i.exec(text);
   if (closes) return Number(closes[2]);
   return 0;
+}
+
+function targetIssueFromPrSection(prBody) {
+  const text = String(prBody || "");
+  const sectionStart = text.search(STATUS_SYNC_TARGET_SECTION_RE);
+  if (sectionStart < 0) return 0;
+  const afterSection = text.slice(sectionStart);
+  const nextHeading = afterSection.search(/\n##\s*\d+\./);
+  const sectionText = nextHeading >= 0 ? afterSection.slice(0, nextHeading) : afterSection;
+  const related = /Related to\s+#(\d+)/i.exec(sectionText);
+  return related ? Number(related[1]) : 0;
+}
+
+/**
+ * Projects Status 同期・Harness request_issue 用の Task/Epic Issue 番号を解決する。
+ * Task Branch では Branch の task-<N> を Epic の Related to より優先する。
+ */
+function resolveStatusSyncTargetIssue({ prBody = "", headRef = "" } = {}) {
+  const branchInfo = resolver.parseBranchRef(headRef);
+  if (branchInfo?.unit === "task" && branchInfo.issueNumber > 0) {
+    return branchInfo.issueNumber;
+  }
+
+  const fromSection = targetIssueFromPrSection(prBody);
+  if (fromSection > 0) return fromSection;
+
+  if (branchInfo?.unit === "epic" && branchInfo.issueNumber > 0) {
+    return branchInfo.issueNumber;
+  }
+
+  return relatedIssueNumberFromBody(prBody);
+}
+
+/** @deprecated 互換のため残す。新規は resolveStatusSyncTargetIssue を使用する。 */
+function relatedIssueNumber(prBody) {
+  return resolveStatusSyncTargetIssue({ prBody });
 }
 
 function normalizeKnownReviewToken(value) {
@@ -441,6 +480,37 @@ function statusFromReviewResult(result, body) {
   return "";
 }
 
+function buildFixerDispatchFailureSlackText({
+  prNumber,
+  issueNumber,
+  reason = "",
+  recoveryCommand = "",
+  prUrl = "",
+  issueUrl = "",
+}) {
+  const fields = {
+    PR: `#${prNumber}`,
+    Issue: `#${issueNumber}`,
+    Reason: reason || "unknown",
+  };
+  const links = {};
+  if (prUrl) links.PR = prUrl;
+  if (issueUrl) links.Issue = issueUrl;
+  let humanAction =
+    "Actions ログの recovery_command を確認し、Task Issue / Task Definition を修正してから手動 dispatch してください。";
+  if (recoveryCommand) {
+    humanAction += `\n\`\`\`\n${recoveryCommand}\n\`\`\``;
+  }
+  return buildSlackText({
+    level: "error",
+    title: "Fixer auto-dispatch が失敗しました",
+    summary: "AI Review が request_changes ですが、Fixer Harness の起動に失敗しました。",
+    fields,
+    links,
+    humanAction,
+  });
+}
+
 function notificationLevelFromReviewResult(result) {
   const normalized = normalizeReviewResult(result);
   if (normalized === "approve_for_human_review") return "review";
@@ -469,6 +539,9 @@ module.exports = {
   listIssueComments,
   upsertThreadMarkerComment,
   postSlackMessage,
+  resolveStatusSyncTargetIssue,
+  targetIssueFromPrSection,
+  relatedIssueNumberFromBody,
   relatedIssueNumber,
   normalizeKnownReviewToken,
   normalizeKnownFixOutcome,
@@ -484,6 +557,7 @@ module.exports = {
   extractFixOutcomeFromComment,
   expectedCurrentStatusForFixComplete,
   fixOutcomeLabelForHumans,
+  buildFixerDispatchFailureSlackText,
   buildStatusSyncConfirmationComment,
   reviewResultLabelForHumans,
   statusFromReviewResult,

@@ -1,0 +1,232 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-002-score-breakdown-debug-return-policy"
+  title: "API-INT-002:scoreBreakdown/debugPayload返却条件確定"
+  summary: "API-INT-002 契約仕様書 §14 No.3（scoreBreakdown / debug_payload の返却条件）を Human 判断で確定し、契約仕様書 §7.3・human-decisions へ反映する（docs のみ。実装・OpenAPI 変更は対象外）。"
+
+work_mode: "human-led"
+
+parent:
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: 366
+  epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  related_issues:
+    - 368
+    - 372
+    - 373
+  related_prs:
+    - 372
+    - 378
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "orchestrator-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  API-INT-002 契約仕様書 §14 の未決事項 No.3（scoreBreakdown / debug_payload の返却条件）を個別 Issue #375 で管理する。
+  Internal API では Item 単位の scoreBreakdown と Run 単位の debug 情報を返せるが、evaluation / includeDebugInfo 時の必須度と API フィールドマッピングが未確定である。
+  Recommendation Result 定義書 §9.2 では debug 時のみ score_breakdown / debug_payload を返却する方針があるが、Request フラグ（mode / includeDebugInfo）との対応が契約仕様書に明文化されていない。
+
+objective: |
+  scoreBreakdown / debugPayload の返却条件を Human 判断で確定し、正本 docs へ反映する。
+
+  確定方針（Human Review 承認済みたたき台）:
+  - 「debug返却条件」= execution.mode = evaluation OR execution.includeDebugInfo = true（batch は含めない）
+  - debug返却条件を満たすとき: resultItems[].scoreBreakdown 推奨、data.metadata.debugPayload 推奨（契約上必須ではない）
+  - ui かつ includeDebugInfo=false、または batch かつ includeDebugInfo=false: 両方省略
+  - 欠落時: SCORE_BREAKDOWN_MISSING 相当をログ（phase_log / error_log）に記録し HTTP 200 継続。warnings[] には載せない
+  - metadata.debugPayload: open object（追加キー許容）。推奨キーは evalCaseId / semanticConfigVersionId / modelVersionId / rankingConfigVersionId / phaseSummary
+  - Public API 非表面化: api が scoreBreakdown / metadata.debugPayload を Public へ渡さない（現行維持）
+
+scope:
+  - "「debug返却条件」の用語定義を API-INT-002 契約仕様書 §7 に追記する"
+  - "返却条件マトリクス（mode × includeDebugInfo）を §7.3.1 / §7.3.2 に追記する"
+  - "data.metadata.debugPayload の定義（Run 単位・推奨キー列挙・open object）を §7.3.1 に追記する"
+  - "scoreBreakdown 欠落時の tolerant 処理（ログのみ・200 継続）を §7.3.2 または §9 に追記する"
+  - "§14 No.3 を確定済み（§14.1）へ移し、未決一覧から除外する"
+  - "ai-logs/human-decisions/ に判断記録を作成する"
+  - "Recommendation Result 定義書 §9.2 に API-INT-002 への相互参照 footnote を追記する（表現矛盾がある場合のみ最小修正）"
+  - "Issue #375 完了条件（人間判断・docs 反映）を満たす"
+
+out_of_scope:
+  - "OpenAPI（internal-reco-api.yaml / Public）の変更"
+  - "apps/reco / apps/api / apps/web の実装変更"
+  - "scoreBreakdown JSON 内部キーの詳細確定（Ranking 定義書レベル。実装 Task で確定）"
+  - "metadata.debugPayload の詳細スキーマ固定（OpenAPI Task で確定）"
+  - "warnings[] への SCORE_BREAKDOWN_MISSING 追加"
+  - "API-PUB-002 契約仕様書の新規作成（参照追記のみ可）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "§7.3 / §14 No.3 の正本。返却条件マトリクスを追記する"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "§9.2 / §13.1 / §15.1 の返却方針・SCORE_BREAKDOWN_MISSING を確認する"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "§21.3 Internal 項目・Public 非表面化方針を確認する"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: false
+      purpose: "IF-SHARED-004（mode=evaluation）と batch 用途の参照"
+  templates: []
+  files: []
+  issues:
+    - number: 375
+      required: true
+      purpose: "作業計画・完了条件の正本"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "ai-logs/human-decisions/2026-06-05-api-int-002-score-breakdown-debug-return-policy.md"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/2026-06-05-api-int-002-score-breakdown-debug-return-policy.md"
+
+deliverables:
+  - "debug返却条件の用語定義と返却条件マトリクス（mode × includeDebugInfo）"
+  - "data.metadata.debugPayload の API マッピング（Run 単位・open object・推奨キー）"
+  - "scoreBreakdown 欠落時の tolerant 処理（ログのみ・200 継続）"
+  - "API-INT-002 契約仕様書 §14.1 への No.3 確定反映"
+  - "Human 判断記録（ai-logs/human-decisions）"
+
+acceptance_criteria:
+  - "人間判断により返却条件方針が確定している"
+  - "契約仕様書に「debug返却条件」（evaluation OR includeDebugInfo=true）が明記されている"
+  - "返却条件マトリクスが §7.3.1 / §7.3.2 に記載されている"
+  - "batch mode が ui 同列（省略デフォルト）で includeDebugInfo=true 時のみ推奨返却である"
+  - "metadata.debugPayload が data.metadata 内に定義されている"
+  - "scoreBreakdown 欠落時がログのみ（warnings 非追加）・HTTP 200 継続である"
+  - "Public 非表面化方針が維持されている"
+  - "§14 No.3 が確定済みとして整理されている"
+  - "ai-logs/human-decisions/ に決定記録がある"
+  - "scope 外（実装・OpenAPI）の変更が含まれていない"
+  - "secret や .env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "spike/task-<issue-number>-api-int-002-score-breakdown-debug-return-policy"
+  base: "feature/epic-366-api-int-002-reco-recommendation-run"
+  target: "feature/epic-366-api-int-002-reco-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - 368
+    - 372
+    - 373
+  prs:
+    - 372
+    - 378
+  tasks:
+    - "API-INT-002 契約仕様書（#368 / #372）が存在すること"
+    - "warnings / metricSummary 確定（#373 / PR #378）が取り込まれていること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "返却条件マトリクスが human-decisions と一致していること"
+    - "§14.1 に No.3 が移動していること"
+    - "batch + includeDebugInfo=false で省略されること"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs のみの spike Task のため"
+    "integration test": "実装変更を含まないため"
+    "typecheck": "source 変更を含まないため"
+    "build": "source 変更を含まないため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "debug返却条件と返却条件マトリクスが human-decisions と一致しているか"
+    - "batch mode が ui 同列（省略デフォルト）であるか"
+    - "metadata.debugPayload のマッピングと推奨キーが明記されているか"
+    - "欠落時がログのみ（warnings 非追加）であるか"
+    - "Public 非表面化が維持されているか"
+    - "実装・OpenAPI が scope 外であること"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+    human_decisions: true
+  reason: "Human 判断の正本は ai-logs/human-decisions とする。"
+
+notes:
+  - "作業計画の正本は Issue #375"
+  - "Review Definition: prompts/definitions/reviews/api-int-002-score-breakdown-debug-return-policy/pr-review.yaml"
+  - "確定方針: debug返却条件 = evaluation OR includeDebugInfo=true。推奨返却（必須ではない）。欠落時はログのみ"

@@ -24,7 +24,7 @@ Issue作成・Branch作成が未完了の場合は、原則として `/start-tas
 例：
 
 ```text
-/work-issue @prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml
+/work-issue @prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml
 ```
 Definitionなしでの実行は原則禁止する。
 
@@ -338,6 +338,8 @@ Task Definitionの `test_policy` に従い、必要なテスト・検証を実�
 ### 12. commitを作成する
 
 変更内容がTask Definitionのscope内であり、自己確認が完了した場合はcommitを作成する。
+
+**commit 前**に §0 の `print-git-user` で取得した `GIT_NAME` / `GIT_EMAIL` を使用する（ハードコード禁止）。未実行の場合は §0 に戻ってから commit する。
 
 commit作成時は以下を確認する。
 

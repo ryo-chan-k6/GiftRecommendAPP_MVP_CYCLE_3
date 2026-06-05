@@ -1,0 +1,271 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-002-reason-summary-reason-data-required-scope"
+  title: "API-INT-002:reasonSummary/reasonData必須範囲確定"
+  summary: "API-INT-002 契約仕様書 §14 No.4（Internal の reasonSummary / reasonData 必須・任意、Reason 生成のみ失敗時の省略可否、reasonData スキーマ）を Human 判断で確定し、契約仕様書 §7.3 および §14 へ反映する（docs のみ。実装・OpenAPI 変更は対象外）。"
+
+work_mode: "human-led"
+
+parent:
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: 366
+  epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  related_issues:
+    - 368
+    - 372
+    - 373
+  related_prs:
+    - 372
+    - 378
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "orchestrator-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  API-INT-002 契約仕様書 §14 の未決事項 No.4（`reasonSummary` / `reasonData` の必須/任意）を個別 Issue #376 で管理する。
+  Internal API（reco→api）では、Item 単位の `reasonSummary` / `reasonBadges` / `reasonStatus` と、Run または Item に紐づく内部 `reasonData` の契約上の必須度・スキーマが未確定である。
+  Reason 生成のみ失敗した場合に Item を残し `reasonSummary` を省略するか、代替表示を返すかは Human Review が必要（Recommendation Result 定義書 §11.2、Reason生成定義書 §5 参照）。
+  Public API（API-PUB-002）への露出項目は本 Task では参照整理のみとし、Public 契約仕様書の新規作成は対象外とする。
+
+objective: |
+  Internal API における `reasonSummary` / `reasonData` の必須・任意、Reason 生成のみ失敗時の省略ルール、`reasonData` スキーマ（Reason生成定義書 §5 との対応）を Human 判断で確定し、正本 docs へ反映する。
+  確定内容は API-INT-002 契約仕様書 §7.3.2（resultItems）および必要に応じ §7.3.x（reasonData スキーマ節）・§14.1 へ記載する。
+  OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract Task** とする（#373 と同方針）。
+
+scope:
+  - "§14 No.4 の論点整理（現行 §7.3.2 の reason 関連項目、Run レベル reasonData、Reason生成定義書 §5 との差分）"
+  - "Human 判断待ちの選択肢・推奨案を整理し、確定後に契約仕様書へ反映する"
+  - "確定方針を API-INT-002 契約仕様書 §7.3.2 および reasonData スキーマ節（§7.3.x 新設または既存節追記）に記載する"
+  - "§14 No.4 を確定済み（§14.1）へ移し、未決一覧から除外する"
+  - "ai-logs/human-decisions/ に判断記録を作成する"
+  - "Issue #376 完了条件（人間判断・docs 反映）を満たす"
+
+out_of_scope:
+  - "OpenAPI（packages/contracts/openapi/internal-reco-api.yaml）の変更"
+  - "Orval 再生成・generated API client の変更"
+  - "apps/reco / apps/api / apps/web の実装変更"
+  - "Reason 生成ロジック（MOD-RECO 等）の実装・設計変更"
+  - "API-PUB-002 契約仕様書の新規作成（参照・整合確認の追記のみ可）"
+  - "Recommendation Result / Reason生成定義書の大規模改訂（契約仕様書からの参照追記・最小整合のみ可）"
+  - "DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "§7.3.2 / §14 No.4 の正本。reason 関連契約を追記・確定する"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "Reason 生成出力（§5）・失敗時方針（§17）・reason_basis の参照"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "Result Item の reason_status・Reason 失敗時の Item 存続（§6.2.5 / §11.2）"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "§21.3 Reco Internal API の reasonData / Public 非表面化方針"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: false
+      purpose: "API-INT-002 / API-PUB-002 の reason 関連列の横断参照"
+  templates: []
+  files:
+    - path: "packages/contracts/openapi/internal-reco-api.yaml"
+      required: false
+      purpose: "現行 OpenAPI の reasonSummary / reasonBadges 定義確認（変更は out_of_scope）"
+  issues:
+    - number: 376
+      required: true
+      purpose: "作業計画・完了条件の正本"
+    - number: 368
+      required: false
+      purpose: "親 Task（契約仕様書作成）の scope 確認"
+  prs:
+    - number: 372
+      required: false
+      purpose: "§14 未決 Issue 化の経緯確認"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/2026-06-05-api-int-002-reason-summary-reason-data-required-scope.md"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/2026-06-05-api-int-002-reason-summary-reason-data-required-scope.md"
+
+deliverables:
+  - "Internal API における reasonSummary / reasonData の必須・任意方針の確定"
+  - "Reason 生成のみ失敗時の reasonSummary 省略ルールと reasonStatus 値域の確定"
+  - "reasonData スキーマ（Reason生成定義書 §5 との camelCase 対応）の契約記載"
+  - "API-INT-002 契約仕様書 §7.3 および §14.1 への反映"
+  - "Human 判断記録（ai-logs/human-decisions）"
+
+acceptance_criteria:
+  - "人間判断により reasonSummary / reasonData の必須・任意方針が確定している"
+  - "Reason 生成のみ失敗時の reasonSummary 省略可否と reasonStatus の扱いが契約仕様書に明記されている"
+  - "reasonData スキーマ（主要フィールド・必須/任意）が契約仕様書に記載されている"
+  - "§14 No.4 が確定済みとして §14.1 に整理されている"
+  - "ai-logs/human-decisions/ に決定記録がある"
+  - "Public Response へ reasonData をそのまま返さない方針が維持・明記されている"
+  - "scope 外（実装・OpenAPI・generated）の変更が含まれていない"
+  - "secret や .env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "spike/task-<issue-number>-api-int-002-reason-summary-reason-data-required-scope"
+  base: "feature/epic-366-api-int-002-reco-recommendation-run"
+  target: "feature/epic-366-api-int-002-reco-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - 368
+    - 372
+    - 373
+  prs:
+    - 372
+    - 378
+  tasks:
+    - "API-INT-002 契約仕様書（#368 / #372）が存在すること"
+    - "§14 No.1 warnings/metricSummary 確定（#373 / PR #378）が親 Epic に取り込まれていること"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "#373（§14 No.1 確定）"
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at:
+    - "/work-issue"
+  checks: []
+  blocked_message: null
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "§7.3.2 の reason 関連項目が human-decisions の確定方針と一致していること"
+    - "§14.1 に No.4 が移動していること"
+    - "reasonData スキーマが Reason生成定義書 §5 と矛盾しないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "typecheck"
+    - "build"
+    - "OpenAPI validation"
+  skip_reason:
+    "unit test": "docs のみの spike Task のため"
+    "integration test": "実装変更を含まないため"
+    "typecheck": "source 変更を含まないため"
+    "build": "source 変更を含まないため"
+    "OpenAPI validation": "OpenAPI 変更は out_of_scope のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "reasonSummary / reasonData の必須・任意が §7.3 と human-decisions で一致しているか"
+    - "Reason 生成のみ失敗時の省略ルールが Recommendation Result 定義書 §11.2 と整合しているか"
+    - "reasonData が Public に露出しないことが明記されているか"
+    - "OpenAPI / 実装が scope 外であること"
+    - "§14 No.3（#375）との記述矛盾がないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+    human_decisions: true
+  reason: "Human 判断の正本は ai-logs/human-decisions とする。"
+
+risk_points:
+  - "§14 No.3（#375 scoreBreakdown）と同一契約仕様書を編集するため競合リスク"
+  - "reasonData（Run レベル）と resultItems[].reasonSummary（Item レベル）の責務境界が曖昧になりやすい"
+  - "Reason生成定義書（snake_case）と API 契約（camelCase）の対応漏れ"
+  - "親 Epic Branch が #374 確定分より遅れている場合、merge 競合"
+
+human_decision_points:
+  - "`includeReason=true` 時、Item 単位 `reasonSummary` を必須とするか（Reason 生成のみ失敗時に省略可とするか）"
+  - "`reasonStatus` の値域（例: completed / failed / skipped）と、`reasonSummary` 省略・null 許容の条件"
+  - "Reason 生成のみ失敗時も Item を返し続けるか（Recommendation Result 定義書 §11.2 との整合）"
+  - "Run レベル `reasonData` と Item レベル reason フィールド（reasonSummary / reasonBadges 等）の責務境界"
+  - "`reasonData` オブジェクトの必須/任意（Internal、`includeReason=true` 時）"
+  - "`reasonData` に含めるフィールド範囲（Reason生成定義書 §5 の reason_summary / reason_detail / reason_basis 等の camelCase 対応）"
+  - "`reason_basis` 等の詳細根拠を Internal Response に含めるか（api 分析用途 vs ペイロードサイズ）"
+
+stop_conditions:
+  - "正本 docs 間で reason 関連定義が矛盾し、Human 判断なしに解消できない場合"
+  - "OpenAPI または apps/** の変更が必要になった場合"
+  - "親 Epic Branch との merge で契約仕様書の競合解消に設計判断が必要な場合"
+  - "Human 判断なしに reasonSummary / reasonData の必須度を確定しようとした場合"
+
+notes:
+  - "作業計画の正本は Issue #376"
+  - "作業開始前に親 Epic Branch（feature/epic-366-api-int-002-reco-recommendation-run）を merge し #374 確定分を取り込むこと（work-issue §5）"
+  - "Review Definition: prompts/definitions/reviews/api-int-002-reason-summary-reason-data-required-scope/pr-review.yaml"
+  - "OpenAPI 反映は #373 と同様に別 Contract Task とする"

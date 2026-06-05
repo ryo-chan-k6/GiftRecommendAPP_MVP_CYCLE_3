@@ -62,6 +62,7 @@ Implementation Task 開始前に、以下を**すべて**確認する。1つで�
 | 5 | 契約面 docs（該当時） | `api-contract-spec.md` / `openapi-spec.md` に基づく契約 docs が Contract Task または先行 Task で確定している | 停止。契約 docs Task を先行 |
 | 6 | 破壊的変更の人間判断（該当時） | Contract Task で `breaking_change: true` の場合、Contract PR の **Human Review 完了** | 停止。人間判断待ち |
 | 7 | Task Definition 上の依存 | `contract_gate.prerequisite_contract_tasks` / `parallel_control.depends_on` に列挙された Task が完了している | 停止。依存 Task を先行 |
+| 8 | Phase1 マイルストーン（Phase4b 着手時） | 対象 API の Phase1 成果（契約 docs / OpenAPI / generated）が **Phase1 マイルストーン Epic PR により `develop` に merge 済み** | 停止。マイルストーン Epic PR の merge を待つ |
 
 ### 4.1 正本パス（再掲）
 
@@ -114,14 +115,39 @@ contract_gate:
 
 ## 6. 標準フロー
 
+### 6.1 識別子 Epic Branch 上（staging）
+
 ```mermaid
 flowchart TD
   A[Contract Task 起票] --> B[Contract 作業: OpenAPI / Orval / generated]
-  B --> C[Contract PR → Epic Branch へマージ]
-  C --> D{Contract Gate チェック}
-  D -->|未充足| E[Implementation 開始禁止]
-  D -->|充足| F[Implementation Task 開始]
-  F --> G[実装・テスト・PR]
+  B --> C[Contract PR → 識別子/横断 Epic Branch へマージ]
+  C --> D{Contract Gate チェック staging}
+  D -->|未充足| E[マイルストーン統合待ち]
+  D -->|充足| F[Phase1 マイルストーン Epic Branch へ統合]
+```
+
+### 6.2 Phase1 マイルストーン Epic → develop（Phase1 完了ゲート）
+
+```mermaid
+flowchart TD
+  M1[識別子/横断 Branch 上の Phase1 成果] --> M2[Phase1 マイルストーン Epic Branch へ統合]
+  M2 --> M3{Contract Gate §4 全項目}
+  M3 -->|未充足| M4[統合・再生成・docs 修正]
+  M3 -->|充足| M5[マイルストーン Epic PR → develop]
+  M5 --> M6[Phase4b Implementation Task 解放]
+```
+
+- 識別子 Epic Branch 上の Gate 確認は **マイルストーン PR 前の事前確認**である。Phase4b 着手の最終前提は **§4 No.8（マイルストーン merge 済み）** とする。
+- 識別子 Epic の `develop` merge は Phase4b 縦串完了時（[実装フェーズ実行プロセス設計書](../プロジェクト管理/実装フェーズ実行プロセス設計書.md) §6.2）とし、Phase1 単体の `develop` 反映はマイルストーン Epic PR に限定する。
+
+### 6.3 Phase4b Implementation（従来）
+
+```mermaid
+flowchart TD
+  G1[マイルストーン merge 済み develop] --> G2{Contract Gate §4 全項目}
+  G2 -->|未充足| G3[Implementation 開始禁止]
+  G2 -->|充足| G4[Implementation Task 開始]
+  G4 --> G5[実装・テスト・PR]
 ```
 
 ---
