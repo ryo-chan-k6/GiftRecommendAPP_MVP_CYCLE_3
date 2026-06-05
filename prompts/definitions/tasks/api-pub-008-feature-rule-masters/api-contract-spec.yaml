@@ -1,0 +1,171 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-008-feature-rule-masters-api-contract-spec"
+  title: "API-PUB-008:Featureルール取得API契約仕様書作成"
+  summary: "API-PUB-008（Featureルール取得 / Public API、GET /api/v1/masters/feature-rules）の API 契約仕様書（API-PUB-008_Featureルール取得API契約仕様書.md）を、api-contract-spec.md 準拠で作成する。実装面は別 Task（api-implementation-spec.yaml）へ分離する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-008:Featureルール取得"
+  epic_issue_number: 390
+  epic_branch: "feature/epic-390-pub-008-feature-rule-masters"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase1 ① API契約仕様書（1a）として、API-PUB-008（Featureルール取得 / Public API）の契約面を確定する。
+  本 API は Relationship Rule / Occasion Rule / Concept Feature Rule を Public 表面化する。Pair Rule は Public 応答に含めない（API一覧 §API-PUB-005 備考と同方針）。
+
+objective: |
+  API-PUB-008（`GET /api/v1/masters/feature-rules`）の API 契約仕様書を作成する。
+  OpenAPI / generated の実変更は後続 Contract Task へ分離する。
+
+scope:
+  - "API-PUB-008 API 契約仕様書を新規作成"
+  - "Request / Response / Error / Validation を定義"
+  - "relationshipRules / occasionRules / conceptFeatureRules の表面フィールドを定義"
+  - "Pair Rule 非公開方針を明示"
+  - "API-PUB-005/006/007 とのコード・Version 整合を整理"
+  - "OpenAPI 反映方針（方針のみ）"
+  - "未決事項を明記"
+
+out_of_scope:
+  - "api-implementation-spec.yaml の作成"
+  - "OpenAPI / Orval / generated の実変更"
+  - "apps 実装"
+  - "pair_rule の Public 返却"
+  - "API-PUB-007 の仕様書作成（別 Task #403）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "relationship_rule / occasion_rule / concept_feature_rule 項目"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+  templates:
+    - path: "prompts/templates/docs/api-contract-spec.md"
+      required: true
+  issues:
+    - number: 404
+      required: true
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-contract-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/api-pub-008-feature-rule-masters/api-contract-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/api-pub-008-feature-rule-masters/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "API-PUB-008 API 契約仕様書"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "API-PUB-008_Featureルール取得API契約仕様書.md が作成されている"
+  - "Featureルール定義書 §17 と整合"
+  - "Pair Rule 非公開が明記されている"
+  - "OpenAPI 変更なし"
+
+branch:
+  no_branch: false
+  name: "docs/task-404-pub-008-feature-rule-masters-api-contract-spec"
+  base: "feature/epic-390-pub-008-feature-rule-masters"
+  target: "feature/epic-390-pub-008-feature-rule-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics:
+    - issue: 390
+      title: "[Epic]API-PUB-008:Featureルール取得"
+      purpose: "親 Epic Branch が PR target"
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+  conflict_risk: "low"
+  contract_impact: true
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  not_required:
+    - "unit test"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Pair Rule 非公開"
+    - "3 種 Rule 配列の妥当性"
+    - "API-PUB-005/006/007 整合"
+  specialist_reviews:
+    docs: true
+    contract: true
+    security: true
+
+notes:
+  - "Issue #404 / Epic #390"
