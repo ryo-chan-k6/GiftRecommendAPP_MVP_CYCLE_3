@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: 393
+  pr: 396
   issue: 392
   task_definition: "prompts/definitions/tasks/api-int-001-reco-health-check/api-contract-spec.yaml"
   source_branch: "docs/task-392-api-int-001-reco-health-check-api-contract-spec"
