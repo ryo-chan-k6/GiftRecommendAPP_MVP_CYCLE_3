@@ -136,6 +136,8 @@ Task Definition設計書 §15.0 / [成果物一覧×Task Definition化方針書]
 | PR target | `develop` |
 | 配下 Task PR target | 本 Epic Branch |
 
+**Phase1 マイルストーン Epic（機能・領域単位・例外）:** Phase1 の `develop` 反映専用 Epic（例: `phase1-api-contract-foundation`）は識別子 Epic とは別に起票する。識別子 Epic の Phase1 成果はマイルストーン Epic Branch へ統合し、マイルストーン Epic PR のみが `develop` を更新する。識別子 Epic の `develop` merge は Phase4b 縦串完了時（[実装フェーズ実行プロセス設計書](../../docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md) §6.2）。マイルストーン Epic 起票時は `reviews/<workstream>/epic/pr-review.yaml` の有無を確認し、未作成なら PR 作成前に追加する。
+
 `branch.no_branch` と `work_mode` が §17.2 と矛盾する場合は、`human_decision_points` に理由がなければ停止する。
 
 ### 5. Issue 化可能か判断する
@@ -227,6 +229,20 @@ Issue 本文の no-branch チェックボックスに `branch.no_branch` を反�
 - base / target は `develop`（Definition と一致すること）
 
 `branch.no_branch: true` の場合は Branch 作成を行わない（人主導・未来着手 Epic）。
+
+### 13.5 Machine account 認証（git commit 前・必須）
+
+Epic Definition 更新や Branch 上での commit を行う場合、**commit 前**に bot 認証と git user を確認する（[github-operation.mdc](../../.cursor/rules/github-operation.mdc) §3.16）。user.name / user.email をハードコードしない。
+
+```bash
+node .github/scripts/gh-bot-auth.cjs verify
+eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+GIT_USER_JSON="$(node .github/scripts/gh-bot-auth.cjs print-git-user)"
+GIT_NAME="$(node -e "console.log(JSON.parse(process.argv[1]).name)" "$GIT_USER_JSON")"
+GIT_EMAIL="$(node -e "console.log(JSON.parse(process.argv[1]).email)" "$GIT_USER_JSON")"
+```
+
+commit は `git -c user.name="$GIT_NAME" -c user.email="$GIT_EMAIL" commit ...` を用いる。push は `GH_BOT_TOKEN` を `GH_TOKEN` に export した状態で行う。
 
 ### 14. 後続作業を案内する
 
