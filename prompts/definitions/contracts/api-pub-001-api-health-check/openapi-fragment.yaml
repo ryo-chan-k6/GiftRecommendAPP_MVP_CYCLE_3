@@ -1,0 +1,229 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-api-pub-001-api-health-check-openapi-fragment"
+  title: "API-PUB-001:APIヘルスチェックOpenAPI断片反映"
+  summary: "API-PUB-001（GET /api/v1/health）の契約仕様書に基づき packages/contracts/openapi/public-api.yaml へ OpenAPI 断片を追加する。Phase1 第2波 1b（Orval 再生成は 1c で一括実施）。"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "phase1_wave2"
+  related_issue: "#395"
+  related_pr: "#398"
+  related_task_definition: "prompts/definitions/tasks/api-pub-001-api-health-check/api-contract-spec.yaml"
+  related_review: null
+  reason: "Phase1 1a（#395/#398）完了後の 1b OpenAPI 直列 merge（#367 横断 Epic）"
+
+commands:
+  primary: "/create-contract-task"
+  allowed:
+    - "/create-contract-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    pr: "/create-pr"
+    review: "/review-pr"
+    blocked: null
+
+agent:
+  primary: "contract-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+
+change:
+  api_name: "APIヘルスチェック"
+  api_kind: "public"
+  endpoint: "GET /api/v1/health"
+  method: "GET"
+  change_type: "add_endpoint"
+  breaking_change: false
+  backward_compatibility: "compatible"
+  reason: "Phase1 第2波 1b として API-PUB-001 の Public OpenAPI 断片を正本へ反映する"
+
+scope:
+  - "packages/contracts/openapi/public-api.yaml に GET /api/v1/health を追加する"
+  - "Health 用 components schema（status / service / apiVersion 等）を追加する"
+  - "Contract Definition / Review Definition を追加する"
+
+out_of_scope:
+  - "Orval 再生成（Phase1 1c で一括）"
+  - "generated API client の更新"
+  - "apps/api / apps/web 実装変更"
+  - "internal-reco-api.yaml（API-INT-001 は別 Contract Task）"
+  - "他 API の OpenAPI 断片"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-001 の endpoint / MVP 対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Success / Error envelope・HTTP Status 方針を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI契約仕様書.md"
+      required: true
+      purpose: "1b の入力正本（識別子 Epic #384 上）"
+  files: []
+  issues:
+    - "#395"
+    - "#384"
+  prs:
+    - "#398"
+  openapi:
+    path: "packages/contracts/openapi/public-api.yaml"
+    required: true
+  orval:
+    path: "orval.config.ts"
+    required: false
+  generated:
+    paths: []
+    required: false
+
+output:
+  docs: []
+  files: []
+  openapi:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      action: "update"
+      required: true
+  orval: []
+  generated: []
+  tests: []
+  logs:
+    ai_logs_required: false
+    path: null
+
+impact:
+  api_design:
+    affected: false
+    note: "新規 endpoint 追加。既存 API 設計方針の範囲内"
+  openapi:
+    affected: true
+    note: "public-api.yaml に path / schema 追加"
+  orval:
+    affected: false
+    note: "1c で一括再生成"
+  generated:
+    affected: false
+    note: "1c まで差分なし"
+  provider:
+    affected: false
+    note: "実装は Phase4"
+  consumer:
+    affected: false
+    note: "実装は Phase4"
+
+generation_policy:
+  generated_expected: false
+  manual_edit_allowed: false
+  source_files:
+    - "packages/contracts/openapi/public-api.yaml"
+  regenerate_commands: []
+  output_paths: []
+  verification_commands: []
+
+implementation_gate:
+  enabled: false
+  gate_id: null
+  prerequisite_checks: []
+  releases_implementation_for: []
+  notes: []
+
+deliverables:
+  - "Contract Task Issue"
+  - "packages/contracts/openapi/public-api.yaml 更新"
+  - "Contract / Review Definition"
+
+acceptance_criteria:
+  - "GET /api/v1/health が public-api.yaml に定義されている"
+  - "契約仕様書 §7 の data.status / service / apiVersion と整合している"
+  - "service 固定値 okuri、status enum ok/degraded/unavailable が定義されている"
+  - "Orval / generated は本 Task で変更していない"
+  - "破壊的変更なし"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-pub-001-api-health-check-openapi"
+  base: "feature/epic-367-api-contract-orval"
+  target: "feature/epic-367-api-contract-orval"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+dependencies:
+  epics:
+    - issue: 367
+      title: "[Epic]API-CONTRACT-ORVAL:API契約基盤"
+      purpose: "1b OpenAPI の PR target"
+    - issue: 384
+      title: "[Epic]API-PUB-001:APIヘルスチェック"
+      purpose: "1a 契約仕様書の供給元"
+  issues:
+    - "#395"
+    - "#398"
+  prs:
+    - "#411"
+  tasks:
+    - "task-api-pub-001-api-health-check-api-contract-spec"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "#411"
+  blocks: []
+  exclusive_files:
+    - "packages/contracts/openapi/public-api.yaml"
+  conflict_risk: "high"
+  generated_impact: false
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "OpenAPI YAML 構文確認"
+  commands: []
+  manual_checks:
+    - "契約仕様書 API-PUB-001 §6〜§8 と path / schema が一致すること"
+    - "既存 API-PUB-002 path が破損していないこと"
+  not_required:
+    - "Orval generation"
+    - "typecheck"
+  skip_reason:
+    "Orval generation": "Phase1 1c で一括再生成するため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "1a 契約仕様書との整合"
+    - "exclusive_files 競合なし（直列 1b）"
+    - "generated 手動編集なし"
+  specialist_reviews:
+    contract: true
+
+notes:
+  - "PR target は feature/epic-367-api-contract-orval（#367）"
+  - "前提: #411（develop→epic-367 同期）merge 推奨。未 merge 時は PR に同期コミットが含まれる可能性あり"
+  - "author は okuri-ai-bot を必須とする"
