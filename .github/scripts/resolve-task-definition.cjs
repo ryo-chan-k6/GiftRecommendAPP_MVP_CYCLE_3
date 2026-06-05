@@ -43,6 +43,215 @@ function hasTaskDefinitionType(content) {
   return /definition_type:\s*["']?task["']?/i.test(String(content || ""));
 }
 
+function isContractDefinitionPath(relativePath) {
+  const normalized = nonEmpty(relativePath).replace(/\\/g, "/");
+  if (!normalized.startsWith(`${DEFINITION_ROOT}contracts/`)) return false;
+  if (normalized.endsWith(`/${resolver.REVIEW_FILE_NAME}`)) return false;
+  return /\.ya?ml$/i.test(normalized);
+}
+
+function hasContractDefinitionType(content) {
+  return /definition_type:\s*["']?contract["']?/i.test(String(content || ""));
+}
+
+function isHarnessDefinitionFile(relativePath, content) {
+  if (isTaskDefinitionPath(relativePath) && hasTaskDefinitionType(content)) return "task";
+  if (isContractDefinitionPath(relativePath) && hasContractDefinitionType(content)) return "contract";
+  return "";
+}
+
+function extractYamlScalar(content, key) {
+  const pattern = new RegExp(`^\\s*${key}:\\s*"?([^"\\n#]+)"?`, "m");
+  const match = pattern.exec(String(content || ""));
+  return match ? nonEmpty(match[1]) : "";
+}
+
+function extractLinkedContractFromReviewContent(reviewContent) {
+  const targetBlock = /target:\s*[\s\S]*?(?=\n[a-z_]+:|\n\S|\s*$)/i.exec(String(reviewContent || ""));
+  const block = targetBlock ? targetBlock[0] : reviewContent;
+  return normalizePath(extractYamlScalar(block, "task_definition"));
+}
+
+function extractContractDefinitionPathsFromText(text) {
+  const paths = new Set();
+  const body = String(text || "");
+
+  for (const match of body.matchAll(
+    /(?:Contract Definition|ContractDefinition)\s*[:：]\s*`?([^\s`#]+\.ya?ml)`?/gi,
+  )) {
+    const candidate = normalizePath(match[1]);
+    if (candidate && isContractDefinitionPath(candidate)) paths.add(candidate);
+  }
+
+  for (const match of body.matchAll(
+    /(?:Definition\s*[:：]\s*`?)(prompts\/definitions\/contracts\/[^\s`#]+\.ya?ml)`?/gi,
+  )) {
+    const candidate = normalizePath(match[1]);
+    if (candidate) paths.add(candidate);
+  }
+
+  for (const match of body.matchAll(/`(prompts\/definitions\/contracts\/[^`\s#]+\.ya?ml)`/g)) {
+    const candidate = normalizePath(match[1]);
+    if (candidate) paths.add(candidate);
+  }
+
+  for (const match of body.matchAll(/\/create-contract-task\s+@([^\s#`]+\.ya?ml)/gi)) {
+    const candidate = normalizePath(match[1]);
+    if (candidate && isContractDefinitionPath(candidate)) paths.add(candidate);
+  }
+
+  return [...paths];
+}
+
+function preferOpenApiFragmentDefinitionPath(paths) {
+  const list = [...new Set(paths || [])];
+  if (list.length <= 1) return list[0] || "";
+  const fragmentPaths = list.filter((candidate) => /\/openapi-fragment\.ya?ml$/i.test(candidate));
+  if (fragmentPaths.length === 1) return fragmentPaths[0];
+  return "";
+}
+
+function pickContractDefinitionFromChangedFiles(changedFiles, branchInfo, workspaceRoot) {
+  const workspace = nonEmpty(workspaceRoot) || process.cwd();
+  const contractFiles = (changedFiles || [])
+    .map((entry) => (typeof entry === "string" ? entry : entry?.filename || ""))
+    .filter((filename) => isContractDefinitionPath(filename));
+
+  const valid = contractFiles.filter((filename) => {
+    const kind = isHarnessDefinitionFile(filename, readFileSafe(path.join(workspace, filename)));
+    return kind === "contract";
+  });
+
+  if (valid.length === 1) {
+    return valid[0];
+  }
+
+  const fragmentPick = preferOpenApiFragmentDefinitionPath(valid);
+  if (fragmentPick) return fragmentPick;
+
+  if (branchInfo?.summary) {
+    const summary = branchInfo.summary.toLowerCase();
+    const summaryMatches = valid.filter((filename) => filename.toLowerCase().includes(`/${summary}/`));
+    if (summaryMatches.length === 1) {
+      return summaryMatches[0];
+    }
+    const fragmentFromSummary = preferOpenApiFragmentDefinitionPath(summaryMatches);
+    if (fragmentFromSummary) return fragmentFromSummary;
+  }
+
+  return "";
+}
+
+function pickContractDefinitionFromReviewPaths(reviewPaths, workspaceRoot) {
+  const workspace = nonEmpty(workspaceRoot) || process.cwd();
+  const linked = new Set();
+
+  for (const reviewPath of reviewPaths) {
+    const normalized = normalizePath(reviewPath);
+    if (!normalized || !normalized.endsWith(`/${resolver.REVIEW_FILE_NAME}`)) continue;
+    const absolute = path.join(workspace, normalized);
+    if (!fileExists(absolute)) continue;
+    const contractPath = extractLinkedContractFromReviewContent(readFileSafe(absolute));
+    if (!contractPath || !isContractDefinitionPath(contractPath)) continue;
+    if (!fileExists(path.join(workspace, contractPath))) continue;
+    if (!hasContractDefinitionType(readFileSafe(path.join(workspace, contractPath)))) continue;
+    linked.add(contractPath);
+  }
+
+  const list = [...linked];
+  if (list.length === 1) return list[0];
+  const fragmentPick = preferOpenApiFragmentDefinitionPath(list);
+  if (fragmentPick) return fragmentPick;
+  return "";
+}
+
+function pickContractDefinitionFromReviewChangedFiles(changedFiles, workspaceRoot, branchInfo) {
+  const reviewFiles = (changedFiles || [])
+    .map((entry) => (typeof entry === "string" ? entry : entry?.filename || ""))
+    .filter(
+      (filename) =>
+        filename.startsWith(`${DEFINITION_ROOT}reviews/`) &&
+        filename.endsWith(`/${resolver.REVIEW_FILE_NAME}`),
+    );
+
+  if (reviewFiles.length === 0) return "";
+
+  if (reviewFiles.length === 1) {
+    return pickContractDefinitionFromReviewPaths(reviewFiles, workspaceRoot);
+  }
+
+  if (branchInfo?.summary) {
+    const summary = branchInfo.summary.toLowerCase();
+    const summaryMatches = reviewFiles.filter((filename) => filename.toLowerCase().includes(`/${summary}/`));
+    if (summaryMatches.length === 1) {
+      return pickContractDefinitionFromReviewPaths(summaryMatches, workspaceRoot);
+    }
+  }
+
+  return pickContractDefinitionFromReviewPaths(reviewFiles, workspaceRoot);
+}
+
+function resolveContractDefinition({
+  workspaceRoot,
+  prBody = "",
+  issueBody = "",
+  headRef = "",
+  changedFiles = [],
+}) {
+  const workspace = nonEmpty(workspaceRoot) || process.cwd();
+  const branchInfo = resolver.parseBranchRef(headRef);
+
+  const fromText = [
+    ...extractContractDefinitionPathsFromText(prBody),
+    ...extractContractDefinitionPathsFromText(issueBody),
+  ];
+  const validFromText = [...new Set(fromText)].filter((candidate) => {
+    const absolute = path.join(workspace, candidate);
+    return fileExists(absolute) && hasContractDefinitionType(readFileSafe(absolute));
+  });
+  if (validFromText.length === 1) {
+    return { ok: true, path: validFromText[0], source: "pr_or_issue_body_contract", definition_kind: "contract" };
+  }
+  if (validFromText.length > 1) {
+    const fragmentPick = preferOpenApiFragmentDefinitionPath(validFromText);
+    if (fragmentPick) {
+      return { ok: true, path: fragmentPick, source: "pr_or_issue_body_contract_fragment", definition_kind: "contract" };
+    }
+    return { ok: false, reason: "ambiguous_definition_in_text", paths: validFromText };
+  }
+
+  const reviewPaths = [
+    ...resolver.extractDefinitionPathsFromText(prBody),
+    ...resolver.extractDefinitionPathsFromText(issueBody),
+  ];
+  const fromReviewText = pickContractDefinitionFromReviewPaths(reviewPaths, workspace);
+  if (fromReviewText) {
+    return { ok: true, path: fromReviewText, source: "review_definition_text", definition_kind: "contract" };
+  }
+
+  const fromChangedContract = pickContractDefinitionFromChangedFiles(changedFiles, branchInfo, workspace);
+  if (fromChangedContract) {
+    return {
+      ok: true,
+      path: fromChangedContract,
+      source: "pr_changed_files_contract",
+      definition_kind: "contract",
+    };
+  }
+
+  const fromReviewChanged = pickContractDefinitionFromReviewChangedFiles(changedFiles, workspace, branchInfo);
+  if (fromReviewChanged) {
+    return {
+      ok: true,
+      path: fromReviewChanged,
+      source: "pr_changed_files_review",
+      definition_kind: "contract",
+    };
+  }
+
+  return { ok: false, reason: "contract_definition_not_found" };
+}
+
 function extractTaskDefinitionPathsFromText(text) {
   const paths = new Set();
   const body = String(text || "");
@@ -139,6 +348,7 @@ function resolveTaskDefinition({
   headRef = "",
   issueNumber = null,
   definitionOverride = "",
+  changedFiles = [],
 }) {
   const workspace = nonEmpty(workspaceRoot) || process.cwd();
   const explicit = normalizePath(definitionOverride);
@@ -147,10 +357,12 @@ function resolveTaskDefinition({
     if (!fileExists(absolute)) {
       return { ok: false, reason: "definition_override_missing", path: explicit };
     }
-    if (!hasTaskDefinitionType(readFileSafe(absolute))) {
+    const content = readFileSafe(absolute);
+    const overrideKind = isHarnessDefinitionFile(explicit, content);
+    if (!overrideKind) {
       return { ok: false, reason: "definition_override_not_task", path: explicit };
     }
-    return { ok: true, path: explicit, source: "override" };
+    return { ok: true, path: explicit, source: "override", definition_kind: overrideKind };
   }
 
   const fromText = [
@@ -214,7 +426,27 @@ function resolveTaskDefinition({
   }
   const contractFromScored = preferContractSpecDefinitionPath(scored.map((entry) => entry.path));
   if (contractFromScored) {
-    return { ok: true, path: contractFromScored, source: "scan_contract_spec" };
+    return { ok: true, path: contractFromScored, source: "scan_contract_spec", definition_kind: "task" };
+  }
+
+  const branchInfoForChanged = resolver.parseBranchRef(headRef);
+  const fromChangedTask = pickTaskDefinitionFromChangedFiles(changedFiles, branchInfoForChanged);
+  if (fromChangedTask) {
+    return { ok: true, path: fromChangedTask, source: "pr_changed_files", definition_kind: "task" };
+  }
+
+  const contractResolution = resolveContractDefinition({
+    workspaceRoot: workspace,
+    prBody,
+    issueBody,
+    headRef,
+    changedFiles,
+  });
+  if (contractResolution.ok) {
+    return contractResolution;
+  }
+  if (contractResolution.reason === "ambiguous_definition_in_text") {
+    return contractResolution;
   }
 
   return {
@@ -222,7 +454,8 @@ function resolveTaskDefinition({
     reason: "task_definition_not_found",
     headRef,
     issueNumber: resolvedIssueNumber,
-    hint: "PR 本文または Issue 本文に Task Definition パスを明示するか、--definition を指定してください。",
+    hint:
+      "PR 本文または Issue 本文に Task / Contract Definition パスを明示するか、--definition を指定してください。",
   };
 }
 
@@ -274,9 +507,15 @@ function listTaskDefinitionsByIssueNumber(workspaceRoot, issueNumber) {
 module.exports = {
   DEFINITION_ROOT,
   extractTaskDefinitionPathsFromText,
+  extractContractDefinitionPathsFromText,
   hasTaskDefinitionType,
+  hasContractDefinitionType,
   isTaskDefinitionPath,
+  isContractDefinitionPath,
   pickTaskDefinitionFromChangedFiles,
+  pickContractDefinitionFromChangedFiles,
+  pickContractDefinitionFromReviewChangedFiles,
+  resolveContractDefinition,
   findTaskDefinitionByFilenameSummary,
   listTaskDefinitionsByIssueNumber,
   resolveTaskDefinition,
