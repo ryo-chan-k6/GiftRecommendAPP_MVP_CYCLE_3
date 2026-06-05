@@ -4,11 +4,56 @@ info:
   version: 1.0.0
   description: |
     web（apps/web）向け Public API 契約正本。
-    MVP 対象: API-PUB-002 レコメンド実行（POST /api/v1/recommendations）。
+    MVP 対象:
+    - API-PUB-001 APIヘルスチェック（GET /api/v1/health）
+    - API-PUB-002 レコメンド実行（POST /api/v1/recommendations）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
 paths:
+  /api/v1/health:
+    get:
+      operationId: getApiHealth
+      tags:
+        - Health
+      summary: APIヘルスチェック（API-PUB-001）
+      description: |
+        api（apps/api）の稼働状態を返す。監視・疎通確認向け。
+        MVP は非認証。Provider: apps/api / Consumer: apps/web・運用確認。
+        正常系は HTTP 200 かつ data.status: ok。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（API 稼働中、または degraded だが応答可能）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiHealthSuccessResponse"
+              examples:
+                ok:
+                  $ref: "#/components/examples/ApiHealthOkExample"
+                degraded:
+                  $ref: "#/components/examples/ApiHealthDegradedExample"
+        "500":
+          description: 内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（data.status unavailable 相当）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "504":
+          description: タイムアウト
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
   /api/v1/recommendations:
     post:
       operationId: runRecommendation
@@ -104,6 +149,53 @@ components:
         example: "req_01HZYX"
 
   schemas:
+    ApiHealthStatus:
+      type: string
+      enum:
+        - ok
+        - degraded
+        - unavailable
+      description: |
+        API 稼働状態（API-PUB-001 契約仕様書 §7.3.1）。
+        degraded は HTTP 200 固定。unavailable は原則 HTTP 503。
+
+    ApiHealthData:
+      type: object
+      required:
+        - status
+        - service
+        - apiVersion
+      properties:
+        status:
+          $ref: "#/components/schemas/ApiHealthStatus"
+        service:
+          type: string
+          description: サービス識別子（固定値 okuri）
+          enum:
+            - okuri
+          example: "okuri"
+        apiVersion:
+          type: string
+          description: API バージョン（URL パス v1 と整合）
+          example: "v1"
+        checkedAt:
+          type: string
+          format: date-time
+          description: ヘルス判定日時（ISO 8601）。未指定時は meta.generatedAt を参照可
+
+    ApiHealthSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/ApiHealthData"
+            meta:
+              $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
     RelationshipInput:
       type: object
       required:
@@ -363,6 +455,27 @@ components:
               $ref: "../schemas/common.yaml#/components/schemas/Meta"
 
   examples:
+    ApiHealthOkExample:
+      value:
+        data:
+          status: "ok"
+          service: "okuri"
+          apiVersion: "v1"
+          checkedAt: "2026-06-05T09:00:00+09:00"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T09:00:00+09:00"
+
+    ApiHealthDegradedExample:
+      value:
+        data:
+          status: "degraded"
+          service: "okuri"
+          apiVersion: "v1"
+        meta:
+          generatedAt: "2026-06-05T09:01:00+09:00"
+
     RecommendationRunRequestExample:
       value:
         relationship:
