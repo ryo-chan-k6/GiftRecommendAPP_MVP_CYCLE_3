@@ -215,24 +215,26 @@ async function dispatchFixReviewHarness({
     });
   }
 
-  const infraSkip = reviewAuto.shouldSkipHarnessAutoDispatch({
+  const headRef = pull.head?.ref || "";
+
+  const fixerSkip = reviewAuto.shouldSkipFixerHarnessAutoDispatch({
     context: dispatchContext,
     pullLabels,
     issueLabels,
     changedFiles,
+    headRef,
   });
-  if (infraSkip.skip) {
+  if (fixerSkip.skip) {
     return {
       ok: true,
       skipped: true,
-      reason: infraSkip.reason,
+      reason: fixerSkip.reason,
       pr_number: String(pr),
       issue_number: relatedIssue ? String(relatedIssue) : null,
     };
   }
 
   const workspace = nonEmpty(workspaceRoot) || process.cwd();
-  const headRef = pull.head?.ref || "";
   const taskResolution = await resolveTaskDefinitionForPull({
     workspaceRoot: workspace,
     pull,
