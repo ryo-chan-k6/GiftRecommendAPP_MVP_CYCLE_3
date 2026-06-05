@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 406
   issue: 400
   task_definition: "prompts/definitions/tasks/api-pub-004-feedback-submit/api-contract-spec.yaml"
   source_branch: "docs/task-400-pub-004-feedback-submit-api-contract-spec"
@@ -70,7 +70,7 @@ input:
     number: 400
     required: true
   pr:
-    number: null
+    number: 406
     required: true
   diff:
     required: true
