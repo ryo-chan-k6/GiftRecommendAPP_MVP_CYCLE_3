@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-05                                |
+| 更新日         | 2026-06-05（Human Review #409 反映）       |
 
 ---
 
@@ -106,7 +106,7 @@ MVP では `Authorization` は使用しない。`Content-Type` は Request Body 
 | ---- | -- | ---- | ---- | ---- | -- |
 | -    | -  | -    | なし | -    | -  |
 
-MVP では locale / version 等の Query は定義しない（§14.1 No.2 参照）。
+MVP では Query パラメータは定義しない。locale / version 等の多言語対応用 Query も**想定しない**（Human Review #409 確定）。
 
 ### 6.4 Request Body
 
@@ -160,14 +160,14 @@ Accept: application/json
 | 項目 | 型 | 必須 | 内容 | 制約 | 例 |
 | ---- | -- | ---- | ---- | ---- | ---- |
 | `relationshipCode` | `string` | `true` | 関係性コード | 非空。`relationship_master.relationship_code` に対応 | `boss` |
-| `relationshipLabel` | `string` | `true` | 表示名 | 非空。最大 **50** 文字（API-PUB-002 と同上限） | `上司` |
+| `relationshipLabel` | `string` | `true` | 表示名 | 非空。最大 **50** 文字（API-PUB-002 と同上限）。DB 正本列は `relationship_master.relationship_label`（日本語 UI 表示用） | `上司` |
 | `displayOrder` | `integer` | `false` | 表示順 | 0 以上。未指定時は api 側で `relationshipCode` 辞書順等にフォールバック可（実装仕様書で確定） | `10` |
 
 **Response に含めない項目（MVP 契約面）:**
 
 | 項目 | 理由 |
 | ---- | ---- |
-| `relationshipLabelJp` 等の DB 物理名そのもの | 表示は `relationshipLabel` に集約（§14.1 No.1） |
+| `relationshipLabelJp` 等の DB 物理名そのもの | 表示は `relationshipLabel` に集約（`relationship_label` からマップ。§14.1 No.1） |
 | `isActive` | サーバ側で `is_active=true` のみ返却。クライアントへ状態を露出しない |
 | Pair / Rule 詳細 | Public API 非公開（API一覧 備考） |
 | `relationshipRule` / Feature 補正値 | Reco / Internal 側の責務 |
@@ -257,7 +257,7 @@ Accept: application/json
 | 503 | `GRS-COM-003` | 一時的利用不可 | サービス一時停止 | 現在サービスを利用できません。時間を置いて再度お試しください。 |
 | 504 | `GRS-COM-002` | タイムアウト | タイムアウト | 処理に時間がかかっています。時間を置いて再度お試しください。 |
 
-**空配列とエラーの境界:** 有効レコード 0 件は **200 + 空配列**（API一覧）。`GRS-CFG-005` は DB 接続は成功するがマスタ参照処理が設定不備で継続不能な場合等に限定する（§14.1 No.3）。
+**空配列とエラーの境界:** 有効レコード 0 件は **200 + 空配列**（API一覧）。参照処理不能（設定不備等）は **500 + `GRS-CFG-005`**（Human Review #409 確定。§14.1 No.3）。
 
 本 API では Request Body を持たないため、`GRS-REQ-*` は原則発生しない。
 
@@ -269,7 +269,7 @@ Accept: application/json
 | -------- | ------ | ------------ | ---------------- |
 | HTTP Method | `GET` のみ許可 | - | ルーティング層で拒否（405 等は実装仕様書で定義） |
 | Request Body | 送信しない | - | GET では Body なし |
-| Path / Query | 本 API ではパラメータなし | - | 未知 Query は無視（§14.1 No.2） |
+| Path / Query | 本 API ではパラメータなし | - | 未知 Query は無視（locale 等の Query は定義しない。§14.1 No.2） |
 
 ---
 
@@ -326,16 +326,21 @@ Accept: application/json
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（契約面のみ。Phase1 Wave2 C2 batch3） | Issue #401 |
+| 2026-06-05 | Human Review #409 反映（`relationshipLabel` 正本列 / Query 非対応 / 空配列 vs `GRS-CFG-005` 境界） | #409 |
 
 ---
 
 ## 14. 未決事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `relationshipLabel` の正本列 | 論理 ER に `relationship_label` / `relationship_label_jp` が併存 | Human Review | MVP 着手前 | 暫定: UI 表示用 `relationship_label`（日本語）を `relationshipLabel` にマップ |
-| 2 | Query パラメータ（locale 等） | 将来の多言語対応 | Human Review | 後続 | MVP では Query なし |
-| 3 | `GRS-CFG-005` と空配列の境界 | 設定不備と 0 件正常系の切り分け | Human Review | MVP 着手前 | 暫定: 0 件は 200、参照処理不能は 500 |
+現時点の未決事項はなし（Human Review #409 で §14.1 の論点を確定済み）。
+
+### 14.1 Human Review 反映済み判断（PR #409）
+
+| No | 論点 | 確定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | `relationshipLabel` の正本列 | UI 表示用 `relationship_master.relationship_label`（日本語）を `relationshipLabel` にマップ | §7.3.2。`relationship_label_jp` は Response に露出しない |
+| 2 | Query パラメータ（locale 等） | MVP では Query なし。**多言語対応は想定不要** | §6.3・§9 |
+| 3 | `GRS-CFG-005` と空配列の境界 | 有効レコード 0 件は **200 + 空配列**。参照処理不能は **500 + `GRS-CFG-005`** | §7.2・§8.2 |
 
 ---
 
@@ -361,6 +366,12 @@ Accept: application/json
 - OpenAPI 反映方針が明確である
 - 実装詳細（MOD-API-011/012 フロー）を含めず契約面に限定している
 - secret や `.env` 実値が含まれていない
+
+### 16.1 Human Review で確認してほしいこと
+
+- 正式 Endpoint（`GET /api/v1/masters/relationships`）と MVP 非認証方針の最終確認
+- OpenAPI Contract Task への分離方針の確認
+- §14.1 の Human Review 反映内容が意図どおりか（再レビュー時）
 
 ---
 
