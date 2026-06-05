@@ -8,6 +8,7 @@ info:
     - API-PUB-001 APIヘルスチェック（GET /api/v1/health）
     - API-PUB-002 レコメンド実行（POST /api/v1/recommendations）
     - API-PUB-003 商品詳細取得（GET /api/v1/items/{itemId}）
+    - API-PUB-004 Feedback送信（POST /api/v1/recommendation-results/{resultId}/feedback）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
@@ -111,6 +112,68 @@ paths:
             application/json:
               schema:
                 $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/recommendation-results/{resultId}/feedback:
+    post:
+      operationId: submitRecommendationFeedback
+      tags:
+        - Feedback
+      summary: Feedback送信（API-PUB-004）
+      description: |
+        表示済み Recommendation Result に対するユーザー Feedback を登録する。
+        MVP は非認証（匿名 Feedback）。新規作成は HTTP 201、同一 sessionId + 対象 + feedbackType の更新は HTTP 200。
+        Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/ResultIdPath"
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationFeedbackSubmitRequest"
+            examples:
+              itemNotMatch:
+                $ref: "#/components/examples/FeedbackSubmitItemNotMatchExample"
+              reasonGood:
+                $ref: "#/components/examples/FeedbackSubmitReasonGoodExample"
+      responses:
+        "200":
+          description: Feedback 更新成功（重複キー一致時。data.status updated）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationFeedbackSubmitSuccessResponse"
+              examples:
+                updated:
+                  $ref: "#/components/examples/FeedbackSubmitUpdatedExample"
+        "201":
+          description: Feedback 新規作成成功（data.status accepted）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationFeedbackSubmitSuccessResponse"
+              examples:
+                accepted:
+                  $ref: "#/components/examples/FeedbackSubmitAcceptedExample"
+        "400":
+          description: Request 不正（GRS-FDB-001 / GRS-FDB-004 / GRS-REQ-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "404":
+          description: 対象 Result / Item / Reason なし（GRS-FDB-002）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー（GRS-FDB-005 / GRS-FDB-999 / GRS-DB-*）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
   /api/v1/recommendations:
     post:
       operationId: runRecommendation
@@ -199,6 +262,15 @@ components:
         maxLength: 64
         pattern: '^[A-Za-z0-9_-]+$'
       example: "item_001"
+    ResultIdPath:
+      name: resultId
+      in: path
+      required: true
+      description: Recommendation Result ID（API-PUB-002 の recommendationResultId と一致）
+      schema:
+        type: string
+        minLength: 1
+      example: "result_001"
     XTraceId:
       name: X-Trace-Id
       in: header
@@ -368,6 +440,130 @@ components:
               $ref: "#/components/schemas/PublicItemDetail"
             meta:
               $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+    FeedbackTargetType:
+      type: string
+      enum:
+        - result
+        - item
+        - reason
+      description: Feedback 対象粒度（API-PUB-004 契約仕様書 §6.4）
+
+    FeedbackType:
+      type: string
+      enum:
+        - item_good
+        - item_bad
+        - item_not_match
+        - item_ng_violation
+        - item_avoid_match
+        - reason_good
+        - reason_bad
+        - result_good
+        - result_bad
+        - comment
+      description: MVP 許容 feedbackType（契約仕様書 §6.4.1）
+
+    FeedbackValueType:
+      type: string
+      enum:
+        - boolean
+        - rating
+        - choice
+        - text
+        - event
+
+    RecommendationFeedbackSubmitRequest:
+      type: object
+      required:
+        - feedbackTargetType
+        - feedbackType
+        - rating
+      description: |
+        Feedback 送信 Request（API-PUB-004 §6.4）。
+        feedbackTargetType=item 時は resultItemId 必須。reason 時は reasonId 必須。
+      properties:
+        feedbackTargetType:
+          $ref: "#/components/schemas/FeedbackTargetType"
+        resultItemId:
+          type: string
+          description: 対象 Result Item ID（feedbackTargetType=item 時必須）
+        reasonId:
+          type: string
+          description: 対象 Reason ID（feedbackTargetType=reason 時必須）
+        feedbackType:
+          $ref: "#/components/schemas/FeedbackType"
+        feedbackValueType:
+          $ref: "#/components/schemas/FeedbackValueType"
+        feedbackValue:
+          oneOf:
+            - type: boolean
+            - type: number
+            - type: string
+        feedbackChoiceCode:
+          type: string
+        feedbackReasonCategory:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: 1〜5 評価（MVP 必須）
+        comment:
+          type: string
+          maxLength: 500
+        sourcePage:
+          type: string
+        sessionId:
+          type: string
+          description: MVP 匿名 Feedback 用セッション識別子
+
+    RecommendationFeedbackSubmitData:
+      type: object
+      required:
+        - recommendationFeedbackId
+        - status
+      properties:
+        recommendationFeedbackId:
+          type: string
+          example: "feedback_001"
+        status:
+          type: string
+          enum:
+            - accepted
+            - updated
+          description: 新規 accepted / 更新 updated
+        message:
+          type: string
+          example: "フィードバックを受け付けました。"
+
+    FeedbackSubmitMeta:
+      type: object
+      required:
+        - traceId
+        - requestId
+      properties:
+        traceId:
+          type: string
+        requestId:
+          type: string
+        acceptedAt:
+          type: string
+          format: date-time
+          description: 受付日時（ISO 8601）
+
+    RecommendationFeedbackSubmitSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/RecommendationFeedbackSubmitData"
+            meta:
+              $ref: "#/components/schemas/FeedbackSubmitMeta"
 
     RelationshipInput:
       type: object
@@ -690,6 +886,52 @@ components:
         meta:
           traceId: "550e8400-e29b-41d4-a716-446655440001"
           requestId: "req_01HZYY"
+
+    FeedbackSubmitItemNotMatchExample:
+      value:
+        feedbackTargetType: "item"
+        resultItemId: "result_item_001"
+        feedbackType: "item_not_match"
+        feedbackValueType: "choice"
+        feedbackChoiceCode: "too_casual"
+        feedbackReasonCategory: "context_mismatch"
+        rating: 2
+        comment: "上司へのお礼としては少しカジュアルに見えます"
+        sourcePage: "SCR-007"
+        sessionId: "sess_abc123"
+
+    FeedbackSubmitReasonGoodExample:
+      value:
+        feedbackTargetType: "reason"
+        reasonId: "reason_001"
+        resultItemId: "result_item_001"
+        feedbackType: "reason_good"
+        feedbackValueType: "boolean"
+        feedbackValue: true
+        rating: 5
+        sourcePage: "SCR-007"
+
+    FeedbackSubmitAcceptedExample:
+      value:
+        data:
+          recommendationFeedbackId: "feedback_001"
+          status: "accepted"
+          message: "フィードバックを受け付けました。"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          acceptedAt: "2026-06-05T12:00:00+09:00"
+
+    FeedbackSubmitUpdatedExample:
+      value:
+        data:
+          recommendationFeedbackId: "feedback_001"
+          status: "updated"
+          message: "フィードバックを更新しました。"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          acceptedAt: "2026-06-05T12:05:00+09:00"
 
     RecommendationRunRequestExample:
       value:

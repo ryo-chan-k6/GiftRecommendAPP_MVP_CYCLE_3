@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-api-pub-004-feedback-submit-openapi-fragment"
+  title: "API-PUB-004:Feedback送信OpenAPI断片反映"
+  summary: "API-PUB-004（POST /api/v1/recommendation-results/{resultId}/feedback）の契約仕様書に基づき public-api.yaml へ OpenAPI 断片を追加する。"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "phase1_wave2"
+  related_issue: "#400"
+  related_pr: "#406"
+  related_task_definition: "prompts/definitions/tasks/api-pub-004-feedback-submit/api-contract-spec.yaml"
+  reason: "Phase1 1b 直列 merge（#367）。#417（PUB-003）完了後の次手。"
+
+change:
+  api_name: "Feedback送信"
+  api_kind: "public"
+  endpoint: "POST /api/v1/recommendation-results/{resultId}/feedback"
+  method: "POST"
+  change_type: "add_endpoint"
+  breaking_change: false
+
+scope:
+  - "public-api.yaml に POST /api/v1/recommendation-results/{resultId}/feedback を追加"
+  - "RecommendationFeedbackSubmitRequest 等の components schema を追加"
+
+out_of_scope:
+  - "Orval 再生成（1c）"
+  - "internal-reco-api.yaml"
+  - "apps 実装"
+
+branch:
+  name: "feature/task-420-pub-004-feedback-submit-openapi"
+  base: "feature/epic-367-api-contract-orval"
+  target: "feature/epic-367-api-contract-orval"
+
+dependencies:
+  epics:
+    - issue: 367
+      title: "[Epic]API-CONTRACT-ORVAL"
+    - issue: 386
+      title: "[Epic]API-PUB-004:Feedback送信"
+  issues:
+    - "#400"
+    - "#406"
+  prs:
+    - "#417"
+
+parallel_control:
+  exclusive_files:
+    - "packages/contracts/openapi/public-api.yaml"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
