@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-05                                |
+| 更新日         | 2026-06-05（Human Review 反映）           |
 
 ---
 
@@ -133,10 +133,19 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 | -----: | ---- | -------- |
 | 200 | 処理成功 | Semantic Config スナップショットを返却できる場合 |
 | 400 | Request 不正 | 未知 Query 等の Validation 失敗（`GRS-REQ-001`） |
-| 500 | 内部エラー | current Semantic Config 未設定（`GRS-CFG-001`）、解決失敗（`GRS-CFG-002`）、DB 障害（`GRS-DB-*` / `GRS-CFG-999`） |
+| 500 | 内部エラー | current Semantic Config 未設定（`GRS-CFG-001`）、解決失敗（`GRS-CFG-002`）、有効 Feature Definition 0 件（`GRS-CFG-006`）、DB 障害（`GRS-DB-*` / `GRS-CFG-999`） |
 | 503 | 一時利用不可 | DB 一時不可（`GRS-DB-001`） |
 
-**空配列方針:** Semantic Concept または Feature Definition が 0 件の場合、HTTP **200** とし該当配列を `[]` とする（API一覧 §API-PUB-007「マスタ未設定時は空配列等」に整合）。ただし **current Version 自体が存在しない** 場合は `GRS-CFG-001`（500）とする。
+**空配列・不足方針（§14 決定事項）:**
+
+| 条件 | HTTP Status | 扱い |
+| ---- | ----------- | ---- |
+| current Version 自体が存在しない | 500 | `GRS-CFG-001` |
+| Version あり・Semantic Concept 0 件（`is_active = true`） | 200 | `semanticConcepts: []` |
+| Version あり・有効 Feature Definition 0 件 | 500 | `GRS-CFG-006` |
+| Version あり・Concept / Feature Definition ともに 1 件以上 | 200 | 通常応答 |
+
+`is_active = false` の行は応答に含めない（§14 決定事項 No.1）。
 
 ### 7.3 Response Body
 
@@ -149,12 +158,12 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 | `semanticConfigVersionId` | `string` | `true` | 現行 Semantic Config Version ID | `semantic_config_version` 正本 |
 | `versionLabel` | `string` | `false` | Version 表示ラベル | 例: `v1.0.0` |
 | `configName` | `string` | `false` | Semantic Config 名称 | `semantic_config.config_name` 表面 |
-| `semanticConcepts` | `array` | `true` | Semantic Concept 一覧 | `is_active = true` のみ（§14.1 No.1 参照） |
+| `semanticConcepts` | `array` | `true` | Semantic Concept 一覧 | `is_active = true` の行のみ（§14 決定事項 No.1） |
 | `semanticConcepts[].conceptCode` | `string` | `true` | Concept コード | snake_case 物理名を API では camelCase キーで表現 |
 | `semanticConcepts[].conceptLabel` | `string` | `true` | 表示ラベル | - |
 | `semanticConcepts[].conceptDescription` | `string` | `false` | 説明 | - |
 | `semanticConcepts[].isActive` | `boolean` | `true` | 有効フラグ | 応答に含める行は `true` |
-| `featureDefinitions` | `array` | `true` | Feature Definition 一覧 | MVP 8 次元固定 |
+| `featureDefinitions` | `array` | `true` | Feature Definition 一覧 | `is_active = true` の行のみ。MVP 8 次元固定（§14 決定事項 No.1） |
 | `featureDefinitions[].featureCode` | `string` | `true` | Feature コード | `formality` 等（用語集・AGENTS.md 固定名） |
 | `featureDefinitions[].featureLabel` | `string` | `true` | 表示ラベル | - |
 | `featureDefinitions[].featureGroup` | `string` | `true` | 軸グループ | enum: `social` / `symbolic` |
@@ -168,7 +177,7 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 | `social` | `formality`, `safety`, `brand_appropriateness` |
 | `symbolic` | `emotion`, `novelty`, `intimacy`, `symbolic_identity`, `story_richness` |
 
-**返却しない項目（契約上明示）:** `semantic_rule` の `source_text_pattern` / `weight`、`pair_rule`、`normalization_rule` のパラメータ、`model_version_id`、内部 DB 主キー（`semantic_concept_id` 等の生 ID は省略可。§14.1 No.2 参照）。
+**返却しない項目（契約上明示）:** `semantic_rule` の `source_text_pattern` / `weight`、`pair_rule`、`normalization_rule` のパラメータ、`model_version_id`、内部 DB 主キー（`semantic_concept_id` 等）。Public 表面はコード体系（`conceptCode` / `featureCode` 等）のみとする（§14 決定事項 No.2）。
 
 #### 7.3.2 `meta`
 
@@ -226,7 +235,9 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 }
 ```
 
-#### 7.4.2 空配列正常系（200）
+#### 7.4.2 Semantic Concept 空配列正常系（200）
+
+Version あり・有効 Feature Definition 1 件以上の場合。Concept 0 件は 200 とする。
 
 ```json
 {
@@ -234,11 +245,37 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
     "semanticConfigVersionId": "semantic_config_v001",
     "versionLabel": "v1.0.0",
     "semanticConcepts": [],
-    "featureDefinitions": []
+    "featureDefinitions": [
+      {
+        "featureCode": "formality",
+        "featureLabel": "格式",
+        "featureGroup": "social",
+        "displayOrder": 1,
+        "isActive": true
+      }
+    ]
   },
   "meta": {
     "traceId": "550e8400-e29b-41d4-a716-446655440001",
     "requestId": "req_01HZYY"
+  }
+}
+```
+
+#### 7.4.3 Feature Definition 不足（500）
+
+Version あり・有効 Feature Definition 0 件の場合。
+
+```json
+{
+  "error": {
+    "code": "GRS-CFG-006",
+    "message": "選択項目の取得に失敗しました。",
+    "details": []
+  },
+  "meta": {
+    "traceId": "550e8400-e29b-41d4-a716-446655440003",
+    "requestId": "req_01HZYZ"
   }
 }
 ```
@@ -284,7 +321,7 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 | -------- | ------ | ------------ | ---------------- |
 | HTTP Method | `GET` のみ許可 | - | ルーティング層で拒否 |
 | Request Body | 送信しない | - | GET では Body なし |
-| 未知 Query | MVP では未定義 Query を受け付けない | `GRS-REQ-001` | 条件を確認してください。 |
+| 未知 Query | MVP では未定義 Query を受け付けない（400 で拒否。§14 決定事項 No.4） | `GRS-REQ-001` | 条件を確認してください。 |
 
 ---
 
@@ -322,7 +359,7 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 |  No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
 | 1 | 正常系 | current Version 存在時 200、`semanticConfigVersionId` と配列が返る | contract |
-| 2 | 空配列 | Concept / Definition 0 件でも 200 + `[]` | contract |
+| 2 | Concept 空配列 | Version あり・Concept 0 件で 200 + `semanticConcepts: []` | contract |
 | 3 | 設定未整備 | current Version なしで 500 / `GRS-CFG-001` | contract |
 | 4 | Feature 不足 | 有効 Feature Definition 0 件で 500 / `GRS-CFG-006` | contract |
 | 5 | validation | 未知 Query で 400 / `GRS-REQ-001` | contract |
@@ -336,17 +373,18 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（Phase1 1a 契約面） | Issue #403 |
+| 2026-06-05 | Human Review 指摘反映（§14 決定事項確定・空配列方針整合） | PR #407 |
 
 ---
 
-## 14. 未決事項
+## 14. 決定事項（Human Review 確定）
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 応答に `is_active = false` の行を含めるか | 画面・デバッグ要件 | Human | - | 本書は active のみを契約代表とする |
-| 2 | DB 主キー（`semantic_concept_id` 等）を Public に含めるか | 将来の差分更新 API 要否 | Human | - | 本書はコード体系のみ |
-| 3 | Concept / Definition 0 件を 200 とするか 500 とするか | API一覧「空配列等」と CFG-006 の境界 | Human | - | Version あり・子 0 件は 200 案 |
-| 4 | 未知 Query を 400 とするか無視するか | 他マスタ API との統一 | Human | - | 本書は 400 案 |
+|  No | 論点 | 決定内容 | 判断者 | 関連 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | 応答に `is_active = false` の行を含めるか | **含めない**。`is_active = true` の行のみ返却する | Human | §7.3.1 |
+| 2 | DB 主キー（`semantic_concept_id` 等）を Public に含めるか | **含めない**。コード体系（`conceptCode` / `featureCode` 等）のみ | Human | §7.3.1 |
+| 3 | Concept / Definition 0 件の HTTP Status | **Version あり・Concept 0 件は 200**、**Version あり・有効 Feature Definition 0 件は 500（`GRS-CFG-006`）** | Human | §7.2 / §7.4.2 / §7.4.3 |
+| 4 | 未知 Query を 400 とするか無視するか | **400（`GRS-REQ-001`）で拒否** | Human | §6.3 / §9 |
 
 ---
 
