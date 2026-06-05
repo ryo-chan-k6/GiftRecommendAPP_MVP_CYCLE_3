@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-001-reco-health-check-openapi-pr"
+  title: "API-INT-001 OpenAPI断片 Contract Task PRレビュー"
+  summary: "API-INT-001（GET /internal/reco/v1/health）の OpenAPI 断片を #367 へ反映する Contract Task PR の AI Review。"
+  type: "task_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue:
+    number: 414
+  task_definition: "prompts/definitions/contracts/api-int-001-reco-health-check/openapi-fragment.yaml"
+  target_branch: "feature/epic-367-api-contract-orval"
+  parent_epic_branch: "feature/epic-367-api-contract-orval"
+
+review_points:
+  common:
+    - "PR target が feature/epic-367-api-contract-orval"
+    - "author=okuri-ai-bot"
+  contract:
+    - "契約仕様書 §6〜§8 との整合（InternalApiKey、optional trace/request）"
+    - "service=reco、status enum、MVP 二値運用"
+    - "API-INT-002 既存 path 維持"
+    - "Orval / generated 未変更"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
