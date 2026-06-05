@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 380
   issue: 376
   task_definition: "prompts/definitions/tasks/api-int-002-reason-summary-reason-data-required-scope/spike.yaml"
   source_branch: "spike/task-376-api-int-002-reason-summary-reason-data-required-scope"
@@ -70,7 +70,7 @@ input:
     number: 376
     required: true
   pr:
-    number: null
+    number: 380
     required: true
   diff:
     required: true
@@ -109,7 +109,7 @@ review_points:
     - "out_of_scope（実装・OpenAPI・generated）の変更が混在していないか"
     - "PR 本文に Task Definition パスが記載されているか"
     - "PR target が親 Epic Branch であるか"
-    - "Closes #376 の使用が妥当か（spike 完了として）"
+    - "Related to #376 の使用が妥当か（Task PR 自動 close キーワード未使用）"
   docs:
     - "reasonSummary / reasonData の必須・任意が human-decisions と §7.3 で一致しているか"
     - "Reason 生成のみ失敗時の reasonSummary 省略ルールと reasonStatus 値域が明記されているか"
