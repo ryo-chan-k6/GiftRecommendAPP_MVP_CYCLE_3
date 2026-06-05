@@ -339,6 +339,8 @@ Task Definitionの `test_policy` に従い、必要なテスト・検証を実�
 
 変更内容がTask Definitionのscope内であり、自己確認が完了した場合はcommitを作成する。
 
+**commit 前**に §0 の `print-git-user` で取得した `GIT_NAME` / `GIT_EMAIL` を使用する（ハードコード禁止）。未実行の場合は §0 に戻ってから commit する。
+
 commit作成時は以下を確認する。
 
 - commit対象ファイルが妥当か
