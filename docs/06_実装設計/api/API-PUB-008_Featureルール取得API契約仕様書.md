@@ -23,6 +23,8 @@ web（`apps/web`）から api（`apps/api`）へ、レコメンド条件入力�
 
 **Pair Rule**（Relationship × Occasion 組み合わせ補正）は Public API 応答に含めない（API一覧 §API-PUB-005 備考「Pair情報はPublic API応答に含めず」と同方針）。Normalization Rule の内部パラメータも含めない。
 
+**Response 構成（MVP 確定）:** `baseValueRules[]`（Relationship / Occasion 等の基準値 Rule）と `conceptFeatureRules[]`（Concept 補正 Rule）の **2 グループ構成** とする（Human Review #408 確定）。
+
 ---
 
 ## 3. 目的
@@ -68,16 +70,16 @@ web（`apps/web`）から api（`apps/api`）へ、レコメンド条件入力�
 
 - 現行 Semantic Config Version に紐づく Feature Rule を一覧取得する。
 - web が Relationship / Occasion コード（API-PUB-005/006）および Semantic Concept（API-PUB-007）と整合した Rule 参照に利用する。
-- Pair Rule は Reco 内部または Internal API 側で利用し、本 Public API では返却しない。
+- Pair Rule は Reco 内部で Relationship + Occasion 選択後に適用し、本 Public API では返却しない。
 
 ### 5.4 他 API との関係
 
 | 項目 | 内容 |
 | ---- | ---- |
-| API-PUB-005 | `relationshipCode` は本 API の `relationshipRules[].relationshipCode` と整合 |
-| API-PUB-006 | `occasionCode` は本 API の `occasionRules[].occasionCode` と整合 |
+| API-PUB-005 | `relationshipCode` は本 API の `baseValueRules[]`（`ruleType: relationship`）と整合 |
+| API-PUB-006 | `occasionCode` は本 API の `baseValueRules[]`（`ruleType: occasion`）と整合 |
 | API-PUB-007 | `semanticConfigVersionId` および `conceptCode` が整合 |
-| 非公開 | `pair_rule` 行は応答に含めない |
+| 非公開 | `pair_rule` 行は応答に含めない（Reco 内部完結） |
 
 ---
 
@@ -134,6 +136,8 @@ Accept: application/json
 
 **空配列方針:** 各 Rule 配列が 0 件でも HTTP **200** とする（API一覧「マスタ未設定時は空配列等」）。current Version 未設定のみ `GRS-CFG-001`。
 
+**active Rule のみ返却（MVP 確定）:** DB 上 `is_active = false` の Rule は応答に含めない。`isActive` フィールドは Public 応答に含めない（サーバ側で active のみ抽出）。
+
 ### 7.3 Response Body
 
 #### 7.3.1 `data`
@@ -141,22 +145,24 @@ Accept: application/json
 | 項目 | 型 | 必須 | 内容 | 備考 |
 | ---- | -- | ---- | ---- | ---- |
 | `semanticConfigVersionId` | `string` | `true` | 現行 Semantic Config Version ID | API-PUB-007 と一致 |
-| `relationshipRules` | `array` | `true` | Relationship Rule 一覧 | `relationship_rule` 表面 |
-| `relationshipRules[].relationshipCode` | `string` | `true` | Relationship コード | API-PUB-005 と整合 |
-| `relationshipRules[].featureCode` | `string` | `true` | Feature コード | MVP 8 次元 |
-| `relationshipRules[].featureBaseValue` | `number` | `true` | 基準値 | 0.0〜1.0（API設計方針書 §7.3） |
-| `relationshipRules[].isActive` | `boolean` | `true` | 有効フラグ | - |
-| `occasionRules` | `array` | `true` | Occasion Rule 一覧 | `occasion_rule` 表面 |
-| `occasionRules[].occasionCode` | `string` | `true` | Occasion コード | API-PUB-006 と整合 |
-| `occasionRules[].featureCode` | `string` | `true` | Feature コード | - |
-| `occasionRules[].featureBaseValue` | `number` | `true` | 基準値 | 0.0〜1.0 |
-| `occasionRules[].isActive` | `boolean` | `true` | 有効フラグ | - |
+| `baseValueRules` | `array` | `true` | 基準値 Rule 一覧 | `relationship_rule` / `occasion_rule` 表面 |
+| `baseValueRules[].ruleType` | `string` | `true` | Rule 種別 | enum: `relationship` / `occasion` |
+| `baseValueRules[].relationshipCode` | `string` | 条件付き | Relationship コード | `ruleType: relationship` 時必須。API-PUB-005 と整合 |
+| `baseValueRules[].occasionCode` | `string` | 条件付き | Occasion コード | `ruleType: occasion` 時必須。API-PUB-006 と整合 |
+| `baseValueRules[].featureCode` | `string` | `true` | Feature コード | MVP 8 次元 |
+| `baseValueRules[].featureBaseValue` | `number` | `true` | 基準値 | 0.0〜1.0（API設計方針書 §7.3、Human Review 確定） |
 | `conceptFeatureRules` | `array` | `true` | Concept Feature Rule 一覧 | `concept_feature_rule` 表面 |
 | `conceptFeatureRules[].conceptCode` | `string` | `true` | Semantic Concept コード | API-PUB-007 と整合 |
 | `conceptFeatureRules[].featureCode` | `string` | `true` | Feature コード | - |
-| `conceptFeatureRules[].featureDelta` | `number` | `true` | 補正値（delta） | 正負あり |
+| `conceptFeatureRules[].featureDelta` | `number` | `true` | 補正値（delta） | 0.0〜1.0。方向は `polarity` で表現 |
 | `conceptFeatureRules[].polarity` | `string` | `false` | 極性 | enum: `positive` / `negative` / `mixed` |
-| `conceptFeatureRules[].isActive` | `boolean` | `true` | 有効フラグ | - |
+
+**`ruleType` ごとのコードフィールド:**
+
+| `ruleType` | 必須コードフィールド | 整合先 API |
+| ---------- | -------------------- | ---------- |
+| `relationship` | `relationshipCode` | API-PUB-005 |
+| `occasion` | `occasionCode` | API-PUB-006 |
 
 **返却しない Rule 種別:** `pair_rule`、`normalization_rule`、`input_type_rule`、`feature_integration_rule`（内部処理用）。
 
@@ -174,20 +180,18 @@ Accept: application/json
 {
   "data": {
     "semanticConfigVersionId": "semantic_config_v001",
-    "relationshipRules": [
+    "baseValueRules": [
       {
+        "ruleType": "relationship",
         "relationshipCode": "boss",
         "featureCode": "formality",
-        "featureBaseValue": 0.85,
-        "isActive": true
-      }
-    ],
-    "occasionRules": [
+        "featureBaseValue": 0.85
+      },
       {
+        "ruleType": "occasion",
         "occasionCode": "thanks",
         "featureCode": "emotion",
-        "featureBaseValue": 0.7,
-        "isActive": true
+        "featureBaseValue": 0.7
       }
     ],
     "conceptFeatureRules": [
@@ -195,8 +199,7 @@ Accept: application/json
         "conceptCode": "formal_refined",
         "featureCode": "formality",
         "featureDelta": 0.15,
-        "polarity": "positive",
-        "isActive": true
+        "polarity": "positive"
       }
     ]
   },
@@ -237,6 +240,12 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | HTTP Method | `GET` のみ | - |
 | Request Body | なし | - |
 | 未知 Query | MVP では拒否 | `GRS-REQ-001` |
+| `featureBaseValue` | 0.0〜1.0 | - |
+| `featureDelta` | 0.0〜1.0 | - |
+| `baseValueRules[].ruleType` | `relationship` / `occasion` | - |
+| `baseValueRules[].relationshipCode` | `ruleType: relationship` 時必須 | - |
+| `baseValueRules[].occasionCode` | `ruleType: occasion` 時必須 | - |
+| inactive Rule | 応答に含めない（サーバ側フィルタ） | - |
 
 ---
 
@@ -247,7 +256,8 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | OpenAPI正本 | `packages/contracts/openapi/public-api.yaml` |
 | 操作 ID（案） | `getFeatureRuleMasters` |
 | Path | `/api/v1/masters/feature-rules` |
-| components schema | `FeatureRuleMastersResponse` / `RelationshipRuleMaster` / `OccasionRuleMaster` / `ConceptFeatureRuleMaster` 等 |
+| components schema | `FeatureRuleMastersResponse` / `BaseValueRuleMaster` / `ConceptFeatureRuleMaster` 等 |
+| 条件付き必須 | `baseValueRules` は `ruleType` による `oneOf` / `discriminator` 表現を Contract Task で検討 |
 
 本 Task では YAML / generated の実変更は行わない。
 
@@ -266,12 +276,14 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 
 |  No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
-| 1 | 正常系 | 200 + 3 種 Rule 配列 | contract |
+| 1 | 正常系 | 200 + `baseValueRules` / `conceptFeatureRules` の 2 グループ | contract |
 | 2 | Pair 非公開 | 応答に pair 関連フィールドがない | contract |
-| 3 | コード整合 | relationshipCode / occasionCode / conceptCode が他マスタ API と一致 | contract |
+| 3 | コード整合 | `relationshipCode` / `occasionCode` / `conceptCode` が他マスタ API と一致 | contract |
 | 4 | Version 整合 | `semanticConfigVersionId` が API-PUB-007 と一致 | contract |
 | 5 | 空配列 | 各配列 0 件でも 200 | contract |
 | 6 | 設定未整備 | current Version なしで 500 / `GRS-CFG-001` | contract |
+| 7 | active のみ | inactive Rule が応答に含まれない | contract |
+| 8 | 値域 | `featureBaseValue` / `featureDelta` が 0.0〜1.0 | contract |
 
 ---
 
@@ -280,17 +292,18 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（Phase1 1a 契約面） | Issue #404 |
+| 2026-06-05 | Human Review 反映（2 グループ構成・値域・active のみ・Pair Reco 内部完結） | PR #408 |
 
 ---
 
-## 14. 未決事項
+## 14. Human Review 確定事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- |
-| 1 | Rule を 3 配列に分けるか単一 `rules[]` + `ruleType` にするか | OpenAPI schema 設計 | Human / Contract Task | 本書は 3 配列を契約代表とする |
-| 2 | `featureBaseValue` / `featureDelta` の小数桁・範囲の最終値 | Validation / OpenAPI `minimum`/`maximum` | Human | 本書は 0.0〜1.0（base）案 |
-| 3 | inactive Rule を応答に含めるか | デバッグ・管理画面要否 | Human | active のみ案 |
-| 4 | Pair Rule を将来 Public 化するか | Reco 内部完結 vs web 事前計算 | Human | 現時点は非公開 |
+|  No | 論点 | 確定内容 | 判断者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | Response 構成 | `baseValueRules[]` + `conceptFeatureRules[]` の 2 グループ | Human Review | 3 配列案・単一 `rules[]` 案は不採用 |
+| 2 | 値域 | `featureBaseValue` / `featureDelta` は 0.0〜1.0 | Human Review | `featureDelta` の方向は `polarity` で表現 |
+| 3 | inactive Rule | MVP は active Rule のみ返却 | Human Review | `isActive` は Public 応答に含めない |
+| 4 | Pair Rule 公開方針 | Reco 内部完結。Public 化しない | Human Review | 現行非公開方針を維持 |
 
 ---
 
@@ -308,7 +321,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 ## 16. レビュー観点
 
 - Pair Rule が Public 応答に含まれていないこと
-- Relationship / Occasion / Concept Feature Rule の表面フィールドが Featureルール定義書 §17 と整合していること
+- `baseValueRules` / `conceptFeatureRules` の表面フィールドが Featureルール定義書 §17 と整合していること
 - API-PUB-005/006/007 とのコード体系整合が明記されていること
 - 実装詳細を含まず契約面に限定していること
 
@@ -317,4 +330,4 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 ## 17. 備考
 
 - メトリクス: `masters_feature_rules_request_count` / `masters_feature_rules_error_count`
-- Pair Rule は Reco（MOD-RECO-005 等）内部で Relationship + Occasion 選択後に適用する
+- Pair Rule は Reco（MOD-RECO-005 等）内部で Relationship + Occasion 選択後に適用する（Public 化しない）
