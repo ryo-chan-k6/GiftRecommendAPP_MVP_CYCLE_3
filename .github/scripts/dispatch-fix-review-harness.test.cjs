@@ -90,6 +90,79 @@ test("dispatchFixReviewHarness: Task Definition 解決成功時に fix-review-co
   assert.match(result.recovery_command, /dispatch-fix-review-harness\.cjs/);
 });
 
+test("dispatchFixReviewHarness: Epic PR（unit: epic ラベル）で skip", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "fix-dispatch-"));
+  const epicPath = "prompts/definitions/epics/phase1-wave2-api-contract-foundation/epic.yaml";
+  write(path.join(root, epicPath), 'definition_type: "epic"\n');
+
+  const result = await fixer.dispatchFixReviewHarness({
+    owner: "o",
+    repo: "r",
+    prNumber: 433,
+    issueNumber: 432,
+    context: "request-changes",
+    workspaceRoot: root,
+    token: "token",
+    fetchImpl: async (url) => {
+      if (url.includes("/pulls/433/files")) {
+        return jsonResponse([{ filename: "docs/foo.md" }]);
+      }
+      if (url.includes("/pulls/433")) {
+        return jsonResponse({
+          body: "Related to #432",
+          head: { ref: "feature/epic-432-phase1-wave2-api-contract-foundation", repo: { full_name: "o/r" } },
+          labels: [{ name: "unit: epic" }],
+        });
+      }
+      if (url.includes("/issues/432")) {
+        return jsonResponse({ body: "", labels: [{ name: "unit: epic" }] });
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "epic_pr");
+});
+
+test("dispatchFixReviewHarness: Epic PR（epic branch のみ）で skip", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "fix-dispatch-"));
+
+  const result = await fixer.dispatchFixReviewHarness({
+    owner: "o",
+    repo: "r",
+    prNumber: 433,
+    issueNumber: 432,
+    context: "request-changes",
+    workspaceRoot: root,
+    token: "token",
+    fetchImpl: async (url) => {
+      if (url.includes("/pulls/433/files")) {
+        return jsonResponse([{ filename: "docs/foo.md" }]);
+      }
+      if (url.includes("/pulls/433")) {
+        return jsonResponse({
+          body: "Related to #432",
+          head: { ref: "feature/epic-432-phase1-wave2-api-contract-foundation", repo: { full_name: "o/r" } },
+          labels: [],
+        });
+      }
+      if (url.includes("/issues/432")) {
+        return jsonResponse({ body: "", labels: [{ name: "type: feature" }] });
+      }
+      if (url.includes("/issues/433")) {
+        return jsonResponse({ body: "", labels: [] });
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "epic_pr");
+});
+
 test("dispatchFixReviewHarness: infra ラベルで skip（request-changes context）", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "fix-dispatch-"));
   const taskPath = "prompts/definitions/tasks/fixer-auto-dispatch/fixer-dispatch-script.yaml";
