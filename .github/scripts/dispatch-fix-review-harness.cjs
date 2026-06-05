@@ -86,34 +86,15 @@ async function resolveTaskDefinitionForPull({
   changedFiles,
 }) {
   const headRef = pull.head?.ref || "";
-  const branchInfo = resolver.parseBranchRef(headRef);
-  let taskResolution = taskResolver.resolveTaskDefinition({
+  return taskResolver.resolveTaskDefinition({
     workspaceRoot,
     prBody: pull.body || "",
     issueBody,
     headRef,
     issueNumber,
     definitionOverride,
+    changedFiles,
   });
-
-  if (taskResolution.ok) {
-    return taskResolution;
-  }
-
-  const shouldFallback =
-    taskResolution.reason === "ambiguous_definition_in_text" ||
-    taskResolution.reason === "task_definition_not_found";
-
-  if (!shouldFallback) {
-    return taskResolution;
-  }
-
-  const fromPrFiles = taskResolver.pickTaskDefinitionFromChangedFiles(changedFiles, branchInfo);
-  if (fromPrFiles) {
-    return { ok: true, path: fromPrFiles, source: "pr_changed_files" };
-  }
-
-  return taskResolution;
 }
 
 function buildHarnessDirectRecoveryCommand({
