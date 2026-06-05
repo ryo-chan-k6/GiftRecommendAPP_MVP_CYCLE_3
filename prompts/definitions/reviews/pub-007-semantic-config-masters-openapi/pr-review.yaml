@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-007-semantic-config-masters-openapi-pr"
+  title: "API-PUB-007 OpenAPI断片 Contract Task PRレビュー"
+  summary: "API-PUB-007 Semantic設定取得 OpenAPI 断片の #367 反映 PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue:
+    number: 426
+  task_definition: "prompts/definitions/contracts/api-pub-007-semantic-config-masters/openapi-fragment.yaml"
+  target_branch: "feature/epic-367-api-contract-orval"
+
+review_points:
+  common:
+    - "author=okuri-ai-bot"
+    - "PR target=feature/epic-367-api-contract-orval"
+  contract:
+    - "契約仕様書 §6〜§8 との整合（Concept 0件200、Feature 0件500、未知Query 400）"
+    - "semantic_rule / pair_rule / normalization 非露出"
+    - "featureGroup enum（social/symbolic）と MVP 8 次元 featureCode 整合"
+    - "API-PUB-008 との semanticConfigVersionId 整合前提が明記されていること"
+    - "Orval / generated 未変更"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
