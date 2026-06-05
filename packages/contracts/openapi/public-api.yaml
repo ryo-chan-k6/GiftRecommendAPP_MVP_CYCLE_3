@@ -12,6 +12,7 @@ info:
     - API-PUB-005 Relationshipマスタ取得（GET /api/v1/masters/relationships）
     - API-PUB-006 Occasionマスタ取得（GET /api/v1/masters/occasions）
     - API-PUB-007 Semantic設定取得（GET /api/v1/masters/semantic-configs）
+    - API-PUB-008 Featureルール取得（GET /api/v1/masters/feature-rules）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
@@ -297,6 +298,50 @@ paths:
                 $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
         "500":
           description: 内部エラー（GRS-CFG-001 / GRS-CFG-002 / GRS-CFG-006 / GRS-DB-* 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（GRS-DB-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/masters/feature-rules:
+    get:
+      operationId: getFeatureRuleMasters
+      tags:
+        - Masters
+      summary: Featureルール取得（API-PUB-008）
+      description: |
+        レコメンド条件入力画面（SCR-002）向けに現行 Semantic Config Version に紐づく Feature Rule 一覧を返す。
+        baseValueRules（relationship / occasion）と conceptFeatureRules の 2 グループ構成。MVP は非認証。
+        active Rule のみ返却（isActive フィールドは含めない）。pair_rule / normalization_rule は含めない。
+        Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（Rule 一覧。各配列 0 件も 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeatureRuleMastersSuccessResponse"
+              examples:
+                full:
+                  $ref: "#/components/examples/FeatureRuleMastersFullExample"
+                empty:
+                  $ref: "#/components/examples/FeatureRuleMastersEmptyExample"
+        "400":
+          description: Request 不正（未知 Query 等、GRS-REQ-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー（GRS-CFG-001 / GRS-CFG-005 / GRS-DB-* 等）
           content:
             application/json:
               schema:
@@ -922,6 +967,155 @@ components:
             meta:
               $ref: "#/components/schemas/SemanticConfigMastersMeta"
 
+    RelationshipBaseValueRuleItem:
+      type: object
+      required:
+        - ruleType
+        - relationshipCode
+        - featureCode
+        - featureBaseValue
+      description: Relationship 基準値 Rule（API-PUB-008 §7.3.1）
+      properties:
+        ruleType:
+          type: string
+          enum:
+            - relationship
+          example: "relationship"
+        relationshipCode:
+          type: string
+          minLength: 1
+          description: Relationship コード（API-PUB-005 と整合）
+          example: "boss"
+        featureCode:
+          type: string
+          minLength: 1
+          description: Feature コード（MVP 8 次元）
+          example: "formality"
+        featureBaseValue:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: 基準値（0.0〜1.0）
+          example: 0.85
+
+    OccasionBaseValueRuleItem:
+      type: object
+      required:
+        - ruleType
+        - occasionCode
+        - featureCode
+        - featureBaseValue
+      description: Occasion 基準値 Rule（API-PUB-008 §7.3.1）
+      properties:
+        ruleType:
+          type: string
+          enum:
+            - occasion
+          example: "occasion"
+        occasionCode:
+          type: string
+          minLength: 1
+          description: Occasion コード（API-PUB-006 と整合）
+          example: "thanks"
+        featureCode:
+          type: string
+          minLength: 1
+          description: Feature コード（MVP 8 次元）
+          example: "emotion"
+        featureBaseValue:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: 基準値（0.0〜1.0）
+          example: 0.7
+
+    BaseValueRuleMasterItem:
+      oneOf:
+        - $ref: "#/components/schemas/RelationshipBaseValueRuleItem"
+        - $ref: "#/components/schemas/OccasionBaseValueRuleItem"
+      discriminator:
+        propertyName: ruleType
+        mapping:
+          relationship: "#/components/schemas/RelationshipBaseValueRuleItem"
+          occasion: "#/components/schemas/OccasionBaseValueRuleItem"
+
+    ConceptFeatureRuleMasterItem:
+      type: object
+      required:
+        - conceptCode
+        - featureCode
+        - featureDelta
+      description: Concept Feature Rule（API-PUB-008 §7.3.1）
+      properties:
+        conceptCode:
+          type: string
+          minLength: 1
+          description: Semantic Concept コード（API-PUB-007 と整合）
+          example: "formal_refined"
+        featureCode:
+          type: string
+          minLength: 1
+          description: Feature コード
+          example: "formality"
+        featureDelta:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: 補正値 delta（0.0〜1.0。方向は polarity で表現）
+          example: 0.15
+        polarity:
+          type: string
+          enum:
+            - positive
+            - negative
+            - mixed
+          description: 極性
+          example: "positive"
+
+    FeatureRuleMastersData:
+      type: object
+      required:
+        - semanticConfigVersionId
+        - baseValueRules
+        - conceptFeatureRules
+      description: Feature Rule 一覧（API-PUB-008 §7.3.1）
+      properties:
+        semanticConfigVersionId:
+          type: string
+          minLength: 1
+          description: 現行 Semantic Config Version ID（API-PUB-007 と一致）
+          example: "semantic_config_v001"
+        baseValueRules:
+          type: array
+          description: 基準値 Rule 一覧（relationship / occasion。0 件も 200）
+          items:
+            $ref: "#/components/schemas/BaseValueRuleMasterItem"
+        conceptFeatureRules:
+          type: array
+          description: Concept Feature Rule 一覧（0 件も 200）
+          items:
+            $ref: "#/components/schemas/ConceptFeatureRuleMasterItem"
+
+    FeatureRuleMastersMeta:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+    FeatureRuleMastersSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/FeatureRuleMastersData"
+            meta:
+              $ref: "#/components/schemas/FeatureRuleMastersMeta"
+
     RelationshipInput:
       type: object
       required:
@@ -1383,6 +1577,39 @@ components:
         meta:
           traceId: "550e8400-e29b-41d4-a716-446655440001"
           requestId: "req_01HZYY"
+
+    FeatureRuleMastersFullExample:
+      value:
+        data:
+          semanticConfigVersionId: "semantic_config_v001"
+          baseValueRules:
+            - ruleType: "relationship"
+              relationshipCode: "boss"
+              featureCode: "formality"
+              featureBaseValue: 0.85
+            - ruleType: "occasion"
+              occasionCode: "thanks"
+              featureCode: "emotion"
+              featureBaseValue: 0.7
+          conceptFeatureRules:
+            - conceptCode: "formal_refined"
+              featureCode: "formality"
+              featureDelta: 0.15
+              polarity: "positive"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T12:00:00+09:00"
+
+    FeatureRuleMastersEmptyExample:
+      value:
+        data:
+          semanticConfigVersionId: "semantic_config_v001"
+          baseValueRules: []
+          conceptFeatureRules: []
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440002"
+          requestId: "req_01HZYZ"
 
     RecommendationRunRequestExample:
       value:
