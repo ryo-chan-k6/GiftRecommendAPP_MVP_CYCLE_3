@@ -10,6 +10,7 @@ info:
     - API-PUB-003 商品詳細取得（GET /api/v1/items/{itemId}）
     - API-PUB-004 Feedback送信（POST /api/v1/recommendation-results/{resultId}/feedback）
     - API-PUB-005 Relationshipマスタ取得（GET /api/v1/masters/relationships）
+    - API-PUB-006 Occasionマスタ取得（GET /api/v1/masters/occasions）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
@@ -200,6 +201,49 @@ paths:
                   $ref: "#/components/examples/RelationshipMastersMultipleExample"
                 empty:
                   $ref: "#/components/examples/RelationshipMastersEmptyExample"
+        "500":
+          description: 内部エラー（GRS-DB-002 / GRS-CFG-005 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（GRS-COM-003）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "504":
+          description: タイムアウト（GRS-COM-002）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/masters/occasions:
+    get:
+      operationId: getMastersOccasions
+      tags:
+        - Masters
+      summary: Occasionマスタ取得（API-PUB-006）
+      description: |
+        レコメンド条件入力画面（SCR-002）向けに Occasion 選択肢一覧を返す。
+        MVP は非認証。有効レコード 0 件も HTTP 200（空配列）。
+        Pair / Rule 詳細は Response に含めない。Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（選択肢一覧。0 件も 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionMastersSuccessResponse"
+              examples:
+                multiple:
+                  $ref: "#/components/examples/OccasionMastersMultipleExample"
+                empty:
+                  $ref: "#/components/examples/OccasionMastersEmptyExample"
         "500":
           description: 内部エラー（GRS-DB-002 / GRS-CFG-005 等）
           content:
@@ -665,6 +709,62 @@ components:
             meta:
               $ref: "#/components/schemas/RelationshipMastersMeta"
 
+    OccasionMasterItem:
+      type: object
+      required:
+        - occasionCode
+        - occasionLabel
+      description: Occasion 選択肢（API-PUB-006 §7.3.2。isActive は Response に含めない）
+      properties:
+        occasionCode:
+          type: string
+          minLength: 1
+          description: 用途コード
+          example: "thanks"
+        occasionLabel:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 表示名（API-PUB-002 OccasionInput と同上限）
+          example: "お礼"
+        displayOrder:
+          type: integer
+          minimum: 0
+          description: 表示順（displayOrder 昇順、同順位は occasionCode 昇順）
+
+    OccasionMastersData:
+      type: object
+      required:
+        - occasions
+      properties:
+        occasions:
+          type: array
+          items:
+            $ref: "#/components/schemas/OccasionMasterItem"
+
+    OccasionMastersMeta:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/Meta"
+        - type: object
+          properties:
+            count:
+              type: integer
+              minimum: 0
+              description: 返却件数（occasions.length と一致）
+
+    OccasionMastersSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/OccasionMastersData"
+            meta:
+              $ref: "#/components/schemas/OccasionMastersMeta"
+
     RelationshipInput:
       type: object
       required:
@@ -1053,6 +1153,30 @@ components:
       value:
         data:
           relationships: []
+        meta:
+          generatedAt: "2026-06-05T09:00:00+09:00"
+          count: 0
+
+    OccasionMastersMultipleExample:
+      value:
+        data:
+          occasions:
+            - occasionCode: "thanks"
+              occasionLabel: "お礼"
+              displayOrder: 10
+            - occasionCode: "birthday"
+              occasionLabel: "誕生日"
+              displayOrder: 20
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T09:00:00+09:00"
+          count: 2
+
+    OccasionMastersEmptyExample:
+      value:
+        data:
+          occasions: []
         meta:
           generatedAt: "2026-06-05T09:00:00+09:00"
           count: 0
