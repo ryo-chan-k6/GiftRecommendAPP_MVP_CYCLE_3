@@ -139,6 +139,7 @@ Review Definition 専用ファイルの要否は Task2 で確定する。最低�
 | ---- | ---- | ------------ |
 | PR from fork | skip（job success） | `fork_pr` |
 | `type: infra` / `area: infra` ラベル | skip | `infra_pr` |
+| Epic PR（`unit: epic` ラベル、または `feature/epic-*` branch） | skip | `epic_pr` |
 | 変更ファイルが `.github/` のみ | skip | `automation_only_changes` |
 | Review Result が `request_changes` 以外 | Step1 で dispatch 出力 false | （dispatch step 未実行） |
 | Fixer 不要（Task Definition で `ai_review` 相当の gate が false） | 将来拡張。Task2 で要否判断 | — |
