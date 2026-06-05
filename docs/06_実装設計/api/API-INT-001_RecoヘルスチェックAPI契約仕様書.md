@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-05                                |
+| 更新日         | 2026-06-05（Human Review 反映）           |
 
 ---
 
@@ -149,7 +149,7 @@ access_log / metric の**実装・記録詳細**は実装仕様書 Task で扱�
 
 ヘルスチェックは **推薦未実行** のため、400 / 422 / 502 / 504 は通常発生しない。api 側の HTTP クライアントタイムアウトは接続エラーとして扱い、実装仕様書 Task で整理する。
 
-**稼働不良と HTTP Status:** reco プロセスは応答するが内部依存が不全の場合、HTTP **503** と `data.status: degraded` の組み合わせを許容する（§7.3.1）。
+**稼働不良と HTTP Status:** MVP では DB 接続不可または reco プロセス応答不可の場合、HTTP **503** と `data.status: unavailable` を返す。`degraded` は将来拡張用に契約値域のみ保持し、MVP では使用しない（§7.3.1）。
 
 ### 7.3 Response Body
 
@@ -166,11 +166,21 @@ access_log / metric の**実装・記録詳細**は実装仕様書 Task で扱�
 
 | `status` 値 | HTTP Status（典型） | 意味 |
 | ----------- | ------------------- | ---- |
-| `ok` | 200 | reco プロセスが正常応答し、MVP で必要な最小依存が利用可能 |
-| `degraded` | 200 または 503 | reco は応答するが一部依存が不全（詳細チェックは実装 Task） |
-| `unavailable` | 503 | reco が利用不可 |
+| `ok` | 200 | DB 接続が正常かつ reco プロセスが正常応答 |
+| `degraded` | 200 または 503 | 将来拡張用。MVP では使用しない（契約値域のみ保持） |
+| `unavailable` | 503 | DB 接続不可または reco プロセス応答不可 |
 
-MVP 初版では `status: ok` のみを必須成功パターンとし、`degraded` / `unavailable` の判定条件詳細は実装仕様書 Task で確定する。
+**MVP 運用（Human Review 確定）:** 二値運用とする。DB OK → `ok`、DB NG またはプロセス NG → `unavailable`。`degraded` は将来拡張用に契約値域のみ保持する。
+
+**依存チェック範囲（契約面）:**
+
+| 依存 | MVP での扱い | `status` への影響 |
+| ---- | ------------ | ----------------- |
+| DB | 必須依存 | あり（OK → `ok`、NG → `unavailable`） |
+| Redis | 任意依存 | なし（チェックしても結果に影響させない） |
+| Embedding | 対象外 | ヘルスチェック対象外 |
+
+依存チェックの実装詳細は実装仕様書 Task で扱う。
 
 #### 7.3.2 `meta`
 
@@ -291,7 +301,8 @@ Contract Gate 通過後に Implementation Task および apps/reco・apps/api �
 
 | No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
-| 1 | 正常系 | 有効な `X-Internal-Api-Key` で 200、`data.status: ok`、`data.service: reco` | contract |
+| 1 | 正常系 | 有効な `X-Internal-Api-Key` かつ DB 正常で 200、`data.status: ok`、`data.service: reco` | contract |
+| 6 | 不可用系 | DB 接続不可またはプロセス応答不可で 503、`data.status: unavailable` | contract |
 | 2 | auth error | `X-Internal-Api-Key` 欠落・不正で 401 | contract |
 | 3 | trace 伝播 | `X-Trace-Id` 指定時に `meta.traceId` が一致 | contract |
 | 4 | 冪等性 | 同一 Request の繰り返しで副作用なし | contract |
@@ -306,6 +317,7 @@ Contract Gate 通過後に Implementation Task および apps/reco・apps/api �
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（契約面のみ。Phase1 1a） | #392 |
+| 2026-06-05 | Human Review 反映（`status` MVP 二値運用、依存チェック範囲、`data.version` optional 確定） | #392 / #396 |
 
 ---
 
@@ -319,13 +331,15 @@ Contract Gate 通過後に Implementation Task および apps/reco・apps/api �
 | 2 | Provider / Consumer | Provider: `apps/reco` エンドポイント層、Consumer: `apps/api` | §4、§5.4 |
 | 3 | Request Body | なし（GET） | §6.4 |
 | 4 | 認証 | Internal API Key 必須（API設計方針書 §11.3） | §6.1、§9 |
+| 5 | `status` MVP 運用 | DB OK → `ok`、DB NG またはプロセス NG → `unavailable`。`degraded` は将来拡張用に契約値域のみ保持 | §7.2、§7.3.1 |
+| 6 | 依存チェック範囲 | DB は必須依存。Redis は任意依存（チェックしても `status` に影響しない）。Embedding はヘルスチェック対象外 | §7.3.1 |
+| 7 | `data.version` | optional（MVP で必須としない） | §7.3.1 |
+| 8 | Endpoint / I/F 境界 | `GET /internal/reco/v1/health`、Provider: `apps/reco`、Consumer: `apps/api` | §4、§5.4 |
+| 9 | OpenAPI 反映 | `internal-reco-api.yaml` 更新は別 Contract Task で実施 | §10 |
 
 ### 14.2 未決（人間判断待ち）
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 | 追跡 Issue |
-| --: | ---- | ---------------- | ------ | ---- | ---- | ---------- |
-| 1 | `degraded` / `unavailable` の判定条件 | MVP 初版は `ok` のみ必須としたが、依存チェック（DB 等）の範囲は実装判断が必要 | Human | - | 実装仕様書 Task で詳細化 | - |
-| 2 | `data.version` の必須化 | デプロイ追跡に有用だが MVP で必須とするか未確定 | Human | - | 現状 optional | - |
+なし（MVP 契約面の論点は Human Review #396 で確定済み）。
 
 OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract Task** とする。
 
@@ -358,13 +372,14 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
 - `packages/contracts/openapi/internal-reco-api.yaml` への反映方針が明確か（本 Task でファイル未変更）
 - secret / `.env` 実値が含まれていないか
 
-### 16.1 Human Review で確認してほしいこと
+### 16.1 Human Review で確定した事項（#396）
 
-- 正式 Endpoint（`GET /internal/reco/v1/health`）と api→reco I/F 境界
-- Internal API Key をヘルスチェックでも必須とする方針
-- Response `data.status` の値域（`ok` / `degraded` / `unavailable`）と MVP での必須範囲
-- `data.version` を optional とした方針
-- OpenAPI Contract Task への分離方針（`internal-reco-api.yaml`）
+- 正式 Endpoint（`GET /internal/reco/v1/health`）と api→reco I/F 境界 — 確定
+- Internal API Key をヘルスチェックでも必須とする方針 — 確定
+- Response `data.status` の MVP 運用 — DB OK → `ok`、DB NG またはプロセス NG → `unavailable` の二値運用。`degraded` は将来拡張用に契約値域のみ保持
+- 依存チェック範囲 — DB は必須依存。Redis は任意依存（結果に影響しない）。Embedding は対象外
+- `data.version` — optional（MVP で必須としない）— 確定
+- OpenAPI Contract Task への分離方針（`internal-reco-api.yaml`）— 確定
 
 ---
 
