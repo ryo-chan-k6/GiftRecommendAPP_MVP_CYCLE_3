@@ -11,6 +11,7 @@ info:
     - API-PUB-004 Feedback送信（POST /api/v1/recommendation-results/{resultId}/feedback）
     - API-PUB-005 Relationshipマスタ取得（GET /api/v1/masters/relationships）
     - API-PUB-006 Occasionマスタ取得（GET /api/v1/masters/occasions）
+    - API-PUB-007 Semantic設定取得（GET /api/v1/masters/semantic-configs）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
@@ -258,6 +259,50 @@ paths:
                 $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
         "504":
           description: タイムアウト（GRS-COM-002）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/masters/semantic-configs:
+    get:
+      operationId: getSemanticConfigMasters
+      tags:
+        - Masters
+      summary: Semantic設定取得（API-PUB-007）
+      description: |
+        レコメンド条件入力画面（SCR-002）向けに現行 Semantic Config のスナップショットを返す。
+        Semantic Concept / Feature Definition（MVP 8 次元）を含む。MVP は非認証。
+        is_active = true の行のみ返却。semantic_rule / pair_rule / normalization 詳細は含めない。
+        Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（スナップショット返却。Concept 0 件も 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticConfigMastersSuccessResponse"
+              examples:
+                full:
+                  $ref: "#/components/examples/SemanticConfigMastersFullExample"
+                emptyConcepts:
+                  $ref: "#/components/examples/SemanticConfigMastersEmptyConceptsExample"
+        "400":
+          description: Request 不正（未知 Query 等、GRS-REQ-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー（GRS-CFG-001 / GRS-CFG-002 / GRS-CFG-006 / GRS-DB-* 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（GRS-DB-001）
           content:
             application/json:
               schema:
@@ -765,6 +810,118 @@ components:
             meta:
               $ref: "#/components/schemas/OccasionMastersMeta"
 
+    SemanticConceptMasterItem:
+      type: object
+      required:
+        - conceptCode
+        - conceptLabel
+        - isActive
+      description: Semantic Concept 定義（API-PUB-007 §7.3.1。is_active=true の行のみ）
+      properties:
+        conceptCode:
+          type: string
+          minLength: 1
+          description: Concept コード（snake_case 物理名を camelCase で表現）
+          example: "formal_refined"
+        conceptLabel:
+          type: string
+          minLength: 1
+          description: 表示ラベル
+          example: "フォーマルで上品"
+        conceptDescription:
+          type: string
+          description: 説明
+          example: "贈答として格式があり、品のある印象"
+        isActive:
+          type: boolean
+          description: 有効フラグ（応答に含める行は true）
+          example: true
+
+    FeatureDefinitionMasterItem:
+      type: object
+      required:
+        - featureCode
+        - featureLabel
+        - featureGroup
+        - isActive
+      description: Feature Definition（API-PUB-007 §7.3.1。MVP 8 次元）
+      properties:
+        featureCode:
+          type: string
+          minLength: 1
+          description: Feature コード（AGENTS.md 固定名）
+          example: "formality"
+        featureLabel:
+          type: string
+          minLength: 1
+          description: 表示ラベル
+          example: "格式"
+        featureGroup:
+          type: string
+          enum:
+            - social
+            - symbolic
+          description: 軸グループ
+          example: "social"
+        displayOrder:
+          type: integer
+          minimum: 1
+          description: 表示順（1 始まり）
+          example: 1
+        isActive:
+          type: boolean
+          description: 有効フラグ（応答に含める行は true）
+          example: true
+
+    SemanticConfigMastersData:
+      type: object
+      required:
+        - semanticConfigVersionId
+        - semanticConcepts
+        - featureDefinitions
+      description: Semantic Config スナップショット（API-PUB-007 §7.3.1）
+      properties:
+        semanticConfigVersionId:
+          type: string
+          minLength: 1
+          description: 現行 Semantic Config Version ID
+          example: "semantic_config_v001"
+        versionLabel:
+          type: string
+          description: Version 表示ラベル
+          example: "v1.0.0"
+        configName:
+          type: string
+          description: Semantic Config 名称
+          example: "mvp-semantic-config"
+        semanticConcepts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SemanticConceptMasterItem"
+        featureDefinitions:
+          type: array
+          minItems: 1
+          description: 有効 Feature Definition 一覧（0 件は 500 GRS-CFG-006）
+          items:
+            $ref: "#/components/schemas/FeatureDefinitionMasterItem"
+
+    SemanticConfigMastersMeta:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+    SemanticConfigMastersSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/SemanticConfigMastersData"
+            meta:
+              $ref: "#/components/schemas/SemanticConfigMastersMeta"
+
     RelationshipInput:
       type: object
       required:
@@ -1180,6 +1337,52 @@ components:
         meta:
           generatedAt: "2026-06-05T09:00:00+09:00"
           count: 0
+
+    SemanticConfigMastersFullExample:
+      value:
+        data:
+          semanticConfigVersionId: "semantic_config_v001"
+          versionLabel: "v1.0.0"
+          configName: "mvp-semantic-config"
+          semanticConcepts:
+            - conceptCode: "formal_refined"
+              conceptLabel: "フォーマルで上品"
+              conceptDescription: "贈答として格式があり、品のある印象"
+              isActive: true
+            - conceptCode: "warm_gratitude"
+              conceptLabel: "感謝が伝わる"
+              isActive: true
+          featureDefinitions:
+            - featureCode: "formality"
+              featureLabel: "格式"
+              featureGroup: "social"
+              displayOrder: 1
+              isActive: true
+            - featureCode: "emotion"
+              featureLabel: "感情"
+              featureGroup: "symbolic"
+              displayOrder: 4
+              isActive: true
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T12:00:00+09:00"
+
+    SemanticConfigMastersEmptyConceptsExample:
+      value:
+        data:
+          semanticConfigVersionId: "semantic_config_v001"
+          versionLabel: "v1.0.0"
+          semanticConcepts: []
+          featureDefinitions:
+            - featureCode: "formality"
+              featureLabel: "格式"
+              featureGroup: "social"
+              displayOrder: 1
+              isActive: true
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440001"
+          requestId: "req_01HZYY"
 
     RecommendationRunRequestExample:
       value:
