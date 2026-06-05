@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: 394
+  pr: 397
   issue: 395
   task_definition: "prompts/definitions/tasks/api-pub-001-api-health-check/api-contract-spec.yaml"
   source_branch: "docs/task-api-pub-001-api-health-check-api-contract-spec"
@@ -70,7 +70,7 @@ input:
     number: 395
     required: true
   pr:
-    number: 394
+    number: 397
     required: true
   diff:
     required: true
@@ -159,6 +159,6 @@ issue:
   area: "api"
 
 notes:
-  - "Task Issue #395 / PR #394 に追記済み（branch 名は起票前作成のため issue 番号非含有）"
+  - "Task Issue #395 / PR #397 に追記済み（#394 は author 差し替えのため close）"
   - "対応 Task Definition: prompts/definitions/tasks/api-pub-001-api-health-check/api-contract-spec.yaml"
   - "対応 Epic Definition: prompts/definitions/epics/api-pub-001-api-health-check/epic.yaml"
