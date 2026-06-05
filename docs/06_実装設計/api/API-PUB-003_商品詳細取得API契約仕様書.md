@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-05                                |
+| 更新日         | 2026-06-05（Human Review #405 反映）      |
 
 ---
 
@@ -69,7 +69,7 @@ web（`apps/web`）から api（`apps/api`）へ、指定 `itemId` の商品詳�
 
 - `itemId` を指定して商品詳細を取得する。
 - 商品が存在しない場合は HTTP **404** と `GRS-ITM-001` を返す（API一覧 §API-PUB-003）。
-- 非 active 商品は HTTP **422** と `GRS-ITM-002` を返す（契約上の代表。404 マスクは §14.1 を参照）。
+- 非 active 商品は HTTP **422** と `GRS-ITM-002` を返す（Human Review #405 で確定。§14.1 参照）。
 - 画像がない場合は HTTP **200** の正常系とし、`itemImageUrl` を省略する（API-PUB-002 `items[]` と同方針。画面側プレースホルダ）。
 
 ### 5.4 API-PUB-002 との関係（契約上の前提のみ）
@@ -110,7 +110,7 @@ MVP では `Authorization` は使用しない。GET のため `Content-Type` は
 | ---- | -- | ---- | ---- | ---- | -- |
 | -    | -  | -    | なし | -    | -  |
 
-MVP では Query Parameter を定義しない。将来、表示言語や画像サイズ指定が必要になった場合は optional で追加可能（破壊的変更に該当しない追加のみ）。
+MVP では Query Parameter を定義しない。未定義 Query を受け付けた場合は HTTP **400** と `GRS-REQ-001` を返す（Human Review #405 で確定。§14.1 参照）。将来、表示言語や画像サイズ指定が必要になった場合は optional で追加可能（破壊的変更に該当しない追加のみ）。
 
 ### 6.4 Request Body
 
@@ -166,8 +166,8 @@ Public API では API設計方針書 §18.4 に従い、**Feature / Embedding / 
 | `itemCatchcopy` | `string` | `false` | キャッチコピー | API-PUB-002 `items[]` と同名 |
 | `itemDescription` | `string` | `false` | 商品説明 | Item Caption 相当。詳細画面向け |
 | `shopName` | `string` | `false` | 店舗名 | API-PUB-002 `items[]` と同名 |
-| `genreId` | `string` | `false` | ジャンル ID | 表示補助。Feature 推定の内部値は含めない |
-| `genreName` | `string` | `false` | ジャンル名 | 表示補助 |
+| `genreId` | `string` | `false` | ジャンル ID | 表示補助。MVP Response に optional で含める（Human Review #405 確定）。Feature 推定の内部値は含めない |
+| `genreName` | `string` | `false` | ジャンル名 | 表示補助。`genreId` とセットで optional 返却 |
 | `reviewSummary` | `object` | `false` | レビュー概要 | Item Review Summary 表面 |
 | `reviewSummary.average` | `number` | `false` | レビュー平均 | 例: `4.2` |
 | `reviewSummary.count` | `integer` | `false` | レビュー件数 | 例: `128` |
@@ -175,7 +175,7 @@ Public API では API設計方針書 §18.4 に従い、**Feature / Embedding / 
 | `images[].url` | `string` | `true` | 画像 URL | `images` 指定時必須 |
 | `images[].kind` | `string` | `false` | 画像種別 | enum 案: `medium` / `small`（OpenAPI Task で固定） |
 | `images[].isPrimary` | `boolean` | `false` | 代表画像フラグ | 1 件を `true` とする |
-| `popularityBadge` | `object` | `false` | 人気表示用バッジ | Popularity Signal の **表示用** 表面のみ |
+| `popularityBadge` | `object` | `false` | 人気表示用バッジ | Popularity Signal の **表示用** 表面のみ。MVP Response に optional で含める（Human Review #405 確定） |
 | `popularityBadge.label` | `string` | `false` | 表示ラベル | 例: `ランキング入り` |
 | `popularityBadge.rank` | `integer` | `false` | ランキング順位 | 内部スコアは含めない |
 | `isActive` | `boolean` | `true` | 推薦・表示対象か | `true` のみ 200 正常系（`false` は §7.2 の 422） |
@@ -304,10 +304,10 @@ Public API では API設計方針書 §18.4 に従い、**Feature / Embedding / 
 | 対象項目 | ルール | エラーコード | エラーメッセージ |
 | -------- | ------ | ------------ | ---------------- |
 | HTTP Method | `GET` のみ許可 | - | ルーティング層で拒否（405 等は実装仕様書で定義） |
-| `itemId` | 必須・非空・最大長 **64**（案） | `GRS-REQ-001` | 条件を確認してください。 |
-| `itemId` | 許可文字: 英数字・`_`・`-`（案） | `GRS-REQ-001` | 条件を確認してください。 |
+| `itemId` | 必須・非空・最大長 **64** | `GRS-REQ-001` | 条件を確認してください。 |
+| `itemId` | 許可文字: 英数字・`_`・`-` | `GRS-REQ-001` | 条件を確認してください。 |
 | Request Body | 送信しない | - | GET では Body なし |
-| 未知 Query | MVP では未定義 Query を受け付けない | `GRS-REQ-001` | 条件を確認してください。 |
+| 未知 Query | MVP では未定義 Query を受け付けない（HTTP 400） | `GRS-REQ-001` | 条件を確認してください。 |
 
 存在確認・active 判定は Repository 層で行い、HTTP Status / Error Code は §8.2 にマッピングする（実装詳細は api-implementation-spec Task）。
 
@@ -367,17 +367,22 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（Phase1 1a 契約面） | Issue #399 |
+| 2026-06-05 | Human Review #405 反映（非 active 422 / optional フィールド / itemId 制約 / 未知 Query 400） | PR #405 |
 
 ---
 
 ## 14. 未決事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 非 active 商品を 422（`GRS-ITM-002`）とするか 404 でマスクするか | セキュリティ・UX 方針 | Human | - | 本書は 422 を契約代表とする |
-| 2 | `popularityBadge` / `genreId` を MVP Response に含めるか | 画面要件（SCR-006）未確定 | Human | - | optional として定義済み |
-| 3 | `itemId` 最大長・許可文字の最終値 | OpenAPI `pattern` / `maxLength` 確定 | Human / Contract Task | - | 本書は案値 |
-| 4 | 未知 Query Parameter を 400 とするか無視するか | API設計方針書との統一 | Human | - | 本書は 400 案 |
+現時点の未決事項はなし（Human Review #405 で §14.1 の論点を確定済み）。
+
+### 14.1 Human Review 反映済み判断（PR #405）
+
+| No | 論点 | 確定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | 非 active 商品の HTTP Status | HTTP **422** + `GRS-ITM-002`（404 マスクは採用しない） | §5.3・§7.2・§8.2 |
+| 2 | `popularityBadge` / `genreId` を MVP Response に含めるか | **optional で含める**（データがない場合は省略） | §7.3.1 |
+| 3 | `itemId` 最大長・許可文字 | 最大長 **64**、許可文字 **英数字・`_`・`-`** | §9。OpenAPI `maxLength` / `pattern` に反映 |
+| 4 | 未知 Query Parameter の扱い | HTTP **400** + `GRS-REQ-001`（無視しない） | §6.3・§9 |
 
 ---
 
@@ -396,6 +401,12 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 ---
 
 ## 16. レビュー観点
+
+### 16.1 Human Review で確認してほしいこと
+
+- §14.1 の Human Review 反映内容が意図どおりか（再レビュー時）
+
+### 16.2 一般レビュー観点
 
 - API契約（Request / Response / Error / Validation）が明確で確定可能である
 - API設計方針書・API一覧と整合している
