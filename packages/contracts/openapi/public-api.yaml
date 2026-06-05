@@ -192,10 +192,12 @@ components:
       name: itemId
       in: path
       required: true
-      description: 商品 ID（内部 Item 識別子）
+      description: 商品 ID（内部 Item 識別子。最大 64 文字、英数字・`_`・`-` のみ）
       schema:
         type: string
         minLength: 1
+        maxLength: 64
+        pattern: '^[A-Za-z0-9_-]+$'
       example: "item_001"
     XTraceId:
       name: X-Trace-Id
