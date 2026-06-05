@@ -1,0 +1,326 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-001-reco-health-check-api-contract-spec"
+  title: "API-INT-001:RecoヘルスチェックAPI契約仕様書作成"
+  summary: "API-INT-001（Recoヘルスチェック / Internal API、`GET /internal/reco/v1/health`）のAPI契約仕様書（API-INT-001_RecoヘルスチェックAPI契約仕様書.md）を、API設計方針書・API一覧・エラーコード定義書・ログ・Observability設計書に基づき、prompts/templates/docs/api-contract-spec.md に準拠して作成する（契約面のみ。実装面・apps/reco実装は対象外）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-INT-001:Recoヘルスチェック"
+  epic_issue_number: 391
+  epic_branch: "feature/epic-391-int-001-reco-health-check"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  06_実装設計において、apps/reco エンドポイント層実装・OpenAPI（internal）定義・apps/api 側 reco-client 利用・Contract Task 化の前提となる **API契約仕様書（契約面）** を作成する。
+  本Taskは API一覧の API-INT-001（Recoヘルスチェック / Internal API）を対象とし、api→reco 間の Request / Response / Error / Validation / 互換性 / OpenAPI反映方針（記載のみ）を整理する。
+  Provider は apps/reco のエンドポイント層（`apps/reco/src/reco/api/**`）、Consumer は apps/api（MOD-API-005 Reco Client 等）とする。
+  ヘルスチェックは推薦パイプラインを実行しない軽量 API であるため、API-INT-002 契約仕様書より簡素な契約面とする。
+  親 Epic（[Epic]API-INT-001:Recoヘルスチェック）の epic_scope に従い、本Taskは契約 docs のみを作成し、apps/reco 実装・OpenAPI ファイル変更は行わない。
+
+objective: |
+  API-INT-001（Recoヘルスチェック / Internal API、`GET /internal/reco/v1/health`）について、Contract Gate および後続 Implementation Task / OpenAPI Contract Task が参照可能な粒度の **API契約仕様書（契約面のみ）** を作成する。
+  成果物は prompts/templates/docs/api-contract-spec.md に準拠し、実装面（`api-implementation-spec.md`）の章は含めない。
+  OpenAPI 正本パス（`packages/contracts/openapi/internal-reco-api.yaml`）および Orval / generated 方針は契約仕様書内に **方針として記載** するが、本Taskでは当該ファイルを変更しない。
+
+scope:
+  - "API-INT-001（Recoヘルスチェック / Internal API）のAPI契約仕様書を新規作成する（成果物ファイル名: API-INT-001_RecoヘルスチェックAPI契約仕様書.md）"
+  - "API基本情報を定義する（API ID / API種別 Internal API / Method GET / Endpoint /internal/reco/v1/health / Provider apps/reco エンドポイント層 / Consumer apps/api / 認証要否 / 冪等性 / MVP対象）"
+  - "Request Header / Path Parameters / Query Parameters / Request Bodyを整理する（ヘルスチェックのため Request Body なし）"
+  - "Response Header / Status Code / Response Bodyを整理する（Reco稼働状態）"
+  - "Error Response仕様を整理する（GRS-COM-* / GRS-REC-* / GRS-AUTH-* 等）"
+  - "バリデーション仕様を整理する"
+  - "契約面における trace_id / ログ・メトリクス対象項目（Request/Response に含める識別子の範囲）を整理する"
+  - "契約面における provider（apps/reco エンドポイント層）/ consumer（apps/api）の I/F 境界を整理する"
+  - "OpenAPI / Orval / generated 反映方針を整理する（正本: packages/contracts/openapi/internal-reco-api.yaml、generated: apps/api/src/generated/reco-client/ 等。ファイル変更は本Task外）"
+  - "互換性・破壊的変更・rollout order を整理する"
+  - "契約面テスト観点（api-contract-spec.md §12）を整理する"
+  - "未決事項・人間判断が必要な事項を明記する"
+
+out_of_scope:
+  - "API-INT-002（Reco推薦実行）の仕様・契約仕様書変更"
+  - "API-PUB-001（Public API / APIヘルスチェック）の仕様・契約仕様書作成"
+  - "prompts/templates/docs/api-implementation-spec.md に準拠する実装面章（処理フロー・Mermaid、内部DTOマッピング、provider/consumer 実装影響、実装結合テスト観点、非機能の実装詳細）"
+  - "OpenAPI定義ファイル（packages/contracts/openapi/internal-reco-api.yaml）の作成・更新"
+  - "Orval設定ファイル（orval.config.ts）の作成・更新"
+  - "generated API client（apps/api/src/generated/reco-client/ 等）の再生成"
+  - "apps/api の実装"
+  - "apps/web の実装"
+  - "apps/reco の実装（エンドポイント層・application 層を含む）"
+  - "Recoモジュール本体（MOD-RECO-001〜029）の設計・実装"
+  - "DB schema変更"
+  - "DDL作成・変更"
+  - "認証・認可方式そのものの変更"
+  - "API一覧全体の再設計"
+  - "画面仕様書の作成"
+  - "他 API（API-PUB-002〜008 / API-INT-002 / API-EXT-*）の契約仕様書作成"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Internal API の URL 設計、HTTP Method、認証、エラー形式、バージョニング等の API 設計方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-INT-001 の endpoint、API種別（Internal API）、呼び出し元（api）/ 呼び出し先（reco）、MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "Internal API の Error Response、HTTP Status、GRS-COM-* / GRS-REC-* 等を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "API-INT-001 の trace_id / access_log / metric（reco_health_check_count）対象を契約仕様書へ反映するため"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "Internal API の認証要否、認可条件、サービス間アクセス制御方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能一覧.md"
+      required: true
+      purpose: "Reco稼働確認が対応する機能と MVP 対象範囲を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-API-005（Reco Client）/ reco エンドポイント層との責務境界を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: false
+      purpose: "reco エンドポイント層と推薦ロジック層の境界を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "API-INT-001 / MOD-API-005 の接続を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: false
+      purpose: "IF-INT-001 と API-INT-001 の対応を確認するため"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: false
+      purpose: "同一 Internal API 群の契約仕様書スタイル・認証・Error 形式の参考とするため"
+  templates:
+    - path: "prompts/templates/docs/api-contract-spec.md"
+      required: true
+      purpose: "API契約仕様書（契約面のみ）を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md"
+  files: []
+  issues: []
+  prs: []
+  openapi:
+    path: "packages/contracts/openapi/internal-reco-api.yaml"
+    required: false
+    purpose: "OpenAPI 正本パスを契約仕様書 §10 に記載するため（本Taskではファイル変更しない。方針・参照のみ）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-contract-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-INT-001（Recoヘルスチェック）API契約仕様書（ファイル名: API-INT-001_RecoヘルスチェックAPI契約仕様書.md）"
+  - "Request / Response / Error Response 定義（契約面）"
+  - "Validation 仕様"
+  - "trace_id / ログ・メトリクス対象（契約面で露出する項目）"
+  - "provider（apps/reco エンドポイント層）/ consumer（apps/api）の I/F 境界整理"
+  - "OpenAPI（internal-reco-api.yaml）/ Orval / generated 反映方針（記載のみ）"
+  - "互換性・破壊的変更・契約面テスト観点"
+  - "未決事項・人間判断事項の整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md が作成されている"
+  - "prompts/templates/docs/api-contract-spec.md の契約面章に準拠している（api-implementation-spec.md の実装面章を含んでいない）"
+  - "API設計方針書と矛盾する URL、HTTP Method、認証、Error 形式を定義していない"
+  - "API一覧の API-INT-001 と矛盾する endpoint、HTTP Method、API種別（Internal API）、呼び出し元（api）/ 呼び出し先（reco）、MVP対象を定義していない"
+  - "Provider が apps/reco（エンドポイント層）、Consumer が apps/api であることが明記されている"
+  - "Request Body がないこと（GET ヘルスチェック）が明記されている"
+  - "Response Body が Reco稼働状態として整理されている"
+  - "Error Response とエラーコードがエラーコード定義書と整合している"
+  - "trace_id / access_log / metric（reco_health_check_count）方針がログ・Observability設計書と整合している（契約面の露出範囲に限定）"
+  - "OpenAPI 正本パスとして packages/contracts/openapi/internal-reco-api.yaml が記載されている"
+  - "OpenAPI / Orval / generated のファイル変更を本Taskに含めていない"
+  - "apps/reco / apps/api のソースコード変更を本Taskに含めていない"
+  - "処理フロー・内部DTOマッピング・実装結合テスト等の実装面詳細を契約仕様書に混入していない"
+  - "未決事項がある場合、未決事項として明記されている"
+  - "secret、APIキー、.env 実値、接続文字列の実値を含んでいない"
+  - "Human Review で確認してほしい事項が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-392-api-int-001-reco-health-check-api-contract-spec"
+  base: "feature/epic-391-int-001-reco-health-check"
+  target: "feature/epic-391-int-001-reco-health-check"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "API設計方針書が作成済みであること"
+    - "API一覧が作成済みであること"
+    - "エラーコード定義書が作成済みであること"
+    - "ログ・Observability設計書が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "API-INT-001 実装面仕様書 Task（api-implementation-spec 準拠）"
+    - "API-INT-001 OpenAPI（internal）Contract Task"
+    - "API-INT-001 reco エンドポイント実装 Task"
+  exclusive_files:
+    - "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "template conformity check"
+    - "api design consistency check"
+    - "api list consistency check"
+    - "error response consistency check"
+    - "contract impact check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md"
+  manual_checks:
+    - "api-contract-spec.md の章構成（契約面のみ）に準拠していることを確認する"
+    - "api-implementation-spec.md の章（処理フロー・内部DTOマッピング等）が混入していないことを確認する"
+    - "API設計方針書と矛盾がないことを確認する"
+    - "API一覧の API-INT-001 と endpoint / method / API種別（Internal API）/ 呼び出し元・呼び出し先 / MVP対象 が一致していることを確認する"
+    - "Provider（apps/reco エンドポイント層）/ Consumer（apps/api）が明記されていることを確認する"
+    - "エラーコード定義書と Error Response が整合していることを確認する"
+    - "OpenAPI 正本パス（internal-reco-api.yaml）が記載され、本Taskで OpenAPI ファイルを変更していないことを確認する"
+    - "apps/reco / apps/api の実装変更を本Taskに含めていないことを確認する"
+    - "secret、APIキー、.env 実値、接続文字列の実値が含まれていないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "契約 docs 作成 Task であり、source code 変更を含まないため対象外"
+    "integration test": "契約 docs 作成 Task であり、実装変更を含まないため対象外"
+    "e2e test": "契約 docs 作成 Task であり、画面・API 実装を含まないため対象外"
+    "contract test": "OpenAPI 定義・provider 実装・consumer 実装・generated 変更を含まないため対象外。ただし contract impact check は必須確認とする"
+    "typecheck": "source code 変更を含まないため対象外"
+    "build": "source code 変更を含まないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "API契約仕様書として粒度が過不足ないか（契約面に限定されているか）"
+    - "API一覧の API-INT-001 と内容が整合しているか"
+    - "API設計方針書と URL、Method、認証、Error 形式が整合しているか"
+    - "Provider（apps/reco エンドポイント層）/ Consumer（apps/api）の I/F 境界が明確か"
+    - "実装面（処理フロー・内部DTO・実装テスト）が契約仕様書に混入していないか"
+    - "OpenAPI（internal-reco-api.yaml）変更が Contract Task として分離されているか"
+    - "親 Epic epic_scope（apps/reco 実装なし）と本Task差分が整合しているか"
+    - "未決事項が隠れずに明記されているか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常の契約 docs 作成作業は ai-logs に保存しない。ただし、必須 input 不足、作業停止、OpenAPI / Orval / generated など横断影響が判明した場合は、必要に応じて incident または cross-cutting として記録する。"
+
+risk_points:
+  - "API一覧とヘルスチェック Response の粒度が一致しない可能性がある"
+  - "Internal API の認証要否（ヘルスチェックで Key 必須とするか）の判断が必要になる可能性がある"
+  - "契約 docs 作成中に OpenAPI（internal-reco-api.yaml）変更が必要と判明する可能性がある"
+  - "Provider（apps/reco エンドポイント層）と Consumer（apps/api / MOD-API-005）の責務境界が曖昧になる可能性がある"
+  - "認証・認可仕様が未確定の場合、契約仕様の確定が止まる可能性がある"
+
+human_decision_points:
+  - "API-INT-001 の正式 Endpoint（`GET /internal/reco/v1/health`）と api→reco の I/F 境界を確認する"
+  - "Provider を apps/reco エンドポイント層、Consumer を apps/api とする方針を確認する"
+  - "ヘルスチェック成功時の Response Body 項目（status / version / checks 等）の最終範囲を確認する"
+  - "Internal API Key をヘルスチェックでも必須とするか確認する"
+  - "OpenAPI（internal-reco-api.yaml）/ Orval / generated 更新を後続 Contract Task として分離するか確認する"
+
+stop_conditions:
+  - "必須 `input.docs` が存在しない場合"
+  - "必須 `input.templates` が存在しない場合"
+  - "必須 `input.docs` 間に矛盾があり、AI Agent だけで判断できない場合"
+  - "API一覧に API-INT-001（Recoヘルスチェック）が存在しない場合"
+  - "正式 Endpoint、HTTP Method、API種別が確定できない場合"
+  - "OpenAPI 定義ファイル（internal-reco-api.yaml）の作成・更新が必要になった場合（Contract Task として分離）"
+  - "Orval 再生成が必要になった場合（Contract Task として分離）"
+  - "generated ファイルの手動編集が必要に見える場合"
+  - "apps/reco または apps/api の実装変更が必要になった場合"
+  - "DB schema 変更が必要になった場合"
+  - "認証・認可仕様変更が必要になった場合"
+  - "secret や .env 実値を扱う必要が出た場合"
+  - "scope 外の実装作業が必要になった場合"
+  - "本Task差分が親 Epic epic_scope.allowed_paths から外れた場合（apps/reco 実装・OpenAPI ファイル変更の混入）"
+
+notes:
+  - "本Taskは API-INT-001 の **契約面** 専用 Task である（Phase1 1a）。構造の参考は prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml および docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md とする。"
+  - "実装面は prompts/templates/docs/api-implementation-spec.md 準拠の別 Task（api-implementation-spec.yaml 等）で作成する。"
+  - "OpenAPI、Orval、generated、apps/reco 実装、apps/api 実装は本Taskでは扱わない。必要になった場合は Contract Task または Implementation Task として分離する。"
+  - "OpenAPI 正本パスは packages/contracts/openapi/internal-reco-api.yaml。本Taskは方針記載のみとし、ファイル変更は out_of_scope。"
+  - "親 Epic Issue #391 / Branch feature/epic-391-int-001-reco-health-check に整合。Task PR は親 Epic Branch を target とする。"
+  - "親 Epic epic_scope: allowed_paths は docs/06_実装設計/api/API-INT-001_* 等。本Taskは契約仕様書のみ作成し、apps/reco/src/reco/application/** 等 forbidden_paths への変更を含めない。"
+  - "出力先は docs/06_実装設計/api/（プロジェクトディレクトリ構成定義書 §10.5）。命名: task.title API-INT-001:RecoヘルスチェックAPI契約仕様書作成、成果物 API-INT-001_RecoヘルスチェックAPI契約仕様書.md、Branch english-summary に api-int-001 と api-contract-spec を含める。"

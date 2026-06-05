@@ -4,11 +4,354 @@ info:
   version: 1.0.0
   description: |
     web（apps/web）向け Public API 契約正本。
-    MVP 対象: API-PUB-002 レコメンド実行（POST /api/v1/recommendations）。
+    MVP 対象:
+    - API-PUB-001 APIヘルスチェック（GET /api/v1/health）
+    - API-PUB-002 レコメンド実行（POST /api/v1/recommendations）
+    - API-PUB-003 商品詳細取得（GET /api/v1/items/{itemId}）
+    - API-PUB-004 Feedback送信（POST /api/v1/recommendation-results/{resultId}/feedback）
+    - API-PUB-005 Relationshipマスタ取得（GET /api/v1/masters/relationships）
+    - API-PUB-006 Occasionマスタ取得（GET /api/v1/masters/occasions）
+    - API-PUB-007 Semantic設定取得（GET /api/v1/masters/semantic-configs）
+    - API-PUB-008 Featureルール取得（GET /api/v1/masters/feature-rules）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
 paths:
+  /api/v1/health:
+    get:
+      operationId: getApiHealth
+      tags:
+        - Health
+      summary: APIヘルスチェック（API-PUB-001）
+      description: |
+        api（apps/api）の稼働状態を返す。監視・疎通確認向け。
+        MVP は非認証。Provider: apps/api / Consumer: apps/web・運用確認。
+        正常系は HTTP 200 かつ data.status: ok。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（API 稼働中、または degraded だが応答可能）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiHealthSuccessResponse"
+              examples:
+                ok:
+                  $ref: "#/components/examples/ApiHealthOkExample"
+                degraded:
+                  $ref: "#/components/examples/ApiHealthDegradedExample"
+        "500":
+          description: 内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（data.status unavailable 相当）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "504":
+          description: タイムアウト
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/items/{itemId}:
+    get:
+      operationId: getItemDetail
+      tags:
+        - Items
+      summary: 商品詳細取得（API-PUB-003）
+      description: |
+        商品詳細画面向けに Item の Public 表面情報を返す。
+        MVP は非認証。Provider: apps/api / Consumer: apps/web。
+        非 active 商品は HTTP 422（GRS-ITM-002）。不存在は HTTP 404（GRS-ITM-001）。
+      parameters:
+        - $ref: "#/components/parameters/ItemIdPath"
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（商品詳細あり。画像なしも 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemDetailSuccessResponse"
+              examples:
+                withImage:
+                  $ref: "#/components/examples/ItemDetailWithImageExample"
+                withoutImage:
+                  $ref: "#/components/examples/ItemDetailWithoutImageExample"
+        "400":
+          description: Request 不正（Path / Query 不正。GRS-REQ-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "404":
+          description: 商品なし（GRS-ITM-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "422":
+          description: 非 active 商品等（GRS-ITM-002）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（DB 接続失敗等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/recommendation-results/{resultId}/feedback:
+    post:
+      operationId: submitRecommendationFeedback
+      tags:
+        - Feedback
+      summary: Feedback送信（API-PUB-004）
+      description: |
+        表示済み Recommendation Result に対するユーザー Feedback を登録する。
+        MVP は非認証（匿名 Feedback）。新規作成は HTTP 201、同一 sessionId + 対象 + feedbackType の更新は HTTP 200。
+        Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/ResultIdPath"
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationFeedbackSubmitRequest"
+            examples:
+              itemNotMatch:
+                $ref: "#/components/examples/FeedbackSubmitItemNotMatchExample"
+              reasonGood:
+                $ref: "#/components/examples/FeedbackSubmitReasonGoodExample"
+      responses:
+        "200":
+          description: Feedback 更新成功（重複キー一致時。data.status updated）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationFeedbackSubmitSuccessResponse"
+              examples:
+                updated:
+                  $ref: "#/components/examples/FeedbackSubmitUpdatedExample"
+        "201":
+          description: Feedback 新規作成成功（data.status accepted）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationFeedbackSubmitSuccessResponse"
+              examples:
+                accepted:
+                  $ref: "#/components/examples/FeedbackSubmitAcceptedExample"
+        "400":
+          description: Request 不正（GRS-FDB-001 / GRS-FDB-004 / GRS-REQ-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "404":
+          description: 対象 Result / Item / Reason なし（GRS-FDB-002）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー（GRS-FDB-005 / GRS-FDB-999 / GRS-DB-*）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/masters/relationships:
+    get:
+      operationId: getMastersRelationships
+      tags:
+        - Masters
+      summary: Relationshipマスタ取得（API-PUB-005）
+      description: |
+        レコメンド条件入力画面（SCR-002）向けに Relationship 選択肢一覧を返す。
+        MVP は非認証。有効レコード 0 件も HTTP 200（空配列）。
+        Pair / Rule 詳細は Response に含めない。Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（選択肢一覧。0 件も 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipMastersSuccessResponse"
+              examples:
+                multiple:
+                  $ref: "#/components/examples/RelationshipMastersMultipleExample"
+                empty:
+                  $ref: "#/components/examples/RelationshipMastersEmptyExample"
+        "500":
+          description: 内部エラー（GRS-DB-002 / GRS-CFG-005 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（GRS-COM-003）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "504":
+          description: タイムアウト（GRS-COM-002）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/masters/occasions:
+    get:
+      operationId: getMastersOccasions
+      tags:
+        - Masters
+      summary: Occasionマスタ取得（API-PUB-006）
+      description: |
+        レコメンド条件入力画面（SCR-002）向けに Occasion 選択肢一覧を返す。
+        MVP は非認証。有効レコード 0 件も HTTP 200（空配列）。
+        Pair / Rule 詳細は Response に含めない。Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（選択肢一覧。0 件も 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionMastersSuccessResponse"
+              examples:
+                multiple:
+                  $ref: "#/components/examples/OccasionMastersMultipleExample"
+                empty:
+                  $ref: "#/components/examples/OccasionMastersEmptyExample"
+        "500":
+          description: 内部エラー（GRS-DB-002 / GRS-CFG-005 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（GRS-COM-003）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "504":
+          description: タイムアウト（GRS-COM-002）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/masters/semantic-configs:
+    get:
+      operationId: getSemanticConfigMasters
+      tags:
+        - Masters
+      summary: Semantic設定取得（API-PUB-007）
+      description: |
+        レコメンド条件入力画面（SCR-002）向けに現行 Semantic Config のスナップショットを返す。
+        Semantic Concept / Feature Definition（MVP 8 次元）を含む。MVP は非認証。
+        is_active = true の行のみ返却。semantic_rule / pair_rule / normalization 詳細は含めない。
+        Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（スナップショット返却。Concept 0 件も 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticConfigMastersSuccessResponse"
+              examples:
+                full:
+                  $ref: "#/components/examples/SemanticConfigMastersFullExample"
+                emptyConcepts:
+                  $ref: "#/components/examples/SemanticConfigMastersEmptyConceptsExample"
+        "400":
+          description: Request 不正（未知 Query 等、GRS-REQ-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー（GRS-CFG-001 / GRS-CFG-002 / GRS-CFG-006 / GRS-DB-* 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（GRS-DB-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/masters/feature-rules:
+    get:
+      operationId: getFeatureRuleMasters
+      tags:
+        - Masters
+      summary: Featureルール取得（API-PUB-008）
+      description: |
+        レコメンド条件入力画面（SCR-002）向けに現行 Semantic Config Version に紐づく Feature Rule 一覧を返す。
+        baseValueRules（relationship / occasion）と conceptFeatureRules の 2 グループ構成。MVP は非認証。
+        active Rule のみ返却（isActive フィールドは含めない）。pair_rule / normalization_rule は含めない。
+        Provider: apps/api / Consumer: apps/web。
+      parameters:
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（Rule 一覧。各配列 0 件も 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeatureRuleMastersSuccessResponse"
+              examples:
+                full:
+                  $ref: "#/components/examples/FeatureRuleMastersFullExample"
+                empty:
+                  $ref: "#/components/examples/FeatureRuleMastersEmptyExample"
+        "400":
+          description: Request 不正（未知 Query 等、GRS-REQ-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー（GRS-CFG-001 / GRS-CFG-005 / GRS-DB-* 等）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（GRS-DB-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
   /api/v1/recommendations:
     post:
       operationId: runRecommendation
@@ -86,6 +429,26 @@ paths:
                 $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
 components:
   parameters:
+    ItemIdPath:
+      name: itemId
+      in: path
+      required: true
+      description: 商品 ID（内部 Item 識別子。最大 64 文字、英数字・`_`・`-` のみ）
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+        pattern: '^[A-Za-z0-9_-]+$'
+      example: "item_001"
+    ResultIdPath:
+      name: resultId
+      in: path
+      required: true
+      description: Recommendation Result ID（API-PUB-002 の recommendationResultId と一致）
+      schema:
+        type: string
+        minLength: 1
+      example: "result_001"
     XTraceId:
       name: X-Trace-Id
       in: header
@@ -104,6 +467,655 @@ components:
         example: "req_01HZYX"
 
   schemas:
+    ApiHealthStatus:
+      type: string
+      enum:
+        - ok
+        - degraded
+        - unavailable
+      description: |
+        API 稼働状態（API-PUB-001 契約仕様書 §7.3.1）。
+        degraded は HTTP 200 固定。unavailable は原則 HTTP 503。
+
+    ApiHealthData:
+      type: object
+      required:
+        - status
+        - service
+        - apiVersion
+      properties:
+        status:
+          $ref: "#/components/schemas/ApiHealthStatus"
+        service:
+          type: string
+          description: サービス識別子（固定値 okuri）
+          enum:
+            - okuri
+          example: "okuri"
+        apiVersion:
+          type: string
+          description: API バージョン（URL パス v1 と整合）
+          example: "v1"
+        checkedAt:
+          type: string
+          format: date-time
+          description: ヘルス判定日時（ISO 8601）。未指定時は meta.generatedAt を参照可
+
+    ApiHealthSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/ApiHealthData"
+            meta:
+              $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+    ItemReviewSummary:
+      type: object
+      properties:
+        average:
+          type: number
+          format: float
+          example: 4.2
+        count:
+          type: integer
+          minimum: 0
+          example: 128
+
+    ItemImageEntry:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+        kind:
+          type: string
+          enum:
+            - medium
+            - small
+          description: 画像種別
+        isPrimary:
+          type: boolean
+          description: 代表画像フラグ
+
+    ItemPopularityBadge:
+      type: object
+      properties:
+        label:
+          type: string
+          example: "ランキング入り"
+        rank:
+          type: integer
+          minimum: 1
+          example: 12
+
+    PublicItemDetail:
+      type: object
+      required:
+        - itemId
+        - itemName
+        - itemPrice
+        - itemUrl
+        - isActive
+      description: |
+        商品詳細（Public 表面）。Feature / Embedding / 内部スコアは含めない（API-PUB-003 契約仕様書 §7.3.1）。
+      properties:
+        itemId:
+          type: string
+          example: "item_001"
+        itemName:
+          type: string
+          example: "上品な焼き菓子ギフトセット"
+        itemPrice:
+          type: integer
+          description: 価格（JPY）
+          example: 4320
+        itemUrl:
+          type: string
+          format: uri
+          example: "https://example.com/item/001"
+        itemImageUrl:
+          type: string
+          format: uri
+          description: 代表画像 URL。なしの場合は省略
+        itemCatchcopy:
+          type: string
+        itemDescription:
+          type: string
+        shopName:
+          type: string
+        genreId:
+          type: string
+        genreName:
+          type: string
+        reviewSummary:
+          $ref: "#/components/schemas/ItemReviewSummary"
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemImageEntry"
+        popularityBadge:
+          $ref: "#/components/schemas/ItemPopularityBadge"
+        isActive:
+          type: boolean
+          description: true のみ 200 正常系
+
+    ItemDetailSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/PublicItemDetail"
+            meta:
+              $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+    FeedbackTargetType:
+      type: string
+      enum:
+        - result
+        - item
+        - reason
+      description: Feedback 対象粒度（API-PUB-004 契約仕様書 §6.4）
+
+    FeedbackType:
+      type: string
+      enum:
+        - item_good
+        - item_bad
+        - item_not_match
+        - item_ng_violation
+        - item_avoid_match
+        - reason_good
+        - reason_bad
+        - result_good
+        - result_bad
+        - comment
+      description: MVP 許容 feedbackType（契約仕様書 §6.4.1）
+
+    FeedbackValueType:
+      type: string
+      enum:
+        - boolean
+        - rating
+        - choice
+        - text
+        - event
+
+    RecommendationFeedbackSubmitRequest:
+      type: object
+      required:
+        - feedbackTargetType
+        - feedbackType
+        - rating
+      description: |
+        Feedback 送信 Request（API-PUB-004 §6.4）。
+        feedbackTargetType=item 時は resultItemId 必須。reason 時は reasonId 必須。
+      properties:
+        feedbackTargetType:
+          $ref: "#/components/schemas/FeedbackTargetType"
+        resultItemId:
+          type: string
+          description: 対象 Result Item ID（feedbackTargetType=item 時必須）
+        reasonId:
+          type: string
+          description: 対象 Reason ID（feedbackTargetType=reason 時必須）
+        feedbackType:
+          $ref: "#/components/schemas/FeedbackType"
+        feedbackValueType:
+          $ref: "#/components/schemas/FeedbackValueType"
+        feedbackValue:
+          oneOf:
+            - type: boolean
+            - type: number
+            - type: string
+        feedbackChoiceCode:
+          type: string
+        feedbackReasonCategory:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: 1〜5 評価（MVP 必須）
+        comment:
+          type: string
+          maxLength: 500
+        sourcePage:
+          type: string
+        sessionId:
+          type: string
+          description: MVP 匿名 Feedback 用セッション識別子
+
+    RecommendationFeedbackSubmitData:
+      type: object
+      required:
+        - recommendationFeedbackId
+        - status
+      properties:
+        recommendationFeedbackId:
+          type: string
+          example: "feedback_001"
+        status:
+          type: string
+          enum:
+            - accepted
+            - updated
+          description: 新規 accepted / 更新 updated
+        message:
+          type: string
+          example: "フィードバックを受け付けました。"
+
+    FeedbackSubmitMeta:
+      type: object
+      required:
+        - traceId
+        - requestId
+      properties:
+        traceId:
+          type: string
+        requestId:
+          type: string
+        acceptedAt:
+          type: string
+          format: date-time
+          description: 受付日時（ISO 8601）
+
+    RecommendationFeedbackSubmitSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/RecommendationFeedbackSubmitData"
+            meta:
+              $ref: "#/components/schemas/FeedbackSubmitMeta"
+
+    RelationshipMasterItem:
+      type: object
+      required:
+        - relationshipCode
+        - relationshipLabel
+      description: Relationship 選択肢（API-PUB-005 §7.3.2。isActive は Response に含めない）
+      properties:
+        relationshipCode:
+          type: string
+          minLength: 1
+          description: 関係性コード
+          example: "boss"
+        relationshipLabel:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 表示名（API-PUB-002 RelationshipInput と同上限）
+          example: "上司"
+        displayOrder:
+          type: integer
+          minimum: 0
+          description: 表示順（displayOrder 昇順、同順位は relationshipCode 昇順）
+
+    RelationshipMastersData:
+      type: object
+      required:
+        - relationships
+      properties:
+        relationships:
+          type: array
+          items:
+            $ref: "#/components/schemas/RelationshipMasterItem"
+
+    RelationshipMastersMeta:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/Meta"
+        - type: object
+          properties:
+            count:
+              type: integer
+              minimum: 0
+              description: 返却件数（relationships.length と一致）
+
+    RelationshipMastersSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/RelationshipMastersData"
+            meta:
+              $ref: "#/components/schemas/RelationshipMastersMeta"
+
+    OccasionMasterItem:
+      type: object
+      required:
+        - occasionCode
+        - occasionLabel
+      description: Occasion 選択肢（API-PUB-006 §7.3.2。isActive は Response に含めない）
+      properties:
+        occasionCode:
+          type: string
+          minLength: 1
+          description: 用途コード
+          example: "thanks"
+        occasionLabel:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 表示名（API-PUB-002 OccasionInput と同上限）
+          example: "お礼"
+        displayOrder:
+          type: integer
+          minimum: 0
+          description: 表示順（displayOrder 昇順、同順位は occasionCode 昇順）
+
+    OccasionMastersData:
+      type: object
+      required:
+        - occasions
+      properties:
+        occasions:
+          type: array
+          items:
+            $ref: "#/components/schemas/OccasionMasterItem"
+
+    OccasionMastersMeta:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/Meta"
+        - type: object
+          properties:
+            count:
+              type: integer
+              minimum: 0
+              description: 返却件数（occasions.length と一致）
+
+    OccasionMastersSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/OccasionMastersData"
+            meta:
+              $ref: "#/components/schemas/OccasionMastersMeta"
+
+    SemanticConceptMasterItem:
+      type: object
+      required:
+        - conceptCode
+        - conceptLabel
+        - isActive
+      description: Semantic Concept 定義（API-PUB-007 §7.3.1。is_active=true の行のみ）
+      properties:
+        conceptCode:
+          type: string
+          minLength: 1
+          description: Concept コード（snake_case 物理名を camelCase で表現）
+          example: "formal_refined"
+        conceptLabel:
+          type: string
+          minLength: 1
+          description: 表示ラベル
+          example: "フォーマルで上品"
+        conceptDescription:
+          type: string
+          description: 説明
+          example: "贈答として格式があり、品のある印象"
+        isActive:
+          type: boolean
+          description: 有効フラグ（応答に含める行は true）
+          example: true
+
+    FeatureDefinitionMasterItem:
+      type: object
+      required:
+        - featureCode
+        - featureLabel
+        - featureGroup
+        - isActive
+      description: Feature Definition（API-PUB-007 §7.3.1。MVP 8 次元）
+      properties:
+        featureCode:
+          type: string
+          minLength: 1
+          description: Feature コード（AGENTS.md 固定名）
+          example: "formality"
+        featureLabel:
+          type: string
+          minLength: 1
+          description: 表示ラベル
+          example: "格式"
+        featureGroup:
+          type: string
+          enum:
+            - social
+            - symbolic
+          description: 軸グループ
+          example: "social"
+        displayOrder:
+          type: integer
+          minimum: 1
+          description: 表示順（1 始まり）
+          example: 1
+        isActive:
+          type: boolean
+          description: 有効フラグ（応答に含める行は true）
+          example: true
+
+    SemanticConfigMastersData:
+      type: object
+      required:
+        - semanticConfigVersionId
+        - semanticConcepts
+        - featureDefinitions
+      description: Semantic Config スナップショット（API-PUB-007 §7.3.1）
+      properties:
+        semanticConfigVersionId:
+          type: string
+          minLength: 1
+          description: 現行 Semantic Config Version ID
+          example: "semantic_config_v001"
+        versionLabel:
+          type: string
+          description: Version 表示ラベル
+          example: "v1.0.0"
+        configName:
+          type: string
+          description: Semantic Config 名称
+          example: "mvp-semantic-config"
+        semanticConcepts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SemanticConceptMasterItem"
+        featureDefinitions:
+          type: array
+          minItems: 1
+          description: 有効 Feature Definition 一覧（0 件は 500 GRS-CFG-006）
+          items:
+            $ref: "#/components/schemas/FeatureDefinitionMasterItem"
+
+    SemanticConfigMastersMeta:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+    SemanticConfigMastersSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/SemanticConfigMastersData"
+            meta:
+              $ref: "#/components/schemas/SemanticConfigMastersMeta"
+
+    RelationshipBaseValueRuleItem:
+      type: object
+      required:
+        - ruleType
+        - relationshipCode
+        - featureCode
+        - featureBaseValue
+      description: Relationship 基準値 Rule（API-PUB-008 §7.3.1）
+      properties:
+        ruleType:
+          type: string
+          enum:
+            - relationship
+          example: "relationship"
+        relationshipCode:
+          type: string
+          minLength: 1
+          description: Relationship コード（API-PUB-005 と整合）
+          example: "boss"
+        featureCode:
+          type: string
+          minLength: 1
+          description: Feature コード（MVP 8 次元）
+          example: "formality"
+        featureBaseValue:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: 基準値（0.0〜1.0）
+          example: 0.85
+
+    OccasionBaseValueRuleItem:
+      type: object
+      required:
+        - ruleType
+        - occasionCode
+        - featureCode
+        - featureBaseValue
+      description: Occasion 基準値 Rule（API-PUB-008 §7.3.1）
+      properties:
+        ruleType:
+          type: string
+          enum:
+            - occasion
+          example: "occasion"
+        occasionCode:
+          type: string
+          minLength: 1
+          description: Occasion コード（API-PUB-006 と整合）
+          example: "thanks"
+        featureCode:
+          type: string
+          minLength: 1
+          description: Feature コード（MVP 8 次元）
+          example: "emotion"
+        featureBaseValue:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: 基準値（0.0〜1.0）
+          example: 0.7
+
+    BaseValueRuleMasterItem:
+      oneOf:
+        - $ref: "#/components/schemas/RelationshipBaseValueRuleItem"
+        - $ref: "#/components/schemas/OccasionBaseValueRuleItem"
+      discriminator:
+        propertyName: ruleType
+        mapping:
+          relationship: "#/components/schemas/RelationshipBaseValueRuleItem"
+          occasion: "#/components/schemas/OccasionBaseValueRuleItem"
+
+    ConceptFeatureRuleMasterItem:
+      type: object
+      required:
+        - conceptCode
+        - featureCode
+        - featureDelta
+      description: Concept Feature Rule（API-PUB-008 §7.3.1）
+      properties:
+        conceptCode:
+          type: string
+          minLength: 1
+          description: Semantic Concept コード（API-PUB-007 と整合）
+          example: "formal_refined"
+        featureCode:
+          type: string
+          minLength: 1
+          description: Feature コード
+          example: "formality"
+        featureDelta:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: 補正値 delta（0.0〜1.0。方向は polarity で表現）
+          example: 0.15
+        polarity:
+          type: string
+          enum:
+            - positive
+            - negative
+            - mixed
+          description: 極性
+          example: "positive"
+
+    FeatureRuleMastersData:
+      type: object
+      required:
+        - semanticConfigVersionId
+        - baseValueRules
+        - conceptFeatureRules
+      description: Feature Rule 一覧（API-PUB-008 §7.3.1）
+      properties:
+        semanticConfigVersionId:
+          type: string
+          minLength: 1
+          description: 現行 Semantic Config Version ID（API-PUB-007 と一致）
+          example: "semantic_config_v001"
+        baseValueRules:
+          type: array
+          description: 基準値 Rule 一覧（relationship / occasion。0 件も 200）
+          items:
+            $ref: "#/components/schemas/BaseValueRuleMasterItem"
+        conceptFeatureRules:
+          type: array
+          description: Concept Feature Rule 一覧（0 件も 200）
+          items:
+            $ref: "#/components/schemas/ConceptFeatureRuleMasterItem"
+
+    FeatureRuleMastersMeta:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+    FeatureRuleMastersSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/FeatureRuleMastersData"
+            meta:
+              $ref: "#/components/schemas/FeatureRuleMastersMeta"
+
     RelationshipInput:
       type: object
       required:
@@ -363,6 +1375,242 @@ components:
               $ref: "../schemas/common.yaml#/components/schemas/Meta"
 
   examples:
+    ApiHealthOkExample:
+      value:
+        data:
+          status: "ok"
+          service: "okuri"
+          apiVersion: "v1"
+          checkedAt: "2026-06-05T09:00:00+09:00"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T09:00:00+09:00"
+
+    ApiHealthDegradedExample:
+      value:
+        data:
+          status: "degraded"
+          service: "okuri"
+          apiVersion: "v1"
+        meta:
+          generatedAt: "2026-06-05T09:01:00+09:00"
+
+    ItemDetailWithImageExample:
+      value:
+        data:
+          itemId: "item_001"
+          itemName: "上品な焼き菓子ギフトセット"
+          itemPrice: 4320
+          itemUrl: "https://example.com/item/001"
+          itemImageUrl: "https://example.com/item/001.jpg"
+          itemCatchcopy: "贈答にふさわしい上質な焼き菓子"
+          itemDescription: "厳選した素材を使用した、上品な味わいの焼き菓子詰め合わせです。"
+          shopName: "Example Shop"
+          genreId: "100227"
+          genreName: "スイーツ・お菓子"
+          reviewSummary:
+            average: 4.2
+            count: 128
+          images:
+            - url: "https://example.com/item/001.jpg"
+              kind: "medium"
+              isPrimary: true
+          popularityBadge:
+            label: "ランキング入り"
+            rank: 12
+          isActive: true
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T12:00:00+09:00"
+
+    ItemDetailWithoutImageExample:
+      value:
+        data:
+          itemId: "item_002"
+          itemName: "詰め合わせギフト"
+          itemPrice: 2980
+          itemUrl: "https://example.com/item/002"
+          itemDescription: "手軽に贈れる詰め合わせギフトです。"
+          isActive: true
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440001"
+          requestId: "req_01HZYY"
+
+    FeedbackSubmitItemNotMatchExample:
+      value:
+        feedbackTargetType: "item"
+        resultItemId: "result_item_001"
+        feedbackType: "item_not_match"
+        feedbackValueType: "choice"
+        feedbackChoiceCode: "too_casual"
+        feedbackReasonCategory: "context_mismatch"
+        rating: 2
+        comment: "上司へのお礼としては少しカジュアルに見えます"
+        sourcePage: "SCR-007"
+        sessionId: "sess_abc123"
+
+    FeedbackSubmitReasonGoodExample:
+      value:
+        feedbackTargetType: "reason"
+        reasonId: "reason_001"
+        resultItemId: "result_item_001"
+        feedbackType: "reason_good"
+        feedbackValueType: "boolean"
+        feedbackValue: true
+        rating: 5
+        sourcePage: "SCR-007"
+
+    FeedbackSubmitAcceptedExample:
+      value:
+        data:
+          recommendationFeedbackId: "feedback_001"
+          status: "accepted"
+          message: "フィードバックを受け付けました。"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          acceptedAt: "2026-06-05T12:00:00+09:00"
+
+    FeedbackSubmitUpdatedExample:
+      value:
+        data:
+          recommendationFeedbackId: "feedback_001"
+          status: "updated"
+          message: "フィードバックを更新しました。"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          acceptedAt: "2026-06-05T12:05:00+09:00"
+
+    RelationshipMastersMultipleExample:
+      value:
+        data:
+          relationships:
+            - relationshipCode: "boss"
+              relationshipLabel: "上司"
+              displayOrder: 10
+            - relationshipCode: "colleague"
+              relationshipLabel: "同僚"
+              displayOrder: 20
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T09:00:00+09:00"
+          count: 2
+
+    RelationshipMastersEmptyExample:
+      value:
+        data:
+          relationships: []
+        meta:
+          generatedAt: "2026-06-05T09:00:00+09:00"
+          count: 0
+
+    OccasionMastersMultipleExample:
+      value:
+        data:
+          occasions:
+            - occasionCode: "thanks"
+              occasionLabel: "お礼"
+              displayOrder: 10
+            - occasionCode: "birthday"
+              occasionLabel: "誕生日"
+              displayOrder: 20
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T09:00:00+09:00"
+          count: 2
+
+    OccasionMastersEmptyExample:
+      value:
+        data:
+          occasions: []
+        meta:
+          generatedAt: "2026-06-05T09:00:00+09:00"
+          count: 0
+
+    SemanticConfigMastersFullExample:
+      value:
+        data:
+          semanticConfigVersionId: "semantic_config_v001"
+          versionLabel: "v1.0.0"
+          configName: "mvp-semantic-config"
+          semanticConcepts:
+            - conceptCode: "formal_refined"
+              conceptLabel: "フォーマルで上品"
+              conceptDescription: "贈答として格式があり、品のある印象"
+              isActive: true
+            - conceptCode: "warm_gratitude"
+              conceptLabel: "感謝が伝わる"
+              isActive: true
+          featureDefinitions:
+            - featureCode: "formality"
+              featureLabel: "格式"
+              featureGroup: "social"
+              displayOrder: 1
+              isActive: true
+            - featureCode: "emotion"
+              featureLabel: "感情"
+              featureGroup: "symbolic"
+              displayOrder: 4
+              isActive: true
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T12:00:00+09:00"
+
+    SemanticConfigMastersEmptyConceptsExample:
+      value:
+        data:
+          semanticConfigVersionId: "semantic_config_v001"
+          versionLabel: "v1.0.0"
+          semanticConcepts: []
+          featureDefinitions:
+            - featureCode: "formality"
+              featureLabel: "格式"
+              featureGroup: "social"
+              displayOrder: 1
+              isActive: true
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440001"
+          requestId: "req_01HZYY"
+
+    FeatureRuleMastersFullExample:
+      value:
+        data:
+          semanticConfigVersionId: "semantic_config_v001"
+          baseValueRules:
+            - ruleType: "relationship"
+              relationshipCode: "boss"
+              featureCode: "formality"
+              featureBaseValue: 0.85
+            - ruleType: "occasion"
+              occasionCode: "thanks"
+              featureCode: "emotion"
+              featureBaseValue: 0.7
+          conceptFeatureRules:
+            - conceptCode: "formal_refined"
+              featureCode: "formality"
+              featureDelta: 0.15
+              polarity: "positive"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T12:00:00+09:00"
+
+    FeatureRuleMastersEmptyExample:
+      value:
+        data:
+          semanticConfigVersionId: "semantic_config_v001"
+          baseValueRules: []
+          conceptFeatureRules: []
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440002"
+          requestId: "req_01HZYZ"
+
     RecommendationRunRequestExample:
       value:
         relationship:
