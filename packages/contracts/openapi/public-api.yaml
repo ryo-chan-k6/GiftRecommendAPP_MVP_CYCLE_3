@@ -7,6 +7,7 @@ info:
     MVP 対象:
     - API-PUB-001 APIヘルスチェック（GET /api/v1/health）
     - API-PUB-002 レコメンド実行（POST /api/v1/recommendations）
+    - API-PUB-003 商品詳細取得（GET /api/v1/items/{itemId}）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
@@ -50,6 +51,62 @@ paths:
                 $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
         "504":
           description: タイムアウト
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+  /api/v1/items/{itemId}:
+    get:
+      operationId: getItemDetail
+      tags:
+        - Items
+      summary: 商品詳細取得（API-PUB-003）
+      description: |
+        商品詳細画面向けに Item の Public 表面情報を返す。
+        MVP は非認証。Provider: apps/api / Consumer: apps/web。
+        非 active 商品は HTTP 422（GRS-ITM-002）。不存在は HTTP 404（GRS-ITM-001）。
+      parameters:
+        - $ref: "#/components/parameters/ItemIdPath"
+        - $ref: "#/components/parameters/XTraceId"
+        - $ref: "#/components/parameters/XRequestId"
+      responses:
+        "200":
+          description: 処理成功（商品詳細あり。画像なしも 200）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemDetailSuccessResponse"
+              examples:
+                withImage:
+                  $ref: "#/components/examples/ItemDetailWithImageExample"
+                withoutImage:
+                  $ref: "#/components/examples/ItemDetailWithoutImageExample"
+        "400":
+          description: Request 不正（Path / Query 不正。GRS-REQ-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "404":
+          description: 商品なし（GRS-ITM-001）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "422":
+          description: 非 active 商品等（GRS-ITM-002）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（DB 接続失敗等）
           content:
             application/json:
               schema:
@@ -131,6 +188,15 @@ paths:
                 $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
 components:
   parameters:
+    ItemIdPath:
+      name: itemId
+      in: path
+      required: true
+      description: 商品 ID（内部 Item 識別子）
+      schema:
+        type: string
+        minLength: 1
+      example: "item_001"
     XTraceId:
       name: X-Trace-Id
       in: header
@@ -193,6 +259,111 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/ApiHealthData"
+            meta:
+              $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
+    ItemReviewSummary:
+      type: object
+      properties:
+        average:
+          type: number
+          format: float
+          example: 4.2
+        count:
+          type: integer
+          minimum: 0
+          example: 128
+
+    ItemImageEntry:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+        kind:
+          type: string
+          enum:
+            - medium
+            - small
+          description: 画像種別
+        isPrimary:
+          type: boolean
+          description: 代表画像フラグ
+
+    ItemPopularityBadge:
+      type: object
+      properties:
+        label:
+          type: string
+          example: "ランキング入り"
+        rank:
+          type: integer
+          minimum: 1
+          example: 12
+
+    PublicItemDetail:
+      type: object
+      required:
+        - itemId
+        - itemName
+        - itemPrice
+        - itemUrl
+        - isActive
+      description: |
+        商品詳細（Public 表面）。Feature / Embedding / 内部スコアは含めない（API-PUB-003 契約仕様書 §7.3.1）。
+      properties:
+        itemId:
+          type: string
+          example: "item_001"
+        itemName:
+          type: string
+          example: "上品な焼き菓子ギフトセット"
+        itemPrice:
+          type: integer
+          description: 価格（JPY）
+          example: 4320
+        itemUrl:
+          type: string
+          format: uri
+          example: "https://example.com/item/001"
+        itemImageUrl:
+          type: string
+          format: uri
+          description: 代表画像 URL。なしの場合は省略
+        itemCatchcopy:
+          type: string
+        itemDescription:
+          type: string
+        shopName:
+          type: string
+        genreId:
+          type: string
+        genreName:
+          type: string
+        reviewSummary:
+          $ref: "#/components/schemas/ItemReviewSummary"
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemImageEntry"
+        popularityBadge:
+          $ref: "#/components/schemas/ItemPopularityBadge"
+        isActive:
+          type: boolean
+          description: true のみ 200 正常系
+
+    ItemDetailSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/PublicItemDetail"
             meta:
               $ref: "../schemas/common.yaml#/components/schemas/Meta"
 
@@ -475,6 +646,48 @@ components:
           apiVersion: "v1"
         meta:
           generatedAt: "2026-06-05T09:01:00+09:00"
+
+    ItemDetailWithImageExample:
+      value:
+        data:
+          itemId: "item_001"
+          itemName: "上品な焼き菓子ギフトセット"
+          itemPrice: 4320
+          itemUrl: "https://example.com/item/001"
+          itemImageUrl: "https://example.com/item/001.jpg"
+          itemCatchcopy: "贈答にふさわしい上質な焼き菓子"
+          itemDescription: "厳選した素材を使用した、上品な味わいの焼き菓子詰め合わせです。"
+          shopName: "Example Shop"
+          genreId: "100227"
+          genreName: "スイーツ・お菓子"
+          reviewSummary:
+            average: 4.2
+            count: 128
+          images:
+            - url: "https://example.com/item/001.jpg"
+              kind: "medium"
+              isPrimary: true
+          popularityBadge:
+            label: "ランキング入り"
+            rank: 12
+          isActive: true
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          requestId: "req_01HZYX"
+          generatedAt: "2026-06-05T12:00:00+09:00"
+
+    ItemDetailWithoutImageExample:
+      value:
+        data:
+          itemId: "item_002"
+          itemName: "詰め合わせギフト"
+          itemPrice: 2980
+          itemUrl: "https://example.com/item/002"
+          itemDescription: "手軽に贈れる詰め合わせギフトです。"
+          isActive: true
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440001"
+          requestId: "req_01HZYY"
 
     RecommendationRunRequestExample:
       value:
