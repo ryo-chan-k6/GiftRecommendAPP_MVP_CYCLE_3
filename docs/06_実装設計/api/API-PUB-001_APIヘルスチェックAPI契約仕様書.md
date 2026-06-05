@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-05                                |
+| 更新日         | 2026-06-05（Human Review 指摘対応）       |
 
 ---
 
@@ -140,7 +140,7 @@ Accept: application/json
 | 項目 | 型 | 必須 | 内容 | 備考 |
 | ---- | -- | ---- | ---- | ---- |
 | `status` | `string` | `true` | API 稼働状態 | enum: `ok` / `degraded` / `unavailable`（OpenAPI Task で固定） |
-| `service` | `string` | `true` | サービス識別子 | 例: `gift-recommendation-api` |
+| `service` | `string` | `true` | サービス識別子 | 正式値: `okuri`（Human Review 確定） |
 | `apiVersion` | `string` | `true` | API バージョン | URL パス `v1` と整合。例: `v1` |
 | `checkedAt` | `string` | `false` | ヘルス判定日時（ISO 8601） | 未指定時は `meta.generatedAt` を参照可 |
 
@@ -149,10 +149,10 @@ Accept: application/json
 | 値 | 意味 | HTTP Status（原則） |
 | -- | ---- | ------------------- |
 | `ok` | api プロセスが正常応答可能 | 200 |
-| `degraded` | api は応答するが一部依存に劣化あり | 200（契約上は応答可。監視閾値は実装仕様書で定義） |
+| `degraded` | api は応答するが一部依存に劣化あり | **200 固定**（Human Review 確定。監視閾値は実装仕様書で定義） |
 | `unavailable` | api が正常な Health を返せない | 503 |
 
-依存コンポーネント（DB / reco）の個別チェック結果・閾値・タイムアウトは本契約では **表面化しない**。実装仕様書 Task で定義する（§14.1 No.1）。
+依存コンポーネント（DB / reco）の個別チェック結果・閾値・タイムアウトは本契約では **表面化しない**（集約 `status` のみを返す。Human Review 確定）。依存チェックの実体は実装仕様書 Task と [ログ・Observability設計書](../../05_アプリケーション設計/アプリ/ログ・Observability設計書.md) で定義する。
 
 #### 7.3.2 `meta`
 
@@ -170,7 +170,7 @@ Accept: application/json
 {
   "data": {
     "status": "ok",
-    "service": "gift-recommendation-api",
+    "service": "okuri",
     "apiVersion": "v1",
     "checkedAt": "2026-06-05T09:00:00+09:00"
   },
@@ -188,7 +188,7 @@ Accept: application/json
 {
   "data": {
     "status": "degraded",
-    "service": "gift-recommendation-api",
+    "service": "okuri",
     "apiVersion": "v1"
   },
   "meta": {
@@ -297,16 +297,21 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（契約面のみ。Phase1 Wave2 C2 batch1） | Epic #384 |
+| 2026-06-05 | Human Review 指摘対応（`service`=`okuri`、`degraded` HTTP 200 固定、依存チェック非表面化） | PR #398 |
 
 ---
 
 ## 14. 未決事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 依存コンポーネント（DB / reco）チェックを Response に含めるか | `degraded` 判定の契約面定義に影響 | Human | - | 実装仕様書 Task と合わせて確定推奨 |
-| 2 | `degraded` 時の HTTP Status を 200 固定とするか | 監視アラート閾値に影響 | Human | - | 本書は契約上 200 を原則とした |
-| 3 | `service` 識別子の正式文字列 | OpenAPI example / 監視ダッシュボード整合 | Human | - | 例は `gift-recommendation-api` |
+なし（Human Review PR #398 にて §14.1 の論点を確定。決定内容は下表を参照）。
+
+### 14.1 Human Review 決定事項（PR #398）
+
+| No | 論点 | 決定内容 |
+| --: | ---- | -------- |
+| 1 | 依存コンポーネント（DB / reco）チェックを Response に含めるか | **含めない**（集約 `status` のみ）。依存チェックの実体は実装仕様書 + Observability |
+| 2 | `degraded` 時の HTTP Status | **200 固定** |
+| 3 | `service` 識別子の正式文字列 | **`okuri`** |
 
 ---
 
@@ -335,7 +340,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 ### 16.1 Human Review で確認してほしいこと
 
 - 正式 Endpoint（`GET /api/v1/health`）と MVP 非認証方針の最終確認
-- §14 の `status` enum と依存コンポーネント表面化範囲
+- §14.1 決定事項（`service`=`okuri`、`degraded` HTTP 200 固定、依存チェック非表面化）の再確認
 - OpenAPI Contract Task への分離方針の確認
 
 ---
