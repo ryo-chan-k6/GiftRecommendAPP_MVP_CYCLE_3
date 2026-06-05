@@ -230,6 +230,20 @@ Issue 本文の no-branch チェックボックスに `branch.no_branch` を反�
 
 `branch.no_branch: true` の場合は Branch 作成を行わない（人主導・未来着手 Epic）。
 
+### 13.5 Machine account 認証（git commit 前・必須）
+
+Epic Definition 更新や Branch 上での commit を行う場合、**commit 前**に bot 認証と git user を確認する（[github-operation.mdc](../../.cursor/rules/github-operation.mdc) §3.16）。user.name / user.email をハードコードしない。
+
+```bash
+node .github/scripts/gh-bot-auth.cjs verify
+eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+GIT_USER_JSON="$(node .github/scripts/gh-bot-auth.cjs print-git-user)"
+GIT_NAME="$(node -e "console.log(JSON.parse(process.argv[1]).name)" "$GIT_USER_JSON")"
+GIT_EMAIL="$(node -e "console.log(JSON.parse(process.argv[1]).email)" "$GIT_USER_JSON")"
+```
+
+commit は `git -c user.name="$GIT_NAME" -c user.email="$GIT_EMAIL" commit ...` を用いる。push は `GH_BOT_TOKEN` を `GH_TOKEN` に export した状態で行う。
+
 ### 14. 後続作業を案内する
 
 チャット出力に以下を含める。
