@@ -6,10 +6,10 @@ review:
   title: "Phase1 API Contract基盤 Epic PRレビュー"
   summary: "Phase1 第1波マイルストーン Epic PR（develop 向け）の AI Review。PUB-002 / INT-002 契約 docs・OpenAPI・generated 統合と Contract Gate §4 を横断確認する。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 target:
-  pr: null
+  pr: 382
   issue:
     number: 381
   task_definition: "prompts/definitions/epics/phase1-api-contract-foundation/epic.yaml"
