@@ -70,7 +70,7 @@ input:
     number: 392
     required: true
   pr:
-    number: 393
+    number: 396
     required: true
   diff:
     required: true
