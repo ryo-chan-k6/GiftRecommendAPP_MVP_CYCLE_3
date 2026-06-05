@@ -3,7 +3,15 @@
  * Do not edit manually.
  * Gift Recommendation Service Public API
  * web（apps/web）向け Public API 契約正本。
- * MVP 対象: API-PUB-002 レコメンド実行（POST /api/v1/recommendations）。
+ * MVP 対象:
+ * - API-PUB-001 APIヘルスチェック（GET /api/v1/health）
+ * - API-PUB-002 レコメンド実行（POST /api/v1/recommendations）
+ * - API-PUB-003 商品詳細取得（GET /api/v1/items/{itemId}）
+ * - API-PUB-004 Feedback送信（POST /api/v1/recommendation-results/{resultId}/feedback）
+ * - API-PUB-005 Relationshipマスタ取得（GET /api/v1/masters/relationships）
+ * - API-PUB-006 Occasionマスタ取得（GET /api/v1/masters/occasions）
+ * - API-PUB-007 Semantic設定取得（GET /api/v1/masters/semantic-configs）
+ * - API-PUB-008 Featureルール取得（GET /api/v1/masters/feature-rules）
  *
  * OpenAPI spec version: 1.0.0
  */
