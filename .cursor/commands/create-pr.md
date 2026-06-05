@@ -161,6 +161,8 @@ Task Branchから `develop` へ直接PRを作成しない。
 | Epic PR   | `develop`        | 必要に応じて `Closes #<Epic Issue番号>` |
 | Hotfix PR | 運用ルールに従う | Issue運用ルールに従う                   |
 
+**Phase1 マイルストーン Epic と識別子 Epic の使い分け:** 識別子単位 Epic（`API-PUB-*` / `API-INT-*` 等）は Phase1 + Phase4b の縦串のため、Phase1 成果の `develop` 反映は **Phase1 マイルストーン Epic PR**（例: `phase1-api-contract-foundation`）のみとする。識別子 Epic PR → `develop` は **Phase4b 縦串完了後**に限る（[実装フェーズ実行プロセス設計書](../../docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md) §6.2）。
+
 Task PR では **`Closes #<Task Issue番号>` を記載しない**（`pr-created` 等の workflow が Task Issue を誤って close する、および Projects 完了制御と競合するため）。  
 Task Issueの close / Projects Done 更新は、PR本文の `Closes #...` に依存しない。  
 Task Issueの完了制御は、Task PRが親Epic Branchへmergeされた時点でGitHub Actions workflowにより明示的に行う。
