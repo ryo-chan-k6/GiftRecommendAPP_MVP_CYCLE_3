@@ -1,0 +1,168 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-002-internal-401-public-map-policy-spike-pr"
+  title: "API-INT-002 Internal401 Publicマップ方針 spike PRレビュー"
+  summary: "Issue #374（Internal 401 Public マップ方針確定）spike Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "human-led"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 377
+  issue: 374
+  task_definition: "prompts/definitions/tasks/api-int-002-internal-401-public-map-policy/spike.yaml"
+  source_branch: "spike/task-374-api-int-002-internal-401-public-map-policy"
+  target_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  parent_epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  parent_epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: true
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-int-002-internal-401-public-map-policy/spike.yaml"
+    required: true
+  issue:
+    number: 374
+    required: true
+  pr:
+    number: 377
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-366-api-int-002-reco-recommendation-run"
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "§8.2.1 マップ表・§14.1 確定反映の確認"
+    - path: "ai-logs/human-decisions/2026-06-05-api-int-002-internal-401-public-map-policy.md"
+      required: true
+      purpose: "Human 判断記録と契約仕様書の一致確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-REC-002 / GRS-AUTH-* 整合確認"
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition（spike.yaml）の scope を満たしているか"
+    - "out_of_scope（実装・OpenAPI）の変更が混在していないか"
+    - "PR 本文に Task Definition パスが記載されているか"
+    - "PR target が親 Epic Branch であるか"
+    - "Closes #374 の使用が妥当か（spike 完了として）"
+  docs:
+    - "§8.2.1 のマップ（500 + GRS-REC-002）が human-decisions と一致しているか"
+    - "GRS-AUTH-* を Public に返さないことが明記されているか"
+    - "error_log 原文保持が明記されているか"
+    - "§14 No.2 が §14.1 確定済みへ移動しているか"
+  security:
+    - "Internal API Key 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "Human 方針（案A）が docs と human-decisions で一貫している"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な docs 不備がある"
+      - "PR 本文に Definition または検証記載が不足している"
+  needs_human_decision:
+    conditions:
+      - "マップ方針そのものの再判断が必要"
+  blocked:
+    conditions:
+      - "Task Definition が解決できない"
+      - "secret 混入の疑い"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  ai_logs:
+    required: false
+    path: null
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "spike docs 反映。レビュー結果は PR コメントを正本とする。"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/api-int-002-internal-401-public-map-policy/spike.yaml"
+  - "確定方針: Internal GRS-AUTH-* → Public 500 + GRS-REC-002（#374 Human 承認済み）"

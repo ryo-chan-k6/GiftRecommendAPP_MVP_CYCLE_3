@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-04                                |
-| 更新日         | 2026-06-05（§14 No.3 確定：`scoreBreakdown` / `debugPayload` 返却条件。Issue #375） |
+| 更新日         | 2026-06-05（§14 No.1 確定 #373、No.2 Internal 認証 Public マップ確定 #374、No.3 `scoreBreakdown` / `debugPayload` 返却条件確定 #375） |
 
 ---
 
@@ -534,7 +534,7 @@ OR execution.includeDebugInfo = true
 {
   "error": {
     "code": "GRS-REC-002",
-    "message": "レコメンド処理に失敗しました。",
+    "message": "レコメンド処理に失敗しました。時間を置いて再度お試しください。",
     "details": []
   },
   "meta": {
@@ -546,13 +546,13 @@ OR execution.includeDebugInfo = true
 
 ### 8.2 Error一覧（本 API で想定する代表）
 
-| Status | Error Code | 発生条件 | Response概要 | ユーザー向け表示 |
-| -----: | ---------- | -------- | ------------ | ---------------- |
-| 401 | `GRS-AUTH-001` | Internal API Key 不正 | 認証失敗 | Public には露出しない（api 実装仕様書でマップ方針を確定） |
-| 401 | `GRS-AUTH-004` | 内部認証情報なし | 認証情報不足 | 同上 |
-| 403 | `GRS-AUTH-002` | 許可されない操作 | 権限不足 | Public には露出しない |
-| 403 | `GRS-AUTH-003` | Public 向け API への不正アクセス相当 | 操作不可 | 同上 |
-| 403 | `GRS-AUTH-005` | Batch 操作の外部実行 | 操作不可 | 同上 |
+| Status | Error Code | 発生条件 | Response概要 | Public 向けマップ（API-PUB-002） |
+| -----: | ---------- | -------- | ------------ | -------------------------------- |
+| 401 | `GRS-AUTH-001` | Internal API Key 不正 | 認証失敗 | §8.2.1 参照（500 + `GRS-REC-002`） |
+| 401 | `GRS-AUTH-004` | 内部認証情報なし | 認証情報不足 | §8.2.1 参照（500 + `GRS-REC-002`） |
+| 403 | `GRS-AUTH-002` | 許可されない操作 | 権限不足 | §8.2.1 参照（500 + `GRS-REC-002`） |
+| 403 | `GRS-AUTH-003` | Public 向け API への不正アクセス相当 | 操作不可 | §8.2.1 参照（500 + `GRS-REC-002`） |
+| 403 | `GRS-AUTH-005` | Batch 操作の外部実行 | 操作不可 | §8.2.1 参照（500 + `GRS-REC-002`） |
 | 400 | `GRS-REQ-001` | 正規化済み Request の契約違反 | Validation 失敗 | Public `GRS-REQ-001` 等へ変換 |
 | 422 | `GRS-REQ-002` | 未対応の条件組み合わせ | 業務 Validation | Public 422 へ伝播可 |
 | 422 | `GRS-REQ-006` | 条件が厳しすぎる | 業務 Validation | 同上 |
@@ -565,6 +565,27 @@ OR execution.includeDebugInfo = true
 | 502 | `GRS-LLM-100`〜`104` | LLM / Embedding 失敗 | 外部依存 | Public 502 |
 | 504 | `GRS-LLM-101` | LLM タイムアウト | タイムアウト | Public 504 |
 | 503 | `GRS-COM-003` | 一時的利用不可（DB 接続失敗等） | サービス一時停止 | Public 503 へ集約可 |
+
+### 8.2.1 Internal 認証・認可エラーの Public マップ（確定 #374）
+
+api（`apps/api`）が reco（API-INT-002）呼び出しで受け取る `GRS-AUTH-*` は、**Public API（API-PUB-002）へそのまま返却しない**。MVP では Public API は匿名利用のため、エンドユーザー向け HTTP 401 / `GRS-AUTH-*` は定義しない（後続の会員認証導入時は API-AUT 系で別途定義）。
+
+| Internal（reco→api） | Internal HTTP | Public（api→web）HTTP | Public `error.code` | Public `error.message` |
+| -------------------- | ------------- | --------------------- | ------------------- | ---------------------- |
+| `GRS-AUTH-001` | 401 | 500 | `GRS-REC-002` | エラーコード定義書の `GRS-REC-002` ユーザー向け文言 |
+| `GRS-AUTH-004` | 401 | 500 | `GRS-REC-002` | 同上 |
+| `GRS-AUTH-002` | 403 | 500 | `GRS-REC-002` | 同上 |
+| `GRS-AUTH-003` | 403 | 500 | `GRS-REC-002` | 同上 |
+| `GRS-AUTH-005` | 403 | 500 | `GRS-REC-002` | 同上 |
+
+| 方針 | 内容 |
+| ---- | ---- |
+| `meta.traceId` / `meta.requestId` | Public 応答でも維持（§8.1） |
+| error_log（内部） | 原文の `GRS-AUTH-*`・Internal HTTP Status・`upstream=reco`（または api 側事前検証時は `upstream=api`）を記録 |
+| api 事前検証 | reco 呼び出し前に Internal API Key（環境変数）未設定時は reco を呼ばず、Public は上表と同じ 500 + `GRS-REC-002`。error_log には `GRS-AUTH-004` 相当を記録 |
+| Secret | `X-Internal-Api-Key` 実値は Response・ログに含めない |
+
+実装詳細（MOD-API-013 Error Handler、reco-client 例外変換、単体テスト）は API-INT-002 実装仕様書 Task で定義する。判断記録は `ai-logs/human-decisions/2026-06-05-api-int-002-internal-401-public-map-policy.md` を参照。
 
 `GRS-REC-001` は **HTTP 200** の正常系（0 件）として扱い、§7.4.2 を参照。エラー Response 一覧には含めない。
 
@@ -661,6 +682,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 2026-06-04 | AI Review 指摘反映（`resultItems` / Result Status / Error / Validation / Observability 等） | #368 / #369 |
 | 2026-06-04 | Human Review 指摘対応：§14 未決事項を個別 Issue 化（#373〜#376） | #368 / #372 |
 | 2026-06-05 | §14 No.1 確定：`warnings`（`WarningItem`）/ `metricSummary`（mean・p95）、Transient 注記、MVP 警告コード 3 件 | #373 |
+| 2026-06-05 | §14 No.2 確定：Internal 認証エラーの Public マップ（§8.2.1、#374） | #374 |
 | 2026-06-05 | §14 No.3 確定：`scoreBreakdown` / `debugPayload` 返却条件、§7.3.8、`metadata.debugPayload` マッピング | #375 |
 
 ---
@@ -669,20 +691,20 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 
 本節の論点は **人間判断待ち** として個別 Issue で管理する（作業計画の正本は Issue。契約仕様書は論点の参照先）。
 
-### 14.1 確定済み（#373 / #375）
+### 14.1 確定済み（本書へ反映済み）
 
-| No | 論点 | 決定内容 | 参照 |
-| --: | ---- | -------- | ---- |
-| 1 | `warnings` / `metricSummary` のスキーマ詳細 | `warnings`: `WarningItem[]`（`code` 必須）。`metricSummary`: `recommendationLatencyMs` / `phaseDurationMs` / `featureDistribution`（`mean`, `p95` のみ）。Transient（DB 非永続）。0 件は `resultStatus: completed` | §7.3.4〜§7.3.7 |
-| 3 | `scoreBreakdown` / `debug_payload` の返却条件 | debug返却条件 = `mode=evaluation` OR `includeDebugInfo=true`。両フィールドは**推奨**（必須ではない）。`debug_payload` → `data.metadata.debugPayload`。欠落時はログのみ・200 継続。`batch`+`includeDebugInfo=false` は省略 | §7.3.8 |
+| No | 論点 | 確定内容 | 反映箇所 | 追跡 Issue |
+| --: | ---- | -------- | -------- | ---------- |
+| 1 | `warnings` / `metricSummary` のスキーマ詳細 | `warnings`: `WarningItem[]`（`code` 必須）。`metricSummary`: `recommendationLatencyMs` / `phaseDurationMs` / `featureDistribution`（`mean`, `p95` のみ）。Transient（DB 非永続）。0 件は `resultStatus: completed` | §7.3.4〜§7.3.7 | #373 |
+| 2 | Internal 401/403（`GRS-AUTH-*`）の Public マップ方針 | `GRS-AUTH-*` は Public 非露出。api→web は **500 + `GRS-REC-002`**。内部は error_log に原文保持 | §8.2.1 | #374 |
+| 3 | `scoreBreakdown` / `debug_payload` の返却条件 | debug返却条件 = `mode=evaluation` OR `includeDebugInfo=true`。両フィールドは**推奨**（必須ではない）。`debug_payload` → `data.metadata.debugPayload`。欠落時はログのみ・200 継続。`batch`+`includeDebugInfo=false` は省略 | §7.3.8 | #375 |
 
 OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract Task** とする。
 
-### 14.2 未決（残り）
+### 14.2 未決（人間判断待ち）
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 | 追跡 Issue |
 | --: | ---- | ---------------- | ------ | ---- | ---- | ---------- |
-| 2 | Internal 401 の Public へのマップ方針 | `GRS-AUTH-*` を web に露出しない変換ルール | Human + api 実装 Task | 実装仕様書作成時 | §8.2 | #374 |
 | 4 | `reasonSummary` / `reasonData` の必須/任意（Internal） | Reason 生成のみ失敗時の省略可否、`reasonData` スキーマ | Human Review | Contract Gate 前 | Reason生成定義書・API-PUB-002 参照 | #376 |
 
 ---
