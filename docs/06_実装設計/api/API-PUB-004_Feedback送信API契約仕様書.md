@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-05                                |
+| 更新日         | 2026-06-05（Human Review 指摘反映）       |
 
 ---
 
@@ -46,7 +46,7 @@ web（`apps/web`）から api（`apps/api`）へ、表示済みの Recommendatio
 | Consumer | `apps/web`                                                        |
 | 認証要否 | `false`（MVP は匿名 Feedback。後続で Authorization 追加可）       |
 | 権限条件 | MVP ではなし                                                      |
-| 冪等性   | `非冪等`（同一内容の再送は重複制御の対象。§14.1 No.2 参照）     |
+| 冪等性   | `条件付き`（`sessionId` + 同一対象 + 同一 `feedbackType` の再送は更新扱い。Recommendation Feedback 定義書 §13.2 準拠） |
 | MVP対象  | `○`                                                               |
 
 ---
@@ -112,8 +112,8 @@ Recommendation Feedback 定義書 §7.1 に準拠。フィールド名は API �
 | `feedbackValue` | `boolean` / `number` / `string` | 条件付き | Feedback 値 | `feedbackValueType` に応じた型・範囲 | `true` |
 | `feedbackChoiceCode` | `string` | 条件付き | 選択式 Feedback コード | `item_not_match` 等で使用。定義書 §7.2 の category と整合 | `too_casual` |
 | `feedbackReasonCategory` | `string` | `false` | 不満・違和感の分類 | 定義書 §7.2 MVP category | `context_mismatch` |
-| `rating` | `integer` | `false` | 1〜5 評価 | 指定時は **1〜5**。MVP では必須としない（§14.1 No.4） | `4` |
-| `comment` | `string` | `false` | 自由コメント（`feedback_text`） | 最大 **500** 文字（暫定。§14.1 No.3） | `上司へのお礼としては少しカジュアルに見えます` |
+| `rating` | `integer` | `true` | 1〜5 評価 | **1〜5** の整数（MVP 必須） | `4` |
+| `comment` | `string` | `false` | 自由コメント（`feedback_text`） | 最大 **500** 文字 | `上司へのお礼としては少しカジュアルに見えます` |
 | `sourcePage` | `string` | `false` | 入力元画面識別子 | SCR-007 等の画面 ID | `SCR-007` |
 | `sessionId` | `string` | `false` | セッション識別子 | MVP 匿名 Feedback 用。個人情報を含めない | `sess_abc123` |
 
@@ -160,6 +160,7 @@ Recommendation Feedback 定義書 §9.2 に準拠。不整合時は `GRS-FDB-001
   "feedbackValueType": "choice",
   "feedbackChoiceCode": "too_casual",
   "feedbackReasonCategory": "context_mismatch",
+  "rating": 2,
   "comment": "上司へのお礼としては少しカジュアルに見えます",
   "sourcePage": "SCR-007",
   "sessionId": "sess_abc123"
@@ -176,6 +177,7 @@ Recommendation Feedback 定義書 §9.2 に準拠。不整合時は `GRS-FDB-001
   "feedbackType": "reason_good",
   "feedbackValueType": "boolean",
   "feedbackValue": true,
+  "rating": 5,
   "sourcePage": "SCR-007"
 }
 ```
@@ -194,11 +196,10 @@ Recommendation Feedback 定義書 §9.2 に準拠。不整合時は `GRS-FDB-001
 
 | Status | 意味 | 利用条件 |
 | -----: | ---- | -------- |
-| 201 | Feedback 作成成功 | 新規 Feedback を受け付け保存した場合（API設計方針書 §9.1。MVP では 200 でも可 — §14.1 No.1） |
-| 200 | 処理成功 | MVP で 201 を使わない場合の代替 |
+| 201 | Feedback 作成成功 | 新規 Feedback を受け付け保存した場合（API設計方針書 §9.1 準拠） |
+| 200 | Feedback 更新成功 | `sessionId` + 同一対象 + 同一 `feedbackType` の既存 Feedback を更新した場合（Recommendation Feedback 定義書 §13.2 準拠） |
 | 400 | Request 不正 | Validation エラー（`GRS-FDB-001` / `GRS-FDB-004` / `GRS-REQ-001` 等） |
 | 404 | 対象なし | 対象 Result / Item / Reason が存在しない（`GRS-FDB-002`） |
-| 409 | 競合 | 同一対象への重複 Feedback（`GRS-FDB-003`） |
 | 500 | 内部エラー | Feedback 保存失敗等（`GRS-FDB-005` / `GRS-FDB-999` / `GRS-DB-*`） |
 
 MVP では認証未導入のため **401 / 403** は返却しない。
@@ -212,7 +213,7 @@ MVP では認証未導入のため **401 / 403** は返却しない。
 | 項目 | 型 | 必須 | 内容 | 備考 |
 | ---- | -- | ---- | ---- | ---- |
 | `recommendationFeedbackId` | `string` | `true` | 登録された Feedback ID | 内部 ID の表面化。UUID 形式想定 |
-| `status` | `string` | `true` | 受付状態 | MVP では `accepted` 固定 |
+| `status` | `string` | `true` | 受付状態 | 新規作成時は `accepted`、更新時は `updated` |
 | `message` | `string` | `false` | 画面向け補足メッセージ | 例: 受付完了の短文 |
 
 #### 7.3.2 `meta`
@@ -227,7 +228,7 @@ MVP では認証未導入のため **401 / 403** は返却しない。
 
 ### 7.4 Response Example
 
-#### 7.4.1 Feedback 受付成功（201）
+#### 7.4.1 Feedback 新規作成成功（201）
 
 ```json
 {
@@ -240,6 +241,25 @@ MVP では認証未導入のため **401 / 403** は返却しない。
     "traceId": "550e8400-e29b-41d4-a716-446655440000",
     "requestId": "req_01HZYX",
     "acceptedAt": "2026-06-05T12:00:00+09:00"
+  }
+}
+```
+
+#### 7.4.2 Feedback 更新成功（200）
+
+`sessionId` + 同一対象 + 同一 `feedbackType` の既存 Feedback がある場合、新しい内容で更新し **200** を返す。
+
+```json
+{
+  "data": {
+    "recommendationFeedbackId": "feedback_001",
+    "status": "updated",
+    "message": "フィードバックを更新しました。"
+  },
+  "meta": {
+    "traceId": "550e8400-e29b-41d4-a716-446655440000",
+    "requestId": "req_01HZYX",
+    "acceptedAt": "2026-06-05T12:05:00+09:00"
   }
 }
 ```
@@ -279,13 +299,12 @@ MVP では認証未導入のため **401 / 403** は返却しない。
 | 400 | `GRS-FDB-004` | コメント文字数超過 | `comment` が最大長超過 | コメントを短くしてください。 |
 | 400 | `GRS-REQ-001` | Request JSON 形式不正・型不正 | 共通 Validation | 条件を確認してください。 |
 | 404 | `GRS-FDB-002` | 対象 Result / Item / Reason なし | 対象不存在 | 対象の推薦結果が見つかりません。 |
-| 409 | `GRS-FDB-003` | 同一対象への重複 Feedback | 競合 | すでにフィードバックを受け付けています。 |
 | 500 | `GRS-FDB-005` | Feedback 保存失敗 | DB 書き込み失敗 | フィードバックの送信に失敗しました。時間を置いて再度お試しください。 |
 | 500 | `GRS-FDB-999` | Feedback 想定外エラー | 内部エラー | フィードバック処理でエラーが発生しました。 |
 | 500 | `GRS-DB-001`〜`006` | DB 障害 | 永続化失敗 | データ処理に失敗しました。 |
 | 500 | `GRS-DB-999` | DB 想定外 | 内部エラー | データ処理で予期しないエラー。 |
 
-重複時の代替方針（冪等成功・更新扱い）は Recommendation Feedback 定義書 §13.2 に記載があるが、**契約上の HTTP 応答は 409 + `GRS-FDB-003` を正**とする（[API一覧](../../05_アプリケーション設計/アプリ/api/API一覧.md) §API-PUB-004「重複Feedbackは409候補」、エラーコード定義書 §14）。
+重複判定キー（`sessionId` + 同一対象 + 同一 `feedbackType`）に一致する既存 Feedback がある場合、**409 ではなく 200 + 更新扱い**とする（Recommendation Feedback 定義書 §13.2、Human Review #406 確定）。`GRS-FDB-003` は本 API の MVP 契約では返却しない。
 
 ---
 
@@ -299,12 +318,12 @@ MVP では認証未導入のため **401 / 403** は返却しない。
 | `feedbackType` × `feedbackTargetType` | §6.4.2 の整合 | `GRS-FDB-001` | フィードバック内容を確認してください。 |
 | `resultItemId` | `feedbackTargetType=item` 時は必須。Path `resultId` に属すること | `GRS-FDB-001` / `GRS-FDB-002` | 内容確認 / 対象なし |
 | `reasonId` | `feedbackTargetType=reason` 時は必須 | `GRS-FDB-001` / `GRS-FDB-002` | 内容確認 / 対象なし |
-| `rating` | 指定時は 1〜5 の整数 | `GRS-FDB-001` | フィードバック内容を確認してください。 |
-| `comment` | 指定時は最大 **500** 文字（暫定） | `GRS-FDB-004` | コメントを短くしてください。 |
-| 重複 | 同一セッション・同一対象・同一 `feedbackType` の連続投稿を抑制 | `GRS-FDB-003` | すでにフィードバックを受け付けています。 |
+| `rating` | 必須。**1〜5** の整数 | `GRS-FDB-001` | フィードバック内容を確認してください。 |
+| `comment` | 指定時は最大 **500** 文字 | `GRS-FDB-004` | コメントを短くしてください。 |
+| 重複（更新） | `sessionId` + 同一対象 + 同一 `feedbackType` の既存 Feedback がある場合は更新し **200** を返す | - | - |
 | JSON 形式 | パース可能であること | `GRS-REQ-001` | 条件を確認してください。 |
 
-匿名 Feedback のため、MVP ではユーザー ID による厳密な重複排除は行わない（Recommendation Feedback 定義書 §9.3）。重複判定の具体キー（`sessionId` 等）は実装仕様書 Task で詳細化する。
+匿名 Feedback のため、MVP ではユーザー ID による厳密な重複排除は行わない（Recommendation Feedback 定義書 §9.3）。更新判定キーは `sessionId` + 同一対象 + 同一 `feedbackType` とし、一致時は新規作成（201）ではなく更新（200）とする。判定の詳細は実装仕様書 Task で詳細化する。
 
 ---
 
@@ -344,14 +363,15 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 
 | No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
-| 1 | 正常系（item） | `item_good` + 必須項目で 201（または 200）+ `data.status: accepted` | contract |
-| 2 | 正常系（reason） | `reason_good` + `reasonId` で受付成功 | contract |
+| 1 | 正常系（item・新規） | `item_good` + 必須項目（`rating` 含む）で 201 + `data.status: accepted` | contract |
+| 2 | 正常系（reason・新規） | `reason_good` + `reasonId` + `rating` で 201 + `data.status: accepted` | contract |
 | 3 | validation error | `feedbackTargetType` と `feedbackType` 不整合で 400 + `GRS-FDB-001` | contract |
 | 4 | 対象なし | 存在しない `resultId` で 404 + `GRS-FDB-002` | contract |
-| 5 | 重複 | 同一対象・同一 type の再送で 409 + `GRS-FDB-003` | contract |
-| 6 | comment 超過 | 501 文字以上で 400 + `GRS-FDB-004` | contract |
-| 7 | trace 伝播 | `X-Trace-Id` 指定時に `meta.traceId` が一致 | contract |
-| 8 | generated client | OpenAPI 生成後、型が Request/Response と一致 | typecheck |
+| 5 | 重複更新 | `sessionId` + 同一対象 + 同一 type の再送で 200 + `data.status: updated` | contract |
+| 6 | rating 未指定 | `rating` 欠落で 400 + `GRS-FDB-001` | contract |
+| 7 | comment 超過 | 501 文字以上で 400 + `GRS-FDB-004` | contract |
+| 8 | trace 伝播 | `X-Trace-Id` 指定時に `meta.traceId` が一致 | contract |
+| 9 | generated client | OpenAPI 生成後、型が Request/Response と一致 | typecheck |
 
 実装結合・DB 障害シミュレーションは実装仕様書・単体テスト Task で扱う。
 
@@ -362,17 +382,20 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（契約面のみ。Task #400 / 分離後モデル） | #400 |
+| 2026-06-05 | Human Review 指摘反映（201 確定、重複は更新 200、`comment` 500 文字、`rating` 必須） | #406 |
 
 ---
 
-## 14. 未決事項
+## 14. Human Review 確定事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Feedback 成功時の HTTP Status（201 vs 200） | API設計方針書 §9.1 は 201 推奨だが MVP では 200 も可 | Human | - | 本書は **201 を契約上の推奨**、200 を MVP 代替として記載 |
-| 2 | 重複 Feedback の最終応答（409 vs 冪等 200） | ドメイン定義書 §13.2 は更新扱いも許容 | Human | - | 契約上は **409 + GRS-FDB-003** を正とする |
-| 3 | `comment` 最大文字数 | 正本 docs に確定値なし。API-PUB-002 のテキスト系と揃え **500** を暫定 | Human | - | OpenAPI `maxLength` に反映 |
-| 4 | `rating` の MVP 必須化 | ドメイン定義書 §6.3 は MVP 必須にしない方針 | Human | - | 本契約では **optional** |
+PR #406 Human Review にて以下を確定した。
+
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | Feedback 成功時の HTTP Status | 新規作成は **201**。更新は **200** |
+| 2 | 重複 Feedback の応答 | **更新扱い（200 + `data.status: updated`）**。409 は返却しない |
+| 3 | `comment` 最大文字数 | **500 文字** |
+| 4 | `rating` の MVP 必須化 | **必須**（1〜5 の整数） |
 
 ---
 
@@ -395,7 +418,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 
 - API契約（Request / Response / Error / Validation）が明確で、OpenAPI Task の入力として十分か
 - API設計方針書 §20（Feedback API）と矛盾していないか
-- API一覧の API-PUB-004（endpoint / Method / Provider / Consumer / 匿名 Feedback / 重複 409）と一致しているか
+- API一覧の API-PUB-004（endpoint / Method / Provider / Consumer / 匿名 Feedback）と一致しているか（重複応答は本契約で更新 200 に確定。API一覧の 409 候補表記との差異は OpenAPI Contract Task 前に確認）
 - Recommendation Feedback 定義書の MVP feedback_type と整合しているか
 - 実装面（MOD-API-007〜010 フロー等）を含んでいないか
 - secret / `.env` 実値が含まれていないか
@@ -403,7 +426,8 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 ### 16.1 Human Review で確認してほしいこと
 
 - 正式 Endpoint と MVP 非認証（匿名 Feedback）方針の最終確認
-- §14 の未決事項（201/200、重複応答、comment 最大長、rating 必須化）の確定
+- §14 の確定事項（201/200 使い分け、重複更新、`comment` 500 文字、`rating` 必須）の妥当性
+- API一覧 §API-PUB-004 の重複 409 候補表記と本契約（更新 200）の整合方針
 - OpenAPI Contract Task への分離方針の確認
 
 ---
