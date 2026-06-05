@@ -149,7 +149,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-api-pub-001-api-health-check-api-contract-spec"
+  name: "docs/task-395-api-pub-001-api-health-check-api-contract-spec"
   base: "feature/epic-384-pub-001-api-health-check"
   target: "feature/epic-384-pub-001-api-health-check"
   worktree_required: false

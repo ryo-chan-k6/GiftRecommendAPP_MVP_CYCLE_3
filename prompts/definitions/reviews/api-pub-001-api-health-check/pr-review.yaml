@@ -21,7 +21,7 @@ target:
   pr: 397
   issue: 395
   task_definition: "prompts/definitions/tasks/api-pub-001-api-health-check/api-contract-spec.yaml"
-  source_branch: "docs/task-api-pub-001-api-health-check-api-contract-spec"
+  source_branch: "docs/task-395-api-pub-001-api-health-check-api-contract-spec"
   target_branch: "feature/epic-384-pub-001-api-health-check"
   parent_epic_issue: "[Epic]API-PUB-001:APIヘルスチェック"
   parent_epic_branch: "feature/epic-384-pub-001-api-health-check"
@@ -159,6 +159,6 @@ issue:
   area: "api"
 
 notes:
-  - "Task Issue #395 / PR #397 に追記済み（#394 は author 差し替えのため close）"
+  - "Task Issue #395 / PR #397 / Branch docs/task-395-api-pub-001-api-health-check-api-contract-spec"
   - "対応 Task Definition: prompts/definitions/tasks/api-pub-001-api-health-check/api-contract-spec.yaml"
   - "対応 Epic Definition: prompts/definitions/epics/api-pub-001-api-health-check/epic.yaml"
