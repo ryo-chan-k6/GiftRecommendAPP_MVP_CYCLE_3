@@ -121,10 +121,9 @@ Fixer 完了後の **再 AI Review** は既存の `fix-ready` → `pr-ready-for-
 | 解決物 | 方針 |
 | ------ | ---- |
 | Task Definition | PR 本文 / Issue 本文 / PR head の branch summary / PR changed files から解決（review 側と同型） |
-| Contract Definition（1b OpenAPI 等） | `prompts/definitions/contracts/**` の `definition_type: contract`。PR / Issue 本文の Contract Definition、PR changed files、Review Definition の `target.task_definition` から解決 |
-| Review Definition | Fixer 用 `pr-review.yaml` が無い場合は **Task / Contract Definition パス**を `--definition` で Harness に渡す（`/fix-review-comments @<definition>` と同型） |
+| Review Definition | Fixer 用 `pr-review.yaml` が無い場合は **Task Definition パス**を `--definition` で Harness に渡す（`/fix-review-comments @task.yaml` と同型） |
 
-`fix-review-comments` の Definition Run Harness は `definition_type: task` に加え **`contract` を許容**する（`definition-run-prompt-builder.cjs`）。Contract Task PR で `request_changes` となった場合も Fixer auto-dispatch の対象とする。
+Review Definition 専用ファイルの要否は Task2 で確定する。最低限 Task Definition パス解決で動作すること。
 
 ### 6.3 CLI 出力
 
@@ -178,7 +177,7 @@ node .github/scripts/dispatch-fix-review-harness.cjs \
   --context request-changes
 ```
 
-オプションで `--definition prompts/definitions/tasks/.../task.yaml` または `prompts/definitions/contracts/.../*.yaml` を明示可能とする。
+オプションで `--definition prompts/definitions/tasks/.../task.yaml` を明示可能とする。
 
 ### 8.3 Harness job 失敗（dispatch 成功後）
 
