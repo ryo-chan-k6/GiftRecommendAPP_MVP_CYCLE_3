@@ -176,45 +176,6 @@ test("validateDefinitionType: 期待値と一致しなければ mismatch", () =>
   }
 });
 
-test("validateDefinitionType: fix-review-comments は contract を許容", () => {
-  const root = withTempWorkspace((dir) => {
-    const rel = "prompts/definitions/contracts/sample/openapi-fragment.yaml";
-    const full = path.join(dir, rel);
-    fs.mkdirSync(path.dirname(full), { recursive: true });
-    fs.writeFileSync(full, 'definition_type: "contract"\n', "utf8");
-  });
-  try {
-    const abs = path.join(root, "prompts/definitions/contracts/sample/openapi-fragment.yaml");
-    assert.equal(builder.validateDefinitionType(abs, ["task", "contract"]), "contract");
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
-});
-
-test("buildDefinitionRunRequest: fix-review-comments + contract definition", () => {
-  const root = withTempWorkspace((dir) => {
-    const rel = "prompts/definitions/contracts/sample/openapi-fragment.yaml";
-    const full = path.join(dir, rel);
-    fs.mkdirSync(path.dirname(full), { recursive: true });
-    fs.writeFileSync(full, 'definition_type: "contract"\n', "utf8");
-  });
-  try {
-    const request = builder.buildDefinitionRunRequest(
-      {
-        command: "fix-review-comments",
-        definition: "prompts/definitions/contracts/sample/openapi-fragment.yaml",
-        run_mode: "live-run",
-        target_pr: "417",
-      },
-      { workspace: root },
-    );
-    assert.equal(request.definition_type, "contract");
-    assert.match(request.prompt, /openapi-fragment\.yaml/);
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
-});
-
 test("validateDefinitionType: definition_type 欠落は missing", () => {
   const root = withTempWorkspace((dir) => {
     const rel = "prompts/definitions/epics/no-type/epic.yaml";

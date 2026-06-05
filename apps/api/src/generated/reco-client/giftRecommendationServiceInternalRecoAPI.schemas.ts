@@ -3,10 +3,79 @@
  * Do not edit manually.
  * Gift Recommendation Service Internal Reco API
  * api（apps/api）→ reco（apps/reco）向け Internal API 契約正本。
- * MVP 対象: API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）。
+ * MVP 対象:
+ * - API-INT-001 Recoヘルスチェック（GET /internal/reco/v1/health）
+ * - API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）
  *
  * OpenAPI spec version: 1.0.0
  */
+/**
+ * reco 稼働状態（API-INT-001 契約仕様書 §7.3.1）。
+ * MVP では ok / unavailable の二値運用。degraded は将来拡張用。
+ */
+export type RecoHealthStatus = typeof RecoHealthStatus[keyof typeof RecoHealthStatus];
+
+
+export const RecoHealthStatus = {
+  ok: 'ok',
+  degraded: 'degraded',
+  unavailable: 'unavailable',
+} as const;
+
+/**
+ * サービス識別子（固定値 reco）
+ */
+export type RecoHealthDataService = typeof RecoHealthDataService[keyof typeof RecoHealthDataService];
+
+
+export const RecoHealthDataService = {
+  reco: 'reco',
+} as const;
+
+export interface RecoHealthData {
+  status: RecoHealthStatus;
+  /** サービス識別子（固定値 reco） */
+  service: RecoHealthDataService;
+  /** アプリケーションバージョン（任意） */
+  version?: string;
+  /** 確認日時（ISO 8601） */
+  checkedAt?: string;
+}
+
+/**
+ * 横断追跡・リクエスト識別・業務結果コード（API設計方針 §8.2）
+ */
+export interface Meta {
+  /** 横断追跡 ID（Header X-Trace-Id を引き継ぎまたは生成） */
+  traceId: string;
+  /** API リクエスト ID */
+  requestId: string;
+  /** 生成日時（ISO 8601） */
+  generatedAt?: string;
+  /** 業務結果コード（0 件正常系では GRS-REC-001 等） */
+  resultCode?: string;
+}
+
+/**
+ * 成功時ペイロード（API ごとに schema を上書き定義）
+ */
+export type SuccessEnvelopeData = { [key: string]: unknown };
+
+/**
+ * 成功時 Response の共通パターン（data + meta）。
+ * 各 API は data に固有 schema を allOf で合成する。
+ */
+export interface SuccessEnvelope {
+  /** 成功時ペイロード（API ごとに schema を上書き定義） */
+  data: SuccessEnvelopeData;
+  meta: Meta;
+}
+
+export type RecoHealthSuccessResponse = SuccessEnvelope & {
+  data: RecoHealthData;
+  meta: Meta;
+};
+
 export interface RelationshipInput {
   relationshipCode: string;
   /** @maxLength 50 */
@@ -169,35 +238,6 @@ export interface RecoRecommendationRunResponseData {
   metadata?: RecoRunMetadata;
 }
 
-/**
- * 横断追跡・リクエスト識別・業務結果コード（API設計方針 §8.2）
- */
-export interface Meta {
-  /** 横断追跡 ID（Header X-Trace-Id を引き継ぎまたは生成） */
-  traceId: string;
-  /** API リクエスト ID */
-  requestId: string;
-  /** 生成日時（ISO 8601） */
-  generatedAt?: string;
-  /** 業務結果コード（0 件正常系では GRS-REC-001 等） */
-  resultCode?: string;
-}
-
-/**
- * 成功時ペイロード（API ごとに schema を上書き定義）
- */
-export type SuccessEnvelopeData = { [key: string]: unknown };
-
-/**
- * 成功時 Response の共通パターン（data + meta）。
- * 各 API は data に固有 schema を allOf で合成する。
- */
-export interface SuccessEnvelope {
-  /** 成功時ペイロード（API ごとに schema を上書き定義） */
-  data: SuccessEnvelopeData;
-  meta: Meta;
-}
-
 export type RecoRecommendationRunSuccessResponse = SuccessEnvelope & {
   data: RecoRecommendationRunResponseData;
   meta: Meta;
@@ -247,4 +287,14 @@ export type XTraceIdRequiredParameter = string;
  * API リクエスト ID（api 側で生成）
  */
 export type XRequestIdRequiredParameter = string;
+
+/**
+ * 横断追跡 ID（指定時は Response meta.traceId へ反映）
+ */
+export type XTraceIdOptionalParameter = string;
+
+/**
+ * API リクエスト ID（指定時は Response meta.requestId へ反映）
+ */
+export type XRequestIdOptionalParameter = string;
 

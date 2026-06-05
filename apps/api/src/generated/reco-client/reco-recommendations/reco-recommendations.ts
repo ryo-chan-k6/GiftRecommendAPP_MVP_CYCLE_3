@@ -3,7 +3,9 @@
  * Do not edit manually.
  * Gift Recommendation Service Internal Reco API
  * api（apps/api）→ reco（apps/reco）向け Internal API 契約正本。
- * MVP 対象: API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）。
+ * MVP 対象:
+ * - API-INT-001 Recoヘルスチェック（GET /internal/reco/v1/health）
+ * - API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）
  *
  * OpenAPI spec version: 1.0.0
  */
