@@ -1,0 +1,283 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-physical-er-spec-pr"
+  title: "DB物理ER仕様書 PRレビュー"
+  summary: "物理ER仕様書作成 Task の PR を AI Review する。論理ER・テーブル一覧・正本定義表との整合と physical-er-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-438-db-physical-design-physical-er-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 438
+  task_definition: "prompts/definitions/tasks/db-physical-design/physical-er-spec.yaml"
+  source_branch: "docs/task-438-db-physical-design-physical-er-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/physical-er-spec.yaml"
+    required: true
+  issue:
+    number: 438
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "作成成果物（物理ER仕様書）の内容確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "論理ERとの整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "テーブル網羅・引き継ぎ事項の整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "正本区分・派生/Snapshot方針の整合確認"
+    - path: "prompts/templates/docs/physical-er-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合確認"
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（physical-er-spec.yaml）の scope を満たしているか"
+    - "out_of_scope（テーブル定義書 / DDL / migration / apps 実装）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に変更内容、検証結果、未実施事項が記載されているか"
+    - "Human Review観点が明記されているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+    - "Task PR で Closes #438 を使っていないか（Related to を使用）"
+  docs:
+    - "物理ER仕様書が docs/06_実装設計/database/物理ER.md に存在するか"
+    - "physical-er-spec.md テンプレの主要章（設計方針・ER図・テーブル一覧・関係・Index・制約・enum連携・保持・Migration接続・未決事項）が充足しているか"
+    - "テーブル一覧.md の 62 テーブルと網羅・分類が一致しているか"
+    - "テーブル一覧 §14 引き継ぎ事項（ranking_snapshot / phase_log 統合 / pair_master / 入力hash 等）が反映されているか"
+    - "論理ERの recommendation_run_phase_log が物理テーブル化されていないか"
+    - "正本定義表の正本区分（内部正本 / 派生 / Snapshot / Log / 設定正本）と矛盾していないか"
+    - "Mermaid 構文が破綻していないか"
+    - "用語揺れがないか（terminology.mdc）"
+  db:
+    - "Online / Batch / Log / Metric の責務が混在していないか"
+    - "Raw Product Object が DB テーブル化されていないか"
+    - "主キー・外部キー・unique・index 方針が後続テーブル定義・DDLへ展開できる粒度か"
+    - "破壊的DB変更・Human Review 必須事項が明示されているか"
+  source: []
+  tests:
+    - "docs Task として Mermaid 構文・論理ER突合の manual check が PR 本文に記載されているか"
+    - "未実施テストの理由が PR 本文に記載されているか"
+  api_contract: []
+  generated:
+    - "generated ファイルを手動編集していないか（本 Task は generated 影響なし想定）"
+  security:
+    - "secret や .env 実値が含まれていないか"
+  branch:
+    - "Task Branch から develop へ直接 PR していないか"
+    - "PR target が親 Epic Branch（docs/epic-435-db-physical-design）であるか"
+    - "Task PR で Related to #438 が使われているか"
+    - "Task PR で Closes #438 を使っていないか"
+  project:
+    - "レビュー結果に応じた Status 更新意図が明確か"
+  epic_scope:
+    - "PR差分が親 Epic db-physical-design の epic_scope.allowed_paths 内に収まっているか"
+    - "epic_scope.forbidden_paths（apps / packages/contracts 等）への変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Reviewで確認してほしい事項（schema 分割 / pair_id 保持先等）が明記されている"
+    - "Review Definition（pr-review.yaml）が prompts/definitions/reviews/db-physical-design/physical-er-spec/ に存在する"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "論理ER・テーブル一覧との矛盾がある"
+      - "テーブル網羅漏れがある"
+      - "Mermaid 構文エラーがある"
+      - "PR 本文に必要情報が不足している"
+  needs_human_decision:
+    conditions:
+      - "§17 決定事項に対する追加の設計方針変更が必要"
+  split_required:
+    conditions:
+      - "DDL / migration / テーブル定義書が混在している"
+      - "apps 実装変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: "2026-06-06"
+    due_date: "2026-06-08"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  epics:
+    - "prompts/definitions/epics/db-physical-design/epic.yaml"
+  issues:
+    - 435
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/physical-er-spec.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "prompts/definitions/tasks/db-physical-design/enum-code-definitions.yaml"
+    - "prompts/definitions/tasks/db-physical-design/table-definition-*.yaml"
+  exclusive_files:
+    - "docs/06_実装設計/database/物理ER.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "Mermaid syntax check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "テーブル一覧 62 件との突合"
+    - "論理ER・正本定義表との整合確認"
+    - "Mermaid erDiagram 構文確認"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "物理ER仕様書作成 Task は docs 中心のため"
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常PRレビューのため、レビュー結果はPRコメントを正本とする"
+
+risk_points:
+  - "論理ERとテーブル一覧の差分（feature_rule 分解 / ranking_snapshot 追加等）の解釈齟齬"
+  - "§17 決定事項が後続テーブル定義 Task へ正しく引き継がれるか"
+
+human_decision_points:
+  - "§17 決定事項（pair_id / Request 保持方式 / FK 範囲 / Staging 保持 / schema / pgvector / attribute 対象外）の妥当性"
+  - "MVP 60 テーブル構成とテーブル一覧 62 との差分説明の明確さ"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "apps/** 変更が混入している場合"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/physical-er-spec.yaml"
+  - "対応 Epic Definition: prompts/definitions/epics/db-physical-design/epic.yaml"
+  - "後続 Task（enum/テーブル定義/DDL）の前提成果物として Human Review を重視する"
