@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-06                                 |
-| 更新日         | 2026-06-06                                 |
+| 更新日         | 2026-06-07                                 |
 
 ---
 
@@ -17,7 +17,7 @@
 
 本ドキュメントは、Gift Recommendation Service MVP における PostgreSQL（Supabase）上の物理ER仕様書である。
 
-論理ER・テーブル一覧・正本定義表を入力とし、MVPで永続化する **62 物理テーブル** の関係、物理設計方針、制約・Index方針、後続テーブル定義書・DDLへの引き継ぎ事項を定義する。
+論理ER・テーブル一覧・正本定義表を入力とし、MVPで永続化する **60 物理テーブル**（テーブル一覧 62 のうち `external_attribute` / `staging_attribute` を除く）の関係、物理設計方針、制約・Index方針、後続テーブル定義書・DDLへの引き継ぎ事項を定義する。
 
 本ドキュメントではカラム型・NULL可否・具体DDLは確定しない。それらは後続 Task（テーブル定義書 / DDL）で定義する。
 
@@ -26,7 +26,7 @@
 ## 3. 目的
 
 - 論理ER上のエンティティを物理テーブルへ落とし込む
-- テーブル一覧で定義した 62 テーブルの PK / FK / 多重度 / 正本区分を物理設計レベルで整理する
+- テーブル一覧で定義した 62 テーブルのうち MVP 作成対象 60 テーブルの PK / FK / 多重度 / 正本区分を物理設計レベルで整理する
 - Online推薦 / Batch商品連携 / Semantic・Feature / Evaluation / Log・Metric の責務境界をDB設計に反映する
 - enum・テーブル定義書・DDL・migration Task の共通前提を提供する
 
@@ -37,8 +37,8 @@
 | 項目             | 内容                                                                 |
 | ---------------- | -------------------------------------------------------------------- |
 | 対象DB           | PostgreSQL（Supabase）                                               |
-| 対象スキーマ     | MVPでは同一DB内。論理分割として `app` / `log` / `metric` を想定する  |
-| 対象テーブル群   | テーブル一覧 §13 合計 62 テーブル                                    |
+| 対象スキーマ     | MVPでは `public` 単一 schema。`app` / `log` / `metric` は論理分類（§5.1） |
+| 対象テーブル群   | テーブル一覧 §13 合計 62 テーブル（MVP 作成対象 60）                 |
 | 前提論理ER       | `docs/05_アプリケーション設計/アプリ/database/論理ER.md`             |
 | 前提テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md`       |
 | DB方針           | 正本・派生・Snapshot・Log・Metric を用途ごとに分離し、Object Storage上の Raw JSON 本体はDB化しない |
@@ -54,6 +54,7 @@
 | 5 | `feature_rule`（論理ER上の抽象名） | `relationship_rule` / `occasion_rule` / `pair_rule` / `concept_feature_rule` / `input_type_rule` / `feature_integration_rule` / `normalization_rule` へ **分解** | テーブル一覧 §8 |
 | 6 | `raw_product_object` | DBテーブル化 **しない**（Object Storage 管理） | テーブル一覧 §12 |
 | 7 | `feedback_analysis_result` | MVP 62 テーブル対象 **外**（Evaluation 低優先度。必要時は後続 Task 化） | 論理ER §18.2 |
+| 8 | `external_attribute` / `staging_attribute` | MVP では物理テーブル **作成しない**（後続 Task 化） | §17 No.7 |
 
 ---
 
@@ -62,31 +63,33 @@
 | 観点         | 方針 |
 | ------------ | ---- |
 | 主キー       | 業務エンティティは `uuid`（`gen_random_uuid()`）を基本とする。Log / Metric の大量追記系は `bigint` identity も許容する |
-| 外部キー     | Online推薦コアチェーン（Request → Run → Result → Result Item）および Item 派生系は **物理FKを張る**。Batch / Staging / 汎用 Log は性能・運用柔軟性のため **論理FK + Index** を基本とし、Human Review後に物理FK化を検討する |
+| 外部キー     | Online推薦コアチェーン（Request → Run → Result → Result Item）および Item 派生系は **物理FKを張る**。Batch / Staging / 汎用 Log は **論理FK + Index** とする（§17 No.3） |
 | unique制約   | テーブル一覧で定義した冪等キー（例: `item_popularity_signal`: `ranking_snapshot_id + rank`）を unique 制約候補とする |
 | index        | FK列、状態カラム（`*_status`）、外部参照キー（`external_item_code`, `source`, `semantic_config_version_id` 等）、時系列検索列（`created_at`, `started_at`）に Index を付与する |
-| JSON / JSONB | 可変構造・内訳保存（`score_breakdown_json`, `detail_json`, `parameter_json`, `extracted_semantic_json` 等）は JSONB を基本とする。検索キーに使う項目は正規化列として別途保持する |
+| JSON / JSONB | 可変構造・内訳保存（`score_breakdown_json`, `detail_json`, `parameter_json`, `extracted_semantic_json` 等）は JSONB を基本とする。`recommendation_request` は主要条件を個別カラムとし、併せて `request_payload` / `validated_payload`（JSONB）を保持する（§17 No.2） |
 | timestamp    | `created_at`（NOT NULL）を原則必須とする。更新があるテーブルは `updated_at` を付与する。実行系は `started_at` / `completed_at` / `generated_at` / `fetched_at` を用途に応じて保持する |
 | 論理削除     | 原則採用しない。`active_status` / `is_active` / 各種 `*_status` による状態管理を基本とする |
 | 履歴管理     | 業務状態の途中経過は `phase_log` / `error_log` に追記する。Snapshot 系（`recommendation_result_item` 等）は上書きしない |
-| partition    | MVPでは未適用。`phase_log` / `error_log` / `api_call_log` は保持期間確定後に range partition（月次等）を検討する |
-| pgvector     | `item_embedding.embedding_vector` に `vector` 型を使用する。Index は ivfflat または hnsw をデータ量確定後に選定する（後続 DDL Task） |
+| partition    | MVPでは **未適用**。`created_at` Index + retention DELETE で運用し、本番前に `phase_log` / `api_call_log` 等の range partition を検討する（§17 No.5） |
+| pgvector     | `item_embedding.embedding_vector` に `vector` 型を使用する。Index は **HNSW** を第一候補とする（§17 No.6） |
 
 ### 5.1 schema 分割方針（MVP）
 
-| schema  | 配置テーブル群 | 備考 |
-| ------- | -------------- | ---- |
-| `app`   | Online推薦 / User意味 / Item / 外部連携（Staging除く正本）/ Item派生 / Semantic / Master / Evaluation | 業務データ・設定正本 |
-| `log`   | `batch_run_log`, `phase_log`, `error_log`, `api_call_log`, `item_import_summary`, Staging 系, `product_diff_result`, `fetch_cursor` | 追記・一時・実行追跡 |
-| `metric`| `feature_distribution_metric`, `meaning_distribution_metric`, `normalization_distribution_metric`, `reco_score_distribution_metric` | 分布監視 |
+MVP では物理 schema は **`public` 単一** とする。以下は **論理分類**（テーブル命名・Repository 設計・保持方針の整理用）である。
 
-MVPでは同一DB・同一 Supabase プロジェクト内で schema を分ける。アプリからの search_path は後続 Repository 設計で確定する。
+| 論理分類 | 配置テーブル群 | 備考 |
+| -------- | -------------- | ---- |
+| `app`    | Online推薦 / User意味 / Item / 外部連携（Staging除く正本）/ Item派生 / Semantic / Master / Evaluation | 業務データ・設定正本 |
+| `log`    | `batch_run_log`, `phase_log`, `error_log`, `api_call_log`, `item_import_summary`, Staging 系, `product_diff_result`, `fetch_cursor` | 追記・一時・実行追跡 |
+| `metric` | `feature_distribution_metric`, `meaning_distribution_metric`, `normalization_distribution_metric`, `reco_score_distribution_metric` | 分布監視 |
+
+本番前または運用負荷増加時に `app` / `log` / `metric` への物理 schema 分割 migration を検討する（§17 No.8）。
 
 ---
 
 ## 6. 全体物理ER図
 
-以下は主要テーブル群と関係の概観である。全 62 テーブルの詳細は §8・§9 を正とする。
+以下は主要テーブル群と関係の概観である。MVP 作成対象 60 テーブルの詳細は §8・§9 を正とする。
 
 ```mermaid
 erDiagram
@@ -105,7 +108,7 @@ erDiagram
 
     relationship_master ||--o{ recommendation_request : "selected_by"
     occasion_master ||--o{ recommendation_request : "selected_by"
-    pair_master ||--o{ recommendation_request : "resolved_to"
+    pair_master ||--o{ recommendation_run : "resolved_at_run"
 
     item ||--o{ item_image : "has"
     item ||--o| item_review_summary : "has"
@@ -170,8 +173,8 @@ erDiagram
 | ---- | ------------ | -------- | ------- |
 | Online推薦系 | `recommendation_request`, `recommendation_run`, `recommendation_result`, `recommendation_result_item`, `recommendation_reason`, `recommendation_feedback` | ユーザー入力・推薦実行・結果・理由・Feedback | `yes` |
 | User意味推定系 | `user_semantic`, `user_feature`, `user_meaning` | Online推薦時に reco が生成する派生データ | `yes` |
-| Item系 | `item`, `item_image`, `item_review_summary`, `external_genre`, `external_attribute`, `ranking_snapshot`, `item_popularity_signal` | Online推薦で参照する商品正本・補助情報 | `partial`（`external_attribute` は任意） |
-| 外部商品データ連携系 | `fetch_cursor`, `api_call_log`, `raw_product_metadata`, `staging_*`, `product_diff_result`, `item_import_summary` | Batch による Raw 参照・Staging・Item 反映 | `partial`（`staging_attribute` は任意） |
+| Item系 | `item`, `item_image`, `item_review_summary`, `external_genre`, `ranking_snapshot`, `item_popularity_signal` | Online推薦で参照する商品正本・補助情報 | `yes` |
+| 外部商品データ連携系 | `fetch_cursor`, `api_call_log`, `raw_product_metadata`, `staging_item`, `staging_item_image`, `staging_ranking_signal`, `staging_genre`, `product_diff_result`, `item_import_summary` | Batch による Raw 参照・Staging・Item 反映 | `yes` |
 | Item派生データ系 | `item_generation_queue`, `item_semantic`, `item_feature`, `item_meaning`, `item_embedding` | Batch 事前生成の推薦用派生データ | `yes` |
 | Semantic / Feature定義系 | `semantic_config`, `semantic_config_version`, `semantic_concept`, `feature_definition`, `semantic_rule`, 各種 `*_rule` | 意味・Feature 定義と変換ルール（設定正本） | `partial`（`input_type_rule`, `feature_integration_rule` は任意） |
 | Master / Config系 | `relationship_master`, `occasion_master`, `pair_master`, `model_version`, `ranking_config`, `reason_template`, `feature_normalization_version` | 入力マスタ・モデル・Ranking・理由・正規化 version | `yes` |
@@ -182,7 +185,7 @@ erDiagram
 
 ## 8. テーブル一覧
 
-テーブル名の正本は `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` とする。
+テーブル名の正本は `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` とする。MVP では `external_attribute` / `staging_attribute` を除く **60 テーブル** を作成する。
 
 | テーブル名 | 論理名 | 分類 | 正本区分 | 主な更新主体 | MVP対象 |
 | ---------- | ------ | ---- | -------- | ------------ | ------- |
@@ -199,7 +202,7 @@ erDiagram
 | `item_image` | Item Image | Item系 | 内部正本 / 外部参照 | batch | `yes` |
 | `item_review_summary` | Item Review Summary | Item系 | 派生 / 補助情報 | batch | `yes` |
 | `external_genre` | External Genre | Item系 | 外部参照 / 内部正本 | batch | `yes` |
-| `external_attribute` | External Attribute | Item系 | 外部参照 | batch | `partial` |
+| `external_attribute` | External Attribute | Item系 | 外部参照 | batch | `no` |
 | `ranking_snapshot` | Ranking Snapshot | Item系 | Snapshot | batch | `yes` |
 | `item_popularity_signal` | Item Popularity Signal | Item系 | Snapshot / 派生 | batch | `yes` |
 | `fetch_cursor` | Fetch Cursor | 外部商品データ連携系 | 状態 / 管理情報 | batch | `yes` |
@@ -209,7 +212,7 @@ erDiagram
 | `staging_item_image` | Staging Item Image | 外部商品データ連携系 | 一時 / 中間 | batch | `yes` |
 | `staging_ranking_signal` | Staging Ranking Signal | 外部商品データ連携系 | 一時 / 中間 | batch | `yes` |
 | `staging_genre` | Staging Genre | 外部商品データ連携系 | 一時 / 中間 | batch | `yes` |
-| `staging_attribute` | Staging Attribute | 外部商品データ連携系 | 一時 / 中間 | batch | `partial` |
+| `staging_attribute` | Staging Attribute | 外部商品データ連携系 | 一時 / 中間 | batch | `no` |
 | `product_diff_result` | Product Diff Result | 外部商品データ連携系 | 派生 / 判定結果 | batch | `yes` |
 | `item_import_summary` | Item Import Summary | 外部商品データ連携系 | Log / 集計 | batch | `yes` |
 | `item_generation_queue` | Item Generation Queue | Item派生データ系 | 状態 / Queue | batch | `yes` |
@@ -269,7 +272,7 @@ erDiagram
 | `recommendation_run.recommendation_run_id` | `user_meaning.recommendation_run_id` | generates | `ON` | 1:0..1 | |
 | `relationship_master.relationship_code` | `recommendation_request.relationship_code` | selected_by | `LOGICAL` | 1:N | マスタコード参照 |
 | `occasion_master.occasion_code` | `recommendation_request.occasion_code` | selected_by | `LOGICAL` | 1:N | マスタコード参照 |
-| `pair_master.pair_id` | `recommendation_request.pair_id` | resolved_to | `LOGICAL` | 1:N | **保持先は未決**（§17 参照） |
+| `pair_master.pair_id` | `recommendation_run.pair_id` | resolved_at_run | `ON` | 1:N | 実行時解決 Pair を Run に保持（§17 No.1） |
 | `item.item_id` | `recommendation_result_item.item_id` | snapshotted_by | `ON` | 1:N | Snapshot は Item 更新で上書きしない |
 | `item.item_id` | `item_image.item_id` | has | `ON` | 1:N | |
 | `item.item_id` | `item_review_summary.item_id` | has | `ON` | 1:0..1 | |
@@ -313,7 +316,8 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | `ranking_snapshot_id`, `rank` | unique | 冪等キー | テーブル一覧 §14 No.2 |
 | `item_feature` | `idx_item_feature_lookup` | `item_id`, `semantic_config_version_id`, `feature_code` | btree | Online 参照 | input_hash は unique 候補 |
 | `item_embedding` | `idx_item_embedding_item_model` | `item_id`, `model_version_id` | btree | Online 参照 | vector Index は別途 |
-| `item_embedding` | `idx_item_embedding_vector` | `embedding_vector` | ivfflat/hnsw | 類似検索 | DDL Task で確定 |
+| `item_embedding` | `idx_item_embedding_vector` | `embedding_vector` | hnsw | 類似検索 | §17 No.6 |
+| `recommendation_run` | `idx_recommendation_run_pair_id` | `pair_id` | btree | Pair 参照 | §17 No.1 |
 | `phase_log` | `idx_phase_log_owner` | `owner_type`, `owner_id`, `started_at` | btree | Run/Batch 追跡 | Run phase log 統合先 |
 | `error_log` | `idx_error_log_owner` | `owner_type`, `owner_id`, `occurred_at` | btree | 障害調査 | |
 | `api_call_log` | `idx_api_call_log_batch` | `batch_run_id`, `requested_at` | btree | Batch 分析 | |
@@ -329,6 +333,8 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | テーブル | 制約名（案） | 種別 | 対象 | 内容 | 備考 |
 | -------- | ------------ | ---- | ---- | ---- | ---- |
 | `recommendation_result` | `uq_result_per_run` | unique | `recommendation_run_id` | 1 Run 1 Result | nullable run は別途検討 |
+| `recommendation_run` | `fk_recommendation_run_pair` | FK | `pair_id` | `pair_master.pair_id` 参照 | §17 No.1 |
+| `recommendation_request` | — | — | 条件列 + JSONB | 個別カラムと payload 併用 | §17 No.2 |
 | `item` | `uq_item_source_external_code` | unique | `source`, `external_item_code` | 商品 Upsert キー | |
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | unique | `ranking_snapshot_id`, `rank` | ランキング明細一意 | |
 | `item_feature` | `uq_item_feature_idempotent` | unique | `item_id`, `semantic_config_version_id`, `feature_code`, `feature_input_hash`, `feature_normalization_version_id` | 再生成冪等 | テーブル一覧 §7 補足 |
@@ -370,9 +376,9 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | Online推薦コア（Request / Result / Feedback） | 未定（長期） | 原則削除しない | — | Snapshot 再現性優先。保持期間はデータ保持方針 Task |
 | User派生（semantic / feature / meaning） | Run 単位で長期 | 原則削除しない | — | 再現性確保 |
 | Item 正本・派生 | 商品有効期間中 | Upsert / 状態更新 | `active_status` 変更 | 物理削除は原則しない |
-| Staging 系 | 短期（日〜週） | TRUNCATE / DELETE | Batch 完了後 | 保持期間は未決（§17） |
-| `product_diff_result` | 短期 | DELETE | Batch 完了後 | 長期保存不要の場合 Retention |
-| Log 系（phase / error / api_call / batch_run） | 中期（月単位） | partition drop / DELETE | 保持期間経過 | partition は後続 DDL |
+| Staging 系 | 成功 Batch 完了後 **即削除** / 失敗・部分成功時 **7〜14 日** | DELETE | `batch_run_id` 単位 | §17 No.4 |
+| `product_diff_result` | 成功時短期 / 失敗時 7〜14 日 | DELETE | Batch 完了後 | Staging と同様 |
+| Log 系（phase / error / api_call / batch_run） | 中期（月単位） | DELETE | 保持期間経過 | MVP では partition なし（§17 No.5） |
 | Metric 系 | 中期 | DELETE / 集約 | 保持期間経過 | 将来 `metric_summary` 統合可 |
 | Raw Metadata | 中期 | 状態更新 + アーカイブ | Object Storage 側 lifecycle と連動 | DB は参照のみ |
 
@@ -394,19 +400,22 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 
 | 項目 | 内容 |
 | ---- | ---- |
-| DDL作成単位 | schema 単位 → テーブル群単位 → テーブル単位の順。Master / Config → Item → Online → Log の依存順を基本とする |
+| DDL作成単位 | テーブル群単位 → テーブル単位の順。Master / Config → Item → Online → Log / Metric の依存順を基本とする |
 | migration命名 | `YYYYMMDDHHMMSS_<summary>.sql`（db/migrations 正本は DDL Task） |
-| 適用順序 | enum / extension（pgvector）→ schema 作成 → Master → Semantic → Item → 派生 → Online → Batch/Log → Metric → index / FK 追加 |
+| 適用順序 | enum / extension（pgvector）→ Master → Semantic → Item → 派生 → Online → Batch/Log → Metric → index / FK 追加（MVP は `public` schema のみ） |
 | rollback方針 | MVP では forward migration 主体。破壊的変更は down migration を Human Review 必須とする |
 | 破壊的変更有無 | `no`（本 Task 時点。DDL Task 時に再評価） |
-| Human Review必須事項 | schema 分割採否、物理 FK 追加範囲、partition 導入、pgvector Index 方式、本番 migration 適用 |
+| Human Review必須事項 | 本番 migration 適用、破壊的 DDL、物理 schema 分割 migration の導入 |
 
 ---
 
 ## 16. 後続テーブル定義書への引き継ぎ
 
-- 各テーブルについて `{物理テーブル名}_テーブル定義書.md` を 1 テーブル 1 Task で作成する（テーブル一覧 §1.1）
-- 全 62 テーブルの PK / FK / unique / index / 正本区分 / 更新主体を本ドキュメント §8〜§11 から転記する
+- MVP 作成対象 **60 テーブル**について `{物理テーブル名}_テーブル定義書.md` を 1 テーブル 1 Task で作成する（テーブル一覧 §1.1）
+- `external_attribute` / `staging_attribute` のテーブル定義書・DDL は **MVP では作成しない**
+- `recommendation_request` は `relationship_code` / `occasion_code` / `budget_min` / `budget_max` / `preferred_text` 等の **個別カラム** と `request_payload` / `validated_payload`（JSONB）を **併用**する（RecommendationRequest定義書 §11.2）
+- `recommendation_run` に `pair_id` を保持し、実行時に解決した Pair を再現性確保のため固定する
+- 全 MVP 対象テーブルの PK / FK / unique / index / 正本区分 / 更新主体を本ドキュメント §8〜§11 から転記する
 - `recommendation_run_phase_log` 用のテーブル定義書は **作成しない**
 - `ranking_snapshot` と `item_popularity_signal` の親子関係・冪等キーを優先的に定義する
 - `item_feature` / `item_embedding` の `feature_input_hash` / `embedding_input_hash` 列を必須候補とする
@@ -417,18 +426,20 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 
 ---
 
-## 17. 未決事項
+## 17. 決定事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `pair_id` の保持先 | `recommendation_request` と `recommendation_run` のどちらに解決済み Pair を保持するかで再現性・API 契約が変わる | Human | テーブル定義 Task 前 | テーブル一覧 §3 補足 |
-| 2 | Request 条件の保持方式 | budget / preferred / ng 等を列分解するか JSONB 一本化するか | Human | テーブル定義 Task | 論理ER §18.1 |
-| 3 | Batch / Staging への物理 FK | 性能・削除運用と整合性のトレードオフ | Human | DDL Task | 本ドキュメント §5 は LOGICAL 基本 |
-| 4 | Staging 保持期間 | 毎回削除 vs 一定期間保持 | Human | データ保持方針 Task | |
-| 5 | Log partition 要否 | データ量見積もり未確定 | Human | DDL Task | |
-| 6 | pgvector Index 方式 | ivfflat vs hnsw、データ量依存 | Human | DDL Task | |
-| 7 | `external_attribute` / `staging_attribute` | MVP でテーブル作成するか | Human | テーブル定義 Task | 現状 `partial` |
-| 8 | schema 分割（app / log / metric） | MVP で物理 schema を分けるか public 単一にするか | Human | DDL Task | Issue #438 Human Review 観点 |
+Human Review にて以下を確定した（2026-06-07）。
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | `pair_id` の保持先 | **`recommendation_run`** に保持する | `recommendation_request` は `relationship_code` / `occasion_code` のみ。再現性単位は Run |
+| 2 | Request 条件の保持方式 | **主要項目は個別カラム + `request_payload` / `validated_payload`（JSONB）併用** | RecommendationRequest定義書 §11.2 に整合 |
+| 3 | Batch / Staging への物理 FK | **Online コア + Item 派生のみ物理 FK**。Staging / Log / Metric は **論理 FK + Index** | §5 物理設計方針 |
+| 4 | Staging 保持期間 | **成功 Batch 完了後に当該分を削除**。**失敗 / 部分成功のみ 7〜14 日保持** | §13 データ保持 |
+| 5 | Log partition 要否 | **MVP では partition なし**（`created_at` Index + retention DELETE） | 本番前に再評価 |
+| 6 | pgvector Index 方式 | **HNSW** を第一候補とする | 商品数が極少の初期は Index 後追いも可 |
+| 7 | `external_attribute` / `staging_attribute` | **MVP ではテーブル作成しない** | 後続 Task で追加検討 |
+| 8 | schema 分割（app / log / metric） | **MVP は `public` 単一 schema**。§5.1 の分類は論理分類のみ | 本番前に物理分割 migration を検討 |
 
 ---
 
@@ -449,13 +460,16 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 ## 19. レビュー観点
 
 - 論理ER・テーブル一覧・正本定義表と矛盾していないか
-- 62 テーブルが網羅され、論理ER上の `recommendation_run_phase_log` が物理化されていないか
+- 論理ER上の `recommendation_run_phase_log` が物理化されていないか
 - `ranking_snapshot` / `pair_master` / `item_meaning` / 各種 `*_rule` 分解がテーブル一覧と一致しているか
+- `pair_id` が `recommendation_run` に保持される方針が §9・§17 と一致しているか
+- §17 決定事項（Request 条件保持 / FK 範囲 / Staging 保持 / schema / pgvector 等）が §5・§13・§15 に反映されているか
 - 主キー・外部キー・unique 制約・index 方針が後続 DDL へ展開できる粒度であるか
 - Online / Batch / Log / Metric の責務が混在していないか
 - Raw Product Object が DB テーブル化されていないか
 - Snapshot（`recommendation_result_item`）の上書き禁止方針が明示されているか
 - Online 推薦中に Item 系を更新しない前提が維持されているか
 - migration や破壊的 DB 変更が Human Review 事項として明示されているか
+- MVP 作成対象 60 テーブルが明示され、`external_attribute` / `staging_attribute` が MVP 対象外であること
 - secret や `.env` 実値が含まれていないか
-- 未決事項（pair_id 保持先 / schema 分割 / FK 範囲）が §17 に整理されているか
+- §17 決定事項が後続テーブル定義・DDL Task へ引き継がれているか

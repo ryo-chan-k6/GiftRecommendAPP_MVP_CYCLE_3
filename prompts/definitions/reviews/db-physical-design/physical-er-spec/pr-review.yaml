@@ -170,9 +170,7 @@ result_policy:
       - "PR 本文に必要情報が不足している"
   needs_human_decision:
     conditions:
-      - "schema 分割方針（app / log / metric）の妥当性判断が必要"
-      - "pair_id 保持先（recommendation_request vs recommendation_run）の判断が必要"
-      - "FK 物理制約の適用範囲判断が必要"
+      - "§17 決定事項に対する追加の設計方針変更が必要"
   split_required:
     conditions:
       - "DDL / migration / テーブル定義書が混在している"
@@ -265,12 +263,11 @@ operation_logging:
 
 risk_points:
   - "論理ERとテーブル一覧の差分（feature_rule 分解 / ranking_snapshot 追加等）の解釈齟齬"
-  - "未決事項（pair_id 保持先 / FK 物理制約範囲）が後続 Task へ正しく引き継がれない可能性"
+  - "§17 決定事項が後続テーブル定義 Task へ正しく引き継がれるか"
 
 human_decision_points:
-  - "schema 分割方針（app / log / metric）の妥当性"
-  - "pair_id を recommendation_request か recommendation_run のどちらに保持するか"
-  - "Batch / Staging / Log 系への物理 FK 制約をどこまで適用するか"
+  - "§17 決定事項（pair_id / Request 保持方式 / FK 範囲 / Staging 保持 / schema / pgvector / attribute 対象外）の妥当性"
+  - "MVP 60 テーブル構成とテーブル一覧 62 との差分説明の明確さ"
 
 stop_conditions:
   - "PR が存在しない場合"
