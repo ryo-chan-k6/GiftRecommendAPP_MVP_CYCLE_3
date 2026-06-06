@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "request_mode"
+  physical_name: "request_mode"
+  logical_name: "Recommendation Request Mode"
+  category: "application"
+  mvp_scope: true
+
+values:
+  - value: "ui"
+    label: "UI"
+    meaning: "Web UI からの通常推薦リクエスト"
+    terminal: true
+    enabled: true
+  - value: "evaluation"
+    label: "評価"
+    meaning: "Evaluation Run からの評価用リクエスト"
+    terminal: true
+    enabled: true
+  - value: "batch"
+    label: "Batch"
+    meaning: "Batch 評価・一括実行からのリクエスト"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "recommendation_request"
+    column: "request_mode"
+    constraint: "NOT NULL"
+    note: "ドメイン docs では mode 表記"

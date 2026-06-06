@@ -1,0 +1,37 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "item_active_status"
+  physical_name: "active_status"
+  logical_name: "Item Active Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "active"
+    label: "有効"
+    meaning: "推薦対象として有効"
+    terminal: false
+    enabled: true
+  - value: "inactive"
+    label: "無効"
+    meaning: "一時的に推薦対象外"
+    terminal: false
+    enabled: true
+  - value: "unavailable"
+    label: "取得不可"
+    meaning: "外部API上で取得不可"
+    terminal: true
+    enabled: true
+  - value: "excluded"
+    label: "除外"
+    meaning: "運用・品質理由で明示除外"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "item"
+    column: "active_status"
+    constraint: "NOT NULL"
+    note: "is_active フラグと併用"
