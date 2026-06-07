@@ -11,17 +11,17 @@ code_definition:
 values:
   - value: "semantic"
     label: "Semantic"
-    meaning: "Item Semantic 生成（BATCH-010 相当）"
+    meaning: "Item Semantic 生成パイプライン区間（BATCH-010 相当）"
     terminal: true
     enabled: true
   - value: "feature"
     label: "Feature"
-    meaning: "Item Feature 生成（BATCH-011〜013 相当）"
+    meaning: "Item Feature 生成パイプライン区間（BATCH-011〜013 相当）"
     terminal: true
     enabled: true
   - value: "embedding"
     label: "Embedding"
-    meaning: "Item Embedding 生成（BATCH-014〜015 相当）"
+    meaning: "Item Embedding 生成パイプライン区間（BATCH-014〜015 相当）"
     terminal: true
     enabled: true
 
@@ -29,4 +29,4 @@ db_usages:
   - table: "item_generation_queue"
     column: "generation_type"
     constraint: "NOT NULL"
-    note: "入力 docs に明示値不足。Batch パイプラインに基づく暫定定義"
+    note: "Human Review 確定。BATCH-009 初回キュー登録時デフォルトは semantic。部分再生成は該当区間の値でキュー登録"

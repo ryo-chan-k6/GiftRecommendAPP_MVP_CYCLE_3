@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-07                                 |
+| 更新日         | 2026-06-07（Human Review 反映）            |
 
 ---
 
@@ -47,8 +47,10 @@
 | ------------- | ------- | ---- |
 | `run_status` | `recommendation_run_status` | `recommendation_run` 専用 |
 | `run_status` | `batch_run_status` | `batch_run_log` 専用 |
+| `phase_name` | `recommendation_run_phase_name` | `owner_type` が Run 系のとき |
+| `phase_name` | `batch_run_phase_name` | `owner_type = batch_run` 専用 |
 
-DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** を使用する。
+DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** を使用する。`phase_log.phase_name` は `owner_type` と組み合わせた CHECK（または同等のアプリ validation）で owner 別の値集合を許可する。
 
 ---
 
@@ -72,8 +74,9 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | Feedback Target Type | `feedback_target_type` | application | Feedback | `yes` | |
 | Log Owner Type | `owner_type` | application | phase_log / error_log | `yes` | polymorphic |
 | Feature Code | `feature_code` | semantic | Feature / Meaning | `yes` | MVP 8 軸固定 |
-| Item Generation Type | `generation_type` | batch | item_generation_queue | `yes` | 暫定定義（§12） |
-| Recommendation Run Phase Name | `phase_name` | batch | phase_log | `yes` | フェーズ識別子 |
+| Item Generation Type | `generation_type` | batch | item_generation_queue | `yes` | Human Review 確定 |
+| Recommendation Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `recommendation_run_phase_name` |
+| Batch Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `batch_run_phase_name` |
 
 ---
 
@@ -238,11 +241,13 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 
 ### 6.17 Item Generation Type (`item_generation_type`)
 
+Human Review にて `semantic` / `feature` / `embedding` の3値を確定した。各値は **パイプライン処理開始区間** を表す。
+
 | 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
 | -- | ------ | ---- | -------- | ----------- | ---- |
-| `semantic` | Semantic | Item Semantic 生成 | BATCH-010 相当 | `yes` | 暫定定義 |
-| `feature` | Feature | Item Feature 生成 | BATCH-011〜013 相当 | `yes` | 暫定定義 |
-| `embedding` | Embedding | Item Embedding 生成 | BATCH-014〜015 相当 | `yes` | 暫定定義 |
+| `semantic` | Semantic | Item Semantic 生成パイプライン区間 | BATCH-010 相当 | `yes` | BATCH-009 初回キュー登録時のデフォルト（フルパイプライン入口） |
+| `feature` | Feature | Item Feature 生成パイプライン区間 | BATCH-011〜013 相当 | `yes` | 部分再生成時は該当区間の値でキュー登録 |
+| `embedding` | Embedding | Item Embedding 生成パイプライン区間 | BATCH-014〜015 相当 | `yes` | 部分再生成（例: `embedding_source_version` 変更時の Embedding のみ再実行） |
 
 ### 6.18 Recommendation Run Phase Name (`recommendation_run_phase_name`)
 
@@ -263,6 +268,30 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | `reason_generated` | Reason Generated | Reason 生成完了 | Reason 生成 | `yes` | |
 | `response_built` | Response Built | Response 生成完了 | Response 構築 | `yes` | |
 
+### 6.19 Batch Run Phase Name (`batch_run_phase_name`)
+
+正本: ログ・Observability設計書 §10.4。`phase_log` は 1 `batch_run_id` あたり主要フェーズ単位（十数行オーダー）で記録する。`owner_type = batch_run` 時のみ許可する。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `batch_started` | Batch Started | Batch 開始 | Batch 起動 | `yes` | |
+| `cursor_loaded` | Cursor Loaded | Fetch Cursor 読込 | カーソル読込完了 | `yes` | |
+| `external_api_called` | External API Called | 外部 API 呼び出し | 外部 API 呼び出し | `yes` | |
+| `raw_saved` | Raw Saved | Raw JSON 保存 | Raw 保存完了 | `yes` | |
+| `raw_metadata_saved` | Raw Metadata Saved | Raw Metadata 保存 | Metadata 保存完了 | `yes` | |
+| `staging_transformed` | Staging Transformed | Staging 変換 | Staging 変換完了 | `yes` | |
+| `diff_judged` | Diff Judged | 疑似差分判定 | 差分判定完了 | `yes` | |
+| `item_imported` | Item Imported | Item 反映 | Item Import 完了 | `yes` | |
+| `item_image_imported` | Item Image Imported | Item Image 反映 | Image Import 完了 | `yes` | |
+| `popularity_signal_imported` | Popularity Signal Imported | Popularity Signal 反映 | Signal Import 完了 | `yes` | |
+| `item_feature_generated` | Item Feature Generated | Item Feature 生成 | Feature 生成完了 | `yes` | |
+| `item_embedding_generated` | Item Embedding Generated | Item Embedding 生成 | Embedding 生成完了 | `yes` | |
+| `feature_distribution_metric_recorded` | Feature Distribution Metric Recorded | Feature 分布メトリクス記録 | Metric 記録完了 | `yes` | |
+| `summary_created` | Summary Created | Import Summary 作成 | Summary 作成完了 | `yes` | |
+| `batch_completed` | Batch Completed | Batch 完了 | Batch 正常/異常終了 | `yes` | |
+
+`evaluation_run_phase_name` は本 Task では定義しない。Evaluation 関連テーブル定義 Task（BATCH-018 前）で別途定義する。
+
 ---
 
 ## 7. DB利用箇所
@@ -275,7 +304,7 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | `recommendation_feedback` | `feedback_target_type` | `feedback_target_type` | NOT NULL | |
 | `recommendation_request` | `request_mode` | `request_mode` | NOT NULL | |
 | `phase_log` | `phase_status` | `phase_status` | NOT NULL | |
-| `phase_log` | `phase_name` | `recommendation_run_phase_name` 等 | NOT NULL | Batch フェーズ名は後続拡張 |
+| `phase_log` | `phase_name` | `recommendation_run_phase_name` / `batch_run_phase_name` | NOT NULL | `owner_type` と組み合わせた CHECK |
 | `phase_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
 | `error_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
 | `batch_run_log` | `run_status` | `batch_run_status` | NOT NULL | |
@@ -286,7 +315,7 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | `staging_item` | `diff_status` | `product_diff_status` | NULL可 | |
 | `item` | `active_status` | `item_active_status` | NOT NULL | |
 | `item_generation_queue` | `queue_status` | `item_generation_queue_status` | NOT NULL | |
-| `item_generation_queue` | `generation_type` | `item_generation_type` | NOT NULL | 暫定 |
+| `item_generation_queue` | `generation_type` | `item_generation_type` | NOT NULL | Human Review 確定 |
 | `evaluation_run` | `evaluation_status` | `evaluation_run_status` | NOT NULL | |
 | `feature_definition` | `feature_code` | `feature_code` | NOT NULL | MVP 8 軸 CHECK |
 | `item_feature` | `feature_code` | `feature_code` | NOT NULL | feature_definition 参照 |
@@ -334,6 +363,22 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | Contract Task要否 | `false`（enum 値確定のみ。OpenAPI enum 化は後続 Contract Task） |
 | 補足 | API 公開 enum と DB enum のマッピングは API Contract Task で確認 |
 
+### 10.2 error_code 正本分担
+
+GRS コード全件の重複定義は行わない（参照のみ）。
+
+| レイヤ | 正本 | 担当 |
+| ------ | ---- | ---- |
+| 人間可読・設計 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | 既存 docs 維持 |
+| 機械可読 | `packages/code-definitions/error/*.yaml` | Phase4a packages-foundation |
+| DB 物理 | `error_log.error_code` | テーブル定義 / DDL Task |
+
+DB 制約方針:
+
+- エラーコード全件の CHECK 列挙は **行わない**
+- **`error_code` 形式 CHECK のみ** を付与する（例: `^GRS-[A-Z]{3}-[0-9]{3}$`）
+- 意味・retryable・HTTP status・user message 等は Phase4a YAML + CI 整合で管理する
+
 ---
 
 ## 11. テスト観点
@@ -347,14 +392,31 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 
 ---
 
-## 12. 未決事項
+## 12. 未決事項・後続 Task 引き継ぎ
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `item_generation_type` の暫定値（semantic / feature / embedding） | 入力 docs に明示値が不足 | Human | テーブル定義 Task 前 | Batch パイプラインから推論 |
-| 2 | Batch 用 `phase_name` 一覧 | 物理ER §12 未記載 | Human | DDL Task 前 | Run phase のみ本 Task で定義 |
-| 3 | `source_type` / `embedding_source_type` | user_feature / item_embedding 列だが物理ER §12 外 | Human | テーブル定義 Task | 本 Task では未定義 |
-| 4 | `error_code` 正本化範囲 | Phase4a packages-foundation との分担 | Human | Phase4a 着手前 | error/ は README のみ |
+| No | 論点 | 状態 | 判断者 | 備考 |
+| --: | ---- | ---- | ------ | ---- |
+| 1 | `item_generation_type`（semantic / feature / embedding） | **クローズ**（Human Review 確定） | Human | §6.17・`item_generation_type.yaml` を確定。テーブル定義 Task で意味を転記 |
+| 2 | Batch 用 `phase_name`（`batch_run_phase_name`） | **クローズ**（Human Review 確定） | Human | §6.19・Observability §10.4 の15値。物理ER §12 連携済 |
+| 3 | `source_type` / `embedding_source_type` | **方針確定済み**（YAML 正本化は後続） | Human | テーブル定義 Task（`user_feature`, `item_embedding`）で enum 定義書 + YAML 正本化 |
+| 4 | `error_code` 正本化範囲 | **クローズ**（Human Review 確定） | Human | §10.2・`error/README.md`。Phase4a へ委譲 |
+
+### 12.1 No.3 方針メモ（テーブル定義 Task 引き継ぎ）
+
+**`user_feature.source_type` → 論理 ID: `user_feature_source_type`**
+
+- MVP は集約1行モデル（1 Recommendation Run × 1 feature_code = 8行）
+- 各行の `source_type` は **`aggregated` 固定**
+- Relationship / Occasion / Concept 等の寄与分解は MVP では保存しない
+
+**`item_embedding.embedding_source_type` → 論理 ID: `embedding_source_type`**
+
+- `embedding_source_version`（構築ルール version ID）とは別概念
+- MVP 有効値は **`item_text_context` のみ**（enabled: true）
+- **`item_text_with_semantic`** は enum に定義するが MVP 初期は enabled: false
+- 再生成判定の主キーは `item_id + embedding_model_version_id + embedding_source_version + embedding_input_hash`
+
+Semantic ルールの `source_type`（`item_name`, `user_input` 等）とは **別論理 ID** とし、同名 enum の混在を避ける。
 
 ---
 
@@ -375,6 +437,8 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 - 物理ER §12・論理ER 状態一覧・状態遷移設計書と値が一致している
 - `recommendation_run_status` と `batch_run_status` が論理 ID で分離されている
 - MVP Feature 8 軸が固定されている
-- error_code 全件を本 Task で確定していないことが明記されている
+- error_code 全件を本 Task で確定していないことが明記されている（§10.2）
+- `batch_run_phase_name` が Observability §10.4 と一致している
+- `item_generation_type` が Human Review 判断どおり確定されている
 - packages/code-definitions のディレクトリ構成がプロジェクトディレクトリ構成定義書 §8.2 と一致している
 - secret や `.env` 実値が含まれていない

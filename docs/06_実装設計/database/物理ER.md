@@ -362,6 +362,8 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | Product Diff | `diff_status` | 同上 | `product_diff_result`, `staging_item` | new / updated / unchanged / unavailable |
 | Item | `active_status` | 同上 | `item` | active / inactive / unavailable / excluded |
 | Generation Queue | `queue_status` | 同上 | `item_generation_queue` | queued / processing / succeeded / failed / skipped |
+| Item Generation Type | `generation_type` | enum Task | `item_generation_queue` | semantic / feature / embedding（Human Review 確定） |
+| Batch Run Phase | `phase_name` | enum Task / Observability §10.4 | `phase_log` | owner_type=batch_run 時。15値 |
 | Phase Log | `phase_status` | 同上 | `phase_log` | started / succeeded / failed / skipped |
 | Evaluation Run | `evaluation_status` | 同上 | `evaluation_run` | queued / running / succeeded / failed / canceled |
 | Feature Code | `feature_code` | Feature Definition / enum Task | `feature_definition`, `item_feature`, `user_feature` | MVP 8 軸固定 |
