@@ -1,0 +1,42 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "raw_import_status"
+  physical_name: "import_status"
+  logical_name: "Raw Import Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "raw_saved"
+    label: "Raw保存済"
+    meaning: "Raw JSON本体をObject Storageへ保存済み"
+    terminal: false
+    enabled: true
+  - value: "staged"
+    label: "Staging済"
+    meaning: "RawからStagingへの変換が完了"
+    terminal: false
+    enabled: true
+  - value: "imported"
+    label: "Import済"
+    meaning: "Stagingから内部Item系リソースへの反映が完了"
+    terminal: true
+    enabled: true
+  - value: "skipped"
+    label: "スキップ"
+    meaning: "差分なし・対象外などによりImport不要"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "Raw保存後の処理で失敗"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "raw_product_metadata"
+    column: "import_status"
+    constraint: "NOT NULL"
+    note: ""

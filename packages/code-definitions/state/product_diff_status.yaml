@@ -1,0 +1,41 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "product_diff_status"
+  physical_name: "diff_status"
+  logical_name: "Product Diff Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "new"
+    label: "新規"
+    meaning: "新規商品として判定"
+    terminal: true
+    enabled: true
+  - value: "updated"
+    label: "更新"
+    meaning: "既存商品の内容更新として判定"
+    terminal: true
+    enabled: true
+  - value: "unchanged"
+    label: "変更なし"
+    meaning: "hash比較で変更なし"
+    terminal: true
+    enabled: true
+  - value: "unavailable"
+    label: "取得不可"
+    meaning: "商品が取得不可・販売終了等"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "product_diff_result"
+    column: "diff_status"
+    constraint: "NOT NULL"
+    note: ""
+  - table: "staging_item"
+    column: "diff_status"
+    constraint: "NULL可"
+    note: "Staging段階での判定"

@@ -1,0 +1,47 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "batch_run_status"
+  physical_name: "run_status"
+  logical_name: "Batch Run Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "queued"
+    label: "待機"
+    meaning: "Batch実行待ち"
+    terminal: false
+    enabled: true
+  - value: "running"
+    label: "実行中"
+    meaning: "Batch実行中"
+    terminal: false
+    enabled: true
+  - value: "succeeded"
+    label: "成功"
+    meaning: "全体が正常終了"
+    terminal: true
+    enabled: true
+  - value: "partially_succeeded"
+    label: "部分成功"
+    meaning: "一部失敗したが、処理可能分は完了"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "致命的エラーによりBatch全体が失敗"
+    terminal: true
+    enabled: true
+  - value: "canceled"
+    label: "中止"
+    meaning: "手動中断・タイムアウト"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "batch_run_log"
+    column: "run_status"
+    constraint: "NOT NULL"
+    note: "recommendation_run.run_status とは別 enum"

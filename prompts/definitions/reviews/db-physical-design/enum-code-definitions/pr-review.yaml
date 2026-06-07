@@ -1,0 +1,155 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-enum-code-definitions-pr"
+  title: "DB enum・コード定義 PRレビュー"
+  summary: "enum/コード定義整備 Task の PR を AI Review する。物理ER §12・状態遷移設計書・論理ERとの整合と enum-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-440-db-physical-design-enum-code-definitions"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 440
+  task_definition: "prompts/definitions/tasks/db-physical-design/enum-code-definitions.yaml"
+  source_branch: "docs/task-440-db-physical-design-enum-code-definitions"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/enum-code-definitions.yaml"
+    required: true
+  issue:
+    number: 440
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "作成成果物（enum 定義書）の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§12 enum 連携との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "状態カラム・DB 利用箇所の整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "状態値の整合確認"
+    - path: "prompts/templates/docs/enum-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合確認"
+  files:
+    - path: "packages/code-definitions/**"
+      required: true
+      purpose: "機械可読 code-definitions の配置・内容確認"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（enum-code-definitions.yaml）の scope を満たしているか"
+    - "out_of_scope（テーブル定義書 / DDL / migration / apps 実装 / error_code 全件）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に変更内容、検証結果、未実施事項が記載されているか"
+    - "Human Review観点が明記されているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+    - "Task PR で Closes を使っていないか（Related to を使用）"
+  docs:
+    - "enum 定義書が docs/06_実装設計/database/enum定義書.md に存在するか"
+    - "物理ER §12 の enum 一覧と値が一致しているか"
+    - "論理ER 状態一覧（§末尾）と矛盾しないか"
+    - "状態遷移設計書の状態値・遷移と矛盾しないか"
+    - "enum-spec.md テンプレの主要章が充足しているか"
+    - "error_code 全件を本 Task で確定していない（参照のみ）ことが明記されているか"
+  source:
+    - "packages/code-definitions のディレクトリ構成がプロジェクトディレクトリ構成定義書 §8.2 と一致するか"
+    - "state / application / semantic / batch 配下に MVP DB 関連 enum が配置されているか"
+    - "同一 physical 列名（run_status 等）が異なる enum 定義として分離されているか"
+    - "YAML 構文・必須項目（id / values / db_usages）が揃っているか"
+  db:
+    - "後続テーブル定義 Task が参照できる DB 利用箇所が明記されているか"
+    - "feature_code MVP 8 軸が固定されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "generation_type / source_type / embedding_source_type 等、入力 docs に明示値が不足する enum の暫定値妥当性"
+  - "error_code を Phase4a へ完全委譲する範囲の妥当性"
+  - "recommendation_run_status と batch_run_status の physical 列名分離方針"
+
+risk_points:
+  - "物理ER §12 未記載の DB 列（owner_type / generation_type 等）の追加定義が後続 Task と衝突する可能性"
+  - "Phase4a packages-foundation Epic との code-definitions 重複・乖離"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/enum-code-definitions.yaml"
+  - "先行 Task: #438 / PR #439（物理ER）"
