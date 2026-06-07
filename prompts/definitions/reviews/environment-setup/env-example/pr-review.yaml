@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 447
   issue:
     number: 446
   task_definition: "prompts/definitions/tasks/environment-setup/env-example.yaml"
