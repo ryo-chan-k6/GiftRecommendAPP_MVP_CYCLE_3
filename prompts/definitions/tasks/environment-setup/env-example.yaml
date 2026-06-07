@@ -1,0 +1,129 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-environment-setup-env-example"
+  title: ".env.example整備"
+  summary: "環境設計書 §19 を入力に、.env.example を変数名・ダミー値・用途コメントで整備する。Phase3 子 Task ②。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-environment-setup"
+  epic_issue: "[Epic]environment-setup:環境設計・構築"
+  epic_issue_number: 436
+  epic_branch: "docs/epic-436-environment-setup"
+  related_issues:
+    - number: 437
+      purpose: "先行 Task ①（環境変数定義書）"
+  related_prs:
+    - number: 444
+      purpose: "Task ① PR（merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 子 Task ②。Task ①（#437 / PR #444 merge 済み）で環境設計書 §19 に環境変数定義を正本化した。
+  後続 Task（infra/scripts / ローカル開発手順 / CI 基盤）の前提となる。
+
+objective: |
+  環境設計書 §19 の変数名・秘匿性区分・命名正本（§19.7.1）に整合する .env.example を整備する。
+  secret 実値は記載せず、ダミー値と用途コメントのみとする。
+
+scope:
+  - ".env.example の作成・更新（変数名・ダミー値・用途コメント）"
+  - "web / api / reco / batch 向け env の網羅（§19.3〜§19.7）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "環境設計書 §19 の内容変更（Task ① scope）"
+  - "infra/scripts の実装（Task ③）"
+  - "CI workflow 変更（Task ⑤）"
+  - "apps/** 実装"
+  - "secret 実値の記載"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "環境変数定義の正本（§19）"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: false
+      purpose: "接続関係の参照"
+
+output:
+  docs: []
+  files:
+    - path: ".env.example"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/environment-setup/env-example.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/environment-setup/env-example/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - ".env.example が環境設計書 §19 の変数名と整合している"
+  - "物理名正本（RAKUTEN_APPLICATION_ID / OBJECT_STORAGE_*）が §19.7.1 と一致している"
+  - "secret 実値が含まれていない（ダミー値のみ）"
+  - "db/**・apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "environment-setup-env-example"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+parallel_control:
+  exclusive_files:
+    - ".env.example"
+  conflict_risk: "medium"
+  db_impact: false
+  depends_on:
+    - "prompts/definitions/tasks/environment-setup/env-var-definition-doc.yaml"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+notes:
+  - "命名正本: 認証・認可方針書 §10.1 / 環境設計書 §19.7.1（Human 確認済み 2026-06-06）"
+  - "MVP では web から Supabase 直結しないため SUPABASE_ANON_KEY は .env.example に含めない"
