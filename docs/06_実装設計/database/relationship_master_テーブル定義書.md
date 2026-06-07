@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-07                                 |
+| 更新日         | 2026-06-07（Human Review #443 反映）       |
 
 ---
 
@@ -63,10 +63,11 @@ Web UI の Relationship 選択肢（API-PUB-005）および Recommendation Reque
 | No | カラム名 | 論理名 | 型 | 必須 | PK | FK | Unique | Default | 説明 |
 | --: | -------- | ------ | -- | ---- | -- | -- | ------ | ------- | ---- |
 | 1 | `relationship_code` | Relationship Code | `text` | `yes` | `yes` | — | `yes` | — | 関係性コード。snake_case 英小文字・数字・アンダースコア。Featureルール定義書 §5.1 のコード体系に整合 |
-| 2 | `relationship_label` | Relationship Label | `varchar(50)` | `yes` | — | — | — | — | 日本語 UI 表示名。API-PUB-005 `relationshipLabel` の正本 |
-| 3 | `relationship_label_jp` | Relationship Label JP | `varchar(50)` | `no` | — | — | — | `NULL` | 論理ER 互換列。MVP では API 非公開。未設定時は `relationship_label` と同一値を seed で投入可 |
-| 4 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 有効フラグ。`false` の行は API 返却対象外 |
-| 5 | `display_order` | Display Order | `integer` | `yes` | — | — | — | `0` | 表示順。API-PUB-005 は `displayOrder` 昇順（同順位は `relationshipCode` 昇順） |
+| 2 | `relationship_label` | Relationship Label | `varchar(50)` | `yes` | — | — | — | — | 唯一の日本語 UI 表示名。API-PUB-005 `relationshipLabel` の正本。MVP では多言語対応なし（Human Review #443） |
+| 3 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 有効フラグ。`false` の行は API 返却対象外 |
+| 4 | `display_order` | Display Order | `integer` | `yes` | — | — | — | `0` | 表示順。API-PUB-005 は `displayOrder` 昇順（同順位は `relationshipCode` 昇順） |
+
+> **論理ER との差分**: 論理ER §11.1 には `relationship_label_jp` が列挙されているが、MVP 物理 DDL では Human Review (#443) により当該列は採用しない。論理ER 側の整理は別 Task とする。
 
 ---
 
@@ -110,7 +111,6 @@ Web UI の Relationship 選択肢（API-PUB-005）および Recommendation Reque
 | `relationship_master_pkey` | PRIMARY KEY | `relationship_code` | 主キー | — |
 | `chk_relationship_code_format` | CHECK | `relationship_code` | `relationship_code ~ '^[a-z][a-z0-9_]*$'` | snake_case。先頭英字 |
 | `chk_relationship_label_length` | CHECK | `relationship_label` | `char_length(relationship_label) BETWEEN 1 AND 50` | API-PUB-005 / API-PUB-002 上限 |
-| `chk_relationship_label_jp_length` | CHECK | `relationship_label_jp` | `relationship_label_jp IS NULL OR char_length(relationship_label_jp) BETWEEN 1 AND 50` | — |
 | `chk_display_order_non_negative` | CHECK | `display_order` | `display_order >= 0` | API `displayOrder` 0 以上 |
 
 ---
@@ -186,8 +186,14 @@ Web UI の Relationship 選択肢（API-PUB-005）および Recommendation Reque
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `relationship_label_jp` の MVP 運用 | 論理ER 上は列あり。API は `relationship_label` のみ公開 | Human | seed Task 前 | 推奨: seed で `relationship_label` と同一値を投入 |
-| 2 | `recommendation_request` への物理 FK | 現状 LOGICAL 参照。DDL Task で FK 追加要否 | Human | DDL Task | 推奨: MVP は LOGICAL のまま（api validation） |
+| — | — | — | — | — | Human Review (#443) にて No.1・No.2 を決定済み（下記参照） |
+
+### 17.1 Human Review 決定事項（PR #443）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `relationship_label_jp` の MVP 運用 | MVP 物理 DDL から `relationship_label_jp` を除外。`relationship_label` を唯一の日本語 UI 表示名とする | Human | 多言語対応は MVP 対象外 |
+| 2 | `recommendation_request` への物理 FK | MVP は `LOGICAL` 参照のまま（物理 FK なし） | Human | api validation + seed 正本で整合を担保 |
 
 ---
 
@@ -206,8 +212,9 @@ Web UI の Relationship 選択肢（API-PUB-005）および Recommendation Reque
 
 ## 19. レビュー観点
 
-- 論理ER §11.1・物理ER §8・テーブル一覧 §9 と矛盾していない
+- 論理ER §11.1・物理ER §8・テーブル一覧 §9 と矛盾していない（`relationship_label_jp` 除外は §17.1 の Human 決定に基づく）
 - API-PUB-005 の `relationshipLabel` / `displayOrder` マッピングが明確
-- `relationship_label_jp` が API 非公開であることが明記されている
+- `relationship_label` が唯一の日本語 UI 表示名であることが明記されている
+- `recommendation_request.relationship_code` の LOGICAL 参照方針が明記されている
 - DDL Task が CREATE TABLE を起こせる粒度である
 - secret や `.env` 実値が含まれていない

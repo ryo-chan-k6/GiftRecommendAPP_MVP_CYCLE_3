@@ -114,7 +114,7 @@ review_points:
     - "table-spec.md テンプレの主要章が充足しているか"
     - "論理ER §11.1 の属性と矛盾しないか"
     - "API-PUB-005 の relationshipLabel / displayOrder マッピングが明記されているか"
-    - "relationship_label_jp が API 非公開であることが明記されているか"
+    - "relationship_label が唯一の日本語 UI 表示名であることが明記されているか"
   db:
     - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
     - "recommendation_request.relationship_code との LOGICAL 参照方針が明記されているか"
@@ -129,7 +129,6 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "relationship_label と relationship_label_jp の MVP 運用（同一値 seed 等）"
   - "relationship_code 追加時の migration / seed 更新フロー"
 
 risk_points:
