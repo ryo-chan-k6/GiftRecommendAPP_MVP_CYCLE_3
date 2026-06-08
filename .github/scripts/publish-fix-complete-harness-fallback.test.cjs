@@ -108,6 +108,78 @@ test("publishFixCompleteHarnessFallback: verify 済みなら skip", async () => 
   assert.equal(result.reason, "already_published");
 });
 
+test("extractPrBodyUpdateFromTranscript: PR本文セクションを抽出", () => {
+  const transcript = `## PR本文（更新後全文）
+
+## Summary
+
+Related to #458
+
+# Fix Review Comments Result
+
+## 1. 対応結果
+`;
+  const body = fallback.extractPrBodyUpdateFromTranscript(transcript);
+  assert.match(body, /Related to #458/);
+  assert.doesNotMatch(body, /Fix Review Comments Result/);
+});
+
+test("prBodyNeedsTaskIssueReferenceUpdate: Closes のみなら true", () => {
+  assert.equal(fallback.prBodyNeedsTaskIssueReferenceUpdate("Summary\n\nCloses #458\n"), true);
+  assert.equal(
+    fallback.prBodyNeedsTaskIssueReferenceUpdate("Related to #458\n"),
+    false,
+  );
+});
+
+test("publishFixCompleteHarnessFallback: PR本文を更新してから publish", async () => {
+  const updatedBody = "## Summary\n\nRelated to #458\n";
+  const transcript = `## PR本文（更新後全文）
+
+${updatedBody}
+${COMMAND_OUTPUT}`;
+  const calls = [];
+  const result = await fallback.publishFixCompleteHarnessFallback({
+    repository: "o/r",
+    prNumber: 359,
+    token: "bot-token",
+    transcriptText: transcript,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, method: options && options.method });
+      if (url.includes("/pulls/359") && (!options || !options.method || options.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => ({ body: "Closes #358\n" }),
+        };
+      }
+      if (url.includes("/pulls/359") && options.method === "PATCH") {
+        return { ok: true, json: async () => ({ body: updatedBody }) };
+      }
+      if (url.includes("/issues/359/comments") && (!options || !options.method || options.method === "GET")) {
+        return { ok: true, json: async () => [] };
+      }
+      if (url.includes("/issues/359/comments") && options.method === "POST") {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ html_url: "https://example.com/c/3", id: 3 }),
+        };
+      }
+      if (url.includes("/dispatches")) {
+        return { ok: true, status: 204, text: async () => "" };
+      }
+      if (url.includes("/actions/workflows/pr-ready-for-ai-review.yml/runs")) {
+        return { ok: true, json: async () => ({ workflow_runs: [] }) };
+      }
+      throw new Error(`unexpected: ${url}`);
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.reason, "published");
+  assert.equal(result.pr_body_update.reason, "pr_body_updated");
+  assert.ok(calls.some((c) => c.method === "PATCH" && c.url.includes("/pulls/359")));
+});
+
 test("publishFixCompleteHarnessFallback: transcript から publish する", async () => {
   const calls = [];
   const result = await fallback.publishFixCompleteHarnessFallback({
