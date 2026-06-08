@@ -1,0 +1,156 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-feature-normalization-version-pr"
+  title: "feature_normalization_version テーブル定義書 PRレビュー"
+  summary: "feature_normalization_version テーブル定義書 Task の PR を AI Review する。物理ER・論理ER・Featureルール定義書との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-458-feature-normalization-version-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 458
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-feature-normalization-version.yaml"
+  source_branch: "docs/task-458-feature-normalization-version-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-feature-normalization-version.yaml"
+    required: true
+  issue:
+    number: 458
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8–§11 テーブル分類・FK・冪等キー方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§11.1 エンティティ属性との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§9 Master / Config系・§7 冪等キーとの整合"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "§14 sigmoid 正規化・初期パラメータとの整合"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "Config version 管理パターンとの一貫性"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "parameter_json / is_current パターンとの一貫性"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（他テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §11.1 の属性（normalization_method, parameter_json, is_current, generated_at）と矛盾しないか"
+    - "Featureルール定義書 §14.2 / §14.3 の sigmoid 初期パラメータが parameter_json 参照として明記されているか"
+    - "semantic_config_version との責務分担が §5.1 / §17 で明示されているか"
+    - "Public API 非公開が明記されているか"
+  db:
+    - "PK / Index / CHECK / partial unique が DDL Task へ展開できる粒度か"
+    - "user_feature / item_feature への LOGICAL FK 方針が明記されているか"
+    - "item_feature 冪等キー（テーブル一覧 §7）への feature_normalization_version_id 含有が明記されているか"
+    - "model_version / ranking_config との version 管理方針が一貫しているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "semantic_config_version との正規化パラメータ責務分担（Featureルール定義書 §14.8 との整合）"
+  - "is_current の解決単位（normalization_method 単位か全体 1 件か）"
+  - "generated_at vs created_at の採用"
+  - "Feature 軸別パラメータ要否（MVP は全軸共通固定パラメータ）"
+
+risk_points:
+  - "Featureルール定義書 §14.8 と論理ER / 物理ER の正本関係の不整合（docs 横断修正の要否）"
+  - "normalization_rule テーブル（Semantic / Feature定義系）との役割重複"
+  - "item_feature 再生成判定への Normalization Version 変更影響（batch 設計との整合）"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-feature-normalization-version.yaml"
+  - "先行 Task: #440 / PR #441（enum 定義）"
+  - "参考: model_version / ranking_config Config version 管理パターン"
