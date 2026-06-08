@@ -67,7 +67,7 @@ Web UI の Occasion 選択肢（API-PUB-006）および Recommendation Request �
 | 3 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 有効フラグ。`false` の行は API 返却対象外 |
 | 4 | `display_order` | Display Order | `integer` | `yes` | — | — | — | `0` | 表示順。API-PUB-006 は `displayOrder` 昇順（同順位は `occasionCode` 昇順） |
 
-> **論理ER との差分**: 論理ER §11.1 には `occasion_label_jp` が列挙されているが、MVP 物理 DDL では Human Review (#448) により当該列は採用しない。`occasion_label` を唯一の日本語 UI 表示名とする。論理ER 側の整理は別 Task とする。
+> **論理ER との差分**: 論理ER §11.1 には `occasion_label_jp` が列挙されているが、MVP 物理 DDL では Human Review (#448) により当該列は採用しない。論理ER 側の整理は別 Task とする。
 
 ---
 
