@@ -1,0 +1,164 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-environment-setup-infra-scripts"
+  title: "infra/scripts整備"
+  summary: "環境設計書 §19.9・§19.10 と基盤構成設計書を入力に、infra/・scripts/ の骨格と最小補助スクリプトを整備する。Phase3 子 Task ③。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-environment-setup"
+  epic_issue: "[Epic]environment-setup:環境設計・構築"
+  epic_issue_number: 436
+  epic_branch: "docs/epic-436-environment-setup"
+  related_issues:
+    - number: 437
+      purpose: "先行 Task ①（環境変数定義 §19）"
+    - number: 446
+      purpose: "先行 Task ②（.env.example）"
+  related_prs:
+    - number: 444
+      purpose: "Task ① PR（merge 済み）"
+    - number: 447
+      purpose: "Task ② PR（merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 子 Task ③。Task ①（#437）で §19、Task ②（#446）で .env.example を正本化済み。
+  後続 Task（④ ローカル開発手順 / ⑤ CI 基盤）の前提となる。
+  Human 判断（2026-06-07）により、MVP では docker-compose 同梱・本番 deploy 設定・scripts/ai 実装は行わない。
+
+objective: |
+  プロジェクトディレクトリ構成定義書 §12–13 に整合する infra/・scripts/ 骨格を追加し、
+  環境設計書 §19.9（設定先マトリクス）・§7/§8（環境分離）を README と最小 scripts/dev 補助で具体化する。
+  secret 実値は含めない。
+
+scope:
+  - "infra/ ディレクトリ骨格（render / vercel / fly / supabase）と README（プレースホルダ・用途説明）"
+  - "scripts/ ディレクトリ骨格（dev / db / batch / ops / ai）と README"
+  - "scripts/dev/ の最小補助（.env.example コピー案内、§19 変数名チェック等）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "docker-compose 等によるローカル DB/Redis 同梱（Human 判断: 手動起動前提）"
+  - "Vercel / Render / Fly 等の本番 deploy 設定ファイル本体（Human 判断: README + プレースホルダのみ）"
+  - "scripts/ai/ の Python 実装（Human 判断: README のみ。Phase0 別 Task と競合回避）"
+  - "ローカル開発手順 docs 本文（Task ④）"
+  - "CI workflow 変更（Task ⑤）"
+  - "環境設計書 §19 の内容変更"
+  - ".env.example の変更（Task ② scope）"
+  - "apps/** 実装"
+  - "db/** 変更"
+  - "production deploy 実行"
+  - "secret 実値の記載"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19 環境変数・§19.9 設定先・§7/§8 環境分離"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "Web/API/Reco/Batch/Neon/Redis 配置"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "infra/・scripts/ 配置正本（§12–13）"
+  files:
+    - path: ".env.example"
+      required: true
+      purpose: "scripts/dev チェック対象・README 参照"
+
+output:
+  docs: []
+  files:
+    - path: "infra/**"
+      action: "create"
+      required: true
+    - path: "scripts/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/environment-setup/infra-scripts.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/environment-setup/infra-scripts/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "infra/・scripts/ がプロジェクトディレクトリ構成定義書 §12–13 と整合している"
+  - "§19.9 local 列の変数が .env.example / README から辿れる"
+  - "docker-compose・本番 deploy 設定・scripts/ai 実装が含まれていない（Human 判断反映）"
+  - "secret 実値が含まれていない"
+  - "db/**・apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "environment-setup-infra-scripts"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+parallel_control:
+  exclusive_files:
+    - "infra/**"
+    - "scripts/**"
+  conflict_risk: "medium"
+  db_impact: false
+  depends_on:
+    - "prompts/definitions/tasks/environment-setup/env-example.yaml"
+  blocks:
+    - "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
+    - "prompts/definitions/tasks/environment-setup/ci-foundation.yaml"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "ローカル DB/Redis: docker-compose 同梱なし。手動起動前提 + scripts/dev 最小補助（Human OK 2026-06-07）"
+  - "infra/ 深さ: README + プレースホルダのみ。本番 deploy 設定ファイル本体は Task ③ scope 外（Human OK 2026-06-07）"
+  - "scripts/ai/: README のみ。Python 実装は Phase0 別 Task まで保留（Human OK 2026-06-07）"
+  - "Task ④ / ⑤ 優先: ④ ローカル開発手順 → ⑤ CI 基盤（Human OK 2026-06-07）"
+
+notes:
+  - "Human 判断 2026-06-07: 上記 human_decision_points を確定事項として扱う"
+  - "scripts/dev 最小補助の例: .env.example → .env コピー案内、§19 変数名存在チェック（実値検証はしない）"
+  - "Task ④ は scripts/dev 参照。Task ⑤ は .github/workflows 変更を Task ⑤ に集中"
