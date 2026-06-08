@@ -45,7 +45,8 @@ Recommendation Result
 - Rankingでは、意味一致だけでなく、人気・信頼性・リスク・多様性を考慮する
 - Rankingは、Feature生成・Semantic Concept抽出を行わない
 - Rankingは、User Feature / Item Featureを直接変更しない
-- Rankingロジックは `model_version` に紐づけて管理する
+- Rankingパラメータ（重み・MMR・top_k 等）は `ranking_config` に紐づけて管理する
+- `model_version` は LLM / Embedding / Reason 生成など技術モデル識別の正本であり、Ranking パラメータは含まない
 - Feature生成ルール・Semanticルール・正規化ルールは `semantic_config_version` 側で管理する
 - MVPでは、説明可能性を優先し、シンプルな線形スコアリング方式を採用する
 
@@ -139,7 +140,7 @@ flowchart TD
 | `item_rank_signal` | ランキング・人気指標 | Item Data / 任意 |
 | `item_feature_confidence` | Item Feature推定信頼度 | Feature生成 |
 | `match_reason_basis` | Matching根拠 | Matching |
-| `model_version_id` | Rankingロジックバージョン | Model Config |
+| `ranking_config_id` | Rankingパラメータバージョン | Ranking Config（`MOD-RECO-003` で解決） |
 
 ---
 
@@ -209,7 +210,7 @@ MVPでは、`avoid_similarity` / `social_match` / `item_feature_confidence` を�
 | `final_score` | 最終順位スコア |
 | `score_breakdown` | スコア内訳 |
 | `ranking_reason_basis` | 推薦理由生成向け根拠 |
-| `model_version_id` | Rankingロジックバージョン |
+| `ranking_config_id` | Rankingパラメータバージョン |
 
 ---
 
@@ -235,7 +236,7 @@ MVPでは、`avoid_similarity` / `social_match` / `item_feature_confidence` を�
     "risk_notes": [],
     "popularity_notes": ["レビュー評価が安定している"]
   },
-  "model_version_id": "model_v001"
+  "ranking_config_id": "ranking_cfg_v001"
 }
 ```
 
@@ -710,11 +711,11 @@ context_score > popularity_score > risk_penalty
 
 ---
 
-## 13. model_versionとの関係
+## 13. ranking_config との関係
 
-### 13.1 Rankingでmodel_version管理するもの
+### 13.1 Rankingで ranking_config 管理するもの
 
-Rankingロジックは、`model_version` に紐づけて管理する。
+Rankingパラメータは、`ranking_config.parameter_json` に紐づけて管理する。DB 正本は [ranking_config_テーブル定義書](../06_実装設計/database/ranking_config_テーブル定義書.md) を参照する。
 
 | 管理対象 | 内容 |
 |---|---|
@@ -729,9 +730,11 @@ Rankingロジックは、`model_version` に紐づけて管理する。
 | top_k_default | 表示件数初期値 |
 | threshold_rule | 表示・非表示閾値 |
 
+現行 Config は `config_name` 単位で `is_current = true` の行を `MOD-RECO-003` Config Version Resolver が解決する。
+
 ---
 
-### 13.2 semantic_config_versionとの違い
+### 13.2 他 Config 次元との違い
 
 | 管理対象 | 管理先 | 理由 |
 |---|---|---|
@@ -739,9 +742,12 @@ Rankingロジックは、`model_version` に紐づけて管理する。
 | Feature生成ルール | semantic_config_version | 意味の作り方 |
 | Feature正規化ルール | semantic_config_version | 意味の作り方 |
 | Matching計算 | model_version | 比較・スコア化の仕方 |
-| Ranking計算 | model_version | 順位の決め方 |
-| MMR | model_version | 並び順の決め方 |
-| final_score | model_version | 最終順位の決め方 |
+| LLM / Embedding / Reason 生成 | model_version | 外部モデル識別 |
+| Ranking計算 | ranking_config | 順位パラメータの決め方 |
+| MMR | ranking_config | 多様性制御パラメータ |
+| final_score | ranking_config | 最終順位パラメータ |
+
+`ranking_config` と `model_version` は独立 Config 次元であり、相互 FK は張らない。Run 再現性は `recommendation_run.ranking_config_id` と `recommendation_run.model_version_id` を併記して保持する。
 
 ---
 
@@ -762,7 +768,7 @@ Rankingロジックは、`model_version` に紐づけて管理する。
 | pre_rank_score | 多様性制御前スコア |
 | diversity_penalty | 多様性制御による補正 |
 | final_score | 最終順位スコア |
-| model_version_id | 使用したRankingロジックバージョン |
+| ranking_config_id | 使用したRankingパラメータバージョン |
 | calculated_at | 算出日時 |
 
 ---
@@ -996,7 +1002,7 @@ def select_with_mmr(
 | risk情報欠損 | 算出可能な要素のみでrisk_penaltyを算出 |
 | social_match欠損 | social_low_riskを0.0、または候補除外 |
 | item_feature_confidence欠損 | 0.5で補完 |
-| model_version欠損 | 現行有効versionを使用 |
+| ranking_config欠損 | 現行有効 `ranking_config`（`is_current = true`）を使用 |
 | top_k欠損 | デフォルト値10を使用 |
 
 ---
@@ -1038,7 +1044,7 @@ Ranking入力は原則として `0.0〜1.0` の値を想定する。
 | risk妥当性 | 避けたい条件や不適切商品が適切に下がっているか |
 | diversity妥当性 | 似た商品ばかりが並んでいないか |
 | 説明可能性 | final_scoreの内訳を説明できるか |
-| 再現性 | model_versionにより同じ結果を再現できるか |
+| 再現性 | ranking_config により同じ Ranking パラメータを再現できるか |
 | 欠損耐性 | レビュー欠損・Feature信頼度欠損でも破綻しないか |
 | MVP適性 | 複雑すぎず、改善しやすい設計か |
 
@@ -1101,7 +1107,7 @@ Score Breakdown分析
 ↓
 context / popularity / risk / diversityの影響確認
 ↓
-model_version更新
+ranking_config更新
 ↓
 再評価
 ```
@@ -1121,7 +1127,7 @@ model_version更新
 | diversity制御 | MMRを簡易採用 |
 | top_k | 通常10件 |
 | score_breakdown | 必須 |
-| model_version管理 | 必須 |
+| ranking_config管理 | 必須 |
 | Ranking結果保存 | 必須 |
 
 ---
@@ -1151,7 +1157,7 @@ model_version更新
 | popularity_score | 人気スコア |
 | risk_penalty | リスク減点 |
 | score_breakdown | スコア内訳 |
-| model_version_id | Ranking再現用 |
+| ranking_config_id | Ranking再現用 |
 
 ---
 
@@ -1210,7 +1216,7 @@ MVPでは、以下の方針で運用する。
 - MMRにより類似商品の連続表示を抑制する
 - top_kは通常10件とする
 - score_breakdownを保持し、説明・評価・改善に利用する
-- Rankingロジックはmodel_version配下で管理する
+- Rankingパラメータは ranking_config 配下で管理する
 ```
 
 Rankingは「どの商品をどの順番で出すか」を決める層であり、Semantic抽出・Feature生成・Matchingとは明確に責務を分離する。
