@@ -9,9 +9,6 @@ const LOG_LINE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}T[^\s]+\s+/;
 const TRANSCRIPT_STOP_RE = /^---$|^### \d+\.|^## 12\./;
 const FIX_COMPLETE_TITLE = slack.FIX_COMPLETE_TITLE;
 const FIX_COMMAND_RESULT_HEADING = "## fix-review-comments 実行結果";
-const PR_BODY_UPDATE_HEADING = "## PR本文（更新後全文）";
-const PR_BODY_STOP_RE =
-  /^# Fix Review Comments Result$|^## fix-review-comments 実行結果$|^## 12\. Status|^---$/;
 
 function nonEmpty(value) {
   return String(value || "").trim();
@@ -148,138 +145,6 @@ function readResultTextFromJson(resultJsonPath) {
   }
 }
 
-function extractPrBodyUpdateBlock(stripped, startIdx) {
-  const block = [];
-  for (let i = startIdx + 1; i < stripped.length; i += 1) {
-    const line = stripped[i];
-    const trimmed = line.trim();
-    if (PR_BODY_STOP_RE.test(trimmed)) break;
-    block.push(line);
-  }
-  return block.join("\n").trim();
-}
-
-function extractPrBodyUpdateFromTranscript(transcript) {
-  const lines = String(transcript || "").split(/\r?\n/);
-  const stripped = lines.map(stripLogPrefix);
-  const blocks = [];
-  for (let idx = 0; idx < stripped.length; idx += 1) {
-    if (stripped[idx].trim() !== PR_BODY_UPDATE_HEADING) continue;
-    const body = extractPrBodyUpdateBlock(stripped, idx);
-    if (body) blocks.push(body);
-  }
-  return blocks.length ? blocks[blocks.length - 1] : "";
-}
-
-function authHeaders(token) {
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/vnd.github+json",
-    "Content-Type": "application/json",
-    "X-GitHub-Api-Version": "2022-11-28",
-  };
-}
-
-function prBodyNeedsTaskIssueReferenceUpdate(body) {
-  const text = String(body || "");
-  if (!text) return false;
-  if (/\bRelated to\s+#\d+/i.test(text) && !/\bCloses\s+#\d+/i.test(text)) return false;
-  return /\bCloses\s+#\d+/i.test(text);
-}
-
-async function fetchPullRequestBody({ owner, repo, prNumber, token, fetchImpl }) {
-  const send = fetchImpl || global.fetch;
-  const response = await send(
-    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-    { headers: authHeaders(token) },
-  );
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`Failed to fetch PR body: HTTP ${response.status} ${text}`.trim());
-  }
-  const data = await response.json();
-  return data.body || "";
-}
-
-async function updatePullRequestBody({
-  owner,
-  repo,
-  prNumber,
-  body,
-  token,
-  dryRun,
-  fetchImpl,
-}) {
-  if (dryRun) {
-    return { ok: true, dryRun: true, updated: true };
-  }
-  const send = fetchImpl || global.fetch;
-  const response = await send(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
-    method: "PATCH",
-    headers: authHeaders(token),
-    body: JSON.stringify({ body }),
-  });
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`Failed to update PR body: HTTP ${response.status} ${text}`.trim());
-  }
-  return { ok: true, updated: true };
-}
-
-async function applyPrBodyUpdateFromTranscript({
-  owner,
-  repo,
-  prNumber,
-  transcriptText,
-  resultJsonPath,
-  token,
-  dryRun,
-  fetchImpl,
-}) {
-  const transcript =
-    nonEmpty(transcriptText) ||
-    (resultJsonPath && fs.existsSync(resultJsonPath)
-      ? fs.readFileSync(resultJsonPath, "utf8")
-      : "");
-  const resultText = readResultTextFromJson(resultJsonPath);
-  const combined = [transcript, resultText].filter(Boolean).join("\n");
-  const candidateBody = extractPrBodyUpdateFromTranscript(combined);
-  if (!candidateBody) {
-    return { ok: true, skipped: true, reason: "no_pr_body_in_transcript" };
-  }
-  if (!/\bRelated to\s+#\d+/i.test(candidateBody)) {
-    return { ok: true, skipped: true, reason: "pr_body_missing_related_to" };
-  }
-  if (/\bCloses\s+#\d+/i.test(candidateBody)) {
-    return { ok: true, skipped: true, reason: "pr_body_still_has_closes" };
-  }
-
-  const currentBody = await fetchPullRequestBody({
-    owner,
-    repo,
-    prNumber,
-    token,
-    fetchImpl,
-  });
-  if (currentBody.trim() === candidateBody.trim()) {
-    return { ok: true, skipped: true, reason: "pr_body_already_updated" };
-  }
-  if (!prBodyNeedsTaskIssueReferenceUpdate(currentBody)) {
-    return { ok: true, skipped: true, reason: "pr_body_no_update_needed" };
-  }
-
-  const updateResult = await updatePullRequestBody({
-    owner,
-    repo,
-    prNumber,
-    body: candidateBody,
-    token,
-    dryRun,
-    fetchImpl,
-  });
-  return { ok: true, skipped: false, reason: "pr_body_updated", update: updateResult };
-}
-
 function extractLatestFixCompleteCommentFromSources({
   transcriptText,
   transcriptPath,
@@ -375,27 +240,6 @@ async function publishFixCompleteHarnessFallback({
     };
   }
 
-  let prBodyUpdate = null;
-  try {
-    prBodyUpdate = await applyPrBodyUpdateFromTranscript({
-      owner: resolvedRepo.owner,
-      repo: resolvedRepo.repo,
-      prNumber,
-      transcriptText: transcript,
-      resultJsonPath,
-      token: authToken,
-      dryRun,
-      fetchImpl,
-    });
-  } catch (error) {
-    return {
-      ok: false,
-      reason: "pr_body_update_failed",
-      message: error.message,
-      prior_verify: verify,
-    };
-  }
-
   const publishResult = await publish.publishFixCompleteAndDispatch({
     owner: resolvedRepo.owner,
     repo: resolvedRepo.repo,
@@ -412,7 +256,6 @@ async function publishFixCompleteHarnessFallback({
     reason: "published",
     synthesized: commentBody.includes("harness-fallback: synthesized"),
     prior_verify: verify,
-    pr_body_update: prBodyUpdate,
     publish: publishResult,
   };
 }
@@ -505,15 +348,11 @@ if (require.main === module) {
 module.exports = {
   LOG_LINE_PREFIX_RE,
   FIX_COMMAND_RESULT_HEADING,
-  PR_BODY_UPDATE_HEADING,
   extractFixCompleteCommentBlocks,
   extractFixOutcomeFromProse,
-  extractPrBodyUpdateFromTranscript,
-  prBodyNeedsTaskIssueReferenceUpdate,
   synthesizeFixCompleteComment,
   extractLatestFixCompleteCommentFromTranscript,
   extractLatestFixCompleteCommentFromSources,
   readResultTextFromJson,
-  applyPrBodyUpdateFromTranscript,
   publishFixCompleteHarnessFallback,
 };
