@@ -1,0 +1,159 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-reason-template-pr"
+  title: "reason_template テーブル定義書 PRレビュー"
+  summary: "reason_template テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §11.1・Reason生成定義書 §15.2 との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-457-reason-template-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 457
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-reason-template.yaml"
+  source_branch: "docs/task-457-reason-template-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-reason-template.yaml"
+    required: true
+  issue:
+    number: 457
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/reason_template_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "LOGICAL 参照・Master 系構成の一貫性確認"
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "LOGICAL 参照・Master 系構成の一貫性確認"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "model_version_id LOGICAL 参照方針の一貫性確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§11.1 エンティティ属性との整合"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "§15.1〜§15.3 template 論理項目・reason_basis との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§9 Master / Config系との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（他テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §11.1 の属性（reason_template_id / template_name / template_type / template_body / is_active / created_at）と矛盾しないか"
+    - "Reason生成定義書 §15.2 の条件列（relationship_code / occasion_code / feature_code / tone / model_version_id）の MVP 採否が明記されているか"
+    - "relationship_master / occasion_master / model_version テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "Public API 非公開（内部 Config）が明記されているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "recommendation_reason.template_id との LOGICAL 参照方針が明記されているか"
+    - "relationship_code / occasion_code / model_version_id の LOGICAL 参照が Human Review #443/#448 方針と一貫しているか"
+    - "Config 系の保持・削除方針（物理 DELETE 禁止・is_active 無効化）が妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "論理ER §11.1 と Reason生成定義書 §15.2 のカラム統合方針"
+  - "template 解決キー（template_name / 条件列の組み合わせ）"
+  - "recommendation_reason.template_id の型（uuid vs template_name）"
+  - "seed 初期範囲"
+  - "YAML seed vs DB 管理の採用方針"
+
+risk_points:
+  - "論理ER は template_name / template_body のみだが、Reason生成定義書は条件列・tone・model_version_id を追加する点"
+  - "Reason生成定義書 §15.3 が YAML/JSON テンプレートを高適性とする一方、本 Task は DB 正本を定義する点"
+  - "recommendation_reason テーブル定義 Task への template_id 型・列追加の引き継ぎ"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-reason-template.yaml"
+  - "先行 Task: #440 / PR #441（enum 定義）、#442 / PR #443（relationship_master）、#445 / PR #448（occasion_master）"
