@@ -3,6 +3,7 @@
 const fs = require("fs");
 const slack = require("./slack-notify.cjs");
 const publish = require("./publish-fix-complete-and-dispatch.cjs");
+const fixTaskPrIssueReference = require("./fix-task-pr-issue-reference.cjs");
 
 const LOG_LINE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}T[^\s]+\s+/;
 // review-pr fallback と同型（`^## \d+\.` は使わない）。§12 境界のみ ## で止める。
@@ -240,6 +241,25 @@ async function publishFixCompleteHarnessFallback({
     };
   }
 
+  let prBodyFix = null;
+  try {
+    prBodyFix = await fixTaskPrIssueReference.fixTaskPrIssueReference({
+      owner: resolvedRepo.owner,
+      repo: resolvedRepo.repo,
+      prNumber,
+      token: authToken,
+      dryRun,
+      fetchImpl,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      reason: "pr_body_fix_failed",
+      message: error && error.message ? error.message : String(error),
+      prior_verify: verify,
+    };
+  }
+
   const publishResult = await publish.publishFixCompleteAndDispatch({
     owner: resolvedRepo.owner,
     repo: resolvedRepo.repo,
@@ -256,6 +276,7 @@ async function publishFixCompleteHarnessFallback({
     reason: "published",
     synthesized: commentBody.includes("harness-fallback: synthesized"),
     prior_verify: verify,
+    pr_body_fix: prBodyFix,
     publish: publishResult,
   };
 }

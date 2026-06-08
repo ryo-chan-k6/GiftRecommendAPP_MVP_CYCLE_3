@@ -133,6 +133,15 @@ test("publishFixCompleteHarnessFallback: transcript から publish する", asyn
       if (url.includes("/actions/workflows/pr-ready-for-ai-review.yml/runs")) {
         return { ok: true, json: async () => ({ workflow_runs: [] }) };
       }
+      if (url.includes("/pulls/359") && (!options || !options.method || options.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => ({
+            body: "Related to #359",
+            head: { ref: "docs/task-359-sample" },
+          }),
+        };
+      }
       throw new Error(`unexpected: ${url}`);
     },
   });
