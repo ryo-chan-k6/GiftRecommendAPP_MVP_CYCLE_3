@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-08                         |
-| 更新日         | 2026-06-08                         |
+| 更新日         | 2026-06-08（Human Review #454 追随） |
 
 ---
 
@@ -103,7 +103,7 @@ reco が Recommendation Run 実行時に解決し、`recommendation_run.ranking_
 }
 ```
 
-> **Ranking定義書 §13 との関係**: Ranking定義書は Ranking ロジックの一部を `model_version` 管理と記載している。論理ER §11.1 / 物理ER §9 では本テーブルを Ranking パラメータ正本とする。両者の責務分担は §17 の Human Review 論点とする。
+> **Ranking定義書 §13 との関係**: MVP DB では Ranking パラメータ（重み・MMR・top_k 等）の正本は本テーブル `parameter_json` とする。`model_version` は LLM / Embedding / Reason 生成など技術モデル識別の正本であり、Ranking パラメータは含まない。責務分担の Human 決定は §17.1 を参照。
 
 ---
 
@@ -233,9 +233,15 @@ reco が Recommendation Run 実行時に解決し、`recommendation_run.ranking_
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `ranking_config` と `model_version` の責務分担 | Ranking定義書 §13 は model_version 管理を示唆。論理ER は独立 `ranking_config` を定義 | Human | DDL Task 前 | reco Config Resolver 設計へ影響 |
+| — | — | — | — | — | Human Review (#454) にて No.1 を決定済み（下記参照） |
 | 2 | `is_current` の解決単位 | MVP では `config_name` 単位 partial unique を採用。全体 1 現行も選択肢 | Human | seed Task 前 | 本定義書 §10 は config_name 単位 |
 | 3 | `parameter_json` の MVP 必須キー | CHECK で重み合計のみ担保。追加キー（threshold_rule 等）は将来拡張 | Human | seed Task 前 | §6.1 を seed 正本候補とする |
+
+### 17.1 Human Review 決定事項（PR #454）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `ranking_config` と `model_version` の責務分担 | `model_version` は LLM / Embedding / Reason 生成など外部モデル version 正本。Ranking パラメータ（重み・MMR・top_k 等）は含まない。`ranking_config` は Ranking パラメータ正本。`config_name` 単位で `is_current` を解決する。両者は独立 Config 次元で FK なし。Run 再現性は `recommendation_run.model_version_id` + `recommendation_run.ranking_config_id` で保持する。Ranking定義書 §13 の旧表現は MVP DB 正本として `ranking_config` にマッピングする | Human | Ranking定義書を同一 PR で追随更新 |
 
 ---
 
@@ -255,7 +261,7 @@ reco が Recommendation Run 実行時に解決し、`recommendation_run.ranking_
 
 ## 19. レビュー観点
 
-- 論理ER §11.1・物理ER §8・§9・テーブル一覧 §9 と矛盾していない
+- 論理ER §11.1・物理ER §8・§9・テーブル一覧 §9 と矛盾していない（`model_version` との責務分担は §17.1 の Human 決定に基づく）
 - `ranking_config_id` / `config_name` / `config_version` / `parameter_json` / `is_current` / `created_at` がすべて定義されている
 - `recommendation_run.ranking_config_id` の LOGICAL 参照方針が明記されている
 - Ranking定義書 MVP 初期パラメータが `parameter_json` 参照として明記されている
