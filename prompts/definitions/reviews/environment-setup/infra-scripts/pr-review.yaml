@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 456
   issue:
     number: 455
   task_definition: "prompts/definitions/tasks/environment-setup/infra-scripts.yaml"
