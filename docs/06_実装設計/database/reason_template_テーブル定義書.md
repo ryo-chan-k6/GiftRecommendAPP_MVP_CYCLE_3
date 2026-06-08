@@ -61,7 +61,7 @@ reco が Reason Generator（MOD-RECO-023）実行時に解決し、`recommendati
 | 観点 | 論理ER §11.1 | Reason生成定義書 §15.2 | MVP 物理カラム案 |
 | ---- | ------------ | ---------------------- | ---------------- |
 | テンプレート ID | `reason_template_id` | `reason_template_id` | `reason_template_id`（uuid PK） |
-| 識別名 | `template_name` | —（`reason_basis.template_id` は文字列識別子） | `template_name`（版を含めない安定 ID。例: `social_reason_boss_thanks`） |
+| 識別名 | `template_name` | `template_name`（Reason生成定義書 §14.2 / §15.2 追随済み） | `template_name`（版を含めない安定 ID。例: `social_reason_boss_thanks`） |
 | 版 | — | — | `template_version`（integer。§5.3） |
 | 種別 | `template_type` | `template_type` | `template_type` |
 | 本文 | `template_body` | `template_text` | `template_body`（`template_text` は論理別名） |
@@ -133,7 +133,7 @@ reco が Reason Generator（MOD-RECO-023）実行時に解決し、`recommendati
 | 9 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 有効フラグ。`false` の行は解決対象外 |
 | 10 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | レコード作成日時（UTC） |
 
-> **論理ER との差分**: 論理ER §11.1 は最小属性のみ列挙する。本定義書は条件列・`template_version` を MVP 統合案として追加し、`tone` / `model_version_id` は不採用とする。`template_text` は物理列 `template_body` に相当する。
+> **論理ER との差分**: 論理ER §11.1 は `template_version` と条件列を追随済み。`tone` / `model_version_id` は不採用。`template_text` は物理列 `template_body` に相当する。
 
 ### 6.1 `template_body` 参照構造（MVP）
 
@@ -165,7 +165,7 @@ Reason 単位の利用記録（方式 B）。`recommendation_reason.reason_basis
 | `used_scores` | `yes` | 同上 |
 | `used_semantic_evidence` | 推奨 | 同上 |
 
-> Reason生成定義書 §14.2 の `template_id`（文字列識別子例）は、MVP では `template_name` + `template_version` に置き換える。後続 Task で Reason生成定義書との整合を follow-up する。
+> Reason生成定義書 §14.2 / §15.2 は `template_name` + `template_version` 方針へ追随済み（follow-up 完了）。
 
 ---
 
@@ -327,7 +327,7 @@ Human Review で判断する論点。以下は **未確定事項** であり、�
 | --: | ---- | ---------------- | ------ | ---- | ---- |
 | 1 | seed 初期範囲 | MVP で投入する template_type / relationship / occasion の組み合わせ範囲 | Human | seed Task 前 | 推奨: 汎用 `summary` 1 本 + 主要 pair（上司×お礼 等）の `summary` のみ先行投入 |
 | 2 | YAML seed vs DB 管理 | Reason生成定義書 §15.3 は YAML/JSON + Python 生成を高適性とする。DB 正本との役割分担 | Human | seed Task 前 | 推奨: DB を正本、YAML は seed 投入ソース（変換スクリプトは seed Task） |
-| 3 | Reason生成定義書 §14.2 との整合 | `template_id` 文字列識別子例と本定義の `template_name` + `template_version` の差分 | Human | recommendation_reason 定義 Task 前 | 本定義書 §6.2 を正とする follow-up を別 Task 化 |
+| 3 | Reason生成定義書 §14.2 との整合 | — | — | — | **追随済み**（Reason生成定義書 §14.2 / §15.2 を更新。本定義書 §6.2 を正とする） |
 
 ### 17.1 Human Review 決定事項（本更新で反映）
 
