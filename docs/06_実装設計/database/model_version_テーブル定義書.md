@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-08                         |
-| 更新日         | 2026-06-08                         |
+| 更新日         | 2026-06-08（AI Review #453 指摘反映） |
 
 ---
 
@@ -56,9 +56,11 @@
 
 | 観点 | `semantic_config_version` | `model_version` |
 | ---- | ------------------------- | --------------- |
-| 管理対象 | 意味推定ロジック（Feature 定義・Rule 等） | スコアリング・Ranking・Embedding・理由生成等のモデル |
-| ドメイン不変条件 | CF-01 | CF-02 |
+| 管理対象 | 意味推定ロジック（Feature 定義・Rule 等） | Embedding / LLM / Ranking 等の技術的モデル version（`model_type` 単位） |
+| ドメイン不変条件 | CF-01 | CF-02（Ranking 文脈）/ CF-03（Run 固定） |
 | Run 固定 | Run 開始時に固定 | Run 開始時に固定 |
+
+> **ドメインモデルとの関係**: ドメインモデル CF-02 は `model_version` を「順位決定ロジック」として述べるが、本テーブルはテーブル一覧 §9・§14 No.6 に従い embedding / LLM / ranking 等の技術 version を `model_type` で束ねて管理する。CF-02 の解釈（Ranking 専用か複数 model_type か）は Human Review 論点（§17.1 No.1）。
 
 ### 5.2 対象外
 
@@ -107,8 +109,8 @@
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | `recommendation_run` | `model_version_id` | used_by | `LOGICAL` | 物理ER §9。Run 開始時に固定。MVP は物理 FK なし |
-| `item_embedding` | `model_version_id` | generates_with | `ON` | Item 派生データ系。DELETE RESTRICT 想定。物理ER §9・§11 |
-| `evaluation_run` | `model_version_id` | used_by | `LOGICAL` | Evaluation 系。後続 Task で FK 方針を確定 |
+| `item_embedding` | `model_version_id` | generates_with | `ON`（方針） | 論理ER §11・テーブル一覧 §14 No.6。物理 FK は `item_embedding` テーブル定義 Task で DDL 確定。物理ER §9 には未記載 |
+| `evaluation_run` | `model_version_id` | used_by | `LOGICAL` | 論理ER §12.2。Evaluation 系 Task で FK 方針を確定 |
 
 ---
 
@@ -133,7 +135,7 @@
 | `chk_model_type_mvp` | CHECK | `model_type` | `model_type IN ('embedding', 'llm', 'ranking')` | MVP 3 値。後続 enum Task で正本化 |
 | `chk_provider_format` | CHECK | `provider` | `provider ~ '^[a-z][a-z0-9_]*$'` | snake_case。先頭英字 |
 | `chk_version_label_length` | CHECK | `version_label` | `char_length(version_label) BETWEEN 1 AND 50` | — |
-| `fk_item_embedding_model_version` | FOREIGN KEY | `item_embedding.model_version_id` | `model_version.model_version_id` ON DELETE RESTRICT | item_embedding テーブル定義 Task で DDL 確定 |
+| `chk_model_name_length` | CHECK | `model_name` | `char_length(model_name) BETWEEN 1 AND 100` | §6 型定義と整合 |
 
 ---
 
@@ -176,7 +178,7 @@
 | ---- | ---- |
 | DDL対象 | `model_version` |
 | migration単位 | 1 テーブル = 1 migration（DDL Task） |
-| 適用順序 | 物理ER §15: Master / Config 群（`pair_master` 以降、`ranking_config` より前後は依存 Task で調整） |
+| 適用順序 | 物理ER §15: Master / Config 群（`occasion_master` と同順、`pair_master` より前） |
 | rollback方針 | forward migration 主体。DROP は Human Review 必須 |
 | 破壊的変更有無 | `no`（初回 CREATE） |
 
@@ -201,7 +203,7 @@
 | 1 | DDL適用 | CREATE TABLE / Index / CHECK / partial unique が定義どおり | migration |
 | 2 | PK / UNIQUE | 同一 provider + model_name + model_type + version_label の重複が拒否される | migration |
 | 3 | is_current | 同一 model_type で `is_current = true` が 2 件以上になる INSERT/UPDATE が拒否される | migration |
-| 4 | FK | `item_embedding.model_version_id` が存在しない ID を拒否する | migration |
+| 4 | 被参照 FK | `item_embedding` 側 FK（`fk_item_embedding_model_version` 等）は item_embedding 定義 Task で検証 | migration（後続 Task） |
 | 5 | version 解決 | reco が `is_current = true` の embedding / ranking version を解決できる | integration |
 | 6 | 再現性 | 過去 Run の `model_version_id` が version 非現行化後も参照可能 | integration |
 | 7 | 権限 | web client から Direct DB アクセス不可 | manual |
@@ -212,10 +214,18 @@
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `is_current` のスコープ | model_type 単位（本定義書の推奨）か、全体 1 件かで解決ロジックが変わる | Human | DDL Task 前 | テーブル一覧 §9 は model 種別ごとの技術 version を示唆 |
-| 2 | `recommendation_run` への物理 FK | MVP は LOGICAL（物理ER §9）だが、DDL Task で ON に変更するか | Human | DDL Task 前 | Run 履歴保持と RESTRICT の兼ね合い |
-| 3 | `model_type` enum の YAML 正本化 | enum 定義書 + packages/code-definitions への追加タイミング | Human | enum Task | 本 Task では CHECK 候補値を定義 |
-| 4 | `evaluation_run` への FK 方針 | Evaluation 系 Task で LOGICAL / ON を確定 | Human | evaluation_run 定義 Task | 論理ER §12.2 に参照あり |
+| — | — | — | — | — | Human Review 前の論点は §17.1 を参照 |
+
+### 17.1 Human Review 観点（PR #453）
+
+| No | 論点 | 推奨案 | 判断者 | 備考 |
+| --: | ---- | ------ | ------ | ---- |
+| 1 | `model_type` のスコープと CF-02 解釈 | 本定義書どおり `embedding` / `llm` / `ranking` の 3 値を `model_type` で管理し、Ranking Run 解決は `model_type = ranking` の現行 version を参照 | Human | ドメインモデル CF-02 は Ranking 文脈の責務分離。Embedding / LLM は batch 文脈（テーブル一覧 §9） |
+| 2 | `is_current` のスコープ | model_type 単位（部分 unique 採用） | Human | 全体 1 件案は reco / batch の並列解決と両立しにくい |
+| 3 | `recommendation_run` への物理 FK | MVP は `LOGICAL` のまま（物理ER §9） | Human | relationship_master / occasion_master と同型 |
+| 4 | `item_embedding` への物理 FK | `ON` + `DELETE RESTRICT`。DDL は item_embedding 定義 Task で `model_version` 先行 CREATE 後に付与 | Human | 本 Task §10 には被参照側 FK を載せない（Master 定義書慣例） |
+| 5 | `model_type` enum の YAML 正本化 | 後続 enum Task へ引き継ぎ。本 Task は CHECK 候補値のみ | Human | enum 定義書 + packages/code-definitions |
+| 6 | `evaluation_run.model_version_id` の FK 方針 | Evaluation 系 Task で LOGICAL / ON を確定 | Human | 論理ER §12.2 に参照あり |
 
 ---
 
@@ -239,8 +249,9 @@
 
 - 論理ER §11.1・物理ER §8・§9・§11・テーブル一覧 §9 と矛盾していない
 - `model_version_id`（UUID PK）および provider / model_name / model_type / version_label / is_current / created_at が定義されている
-- `recommendation_run` への LOGICAL FK / `item_embedding` への ON FK 方針が明記されている
-- `semantic_config_version` との責務分離（CF-01 / CF-02）が明記されている
+- `recommendation_run` への LOGICAL FK / `item_embedding` への ON FK 方針が明記されている（item_embedding FK DDL は後続 Task）
+- `semantic_config_version` との責務分離（CF-01 / CF-02 / CF-03）と `model_type` 管理方針が明記されている
+- relationship_master / occasion_master と §10 に被参照 FK を載せない Master / Config 系慣例が一貫している
 - `is_current` の model_type 単位管理と部分 unique が DDL へ展開できる粒度である
 - Public API 非公開（`model_version_id`）が明記されている
 - relationship_master / occasion_master テーブル定義書と Master / Config 系方針（保持・削除・seed 更新）が一貫している
