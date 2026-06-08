@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-08                         |
-| 更新日         | 2026-06-08（AI Review #453 指摘反映） |
+| 更新日         | 2026-06-08（AI Review #453 再指摘反映） |
 
 ---
 
@@ -50,7 +50,7 @@
 - **`is_current`** により、reco / batch が解決する「現行 version」を `model_type` 単位で管理する（Embedding / LLM / Ranking 等ごとに 1 件）
 - **`model_version_id`（UUID）** をサロゲート PK とし、Run・派生データへの参照キーとする
 - `recommendation_run.model_version_id` は本テーブルを **論理参照**する（MVP 初期 DDL では物理 FK なし。Run 開始時に ID を固定し再現性を担保）
-- `item_embedding.model_version_id` は本テーブルを **物理 FK（ON）** で参照する（Item 派生データ系。物理ER §3 Batch / Staging FK 方針に整合）
+- `item_embedding.model_version_id` は本テーブルを **ON 方針**で参照する（Item 派生データ系。物理 FK DDL は `item_embedding` 定義 Task で `model_version` 先行 CREATE 後に付与。DELETE RESTRICT 想定）
 
 ### 5.1 semantic_config_version との分離
 
@@ -104,7 +104,7 @@
 | ------ | ------ | ------ | ---------- | ---- |
 | — | — | なし | — | 本テーブルは Config 根。他テーブルから参照される |
 
-### 8.1 被参照
+### 8.1 被参照（論理 / ON 方針）
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
@@ -178,7 +178,7 @@
 | ---- | ---- |
 | DDL対象 | `model_version` |
 | migration単位 | 1 テーブル = 1 migration（DDL Task） |
-| 適用順序 | 物理ER §15: Master / Config 群（`occasion_master` と同順、`pair_master` より前） |
+| 適用順序 | 物理ER §8・§15: Master / Config 群（`pair_master` より後、`ranking_config` より前） |
 | rollback方針 | forward migration 主体。DROP は Human Review 必須 |
 | 破壊的変更有無 | `no`（初回 CREATE） |
 
@@ -252,6 +252,7 @@
 - `recommendation_run` への LOGICAL FK / `item_embedding` への ON FK 方針が明記されている（item_embedding FK DDL は後続 Task）
 - `semantic_config_version` との責務分離（CF-01 / CF-02 / CF-03）と `model_type` 管理方針が明記されている
 - relationship_master / occasion_master と §10 に被参照 FK を載せない Master / Config 系慣例が一貫している
+- 物理ER §8 の Master / Config 並び（`pair_master` → `model_version` → `ranking_config`）と §14 適用順序が整合している
 - `is_current` の model_type 単位管理と部分 unique が DDL へ展開できる粒度である
 - Public API 非公開（`model_version_id`）が明記されている
 - relationship_master / occasion_master テーブル定義書と Master / Config 系方針（保持・削除・seed 更新）が一貫している
