@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-07                         |
-| 更新日         | 2026-06-07                         |
+| 更新日         | 2026-06-08                         |
 
 ---
 
@@ -63,11 +63,11 @@ Web UI の Occasion 選択肢（API-PUB-006）および Recommendation Request �
 | No | カラム名 | 論理名 | 型 | 必須 | PK | FK | Unique | Default | 説明 |
 | --: | -------- | ------ | -- | ---- | -- | -- | ------ | ------- | ---- |
 | 1 | `occasion_code` | Occasion Code | `text` | `yes` | `yes` | — | `yes` | — | 用途コード。snake_case 英小文字・数字・アンダースコア。Featureルール定義書 §7.1 のコード体系に整合 |
-| 2 | `occasion_label` | Occasion Label | `varchar(50)` | `yes` | — | — | — | — | 唯一の日本語 UI 表示名。API-PUB-006 `occasionLabel` の正本（Human Review #410 §14.1 No.1）。MVP では多言語対応なし |
+| 2 | `occasion_label` | Occasion Label | `varchar(50)` | `yes` | — | — | — | — | 唯一の日本語 UI 表示名。API-PUB-006 `occasionLabel` の正本。MVP では多言語対応なし（Human Review #448） |
 | 3 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 有効フラグ。`false` の行は API 返却対象外 |
 | 4 | `display_order` | Display Order | `integer` | `yes` | — | — | — | `0` | 表示順。API-PUB-006 は `displayOrder` 昇順（同順位は `occasionCode` 昇順） |
 
-> **論理ER との差分**: 論理ER §11.1 には `occasion_label_jp` が列挙されているが、MVP 物理 DDL では Human Review #443（relationship_master）および API-PUB-006 §14.1 No.1 の方針に整合し、当該列は **採用しない（推奨）**。論理ER 側の整理は別 Task とする。最終確定は本 Task の Human Review（#445）で行う。
+> **論理ER との差分**: 論理ER §11.1 には `occasion_label_jp` が列挙されているが、MVP 物理 DDL では Human Review (#448) により当該列は採用しない。`occasion_label` を唯一の日本語 UI 表示名とする。論理ER 側の整理は別 Task とする。
 
 ---
 
@@ -186,8 +186,14 @@ Web UI の Occasion 選択肢（API-PUB-006）および Recommendation Request �
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `occasion_label_jp` の MVP 運用 | 論理ER 上は列あり。API-PUB-006 §14.1 / Human Review #410 では `occasion_label` のみ公開 | Human | seed Task 前 | 推奨: Human Review #443 と同様、`occasion_label_jp` を物理 DDL から除外 |
-| 2 | `recommendation_request` への物理 FK | 現状 LOGICAL 参照。DDL Task で FK 追加要否 | Human | DDL Task | 推奨: MVP は LOGICAL のまま（api validation） |
+| — | — | — | — | — | Human Review (#448) にて No.1・No.2 を決定済み（下記参照） |
+
+### 17.1 Human Review 決定事項（PR #448）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `occasion_label_jp` の MVP 運用 | MVP 物理 DDL から `occasion_label_jp` を除外。`occasion_label` を唯一の日本語 UI 表示名とする | Human | 多言語対応は MVP 対象外 |
+| 2 | `recommendation_request` への物理 FK | MVP は `LOGICAL` 参照のまま（物理 FK なし） | Human | api validation + seed 正本で整合を担保 |
 
 ---
 
@@ -207,7 +213,7 @@ Web UI の Occasion 選択肢（API-PUB-006）および Recommendation Request �
 
 ## 19. レビュー観点
 
-- 論理ER §11.1・物理ER §8・テーブル一覧 §9 と矛盾していない（`occasion_label_jp` 除外推奨は §17 No.1）
+- 論理ER §11.1・物理ER §8・テーブル一覧 §9 と矛盾していない（`occasion_label_jp` 除外は §17.1 の Human 決定に基づく）
 - API-PUB-006 の `occasionLabel` / `displayOrder` マッピングが明確
 - `occasion_label` が唯一の日本語 UI 表示名であることが明記されている
 - `recommendation_request.occasion_code` の LOGICAL 参照方針が明記されている
