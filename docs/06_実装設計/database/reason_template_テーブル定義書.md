@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-08                         |
-| 更新日         | 2026-06-08                         |
+| 更新日         | 2026-06-08（AI Review 指摘反映）   |
 
 ---
 
@@ -50,7 +50,7 @@ reco が Reason Generator（MOD-RECO-023）実行時に解決し、`recommendati
 - **relationship_code / occasion_code / feature_code** により適用条件を絞り込む（NULL はワイルドカード）
 - **`template_body`** にプレースホルダ付きテンプレート本文を保持する（Reason生成定義書の `template_text` に相当）
 - **`is_active = true`** の行のみを reco が解決対象とする
-- `recommendation_reason.template_id` は本テーブルの `reason_template_id` を **論理参照**する（MVP 初期 DDL では物理 FK なし）
+- reco 解決時、`recommendation_reason.template_id` は本テーブルの `reason_template_id`（uuid）を **論理参照**する MVP 案（§17 No.3）。MVP 初期 DDL では物理 FK なし
 
 ### 5.1 論理ER §11.1 と Reason生成定義書 §15.2 の差分整理（MVP 統合案）
 
@@ -96,6 +96,8 @@ reco が Reason Generator（MOD-RECO-023）実行時に解決し、`recommendati
 | 10 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 有効フラグ。`false` の行は解決対象外 |
 | 11 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | レコード作成日時（UTC） |
 
+> **論理ER との差分**: 論理ER §11.1 は最小属性（`reason_template_id` / `template_name` / `template_type` / `template_body` / `is_active` / `created_at`）のみ列挙する。Reason生成定義書 §15.2 の条件列（`relationship_code` / `occasion_code` / `feature_code` / `tone` / `model_version_id`）は §5.1 の MVP 統合案として本定義書に追加する。`template_text` は物理列 `template_body` に相当する。Human Review 前の未決事項は §17 を参照。
+
 ### 6.1 `template_body` 参照構造（MVP）
 
 物理 DDL では JSON Schema CHECK は設けず、reco / seed 側で整合を担保する。MVP ではプレーンテキストまたは軽量プレースホルダを想定する。
@@ -119,7 +121,7 @@ reco が Reason Generator（MOD-RECO-023）実行時に解決し、`recommendati
 
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
-| PRIMARY KEY | `reason_template_id` | サロゲート UUID | `recommendation_reason.template_id` の参照キー |
+| PRIMARY KEY | `reason_template_id` | サロゲート UUID | `recommendation_reason.template_id` の参照キー（MVP 案。§17 No.3） |
 | UNIQUE | `reason_template_id` | PK と同一 | — |
 | UNIQUE | `template_name` | 業務識別子の一意性 | `reason_basis_json.template_id` との対応 |
 
@@ -139,9 +141,11 @@ reco が Reason Generator（MOD-RECO-023）実行時に解決し、`recommendati
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `recommendation_reason` | `template_id` | used_by | `LOGICAL` | Reason生成定義書 §15.1。`reason_template_id`（uuid）を格納する案。§17 No.1 |
+| `recommendation_reason` | `template_id` | used_by | `LOGICAL` | Reason生成定義書 §15.1。`reason_template_id`（uuid）格納を MVP 案とする（§17 No.3）。Human Review 前は未確定 |
 
 > MVP 初期 DDL では物理 FK を張らない。整合は reco 側テンプレート解決 + seed 正本 + Reason INSERT 時の存在確認で担保する。
+
+> **物理ER §9 との差分**: 現行物理ER §9 には `reason_template` → `recommendation_reason.template_id` の関係行が未記載である。物理ER 更新は本 Task scope 外のため follow-up とし、本定義書 §8.1 で LOGICAL 被参照を明記する。
 
 ---
 
@@ -247,6 +251,8 @@ reco が Reason Generator（MOD-RECO-023）実行時に解決し、`recommendati
 
 ## 17. 未決事項
 
+Human Review で判断する論点。以下は **未確定事項** であり、決定事項ではない。
+
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
 | 1 | 論理ER §11.1 と Reason生成定義書 §15.2 のカラム統合 | 論理ER は `template_name` / `template_body` のみ。Reason生成定義書は条件列・`template_text`・`tone`・`model_version_id` を追加 | Human | DDL Task 前 | 本定義書 §5.1 / §6 は MVP 統合案。`template_body` = `template_text` と明記 |
@@ -268,8 +274,8 @@ reco が Reason Generator（MOD-RECO-023）実行時に解決し、`recommendati
 | Reason生成定義書 | `docs/04_ドメインモデル設計/Reason生成定義書.md` | §14 reason_basis / §15.1〜§15.3 template 論理項目 |
 | 参照テーブル定義 | `docs/06_実装設計/database/relationship_master_テーブル定義書.md` | LOGICAL 参照・Master 系構成踏襲 |
 | 参照テーブル定義 | `docs/06_実装設計/database/occasion_master_テーブル定義書.md` | LOGICAL 参照・Master 系構成踏襲 |
-| 参照テーブル定義 | `docs/06_実装設計/database/model_version_テーブル定義書.md` | `model_version_id` LOGICAL 参照 |
-| 参照テーブル定義 | `docs/06_実装設計/database/ranking_config_テーブル定義書.md` | Config 系章構成参考 |
+| 参照テーブル定義 | `docs/06_実装設計/database/model_version_テーブル定義書.md` | `model_version_id` LOGICAL 参照（Task #450 / 並行 Task。Epic Branch merge 済み前提） |
+| 参照テーブル定義 | `docs/06_実装設計/database/ranking_config_テーブル定義書.md` | Config 系章構成参考（Task #451 / 並行 Task。未 merge 時は relationship_master 構成を踏襲） |
 
 ---
 
