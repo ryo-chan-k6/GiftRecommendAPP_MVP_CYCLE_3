@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP                |
 | MVP対象        | `yes`                                          |
 | 作成日         | 2026-06-08                                     |
-| 更新日         | 2026-06-08（AI Review #460 再修正反映）         |
+| 更新日         | 2026-06-08（正規化パラメータ正本整理反映）         |
 
 ---
 
@@ -52,16 +52,16 @@ batch / reco が Feature 生成時に参照し、`user_feature` / `item_feature`
 - **`feature_normalization_version_id`（UUID）** をサロゲート PK とし、派生 Feature 行への参照キーとする
 - `user_feature.feature_normalization_version_id` / `item_feature.feature_normalization_version_id` は本テーブルを **論理参照**する（物理ER §9・§11。MVP 初期 DDL では物理 FK なし）
 
-### 5.1 semantic_config_version / normalization_rule との分離
+### 5.1 semantic_config_version との分離
 
-| 観点 | `semantic_config_version` / `normalization_rule` | `feature_normalization_version` |
-| ---- | ------------------------------------------------ | ------------------------------- |
-| 分類 | Semantic / Feature 定義系（設定正本 Rule テーブル） | Master / Config 系（独立 version テーブル） |
-| 管理対象 | 意味推定ロジック・Feature ルール・Concept 定義。`normalization_rule` は Feature 軸別の正規化ルール定義（Featureルール定義書 §17.5） | Feature raw 値の正規化パラメータ正本（sigmoid center / k 等。MVP は全 8 軸共通） |
-| 派生への紐づけ | `semantic_config_version_id` を Feature / Semantic 系に保持 | `feature_normalization_version_id` を user_feature / item_feature に保持 |
-| Featureルール定義書 | §14.8 / §16.1 は正規化パラメータを semantic_config_version 配下と記載 | 論理ER §11.1 / 物理ER §9・§11 / テーブル一覧 §9 は独立テーブルを定義 |
+| 観点 | `semantic_config_version` | `feature_normalization_version`（本テーブル） |
+| ---- | ------------------------- | --------------------------------------------- |
+| 分類 | Semantic / Feature 定義系（設定正本） | Master / Config 系（独立 version テーブル） |
+| 管理対象 | 意味推定ロジック・Feature ルール・Concept 定義 | Feature raw 値の正規化パラメータ正本（sigmoid center / k 等。MVP は全 8 軸共通） |
+| 派生への紐づけ | `semantic_config_version_id` を Semantic / Feature raw 生成系に保持 | `feature_normalization_version_id` を user_feature / item_feature に保持 |
+| 正規化パラメータ | 管理しない（Featureルール定義書 §14.8 参照） | `parameter_json` が正本 |
 
-> **Featureルール定義書との関係**: Featureルール定義書 §14.8 は正規化パラメータを `semantic_config_version` 配下と記載するが、本テーブルは物理設計正本（論理ER §11.1 / 物理ER / テーブル一覧 §9）に従い独立テーブルとして定義する。`normalization_rule`（Semantic / Feature 定義系）は Feature 軸別ルール定義の責務であり、本テーブルの `parameter_json`（全軸共通 sigmoid パラメータ）とは粒度が異なる。§14.8 との整合は Human Review 論点（§17.1 No.1）。
+> **Featureルール定義書との関係**: 正規化パラメータの正本は `feature_normalization_version` とする（Featureルール定義書 §14.8）。`semantic_config_version` は raw 値生成（Relationship / Occasion / Concept 等のルール）と Social / Symbolic 射影の意味体系 version を管理する。
 
 ### 5.2 対象外
 
@@ -82,7 +82,7 @@ batch / reco が Feature 生成時に参照し、`user_feature` / `item_feature`
 | パラメータ正本 | 列ベース（`provider` / `model_name` 等） | `parameter_json` | `parameter_json`（`center_feature` / `k_feature`） |
 | version 識別 | `model_version_id`（UUID） | `ranking_config_id`（UUID） | `feature_normalization_version_id`（UUID） |
 | 更新方針 | 新規 INSERT、immutable | `parameter_json` UPDATE 禁止 | 同上（§12） |
-| 日時列 | `created_at` | `created_at` | `generated_at`（§17.1 No.3 で Human 判断） |
+| 日時列 | `created_at` | `created_at` | `generated_at`（§17.1 No.2 で Human 判断） |
 
 > 詳細 DDL は Issue #450（`model_version`）/ Issue #451（`ranking_config`）のテーブル定義書 merge 後に突合する。本 Epic Branch 上では論理ER §11.1 を正本として比較する。
 
@@ -98,7 +98,7 @@ batch / reco が Feature 生成時に参照し、`user_feature` / `item_feature`
 | 4 | `is_current` | Current Flag | `boolean` | `yes` | — | — | — | `false` | 現行 version フラグ。`true` は `normalization_method` あたり最大 1 行（§7・§10） |
 | 5 | `generated_at` | Generated At | `timestamptz` | `yes` | — | — | — | `now()` | version レコード作成日時（UTC）。論理ER §11.1 に整合 |
 
-> **用語補足**: `model_version` / `ranking_config` は `created_at` を採用するが、論理ER §11.1 は本テーブルに `generated_at` のみ定義する。採用理由の最終判断は §17.1 No.3。
+> **用語補足**: `model_version` / `ranking_config` は `created_at` を採用するが、論理ER §11.1 は本テーブルに `generated_at` のみ定義する。採用理由の最終判断は §17.1 No.2。
 
 ### 6.1 `parameter_json` 参照構造（MVP）
 
@@ -125,7 +125,7 @@ normalized_value = sigmoid(k_feature * (raw_value - center_feature))
 sigmoid(x) = 1 / (1 + exp(-x))
 ```
 
-> **将来拡張キー（MVP では未使用）**: `z-score + sigmoid` 拡張用の `mu_feature` / `sigma_feature`（Feature 軸別）は §17.1 No.4 / No.7 へ委譲。DDL CHECK への追加は後続 Task で判断する。
+> **将来拡張キー（MVP では未使用）**: `z-score + sigmoid` 拡張用の `mu_feature` / `sigma_feature`（Feature 軸別）は §17.1 No.3 / No.6 へ委譲。DDL CHECK への追加は後続 Task で判断する。
 
 ---
 
@@ -190,8 +190,8 @@ Item Feature 再生成の冪等キーは、テーブル一覧 §7 および物�
 | 制約名 | 種別 | 対象 | 内容 | 備考 |
 | ------ | ---- | ---- | ---- | ---- |
 | `feature_normalization_version_pkey` | PRIMARY KEY | `feature_normalization_version_id` | 主キー | — |
-| `uq_feature_norm_version_current_per_method` | UNIQUE（部分） | `normalization_method` | `is_current = true` は normalization_method あたり 1 行 | MVP 方針。§17.1 No.2 |
-| `chk_normalization_method_mvp` | CHECK | `normalization_method` | `normalization_method IN ('sigmoid')` | MVP 1 値。`z_score_sigmoid` 等は §17.1 No.4 / No.7 |
+| `uq_feature_norm_version_current_per_method` | UNIQUE（部分） | `normalization_method` | `is_current = true` は normalization_method あたり 1 行 | MVP 方針。§17.1 No.1 |
+| `chk_normalization_method_mvp` | CHECK | `normalization_method` | `normalization_method IN ('sigmoid')` | MVP 1 値。`z_score_sigmoid` 等は §17.1 No.3 / No.6 |
 | `chk_parameter_json_object` | CHECK | `parameter_json` | `jsonb_typeof(parameter_json) = 'object'` | 配列・スカラー禁止。物理ER §11 は個別 CHECK 未記載。本 Task で追加方針 |
 | `chk_parameter_json_keys_mvp` | CHECK | `parameter_json` | `parameter_json ? 'center_feature' AND parameter_json ? 'k_feature'` | MVP 必須キー存在。§6.1 参照 |
 | `chk_parameter_json_center_feature` | CHECK | `parameter_json` | `(parameter_json->>'center_feature')::numeric BETWEEN 0.0 AND 1.0` | MVP 全軸共通中立点 |
@@ -203,7 +203,7 @@ Item Feature 再生成の冪等キーは、テーブル一覧 §7 および物�
 
 | カラム | enum / code | 定義元 | 許容値 | 備考 |
 | ------ | ----------- | ------ | ------ | ---- |
-| `normalization_method` | `normalization_method` | Featureルール定義書 §14.2（本 Task で候補値） | `sigmoid` | 将来 `z_score_sigmoid` 等は §17.1 No.4 / No.7。enum Task 正本化は後続 |
+| `normalization_method` | `normalization_method` | Featureルール定義書 §14.2（本 Task で候補値） | `sigmoid` | 将来 `z_score_sigmoid` 等は §17.1 No.3 / No.6。enum Task 正本化は後続 |
 
 ---
 
@@ -283,14 +283,13 @@ Item Feature 再生成の冪等キーは、テーブル一覧 §7 および物�
 
 | No | 論点 | 推奨案 | 判断者 | 備考 |
 | --: | ---- | ------ | ------ | ---- |
-| 1 | `semantic_config_version` / Featureルール定義書 §14.8 との責務分担 | 物理設計正本どおり独立 `feature_normalization_version` を正とし、Featureルール定義書 §14.8 の整合は別 docs Task で検討 | Human | `normalization_rule`（Semantic / Feature 定義系）は軸別ルール定義。本テーブルは全軸共通 sigmoid パラメータ正本 |
-| 2 | `is_current` の解決単位 | `normalization_method` 単位（部分 unique 採用） | Human | model_version（model_type 単位）/ ranking_config（config_name 単位）パターンの踏襲 |
-| 3 | `generated_at` vs `created_at` | 論理ER §11.1 に従い `generated_at` を採用 | Human | model_version / ranking_config は `created_at` |
-| 4 | Feature 軸別パラメータ要否 | MVP は全 8 軸共通固定パラメータ（§14.3）。将来 z-score 拡張では軸別 μ / σ が必要 | Human | `parameter_json` に `per_feature` オブジェクト追加は後続 Task |
-| 5 | `user_feature` / `item_feature` への物理 FK | MVP は `LOGICAL` のまま（物理ER §9）。DDL は各派生テーブル定義 Task で確定 | Human | 本 Task §10 には被参照 FK を載せない（Master / Config 系慣例） |
-| 6 | item_feature 再生成判定への Normalization Version 変更影響 | `feature_normalization_version_id` 変更時は §7.1 冪等キーにより別行 INSERT。batch 再生成判定はバッチ設計方針書と整合させる | Human | テーブル一覧 §7 / 物理ER §11 |
-| 7 | `z_score_sigmoid` 拡張時の `parameter_json` キー | Featureルール定義書 §14.7 の μ / σ を JSON に含めるか、統計量テーブルへ分離するか | Human | MVP では `sigmoid` + center / k のみ |
-| 8 | `normalization_method` enum の YAML 正本化 | 後続 enum Task へ引き継ぎ。本 Task は CHECK 候補値のみ | Human | enum 定義書 + packages/code-definitions |
+| 1 | `is_current` の解決単位 | `normalization_method` 単位（部分 unique 採用） | Human | model_version（model_type 単位）/ ranking_config（config_name 単位）パターンの踏襲 |
+| 2 | `generated_at` vs `created_at` | 論理ER §11.1 に従い `generated_at` を採用 | Human | model_version / ranking_config は `created_at` |
+| 3 | Feature 軸別パラメータ要否 | MVP は全 8 軸共通固定パラメータ（§14.3）。将来 z-score 拡張では軸別 μ / σ が必要 | Human | `parameter_json` に `per_feature` オブジェクト追加は後続 Task |
+| 4 | `user_feature` / `item_feature` への物理 FK | MVP は `LOGICAL` のまま（物理ER §9）。DDL は各派生テーブル定義 Task で確定 | Human | 本 Task §10 には被参照 FK を載せない（Master / Config 系慣例） |
+| 5 | item_feature 再生成判定への Normalization Version 変更影響 | `feature_normalization_version_id` 変更時は §7.1 冪等キーにより別行 INSERT。batch 再生成判定はバッチ設計方針書と整合させる | Human | テーブル一覧 §7 / 物理ER §11 |
+| 6 | `z_score_sigmoid` 拡張時の `parameter_json` キー | Featureルール定義書 §14.7 の μ / σ を JSON に含めるか、統計量テーブルへ分離するか | Human | MVP では `sigmoid` + center / k のみ |
+| 7 | `normalization_method` enum の YAML 正本化 | 後続 enum Task へ引き継ぎ。本 Task は CHECK 候補値のみ | Human | enum 定義書 + packages/code-definitions |
 
 ---
 
@@ -301,7 +300,7 @@ Item Feature 再生成の冪等キーは、テーブル一覧 §7 および物�
 | 物理ER | `docs/06_実装設計/database/物理ER.md` | §8 分類・§9 FK・§11 制約・冪等キー |
 | 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §11.1 エンティティ属性・§14 関係 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §9 Master / Config系・§7 item_feature 冪等キー |
-| Featureルール | `docs/04_ドメインモデル設計/Featureルール定義書.md` | §14 sigmoid 正規化・§14.8 / §17.5 normalization_rule |
+| Featureルール | `docs/04_ドメインモデル設計/Featureルール定義書.md` | §14 sigmoid 正規化・§14.8 正規化パラメータ管理 |
 | バッチ設計 | `docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md` | Item Feature 再生成判定・冪等キー |
 | enum定義書 | `docs/06_実装設計/database/enum定義書.md` | normalization_method 正本化（後続 Task） |
 | 参照テーブル定義 | `docs/06_実装設計/database/relationship_master_テーブル定義書.md` | Master / Config 系構成 |
@@ -317,7 +316,7 @@ Item Feature 再生成の冪等キーは、テーブル一覧 §7 および物�
 - `user_feature` / `item_feature` への LOGICAL FK 方針が明記されている（派生テーブル FK DDL は後続 Task）
 - item_feature 冪等キー（§7.1 / テーブル一覧 §7）への `feature_normalization_version_id` 含有が明記されている
 - Featureルール定義書 §14.2 / §14.3 の sigmoid 初期パラメータが `parameter_json` 参照として明記されている
-- `semantic_config_version` / `normalization_rule` との責務分担が §5.1 / §17.1 で明示されている
+- `semantic_config_version` との責務分担が §5.1 で明示されている
 - Public API 非公開（`feature_normalization_version_id`）が明記されている
 - 論理ER §11.1 の Config version パターン（§5.3 比較表）と一貫している
 - relationship_master / model_version と §10 に被参照 FK を載せない Master / Config 系慣例が一貫している

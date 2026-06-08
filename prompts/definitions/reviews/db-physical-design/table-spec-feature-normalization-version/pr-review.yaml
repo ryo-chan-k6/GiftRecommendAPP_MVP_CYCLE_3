@@ -140,14 +140,11 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "semantic_config_version との正規化パラメータ責務分担（Featureルール定義書 §14.8 との整合）"
   - "is_current の解決単位（normalization_method 単位か全体 1 件か）"
   - "generated_at vs created_at の採用"
   - "Feature 軸別パラメータ要否（MVP は全軸共通固定パラメータ）"
 
 risk_points:
-  - "Featureルール定義書 §14.8 と論理ER / 物理ER の正本関係の不整合（docs 横断修正の要否）"
-  - "normalization_rule テーブル（Semantic / Feature定義系）との役割重複"
   - "item_feature 再生成判定への Normalization Version 変更影響（batch 設計との整合）"
 
 notes:
