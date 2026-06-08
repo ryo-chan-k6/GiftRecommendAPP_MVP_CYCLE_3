@@ -86,9 +86,9 @@ input:
     - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
       required: true
       purpose: "LOGICAL 参照・Master 系構成の一貫性確認"
-    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
       required: true
-      purpose: "model_version_id LOGICAL 参照方針の一貫性確認"
+      purpose: "Config 系章構成・版管理の一貫性確認"
     - path: "docs/06_実装設計/database/物理ER.md"
       required: true
       purpose: "テーブル分類・FK・Index 方針との整合"
@@ -122,17 +122,21 @@ review_points:
     - "out_of_scope（他テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
     - "acceptance_criteria を満たしているか"
     - "Task PR target が親 Epic Branch であるか"
+    - "Task Branch が親 Epic Branch の最新状態を取り込んでいるか"
   docs:
     - "table-spec.md テンプレの主要章が充足しているか"
     - "論理ER §11.1 の属性（reason_template_id / template_name / template_type / template_body / is_active / created_at）と矛盾しないか"
-    - "Reason生成定義書 §15.2 の条件列（relationship_code / occasion_code / feature_code / tone / model_version_id）の MVP 採否が明記されているか"
-    - "relationship_master / occasion_master / model_version テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "Reason生成定義書 §15.2 の条件列（relationship_code / occasion_code / feature_code）の MVP 採用が明記されているか"
+    - "tone / model_version_id 不採用が §5.4 / §17.1 で明示されているか"
+    - "template_name + template_version 版管理と方式 B 利用記録が §5.3 / §6.2 で明記されているか"
+    - "テンプレート解決優先順位（§7.1）が具体化されているか"
+    - "relationship_master / occasion_master / ranking_config テーブル定義書と章構成・MVP 方針が一貫しているか"
     - "Public API 非公開（内部 Config）が明記されているか"
   db:
     - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
     - "recommendation_reason.template_id との LOGICAL 参照方針が明記されているか"
-    - "relationship_code / occasion_code / model_version_id の LOGICAL 参照が Human Review #443/#448 方針と一貫しているか"
-    - "Config 系の保持・削除方針（物理 DELETE 禁止・is_active 無効化）が妥当か"
+    - "relationship_code / occasion_code の LOGICAL 参照が Human Review #443/#448 方針と一貫しているか"
+    - "Config 系の保持・削除方針（物理 DELETE 禁止・is_active 無効化・版追加 INSERT）が妥当か"
   security:
     - "secret / .env 実値が含まれていないか"
 
@@ -143,17 +147,16 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "論理ER §11.1 と Reason生成定義書 §15.2 のカラム統合方針"
-  - "template 解決キー（template_name / 条件列の組み合わせ）"
-  - "recommendation_reason.template_id の型（uuid vs template_name）"
-  - "seed 初期範囲"
-  - "YAML seed vs DB 管理の採用方針"
+  - "seed 初期範囲（§17 No.1）"
+  - "YAML seed vs DB 管理の採用方針（§17 No.2）"
+  - "Reason生成定義書 §14.2 との follow-up 方針（§17 No.3）"
 
 risk_points:
-  - "論理ER は template_name / template_body のみだが、Reason生成定義書は条件列・tone・model_version_id を追加する点"
+  - "論理ER §11.1 は template_version / 条件列を未列挙だが、本定義書は MVP 統合案として追加する点"
   - "Reason生成定義書 §15.3 が YAML/JSON テンプレートを高適性とする一方、本 Task は DB 正本を定義する点"
-  - "recommendation_reason テーブル定義 Task への template_id 型・列追加の引き継ぎ"
+  - "recommendation_reason テーブル定義 Task への reason_basis_json 必須項目の引き継ぎ"
 
 notes:
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-reason-template.yaml"
-  - "先行 Task: #440 / PR #441（enum 定義）、#442 / PR #443（relationship_master）、#445 / PR #448（occasion_master）"
+  - "Human Review 確定: tone / model_version_id 不採用、template_version 採用、方式 B 利用記録（§17.1）"
+  - "先行 Task: #440 / PR #441（enum）、#442 / PR #443（relationship_master）、#445 / PR #448（occasion_master）、#449 / PR #465（pair_master）、#451 / PR #454（ranking_config）"

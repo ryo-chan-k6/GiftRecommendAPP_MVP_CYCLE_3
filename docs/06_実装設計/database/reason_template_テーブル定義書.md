@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP                              |
 | MVP対象        | `yes`                                                        |
 | 作成日         | 2026-06-08                                                   |
-| 更新日         | 2026-06-08（Human Review 議論反映: 版管理・`tone` / `model_version_id` 不採用） |
+| 更新日         | 2026-06-08（Human Review 議論反映・AI Review 追随: 版管理・解決優先順位） |
 
 ---
 
@@ -177,7 +177,25 @@ Reason 単位の利用記録（方式 B）。`recommendation_reason.reason_basis
 | UNIQUE | `reason_template_id` | PK と同一 | — |
 | UNIQUE | `template_name`, `template_version` | 版付き業務識別子の一意性 | §5.3 |
 
-> **template 解決キー（MVP）**: reco は Run 時に `template_type` + `relationship_code` + `occasion_code` + `feature_code`（NULL 許容）+ `is_active = true` で候補を絞り込む。同一 `template_name` については現行版 1 件のみ `is_active = true` とする運用（§5.3）。一致件数が複数の場合は具体条件行（非 NULL の `relationship_code` / `occasion_code` / `feature_code` を持つ行）を優先し、さらに複数の場合は優先度ルールで 1 件に決定する。
+> **template 解決キー（MVP）**: reco は Run 時に `template_type` + `relationship_code` + `occasion_code` + `feature_code`（NULL 許容）+ `is_active = true` で候補を絞り込む。同一 `template_name` については現行版 1 件のみ `is_active = true` とする運用（§5.3）。候補が複数残る場合は §7.1 の優先順位で 1 件に決定する。
+
+### 7.1 テンプレート解決優先順位（MVP）
+
+Run 時の条件列は **完全一致または NULL ワイルドカード一致** で候補を抽出する（例: Run の `relationship_code = 'boss'` は、行の `relationship_code` が `'boss'` または `NULL` の行に一致）。
+
+候補が 2 件以上残る場合、reco は以下の順で 1 件に決定する。
+
+| 順位 | ルール | 内容 |
+| --: | ------ | ---- |
+| 1 | 条件具体度 | 非 NULL の条件列数が多い行を優先。`relationship_code` / `occasion_code` / `feature_code` の各非 NULL を 1 点とし、最大 3 点 |
+| 2 | `template_version` | 同一具体度の場合、`template_version` 最大の行を採用（§5.3 の現行版 1 件運用と整合） |
+| 3 | seed 整合検知 | 上記でも複数残る場合は seed 不整合として検知し、汎用フォールバック（`template_type = summary` かつ全条件列 NULL の行）へ退避、または Reason 生成エラーとする |
+
+**seed 運用ルール（推奨）:**
+
+- 同一解決コンテキスト（`template_type` + 具体化した条件列の組み合わせ）に対し、`is_active = true` の行は **1 件のみ** とする
+- 汎用フォールバック行（全条件列 `NULL`）は `template_type` ごとに最大 1 件の `is_active = true` とする
+- 具体条件行と汎用行を併用する場合、§7.1 順位 1 により具体条件行が常に優先される
 
 ---
 
@@ -335,7 +353,8 @@ Human Review で判断する論点。以下は **未確定事項** であり、�
 | Reason生成定義書 | `docs/04_ドメインモデル設計/Reason生成定義書.md` | §14 reason_basis / §15.1〜§15.3 template 論理項目 |
 | 参照テーブル定義 | `docs/06_実装設計/database/relationship_master_テーブル定義書.md` | LOGICAL 参照・Master 系構成踏襲 |
 | 参照テーブル定義 | `docs/06_実装設計/database/occasion_master_テーブル定義書.md` | LOGICAL 参照・Master 系構成踏襲 |
-| 参照テーブル定義 | `docs/06_実装設計/database/ranking_config_テーブル定義書.md` | Config 系章構成参考（未 merge 時は relationship_master 構成を踏襲） |
+| 参照テーブル定義 | `docs/06_実装設計/database/ranking_config_テーブル定義書.md` | Config 系章構成・版管理参考 |
+| 参照テーブル定義 | `docs/06_実装設計/database/pair_master_テーブル定義書.md` | Master 系章構成参考 |
 
 ---
 
@@ -345,6 +364,7 @@ Human Review で判断する論点。以下は **未確定事項** であり、�
 - `reason_template_id` / `template_name` / `template_version` / `template_type` / `template_body` / `is_active` / `created_at` が定義されている
 - Reason生成定義書の条件列（`relationship_code` / `occasion_code` / `feature_code`）の MVP 採用が明記されている
 - 版管理（`template_name` + `template_version`）と利用記録（方式 B）が明記されている
+- テンプレート解決優先順位（§7.1）が具体化されている
 - `recommendation_reason.template_id` の LOGICAL 参照方針が明記されている
 - `relationship_master` / `occasion_master` への LOGICAL 参照が Human Review #443/#448 方針と一貫している
 - Public API 非公開（内部 Config）が明記されている
