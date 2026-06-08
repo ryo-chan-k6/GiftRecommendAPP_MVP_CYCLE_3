@@ -34,4 +34,4 @@
 ./scripts/dev/check-env-names.sh --strict
 ```
 
-詳細な起動手順は Task ④（ローカル開発手順 docs）で正本化予定。
+| [ローカル開発手順書 §6–§10](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | 初回セットアップ・起動・疎通確認 |
