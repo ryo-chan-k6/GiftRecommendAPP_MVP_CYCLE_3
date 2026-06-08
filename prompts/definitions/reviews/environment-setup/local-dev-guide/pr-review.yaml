@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 464
   issue:
     number: 461
   task_definition: "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
@@ -72,7 +72,7 @@ input:
     number: 461
     required: true
   pr:
-    number: null
+    number: 464
     required: true
   diff:
     required: true
