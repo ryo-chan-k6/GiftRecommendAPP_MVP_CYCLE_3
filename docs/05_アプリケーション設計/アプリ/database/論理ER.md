@@ -554,8 +554,10 @@ erDiagram
 | occasion_master               | occasion_code                    | occasion_label, occasion_label_jp, is_active, display_order             | 設定正本 | database / api          |
 | model_version                 | model_version_id                 | provider, model_name, model_type, version_label, is_current, created_at | 設定正本 | database / reco / batch |
 | ranking_config                | ranking_config_id                | config_name, config_version, parameter_json, is_current, created_at     | 設定正本 | database / reco         |
-| reason_template               | reason_template_id               | template_name, template_type, template_body, is_active, created_at      | 設定正本 | database / reco         |
+| reason_template               | reason_template_id               | template_name, template_version, template_type, template_body, relationship_code, occasion_code, feature_code, is_active, created_at | 設定正本 | database / reco         |
 | feature_normalization_version | feature_normalization_version_id | normalization_method, parameter_json, is_current, generated_at          | 設定正本 | database / batch / reco |
+
+> **`reason_template` 補足（MVP）**: `template_version` と条件列（`relationship_code` / `occasion_code` / `feature_code`）を主要属性に含める。`tone` / `model_version_id` は不採用。版管理・利用記録・解決優先順位は `reason_template_テーブル定義書` および Reason生成定義書 §14.2 / §15.2 を正とする。
 
 ---
 
