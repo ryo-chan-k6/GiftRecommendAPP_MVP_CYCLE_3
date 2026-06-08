@@ -1,0 +1,170 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-semantic-config-version-pr"
+  title: "semantic_config_version テーブル定義書 PRレビュー"
+  summary: "semantic_config_version テーブル定義書 Task の PR を AI Review する。物理ER §8・§9・論理ER §11.1・テーブル一覧 §8・API-PUB-007 との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-463-semantic-config-version-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 463
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-semantic-config-version.yaml"
+  source_branch: "docs/task-463-semantic-config-version-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-semantic-config-version.yaml"
+    required: true
+  issue:
+    number: 463
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/semantic_config_テーブル定義書.md"
+      required: true
+      purpose: "親 FK・is_active 解決階層との整合"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "Config 系テーブル定義書との一貫性確認"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: false
+      purpose: "技術 model version との責務分離確認"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "Master / Config 系テーブル定義書との一貫性確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8 Semantic/Feature定義系・§9 FK との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§11.1 エンティティ属性との整合"
+    - path: "docs/04_ドメインモデル設計/ドメインモデル.md"
+      required: true
+      purpose: "CF-01 / CF-02、意味 vs モデル分離"
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "semanticConfigVersionId / versionLabel / configName マッピング整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 Semantic / Feature定義系との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（他テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章（19 章）が充足しているか"
+    - "論理ER §11.1 の属性（semantic_config_version_id / semantic_config_id / version_label / is_current / valid_from / valid_to / created_at）と矛盾しないか"
+    - "ranking_config / model_version / semantic_config テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "API-PUB-007 の semanticConfigVersionId / versionLabel マッピングと内部 uuid 非公開が明記されているか"
+  db:
+    - "PK / Unique / Index / CHECK / partial unique が DDL Task へ展開できる粒度か"
+    - "semantic_config_id への物理 FK（ON DELETE RESTRICT）が明記されているか"
+    - "recommendation_run / evaluation_run への LOGICAL 被参照方針が明記されているか"
+    - "子テーブル（semantic_concept / feature_definition / 各種 Rule）への ON FK 被参照が §8.1 に整理されているか"
+    - "is_active（親）と is_current（本テーブル）の解決階層が §17 に整理されているか"
+    - "model_version との責務分離（CF-01 / CF-02）が明記されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "is_active（親 semantic_config）と is_current（本テーブル）の解決階層"
+  - "API semanticConfigVersionId と version_label の表面 ID 対応（uuid 非公開との両立）"
+  - "is_current の解決単位（semantic_config_id 単位 vs 全体 1 現行）"
+  - "valid_from / valid_to の MVP 運用方針"
+  - "recommendation_run / evaluation_run への物理 FK 採用可否"
+  - "MVP 初期 version_label 値（semantic_config_v001 vs v1.0.0）"
+
+risk_points:
+  - "semantic_config 親テーブル Task (#462) との FK / is_active 解決引き継ぎ"
+  - "子テーブル（semantic_concept 等）定義 Task への ON FK 引き継ぎ"
+  - "API-PUB-007 / API-PUB-008 の semanticConfigVersionId 整合"
+  - "reco Config Resolver が is_active / is_current の両方を解釈する必要"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-semantic-config-version.yaml"
+  - "先行 Task: #440（enum 定義）、#442 / #445（Master 系）、#462（semantic_config 親テーブル）"
+  - "Batch2-2: Semantic / Feature定義系 version 管理テーブル定義 Task"
+  - "参考: ranking_config (#451)、model_version (#450) の Config / version 管理構成"

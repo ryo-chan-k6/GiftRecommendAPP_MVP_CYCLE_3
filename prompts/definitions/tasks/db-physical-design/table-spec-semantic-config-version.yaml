@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-semantic-config-version"
+  title: "semantic_config_version:Semantic Config Versionテーブル定義書作成"
+  summary: "物理ER・論理ER §11.1・テーブル一覧 §8・API-PUB-007 を入力に、semantic_config_version のテーブル定義書を作成する。Phase2 子 Task ③ Batch2-2（Semantic / Feature定義系 version 管理）の Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 442
+      purpose: "先行 Task ③ relationship_master テーブル定義書（merge 済み前提）"
+    - number: 445
+      purpose: "先行 Task ③ occasion_master テーブル定義書（merge 済み前提）"
+    - number: 451
+      purpose: "参考 Task ③ ranking_config テーブル定義書（Config 系構成参考）"
+    - number: 450
+      purpose: "参考 Task ③ model_version テーブル定義書（version 管理・責務分離参考）"
+    - number: 462
+      purpose: "先行 Task ③ semantic_config テーブル定義書（親 FK 前提）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（merge 済み前提）"
+    - number: 443
+      purpose: "Task ③ relationship_master PR（merge 済み前提）"
+    - number: 448
+      purpose: "Task ③ occasion_master PR（merge 済み前提）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch2-2。Semantic / Feature 定義系の version 管理テーブル。
+  物理ER §9 では `semantic_config` への物理 FK（ON）、`recommendation_run` への LOGICAL 被参照を定義。
+  先行 Task ② enum 定義書・Master / Config 系テーブル定義書・semantic_config テーブル定義書を前提とする。
+
+objective: |
+  `semantic_config_version` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の semantic_config_version テーブル定義書作成"
+  - "物理ER・論理ER §11.1・テーブル一覧 §8・API-PUB-007 との突合"
+  - "relationship_master / ranking_config / model_version テーブル定義書の章構成・MVP 方針を踏襲"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "他テーブルのテーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index 方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（本テーブルは state enum なし）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§11.1 エンティティ属性・正本区分"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 Semantic / Feature定義系・用途"
+    - path: "docs/04_ドメインモデル設計/ドメインモデル.md"
+      required: true
+      purpose: "CF-01 / CF-02、semantic_config_version と model_version の分離"
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "semanticConfigVersionId / versionLabel / configName マッピング"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "Master / Config 系テーブル定義書の構成踏襲"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "Config 系 UUID PK・is_current partial unique 構成参考"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: false
+      purpose: "技術 model version との責務分離参考（未 merge 時は worktree 参照可）"
+    - path: "docs/06_実装設計/database/semantic_config_テーブル定義書.md"
+      required: true
+      purpose: "親 FK・is_active 解決階層・configName 参照（Task #462 成果物）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-semantic-config-version.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-semantic-config-version/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "semantic_config_version テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §11.1・テーブル一覧 §8 と矛盾しない"
+  - "semantic_config_id 物理 FK（ON）および recommendation_run / evaluation_run LOGICAL 被参照方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "semantic-config-version-table-spec"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了"
+    - number: 462
+      purpose: "Task ③ semantic_config テーブル定義書 完了（親 FK 前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8・§9・§11 とカラム・制約の整合"
+    - "論理ER §11.1 属性との整合"
+    - "API-PUB-007 の semanticConfigVersionId / versionLabel マッピング"
+    - "semantic_config 親テーブルとの is_active / is_current 解決階層の整合"
+    - "ranking_config / model_version テーブル定義書との章構成一貫性"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "テーブル一覧 §1.1: Task 識別子は物理テーブル名 semantic_config_version を使用"
+  - "論点: semantic_config_version_id(uuid PK), semantic_config_id(FK ON), version_label/is_current/valid_from/valid_to, recommendation_run/evaluation_run LOGICAL 被参照, API-PUB-007 表面 ID マッピング"
+  - "is_active（親 semantic_config）と is_current（本テーブル）の解決階層は Human Review 論点とする"
+  - "model_version との意味 vs 技術 model 分離を §5.1 で明記する"
