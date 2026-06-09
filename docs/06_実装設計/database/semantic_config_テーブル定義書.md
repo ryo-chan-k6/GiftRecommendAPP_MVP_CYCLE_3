@@ -115,7 +115,7 @@
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `semantic_config_version` | `semantic_config_id` | has | `ON` | 物理ER §9。1:N。DELETE RESTRICT 想定（§17 No.4） |
+| `semantic_config_version` | `semantic_config_id` | has | `ON` | 物理ER §9。1:N。DELETE RESTRICT（§17.1 No.4） |
 
 > **子テーブル側 DDL 方針（引き継ぎ）**: `semantic_config_version.semantic_config_id` → `semantic_config.semantic_config_id` に `REFERENCES ... ON DELETE RESTRICT` を付与する。親系列削除前に version 行の整理が必要。
 
