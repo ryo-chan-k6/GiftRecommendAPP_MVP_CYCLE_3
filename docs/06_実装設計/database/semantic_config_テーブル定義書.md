@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-08                         |
-| 更新日         | 2026-06-08                         |
+| 更新日         | 2026-06-09                         |
 
 ---
 
@@ -67,7 +67,9 @@
 | ---- | ---- |
 | `semantic_config_id` | Public API 非公開（内部 DB キー） |
 | `config_name` | API-PUB-007 の `configName`（任意）として **表面公開候補**。version 詳細・Rule パラメータは非公開 |
+| `semantic_config_version_id` / Rule 詳細 | Public API 非公開（§17.1 No.5） |
 | Semantic Concept / Feature Definition | `semantic_config_version` 配下。API-PUB-007 が返却 |
+| API-PUB-007 MVP 前提 | default 系列（`config_name = 'mvp_semantic_config'`）のスナップショット返却を前提とする（§17.1 No.5） |
 
 ### 5.3 対象外
 
@@ -86,7 +88,7 @@
 | 1 | `semantic_config_id` | Semantic Config ID | `uuid` | `yes` | `yes` | — | `yes` | `gen_random_uuid()` | サロゲート PK。`semantic_config_version.semantic_config_id` の参照先 |
 | 2 | `config_name` | Config Name | `text` | `yes` | — | — | `yes` | — | 設定系列名。MVP 初期値 `mvp_semantic_config`。snake_case 英小文字・数字・アンダースコア |
 | 3 | `config_description` | Config Description | `text` | `no` | — | — | — | `NULL` | 系列の説明。運用・監査用。Public API 非公開 |
-| 4 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 系列有効フラグ。`false` の系列は version 解決対象外（§17 No.1） |
+| 4 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 系列有効フラグ。`false` の系列は version 解決対象外（§17.1 No.1） |
 | 5 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | レコード作成日時（UTC） |
 
 > **論理ER §11.1 との関係**: 論理ER §10.2 は `config_description` を主要属性に列挙するが NULL 許容とする。MVP 物理 DDL でも NULL 許容とし、seed では説明文を付与する。
@@ -146,7 +148,7 @@
 | `chk_config_name_format` | CHECK | `config_name` | `config_name ~ '^[a-z][a-z0-9_]*$'` | snake_case。先頭英字 |
 | `chk_config_description_length` | CHECK | `config_description` | `config_description IS NULL OR char_length(config_description) <= 500` | 運用説明の上限（§17 No.3） |
 
-> **`is_active` の partial unique**: MVP では **付与しない**（複数系列共存を許容する前提。§17 No.2）。単一系列のみとする場合は seed Task 前に partial unique を追加する Human 判断とする。
+> **`is_active` の partial unique**: MVP では **付与しない**（Human Review #467 決定。A/B 用に複数系列を同時 `is_active=true` とする想定。§17.1 No.2）。
 
 ---
 
@@ -164,11 +166,23 @@ Feature 8 軸（`formality` 等）は本テーブルには保持せず、`featur
 
 | 操作 | 実行主体 | 条件 | 更新項目 | 冪等性 | 備考 |
 | ---- | -------- | ---- | -------- | ------ | ---- |
-| SELECT | reco | Config 系列解決時 | — | — | `is_active = true` の系列を対象（§17 No.1） |
-| SELECT | api | API-PUB-007 応答組立 | — | — | 現行 version 解決後、`config_name` を `configName` にマッピング |
-| INSERT | database（seed / 運用） | 新系列追加 | 全列 | seed は Upsert 想定 | MVP 初期は 1 系列 seed を想定 |
+| SELECT | reco | Config 系列解決時 | — | — | §12.1 の解決順序に従う |
+| SELECT | api | API-PUB-007 応答組立 | — | — | MVP では default 系列（`mvp_semantic_config`）の現行 version 解決後、`config_name` を `configName` にマッピング |
+| INSERT | database（seed / 運用） | 新系列追加 | 全列 | seed は Upsert 想定 | MVP 初期は default 系列 seed 必須。Treatment 系列は追加 seed 可（§17.1 No.2） |
 | UPDATE | database（運用） | 説明変更・系列無効化 | `config_description`, `is_active` | — | `config_name` / PK の変更は原則禁止 |
-| DELETE | — | MVP では原則禁止 | — | — | 子 version 存在時は FK RESTRICT。`is_active = false` で無効化 |
+| DELETE | — | MVP では原則禁止 | — | — | 子 version 存在時は FK RESTRICT（§17.1 No.4）。`is_active = false` で無効化 |
+
+### 12.1 Config 系列・version 解決順序（Human Review 決定）
+
+reco / api が Semantic Config を解決する際の順序は以下とする（§17.1 No.1）。
+
+1. **親系列フィルタ**: `semantic_config.is_active = true` の系列のみ対象。`is_active = false` の系列は **解決対象外**（スキップ。エラーにしない）
+2. **系列選択**:
+   - Run 実行時に Treatment 系列が **明示割当** されている場合はその系列を使用（割当ロジックは MOD-RECO-003 Task で具体化。本 Task では決定しない）
+   - 割当なし、または複数 `is_active = true` が存在する fallback 時は **`config_name = 'mvp_semantic_config'` 固定**
+3. **子 version 解決**: 選択系列配下で `semantic_config_version.is_current = true` の version を解決
+
+> **A/B 前提**: 複数系列を同時 `is_active = true` にする想定。Default = `mvp_semantic_config`、Treatment = 非 default 系列の明示割当は後続 Resolver Task（MOD-RECO-003）で設計する。
 
 ---
 
@@ -227,11 +241,17 @@ Feature 8 軸（`formality` 等）は本テーブルには保持せず、`featur
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `is_active` と `semantic_config_version.is_current` の解決階層 | 系列無効時に子 version をどう扱うか（解決スキップ / エラー）が reco Resolver に影響 | Human | DDL Task 前 | 本定義書 §12 は `is_active=false` を解決対象外とする |
-| 2 | MVP の `config_name` 系列数 | 単一系列のみ seed するか、複数系列を許容するかが partial unique・seed に影響 | Human | seed Task 前 | 本定義書 §10 は partial unique なし（複数系列許容） |
+| — | — | — | — | — | Human Review (#467) にて No.1 / No.2 / No.4 / No.5 を決定済み（§17.1 参照） |
 | 3 | `config_description` の MVP 必須性と上限 | 論理ER は属性列挙だが NULL 許容。CHECK 500 文字は暫定 | Human | seed Task 前 | §6・§10 の CHECK を seed 正本と突合 |
-| 4 | 親 DELETE と FK RESTRICT | version 履歴保持方針と整合。物理 DELETE 禁止運用との両立 | Human | DDL Task 前 | §8.1 DELETE RESTRICT 想定 |
-| 5 | API-PUB-007 `configName` 公開範囲 | 内部 Config 非公開方針と `config_name` 表面公開の境界 | Human | API 実装前 | §5.2 参照。version ID / Rule 詳細は非公開 |
+
+### 17.1 Human Review 決定事項（PR #467）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `is_active` と `semantic_config_version.is_current` の解決階層 | 解決順序は **親系列 → 子 version**（§12.1）。`is_active = false` の系列は解決対象外（スキップ）。複数 `is_active = true` 時の fallback は **`config_name = 'mvp_semantic_config'` 固定**。Treatment 系列の Run 明示割当は MOD-RECO-003 Task で具体化する | Human | 段階A（本 PR）で決定。段階Bは Resolver Task |
+| 2 | MVP の `config_name` 系列数 | **複数系列を許容**（A/B 用に複数系列を同時 `is_active = true` とする想定）。`is_active` partial unique は **付与しない**。MVP seed は default 系列（`mvp_semantic_config`）必須 | Human | §10・§12 と整合 |
+| 4 | 親 DELETE と FK RESTRICT | `semantic_config_version.semantic_config_id` への **DELETE RESTRICT** を採用。子 version 存在時は親物理 DELETE 不可 | Human | §8.1・§13 と整合 |
+| 5 | API-PUB-007 `configName` 公開範囲 | `semantic_config_id` / `semantic_config_version_id` / Rule 詳細は **非公開**。`config_name` は `configName` 表面公開候補。API-PUB-007 MVP は **default 系列（`mvp_semantic_config`）のスナップショット返却** を前提とする | Human | api 層マッピング（DB snake_case → API 表面表記）は API 実装 Task で確定 |
 
 ---
 
@@ -255,7 +275,8 @@ Feature 8 軸（`formality` 等）は本テーブルには保持せず、`featur
 - 論理ER §10.2 / §11.1・物理ER §8・§9・テーブル一覧 §8 と矛盾していない
 - `semantic_config_id` / `config_name` / `config_description` / `is_active` / `created_at` がすべて定義されている
 - `semantic_config_version.semantic_config_id` への物理 FK（ON）被参照方針が明記されている
-- Public API 非公開（内部 Config）と API-PUB-007 `configName` 表面公開の境界が明記されている
+- Public API 非公開（内部 Config）と API-PUB-007 `configName` 表面公開の境界が明記されている（§17.1 No.5）
+- Config 系列・version 解決順序（§12.1）が Human Review 決定事項と整合している
 - `relationship_master` / `ranking_config` テーブル定義書と章構成・MVP 方針が一貫している
 - DDL Task が CREATE TABLE を起こせる粒度である
 - secret や `.env` 実値が含まれていない
