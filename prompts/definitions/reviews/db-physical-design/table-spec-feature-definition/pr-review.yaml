@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 479
   issue: 470
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-feature-definition.yaml"
   source_branch: "docs/task-470-feature-definition-table-spec"
