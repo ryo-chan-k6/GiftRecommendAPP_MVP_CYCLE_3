@@ -177,7 +177,7 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 | `social` | `formality`, `safety`, `brand_appropriateness` |
 | `symbolic` | `emotion`, `novelty`, `intimacy`, `symbolic_identity`, `story_richness` |
 
-**返却しない項目（契約上明示）:** `semantic_rule` の `source_text_pattern` / `weight`、`pair_rule`、`normalization_rule` のパラメータ、`model_version_id`、内部 DB 主キー（`semantic_concept_id` 等）。Public 表面はコード体系（`conceptCode` / `featureCode` 等）のみとする（§14 決定事項 No.2）。
+**返却しない項目（契約上明示）:** `semantic_rule` の `source_text_pattern` / `weight`、`pair_rule`、`feature_normalization_version` のパラメータ、`model_version_id`、内部 DB 主キー（`semantic_concept_id` 等）。Public 表面はコード体系（`conceptCode` / `featureCode` 等）のみとする（§14 決定事項 No.2）。
 
 #### 7.3.2 `meta`
 
