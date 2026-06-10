@@ -120,6 +120,9 @@
 | API-PUB-002 / API設計方針書 §18.4 | レコメンド結果に version 参照を含めない方針を維持し、記述を composite に整合 |
 | `public-api.yaml` | `SemanticConfigMastersData` / `FeatureRuleMastersData` schema・examples を更新 |
 | `internal-reco-api.yaml` | `ExecutionInput` から `semanticConfigVersionId` を削除し composite フィールドを追加 |
+| RecommendationRequest / RecommendationResult 定義書 | JSON 例の `semantic_config_version_id` を内部 UUID 形式へ更新 |
+| `2026-06-05-api-int-002-score-breakdown-debug-return-policy.md` | `debugPayload` 推奨キーを `configName` + `versionLabel` に改定 |
+| Task Definition / pr-review yaml | composite 参照文言へ追随 |
 
 ---
 

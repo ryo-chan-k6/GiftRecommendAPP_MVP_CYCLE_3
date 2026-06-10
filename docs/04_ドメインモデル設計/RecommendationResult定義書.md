@@ -224,7 +224,7 @@ MVPでは、1回のRequestに対して1回のRun、1つのResultを生成する�
 
 | 項目                         | 型     | 必須 | 内容                            |
 | ---------------------------- | ------ | ---: | ------------------------------- |
-| `semantic_config_version_id` | string | 推奨 | 使用したSemantic Config Version |
+| `semantic_config_version_id` | string | 推奨 | 使用した Semantic Config Version（**内部 UUID**） |
 | `model_version_id`           | string | 推奨 | 使用したModel Version           |
 | `ranking_config_version_id`  | string | 任意 | 使用したRanking Config Version  |
 | `reason_template_version_id` | string | 任意 | 使用したReason Template Version |
@@ -448,7 +448,7 @@ flowchart TD
   ],
   "metadata": {
     "mode": "ui",
-    "semantic_config_version_id": "semantic_config_v001",
+    "semantic_config_version_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
     "model_version_id": "model_v001"
   }
 }
@@ -470,7 +470,7 @@ flowchart TD
 | `debug_payload`             | evaluation / debug modeのみ返却     |
 | `version情報`               | evaluation / debug modeでは返却推奨 |
 
-> **debug mode / debug返却条件（API-INT-002）:** 本表の「debug時」「evaluation / debug mode」は、API-INT-002 契約仕様書 §7.3.8 の **debug返却条件**（`execution.mode = evaluation` OR `execution.includeDebugInfo = true`）に対応する。`score_breakdown` は `data.resultItems[].scoreBreakdown`、`debug_payload` は `data.metadata.debugPayload` にマッピングする（Issue #375）。
+> **debug mode / debug返却条件（API-INT-002）:** 本表の「debug時」「evaluation / debug mode」は、API-INT-002 契約仕様書 §7.3.8 の **debug返却条件**（`execution.mode = evaluation` OR `execution.includeDebugInfo = true`）に対応する。`score_breakdown` は `data.resultItems[].scoreBreakdown`、`debug_payload` は `data.metadata.debugPayload` にマッピングする（Issue #375）。`debugPayload` 推奨キーの Semantic Config 参照は `configName` + `versionLabel` composite（Task #463）。
 
 ---
 
