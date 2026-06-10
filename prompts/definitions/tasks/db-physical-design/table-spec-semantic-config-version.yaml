@@ -97,7 +97,7 @@ input:
       purpose: "CF-01 / CF-02、semantic_config_version と model_version の分離"
     - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
       required: true
-      purpose: "semanticConfigVersionId / versionLabel / configName マッピング"
+      purpose: "configName + versionLabel composite 参照（契約追随は Contract Task）"
     - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
       required: true
       purpose: "Master / Config 系テーブル定義書の構成踏襲"
@@ -172,7 +172,7 @@ test_policy:
   manual_checks:
     - "物理ER §8・§9・§11 とカラム・制約の整合"
     - "論理ER §11.1 属性との整合"
-    - "API-PUB-007 の semanticConfigVersionId / versionLabel マッピング"
+    - "configName + versionLabel composite 参照とアプリ層 JOIN 方針（§17.1）"
     - "semantic_config 親テーブルとの is_active / is_current 解決階層の整合"
     - "ranking_config / model_version テーブル定義書との章構成一貫性"
     - "apps 実装層への変更がないこと"
@@ -189,6 +189,11 @@ review:
 
 notes:
   - "テーブル一覧 §1.1: Task 識別子は物理テーブル名 semantic_config_version を使用"
-  - "論点: semantic_config_version_id(uuid PK), semantic_config_id(FK ON), version_label/is_current/valid_from/valid_to, recommendation_run/evaluation_run LOGICAL 被参照, API-PUB-007 表面 ID マッピング"
-  - "is_active（親 semantic_config）と is_current（本テーブル）の解決階層は Human Review 論点とする"
+  - "論点: semantic_config_version_id(uuid PK), semantic_config_id(FK ON), version_label(is_current/valid_from/valid_to, semver v1.0.0), recommendation_run/evaluation_run LOGICAL 被参照"
+  - "Public 参照: configName + versionLabel composite。config_name は親正本・api アプリ層 JOIN（denormalize/DB ビューなし）— §17.1 決定済み"
+  - "is_active（親）→ is_current（子）の 2 段階解決は §17.1 No.5 で決定済み"
+  - "is_current 解決単位は semantic_config_id 単位 — §17.1 No.6 で決定済み"
+  - "valid_from/valid_to は seed 明示設定（valid_to=9999-12-31 23:59:59+00）— §17.1 No.7"
+  - "recommendation_run/evaluation_run への参照は MVP LOGICAL 維持 — §17.1 No.8"
+  - "API 契約・OpenAPI 追随は Contract Task（本 Task out_of_scope）"
   - "model_version との意味 vs 技術 model 分離を §5.1 で明記する"

@@ -103,7 +103,7 @@ input:
       purpose: "CF-01 / CF-02、意味 vs モデル分離"
     - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
       required: true
-      purpose: "semanticConfigVersionId / versionLabel / configName マッピング整合"
+      purpose: "configName + versionLabel composite 参照・アプリ層 JOIN 整合"
     - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
       required: true
       purpose: "§8 Semantic / Feature定義系との整合"
@@ -132,7 +132,7 @@ review_points:
     - "table-spec.md テンプレの主要章（19 章）が充足しているか"
     - "論理ER §11.1 の属性（semantic_config_version_id / semantic_config_id / version_label / is_current / valid_from / valid_to / created_at）と矛盾しないか"
     - "ranking_config / model_version / semantic_config テーブル定義書と章構成・MVP 方針が一貫しているか"
-    - "API-PUB-007 の semanticConfigVersionId / versionLabel マッピングと内部 uuid 非公開が明記されているか"
+    - "configName + versionLabel composite 参照・アプリ層 JOIN・内部 uuid 非公開が §5.3 / §17.1 に明記されているか"
   db:
     - "PK / Unique / Index / CHECK / partial unique が DDL Task へ展開できる粒度か"
     - "semantic_config_id への物理 FK（ON DELETE RESTRICT）が明記されているか"
@@ -149,18 +149,21 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "is_active（親 semantic_config）と is_current（本テーブル）の解決階層"
-  - "API semanticConfigVersionId と version_label の表面 ID 対応（uuid 非公開との両立）"
-  - "is_current の解決単位（semantic_config_id 単位 vs 全体 1 現行）"
-  - "valid_from / valid_to の MVP 運用方針"
-  - "recommendation_run / evaluation_run への物理 FK 採用可否"
-  - "MVP 初期 version_label 値（semantic_config_v001 vs v1.0.0）"
+human_decision_points: []
+resolved_human_decisions:
+  - "Public 参照キー: configName + versionLabel composite（semanticConfigVersionId 表面 ID 不採用）— §17.1 No.1"
+  - "config_name は親正本・api アプリ層 JOIN（denormalize / DB ビューなし）— §17.1 No.2"
+  - "MVP 初期 version_label: semver v1.0.0 — §17.1 No.3"
+  - "内部参照は semantic_config_version_id（UUID）維持 — §17.1 No.4"
+  - "解決階層: 親 is_active → 子 is_current の 2 段階解決 — §17.1 No.5"
+  - "is_current 解決単位: semantic_config_id 単位（全体1現行は不採用）— §17.1 No.6"
+  - "valid_from/valid_to: seed 明示設定、valid_to=9999-12-31 23:59:59+00 — §17.1 No.7"
+  - "recommendation_run/evaluation_run: MVP は LOGICAL 維持 — §17.1 No.8"
 
 risk_points:
   - "semantic_config 親テーブル Task (#462) との FK / is_active 解決引き継ぎ"
   - "子テーブル（semantic_concept 等）定義 Task への ON FK 引き継ぎ"
-  - "API-PUB-007 / API-PUB-008 の semanticConfigVersionId 整合"
+  - "API-PUB-007 / API-PUB-008 / API-INT-002 の契約追随（Contract Task。composite 参照への更新）"
   - "reco Config Resolver が is_active / is_current の両方を解釈する必要"
 
 notes:
