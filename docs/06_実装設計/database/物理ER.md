@@ -17,7 +17,7 @@
 
 本ドキュメントは、Gift Recommendation Service MVP における PostgreSQL（Supabase）上の物理ER仕様書である。
 
-論理ER・テーブル一覧・正本定義表を入力とし、MVPで永続化する **60 物理テーブル**（テーブル一覧 62 のうち `external_attribute` / `staging_attribute` を除く）の関係、物理設計方針、制約・Index方針、後続テーブル定義書・DDLへの引き継ぎ事項を定義する。
+論理ER・テーブル一覧・正本定義表を入力とし、MVPで永続化する **59 物理テーブル**（テーブル一覧 61 のうち `external_attribute` / `staging_attribute` を除く）の関係、物理設計方針、制約・Index方針、後続テーブル定義書・DDLへの引き継ぎ事項を定義する。
 
 本ドキュメントではカラム型・NULL可否・具体DDLは確定しない。それらは後続 Task（テーブル定義書 / DDL）で定義する。
 
@@ -26,7 +26,7 @@
 ## 3. 目的
 
 - 論理ER上のエンティティを物理テーブルへ落とし込む
-- テーブル一覧で定義した 62 テーブルのうち MVP 作成対象 60 テーブルの PK / FK / 多重度 / 正本区分を物理設計レベルで整理する
+- テーブル一覧で定義した 61 テーブルのうち MVP 作成対象 59 テーブルの PK / FK / 多重度 / 正本区分を物理設計レベルで整理する
 - Online推薦 / Batch商品連携 / Semantic・Feature / Evaluation / Log・Metric の責務境界をDB設計に反映する
 - enum・テーブル定義書・DDL・migration Task の共通前提を提供する
 
@@ -38,7 +38,7 @@
 | ---------------- | -------------------------------------------------------------------- |
 | 対象DB           | PostgreSQL（Supabase）                                               |
 | 対象スキーマ     | MVPでは `public` 単一 schema。`app` / `log` / `metric` は論理分類（§5.1） |
-| 対象テーブル群   | テーブル一覧 §13 合計 62 テーブル（MVP 作成対象 60）                 |
+| 対象テーブル群   | テーブル一覧 §13 合計 61 テーブル（MVP 作成対象 59）                 |
 | 前提論理ER       | `docs/05_アプリケーション設計/アプリ/database/論理ER.md`             |
 | 前提テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md`       |
 | DB方針           | 正本・派生・Snapshot・Log・Metric を用途ごとに分離し、Object Storage上の Raw JSON 本体はDB化しない |
@@ -51,9 +51,9 @@
 | 2 | `ranking_snapshot` | **追加**する。ランキング取得単位のヘッダテーブル | テーブル一覧 §14 No.1 |
 | 3 | `pair_master` | **追加**する。Relationship × Occasion の有効組み合わせマスタ | テーブル一覧 §14 No.13 |
 | 4 | `item_meaning` | 物理テーブルとして **作成**する | テーブル一覧 §7 |
-| 5 | `feature_rule`（論理ER上の抽象名） | `relationship_rule` / `occasion_rule` / `pair_rule` / `concept_feature_rule` / `input_type_rule` / `feature_integration_rule` / `normalization_rule` へ **分解** | テーブル一覧 §8 |
+| 5 | `feature_rule`（論理ER上の抽象名） | `relationship_rule` / `occasion_rule` / `pair_rule` / `concept_feature_rule` / `input_type_rule` / `feature_integration_rule` へ **分解** | テーブル一覧 §8 |
 | 6 | `raw_product_object` | DBテーブル化 **しない**（Object Storage 管理） | テーブル一覧 §12 |
-| 7 | `feedback_analysis_result` | MVP 62 テーブル対象 **外**（Evaluation 低優先度。必要時は後続 Task 化） | 論理ER §18.2 |
+| 7 | `feedback_analysis_result` | MVP 61 テーブル対象 **外**（Evaluation 低優先度。必要時は後続 Task 化） | 論理ER §18.2 |
 | 8 | `external_attribute` / `staging_attribute` | MVP では物理テーブル **作成しない**（後続 Task 化） | §17 No.7 |
 
 ---
@@ -89,7 +89,7 @@ MVP では物理 schema は **`public` 単一** とする。以下は **論理�
 
 ## 6. 全体物理ER図
 
-以下は主要テーブル群と関係の概観である。MVP 作成対象 60 テーブルの詳細は §8・§9 を正とする。
+以下は主要テーブル群と関係の概観である。MVP 作成対象 59 テーブルの詳細は §8・§9 を正とする。
 
 ```mermaid
 erDiagram
@@ -130,7 +130,6 @@ erDiagram
     semantic_config_version ||--o{ occasion_rule : "contains"
     semantic_config_version ||--o{ pair_rule : "contains"
     semantic_config_version ||--o{ concept_feature_rule : "contains"
-    semantic_config_version ||--o{ normalization_rule : "contains"
 
     semantic_config_version ||--o{ recommendation_run : "used_by"
     model_version ||--o{ recommendation_run : "used_by"
@@ -185,7 +184,7 @@ erDiagram
 
 ## 8. テーブル一覧
 
-テーブル名の正本は `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` とする。MVP では `external_attribute` / `staging_attribute` を除く **60 テーブル** を作成する。
+テーブル名の正本は `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` とする。MVP では `external_attribute` / `staging_attribute` を除く **59 テーブル** を作成する。
 
 | テーブル名 | 論理名 | 分類 | 正本区分 | 主な更新主体 | MVP対象 |
 | ---------- | ------ | ---- | -------- | ------------ | ------- |
@@ -231,7 +230,6 @@ erDiagram
 | `concept_feature_rule` | Concept Feature Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `yes` |
 | `input_type_rule` | Input Type Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `partial` |
 | `feature_integration_rule` | Feature Integration Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `partial` |
-| `normalization_rule` | Normalization Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `yes` |
 | `relationship_master` | Relationship Master | Master / Config系 | 設定正本 | database / api | `yes` |
 | `occasion_master` | Occasion Master | Master / Config系 | 設定正本 | database / api | `yes` |
 | `pair_master` | Pair Master | Master / Config系 | 設定正本 | database / api / reco | `yes` |
@@ -413,7 +411,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 
 ## 16. 後続テーブル定義書への引き継ぎ
 
-- MVP 作成対象 **60 テーブル**について `{物理テーブル名}_テーブル定義書.md` を 1 テーブル 1 Task で作成する（テーブル一覧 §1.1）
+- MVP 作成対象 **59 テーブル**について `{物理テーブル名}_テーブル定義書.md` を 1 テーブル 1 Task で作成する（テーブル一覧 §1.1）
 - `external_attribute` / `staging_attribute` のテーブル定義書・DDL は **MVP では作成しない**
 - `recommendation_request` は `relationship_code` / `occasion_code` / `budget_min` / `budget_max` / `preferred_text` 等の **個別カラム** と `request_payload` / `validated_payload`（JSONB）を **併用**する（RecommendationRequest定義書 §11.2）
 - `recommendation_run` に `pair_id` を保持し、実行時に解決した Pair を再現性確保のため固定する
@@ -472,6 +470,6 @@ Human Review にて以下を確定した（2026-06-07）。
 - Snapshot（`recommendation_result_item`）の上書き禁止方針が明示されているか
 - Online 推薦中に Item 系を更新しない前提が維持されているか
 - migration や破壊的 DB 変更が Human Review 事項として明示されているか
-- MVP 作成対象 60 テーブルが明示され、`external_attribute` / `staging_attribute` が MVP 対象外であること
+- MVP 作成対象 59 テーブルが明示され、`external_attribute` / `staging_attribute` が MVP 対象外であること
 - secret や `.env` 実値が含まれていないか
 - §17 決定事項が後続テーブル定義・DDL Task へ引き継がれているか

@@ -21,7 +21,7 @@
 
 web（`apps/web`）から api（`apps/api`）へ、レコメンド条件入力画面（SCR-002）初期表示時に利用する **Feature Rule 一覧** を取得する Public API である。現行 Semantic Config Version に紐づく Relationship Rule / Occasion Rule / Concept Feature Rule を返す（[API一覧](../../05_アプリケーション設計/アプリ/api/API一覧.md) §API-PUB-008、[Featureルール定義書](../../04_ドメインモデル設計/Featureルール定義書.md) §17）。
 
-**Pair Rule**（Relationship × Occasion 組み合わせ補正）は Public API 応答に含めない（API一覧 §API-PUB-005 備考「Pair情報はPublic API応答に含めず」と同方針）。Normalization Rule の内部パラメータも含めない。
+**Pair Rule**（Relationship × Occasion 組み合わせ補正）は Public API 応答に含めない（API一覧 §API-PUB-005 備考「Pair情報はPublic API応答に含めず」と同方針）。正規化パラメータ（`feature_normalization_version`）も含めない。
 
 **Response 構成（MVP 確定）:** `baseValueRules[]`（Relationship / Occasion 等の基準値 Rule）と `conceptFeatureRules[]`（Concept 補正 Rule）の **2 グループ構成** とする（Human Review #408 確定）。
 
@@ -165,7 +165,7 @@ Accept: application/json
 | `relationship` | `relationshipCode` | API-PUB-005 |
 | `occasion` | `occasionCode` | API-PUB-006 |
 
-**返却しない Rule 種別:** `pair_rule`、`normalization_rule`、`input_type_rule`、`feature_integration_rule`（内部処理用）。
+**返却しない Rule 種別:** `pair_rule`、`input_type_rule`、`feature_integration_rule`（内部処理用）。
 
 #### 7.3.2 `meta`
 

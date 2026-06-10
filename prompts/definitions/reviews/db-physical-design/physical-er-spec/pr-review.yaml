@@ -117,7 +117,7 @@ review_points:
   docs:
     - "物理ER仕様書が docs/06_実装設計/database/物理ER.md に存在するか"
     - "physical-er-spec.md テンプレの主要章（設計方針・ER図・テーブル一覧・関係・Index・制約・enum連携・保持・Migration接続・未決事項）が充足しているか"
-    - "テーブル一覧.md の 62 テーブルと網羅・分類が一致しているか"
+    - "テーブル一覧.md の 61 テーブルと網羅・分類が一致しているか"
     - "テーブル一覧 §14 引き継ぎ事項（ranking_snapshot / phase_log 統合 / pair_master / 入力hash 等）が反映されているか"
     - "論理ERの recommendation_run_phase_log が物理テーブル化されていないか"
     - "正本定義表の正本区分（内部正本 / 派生 / Snapshot / Log / 設定正本）と矛盾していないか"
@@ -267,7 +267,7 @@ risk_points:
 
 human_decision_points:
   - "§17 決定事項（pair_id / Request 保持方式 / FK 範囲 / Staging 保持 / schema / pgvector / attribute 対象外）の妥当性"
-  - "MVP 60 テーブル構成とテーブル一覧 62 との差分説明の明確さ"
+  - "MVP 59 テーブル構成とテーブル一覧 61 との差分説明の明確さ"
 
 stop_conditions:
   - "PR が存在しない場合"

@@ -67,7 +67,7 @@ out_of_scope:
   - "Orval設定・generated の再生成"
   - "apps/api / apps/web / apps/reco の実装"
   - "API-PUB-008 の仕様書作成（別 Task #404）"
-  - "pair_rule / semantic_rule / normalization_rule の Public 返却"
+  - "pair_rule / semantic_rule / feature_normalization_version の Public 返却"
   - "DB schema 変更"
 
 input:

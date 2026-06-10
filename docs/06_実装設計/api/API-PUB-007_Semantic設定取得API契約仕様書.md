@@ -178,7 +178,7 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 
 **Public Version 参照:** `configName` + `versionLabel` の **composite** で現行 version を識別する。単一 `semanticConfigVersionId` 表面 ID は **返却しない**。内部 DB 主キー（`semantic_config_version_id` 等）も非公開。
 
-**返却しない項目（契約上明示）:** `semanticConfigVersionId`、`semantic_rule` の `source_text_pattern` / `weight`、`pair_rule`、`normalization_rule` のパラメータ、`model_version_id`、内部 DB 主キー（`semantic_concept_id` 等）。Public 表面はコード体系（`conceptCode` / `featureCode` 等）のみとする（§14 決定事項 No.2）。
+**返却しない項目（契約上明示）:** `semanticConfigVersionId`、`semantic_rule` の `source_text_pattern` / `weight`、`pair_rule`、`feature_normalization_version` のパラメータ、`model_version_id`、内部 DB 主キー（`semantic_concept_id` 等）。Public 表面はコード体系（`conceptCode` / `featureCode` 等）のみとする（§14 決定事項 No.2）。
 
 #### 7.3.2 `meta`
 
