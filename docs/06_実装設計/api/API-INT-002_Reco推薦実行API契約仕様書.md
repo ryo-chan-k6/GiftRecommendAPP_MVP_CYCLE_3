@@ -161,7 +161,8 @@ Recommendation Request 定義書 **§6**（データ項目定義）および **�
 | `execution.includeReason` | `boolean` | `false` | 推薦理由を含めるか | ui ではデフォルト **true** | `true` |
 | `execution.includeDebugInfo` | `boolean` | `false` | デバッグ情報 | `evaluation` 等で **true** 可。ui では **false** 想定 | `false` |
 | `execution.evalCaseId` | `string` | `false` | 評価ケース ID | `mode=evaluation` 時に使用 | - |
-| `execution.semanticConfigVersionId` | `string` | `false` | Semantic Config Version | 評価・再現用 | - |
+| `execution.configName` | `string` | `false` | Semantic Config 系列名 | evaluation / batch の version 再現用。`versionLabel` とセット指定 | `mvp-semantic-config` |
+| `execution.versionLabel` | `string` | `false` | Version ラベル（semver） | evaluation / batch の version 再現用。`configName` とセット指定 | `v1.0.0` |
 | `execution.modelVersionId` | `string` | `false` | Model Version | 評価・再現用 | - |
 
 `recommendationRequestId` と `recommendationRequest` の内容が矛盾しないこと（同一 Request の確定ペイロードであること）を api 側で保証する。reco 側の再 Validation は契約上、必須項目・値域・矛盾の **受け入れ確認** に限定する（詳細ルールは §9）。
@@ -281,7 +282,7 @@ Recommendation Request 定義書 **§6**（データ項目定義）および **�
 | `mode` | `string` | `false` | Request の `execution.mode` | `ui` / `evaluation` / `batch` |
 | `debugPayload` | `object` | `false` | 評価・デバッグ用 Run 単位情報 | Recommendation Result 定義書 `debug_payload` の API マッピング。§7.3.8 |
 
-`debugPayload` は **open object**（追加キー許容）。MVP 推奨キー: `evalCaseId`, `semanticConfigVersionId`, `modelVersionId`, `rankingConfigVersionId`, `phaseSummary`。詳細スキーマ固定は OpenAPI / 実装 Task とする。
+`debugPayload` は **open object**（追加キー許容）。MVP 推奨キー: `evalCaseId`, `configName`, `versionLabel`, `modelVersionId`, `rankingConfigVersionId`, `phaseSummary`。詳細スキーマ固定は OpenAPI / 実装 Task とする。
 
 #### 7.3.2 `data.resultItems[]`（1 件あたり）
 
@@ -382,7 +383,7 @@ Retrieval 等の**モジュール内部** `error_code` と、本 API の `warnin
 
 #### 7.3.8 `scoreBreakdown` / `debugPayload` 返却条件（#375 確定）
 
-Recommendation Result 定義書 §9.2・§13.1 および Human 判断記録（`ai-logs/human-decisions/2026-06-05-api-int-002-score-breakdown-debug-return-policy.md`）に整合する。
+Recommendation Result 定義書 §9.2・§13.1 および Human 判断記録（`ai-logs/human-decisions/2026-06-05-api-int-002-score-breakdown-debug-return-policy.md`）に整合する。`debugPayload` 推奨キーの Semantic Config 参照は Task #463 にて `configName` + `versionLabel` composite に更新（旧 `semanticConfigVersionId` は不採用）。
 
 **用語: debug返却条件**
 
@@ -701,6 +702,8 @@ api（`apps/api`）が reco（API-INT-002）呼び出しで受け取る `GRS-AUT
 | `recommendationRequest.execution.topK` | 指定時 1〜50 | `GRS-REQ-001` | 返却件数が不正です。 |
 | `recommendationRequest.execution.candidateLimit` | 指定時 **`topK` 以上**（Recommendation Request §8.2） | `GRS-REQ-001` | 候補抽出上限が不正です。 |
 | `recommendationRequest.budget.*` | 指定時 0 以上、min ≤ max | `GRS-REQ-001` | 予算条件が不正です。 |
+| `execution.configName` / `execution.versionLabel` | 片方のみ指定は不可。両方指定または両方省略 | `GRS-REQ-001` | Semantic Config 指定が不正です。 |
+| `execution.versionLabel` | 指定時 semver 形式（`^v[0-9]+\.[0-9]+\.[0-9]+$`） | `GRS-REQ-001` | Version ラベルが不正です。 |
 | `X-Internal-Api-Key` | 必須・検証成功 | `GRS-AUTH-001` / `GRS-AUTH-004` | 認証に失敗しました。 |
 | `X-Trace-Id` / `X-Request-Id` | 必須・非空 | `GRS-REQ-001` | 追跡 ID が不正です。 |
 | JSON 形式 | パース可能 | `GRS-REQ-001` | リクエスト形式が不正です。 |
@@ -787,6 +790,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 2026-06-05 | §14 No.2 確定：Internal 認証エラーの Public マップ（§8.2.1、#374） | #374 |
 | 2026-06-05 | §14 No.3 確定：`scoreBreakdown` / `debugPayload` 返却条件、§7.3.8、`metadata.debugPayload` マッピング | #375 |
 | 2026-06-05 | §14 No.4 確定：`reasonSummary` / `reasonData` 必須範囲（§7.3.2.1、§7.3.9、#376） | #376 |
+| 2026-06-10 | evaluation / batch 用 Semantic Config 指定を `execution.configName` + `execution.versionLabel` composite に変更。`debugPayload` 推奨キーも追随 | Task #463 |
 
 ---
 

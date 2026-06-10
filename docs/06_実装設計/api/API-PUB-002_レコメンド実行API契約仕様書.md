@@ -136,7 +136,7 @@ Recommendation Request 定義書 §7.1（UI 向け）に準拠。フィールド
 | `execution.includeReason` | `boolean` | `false` | 推薦理由を含めるか | ui ではデフォルト **true** | `true` |
 | `execution.includeDebugInfo` | `boolean` | `false` | デバッグ情報 | Public MVP では **false** 固定想定 | `false` |
 
-`evaluation` / `batch` モード用フィールド（`evalCaseId`、`semanticConfigVersionId` 等）は MVP Public 画面では送信しない。Internal / 評価系は別契約で扱う。
+`evaluation` / `batch` モード用フィールド（`evalCaseId`、`configName` + `versionLabel` 等）は MVP Public 画面では送信しない。Internal / 評価系は別契約（API-INT-002）で扱う。
 
 ### 6.5 Request Example
 
@@ -238,7 +238,7 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 | `reasonBadges` | `array` | `false` | 理由バッジ | 画面仕様に合わせて任意 |
 | `cautionNote` | `string` | `false` | 注意表示 | 任意 |
 
-**返却しない項目（契約上明示）:** `finalScore`, `contextScore`, `popularityScore`, `riskPenalty`, `scoreBreakdown`, `modelVersionId`, `semanticConfigVersionId`, `reasonBasis`, `debugPayload`, `embedding` 等。
+**返却しない項目（契約上明示）:** `finalScore`, `contextScore`, `popularityScore`, `riskPenalty`, `scoreBreakdown`, `modelVersionId`, `configName`, `versionLabel`, `reasonBasis`, `debugPayload`, `embedding` 等。
 
 #### 7.3.3 `meta`
 
