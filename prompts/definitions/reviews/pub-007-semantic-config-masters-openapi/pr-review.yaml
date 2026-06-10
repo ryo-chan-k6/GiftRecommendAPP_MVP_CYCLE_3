@@ -23,7 +23,7 @@ review_points:
     - "契約仕様書 §6〜§8 との整合（Concept 0件200、Feature 0件500、未知Query 400）"
     - "semantic_rule / pair_rule / feature_normalization_version 非露出"
     - "featureGroup enum（social/symbolic）と MVP 8 次元 featureCode 整合"
-    - "API-PUB-008 との semanticConfigVersionId 整合前提が明記されていること"
+    - "API-PUB-008 との configName + versionLabel composite 整合前提が明記されていること"
     - "Orval / generated 未変更"
 
 issue:
