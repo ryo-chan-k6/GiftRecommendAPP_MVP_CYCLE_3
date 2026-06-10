@@ -1,0 +1,179 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-model-version"
+  title: "model_version:Model Versionテーブル定義書作成"
+  summary: "物理ER・論理ER・enum定義書・テーブル一覧を入力に、model_version のテーブル定義書を作成する。Phase2 子 Task ③（テーブル定義）の Master / Config 系 Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 442
+      purpose: "先行 Task ③ relationship_master テーブル定義書（merge 済み前提）"
+    - number: 445
+      purpose: "先行 Task ③ occasion_master テーブル定義書（merge 済み前提・構成踏襲）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（merge 済み前提）"
+    - number: 443
+      purpose: "Task ③ relationship_master PR（merge 済み前提）"
+    - number: 448
+      purpose: "Task ③ occasion_master PR（merge 済み前提）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③。実装フェーズ実行プロセス設計書 §6.3 の「テーブル定義書（1テーブル=1Task）」に対応。
+  物理ER §15 適用順序どおり Master / Config 系を継続する。
+  先行 Task ② enum 定義書・Task ③ relationship_master / occasion_master テーブル定義書を前提とする。
+
+objective: |
+  `model_version` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の model_version テーブル定義書作成"
+  - "物理ER・論理ER・enum定義書・テーブル一覧との突合"
+  - "relationship_master / occasion_master テーブル定義書の章構成・MVP 方針を踏襲"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "他テーブルのテーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index 方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（model_type は本 Task で候補値を定義、後続 enum Task で正本化）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "エンティティ属性・正本区分（§11.1）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "テーブル分類・用途（§9）"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "Master / Config 系テーブル定義書の構成・MVP 方針の踏襲"
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "Master / Config 系テーブル定義書の構成・MVP 方針の踏襲"
+    - path: "docs/04_ドメインモデル設計/ドメインモデル.md"
+      required: true
+      purpose: "model_version と semantic_config_version の責務分離"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-model-version.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-model-version/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "model_version テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER・テーブル一覧 §9 と矛盾しない"
+  - "recommendation_run への LOGICAL FK / item_embedding への ON FK 方針が明記されている"
+  - "relationship_master / occasion_master テーブル定義書と Master / Config 系方針が一貫している"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "model-version-table-spec"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了"
+    - number: 442
+      purpose: "Task ③ relationship_master テーブル定義 完了"
+    - number: 445
+      purpose: "Task ③ occasion_master テーブル定義 完了"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/model_version_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8・§9・§11 とカラム・制約の整合"
+    - "論理ER §11.1 の属性と一致"
+    - "recommendation_run LOGICAL FK / item_embedding ON FK の方針明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "テーブル一覧 §1.1: Task 識別子は物理テーブル名 model_version を使用"
+  - "model_type enum の YAML 正本化は後続 enum Task へ引き継ぎ"
+  - "ranking_config / feature_normalization_version 等の後続 Config Task は model_version 完了後に着手可能"

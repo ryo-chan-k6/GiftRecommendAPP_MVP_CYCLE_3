@@ -1,0 +1,127 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-physical-er-spec"
+  title: "DB物理ER仕様書作成"
+  summary: "論理ER・テーブル一覧・正本定義表を入力に、physical-er-spec.md 準拠の物理ER仕様書を作成する。Phase2 子 Task ①。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ①。実装フェーズ実行プロセス設計書 §6.3 の「物理ER」に対応。
+  後続 Task（enum/テーブル定義/DDL）の前提成果物となる。
+
+objective: |
+  論理ER を物理設計に落とし込んだ物理ER仕様書を docs/06_実装設計/database/ に作成する。
+  テーブル一覧・正本定義表との整合を満たす。
+
+scope:
+  - "physical-er-spec.md テンプレ準拠の物理ER仕様書作成"
+  - "論理ER・テーブル一覧との突合"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "テーブル定義書（Task ③）"
+  - "DDL・migration（Task ④⑤）"
+  - "apps/** 実装"
+  - "db/migrations ファイルの作成"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "物理ER 変換入力"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "テーブル群の網羅確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "正本・型の整合"
+  templates:
+    - path: "prompts/templates/docs/physical-er-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/physical-er-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/physical-er-spec.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/db-physical-design/physical-er-spec/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "物理ER仕様書が docs/06_実装設計/database/ に存在する"
+  - "論理ER・テーブル一覧と矛盾しない"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "db-physical-design-physical-er-spec"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/物理ER.md"
+  conflict_risk: "low"
+  db_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "親 Epic Issue / Branch は /start-task 後に parent ブロックを更新する"

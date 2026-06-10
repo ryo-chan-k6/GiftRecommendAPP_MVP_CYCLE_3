@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "recommendation_result_status"
+  physical_name: "result_status"
+  logical_name: "Recommendation Result Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "generated"
+    label: "生成済"
+    meaning: "1件以上の推薦結果を生成できた状態"
+    terminal: true
+    enabled: true
+  - value: "empty"
+    label: "0件"
+    meaning: "Hard Filter / Retrieval / Ranking の結果、推薦結果が0件の状態"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "Result生成に失敗した状態"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "recommendation_result"
+    column: "result_status"
+    constraint: "NOT NULL"
+    note: "生成後原則更新しない"

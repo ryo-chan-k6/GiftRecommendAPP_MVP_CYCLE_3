@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-05                                |
+| 更新日         | 2026-06-10（composite 参照・API-PUB-007 追随） |
 
 ---
 
@@ -21,7 +21,7 @@
 
 web（`apps/web`）から api（`apps/api`）へ、レコメンド条件入力画面（SCR-002）初期表示時に利用する **Feature Rule 一覧** を取得する Public API である。現行 Semantic Config Version に紐づく Relationship Rule / Occasion Rule / Concept Feature Rule を返す（[API一覧](../../05_アプリケーション設計/アプリ/api/API一覧.md) §API-PUB-008、[Featureルール定義書](../../04_ドメインモデル設計/Featureルール定義書.md) §17）。
 
-**Pair Rule**（Relationship × Occasion 組み合わせ補正）は Public API 応答に含めない（API一覧 §API-PUB-005 備考「Pair情報はPublic API応答に含めず」と同方針）。Normalization Rule の内部パラメータも含めない。
+**Pair Rule**（Relationship × Occasion 組み合わせ補正）は Public API 応答に含めない（API一覧 §API-PUB-005 備考「Pair情報はPublic API応答に含めず」と同方針）。正規化パラメータ（`feature_normalization_version`）も含めない。
 
 **Response 構成（MVP 確定）:** `baseValueRules[]`（Relationship / Occasion 等の基準値 Rule）と `conceptFeatureRules[]`（Concept 補正 Rule）の **2 グループ構成** とする（Human Review #408 確定）。
 
@@ -78,7 +78,7 @@ web（`apps/web`）から api（`apps/api`）へ、レコメンド条件入力�
 | ---- | ---- |
 | API-PUB-005 | `relationshipCode` は本 API の `baseValueRules[]`（`ruleType: relationship`）と整合 |
 | API-PUB-006 | `occasionCode` は本 API の `baseValueRules[]`（`ruleType: occasion`）と整合 |
-| API-PUB-007 | `semanticConfigVersionId` および `conceptCode` が整合 |
+| API-PUB-007 | `configName` + `versionLabel` および `conceptCode` が整合 |
 | 非公開 | `pair_rule` 行は応答に含めない（Reco 内部完結） |
 
 ---
@@ -144,7 +144,8 @@ Accept: application/json
 
 | 項目 | 型 | 必須 | 内容 | 備考 |
 | ---- | -- | ---- | ---- | ---- |
-| `semanticConfigVersionId` | `string` | `true` | 現行 Semantic Config Version ID | API-PUB-007 と一致 |
+| `configName` | `string` | `true` | Semantic Config 系列名 | API-PUB-007 と一致 |
+| `versionLabel` | `string` | `true` | Version ラベル（semver） | API-PUB-007 と一致。例: `v1.0.0` |
 | `baseValueRules` | `array` | `true` | 基準値 Rule 一覧 | `relationship_rule` / `occasion_rule` 表面 |
 | `baseValueRules[].ruleType` | `string` | `true` | Rule 種別 | enum: `relationship` / `occasion` |
 | `baseValueRules[].relationshipCode` | `string` | 条件付き | Relationship コード | `ruleType: relationship` 時必須。API-PUB-005 と整合 |
@@ -164,7 +165,7 @@ Accept: application/json
 | `relationship` | `relationshipCode` | API-PUB-005 |
 | `occasion` | `occasionCode` | API-PUB-006 |
 
-**返却しない Rule 種別:** `pair_rule`、`normalization_rule`、`input_type_rule`、`feature_integration_rule`（内部処理用）。
+**返却しない Rule 種別:** `pair_rule`、`input_type_rule`、`feature_integration_rule`（内部処理用）。
 
 #### 7.3.2 `meta`
 
@@ -179,7 +180,8 @@ Accept: application/json
 ```json
 {
   "data": {
-    "semanticConfigVersionId": "semantic_config_v001",
+    "configName": "mvp-semantic-config",
+    "versionLabel": "v1.0.0",
     "baseValueRules": [
       {
         "ruleType": "relationship",
@@ -279,7 +281,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | 1 | 正常系 | 200 + `baseValueRules` / `conceptFeatureRules` の 2 グループ | contract |
 | 2 | Pair 非公開 | 応答に pair 関連フィールドがない | contract |
 | 3 | コード整合 | `relationshipCode` / `occasionCode` / `conceptCode` が他マスタ API と一致 | contract |
-| 4 | Version 整合 | `semanticConfigVersionId` が API-PUB-007 と一致 | contract |
+| 4 | Version 整合 | `configName` + `versionLabel` が API-PUB-007 と一致 | contract |
 | 5 | 空配列 | 各配列 0 件でも 200 | contract |
 | 6 | 設定未整備 | current Version なしで 500 / `GRS-CFG-001` | contract |
 | 7 | active のみ | inactive Rule が応答に含まれない | contract |
@@ -293,6 +295,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（Phase1 1a 契約面） | Issue #404 |
 | 2026-06-05 | Human Review 反映（2 グループ構成・値域・active のみ・Pair Reco 内部完結） | PR #408 |
+| 2026-06-10 | Public Version 参照を `configName` + `versionLabel` composite に変更 | Task #463 |
 
 ---
 
@@ -304,6 +307,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | 2 | 値域 | `featureBaseValue` / `featureDelta` は 0.0〜1.0 | Human Review | `featureDelta` の方向は `polarity` で表現 |
 | 3 | inactive Rule | MVP は active Rule のみ返却 | Human Review | `isActive` は Public 応答に含めない |
 | 4 | Pair Rule 公開方針 | Reco 内部完結。Public 化しない | Human Review | 現行非公開方針を維持 |
+| 5 | Public Version 参照キー | **`configName` + `versionLabel` composite**（両方必須） | Human | API-PUB-007 / `semantic_config_version_テーブル定義書` §17.1 |
 
 ---
 

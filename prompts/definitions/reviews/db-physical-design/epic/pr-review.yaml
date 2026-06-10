@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-epic-pr"
+  title: "DB物理設計・構築 Epic PRレビュー"
+  summary: "Phase2 Epic PR（develop 向け）の AI Review。物理ER・テーブル定義・DDL・migration 統合と epic_scope を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue:
+    number: 435
+  task_definition: "prompts/definitions/epics/db-physical-design/epic.yaml"
+  source_branch: "docs/epic-435-db-physical-design"
+  target_branch: "develop"
+
+review_scope:
+  docs: true
+  project_operation: true
+  db: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/db-physical-design/epic.yaml"
+    required: true
+  issue:
+    number: 435
+    required: true
+
+review_points:
+  common:
+    - "Epic Definition scope / out_of_scope を満たしているか"
+    - "epic_scope.forbidden_paths（apps 実装層）への変更がないか"
+    - "Epic PR target=develop であるか"
+    - "Closes #<Epic Issue> が PR 本文にあるか"
+  docs:
+    - "物理ER・テーブル定義が論理ERと整合しているか"
+  db:
+    - "migration/seed が手動編集方針に反していないか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "apps 実装層への変更がない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+issue:
+  unit: "epic"
+  type: "docs"
+  area: "db"
