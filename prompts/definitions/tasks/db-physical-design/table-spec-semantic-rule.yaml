@@ -1,0 +1,207 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-semantic-rule"
+  title: "semantic_rule:Semantic Ruleテーブル定義書作成"
+  summary: "物理ER・論理ER・Semanticルール定義書・テーブル一覧を入力に、semantic_rule のテーブル定義書を作成する。Phase2 子 Task ③ Wave2（Semantic / Feature Rule 群）No.3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 462
+      purpose: "先行 Task / Wave1 merge 済み前提（semantic_config）"
+    - number: 463
+      purpose: "先行 Task / Wave1 merge 済み前提（semantic_config_version）"
+    - number: 470
+      purpose: "先行 Task / Wave2 No.1 merge 済み前提（feature_definition）"
+    - number: 471
+      purpose: "先行 Task / Wave2 No.2 merge 済み前提（semantic_concept）。semantic_concept_id FK 参照先"
+  related_prs:
+    - number: 479
+      purpose: "Task #470 feature_definition PR（merge 済み前提）"
+    - number: 485
+      purpose: "Task #471 semantic_concept PR（merge 済み前提）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Wave2（Semantic / Feature 定義系 Rule 群）No.3。
+  Wave1（semantic_config / semantic_config_version）および Wave2 No.1（feature_definition）・No.2（semantic_concept）merge 済み前提。
+  推奨着手順: feature_definition → semantic_concept → semantic_rule → relationship_rule / occasion_rule / pair_rule → concept_feature_rule → partial 2 件。
+  `semantic_rule` は入力文・商品情報から Semantic Concept を抽出するルールの設定正本であり、Public API 表面には含めない（API-PUB-007）。
+  `semantic_concept` テーブル定義書 §8.1 では本テーブルが `semantic_concept_id` へ物理 FK（ON / RESTRICT）で参照する前提が確定済み。
+
+objective: |
+  `semantic_rule` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の semantic_rule テーブル定義書作成"
+  - "物理ER §8–§11・論理ER §10.2・Semanticルール定義書 §17.1・Featureルール定義書との突合"
+  - "semantic_config_version / semantic_concept テーブル定義書 §8.1 との FK・被参照関係の整理"
+  - "feature_definition / semantic_concept テーブル定義書の章構成・MVP 方針を踏襲"
+  - "API-PUB-007 非公開情報（source_text_pattern / weight 等）境界の明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "他テーブルのテーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index・CHECK 方針（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（rule_type 等、未定義時は Human Review 論点）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 Semantic / Feature 系エンティティ属性"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 Semantic / Feature 定義系"
+    - path: "docs/04_ドメインモデル設計/Semanticルール定義書.md"
+      required: true
+      purpose: "Rule 定義 §17.1（論理項目）・抽出フロー"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "Semantic Rule と Feature Rule の責務分離・横断参照"
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "semantic_rule 内部パターン・重みの非公開境界"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "親 FK（semantic_config_version_id ON）・§8.1 被参照"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "Wave2 同群テーブル定義書の章構成・MVP 方針踏襲"
+    - path: "docs/06_実装設計/database/semantic_concept_テーブル定義書.md"
+      required: true
+      purpose: "semantic_concept_id FK（ON / RESTRICT）・§8.1 被参照元との整合"
+    - path: "docs/06_実装設計/database/semantic_config_テーブル定義書.md"
+      required: false
+      purpose: "Config 系列の解決階層参考"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/semantic_rule_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-semantic-rule.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-semantic-rule/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "semantic_rule テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER §8–§11・論理ER §10.2・テーブル一覧 §8 と矛盾しない"
+  - "semantic_config_version_id への FK（ON）方針が明記されている"
+  - "semantic_concept_id への FK（ON / RESTRICT）方針が明記されている"
+  - "semantic_concept テーブル定義書 §8.1 被参照前提と矛盾しない"
+  - "API-PUB-007 非公開（source_text_pattern / weight 等）方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "semantic-rule-table-spec"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+  number: 472
+
+dependencies:
+  issues:
+    - number: 463
+      purpose: "Wave1 semantic_config_version 完了"
+    - number: 470
+      purpose: "Wave2 No.1 feature_definition 完了"
+    - number: 471
+      purpose: "Wave2 No.2 semantic_concept 完了（merge 済み・semantic_concept_id FK 参照先）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/semantic_rule_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8–§11 とカラム・CHECK の整合"
+    - "論理ER §10.2 属性（rule_type / source_text_pattern / semantic_concept_id / weight / is_active）との整合"
+    - "Semanticルール定義書 §17.1 と物理カラム名の対応整理"
+    - "API-PUB-007 非公開項目境界"
+    - "semantic_config_version_テーブル定義書 §8.1 被参照との整合"
+    - "semantic_concept_テーブル定義書 §8.1（semantic_concept_id FK ON / RESTRICT）との整合"
+    - "semantic_concept / feature_definition テーブル定義書との章構成一貫性"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Wave2 着手順 No.3"
+  - "論理ER §10.2: semantic_config_version_id, rule_type, source_text_pattern, semantic_concept_id, weight, is_active"
+  - "semantic_concept §8.1: semantic_concept_id へ物理 FK ON / RESTRICT（#471 merge 済み）"
+  - "Semanticルール定義書 §17.1 は concept_code / match_pattern 等の論理名。物理 FK は semantic_concept_id、派生データは concept_code 参照（#471 方針）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
