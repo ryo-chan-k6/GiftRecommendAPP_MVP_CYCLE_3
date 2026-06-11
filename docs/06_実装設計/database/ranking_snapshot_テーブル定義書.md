@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-12                      |
-| 更新日         | 2026-06-12                      |
+| 更新日         | 2026-06-12（Human Review #496 反映） |
 
 ---
 
@@ -136,7 +136,7 @@
 | `batch_run_id` | `batch_run_log.batch_run_id` | `LOGICAL` | — | 追跡用 nullable |
 | `api_call_log_id` | `api_call_log.api_call_log_id` | `LOGICAL` | — | 追跡用 nullable |
 
-> 物理ER §8 FK 表に `external_genre` → `ranking_snapshot` 行は未掲載。本テーブル定義書で **LOGICAL 参照** を確定し、DDL Task または物理ER 整合 Task で追記する。
+> 物理ER §8 FK 表に `external_genre` → `ranking_snapshot` 行を追記済み（Human Review #496）。**LOGICAL 参照**（Batch 系方針踏襲）。
 
 ### 8.2 被参照（子テーブル）
 
@@ -261,10 +261,16 @@ RETURNING ranking_snapshot_id;
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 観測キーに `fetched_at` を含めるか | インターフェース一覧は `fetched_at` 代替案を示す一方、バッチ設計方針書は `last_build_date` を採用 | Human | DDL Task 前 | MVP は **§7 どおり `last_build_date` を採用**（推奨案）。再取得のみ異なる場合は別ヘッダが必要 |
-| 2 | 履歴 Snapshot の保持上限 | ストレージ・クエリコストに影響 | Human | 運用設計 | MVP は無期限追記。TTL は後続 |
-| 3 | `external_genre_id` 物理 FK 採否 | #494 は item 側 LOGICAL を確定。ヘッダでも LOGICAL を本稿で採用 | Human | DDL Task 前 | 本稿は **LOGICAL**（Batch 系方針踏襲） |
-| 4 | 物理ER §8 への `external_genre` → `ranking_snapshot` 行追記 | FK 表未掲載 | Human / DDL Task | DDL Task | 本定義書を正として DDL 起票 |
+| — | — | — | — | — | Human Review #496 にて No.1〜4 を決定済み（下記参照） |
+
+### 17.1 Human Review 決定事項（Issue #496）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | 観測キーに `fetched_at` を含めるか | **含めない**。観測キーは `source` + `external_genre_id` + `period` + **`last_build_date`**（楽天 API `lastBuildDate`）。`fetched_at` は本サービス反映日時の運用メタのみ | Human | `last_build_date` が観測時点の正本。再取得のみ異なる場合は別ヘッダが必要 |
+| 2 | 履歴 Snapshot の保持上限 | **MVP 初期は無期限追記**。TTL / アーカイブは運用進行中に検討し後続実装 | Human | 物理 DELETE 原則禁止（§13） |
+| 3 | `external_genre_id` 物理 FK 採否 | **LOGICAL FK**（Index 推奨）。#494 の Batch 系方針を踏襲 | Human | 物理ER §8・§17.2 No.2 |
+| 4 | 物理ER §8 への `external_genre` → `ranking_snapshot` 行追記 | **追記する**（`observed_for` / LOGICAL） | Human | `ranking_snapshot_テーブル定義書.md` を正として DDL Task 起票 |
 
 ---
 

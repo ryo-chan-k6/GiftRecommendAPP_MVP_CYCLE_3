@@ -140,6 +140,7 @@
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | `item` | `external_genre_id` | classifies | `LOGICAL` | 物理ER §8。商品 Upsert 時に設定 |
+| `ranking_snapshot` | `external_genre_id` | observed_for | `LOGICAL` | ランキング観測対象ジャンル（Human Review #496） |
 | `item_popularity_signal` | `external_genre_id` | ranking_genre | `LOGICAL` | ランキング対象ジャンル |
 | `fetch_cursor` | `target_external_genre_id` | targets | `LOGICAL` | 疑似差分取得カーソル |
 | `staging_genre` | `external_genre_id` | upserts | `LOGICAL` | Staging → 正本 Upsert キー |

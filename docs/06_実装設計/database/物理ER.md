@@ -120,6 +120,7 @@ erDiagram
     item ||--o{ recommendation_result_item : "snapshotted_by"
 
     external_genre ||--o{ item : "classifies"
+    external_genre ||--o{ ranking_snapshot : "observed_for"
     ranking_snapshot ||--o{ item_popularity_signal : "contains"
 
     semantic_config ||--o{ semantic_config_version : "has"
@@ -279,6 +280,7 @@ erDiagram
 | `item.item_id` | `item_review_summary.item_id` | has | `ON` | 1:0..1 | |
 | `item.item_id` | `item_popularity_signal.item_id` | has | `LOGICAL` | 1:N | item 未解決時は code 紐づけ |
 | `ranking_snapshot.ranking_snapshot_id` | `item_popularity_signal.ranking_snapshot_id` | contains | `ON` | 1:N | 冪等キー: snapshot + rank |
+| `external_genre.external_genre_id` | `ranking_snapshot.external_genre_id` | observed_for | `LOGICAL` | 1:N | Human Review #496 確定。観測対象ジャンル |
 | `external_genre.external_genre_id` | `item.external_genre_id` | classifies | `LOGICAL` | 1:N | |
 | `semantic_config.semantic_config_id` | `semantic_config_version.semantic_config_id` | has | `ON` | 1:N | |
 | `semantic_config_version.semantic_config_version_id` | `normalization_rule.semantic_config_version_id` | contains | `ON` | 1:N | Feature 正規化 binding |
@@ -316,6 +318,8 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `recommendation_result_item` | `idx_result_item_result_id_rank` | `recommendation_result_id`, `rank` | btree | 結果表示 | |
 | `item` | `uq_item_source_external_code` | `source`, `external_item_code` | unique | Upsert キー | |
 | `item` | `idx_item_active_status` | `active_status`, `is_active` | btree | Retrieval 前フィルタ | |
+| `ranking_snapshot` | `uq_ranking_snapshot_observation_key` | `source`, `external_genre_id`, `period`, `last_build_date` | unique | 観測キー / get-or-create | バッチ設計方針書 §11.5 |
+| `ranking_snapshot` | `idx_ranking_snapshot_genre_fetched` | `external_genre_id`, `fetched_at` DESC | btree | 最新 Snapshot 抽出 | reco / batch |
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | `ranking_snapshot_id`, `rank` | unique | 冪等キー | テーブル一覧 §14 No.2 |
 | `item_feature` | `idx_item_feature_lookup` | `item_id`, `semantic_config_version_id`, `feature_code` | btree | Online 参照 | input_hash は unique 候補 |
 | `item_embedding` | `idx_item_embedding_item_model` | `item_id`, `model_version_id` | btree | Online 参照 | vector Index は別途 |
@@ -339,6 +343,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `recommendation_run` | `fk_recommendation_run_pair` | FK | `pair_id` | `pair_master.pair_id` 参照 | §17 No.1 |
 | `recommendation_request` | — | — | 条件列 + JSONB | 個別カラムと payload 併用 | §17 No.2 |
 | `item` | `uq_item_source_external_code` | unique | `source`, `external_item_code` | 商品 Upsert キー | |
+| `ranking_snapshot` | `uq_ranking_snapshot_observation_key` | unique | `source`, `external_genre_id`, `period`, `last_build_date` | 観測キー一意 | §17.2 No.1 |
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | unique | `ranking_snapshot_id`, `rank` | ランキング明細一意 | |
 | `item_feature` | `uq_item_feature_idempotent` | unique | `item_id`, `semantic_config_version_id`, `feature_code`, `feature_input_hash`, `feature_normalization_version_id` | 再生成冪等 | テーブル一覧 §7 補足 |
 | `item_embedding` | `uq_item_embedding_idempotent` | unique | `item_id`, `model_version_id`, `embedding_input_hash` | Embedding 冪等 | |
@@ -445,6 +450,14 @@ Human Review にて以下を確定した（2026-06-07）。
 | 6 | pgvector Index 方式 | **HNSW** を第一候補とする | 商品数が極少の初期は Index 後追いも可 |
 | 7 | `external_attribute` / `staging_attribute` | **MVP ではテーブル作成しない** | 後続 Task で追加検討 |
 | 8 | schema 分割（app / log / metric） | **MVP は `public` 単一 schema**。§5.1 の分類は論理分類のみ | 本番前に物理分割 migration を検討 |
+
+### 17.2 Human Review 決定事項（Issue #496 / `ranking_snapshot`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | 観測キー（冪等） | **`source` + `external_genre_id` + `period` + `last_build_date`**。`fetched_at` は観測キーに含めない | `ranking_snapshot_テーブル定義書.md` §7・バッチ設計方針書 §11.5 |
+| 2 | `external_genre` → `ranking_snapshot` FK | **LOGICAL**（`observed_for`） | §9 FK 表に追記 |
+| 3 | Snapshot 保持 | **MVP 初期は無期限追記**。TTL は運用進行中に後続検討 | テーブル定義書 §13 |
 
 ---
 
