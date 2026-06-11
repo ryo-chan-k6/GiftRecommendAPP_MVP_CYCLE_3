@@ -1,0 +1,161 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-item-pr"
+  title: "item テーブル定義書 PRレビュー"
+  summary: "item テーブル定義書 Task の PR を AI Review する。物理ER・論理ER・外部商品データ連携設計書・API-PUB-003 との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-495-item-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 495
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item.yaml"
+  source_branch: "docs/task-495-item-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-item.yaml"
+    required: true
+  issue:
+    number: 495
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index・Upsert キー方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "エンティティ属性・Online/Batch 責務境界との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "テーブル一覧 §5 No.10 との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "normalized_hash 対象・Staging→Item Upsert 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Item 正本区分・外部API属性マッピングの確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "active_status（item_active_status）enum との整合"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+      purpose: "API 公開列マッピング・非 active 判定の確認"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（子テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §8.2 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "テーブル一覧 §5 No.10 の分類・用途と一致しているか"
+    - "外部商品データ連携設計書 §6.4 の normalized_hash 対象が明記されているか"
+    - "論理ER §16.1（Online推薦中に item を更新しない）が反映されているか"
+    - "API-PUB-003 の item 表面フィールド・非 active（GRS-ITM-002）判定方針が明記されているか"
+  db:
+    - "PK / unique（source + external_item_code）/ Index（active_status）が DDL Task へ展開できる粒度か"
+    - "external_genre.external_genre_id への LOGICAL 参照方針が明記されているか（物理ER §9・§17.1 No.3 との整合。比較表があれば normalization_rule §17.1.1 形式を踏襲）"
+    - "staging_item → item Upsert キー・更新主体（batch）・保持方針が妥当か"
+    - "active_status / is_active の使い分けと Retrieval 前フィルタ方針が明記されているか"
+    - "論理ER §8.2 商品系属性と §8.3 Item Image / §8.4 Popularity Signal の責務境界が明記されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "external_genre_id の物理 FK vs LOGICAL 参照方針"
+  - "normalized_hash 算出対象フィールドの確定（外部商品データ連携設計書 §6.4 との差分有無）"
+
+risk_points:
+  - "external_genre テーブル定義書（#494）未 merge 時の genre 参照記述の暫定性"
+  - "item_image / item_review_summary 後続 Task との FK・更新順序の一貫性"
+  - "API-PUB-002 items[] Snapshot 列と item 正本列の命名・意味の整合（OpenAPI 変更は #469 委譲）"
+
+notes:
+  - "Batch R01 No.3: item"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item.yaml"
+  - "Issue #495 / Branch docs/task-495-item-table-spec"
+  - "先行 merge 済み: #440 / PR #441（enum）、#493 / PR #498（normalization_rule）"
+  - "推奨未 merge: #494（external_genre テーブル定義。merge 後は input 突合を再確認）"
