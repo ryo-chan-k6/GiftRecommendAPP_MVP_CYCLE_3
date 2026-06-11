@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 502
   issue: 497
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-image.yaml"
   source_branch: "docs/task-497-item-image-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 497
     required: true
   pr:
-    number: null
+    number: 502
     required: true
   diff:
     required: true
