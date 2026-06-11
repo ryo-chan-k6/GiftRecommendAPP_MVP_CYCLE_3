@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP  |
 | MVP対象        | `yes`                            |
 | 作成日         | 2026-06-12                       |
-| 更新日         | 2026-06-12                       |
+| 更新日         | 2026-06-12（Human Review #494 反映） |
 
 ---
 
@@ -52,6 +52,7 @@
 - テーブル一覧 §5 補足どおり、**差分反映（Upsert）対象** の外部参照マスタである（ランキング Snapshot とは異なり、時系列全件反映ではない）
 - `staging_genre` 経由または BATCH-001 直接反映で Upsert する（§5.2）
 - ジャンル階層探索（親子・末端判定）と取得対象ジャンル管理の正本とする
+- **履歴管理は行わない**。Batch Upsert により外部 API から取得した **最新のジャンル状態** を行単位で上書き保持し、アプリ内でも当該行を **現在値の正本** として参照する（§5.4）
 
 ### 5.1 対象外
 
@@ -77,7 +78,7 @@
 
 | 楽天ジャンルAPI（正規化後） | 物理カラム | 備考 |
 | --------------------------- | ---------- | ---- |
-| `genreId` | `external_genre_id` | 楽天ジャンルID。`0` は root 起点 |
+| `genreId` | `external_genre_id` | 楽天ジャンルID。`0` は root 行として DB 保持（§17.1 No.4） |
 | `jaName` / `genreName` | `genre_name` | Adapter で `genre_name` に統一 |
 | `level` / `genreLevel` | `genre_level` | 階層レベル |
 | `parentGenreId`（祖先チェーン末端） | `parent_external_genre_id` | 最直近の親。root は `NULL` |
@@ -85,7 +86,17 @@
 | — | `source` | MVP 固定 `rakuten` |
 | — | `fetched_at` | 当該行の最終取得反映日時 |
 
-> **外部商品データ連携設計書 §12.1 との差分**: 設計書は `parent_genre_id` / `source_system` / `is_active` を列挙するが、論理ER §8.2 は `parent_external_genre_id` / `source` を採用し `is_active` は持たない。本テーブル定義書は **論理ER §8.2 を正** とし、`source_system` → `source`、`parent_genre_id` → `parent_external_genre_id` に物理名を揃える。`is_active` は MVP 物理 DDL では **採用しない**（§17.1 No.3 参照）。
+> **外部商品データ連携設計書 §12.1 との差分**: 設計書は `parent_genre_id` / `source_system` / `is_active` を列挙するが、論理ER §8.2 は `parent_external_genre_id` / `source` を採用し `is_active` は持たない。本テーブル定義書は **論理ER §8.2 を正** とし、`source_system` → `source`、`parent_genre_id` → `parent_external_genre_id` に物理名を揃える。`is_active` は MVP 物理 DDL では **採用しない**（§17.1 No.3 決定済み）。
+
+### 5.4 正本モデル（履歴なし・最新状態 Upsert）
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 履歴管理 | **行わない**。ジャンル名・階層・末端フラグの過去版を別行・別テーブルで保持しない |
+| 更新方式 | Batch が `source` + `external_genre_id` 単位で Upsert し、取得結果で既存行を **上書き** |
+| 正本性 | アプリ内（batch / reco）では、常に **最新の Upsert 結果** をジャンル参照の正本として扱う |
+| 論理削除 | `is_active` 列は持たない。無効化・非参照は Batch 側の取得対象制御で行い、行自体は原則残す |
+| ランキングとの違い | ランキングは Snapshot（時系列観測）。ジャンルは **参照マスタ** であり Snapshot 化しない |
 
 ---
 
@@ -96,7 +107,7 @@
 | 1 | `external_genre_id` | External Genre ID | `bigint` | `yes` | `yes` | — | `yes` | — | 楽天ジャンルID（外部自然キー）。MVP では `source='rakuten'` 前提で PK とする |
 | 2 | `source` | Data Source | `text` | `yes` | — | — | — | `'rakuten'` | 外部商品データ元。MVP は `rakuten` 固定。`item.source` と同一コード体系 |
 | 3 | `genre_name` | Genre Name | `varchar(255)` | `yes` | — | — | — | — | ジャンル表示名。楽天 `jaName` / `genreName` の正本 |
-| 4 | `parent_external_genre_id` | Parent External Genre ID | `bigint` | `no` | — | self | — | `NULL` | 親ジャンルID。最上位（root 直下等）では `NULL`。`0` は root 起点API用で行として保持するかは §17.1 No.4 |
+| 4 | `parent_external_genre_id` | Parent External Genre ID | `bigint` | `no` | — | self | — | `NULL` | 親ジャンルID。`external_genre_id = 0`（root）の行は `NULL`。それ以外の最上位は親行を参照 |
 | 5 | `genre_level` | Genre Level | `smallint` | `yes` | — | — | — | — | 階層レベル。楽天 `level` / `genreLevel`。0 以上 |
 | 6 | `is_leaf` | Leaf Flag | `boolean` | `yes` | — | — | — | `false` | 末端ジャンル（子ジャンルなし）か。取得計画・ランキング対象判定に利用 |
 | 7 | `fetched_at` | Fetched At | `timestamptz` | `yes` | — | — | — | — | 当該ジャンル行の最終取得・反映日時（UTC） |
@@ -120,9 +131,9 @@
 
 | カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
 | ------ | ------ | ------ | ---------- | ---- |
-| `parent_external_genre_id` | `external_genre.external_genre_id` | **MVP 提案: ON** | `ON DELETE RESTRICT` | 親削除時に子が残ることを防止。root は `NULL` |
+| `parent_external_genre_id` | `external_genre.external_genre_id` | `ON` | `ON DELETE RESTRICT` | 親削除時に子が残ることを防止。root（`external_genre_id = 0`）は `NULL` |
 
-> 物理ER §8 FK 表には self-reference 行が未掲載。本 Task で **物理 FK ON（RESTRICT）** を提案する。Human Review 論点（§17.1 No.1）。
+> 物理ER §8 FK 表には self-reference 行が未掲載。Human Review #494 により **物理 FK ON（RESTRICT）** を確定（§17.1 No.1）。
 
 ### 8.2 被参照（論理）
 
@@ -152,9 +163,9 @@
 | ------ | ---- | ---- | ---- | ---- |
 | `external_genre_pkey` | PRIMARY KEY | `external_genre_id` | 主キー | — |
 | `uq_external_genre_source_id` | UNIQUE | `source`, `external_genre_id` | Upsert キー | — |
-| `fk_external_genre_parent` | FOREIGN KEY | `parent_external_genre_id` | `external_genre(external_genre_id)` ON DELETE RESTRICT | §8.1。Human Review 対象 |
+| `fk_external_genre_parent` | FOREIGN KEY | `parent_external_genre_id` | `external_genre(external_genre_id)` ON DELETE RESTRICT | §8.1。Human Review #494 確定 |
 | `chk_external_genre_source_mvp` | CHECK | `source` | `source = 'rakuten'` | MVP 固定。enum Task 後に緩和可 |
-| `chk_external_genre_level_range` | CHECK | `genre_level` | `genre_level >= 0 AND genre_level <= 5` | MVP 上限 5（§17.1 No.2） |
+| `chk_external_genre_level_range` | CHECK | `genre_level` | `genre_level >= 0 AND genre_level <= 5` | MVP 上限 5（§17.1 No.2 確定）。運用中に実測で変更する場合は migration で CHECK 更新 |
 | `chk_external_genre_name_length` | CHECK | `genre_name` | `char_length(genre_name) BETWEEN 1 AND 255` | — |
 | `chk_external_genre_parent_not_self` | CHECK | `parent_external_genre_id` | `parent_external_genre_id IS NULL OR parent_external_genre_id <> external_genre_id` | 自己参照禁止 |
 
@@ -202,7 +213,8 @@ ON CONFLICT (source, external_genre_id) DO UPDATE SET
 | 保持期間 | 長期（外部参照マスタ） |
 | 削除方式 | 物理 DELETE 原則禁止 |
 | 削除条件 | — |
-| 論理削除 | MVP では `is_active` 列なし（§5.3） |
+| 論理削除 | `is_active` 列なし。最新状態 Upsert 正本モデル（§5.4） |
+| 履歴 | 保持しない。過去版は Raw / Staging / Log 側で必要に応じて追跡 |
 | アーカイブ | MVP 対象外 |
 
 ---
@@ -248,10 +260,16 @@ ON CONFLICT (source, external_genre_id) DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `parent_external_genre_id` 物理 FK 採否 | 物理ER §8 未掲載。RESTRICT vs LOGICAL | Human | DDL Task 前 | **MVP 提案: 物理 FK ON（RESTRICT）** |
-| 2 | `genre_level` MVP 上限 | 楽天階層の実測最大値 | Human | DDL Task 前 | **MVP 提案: 0〜5**（CHECK 定義済み） |
-| 3 | `is_active` 列の採否 | 外部商品データ連携設計書 §12.1 にあるが論理ERになし | Human | DDL Task 前 | **MVP 提案: 不採用**（Upsert のみ） |
-| 4 | root ジャンル（`genreId=0`）の保持 | API 起点用。DB 行として要否 | Human | seed Task 前 | Batch は `0` から探索開始 |
+| — | — | — | — | — | Human Review #494 にて No.1〜4 を決定済み（下記参照） |
+
+### 17.1 Human Review 決定事項（Issue #494）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `parent_external_genre_id` 物理 FK 採否 | **物理 FK ON（`ON DELETE RESTRICT`）** を採用 | Human | 物理ER §8 FK 表への追記は DDL Task または別 docs Task で整合 |
+| 2 | `genre_level` MVP 上限 | **0〜5**（`chk_external_genre_level_range`）を採用 | Human | 運用中に楽天階層の実測で上限変更が必要になった場合は migration で CHECK を更新する |
+| 3 | `is_active` 列の採否 | **不採用**。Upsert により **最新の外部ジャンル状態を正本として上書き保持** する（履歴管理しない） | Human | §5.4 正本モデル参照。batch / reco は常に最新行を参照 |
+| 4 | root ジャンル（`genreId=0`）の保持 | **`external_genre_id = 0` の行を DB に保持** し、Batch 探索起点とする | Human | `parent_external_genre_id` は `NULL` |
 
 ---
 
