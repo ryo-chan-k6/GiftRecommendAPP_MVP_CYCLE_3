@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-11（input_type / application_method 追加） |
+| 更新日         | 2026-06-11（polarity #476 / input_type・application_method #477 反映） |
 
 ---
 
@@ -79,6 +79,7 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | Batch Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `batch_run_phase_name` |
 | Input Type | `input_type` | semantic | input_type_rule / reco | `yes` | Featureルール §11.1。Issue #477 |
 | Application Method | `application_method` | semantic | input_type_rule / reco | `yes` | ディスパッチ先コード。Issue #477 |
+| Concept Feature Polarity | `polarity` | semantic | concept_feature_rule | `yes` | API-PUB-008。Issue #476 決定 |
 
 ---
 
@@ -321,6 +322,16 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | `hard_filter_excluded` | Hard Filter Excluded | Feature Rule 非適用 | `input_type` が ng / budget | `yes` | |
 | `semantic_extraction_then_apply` | Semantic Extraction Then Apply | 抽出後 Concept Rule 適用 | `input_type=free_text` | `yes` | |
 
+### 6.22 Concept Feature Polarity (`polarity`)
+
+Human Review（Issue #476）にて MVP 候補値を確定した。`feature_delta` の大きさ（0.0〜1.0）に対する符号・方向を表す。packages/code-definitions 正本化は後続 enum Task で実施する。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `positive` | Positive | Feature 値を増加方向に補正 | Concept → Feature delta | `yes` | API-PUB-008 応答例のデフォルト |
+| `negative` | Negative | Feature 値を減少方向に補正 | Concept → Feature delta | `yes` | |
+| `mixed` | Mixed | 文脈依存・両方向の補正 | Concept → Feature delta | `yes` | reco 適用ロジックは実装 Task で確定 |
+
 ---
 
 ## 7. DB利用箇所
@@ -351,6 +362,8 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | `user_feature` | `feature_code` | `feature_code` | NOT NULL | feature_definition 参照 |
 | `input_type_rule` | `input_type` | `input_type` | NOT NULL | enum定義書 §6.20 |
 | `input_type_rule` | `application_method` | `application_method` | NOT NULL | enum定義書 §6.21。`input_type` と組み合わせ CHECK |
+| `concept_feature_rule` | `polarity` | `polarity` | NOT NULL | `chk_polarity_mvp` CHECK。enum定義書 §6.22。Issue #476 決定 |
+| `concept_feature_rule` | `feature_code` | `feature_code` | NOT NULL | MVP 8 軸 CHECK |
 
 ---
 
@@ -361,6 +374,7 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | API-PUB-002 等 | Request | `mode` | `request_mode` | OpenAPI 上は `mode`。DB 列名は `request_mode` |
 | API-PUB-004 等 | Request | `feedback_target_type` | `feedback_target_type` | |
 | - | Response | `run_status` 等 | 各 state enum | MVP 初期 API では内部状態を直接公開しない設計。Contract Task で再確認 |
+| API-PUB-008 | Response | `conceptFeatureRules[].polarity` | `polarity` | 任意応答。enum定義書 §6.22 と整合 |
 
 ---
 
@@ -433,6 +447,7 @@ DB 制約方針:
 | 3 | `source_type` / `embedding_source_type` | **方針確定済み**（YAML 正本化は後続） | Human | テーブル定義 Task（`user_feature`, `item_embedding`）で enum 定義書 + YAML 正本化 |
 | 4 | `error_code` 正本化範囲 | **クローズ**（Human Review 確定） | Human | §10.2・`error/README.md`。Phase4a へ委譲 |
 | 5 | `input_type` / `application_method` | **クローズ**（Issue #477） | Human | §6.20–§6.21・`semantic/input_type.yaml`・`semantic/application_method.yaml` |
+| 6 | `polarity`（Concept Feature Polarity） | **クローズ**（Issue #476） | Human | §6.22。packages/code-definitions 正本化は後続 enum Task |
 
 ### 12.1 No.3 方針メモ（テーブル定義 Task 引き継ぎ）
 
@@ -474,5 +489,6 @@ Semantic ルールの `source_type`（`item_name`, `user_input` 等）とは **�
 - `batch_run_phase_name` が Observability §10.4 と一致している
 - `item_generation_type` が Human Review 判断どおり確定されている
 - `input_type` / `application_method` が Featureルール §11.1・input_type_rule テーブル定義書と一致している
+- `polarity` が concept_feature_rule テーブル定義書・API-PUB-008 と一致している（§6.22）
 - packages/code-definitions のディレクトリ構成がプロジェクトディレクトリ構成定義書 §8.2 と一致している
 - secret や `.env` 実値が含まれていない

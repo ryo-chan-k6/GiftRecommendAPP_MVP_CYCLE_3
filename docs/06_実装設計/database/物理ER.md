@@ -175,7 +175,7 @@ erDiagram
 | Item系 | `item`, `item_image`, `item_review_summary`, `external_genre`, `ranking_snapshot`, `item_popularity_signal` | Online推薦で参照する商品正本・補助情報 | `yes` |
 | 外部商品データ連携系 | `fetch_cursor`, `api_call_log`, `raw_product_metadata`, `staging_item`, `staging_item_image`, `staging_ranking_signal`, `staging_genre`, `product_diff_result`, `item_import_summary` | Batch による Raw 参照・Staging・Item 反映 | `yes` |
 | Item派生データ系 | `item_generation_queue`, `item_semantic`, `item_feature`, `item_meaning`, `item_embedding` | Batch 事前生成の推薦用派生データ | `yes` |
-| Semantic / Feature定義系 | `semantic_config`, `semantic_config_version`, `semantic_concept`, `feature_definition`, `semantic_rule`, 各種 `*_rule` | 意味・Feature 定義と変換ルール（設定正本） | `partial`（`input_type_rule`, `feature_integration_rule` は任意） |
+| Semantic / Feature定義系 | `semantic_config`, `semantic_config_version`, `semantic_concept`, `feature_definition`, `semantic_rule`, 各種 `*_rule` | 意味・Feature 定義と変換ルール（設定正本） | `yes` |
 | Master / Config系 | `relationship_master`, `occasion_master`, `pair_master`, `model_version`, `ranking_config`, `reason_template`, `feature_normalization_version` | 入力マスタ・モデル・Ranking・理由・正規化 version | `yes` |
 | Evaluation系 | `evaluation_dataset`, `evaluation_case`, `evaluation_run`, `evaluation_result`, `evaluation_metric` | オフライン評価 | `partial` |
 | Log / Observability系 | `batch_run_log`, `phase_log`, `error_log`, 各種 `*_metric` | 実行記録・分布監視 | `partial`（`reco_score_distribution_metric` は任意） |
@@ -228,8 +228,8 @@ erDiagram
 | `occasion_rule` | Occasion Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `yes` |
 | `pair_rule` | Pair Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `yes` |
 | `concept_feature_rule` | Concept Feature Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `yes` |
-| `input_type_rule` | Input Type Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `partial` |
-| `feature_integration_rule` | Feature Integration Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `partial` |
+| `input_type_rule` | Input Type Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `yes` |
+| `feature_integration_rule` | Feature Integration Rule | Semantic / Feature定義系 | 設定正本 | database / reco | `yes` |
 | `relationship_master` | Relationship Master | Master / Config系 | 設定正本 | database / api | `yes` |
 | `occasion_master` | Occasion Master | Master / Config系 | 設定正本 | database / api | `yes` |
 | `pair_master` | Pair Master | Master / Config系 | 設定正本 | database / api / reco | `yes` |
