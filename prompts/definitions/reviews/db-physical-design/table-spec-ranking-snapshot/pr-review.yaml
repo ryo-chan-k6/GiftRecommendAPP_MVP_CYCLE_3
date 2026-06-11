@@ -1,0 +1,166 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-ranking-snapshot-pr"
+  title: "ranking_snapshot テーブル定義書 PRレビュー"
+  summary: "ranking_snapshot テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §8.4・テーブル一覧 §5/§14・external_genre テーブル定義書・外部商品データ連携設計書との整合、item_popularity_signal 親子関係・冪等方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-496-ranking-snapshot-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 496
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-ranking-snapshot.yaml"
+  source_branch: "docs/task-496-ranking-snapshot-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-ranking-snapshot.yaml"
+    required: true
+  issue:
+    number: 496
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item 系・Ranking Snapshot 系分類・FK・Index・冪等キー方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§8.4 Item Popularity Signal 方針・§9 Staging 系 ER との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§5 No.15・§14 No.1–2・Ranking 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "楽天ランキング API・Snapshot 反映方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-008・snapshot_key 方針との整合"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "external_genre_id（bigint）・§8.2 被参照関係・source 列との整合（#494 merge 済み正本）"
+    - path: "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+      required: true
+      purpose: "Batch R01 系テーブル定義書との一貫性確認"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（item_popularity_signal / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "物理ER §4.1 No.2・§9・§16 の ranking_snapshot 追加方針と矛盾しないか"
+    - "論理ER §8.4 のランキング API 項目マッピングとヘッダ/明細の責務分離が明確か"
+    - "テーブル一覧 §5 No.15・§14 No.1–2 と分類・用途・冪等方針が一致しているか"
+    - "staging_ranking_signal → item_popularity_signal 経路が整理されているか"
+    - "external_genre テーブル定義書 §8.2・§7 と external_genre_id / source 列の型・命名が一致しているか"
+    - "external_genre / normalization_rule 等 Batch R01 テーブル定義書と章構成・MVP 方針が一貫しているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "item_popularity_signal との 1:N contains FK（ON）方針が明記されているか"
+    - "item_popularity_signal 冪等キー（ranking_snapshot_id + rank）の親ヘッダ側前提が明記されているか"
+    - "Snapshot ヘッダの保持・削除方針（履歴追記 vs 最新のみ）が妥当か"
+    - "external_genre_id（bigint）が external_genre.external_genre_id への LOGICAL 参照として明記されているか"
+    - "source 列の採用有無・snapshot_key 構成が external_genre の source + external_genre_id 方針と整合しているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "Snapshot ヘッダに保持する取得メタデータ（external_genre_id / period / fetched_at 等）の粒度"
+  - "履歴追記 vs 最新のみ Upsert の MVP 方針"
+  - "snapshot_key の構成（source + external_genre_id + period + fetched_at 等）"
+  - "ranking_snapshot ヘッダの external_genre_id を physical FK とするか LOGICAL FK のままとするか"
+
+risk_points:
+  - "論理ER §8.4 が item_popularity_signal 属性中心で、ranking_snapshot ヘッダ属性の正本が薄い点"
+  - "staging_ranking_signal → item_popularity_signal 直接 upserts と ranking_snapshot ヘッダ追加の整合"
+  - "Batch R02 item_popularity_signal Task への ranking_snapshot_id FK 引き継ぎ"
+  - "external_genre_id が bigint 自然キーである一方、ranking_snapshot_id は uuid PK である型の混在"
+  - "物理ER §8 FK 表に external_genre → ranking_snapshot 行が未掲載の可能性（本 Task で LOGICAL 参照方針を確定）"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-ranking-snapshot.yaml"
+  - "Batch R01 No.4: ranking_snapshot"
+  - "先行 merge 済み: #493 normalization_rule / PR #498、#494 external_genre / PR #499"
+  - "external_genre 正本: docs/06_実装設計/database/external_genre_テーブル定義書.md（Human Review #494 反映済み）"
