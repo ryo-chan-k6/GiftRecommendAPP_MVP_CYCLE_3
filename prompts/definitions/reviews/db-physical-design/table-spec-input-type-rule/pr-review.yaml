@@ -86,6 +86,15 @@ input:
     - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
       required: true
       purpose: "feature_code 参照・Rule 系方針の一貫性確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "§6.20–§6.21 input_type / application_method 正本化"
+    - path: "packages/code-definitions/semantic/input_type.yaml"
+      required: true
+      purpose: "enum 機械可読正本との一致"
+    - path: "packages/code-definitions/semantic/application_method.yaml"
+      required: true
+      purpose: "enum 機械可読正本との一致"
     - path: "docs/06_実装設計/database/物理ER.md"
       required: true
       purpose: "§8–§11 テーブル分類・partial 方針との整合"
@@ -131,11 +140,13 @@ review_points:
     - "Featureルール定義書 §11.1 入力種別（7 分類）と適用方針が整理されているか"
     - "ng_condition / budget_condition の Hard Filter 分離が明記されているか"
     - "API-PUB-007 / API-PUB-008 に基づく Public API 非公開が明記されているか"
-    - "table-spec §17 に MVP partial 採用方針が未決事項として整理されているか"
+    - "table-spec §17.1 に Human Review #477（MVP 物理 DDL 採用）が決定事項として記録されているか"
   db:
     - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
     - "semantic_config_version_id への物理 FK 方針が明記されているか"
-    - "input_type 列の enum / CHECK 候補が明記されているか"
+    - "input_type / application_method が enum定義書 §6.20–§6.21 と code-definitions と一致しているか"
+    - "default_source_weight が input_type_rule に含まれず feature_integration_rule へ委譲されているか"
+    - "§10 厳格 CHECK（chk_invert_delta_application_method / chk_input_type_dispatch_consistency）が DDL 展開可能か"
     - "version + input_type の UNIQUE 方針が妥当か"
   security:
     - "secret / .env 実値が含まれていないか"
@@ -147,15 +158,15 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "MVP で物理テーブルを作成するか（物理ER partial / テーブル一覧 △）"
-  - "DDL Task との関係（作成する場合の migration タイミング）"
-  - "input_type enum 正本化タイミング（§11.1 7 分類）"
-  - "ng_condition / budget_condition を DB 行として保持するか（Hard Filter 分離方針）"
+  - "（クローズ）MVP seed 7 行固定 — §17.1 No.4"
+  - "（クローズ）seed 漏れ時 §11.1 フォールバック + ログ — §17.1 No.7"
+  - "（クローズ）input_type / application_method enum 正本化 — §17.1 No.5"
+  - "（クローズ）default_source_weight は feature_integration_rule へ委譲 — §17.1 No.6"
+  - "（クローズ）DDL 厳格 CHECK — §17.1 No.8"
 
 risk_points:
   - "Featureルール定義書 §17 に input_type_rule 専用論理項目節がなく、§11 からの導出判断が必要"
-  - "feature_integration_rule（#478）との統合フロー境界（§12）"
-  - "YAML / JSON + seed 管理（§17.6）と DB テーブル管理の選択"
+  - "feature_integration_rule（#478）との統合重み境界（default_source_weight 委譲）"
 
 notes:
   - "Wave2 No.8: input_type_rule"

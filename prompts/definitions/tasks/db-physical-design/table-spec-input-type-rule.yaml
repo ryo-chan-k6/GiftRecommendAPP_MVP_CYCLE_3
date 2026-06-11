@@ -49,20 +49,21 @@ background: |
   Phase2 子 Task ③ Wave2（Semantic / Feature 定義系 Rule 群）No.8。
   Wave1（semantic_config / semantic_config_version）merge 済み前提。
   `input_type_rule` は好み・避けたい・NG など入力種別ごとの Feature 適用方法を管理する内部 Rule である。
-  物理ER・テーブル一覧では MVP `partial`（△）として扱い、MVP で物理テーブルを作成するかは Human Review で判断する。
+  テーブル一覧 §8 上の分類は `partial`（△）だが、Human Review #477 により **MVP から物理テーブル・migration・seed を作成する**（テーブル定義書 §17.1 No.1）。
   Featureルール定義書 §17 には input_type_rule 専用の論理項目節がなく、§2.1 / §11 のドメイン定義を物理設計へ落とし込む必要がある。
   Issue #477 / Branch `docs/task-477-input-type-rule-table-spec` で作業する。
 
 objective: |
   `input_type_rule` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
-  MVP partial 採用方針と Public API 非公開を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+  Human Review 決定（MVP 物理 DDL 採用）と Public API 非公開を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
 
 scope:
   - "table-spec.md テンプレ準拠の input_type_rule テーブル定義書作成"
   - "物理ER §8–§11・論理ER §10.2・Featureルール定義書 §2.1 / §11 との突合"
   - "semantic_config_version テーブル定義書の contains FK 方針を踏襲"
-  - "MVP partial（テーブル一覧 △）採用方針を table-spec §17 未決事項へ整理"
+  - "Human Review 決定（MVP 物理 DDL 採用）を table-spec §17.1 へ記録"
   - "API-PUB-007 / API-PUB-008 に基づく Public API 非公開方針の明記"
+  - "enum定義書 §6.20–§6.21 および packages/code-definitions/semantic/*.yaml への input_type / application_method 正本化"
   - "Task / Review Definition の整備"
 
 out_of_scope:
@@ -115,7 +116,17 @@ output:
       action: "create"
       required: true
       template: "prompts/templates/docs/table-spec.md"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      action: "update"
+      required: true
+      purpose: "§6.20 input_type / §6.21 application_method 追加"
   files:
+    - path: "packages/code-definitions/semantic/input_type.yaml"
+      action: "create"
+      required: true
+    - path: "packages/code-definitions/semantic/application_method.yaml"
+      action: "create"
+      required: true
     - path: "prompts/definitions/tasks/db-physical-design/table-spec-input-type-rule.yaml"
       action: "update"
       required: true
@@ -128,9 +139,12 @@ acceptance_criteria:
   - "物理ER §8–§11・論理ER §10.2・テーブル一覧 §8 と矛盾しない"
   - "Featureルール定義書 §11.1 入力種別と適用方針が物理設計へ整理されている"
   - "semantic_config_version_id への物理 FK 方針が明記されている"
-  - "MVP partial 採用方針が table-spec §17 未決事項に明記されている"
+  - "Human Review #477: MVP から物理 DDL 作成が table-spec §17.1 決定事項として記録されている"
   - "API-PUB-007 / API-PUB-008 に基づく Public API 非公開が明記されている"
   - "ng_condition / budget_condition の Hard Filter 分離が明記されている"
+  - "enum定義書 §6.20–§6.21 と code-definitions YAML が Featureルール §11.1 と一致している"
+  - "default_source_weight は input_type_rule に含めず feature_integration_rule（#478）へ委譲している"
+  - "§10 厳格 CHECK（invert_delta + dispatch consistency）が明記されている"
   - "apps/** 変更がない"
   - "Task PR target が親 Epic Branch"
 
@@ -164,12 +178,15 @@ dependencies:
 parallel_control:
   exclusive_files:
     - "docs/06_実装設計/database/input_type_rule_テーブル定義書.md"
+    - "docs/06_実装設計/database/enum定義書.md"
+    - "packages/code-definitions/semantic/input_type.yaml"
+    - "packages/code-definitions/semantic/application_method.yaml"
   conflict_risk: "low"
   db_impact: false
 
 test_policy:
   manual_checks:
-    - "物理ER §8 input_type_rule partial 方針との整合"
+    - "物理ER §8 input_type_rule 分類（partial）と Human Review MVP DDL 採用の整合"
     - "Featureルール定義書 §11.1 入力種別（7 分類）との整合"
     - "semantic_config_version_id への物理 FK 方針"
     - "API-PUB-007 / API-PUB-008 非公開方針の明記"
@@ -188,7 +205,7 @@ review:
 
 notes:
   - "Wave2 着手順 No.8"
-  - "入力種別ごとの Feature 適用。MVP partial（テーブル一覧 △）"
+  - "入力種別ごとの Feature 適用。Human Review #477: MVP 物理 DDL 採用"
   - "Featureルール定義書 §17 に input_type_rule 専用論理項目節がないため、§11 から物理項目を導出する"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
   - "Issue #477 / Branch docs/task-477-input-type-rule-table-spec"

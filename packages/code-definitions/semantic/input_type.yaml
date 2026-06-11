@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "input_type"
+  physical_name: "input_type"
+  logical_name: "Input Type"
+  category: "semantic"
+  mvp_scope: true
+
+values:
+  - value: "relationship"
+    label: "Relationship"
+    meaning: "関係性入力。Relationship Rule を適用"
+    terminal: true
+    enabled: true
+  - value: "occasion"
+    label: "Occasion"
+    meaning: "贈答目的入力。Occasion Rule を適用"
+    terminal: true
+    enabled: true
+  - value: "preferred_condition"
+    label: "Preferred Condition"
+    meaning: "好み条件。Concept Feature Delta を加算"
+    terminal: true
+    enabled: true
+  - value: "non_preferred_condition"
+    label: "Non-Preferred Condition"
+    meaning: "避けたい条件。Concept Feature Delta を反転または抑制"
+    terminal: true
+    enabled: true
+  - value: "ng_condition"
+    label: "NG Condition"
+    meaning: "絶対NG条件。Hard Filter へ分離"
+    terminal: true
+    enabled: true
+  - value: "budget_condition"
+    label: "Budget Condition"
+    meaning: "予算条件。Hard Filter へ分離"
+    terminal: true
+    enabled: true
+  - value: "free_text"
+    label: "Free Text"
+    meaning: "自由入力。Semantic Concept 抽出後に適用"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "input_type_rule"
+    column: "input_type"
+    constraint: "NOT NULL"
+    note: "version 内 UNIQUE（semantic_config_version_id, input_type）"
