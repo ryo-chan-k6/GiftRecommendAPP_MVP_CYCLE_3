@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 500
   issue: 495
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item.yaml"
   source_branch: "docs/task-495-item-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 495
     required: true
   pr:
-    number: null
+    number: 500
     required: true
   diff:
     required: true
@@ -145,11 +145,10 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "external_genre_id の物理 FK vs LOGICAL 参照方針"
-  - "normalized_hash 算出対象フィールドの確定（外部商品データ連携設計書 §6.4 との差分有無）"
+  - "§18.1 決定事項の妥当性（LOGICAL 維持・§6.4 hash 正本）— PR 作成前に Human 承認済み"
 
 risk_points:
-  - "external_genre テーブル定義書（#494）未 merge 時の genre 参照記述の暫定性"
+  - "external_genre テーブル定義書（#494 / PR #499）merge 済み。`external_genre_id` は LOGICAL・`bigint` で突合完了"
   - "item_image / item_review_summary 後続 Task との FK・更新順序の一貫性"
   - "API-PUB-002 items[] Snapshot 列と item 正本列の命名・意味の整合（OpenAPI 変更は #469 委譲）"
 
@@ -158,4 +157,5 @@ notes:
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item.yaml"
   - "Issue #495 / Branch docs/task-495-item-table-spec"
   - "先行 merge 済み: #440 / PR #441（enum）、#493 / PR #498（normalization_rule）"
-  - "推奨未 merge: #494（external_genre テーブル定義。merge 後は input 突合を再確認）"
+  - "merge 済み: #494 / PR #499（external_genre）。Human Review #495 で突合・決定済み"
+  - "PR #500"
