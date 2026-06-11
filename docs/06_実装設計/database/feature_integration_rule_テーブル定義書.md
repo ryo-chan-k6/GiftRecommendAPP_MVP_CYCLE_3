@@ -4,12 +4,12 @@
 
 | 項目           | 内容                                   |
 | -------------- | -------------------------------------- |
-| ドキュメントID | `DB-TBL-partial-feature_integration_rule` |
+| ドキュメントID | `DB-TBL-MVP-feature_integration_rule` |
 | ドキュメント名 | Feature Integration Rule テーブル定義書 |
 | 対象システム   | Gift Recommendation Service MVP        |
-| MVP対象        | `partial`                              |
+| MVP対象        | `yes`                                  |
 | 作成日         | 2026-06-11                             |
-| 更新日         | 2026-06-11                             |
+| 更新日         | 2026-06-11（Human Review: MVP 物理テーブル化方針反映） |
 
 ---
 
@@ -17,7 +17,9 @@
 
 `feature_integration_rule` は、User Feature 生成時に **複数の Feature 入力**（Relationship / Occasion 基準値、Pair 補正、Concept 由来 Delta 等）を **1 つの `user_feature_raw` に統合する重み（weight）** を、`semantic_config_version` 単位で保持する Semantic / Feature 定義系テーブルである。
 
-Featureルール定義書 §12・§18.1 の Feature Integration を物理化する。**Public API では返却しない**（API-PUB-007 / API-PUB-008 非公開）。物理ER・テーブル一覧では **MVP partial（△）** とし、DDL 作成要否は Human Review で確定する。
+Featureルール定義書 §12・§18.1 の Feature Integration を物理化する。**Public API では返却しない**（API-PUB-007 / API-PUB-008 非公開）。
+
+**MVP 物理テーブル化方針（Human Review 決定）:** 後続リファクタリングコストを抑えるため、MVP 初期から本テーブルを **物理 DDL 作成・seed 投入対象** とする。`input_type_rule` と同様の方針。統合重みの設定正本は **DB（本テーブル）** とし、reco 定数 / YAML への二重管理は行わない。
 
 ---
 
@@ -25,7 +27,7 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 
 - Feature 8 軸ごとに、統合対象入力（§12.1）への **重み係数** を version 管理する（Featureルール定義書 §12.3）
 - reco が User Feature 生成時（§18.1）に `relationship_rule` / `occasion_rule` / `pair_rule` / `concept_feature_rule` の出力を統合する際の係数を参照できるようにする
-- MVP partial 採用時でも、後続 DDL Task が CREATE TABLE を起こせる物理スキーマを確定する
+- 後続 DDL Task が MVP migration で CREATE TABLE を起こせる物理スキーマを確定する
 
 ---
 
@@ -39,7 +41,7 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 | 正本区分 | 設定正本 |
 | 主な更新主体 | database（seed / 運用更新） |
 | 主な参照主体 | reco（User Feature 生成時の統合係数参照） |
-| MVP対象 | `partial`（テーブル一覧 △・物理ER §8 partial） |
+| MVP対象 | `yes`（Human Review: MVP 物理テーブル化。`input_type_rule` と同方針） |
 | 関連物理ER | `docs/06_実装設計/database/物理ER.md` §8–§11 |
 
 ---
@@ -176,7 +178,7 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 | `avoid_delta` | 1.000 | 8 軸共通 |
 | `free_text_delta` | 0.700 | 8 軸共通 |
 
-> MVP では軸別に重みを変えない（48 行 / version = 8 feature × 6 input_source）。軸別チューニングは post-MVP 運用で `weight` UPDATE または新 version INSERT で対応する。
+> **Human Review 決定:** MVP 初回実装は **8 軸同一重み**（48 行 / version = 8 feature × 6 input_source）。軸別チューニングは post-MVP で `weight` UPDATE または新 version INSERT を検討する。
 
 ---
 
@@ -185,7 +187,7 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 | 操作 | 実行主体 | 条件 | 更新項目 | 冪等性 | 備考 |
 | ---- | -------- | ---- | -------- | ------ | ---- |
 | SELECT | reco | User Feature 生成時。`semantic_config_version_id` + `feature_code` + `is_active=true` | — | — | 6 `input_source` 分の `weight` を取得し §12.2 を適用 |
-| SELECT | reco | 該当行なし | — | — | §12.3 初期値をコード側フォールバックとするかは reco 実装 Task の論点（DB 未作成時） |
+| SELECT | reco | 該当行なし | — | — | エラーまたは運用アラート。MVP では seed 未投入を許容しない |
 | INSERT | database（seed） | 新 version 初回投入 | 全列 | version ごと Upsert | 8 軸 × 6 入力 = 48 行 |
 | UPDATE | database（運用） | 重みチューニング・無効化 | `weight`, `is_active` | — | **`feature_code` / `input_source` 変更禁止**（新 version INSERT 推奨） |
 | DELETE | — | MVP では原則禁止 | — | — | `is_active=false` で無効化 |
@@ -200,7 +202,7 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 | 削除方式 | 物理 DELETE 原則禁止 |
 | 論理削除 | `is_active = false` |
 | version 切替 | 新 `semantic_config_version` 作成時に 48 行を新規 INSERT |
-| partial 未作成時 | reco が §12.3 定数で統合する場合、本テーブルは参照されない（二重管理リスクは §17 で整理） |
+| 設定正本 | **DB 本テーブルのみ**。reco 定数 / YAML への重み二重管理は行わない（Human Review 決定） |
 
 ---
 
@@ -210,7 +212,7 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 | ---- | ---- |
 | DDL対象 | `feature_integration_rule` |
 | migration単位 | 1 テーブル = 1 migration（DDL Task） |
-| 適用順序 | 物理ER §15: `semantic_config_version`・`feature_definition` 作成後、Rule 群の一部として適用。**MVP partial のため DDL Task でスキップ可** |
+| 適用順序 | 物理ER §15: `semantic_config_version`・`feature_definition` 作成後、Rule 群の一部として適用。**MVP migration 必須** |
 | rollback方針 | forward migration 主体 |
 | 破壊的変更有無 | `no`（初回 CREATE） |
 
@@ -231,45 +233,35 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 
 | No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
-| 1 | DDL適用 | CREATE TABLE / Index / FK / CHECK が定義どおり（partial 採用時） | migration |
+| 1 | DDL適用 | CREATE TABLE / Index / FK / CHECK が定義どおり | migration |
 | 2 | UNIQUE | 同一 version で同一 feature × input_source の重複 INSERT が拒否される | migration |
 | 3 | input_source CHECK | 許容外 `input_source` が拒否される | migration |
 | 4 | weight CHECK | `weight` が 0.0〜2.0 外で拒否される | migration |
 | 5 | reco 参照 | version + feature で active 6 行が取得され §12.2 に適用される | integration |
 | 6 | Public API | API-PUB-007 / API-PUB-008 が `feature_integration_rule` を返却しない | contract |
-| 7 | seed 整合 | §12.3 初期重み 48 行が seed に存在（partial 採用時） | manual |
-| 8 | partial 未作成 | DDL スキップ時に reco 定数フォールバックが §12.3 と一致 | manual |
+| 7 | seed 整合 | §12.3 初期重み 48 行が seed に存在 | manual |
+| 8 | reco 参照 | seed 未投入 version で統合が失敗しないこと（運用前提） | integration |
 
 ---
 
 ## 17. 未決事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | MVP で物理テーブルを作成するか | テーブル一覧 △・物理ER partial。Featureルール定義書 §17.6 は YAML/JSON も許容 | Human | DDL Task 前 | DDL Task / reco 実装と連動 |
-| 2 | DB 未作成時の reco フォールバック | partial スキップ時に §12.3 定数をコード側で保持する必要 | Human | reco 実装 Task 前 | 二重管理回避方針 |
-| 3 | 軸別重みチューニング | MVP は 8 軸同一重み。post-MVP で軸別化するか | Human | 運用設計時 | seed 設計へ引き継ぎ |
+- なし（MVP 初回実装に必要な論点は §17.1 で確定済み）
 
-### 17.1 MVP partial 採用方針（docs Task 時点の整理）
+### 17.1 Human Review 決定事項
 
-| 観点 | 本定義書の整理 | Human 判断待ち |
-| ---- | -------------- | -------------- |
-| 物理 DDL | **スキーマ定義は本書で確定**。MVP migration への含否は partial | **要判断**（テーブル一覧 △） |
-| 設定正本 | DB 採用時は本テーブル。未採用時は reco 定数 / YAML（§17.6） | **要判断** |
-| Public API | **非公開**（確定） | — |
-| `semantic_config_version_id` FK | **物理 FK ON**（relationship_rule と同型） | — |
-| 行モデル | **version × feature_code × input_source**（48 行 / version） | — |
-
-### 17.2 Human Review 決定事項（踏襲・提案）
-
-| No | 論点 | 提案内容 | 決定者 | 備考 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
-| 1 | `semantic_config_version_id` FK | **物理 FK ON**、ON DELETE RESTRICT | Human | relationship_rule / pair_rule と同型 |
-| 2 | version 内 UNIQUE | **採用**。`(semantic_config_version_id, feature_code, input_source)` | Human | 1 軸 × 1 入力 = 1 重み |
-| 3 | `input_source` 許容値 | **MVP 6 値固定**（§12.1 対応） | Human | CHECK で担保 |
-| 4 | `weight` 値域 | **0.0〜2.0**（§12.3 を包含） | Human | |
-| 5 | Public API | **非公開**（API-PUB-007 / API-PUB-008） | Human | Reco 内部完結 |
-| 6 | MVP DDL | **partial のため DDL Task でスキップ可**。スキップ時は reco 定数正本 | Human | テーブル一覧 △ |
+| 1 | MVP 物理テーブル化 | **MVP 初期から物理 DDL 作成・seed 投入対象**とする | Human | リファクタリングコスト低減。`input_type_rule` と同方針 |
+| 2 | 設定正本 | **DB 本テーブルのみ**。reco 定数 / YAML への重み二重管理は行わない | Human | Featureルール定義書 §17.6 の代替方式は MVP では採用しない |
+| 3 | `semantic_config_version_id` FK | **物理 FK ON**、ON DELETE RESTRICT | Human | relationship_rule / pair_rule と同型 |
+| 4 | version 内 UNIQUE | **採用**。`(semantic_config_version_id, feature_code, input_source)` | Human | 1 軸 × 1 入力 = 1 重み |
+| 5 | `input_source` 許容値 | **MVP 6 値固定**（§12.1 対応） | Human | CHECK で担保 |
+| 6 | `weight` 値域 | **0.0〜2.0**（§12.3 を包含） | Human | |
+| 7 | Public API | **非公開**（API-PUB-007 / API-PUB-008） | Human | Reco 内部完結 |
+| 8 | MVP DDL | **migration 必須**。DDL Task で CREATE TABLE を実施 | Human | seed Task で 48 行 / version を投入 |
+| 9 | 軸別重みチューニング | **MVP 初回実装は 8 軸同一重み**（§11.1）。post-MVP で軸別化は別途検討 | Human | seed は 48 行 / version |
+| 10 | 正本 docs 同期 | 物理ER §8・テーブル一覧 §8・semantic_config_version §8.1 を `yes` / `○` に更新 | Human | `input_type_rule` と同方針 |
 
 ---
 
@@ -277,9 +269,10 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 
 | 種別 | パス / URL | 用途 |
 | ---- | ---------- | ---- |
-| 物理ER | `docs/06_実装設計/database/物理ER.md` | §8–§11・partial 方針 |
+| 物理ER | `docs/06_実装設計/database/物理ER.md` | §8–§11 |
 | 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §10.2（抽象 feature_rule 分解） |
-| テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §8 No.42 MVP partial |
+| テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §8 No.41–42 |
+| 関連方針 | `input_type_rule` テーブル定義書（#477） | MVP 物理テーブル化の同方針 |
 | enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.16 feature_code |
 | Featureルール | `docs/04_ドメインモデル設計/Featureルール定義書.md` | §12 / §16.1 / §17.6 / §18.1 |
 | API契約 | `docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md` | 内部 Rule 非公開 |
@@ -297,9 +290,9 @@ Featureルール定義書 §12・§18.1 の Feature Integration を物理化す�
 - 論理ER §10.2（抽象 `feature_rule` 分解）・物理ER §8–§11・テーブル一覧 §8 No.42 と矛盾していない
 - Featureルール定義書 §12.1 / §12.2 / §12.3 の統合対象・式・初期重みが物理カラムとして整理されている
 - `semantic_config_version_id` FK（物理 ON）および `feature_code` の LOGICAL 参照方針が明記されている
-- MVP partial 採用方針が §17 に明記されている
+- MVP 物理テーブル化方針（Human Review 決定）が §17 に明記されている
 - API-PUB-007 / API-PUB-008 に基づく Public API 非公開が明記されている
 - relationship_rule / pair_rule テーブル定義書と Rule 系方針（UNIQUE / is_active / version 管理）が一貫している
 - OpenAPI / generated 変更が含まれていない（#469 委譲）
-- DDL Task が CREATE TABLE を起こせる粒度である（partial 採用時）
+- DDL Task が MVP migration で CREATE TABLE を起こせる粒度である
 - secret や `.env` 実値が含まれていない

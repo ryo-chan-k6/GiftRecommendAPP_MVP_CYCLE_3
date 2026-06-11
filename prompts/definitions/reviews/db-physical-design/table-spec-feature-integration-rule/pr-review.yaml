@@ -4,7 +4,7 @@ definition_type: "review"
 review:
   id: "review-db-physical-design-table-spec-feature-integration-rule-pr"
   title: "feature_integration_rule テーブル定義書 PRレビュー"
-  summary: "feature_integration_rule テーブル定義書 Task の PR を AI Review する。物理ER・論理ER・Featureルール定義書 §12 との整合、MVP partial 方針、table-spec テンプレ準拠を確認する。"
+  summary: "feature_integration_rule テーブル定義書 Task の PR を AI Review する。物理ER・論理ER・Featureルール定義書 §12 との整合、MVP 物理テーブル化方針、table-spec テンプレ準拠を確認する。"
   type: "task_pr_review"
   status: "ready"
 
@@ -88,13 +88,13 @@ input:
       purpose: "内部 Rule 非公開・version 管理方針の参考"
     - path: "docs/06_実装設計/database/物理ER.md"
       required: true
-      purpose: "§8–§11 整合。feature_integration_rule partial 方針"
+      purpose: "§8–§11 整合"
     - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
       required: true
       purpose: "§10.2 整合"
     - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
       required: true
-      purpose: "§8 No.42 MVP partial（△）との整合"
+      purpose: "§8 No.42 MVP 対象（○）との整合"
     - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
       required: true
       purpose: "§12 Feature Integration Rule・§16.1・§18.1 統合フロー"
@@ -132,7 +132,8 @@ review_points:
   docs:
     - "table-spec.md テンプレの主要章が充足しているか"
     - "論理ER §10.2 属性と矛盾しないか"
-    - "MVP partial 採用方針が §17 に明記されているか"
+    - "MVP 物理テーブル化方針（Human Review 決定）が §17 に明記されているか"
+    - "MVP migration 必須・DB 正本（reco 定数フォールバックなし）が明記されているか"
     - "Public API 非公開（API-PUB-007 / API-PUB-008 返却対象外）が明記されているか"
     - "§12 統合式・§12.3 初期重みと DB 保持方針（行モデル）の対応が整理されているか"
     - "relationship_rule / pair_rule テーブル定義書と Rule 系方針が一貫しているか"
@@ -151,14 +152,10 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "MVP でテーブル作成するか（物理ER partial / テーブル一覧 △）"
-  - "integration ロジックと DB 境界（カラム化 vs コード定数 / YAML）"
-  - "§12.3 初期重みの DB 保持要否と更新主体"
-  - "DDL Task との関係（partial 採用時の migration 要否）"
+  - "post-MVP の軸別重みチューニング要否"
 
 risk_points:
-  - "MVP partial のため DDL Task でテーブル未作成となる可能性"
-  - "reco Feature Integration 実装が DB 非依存（定数 / YAML）で進む場合の二重管理"
+  - "seed Task で 48 行 / version 未投入時の reco 統合失敗"
   - "semantic_config_version 子テーブル FK 連鎖への後続 Task 影響"
 
 notes:

@@ -65,13 +65,13 @@ agent:
 background: |
   Phase2 子 Task ③ Wave2（Semantic / Feature 定義系 Rule 群）No.9。
   Wave1（semantic_config / semantic_config_version）および Wave2 No.1〜No.6（feature_definition / relationship_rule / occasion_rule / pair_rule）merge 済み前提。
-  本テーブルは MVP partial（テーブル一覧 △・物理ER partial）。Featureルール定義書 §12 の統合式・§12.3 初期重みを DB 化するかは Human Review 論点。
-  推奨着手順: … → concept_feature_rule → partial 2 件（input_type_rule / feature_integration_rule）。
+  Human Review により MVP 初期から物理テーブル化を採用（`input_type_rule` と同方針）。リファクタリングコスト低減のため reco 定数 / YAML への二重管理は行わない。
+  推奨着手順: … → concept_feature_rule → input_type_rule / feature_integration_rule。
 
 objective: |
   `feature_integration_rule` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
-  後続 DDL Task が migration を作成できる粒度まで確定する。
-  MVP partial 採用時は §12 統合式・§12.3 初期重みを DB カラムまたは正規化行モデルで保持する方針を明記する。
+  後続 DDL Task が MVP migration を作成できる粒度まで確定する。
+  §12 統合式・§12.3 初期重みを正規化行モデル（version × feature_code × input_source）で DB 保持する方針を明記する。
 
 scope:
   - "table-spec.md テンプレ準拠の feature_integration_rule テーブル定義書作成"
@@ -87,13 +87,12 @@ out_of_scope:
   - "db/seeds ファイルの作成（Task ⑤）"
   - "apps/** 実装"
   - "OpenAPI / generated 変更（#469 へ委譲）"
-  - "MVP partial テーブル作成要否の最終確定（Human Review 論点）"
 
 input:
   docs:
     - path: "docs/06_実装設計/database/物理ER.md"
       required: true
-      purpose: "テーブル分類・FK・Index・CHECK 方針（§8–§11）。feature_integration_rule は partial"
+      purpose: "テーブル分類・FK・Index・CHECK 方針（§8–§11）"
     - path: "docs/06_実装設計/database/enum定義書.md"
       required: true
       purpose: "feature_code 等 enum 参照"
@@ -102,7 +101,7 @@ input:
       purpose: "§10.2 Semantic / Feature 系エンティティ属性・feature_rule 分解方針"
     - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
       required: true
-      purpose: "§8 No.42 MVP partial（△）"
+      purpose: "§8 No.42 MVP 対象（○）"
     - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
       required: true
       purpose: "§12 Feature Integration Rule・§16.1 semantic_config_version との関係・§18.1 統合フロー"
@@ -148,7 +147,8 @@ acceptance_criteria:
   - "物理ER §8–§11・論理ER §10.2・テーブル一覧 §8 と矛盾しない"
   - "apps/** 変更がない"
   - "Task PR target が親 Epic Branch"
-  - "MVP partial 採用方針が §17 に明記されている"
+  - "MVP 物理テーブル化方針（Human Review 決定）が §17 に明記されている"
+  - "MVP migration 必須・seed 48 行 / version が §14・§17 に明記されている"
   - "Public API 非公開（API-PUB-007 / API-PUB-008 返却対象外）が明記されている"
   - "semantic_config_version_id への FK 方針が明記されている"
   - "§12 統合式・§12.3 初期重みと DB 保持方針（行モデル）の対応が整理されている"
@@ -189,7 +189,7 @@ parallel_control:
 
 test_policy:
   manual_checks:
-    - "物理ER §8 feature_integration_rule partial 方針との整合"
+    - "MVP 物理テーブル化方針（yes）と §17 Human Review 決定事項の整合"
     - "Featureルール定義書 §12 統合対象・統合式・§12.3 初期重みとの整合"
     - "semantic_config_version テーブル定義書 §8.1 FK 被参照（contains / ON）との整合"
     - "relationship_rule / pair_rule テーブル定義書との Rule 系方針一貫性"
@@ -208,7 +208,7 @@ review:
 
 notes:
   - "Wave2 着手順 No.9"
-  - "MVP partial テーブル（テーブル一覧 △）。Human Review で MVP 作成要否を確認"
+  - "Human Review: MVP 物理テーブル化採用（input_type_rule と同方針）"
   - "複数 Feature 入力統合ルール。reco 内部処理用（User Feature 生成 §18.1）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
   - "対応 Issue: #478"
