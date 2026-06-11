@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 485
   issue: 471
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-semantic-concept.yaml"
   source_branch: "docs/task-471-semantic-concept-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 471
     required: true
   pr:
-    number: null
+    number: 485
     required: true
   diff:
     required: true
