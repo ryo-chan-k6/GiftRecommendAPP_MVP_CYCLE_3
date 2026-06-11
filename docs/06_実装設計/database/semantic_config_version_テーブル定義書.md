@@ -192,8 +192,8 @@ version 非現行化時は `is_current = false` に加え、運用で `valid_to`
 | `pair_rule` | `semantic_config_version_id` | contains | `ON` | Pair 補正ルール |
 | `concept_feature_rule` | `semantic_config_version_id` | contains | `ON` | Concept → Feature 補正ルール。詳細は `concept_feature_rule_テーブル定義書` §8・§17.1 |
 | `normalization_rule` | `semantic_config_version_id` | contains | `ON` | Feature 正規化ルール |
-| `input_type_rule` | `semantic_config_version_id` | contains | `ON` | MVP partial |
-| `feature_integration_rule` | `semantic_config_version_id` | contains | `ON` | MVP partial |
+| `input_type_rule` | `semantic_config_version_id` | contains | `ON` | Human Review: MVP 物理 DDL 対象 |
+| `feature_integration_rule` | `semantic_config_version_id` | contains | `ON` | Human Review: MVP 物理 DDL 対象 |
 
 > 子テーブル側 DDL では `REFERENCES semantic_config_version(semantic_config_version_id) ON DELETE RESTRICT` を付与する想定。Rule 定義の詳細・CHECK は各子テーブル定義 Task で確定する。
 
