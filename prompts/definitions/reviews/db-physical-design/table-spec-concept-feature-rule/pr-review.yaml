@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 490
   issue: 476
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-concept-feature-rule.yaml"
   source_branch: "docs/task-476-concept-feature-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 476
     required: true
   pr:
-    number: null
+    number: 490
     required: true
   diff:
     required: true
