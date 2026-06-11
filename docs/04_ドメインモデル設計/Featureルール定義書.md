@@ -1082,6 +1082,8 @@ Featureルールは「意味の作り方」である。
 | polarity                   | positive / negative / mixed |
 | is_active                  | 有効フラグ                  |
 
+> **物理テーブルへのマッピング（Human Review #476 決定）**: 論理項目 `concept_code` は物理列 **`semantic_concept_id`**（`semantic_concept` への物理 FK）で表現する。Public API 応答の `conceptCode` は JOIN で導出する。`feature_delta` は **0.0〜1.0**（大きさ）とし、符号・方向は `polarity` で表現する（pair_rule の signed delta とは分離）。MVP seed は初期 18 Concept 対象の **稀疏** 投入（全 18×8 完全行列は必須としない）。詳細は `docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md` §6・§17.1 を正とする。
+
 ---
 
 ### 17.5 Feature生成結果
@@ -1198,7 +1200,7 @@ flowchart TD
 | relationship_rule    | 12分類すべて定義                  |
 | occasion_rule        | 15分類すべて定義                  |
 | pair_rule            | 代表的な組み合わせのみ定義        |
-| concept_feature_rule | 初期18Conceptを定義               |
+| concept_feature_rule | 初期18Conceptを対象とする稀疏seed（全18×8完全行列は必須としない） |
 | 統合ルール           | 加重平均 + Delta加算              |
 | 正規化               | 固定パラメータによるsigmoid正規化 |
 | raw値保持            | 必須                              |

@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-07（Human Review 反映）            |
+| 更新日         | 2026-06-11（polarity 追加・Issue #476 反映） |
 
 ---
 
@@ -77,6 +77,7 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | Item Generation Type | `generation_type` | batch | item_generation_queue | `yes` | Human Review 確定 |
 | Recommendation Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `recommendation_run_phase_name` |
 | Batch Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `batch_run_phase_name` |
+| Concept Feature Polarity | `polarity` | semantic | concept_feature_rule | `yes` | API-PUB-008。Issue #476 決定 |
 
 ---
 
@@ -292,6 +293,16 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 
 `evaluation_run_phase_name` は本 Task では定義しない。Evaluation 関連テーブル定義 Task（BATCH-018 前）で別途定義する。
 
+### 6.20 Concept Feature Polarity (`polarity`)
+
+Human Review（Issue #476）にて MVP 候補値を確定した。`feature_delta` の大きさ（0.0〜1.0）に対する符号・方向を表す。packages/code-definitions 正本化は後続 enum Task で実施する。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `positive` | Positive | Feature 値を増加方向に補正 | Concept → Feature delta | `yes` | API-PUB-008 応答例のデフォルト |
+| `negative` | Negative | Feature 値を減少方向に補正 | Concept → Feature delta | `yes` | |
+| `mixed` | Mixed | 文脈依存・両方向の補正 | Concept → Feature delta | `yes` | reco 適用ロジックは実装 Task で確定 |
+
 ---
 
 ## 7. DB利用箇所
@@ -320,6 +331,8 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | `feature_definition` | `feature_code` | `feature_code` | NOT NULL | MVP 8 軸 CHECK |
 | `item_feature` | `feature_code` | `feature_code` | NOT NULL | feature_definition 参照 |
 | `user_feature` | `feature_code` | `feature_code` | NOT NULL | feature_definition 参照 |
+| `concept_feature_rule` | `polarity` | `polarity` | NOT NULL | `chk_polarity_mvp` CHECK。Issue #476 決定 |
+| `concept_feature_rule` | `feature_code` | `feature_code` | NOT NULL | MVP 8 軸 CHECK |
 
 ---
 
@@ -330,6 +343,7 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | API-PUB-002 等 | Request | `mode` | `request_mode` | OpenAPI 上は `mode`。DB 列名は `request_mode` |
 | API-PUB-004 等 | Request | `feedback_target_type` | `feedback_target_type` | |
 | - | Response | `run_status` 等 | 各 state enum | MVP 初期 API では内部状態を直接公開しない設計。Contract Task で再確認 |
+| API-PUB-008 | Response | `conceptFeatureRules[].polarity` | `polarity` | 任意応答。enum定義書 §6.20 と整合 |
 
 ---
 

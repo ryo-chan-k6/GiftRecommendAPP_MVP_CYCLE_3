@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP        |
 | MVP対象        | `yes`                                  |
 | 作成日         | 2026-06-11                             |
-| 更新日         | 2026-06-11                             |
+| 更新日         | 2026-06-11（Human Review Issue #476 反映） |
 
 ---
 
@@ -50,7 +50,7 @@ Featureルール定義書 §6・§17.4 の Concept Feature Rule を物理化し�
 - **`semantic_concept_id`** は `semantic_concept` への **物理 FK** を採用する（semantic_concept テーブル定義書 §8.1）。Featureルール定義書 §17.4 の `concept_code` は **子 Rule 側では FK 列で表現**し、Public API 表面では `semantic_concept.concept_code` を JOIN して `conceptCode` として返す（semantic_rule と同型）
 - **`feature_delta`** は Concept 由来の Feature 補正の **大きさ**（0.0〜1.0）。適用時の符号・方向は **`polarity`** で表現する（API-PUB-008 §7.3.1）
 - **`is_active = true`** の行のみ API-PUB-008 が返却する（契約上、返却行は active のみ）
-- MVP seed は **初期 18 Concept** を対象とする。全 18×8 完全行列を必須とはしない（稀疏 seed 可）。ただし version 内で同一 Concept × Feature の重複は禁止する
+- MVP seed は **初期 18 Concept** を対象とする。**稀疏 seed**（全 18×8 完全行列は必須としない — §17.1 No.5 決定済み）。version 内で同一 Concept × Feature の重複は禁止（§17.1 No.4 決定済み）
 
 ### 5.1 関連テーブルとの関係
 
@@ -166,7 +166,7 @@ applied_delta = feature_delta * source_weight * confidence
 | `fk_concept_feature_rule_semantic_concept` | FOREIGN KEY | `semantic_concept_id` | `semantic_concept` ON DELETE RESTRICT | semantic_concept §8.1 |
 | `chk_feature_code_mvp` | CHECK | `feature_code` | MVP 8 軸 IN 句 | feature_definition / 物理ER §11 と同一 |
 | `chk_feature_delta_range` | CHECK | `feature_delta` | `feature_delta >= 0.0 AND feature_delta <= 1.0` | API-PUB-008 §7.3.1 |
-| `chk_polarity_mvp` | CHECK | `polarity` | `polarity IN ('positive','negative','mixed')` | API-PUB-008 enum 候補。正本化は §17.1 No.1 |
+| `chk_polarity_mvp` | CHECK | `polarity` | `polarity IN ('positive','negative','mixed')` | enum定義書 §6.20 / API-PUB-008。packages 正本化は後続 enum Task（§17.1 No.1 決定済み） |
 
 ---
 
@@ -175,8 +175,8 @@ applied_delta = feature_delta * source_weight * confidence
 | カラム | enum / code | 定義元 | 許容値 | 備考 |
 | ------ | ----------- | ------ | ------ | ---- |
 | `feature_code` | `feature_code` | enum定義書 §6.16 | MVP 8 値 | 物理ER §11 |
-| `polarity` | `polarity` | API-PUB-008 | `positive` / `negative` / `mixed` | MVP は CHECK 候補値 |
-| `feature_delta` | — | API-PUB-008 | 0.0〜1.0 | 大きさ。符号は `polarity` |
+| `polarity` | `polarity` | enum定義書 §6.20 / API-PUB-008 | `positive` / `negative` / `mixed` | MVP は CHECK で担保（§17.1 No.1 決定済み） |
+| `feature_delta` | — | API-PUB-008 | 0.0〜1.0 | 大きさ。符号は `polarity`（§17.1 No.2 決定済み。pair_rule の signed delta とは分離） |
 | `semantic_concept_id` | — | `semantic_concept` | seed 投入済み Concept のみ | 存在しない Concept は FK で拒否 |
 
 ---
@@ -246,17 +246,17 @@ applied_delta = feature_delta * source_weight * confidence
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review 前の論点は §17.1 を参照 |
+| — | — | — | — | — | Human Review（Issue #476）にて §17.1 No.1〜No.5 を決定済み |
 
-### 17.1 Human Review 観点（Issue #476）
+### 17.1 Human Review 決定事項（Issue #476）
 
-| No | 論点 | 推奨案 | 判断者 | 備考 |
-| --: | ---- | ------ | ------ | ---- |
-| 1 | `polarity` enum 正本化タイミング | MVP は `chk_polarity_mvp` CHECK 候補値。packages/code-definitions 正本化は後続 enum Task | Human | API-PUB-008 と一致 |
-| 2 | `feature_delta` 値域 | API-PUB-008 に合わせ **0.0〜1.0**（大きさ）。符号は `polarity` で表現 | Human | pair_rule の signed delta（-1.0〜1.0）とは責務分離 |
-| 3 | Concept 参照列 | **`semantic_concept_id` 物理 FK** を正とする。`concept_code` は API 応答時 JOIN（semantic_rule 同型） | Human | semantic_concept §8.1 / Featureルール §17.4 の橋渡し |
-| 4 | version 内 UNIQUE | `(semantic_config_version_id, semantic_concept_id, feature_code)` UNIQUE を採用 | Human | relationship_rule / pair_rule と同型 |
-| 5 | MVP seed 行数 | 18 Concept 全件に対し **稀疏** seed（全 18×8 完全行列は必須としない） | Human | Featureルール §20.1「初期18Conceptを定義」 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `polarity` enum 正本化タイミング | **採用**。MVP は `chk_polarity_mvp` CHECK + enum定義書 §6.20。packages/code-definitions 正本化は後続 enum Task | Human | API-PUB-008 §14 No.2 と一致 |
+| 2 | `feature_delta` 値域 | **採用**。API-PUB-008 に合わせ **0.0〜1.0**（大きさ）。符号は `polarity` で表現 | Human | pair_rule の signed delta（-1.0〜1.0）とは責務分離 |
+| 3 | Concept 参照列 | **採用**。`semantic_concept_id` 物理 FK を正とする。`concept_code` は API 応答時 JOIN（semantic_rule 同型） | Human | semantic_concept §8.1 / Featureルール §17.4 物理マッピング注記 |
+| 4 | version 内 UNIQUE | **採用**。`(semantic_config_version_id, semantic_concept_id, feature_code)` UNIQUE | Human | relationship_rule / pair_rule と同型 |
+| 5 | MVP seed 行数 | **採用**。18 Concept 対象の **稀疏** seed（全 18×8 完全行列は必須としない） | Human | Featureルール §20.1「初期18Conceptを定義」。不足行は補正なし（0 加算） |
 
 ---
 
@@ -267,7 +267,7 @@ applied_delta = feature_delta * source_weight * confidence
 | 物理ER | `docs/06_実装設計/database/物理ER.md` | §8–§11 |
 | 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §10.2 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §8 |
-| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.16 feature_code |
+| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.16 feature_code / §6.20 polarity |
 | API契約 | `docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md` | conceptFeatureRules マッピング |
 | API契約 | `docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md` | conceptCode 整合 |
 | Featureルール | `docs/04_ドメインモデル設計/Featureルール定義書.md` | §17.4 / §20.1 |
@@ -281,6 +281,7 @@ applied_delta = feature_delta * source_weight * confidence
 - `semantic_config_version_id` FK（物理 ON）が明記されている
 - `semantic_concept_id` FK（物理 ON）と API `conceptCode` JOIN 方針が明確
 - API-PUB-008 `conceptFeatureRules` マッピングが明確
-- `feature_delta` 値域（0.0〜1.0）と `polarity` enum 候補が明記されている
+- `feature_delta` 値域（0.0〜1.0）と `polarity` enum（§17.1 決定済み）が明記されている
+- Human Review 決定事項（§17.1 No.1〜No.5）が反映されている
 - Public API 非公開列（内部 UUID）と公開列の区別が明確
 - DDL Task が CREATE TABLE を起こせる粒度である

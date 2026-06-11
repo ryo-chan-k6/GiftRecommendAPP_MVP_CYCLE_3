@@ -133,9 +133,11 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "polarity（positive/negative/mixed）enum 正本化タイミング"
-  - "feature_delta 値域 CHECK"
-  - "version 内 (concept_code, feature_code) UNIQUE の要否"
+  - "polarity: MVP は CHECK + enum定義書 §6.20。packages 正本化は後続 enum Task（§17.1 No.1 決定済み）"
+  - "feature_delta: 0.0〜1.0（大きさ）。polarity で方向（§17.1 No.2 決定済み）"
+  - "Concept 参照: semantic_concept_id 物理 FK + API conceptCode JOIN（§17.1 No.3 決定済み）"
+  - "version 内 UNIQUE: (semantic_config_version_id, semantic_concept_id, feature_code)（§17.1 No.4 決定済み）"
+  - "MVP seed: 18 Concept 稀疏 seed（§17.1 No.5 決定済み）"
 
 notes:
   - "Wave2 No.7: concept_feature_rule"
