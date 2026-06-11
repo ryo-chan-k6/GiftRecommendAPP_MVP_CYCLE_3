@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP  |
 | MVP対象        | `yes`                            |
 | 作成日         | 2026-06-11                       |
-| 更新日         | 2026-06-11                       |
+| 更新日         | 2026-06-11（Human Review Issue #474 反映） |
 
 ---
 
@@ -245,19 +245,17 @@ Featureルール定義書 §7.1 の 15 分類と一致させる。
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | MVP 初期 `feature_base_value` 具体値 | seed Task 投入値の最終確認 | Human | Human Review #474 | 本定義書では Featureルール定義書 §8.2 を正本参照。値本体は重複定義しない |
-| 2 | 120 行不足時の API 挙動 | 部分返却可否の最終確認 | Human | Human Review #474 | relationship_rule §17.1 No.5 と同型で **採用予定** |
+| — | — | — | — | — | Human Review（Issue #474）にて §17.1 No.1〜No.5 を決定済み |
 
-### 17.1 踏襲事項（Issue #473 Human Review より）
+### 17.1 Human Review 決定事項（Issue #474）
 
-relationship_rule テーブル定義書 §17.1 No.4 により、以下を本テーブルへ **踏襲**する。
-
-| No | 論点 | 踏襲内容 | 根拠 |
-| --: | ---- | -------- | ---- |
-| 1 | カラム構成 | `occasion_rule_id` / `semantic_config_version_id` / `occasion_code` / `feature_code` / `feature_base_value` / `is_active` | relationship_rule と同型 |
-| 2 | Master への物理 FK | **LOGICAL + CHECK**（`occasion_master` は version 非依存） | relationship_rule §17.1 No.2 |
-| 3 | version 内 UNIQUE | `(semantic_config_version_id, occasion_code, feature_code)` | relationship_rule §17.1 No.3 |
-| 4 | Index / CHECK 方針 | PK / UNIQUE / active lookup Index / `chk_feature_code_mvp` / `chk_feature_base_value_range` | relationship_rule §9–§10 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | MVP 初期 `feature_base_value` | **採用**。seed Task が Featureルール定義書 **§8.2** を正本として **120 行**（15 `occasion_code` × 8 `feature_code`）投入する。`occasion_code` は §7.1 / `occasion_master` と一致させる | Human | 本テーブル定義書では値本体を重複定義しない。§8.2 は MVP 初期仮説値であり、調整は version 切替または `feature_base_value` / `is_active` の運用 UPDATE で行う |
+| 2 | `occasion_master` への物理 FK | **採用**。MVP は **LOGICAL + CHECK**（Master は version 非依存） | Human | relationship_rule §17.1 No.2 / occasion_master §8.1 と同型 |
+| 3 | version 内 UNIQUE | **採用**。`(semantic_config_version_id, occasion_code, feature_code)` | Human | 1 Occasion × 1 Feature 軸 = 1 基準値 |
+| 4 | `relationship_rule` との一貫性 | **採用**。同一カラム構成・CHECK・Index 方針を踏襲する | Human | relationship_rule テーブル定義書 §17.1 No.4 より引き継ぎ |
+| 5 | 120 行不足時の API 挙動 | **採用**。契約上は部分返却可（HTTP **200** + 取得できた `ruleType: occasion` の Rule のみ）。完全性は seed / 運用で担保する | Human | relationship_rule §17.1 No.5 と同型。API-PUB-008 空配列方針と整合。current Version 未設定は `GRS-CFG-001`、Rule 参照不能な障害は既存 500 方針に従う |
 
 ---
 
