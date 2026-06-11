@@ -234,7 +234,7 @@ Featureルール定義書 §5.1 の 12 分類と一致させる。
 | 2 | UNIQUE | 同一 version で同一 relationship × feature の重複 INSERT が拒否される | migration |
 | 3 | 値域 CHECK | `feature_base_value` が 0.0〜1.0 外で拒否される | migration |
 | 4 | API 整合 | active 96 行が API-PUB-008 `baseValueRules` 形式で返る | integration |
-| 5 | seed 整合 | Featureルール定義書 §6.2 の 12×8 矩阵が seed に存在 | manual |
+| 5 | seed 整合 | Featureルール定義書 §6.2 の 12×8 表が seed に存在 | manual |
 
 ---
 
