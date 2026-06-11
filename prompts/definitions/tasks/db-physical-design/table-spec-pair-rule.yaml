@@ -1,0 +1,213 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-pair-rule"
+  title: "pair_rule:Pair Ruleテーブル定義書作成"
+  summary: "物理ER・論理ER・Featureルール定義書・pair_master / feature_definition テーブル定義書を入力に、pair_rule のテーブル定義書を作成する。Phase2 子 Task ③ Wave2（Semantic / Feature Rule 群）No.6。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 462
+      purpose: "Wave1 semantic_config（merge 済み前提）"
+    - number: 463
+      purpose: "Wave1 semantic_config_version（merge 済み前提）"
+    - number: 470
+      purpose: "Wave2 No.1 feature_definition テーブル定義書（merge 済み前提）"
+    - number: 449
+      purpose: "pair_master テーブル定義書（merge 済み前提・pair_id FK 方針）"
+    - number: 473
+      purpose: "Wave2 No.4 relationship_rule テーブル定義書（Rule 系章構成参考・merge 済み前提）"
+    - number: 474
+      purpose: "Wave2 No.5 occasion_rule テーブル定義書（Rule 系章構成参考・並行可）"
+  related_prs:
+    - number: 467
+      purpose: "Wave1 semantic_config PR（merge 済み前提）"
+    - number: 468
+      purpose: "Wave1 semantic_config_version PR（merge 済み前提）"
+    - number: 479
+      purpose: "Wave2 No.1 feature_definition PR（merge 済み前提）"
+    - number: 465
+      purpose: "pair_master PR（merge 済み前提・Human Review #465 pair_id FK 決定）"
+    - number: 486
+      purpose: "Wave2 No.4 relationship_rule PR（merge 済み前提・Rule 系参考）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Wave2（Semantic / Feature 定義系 Rule 群）No.6。
+  Wave1（semantic_config / semantic_config_version）および pair_master（Human Review #465）merge 済み前提。
+  Featureルール定義書 §17.3 は relationship_code / occasion_code 列を論理項目とするが、
+  pair_master テーブル定義書 §17.1 No.3 により物理 FK は **pair_id** を採用する（Human 決定済み）。
+  推奨着手順: feature_definition → semantic_concept → semantic_rule → relationship_rule / occasion_rule / pair_rule → concept_feature_rule → partial 2 件。
+
+objective: |
+  `pair_rule` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の pair_rule テーブル定義書作成"
+  - "物理ER §8–§11・論理ER §10.2・Featureルール定義書 §17.3 との突合"
+  - "pair_master / feature_definition / semantic_config_version テーブル定義書の FK・章構成を踏襲"
+  - "`pair_id` 物理 FK、`semantic_config_version_id` 物理 FK、`feature_code` + `feature_delta` 行モデルの明記"
+  - "Public API 非公開方針（API-PUB-007 / API-PUB-008）の明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "他テーブルのテーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index 方針（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feature_code 等 enum 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 Semantic / Feature 系エンティティ属性・feature_rule 分解方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 Semantic / Feature 定義系・pair_master との関係"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "§9.3 Pair Rule 一覧・§17.3 pair_rule 論理項目・§20.1 MVP 方針"
+    - path: "docs/06_実装設計/database/pair_master_テーブル定義書.md"
+      required: true
+      purpose: "pair_id 物理 FK 方針（Human Review #465）・被参照関係"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "feature_code 参照・Rule 系テーブルとの整合"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version_id 被参照（contains）方針"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "Rule 系テーブル定義書の章構成・FK / UNIQUE 方針踏襲（PR #486 merge 後）"
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+      purpose: "pair_rule Public 非公開方針"
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "内部 Rule 非公開方針の確認"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-pair-rule.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-pair-rule/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "pair_rule テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER §8–§11・論理ER §10.2・テーブル一覧 §8 と矛盾しない"
+  - "pair_master テーブル定義書の pair_id 物理 FK 方針（Human Review #465）と一貫している"
+  - "semantic_config_version_id への物理 FK が明記されている"
+  - "feature_code + feature_delta 行モデル（§17.3）が DDL 展開可能な粒度で定義されている"
+  - "API-PUB-007 / API-PUB-008 に基づく Public API 非公開が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "pair-rule-table-spec"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 462
+      purpose: "Wave1 semantic_config 完了"
+    - number: 463
+      purpose: "Wave1 semantic_config_version 完了"
+    - number: 449
+      purpose: "pair_master テーブル定義完了（pair_id FK 前提）"
+    - number: 470
+      purpose: "feature_definition テーブル定義完了（feature_code 前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8–§11 とカラム・制約・FK の整合"
+    - "pair_master.pair_id への物理 FK 方針（codes 参照ではなく pair_id）"
+    - "semantic_config_version_id への物理 FK 方針"
+    - "feature_code enum / feature_definition との整合"
+    - "Featureルール定義書 §9.3 / §17.3 との突合（論理ER feature_rule 分解との差分注記）"
+    - "API-PUB-007 / API-PUB-008 非公開方針の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "テーブル一覧 §8: pair_master は組み合わせ定義、pair_rule は Feature 補正ルール"
+  - "Featureルール定義書 §17.3 の relationship_code / occasion_code は物理 DDL では pair_id に置換（Human Review #465）"
+  - "MVP では代表的な Pair 組み合わせのみ seed 定義（§20.1）。seed 範囲は seed Task へ引き継ぎ"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
