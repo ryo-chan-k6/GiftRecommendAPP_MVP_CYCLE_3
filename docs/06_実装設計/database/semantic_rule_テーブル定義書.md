@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP   |
 | MVP対象        | `yes`                             |
 | 作成日         | 2026-06-11                        |
-| 更新日         | 2026-06-11                        |
+| 更新日         | 2026-06-11（Human Review 決定反映） |
 
 ---
 
@@ -63,7 +63,7 @@ reco / batch の Semantic Rule Resolver が参照する設定正本であり、*
 | FK | — | `semantic_config_version_id`（ON） | `semantic_config_version_id`（ON）+ `semantic_concept_id`（ON） |
 | Public API | `semanticConfigVersionId` | `semanticConcepts[]`（code のみ表面） | **非公開** |
 
-> **`semantic_concept_id` と `semantic_config_version_id` の version 整合**（参照先 Concept が同一 version に属すること）は reco / seed 運用で担保する。DB 上の複合 FK は MVP では採用せず、§17.1 No.4 を Human Review 論点とする。
+> **version 内 Concept 整合（決定済み・§17.1 No.4）**: `semantic_concept_id` が同一 `semantic_config_version_id` に属することは **seed / reco 運用で担保**する。DB 上の複合 FK は **MVP では採用しない**。
 
 ### 5.2 API-PUB-007 非公開マッピング
 
@@ -154,7 +154,7 @@ reco / batch の Semantic Rule Resolver が参照する設定正本であり、*
 | `chk_source_text_pattern_length` | CHECK | `source_text_pattern` | `char_length(source_text_pattern) BETWEEN 1 AND 2000` | パターン上限（seed / 正規表現長さ） |
 | `chk_weight_range` | CHECK | `weight` | `weight >= 0.0000 AND weight <= 1.0000` | 初期重み範囲 |
 
-> `rule_type` の enum 正本化（packages/code-definitions）は後続 enum Task で検討する。MVP は CHECK 候補値で足りる（§17.1 No.1）。
+> `rule_type` の enum 正本化（packages/code-definitions）は後続 enum Task で検討する。MVP は **CHECK 4 値で足りる**（§17.1 No.1 決定済み）。
 
 ---
 
@@ -230,17 +230,17 @@ reco / batch の Semantic Rule Resolver が参照する設定正本であり、*
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review 前の論点は §17.1 を参照 |
+| — | — | — | — | — | Human Review にて No.1〜No.6 を決定済み（§17.1 参照） |
 
-### 17.1 Human Review 観点
+### 17.1 Human Review 決定事項（Task #472）
 
-| No | 論点 | 推奨案 | 判断者 | 備考 |
-| --: | ---- | ------ | ------ | ---- |
-| 1 | `rule_type` enum 正本化 | MVP は CHECK 4 値。`hybrid` は抽出結果 `extraction_method` 側。packages 正本化は後続 enum Task | Human | Semanticルール定義書 §6.1 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `rule_type` enum 正本化 | MVP は **CHECK 4 値**（`keyword` / `phrase` / `pattern` / `llm`）。`hybrid` は抽出結果 `extraction_method` 側。packages 正本化は後続 enum Task | Human | Semanticルール定義書 §6.1 |
 | 2 | `input_type` / `source_type` 列 | MVP は論理ER §10.2 どおり **非保持**。適用条件は `input_type_rule` または Resolver 側ロジック | Human | Semanticルール定義書 §17.1 vs 論理ER |
 | 3 | `source_text_pattern` 命名 | 論理ER §10.2 の **`source_text_pattern` を物理名正**とする（`match_pattern` はドメイン論理名） | Human | API-PUB-007 非公開列名と一致 |
-| 4 | version 内 Concept 整合 | `semantic_concept_id` が同一 `semantic_config_version_id` に属することを seed / reco で担保。複合 FK は MVP 見送り | Human | semantic_concept §8.2 方針と整合 |
-| 5 | Rule 実装形式 | Semanticルール定義書 §17.4 どおり **YAML/JSON + seed + LLM 補助** を推奨。DB テーブルは正本の一形式 | Human | seed Task で具体化 |
+| 4 | version 内 Concept 整合 | `semantic_concept_id` が同一 `semantic_config_version_id` に属することを **seed / reco で担保**。複合 FK は **MVP 見送り** | Human | semantic_concept §8.2 方針と整合 |
+| 5 | Rule 実装形式 | Semanticルール定義書 §17.4 どおり **YAML/JSON + seed + LLM 補助** を採用。DB テーブルは正本の一形式 | Human | seed Task で具体化 |
 | 6 | `weight` 既定値 | MVP は **`1.0000` 既定**。ルール優先度差は seed で調整 | Human | `default_confidence` 相当 |
 
 ---
@@ -269,5 +269,6 @@ reco / batch の Semantic Rule Resolver が参照する設定正本であり、*
 - API-PUB-007 非公開列（`source_text_pattern` / `weight` / 内部 PK）が明確
 - Semanticルール定義書 §17.1 との論理名・物理名対応が整理されている
 - feature_definition / semantic_concept テーブル定義書と章構成・MVP 方針が一貫している
-- `input_type` / `source_type` の非保持方針（§17.1 No.2）が明示されている
+- `input_type` / `source_type` の非保持方針（§17.1 No.2）が決定・明示されている
+- `source_text_pattern` 物理名・version 内 Concept 整合・Rule 実装形式・`weight` 既定が §17.1 に決定されている
 - DDL Task が CREATE TABLE を起こせる粒度である

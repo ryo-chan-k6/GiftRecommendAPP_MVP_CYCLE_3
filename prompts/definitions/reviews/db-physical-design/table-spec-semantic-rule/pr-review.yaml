@@ -148,13 +148,15 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "論理ER §10.2（source_text_pattern）と Semanticルール定義書 §17.1（match_pattern）の物理名対応（semantic_concept_id FK は #471 で確定）"
-  - "rule_type enum 採用（keyword / phrase / pattern / llm 等）と enum定義書への反映タイミング"
-  - "input_type / source_type を MVP カラムに含めるか（論理ER §10.2 未列挙）"
-  - "semantic_config_version 単位の UNIQUE（rule_type + source_text_pattern + semantic_concept_id 等）"
-  - "weight / default_confidence の保持方式と CHECK 範囲"
-  - "YAML+seed 推奨と DB テーブル管理の MVP 境界（Semanticルール定義書 §17.4）"
+human_decision_points: []
+resolved_human_decisions:
+  - "rule_type: MVP は CHECK 4 値（keyword / phrase / pattern / llm）。hybrid は extraction_method 側 — §17.1 No.1"
+  - "input_type / source_type: MVP は非保持（論理ER §10.2 準拠）。適用条件は input_type_rule または Resolver 側 — §17.1 No.2"
+  - "source_text_pattern: 論理ER §10.2 の物理名正（match_pattern はドメイン論理名）— §17.1 No.3"
+  - "version 内 Concept 整合: seed / reco で担保。複合 FK は MVP 見送り — §17.1 No.4"
+  - "Rule 実装形式: YAML/JSON + seed + LLM 補助。DB テーブルは正本の一形式 — §17.1 No.5"
+  - "weight 既定: 1.0000。優先度差は seed で調整 — §17.1 No.6"
+  - "version 内 UNIQUE: semantic_config_version_id + rule_type + source_text_pattern + semantic_concept_id — §7"
 
 risk_points:
   - "semantic_concept §8.1 前提（semantic_concept_id ON / RESTRICT）との FK 詳細の引き継ぎ"
