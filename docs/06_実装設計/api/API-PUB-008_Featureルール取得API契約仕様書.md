@@ -316,7 +316,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | Featureルール定義書 | `docs/04_ドメインモデル設計/Featureルール定義書.md` | Rule 物理項目 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | feature_rule 分解 |
 | テーブル定義 | `docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md` | conceptFeatureRules DB 正本・§17.1 決定事項 |
-| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.20 polarity |
+| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.22 polarity |
 | 関連契約 | `docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md` | Version / conceptCode 整合 |
 
 ---
