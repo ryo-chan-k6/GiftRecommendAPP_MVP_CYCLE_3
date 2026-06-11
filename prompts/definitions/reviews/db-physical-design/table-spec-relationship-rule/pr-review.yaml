@@ -139,9 +139,11 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "MVP 12 relationship_code ごとの feature_base_value 初期値（seed Task へ引き継ぎ）"
-  - "semantic_config_version 単位 UNIQUE（relationship_code + feature_code）の採否"
-  - "occasion_rule / pair_rule テーブル定義 Task との Rule 群一貫性"
+  - "（決定済み）MVP 初期 feature_base_value: Featureルール定義書 §6.2 を seed 正本 — テーブル定義書 §17.1 No.1"
+  - "（決定済み）relationship_master への物理 FK 非採用（LOGICAL + CHECK）— §17.1 No.2"
+  - "（決定済み）version 内 UNIQUE（relationship_code + feature_code）— §17.1 No.3"
+  - "（決定済み）occasion_rule への Rule 群一貫性引き継ぎ — §17.1 No.4"
+  - "（決定済み）96 行不足時の API 部分返却 — §17.1 No.5"
 
 risk_points:
   - "Featureルール定義書の Relationship 基準値と seed 内容の乖離（seed Task へ引き継ぎ）"
@@ -152,3 +154,4 @@ notes:
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-relationship-rule.yaml"
   - "Wave2 No.4: relationship_rule"
   - "先行 Task: #462 / #463（Wave1）、#442（relationship_master）、#470（feature_definition）"
+  - "Human Review（Issue #473）: §17.1 No.1〜No.5 決定済み（2026-06-11）"

@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP        |
 | MVP対象        | `yes`                                  |
 | 作成日         | 2026-06-11                             |
-| 更新日         | 2026-06-11                             |
+| 更新日         | 2026-06-11（Human Review Issue #473 反映） |
 
 ---
 
@@ -122,7 +122,7 @@ Featureルール定義書 §6・§17.1 の Relationship Rule を物理化し、A
 | `relationship_code` | `relationship_master.relationship_code` | `LOGICAL` | seed + CHECK | Master は自然キー PK。物理 FK は MVP では付与しない方針（relationship_master §8.1 と同型） |
 | `feature_code` | `feature_definition.feature_code`（同一 `semantic_config_version_id`） | `LOGICAL` | CHECK + seed | version 内 8 軸存在は seed / アプリ validation で担保 |
 
-> `relationship_master` への物理 FK 非採用は、Master 系が Semantic version とは独立に管理されるため。整合は enum / seed / CHECK で担保する（§17.1 No.2）。
+> `relationship_master` への物理 FK 非採用は、Master 系が Semantic version とは独立に管理されるため。整合は enum / seed / CHECK で担保する（§17.1 No.2 **Human 決定済み**）。
 
 ---
 
@@ -242,17 +242,17 @@ Featureルール定義書 §5.1 の 12 分類と一致させる。
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review 前の論点は §17.1 を参照 |
+| — | — | — | — | — | Human Review（Issue #473）にて §17.1 No.1〜No.5 を決定済み |
 
-### 17.1 Human Review 観点（Issue #473）
+### 17.1 Human Review 決定事項（Issue #473）
 
-| No | 論点 | 推奨案 | 判断者 | 備考 |
-| --: | ---- | ------ | ------ | ---- |
-| 1 | MVP 初期 `feature_base_value` | seed Task が Featureルール定義書 §6.2 を正本として 96 行投入 | Human | 本テーブル定義書では値本体を重複定義しない |
-| 2 | `relationship_master` への物理 FK | MVP は **LOGICAL + CHECK**（Master は version 非依存） | Human | relationship_master §8.1 / recommendation_request と同型 |
-| 3 | version 内 UNIQUE | `(semantic_config_version_id, relationship_code, feature_code)` を採用 | Human | 1 Relationship × 1 Feature 軸 = 1 基準値 |
-| 4 | `occasion_rule` との一貫性 | 同一カラム構成・CHECK・Index 方針を occasion_rule Task へ引き継ぎ | Human | Wave2 No.5 以降 |
-| 5 | 96 行不足時の API 挙動 | 契約上は部分返却可（200 + 取得できた Rule のみ）。完全性は seed / 運用で担保 | Human | API-PUB-008 空配列方針と整合 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | MVP 初期 `feature_base_value` | **採用**。seed Task が Featureルール定義書 §6.2 を正本として 96 行投入する | Human | 本テーブル定義書では値本体を重複定義しない |
+| 2 | `relationship_master` への物理 FK | **採用**。MVP は **LOGICAL + CHECK**（Master は version 非依存） | Human | relationship_master §8.1 / recommendation_request と同型 |
+| 3 | version 内 UNIQUE | **採用**。`(semantic_config_version_id, relationship_code, feature_code)` | Human | 1 Relationship × 1 Feature 軸 = 1 基準値 |
+| 4 | `occasion_rule` との一貫性 | **採用**。同一カラム構成・CHECK・Index 方針を occasion_rule Task へ引き継ぐ | Human | Wave2 No.5 以降 |
+| 5 | 96 行不足時の API 挙動 | **採用**。契約上は部分返却可（200 + 取得できた Rule のみ）。完全性は seed / 運用で担保 | Human | API-PUB-008 空配列方針と整合 |
 
 ---
 
