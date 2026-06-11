@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-input-type-rule"
+  title: "input_type_rule:Input Type Ruleテーブル定義書作成"
+  summary: "物理ER・論理ER・Featureルール定義書・テーブル一覧を入力に、input_type_rule のテーブル定義書を作成する。Phase2 子 Task ③ Wave2（Semantic / Feature Rule 群）No.8。MVP partial（テーブル一覧 △）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 462
+      purpose: "Wave1 semantic_config（merge 済み前提）"
+    - number: 463
+      purpose: "Wave1 semantic_config_version（merge 済み前提）"
+    - number: 476
+      purpose: "Wave2 No.7 concept_feature_rule テーブル定義書（Rule 系章構成参考・merge 済み前提）"
+    - number: 475
+      purpose: "Wave2 No.6 pair_rule テーブル定義書（内部 Rule 非公開方針参考・merge 済み前提）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Wave2（Semantic / Feature 定義系 Rule 群）No.8。
+  Wave1（semantic_config / semantic_config_version）merge 済み前提。
+  `input_type_rule` は好み・避けたい・NG など入力種別ごとの Feature 適用方法を管理する内部 Rule である。
+  物理ER・テーブル一覧では MVP `partial`（△）として扱い、MVP で物理テーブルを作成するかは Human Review で判断する。
+  Featureルール定義書 §17 には input_type_rule 専用の論理項目節がなく、§2.1 / §11 のドメイン定義を物理設計へ落とし込む必要がある。
+  Issue #477 / Branch `docs/task-477-input-type-rule-table-spec` で作業する。
+
+objective: |
+  `input_type_rule` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  MVP partial 採用方針と Public API 非公開を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の input_type_rule テーブル定義書作成"
+  - "物理ER §8–§11・論理ER §10.2・Featureルール定義書 §2.1 / §11 との突合"
+  - "semantic_config_version テーブル定義書の contains FK 方針を踏襲"
+  - "MVP partial（テーブル一覧 △）採用方針を table-spec §17 未決事項へ整理"
+  - "API-PUB-007 / API-PUB-008 に基づく Public API 非公開方針の明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "他テーブルのテーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index 方針（§8–§11）・input_type_rule partial 方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（input_type 候補の整理）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 Semantic / Feature 系エンティティ属性・feature_rule 分解方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 Semantic / Feature 定義系・MVP partial（△）"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "§2.1 Rule 一覧・§11 Input Type Rule・§17.6 実装形式"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version_id 被参照（contains）方針・MVP partial 注記"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "feature_code 参照・Rule 系テーブルとの整合"
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+      purpose: "input_type_rule Public 非公開方針"
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "内部 Rule 非公開方針の確認"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/input_type_rule_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-input-type-rule.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-input-type-rule/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "input_type_rule テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER §8–§11・論理ER §10.2・テーブル一覧 §8 と矛盾しない"
+  - "Featureルール定義書 §11.1 入力種別と適用方針が物理設計へ整理されている"
+  - "semantic_config_version_id への物理 FK 方針が明記されている"
+  - "MVP partial 採用方針が table-spec §17 未決事項に明記されている"
+  - "API-PUB-007 / API-PUB-008 に基づく Public API 非公開が明記されている"
+  - "ng_condition / budget_condition の Hard Filter 分離が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "input-type-rule-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+
+issue:
+  number: 477
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 462
+      purpose: "Wave1 semantic_config 完了"
+    - number: 463
+      purpose: "Wave1 semantic_config_version 完了"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/input_type_rule_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8 input_type_rule partial 方針との整合"
+    - "Featureルール定義書 §11.1 入力種別（7 分類）との整合"
+    - "semantic_config_version_id への物理 FK 方針"
+    - "API-PUB-007 / API-PUB-008 非公開方針の明記"
+    - "論理ER feature_rule 抽象名からの分解差分注記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "Wave2 着手順 No.8"
+  - "入力種別ごとの Feature 適用。MVP partial（テーブル一覧 △）"
+  - "Featureルール定義書 §17 に input_type_rule 専用論理項目節がないため、§11 から物理項目を導出する"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
+  - "Issue #477 / Branch docs/task-477-input-type-rule-table-spec"
