@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 487
   issue: 472
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-semantic-rule.yaml"
   source_branch: "docs/task-472-semantic-rule-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 472
     required: true
   pr:
-    number: null
+    number: 487
     required: true
   diff:
     required: true
