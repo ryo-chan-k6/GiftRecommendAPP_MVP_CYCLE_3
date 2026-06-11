@@ -293,6 +293,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（Phase1 1a 契約面） | Issue #404 |
 | 2026-06-05 | Human Review 反映（2 グループ構成・値域・active のみ・Pair Reco 内部完結） | PR #408 |
+| 2026-06-11 | `concept_feature_rule` テーブル定義書 Human Review 決定を反映（polarity / feature_delta 値域 / semantic_concept_id FK） | Issue #476 |
 
 ---
 
@@ -314,7 +315,9 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | API一覧 | `docs/05_アプリケーション設計/アプリ/api/API一覧.md` | API-PUB-008 |
 | Featureルール定義書 | `docs/04_ドメインモデル設計/Featureルール定義書.md` | Rule 物理項目 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | feature_rule 分解 |
-| 関連契約 | `docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md` | Version 整合 |
+| テーブル定義 | `docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md` | conceptFeatureRules DB 正本・§17.1 決定事項 |
+| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.20 polarity |
+| 関連契約 | `docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md` | Version / conceptCode 整合 |
 
 ---
 

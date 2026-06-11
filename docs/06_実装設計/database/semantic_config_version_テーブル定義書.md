@@ -190,7 +190,7 @@ version 非現行化時は `is_current = false` に加え、運用で `valid_to`
 | `relationship_rule` | `semantic_config_version_id` | contains | `ON` | Relationship → Feature 基準値ルール |
 | `occasion_rule` | `semantic_config_version_id` | contains | `ON` | Occasion → Feature 基準値ルール |
 | `pair_rule` | `semantic_config_version_id` | contains | `ON` | Pair 補正ルール |
-| `concept_feature_rule` | `semantic_config_version_id` | contains | `ON` | Concept → Feature 補正ルール |
+| `concept_feature_rule` | `semantic_config_version_id` | contains | `ON` | Concept → Feature 補正ルール。詳細は `concept_feature_rule_テーブル定義書` §8・§17.1 |
 | `normalization_rule` | `semantic_config_version_id` | contains | `ON` | Feature 正規化ルール |
 | `input_type_rule` | `semantic_config_version_id` | contains | `ON` | MVP partial |
 | `feature_integration_rule` | `semantic_config_version_id` | contains | `ON` | MVP partial |
