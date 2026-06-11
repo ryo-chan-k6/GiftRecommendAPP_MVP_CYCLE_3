@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 486
   issue: 473
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-relationship-rule.yaml"
   source_branch: "docs/task-473-relationship-rule-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 473
     required: true
   pr:
-    number: null
+    number: 486
     required: true
   diff:
     required: true
