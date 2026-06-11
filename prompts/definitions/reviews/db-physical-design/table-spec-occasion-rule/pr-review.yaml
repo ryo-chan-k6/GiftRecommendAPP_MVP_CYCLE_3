@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 488
   issue: 474
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-occasion-rule.yaml"
   source_branch: "docs/task-474-occasion-rule-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 474
     required: true
   pr:
-    number: null
+    number: 488
     required: true
   diff:
     required: true
