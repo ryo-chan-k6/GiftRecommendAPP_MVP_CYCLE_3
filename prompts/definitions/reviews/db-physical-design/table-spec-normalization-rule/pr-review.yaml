@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 498
   issue: 493
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-normalization-rule.yaml"
   source_branch: "docs/task-493-normalization-rule-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 493
     required: true
   pr:
-    number: null
+    number: 498
     required: true
   diff:
     required: true
