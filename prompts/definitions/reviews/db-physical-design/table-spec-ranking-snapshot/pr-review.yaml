@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 501
   issue: 496
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-ranking-snapshot.yaml"
   source_branch: "docs/task-496-ranking-snapshot-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 496
     required: true
   pr:
-    number: null
+    number: 501
     required: true
   diff:
     required: true
