@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 491
   issue: 478
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-feature-integration-rule.yaml"
   source_branch: "docs/task-478-feature-integration-rule-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 478
     required: true
   pr:
-    number: null
+    number: 491
     required: true
   diff:
     required: true
@@ -161,5 +161,5 @@ risk_points:
 notes:
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-feature-integration-rule.yaml"
   - "Wave2 No.9: feature_integration_rule"
-  - "対応 Issue: #478"
+  - "対応 Issue: #478 / PR #491"
   - "先行 Task: #462 / #463 / #470 / #473 / #474 / #475（Wave1 + Wave2 Rule 群 merge 済み前提）"
