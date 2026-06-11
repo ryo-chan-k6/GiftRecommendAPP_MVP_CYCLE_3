@@ -73,7 +73,7 @@ API-PUB-007（Semantic 設定取得）の `semanticConcepts` 配列の正本と�
 | `concept_description` | `conceptDescription` | 公開（任意） | NULL の場合は応答から省略可 |
 | `is_active` | `isActive` | 公開 | 応答に含める行は `true` のみ |
 
-> API-PUB-007 応答例の `warm_gratitude` は **例示用**であり、MVP seed 正本は SemanticConcept定義書 §6.1 の 18 `concept_code` とする（§17.1 No.2）。
+> API-PUB-007 §7.4.1 応答例の `conceptCode` は **§10.1 の MVP seed 18 code** に整合する（Human Review #471 / PR #485 で `emotional_warm` 等に更新済み）。OpenAPI 正本の同期は #469 へ委譲。
 
 ### 5.3 対象外
 
@@ -267,7 +267,7 @@ SemanticConcept定義書 §6.1 / §15.1 に基づく MVP seed 18 件。`concept_
 | No | 論点 | 推奨案 | 判断者 | 備考 |
 | --: | ---- | ------ | ------ | ---- |
 | 1 | `concept_group` / `polarity_default` 列の追加 | MVP は論理ER §10.2 どおり **非保持**。ドメイン定義書正本 + Rule 側で参照 | Human | SemanticConcept定義書 §4.1 vs 論理ER |
-| 2 | API-PUB-007 例示 `warm_gratitude` | seed / 契約例は **§10.1 の 18 code** を正本とする。契約書例は後続 #469 で整合 | Human | API-PUB-007 §7.4.1 |
+| 2 | API-PUB-007 例示 `conceptCode` | **§10.1 seed 18 code に整合**（PR #485 で API-PUB-007 §7.4.1 更新済み）。OpenAPI は #469 | Human | 確定 |
 | 3 | API 返却順 | MVP は **`concept_code` 昇順**（display_order 列なし） | Human | feature_definition の display_order との差 |
 | 4 | `concept_description` DB 必須性 | DB は **NULL 許容**。seed では説明を投入推奨 | Human | API は optional |
 | 5 | Concept 追加拡張 | 同一 version への追加 INSERT を運用で許容。code 変更は禁止（新 version 推奨） | Human | SemanticConcept定義書 §13 |
