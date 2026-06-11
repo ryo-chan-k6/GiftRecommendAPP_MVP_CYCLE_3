@@ -1,0 +1,192 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-item-image-pr"
+  title: "item_image テーブル定義書 PRレビュー"
+  summary: "item_image テーブル定義書 Task の PR を AI Review する。item_テーブル定義書 §8.2 FK・物理ER Item系・論理ER §8.3・外部商品データ連携設計書 §11・主画像選定・Result Snapshot 参照・Batch Upsert 方針との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-497-item-image-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 497
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-image.yaml"
+  source_branch: "docs/task-497-item-image-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-item-image.yaml"
+    required: true
+  issue:
+    number: 497
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item系・外部商品データ連携系・FK 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§8.2–§8.3 商品系エンティティ属性・主画像選定・§7.3 Snapshot"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§5 No.11 Item Image・§6 No.21 staging_item_image との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§11.3 item_image 管理方針・§11.4 主画像選定・§11.5 Result Snapshot"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "§12.3 Item Image 主な項目・出所方針との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "image_size_type 等 enum 参照との整合"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_id 物理 FK（ON）被参照・§5.1 責務境界・§12.1 Upsert 順序・§12.3 hash/列分離・§13 API JOIN・§15 DDL 順序"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: false
+      purpose: "itemImageUrl / images 応答マッピング参考"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（item / staging_item_image 定義書 / 画像バイナリ / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §8.2 の属性（item_image_id / item_id / image_url / image_size_type / display_order / is_primary / fetched_at）と矛盾しないか（source 系列列なし）"
+    - "論理ER §8.3 出所・更新方針（item.source 経由・最新 Upsert・is_active 不採用）と一致しているか"
+    - "リソース一覧 §12.3 主な項目（source_api なし）と一致しているか"
+    - "論理ER §8.3 主画像選定方針（mediumImageUrls[0] → smallImageUrls[0] → プレースホルダー）が明記されているか"
+    - "論理ER §7.3 item_image_url_snapshot と recommendation_result_item の参照関係が明記されているか"
+    - "item_テーブル定義書 §5.1 / §8.2（item_id 物理 FK ON・責務境界）と矛盾しないか"
+    - "item_テーブル定義書 §12.1（item Upsert 後に item_image 反映）・§12.3（hash 入力と列保持の分離）と整合しているか"
+    - "item_テーブル定義書 §13（itemImageUrl / images は item_image JOIN）と API 公開列マッピングが整合しているか"
+    - "外部商品データ連携設計書 §11.1 楽天API 画像項目（smallImageUrls / mediumImageUrls / imageFlag）のマッピングが整理されているか"
+    - "外部商品データ連携設計書 §11.3（source_system / is_active 不採用）と物理 DDL が一致しているか"
+    - "source / source_system / source_api を item_image 行に持たない方針が §5 / §6 で明示されているか"
+    - "MVP では画像バイナリ非保存であることが明記されているか"
+  db:
+    - "PK / Unique / Index / CHECK / partial unique が DDL Task へ展開できる粒度か"
+    - "item.item_id への物理 FK（ON・`item_テーブル定義書` §8.2 / 物理ER §8 FK 表）方針が明記されているか"
+    - "item_id の型が item.item_id（uuid）と一致しているか"
+    - "DDL 適用順序が item 作成後（`item_テーブル定義書` §15）と整合しているか"
+    - "staging_item_image → item_image Upsert 方針（BATCH-005 / BATCH-007 連携）が明記されているか"
+    - "is_primary / display_order / image_size_type の整合ルール（主画像1件・配列展開順）が明記されているか"
+    - "UNIQUE (item_id, image_url) Upsert キーと is_primary partial unique が §7 / §10 に定義されているか"
+    - "最新のみ Upsert + item 単位同期置換（消えた URL DELETE）が §12 に明記されているか"
+    - "is_active 列が MVP 物理 DDL に含まれていないか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "item.item_id 物理 FK の ON DELETE 詳細（RESTRICT / CASCADE 等）— 親側 §8.2 は `ON` 決定済み"
+
+human_review_decisions:
+  - topic: "画像 URL 履歴 vs 最新 Upsert"
+    decision: "最新のみ Upsert + item 単位同期置換（DELETE）"
+    status: "decided"
+  - topic: "source / source_system / source_api 列"
+    decision: "item_image 行にはいずれも持たない"
+    status: "decided"
+  - topic: "is_active 列"
+    decision: "MVP 不採用"
+    status: "decided"
+  - topic: "is_primary partial unique / Upsert キー"
+    decision: "partial unique 採用 + UNIQUE (item_id, image_url)"
+    status: "decided"
+
+risk_points:
+  - "staging_item_image テーブル定義 Task への Upsert キー・列マッピング・同期置換（DELETE）引き継ぎ"
+  - "item Upsert（source + external_item_code）と item_image 反映の item_id 解決タイミング"
+  - "MOD-RECO-022 Result Snapshot Builder への is_primary 参照一貫性"
+  - "normalized_hash に画像 URL を含める方針（item §12.3）と item_image Upsert トリガーの整合"
+  - "同期置換（DELETE）未実装時のリンク切れ URL 残存"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item-image.yaml"
+  - "Batch R01 No.5: item_image（#493 / #494 / #495 merge 済み前提）"
+  - "Issue #497 / Branch docs/task-497-item-image-table-spec"
+  - "先行 Epic: #435 / docs/epic-435-db-physical-design"
+  - "先行 merge 済み: #495 item / PR #500（§8.2 FK ON・§5.1 責務境界決定済み）"
+  - "Human Review #497 決定済み: 履歴なし Upsert / 出所列なし / is_active 不採用 / is_primary partial unique"
+  - "正本 docs 整合: 論理ER §8.2–§8.3 / 外部商品データ連携 §11.3 / リソース一覧 §12.3"

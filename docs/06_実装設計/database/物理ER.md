@@ -318,6 +318,9 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `recommendation_result_item` | `idx_result_item_result_id_rank` | `recommendation_result_id`, `rank` | btree | 結果表示 | |
 | `item` | `uq_item_source_external_code` | `source`, `external_item_code` | unique | Upsert キー | |
 | `item` | `idx_item_active_status` | `active_status`, `is_active` | btree | Retrieval 前フィルタ | |
+| `item_image` | `uq_item_image_item_url` | `item_id`, `image_url` | unique | Upsert キー | `item_image_テーブル定義書` §7 |
+| `item_image` | `uq_item_image_primary_per_item` | `item_id` | unique partial | 主画像 1 件 | `WHERE is_primary = true` |
+| `item_image` | `idx_item_image_item_id` | `item_id` | btree | api / reco JOIN | API-PUB-003 |
 | `ranking_snapshot` | `uq_ranking_snapshot_observation_key` | `source`, `external_genre_id`, `period`, `last_build_date` | unique | 観測キー / get-or-create | バッチ設計方針書 §11.5 |
 | `ranking_snapshot` | `idx_ranking_snapshot_genre_fetched` | `external_genre_id`, `fetched_at` DESC | btree | 最新 Snapshot 抽出 | reco / batch |
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | `ranking_snapshot_id`, `rank` | unique | 冪等キー | テーブル一覧 §14 No.2 |

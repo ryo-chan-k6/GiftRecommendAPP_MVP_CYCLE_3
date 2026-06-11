@@ -323,7 +323,7 @@ erDiagram
 | エンティティ           | 主キー                    | 主要属性                                                                                                                                                          | 状態カラム                | 正本区分            | 管理主体 |
 | ---------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------- | -------- |
 | item                   | item_id                   | source, external_item_code, item_name, item_caption, catchcopy, price, item_url, external_genre_id, shop_code, normalized_hash, first_fetched_at, last_checked_at | active_status / is_active | 内部正本            | batch    |
-| item_image             | item_image_id             | item_id, image_url, image_size_type, display_order, is_primary, source_api, fetched_at                                                                            | なし                      | 内部正本 / 外部参照 | batch    |
+| item_image             | item_image_id             | item_id, image_url, image_size_type, display_order, is_primary, fetched_at                                                                                        | なし                      | 内部正本 / 外部参照 | batch    |
 | item_review_summary    | item_review_summary_id    | item_id, review_average, review_count, fetched_at                                                                                                                 | なし                      | 派生 / 外部参照     | batch    |
 | item_popularity_signal | item_popularity_signal_id | item_id, external_item_code, external_genre_id, rank, period, last_build_date, fetched_at                                                                         | なし                      | 派生 / 外部参照     | batch    |
 | item_generation_queue  | item_generation_queue_id  | item_id, generation_type, retry_count, queued_at, started_at, completed_at, error_message                                                                         | queue_status              | 状態 / Queue        | batch    |
@@ -350,6 +350,18 @@ MVPでは画像バイナリを保存しない。
 2. smallImageUrls[0]
 3. 画像なしプレースホルダー
 ```
+
+出所・更新方針（Item 子テーブル共通）:
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 取得元 API | 楽天商品検索 API（`item_search`）。`item_review_summary` と同型で **行に `source` / `source_api` は持たない** |
+| マーケット識別 | 親 `item.source`（`item_id` FK 経由。MVP: `rakuten`） |
+| API トレース | 必要時は `staging_item_image.raw_metadata_id` → `raw_product_metadata.source_api` で参照 |
+| 履歴 | **最新のみ Upsert**。item 単位の同期置換（API から消えた URL は DELETE） |
+| `is_active` | **MVP 物理 DDL では持たない**（`external_genre` / `item_review_summary` と同型） |
+
+> **旧記載との差分**: §8.2 旧版は `source_api` を列挙していたが、物理テーブル化（Issue #497）に伴い **`item_popularity_signal` / `item_review_summary` と同様、出所列は持たない** 方針に統一する。
 
 ---
 
@@ -852,7 +864,7 @@ Online推薦では、これらを参照するだけにする。
 | Staging保持期間          | Stagingデータを毎回削除するか、一定期間保持するか                       |
 | Raw保持期間              | Object Storage上のRaw JSONをどれくらい保持するか                        |
 | Item Popularity Signal   | rank履歴を追記で持つか、最新のみUpsertするか                            |
-| Item Image               | 画像URL履歴を持つか、最新のみ持つか                                     |
+| Item Image               | ~~画像URL履歴を持つか、最新のみ持つか~~ **決定済み: 最新のみ Upsert + item 単位同期置換**（§8.3・Issue #497） |
 | Item Feature世代管理     | item_id + semantic_config_version_id 単位で複数世代を保持するか         |
 | Item Embedding世代管理   | item_id + model_version_id + source_type 単位で複数世代を保持するか     |
 | FK制約                   | 外部IDやBatch系に物理FKを張るか、論理整合に留めるか                     |
