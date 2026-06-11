@@ -131,6 +131,7 @@ erDiagram
     semantic_config_version ||--o{ pair_rule : "contains"
     semantic_config_version ||--o{ concept_feature_rule : "contains"
     semantic_config_version ||--o{ normalization_rule : "contains"
+    normalization_rule }o--|| feature_normalization_version : "resolves"
 
     semantic_config_version ||--o{ recommendation_run : "used_by"
     model_version ||--o{ recommendation_run : "used_by"
@@ -281,7 +282,7 @@ erDiagram
 | `external_genre.external_genre_id` | `item.external_genre_id` | classifies | `LOGICAL` | 1:N | |
 | `semantic_config.semantic_config_id` | `semantic_config_version.semantic_config_id` | has | `ON` | 1:N | |
 | `semantic_config_version.semantic_config_version_id` | `normalization_rule.semantic_config_version_id` | contains | `ON` | 1:N | Feature 正規化 binding |
-| `normalization_rule.feature_normalization_version_id` | `feature_normalization_version.feature_normalization_version_id` | resolves | `LOGICAL` | N:1 | MVP は version あたり 1 行 |
+| `normalization_rule.feature_normalization_version_id` | `feature_normalization_version.feature_normalization_version_id` | resolves | `ON` | N:1 | binding 正本。物理 FK（§17.1 No.3 決定済み） |
 | `semantic_config_version.semantic_config_version_id` | `recommendation_run.semantic_config_version_id` | used_by | `LOGICAL` | 1:N | 再現性保持 |
 | `model_version.model_version_id` | `recommendation_run.model_version_id` | used_by | `LOGICAL` | 1:N | |
 | `ranking_config.ranking_config_id` | `recommendation_run.ranking_config_id` | used_by | `LOGICAL` | 1:N | |

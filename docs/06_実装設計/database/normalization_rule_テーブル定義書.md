@@ -61,7 +61,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 | 分類 | Semantic / Feature 定義系（`semantic_config_version` 子 Rule） | Master / Config 系（独立 version テーブル） |
 | 管理単位 | 意味定義 version ごとの **正規化適用方針** | 正規化方式ごとの **パラメータ version** |
 | 保持内容 | `normalization_method` + `feature_normalization_version_id` 参照 | `parameter_json`（`center_feature` / `k_feature` 等） |
-| 親子関係 | `semantic_config_version` の子（物理 FK ON） | ルート Config テーブル（他から LOGICAL 参照） |
+| 親子関係 | `semantic_config_version` の子（物理 FK ON）。`feature_normalization_version` へ **物理 FK ON**（binding 正本） | ルート Config テーブル。`normalization_rule` から物理 FK 被参照。派生 Feature からは LOGICAL 参照 |
 | 派生への影響 | どの正規化 version を使うかを **意味体系 version に紐づける** | 実際の sigmoid 計算パラメータの **再現性正本** |
 | Public API | 非公開 | 非公開 |
 
@@ -72,7 +72,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 | 観点 | 参照先 | 本テーブルとの関係 |
 | ---- | ------ | ------------------ |
 | version ヘッダ | `semantic_config_version` | `semantic_config_version_id` で所属 version を特定（物理 FK ON） |
-| 正規化パラメータ正本 | `feature_normalization_version` | `feature_normalization_version_id` で LOGICAL 参照。`normalization_method` と整合必須 |
+| 正規化パラメータ正本 | `feature_normalization_version` | `feature_normalization_version_id` で **物理 FK ON**（`ON DELETE RESTRICT`）。`normalization_method` との列間整合は seed + CHECK で担保 |
 | Feature 統合 | `feature_integration_rule` | 統合後 raw 値の正規化は本テーブル → `feature_normalization_version` 経由で実施 |
 | 派生 Feature | `user_feature` / `item_feature` | 解決済み `feature_normalization_version_id` を派生行に記録（各派生テーブル責務） |
 
@@ -89,7 +89,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 
 | 観点 | 正本の記載 | 本テーブルの扱い |
 | ---- | ---------- | ---------------- |
-| 論理ER §10.2 | 抽象 `feature_rule` / `feature_normalization_version` エンティティ | 物理ER §5 No.5 に従い `normalization_rule` へ **分解**。パラメータ version は `feature_normalization_version` に分離 |
+| 論理ER §10.2 | 抽象 `feature_rule` に加え `normalization_rule` を **独立エンティティ**として追記（本 Issue スコープ） | 物理ER §5 No.5 の `feature_rule` 分解一覧にも含む。パラメータ version は `feature_normalization_version` に分離 |
 | Featureルール §17 | `normalization_rule` 専用論理項目節なし | §14 + GiftMeaningSpace §7.4 から物理項目を **導出** |
 | Matching / Ranking 定義書 | 正規化ルールは `semantic_config_version` 管理 | 本テーブルが binding 正本。パラメータは §14.8 どおり `feature_normalization_version` |
 
@@ -109,7 +109,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 | 1 | `normalization_rule_id` | Normalization Rule ID | `uuid` | `yes` | `yes` | — | `yes` | `gen_random_uuid()` | サロゲート PK。Public API 非公開 |
 | 2 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `yes` | — | `yes` | — | — | 所属する意味定義 version。`semantic_config_version` を参照 |
 | 3 | `normalization_method` | Normalization Method | `text` | `yes` | — | — | — | — | 正規化方式。MVP は `sigmoid`（Featureルール定義書 §14.2） |
-| 4 | `feature_normalization_version_id` | Feature Normalization Version ID | `uuid` | `yes` | — | — | — | — | 適用する正規化パラメータ version。`feature_normalization_version` を論理参照 |
+| 4 | `feature_normalization_version_id` | Feature Normalization Version ID | `uuid` | `yes` | — | `yes` | — | — | 適用する正規化パラメータ version。`feature_normalization_version` を物理 FK 参照 |
 | 5 | `is_active` | Active Flag | `boolean` | `yes` | — | — | — | `true` | 有効フラグ。`false` は batch / reco 参照対象外 |
 
 > **MVP 行モデル**: version あたり 1 行（全 8 軸共通 binding）。`feature_code` 列は持たない（§17.1 No.2 参照）。
@@ -131,13 +131,13 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 | カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
 | ------ | ------ | ------ | ---------- | ---- |
 | `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `ON` | RESTRICT | 物理ER §9 / semantic_config_version §8.1（contains） |
+| `feature_normalization_version_id` | `feature_normalization_version.feature_normalization_version_id` | `ON` | RESTRICT | 物理ER §9（resolves）。アプリ設計で固定される binding 正本のため物理 FK を採用（§17.1 No.3 **決定済み**） |
 
-### 8.1 論理参照（MVP 初期 DDL）
+### 8.1 列間整合（DB FK 外）
 
-| カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
-| ------ | ------ | ------ | ---------- | ---- |
-| `feature_normalization_version_id` | `feature_normalization_version.feature_normalization_version_id` | `LOGICAL` | seed + 存在確認 | Master / Config 系は子 Rule から物理 FK を張らない方針（`feature_normalization_version` §8.1 と同型） |
-| `normalization_method` | `feature_normalization_version.normalization_method` | `LOGICAL` | CHECK + seed | 参照先 version の `normalization_method` と一致必須（§10 `chk_normalization_method_consistency`） |
+| カラム | 参照先属性 | 整合方式 | 備考 |
+| ------ | ---------- | -------- | ---- |
+| `normalization_method` | `feature_normalization_version.normalization_method` | seed + CHECK + 運用 validation | 参照先 version の `normalization_method` と一致必須。単一列 FK では表現できないため列間整合として担保 |
 
 > batch / reco は (1) 本テーブルで binding 解決 → (2) `feature_normalization_version` で `parameter_json` 取得 → (3) 派生行に `feature_normalization_version_id` 記録、の 3 段階とする。
 
@@ -166,6 +166,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 | `normalization_rule_pkey` | PRIMARY KEY | `normalization_rule_id` | 主キー | — |
 | `uq_normalization_rule_version` | UNIQUE | `semantic_config_version_id` | MVP は version あたり 1 行 | §17.1 No.2 |
 | `fk_normalization_rule_semantic_config_version` | FOREIGN KEY | `semantic_config_version_id` | `semantic_config_version` ON DELETE RESTRICT | semantic_config_version §8.1 |
+| `fk_normalization_rule_feature_normalization_version` | FOREIGN KEY | `feature_normalization_version_id` | `feature_normalization_version` ON DELETE RESTRICT | feature_normalization_version §8.1。§17.1 No.3 **決定済み** |
 | `chk_normalization_method_mvp` | CHECK | `normalization_method` | `normalization_method IN ('sigmoid')` | feature_normalization_version と同一 MVP 1 値 |
 | `chk_feature_norm_version_id_not_null` | CHECK | `feature_normalization_version_id` | `NOT NULL` | 型上必須だが DDL 明示用 |
 
@@ -201,7 +202,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 | ---- | ---- |
 | 保持期間 | 意味定義 version と同寿命。過去 version の binding も再現性のため保持 |
 | 削除方式 | 物理 DELETE 原則禁止 |
-| 削除条件 | 親 `semantic_config_version` 削除前に子行整理（RESTRICT） |
+| 削除条件 | 親 `semantic_config_version` 削除前に子行整理（RESTRICT）。参照中の `feature_normalization_version` は `normalization_rule` 経由で DELETE RESTRICT |
 | 論理削除 | `is_active = false` |
 | version 切替 | 新 `semantic_config_version` 作成時に新規 INSERT（1 行） |
 
@@ -236,7 +237,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 | --: | ---- | -------- | ---- |
 | 1 | DDL適用 | CREATE TABLE / Index / FK / CHECK | migration |
 | 2 | UNIQUE | 同一 `semantic_config_version_id` の重複 INSERT が拒否される | migration |
-| 3 | FK | 存在しない `semantic_config_version_id` が拒否される | migration |
+| 3 | FK | 存在しない `semantic_config_version_id` / `feature_normalization_version_id` が拒否される | migration |
 | 4 | batch 整合 | Item Feature 生成時に binding 経由で解決した `feature_normalization_version_id` が `item_feature` に記録される | integration |
 | 5 | reco 整合 | User Feature 生成時に同様に `user_feature` へ記録される | integration |
 | 6 | seed 整合 | 各 `semantic_config_version` seed に 1 行 binding が存在し、現行 `feature_normalization_version` を参照する | manual |
@@ -252,13 +253,26 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 
 ### 17.1 Human Review 観点（Issue #493）
 
-| No | 論点 | 推奨案 | 判断者 | 備考 |
-| --: | ---- | ------ | ------ | ---- |
-| 1 | sigmoid パラメータの保持方式（カラム vs JSONB） | **本テーブルには持たない**。`feature_normalization_version.parameter_json` を正本とする（Featureルール §14.8） | Human | normalization_rule は binding のみ |
-| 2 | 行モデル（`feature_code` 単位 vs version 共通） | **MVP は version あたり 1 行**（全 8 軸共通）。`uq_normalization_rule_version` を採用 | Human | feature_normalization_version MVP も全軸共通（§14.3） |
-| 3 | `feature_normalization_version_id` への物理 FK | **MVP は LOGICAL**（Master / Config 系慣例。存在確認は seed + アプリ層） | Human | `feature_normalization_version` §17.1 No.4 と同型 |
-| 4 | `normalization_method` と参照 version の整合 | seed + CHECK で `normalization_method='sigmoid'` 固定。参照先 version の method と一致を seed 運用で担保 | Human | 将来 `z_score_sigmoid` は enum Task 連動 |
-| 5 | 論理ER へのエンティティ追記 | 本 Task では **論理ER 更新は out_of_scope**。物理 binding は本定義書 + 物理ER + テーブル一覧で整合 | Human | 別 docs Task 化 |
+| No | 論点 | 決定 / 推奨案 | 状態 | 備考 |
+| --: | ---- | ------------- | ---- | ---- |
+| 1 | sigmoid パラメータの保持方式（カラム vs JSONB） | **本テーブルには持たない**。`feature_normalization_version.parameter_json` を正本とする（Featureルール §14.8） | **決定済み** | normalization_rule は binding のみ |
+| 2 | 行モデル（`feature_code` 単位 vs version 共通） | **MVP は version あたり 1 行**（全 8 軸共通）。`uq_normalization_rule_version` を採用 | **決定済み** | feature_normalization_version MVP も全軸共通（§14.3） |
+| 3 | `feature_normalization_version_id` への物理 FK vs LOGICAL | **物理 FK ON**（`ON DELETE RESTRICT`）。binding はアプリ設計で固定される正本のため整合性を DB で担保 | **決定済み** | 比較は §17.1.1。`feature_normalization_version` §8.1 を更新 |
+| 4 | `normalization_method` と参照 version の整合 | seed + CHECK で `normalization_method='sigmoid'` 固定。参照先 version の method と一致を seed 運用で担保 | **決定済み** | §8.1 列間整合。将来 `z_score_sigmoid` は enum Task 連動 |
+| 5 | 論理ER へのエンティティ追記 | **本 Issue スコープに含める**（§10.2 エンティティ・§10.1 ER 図・§14.5 関係表） | **決定済み** | Human Review 2026-06-12 |
+
+#### 17.1.1 No.3 物理 FK vs LOGICAL 比較
+
+| 観点 | 物理 FK（`ON DELETE RESTRICT`） | LOGICAL（seed + 存在確認） |
+| ---- | ------------------------------- | ------------------------- |
+| 参照整合性 | DB が存在しない version 参照を拒否 | seed / アプリ validation に依存 |
+| 適用対象の性質 | **設定 binding 正本**（version あたり 1 行）に向く | **大量派生行**（`user_feature` / `item_feature`）の再現記録に向く |
+| プロジェクト慣例 | `semantic_config_version_id` と同様、Rule 定義の必須参照は物理 FK 化しやすい | `relationship_rule` → `relationship_master`（自然キー Master）、派生 Feature → `feature_normalization_version` は LOGICAL |
+| migration 順序 | `feature_normalization_version` 作成後に `normalization_rule` を CREATE | 順序制約は緩い |
+| version ライフサイクル | 参照先 version の DELETE は RESTRICT で保護（immutable version 方針と整合） | 孤児参照をアプリ層で検知する必要あり |
+| 被参照側の記載 | `feature_normalization_version` §8.1 に `normalization_rule`（物理 FK ON）を追記 | 派生 Feature 参照は §8.2 LOGICAL のまま |
+
+> **決定（Human Review 2026-06-12）**: No.3 は **物理 FK** を採用。`normalization_rule` → `feature_normalization_version` は自然発生する派生参照ではなく、アプリケーション設計で固定される binding 正本である。`user_feature` / `item_feature` からの参照は引き続き LOGICAL（再現記録・大量派生行）。
 
 ---
 
@@ -267,7 +281,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 | 種別 | パス / URL | 用途 |
 | ---- | ---------- | ---- |
 | 物理ER | `docs/06_実装設計/database/物理ER.md` | §8–§11 |
-| 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §10.2 |
+| 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §10.2・§14.5（本 Issue で追記） |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §8 No.43 |
 | Featureルール | `docs/04_ドメインモデル設計/Featureルール定義書.md` | §14 / §14.8 / §16.2 |
 | GiftMeaningSpace | `docs/04_ドメインモデル設計/GiftMeaningSpace定義書.md` | §7.4 正規化ルール管理 |
@@ -286,7 +300,7 @@ GiftMeaningSpace §7.4 および Matching / Ranking 定義書の「正規化ル�
 - `feature_normalization_version` との責務分離が §5.1 / §17.1 で明示されている
 - sigmoid パラメータを本テーブルに持たず、`feature_normalization_version.parameter_json` を正本としている
 - `semantic_config_version_id` への物理 FK（ON DELETE RESTRICT）が明記されている
-- `feature_normalization_version_id` の LOGICAL 参照方針が明記されている
+- `feature_normalization_version_id` への物理 FK（ON DELETE RESTRICT）が明記されている
 - Public API 非公開が明記されている
 - OpenAPI / generated 変更が含まれていない（#469 委譲）
 - DDL Task が CREATE TABLE を起こせる粒度である

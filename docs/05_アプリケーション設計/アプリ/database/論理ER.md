@@ -135,7 +135,7 @@
 | Item系                   | item / item_image / item_review_summary / item_popularity_signal / item_generation_queue                                                       | 内部正本 / 派生 / 状態      |
 | 外部商品データ系         | fetch_cursor / api_call_log / raw_product_metadata / raw_product_object / product_diff_result                                                  | Raw / Metadata / Log / 状態 |
 | Staging系                | staging_item / staging_item_image / staging_ranking_signal / staging_genre                                                                     | 一時 / 中間                 |
-| Semantic / Feature系     | semantic_config / semantic_config_version / semantic_concept / feature_definition / semantic_rule / feature_rule / item_feature / user_feature | 設定正本 / 派生             |
+| Semantic / Feature系     | semantic_config / semantic_config_version / semantic_concept / feature_definition / semantic_rule / feature_rule / normalization_rule / item_feature / user_feature | 設定正本 / 派生             |
 | Embedding系              | item_embedding                                                                                                                                 | 派生                        |
 | Evaluation系             | evaluation_dataset / evaluation_case / evaluation_run / evaluation_result / evaluation_metric                                                  | 内部正本 / 派生 / Log       |
 | Log系                    | phase_log / error_log / batch_run_log / item_import_summary                                                                                    | Log                         |
@@ -457,6 +457,9 @@ erDiagram
     SEMANTIC_CONFIG_VERSION ||--o{ FEATURE_DEFINITION : "defines"
     SEMANTIC_CONFIG_VERSION ||--o{ SEMANTIC_RULE : "contains"
     SEMANTIC_CONFIG_VERSION ||--o{ FEATURE_RULE : "contains"
+    SEMANTIC_CONFIG_VERSION ||--o{ NORMALIZATION_RULE : "contains"
+
+    NORMALIZATION_RULE }o--|| FEATURE_NORMALIZATION_VERSION : "resolves"
 
     SEMANTIC_CONCEPT ||--o{ SEMANTIC_RULE : "detected_by"
     SEMANTIC_CONCEPT ||--o{ FEATURE_RULE : "maps_to_feature"
@@ -494,6 +497,7 @@ erDiagram
 | feature_definition            | feature_definition_id            | semantic_config_version_id, feature_code, feature_label, feature_group, display_order, is_active                                                        | なし       | 設定正本 | database / reco |
 | semantic_rule                 | semantic_rule_id                 | semantic_config_version_id, rule_type, source_text_pattern, semantic_concept_id, weight, is_active                                                      | なし       | 設定正本 | database / reco |
 | feature_rule                  | feature_rule_id                  | semantic_config_version_id, semantic_concept_id, feature_definition_id, feature_delta, weight, is_active                                                | なし       | 設定正本 | database / reco |
+| normalization_rule            | normalization_rule_id            | semantic_config_version_id, normalization_method, feature_normalization_version_id, is_active                                                         | なし       | 設定正本 | database / batch / reco |
 | user_semantic                 | user_semantic_id                 | recommendation_run_id, semantic_config_version_id, extracted_semantic_json, generated_at                                                                | なし       | 派生     | reco            |
 | user_feature                  | user_feature_id                  | recommendation_run_id, feature_definition_id, feature_normalization_version_id, feature_value, source_type, generated_at                                | なし       | 派生     | reco            |
 | user_meaning                  | user_meaning_id                  | recommendation_run_id, user_social, user_symbolic, lambda_ctx, generated_at                                                                             | なし       | 派生     | reco            |
@@ -521,6 +525,15 @@ MVPで扱うFeature軸は以下である。
 
 Feature値は `0.0〜1.0` の範囲で扱う。  
 正規化方式は、単純clipではなくsigmoid系正規化を前提とする。
+
+### 10.2.1 補足（物理分解・責務分離）
+
+| 論点 | 方針 |
+| ---- | ---- |
+| `feature_rule`（論理抽象） | 物理テーブルでは `relationship_rule` / `occasion_rule` / `pair_rule` / `concept_feature_rule` / `input_type_rule` / `feature_integration_rule` 等へ分解（物理ER §5） |
+| `normalization_rule` | 意味定義 version ごとの正規化 **binding**（方式 + 正規化パラメータ version 参照）。sigmoid パラメータ正本は `feature_normalization_version`（`normalization_rule_テーブル定義書` §5.1） |
+| `normalization_rule` → `feature_normalization_version` | アプリ設計で固定される binding のため **物理 FK ON**（`ON DELETE RESTRICT`）。派生 Feature からの参照は LOGICAL 維持 |
+| MVP 行モデル | `semantic_config_version` あたり 1 行（全 8 Feature 軸共通） |
 
 ---
 
@@ -694,6 +707,8 @@ erDiagram
 | semantic_config_version       | feature_definition      | 1対多 | Feature軸定義              |
 | semantic_config_version       | semantic_rule           | 1対多 | Semantic抽出ルール         |
 | semantic_config_version       | feature_rule            | 1対多 | Feature推定ルール          |
+| semantic_config_version       | normalization_rule      | 1対0..1 | MVP は version あたり 1 行の正規化 binding |
+| normalization_rule            | feature_normalization_version | 多対1 | 正規化パラメータ version 参照（物理 FK ON） |
 | semantic_config_version       | recommendation_run      | 1対多 | Runで使用した設定version   |
 | model_version                 | recommendation_run      | 1対多 | Runで使用したモデルversion |
 | model_version                 | item_embedding          | 1対多 | Embedding生成モデル        |

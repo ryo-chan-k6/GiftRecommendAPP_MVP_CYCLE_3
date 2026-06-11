@@ -72,6 +72,7 @@ scope:
   - "物理ER.md への normalization_rule 行追加（§8 テーブル一覧・§5 feature_rule 分解一覧・必要に応じて FK/Index 方針）"
   - "テーブル一覧.md §8 への normalization_rule 行追加（§9 以降の通し No. 繰り下げ・§13 集計更新を含む）"
   - "物理ER Semantic/Feature定義系・FK方針との突合"
+  - "論理ER.md への normalization_rule エンティティ追記（§10.1 ER 図・§10.2 定義・§14.5 関係表）"
   - "論理ER §10.2・semantic_config_version §8.1・Featureルール定義書 §14 との整合"
   - "先行 merge 済みテーブル定義書（feature_definition / feature_normalization_version / relationship_rule 等）の章構成を踏襲"
   - "Task / Review Definition の整備"
@@ -82,7 +83,6 @@ out_of_scope:
   - "db/seeds ファイルの作成（Task ⑤）"
   - "apps/** 実装"
   - "OpenAPI / generated 変更（#469 へ委譲）"
-  - "論理ER.md へのエンティティ追記（別 docs Task 化を検討）"
 
 input:
   docs:
@@ -135,6 +135,10 @@ output:
       action: "update"
       required: true
       purpose: "§8 Semantic/Feature定義系へ normalization_rule を追記（No. 繰り下げ・§13 集計更新）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      action: "update"
+      required: true
+      purpose: "§10.1 ER 図・§10.2 エンティティ・§14.5 関係表へ normalization_rule を追記"
   files:
     - path: "prompts/definitions/tasks/db-physical-design/table-spec-normalization-rule.yaml"
       action: "update"
@@ -148,9 +152,10 @@ acceptance_criteria:
   - "物理ER §8 に normalization_rule 行が追加され、§5 feature_rule 分解一覧に normalization_rule が含まれる"
   - "テーブル一覧 §8 に normalization_rule 行が追加され、§9 以降の通し No. と §13 集計が整合している"
   - "物理ER・テーブル一覧・semantic_config_version §8.1・テーブル定義書の4点が矛盾しない"
-  - "論理ER §10.2・Featureルール定義書 §14 と矛盾しない"
+  - "論理ER §10.2・§14.5 に normalization_rule が追記され、Featureルール定義書 §14 と矛盾しない"
   - "`feature_normalization_version` との責務分離が §5.1 / §17 で明記されている"
   - "semantic_config_version_id への物理 FK（ON DELETE RESTRICT）方針が明記されている"
+  - "feature_normalization_version_id への物理 FK（ON DELETE RESTRICT）方針が明記されている"
   - "Public API 非公開方針が明記されている"
   - "apps/** 変更がない"
   - "Task PR target が親 Epic Branch"
@@ -191,6 +196,7 @@ parallel_control:
     - "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
     - "docs/06_実装設計/database/物理ER.md"
     - "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+    - "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
   conflict_risk: "medium"
   db_impact: false
 
@@ -200,7 +206,7 @@ test_policy:
     - "物理ER §8 追記行とテーブル定義書の分類・正本区分・MVP 対象が一致していること"
     - "テーブル一覧 §8 追記行と §13 集計（Semantic/Feature定義系・合計）が一致していること"
     - "テーブル一覧 §9 以降の通し No. 繰り下げが漏れなく実施されていること"
-    - "論理ER §10.2 属性との整合"
+    - "論理ER §10.2・§14.5 への追記と属性・関係の整合"
     - "Featureルール定義書 §14.2 / §14.3 / §14.8 と正規化方式・パラメータ正本の整合"
     - "feature_normalization_version テーブル定義書 §5.1 との責務分離"
     - "semantic_config_version §8.1 contains FK 方針との整合"

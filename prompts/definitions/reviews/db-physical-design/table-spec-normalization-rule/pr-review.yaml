@@ -122,19 +122,21 @@ input:
 review_points:
   common:
     - "Task Definition の scope を満たしているか"
-    - "out_of_scope（他テーブル定義書 / DDL / migration / apps / OpenAPI / 論理ER更新）が混在していないか"
+    - "out_of_scope（他テーブル定義書 / DDL / migration / apps / OpenAPI）が混在していないか"
     - "acceptance_criteria を満たしているか"
     - "Task PR target が親 Epic Branch であるか"
   docs:
     - "table-spec.md テンプレの主要章が充足しているか"
     - "物理ER §8・§5 とテーブル一覧 §8・§13 の追記がテーブル定義書と一致しているか"
     - "テーブル一覧 §9 以降の通し No. 繰り下げ漏れがないか"
-    - "論理ER §10.2・Featureルール定義書 §14 と矛盾しないか"
+    - "論理ER §10.2・§14.5 への normalization_rule 追記がテーブル定義書と一致しているか"
+    - "論理ER・Featureルール定義書 §14 と矛盾しないか"
     - "GiftMeaningSpace §7.4（semantic_config_version 配下）と Featureルール定義書 §14.8 / §16.2（feature_normalization_version 正本）の整理が §5.1 / §17 で明示されているか"
     - "Public API 非公開が明記されているか"
   db:
     - "PK / Index / CHECK / partial unique が DDL Task へ展開できる粒度か"
     - "semantic_config_version_id への物理 FK（ON DELETE RESTRICT）方針が明記されているか"
+    - "feature_normalization_version_id への物理 FK（ON DELETE RESTRICT）方針が明記されているか"
     - "feature_code / normalization_method 参照方針が明記されているか"
     - "feature_normalization_version との責務分離（ルール定義 vs version / パラメータ正本）が明記されているか"
     - "sigmoid 正規化パラメータの保持方式（カラム vs JSONB）が整理されているか"
@@ -151,7 +153,7 @@ human_decision_points:
   - "normalization_rule（ルール定義）と feature_normalization_version（version / パラメータ正本）の責務境界"
   - "sigmoid 系正規化パラメータの保持方式（カラム vs JSONB）"
   - "feature_code 単位の行モデル要否（MVP は全 8 軸共通か軸別か）"
-  - "feature_normalization_version_id への LOGICAL 参照要否"
+  - "feature_normalization_version_id への物理 FK 採用（binding 正本）— 決定済み"
 
 risk_points:
   - "テーブル一覧 §9 以降の通し No. 繰り下げ漏れによる正本 docs 不整合"
