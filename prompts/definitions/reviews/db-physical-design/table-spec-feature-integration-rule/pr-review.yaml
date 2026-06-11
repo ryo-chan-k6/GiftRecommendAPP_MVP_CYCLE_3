@@ -1,0 +1,168 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-feature-integration-rule-pr"
+  title: "feature_integration_rule テーブル定義書 PRレビュー"
+  summary: "feature_integration_rule テーブル定義書 Task の PR を AI Review する。物理ER・論理ER・Featureルール定義書 §12 との整合、MVP partial 方針、table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-478-feature-integration-rule-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 478
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-feature-integration-rule.yaml"
+  source_branch: "docs/task-478-feature-integration-rule-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-feature-integration-rule.yaml"
+    required: true
+  issue:
+    number: 478
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "Rule 系テーブル定義書との一貫性確認"
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+      purpose: "内部 Rule 非公開・version 管理方針の参考"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8–§11 整合。feature_integration_rule partial 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 No.42 MVP partial（△）との整合"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "§12 Feature Integration Rule・§16.1・§18.1 統合フロー"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "子テーブル FK（contains / ON）被参照元との整合"
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "内部 Rule 非公開方針"
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+      purpose: "Public API 非公開（返却対象外 Rule 種別）の整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（他テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+    - "OpenAPI / generated が含まれていないか（#469 委譲）"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §10.2 属性と矛盾しないか"
+    - "MVP partial 採用方針が §17 に明記されているか"
+    - "Public API 非公開（API-PUB-007 / API-PUB-008 返却対象外）が明記されているか"
+    - "§12 統合式・§12.3 初期重みと DB 保持方針（行モデル）の対応が整理されているか"
+    - "relationship_rule / pair_rule テーブル定義書と Rule 系方針が一貫しているか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "semantic_config_version_id FK 方針（contains / ON）が明記されているか"
+    - "version 内 UNIQUE（feature_code × input_source）方針が明記されているか"
+    - "weight 値域 CHECK（0.0〜2.0 等）が明記されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "MVP でテーブル作成するか（物理ER partial / テーブル一覧 △）"
+  - "integration ロジックと DB 境界（カラム化 vs コード定数 / YAML）"
+  - "§12.3 初期重みの DB 保持要否と更新主体"
+  - "DDL Task との関係（partial 採用時の migration 要否）"
+
+risk_points:
+  - "MVP partial のため DDL Task でテーブル未作成となる可能性"
+  - "reco Feature Integration 実装が DB 非依存（定数 / YAML）で進む場合の二重管理"
+  - "semantic_config_version 子テーブル FK 連鎖への後続 Task 影響"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-feature-integration-rule.yaml"
+  - "Wave2 No.9: feature_integration_rule"
+  - "対応 Issue: #478"
+  - "先行 Task: #462 / #463 / #470 / #473 / #474 / #475（Wave1 + Wave2 Rule 群 merge 済み前提）"
