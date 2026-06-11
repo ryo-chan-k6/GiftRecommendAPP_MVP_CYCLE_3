@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-12                      |
-| 更新日         | 2026-06-12                      |
+| 更新日         | 2026-06-12（Human Review #495 反映） |
 
 ---
 
@@ -84,7 +84,7 @@
 | 6 | `catchcopy` | Catchcopy | `varchar(500)` | `no` | — | — | — | — | キャッチコピー。API-PUB-003 `itemCatchcopy` の正本 |
 | 7 | `price` | Price | `integer` | `yes` | — | — | — | — | 価格（JPY・税込前提は画面側方針）。API `itemPrice` の正本。0 以上 |
 | 8 | `item_url` | Item URL | `text` | `yes` | — | — | — | — | 外部 EC 商品 URL。API `itemUrl` の正本 |
-| 9 | `external_genre_id` | External Genre ID | `uuid` | `no` | — | `LOGICAL` | — | — | `external_genre.external_genre_id` への論理参照（§8.1） |
+| 9 | `external_genre_id` | External Genre ID | `bigint` | `no` | — | `LOGICAL` | — | — | 楽天 `genreId`。`external_genre.external_genre_id`（`bigint` PK）への論理参照（§8.1） |
 | 10 | `shop_code` | Shop Code | `text` | `no` | — | — | — | — | 楽天 `shopCode`。API `shopName` は JOIN 導出（本テーブルには保持しない） |
 | 11 | `normalized_hash` | Normalized Hash | `varchar(64)` | `yes` | — | — | — | — | 正規化 Payload の SHA-256 等（hex）。差分判定・Upsert 冪等の基準（§12.2） |
 | 12 | `active_status` | Active Status | `text` | `yes` | — | — | — | `'active'` | `item_active_status` enum（enum定義書 §6.10） |
@@ -119,7 +119,7 @@
 
 | カラム | 参照先 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `external_genre_id` | `external_genre.external_genre_id` | classifies | `LOGICAL` | 物理ER §9。`external_genre` テーブル定義書（#494）merge 後に突合。§17.1 No.1 参照 |
+| `external_genre_id` | `external_genre.external_genre_id` | classifies | `LOGICAL` | 物理ER §9・`external_genre_テーブル定義書` §8.2 と一致。Human Review #495 §18.1 No.1 決定済み |
 
 ### 8.2 被参照
 
@@ -209,7 +209,7 @@ staging_item（external_item_code + normalized_hash）
 
 ### 12.3 `normalized_hash` 算出対象（正本参照）
 
-外部商品データ連携設計書 §6.4 を正本とする。MVP では以下を hash 入力に含める想定（**確定は Human Review §17.1 No.2**）。
+外部商品データ連携設計書 §6.4 を正本とする。MVP では以下を hash 入力に含める（**Human Review #495 §18.1 No.2 決定済み**）。正規化順序・NULL 扱いは Batch 仕様 Task で確定する。
 
 | 入力項目 | hash対象 | `item` 列への反映 |
 | -------- | -------- | ----------------- |
@@ -219,7 +219,7 @@ staging_item（external_item_code + normalized_hash）
 | `itemCaption` | ○ | `item_caption` |
 | `itemPrice` | ○ | `price` |
 | `itemUrl` | ○ | `item_url` |
-| `genreId` | ○ | `external_genre_id`（解決後 UUID） |
+| `genreId` | ○ | `external_genre_id`（楽天 `genreId`・`bigint`） |
 | `shopCode` | ○ | `shop_code` |
 | `availability` | ○ | `active_status` / `is_active` 判定に利用 |
 | `mediumImageUrls` / `smallImageUrls` | ○ | **`item_image` 側**（本テーブル列なし） |
@@ -265,7 +265,7 @@ staging_item（external_item_code + normalized_hash）
 | ---- | ---- |
 | DDL対象 | `item` |
 | migration単位 | 1 テーブル = 1 migration（DDL Task） |
-| 適用順序 | 物理ER §15: **Item 群**。`external_genre` より先または並行可（`external_genre_id` は LOGICAL のため FK 依存なし）。子テーブル `item_image` 等は **本テーブル作成後** |
+| 適用順序 | 物理ER §15: **Item 群**。`external_genre` を **先行 CREATE 推奨**（`external_genre_テーブル定義書` §14）。`external_genre_id` は LOGICAL のため FK 依存なし。子テーブル `item_image` 等は **本テーブル作成後** |
 | rollback方針 | forward migration 主体。DROP は Human Review 必須 |
 | 破壊的変更有無 | `no`（初回 CREATE） |
 
@@ -300,14 +300,14 @@ staging_item（external_item_code + normalized_hash）
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review 論点は §18.1 を参照 |
+| — | — | — | — | — | Human Review #495 にて No.1〜2 を決定済み（下記参照） |
 
-### 18.1 Human Review 観点（Issue #495）
+### 18.1 Human Review 決定事項（Issue #495）
 
-| No | 論点 | 決定 / 推奨案 | 状態 | 備考 |
-| --: | ---- | ------------- | ---- | ---- |
-| 1 | `external_genre_id` への物理 FK vs LOGICAL | **推奨: LOGICAL**（物理ER §9 現行方針）。`external_genre` 未 merge（#494）時も DDL 可能。比較は §18.1.1 | **Human判断待ち** | merge 後に `external_genre_テーブル定義書` と突合 |
-| 2 | `normalized_hash` 算出対象フィールドの確定 | **推奨: 外部商品データ連携設計書 §6.4 を正本**とし、画像・レビューを hash 入力に含める（列は子テーブル）。正規化順序・NULL 扱いは Batch 仕様 Task で確定 | **Human判断待ち** | §12.3 参照 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `external_genre_id` への物理 FK vs LOGICAL | **LOGICAL 維持**（物理ER §9・`external_genre_テーブル定義書` §8.2 と一致）。型は `bigint`（#494 PK と整合） | Human | #494 merge 後突合完了。比較は §18.1.1 |
+| 2 | `normalized_hash` 算出対象フィールドの確定 | **外部商品データ連携設計書 §6.4 を正本**とし、画像・レビューを hash 入力に含める（列は子テーブル） | Human | §12.3 参照。正規化順序・NULL 扱いは Batch 仕様 Task へ委譲 |
 
 #### 18.1.1 No.1 物理 FK vs LOGICAL 比較（`external_genre_id`）
 
@@ -316,10 +316,10 @@ staging_item（external_item_code + normalized_hash）
 | 参照整合性 | DB が存在しない genre 参照を拒否 | batch 解決 + アプリ validation に依存 |
 | 適用対象の性質 | **内部正本同士の安定参照**に向く | **外部 ID 解決前の staging 経路**や大量 Upsert に向く |
 | プロジェクト慣例 | `normalization_rule` → `feature_normalization_version` は binding 正本で物理 FK ON | `staging_item` → `item` Upsert、`item` → `external_genre` は物理ER 上 LOGICAL |
-| migration 順序 | `external_genre` 作成後に `item` FK 追加が必要 | `item` を先行 CREATE 可能 |
-| genre 未整備時 | #494 完了まで DDL ブロックしやすい | #494 未 merge でも本 Task 継続可能 |
+| migration 順序 | `external_genre` 作成後に `item` FK 追加が必要 | `external_genre` 先行 CREATE 推奨。`item` は FK なしで CREATE 可能 |
+| genre 未整備時 | #494 完了まで DDL ブロックしやすい | LOGICAL のため staging 経路と並行整備可能 |
 
-> **推奨（AI Agent）**: MVP は **LOGICAL 維持**（物理ER §9 一致）。#494 merge 後に物理 FK 化の要否を再評価してよい。
+> **決定（Human Review #495 No.1）**: MVP は **LOGICAL 維持**。#494 merge 後の再評価でも物理 FK 化は不要と判断した。
 
 ---
 
@@ -335,6 +335,7 @@ staging_item（external_item_code + normalized_hash）
 | 外部商品連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | §6.4 hash・§10 Upsert |
 | 状態遷移 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | §7.1 Item Active Status |
 | API契約 | `docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md` | Response マッピング |
+| 参照先テーブル | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | §8.2 被参照・型 `bigint`・#494 決定事項 |
 | 参考（FK 比較） | `docs/06_実装設計/database/normalization_rule_テーブル定義書.md` | §17.1.1 比較表形式 |
 
 ---
@@ -347,7 +348,7 @@ staging_item（external_item_code + normalized_hash）
 - `staging_item` → `item` Upsert キー（`source` + `external_item_code`）が明記されている
 - Online推薦中に `item` を更新しない方針が §5.2 に反映されている
 - API-PUB-003 の `isActive` / 非 active 422 方針と整合している
-- `external_genre_id` の LOGICAL 参照と §18.1 Human 論点が整理されている
+- `external_genre_id` の LOGICAL 参照（`bigint`）と §18.1 決定事項が `external_genre_テーブル定義書` と整合している
 - 子テーブル（`item_image` 等）の責務境界が §5.1 / §8.2 で明示されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - DDL Task が CREATE TABLE を起こせる粒度である
