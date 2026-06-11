@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 499
   issue: 494
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-external-genre.yaml"
   source_branch: "docs/task-494-external-genre-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 494
     required: true
   pr:
-    number: null
+    number: 499
     required: true
   diff:
     required: true
