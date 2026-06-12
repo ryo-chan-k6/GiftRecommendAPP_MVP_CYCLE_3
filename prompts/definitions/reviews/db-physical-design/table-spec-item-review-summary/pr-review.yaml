@@ -1,0 +1,184 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-item-review-summary-pr"
+  title: "item_review_summary テーブル定義書 PRレビュー"
+  summary: "item_review_summary テーブル定義書 Task の PR を AI Review する。item_テーブル定義書 §8.2 FK・物理ER Item系・論理ER §8.2・外部商品データ連携設計書・Snapshot 参照・Feature推定非利用・Batch Upsert 方針との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-503-item-review-summary-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 503
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-review-summary.yaml"
+  source_branch: "docs/task-503-item-review-summary-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-item-review-summary.yaml"
+    required: true
+  issue:
+    number: 503
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/item_review_summary_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item系・FK（item_id ON・1:0..1）・Index 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§8.2 商品系エンティティ属性・§7.3 Snapshot・§8.3 出所列方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§5 No.12 Item Review Summary との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§9.2 Staging 変換・§10.3 反映先・§13.3 popularity 補助シグナル"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "§12.4 Item Review Summary 役割・更新主体との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-007・Feature推定非利用方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "BATCH-007 反映・review_average_snapshot / review_count_snapshot マッピング"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§5.1 責務境界・§8.2 item_id 物理 FK（ON）被参照・§12.1 Upsert 順序・§13 API JOIN"
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: false
+      purpose: "Item 子テーブル共通方針（出所列なし・is_active 不採用）の参考"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: false
+      purpose: "reviewSummary 応答マッピング参考"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（item 再定義 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §8.2 の属性（item_review_summary_id / item_id / review_average / review_count / fetched_at）と矛盾しないか"
+    - "論理ER §8.3 出所列方針（item_image 同型・source 系列列なし）と一致しているか"
+    - "テーブル一覧 §5 No.12 の分類・用途・batch 更新主体と一致しているか"
+    - "外部商品データ連携設計書 §9.2 reviewAverage/reviewCount マッピングが整理されているか"
+    - "Feature推定非利用（表示・Popularity補助・Snapshot のみ）が §5 または相当章で明示されているか"
+    - "論理ER §7.3 review_average_snapshot / review_count_snapshot と recommendation_result_item の参照関係が明記されているか"
+    - "item_テーブル定義書 §5.1 / §8.2（item_id 物理 FK ON・責務境界）と矛盾しないか"
+    - "item_テーブル定義書 §12.1（item Upsert 後に item_review_summary 反映）と整合しているか"
+    - "item_テーブル定義書 §13（reviewSummary は item_review_summary JOIN）と API 公開列マッピングが整合しているか"
+    - "リソース一覧 §12.4 の役割・更新主体・Online 参照用途と一致しているか"
+    - "source / source_system / source_api / is_active を item_review_summary 行に持たない方針が明示されているか"
+  db:
+    - "PK / Unique（item_id）/ Index / CHECK が DDL Task へ展開できる粒度か"
+    - "item.item_id への物理 FK（ON・`item_テーブル定義書` §8.2 / 物理ER §8 FK 表）方針が明記されているか"
+    - "item_id の型が item.item_id（uuid）と一致しているか"
+    - "1対0または1 関係（item あたり最大1行）が UNIQUE (item_id) 等で表現されているか"
+    - "DDL 適用順序が item 作成後（`item_テーブル定義書` §15）と整合しているか"
+    - "staging_item → item_review_summary Upsert 方針（BATCH-007 / MOD-BATCH-025 連携）が明記されているか"
+    - "review_average / review_count の型・範囲制約（nullable・0件時の扱い）が明記されているか"
+    - "item 単位 Upsert（履歴なし）方針が §12 に明記されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "item 単位 Upsert vs 履歴保持の MVP 方針"
+  - "Feature推定非利用（表示・Popularity補助のみ）の明記妥当性"
+  - "item.item_id 物理 FK の ON DELETE 詳細（RESTRICT / CASCADE 等）— 親側 §8.2 は `ON` 決定済み"
+  - "API から reviewAverage/reviewCount が欠損した場合の行削除 vs 保持"
+
+risk_points:
+  - "item Upsert（source + external_item_code）と item_review_summary 反映の item_id 解決タイミング"
+  - "MOD-RECO-022 Result Snapshot Builder への review_average / review_count 参照一貫性"
+  - "popularity_score 補助シグナル（外部商品データ連携 §13.3）と Feature推定非利用の境界"
+  - "item_popularity_signal（#504）後続 Task との Popularity 補助責務の一貫性"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item-review-summary.yaml"
+  - "Batch R02 No.1: item_review_summary"
+  - "Issue #503 / Branch docs/task-503-item-review-summary-table-spec"
+  - "先行 Epic: #435 / docs/epic-435-db-physical-design"
+  - "先行 merge 済み: #495 item / PR #500（§8.2 FK ON・§5.1 責務境界決定済み）"
+  - "参考: #497 item_image（Item 子テーブル出所列・is_active 不採用方針）"
+  - "PR 番号は /create-pr 後に本 Definition の target.pr / input.pr.number を更新する"
