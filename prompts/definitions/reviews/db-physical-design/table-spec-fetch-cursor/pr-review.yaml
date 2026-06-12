@@ -1,0 +1,171 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-fetch-cursor-pr"
+  title: "fetch_cursor テーブル定義書 PRレビュー"
+  summary: "fetch_cursor テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §9・状態遷移設計書 §6.4・enum定義書・external_genre テーブル定義書との整合、api_call_log 関係整理と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-505-fetch-cursor-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 505
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-fetch-cursor.yaml"
+  source_branch: "docs/task-505-fetch-cursor-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-fetch-cursor.yaml"
+    required: true
+  issue:
+    number: 505
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系・fetch_cursor → api_call_log controls 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 エンティティ属性・§9.3 疑似差分取得構造との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.17 分類・用途との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.4 cursor_status 遷移・§6.2 API Call 連動・§11.2 / §11.3 異常系・再実行方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "fetch_cursor_status enum との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "疑似差分取得・Normalized Hash 上位方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-003 の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-003 / BATCH-004・Rate Limit → paused 方針の確認"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "target_external_genre_id LOGICAL 参照・§8.2 被参照関係の確認"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（api_call_log / raw_product_metadata 本体 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §9.2 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "テーブル一覧 §6 No.17 の分類・用途と一致しているか"
+    - "状態遷移設計書 §6.4 の状態一覧・遷移図が反映されているか"
+    - "external_genre テーブル定義書 §8.2 と target_external_genre_id（bigint）LOGICAL 参照方針が一致しているか"
+    - "normalization_rule / external_genre 等 Batch R01 テーブル定義書と章構成・MVP 方針が一貫しているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "fetch_cursor → api_call_log の 1:N controls（LOGICAL FK）関係が明記されているか"
+    - "cursor_status（fetch_cursor_status）と enum定義書 §6.8 が一致しているか"
+    - "api_call_log.call_status=rate_limited 時の Fetch Cursor paused 検討方針が明記されているか"
+    - "source / source_api / cursor_type / cursor_value / last_fetched_at の更新主体（batch）・保持方針が妥当か"
+    - "BATCH-003 / BATCH-004 における取得条件単位（ジャンル / キーワード / 補完候補）の表現が整理されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "cursor_type / cursor_value の意味とカーソル識別キー（Upsert / Unique）の構成"
+  - "target_external_genre_id の nullable 方針（ジャンル以外の取得条件での扱い）"
+  - "api_call_log rate_limited → fetch_cursor paused の自動連動を MVP で必須とするか（検討のみ vs 必須）"
+  - "同一取得条件の active カーソル重複許容方針"
+
+risk_points:
+  - "api_call_log テーブル定義書が未作成のため、関係整理の粒度が本 Task のみで完結するか"
+  - "cursor_type が enum定義書に未定義（論理属性のみ）である点の扱い"
+  - "raw_product_metadata（#506）後続 Task への api_call_log_id 経路引き継ぎ"
+  - "BATCH-002 未登録 itemCode 補完候補と fetch_cursor の関係が論理ER上薄い点"
+
+notes:
+  - "Batch R02 No.3: fetch_cursor"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-fetch-cursor.yaml"
+  - "Issue #505 / Branch docs/task-505-fetch-cursor-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#494 / PR #499（external_genre）"
+  - "api_call_log 本体定義は out_of_scope。fetch_cursor 側からの参照・連動方針のみ確認"
