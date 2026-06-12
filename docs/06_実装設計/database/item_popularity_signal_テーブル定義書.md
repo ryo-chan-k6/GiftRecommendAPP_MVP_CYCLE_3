@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP       |
 | MVP対象        | `yes`                                 |
 | 作成日         | 2026-06-12                            |
-| 更新日         | 2026-06-12                            |
+| 更新日         | 2026-06-12（Human Review #504 反映）  |
 
 ---
 
@@ -105,8 +105,9 @@
 | 履歴単位 | **`ranking_snapshot` ヘッダ単位**（`last_build_date` 等が異なれば別 Snapshot として履歴保持） |
 | 明細冪等キー | `ranking_snapshot_id + rank`（テーブル一覧 §14 No.2） |
 | item 単位最新のみ | **採用しない**。同一 `item_id` が複数 Snapshot にまたがって rank を持ちうる |
-| Online 参照 | 最新 `ranking_snapshot` 選択後に本テーブルを JOIN（バッチ設計方針書 §12.3） |
-| 物理 DELETE | MVP 原則禁止（親 Snapshot と同様）。Snapshot スコープ同期 DELETE は §17 論点 |
+| Online 参照 | 最新 `ranking_snapshot` 選択後に本テーブルを JOIN（§12.4） |
+| 物理 DELETE | **過去 Snapshot 配下は禁止**。同一 `ranking_snapshot_id` 内の **同期置換 DELETE のみ許可**（§12.1 ステップ 5・§14） |
+| 観測の変化 | `last_build_date` が異なる取得は **別 Snapshot として履歴追記**。昨日 1 位・今日圏外は別ヘッダで表現し、過去 Snapshot は削除しない |
 
 ### 5.6 楽天ランキング API マッピング
 
@@ -126,6 +127,22 @@
 | — | `item_id` | 解決できた場合のみ設定（LOGICAL FK） |
 | — | `ranking_snapshot_id` | 親ヘッダ FK（物理 ON） |
 | — | `fetched_at` | 明細反映日時（UTC） |
+
+### 5.7 Online 参照時の最新 Snapshot 選択（reco / api 共通）
+
+MVP では reco（IF-DB-RECO-006）と api（IF-DB-API-007）で **同一条件** を用いる（Human Review #504 No.3 確定）。
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 対象ジャンル | 参照対象 `item.external_genre_id` |
+| period | MVP 固定 **`daily`** |
+| source | MVP 固定 **`rakuten`** |
+| 最新の定義 | 同一 `(source, external_genre_id, period)` で **`last_build_date` 最大** の `ranking_snapshot` |
+| タイブレーク | `last_build_date` 同値時は **`fetched_at DESC`**（`ranking_snapshot` Index 方針と一致） |
+| 明細 JOIN | 上記で得た `ranking_snapshot_id` で本テーブルを JOIN |
+| 該当なし | 最新 Snapshot または明細が無い場合、Popularity 補助なし / `popularityBadge` は **省略** |
+
+> 将来、リクエストコンテキスト（Occasion 等）に応じて `period` や対象ジャンルを変える拡張は api / reco 実装 Task で検討する。
 
 ---
 
@@ -219,9 +236,9 @@
 | ---- | -------- | ---- | -------- | ------ | ---- |
 | INSERT / UPSERT | batch（BATCH-002 / IF-DB-BATCH-008） | 親 `ranking_snapshot_id` 確定後 | 全明細列 | `ranking_snapshot_id + rank` | §12.1 |
 | UPDATE（item 補完） | batch | `item_id IS NULL` かつ `item` が存在 | `item_id`, `updated_at` | `external_item_code` 一致 | §12.2 |
-| DELETE（Snapshot スコープ） | batch | Human Review 後に実装方針確定 | — | — | §17 No.1 |
-| SELECT | reco | 最新 `ranking_snapshot` 解決後 JOIN | — | — | IF-DB-RECO-006 |
-| SELECT | api | `item_id` + 最新 Snapshot 条件 JOIN | — | — | `popularityBadge`（§13） |
+| DELETE（Snapshot スコープ） | batch（BATCH-002 / IF-DB-BATCH-008） | 同一 `ranking_snapshot_id` で API 応答集合 R に無い `rank` | — | 再実行で同一結果 | §12.1 ステップ 5。過去 Snapshot 配下は対象外 |
+| SELECT | reco | §12.4 の最新 Snapshot 解決後 JOIN | — | — | IF-DB-RECO-006 |
+| SELECT | api | `item_id` + §12.4 最新 Snapshot JOIN | — | — | `popularityBadge`（§13） |
 | INSERT / UPDATE / DELETE | api / reco | — | — | **禁止** | Online 推薦中に更新しない |
 
 ### 12.1 Snapshot 配下全件反映フロー
@@ -231,10 +248,14 @@
 2. API / staging_ranking_signal から順位明細集合 R を取得
 3. R の各行について item_id を解決（source='rakuten' + external_item_code → item）
 4. ranking_snapshot_id + rank で UPSERT（冗長列はヘッダ値と一致させる）
-5. （任意・§17）同一 ranking_snapshot_id で R に含まれない既存行の扱いを決定
+5. 同期置換 DELETE: 当該 ranking_snapshot_id で R に含まれない rank 行を DELETE
+   （R が空の場合は当該 Snapshot 配下を全 DELETE）
+6. （任意）item_id 未解決行の後続補完 UPDATE（§12.3）
 ```
 
-### 12.2 Upsert 疑似コード
+ステップ 1〜5 は **1 トランザクション** で実行する。過去の `ranking_snapshot_id` 配下の行は DELETE しない。
+
+### 12.2 Upsert・同期置換 疑似コード
 
 ```sql
 INSERT INTO item_popularity_signal (
@@ -255,6 +276,12 @@ ON CONFLICT (ranking_snapshot_id, rank) DO UPDATE SET
   last_build_date = EXCLUDED.last_build_date,
   fetched_at = EXCLUDED.fetched_at,
   updated_at = now();
+
+-- 同期置換（§12.1 ステップ 5）
+DELETE FROM item_popularity_signal
+ WHERE ranking_snapshot_id = :ranking_snapshot_id
+   AND rank NOT IN (:rank_list_from_R);
+-- R が空の場合: AND 1=1（当該 Snapshot 配下を全削除）
 ```
 
 ### 12.3 item_id 補完（後続 Batch）
@@ -269,17 +296,43 @@ UPDATE item_popularity_signal ips
    AND i.external_item_code = ips.external_item_code;
 ```
 
+### 12.4 最新 Snapshot 解決（reco / api）
+
+§5.7 の条件で親ヘッダを 1 件選択し、配下明細を JOIN する。
+
+```sql
+SELECT rs.ranking_snapshot_id
+  FROM ranking_snapshot rs
+ WHERE rs.source = 'rakuten'
+   AND rs.external_genre_id = :item_external_genre_id
+   AND rs.period = 'daily'
+ ORDER BY rs.last_build_date DESC, rs.fetched_at DESC
+ LIMIT 1;
+
+-- 上記 ranking_snapshot_id で item_popularity_signal を item_id 条件 JOIN
+```
+
 ---
 
 ## 13. API 公開列マッピング（API-PUB-003）
 
 | API 項目 | DB 列 / 導出 | 公開 | 備考 |
 | -------- | ------------ | ---- | ---- |
-| `popularityBadge` | 最新 Snapshot 経由 JOIN | optional | データなし時は省略（Human Review #405） |
-| `popularityBadge.label` | 導出（例: `ランキング入り`） | optional | api 実装 Task で確定 |
-| `popularityBadge.rank` | `rank` | optional | **順位のみ**。内部スコア非公開 |
+| `popularityBadge` | §12.4 最新 Snapshot 経由 JOIN | optional | 明細が無い場合は **省略**（Human Review #405） |
+| `popularityBadge.label` | 固定文字列 **`ランキング入り`** | optional | Human Review #504 No.2 確定。period は label に含めない |
+| `popularityBadge.rank` | `rank` | optional | DB 値をそのまま返す。**順位のみ**。内部スコア非公開 |
 | `popularityScore` | — | **非公開** | MOD-RECO-017 内部利用 |
 | `genreId` / `genreName` | `external_genre_id` → JOIN | optional | `item` 経由でも可 |
+
+### 13.1 `popularityBadge` 導出ルール（MVP）
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 表示条件 | 対象 `item_id` が §12.4 で解決した最新 Snapshot の明細に **存在するときのみ** `popularityBadge` を返す |
+| `label` | 固定 **`ランキング入り`**（API-PUB-003 例と一致） |
+| `rank` | 明細の `rank` を integer で返す |
+| rank 閾値 | MVP では **設けない**（API が返した上位 N 件＝当該 Snapshot の全明細が対象） |
+| 非表示 | 最新 Snapshot に該当明細が無い場合、`popularityBadge` オブジェクトごと省略 |
 
 > `item_テーブル定義書` §13 と整合。本テーブルは **表示用バッジの参照元** であり、商品正本列ではない。
 
@@ -290,8 +343,8 @@ UPDATE item_popularity_signal ips
 | 観点 | 方針 |
 | ---- | ---- |
 | 保持期間 | 親 `ranking_snapshot` と一体で **履歴追記**（MVP 初期は無期限。`ranking_snapshot_テーブル定義書` §13） |
-| 削除方式 | 物理 DELETE 原則禁止 |
-| 削除条件 | — |
+| 削除方式 | **過去 Snapshot 配下の物理 DELETE は原則禁止**。例外: 同一 `ranking_snapshot_id` 内の **同期置換 DELETE**（§12.1 ステップ 5） |
+| 削除条件 | 当該 Snapshot の API 応答集合 R に含まれない `rank` 行。R 空時は当該 Snapshot 配下を全 DELETE |
 | 論理削除 | 列なし |
 | アーカイブ | MVP 対象外 |
 
@@ -325,20 +378,21 @@ UPDATE item_popularity_signal ips
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 同一 `ranking_snapshot_id` 再反映時、API 応答から消えた `rank` 行を DELETE するか | `item_image` は同期置換 DELETE だが、Snapshot 明細は履歴モデル。実装一貫性に影響 | Human | DDL 前 | 推奨: Snapshot スコープ同期 DELETE（§12.1 ステップ 5） |
-| 2 | `popularityBadge.label` の導出ルール | api 実装・表示仕様に影響 | Human | api 実装 Task 前 | rank 閾値や period に依存しうる |
-| 3 | reco の「最新 Snapshot」選択条件 | ジャンル / period / fetched_at の優先順 | Human | reco 実装 Task 前 | バッチ設計方針書 §12.3 は方針のみ |
+| — | — | — | — | — | Human Review #504 にて §17.1 を決定済み |
 
-### 17.1 本 Task で確定した方針（Human Review 前の設計案）
+### 17.1 Human Review 決定事項（Issue #504）
 
-| No | 論点 | 設計案 | 根拠 |
-| --: | ---- | ------ | ---- |
-| 1 | 冗長列（`external_genre_id` / `period` / `last_build_date`） | **明細に保持**（ヘッダ正本と整合必須） | 論理ER §8.2・§8.4・staging 列構成 |
-| 2 | `source` / `source_api` 列 | **不採用** | `item_image` / `item_review_summary` 同型（§5.3） |
-| 3 | `item_id` 物理 FK | **LOGICAL**（nullable） | 物理ER §9・`item_テーブル定義書` §8.2 |
-| 4 | `ranking_snapshot_id` 物理 FK | **ON**（RESTRICT） | `ranking_snapshot_テーブル定義書` §8.2 |
-| 5 | item 単位最新のみ Upsert | **不採用** | Snapshot 履歴モデル（§5.5） |
-| 6 | 冪等キー | **`ranking_snapshot_id + rank`** | テーブル一覧 §14 No.2・バッチ設計方針書 §11.5 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | 同一 `ranking_snapshot_id` 再反映時の DELETE | **Snapshot スコープ同期 DELETE を採用**。R に無い `rank` 行を DELETE。過去 Snapshot 配下は削除しない | Human | §12.1 ステップ 5・§14。`item_image` 同期置換と同型（親スコープ限定） |
+| 2 | `popularityBadge.label` 導出 | 固定文字列 **`ランキング入り`**。`rank` は DB 値。明細無し時は `popularityBadge` 省略。MVP で rank 閾値なし | Human | §13.1 |
+| 3 | reco / api の最新 Snapshot 選択 | `item.external_genre_id` + `period='daily'` + **`last_build_date` 最大**（同値時 `fetched_at DESC`） | Human | §5.7・§12.4 |
+| 4 | 冗長列（`external_genre_id` / `period` / `last_build_date`） | **明細に保持**（ヘッダ正本と整合必須） | Human | 論理ER §8.2・§8.4 |
+| 5 | `source` / `source_api` 列 | **不採用** | Human | §5.3 |
+| 6 | `item_id` 物理 FK | **LOGICAL**（nullable） | Human | 物理ER §9 |
+| 7 | `ranking_snapshot_id` 物理 FK | **ON**（RESTRICT） | Human | `ranking_snapshot_テーブル定義書` §8.2 |
+| 8 | item 単位最新のみ Upsert | **不採用** | Human | Snapshot 履歴モデル（§5.5） |
+| 9 | 冪等キー | **`ranking_snapshot_id + rank`** | Human | テーブル一覧 §14 No.2 |
 
 ---
 
@@ -371,5 +425,7 @@ UPDATE item_popularity_signal ips
 - `staging_ranking_signal` → `ranking_snapshot` → 本テーブル経路が §5.2 に整理されている
 - `source` / `source_api` 列を持たない方針が §5.3 で明示されている
 - バッチ設計方針書 §11.5 の冪等キーと一致している
+- §12.1 の Snapshot スコープ同期 DELETE と §14 の削除例外が明記されている
+- §5.7 / §12.4 / §13.1 の最新 Snapshot 選択・`popularityBadge` 導出が Human Review #504 と一致している
 - DDL Task が CREATE TABLE を起こせる粒度である
 - secret や `.env` 実値が含まれていない
