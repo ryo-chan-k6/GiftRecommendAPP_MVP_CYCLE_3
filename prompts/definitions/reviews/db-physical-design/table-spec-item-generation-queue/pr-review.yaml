@@ -1,0 +1,182 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-item-generation-queue-pr"
+  title: "item_generation_queue テーブル定義書 PRレビュー"
+  summary: "item_generation_queue テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §8.2 / §15・状態遷移設計書 §7.2・enum定義書・item テーブル定義書・バッチ設計方針書との整合、queue_status / generation_type / retry_count / item 紐づけ方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-507-item-generation-queue-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 507
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-generation-queue.yaml"
+  source_branch: "docs/task-507-item-generation-queue-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-item-generation-queue.yaml"
+    required: true
+  issue:
+    number: 507
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item派生データ系・item → item_generation_queue queued（ON）・Index 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§8.2 エンティティ属性・§15 状態カラム・§16 Online/Batch 責務境界との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§7 No.27 分類・用途・再生成判定補足方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§7.2 queue_status 遷移・§11.2 異常系・§11.3 再実行方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "item_generation_queue_status / item_generation_type enum との整合"
+    - path: "packages/code-definitions/state/item_generation_queue_status.yaml"
+      required: true
+      purpose: "queue_status packages 正本との整合"
+    - path: "packages/code-definitions/batch/item_generation_type.yaml"
+      required: true
+      purpose: "generation_type packages 正本との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-009 登録条件・失敗時 failed・二重 processing 禁止・再実行単位の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "BATCH-009 → BATCH-010〜015 依存・item_generation_queue_id 再実行キーの確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-010 / IF-DB-BATCH-012 の確認"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_id 物理 FK（ON）・§12.1 hash 変更時キュー登録経路の確認（#495 merge 済み正本）"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（item_semantic / item_feature / item_embedding 本体 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §8.2 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "テーブル一覧 §7 No.27 の分類・用途と一致しているか"
+    - "状態遷移設計書 §7.2 の状態一覧・遷移図が反映されているか"
+    - "item_テーブル定義書 §8.2 / §12.1 と item 紐づけ・再生成トリガー方針が一貫しているか"
+    - "バッチ設計方針書の意味影響項目のみ登録・review/price のみ変更時は非登録方針が明記されているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "item → item_generation_queue の 1:N queued（物理 FK ON）関係が明記されているか"
+    - "queue_status（item_generation_queue_status）と enum定義書 §6.11 が一致しているか"
+    - "generation_type（item_generation_type）と enum定義書 §6.17・packages 正本が一致しているか"
+    - "idx_item_gen_queue_status（queue_status, queued_at）が §7 / §10 に定義されているか"
+    - "retry_count / queued_at / started_at / completed_at / error_message の更新主体（batch）・保持方針が妥当か"
+    - "BATCH-009 初回登録時 generation_type=semantic デフォルト・部分再生成時の generation_type 選定が整理されているか"
+    - "failed → queued 再実行・二重 processing 禁止方針が明記されているか"
+    - "論理ER §16.1 Online 推薦中は更新しない方針が反映されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "Upsert / Unique キー: item_id + generation_type vs 履歴行を残す設計"
+  - "active（queued / processing）状態の同一 item + generation_type 重複許容方針"
+  - "retry_count 上限・failed からの再登録時インクリメント方針"
+  - "generation_type=semantic 1 行で BATCH-010〜015 を一括消化するか、区間ごとに別行を積むか"
+  - "semantic_config_version / model_version 変更時の generation_type 選定ルール"
+
+risk_points:
+  - "item_semantic / item_feature / item_embedding 定義書未作成のため、Queue 消化先との関係が本 Task のみで完結するか"
+  - "feature_input_hash / embedding_input_hash の永続化先が未定のため、IF-DB-BATCH-012 連携の粒度"
+  - "meaning_input_diff / product_diff_result 本体未定義のため、BATCH-009 登録トリガー記述の抽象度"
+  - "バッチ設計方針書の Item Meaning 生成言及と generation_type 3 値の対応（item_meaning は派生テーブル）"
+
+notes:
+  - "Batch R02 No.5: item_generation_queue"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item-generation-queue.yaml"
+  - "Issue #507 / Branch docs/task-507-item-generation-queue-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#495 / PR #500（item）"
+  - "item_semantic / item_feature / item_embedding 本体定義は out_of_scope"
+  - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"
