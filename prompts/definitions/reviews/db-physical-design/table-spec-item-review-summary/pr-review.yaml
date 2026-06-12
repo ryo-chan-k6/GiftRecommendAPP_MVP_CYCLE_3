@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 508
   issue: 503
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-review-summary.yaml"
   source_branch: "docs/task-503-item-review-summary-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 503
     required: true
   pr:
-    number: null
+    number: 508
     required: true
   diff:
     required: true
@@ -163,10 +163,24 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "item 単位 Upsert vs 履歴保持の MVP 方針"
-  - "Feature推定非利用（表示・Popularity補助のみ）の明記妥当性"
-  - "item.item_id 物理 FK の ON DELETE 詳細（RESTRICT / CASCADE 等）— 親側 §8.2 は `ON` 決定済み"
-  - "API から reviewAverage/reviewCount が欠損した場合の行削除 vs 保持"
+  - "§18.1 決定事項の妥当性（Upsert 履歴なし / Feature 推定非利用 / 欠損時保持 / ON DELETE RESTRICT）— PR 作成前に Human 承認済み"
+
+human_review_decisions:
+  - topic: "履歴 vs Upsert"
+    decision: "item 単位 Upsert、履歴なし（UNIQUE item_id）"
+    status: "decided"
+  - topic: "Feature 推定"
+    decision: "非利用。表示・Popularity 補助・Snapshot のみ"
+    status: "decided"
+  - topic: "source / is_active 列"
+    decision: "item_review_summary 行にはいずれも持たない"
+    status: "decided"
+  - topic: "Staging レビュー欠損時"
+    decision: "Upsert スキップ・前回値保持（DELETE しない）"
+    status: "decided"
+  - topic: "item_id FK ON DELETE"
+    decision: "ON DELETE RESTRICT"
+    status: "decided"
 
 risk_points:
   - "item Upsert（source + external_item_code）と item_review_summary 反映の item_id 解決タイミング"
@@ -181,4 +195,5 @@ notes:
   - "先行 Epic: #435 / docs/epic-435-db-physical-design"
   - "先行 merge 済み: #495 item / PR #500（§8.2 FK ON・§5.1 責務境界決定済み）"
   - "参考: #497 item_image（Item 子テーブル出所列・is_active 不採用方針）"
-  - "PR 番号は /create-pr 後に本 Definition の target.pr / input.pr.number を更新する"
+  - "Human Review #503 決定済み: 上記 human_review_decisions 参照"
+  - "PR #508"
