@@ -6,7 +6,7 @@ review:
   title: "item_popularity_signal テーブル定義書 PRレビュー"
   summary: "item_popularity_signal テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §8.4・テーブル一覧 §5/§14・ranking_snapshot / item / external_genre テーブル定義書・バッチ設計方針書との整合、冪等キー・Item 紐づけ・Snapshot 配下全件反映方針と table-spec テンプレ準拠を確認する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 509
   issue: 504
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-popularity-signal.yaml"
   source_branch: "docs/task-504-item-popularity-signal-table-spec"
@@ -71,8 +71,8 @@ input:
     number: 504
     required: true
   pr:
-    number: null
-    required: false
+    number: 509
+    required: true
   diff:
     required: true
     compare_with: "docs/epic-435-db-physical-design"
