@@ -1,0 +1,230 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-item-popularity-signal"
+  title: "item_popularity_signal:Item Popularity Signalテーブル定義書作成"
+  summary: "物理ER・論理ER §8.4・テーブル一覧・ranking_snapshot / item / external_genre テーブル定義書・バッチ設計方針書を入力に、item_popularity_signal のテーブル定義書を作成する。Phase2 子 Task ③ Batch R02 No.2（Item系 / Ranking 明細）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 494
+      purpose: "Batch R01 No.2 external_genre（merge 済み前提・external_genre_id LOGICAL 参照正本）"
+    - number: 495
+      purpose: "Batch R01 No.3 item（merge 済み前提・item_id LOGICAL 参照・popularityBadge JOIN 正本）"
+    - number: 496
+      purpose: "Batch R01 No.4 ranking_snapshot（merge 済み前提・ranking_snapshot_id 物理 FK 親ヘッダ）"
+  related_prs:
+    - number: 499
+      purpose: "Task #494 PR（merge 済み前提）"
+    - number: 500
+      purpose: "Task #495 PR（merge 済み前提）"
+    - number: 501
+      purpose: "Task #496 PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R02 No.2。実装フェーズ実行プロセス設計書 §6.3 の「テーブル定義書（1テーブル=1Task）」に対応。
+  楽天ランキングAPI由来の人気補助シグナルを、`ranking_snapshot` 配下の順位明細として管理する。
+  物理ER §4.1 Item系・§9 FK・§10 Index・テーブル一覧 §14 No.2（冪等キー: `ranking_snapshot_id + rank`）を前提とする。
+  先行 Task #496（ranking_snapshot / PR #501 merge 済み）で確定した親ヘッダ・2 層 Snapshot 構造・staging 経路整理を踏襲する。
+  先行 Task #495（item / PR #500 merge 済み）の `item_id` LOGICAL 参照・item 未解決時 code 紐づけ方針を踏襲する。
+  先行 Task #494（external_genre / PR #499 merge 済み）の `external_genre_id`（bigint 自然キー）LOGICAL 参照方針を踏襲する。
+  Issue #504 / Branch `docs/task-504-item-popularity-signal-table-spec` で作業する。
+
+objective: |
+  `item_popularity_signal` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  冪等キー（`ranking_snapshot_id + rank`）と Item 紐づけ（`item_id` / `external_item_code`）方針を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+  `staging_ranking_signal` → `ranking_snapshot` → `item_popularity_signal` 経路およびヘッダ/明細の冗長列扱いを整理する。
+
+scope:
+  - "table-spec.md テンプレ準拠の item_popularity_signal テーブル定義書作成"
+  - "物理ER Item系・Ranking Snapshot 系・FK・Index 方針との突合"
+  - "論理ER §8.2–§8.4・§9 Staging 系 ER・テーブル一覧 §5 No.16・§14 No.2 との整合"
+  - "ranking_snapshot テーブル定義書 §5.2 / §8.2 / §12 との親子・冪等・データフロー突合"
+  - "item_テーブル定義書 §8.2 / §13（popularityBadge JOIN）・external_genre テーブル定義書 §8.2 との参照整合"
+  - "バッチ設計方針書 §11.5・§12.3・外部商品データ連携設計書・インターフェース一覧 IF-DB-BATCH-008 との整合"
+  - "item_image / item_review_summary と同型の出所列方針（source / source_api 不採用）の明記"
+  - "先行 merge 済み Item 系テーブル定義書の章構成を踏襲"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "ranking_snapshot テーブル定義書の再作成（#496 merge 済み）"
+  - "item / external_genre / staging_ranking_signal テーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item 系・Ranking Snapshot 系分類・FK・Index・冪等キー方針（§4.1・§8–§11・§16）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（period 等。行に source 列なし）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§8.2–§8.4 Item Popularity Signal 属性・§9 Staging 系 ER・§18.1 未確定論点"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§5 Item 系 No.16・§14 引き継ぎ No.2・Ranking 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "楽天ランキング API 取得・Snapshot 反映・staging 経路"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "§11.5 ランキング Snapshot 反映・§12.3 staging 反映・冪等キー・Online 参照方針"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-008 / IF-DB-RECO-006・ranking_snapshot_id + rank 冪等キー"
+    - path: "docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md"
+      required: true
+      purpose: "親ヘッダ・2 層構造・§5.2 staging 経路・§8.2 子 FK（ranking_snapshot_id ON）・§12 Upsert 方針（merge 済み前提）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_id LOGICAL FK・§13 popularityBadge JOIN・§5.1 責務境界（merge 済み前提）"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "external_genre_id（bigint PK）・§8.2 被参照関係 LOGICAL 参照方針（merge 済み前提）"
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: true
+      purpose: "Item 子テーブル章構成・出所列不採用・MVP 方針参考（merge 済み前提）"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: false
+      purpose: "popularityBadge 公開表面・内部スコア非公開方針の参考"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/item_popularity_signal_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-item-popularity-signal.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-item-popularity-signal/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "item_popularity_signal テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §8.4・テーブル一覧 §5 / §14 と矛盾しない"
+  - "ranking_snapshot テーブル定義書 §8.2 / §12 と親子関係・冪等方針が矛盾しない"
+  - "item_テーブル定義書 §8.2 の item_id LOGICAL 参照・external_item_code 紐づけ方針が明記されている"
+  - "external_genre テーブル定義書 §8.2 と external_genre_id（bigint）LOGICAL 参照方針が矛盾しない"
+  - "冪等キー（ranking_snapshot_id + rank）と Snapshot 配下全件反映方針が明記されている"
+  - "staging_ranking_signal → ranking_snapshot → item_popularity_signal 経路が整理されている"
+  - "source / source_api 列を item_popularity_signal 行に持たない方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "item-popularity-signal-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 504
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 494
+      purpose: "Batch R01 No.2 external_genre テーブル定義書 完了（merge 済み前提）"
+    - number: 495
+      purpose: "Batch R01 No.3 item テーブル定義書 完了（merge 済み前提）"
+    - number: 496
+      purpose: "Batch R01 No.4 ranking_snapshot テーブル定義書 完了（merge 済み前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/item_popularity_signal_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8–§11 とカラム・制約・Index の整合"
+    - "テーブル一覧 §14 No.2（ranking_snapshot_id + rank 冪等キー）との整合"
+    - "論理ER §8.2 属性（item_popularity_signal_id / item_id / external_item_code / external_genre_id / rank / period / last_build_date / fetched_at）との整合"
+    - "論理ER §8.4 楽天ランキング API 項目マッピングとの整合"
+    - "ranking_snapshot テーブル定義書 §5.2 / §8.2 / §12 との親子・冗長列・Upsert 方針整合"
+    - "item_テーブル定義書 §8.2 / §13（popularityBadge）との整合"
+    - "external_genre テーブル定義書 §8.2・§7（external_genre_id bigint）との整合"
+    - "バッチ設計方針書 §11.5・§12.3・外部商品データ連携設計書のランキング Snapshot 方針との整合"
+    - "インターフェース一覧 IF-DB-BATCH-008 / IF-DB-RECO-006 の冪等キー・参照 I/F との整合"
+    - "item_image / item_review_summary と同型の出所列不採用方針との一貫性"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R02 No.2: item_popularity_signal"
+  - "先行 merge 済み: #494 / PR #499（external_genre）、#495 / PR #500（item）、#496 / PR #501（ranking_snapshot）"
+  - "論点: item_popularity_signal_id(uuid PK), ranking_snapshot_id(uuid FK ON), item_id(uuid LOGICAL), external_item_code, external_genre_id(bigint LOGICAL), rank, period, last_build_date, fetched_at"
+  - "冪等キー: UNIQUE (ranking_snapshot_id, rank) — テーブル一覧 §14 No.2・物理ER §10"
+  - "ranking_snapshot ヘッダの genreId / period / lastBuildDate 冗長列を明細に持つかどうか（Human Review 論点。ヘッダ正本は ranking_snapshot 定義書 §5.2）"
+  - "Human Review 論点: rank 履歴追記 vs Snapshot 配下最新のみ Upsert（論理ER §18.1）"
+  - "Human Review 論点: item_id 未解決時の external_item_code のみ保持・後続 item 補完取得（バッチ設計方針書 §12.3）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
+  - "Issue #504 / Branch docs/task-504-item-popularity-signal-table-spec"
