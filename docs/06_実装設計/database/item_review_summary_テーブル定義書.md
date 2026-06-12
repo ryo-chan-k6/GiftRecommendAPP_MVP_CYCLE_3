@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-12                      |
-| 更新日         | 2026-06-12                      |
+| 更新日         | 2026-06-12（Human Review #503 反映） |
 
 ---
 
@@ -63,7 +63,7 @@ MVP では **Feature 推定には利用しない**（表示・Popularity 補助�
 - 人気シグナル明細（`item_popularity_signal` の責務）
 - Staging 中間データ（`staging_item` のレビュー列は Staging 定義 Task へ委譲）
 - `source` / `source_system` / `source_api` 列（Item 子テーブル共通方針で **行に持たない**。§5.2）
-- `is_active` 列（§17.1 No.3）
+- `is_active` 列（§18.1 No.3）
 - OpenAPI / generated 変更（Epic 終盤 Task #469 へ委譲）
 
 ### 5.2 出所・トレース方針（`source` 系列列なし）
@@ -153,7 +153,7 @@ MVP では **Feature 推定には利用しない**（表示・Popularity 補助�
 
 | カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
 | ------ | ------ | ------ | ---------- | ---- |
-| `item_id` | `item.item_id` | `ON` | `ON DELETE RESTRICT` | `item_テーブル定義書` §8.2 被参照と一致。`item_image` と同型（§17.1 No.5） |
+| `item_id` | `item.item_id` | `ON` | `ON DELETE RESTRICT` | `item_テーブル定義書` §8.2 被参照と一致。Human Review #503 §18.1 No.5 決定済み |
 
 ### 8.2 被参照
 
@@ -209,7 +209,7 @@ MVP では **Feature 推定には利用しない**（表示・Popularity 補助�
 | SELECT | reco | Result Snapshot 生成 / Popularity 参照 | — | — | §8.3 |
 | UPSERT | batch（BATCH-007） | `item_id`（staging から解決） | `review_average`, `review_count`, `fetched_at` | Upsert キーで冪等 | §12.1 |
 | INSERT / UPDATE / DELETE | api / reco | — | — | **禁止** | Online 推薦中に更新しない |
-| DELETE | batch | MVP 原則 **しない** | — | — | §12.2・§17.1 No.1 |
+| DELETE | batch | MVP 原則 **しない** | — | — | §12.2・§18.1 No.1 決定済み |
 
 ### 12.1 item 単位 Upsert フロー
 
@@ -218,10 +218,20 @@ MVP では **Feature 推定には利用しない**（表示・Popularity 補助�
 2. staging_item から当該 item の review_average / review_count を取得
 3. 両フィールドが Staging 上で有効な場合、item_id をキーに UPSERT
 4. fetched_at を反映 Batch 完了時刻（UTC）で更新
-5. Staging でレビュー列が欠損している場合は §12.2 に従う（Human Review #503 No.4）
+5. Staging でレビュー列が欠損している場合は §12.2 に従う（§18.1 No.4 決定済み）
 ```
 
-### 12.2 Upsert 疑似コード
+### 12.2 Staging レビュー欠損時の方針
+
+Human Review #503 §18.1 No.4 決定済み。
+
+| 条件 | 処理 |
+| ---- | ---- |
+| `review_average` / `review_count` が Staging 上で有効 | §12.1 ステップ 3 で UPSERT |
+| いずれかが欠損・NULL | **Upsert をスキップ**し既存行を保持（DELETE しない） |
+| 初回反映で行が存在せず欠損 | 行を作成しない（1:0..1 の「0」） |
+
+### 12.3 Upsert 疑似コード
 
 ```sql
 INSERT INTO item_review_summary (
@@ -233,7 +243,7 @@ ON CONFLICT (item_id) DO UPDATE SET
   fetched_at = EXCLUDED.fetched_at;
 ```
 
-### 12.3 `normalized_hash` との関係
+### 12.4 `normalized_hash` との関係
 
 | 観点 | 方針 |
 | ---- | ---- |
@@ -262,7 +272,7 @@ OpenAPI schema 変更は Task #469 へ委譲。本定義書は DB ↔ 契約 doc
 | 保持期間 | 商品有効期間中（親 `item` に従う） |
 | 削除方式 | MVP では Batch による物理 DELETE は **原則しない** |
 | 削除条件 | 親 `item` 物理削除は RESTRICT で禁止。行不存在 = 1:0..1 の「0」 |
-| 論理削除 | `is_active` 列なし（§17.1 No.3） |
+| 論理削除 | `is_active` 列なし（§18.1 No.3 決定済み） |
 | 履歴 | 保持しない。監査は Raw / Staging メタデータ |
 | アーカイブ | MVP 対象外 |
 
@@ -309,19 +319,16 @@ OpenAPI schema 変更は Task #469 へ委譲。本定義書は DB ↔ 契約 doc
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | item 単位 Upsert vs 履歴保持 | MVP 物理モデルの確定 | Human | Issue #503 Due | §17.1 No.1 推奨案あり |
-| 2 | Feature推定非利用の明記 | Popularity 補助との境界確認 | Human | Issue #503 Due | §17.1 No.2 推奨案あり |
-| 3 | API 欠損時の行削除 vs 保持 | Staging に review 列が無い場合の挙動 | Human | Issue #503 Due | §17.1 No.4 推奨案あり |
-| 4 | `ON DELETE RESTRICT` 確定 | 親 item 削除ポリシーとの整合 | Human | DDL Task 前 | §17.1 No.5 推奨案あり |
+| — | — | — | — | — | Human Review #503 にて No.1〜5 を決定済み（下記参照） |
 
-### 18.1 Human Review 推奨案（Issue #503）
+### 18.1 Human Review 決定事項（Issue #503）
 
-| No | 論点 | 推奨内容 | 決定者 | 備考 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
 | 1 | 履歴 vs Upsert | **item 単位 Upsert、履歴なし**（`UNIQUE(item_id)`） | Human | §5.4 / §12.1 |
 | 2 | Feature 推定 | **非利用**。表示・Popularity 補助・Snapshot のみ | Human | §5.5 |
 | 3 | `source` / `is_active` 列 | **いずれも行に持たない**（`item_image` 同型） | Human | §5.2 |
-| 4 | Staging レビュー欠損時 | **Upsert をスキップし前回値を保持**（DELETE しない） | Human |  transient API 欠損対策 |
+| 4 | Staging レビュー欠損時 | **Upsert をスキップし前回値を保持**（DELETE しない） | Human | §12.2 |
 | 5 | `item_id` FK ON DELETE | **`ON DELETE RESTRICT`**（`item_image` #497 No.5 と同型） | Human | 親は論理無効化が基本 |
 
 ---
@@ -354,6 +361,6 @@ OpenAPI schema 変更は Task #469 へ委譲。本定義書は DB ↔ 契約 doc
 - Feature 推定非利用（表示・Popularity 補助・Snapshot のみ）が §5.5 で明示されている
 - `recommendation_result_item` Snapshot 参照が §8.3 に整理されている
 - staging → item_review_summary Upsert 方針が §5.6 / §12 に整理されている
-- Human Review 論点（§18）が Issue #503 と一致している
+- Human Review #503 決定事項（§18.1 No.1〜5）が本文に反映されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
