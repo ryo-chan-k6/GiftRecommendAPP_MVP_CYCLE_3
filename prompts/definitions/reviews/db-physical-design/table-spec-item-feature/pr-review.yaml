@@ -1,0 +1,192 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-item-feature-pr"
+  title: "item_feature テーブル定義書 PRレビュー"
+  summary: "item_feature テーブル定義書 Task の PR を AI Review する。物理ER・論理ER・テーブル一覧・Featureルール定義書・先行テーブル定義書・バッチ設計との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-514-item-feature-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 514
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-feature.yaml"
+  source_branch: "docs/task-514-item-feature-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-item-feature.yaml"
+    required: true
+  issue:
+    number: 514
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item派生データ系・FK・Index・制約（§8–§11）との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 エンティティ属性・§16 Online/Batch 責務境界との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§7 No.29・冪等キー・feature_input_hash 補足との整合"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "Feature 生成・正規化・値域 0.0〜1.0 の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-011 / BATCH-012 / BATCH-013 入出力との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "再実行単位・BATCH-011 → BATCH-012 → BATCH-013 依存の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-012 Feature 入力 hash 保存との整合"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_id 物理 FK（ON）被参照・責務境界の確認"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "Queue 消化先・feature_input_hash 変更トリガーとの整合"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "feature_code 正本・派生参照キー方針の確認"
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "§7.1 冪等キー・LOGICAL FK 方針の確認"
+    - path: "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+      required: true
+      purpose: "binding 解決と batch 整合の確認"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version_id 物理 FK（ON）との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feature_code enum との整合"
+    - path: "packages/code-definitions/semantic/feature_code.yaml"
+      required: true
+      purpose: "MVP 8 軸 feature_code 正本との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（item_semantic / item_meaning / item_embedding / user_feature / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §10.2 の属性と矛盾しないか（論理ER 差分は §8.1 等で明示されているか）"
+    - "テーブル一覧 §7 No.29 の分類・用途・batch 更新主体と一致しているか"
+    - "冪等キー（item_id + semantic_config_version_id + feature_code + feature_input_hash + feature_normalization_version_id）が明記されているか"
+    - "feature_input_hash の保持方針・BATCH-011 / IF-DB-BATCH-012 との関係が明記されているか"
+    - "論理ER §16.1 / §16.2（Online推薦中に item_feature を更新しない）が反映されているか"
+    - "Featureルール定義書 §10.3 MVP 8 軸・値域 0.0〜1.0 が反映されているか"
+  db:
+    - "PK / unique（uq_item_feature_idempotent）/ Index（idx_item_feature_lookup）/ CHECK（chk_feature_value_range）が DDL Task へ展開できる粒度か"
+    - "item_id への物理 FK（ON）・semantic_config_version_id への物理 FK（ON）方針が明記されているか"
+    - "feature_normalization_version_id への LOGICAL FK 方針が feature_normalization_version_テーブル定義書 §7.1 / §10 と一致しているか"
+    - "feature_code 参照と feature_definition_id 列要否の判断が §17 で整理されているか（論理ER §10.2 vs 物理ER §11）"
+    - "raw_feature_value / normalized_feature_value（または feature_value）の物理名が物理ER §11・バッチ処理一覧と整合しているか"
+    - "BATCH-012 / BATCH-013 の更新主体（batch）・再実行単位・item_generation_queue 連携が妥当か"
+    - "8 軸ごと 1 行（item_id × semantic_config_version_id × feature_code）の行モデルが明記されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "feature_definition_id 列の物理化要否 vs feature_code のみ（論理ER §10.2 vs 物理ER §11 冪等キー）"
+  - "raw_feature_value / feature_value の物理名（物理ER §11 chk_feature_value_range 表記との突合）"
+  - "feature_input_hash 列の必須化と算出対象フィールドの範囲"
+  - "履歴行保持 vs 同一冪等キーでの Upsert 上書き方針"
+  - "semantic_config_version_id / feature_normalization_version_id の ON DELETE 詳細"
+
+risk_points:
+  - "item_semantic テーブル定義書（#513）未 merge 時、BATCH-012 入力関係の記述が論理ER 参照に留まる"
+  - "論理ER §10.2（feature_definition_id / raw_feature_value）と物理ER §11（feature_code / feature_input_hash / feature_value）の差分整理"
+  - "item_meaning / item_embedding 後続 Task との FK・生成順序の一貫性"
+  - "normalization_rule / feature_normalization_version 変更時の item_feature 再生成影響"
+
+notes:
+  - "Batch R03 No.2: item_feature"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item-feature.yaml"
+  - "Issue #514 / Branch docs/task-514-item-feature-table-spec"
+  - "先行 merge 済み: #495 / PR #500（item）、#470 / PR #479（feature_definition）、#458 / PR #460（feature_normalization_version）、#507 / PR #512（item_generation_queue）"
+  - "並行 Task: #513 item_semantic（Batch R03 No.1）"
