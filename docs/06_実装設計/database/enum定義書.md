@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-11（polarity #476 / input_type・application_method #477 反映） |
+| 更新日         | 2026-06-12（source_api #506 反映） |
 
 ---
 
@@ -66,6 +66,8 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | API Call Status | `call_status` | state | Batch / 外部API | `yes` | |
 | Raw Import Status | `import_status` | state | Raw Metadata | `yes` | |
 | Fetch Cursor Status | `cursor_status` | state | Batch | `yes` | |
+| Fetch Cursor Type | `cursor_type` | batch | fetch_cursor | `yes` | id: `fetch_cursor_type`。Issue #505 |
+| Source API | `source_api` | batch | raw_product_metadata / api_call_log 等 | `yes` | id: `source_api`。Issue #506 |
 | Product Diff Status | `diff_status` | state | Staging / Diff | `yes` | |
 | Item Active Status | `active_status` | state | Item | `yes` | |
 | Item Generation Queue Status | `queue_status` | state | Batch | `yes` | |
@@ -332,6 +334,29 @@ Human Review（Issue #476）にて MVP 候補値を確定した。`feature_delta
 | `negative` | Negative | Feature 値を減少方向に補正 | Concept → Feature delta | `yes` | |
 | `mixed` | Mixed | 文脈依存・両方向の補正 | Concept → Feature delta | `yes` | reco 適用ロジックは実装 Task で確定 |
 
+### 6.23 Fetch Cursor Type (`fetch_cursor_type`)
+
+Human Review（Issue #505）にて走査戦略 5 値を確定した。`fetch_cursor_テーブル定義書` §5.4 を正とする。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `genre` | Genre | ジャンル別商品検索のページ走査 | BATCH-003・`target_external_genre_id` 必須 | `yes` | |
+| `keyword` | Keyword | キーワード検索のページ走査 | BATCH-003・`scope.keyword` 必須 | `yes` | |
+| `update_sort` | Update Sort | 更新順ソートによる棚卸し走査 | BATCH-003 | `yes` | |
+| `ranking_supplement` | Ranking Supplement | ランキング補完候補の走査 | BATCH-003・BATCH-002 後続 | `yes` | |
+| `recheck` | Recheck | 既存商品再確認 | BATCH-004・**1 商品（`external_item_code`）単位** | `yes` | §17.1 No.4 |
+
+### 6.24 Source API (`source_api`)
+
+Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の 4 値を正本化した。Observability §15.2 の短縮表記（`ranking` / `genre`）は **本 enum を正**とし、物理 DDL では採用しない。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `item_search` | Item Search | 楽天商品検索API | BATCH-003 / BATCH-004 等 | `yes` | fetch_cursor MVP は本値のみ（テーブル CHECK） |
+| `item_ranking` | Item Ranking | 楽天ランキングAPI | BATCH-002 | `yes` | |
+| `genre_search` | Genre Search | 楽天ジャンル検索API | BATCH-001 | `yes` | |
+| `attribute_search` | Attribute Search | 楽天属性検索API | 将来拡張 | `yes` | MVP では Raw 保存対象外の場合あり |
+
 ---
 
 ## 7. DB利用箇所
@@ -349,8 +374,13 @@ Human Review（Issue #476）にて MVP 候補値を確定した。`feature_delta
 | `error_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
 | `batch_run_log` | `run_status` | `batch_run_status` | NOT NULL | |
 | `api_call_log` | `call_status` | `api_call_status` | NOT NULL | |
+| `api_call_log` | `source_api` | `source_api` | NOT NULL | 論理ER §9.2。api_call_log 定義書（別 Task）で転記 |
 | `raw_product_metadata` | `import_status` | `raw_import_status` | NOT NULL | |
+| `raw_product_metadata` | `source_api` | `source_api` | NOT NULL | Issue #506 確定 |
+| `item_import_summary` | `source_api` | `source_api` | NOT NULL | 論理ER §9.2 |
 | `fetch_cursor` | `cursor_status` | `fetch_cursor_status` | NOT NULL | |
+| `fetch_cursor` | `cursor_type` | `fetch_cursor_type` | NOT NULL | Issue #505 確定 |
+| `fetch_cursor` | `source_api` | `source_api` | NOT NULL | fetch_cursor 定義書 §10。MVP CHECK は `item_search` のみ |
 | `product_diff_result` | `diff_status` | `product_diff_status` | NOT NULL | |
 | `staging_item` | `diff_status` | `product_diff_status` | NULL可 | |
 | `item` | `active_status` | `item_active_status` | NOT NULL | |
@@ -385,6 +415,8 @@ Human Review（Issue #476）にて MVP 候補値を確定した。`feature_delta
 | `packages/code-definitions` | `state/*.yaml` 等 | 全 state enum | 正本 | 本 Task で作成 |
 | `apps/reco` | Run / Phase 記録 | `recommendation_run_status` 等 | 状態更新 | Phase4b 実装 |
 | `apps/batch` | Batch / Import | `batch_run_status` 等 | 状態更新 | Phase4b 実装 |
+| `apps/batch` | Fetch Cursor Manager | `fetch_cursor_type` | 走査種別判定 | Issue #505 |
+| `apps/batch` | Raw Product Metadata Writer 等 | `source_api` | API 種別識別 | Issue #506 |
 | `apps/api` | Feedback 保存 | `feedback_*` | Validation | Phase4b 実装 |
 | `apps/reco` | User Feature 生成ディスパッチ | `input_type` / `application_method` | Rule 経路分岐 | Issue #477 |
 
@@ -448,6 +480,8 @@ DB 制約方針:
 | 4 | `error_code` 正本化範囲 | **クローズ**（Human Review 確定） | Human | §10.2・`error/README.md`。Phase4a へ委譲 |
 | 5 | `input_type` / `application_method` | **クローズ**（Issue #477） | Human | §6.20–§6.21・`semantic/input_type.yaml`・`semantic/application_method.yaml` |
 | 6 | `polarity`（Concept Feature Polarity） | **クローズ**（Issue #476） | Human | §6.22。packages/code-definitions 正本化は後続 enum Task |
+| 7 | `fetch_cursor_type` | **クローズ**（Issue #505） | Human | §6.23・`batch/fetch_cursor_type.yaml`。fetch_cursor テーブル定義書で転記 |
+| 8 | `source_api` | **クローズ**（Issue #506） | Human | §6.24・`batch/source_api.yaml`。raw_product_metadata テーブル定義書 §17.1 No.4 |
 
 ### 12.1 No.3 方針メモ（テーブル定義 Task 引き継ぎ）
 
@@ -490,5 +524,7 @@ Semantic ルールの `source_type`（`item_name`, `user_input` 等）とは **�
 - `item_generation_type` が Human Review 判断どおり確定されている
 - `input_type` / `application_method` が Featureルール §11.1・input_type_rule テーブル定義書と一致している
 - `polarity` が concept_feature_rule テーブル定義書・API-PUB-008 と一致している（§6.22）
+- `fetch_cursor_type` が fetch_cursor テーブル定義書 §5.4 と一致している（§6.23）
+- `source_api` が raw_product_metadata テーブル定義書 §11・外部商品データ連携設計書 §8.4 と一致している（§6.24）
 - packages/code-definitions のディレクトリ構成がプロジェクトディレクトリ構成定義書 §8.2 と一致している
 - secret や `.env` 実値が含まれていない
