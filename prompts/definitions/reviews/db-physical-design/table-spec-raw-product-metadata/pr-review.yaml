@@ -158,11 +158,13 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "PK 列名: raw_metadata_id（論理ER）vs raw_product_metadata_id（外部商品データ連携設計書 §8.4）"
-  - "外部商品データ連携設計書 §8.4 の batch_run_id / request_params / http_status 等を raw_product_metadata 行に持つか（api_call_log との責務分離）"
-  - "content_hash vs response_content_hash 命名・算出対象範囲"
-  - "object_key の UNIQUE 制約（1 Raw Object = 1 Metadata）の MVP 採否"
-  - "api_call_log_id の nullable 方針（手動 Raw 再処理・監査モード等）"
+  - "PK 列名: raw_metadata_id（論理ER）— **確定**（外部商品データ連携設計書 §8.4 との差分は §5.4）"
+  - "外部商品データ連携設計書 §8.4 の batch_run_id / request_params 等 — **本テーブル列には持たない**（api_call_log 責務。§5.4）"
+  - "content_hash 算出対象 — **Object Storage PUT body バイト列 SHA-256**（§5.7 / §17.1 No.5）"
+  - "object_key UNIQUE — **MVP 必須**（§17.1 No.1 / §12.4）"
+  - "api_call_log_id nullable — **手動再処理・integration test で NULL 可**（§17.1 No.2）"
+  - "failed 再実行 — **同一行 import_status リセット**（§17.1 No.3 / §12.3）"
+  - "source_api enum — **batch/source_api.yaml + enum定義書 §6.24**（§17.1 No.4）"
 
 risk_points:
   - "api_call_log / fetch_cursor テーブル定義書が未作成のため、produces 関係の粒度が本 Task のみで完結するか"

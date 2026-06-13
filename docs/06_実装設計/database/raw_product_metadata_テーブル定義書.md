@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-12                         |
-| 更新日         | 2026-06-12                         |
+| 更新日         | 2026-06-12（Human Review #506 反映） |
 
 ---
 
@@ -74,9 +74,10 @@ Raw JSON 本体は DB 非管理（Object Storage 正本）。Public API では�
 | データフロー | `fetch_cursor`（任意）→ `api_call_log`（1 外部 API 呼び出し）→ **`raw_product_metadata`（1 Raw レスポンス）** → `staging_*` |
 | 物理ER 関係 | `api_call_log` → `raw_product_metadata` : `produces`（**LOGICAL** FK。Batch / Log 系は物理 FK なし） |
 | カーディナリティ | 1 API 呼び出し : N Raw Metadata（1 レスポンス内に複数 Raw 分割保存は MVP では **想定しない**。通常 1:1） |
-| `api_call_log_id` | API 経由で Raw 保存した行では **設定必須**。手動再処理・監査モード等で API Log 非経由の場合は `NULL` 可（§17 No.2） |
-| trace | インターフェース一覧: `batch_run_id` / `api_call_log_id` / `raw_metadata_id` で追跡 |
+| `api_call_log_id` | **nullable**。BATCH 通常経路では `api_call_log` INSERT 後に **原則設定** する。手動再処理・監査・integration test 等で Log 非経由の場合は `NULL` 可（§17.1 No.2） |
+| trace | インターフェース一覧: `batch_run_id` / `api_call_log_id` / `raw_metadata_id` で追跡。`api_call_log_id` が NULL の場合は `raw_metadata_id` + `object_key` で代替 |
 | `batch_run_id` | **本テーブル列には持たない**。`api_call_log.batch_run_id` 経由で間接参照（§5.4） |
+| Raw 未保存時 | `api_call_log.call_status` が `failed` / `rate_limited` 等で Raw JSON を Object Storage へ保存しない場合、**Metadata 行は作成しない** |
 
 ```mermaid
 flowchart LR
@@ -95,7 +96,7 @@ flowchart LR
 | 正本 | Raw JSON 本体は **Object Storage**（`raw_product_object` 論理エンティティ）。DB 非管理 |
 | 参照キー | `object_key` が Storage 上のパス正本（外部商品データ連携設計書 §8.3） |
 | 関係 | `raw_product_metadata` 1 行 : Raw Object 1 件（**1 対 1**） |
-| 整合性 | `content_hash` で Raw 本体の改ざん・再取得差分を検知。Staging 前の再読込検証に利用 |
+| 整合性 | `content_hash` で Raw 本体の改ざん・再取得差分を検知。算出方針は §5.7 |
 | `object_key` 未設定 | Raw 保存省略時は Metadata 行を **作成しない**（§5 冒頭）。行が存在する場合 `object_key` は NOT NULL（§10 CHECK） |
 
 **Object Storage Key 形式（正本）**:
@@ -145,9 +146,23 @@ raw/rakuten/item_search/dt=2026-05-10/batch_run_id=br_20260510_001/9f2a3c.json
 | 変更なしのみ | ×（原則） | **作成しない** |
 | エラー（調査用保存） | 必要に応じて ○ | 作成可（`failed` 等） |
 | Genre / Ranking / Attribute 定義 | ○ | 作成 |
-| 手動検証・監査 | ○ | 作成（`api_call_log_id` NULL 可） |
+| 手動検証・監査 | ○ | 作成（`api_call_log_id` NULL 可。§17.1 No.2） |
+| integration test | ○ | 作成可（`api_call_log_id` NULL・既存 Object Storage Raw の再 Staging 等） |
 
----
+### 5.7 `content_hash` 算出方針
+
+外部商品データ連携設計書 §8.4 `response_content_hash` に相当するが、物理列名は論理ER §9.2 に合わせ **`content_hash`** とする。
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 正本 | **Object Storage に PUT する Raw JSON 本体のバイト列**（Adapter 適用前の API レスポンス body） |
+| アルゴリズム | SHA-256（hex 小文字等の表現は Batch 実装で統一） |
+| 対象外 | `normalized_hash`（Staging 後・Item 差分判定用。別概念） |
+| 正規化 | **保存直前の body バイト列をそのまま hash** する（MVP）。JSON key 順ソート等の canonical 化は行わない |
+| 用途 | Object Storage 読み戻し時の整合性確認、同一 Raw の再処理判定 |
+| 再取得 | 同一 API 条件でも body が変われば hash も変わり、別 `object_key` / 別 Metadata 行となり得る |
+
+> **Human Review #506 決定（§17.1 No.5）**: レスポンス全体 hash（Raw body バイト列）を採用。normalized JSON hash は Staging 層（`staging_item.normalized_hash`）の責務。
 
 ## 6. カラム定義
 
@@ -158,7 +173,7 @@ raw/rakuten/item_search/dt=2026-05-10/batch_run_id=br_20260510_001/9f2a3c.json
 | 3 | `object_key` | Object Key | `text` | `yes` | — | — | `yes` | — | Object Storage 上 Raw JSON パス（§5.3） |
 | 4 | `source` | Data Source | `text` | `yes` | — | — | — | `'rakuten'` | 外部商品データ元。`item.source` と同一体系 |
 | 5 | `source_api` | Source API | `varchar(32)` | `yes` | — | — | — | — | 取得 API 識別子（§11） |
-| 6 | `content_hash` | Content Hash | `text` | `yes` | — | — | — | — | Raw JSON 本体の hash（SHA-256 等。算出方式は Batch 実装） |
+| 6 | `content_hash` | Content Hash | `text` | `yes` | — | — | — | — | Raw JSON 本体 hash（§5.7。Object Storage PUT body の SHA-256） |
 | 7 | `item_count` | Item Count | `integer` | `yes` | — | — | — | `0` | Raw レスポンス内の商品件数（該当 API に商品列がない場合は 0） |
 | 8 | `import_status` | Import Status | `varchar(32)` | `yes` | — | — | — | `'raw_saved'` | 取込状態。`raw_import_status` enum 準拠 |
 | 9 | `fetched_at` | Fetched At | `timestamptz` | `yes` | — | — | — | — | 外部 API 取得完了日時（UTC） |
@@ -178,7 +193,7 @@ raw/rakuten/item_search/dt=2026-05-10/batch_run_id=br_20260510_001/9f2a3c.json
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `raw_metadata_id` | サロゲート UUID | `staging_*` / error_log owner 参照 |
-| UNIQUE | `object_key` | Raw Object 1 件 = Metadata 1 行 | §5.3 1 対 1 参照 |
+| UNIQUE | `object_key` | Raw Object 1 件 = Metadata 1 行 | Human Review #506 確定（§17.1 No.1） |
 
 ---
 
@@ -227,7 +242,7 @@ raw/rakuten/item_search/dt=2026-05-10/batch_run_id=br_20260510_001/9f2a3c.json
 | `raw_product_metadata_pkey` | PRIMARY KEY | `raw_metadata_id` | 主キー | — |
 | `uq_raw_product_metadata_object_key` | UNIQUE | `object_key` | Raw Object 一意 | §7 |
 | `chk_raw_metadata_source_mvp` | CHECK | `source` | `source = 'rakuten'` | MVP 固定 |
-| `chk_raw_metadata_source_api` | CHECK | `source_api` | §11 許容値 | enum YAML 化は後続 |
+| `chk_raw_metadata_source_api` | CHECK | `source_api` | `source_api IN ('item_search','item_ranking','genre_search','attribute_search')` | enum定義書 §6.24・`batch/source_api.yaml` |
 | `chk_raw_metadata_import_status` | CHECK | `import_status` | `raw_import_status` 許容値 | enum定義書 §6.7 |
 | `chk_raw_metadata_item_count` | CHECK | `item_count` | `item_count >= 0` | — |
 | `chk_raw_metadata_staged_at` | CHECK | `staged_at` | `import_status NOT IN ('staged','imported') OR staged_at IS NOT NULL` | 状態と時刻の整合 |
@@ -242,7 +257,7 @@ raw/rakuten/item_search/dt=2026-05-10/batch_run_id=br_20260510_001/9f2a3c.json
 | ------ | ----------- | ------ | ------ | ---- |
 | `import_status` | `raw_import_status` | `enum定義書.md` §6.7 / `packages/code-definitions/state/raw_import_status.yaml` | `raw_saved`, `staged`, `imported`, `skipped`, `failed` | NOT NULL |
 | `source` | （code 未定義） | `item.source` 慣行 | MVP: `rakuten` | CHECK |
-| `source_api` | （code 未定義） | 外部商品データ連携設計書 §8.4 | `item_search`, `item_ranking`, `genre_search`, `attribute_search` | BATCH 別に利用 |
+| `source_api` | `source_api` | `enum定義書.md` §6.24 / `packages/code-definitions/batch/source_api.yaml` | `item_search`, `item_ranking`, `genre_search`, `attribute_search` | NOT NULL。外部商品データ連携設計書 §8.4 準拠 |
 
 ### 11.1 `import_status` 状態遷移
 
@@ -281,13 +296,13 @@ stateDiagram-v2
 
 | 操作 | 実行主体 | 条件 | 更新項目 | 冪等性 | 備考 |
 | ---- | -------- | ---- | -------- | ------ | ---- |
-| INSERT | batch | Raw JSON 保存完了 | 全列（`import_status=raw_saved`） | `object_key` UNIQUE で重複防止 | IF-DB-BATCH-004 |
+| INSERT | batch | Raw JSON 保存完了 | 全列（`import_status=raw_saved`） | `object_key` UNIQUE。同一 key 再保存時は §12.4 | IF-DB-BATCH-004 |
 | SELECT | batch | `import_status = raw_saved` 等 | — | — | BATCH-005 対象一覧 |
 | UPDATE | batch | Staging 完了 | `import_status=staged`, `staged_at`, `updated_at` | `raw_metadata_id` 指定 | BATCH-005 |
 | UPDATE | batch | Item 反映完了 | `import_status=imported`, `imported_at`, `updated_at` | 同上 | BATCH-005 / 007 等 |
 | UPDATE | batch | Import 不要 | `import_status=skipped`, `imported_at`, `updated_at` | 同上 | 差分なし |
 | UPDATE | batch | 処理失敗 | `import_status=failed`, `error_code`, `error_message`, `updated_at` | 同上 | error_log 連携 |
-| UPDATE | batch | Raw 再処理成功 | 終端状態から `raw_saved` へ **原則戻さない** | — | 再処理は新規 Metadata 行または Human 判断（§17 No.3） |
+| UPDATE | batch | failed 後の再実行（§12.4） | `import_status=raw_saved`, `staged_at=NULL`, `imported_at=NULL`, `error_code=NULL`, `error_message=NULL`, `content_hash`（必要時）, `updated_at` | 同一 `raw_metadata_id` / `object_key` 行を **リセット** | §17.1 No.3 |
 | DELETE | — | MVP 原則禁止 | — | — | Retention Task で方針確定 |
 | INSERT / UPDATE / DELETE | api / reco / web | — | — | **禁止** | batch のみ |
 
@@ -325,11 +340,42 @@ INSERT INTO raw_product_metadata (
 );
 ```
 
-### 12.3 失敗時の再実行
+### 12.3 失敗時の再実行（`import_status` リセット）
 
-状態遷移設計書 §11.3: Raw Product Metadata `failed` 時、**Object Storage 上 Raw JSON が存在すれば** Staging 以降を再実行可能。Batch は同一 `object_key` の Metadata を読み直すか、運用判断で新規行を作成する（§17 No.3）。
+状態遷移設計書 §11.3: Raw Product Metadata `failed` 時、**Object Storage 上 Raw JSON が存在すれば** Staging 以降を再実行可能。
 
----
+Human Review #506 決定（§17.1 No.3）: **同一行の `import_status` をリセット**し、新規 Metadata 行は作成しない（`object_key` UNIQUE と整合）。
+
+```text
+1. 対象 raw_metadata_id（または object_key）を特定
+2. Object Storage 上の Raw JSON 存在を確認
+3. UPDATE: import_status='raw_saved', staged_at/imported_at/error_* を NULL 化
+4. BATCH-005 を当該行に対して再実行
+5. 必要に応じて content_hash / item_count / fetched_at を再取得結果で更新
+```
+
+```sql
+UPDATE raw_product_metadata
+SET
+  import_status = 'raw_saved',
+  staged_at = NULL,
+  imported_at = NULL,
+  error_code = NULL,
+  error_message = NULL,
+  updated_at = now()
+WHERE raw_metadata_id = :raw_metadata_id
+  AND object_key IS NOT NULL;
+```
+
+### 12.4 同一 `object_key` 再保存時（Upsert 方針）
+
+`object_key` UNIQUE（§17.1 No.1）により、同一 Storage パスへの再 PUT は **新規 INSERT ではなく既存行 UPDATE** とする。
+
+| 条件 | 処理 |
+| ---- | ---- |
+| 新規 `object_key` | INSERT（`import_status=raw_saved`） |
+| 既存 `object_key`・body 変更 | UPDATE `content_hash`, `item_count`, `fetched_at`, `import_status=raw_saved`（§12.3 と同型リセット） |
+| 既存 `object_key`・body 同一 | UPDATE `fetched_at` のみ、または no-op（Batch 実装で選択） |
 
 ## 13. データ保持・削除
 
@@ -386,13 +432,17 @@ INSERT INTO raw_product_metadata (
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `object_key` UNIQUE の MVP 必須性 | 同一 hash 再保存・上書き Upsert vs 新規行 | Human | DDL Task 前 | §7 |
-| 2 | `api_call_log_id` NULL 許容範囲 | 手動再処理・監査モードの運用頻度 | Human | BATCH 実装前 | §5.2 |
-| 3 | `failed` からの再実行 | 同一行 `import_status` リセット vs 新規 Metadata 行 | Human | BATCH-005 実装前 | §12.3 |
-| 4 | `source_api` の enum YAML 化 | `item_ranking` vs `ranking` 表記揺れ（Observability §15.2） | Human | enum 拡張 Task | §11 |
-| 5 | `content_hash` 算出対象 | レスポンス全体 vs 正規化 JSON | Human | Batch 実装前 | §5.4 |
+| — | — | — | — | — | Human Review #506 にて No.1〜5 を決定済み（下記参照） |
 
----
+### 17.1 Human Review 決定事項（Issue #506）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `object_key` UNIQUE | **MVP 必須**。Raw Object 1 件 = Metadata 1 行。再保存は §12.4 UPDATE | Human | §7・§10 |
+| 2 | `api_call_log_id` NULL 許容 | **nullable 維持**。手動再処理・監査・integration test では NULL 可。BATCH 通常経路では原則設定 | Human | §5.2 |
+| 3 | `failed` からの再実行 | **同一行 `import_status` リセット**（`raw_saved` へ戻す）。新規行は作らない | Human | §12.3 |
+| 4 | `source_api` enum 化 | **実施**。`source_api` を `packages/code-definitions/batch/source_api.yaml` に追加し enum定義書 §6.24 に反映。Observability §15.2 の短縮表記は本 enum を正とする | Human | §11 |
+| 5 | `content_hash` 算出対象 | **Object Storage PUT する Raw JSON body バイト列の SHA-256**（Adapter 前）。`normalized_hash` とは別 | Human | §5.7 |
 
 ## 18. 関連資料
 
@@ -410,8 +460,8 @@ INSERT INTO raw_product_metadata (
 | システム論理構成図 | `docs/05_アプリケーション設計/基盤/システム論理構成図.md` | Object Storage 分離 |
 | item 定義書 | `docs/06_実装設計/database/item_テーブル定義書.md` | Staging→Item 経路参考 |
 | external_genre 定義書 | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | staging_genre フロー参考 |
-
----
+| fetch_cursor 定義書 | `docs/06_実装設計/database/fetch_cursor_テーブル定義書.md` | §5.2 連携フロー・api_call_log 関係 |
+| source_api enum | `packages/code-definitions/batch/source_api.yaml` | §11 source_api 正本 |
 
 ## 19. レビュー観点
 
@@ -424,3 +474,4 @@ INSERT INTO raw_product_metadata (
 - `batch_run_id` 等 api_call_log 側項目を本テーブルに重複保持していない
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
+- Human Review #506 決定事項（§17.1 No.1〜5）が本文に反映されている
