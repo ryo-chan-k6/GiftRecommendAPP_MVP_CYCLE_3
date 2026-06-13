@@ -849,7 +849,7 @@ Batchでは、以下を追跡する。
 | item_import_summary_id | Import Summary ID |
 | batch_run_id | Batch Run ID |
 | source | rakuten |
-| source_api | item_search / ranking / genre |
+| source_api | item_search / item_ranking / genre_search / attribute_search |
 | fetched_count | API取得件数 |
 | new_count | 新規件数 |
 | updated_count | 更新件数 |
@@ -908,7 +908,7 @@ Batchでは、以下を追跡する。
 | batch_run_id | Batch Run ID |
 | fetch_cursor_id | Fetch Cursor ID |
 | source | rakuten |
-| source_api | item_search / ranking / genre |
+| source_api | item_search / item_ranking / genre_search / attribute_search |
 | request_params_hash | リクエスト条件のHash |
 | request_params_json | マスキング済みリクエスト条件 |
 | response_status | HTTPステータスまたは外部APIステータス |
@@ -953,7 +953,7 @@ Raw JSON本体はObject Storageに保存し、DBには `raw_product_metadata` �
 | api_call_log_id | API Call Log ID |
 | object_key | Object Storage上のRaw JSON参照キー |
 | source | rakuten |
-| source_api | item_search / ranking / genre |
+| source_api | item_search / item_ranking / genre_search / attribute_search |
 | content_hash | Raw JSONのHash |
 | item_count | Raw内の商品件数 |
 | import_status | raw_saved / staged / imported / skipped / failed |

@@ -1,0 +1,49 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "source_api"
+  physical_name: "source_api"
+  logical_name: "Source API"
+  category: "batch"
+  mvp_scope: true
+
+values:
+  - value: "item_search"
+    label: "Item Search"
+    meaning: "楽天商品検索API（BATCH-003 / BATCH-004 等）"
+    terminal: true
+    enabled: true
+  - value: "item_ranking"
+    label: "Item Ranking"
+    meaning: "楽天ランキングAPI（BATCH-002）"
+    terminal: true
+    enabled: true
+  - value: "genre_search"
+    label: "Genre Search"
+    meaning: "楽天ジャンル検索API（BATCH-001）"
+    terminal: true
+    enabled: true
+  - value: "attribute_search"
+    label: "Attribute Search"
+    meaning: "楽天属性検索API（将来拡張。MVP では Raw 保存対象外の場合あり）"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "raw_product_metadata"
+    column: "source_api"
+    constraint: "NOT NULL"
+    note: "Issue #506 Human Review 確定。raw_product_metadata_テーブル定義書 §11"
+  - table: "api_call_log"
+    column: "source_api"
+    constraint: "NOT NULL"
+    note: "論理ER §9.2。api_call_log テーブル定義書（別 Task）で転記"
+  - table: "item_import_summary"
+    column: "source_api"
+    constraint: "NOT NULL"
+    note: "論理ER §9.2。集計単位の API 種別"
+  - table: "fetch_cursor"
+    column: "source_api"
+    constraint: "NOT NULL"
+    note: "fetch_cursor テーブル定義書 §10。MVP は CHECK で item_search のみ（BATCH-003/004）"
