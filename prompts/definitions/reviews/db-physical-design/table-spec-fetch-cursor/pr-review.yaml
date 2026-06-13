@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 510
   issue: 505
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-fetch-cursor.yaml"
   source_branch: "docs/task-505-fetch-cursor-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 505
     required: true
   pr:
-    number: null
+    number: 510
     required: true
   diff:
     required: true
