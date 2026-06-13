@@ -152,16 +152,11 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "cursor_type / cursor_value の意味とカーソル識別キー（Upsert / Unique）の構成"
-  - "target_external_genre_id の nullable 方針（ジャンル以外の取得条件での扱い）"
-  - "api_call_log rate_limited → fetch_cursor paused の自動連動を MVP で必須とするか（検討のみ vs 必須）"
-  - "同一取得条件の active カーソル重複許容方針"
+  - "§17.1 決定事項の妥当性（fingerprint 採用・fetch_cursor_type enum・rate_limited→paused 必須・recheck item 単位）— PR 作成前に Human 承認済み想定"
 
 risk_points:
   - "api_call_log テーブル定義書が未作成のため、関係整理の粒度が本 Task のみで完結するか"
-  - "cursor_type が enum定義書に未定義（論理属性のみ）である点の扱い"
   - "raw_product_metadata（#506）後続 Task への api_call_log_id 経路引き継ぎ"
-  - "BATCH-002 未登録 itemCode 補完候補と fetch_cursor の関係が論理ER上薄い点"
 
 notes:
   - "Batch R02 No.3: fetch_cursor"

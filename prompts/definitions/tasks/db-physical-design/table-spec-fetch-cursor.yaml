@@ -206,7 +206,7 @@ notes:
   - "Batch R02 No.3: fetch_cursor（外部商品データ連携系）"
   - "Issue #505 / Branch docs/task-505-fetch-cursor-table-spec"
   - "先行 merge 済み前提: #440 / PR #441（enum）、#494 / PR #499（external_genre）"
-  - "Human Review 論点: cursor_type / cursor_value の意味と Upsert キー、target_external_genre_id の nullable 方針（ジャンル以外の取得条件）、同一条件カーソルの重複許容"
+  - "Human Review 論点: §17.1 No.1〜4 は Issue #505 内で決定済み（fingerprint 採用・fetch_cursor_type enum・rate_limited→paused 必須・recheck item 単位）"
   - "api_call_log 本体は out_of_scope。関係整理（fetch_cursor_id・rate_limited 連動）のみ本 Task で明記"
   - "後続 Task: raw_product_metadata（#506）、api_call_log 定義書は別 Task 化を検討"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

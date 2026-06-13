@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-12                      |
-| 更新日         | 2026-06-12                      |
+| 更新日         | 2026-06-12（Human Review #505 反映） |
 
 ---
 
@@ -88,8 +88,8 @@ flowchart LR
 | 観点 | 方針 |
 | ---- | ---- |
 | 責務分離 | `call_status` は **API 呼び出し単位** の終端結果。`cursor_status` は **走査条件単位** の継続可否 |
-| `rate_limited` | `api_call_log.call_status = rate_limited` 終端時、Fetch Cursor Manager は **`cursor_status = paused` への遷移を検討** する（状態遷移設計書 §11.2・エラーコード定義書 GRS-EXT-102・バッチ設計方針書 §15） |
-| 自動連動 | MVP では **DB トリガーによる自動更新は行わない**。Batch アプリ（`MOD-BATCH-002`）が `api_call_log` 記録後に `fetch_cursor` を UPDATE する |
+| `rate_limited` | `api_call_log.call_status = rate_limited` 終端時、Fetch Cursor Manager は **同一 Batch 処理内で `cursor_status = paused` へ遷移する（MVP 必須）** | 状態遷移設計書 §11.2・GRS-EXT-102・バッチ設計方針書 §15 |
+| 自動連動 | MVP では **DB トリガーは使わない**。Batch アプリ（`MOD-BATCH-002`）が `api_call_log` 記録直後に `fetch_cursor` を UPDATE する |
 | `failed` | API 呼び出し失敗が走査継続不能な場合、`cursor_status = failed` を設定可能。個別 `api_call_log.failed` だけではカーソルは `active` のまま再試行可能な場合あり（§12） |
 | 再開 | `failed` / `paused` から原因解消後に `active` へ戻して再開可能（状態遷移設計書 §6.4.2・§11.3） |
 
@@ -126,9 +126,9 @@ flowchart LR
 | `keyword` | キーワード検索のページ走査 | `NULL` | `{"keyword":"..."}` |
 | `update_sort` | 更新順ソートによる棚卸し走査 | `NULL` または任意ジャンル | `{"sort":"-updateTimestamp"}` |
 | `ranking_supplement` | BATCH-002 未登録 itemCode 補完候補の走査 | 任意 | `{"supplement_batch_run_id":"..."}` |
-| `recheck` | 既存商品再確認（BATCH-004） | `NULL` | `{"external_item_code":"..."}` 等 |
+| `recheck` | 既存商品再確認（BATCH-004） | `NULL` | `{"external_item_code":"shop:123456"}`。**1 商品 = 1 カーソル**（§17.1 No.4） |
 
-> `cursor_type` は enum定義書に **未 YAML 化**（§11）。MVP は `varchar` + CHECK またはアプリバリデーションで許容値を制限し、Human Review で確定する（§17）。
+> `cursor_type` は `fetch_cursor_type` enum（enum定義書 §6.23 / `packages/code-definitions/batch/fetch_cursor_type.yaml`）を正とする。
 
 ### 5.5 `external_genre` との参照
 
@@ -155,8 +155,9 @@ flowchart LR
 | 8 | `cursor_status` | Cursor Status | `varchar(32)` | `yes` | — | — | — | `'active'` | カーソル状態。`fetch_cursor_status` enum 準拠 |
 | 9 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | 行作成日時（物理ER §5 timestamp 方針） |
 | 10 | `updated_at` | Updated At | `timestamptz` | `yes` | — | — | — | `now()` | 行最終更新日時 |
+| 11 | `cursor_scope_fingerprint` | Cursor Scope Fingerprint | `text` | `yes` | — | — | — | generated | `scope` 単位の Upsert 自然キー（§7.1）。`position` は含めない |
 
-> **論理ER §9.2 との差分**: 論理ERは `cursor_value` の型を明示しない。物理 DDL では検索・バリデーションのため **`jsonb`** を採用する。`created_at` / `updated_at` は物理ER §5 の共通 timestamp 方針に従い追加する。
+> **論理ER §9.2 との差分**: 論理ERは `cursor_value` の型を明示しない。物理 DDL では検索・バリデーションのため **`jsonb`** を採用する。`created_at` / `updated_at` / `cursor_scope_fingerprint` は物理ER §5 の共通方針・Upsert キー要件に従い追加する。
 
 ---
 
@@ -165,20 +166,19 @@ flowchart LR
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `fetch_cursor_id` | サロゲート UUID | `api_call_log` からの LOGICAL 参照先 |
-| UNIQUE（案） | `source`, `source_api`, `cursor_type`, `target_external_genre_id`, `cursor_scope_fingerprint` | 同一走査条件の重複行を防止 | `cursor_scope_fingerprint` は §7.1 参照 |
+| UNIQUE | `source`, `source_api`, `cursor_type`, `target_external_genre_id`, `cursor_scope_fingerprint` | 同一走査条件の重複行を防止 | Human Review #505 確定（§17.1 No.1） |
 
-### 7.1 `cursor_scope_fingerprint`（生成列案）
+### 7.1 `cursor_scope_fingerprint`（stored generated column）
 
-`target_external_genre_id` だけではキーワード走査などを一意に識別できないため、MVP では以下の **stored generated column** を採用する案とする。
+`target_external_genre_id` だけではキーワード走査などを一意に識別できないため、MVP では **stored generated column を採用** する（Human Review #505 確定）。
 
 | 項目 | 内容 |
 | ---- | ---- |
 | 列名 | `cursor_scope_fingerprint` |
 | 型 | `text` |
-| 生成式（案） | `md5(coalesce(target_external_genre_id::text, '') \|\| cursor_type \|\| coalesce(cursor_value->'scope'::text, ''))` |
+| 生成式 | `md5(coalesce(target_external_genre_id::text, '') \|\| cursor_type \|\| coalesce(cursor_value->'scope'::text, ''))` |
 | 用途 | Upsert 自然キーの一部。`position` は含めない（ページ更新で fingerprint が変わらない） |
-
-> **Human Review 論点**: generated column 採用可否、またはアプリ側での get-or-create のみに留めるか（§17 No.1）。
+| 採用理由 | DB 一意制約で並行 Batch の二重 INSERT を防止。アプリのみ get-or-create より整合性が高い |
 
 ---
 
@@ -203,7 +203,7 @@ flowchart LR
 | Index名 | 対象カラム | 種別 | 用途 | 備考 |
 | ------- | ---------- | ---- | ---- | ---- |
 | `fetch_cursor_pkey` | `fetch_cursor_id` | btree（PK） | 主キー | 自動生成 |
-| `uq_fetch_cursor_scope` | `source`, `source_api`, `cursor_type`, `target_external_genre_id`, `cursor_scope_fingerprint` | unique | Upsert / get-or-create | §7.1 採用時 |
+| `uq_fetch_cursor_scope` | `source`, `source_api`, `cursor_type`, `target_external_genre_id`, `cursor_scope_fingerprint` | unique | Upsert / get-or-create | §7.1 確定 |
 | `idx_fetch_cursor_status` | `cursor_status`, `updated_at` | btree | active カーソル抽出・監視 | 物理ER §5 Index 方針（`*_status`） |
 | `idx_fetch_cursor_genre` | `target_external_genre_id` | btree | ジャンル別カーソル一覧 | BATCH-003 計画用 |
 | `idx_fetch_cursor_source_api` | `source`, `source_api`, `cursor_type` | btree | 走査種別ごとの一覧 | Product Fetch Planner |
@@ -217,7 +217,7 @@ flowchart LR
 | `fetch_cursor_pkey` | PRIMARY KEY | `fetch_cursor_id` | 主キー | — |
 | `chk_fetch_cursor_source_mvp` | CHECK | `source` | `source = 'rakuten'` | MVP 固定 |
 | `chk_fetch_cursor_source_api_mvp` | CHECK | `source_api` | `source_api = 'item_search'` | BATCH-003 / 004 MVP 固定 |
-| `chk_fetch_cursor_type_mvp` | CHECK | `cursor_type` | `cursor_type IN ('genre','keyword','update_sort','ranking_supplement','recheck')` | §5.4。拡張時は migration |
+| `chk_fetch_cursor_type` | CHECK | `cursor_type` | `fetch_cursor_type` 許容値 | enum定義書 §6.23 |
 | `chk_fetch_cursor_status` | CHECK | `cursor_status` | `fetch_cursor_status` 許容値 | enum定義書 §6.8 と一致 |
 | `chk_fetch_cursor_genre_requires_target` | CHECK | `target_external_genre_id` | `cursor_type <> 'genre' OR target_external_genre_id IS NOT NULL` | ジャンル走査の整合 |
 
@@ -230,7 +230,7 @@ flowchart LR
 | `cursor_status` | `fetch_cursor_status` | `enum定義書.md` §6.8 / `packages/code-definitions/state/fetch_cursor_status.yaml` | `active`, `paused`, `exhausted`, `failed` | NOT NULL |
 | `source` | （code 未定義） | `item.source` 慣行 | MVP: `rakuten` | CHECK で固定 |
 | `source_api` | （code 未定義） | 外部商品データ連携設計書 §8.4 | MVP: `item_search` | BATCH-003 / 004 |
-| `cursor_type` | （code 未定義） | 本定義書 §5.4 | §5.4 表 | enum Task 化は後続検討 |
+| `cursor_type` | `fetch_cursor_type` | `enum定義書.md` §6.23 / `packages/code-definitions/batch/fetch_cursor_type.yaml` | `genre`, `keyword`, `update_sort`, `ranking_supplement`, `recheck` | NOT NULL |
 
 ### 11.1 `cursor_status` 状態遷移
 
@@ -268,7 +268,7 @@ stateDiagram-v2
 | SELECT | batch | `cursor_status IN ('active','paused')` 等 | — | — | IF-DB-BATCH-003 |
 | UPDATE | batch | 正常取得後 | `cursor_value.position`, `last_fetched_at`, `updated_at` | 同一 `fetch_cursor_id` で上書き | `active` 維持 |
 | UPDATE | batch | 走査範囲完了 | `cursor_status=exhausted`, `updated_at` | — | 次回 Batch はスキップ可 |
-| UPDATE | batch | `api_call_log.rate_limited` 等 | `cursor_status=paused` | — | **検討**（必須ではない。§5.3） |
+| UPDATE | batch | `api_call_log.call_status = rate_limited` | `cursor_status=paused` | — | **MVP 必須**（§5.3・§17.1 No.3） |
 | UPDATE | batch | 復旧・再開 | `cursor_status=active` | — | `paused` / `failed` から |
 | UPDATE | batch | 継続不能エラー | `cursor_status=failed` | — | GRS-BAT-006 等 |
 | DELETE | — | MVP では原則禁止 | — | — | 状態は `exhausted` / `failed` で終端管理 |
@@ -341,7 +341,7 @@ WHERE source = 'rakuten'
 | 2 | enum整合 | `cursor_status` が `fetch_cursor_status` の 4 値のみ | migration |
 | 3 | 状態遷移 | `active`→`paused`→`active`、`active`→`exhausted` がアプリで再現可能 | integration |
 | 4 | api_call_log 連携 | `api_call_log.fetch_cursor_id` が設定され trace 可能 | integration |
-| 5 | rate_limited 連動 | `rate_limited` 後に `paused` へ遷移する Batch 実装（検討方針どおり） | manual |
+| 5 | rate_limited 連動 | `rate_limited` 後に同一処理内で `paused` へ遷移する | integration |
 | 6 | 排他 | 同一カーソル running 二重起動が拒否される | manual |
 | 7 | 権限 | web client から Direct DB アクセス不可 | manual |
 
@@ -351,10 +351,32 @@ WHERE source = 'rakuten'
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `cursor_scope_fingerprint` generated column の採用 | キーワード走査など `target_external_genre_id` 非一意時の Upsert キー | Human | DDL Task 前 | §7.1 |
-| 2 | `cursor_type` の enum YAML 化 | `packages/code-definitions` への追加要否 | Human | enum 拡張 Task | 現状は CHECK |
-| 3 | `rate_limited` → `paused` の自動連動を MVP 必須とするか | Batch 実装の複雑さと運用期待の trade-off | Human | BATCH-003 実装前 | §5.3「検討」 |
-| 4 | `recheck` 走査の `cursor_value.scope` 形式 | BATCH-004 の item 単位 vs バッチ単位 | Human | BATCH-004 実装前 | — |
+| — | — | — | — | — | Human Review #505 にて No.1〜4 を決定済み（下記参照） |
+
+### 17.1 Human Review 決定事項（Issue #505）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `cursor_scope_fingerprint` generated column の採用 | **採用**（stored generated column）。Upsert 自然キーに含める | Human | §7.1。`position` 除外でページ更新と両立 |
+| 2 | `cursor_type` の enum YAML 化 | **実施**。`fetch_cursor_type` を `packages/code-definitions/batch/fetch_cursor_type.yaml` に追加し enum定義書 §6.23 に反映 | Human | 本 Issue 内で対応済み |
+| 3 | `rate_limited` → `paused` の自動連動 | **MVP 必須**。DB トリガーは使わず Batch アプリが `api_call_log` 記録直後に `paused` へ UPDATE | Human | §5.3。次回実行での API 再試行暴走を防止 |
+| 4 | `recheck` 走査の `cursor_value.scope` 形式 | **1 商品（`external_item_code`）= 1 カーソル**。`scope.external_item_code` のみ必須。バッチ単位キューは MVP では持たない | Human | BATCH-004 は item 単位 API 呼び出しと整合 |
+
+**`recheck` の `cursor_value` 例（確定）**:
+
+```json
+{
+  "scope": {
+    "external_item_code": "shop:123456"
+  },
+  "position": {
+    "page": 1
+  }
+}
+```
+
+- 正常取得後は `exhausted` へ遷移（1 商品 1 回の再確認が基本）
+- 同一 `external_item_code` の再実行は同一 fingerprint で get-or-create
 
 ---
 
@@ -365,7 +387,7 @@ WHERE source = 'rakuten'
 | 物理ER | `docs/06_実装設計/database/物理ER.md` | 外部商品データ連携系・LOGICAL FK |
 | 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §9.2 / §9.3 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §6 No.17 |
-| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.8 fetch_cursor_status |
+| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.8 fetch_cursor_status・§6.23 fetch_cursor_type |
 | 状態遷移設計書 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | §6.4 / §11.2 / §11.3 |
 | 外部商品データ連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | 疑似差分・Raw 経路 |
 | バッチ設計方針書 | `docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md` | §11.1 / §18.1 |
