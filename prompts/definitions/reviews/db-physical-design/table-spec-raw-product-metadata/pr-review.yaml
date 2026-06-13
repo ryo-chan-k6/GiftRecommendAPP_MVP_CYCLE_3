@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 511
   issue: 506
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-raw-product-metadata.yaml"
   source_branch: "docs/task-506-raw-product-metadata-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 506
     required: true
   pr:
-    number: null
+    number: 511
     required: true
   diff:
     required: true
