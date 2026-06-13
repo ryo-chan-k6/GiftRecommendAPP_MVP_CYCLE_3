@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                             |
 | 作成日         | 2026-06-12                        |
-| 更新日         | 2026-06-12                        |
+| 更新日         | 2026-06-12（Human Review #507 反映） |
 
 ---
 
@@ -95,7 +95,8 @@ enum定義書 §6.17・`packages/code-definitions/batch/item_generation_type.yam
 | 新規 Item（`product_diff_result.diff_status = new` 等） | ○（`generation_type = semantic`） |
 | 意味影響項目変更（`itemName` / `catchcopy` / `itemCaption` / `genreId` / `attribute` / `tag` 等・`meaning_input_diff` 正本） | ○ |
 | `normalized_hash` 変更（`item_テーブル定義書` §12.2・hash 変更あり Upsert 後） | ○（通常 `semantic`） |
-| `semantic_config_version_id` 変更 | ○（`semantic` または `feature`。§5.6） |
+| `semantic_config_version_id` 変更（`meaning_input_diff` なし） | ○（`generation_type = feature`。§5.6 / §17.1 No.3） |
+| 意味影響項目 / `meaning_input_diff` あり（config version 同時変更含む） | ○（`generation_type = semantic`） |
 | `reviewAverage` / `reviewCount` / `price` / `rank` / `availability` / `itemUrl` **のみ**変更 | **×**（登録しない） |
 | Embedding 関連 version / hash のみ変更 | ○（`generation_type = embedding`） |
 | Feature 入力 hash のみ変更 | ○（`generation_type = feature`） |
@@ -110,14 +111,18 @@ enum定義書 §6.17・`packages/code-definitions/batch/item_generation_type.yam
 
 skip 条件（同一 hash / version で生成済み）を満たした場合は、当該区間をスキップし、対象 Queue 行は `skipped` とする（バッチ設計方針書 §7.2 補足・§14.1）。
 
-### 5.6 version 変更時の `generation_type` 選定（MVP 推奨）
+### 5.6 version 変更時の `generation_type` 選定（MVP 方針）
 
-| 変更要因 | 推奨 `generation_type` | 備考 |
-| -------- | ---------------------- | ---- |
-| 意味影響項目 / `normalized_hash` | `semantic` | BATCH-009 デフォルト |
-| `semantic_config_version_id` のみ（Item 本文不変） | `feature` | Semantic 再利用可能な場合。Human Review §18.1 No.3 |
+Human Review #507 §17.1 No.3 決定済み。
+
+| 変更要因 | `generation_type` | 備考 |
+| -------- | ----------------- | ---- |
+| 新規 Item / 意味影響項目 / `normalized_hash` / `meaning_input_diff` あり | `semantic` | BATCH-009 デフォルト |
+| **`semantic_config_version_id` のみ**（Item 本文・意味入力不変） | `feature` | Semantic 再利用。Semantic ルール変更を `meaning_input_diff` で検知できない場合は Batch 仕様 Task で `semantic` 昇格条件を補足 |
+| `feature_input_hash` のみ変更 | `feature` | — |
 | `embedding_model_version_id` / `embedding_source_version` / `embedding_input_hash` | `embedding` | Feature 済み前提 |
-| 前回 `failed` の再実行 | **変更しない**（同一行を `queued` へ） | `generation_type` は初回登録値を保持 |
+| 複数要因同時（例: hash + config version） | **最上流優先**: hash / meaning_input 変更あり → `semantic`、なければ `feature` | — |
+| 前回 `failed` の再実行 | **変更しない**（同一行を `queued` へ） | 初回登録値を保持 |
 
 ### 5.7 二重処理禁止
 
@@ -145,7 +150,7 @@ skip 条件（同一 hash / version で生成済み）を満たした場合は�
 | 8 | `completed_at` | Completed At | `timestamptz` | `no` | — | — | — | — | 終端状態（`succeeded` / `failed` / `skipped`）到達日時（UTC） |
 | 9 | `error_message` | Error Message | `text` | `no` | — | — | — | — | 失敗時の要約メッセージ。詳細は `error_log` |
 
-> `semantic_config_version_id` / `model_version_id` 等は **本テーブル行には持たない**（論理ER §8.2 属性に含まれない）。version 解決は BATCH 実行時に Config Resolver が行い、結果は `item_semantic` / `item_feature` / `item_embedding` 側に保持する（§18.1 No.4）。
+> `semantic_config_version_id` / `model_version_id` 等は **本テーブル行には持たない**（論理ER §8.2 準拠・Human Review #507 §17.1 No.4 決定済み）。version 解決は BATCH 実行時に Config Resolver が行い、結果は `item_semantic` / `item_feature` / `item_embedding` および `batch_run_log` / `phase_log` / `error_log`（`owner_type = item_generation_queue`）で追跡する。
 
 ---
 
@@ -154,9 +159,9 @@ skip 条件（同一 hash / version で生成済み）を満たした場合は�
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `item_generation_queue_id` | サロゲート UUID | trace / 再実行単位 |
-| UNIQUE（部分・案） | `item_id`, `generation_type` | `queue_status IN ('queued', 'processing')` のとき最大 1 行 | 二重 active 行防止（§18.1 No.1 推奨案） |
+| UNIQUE（partial） | `item_id`, `generation_type` | `queue_status IN ('queued', 'processing')` のとき最大 1 行 | 二重 active 行防止（§17.1 No.1 決定済み） |
 
-終端状態（`succeeded` / `failed` / `skipped`）の履歴行は **複数保持可**（物理ER 1:N と整合）。MVP では古い終端行の DELETE 方針は §14・§18.1 No.2 で Human Review。
+終端状態（`succeeded` / `failed` / `skipped`）の履歴行は **複数保持可**（物理ER 1:N と整合）。保持期間・DELETE は §13・§17.1 No.2。
 
 ---
 
@@ -192,7 +197,7 @@ skip 条件（同一 hash / version で生成済み）を満たした場合は�
 | `item_generation_queue_pkey` | `item_generation_queue_id` | btree（PK） | 主キー | 自動生成 |
 | `idx_item_gen_queue_status` | `queue_status`, `queued_at` | btree | 再生成処理の取得 | 物理ER §10 |
 | `idx_item_generation_queue_item_id` | `item_id` | btree | FK / item 単位の参照 | JOIN・障害調査 |
-| `uq_item_gen_queue_active_per_type` | `item_id`, `generation_type` | unique partial btree | active 行の重複防止 | `WHERE queue_status IN ('queued', 'processing')`（§7・§18.1 No.1） |
+| `uq_item_gen_queue_active_per_type` | `item_id`, `generation_type` | unique partial btree | active 行の重複防止 | `WHERE queue_status IN ('queued', 'processing')`（§7・§17.1 No.1） |
 
 ---
 
@@ -205,6 +210,7 @@ skip 条件（同一 hash / version で生成済み）を満たした場合は�
 | `chk_item_gen_queue_status` | CHECK | `queue_status` | `item_generation_queue_status` 許容値 | enum定義書 §6.11 |
 | `chk_item_gen_generation_type` | CHECK | `generation_type` | `item_generation_type` 許容値 | enum定義書 §6.17 |
 | `chk_item_gen_retry_count_nonneg` | CHECK | `retry_count` | `retry_count >= 0` | — |
+| `chk_item_gen_retry_count_max` | CHECK | `retry_count` | `retry_count <= 5` | 自動再実行上限（3）より大きい手動運用余裕（§17.1 No.5） |
 | `chk_item_gen_started_when_processing` | CHECK | `queue_status`, `started_at` | `queue_status NOT IN ('processing','succeeded','failed','skipped') OR started_at IS NOT NULL` | 処理開始後は開始時刻必須 |
 | `chk_item_gen_completed_when_terminal` | CHECK | `queue_status`, `completed_at` | `queue_status IN ('queued','processing') OR completed_at IS NOT NULL` | 終端状態は完了時刻必須 |
 | `uq_item_gen_queue_active_per_type` | UNIQUE（partial） | `item_id`, `generation_type` | active 時のみ一意 | §7 |
@@ -253,7 +259,8 @@ stateDiagram-v2
 | ---- | -------- | ---- | -------- | ------ | ---- |
 | INSERT | batch（BATCH-009） | §5.4 登録条件を満たす | 全業務列（`queue_status=queued`） | active 行重複は §12.1 | IF-DB-BATCH-010 |
 | UPDATE | batch（BATCH-010〜015） | `item_generation_queue_id` 指定 | `queue_status`, タイムスタンプ, `error_message` | 行単位 | 同一 id の二重 processing 禁止 |
-| UPDATE | batch（retry） | `queue_status = failed` | `queue_status=queued`, `retry_count++`, `queued_at`, `error_message` クリア等 | 行単位 | §12.3 |
+| UPDATE | batch（retry） | `queue_status = failed` かつ §12.5 上限内 | `queue_status=queued`, `retry_count++`, `queued_at`, `error_message` クリア等 | 行単位 | §12.3 |
+| DELETE | batch（メンテナンス） | §13 保持期間経過 | 終端行 | 定期実行 | §13.1 |
 | SELECT | batch | `queue_status = queued` | — | — | `ORDER BY queued_at` |
 | INSERT / UPDATE / DELETE | api / reco | — | — | **禁止** | Online 推薦中に更新しない |
 
@@ -262,9 +269,9 @@ stateDiagram-v2
 ```text
 1. BATCH-007 / BATCH-008 完了後、対象 item を評価
 2. product_diff_result / meaning_input_diff / normalized_hash 変更を確認
-3. 意味影響あり → generation_type を決定（初回は semantic）
-4. 同一 item_id + generation_type で active（queued/processing）行がなければ INSERT
-5. active 行が queued のみ存在 → queued_at 更新（§18.1 No.1 推奨案 B）
+3. 登録条件を満たす → generation_type を §5.6 で決定
+4. 同一 item_id + generation_type で active 行がなければ INSERT
+5. active 行が queued のみ存在 → queued_at のみ UPDATE（新規 INSERT しない）
 6. active 行が processing → 登録スキップ（二重処理防止）
 ```
 
@@ -283,42 +290,70 @@ stateDiagram-v2
 
 ```text
 1. retry-failed-items または運用再実行で failed 行を対象
-2. queue_status = queued, retry_count = retry_count + 1, queued_at = now()
-3. started_at / completed_at / error_message を NULL クリア
-4. generation_type は初回登録値を維持
+2. retry_count < 3（自動）または retry_count < 5（手動運用）を満たすこと
+3. queue_status = queued, retry_count = retry_count + 1, queued_at = now()
+4. started_at / completed_at / error_message を NULL クリア
+5. generation_type は初回登録値を維持
+6. retry_count >= 3 かつ自動再実行 → failed のまま。error_log + 監視アラート
 ```
 
-### 12.4 登録疑似コード（INSERT）
+### 12.4 登録疑似コード
+
+**新規 INSERT（active 行なし）**
 
 ```sql
 INSERT INTO item_generation_queue (
   item_id, generation_type, queue_status, retry_count, queued_at
 ) VALUES (
   :item_id, :generation_type, 'queued', 0, now()
-)
--- active 行がある場合は §12.1 に従い INSERT しない、または queued_at のみ UPDATE
-;
+);
+```
+
+**active `queued` 行あり（§17.1 No.1）**
+
+```sql
+UPDATE item_generation_queue
+SET queued_at = now()
+WHERE item_id = :item_id
+  AND generation_type = :generation_type
+  AND queue_status = 'queued';
 ```
 
 ### 12.5 `retry_count` 方針
+
+Human Review #507 §17.1 No.5 決定済み。
 
 | 観点 | 方針 |
 | ---- | ---- |
 | 初回登録 | `0` |
 | インクリメント | `failed` → `queued` 再実行時に `+1` |
-| 上限 | MVP では DB CHECK なし。上限は Batch / 運用設計で制御（§18.1 No.5） |
+| 自動再実行上限 | **`retry_count < 3`**（`retry-failed-items` 等）。3 回到達後は自動再キューしない |
+| DB 上限 | **`retry_count <= 5`**（`chk_item_gen_retry_count_max`）。手動運用の余裕 |
+| 上限到達後 | `queue_status = failed` のまま。`error_log` 記録 + 監視アラート |
 
 ---
 
 ## 13. データ保持・削除
 
+Human Review #507 §17.1 No.2 決定済み。
+
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | 商品有効期間中。終端行は監査・集計（BATCH-017）のため **短期保持**（§18.1 No.2） |
-| 削除方式 | MVP では Batch による定期 DELETE は **未定**（Human Review） |
+| 保持期間 | active 行（`queued` / `processing`）は削除しない。終端行は下記 §13.1 |
+| 削除方式 | Batch メンテナンス（定期 DELETE） |
 | 削除条件 | 親 `item` 物理削除は RESTRICT で禁止 |
 | 論理削除 | 列なし。`queue_status` で表現 |
 | アーカイブ | MVP 対象外 |
+
+### 13.1 終端行 DELETE 方針
+
+| `queue_status` | 保持期間 | DELETE 条件 |
+| -------------- | -------- | ----------- |
+| `succeeded` / `skipped` | **`completed_at` から 14 日** | `completed_at < now() - interval '14 days'` |
+| `failed` | **`completed_at` から 30 日** | `completed_at < now() - interval '30 days'`（`retry_count >= 3` 到達後を想定） |
+| `queued` / `processing` | 削除しない | 滞留監視は別途アラート |
+
+BATCH-017 は実行時点の集計を `item_import_summary` に取る。Queue 行の長期保持は不要（正本定義表: 一時 / 状態）。
 
 ---
 
@@ -356,6 +391,8 @@ INSERT INTO item_generation_queue (
 | 4 | active 一意 | 同一 `item_id` + `generation_type` で active 行が 2 件 INSERT できない | migration |
 | 5 | 状態遷移 | `queued` → `processing` → `succeeded` の UPDATE が CHECK を満たす | integration |
 | 6 | 再実行 | `failed` → `queued` で `retry_count` がインクリメントされる | integration |
+| 7 | retry 上限 | `retry_count > 5` の INSERT / UPDATE が拒否される | migration |
+| 8 | 終端 DELETE | §13.1 条件の行がメンテナンス DELETE 対象となる | integration |
 
 ---
 
@@ -363,11 +400,17 @@ INSERT INTO item_generation_queue (
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | active 行の重複方針 | partial UNIQUE 採否・queued 再登録時の UPDATE vs 新規 INSERT | Human | DDL Task 前 | §7・§12.1 |
-| 2 | 終端行の保持 / DELETE | `succeeded` 履歴の保持期間・BATCH-017 集計後の削除 | Human | 運用設計 | §13 |
-| 3 | version 変更時の `generation_type` | `semantic_config_version` のみ変更時に `semantic` vs `feature` | Human | 実装設計 | §5.6 |
-| 4 | version 列の Queue 行保持 | 再現性のため Queue 行に version snapshot を持つか | Human | 実装設計 | §6 注記 |
-| 5 | `retry_count` 上限 | 無限再試行の防止閾値 | Human | 運用設計 | §12.5 |
+| — | — | — | — | — | Human Review #507 にて No.1〜5 を決定済み（下記参照） |
+
+### 17.1 Human Review 決定事項（Issue #507）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | active 行重複 | **partial UNIQUE 採用**。active `queued` は **`queued_at` のみ UPDATE**、active `processing` は **登録スキップ**、終端のみなら **INSERT** | Human | §7 / §9 / §12.1 / §12.4 |
+| 2 | 終端行 DELETE | **`succeeded` / `skipped` は 14 日**、**`failed` は 30 日**（`completed_at` 基準）でメンテナンス DELETE | Human | §13.1 |
+| 3 | `generation_type` 選定 | **`semantic_config_version_id` のみ変更 → `feature`**。意味入力 / hash 変更あり → **`semantic`**。複数要因は最上流優先 | Human | §5.4 / §5.6 |
+| 4 | version 列 | **MVP では Queue 行に version snapshot 列を持たない**（論理ER §8.2 準拠）。trace は log + 派生テーブル | Human | §6 注記 |
+| 5 | `retry_count` 上限 | **自動再実行 3 回** / **DB CHECK 5 回**。超過後は `failed` 固定 + アラート | Human | §10 / §12.3 / §12.5 |
 
 ---
 
@@ -403,5 +446,6 @@ INSERT INTO item_generation_queue (
 - BATCH-009 登録条件（意味影響のみ）が §5.4 で明示されている
 - `retry_count` の更新主体・再実行フローが §12.3 / §12.5 で明示されている
 - 二重 `processing` 禁止が §5.7 で明示されている
+- partial UNIQUE・終端 DELETE・`generation_type` 選定・version 列不採用・`retry_count` 上限が §17.1 決定事項どおり本文に反映されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
