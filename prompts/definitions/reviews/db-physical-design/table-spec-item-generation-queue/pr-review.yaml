@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 512
   issue: 507
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-generation-queue.yaml"
   source_branch: "docs/task-507-item-generation-queue-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 507
     required: true
   pr:
-    number: null
+    number: 512
     required: true
   diff:
     required: true
