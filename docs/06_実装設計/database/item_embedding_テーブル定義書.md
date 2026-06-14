@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP   |
 | MVP対象        | `yes`                             |
 | 作成日         | 2026-06-14                        |
-| 更新日         | 2026-06-14                        |
+| 更新日         | 2026-06-14（Human Review #516 反映） |
 
 ---
 
@@ -60,7 +60,7 @@
 | ---- | ---- |
 | 粒度 | **1 商品 × 1 `model_version_id` × 1 `embedding_input_hash` × 1 `embedding_source_type`** あたり 1 行 |
 | 履歴 | 冪等キーが変わる再生成（hash / model version 変更等）は **別行 INSERT**。同一冪等キーは Upsert 上書き |
-| Online 参照 | Run 開始時に解決した `model_version_id`（または current embedding model）で、候補 `item_id` のベクトルを読み取る |
+| Online 参照 | Run 開始時に固定した `model_version_id` で、**同一 model 配下の最新 `generated_at` 1 行**のベクトルを読み取る（§12.3・§17.1 No.6 決定済み） |
 | 失敗記録 | 行単位の `generation_status` 列は持たない。失敗は `item_generation_queue` / `error_log` / `phase_log` で追跡（`item_semantic` と同型） |
 
 ### 5.2 `embedding_input_hash` 保持方針
@@ -94,7 +94,7 @@ enum定義書 §12.1 No.3 を正本とする。
 | 論理 ID | `embedding_source_type`（`user_feature.source_type` 等とは **別論理 ID**） |
 | MVP 有効値 | **`item_text_context` のみ**（enabled: true） |
 | 将来値 | `item_text_with_semantic` は enum に定義するが MVP 初期は enabled: false |
-| 役割 | Embedding 入力テキストの **構築レシピ種別** を識別する（`embedding_source_version`＝構築ルール version ID とは別概念） |
+| 役割 | Embedding 入力テキストの **構築レシピ種別** を識別する。`embedding_source_version`（構築ルール version ID）は **batch 層の運用概念**であり MVP では物理列に持たない（§17.1 No.2 決定済み） |
 | YAML 正本化 | MVP では enum定義書への転記まで。`packages/code-definitions` 正本化は後続 enum Task |
 
 ### 5.5 `item_meaning` との関係
@@ -112,7 +112,7 @@ enum定義書 §12.1 No.3 を正本とする。
 ```text
 item_generation_queue
   → BATCH-010 item_semantic
-  → BATCH-011〜013 item_feature → item_meaning（別 Task #515 / BATCH-013 射影）
+  → BATCH-011〜013 item_feature → item_meaning（`item_meaning_テーブル定義書` / BATCH-013 射影）
   → BATCH-014 embedding_input_hash 算出
   → BATCH-015 Item Embedding 生成 → item_embedding（本テーブル）
 ```
@@ -134,11 +134,11 @@ item_generation_queue（generation_type = semantic | feature | embedding）
 
 skip 条件（バッチ設計方針書 §13.7）: 同一 `item_id` + `model_version_id` + `embedding_input_hash` で成功済み行が存在する場合、BATCH-015 を skip し得る。
 
-> batch 設計書は `embedding_source_version` も冪等判定要素に列挙する（§8.4）。物理ER §11 の unique は **3 列** のみ。MVP DDL は物理ER を正とし、アプリ層 skip 判定で `embedding_source_type` 固定（`item_text_context`）を前提とする。
+> batch 設計書は `embedding_source_version` を Queue 登録トリガーに列挙する（§8.4）。DB 永続化は **`model_version_id` + `embedding_input_hash` + `embedding_source_type`** のみ（§17.1 No.2 決定済み）。MVP の `embedding_source_type` は `item_text_context` 固定のため、skip 判定は物理 unique 3 列で足りる。
 
 ### 5.7 対象外
 
-- `item_meaning` テーブル定義書本体（別 Task #515）
+- `item_meaning` テーブル定義書本体の再定義（`item_meaning_テーブル定義書` を正本とする）
 - `user_embedding` / `query_embedding`（User意味推定系）
 - `embedding_input_hash` 算出アルゴリズム詳細（BATCH-014 バッチ仕様書）
 - `embedding_source_type` の packages/code-definitions YAML 正本化（後続 enum Task）
@@ -167,12 +167,12 @@ skip 条件（バッチ設計方針書 §13.7）: 同一 `item_id` + `model_vers
 | 3 | `model_version_id` | Model Version ID | `uuid` | `yes` | — | `ON` | — | — | Embedding モデル version。`model_version` 参照（`model_type = embedding`） |
 | 4 | `embedding_source_type` | Embedding Source Type | `text` | `yes` | — | — | — | — | 入力構築レシピ種別。enum定義書 §12.1 No.3 |
 | 5 | `embedding_input_hash` | Embedding Input Hash | `varchar(64)` | `yes` | — | — | — | — | BATCH-014 算出 hash。冪等キー構成要素 |
-| 6 | `embedding_vector` | Embedding Vector | `vector` | `yes` | — | — | — | — | pgvector 型。次元数は §17.1 参照 |
+| 6 | `embedding_vector` | Embedding Vector | `vector(1536)` | `yes` | — | — | — | — | pgvector 型。MVP 現行モデル `text-embedding-3-small`（§17.1 No.3 決定済み） |
 | 7 | `generated_at` | Generated At | `timestamptz` | `yes` | — | — | — | — | Embedding 生成完了日時（UTC）。BATCH-015 完了時に設定 |
 
-> **論理ER §10.2 との差分（§8.4）**: 論理ERは `source_text_hash` を列挙するが、物理ER §11・テーブル一覧 §7 は **`embedding_input_hash`** を冪等キー要素とする。MVP 物理 DDL では **`embedding_input_hash`** を採用する（§17.1 No.1 推奨案）。
+> **論理ER §10.2**: 物理列名は **`embedding_input_hash`**（Human Review #516 §17.1 No.1 決定済み。論理ER §10.2 も同名に更新済み）。
 >
-> batch 設計書 §13.7 は `embedding_source_version` / `generation_status` の保持を列挙するが、論理ER §10.2・物理ER には未記載。MVP では **`embedding_source_type`** でレシピ種別を保持し、version / 失敗状態は batch ログ・Queue で追跡する（§17.1 No.2・No.3 参照）。
+> batch 設計書 §13.7 の `embedding_source_version` / `generation_status` は **DB 列に持たない**。`embedding_source_type` でレシピ種別を保持し、構築ルール version 変更は Queue トリガー + batch ログで追跡する（§17.1 No.2 決定済み）。
 
 ---
 
@@ -209,18 +209,18 @@ skip 条件（バッチ設計方針書 §13.7）: 同一 `item_id` + `model_vers
 | 観点 | 方針 |
 | ---- | ---- |
 | 関係種別 | 同一 `item_id` 配下の **兄弟派生テーブル**（has 関係は `item` 経由） |
-| 直接 FK | **なし**（`item_meaning` 定義書 #515 で確定予定） |
+| 直接 FK | **なし**（`item_meaning_テーブル定義書` と兄弟派生。Matching 用スカラー vs Retrieval 用ベクトル） |
 | 生成順序 | Feature 正規化（BATCH-013）で `item_meaning` 射影と、Embedding（BATCH-014〜015）は **並行し得る** が、`generation_type = embedding` の Queue 消化は Feature 済み前提（Queue 定義書 §5.6） |
 | reco 責務 | `item_meaning` → Matching / `item_embedding` → Retrieval（コンテキスト境界定義書） |
 
 ### 8.4 論理ER / 物理ER / batch 設計 差分整理
 
-| 論点 | 論理ER §10.2 | 物理ER §11 / テーブル一覧 §7 | batch 設計書 §13.7 | 本定義書の採用（MVP） |
-| ---- | ------------ | ----------------------------- | ------------------- | --------------------- |
-| 入力 hash 列名 | `source_text_hash` | `embedding_input_hash` | `embedding_input_hash` | **`embedding_input_hash`** |
+| 論点 | 論理ER §10.2 | 物理ER §11 / テーブル一覧 §7 | batch 設計書 §13.7 | 本定義書の採用（MVP・HR #516 決定済み） |
+| ---- | ------------ | ----------------------------- | ------------------- | ------------------------------------- |
+| 入力 hash 列名 | `embedding_input_hash` | `embedding_input_hash` | `embedding_input_hash` | **`embedding_input_hash`** |
 | モデル version 列名 | `model_version_id` | `model_version_id` | `embedding_model_version_id` | **`model_version_id`** |
-| 入力レシピ識別 | `embedding_source_type` | （§12 enum 連携） | `embedding_source_version` も列挙 | **`embedding_source_type` 列** + source version は §17.1 No.2 |
-| 冪等キー | 未詳細 | 3 列 unique | 4 要素（+ source_version） | **物理ER 3 列 unique** + skip 判定は §12.5 |
+| 入力レシピ識別 | `embedding_source_type` | （§12 enum 連携） | `embedding_source_version` も運用列挙 | **`embedding_source_type` 列のみ**。source version は Queue トリガー |
+| 冪等キー | 3 列相当 | 3 列 unique | 4 要素（+ source_version） | **物理ER 3 列 unique** + skip は §12.5 |
 | 生成状態 | なし | なし | `generation_status` | **列なし**（Queue / error_log） |
 
 ---
@@ -241,7 +241,7 @@ skip 条件（バッチ設計方針書 §13.7）: 同一 `item_id` + `model_vers
 | ---- | ---- |
 | 方式 | **HNSW** を第一候補（物理ER §17 No.6 決定済み） |
 | 距離関数 | **cosine** または **inner product**（Embedding API 出力と reco 側の正規化方針に合わせ DDL Task で確定） |
-| パラメータ | `m` / `ef_construction` の具体値は DDL Task / 性能検証で確定（§17.1 No.4） |
+| パラメータ | `m` / `ef_construction` の具体値は **DDL Task / 性能検証で確定**（§17.1 No.4 決定済み。MVP は Index 作成方針のみ本 Task で確定） |
 | 後追い | 商品数が極少の初期は vector Index を後追い作成してもよい（物理ER §17 No.6 備考） |
 
 ---
@@ -256,8 +256,9 @@ skip 条件（バッチ設計方針書 §13.7）: 同一 `item_id` + `model_vers
 | `fk_item_embedding_model_version_id` | FOREIGN KEY | `model_version_id` | `model_version(model_version_id)` ON DELETE RESTRICT | §8.1 |
 | `chk_item_embedding_source_type` | CHECK | `embedding_source_type` | MVP は `item_text_context` のみ許容 | enum定義書 §12.1 No.3 |
 | `chk_item_embedding_input_hash_format` | CHECK | `embedding_input_hash` | `char_length(embedding_input_hash) = 64` かつ hex 形式 | SHA-256 想定（BATCH-014 仕様 Task） |
+| `chk_item_embedding_vector_dims` | CHECK | `embedding_vector` | `vector_dims(embedding_vector) = 1536` | MVP 現行モデル `text-embedding-3-small`（§17.1 No.3 決定済み） |
 
-> `embedding_vector` の次元 CHECK（例: `vector_dims(embedding_vector) = 1536`）は §17.1 No.3 確定後に DDL Task で追加する。
+> MVP では単一 Embedding モデル（1536 次元）を前提とする。将来 `model_version` 追加で次元が異なる場合は DDL Task で列設計を再検討する。
 
 ---
 
@@ -324,11 +325,25 @@ ON CONFLICT (
 
 ### 12.3 Online 参照フロー（reco / Retrieval）
 
+§17.1 No.6 決定済み。
+
 ```text
 1. Run 開始時に model_version_id（embedding）を固定
-2. User / Query 側 embedding と item_embedding.embedding_vector で pgvector 類似検索
-3. Retrieval は recall 重視（RT-01）。final_score 算出は Matching / Ranking の責務（RT-05）
-4. active な item のみ対象（item.active_status 等は Retrieval 前フィルタ。詳細は reco 実装 Task）
+2. 候補 item_id ごとに、同一 model_version_id 配下で generated_at が最大の行を 1 件特定
+3. 当該行の embedding_vector で pgvector 類似検索
+4. Retrieval は recall 重視（RT-01）。final_score 算出は Matching / Ranking の責務（RT-05）
+5. active な item のみ対象（item.active_status 等は Retrieval 前フィルタ。詳細は reco 実装 Task）
+```
+
+**現行世代解決（疑似 SQL）:**
+
+```sql
+SELECT DISTINCT ON (item_id)
+       item_embedding.*
+  FROM item_embedding
+ WHERE item_id = ANY(:item_ids)
+   AND model_version_id = :model_version_id
+ ORDER BY item_id, generated_at DESC;
 ```
 
 ### 12.4 `item_generation_queue` 連携
@@ -339,13 +354,13 @@ ON CONFLICT (
 | `feature` | BATCH-011〜013（必要時 BATCH-014〜015） | 同上 |
 | `embedding` | BATCH-014 → BATCH-015 | **本テーブルが直接出力先** |
 
-再生成トリガー（Queue 定義書 §5.6）: `embedding_model_version_id` / `embedding_source_version` / `embedding_input_hash` 変更 → `generation_type = embedding`。
+再生成トリガー（Queue 定義書 §5.6）: `embedding_model_version_id` / `embedding_source_version` / `embedding_input_hash` 変更 → `generation_type = embedding`（`embedding_source_version` は batch 層トリガー。DB 列なし）。
 
 ### 12.5 skip 判定（batch）
 
 バッチ設計方針書 §13.7: 同一 `item_id` + `model_version_id` + `embedding_input_hash` で **成功済み** `item_embedding` 行が存在する場合、BATCH-015 を skip し `item_generation_queue` を `skipped` へ遷移し得る。
 
-> batch 設計書の 4 要素判定（`embedding_source_version` 含む）と物理 unique 3 列の差は §8.4。MVP は hash が入力文脈の同一性を内包する前提で 3 列 skip とする。
+> batch 設計書の 4 要素運用（`embedding_source_version` 含む）と DB unique 3 列の差は §8.4。MVP は `embedding_source_type = item_text_context` 固定のため、入力文脈の同一性は `embedding_input_hash` に内包される前提で 3 列 skip とする。構築ルール version 変更は Queue 登録で再生成を起動する。
 
 ---
 
@@ -353,9 +368,9 @@ ON CONFLICT (
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | 長期（Retrieval 再現性・監査）。**現行世代**（batch / reco が参照する model + hash 組）は削除しない |
+| 保持期間 | 長期（Retrieval 再現性・監査）。**現行世代**（Run / batch が参照する model + hash 組）は削除しない |
 | 削除方式 | 原則 **物理 DELETE はメンテナンスのみ**。Online / 通常 batch では DELETE しない |
-| 削除条件 | **非現行** 冪等キー行のみ。MVP は運用メンテナンス時の最小 DELETE に限定 |
+| 削除条件 | **非現行** 冪等キー行のみ。MVP は運用メンテナンス時の **最小 DELETE** に限定（§17.1 No.5 決定済み・`item_feature_テーブル定義書` §13 と同型） |
 | 論理削除 | 採用しない |
 | アーカイブ | MVP では対象外 |
 | キャッシュ | Redis 等の item_embedding cache は別層（基盤構成設計書）。DB 正本は本テーブル |
@@ -402,7 +417,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 | 2 | 冪等キー | 同一 3 列で Upsert が上書き、hash 変更で別行 INSERT される | integration |
 | 3 | FK | `item_id` / `model_version_id` の RESTRICT が機能する | integration |
 | 4 | embedding_source_type CHECK | MVP 許容値以外が拒否される | migration |
-| 5 | pgvector 検索 | HNSW Index を用いた類似検索が実行できる | integration |
+| 5 | pgvector 検索 | HNSW Index を用いた類似検索が実行できる（次元 1536） | integration |
 | 6 | BATCH-014/015 連携 | hash 算出後に同一冪等キー行へ vector が保存される | integration |
 | 7 | Online 境界 | api / reco からの INSERT / UPDATE / DELETE が行われない | manual |
 | 8 | 権限 | batch のみが書き込み可能 | manual |
@@ -413,18 +428,18 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `source_text_hash` vs `embedding_input_hash` | 論理ER と物理ER の列名差 | Human | HR #516 | 推奨: `embedding_input_hash`（§6・§8.4） |
-| 2 | `embedding_source_version` 列の物理化 | batch 冪等キー 4 要素 vs 物理ER 3 列 unique | Human | HR #516 | 推奨: MVP は列なし。`embedding_source_type` + hash で代替 |
-| 3 | `embedding_vector` 次元数 | `model_name` ごとに次元が異なる | Human | HR #516 | 推奨: MVP 現行モデル `text-embedding-3-small` → **1536** |
-| 4 | HNSW パラメータ（`m` / `ef_construction`） | 性能・Recall トレードオフ | Human / DDL Task | 後続 | MVP は Index 作成方針のみ確定 |
-| 5 | 非現行世代行の DELETE ポリシー | ストレージ・再現性 | Human | HR #516 | 推奨: `item_feature` と同型（現行世代保持・メンテナンス時のみ DELETE） |
-| 6 | Online 参照時の「現行世代」解決 | 複数 hash 行が共存時の読取ルール | Human | HR #516 | 推奨: 同一 `model_version_id` で最新 `generated_at` 1 行 |
+| — | — | — | — | — | Human Review #516 にて No.1〜6 を決定済み（§17.1） |
 
 ### 17.1 Human Review 決定事項（Issue #516）
 
 | No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
-| — | — | **Human Review 待ち** | Human | 上記 No.1〜6 を §17 で整理。決定後に本表へ転記する |
+| 1 | `source_text_hash` vs `embedding_input_hash` | 物理列名は **`embedding_input_hash`**。論理ER §10.2 も同名に更新 | Human | §6・§8.4・enum定義書 §12.1 |
+| 2 | `embedding_source_version` 列の物理化 | **MVP は物理列なし**。`embedding_source_type` + `embedding_input_hash` + `model_version_id` で永続化。source version 変更は Queue トリガー（batch 層） | Human | §5.4・§8.4・`item_generation_queue_テーブル定義書` §5.6 |
+| 3 | `embedding_vector` 次元数 | **`vector(1536)`**。MVP 現行モデル `text-embedding-3-small` | Human | §6・§10 `chk_item_embedding_vector_dims` |
+| 4 | HNSW パラメータ（`m` / `ef_construction`） | **MVP は HNSW 採用方針のみ確定**。具体値は DDL Task / 性能検証 | Human | §9.1 |
+| 5 | 非現行世代行の DELETE ポリシー | **`item_feature` と同型**。現行世代保持・メンテナンス時のみ非現行行 DELETE | Human | §13 |
+| 6 | Online 参照時の「現行世代」解決 | 同一 **`model_version_id` で最新 `generated_at` 1 行** | Human | §12.3 |
 
 ---
 
@@ -442,6 +457,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 | item_generation_queue 定義書 | `docs/06_実装設計/database/item_generation_queue_テーブル定義書.md` | 再生成トリガー |
 | item_semantic 定義書 | `docs/06_実装設計/database/item_semantic_テーブル定義書.md` | 入力文脈参照 |
 | item_feature 定義書 | `docs/06_実装設計/database/item_feature_テーブル定義書.md` | パイプライン参照 |
+| item_meaning 定義書 | `docs/06_実装設計/database/item_meaning_テーブル定義書.md` | Matching 用スカラー正本・パイプライン |
 | enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §12.1 embedding_source_type |
 | バッチ設計方針書 | `docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md` | §13.6〜13.7 BATCH-014/015 |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | 入出力 |
@@ -460,5 +476,5 @@ CREATE EXTENSION IF NOT EXISTS vector;
 - pgvector / HNSW Index 方針が DDL Task へ展開できる粒度である
 - BATCH-014 / BATCH-015・`item_generation_queue` との整合が取れている
 - 論理ER §16.1 / §16.2（Batch 更新・Online 参照のみ）が反映されている
-- §17 未決事項（No.1〜6）が Human Review 論点として明示されている
+- §17.1 決定事項（No.1〜6）が本文（§6 / §8.4 / §9.1 / §10 / §12.3 / §13）に反映されている
 - secret や `.env` 実値が含まれていない

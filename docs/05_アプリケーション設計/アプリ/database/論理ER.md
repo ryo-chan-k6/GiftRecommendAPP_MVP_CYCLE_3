@@ -522,7 +522,7 @@ erDiagram
 | item_semantic                 | item_semantic_id                 | item_id, semantic_config_version_id, semantic_json, generated_at                                                                                        | なし       | 派生     | batch / reco    |
 | item_feature                  | item_feature_id                  | item_id, feature_definition_id, semantic_config_version_id, feature_normalization_version_id, raw_feature_value, normalized_feature_value, generated_at | なし       | 派生     | batch / reco    |
 | item_meaning                  | item_meaning_id                  | item_id, semantic_config_version_id, feature_normalization_version_id, item_social, item_symbolic, generated_at                                         | なし       | 派生 / 推薦用正本 | batch / reco    |
-| item_embedding                | item_embedding_id                | item_id, model_version_id, embedding_source_type, embedding_vector, source_text_hash, generated_at                                                      | なし       | 派生     | batch           |
+| item_embedding                | item_embedding_id                | item_id, model_version_id, embedding_source_type, embedding_input_hash, embedding_vector, generated_at                                                | なし       | 派生     | batch           |
 | feature_normalization_version | feature_normalization_version_id | normalization_method, parameter_json, is_current, generated_at                                                                                          | なし       | 設定正本 | batch / reco    |
 
 ---
