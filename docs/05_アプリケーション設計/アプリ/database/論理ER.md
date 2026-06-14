@@ -135,7 +135,7 @@
 | Item系                   | item / item_image / item_review_summary / item_popularity_signal / item_generation_queue                                                       | 内部正本 / 派生 / 状態      |
 | 外部商品データ系         | fetch_cursor / api_call_log / raw_product_metadata / raw_product_object / product_diff_result                                                  | Raw / Metadata / Log / 状態 |
 | Staging系                | staging_item / staging_item_image / staging_ranking_signal / staging_genre                                                                     | 一時 / 中間                 |
-| Semantic / Feature系     | semantic_config / semantic_config_version / semantic_concept / feature_definition / semantic_rule / feature_rule / normalization_rule / item_feature / user_feature | 設定正本 / 派生             |
+| Semantic / Feature系     | semantic_config / semantic_config_version / semantic_concept / feature_definition / semantic_rule / feature_rule / normalization_rule / item_semantic / item_feature / item_meaning / user_feature | 設定正本 / 派生             |
 | Embedding系              | item_embedding                                                                                                                                 | 派生                        |
 | Evaluation系             | evaluation_dataset / evaluation_case / evaluation_run / evaluation_result / evaluation_metric                                                  | 内部正本 / 派生 / Log       |
 | Log系                    | phase_log / error_log / batch_run_log / item_import_summary                                                                                    | Log                         |
@@ -303,6 +303,7 @@ erDiagram
     ITEM ||--o| ITEM_REVIEW_SUMMARY : "has"
     ITEM ||--o{ ITEM_POPULARITY_SIGNAL : "has"
     ITEM ||--o{ ITEM_FEATURE : "has"
+    ITEM ||--o{ ITEM_MEANING : "has"
     ITEM ||--o{ ITEM_EMBEDDING : "has"
     ITEM ||--o{ ITEM_GENERATION_QUEUE : "queued_for_generation"
 
@@ -312,7 +313,9 @@ erDiagram
     ITEM ||--o{ RECOMMENDATION_RESULT_ITEM : "snapshotted_by"
 
     SEMANTIC_CONFIG_VERSION ||--o{ ITEM_FEATURE : "generated_with"
+    SEMANTIC_CONFIG_VERSION ||--o{ ITEM_MEANING : "generated_with"
     FEATURE_NORMALIZATION_VERSION ||--o{ ITEM_FEATURE : "normalized_with"
+    FEATURE_NORMALIZATION_VERSION ||--o{ ITEM_MEANING : "normalized_with"
     MODEL_VERSION ||--o{ ITEM_EMBEDDING : "generated_with"
 ```
 
@@ -483,6 +486,7 @@ erDiagram
 
     ITEM ||--o{ ITEM_SEMANTIC : "generates"
     ITEM ||--o{ ITEM_FEATURE : "has"
+    ITEM ||--o{ ITEM_MEANING : "has"
     ITEM ||--o{ ITEM_EMBEDDING : "has"
 
     FEATURE_DEFINITION ||--o{ USER_FEATURE : "measured_as"
@@ -490,9 +494,11 @@ erDiagram
 
     SEMANTIC_CONFIG_VERSION ||--o{ USER_FEATURE : "generated_with"
     SEMANTIC_CONFIG_VERSION ||--o{ ITEM_FEATURE : "generated_with"
+    SEMANTIC_CONFIG_VERSION ||--o{ ITEM_MEANING : "generated_with"
 
     FEATURE_NORMALIZATION_VERSION ||--o{ USER_FEATURE : "normalizes"
     FEATURE_NORMALIZATION_VERSION ||--o{ ITEM_FEATURE : "normalizes"
+    FEATURE_NORMALIZATION_VERSION ||--o{ ITEM_MEANING : "normalizes"
 
     MODEL_VERSION ||--o{ ITEM_EMBEDDING : "generated_with"
 ```
@@ -515,6 +521,7 @@ erDiagram
 | user_meaning                  | user_meaning_id                  | recommendation_run_id, user_social, user_symbolic, lambda_ctx, generated_at                                                                             | なし       | 派生     | reco            |
 | item_semantic                 | item_semantic_id                 | item_id, semantic_config_version_id, semantic_json, generated_at                                                                                        | なし       | 派生     | batch / reco    |
 | item_feature                  | item_feature_id                  | item_id, feature_definition_id, semantic_config_version_id, feature_normalization_version_id, raw_feature_value, normalized_feature_value, generated_at | なし       | 派生     | batch / reco    |
+| item_meaning                  | item_meaning_id                  | item_id, semantic_config_version_id, feature_normalization_version_id, item_social, item_symbolic, generated_at                                         | なし       | 派生 / 推薦用正本 | batch / reco    |
 | item_embedding                | item_embedding_id                | item_id, model_version_id, embedding_source_type, embedding_vector, source_text_hash, generated_at                                                      | なし       | 派生     | batch           |
 | feature_normalization_version | feature_normalization_version_id | normalization_method, parameter_json, is_current, generated_at                                                                                          | なし       | 設定正本 | batch / reco    |
 
@@ -546,6 +553,7 @@ Feature値は `0.0〜1.0` の範囲で扱う。
 | `normalization_rule` | 意味定義 version ごとの正規化 **binding**（方式 + 正規化パラメータ version 参照）。sigmoid パラメータ正本は `feature_normalization_version`（`normalization_rule_テーブル定義書` §5.1） |
 | `normalization_rule` → `feature_normalization_version` | アプリ設計で固定される binding のため **物理 FK ON**（`ON DELETE RESTRICT`）。派生 Feature からの参照は LOGICAL 維持 |
 | MVP 行モデル | `semantic_config_version` あたり 1 行（全 8 Feature 軸共通） |
+| `item_meaning` 行モデル | **1 商品 × 1 `semantic_config_version_id` あたり 1 行**（`item_feature` 8 行から Social / Symbolic 射影。詳細は `item_meaning_テーブル定義書`） |
 
 ---
 
@@ -688,6 +696,7 @@ erDiagram
 | item           | item_review_summary    | 1対0または1 | 1商品にレビュー要約                            |
 | item           | item_popularity_signal | 1対多       | ジャンル・期間別の人気シグナル                 |
 | item           | item_feature           | 1対多       | Feature軸ごとに値を持つ                        |
+| item           | item_meaning           | 1対多       | semantic_config_version 別に Social / Symbolic 射影を持つ |
 | item           | item_embedding         | 1対多       | model_version / source_type別にEmbeddingを持つ |
 | item           | item_generation_queue  | 1対多       | 意味生成・Embedding生成の再実行対象            |
 | external_genre | item                   | 1対多       | 1ジャンルに複数商品                            |
@@ -725,6 +734,8 @@ erDiagram
 | model_version                 | recommendation_run      | 1対多 | Runで使用したモデルversion |
 | model_version                 | item_embedding          | 1対多 | Embedding生成モデル        |
 | feature_normalization_version | item_feature            | 1対多 | Feature正規化version       |
+| semantic_config_version       | item_meaning            | 1対多 | 意味体系 version 別の射影   |
+| feature_normalization_version | item_meaning            | 1対多 | 射影入力 Feature の正規化 version |
 
 ---
 
@@ -759,6 +770,7 @@ Online推薦中は、以下を更新しない。
 - item_review_summary
 - item_popularity_signal
 - item_feature
+- item_meaning
 - item_embedding
 - item_generation_queue
 - raw_product_metadata
@@ -796,6 +808,7 @@ Online推薦では、これらを参照するだけにする。
 - item_generation_queue
 - item_semantic
 - item_feature
+- item_meaning
 - item_embedding
 - item_import_summary
 - batch_run_log
