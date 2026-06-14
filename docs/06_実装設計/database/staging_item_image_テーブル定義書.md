@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP   |
 | MVP対象        | `yes`                               |
 | 作成日         | 2026-06-14                          |
-| 更新日         | 2026-06-14                          |
+| 更新日         | 2026-06-14（Human Review #523 反映） |
 
 ---
 
@@ -188,8 +188,8 @@ flowchart LR
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `staging_item_image_id` | サロゲート UUID | — |
-| UNIQUE | `raw_metadata_id`, `external_item_code`, `image_url` | BATCH-005 冪等キー | 同一 Raw 内の同一商品・同一 URL は 1 行 |
-| UNIQUE（partial） | `raw_metadata_id`, `external_item_code` WHERE `is_primary_candidate = true` | 主画像候補 1 件制約 | Index 名: `uq_staging_item_image_primary_candidate`（§9） |
+| UNIQUE | `raw_metadata_id`, `external_item_code`, `image_url` | BATCH-005 冪等キー | Human Review #523 **確定**（§17.1 No.1）。同一 Raw 内の同一商品・同一 URL は 1 行 |
+| UNIQUE（partial） | `raw_metadata_id`, `external_item_code` WHERE `is_primary_candidate = true` | 主画像候補 1 件制約 | Human Review #523 **確定**（§17.1 No.3）。Index 名: `uq_staging_item_image_primary_candidate`（§9） |
 
 ---
 
@@ -226,6 +226,8 @@ flowchart LR
 | `uq_staging_item_image_primary_candidate` | `raw_metadata_id`, `external_item_code` | unique partial | 主画像候補 1 件 | `WHERE is_primary_candidate = true` |
 | `idx_staging_item_image_raw_metadata` | `raw_metadata_id` | btree | Raw 単位一覧・Retention DELETE 補助 | transforms_to 親 |
 | `idx_staging_item_image_raw_code` | `raw_metadata_id`, `external_item_code` | btree | BATCH-007 の商品単位画像集合取得 | §12.3 |
+
+> 物理ER §10 `staging_item_image` Index 案と整合（Human Review #523 反映）。
 
 ---
 
@@ -394,17 +396,17 @@ DELETE FROM staging_item_image
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | 初版作成。Human Review #523 で §17.1 を確定予定 |
+| — | — | — | — | — | Human Review #523 にて No.1〜5 を決定済み（下記参照） |
 
-### 17.1 Human Review 提案事項（Issue #523）
+### 17.1 Human Review 決定事項（Issue #523）
 
-| No | 論点 | 提案内容 | 根拠 |
-| --: | ---- | -------- | ---- |
-| 1 | BATCH-005 冪等 UNIQUE キー | **`(raw_metadata_id, external_item_code, image_url)`** | `item_image` の `(item_id, image_url)` と同型。Raw 内 URL 重複防止 |
-| 2 | `source` 列 | **不採用**（論理ER §9.2 整合）。item 解決は `staging_item.source` / `item.source` | `staging_item` は `source` 保持、画像 Staging は兄弟キーのみ |
-| 3 | `is_primary_candidate` partial unique | **採用**（`(raw_metadata_id, external_item_code)` WHERE `is_primary_candidate = true`） | `item_image.is_primary` partial unique と同型 |
-| 4 | 主画像候補算出タイミング | **BATCH-005 内確定**。BATCH-007 は引き継ぎのみ | Staging Validator / Repository で検証可能 |
-| 5 | Staging 同期置換 | **BATCH-005 内で実施**（§5.8）。BATCH-007 は Staging 集合 S を信頼 | `item_image` §12.1 と二段階で整合 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | BATCH-005 冪等 UNIQUE キー | **`(raw_metadata_id, external_item_code, image_url)`** を MVP 必須とする | Human | §7・§12.2 ON CONFLICT。`item_image` の `(item_id, image_url)` と同型 |
+| 2 | `source` 列 | **不採用**。item 解決は `staging_item.source` / `item.source` + `external_item_code` | Human | 論理ER §9.2 整合。`staging_item` は `source` 保持、画像 Staging は兄弟キーのみ |
+| 3 | `is_primary_candidate` partial unique | **採用**（`(raw_metadata_id, external_item_code)` WHERE `is_primary_candidate = true`） | Human | `item_image.is_primary` partial unique と同型（§9 / §10） |
+| 4 | 主画像候補算出タイミング | **BATCH-005 内確定**。BATCH-007 は `is_primary_candidate` を引き継ぎのみ | Human | §5.6 / §12.3 |
+| 5 | Staging 同期置換 | **BATCH-005 内で実施**（§5.8）。BATCH-007 は Staging 集合 S を信頼 | Human | `item_image` §12.1 と二段階で整合 |
 
 ---
 
@@ -441,3 +443,4 @@ DELETE FROM staging_item_image
 - BATCH-005 冪等キー・同期置換が §7 / §12 に定義されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
+- Human Review #523 決定事項（§17.1 No.1〜5）が本文に反映されている

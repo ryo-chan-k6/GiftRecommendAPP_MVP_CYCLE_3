@@ -163,10 +163,19 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "BATCH-005 冪等 UNIQUE キー（`raw_metadata_id` + `external_item_code` + `image_url` 等）— 成果物 §7 で確定"
-  - "is_primary_candidate の算出タイミング（BATCH-005 Staging 保存時 vs BATCH-007 反映前）— item_image §5.3 と整合"
-  - "Retention 削除単位（raw_metadata_id / batch_run_id）— 物理ER §13 方針に従う"
+human_review_decisions:
+  - topic: "BATCH-005 冪等 UNIQUE キー"
+    decision: "(raw_metadata_id, external_item_code, image_url)"
+    status: "decided"
+  - topic: "source 列"
+    decision: "staging_item_image 行には持たない"
+    status: "decided"
+  - topic: "is_primary_candidate partial unique"
+    decision: "採用 + BATCH-005 内算出"
+    status: "decided"
+  - topic: "Staging 同期置換"
+    decision: "BATCH-005 内で実施"
+    status: "decided"
 
 risk_points:
   - "raw_product_metadata（#506 / PR #511）との raw_metadata_id 参照・import_status 連動の引き継ぎ"
@@ -180,4 +189,5 @@ notes:
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-staging-item-image.yaml"
   - "Issue #523 / Branch docs/task-523-staging-item-image-table-spec"
   - "先行 merge 済み前提: #506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）、#497 / PR #502（item_image）、#495 / PR #500（item）"
+  - "Human Review #523 決定済み: UNIQUE キー / source 不採用 / is_primary_candidate partial unique / BATCH-005 同期置換"
   - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"

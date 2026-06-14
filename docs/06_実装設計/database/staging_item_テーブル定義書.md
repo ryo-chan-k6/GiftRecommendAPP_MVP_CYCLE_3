@@ -198,13 +198,13 @@ flowchart LR
 | `product_diff_result` | `staging_item_id` | judged_as | `LOGICAL` | 本体定義は別 Task |
 | `item` | `source`, `external_item_code` | upserts（間接） | `LOGICAL` | Upsert キー対応。`item_id` は Staging に保持しない |
 
-### 8.3 関連 Staging（同一 Raw 由来・別 Task）
+### 8.3 関連 Staging（同一 Raw 由来）
 
 | テーブル | 紐づけ | 備考 |
 | -------- | ------ | ---- |
-| `staging_item_image` | `raw_metadata_id` + `external_item_code` | 画像 URL 集合 |
-| `staging_ranking_signal` | 同上 | ランキング由来時 |
-| `staging_genre` | `raw_metadata_id` | ジャンル API 由来時 |
+| `staging_item_image` | `raw_metadata_id` + `external_item_code` | 画像 URL 集合（`staging_item_image_テーブル定義書` #523） |
+| `staging_ranking_signal` | 同上 | ランキング由来時（別 Task） |
+| `staging_genre` | `raw_metadata_id` | ジャンル API 由来時（別 Task） |
 
 ---
 
@@ -473,7 +473,8 @@ ON CONFLICT (raw_metadata_id, external_item_code) DO UPDATE SET
 - 外部商品データ連携設計書 §9.2 との列差分が §5.6 で整理されている
 - Staging 系 **物理 FK なし** 方針が §8 で明記されている
 - Retention（物理ER §13）が §13 に反映されている
-- `staging_item_image` / `product_diff_result` 本体定義が out_of_scope であることが §5.1 / §8.3 で明示されている
+- `staging_item_image` 本体定義は **`staging_item_image_テーブル定義書`**（#523）へ委譲。本定義書では兄弟紐づけのみ整理
+- `product_diff_result` 本体定義が out_of_scope であることが §5.1 / §8.3 で明示されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
 - Human Review #517 決定事項（§17.1 No.1〜5）が本文に反映されている

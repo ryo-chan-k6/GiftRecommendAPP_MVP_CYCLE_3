@@ -298,8 +298,10 @@ erDiagram
 | `fetch_cursor.fetch_cursor_id` | `api_call_log.fetch_cursor_id` | controls | `LOGICAL` | 1:N | |
 | `api_call_log.api_call_log_id` | `raw_product_metadata.api_call_log_id` | produces | `LOGICAL` | 1:N | |
 | `raw_product_metadata.raw_metadata_id` | `staging_item.raw_metadata_id` | transforms_to | `LOGICAL` | 1:N | |
+| `raw_product_metadata.raw_metadata_id` | `staging_item_image.raw_metadata_id` | transforms_to | `LOGICAL` | 1:N | |
 | `staging_item.staging_item_id` | `product_diff_result.staging_item_id` | judged_as | `LOGICAL` | 1:0..1 | |
 | `staging_item.external_item_code` | `item.external_item_code` | upserts | `LOGICAL` | N:1 | Upsert キー |
+| `staging_item_image.external_item_code` | `item_image.image_url` | upserts | `LOGICAL` | N:M 相当 | `item_id` 解決後。`itemCode` + `image_url` |
 | `evaluation_dataset.evaluation_dataset_id` | `evaluation_case.evaluation_dataset_id` | contains | `ON` | 1:N | Evaluation 系 |
 | `evaluation_run.evaluation_run_id` | `evaluation_result.evaluation_result_id` | produces | `ON` | 1:N | |
 | `phase_log.owner_id` | `recommendation_run.recommendation_run_id` 等 | records | `LOGICAL` | N:1 | polymorphic: owner_type + owner_id |
@@ -336,6 +338,10 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `staging_item` | `idx_staging_item_raw_metadata` | `raw_metadata_id` | btree | Raw 単位一覧・Retention | |
 | `staging_item` | `idx_staging_item_source_code` | `source`, `external_item_code` | btree | Item 突合 | Upsert キー |
 | `staging_item` | `idx_staging_item_diff_status` | `diff_status` | btree | 差分判定後抽出 | nullable |
+| `staging_item_image` | `uq_staging_item_image_raw_code_url` | `raw_metadata_id`, `external_item_code`, `image_url` | unique | BATCH-005 冪等 | `staging_item_image_テーブル定義書` §17.1 No.1 |
+| `staging_item_image` | `uq_staging_item_image_primary_candidate` | `raw_metadata_id`, `external_item_code` | unique partial | 主画像候補 1 件 | `WHERE is_primary_candidate = true`（§17.1 No.3） |
+| `staging_item_image` | `idx_staging_item_image_raw_metadata` | `raw_metadata_id` | btree | Raw 単位一覧・Retention | |
+| `staging_item_image` | `idx_staging_item_image_raw_code` | `raw_metadata_id`, `external_item_code` | btree | BATCH-007 画像集合取得 | |
 | `product_diff_result` | `idx_product_diff_batch_code` | `batch_run_id`, `external_item_code` | btree | 差分追跡 | Retention 対象候補 |
 | `item_generation_queue` | `idx_item_gen_queue_status` | `queue_status`, `queued_at` | btree | 再生成処理 | |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
@@ -351,6 +357,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `recommendation_request` | — | — | 条件列 + JSONB | 個別カラムと payload 併用 | §17 No.2 |
 | `item` | `uq_item_source_external_code` | unique | `source`, `external_item_code` | 商品 Upsert キー | |
 | `staging_item` | `uq_staging_item_raw_metadata_code` | unique | `raw_metadata_id`, `external_item_code` | Raw 内 itemCode 一意 | `staging_item_テーブル定義書` §17.1 No.1 |
+| `staging_item_image` | `uq_staging_item_image_raw_code_url` | unique | `raw_metadata_id`, `external_item_code`, `image_url` | Raw 内 URL 一意 | `staging_item_image_テーブル定義書` §17.1 No.1 |
 | `ranking_snapshot` | `uq_ranking_snapshot_observation_key` | unique | `source`, `external_genre_id`, `period`, `last_build_date` | 観測キー一意 | §17.2 No.1 |
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | unique | `ranking_snapshot_id`, `rank` | ランキング明細一意 | |
 | `item_feature` | `uq_item_feature_idempotent` | unique | `item_id`, `semantic_config_version_id`, `feature_code`, `feature_input_hash`, `feature_normalization_version_id` | 再生成冪等 | テーブル一覧 §7 補足 |

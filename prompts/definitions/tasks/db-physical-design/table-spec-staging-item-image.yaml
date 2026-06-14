@@ -244,6 +244,28 @@ review:
 contract_gate:
   required: false
 
+human_review_decisions:
+  - id: "hr-523-1"
+    topic: "BATCH-005 冪等 UNIQUE キー"
+    decision: "(raw_metadata_id, external_item_code, image_url)"
+    status: "decided"
+  - id: "hr-523-2"
+    topic: "source 列"
+    decision: "staging_item_image 行には持たない。item 解決は staging_item.source / item.source + external_item_code"
+    status: "decided"
+  - id: "hr-523-3"
+    topic: "is_primary_candidate partial unique"
+    decision: "採用（raw_metadata_id, external_item_code WHERE is_primary_candidate = true）"
+    status: "decided"
+  - id: "hr-523-4"
+    topic: "主画像候補算出タイミング"
+    decision: "BATCH-005 内確定。BATCH-007 は is_primary_candidate を引き継ぎ"
+    status: "decided"
+  - id: "hr-523-5"
+    topic: "Staging 同期置換"
+    decision: "BATCH-005 内で実施。BATCH-007 は Staging 集合 S を信頼"
+    status: "decided"
+
 notes:
   - "Batch R04 No.1: staging_item_image（外部商品データ連携系 / Staging 画像中間正本）"
   - "Issue #523 / Branch docs/task-523-staging-item-image-table-spec"
@@ -252,4 +274,5 @@ notes:
   - "論理ER §9.2: is_primary_candidate は Staging 側候補。item_image.is_primary は BATCH-007 で確定"
   - "staging_item と異なり source 列は論理ER §9.2 にない。マーケット識別は item.source、API trace は raw_product_metadata.source_api"
   - "item_image_テーブル定義書 §5.5 の Upsert キー・同期置換（DELETE）を Staging 側から引き継ぐ"
+  - "Human Review #523 決定済み: 上記 human_review_decisions 参照。物理ER §9 / §10 / §11 に Index・制約を反映"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
