@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 521
   issue: 516
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-embedding.yaml"
   source_branch: "docs/task-516-item-embedding-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 516
     required: true
   pr:
-    number: null
+    number: 521
     required: true
   diff:
     required: true
