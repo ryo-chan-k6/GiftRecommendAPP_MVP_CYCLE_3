@@ -1,0 +1,255 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-staging-item-image"
+  title: "staging_item_image:Staging Item Imageテーブル定義書作成"
+  summary: "物理ER・論理ER §9.2・テーブル一覧・外部商品データ連携設計書・raw_product_metadata / staging_item / item_image テーブル定義書を入力に、外部商品取込 Staging 画像正本 `staging_item_image` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R04 No.1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書（transforms_to 親 Metadata。merge 済み前提）"
+    - number: 517
+      purpose: "staging_item テーブル定義書（同一 Raw 由来の兄弟 Staging。merge 済み前提）"
+    - number: 497
+      purpose: "item_image テーブル定義書（Upsert 先正本。merge 済み前提）"
+    - number: 495
+      purpose: "item テーブル定義書（item.source 解決・Upsert 先。merge 済み前提）"
+  related_prs:
+    - number: 511
+      purpose: "Task #506 PR（raw_product_metadata。merge 済み前提）"
+    - number: 522
+      purpose: "Task #517 PR（staging_item。merge 済み前提）"
+    - number: 502
+      purpose: "Task #497 PR（item_image。merge 済み前提）"
+    - number: 500
+      purpose: "Task #495 PR（item。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R04 No.1。論理ER §9.2・テーブル一覧 §6 No.21。
+  外部商品取込 Staging の画像データ。`raw_product_metadata` → `staging_item_image`（BATCH-005）→ `item_image`（BATCH-007）昇格フローの Staging 側。
+  楽天商品検索 API の `smallImageUrls` / `mediumImageUrls` を URL 行として保持する。MVP では画像バイナリ非保存。
+  親 Epic Branch 最新（raw_product_metadata #506、staging_item #517、item_image #497 merge 済み前提）を前提とする。
+  Issue #523 / Branch `docs/task-523-staging-item-image-table-spec` で作業する。
+
+objective: |
+  `staging_item_image` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `raw_product_metadata` との transforms_to 関係、`staging_item` との兄弟紐づけ（`raw_metadata_id` + `external_item_code`）、`item_image` への Upsert 反映（`external_item_code` + `item.source` → `item_id`）を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の staging_item_image テーブル定義書作成"
+  - "物理ER 外部商品データ連携系・論理ER §9.2 / §14.4・テーブル一覧 §6 No.21 との突合"
+  - "raw_product_metadata_テーブル定義書 §8 transforms_to 関係との整合"
+  - "staging_item_テーブル定義書 §8.3 兄弟 Staging 紐づけ（raw_metadata_id + external_item_code）との整合"
+  - "item_image_テーブル定義書 §5.5 / §12.1 staging_item_image → item_image 反映・同期置換との突合"
+  - "item_テーブル定義書 §8 / §12（item.source 解決・Upsert 順序）との突合"
+  - "外部商品データ連携設計書 §11 商品画像データ・楽天 API 画像項目マッピングとの整合"
+  - "バッチ設計方針書 BATCH-005 / BATCH-007・処理構成定義書 MOD-BATCH-022 / MOD-BATCH-024 との登録/反映方針整理"
+  - "インターフェース一覧 IF-DB-BATCH-005（Staging 保存）との整合"
+  - "物理ER §13 Staging 系 Retention（成功 Batch 後即 DELETE）方針の明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "staging_item / item_image / raw_product_metadata / item テーブル定義書（先行 Task 完了済み）"
+  - "staging_ranking_signal / staging_genre / product_diff_result テーブル定義書（別 Task）"
+  - "画像バイナリ保存・CDN 設計"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系分類・raw_product_metadata → staging_item_image transforms_to・staging_item_image → item_image upserts・Retention §13"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "image_size_type 等 enum 参照（Staging 行に source 列なし）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 外部商品データ連携系エンティティ属性・§14.4 Raw/Staging/Item 関係・主画像候補 is_primary_candidate"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.21 staging_item_image・Staging 補足方針"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§11 商品画像データ・§11.3–§11.4 主画像選定・楽天 API 画像項目マッピング"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Staging Item Image リソース分類・Item Image との責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Staging 正本区分（一時 / 中間）・Batch 管理主体"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-005 Staging 保存・trace キー（raw_metadata_id）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-005 Staging 変換・BATCH-007 Item Image 反映・staging_item_image 更新タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-005 / BATCH-007 の入出力・staging_item_image 作成/参照タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "MOD-BATCH-022 Staging Repository / MOD-BATCH-024 Item Image Updater・staging_item_image 保存/反映フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-022 / MOD-BATCH-024 と staging_item_image の責務"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "staging_item_image / raw_metadata_id trace キー・Retention 方針"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "§8 transforms_to（raw_metadata_id）被参照・source_api trace 経路（merge 済み前提）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "§8.3 兄弟 Staging 紐づけ・BATCH-005 同時 INSERT 関係（merge 済み前提）"
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 staging_item_image → item_image Upsert・§12.1 同期置換・is_primary 算出（merge 済み前提）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8 / §12 item.source 解決・Upsert 後 item_image 反映順序（merge 済み前提）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/staging_item_image_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-staging-item-image.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-staging-item-image/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "staging_item_image テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §9.2・テーブル一覧 §6 No.21 と矛盾しない"
+  - "raw_product_metadata → staging_item_image transforms_to（raw_metadata_id）関係が明記されている"
+  - "staging_item との兄弟紐づけ（raw_metadata_id + external_item_code）が明記されている"
+  - "staging_item_image → item_image Upsert 反映（external_item_code + item.source → item_id、image_url キー）が明記されている"
+  - "is_primary_candidate と item_image.is_primary の算出/反映関係が明記されている"
+  - "楽天 API smallImageUrls / mediumImageUrls / imageFlag のマッピングが整理されている"
+  - "BATCH-005 INSERT 冪等キーと BATCH-007 読取・反映タイミングが §12 に明記されている"
+  - "Staging 系物理 FK なし（LOGICAL + Index）方針が明記されている"
+  - "物理ER §13 Retention（成功 Batch 後即 DELETE）が明記されている"
+  - "source / source_system / source_api 列を staging_item_image 行に持たない方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "staging-item-image-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 523
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書 完了（transforms_to 親 Metadata 正本）"
+    - number: 517
+      purpose: "staging_item テーブル定義書 完了（兄弟 Staging・BATCH-005 同時保存）"
+    - number: 497
+      purpose: "item_image テーブル定義書 完了（Upsert 先・同期置換正本）"
+    - number: 495
+      purpose: "item テーブル定義書 完了（item.source 解決）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/staging_item_image_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER raw_product_metadata → staging_item_image transforms_to（LOGICAL 1:N）との整合"
+    - "物理ER staging_item_image → item_image upserts（LOGICAL・external_item_code + image_url）との整合"
+    - "論理ER §9.2 属性（staging_item_image_id / raw_metadata_id / external_item_code / image_url / image_size_type / display_order / is_primary_candidate / staged_at）との整合"
+    - "論理ER §14.4 staging_item_image → item_image 関係（itemCode + image_url）との整合"
+    - "テーブル一覧 §6 No.21 分類・用途との整合"
+    - "raw_product_metadata_テーブル定義書 §8 raw_metadata_id 被参照との整合"
+    - "staging_item_テーブル定義書 §8.3 兄弟 Staging 紐づけとの整合"
+    - "item_image_テーブル定義書 §5.5 / §12.1 Upsert・同期 DELETE 引き継ぎとの整合"
+    - "item_テーブル定義書 §12.1 item Upsert 後に item_image 反映順序との整合"
+    - "外部商品データ連携設計書 §11 楽天 API 画像項目マッピングとの整合"
+    - "バッチ設計方針書 BATCH-005 / BATCH-007 における staging_item_image 作成・参照タイミング"
+    - "インターフェース一覧 IF-DB-BATCH-005 との整合"
+    - "Staging 系物理 FK なし・Retention §13 方針の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R04 No.1: staging_item_image（外部商品データ連携系 / Staging 画像中間正本）"
+  - "Issue #523 / Branch docs/task-523-staging-item-image-table-spec"
+  - "Issue 本文のテーブル一覧参照 §8 は semantic_config を指すため、正本は §6 No.21 を用いる"
+  - "先行 merge 済み前提: #506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）、#497 / PR #502（item_image）、#495 / PR #500（item）"
+  - "論理ER §9.2: is_primary_candidate は Staging 側候補。item_image.is_primary は BATCH-007 で確定"
+  - "staging_item と異なり source 列は論理ER §9.2 にない。マーケット識別は item.source、API trace は raw_product_metadata.source_api"
+  - "item_image_テーブル定義書 §5.5 の Upsert キー・同期置換（DELETE）を Staging 側から引き継ぐ"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
