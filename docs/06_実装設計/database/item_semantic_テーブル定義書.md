@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP   |
 | MVP対象        | `yes`                             |
 | 作成日         | 2026-06-14                        |
-| 更新日         | 2026-06-14                        |
+| 更新日         | 2026-06-14（Human Review #513 反映） |
 
 ---
 
@@ -72,7 +72,7 @@
 | api | — | 直接参照なし（MVP） |
 | Online 推薦中 | — | **本テーブルを更新しない** |
 
-> 論理ER §16.1 の「Online 推薦中に更新しない」一覧には `item_feature` / `item_embedding` は含まれるが **`item_semantic` は未列挙**。MVP では `item_feature` と同様 **Online 中は batch 更新・reco 参照のみ** とする（§17.1 No.6 参照）。
+> 論理ER §16.1 の「Online 推薦中に更新しない」一覧には `item_feature` / `item_embedding` は含まれるが **`item_semantic` は未列挙**。MVP では `item_feature` と同様 **Online 中は batch 更新・reco 参照のみ** とする（§17.1 No.6 決定済み）。
 
 ### 5.3 `semantic_json` 保持方針
 
@@ -373,18 +373,18 @@ DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review #513 にて No.1〜6 を決定（下記 §17.1） |
+| — | — | — | — | — | Human Review #513 にて No.1〜6 を決定済み（下記 §17.1） |
 
 ### 17.1 Human Review 決定事項（Issue #513）
 
 | No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
-| 1 | `semantic_config_version_id` FK | **物理 FK ON**（`ON DELETE RESTRICT`） | Human（提案） | `item_feature`・`semantic_config_version_テーブル定義書` §8.2 と整合。`user_semantic` は LOGICAL だが Item 派生は ON を採用 |
-| 2 | Upsert / Unique キー | **`item_id` + `semantic_config_version_id` UNIQUE**。同一 version 内 Upsert、version 変更時は **別行 INSERT** | Human（提案） | テーブル一覧 §7 再生成判定・Feature 入力 hash 整合 |
-| 3 | version 解決タイミング | **BATCH-010 実行時**に current version を解決し、**行へ固定保存** | Human（提案） | Queue 行に version 列なし（#507 No.4）との整合 |
-| 4 | `semantic_json` スキーマ | **`concepts[]` 配列**。要素は `concept_code` / `confidence` / `extraction_method` / `source_type` 必須、`evidence_texts` 推奨 | Human（提案） | Semanticルール定義書 §4・§13 準拠 |
-| 5 | 旧行扱い（同一 version 再生成） | **Upsert 上書き**（`semantic_json` + `generated_at`）。履歴テーブルは MVP 作らない | Human（提案） | 監査は `batch_run_log` / `phase_log` |
-| 6 | Online 更新禁止 | **`item_feature` と同様 reco 参照のみ**。論理ER §16.1 一覧への `item_semantic` 追記は **別 docs Task** | Human（提案） | 本定義書 §5.2 で MVP 境界を明示 |
+| 1 | `semantic_config_version_id` FK | **物理 FK ON**（`ON DELETE RESTRICT`） | Human | `item_feature`・`semantic_config_version_テーブル定義書` §8.2 と整合。`user_semantic` は LOGICAL だが Item 派生は ON を採用 |
+| 2 | Upsert / Unique キー | **`item_id` + `semantic_config_version_id` UNIQUE**。同一 version 内 Upsert、version 変更時は **別行 INSERT** | Human | テーブル一覧 §7 再生成判定・Feature 入力 hash 整合 |
+| 3 | version 解決タイミング | **BATCH-010 実行時**に current version を解決し、**行へ固定保存** | Human | Queue 行に version 列なし（#507 No.4）との整合 |
+| 4 | `semantic_json` スキーマ | **`concepts[]` 配列**。要素は `concept_code` / `confidence` / `extraction_method` / `source_type` 必須、`evidence_texts` 推奨 | Human | Semanticルール定義書 §4・§13 準拠 |
+| 5 | 旧行扱い（同一 version 再生成） | **Upsert 上書き**（`semantic_json` + `generated_at`）。履歴テーブルは MVP 作らない | Human | 監査は `batch_run_log` / `phase_log` |
+| 6 | Online 更新禁止 | **`item_feature` と同様 reco 参照のみ**。論理ER §16.1 一覧への `item_semantic` 追記は **別 docs Task** | Human | 本定義書 §5.2 で MVP 境界を明示 |
 
 ---
 
