@@ -1,0 +1,189 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-item-embedding-pr"
+  title: "item_embedding テーブル定義書 PRレビュー"
+  summary: "item_embedding テーブル定義書 Task の PR を AI Review する。物理ER・論理ER・テーブル一覧・model_version / item 派生系テーブル定義書・バッチ設計との整合、pgvector/HNSW・model_version / item_meaning 関係・table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-516-item-embedding-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 516
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-embedding.yaml"
+  source_branch: "docs/task-516-item-embedding-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-item-embedding.yaml"
+    required: true
+  issue:
+    number: 516
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item派生データ系・FK・Index・制約・pgvector/HNSW 方針（§8–§11・§17 No.6）との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 エンティティ属性・§16 Online/Batch 責務境界との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§7 No.31・冪等キー・embedding_input_hash 補足との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Item Embedding 派生データ正本区分・Retrieval 用途の確認"
+    - path: "docs/04_ドメインモデル設計/コンテキスト境界定義書.md"
+      required: true
+      purpose: "Retrieval Context と item_embedding の責務確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-014 / BATCH-015 入出力・embedding_input_hash 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "BATCH-014 → BATCH-015 依存・再実行単位の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-015 Embedding 入力 hash 保存との整合"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_id 物理 FK（ON）被参照・責務境界の確認"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "§8.1 item_embedding への ON FK 方針の確認"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "Queue 消化先・embedding 再生成トリガーとの整合"
+    - path: "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+      required: true
+      purpose: "Item派生データ系先行テーブル・入力文脈参照の確認"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "Item派生データ系パイプライン・item_meaning 連携の確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "embedding_source_type 方針（§12.1 No.3）との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（item_meaning 本体 / user_embedding / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §10.2 の属性と矛盾しないか（論理ER 差分は §8.1 等で明示されているか）"
+    - "テーブル一覧 §7 No.31 の分類・用途・batch 更新主体と一致しているか"
+    - "冪等キー（item_id + model_version_id + embedding_input_hash）が明記されているか"
+    - "model_version_id への ON FK 方針が model_version_テーブル定義書 §8.1 と一致しているか"
+    - "item_meaning との関係（Matching 用スカラー正本 vs Retrieval 用ベクトル正本・パイプライン順序）が明記されているか"
+    - "embedding_input_hash / embedding_source_type の保持方針が明記されているか"
+    - "論理ER §16.1 / §16.2（Online推薦中に item_embedding を更新しない）が反映されているか"
+    - "Retrieval Context（コンテキスト境界定義書）との責務が整合しているか"
+  db:
+    - "PK / unique（uq_item_embedding_idempotent）/ Index（idx_item_embedding_item_model / idx_item_embedding_vector HNSW）が DDL Task へ展開できる粒度か"
+    - "item_id への物理 FK（ON）・model_version_id への物理 FK（ON）方針が明記されているか"
+    - "embedding_vector の pgvector 型・次元数・HNSW Index 方針（物理ER §17 No.6）が妥当か"
+    - "§17.1 決定事項が本文に反映されているか（作成時）"
+    - "source_text_hash（論理ER）vs embedding_input_hash（物理ER）の物理名整理が妥当か"
+    - "BATCH-014 / BATCH-015 の更新主体（batch）・再実行単位・item_generation_queue 連携が妥当か"
+    - "enum定義書 §12.1 No.3 embedding_source_type 方針（item_text_context MVP 有効）が転記されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "§17.1 決定事項は Human Review #516 で確定予定。AI Review では論点の整理と本文反映の充足を確認する"
+  - "item_meaning（#515）未 merge 時のパイプライン記述で十分か"
+  - "vector 次元数・HNSW パラメータの MVP 記載粒度"
+
+risk_points:
+  - "item_meaning テーブル定義書（#515）未 merge 時、Matching 用スカラー正本との関係が論理ER 参照に留まる"
+  - "論理ER §10.2（source_text_hash）と物理ER §11（embedding_input_hash）の差分整理"
+  - "batch 設計書の embedding_model_version_id / embedding_source_version と物理列 model_version_id / embedding_source_type の対応整理"
+  - "pgvector extension 適用・HNSW Index 作成は DDL Task 引き継ぎ。本 Task で方針のみ確定する"
+
+notes:
+  - "Batch R03 No.4: item_embedding"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item-embedding.yaml"
+  - "Issue #516 / Branch docs/task-516-item-embedding-table-spec"
+  - "先行 merge 済み: #495 / PR #500（item）、#450 / PR #453（model_version）、#507 / PR #512（item_generation_queue）、#513 / PR #518（item_semantic）、#514 / PR #519（item_feature）"
+  - "並行 Task: #515 item_meaning（Batch R03 No.3）"
