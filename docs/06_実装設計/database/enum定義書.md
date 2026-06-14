@@ -476,7 +476,7 @@ DB 制約方針:
 | --: | ---- | ---- | ------ | ---- |
 | 1 | `item_generation_type`（semantic / feature / embedding） | **クローズ**（Human Review 確定） | Human | §6.17・`item_generation_type.yaml` を確定。テーブル定義 Task で意味を転記 |
 | 2 | Batch 用 `phase_name`（`batch_run_phase_name`） | **クローズ**（Human Review 確定） | Human | §6.19・Observability §10.4 の15値。物理ER §12 連携済 |
-| 3 | `source_type` / `embedding_source_type` | **方針確定済み**（YAML 正本化は後続） | Human | テーブル定義 Task（`user_feature`, `item_embedding`）で enum 定義書 + YAML 正本化 |
+| 3 | `source_type` / `embedding_source_type` | **クローズ**（Issue #516 HR。YAML 正本化は後続） | Human | §12.1・`item_embedding_テーブル定義書` §11。`user_feature.source_type` は §12.1 維持 |
 | 4 | `error_code` 正本化範囲 | **クローズ**（Human Review 確定） | Human | §10.2・`error/README.md`。Phase4a へ委譲 |
 | 5 | `input_type` / `application_method` | **クローズ**（Issue #477） | Human | §6.20–§6.21・`semantic/input_type.yaml`・`semantic/application_method.yaml` |
 | 6 | `polarity`（Concept Feature Polarity） | **クローズ**（Issue #476） | Human | §6.22。packages/code-definitions 正本化は後続 enum Task |
@@ -493,10 +493,16 @@ DB 制約方針:
 
 **`item_embedding.embedding_source_type` → 論理 ID: `embedding_source_type`**
 
-- `embedding_source_version`（構築ルール version ID）とは別概念
+- `embedding_source_version`（構築ルール version ID）とは **別概念**。MVP では **DB 物理列に持たない**（Human Review #516 §17.1 No.2）
+- `embedding_source_version` の変更は **batch 層の Queue 登録トリガー**（`item_generation_queue` §5.6）。永続化は `embedding_source_type` + `embedding_input_hash` + `model_version_id` で行う
 - MVP 有効値は **`item_text_context` のみ**（enabled: true）
 - **`item_text_with_semantic`** は enum に定義するが MVP 初期は enabled: false
-- 再生成判定の主キーは `item_id + embedding_model_version_id + embedding_source_version + embedding_input_hash`
+
+**`item_embedding.embedding_input_hash`**
+
+- 論理ER §10.2・物理ER §11・テーブル一覧 §7 の物理列名は **`embedding_input_hash`**（旧 `source_text_hash` は使用しない。Human Review #516 §17.1 No.1）
+- DB 冪等キー（unique）: `item_id` + `model_version_id` + `embedding_input_hash`
+- 物理列 `model_version_id` は batch 設計書の `embedding_model_version_id` と同一概念
 
 Semantic ルールの `source_type`（`item_name`, `user_input` 等）とは **別論理 ID** とし、同名 enum の混在を避ける。
 
@@ -526,5 +532,6 @@ Semantic ルールの `source_type`（`item_name`, `user_input` 等）とは **�
 - `polarity` が concept_feature_rule テーブル定義書・API-PUB-008 と一致している（§6.22）
 - `fetch_cursor_type` が fetch_cursor テーブル定義書 §5.4 と一致している（§6.23）
 - `source_api` が raw_product_metadata テーブル定義書 §11・外部商品データ連携設計書 §8.4 と一致している（§6.24）
+- `embedding_source_type` / `embedding_input_hash` が enum定義書 §12.1・`item_embedding_テーブル定義書` と一致している（Issue #516）
 - packages/code-definitions のディレクトリ構成がプロジェクトディレクトリ構成定義書 §8.2 と一致している
 - secret や `.env` 実値が含まれていない
