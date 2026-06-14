@@ -1,0 +1,241 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-staging-genre"
+  title: "staging_genre:Staging Genreテーブル定義書作成"
+  summary: "物理ER・論理ER §9.2・テーブル一覧・外部商品データ連携設計書・raw_product_metadata / external_genre / staging_item テーブル定義書を入力に、外部ジャンル Staging 中間正本 `staging_genre` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R04 No.3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書（transforms_to 親 Metadata。merge 済み前提）"
+    - number: 494
+      purpose: "external_genre テーブル定義書（Upsert 先正本。merge 済み前提）"
+    - number: 517
+      purpose: "staging_item テーブル定義書（Staging 系章構成・Retention 方針参考。merge 済み前提）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 511
+      purpose: "Task #506 PR（raw_product_metadata。merge 済み前提）"
+    - number: 499
+      purpose: "Task #494 PR（external_genre。merge 済み前提）"
+    - number: 522
+      purpose: "Task #517 PR（staging_item。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R04 No.3。論理ER §9.2・テーブル一覧 §6 No.23。
+  外部ジャンル情報の Staging 中間正本。`external_genre` マスタへの Upsert 前データ。
+  `raw_product_metadata` → `staging_genre`（transforms_to）→ `external_genre`（upserts）のジャンル昇格フローの中核。
+  BATCH-001（楽天ジャンル同期）・BATCH-005（Raw取込・Staging変換）で作成・更新され、ジャンル反映フェーズで `external_genre` へ Upsert する。
+  親 Epic Branch 最新（enum #440、raw_product_metadata #506、external_genre #494、staging_item #517 merge 済み前提）を前提とする。
+  Issue #525 / Branch `docs/task-525-staging-genre-table-spec` で作業する。
+
+objective: |
+  `staging_genre` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `raw_product_metadata` との transforms_to 関係、`external_genre` への Upsert キー（`source` + `external_genre_id`）・列マッピング、BATCH-001 / BATCH-005 との関係を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の staging_genre テーブル定義書作成"
+  - "物理ER 外部商品データ連携系・論理ER §9.2・テーブル一覧 §6 No.23 との突合"
+  - "外部商品データ連携設計書 §12（ジャンルデータ連携）・§4.4 楽天ジャンル検索API マッピングとの整合"
+  - "raw_product_metadata_テーブル定義書 §5.5 transforms_to 関係・ジャンル Raw 保存方針との整合"
+  - "external_genre_テーブル定義書 §5.2 Upsert 関係・列マッピング・楽天API マッピングとの突合"
+  - "staging_item_テーブル定義書 §8.3 関連 Staging・Retention・LOGICAL FK 方針との一貫性"
+  - "バッチ設計方針書 BATCH-001 / BATCH-005・バッチ処理一覧・処理構成定義書 MOD-BATCH-020〜022 との登録/反映方針整理"
+  - "インターフェース一覧 IF-DB-BATCH-005（Staging 保存）等との整合"
+  - "staging_item / staging_item_image / staging_ranking_signal 等への関係整理（本体定義は別 Task へ委譲）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "staging_item / staging_item_image / staging_ranking_signal / staging_attribute テーブル定義書（別 Task）"
+  - "external_genre / item / product_diff_result テーブル定義書（本 Task では Upsert / transforms_to 関係の整理のみ）"
+  - "api_call_log / fetch_cursor テーブル定義書"
+  - "raw_product_object（Object Storage 正本・DB 非管理）のテーブル定義書"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系分類・raw_product_metadata → staging_genre transforms_to・staging_genre → external_genre upserts（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "source 等 enum 参照（該当時）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 外部商品データ連携系エンティティ属性（staging_genre_id / raw_metadata_id / external_genre_id / genre_name / parent_external_genre_id / genre_level / staged_at）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.23 staging_genre・外部商品データ連携系 Staging 補足"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§4.4 楽天ジャンル検索API・§12 ジャンルデータ連携・Adapter 正規化・Upsert 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Staging 正本区分（一時 / 中間）・Batch 管理主体"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-005 Staging 保存・trace キー（raw_metadata_id / staging_genre_id）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-001 楽天ジャンル同期・BATCH-005 Staging 変換・staging_genre 更新タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-001 / BATCH-005 の入出力・staging_genre 更新タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "MOD-BATCH-020 Staging Transformer / MOD-BATCH-022 Staging Repository・staging_genre 保存フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "staging_genre / raw_metadata_id trace キー・Retention 方針"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 transforms_to（raw_metadata_id）・ジャンル Raw 保存方針（merge 済み前提）"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 Upsert 関係・Upsert キー・列マッピング・楽天API マッピング（merge 済み前提）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "§8.3 関連 Staging・Retention・LOGICAL FK 方針・章構成参考（merge 済み前提）"
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+      purpose: "外部商品データ連携系 Batch 系テーブル定義書章構成参考（merge 済み前提）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/staging_genre_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-staging-genre.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-staging-genre/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "staging_genre テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §9.2・テーブル一覧 §6 No.23 と矛盾しない"
+  - "raw_product_metadata → staging_genre transforms_to（raw_metadata_id）関係が明記されている"
+  - "staging_genre → external_genre Upsert キー（source + external_genre_id）と列マッピングが明記されている"
+  - "staging_item テーブル定義書との Staging 系方針（LOGICAL FK・Retention）が一貫している"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "staging-genre-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 525
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書 完了（transforms_to 親 Metadata 正本）"
+    - number: 494
+      purpose: "external_genre テーブル定義書 完了（Upsert 先正本）"
+    - number: 517
+      purpose: "staging_item テーブル定義書 完了（Staging 系参考正本）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/staging_genre_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER raw_product_metadata → staging_genre transforms_to（LOGICAL 1:N）との整合"
+    - "物理ER staging_genre → external_genre upserts（LOGICAL N:1・Upsert キー source + external_genre_id）との整合"
+    - "論理ER §9.2 属性（staging_genre_id / raw_metadata_id / external_genre_id / genre_name / parent_external_genre_id / genre_level / staged_at）との整合"
+    - "外部商品データ連携設計書 §12.1 ジャンル項目と物理列の突合表があるか"
+    - "external_genre_テーブル定義書 §5.2 / §5.3 Upsert 列・楽天API マッピングとの整合"
+    - "raw_product_metadata_テーブル定義書 §5.5 transforms_to 関係との整合"
+    - "staging_item_テーブル定義書 §8.3 関連 Staging・Retention 方針との一貫性"
+    - "バッチ設計方針書 BATCH-001 / BATCH-005 における staging_genre 作成・参照・反映タイミング"
+    - "インターフェース一覧 IF-DB-BATCH-005 との整合"
+    - "Staging 系物理 FK なし（LOGICAL + Index）方針の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R04 No.3: staging_genre（外部商品データ連携系 / Staging 中間正本）"
+  - "Issue #525 / Branch docs/task-525-staging-genre-table-spec"
+  - "Issue 本文のテーブル一覧参照 §8 は user_feature 系を指すため、正本は §6 No.23 を用いる"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#506 / PR #511（raw_product_metadata）、#494 / PR #499（external_genre）、#517 / PR #522（staging_item）"
+  - "論点: UNIQUE (raw_metadata_id, external_genre_id)、source / is_leaf の Staging 列採否、BATCH-001 直接反映 vs BATCH-005 経由、Retention（物理ER §13）"
+  - "staging_item_image / staging_ranking_signal 本体は out_of_scope。関係整理のみ本 Task で明記"
+  - "後続 Task: staging_item_image / staging_ranking_signal 等（Staging 系）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
