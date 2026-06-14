@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 518
   issue: 513
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-semantic.yaml"
   source_branch: "docs/task-513-item-semantic-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 513
     required: true
   pr:
-    number: null
+    number: 518
     required: true
   diff:
     required: true
