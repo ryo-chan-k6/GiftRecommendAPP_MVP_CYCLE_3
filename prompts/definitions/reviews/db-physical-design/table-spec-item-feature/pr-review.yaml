@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 519
   issue: 514
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-feature.yaml"
   source_branch: "docs/task-514-item-feature-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 514
     required: true
   pr:
-    number: null
+    number: 519
     required: true
   diff:
     required: true
@@ -158,7 +158,7 @@ review_points:
     - "PK / unique（uq_item_feature_idempotent）/ Index（idx_item_feature_lookup）/ CHECK（chk_feature_value_range）が DDL Task へ展開できる粒度か"
     - "item_id への物理 FK（ON）・semantic_config_version_id への物理 FK（ON）方針が明記されているか"
     - "feature_normalization_version_id への LOGICAL FK 方針が feature_normalization_version_テーブル定義書 §7.1 / §10 と一致しているか"
-    - "feature_code 参照と feature_definition_id 列要否の判断が §17 で整理されているか（論理ER §10.2 vs 物理ER §11）"
+    - "§17.1 決定事項（No.1〜5）が本文に反映されているか"
     - "raw_feature_value / normalized_feature_value（または feature_value）の物理名が物理ER §11・バッチ処理一覧と整合しているか"
     - "BATCH-012 / BATCH-013 の更新主体（batch）・再実行単位・item_generation_queue 連携が妥当か"
     - "8 軸ごと 1 行（item_id × semantic_config_version_id × feature_code）の行モデルが明記されているか"
@@ -172,11 +172,8 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "feature_definition_id 列の物理化要否 vs feature_code のみ（論理ER §10.2 vs 物理ER §11 冪等キー）"
-  - "raw_feature_value / feature_value の物理名（物理ER §11 chk_feature_value_range 表記との突合）"
-  - "feature_input_hash 列の必須化と算出対象フィールドの範囲"
-  - "履歴行保持 vs 同一冪等キーでの Upsert 上書き方針"
-  - "semantic_config_version_id / feature_normalization_version_id の ON DELETE 詳細"
+  - "§17.1 No.1〜5 は Human Review #514 で決定済み。AI Review では本文反映の充足を確認する"
+  - "item_semantic（#513）未 merge 時の BATCH-012 入力前提の記載で十分か"
 
 risk_points:
   - "item_semantic テーブル定義書（#513）未 merge 時、BATCH-012 入力関係の記述が論理ER 参照に留まる"
@@ -187,6 +184,6 @@ risk_points:
 notes:
   - "Batch R03 No.2: item_feature"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item-feature.yaml"
-  - "Issue #514 / Branch docs/task-514-item-feature-table-spec"
+  - "Issue #514 / Branch docs/task-514-item-feature-table-spec / PR #519"
   - "先行 merge 済み: #495 / PR #500（item）、#470 / PR #479（feature_definition）、#458 / PR #460（feature_normalization_version）、#507 / PR #512（item_generation_queue）"
   - "並行 Task: #513 item_semantic（Batch R03 No.1）"
