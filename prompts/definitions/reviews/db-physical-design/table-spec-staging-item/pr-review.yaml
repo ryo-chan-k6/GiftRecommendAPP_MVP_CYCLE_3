@@ -153,7 +153,7 @@ review_points:
     - "staging_item → product_diff_result judged_as 関係（staging_item_id）が整理されているか"
     - "Staging 系物理 FK なし（LOGICAL + Index）方針が §8 等で明記されているか"
     - "BATCH-005 / BATCH-006 / BATCH-007 における staging_item 作成・更新主体（batch）が妥当か"
-    - "Retention / 中間データ保持方針が妥当か"
+    - "idx_staging_item_* Index が §9 / 物理ER §10 に定義されているか"
   security:
     - "secret / .env 実値が含まれていないか"
 
@@ -164,19 +164,17 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "staging 行 Upsert / Unique キー: raw_metadata_id + external_item_code vs バッチ実行ごと履歴行保持"
-  - "reviewAverage / reviewCount 等レビュー列を staging_item に持つか（item_review_summary #503 との責務分担）"
-  - "price 列名: 論理ER price vs item.item_price とのマッピング"
-  - "source 列の staging 保持要否（Upsert キー source + external_item_code との対応）"
-  - "diff_status の staging 段階 NULL 許容 vs BATCH-006 判定後のみ設定"
-  - "normalized_hash 算出タイミング: BATCH-005 Staging 保存時 vs BATCH-006 差分判定時"
-  - "Retention / 古い staging 行の削除方針"
+  - "UNIQUE キー `(raw_metadata_id, external_item_code)` — **確定**（§17.1 No.1 / staging_item_テーブル定義書 §7）"
+  - "`source` 列の Staging 明示保持 — **採用**（§17.1 No.2）"
+  - "`review_average` / `review_count` の Staging 列 — **採用**（§17.1 No.3 / item_review_summary §5.7）"
+  - "`diff_status` — **Staging 行 NULL 可**。判定正本は `product_diff_result` 優先（§17.1 No.4）"
+  - "`normalized_hash` 算出 — **BATCH-005 内確定**。BATCH-006 は比較のみ（§17.1 No.5）"
+  - "Retention / 古い staging 行の削除 — **物理ER §13 方針に従う**（成功 Batch 後即 DELETE）"
 
 risk_points:
   - "raw_product_metadata（#506 / PR #511）との raw_metadata_id 参照・import_status 連動の引き継ぎ"
   - "item（#495 / PR #500）との Upsert キー・normalized_hash 経路の一貫性"
   - "product_diff_result / staging_item_image 後続 Task への staging_item_id / external_item_code 参照引き継ぎ"
-  - "物理ER §10 に staging_item 専用 Index 案が未記載のため、本 Task で Index 設計を補完する必要"
   - "外部商品データ連携設計書 hash 対象項目と staging 列の対応漏れ"
 
 notes:

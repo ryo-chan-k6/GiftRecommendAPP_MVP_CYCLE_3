@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-14                      |
-| 更新日         | 2026-06-14                      |
+| 更新日         | 2026-06-14（Human Review #517 反映） |
 
 ---
 
@@ -108,7 +108,7 @@ flowchart LR
 | 物理ER 関係 | `staging_item` → `product_diff_result` : `judged_as`（**LOGICAL** 1:0..1） |
 | 参照列 | `product_diff_result.staging_item_id` → `staging_item.staging_item_id`（本体定義は別 Task） |
 | 判定 Batch | BATCH-006（Product Diff Detector / `MOD-BATCH-014`） |
-| `diff_status` | Staging 行にも **nullable** で保持可（enum定義書: Staging 段階での判定）。確定値は `product_diff_result` が正本候補 |
+| `diff_status` | Staging 行は **NULL 可**（BATCH-005 時点は未設定）。判定 **正本は `product_diff_result`**。必要なら BATCH-006 で Staging 行も UPDATE（§17.1 No.4 **確定**） |
 
 ### 5.5 `staging_item` → `item_review_summary` 反映経路
 
@@ -132,7 +132,7 @@ flowchart LR
 | `rank` / `lastBuildDate` | （列なし） | **`staging_ranking_signal`** へ委譲 |
 | `attribute_ids` | （列なし） | MVP **DB 列なし**。正規化 Payload / hash 入力にのみ含める（`item_テーブル定義書` §12.3） |
 | `shop_name` | （列なし） | MVP **非保持**（`shop_code` のみ。`item` も `shopName` 非保持） |
-| `source`（暗黙） | `source` | Upsert キー用に **明示列として採用**（§17.1 No.2 提案） |
+| `source`（暗黙） | `source` | Upsert キー用に **明示列として採用**（§17.1 No.2 **確定**） |
 
 ### 5.7 `normalized_hash` 責務分担
 
@@ -140,7 +140,7 @@ flowchart LR
 | ---- | --------------- | ---- |
 | `content_hash` | `raw_product_metadata`（BATCH Raw 保存時） | Raw JSON 本体整合性 |
 | `normalized_hash` | **`staging_item` / `item`**（batch・BATCH-005 内） | 疑似差分判定・Upsert 更新判定 |
-| 算出タイミング | **BATCH-005 Staging 変換完了時**（`MOD-BATCH-012` / `MOD-BATCH-013`） | BATCH-006 は **比較のみ**（§17.1 No.5 提案） |
+| 算出タイミング | **BATCH-005 Staging 変換完了時**（`MOD-BATCH-012` / `MOD-BATCH-013`） | BATCH-006 は **比較のみ**（§17.1 No.5 **確定**） |
 | hash 入力正本 | 外部商品データ連携設計書 §6.4（`item_テーブル定義書` §12.3 と同一） | 画像・レビューは hash 入力に含むが列は子テーブル / Staging レビュー列 |
 
 ---
@@ -169,7 +169,7 @@ flowchart LR
 | 18 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | 行作成日時 |
 | 19 | `updated_at` | Updated At | `timestamptz` | `yes` | — | — | — | `now()` | 行最終更新日時 |
 
-> **論理ER §9.2 との差分**: 論理ER表は `price` / `external_genre_id` / `diff_status` / `normalized_hash` までを列挙。本定義書は Upsert・Item 子反映・hash 入力のため **`source` / `availability` / `review_average` / `review_count` / `staged_at`** を追加（§5.6・§17.1）。
+> **論理ER §9.2 との差分**: 論理ER §9.2 は Human Review #517 決定（§17.1）に基づき **`source` / `availability` / `review_average` / `review_count` / `staged_at`** を主要属性に含める（`docs/05_アプリケーション設計/アプリ/database/論理ER.md` §9.2 参照）。
 
 ---
 
@@ -178,7 +178,7 @@ flowchart LR
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `staging_item_id` | サロゲート UUID | `product_diff_result.staging_item_id` 被参照 |
-| UNIQUE | `raw_metadata_id`, `external_item_code` | Raw 1 件あたり同一 `itemCode` は 1 Staging 行 | Human Review 提案（§17.1 No.1）。BATCH-005 冪等 |
+| UNIQUE | `raw_metadata_id`, `external_item_code` | Raw 1 件あたり同一 `itemCode` は 1 Staging 行 | Human Review #517 **確定**（§17.1 No.1）。BATCH-005 冪等 |
 
 ---
 
@@ -218,7 +218,7 @@ flowchart LR
 | `idx_staging_item_source_code` | `source`, `external_item_code` | btree | BATCH-006/007 の Item 突合 | Upsert キー |
 | `idx_staging_item_diff_status` | `diff_status` | btree | 差分判定後の抽出 | nullable 列 |
 
-> 物理ER §10 には staging_item 専用 Index 案が未記載。本 Task で上記を **テーブル定義書正本** とし、必要に応じて物理ER 追記を別 Task 化する。
+> 物理ER §10 `staging_item` Index 案と整合（Human Review #517 反映）。
 
 ---
 
@@ -429,21 +429,17 @@ ON CONFLICT (raw_metadata_id, external_item_code) DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | UNIQUE キー `(raw_metadata_id, external_item_code)` | バッチ実行ごと履歴行 vs 最新行 Upsert | Human | — | §17.1 No.1 |
-| 2 | `source` 列の Staging 明示保持 | 論理ER §9.2 未列挙。Upsert キー整合 | Human | — | §17.1 No.2 |
-| 3 | `review_average` / `review_count` の Staging 列採否 | `item_review_summary` 反映経路 | Human | — | §17.1 No.3 |
-| 4 | `diff_status` の Staging 保持 vs `product_diff_result` のみ | 二重保持の要否 | Human | — | §17.1 No.4 |
-| 5 | `normalized_hash` 算出タイミング | BATCH-005 内 vs BATCH-006 開始時 | Human | — | §17.1 No.5 |
+| — | — | — | — | — | Human Review #517 にて No.1〜5 を決定済み（下記参照） |
 
-### 17.1 Human Review 提案（Issue #517）
+### 17.1 Human Review 決定事項（Issue #517）
 
-| No | 論点 | 提案内容 | 備考 |
-| --: | ---- | -------- | ---- |
-| 1 | UNIQUE キー | **`(raw_metadata_id, external_item_code)`** を MVP 必須とする。同一 Raw 内の itemCode 重複を防止 | §7・§12.2 ON CONFLICT |
-| 2 | `source` 列 | **採用**。`raw_product_metadata.source` を Staging INSERT 時にコピー。Upsert キーを item と一致 | §6 No.3 |
-| 3 | レビュー列 | **採用**。`review_average` / `review_count` を Staging に保持し BATCH-007 で `item_review_summary` へ | `item_review_summary_テーブル定義書` §5.7 |
-| 4 | `diff_status` | **Staging 行は NULL 可**。判定正本は `product_diff_result` を優先。必要なら BATCH-006 で Staging 行も UPDATE | enum定義書「Staging 段階での判定」 |
-| 5 | hash 算出タイミング | **BATCH-005 内**（Staging 保存前）に `normalized_hash` を確定。BATCH-006 は比較のみ | 論理ER §9.3 フロー |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | UNIQUE キー | **`(raw_metadata_id, external_item_code)`** を MVP 必須とする。同一 Raw 内の itemCode 重複を防止 | Human | §7・§12.2 ON CONFLICT |
+| 2 | `source` 列 | **採用**。`raw_product_metadata.source` を Staging INSERT 時にコピー。Upsert キーを item と一致 | Human | §6 No.3 |
+| 3 | レビュー列 | **採用**。`review_average` / `review_count` を Staging に保持し BATCH-007 で `item_review_summary` へ | Human | `item_review_summary_テーブル定義書` §5.7 |
+| 4 | `diff_status` | **Staging 行は NULL 可**。判定正本は `product_diff_result` を優先。必要なら BATCH-006 で Staging 行も UPDATE | Human | enum定義書「Staging 段階での判定」 |
+| 5 | hash 算出タイミング | **BATCH-005 内**（Staging 保存前）に `normalized_hash` を確定。BATCH-006 は比較のみ | Human | 論理ER §9.3 フロー |
 
 ---
 
@@ -480,4 +476,4 @@ ON CONFLICT (raw_metadata_id, external_item_code) DO UPDATE SET
 - `staging_item_image` / `product_diff_result` 本体定義が out_of_scope であることが §5.1 / §8.3 で明示されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
-- Human Review 提案（§17.1）が未確定事項として明示されている
+- Human Review #517 決定事項（§17.1 No.1〜5）が本文に反映されている

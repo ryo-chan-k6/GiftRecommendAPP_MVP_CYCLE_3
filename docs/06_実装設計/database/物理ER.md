@@ -332,6 +332,10 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `error_log` | `idx_error_log_owner` | `owner_type`, `owner_id`, `occurred_at` | btree | 障害調査 | |
 | `api_call_log` | `idx_api_call_log_batch` | `batch_run_id`, `requested_at` | btree | Batch 分析 | |
 | `raw_product_metadata` | `idx_raw_metadata_status` | `import_status`, `fetched_at` | btree | 取込監視 | |
+| `staging_item` | `uq_staging_item_raw_metadata_code` | `raw_metadata_id`, `external_item_code` | unique | BATCH-005 冪等 | `staging_item_テーブル定義書` §7 |
+| `staging_item` | `idx_staging_item_raw_metadata` | `raw_metadata_id` | btree | Raw 単位一覧・Retention | |
+| `staging_item` | `idx_staging_item_source_code` | `source`, `external_item_code` | btree | Item 突合 | Upsert キー |
+| `staging_item` | `idx_staging_item_diff_status` | `diff_status` | btree | 差分判定後抽出 | nullable |
 | `product_diff_result` | `idx_product_diff_batch_code` | `batch_run_id`, `external_item_code` | btree | 差分追跡 | Retention 対象候補 |
 | `item_generation_queue` | `idx_item_gen_queue_status` | `queue_status`, `queued_at` | btree | 再生成処理 | |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
@@ -346,6 +350,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `recommendation_run` | `fk_recommendation_run_pair` | FK | `pair_id` | `pair_master.pair_id` 参照 | §17 No.1 |
 | `recommendation_request` | — | — | 条件列 + JSONB | 個別カラムと payload 併用 | §17 No.2 |
 | `item` | `uq_item_source_external_code` | unique | `source`, `external_item_code` | 商品 Upsert キー | |
+| `staging_item` | `uq_staging_item_raw_metadata_code` | unique | `raw_metadata_id`, `external_item_code` | Raw 内 itemCode 一意 | `staging_item_テーブル定義書` §17.1 No.1 |
 | `ranking_snapshot` | `uq_ranking_snapshot_observation_key` | unique | `source`, `external_genre_id`, `period`, `last_build_date` | 観測キー一意 | §17.2 No.1 |
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | unique | `ranking_snapshot_id`, `rank` | ランキング明細一意 | |
 | `item_feature` | `uq_item_feature_idempotent` | unique | `item_id`, `semantic_config_version_id`, `feature_code`, `feature_input_hash`, `feature_normalization_version_id` | 再生成冪等 | テーブル一覧 §7 補足 |
