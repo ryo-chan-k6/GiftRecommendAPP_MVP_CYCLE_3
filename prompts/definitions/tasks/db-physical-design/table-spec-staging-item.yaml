@@ -1,0 +1,257 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-staging-item"
+  title: "staging_item:Staging Itemテーブル定義書作成"
+  summary: "物理ER・論理ER §9.2 / §9.3・状態遷移設計書・enum定義書・外部商品データ連携設計書・raw_product_metadata / item テーブル定義書を入力に、外部商品取込 Staging 正本 `staging_item` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R03 No.5。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提・product_diff_status）"
+    - number: 505
+      purpose: "fetch_cursor テーブル定義書（外部商品データ連携系上流。merge 済み前提）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書（transforms_to 親 Metadata。merge 済み前提）"
+    - number: 495
+      purpose: "item テーブル定義書（Staging→Item Upsert 先正本。merge 済み前提）"
+    - number: 494
+      purpose: "external_genre テーブル定義書（external_genre_id 参照正本。merge 済み前提）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 510
+      purpose: "Task #505 PR（fetch_cursor。merge 済み前提）"
+    - number: 511
+      purpose: "Task #506 PR（raw_product_metadata。merge 済み前提）"
+    - number: 500
+      purpose: "Task #495 PR（item。merge 済み前提）"
+    - number: 499
+      purpose: "Task #494 PR（external_genre。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R03 No.5。論理ER §9.2・テーブル一覧 §6 No.20。
+  外部商品取込の Staging 正本。`raw_product_metadata` → `staging_item` → `item` 昇格フローの中核。
+  BATCH-005（Raw取込・Staging変換）で作成、BATCH-006（商品差分判定）・BATCH-007（Item反映）の入力となる。
+  親 Epic Branch 最新（enum #440、fetch_cursor #505、raw_product_metadata #506、item #495 merge 済み前提）を前提とする。
+  Issue #517 / Branch `docs/task-517-staging-item-table-spec` で作業する。
+
+objective: |
+  `staging_item` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `raw_product_metadata` との transforms_to 関係、`item` への Upsert キー（`source` + `external_item_code`）、`normalized_hash` / `diff_status`（product_diff_status）・BATCH-005〜007 との関係を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の staging_item テーブル定義書作成"
+  - "物理ER 外部商品データ連携系・論理ER §9.2 / §9.3・テーブル一覧 §6 No.20 との突合"
+  - "状態遷移設計書 §6.5 Product Diff Result 状態・enum定義書 product_diff_status との整合"
+  - "packages/code-definitions/state/product_diff_status.yaml との突合"
+  - "外部商品データ連携設計書 §6.3〜§6.4（差分判定・normalized_hash 対象）・§7 フローとの突合"
+  - "raw_product_metadata_テーブル定義書 §8 transforms_to 関係・normalized_hash 責務分担との整合"
+  - "item_テーブル定義書 §8 / §12（Staging→Item Upsert キー・normalized_hash 経路）との突合"
+  - "バッチ設計方針書 BATCH-005 / BATCH-006 / BATCH-007・処理構成定義書 MOD-BATCH-020〜022 との登録/反映/差分判定方針整理"
+  - "インターフェース一覧 IF-DB-BATCH-005（Staging 保存）等との整合"
+  - "product_diff_result / staging_item_image 等への関係整理（本体定義は別 Task へ委譲）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "staging_item_image / staging_ranking_signal / staging_genre / staging_attribute テーブル定義書（別 Task）"
+  - "product_diff_result / item_import_summary テーブル定義書（本 Task では judged_as / 集計関係の整理のみ）"
+  - "api_call_log テーブル定義書"
+  - "raw_product_object（Object Storage 正本・DB 非管理）のテーブル定義書"
+  - "item_review_summary 等 Item 子テーブルへの列マッピング詳細（staging レビュー列は本 Task で整理、子テーブル反映は #503 参照）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系分類・raw_product_metadata → staging_item transforms_to・staging_item → item upserts・product_diff_result judged_as（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "diff_status（product_diff_status）enum 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 外部商品データ連携系エンティティ属性・§9.3 疑似差分取得構造・Staging→Item フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.20 staging_item・外部商品データ連携系 Staging 補足・Normalized Hash 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.5 Product Diff Result 状態（new / updated / unchanged / unavailable）・差分判定フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§6.3 新規・更新・変更なし判定・§6.4 hash 対象項目・§7 Staging 変換フロー・楽天API属性マッピング"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Staging 正本区分（一時 / 中間）・Batch 管理主体"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-005 Staging 保存・trace キー（raw_metadata_id / staging_item_id）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-005 Staging 変換・BATCH-006 差分判定・BATCH-007 Item 反映・staging_item 更新タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-005〜007 の入出力・staging_item 更新タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "MOD-BATCH-020 Staging Transformer / MOD-BATCH-022 Staging Repository・staging_item 保存フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "staging_item / raw_metadata_id trace キー・Retention 方針"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "§8 transforms_to（raw_metadata_id）・content_hash vs normalized_hash 責務分担（merge 済み前提）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8 staging_item → item Upsert キー・§12 normalized_hash 経路・active_status 連動（merge 済み前提）"
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+      purpose: "外部商品データ連携系上流・Batch R02 系章構成参考（merge 済み前提）"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "external_genre_id 参照・LOGICAL FK 方針（merge 済み前提）"
+    - path: "packages/code-definitions/state/product_diff_status.yaml"
+      required: true
+      purpose: "diff_status enum 正本（packages）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-staging-item.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-staging-item/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "staging_item テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §9.2・テーブル一覧 §6 No.20 と矛盾しない"
+  - "raw_product_metadata → staging_item transforms_to（raw_metadata_id）関係が明記されている"
+  - "staging_item → item Upsert キー（source + external_item_code）と normalized_hash 経路が明記されている"
+  - "diff_status（product_diff_status）と BATCH-006 差分判定の関係が整理されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "staging-item-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 517
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 505
+      purpose: "fetch_cursor テーブル定義書 完了（merge 済み前提）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書 完了（transforms_to 親 Metadata 正本）"
+    - number: 495
+      purpose: "item テーブル定義書 完了（Upsert 先正本）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER raw_product_metadata → staging_item transforms_to（LOGICAL 1:N）との整合"
+    - "物理ER staging_item → item upserts（LOGICAL N:1・Upsert キー external_item_code）との整合"
+    - "物理ER staging_item → product_diff_result judged_as（LOGICAL 1:0..1）との整合"
+    - "論理ER §9.2 属性（staging_item_id / raw_metadata_id / external_item_code / item_name / item_caption / catchcopy / price / item_url / external_genre_id / shop_code / normalized_hash / diff_status）との整合"
+    - "論理ER §9.3 fetch_cursor → api_call_log → raw_product_metadata → staging_item フローとの整合"
+    - "状態遷移設計書 §6.5 Product Diff Result 状態一覧との整合"
+    - "enum定義書 product_diff_status と packages/code-definitions YAML との整合"
+    - "外部商品データ連携設計書 §6.3 / §6.4 normalized_hash 対象項目との突合"
+    - "raw_product_metadata_テーブル定義書 §8 transforms_to・normalized_hash 責務分担との整合"
+    - "item_テーブル定義書 §8 / §12 Staging→Item Upsert キー・hash 経路との整合"
+    - "バッチ設計方針書 BATCH-005 / BATCH-006 / BATCH-007 における staging_item 作成・参照・反映タイミング"
+    - "インターフェース一覧 IF-DB-BATCH-005 との整合"
+    - "Staging 系物理 FK なし（LOGICAL + Index）方針の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R03 No.5: staging_item（外部商品データ連携系 / Staging 中間正本）"
+  - "Issue #517 / Branch docs/task-517-staging-item-table-spec"
+  - "Issue 本文のテーブル一覧参照 §8 No.32 は semantic_config を指すため、正本は §6 No.20 を用いる"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#505 / PR #510（fetch_cursor）、#506 / PR #511（raw_product_metadata）、#495 / PR #500（item）、#494 / PR #499（external_genre）"
+  - "Human Review 論点: staging 行の Upsert / Unique キー（raw_metadata_id + external_item_code vs バッチ実行ごと履歴行）、Retention / 削除方針、reviewAverage / reviewCount 等の staging 列採否"
+  - "Human Review 論点: price 列名（論理ER price vs item.item_price）、source 列の staging 保持要否（item.source との対応）、diff_status の staging 段階 NULL 許容"
+  - "Human Review 論点: normalized_hash 算出タイミング（BATCH-005 Staging 保存時 vs BATCH-006 差分判定時）"
+  - "product_diff_result / staging_item_image 本体は out_of_scope。関係整理のみ本 Task で明記"
+  - "後続 Task: staging_item_image 等（Staging 系）、product_diff_result 定義書"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
