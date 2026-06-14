@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                        |
 | 作成日         | 2026-06-14                   |
-| 更新日         | 2026-06-14                   |
+| 更新日         | 2026-06-14（Human Review #515 反映・#514 item_feature 突合） |
 
 ---
 
@@ -48,7 +48,7 @@ Batch 事前生成（BATCH-013 Feature 正規化 Batch）で UPSERT され、Onl
 ## 5. 用途・責務
 
 - **Meaning 射影の正本**（テーブル一覧 §7 No.30・正本定義表 `item_social` / `item_symbolic`）
-- BATCH-013 において、同一 `item_id` + `semantic_config_version_id` の **8 軸 `item_feature.normalized_value`** 集合から `item_social` / `item_symbolic` を算出して UPSERT する
+- BATCH-013 において、同一 `item_id` + `semantic_config_version_id` の **8 軸 `item_feature.normalized_feature_value`** 集合から `item_social` / `item_symbolic` を算出して UPSERT する
 - User Meaning（`user_meaning.user_social` / `user_symbolic`）と **同一 Gift Meaning Space** 上で距離・一致度計算（Matching）に利用する
 - Online 推薦中は **更新しない**（論理ER §16.1・`item_テーブル定義書` §5.2 と同型）
 
@@ -67,13 +67,14 @@ Batch 事前生成（BATCH-013 Feature 正規化 Batch）で UPSERT され、Onl
 | 観点 | 方針 |
 | ---- | ---- |
 | 生成 Batch | **BATCH-013**（Feature 正規化 Batch。`item_feature.raw_value` → `normalized_value` と **同一トランザクション** で Meaning 射影） |
-| 保存 I/F | **IF-DB-BATCH-014**（`item_feature.normalized_value` / `item_meaning` を UPDATE / UPSERT） |
-| 入力正本 | 同一 `item_id` + `semantic_config_version_id` の **`item_feature` 8 行**（MVP 8 軸すべて `normalized_value` が非 NULL） |
-| 入力列 | `item_feature.feature_code` + `item_feature.normalized_value`（正規化後 0.0〜1.0） |
+| 保存 I/F | **IF-DB-BATCH-014**（`item_feature.normalized_feature_value` / `item_meaning` を UPDATE / UPSERT） |
+| 入力正本 | 同一 `item_id` + `semantic_config_version_id` の **`item_feature` 8 行**（MVP 8 軸すべて `normalized_feature_value` が非 NULL） |
+| 入力列 | `item_feature.feature_code` + `item_feature.normalized_feature_value`（正規化後 0.0〜1.0。`item_feature_テーブル定義書` §6 列名） |
 | 出力列 | 本テーブル `item_social` / `item_symbolic` |
 | カーディナリティ | `item_feature` **8 行 : `item_meaning` 1 行**（version 単位） |
 | 再生成トリガー | `item_feature` 集合の再生成（`feature_input_hash` / `feature_normalization_version_id` 変更を含む）に追随して BATCH-013 が再 UPSERT |
-| 先行 Task | `item_feature` テーブル定義書（#514）。未 merge 時は論理ER §10.2・物理ER §11 `uq_item_feature_idempotent` を参照 |
+| 入力行の選定 | `item_feature_テーブル定義書` §17.1 No.5：**item 単位で最新 `generated_at` の冪等キー組 8 行**を射影入力とする |
+| 生成元正本 | `item_feature_テーブル定義書`（#514 merge 済み） |
 
 #### 5.2.1 生成パイプライン（Batch R03）
 
@@ -86,7 +87,7 @@ item_semantic（BATCH-010〜011）
   ↓
 item_feature.raw_value（BATCH-012）
   ↓
-item_feature.normalized_value + item_meaning（BATCH-013）← IF-DB-BATCH-014
+item_feature.normalized_feature_value + item_meaning（BATCH-013）← IF-DB-BATCH-014
   ↓
 Matching / meaning_distribution_metric（BATCH-016）
 ```
@@ -97,9 +98,9 @@ Matching / meaning_distribution_metric（BATCH-016）
 
 GiftMeaningSpace定義書 §5–§7 を正本とする。
 
-| 座標 | 入力 Feature（`normalized_value`） | MVP 集約 |
-| ---- | ----------------------------------- | -------- |
-| `item_social` | `formality`, `safety`, `brand_appropriateness` | 加重平均（重みは `semantic_config_version` 内。未設定時は **単純平均**） |
+| 座標 | 入力 Feature（`normalized_feature_value`） | MVP 集約 |
+| ---- | ------------------------------------------- | -------- |
+| `item_social` | `formality`, `safety`, `brand_appropriateness` | **`semantic_config_version` 内の加重平均**。重み未設定時は **単純平均**（Human Review #515 決定済み） |
 | `item_symbolic` | `emotion`, `novelty`, `intimacy`, `symbolic_identity`, `story_richness` | 同上 |
 
 ```text
@@ -120,8 +121,8 @@ item_symbolic =
 | ---- | ---- |
 | 値域 | **0.0〜1.0**（Feature 正規化後と同値域。Matching 比較可能） |
 | 射影タイミング | **Feature 正規化後**（GiftMeaningSpace §7.2 `item_meaning_projection`） |
-| 重み正本 | `semantic_config_version`（§5.4）。本テーブル行には **重み JSON を保持しない** |
-| 欠損 Feature | 8 軸のいずれかが欠損・NULL の場合、**行を UPSERT しない**（`item_feature.generation_status` で先行判定。詳細は #514） |
+| 重み正本 | `semantic_config_version`。**行に重み JSON を保持しない**（Human Review #515 決定済み） |
+| 欠損 Feature | 8 軸のいずれかで `normalized_feature_value IS NULL` の場合、**行を UPSERT しない**（`item_feature_テーブル定義書` §10 `chk_item_feature_normalized_range` 準拠） |
 
 ### 5.4 `user_meaning` との対称性
 
@@ -137,7 +138,7 @@ item_symbolic =
 | 更新主体 | reco（Online 生成） | batch（事前生成） |
 | 参照主体 | reco（Matching） | batch / reco（Matching） |
 
-> **論理ER §10.2 との差分**: 論理ER主要属性表に **`item_meaning` エンティティが未列挙**（`user_meaning` のみ定義）。本定義書は物理ER §9・テーブル一覧 §7 No.30 を正として `item_meaning_id` / `item_id` / `semantic_config_version_id` / `item_social` / `item_symbolic` / `generated_at` を採用する。論理ER への追記は別 docs Task で検討する（§17.1 No.4）。
+論理ER §10.2 に `item_meaning` を追記済み（Issue #515）。`user_meaning` と Social / Symbolic 列名を対称とする。
 
 ### 5.5 分布メトリクスとの責務境界
 
@@ -158,7 +159,7 @@ item_symbolic =
 | --: | -------- | ------ | -- | ---- | -- | -- | ------ | ------- | ---- |
 | 1 | `item_meaning_id` | Item Meaning ID | `uuid` | `yes` | `yes` | — | `yes` | `gen_random_uuid()` | Meaning 行 ID |
 | 2 | `item_id` | Item ID | `uuid` | `yes` | — | `ON` | — | — | 対象商品。`item.item_id` 参照 |
-| 3 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `yes` | — | `LOGICAL` | — | — | 射影に用いた意味体系 version |
+| 3 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `yes` | — | `ON` | — | — | 射影に用いた意味体系 version。`item_feature` と同型 |
 | 4 | `feature_normalization_version_id` | Feature Normalization Version ID | `uuid` | `yes` | — | `LOGICAL` | — | — | 入力 `item_feature` 集合が使用した正規化 version（再現性） |
 | 5 | `item_social` | Item Social | `numeric(6,4)` | `yes` | — | — | — | — | Social 座標（0.0〜1.0） |
 | 6 | `item_symbolic` | Item Symbolic | `numeric(6,4)` | `yes` | — | — | — | — | Symbolic 座標（0.0〜1.0） |
@@ -166,7 +167,7 @@ item_symbolic =
 | 8 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | 行作成日時 |
 | 9 | `updated_at` | Updated At | `timestamptz` | `yes` | — | — | — | `now()` | 行更新日時（再 UPSERT 時） |
 
-> **`item_social` / `item_symbolic` の型**: MVP では **スカラー `numeric(6,4)`** を採用（`user_meaning` 対称・JSONB ベクトルは不採用）。Human Review 論点は §17.1 No.1。
+> **`item_social` / `item_symbolic` の型**: MVP では **スカラー `numeric(6,4)`** を採用（`user_meaning` 対称・JSONB ベクトルは不採用。Human Review #515 §17.1 No.1 **決定済み**）。
 
 > **`feature_normalization_version_id`**: 同一 version の `item_feature` 8 行と **一致** させる。`item_feature` 行ごとに version が異なる場合は **射影前に整合を取る**（通常 BATCH-013 単一 run では同一 version）。
 
@@ -188,8 +189,8 @@ item_symbolic =
 | カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
 | ------ | ------ | ------ | ---------- | ---- |
 | `item_id` | `item.item_id` | `ON` | `ON DELETE RESTRICT` | 物理ER §9・`item_テーブル定義書` §8.2 |
-| `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | Index 推奨 | `semantic_config_version_テーブル定義書` §8 |
-| `feature_normalization_version_id` | `feature_normalization_version.feature_normalization_version_id` | `LOGICAL` | Index 推奨 | `feature_normalization_version_テーブル定義書` §8 |
+| `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `ON` | `ON DELETE RESTRICT` | `item_feature_テーブル定義書` §8.1 と同型 |
+| `feature_normalization_version_id` | `feature_normalization_version.feature_normalization_version_id` | `LOGICAL` | Index 推奨 | `item_feature` / `feature_normalization_version_テーブル定義書` §8.2 |
 
 ### 8.2 被参照
 
@@ -202,8 +203,19 @@ item_symbolic =
 
 | 生成元 | 関係 | 備考 |
 | ------ | ---- | ---- |
-| `item_feature`（8 行 / version） | derives_from | 同一 `item_id` + `semantic_config_version_id` + 8 `feature_code` |
+| `item_feature`（8 行 / 現行世代） | derives_from | 同一 `item_id` + `semantic_config_version_id` + 8 `feature_code`。入力は最新 `generated_at` 冪等キー組（`item_feature_テーブル定義書` §17.1 No.5） |
 | BATCH-013 / IF-DB-BATCH-014 | generates | 正規化と射影を同一処理単位 |
+
+### 8.4 `item_feature` との整合（#514 merge 後）
+
+| 論点 | `item_feature`（#514 正本） | 本テーブル |
+| ---- | --------------------------- | ---------- |
+| 射影入力列 | `normalized_feature_value`（0.0〜1.0） | `item_social` / `item_symbolic` へ集約 |
+| 入力行選定 | 最新 `generated_at` の冪等キー組 8 行 | 同一 8 行を入力 |
+| `semantic_config_version_id` FK | 物理 FK **ON** | 物理 FK **ON**（同型） |
+| `feature_normalization_version_id` | LOGICAL（行に保持） | LOGICAL（射影再現性のため同一 version を記録） |
+| 状態列 | なし（`normalized_feature_value IS NULL` で未完了判定） | なし |
+| 更新 Batch | BATCH-012 raw / BATCH-013 normalized | BATCH-013 射影（同一 run） |
 
 ---
 
@@ -224,6 +236,7 @@ item_symbolic =
 | ------ | ---- | ---- | ---- | ---- |
 | `item_meaning_pkey` | PRIMARY KEY | `item_meaning_id` | 主キー | — |
 | `fk_item_meaning_item_id` | FOREIGN KEY | `item_id` | `item(item_id)` ON DELETE RESTRICT | §8.1 |
+| `fk_item_meaning_semantic_config_version_id` | FOREIGN KEY | `semantic_config_version_id` | `semantic_config_version(semantic_config_version_id)` ON DELETE RESTRICT | §8.1 |
 | `uq_item_meaning_item_scv` | UNIQUE | `item_id`, `semantic_config_version_id` | 冪等キー | §7 |
 | `chk_item_meaning_social_range` | CHECK | `item_social` | `item_social >= 0.0 AND item_social <= 1.0` | 物理ER §11 `chk_feature_value_range` と同型 |
 | `chk_item_meaning_symbolic_range` | CHECK | `item_symbolic` | `item_symbolic >= 0.0 AND item_symbolic <= 1.0` | 同上 |
@@ -244,7 +257,7 @@ item_symbolic =
 
 | 操作 | 実行主体 | 条件 | 更新項目 | 冪等性 | 備考 |
 | ---- | -------- | ---- | -------- | ------ | ---- |
-| UPSERT | batch（BATCH-013） | 8 軸 `item_feature.normalized_value` が揃っている | 全業務列 + `updated_at` | `item_id` + `semantic_config_version_id` | IF-DB-BATCH-014 |
+| UPSERT | batch（BATCH-013） | 8 軸 `item_feature.normalized_feature_value` が揃っている | 全業務列 + `updated_at` | `item_id` + `semantic_config_version_id` | IF-DB-BATCH-014 |
 | SELECT | batch / reco | Matching / 監視 | — | — | Online 参照 |
 | INSERT / UPDATE / DELETE | api | — | — | **禁止** | Online 推薦中に更新しない |
 | DELETE | batch（メンテナンス） | §13 方針 | 孤児行等 | 定期 | 通常は UPSERT のみ |
@@ -253,9 +266,11 @@ item_symbolic =
 
 ```text
 1. 対象 item_id + semantic_config_version_id の item_feature 8 行を取得
-2. いずれか normalized_value が NULL → 本テーブル UPSERT スキップ（error_log 等）
+   （item 単位で最新 generated_at の冪等キー組 — item_feature §17.1 No.5）
+2. いずれか normalized_feature_value が NULL → 本テーブル UPSERT スキップ
 3. GiftMeaningSpace §5 射影式で item_social / item_symbolic を算出
-4. feature_normalization_version_id は 8 行の共通 version を記録（不一致時は Human エスカレーション）
+   （重み未設定時は単純平均 — §17.1 No.3 決定済み）
+4. feature_normalization_version_id は 8 行の共通 version を記録（不一致時は error_log）
 5. UPSERT ON CONFLICT (item_id, semantic_config_version_id)
 6. generated_at = now(), updated_at = now()
 ```
@@ -355,21 +370,18 @@ DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `item_social` / `item_symbolic` の物理型 | scalar vs JSONB ベクトル | Human | Task PR Human Review | MVP 案: `numeric(6,4)` スカラー（§6） |
-| 2 | 射影重みスナップショット | version 変更後の再現性 | Human | 同上 | MVP 案: **非保持**（`semantic_config_version` 正本参照） |
-| 3 | 加重平均 vs 単純平均 | GiftMeaningSpace §5 は両方許容 | Human | 同上 | Config 未設定時は単純平均 |
-| 4 | 論理ER §10.2 追記 | `item_meaning` エンティティ未列挙 | Human | 別 docs Task | 本定義書で差分明示済み（§5.4） |
-| 5 | #514 merge 後突合 | `item_feature` 列名・`generation_status` 連携 | Human | #514 PR 後 | 未 merge 時は物理ER §11 を正本 |
+| — | — | — | — | — | Human Review #515 にて No.1〜6 を決定済み（下記参照） |
 
-### 17.1 Human Review 論点（Issue #515）
+### 17.1 Human Review 決定事項（Issue #515）
 
-| No | 論点 | MVP 提案 | 備考 |
-| --: | ---- | -------- | ---- |
-| 1 | Social / Symbolic 列型 | **`numeric(6,4)` スカラー 2 列** | `user_meaning` 対称。JSONB は不採用 |
-| 2 | 冪等キー | **`UNIQUE (item_id, semantic_config_version_id)`** | `item_feature` 8 行 : 本テーブル 1 行 |
-| 3 | mean / std | **本テーブルに持たない** | `meaning_distribution_metric`（BATCH-016）へ委譲 |
-| 4 | 射影重み | **行に持たない** | `semantic_config_version` 参照 |
-| 5 | `feature_normalization_version_id` | **保持する**（LOGICAL） | `item_feature` 集合との再現性 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | Social / Symbolic 列型 | **`numeric(6,4)` スカラー 2 列**（JSONB 不採用） | Human | §6 |
+| 2 | 射影重みスナップショット | **行に保持しない**。`semantic_config_version` 正本参照 | Human | §5.3 |
+| 3 | 加重平均 vs 単純平均 | **`semantic_config_version` 内加重平均**。重み未設定時は **単純平均** | Human | §5.3 |
+| 4 | 論理ER §10.2 追記 | **`item_meaning` エンティティを追記**（Issue #515 内で反映） | Human | 論理ER §10.2 / §8.1 / §14 / §16 |
+| 5 | #514 merge 後突合 | **`item_feature_テーブル定義書` を正本**とし、`normalized_feature_value` / 最新世代 8 行 / FK 方針を整合 | Human | §5.2 / §8.4 |
+| 6 | 冪等キー / mean・std | **`UNIQUE (item_id, semantic_config_version_id)`**。mean / std は **`meaning_distribution_metric` のみ** | Human | §5.5 / §7 |
 
 ---
 
@@ -378,7 +390,7 @@ DO UPDATE SET
 | 種別 | パス / URL | 用途 |
 | ---- | ---------- | ---- |
 | 物理ER | `docs/06_実装設計/database/物理ER.md` | §9 FK・§11 制約方針 |
-| 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §10.2 user_meaning 対称・§16 責務境界 |
+| 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §10.2 item_meaning 追記・§16 責務境界 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §7 No.30 |
 | 正本定義表 | `docs/05_アプリケーション設計/アプリ/database/正本定義表.md` | Item Meaning 正本区分 |
 | GiftMeaningSpace | `docs/04_ドメインモデル設計/GiftMeaningSpace定義書.md` | §5–§7 射影ルール |
@@ -395,7 +407,7 @@ DO UPDATE SET
 | feature_definition | `docs/06_実装設計/database/feature_definition_テーブル定義書.md` | 8 軸 |
 | feature_normalization_version | `docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md` | 正規化 version |
 | enum定義書 | `docs/06_実装設計/database/enum定義書.md` | feature_code |
-| item_feature（任意） | `docs/06_実装設計/database/item_feature_テーブル定義書.md` | #514 merge 後 |
+| item_feature | `docs/06_実装設計/database/item_feature_テーブル定義書.md` | #514 merge 済み・生成元正本 |
 
 ---
 
@@ -407,7 +419,9 @@ DO UPDATE SET
 - BATCH-013 / IF-DB-BATCH-014 による `item_feature` → `item_meaning` 生成関係が §5.2 / §12 で明示されている
 - 冪等キー `item_id` + `semantic_config_version_id` が §7 / §12.1 で定義されている
 - mean / std 等分布統計が本テーブルに混在せず、`meaning_distribution_metric` と責務分離されている（§5.5）
-- 論理ER §10.2 未列挙差分が §5.4 で明示されている
+- 論理ER §10.2・§16.1 / §16.2 と整合している
+- `item_feature_テーブル定義書`（#514）との列名・入力行選定・FK 方針が §8.4 で整合している
+- §17.1 決定事項（No.1〜6）が本文に反映されている
 - Online 更新禁止・Batch 更新主体が §5 / §12 で明示されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
