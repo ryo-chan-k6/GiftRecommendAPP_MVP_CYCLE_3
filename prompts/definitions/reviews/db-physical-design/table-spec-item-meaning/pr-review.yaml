@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 520
   issue: 515
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-meaning.yaml"
   source_branch: "docs/task-515-item-meaning-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 515
     required: true
   pr:
-    number: null
+    number: 520
     required: true
   diff:
     required: true
