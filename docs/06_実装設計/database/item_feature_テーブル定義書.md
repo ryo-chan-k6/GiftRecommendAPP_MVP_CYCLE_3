@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                        |
 | 作成日         | 2026-06-14                   |
-| 更新日         | 2026-06-14                   |
+| 更新日         | 2026-06-14（Human Review #514 反映） |
 
 ---
 
@@ -124,9 +124,9 @@ item_generation_queue（generation_type = semantic | feature）
 | 8 | `normalized_feature_value` | Normalized Feature Value | `numeric(8,6)` | `no` | — | — | — | — | BATCH-013 出力。Matching 用 0.0〜1.0 |
 | 9 | `generated_at` | Generated At | `timestamptz` | `yes` | — | — | — | — | 当該行の Feature 生成完了日時（UTC）。BATCH-012 完了時に設定 |
 
-> **論理ER §10.2 との差分（§8.1）**: 論理ERは `feature_definition_id` を主要属性に列挙するが、物理ER §11 冪等キーは `feature_code` を使用する。MVP 物理 DDL では **`feature_code` のみ** を保持し、`feature_definition_id` 列は持たない（`feature_definition_テーブル定義書` §8.1 方針に整合）。
+> **論理ER §10.2 との差分（§8.4）**: 論理ERは `feature_definition_id` を主要属性に列挙するが、物理ER §11 冪等キーは `feature_code` を使用する。MVP 物理 DDL では **`feature_code` のみ** を保持し、`feature_definition_id` 列は持たない（§17.1 No.1 **決定済み**）。
 >
-> **物理ER §11 との差分（CHECK 列名）**: 物理ER `chk_feature_value_range` は `feature_value` / `normalized_feature_value` と記載する。本定義書では論理ER §10.2 に合わせ **`raw_feature_value`** を raw 列名とする（§8.1・§17.1 No.2）。
+> **物理ER §11 との差分（CHECK 列名）**: 物理ER `chk_feature_value_range` は `feature_value` / `normalized_feature_value` と記載する。本定義書では論理ER §10.2 に合わせ **`raw_feature_value`** を raw 列名とする（§8.4・§17.1 No.2 **決定済み**）。
 
 ---
 
@@ -169,7 +169,7 @@ item_generation_queue（generation_type = semantic | feature）
 
 | 論点 | 論理ER §10.2 | 物理ER §11 / テーブル一覧 §7 | 本定義書の採用 |
 | ---- | ------------ | ----------------------------- | -------------- |
-| 軸参照キー | `feature_definition_id` | `feature_code`（冪等キー） | **`feature_code` のみ**（§6 注記） |
+| 軸参照キー | `feature_definition_id` | `feature_code`（冪等キー） | **`feature_code` のみ**（§17.1 No.1 決定済み） |
 | raw 値列名 | `raw_feature_value` | `feature_value`（CHECK 表記） | **`raw_feature_value`** |
 | 入力 hash | 未列挙 | 冪等キー要素 | **`feature_input_hash` 必須列** |
 | normalization FK | `feature_normalization_version_id` | LOGICAL | **LOGICAL 維持** |
@@ -188,7 +188,7 @@ item_generation_queue（generation_type = semantic | feature）
 | `idx_item_feature_item_id` | `item_id` | btree | FK 補助・障害調査 | batch 再実行単位の抽出 |
 | `idx_item_feature_norm_version` | `feature_normalization_version_id` | btree | 正規化 version 別分析 | 運用・監査（物理ER §10 未記載。本 Task で追加方針） |
 
-Online 参照では、Run 開始時に固定した `semantic_config_version_id` と、batch が解決した現行 `feature_input_hash` / `feature_normalization_version_id` に一致する行（通常は冪等キー最新世代の 8 行）を `idx_item_feature_lookup` で取得する。
+Online 参照では、Run 開始時に固定した `semantic_config_version_id` に対し、**item 単位で最新 `generated_at` の冪等キー組**に属する 8 行を `idx_item_feature_lookup` で取得する（§17.1 No.5 決定済み）。
 
 ---
 
@@ -203,7 +203,7 @@ Online 参照では、Run 開始時に固定した `semantic_config_version_id` 
 | `chk_item_feature_code_mvp` | CHECK | `feature_code` | MVP 8 軸のみ | `feature_definition` / 物理ER §11 と同一 |
 | `chk_item_feature_input_hash_format` | CHECK | `feature_input_hash` | `char_length(feature_input_hash) = 64` かつ hex 形式 | SHA-256 想定（詳細は BATCH-011 仕様 Task） |
 | `chk_item_feature_normalized_range` | CHECK | `normalized_feature_value` | `normalized_feature_value IS NULL OR (normalized_feature_value >= 0.0 AND normalized_feature_value <= 1.0)` | BATCH-013 完了後は NOT NULL 化をアプリ層で担保 |
-| `chk_item_feature_raw_range` | CHECK | `raw_feature_value` | `raw_feature_value >= 0.0 AND raw_feature_value <= 1.0` | MVP は Feature Engine 出力を 0〜1 clip 前提（§17.1 No.2） |
+| `chk_item_feature_raw_range` | CHECK | `raw_feature_value` | `raw_feature_value >= 0.0 AND raw_feature_value <= 1.0` | Feature Engine 出力を 0〜1 clip 前提（§17.1 No.2 決定済み） |
 
 > 物理ER §11 の `chk_feature_value_range`（`feature_value` / `normalized_feature_value`）は、本定義書では `raw_feature_value` + `normalized_feature_value` に読み替える（§8.4）。
 
@@ -295,11 +295,25 @@ UPDATE item_feature
 
 ### 12.4 Online 参照フロー（reco）
 
+§17.1 No.5 決定済み。
+
 ```text
 1. Run 開始時に semantic_config_version_id を固定
-2. 候補 item_id 集合に対し idx_item_feature_lookup で 8 軸を取得
-3. 同一 item_id + semantic_config_version_id で feature_code 8 件が揃うことを前提（欠損時は Matching 側でフォールバック／警告。詳細は reco 実装 Task）
-4. normalized_feature_value が NULL の行は Matching 対象外（BATCH 未完了）
+2. 候補 item_id ごとに、同一 semantic_config_version_id 配下で generated_at が最大の冪等キー組を特定
+3. 当該冪等キー組の 8 軸（feature_code 8 値）を idx_item_feature_lookup で取得
+4. 同一 item_id + semantic_config_version_id で feature_code 8 件が揃うことを前提（欠損時は Matching 側でフォールバック／警告。詳細は reco 実装 Task）
+5. normalized_feature_value が NULL の行は Matching 対象外（BATCH 未完了）
+```
+
+**現行世代解決（疑似 SQL）:**
+
+```sql
+SELECT DISTINCT ON (item_id, feature_code)
+       item_feature.*
+  FROM item_feature
+ WHERE item_id = ANY(:item_ids)
+   AND semantic_config_version_id = :semantic_config_version_id
+ ORDER BY item_id, feature_code, generated_at DESC;
 ```
 
 ### 12.5 skip 判定（batch）
@@ -314,7 +328,7 @@ UPDATE item_feature
 | ---- | ---- |
 | 保持期間 | 長期（推薦再現性・監査）。**現行世代**（Run / batch が参照する hash + normalization version 組）は削除しない |
 | 削除方式 | 原則 **物理 DELETE はメンテナンスのみ**。Online / 通常 batch では DELETE しない |
-| 削除条件 | 運用ポリシーで定めた世代数・経過日数を超えた **非現行** 冪等キー行のみ（§17.1 No.4） |
+| 削除条件 | **非現行** 冪等キー行のみ。MVP は運用メンテナンス時の最小 DELETE に限定（§17.1 No.4 決定済み） |
 | 論理削除 | 採用しない（`is_active` 列なし） |
 | アーカイブ | MVP では対象外 |
 
@@ -363,11 +377,17 @@ UPDATE item_feature
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `feature_definition_id` 列の物理化要否 | 論理ER §10.2 は id 参照、物理ER 冪等キーは code | Human | Human Review | **推奨: 物理化しない**（`feature_code` + `semantic_config_version_id` で十分） |
-| 2 | `raw_feature_value` の値域 CHECK | 物理ER §11 は `feature_value` 0〜1、BATCH パイプラインは 2 段階更新 | Human | Human Review | **推奨: MVP は raw も 0〜1 CHECK**（§10）。未 clip 運用なら CHECK 緩和 |
-| 3 | `feature_input_hash` 算出対象フィールド範囲 | BATCH-011 仕様が未確定 | Human | 別 Task | 本 Task では列存在・冪等キー含有のみ確定 |
-| 4 | 非現行世代行の DELETE ポリシー | ストレージ・再現性のトレードオフ | Human | 運用設計 | MVP は DELETE 最小（§13） |
-| 5 | Online 参照時の「現行世代」解決 | 複数 hash 行共存時に reco がどれを読むか | Human | reco 実装 Task | **推奨: item 単位で最新 `generated_at` の冪等キー組 8 行** |
+| — | — | — | — | — | Human Review #514 にて No.1〜5 を決定済み（下記参照） |
+
+### 17.1 Human Review 決定事項（Issue #514）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `feature_definition_id` 列の物理化要否 | **物理化しない**。`feature_code` + `semantic_config_version_id` で軸を特定する | Human | §6・§8.4 |
+| 2 | `raw_feature_value` の値域 CHECK | **MVP は raw も 0.0〜1.0 CHECK**（`chk_item_feature_raw_range`）。Feature Engine 出力は clip 前提 | Human | §10 |
+| 3 | `feature_input_hash` 算出対象フィールド範囲 | **本 Task では列存在・冪等キー含有のみ確定**。算出対象フィールドの詳細は BATCH-011 バッチ仕様 Task へ委譲 | Human | §5.2・§6 |
+| 4 | 非現行世代行の DELETE ポリシー | **MVP は DELETE 最小**。現行世代は保持し、非現行行の削除は運用メンテナンス時のみ | Human | §13 |
+| 5 | Online 参照時の「現行世代」解決 | **item 単位で最新 `generated_at` の冪等キー組 8 行**を読み取る | Human | §9・§12.4 |
 
 ---
 
@@ -402,5 +422,5 @@ UPDATE item_feature
 - BATCH-011 / BATCH-012 / BATCH-013・`item_generation_queue` との整合が取れている
 - 論理ER §16.1 / §16.2（Batch 更新・Online 参照のみ）が反映されている
 - カラム・制約・Index が DDL Task へ展開できる粒度である
-- §17 の Human Review 論点が明示されている
+- §17.1 決定事項（No.1〜5）が本文（§6 / §8.4 / §9 / §10 / §12.4 / §13）に反映されている
 - secret や `.env` 実値が含まれていない
