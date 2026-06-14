@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 522
   issue: 517
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-staging-item.yaml"
   source_branch: "docs/task-517-staging-item-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 517
     required: true
   pr:
-    number: null
+    number: 522
     required: true
   diff:
     required: true
