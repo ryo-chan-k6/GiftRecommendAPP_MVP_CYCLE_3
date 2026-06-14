@@ -18,6 +18,7 @@ branch:
   worktree_required: true
 
 target:
+  pr: 528
   issue: 523
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-staging-item-image.yaml"
   source_branch: "docs/task-523-staging-item-image-table-spec"
@@ -70,8 +71,8 @@ input:
     number: 523
     required: true
   pr:
-    required: false
-    source: "create_pr_after_work"
+    number: 528
+    required: true
   diff:
     required: true
     compare_with: "docs/epic-435-db-physical-design"
