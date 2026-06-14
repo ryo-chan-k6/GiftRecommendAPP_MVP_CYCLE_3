@@ -61,7 +61,7 @@ MVP では **Feature 推定には利用しない**（表示・Popularity 補助�
 - レビュー本文・個別レビュー履歴（MVP 対象外）
 - 商品画像（`item_image` の責務）
 - 人気シグナル明細（`item_popularity_signal` の責務）
-- Staging 中間データ（`staging_item` のレビュー列は Staging 定義 Task へ委譲）
+- Staging 中間データのレビュー列（`staging_item.review_average` / `review_count`。正本は `staging_item_テーブル定義書` §6）
 - `source` / `source_system` / `source_api` 列（Item 子テーブル共通方針で **行に持たない**。§5.2）
 - `is_active` 列（§18.1 No.3）
 - OpenAPI / generated 変更（Epic 終盤 Task #469 へ委譲）
@@ -120,7 +120,7 @@ MVP では **Feature 推定には利用しない**（表示・Popularity 補助�
 
 | 楽天商品検索 API | Staging 列 | 物理カラム | 備考 |
 | ---------------- | ---------- | ---------- | ---- |
-| `reviewAverage` | `review_average` | `review_average` | 外部商品データ連携設計書 §9.2 |
+| `reviewAverage` | `review_average` | `review_average` | `staging_item_テーブル定義書` §6 No.13 → 本テーブル |
 | `reviewCount` | `review_count` | `review_count` | 整数。0 件レビューもあり得る |
 | — | — | `fetched_at` | 当該 item のレビュー反映 Batch 完了時刻（UTC） |
 
@@ -345,6 +345,7 @@ OpenAPI schema 変更は Task #469 へ委譲。本定義書は DB ↔ 契約 doc
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-007・Feature推定非利用 |
 | 処理構成 | `docs/05_アプリケーション設計/アプリ/処理構成定義書.md` | §11.7 Snapshot マッピング |
 | item 定義書 | `docs/06_実装設計/database/item_テーブル定義書.md` | §8.2 FK 被参照・§12.1 反映順・§13 |
+| staging_item 定義書 | `docs/06_実装設計/database/staging_item_テーブル定義書.md` | §5.5 / §5.7 Staging レビュー列・BATCH-007 反映 |
 | item_image 定義書 | `docs/06_実装設計/database/item_image_テーブル定義書.md` | Item 子テーブル共通方針参考 |
 | API契約 | `docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md` | reviewSummary マッピング |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-007 |
@@ -361,6 +362,7 @@ OpenAPI schema 変更は Task #469 へ委譲。本定義書は DB ↔ 契約 doc
 - Feature 推定非利用（表示・Popularity 補助・Snapshot のみ）が §5.5 で明示されている
 - `recommendation_result_item` Snapshot 参照が §8.3 に整理されている
 - staging → item_review_summary Upsert 方針が §5.6 / §12 に整理されている
+- `staging_item_テーブル定義書` §17.1 No.3（レビュー列 Staging 保持）と整合している
 - Human Review #503 決定事項（§18.1 No.1〜5）が本文に反映されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない

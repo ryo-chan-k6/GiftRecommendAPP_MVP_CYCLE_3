@@ -336,6 +336,7 @@ staging_item（external_item_code + normalized_hash）
 | 状態遷移 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | §7.1 Item Active Status |
 | API契約 | `docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md` | Response マッピング |
 | 参照先テーブル | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | §8.2 被参照・型 `bigint`・#494 決定事項 |
+| Upsert 元 | `docs/06_実装設計/database/staging_item_テーブル定義書.md` | §5.3 Upsert キー・§12.4 列マッピング・#517 決定事項 |
 | 参考（FK 比較） | `docs/06_実装設計/database/normalization_rule_テーブル定義書.md` | §17.1.1 比較表形式 |
 
 ---
@@ -346,6 +347,7 @@ staging_item（external_item_code + normalized_hash）
 - 物理ER §8–§11・テーブル一覧 §5 No.10 と矛盾していない
 - `normalized_hash` / `active_status` / `external_item_code` 冪等方針が §12 に明記されている
 - `staging_item` → `item` Upsert キー（`source` + `external_item_code`）が明記されている
+- `staging_item_テーブル定義書` §17.1（Upsert キー・hash 算出・diff_status）と整合している
 - Online推薦中に `item` を更新しない方針が §5.2 に反映されている
 - API-PUB-003 の `isActive` / 非 active 422 方針と整合している
 - `external_genre_id` の LOGICAL 参照（`bigint`）と §18.1 決定事項が `external_genre_テーブル定義書` と整合している
