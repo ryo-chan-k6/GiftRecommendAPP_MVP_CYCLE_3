@@ -120,9 +120,11 @@ Human Review #507 §17.1 No.3 決定済み。
 | 新規 Item / 意味影響項目 / `normalized_hash` / `meaning_input_diff` あり | `semantic` | BATCH-009 デフォルト |
 | **`semantic_config_version_id` のみ**（Item 本文・意味入力不変） | `feature` | Semantic 再利用。Semantic ルール変更を `meaning_input_diff` で検知できない場合は Batch 仕様 Task で `semantic` 昇格条件を補足 |
 | `feature_input_hash` のみ変更 | `feature` | — |
-| `embedding_model_version_id` / `embedding_source_version` / `embedding_input_hash` | `embedding` | Feature 済み前提 |
+| `embedding_model_version_id` / `embedding_source_version` / `embedding_input_hash` | `embedding` | Feature 済み前提。`embedding_source_version` は batch 層トリガー（DB 列なし。`item_embedding_テーブル定義書` §17.1 No.2） |
 | 複数要因同時（例: hash + config version） | **最上流優先**: hash / meaning_input 変更あり → `semantic`、なければ `feature` | — |
 | 前回 `failed` の再実行 | **変更しない**（同一行を `queued` へ） | 初回登録値を保持 |
+
+> **Embedding 永続化との関係（Human Review #516）**: Queue / batch 層では `embedding_model_version_id`（＝`model_version_id`）・`embedding_source_version`・`embedding_input_hash` の変更を再生成トリガーとする。`item_embedding` テーブルが保持するのは **`model_version_id` + `embedding_input_hash` + `embedding_source_type`** のみ（`embedding_source_version` 物理列なし）。構築ルール version 変更で入力文脈が変われば `embedding_input_hash` も変わり得る。
 
 ### 5.7 二重処理禁止
 

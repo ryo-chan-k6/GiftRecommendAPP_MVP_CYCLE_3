@@ -1,0 +1,201 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-item-meaning-pr"
+  title: "item_meaning テーブル定義書 PRレビュー"
+  summary: "item_meaning テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §10.2・GiftMeaningSpace・テーブル一覧 §7 No.30・item / item_feature 生成系設計書・バッチ設計方針書 §13 との整合、Social / Symbolic 射影・item_feature 生成関係と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-515-item-meaning-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 520
+  issue: 515
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-meaning.yaml"
+  source_branch: "docs/task-515-item-meaning-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-item-meaning.yaml"
+    required: true
+  issue:
+    number: 515
+    required: true
+  pr:
+    number: 520
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/item_meaning_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item派生データ系分類・§9 item → item_meaning FK・§10 Index 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 user_meaning / item_feature 属性・§10.3 Feature 8 軸・§16 責務境界との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§7 No.30 item_meaning・Item派生データ系補足との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Item Meaning 正本区分（item_social / item_symbolic）の確認"
+    - path: "docs/04_ドメインモデル設計/GiftMeaningSpace定義書.md"
+      required: true
+      purpose: "§5–§7 Social / Symbolic 射影ルール・正規化後算出方針との整合"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+      purpose: "User Meaning × Item Meaning 比較前提との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "§13 Item Meaning 生成パイプライン・§13.5 Feature 正規化後射影との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-013 出力（item_feature / item_meaning）との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-014 保存 I/F との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "item_social_mean / item_symbolic_mean 等メトリクス列と item_meaning の責務境界"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_id 物理 FK ON 被参照・§5.1 派生データ系責務境界（#495 merge 済み正本）"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "派生再生成 Queue 経路（#507 merge 済み正本）"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "射影重み・semantic_config_version_id 参照"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "8 軸 feature_code・Social / Symbolic グループ"
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "item_feature 正規化 version との再現性参照"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: false
+      purpose: "#514 merge 済み時の生成元 Feature 正本との突合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feature_code enum との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（item_feature 本体再定義 / user_meaning / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "GiftMeaningSpace定義書 §5–§7 の Social / Symbolic 射影ルールと矛盾しないか"
+    - "論理ER §10.2 user_meaning（user_social / user_symbolic）との対称性が整理されているか"
+    - "テーブル一覧 §7 No.30・正本定義表 item_social / item_symbolic と一致しているか"
+    - "バッチ設計方針書 §13 生成パイプライン（Feature Normalized → Item Meaning）が §5 / §12 に整理されているか"
+    - "BATCH-013 / IF-DB-BATCH-014 による item_feature → item_meaning 生成・保存関係が明記されているか"
+    - "item_テーブル定義書 §5.1 / §8.2 との Item 派生データ系責務境界が明記されているか"
+    - "論理ER §10.2 に item_meaning 未列挙の差分が明示されているか"
+    - "ログ・Observability設計書の item_social_mean 等と meaning_distribution_metric の責務境界が明記されているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "item.item_id への物理 FK（ON・has 1:N）方針が明記されているか"
+    - "semantic_config_version_id 参照（LOGICAL / ON）方針が明記されているか"
+    - "item_social / item_symbolic（または同等列）の型・値域（0.0〜1.0）が定義されているか"
+    - "item_feature 正規化済み Feature 集合からの射影入力・再生成判定キーが明記されているか"
+    - "Online 参照のみ・Batch 更新主体（論理ER §16）が明記されているか"
+    - "DDL 適用順序が item / semantic_config_version / item_feature 作成後と整合しているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "item_social / item_symbolic の物理型（scalar vs JSONB ベクトル）と MVP 保持粒度"
+  - "射影重み（semantic_config_version 内）のスナップショット保持要否"
+  - "冪等キー（item_id + semantic_config_version_id 等）と item_feature 行集合との 1:1 / 1:N 関係"
+  - "mean / std 等分布統計量を item_meaning 行に持つか meaning_distribution_metric のみか"
+  - "論理ER §10.2 への item_meaning 追記要否（別 docs Task 化判断）"
+
+risk_points:
+  - "論理ER §10.2 に item_meaning エンティティ未列挙（user_meaning のみ定義）"
+  - "item_feature テーブル定義書（#514）未 merge 時の生成元 Feature 列名・冪等キー参照ブレ"
+  - "GiftMeaningSpace §5 の加重平均 vs 単純平均の MVP 採用と DB 列設計の整合"
+  - "BATCH-013 と BATCH-016（分布メトリクス）の item_meaning 更新タイミング・責務重複"
+  - "user_meaning（Run 単位）と item_meaning（商品単位）の version 参照粒度差"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item-meaning.yaml"
+  - "Batch R03 No.3: item_meaning"
+  - "先行 merge 済み: #495 item / PR #500、#507 item_generation_queue / PR #512、#508–#511"
+  - "Issue #515 / Branch docs/task-515-item-meaning-table-spec"
+  - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"
