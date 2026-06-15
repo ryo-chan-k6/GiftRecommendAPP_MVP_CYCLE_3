@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-15（`ranking_supplement` 粒度 #527 連携） |
+| 更新日         | 2026-06-15（`batch_type` 追加 #534 Human Review） |
 
 ---
 
@@ -79,6 +79,7 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | Item Generation Type | `generation_type` | batch | item_generation_queue | `yes` | Human Review 確定 |
 | Recommendation Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `recommendation_run_phase_name` |
 | Batch Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `batch_run_phase_name` |
+| Batch Type | `batch_type` | batch | batch_run_log | `yes` | id: `batch_type`。Issue #534 |
 | Input Type | `input_type` | semantic | input_type_rule / reco | `yes` | Featureルール §11.1。Issue #477 |
 | Application Method | `application_method` | semantic | input_type_rule / reco | `yes` | ディスパッチ先コード。Issue #477 |
 | Concept Feature Polarity | `polarity` | semantic | concept_feature_rule | `yes` | API-PUB-008。Issue #476 決定 |
@@ -357,6 +358,21 @@ Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の
 | `genre_search` | Genre Search | 楽天ジャンル検索API | BATCH-001 | `yes` | |
 | `attribute_search` | Attribute Search | 楽天属性検索API | 将来拡張 | `yes` | MVP では Raw 保存対象外の場合あり |
 
+### 6.25 Batch Type (`batch_type`)
+
+Human Review（Issue #534）にて Observability §13.2 の処理カテゴリを正本化した。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `external_fetch` | External Fetch | 外部 API 取得系 | BATCH-001〜004 | `yes` | |
+| `staging` | Staging | Raw → Staging 変換 | BATCH-005 | `yes` | |
+| `import` | Import | 差分判定・Item 反映・状態更新 | BATCH-006〜008 | `yes` | |
+| `feature_generation` | Feature Generation | 意味 / Feature / Embedding 生成 | BATCH-009〜016 | `yes` | |
+| `summary` | Summary | Import Summary 集計 | BATCH-017 | `yes` | |
+| `maintenance` | Maintenance | 保守・Retention 等 | 後続 Batch | `yes` | |
+
+`batch_name`（`BATCH-00N`）から `batch_type` への対応は `batch_run_log_テーブル定義書` §11.3 を正とする。
+
 ---
 
 ## 7. DB利用箇所
@@ -373,6 +389,7 @@ Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の
 | `phase_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
 | `error_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
 | `batch_run_log` | `run_status` | `batch_run_status` | NOT NULL | |
+| `batch_run_log` | `batch_type` | `batch_type` | NULL可 | Issue #534 確定 |
 | `api_call_log` | `call_status` | `api_call_status` | NOT NULL | |
 | `api_call_log` | `source_api` | `source_api` | NOT NULL | 論理ER §9.2。api_call_log 定義書（別 Task）で転記 |
 | `raw_product_metadata` | `import_status` | `raw_import_status` | NOT NULL | |
@@ -404,6 +421,7 @@ Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の
 | API-PUB-002 等 | Request | `mode` | `request_mode` | OpenAPI 上は `mode`。DB 列名は `request_mode` |
 | API-PUB-004 等 | Request | `feedback_target_type` | `feedback_target_type` | |
 | - | Response | `run_status` 等 | 各 state enum | MVP 初期 API では内部状態を直接公開しない設計。Contract Task で再確認 |
+| API-ADM-005 | Response | `batchType` / `runStatus` | `batch_type` / `batch_run_status` | Admin 専用。決定事項は batch_run_log 定義書 §5.6 |
 | API-PUB-008 | Response | `conceptFeatureRules[].polarity` | `polarity` | 任意応答。enum定義書 §6.22 と整合 |
 
 ---
@@ -414,7 +432,7 @@ Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の
 | ------------- | --------------------- | ------ | ---- | ---- |
 | `packages/code-definitions` | `state/*.yaml` 等 | 全 state enum | 正本 | 本 Task で作成 |
 | `apps/reco` | Run / Phase 記録 | `recommendation_run_status` 等 | 状態更新 | Phase4b 実装 |
-| `apps/batch` | Batch / Import | `batch_run_status` 等 | 状態更新 | Phase4b 実装 |
+| `apps/batch` | Batch / Import | `batch_run_status` / `batch_type` 等 | 状態更新 | Phase4b 実装 |
 | `apps/batch` | Fetch Cursor Manager | `fetch_cursor_type` | 走査種別判定 | Issue #505 |
 | `apps/batch` | Raw Product Metadata Writer 等 | `source_api` | API 種別識別 | Issue #506 |
 | `apps/api` | Feedback 保存 | `feedback_*` | Validation | Phase4b 実装 |
