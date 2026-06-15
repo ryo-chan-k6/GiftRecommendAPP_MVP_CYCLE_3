@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-15                         |
-| 更新日         | 2026-06-15（§17.1 Human Review 反映） |
+| 更新日         | 2026-06-15（Batch 系 Log Retention 90 日統一・#536 cross-cutting） |
 
 ---
 
@@ -331,14 +331,15 @@ GROUP BY diff_status;
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **365 日**（ログ・Observability設計書 §20.2。商品データ推移の運用分析用） |
+| 保持期間 | **90 日**（Human Review #536 No.10 cross-cutting 決定。旧 #533 の 365 日から短縮） |
 | 削除方式 | 物理 DELETE（将来 partition 検討可。物理ER §17 No.5） |
-| 削除条件 | `summarized_at < now() - interval '365 days'` |
+| 削除条件 | `summarized_at < now() - interval '90 days'` |
+| Batch アンカー | `batch_run_log_テーブル定義書` §13.1（`batch_run_id`） |
 | 論理削除 | 列なし |
 | 履歴 | **再集計履歴は保持しない**（INSERT 1 行が正本） |
 | アーカイブ | MVP 対象外 |
 
-> `product_diff_result` / Staging 系とは異なり、本テーブルは **中期保持（365 日）** とする。
+> MVP では **Batch 系 Log 90 日統一**（`error_log_テーブル定義書` §13.3）。長期の商品取込トレンドは後続 Metric / BI Task へ委譲。
 
 ---
 
@@ -376,7 +377,7 @@ GROUP BY diff_status;
 | 4 | 集計整合 | `new+updated+unchanged+unavailable` が `product_diff_result` COUNT と一致 | integration |
 | 5 | fetched_count | `api_call_log.item_count` 合計と整合（正本 §5.5。`item_count = 0` 時のみ staging 補完可） | integration |
 | 6 | partially_succeeded | Item 一部失敗時 `failed_count > 0` | integration |
-| 7 | Retention | 365 日超過行の DELETE ジョブ対象 | integration |
+| 7 | Retention | 90 日超過行の DELETE ジョブ対象 | integration |
 | 8 | 権限 | web client から Direct DB 書き込み不可 | manual |
 
 ---
@@ -395,6 +396,7 @@ GROUP BY diff_status;
 | 4 | `item_ranking` workflow の snapshot 件数列 | **MVP では専用列を持たない**。ランキング取得件数は **`fetched_count`** に集約 | Human | Observability §13.3 準拠。`ranking_snapshot` 明細は別テーブル正本 |
 | 5 | 再集計時の UPDATE / DELETE+INSERT | **MVP は INSERT 1 回のみ**。再実行時は **`ON CONFLICT (batch_run_id, source_api) DO NOTHING`**。UPDATE / DELETE+INSERT は行わない | Human | §12 |
 | 6 | `batch_run_log` 物理 FK | **MVP は LOGICAL FK + Index**（`api_call_log` 同型）。#534 完了後も物理 FK は付与しない | Human | `batch_run_log_テーブル定義書`（#534）と整合 |
+| 7 | Retention 具体日数 | **90 日**（#536 No.10 で Batch 系 Log 統一。旧 365 日から短縮） | Human | §13 |
 
 ---
 
@@ -425,6 +427,6 @@ GROUP BY diff_status;
 - カラム・型・制約・Index が DDL Task へ展開できる粒度か
 - `source_api` enum と packages 正本が一致しているか
 - Observability §13.3 の主要項目（`unavailable_count` / Feature / Embedding 件数）が反映されているか
-- Retention 365 日が §13 で明記されているか
+- Retention **90 日** が §13 で明記されているか
 - out_of_scope（DDL / apps / OpenAPI）に触れていないか
 - secret や `.env` 実値が含まれていないか

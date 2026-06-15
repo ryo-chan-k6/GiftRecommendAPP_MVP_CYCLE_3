@@ -1275,11 +1275,11 @@ Recommendation RequestやFeedbackには自由入力が含まれる。
 
 | データ | 推奨保持期間 | 備考 |
 | --- | --- | --- |
-| error_log | 90日〜180日 | 障害調査用 |
-| phase_log | **60日**（物理設計確定） | 処理追跡用。`phase_log_テーブル定義書` §13（Issue #535） |
-| batch_run_log | 180日〜365日 | Batch実行履歴 |
-| api_call_log | 90日〜180日 | 外部API調査用 |
-| item_import_summary | 365日 | 商品データ推移を見るため長め |
+| error_log | **90日**（物理設計確定） | 障害調査用。`error_log_テーブル定義書` §13（Issue #536） |
+| phase_log | **90日**（物理設計確定） | 処理追跡用。Batch 系 Log 統一（Issue #536 No.10）。`phase_log_テーブル定義書` §13 |
+| batch_run_log | **90日**（物理設計確定） | Batch実行履歴。BATCH-RET-001 アンカー。`batch_run_log_テーブル定義書` §13 |
+| api_call_log | **90日**（物理設計確定） | 外部API調査用。`api_call_log_テーブル定義書` §13 |
+| item_import_summary | **90日**（物理設計確定） | Batch 系 Log 統一（旧 365 日から短縮）。`item_import_summary_テーブル定義書` §13 |
 | raw_product_metadata | 180日〜365日 | Raw再処理要件次第 |
 | Raw Product Object | 30日〜180日 | Object Storageコスト次第 |
 | recommendation_run | 180日〜365日 | 評価・改善用途 |
@@ -1530,7 +1530,7 @@ API一覧では、以下の列を追加することを推奨する。
 - metric系テーブルを独立させるか、汎用metric_summaryへ統合するか
 - trace_id / error_code / owner_id / occurred_atにindexを張るか → **phase_log**: `trace_id` 列・`idx_phase_log_trace` 採用（Issue #535 §5.4・§9）
 - feature_code / metric_type / aggregation_scopeにindexを張るか
-- ログ系テーブルのretentionをどうするか → **phase_log: 60日**（Issue #535 §13）
+- ログ系テーブルのretentionをどうするか → **Batch 系 Log 一式 90日統一**（Issue #536 No.10。`error_log` / `phase_log` / `api_call_log` / `item_import_summary` / `batch_run_log` + BATCH-RET-001）
 ```
 
 ---
