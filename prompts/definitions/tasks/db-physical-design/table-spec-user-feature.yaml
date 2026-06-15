@@ -1,0 +1,295 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-user-feature"
+  title: "user_feature:User Featureテーブル定義書作成"
+  summary: "物理ER・論理ER・Featureルール定義書・テーブル一覧・先行テーブル定義書を入力に、8次元 Feature 値の User 側正本 `user_feature` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R07 No.2。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 543
+      purpose: "Batch R06 recommendation_run テーブル定義書（merge 済み・§8.2 recommendation_run_id 物理 FK ON 被参照正本）"
+    - number: 470
+      purpose: "Wave2 feature_definition テーブル定義書（merge 済み・feature_code 正本）"
+    - number: 458
+      purpose: "Config feature_normalization_version テーブル定義書（merge 済み・LOGICAL FK 方針）"
+    - number: 514
+      purpose: "Batch R03 No.2 item_feature テーブル定義書（merge 済み・対称関係の正本）"
+    - number: 473
+      purpose: "relationship_rule テーブル定義書（merge 済み・User Feature 基準値入力）"
+    - number: 474
+      purpose: "occasion_rule テーブル定義書（merge 済み・User Feature 基準値入力）"
+    - number: 475
+      purpose: "pair_rule テーブル定義書（merge 済み・Pair 補正入力）"
+    - number: 476
+      purpose: "concept_feature_rule テーブル定義書（merge 済み・Concept Delta 入力）"
+    - number: 477
+      purpose: "input_type_rule テーブル定義書（merge 済み・入力経路分岐）"
+    - number: 478
+      purpose: "feature_integration_rule テーブル定義書（merge 済み・統合重み）"
+    - number: 553
+      purpose: "並行: user_semantic テーブル定義書（Batch R07 No.1。未 merge 時は論理ER §7.2 / §10.2 を参照）"
+  related_prs:
+    - number: 548
+      purpose: "Task recommendation_run PR（merge 済み）"
+    - number: 479
+      purpose: "Task feature_definition PR（merge 済み）"
+    - number: 460
+      purpose: "Task feature_normalization_version PR（merge 済み）"
+    - number: 519
+      purpose: "Task item_feature PR（merge 済み・対称関係正本）"
+    - number: 486
+      purpose: "Task relationship_rule PR（merge 済み）"
+    - number: 491
+      purpose: "Task feature_integration_rule PR（merge 済み）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R07 No.2。論理ER §7.2 / §10.2・テーブル一覧 §4 No.8。
+  8次元 Feature 値の User 側正本。Online 推薦時に reco が生成・参照する責務境界を物理定義する。
+  親 Epic Branch 最新（recommendation_run #543 / feature_definition #470 / feature_normalization_version #458 / item_feature #514 / Feature Rule 系 #473〜#478 merge 済み）を前提とする。
+  User Feature Generator（MOD-RECO-007）が Relationship / Occasion / Pair / Concept 入力を統合し、正規化後に本テーブルへ保存する（処理構成定義書・Featureルール定義書 §18.1）。
+  Issue #554 / Branch `docs/task-554-user-feature-table-spec` で作業する。
+
+objective: |
+  `user_feature` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `recommendation_run_id` 単位の 8 行モデル、`feature_normalization_version_id` の保持・参照方針、`source_type`（enum定義書 §12.1）を明記し、
+  `item_feature` との対称関係（User 側 Run 単位 / Item 側商品単位の差分）を §8 系で整理する。
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の user_feature テーブル定義書作成"
+  - "物理ER User意味推定系・論理ER §7.2 / §10.2・テーブル一覧 §4 No.8 との突合"
+  - "物理ER §9 FK（recommendation_run_id ON / feature_normalization_version_id LOGICAL）・§11 制約（chk_feature_value_range）との整合"
+  - "item_feature_テーブル定義書との対称関係・差分（Run 単位 / 商品単位、batch vs reco 更新主体、冪等キー有無）の明記"
+  - "feature_definition / feature_normalization_version / normalization_rule テーブル定義書との参照キー整合"
+  - "relationship_rule / occasion_rule / pair_rule / concept_feature_rule / input_type_rule / feature_integration_rule テーブル定義書との User Feature 生成入力整合"
+  - "recommendation_run_テーブル定義書 §8.2 / 処理構成定義書 MOD-RECO-007 / 機能×モジュール対応表との整合"
+  - "インターフェース一覧 IF-DB-RECO-003（User Semantic / Feature 保存）との整合"
+  - "enum定義書 §6.16 feature_code・§12.1 user_feature_source_type・packages/code-definitions/semantic/feature_code.yaml との整合"
+  - "論理ER §16.3（reco 生成）・§16.1（Online 中に item_feature 等を更新しない）との責務境界反映"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "user_semantic / user_meaning テーブル定義書（別 Task / Batch R07）"
+  - "item_feature / item_semantic / item_meaning / item_embedding テーブル定義書（Item派生データ系・別 Batch）"
+  - "User Feature 統合・正規化アルゴリズムの実装詳細（reco モジュール実装の責務）"
+  - "feature_input_hash / item_generation_queue（Item 側 Batch 専用。User 側には適用しない）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "User意味推定系分類・FK・制約 chk_feature_value_range（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feature_code enum 参照・user_feature_source_type（§6.16・§12.1）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§7.2 / §10.2 user_feature エンティティ属性・§10.3 MVP 8 軸・§16 Online/Batch / reco 責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§4 No.8 user_feature・Run 単位保存・version 紐づけ補足"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "User Feature 正本区分・reco 生成責務"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "User Feature 生成・統合・正規化・Matching 前提（§4.1・§12・§17.5・§18.1）"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "MOD-RECO-007 User Feature Generator・Online 推薦パイプライン"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "User Feature 生成モジュール責務・入出力"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-003 User Semantic / Feature 保存"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "phase_name user_feature_generated との整合"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 recommendation_run_id 物理 FK（ON）被参照・version 解決コンテキスト"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "対称関係正本（§8.4 差分整理・§17.1 決定事項との対比）"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "feature_code 正本・派生テーブル参照キー方針（§8.1 feature_definition_id vs feature_code）"
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "§7.1 user_feature LOGICAL FK 方針・Run 単位派生の冪等 unique 非採用"
+    - path: "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version → feature_normalization_version binding 解決（reco 実行前）"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "Relationship 基準値入力（User Feature 生成）"
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      required: true
+      purpose: "Occasion 基準値入力（User Feature 生成）"
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+      purpose: "Pair 補正入力（User Feature 生成）"
+    - path: "docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md"
+      required: true
+      purpose: "Concept Delta 入力（User Feature 生成）"
+    - path: "docs/06_実装設計/database/input_type_rule_テーブル定義書.md"
+      required: true
+      purpose: "入力経路分岐（input_type / application_method）"
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+      purpose: "統合重み（user_feature_raw 合成係数）"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: false
+      purpose: "Run 解決 version と user_feature 列の denormalize 要否（論理ER §7.2 vs §10.2 差分）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: false
+      purpose: "phase_name user_feature_generated 連携"
+    - path: "packages/code-definitions/semantic/feature_code.yaml"
+      required: true
+      purpose: "MVP 8 軸 feature_code 正本（packages）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/user_feature_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-user-feature.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-user-feature/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "user_feature テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §7.2 / §10.2・テーブル一覧 §4 No.8 と矛盾しない"
+  - "item_feature_テーブル定義書との対称関係・差分が §8 系で明記されている"
+  - "recommendation_run_id 単位の 8 行モデル（1 Run × 8 feature_code）が明記されている"
+  - "feature_normalization_version_id の LOGICAL FK 方針と正規化 version 再現性が明記されている"
+  - "source_type（user_feature_source_type / aggregated 固定）が enum定義書 §12.1 と整合している"
+  - "論理ER §16.3（reco 生成）・IF-DB-RECO-003 が反映されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "user-feature-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 554
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 543
+      purpose: "recommendation_run テーブル定義書 完了（§8.2 recommendation_run_id 物理 FK ON 正本）"
+    - number: 470
+      purpose: "feature_definition テーブル定義書 完了（feature_code 正本）"
+    - number: 458
+      purpose: "feature_normalization_version テーブル定義書 完了（LOGICAL FK 方針）"
+    - number: 514
+      purpose: "item_feature テーブル定義書 完了（対称関係正本）"
+    - number: 473
+      purpose: "relationship_rule テーブル定義書 完了（User Feature 入力）"
+    - number: 478
+      purpose: "feature_integration_rule テーブル定義書 完了（統合重み）"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "docs/06_実装設計/database/user_feature_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 FK 表（recommendation_run_id ON・feature_normalization_version_id LOGICAL）との整合"
+    - "物理ER §11 chk_feature_value_range（user_feature は feature_value 列）との整合"
+    - "論理ER §7.2 / §10.2 属性（user_feature_id / recommendation_run_id / feature_definition_id / feature_normalization_version_id / feature_value / source_type / generated_at）との整合（差分は §8.1 で明示）"
+    - "テーブル一覧 §4 No.8・Run 単位保存・version 紐づけ補足との整合"
+    - "item_feature_テーブル定義書 §8.4 対称差分・§17.1 決定事項との対比が妥当か"
+    - "feature_definition_テーブル定義書 §8.1（feature_code vs feature_definition_id）・feature_normalization_version_テーブル定義書 §7.1 との整合"
+    - "relationship_rule / occasion_rule / pair_rule / concept_feature_rule / feature_integration_rule との User Feature 生成入力整合"
+    - "IF-DB-RECO-003・処理構成定義書 MOD-RECO-007・状態遷移 user_feature_generated との整合"
+    - "enum定義書 §6.16 feature_code 8 値・§12.1 source_type=aggregated・packages/code-definitions/semantic/feature_code.yaml との整合"
+    - "論理ER §16.3 reco 生成責務・§16.1 Online 中 item 派生非更新との境界明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R07 No.2: user_feature（User意味推定系 / Run 単位派生）"
+  - "Issue #554 / Branch docs/task-554-user-feature-table-spec"
+  - "先行 merge 済み: #543 / PR #548（recommendation_run）、#470 / PR #479（feature_definition）、#458 / PR #460（feature_normalization_version）、#514 / PR #519（item_feature）、#473〜#478 Feature Rule 系"
+  - "並行 Task: #553 user_semantic（Batch R07 No.1。未 merge 時は論理ER §7.2 / §10.2 を正として着手）"
+  - "Human Review 論点: feature_definition_id 列の物理化要否 vs feature_code のみ（item_feature #514 §17.1 No.1 との対称）、raw / normalized 2 列 vs feature_value 1 列（Featureルール §17.5 vs 論理ER §7.2）、semantic_config_version_id の user_feature 列 denormalize 要否（§7.2 vs §10.2）"
+  - "Human Review 論点: Run 単位 unique（recommendation_run_id + feature_code）の採用、chk_feature_value_range 対象列名、Retention / DELETE 方針（Run ライフサイクル連動）"
+  - "後続 Task: user_meaning（Batch R07 No.3 / #555）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
