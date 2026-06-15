@@ -211,7 +211,7 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `recommendation_feedback` | `recommendation_reason_id` | receives | `LOGICAL` | nullable。Feedback Task #547 |
+| `recommendation_feedback` | `recommendation_reason_id` | receives | `LOGICAL` | nullable。`feedback_target_type=reason` 時必須。`recommendation_feedback_テーブル定義書.md` §8.2 と双方向整合 |
 
 > **物理ER §9 との差分**: 現行物理ER §9 には `reason_template` → `recommendation_reason.template_id` の関係行が未記載。物理ER 更新は本 Task scope 外（reason_template 定義書 follow-up と同方針）。本定義書 §8.1 で LOGICAL 参照を明記する。
 

@@ -87,7 +87,7 @@ flowchart LR
 | 子 Feedback | `recommendation_feedback.recommendation_result_id` → 本テーブル（**物理 FK ON**。1:N receives） |
 | 子 Reason | **本テーブル経由ではなく** `recommendation_result_item` 経由（§5.1） |
 
-> **子テーブル定義**: `recommendation_result_item_テーブル定義書.md`（#545）で contains 側 FK・Snapshot 列・Index を詳細化済み。`recommendation_reason_テーブル定義書.md`（#546）で has 側・理由文列を詳細化済み。`recommendation_feedback` は Batch R06 No.5（#547）で詳細化する。
+> **子テーブル定義**: `recommendation_result_item_テーブル定義書.md`（#545）で contains 側 FK・Snapshot 列・Index を詳細化済み。`recommendation_reason_テーブル定義書.md`（#546）で has 側・理由文列を詳細化済み。`recommendation_feedback_テーブル定義書.md`（#547）で receives 側・冪等 UNIQUE・`feedback_type` 正本を詳細化済み。
 
 ### 5.3 親テーブルとの関係整理
 
@@ -262,7 +262,7 @@ recommendation_run 定義書 §5.5・§17.1 No.2 / No.3・RecommendationResult�
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | `recommendation_result_item` | `recommendation_result_id` | contains | `ON`（DDL Task） | 1:N。`recommendation_result_item_テーブル定義書.md` §8.1 と双方向整合（#545） |
-| `recommendation_feedback` | `recommendation_result_id` | receives | `ON`（DDL Task） | 1:N。Batch R06 No.5 |
+| `recommendation_feedback` | `recommendation_result_id` | receives | `ON`（DDL Task） | 1:N。`recommendation_feedback_テーブル定義書.md` §8.1 と双方向整合（#547） |
 | `evaluation_result` | `recommendation_result_id` | references | `LOGICAL` | Evaluation 系（将来） |
 | `error_log` | `owner_id`（`owner_type=recommendation_result`） | may_have | `LOGICAL` | enum §6.15。障害時 |
 

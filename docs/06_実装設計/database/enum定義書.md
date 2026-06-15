@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-15（`batch_type` 追加 #534 Human Review） |
+| 更新日         | 2026-06-15（`feedback_type` 追加 #547） |
 
 ---
 
@@ -74,6 +74,7 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | Evaluation Run Status | `evaluation_status` | state | Evaluation | `yes` | |
 | Recommendation Request Mode | `request_mode` | application | Request | `yes` | ドメイン docs では `mode` |
 | Feedback Target Type | `feedback_target_type` | application | Feedback | `yes` | |
+| Feedback Type | `feedback_type` | application | Feedback | `yes` | id: `feedback_type`。Issue #547 |
 | Log Owner Type | `owner_type` | application | phase_log / error_log | `yes` | polymorphic |
 | Feature Code | `feature_code` | semantic | Feature / Meaning | `yes` | MVP 8 軸固定 |
 | Item Generation Type | `generation_type` | batch | item_generation_queue | `yes` | Human Review 確定 |
@@ -377,6 +378,23 @@ Human Review（Issue #534）にて Observability §13.2 の処理カテゴリを
 
 `batch_name`（`BATCH-00N`）から `batch_type` への対応は `batch_run_log_テーブル定義書` §11.3 を正とする。
 
+### 6.26 Feedback Type (`feedback_type`)
+
+Recommendation Feedback定義書 §5.2・API-PUB-004 §6.4.1・`recommendation_feedback_テーブル定義書.md` §10.1 を正とする。`feedback_target_type` との整合は API Validation で担保する。
+
+| 値 | 表示名 | 意味 | 必須 `feedback_target_type` | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | --------------------------- | ----------- | ---- |
+| `item_good` | 商品候補として良い | 商品候補として適切 | `item` | `yes` | |
+| `item_bad` | 商品候補として微妙 | 商品候補として不適切 | `item` | `yes` | |
+| `item_not_match` | 文脈不一致 | 贈答文脈に合っていない | `item` | `yes` | |
+| `item_ng_violation` | NG違反 | NG 条件に反している | `item` | `yes` | |
+| `item_avoid_match` | avoid一致 | 避けたい条件に近い | `item` | `yes` | |
+| `reason_good` | 理由に納得 | 理由に納得できた | `reason` | `yes` | |
+| `reason_bad` | 理由に不納得 | 理由に納得できない | `reason` | `yes` | |
+| `result_good` | 推薦全体が良い | 推薦結果全体が適切 | `result` | `yes` | |
+| `result_bad` | 推薦全体が微妙 | 推薦結果全体が不適切 | `result` | `yes` | |
+| `comment` | 自由コメント | 定性コメント中心 | `result` / `item` / `reason` | `yes` | |
+
 ---
 
 ## 7. DB利用箇所
@@ -387,6 +405,7 @@ Human Review（Issue #534）にて Observability §13.2 の処理カテゴリを
 | `recommendation_result` | `result_status` | `recommendation_result_status` | NOT NULL | |
 | `recommendation_feedback` | `feedback_status` | `recommendation_feedback_status` | NOT NULL | |
 | `recommendation_feedback` | `feedback_target_type` | `feedback_target_type` | NOT NULL | |
+| `recommendation_feedback` | `feedback_type` | `feedback_type` | NOT NULL | Issue #547 |
 | `recommendation_request` | `request_mode` | `request_mode` | NOT NULL | |
 | `phase_log` | `phase_status` | `phase_status` | NOT NULL | |
 | `phase_log` | `phase_name` | `recommendation_run_phase_name` / `batch_run_phase_name` | NOT NULL | `owner_type` と組み合わせた CHECK |
@@ -425,6 +444,7 @@ Human Review（Issue #534）にて Observability §13.2 の処理カテゴリを
 | --- | ------------------ | ---- | ------ | ---- |
 | API-PUB-002 等 | Request | `mode` | `request_mode` | OpenAPI 上は `mode`。DB 列名は `request_mode` |
 | API-PUB-004 等 | Request | `feedback_target_type` | `feedback_target_type` | |
+| API-PUB-004 等 | Request | `feedbackType` | `feedback_type` | API camelCase。DB 列名は `feedback_type` |
 | - | Response | `run_status` 等 | 各 state enum | MVP 初期 API では内部状態を直接公開しない設計。Contract Task で再確認 |
 | API-ADM-005 | Response | `batchType` / `runStatus` | `batch_type` / `batch_run_status` | Admin 専用。決定事項は batch_run_log 定義書 §5.6 |
 | API-PUB-008 | Response | `conceptFeatureRules[].polarity` | `polarity` | 任意応答。enum定義書 §6.22 と整合 |
@@ -440,7 +460,7 @@ Human Review（Issue #534）にて Observability §13.2 の処理カテゴリを
 | `apps/batch` | Batch / Import | `batch_run_status` / `batch_type` 等 | 状態更新 | Phase4b 実装 |
 | `apps/batch` | Fetch Cursor Manager | `fetch_cursor_type` | 走査種別判定 | Issue #505 |
 | `apps/batch` | Raw Product Metadata Writer 等 | `source_api` | API 種別識別 | Issue #506 |
-| `apps/api` | Feedback 保存 | `feedback_*` | Validation | Phase4b 実装 |
+| `apps/api` | Feedback 保存 | `feedback_status` / `feedback_target_type` / `feedback_type` | Validation | Phase4b 実装 |
 | `apps/reco` | User Feature 生成ディスパッチ | `input_type` / `application_method` | Rule 経路分岐 | Issue #477 |
 
 ---
@@ -458,7 +478,7 @@ Human Review（Issue #534）にて Observability §13.2 の処理カテゴリを
 
 | 項目 | 内容 |
 | ---- | ---- |
-| OpenAPI影響 | `partial`（`mode` / `feedback_target_type` のみ直接影響） |
+| OpenAPI影響 | `partial`（`mode` / `feedback_target_type` / `feedback_type` のみ直接影響） |
 | Orval影響 | `false`（本 Task では OpenAPI 未変更） |
 | generated影響 | `false` |
 | Contract Task要否 | `false`（enum 値確定のみ。OpenAPI enum 化は後続 Contract Task） |
@@ -506,6 +526,7 @@ DB 制約方針:
 | 7 | `fetch_cursor_type` | **クローズ**（Issue #505） | Human | §6.23・`batch/fetch_cursor_type.yaml`。fetch_cursor テーブル定義書で転記 |
 | 8 | `source_api` | **クローズ**（Issue #506） | Human | §6.24・`batch/source_api.yaml`。raw_product_metadata テーブル定義書 §17.1 No.4 |
 | 9 | `phase_log` owner_type / retention | **クローズ**（Issue #535 HR） | Human | §6.15 注記・物理ER §13（60日）・`phase_log_テーブル定義書` §11.3 / §13 |
+| 10 | `feedback_type` | **クローズ**（Issue #547） | Human | §6.26・`feedback_type.yaml`・`recommendation_feedback_テーブル定義書` §10.1 |
 
 ### 12.1 No.3 方針メモ（テーブル定義 Task 引き継ぎ）
 

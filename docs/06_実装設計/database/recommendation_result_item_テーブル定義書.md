@@ -62,7 +62,7 @@ Public API（API-PUB-002）では内部スコアを返さないが、DB には�
 - 推薦結果ヘッダ（`recommendation_result` の責務。`recommendation_result_テーブル定義書.md`）
 - 推薦実行状態（`recommendation_run` の責務。`recommendation_run_テーブル定義書.md`）
 - 推薦理由本文（`recommendation_reason` の責務。`recommendation_reason_テーブル定義書.md`）
-- ユーザー Feedback 本体（`recommendation_feedback` の責務。#547 後続 Task）
+- ユーザー Feedback 本体（`recommendation_feedback` の責務。`recommendation_feedback_テーブル定義書.md`）
 - 商品正本の更新（`item` 系は Batch 責務。Online 推薦中に Item 系を更新しない）
 
 ### 5.2 Online推薦フロー上の位置づけ
@@ -208,7 +208,7 @@ Snapshot 元（`item_image` / `item_review_summary`）への **物理 FK は張�
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | `recommendation_reason` | `recommendation_result_item_id` | has | `ON`（DDL Task） | 物理ER §9 は 1:N。MVP DDL は `UNIQUE(recommendation_result_item_id)` で **実質 1:1**（`recommendation_reason_テーブル定義書.md` §17.1 No.4 **決定済み**） |
-| `recommendation_feedback` | `recommendation_result_item_id` | receives | `LOGICAL` | nullable。Feedback Task #547 |
+| `recommendation_feedback` | `recommendation_result_item_id` | receives | `LOGICAL` | nullable。`feedback_target_type=item` 時必須。`recommendation_feedback_テーブル定義書.md` §8.2 と双方向整合 |
 
 ---
 
