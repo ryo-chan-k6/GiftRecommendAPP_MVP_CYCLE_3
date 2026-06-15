@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 532
   issue: 527
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-api-call-log.yaml"
   source_branch: "docs/task-527-api-call-log-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 527
     required: true
   pr:
-    number: null
+    number: 532
     required: true
   diff:
     required: true
