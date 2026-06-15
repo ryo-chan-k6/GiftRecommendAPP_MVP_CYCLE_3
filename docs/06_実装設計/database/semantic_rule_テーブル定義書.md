@@ -126,7 +126,7 @@ reco / batch の Semantic Rule Resolver が参照する設定正本であり、*
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `user_semantic` | `extracted_semantic_json` 内 concept 参照 | generates_with | `LOGICAL` | 派生は `concept_code` 参照を推奨（semantic_concept §8.2） |
+| `user_semantic` | `extracted_semantic_json` 内 concept 参照 | generates_with | `LOGICAL` | `user_semantic_テーブル定義書` §5.3。`concept_code` 参照（semantic_concept §8.2） |
 | `item_semantic` | `semantic_json` 内 concept 参照 | generates_with | `LOGICAL` | batch 設計方針書の `semantic_concepts` 配列は code 参照 |
 
 > 本テーブルは Rule 正本のため、派生テーブルからの物理 FK 被参照は想定しない。

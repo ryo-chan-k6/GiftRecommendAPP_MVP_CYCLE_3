@@ -269,7 +269,7 @@ erDiagram
 | `recommendation_result_item.recommendation_result_item_id` | `recommendation_reason.recommendation_result_item_id` | has | `ON` | 1:N | |
 | `recommendation_result.recommendation_result_id` | `recommendation_feedback.recommendation_result_id` | receives | `ON` | 1:N | |
 | `recommendation_result_item.recommendation_result_item_id` | `recommendation_feedback.recommendation_result_item_id` | receives | `LOGICAL` | 1:N | nullable FK |
-| `recommendation_run.recommendation_run_id` | `user_semantic.recommendation_run_id` | generates | `ON` | 1:N | |
+| `recommendation_run.recommendation_run_id` | `user_semantic.recommendation_run_id` | generates | `ON` | 1:0..1 | `uq_user_semantic_recommendation_run_id`（`user_semantic_テーブル定義書` §17.1 No.2） |
 | `recommendation_run.recommendation_run_id` | `user_feature.recommendation_run_id` | generates | `ON` | 1:N | |
 | `recommendation_run.recommendation_run_id` | `user_meaning.recommendation_run_id` | generates | `ON` | 1:0..1 | |
 | `relationship_master.relationship_code` | `recommendation_request.relationship_code` | selected_by | `LOGICAL` | 1:N | マスタコード参照 |
@@ -286,6 +286,7 @@ erDiagram
 | `semantic_config_version.semantic_config_version_id` | `normalization_rule.semantic_config_version_id` | contains | `ON` | 1:N | Feature 正規化 binding |
 | `normalization_rule.feature_normalization_version_id` | `feature_normalization_version.feature_normalization_version_id` | resolves | `ON` | N:1 | binding 正本。物理 FK（§17.1 No.3 決定済み） |
 | `semantic_config_version.semantic_config_version_id` | `recommendation_run.semantic_config_version_id` | used_by | `LOGICAL` | 1:N | 再現性保持 |
+| `semantic_config_version.semantic_config_version_id` | `user_semantic.semantic_config_version_id` | generates_with | `LOGICAL` | 1:N | Run 固定 version と一致必須。`user_semantic_テーブル定義書` §17.1 No.1・No.4 |
 | `model_version.model_version_id` | `recommendation_run.model_version_id` | used_by | `LOGICAL` | 1:N | |
 | `ranking_config.ranking_config_id` | `recommendation_run.ranking_config_id` | used_by | `LOGICAL` | 1:N | |
 | `feature_normalization_version.feature_normalization_version_id` | `user_feature.feature_normalization_version_id` | normalizes | `LOGICAL` | 1:N | |
@@ -322,6 +323,9 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `recommendation_run` | `idx_recommendation_run_status` | `run_status`, `started_at` | btree | 状態監視 | |
 | `recommendation_result` | `idx_recommendation_result_run_id` | `recommendation_run_id` | btree | FK | unique 候補 |
 | `recommendation_result_item` | `idx_result_item_result_id_rank` | `recommendation_result_id`, `rank` | btree | 結果表示 | |
+| `user_semantic` | `uq_user_semantic_recommendation_run_id` | `recommendation_run_id` | unique | Run 単位 1 行・冪等 INSERT | `user_semantic_テーブル定義書` §9 |
+| `user_semantic` | `idx_user_semantic_version_id` | `semantic_config_version_id` | btree | version 参照・監査 | LOGICAL FK |
+| `user_semantic` | `idx_user_semantic_generated_at` | `generated_at` DESC | btree | 時系列調査 | |
 | `item` | `uq_item_source_external_code` | `source`, `external_item_code` | unique | Upsert キー | |
 | `item` | `idx_item_active_status` | `active_status`, `is_active` | btree | Retrieval 前フィルタ | |
 | `item_image` | `uq_item_image_item_url` | `item_id`, `image_url` | unique | Upsert キー | `item_image_テーブル定義書` §7 |
@@ -366,6 +370,9 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | テーブル | 制約名（案） | 種別 | 対象 | 内容 | 備考 |
 | -------- | ------------ | ---- | ---- | ---- | ---- |
 | `recommendation_result` | `uq_result_per_run` | unique | `recommendation_run_id` | 1 Run 1 Result | nullable run は別途検討 |
+| `user_semantic` | `uq_user_semantic_recommendation_run_id` | unique | `recommendation_run_id` | Run あたり 1 行 | `user_semantic_テーブル定義書` §17.1 No.2 |
+| `user_semantic` | `fk_user_semantic_recommendation_run_id` | FK | `recommendation_run_id` | `recommendation_run` 参照 ON DELETE RESTRICT | §8.1 |
+| `user_semantic` | `chk_extracted_semantic_json_concepts_array` | check | `extracted_semantic_json` | `concepts` 配列必須 | §5.3 |
 | `recommendation_run` | `fk_recommendation_run_pair` | FK | `pair_id` | `pair_master.pair_id` 参照 | §17 No.1 |
 | `recommendation_request` | — | — | 条件列 + JSONB | 個別カラムと payload 併用 | §17 No.2 |
 | `item` | `uq_item_source_external_code` | unique | `source`, `external_item_code` | 商品 Upsert キー | |
