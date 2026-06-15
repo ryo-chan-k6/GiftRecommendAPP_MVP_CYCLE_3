@@ -216,8 +216,6 @@ contract_gate:
 notes:
   - "Batch R05 No.2: batch_run_log（Log / Observability系 / Log）"
   - "Issue #534 / Branch docs/task-534-batch-run-log-table-spec"
-  - "先行 merge 済み前提: #440 / PR #441（enum）、#527 / PR #532（api_call_log）"
-  - "Human Review 論点: 論理ER success_count/failed_count/error_summary vs 状態遷移設計書 §6.1.3 fetched_count/new_count/updated_count/unchanged_count/skipped_count/failed_count vs ログ・Observability設計書 §13.2 success_count/failed_count/skipped_count/batch_type/trace_id/duration_ms"
-  - "Human Review 論点: batch_name のみ（論理ER）vs batch_type 追加（Observability）の採否、trace_id / duration_ms / error_summary の採否と nullable 方針"
-  - "Human Review 論点: phase_log / error_log は polymorphic owner（owner_type / owner_id）方式。詳細列定義は別 Task へ委譲し、本 Task では親子関係と参照整合のみ確定"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#527 / PR #532（api_call_log）、#533 item_import_summary 定義書（Epic Branch 取り込み済み）"
+  - "Human Review #534 決定済み（§17.1）: (1) Import 詳細件数は item_import_summary 正本 (2) batch_type enum 化 (3) Retention 180日 (4) batch_name BATCH-00N (5) API-ADM-005 §5.6 公開項目"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

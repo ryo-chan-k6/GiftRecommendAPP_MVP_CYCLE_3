@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15                      |
+| 更新日         | 2026-06-15（Human Review #534 全項目決定・item_import_summary 連携） |
 
 ---
 
@@ -100,7 +100,7 @@ flowchart TB
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | `api_call_log` | `batch_run_id` | has | `LOGICAL` | **NOT NULL**。api_call_log 定義書 §5.2 |
-| `item_import_summary` | `batch_run_id` | summarizes | `LOGICAL` | BATCH-017 集計。別 Task |
+| `item_import_summary` | `batch_run_id` | summarizes | `LOGICAL` | item_import_summary 定義書 §5.2（BATCH-017） |
 | `product_diff_result` | `batch_run_id` | — | `LOGICAL` | BATCH-006 冪等キー構成要素 |
 | `ranking_snapshot` | `batch_run_id` | — | `LOGICAL` | 追跡用 **nullable** |
 | `phase_log` | `owner_id`（`owner_type=batch_run`） | records | `LOGICAL` | §5.2 |
@@ -115,8 +115,8 @@ flowchart TB
 | 論理ER §13.2 | `batch_name` | **`batch_name`** | 採用（NOT NULL） |
 | 論理ER §13.2 | `success_count`, `failed_count`, `error_summary` | **採用** | Batch 全体サマリ |
 | 論理ER §13.2 | `started_at`, `completed_at`, `run_status` | **採用** | 一致 |
-| 状態遷移 §6.1.3 | `fetched_count`, `new_count`, `updated_count`, `unchanged_count`, `skipped_count`, `failed_count` | **本テーブルには持たない** | **`item_import_summary` 正本**（BATCH-017）。Run 全体 rollup が必要な場合は Import Summary Builder が集約 |
-| Observability §13.2 | `batch_type` | **`batch_type`（nullable）** | 処理カテゴリ分類のため **採用**（§11.3） |
+| 状態遷移 §6.1.3 | `fetched_count`, `new_count`, `updated_count`, `unchanged_count`, `skipped_count`, `failed_count` | **本テーブルには持たない** | **`item_import_summary` 正本**（BATCH-017）。Human Review #534 No.1 **決定済み** |
+| Observability §13.2 | `batch_type` | **`batch_type`（nullable）** | **`batch_type` enum 採用**（§11.3 / enum §6.25） |
 | Observability §13.2 | `trace_id`, `duration_ms` | **採用**（nullable） | 横断 trace / 性能分析 |
 | Observability §13.2 | `skipped_count` | **採用**（default 0） | Run 全体スキップ件数サマリ |
 | Observability §13.2 | `success_count`, `failed_count` | **採用** | 論理ER と一致 |
@@ -134,6 +134,56 @@ flowchart TB
 
 詳細は `error_log.error_detail_json`（マスキング済み）へ委譲する。
 
+### 5.6 API-ADM-005（Batch 実行履歴取得）公開項目（Human Review 決定）
+
+API Contract Task（API-ADM-005）向けの **公開項目方針**（Human Review #534 No.5 決定）。OpenAPI 正本は後続 Contract Task（#469）で作成する。
+
+#### 5.6.1 一覧 `GET /api/v1/admin/batch-runs`
+
+**Query（API一覧記載どおり）**
+
+| パラメータ | 対応 DB 列 | 備考 |
+| ---------- | ---------- | ---- |
+| `batchName` | `batch_name` | `BATCH-00N` 完全一致または prefix |
+| `status` | `run_status` | `batch_run_status` enum |
+| `batchType` | `batch_type` | 任意。`batch_type` enum |
+| `startedAtFrom` / `startedAtTo` | `started_at` | dateRange |
+
+**Response 各要素（BatchRunSummary）— 公開**
+
+| JSON フィールド | DB 列 | 公開 | 備考 |
+| --------------- | ----- | ---- | ---- |
+| `batchRunId` | `batch_run_id` | ○ | 詳細・下流 trace のキー |
+| `batchName` | `batch_name` | ○ | `BATCH-00N` |
+| `batchType` | `batch_type` | ○ | nullable |
+| `runStatus` | `run_status` | ○ | |
+| `startedAt` | `started_at` | ○ | |
+| `completedAt` | `completed_at` | ○ | 終端時のみ |
+| `durationMs` | `duration_ms` | ○ | nullable |
+| `successCount` | `success_count` | ○ | Run 全体サマリ |
+| `failedCount` | `failed_count` | ○ | |
+| `skippedCount` | `skipped_count` | ○ | |
+| `errorSummary` | `error_summary` | △ | `failed` / `partially_succeeded` 時のみ。**最大 500 文字で truncate** |
+
+**Response に含めない（MVP）**
+
+| DB 列 | 理由 |
+| ----- | ---- |
+| `trace_id` | 運用者向け詳細 API またはログ基盤連携で参照（一覧では非公開） |
+| `created_at` / `updated_at` | 内部監査用。Admin 一覧では `startedAt` / `completedAt` で足りる |
+| `fetched_count` 等 Import 内訳 | **`item_import_summary` 正本**（`item_import_summary_テーブル定義書` §5.2）。一覧では非公開。詳細 API の `importSummaries` で参照（§5.6.2） |
+
+#### 5.6.2 詳細 `GET /api/v1/admin/batch-runs/{batchRunId}`（後続・任意）
+
+一覧フィールドに加え、運用調査向けに以下を **詳細 API のみ** 公開する（Contract Task で OpenAPI 化）。
+
+| JSON フィールド | DB 列 / 関連 | 備考 |
+| --------------- | ------------ | ---- |
+| `traceId` | `trace_id` | Ops 相関用 |
+| `importSummaries` | `item_import_summary` | `batch_run_id` で 0..N 取得。Import 内訳の正本 |
+
+> **責務分離**: Admin API は **読取専用**。DML は batch のみ（§15）。Import 詳細件数は `item_import_summary` を正本とし、一覧 Response へ rollup しない（§5.4 No.1 決定）。
+
 ---
 
 ## 6. カラム定義
@@ -142,8 +192,8 @@ flowchart TB
 | --: | -------- | ------ | -- | ---- | -- | -- | ------ | ------- | ---- |
 | 1 | `batch_run_id` | Batch Run ID | `uuid` | `yes` | `yes` | — | `yes` | `gen_random_uuid()` | サロゲート PK。trace キー（IF-OBS-003） |
 | 2 | `trace_id` | Trace ID | `text` | `no` | — | — | — | `NULL` | 横断追跡 ID（Observability §13.2。GitHub Actions / api_call_log と連携） |
-| 3 | `batch_name` | Batch Name | `text` | `yes` | — | — | — | — | 実行 Batch 識別子（例: `BATCH-001`、workflow 名 `batch-rakuten-genre-sync`） |
-| 4 | `batch_type` | Batch Type | `varchar(32)` | `no` | — | — | — | `NULL` | 処理カテゴリ（§11.3）。未分類 Batch は `NULL` 可 |
+| 3 | `batch_name` | Batch Name | `text` | `yes` | — | — | — | — | Batch ID（**`BATCH-00N` 形式**。バッチ処理一覧 §3 正本） |
+| 4 | `batch_type` | Batch Type | `varchar(32)` | `no` | — | — | — | `NULL` | 処理カテゴリ（`batch_type` enum §11.3）。未分類 Batch は `NULL` 可 |
 | 5 | `run_status` | Run Status | `varchar(32)` | `yes` | — | — | — | `'queued'` | Batch 実行状態。`batch_run_status` enum 準拠 |
 | 6 | `started_at` | Started At | `timestamptz` | `yes` | — | — | — | — | Batch 実行開始日時（UTC） |
 | 7 | `completed_at` | Completed At | `timestamptz` | `no` | — | — | — | `NULL` | Batch 実行完了日時。終端状態で設定 |
@@ -180,7 +230,7 @@ flowchart TB
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | `api_call_log` | `batch_run_id` | has | `LOGICAL` | api_call_log 定義書 §8.1 |
-| `item_import_summary` | `batch_run_id` | summarizes | `LOGICAL` | BATCH-017 |
+| `item_import_summary` | `batch_run_id` | summarizes | `LOGICAL` | item_import_summary 定義書 §5.2 |
 | `product_diff_result` | `batch_run_id` | — | `LOGICAL` | product_diff_result 定義書 §8.1 |
 | `ranking_snapshot` | `batch_run_id` | — | `LOGICAL` | nullable 追跡 |
 | `phase_log` | `owner_id` | records | `LOGICAL` | `owner_type = 'batch_run'` |
@@ -208,7 +258,7 @@ flowchart TB
 | `chk_batch_run_log_counts_nonneg` | CHECK | `success_count`, `failed_count`, `skipped_count` | 各 count `>= 0` | |
 | `chk_batch_run_log_duration_nonneg` | CHECK | `duration_ms` | `duration_ms IS NULL OR duration_ms >= 0` | |
 | `chk_batch_run_log_terminal_completed` | CHECK | `completed_at` | 終端状態では `completed_at IS NOT NULL` | §11.2 |
-| `chk_batch_run_log_batch_type` | CHECK | `batch_type` | `batch_type IS NULL OR batch_type IN (...)` | §11.3 許容値 |
+| `chk_batch_run_log_batch_type` | CHECK | `batch_type` | `batch_type IS NULL OR batch_type IN (...)` | enum定義書 §6.25 |
 
 ---
 
@@ -217,7 +267,7 @@ flowchart TB
 | カラム | enum / code | 定義元 | 許容値 | 備考 |
 | ------ | ----------- | ------ | ------ | ---- |
 | `run_status` | `batch_run_status` | `enum定義書.md` §6.5 / `packages/code-definitions/state/batch_run_status.yaml` | `queued`, `running`, `succeeded`, `partially_succeeded`, `failed`, `canceled` | NOT NULL |
-| `batch_type` | （code 未定義） | Observability §13.2 | §11.3 参照 | MVP は CHECK で限定 |
+| `batch_type` | `batch_type` | `enum定義書.md` §6.25 / `packages/code-definitions/batch/batch_type.yaml` | §11.3 参照 | NULL可 |
 
 ### 11.1 `run_status` 状態遷移
 
@@ -261,10 +311,10 @@ stateDiagram-v2
 
 ### 11.3 `batch_type` 許容値（MVP）
 
-Observability §13.2 を正とする。enum Task 未整備のため MVP は CHECK で限定する。
+`enum定義書.md` §6.25 / `packages/code-definitions/batch/batch_type.yaml` を正とする。
 
-| 値 | 意味 | 例示 Batch |
-| -- | ---- | ---------- |
+| 値 | 意味 | 対応 `batch_name`（例） |
+| -- | ---- | ------------------------- |
 | `external_fetch` | 外部 API 取得系 | BATCH-001〜004 |
 | `staging` | Raw → Staging 変換 | BATCH-005 |
 | `import` | 差分判定・Item 反映・状態更新 | BATCH-006〜008 |
@@ -272,7 +322,7 @@ Observability §13.2 を正とする。enum Task 未整備のため MVP は CHEC
 | `summary` | Import Summary 集計 | BATCH-017 |
 | `maintenance` | 保守・Retention 等 | 後続 Batch |
 
-> workflow 連鎖で複数カテゴリを跨ぐ場合、**起動 Batch の主目的** で 1 値を設定する（Human Review §17）。
+> workflow 連鎖で複数カテゴリを跨ぐ場合、**起動 Batch の `batch_name`（BATCH-00N）に対応する `batch_type`** を 1 値設定する。GitHub Actions workflow ファイル名は `batch_name` に使用しない（Human Review #534 No.4 決定済み）。
 
 ---
 
@@ -348,9 +398,9 @@ WHERE batch_run_id = :batch_run_id
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **180 日〜365 日**（ログ・Observability設計書 §20.2 / 物理ER §13 Log 系） |
+| 保持期間 | **180 日**（Human Review #534 No.3 決定。ログ・Observability設計書 §20.2 下限） |
 | 削除方式 | 後続 Retention Batch による **物理 DELETE** 候補 |
-| 削除条件 | `started_at < now() - interval '180 days'` 等（具体閾値は Human Review） |
+| 削除条件 | `started_at < now() - interval '180 days'` | |
 | 論理削除 | 採用しない（Log 追記型） |
 | partition | MVP **未適用**。物理ER §17 No.5 に従い本番前に range partition 検討 |
 | 下流連動 | Retention 削除時は `api_call_log` / `phase_log` 等との **Batch 単位一括削除** を検討（別 Task） |
@@ -402,11 +452,17 @@ WHERE batch_run_id = :batch_run_id
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 状態遷移 §6.1.3 詳細件数の物理配置 | `fetched_count` 等を Run ヘッダに rollup するか Summary のみか | Human | Task PR Review | §5.4 で Summary 正本案 |
-| 2 | `batch_type` enum 化 | CHECK 限定 vs `packages/code-definitions` 追加 | Human | 後続 enum Task | §11.3 |
-| 3 | Retention 具体日数 | 180 vs 365 日 | Human | 運用 Task | §13 |
-| 4 | `batch_name` 命名規約 | `BATCH-00N` vs workflow ファイル名の正本 | Human | Batch 実装 Task | IF-OBS-003 |
-| 5 | Admin API 公開項目 | API-ADM-005 で返却する列範囲 | Human | API Contract Task | MVP 後続 |
+| — | — | — | — | — | Human Review #534 にて No.1〜5 を決定（下記参照） |
+
+### 17.1 Human Review 決定事項（Issue #534）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | 状態遷移 §6.1.3 詳細件数の物理配置 | **`fetched_count` 等は `item_import_summary` 正本**。`batch_run_log` には Run 全体サマリ（`success_count` / `failed_count` / `skipped_count`）のみ保持 | Human | §5.4・`item_import_summary_テーブル定義書` §5.2 |
+| 2 | `batch_type` enum 化 | **`packages/code-definitions/batch/batch_type.yaml` + enum定義書 §6.25 を正本** | Human | §11.3 |
+| 3 | Retention 具体日数 | **180 日** | Human | §13 |
+| 4 | `batch_name` 命名規約 | **`BATCH-00N` 形式**（バッチ処理一覧 ID）。workflow ファイル名は使用しない | Human | §6 No.3 |
+| 5 | Admin API 公開項目 | **§5.6 を採用**（一覧 BatchRunSummary 11 項目 + 条件付き `errorSummary`。Import 内訳は詳細 API `importSummaries`） | Human | API-ADM-005 / API一覧 |
 
 ---
 
@@ -417,13 +473,16 @@ WHERE batch_run_id = :batch_run_id
 | 物理ER | `docs/06_実装設計/database/物理ER.md` | Log 系・LOGICAL FK・Retention |
 | 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §13.2 / §14.4 / §15 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §6 No.56 |
-| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.5 batch_run_status |
+| enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.5 batch_run_status・§6.25 batch_type |
+| code-definitions | `packages/code-definitions/batch/batch_type.yaml` | batch_type 正本 |
 | 状態遷移設計書 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | §6.1 / §6.1.3 |
 | ログ・Observability | `docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md` | §9.3 / §10 / §13.2 / §20.2 |
 | バッチ設計方針書 | `docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md` | Batch 起動・終了・Logger |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-001〜017 |
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-001 / IF-OBS-003 |
 | 正本定義表 | `docs/05_アプリケーション設計/アプリ/database/正本定義表.md` | Batch Run Log 正本区分 |
+| API一覧 | `docs/05_アプリケーション設計/アプリ/api/API一覧.md` | API-ADM-005 §5.6 |
+| item_import_summary 定義書 | `docs/06_実装設計/database/item_import_summary_テーブル定義書.md` | §5.2 summarizes・Import 内訳正本 |
 | api_call_log 定義書 | `docs/06_実装設計/database/api_call_log_テーブル定義書.md` | §5.2 has 関係 |
 | product_diff_result 定義書 | `docs/06_実装設計/database/product_diff_result_テーブル定義書.md` | batch_run_id 被参照 |
 
@@ -437,6 +496,6 @@ WHERE batch_run_id = :batch_run_id
 - `api_call_log` との has 1:N LOGICAL FK が §5.3 に明記されている
 - 状態遷移 §6.1.3 詳細件数と Observability §13.2 の差分が §5.4 で整理されている
 - `error_summary` マスキング方針（§5.5）が明記されている
-- phase_log / error_log / item_import_summary 本体定義を本 Task に混入していない
+- `item_import_summary` との summarizes 関係と Import 内訳責務分離が §5.3 / §5.4 / §5.6 で明記されている
 - DDL Task が CREATE TABLE を起こせる粒度である
 - secret や `.env` 実値が含まれていない

@@ -54,7 +54,7 @@ BATCH-017（Import Summary作成 / `MOD-BATCH-047` Item Import Summary Writer）
 - **Batch Run + Source API 単位** で取込・反映結果の件数サマリを **1 行 INSERT** する（追記型。同一キーの再集計は **UPSERT しない** 前提。§12）
 - `batch_run_log.run_status` が `partially_succeeded` のとき **`failed_count`** に Item 反映失敗等を記録する（状態遷移設計書 §6.6）
 - 商品単位の過剰ログを避け、件数を本テーブルへ集約する（ログ・Observability設計書 §22・バッチ設計方針書 §21.1）
-- Public API では直接返却しない（Admin API は `batch_run_log` 経由でサマリ参照候補。OpenAPI 変更は #469 委譲）
+- Public API では直接返却しない（Admin API は `batch_run_log` 経由でサマリ参照。Import 内訳は API-ADM-005 詳細 API `importSummaries`。OpenAPI 変更は #469 委譲）
 
 ### 5.1 対象外
 
@@ -75,7 +75,7 @@ BATCH-017（Import Summary作成 / `MOD-BATCH-047` Item Import Summary Writer）
 | 物理ER 関係 | `batch_run_log` → `item_import_summary` : **`summarizes`**（**LOGICAL** 1:N） |
 | 参照列 | **`item_import_summary.batch_run_id`** → `batch_run_log.batch_run_id`（**NOT NULL**） |
 | 作成 Batch | BATCH-017（各子 workflow 末尾または集計対象 Batch 完了後） |
-| `batch_run_log` 定義書 | **#534 別 Task**。**LOGICAL FK + Index**（§17.1 No.6 確定）。物理 FK は付与しない |
+| `batch_run_log` 定義書 | **`batch_run_log_テーブル定義書.md`**（#534 完了）。**LOGICAL FK + Index**（§17.1 No.6 確定）。物理 FK は付与しない |
 | カーディナリティ | 1 Batch Run : **0..N** Item Import Summary（`source_api` 別に複数行可。§7） |
 
 ```mermaid
@@ -208,7 +208,7 @@ flowchart TD
 
 | 参照元 | 用途 | 備考 |
 | ------ | ---- | ---- |
-| Admin Batch 実行履歴 API（API-ADM-005 候補） | 実行サマリ表示 | OpenAPI は #469 |
+| Admin Batch 実行履歴 API（API-ADM-005） | 実行サマリ表示・Import 内訳（詳細 API） | 一覧は `batch_run_log` 正本（`batch_run_log_テーブル定義書` §5.6）。`importSummaries` は詳細 API §5.6.2。OpenAPI は #469 |
 | Observability IF-OBS-006 | 取込件数監視 | インターフェース一覧 §14.1 |
 
 ---
@@ -412,6 +412,7 @@ GROUP BY diff_status;
 | product_diff_result | `docs/06_実装設計/database/product_diff_result_テーブル定義書.md` | 件数集計元・責務境界 |
 | staging_item | `docs/06_実装設計/database/staging_item_テーブル定義書.md` | 昇格フロー文脈 |
 | api_call_log | `docs/06_実装設計/database/api_call_log_テーブル定義書.md` | fetched_count 参考 |
+| batch_run_log | `docs/06_実装設計/database/batch_run_log_テーブル定義書.md` | §5.2 summarizes・API-ADM-005 §5.6.2 importSummaries |
 | enum | `docs/06_実装設計/database/enum定義書.md` | §6.24 source_api |
 | packages | `packages/code-definitions/batch/source_api.yaml` | source_api 正本 |
 

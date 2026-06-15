@@ -154,10 +154,9 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "論理ER success_count/failed_count/error_summary vs 状態遷移設計書 §6.1.3 fetched_count/new_count/updated_count/unchanged_count/skipped_count/failed_count vs ログ・Observability設計書 §13.2 の物理列採用"
-  - "batch_name のみ（論理ER）vs batch_type 追加（Observability）の採否"
-  - "trace_id / duration_ms / skipped_count / error_summary の採否と nullable 方針"
-  - "phase_log / error_log の polymorphic owner 方式における本 Task の記述粒度（親子関係のみ vs 列定義の先取り）"
+  - "（決定済み §17.1）論理ER vs 状態遷移 §6.1.3 vs Observability §13.2 の集計列: Import 詳細は item_import_summary、Run 全体は success/failed/skipped_count"
+  - "（決定済み §17.1）batch_type enum 化・batch_name BATCH-00N・Retention 180日・API-ADM-005 §5.6 公開項目"
+  - "（未決・別 Task）phase_log / error_log の列定義詳細（本 Task は親子関係のみ確定）"
 
 risk_points:
   - "api_call_log 定義書が batch_run_log 側から逆参照しているため、双方向記述の粒度が本 Task のみで完結するか"
@@ -168,5 +167,6 @@ notes:
   - "Batch R05 No.2: batch_run_log"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-batch-run-log.yaml"
   - "Issue #534 / Branch docs/task-534-batch-run-log-table-spec"
-  - "先行 merge 済み前提: #440 / PR #441（enum）、#527 / PR #532（api_call_log）"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#527 / PR #532（api_call_log）、#533 item_import_summary（Epic 取り込み済み）"
+  - "Human Review #534 No.1〜5 は定義書 §17.1 で決定済み。API-ADM-005 公開項目は §5.6"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
