@@ -66,7 +66,7 @@ scope:
   - "物理ER Log系・batch_run_log / recommendation_run may_have 関係・§10 idx_error_log_owner との突合"
   - "論理ER §13.2 Log系エンティティ属性・§14 主要リレーションとの整合"
   - "テーブル一覧 §6 No.58 Error Log・Log / Observability 系補足との整合"
-  - "ログ・Observability設計書 §9 Error Log設計（主要項目・owner_type候補・記録対象）・§20.2 Retention 90〜180日との整合"
+  - "ログ・Observability設計書 §9 Error Log設計（主要項目・owner_type候補・記録対象）・§20.2 Retention 90日（Batch 系統一）との整合"
   - "enum定義書 §6.15 owner_type（polymorphic）・§10.2 error_code 正本分担との整合"
   - "エラーコード定義書・packages/code-definitions/error との error_code 形式 CHECK 方針"
   - "状態遷移設計書 §5 Log系整理（error_log は状態カラムなし）との整合"
@@ -76,6 +76,7 @@ scope:
   - "batch_run_log_テーブル定義書 / phase_log_テーブル定義書（#534 / #535 merge 済み時）との双方向整合"
   - "api_call_log_テーブル定義書（owner_type=api_call 時の owner_id 整合）との突合"
   - "item_import_summary_テーブル定義書（Log 系章構成・FK 方針参考）との突合"
+  - "Batch 系 Log Retention 90 日統一の cross-cutting 反映（batch_run_log / phase_log / api_call_log / item_import_summary テーブル定義書・物理ER §13・Observability §20.2・テーブル一覧）"
   - "Task / Review Definition の整備"
 
 out_of_scope:
@@ -103,7 +104,7 @@ input:
       purpose: "§6 No.58 error_log・Log / Observability 系分類・recommendation_run_phase_log 統合方針"
     - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
       required: true
-      purpose: "§9 Error Log設計（主要項目・owner_type候補・記録対象）・§20.2 Retention 90〜180日・trace_id 方針"
+      purpose: "§9 Error Log設計（主要項目・owner_type候補・記録対象）・§20.2 Retention 90日（Batch 系統一）・trace_id 方針"
     - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
       required: true
       purpose: "§5 Log系整理（error_log は状態カラムなし・error_code / occurred_at で追跡）"
@@ -175,7 +176,7 @@ acceptance_criteria:
   - "owner_type / owner_id の polymorphic 設計と enum定義書 §6.15 が一致している"
   - "error_code 形式 CHECK と error_detail_json マスキング方針が明記されている"
   - "trace_id / request_id / service / severity / retryable の MVP 採否が整理されている"
-  - "Retention 方針（Observability §20.2 90〜180日）が明記されている"
+  - "Retention 方針（Batch 系 Log 90 日統一・Observability §20.2）が明記されている"
   - "apps/** 変更がない"
   - "Task PR target が親 Epic Branch"
 
@@ -230,7 +231,7 @@ test_policy:
     - "バッチ設計方針書 Error Handler / GRS-BAT-* / GRS-EXT-* 記録方針との整合"
     - "batch_run_log / phase_log テーブル定義書（#534 / #535 merge 済み時）との双方向整合"
     - "api_call_log テーブル定義書 owner_type=api_call 整合"
-    - "Retention 90〜180日（Observability §20.2）の明記"
+    - "Retention 90日統一（Batch 系 Log・Observability §20.2）の明記"
     - "error_detail_json マスキング・保存禁止情報（secret / Authorization / 個人情報）の明記"
     - "apps 実装層への変更がないこと"
   not_required:
@@ -276,7 +277,10 @@ human_review_decisions:
     decision: "phase_log_テーブル定義書 §5.6 / §8.2 と一致（#535 merge 済み）"
   - id: 9
     topic: "Retention 連動方針"
-    decision: "二層 Retention（Standalone 90日 + Batch Run アンカー 180日一括パージ BATCH-RET-001）。正本 error_log §13、batch_run_log §13.1 と整合"
+    decision: "二層 Retention（Standalone 90日 + Batch Run アンカー 90日一括パージ BATCH-RET-001）。正本 error_log §13、batch_run_log §13.1 と整合"
+  - id: 10
+    topic: "Batch 系 Log Retention 統一"
+    decision: "api_call_log / phase_log / error_log / item_import_summary / batch_run_log を 90 日に統一（#534 / #535 / #533 cross-cutting）。関連 docs（物理ER §13・Observability §20.2・テーブル一覧）も本 Issue で反映"
 
 notes:
   - "Batch R05 No.4: error_log（Log / Observability系 / Batch・Online 横断）"
@@ -285,5 +289,5 @@ notes:
   - "先行 merge 済み前提: #533 / PR #538（item_import_summary）、#527 / PR #532（api_call_log）"
   - "同 Batch 先行 Task: #534（batch_run_log / PR #539）、#535（phase_log / PR #540）merge 済み。双方向整合は error_log 定義書 §5.2 / §5.3 / §17.1 No.7〜8"
   - "recommendation_run_phase_log は物理テーブルとして作成せず phase_log に統合（テーブル一覧 §8）"
-  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み・Retention 連動 §13 / No.9）"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み・Retention 連動 §13 / No.9・Batch 系 90 日統一 No.10）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

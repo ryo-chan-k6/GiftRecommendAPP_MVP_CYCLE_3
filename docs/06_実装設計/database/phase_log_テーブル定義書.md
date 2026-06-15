@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15（Human Review #535 反映） |
+| 更新日         | 2026-06-15（Batch 系 Log Retention 90 日統一・#536 cross-cutting） |
 
 ---
 
@@ -423,9 +423,10 @@ INSERT INTO phase_log (
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **60 日**（Human Review #535 決定。ログ・Observability設計書 §20.2 の 30〜90 日レンジ内） |
+| 保持期間 | **90 日**（Human Review #536 No.10 cross-cutting 決定。旧 #535 の 60 日から統一） |
 | 削除方式 | 後続 Retention Batch による **物理 DELETE** 候補 |
-| 削除条件 | `created_at < now() - interval '60 days'` |
+| 削除条件 | `created_at < now() - interval '90 days'` |
+| Batch アンカー | `batch_run_log_テーブル定義書` §13.1（`owner_type=batch_run`） |
 | 論理削除 | 採用しない（Log 追記型） |
 | partition | MVP **未適用**。`idx_phase_log_created` + retention DELETE（物理ER §17 No.5） |
 | アーカイブ | MVP 対象外 |
@@ -487,7 +488,7 @@ INSERT INTO phase_log (
 | 2 | `reco_quality_metric_recorded` | **MVP では `phase_name` に含めない**。Metric テーブルで記録し、enum 追加は後続 Task | Human | §5.7 |
 | 3 | `owner_type` MVP 集合 | **`recommendation_run` / `batch_run` / `evaluation_run` の 3 値に限定**（DB CHECK） | Human | §11.3 |
 | 4 | `evaluation_run` の `phase_name` | **MVP は DB CHECK 省略**。アプリ validation のみ。`evaluation_run_phase_name` は Evaluation Task で定義 | Human | §10・§11.3 |
-| 5 | Retention 具体日数 | **60 日**。自動削除 Batch は MVP 外（後続 Task） | Human | §13 |
+| 5 | Retention 具体日数 | **90 日**（#536 No.10 で Batch 系 Log 統一。旧 60 日から変更） | Human | §13 |
 | 6 | `detail_json` マスキング | **§5.5 を正とする**。LLM prompt 全文は含めない。実装 Task で Adapter 層マスキングを必須化 | Human | §5.5。プロンプト改善の参照先は同節表を正とする |
 
 ---
