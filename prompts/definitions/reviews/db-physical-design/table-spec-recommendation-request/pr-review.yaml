@@ -1,0 +1,186 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-recommendation-request-pr"
+  title: "recommendation_request テーブル定義書 PRレビュー"
+  summary: "recommendation_request テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §14.1・RecommendationRequest定義書・enum定義書・Master テーブル定義書・API-PUB-002 との整合、Request → Run → Result 起点・payload 併用方針・table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-537-recommendation-request-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 537
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-request.yaml"
+  source_branch: "docs/task-537-recommendation-request-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-request.yaml"
+    required: true
+  issue:
+    number: 537
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Online推薦系・LOGICAL FK・§11 / §17 No.1 / No.2 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§3 属性・§14.1 Request → Run → Result フローとの整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§3 No.1 分類・用途・補足方針との整合"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "§11 DB 項目・§11.2 payload 併用・§10 状態との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "request_mode / owner_type との整合"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "request body → DB 列マッピング確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-API-001 の確認"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "user_id nullable 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "recommendation_request_id trace キーの確認"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 selected_by LOGICAL 参照との双方向整合"
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 selected_by LOGICAL 参照との双方向整合"
+    - path: "docs/06_実装設計/database/pair_master_テーブル定義書.md"
+      required: true
+      purpose: "pair_id Run 側保持（§17 No.1）との整合"
+    - path: "packages/code-definitions/application/request_mode.yaml"
+      required: true
+      purpose: "request_mode packages 正本との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（recommendation_run 本体 / user 派生 / Master 再作成 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "Online推薦フロー（request → run → result）の起点として明記されているか"
+    - "論理ER §3 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "テーブル一覧 §3 No.1 の分類・用途と一致しているか"
+    - "RecommendationRequest定義書 §11 / §11.2 の項目・payload 併用方針が反映されているか"
+    - "relationship_master / occasion_master / pair_master 定義書と章構成・MVP 方針が一貫しているか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "recommendation_request → recommendation_run / recommendation_result の 1:N executes / has 関係が明記されているか"
+    - "relationship_master / occasion_master との LOGICAL FK（selected_by）が明記されているか"
+    - "pair_id は recommendation_run 側（物理ER §17 No.1）であり Request 非保持であることが明記されているか"
+    - "個別カラム + request_payload / validated_payload（JSONB）併用（§17 No.2）が明記されているか"
+    - "request_mode と enum定義書 §6.13 / packages 正本が一致しているか"
+    - "API-PUB-002 mode → request_mode マッピングが整理されているか"
+  security:
+    - "request_payload / validated_payload に secret・個人情報過剰保持を避ける方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "Request status 列の採否と MVP 状態粒度（RecommendationRequest定義書 §10 vs 論理ER 状態なし）"
+  - "user_id / session_id / client_request_id の採否と nullable 方針（認証・認可方針書）"
+  - "semantic_config_version_id / model_version_id の Request 保持 vs Run のみ（evaluation mode）"
+  - "execution 系項目（top_k / candidate_limit / include_reason 等）の個別カラム vs JSONB のみ"
+  - "requested_at vs created_at / validated_at の物理列名採用"
+  - "Online推薦コア Retention（物理ER §13 未定）の MVP 記載粒度"
+
+risk_points:
+  - "RecommendationRequest定義書 §11 と論理ER §3 の項目差分（status / currency / execution 系）整理が Human Review 論点として残る可能性"
+  - "API-PUB-002 OpenAPI 上の mode と DB 列 request_mode の命名差分整理"
+  - "後続 recommendation_run Task へ引き継ぐ FK / Index 方針が Request 定義書のみで完結するか"
+
+notes:
+  - "Batch R05 No.5: recommendation_request"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-recommendation-request.yaml"
+  - "Issue #537 / Branch docs/task-537-recommendation-request-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#442 / PR #443（relationship_master）、#445 / PR #448（occasion_master）、#449 / PR #465（pair_master）"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
