@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 531
   issue: 526
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-product-diff-result.yaml"
   source_branch: "docs/task-526-product-diff-result-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 526
     required: true
   pr:
-    number: null
+    number: 531
     required: true
   diff:
     required: true
@@ -198,4 +198,4 @@ notes:
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-product-diff-result.yaml"
   - "Issue #526 / Branch docs/task-526-product-diff-result-table-spec"
   - "先行 merge 済み前提: #440 / PR #441（enum）、#506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）、#495 / PR #500（item）"
-  - "PR 作成後: target.pr / input.pr.number を更新すること"
+  - "PR #531 / Branch docs/task-526-product-diff-result-table-spec"
