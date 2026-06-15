@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP      |
 | MVP対象        | `yes`                                |
 | 作成日         | 2026-06-15                           |
-| 更新日         | 2026-06-15（Human Review #545 反映・#544 双方向整合） |
+| 更新日         | 2026-06-15（Human Review #545 反映・#544 双方向整合・#546 Reason 1:1 整合） |
 
 ---
 
@@ -54,14 +54,14 @@ Public API（API-PUB-002）では内部スコアを返さないが、DB には�
 - INSERT 時に `item` / `item_image`（`is_primary=true`）/ `item_review_summary` から Snapshot 列へ **値をコピー** する（論理ER §7.3）
 - `rank` は 1 始まりの表示順位。同一 `recommendation_result_id` 内で **一意** とする
 - Snapshot 列・スコア列は **INSERT 後に UPDATE しない**（物理ER §11・状態遷移設計書・正本定義表）
-- `recommendation_reason` の親（1:N has）。Reason 本文は **別テーブル** の責務（#546 後続 Task）
+- `recommendation_reason` の親（has）。Reason 本文は **別テーブル** の責務（`recommendation_reason_テーブル定義書.md`）。MVP は **1 Item 1 Reason**（Reason 定義書 §17.1 No.4 **決定済み**）
 - `recommendation_feedback` の **Item 単位評価対象** として参照される（認証・認可方針書・RecommendationFeedback定義書）
 
 ### 5.1 対象外
 
 - 推薦結果ヘッダ（`recommendation_result` の責務。`recommendation_result_テーブル定義書.md`）
 - 推薦実行状態（`recommendation_run` の責務。`recommendation_run_テーブル定義書.md`）
-- 推薦理由本文（`recommendation_reason` の責務。#546 後続 Task）
+- 推薦理由本文（`recommendation_reason` の責務。`recommendation_reason_テーブル定義書.md`）
 - ユーザー Feedback 本体（`recommendation_feedback` の責務。#547 後続 Task）
 - 商品正本の更新（`item` 系は Batch 責務。Online 推薦中に Item 系を更新しない）
 
@@ -207,7 +207,7 @@ Snapshot 元（`item_image` / `item_review_summary`）への **物理 FK は張�
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `recommendation_reason` | `recommendation_result_item_id` | has | `ON`（DDL Task） | 1:N。Reason Task #546 |
+| `recommendation_reason` | `recommendation_result_item_id` | has | `ON`（DDL Task） | 物理ER §9 は 1:N。MVP DDL は `UNIQUE(recommendation_result_item_id)` で **実質 1:1**（`recommendation_reason_テーブル定義書.md` §17.1 No.4 **決定済み**） |
 | `recommendation_feedback` | `recommendation_result_item_id` | receives | `LOGICAL` | nullable。Feedback Task #547 |
 
 ---
@@ -268,7 +268,7 @@ Snapshot 元（`item_image` / `item_review_summary`）への **物理 FK は張�
 2. 各候補について `item` / `item_image`（主画像）/ `item_review_summary` を SELECT
 3. Snapshot 列へコピー、`rank`（1 始まり・`top_k` 以下）/ `final_score` / `context_score` / `score_breakdown_json` を設定
 4. `recommendation_result_id` とともに本テーブルへ INSERT（**手順 1 と同一トランザクション推奨**）
-5. 後続で `recommendation_reason` を生成・INSERT（#546）
+5. 後続で `recommendation_reason` を生成・INSERT（`recommendation_reason_テーブル定義書.md` §12）
 
 ---
 
@@ -389,6 +389,7 @@ CREATE TABLE recommendation_result_item (
 | item_image 定義書 | `docs/06_実装設計/database/item_image_テーブル定義書.md` | §8.3 image snapshot |
 | item_review_summary 定義書 | `docs/06_実装設計/database/item_review_summary_テーブル定義書.md` | §8.3 review snapshot |
 | 親 Result | `docs/06_実装設計/database/recommendation_result_テーブル定義書.md` | contains 関係・`result_item_count`・§8.2 被参照 |
+| 子 Reason | `docs/06_実装設計/database/recommendation_reason_テーブル定義書.md` | has §8.1 被参照・1:1 UNIQUE |
 | 親 Run | `docs/06_実装設計/database/recommendation_run_テーブル定義書.md` | Online フロー文脈 |
 | Observability | `docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md` | trace キー |
 | 外部商品連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | §11.5 Result Snapshot |
@@ -405,6 +406,7 @@ CREATE TABLE recommendation_result_item (
 - Ranking定義書 §14.3・RecommendationResult定義書 §6.2 / §10.2 のスコア・順位が整理されている
 - API-PUB-002 / API-INT-002 の Item マッピングが §5.5 に整理されている
 - `recommendation_result_テーブル定義書.md` §8.2 / §12 と双方向整合している（`result_item_count`・empty Result・INSERT 順序）
-- Human Review #545 決定事項（§17.1 No.1〜4）が本文に反映されている
+- `recommendation_reason_テーブル定義書.md` §8.1 / §12 と双方向整合している（has・1:1 UNIQUE・Reason INSERT 順序）
+- Human Review #545 / #546 決定事項が本文に反映されている（§17.1）
 - apps/** 変更がない
 - secret / `.env` 実値が含まれていない

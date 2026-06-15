@@ -82,7 +82,7 @@ input:
       purpose: "作成成果物の内容確認"
     - path: "docs/06_実装設計/database/物理ER.md"
       required: true
-      purpose: "Online推薦系・recommendation_result_item has（FK ON・1:N）・派生Snapshot 区分との整合"
+      purpose: "Online推薦系・recommendation_result_item has（FK ON・MVP 実質 1:1 UNIQUE）・派生Snapshot 区分との整合"
     - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
       required: true
       purpose: "§7.2 属性・§14 Result Item → Reason 1対多関係との整合"
@@ -100,7 +100,7 @@ input:
       purpose: "template_id LOGICAL 参照・reason_basis_json 必須項目との双方向整合"
     - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
       required: true
-      purpose: "§8.2 has 1:N・FK ON 被参照・§5.5 Reason 非保持 / api JOIN 方針との双方向整合"
+      purpose: "§8.2 has / §5.5 Reason 非保持 / api JOIN / MVP 1:1 UNIQUE との双方向整合"
     - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
       required: true
       purpose: "reasonSummary / reasonBadges マッピング確認"
@@ -143,7 +143,7 @@ review_points:
     - "recommendation_result_item 定義書 §8.2 / §5.5 と双方向整合しているか"
   db:
     - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
-    - "recommendation_result_item → recommendation_reason の has 関係（FK ON・1:N）が明記されているか"
+    - "recommendation_result_item → recommendation_reason の has 関係（FK ON・MVP 実質 1:1 UNIQUE）が明記されているか"
     - "reason_template.reason_template_id への template_id LOGICAL 参照が明記されているか"
     - "reason_basis_json に template_name / template_version 必須記録（方式 B）が明記されているか"
     - "API-PUB-002 reasonSummary / reasonBadges と物理列の対応が整理されているか"
@@ -158,19 +158,7 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - id: 1
-    topic: "recommendation_run_id / item_id 冗長列の MVP 採否"
-    note: "Reason生成定義書 §15.1 と論理ER §7.2 の差分整理が Human Review 対象"
-  - id: 2
-    topic: "generation_method 物理列"
-    note: "enum 物理列 vs reason_basis_json のみの整理が Human Review 対象"
-  - id: 3
-    topic: "model_version_id 保持"
-    note: "Reason 側 model_version_id の MVP 物理列採否"
-  - id: 4
-    topic: "1 Result Item : N Reason の MVP 方針"
-    note: "物理ER §9・result_item 定義書 §8.2 は 1:N。UNIQUE(recommendation_result_item_id) による実質 1:1 制限の採否"
+human_decision_points: []
 
 human_review_decisions:
   - id: 1
@@ -178,19 +166,30 @@ human_review_decisions:
     decision: "recommendation_reason_id / reason_status / reasonSummary 等は recommendation_result_item に保持しない（result_item 定義書 §5.5・§17.1）"
   - id: 2
     topic: "has 関係（Result Item → Reason）"
-    decision: "物理ER §9 どおり 1:N。recommendation_result_item_id 物理 FK ON。result_item 定義書 §8.2 と双方向整合"
+    decision: "物理ER §9 は 1:N。recommendation_result_item_id 物理 FK ON。MVP DDL は UNIQUE で実質 1:1（§17.1 No.4 決定済み）"
   - id: 3
     topic: "Public API Reason 返却"
     decision: "api が recommendation_reason を JOIN して reasonSummary / reasonBadges を Public 応答に組立（result_item 定義書 §5.5）"
+  - id: 4
+    topic: "recommendation_run_id / item_id 冗長列"
+    decision: "MVP 物理列なし（§17.1 No.1 決定済み）"
+  - id: 5
+    topic: "generation_method 物理列"
+    decision: "reason_basis_json のみ（§17.1 No.2 決定済み）"
+  - id: 6
+    topic: "model_version_id 保持"
+    decision: "MVP 物理列なし。recommendation_run.model_version_id を正本（§17.1 No.3 決定済み）"
+  - id: 7
+    topic: "1 Result Item : N Reason"
+    decision: "UNIQUE(recommendation_result_item_id) で実質 1:1（§17.1 No.4 決定済み）"
 
 risk_points:
-  - "Reason生成定義書 §15.1 と論理ER §7.2 の項目差分（run_id / item_id / generation_method 等）"
-  - "result_item 定義書 §8.2 の 1:N と UNIQUE(recommendation_result_item_id) 採否の整合"
+  - "Reason生成定義書 §15.1 と論理ER §7.2 の項目差分が §5.3 / §17.1 で明示されているか"
   - "reason_template 定義書で指摘済みの物理ER §9 関係行未記載との follow-up 境界"
 
 notes:
   - "Batch R06 No.4: recommendation_reason"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-recommendation-reason.yaml"
   - "Issue #546 / Branch docs/task-546-recommendation-reason-table-spec"
-  - "先行 merge 済み前提: #457 / PR #459（reason_template）、#543 / PR #548（recommendation_run）、#544 / PR #549（recommendation_result）、#545 / PR #550（recommendation_result_item）"
+  - "Human Review #546 決定事項（§17.1 No.1〜4）が本文に反映されている"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

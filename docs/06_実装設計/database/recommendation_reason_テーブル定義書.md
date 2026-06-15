@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP       |
 | MVP対象        | `yes`                                 |
 | 作成日         | 2026-06-15                            |
-| 更新日         | 2026-06-15（#545 / #457 双方向整合案） |
+| 更新日         | 2026-06-15（Human Review #546 反映・#545 / #457 双方向整合） |
 
 ---
 
@@ -81,7 +81,7 @@ flowchart LR
 | テンプレート | `template_id` に `reason_template.reason_template_id`（uuid）を **論理参照**（reason_template 定義書 §8.1） |
 | 生成タイミング | Result Item INSERT の **直後・同一トランザクション推奨**（result_item 定義書 §12） |
 | 0 件 Result | Result Item 行が 0 件のとき **本テーブル行も 0 件** |
-| Run / Item 追跡 | `recommendation_run_id` / `item_id` は **本テーブルに保持しない**。Result Item 経由で辿る（§5.4） |
+| Run / Item 追跡 | `recommendation_run_id` / `item_id` は **本テーブルに保持しない**。Result Item 経由で辿る（§17.1 No.1 **決定済み**） |
 
 > **親 Result Item 定義書（#545 / PR #550 merge 済み）** と双方向整合する。has 側は本定義書 §8.1、被参照側は `recommendation_result_item_テーブル定義書.md` §8.2。
 
@@ -93,10 +93,10 @@ flowchart LR
 | 論理ER §7.2 | `reason_badges_json`, `reason_points_json`, `reason_basis_json` | **採用**（JSONB） | 論理名どおり |
 | Reason生成 §15.1 | `reason_summary`, `reason_detail`, `caution_note`, `template_id` | **採用** | 一致 |
 | Reason生成 §15.1 | `reason_basis` | **`reason_basis_json`（JSONB）** | 物理名は `_json` サフィックス |
-| Reason生成 §15.1 | `recommendation_run_id` | **MVP 物理列なし** | Result Item → Result → Run で追跡（§17.1 No.1 **提案**） |
-| Reason生成 §15.1 | `item_id` | **MVP 物理列なし** | `recommendation_result_item.item_id` で追跡（§17.1 No.1 **提案**） |
-| Reason生成 §15.1 | `generation_method` | **MVP 物理列なし** | `reason_basis_json.generation_method` に記録（§17.1 No.2 **提案**） |
-| Reason生成 §15.1 | `model_version_id` | **MVP 物理列なし** | `recommendation_run.model_version_id` で再現性確保（§17.1 No.3 **提案**） |
+| Reason生成 §15.1 | `recommendation_run_id` | **MVP 物理列なし** | Result Item → Result → Run で追跡（§17.1 No.1 **決定済み**） |
+| Reason生成 §15.1 | `item_id` | **MVP 物理列なし** | `recommendation_result_item.item_id` で追跡（§17.1 No.1 **決定済み**） |
+| Reason生成 §15.1 | `generation_method` | **MVP 物理列なし** | `reason_basis_json.generation_method` に記録（§17.1 No.2 **決定済み**） |
+| Reason生成 §15.1 | `model_version_id` | **MVP 物理列なし** | `recommendation_run.model_version_id` で再現性確保（§17.1 No.3 **決定済み**） |
 | Reason生成 §15.1 | `generated_at` | **`created_at`** | 物理名 `created_at`。論理 `generated_at` と同一意味 |
 | result_item §5.4 | `recommendation_reason_id` / `reason_status` on Item | **Item 側は保持しない** | 本テーブル側の責務（#545 決定済み） |
 | API-INT-002 | `reasonStatus` | **DB 列なし** | 行あり = `completed`、行なし = `failed`（includeReason 時） |
@@ -114,7 +114,7 @@ Reason生成定義書 §14.2 / §14.3・reason_template 定義書 §6.2 を正�
 | `used_scores` | `yes` | 使用スコア（`context_score` 等） |
 | `used_semantic_evidence` | 推奨 | 意味根拠配列 |
 | `template_type` | 推奨 | `summary` / `detail` / `point` / `caution` |
-| `generation_method` | 推奨 | `template` / `llm_refined` / `hybrid`（物理列なし時の記録先） |
+| `generation_method` | `yes` | `template` / `llm_refined` / `hybrid`（物理列なし。§17.1 No.2 **決定済み**） |
 | `llm_prompt_version` | LLM 利用時必須 | 版識別子（prompt 全文は保持しない） |
 | `generated_text` | 推奨 | 生成文面の記録（評価用。`reason_summary` と重複し得る） |
 
@@ -156,7 +156,7 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 | No | カラム名 | 論理名 | 型 | 必須 | PK | FK | Unique | Default | 説明 |
 | --: | -------- | ------ | -- | ---- | -- | -- | ------ | ------- | ---- |
 | 1 | `recommendation_reason_id` | Recommendation Reason ID | `uuid` | `yes` | `yes` | — | `yes` | `gen_random_uuid()` | サロゲート PK。API `recommendationReasonId`・Feedback 参照 |
-| 2 | `recommendation_result_item_id` | Recommendation Result Item ID | `uuid` | `yes` | — | `ON` | `yes` | — | 親 Result Item。物理 FK ON。MVP は **1 Item 1 Reason**（§7・§17.1 No.4 **提案**） |
+| 2 | `recommendation_result_item_id` | Recommendation Result Item ID | `uuid` | `yes` | — | `ON` | `yes` | — | 親 Result Item。物理 FK ON。**1 Item 1 Reason**（§7・§17.1 No.4 **決定済み**） |
 | 3 | `template_id` | Template ID | `uuid` | `yes` | — | `LOGICAL` | — | — | 使用 `reason_template.reason_template_id`。MVP は物理 FK なし |
 | 4 | `reason_summary` | Reason Summary | `text` | `yes` | — | — | — | — | 短い推薦理由。API `reasonSummary`。空文字不可（CHECK） |
 | 5 | `reason_detail` | Reason Detail | `text` | `no` | — | — | — | `NULL` | 詳細推薦理由。Internal / 将来画面用 |
@@ -166,7 +166,7 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 | 9 | `reason_basis_json` | Reason Basis | `jsonb` | `yes` | — | — | — | — | 根拠 JSON（§5.4 必須項目） |
 | 10 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | Reason 生成日時。論理ER `generated_at` と同一意味 |
 
-> **MVP で採用しない列**: `recommendation_run_id`, `item_id`, `generation_method`, `model_version_id`, `reason_status`, `updated_at`（§5.3・§17.1 **提案**）。
+> **MVP で採用しない列**: `recommendation_run_id`, `item_id`, `generation_method`, `model_version_id`, `reason_status`, `updated_at`（§5.3・§17.1 **決定済み**）。
 
 ### 6.1 JSON 列参照構造（MVP）
 
@@ -194,9 +194,7 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `recommendation_reason_id` | サロゲート UUID | Feedback・Internal API の参照先 |
-| UNIQUE | `recommendation_result_item_id` | **MVP 提案: 1 Item 1 Reason** | 物理ER §9 は 1:N だが、MVP UI・API は Item あたり 1 理由。Human Review #546 §17.1 No.4 |
-
-> **1:N 維持案**: UNIQUE を設けず複数 Reason を許容する場合、最新版を api が SELECT する規約が必要。MVP では **UNIQUE 採用を提案** する。
+| UNIQUE | `recommendation_result_item_id` | **1 Item 1 Reason** | 物理ER §9 は 1:N だが、MVP DDL は UNIQUE で実質 1:1（§17.1 No.4 **決定済み**） |
 
 ---
 
@@ -224,7 +222,7 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 | Index名 | 対象カラム | 種別 | 用途 | 備考 |
 | ------- | ---------- | ---- | ---- | ---- |
 | `recommendation_reason_pkey` | `recommendation_reason_id` | btree（PK） | 主キー | 自動生成 |
-| `uq_recommendation_reason_result_item` | `recommendation_result_item_id` | unique btree | 親 Item からの JOIN・1:1 担保 | §7 MVP 提案 |
+| `uq_recommendation_reason_result_item` | `recommendation_result_item_id` | unique btree | 親 Item からの JOIN・1:1 担保 | §17.1 No.4 **決定済み** |
 | `idx_recommendation_reason_template_id` | `template_id` | btree | テンプレート別分析・PDCA | 任意（DDL Task で確定） |
 
 ---
@@ -234,7 +232,7 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 | 制約名 | 種別 | 対象 | 内容 | 備考 |
 | ------ | ---- | ---- | ---- | ---- |
 | `fk_recommendation_reason_result_item` | FOREIGN KEY | `recommendation_result_item_id` | `recommendation_result_item` 参照 | ON DELETE RESTRICT |
-| `uq_recommendation_reason_result_item` | UNIQUE | `recommendation_result_item_id` | 1 Item 1 Reason（MVP 提案） | §17.1 No.4 |
+| `uq_recommendation_reason_result_item` | UNIQUE | `recommendation_result_item_id` | 1 Item 1 Reason | §17.1 No.4 **決定済み** |
 | `chk_reason_summary_not_empty` | CHECK | `reason_summary` | `length(trim(reason_summary)) > 0` | 空理由の INSERT 禁止 |
 | `chk_reason_basis_json_object` | CHECK | `reason_basis_json` | `jsonb_typeof(reason_basis_json) = 'object'` | オブジェクト型のみ |
 
@@ -250,7 +248,7 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 | ---- | -------- | ---- |
 | Reason 生成成功 | **行が存在** | API `reasonStatus = completed`（includeReason 時） |
 | Reason 生成失敗 | **行が存在しない** | API `reasonStatus = failed`。Result Item は存続 |
-| `generation_method` | `reason_basis_json` 内 | 物理 enum 列なし（§17.1 No.2 **提案**） |
+| `generation_method` | `reason_basis_json` 内 | 物理 enum 列なし（§17.1 No.2 **決定済み**） |
 
 ---
 
@@ -353,30 +351,27 @@ CREATE TABLE recommendation_reason (
 
 ---
 
-## 17. 未決事項
+## 17. 決定事項
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `recommendation_run_id` / `item_id` 冗長列 | Reason生成定義書 §15.1 と論理ER §7.2 の差分 | Human | Human Review #546 | §17.1 No.1 |
-| 2 | `generation_method` 物理列 | enum 列 vs JSON のみ | Human | Human Review #546 | §17.1 No.2 |
-| 3 | `model_version_id` 保持 | Reason 側に版列が必要か | Human | Human Review #546 | §17.1 No.3 |
-| 4 | 1 Item : N Reason | 物理ER 1:N vs MVP UNIQUE 1:1 | Human | Human Review #546 | §17.1 No.4 |
+| — | — | — | — | — | Human Review（Issue #546）にて §17.1 No.1〜4 を決定済み |
 
-### 17.1 Human Review 提案（Issue #546・未確定）
+### 17.1 Human Review 決定事項（Issue #546）
 
-| No | 論点 | MVP 提案 | 備考 |
-| --: | ---- | -------- | ---- |
-| 1 | `recommendation_run_id` / `item_id` | **物理列なし** | Result Item / Result / Run 経由で追跡。冗長排除 |
-| 2 | `generation_method` | **`reason_basis_json` のみ** | 物理 enum 列は DDL Task まで保留可 |
-| 3 | `model_version_id` | **物理列なし** | `recommendation_run.model_version_id` を正本 |
-| 4 | 1 Item : N Reason | **`UNIQUE(recommendation_result_item_id)`** で実質 1:1 | API・UI は Item あたり 1 理由。将来 multi-reason は UNIQUE 解除 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `recommendation_run_id` / `item_id` 冗長列 | **MVP 物理列なし**。Result Item / Result / Run 経由で追跡 | Human | Reason生成定義書 §15.1 との差分は §5.3 に明示 |
+| 2 | `generation_method` 物理列 | **`reason_basis_json` のみ**（`generation_method` キー必須） | Human | 物理 enum 列は採用しない |
+| 3 | `model_version_id` 保持 | **MVP 物理列なし** | Human | `recommendation_run.model_version_id` を正本 |
+| 4 | 1 Item : N Reason | **`UNIQUE(recommendation_result_item_id)`** で実質 1:1 | Human | 物理ER §9 は 1:N。将来 multi-reason は UNIQUE 解除 |
 
 ### 17.2 先行 Task からの確定事項（引用）
 
 | No | 論点 | 決定内容 | 出典 |
 | --: | ---- | -------- | ---- |
 | 1 | Reason 項目の保持先（Item 側） | Item に `recommendation_reason_id` / `reason_status` / reasonSummary を **保持しない** | result_item 定義書 §5.4・§17.1 |
-| 2 | has 関係 | **1:N（ER）**。FK ON。MVP DDL は §17.1 No.4 で 1:1 制約を提案 | result_item §8.2・物理ER §9 |
+| 2 | has 関係 | 物理ER §9 は **1:N**。FK ON。MVP DDL は §17.1 No.4 により **実質 1:1** | result_item §8.2・本定義書 §8.1 |
 | 3 | Public API Reason 返却 | api が **JOIN** して `reasonSummary` 等を組立 | result_item §5.5 |
 | 4 | `template_id` LOGICAL 参照 | `reason_template_id`（uuid）格納 + `reason_basis_json` 併記 | reason_template §8.1・§6.2 |
 
@@ -413,5 +408,5 @@ CREATE TABLE recommendation_reason (
 - Reason生成定義書 §14.2 / §15.1 との差分が §5.3 に明示されている
 - API-PUB-002 / API-INT-002 の Reason マッピングが §5.5 に整理されている
 - INSERT 後 UPDATE 禁止・Reason 失敗時は行なしの方針が §12 に明記されている
-- Human Review #546 提案（§17.1 No.1〜4）が未確定であることが §17 に明示されている
+- Human Review #546 決定事項（§17.1 No.1〜4）が本文に反映されている
 - apps/** 変更がない

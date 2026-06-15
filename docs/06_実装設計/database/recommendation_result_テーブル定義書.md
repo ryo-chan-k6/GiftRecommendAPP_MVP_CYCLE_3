@@ -87,7 +87,7 @@ flowchart LR
 | 子 Feedback | `recommendation_feedback.recommendation_result_id` → 本テーブル（**物理 FK ON**。1:N receives） |
 | 子 Reason | **本テーブル経由ではなく** `recommendation_result_item` 経由（§5.1） |
 
-> **子テーブル定義**: `recommendation_result_item_テーブル定義書.md`（#545）で contains 側 FK・Snapshot 列・Index を詳細化済み。`recommendation_reason` / `recommendation_feedback` は Batch R06 No.4〜5 で詳細化する。
+> **子テーブル定義**: `recommendation_result_item_テーブル定義書.md`（#545）で contains 側 FK・Snapshot 列・Index を詳細化済み。`recommendation_reason_テーブル定義書.md`（#546）で has 側・理由文列を詳細化済み。`recommendation_feedback` は Batch R06 No.5（#547）で詳細化する。
 
 ### 5.3 親テーブルとの関係整理
 
