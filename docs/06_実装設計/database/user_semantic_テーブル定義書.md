@@ -152,7 +152,7 @@ Semanticルール定義書 §3.1・§7・§11・§14 を正本とする。`seman
 | 行への固定 | 抽出完了時、Run と **同一の** `semantic_config_version_id` を本行へ保存（再現性・監査用。§17.1 No.4 決定済み） |
 | Run との関係 | 通常は `user_semantic.semantic_config_version_id = recommendation_run.semantic_config_version_id`。不一致は **実装バグ**として扱う |
 | `item_semantic` との差分 | Item 側は BATCH-010 実行時に独立解決 + **物理 FK ON**。User 側は Run 固定 version を継承 + **LOGICAL FK**（`semantic_config_version_テーブル定義書` §8.2・`item_semantic_テーブル定義書` §17.1 No.1 注記） |
-| `user_feature` 連携 | 後続 Task で同一 `recommendation_run_id` / `semantic_config_version_id` を参照して Feature 生成 |
+| `user_feature` 連携 | 同一 `recommendation_run_id` で Feature 生成。version は Run / 本行経由で参照（`user_feature_テーブル定義書` §5.6・§8.2.1） |
 
 ### 5.6 MOD-RECO-004 / IF-DB-RECO-003 入出力
 
@@ -207,7 +207,7 @@ Semanticルール定義書 §3.1・§7・§11・§14 を正本とする。`seman
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `user_feature`（後続 Task） | `recommendation_run_id` | input | `LOGICAL` / 部分 `ON` | Feature 生成入力。別 Task で確定 |
+| `user_feature` | `recommendation_run_id` | input | `ON`（親 Run）+ `LOGICAL`（semantic 入力） | `user_feature_テーブル定義書` §5.6・§8.2.1 |
 | reco | `recommendation_run_id` 経由 SELECT | reads | アプリ層 | User Feature / Meaning 生成 |
 | `semantic_concept` | `extracted_semantic_json` 内 `concept_code` | generates_with | `LOGICAL` | `concept_code` + 行の `semantic_config_version_id` で特定 |
 | `semantic_rule` | 間接（MOD-RECO-004 実行） | applied_by | アプリ層 | Rule 正本は `semantic_rule` テーブル |
@@ -224,9 +224,9 @@ MOD-RECO-004: User Semantic Extractor
     ↓ extracted_semantic_json 組み立て
 IF-DB-RECO-003: INSERT user_semantic（recommendation_run_id）
     ↓
-MOD-RECO-005/006: user_feature 生成（後続）
+MOD-RECO-007: user_feature 生成
     ↓
-user_meaning 射影（後続 Task）
+user_meaning 射影（`user_meaning_テーブル定義書` #555 / MOD-RECO-008）
 ```
 
 ---
@@ -424,6 +424,8 @@ INSERT INTO user_semantic (
 | semantic_concept 定義書 | `docs/06_実装設計/database/semantic_concept_テーブル定義書.md` | concept_code |
 | semantic_rule 定義書 | `docs/06_実装設計/database/semantic_rule_テーブル定義書.md` | 抽出 Rule 正本 |
 | item_semantic 定義書 | `docs/06_実装設計/database/item_semantic_テーブル定義書.md` | 対称正本（#513） |
+| user_feature 定義書 | `docs/06_実装設計/database/user_feature_テーブル定義書.md` | 後続 Feature 生成連携正本（#554） |
+| user_meaning 定義書 | `docs/06_実装設計/database/user_meaning_テーブル定義書.md` | 後続 Meaning 射影連携正本（#555） |
 
 ---
 
