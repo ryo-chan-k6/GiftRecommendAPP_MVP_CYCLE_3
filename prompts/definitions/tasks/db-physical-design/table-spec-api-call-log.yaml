@@ -1,0 +1,227 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-api-call-log"
+  title: "api_call_log:API Call Logテーブル定義書作成"
+  summary: "物理ER・論理ER §9・状態遷移設計書 §6.2・enum定義書・ログ・Observability設計書・fetch_cursor / raw_product_metadata テーブル定義書を入力に、外部 API 呼び出し監査・再実行・レート制御ログ `api_call_log` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R04 No.5。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（api_call_status / source_api 等。merge 済み前提）"
+    - number: 505
+      purpose: "fetch_cursor テーブル定義書（controls 関係・rate_limited → paused 連動正本。merge 済み前提）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書（produces 関係・trace キー正本。merge 済み前提）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 510
+      purpose: "Task #505 PR（fetch_cursor。merge 済み前提）"
+    - number: 511
+      purpose: "Task #506 PR（raw_product_metadata。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R04 No.5。論理ER §9.2・テーブル一覧 §6 No.18。
+  外部 API 呼び出しの監査・再実行・レート制御ログ。`fetch_cursor` → `api_call_log` → `raw_product_metadata` の連携中核。
+  IF-DB-BATCH-002（API Call Log 保存）・IF-OBS-004（API Call Log 記録）の DB 正本。
+  親 Epic Branch 最新（enum #440、fetch_cursor #505、raw_product_metadata #506 merge 済み前提）を前提とする。
+  Issue #527 / Branch `docs/task-527-api-call-log-table-spec` で作業する。
+
+objective: |
+  `api_call_log` の物理カラム・制約・Index・保持方針を table-spec.md テンプレ準拠で定義する。
+  `batch_run_log` / `fetch_cursor` との LOGICAL FK、`raw_product_metadata` との produces 関係、`call_status` 状態遷移（状態遷移設計書 §6.2）と Fetch Cursor 連動（§11.2）を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の api_call_log テーブル定義書作成"
+  - "物理ER 外部商品データ連携系・Log 系分類・§9 FK 関係・§10 idx_api_call_log_batch との突合"
+  - "論理ER §9.2 属性・§9.3 フロー・§14 状態一覧との整合"
+  - "テーブル一覧 §6 No.18・Log / Observability 系補足との整合"
+  - "状態遷移設計書 §6.2（call_status）・§11.2 / §11.3（異常系・再実行）との整合"
+  - "enum定義書 §6.6 api_call_status・§6.24 source_api との整合"
+  - "ログ・Observability設計書 §14（api_call_log 主要項目・保存禁止情報・Retention）との突合・差分整理"
+  - "外部商品データ連携設計書 §8.4（request_params 等）と api_call_log 責務境界の整理"
+  - "fetch_cursor_テーブル定義書 §5.2 / §5.3（controls・rate_limited → paused）との双方向整合"
+  - "raw_product_metadata_テーブル定義書 §5.2（produces・api_call_log_id nullable・trace）との双方向整合"
+  - "インターフェース一覧 IF-DB-BATCH-002 / IF-OBS-004・バッチ設計方針書 Rate Limit 方針との整合"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "fetch_cursor / raw_product_metadata テーブル定義書の再作成（#505 / #506 merge 済み）"
+  - "batch_run_log / phase_log / error_log テーブル定義書"
+  - "raw_product_object（Object Storage 正本）のテーブル定義書"
+  - "staging_* / product_diff_result 等の他外部商品データ連携系テーブル定義書"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系・Log 系分類・batch_run_log → api_call_log / fetch_cursor → api_call_log / api_call_log → raw_product_metadata LOGICAL FK・Index（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "call_status（api_call_status）・source_api enum 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 外部商品データ連携系エンティティ・§9.3 疑似差分取得構造・api_call_log 属性"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.18 api_call_log・Log / Observability 系補足方針"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.2 API Call 状態遷移・§11.2 Batch 異常系（rate_limited）・§11.3 再実行方針"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§8.4 Raw Metadata 項目との責務分離（request_params / batch_run_id / http_status 等は api_call_log 側）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "API Call Log 正本区分（Log）・Batch 管理主体"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-002 API Call Log 保存・IF-OBS-004 API Call Log 記録 I/F"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "外部 API 呼び出し・Rate Limit 対応・Fetch Cursor Manager 連動方針"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§14 api_call_log 主要項目・保存禁止情報・Retention・trace キー"
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 controls 関係・§5.3 rate_limited → paused 連動（merge 済み前提）"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 produces 関係・api_call_log_id nullable・trace 方針・章構成参考（merge 済み前提）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-api-call-log.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-api-call-log/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "api_call_log テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §9.2・テーブル一覧 §6 No.18 と矛盾しない"
+  - "call_status 状態遷移（requested / succeeded / failed / rate_limited / skipped）が明記されている"
+  - "fetch_cursor との 1:N controls 関係（LOGICAL FK）と rate_limited → paused 連動方針が明記されている"
+  - "raw_product_metadata との 1:N produces 関係（LOGICAL FK）と trace キー方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "api-call-log-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 527
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 505
+      purpose: "fetch_cursor テーブル定義書 完了（controls 関係整合。merge 済み前提）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書 完了（produces 関係整合。merge 済み前提）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 batch_run_log → api_call_log / fetch_cursor → api_call_log / api_call_log → raw_product_metadata LOGICAL FK との整合"
+    - "物理ER §10 idx_api_call_log_batch（batch_run_id, requested_at）との整合"
+    - "論理ER §9.2 属性（batch_run_id / fetch_cursor_id / source / source_api / request_params_json / response_status / item_count / requested_at / completed_at / call_status）との整合"
+    - "論理ER §9.3 fetch_cursor → api_call_log → raw_product_metadata フローとの整合"
+    - "状態遷移設計書 §6.2 状態一覧・遷移図との整合"
+    - "enum定義書 §6.6 api_call_status・§6.24 source_api との整合"
+    - "ログ・Observability設計書 §14 主要項目・§14.3 保存禁止情報・Retention 方針との整合（差分は §5.4 等で明示）"
+    - "fetch_cursor テーブル定義書 §5.2 / §5.3 との双方向整合（fetch_cursor_id nullable・rate_limited → paused）"
+    - "raw_product_metadata テーブル定義書 §5.2 との双方向整合（produces・api_call_log_id nullable）"
+    - "インターフェース一覧 IF-DB-BATCH-002 / IF-OBS-004 との整合"
+    - "バッチ設計方針書 Rate Limit → api_call_log.rate_limited 記録方針との整合"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R04 No.5: api_call_log（外部商品データ連携系 / Log 系）"
+  - "Issue #527 / Branch docs/task-527-api-call-log-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#505 / PR #510（fetch_cursor）、#506 / PR #511（raw_product_metadata）"
+  - "Human Review 論点: 論理ER requested_at/completed_at vs ログ・Observability設計書 started_at/completed_at 命名、response_status vs http_status、request_params_json マスキング方針、trace_id 採否、Retention（90〜180日）"
+  - "Human Review 論点: fetch_cursor_id nullable（カーソル非経由 API 呼び出し）、rate_limited 終端時の Fetch Cursor paused 連動（fetch_cursor 定義書 §17.1 No.3 と整合）"
+  - "外部商品データ連携設計書 §8.4 の batch_run_id / request_params 等は api_call_log 責務。raw_product_metadata へ重複保持しない（raw_product_metadata 定義書 §5.4 と整合）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
