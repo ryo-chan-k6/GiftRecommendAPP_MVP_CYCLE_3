@@ -36,7 +36,7 @@ parent:
     - number: 478
       purpose: "feature_integration_rule テーブル定義書（merge 済み・統合重み）"
     - number: 553
-      purpose: "並行: user_semantic テーブル定義書（Batch R07 No.1。未 merge 時は論理ER §7.2 / §10.2 を参照）"
+      purpose: "user_semantic テーブル定義書（merge 済み・Batch R07 No.1 先行入力正本）"
   related_prs:
     - number: 548
       purpose: "Task recommendation_run PR（merge 済み）"
@@ -171,9 +171,12 @@ input:
     - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
       required: true
       purpose: "統合重み（user_feature_raw 合成係数）"
+    - path: "docs/06_実装設計/database/user_semantic_テーブル定義書.md"
+      required: true
+      purpose: "§5.6 / §8.2.1 先行入力・生成順序・extracted_semantic_json 連携（#553 merge 済み）"
     - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
       required: false
-      purpose: "Run 解決 version と user_feature 列の denormalize 要否（論理ER §7.2 vs §10.2 差分）"
+      purpose: "Run 解決 version と user_feature 列の denormalize 要否（§17.1 No.3 決定済み：持たない）"
     - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
       required: false
       purpose: "phase_name user_feature_generated 連携"
@@ -287,9 +290,7 @@ contract_gate:
 notes:
   - "Batch R07 No.2: user_feature（User意味推定系 / Run 単位派生）"
   - "Issue #554 / Branch docs/task-554-user-feature-table-spec"
-  - "先行 merge 済み: #543 / PR #548（recommendation_run）、#470 / PR #479（feature_definition）、#458 / PR #460（feature_normalization_version）、#514 / PR #519（item_feature）、#473〜#478 Feature Rule 系"
-  - "並行 Task: #553 user_semantic（Batch R07 No.1。未 merge 時は論理ER §7.2 / §10.2 を正として着手）"
-  - "Human Review 論点: feature_definition_id 列の物理化要否 vs feature_code のみ（item_feature #514 §17.1 No.1 との対称）、raw / normalized 2 列 vs feature_value 1 列（Featureルール §17.5 vs 論理ER §7.2）、semantic_config_version_id の user_feature 列 denormalize 要否（§7.2 vs §10.2）"
-  - "Human Review 論点: Run 単位 unique（recommendation_run_id + feature_code）の採用、chk_feature_value_range 対象列名、Retention / DELETE 方針（Run ライフサイクル連動）"
+  - "先行 merge 済み: #543 / PR #548（recommendation_run）、#553（user_semantic）、#470 / PR #479（feature_definition）、#458 / PR #460（feature_normalization_version）、#514 / PR #519（item_feature）、#473〜#478 Feature Rule 系"
+  - "Human Review #554: §17.1 No.1〜6 決定済み（feature_code のみ / feature_value 1 列 / version Run 経由 / uq_user_feature_per_run_axis / MVP DELETE なし）"
   - "後続 Task: user_meaning（Batch R07 No.3 / #555）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

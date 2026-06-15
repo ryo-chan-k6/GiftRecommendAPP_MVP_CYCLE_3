@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15                      |
+| 更新日         | 2026-06-15（Human Review #554 反映） |
 
 ---
 
@@ -51,7 +51,7 @@ User Feature Generator（`MOD-RECO-007`）が Relationship / Occasion / Pair / C
 - `relationship_rule` / `occasion_rule` 基準値、 `pair_rule` 補正、 `concept_feature_rule` Delta、`feature_integration_rule` 重みを統合した **正規化後 Feature 値** を保存する（Featureルール定義書 §12・§18.1）
 - `feature_normalization_version_id` を行に保持し、Run 実行時点の正規化パラメータ再現性を担保する（`feature_normalization_version_テーブル定義書` §8.2）
 - `source_type` を **`aggregated` 固定** で保持し、Relationship / Occasion / Concept 等の寄与分解は MVP では保存しない（enum定義書 §12.1）
-- `semantic_config_version_id` は **本テーブルには持たず**、`recommendation_run.semantic_config_version_id` を正とする（§8.4・§17.1 No.3 **推奨**）
+- `semantic_config_version_id` は **本テーブルには持たず**、`recommendation_run.semantic_config_version_id` を正とする（§8.4・§17.1 No.3 **決定済み**）
 
 ### 5.1 行モデル（MVP）
 
@@ -85,11 +85,11 @@ User Feature Generator（`MOD-RECO-007`）が Relationship / Occasion / Pair / C
 
 ```text
 recommendation_run INSERT（version / pair 解決済み）
-  → user_semantic 生成（別 Task / MOD-RECO-006）
+  → user_semantic 生成（MOD-RECO-004 / IF-DB-RECO-003）
   → User Feature Generator（MOD-RECO-007）
       → relationship_rule / occasion_rule 基準値
       → pair_rule 補正
-      → concept_feature_rule（user_semantic 入力）
+      → concept_feature_rule（user_semantic.extracted_semantic_json 入力）
       → feature_integration_rule 重み適用
       → input_type_rule 経路分岐
       → sigmoid 正規化（feature_normalization_version 参照）
@@ -98,7 +98,7 @@ recommendation_run INSERT（version / pair 解決済み）
   → Matching / Ranking
 ```
 
-> `user_semantic` テーブル定義書（#553）未 merge 時は、上記の semantic 入力前提を論理ER §7.2 / §10.2 参照で整理する（本 Task の out_of_scope）。
+> 先行入力の詳細は `user_semantic_テーブル定義書` §5.3 / §8.3 / §12.1 を正とする。`semantic_config_version_id` は `user_semantic` 行および `recommendation_run` 行に保持され、本テーブルでは Run 経由で参照する（§17.1 No.3 決定済み）。
 
 ### 5.5 `item_feature` との対称関係（概要）
 
@@ -114,9 +114,19 @@ recommendation_run INSERT（version / pair 解決済み）
 
 詳細は §8.4 を正とする。
 
-### 5.6 対象外
+### 5.6 `user_semantic` との連携
 
-- `user_semantic` / `user_meaning` の本体定義（別 Task / Batch R07）
+| 観点 | 方針 |
+| ---- | ---- |
+| 生成順序 | **`user_semantic` INSERT 完了後**に User Feature 生成（`user_semantic_テーブル定義書` §8.3） |
+| 入力 | 同一 `recommendation_run_id` の `user_semantic` 行。`extracted_semantic_json.concepts[]` を `concept_feature_rule` 解決の入力に用いる |
+| version 整合 | `user_semantic.semantic_config_version_id` = `recommendation_run.semantic_config_version_id`。Feature 生成時の `feature_code` / Rule 参照 version と一致必須 |
+| 0 件 Concept | `concepts: []` の Run でも Feature 生成は継続可（Relationship / Occasion / Pair 基準値のみで 8 軸を生成し得る） |
+| IF 分担 | IF-DB-RECO-003 は Semantic / Feature / Meaning をまとめて記載するが、**本テーブルは Feature 8 行のみ**を責務とする |
+
+### 5.7 対象外
+
+- `user_semantic` / `user_meaning` の本体定義（別テーブル。連携は §5.6 / §8.2 で整理）
 - `item_feature` 等 Item 派生データ系テーブル
 - User Feature 統合・正規化アルゴリズムの実装詳細（reco モジュール実装 Task）
 - `feature_input_hash` / `item_generation_queue`（Item 側 Batch 専用）
@@ -139,9 +149,9 @@ recommendation_run INSERT（version / pair 解決済み）
 | 6 | `source_type` | Source Type | `text` | `yes` | — | — | — | `'aggregated'` | MVP は `aggregated` 固定（enum定義書 §12.1） |
 | 7 | `generated_at` | Generated At | `timestamptz` | `yes` | — | — | — | — | 当該行の Feature 生成完了日時（UTC） |
 
-> **論理ER §7.2 / §10.2 との差分（§8.4）**: 論理ERは `feature_definition_id` を主要属性に列挙するが、item_feature #514 §17.1 No.1 と対称に MVP 物理 DDL では **`feature_code` のみ** を保持し、`feature_definition_id` 列は持たない（§17.1 No.1 **推奨**）。
+> **論理ER §7.2 / §10.2 との差分（§8.4）**: 論理ERは `feature_definition_id` を主要属性に列挙するが、item_feature #514 §17.1 No.1 と対称に MVP 物理 DDL では **`feature_code` のみ** を保持し、`feature_definition_id` 列は持たない（§17.1 No.1 **決定済み**）。
 >
-> **Featureルール定義書 §17.5 との差分**: 論理モデルは `raw_value` / `normalized_value` の両保持を許容するが、論理ER §7.2・物理ER §11 は User 側を **`feature_value` 1 列** とする。MVP は **正規化後のみ永続化**（raw は reco 内一時変数）（§17.1 No.2 **推奨**）。
+> **Featureルール定義書 §17.5 との差分**: 論理モデルは `raw_value` / `normalized_value` の両保持を許容するが、論理ER §7.2・物理ER §11 は User 側を **`feature_value` 1 列** とする。MVP は **正規化後のみ永続化**（raw は reco 内一時変数）（§17.1 No.2 **決定済み**）。
 
 ---
 
@@ -151,7 +161,7 @@ recommendation_run INSERT（version / pair 解決済み）
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `user_feature_id` | サロゲート UUID | — |
 | UNIQUE | `user_feature_id` | PK と同一 | — |
-| UNIQUE | `recommendation_run_id`, `feature_code` | Run 内 8 軸一意 | Index 名: `uq_user_feature_per_run_axis`（§17.1 No.4 **推奨**） |
+| UNIQUE | `recommendation_run_id`, `feature_code` | Run 内 8 軸一意 | Index 名: `uq_user_feature_per_run_axis`（§17.1 No.4 **決定済み**） |
 
 > **item_feature 冪等キーとの差分**: `feature_normalization_version_テーブル定義書` §7.1 注記どおり、Run 単位派生の `user_feature` には item_feature 同型の 5 列冪等 unique（`feature_input_hash` 含む）は **MVP では定義しない**。Run 内では `recommendation_run_id` + `feature_code` で 8 行を固定する。
 
@@ -172,6 +182,13 @@ recommendation_run INSERT（version / pair 解決済み）
 | `feature_code` | `feature_definition.feature_code`（Run 解決済み `semantic_config_version_id` 内） | `LOGICAL` | reco が INSERT 前に存在確認 | `recommendation_run.semantic_config_version_id` 経由で version 特定。`feature_definition_テーブル定義書` §8.1 |
 | `feature_normalization_version_id` | `feature_normalization_version.feature_normalization_version_id` | `LOGICAL` | reco が INSERT 前に存在確認 | `feature_normalization_version_テーブル定義書` §8.2 |
 
+### 8.2.1 入力（`user_semantic` から）
+
+| カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
+| ------ | ------ | ------ | ---------- | ---- |
+| `recommendation_run_id` | `user_semantic.recommendation_run_id` | `LOGICAL` | 同一 Run の Semantic 行が存在 | Feature 生成前に `user_semantic` INSERT 完了必須（`user_semantic_テーブル定義書` §12.1） |
+| （間接） | `user_semantic.extracted_semantic_json` | — | `concept_code` 配列を Concept Delta 入力に利用 | `concept_feature_rule_テーブル定義書` 経由 |
+
 ### 8.3 被参照
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
@@ -183,9 +200,9 @@ recommendation_run INSERT（version / pair 解決済み）
 
 | 論点 | 論理ER §7.2 | 論理ER §10.2 | 物理ER §11 | `item_feature` | 本定義書の採用 |
 | ---- | ----------- | ------------ | ---------- | -------------- | -------------- |
-| 軸参照キー | `feature_definition_id` | `feature_definition_id` | `feature_code`（enum 連携） | `feature_code` のみ（#514 No.1） | **`feature_code` のみ**（§17.1 No.1 推奨） |
-| 意味 version | 未列挙 | 未列挙 | — | `semantic_config_version_id` 列 | **Run 経由。列は持たない**（§17.1 No.3 推奨） |
-| 値列 | `feature_value` | `feature_value` | `chk_feature_value_range` 対象 | raw + normalized 2 列 | **`feature_value` 1 列（正規化後）**（§17.1 No.2 推奨） |
+| 軸参照キー | `feature_definition_id` | `feature_definition_id` | `feature_code`（enum 連携） | `feature_code` のみ（#514 No.1） | **`feature_code` のみ**（§17.1 No.1 決定済み） |
+| 意味 version | 未列挙 | 未列挙 | — | `semantic_config_version_id` 列 | **Run / `user_semantic` 経由。列は持たない**（§17.1 No.3 決定済み） |
+| 値列 | `feature_value` | `feature_value` | `chk_feature_value_range` 対象 | raw + normalized 2 列 | **`feature_value` 1 列（正規化後）**（§17.1 No.2 決定済み） |
 | normalization FK | 未列挙（§7.2） | `feature_normalization_version_id` | LOGICAL | LOGICAL | **LOGICAL 維持** |
 | 入力 hash | — | — | — | `feature_input_hash` 必須 | **非採用** |
 | source_type | `source_type` | `source_type` | — | — | **`aggregated` 固定** |
@@ -200,9 +217,11 @@ recommendation_run INSERT（version / pair 解決済み）
 | Index名 | 対象カラム | 種別 | 用途 | 備考 |
 | ------- | ---------- | ---- | ---- | ---- |
 | `user_feature_pkey` | `user_feature_id` | btree（PK） | 主キー | 自動生成 |
-| `uq_user_feature_per_run_axis` | `recommendation_run_id`, `feature_code` | unique btree | Run 内 8 軸一意 | §7・§17.1 No.4 推奨 |
-| `idx_user_feature_lookup` | `recommendation_run_id`, `feature_code` | btree | Matching / Ranking 読取 | 物理ER §10 未記載。本 Task で追加方針 |
-| `idx_user_feature_run_id` | `recommendation_run_id` | btree | FK 補助・Run 単位一覧 | `recommendation_run` 被参照の JOIN 補助 |
+| `uq_user_feature_per_run_axis` | `recommendation_run_id`, `feature_code` | unique btree | Run 内 8 軸一意 | §7・§17.1 No.4 決定済み |
+| `idx_user_feature_lookup` | `recommendation_run_id`, `feature_code` | btree | Matching / Ranking 読取 | 物理ER §10 反映済み |
+| `idx_user_feature_run_id` | `recommendation_run_id` | btree | FK 補助・Run 単位一覧 | 物理ER §10 反映済み |
+
+> 物理ER §10・§11 に本テーブル Index / 制約を反映済み（#554）。
 
 Online 参照では、**同一 `recommendation_run_id` の 8 行**（`feature_code` 8 値）を `idx_user_feature_lookup` で一括取得する。
 
@@ -258,6 +277,7 @@ Online 参照では、**同一 `recommendation_run_id` の 8 行**（`feature_co
 ### 12.1 正規化 version 解決フロー
 
 ```text
+0. 同一 recommendation_run_id の user_semantic 行が存在すること（§5.6）
 1. reco が Run INSERT 時に semantic_config_version_id を recommendation_run へ記録済み
 2. normalization_rule から feature_normalization_version_id を解決（is_active=true）
 3. User Feature Generator が 8 軸を統合・sigmoid 正規化
@@ -319,7 +339,7 @@ SELECT *
 | 観点 | 方針 |
 | ---- | ---- |
 | 保持期間 | **recommendation_run と同ライフサイクル**（Online コア長期保持。具体日数は Phase2 ⑥ データ保持方針 Task で一括確定） |
-| 削除方式 | MVP では **DELETE なし**（`recommendation_run_テーブル定義書` §13・§17.1 No.5 踏襲） |
+| 削除方式 | MVP では **DELETE なし**（`recommendation_run_テーブル定義書` §13・§17.1 No.5 **決定済み**） |
 | 削除条件 | — |
 | 論理削除 | 採用しない |
 | アーカイブ | Phase2 ⑥ で確定 |
@@ -364,7 +384,8 @@ SELECT *
 | 7 | source_type CHECK | `aggregated` 以外が拒否される | migration |
 | 8 | Online 境界 | api / batch からの DML が行われない | manual |
 | 9 | IF-DB-RECO-003 | reco が 8 行 INSERT 後に Matching で読取できる | integration |
-| 10 | 権限 | reco のみが書き込み可能 | manual |
+| 10 | user_semantic 連携 | `user_semantic` 存在後にのみ INSERT される | integration |
+| 11 | 権限 | reco のみが書き込み可能 | manual |
 
 ---
 
@@ -372,15 +393,15 @@ SELECT *
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review #554 で §17.1 を決定予定 |
+| — | — | — | — | — | Human Review #554 にて No.1〜6 を決定済み（下記 §17.1） |
 
 ### 17.1 Human Review 決定事項（Issue #554）
 
-| No | 論点 | 推奨内容 | 決定者 | 備考 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
 | 1 | `feature_definition_id` 列の物理化要否 | **物理化しない**。`feature_code` のみ（item_feature #514 No.1 対称） | Human | §6・§8.4 |
 | 2 | raw / normalized 2 列 vs `feature_value` 1 列 | **`feature_value` 1 列**（正規化後のみ永続化。raw は reco 内一時変数） | Human | Featureルール §17.5 vs 論理ER §7.2 |
-| 3 | `semantic_config_version_id` の user_feature 行 denormalize | **持たない**。`recommendation_run.semantic_config_version_id` を正とする | Human | §5.1・§8.4 |
+| 3 | `semantic_config_version_id` の user_feature 行 denormalize | **持たない**。`recommendation_run` / `user_semantic` 経由で参照 | Human | §5.6・§8.4 |
 | 4 | Run 単位 unique | **`uq_user_feature_per_run_axis`（`recommendation_run_id` + `feature_code`）を採用** | Human | §7・§9 |
 | 5 | Retention / DELETE | **MVP DELETE なし**。Run と同ライフサイクル長期保持 | Human | §13・recommendation_run §13 踏襲 |
 | 6 | `chk_user_feature_value_range` 対象列 | **`feature_value` 列**（物理ER §11 表記に整合） | Human | §10 |
@@ -396,6 +417,7 @@ SELECT *
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §4 No.8 |
 | Featureルール定義書 | `docs/04_ドメインモデル設計/Featureルール定義書.md` | User Feature 生成・統合・§18.1 |
 | recommendation_run 定義書 | `docs/06_実装設計/database/recommendation_run_テーブル定義書.md` | recommendation_run_id FK・version コンテキスト |
+| user_semantic 定義書 | `docs/06_実装設計/database/user_semantic_テーブル定義書.md` | 先行入力・§5.6 連携正本（#553） |
 | item_feature 定義書 | `docs/06_実装設計/database/item_feature_テーブル定義書.md` | 対称関係・差分正本 |
 | feature_definition 定義書 | `docs/06_実装設計/database/feature_definition_テーブル定義書.md` | feature_code 正本 |
 | feature_normalization_version 定義書 | `docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md` | §8.2 LOGICAL FK |
@@ -416,11 +438,12 @@ SELECT *
 ## 19. レビュー観点
 
 - テーブル一覧 §4 No.8・論理ER §7.2 / §10.2・物理ER §8–§11 と矛盾していない
-- `item_feature_テーブル定義書` との対称関係・差分が §8.4 で明記されている
+- `item_feature_テーブル定義書` との対称関係・差分が §5.5 / §8.4 で明記されている
+- `user_semantic_テーブル定義書` との生成順序・入力連携が §5.6 / §8.2.1 で明記されている
 - `recommendation_run_id` 単位 8 行モデル・`uq_user_feature_per_run_axis` が明記されている
 - `feature_normalization_version_id` の LOGICAL FK 方針が明記されている
 - `source_type = aggregated` が enum定義書 §12.1 と整合している
 - 論理ER §16.3（reco 生成）・IF-DB-RECO-003・MOD-RECO-007 が反映されている
 - カラム・制約・Index が DDL Task へ展開できる粒度である
-- §17.1 推奨事項が本文（§6 / §8.4 / §9 / §10 / §12 / §13）に反映されている
+- §17.1 決定事項（No.1〜6）が本文に反映されている
 - secret や `.env` 実値が含まれていない

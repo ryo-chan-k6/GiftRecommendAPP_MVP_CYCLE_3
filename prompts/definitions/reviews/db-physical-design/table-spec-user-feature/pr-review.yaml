@@ -98,6 +98,9 @@ input:
     - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
       required: true
       purpose: "IF-DB-RECO-003 User Semantic / Feature 保存との整合"
+    - path: "docs/06_実装設計/database/user_semantic_テーブル定義書.md"
+      required: true
+      purpose: "先行入力・生成順序・§8.2.1 連携の確認"
     - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
       required: true
       purpose: "§8.2 recommendation_run_id 物理 FK（ON）被参照・責務境界の確認"
@@ -181,15 +184,9 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "feature_definition_id 列の物理化要否 vs feature_code のみ（item_feature #514 §17.1 No.1 との対称）"
-  - "raw / normalized 2 列 vs feature_value 1 列（Featureルール §17.5 vs 論理ER §7.2）"
-  - "semantic_config_version_id を user_feature 行に denormalize するか（論理ER §7.2 vs §10.2）"
-  - "Run 単位 unique（recommendation_run_id + feature_code）の採用可否"
-  - "user_semantic（#553）未 merge 時の生成順序・入力前提の記載で十分か"
+human_decision_points: []
 
 risk_points:
-  - "user_semantic テーブル定義書（#553）未 merge 時、User Feature 生成の semantic 入力関係が論理ER 参照に留まる"
   - "論理ER §7.2（feature_definition_id / feature_value のみ）と §10.2（feature_normalization_version_id 追加）の差分整理"
   - "item_feature #514 決定事項との対称適用範囲（冪等キー・hash 列・世代 DELETE 方針の User 側非適用）"
   - "user_meaning 後続 Task（#555）との FK・生成順序の一貫性"
@@ -198,6 +195,6 @@ notes:
   - "Batch R07 No.2: user_feature"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-user-feature.yaml"
   - "Issue #554 / Branch docs/task-554-user-feature-table-spec"
-  - "先行 merge 済み: #543 / PR #548（recommendation_run）、#470 / PR #479（feature_definition）、#458 / PR #460（feature_normalization_version）、#514 / PR #519（item_feature）、#473〜#478 Feature Rule 系"
-  - "並行 Task: #553 user_semantic（Batch R07 No.1）"
+  - "先行 merge 済み: #543 / PR #548（recommendation_run）、#553（user_semantic）、#470 / PR #479（feature_definition）、#458 / PR #460（feature_normalization_version）、#514 / PR #519（item_feature）、#473〜#478 Feature Rule 系"
+  - "Human Review #554: §17.1 No.1〜6 決定済み"
   - "PR 番号は /create-pr 完了後に本 Definition の target.pr / input.pr.number を更新する"
