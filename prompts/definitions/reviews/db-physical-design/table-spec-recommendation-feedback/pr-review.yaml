@@ -1,0 +1,225 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-recommendation-feedback-pr"
+  title: "recommendation_feedback テーブル定義書 PRレビュー"
+  summary: "recommendation_feedback テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §7.2・RecommendationFeedback定義書・enum定義書・recommendation_result 定義書・API-PUB-004 との整合、Result / Run 関係・feedback_status 方針・冪等更新・table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-547-recommendation-feedback-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 547
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-feedback.yaml"
+  source_branch: "docs/task-547-recommendation-feedback-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-feedback.yaml"
+    required: true
+  issue:
+    number: 547
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_feedback_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Online推薦系・receives LOGICAL/物理 FK・§17 No.3 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§7.2 属性・§14.1 Request → Run → Result → Feedback との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§3 No.6 分類・用途との整合"
+    - path: "docs/04_ドメインモデル設計/RecommendationFeedback定義書.md"
+      required: true
+      purpose: "§12.1 DB 項目・§13.2 重複更新・§5.2 feedback_type との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feedback_status / feedback_target_type との整合"
+    - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md"
+      required: true
+      purpose: "Request Body → DB 列・冪等更新キー（§14）の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-API-002 の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§5.3 feedback_status 遷移・保存済み不変方針と API 更新の差分確認"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "user_id なし・session_id 匿名 Feedback 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "recommendation_feedback_id trace キー・長期保持候補の確認"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+      purpose: "receives 関係（recommendation_result_id 物理 FK）との双方向整合"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "trace 用 recommendation_run_id 方針との整合"
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+      purpose: "trace 用 recommendation_request_id 方針との整合"
+    - path: "packages/code-definitions/state/recommendation_feedback_status.yaml"
+      required: true
+      purpose: "feedback_status packages 正本との整合"
+    - path: "packages/code-definitions/application/feedback_target_type.yaml"
+      required: true
+      purpose: "feedback_target_type packages 正本との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（summary / analysis / 親テーブル再作成 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "Online推薦フローの Feedback 正本として明記されているか"
+    - "論理ER §7.2 の属性と矛盾しないか（論理ER / ドメイン定義書との差分は明示されているか）"
+    - "テーブル一覧 §3 No.6 の分類・用途と一致しているか"
+    - "RecommendationFeedback定義書 §12.1 の項目・§13.2 重複更新方針が反映されているか"
+    - "recommendation_result / run / request 定義書と章構成・MVP 方針が双方向整合しているか"
+  db:
+    - "PK / Index / unique / CHECK が DDL Task へ展開できる粒度か"
+    - "recommendation_result → recommendation_feedback receives（1:N・物理 FK ON）関係が明記されているか"
+    - "recommendation_result_item / recommendation_reason への nullable LOGICAL FK が明記されているか"
+    - "recommendation_run / recommendation_request の trace 列方針が明記されているか"
+    - "feedback_status と enum定義書 §6.3 / packages 正本が一致しているか"
+    - "feedback_target_type と API-PUB-004 feedbackTargetType が一致しているか"
+    - "冪等更新キー（session_id + 同一対象 + 同一 feedback_type）の unique / Index 方針が整理されているか"
+    - "feedback_rating 必須（1〜5）・feedback_text 500 文字制約が明記されているか"
+    - "feedback_type MVP 許容値 CHECK が API-PUB-004 §6.4.1 / ドメイン定義書 §5.2 と整合しているか"
+    - "状態遷移設計書 §5.3 と API 冪等 UPDATE の差分が § 等で整理されているか"
+  security:
+    - "feedback_text に個人情報過剰保持を避ける方針が明記されているか"
+    - "session_id / anonymous_user_id の扱いが認証・認可方針書と整合しているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "feedback_status 物理列"
+    decision: "MVP 物理列あり。値は submitted / invalid / ignored"
+  - id: 2
+    topic: "user_id nullable 列"
+    decision: "MVP 物理列なし。認証 Epic まで追加しない"
+  - id: 3
+    topic: "submitted_at 物理列名"
+    decision: "論理ER submitted_at と同一意味。物理名は submitted_at"
+  - id: 4
+    topic: "冪等更新（重複 Feedback）"
+    decision: "session_id + 同一対象 + 同一 feedback_type の一致時は UPDATE 許容（API-PUB-004 §14 #406）"
+  - id: 5
+    topic: "recommendation_result_id FK"
+    decision: "物理 FK ON（NOT NULL）"
+  - id: 6
+    topic: "recommendation_result_item_id / recommendation_reason_id"
+    decision: "nullable・条件付き必須。物理 FK は LOGICAL"
+  - id: 7
+    topic: "recommendation_run_id / recommendation_request_id"
+    decision: "denormalized trace 列として保持可（LOGICAL FK）"
+  - id: 8
+    topic: "feedback_rating 必須"
+    decision: "MVP NOT NULL（1〜5）"
+  - id: 9
+    topic: "feedback_text 最大長"
+    decision: "500 文字。物理名 feedback_text"
+  - id: 10
+    topic: "Online推薦コア Retention"
+    decision: "MVP DELETE なし。長期保持候補を注記"
+
+risk_points:
+  - "RecommendationFeedback定義書 §12.1 の項目数と論理ER §7.2 簡略属性の差分整理"
+  - "状態遷移設計書 §5.3.3『原則更新しない』と API-PUB-004 冪等 UPDATE の読み合わせ"
+  - "feedback_type が packages 正本未整備のため CHECK 列定義の粒度"
+  - "#545 / #546 未 merge 時の result_item / reason 定義書との双方向整合（物理ER・論理ERを正本として整理）"
+  - "論理ER feedback_comment と API comment / 物理 feedback_text の命名差分"
+
+notes:
+  - "Batch R06 No.5: recommendation_feedback"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-recommendation-feedback.yaml"
+  - "Issue #547 / Branch docs/task-547-recommendation-feedback-table-spec"
+  - "先行 merge 済み前提: #537 / PR #542、#543 / PR #548、#544 / PR #549"
+  - "Human Review 決定事項: human_review_decisions 参照"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
