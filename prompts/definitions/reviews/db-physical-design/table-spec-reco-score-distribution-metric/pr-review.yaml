@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-reco-score-distribution-metric-pr"
+  title: "reco_score_distribution_metric テーブル定義書 PRレビュー"
+  summary: "reco_score_distribution_metric テーブル定義書 Task の PR を AI Review する。物理ER・テーブル一覧 §11 No.62・ログ・Observability設計書・batch_run_log / recommendation_result / recommendation_result_item / feature_distribution_metric / meaning_distribution_metric テーブル定義書との整合、Matching / Ranking スコア分布統計量・集計粒度・Retention 方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-564-reco-score-distribution-metric-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 564
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-reco-score-distribution-metric.yaml"
+  source_branch: "docs/task-564-reco-score-distribution-metric-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-reco-score-distribution-metric.yaml"
+    required: true
+  issue:
+    number: 564
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log / Observability系・Metric 分類・partial MVP・§8–§11 整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§11 No.62 分類・用途・reco 更新主体との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§14 Online推薦フロー・Run → Result → Item との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§11.2 / §12.9–§12.12 分布メトリクス方針・§22.3 reco 記録・§20.2 Retention の確認"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "§15.1 スコア項目・score_breakdown 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-OBS-005 / IF-DB-RECO-007 の確認"
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: true
+      purpose: "batch_run_id LOGICAL FK・任意性・Batch trace（#534 merge 済み正本）"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+      purpose: "Result ヘッダ trace・1 Run : 0..1 Result（#544 merge 済み正本）"
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+      purpose: "context_score / final_score / score_breakdown 集計入力（#545 merge 済み正本）"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "Run 単位 trace・version スナップショット（#543 merge 済み正本）"
+    - path: "docs/06_実装設計/database/feature_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 / §5.7 / §17.1 Metric 系列対称設計正本（#556 merge 済み正本）"
+    - path: "docs/06_実装設計/database/meaning_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 / §5.7 / §17.1 Metric 系列対称設計正本（#557 merge 済み正本）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "Reco 品質 Metric 記録境界（#535 merge 済み正本）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "result_status / run_status 等との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（他 Metric テーブル / BATCH-016 再定義 / DDL / migration / apps / OpenAPI / enum 追加本体）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "テーブル一覧 §11 No.62 の分類・用途（reco・Matching / Ranking スコア分布・partial MVP）と一致しているか"
+    - "ログ・Observability設計書 §12.12 カラム候補との突合（採用列・差分）が §5.4 等で整理されているか"
+    - "batch_run_log / recommendation_result / recommendation_result_item との関係が §5 / §8 で明記されているか"
+    - "feature_distribution_metric / meaning_distribution_metric テーブル定義書との対称設計（列構造・aggregation_scope・冪等キー・Retention）が参考整合しているか"
+    - "reco Online 記録方針（§22.3）と保存 I/F 整理が一貫しているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "batch_run_log.batch_run_id への LOGICAL FK・任意性・集計スコープ（aggregation_scope）方針が明記されているか"
+    - "recommendation_result / recommendation_result_item 個別スコアと本テーブル分布統計量の責務分離が明記されているか"
+    - "score_type / value_layer（context_score / final_score / matching 内訳）・recommendation_run_id / recommendation_result_id 保持方針が妥当か"
+    - "冪等キー / 再集計時の Upsert vs 追記方針が明記されているか"
+    - "Retention 方針（Metric 系列先例・§20.2）が §13 等で明記されているか"
+    - "aggregation_scope=run（Recommendation Run 単位）を MVP partial に含めるかの整理が明確か"
+    - "phase_log Reco 品質 Metric 記録境界（専用 phase 非追加）が整合しているか"
+  security:
+    - "分布統計量に個人情報・自由入力・secret を含めない方針が明記されているか"
+    - "score_breakdown 全文をログ出力しない方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "ログ・Observability設計書 §12.12 汎用カラム候補のうち MVP partial で物理列化する範囲（#556 / #557 先例との一貫性）"
+  - "score_type / value_layer（context_score / final_score / social_match / symbolic_match / feature_match）の列設計"
+  - "aggregation_scope=run を MVP partial に含めるか、daily / semantic_config_version を含めるか"
+  - "batch_run_id 必須性（reco Online 記録では NULL 許容とするか）"
+  - "score_breakdown_json から抽出する matching 内訳スコアの MVP 採用範囲"
+
+risk_points:
+  - "ログ・Observability設計書 §12.12 の汎用 metric カラム設計と Reco スコア専用テーブルへの落とし込み粒度"
+  - "recommendation_result_item 個別スコア列と分布統計量の責務境界の一貫性"
+  - "feature / meaning Metric 系列との列設計・命名・aggregation_scope の対称性と reco 主更新の差分"
+  - "MVP partial（△）のため、Run 単位のみ採用か日次集計も含めるかの判断"
+  - "batch_run_log 90 日 Retention と Metric 365 日以上 Retention の非連動整理"
+
+notes:
+  - "Batch R08 No.2: reco_score_distribution_metric"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-reco-score-distribution-metric.yaml"
+  - "Issue #564 / Branch docs/task-564-reco-score-distribution-metric-table-spec"
+  - "先行 merge 済み前提: #534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）、#543 / PR #548（recommendation_run）、#544 / PR #549（recommendation_result）、#545 / PR #550（recommendation_result_item）、#556 / PR #561（feature_distribution_metric）、#557 / PR #562（meaning_distribution_metric）"
+  - "feature / meaning / normalization 系 Metric 本体定義の再作成は out_of_scope"
+  - "Human Review #556 / #557 先例を Reco スコア軸設計の参考基準とする（ただし reco 主更新・partial MVP の差分を明示）"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
