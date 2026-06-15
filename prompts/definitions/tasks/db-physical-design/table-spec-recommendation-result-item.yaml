@@ -20,7 +20,7 @@ parent:
     - number: 543
       purpose: "並行: recommendation_run テーブル定義書（Batch R06 No.1）"
     - number: 544
-      purpose: "並行: recommendation_result テーブル定義書（Batch R06 No.2・親 Result）"
+      purpose: "recommendation_result テーブル定義書（親 Result・merge 済み前提・#549）"
     - number: 495
       purpose: "item テーブル定義書（Snapshot 参照元・merge 済み前提）"
     - number: 497
@@ -34,6 +34,8 @@ parent:
   related_prs:
     - number: 542
       purpose: "Task #537 PR（recommendation_request。merge 済み前提）"
+    - number: 549
+      purpose: "Task #544 PR（recommendation_result。merge 済み前提）"
     - number: 500
       purpose: "Task #495 PR（item。merge 済み前提）"
     - number: 502
@@ -65,8 +67,8 @@ background: |
   Phase2 子 Task ③ Batch R06 No.3。論理ER §7.3・テーブル一覧 §3 No.4。
   推薦結果の商品明細正本。スコア・順位・item 参照および表示時点の商品情報 Snapshot を保持する。
   IF-DB-RECO-007（Recommendation Result 保存）の明細側 DB 正本。
-  親 Epic Branch 最新（item #495 / item_image #497 / item_review_summary merge 済み前提、recommendation_request #537 merge 済み前提）を前提とする。
-  同 Batch の `recommendation_run`（#543）・`recommendation_result`（#544）は並行 Task。未 merge 時は物理ER・論理ER を正本として着手し、merge 後に双方向整合を確認する。
+  親 Epic Branch 最新（item #495 / item_image #497 / item_review_summary / recommendation_request #537 / recommendation_result #544 merge 済み前提）を前提とする。
+  同 Batch の `recommendation_run`（#543）は並行 Task。`recommendation_result`（#544）は merge 済みを正本とし双方向整合を確認する。
   Issue #545 / Branch `docs/task-545-recommendation-result-item-table-spec` で作業する。
 
 objective: |
@@ -162,6 +164,9 @@ input:
     - path: "docs/06_実装設計/database/item_review_summary_テーブル定義書.md"
       required: true
       purpose: "review_average_snapshot / review_count_snapshot 元データ参照（merge 済み前提）"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+      purpose: "親 Result contains FK・result_item_count・empty Result・§8.2 被参照（#544 merge 済み）"
     - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
       required: false
       purpose: "Online推薦フロー文脈参考（merge 済み前提）"
@@ -230,7 +235,7 @@ dependencies:
     - number: 537
       purpose: "recommendation_request テーブル定義書 完了（Online推薦フロー文脈。merge 済み前提）"
     - number: 544
-      purpose: "recommendation_result テーブル定義書（親 Result。並行 Task・merge 後双方向整合）"
+      purpose: "recommendation_result テーブル定義書 完了（親 Result・merge 済み前提）"
   blocking: false
 
 parallel_control:
@@ -268,24 +273,27 @@ review:
 contract_gate:
   required: false
 
-human_decision_points:
+human_decision_points: []
+
+human_review_decisions:
   - id: 1
     topic: "スコア列の物理化粒度"
-    note: "RecommendationResult定義書 §6.2.3 は context_score / social_match 等の個別列を示すが、論理ER §7.3 は rank / final_score / score_breakdown_json を主要属性とする。個別列 vs JSONB 併用の整理が Human Review 対象"
+    decision: "final_score + context_score を個別列。その他内訳は score_breakdown_json（JSONB）に集約"
   - id: 2
-    topic: "is_displayed / shop_name_snapshot / genre_name_snapshot 等の MVP 物理列"
-    note: "RecommendationResult定義書 §10.2 にあるが論理ER §7.3 にない項目の採否"
+    topic: "genre_name_snapshot"
+    decision: "MVP 物理列なし"
   - id: 3
+    topic: "中間参照 ID 列（Retrieval / Matching / Ranking）"
+    decision: "MVP 物理列なし。score_breakdown_json または Result debug_payload に委譲"
+  - id: 4
     topic: "recommendation_result 定義書との双方向整合"
-    note: "#544 並行 Task merge 後に親 Result 定義書 §8 子テーブル参照と突合"
-
-human_review_decisions: []
+    decision: "recommendation_result_テーブル定義書.md §8.2 と本定義書 §8.1 が一致（#544 / PR #549 merge 済み）"
 
 notes:
   - "Batch R06 No.3: recommendation_result_item（Online推薦系）"
   - "Issue #545 / Branch docs/task-545-recommendation-result-item-table-spec"
   - "Issue 本文のテーブル一覧参照 §4 は User意味推定系を指すため、正本は §3 No.4 を用いる"
-  - "先行 merge 済み前提: #495 / PR #500（item）、#497 / PR #502（item_image）、item_review_summary / PR #508、#537 / PR #542（recommendation_request）"
-  - "並行 Task: #543 recommendation_run、#544 recommendation_result。未 merge 時は物理ER・論理ER を正本として着手可"
+  - "先行 merge 済み前提: #495 / PR #500（item）、#497 / PR #502（item_image）、item_review_summary / PR #508、#537 / PR #542（recommendation_request）、#544 / PR #549（recommendation_result）"
   - "後続 Task: #546 recommendation_reason、#547 recommendation_feedback"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
