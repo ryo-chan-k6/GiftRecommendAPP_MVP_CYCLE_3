@@ -285,6 +285,7 @@ ON CONFLICT (source, external_genre_id) DO UPDATE SET
 | 外部商品データ連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | §12 ジャンルデータ |
 | バッチ設計方針書 | `docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md` | §8.2 / §8.6 Upsert 方針 |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-001 / BATCH-005 |
+| staging_genre 定義書 | `docs/06_実装設計/database/staging_genre_テーブル定義書.md` | §5.2 Upsert 元 Staging 正本（#525） |
 
 ---
 
