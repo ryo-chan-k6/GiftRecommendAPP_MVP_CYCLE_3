@@ -1,0 +1,174 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-phase-log-pr"
+  title: "phase_log テーブル定義書 PRレビュー"
+  summary: "phase_log テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §13・状態遷移設計書 §12・enum定義書・ログ・Observability設計書・api_call_log テーブル定義書との整合、polymorphic owner / phase_name CHECK / phase_status 遷移・Retention 方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-535-phase-log-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 535
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-phase-log.yaml"
+  source_branch: "docs/task-535-phase-log-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-phase-log.yaml"
+    required: true
+  issue:
+    number: 535
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log 系分類・polymorphic records LOGICAL FK・idx_phase_log_owner 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§13.1 ER 図・§13.2 属性・recommendation_run_phase_log 統合方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§11 No.57 分類・用途・Log 系補足との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§12.2 ログ保存方針・§13 phase_status 対応との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "phase_status / owner_type / recommendation_run_phase_name / batch_run_phase_name との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§9.3 owner_type 候補・§10 Phase Log 設計・§20.2 Retention 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-009 / IF-OBS-001 の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "phase_log 記録タイミング・コンポーネント責務の確認"
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+      purpose: "Log 系章構成・trace キー方針との一貫性確認"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（recommendation_run_phase_log 物理化 / batch_run_log・error_log 再作成 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §13.2 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "テーブル一覧 §11 No.57 の分類・用途と一致しているか"
+    - "recommendation_run_phase_log が物理化しない方針が明記されているか"
+    - "ログ・Observability設計書 §10 との突合（trace_id / duration_ms / error_code 等）が §5.4 等で整理されているか"
+    - "api_call_log テーブル定義書と章構成・MVP 方針が一貫しているか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "owner_type + owner_id による polymorphic records（LOGICAL FK）関係が明記されているか"
+    - "phase_status（phase_status enum）と enum定義書 §6.4 が一致しているか"
+    - "owner_type=batch_run 時の phase_name（batch_run_phase_name）と §6.19 が一致しているか"
+    - "owner_type=recommendation_run 時の phase_name（recommendation_run_phase_name）と §6.18 が一致しているか"
+    - "物理ER §10 idx_phase_log_owner（owner_type, owner_id, started_at）が反映されているか"
+    - "owner 別 phase_name CHECK（または同等 validation）方針が明記されているか"
+    - "Retention 方針（ログ・Observability設計書 §20.2）が § 等で明記されているか"
+  security:
+    - "detail_json に secret・Authorization Header・個人情報を保存しない方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "論理ER §13.2 未列挙列（trace_id / duration_ms / error_code / created_at）の物理列採用と nullable 方針"
+  - "Observability §10.3 reco_quality_metric_recorded と enum §6.18 / code-definitions の差分（追加 enum 値 vs MVP 除外）"
+  - "owner_type=evaluation_run 時の phase_name MVP 扱い（evaluation_run_phase_name 未定義）"
+  - "phase_log に許可する owner_type 集合（error_log 用 owner との差分）"
+  - "detail_json マスキング粒度・Retention（30〜90日）・created_at Index の MVP 必須性"
+
+risk_points:
+  - "batch_run_log / error_log 定義書（#534 / #536）が未作成のため、双方向記述が本 Task のみで完結するか"
+  - "Observability §10.3 と enum §6.18 の phase_name 差分整理が Human Review 論点として残る可能性"
+  - "evaluation_run の phase_name 未定義により MVP 範囲の記述が暫定になる可能性"
+
+notes:
+  - "テーブル一覧 §11 No.57: phase_log"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-phase-log.yaml"
+  - "Issue #535 / Branch docs/task-535-phase-log-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#527 / PR #532（api_call_log）"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

@@ -1,0 +1,243 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-phase-log"
+  title: "phase_log:Phase Logテーブル定義書作成"
+  summary: "物理ER・論理ER §13・状態遷移設計書 §12・enum定義書・ログ・Observability設計書・api_call_log テーブル定義書を入力に、Recommendation Run / Batch Run / Evaluation Run 等の汎用フェーズ実行記録 `phase_log` のテーブル定義書を作成する。Phase2 子 Task ③ テーブル一覧 §11 No.57。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（owner_type / phase_status / recommendation_run_phase_name / batch_run_phase_name 等。merge 済み前提）"
+    - number: 527
+      purpose: "api_call_log テーブル定義書（Log 系章構成・trace_id / duration_ms / error_code 方針参考。merge 済み前提）"
+    - number: 534
+      purpose: "推奨: batch_run_log テーブル定義書（owner_type=batch_run の records 関係整合。未 merge 時も物理ER・論理ER §13 で着手可能）"
+    - number: 537
+      purpose: "推奨: recommendation_request テーブル定義書（Online コア Run 追跡の文脈参考。並行可）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 532
+      purpose: "Task #527 PR（api_call_log。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ テーブル一覧 §11 No.57。論理ER §13.2・物理ER Log / Observability系分類。
+  `recommendation_run_phase_log` は物理化せず、`phase_log` に Run / Batch / Evaluation のフェーズ記録を統合する（テーブル一覧 §11 補足・物理ER §16）。
+  IF-DB-RECO-009（Phase / Error Log 保存）・IF-OBS-001（Phase Log 記録）の DB 正本。
+  親 Epic Branch 最新（enum #440、api_call_log #527 merge 済み前提）を前提とする。
+  推奨先行 Task #534（batch_run_log）は未 merge でも、物理ER §9・論理ER §13・ログ・Observability設計書 §10 を正本として着手可能とする。
+  Issue #535 / Branch `docs/task-535-phase-log-table-spec` で作業する。
+
+objective: |
+  `phase_log` の物理カラム・制約・Index・保持方針を table-spec.md テンプレ準拠で定義する。
+  polymorphic `owner_type` / `owner_id` による `recommendation_run` / `batch_run_log` / `evaluation_run` 等への LOGICAL FK（records 関係）、`phase_name` の owner 別 CHECK（`recommendation_run_phase_name` / `batch_run_phase_name`）、`phase_status` 状態遷移を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の phase_log テーブル定義書作成"
+  - "物理ER Log 系分類・§9 records 関係（polymorphic owner_type + owner_id）・§10 idx_phase_log_owner との突合"
+  - "論理ER §13.1 ER 図・§13.2 属性・recommendation_run_phase_log 統合方針との整合"
+  - "テーブル一覧 §11 No.57・Log / Observability 系補足（trace / retention / recommendation_run_phase_log 統合）との整合"
+  - "状態遷移設計書 §12.2 ログ保存方針・§13 状態遷移と ER 対応との整合"
+  - "enum定義書 §6.4 phase_status・§6.15 owner_type・§6.18 recommendation_run_phase_name・§6.19 batch_run_phase_name との整合"
+  - "packages/code-definitions（owner_type / phase_status / recommendation_run_phase_name / batch_run_phase_name）との突合"
+  - "ログ・Observability設計書 §9.3 owner_type 候補・§10 Phase Log 設計（主要項目・Run/Batch Phase 一覧）・§20.2 Retention との突合・差分整理"
+  - "インターフェース一覧 IF-DB-RECO-009 / IF-OBS-001・処理構成定義書の phase_log 責務との整合"
+  - "api_call_log テーブル定義書との Log 系章構成・trace キー方針の一貫性整理"
+  - "batch_run_log / error_log テーブル定義書との双方向整合（本 Task では関係整理。相手テーブル本体は別 Task）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "recommendation_run_phase_log テーブル定義書（物理化しない。§11 補足）"
+  - "batch_run_log / error_log テーブル定義書の再作成（#534 / #536）"
+  - "api_call_log テーブル定義書の再作成（#527 merge 済み）"
+  - "evaluation_run_phase_name enum の新規定義（Evaluation 系テーブル定義 Task へ委譲。本 Task では owner_type=evaluation_run 時の MVP 扱いを整理のみ）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log 系分類・batch_run_log / recommendation_run / evaluation_run → phase_log records（LOGICAL polymorphic）・idx_phase_log_owner（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "phase_status / owner_type / recommendation_run_phase_name / batch_run_phase_name 参照・owner 別 phase_name CHECK 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§13.1 Log ER 図・§13.2 phase_log 属性・recommendation_run_phase_log 統合方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§11 No.57 phase_log・Log / Observability 系補足（trace / retention / 統合方針）"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§12.2 ログ保存方針（Phase Log 粒度）・§13 状態遷移と ER 対応（phase_status）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Phase Log 正本区分（Log）・追記方針・上書き禁止"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-009 Phase / Error Log 保存・IF-OBS-001 Phase Log 記録 I/F"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§9.3 owner_type 候補・§10 phase_log 主要項目・§10.3/§10.4 Phase 一覧・§20.2 Retention・§21.2 物理設計判断事項"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "phase_log 記録タイミング・api / reco / batch 各コンポーネント責務"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "phase_log.error_code と error_log.error_code の責務境界・参照整合"
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+      purpose: "Log 系テーブル定義書の章構成・trace_id / duration_ms / error_code / detail_json マスキング方針参考（merge 済み前提）"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: false
+      purpose: "Batch 系 trace 文脈（batch_run_log / phase_log / error_log 併用）参考"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+  files:
+    - path: "packages/code-definitions/application/owner_type.yaml"
+      required: true
+      purpose: "owner_type 許容値・phase_log 利用箇所"
+    - path: "packages/code-definitions/state/phase_status.yaml"
+      required: true
+      purpose: "phase_status 許容値"
+    - path: "packages/code-definitions/batch/recommendation_run_phase_name.yaml"
+      required: true
+      purpose: "owner_type=recommendation_run 時の phase_name 許容値"
+    - path: "packages/code-definitions/batch/batch_run_phase_name.yaml"
+      required: true
+      purpose: "owner_type=batch_run 時の phase_name 許容値"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-phase-log.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-phase-log/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "phase_log テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §13.2・テーブル一覧 §11 No.57 と矛盾しない"
+  - "recommendation_run_phase_log が物理化しない方針が明記されている"
+  - "owner_type / owner_id による polymorphic records 関係（recommendation_run / batch_run / evaluation_run 等）が LOGICAL FK として明記されている"
+  - "phase_status（started / succeeded / failed / skipped）と owner 別 phase_name CHECK 方針が明記されている"
+  - "物理ER §10 idx_phase_log_owner（owner_type, owner_id, started_at）が反映されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "phase-log-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 535
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 527
+      purpose: "api_call_log テーブル定義書 完了（Log 系参考。merge 済み前提）"
+    - number: 534
+      purpose: "推奨: batch_run_log テーブル定義書（owner_type=batch_run 整合。未 merge 時は物理ER を正本）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 phase_log.owner_id polymorphic records（owner_type + owner_id）との整合"
+    - "物理ER §10 idx_phase_log_owner（owner_type, owner_id, started_at）との整合"
+    - "論理ER §13.2 属性（owner_type / owner_id / phase_name / phase_status / started_at / completed_at / detail_json）との整合"
+    - "論理ER §13.1 recommendation_run_phase_log 統合（物理化しない）との整合"
+    - "enum定義書 §6.4 phase_status・§6.15 owner_type・§6.18/§6.19 phase_name との整合"
+    - "packages/code-definitions 4 ファイルとの突合"
+    - "ログ・Observability設計書 §10.2 主要項目・§10.3/§10.4 Phase 一覧・§20.2 Retention との整合（差分は §5.4 等で明示）"
+    - "インターフェース一覧 IF-DB-RECO-009 / IF-OBS-001 との整合"
+    - "api_call_log テーブル定義書との Log 系章構成・trace 方針の一貫性"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "テーブル一覧 §11 No.57: phase_log（Log / Observability系）"
+  - "Issue #535 / Branch docs/task-535-phase-log-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#527 / PR #532（api_call_log）"
+  - "推奨先行（未 merge 可）: #534 batch_run_log — owner_type=batch_run の records 双方向整合"
+  - "Human Review 論点: 論理ER §13.2 未列挙列（trace_id / duration_ms / error_code / created_at）の採否と nullable 方針"
+  - "Human Review 論点: Observability §10.3 reco_quality_metric_recorded と enum §6.18 / code-definitions の差分整理"
+  - "Human Review 論点: owner_type=evaluation_run 時の phase_name MVP 扱い（evaluation_run_phase_name 未定義）"
+  - "Human Review 論点: phase_log に許可する owner_type 集合（error_log 用 owner との差分）"
+  - "Human Review 論点: detail_json マスキング方針・Retention（30〜90日）・created_at Index（§17 No.5 partition 代替）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
