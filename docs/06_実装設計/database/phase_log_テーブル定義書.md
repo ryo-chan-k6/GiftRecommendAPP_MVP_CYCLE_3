@@ -342,7 +342,7 @@ stateDiagram-v2
 | ------------ | --- | ---- |
 | `recommendation_run` | ○ | Online 推薦フェーズ（§5.2 統合先） |
 | `batch_run` | ○ | Batch 主要フェーズ |
-| `evaluation_run` | △ | Evaluation 実行フェーズ。**`phase_name` DB CHECK は MVP 省略** |
+| `evaluation_run` | ○ | Evaluation 実行フェーズ。**`phase_name` DB CHECK は MVP 省略**（§17.1 No.4） |
 | `recommendation_request` | × | error_log 中心。Phase は Run 単位で記録 |
 | `recommendation_result` | × | error_log 用 owner |
 | `recommendation_feedback` | × | error_log 用 owner |
@@ -465,7 +465,7 @@ INSERT INTO phase_log (
 | 3 | 状態遷移 | `started`→各終端が 1 回 UPDATE で完結 | integration |
 | 4 | polymorphic owner | `owner_type` / `owner_id` で Run / Batch を trace 可能 | integration |
 | 5 | recommendation_run 統合 | `owner_type=recommendation_run` で全 Phase が記録可能 | integration |
-| 6 | batch_run 連携 | `owner_type=batch_run` で §10.4 の主要 Phase が記録可能 | integration |
+| 6 | batch_run 連携 | `owner_type=batch_run` で §11.2（`batch_run_phase_name` 15 値）の主要 Phase が記録可能 | integration |
 | 7 | error_log 分離 | フェーズ失敗時に `error_code` 要約 + error_log 詳細が両立 | integration |
 | 8 | マスキング | `detail_json` に Secret / API キーが含まれない | manual |
 | 9 | trace | `trace_id` で api_call_log / error_log と横断検索可能 | integration |
