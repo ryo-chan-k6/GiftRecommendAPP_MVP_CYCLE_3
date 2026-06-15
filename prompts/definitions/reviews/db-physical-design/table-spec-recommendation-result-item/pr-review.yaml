@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-recommendation-result-item-pr"
+  title: "recommendation_result_item テーブル定義書 PRレビュー"
+  summary: "recommendation_result_item テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §7.3・RecommendationResult定義書・Ranking定義書・item 系テーブル定義書・API 契約仕様書との整合、Snapshot / FK / Index / table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-545-recommendation-result-item-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 545
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-result-item.yaml"
+  source_branch: "docs/task-545-recommendation-result-item-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-result-item.yaml"
+    required: true
+  issue:
+    number: 545
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Online推薦系・contains / snapshotted_by FK・§10 Index・§11 Snapshot UPDATE 禁止との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§7.3 Snapshot 項目・§14 Online推薦系属性との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§3 No.4 分類・用途・補足方針との整合"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "§6.2 / §10.2 Result Item 項目・§11 Ranking / Reason / Feedback 関係の確認"
+    - path: "docs/04_ドメインモデル設計/Ranking定義書.md"
+      required: true
+      purpose: "§14.3 Ranking 結果の Result Item 反映項目の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Snapshot 正本区分・上書き禁止方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-007 の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "recommendation_result_item_id trace キー・score_breakdown 保持方針の確認"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "推薦結果応答 Result Item 項目マッピング確認"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "reco 応答 Result Item 項目マッピング確認"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "item_id 物理 FK・Snapshot 元データ参照との双方向整合"
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: true
+      purpose: "item_image_url_snapshot 元データ参照との双方向整合"
+    - path: "docs/06_実装設計/database/item_review_summary_テーブル定義書.md"
+      required: true
+      purpose: "review snapshot 元データ参照との双方向整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（recommendation_run / recommendation_result / reason / feedback 本体 / item 系再作成 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "recommendation_result / item との関係（contains / snapshotted_by）が明記されているか"
+    - "論理ER §7.3 Snapshot 項目と矛盾しないか（差分は明示されているか）"
+    - "テーブル一覧 §3 No.4 の分類・用途と一致しているか"
+    - "RecommendationResult定義書 §6.2 / §10.2 の項目・Snapshot 方針が反映されているか"
+    - "Ranking定義書 §14.3 の反映項目が整理されているか"
+    - "item / item_image / item_review_summary 定義書と Snapshot 参照関係が双方向に整理されているか"
+    - "正本定義表の Snapshot 上書き禁止方針が反映されているか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "recommendation_result.recommendation_result_id への物理 FK（contains / ON）が明記されているか"
+    - "item.item_id への物理 FK（snapshotted_by / ON）が明記されているか"
+    - "Snapshot 列の UPDATE 禁止方針（物理ER §11）が明記されているか"
+    - "idx_result_item_result_id_rank（recommendation_result_id, rank）が Index 方針に反映されているか"
+    - "score_breakdown_json（JSONB）と個別スコア列の採否が整理されているか"
+    - "recommendation_reason / recommendation_feedback への子関係（has / receives）が参照として明記されているか"
+  security:
+    - "Snapshot 列に secret・個人情報過剰保持を避ける方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - id: 1
+    topic: "スコア列の物理化粒度"
+    note: "個別列 vs score_breakdown_json 併用の整理"
+  - id: 2
+    topic: "is_displayed / shop_name_snapshot / genre_name_snapshot 等の MVP 物理列"
+    note: "RecommendationResult定義書 §10.2 と論理ER §7.3 の差分採否"
+  - id: 3
+    topic: "recommendation_result 定義書との双方向整合"
+    note: "#544 merge 後の親 Result 定義書との突合"
+
+human_review_decisions: []
+
+risk_points:
+  - "RecommendationResult定義書 §10.2 と論理ER §7.3 の Snapshot / スコア項目差分整理"
+  - "並行 Task #544 recommendation_result 未 merge 時の親 Result FK / 列参照の暫定方針"
+  - "後続 #546 recommendation_reason への has 関係・reason_status 保持先の引き継ぎ"
+  - "API-PUB-002 / API-INT-002 応答項目名と DB 物理列名の命名差分整理"
+
+notes:
+  - "Batch R06 No.3: recommendation_result_item"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-recommendation-result-item.yaml"
+  - "Issue #545 / Branch docs/task-545-recommendation-result-item-table-spec"
+  - "先行 merge 済み前提: #495 / PR #500（item）、#497 / PR #502（item_image）、item_review_summary / PR #508、#537 / PR #542（recommendation_request）"
+  - "並行 Task: #543 recommendation_run、#544 recommendation_result"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
