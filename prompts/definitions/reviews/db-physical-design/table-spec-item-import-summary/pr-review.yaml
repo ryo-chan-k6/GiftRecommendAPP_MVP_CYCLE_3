@@ -157,12 +157,27 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "集計粒度（batch_run_id のみ vs batch_run_id + source_api vs chunk 複数行）"
-  - "unavailable_count / feature_generated_count / embedding_generated_count の MVP 採用"
-  - "skipped_count と unavailable_count の定義境界"
-  - "batch_run_log への物理 FK vs LOGICAL FK 方針"
-  - "1 batch_run あたりの行数・UNIQUE キー設計"
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "UNIQUE キー（batch_run_id + source_api）"
+    decision: "(batch_run_id, source_api) を冪等キーとする"
+  - id: 2
+    topic: "skipped_count と unavailable_count の定義境界"
+    decision: "§5.7 を正とする"
+  - id: 3
+    topic: "fetched_count の正本"
+    decision: "api_call_log.item_count 合計を正本"
+  - id: 4
+    topic: "item_ranking snapshot 件数列"
+    decision: "MVP では fetched_count のみ"
+  - id: 5
+    topic: "再集計方針"
+    decision: "INSERT 1 回 + ON CONFLICT DO NOTHING"
+  - id: 6
+    topic: "batch_run_log 物理 FK"
+    decision: "LOGICAL FK + Index"
 
 risk_points:
   - "product_diff_result（#526 / PR #531）の diff_status 別件数と new/updated/unchanged/unavailable_count の対応漏れ"
@@ -178,3 +193,4 @@ notes:
   - "先行 Epic: #435 / docs/epic-435-db-physical-design"
   - "先行 merge 済み前提: #526 / PR #531（product_diff_result）、#517 / PR #522（staging_item）"
   - "PR 番号は /create-pr 後に本 Definition の target.pr / input.pr.number を更新する"
+  - "Human Review 決定事項（§17.1 No.1〜6）は item_import_summary テーブル定義書に反映済み"

@@ -302,6 +302,7 @@ erDiagram
 | `raw_product_metadata.raw_metadata_id` | `staging_ranking_signal.raw_metadata_id` | transforms_to | `LOGICAL` | 1:N | |
 | `raw_product_metadata.raw_metadata_id` | `staging_genre.raw_metadata_id` | transforms_to | `LOGICAL` | 1:N | |
 | `staging_item.staging_item_id` | `product_diff_result.staging_item_id` | judged_as | `LOGICAL` | 1:0..1 | |
+| `batch_run_log.batch_run_id` | `item_import_summary.batch_run_id` | summarizes | `LOGICAL` | 1:N | `item_import_summary_テーブル定義書` §17.1 No.6 |
 | `staging_item.external_item_code` | `item.external_item_code` | upserts | `LOGICAL` | N:1 | Upsert キー |
 | `staging_item_image.external_item_code` | `item_image.image_url` | upserts | `LOGICAL` | N:M 相当 | `item_id` 解決後。`itemCode` + `image_url` |
 | `staging_genre.external_genre_id` | `external_genre.external_genre_id` | upserts | `LOGICAL` | N:1 | Upsert キー `source` + `external_genre_id`（`staging_genre_テーブル定義書` §17.1 No.1〜2） |
@@ -351,6 +352,9 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `product_diff_result` | `uq_product_diff_batch_code` | `batch_run_id`, `external_item_code` | unique | BATCH-006 冪等 | `product_diff_result_テーブル定義書` §7 |
 | `product_diff_result` | `idx_product_diff_staging_item` | `staging_item_id` | btree | judged_as 逆引き | Retention 連動 |
 | `product_diff_result` | `idx_product_diff_status` | `batch_run_id`, `diff_status` | btree | BATCH-007〜009 読取 | — |
+| `item_import_summary` | `uq_item_import_summary_run_api` | `batch_run_id`, `source_api` | unique | BATCH-017 冪等 INSERT | `item_import_summary_テーブル定義書` §17.1 No.1 |
+| `item_import_summary` | `idx_item_import_summary_run` | `batch_run_id`, `summarized_at` DESC | btree | Batch Run 単位一覧 | Admin / 運用分析 |
+| `item_import_summary` | `idx_item_import_summary_source_api` | `source_api`, `summarized_at` DESC | btree | API 種別別推移 | Observability |
 | `item_generation_queue` | `idx_item_gen_queue_status` | `queue_status`, `queued_at` | btree | 再生成処理 | |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 
@@ -369,6 +373,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `staging_genre` | `uq_staging_genre_raw_metadata_genre` | unique | `raw_metadata_id`, `external_genre_id` | Raw 内ジャンルID一意 | `staging_genre_テーブル定義書` §17.1 No.1 |
 | `ranking_snapshot` | `uq_ranking_snapshot_observation_key` | unique | `source`, `external_genre_id`, `period`, `last_build_date` | 観測キー一意 | §17.2 No.1 |
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | unique | `ranking_snapshot_id`, `rank` | ランキング明細一意 | |
+| `item_import_summary` | `uq_item_import_summary_run_api` | unique | `batch_run_id`, `source_api` | BATCH-017 冪等 | `item_import_summary_テーブル定義書` §17.1 No.1 |
 | `item_feature` | `uq_item_feature_idempotent` | unique | `item_id`, `semantic_config_version_id`, `feature_code`, `feature_input_hash`, `feature_normalization_version_id` | 再生成冪等 | テーブル一覧 §7 補足 |
 | `item_embedding` | `uq_item_embedding_idempotent` | unique | `item_id`, `model_version_id`, `embedding_input_hash` | Embedding 冪等 | |
 | `pair_master` | `uq_pair_relationship_occasion` | unique | `relationship_code`, `occasion_code` | Pair 一意 | |
@@ -413,6 +418,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | Staging 系 | 成功 Batch 完了後 **即削除** / 失敗・部分成功時 **7〜14 日** | DELETE | `batch_run_id` 単位 | §17 No.4 |
 | `product_diff_result` | 成功時短期 / 失敗時 7〜14 日 | DELETE | Batch 完了後 | Staging と同様 |
 | Log 系（phase / error / api_call / batch_run） | 中期（月単位） | DELETE | 保持期間経過 | MVP では partition なし（§17 No.5） |
+| `item_import_summary` | **365 日** | DELETE | `summarized_at` 基準 | `item_import_summary_テーブル定義書` §13 |
 | Metric 系 | 中期 | DELETE / 集約 | 保持期間経過 | 将来 `metric_summary` 統合可 |
 | Raw Metadata | 中期 | 状態更新 + アーカイブ | Object Storage 側 lifecycle と連動 | DB は参照のみ |
 

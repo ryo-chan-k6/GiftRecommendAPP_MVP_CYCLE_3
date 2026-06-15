@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `yes`                              |
 | 作成日         | 2026-06-15                         |
-| 更新日         | 2026-06-15                         |
+| 更新日         | 2026-06-15（§17.1 Human Review 反映） |
 
 ---
 
@@ -75,7 +75,7 @@ BATCH-017（Import Summary作成 / `MOD-BATCH-047` Item Import Summary Writer）
 | 物理ER 関係 | `batch_run_log` → `item_import_summary` : **`summarizes`**（**LOGICAL** 1:N） |
 | 参照列 | **`item_import_summary.batch_run_id`** → `batch_run_log.batch_run_id`（**NOT NULL**） |
 | 作成 Batch | BATCH-017（各子 workflow 末尾または集計対象 Batch 完了後） |
-| `batch_run_log` 定義書 | **#534 別 Task**。本 Task では LOGICAL 参照 + Index のみ定義 |
+| `batch_run_log` 定義書 | **#534 別 Task**。**LOGICAL FK + Index**（§17.1 No.6 確定）。物理 FK は付与しない |
 | カーディナリティ | 1 Batch Run : **0..N** Item Import Summary（`source_api` 別に複数行可。§7） |
 
 ```mermaid
@@ -111,7 +111,7 @@ flowchart LR
 | ---- | ---- |
 | 物理 FK | **なし** |
 | データフロー | `staging_item`（BATCH-005）→ BATCH-006 → `product_diff_result` → BATCH-007 Item 反映 → BATCH-017 集計 |
-| `fetched_count` 補助 | 同一 `batch_run_id` + `source_api` の `staging_item` 行数、または `api_call_log.item_count` 合計（§12.1） |
+| `fetched_count` 正本 | **`api_call_log.item_count` 合計**（§5.5・§12.1）。`staging_item` 行数は整合確認用の参考のみ |
 | 直接参照 | Staging 行単位の trace は `staging_item` / `product_diff_result` で行い、本テーブルは **件数のみ** |
 
 ```mermaid
@@ -130,7 +130,7 @@ flowchart TD
 | 観点 | 方針 |
 | ---- | ---- |
 | 集計 | 同一 `batch_run_id` + **`source_api`** の `api_call_log.item_count` **合計** を `fetched_count` の主入力とする |
-| 代替 | API 商品列がない呼び出し（`item_count = 0`）は Staging 変換件数で補完してよい（Batch 実装判断。§17） |
+| 代替 | API 商品列がない呼び出し（`item_count = 0`）のみ、同一 `batch_run_id` + `source_api` の `staging_item` 行数で補完してよい（例外ケース。正本は `api_call_log`） |
 | 物理 FK | **なし** |
 
 ### 5.6 workflow 別集計方針（`source_api`）
@@ -140,19 +140,17 @@ flowchart TD
 | `source_api` | 典型 workflow | `new/updated/unchanged/unavailable` | その他カウント |
 | ------------ | ------------- | ----------------------------------- | -------------- |
 | `item_search` | BATCH-003〜007 系 | `product_diff_result` から集計 | `feature_generated_count` 等は同一 Run 内 Feature 系 Batch 完了後に設定（§6 No.12〜13） |
-| `item_ranking` | BATCH-002 系 | **0 固定**（差分判定なし） | `fetched_count` = ランキング API 取得件数。snapshot 件数は Batch ログで別途追跡可（§17） |
+| `item_ranking` | BATCH-002 系 | **0 固定**（差分判定なし） | `fetched_count` = ランキング API 取得件数。**snapshot 専用列は持たない**（§17.1 No.4） |
 | `genre_search` | BATCH-001 系 | **0 固定** | `fetched_count` = ジャンル取得件数 |
 | `attribute_search` | 将来拡張 | MVP 未使用時は行なし | — |
 
-### 5.7 `skipped_count` と `unavailable_count` の境界（案）
+### 5.7 `skipped_count` と `unavailable_count` の境界
 
-| 列 | 意味（MVP 案） | 集計元（概要） |
-| -- | -------------- | -------------- |
+| 列 | 意味（MVP） | 集計元（概要） |
+| -- | ----------- | -------------- |
 | `unavailable_count` | 取得不能・対象外・Validator 不合格 | `product_diff_result.diff_status = 'unavailable'` |
 | `skipped_count` | 意図的スキップ（反映対象外・Bulk unchanged チャンク等） | BATCH-007 で `new`/`updated` 以外のうち **反映を意図的にスキップ** した件数。`unchanged` は **`unchanged_count` へ計上**（二重計上しない） |
 | `failed_count` | Item 反映失敗等（GRS-BAT-005） | BATCH-007 失敗件数 + 致命的でない部分失敗（`partially_succeeded` 時） |
-
-> 最終定義は Human Review（§17.1）で確定する。
 
 ---
 
@@ -176,7 +174,7 @@ flowchart TD
 | 14 | `summarized_at` | Summarized At | `timestamptz` | `yes` | — | — | — | — | BATCH-017 集計完了日時（UTC） |
 | 15 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | 行作成日時（物理ER §5 timestamp 方針） |
 
-> **論理ER §9.2 chunk 表との差分**: 論理ER §9.2 後段表に未列挙の `unavailable_count` / `feature_generated_count` / `embedding_generated_count` を、ログ・Observability設計書 §13.3 を正として **MVP 物理 DDL に採用** する（`api_call_log_テーブル定義書` §5.4 と同型の整理）。
+> **論理ER 整合**: 論理ER §9.2・§13.2 を本定義書に合わせて更新済み（#533）。`unavailable_count` / `feature_generated_count` / `embedding_generated_count` はログ・Observability設計書 §13.3 を正として MVP 物理 DDL に採用する。
 
 ---
 
@@ -185,7 +183,7 @@ flowchart TD
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `item_import_summary_id` | サロゲート UUID | — |
-| UNIQUE | `batch_run_id`, `source_api` | 同一 Batch Run・同一 API 種別は 1 サマリ行 | Human Review 論点（§17.1 No.1）。バッチ処理一覧 BATCH-017 の `batch_run_id + summary_type` に **`source_api` を summary 識別子として対応** |
+| UNIQUE | `batch_run_id`, `source_api` | 同一 Batch Run・同一 API 種別は 1 サマリ行 | §17.1 No.1 確定。バッチ処理一覧 BATCH-017 の `summary_type` は **`source_api` に対応** |
 
 ---
 
@@ -195,7 +193,7 @@ flowchart TD
 
 | カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
 | ------ | ------ | ------ | ---------- | ---- |
-| `batch_run_id` | `batch_run_log.batch_run_id` | `LOGICAL` | BATCH-017 INSERT 前に run 存在 | 物理ER §9 summarizes |
+| `batch_run_id` | `batch_run_log.batch_run_id` | `LOGICAL` | BATCH-017 INSERT 前に run 存在 | 物理ER §9 summarizes。§17.1 No.6 確定 |
 
 ### 8.2 間接参照（列なし・集計元）
 
@@ -255,7 +253,7 @@ flowchart TD
 | INSERT | batch | BATCH-017 集計完了 | 全業務列 + `summarized_at` | `(batch_run_id, source_api)` UNIQUE | IF-DB-BATCH-017 |
 | SELECT | batch / api（Admin） | 運用分析・履歴表示 | — | — | Direct DB は batch のみ |
 | DELETE | batch / 運用ジョブ | Retention 満了 | — | `summarized_at` 基準 | §13 |
-| UPDATE | — | — | — | **MVP では行わない** | 再集計が必要な場合は Human 判断（§17.1 No.5） |
+| UPDATE | — | — | — | **MVP では行わない** | INSERT 1 回 + `ON CONFLICT DO NOTHING`（§17.1 No.5） |
 | INSERT / UPDATE / DELETE | web / reco | — | — | **禁止** | Batch / Admin 経由のみ |
 
 ### 12.1 BATCH-017 集計フロー（item_search workflow）
@@ -305,7 +303,7 @@ INSERT INTO item_import_summary (
   :embedding_generated_count,
   :summarized_at
 );
--- ON CONFLICT (batch_run_id, source_api) DO NOTHING または事前存在チェック（§17.1 No.5）
+-- ON CONFLICT (batch_run_id, source_api) DO NOTHING（§17.1 No.5）
 ```
 
 ### 12.3 `product_diff_result` 集計クエリ（参考）
@@ -376,7 +374,7 @@ GROUP BY diff_status;
 | 2 | 冪等 INSERT | 同一 `(batch_run_id, source_api)` 再 INSERT が拒否または no-op | integration |
 | 3 | enum整合 | `source_api` 4 値 CHECK + NOT NULL | migration |
 | 4 | 集計整合 | `new+updated+unchanged+unavailable` が `product_diff_result` COUNT と一致 | integration |
-| 5 | fetched_count | `api_call_log.item_count` 合計と整合（許容誤差方針は §17） | integration |
+| 5 | fetched_count | `api_call_log.item_count` 合計と整合（正本 §5.5。`item_count = 0` 時のみ staging 補完可） | integration |
 | 6 | partially_succeeded | Item 一部失敗時 `failed_count > 0` | integration |
 | 7 | Retention | 365 日超過行の DELETE ジョブ対象 | integration |
 | 8 | 権限 | web client から Direct DB 書き込み不可 | manual |
@@ -385,20 +383,18 @@ GROUP BY diff_status;
 
 ## 17. 未決事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | UNIQUE キー（`batch_run_id` + `source_api`） | バッチ処理一覧は `batch_run_id + summary_type`。`source_api` で十分か | Human | Task PR Human Review | **推奨**: `source_api` を summary 識別子とする（§7） |
-| 2 | `skipped_count` と `unavailable_count` の定義境界 | 機能×モジュール対応表と状態遷移の「スキップ」語彙が複数 | Human | 同上 | §5.7 案を提示 |
-| 3 | `fetched_count` の正本（api_call_log vs staging_item） | API 件数と Staging 件数が一致しない場合の優先 | Human | 同上 | §12.1 は api_call_log 優先案 |
-| 4 | `item_ranking` workflow の snapshot 件数列 | Observability §13.3 に snapshot 列なし。別列要否 | Human | 同上 | MVP は `fetched_count` のみ |
-| 5 | 再集計時の UPDATE / DELETE+INSERT | BATCH-017 再実行時の扱い | Human | 同上 | MVP は INSERT 1 回前提（§12） |
-| 6 | `batch_run_log` 物理 FK | #534 定義書との整合 | Human | #534 完了後 | MVP は LOGICAL（api_call_log 同型） |
+なし（§17.1 に Human Review 決定事項を記載）。
 
 ### 17.1 Human Review 決定事項（Issue #533）
 
 | No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
-| — | （未決） | Human Review 後に追記 | Human | PR #533 Human Review で §17 No.1〜6 を確定 |
+| 1 | UNIQUE キー（`batch_run_id` + `source_api`） | **`(batch_run_id, source_api)` を冪等キーとする**。バッチ処理一覧 BATCH-017 の `summary_type` は **`source_api` に対応** | Human | §7・バッチ処理一覧 BATCH-017 冪等キー更新 |
+| 2 | `skipped_count` と `unavailable_count` の定義境界 | **§5.7 を正とする**。`unavailable` = `product_diff_result` 集計、`skipped` = 意図的スキップ、`unchanged` は二重計上しない | Human | 機能×モジュール対応表・状態遷移設計書の「スキップ」語彙と整合 |
+| 3 | `fetched_count` の正本（api_call_log vs staging_item） | **`api_call_log.item_count` 合計を正本**とする。`item_count = 0` の API 呼び出しのみ `staging_item` 行数で補完可 | Human | §5.5・§12.1 |
+| 4 | `item_ranking` workflow の snapshot 件数列 | **MVP では専用列を持たない**。ランキング取得件数は **`fetched_count`** に集約 | Human | Observability §13.3 準拠。`ranking_snapshot` 明細は別テーブル正本 |
+| 5 | 再集計時の UPDATE / DELETE+INSERT | **MVP は INSERT 1 回のみ**。再実行時は **`ON CONFLICT (batch_run_id, source_api) DO NOTHING`**。UPDATE / DELETE+INSERT は行わない | Human | §12 |
+| 6 | `batch_run_log` 物理 FK | **MVP は LOGICAL FK + Index**（`api_call_log` 同型）。#534 完了後も物理 FK は付与しない | Human | `batch_run_log_テーブル定義書`（#534）と整合 |
 
 ---
 
