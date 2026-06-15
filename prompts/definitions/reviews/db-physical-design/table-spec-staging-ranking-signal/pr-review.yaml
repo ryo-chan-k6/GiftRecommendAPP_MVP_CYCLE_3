@@ -163,16 +163,13 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "Staging 行の UNIQUE キー（raw_metadata_id + rank / raw_metadata_id + external_item_code + rank 等）"
-  - "source / source_api 列を staging_ranking_signal 行に持つか（staging_item は source 採用、item_popularity_signal は不採用）"
-  - "論理ER §14.4 直接 upserts と ranking_snapshot ヘッダ介在の 2 層構造の MVP 採用方針"
-  - "Retention / 古い staging 行の削除方針（物理ER §13）"
-  - "itemCode 未解決時の external_item_code のみ保持・後続 item 補完取得の扱い"
+  - "itemCode 未解決時の external_item_code のみ保持・後続 item 補完取得の扱い（§12 記載の暫定方針で Human Review 可）"
+  - "Reco モジュール仕様書へ委譲: Online 選定拡張・popularity_score への ranking_rank 組み込み（§17.2。本 Task scope 外）"
 
 risk_points:
   - "raw_product_metadata（#506 / PR #511）との raw_metadata_id 参照・import_status 連動の引き継ぎ"
   - "ranking_snapshot（#496 / PR #501）・item_popularity_signal（#504 / PR #509）との昇格経路・冗長列の一貫性"
-  - "staging_item（#517 / PR #522）との external_item_code 紐づけ・BATCH-005 sibling 整合"
+  - "staging_item（#517 / PR #522）・staging_item_image（#523 / PR #528）との external_item_code 紐づけ・BATCH-005 sibling 整合"
   - "外部商品データ連携設計書 §4.3 ランキング API 項目と Staging 列の対応漏れ"
   - "論理ER §14.4 と物理ER 2 層 Snapshot 経路の記述差分"
 
@@ -180,5 +177,6 @@ notes:
   - "Batch R04 No.2: staging_ranking_signal"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-staging-ranking-signal.yaml"
   - "Issue #524 / Branch docs/task-524-staging-ranking-signal-table-spec"
-  - "先行 merge 済み前提: #494 / PR #499（external_genre）、#496 / PR #501（ranking_snapshot）、#504 / PR #509（item_popularity_signal）、#506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）"
+  - "Human Review #524 確定済み: UNIQUE / source 非採用 / 2 層 Snapshot / Retention（§17.1）"
+  - "先行 merge 済み前提: #494 / PR #499（external_genre）、#496 / PR #501（ranking_snapshot）、#504 / PR #509（item_popularity_signal）、#506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）、#523 / PR #528（staging_item_image）"
   - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"

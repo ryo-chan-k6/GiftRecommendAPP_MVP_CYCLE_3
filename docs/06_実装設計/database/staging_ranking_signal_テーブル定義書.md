@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP       |
 | MVP対象        | `yes`                                 |
 | 作成日         | 2026-06-14                            |
-| 更新日         | 2026-06-14                            |
+| 更新日         | 2026-06-14（Human Review #524 反映）  |
 
 ---
 
@@ -185,7 +185,7 @@ flowchart LR
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `staging_ranking_signal_id` | サロゲート UUID | trace キー |
-| UNIQUE | `raw_metadata_id`, `rank` | Raw 1 件あたり同一順位は 1 Staging 行 | **MVP 提案**（§17.1 No.1）。BATCH-005 冪等 |
+| UNIQUE | `raw_metadata_id`, `rank` | Raw 1 件あたり同一順位は 1 Staging 行 | Human Review #524 **確定**（§17.1 No.1）。BATCH-005 冪等 |
 
 > 同一 Raw 内で `external_item_code` は `rank` と 1:1 対応するため、`(raw_metadata_id, rank)` と `(raw_metadata_id, external_item_code)` は実質同等。順位軸を明示するため **`rank` を UNIQUE 構成に採用**。
 
@@ -212,7 +212,7 @@ flowchart LR
 | テーブル | 紐づけ | 備考 |
 | -------- | ------ | ---- |
 | `staging_item` | `raw_metadata_id` + `external_item_code`（別 API 由来が原則） | 商品属性 Staging。#517 |
-| `staging_item_image` | `raw_metadata_id` + `external_item_code` | 画像 Staging |
+| `staging_item_image` | `raw_metadata_id` + `external_item_code` | 画像 Staging。#523 |
 | `staging_genre` | `raw_metadata_id` | ジャンル API 由来 |
 
 ---
@@ -382,18 +382,25 @@ ON CONFLICT (raw_metadata_id, rank) DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | UNIQUE キー | `(raw_metadata_id, rank)` vs `(raw_metadata_id, external_item_code)` | Human | DDL Task 前 | §17.1 参照 |
-| 2 | `source` 列 | `staging_item` は採用、本テーブル論理ER §9.2 は未列挙 | Human | DDL Task 前 | §17.1 参照 |
-| 3 | Retention 詳細 | 失敗時 7〜14 日の具体値 | Human | 運用 Task | 物理ER §13 |
+| — | — | — | — | — | Human Review #524 にて No.1〜4 を決定済み（下記参照）。Reco 連携 2 論点は §17.2 へ委譲 |
 
-### 17.1 Human Review 論点（Issue #524）
+### 17.1 Human Review 決定事項（Issue #524）
 
-| No | 論点 | MVP 提案 | 備考 |
-| --: | ---- | -------- | ---- |
-| 1 | UNIQUE キー | **`(raw_metadata_id, rank)`** | 1 ランキングレスポンス内で順位は一意。`item_popularity_signal` の `ranking_snapshot_id + rank` と対称 |
-| 2 | `source` 列 | **非採用** | 論理ER §9.2 準拠。trace は `raw_product_metadata.source`。昇格時ヘッダ `ranking_snapshot.source` に設定 |
-| 3 | 論理ER §14.4 直接 upserts | **物理設計どおりヘッダ介在を採用** | `ranking_snapshot` / `item_popularity_signal` 定義書 §5.2 と整合 |
-| 4 | Retention | **物理ER §13 踏襲**（成功後即 DELETE） | `staging_item` §13 と同型 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | UNIQUE キー | **`(raw_metadata_id, rank)`** を MVP 必須とする | Human | §7・§12.2 ON CONFLICT。`item_popularity_signal` の `ranking_snapshot_id + rank` と対称 |
+| 2 | `source` 列 | **非採用**。trace は `raw_product_metadata.source`。昇格時ヘッダ `ranking_snapshot.source` に Batch が設定 | Human | 論理ER §9.2 整合。`staging_item` は `source` 保持、本テーブルは兄弟 Staging として trace 経由 |
+| 3 | 論理ER §14.4 直接 upserts | **物理設計どおりヘッダ介在を採用**（`staging_ranking_signal` → `ranking_snapshot` → `item_popularity_signal`） | Human | `ranking_snapshot` / `item_popularity_signal` 定義書 §5.2 と整合 |
+| 4 | Retention | **物理ER §13 踏襲**（成功 Batch 完了後即 DELETE / 失敗時 7〜14 日） | Human | `staging_item` §13 と同型 |
+
+### 17.2 後続 Task への委譲（Reco モジュール仕様書）
+
+本テーブル定義書の scope 外。Reco モジュール仕様書（`MOD-RECO-017` Popularity Scorer 等）作成 Task で確定する。
+
+| No | 論点 | 現状の暫定正本 | 委譲先 |
+| --: | ---- | -------------- | ------ |
+| 1 | Online 参照時の `item_popularity_signal` 選定（複数ジャンル・複数 Snapshot 横断、`IF-DB-RECO-006` ranking context） | `item_popularity_signal_テーブル定義書` §5.7（`item.external_genre_id` + `period='daily'` + 最新 `last_build_date`） | Reco モジュール仕様書 / Ranking 実装 Task |
+| 2 | `popularity_score` への `ranking_rank` 組み込み（Ranking定義書 §7.2 と外部商品データ連携設計書 §13.3 の整合） | 外部商品連携 §13.3 は rank 利用、`Ranking定義書` §7.2 MVP 式は review のみ | Reco モジュール仕様書 / Ranking 実装 Task |
 
 ---
 
@@ -412,7 +419,9 @@ ON CONFLICT (raw_metadata_id, rank) DO UPDATE SET
 | ranking_snapshot 定義書 | `docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md` | §5.2 昇格先ヘッダ |
 | item_popularity_signal 定義書 | `docs/06_実装設計/database/item_popularity_signal_テーブル定義書.md` | §5.2 昇格先明細 |
 | staging_item 定義書 | `docs/06_実装設計/database/staging_item_テーブル定義書.md` | §5.6 / §8.3 sibling |
+| staging_item_image 定義書 | `docs/06_実装設計/database/staging_item_image_テーブル定義書.md` | §8.3 sibling Staging。#523 |
 | external_genre 定義書 | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | external_genre_id 参照 |
+| Recoモジュール一覧 | `docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` | §17.2 委譲先（MOD-RECO-017） |
 
 ---
 
@@ -428,3 +437,5 @@ ON CONFLICT (raw_metadata_id, rank) DO UPDATE SET
 - 論理ER §14.4 直接 upserts との差分が §5.3 で明示されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
+- Human Review #524 決定事項（§17.1 No.1〜4）が本文に反映されている
+- Reco 連携 2 論点が §17.2 で後続 Task に委譲されている

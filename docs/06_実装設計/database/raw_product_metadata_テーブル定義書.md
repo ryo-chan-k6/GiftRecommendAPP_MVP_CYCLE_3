@@ -134,7 +134,7 @@ raw/rakuten/item_search/dt=2026-05-10/batch_run_id=br_20260510_001/9f2a3c.json
 | `raw_metadata_id` | `staging_ranking_signal.raw_metadata_id` | transforms_to | `LOGICAL` | ランキング Staging |
 | `raw_metadata_id` | `staging_genre.raw_metadata_id` | transforms_to | `LOGICAL` | ジャンル Staging |
 
-> `staging_item` は **`staging_item_テーブル定義書`**（#517）で定義済み。`staging_item_image` は **`staging_item_image_テーブル定義書`**（#523）で定義済み。`staging_ranking_signal` / `staging_genre` 等は別 Task。本定義書では **`raw_metadata_id` 被参照** を確定する。
+> `staging_item` は **`staging_item_テーブル定義書`**（#517）で定義済み。`staging_item_image` は **`staging_item_image_テーブル定義書`**（#523）で定義済み。`staging_ranking_signal` は **`staging_ranking_signal_テーブル定義書`**（#524）で定義済み。`staging_genre` 等は別 Task。本定義書では **`raw_metadata_id` 被参照** を確定する。
 
 ### 5.6 Raw 保存対象方針（Batch 前提）
 

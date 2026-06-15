@@ -25,6 +25,8 @@ parent:
       purpose: "raw_product_metadata テーブル定義書（transforms_to 親 Metadata。merge 済み前提）"
     - number: 517
       purpose: "staging_item テーブル定義書（同一 BATCH-005 Staging 系 sibling 正本。merge 済み前提）"
+    - number: 523
+      purpose: "staging_item_image テーブル定義書（sibling Staging 正本。merge 済み前提）"
   related_prs:
     - number: 499
       purpose: "Task #494 PR（external_genre。merge 済み前提）"
@@ -36,6 +38,8 @@ parent:
       purpose: "Task #506 PR（raw_product_metadata。merge 済み前提）"
     - number: 522
       purpose: "Task #517 PR（staging_item。merge 済み前提）"
+    - number: 528
+      purpose: "Task #523 PR（staging_item_image。merge 済み前提）"
 
 commands:
   primary: "/work-issue"
@@ -254,7 +258,7 @@ notes:
   - "先行 merge 済み前提: #494 / PR #499（external_genre）、#496 / PR #501（ranking_snapshot）、#504 / PR #509（item_popularity_signal）、#506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）"
   - "論点: staging_ranking_signal_id(uuid PK), raw_metadata_id(uuid LOGICAL), external_item_code, external_genre_id(bigint LOGICAL), rank, period, last_build_date, staged_at"
   - "論理ER §14.4 は staging_ranking_signal → item_popularity_signal 直接 upserts を示すが、物理設計では ranking_snapshot ヘッダ介在の 2 層構造を採用（ranking_snapshot 定義書 §5.2）"
-  - "Human Review 論点: Staging 行の UNIQUE キー（raw_metadata_id + external_item_code + rank 等）"
-  - "Human Review 論点: source / source_api 列を Staging 行に持つか（staging_item は source 採用、item_popularity_signal は不採用）"
-  - "Human Review 論点: Retention / 古い staging 行の削除方針（物理ER §13）"
+  - "Human Review #524 確定: UNIQUE `(raw_metadata_id, rank)` / `source` 列非採用 / ヘッダ介在 2 層構造 / Retention 物理ER §13 踏襲（§17.1）"
+  - "Reco モジュール仕様書へ委譲: Online 選定拡張・popularity_score への ranking_rank 組み込み（§17.2）"
+  - "先行 merge 済み追加: #523 / PR #528（staging_item_image）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
