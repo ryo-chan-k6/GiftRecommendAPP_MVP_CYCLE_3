@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 541
   issue: 536
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-error-log.yaml"
   source_branch: "docs/task-536-error-log-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 536
     required: true
   pr:
-    number: null
+    number: 541
     required: true
   diff:
     required: true
