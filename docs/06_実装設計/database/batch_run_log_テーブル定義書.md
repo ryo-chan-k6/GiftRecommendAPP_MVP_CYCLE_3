@@ -403,8 +403,23 @@ WHERE batch_run_id = :batch_run_id
 | 削除条件 | `started_at < now() - interval '180 days'` | |
 | 論理削除 | 採用しない（Log 追記型） |
 | partition | MVP **未適用**。物理ER §17 No.5 に従い本番前に range partition 検討 |
-| 下流連動 | Retention 削除時は `api_call_log` / `phase_log` 等との **Batch 単位一括削除** を検討（別 Task） |
+| 下流連動 | **Batch Run アンカー一括パージ**（§13.1）。`error_log` 削除対象は `error_log_テーブル定義書` §13.2 |
 | アーカイブ | MVP 対象外 |
+
+### 13.1 Batch Run アンカー一括パージ（BATCH-RET-001・MVP 方針確定）
+
+Human Review #536 No.9 と整合。`batch_run_log.started_at < now() - interval '180 days'` の Run を対象に、下流 Log を **子 → 親** で物理 DELETE してから本テーブル行を削除する。実装 Batch は MVP 外。
+
+| 順序 | テーブル | 備考 |
+| --: | -------- | ---- |
+| 1 | `api_call_log` | `batch_run_id` 一致 |
+| 2 | `product_diff_result` 等 | workflow 依存（該当時） |
+| 3 | `item_import_summary` | `batch_run_id` 一致 |
+| 4 | `error_log` | `error_log_テーブル定義書` §13.2 |
+| 5 | `phase_log` | `owner_type=batch_run` / `owner_id=batch_run_id` |
+| 6 | **`batch_run_log`** | アンカー（最後） |
+
+> 各テーブルの **Standalone 削除**（例: `error_log` 90 日、`phase_log` 60 日）は一括パージと **併用** する（`error_log_テーブル定義書` §13.3）。
 
 ---
 

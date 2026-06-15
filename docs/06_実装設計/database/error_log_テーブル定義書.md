@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15（§17.1 Human Review 反映・#534/#535 双方向整合） |
+| 更新日         | 2026-06-15（§17.1 HR 反映・#534/#535 整合・§13 Retention 連動方針確定） |
 
 ---
 
@@ -28,7 +28,7 @@ IF-OBS-002（Error Log 記録）・IF-DB-API-008（API エラーログ保存）�
 - Batch / Online 横断で発生したエラーを **追記型 Log** として記録する
 - `batch_run_log` / `recommendation_run` / `phase_log` / `api_call_log` 等との **polymorphic owner 関係** を物理定義する
 - `error_code` 形式 CHECK と `error_detail_json` マスキング方針を DDL Task へ展開可能にする
-- Retention **90 日** 方針を明記し、後続 Retention Batch Task へ引き継ぐ
+- Retention **90 日**（Standalone）と **Batch Run アンカー一括パージ**（180 日）の二層方針を明記し、後続 BATCH-RET-001 実装 Task へ引き継ぐ
 - 後続 DDL Task が migration を作成できる粒度まで設計を確定する
 
 ---
@@ -317,15 +317,109 @@ INSERT INTO error_log (
 
 ## 13. データ保持・削除
 
+MVP では **二層 Retention** を採用する（Human Review #536 No.9 **決定済み**）。
+
+| 層 | 名称 | 実行主体（後続） | 本テーブルへの効果 |
+| -- | ---- | ---------------- | ------------------ |
+| Tier 1 | **Standalone 削除** | BATCH-RET-002（定期） | `occurred_at` 基準で **90 日超** を個別 DELETE |
+| Tier 2 | **Batch Run アンカー一括パージ** | BATCH-RET-001（保守） | 対象 `batch_run_id` に紐づく行を **180 日到達時に一括 DELETE**（残存行の掃除 + ヘッダ整合） |
+
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **90 日**（Human Review #536 No.5 決定。ログ・Observability設計書 §20.2 の 90〜180 日レンジ内） |
-| 削除方式 | 後続 Retention Batch による **物理 DELETE** 候補 |
-| 削除条件 | `occurred_at < now() - interval '90 days'` |
-| 他 Log 系との関係 | `batch_run_log`（180 日）/ `phase_log`（60 日）とは **テーブル別 Retention**。Batch 単位一括削除は batch_run_log 定義書 §13「下流連動」で後続 Task 検討 |
+| 保持期間（Standalone） | **90 日**（Human Review #536 No.5 決定） |
+| 削除方式 | 物理 DELETE（論理削除なし） |
+| 削除列 | **`occurred_at`**（`idx_error_log_occurred` 利用） |
 | 論理削除 | 採用しない（Log 追記型） |
 | partition | MVP **未適用**。物理ER §17 / Observability §21.2 に従い本番前に range partition 検討 |
 | アーカイブ | MVP 対象外 |
+| 実装 Batch | **MVP 外**（DDL 後の BATCH-RET-001 / BATCH-RET-002。本節は **運用方針の正本**） |
+
+### 13.1 Tier 1 — Standalone 削除（全 `error_log` 行）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 条件 | `occurred_at < now() - interval '90 days'` |
+| 対象 | **owner_type を問わず全行** |
+| 頻度 | 日次または週次（運用 Task で確定） |
+| 備考 | Online（`recommendation_run` 等）も本 Tier のみ。Run 本体が 180 日残っても **error 詳細は 90 日で消える** |
+
+```sql
+-- BATCH-RET-002（方針例）
+DELETE FROM error_log
+WHERE occurred_at < now() - interval '90 days';
+```
+
+### 13.2 Tier 2 — Batch Run アンカー一括パージ（Batch 系 trace 整合）
+
+`batch_run_log` の Retention **180 日**（`batch_run_log_テーブル定義書` §13）を **アンカー** とし、同一 Batch Run に紐づく Log を **子 → 親** の順でまとめて除去する。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| トリガー | `batch_run_log.started_at < now() - interval '180 days'` の Run |
+| 目的 | 180 日経過後に **ヘッダだけ残る / 明細だけ残る** 混在を防ぐ |
+| 正本分担 | 一括パージの **全体手順・削除順序** は `batch_run_log_テーブル定義書` §13.1。**本テーブルの削除対象定義** は下表 |
+
+#### `error_log` 削除対象（当該 `batch_run_id = :batch_run_id`）
+
+| 優先 | 条件 | 備考 |
+| --: | ---- | ---- |
+| 1 | `owner_type = 'batch_run'` AND `owner_id = :batch_run_id` | 直接紐づけ |
+| 2 | `owner_type = 'api_call'` AND `owner_id IN (SELECT api_call_log_id FROM api_call_log WHERE batch_run_id = :batch_run_id)` | api_call_log 定義書 §5.2 経由 |
+| 3 | `owner_type = 'raw_product_metadata'` AND `owner_id IN (SELECT raw_metadata_id FROM raw_product_metadata WHERE api_call_log_id IN (SELECT api_call_log_id FROM api_call_log WHERE batch_run_id = :batch_run_id))` | Raw 失敗 trace |
+| 4 | `owner_type = 'item_generation_queue'` AND 当該 Run 内 Item 生成キューに限定（Batch アプリが `batch_run_id` で解決） | キュー失敗 trace |
+
+> Tier 1（90 日）が先に走るため、180 日時点では多くの `error_log` 行は **既に Standalone で削除済み**。Tier 2 は **残存行の掃除** と他 Log 系との **同時パージ** が主目的。
+
+```sql
+-- BATCH-RET-001 内の error_log 削除（方針例・:batch_run_id 単位）
+DELETE FROM error_log
+WHERE (owner_type = 'batch_run' AND owner_id = :batch_run_id)
+   OR (owner_type = 'api_call' AND owner_id IN (
+         SELECT api_call_log_id FROM api_call_log WHERE batch_run_id = :batch_run_id
+       ));
+-- raw_product_metadata / item_generation_queue は上表に従い同等のサブクエリで拡張
+```
+
+#### Batch Run 一括パージ時の削除順序（Log 系抜粋）
+
+`batch_run_log_テーブル定義書` §13.1 と整合。`error_log` は **`phase_log` より前**（同一 owner のフェーズ要約より詳細を先に消す必要はないが、**ヘッダ削除前**に実施）。
+
+| 順序 | テーブル | 備考 |
+| --: | -------- | ---- |
+| 1 | `api_call_log` | 外部 API 明細 |
+| 2 | `product_diff_result` 等 | 差分明細（該当 workflow） |
+| 3 | `item_import_summary` | 集計 |
+| 4 | **`error_log`** | **本テーブル**（§13.2 条件） |
+| 5 | `phase_log` | `owner_type=batch_run` |
+| 6 | `batch_run_log` | アンカー（最後） |
+
+### 13.3 関連 Log 系との Retention 関係（MVP 確定）
+
+| テーブル | Standalone 保持 | 削除基準列 | Batch アンカー連動 |
+| -------- | --------------- | ---------- | ------------------ |
+| `phase_log` | **60 日** | `created_at` | ○（`owner_type=batch_run`） |
+| **`error_log`** | **90 日** | `occurred_at` | ○（§13.2） |
+| `batch_run_log` | **180 日** | `started_at` | アンカー本体 |
+| `api_call_log` | 90〜180 日（別 Task 方針） | `requested_at` | ○（`batch_run_id`） |
+
+#### 障害調査で参照できる情報（Batch 系・意図的な段階差）
+
+| 経過日数 | 参照可能な情報 |
+| -------- | -------------- |
+| 0〜60 日 | `phase_log` + `error_log` + `batch_run_log`（フル trace） |
+| 61〜90 日 | `error_log` + `batch_run_log`（フェーズ時系列は消失） |
+| 91〜180 日 | `batch_run_log` のみ（`error_summary` 等の概要） |
+| 180 日超 | 一括パージにより **Batch 単位で痕跡なし** |
+
+> `phase_log`（60 日）< `error_log`（90 日）の差は **意図的**（フェーズ行は高頻度・大容量、エラー詳細は追加 30 日保持）。フェーズ時系列まで 90 日保持したい場合は `phase_log` 側の見直し（#535 フォローアップ）を検討する。
+
+### 13.4 Online 系 `error_log`（Batch アンカー対象外）
+
+| owner_type | 連動 |
+| ---------- | ---- |
+| `recommendation_run` / `recommendation_request` / `recommendation_result` / `recommendation_feedback` | **Tier 1 のみ**（90 日）。`recommendation_run` 本体 Retention（180〜365 日）とは独立 |
+| `evaluation_run` | Tier 1 のみ（Evaluation Run Retention Task へ委譲） |
+| `system` | Tier 1 のみ |
 
 ---
 
@@ -384,7 +478,8 @@ INSERT INTO error_log (
 | 2 | `owner_type=system` | **`owner_id` NULL 可**（CHECK で明示） | Human | §8.1・§10 |
 | 3 | `phase_log_id` 列 | **採用しない**。owner polymorphic のみ | Human | §5.3 |
 | 4 | `error_code` CHECK | **形式 CHECK のみ**（§10.2）。全件列挙は Phase4a | Human | §10 |
-| 5 | Retention 具体日数 | **90 日**。自動削除 Batch は MVP 外（後続 Task） | Human | §13 |
+| 5 | Retention 具体日数 | **90 日**（Standalone）。削除 Batch 実装は MVP 外 | Human | §13.1 |
+| 9 | Retention 連動方針 | **二層 Retention**（§13.1 Standalone 90 日 + §13.2 Batch Run アンカー 180 日一括パージ）。正本は本定義書 §13、`batch_run_log` §13.1 と整合 | Human | §13.2〜§13.3 |
 | 6 | IF-OBS-002 命名 | **`component` → `service`、`target_id` → `owner_id`** で DB 正本化 | Human | §5.5 |
 | 7 | batch_run_log 双方向整合 | `batch_run_log_テーブル定義書` §5.2（may_have / owner_type=batch_run）と一致 | Human | §5.2 |
 | 8 | phase_log 双方向整合 | `phase_log_テーブル定義書` §5.6 / §8.2（責務境界・owner 単位）と一致 | Human | §5.3 |
@@ -416,7 +511,7 @@ INSERT INTO error_log (
 - 論理ER §13.2・物理ER §9 / §10・テーブル一覧 §6 No.58 と矛盾していない
 - `batch_run_log` / `recommendation_run` との may_have 関係が §5.2 に明記され、`batch_run_log_テーブル定義書` §5.2 と双方向整合している
 - `phase_log` との責務境界（`phase_log_id` 非採用・error_code 分担）が §5.3 に明記され、`phase_log_テーブル定義書` §5.6 / §8.2 と双方向整合している
-- Retention **90 日** が §13 / §17.1 No.5 で確定している
+- Retention **二層方針**（Standalone 90 日 + Batch アンカー 180 日）が §13 / §17.1 No.5・No.9 で確定している
 - `owner_type` / enum定義書 §6.15 が §11.1 で一致している
 - ログ・Observability設計書 §9.2 との差分が §5.5 で整理されている
 - `error_detail_json` マスキング方針（§5.6）が明記されている

@@ -274,6 +274,9 @@ human_review_decisions:
   - id: 8
     topic: "phase_log 双方向整合"
     decision: "phase_log_テーブル定義書 §5.6 / §8.2 と一致（#535 merge 済み）"
+  - id: 9
+    topic: "Retention 連動方針"
+    decision: "二層 Retention（Standalone 90日 + Batch Run アンカー 180日一括パージ BATCH-RET-001）。正本 error_log §13、batch_run_log §13.1 と整合"
 
 notes:
   - "Batch R05 No.4: error_log（Log / Observability系 / Batch・Online 横断）"
@@ -282,5 +285,5 @@ notes:
   - "先行 merge 済み前提: #533 / PR #538（item_import_summary）、#527 / PR #532（api_call_log）"
   - "同 Batch 先行 Task: #534（batch_run_log / PR #539）、#535（phase_log / PR #540）merge 済み。双方向整合は error_log 定義書 §5.2 / §5.3 / §17.1 No.7〜8"
   - "recommendation_run_phase_log は物理テーブルとして作成せず phase_log に統合（テーブル一覧 §8）"
-  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み）"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み・Retention 連動 §13 / No.9）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

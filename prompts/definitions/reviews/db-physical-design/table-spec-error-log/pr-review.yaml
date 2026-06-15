@@ -191,9 +191,13 @@ human_review_decisions:
   - id: 8
     topic: "phase_log 双方向整合"
     decision: "§5.6 / §8.2 一致（#535 merge 済み）"
+  - id: 9
+    topic: "Retention 連動"
+    decision: "二層 Retention（90日 Standalone + 180日 Batch アンカー）"
 
 risk_points:
-  - "batch_run_log（180 日）/ phase_log（60 日）/ error_log（90 日）の Retention 差分。Batch 単位一括削除は後続 Task"
+  - "phase_log（60日）と error_log（90日）の調査窓差分。フェーズ時系列を90日保持する場合は #535 フォローアップ"
+  - "BATCH-RET-001 / BATCH-RET-002 実装は MVP 外。§13 の SQL は方針例"
 
 notes:
   - "Batch R05 No.4: error_log"
