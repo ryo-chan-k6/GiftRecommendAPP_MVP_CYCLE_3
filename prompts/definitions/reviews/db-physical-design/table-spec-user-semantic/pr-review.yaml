@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 558
   issue: 553
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-user-semantic.yaml"
   source_branch: "docs/task-553-user-semantic-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 553
     required: true
   pr:
-    number: null
+    number: 558
     required: true
   diff:
     required: true
@@ -193,4 +193,4 @@ notes:
   - "Issue #553 / Branch docs/task-553-user-semantic-table-spec"
   - "先行 merge 済み前提: #440 / PR #441（enum）、#462–#463（semantic_config 系）、#513 / PR #518（item_semantic）、#537 / PR #542（recommendation_request）、#543 / PR #548（recommendation_run）"
   - "user_feature / user_meaning 本体定義は out_of_scope"
-  - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"
+  - "PR #558 作成済み（target.pr / input.pr.number 反映済み）"
