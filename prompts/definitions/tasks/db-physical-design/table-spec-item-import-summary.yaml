@@ -1,0 +1,264 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-item-import-summary"
+  title: "item_import_summary:Item Import Summaryテーブル定義書作成"
+  summary: "物理ER・論理ER・テーブル一覧・ログ・Observability設計書・バッチ設計方針書・product_diff_result / staging_item テーブル定義書を入力に、外部商品取込バッチの実行サマリ正本 `item_import_summary` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R05 No.1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 526
+      purpose: "Batch R04 No.4 product_diff_result テーブル定義書（merge 済み前提・件数集計の diff_status 正本）"
+    - number: 517
+      purpose: "Batch R04 No.2 staging_item テーブル定義書（merge 済み前提・Staging → item 昇格フロー）"
+    - number: 534
+      purpose: "並行可能: batch_run_log テーブル定義書（summarizes 親・別 Task）"
+  related_prs:
+    - number: 531
+      purpose: "Task #526 PR（product_diff_result。merge 済み前提）"
+    - number: 522
+      purpose: "Task #517 PR（staging_item。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R05 No.1。論理ER §9.2・テーブル一覧 §6 No.26。
+  外部商品取込バッチ（BATCH-017 Import Summary作成 / `MOD-BATCH-047` Item Import Summary Writer）の実行サマリ。
+  Staging → item 昇格フロー（BATCH-005〜007）および product_diff_result 差分判定結果を集約し、運用・Observability で件数を把握する。
+  親 Epic Branch 最新（product_diff_result #526 / PR #531、staging_item #517 / PR #522 merge 済み前提）を前提とする。
+  Issue #533 / Branch `docs/task-533-item-import-summary-table-spec` で作業する。
+
+objective: |
+  `item_import_summary` の物理カラム・制約・Index・集計仕様を table-spec.md テンプレ準拠で定義する。
+  `batch_run_log` / `product_diff_result` / `staging_item` との関係、BATCH-017 INSERT 方針、Retention 方針を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の item_import_summary テーブル定義書作成"
+  - "物理ER Log系・batch_run_log summarizes 関係・論理ER §9.2 / §14・テーブル一覧 §6 No.26 との突合"
+  - "ログ・Observability設計書 §6.2 / §13.3 / §20.2 / §22・IF-OBS-006 との整合"
+  - "バッチ設計方針書 BATCH-017 / §14.1 集計単位・§15.2 Batch ID伝播・GRS-BAT-005 失敗件数記録との整合"
+  - "バッチ処理一覧・バッチ依存関係図・機能×モジュール対応表（MOD-BATCH-047）との整合"
+  - "インターフェース一覧 IF-DB-BATCH-017（INSERT）・IF-OBS-006 との整合"
+  - "状態遷移設計書 §6.6 Item反映一部失敗時の failed_count 集計との整合"
+  - "enum定義書 / packages/code-definitions/batch/source_api.yaml との source_api 整合"
+  - "product_diff_result_テーブル定義書 §5.1（件数集計は item_import_summary 責務）との突合"
+  - "staging_item_テーブル定義書（Staging → item 昇格フロー・BATCH-005〜007 文脈）との突合"
+  - "処理構成定義書・正本定義表・リソース一覧・リソース責務定義表との整合"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "batch_run_log / phase_log / error_log テーブル定義書（#534〜#536 別 Task）"
+  - "api_call_log テーブル定義書の再作成（既存定義書を参照のみ）"
+  - "product_diff_result / staging_item テーブル定義書の再作成（merge 済みを参照）"
+  - "item / raw_product_metadata 等の他テーブル定義書"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log系分類・batch_run_log summarizes 関係・外部商品データ連携系分類"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "source_api enum 参照（§6.24・item_import_summary 利用箇所）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 エンティティ属性・§14 主要リレーション・Batch / chunk単位集計"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.26 Item Import Summary・分類・用途"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§6.2 MVP必須・§13.3 主要項目・§20.2 Retention 365日・§22 Batch観測フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.6 Item反映一部失敗・batch_run partially_succeeded と failed_count"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-017 Import Summary作成・§14.1 集計単位・§15.2 Batch ID伝播・GRS-BAT-005"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-017 入出力・Item Import Summary Writer"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "BATCH-017 集計依存・子workflow末尾作成方針"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-BATCH-047 Item Import Summary Writer・BATCH-006/007 連携"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-047 責務・集計保存"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-017 INSERT・IF-OBS-006 集計項目"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "item_import_summary 反映タイミング（Item反映後）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Item Import Summary リソース分類・Batch / chunk単位"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Log / 集計正本区分・追記または集計更新"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "ログ記録責務・Batch / chunk単位集計"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-BAT-005 Item Import Failed → failed_count 記録"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "§5.1 件数集計責務境界・diff_status 別件数の集計元（merge 済み前提）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "Staging → item 昇格フロー・BATCH-005〜007 文脈（merge 済み前提）"
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: false
+      purpose: "fetched_count と api_call_log.item_count の関係参考（集計元の補助）"
+    - path: "packages/code-definitions/batch/source_api.yaml"
+      required: true
+      purpose: "source_api packages 正本・item_import_summary 利用箇所"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/item_import_summary_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-item-import-summary.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-item-import-summary/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "item_import_summary テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §9.2・テーブル一覧 §6 No.26 と矛盾しない"
+  - "batch_run_log との summarizes 関係（batch_run_id）が明記されている"
+  - "product_diff_result との集計関係（new / updated / unchanged / unavailable 件数の由来）が明記されている"
+  - "staging_item との関係（Staging → item 昇格フロー文脈・直接 FK なし方針）が明記されている"
+  - "fetched_count / new_count / updated_count / unchanged_count / skipped_count / failed_count / summarized_at の型・制約が DDL Task へ展開できる粒度で定義されている"
+  - "source_api（enum）・source 列の要否と CHECK 方針が明記されている"
+  - "BATCH-017 / MOD-BATCH-047 の INSERT タイミングと IF-DB-BATCH-017 との整合が明記されている"
+  - "Retention 方針（Observability §20.2 365日）が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "item-import-summary-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 533
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 526
+      purpose: "product_diff_result テーブル定義書 完了（diff_status 件数集計の正本）"
+    - number: 517
+      purpose: "staging_item テーブル定義書 完了（Staging → item 昇格フロー）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/item_import_summary_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER batch_run_log → item_import_summary summarizes（batch_run_id）との整合"
+    - "論理ER §9.2 属性（item_import_summary_id / batch_run_id / source / source_api / 各 count / summarized_at）との整合"
+    - "論理ER §14 Log系・Batch / chunk単位集計との整合"
+    - "テーブル一覧 §6 No.26 の分類・用途・batch 更新主体との整合"
+    - "ログ・Observability設計書 §13.3 主要項目（unavailable_count / feature_generated_count 等の MVP 採否）との整合"
+    - "バッチ設計方針書 BATCH-017 入出力・§14.1 集計単位との整合"
+    - "インターフェース一覧 IF-DB-BATCH-017 INSERT・IF-OBS-006 集計項目との整合"
+    - "enum定義書 / packages/code-definitions/batch/source_api.yaml との source_api 整合"
+    - "product_diff_result_テーブル定義書 §5.1 責務境界（件数集計は本テーブル）との整合"
+    - "staging_item_テーブル定義書（昇格フロー文脈・直接 FK なし）との整合"
+    - "状態遷移設計書 §6.6 partially_succeeded と failed_count の関係"
+    - "Retention 365日（Observability §20.2）の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_decision_points:
+  - "集計粒度（batch_run_id のみ vs batch_run_id + source_api vs chunk 単位複数行）"
+  - "unavailable_count 列の MVP 採用（Observability §13.3 あり・論理ER §9.2 chunk 表には未記載）"
+  - "feature_generated_count / embedding_generated_count 列の MVP 採用（Observability §13.3）"
+  - "skipped_count と unavailable_count の定義境界"
+  - "batch_run_log への物理 FK（ON）vs LOGICAL FK + Index 方針（batch_run_log 定義書未作成 #534）"
+  - "1 batch_run あたり INSERT 1行 vs source_api 別複数行（UNIQUE キー設計）"
+
+notes:
+  - "Batch R05 No.1: item_import_summary（外部商品データ連携系 / Log / 集計）"
+  - "Issue #533 / Branch docs/task-533-item-import-summary-table-spec"
+  - "Issue 本文のテーブル一覧参照 §8 は semantic_config を指すため、正本は §6 No.26 を用いる"
+  - "先行 merge 済み前提: #526 / PR #531（product_diff_result）、#517 / PR #522（staging_item）"
+  - "batch_run_log テーブル定義書は #534 別 Task。本 Task では論理ER / 物理ER の summarizes 関係のみ整理"
+  - "物理カラム（MVP 想定）: item_import_summary_id, batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, skipped_count, failed_count, summarized_at"
+  - "Human Review 論点: 上記 human_decision_points 参照"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
