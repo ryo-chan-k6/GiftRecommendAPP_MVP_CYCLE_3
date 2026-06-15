@@ -143,6 +143,8 @@ MVP では reco（IF-DB-RECO-006）と api（IF-DB-API-007）で **同一条件*
 | 該当なし | 最新 Snapshot または明細が無い場合、Popularity 補助なし / `popularityBadge` は **省略** |
 
 > 将来、リクエストコンテキスト（Occasion 等）に応じて `period` や対象ジャンルを変える拡張は api / reco 実装 Task で検討する。
+>
+> **後続 Task**: 複数ジャンル横断選定・`IF-DB-RECO-006` ranking context 拡張、`popularity_score` への `ranking_rank` 組み込みは Reco モジュール仕様書 Task で確定する（`staging_ranking_signal_テーブル定義書` §17.2）。
 
 ---
 
@@ -394,6 +396,15 @@ SELECT rs.ranking_snapshot_id
 | 8 | item 単位最新のみ Upsert | **不採用** | Human | Snapshot 履歴モデル（§5.5） |
 | 9 | 冪等キー | **`ranking_snapshot_id + rank`** | Human | テーブル一覧 §14 No.2 |
 
+### 17.2 後続 Task への委譲（Reco モジュール仕様書）
+
+| No | 論点 | 現状の暫定正本 | 委譲先 |
+| --: | ---- | -------------- | ------ |
+| 1 | Online 参照時の選定拡張（複数ジャンル横断、`IF-DB-RECO-006` ranking context） | §5.7・§17.1 No.3 | Reco モジュール仕様書 / Ranking 実装 Task |
+| 2 | `popularity_score` への `ranking_rank` 組み込み | 外部商品連携 §13.3 vs Ranking定義書 §7.2 | Reco モジュール仕様書 / Ranking 実装 Task |
+
+委譲の詳細は `staging_ranking_signal_テーブル定義書` §17.2 を参照。
+
 ---
 
 ## 18. 関連資料
@@ -404,6 +415,7 @@ SELECT rs.ranking_snapshot_id
 | 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §8.2–§8.4・§9 Staging 経路 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §5 No.16・§14 No.2 |
 | ranking_snapshot 定義書 | `docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md` | 親ヘッダ・§5.2 経路・§8.2 FK |
+| staging_ranking_signal 定義書 | `docs/06_実装設計/database/staging_ranking_signal_テーブル定義書.md` | Staging 入力正本・§17.2 委譲先参照（#524） |
 | item 定義書 | `docs/06_実装設計/database/item_テーブル定義書.md` | §8.2 LOGICAL FK・§13 popularityBadge |
 | external_genre 定義書 | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | §8.2 LOGICAL 参照 |
 | item_image 定義書 | `docs/06_実装設計/database/item_image_テーブル定義書.md` | 出所列不採用・章構成参考 |
