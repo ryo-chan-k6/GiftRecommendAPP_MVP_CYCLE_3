@@ -1,0 +1,263 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-evaluation-dataset"
+  title: "evaluation_dataset:Evaluation Datasetテーブル定義書作成"
+  summary: "物理ER・論理ER §12 Evaluation系・テーブル一覧 §10 No.51・BATCH-018・リソース責務定義表を入力に、評価用データセット正本 `evaluation_dataset` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R08 No.3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（evaluation_run_status 等。merge 済み前提）"
+    - number: 535
+      purpose: "phase_log テーブル定義書（evaluation_run owner。merge 済み前提）"
+    - number: 536
+      purpose: "error_log テーブル定義書（evaluation_run owner。merge 済み前提）"
+    - number: 566
+      purpose: "並行可能: evaluation_case テーブル定義書（子テーブル・contains FK 被参照）"
+    - number: 567
+      purpose: "並行可能: evaluation_run テーブル定義書（子テーブル・executed_by FK 被参照）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 540
+      purpose: "Task #535 PR（phase_log。merge 済み前提）"
+    - number: 541
+      purpose: "Task #536 PR（error_log。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R08 No.3。テーブル一覧 §10 No.51。
+  評価用データセット正本。`evaluation_case` / `evaluation_run` の親エンティティ。
+  BATCH-018（Offline Evaluation Batch）・IF-DB-BATCH-018 / IF-SHARED-004 の入力正本。
+  物理ER Evaluation系分類・論理ER §12.1 / §12.2 を前提とする。
+  親 Epic Branch 最新（enum #440、phase_log #535、error_log #536 merge 済み前提）を前提とする。
+  Issue #565 / Branch `docs/task-565-evaluation-dataset-table-spec` で作業する。
+
+objective: |
+  `evaluation_dataset` の物理カラム・制約・Index を table-spec.md テンプレ準拠で定義する。
+  `evaluation_case` との 1:N contains 関係、`evaluation_run` との 1:N executed_by 関係、
+  データセット version / 有効化方針、BATCH-018 読取 I/F を明記し、
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の evaluation_dataset テーブル定義書作成"
+  - "物理ER Evaluation系分類・§7–§11・Mermaid ER（contains / executed_by）との突合"
+  - "論理ER §12.1 Evaluation系 ER 図・§12.2 evaluation_dataset 属性（dataset_name / dataset_description / dataset_version / is_active / created_at）との整合"
+  - "テーブル一覧 §10 No.51・Evaluation系補足（MVP partial・オフライン評価）との整合"
+  - "状態遷移設計書 §8.1.3 再評価方針（同一 Dataset で新規 Run / Result 追記）との整合"
+  - "リソース一覧・リソース責務定義表 §6.12 Evaluation Dataset 責務（batch / database 更新・正本区分）との突合"
+  - "インターフェース一覧 IF-DB-BATCH-018 / IF-SHARED-004・バッチ処理一覧 BATCH-018・バッチ設計方針書との整合"
+  - "機能×モジュール対応表 / モジュール一覧 MOD-BATCH-039 Offline Evaluation Runner との整合"
+  - "処理構成定義書・システム物理構成図の evaluation_dataset 取得フローとの整合"
+  - "ログ・Observability設計書 evaluation_run_id trace キーとの境界整理（本テーブルは trace キーではない）"
+  - "evaluation_case / evaluation_run 子テーブル定義 Task（#566 / #567）への FK / Index 引き継ぎ方針の明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "evaluation_case / evaluation_run / evaluation_result / evaluation_metric テーブル定義書（R08 別 Task #566 / #567 以降）"
+  - "evaluation_run_status / evaluation_run_phase_name の新規 enum 定義（#440 merge 済みを参照。phase_name は Evaluation Task へ委譲）"
+  - "semantic_config_version / model_version / ranking_config テーブル定義書の再作成（evaluation_run Task で参照）"
+  - "phase_log / error_log テーブル定義書の再作成（merge 済みを参照）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+  - "評価メトリクス算出ロジック・BATCH-018 バッチ仕様書の詳細実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Evaluation系分類・contains / executed_by ER・§9 FK（evaluation_case）・§7–§11"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "evaluation_run_status（§6.12）・request_mode evaluation（§6.13）参照。本テーブルは state enum なし"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§12.1 Evaluation系 ER 図・§12.2 evaluation_dataset 属性・正本区分"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§10 No.51 Evaluation Dataset・Evaluation系補足方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Evaluation Dataset リソース分類・更新主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "§6.12 Evaluation Dataset 責務・正本 / 派生の境界"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§8 Evaluation 状態遷移・§8.1.3 同一 Dataset 再評価の追記方針"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-018 Evaluation保存・IF-SHARED-004 Offline Evaluation推薦実行"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-018 Offline Evaluation Batch 入出力"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-018 評価データセット利用方針"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "BATCH-018 / MOD-BATCH-039 入出力"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-039 Offline Evaluation Runner"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "Offline Evaluation フロー上の evaluation_dataset 取得位置"
+    - path: "docs/05_アプリケーション設計/基盤/システム物理構成図.md"
+      required: true
+      purpose: "GHA → DB evaluation_dataset 取得フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "evaluation_run trace キーとの責務境界"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "evaluation_run owner 連携の文脈整理（merge 済み前提）"
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      required: true
+      purpose: "evaluation_run owner 連携の文脈整理（merge 済み前提）"
+    - path: "docs/06_実装設計/database/semantic_config_テーブル定義書.md"
+      required: false
+      purpose: "Evaluation系ルート正本テーブル定義書の章構成・MVP 方針参考"
+  packages:
+    - path: "packages/code-definitions/state/evaluation_run_status.yaml"
+      required: false
+      purpose: "evaluation_run 子テーブル連携時の status 参照（本テーブル列ではない）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-evaluation-dataset.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-evaluation-dataset/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "evaluation_dataset テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "evaluation_case / evaluation_run との親子関係（contains / executed_by）が明記されている"
+  - "物理ER・論理ER §12.2・テーブル一覧 §10 No.51 と矛盾しない"
+  - "dataset_name / dataset_version / is_active の MVP 方針が明記されている"
+  - "BATCH-018 / IF-DB-BATCH-018 の読取正本としての責務が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "evaluation-dataset-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 565
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 535
+      purpose: "phase_log テーブル定義書 完了（Log 系 R05。merge 済み前提）"
+    - number: 536
+      purpose: "error_log テーブル定義書 完了（Log 系 R05。merge 済み前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER Mermaid ER evaluation_dataset → evaluation_case contains / evaluation_run executed_by との整合"
+    - "物理ER §9 evaluation_dataset → evaluation_case contains（ON）1:N との整合"
+    - "論理ER §12.2 属性（evaluation_dataset_id, dataset_name, dataset_description, dataset_version, is_active, created_at）との整合"
+    - "テーブル一覧 §10 No.51・Evaluation系補足（MVP partial）との整合"
+    - "状態遷移設計書 §8.1.3 同一 Dataset 再評価追記方針との整合"
+    - "リソース責務定義表 §6.12 Evaluation Dataset 責務との整合"
+    - "BATCH-018 / IF-DB-BATCH-018 / IF-SHARED-004 入出力との整合"
+    - "evaluation_case / evaluation_run 子テーブルへの FK 引き継ぎ方針（evaluation_dataset_id 被参照）の明記"
+    - "物理ER §9 に evaluation_run.executed_by FK 行が未掲載の場合、本定義書での方針確定と差分整理"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_decision_points:
+  - "dataset_name の一意性（UNIQUE 制約の要否）"
+  - "dataset_version の形式（semver / 自由ラベル）と同一 dataset_name 内 version 管理方針"
+  - "is_active 列の MVP 物理 DDL 採用"
+  - "evaluation_run.executed_by（evaluation_dataset_id）の物理 FK ON 方針（物理ER §9 未掲載の補完）"
+  - "Evaluation Dataset の Retention / 削除方針（MVP partial）"
+
+human_review_decisions: []
+
+notes:
+  - "Batch R08 No.3: evaluation_dataset（Evaluation系ルート正本）"
+  - "Issue #565 / Branch docs/task-565-evaluation-dataset-table-spec"
+  - "R08 並行: #566 evaluation_case / #567 evaluation_run"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#535 / PR #540（phase_log）、#536 / PR #541（error_log）"
+  - "物理ER §9 は evaluation_case contains のみ掲載。evaluation_run executed_by は ER 図・論理ER §12.1 に存在し、本 Task で FK 方針を確定する"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
