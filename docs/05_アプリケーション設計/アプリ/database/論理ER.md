@@ -432,7 +432,7 @@ erDiagram
 | staging_ranking_signal | staging_ranking_signal_id | raw_metadata_id, external_item_code, external_genre_id, rank, period, last_build_date, staged_at                                        | なし          | 一時 / 中間     | batch          |
 | staging_genre          | staging_genre_id          | raw_metadata_id, source, external_genre_id, genre_name, parent_external_genre_id, genre_level, is_leaf, staged_at                        | なし          | 一時 / 中間     | batch          |
 | product_diff_result    | product_diff_result_id    | batch_run_id, staging_item_id, external_item_code, old_hash, new_hash, judged_at                                                         | diff_status   | 派生 / 判定結果 | batch          |
-| item_import_summary    | item_import_summary_id    | batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, skipped_count, failed_count, summarized_at  | なし          | Log / 集計      | batch          |
+| item_import_summary    | item_import_summary_id    | batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, unavailable_count, skipped_count, failed_count, feature_generated_count, embedding_generated_count, summarized_at | なし          | Log / 集計      | batch          |
 
 ---
 
@@ -659,7 +659,7 @@ erDiagram
 | batch_run_log                | batch_run_id                    | batch_name, started_at, completed_at, success_count, failed_count, error_summary                                                | run_status    | Batch実行単位          |
 | api_call_log                 | api_call_log_id                 | batch_run_id, fetch_cursor_id, source, source_api, request_params_json, response_status, item_count, requested_at, completed_at | call_status   | 外部APIリクエスト単位  |
 | raw_product_metadata         | raw_metadata_id                 | api_call_log_id, object_key, content_hash, item_count, fetched_at, staged_at, imported_at, error_message                        | import_status | Rawレスポンス単位      |
-| item_import_summary          | item_import_summary_id          | batch_run_id, fetched_count, new_count, updated_count, unchanged_count, skipped_count, failed_count                             | なし          | Batch / chunk単位      |
+| item_import_summary          | item_import_summary_id          | batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, unavailable_count, skipped_count, failed_count, feature_generated_count, embedding_generated_count, summarized_at | なし          | Batch / source_api単位 |
 
 ---
 
