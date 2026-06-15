@@ -62,7 +62,7 @@ Staging 系は **物理 FK なし（LOGICAL + Index）**、**成功 Batch 完了
 - Item 正本（`item` の責務）
 - 商品画像 URL 集合（`staging_item_image` / `item_image` の責務）
 - レビュー要約正本（`item_review_summary` の責務。Staging 列は中間保持のみ）
-- 差分判定結果の永続正本（`product_diff_result` の責務。本 Task では `judged_as` 関係のみ整理）
+- 差分判定結果の永続正本（`product_diff_result_テーブル定義書` #526 の責務）
 - `api_call_log` / `fetch_cursor` 本体
 - Public API 公開
 - OpenAPI / generated 変更（Epic 終盤 Task #469 へ委譲）
@@ -106,7 +106,7 @@ flowchart LR
 | 観点 | 方針 |
 | ---- | ---- |
 | 物理ER 関係 | `staging_item` → `product_diff_result` : `judged_as`（**LOGICAL** 1:0..1） |
-| 参照列 | `product_diff_result.staging_item_id` → `staging_item.staging_item_id`（本体定義は別 Task） |
+| 参照列 | `product_diff_result.staging_item_id` → `staging_item.staging_item_id`（`product_diff_result_テーブル定義書` §5.2 / §8.1） |
 | 判定 Batch | BATCH-006（Product Diff Detector / `MOD-BATCH-014`） |
 | `diff_status` | Staging 行は **NULL 可**（BATCH-005 時点は未設定）。判定 **正本は `product_diff_result`**。必要なら BATCH-006 で Staging 行も UPDATE（§17.1 No.4 **確定**） |
 
@@ -195,7 +195,7 @@ flowchart LR
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `product_diff_result` | `staging_item_id` | judged_as | `LOGICAL` | 本体定義は別 Task |
+| `product_diff_result` | `staging_item_id` | judged_as | `LOGICAL` | `product_diff_result_テーブル定義書` #526 |
 | `item` | `source`, `external_item_code` | upserts（間接） | `LOGICAL` | Upsert キー対応。`item_id` は Staging に保持しない |
 
 ### 8.3 関連 Staging（同一 Raw 由来）
@@ -350,7 +350,7 @@ ON CONFLICT (raw_metadata_id, external_item_code) DO UPDATE SET
 1. staging_item 行（normalized_hash 保持済み）を読み取り
 2. item を source + external_item_code で検索
 3. 未存在 → new / 存在 & hash 不一致 → updated / hash 一致 → unchanged / 取得不能 → unavailable
-4. product_diff_result INSERT（別 Task）+ 任意で staging_item.diff_status UPDATE
+4. product_diff_result INSERT / UPSERT（`product_diff_result_テーブル定義書` §12.1–§12.2）+ 任意で staging_item.diff_status UPDATE
 5. unchanged の場合 BATCH-007 は item 業務列を更新せず item.last_checked_at のみ（item 定義書 §12）
 ```
 
@@ -461,6 +461,7 @@ ON CONFLICT (raw_metadata_id, external_item_code) DO UPDATE SET
 | item_review_summary 定義書 | `docs/06_実装設計/database/item_review_summary_テーブル定義書.md` | §5.6 / §5.7 Staging 反映 |
 | external_genre 定義書 | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | external_genre_id 参照 |
 | product_diff_status | `packages/code-definitions/state/product_diff_status.yaml` | diff_status 正本 |
+| product_diff_result 定義書 | `docs/06_実装設計/database/product_diff_result_テーブル定義書.md` | judged_as 先・BATCH-006 判定正本 |
 
 ---
 
@@ -474,7 +475,7 @@ ON CONFLICT (raw_metadata_id, external_item_code) DO UPDATE SET
 - Staging 系 **物理 FK なし** 方針が §8 で明記されている
 - Retention（物理ER §13）が §13 に反映されている
 - `staging_item_image` 本体定義は **`staging_item_image_テーブル定義書`**（#523）へ委譲。本定義書では兄弟紐づけのみ整理
-- `product_diff_result` 本体定義が out_of_scope であることが §5.1 / §8.3 で明示されている
+- `product_diff_result` 本体定義は **`product_diff_result_テーブル定義書`**（#526）を正本とし、本定義書では judged_as 関係のみ整理
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
 - Human Review #517 決定事項（§17.1 No.1〜5）が本文に反映されている
