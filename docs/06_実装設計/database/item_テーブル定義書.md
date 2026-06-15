@@ -190,8 +190,8 @@
 ### 12.1 Staging → Item Upsert フロー
 
 ```text
-staging_item（external_item_code + normalized_hash）
-  → product_diff_result 判定（任意）
+staging_item（source + external_item_code + normalized_hash）
+  → product_diff_result 判定（BATCH-006。`product_diff_result_テーブル定義書` §12.1）
   → item Upsert（uq_item_source_external_code）
   → item_image / item_review_summary 等は別 Task
   → item_generation_queue 登録（hash 変更時）

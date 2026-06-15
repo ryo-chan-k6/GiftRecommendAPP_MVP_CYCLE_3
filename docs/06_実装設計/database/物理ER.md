@@ -348,7 +348,9 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `staging_genre` | `uq_staging_genre_raw_metadata_genre` | `raw_metadata_id`, `external_genre_id` | unique | BATCH-001 / BATCH-005 冪等 | `staging_genre_テーブル定義書` §17.1 No.1 |
 | `staging_genre` | `idx_staging_genre_raw_metadata` | `raw_metadata_id` | btree | Raw 単位一覧・Retention | |
 | `staging_genre` | `idx_staging_genre_source_id` | `source`, `external_genre_id` | btree | `external_genre` 反映突合 | Upsert キー |
-| `product_diff_result` | `idx_product_diff_batch_code` | `batch_run_id`, `external_item_code` | btree | 差分追跡 | Retention 対象候補 |
+| `product_diff_result` | `uq_product_diff_batch_code` | `batch_run_id`, `external_item_code` | unique | BATCH-006 冪等 | `product_diff_result_テーブル定義書` §7 |
+| `product_diff_result` | `idx_product_diff_staging_item` | `staging_item_id` | btree | judged_as 逆引き | Retention 連動 |
+| `product_diff_result` | `idx_product_diff_status` | `batch_run_id`, `diff_status` | btree | BATCH-007〜009 読取 | — |
 | `item_generation_queue` | `idx_item_gen_queue_status` | `queue_status`, `queued_at` | btree | 再生成処理 | |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 

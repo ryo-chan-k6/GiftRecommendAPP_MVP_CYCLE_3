@@ -381,8 +381,8 @@ Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の
 | `fetch_cursor` | `cursor_status` | `fetch_cursor_status` | NOT NULL | |
 | `fetch_cursor` | `cursor_type` | `fetch_cursor_type` | NOT NULL | Issue #505 確定 |
 | `fetch_cursor` | `source_api` | `source_api` | NOT NULL | fetch_cursor 定義書 §10。MVP CHECK は `item_search` のみ |
-| `product_diff_result` | `diff_status` | `product_diff_status` | NOT NULL | |
-| `staging_item` | `diff_status` | `product_diff_status` | NULL可 | `staging_item_テーブル定義書` §17.1 No.4。正本は `product_diff_result` |
+| `product_diff_result` | `diff_status` | `product_diff_status` | NOT NULL | `product_diff_result_テーブル定義書` §11 |
+| `staging_item` | `diff_status` | `product_diff_status` | NULL可 | `staging_item_テーブル定義書` §17.1 No.4。正本は `product_diff_result`（`product_diff_result_テーブル定義書` §11.2） |
 | `item` | `active_status` | `item_active_status` | NOT NULL | |
 | `item_generation_queue` | `queue_status` | `item_generation_queue_status` | NOT NULL | |
 | `item_generation_queue` | `generation_type` | `item_generation_type` | NOT NULL | Human Review 確定 |

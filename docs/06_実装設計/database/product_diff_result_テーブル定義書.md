@@ -144,8 +144,6 @@ flowchart LR
 | 9 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | 行作成日時 |
 | 10 | `updated_at` | Updated At | `timestamptz` | `yes` | — | — | — | `now()` | 行最終更新日時（再判定 UPSERT 時） |
 
-> **論理ER §9.2 との差分**: 論理ER §9.2 主要属性に **`staging_item_id` が未記載**。物理ER judged_as（§9）・`staging_item_テーブル定義書` §5.4 に基づき **本 Task で `staging_item_id` を必須列として採用**（Human Review #526 §17.1 No.3）。
-
 ---
 
 ## 7. 主キー・一意キー
@@ -373,7 +371,7 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review #526 にて No.1〜5 を決定済み（下記参照） |
+| — | なし | — | — | — | Human Review #526 にて No.1〜5 を決定済み（§17.1） |
 
 ### 17.1 Human Review 決定事項（Issue #526）
 
@@ -410,7 +408,7 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 
 ## 19. レビュー観点
 
-- 論理ER §9.2 / §9.3・テーブル一覧 §6 No.25 と矛盾していない（差分は §6 注記で明示）
+- 論理ER §9.2 / §9.3・テーブル一覧 §6 No.25 と矛盾していない
 - 物理ER §9 judged_as / §10 Index / §13 Retention と整合している
 - `staging_item` / `item` との差分判定フローが §5.3 / §12.1 で明記されている
 - `old_hash` / `new_hash` と normalized_hash 経路が §5.4 で整理されている

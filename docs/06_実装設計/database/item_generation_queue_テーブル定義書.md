@@ -59,7 +59,7 @@ Online 推薦中は **更新しない**（論理ER §16.1）。batch のみが I
 
 - Item Semantic / Item Feature / Item Meaning / Item Embedding の **生成結果本体**（別 Task / Batch R03）
 - `feature_input_hash` / `embedding_input_hash` の永続化先テーブル（本 Task では IF 連携の参照整理のみ）
-- `product_diff_result` / `meaning_input_diff` の本体定義（BATCH-009 入力の参照整理のみ）
+- `meaning_input_diff` の本体定義（BATCH-009 入力の参照整理のみ）。`product_diff_result` は `product_diff_result_テーブル定義書` #526 を正本とする
 - `source` / `source_api` 列（外部 API 由来データではなく **制御 Queue** のため不要）
 - api / reco からの直接 DML
 - DDL / migration 本体（DDL Task へ委譲）
