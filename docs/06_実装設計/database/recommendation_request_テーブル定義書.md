@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15                      |
+| 更新日         | 2026-06-15（Human Review #537 反映） |
 
 ---
 
@@ -28,7 +28,7 @@ Public API レスポンスでは Request 全体を返さないが、`recommendat
 - Online推薦フロー **Request → Run → Result** の起点として、ユーザー入力条件を不変の正本として保存する
 - 主要検索・参照項目を **個別カラム**、完全再現用に **`request_payload` / `validated_payload`（JSONB）** を併用する（物理ER §17 No.2・RecommendationRequest定義書 §11.2）
 - `relationship_master` / `occasion_master` を **LOGICAL 参照**し、Master コード整合を api validation で担保する
-- `pair_id` は保持せず、実行時解決結果は **`recommendation_run`** 側で保持する（物理ER §17 No.1）
+- `pair_id` および `semantic_config_version_id` / `model_version_id` は保持せず、実行時解決結果は **`recommendation_run`** 側で保持する（物理ER §9・§17 No.1。Human Review #537 No.4）
 - 後続 DDL Task が migration を作成できる粒度まで設計を確定する
 
 ---
@@ -62,6 +62,7 @@ Public API レスポンスでは Request 全体を返さないが、`recommendat
 - 推薦結果・理由・Feedback（各 Online推薦系子テーブルの責務）
 - User 派生データ（`user_semantic` / `user_feature` / `user_meaning` の責務）
 - Pair 解決結果の保持（`pair_id` は `recommendation_run` の責務）
+- Config / Model Version の正本保持（`semantic_config_version_id` / `model_version_id` / `ranking_config_id` は `recommendation_run` の責務。§5.7）
 - 独立 `recommendation_request_condition` テーブル（MVP 非採用。テーブル一覧 §3 補足）
 
 ### 5.2 Online推薦フロー上の位置づけ（Request → Run → Result）
@@ -101,20 +102,20 @@ Pair 解決は api / reco が `relationship_code` + `occasion_code` から `pair
 
 | 出典 | 列・概念 | 本テーブル（MVP 物理 DDL） | 扱い |
 | ---- | -------- | -------------------------- | ---- |
-| 論理ER §3 | `request_mode`, `relationship_code`, `occasion_code`, `budget_min/max`, `preferred_text`, `non_preferred_text`, `ng_text`, `requested_at` | **採用**（`requested_at` → **`created_at`** に物理名統一。§5.4 注記） | 論理ER 差分は §17 で Human Review |
-| 論理ER §3 | 状態カラム | **MVP では物理列なし** | Validation 失敗は INSERT しない。成功行は暗黙 `accepted`（RecommendationRequest §10.3） |
+| 論理ER §3 | `request_mode`, `relationship_code`, `occasion_code`, `budget_min/max`, `preferred_text`, `non_preferred_text`, `ng_text`, `requested_at` | **採用**（`requested_at` → **`created_at`** に物理名統一。§17.1 No.3 **決定済み**） | 論理ER 物理名差分は §17.1 参照 |
+| 論理ER §3 | 状態カラム | **MVP では物理列なし** | Validation 失敗は INSERT しない。成功行は暗黙 `accepted`（§17.1 No.1 **決定済み**） |
 | RecommendationRequest §11 | `mode` | **`request_mode`** | enum定義書 §6.13・API `execution.mode` |
-| RecommendationRequest §11 | `status` | **MVP 物理列なし** | §10.3 簡略化 |
+| RecommendationRequest §11 | `status` | **MVP 物理列なし** | §10.3 簡略化（§17.1 No.1 **決定済み**） |
 | RecommendationRequest §11 | `created_at`, `validated_at` | **`created_at`**, **`validated_at`** | INSERT 時に両方設定（即時実行） |
-| RecommendationRequest §11 | `semantic_config_version_id`, `model_version_id` | **nullable UUID 列** | evaluation / batch mode 用。ui mode は `NULL` |
+| RecommendationRequest §11 | `semantic_config_version_id`, `model_version_id` | **個別列なし** | **`recommendation_run` 側正本**。evaluation 指定は `validated_payload` のみ（§5.7・§17.1 No.4 **決定済み**） |
 | RecommendationRequest §11 | `top_k`, `candidate_limit`, `include_reason`, `include_debug_info` | **個別列** | API-PUB-002 `execution.*` と 1:1 |
 | RecommendationRequest §11 | `currency`, `free_text` | **採用** | `tax_included` も API budget から採用 |
 | API-PUB-002 | camelCase Body | **`request_payload` に API 形式 JSON を保持** | 個別列は snake_case 物理名 |
-| 認証・認可方針書 §19.2 | `user_id` | **MVP 物理列なし** | 将来 nullable 追加を §17 で検討 |
+| 認証・認可方針書 §19.2 | `user_id` | **MVP 物理列なし** | §17.1 No.2 **決定済み**。認証 Epic まで追加しない |
 | 物理ER §17 No.1 | `pair_id` | **保持しない** | Run 側 |
 | 物理ER §17 No.2 | payload 併用 | **`request_payload` + `validated_payload` + 個別列** | 必須 |
 
-> **`requested_at` と `created_at`**: 論理ERは `requested_at`、ドメイン定義書は `created_at` を使用。MVP 物理 DDL では **`created_at` を Request 受付時刻** とし、論理ER `requested_at` と **同一意味** とする（§17 Human Review 論点）。
+> **`requested_at` と `created_at`**: 論理ERは `requested_at`、ドメイン定義書は `created_at` を使用。MVP 物理 DDL では **`created_at` を Request 受付時刻** とし、論理ER `requested_at` と **同一意味** とする（§17.1 No.3 **決定済み**）。
 
 ### 5.5 API-PUB-002 → DB 列マッピング（Public MVP / `request_mode = ui`）
 
@@ -149,6 +150,18 @@ Pair 解決は api / reco が `relationship_code` + `occasion_code` から `pair
 - `.env` 実値
 - 不要な個人識別情報（MVP 匿名利用前提）
 
+### 5.7 Config / Model Version 責務境界（`recommendation_run` 連携）
+
+論理ER §3（`recommendation_run` 属性）・物理ER §9（used_by LOGICAL）・Human Review #537 No.4 / No.6 を正とする。
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 正本テーブル | **`semantic_config_version_id` / `model_version_id` / `ranking_config_id` は `recommendation_run` の個別列** |
+| Request 側 | **個別列を持たない**。evaluation / batch でクライアントが version を指定する場合は **`validated_payload`（および必要なら `request_payload`）にのみ保持** |
+| Run 作成時 | reco が Config Resolver で解決（ui）または payload から読取（evaluation）し、**Run 行へコピー** |
+| FK 方針 | Run 側 version 参照は **LOGICAL FK**（物理ER §9。§17.1 No.6 **決定済み**） |
+| 後続 Task | `recommendation_run_テーブル定義書`（Batch R06）で Run 側列・Index・LOGICAL FK を詳細化 |
+
 ---
 
 ## 6. カラム定義
@@ -171,15 +184,13 @@ Pair 解決は api / reco が `relationship_code` + `occasion_code` から `pair
 | 14 | `candidate_limit` | Candidate Limit | `integer` | `no` | — | — | — | `NULL` | 内部候補上限。未指定時 ui default 50 |
 | 15 | `include_reason` | Include Reason | `boolean` | `no` | — | — | — | `NULL` | Reason 生成有無 |
 | 16 | `include_debug_info` | Include Debug Info | `boolean` | `no` | — | — | — | `NULL` | デバッグ情報出力有無 |
-| 17 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `no` | — | — | — | `NULL` | evaluation / batch mode 用。ui mode は NULL |
-| 18 | `model_version_id` | Model Version ID | `uuid` | `no` | — | — | — | `NULL` | evaluation / batch mode 用。ui mode は NULL |
-| 19 | `request_payload` | Request Payload | `jsonb` | `yes` | — | — | — | — | 受信 Request Body 正本（API camelCase） |
-| 20 | `validated_payload` | Validated Payload | `jsonb` | `yes` | — | — | — | — | バリデーション・default 適用後の確定 JSON |
-| 21 | `trace_id` | Trace ID | `text` | `no` | — | — | — | `NULL` | `X-Trace-Id` / api 生成 trace |
-| 22 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | Request 受付・保存日時（論理ER `requested_at` 相当） |
-| 23 | `validated_at` | Validated At | `timestamptz` | `yes` | — | — | — | — | バリデーション完了日時。MVP 即時実行では `created_at` と同一タイミング |
+| 17 | `request_payload` | Request Payload | `jsonb` | `yes` | — | — | — | — | 受信 Request Body 正本（API camelCase）。evaluation の version 指定もここに残る |
+| 18 | `validated_payload` | Validated Payload | `jsonb` | `yes` | — | — | — | — | バリデーション・default 適用後の確定 JSON |
+| 19 | `trace_id` | Trace ID | `text` | `no` | — | — | — | `NULL` | `X-Trace-Id` / api 生成 trace |
+| 20 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | Request 受付・保存日時（論理ER `requested_at` 相当。§17.1 No.3） |
+| 21 | `validated_at` | Validated At | `timestamptz` | `yes` | — | — | — | — | バリデーション完了日時。MVP 即時実行では `created_at` と同一タイミング |
 
-> **MVP で採用しない列**: `user_id`, `pair_id`, `request_status`（§5.4）。`updated_at` は immutable 方針のため MVP では省略（将来 UPDATE 導入時に追加検討）。
+> **MVP で採用しない列**: `user_id`, `pair_id`, `request_status`, `semantic_config_version_id`, `model_version_id`, `ranking_config_id`（§5.4・§5.7・§17.1）。`updated_at` は immutable 方針のため MVP では省略（将来 UPDATE 導入時に追加検討）。
 
 ---
 
@@ -201,8 +212,8 @@ Pair 解決は api / reco が `relationship_code` + `occasion_code` から `pair
 | ------ | ------ | ------ | ---------- | ---- |
 | `relationship_code` | `relationship_master.relationship_code` | `LOGICAL` | api validation + seed 正本 | 物理 FK なし（Master 定義書 §17.1 No.2） |
 | `occasion_code` | `occasion_master.occasion_code` | `LOGICAL` | 同上 | 物理 FK なし |
-| `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | nullable。evaluation 時のみ | DDL Task で ON FK 要否を再評価 |
-| `model_version_id` | `model_version.model_version_id` | `LOGICAL` | nullable。evaluation 時のみ | 同上 |
+
+> **`semantic_config_version_id` / `model_version_id`**: 本テーブルには **参照列なし**。正本は `recommendation_run` 側（§5.7・物理ER §9 used_by LOGICAL。§17.1 No.4 / No.6 **決定済み**）。
 
 ### 8.2 被参照（子テーブル）
 
@@ -282,13 +293,13 @@ Pair 解決は api / reco が `relationship_code` + `occasion_code` から `pair
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **長期（未定）**。Online推薦コアは原則削除しない（物理ER §13） |
+| 保持期間 | **長期（具体日数未定）**。Online推薦コアは原則削除しない（物理ER §13。§17.1 No.5 **決定済み**） |
 | 削除方式 | MVP では **DELETE なし** |
 | 削除条件 | — |
 | 論理削除 | MVP 対象外 |
-| アーカイブ | データ保持・削除方針 Task（Phase2 ⑥）で確定 |
+| アーカイブ | **Phase2 ⑥ データ保持・削除方針 Task** で Online 推薦コア全体（Request / Result / Feedback）と一括確定 |
 
-Snapshot 再現性（Result Item）のため、Request 行は Run / Result と独立に長期保持する。
+Snapshot 再現性（Result Item）のため、Request 行は Run / Result と独立に長期保持する。Log 系（90 日等）とは別枠で扱う（error_log 定義書 §13 との責務分離）。
 
 ---
 
@@ -323,8 +334,6 @@ CREATE TABLE recommendation_request (
   candidate_limit integer,
   include_reason boolean,
   include_debug_info boolean,
-  semantic_config_version_id uuid,
-  model_version_id uuid,
   request_payload jsonb NOT NULL,
   validated_payload jsonb NOT NULL,
   trace_id text,
@@ -365,12 +374,18 @@ CREATE TABLE recommendation_request (
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `request_status` 物理列の採否 | ドメイン §10 は状態あり、論理ERは状態なし。MVP 簡略化で列なしとした | Human | DDL Task 前 | §5.4 |
-| 2 | `user_id` nullable 列 | 認証方針書は MVP なし・将来追加。列を先に用意するか | Human | 認証 Epic 前 | §5.4 |
-| 3 | `requested_at` vs `created_at` 物理名 | 論理ER / ドメイン定義の列名差分 | Human | DDL Task 前 | §5.4 |
-| 4 | `semantic_config_version_id` / `model_version_id` の Run 側移管 | evaluation 入力を Request のみ vs Run のみ | Human | recommendation_run Task 前 | — |
-| 5 | Online推薦コア Retention 確定期限 | 物理ER §13「未定」 | Human | データ保持方針 Task | — |
-| 6 | `semantic_config_version_id` / `model_version_id` 物理 FK | MVP LOGICAL のまま vs ON FK | Human | DDL Task | §8.1 |
+| — | — | — | — | — | Human Review（Issue #537）にて §17.1 No.1〜No.6 を決定済み |
+
+### 17.1 Human Review 決定事項（Issue #537）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `request_status` 物理列 | **MVP 物理列なし**。Validation 失敗は INSERT しない。成功行は暗黙 `accepted` | Human | RecommendationRequest §10.3 と整合 |
+| 2 | `user_id` nullable 列 | **MVP 物理列なし**。認証 Epic まで追加しない | Human | 認証・認可方針書 §19.2 |
+| 3 | `requested_at` vs `created_at` | 物理名 **`created_at`**。論理ER `requested_at` と同一意味 | Human | §5.4 注記 |
+| 4 | Config / Model Version 保持先 | **個別列正本は `recommendation_run`**。Request は `validated_payload` のみ（evaluation 指定の記録） | Human | 論理ER §3・物理ER §9。§5.7 |
+| 5 | Online推薦コア Retention | MVP **DELETE なし**。具体保持期間は **Phase2 ⑥ データ保持方針 Task** で確定 | Human | 物理ER §13 |
+| 6 | version 列の物理 FK | **`recommendation_run` 側は LOGICAL FK 維持**（物理 FK なし） | Human | 物理ER §9 used_by。pair_id 物理 FK とは別パターン |
 
 ---
 
@@ -401,6 +416,7 @@ CREATE TABLE recommendation_request (
 - 個別カラム + JSONB payload 併用（§17 No.2）が DDL 展開可能な粒度である
 - `relationship_master` / `occasion_master` LOGICAL 参照と Master 定義書 §8.1 が双方向整合している
 - `pair_id` が Request になく Run 側であることが明記されている
+- `semantic_config_version_id` / `model_version_id` が Request になく Run 側正本であることが明記されている（§5.7・§17.1 No.4）
 - API-PUB-002 `mode` → `request_mode` マッピングが整理されている
 - apps/** 変更がない
 - secret / `.env` 実値が含まれていない

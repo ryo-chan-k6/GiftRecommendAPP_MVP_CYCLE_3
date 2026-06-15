@@ -252,14 +252,27 @@ review:
 contract_gate:
   required: false
 
-human_decision_points:
-  - "Request 本体 status 列の採否と MVP 状態（validated / accepted / rejected 等）の粒度"
-  - "user_id / session_id / client_request_id 等の trace・冪等キー列の採否"
-  - "semantic_config_version_id / model_version_id を Request に保持するか Run のみか（evaluation mode 入力）"
-  - "top_k / candidate_limit / include_reason / include_debug_info の個別カラム化 vs JSONB のみ"
-  - "currency / tax_included / free_text / raw_input_text の物理列採否"
-  - "requested_at vs created_at / validated_at の列名・必須性"
-  - "Online推薦コアの Retention（物理ER §13 未定）の MVP 明記粒度"
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "request_status 物理列"
+    decision: "MVP 物理列なし。Validation 失敗は INSERT しない。成功行は暗黙 accepted"
+  - id: 2
+    topic: "user_id nullable 列"
+    decision: "MVP 物理列なし。認証 Epic まで追加しない"
+  - id: 3
+    topic: "requested_at vs created_at"
+    decision: "物理名 created_at。論理ER requested_at と同一意味"
+  - id: 4
+    topic: "semantic_config_version_id / model_version_id 保持先"
+    decision: "個別列正本は recommendation_run。Request は validated_payload のみ（evaluation 指定の記録）"
+  - id: 5
+    topic: "Online推薦コア Retention"
+    decision: "MVP DELETE なし。具体保持期間は Phase2 ⑥ データ保持方針 Task で確定"
+  - id: 6
+    topic: "version 列の物理 FK"
+    decision: "recommendation_run 側は LOGICAL FK 維持（物理 FK なし）"
 
 notes:
   - "Batch R05 No.5: recommendation_request（Online推薦系）"
@@ -267,4 +280,5 @@ notes:
   - "Issue 本文のテーブル一覧参照 §4 は User意味推定系を指すため、正本は §3 No.1 を用いる"
   - "R06 recommendation_run 等は本 Task の後続 Task。Request 側から 1:N executes 関係のみ整理"
   - "先行 merge 済み前提: #440 / PR #441（enum）、#442 / PR #443（relationship_master）、#445 / PR #448（occasion_master）、#449 / PR #465（pair_master）"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
