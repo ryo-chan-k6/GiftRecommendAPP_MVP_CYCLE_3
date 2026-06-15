@@ -25,6 +25,10 @@ parent:
       purpose: "Batch R05 No.2 batch_run_log テーブル定義書（merge 済み・Batch 実行単位 LOGICAL 参照）"
     - number: 535
       purpose: "Batch R05 No.3 phase_log テーブル定義書（merge 済み・feature_distribution_metric_recorded フェーズ）"
+    - number: 554
+      purpose: "Batch R07 No.2 user_feature テーブル定義書（merge 済み・MVP 集計入力外・将来 run 拡張参照）"
+    - number: 555
+      purpose: "Batch R07 No.3 user_meaning テーブル定義書（merge 済み・Meaning 分布は meaning_distribution_metric 側）"
   related_prs:
     - number: 441
       purpose: "Task ② PR（enum。merge 済み前提）"
@@ -36,6 +40,10 @@ parent:
       purpose: "Task #534 PR（batch_run_log。merge 済み前提）"
     - number: 540
       purpose: "Task #535 PR（phase_log。merge 済み前提）"
+    - number: 559
+      purpose: "Task #554 PR（user_feature。merge 済み前提）"
+    - number: 560
+      purpose: "Task #555 PR（user_meaning。merge 済み前提）"
 
 commands:
   primary: "/work-issue"
@@ -83,6 +91,7 @@ scope:
   - "phase_log_テーブル定義書 feature_distribution_metric_recorded フェーズとの trace 境界"
   - "enum定義書 §6.16 feature_code・packages/code-definitions/semantic/feature_code.yaml との整合"
   - "meaning_distribution_metric / normalization_distribution_metric との責務分離（本 Task は feature 軸のみ）"
+  - "user_feature / user_meaning（#554 / #555）との MVP 集計境界整理（§5.8）"
   - "Task / Review Definition の整備"
 
 out_of_scope:
@@ -137,6 +146,12 @@ input:
     - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
       required: true
       purpose: "feature_distribution_metric_recorded フェーズ・Metric 記録 trace 境界（#535 merge 済み正本）"
+    - path: "docs/06_実装設計/database/user_feature_テーブル定義書.md"
+      required: true
+      purpose: "#554 merge 済み。MVP 集計入力外・item_feature 対称・将来 run 拡張参照"
+    - path: "docs/06_実装設計/database/user_meaning_テーブル定義書.md"
+      required: true
+      purpose: "#555 merge 済み。Meaning 分布は meaning_distribution_metric 側（§5.8 境界）"
     - path: "packages/code-definitions/semantic/feature_code.yaml"
       required: true
       purpose: "MVP 8 軸 feature_code コード定義正本"
@@ -223,6 +238,7 @@ test_policy:
     - "BATCH-016 / IF-DB-BATCH-016 INSERT 保存 I/F との整合"
     - "Retention 方針（ログ・Observability設計書 §20.2: 365日以上）が明記されていること"
     - "meaning_distribution_metric との責務分離が §5 等で明記されていること"
+    - "user_feature / user_meaning（#554 / #555）との MVP 集計境界が §5.8 で明記されていること"
     - "apps 実装層への変更がないこと"
   not_required:
     - "unit test"
@@ -241,7 +257,7 @@ contract_gate:
 notes:
   - "Batch R07 No.4: feature_distribution_metric（No.5 meaning_distribution_metric / No.6 normalization_distribution_metric は別 Task）"
   - "Issue #556 / Branch docs/task-556-feature-distribution-metric-table-spec"
-  - "先行 merge 済み前提: #440 / PR #441（enum）、#470 / PR #479（feature_definition）、#514 / PR #519（item_feature）、#534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#470 / PR #479（feature_definition）、#514 / PR #519（item_feature）、#534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）、#554 / PR #559（user_feature）、#555 / PR #560（user_meaning）"
   - "論点: aggregation_scope（batch_run / daily / version 等）、value_layer（raw / normalized）、分布統計量列の MVP 採用範囲、冪等キー（再集計時の Upsert vs 追記）"
   - "Human Review 論点: ログ・Observability設計書 §12.12 汎用カラム候補のうち MVP で物理列化する範囲"
   - "Human Review 論点: batch_run_id 必須 vs nullable（reco 起点集計の扱い）"

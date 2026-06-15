@@ -113,6 +113,12 @@ input:
     - path: "docs/06_実装設計/database/enum定義書.md"
       required: true
       purpose: "feature_code §6.16・batch_run_phase_name との整合"
+    - path: "docs/06_実装設計/database/user_feature_テーブル定義書.md"
+      required: true
+      purpose: "#554 merge 済み。MVP 集計入力外・§5.8 境界"
+    - path: "docs/06_実装設計/database/user_meaning_テーブル定義書.md"
+      required: true
+      purpose: "#555 merge 済み。Meaning 分布責務境界参考"
     - path: "packages/code-definitions/semantic/feature_code.yaml"
       required: true
       purpose: "MVP 8 軸 feature_code コード定義正本"
@@ -143,6 +149,7 @@ review_points:
     - "ログ・Observability設計書 §12.12 カラム候補との突合（採用列・差分）が §5.4 等で整理されているか"
     - "batch_run_log / feature_definition / item_feature との関係が §5 / §8 で明記されているか"
     - "meaning_distribution_metric との責務分離（Feature 軸のみ）が明記されているか"
+    - "user_feature / user_meaning（#554 / #555）との MVP 集計境界が §5.8 で明記されているか"
     - "BATCH-016 / IF-DB-BATCH-016 保存 I/F が一貫しているか"
   db:
     - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
@@ -180,6 +187,6 @@ notes:
   - "Batch R07 No.4: feature_distribution_metric"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-feature-distribution-metric.yaml"
   - "Issue #556 / Branch docs/task-556-feature-distribution-metric-table-spec"
-  - "先行 merge 済み前提: #440 / PR #441（enum）、#470 / PR #479（feature_definition）、#514 / PR #519（item_feature）、#534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#470 / PR #479（feature_definition）、#514 / PR #519（item_feature）、#534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）、#554 / PR #559（user_feature）、#555 / PR #560（user_meaning）"
   - "meaning_distribution_metric / normalization_distribution_metric 本体定義は out_of_scope"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

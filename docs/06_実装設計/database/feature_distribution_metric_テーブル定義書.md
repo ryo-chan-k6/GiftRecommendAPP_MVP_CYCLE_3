@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP           |
 | MVP対象        | `yes`                                     |
 | 作成日         | 2026-06-15                                |
-| 更新日         | 2026-06-15                                |
+| 更新日         | 2026-06-15（#554 user_feature / #555 user_meaning merge 後突合） |
 
 ---
 
@@ -60,6 +60,8 @@ Public API では返却しない（内部監視・品質分析データ）。
 ### 5.1 対象外
 
 - Item Feature **個別値**（`item_feature` の責務。#514 merge 済み）
+- User Feature **個別値**（`user_feature` の責務。#554 merge 済み。MVP 集計入力外・§5.8）
+- User Meaning **個別座標**（`user_meaning` の責務。#555 merge 済み。`meaning_distribution_metric` 側・§5.5）
 - Feature 軸定義正本（`feature_definition` の責務。#470 merge 済み）
 - Social / Symbolic / λ_ctx 等 Meaning 系分布（`meaning_distribution_metric` の責務。#557 別 Task）
 - 正規化前後 z-score / sigmoid 変換分布（`normalization_distribution_metric` の責務。別 Task）
@@ -175,7 +177,24 @@ feature_distribution_metric_recorded
 | `daily` | 日次スナップショット（schedule 実行） | 実行 Run の ID を設定可 | `YYYY-MM-DD`（UTC 日付） |
 | `semantic_config_version` | version 単位の再集計スナップショット | 任意 | `NULL` または version ラベル |
 
-> `run`（Recommendation Run 単位）・`relationship` / `genre` 単位は Observability §12.9 にあるが、**本テーブル MVP では対象外**（User Feature 分布は `meaning_distribution_metric` / 将来拡張で整理。§17.1 No.3）。
+> `run`（Recommendation Run 単位）・`relationship` / `genre` 単位は Observability §12.9 にあるが、**本テーブル MVP では対象外**（§5.8・§17.1 No.3）。Run 単位 **User Feature** 分布の将来拡張先は本テーブル、`user_social` / `user_symbolic` / `λ_ctx` 等 **Meaning** 分布は `meaning_distribution_metric`。
+
+### 5.8 `user_feature` / `user_meaning` との責務境界（#554 / #555 突合）
+
+Epic Branch 最新（`user_feature_テーブル定義書` #554、`user_meaning_テーブル定義書` #555 merge 済み）との整合。
+
+| 観点 | `user_feature`（#554） | `user_meaning`（#555） | 本テーブル |
+| ---- | ---------------------- | ---------------------- | ---------- |
+| 分類 | User意味推定系 | User意味推定系 | Log / Observability / Metric |
+| 親キー | `recommendation_run_id` | `recommendation_run_id` | `batch_run_id`（LOGICAL）+ 集計スコープ |
+| 値の正本 | `feature_value`（**正規化後 1 列のみ**。raw 非保持） | `user_social` / `user_symbolic` / `lambda_ctx` | 分布統計量（mean / stddev 等） |
+| version 列 | **行に `semantic_config_version_id` なし**（Run 経由） | 同上（Run 経由） | **`semantic_config_version_id` 必須**（item 集計の version 正本） |
+| 更新主体 | reco（Online） | reco（Online） | batch（BATCH-016） |
+| MVP 集計入力 | **対象外**（`entity_type=item` 固定） | **対象外**（Meaning 系は `meaning_distribution_metric`） | `item_feature` のみ |
+
+#### 5.8.1 将来拡張（MVP 外・§17.1 No.3）
+
+Observability §12.9 の **run 単位** User Feature 分布は、将来 `entity_type=user`・`aggregation_scope=run`・`value_layer=normalized`（`user_feature.feature_value` 入力）で本テーブルへ拡張しうる。`user_meaning` の Social / Symbolic / λ_ctx 分布は **`meaning_distribution_metric`** の責務であり、本テーブルには含めない（`user_meaning_テーブル定義書` §5.6・`item_meaning_テーブル定義書` §5.5 と同型）。
 
 ---
 
@@ -363,7 +382,7 @@ feature_distribution_metric_recorded
 | --: | ---- | ------ | ------ | ---- |
 | 1 | Observability §12.12 の追加統計列（`skewness` / `kurtosis` / `inf_count`） | MVP は **本表の列のみ**採用。追加は migration または `detail_json` | Human | §6 注記 |
 | 2 | `feature_normalization_version_id` 必須 CHECK | normalized 層では **NOT NULL 推奨**（§10）。raw 層は NULL | Human | 複数 normalization version 混在時の集計ルールは BATCH-016 側 |
-| 3 | `aggregation_scope` の Run / genre 拡張 | MVP は **batch_run / daily / semantic_config_version のみ** | Human | User Feature 分布は別テーブル |
+| 3 | `aggregation_scope` の Run / genre 拡張 | MVP は **batch_run / daily / semantic_config_version のみ** | Human | Run 単位 User Feature は将来 `entity_type=user` で本テーブル拡張。Meaning 系は `meaning_distribution_metric`（§5.8） |
 | 4 | `batch_run_id` と Retention 独立性 | **親 Run 削除後も Metric 保持**（§5.4 / §13） | Human | dangling `batch_run_id` を許容 |
 | 5 | 物理 schema `metric` 分割タイミング | MVP は **public**。論理分類のみ明記（§4） | Human | 物理ER §17 No.8 |
 | 6 | reco 書き込み | MVP は **batch のみ INSERT**。reco は SELECT のみ | Human | テーブル一覧 §11 の reco は将来拡張 |
@@ -381,7 +400,10 @@ feature_distribution_metric_recorded
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-016 |
 | batch_run_log | `docs/06_実装設計/database/batch_run_log_テーブル定義書.md` | §5.2 / §13 |
 | feature_definition | `docs/06_実装設計/database/feature_definition_テーブル定義書.md` | feature_code 正本 |
-| item_feature | `docs/06_実装設計/database/item_feature_テーブル定義書.md` | 集計入力 |
+| item_feature | `docs/06_実装設計/database/item_feature_テーブル定義書.md` | 集計入力（MVP 正本） |
+| user_feature | `docs/06_実装設計/database/user_feature_テーブル定義書.md` | #554。MVP 集計入力外・将来 run 拡張参照（§5.8） |
+| user_meaning | `docs/06_実装設計/database/user_meaning_テーブル定義書.md` | #555。Meaning 分布は `meaning_distribution_metric`（§5.8） |
+| item_meaning | `docs/06_実装設計/database/item_meaning_テーブル定義書.md` | Meaning 分布責務境界参考（§5.5） |
 | phase_log | `docs/06_実装設計/database/phase_log_テーブル定義書.md` | `feature_distribution_metric_recorded` |
 | enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.16 feature_code |
 | feature_code | `packages/code-definitions/semantic/feature_code.yaml` | コード定義正本 |
@@ -394,6 +416,7 @@ feature_distribution_metric_recorded
 - `batch_run_log` / `feature_definition` / `item_feature` との関係が §5 / §8 で明記されている
 - BATCH-016 / IF-DB-BATCH-016・`phase_log.feature_distribution_metric_recorded` と整合している
 - `meaning_distribution_metric` との責務分離が §5.5 で明記されている
+- `user_feature` / `user_meaning`（#554 / #555）との MVP 集計境界が §5.8 で明記されている
 - Observability §12.12 候補列との差分が §6 / §17.1 で整理されている
 - Retention（365 日以上）と `batch_run_log`（90 日）の非連動が §13 で明記されている
 - PK / Unique / Index / CHECK が DDL Task へ展開できる粒度である
