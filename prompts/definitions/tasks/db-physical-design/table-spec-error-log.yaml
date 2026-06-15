@@ -1,0 +1,265 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-error-log"
+  title: "error_log:Error Logテーブル定義書作成"
+  summary: "物理ER・論理ER・テーブル一覧・ログ・Observability設計書・enum定義書・エラーコード定義書・バッチ設計方針書・batch_run_log / phase_log テーブル定義書を入力に、Batch / Online 横断のエラーログ正本 `error_log` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R05 No.4。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 534
+      purpose: "Batch R05 No.2 batch_run_log テーブル定義書（may_have 親・merge 済み前提）"
+    - number: 535
+      purpose: "Batch R05 No.3 phase_log テーブル定義書（同一 Batch・owner 設計整合。merge 済み前提）"
+    - number: 533
+      purpose: "Batch R05 No.1 item_import_summary テーブル定義書（Log 系章構成参考。merge 済み前提）"
+    - number: 527
+      purpose: "api_call_log テーブル定義書（owner_type=api_call 整合参考。merge 済み前提）"
+  related_prs:
+    - number: 538
+      purpose: "Task #533 PR（item_import_summary。merge 済み前提）"
+    - number: 532
+      purpose: "Task #527 PR（api_call_log。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R05 No.4。論理ER §13.2・テーブル一覧 §6 No.58。
+  Batch / Online 横断のエラーログ正本。api / reco / batch / 外部 API / DB / Storage で発生したエラーを polymorphic owner（owner_type / owner_id）で記録する。
+  IF-OBS-002（Error Log 記録）・IF-DB-API-008 / IF-DB-RECO-009 の DB 正本。
+  親 Epic Branch 最新（item_import_summary #533 / PR #538、api_call_log #527 / PR #532 merge 済み前提）を前提とする。
+  batch_run_log（#534）/ phase_log（#535）は同 Batch 先行 Task。merge 済みであればテーブル定義書を正本入力とし、未 merge 時は論理ER / 物理ER / ログ・Observability設計書を参照する。
+  Issue #536 / Branch `docs/task-536-error-log-table-spec` で作業する。
+
+objective: |
+  `error_log` の物理カラム・制約・Index・保持方針を table-spec.md テンプレ準拠で定義する。
+  `batch_run_log` / `phase_log` / `recommendation_run` との polymorphic owner 関係、error_code / severity / retryable / trace_id 方針、マスキング・Retention を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の error_log テーブル定義書作成"
+  - "物理ER Log系・batch_run_log / recommendation_run may_have 関係・§10 idx_error_log_owner との突合"
+  - "論理ER §13.2 Log系エンティティ属性・§14 主要リレーションとの整合"
+  - "テーブル一覧 §6 No.58 Error Log・Log / Observability 系補足との整合"
+  - "ログ・Observability設計書 §9 Error Log設計（主要項目・owner_type候補・記録対象）・§20.2 Retention 90〜180日との整合"
+  - "enum定義書 §6.15 owner_type（polymorphic）・§10.2 error_code 正本分担との整合"
+  - "エラーコード定義書・packages/code-definitions/error との error_code 形式 CHECK 方針"
+  - "状態遷移設計書 §5 Log系整理（error_log は状態カラムなし）との整合"
+  - "バッチ設計方針書 Error Handler / error_log 記録方針・GRS-BAT-* / GRS-EXT-* / GRS-RAW-* との整合"
+  - "インターフェース一覧 IF-OBS-002 / IF-DB-API-008 / IF-DB-RECO-009 との整合"
+  - "正本定義表・リソース一覧・リソース責務定義表・処理構成定義書との整合"
+  - "batch_run_log_テーブル定義書 / phase_log_テーブル定義書（#534 / #535 merge 済み時）との双方向整合"
+  - "api_call_log_テーブル定義書（owner_type=api_call 時の owner_id 整合）との突合"
+  - "item_import_summary_テーブル定義書（Log 系章構成・FK 方針参考）との突合"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "batch_run_log / phase_log テーブル定義書の再作成（#534 / #535 別 Task）"
+  - "api_call_log / item_import_summary テーブル定義書の再作成（merge 済みを参照のみ）"
+  - "recommendation_run / recommendation_request 等 Online 系テーブル定義書"
+  - "error_code 全件の packages YAML 正本化（Phase4a へ委譲）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log系分類・batch_run_log / recommendation_run → error_log may_have・idx_error_log_owner（§10）・マスキング方針（§12）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "owner_type（§6.15）・error_log 列への enum 適用（§9）・error_code 形式 CHECK（§10.2）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§13.2 error_log 属性（owner_type / owner_id / error_code / error_message / error_detail_json / occurred_at）・§14 Log系"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.58 error_log・Log / Observability 系分類・recommendation_run_phase_log 統合方針"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§9 Error Log設計（主要項目・owner_type候補・記録対象）・§20.2 Retention 90〜180日・trace_id 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§5 Log系整理（error_log は状態カラムなし・error_code / occurred_at で追跡）"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* エラーコード体系・retryable / severity 参照・error_log 記録対象"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Error Handler・error_log 記録・GRS-BAT-* / GRS-EXT-* / GRS-RAW-* 連携"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "各 BATCH の error_log 出力先・Error Handler 利用"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-OBS-002 Error Log 記録・IF-DB-API-008 / IF-DB-RECO-009 Phase / Error Log 保存"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Error Log 正本区分（Log）・追記主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Error Log リソース分類・polymorphic owner"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "エラー記録責務・api / reco / batch 主体"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "Online / Batch 処理失敗時の error_log 記録タイミング"
+    - path: "docs/06_実装設計/database/item_import_summary_テーブル定義書.md"
+      required: true
+      purpose: "Log 系章構成・batch_run_log LOGICAL FK 方針参考（#533 merge 済み前提）"
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+      purpose: "owner_type=api_call 時 owner_id=api_call_log_id 整合・Log 系記述粒度参考（#527 merge 済み前提）"
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: false
+      purpose: "may_have 親関係・owner_type=batch_run 整合（#534 merge 済み時は required 相当で参照）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: false
+      purpose: "owner_type 設計・phase / error 責務境界（#535 merge 済み時は required 相当で参照）"
+    - path: "packages/code-definitions/error/README.md"
+      required: false
+      purpose: "error_code packages 正本方針（Phase4a）・形式 CHECK 参考"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-error-log.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-error-log/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "error_log テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §13.2・テーブル一覧 §6 No.58 と矛盾しない"
+  - "batch_run_log / phase_log との参照関係（polymorphic owner・may_have 親）が明記されている"
+  - "owner_type / owner_id の polymorphic 設計と enum定義書 §6.15 が一致している"
+  - "error_code 形式 CHECK と error_detail_json マスキング方針が明記されている"
+  - "trace_id / request_id / service / severity / retryable の MVP 採否が整理されている"
+  - "Retention 方針（Observability §20.2 90〜180日）が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "error-log-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 536
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 534
+      purpose: "batch_run_log テーブル定義書（may_have 親・owner_type=batch_run 整合。merge 推奨）"
+    - number: 535
+      purpose: "phase_log テーブル定義書（owner 設計・phase/error 責務境界。merge 推奨）"
+    - number: 533
+      purpose: "item_import_summary テーブル定義書（Log 系参考。merge 済み前提）"
+    - number: 527
+      purpose: "api_call_log テーブル定義書（owner_type=api_call 参考。merge 済み前提）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/error_log_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER batch_run_log → error_log / recommendation_run → error_log may_have との整合"
+    - "物理ER §10 idx_error_log_owner（owner_type, owner_id, occurred_at）との整合"
+    - "論理ER §13.2 属性（error_log_id / owner_type / owner_id / error_code / error_message / error_detail_json / occurred_at）との整合"
+    - "ログ・Observability設計書 §9.2 主要項目（trace_id / request_id / service / severity / retryable 等）との突合・差分整理"
+    - "ログ・Observability設計書 §9.3 owner_type候補と enum定義書 §6.15 の一致"
+    - "enum定義書 §10.2 error_code 形式 CHECK 方針との整合"
+    - "インターフェース一覧 IF-OBS-002 / IF-DB-API-008 / IF-DB-RECO-009 との整合"
+    - "バッチ設計方針書 Error Handler / GRS-BAT-* / GRS-EXT-* 記録方針との整合"
+    - "batch_run_log / phase_log テーブル定義書（#534 / #535 merge 済み時）との双方向整合"
+    - "api_call_log テーブル定義書 owner_type=api_call 整合"
+    - "Retention 90〜180日（Observability §20.2）の明記"
+    - "error_detail_json マスキング・保存禁止情報（secret / Authorization / 個人情報）の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_decision_points:
+  - "論理ER §13.2 最小属性 vs ログ・Observability設計書 §9.2 拡張列（trace_id / request_id / service / severity / retryable）の MVP 採否"
+  - "owner_type=system 時の owner_id nullable 方針（Observability §9.3）"
+  - "phase_log_id 列の要否（owner 経由のみ vs 明示 FK）"
+  - "error_code 形式 CHECK のみ vs 既知 prefix 別 CHECK（enum定義書 §10.2）"
+  - "Retention 90日 vs 180日の MVP 初期値"
+
+notes:
+  - "Batch R05 No.4: error_log（Log / Observability系 / Batch・Online 横断）"
+  - "Issue #536 / Branch docs/task-536-error-log-table-spec"
+  - "Issue 本文のテーブル一覧参照 §9 は Log 系章を指すため、正本は §6 No.58 を用いる"
+  - "先行 merge 済み前提: #533 / PR #538（item_import_summary）、#527 / PR #532（api_call_log）"
+  - "同 Batch 先行 Task: #534（batch_run_log）、#535（phase_log）。未 merge 時は ER / Observability 設計書で owner 関係を整理し、merge 後に双方向整合を確認"
+  - "recommendation_run_phase_log は物理テーブルとして作成せず phase_log に統合（テーブル一覧 §8）"
+  - "Human Review 論点: polymorphic owner の物理 FK 方針、severity / retryable の DB 列化、Validation エラー記録方針（§9.4 warn 集計のみ）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

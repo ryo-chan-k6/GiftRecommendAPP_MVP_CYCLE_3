@@ -1,0 +1,186 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-error-log-pr"
+  title: "error_log テーブル定義書 PRレビュー"
+  summary: "error_log テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §13.2・ログ・Observability設計書 §9・enum定義書 owner_type / error_code・batch_run_log / phase_log / api_call_log との整合、polymorphic owner 設計・Retention・table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-536-error-log-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 536
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-error-log.yaml"
+  source_branch: "docs/task-536-error-log-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: true
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-error-log.yaml"
+    required: true
+  issue:
+    number: 536
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log系・may_have 関係・idx_error_log_owner・マスキング方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§13.2 error_log 属性・§14 Log系との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.58 Error Log 分類・用途との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§9 Error Log設計・§9.3 owner_type候補・§20.2 Retention"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "owner_type（§6.15）・error_code 形式 CHECK（§10.2）との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* 体系・retryable / severity 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Error Handler・error_log 記録方針"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-OBS-002 / IF-DB-API-008 / IF-DB-RECO-009 の確認"
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+      purpose: "owner_type=api_call 整合・Log 系章構成参考（#527 merge 済み正本）"
+    - path: "docs/06_実装設計/database/item_import_summary_テーブル定義書.md"
+      required: true
+      purpose: "Log 系章構成・LOGICAL FK 方針参考（#533 merge 済み正本）"
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: false
+      purpose: "may_have 親・owner_type=batch_run 双方向整合（#534 merge 済み時）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: false
+      purpose: "owner 設計・phase/error 責務境界（#535 merge 済み時）"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（batch_run_log / phase_log 再定義 / error_code packages 正本化 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §13.2 の属性と矛盾しないか（Observability §9.2 拡張列の差分は明示されているか）"
+    - "テーブル一覧 §6 No.58 の分類・用途・api / reco / batch 更新主体と一致しているか"
+    - "ログ・Observability設計書 §9.3 owner_type候補と定義書の CHECK / enum 整合が整理されているか"
+    - "api_call_log / item_import_summary テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "Mermaid 構文が破綻していないか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "batch_run_log / recommendation_run との may_have 関係（polymorphic owner）が明記されているか"
+    - "phase_log との責務境界（owner 経由 vs phase_log_id 列）が明記されているか"
+    - "owner_type と enum定義書 §6.15 が一致しているか"
+    - "物理ER §10 idx_error_log_owner（owner_type, owner_id, occurred_at）が反映されているか"
+    - "error_code 形式 CHECK（enum定義書 §10.2）が明記されているか"
+    - "Retention 90〜180日（Observability §20.2）が明記されているか"
+    - "batch_run_log / phase_log（#534 / #535）merge 済み時の双方向整合が取れているか"
+  security:
+    - "error_detail_json に secret・Authorization Header・個人情報を含めない方針が明記されているか"
+    - "Secret 出力検知（critical）の記録方針が整理されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "論理ER 最小属性 vs Observability §9.2 拡張列（trace_id / request_id / service / severity / retryable）の MVP 採否"
+  - "owner_type=system 時の owner_id nullable 方針"
+  - "phase_log_id 列の要否"
+  - "Retention 90日 vs 180日の MVP 初期値"
+
+risk_points:
+  - "batch_run_log（#534）/ phase_log（#535）未 merge 時、may_have / owner 設計が ER のみ参照で先行 Task と後から矛盾する可能性"
+  - "論理ER §13.2 と Observability §9.2 の列差整理が Human Review 論点として残る可能性"
+  - "IF-OBS-002 の component / target_id 命名 vs owner_type / owner_id の対応漏れ"
+  - "Validation エラー記録方針（§9.4 warn 集計のみ）の MVP 境界"
+
+notes:
+  - "Batch R05 No.4: error_log"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-error-log.yaml"
+  - "Issue #536 / Branch docs/task-536-error-log-table-spec"
+  - "先行 Epic: #435 / docs/epic-435-db-physical-design"
+  - "先行 merge 済み前提: #533 / PR #538（item_import_summary）、#527 / PR #532（api_call_log）"
+  - "同 Batch 先行 Task: #534（batch_run_log）、#535（phase_log）"
+  - "PR 番号は /create-pr 後に本 Definition の target.pr / input.pr.number を更新する"
