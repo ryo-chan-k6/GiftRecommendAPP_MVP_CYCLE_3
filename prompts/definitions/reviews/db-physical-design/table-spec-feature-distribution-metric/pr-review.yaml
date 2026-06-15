@@ -1,0 +1,185 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-feature-distribution-metric-pr"
+  title: "feature_distribution_metric テーブル定義書 PRレビュー"
+  summary: "feature_distribution_metric テーブル定義書 Task の PR を AI Review する。物理ER・テーブル一覧 §11 No.59・ログ・Observability設計書・BATCH-016・batch_run_log / feature_definition / item_feature テーブル定義書との整合、分布統計量・集計粒度・Retention 方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-556-feature-distribution-metric-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 556
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-feature-distribution-metric.yaml"
+  source_branch: "docs/task-556-feature-distribution-metric-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-feature-distribution-metric.yaml"
+    required: true
+  issue:
+    number: 556
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/feature_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log / Observability系・Metric 分類・schema 候補・§8–§11 整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§11 No.59 分類・用途・Metric 系補足との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§13 Log / 状態管理系・batch_run_log 関係との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§12.10–§12.12 分布メトリクス方針・§20.2 Retention の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-016 入出力・対象テーブルの確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-016 分布メトリクス保存 I/F の確認"
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: true
+      purpose: "batch_run_id LOGICAL FK・Batch 実行単位 trace（#534 merge 済み正本）"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "feature_code 正本参照・semantic_config_version 単位 8 軸（#470 merge 済み正本）"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "集計入力正本・個別値 vs 分布統計量の責務境界（#514 merge 済み正本）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "feature_distribution_metric_recorded フェーズ・trace 境界（#535 merge 済み正本）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feature_code §6.16・batch_run_phase_name との整合"
+    - path: "packages/code-definitions/semantic/feature_code.yaml"
+      required: true
+      purpose: "MVP 8 軸 feature_code コード定義正本"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（他 Metric テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "テーブル一覧 §11 No.59 の分類・用途（batch / reco・Feature 値分布）と一致しているか"
+    - "ログ・Observability設計書 §12.12 カラム候補との突合（採用列・差分）が §5.4 等で整理されているか"
+    - "batch_run_log / feature_definition / item_feature との関係が §5 / §8 で明記されているか"
+    - "meaning_distribution_metric との責務分離（Feature 軸のみ）が明記されているか"
+    - "BATCH-016 / IF-DB-BATCH-016 保存 I/F が一貫しているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "batch_run_log.batch_run_id への LOGICAL FK・集計スコープ（aggregation_scope）方針が明記されているか"
+    - "feature_code と feature_definition / enum定義書 §6.16 / chk_feature_code_mvp が整合しているか"
+    - "item_feature 個別値と本テーブル分布統計量の責務分離が明記されているか"
+    - "value_layer（raw / normalized 等）・semantic_config_version_id 保持方針が妥当か"
+    - "冪等キー / 再集計時の Upsert vs 追記方針が明記されているか"
+    - "Retention 方針（365日以上）が §13 等で明記されているか"
+    - "phase_log feature_distribution_metric_recorded フェーズとの trace 境界が整合しているか"
+  security:
+    - "分布統計量に個人情報・secret を含めない方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "ログ・Observability設計書 §12.12 汎用カラム候補のうち MVP で物理列化する範囲（mean / stddev / p10–p90 / near_zero_rate 等）"
+  - "aggregation_scope（batch_run / daily / version 等）と冪等キー・再集計時の行扱い"
+  - "batch_run_id 必須 vs nullable（reco 起点集計の扱い）"
+  - "semantic_config_version_id / feature_normalization_version_id の保持要否"
+  - "metric schema 分割（物理ER §8 metric）の MVP 適用タイミング"
+
+risk_points:
+  - "ログ・Observability設計書 §12.12 の汎用 metric カラム設計と Feature 専用テーブルへの落とし込み粒度"
+  - "item_feature 行単位データと分布統計量の責務境界（item_meaning / meaning_distribution_metric 先例との一貫性）"
+  - "batch / reco 双方が更新主体のため、集計トリガーと batch_run_id 必須性の整理"
+  - "meaning_distribution_metric（#557）との列設計・命名の一貫性"
+
+notes:
+  - "Batch R07 No.4: feature_distribution_metric"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-feature-distribution-metric.yaml"
+  - "Issue #556 / Branch docs/task-556-feature-distribution-metric-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#470 / PR #479（feature_definition）、#514 / PR #519（item_feature）、#534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）"
+  - "meaning_distribution_metric / normalization_distribution_metric 本体定義は out_of_scope"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
