@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-12（source_api #506 反映） |
+| 更新日         | 2026-06-15（`ranking_supplement` 粒度 #527 連携） |
 
 ---
 
@@ -336,14 +336,14 @@ Human Review（Issue #476）にて MVP 候補値を確定した。`feature_delta
 
 ### 6.23 Fetch Cursor Type (`fetch_cursor_type`)
 
-Human Review（Issue #505）にて走査戦略 5 値を確定した。`fetch_cursor_テーブル定義書` §5.4 を正とする。
+Human Review（Issue #505）にて走査戦略 5 値を確定した。`fetch_cursor_テーブル定義書` §5.4・§17.1 を正とする（`ranking_supplement` 粒度は #527 連携で §17.1 No.5 追補）。
 
 | 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
 | -- | ------ | ---- | -------- | ----------- | ---- |
 | `genre` | Genre | ジャンル別商品検索のページ走査 | BATCH-003・`target_external_genre_id` 必須 | `yes` | |
 | `keyword` | Keyword | キーワード検索のページ走査 | BATCH-003・`scope.keyword` 必須 | `yes` | |
 | `update_sort` | Update Sort | 更新順ソートによる棚卸し走査 | BATCH-003 | `yes` | |
-| `ranking_supplement` | Ranking Supplement | ランキング補完候補の走査 | BATCH-003・BATCH-002 後続 | `yes` | |
+| `ranking_supplement` | Ranking Supplement | ランキング補完候補の走査 | BATCH-003 消費・BATCH-002 生産 | `yes` | **1 商品（`external_item_code`）単位**（§17.1 No.5） |
 | `recheck` | Recheck | 既存商品再確認 | BATCH-004・**1 商品（`external_item_code`）単位** | `yes` | §17.1 No.4 |
 
 ### 6.24 Source API (`source_api`)

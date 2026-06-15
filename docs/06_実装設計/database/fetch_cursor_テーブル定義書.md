@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-12                      |
-| 更新日         | 2026-06-12（Human Review #505 反映） |
+| 更新日         | 2026-06-15（Human Review #527 連携: `ranking_supplement` 粒度追補） |
 
 ---
 
@@ -73,8 +73,10 @@
 | データフロー | `fetch_cursor`（走査条件・位置）→ `api_call_log`（外部 API 1 呼び出し単位）→ `raw_product_metadata`（Raw JSON 参照・取込状態） |
 | 物理ER 関係 | `fetch_cursor` → `api_call_log` : `controls`（**LOGICAL** FK。Batch / Log 系は物理 FK なし） |
 | カーディナリティ | 1 カーソル : N API 呼び出し（同一走査条件で複数ページ・再試行があり得る） |
-| `api_call_log.fetch_cursor_id` | nullable。カーソル非経由の API 呼び出し（例: 一部ジャンル同期）は `NULL` 可 |
-| 後続 | `api_call_log` 本体のカラム定義は **別 Task**（out_of_scope）。本定義書では参照関係のみ確定 |
+| `api_call_log.fetch_cursor_id` | **nullable**。カーソル非経由の外部 API 呼び出し（例: BATCH-001 `genre_search`、BATCH-002 `item_ranking`）は `NULL` |
+| BATCH-002 と本テーブル | BATCH-002（Ranking Unknown Item Collector）は未登録 `external_item_code` 向けに `cursor_type = ranking_supplement` 行を **生産**する。当該 Batch 内のランキング API `api_call_log` 行には `fetch_cursor_id` を **紐づけない** |
+| BATCH-003 消費 | `ranking_supplement` / `genre` / `keyword` 等を消費する `item_search` 呼び出しの `api_call_log` では `fetch_cursor_id` を **設定**（通常 NOT NULL） |
+| 後続 | `api_call_log` 本体のカラム定義は **別 Task**（`api_call_log_テーブル定義書` を正）。本定義書では参照関係のみ確定 |
 
 ```mermaid
 flowchart LR
@@ -125,8 +127,8 @@ flowchart LR
 | `genre` | ジャンル別商品検索のページ走査 | 必須（bigint） | `{"sort":"-updateTimestamp"}` |
 | `keyword` | キーワード検索のページ走査 | `NULL` | `{"keyword":"..."}` |
 | `update_sort` | 更新順ソートによる棚卸し走査 | `NULL` または任意ジャンル | `{"sort":"-updateTimestamp"}` |
-| `ranking_supplement` | BATCH-002 未登録 itemCode 補完候補の走査 | 任意 | `{"supplement_batch_run_id":"..."}` |
-| `recheck` | 既存商品再確認（BATCH-004） | `NULL` | `{"external_item_code":"shop:123456"}`。**1 商品 = 1 カーソル**（§17.1 No.4） |
+| `ranking_supplement` | BATCH-002 未登録 itemCode 補完候補（BATCH-003 消費） | `NULL` | `scope.external_item_code` 必須。**1 商品 = 1 カーソル**（§17.1 No.5）。`supplement_batch_run_id` / `ranking_snapshot_id` は trace 用 |
+| `recheck` | 既存商品再確認（BATCH-004） | `NULL` | `scope.external_item_code` 必須。**1 商品 = 1 カーソル**（§17.1 No.4） |
 
 > `cursor_type` は `fetch_cursor_type` enum（enum定義書 §6.23 / `packages/code-definitions/batch/fetch_cursor_type.yaml`）を正とする。
 
@@ -351,7 +353,7 @@ WHERE source = 'rakuten'
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review #505 にて No.1〜4 を決定済み（下記参照） |
+| — | — | — | — | — | Human Review #505 にて No.1〜4、#527 連携にて No.5 を決定済み（下記参照） |
 
 ### 17.1 Human Review 決定事項（Issue #505）
 
@@ -361,6 +363,7 @@ WHERE source = 'rakuten'
 | 2 | `cursor_type` の enum YAML 化 | **実施**。`fetch_cursor_type` を `packages/code-definitions/batch/fetch_cursor_type.yaml` に追加し enum定義書 §6.23 に反映 | Human | 本 Issue 内で対応済み |
 | 3 | `rate_limited` → `paused` の自動連動 | **MVP 必須**。DB トリガーは使わず Batch アプリが `api_call_log` 記録直後に `paused` へ UPDATE | Human | §5.3。次回実行での API 再試行暴走を防止 |
 | 4 | `recheck` 走査の `cursor_value.scope` 形式 | **1 商品（`external_item_code`）= 1 カーソル**。`scope.external_item_code` のみ必須。バッチ単位キューは MVP では持たない | Human | BATCH-004 は item 単位 API 呼び出しと整合 |
+| 5 | `ranking_supplement` 走査の `cursor_value.scope` 形式 | **`recheck` と同型**。**1 商品（`external_item_code`）= 1 カーソル**。`scope.external_item_code` 必須。`supplement_batch_run_id` / `ranking_snapshot_id` は trace 用（fingerprint に含めない）。バッチ単位キューは MVP では持たない | Human（#527 連携） | BATCH-002 生産・BATCH-003 消費。任意依存 |
 
 **`recheck` の `cursor_value` 例（確定）**:
 
@@ -377,6 +380,25 @@ WHERE source = 'rakuten'
 
 - 正常取得後は `exhausted` へ遷移（1 商品 1 回の再確認が基本）
 - 同一 `external_item_code` の再実行は同一 fingerprint で get-or-create
+
+**`ranking_supplement` の `cursor_value` 例（確定）**:
+
+```json
+{
+  "scope": {
+    "external_item_code": "shop:123456",
+    "supplement_batch_run_id": "uuid-of-batch-002-run",
+    "ranking_snapshot_id": "uuid-optional"
+  },
+  "position": {
+    "page": 1
+  }
+}
+```
+
+- BATCH-002 再実行時、同一 `external_item_code` の active 行は fingerprint で get-or-create
+- BATCH-003 が `item_search` で正常取得後は `exhausted` へ遷移（`recheck` と同型）
+- `supplement_batch_run_id` / `ranking_snapshot_id` は Upsert 自然キー（fingerprint）に **含めない**
 
 ---
 
@@ -402,6 +424,7 @@ WHERE source = 'rakuten'
 - 論理ER §9.2・物理ER 外部商品データ連携系・テーブル一覧 §6 No.17 と矛盾していない
 - `cursor_status` 状態遷移が状態遷移設計書 §6.4・enum定義書 §6.8 と一致している
 - `fetch_cursor` → `api_call_log` の 1:N controls（LOGICAL）と `rate_limited` → `paused` 検討方針が §5.2 / §5.3 に明記されている
+- `ranking_supplement` が `recheck` と同型（1 商品 = 1 カーソル）であり、BATCH-002 生産 / BATCH-003 消費と `api_call_log.fetch_cursor_id` の関係が §5.2 / §17.1 No.5 に明記されている
 - `target_external_genre_id` の LOGICAL 参照が `external_genre_テーブル定義書` §8.2 と整合している
 - `api_call_log` / `raw_product_metadata` 本体定義を本 Task に混入していない
 - DDL Task が CREATE TABLE を起こせる粒度である
