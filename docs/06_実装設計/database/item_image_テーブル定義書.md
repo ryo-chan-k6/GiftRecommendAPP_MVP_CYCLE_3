@@ -59,7 +59,7 @@ MVP では画像バイナリを保存しない。Public API では `item` 経由
 - 商品正本属性（`item` の責務）
 - 画像バイナリ・CDN（MVP 対象外）
 - レビュー要約（`item_review_summary` の責務）
-- Staging 中間データ（`staging_item_image` の責務）
+- Staging 中間データ（`staging_item_image_テーブル定義書` #523 の責務）
 - `source` / `source_system` / `source_api` 列（Item 子テーブル共通方針で **行に持たない**。§5.2）
 - `is_active` 列（同期置換で代替。§17.1 No.3）
 - OpenAPI / generated 変更（Epic 終盤 Task #469 へ委譲）
@@ -104,6 +104,7 @@ Batch 反映時に `is_primary` を上記優先順で **1 件のみ** `true` に
 | item 解決 | `staging_item_image.external_item_code` + `item.source` で `item_id` を解決（`item` Upsert 後） |
 | 反映順序 | `item_テーブル定義書` §12.1：`item` Upsert 後に `item_image` を反映 |
 | 冪等性 | Upsert キー + 同期 DELETE により Batch 再実行で同一結果 |
+| Staging 正本 | `staging_item_image_テーブル定義書`（#523）。`is_primary_candidate` は BATCH-005 で確定し BATCH-007 で `is_primary` へ引き継ぐ（Human Review #523 §17.1 No.4） |
 
 ### 5.6 楽天 API マッピング
 
@@ -330,6 +331,7 @@ DELETE FROM item_image
 | リソース一覧 | `docs/05_アプリケーション設計/アプリ/database/リソース一覧.md` | §12.3 Item Image |
 | 外部商品連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | §11 商品画像 |
 | item 定義書 | `docs/06_実装設計/database/item_テーブル定義書.md` | §8.2 FK 被参照・§12.1 反映順 |
+| staging_item_image 定義書 | `docs/06_実装設計/database/staging_item_image_テーブル定義書.md` | §5.5 Upsert 入力・Human Review #523 |
 | API契約 | `docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md` | 画像応答マッピング |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-005 / BATCH-007 |
 
