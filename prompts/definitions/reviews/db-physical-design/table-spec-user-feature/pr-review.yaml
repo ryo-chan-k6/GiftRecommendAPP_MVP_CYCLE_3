@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 559
   issue: 554
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-user-feature.yaml"
   source_branch: "docs/task-554-user-feature-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 554
     required: true
   pr:
-    number: null
+    number: 559
     required: true
   diff:
     required: true
