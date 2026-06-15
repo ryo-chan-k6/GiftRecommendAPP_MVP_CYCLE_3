@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15（#543 recommendation_run マージ反映） |
+| 更新日         | 2026-06-15（#543 recommendation_run マージ反映・#545 result_item 双方向整合） |
 
 ---
 
@@ -87,7 +87,7 @@ flowchart LR
 | 子 Feedback | `recommendation_feedback.recommendation_result_id` → 本テーブル（**物理 FK ON**。1:N receives） |
 | 子 Reason | **本テーブル経由ではなく** `recommendation_result_item` 経由（§5.1） |
 
-> **後続 Task**: `recommendation_result_item` / `recommendation_reason` / `recommendation_feedback` テーブル定義書（Batch R06 No.3〜5）で子 FK・Snapshot 列を詳細化する。本 Task では **Result ヘッダ列と親子関係方針** を確定する。
+> **子テーブル定義**: `recommendation_result_item_テーブル定義書.md`（#545）で contains 側 FK・Snapshot 列・Index を詳細化済み。`recommendation_reason_テーブル定義書.md`（#546）で has 側・理由文列を詳細化済み。`recommendation_feedback` は Batch R06 No.5（#547）で詳細化する。
 
 ### 5.3 親テーブルとの関係整理
 
@@ -135,7 +135,7 @@ flowchart LR
 | （items 以外の metadata） | `result_payload` | evaluation / debug 時の version 等 |
 | `data.metadata.debugPayload`（Internal） | `debug_payload` | debug 返却時のみ |
 
-`items[]` 本体は **`recommendation_result_item`** に保存（後続 Task #545）。
+`items[]` 本体は **`recommendation_result_item`** に保存（`recommendation_result_item_テーブル定義書.md` §5.5・§6。Human Review #545 確定済み）。
 
 ### 5.6 API `resultStatus` ↔ DB `result_status` マッピング
 
@@ -261,7 +261,7 @@ recommendation_run 定義書 §5.5・§17.1 No.2 / No.3・RecommendationResult�
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `recommendation_result_item` | `recommendation_result_id` | contains | `ON`（DDL Task） | 1:N。Batch R06 No.3 |
+| `recommendation_result_item` | `recommendation_result_id` | contains | `ON`（DDL Task） | 1:N。`recommendation_result_item_テーブル定義書.md` §8.1 と双方向整合（#545） |
 | `recommendation_feedback` | `recommendation_result_id` | receives | `ON`（DDL Task） | 1:N。Batch R06 No.5 |
 | `evaluation_result` | `recommendation_result_id` | references | `LOGICAL` | Evaluation 系（将来） |
 | `error_log` | `owner_id`（`owner_type=recommendation_result`） | may_have | `LOGICAL` | enum §6.15。障害時 |
@@ -460,6 +460,7 @@ CREATE TABLE recommendation_result (
 | 状態遷移 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | §5.2 |
 | 親 Request | `docs/06_実装設計/database/recommendation_request_テーブル定義書.md` | has 関係 |
 | 親 Run | `docs/06_実装設計/database/recommendation_run_テーブル定義書.md` | produces 関係・version 正本 |
+| 子 Item | `docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md` | contains 関係・Snapshot 列（#545） |
 | Config | `docs/06_実装設計/database/ranking_config_テーブル定義書.md` | `ranking_config_id` LOGICAL 参照 |
 | API 契約 | `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` | Response マッピング |
 | API 契約 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | Internal Response |
@@ -475,6 +476,7 @@ CREATE TABLE recommendation_result (
 
 - テーブル一覧 §3 No.3・論理ER §14.1 / §14.2・物理ER §9 / §11 と矛盾していない
 - `recommendation_run` / `recommendation_result_item` との produces / contains 関係が明記されている
+- `recommendation_result_item_テーブル定義書.md` §8.1 / §12 と双方向整合している（`result_item_count`・empty Result・INSERT 順序）
 - `recommendation_request` との has 関係（1:N・物理 FK ON）が明記されている
 - `result_status` が enum定義書 §6.2 と一致している
 - `uq_result_per_run`（1 Run 1 Result）が明記されている
