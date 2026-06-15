@@ -218,9 +218,11 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 
 ### 6.15 Log Owner Type (`owner_type`)
 
+> **`phase_log` と `error_log` の差分（Issue #535 確定）**: `owner_type` enum 全体は両テーブルで共通だが、**`phase_log` の MVP DB CHECK は `recommendation_run` / `batch_run` / `evaluation_run` の 3 値に限定**する。`item_generation_queue` 等は `error_log` のみ（`phase_log_テーブル定義書` §11.3）。
+
 | 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
 | -- | ------ | ---- | -------- | ----------- | ---- |
-| `recommendation_request` | Recommendation Request | Request を owner | phase / error log | `yes` | |
+| `recommendation_request` | Recommendation Request | Request を owner | error log | `yes` | `phase_log` MVP 対象外 |
 | `recommendation_run` | Recommendation Run | Run を owner | phase / error log | `yes` | |
 | `recommendation_result` | Recommendation Result | Result を owner | error log | `yes` | |
 | `recommendation_feedback` | Recommendation Feedback | Feedback を owner | error log | `yes` | |
@@ -272,6 +274,8 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | `result_generated` | Result Generated | Result 生成完了 | Result 生成 | `yes` | |
 | `reason_generated` | Reason Generated | Reason 生成完了 | Reason 生成 | `yes` | |
 | `response_built` | Response Built | Response 生成完了 | Response 構築 | `yes` | |
+
+> **Observability §10.3 との差分**: `reco_quality_metric_recorded` はログ・Observability設計書に列挙されるが、本 enum および MVP の `phase_log` CHECK には **含めない**。Metric テーブルで記録（`phase_log_テーブル定義書` §5.7）。
 
 ### 6.19 Batch Run Phase Name (`batch_run_phase_name`)
 
@@ -370,7 +374,8 @@ Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の
 | `recommendation_request` | `request_mode` | `request_mode` | NOT NULL | |
 | `phase_log` | `phase_status` | `phase_status` | NOT NULL | |
 | `phase_log` | `phase_name` | `recommendation_run_phase_name` / `batch_run_phase_name` | NOT NULL | `owner_type` と組み合わせた CHECK |
-| `phase_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
+| `phase_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic。MVP CHECK は 3 値（§6.15） |
+| `phase_log` | `trace_id` | — | NULL可 | Observability 横断追跡（`phase_log_テーブル定義書` §5.4） |
 | `error_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
 | `batch_run_log` | `run_status` | `batch_run_status` | NOT NULL | |
 | `api_call_log` | `call_status` | `api_call_status` | NOT NULL | |
@@ -482,6 +487,7 @@ DB 制約方針:
 | 6 | `polarity`（Concept Feature Polarity） | **クローズ**（Issue #476） | Human | §6.22。packages/code-definitions 正本化は後続 enum Task |
 | 7 | `fetch_cursor_type` | **クローズ**（Issue #505） | Human | §6.23・`batch/fetch_cursor_type.yaml`。fetch_cursor テーブル定義書で転記 |
 | 8 | `source_api` | **クローズ**（Issue #506） | Human | §6.24・`batch/source_api.yaml`。raw_product_metadata テーブル定義書 §17.1 No.4 |
+| 9 | `phase_log` owner_type / retention | **クローズ**（Issue #535 HR） | Human | §6.15 注記・物理ER §13（60日）・`phase_log_テーブル定義書` §11.3 / §13 |
 
 ### 12.1 No.3 方針メモ（テーブル定義 Task 引き継ぎ）
 

@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15                      |
+| 更新日         | 2026-06-15（Human Review #535 反映） |
 
 ---
 
@@ -126,8 +126,23 @@ flowchart LR
 - API キー / Application ID / Authorization Header / Secret
 - Recommendation Request / Feedback の自由記述全文（個人情報混入リスク）
 - Raw レスポンス本文
-- LLM prompt 全文
+- **LLM prompt 全文**（実行時に組み立てたプロンプト。テンプレート本文・ユーザー自由入力の埋め込みを含む）
 - `error_detail_json` 相当のスタックトレース全文（詳細は `error_log`）
+
+> **Human Review #535 決定**: `detail_json` に LLM prompt 全文は **含めない**（テーブル一覧 §12「LLM prompt全文: 原則非保存」と整合）。
+
+**LLM プロンプト改善の参照先（MVP）**: 本番 Run の実行時 prompt を DB に残す設計は **ない**。改善・再現は以下を正本とする。
+
+| 用途 | 参照先 | 内容 |
+| ---- | ------ | ---- |
+| プロンプト定義（版） | `reason_template`（`template_body`） | Reason 生成テンプレート正本 |
+| プロンプト版 ID | `recommendation_reason.reason_basis` の `llm_prompt_version` | LLM 利用時の版識別子（全文ではない） |
+| Semantic 側プロンプト版 | `semantic_config_version` 管理の `llm_prompt_version` | Semanticルール定義書 §16.1。実体は seed / YAML（semantic_rule 設計） |
+| 抽出・生成結果 | `user_semantic` / `item_semantic` / `recommendation_reason` | LLM **出力** と reason 文面（入力 prompt ではない） |
+| 版・再現性 | `recommendation_run` の `semantic_config_version_id` / `model_version_id` 等 | Run 時点の設定固定 |
+| 品質改善入力 | `recommendation_feedback` / Evaluation 系（`evaluation_case` 等） | オフライン評価・フィードバック |
+
+実行時 prompt のアーカイブ専用テーブルは MVP では作成しない。必要時マスク保存はテーブル一覧 §12 の例外方針に従い、別 Task で検討する。
 
 **保存してよい例**（マスキング済み）:
 
@@ -408,9 +423,9 @@ INSERT INTO phase_log (
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **30 日〜90 日**（ログ・Observability設計書 §20.2 推奨。MVP 初期は方針明記のみ） |
+| 保持期間 | **60 日**（Human Review #535 決定。ログ・Observability設計書 §20.2 の 30〜90 日レンジ内） |
 | 削除方式 | 後続 Retention Batch による **物理 DELETE** 候補 |
-| 削除条件 | `created_at < now() - interval '30 days'` 等（具体閾値は Human Review） |
+| 削除条件 | `created_at < now() - interval '60 days'` |
 | 論理削除 | 採用しない（Log 追記型） |
 | partition | MVP **未適用**。`idx_phase_log_created` + retention DELETE（物理ER §17 No.5） |
 | アーカイブ | MVP 対象外 |
@@ -462,18 +477,18 @@ INSERT INTO phase_log (
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review #535 にて No.1〜6 を確定（下記参照） |
+| — | — | — | — | — | Human Review #535 にて No.1〜6 を確定済み（下記参照） |
 
-### 17.1 Human Review 決定事項（Issue #535・本 Task 提案）
+### 17.1 Human Review 決定事項（Issue #535）
 
-| No | 論点 | 決定内容（提案） | 決定者 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
 | 1 | 論理ER 未列挙列の採否 | **`trace_id`（nullable）・`duration_ms`（nullable）・`error_code`（nullable）・`created_at` / `updated_at` を採用** | Human | §5.4・§6。api_call_log 定義書と同型 |
 | 2 | `reco_quality_metric_recorded` | **MVP では `phase_name` に含めない**。Metric テーブルで記録し、enum 追加は後続 Task | Human | §5.7 |
 | 3 | `owner_type` MVP 集合 | **`recommendation_run` / `batch_run` / `evaluation_run` の 3 値に限定**（DB CHECK） | Human | §11.3 |
 | 4 | `evaluation_run` の `phase_name` | **MVP は DB CHECK 省略**。アプリ validation のみ。`evaluation_run_phase_name` は Evaluation Task で定義 | Human | §10・§11.3 |
-| 5 | Retention 具体日数 | **方針 30〜90 日を明記**。自動削除 Batch は MVP 外（後続 Task） | Human | §13 |
-| 6 | `detail_json` マスキング | **§5.5 を正とする**。実装 Task で Adapter 層マスキングを必須化 | Human | api_call_log §5.5 と同型 |
+| 5 | Retention 具体日数 | **60 日**。自動削除 Batch は MVP 外（後続 Task） | Human | §13 |
+| 6 | `detail_json` マスキング | **§5.5 を正とする**。LLM prompt 全文は含めない。実装 Task で Adapter 層マスキングを必須化 | Human | §5.5。プロンプト改善の参照先は同節表を正とする |
 
 ---
 
