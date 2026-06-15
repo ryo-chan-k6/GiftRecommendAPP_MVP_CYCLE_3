@@ -1,0 +1,223 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-batch-run-log"
+  title: "batch_run_log:Batch Run Logテーブル定義書作成"
+  summary: "物理ER・論理ER §13・状態遷移設計書 §6.1・enum定義書・ログ・Observability設計書・バッチ設計方針書を入力に、Batch 実行単位ログ `batch_run_log` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R05 No.2。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（batch_run_status。merge 済み前提）"
+    - number: 527
+      purpose: "api_call_log テーブル定義書（batch_run_id LOGICAL 参照・has 関係。merge 済み前提）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 532
+      purpose: "Task #527 PR（api_call_log。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R05 No.2。テーブル一覧 §6 No.56。
+  Batch 実行単位のログ正本。`phase_log` / `error_log` の親（owner_type=batch_run）。
+  `api_call_log` / `item_import_summary` / `product_diff_result` / `ranking_snapshot` 等の上流ヘッダ。
+  IF-DB-BATCH-001（Batch Run Log 保存）・IF-OBS-003（Batch Run Log 記録）の DB 正本。
+  親 Epic Branch 最新（enum #440、api_call_log #527 merge 済み前提）を前提とする。
+  Issue #534 / Branch `docs/task-534-batch-run-log-table-spec` で作業する。
+
+objective: |
+  `batch_run_log` の物理カラム・制約・Index・実行状態を table-spec.md テンプレ準拠で定義する。
+  `run_status` 状態遷移（状態遷移設計書 §6.1）と `phase_log` / `error_log` との親子関係（owner_type / owner_id）、
+  下流テーブル（`api_call_log` 等）との LOGICAL FK を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の batch_run_log テーブル定義書作成"
+  - "物理ER Log / Observability系分類・§9 FK 関係（phase_log / error_log / api_call_log / item_import_summary 等）との突合"
+  - "論理ER §13.2 Log / 状態管理系エンティティ・§14.4 Raw / Staging / Item 上流関係との整合"
+  - "テーブル一覧 §6 No.56・Log / Observability 系補足との整合"
+  - "状態遷移設計書 §6.1（run_status）・§6.1.3 集計値方針との整合"
+  - "enum定義書 §6.5 batch_run_status との整合"
+  - "ログ・Observability設計書 §13.2（batch_run_log 主要項目）・§9.3 owner_type・§10.2 phase_log 親子・Retention との突合・差分整理"
+  - "バッチ設計方針書 Batch Run 起動・終了・集計更新方針との整合"
+  - "インターフェース一覧 IF-DB-BATCH-001 / IF-OBS-003 との整合"
+  - "正本定義表 Batch Run Log 正本区分（Log）・Batch 管理主体との整合"
+  - "api_call_log_テーブル定義書 §5.2（batch_run_id LOGICAL 参照・has 関係）との双方向整合"
+  - "phase_log / error_log との親子関係（owner_type=batch_run / owner_id=batch_run_id）の明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "phase_log / error_log テーブル定義書（別 Task 化予定。本 Task では親子関係の整理のみ）"
+  - "item_import_summary テーブル定義書"
+  - "api_call_log テーブル定義書の再作成（#527 merge 済み）"
+  - "recommendation_run / recommendation_run_phase_log テーブル定義書"
+  - "staging_* / raw_product_metadata / fetch_cursor 等の他外部商品データ連携系テーブル定義書"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log 系分類・batch_run_log → phase_log / error_log / api_call_log / item_import_summary LOGICAL FK・Retention（§8–§11・§17）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "run_status（batch_run_status）enum 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§13.2 Log / 状態管理系エンティティ・§14.4 上流関係・§15 状態カラム整理"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.56 batch_run_log・Log / Observability 系補足方針"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.1 Batch Run 状態遷移・§6.1.3 集計値方針（fetched_count 等）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Batch Run Log 正本区分（Log）・Batch 管理主体"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-001 Batch Run Log 保存・IF-OBS-003 Batch Run Log 記録 I/F"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Batch 起動時 batch_run_log 作成・終端更新・件数集計・GitHub Actions 連携方針"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§13.2 batch_run_log 主要項目・§9.3 owner_type・§10.2 phase_log 親子・Retention・trace 方針"
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 batch_run_id LOGICAL 参照・has 1:N 関係・章構成参考（#527 merge 済み前提）"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "batch_run_id LOGICAL 被参照・適用順序（batch_run_log 作成後）参考"
+    - path: "docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md"
+      required: true
+      purpose: "batch_run_id nullable LOGICAL 被参照・trace 方針参考"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-batch-run-log.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-batch-run-log/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "batch_run_log テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §13.2・テーブル一覧 §6 No.56 と矛盾しない"
+  - "run_status 状態遷移（queued / running / succeeded / partially_succeeded / failed / canceled）が明記されている"
+  - "phase_log / error_log との親子関係（owner_type=batch_run / owner_id=batch_run_id）が明記されている"
+  - "api_call_log との 1:N has 関係（LOGICAL FK）が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-run-log-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 534
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（batch_run_status。merge 済み前提）"
+    - number: 527
+      purpose: "api_call_log テーブル定義書 完了（batch_run_id 被参照整合。merge 済み前提）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 batch_run_log → phase_log / error_log / api_call_log / item_import_summary LOGICAL FK との整合"
+    - "論理ER §13.2 属性（batch_run_id / batch_name / started_at / completed_at / success_count / failed_count / error_summary / run_status）との整合"
+    - "状態遷移設計書 §6.1 状態一覧・遷移図・§6.1.3 集計値（fetched_count 等）との整合"
+    - "enum定義書 §6.5 batch_run_status との整合"
+    - "ログ・Observability設計書 §13.2 主要項目・§9.3 owner_type=batch_run・Retention 方針との整合（差分は §5.4 等で明示）"
+    - "api_call_log_テーブル定義書 §5.2 との双方向整合（batch_run_id LOGICAL FK・適用順序 batch_run_log 後）"
+    - "インターフェース一覧 IF-DB-BATCH-001 / IF-OBS-003 との整合"
+    - "バッチ設計方針書 Batch 起動時作成・終端更新・件数集計方針との整合"
+    - "phase_log / error_log 親子関係（owner_type / owner_id）が §5 等で明記されていること"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R05 No.2: batch_run_log（Log / Observability系 / Log）"
+  - "Issue #534 / Branch docs/task-534-batch-run-log-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#527 / PR #532（api_call_log）"
+  - "Human Review 論点: 論理ER success_count/failed_count/error_summary vs 状態遷移設計書 §6.1.3 fetched_count/new_count/updated_count/unchanged_count/skipped_count/failed_count vs ログ・Observability設計書 §13.2 success_count/failed_count/skipped_count/batch_type/trace_id/duration_ms"
+  - "Human Review 論点: batch_name のみ（論理ER）vs batch_type 追加（Observability）の採否、trace_id / duration_ms / error_summary の採否と nullable 方針"
+  - "Human Review 論点: phase_log / error_log は polymorphic owner（owner_type / owner_id）方式。詳細列定義は別 Task へ委譲し、本 Task では親子関係と参照整合のみ確定"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

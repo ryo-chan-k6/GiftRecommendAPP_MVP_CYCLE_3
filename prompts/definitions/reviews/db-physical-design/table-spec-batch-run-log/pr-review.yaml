@@ -1,0 +1,172 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-batch-run-log-pr"
+  title: "batch_run_log テーブル定義書 PRレビュー"
+  summary: "batch_run_log テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §13・状態遷移設計書 §6.1・enum定義書・ログ・Observability設計書・api_call_log テーブル定義書との整合、phase_log / error_log 親子関係・run_status 遷移・Retention 方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-534-batch-run-log-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 534
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-batch-run-log.yaml"
+  source_branch: "docs/task-534-batch-run-log-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-batch-run-log.yaml"
+    required: true
+  issue:
+    number: 534
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log 系分類・LOGICAL FK・Retention 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§13.2 エンティティ属性・§14.4 上流関係・§15 状態カラム整理との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.56 分類・用途との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.1 run_status 遷移・§6.1.3 集計値方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "batch_run_status enum との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§13.2 主要項目・§9.3 owner_type・§10.2 phase_log 親子・Retention 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Batch 起動・終了・集計更新・GitHub Actions 連携方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-001 / IF-OBS-003 の確認"
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 batch_run_id LOGICAL 参照・has 1:N との双方向整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（phase_log / error_log 本体 / item_import_summary / api_call_log 再作成 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §13.2 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "テーブル一覧 §6 No.56 の分類・用途と一致しているか"
+    - "状態遷移設計書 §6.1 の状態一覧・遷移図が反映されているか"
+    - "ログ・Observability設計書 §13.2 との突合（batch_type / trace_id / duration_ms / skipped_count 等）が §5.4 等で整理されているか"
+    - "api_call_log テーブル定義書と章構成・MVP 方針が一貫しているか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "batch_run_log → phase_log / error_log の親子関係（owner_type=batch_run / owner_id=batch_run_id）が明記されているか"
+    - "batch_run_log → api_call_log / item_import_summary の 1:N LOGICAL FK 関係が明記されているか"
+    - "run_status（batch_run_status）と enum定義書 §6.5 が一致しているか"
+    - "状態遷移設計書 §6.1.3 集計値と物理列の対応（fetched_count 等 vs success_count 等）が明記されているか"
+    - "Retention 方針（ログ・Observability設計書 §13.2 / 物理ER §17）が § 等で明記されているか"
+    - "api_call_log 定義書との適用順序（batch_run_log 作成後）が整合しているか"
+  security:
+    - "error_summary / detail 系に secret・Authorization Header・個人情報を保存しない方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "論理ER success_count/failed_count/error_summary vs 状態遷移設計書 §6.1.3 fetched_count/new_count/updated_count/unchanged_count/skipped_count/failed_count vs ログ・Observability設計書 §13.2 の物理列採用"
+  - "batch_name のみ（論理ER）vs batch_type 追加（Observability）の採否"
+  - "trace_id / duration_ms / skipped_count / error_summary の採否と nullable 方針"
+  - "phase_log / error_log の polymorphic owner 方式における本 Task の記述粒度（親子関係のみ vs 列定義の先取り）"
+
+risk_points:
+  - "api_call_log 定義書が batch_run_log 側から逆参照しているため、双方向記述の粒度が本 Task のみで完結するか"
+  - "論理ER・状態遷移設計書・ログ・Observability設計書間の集計列名差分整理が Human Review 論点として残る可能性"
+  - "phase_log / error_log テーブル定義書未作成のため、親子関係の詳細列は後続 Task との整合確認が必要"
+
+notes:
+  - "Batch R05 No.2: batch_run_log"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-batch-run-log.yaml"
+  - "Issue #534 / Branch docs/task-534-batch-run-log-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#527 / PR #532（api_call_log）"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
