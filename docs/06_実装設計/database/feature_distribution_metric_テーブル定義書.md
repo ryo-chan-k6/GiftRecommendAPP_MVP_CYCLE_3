@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP           |
 | MVP対象        | `yes`                                     |
 | 作成日         | 2026-06-15                                |
-| 更新日         | 2026-06-15（#554 user_feature / #555 user_meaning merge 後突合） |
+| 更新日         | 2026-06-15（Human Review #556 全項目決定・物理ER §9/§10/§11/§13 反映） |
 
 ---
 
@@ -246,6 +246,8 @@ Observability §12.9 の **run 単位** User Feature 分布は、将来 `entity_
 | `idx_fdm_calculated_at` | `calculated_at` | btree | Retention DELETE | §13 |
 | `idx_fdm_scope_key` | `aggregation_scope`, `aggregation_key` | btree | 日次 / version スコープ検索 | 補助 |
 
+> 物理ER §10・§11 に本テーブル Index / 制約を反映済み（#556 Human Review）。
+
 ---
 
 ## 10. 制約
@@ -263,7 +265,7 @@ Observability §12.9 の **run 単位** User Feature 分布は、将来 `entity_
 | `chk_fdm_sample_count_non_negative` | CHECK | `sample_count` | `>= 0` | — |
 | `chk_fdm_nan_count_non_negative` | CHECK | `nan_count`, `out_of_range_count` | `>= 0` | — |
 | `chk_fdm_rate_range` | CHECK | `near_zero_rate`, `near_one_rate`, `mid_concentration_rate` | NULL または `0.0 <= x <= 1.0` | Observability §12.7 系 |
-| `chk_fdm_normalized_version_when_layer` | CHECK | `value_layer`, `feature_normalization_version_id` | `value_layer = 'raw' OR feature_normalization_version_id IS NOT NULL` | normalized 層の再現性（§17.1 No.2 で緩和可） |
+| `chk_fdm_normalized_version_when_layer` | CHECK | `value_layer`, `feature_normalization_version_id` | `value_layer = 'raw' OR feature_normalization_version_id IS NOT NULL` | normalized 層の再現性（§17.1 No.2 **決定済み**） |
 
 #### `chk_fdm_feature_code_mvp` 許容値
 
@@ -374,18 +376,18 @@ Observability §12.9 の **run 単位** User Feature 分布は、将来 `entity_
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review 論点は §17.1 を参照 |
+| — | — | — | — | — | Human Review #556 にて No.1〜6 を決定済み（下記 §17.1） |
 
-### 17.1 Human Review 観点（Issue #556）
+### 17.1 Human Review 決定事項（Issue #556）
 
-| No | 論点 | 推奨案 | 判断者 | 備考 |
-| --: | ---- | ------ | ------ | ---- |
-| 1 | Observability §12.12 の追加統計列（`skewness` / `kurtosis` / `inf_count`） | MVP は **本表の列のみ**採用。追加は migration または `detail_json` | Human | §6 注記 |
-| 2 | `feature_normalization_version_id` 必須 CHECK | normalized 層では **NOT NULL 推奨**（§10）。raw 層は NULL | Human | 複数 normalization version 混在時の集計ルールは BATCH-016 側 |
-| 3 | `aggregation_scope` の Run / genre 拡張 | MVP は **batch_run / daily / semantic_config_version のみ** | Human | Run 単位 User Feature は将来 `entity_type=user` で本テーブル拡張。Meaning 系は `meaning_distribution_metric`（§5.8） |
-| 4 | `batch_run_id` と Retention 独立性 | **親 Run 削除後も Metric 保持**（§5.4 / §13） | Human | dangling `batch_run_id` を許容 |
-| 5 | 物理 schema `metric` 分割タイミング | MVP は **public**。論理分類のみ明記（§4） | Human | 物理ER §17 No.8 |
-| 6 | reco 書き込み | MVP は **batch のみ INSERT**。reco は SELECT のみ | Human | テーブル一覧 §11 の reco は将来拡張 |
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | Observability §12.12 の追加統計列（`skewness` / `kurtosis` / `inf_count`） | MVP は **本表の列のみ**採用。追加は migration または `detail_json` | §6 注記 |
+| 2 | `feature_normalization_version_id` 必須 CHECK | normalized 層では **`feature_normalization_version_id IS NOT NULL` 必須**（§10 CHECK）。raw 層は NULL | 複数 normalization version 混在時の集計ルールは BATCH-016 側 |
+| 3 | `aggregation_scope` の Run / genre 拡張 | MVP は **`batch_run` / `daily` / `semantic_config_version` のみ** | Run 単位 User Feature は将来 `entity_type=user` で本テーブル拡張。Meaning 系は `meaning_distribution_metric`（§5.8） |
+| 4 | `batch_run_id` と Retention 独立性 | **親 Run 削除後も Metric 保持**（§5.4 / §13）。`batch_run_id` dangling を許容 | 物理ER §13・§17.3 No.4 反映済み |
+| 5 | 物理 schema `metric` 分割タイミング | MVP は **`public` 単一 schema**。論理分類 `metric` のみ（§4） | 物理ER §17 No.8 と整合 |
+| 6 | reco 書き込み | MVP は **batch のみ INSERT / UPSERT**。reco は **SELECT のみ** | テーブル一覧 §11 補足に MVP 更新主体を明記 |
 
 ---
 

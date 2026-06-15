@@ -304,6 +304,9 @@ erDiagram
 | `raw_product_metadata.raw_metadata_id` | `staging_genre.raw_metadata_id` | transforms_to | `LOGICAL` | 1:N | |
 | `staging_item.staging_item_id` | `product_diff_result.staging_item_id` | judged_as | `LOGICAL` | 1:0..1 | |
 | `batch_run_log.batch_run_id` | `item_import_summary.batch_run_id` | summarizes | `LOGICAL` | 1:N | `item_import_summary_テーブル定義書` §17.1 No.6 |
+| `batch_run_log.batch_run_id` | `feature_distribution_metric.batch_run_id` | records | `LOGICAL` | 1:N | nullable。`feature_distribution_metric_テーブル定義書` §17.1 No.4 決定済み |
+| `semantic_config_version.semantic_config_version_id` | `feature_distribution_metric.semantic_config_version_id` | scopes | `ON` | 1:N | §8.1 物理 FK ON DELETE RESTRICT |
+| `item_feature`（集計入力） | `feature_distribution_metric` | aggregates_to | `LOGICAL` | N:1 | 非 FK。`feature_distribution_metric_テーブル定義書` §5.2 |
 | `staging_item.external_item_code` | `item.external_item_code` | upserts | `LOGICAL` | N:1 | Upsert キー |
 | `staging_item_image.external_item_code` | `item_image.image_url` | upserts | `LOGICAL` | N:M 相当 | `item_id` 解決後。`itemCode` + `image_url` |
 | `staging_genre.external_genre_id` | `external_genre.external_genre_id` | upserts | `LOGICAL` | N:1 | Upsert キー `source` + `external_genre_id`（`staging_genre_テーブル定義書` §17.1 No.1〜2） |
@@ -364,6 +367,12 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `item_import_summary` | `idx_item_import_summary_run` | `batch_run_id`, `summarized_at` DESC | btree | Batch Run 単位一覧 | Admin / 運用分析 |
 | `item_import_summary` | `idx_item_import_summary_source_api` | `source_api`, `summarized_at` DESC | btree | API 種別別推移 | Observability |
 | `item_generation_queue` | `idx_item_gen_queue_status` | `queue_status`, `queued_at` | btree | 再生成処理 | |
+| `feature_distribution_metric` | `uq_fdm_snapshot_key` | `batch_run_id`, `semantic_config_version_id`, `feature_code`, `value_layer`, `aggregation_scope`, `aggregation_key` | unique | BATCH-016 冪等 UPSERT | `feature_distribution_metric_テーブル定義書` §7 |
+| `feature_distribution_metric` | `uq_fdm_non_batch_snapshot` | `aggregation_scope`, `aggregation_key`, `semantic_config_version_id`, `feature_code`, `value_layer` | unique partial | 日次 / version スコープ冪等 | `WHERE aggregation_scope <> 'batch_run'` |
+| `feature_distribution_metric` | `idx_fdm_batch_run_id` | `batch_run_id` | btree | Batch Run 単位一覧 | nullable |
+| `feature_distribution_metric` | `idx_fdm_version_feature` | `semantic_config_version_id`, `feature_code`, `value_layer` | btree | version 比較・軸別参照 | |
+| `feature_distribution_metric` | `idx_fdm_calculated_at` | `calculated_at` | btree | Retention DELETE | §13 |
+| `feature_distribution_metric` | `idx_fdm_scope_key` | `aggregation_scope`, `aggregation_key` | btree | 日次 / version スコープ検索 | 補助 |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 
 ---
@@ -391,6 +400,13 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `item_popularity_signal` | `uq_ips_snapshot_rank` | unique | `ranking_snapshot_id`, `rank` | ランキング明細一意 | |
 | `item_import_summary` | `uq_item_import_summary_run_api` | unique | `batch_run_id`, `source_api` | BATCH-017 冪等 | `item_import_summary_テーブル定義書` §17.1 No.1 |
 | `item_feature` | `uq_item_feature_idempotent` | unique | `item_id`, `semantic_config_version_id`, `feature_code`, `feature_input_hash`, `feature_normalization_version_id` | 再生成冪等 | テーブル一覧 §7 補足 |
+| `feature_distribution_metric` | `uq_fdm_snapshot_key` | unique | §10 冪等キー列 | BATCH-016 UPSERT | `feature_distribution_metric_テーブル定義書` §7 |
+| `feature_distribution_metric` | `fk_fdm_semantic_config_version_id` | FK | `semantic_config_version_id` | `semantic_config_version` ON DELETE RESTRICT | §8.1 |
+| `feature_distribution_metric` | `chk_fdm_feature_code_mvp` | check | `feature_code` | MVP 8 軸のみ | enum §6.16 |
+| `feature_distribution_metric` | `chk_fdm_value_layer` | check | `value_layer` | `IN ('raw', 'normalized')` | §5.2 |
+| `feature_distribution_metric` | `chk_fdm_aggregation_scope` | check | `aggregation_scope` | `IN ('batch_run', 'daily', 'semantic_config_version')` | §5.7 |
+| `feature_distribution_metric` | `chk_fdm_entity_type_item` | check | `entity_type` | `= 'item'` | MVP 固定 |
+| `feature_distribution_metric` | `chk_fdm_batch_run_required` | check | `batch_run_id`, `aggregation_scope` | scope=batch_run 時 batch_run_id 必須 | §5.4 |
 | `item_embedding` | `uq_item_embedding_idempotent` | unique | `item_id`, `model_version_id`, `embedding_input_hash` | Embedding 冪等 | |
 | `pair_master` | `uq_pair_relationship_occasion` | unique | `relationship_code`, `occasion_code` | Pair 一意 | |
 | `feature_definition` | `chk_feature_code_mvp` | check | `feature_code` | MVP 8 軸のみ | enum Task と連携 |
@@ -419,7 +435,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | Batch Run Phase | `phase_name` | enum Task / Observability §10.4 | `phase_log` | owner_type=batch_run 時。15値 |
 | Phase Log | `phase_status` | 同上 | `phase_log` | started / succeeded / failed / skipped |
 | Evaluation Run | `evaluation_status` | 同上 | `evaluation_run` | queued / running / succeeded / failed / canceled |
-| Feature Code | `feature_code` | Feature Definition / enum Task | `feature_definition`, `item_feature`, `user_feature` | MVP 8 軸固定 |
+| Feature Code | `feature_code` | Feature Definition / enum Task | `feature_definition`, `item_feature`, `user_feature`, `feature_distribution_metric` | MVP 8 軸固定 |
 | Request Mode | `request_mode` | Recommendation Request 定義 | `recommendation_request` | ui / evaluation / batch |
 
 ---
@@ -435,7 +451,8 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `product_diff_result` | 成功時短期 / 失敗時 7〜14 日 | DELETE | Batch 完了後 | Staging と同様 |
 | `phase_log` | **90 日** | DELETE | `created_at` 基準 | `phase_log_テーブル定義書` §13（Issue #536 No.10 cross-cutting 統一） |
 | Batch 系 Log（`error_log` / `api_call_log` / `batch_run_log` / `item_import_summary`） | **90 日** | DELETE | 各テーブル定義書 §13 | BATCH-RET-001 アンカー一括パージ（`batch_run_log_テーブル定義書` §13.1）。MVP では partition なし（§17 No.5） |
-| Metric 系 | 中期 | DELETE / 集約 | 保持期間経過 | 将来 `metric_summary` 統合可 |
+| `feature_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`feature_distribution_metric_テーブル定義書` §13・§17.1 No.4 |
+| Metric 系（上記以外） | 中期 | DELETE / 集約 | 保持期間経過 | 将来 `metric_summary` 統合可 |
 | Raw Metadata | 中期 | 状態更新 + アーカイブ | Object Storage 側 lifecycle と連動 | DB は参照のみ |
 
 ---
@@ -480,6 +497,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 - `pair_master` と各種 `*_rule` テーブルの FK / version 列を Semantic Config Version に揃える
 - Snapshot 列（`recommendation_result_item`）は UPDATE 不可方針をテーブル定義書に明記する
 - enum / check 制約は enum Task 成果物と突合する
+- `feature_distribution_metric` の Index / CHECK / Retention は `feature_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#556 Human Review 反映済み）
 
 ---
 
@@ -505,6 +523,17 @@ Human Review にて以下を確定した（2026-06-07）。
 | 1 | 観測キー（冪等） | **`source` + `external_genre_id` + `period` + `last_build_date`**。`fetched_at` は観測キーに含めない | `ranking_snapshot_テーブル定義書.md` §7・バッチ設計方針書 §11.5 |
 | 2 | `external_genre` → `ranking_snapshot` FK | **LOGICAL**（`observed_for`） | §9 FK 表に追記 |
 | 3 | Snapshot 保持 | **MVP 初期は無期限追記**。TTL は運用進行中に後続検討 | テーブル定義書 §13 |
+
+### 17.3 Human Review 決定事項（Issue #556 / `feature_distribution_metric`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | Observability §12.12 追加統計列 | MVP は **本表列のみ**（`skewness` 等は物理列化しない） | `feature_distribution_metric_テーブル定義書` §6 注記 |
+| 2 | `feature_normalization_version_id` | normalized 層では **NOT NULL 必須** CHECK | §10 `chk_fdm_normalized_version_when_layer` |
+| 3 | `aggregation_scope` | MVP は **`batch_run` / `daily` / `semantic_config_version` のみ** | Run 単位 User Feature 拡張は将来 Task |
+| 4 | `batch_run_id` と Retention | **親 Run 削除後も Metric 保持**（dangling 許容） | §13・§9 `batch_run_log` 関係 |
+| 5 | schema 分割 | MVP は **`public` 単一 schema**（§17 No.8 と整合） | 論理分類 `metric` のみ |
+| 6 | reco 書き込み | MVP は **batch のみ INSERT / UPSERT**。reco は SELECT のみ | テーブル一覧 §11 補足 |
 
 ---
 
