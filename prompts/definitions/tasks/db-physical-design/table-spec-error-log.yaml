@@ -138,11 +138,11 @@ input:
       required: true
       purpose: "owner_type=api_call 時 owner_id=api_call_log_id 整合・Log 系記述粒度参考（#527 merge 済み前提）"
     - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
-      required: false
-      purpose: "may_have 親関係・owner_type=batch_run 整合（#534 merge 済み時は required 相当で参照）"
+      required: true
+      purpose: "§5.2 may_have 親・error_summary 境界（#534 merge 済み正本）"
     - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
-      required: false
-      purpose: "owner_type 設計・phase / error 責務境界（#535 merge 済み時は required 相当で参照）"
+      required: true
+      purpose: "§5.6 責務境界・owner 設計（#535 merge 済み正本）"
     - path: "packages/code-definitions/error/README.md"
       required: false
       purpose: "error_code packages 正本方針（Phase4a）・形式 CHECK 参考"
@@ -247,19 +247,40 @@ review:
 contract_gate:
   required: false
 
-human_decision_points:
-  - "論理ER §13.2 最小属性 vs ログ・Observability設計書 §9.2 拡張列（trace_id / request_id / service / severity / retryable）の MVP 採否"
-  - "owner_type=system 時の owner_id nullable 方針（Observability §9.3）"
-  - "phase_log_id 列の要否（owner 経由のみ vs 明示 FK）"
-  - "error_code 形式 CHECK のみ vs 既知 prefix 別 CHECK（enum定義書 §10.2）"
-  - "Retention 90日 vs 180日の MVP 初期値"
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "Observability §9.2 拡張列"
+    decision: "trace_id / request_id / service / severity / retryable を MVP 物理 DDL に採用"
+  - id: 2
+    topic: "owner_type=system"
+    decision: "owner_id NULL 可（CHECK で明示）"
+  - id: 3
+    topic: "phase_log_id 列"
+    decision: "採用しない。owner polymorphic のみ"
+  - id: 4
+    topic: "error_code CHECK"
+    decision: "形式 CHECK のみ（§10.2）。全件列挙は Phase4a"
+  - id: 5
+    topic: "Retention 具体日数"
+    decision: "90 日。自動削除 Batch は MVP 外"
+  - id: 6
+    topic: "IF-OBS-002 命名"
+    decision: "component → service、target_id → owner_id で DB 正本化"
+  - id: 7
+    topic: "batch_run_log 双方向整合"
+    decision: "batch_run_log_テーブル定義書 §5.2（may_have / owner_type=batch_run）と一致（#534 merge 済み）"
+  - id: 8
+    topic: "phase_log 双方向整合"
+    decision: "phase_log_テーブル定義書 §5.6 / §8.2 と一致（#535 merge 済み）"
 
 notes:
   - "Batch R05 No.4: error_log（Log / Observability系 / Batch・Online 横断）"
   - "Issue #536 / Branch docs/task-536-error-log-table-spec"
   - "Issue 本文のテーブル一覧参照 §9 は Log 系章を指すため、正本は §6 No.58 を用いる"
   - "先行 merge 済み前提: #533 / PR #538（item_import_summary）、#527 / PR #532（api_call_log）"
-  - "同 Batch 先行 Task: #534（batch_run_log）、#535（phase_log）。未 merge 時は ER / Observability 設計書で owner 関係を整理し、merge 後に双方向整合を確認"
+  - "同 Batch 先行 Task: #534（batch_run_log / PR #539）、#535（phase_log / PR #540）merge 済み。双方向整合は error_log 定義書 §5.2 / §5.3 / §17.1 No.7〜8"
   - "recommendation_run_phase_log は物理テーブルとして作成せず phase_log に統合（テーブル一覧 §8）"
-  - "Human Review 論点: polymorphic owner の物理 FK 方針、severity / retryable の DB 列化、Validation エラー記録方針（§9.4 warn 集計のみ）"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

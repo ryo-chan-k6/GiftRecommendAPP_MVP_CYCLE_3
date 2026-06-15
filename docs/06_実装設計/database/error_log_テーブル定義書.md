@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15                      |
+| 更新日         | 2026-06-15（§17.1 Human Review 反映・#534/#535 双方向整合） |
 
 ---
 
@@ -28,7 +28,7 @@ IF-OBS-002（Error Log 記録）・IF-DB-API-008（API エラーログ保存）�
 - Batch / Online 横断で発生したエラーを **追記型 Log** として記録する
 - `batch_run_log` / `recommendation_run` / `phase_log` / `api_call_log` 等との **polymorphic owner 関係** を物理定義する
 - `error_code` 形式 CHECK と `error_detail_json` マスキング方針を DDL Task へ展開可能にする
-- Retention（90〜180 日）方針を明記し、後続 Retention Batch Task へ引き継ぐ
+- Retention **90 日** 方針を明記し、後続 Retention Batch Task へ引き継ぐ
 - 後続 DDL Task が migration を作成できる粒度まで設計を確定する
 
 ---
@@ -78,7 +78,9 @@ IF-OBS-002（Error Log 記録）・IF-DB-API-008（API エラーログ保存）�
 | 参照方式 | **`owner_type` + `owner_id`**（polymorphic）。専用 `batch_run_id` 列は **持たない** |
 | Batch 側 owner | `owner_type = batch_run`、`owner_id = batch_run_id` |
 | Online 側 owner | `owner_type = recommendation_run` 等（§5.3） |
-| `batch_run_log` 定義書 | **#534 別 Task**。本 Task では ER / Observability 設計書に基づき LOGICAL owner を整理 |
+| `batch_run_log` 定義書 | `batch_run_log_テーブル定義書` §5.2 と **双方向整合**（#534 / PR #539 merge 済み） |
+| `error_summary` 境界 | Run 全体の短い概要は **`batch_run_log.error_summary`**。スタック・詳細 context は **本テーブル**（batch_run_log 定義書 §5.5） |
+| DDL 適用順 | **`batch_run_log` 先行** → `error_log`（batch_run_log 定義書 §5.2） |
 | 物理 FK | MVP **付与しない**（Log 系 polymorphic 方針。item_import_summary / api_call_log と同型） |
 
 ```mermaid
@@ -95,8 +97,12 @@ flowchart LR
 | ---- | ---- |
 | 責務分離 | **`phase_log`** = フェーズ進行（`phase_status` あり）。**`error_log`** = エラー事象（状態カラムなし） |
 | 関連 | 同一 `owner_type` / `owner_id` で phase と error が **並行して** 存在し得る |
-| `phase_log_id` 列 | MVP **採用しない**。owner 経由 trace のみ（#535 phase_log 定義書 merge 後に双方向整合確認） |
-| フェーズ失敗 | `phase_log.phase_status = failed` と **`error_log` INSERT** を Error Handler が連携（IF-DB-RECO-009） |
+| `phase_log_id` 列 | MVP **採用しない**。owner 経由 trace のみ（Human Review #536 No.3 **決定済み**） |
+| `phase_log` 定義書 | `phase_log_テーブル定義書` §5.3 / §5.6 / §8.2 と **双方向整合**（#535 / PR #540 merge 済み） |
+| owner 単位 | **`phase_log` 行 ID を `error_log.owner_id` にしない**。owner は Run / Batch / Evaluation 単位（phase_log 定義書 §8.2） |
+| `error_code` 分担 | フェーズ失敗 **要約** は `phase_log.error_code`（nullable）。**詳細**は本テーブル `error_code`（NOT NULL）+ `error_detail_json`（phase_log 定義書 §5.6） |
+| フェーズ失敗 | `phase_log.phase_status = failed` 終端 UPDATE と **`error_log` INSERT** を Error Handler が連携（IF-DB-RECO-009） |
+| `trace_id` | 同一 Run / Batch の `phase_log.trace_id` と **同一値を推奨**（横断検索。phase_log 定義書 §16 No.9） |
 | `recommendation_run_phase_log` | 物理テーブルなし。`phase_log` に統合（テーブル一覧 §8） |
 
 ### 5.4 `api_call_log` との関係
@@ -186,7 +192,7 @@ Secret 出力検知は **`severity = critical`** で記録する（§9.4）。
 | `recommendation_run` | `recommendation_run.recommendation_run_id` | `LOGICAL` | 物理ER may_have |
 | `recommendation_result` | `recommendation_result.recommendation_result_id` | `LOGICAL` | error log のみ |
 | `recommendation_feedback` | `recommendation_feedback.recommendation_feedback_id` | `LOGICAL` | error log のみ |
-| `batch_run` | `batch_run_log.batch_run_id` | `LOGICAL` | 物理ER may_have。**#534 定義書 merge 後に双方向整合** |
+| `batch_run` | `batch_run_log.batch_run_id` | `LOGICAL` | 物理ER may_have。batch_run_log 定義書 §5.2 / §8.2 |
 | `api_call` | `api_call_log.api_call_log_id` | `LOGICAL` | api_call_log 定義書 §8.2 |
 | `raw_product_metadata` | `raw_product_metadata.raw_metadata_id` | `LOGICAL` | Raw 保存失敗等 |
 | `item_generation_queue` | `item_generation_queue.item_generation_queue_id` | `LOGICAL` | 生成キュー失敗 |
@@ -313,9 +319,10 @@ INSERT INTO error_log (
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **90 日〜180 日**（ログ・Observability設計書 §20.2 推奨。MVP 初期は方針明記のみ） |
+| 保持期間 | **90 日**（Human Review #536 No.5 決定。ログ・Observability設計書 §20.2 の 90〜180 日レンジ内） |
 | 削除方式 | 後続 Retention Batch による **物理 DELETE** 候補 |
-| 削除条件 | `occurred_at < now() - interval '90 days'` 等（具体閾値は §17.1 Human Review） |
+| 削除条件 | `occurred_at < now() - interval '90 days'` |
+| 他 Log 系との関係 | `batch_run_log`（180 日）/ `phase_log`（60 日）とは **テーブル別 Retention**。Batch 単位一括削除は batch_run_log 定義書 §13「下流連動」で後続 Task 検討 |
 | 論理削除 | 採用しない（Log 追記型） |
 | partition | MVP **未適用**。物理ER §17 / Observability §21.2 に従い本番前に range partition 検討 |
 | アーカイブ | MVP 対象外 |
@@ -367,19 +374,20 @@ INSERT INTO error_log (
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Retention 具体日数（90 vs 180） | 運用コストと調査要件の trade-off | Human | Epic 終盤 | §17.1 No.5 |
-| 2 | #534 / #535 merge 後の双方向整合 | batch_run_log / phase_log 定義書未 merge | Human | #534 / #535 完了後 | §5.2 / §5.3 |
+| — | — | — | — | — | Human Review #536 で §17.1 No.1〜6 を確定。双方向整合は #534 / #535 merge 済み（§5.2 / §5.3） |
 
-### 17.1 Human Review 決定事項（Issue #536・MVP 作業時提案）
+### 17.1 Human Review 決定事項（Issue #536）
 
-| No | 論点 | 決定内容（提案） | 決定者 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- |
-| 1 | Observability §9.2 拡張列 | **`trace_id` / `request_id` / `service` / `severity` / `retryable` を MVP 物理 DDL に採用** | Human | §5.5 |
-| 2 | `owner_type=system` | **`owner_id` NULL 可**（CHECK で明示） | Human | §8.1 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | Observability §9.2 拡張列 | **`trace_id` / `request_id` / `service` / `severity` / `retryable` を MVP 物理 DDL に採用** | Human | §5.5・§6 |
+| 2 | `owner_type=system` | **`owner_id` NULL 可**（CHECK で明示） | Human | §8.1・§10 |
 | 3 | `phase_log_id` 列 | **採用しない**。owner polymorphic のみ | Human | §5.3 |
 | 4 | `error_code` CHECK | **形式 CHECK のみ**（§10.2）。全件列挙は Phase4a | Human | §10 |
-| 5 | Retention 具体日数 | **方針 90〜180 日を明記**。自動削除 Batch は MVP 外 | Human | §13 |
+| 5 | Retention 具体日数 | **90 日**。自動削除 Batch は MVP 外（後続 Task） | Human | §13 |
 | 6 | IF-OBS-002 命名 | **`component` → `service`、`target_id` → `owner_id`** で DB 正本化 | Human | §5.5 |
+| 7 | batch_run_log 双方向整合 | `batch_run_log_テーブル定義書` §5.2（may_have / owner_type=batch_run）と一致 | Human | §5.2 |
+| 8 | phase_log 双方向整合 | `phase_log_テーブル定義書` §5.6 / §8.2（責務境界・owner 単位）と一致 | Human | §5.3 |
 
 ---
 
@@ -397,6 +405,8 @@ INSERT INTO error_log (
 | バッチ設計方針書 | `docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md` | Error Handler |
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-OBS-002 / IF-DB-API-008 / IF-DB-RECO-009 |
 | api_call_log 定義書 | `docs/06_実装設計/database/api_call_log_テーブル定義書.md` | owner_type=api_call |
+| batch_run_log 定義書 | `docs/06_実装設計/database/batch_run_log_テーブル定義書.md` | §5.2 may_have 親・error_summary 境界 |
+| phase_log 定義書 | `docs/06_実装設計/database/phase_log_テーブル定義書.md` | §5.6 責務境界・owner 設計 |
 | item_import_summary 定義書 | `docs/06_実装設計/database/item_import_summary_テーブル定義書.md` | Log 系章構成参考 |
 
 ---
@@ -404,8 +414,9 @@ INSERT INTO error_log (
 ## 19. レビュー観点
 
 - 論理ER §13.2・物理ER §9 / §10・テーブル一覧 §6 No.58 と矛盾していない
-- `batch_run_log` / `recommendation_run` との may_have 関係が §5.2 に明記されている
-- `phase_log` との責務境界（`phase_log_id` 非採用）が §5.3 に明記されている
+- `batch_run_log` / `recommendation_run` との may_have 関係が §5.2 に明記され、`batch_run_log_テーブル定義書` §5.2 と双方向整合している
+- `phase_log` との責務境界（`phase_log_id` 非採用・error_code 分担）が §5.3 に明記され、`phase_log_テーブル定義書` §5.6 / §8.2 と双方向整合している
+- Retention **90 日** が §13 / §17.1 No.5 で確定している
 - `owner_type` / enum定義書 §6.15 が §11.1 で一致している
 - ログ・Observability設計書 §9.2 との差分が §5.5 で整理されている
 - `error_detail_json` マスキング方針（§5.6）が明記されている

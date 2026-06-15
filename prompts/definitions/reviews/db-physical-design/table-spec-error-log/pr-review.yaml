@@ -111,11 +111,11 @@ input:
       required: true
       purpose: "Log 系章構成・LOGICAL FK 方針参考（#533 merge 済み正本）"
     - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
-      required: false
-      purpose: "may_have 親・owner_type=batch_run 双方向整合（#534 merge 済み時）"
+      required: true
+      purpose: "§5.2 may_have 親・error_summary 境界（#534 merge 済み正本）"
     - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
-      required: false
-      purpose: "owner 設計・phase/error 責務境界（#535 merge 済み時）"
+      required: true
+      purpose: "§5.6 責務境界・owner 設計（#535 merge 済み正本）"
     - path: "prompts/templates/docs/table-spec.md"
       required: true
       purpose: "テンプレート章構成との整合"
@@ -164,17 +164,36 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "論理ER 最小属性 vs Observability §9.2 拡張列（trace_id / request_id / service / severity / retryable）の MVP 採否"
-  - "owner_type=system 時の owner_id nullable 方針"
-  - "phase_log_id 列の要否"
-  - "Retention 90日 vs 180日の MVP 初期値"
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "Observability §9.2 拡張列"
+    decision: "trace_id / request_id / service / severity / retryable を採用"
+  - id: 2
+    topic: "owner_type=system"
+    decision: "owner_id NULL 可"
+  - id: 3
+    topic: "phase_log_id 列"
+    decision: "採用しない"
+  - id: 4
+    topic: "error_code CHECK"
+    decision: "形式 CHECK のみ"
+  - id: 5
+    topic: "Retention"
+    decision: "90 日"
+  - id: 6
+    topic: "IF-OBS-002 命名"
+    decision: "component → service、target_id → owner_id"
+  - id: 7
+    topic: "batch_run_log 双方向整合"
+    decision: "§5.2 一致（#534 merge 済み）"
+  - id: 8
+    topic: "phase_log 双方向整合"
+    decision: "§5.6 / §8.2 一致（#535 merge 済み）"
 
 risk_points:
-  - "batch_run_log（#534）/ phase_log（#535）未 merge 時、may_have / owner 設計が ER のみ参照で先行 Task と後から矛盾する可能性"
-  - "論理ER §13.2 と Observability §9.2 の列差整理が Human Review 論点として残る可能性"
-  - "IF-OBS-002 の component / target_id 命名 vs owner_type / owner_id の対応漏れ"
-  - "Validation エラー記録方針（§9.4 warn 集計のみ）の MVP 境界"
+  - "batch_run_log（180 日）/ phase_log（60 日）/ error_log（90 日）の Retention 差分。Batch 単位一括削除は後続 Task"
 
 notes:
   - "Batch R05 No.4: error_log"
@@ -182,5 +201,6 @@ notes:
   - "Issue #536 / Branch docs/task-536-error-log-table-spec"
   - "先行 Epic: #435 / docs/epic-435-db-physical-design"
   - "先行 merge 済み前提: #533 / PR #538（item_import_summary）、#527 / PR #532（api_call_log）"
-  - "同 Batch 先行 Task: #534（batch_run_log）、#535（phase_log）"
+  - "同 Batch 先行 Task: #534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）merge 済み"
+  - "Human Review 決定事項（§17.1 No.1〜8）は error_log テーブル定義書に反映済み"
   - "PR 番号は /create-pr 後に本 Definition の target.pr / input.pr.number を更新する"
