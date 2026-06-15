@@ -94,7 +94,7 @@ recommendation_run INSERT（version / pair 解決済み）
       → input_type_rule 経路分岐
       → sigmoid 正規化（feature_normalization_version 参照）
   → user_feature INSERT（8 行）— IF-DB-RECO-003
-  → user_meaning 射影（別 Task / MOD-RECO-008）
+  → user_meaning 射影（`user_meaning_テーブル定義書` #555 / MOD-RECO-008）
   → Matching / Ranking
 ```
 
@@ -194,7 +194,7 @@ recommendation_run INSERT（version / pair 解決済み）
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | reco（Matching / Ranking） | 全業務列 | reads | アプリ層 | 同一 Run の 8 行読取 |
-| `user_meaning` 生成（MOD-RECO-008） | `feature_value` 等 | derives | 別 Task | User Meaning は本 Task の out_of_scope |
+| `user_meaning` 生成（MOD-RECO-008） | `feature_value` 等 | derives | `user_meaning_テーブル定義書` §8.4 | 射影入力は `feature_value`（#555 正本） |
 
 ### 8.4 論理ER / 物理ER / `item_feature` 差分整理
 
@@ -418,6 +418,7 @@ SELECT *
 | Featureルール定義書 | `docs/04_ドメインモデル設計/Featureルール定義書.md` | User Feature 生成・統合・§18.1 |
 | recommendation_run 定義書 | `docs/06_実装設計/database/recommendation_run_テーブル定義書.md` | recommendation_run_id FK・version コンテキスト |
 | user_semantic 定義書 | `docs/06_実装設計/database/user_semantic_テーブル定義書.md` | 先行入力・§5.6 連携正本（#553） |
+| user_meaning 定義書 | `docs/06_実装設計/database/user_meaning_テーブル定義書.md` | 後続射影先・§8.3 被参照正本（#555） |
 | item_feature 定義書 | `docs/06_実装設計/database/item_feature_テーブル定義書.md` | 対称関係・差分正本 |
 | feature_definition 定義書 | `docs/06_実装設計/database/feature_definition_テーブル定義書.md` | feature_code 正本 |
 | feature_normalization_version 定義書 | `docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md` | §8.2 LOGICAL FK |

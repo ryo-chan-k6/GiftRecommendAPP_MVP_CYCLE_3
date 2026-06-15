@@ -226,7 +226,7 @@ IF-DB-RECO-003: INSERT user_semantic（recommendation_run_id）
     ↓
 MOD-RECO-007: user_feature 生成
     ↓
-user_meaning 射影（後続 Task）
+user_meaning 射影（`user_meaning_テーブル定義書` #555 / MOD-RECO-008）
 ```
 
 ---
@@ -425,6 +425,7 @@ INSERT INTO user_semantic (
 | semantic_rule 定義書 | `docs/06_実装設計/database/semantic_rule_テーブル定義書.md` | 抽出 Rule 正本 |
 | item_semantic 定義書 | `docs/06_実装設計/database/item_semantic_テーブル定義書.md` | 対称正本（#513） |
 | user_feature 定義書 | `docs/06_実装設計/database/user_feature_テーブル定義書.md` | 後続 Feature 生成連携正本（#554） |
+| user_meaning 定義書 | `docs/06_実装設計/database/user_meaning_テーブル定義書.md` | 後続 Meaning 射影連携正本（#555） |
 
 ---
 

@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                        |
 | 作成日         | 2026-06-15                   |
-| 更新日         | 2026-06-15                   |
+| 更新日         | 2026-06-15（Human Review #555 全項目決定・#554 user_feature 突合） |
 
 ---
 
@@ -72,12 +72,12 @@ Online 推薦（`reco`）実行中に **1 `recommendation_run` あたり最大 1
 | 生成モジュール | **MOD-RECO-008** User Meaning Projector（`機能×モジュール対応表` §7 No.8） |
 | Context 重み | **MOD-RECO-009** User Context Builder が `lambda_ctx` を算出し、**同一 IF 保存バッチ**で本行に含める |
 | 保存 I/F | **IF-DB-RECO-003**（`user_semantic` / `user_feature` / `user_meaning` を INSERT） |
-| 入力正本 | 同一 `recommendation_run_id` の **`user_feature` 8 行**（MVP 8 軸すべて正規化済み値が非 NULL） |
-| 入力列 | `user_feature.feature_code` + 正規化済み Feature 値（0.0〜1.0。論理ER §10.2 は `feature_value`、#554 merge 後は `user_feature_テーブル定義書` の物理列名に従う） |
+| 入力正本 | 同一 `recommendation_run_id` の **`user_feature` 8 行**（MVP 8 軸すべて `feature_value` が非 NULL） |
+| 入力列 | `user_feature.feature_code` + `user_feature.feature_value`（sigmoid 正規化後 0.0〜1.0。`user_feature_テーブル定義書` §6・§17.1 No.2 正本） |
 | 出力列 | 本テーブル `user_social` / `user_symbolic` / `lambda_ctx` |
 | カーディナリティ | `user_feature` **8 行 : `user_meaning` 1 行**（Run 単位） |
 | 再生成 | **新 Run のみ**（同一 `recommendation_run_id` への再 INSERT は禁止。§12.1） |
-| 生成元正本 | `user_feature_テーブル定義書`（#554 merge 済み時）または論理ER §10.2 / 物理ER §11 |
+| 生成元正本 | `user_feature_テーブル定義書`（#554 merge 済み） |
 
 #### 5.2.1 生成パイプライン（Online / Batch R07）
 
@@ -127,7 +127,7 @@ user_symbolic =
 | 値域 | **0.0〜1.0**（Feature 正規化後と同値域。Matching 比較可能） |
 | 射影タイミング | **Feature 正規化後**（GiftMeaningSpace §7.2 `user_meaning_projection`） |
 | 重み正本 | `recommendation_run.semantic_config_version_id` が指す `semantic_config_version`。**行に重み JSON を保持しない** |
-| 欠損 Feature | 8 軸のいずれかで正規化済み値が NULL の場合、**行を INSERT しない**（エラーまたは phase 失敗として `error_log` へ） |
+| 欠損 Feature | 8 軸のいずれかで `feature_value IS NULL` の場合、**行を INSERT しない**（`error_log` 記録） |
 
 ### 5.4 `lambda_ctx` の保持方針
 
@@ -139,7 +139,7 @@ Matching定義書 §4.5 / §9 を正本とする。
 | 値域 | **0.0〜1.0**（`0.0` = Social 重視、`1.0` = Symbolic 重視） |
 | 算出主体 | **MOD-RECO-009** User Context Builder（relationship / occasion / user_feature 等を入力） |
 | 保存先 | **本テーブル `lambda_ctx` 列**（論理ER §10.2 属性と一致） |
-| 欠損時 | Matching 実行時は **0.5** を使用（Matching定義書 §4.5）。DB 行は非 NULL を推奨し、算出不能時のみアプリ層デフォルト |
+| 算出不能時 | **`0.5` 固定で INSERT**（非 NULL 列維持・Matching定義書 §4.5 デフォルトと対称）。`error_log` に警告を記録 |
 | Context Score | `context_score = (1 - lambda_ctx) * social_match + lambda_ctx * symbolic_match`（Matching定義書 §9.2） |
 
 ### 5.5 `item_meaning` との対称性
@@ -176,7 +176,8 @@ Matching定義書 §4.5 / §9 を正本とする。
 | `semantic_config_version_id` | **`recommendation_run` 行に保持**（LOGICAL FK。`recommendation_run_テーブル定義書` §6 No.4） |
 | 本テーブル | **行に `semantic_config_version_id` を持たない**（Join またはアプリ層キャッシュで解決） |
 | 射影重み | Run 生成時点の `semantic_config_version_id` が指す設定を使用 |
-| `feature_normalization_version_id` | 本テーブルに **LOGICAL 列で保持**（入力 `user_feature` 8 行の共通正規化 version。再現性） |
+| `feature_normalization_version_id` | 本テーブルに **LOGICAL 列で保持**（入力 `user_feature` 8 行の **完全一致する** 正規化 version。再現性） |
+| 8 行 version 不一致 | **射影拒否**（本テーブル INSERT しない・`error_log` 記録）。多数決は不採用（§17.1 No.7・`item_meaning` §12.1 対称） |
 | 再現性 | Run 完了後は **不変**。推薦結果再現は `recommendation_run_id` + 子派生データで担保 |
 
 ---
@@ -200,6 +201,8 @@ Matching定義書 §4.5 / §9 を正本とする。
 > **`semantic_config_version_id` 非保持**: 論理ER §10.2 属性に合わせ、version は `recommendation_run` 経由で参照する（§5.7）。
 
 > **`updated_at`**: MVP では Run 内再射影を行わないため、INSERT 時に `created_at` と同値を設定し、以降 UPDATE しない。
+
+> **`feature_normalization_version_id`**: 8 行すべて同一 version のときのみ記録。不一致時は **INSERT しない**（§12.1・§17.1 No.7）。
 
 ---
 
@@ -236,15 +239,31 @@ Matching定義書 §4.5 / §9 を正本とする。
 | MOD-RECO-008 / MOD-RECO-009 | generates | IF-DB-RECO-003 保存バッチ |
 | `recommendation_run` | version_context | `semantic_config_version_id` は親 Run 行を参照 |
 
-### 8.4 `user_feature` との整合（#554 merge 前 / 後）
+### 8.4 `user_feature` との整合（#554 正本）
 
-| 論点 | `user_feature`（論理ER §10.2 / #554 正本） | 本テーブル |
-| ---- | ------------------------------------------ | ---------- |
-| 射影入力列 | 正規化済み Feature 値（0.0〜1.0） | `user_social` / `user_symbolic` へ集約 |
-| 入力行数 | **8 行 / Run** | **1 行 / Run** |
+| 論点 | `user_feature`（#554 正本） | 本テーブル |
+| ---- | ----------------------------- | ---------- |
+| 射影入力列 | `feature_value`（0.0〜1.0） | `user_social` / `user_symbolic` へ集約 |
+| 入力行数 | **8 行 / Run**（`uq_user_feature_per_run_axis`） | **1 行 / Run** |
 | `recommendation_run_id` FK | 物理 FK **ON**（1:N） | 物理 FK **ON**（1:0..1 UNIQUE） |
-| `feature_normalization_version_id` | LOGICAL（行ごと） | LOGICAL（8 行の共通 version を記録） |
+| `feature_code` | 行ごとに 1 軸 | 射影入力の軸識別子（列には保持しない） |
+| `feature_normalization_version_id` | LOGICAL（8 行同一を生成時保証） | LOGICAL（8 行が **完全一致** した version のみ記録） |
+| version 8 行不一致 | パイプライン異常（`user_feature` §12.1 で同一 ID を記録） | **射影拒否** + `error_log`（多数決不採用） |
+| `semantic_config_version_id` | **列なし**（Run 経由） | **列なし**（Run 経由。§5.7） |
 | 更新主体 | reco（Online INSERT） | reco（Online INSERT） |
+
+#### 8.4.1 射影入力・生成関係（#554 突合）
+
+| 論点 | `user_feature_テーブル定義書`（#554） | 本テーブル |
+| ---- | ------------------------------------- | ---------- |
+| 射影入力 | `feature_code` + `feature_value` | `user_social` / `user_symbolic` へ集約 |
+| 8 行選定 | 同一 `recommendation_run_id` の 8 行固定 | 同一 8 行を入力 |
+| 正規化 version | 8 行 INSERT 時に **同一** `feature_normalization_version_id` | 本行に **同一 ID を記録** |
+| 生成モジュール | MOD-RECO-007（Feature 生成） | MOD-RECO-008（Meaning 射影）+ MOD-RECO-009（`lambda_ctx`） |
+| 保存 I/F | IF-DB-RECO-003（Feature 8 行） | IF-DB-RECO-003（Meaning 1 行） |
+| 生成順序 | `user_semantic` 完了後（§5.6） | `user_feature` 8 行完了後 |
+
+> **`normalized_feature_value` 非採用**: User 側は Item 側 `normalized_feature_value` ではなく **`feature_value` 1 列**（#554 §17.1 No.2）。射影入力は常に `user_feature.feature_value` とする。
 
 ### 8.5 `item_meaning` との整合（#515 正本）
 
@@ -295,7 +314,7 @@ Matching定義書 §4.5 / §9 を正本とする。
 
 | 操作 | 実行主体 | 条件 | 更新項目 | 冪等性 | 備考 |
 | ---- | -------- | ---- | -------- | ------ | ---- |
-| INSERT | reco（MOD-RECO-008 / 009） | 8 軸 `user_feature` 正規化値が揃っている | 全業務列 | `recommendation_run_id` UNIQUE | IF-DB-RECO-003 |
+| INSERT | reco（MOD-RECO-008 / 009） | 8 軸 `user_feature.feature_value` が揃っている | 全業務列 | `recommendation_run_id` UNIQUE | IF-DB-RECO-003 |
 | SELECT | reco | Matching / Context Score / 監視 | — | — | Run 内参照 |
 | UPDATE | reco | — | — | **MVP 禁止** | Run 完了後は不変 |
 | DELETE | reco / batch | §13 方針 | 孤児行等 | 定期 | 通常は INSERT のみ |
@@ -305,15 +324,16 @@ Matching定義書 §4.5 / §9 を正本とする。
 
 ```text
 1. recommendation_run が running 状態で存在すること
-2. 同一 recommendation_run_id の user_feature 8 行を取得
-3. いずれか正規化済み値が NULL → 本テーブル INSERT スキップ（error_log）
-4. GiftMeaningSpace §5 射影式で user_social / user_symbolic を算出
-   （重みは recommendation_run.semantic_config_version_id 経由で解決）
-5. MOD-RECO-009 で lambda_ctx を算出（算出不能時は 0.5 をアプリ層で使用しつつ DB には記録方針を Human Review）
-6. feature_normalization_version_id は 8 行の共通 version を記録
-7. INSERT（recommendation_run_id の UNIQUE 違反時はエラー — 再実行は冪等設計で INSERT 前に存在確認）
-8. generated_at = now(), created_at = updated_at = now()
-9. phase_log に user_meaning_projected を記録（IF-DB-RECO-009）
+2. 同一 recommendation_run_id の user_feature 8 行を取得（idx_user_feature_lookup）
+3. いずれか feature_value IS NULL → 本テーブル INSERT スキップ（error_log）
+4. 8 行の feature_normalization_version_id が不一致 → 本テーブル INSERT スキップ（error_log）。多数決は不採用
+5. GiftMeaningSpace §5 射影式で user_social / user_symbolic を算出
+   （入力は user_feature.feature_value。重みは recommendation_run.semantic_config_version_id 経由で解決）
+6. MOD-RECO-009 で lambda_ctx を算出。算出不能時は 0.5 を採用して INSERT（§17.1 No.8 決定済み）。warning を error_log に記録
+7. feature_normalization_version_id は 8 行の共通 version を記録（§17.1 No.7 決定済み）
+8. INSERT（recommendation_run_id の UNIQUE 違反時はエラー — 再実行は冪等設計で INSERT 前に存在確認）
+9. generated_at = now(), created_at = updated_at = now()
+10. phase_log に user_meaning_projected を記録（IF-DB-RECO-009）
 ```
 
 ### 12.2 INSERT 疑似 SQL
@@ -404,22 +424,21 @@ INSERT INTO user_meaning (
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `lambda_ctx` 算出不能時の DB 保存 | NULL 許容 vs `0.5` 固定 INSERT | Human | Human Review | §5.4 / §12.1 |
-| 2 | `feature_normalization_version_id` 8 行不一致時 | 射影拒否 vs 多数決 version | Human | Human Review | §8.4 |
-| 3 | #554 merge 後の物理列名突合 | `feature_value` vs `normalized_feature_value` | Human | #554 完了後 | §5.2 / §8.4 |
+| — | — | — | — | — | Human Review #555 にて No.1〜9 を決定済み（下記 §17.1） |
 
-### 17.1 Human Review 仮決定（Issue #555 作業時点）
+### 17.1 Human Review 決定事項（Issue #555）
 
-`item_meaning`（#515）の決定を対称適用する仮決定。Human Review で確定する。
-
-| No | 論点 | 仮決定内容 | 根拠 |
-| --: | ---- | ---------- | ---- |
+| No | 論点 | 決定内容 | 根拠 |
+| --: | ---- | -------- | ---- |
 | 1 | Social / Symbolic 列型 | **`numeric(6,4)` スカラー 2 列** | #515 §17.1 No.1 対称 |
 | 2 | 射影重みスナップショット | **行に保持しない**。`recommendation_run` → `semantic_config_version` 参照 | #515 §17.1 No.2 対称 |
 | 3 | 加重平均 vs 単純平均 | **`semantic_config_version` 内加重平均**。未設定時 **単純平均** | #515 §17.1 No.3 対称 |
-| 4 | `semantic_config_version_id` | **行に denormalize しない**（Run 経由） | 論理ER §10.2・§5.7 |
-| 5 | `lambda_ctx` | **本テーブル列に保持**（非 NULL） | 論理ER §10.2・Matching §4.5 |
+| 4 | `semantic_config_version_id` | **行に denormalize しない**（Run 経由） | 論理ER §10.2・§5.7・#554 対称 |
+| 5 | `lambda_ctx` 保持 | **本テーブル列に保持**（非 NULL） | 論理ER §10.2・Matching §4.5 |
 | 6 | 冪等キー / mean・std | **`UNIQUE (recommendation_run_id)`**。mean / std は **Metric 系のみ** | 物理ER 1:0..1・§5.6 |
+| 7 | `feature_normalization_version_id` 8 行不一致 | **射影拒否**（INSERT しない・`error_log` 記録）。**多数決不採用** | `item_meaning` §12.1 対称・再現性 |
+| 8 | `lambda_ctx` 算出不能時 | **`0.5` 固定で INSERT**（非 NULL 維持）。`error_log` に警告記録 | Matching §4.5 デフォルト・§17.1 No.5 整合 |
+| 9 | 射影入力列（#554 突合） | **`user_feature.feature_value`**（`normalized_feature_value` は Item 側のみ） | #554 §17.1 No.2・§8.4 |
 
 ---
 
@@ -440,12 +459,13 @@ INSERT INTO user_meaning (
 | 状態遷移設計書 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | user_meaning_projected |
 | ログ・Observability | `docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md` | 分布メトリクス名 |
 | recommendation_run | `docs/06_実装設計/database/recommendation_run_テーブル定義書.md` | §8.2 被参照・version 列 |
+| user_semantic | `docs/06_実装設計/database/user_semantic_テーブル定義書.md` | #553 先行入力・パイプライン |
+| user_feature | `docs/06_実装設計/database/user_feature_テーブル定義書.md` | #554 merge 済み・生成元正本 |
 | semantic_config_version | `docs/06_実装設計/database/semantic_config_version_テーブル定義書.md` | 射影重み |
 | feature_definition | `docs/06_実装設計/database/feature_definition_テーブル定義書.md` | 8 軸 |
 | feature_normalization_version | `docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md` | 正規化 version |
 | item_meaning | `docs/06_実装設計/database/item_meaning_テーブル定義書.md` | #515 対称性正本 |
 | enum定義書 | `docs/06_実装設計/database/enum定義書.md` | phase_name / feature_code |
-| user_feature | `docs/06_実装設計/database/user_feature_テーブル定義書.md` | #554 merge 後・生成元正本 |
 
 ---
 
@@ -460,6 +480,10 @@ INSERT INTO user_meaning (
 - 冪等キー `recommendation_run_id` UNIQUE が §7 / §12.1 で定義されている
 - mean / std 等分布統計が本テーブルに混在せず、Metric 系と責務分離されている（§5.6）
 - 論理ER §10.2 属性（`user_social` / `user_symbolic` / `lambda_ctx`）と整合している
+- `user_feature_テーブル定義書`（#554）との `feature_value` 射影入力・8 行 version 整合が §8.4 で明示されている
+- `lambda_ctx` 算出不能時の `0.5` 固定 INSERT が §5.4 / §12.1 / §17.1 No.8 で明示されている
+- `feature_normalization_version_id` 8 行不一致時の射影拒否 + `error_log` が §12.1 / §17.1 No.7 で明示されている
+- §17.1 決定事項（No.1〜9）が本文に反映されている
 - User 派生は Online 生成・Item 派生は Online 更新しない（論理ER §16）責務境界が明記されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない

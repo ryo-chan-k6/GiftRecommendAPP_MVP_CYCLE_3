@@ -128,9 +128,12 @@ input:
     - path: "docs/06_実装設計/database/item_meaning_テーブル定義書.md"
       required: true
       purpose: "#515 merge 済み時の item_meaning 対称性正本との突合"
+    - path: "docs/06_実装設計/database/user_semantic_テーブル定義書.md"
+      required: true
+      purpose: "#553 merge 済み・先行入力・パイプライン順序との突合"
     - path: "docs/06_実装設計/database/user_feature_テーブル定義書.md"
-      required: false
-      purpose: "#554 merge 済み時の生成元 Feature 正本との突合"
+      required: true
+      purpose: "#554 merge 済み・生成元 Feature 正本（feature_value 射影入力）との突合"
     - path: "docs/06_実装設計/database/enum定義書.md"
       required: true
       purpose: "feature_code enum・recommendation_run_phase_name との整合"
@@ -162,6 +165,9 @@ review_points:
     - "item_meaning_テーブル定義書（#515）との対称性・差分（Run 単位 / lambda_ctx / version 参照粒度）が整理されているか"
     - "テーブル一覧 §4 No.9・正本定義表 user_social / user_symbolic と一致しているか"
     - "IF-DB-RECO-003 / MOD-RECO-008 による user_feature → user_meaning 生成・保存関係が明記されているか"
+    - "user_feature_テーブル定義書（#554）との feature_value 射影入力・8 行 version 整合が §8.4 で明記されているか"
+    - "lambda_ctx 算出不能時の 0.5 固定 INSERT + error_log 警告が §5.4 / §12.1 / §17.1 No.8 で明記されているか"
+    - "feature_normalization_version_id 8 行不一致時の射影拒否 + error_log（多数決不採用）が §12.1 / §17.1 No.7 で明記されているか"
     - "Matching定義書 §4.5 lambda_ctx の保持・利用方針が明記されているか"
     - "recommendation_run_テーブル定義書 §5 / §8 との User 派生データ系責務境界が明記されているか"
     - "状態遷移設計書 user_meaning_projected Phase との整合が取れているか"
@@ -171,8 +177,8 @@ review_points:
     - "recommendation_run.recommendation_run_id への物理 FK（ON・generates 1:0..1）方針が明記されているか"
     - "semantic_config_version 再現性（Run 経由 vs 行 denormalize）方針が明記されているか"
     - "user_social / user_symbolic（または同等列）の型・値域（0.0〜1.0）が定義されているか"
-    - "lambda_ctx の型・値域（0.0〜1.0）と欠損時デフォルト方針が定義されているか"
-    - "user_feature 正規化済み Feature 集合からの射影入力・再生成判定キーが明記されているか"
+    - "lambda_ctx の型・値域（0.0〜1.0）と算出不能時 0.5 固定 INSERT 方針が定義されているか"
+    - "user_feature.feature_value からの射影入力・再生成判定キーが明記されているか"
     - "Online 生成・reco 更新主体（論理ER §16）が明記されているか"
     - "DDL 適用順序が recommendation_run / semantic_config_version 作成後と整合しているか"
   security:
@@ -185,15 +191,10 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "user_social / user_symbolic の物理型（item_meaning 対称 scalar vs JSONB ベクトル）と MVP 保持粒度"
-  - "lambda_ctx を user_meaning 行に保持するか Matching 時再算出か"
-  - "semantic_config_version_id の行 denormalize 要否（recommendation_run 経由のみか）"
-  - "feature_normalization_version_id の行保持要否（user_feature 集合との再現性）"
-  - "冪等キー（recommendation_run_id のみ vs 複合キー）と user_feature 行集合との 1:1 / 1:N 関係"
-  - "mean / std 等分布統計量を user_meaning 行に持つか meaning_distribution_metric のみか"
+  - "§17.1 No.1〜9 は Human Review #555 にて決定済み。本文（§5 / §8 / §12 / §17）への反映を確認する"
 
 risk_points:
-  - "user_feature テーブル定義書（#554）未 merge 時の生成元 Feature 列名・冪等キー参照ブレ"
+  - "user_feature（#554）との feature_value / 8 行 version 整合の記述漏れ"
   - "item_meaning（#515）との version 参照粒度差（Run 経由 vs 行直接保持）の整理漏れ"
   - "GiftMeaningSpace §5 の加重平均 vs 単純平均の MVP 採用と DB 列設計の整合"
   - "lambda_ctx の算出モジュール（MOD-RECO-009）と保存先（user_meaning）の責務重複"
@@ -202,7 +203,7 @@ risk_points:
 notes:
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-user-meaning.yaml"
   - "Batch R07 No.3: user_meaning"
-  - "先行 merge 済み前提: #543 recommendation_run / PR #548、#463 semantic_config_version"
-  - "対称参照 merge 推奨: #515 item_meaning / PR #520、#554 user_feature"
+  - "先行 merge 済み前提: #543 recommendation_run / PR #548、#463 semantic_config_version、#553 user_semantic、#554 user_feature"
+  - "対称参照 merge 推奨: #515 item_meaning / PR #520"
   - "Issue #555 / Branch docs/task-555-user-meaning-table-spec"
   - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"
