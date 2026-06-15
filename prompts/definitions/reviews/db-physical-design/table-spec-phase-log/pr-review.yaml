@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 540
   issue: 535
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-phase-log.yaml"
   source_branch: "docs/task-535-phase-log-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 535
     required: true
   pr:
-    number: null
+    number: 540
     required: true
   diff:
     required: true
@@ -155,11 +155,11 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "論理ER §13.2 未列挙列（trace_id / duration_ms / error_code / created_at）の物理列採用と nullable 方針"
-  - "Observability §10.3 reco_quality_metric_recorded と enum §6.18 / code-definitions の差分（追加 enum 値 vs MVP 除外）"
-  - "owner_type=evaluation_run 時の phase_name MVP 扱い（evaluation_run_phase_name 未定義）"
-  - "phase_log に許可する owner_type 集合（error_log 用 owner との差分）"
-  - "detail_json マスキング粒度・Retention（30〜90日）・created_at Index の MVP 必須性"
+  - "Human Review #535 確定済み（§17.1）: trace_id / duration_ms / error_code / created_at・updated_at 採用"
+  - "Human Review #535 確定済み: reco_quality_metric_recorded は phase_name CHECK 対象外"
+  - "Human Review #535 確定済み: owner_type MVP は recommendation_run / batch_run / evaluation_run の 3 値"
+  - "Human Review #535 確定済み: evaluation_run phase_name は MVP DB CHECK 省略"
+  - "Human Review #535 確定済み: Retention 60日・detail_json マスキング（LLM prompt 全文非保存）"
 
 risk_points:
   - "batch_run_log / error_log 定義書（#534 / #536）が未作成のため、双方向記述が本 Task のみで完結するか"
