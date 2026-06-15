@@ -212,7 +212,7 @@ flowchart LR
 | テーブル | 紐づけ | 備考 |
 | -------- | ------ | ---- |
 | `staging_item` | `raw_metadata_id` + `external_item_code` | 商品属性正本（`staging_item_テーブル定義書` §8.3） |
-| `staging_ranking_signal` | 同上 | 別 Task |
+| `staging_ranking_signal` | 同上 | ランキング由来時（`staging_ranking_signal_テーブル定義書` #524） |
 | `staging_genre` | `raw_metadata_id` | 別 Task |
 
 ---

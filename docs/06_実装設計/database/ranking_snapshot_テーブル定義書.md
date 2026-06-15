@@ -282,6 +282,7 @@ RETURNING ranking_snapshot_id;
 | 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §8.4・§9 Staging 経路 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §5 No.15・§14 No.1–2 |
 | external_genre 定義書 | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | `external_genre_id` 型・LOGICAL 参照 |
+| staging_ranking_signal 定義書 | `docs/06_実装設計/database/staging_ranking_signal_テーブル定義書.md` | Staging 入力正本・§5.2 経路（#524） |
 | 外部商品データ連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | §4.3 楽天ランキング API |
 | バッチ設計方針書 | `docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md` | §8.4–§8.5・§11.5・§12.3 |
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-008・冪等キー |
