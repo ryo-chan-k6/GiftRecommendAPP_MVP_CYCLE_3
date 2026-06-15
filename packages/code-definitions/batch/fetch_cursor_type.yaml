@@ -26,7 +26,7 @@ values:
     enabled: true
   - value: "ranking_supplement"
     label: "Ranking Supplement"
-    meaning: "BATCH-002 未登録 itemCode 補完候補の走査（BATCH-003）"
+    meaning: "BATCH-002 未登録 itemCode 補完候補（BATCH-003 消費）。1商品（external_item_code）単位"
     terminal: true
     enabled: true
   - value: "recheck"

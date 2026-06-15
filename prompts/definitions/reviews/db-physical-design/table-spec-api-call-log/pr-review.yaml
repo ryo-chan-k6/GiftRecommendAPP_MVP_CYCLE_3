@@ -147,7 +147,7 @@ review_points:
     - "api_call_log → raw_product_metadata の 1:N produces（LOGICAL FK）関係が明記されているか"
     - "call_status（api_call_status）と enum定義書 §6.6 が一致しているか"
     - "source_api と enum定義書 §6.24 が一致しているか"
-    - "fetch_cursor_id nullable 方針と rate_limited → paused 連動（fetch_cursor 定義書 §5.3）が明記されているか"
+    - "fetch_cursor_id nullable 方針（BATCH-001/002 Log は NULL、BATCH-003 ranking_supplement 消費時は NOT NULL）と rate_limited → paused 連動（fetch_cursor 定義書 §5.3）が明記されているか"
     - "物理ER §10 idx_api_call_log_batch（batch_run_id, requested_at）が反映されているか"
     - "Retention 方針（ログ・Observability設計書）が § 等で明記されているか"
   security:
@@ -164,7 +164,7 @@ human_decision_points:
   - "論理ER requested_at/completed_at vs ログ・Observability設計書 started_at/completed_at の物理列名採用"
   - "response_status vs http_status 命名（論理ER vs 外部商品データ連携設計書 §8.4）"
   - "trace_id / request_params_hash / duration_ms / error_code の採否と nullable 方針"
-  - "fetch_cursor_id nullable と rate_limited → paused 連動の MVP 必須性（fetch_cursor 定義書 §17.1 No.3 との整合）"
+  - "fetch_cursor_id nullable（BATCH-001/002 vs BATCH-003 ranking_supplement）と rate_limited → paused 連動の MVP 必須性（fetch_cursor 定義書 §17.1 No.3 / No.5 との整合）"
 
 risk_points:
   - "fetch_cursor / raw_product_metadata 定義書が api_call_log 側から逆参照しているため、双方向記述の粒度が本 Task のみで完結するか"

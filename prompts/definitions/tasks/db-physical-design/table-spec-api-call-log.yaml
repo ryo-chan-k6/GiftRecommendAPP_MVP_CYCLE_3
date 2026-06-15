@@ -222,6 +222,7 @@ notes:
   - "Issue #527 / Branch docs/task-527-api-call-log-table-spec"
   - "先行 merge 済み前提: #440 / PR #441（enum）、#505 / PR #510（fetch_cursor）、#506 / PR #511（raw_product_metadata）"
   - "Human Review 論点: 論理ER requested_at/completed_at vs ログ・Observability設計書 started_at/completed_at 命名、response_status vs http_status、request_params_json マスキング方針、trace_id 採否、Retention（90〜180日）"
-  - "Human Review 論点: fetch_cursor_id nullable（カーソル非経由 API 呼び出し）、rate_limited 終端時の Fetch Cursor paused 連動（fetch_cursor 定義書 §17.1 No.3 と整合）"
+  - "Human Review 論点: fetch_cursor_id nullable（BATCH-001/002 外部 API Log は NULL、BATCH-003 ranking_supplement 消費時は NOT NULL）、rate_limited 終端時の Fetch Cursor paused 連動（fetch_cursor 定義書 §17.1 No.3 と整合）"
+  - "Human Review 決定: ranking_supplement は recheck 同型（1 external_item_code = 1 fetch_cursor 行）。fetch_cursor 定義書 §17.1 No.5 追補"
   - "外部商品データ連携設計書 §8.4 の batch_run_id / request_params 等は api_call_log 責務。raw_product_metadata へ重複保持しない（raw_product_metadata 定義書 §5.4 と整合）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

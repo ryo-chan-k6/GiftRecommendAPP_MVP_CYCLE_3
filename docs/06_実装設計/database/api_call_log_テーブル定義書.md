@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15                      |
+| 更新日         | 2026-06-15（`ranking_supplement` / `fetch_cursor_id` 連携追記） |
 
 ---
 
@@ -75,7 +75,9 @@
 | 物理ER 関係（上流） | `batch_run_log` → `api_call_log` : `has`（**LOGICAL** 1:N） |
 | 物理ER 関係（上流） | `fetch_cursor` → `api_call_log` : `controls`（**LOGICAL** 1:N） |
 | 物理ER 関係（下流） | `api_call_log` → `raw_product_metadata` : `produces`（**LOGICAL** 1:N。通常 1:1） |
-| `fetch_cursor_id` | **nullable**。カーソル非経由の API 呼び出し（例: BATCH-001 ジャンル同期、BATCH-002 ランキング取得）は `NULL` 可 |
+| `fetch_cursor_id` | **nullable**。カーソル非経由の外部 API 呼び出しは `NULL`（例: BATCH-001 `genre_search`、BATCH-002 `item_ranking`） |
+| BATCH-002 と fetch_cursor | BATCH-002（Ranking Unknown Item Collector）は未登録 `external_item_code` 向けに `fetch_cursor`（`cursor_type = ranking_supplement`）を **登録**するが、当該 Batch 内のランキング API `api_call_log` 行は `fetch_cursor_id = NULL` |
+| BATCH-003 消費 | `ranking_supplement` / `genre` / `keyword` 等のカーソル経由 `item_search` 呼び出しでは `fetch_cursor_id` を **設定**（通常 NOT NULL） |
 | `batch_run_id` | **NOT NULL**。所属 Batch 実行を必ず記録（trace キー） |
 | Raw 未保存時 | `call_status` が `failed` / `rate_limited` / `skipped` 等で Raw を保存しない場合、**`raw_product_metadata` 行は作成しない**（raw_product_metadata 定義書 §5.2） |
 
@@ -374,7 +376,7 @@ WHERE api_call_log_id = :api_call_log_id
 | 1 | 呼び出し開始・完了日時の物理列名 | **`requested_at` / `completed_at` を採用**（論理ER §9.2 正）。Observability `started_at` は同一概念 | Human | §5.4 |
 | 2 | HTTP ステータス列名 | **`response_status`（integer）を採用**。外部商品データ連携設計書 §8.4 の `http_status` は本列に統合 | Human | §5.4 |
 | 3 | Observability 追加列の採否 | **`trace_id`（nullable）・`request_params_hash`（NOT NULL）・`duration_ms`（nullable）・`error_code`（nullable）・`api_version`（nullable）を採用** | Human | §5.4・§6 |
-| 4 | `fetch_cursor_id` nullable | **nullable 維持**。BATCH-001 / BATCH-002 等カーソル非経由は `NULL` | Human | §5.2 |
+| 4 | `fetch_cursor_id` nullable | **nullable 維持**。BATCH-001 / BATCH-002 の **外部 API 呼び出し Log**（`genre_search` / `item_ranking`）は `fetch_cursor_id = NULL`。BATCH-002 は `ranking_supplement` カーソルを `fetch_cursor` に **登録**するが、ランキング API の `api_call_log` には紐づけない。BATCH-003 が `ranking_supplement` を消費した `item_search` 呼び出しでは **NOT NULL**（通常） | Human | §5.2・`fetch_cursor` 定義書 §17.1 No.5 |
 | 5 | Retention 具体日数 | **方針 90〜180 日を明記**。自動削除 Batch は MVP 外（後続 Task） | Human | §13 |
 
 ---
@@ -402,6 +404,7 @@ WHERE api_call_log_id = :api_call_log_id
 - 論理ER §9.2・物理ER §9 / §10・テーブル一覧 §6 No.18 と矛盾していない
 - `call_status` 状態遷移が状態遷移設計書 §6.2・enum定義書 §6.6 と一致している
 - `fetch_cursor` → `api_call_log` controls と `rate_limited` → `paused` 連動が §5.2 / §5.3 に明記されている
+- BATCH-002 ランキング API（`fetch_cursor_id = NULL`）と BATCH-002 → BATCH-003 `ranking_supplement` 経路（BATCH-003 消費時は `fetch_cursor_id` 設定）が §5.2 に明記されている
 - `api_call_log` → `raw_product_metadata` produces と trace キー方針が §5.2 に明記されている
 - ログ・Observability設計書 §14 との差分が §5.4 で整理されている
 - `request_params_json` マスキング方針（§5.5）が明記されている
