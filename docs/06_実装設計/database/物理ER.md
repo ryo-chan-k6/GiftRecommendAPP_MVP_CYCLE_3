@@ -559,12 +559,14 @@ Human Review にて以下を確定した（2026-06-07）。
 | No | 論点 | 決定内容 | 備考 |
 | --: | ---- | -------- | ---- |
 | 1 | Observability §12.12 追加統計列 | MVP は **本表列のみ**（`skewness` 等は物理列化しない） | #556 §17.1 No.1 同型 |
-| 2 | `feature_normalization_version_id` | **NOT NULL 必須** CHECK | §10 `chk_mdm_normalization_version_required` |
+| 2 | `feature_normalization_version_id` | **NOT NULL 必須** CHECK。混在時は **version ごとに行分割** | §10 `chk_mdm_normalization_version_required`・`meaning_distribution_metric_テーブル定義書` §5.8 |
 | 3 | `aggregation_scope` | MVP は **`batch_run` / `daily` / `semantic_config_version` のみ** | Run 単位は `user_meaning` 個別値正本 |
 | 4 | `batch_run_id` と Retention | **親 Run 削除後も Metric 保持**（dangling 許容） | #556 §17.1 No.4 同型 |
-| 5 | phase_log フェーズ | MVP は **`feature_distribution_metric_recorded` に Meaning 記録を包含** | 専用 enum 追加なし |
+| 5 | phase_log フェーズ | MVP は **`feature_distribution_metric_recorded` に Meaning 記録を包含** | `meaning_distribution_metric_recorded` enum 追加なし |
 | 6 | reco 書き込み | MVP は **batch のみ INSERT / UPSERT** | #556 §17.1 No.6 同型 |
 | 7 | `entity_type` | **`item` / `user`**。`feature_code` 列は持たない | `value_layer` で Meaning 軸を識別 |
+| 8 | 物理 schema | MVP は **`public` 単一 schema** | #556 §17.1 No.5 同型 |
+| 9 | user 集計ウィンドウ（`batch_run`） | 完了 Run × 対象 version の `user_meaning` を実行時点で全件集計 | 日次は `daily` scope |
 
 ---
 

@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-15                                 |
-| 更新日         | 2026-06-15（#556 先例整合・Human Review #557 論点整理） |
+| 更新日         | 2026-06-15（Human Review #557 全項目決定・物理ER §17.4 反映） |
 
 ---
 
@@ -68,7 +68,7 @@ Public API では返却しない（内部監視・品質分析データ）。
 - 分布集計アルゴリズム詳細（BATCH-016 バッチ仕様書の責務）
 - Public API 公開（#469 委譲）
 - DDL / migration 本体（DDL Task へ委譲）
-- enum `batch_run_phase_name` への `meaning_distribution_metric_recorded` 追加（§17.1 No.5）
+- enum `batch_run_phase_name` への `meaning_distribution_metric_recorded` 追加（§17.1 No.5 **決定済み**：追加しない）
 
 ### 5.2 `item_meaning` との集計入力責務境界
 
@@ -89,6 +89,8 @@ Public API では返却しない（内部監視・品質分析データ）。
 
 > 入力行の世代選定（最新 `generated_at` の商品集合等）は `item_meaning_テーブル定義書` §12.1 と BATCH-016 実装の責務。本テーブルは **集計結果の保存正本** のみ定義する。
 
+> **`feature_normalization_version_id` 混在**: 同一集計スコープ内に複数 version が存在する場合は **version ごとに行を分割**する（§5.8・§17.1 No.2）。1 行へ混在集約しない。
+
 ### 5.3 `user_meaning` との集計入力責務境界
 
 | 観点 | `user_meaning` | 本テーブル |
@@ -103,7 +105,7 @@ Public API では返却しない（内部監視・品質分析データ）。
 
 | `value_layer` | 入力列 | 対象行の選定 |
 | ------------- | ------ | ------------ |
-| `social` | `user_meaning.user_social` | 集計スコープ内の `user_meaning` 行（`user_social IS NOT NULL`） |
+| `social` | `user_meaning.user_social` | §5.3.2 の選定条件を満たす `user_meaning` 行（`user_social IS NOT NULL`） |
 | `symbolic` | `user_meaning.user_symbolic` | 同上（`user_symbolic IS NOT NULL`） |
 | `lambda_ctx` | `user_meaning.lambda_ctx` | 同上（`lambda_ctx IS NOT NULL`）。**User 専用**（item 側には存在しない） |
 
@@ -113,9 +115,20 @@ Public API では返却しない（内部監視・品質分析データ）。
 
 | `aggregation_scope` | user 集計の意味 |
 | ------------------- | --------------- |
-| `batch_run` | 当該 BATCH-016 実行時点までに存在する **全 `user_meaning` 行**（または Run 完了分のみ。実装は BATCH-016 仕様書で確定） |
-| `daily` | 当日 UTC に `generated_at` を持つ `user_meaning` 行 |
-| `semantic_config_version` | 同一 `semantic_config_version_id`（Run 経由）の `user_meaning` 行集合 |
+| `batch_run` | 対象 `semantic_config_version_id` に属し、**完了 Run**（`recommendation_run.run_status IN ('succeeded', 'partially_succeeded')`）に紐づく `user_meaning` を、BATCH-016 **実行時点で DB に存在する全行**から集計する（**日次フィルタはかけない**。§17.1 No.9 **決定済み**） |
+| `daily` | 当日 UTC に `user_meaning.generated_at` を持つ行（完了 Run に限定するかは BATCH-016 仕様書で明示。推奨は完了 Run のみ） |
+| `semantic_config_version` | 同一 `semantic_config_version_id`（Run 経由）かつ完了 Run に紐づく `user_meaning` 行集合 |
+
+**`batch_run` スコープの選定 SQL イメージ**（BATCH-016 実装参考）:
+
+```sql
+SELECT um.*
+FROM user_meaning um
+JOIN recommendation_run rr ON rr.recommendation_run_id = um.recommendation_run_id
+WHERE rr.semantic_config_version_id = :semantic_config_version_id
+  AND rr.run_status IN ('succeeded', 'partially_succeeded')
+  AND um.<value_layer列> IS NOT NULL
+```
 
 > **`aggregation_scope = run`（単一 Recommendation Run 単位）は MVP 対象外**（§5.7・§17.1 No.3）。Run あたり 1 行の `user_meaning` に対する「分布」は本テーブルではなく **個別値正本** の責務である。
 
@@ -148,7 +161,7 @@ Public API では返却しない（内部監視・品質分析データ）。
 | モジュール | `MOD-BATCH-038` Normalization Statistics Manager / Meaning Distribution Aggregator（機能×モジュール対応表） |
 | 出力 | `feature_distribution_metric` + **本テーブル** + `normalization_distribution_metric`（正規化系は別 Task） |
 | ログ | `batch_run_log` / `phase_log` / `error_log`（バッチ処理一覧） |
-| phase_log | **MVP は `feature_distribution_metric_recorded` 1 フェーズ**で Feature / Meaning / Normalization 各 Metric 記録完了を代表（enum 追加は §17.1 No.5） |
+| phase_log | **`feature_distribution_metric_recorded` 1 フェーズ**で Feature / Meaning / Normalization 各 Metric 記録完了を代表（専用 enum 追加なし。§17.1 No.5 **決定済み**） |
 
 ```text
 item_meaning / user_meaning（個別座標正本）
@@ -167,6 +180,17 @@ feature_distribution_metric_recorded
 | `semantic_config_version` | version 単位の再集計スナップショット | 任意 | `NULL` または version ラベル |
 
 > `run`（Recommendation Run 単位）・`relationship` / `genre` 単位は Observability §12.9 にあるが、**本テーブル MVP では対象外**（§5.3.2・§17.1 No.3）。
+
+### 5.8 `feature_normalization_version_id` 混在時の集計分割
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 原則 | 入力 `item_meaning` / `user_meaning` 行の `feature_normalization_version_id` **ごとに別 Metric 行**を生成する |
+| 冪等キー | §7 UNIQUE に `feature_normalization_version_id` を含む設計をそのまま活用 |
+| 混在集約 | **禁止**（多数決・最新 version のみ・NULL 許容による集約は行わない） |
+| GROUP BY | `semantic_config_version_id`, `entity_type`, `value_layer`, `feature_normalization_version_id` |
+| `sample_count < 2` | 当該 version 分割行の `stddev` は **NULL 許容**（§6） |
+| 根拠 | `item_meaning` / `user_meaning` の行単位 version 正本・#556 normalized 層の version 分離方針と整合（§17.1 No.2 **決定済み**） |
 
 ---
 
@@ -300,8 +324,10 @@ feature_distribution_metric_recorded
 
 ```text
 1. BATCH-016 開始前に batch_run_log 行が存在すること
-2. item_meaning から entity_type=item × value_layer=social|symbolic ごとに統計量を算出
-3. user_meaning から entity_type=user × value_layer=social|symbolic|lambda_ctx ごとに統計量を算出
+2. item_meaning から entity_type=item × value_layer=social|symbolic ×
+   feature_normalization_version_id ごとに統計量を算出（§5.8）
+3. user_meaning から entity_type=user × value_layer=social|symbolic|lambda_ctx ×
+   feature_normalization_version_id ごとに統計量を算出（§5.3.2 完了 Run フィルタ・§5.8）
 4. UNIQUE (batch_run_id, semantic_config_version_id, entity_type, value_layer,
    feature_normalization_version_id, aggregation_scope, aggregation_key)
    に対し INSERT ... ON CONFLICT DO UPDATE
@@ -372,6 +398,8 @@ feature_distribution_metric_recorded
 | 5 | phase_log 連携 | `feature_distribution_metric_recorded` が記録される | integration |
 | 6 | Retention | `calculated_at` 基準 DELETE | manual |
 | 7 | feature_distribution_metric 対称性 | 冪等キー・Retention・aggregation_scope が #556 と整合 | manual |
+| 8 | user 集計ウィンドウ | `batch_run` 時は完了 Run × 対象 version の全行（日次は `daily`） | manual |
+| 9 | version 混在分割 | 複数 `feature_normalization_version_id` が別行になる | integration |
 
 ---
 
@@ -379,22 +407,21 @@ feature_distribution_metric_recorded
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | user 集計ウィンドウ（batch_run スコープ時） | 「当該 Run までの全 user_meaning」か「当該日のみ」か BATCH-016 実装依存 | Human | — | §5.3.2 |
-| 2 | 複数 `feature_normalization_version_id` 混在時の集計分割 | user / item 集合で version が複数ある場合の行分割方針 | Human | — | 冪等キーに version 含有済み |
-| 5 | `meaning_distribution_metric_recorded` enum 追加 | 現状は `feature_distribution_metric_recorded` に包含（§5.6） | Human | — | §17.1 No.5 |
+| — | — | — | — | — | Human Review #557 にて No.1〜9 を決定済み（下記 §17.1） |
 
 ### 17.1 Human Review 決定事項（Issue #557 / #556 先例踏襲）
 
 | No | 論点 | 決定内容 | 備考 |
 | --: | ---- | -------- | ---- |
 | 1 | Observability §12.12 追加統計列 | MVP は **本表の列のみ**（`skewness` 等は物理列化しない） | `feature_distribution_metric_テーブル定義書` §17.1 No.1 同型 |
-| 2 | `feature_normalization_version_id` | **NOT NULL 必須**（§10 CHECK） | item / user 入力の再現性 |
+| 2 | `feature_normalization_version_id` | **NOT NULL 必須**（§10 CHECK）。混在時は **version ごとに行分割**（§5.8）。1 行への混在集約は禁止 | item / user 入力の再現性 |
 | 3 | `aggregation_scope` の Run 拡張 | MVP は **`batch_run` / `daily` / `semantic_config_version` のみ** | Run 単位は個別値正本（`user_meaning`）の責務 |
 | 4 | `batch_run_id` と Retention | **親 Run 削除後も Metric 保持**。dangling 許容 | #556 §17.1 No.4 同型 |
-| 5 | phase_log フェーズ名 | MVP は **`feature_distribution_metric_recorded` に Meaning 記録を包含**。専用 enum は追加しない | enum定義書 §6.19 変更は out_of_scope |
+| 5 | phase_log フェーズ名 | MVP は **`feature_distribution_metric_recorded` に Meaning 記録を包含**。`meaning_distribution_metric_recorded` enum は **追加しない** | enum定義書 §6.19 変更は out_of_scope |
 | 6 | reco 書き込み | MVP は **batch のみ INSERT / UPSERT** | #556 §17.1 No.6 同型 |
 | 7 | `entity_type` MVP 範囲 | **`item`（item_meaning）と `user`（user_meaning）** | `feature_code` 列は持たない |
 | 8 | 物理 schema | MVP は **`public` 単一 schema** | #556 §17.1 No.5 同型 |
+| 9 | user 集計ウィンドウ（`batch_run`） | 対象 `semantic_config_version_id` の **完了 Run**（`succeeded` / `partially_succeeded`）に紐づく `user_meaning` を実行時点で **全件集計**。日次フィルタは **`daily` scope に委譲** | §5.3.2 |
 
 ---
 
@@ -423,6 +450,7 @@ feature_distribution_metric_recorded
 - BATCH-016 / IF-DB-BATCH-016・`phase_log` trace 境界が整合している
 - `feature_distribution_metric` との責務分離・対称設計が §5.5 / §17.1 で明記されている
 - user_social / user_symbolic / λ_ctx 分布の扱いが §5.3 / §6 で明記されている
+- user 集計ウィンドウ（完了 Run・version フィルタ）と version 混在分割が §5.3.2 / §5.8 / §17.1 で明記されている
 - Observability §12.12 候補列との差分が §6 / §17.1 で整理されている
 - Retention（365 日以上）と `batch_run_log`（90 日）の非連動が §13 で明記されている
 - PK / Unique / Index / CHECK が DDL Task へ展開できる粒度である
