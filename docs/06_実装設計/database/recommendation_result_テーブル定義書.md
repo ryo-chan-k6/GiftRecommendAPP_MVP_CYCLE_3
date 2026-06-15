@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15                      |
+| 更新日         | 2026-06-15（#543 recommendation_run マージ反映） |
 
 ---
 
@@ -96,7 +96,7 @@ flowchart LR
 | `recommendation_request_id` | `recommendation_request.recommendation_request_id` | has | `ON` | Request 再実行で 1:N。recommendation_request 定義書 §8.2 |
 | `recommendation_run_id` | `recommendation_run.recommendation_run_id` | produces | `ON` + **UNIQUE** | 1 Run 1 Result。`uq_result_per_run` |
 
-> **`recommendation_run` 定義書（#543）** は未 merge 時、物理ER §9・§11 を正本とする。merge 後は Run 定義書との双方向整合を確認する。
+> **`recommendation_run` 定義書（#543 merge 済み）** と双方向整合する。produces 側は本テーブルの `recommendation_run_id` 物理 FK ON + `uq_result_per_run`（Run 定義書 §8.2・§5.2）。
 
 ### 5.4 論理ER / ドメイン定義 / API 契約との差分整理
 
@@ -106,10 +106,13 @@ flowchart LR
 | RecommendationResult §10.1 | `mode` | **`request_mode`** | Request / Run から生成時スナップショット。enum は `request_mode` |
 | RecommendationResult §10.1 | `created_at` | **`generated_at`** | 論理ER `generated_at` と同一意味（§17.1 No.3） |
 | RecommendationResult §10.1 | `displayed_at`, `expired_at` | **MVP 物理列あり（NULL 可）** | 画面表示・有効期限は将来利用。MVP は未使用可 |
-| RecommendationResult §10.1 | version 4 列 | **採用（NULL 可・LOGICAL FK）** | Run 生成時スナップショット。§5.7 |
+| RecommendationResult §10.1 | `ranking_config_version_id` | **`ranking_config_id`** | Run / ranking_config 定義書に合わせ物理名統一。ドメイン定義書 §10.1 との差分 |
+| RecommendationResult §10.1 | version 3 列 + reason template | **採用（Run 由来 3 列は NOT NULL・LOGICAL FK）** | Run §5.5 からコピー。§5.7 |
+| recommendation_run §5.4 | `trace_id` | **物理列なし（Run 側）** | 本テーブルは **`recommendation_request.trace_id`** を生成時スナップショット（Run 定義書 §5.4） |
 | RecommendationResult §10.1 | `result_payload`, `debug_payload` | **採用（jsonb）** | API 返却補助・debug 用 |
 | RecommendationResult §9.1 例 | `result_status: completed` | **DB は `generated`** | API 層マッピング（§5.6） |
 | API-PUB-002 §7.3.1 | `resultStatus: completed / empty / partial` | **DB `generated` / `empty` / `generated`** | `partial` は API 契約上の表現。DB は件数で表現 |
+| API-INT-002 §7.3.1（現状） | 0 件時 `resultStatus: completed` | **DB `empty` と不一致** | PUB-002 / DB は 0 件 `empty`。INT は #469 で **`empty` に修正推奨**（§5.6.4） |
 | 認証・認可方針書 §19.2 | `user_id` | **MVP 物理列なし** | Request 経由追跡 |
 | 物理ER §11 | `uq_result_per_run` | **採用** | `recommendation_run_id` UNIQUE |
 
@@ -127,7 +130,7 @@ flowchart LR
 | `resultItemCount` | `result_item_count` | 0 件時は `0` |
 | `fallbackUsed` | `fallback_used` | |
 | `displayMessage` | `display_message` | 0 件時など |
-| `meta.traceId` | `trace_id` | Request / Run から引き継ぎ |
+| `meta.traceId` | `trace_id` | **`recommendation_request.trace_id`** から引き継ぎ（Run 本体列なし。Run 定義書 §5.4） |
 | `meta.generatedAt` | `generated_at` | ISO 8601 → timestamptz |
 | （items 以外の metadata） | `result_payload` | evaluation / debug 時の version 等 |
 | `data.metadata.debugPayload`（Internal） | `debug_payload` | debug 返却時のみ |
@@ -136,26 +139,63 @@ flowchart LR
 
 ### 5.6 API `resultStatus` ↔ DB `result_status` マッピング
 
-| API `resultStatus`（API-PUB-002） | DB `result_status` | 条件 |
-| --------------------------------- | ------------------ | ---- |
+DB 永続化正本は **`generated` / `empty` / `failed`**（enum定義書 §6.2）。API 層は Public / Internal で語彙を分け、**api 層が変換**する（API設計方針書 §4 / §21.3 / §29 変換層）。
+
+#### 5.6.1 Public API（API-PUB-002）↔ DB
+
+| PUB `resultStatus` | DB `result_status` | 条件 |
+| ------------------ | ------------------ | ---- |
 | `completed` | `generated` | `result_item_count >= 1` |
 | `empty` | `empty` | `result_item_count = 0`（Hard Filter / Retrieval / Ranking 後 0 件） |
-| `partial` | `generated` | `0 < result_item_count < top_k`（API 契約上の部分返却。DB は generated + 件数で表現） |
-| （Result 生成失敗） | `failed` | Result Build / 保存失敗時。API は 5xx 等で返却し、行が残る場合のみ |
+| `partial` | `generated` | `0 < result_item_count < top_k`（部分返却。DB は件数で表現） |
+| （Result 生成失敗） | `failed` | Result Build / 保存失敗時。PUB は 5xx 等。行が残る場合のみ |
+
+Human Review #359 で PUB enum は `completed` / `empty` / `partial` 確定済み。
+
+#### 5.6.2 Internal API（API-INT-002）↔ DB（推奨）
+
+| INT `resultStatus`（推奨） | DB `result_status` | 条件 |
+| -------------------------- | ------------------ | ---- |
+| `completed` | `generated` | `result_item_count >= 1` かつ Fallback 未使用 |
+| `completed_with_fallback` | `generated` | `result_item_count >= 1` かつ `fallback_used = true` |
+| `partial` | `generated` | `0 < result_item_count < top_k` |
+| **`empty`** | **`empty`** | **`result_item_count = 0`** |
+| （Result 生成失敗） | `failed` | 5xx 等。行が残る場合のみ |
+
+> **現状差分**: API-INT-002 §7.3.1 は 0 件を `completed`（`resultItemCount: 0`）と記載し、DB / PUB の `empty` と不一致。**#469 で INT enum に `empty` を追加し、0 件例を `empty` に修正する**ことを推奨（§5.6.4）。
+
+#### 5.6.3 Internal API ↔ Public API（api 変換・推奨）
+
+| INT `resultStatus` | 追加条件 | PUB `resultStatus` | 備考 |
+| ------------------ | -------- | ------------------ | ---- |
+| `completed` | — | `completed` | — |
+| `completed_with_fallback` | `fallbackUsed=true` | `completed` | PUB は `fallbackUsed` で表現 |
+| `partial` | — | `partial` | — |
+| **`empty`** | `resultItemCount=0` | **`empty`** | `displayMessage` 等を api が引き継ぎ |
+| （失敗） | — | 5xx | DB `failed` は別途 |
+
+#### 5.6.4 契約間差分と #469 への引き渡し
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 本 Task（#544） | **DB 正本確定** + 上記マッピングを **推奨案** として記載。**OpenAPI / generated / API 契約書の変更は行わない** |
+| Task #469 | API-INT-002 の 0 件 `empty` 化、OpenAPI enum 固定、generated 一括同期。§5.6.1〜5.6.3 を **正式マッピング表** として Human Review 承認後に反映 |
+| ドメイン定義書 §7 | `completed` / `partial` 等は論理語彙として維持。DB 物理列 `generated` への対応は §5.4 注記 |
 
 > OpenAPI / generated の `resultStatus` enum 固定は **Task #469** へ委譲。本 Task では DB 正本を `recommendation_result_status`（`generated` / `empty` / `failed`）とする。
 
 ### 5.7 Version 情報の責務境界（`recommendation_run` 連携）
 
-論理ER §3（`recommendation_run` 属性）・RecommendationResult定義書 §10.1・Human Review 整理（§17.1 No.5）を正とする。
+recommendation_run 定義書 §5.5・§17.1 No.2 / No.3・RecommendationResult定義書 §10.1・Human Review 整理（§17.1 No.5）を正とする。
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 実行コンテキスト正本 | **`recommendation_run`** に `semantic_config_version_id` / `model_version_id` / `ranking_config_id` 等の個別列（Run 定義書 #543 で詳細化） |
-| Result ヘッダ | **生成時に Run からコピーしたスナップショット** を `semantic_config_version_id` / `model_version_id` / `ranking_config_version_id` / `reason_template_version_id` に保持 |
-| FK 方針 | version 参照は **LOGICAL FK**（物理 FK なし。recommendation_request 定義書 §5.7・§17.1 No.6 と同パターン） |
-| 目的 | 後続 Item / Reason 更新や Config 変更後も **当時の Result を再現・評価** できるようにする |
-| 後続 Task | `recommendation_run_テーブル定義書`（#543）で Run 側列・Index を詳細化し、本テーブルと突合する |
+| 実行コンテキスト正本 | **`recommendation_run`** に `semantic_config_version_id` / `model_version_id` / `ranking_config_id` を **NOT NULL 個別列** で保持（Run 定義書 §6） |
+| Result ヘッダ | Result Build INSERT 時に Run 3 列を **そのままコピー**（同名・同値）。加えて Reason 生成で解決した **`reason_template_version_id`** のみ Result 側追加（Run には列なし） |
+| 物理列名 | Run と一致: `semantic_config_version_id` / `model_version_id` / `ranking_config_id`。ドメイン定義書の `ranking_config_version_id` は **`ranking_config_id`** にマッピング（§5.4） |
+| FK 方針 | 4 列とも **LOGICAL FK**（物理 FK なし。Run §17.1 No.3 踏襲） |
+| 目的 | Config 更新後も **当時の Result / Item / Reason** を再現・評価できるようにする |
+| Run 状態連携 | Result INSERT 成功後、Run は `run_status = succeeded` へ遷移（Run 定義書 §11.1・状態遷移設計書 §5.1） |
 
 ### 5.8 保存禁止情報（payload 方針）
 
@@ -180,10 +220,10 @@ flowchart LR
 | 9 | `fallback_used` | Fallback Used | `boolean` | `yes` | — | — | — | `false` | Fallback 利用有無 |
 | 10 | `display_message` | Display Message | `text` | `no` | — | — | — | `NULL` | 画面向け補足（0 件時等） |
 | 11 | `caution_message` | Caution Message | `text` | `no` | — | — | — | `NULL` | 注意表示 |
-| 12 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `no` | — | — | — | `NULL` | Run からコピー。LOGICAL FK |
-| 13 | `model_version_id` | Model Version ID | `uuid` | `no` | — | — | — | `NULL` | Run からコピー。LOGICAL FK |
-| 14 | `ranking_config_version_id` | Ranking Config Version ID | `uuid` | `no` | — | — | — | `NULL` | Run からコピー。LOGICAL FK |
-| 15 | `reason_template_version_id` | Reason Template Version ID | `uuid` | `no` | — | — | — | `NULL` | Run からコピー。LOGICAL FK |
+| 12 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `yes` | — | LOGICAL | — | — | Run からコピー（Run 定義書 §6 No.4） |
+| 13 | `model_version_id` | Model Version ID | `uuid` | `yes` | — | LOGICAL | — | — | Run からコピー（Run 定義書 §6 No.5） |
+| 14 | `ranking_config_id` | Ranking Config ID | `uuid` | `yes` | — | LOGICAL | — | — | Run からコピー（Run 定義書 §6 No.6。ranking_config 定義書 §8） |
+| 15 | `reason_template_version_id` | Reason Template Version ID | `uuid` | `no` | — | LOGICAL | — | `NULL` | Reason 生成時解決。Run には列なし（Result 側のみ） |
 | 16 | `result_payload` | Result Payload | `jsonb` | `no` | — | — | — | `NULL` | 返却 metadata 等の補助 JSON |
 | 17 | `debug_payload` | Debug Payload | `jsonb` | `no` | — | — | — | `NULL` | debug 返却時のみ |
 | 18 | `trace_id` | Trace ID | `text` | `no` | — | — | — | `NULL` | 横断 trace |
@@ -214,7 +254,7 @@ flowchart LR
 | `recommendation_run_id` | `recommendation_run.recommendation_run_id` | `ON` | 物理 FK + UNIQUE | 1:0..1 produces |
 | `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | reco 解決済み ID のみ保存 | 物理 FK なし |
 | `model_version_id` | `model_version.model_version_id` | `LOGICAL` | 同上 | 物理 FK なし |
-| `ranking_config_version_id` | `ranking_config.ranking_config_id` 等 | `LOGICAL` | Run / Config 定義書と突合（#543 連携） | 物理 FK なし |
+| `ranking_config_id` | `ranking_config.ranking_config_id` | `LOGICAL` | Run §8.1・ranking_config 定義書 §8 と双方向整合 | 物理 FK なし |
 | `reason_template_version_id` | `reason_template` 系 version | `LOGICAL` | Reason 定義書連携 | 物理 FK なし |
 
 ### 8.2 被参照（子テーブル）
@@ -298,9 +338,11 @@ stateDiagram-v2
 
 1. Ranking 完了後、top_k 件を抽出
 2. `result_status` を件数から決定（`generated` / `empty`）
-3. Run から version 列・`request_mode`・`trace_id` をスナップショット
-4. Result ヘッダ INSERT → `recommendation_result_item` へ続けて INSERT（同一トランザクション推奨）
-5. api へ Internal API レスポンス返却 → Public API へマッピング
+3. **`recommendation_request`** から `request_mode`・`trace_id` をスナップショット（Run 本体に `trace_id` 列なし。Run 定義書 §5.4）
+4. **`recommendation_run`** から version 3 列（`semantic_config_version_id` / `model_version_id` / `ranking_config_id`）をコピー
+5. Result ヘッダ INSERT → `recommendation_result_item` へ続けて INSERT（同一トランザクション推奨）
+6. Run を `run_status = succeeded` に UPDATE（`completed_at` 設定。Run 定義書 §11.1）
+7. api へ Internal API レスポンス返却 → Public API へマッピング
 
 ---
 
@@ -308,7 +350,7 @@ stateDiagram-v2
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **長期（具体日数未定）**。Observability 設計書では **180〜365 日候補**（Feedback 分析用途）。Online推薦コアは原則削除しない（物理ER §13） |
+| 保持期間 | **180 日〜365 日**（ログ・Observability設計書 §20.2 参考。Run 定義書 §13 と同値）。具体日数は **Phase2 ⑥ データ保持方針 Task** で Online コア全体と一括確定 |
 | 削除方式 | MVP では **DELETE なし** |
 | 削除条件 | — |
 | 論理削除 | MVP 対象外 |
@@ -344,9 +386,9 @@ CREATE TABLE recommendation_result (
   fallback_used boolean NOT NULL DEFAULT false,
   display_message text,
   caution_message text,
-  semantic_config_version_id uuid,
-  model_version_id uuid,
-  ranking_config_version_id uuid,
+  semantic_config_version_id uuid NOT NULL,
+  model_version_id uuid NOT NULL,
+  ranking_config_id uuid NOT NULL,
   reason_template_version_id uuid,
   result_payload jsonb,
   debug_payload jsonb,
@@ -390,8 +432,7 @@ CREATE TABLE recommendation_result (
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | API `resultStatus` と DB `result_status` の正式マッピング表 | OpenAPI enum と DB enum の差異 | Human | Epic 終盤 #469 前 | §5.6 で暫定整理済み |
-| 2 | `ranking_config_version_id` の参照先テーブル物理名 | ranking_config 定義書との最終突合 | Human | #543 / Config 系 merge 後 | LOGICAL FK のみ |
+| 1 | API `resultStatus` と DB `result_status` の正式マッピング表 | PUB / INT / DB の enum 差異。INT 0 件が `completed` で DB `empty` と不一致 | Human | Epic 終盤 #469 前 | §5.6 に推奨案記載。**#544 では OpenAPI 変更なし**。#469 で INT 0 件を `empty` に修正し OpenAPI 同期 |
 
 ### 17.1 Human Review 整理事項（Issue #544）
 
@@ -401,8 +442,9 @@ CREATE TABLE recommendation_result (
 | 2 | `uq_result_per_run` | `recommendation_run_id` UNIQUE（1 Run 1 Result） | 物理ER §11 |
 | 3 | `generated_at` 物理列名 | 論理ER `generated_at` と同一意味。物理名 **`generated_at`** | RecommendationResult §10.1 `created_at` との差分は §5.4 |
 | 4 | Online推薦コア Retention | MVP DELETE なし。具体期間は Phase2 ⑥ Task | Observability 180〜365 日候補を注記 |
-| 5 | version 列の保持先 | Run 側が実行正本。Result は **生成時スナップショット** を LOGICAL FK で保持 | §5.7 |
+| 5 | version 列の保持先 | Run 側が実行正本（3 列 NOT NULL）。Result は INSERT 時に **同名 3 列をコピー** + `reason_template_version_id` のみ Result 追加 | §5.7・Run 定義書 §5.5 |
 | 6 | 0 件結果 | error ではなく `result_status=empty` の正常 Result | テーブル一覧 §3 補足 |
+| 7 | API 層 `resultStatus` マッピング | **3 層モデル**: DB（`generated`/`empty`/`failed`）／INT（reco↔api）／PUB（UI 向け `completed`/`empty`/`partial`）。0 件は **DB・PUB・INT すべて `empty` に統一**（INT-002 は #469 で修正） | §5.6.1〜5.6.4 |
 
 ---
 
@@ -417,6 +459,8 @@ CREATE TABLE recommendation_result (
 | enum | `docs/06_実装設計/database/enum定義書.md` | §6.2 / §8 |
 | 状態遷移 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | §5.2 |
 | 親 Request | `docs/06_実装設計/database/recommendation_request_テーブル定義書.md` | has 関係 |
+| 親 Run | `docs/06_実装設計/database/recommendation_run_テーブル定義書.md` | produces 関係・version 正本 |
+| Config | `docs/06_実装設計/database/ranking_config_テーブル定義書.md` | `ranking_config_id` LOGICAL 参照 |
 | API 契約 | `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` | Response マッピング |
 | API 契約 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | Internal Response |
 | API 契約 | `docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md` | resultId 前提 |
@@ -435,7 +479,8 @@ CREATE TABLE recommendation_result (
 - `result_status` が enum定義書 §6.2 と一致している
 - `uq_result_per_run`（1 Run 1 Result）が明記されている
 - 生成後原則 UPDATE しない方針が明記されている
-- API-PUB-002 `recommendationResultId` マッピングと API / DB `result_status` 差分が整理されている
-- `recommendation_request` 定義書と章構成・MVP 方針が一貫している
+- API-PUB-002 `recommendationResultId` マッピングと PUB / INT / DB `result_status` 層間差分・INT 0 件不一致の推奨修正が §5.6 に整理されている
+- `recommendation_request` / `recommendation_run` 定義書と章構成・MVP 方針が双方向整合している
+- `ranking_config_id` 物理名が Run / ranking_config 定義書と一致している
 - apps/** 変更がない
 - secret / `.env` 実値が含まれていない

@@ -18,7 +18,7 @@ parent:
     - number: 537
       purpose: "recommendation_request テーブル定義書（has 関係の親 Request。merge 済み前提）"
     - number: 543
-      purpose: "推奨先行: recommendation_run テーブル定義書（produces 関係の親 Run。Batch R06 No.1。未 merge 時も物理ER・論理ER §14.1 で着手可能）"
+      purpose: "recommendation_run テーブル定義書（produces 関係の親 Run。merge 済み前提）"
     - number: 545
       purpose: "並行可能: recommendation_result_item テーブル定義書（contains 関係の子。Batch R06 No.3）"
     - number: 546
@@ -28,6 +28,8 @@ parent:
   related_prs:
     - number: 542
       purpose: "Task #537 PR（recommendation_request。merge 済み前提）"
+    - number: 548
+      purpose: "Task #543 PR（recommendation_run。merge 済み前提）"
 
 commands:
   primary: "/work-issue"
@@ -53,8 +55,7 @@ background: |
   Phase2 子 Task ③ Batch R06 No.2。論理ER §14.1・テーブル一覧 §3 No.3。
   Online推薦結果ヘッダ正本。`recommendation_result_item` / `recommendation_reason` / `recommendation_feedback` の親。
   IF-DB-RECO-007（Recommendation Result 保存）の DB 正本（ヘッダ部分）。
-  親 Epic Branch 最新（recommendation_request #537 / PR #542 merge 済み前提）を前提とする。
-  推奨先行 Task #543（recommendation_run）は未 merge でも、物理ER §9・論理ER §14.1 を正本として着手可能とする。
+  親 Epic Branch 最新（recommendation_request #537 / PR #542、recommendation_run #543 / PR #548 merge 済み前提）を前提とする。
   Issue #544 / Branch `docs/task-544-recommendation-result-table-spec` で作業する。
 
 objective: |
@@ -71,6 +72,7 @@ scope:
   - "packages/code-definitions/state/recommendation_result_status.yaml との整合"
   - "状態遷移設計書 §5.2 Recommendation Result 状態遷移（generated / empty / failed）との整合"
   - "recommendation_request テーブル定義書（has 関係・Request 再実行で複数 Result）との双方向整合"
+  - "recommendation_run テーブル定義書（produces 関係・version 3 列正本・Run 状態連携）との双方向整合"
   - "API-PUB-002 / API-INT-002（recommendationResultId → recommendation_result_id マッピング）との整合"
   - "API-PUB-004（Feedback 前提 resultId）との整合"
   - "インターフェース一覧 IF-DB-RECO-007・処理構成定義書・処理フロー概要図との整合"
@@ -80,7 +82,7 @@ scope:
 
 out_of_scope:
   - "recommendation_result_item / recommendation_reason / recommendation_feedback テーブル定義書（R06 No.3〜5 別 Task）"
-  - "recommendation_run テーブル定義書の再作成（#543。merge 済みを参照。未 merge 時は物理ER §9 を正本）"
+  - "recommendation_run テーブル定義書の再作成（#543 merge 済みを参照）"
   - "recommendation_request テーブル定義書の再作成（#537 merge 済みを参照）"
   - "user_semantic / user_feature / user_meaning テーブル定義書"
   - "DDL・migration / seed"
@@ -144,8 +146,11 @@ input:
       required: false
       purpose: "Path resultId 前提（API-PUB-002 recommendationResultId 整合）"
     - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
-      required: false
-      purpose: "produces 関係（recommendation_run_id 物理 FK ON・uq_result_per_run）・#543 merge 後の双方向整合"
+      required: true
+      purpose: "produces 関係（recommendation_run_id 物理 FK ON・uq_result_per_run）・version 3 列正本・Run 状態連携（merge 済み前提）"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "ranking_config_id LOGICAL 参照・Run / Result 双方向整合"
   packages:
     - path: "packages/code-definitions/state/recommendation_result_status.yaml"
       required: true
@@ -209,7 +214,7 @@ dependencies:
     - number: 537
       purpose: "recommendation_request テーブル定義書 完了（merge 済み前提）"
     - number: 543
-      purpose: "推奨先行: recommendation_run テーブル定義書（produces 関係整合。未 merge 時は物理ER §9 を正本）"
+      purpose: "recommendation_run テーブル定義書 完了（merge 済み前提）"
   blocking: false
 
 parallel_control:
@@ -227,6 +232,7 @@ test_policy:
     - "RecommendationResult定義書 §10.1 項目表との整合（論理ER 差分は明示）"
     - "enum定義書 §6.2 / packages/code-definitions/state/recommendation_result_status.yaml との整合"
     - "状態遷移設計書 §5.2 result_status 遷移・生成後不変方針との整合"
+    - "recommendation_run 定義書 produces / version 3 列 / Run 状態連携との双方向整合"
     - "recommendation_request 定義書 has 関係との双方向整合"
     - "API-PUB-002 / API-INT-002 recommendationResultId マッピングとの整合"
     - "テーブル一覧 §3 No.3・0件結果 empty 正常扱いとの整合"
@@ -263,17 +269,20 @@ human_review_decisions:
     decision: "MVP DELETE なし。具体保持期間は Phase2 ⑥ データ保持方針 Task で確定（Observability 180〜365日候補を注記）"
   - id: 5
     topic: "version 列の保持先（Result vs Run）"
-    decision: "Run 側に実行コンテキスト正本。Result ヘッダは表示・評価に必要な最小 version 参照を LOGICAL FK または冗長保持で整理（RecommendationResult定義書 §10.1 と Run 定義書の整合を本 Task で明記）"
+    decision: "Run 側が実行正本（3 列 NOT NULL）。Result は INSERT 時に同名 3 列（semantic_config_version_id / model_version_id / ranking_config_id）をコピー + reason_template_version_id のみ Result 追加"
   - id: 6
     topic: "0件結果の扱い"
     decision: "error ではなく result_status=empty の正常 Result として保存（テーブル一覧 Online推薦系補足）"
+  - id: 7
+    topic: "API 層 resultStatus マッピング"
+    decision: "3 層モデル（DB / INT / PUB）。0 件は DB・PUB・INT すべて empty に統一。INT-002 の 0 件 completed は #469 で empty に修正推奨（§5.6.4）"
 
 notes:
   - "Batch R06 No.2: recommendation_result（Online推薦系ヘッダ）"
   - "Issue #544 / Branch docs/task-544-recommendation-result-table-spec"
   - "Issue 本文のテーブル一覧参照 §4 は User意味推定系を指すため、正本は §3 No.3 を用いる"
-  - "R06 No.1 recommendation_run（#543）未 merge 時は物理ER §9・論理ER §14.1 を正本として着手可能"
   - "R06 No.3 recommendation_result_item 等は本 Task の後続 Task。Result 側から 1:N contains 関係のみ整理"
-  - "先行 merge 済み前提: #537 / PR #542（recommendation_request）"
+  - "R06 No.1 recommendation_run（#543 / PR #548）merge 済み前提"
+  - "先行 merge 済み前提: #537 / PR #542（recommendation_request）、#543 / PR #548（recommendation_run）"
   - "Human Review 決定事項: human_review_decisions 参照"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

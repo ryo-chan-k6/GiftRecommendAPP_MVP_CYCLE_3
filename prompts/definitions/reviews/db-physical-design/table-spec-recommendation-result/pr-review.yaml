@@ -117,8 +117,11 @@ input:
       required: true
       purpose: "has 関係（recommendation_request_id 物理 FK）との双方向整合"
     - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
-      required: false
-      purpose: "produces 関係・uq_result_per_run との双方向整合（#543 merge 後）"
+      required: true
+      purpose: "produces 関係・uq_result_per_run・version 3 列正本・Run 状態連携との双方向整合（merge 済み前提）"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "ranking_config_id LOGICAL 参照との整合"
     - path: "packages/code-definitions/state/recommendation_result_status.yaml"
       required: true
       purpose: "result_status packages 正本との整合"
@@ -149,7 +152,7 @@ review_points:
     - "論理ER §3 の属性と矛盾しないか（論理ER / ドメイン定義書との差分は明示されているか）"
     - "テーブル一覧 §3 No.3 の分類・用途と一致しているか"
     - "RecommendationResult定義書 §10.1 の項目・生成後不変方針が反映されているか"
-    - "recommendation_request 定義書と章構成・MVP 方針が一貫しているか"
+    - "recommendation_request / recommendation_run 定義書と章構成・MVP 方針が双方向整合しているか"
   db:
     - "PK / Index / unique / CHECK が DDL Task へ展開できる粒度か"
     - "recommendation_run → recommendation_result produces（1:0..1）関係が明記されているか"
@@ -159,7 +162,9 @@ review_points:
     - "result_status と enum定義書 §6.2 / packages 正本が一致しているか"
     - "0件結果が result_status=empty の正常扱いであることが明記されているか"
     - "生成後原則 UPDATE しない方針（状態遷移設計書 §5.2.3）が明記されているか"
-    - "API-PUB-002 / API-INT-002 recommendationResultId マッピングが整理されているか"
+    - "Run 由来 version 3 列（NOT NULL）と ranking_config_id 物理名が Run / ranking_config 定義書と一致しているか"
+    - "PUB / INT / DB の resultStatus 層間マッピングと INT 0 件不一致の推奨修正が §5.6 に整理されているか"
+    - "Result INSERT 後の Run run_status=succeeded 連携が明記されているか"
   security:
     - "result_payload / debug_payload に secret・個人情報過剰保持を避ける方針が明記されているか"
     - "secret / .env 実値が含まれていないか"
@@ -187,21 +192,24 @@ human_review_decisions:
     decision: "MVP DELETE なし。具体保持期間は Phase2 ⑥ データ保持方針 Task で確定（Observability 180〜365日候補を注記）"
   - id: 5
     topic: "version 列の保持先（Result vs Run）"
-    decision: "Run 側に実行コンテキスト正本。Result ヘッダは表示・評価に必要な最小 version 参照を LOGICAL FK または冗長保持で整理"
+    decision: "Run 側が実行正本（3 列 NOT NULL）。Result は INSERT 時に同名 3 列をコピー + reason_template_version_id のみ Result 追加"
   - id: 6
     topic: "0件結果の扱い"
     decision: "error ではなく result_status=empty の正常 Result として保存"
+  - id: 7
+    topic: "API 層 resultStatus マッピング"
+    decision: "3 層モデル（DB / INT / PUB）。0 件は DB・PUB・INT すべて empty に統一。INT-002 の 0 件 completed は #469 で empty に修正推奨"
 
 risk_points:
   - "RecommendationResult定義書 §10.1 の項目数と論理ER §3 簡略属性の差分整理"
-  - "recommendation_run 定義書（#543）未 merge 時の produces / uq_result_per_run 方針の後続整合"
-  - "version 列の Run / Result 冗長保持方針が後続 recommendation_run Task と矛盾しないか"
+  - "RecommendationResult定義書の ranking_config_version_id と DB ranking_config_id の命名差分"
+  - "trace_id が Request 由来であること（Run 本体列なし）の明記"
+  - "API-INT-002 0 件 resultStatus=completed と DB/PUB empty の不一致（#469 で修正推奨。§5.6.4）"
 
 notes:
   - "Batch R06 No.2: recommendation_result"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-recommendation-result.yaml"
   - "Issue #544 / Branch docs/task-544-recommendation-result-table-spec"
-  - "先行 merge 済み前提: #537 / PR #542（recommendation_request）"
-  - "推奨先行: #543 recommendation_run（未 merge 時は物理ER §9 を正本）"
+  - "先行 merge 済み前提: #537 / PR #542（recommendation_request）、#543 / PR #548（recommendation_run）"
   - "Human Review 決定事項: human_review_decisions 参照"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

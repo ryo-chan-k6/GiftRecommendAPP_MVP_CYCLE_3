@@ -86,7 +86,7 @@ flowchart LR
 | 再実行 | 同一 Request に対し **複数 Run** が存在し得る（物理ER §9） |
 | 再現性 | Run 作成時に `pair_id` / version 列を **固定**（§5.3・§5.5） |
 
-> **後続 Task**: `recommendation_result` テーブル定義書（Issue #544）で produces 側 FK・unique（1 Run 1 Result）を詳細化する。本 Task では **Run 側列定義と親子関係方針** を確定する。
+> **双方向整合**: `recommendation_result` テーブル定義書（Issue #544）で produces 側 FK ON + `uq_result_per_run`（1 Run 1 Result）を確定。Run 側は本 Task で **Run 列定義と被参照方針** を正本とする。
 
 ### 5.3 Pair 解決（`pair_id`）
 
@@ -389,6 +389,7 @@ CREATE TABLE recommendation_run (
 | Config | `docs/06_実装設計/database/ranking_config_テーブル定義書.md` | used_by LOGICAL |
 | Log | `docs/06_実装設計/database/phase_log_テーブル定義書.md` | owner 連携 |
 | Log | `docs/06_実装設計/database/error_log_テーブル定義書.md` | may_have 連携 |
+| Result | `docs/06_実装設計/database/recommendation_result_テーブル定義書.md` | produces 双方向整合 |
 | API | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | Run 生成 I/F |
 | I/F | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-RECO-001/002/009 |
 | code | `packages/code-definitions/state/recommendation_run_status.yaml` | run_status 正本 |
@@ -400,10 +401,11 @@ CREATE TABLE recommendation_run (
 
 - テーブル一覧 §3 No.2・論理ER §14.1・物理ER §9 / §10 / §11 / §17 と矛盾していない
 - Online推薦フロー（request → run → result）の **実行単位** として明記されている
-- `recommendation_request` との executes（ON）・`recommendation_result` との produces（方針）が明記されている
+- `recommendation_request` との executes（ON）・`recommendation_result` との produces（ON + `uq_result_per_run`）が明記されている
 - `pair_id` 物理 FK と version 3 列 LOGICAL FK が DDL 展開可能な粒度である
 - `run_status` と enum定義書 §6.1 / packages 正本が一致している
 - `phase_log` / `error_log` の owner 連携と `recommendation_run_phase_log` 非物理化が明記されている
 - recommendation_request 定義書 §5.7 と双方向整合している
+- recommendation_result 定義書 §5.3 / §5.7 / §8.1 と双方向整合している
 - apps/** 変更がない
 - secret / `.env` 実値が含まれていない
