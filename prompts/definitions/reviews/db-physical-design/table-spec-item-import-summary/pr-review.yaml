@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 538
   issue: 533
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-import-summary.yaml"
   source_branch: "docs/task-533-item-import-summary-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 533
     required: true
   pr:
-    number: null
+    number: 538
     required: true
   diff:
     required: true
