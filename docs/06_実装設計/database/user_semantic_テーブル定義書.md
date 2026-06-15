@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15                      |
+| 更新日         | 2026-06-15（Human Review #553 反映） |
 
 ---
 
@@ -49,7 +49,7 @@
 
 - **MOD-RECO-004（User Semantic Extractor）** の DB 保存先（機能×モジュール対応表・インターフェース一覧 IF-DB-RECO-003）
 - `recommendation_request` の入力テキスト（`preferred_text` / `non_preferred_text` / `ng_text` 等）と `relationship_code` / `occasion_code` 文脈を入力に Semantic Concept を抽出し、結果を `extracted_semantic_json` に格納する
-- **Run 単位保存**（テーブル一覧 §4 補足）。同一 `recommendation_run_id` に対し MVP では **1 行**を基本とする
+- **Run 単位保存**（テーブル一覧 §4 補足・§17.1 No.2 決定済み）。同一 `recommendation_run_id` に対し **1 行**
 - **version スナップショット**: Run 開始時に解決済みの `semantic_config_version_id`（`recommendation_run.semantic_config_version_id` と整合）を行に保持し、後から `is_current` が切替わっても当該行の意味は不変
 - api は直接 DML しない（認証・認可方針書 §9.3）。作成は reco のみ
 
@@ -75,7 +75,7 @@
 
 ### 5.3 `extracted_semantic_json` 保持方針
 
-Semanticルール定義書 §3.1・§7・§11・§14 を正本とする。`semantic_config_version_id` は **列で保持**し、JSON 内には重複保存しない。
+Semanticルール定義書 §3.1・§7・§11・§14 を正本とする。`semantic_config_version_id` は **列で保持**し、JSON 内には重複保存しない。スキーマ粒度は §17.1 No.3 決定済み。
 
 | キー | 必須 | 型 | 説明 |
 | ---- | ---- | -- | ---- |
@@ -149,7 +149,7 @@ Semanticルール定義書 §3.1・§7・§11・§14 を正本とする。`seman
 | 観点 | 方針 |
 | ---- | ---- |
 | 解決タイミング | **Run 開始時**に reco が Config Resolver で解決し、`recommendation_run.semantic_config_version_id` に固定（`recommendation_run_テーブル定義書` §8.1） |
-| 行への固定 | 抽出完了時、Run と **同一の** `semantic_config_version_id` を本行へ保存（再現性・監査用の明示コピー） |
+| 行への固定 | 抽出完了時、Run と **同一の** `semantic_config_version_id` を本行へ保存（再現性・監査用。§17.1 No.4 決定済み） |
 | Run との関係 | 通常は `user_semantic.semantic_config_version_id = recommendation_run.semantic_config_version_id`。不一致は **実装バグ**として扱う |
 | `item_semantic` との差分 | Item 側は BATCH-010 実行時に独立解決 + **物理 FK ON**。User 側は Run 固定 version を継承 + **LOGICAL FK**（`semantic_config_version_テーブル定義書` §8.2・`item_semantic_テーブル定義書` §17.1 No.1 注記） |
 | `user_feature` 連携 | 後続 Task で同一 `recommendation_run_id` / `semantic_config_version_id` を参照して Feature 生成 |
@@ -186,11 +186,11 @@ Semanticルール定義書 §3.1・§7・§11・§14 を正本とする。`seman
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `user_semantic_id` | サロゲート UUID | — |
-| UNIQUE | `recommendation_run_id` | **1 Run あたり 1 行**（MVP） | テーブル一覧 §4 補足「保存単位 recommendation_run_id」 |
+| UNIQUE | `recommendation_run_id` | **1 Run あたり 1 行** | テーブル一覧 §4 補足・§17.1 No.2 決定済み |
 
-**履歴方針**: MVP では Run 再実行は **新規 `recommendation_run` 行**として扱い、本テーブルも新 Run に紐づく新行を INSERT する。同一 Run 内の再抽出は **行を UPDATE しない**（失敗時は Run 失敗扱い・再 Run は新行）。
+**履歴方針**: Run 再実行は **新規 `recommendation_run` 行**として扱い、本テーブルも新 Run に紐づく新行を INSERT する。同一 Run 内の再抽出は **行を UPDATE しない**（失敗時は Run 失敗扱い・再 Run は新行）。
 
-> 物理ER §9 は `generates` 1:N と記載するが、MVP は UNIQUE(`recommendation_run_id`) で実質 1:1 に制約。将来の複数抽出行が必要になった場合は UNIQUE 見直しを別 Task 化する（§17.1 No.2）。
+> 物理ER §9 は `generates` 1:N と ER 図上は多対一だが、MVP は UNIQUE(`recommendation_run_id`) で実質 1:0..1 に制約（§17.1 No.2 決定済み・物理ER §9 / §11 反映済み）。将来の複数抽出行が必要になった場合は UNIQUE 見直しを別 Task 化する。
 
 ---
 
@@ -201,7 +201,7 @@ Semanticルール定義書 §3.1・§7・§11・§14 を正本とする。`seman
 | カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
 | ------ | ------ | ------ | ---------- | ---- |
 | `recommendation_run_id` | `recommendation_run.recommendation_run_id` | `ON` | `ON DELETE RESTRICT` | `recommendation_run_テーブル定義書` §8.2 と同型 |
-| `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | reco INSERT 前に存在確認 + Index | §17.1 No.1 提案。`item_semantic` は ON |
+| `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | reco INSERT 前に存在確認 + Index | §17.1 No.1 決定済み。`item_semantic` は ON |
 
 ### 8.2 被参照
 
@@ -240,7 +240,7 @@ user_meaning 射影（後続 Task）
 | `idx_user_semantic_version_id` | `semantic_config_version_id` | btree | version 単位参照・監査 | LOGICAL FK 整合 |
 | `idx_user_semantic_generated_at` | `generated_at` DESC | btree | 時系列調査 | MVP 推奨 |
 
-> 物理ER §10 には `user_semantic` 専用 Index 行が未記載。本 Task で上記を確定し、Epic 横断で物理ER §10 追記を別 Task 化する。
+> 物理ER §10・§11 に本テーブル Index / 制約を反映済み（#553）。
 
 ---
 
@@ -254,7 +254,7 @@ user_meaning 射影（後続 Task）
 | `chk_extracted_semantic_json_object` | CHECK | `extracted_semantic_json` | `jsonb_typeof(extracted_semantic_json) = 'object'` | — |
 | `chk_extracted_semantic_json_concepts_array` | CHECK | `extracted_semantic_json` | `jsonb_typeof(extracted_semantic_json -> 'concepts') = 'array'` | §5.3 |
 
-> `semantic_config_version_id` への物理 FK 制約は MVP では **付与しない**（LOGICAL + Index）。`concept_code` 個別値の CHECK はアプリ層 + seed 整合に委ねる。
+> `semantic_config_version_id` への物理 FK 制約は MVP では **付与しない**（LOGICAL + Index。§17.1 No.1 決定済み）。`concept_code` 個別値の CHECK はアプリ層 + seed 整合に委ねる。
 
 ---
 
@@ -390,14 +390,11 @@ INSERT INTO user_semantic (
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `semantic_config_version_id` 物理 FK | `item_semantic` は ON・本テーブルは LOGICAL 候補。`semantic_config_version_テーブル定義書` §8.2 との最終整合 | Human | Human Review | §17.1 No.1 |
-| 2 | Run あたり行数 | 物理ER 1:N vs テーブル一覧 Run 単位 1 行。MVP UNIQUE 採用の妥当性 | Human | Human Review | §17.1 No.2 |
-| 3 | `extracted_semantic_json` 必須キー | `item_semantic.semantic_json` との完全同型 vs User 固有キー追加 | Human | Human Review | §17.1 No.3 |
-| 4 | Run version 列の重複保持 | `recommendation_run.semantic_config_version_id` と行 version の二重保持要否 | Human | Human Review | §17.1 No.4 |
+| — | — | — | — | — | Human Review #553 にて No.1〜4 を決定済み（下記 §17.1） |
 
-### 17.1 Human Review 提案（Issue #553）
+### 17.1 Human Review 決定事項（Issue #553）
 
-| No | 論点 | 提案内容 | 判断者 | 備考 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
 | 1 | `semantic_config_version_id` FK | **LOGICAL 維持**（Index `idx_user_semantic_version_id`）。物理 FK は付与しない | Human | `item_semantic` ON との意図的差分。`recommendation_run` も version は LOGICAL |
 | 2 | Unique キー | **`recommendation_run_id` UNIQUE**（Run あたり 1 行） | Human | テーブル一覧 §4 補足。再推薦は新 Run |

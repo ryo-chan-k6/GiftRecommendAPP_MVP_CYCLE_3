@@ -128,7 +128,7 @@ API-PUB-007（Semantic 設定取得）の `semanticConcepts` 配列の正本と�
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `user_semantic` | `extracted_semantic_json` 内 concept 参照 | generates_with | `LOGICAL` | JSON 内は `concept_code` 参照を推奨。詳細は user_semantic Task |
+| `user_semantic` | `extracted_semantic_json` 内 concept 参照 | generates_with | `LOGICAL` | JSON 内は `concept_code` 参照。`user_semantic_テーブル定義書` §5.3・§8.2 |
 | `item_semantic` | `semantic_json` 内 concept 参照 | generates_with | `LOGICAL` | batch 設計方針書の `semantic_concepts` 配列は code 参照 |
 
 > MVP では派生データは **`concept_code` + `semantic_config_version_id`** で Concept を特定する設計を基本とする。`semantic_concept_id` への物理 FK は Rule 系子テーブルに限定する。
