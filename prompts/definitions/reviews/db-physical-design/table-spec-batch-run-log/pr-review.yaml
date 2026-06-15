@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 539
   issue: 534
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-batch-run-log.yaml"
   source_branch: "docs/task-534-batch-run-log-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 534
     required: true
   pr:
-    number: null
+    number: 539
     required: true
   diff:
     required: true
