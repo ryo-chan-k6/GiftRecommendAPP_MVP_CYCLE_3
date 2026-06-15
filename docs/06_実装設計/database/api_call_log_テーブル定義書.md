@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15（`ranking_supplement` / `fetch_cursor_id` 連携追記） |
+| 更新日         | 2026-06-15（Batch 系 Log Retention 90 日統一・#536 cross-cutting） |
 
 ---
 
@@ -314,9 +314,10 @@ WHERE api_call_log_id = :api_call_log_id
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **90 日〜180 日**（ログ・Observability設計書 §20.2 推奨。MVP 初期は方針明記のみ） |
+| 保持期間 | **90 日**（Human Review #536 No.10 cross-cutting 決定。Batch 系 Log 統一） |
 | 削除方式 | 後続 Retention Batch による **物理 DELETE** 候補 |
-| 削除条件 | `requested_at < now() - interval '90 days'` 等（具体閾値は Human Review） |
+| 削除条件 | `requested_at < now() - interval '90 days'` |
+| Batch アンカー | `batch_run_log_テーブル定義書` §13.1（`batch_run_id`） |
 | 論理削除 | 採用しない（Log 追記型） |
 | partition | MVP **未適用**。物理ER §17 No.5 に従い本番前に range partition 検討 |
 | アーカイブ | MVP 対象外 |
@@ -377,7 +378,7 @@ WHERE api_call_log_id = :api_call_log_id
 | 2 | HTTP ステータス列名 | **`response_status`（integer）を採用**。外部商品データ連携設計書 §8.4 の `http_status` は本列に統合 | Human | §5.4 |
 | 3 | Observability 追加列の採否 | **`trace_id`（nullable）・`request_params_hash`（NOT NULL）・`duration_ms`（nullable）・`error_code`（nullable）・`api_version`（nullable）を採用** | Human | §5.4・§6 |
 | 4 | `fetch_cursor_id` nullable | **nullable 維持**。BATCH-001 / BATCH-002 の **外部 API 呼び出し Log**（`genre_search` / `item_ranking`）は `fetch_cursor_id = NULL`。BATCH-002 は `ranking_supplement` カーソルを `fetch_cursor` に **登録**するが、ランキング API の `api_call_log` には紐づけない。BATCH-003 が `ranking_supplement` を消費した `item_search` 呼び出しでは **NOT NULL**（通常） | Human | §5.2・`fetch_cursor` 定義書 §17.1 No.5 |
-| 5 | Retention 具体日数 | **方針 90〜180 日を明記**。自動削除 Batch は MVP 外（後続 Task） | Human | §13 |
+| 5 | Retention 具体日数 | **90 日**（#536 No.10 Batch 系 Log 統一） | Human | §13 |
 
 ---
 

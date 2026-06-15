@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15（Human Review #534 全項目決定・item_import_summary 連携） |
+| 更新日         | 2026-06-15（Batch 系 Log Retention 90 日統一・#536 cross-cutting） |
 
 ---
 
@@ -398,13 +398,28 @@ WHERE batch_run_id = :batch_run_id
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **180 日**（Human Review #534 No.3 決定。ログ・Observability設計書 §20.2 下限） |
+| 保持期間 | **90 日**（Human Review #536 No.10 cross-cutting 決定。旧 #534 No.3 の 180 日から短縮） |
 | 削除方式 | 後続 Retention Batch による **物理 DELETE** 候補 |
-| 削除条件 | `started_at < now() - interval '180 days'` | |
+| 削除条件 | `started_at < now() - interval '90 days'` |
 | 論理削除 | 採用しない（Log 追記型） |
 | partition | MVP **未適用**。物理ER §17 No.5 に従い本番前に range partition 検討 |
-| 下流連動 | Retention 削除時は `api_call_log` / `phase_log` 等との **Batch 単位一括削除** を検討（別 Task） |
+| 下流連動 | **Batch Run アンカー一括パージ**（§13.1）。`error_log` 削除対象は `error_log_テーブル定義書` §13.2 |
 | アーカイブ | MVP 対象外 |
+
+### 13.1 Batch Run アンカー一括パージ（BATCH-RET-001・MVP 方針確定）
+
+Human Review #536 No.9 / No.10 と整合。`batch_run_log.started_at < now() - interval '90 days'` の Run を対象に、下流 Log を **子 → 親** で物理 DELETE してから本テーブル行を削除する。実装 Batch は MVP 外。
+
+| 順序 | テーブル | 備考 |
+| --: | -------- | ---- |
+| 1 | `api_call_log` | `batch_run_id` 一致 |
+| 2 | `product_diff_result` 等 | workflow 依存（該当時） |
+| 3 | `item_import_summary` | `batch_run_id` 一致 |
+| 4 | `error_log` | `error_log_テーブル定義書` §13.2 |
+| 5 | `phase_log` | `owner_type=batch_run` / `owner_id=batch_run_id` |
+| 6 | **`batch_run_log`** | アンカー（最後） |
+
+> 各テーブルの **Standalone 削除** も **90 日**（`error_log_テーブル定義書` §13.3 参照）。
 
 ---
 
@@ -460,7 +475,7 @@ WHERE batch_run_id = :batch_run_id
 | --: | ---- | -------- | ------ | ---- |
 | 1 | 状態遷移 §6.1.3 詳細件数の物理配置 | **`fetched_count` 等は `item_import_summary` 正本**。`batch_run_log` には Run 全体サマリ（`success_count` / `failed_count` / `skipped_count`）のみ保持 | Human | §5.4・`item_import_summary_テーブル定義書` §5.2 |
 | 2 | `batch_type` enum 化 | **`packages/code-definitions/batch/batch_type.yaml` + enum定義書 §6.25 を正本** | Human | §11.3 |
-| 3 | Retention 具体日数 | **180 日** | Human | §13 |
+| 3 | Retention 具体日数 | **90 日**（#536 No.10 で Batch 系 Log 統一。旧 180 日から短縮） | Human | §13 |
 | 4 | `batch_name` 命名規約 | **`BATCH-00N` 形式**（バッチ処理一覧 ID）。workflow ファイル名は使用しない | Human | §6 No.3 |
 | 5 | Admin API 公開項目 | **§5.6 を採用**（一覧 BatchRunSummary 11 項目 + 条件付き `errorSummary`。Import 内訳は詳細 API `importSummaries`） | Human | API-ADM-005 / API一覧 |
 

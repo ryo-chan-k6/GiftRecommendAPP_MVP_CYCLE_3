@@ -335,6 +335,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `item_embedding` | `idx_item_embedding_vector` | `embedding_vector` | hnsw | 類似検索 | §17 No.6 |
 | `recommendation_run` | `idx_recommendation_run_pair_id` | `pair_id` | btree | Pair 参照 | §17 No.1 |
 | `phase_log` | `idx_phase_log_owner` | `owner_type`, `owner_id`, `started_at` | btree | Run/Batch 追跡 | Run phase log 統合先 |
+| `phase_log` | `idx_phase_log_created` | `created_at` | btree | Retention DELETE | Issue #535 確定。`phase_log_テーブル定義書` §9 |
 | `error_log` | `idx_error_log_owner` | `owner_type`, `owner_id`, `occurred_at` | btree | 障害調査 | |
 | `api_call_log` | `idx_api_call_log_batch` | `batch_run_id`, `requested_at` | btree | Batch 分析 | |
 | `raw_product_metadata` | `idx_raw_metadata_status` | `import_status`, `fetched_at` | btree | 取込監視 | |
@@ -417,8 +418,8 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | Item 正本・派生 | 商品有効期間中 | Upsert / 状態更新 | `active_status` 変更 | 物理削除は原則しない |
 | Staging 系 | 成功 Batch 完了後 **即削除** / 失敗・部分成功時 **7〜14 日** | DELETE | `batch_run_id` 単位 | §17 No.4 |
 | `product_diff_result` | 成功時短期 / 失敗時 7〜14 日 | DELETE | Batch 完了後 | Staging と同様 |
-| Log 系（phase / error / api_call / batch_run） | 中期（月単位） | DELETE | 保持期間経過 | MVP では partition なし（§17 No.5） |
-| `item_import_summary` | **365 日** | DELETE | `summarized_at` 基準 | `item_import_summary_テーブル定義書` §13 |
+| `phase_log` | **90 日** | DELETE | `created_at` 基準 | `phase_log_テーブル定義書` §13（Issue #536 No.10 cross-cutting 統一） |
+| Batch 系 Log（`error_log` / `api_call_log` / `batch_run_log` / `item_import_summary`） | **90 日** | DELETE | 各テーブル定義書 §13 | BATCH-RET-001 アンカー一括パージ（`batch_run_log_テーブル定義書` §13.1）。MVP では partition なし（§17 No.5） |
 | Metric 系 | 中期 | DELETE / 集約 | 保持期間経過 | 将来 `metric_summary` 統合可 |
 | Raw Metadata | 中期 | 状態更新 + アーカイブ | Object Storage 側 lifecycle と連動 | DB は参照のみ |
 
@@ -460,6 +461,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 - `ranking_snapshot` と `item_popularity_signal` の親子関係・冪等キーを優先的に定義する
 - `item_feature` / `item_embedding` の `feature_input_hash` / `embedding_input_hash` 列を必須候補とする
 - `phase_log` に `owner_type` / `owner_id` / `phase_name` / `phase_status` を定義し、Run / Batch / Evaluation のフェーズ記録を統合する
+- `phase_log` の Retention は **90 日**（`created_at` 基準。`idx_phase_log_created`）。Batch 系 Log 90 日統一（Issue #536 No.10）。`phase_log_テーブル定義書` §9 / §13
 - `pair_master` と各種 `*_rule` テーブルの FK / version 列を Semantic Config Version に揃える
 - Snapshot 列（`recommendation_result_item`）は UPDATE 不可方針をテーブル定義書に明記する
 - enum / check 制約は enum Task 成果物と突合する
