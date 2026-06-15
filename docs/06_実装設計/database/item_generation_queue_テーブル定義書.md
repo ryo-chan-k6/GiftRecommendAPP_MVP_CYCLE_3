@@ -152,7 +152,7 @@ Human Review #507 §17.1 No.3 決定済み。
 | 8 | `completed_at` | Completed At | `timestamptz` | `no` | — | — | — | — | 終端状態（`succeeded` / `failed` / `skipped`）到達日時（UTC） |
 | 9 | `error_message` | Error Message | `text` | `no` | — | — | — | — | 失敗時の要約メッセージ。詳細は `error_log` |
 
-> `semantic_config_version_id` / `model_version_id` 等は **本テーブル行には持たない**（論理ER §8.2 準拠・Human Review #507 §17.1 No.4 決定済み）。version 解決は BATCH 実行時に Config Resolver が行い、結果は `item_semantic` / `item_feature` / `item_embedding` および `batch_run_log` / `phase_log` / `error_log`（`owner_type = item_generation_queue`）で追跡する。
+> `semantic_config_version_id` / `model_version_id` 等は **本テーブル行には持たない**（論理ER §8.2 準拠・Human Review #507 §17.1 No.4 決定済み）。version 解決は BATCH 実行時に Config Resolver が行い、結果は `item_semantic` / `item_feature` / `item_embedding` および `batch_run_log` / `phase_log`（`owner_type = batch_run`）/ `error_log`（`owner_type = item_generation_queue`）で追跡する（`phase_log_テーブル定義書` §11.3）。
 
 ---
 

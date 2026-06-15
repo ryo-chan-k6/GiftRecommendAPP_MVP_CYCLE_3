@@ -453,6 +453,8 @@ flowchart TD
 | response_built | Response生成完了 |
 | reco_quality_metric_recorded | Reco品質メトリクス記録完了 |
 
+> **MVP 物理設計（Issue #535 確定）**: 上表の `reco_quality_metric_recorded` は Observability 上のフェーズ候補であるが、`phase_log.phase_name` の DB CHECK（`recommendation_run_phase_name`）には **含めない**。Reco 品質メトリクスは `reco_score_distribution_metric` 等の Metric テーブルで記録する（`phase_log_テーブル定義書` §5.7）。
+
 ---
 
 ### 10.4 Batch RunのPhase一覧
@@ -1274,7 +1276,7 @@ Recommendation RequestやFeedbackには自由入力が含まれる。
 | データ | 推奨保持期間 | 備考 |
 | --- | --- | --- |
 | error_log | 90日〜180日 | 障害調査用 |
-| phase_log | 30日〜90日 | 処理追跡用 |
+| phase_log | **60日**（物理設計確定） | 処理追跡用。`phase_log_テーブル定義書` §13（Issue #535） |
 | batch_run_log | 180日〜365日 | Batch実行履歴 |
 | api_call_log | 90日〜180日 | 外部API調査用 |
 | item_import_summary | 365日 | 商品データ推移を見るため長め |
@@ -1326,8 +1328,8 @@ MVP初期では、厳密な自動削除よりも、以下を優先する。
 
 | 論点 | 判断内容 |
 | --- | --- |
-| recommendation_run_phase_logを残すか | 汎用phase_logへ統合するか、Reco専用ログとして分けるか |
-| phase_logのowner設計 | owner_type / owner_id方式にするか |
+| recommendation_run_phase_logを残すか | **確定**: 汎用 `phase_log` へ統合し物理テーブルは作成しない（`phase_log_テーブル定義書` §5.2） |
+| phase_logのowner設計 | **確定**: `owner_type` / `owner_id` 方式。MVP の `phase_log.owner_type` は `recommendation_run` / `batch_run` / `evaluation_run` の 3 値（`phase_log_テーブル定義書` §11.3） |
 | error_logのowner設計 | owner_type / owner_id方式にするか |
 | Reco品質メトリクスのテーブル分割 | feature / meaning / normalizationを分けるか、汎用metricに統合するか |
 | ログテーブルのschema | logスキーマに分離するか |
@@ -1523,12 +1525,12 @@ API一覧では、以下の列を追加することを推奨する。
 また、以下の判断事項を明記する。
 
 ```
-- recommendation_run_phase_logをphase_logへ統合するか
+- recommendation_run_phase_logをphase_logへ統合するか → **確定**（Issue #535。`phase_log_テーブル定義書` §5.2）
 - logスキーマを分けるか
 - metric系テーブルを独立させるか、汎用metric_summaryへ統合するか
-- trace_id / error_code / owner_id / occurred_atにindexを張るか
+- trace_id / error_code / owner_id / occurred_atにindexを張るか → **phase_log**: `trace_id` 列・`idx_phase_log_trace` 採用（Issue #535 §5.4・§9）
 - feature_code / metric_type / aggregation_scopeにindexを張るか
-- ログ系テーブルのretentionをどうするか
+- ログ系テーブルのretentionをどうするか → **phase_log: 60日**（Issue #535 §13）
 ```
 
 ---
