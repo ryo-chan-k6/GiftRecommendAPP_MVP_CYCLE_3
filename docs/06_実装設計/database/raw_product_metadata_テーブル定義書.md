@@ -134,7 +134,7 @@ raw/rakuten/item_search/dt=2026-05-10/batch_run_id=br_20260510_001/9f2a3c.json
 | `raw_metadata_id` | `staging_ranking_signal.raw_metadata_id` | transforms_to | `LOGICAL` | ランキング Staging |
 | `raw_metadata_id` | `staging_genre.raw_metadata_id` | transforms_to | `LOGICAL` | ジャンル Staging |
 
-> `staging_item` は **`staging_item_テーブル定義書`**（#517）で定義済み。`staging_item_image` は **`staging_item_image_テーブル定義書`**（#523）で定義済み。`staging_ranking_signal` は **`staging_ranking_signal_テーブル定義書`**（#524）で定義済み。`staging_genre` 等は別 Task。本定義書では **`raw_metadata_id` 被参照** を確定する。
+> `staging_item` は **`staging_item_テーブル定義書`**（#517）で定義済み。`staging_item_image` は **`staging_item_image_テーブル定義書`**（#523）で定義済み。`staging_ranking_signal` は **`staging_ranking_signal_テーブル定義書`**（#524）で定義済み。`staging_genre` は **`staging_genre_テーブル定義書`**（#525）で定義済み。本定義書では **`raw_metadata_id` 被参照** を確定する。
 
 ### 5.6 Raw 保存対象方針（Batch 前提）
 
@@ -212,7 +212,7 @@ raw/rakuten/item_search/dt=2026-05-10/batch_run_id=br_20260510_001/9f2a3c.json
 | `staging_item` | `raw_metadata_id` | transforms_to | `LOGICAL` | `staging_item_テーブル定義書` §8.2（#517） |
 | `staging_item_image` | `raw_metadata_id` | transforms_to | `LOGICAL` | `staging_item_image_テーブル定義書` §8.1（#523） |
 | `staging_ranking_signal` | `raw_metadata_id` | transforms_to | `LOGICAL` | 同上 |
-| `staging_genre` | `raw_metadata_id` | transforms_to | `LOGICAL` | 同上 |
+| `staging_genre` | `raw_metadata_id` | transforms_to | `LOGICAL` | `staging_genre_テーブル定義書` §8.1（#525） |
 | `error_log` | `owner_id`（`owner_type = raw_product_metadata`） | may_have | `LOGICAL` | enum定義書 §6.15 |
 
 ### 8.3 Object Storage 参照（DB FK なし）
@@ -460,6 +460,7 @@ WHERE raw_metadata_id = :raw_metadata_id
 | システム論理構成図 | `docs/05_アプリケーション設計/基盤/システム論理構成図.md` | Object Storage 分離 |
 | item 定義書 | `docs/06_実装設計/database/item_テーブル定義書.md` | Staging→Item 経路参考 |
 | external_genre 定義書 | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | staging_genre フロー参考 |
+| staging_genre 定義書 | `docs/06_実装設計/database/staging_genre_テーブル定義書.md` | §5.2 Upsert 元 Staging 正本（#525） |
 | fetch_cursor 定義書 | `docs/06_実装設計/database/fetch_cursor_テーブル定義書.md` | §5.2 連携フロー・api_call_log 関係 |
 | source_api enum | `packages/code-definitions/batch/source_api.yaml` | §11 source_api 正本 |
 

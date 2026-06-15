@@ -156,11 +156,12 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "UNIQUE キー `(raw_metadata_id, external_genre_id)` — 1 Raw 内の複数ジャンル行（children / siblings 等）を許容するか"
-  - "`source` 列の Staging 明示保持 — external_genre Upsert キー整合のため採用するか"
-  - "`is_leaf` 列の Staging 保持 — external_genre Upsert 更新列との整合"
-  - "BATCH-001 直接反映と BATCH-005 Staging 変換の書き込み経路の整理"
-  - "Retention / 古い staging 行の削除 — **物理ER §13 方針に従う**（成功 Batch 後即 DELETE）"
+  - "UNIQUE キー `(raw_metadata_id, external_genre_id)` — **確定**（§17.1 No.1 / staging_genre_テーブル定義書 §7）"
+  - "`source` 列の Staging 明示保持 — **採用**（§17.1 No.2）"
+  - "`is_leaf` 列の Staging 保持 — **採用**（§17.1 No.3）"
+  - "`genre_level` CHECK 0〜5 — **採用**（§17.1 No.4 / external_genre と同一）"
+  - "Retention — **物理ER §13 方針**（成功 Batch 後即 DELETE）（§17.1 No.5）"
+  - "BATCH-001 Run 内フェーズ分割 — **実装 Task へ委譲**（§17 No.1）"
 
 risk_points:
   - "raw_product_metadata（#506 / PR #511）との raw_metadata_id 参照・import_status 連動の引き継ぎ"

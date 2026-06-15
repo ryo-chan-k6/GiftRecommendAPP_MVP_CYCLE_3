@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP  |
 | MVP対象        | `yes`                            |
 | 作成日         | 2026-06-14                       |
-| 更新日         | 2026-06-14                       |
+| 更新日         | 2026-06-14（Human Review #525 反映） |
 
 ---
 
@@ -138,16 +138,16 @@ flowchart LR
 | `parent_external_genre_id` | `parent_external_genre_id` | 一致 |
 | `genre_level` | `genre_level` | 一致 |
 | `staged_at` | `staged_at` | 一致 |
-| （未列挙） | `source` | **採用**（`staging_item` と同型。Upsert キー整合のため §17.1 No.2 提案） |
-| （未列挙） | `is_leaf` | **採用**（`external_genre` Upsert 更新列との整合のため §17.1 No.3 提案） |
+| （未列挙） | `source` | **採用**（`staging_item` と同型。Upsert キー整合。§17.1 No.2 **確定**） |
+| （未列挙） | `is_leaf` | **採用**（`external_genre` Upsert 更新列との整合。§17.1 No.3 **確定**） |
 
 ### 5.8 関連 Staging（同一 Raw 由来・別 Task）
 
 | テーブル | 紐づけ | 備考 |
 | -------- | ------ | ---- |
-| `staging_item` | `raw_metadata_id`（商品 API 由来時） | 商品 Staging 正本（#517） |
-| `staging_item_image` | `raw_metadata_id` + `external_item_code` | 画像 Staging（別 Task） |
-| `staging_ranking_signal` | `raw_metadata_id` + `external_item_code` | ランキング Staging（別 Task） |
+| `staging_item` | `raw_metadata_id`（商品 API 由来時） | 商品 Staging 正本（`staging_item_テーブル定義書` #517） |
+| `staging_item_image` | `raw_metadata_id` + `external_item_code` | 画像 Staging（`staging_item_image_テーブル定義書` #523） |
+| `staging_ranking_signal` | `raw_metadata_id` + `external_item_code` | ランキング Staging（`staging_ranking_signal_テーブル定義書` #524） |
 
 ---
 
@@ -174,7 +174,7 @@ flowchart LR
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `staging_genre_id` | サロゲート UUID | trace キー |
-| UNIQUE | `raw_metadata_id`, `external_genre_id` | Raw 1 件あたり同一ジャンルIDは 1 Staging 行 | §17.1 No.1 **提案**。BATCH-001 / BATCH-005 冪等 |
+| UNIQUE | `raw_metadata_id`, `external_genre_id` | Raw 1 件あたり同一ジャンルIDは 1 Staging 行 | Human Review #525 **確定**（§17.1 No.1）。BATCH-001 / BATCH-005 冪等 |
 
 ---
 
@@ -214,7 +214,7 @@ flowchart LR
 | `idx_staging_genre_raw_metadata` | `raw_metadata_id` | btree | Raw 単位一覧・Retention DELETE 補助 | transforms_to 親 |
 | `idx_staging_genre_source_id` | `source`, `external_genre_id` | btree | `external_genre` 反映フェーズの突合 | Upsert キー |
 
-> 物理ER §10 への Index 行追記は DDL Task または別 docs Task で整合する。
+> 物理ER §10 `staging_genre` Index 案と整合（Human Review #525 反映）。
 
 ---
 
@@ -225,7 +225,7 @@ flowchart LR
 | `staging_genre_pkey` | PRIMARY KEY | `staging_genre_id` | 主キー | — |
 | `uq_staging_genre_raw_metadata_genre` | UNIQUE | `raw_metadata_id`, `external_genre_id` | BATCH 冪等 | §7 |
 | `chk_staging_genre_source_mvp` | CHECK | `source` | `source = 'rakuten'` | MVP 固定 |
-| `chk_staging_genre_level_range` | CHECK | `genre_level` | `genre_level >= 0 AND genre_level <= 5` | `external_genre` と同一上限（§17.1 No.4 提案） |
+| `chk_staging_genre_level_range` | CHECK | `genre_level` | `genre_level >= 0 AND genre_level <= 5` | `external_genre` と同一上限（§17.1 No.4 **確定**） |
 | `chk_staging_genre_name_length` | CHECK | `genre_name` | `char_length(genre_name) BETWEEN 1 AND 255` | — |
 | `chk_staging_genre_parent_not_self` | CHECK | `parent_external_genre_id` | `parent_external_genre_id IS NULL OR parent_external_genre_id <> external_genre_id` | 自己参照禁止 |
 
@@ -387,21 +387,17 @@ ON CONFLICT (source, external_genre_id) DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | UNIQUE `(raw_metadata_id, external_genre_id)` | 1 Raw 内の複数ジャンルノード展開との整合 | Human | HR #525 | §17.1 No.1 提案 |
-| 2 | `source` 列の Staging 明示保持 | Upsert キー整合 | Human | HR #525 | §17.1 No.2 提案 |
-| 3 | `is_leaf` 列の Staging 保持 | `external_genre` Upsert 列との整合 | Human | HR #525 | §17.1 No.3 提案 |
-| 4 | `genre_level` CHECK 上限 5 | `external_genre` と同一にするか | Human | HR #525 | §17.1 No.4 提案 |
-| 5 | BATCH-001 内 `external_genre` 直接 Upsert の詳細順序 | Run 内フェーズ分割 | Human | HR #525 | 実装 Task へ引き継ぎ可 |
+| 1 | BATCH-001 内 `external_genre` 反映の Run 内フェーズ分割 | Batch 実装の phase_log 粒度 | Human | 実装 Task | §5.4 / §12.1 のデータフローは確定済み。詳細順序は BATCH-001 実装 Task へ委譲 |
 
-### 17.1 Human Review 提案（Issue #525）
+### 17.1 Human Review 決定事項（Issue #525）
 
-| No | 論点 | 提案内容 | 根拠 |
-| --: | ---- | -------- | ---- |
-| 1 | UNIQUE キー | **`(raw_metadata_id, external_genre_id)`** を MVP 必須とする | 1 ジャンル API レスポンス内の複数ノード（genre / ancestors / siblings / children）を 1 Raw あたり 1 行ずつ保持。`staging_item` の `(raw_metadata_id, external_item_code)` と同型 |
-| 2 | `source` 列 | **採用**。`raw_product_metadata.source` を Staging INSERT 時にコピー | `staging_item` Human Review #517 No.2 と同型。`external_genre` Upsert キー整合 |
-| 3 | `is_leaf` 列 | **採用** | `external_genre_テーブル定義書` §5.2 更新列に含まれる。論理ER §9.2 未列挙だが物理 DDL で補完 |
-| 4 | `genre_level` CHECK | **0〜5**（`external_genre.chk_external_genre_level_range` と同一） | Human Review #494 No.2 決定済み方針の Staging 側踏襲 |
-| 5 | Retention | **物理ER §13 方針**（成功 Batch 後即 DELETE） | `staging_item_テーブル定義書` §13 と同一 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | UNIQUE キー | **`(raw_metadata_id, external_genre_id)`** を MVP 必須とする | Human | 1 ジャンル API レスポンス内の複数ノードを 1 Raw あたり 1 行ずつ保持。§7・§12.2 ON CONFLICT |
+| 2 | `source` 列 | **採用**。`raw_product_metadata.source` を Staging INSERT 時にコピー | Human | `staging_item` #517 No.2 と同型。`external_genre` Upsert キー整合 |
+| 3 | `is_leaf` 列 | **採用** | Human | `external_genre_テーブル定義書` §5.2 更新列に含まれる |
+| 4 | `genre_level` CHECK | **0〜5**（`external_genre.chk_external_genre_level_range` と同一） | Human | Human Review #494 No.2 決定済み方針の Staging 側踏襲 |
+| 5 | Retention | **物理ER §13 方針**（成功 Batch 後即 DELETE） | Human | `staging_item_テーブル定義書` §13 と同一 |
 
 ---
 
@@ -421,6 +417,8 @@ ON CONFLICT (source, external_genre_id) DO UPDATE SET
 | raw_product_metadata 定義書 | `docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md` | §5.5 transforms_to 親 |
 | external_genre 定義書 | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | §5.2 Upsert 先 |
 | staging_item 定義書 | `docs/06_実装設計/database/staging_item_テーブル定義書.md` | Staging 系方針参考 |
+| staging_item_image 定義書 | `docs/06_実装設計/database/staging_item_image_テーブル定義書.md` | §5.8 関連 Staging |
+| staging_ranking_signal 定義書 | `docs/06_実装設計/database/staging_ranking_signal_テーブル定義書.md` | §5.8 関連 Staging |
 | source_api enum | `packages/code-definitions/batch/source_api.yaml` | `genre_search` 識別 |
 
 ---
@@ -437,4 +435,4 @@ ON CONFLICT (source, external_genre_id) DO UPDATE SET
 - `staging_item` / `staging_item_image` / `staging_ranking_signal` 本体定義が out_of_scope であることが §5.1 / §5.8 で明示されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
-- Human Review #525 提案事項（§17.1 No.1〜5）が本文に反映されている
+- Human Review #525 決定事項（§17.1 No.1〜5）が本文に反映されている

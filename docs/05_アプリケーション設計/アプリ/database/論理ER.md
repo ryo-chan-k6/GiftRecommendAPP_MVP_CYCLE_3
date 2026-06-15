@@ -430,7 +430,7 @@ erDiagram
 | staging_item           | staging_item_id           | raw_metadata_id, source, external_item_code, item_name, item_caption, catchcopy, price, item_url, external_genre_id, shop_code, availability, review_average, review_count, normalized_hash, staged_at | diff_status   | 一時 / 中間     | batch          |
 | staging_item_image     | staging_item_image_id     | raw_metadata_id, external_item_code, image_url, image_size_type, display_order, is_primary_candidate, staged_at                         | なし          | 一時 / 中間     | batch          |
 | staging_ranking_signal | staging_ranking_signal_id | raw_metadata_id, external_item_code, external_genre_id, rank, period, last_build_date, staged_at                                        | なし          | 一時 / 中間     | batch          |
-| staging_genre          | staging_genre_id          | raw_metadata_id, external_genre_id, genre_name, parent_external_genre_id, genre_level, staged_at                                        | なし          | 一時 / 中間     | batch          |
+| staging_genre          | staging_genre_id          | raw_metadata_id, source, external_genre_id, genre_name, parent_external_genre_id, genre_level, is_leaf, staged_at                        | なし          | 一時 / 中間     | batch          |
 | product_diff_result    | product_diff_result_id    | batch_run_id, external_item_code, old_hash, new_hash, judged_at                                                                         | diff_status   | 派生 / 判定結果 | batch          |
 | item_import_summary    | item_import_summary_id    | batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, skipped_count, failed_count, summarized_at  | なし          | Log / 集計      | batch          |
 

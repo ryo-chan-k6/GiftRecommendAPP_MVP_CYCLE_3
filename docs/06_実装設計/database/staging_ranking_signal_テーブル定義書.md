@@ -213,7 +213,7 @@ flowchart LR
 | -------- | ------ | ---- |
 | `staging_item` | `raw_metadata_id` + `external_item_code`（別 API 由来が原則） | 商品属性 Staging。#517 |
 | `staging_item_image` | `raw_metadata_id` + `external_item_code` | 画像 Staging。#523 |
-| `staging_genre` | `raw_metadata_id` | ジャンル API 由来 |
+| `staging_genre` | `raw_metadata_id` | ジャンル API 由来（`staging_genre_テーブル定義書` #525） |
 
 ---
 

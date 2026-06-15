@@ -204,7 +204,7 @@ flowchart LR
 | -------- | ------ | ---- |
 | `staging_item_image` | `raw_metadata_id` + `external_item_code` | 画像 URL 集合（`staging_item_image_テーブル定義書` #523） |
 | `staging_ranking_signal` | 同上 | ランキング由来時（`staging_ranking_signal_テーブル定義書` #524） |
-| `staging_genre` | `raw_metadata_id` | ジャンル API 由来時（別 Task） |
+| `staging_genre` | `raw_metadata_id` | ジャンル API 由来時（`staging_genre_テーブル定義書` #525） |
 
 ---
 
