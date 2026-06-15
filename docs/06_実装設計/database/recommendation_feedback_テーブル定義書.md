@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `yes`                           |
 | 作成日         | 2026-06-15                      |
-| 更新日         | 2026-06-15（#544 recommendation_result マージ反映） |
+| 更新日         | 2026-06-15（#545 / #546 merge 反映・`feedback_type` 正本化） |
 
 ---
 
@@ -87,7 +87,7 @@ flowchart LR
 | 子 Item（対象） | `recommendation_result_item_id` → **LOGICAL FK**（nullable）。`feedback_target_type=item` 時必須 |
 | 子 Reason（対象） | `recommendation_reason_id` → **LOGICAL FK**（nullable）。`feedback_target_type=reason` 時必須 |
 
-> **並行 Task**: `recommendation_result_item`（#545）/ `recommendation_reason`（#546）テーブル定義書は Epic 未 merge の場合がある。本 Task では **物理ER §9・論理ER §7.2・recommendation_result 定義書 §8.2** を正本として receives 関係を確定する。
+> **親テーブル定義書（merge 済み）**: `recommendation_result`（#544 / PR #549）、`recommendation_result_item`（#545）、`recommendation_reason`（#546）。本定義書 §8 と各親定義書 §8.2 を双方向整合する。
 
 ### 5.3 親テーブルとの関係整理
 
@@ -96,8 +96,8 @@ flowchart LR
 | `recommendation_result_id` | `recommendation_result.recommendation_result_id` | receives | `ON` | Path `resultId` 正本。recommendation_result 定義書 §8.2 |
 | `recommendation_run_id` | `recommendation_run.recommendation_run_id` | traces | `LOGICAL` | Result 経由で解決した Run ID を denormalize |
 | `recommendation_request_id` | `recommendation_request.recommendation_request_id` | traces | `LOGICAL` | Result 経由で解決した Request ID を denormalize |
-| `recommendation_result_item_id` | `recommendation_result_item.recommendation_result_item_id` | receives | `LOGICAL` | nullable。Item 対象 Feedback |
-| `recommendation_reason_id` | `recommendation_reason.recommendation_reason_id` | receives | `LOGICAL` | nullable。Reason 対象 Feedback |
+| `recommendation_result_item_id` | `recommendation_result_item.recommendation_result_item_id` | receives | `LOGICAL` | nullable。Item 対象時必須。result_item 定義書 §8.2 |
+| `recommendation_reason_id` | `recommendation_reason.recommendation_reason_id` | receives | `LOGICAL` | nullable。Reason 対象時必須。reason 定義書 §8.2 |
 | `item_id` | `item.item_id` | references | `LOGICAL` | 分析用。Item マスタ参照（物理 FK なし） |
 
 ### 5.4 論理ER / ドメイン定義 / API 契約との差分整理
@@ -122,7 +122,7 @@ Path: `POST /api/v1/recommendation-results/{resultId}/feedback` → `recommendat
 | `feedbackTargetType` | `feedback_target_type` | enum `feedback_target_type` |
 | `resultItemId` | `recommendation_result_item_id` | `item` 時必須 |
 | `reasonId` | `recommendation_reason_id` | `reason` 時必須 |
-| `feedbackType` | `feedback_type` | MVP CHECK 許容値 §10 |
+| `feedbackType` | `feedback_type` | `enum定義書` §6.26 / `feedback_type.yaml` |
 | `feedbackValueType` | `feedback_value_type` | 未指定時は api が `feedback_type` から推定 |
 | `feedbackValue` | `feedback_value` | `jsonb` に型を保持して保存 |
 | `feedbackChoiceCode` | `feedback_choice_code` | choice 系 |
@@ -202,7 +202,7 @@ MVP の物理テーブルには **`submitted` のみ** を基本とする。`fee
 | 17 | `rank_at_feedback` | Rank At Feedback | `integer` | `no` | — | — | — | `NULL` | Feedback 時点の表示順位 |
 | 18 | `item_id` | Item ID | `uuid` | `no` | — | LOGICAL | — | `NULL` | 対象商品 ID（分析用） |
 | 19 | `session_id` | Session ID | `text` | `no` | — | — | — | `NULL` | 匿名セッション。冪等キー要素 |
-| 20 | `anonymous_user_id` | Anonymous User ID | `text` | `no` | — | — | — | `NULL` | MVP 任意。将来識別用 |
+| 20 | `anonymous_user_id` | Anonymous User ID | `text` | `no` | — | — | — | `NULL` | **MVP 未使用（常に NULL）**。列のみ確保。識別は `session_id` |
 | 21 | `source_page` | Source Page | `varchar(64)` | `no` | — | — | — | `NULL` | 入力元画面 ID |
 | 22 | `user_agent` | User Agent | `text` | `no` | — | — | — | `NULL` | ブラウザ情報（必要時のみ・長さ制限） |
 | 23 | `feedback_status` | Feedback Status | `varchar(32)` | `yes` | — | — | — | `'submitted'` | `recommendation_feedback_status` |
@@ -230,11 +230,11 @@ MVP の物理テーブルには **`submitted` のみ** を基本とする。`fee
 
 | カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
 | ------ | ------ | ------ | ---------- | ---- |
-| `recommendation_result_id` | `recommendation_result.recommendation_result_id` | `ON` | 物理 FK | 1:N receives。NOT NULL |
+| `recommendation_result_id` | `recommendation_result.recommendation_result_id` | `ON` | 物理 FK | 1:N receives。NOT NULL。result 定義書 §8.2 |
 | `recommendation_run_id` | `recommendation_run.recommendation_run_id` | `LOGICAL` | api が Result から解決 | trace |
 | `recommendation_request_id` | `recommendation_request.recommendation_request_id` | `LOGICAL` | 同上 | trace |
-| `recommendation_result_item_id` | `recommendation_result_item.recommendation_result_item_id` | `LOGICAL` | api Validation | item 対象時必須 |
-| `recommendation_reason_id` | `recommendation_reason.recommendation_reason_id` | `LOGICAL` | api Validation | reason 対象時必須 |
+| `recommendation_result_item_id` | `recommendation_result_item.recommendation_result_item_id` | `LOGICAL` | api Validation | item 対象時必須。result_item 定義書 §8.2 |
+| `recommendation_reason_id` | `recommendation_reason.recommendation_reason_id` | `LOGICAL` | api Validation | reason 対象時必須。reason 定義書 §8.2 |
 | `item_id` | `item.item_id` | `LOGICAL` | Item マスタ | 分析用 |
 
 ### 8.2 被参照（子テーブル）
@@ -275,7 +275,7 @@ MVP の物理テーブルには **`submitted` のみ** を基本とする。`fee
 | `chk_feedback_status` | CHECK | `feedback_status` | `IN ('submitted','invalid','ignored')` | packages 正本と一致 |
 | `chk_feedback_target_type` | CHECK | `feedback_target_type` | `IN ('result','item','reason')` | packages 正本 |
 | `chk_feedback_value_type` | CHECK | `feedback_value_type` | `IN ('boolean','rating','choice','text','event')` | 定義書 §6.2 |
-| `chk_feedback_type_mvp` | CHECK | `feedback_type` | MVP 10 値（§10.1） | packages 未整備。DDL CHECK |
+| `chk_feedback_type_mvp` | CHECK | `feedback_type` | MVP 10 値（§10.1） | `packages/code-definitions/application/feedback_type.yaml` 正本 |
 | `chk_feedback_rating_range` | CHECK | `feedback_rating` | `feedback_rating BETWEEN 1 AND 5` | API-PUB-004 §14 |
 | `chk_feedback_text_length` | CHECK | `feedback_text` | `feedback_text IS NULL OR char_length(feedback_text) <= 500` | API-PUB-004 §14 |
 | `chk_feedback_user_agent_length` | CHECK | `user_agent` | `user_agent IS NULL OR char_length(user_agent) <= 500` | 過剰保持防止 |
@@ -286,7 +286,7 @@ MVP の物理テーブルには **`submitted` のみ** を基本とする。`fee
 
 ### 10.1 MVP `feedback_type` 許容値（`chk_feedback_type_mvp`）
 
-Recommendation Feedback定義書 §5.2・API-PUB-004 §6.4.1 に準拠。
+Recommendation Feedback定義書 §5.2・API-PUB-004 §6.4.1・`enum定義書` §6.26・`packages/code-definitions/application/feedback_type.yaml` を正とする。
 
 | feedback_type | 必須 `feedback_target_type` |
 | ------------- | --------------------------- |
@@ -309,7 +309,7 @@ Recommendation Feedback定義書 §5.2・API-PUB-004 §6.4.1 に準拠。
 | ------ | ----------- | ------ | ------ | ---- |
 | `feedback_status` | `recommendation_feedback_status` | `enum定義書` §6.3 / `packages/code-definitions/state/recommendation_feedback_status.yaml` | `submitted`, `invalid`, `ignored` | MVP 保存行は基本 `submitted` |
 | `feedback_target_type` | `feedback_target_type` | `enum定義書` §6.14 / `packages/code-definitions/application/feedback_target_type.yaml` | `result`, `item`, `reason` | API `feedbackTargetType` |
-| `feedback_type` | （MVP CHECK） | Recommendation Feedback定義書 §5.2 | §10.1 参照 | packages 正本は後続 Task 化候補 |
+| `feedback_type` | `feedback_type` | `enum定義書` §6.26 / `packages/code-definitions/application/feedback_type.yaml` | §10.1 参照 | API `feedbackType`。冪等キー要素 |
 | — | `owner_type`（子 Log 参照用） | `enum定義書` §6.15 | `recommendation_feedback` | error_log から被参照 |
 
 ### 11.1 `feedback_status` 状態遷移（参照）
@@ -354,13 +354,13 @@ stateDiagram-v2
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | **長期保持候補**（ログ・Observability設計書 §20.2 参考。Result と同枠で 180〜365 日候補）。具体日数は **Phase2 ⑥ データ保持方針 Task** で Online コア全体と一括確定 |
+| 保持期間 | **365 日**（計画・容量見積もり用の暫定値）。**Feedback 保持期間 ≥ Result 保持期間** を原則とする。具体日数は **Phase2 ⑥ データ保持方針 Task** で Request / Run / Result / Feedback を一括確定 |
 | 削除方式 | MVP では **DELETE なし** |
 | 削除条件 | — |
 | 論理削除 | MVP 対象外 |
-| アーカイブ | Phase2 ⑥ で Request / Run / Result / Feedback と一括確定 |
+| アーカイブ | Phase2 ⑥ で Online コア一括確定 |
 
-品質改善の重要データとして長期保持する方針（ログ・Observability設計書）。Batch Log 系（90 日）とは別枠。
+品質改善の重要データとして長期保持する方針（ログ・Observability設計書 §20.2）。Batch Log 系（90 日）とは別枠。Observability の「長期保持候補」は **Result（180〜365 日）以上** を想定し、暫定 **365 日** を計画値とする。
 
 ---
 
@@ -370,7 +370,7 @@ stateDiagram-v2
 | ---- | ---- |
 | DDL対象 | `recommendation_feedback` |
 | migration単位 | 1 テーブル = 1 migration（DDL Task） |
-| 適用順序 | 物理ER §15: **`recommendation_result` の後**（`recommendation_result_item` / `recommendation_reason` と前後は DDL Task で調整。親 Result FK が必須） |
+| 適用順序 | 物理ER §15: **`recommendation_result_item` / `recommendation_reason` 作成後**（reason 定義書 §14 と整合） |
 | rollback方針 | forward migration 主体。DROP は Human Review 必須 |
 | 破壊的変更有無 | `no`（初回 CREATE） |
 
@@ -438,12 +438,18 @@ CREATE TABLE recommendation_feedback (
 
 ## 17. 未決事項
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `feedback_type` packages 正本化 | enum定義書 §7 に未登録。CHECK のみで先行 | Human Review | DDL Task 前 | 別 Task 化候補 |
-| 2 | Online コア Retention 日数 | Observability は候補値のみ | Human Review | Phase2 ⑥ | §13 |
-| 3 | `anonymous_user_id` MVP 採用可否 | ドメインは任意。運用で未使用可 | Human Review | 実装 Task 前 | 列は nullable で確保 |
-| 4 | #545 / #546 merge 後の双方向整合 | 子テーブル定義書未 merge 時 | Worker AI / Human Review | PR Review | 物理ER を正本として先行 |
+| No | 論点 | 状態 | 判断者 | 備考 |
+| --: | ---- | ---- | ------ | ---- |
+| — | なし | — | — | §17.1 で Human Review 確定済み |
+
+### 17.1 確定事項（Human Review / Issue #547）
+
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | `feedback_type` packages 正本化 | `packages/code-definitions/application/feedback_type.yaml` + enum定義書 §6.26 を正本。DDL CHECK は本 YAML の enabled 値 |
+| 2 | Online コア Retention 日数 | MVP DELETE なし。暫定 **365 日**（≥ Result）。Phase2 ⑥ で Online コア一括確定 |
+| 3 | `anonymous_user_id` MVP 採用 | 物理列は nullable で保持。**MVP は api が書き込まず常に NULL**。識別は `session_id` のみ |
+| 4 | #545 / #546 双方向整合 | Epic merge 済み。`recommendation_result_item_テーブル定義書.md` §8.2 / `recommendation_reason_テーブル定義書.md` §8.2 と整合確認済み |
 
 ---
 
@@ -458,6 +464,8 @@ CREATE TABLE recommendation_feedback (
 | enum定義書 | `docs/06_実装設計/database/enum定義書.md` | §6.3 / §6.14 / §7 |
 | API契約 | `docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md` | Request / 冪等 |
 | 親 Result | `docs/06_実装設計/database/recommendation_result_テーブル定義書.md` | receives 双方向 |
+| 親 Result Item | `docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md` | receives（item）双方向 |
+| 親 Reason | `docs/06_実装設計/database/recommendation_reason_テーブル定義書.md` | receives（reason）双方向 |
 | 親 Run | `docs/06_実装設計/database/recommendation_run_テーブル定義書.md` | trace |
 | 親 Request | `docs/06_実装設計/database/recommendation_request_テーブル定義書.md` | trace |
 | 状態遷移 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | §5.3 |
@@ -465,6 +473,7 @@ CREATE TABLE recommendation_feedback (
 | I/F | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-API-002 |
 | packages | `packages/code-definitions/state/recommendation_feedback_status.yaml` | feedback_status 正本 |
 | packages | `packages/code-definitions/application/feedback_target_type.yaml` | feedback_target_type 正本 |
+| packages | `packages/code-definitions/application/feedback_type.yaml` | feedback_type 正本 |
 | Task Definition | `prompts/definitions/tasks/db-physical-design/table-spec-recommendation-feedback.yaml` | #547 scope |
 
 ---
@@ -493,4 +502,6 @@ CREATE TABLE recommendation_feedback (
 | 7 | Run / Request trace 列 | denormalized LOGICAL FK として保持可 |
 | 8 | `feedback_rating` | NOT NULL（1〜5） |
 | 9 | `feedback_text` | 最大 500 文字。物理名 `feedback_text` |
-| 10 | Retention | MVP DELETE なし。長期保持候補を注記 |
+| 10 | Retention | MVP DELETE なし。暫定 **365 日**（≥ Result）。Phase2 ⑥ で一括確定 |
+| 11 | `feedback_type` 正本 | `feedback_type.yaml` + enum定義書 §6.26 |
+| 12 | `anonymous_user_id` | MVP 未使用（NULL 固定）。`session_id` のみ |

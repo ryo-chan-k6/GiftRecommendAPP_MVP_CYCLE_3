@@ -94,7 +94,7 @@ input:
       purpose: "§12.1 DB 項目・§13.2 重複更新・§5.2 feedback_type との整合"
     - path: "docs/06_実装設計/database/enum定義書.md"
       required: true
-      purpose: "feedback_status / feedback_target_type との整合"
+      purpose: "feedback_status / feedback_target_type / feedback_type（§6.26）との整合"
     - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md"
       required: true
       purpose: "Request Body → DB 列・冪等更新キー（§14）の確認"
@@ -125,6 +125,15 @@ input:
     - path: "packages/code-definitions/application/feedback_target_type.yaml"
       required: true
       purpose: "feedback_target_type packages 正本との整合"
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+      purpose: "receives（item）双方向整合"
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      required: true
+      purpose: "receives（reason）双方向整合"
+    - path: "packages/code-definitions/application/feedback_type.yaml"
+      required: true
+      purpose: "feedback_type packages 正本との整合"
     - path: "prompts/templates/docs/table-spec.md"
       required: true
       purpose: "テンプレート章構成との整合"
@@ -162,11 +171,11 @@ review_points:
     - "feedback_target_type と API-PUB-004 feedbackTargetType が一致しているか"
     - "冪等更新キー（session_id + 同一対象 + 同一 feedback_type）の unique / Index 方針が整理されているか"
     - "feedback_rating 必須（1〜5）・feedback_text 500 文字制約が明記されているか"
-    - "feedback_type MVP 許容値 CHECK が API-PUB-004 §6.4.1 / ドメイン定義書 §5.2 と整合しているか"
+    - "feedback_type と enum定義書 §6.26 / feedback_type.yaml / API-PUB-004 §6.4.1 が整合しているか"
     - "状態遷移設計書 §5.3 と API 冪等 UPDATE の差分が § 等で整理されているか"
   security:
     - "feedback_text に個人情報過剰保持を避ける方針が明記されているか"
-    - "session_id / anonymous_user_id の扱いが認証・認可方針書と整合しているか"
+    - "session_id / anonymous_user_id の扱いが認証・認可方針書と整合しているか（MVP anonymous_user_id は NULL 固定）"
     - "secret / .env 実値が含まれていないか"
 
 acceptance_criteria:
@@ -207,19 +216,23 @@ human_review_decisions:
     decision: "500 文字。物理名 feedback_text"
   - id: 10
     topic: "Online推薦コア Retention"
-    decision: "MVP DELETE なし。長期保持候補を注記"
+    decision: "MVP DELETE なし。暫定 365 日（≥ Result）。Phase2 ⑥ で一括確定"
+  - id: 11
+    topic: "feedback_type 正本"
+    decision: "feedback_type.yaml + enum定義書 §6.26"
+  - id: 12
+    topic: "anonymous_user_id MVP"
+    decision: "物理列 nullable。MVP は常に NULL。session_id のみ"
 
 risk_points:
   - "RecommendationFeedback定義書 §12.1 の項目数と論理ER §7.2 簡略属性の差分整理"
   - "状態遷移設計書 §5.3.3『原則更新しない』と API-PUB-004 冪等 UPDATE の読み合わせ"
-  - "feedback_type が packages 正本未整備のため CHECK 列定義の粒度"
-  - "#545 / #546 未 merge 時の result_item / reason 定義書との双方向整合（物理ER・論理ERを正本として整理）"
   - "論理ER feedback_comment と API comment / 物理 feedback_text の命名差分"
 
 notes:
   - "Batch R06 No.5: recommendation_feedback"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-recommendation-feedback.yaml"
   - "Issue #547 / Branch docs/task-547-recommendation-feedback-table-spec"
-  - "先行 merge 済み前提: #537 / PR #542、#543 / PR #548、#544 / PR #549"
+  - "先行 merge 済み前提: #537 / PR #542、#543 / PR #548、#544 / PR #549、#545、#546"
   - "Human Review 決定事項: human_review_decisions 参照"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

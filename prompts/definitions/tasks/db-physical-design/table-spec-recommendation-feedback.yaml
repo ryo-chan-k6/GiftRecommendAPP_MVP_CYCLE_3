@@ -22,9 +22,9 @@ parent:
     - number: 544
       purpose: "recommendation_result テーブル定義書（receives 関係の親 Result。merge 済み前提）"
     - number: 545
-      purpose: "recommendation_result_item テーブル定義書（receives 関係の子 Item。並行 Task）"
+      purpose: "recommendation_result_item テーブル定義書（receives 関係の子 Item。merge 済み前提）"
     - number: 546
-      purpose: "recommendation_reason テーブル定義書（Reason 対象 Feedback。並行 Task）"
+      purpose: "recommendation_reason テーブル定義書（Reason 対象 Feedback。merge 済み前提）"
   related_prs:
     - number: 542
       purpose: "Task #537 PR（recommendation_request。merge 済み前提）"
@@ -70,10 +70,12 @@ scope:
   - "論理ER §3 / §7.2 Feedback 属性・§14.1 Request → Run → Result フローとの整合"
   - "テーブル一覧 §3 No.6・Online推薦系補足（Feedback 正本・api 保存）との整合"
   - "RecommendationFeedback定義書 §7〜§9 / §12.1 DB 項目・§13.2 重複時更新方針との整合"
-  - "enum定義書 §6.3 feedback_status・§6.14 feedback_target_type・§7 / §8 列マッピングとの整合"
+  - "enum定義書 §6.3 feedback_status・§6.14 feedback_target_type・§6.26 feedback_type・§7 / §8 列マッピングとの整合"
   - "packages/code-definitions/state/recommendation_feedback_status.yaml との整合"
   - "packages/code-definitions/application/feedback_target_type.yaml との整合"
+  - "packages/code-definitions/application/feedback_type.yaml の新規作成と enum定義書 §6.26 への反映"
   - "状態遷移設計書 §5.3 Recommendation Feedback 状態遷移との整合（API 冪等更新との差分明示）"
+  - "recommendation_result_item / recommendation_reason テーブル定義書（#545 / #546 merge 済み）との receives 双方向整合"
   - "recommendation_result テーブル定義書（receives・recommendation_result_id 物理 FK ON）との双方向整合"
   - "recommendation_run / recommendation_request テーブル定義書（trace 用 denormalized 列方針）との整合"
   - "API-PUB-004（Path resultId・Request Body → DB 列・冪等更新キー）との整合"
@@ -86,12 +88,11 @@ scope:
 out_of_scope:
   - "recommendation_feedback_summary 集計テーブル（RecommendationFeedback定義書 §12.2。MVP 非必須）"
   - "feedback_analysis_result 等 Evaluation 系テーブル（物理ER §2 No.7。後続 Task）"
-  - "recommendation_result / recommendation_result_item / recommendation_reason テーブル定義書の再作成（参照のみ）"
+  - "recommendation_result / recommendation_result_item / recommendation_reason テーブル定義書の receives 双方向参照更新（§8.2 等。再作成は対象外）"
   - "user_semantic / user_feature / user_meaning テーブル定義書"
   - "DDL・migration / seed"
   - "apps/** 実装"
   - "OpenAPI / generated 変更（#469 / api-pub-004 OpenAPI Task へ委譲）"
-  - "feedback_type の packages/code-definitions 新規作成（本 Task では CHECK 列定義まで。enum 正本化は別 Task 化候補）"
 
 input:
   docs:
@@ -100,7 +101,7 @@ input:
       purpose: "Online推薦系分類・recommendation_result / recommendation_result_item receives・§17 No.3 物理 FK 方針"
     - path: "docs/06_実装設計/database/enum定義書.md"
       required: true
-      purpose: "feedback_status（§6.3）・feedback_target_type（§6.14）・§7 DB 列マッピング・§8 API マッピング"
+      purpose: "feedback_status（§6.3）・feedback_target_type（§6.14）・feedback_type（§6.26）・§7 DB 列マッピング・§8 API マッピング"
     - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
       required: true
       purpose: "§3 / §7.2 recommendation_feedback 属性・§14.1 Online推薦フロー"
@@ -165,6 +166,9 @@ input:
     - path: "packages/code-definitions/application/feedback_target_type.yaml"
       required: true
       purpose: "feedback_target_type packages 正本"
+    - path: "packages/code-definitions/application/feedback_type.yaml"
+      required: true
+      purpose: "feedback_type packages 正本（本 Task で新規作成）"
   templates:
     - path: "prompts/templates/docs/table-spec.md"
       required: true
@@ -179,7 +183,26 @@ output:
       action: "create"
       required: true
       template: "prompts/templates/docs/table-spec.md"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      action: "update"
+      required: true
+      purpose: "§6.26 feedback_type 追加・§7 / §8 / §12 更新"
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      action: "update"
+      required: true
+      purpose: "§8.2 receives 双方向参照"
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      action: "update"
+      required: true
+      purpose: "§8.2 receives 双方向参照"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      action: "update"
+      required: true
+      purpose: "子テーブル定義完了注記の更新"
   files:
+    - path: "packages/code-definitions/application/feedback_type.yaml"
+      action: "create"
+      required: true
     - path: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-feedback.yaml"
       action: "update"
       required: true
@@ -194,6 +217,7 @@ acceptance_criteria:
   - "物理ER・論理ER §3 / §7.2・テーブル一覧 §3 No.6 と矛盾しない"
   - "feedback_status（submitted / invalid / ignored）と enum定義書 §6.3 が一致している"
   - "feedback_target_type と API-PUB-004 feedbackTargetType マッピングが明記されている"
+  - "feedback_type と enum定義書 §6.26 / feedback_type.yaml が一致している"
   - "API-PUB-004 冪等更新キー（session_id + 同一対象 + 同一 feedback_type）が Index / unique 方針として整理されている"
   - "apps/** 変更がない"
   - "Task PR target が親 Epic Branch"
@@ -227,6 +251,10 @@ dependencies:
       purpose: "recommendation_run テーブル定義書 完了（merge 済み前提）"
     - number: 544
       purpose: "recommendation_result テーブル定義書 完了（merge 済み前提）"
+    - number: 545
+      purpose: "recommendation_result_item テーブル定義書 完了（merge 済み前提）"
+    - number: 546
+      purpose: "recommendation_reason テーブル定義書 完了（merge 済み前提）"
   blocking: true
 
 parallel_control:
@@ -240,7 +268,7 @@ test_policy:
     - "物理ER §9 recommendation_result / recommendation_result_item receives 関係との整合"
     - "論理ER §7.2 属性（recommendation_result_id, recommendation_result_item_id, feedback_target_type, feedback_rating, feedback_comment, submitted_at, feedback_status）との整合"
     - "RecommendationFeedback定義書 §12.1 項目表との整合（論理ER / ドメイン定義書との差分は明示）"
-    - "enum定義書 §6.3 / §6.14 / packages 正本との整合"
+    - "enum定義書 §6.3 / §6.14 / §6.26 / packages 正本との整合"
     - "状態遷移設計書 §5.3 と API-PUB-004 冪等更新（UPDATE 許容）の差分整理"
     - "recommendation_result 定義書 receives / 子 FK 方針との双方向整合"
     - "recommendation_run / recommendation_request 定義書 trace 列方針との整合"
@@ -295,13 +323,18 @@ human_review_decisions:
     decision: "500 文字（API-PUB-004 §14 #406 確定）。物理名は feedback_text（API comment マッピング）"
   - id: 10
     topic: "Online推薦コア Retention"
-    decision: "MVP DELETE なし。Observability 長期保持候補を注記。具体保持期間は Phase2 ⑥ データ保持方針 Task で確定"
+    decision: "MVP DELETE なし。暫定 365 日（≥ Result）。Phase2 ⑥ で一括確定"
+  - id: 11
+    topic: "feedback_type 正本"
+    decision: "feedback_type.yaml + enum定義書 §6.26 を正本。DDL CHECK は enabled 値"
+  - id: 12
+    topic: "anonymous_user_id MVP"
+    decision: "物理列は nullable で保持。MVP は api が書き込まず常に NULL。識別は session_id のみ"
 
 notes:
   - "Batch R06 No.5: recommendation_feedback（Online推薦系最終テーブル）"
   - "Issue #547 / Branch docs/task-547-recommendation-feedback-table-spec"
   - "Issue 本文のテーブル一覧参照 §4 は User意味推定系を指すため、正本は §3 No.6 を用いる"
-  - "先行 merge 済み前提: #537 / PR #542（recommendation_request）、#543 / PR #548（recommendation_run）、#544 / PR #549（recommendation_result）"
-  - "#545 recommendation_result_item / #546 recommendation_reason は並行 Task。物理ER・論理ER・ドメイン定義書を正本として先行定義"
-  - "Human Review 決定事項: human_review_decisions 参照"
+  - "先行 merge 済み前提: #537 / PR #542（recommendation_request）、#543 / PR #548（recommendation_run）、#544 / PR #549（recommendation_result）、#545（recommendation_result_item）、#546（recommendation_reason）"
+  - "Human Review 決定事項: human_review_decisions 参照（No.11 feedback_type 正本・No.12 anonymous_user_id）"
   - "OpenAPI / generated は Epic 終盤 Task #469 または api-pub-004 OpenAPI Task へ委譲"
