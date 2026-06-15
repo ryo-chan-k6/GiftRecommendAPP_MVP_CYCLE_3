@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 529
   issue: 524
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-staging-ranking-signal.yaml"
   source_branch: "docs/task-524-staging-ranking-signal-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 524
     required: true
   pr:
-    number: null
+    number: 529
     required: true
   diff:
     required: true
