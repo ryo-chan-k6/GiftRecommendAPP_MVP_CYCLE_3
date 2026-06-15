@@ -1,0 +1,196 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-user-semantic-pr"
+  title: "user_semantic テーブル定義書 PRレビュー"
+  summary: "user_semantic テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §10.2・テーブル一覧 §4 No.7・recommendation_run / semantic_config_version / item_semantic テーブル定義書・IF-DB-RECO-003 / MOD-RECO-004 との整合、semantic_config_version 紐づけ方針・item_semantic 対称関係と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-553-user-semantic-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 558
+  issue: 553
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-user-semantic.yaml"
+  source_branch: "docs/task-553-user-semantic-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-user-semantic.yaml"
+    required: true
+  issue:
+    number: 553
+    required: true
+  pr:
+    number: 558
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/user_semantic_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "User意味推定系・§9 recommendation_run → user_semantic FK・§10 Index 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 user_semantic 属性・§16 Online/Batch 責務境界との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§4 No.7 分類・用途・User意味推定系補足との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "User Semantic 派生データ正本区分・reco 生成責務の確認"
+    - path: "docs/04_ドメインモデル設計/SemanticConcept定義書.md"
+      required: true
+      purpose: "extracted_semantic_json 内 concept_code 参照・Concept 体系の確認"
+    - path: "docs/04_ドメインモデル設計/Semanticルール定義書.md"
+      required: true
+      purpose: "User Semantic 抽出ルール・confidence 算出前提の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-003 保存 I/F（INSERT）との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-RECO-004 User Semantic Extractor 入出力との整合"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "reco による user_semantic 作成権限の確認"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 recommendation_run_id 物理 FK（ON）被参照・Run version 解決（#543 merge 済み正本）"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 user_semantic generates_with（LOGICAL 候補）・version 紐づけ方針"
+    - path: "docs/06_実装設計/database/semantic_concept_テーブル定義書.md"
+      required: true
+      purpose: "extracted_semantic_json 内 concept_code 参照・LOGICAL 関係の確認"
+    - path: "docs/06_実装設計/database/semantic_rule_テーブル定義書.md"
+      required: true
+      purpose: "抽出ルール正本・派生データ concept_code 参照の確認"
+    - path: "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+      required: true
+      purpose: "#513 merge 済み正本。Item 側 Semantic との対称関係・差分の確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（state enum なし）との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（user_feature / user_meaning / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §10.2 の属性と矛盾しないか"
+    - "テーブル一覧 §4 No.7 の分類・用途と一致しているか"
+    - "semantic_config_version_id との version 紐づけ方針が §8 / §17 に明記されているか"
+    - "item_semantic_テーブル定義書との対称関係および差分（更新主体・親キー・JSON 列名・FK 方針）が整理されているか"
+    - "extracted_semantic_json 内 concept_code 参照・semantic_concept / semantic_rule との LOGICAL 関係が整理されているか"
+    - "recommendation_run_テーブル定義書 §8.2 との User 派生データ系責務境界が明記されているか"
+    - "IF-DB-RECO-003 / MOD-RECO-004 による生成・INSERT 保存 I/F が一貫しているか"
+    - "論理ER §16（Online reco 生成・Batch 非更新）が反映されているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "recommendation_run.recommendation_run_id への物理 FK（ON・generates 1:N）方針が明記されているか"
+    - "semantic_config_version_id への FK 方針（ON vs LOGICAL）が semantic_config_version_テーブル定義書 §8.2 と item_semantic 対称差分として整合しているか"
+    - "Upsert / 冪等キー（recommendation_run_id + semantic_config_version_id 等）・Run あたり行数方針が妥当か"
+    - "generated_at の更新主体（reco）・Run 開始時 version 解決タイミングが明記されているか"
+    - "user_feature 後続 Task との version / concept 参照一貫性が考慮されているか"
+    - "DDL 適用順序が recommendation_run / semantic_config_version 作成後と整合しているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "semantic_config_version_id 物理 FK（ON）vs LOGICAL 維持（item_semantic は ON 採用との対称差分）"
+  - "Upsert / Unique キー: recommendation_run_id 単独 vs recommendation_run_id + semantic_config_version_id vs 履歴行保持"
+  - "extracted_semantic_json スキーマ粒度（concept_code / confidence / source 等の必須キー）と item_semantic.semantic_json との対称性"
+  - "recommendation_run.semantic_config_version_id（Run 開始時固定）と user_semantic 行への version 重複保持要否"
+  - "同一 Run 内で複数抽出（再試行）時の行扱い（上書き vs 履歴保持）"
+
+risk_points:
+  - "item_semantic（ON FK）と user_semantic（LOGICAL 候補）の semantic_config_version_id 方針差の docs 一貫性"
+  - "recommendation_run.semantic_config_version_id と user_semantic 行の version 列の責務重複"
+  - "論理ER §16.1 に user_semantic が未列挙（Online 生成だが Batch 非更新リストとの関係整理要否）"
+  - "IF-DB-RECO-003 が user_semantic / user_feature / user_meaning を一括 INSERT と記載（個別テーブル責務境界）"
+  - "user_feature 後続 Task との冪等キー・version 列一貫性"
+
+notes:
+  - "Batch R07 No.1: user_semantic"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-user-semantic.yaml"
+  - "Issue #553 / Branch docs/task-553-user-semantic-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#462–#463（semantic_config 系）、#513 / PR #518（item_semantic）、#537 / PR #542（recommendation_request）、#543 / PR #548（recommendation_run）"
+  - "user_feature / user_meaning 本体定義は out_of_scope"
+  - "PR #558 作成済み（target.pr / input.pr.number 反映済み）"

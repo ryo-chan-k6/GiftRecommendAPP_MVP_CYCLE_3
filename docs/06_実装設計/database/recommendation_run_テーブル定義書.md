@@ -190,7 +190,7 @@ recommendation_request 定義書 §5.7・Human Review #537 No.4 / No.6 を正と
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | `recommendation_result` | `recommendation_run_id` | produces | `ON`（DDL Task） | 1:0..1。`uq_result_per_run` は Result 側（物理ER §11） |
-| `user_semantic` | `recommendation_run_id` | generates | `ON`（DDL Task） | 1:N |
+| `user_semantic` | `recommendation_run_id` | generates | `ON`（DDL Task） | 1:0..1 | `uq_user_semantic_recommendation_run_id`（`user_semantic_テーブル定義書` §17.1 No.2） |
 | `user_feature` | `recommendation_run_id` | generates | `ON`（DDL Task） | 1:N |
 | `user_meaning` | `recommendation_run_id` | generates | `ON`（DDL Task） | 1:0..1 |
 | `phase_log` | `owner_id`（`owner_type=recommendation_run`） | records | `LOGICAL` | phase_log 定義書 §5.2 |

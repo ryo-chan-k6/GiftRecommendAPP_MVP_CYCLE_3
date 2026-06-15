@@ -203,8 +203,8 @@ version 非現行化時は `is_current = false` に加え、運用で `valid_to`
 | ------ | ------ | ---- | ------ | ---- |
 | `recommendation_run` | `semantic_config_version_id` | used_by | `LOGICAL` | 物理ER §9。Run 開始時に固定。再現性保持 |
 | `evaluation_run` | `semantic_config_version_id` | used_by | `LOGICAL` | 論理ER §12.2。Evaluation 系（MVP partial） |
-| `user_semantic` | `semantic_config_version_id` | generates_with | `LOGICAL` | 派生データ。詳細は別 Task |
-| `item_semantic` | `semantic_config_version_id` | generates_with | `ON` / `LOGICAL` | 派生データ。item 系 Task で FK 方針確定 |
+| `user_semantic` | `semantic_config_version_id` | generates_with | `LOGICAL` | 派生データ。`user_semantic_テーブル定義書` §8.1・§17.1 No.1（物理 FK なし）。Run 固定 version と一致必須 |
+| `item_semantic` | `semantic_config_version_id` | generates_with | `ON` | 派生データ。`item_semantic_テーブル定義書` §17.1 No.1 決定済み |
 | `item_feature` | `semantic_config_version_id` | generates_with | `ON` | Item 派生データ系。物理ER §10 Index 方針に整合 |
 
 > MVP 初期 DDL では `recommendation_run` / `evaluation_run` への物理 FK を張らない（§17.1 No.8）。整合は reco 側 Config 解決 + seed 正本 + Run INSERT 時の `semantic_config_version_id` 存在確認 + `recommendation_run.semantic_config_version_id` への Index で担保する。
