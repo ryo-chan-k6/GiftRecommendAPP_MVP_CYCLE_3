@@ -1,0 +1,139 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-system-physical-diagram-supabase-alignment-pr"
+  title: "システム物理構成図 Supabase整合 PRレビュー"
+  summary: "システム物理構成図 Supabase 整合 Task の PR を AI Review する。Neon/S3 除去、Supabase Hosted PostgreSQL / Supabase Storage / Secret 骨子、Auth 未接続注記と #596 系基盤 docs との整合、Task PR 運用（Related to）を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-597-db-physical-design-system-physical-diagram-supabase-alignment"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 598
+  issue: 597
+  task_definition: "prompts/definitions/tasks/db-physical-design/system-physical-diagram-supabase-alignment.yaml"
+  source_branch: "docs/task-597-db-physical-design-system-physical-diagram-supabase-alignment"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/system-physical-diagram-supabase-alignment.yaml"
+    required: true
+  issue:
+    number: 597
+    required: true
+  pr:
+    number: 598
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/システム物理構成図.md"
+      required: true
+      purpose: "更新成果物の内容確認"
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "#596 Supabase / Storage / Secret 骨子との整合"
+    - path: "docs/05_アプリケーション設計/基盤/システム論理構成図.md"
+      required: true
+      purpose: "Raw 保存・配置記述との整合"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "Supabase Auth 未接続注記との整合"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "PostgreSQL + Storage 記述との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（apps / OpenAPI / infra/supabase 詳細 / 環境変数定義書全面改訂）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+    - "Task PR 本文が `Related to #597` であるか（`Closes` 禁止）"
+  docs:
+    - "Neon / S3 文字列が残存していないか"
+    - "DB を Supabase Hosted PostgreSQL、Raw 保存を Supabase Storage と記載しているか"
+    - "Secret 骨子が `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `STORAGE_BUCKET_RAW` と整合するか"
+    - "Supabase Auth 未接続（api 境界）注記が認証・認可方針書と矛盾しないか"
+    - "論理名 Object Storage と物理名 Supabase Storage の用法が他 docs と同様か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "論理名 `Object Storage` と物理名 `Supabase Storage` の表記揺れ（Should。Human Review 判断可）"
+
+risk_points:
+  - "`SUPABASE_SERVICE_ROLE_KEY` の api/reco/batch 記載粒度"
+  - "Supabase Auth 未接続注記の表現整合"
+
+notes:
+  - "Issue #597 / PR #598"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/system-physical-diagram-supabase-alignment.yaml"
+  - "前提: #592 #594 #596 merge 済み"
