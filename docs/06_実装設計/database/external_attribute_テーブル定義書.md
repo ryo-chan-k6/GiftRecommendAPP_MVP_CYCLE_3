@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP  |
 | MVP対象        | `optional（△）`                  |
 | 作成日         | 2026-06-16                       |
-| 更新日         | 2026-06-16                       |
+| 更新日         | 2026-06-16（Human Review #575 反映） |
 
 ---
 
@@ -178,7 +178,7 @@ flowchart LR
 
 | カラム | 参照先 | FK制約 | 参照整合性 | 備考 |
 | ------ | ------ | ------ | ---------- | ---- |
-| `external_genre_id` | `external_genre.external_genre_id` | `LOGICAL`（MVP 推奨） | 参照時存在確認は Batch 責務 | 物理 FK ON は Human Review 論点（§17.1 No.2） |
+| `external_genre_id` | `external_genre.external_genre_id` | `LOGICAL` | 参照時存在確認は Batch 責務 | Human Review #575 §17.1 No.2 決定済み（物理 FK OFF） |
 
 ### 8.2 被参照（論理）
 
@@ -244,13 +244,13 @@ ON CONFLICT (source, external_genre_id, external_attribute_id) DO UPDATE SET
 
 ### 12.2 入力 API 優先順位（MVP）
 
-外部商品データ連携設計書 §4.5.2 に従う。
+外部商品データ連携設計書 §4.5.2 に従う。**Human Review #575 §17.1 No.3 決定済み**。
 
-| 優先 | 入力 | 用途 |
-| --: | ---- | ---- |
-| 1 | 楽天商品検索API `attributeFlag=1` / `attributeIds` | MVP 主経路。商品シグナルと名称補完 |
-| 2 | 楽天ジャンル検索API `tagGroups` / `attributes` | ジャンル別属性辞書の補完 |
-| 3 | 楽天属性検索API | MVP 必須ではない。後続または余力時 |
+| 優先 | 入力 | 用途 | MVP |
+| --: | ---- | ---- | --- |
+| 1 | 楽天商品検索API `attributeFlag=1` / `attributeIds` | 商品シグナルと名称補完 | **採用** |
+| 2 | 楽天ジャンル検索API `tagGroups` / `attributes` | ジャンル別属性辞書の補完 | 採用（補完） |
+| 3 | 楽天属性検索API | 属性辞書拡張 | **不採用**（後続または余力時） |
 
 ---
 
@@ -278,7 +278,7 @@ ON CONFLICT (source, external_genre_id, external_attribute_id) DO UPDATE SET
 | rollback方針 | forward migration 主体。DROP は Human Review 必須 |
 | 破壊的変更有無 | `no`（初回 CREATE 時） |
 
-> 本定義書は **設計正本** として先行作成する。MVP リリース時に物理テーブルを作成するかは Human Review 論点（§17.1 No.1）。
+> **Human Review #575 §17.1 No.1 決定済み**: MVP migration には **本テーブルを含めない**。本定義書は設計正本として先行整備し、物理 DDL 採用時に Task ④⑤ で migration を作成する。
 
 ---
 
@@ -311,19 +311,16 @@ ON CONFLICT (source, external_genre_id, external_attribute_id) DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | MVP で物理 DDL を作成するか | 物理ER は `no` だが定義書は整備済み | Human | Epic 内 | §17.1 No.1 |
-| 2 | `external_genre_id` 物理 FK 採否 | LOGICAL のみか ON DELETE RESTRICT か | Human | DDL Task 前 | §17.1 No.2 |
-| 3 | 楽天属性検索API の MVP 採用 | §4.5.2 は任意。入力経路が変わる | Human | Batch 実装前 | §17.1 No.3 |
-| 4 | 商品×属性中間テーブル要否 | 現状は hash シグナルのみ | Human | Feature 強化時 | §17.1 No.4 |
+| — | — | — | — | — | Human Review #575 にて No.1〜4 を決定済み（下記参照） |
 
-### 17.1 Human Review 論点（Issue #575）
+### 17.1 Human Review 決定事項（Issue #575）
 
-| No | 論点 | 推奨案（AI） | 備考 |
-| --: | ---- | ------------ | ---- |
-| 1 | MVP DDL 作成 | **MVP では作成しない**（物理ER 整合） | 定義書のみ先行。採用時に Task ④⑤ |
-| 2 | `external_genre_id` FK | **LOGICAL**（MVP 任意テーブル） | 採用時に ON を検討可 |
-| 3 | 属性検索API | **商品検索API 優先**。属性検索API は後続 | §4.5.2 正本 |
-| 4 | `item_attribute` 中間 | **MVP 不作成**。`attributeIds` は hash のみ | §5.6 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | MVP DDL 作成 | **MVP では作成しない**（物理ER §17 No.7 整合） | Human | 定義書のみ先行。採用時に Task ④⑤ |
+| 2 | `external_genre_id` 物理 FK | **LOGICAL**（物理 FK OFF） | Human | Staging / MVP 任意テーブルと同型。採用時に ON を再検討可 |
+| 3 | 楽天属性検索API MVP 採用 | **不採用**。商品検索API `attributeFlag` / `attributeIds` を優先 | Human | 外部商品データ連携設計書 §4.5.2 正本 |
+| 4 | 商品×属性中間テーブル（`item_attribute`） | **MVP 不作成**。`attributeIds` は normalized_hash シグナルのみ | Human | §5.5・§5.6 |
 
 ---
 

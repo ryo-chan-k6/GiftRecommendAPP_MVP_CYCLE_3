@@ -224,7 +224,7 @@ staging_item（source + external_item_code + normalized_hash）
 | `availability` | ○ | `active_status` / `is_active` 判定に利用 |
 | `mediumImageUrls` / `smallImageUrls` | ○ | **`item_image` 側**（本テーブル列なし） |
 | `reviewAverage` / `reviewCount` | ○ | **`item_review_summary` 側**（本テーブル列なし） |
-| `attributeIds` | ○ | MVP では `external_attribute` テーブル未作成のため Batch 正規化 Payload に含めるのみ |
+| `attributeIds` | ○ | MVP では `external_attribute` **DDL 未作成**（Human Review #575 §17.1 No.1）。Batch 正規化 Payload に含めるのみ。マスタ参照は `external_attribute_テーブル定義書` §5.5 |
 
 ---
 
@@ -336,6 +336,7 @@ staging_item（source + external_item_code + normalized_hash）
 | 状態遷移 | `docs/05_アプリケーション設計/アプリ/状態遷移設計書.md` | §7.1 Item Active Status |
 | API契約 | `docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md` | Response マッピング |
 | 参照先テーブル | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | §8.2 被参照・型 `bigint`・#494 決定事項 |
+| 属性参照（任意） | `docs/06_実装設計/database/external_attribute_テーブル定義書.md` | §5.5 attributeIds シグナル・MVP DDL 未作成（#575 §17.1） |
 | Upsert 元 | `docs/06_実装設計/database/staging_item_テーブル定義書.md` | §5.3 Upsert キー・§12.4 列マッピング・#517 決定事項 |
 | 参考（FK 比較） | `docs/06_実装設計/database/normalization_rule_テーブル定義書.md` | §17.1.1 比較表形式 |
 

@@ -157,11 +157,10 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "MVP で external_attribute / staging_attribute の物理 DDL を作成するか（物理ER は no・定義書のみ先行）"
-  - "item.attributeIds と external_attribute の参照方式（配列 ID のみ vs マスタ JOIN）"
-  - "楽天属性検索API を MVP で採用するか（商品検索API attributeFlag 優先か）"
-  - "属性をジャンル（external_genre_id）に紐づけて保持するか"
-  - "外部商品データ連携設計書 `item_attribute` 表記の正本名称（external_attribute 確定か）"
+  - "MVP DDL 作成 — **確定: MVP では作成しない**（§17.1 No.1 / external_attribute_テーブル定義書 §14）"
+  - "`external_genre_id` 物理 FK — **確定: LOGICAL**（§17.1 No.2 / §8.1）"
+  - "楽天属性検索API MVP 採用 — **確定: 不採用**（§17.1 No.3 / §12.2）"
+  - "`item_attribute` 中間テーブル — **確定: MVP 不作成**（§17.1 No.4 / §5.5・§5.6）"
 
 risk_points:
   - "item（#495 / PR #500）attributeIds / normalized_hash 方針への引き継ぎ"
