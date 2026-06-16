@@ -263,7 +263,7 @@ recommendation_run 定義書 §5.5・§17.1 No.2 / No.3・RecommendationResult�
 | ------ | ------ | ---- | ------ | ---- |
 | `recommendation_result_item` | `recommendation_result_id` | contains | `ON`（DDL Task） | 1:N。`recommendation_result_item_テーブル定義書.md` §8.1 と双方向整合（#545） |
 | `recommendation_feedback` | `recommendation_result_id` | receives | `ON`（DDL Task） | 1:N。`recommendation_feedback_テーブル定義書.md` §8.1 と双方向整合（#547） |
-| `evaluation_result` | `recommendation_result_id` | references | `LOGICAL` | Evaluation 系（将来） |
+| `evaluation_result` | `recommendation_result_id` | references | `LOGICAL` | Evaluation 系（#573 §17.1 No.3 確定。nullable。`evaluation_result_テーブル定義書` §8.2） |
 | `error_log` | `owner_id`（`owner_type=recommendation_result`） | may_have | `LOGICAL` | enum §6.15。障害時 |
 
 ---

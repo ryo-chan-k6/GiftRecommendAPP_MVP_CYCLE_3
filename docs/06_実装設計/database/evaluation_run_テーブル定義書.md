@@ -86,7 +86,7 @@ flowchart LR
 | 再評価 | 同一 Dataset に対し **複数 Run** が存在し得る（状態遷移設計書 §8.1.3） |
 | 再現性 | Run 作成時に version 3 列を **固定**（§5.5） |
 
-> **双方向整合**: `evaluation_result` テーブル定義書（後続 Task）で produces 側 FK ON を確定。Run 側は本 Task で **Run 列定義と被参照方針** を正本とする。
+> **双方向整合**: `evaluation_result_テーブル定義書`（#573 §17.1 確定）§8.1 produces 1:N・`uq_evaluation_result_run_case` UNIQUE と整合。Run 側は本 Task で **Run 列定義と被参照方針** を正本とする。
 
 ### 5.3 BATCH-018 / I/F との関係
 
@@ -355,7 +355,7 @@ CREATE TABLE evaluation_run (
 | 4 | 状態遷移 | queued → running → succeeded の UPDATE 列が設計どおり | integration |
 | 5 | LOGICAL version | 存在しない version UUID INSERT が batch / reco 側で拒否される | integration |
 | 6 | 1:N executed_by | 同一 Dataset に複数 Run INSERT 可能 | integration |
-| 7 | 1:N produces | 同一 Run に複数 evaluation_result INSERT 可能（後続 Task と整合） | integration |
+| 7 | 1:N produces | 同一 Run に複数 evaluation_result INSERT 可能（#573 §17.1 No.2 UNIQUE と整合） | integration |
 | 8 | Log 連携 | `phase_log` / `error_log` が `owner_type=evaluation_run` で記録可能 | integration |
 | 9 | 再実行 | 同一 Run 行の再開 UPDATE が設計上発生しない | manual |
 | 10 | Dataset 連携 | `idx_evaluation_run_dataset_id` が evaluation_dataset 定義書 §5.4 と一致 | manual |
@@ -401,7 +401,8 @@ CREATE TABLE evaluation_run (
 | I/F | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-018 / IF-SHARED-004 |
 | API 契約 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | evaluation mode |
 | packages | `packages/code-definitions/state/evaluation_run_status.yaml` | status 正本 |
-| 後続 Task | evaluation_result / evaluation_metric | produces / has 関係 |
+| 子 Task | `docs/06_実装設計/database/evaluation_result_テーブル定義書.md`（#573 §17.1 確定） | produces 1:N・Run×Case UNIQUE |
+| 後続 Task | `docs/06_実装設計/database/evaluation_metric_テーブル定義書.md`（#574） | has 1:N |
 
 ---
 
@@ -409,7 +410,7 @@ CREATE TABLE evaluation_run (
 
 - 論理ER §12.2・物理ER Mermaid ER・テーブル一覧 §10 No.53 と矛盾していない
 - `evaluation_dataset` との 1:N executed_by 関係（物理 FK ON）が明記されている
-- `evaluation_result` との 1:N produces 関係が明記されている
+- `evaluation_result_テーブル定義書`（#573）§8.1 produces 1:N・`uq_evaluation_result_run_case` UNIQUE と双方向整合している
 - `evaluation_status` と状態遷移設計書 §8.1・enum定義書 §6.12 が一致している
 - version 3 列の LOGICAL FK と Index 方針が Config 定義書と双方向整合している
 - `idx_evaluation_run_dataset_id` が evaluation_dataset 定義書 §5.4 と一致している
