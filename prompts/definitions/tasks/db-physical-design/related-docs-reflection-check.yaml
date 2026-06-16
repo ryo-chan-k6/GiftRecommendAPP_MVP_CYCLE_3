@@ -1,0 +1,286 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-related-docs-reflection-check"
+  title: "db-physical-design:関連ドキュメント反映漏れチェック"
+  summary: "62 テーブル定義書完了後・Epic PR → develop マージ前に、テーブル一覧・論理ER・物理ER・enum定義書・テーブル定義書群および横断参照 docs の反映漏れ・不整合・参照切れを棚卸しし、Blocker 級は修正する Phase2 Epic マージ前ゲート Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "Task ② enum/コード定義（enum定義書・packages/code-definitions 正本。merge 済み前提）"
+    - number: 439
+      purpose: "Task ① 物理ER 仕様書（物理ER.md 正本。merge 済み前提）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③（テーブル定義書）が Batch R01〜R09 で **62/62 完了**（Epic Branch HEAD `deb1877` 時点）。
+  Epic PR → develop マージ（Human 判断）の前に、テーブル定義書と関連 docs の横断整合を確認する Epic マージ前ゲート Task。
+  Issue #582 / Branch `docs/task-582-related-docs-reflection-check` で作業する。
+
+objective: |
+  テーブル一覧・論理ER・物理ER・enum定義書・62 件のテーブル定義書・横断参照 docs について、反映漏れ・不整合・参照切れを棚卸しする。
+  事実 / 推論 / 未確認を区別して一覧化し、Blocker 級は本 Task Branch 上で修正する。
+  Epic PR → develop 進行可否の判断材料を PR 本文に整理する。
+
+scope:
+  - "チェック観点に沿った棚卸しの実施（テーブル一覧 62 件と定義書ファイルの対応、論理ER / 物理ER と各定義書のエンティティ・関係、enum定義書と定義書・#505 以降の enum 参照、定義書間 FK / 参照関係、横断 docs 参照切れ）"
+  - "（未作成）プレースホルダ（コード定義書・データ保持・削除方針書）の扱い明記と一貫性確認"
+  - "Issue 対象外事項（phase_log 統合、raw_product_object 非 DB 化）の記載一貫性確認"
+  - "反映漏れ・不整合の一覧化（事実 / 推論 / 未確認の区分、Blocker / Must / Should / Question 分類）"
+  - "Blocker 級不整合の docs 修正（本 Task scope 内で同一 PR に含める）"
+  - "Epic PR → develop 進行可否の判断材料を PR 本文に記載"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "Epic PR の merge（Human 判断）"
+  - "`develop` への直接反映"
+  - "コード定義書・データ保持・削除方針書の新規本文作成（別 Task 化を検討）"
+  - "DDL・migration / seed の新規作成・変更"
+  - "apps/** 実装変更"
+  - "packages/contracts/**・generated 変更"
+  - "個別テーブル定義書の仕様再設計（本 Task は横断整合・反映漏れが主目的）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "62 テーブルと定義書ファイルの対応・（未作成）プレースホルダ・phase_log / raw_product_object 方針の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "エンティティ・関係と各テーブル定義書の突合"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "物理エンティティ・FK・Index 方針と各テーブル定義書の突合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 定義とテーブル定義書・#440 以降追記の整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "正本区分・enum / コード定義の横断参照"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase2 成果物・Task 分割・Epic マージ前ゲートの位置づけ"
+    - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      required: true
+      purpose: "成果物ステータス・（未作成）表記の横断確認"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: false
+      purpose: "Task / Epic 識別子と成果物対応の参考"
+    - path: "docs/06_実装設計/database/"
+      required: true
+      purpose: "62 件の *_テーブル定義書.md の横断突合（glob 参照）"
+  templates:
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（棚卸し結果・判断材料の記載。/create-pr）"
+  files:
+    - path: "prompts/definitions/epics/db-physical-design/epic.yaml"
+      required: true
+      purpose: "epic_scope.allowed_paths と修正対象 path の整合確認"
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 440
+      purpose: "enum/コード定義 Task（merge 済み前提）"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      action: "update"
+      required: false
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/database/物理ER.md"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/database/*_テーブル定義書.md"
+      action: "update"
+      required: false
+    - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/related-docs-reflection-check.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/related-docs-reflection-check/pr-review.yaml"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "反映漏れ・不整合チェック結果一覧（PR 本文。事実 / 推論 / 未確認の区分付き）"
+  - "Blocker / Must / Should / Question 分類表"
+  - "Blocker 級不整合の docs 修正差分（該当時）"
+  - "Epic PR → develop 進行可否の判断材料（PR 本文）"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "チェック観点に沿った棚卸しが実施されている"
+  - "反映漏れ・不整合が一覧化され、事実 / 推論 / 未確認が区別されている"
+  - "Blocker 級の不整合は修正済み、または Human 判断事項として明示されている"
+  - "Epic PR → develop 進行可否の判断材料が PR に記載されている"
+  - "Task PR target が親 Epic Branch である"
+  - "out_of_scope（Epic merge / develop 直接 / コード定義書・データ保持方針新規作成 / DDL / apps / OpenAPI）に該当する変更が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-582-related-docs-reflection-check"
+  summary: "related-docs-reflection-check"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-17"
+    due_date: "2026-06-19"
+
+issue:
+  number: 582
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+  prs: []
+  tasks:
+    - "task-db-physical-design-table-spec-*"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "Epic PR → develop（本 Task 完了・Human Review 後を推奨）"
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+    - "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+    - "docs/06_実装設計/database/物理ER.md"
+    - "docs/06_実装設計/database/enum定義書.md"
+    - "docs/00_共通/成果物管理/成果物一覧.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+  commands: []
+  manual_checks:
+    - "テーブル一覧の 62 テーブルと docs/06_実装設計/database/*_テーブル定義書.md（62 件）の対応"
+    - "論理ER / 物理ER のエンティティ・関係と各テーブル定義書 §8 参照関係の突合"
+    - "enum定義書とテーブル定義書の enum 列・CHECK 記述の突合"
+    - "phase_log 統合・raw_product_object 非 DB 化の記載一貫性（テーブル一覧・物理ER・該当定義書）"
+    - "（未作成）プレースホルダ（コード定義書・データ保持・削除方針書）の扱いが横断 docs で一貫しているか"
+    - "Mermaid 図がある場合は構文確認"
+    - "apps/** / packages/contracts/** への変更がないこと"
+  not_required:
+    - "unit test"
+    - "e2e test"
+  skip_reason:
+    "unit test": "docs 横断整合チェック Task のため"
+    "e2e test": "docs 横断整合チェック Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "棚卸し結果が事実 / 推論 / 未確認で区別されているか"
+    - "Blocker 級の扱い（修正 or Human 判断明示）が適切か"
+    - "Epic PR 進行判断材料が PR 本文に記載されているか"
+    - "out_of_scope 変更が混在していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "62 テーブル横断影響の棚卸しのため、重大な横断不整合は ai-logs/cross-cutting/ への記録を検討する。通常結果は PR を正本とする。"
+
+risk_points:
+  - "62 件の定義書と横断 docs の突合漏れ"
+  - "enum 追記（#440 以降）と個別定義書の enum 参照の不整合"
+  - "phase_log 統合方針の記載揺れ（recommendation_run_phase_log 等の残存記述）"
+  - "raw_product_object 非 DB 化方針の記載揺れ"
+  - "Blocker と Must の境界判断で Human 確認が必要になる可能性"
+
+human_decision_points:
+  - "Blocker 級と Must 級の境界（Epic PR を止めるかどうか）"
+  - "修正が大規模化した場合の別 Task 化判断"
+  - "コード定義書・データ保持・削除方針書を本 Epic 内で先行着手するか（out_of_scope 原則）"
+  - "Epic PR → develop の merge 可否（Human 判断。本 Task は判断材料の整理まで）"
+
+stop_conditions:
+  - "正本 docs 間で矛盾があり、AI が独断で解消できない場合"
+  - "Blocker 修正に DDL / migration / apps 変更が必要になった場合"
+  - "62 件の定義書のうち欠落ファイルがあり、前提が満たされない場合"
+  - "Epic Branch が Batch R01〜R09 完了状態でない場合"
+  - "正本 docs 間の優先順位判断が Human 必要な場合"
+
+notes:
+  - "Epic マージ前ゲート。子 Task ③ 62/62 完了後に実施"
+  - "Issue #582 / Branch docs/task-582-related-docs-reflection-check"
+  - "Review Definition: prompts/definitions/reviews/db-physical-design/related-docs-reflection-check/pr-review.yaml"
+  - "棚卸し結果の正本は PR 本文。必要に応じて Issue コメントへ要約"
+  - "Issue 対象外: phase_log 統合（recommendation_run_phase_log 非物理化）、raw_product_object（Object Storage・DB 非管理）"

@@ -1,0 +1,272 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-related-docs-reflection-check-pr"
+  title: "関連ドキュメント反映漏れチェック PRレビュー"
+  summary: "62 テーブル定義書完了後の横断 docs 整合チェック Task（#582）の PR を AI Review する。棚卸し結果の区分・Blocker 対応・Epic PR 進行判断材料・out_of_scope 混入を確認する。"
+  type: "docs_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-582-related-docs-reflection-check"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 582
+  task_definition: "prompts/definitions/tasks/db-physical-design/related-docs-reflection-check.yaml"
+  source_branch: "docs/task-582-related-docs-reflection-check"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/related-docs-reflection-check.yaml"
+    required: true
+  issue:
+    number: 582
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "62 テーブル対応・プレースホルダ・phase_log / raw_product_object 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "論理エンティティ・関係の横断整合"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "物理 ER・FK・非物理化方針の横断整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum と定義書の整合"
+    - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      required: true
+      purpose: "成果物ステータス・（未作成）表記"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase2 ゲート Task の位置づけ"
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope（棚卸し・一覧化・Blocker 修正・判断材料整理）を満たしているか"
+    - "out_of_scope（Epic merge / develop 直接 / コード定義書・データ保持方針新規作成 / DDL / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR 本文に棚卸し結果・検証結果・未実施事項・Human Review 観点が記載されているか"
+    - "Task PR target が親 Epic Branch であるか"
+    - "Related to #582 が使われ、Closes #582 が使われていないか"
+  docs:
+    - "棚卸し結果が事実 / 推論 / 未確認で区別されているか"
+    - "Blocker / Must / Should / Question が整理されているか"
+    - "テーブル一覧 62 件と定義書ファイルの対応が確認されているか"
+    - "論理ER / 物理ER と各テーブル定義書のエンティティ・関係が突合されているか"
+    - "enum定義書とテーブル定義書の enum 参照が突合されているか"
+    - "phase_log 統合・raw_product_object 非 DB 化の記載一貫性が確認されているか"
+    - "（未作成）プレースホルダの扱いが横断 docs で一貫しているか"
+    - "Epic PR → develop 進行可否の判断材料が PR 本文に記載されているか"
+    - "修正差分がある場合、横断正本（テーブル一覧 / ER / enum）との矛盾が解消されているか"
+  db:
+    - "DDL / migration / seed の新規作成・変更が混入していないか"
+    - "DB schema 変更を伴う修正が scope 外として分離されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+  branch:
+    - "source が docs/task-582-related-docs-reflection-check であるか"
+    - "target が docs/epic-435-db-physical-design であるか"
+    - "develop へ直接向いていないか"
+  project:
+    - "Status 更新意図（AI Review → Human Review / In Progress）が明確か"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR 本文に Epic PR 進行判断材料が記載されている"
+    - "Blocker 級の扱い（修正済み or Human 判断明示）が確認できる"
+    - "棚卸しの未確認事項が明示されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "棚卸し結果と Blocker 対応が PR 本文で追跡可能"
+      - "修正必須事項がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "棚卸し結果の区分（事実 / 推論 / 未確認）が不足している"
+      - "Blocker 級の扱いが不明確"
+      - "Epic PR 進行判断材料が PR 本文にない"
+      - "同一 Branch で修正可能な docs 不備がある"
+  needs_human_decision:
+    conditions:
+      - "Blocker と Must の境界判断が必要"
+      - "大規模修正の別 Task 化判断が必要"
+      - "Epic PR merge 可否の最終判断"
+  split_required:
+    conditions:
+      - "DDL / migration / apps 変更が必要"
+      - "コード定義書・データ保持方針の新規本文作成が PR に含まれている"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: "2026-06-17"
+    due_date: "2026-06-19"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 582
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/related-docs-reflection-check.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definition の acceptance_criteria を満たしているか確認する"
+    - "PR 本文に棚卸し結果・Epic PR 進行判断材料・Human Review 観点が記載されているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definition はレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 PR レビューのため、レビュー結果は PR コメントを正本とする"
+
+risk_points:
+  - "棚卸しの網羅性不足（62 件突合漏れ）"
+  - "Blocker 判定の甘さで Epic PR に不整合が残る可能性"
+  - "横断 docs 修正の差分が大きく、レビュー負荷が高い"
+
+human_decision_points:
+  - "Epic PR → develop の merge 可否（本 Review では判断材料の妥当性まで）"
+  - "残存 Must 級不整合を Epic PR と同時進行してよいか"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "DDL / migration / apps 変更が混入している場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/related-docs-reflection-check.yaml"
+  - "Issue #582 / Branch docs/task-582-related-docs-reflection-check"
+  - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"
+  - "Epic マージ前ゲート Task のため、Epic PR 進行判断材料の記載を重点確認する"
