@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 585
   issue: 582
   task_definition: "prompts/definitions/tasks/db-physical-design/related-docs-reflection-check.yaml"
   source_branch: "docs/task-582-related-docs-reflection-check"
@@ -72,7 +72,7 @@ input:
     number: 582
     required: true
   pr:
-    number: null
+    number: 585
     required: true
   diff:
     required: true
