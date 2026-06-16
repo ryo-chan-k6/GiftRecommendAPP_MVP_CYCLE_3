@@ -1,0 +1,43 @@
+name: CI Contract Check
+
+# OpenAPI 構文検証と Orval 生成整合（CI・CD方針書 §5.3.6–§5.3.8）。
+# apps/** の lint / build は後続 Task で ci-web.yml / ci-api.yml へ段階拡張する。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate OpenAPI YAML syntax
+        run: bash .github/scripts/ci-validate-yaml.sh
+
+      - name: Run Orval generate
+        run: pnpm orval
+
+      - name: Verify generated API clients match OpenAPI
+        run: |
+          git diff --exit-code -- \
+            apps/web/src/generated/api \
+            apps/api/src/generated/reco-client
