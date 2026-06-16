@@ -329,6 +329,7 @@ erDiagram
 | `evaluation_result.evaluation_case_id` | `evaluation_case.evaluation_case_id` | executed_as | `ON` | 1:N | Human Review #573 確定。`evaluation_case_テーブル定義書` §8.1 |
 | `evaluation_result.evaluation_dataset_id` | `evaluation_dataset.evaluation_dataset_id` | 冗長保持 | `ON` | 1:N | Human Review #573 §17.1 No.1。DELETE RESTRICT。`evaluation_dataset_テーブル定義書` §5.4 |
 | `evaluation_result.recommendation_result_id` | `recommendation_result.recommendation_result_id` | references | `LOGICAL` | 0..1:N | Human Review #573 §17.1 No.3。nullable。推薦失敗時も trace 行 |
+| `evaluation_metric.evaluation_result_id` | `evaluation_result.evaluation_result_id` | has | `ON` | 1:N | Human Review #574 §17.1 No.1。DELETE RESTRICT。`evaluation_metric_テーブル定義書` §8.1 |
 | `phase_log.owner_id` | `recommendation_run.recommendation_run_id` 等 | records | `LOGICAL` | N:1 | polymorphic: owner_type + owner_id |
 
 ---
@@ -430,6 +431,10 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `evaluation_result` | `idx_evaluation_result_recommendation_result_id` | `recommendation_result_id` | btree | may_reference 逆引き | LOGICAL FK nullable（§17.1 No.3） |
 | `evaluation_result` | `idx_evaluation_result_executed_at` | `executed_at` DESC | btree | 業務時系列分析 | §17.1 No.5 |
 | `evaluation_result` | `idx_evaluation_result_created_at` | `created_at` DESC | btree | Retention DELETE / 監査 | 365 日（§17.1 No.6） |
+| `evaluation_metric` | `uq_evaluation_metric_result_name` | `evaluation_result_id`, `metric_name` | unique | Result 内指標冪等 INSERT | `evaluation_metric_テーブル定義書` §7・§17.1 No.4 |
+| `evaluation_metric` | `idx_evaluation_metric_result_id` | `evaluation_result_id` | btree | has FK 補助・Result 単位一覧 | §9 |
+| `evaluation_metric` | `idx_evaluation_metric_name` | `metric_name` | btree | 指標種別横断分析 | §9 |
+| `evaluation_metric` | `idx_evaluation_metric_created_at` | `created_at` DESC | btree | Retention DELETE / 監査 | 365 日（§17.1 No.7） |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 
 ---
@@ -492,6 +497,9 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `feature_definition` | `chk_feature_code_mvp` | check | `feature_code` | MVP 8 軸のみ | enum Task と連携 |
 | `user_feature` / `item_feature` | `chk_feature_value_range` | check | `normalized_feature_value`（item） | 0.0〜1.0 | user_feature は `chk_user_feature_value_range`（上記） |
 | `recommendation_result_item` | — | — | Snapshot 列 | UPDATE 禁止方針 | アプリ・DB 双方で上書き防止 |
+| `evaluation_metric` | `uq_evaluation_metric_result_name` | unique | `evaluation_result_id`, `metric_name` | Result 内指標冪等 | `evaluation_metric_テーブル定義書` §7 |
+| `evaluation_metric` | `fk_evaluation_metric_result` | FK | `evaluation_result_id` | `evaluation_result` ON DELETE RESTRICT | §8.1 |
+| `evaluation_metric` | `chk_metric_name_not_empty` | check | `metric_name` | `length(trim(metric_name)) > 0` | §10 |
 
 ---
 
@@ -569,7 +577,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 ## 16. 後続テーブル定義書への引き継ぎ
 
 - MVP 作成対象 **60 テーブル**について `{物理テーブル名}_テーブル定義書.md` を 1 テーブル 1 Task で作成する（テーブル一覧 §1.1）
-- `external_attribute` / `staging_attribute` のテーブル定義書・DDL は **MVP では作成しない**
+- `external_attribute` のテーブル定義書は `external_attribute_テーブル定義書.md`（#575）を正とする。**MVP DDL は作成しない**。`staging_attribute` のテーブル定義書・両テーブルの DDL は **MVP 対象外**
 - `recommendation_request` は `relationship_code` / `occasion_code` / `budget_min` / `budget_max` / `preferred_text` 等の **個別カラム** と `request_payload` / `validated_payload`（JSONB）を **併用**する（RecommendationRequest定義書 §11.2）
 - `recommendation_run` に `pair_id` を保持し、実行時に解決した Pair を再現性確保のため固定する
 - 全 MVP 対象テーブルの PK / FK / unique / index / 正本区分 / 更新主体を本ドキュメント §8〜§11 から転記する
@@ -588,6 +596,8 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 - `evaluation_dataset` の Index / CHECK / Retention / FK 被参照は `evaluation_dataset_テーブル定義書` §7–§13・§17.1 を正とする（#565）
 - `evaluation_case` の Index / CHECK / JSONB / may_reference は `evaluation_case_テーブル定義書` §7–§13・§17.1 を正とする（#566）
 - `evaluation_result` の Index / CHECK / Retention / FK は `evaluation_result_テーブル定義書` §7–§13・§17.1 を正とする（#573）
+- `evaluation_metric` の Index / CHECK / Retention / FK は `evaluation_metric_テーブル定義書` §7–§13・§17.1 を正とする（#574）
+- `external_attribute` の Index / CHECK / FK / MVP 任意方針は `external_attribute_テーブル定義書` §7–§14・§17.1 を正とする（#575）。**MVP DDL は作成しない**
 
 ---
 
@@ -711,6 +721,28 @@ Human Review にて以下を確定した（2026-06-07）。
 | 4 | インライン metric 列 | **物理化しない** | `evaluation_metric` のみ（#574） |
 | 5 | `executed_at` / `created_at` | **併用** | 業務完了時刻 + 監査 timestamp |
 | 6 | Retention | **365 日**（`created_at`）。MVP 自動 DELETE なし | evaluation_dataset / evaluation_run と同値 |
+
+### 17.11 Human Review 決定事項（Issue #574 / `evaluation_metric`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | `evaluation_result_id` 物理 FK | **物理 FK ON** / `ON DELETE RESTRICT` | §9 has。evaluation_result §8.2 |
+| 2 | `evaluation_run_id` 物理列 | **MVP は物理列なし** | Result 経由間接参照 |
+| 3 | `metric_name` 命名 | **snake_case `{base}_at_{k}`**（例: `precision_at_10`） | Evaluation §10.5 既定 K=10 |
+| 4 | 冪等キー | **`uq_evaluation_metric_result_name`** | §10 UNIQUE。INSERT のみ |
+| 5 | `metric_value` 型 | **`numeric(12,6) NOT NULL`** | DB 0〜1 CHECK なし |
+| 6 | `metric_detail_json` | **nullable JSONB** | k・内訳・MMR パラメータ等 |
+| 7 | Retention | **365 日**（`created_at`）。MVP 自動 DELETE なし | evaluation_result と同値 |
+| 8 | 再評価上書き | **Metric 行は追記のみ** | 新規 Run / Result 経由 |
+
+### 17.12 Human Review 決定事項（Issue #575 / `external_attribute`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | MVP DDL 作成 | **MVP では作成しない** | 物理ER §17 No.7 整合。定義書のみ #575 で整備 |
+| 2 | `external_genre_id` 物理 FK | **LOGICAL**（物理 FK OFF） | `external_attribute_テーブル定義書` §8.1 |
+| 3 | 楽天属性検索API MVP 採用 | **不採用**。商品検索API 優先 | §4.5.2 正本 |
+| 4 | `item_attribute` 中間テーブル | **MVP 不作成** | `attributeIds` は hash シグナルのみ |
 
 ---
 

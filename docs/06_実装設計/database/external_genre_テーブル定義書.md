@@ -59,7 +59,7 @@
 - 商品正本（`item` の責務）
 - Staging 中間データ（`staging_genre` の責務）
 - ランキング観測（`ranking_snapshot` / `item_popularity_signal` の責務）
-- 楽天属性（`external_attribute` の責務。MVP 任意）
+- 楽天属性（`external_attribute` の責務。MVP 任意。`external_attribute_テーブル定義書` #575）
 - Public API 公開
 
 ### 5.2 `staging_genre` → `external_genre` Upsert 関係
