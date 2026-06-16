@@ -19,3 +19,5 @@ supabase migration up
 Redis は Supabase 外で Docker 起動する（[基盤構成設計書](../docs/06_実装設計/cross_cutting/基盤構成設計書.md) §5.5）。
 
 詳細は [マイグレーション方針書](../docs/06_実装設計/database/マイグレーション方針書.md) および Phase3 DB構築手順書を正とする。
+
+**DDL スモーク検証（Phase2）**: [ローカルDB検証手順書](../docs/06_実装設計/database/ローカルDB検証手順書.md)（WSL2 + Docker Desktop + Supabase CLI + `psql`）。`db/ddl/` の直接適用手順を含む。
