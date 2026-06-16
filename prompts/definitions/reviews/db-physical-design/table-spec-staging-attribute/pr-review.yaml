@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-staging-attribute-pr"
+  title: "staging_attribute テーブル定義書 PRレビュー"
+  summary: "staging_attribute テーブル定義書 Task の PR を AI Review する。物理ER・テーブル一覧・外部商品データ連携設計書 §4.5 / §12.3・raw_product_metadata / external_attribute / product_diff_result / staging_item / staging_genre テーブル定義書との整合、MVP 任意方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-576-staging-attribute-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 576
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-staging-attribute.yaml"
+  source_branch: "docs/task-576-staging-attribute-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-staging-attribute.yaml"
+    required: true
+  issue:
+    number: 576
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/staging_attribute_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系・MVP DDL 対象外（§17 No.7）・Staging 系 FK 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "商品系・外部商品データ連携系エンティティ属性との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.24 staging_attribute・§5 補足 No.9（MVP任意）との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Staging 正本区分（一時 / 中間・MVP任意）の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§4.5 楽天属性検索API・§12.2–§12.3 属性データ・attributeIds マッピング"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-005・trace キー（raw_metadata_id / staging_attribute_id）の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-005 / 属性マスタ Upsert 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "§10.2–§10.3 `staging_item_attribute` 表記と物理名の突合"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-031 External Attribute Updater の責務確認"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "transforms_to 親 Metadata・source_api 方針（#506 merge 済み正本）"
+    - path: "docs/06_実装設計/database/external_attribute_テーブル定義書.md"
+      required: true
+      purpose: "Upsert 先正本・Upsert キー・列マッピング（#575 merge 済み正本）"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "§5 責務境界・BATCH-005〜006 sibling パイプライン（#526 merge 済み正本）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "attributeIds 方針・Staging 系章構成（#517 merge 済み正本）"
+    - path: "docs/06_実装設計/database/staging_genre_テーブル定義書.md"
+      required: true
+      purpose: "transforms_to / upserts 章構成・Retention 方針（#525 merge 済み正本）"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（external_attribute 再作成 / product_diff_result 再作成 / DDL / migration / apps / OpenAPI / 物理ER 本体更新）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "MVP 任意テーブル（△）であることが §4 / §5 等で明記されているか"
+    - "物理ER §17 No.7（MVP DDL 作成対象外）との関係が矛盾なく整理されているか"
+    - "テーブル一覧 §5 補足 No.9（属性データは MVP 任意）と一致しているか"
+    - "外部商品データ連携設計書 §12.3 属性データ・Feature 推定補助の位置づけが整理されているか"
+    - "external_attribute / staging_genre / staging_item テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "処理構成定義書 `staging_item_attribute` と物理名 `staging_attribute` の差分が解消されているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "raw_product_metadata → staging_attribute transforms_to（raw_metadata_id・LOGICAL FK）関係が明記されているか"
+    - "staging_attribute → external_attribute Upsert キーと列マッピングが明記されているか"
+    - "product_diff_result との責務分離（直接 FK なし・judged_as 対象外・BATCH-006 入力外）が明記されているか"
+    - "staging_item.attributeIds（Payload / hash のみ）と属性マスタ Staging の参照関係が整理されているか"
+    - "楽天属性検索API / ジャンルAPI attributes / 商品検索API attributeIds の入力優先順位が整理されているか"
+    - "Staging 系物理 FK なし（LOGICAL + Index）方針が §8 等で明記されているか"
+    - "BATCH-005 / MOD-BATCH-031 における staging_attribute 作成・更新主体（batch）が妥当か"
+    - "物理ER §13 Retention 方針（成功 Batch 後即 DELETE）が反映されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "MVP で external_attribute / staging_attribute の物理 DDL を作成するか（物理ER は no・定義書のみ先行）"
+  - "UNIQUE キー（raw_metadata_id + external_attribute_id 等）の採否"
+  - "source / external_genre_id 列の Staging 明示保持要否"
+  - "attribute_search vs genre_search attributes vs item_search attributeIds の入力優先順位"
+  - "Retention — 物理ER §13 方針（成功 Batch 後即 DELETE）の採否"
+  - "処理構成定義書 `staging_item_attribute` 表記の正本名称（staging_attribute 確定か）"
+
+risk_points:
+  - "external_attribute（#575）との Upsert キー・列マッピング引き継ぎ（同 Batch R09・#575 PR 未 merge 時は Human Review 前に Epic 取込確認）"
+  - "product_diff_result（#526 / PR #531）とのパイプライン整理（属性 Staging が hash 判定に与えないことの明確化）"
+  - "staging_item（#517 / PR #522）attributeIds 方針との一貫性"
+  - "staging_genre（#525 / PR #530）との Staging 系 Retention / LOGICAL FK 方針の一貫性"
+  - "MOD-BATCH-031 External Attribute Updater 実装 Task への I/F 引き継ぎ"
+  - "論理ER に staging_attribute 詳細属性が未掲載の場合の後続論理ER 更新要否"
+
+notes:
+  - "Batch R09 No.4: staging_attribute（Phase2 子 Task ③ 最終バッチ）"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-staging-attribute.yaml"
+  - "Issue #576 / Branch docs/task-576-staging-attribute-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#506 / PR #511（raw_product_metadata）、#575（external_attribute・PR 作成後に target.pr 更新）、#517 / PR #522（staging_item）、#525 / PR #530（staging_genre）、#526 / PR #531（product_diff_result）"
+  - "external_attribute 本体定義は out_of_scope（#575 正本参照）"
+  - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"

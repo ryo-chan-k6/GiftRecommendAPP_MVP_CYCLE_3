@@ -1,0 +1,273 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-staging-attribute"
+  title: "staging_attribute:Staging Attributeテーブル定義書作成"
+  summary: "物理ER・論理ER・テーブル一覧・外部商品データ連携設計書・raw_product_metadata / external_attribute / product_diff_result / staging_item / staging_genre テーブル定義書を入力に、属性 Staging 中間正本 `staging_attribute` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R09 No.4（最終バッチ）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書（transforms_to 親 Metadata。merge 済み前提）"
+    - number: 575
+      purpose: "external_attribute テーブル定義書（Upsert 先正本。同 Batch R09 No.3。merge 済み前提）"
+    - number: 517
+      purpose: "staging_item テーブル定義書（Staging 系章構成・attributeIds / normalized_hash 方針参考。merge 済み前提）"
+    - number: 525
+      purpose: "staging_genre テーブル定義書（Staging 中間正本・transforms_to / upserts 章構成参考。merge 済み前提）"
+    - number: 526
+      purpose: "product_diff_result テーブル定義書（BATCH-005〜006 パイプライン上の sibling 関係整理。merge 済み前提）"
+    - number: 494
+      purpose: "external_genre テーブル定義書（外部参照マスタ章構成参考。merge 済み前提）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 511
+      purpose: "Task #506 PR（raw_product_metadata。merge 済み前提）"
+    - number: 522
+      purpose: "Task #517 PR（staging_item。merge 済み前提）"
+    - number: 530
+      purpose: "Task #525 PR（staging_genre。merge 済み前提）"
+    - number: 531
+      purpose: "Task #526 PR（product_diff_result。merge 済み前提）"
+    - number: 499
+      purpose: "Task #494 PR（external_genre。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R09 No.4（最終バッチ）。テーブル一覧 §6 No.24。
+  External Attribute 反映前の属性データを保持する Staging 中間正本。
+  楽天商品検索APIの `attributeIds` / `attributeFlag`、楽天属性検索API（任意）、ジャンル検索APIの `attributes` / `tagGroups` 正規化結果が入力候補となる。
+  `raw_product_metadata` → `staging_attribute`（transforms_to）→ `external_attribute`（upserts）の属性昇格フローの中核。
+  BATCH-005（Raw取込・Staging変換）および MOD-BATCH-031 External Attribute Updater で作成・更新され、属性反映フェーズで `external_attribute` へ Upsert する。
+  MVP では **任意テーブル（△）** であり、物理ER では MVP DDL 作成対象 60 テーブルから除外されているが、本 Task では **テーブル定義書として設計を文書化** し、採用判断・後続 DDL Task への引き継ぎを可能にする。
+  処理構成定義書 §10.2 の `staging_item_attribute` 表記とテーブル一覧 `staging_attribute` の名称差分を物理 DDL 方針として解消する。
+  親 Epic Branch 最新（enum #440、raw_product_metadata #506、external_attribute #575、staging_item #517、staging_genre #525、product_diff_result #526 merge 済み前提）を前提とする。
+  Issue #576 / Branch `docs/task-576-staging-attribute-table-spec` で作業する。
+
+objective: |
+  `staging_attribute` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `raw_product_metadata` との transforms_to 関係、`external_attribute` への Upsert キー・列マッピング、`product_diff_result` との **責務分離**（属性 Staging は差分判定入力外）、MVP 任意テーブルであること、BATCH-005 / MOD-BATCH-031 との関係を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の staging_attribute テーブル定義書作成"
+  - "物理ER 外部商品データ連携系・テーブル一覧 §6 No.24・§5 補足 No.9（MVP任意）との突合"
+  - "論理ER・外部商品データ連携設計書 §4.5 楽天属性検索API・§12.2–§12.3 属性データ連携・attributeIds マッピングとの整合"
+  - "raw_product_metadata_テーブル定義書 §5 transforms_to 関係・source_api = attribute_search / genre_search 属性ノードとの整合"
+  - "external_attribute_テーブル定義書 §5 Upsert 関係・Upsert キー・列マッピング・楽天API マッピングとの突合"
+  - "product_diff_result_テーブル定義書 §5 責務境界・BATCH-005〜006 パイプライン上の sibling 関係（直接 FK なし）の整理"
+  - "staging_item_テーブル定義書 §5 attributeIds（Payload / hash 入力のみ・DB 列なし）との参照関係整理"
+  - "staging_genre_テーブル定義書 §5 transforms_to / upserts・Staging 系章構成・Retention 方針との一貫性"
+  - "正本定義表・モジュール一覧 MOD-BATCH-031 External Attribute Updater・処理構成定義書 §10.2–§10.3 との整合"
+  - "バッチ設計方針書 BATCH-005 / 属性マスタ Upsert 方針・インターフェース一覧 IF-DB-BATCH-005 等との整合"
+  - "処理構成定義書 `staging_item_attribute` / `item_attribute` 表記と物理名 `staging_attribute` / `external_attribute` の差分解消"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "external_attribute テーブル定義書の再作成（#575 merge 済み正本を参照）"
+  - "product_diff_result / staging_item / staging_genre テーブル定義書の再作成（本 Task では関係整理のみ）"
+  - "item / item_image / item_review_summary 等のテーブル定義書"
+  - "api_call_log / fetch_cursor テーブル定義書"
+  - "DDL・migration / seed（MVP では物理ER 上も作成しない方針）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+  - "物理ER 本体の Mermaid / 関係表への追記（Epic 横断更新 Task へ委譲。本 Task では参照・差分明示のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系分類・staging_attribute MVP 対象外（§17 No.7）・Staging 系 FK 方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "source / source_api 等 enum 参照（該当時）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "商品系・外部商品データ連携系エンティティ属性（論理ER 未詳細時はテーブル一覧・外部商品データ連携設計書と突合）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.24 staging_attribute・§5 No.14 external_attribute・§5 補足 No.9（MVP任意）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Staging 正本区分（一時 / 中間）・Batch 管理主体・MVP任意"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§4.5 楽天属性検索API・§6.4 attributeIds・§12.2–§12.3 属性データ連携・Adapter 正規化"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-005 Staging 保存・trace キー（raw_metadata_id / staging_attribute_id）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-005 Staging 変換・属性マスタ Upsert / 差分反映方針"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-005 / 属性反映 Batch の入出力・staging_attribute 更新タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "§10.2–§10.3 Raw取込・Staging変換・`staging_item_attribute` 表記との突合"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-031 External Attribute Updater の入出力・責務"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "staging_attribute / raw_metadata_id trace キー・Retention 方針"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "§5 transforms_to（raw_metadata_id）・source_api = attribute_search 等（merge 済み前提）"
+    - path: "docs/06_実装設計/database/external_attribute_テーブル定義書.md"
+      required: true
+      purpose: "§5 Upsert 関係・Upsert キー・列マッピング・楽天API マッピング（#575 merge 済み前提）"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "§5 責務境界・BATCH-005〜006 sibling パイプライン・judged_as 対象外の整理（#526 merge 済み前提）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "§5 attributeIds 方針・Staging 系章構成・Retention・LOGICAL FK 方針（#517 merge 済み前提）"
+    - path: "docs/06_実装設計/database/staging_genre_テーブル定義書.md"
+      required: true
+      purpose: "§5 transforms_to / upserts 章構成・Staging 系 Retention 方針参考（#525 merge 済み前提）"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: false
+      purpose: "外部参照マスタ章構成・Upsert 方針参考（#494 merge 済み前提）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: false
+      purpose: "§12.3 attributeIds / normalized_hash 方針（#495 merge 済み前提）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/staging_attribute_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-staging-attribute.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-staging-attribute/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "staging_attribute テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・テーブル一覧 §6 No.24 と矛盾しない"
+  - "MVP 任意テーブル（△）であり、物理ER §17 No.7 で MVP DDL 作成対象外であることが明記されている"
+  - "external_attribute との Upsert 関係（transforms_to / upserts・Upsert キー・列マッピング）が明記されている"
+  - "product_diff_result との責務分離（差分判定入力外・直接 FK なし・BATCH-005 sibling パイプライン）が明記されている"
+  - "staging_genre / staging_item テーブル定義書との Staging 系方針（LOGICAL FK・Retention）が一貫している"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "staging-attribute-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 576
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書 完了（transforms_to 親 Metadata 正本）"
+    - number: 575
+      purpose: "external_attribute テーブル定義書 完了（Upsert 先正本。同 Batch R09 No.3）"
+    - number: 517
+      purpose: "staging_item テーブル定義書 完了（Staging 系参考正本）"
+    - number: 526
+      purpose: "product_diff_result テーブル定義書 完了（パイプライン sibling 関係整理）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/staging_attribute_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §17 No.7（MVP DDL 対象外）との整合"
+    - "テーブル一覧 §6 No.24・§5 補足 No.9（MVP任意）との整合"
+    - "raw_product_metadata → staging_attribute transforms_to（raw_metadata_id・LOGICAL FK）との整合"
+    - "staging_attribute → external_attribute upserts（LOGICAL・Upsert キー・列マッピング）との整合"
+    - "product_diff_result との責務分離（judged_as 対象外・staging_item 経由の hash 判定との独立）"
+    - "外部商品データ連携設計書 §12.3 属性データ・attributeIds マッピングとの整合"
+    - "external_attribute_テーブル定義書 §5 Upsert 列・楽天API マッピングとの整合"
+    - "staging_item_テーブル定義書 attributeIds（Payload のみ・DB 列なし）との参照関係"
+    - "staging_genre_テーブル定義書 §5 transforms_to / upserts・Retention 方針との一貫性"
+    - "処理構成定義書 `staging_item_attribute` と物理名 `staging_attribute` の差分解消"
+    - "MOD-BATCH-031 External Attribute Updater との入出力整合"
+    - "Staging 系物理 FK なし（LOGICAL + Index）方針の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R09 No.4: staging_attribute（Phase2 子 Task ③ 最終バッチ）"
+  - "Issue #576 / Branch docs/task-576-staging-attribute-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#506 / PR #511（raw_product_metadata）、#575 / PR（external_attribute・未 merge 時は /work-issue 開始前に Epic 取込を確認）、#517 / PR #522（staging_item）、#525 / PR #530（staging_genre）、#526 / PR #531（product_diff_result）"
+  - "論点: UNIQUE キー（raw_metadata_id + external_attribute_id 等）、source / external_genre_id の Staging 列採否、attribute_search vs genre_search attributes 入力優先 — Human Review で確定"
+  - "product_diff_result とは直接 FK なし。BATCH-005 で sibling 生成、BATCH-006 差分判定は staging_item のみが入力"
+  - "処理構成定義書 §10.2 `staging_item_attribute` は本 Task で `staging_attribute` に統一する方針を明記"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
