@@ -1289,6 +1289,7 @@ Recommendation RequestやFeedbackには自由入力が含まれる。
 | meaning_distribution_metric | 365日以上 | Gift Meaning空間の品質推移 |
 | normalization_distribution_metric | 365日以上 | 正規化方式の妥当性検証 |
 | evaluation_result | 長期保持候補 | モデル比較・改善履歴 |
+| evaluation_dataset | **365日**（物理設計確定） | 評価基準正本。MVP は自動 DELETE なし。`evaluation_dataset_テーブル定義書` §13（#565） |
 
 ---
 

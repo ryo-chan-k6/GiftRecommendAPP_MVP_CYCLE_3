@@ -245,19 +245,29 @@ review:
 contract_gate:
   required: false
 
-human_decision_points:
-  - "dataset_name の一意性（UNIQUE 制約の要否）"
-  - "dataset_version の形式（semver / 自由ラベル）と同一 dataset_name 内 version 管理方針"
-  - "is_active 列の MVP 物理 DDL 採用"
-  - "evaluation_run.executed_by（evaluation_dataset_id）の物理 FK ON 方針（物理ER §9 未掲載の補完）"
-  - "Evaluation Dataset の Retention / 削除方針（MVP partial）"
+human_decision_points: []
 
-human_review_decisions: []
+human_review_decisions:
+  - id: 1
+    topic: "dataset_name + dataset_version の UNIQUE"
+    decision: "組み合わせ UNIQUE（uq_evaluation_dataset_name_version）。dataset_name 単独 UNIQUE は採用しない"
+  - id: 2
+    topic: "dataset_version の形式"
+    decision: "semver 基本形 v1.0.0（chk_dataset_version_format）。semantic_config_version 同型"
+  - id: 3
+    topic: "is_active 列の MVP 物理 DDL"
+    decision: "採用（boolean NOT NULL DEFAULT true）。semantic_config / occasion_master 踏襲"
+  - id: 4
+    topic: "evaluation_run.executed_by の物理 FK"
+    decision: "evaluation_run.evaluation_dataset_id へ物理 FK ON / ON DELETE RESTRICT。物理ER §9 に反映"
+  - id: 5
+    topic: "Evaluation Dataset の Retention"
+    decision: "365 日（created_at 基準）。MVP は自動 DELETE なし。日常は is_active=false"
 
 notes:
   - "Batch R08 No.3: evaluation_dataset（Evaluation系ルート正本）"
   - "Issue #565 / Branch docs/task-565-evaluation-dataset-table-spec"
   - "R08 並行: #566 evaluation_case / #567 evaluation_run"
   - "先行 merge 済み前提: #440 / PR #441（enum）、#535 / PR #540（phase_log）、#536 / PR #541（error_log）"
-  - "物理ER §9 は evaluation_case contains のみ掲載。evaluation_run executed_by は ER 図・論理ER §12.1 に存在し、本 Task で FK 方針を確定する"
+  - "Human Review #565 確定: §17.1 No.1〜No.5（UNIQUE / semver / is_active / executed_by FK / Retention 365日）"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

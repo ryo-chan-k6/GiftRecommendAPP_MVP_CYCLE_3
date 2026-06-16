@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `partial`                          |
 | 作成日         | 2026-06-16                         |
-| 更新日         | 2026-06-16                         |
+| 更新日         | 2026-06-16（Human Review §17.1 確定） |
 
 ---
 
@@ -80,13 +80,13 @@
 
 ### 5.4 子テーブル Task への引き継ぎ
 
-| 子テーブル | 参照列 | 関係 | FK制約（推奨） | Index（推奨） |
-| ---------- | ------ | ---- | ------------- | ------------- |
+| 子テーブル | 参照列 | 関係 | FK制約 | Index |
+| ---------- | ------ | ---- | ------ | ----- |
 | `evaluation_case` | `evaluation_dataset_id` | contains | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_case_dataset_id`（#566 で確定） |
 | `evaluation_run` | `evaluation_dataset_id` | executed_by | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_run_dataset_id`（#567 で確定） |
 | `evaluation_result` | `evaluation_dataset_id` | 冗長保持（再現性） | `LOGICAL` または `ON`（#567 以降で確定） | — |
 
-> **物理ER §9 との差分**: Mermaid ER および論理ER §12.1 には `evaluation_dataset` → `evaluation_run` の `executed_by` 関係が存在するが、物理ER §9 FK 表には `evaluation_case.contains` のみ掲載されている。本定義書では `evaluation_run.evaluation_dataset_id` への **物理 FK ON** を推奨し、§17 No.4 で Human Review を求める。
+> **物理ER §9 整合**: Human Review §17.1 No.4 により `evaluation_run.evaluation_dataset_id` への物理 FK ON を確定。物理ER §9 FK 表・§17.7 に反映済み。
 
 ### 5.5 対象外
 
@@ -133,17 +133,17 @@
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `evaluation_case` | `evaluation_dataset_id` | contains | `ON` | 物理ER §9。1:N。DELETE RESTRICT（§17 No.4 推奨） |
-| `evaluation_run` | `evaluation_dataset_id` | executed_by | `ON`（推奨） | 論理ER §12.1 / 物理ER Mermaid ER。1:N。§9 FK 表未掲載を本 Task で補完 |
+| `evaluation_case` | `evaluation_dataset_id` | contains | `ON` | 物理ER §9。1:N。DELETE RESTRICT（§17.1 No.4） |
+| `evaluation_run` | `evaluation_dataset_id` | executed_by | `ON` | 物理ER §9・§17.1 No.4。1:N。DELETE RESTRICT |
 
 > **子テーブル側 DDL 方針（引き継ぎ）**: 子テーブルの `evaluation_dataset_id` → `evaluation_dataset.evaluation_dataset_id` に `REFERENCES ... ON DELETE RESTRICT` を付与する。親データセット削除前に case / run 行の整理が必要。
 
-### 8.2 物理ER §9 差分整理
+### 8.2 物理ER §9 整合（Human Review #565 反映）
 
-| 関係 | 物理ER Mermaid ER | 物理ER §9 FK 表 | 本定義書の方針 |
-| ---- | ----------------- | --------------- | -------------- |
+| 関係 | 物理ER Mermaid ER | 物理ER §9 FK 表 | 状態 |
+| ---- | ----------------- | --------------- | ---- |
 | `evaluation_dataset` → `evaluation_case` contains | あり | あり（ON） | 整合 |
-| `evaluation_dataset` → `evaluation_run` executed_by | あり | **未掲載** | `evaluation_run.evaluation_dataset_id` 物理 FK ON を推奨（§17 No.4） |
+| `evaluation_dataset` → `evaluation_run` executed_by | あり | あり（ON。§17.1 No.4 確定） | **#565 で §9 補完済み** |
 
 ---
 
@@ -217,11 +217,13 @@ BATCH-018 / MOD-BATCH-039 が評価データセットを解決する際の順序
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 保持期間 | 長期（評価用正本）。具体保持期間は Phase2 ⑥ データ保持方針 Task で確定（§17 No.5） |
-| 削除方式 | 物理 DELETE 原則禁止 |
-| 削除条件 | 子 `evaluation_case` / `evaluation_run` 行が存在する場合は DELETE RESTRICT |
-| 論理削除 | `is_active = false` でデータセット無効化 |
+| 保持期間 | **365 日**（`created_at` 基準。Human Review §17.1 No.5 確定） |
+| 削除方式 | MVP では **自動 DELETE なし**（ログ・Observability設計書 §20.3） |
+| 削除条件 | 将来パージ時: `is_active = false` かつ 子 `evaluation_case` / `evaluation_run` / `evaluation_result` / `evaluation_metric` が各 Retention 満了後 かつ `created_at < now() - interval '365 days'`。子行存続中は DELETE RESTRICT |
+| 論理削除 | 日常運用は `is_active = false` でデータセット無効化（期日到来前の主手段） |
 | アーカイブ | MVP 対象外 |
+
+評価基準正本として **365 日** を計画値とする（`recommendation_feedback` 暫定値・`feature_distribution_metric` と同レンジ）。Batch Log 系（90 日）および `evaluation_run` 配下の `phase_log` / `error_log`（90 日）とは **別枠**。`evaluation_result`（長期保持候補）と同値とし、親子で整合させる。
 
 > Evaluation系は MVP `partial`（テーブル一覧 §10 補足）。本番 Online 推薦の必須テーブルではないが、オフライン評価を行う場合は必要。
 
@@ -270,11 +272,17 @@ BATCH-018 / MOD-BATCH-039 が評価データセットを解決する際の順序
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `dataset_name` + `dataset_version` の UNIQUE | 系列内 version 管理の正本キー。`dataset_name` 単独 UNIQUE か組み合わせ UNIQUE か | Human | DDL Task 前 | **推奨**: 組み合わせ UNIQUE（§7）。再評価追記方針と整合 |
-| 2 | `dataset_version` の形式 | semver 限定か自由ラベルか | Human | DDL Task 前 | **推奨**: semver `v1.0.0`（`semantic_config_version` 同型。§10） |
-| 3 | `is_active` 列の MVP 物理 DDL 採用 | 論理ER §12.2 に属性あり。Master / Config 系と同様の有効化制御が必要か | Human | DDL Task 前 | **推奨**: 採用（`semantic_config` / `occasion_master` 踏襲） |
-| 4 | `evaluation_run.executed_by` の物理 FK | 物理ER §9 FK 表に未掲載。Mermaid ER / 論理ER には関係あり | Human | #567 PR 前 | **推奨**: 物理 FK ON / DELETE RESTRICT（§8.1） |
-| 5 | Evaluation Dataset の Retention | MVP partial のため具体日数未確定 | Human | Phase2 ⑥ | **推奨**: 長期保持 + `is_active` 無効化。子 Result 連動削除は別 Task |
+| — | — | — | — | — | Human Review（#565）にて No.1〜No.5 を決定済み（§17.1 参照） |
+
+### 17.1 Human Review 決定事項（Issue #565）
+
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `dataset_name` + `dataset_version` の UNIQUE | **組み合わせ UNIQUE**（`uq_evaluation_dataset_name_version`）。`dataset_name` 単独 UNIQUE は採用しない | Human | §7・§10。再評価追記方針（§12.2）と整合 |
+| 2 | `dataset_version` の形式 | **semver 基本形 `v1.0.0`**（`chk_dataset_version_format`）。`semantic_config_version` 同型 | Human | §10 |
+| 3 | `is_active` 列の MVP 物理 DDL 採用 | **採用**（`boolean NOT NULL DEFAULT true`）。`semantic_config` / `occasion_master` 踏襲 | Human | §6・§12.1 |
+| 4 | `evaluation_run.executed_by` の物理 FK | **`evaluation_run.evaluation_dataset_id` へ物理 FK ON** / `ON DELETE RESTRICT` | Human | §8.1。物理ER §9・§17.7 に反映 |
+| 5 | Evaluation Dataset の Retention | **365 日**（`created_at` 基準）。MVP は自動 DELETE なし。日常は `is_active = false` | Human | §13。`evaluation_result` 長期保持候補と同値。Batch Log 90 日とは別枠 |
 
 ---
 
@@ -300,10 +308,12 @@ BATCH-018 / MOD-BATCH-039 が評価データセットを解決する際の順序
 - 論理ER §12.2・物理ER Mermaid ER・テーブル一覧 §10 No.51 と矛盾していない
 - `evaluation_case` との 1:N `contains` 関係が明記されている
 - `evaluation_run` との 1:N `executed_by` 関係が明記されている
-- 物理ER §9 FK 表の `evaluation_run` 未掲載差分が整理されている
+- 物理ER §9 FK 表に `evaluation_run.executed_by`（ON）が反映されている
+- Human Review §17.1 No.1〜No.5（UNIQUE / semver / is_active / FK / Retention）が確定している
 - `dataset_name` / `dataset_version` / `is_active` の MVP 方針が明記されている
 - BATCH-018 / IF-DB-BATCH-018 の読取正本責務が明記されている
 - 状態遷移設計書 §8.1.3 の再評価追記方針が反映されている
 - `semantic_config` テーブル定義書と章構成・MVP 方針が一貫している
+- Retention **365 日**（§13 / §17.1 No.5）が明記され、Batch Log 90 日と別枠である
 - DDL Task が CREATE TABLE を起こせる粒度である
 - secret や `.env` 実値が含まれていない

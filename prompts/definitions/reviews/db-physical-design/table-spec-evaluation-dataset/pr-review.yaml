@@ -149,18 +149,10 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "dataset_name の UNIQUE 制約要否"
-  - "dataset_version の形式と version 管理方針"
-  - "is_active 列の MVP 物理 DDL 採用"
-  - "evaluation_run.executed_by の物理 FK ON 方針"
-  - "Evaluation Dataset の Retention / 削除方針"
+human_decision_points: []
 
 risk_points:
-  - "物理ER §9 FK 表に evaluation_run executed_by 行が未掲載である点"
   - "evaluation_case / evaluation_run 並行 Task（#566 / #567）との FK 方針の一貫性"
-  - "dataset_version と dataset_name の組み合わせ一意性の設計判断"
-  - "MVP partial（△）テーブルの Retention 未確定"
   - "BATCH-018 バッチ仕様書未作成時の入出力粒度"
 
 notes:
@@ -168,3 +160,4 @@ notes:
   - "Batch R08 No.3: evaluation_dataset"
   - "並行 Task: #566 evaluation_case / #567 evaluation_run"
   - "先行 merge 済み: #440 / PR #441（enum）、#535 / PR #540（phase_log）、#536 / PR #541（error_log）"
+  - "Human Review #565 確定: UNIQUE 組み合わせ / semver / is_active / executed_by FK ON / Retention 365日。物理ER §17.7 反映済み"
