@@ -555,7 +555,6 @@ module.exports = {
   hasFixCompleteResultHeading,
   isFixCompleteResultComment,
   extractFixOutcomeFromComment,
-  extractFixOutcomeTableCell,
   expectedCurrentStatusForFixComplete,
   fixOutcomeLabelForHumans,
   buildFixerDispatchFailureSlackText,
