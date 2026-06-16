@@ -171,25 +171,7 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - id: 1
-    topic: "evaluation_dataset_id の物理 FK"
-    question: "冗長 `evaluation_dataset_id` を物理 FK ON とするか LOGICAL のみとするか"
-  - id: 2
-    topic: "(evaluation_run_id, evaluation_case_id) UNIQUE"
-    question: "Run × Case 単位の UNIQUE 制約を採用するか"
-  - id: 3
-    topic: "recommendation_result_id の必須性"
-    question: "推薦失敗時に NULL を許容するか"
-  - id: 4
-    topic: "Evaluation §14.4 インライン metric 列"
-    question: "metric 列を本テーブルに物理化するか evaluation_metric のみとするか"
-  - id: 5
-    topic: "executed_at と created_at"
-    question: "業務時刻と監査時刻の使い分け"
-  - id: 6
-    topic: "Evaluation Result Retention"
-    question: "保持期間（365 日 vs 90 日）"
+human_decision_points: []
 
 human_review_decisions:
   - id: 1
@@ -212,10 +194,9 @@ human_review_decisions:
     decision: "365 日（§17.1 No.6）"
 
 risk_points:
-  - "evaluation_dataset §5 の evaluation_dataset_id FK 方針が #573 確定待ちのまま物理ER §9 に未追記の可能性"
   - "Evaluation §14.4 offline_eval_result のインライン metric と evaluation_metric 分離の説明負荷"
   - "recommendation_result_id nullable 時の evaluation_metric 保存粒度（失敗ケース trace）"
-  - "evaluation_run / evaluation_case 定義書 §8.1 被参照記述との双方向整合タイミング"
+  - "evaluation_metric（#574）定義書との has 1:N 双方向整合は後続 Task で確定"
 
 notes:
   - "Batch R09 No.1: evaluation_result"
@@ -223,5 +204,6 @@ notes:
   - "Issue #573 / Branch docs/task-573-evaluation-result-table-spec"
   - "blocking 依存: #566 evaluation_case / #567 evaluation_run テーブル定義書（親 Epic merge 必須）"
   - "先行 merge 済み前提: #566 / PR #571（evaluation_case）、#567 / PR #572（evaluation_run）、#565 / PR #570（evaluation_dataset）、#544 / PR #549（recommendation_result）"
-  - "Human Review 論点: human_decision_points 参照。確定後は human_review_decisions へ反映"
+  - "Human Review §17.1 No.1〜No.6 確定済み（2026-06-16）。human_review_decisions を正とする"
+  - "関連 docs 双方向整合: evaluation_dataset / evaluation_case / evaluation_run / recommendation_result / 物理ER §9・§10・§17.10"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

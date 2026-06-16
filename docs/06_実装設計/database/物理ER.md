@@ -161,6 +161,7 @@ erDiagram
     recommendation_run ||--o{ phase_log : "records"
     recommendation_run ||--o{ error_log : "may_have"
 
+    evaluation_case ||--o{ evaluation_result : "executed_as"
     evaluation_dataset ||--o{ evaluation_case : "contains"
     evaluation_dataset ||--o{ evaluation_run : "executed_by"
     evaluation_run ||--o{ evaluation_result : "produces"
@@ -325,6 +326,9 @@ erDiagram
 | `evaluation_dataset.evaluation_dataset_id` | `evaluation_case.evaluation_dataset_id` | contains | `ON` | 1:N | Human Review #566 確定。`evaluation_case_テーブル定義書` §17.1 No.5 |
 | `evaluation_dataset.evaluation_dataset_id` | `evaluation_run.evaluation_dataset_id` | executed_by | `ON` | 1:N | Human Review #565 確定。`evaluation_dataset_テーブル定義書` §17.1 No.4 |
 | `evaluation_result.evaluation_run_id` | `evaluation_run.evaluation_run_id` | produces | `ON` | 1:N | Human Review #567 確定。Case 単位。`evaluation_run_テーブル定義書` §17.1 No.9 |
+| `evaluation_result.evaluation_case_id` | `evaluation_case.evaluation_case_id` | executed_as | `ON` | 1:N | Human Review #573 確定。`evaluation_case_テーブル定義書` §8.1 |
+| `evaluation_result.evaluation_dataset_id` | `evaluation_dataset.evaluation_dataset_id` | 冗長保持 | `ON` | 1:N | Human Review #573 §17.1 No.1。DELETE RESTRICT。`evaluation_dataset_テーブル定義書` §5.4 |
+| `evaluation_result.recommendation_result_id` | `recommendation_result.recommendation_result_id` | references | `LOGICAL` | 0..1:N | Human Review #573 §17.1 No.3。nullable。推薦失敗時も trace 行 |
 | `phase_log.owner_id` | `recommendation_run.recommendation_run_id` 等 | records | `LOGICAL` | N:1 | polymorphic: owner_type + owner_id |
 
 ---
@@ -419,6 +423,13 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `evaluation_run` | `idx_evaluation_run_model_version` | `model_version_id` | btree | version 被参照 | LOGICAL FK（§17.9 No.4） |
 | `evaluation_run` | `idx_evaluation_run_ranking_config` | `ranking_config_id` | btree | version 被参照 | LOGICAL FK（§17.9 No.4） |
 | `evaluation_run` | `idx_evaluation_run_created` | `created_at` DESC | btree | Retention DELETE / 監査 | 365 日（§17.9 No.7） |
+| `evaluation_result` | `uq_evaluation_result_run_case` | `evaluation_run_id`, `evaluation_case_id` | unique | Run × Case 冪等 INSERT | `evaluation_result_テーブル定義書` §7・§17.1 No.2 |
+| `evaluation_result` | `idx_evaluation_result_run_id` | `evaluation_run_id` | btree | produces FK 補助・Run 単位一覧 | `evaluation_run_テーブル定義書` §5.4 |
+| `evaluation_result` | `idx_evaluation_result_case_id` | `evaluation_case_id` | btree | executed_as FK 補助 | `evaluation_case_テーブル定義書` §8.1 |
+| `evaluation_result` | `idx_evaluation_result_dataset_id` | `evaluation_dataset_id` | btree | 冗長 FK 補助・Dataset 単位分析 | #573 §17.1 No.1 |
+| `evaluation_result` | `idx_evaluation_result_recommendation_result_id` | `recommendation_result_id` | btree | may_reference 逆引き | LOGICAL FK nullable（§17.1 No.3） |
+| `evaluation_result` | `idx_evaluation_result_executed_at` | `executed_at` DESC | btree | 業務時系列分析 | §17.1 No.5 |
+| `evaluation_result` | `idx_evaluation_result_created_at` | `created_at` DESC | btree | Retention DELETE / 監査 | 365 日（§17.1 No.6） |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 
 ---
@@ -576,6 +587,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 - `reco_score_distribution_metric` の Index / CHECK / Retention は `reco_score_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#564）
 - `evaluation_dataset` の Index / CHECK / Retention / FK 被参照は `evaluation_dataset_テーブル定義書` §7–§13・§17.1 を正とする（#565）
 - `evaluation_case` の Index / CHECK / JSONB / may_reference は `evaluation_case_テーブル定義書` §7–§13・§17.1 を正とする（#566）
+- `evaluation_result` の Index / CHECK / Retention / FK は `evaluation_result_テーブル定義書` §7–§13・§17.1 を正とする（#573）
 
 ---
 
@@ -688,6 +700,17 @@ Human Review にて以下を確定した（2026-06-07）。
 | 8 | `evaluation_status` 列名 | 物理列 **`evaluation_status`** / enum ID **`evaluation_run_status`** | enum定義書 §6.12 |
 | 9 | produces カーディナリティ | **1 Run : N evaluation_result** | §9 FK 表 produces 1:N |
 | 10 | `evaluation_run_phase_log` 物理化 | **MVP 物理テーブルなし** | `phase_log`（`owner_type=evaluation_run`）に統合 |
+
+### 17.10 Human Review 決定事項（Issue #573 / `evaluation_result`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | `evaluation_dataset_id` 物理 FK | **物理 FK ON** / `ON DELETE RESTRICT` | Run #567・Dataset #565 踏襲。§9 冗長保持 |
+| 2 | Run×Case UNIQUE | **`uq_evaluation_result_run_case`** | §10 UNIQUE。BATCH-018 冪等 INSERT |
+| 3 | `recommendation_result_id` | **nullable**（LOGICAL FK） | 推薦失敗時も trace 行。metric は子テーブル |
+| 4 | インライン metric 列 | **物理化しない** | `evaluation_metric` のみ（#574） |
+| 5 | `executed_at` / `created_at` | **併用** | 業務完了時刻 + 監査 timestamp |
+| 6 | Retention | **365 日**（`created_at`）。MVP 自動 DELETE なし | evaluation_dataset / evaluation_run と同値 |
 
 ---
 

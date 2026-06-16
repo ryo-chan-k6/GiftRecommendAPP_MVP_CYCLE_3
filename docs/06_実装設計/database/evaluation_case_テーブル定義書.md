@@ -26,7 +26,7 @@
 - データセット内の個別評価ケース（入力条件・期待結果・ラベル）を不変の正本として保存する
 - `evaluation_dataset` との **物理 FK（ON）** により親子関係（contains 1:N）を確定する
 - BATCH-018 が `is_active = true` のケースを読み取り、IF-SHARED-004 / API-INT-002 `mode=evaluation` へ渡す入力を提供する
-- 後続 `evaluation_result`（#567 以降）から `evaluation_case_id` で被参照される実行単位の入力正本とする
+- `evaluation_result`（#573 §17.1 確定）から `evaluation_case_id` で被参照される実行単位の入力正本とする
 
 ---
 
@@ -49,7 +49,7 @@
 
 - **ケース識別**（`case_label`）と **入力条件**（`input_condition_json`）、**期待結果**（`expected_result_json`）をデータセット単位で保持する
 - **有効フラグ**（`is_active`）により、無効ケースを BATCH-018 実行対象外とする
-- **`evaluation_case_id`（UUID）** をサロゲート PK とし、子 `evaluation_result` から参照される（後続 Task）
+- **`evaluation_case_id`（UUID）** をサロゲート PK とし、子 `evaluation_result` から参照される（#573 §17.1 確定）
 - 評価実行状態（`evaluation_status`）・Config version 固定・メトリクス算出結果は本テーブルでは保持しない（`evaluation_run` / `evaluation_result` / `evaluation_metric` の責務）
 
 ### 5.1 evaluation_dataset との親子関係
@@ -70,8 +70,8 @@
 | ---- | ----------------- | ---------------- | ------------------- |
 | 管理単位 | 固定評価ケース（入力 + 期待） | データセットに対する評価実行 | ケース × Run の実行結果 |
 | 状態 | `is_active` のみ | `evaluation_status` | なし（Log / 派生） |
-| 被参照 | `evaluation_result.evaluation_case_id`（後続） | `evaluation_result.evaluation_run_id` | — |
-| 定義 Task | 本 Task（#566） | #567（§17.1 確定済み） | 後続 Task |
+| 被参照 | `evaluation_result.evaluation_case_id`（#573 確定） | `evaluation_result.evaluation_run_id` | — |
+| 定義 Task | 本 Task（#566） | #567（§17.1 確定済み） | #573（§17.1 確定済み） |
 
 > **#567 確定（evaluation_run）**: `recommendation_run_id` は Run 側に持たず、`evaluation_result.recommendation_result_id` 経由で Recommendation Result と間接連携。produces は **1 Run : N evaluation_result**（Case 単位）。
 
@@ -186,7 +186,7 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
-| PRIMARY KEY | `evaluation_case_id` | サロゲート UUID | 子 `evaluation_result` FK の参照先（後続 Task） |
+| PRIMARY KEY | `evaluation_case_id` | サロゲート UUID | 子 `evaluation_result` FK の参照先（#573 §17.1 確定） |
 | UNIQUE | `evaluation_case_id` | PK と同一 | — |
 | UNIQUE | `evaluation_dataset_id`, `case_label` | データセット内ケースラベル一意 | §17.1 No.5 決定済み（`uq_evaluation_case_dataset_label`） |
 
@@ -199,11 +199,11 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 | `evaluation_dataset_id` | `evaluation_dataset.evaluation_dataset_id` | `ON` | `ON DELETE RESTRICT` | 物理 ER §9 contains。親 #565 §8.1 と双方向整合 |
 | `recommendation_request_id` | `recommendation_request.recommendation_request_id` | `LOGICAL` | アプリ Validation | nullable。may_reference。Index のみ |
 
-### 8.1 被参照（後続 Task 引き継ぎ）
+### 8.1 被参照（#573 双方向整合）
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
-| `evaluation_result` | `evaluation_case_id` | executed_as | `ON`（#567 以降で確定） | 論理ER §12.1。1:N |
+| `evaluation_result` | `evaluation_case_id` | executed_as | `ON`（#573 §17.1 確定） | 論理ER §12.1。1:N。`evaluation_result_テーブル定義書` §8.1 |
 
 ### 8.2 evaluation_dataset 定義書との双方向整合
 
@@ -369,7 +369,8 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-SHARED-004 |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-018 |
 | エラーコード | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-EVAL-002 |
-| 子 Task | `docs/06_実装設計/database/evaluation_run_テーブル定義書.md`（#567 §17.1 確定） | `evaluation_result` FK 引き継ぎ |
+| 子 Task | `docs/06_実装設計/database/evaluation_run_テーブル定義書.md`（#567 §17.1 確定） | produces 関係 |
+| 子 Task | `docs/06_実装設計/database/evaluation_result_テーブル定義書.md`（#573 §17.1 確定） | executed_as 被参照 |
 
 ---
 
@@ -383,6 +384,6 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 - BATCH-018 / IF-SHARED-004 / API-INT-002 evaluation mode との I/F が一貫している
 - GRS-EVAL-002 と `is_active` / Validation 除外方針が整合している
 - `evaluation_dataset_テーブル定義書`（#565）§5.4 Index 引き継ぎと双方向整合している
-- `evaluation_result` 後続 Task 向け `evaluation_case_id` 被参照が §8.1 で言及されている
+- `evaluation_result_テーブル定義書`（#573）§8.1 executed_as FK ON と双方向整合している
 - Human Review §17.1 No.1〜No.6（JSONB / UNIQUE / partial index / may_reference）が確定している
 - secret や `.env` 実値が含まれていない

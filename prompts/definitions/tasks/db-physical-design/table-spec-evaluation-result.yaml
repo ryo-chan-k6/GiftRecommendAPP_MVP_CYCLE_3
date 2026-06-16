@@ -264,55 +264,7 @@ review:
 contract_gate:
   required: false
 
-human_decision_points:
-  - id: 1
-    topic: "evaluation_dataset_id の物理 FK"
-    question: "冗長 `evaluation_dataset_id` を物理 FK ON（ON DELETE RESTRICT）とするか、LOGICAL FK のみとするか"
-    context: "evaluation_dataset_テーブル定義書 §5 は `#573 以降で確定`。Run 側は物理 FK ON 済み（#567）。再現性 denormalization の整合"
-    options:
-      - "物理 FK ON / ON DELETE RESTRICT（Run と同様）"
-      - "LOGICAL FK のみ（Index のみ）"
-    recommendation: "物理 FK ON / ON DELETE RESTRICT（Run #567・Dataset #565 踏襲。冗長列だが整合性担保）"
-  - id: 2
-    topic: "(evaluation_run_id, evaluation_case_id) UNIQUE"
-    question: "同一 Run 内で Case あたり 1 Result 行に制約するか"
-    context: "BATCH-018 冪等性・再実行は新規 Run 追記（#567 §17.1 No.6）"
-    options:
-      - "UNIQUE 制約を採用（uq_evaluation_result_run_case）"
-      - "UNIQUE なし（アプリ冪等で担保）"
-    recommendation: "UNIQUE 制約を採用（Run × Case 単位の冪等 INSERT）"
-  - id: 3
-    topic: "recommendation_result_id の必須性"
-    question: "evaluation mode 推薦失敗時に NULL を許容するか"
-    context: "recommendation_result §8.2 は LOGICAL FK。IF-SHARED-004 失敗時の Result 未生成"
-    options:
-      - "nullable 採用（失敗時 NULL・metric のみ保存可）"
-      - "NOT NULL 必須（失敗時は Result 行自体を INSERT しない）"
-    recommendation: "nullable 採用（失敗ケースも evaluation_result 行で trace 可能）"
-  - id: 4
-    topic: "Evaluation §14.4 インライン metric 列"
-    question: "precision_at_k 等を本テーブルに物理化するか、evaluation_metric のみとするか"
-    context: "論理ER §12.2 は metric を evaluation_metric に分離。Evaluation §14.4 は論理項目参考"
-    options:
-      - "evaluation_metric のみ（本テーブルに metric 列なし）"
-      - "主要 metric を本テーブルに冗長保持"
-    recommendation: "evaluation_metric のみ（evaluation_case #566 §17.1 No.2 踏襲）"
-  - id: 5
-    topic: "executed_at と created_at"
-    question: "業務時刻 `executed_at` と監査 `created_at` の使い分け"
-    context: "論理ER §12.2 は executed_at を主要属性とする"
-    options:
-      - "executed_at（業務）+ created_at / updated_at（監査）を併用"
-      - "created_at のみ（executed_at 省略）"
-    recommendation: "executed_at + created_at / updated_at 併用（Run の started_at / created_at 分離と対称）"
-  - id: 6
-    topic: "Evaluation Result Retention"
-    question: "保持期間の確定"
-    context: "evaluation_dataset / evaluation_run は 365 日。Observability は長期保持候補"
-    options:
-      - "365 日（evaluation_dataset / evaluation_run と同値）"
-      - "90 日（Batch Log 系と同値）"
-    recommendation: "365 日（evaluation_dataset §13・evaluation_run §17.1 No.7 踏襲）"
+human_decision_points: []
 
 human_review_decisions:
   - id: 1
@@ -340,5 +292,5 @@ notes:
   - "R09 並行: 後続 evaluation_metric（#574 想定）"
   - "blocking 依存: #566 evaluation_case / #567 evaluation_run テーブル定義書（親 Epic merge 必須。未 merge 時は work-issue 停止）"
   - "先行 merge 済み前提: #440 / PR #441（enum）、#544 / PR #549（recommendation_result）、#565 / PR #570（evaluation_dataset）、#566 / PR #571（evaluation_case）、#567 / PR #572（evaluation_run）"
-  - "Human Review 論点: human_decision_points 参照（dataset_id FK / UNIQUE / recommendation_result_id nullable / metric 分離 / timestamp / Retention）"
+  - "Human Review §17.1 No.1〜No.6 確定済み（2026-06-16）。human_review_decisions を正とする"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

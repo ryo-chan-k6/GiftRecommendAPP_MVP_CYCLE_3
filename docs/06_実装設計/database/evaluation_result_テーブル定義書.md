@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `partial`                          |
 | 作成日         | 2026-06-16                         |
-| 更新日         | 2026-06-16（Human Review §17.1 確定） |
+| 更新日         | 2026-06-16（Human Review §17.1 No.1〜No.6 確定済み） |
 
 ---
 
@@ -360,11 +360,11 @@ CREATE TABLE evaluation_result (
 
 ---
 
-## 17. 未決事項
+## 17. 決定事項
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| — | — | — | — | — | Human Review 決定事項は §17.1 に整理 |
+| — | — | — | — | — | Human Review 確定事項は §17.1 に整理（2026-06-16 確定済み） |
 
 ### 17.1 Human Review 決定事項（Issue #573）
 
