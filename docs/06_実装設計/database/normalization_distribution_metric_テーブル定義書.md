@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP                   |
 | MVP対象        | `yes`                                             |
 | 作成日         | 2026-06-16                                        |
-| 更新日         | 2026-06-16（#556 / #557 先例踏襲・Human Review 論点整理） |
+| 更新日         | 2026-06-16（Human Review #563 全項目決定・物理ER §17.5 反映） |
 
 ---
 
@@ -261,7 +261,7 @@ feature_distribution_metric_recorded
 | `idx_ndm_calculated_at` | `calculated_at` | btree | Retention DELETE | §13 |
 | `idx_ndm_scope_key` | `aggregation_scope`, `aggregation_key` | btree | 日次 / version スコープ検索 | 補助 |
 
-> 物理ER §10・§11 に本テーブル Index / 制約を反映する（#563）。
+> 物理ER §10・§11 に本テーブル Index / 制約を反映済み（#563 Human Review）。
 
 ---
 
@@ -397,22 +397,16 @@ feature_distribution_metric_recorded
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Observability §12.6 / §12.12 追加統計列 | MVP 物理列範囲 | Human Reviewer | PR レビュー時 | §17.1 No.1 参照 |
-| 2 | `feature_normalization_version_id` 必須条件 | version 混在分割 | Human Reviewer | PR レビュー時 | §17.1 No.2 参照 |
-| 3 | `aggregation_scope` Run 拡張 | MVP 範囲 | Human Reviewer | PR レビュー時 | §17.1 No.3 参照 |
-| 4 | `z_score` value_layer 追加タイミング | sigmoid-only MVP とのギャップ | Human Reviewer | PR レビュー時 | §17.1 No.4 参照 |
-| 5 | phase_log フェーズ名 | enum 追加要否 | Human Reviewer | PR レビュー時 | §17.1 No.5 参照 |
-| 6 | BATCH-013 直接書込 | 候補 vs 本保存境界 | Human Reviewer | PR レビュー時 | §17.1 No.6 参照 |
-| 7 | raw 層の張り付き率列 | 算出要否 | Human Reviewer | PR レビュー時 | §17.1 No.7 参照 |
+| — | — | — | — | — | Human Review #563 にて No.1〜7 を決定済み（下記 §17.1） |
 
-### 17.1 Human Review 論点（#556 / #557 先例踏襲・推奨決定案）
+### 17.1 Human Review 決定事項（Issue #563 / #556 / #557 先例踏襲）
 
-| No | 論点 | 推奨決定案 | 備考 |
-| --: | ---- | ---------- | ---- |
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
 | 1 | Observability §12.6 / §12.12 追加統計列 | MVP は **本表の列のみ**（`skewness` / `inf_count` 等は物理列化しない）。**`sigma_zero_count` のみ**正規化監視のため本テーブルに採用 | #556 §17.1 No.1 + Observability §12.6 固有項目 |
-| 2 | `feature_normalization_version_id` | **NOT NULL 必須**（§10 CHECK）。混在時は **version ごとに行分割**（§5.8） | #557 §17.1 No.2 同型 |
+| 2 | `feature_normalization_version_id` | **NOT NULL 必須**（§10 `chk_ndm_normalization_version_required`）。混在時は **version ごとに行分割**（§5.8） | #557 §17.1 No.2 同型 |
 | 3 | `aggregation_scope` Run 拡張 | MVP は **`batch_run` / `daily` / `semantic_config_version` のみ** | #556 §17.1 No.3 同型 |
-| 4 | `z_score` value_layer | MVP は **`raw` / `sigmoid` のみ**。`z_score` は **将来 migration で CHECK 拡張**（Featureルール定義書 §14 z-score 拡張時） | feature_normalization_version §6 は sigmoid-only |
+| 4 | `z_score` value_layer | MVP は **`raw` / `sigmoid` のみ**（§10 `chk_ndm_value_layer`）。`z_score` は **将来 migration で CHECK 拡張**（Featureルール定義書 §14 z-score 拡張時） | feature_normalization_version §6 は sigmoid-only |
 | 5 | phase_log フェーズ名 | MVP は **`feature_distribution_metric_recorded` に Normalization 記録を包含**。専用 enum **追加しない** | #557 §17.1 No.5 同型 |
 | 6 | BATCH-013 直接書込 | MVP は **BATCH-016 のみ INSERT / UPSERT**。BATCH-013 は `item_feature` 更新のみ | バッチ処理一覧の「候補」表記との整合 |
 | 7 | raw 層の張り付き率列 | **`near_*_rate` / `mid_concentration_rate` は NULL 許容**。sigmoid 行での算出を必須としない（BATCH-016 実装で推奨算出） | Observability §12.6 は sigmoid 監視が主 |

@@ -171,12 +171,7 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "ログ・Observability設計書 §12.6 / §12.12 汎用カラム候補のうち MVP で物理列化する範囲（#556 / #557 §17.1 先例との一貫性）"
-  - "value_layer（raw / z_score / sigmoid）と feature_distribution_metric の raw / normalized 境界"
-  - "MVP sigmoid-only 前提で z-score 中間統計列を物理化するか将来拡張とするか"
-  - "feature_normalization_version_id 必須条件（value_layer 別）"
-  - "BATCH-013 候補生成と BATCH-016 本保存の責務境界"
-  - "enum batch_run_phase_name に normalization 専用 phase を追加するかの要否（#557 §17.1 No.5 先例）"
+  - "なし（Human Review #563 にて §17.1 No.1〜7 を推奨案どおり決定済み）"
 
 risk_points:
   - "ログ・Observability設計書 §12.6 の正規化段階別 metric 設計と物理列への落とし込み粒度"
@@ -191,5 +186,5 @@ notes:
   - "Issue #563 / Branch docs/task-563-normalization-distribution-metric-table-spec"
   - "先行 merge 済み前提: #440 / PR #441（enum）、#458 / PR #460（feature_normalization_version）、#514 / PR #519（item_feature）、#534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）、#556 / PR #561（feature_distribution_metric）、#557 / PR #562（meaning_distribution_metric）"
   - "feature_distribution_metric / meaning_distribution_metric 本体定義の再作成は out_of_scope"
-  - "Human Review #556 / #557 先例を正規化分布 Metric 設計の整合基準とする"
+  - "Human Review #563 決定済み（§17.1 No.1〜7）。物理ER §17.5 反映済み"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
