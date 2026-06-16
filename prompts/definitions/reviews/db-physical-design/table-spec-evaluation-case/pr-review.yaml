@@ -1,0 +1,186 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-evaluation-case-pr"
+  title: "evaluation_case テーブル定義書 PRレビュー"
+  summary: "evaluation_case テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §12.2・Evaluation評価定義書・テーブル一覧 §10 No.52・evaluation_dataset / recommendation_request テーブル定義書・BATCH-018 / IF-SHARED-004 との整合、親子関係・JSONB 責務・table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-566-evaluation-case-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 566
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-evaluation-case.yaml"
+  source_branch: "docs/task-566-evaluation-case-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-evaluation-case.yaml"
+    required: true
+  issue:
+    number: 566
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/evaluation_case_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Evaluation系・§9 contains FK ON・§10 Index 整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§12.1 Evaluation系 ER・§12.2 evaluation_case 属性整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§10 No.52 分類・用途・Evaluation系補足との整合"
+    - path: "docs/04_ドメインモデル設計/Evaluation評価定義書.md"
+      required: true
+      purpose: "§5.2 評価ケース構成・§14.2 offline_eval_case 論理項目との差分確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "§5.12 Evaluation Case 内部正本・更新方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "§13 Offline Evaluation 処理構成の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-018 入出力・対象テーブルの確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-SHARED-004 Offline Evaluation推薦実行 I/F の確認"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "mode=evaluation 実行条件の確認"
+    - path: "docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md"
+      required: true
+      purpose: "親 Dataset contains 関係・双方向整合（#565 merge 済み正本）"
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+      purpose: "input_condition_json マッピング・may_reference 方針（#537 merge 済み正本）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "relationship_code / occasion_code 参照整合"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-EVAL-002 Invalid Evaluation Case の確認"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（evaluation_run / evaluation_result / DDL / migration / apps / OpenAPI / バッチ仕様書本体）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "テーブル一覧 §10 No.52 の分類・用途（reco / batch 更新・評価ケース管理）と一致しているか"
+    - "Evaluation評価定義書 §5.2 / §14.2 と論理ER §12.2 の差分が §5.4 等で整理されているか"
+    - "evaluation_dataset_テーブル定義書との親子関係が §5 / §8 で双方向整合しているか"
+    - "BATCH-018 / IF-SHARED-004 / API-INT-002 evaluation mode との I/F が一貫しているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "evaluation_dataset.evaluation_dataset_id への物理 FK ON（contains 1:N）が明記されているか"
+    - "input_condition_json / expected_result_json の JSONB 責務・必須条件が明記されているか"
+    - "case_label / is_active / created_at の扱いが論理ER §12.2 と整合しているか"
+    - "recommendation_request との may_reference（nullable LOGICAL FK）方針が明記されているか"
+    - "evaluation_result 後続 Task 向け evaluation_case_id 被参照（executed_as）が言及されているか"
+    - "GRS-EVAL-002 と is_active / validation 除外方針が整合しているか"
+  security:
+    - "input_condition_json / expected_result_json に個人情報・secret を含めない方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "input_condition_json の物理化方針（recommendation_request 個別列相当 vs API-PUB-002 payload JSONB のみ）"
+  - "expected_result_json の MVP スキーマ（Evaluation評価定義書 §5.2 項目の JSON キー設計）"
+  - "Evaluation評価定義書 §14.2 個別列 vs 論理ER JSONB 集約の採否"
+  - "recommendation_request_id 物理列の要否（may_reference）"
+  - "case_label の Dataset 内 UNIQUE 制約・GRS-EVAL-002 除外条件"
+
+risk_points:
+  - "Evaluation評価定義書 offline_eval_* 命名と物理テーブル evaluation_* 命名の対応整理"
+  - "Evaluation評価定義書 §14.2 個別列設計と論理ER JSONB 集約のギャップ"
+  - "recommendation_request payload 形式と evaluation input_condition_json の 1:1 対応可否"
+  - "evaluation_dataset（#565）未 merge 時の親子関係確定タイミング"
+
+notes:
+  - "Batch R08 No.4: evaluation_case"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-evaluation-case.yaml"
+  - "Issue #566 / Branch docs/task-566-evaluation-case-table-spec"
+  - "blocking 依存: #565 evaluation_dataset テーブル定義書（親 Epic merge 必須）"
+  - "evaluation_run / evaluation_result / evaluation_metric 本体定義の再作成は out_of_scope"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
