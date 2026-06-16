@@ -135,7 +135,7 @@
 | 記録したいもの | 保存先 | 理由 |
 | --- | --- | --- |
 | 推薦実行の現在状態 | recommendation_run.run_status | 状態として検索しやすくするため |
-| 推薦実行の各フェーズ履歴 | phase_log / recommendation_run_phase_log | 処理段階ごとの成功・失敗を追跡するため |
+| 推薦実行の各フェーズ履歴 | `phase_log` | 処理段階ごとの成功・失敗を追跡するため（論理上の `recommendation_run_phase_log` は物理テーブル化せず `phase_log` に統合。`phase_log_テーブル定義書` §5.2） |
 | 推薦実行のエラー詳細 | error_log | エラーコード、trace_id、詳細を検索するため |
 | 推薦結果の商品明細 | recommendation_result_item | 結果表示と再現性のため |
 | 推薦時点の商品情報 | recommendation_result_itemのSnapshot項目 | 後続の商品更新に影響されないようにするため |

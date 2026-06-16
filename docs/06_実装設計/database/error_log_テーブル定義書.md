@@ -103,7 +103,7 @@ flowchart LR
 | `error_code` 分担 | フェーズ失敗 **要約** は `phase_log.error_code`（nullable）。**詳細**は本テーブル `error_code`（NOT NULL）+ `error_detail_json`（phase_log 定義書 §5.6） |
 | フェーズ失敗 | `phase_log.phase_status = failed` 終端 UPDATE と **`error_log` INSERT** を Error Handler が連携（IF-DB-RECO-009） |
 | `trace_id` | 同一 Run / Batch の `phase_log.trace_id` と **同一値を推奨**（横断検索。phase_log 定義書 §16 No.9） |
-| `recommendation_run_phase_log` | 物理テーブルなし。`phase_log` に統合（テーブル一覧 §8） |
+| `recommendation_run_phase_log` | 物理テーブルなし。`phase_log` に統合（テーブル一覧 §11 補足） |
 
 ### 5.4 `api_call_log` との関係
 
