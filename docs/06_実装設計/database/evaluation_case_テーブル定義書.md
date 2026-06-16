@@ -71,7 +71,9 @@
 | 管理単位 | 固定評価ケース（入力 + 期待） | データセットに対する評価実行 | ケース × Run の実行結果 |
 | 状態 | `is_active` のみ | `evaluation_status` | なし（Log / 派生） |
 | 被参照 | `evaluation_result.evaluation_case_id`（後続） | `evaluation_result.evaluation_run_id` | — |
-| 定義 Task | 本 Task（#566） | #567 | 後続 Task |
+| 定義 Task | 本 Task（#566） | #567（§17.1 確定済み） | 後続 Task |
+
+> **#567 確定（evaluation_run）**: `recommendation_run_id` は Run 側に持たず、`evaluation_result.recommendation_result_id` 経由で Recommendation Result と間接連携。produces は **1 Run : N evaluation_result**（Case 単位）。
 
 ### 5.3 BATCH-018 / IF-SHARED-004 / API-INT-002 との I/F
 
@@ -367,7 +369,7 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-SHARED-004 |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-018 |
 | エラーコード | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-EVAL-002 |
-| 子 Task | Issue #567 `evaluation_run` | `evaluation_result` FK 引き継ぎ |
+| 子 Task | `docs/06_実装設計/database/evaluation_run_テーブル定義書.md`（#567 §17.1 確定） | `evaluation_result` FK 引き継ぎ |
 
 ---
 

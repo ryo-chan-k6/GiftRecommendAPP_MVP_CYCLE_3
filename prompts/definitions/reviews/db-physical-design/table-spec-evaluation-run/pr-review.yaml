@@ -182,31 +182,39 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "recommendation_run_id 物理列の要否（mode=evaluation の Recommendation Run 連携）"
-  - "batch_run_id 物理列の要否（BATCH-018 実行単位との紐づけ）"
-  - "evaluation_run_phase_name enum / packages 正本を本 Task で新規定義するか"
-  - "Evaluation Run Retention 方針（evaluation_dataset 365 日との整合）"
+human_decision_points: []
 
 human_review_decisions:
   - id: 1
+    topic: "recommendation_run_id 物理列"
+    decision: "MVP は物理列なし。evaluation_result.recommendation_result_id 経由で間接連携（§17.1 No.1）"
+  - id: 2
+    topic: "batch_run_id 物理列"
+    decision: "nullable 採用（LOGICAL FK）。BATCH-018 実行 trace（§17.1 No.2）"
+  - id: 3
     topic: "evaluation_dataset_id の物理 FK"
     decision: "`evaluation_run.evaluation_dataset_id` へ物理 FK ON / ON DELETE RESTRICT（Human Review #565 No.4）"
-  - id: 2
-    topic: "version 列の物理 FK"
-    decision: "semantic_config_version_id / model_version_id / ranking_config_id は LOGICAL FK 維持（物理 FK なし）。§17.1 No.8 踏襲"
-  - id: 3
-    topic: "evaluation_run → evaluation_result produces カーディナリティ"
-    decision: "1:N（1 Run あたり複数 evaluation_result）。物理ER §9 produces ON 1:N"
   - id: 4
+    topic: "version 列の物理 FK"
+    decision: "semantic_config_version_id / model_version_id / ranking_config_id は LOGICAL FK 維持（物理 FK なし）。§17.1 No.3"
+  - id: 5
+    topic: "evaluation_run_phase_name enum"
+    decision: "本 Task では新規定義しない。phase_log MVP DB CHECK 省略継続（§17.1 No.4）"
+  - id: 6
+    topic: "Evaluation Run 再実行方針"
+    decision: "同一 Run を再開せず新規 Run INSERT（状態遷移設計書 §11.3。§17.1 No.5）"
+  - id: 7
+    topic: "Retention"
+    decision: "365 日（created_at 基準）。MVP 自動 DELETE なし。evaluation_dataset と同値（§17.1 No.6）"
+  - id: 8
+    topic: "evaluation_status 列名"
+    decision: "物理列名 evaluation_status。packages 正本 ID は evaluation_run_status（§17.1 No.7）"
+  - id: 9
+    topic: "evaluation_run → evaluation_result produces カーディナリティ"
+    decision: "1:N（Case 単位）。物理ER §9 produces ON 1:N（§17.1 No.8）"
+  - id: 10
     topic: "evaluation_run_phase_log 物理化"
     decision: "MVP 物理テーブルなし。phase_log（owner_type=evaluation_run）に統合"
-  - id: 5
-    topic: "Evaluation Run 再実行方針"
-    decision: "同一 Run を再開せず、新しい Evaluation Run として再実行（状態遷移設計書 §11.3）"
-  - id: 6
-    topic: "evaluation_status 列名"
-    decision: "物理列名 `evaluation_status`。packages 正本 ID は `evaluation_run_status`"
 
 risk_points:
   - "evaluation_dataset（#565）未 merge 時の親子関係・FK 方針確定タイミング"

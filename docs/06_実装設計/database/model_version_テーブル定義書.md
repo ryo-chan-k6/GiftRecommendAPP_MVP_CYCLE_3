@@ -225,7 +225,7 @@
 | 3 | `recommendation_run` への物理 FK | MVP は `LOGICAL` のまま（物理ER §9） | Human | relationship_master / occasion_master と同型 |
 | 4 | `item_embedding` への物理 FK | `ON` + `DELETE RESTRICT`。DDL は item_embedding 定義 Task で `model_version` 先行 CREATE 後に付与 | Human | 本 Task §10 には被参照側 FK を載せない（Master 定義書慣例） |
 | 5 | `model_type` enum の YAML 正本化 | 後続 enum Task へ引き継ぎ。本 Task は CHECK 候補値のみ | Human | enum 定義書 + packages/code-definitions |
-| 6 | `evaluation_run.model_version_id` の FK 方針 | Evaluation 系 Task で LOGICAL / ON を確定 | Human | 論理ER §12.2 に参照あり |
+| 6 | `evaluation_run.model_version_id` の FK 方針 | **LOGICAL FK 維持**（物理 FK なし）。`evaluation_run_テーブル定義書` §17.1 No.3・§9 `idx_evaluation_run_model_version` | Human | Issue #567 確定 |
 
 ---
 

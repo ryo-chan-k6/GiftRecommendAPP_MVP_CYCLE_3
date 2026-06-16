@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `partial`                     |
 | 作成日         | 2026-06-16                    |
-| 更新日         | 2026-06-16                    |
+| 更新日         | 2026-06-16（Human Review §17.1 確定） |
 
 ---
 

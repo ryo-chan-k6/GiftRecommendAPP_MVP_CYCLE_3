@@ -130,7 +130,7 @@ reco が Recommendation Run 実行時に解決し、`recommendation_run.ranking_
 | `recommendation_run` | `ranking_config_id` | used_by | `LOGICAL` | 物理ER §9。Run 再現性保持 |
 | `evaluation_run` | `ranking_config_id` | used_by | `LOGICAL` | 論理ER §12.2。Evaluation 系（MVP partial） |
 
-> MVP 初期 DDL では物理 FK を張らない。整合は reco 側 Config 解決 + seed 正本 + Run INSERT 時の存在確認で担保する。参照元側 Index は各テーブル定義 Task で確定する。
+> MVP 初期 DDL では物理 FK を張らない。整合は reco / batch 側 Config 解決 + seed 正本 + Run INSERT 時の存在確認で担保する。`evaluation_run` 側 Index は `idx_evaluation_run_ranking_config`（`evaluation_run_テーブル定義書` §9・§17.1 No.3 確定）。
 
 ---
 
