@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 577
   issue: 573
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-evaluation-result.yaml"
   source_branch: "docs/task-573-evaluation-result-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 573
     required: true
   pr:
-    number: null
+    number: 577
     required: false
   diff:
     required: true
