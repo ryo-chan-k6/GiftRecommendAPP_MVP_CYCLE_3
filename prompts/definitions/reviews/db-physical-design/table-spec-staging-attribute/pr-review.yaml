@@ -171,15 +171,10 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "MVP で external_attribute / staging_attribute の物理 DDL を作成するか（物理ER は no・定義書のみ先行）"
-  - "UNIQUE キー（raw_metadata_id + external_attribute_id 等）の採否"
-  - "source / external_genre_id 列の Staging 明示保持要否"
-  - "attribute_search vs genre_search attributes vs item_search attributeIds の入力優先順位"
-  - "Retention — 物理ER §13 方針（成功 Batch 後即 DELETE）の採否"
-  - "処理構成定義書 `staging_item_attribute` 表記の正本名称（staging_attribute 確定か）"
+  - "Human Review #576 にて §17.1 No.1〜8 を決定済み（MVP DDL なし / UNIQUE 確定 / source 採用 / API 優先順 / Retention / product_diff_result 分離 / attributeIds 非展開 / 物理名 staging_attribute）"
 
 risk_points:
-  - "external_attribute（#575）との Upsert キー・列マッピング引き継ぎ（同 Batch R09・#575 PR 未 merge 時は Human Review 前に Epic 取込確認）"
+  - "external_attribute（#575 / Epic merge 済み）との Upsert キー・列マッピング引き継ぎ"
   - "product_diff_result（#526 / PR #531）とのパイプライン整理（属性 Staging が hash 判定に与えないことの明確化）"
   - "staging_item（#517 / PR #522）attributeIds 方針との一貫性"
   - "staging_genre（#525 / PR #530）との Staging 系 Retention / LOGICAL FK 方針の一貫性"

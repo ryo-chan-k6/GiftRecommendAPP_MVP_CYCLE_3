@@ -60,7 +60,7 @@ Staging 系は **物理 FK なし（LOGICAL + Index）**、**成功 Batch 完了
 - Raw JSON 本体（Object Storage / `raw_product_metadata` の責務）
 - 外部ジャンル正本（`external_genre` の責務）
 - 商品 Staging（`staging_item` / `staging_item_image` / `staging_ranking_signal` の責務）
-- 属性 Staging（`staging_attribute` の責務。MVP 任意）
+- 属性 Staging（`staging_attribute` の責務。MVP 任意。`staging_attribute_テーブル定義書` #576）
 - `api_call_log` / `fetch_cursor` 本体
 - Public API 公開
 - OpenAPI / generated 変更（Epic 終盤 Task #469 へ委譲）

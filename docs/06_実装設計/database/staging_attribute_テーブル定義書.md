@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP    |
 | MVP対象        | `optional（△）`                    |
 | 作成日         | 2026-06-16                         |
-| 更新日         | 2026-06-16                         |
+| 更新日         | 2026-06-16（Human Review #576 反映） |
 
 ---
 
@@ -92,7 +92,7 @@ flowchart LR
 
 ### 5.3 `staging_attribute` → `external_attribute` 関係（upserts）
 
-`external_attribute_テーブル定義書` §5.2 に従う（#575 正本。Epic merge 前は同 Branch ドラフトと突合）。
+`external_attribute_テーブル定義書` §5.2 に従う（#575 merge 済み正本）。
 
 | 観点 | 方針 |
 | ---- | ---- |
@@ -181,6 +181,7 @@ flowchart TD
 | ---- | ---- |
 | `staging_item` 列 | **`attribute_ids` 列なし**。Payload / hash 入力のみ |
 | 本テーブル | 属性 **マスタ辞書** の Staging 中間。商品行とは **1:N ではない**（商品×属性中間なし） |
+| `attributeIds` Staging 展開 | **行わない**（Human Review #576 §17.1 No.7 **確定**）。商品検索API `attributeIds` は `staging_item` 正規化 Payload / `normalized_hash` 入力のみ |
 | 将来解決 | `(source, external_genre_id, external_attribute_id)` で `external_attribute` へ JOIN。商品側は `attributeIds` 配列 |
 
 ### 5.11 論理ER との差分整理
@@ -217,7 +218,7 @@ flowchart TD
 | 種別 | 対象カラム | 方針 | 備考 |
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `staging_attribute_id` | サロゲート UUID | trace キー |
-| UNIQUE | `raw_metadata_id`, `external_genre_id`, `external_attribute_id` | Raw 1 件あたり同一ジャンル文脈・属性 ID は 1 Staging 行 | BATCH-005 冪等（§17.1 No.1 **論点**） |
+| UNIQUE | `raw_metadata_id`, `external_genre_id`, `external_attribute_id` | Raw 1 件あたり同一ジャンル文脈・属性 ID は 1 Staging 行 | Human Review #576 **確定**（§17.1 No.2）。BATCH-005 冪等 |
 
 ---
 
@@ -430,20 +431,20 @@ ON CONFLICT (source, external_genre_id, external_attribute_id) DO UPDATE SET
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | MVP で物理 DDL を作成するか | 物理ER は `no` だが定義書は整備済み | Human | Epic 内 | §17.1 No.1 |
-| 2 | 商品検索API `attributeIds` からの Staging 行展開要否 | 現状は `staging_item` Payload のみ | Human | Batch 実装前 | §5.9 / §5.10 |
-| 3 | 楽天属性検索API の MVP 採用 | 入力経路が変わる | Human | Batch 実装前 | §17.1 No.3 |
+| — | — | — | — | — | Human Review #576 にて §17.1 No.1〜8 を決定済み（下記参照） |
 
-### 17.1 Human Review 論点（Issue #576）
+### 17.1 Human Review 決定事項（Issue #576）
 
-| No | 論点 | 推奨案（AI） | 備考 |
-| --: | ---- | ------------ | ---- |
-| 1 | MVP DDL 作成 | **MVP では作成しない**（物理ER 整合） | `external_attribute` #575 と同型 |
-| 2 | UNIQUE キー | **`(raw_metadata_id, external_genre_id, external_attribute_id)`** を MVP 必須とする | §7・§12.2 ON CONFLICT |
-| 3 | `source` 列 | **採用**。`raw_product_metadata.source` を Staging INSERT 時にコピー | `staging_genre` #525 / `staging_item` #517 と同型 |
-| 4 | 入力 API 優先順位 | **商品検索API attributeFlag 優先** → ジャンル API attributes → 属性検索API は任意 | `external_attribute_テーブル定義書` §12.2 と同一 |
-| 5 | Retention | **物理ER §13 方針**（成功 Batch 後即 DELETE） | `staging_item_テーブル定義書` §13 と同一 |
-| 6 | `product_diff_result` 関係 | **直接 FK なし**。差分判定は `staging_item` のみ | §5.9 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | MVP DDL 作成 | **MVP では作成しない**（物理ER §17 No.7 整合） | Human | `external_attribute` #575 §17.1 No.1 と同型 |
+| 2 | UNIQUE キー | **`(raw_metadata_id, external_genre_id, external_attribute_id)`** を必須とする | Human | §7・§12.2 ON CONFLICT |
+| 3 | `source` 列 | **採用**。`raw_product_metadata.source` を Staging INSERT 時にコピー | Human | `staging_genre` #525 / `staging_item` #517 と同型 |
+| 4 | 入力 API 優先順位 | **商品検索API `attributeFlag` / `attributeIds` 優先** → ジャンル API `attributes` / `tagGroups` → 属性検索API **MVP 不採用** | Human | `external_attribute_テーブル定義書` §12.2・§17.1 No.3 と整合 |
+| 5 | Retention | **物理ER §13 方針**（成功 Batch 後即 DELETE） | Human | `staging_item_テーブル定義書` §13 と同一 |
+| 6 | `product_diff_result` 関係 | **直接 FK なし**。差分判定は `staging_item` のみ | Human | §5.9 |
+| 7 | 商品検索API `attributeIds` Staging 展開 | **展開しない**。`staging_item` Payload / `normalized_hash` 入力のみ | Human | `external_attribute` #575 §17.1 No.4 と整合。§5.10 |
+| 8 | `staging_item_attribute` 物理名 | **`staging_attribute` に統一** | Human | §5.7。処理構成定義書 §10.2–§10.3 |
 
 ---
 
@@ -484,3 +485,4 @@ ON CONFLICT (source, external_genre_id, external_attribute_id) DO UPDATE SET
 - Retention（物理ER §13）が §13 に反映されている
 - apps/** / OpenAPI / generated 変更が含まれていない
 - secret や `.env` 実値が含まれていない
+- Human Review #576 決定事項（§17.1 No.1〜8）が本文に反映されている

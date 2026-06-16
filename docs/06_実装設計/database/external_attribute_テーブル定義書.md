@@ -76,7 +76,7 @@
 | 更新列 | `attribute_name`, `attribute_group_name`, `fetched_at` |
 | 冪等性 | 同一キーで INSERT ... ON CONFLICT UPDATE。Batch 再実行で同一結果 |
 | 反映モジュール | `MOD-BATCH-031` External Attribute Updater（モジュール一覧） |
-| 正本性 | **永続正本は `external_attribute`**。Staging 行は一時中間（`staging_attribute` 定義書は別 Task） |
+| 正本性 | **永続正本は `external_attribute`**。Staging 行は一時中間（`staging_attribute_テーブル定義書` #576 を正とする） |
 
 ```mermaid
 flowchart LR
@@ -84,7 +84,7 @@ flowchart LR
     SA --> EA[external_attribute]
 ```
 
-> **注記**: `staging_attribute` の物理カラム・Retention は **別 Task** で定義する。本節は Upsert 関係とキー体系の参照方針を示す。
+> **注記**: Staging 側の物理カラム・Retention・冪等キーは `staging_attribute_テーブル定義書` §5–§13・§17.1（#576 Human Review 反映済み）を正とする。
 
 ### 5.3 楽天API マッピング
 
@@ -133,7 +133,7 @@ flowchart LR
 | 資料上の名称 | 物理テーブル正本 | 扱い |
 | ------------ | ---------------- | ---- |
 | `item_attribute`（§10.3 / 処理構成定義書） | **`external_attribute`**（属性マスタ） | 本定義書で物理名を **`external_attribute`** に統一 |
-| `staging_item_attribute`（処理構成定義書） | **`staging_attribute`** | Staging 中間。別 Task で定義 |
+| `staging_item_attribute`（処理構成定義書） | **`staging_attribute`** | Staging 中間。`staging_attribute_テーブル定義書` #576 を正とする |
 | 商品×属性中間 | **MVP では未作成** | `attributeIds` は hash シグナルのみ。将来必要なら別 Task |
 
 > **正本**: テーブル一覧 §5 No.14 / §6 No.24 の `external_attribute` / `staging_attribute` を物理名の正とする。外部商品データ連携設計書 §10.3 の `item_attribute` は **概念上の反映先** を示す旧称であり、MVP では独立テーブル `item_attribute` は作成しない。
@@ -337,6 +337,7 @@ ON CONFLICT (source, external_genre_id, external_attribute_id) DO UPDATE SET
 | モジュール一覧 | `docs/05_アプリケーション設計/アプリ/モジュール一覧.md` | MOD-BATCH-031 |
 | item 定義書 | `docs/06_実装設計/database/item_テーブル定義書.md` | §12.3 attributeIds |
 | staging_item 定義書 | `docs/06_実装設計/database/staging_item_テーブル定義書.md` | Staging 系章構成参考 |
+| staging_attribute 定義書 | `docs/06_実装設計/database/staging_attribute_テーブル定義書.md` | §5.2 Upsert 元 Staging（#576） |
 | external_genre 定義書 | `docs/06_実装設計/database/external_genre_テーブル定義書.md` | 外部参照マスタ参考 |
 
 ---
