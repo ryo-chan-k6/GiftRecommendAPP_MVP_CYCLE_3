@@ -188,6 +188,7 @@ acceptance_criteria:
   - "Evaluation評価定義書 §14.2 と論理ER §12.2 の差分が §5.4 等で整理されている"
   - "apps/** 変更がない"
   - "Task PR target が親 Epic Branch"
+  - "Human Review §17.1 No.1〜No.6 が確定している"
 
 branch:
   no_branch: false
@@ -252,15 +253,32 @@ review:
 contract_gate:
   required: false
 
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "input_condition_json 物理化"
+    decision: "API-PUB-002 validated 相当 JSONB のみ（個別列なし）。recommendation_request §5.4 payload 方針と整合"
+  - id: 2
+    topic: "Evaluation §14.2 個別列 vs JSONB"
+    decision: "論理ER JSONB 集約を採用。Evaluation評価定義書 §14.2 は論理項目参考"
+  - id: 3
+    topic: "expected_result_json MVP 必須条件"
+    decision: "列は nullable。親 dataset_type=golden は seed Validation で必須"
+  - id: 4
+    topic: "recommendation_request_id 採用"
+    decision: "nullable 物理列を採用（LOGICAL FK）。MVP seed では NULL"
+  - id: 5
+    topic: "case_label UNIQUE 範囲"
+    decision: "(evaluation_dataset_id, case_label) UNIQUE（uq_evaluation_case_dataset_label）"
+  - id: 6
+    topic: "partial index is_active"
+    decision: "idx_evaluation_case_dataset_active は partial（WHERE is_active = true）"
+
 notes:
   - "Batch R08 No.4: evaluation_case（No.3 evaluation_dataset / No.5 evaluation_run 等は別 Task）"
   - "Issue #566 / Branch docs/task-566-evaluation-case-table-spec"
-  - "先行 merge 済み前提: #440（enum）、#442 / #445（Master）、#537（recommendation_request）"
-  - "blocking 依存: #565 evaluation_dataset テーブル定義書（親 Epic merge 必須。未 merge 時は work-issue 停止）"
-  - "Human Review 論点: input_condition_json を recommendation_request 個別列相当で正規化するか、API-PUB-002 payload 形式 JSONB のみとするか"
-  - "Human Review 論点: expected_result_json の MVP スキーマ（expected_concepts / expected_feature_tendency / evaluation_focus 等 Evaluation評価定義書 §5.2 項目の物理化範囲）"
-  - "Human Review 論点: Evaluation評価定義書 §14.2 offline_eval_case 個別列 vs 論理ER JSONB 集約の採否（MVP は論理ER JSONB 優先案）"
-  - "Human Review 論点: recommendation_request_id 物理列の要否（may_reference・LOGICAL FK nullable）"
-  - "Human Review 論点: case_label の Dataset 内 UNIQUE 制約・GRS-EVAL-002 除外条件（is_active=false）"
+  - "先行 merge 済み前提: #440（enum）、#442 / #445（Master）、#537（recommendation_request）、#565（evaluation_dataset）"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み）"
   - "後続 Task: evaluation_run（#567）/ evaluation_result / evaluation_metric"
   - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

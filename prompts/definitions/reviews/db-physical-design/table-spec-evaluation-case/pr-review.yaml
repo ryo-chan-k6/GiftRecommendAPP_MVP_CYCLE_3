@@ -151,6 +151,7 @@ review_points:
     - "evaluation_dataset.evaluation_dataset_id への物理 FK ON（contains 1:N）が明記されているか"
     - "input_condition_json / expected_result_json の JSONB 責務・必須条件が明記されているか"
     - "case_label / is_active / created_at の扱いが論理ER §12.2 と整合しているか"
+    - "Human Review §17.1 No.1〜No.6（JSONB / UNIQUE / partial index / may_reference）が確定していること"
     - "recommendation_request との may_reference（nullable LOGICAL FK）方針が明記されているか"
     - "evaluation_result 後続 Task 向け evaluation_case_id 被参照（executed_as）が言及されているか"
     - "GRS-EVAL-002 と is_active / validation 除外方針が整合しているか"
@@ -164,23 +165,36 @@ acceptance_criteria:
     - "Blocker / Must / Should / Question の整理"
     - "Human Review 観点の明示"
 
-human_decision_points:
-  - "input_condition_json の物理化方針（recommendation_request 個別列相当 vs API-PUB-002 payload JSONB のみ）"
-  - "expected_result_json の MVP スキーマ（Evaluation評価定義書 §5.2 項目の JSON キー設計）"
-  - "Evaluation評価定義書 §14.2 個別列 vs 論理ER JSONB 集約の採否"
-  - "recommendation_request_id 物理列の要否（may_reference）"
-  - "case_label の Dataset 内 UNIQUE 制約・GRS-EVAL-002 除外条件"
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "input_condition_json 物理化"
+    decision: "API-PUB-002 validated 相当 JSONB のみ（個別列なし）"
+  - id: 2
+    topic: "Evaluation §14.2 個別列 vs JSONB"
+    decision: "論理ER JSONB 集約を採用"
+  - id: 3
+    topic: "expected_result_json MVP 必須条件"
+    decision: "列は nullable。親 dataset_type=golden は seed Validation で必須"
+  - id: 4
+    topic: "recommendation_request_id 採用"
+    decision: "nullable 物理列を採用（LOGICAL FK）"
+  - id: 5
+    topic: "case_label UNIQUE 範囲"
+    decision: "(evaluation_dataset_id, case_label) UNIQUE"
+  - id: 6
+    topic: "partial index is_active"
+    decision: "idx_evaluation_case_dataset_active は partial（WHERE is_active = true）"
 
 risk_points:
   - "Evaluation評価定義書 offline_eval_* 命名と物理テーブル evaluation_* 命名の対応整理"
-  - "Evaluation評価定義書 §14.2 個別列設計と論理ER JSONB 集約のギャップ"
-  - "recommendation_request payload 形式と evaluation input_condition_json の 1:1 対応可否"
-  - "evaluation_dataset（#565）未 merge 時の親子関係確定タイミング"
+  - "recommendation_request payload 形式と evaluation input_condition_json の 1:1 対応可否（seed Validation で担保）"
 
 notes:
   - "Batch R08 No.4: evaluation_case"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-evaluation-case.yaml"
   - "Issue #566 / Branch docs/task-566-evaluation-case-table-spec"
-  - "blocking 依存: #565 evaluation_dataset テーブル定義書（親 Epic merge 必須）"
+  - "Human Review #566 決定済み: human_review_decisions 参照。物理ER §10 / §17.8 に反映"
   - "evaluation_run / evaluation_result / evaluation_metric 本体定義の再作成は out_of_scope"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

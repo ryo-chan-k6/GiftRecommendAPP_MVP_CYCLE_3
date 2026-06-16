@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP |
 | MVP対象        | `partial`                       |
 | 作成日         | 2026-06-16                      |
-| 更新日         | 2026-06-16                      |
+| 更新日         | 2026-06-16（Human Review §17.1 確定） |
 
 ---
 
@@ -62,7 +62,7 @@
 | 読取 | BATCH-018 は親 Dataset 解決後、当該 `evaluation_dataset_id` かつ `is_active = true` の行を SELECT |
 | 書込 | database（seed / 運用）および batch（評価データ投入）。Dataset 作成時に Case を同時投入する想定 |
 
-> **親定義書（#565）**: `evaluation_dataset_テーブル定義書` §5.1 / §8.1 / §12.1。親 Epic merge 前は PR #570 ブランチを参照。本定義書 §8 と双方向整合する。
+> **親定義書（#565）**: `evaluation_dataset_テーブル定義書` §5.1 / §8.1 / §12.1（Epic merge 済み正本）。本定義書 §8 と双方向整合する。
 
 ### 5.2 evaluation_run / evaluation_result との分離
 
@@ -100,9 +100,9 @@
 | 列 | 責務 | MVP 方針 |
 | -- | ---- | -------- |
 | `input_condition_json` | reco へ渡す **評価用入力条件正本**（API-PUB-002 / API-INT-002 整合 JSONB） | **NOT NULL**。snake_case 内部形式 |
-| `expected_result_json` | 人手評価・自動 metric 比較の **期待結果**（Golden / Regression 用） | **nullable**。`golden` Dataset では seed 投入時に必須とする運用 |
+| `expected_result_json` | 人手評価・自動 metric 比較の **期待結果**（Golden / Regression 用） | **nullable**（§17.1 No.3）。親 `dataset_type=golden` は seed Validation で必須 |
 
-#### 5.5.1 input_condition_json 推奨キー（MVP）
+#### 5.5.1 input_condition_json MVP キー（§17.1 No.1 決定済み）
 
 `recommendation_request_テーブル定義書` §5.5 および API-PUB-002 を正とする **validated 相当** の snake_case JSON。
 
@@ -121,9 +121,9 @@
 | `execution.include_reason` | boolean | no | Reason 生成有無 |
 | `execution.include_debug_info` | boolean | no | evaluation 時 **true 推奨**（API-INT-002） |
 
-> **個別物理列化**: Evaluation評価定義書 §14.2 `offline_eval_case` の個別列（`relationship_code` 等）は **MVP では採用しない**。論理ER §12.2 JSONB 集約を優先（§17.1 No.2）。
+> **個別物理列化（§17.1 No.1・No.2 決定済み）**: API-PUB-002 **validated 相当 JSONB のみ**（個別列なし）。Evaluation評価定義書 §14.2 `offline_eval_case` 個別列は論理項目参考とし、物理 DDL は論理ER §12.2 JSONB 集約を採用する。
 
-#### 5.5.2 expected_result_json 推奨キー（MVP）
+#### 5.5.2 expected_result_json MVP キー（§17.1 No.3 決定済み）
 
 Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保持する。
 
@@ -150,9 +150,9 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 | 出典 | 列・概念 | 本テーブル（MVP 物理 DDL） | 扱い |
 | ---- | -------- | -------------------------- | ---- |
 | 論理ER §12.2 | `evaluation_case_id`, `evaluation_dataset_id`, `input_condition_json`, `expected_result_json`, `case_label`, `is_active`, `created_at` | **すべて採用** | 論理ER 準拠 |
-| Evaluation評価定義書 §14.2 | `offline_eval_case` 個別列 | **JSONB 集約** | §5.5・§17.1 No.2 |
+| Evaluation評価定義書 §14.2 | `offline_eval_case` 個別列 | **JSONB 集約** | §5.5・§17.1 No.2 決定済み |
 | Evaluation評価定義書 §5.2 | `eval_case_id` | **`case_label`** | 人間可読ラベル。PK は UUID |
-| 論理ER §12.1 | may_reference Request | **`recommendation_request_id` nullable** | §5.4・§17.1 No.4 |
+| 論理ER §12.1 | may_reference Request | **`recommendation_request_id` nullable** | §5.4・§17.1 No.4 決定済み |
 | 状態カラム | なし | **状態列なし** | `is_active` のみ |
 
 ### 5.8 対象外
@@ -186,7 +186,7 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 | ---- | ---------- | ---- | ---- |
 | PRIMARY KEY | `evaluation_case_id` | サロゲート UUID | 子 `evaluation_result` FK の参照先（後続 Task） |
 | UNIQUE | `evaluation_case_id` | PK と同一 | — |
-| UNIQUE | `evaluation_dataset_id`, `case_label` | データセット内ケースラベル一意 | §17.1 No.5 |
+| UNIQUE | `evaluation_dataset_id`, `case_label` | データセット内ケースラベル一意 | §17.1 No.5 決定済み（`uq_evaluation_case_dataset_label`） |
 
 ---
 
@@ -208,7 +208,7 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 | 項目 | `evaluation_dataset_テーブル定義書` | 本テーブル | 状態 |
 | ---- | ----------------------------------- | ---------- | ---- |
 | contains FK | §8.1 `evaluation_case.evaluation_dataset_id` ON | §8 `evaluation_dataset_id` ON | 整合 |
-| Index 引き継ぎ | §5.4 `idx_evaluation_case_dataset_id` | §9 | 本 Task で確定 |
+| Index 引き継ぎ | §5.4 `idx_evaluation_case_dataset_id` / `uq_evaluation_case_dataset_label` / `idx_evaluation_case_dataset_active`（partial） | §9 | #566 §17.1 確定済み |
 | BATCH-018 読取 | §12.1 子ケース `is_active=true` | §12.1 | 整合 |
 
 ---
@@ -220,8 +220,8 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 | `evaluation_case_pkey` | `evaluation_case_id` | btree（PK） | 主キー | 自動生成 |
 | `uq_evaluation_case_dataset_label` | `evaluation_dataset_id`, `case_label` | btree（unique） | データセット内ラベル一意 | §7 |
 | `idx_evaluation_case_dataset_id` | `evaluation_dataset_id` | btree | 親 FK 補助・Dataset 単位一覧 | `evaluation_dataset_テーブル定義書` §5.4 引き継ぎ |
-| `idx_evaluation_case_dataset_active` | `evaluation_dataset_id`, `is_active` | btree | BATCH-018 有効ケース読取 | partial index 候補: `WHERE is_active = true`（§17.1 No.6） |
-| `idx_evaluation_case_request_id` | `recommendation_request_id` | btree | may_reference 逆引き | nullable |
+| `idx_evaluation_case_dataset_active` | `evaluation_dataset_id` | btree（partial） | BATCH-018 有効ケース読取 | `WHERE is_active = true`（§17.1 No.6 決定済み） |
+| `idx_evaluation_case_request_id` | `recommendation_request_id` | btree | may_reference 逆引き | §17.1 No.4 決定済み（LOGICAL FK） |
 | `idx_evaluation_case_created_at` | `created_at` DESC | btree | 監査・運用参照 | 物理ER §10 時系列 Index 方針 |
 
 ---
@@ -337,23 +337,18 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `input_condition_json` 物理化方針 | API payload のみ vs 個別列併用 | Human | Human Review | §17.1 No.1 |
-| 2 | Evaluation §14.2 個別列 vs JSONB | ドメイン定義書との表現差 | Human | Human Review | §17.1 No.2 |
-| 3 | `expected_result_json` MVP 必須条件 | Golden のみ必須 vs 全 Case nullable | Human | Human Review | §17.1 No.3 |
-| 4 | `recommendation_request_id` 採用 | may_reference の MVP 要否 | Human | Human Review | §17.1 No.4 |
-| 5 | `case_label` UNIQUE 範囲 | Dataset 内一意（採用案） | Human | Human Review | §17.1 No.5 |
-| 6 | partial index `is_active` | 読取性能 vs シンプル Index | Human | Human Review | §17.1 No.6 |
+| — | — | — | — | — | Human Review（#566）にて No.1〜No.6 を決定済み（§17.1 参照） |
 
-### 17.1 Human Review 推奨案（Issue #566）
+### 17.1 Human Review 決定事項（Issue #566）
 
-| No | 論点 | 推奨案 | 備考 |
-| --: | ---- | ------ | ---- |
-| 1 | `input_condition_json` 物理化 | **API-PUB-002 validated 相当 JSONB のみ**（個別列なし） | `recommendation_request` §5.4 payload 方針と整合 |
-| 2 | §14.2 個別列 | **論理ER JSONB 集約を採用** | Evaluation評価定義書 §14.2 は論理項目参考。物理 DDL は JSONB |
-| 3 | `expected_result_json` 必須 | **列は nullable**。`dataset_type=golden` は seed Validation で必須 | enum 列は親 Dataset 側（#565） |
-| 4 | `recommendation_request_id` | **nullable 物理列を採用**（LOGICAL FK） | may_reference。MVP seed では NULL |
-| 5 | `case_label` UNIQUE | **`(evaluation_dataset_id, case_label)` UNIQUE** | Evaluation §5.3 例 `case_001` 形式 |
-| 6 | partial index | **`idx_evaluation_case_dataset_active` は partial**（`WHERE is_active = true`） | BATCH-018 読取最適化 |
+| No | 論点 | 決定内容 | 決定者 | 備考 |
+| --: | ---- | -------- | ------ | ---- |
+| 1 | `input_condition_json` 物理化 | **API-PUB-002 validated 相当 JSONB のみ**（個別列なし） | Human | §5.5.1・§6。`recommendation_request` §5.4 payload 方針と整合 |
+| 2 | Evaluation §14.2 個別列 vs JSONB | **論理ER JSONB 集約を採用** | Human | Evaluation評価定義書 §14.2 は論理項目参考。物理 DDL は JSONB |
+| 3 | `expected_result_json` 必須 | **列は nullable**。親 `dataset_type=golden` は seed Validation で必須 | Human | §5.5.2・§6。enum 列は親 Dataset 側（#565） |
+| 4 | `recommendation_request_id` | **nullable 物理列を採用**（LOGICAL FK） | Human | §5.4・§8。may_reference。MVP seed では NULL |
+| 5 | `case_label` UNIQUE | **`(evaluation_dataset_id, case_label)` UNIQUE**（`uq_evaluation_case_dataset_label`） | Human | §7・§9・§10。Evaluation §5.3 例 `case_001` 形式 |
+| 6 | partial index | **`idx_evaluation_case_dataset_active` は partial**（`WHERE is_active = true`） | Human | §9。BATCH-018 読取最適化 |
 
 ---
 
@@ -366,7 +361,7 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §10 No.52 |
 | Evaluation評価定義書 | `docs/04_ドメインモデル設計/Evaluation評価定義書.md` | §5.2 / §14.2 |
 | 正本定義表 | `docs/05_アプリケーション設計/アプリ/database/正本定義表.md` | §5.12 |
-| 親テーブル定義 | `docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md` | contains 親（#565 / PR #570） |
+| 親テーブル定義 | `docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md` | contains 親（#565 Epic merge 済み正本） |
 | Request 定義 | `docs/06_実装設計/database/recommendation_request_テーブル定義書.md` | input JSON マッピング |
 | API-INT-002 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | evaluation mode |
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-SHARED-004 |
@@ -387,5 +382,5 @@ Evaluation評価定義書 §5.2 評価ケース構成を JSON キーとして保
 - GRS-EVAL-002 と `is_active` / Validation 除外方針が整合している
 - `evaluation_dataset_テーブル定義書`（#565）§5.4 Index 引き継ぎと双方向整合している
 - `evaluation_result` 後続 Task 向け `evaluation_case_id` 被参照が §8.1 で言及されている
-- Human Review §17.1 推奨案が DDL Task へ展開可能な粒度である
+- Human Review §17.1 No.1〜No.6（JSONB / UNIQUE / partial index / may_reference）が確定している
 - secret や `.env` 実値が含まれていない

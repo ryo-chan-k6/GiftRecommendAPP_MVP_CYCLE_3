@@ -322,7 +322,7 @@ erDiagram
 | `staging_item.external_item_code` | `item.external_item_code` | upserts | `LOGICAL` | N:1 | Upsert キー |
 | `staging_item_image.external_item_code` | `item_image.image_url` | upserts | `LOGICAL` | N:M 相当 | `item_id` 解決後。`itemCode` + `image_url` |
 | `staging_genre.external_genre_id` | `external_genre.external_genre_id` | upserts | `LOGICAL` | N:1 | Upsert キー `source` + `external_genre_id`（`staging_genre_テーブル定義書` §17.1 No.1〜2） |
-| `evaluation_dataset.evaluation_dataset_id` | `evaluation_case.evaluation_dataset_id` | contains | `ON` | 1:N | Evaluation 系 |
+| `evaluation_dataset.evaluation_dataset_id` | `evaluation_case.evaluation_dataset_id` | contains | `ON` | 1:N | Human Review #566 確定。`evaluation_case_テーブル定義書` §17.1 No.5 |
 | `evaluation_dataset.evaluation_dataset_id` | `evaluation_run.evaluation_dataset_id` | executed_by | `ON` | 1:N | Human Review #565 確定。`evaluation_dataset_テーブル定義書` §17.1 No.4 |
 | `evaluation_run.evaluation_run_id` | `evaluation_result.evaluation_result_id` | produces | `ON` | 1:N | |
 | `phase_log.owner_id` | `recommendation_run.recommendation_run_id` 等 | records | `LOGICAL` | N:1 | polymorphic: owner_type + owner_id |
@@ -407,6 +407,11 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `evaluation_dataset` | `uq_evaluation_dataset_name_version` | `dataset_name`, `dataset_version` | unique | 系列 + version 一意 | `evaluation_dataset_テーブル定義書` §7・§17.1 No.1 |
 | `evaluation_dataset` | `idx_evaluation_dataset_active_name` | `is_active`, `dataset_name` | btree | 有効データセット解決 | BATCH-018 |
 | `evaluation_dataset` | `idx_evaluation_dataset_created_at` | `created_at` DESC | btree | Retention DELETE / 監査 | §13・§17.1 No.5 |
+| `evaluation_case` | `uq_evaluation_case_dataset_label` | `evaluation_dataset_id`, `case_label` | unique | Dataset 内ケースラベル一意 | `evaluation_case_テーブル定義書` §7・§17.1 No.5 |
+| `evaluation_case` | `idx_evaluation_case_dataset_id` | `evaluation_dataset_id` | btree | 親 FK 補助・Dataset 単位一覧 | `evaluation_dataset_テーブル定義書` §5.4 |
+| `evaluation_case` | `idx_evaluation_case_dataset_active` | `evaluation_dataset_id` | btree（partial） | BATCH-018 有効ケース読取 | `WHERE is_active = true`（§17.1 No.6） |
+| `evaluation_case` | `idx_evaluation_case_request_id` | `recommendation_request_id` | btree | may_reference 逆引き | §17.1 No.4 LOGICAL FK |
+| `evaluation_case` | `idx_evaluation_case_created_at` | `created_at` DESC | btree | 監査・運用参照 | 時系列 Index 方針 |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 
 ---
@@ -563,6 +568,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 - `normalization_distribution_metric` の Index / CHECK / Retention は `normalization_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#563）
 - `reco_score_distribution_metric` の Index / CHECK / Retention は `reco_score_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#564）
 - `evaluation_dataset` の Index / CHECK / Retention / FK 被参照は `evaluation_dataset_テーブル定義書` §7–§13・§17.1 を正とする（#565）
+- `evaluation_case` の Index / CHECK / JSONB / may_reference は `evaluation_case_テーブル定義書` §7–§13・§17.1 を正とする（#566）
 
 ---
 
@@ -649,6 +655,17 @@ Human Review にて以下を確定した（2026-06-07）。
 | 3 | `is_active` | **MVP 物理 DDL 採用** | BATCH-018 解決フィルタ |
 | 4 | `evaluation_run.executed_by` FK | **物理 FK ON** / `ON DELETE RESTRICT` | §9 FK 表に `executed_by` 行を追加 |
 | 5 | Retention | **365 日**（`created_at` 基準）。MVP 自動 DELETE なし | Batch Log 90 日とは別枠 |
+
+### 17.8 Human Review 決定事項（Issue #566 / `evaluation_case`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | `input_condition_json` 物理化 | **API-PUB-002 validated 相当 JSONB のみ**（個別列なし） | §10 `input_condition_json` NOT NULL。`recommendation_request` §5.4 と整合 |
+| 2 | Evaluation §14.2 個別列 vs JSONB | **論理ER JSONB 集約を採用** | Evaluation評価定義書 §14.2 は論理項目参考 |
+| 3 | `expected_result_json` 必須 | **列は nullable**。親 `dataset_type=golden` は seed Validation で必須 | enum 列は親 Dataset 側（#565） |
+| 4 | `recommendation_request_id` | **nullable 物理列を採用**（LOGICAL FK） | §10 `idx_evaluation_case_request_id`。MVP seed では NULL |
+| 5 | `case_label` UNIQUE | **`(evaluation_dataset_id, case_label)` UNIQUE** | §10 `uq_evaluation_case_dataset_label` |
+| 6 | partial index | **`idx_evaluation_case_dataset_active` は partial**（`WHERE is_active = true`） | BATCH-018 読取最適化 |
 
 ---
 
