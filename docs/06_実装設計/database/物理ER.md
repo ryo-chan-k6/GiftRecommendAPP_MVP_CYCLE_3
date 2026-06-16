@@ -577,7 +577,8 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 ## 16. 後続テーブル定義書への引き継ぎ
 
 - MVP 作成対象 **60 テーブル**について `{物理テーブル名}_テーブル定義書.md` を 1 テーブル 1 Task で作成する（テーブル一覧 §1.1）
-- `external_attribute` のテーブル定義書は `external_attribute_テーブル定義書.md`（#575）を正とする。**MVP DDL は作成しない**。`staging_attribute` のテーブル定義書・両テーブルの DDL は **MVP 対象外**
+- `external_attribute` のテーブル定義書は `external_attribute_テーブル定義書.md`（#575）を正とする。**MVP DDL は作成しない**
+- `staging_attribute` のテーブル定義書は `staging_attribute_テーブル定義書.md`（#576）を正とする。**MVP DDL は作成しない**
 - `recommendation_request` は `relationship_code` / `occasion_code` / `budget_min` / `budget_max` / `preferred_text` 等の **個別カラム** と `request_payload` / `validated_payload`（JSONB）を **併用**する（RecommendationRequest定義書 §11.2）
 - `recommendation_run` に `pair_id` を保持し、実行時に解決した Pair を再現性確保のため固定する
 - 全 MVP 対象テーブルの PK / FK / unique / index / 正本区分 / 更新主体を本ドキュメント §8〜§11 から転記する
@@ -598,6 +599,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 - `evaluation_result` の Index / CHECK / Retention / FK は `evaluation_result_テーブル定義書` §7–§13・§17.1 を正とする（#573）
 - `evaluation_metric` の Index / CHECK / Retention / FK は `evaluation_metric_テーブル定義書` §7–§13・§17.1 を正とする（#574）
 - `external_attribute` の Index / CHECK / FK / MVP 任意方針は `external_attribute_テーブル定義書` §7–§14・§17.1 を正とする（#575）。**MVP DDL は作成しない**
+- `staging_attribute` の Index / CHECK / UNIQUE / Retention / MVP 任意方針は `staging_attribute_テーブル定義書` §7–§14・§17.1 を正とする（#576）。**MVP DDL は作成しない**
 
 ---
 
@@ -743,6 +745,19 @@ Human Review にて以下を確定した（2026-06-07）。
 | 2 | `external_genre_id` 物理 FK | **LOGICAL**（物理 FK OFF） | `external_attribute_テーブル定義書` §8.1 |
 | 3 | 楽天属性検索API MVP 採用 | **不採用**。商品検索API 優先 | §4.5.2 正本 |
 | 4 | `item_attribute` 中間テーブル | **MVP 不作成** | `attributeIds` は hash シグナルのみ |
+
+### 17.13 Human Review 決定事項（Issue #576 / `staging_attribute`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | MVP DDL 作成 | **MVP では作成しない** | 物理ER §17 No.7 整合。`external_attribute` #575 と同型 |
+| 2 | UNIQUE キー | **`(raw_metadata_id, external_genre_id, external_attribute_id)`** | `staging_attribute_テーブル定義書` §7 |
+| 3 | `source` 列 | **採用** | Staging Upsert キー整合 |
+| 4 | 入力 API 優先 | **商品検索API 優先** → ジャンル API → 属性検索API **MVP 不採用** | `external_attribute` §17.1 No.3 と整合 |
+| 5 | Retention | **成功 Batch 後即 DELETE** | 物理ER §13 |
+| 6 | `product_diff_result` | **直接 FK なし** | judged_as は `staging_item` のみ |
+| 7 | `attributeIds` Staging 展開 | **展開しない** | `staging_item` Payload / hash のみ |
+| 8 | 物理名 | **`staging_attribute`**（`staging_item_attribute` から統一） | 処理構成定義書 §10.2 |
 
 ---
 
