@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 580
   issue: 576
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-staging-attribute.yaml"
   source_branch: "docs/task-576-staging-attribute-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 576
     required: true
   pr:
-    number: null
+    number: 580
     required: true
   diff:
     required: true
