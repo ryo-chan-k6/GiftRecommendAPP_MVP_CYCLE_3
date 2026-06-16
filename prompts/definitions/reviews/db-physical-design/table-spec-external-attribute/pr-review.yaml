@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 579
   issue: 575
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-external-attribute.yaml"
   source_branch: "docs/task-575-external-attribute-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 575
     required: true
   pr:
-    number: null
+    number: 579
     required: true
   diff:
     required: true
@@ -172,7 +172,7 @@ risk_points:
 notes:
   - "Batch R09 No.3: external_attribute（Phase2 子 Task ③ 最終バッチ）"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-external-attribute.yaml"
-  - "Issue #575 / Branch docs/task-575-external-attribute-table-spec"
+  - "Issue #575 / Branch docs/task-575-external-attribute-table-spec / PR #579"
   - "先行 merge 済み前提: #495 / PR #500（item）、#517 / PR #522（staging_item）、#494 / PR #499（external_genre）"
   - "staging_attribute 本体定義は out_of_scope"
   - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"
