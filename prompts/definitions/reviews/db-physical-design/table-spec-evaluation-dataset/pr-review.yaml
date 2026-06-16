@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 570
   issue: 565
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-evaluation-dataset.yaml"
   source_branch: "docs/task-565-evaluation-dataset-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 565
     required: true
   pr:
-    number: null
+    number: 570
     required: true
   diff:
     required: true
