@@ -59,7 +59,8 @@ scope:
   - "反映漏れ・不整合の一覧化（事実 / 推論 / 未確認の区分、Blocker / Must / Should / Question 分類）"
   - "Blocker 級不整合の docs 修正（本 Task scope 内で同一 PR に含める）"
   - "Epic PR → develop 進行可否の判断材料を PR 本文に記載"
-  - "Task / Review Definition の整備"
+  - "成果物一覧 §4.1（db-physical-design 成果物ステータス）の追加・更新"
+  - "成果物連関図・成果物一覧×Task Definition化方針書の enum定義書名称整合"
 
 out_of_scope:
   - "Epic PR の merge（Human 判断）"
@@ -132,6 +133,18 @@ output:
       action: "update"
       required: false
     - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/成果物管理/成果物連関図.md"
+      action: "update"
+      required: false
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
       action: "update"
       required: false
   files:
