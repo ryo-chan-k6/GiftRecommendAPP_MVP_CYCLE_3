@@ -4,7 +4,7 @@ Supabase CLI プロジェクト配置。DB migration の **適用正本** は `m
 
 | パス | 役割 |
 | ---- | ---- |
-| `config.toml` | CLI 設定（後続 Task で実体化） |
+| `config.toml` | Supabase CLI 設定（ローカルポート、DB バージョン等） |
 | `migrations/` | 環境へ適用する SQL（Supabase CLI 管理） |
 | `seed.sql` | 任意。`db/seeds/` との関係は Phase3 で決定 |
 
