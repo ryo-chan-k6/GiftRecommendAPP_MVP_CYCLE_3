@@ -323,6 +323,7 @@ erDiagram
 | `staging_item_image.external_item_code` | `item_image.image_url` | upserts | `LOGICAL` | N:M 相当 | `item_id` 解決後。`itemCode` + `image_url` |
 | `staging_genre.external_genre_id` | `external_genre.external_genre_id` | upserts | `LOGICAL` | N:1 | Upsert キー `source` + `external_genre_id`（`staging_genre_テーブル定義書` §17.1 No.1〜2） |
 | `evaluation_dataset.evaluation_dataset_id` | `evaluation_case.evaluation_dataset_id` | contains | `ON` | 1:N | Evaluation 系 |
+| `evaluation_dataset.evaluation_dataset_id` | `evaluation_run.evaluation_dataset_id` | executed_by | `ON` | 1:N | Human Review #565 確定。`evaluation_dataset_テーブル定義書` §17.1 No.4 |
 | `evaluation_run.evaluation_run_id` | `evaluation_result.evaluation_result_id` | produces | `ON` | 1:N | |
 | `phase_log.owner_id` | `recommendation_run.recommendation_run_id` 等 | records | `LOGICAL` | N:1 | polymorphic: owner_type + owner_id |
 
@@ -403,6 +404,9 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `reco_score_distribution_metric` | `idx_rsdm_recommendation_result_id` | `recommendation_result_id` | btree | Result 単位参照 | |
 | `reco_score_distribution_metric` | `idx_rsdm_version_score` | `semantic_config_version_id`, `ranking_config_id`, `score_type` | btree | Config 比較・軸別参照 | |
 | `reco_score_distribution_metric` | `idx_rsdm_calculated_at` | `calculated_at` | btree | Retention DELETE | §13 |
+| `evaluation_dataset` | `uq_evaluation_dataset_name_version` | `dataset_name`, `dataset_version` | unique | 系列 + version 一意 | `evaluation_dataset_テーブル定義書` §7・§17.1 No.1 |
+| `evaluation_dataset` | `idx_evaluation_dataset_active_name` | `is_active`, `dataset_name` | btree | 有効データセット解決 | BATCH-018 |
+| `evaluation_dataset` | `idx_evaluation_dataset_created_at` | `created_at` DESC | btree | Retention DELETE / 監査 | §13・§17.1 No.5 |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 
 ---
@@ -508,6 +512,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `meaning_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`meaning_distribution_metric_テーブル定義書` §13・§17.1 No.4 |
 | `normalization_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`normalization_distribution_metric_テーブル定義書` §13・§17.1 No.3 |
 | `reco_score_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`reco_score_distribution_metric_テーブル定義書` §13・§17.1 No.9 |
+| Evaluation系（`evaluation_dataset` 等） | **365 日**（dataset 確定） | 原則自動 DELETE なし | `created_at` 基準（将来パージ） | `evaluation_dataset_テーブル定義書` §13・§17.1 No.5。Batch Log 90 日とは別枠 |
 | Metric 系（上記以外） | 中期 | DELETE / 集約 | 保持期間経過 | 将来 `metric_summary` 統合可 |
 | Raw Metadata | 中期 | 状態更新 + アーカイブ | Object Storage 側 lifecycle と連動 | DB は参照のみ |
 
@@ -557,6 +562,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 - `meaning_distribution_metric` の Index / CHECK / Retention は `meaning_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#557）
 - `normalization_distribution_metric` の Index / CHECK / Retention は `normalization_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#563）
 - `reco_score_distribution_metric` の Index / CHECK / Retention は `reco_score_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#564）
+- `evaluation_dataset` の Index / CHECK / Retention / FK 被参照は `evaluation_dataset_テーブル定義書` §7–§13・§17.1 を正とする（#565）
 
 ---
 
@@ -633,6 +639,16 @@ Human Review にて以下を確定した（2026-06-07）。
 | 7 | phase_log フェーズ名 | **`reco_quality_metric_recorded` は追加しない** | `phase_log_テーブル定義書` §5.7 |
 | 8 | 物理 schema | MVP は **`public` 単一 schema** | #556 §17.1 No.5 同型 |
 | 9 | Retention | **365 日以上**。`batch_run_log`（90 日）と**非連動** | #556 / #557 同型 |
+
+### 17.7 Human Review 決定事項（Issue #565 / `evaluation_dataset`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | UNIQUE キー | **`dataset_name` + `dataset_version` 組み合わせ UNIQUE** | §10 `uq_evaluation_dataset_name_version` |
+| 2 | `dataset_version` 形式 | **semver `v1.0.0`**（`chk_dataset_version_format`） | `semantic_config_version` 同型 |
+| 3 | `is_active` | **MVP 物理 DDL 採用** | BATCH-018 解決フィルタ |
+| 4 | `evaluation_run.executed_by` FK | **物理 FK ON** / `ON DELETE RESTRICT` | §9 FK 表に `executed_by` 行を追加 |
+| 5 | Retention | **365 日**（`created_at` 基準）。MVP 自動 DELETE なし | Batch Log 90 日とは別枠 |
 
 ---
 
