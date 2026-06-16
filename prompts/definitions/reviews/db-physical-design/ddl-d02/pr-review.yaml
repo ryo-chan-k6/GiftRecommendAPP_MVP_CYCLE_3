@@ -1,0 +1,187 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-d02-pr"
+  title: "d02 Semantic/Feature定義系DDL PRレビュー"
+  summary: "D02 Semantic / Feature 定義系 DDL Task の PR を AI Review する。`db/ddl/d02_semantic_feature_definitions.sql` が 12 テーブル定義書・物理 ER・マイグレーション方針書と整合しているか、D01 適用後に実行可能か、D03 以降の前提として妥当かを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-599-d02-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 599
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d02.yaml"
+  source_branch: "chore/task-599-d02-ddl"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-d02.yaml"
+    required: true
+  issue:
+    number: 599
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D02 scope・12 テーブル一覧との突合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 ファイル命名・バッチ順序・D12 後追い FK 方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§9 制約一覧・§15 適用順序との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 値との突合"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ・enum 型名の参照"
+    - path: "docs/06_実装設計/database/semantic_config_テーブル定義書.md"
+      required: true
+      purpose: "D02-1 突合"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "D02-2 突合"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "D02-3 突合"
+    - path: "docs/06_実装設計/database/semantic_concept_テーブル定義書.md"
+      required: true
+      purpose: "D02-4 突合"
+    - path: "docs/06_実装設計/database/semantic_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-5 突合"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-6 突合"
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-7 突合"
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-8 突合"
+    - path: "docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-9 突合"
+    - path: "docs/06_実装設計/database/input_type_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-10 突合"
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-11 突合"
+    - path: "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-12 突合（D03 跨ぎ FK は D12 後追い）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（D03 以降テーブル / supabase migrations / packages / apps / docs 変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  db:
+    - "D02 対象 12 テーブルが DDLバッチ分割表 §6 と一致しているか"
+    - "ファイル名が `d02_semantic_feature_definitions.sql`（マイグレーション方針書 §8.1）であるか"
+    - "`semantic_config` → `semantic_config_version` → 子テーブルの CREATE 順序が FK 依存と整合しているか"
+    - "各テーブルの列・型・PK / UNIQUE / Index / CHECK がテーブル定義書と一致しているか"
+    - "enum 列が D01 で定義された論理 ID 型を参照しているか"
+    - "Rule 系テーブルの `semantic_config_version_id` 物理 FK（ON DELETE RESTRICT）が定義書どおりか"
+    - "`normalization_rule.feature_normalization_version_id` 列は存在するが、D03 跨ぎ物理 FK が誤って本ファイルに含まれていないか"
+    - "Master テーブル（D03）への物理 FK が誤って含まれていないか"
+    - "version 内 Concept 整合の複合 FK が誤って含まれていないか（MVP 見送り）"
+    - "D01 適用後に本ファイル単体が実行可能か"
+    - "D03（#600）以降 Task の前提として妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "`normalization_rule.feature_normalization_version_id` の D03 跨ぎ物理 FK を D12 後追いとする方針の確認"
+  - "Rule 系 LOGICAL 参照（`feature_code` / Master code 列）の CHECK 範囲と seed 担保方針の確認"
+
+risk_points:
+  - "12 テーブル横断での列名・型・制約の取りこぼし"
+  - "`normalization_rule` の D03 依存 FK を誤って本バッチに含めるリスク"
+  - "Rule 系 UNIQUE 制約名・列集合のテーブル定義書との不一致"
+  - "D03（#600）以降 Task との適用順序依存"
+
+notes:
+  - "Batch D02 / change_id: `d02_semantic_feature_definitions`"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d02.yaml"
+  - "Issue #599 / Branch chore/task-599-d02-ddl"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
