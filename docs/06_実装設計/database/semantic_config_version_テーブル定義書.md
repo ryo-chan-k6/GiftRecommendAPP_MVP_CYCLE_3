@@ -342,7 +342,7 @@ version 非現行化時は `is_current = false` に加え、運用で `valid_to`
 | プロジェクト整合 | `model_version_テーブル定義書` §17.1 No.3、`ranking_config` と **同じ MVP 方針** | 将来の統一は可能だが MVP scope が広がる |
 | 将来拡張 | `recommendation_run` テーブル定義 Task で **物理 FK ON + DELETE RESTRICT** をオプション検討可 | — |
 
-**採用結論:** MVP は **LOGICAL のまま**。整合は reco Config 解決、Run INSERT 前の存在確認、`recommendation_run.semantic_config_version_id` / `evaluation_run.semantic_config_version_id` への Index（run テーブル定義 Task）で担保する。
+**採用結論:** MVP は **LOGICAL のまま**。整合は reco / batch Config 解決、Run INSERT 前の存在確認、`recommendation_run.semantic_config_version_id` / `evaluation_run.semantic_config_version_id` への Index（`evaluation_run_テーブル定義書` §9 `idx_evaluation_run_semantic_config_version`・§17.1 No.4 確定）で担保する。
 
 ---
 
