@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 569
   issue: 564
   task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-reco-score-distribution-metric.yaml"
   source_branch: "docs/task-564-reco-score-distribution-metric-table-spec"
@@ -71,7 +71,7 @@ input:
     number: 564
     required: true
   pr:
-    number: null
+    number: 569
     required: true
   diff:
     required: true
@@ -188,4 +188,4 @@ notes:
   - "先行 merge 済み前提: #534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）、#543 / PR #548（recommendation_run）、#544 / PR #549（recommendation_result）、#545 / PR #550（recommendation_result_item）、#556 / PR #561（feature_distribution_metric）、#557 / PR #562（meaning_distribution_metric）"
   - "feature / meaning / normalization 系 Metric 本体定義の再作成は out_of_scope"
   - "Human Review #564 決定済み（§17.1）。物理ER §17.6・テーブル一覧 §11 補足へ反映済み"
-  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
+  - "PR #569（/create-pr 反映済み）"
