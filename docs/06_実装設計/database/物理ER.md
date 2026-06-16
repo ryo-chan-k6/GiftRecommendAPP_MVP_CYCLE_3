@@ -315,6 +315,10 @@ erDiagram
 | `item_feature`（集計入力） | `normalization_distribution_metric` | aggregates_to | `LOGICAL` | N:1 | 非 FK。`normalization_distribution_metric_テーブル定義書` §5.2 |
 | `item_meaning`（集計入力） | `meaning_distribution_metric` | aggregates_to | `LOGICAL` | N:1 | 非 FK。`meaning_distribution_metric_テーブル定義書` §5.2 |
 | `user_meaning`（集計入力） | `meaning_distribution_metric` | aggregates_to | `LOGICAL` | N:1 | 非 FK。`meaning_distribution_metric_テーブル定義書` §5.3 |
+| `semantic_config_version.semantic_config_version_id` | `reco_score_distribution_metric.semantic_config_version_id` | scopes | `ON` | 1:N | §8.1 物理 FK ON DELETE RESTRICT |
+| `recommendation_run.recommendation_run_id` | `reco_score_distribution_metric.recommendation_run_id` | records | `LOGICAL` | 1:N | Run trace。`reco_score_distribution_metric_テーブル定義書` §5.4・§17.1 No.4 |
+| `recommendation_result.recommendation_result_id` | `reco_score_distribution_metric.recommendation_result_id` | records | `LOGICAL` | 1:N | Result trace。§5.3 |
+| `recommendation_result_item`（集計入力） | `reco_score_distribution_metric` | aggregates_to | `LOGICAL` | N:1 | 非 FK。`reco_score_distribution_metric_テーブル定義書` §5.2 |
 | `staging_item.external_item_code` | `item.external_item_code` | upserts | `LOGICAL` | N:1 | Upsert キー |
 | `staging_item_image.external_item_code` | `item_image.image_url` | upserts | `LOGICAL` | N:M 相当 | `item_id` 解決後。`itemCode` + `image_url` |
 | `staging_genre.external_genre_id` | `external_genre.external_genre_id` | upserts | `LOGICAL` | N:1 | Upsert キー `source` + `external_genre_id`（`staging_genre_テーブル定義書` §17.1 No.1〜2） |
@@ -394,6 +398,11 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `normalization_distribution_metric` | `idx_ndm_norm_version` | `feature_normalization_version_id`, `calculated_at` DESC | btree | 正規化 version 別履歴 | §5.3 |
 | `normalization_distribution_metric` | `idx_ndm_calculated_at` | `calculated_at` | btree | Retention DELETE | §13 |
 | `normalization_distribution_metric` | `idx_ndm_scope_key` | `aggregation_scope`, `aggregation_key` | btree | 日次 / version スコープ検索 | 補助 |
+| `reco_score_distribution_metric` | `uq_rsdm_run_snapshot_key` | `recommendation_run_id`, `recommendation_result_id`, `score_type`, `aggregation_scope`, `aggregation_key` | unique | Run 単位冪等 UPSERT | `reco_score_distribution_metric_テーブル定義書` §7 |
+| `reco_score_distribution_metric` | `idx_rsdm_recommendation_run_id` | `recommendation_run_id` | btree | Run 単位一覧 | |
+| `reco_score_distribution_metric` | `idx_rsdm_recommendation_result_id` | `recommendation_result_id` | btree | Result 単位参照 | |
+| `reco_score_distribution_metric` | `idx_rsdm_version_score` | `semantic_config_version_id`, `ranking_config_id`, `score_type` | btree | Config 比較・軸別参照 | |
+| `reco_score_distribution_metric` | `idx_rsdm_calculated_at` | `calculated_at` | btree | Retention DELETE | §13 |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 
 ---
@@ -443,6 +452,14 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `normalization_distribution_metric` | `chk_ndm_entity_type_item` | check | `entity_type` | `= 'item'` | MVP 固定 |
 | `normalization_distribution_metric` | `chk_ndm_batch_run_required` | check | `batch_run_id`, `aggregation_scope` | scope=batch_run 時 batch_run_id 必須 | §5.4 |
 | `normalization_distribution_metric` | `chk_ndm_normalization_version_required` | check | `feature_normalization_version_id` | NOT NULL 必須 | §17.1 No.2 |
+| `reco_score_distribution_metric` | `uq_rsdm_run_snapshot_key` | unique | §10 冪等キー列 | reco Run 単位 UPSERT | `reco_score_distribution_metric_テーブル定義書` §7 |
+| `reco_score_distribution_metric` | `fk_rsdm_semantic_config_version_id` | FK | `semantic_config_version_id` | `semantic_config_version` ON DELETE RESTRICT | §8.1 |
+| `reco_score_distribution_metric` | `chk_rsdm_score_type` | check | `score_type` | `IN ('context_score', 'final_score')` | §17.1 No.2 |
+| `reco_score_distribution_metric` | `chk_rsdm_aggregation_scope` | check | `aggregation_scope` | `IN ('run')` | §17.1 No.4 |
+| `reco_score_distribution_metric` | `chk_rsdm_run_required` | check | `recommendation_run_id`, `aggregation_scope` | scope=run 時 run_id 必須 | §5.4 |
+| `reco_score_distribution_metric` | `chk_rsdm_result_required` | check | `recommendation_result_id`, `aggregation_scope` | scope=run 時 result_id 必須 | §5.3 |
+| `reco_score_distribution_metric` | `chk_rsdm_batch_run_null_mvp` | check | `batch_run_id` | `batch_run_id IS NULL` | §17.1 No.5 |
+| `reco_score_distribution_metric` | `chk_rsdm_sample_count_positive` | check | `sample_count` | `>= 1` | §17.1 No.3 |
 | `item_embedding` | `uq_item_embedding_idempotent` | unique | `item_id`, `model_version_id`, `embedding_input_hash` | Embedding 冪等 | |
 | `pair_master` | `uq_pair_relationship_occasion` | unique | `relationship_code`, `occasion_code` | Pair 一意 | |
 | `feature_definition` | `chk_feature_code_mvp` | check | `feature_code` | MVP 8 軸のみ | enum Task と連携 |
@@ -490,6 +507,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `feature_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`feature_distribution_metric_テーブル定義書` §13・§17.1 No.4 |
 | `meaning_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`meaning_distribution_metric_テーブル定義書` §13・§17.1 No.4 |
 | `normalization_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`normalization_distribution_metric_テーブル定義書` §13・§17.1 No.3 |
+| `reco_score_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`reco_score_distribution_metric_テーブル定義書` §13・§17.1 No.9 |
 | Metric 系（上記以外） | 中期 | DELETE / 集約 | 保持期間経過 | 将来 `metric_summary` 統合可 |
 | Raw Metadata | 中期 | 状態更新 + アーカイブ | Object Storage 側 lifecycle と連動 | DB は参照のみ |
 
@@ -538,6 +556,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 - `feature_distribution_metric` の Index / CHECK / Retention は `feature_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#556 Human Review 反映済み）
 - `meaning_distribution_metric` の Index / CHECK / Retention は `meaning_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#557）
 - `normalization_distribution_metric` の Index / CHECK / Retention は `normalization_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#563）
+- `reco_score_distribution_metric` の Index / CHECK / Retention は `reco_score_distribution_metric_テーブル定義書` §9–§13・§17.1 を正とする（#564）
 
 ---
 
@@ -600,6 +619,20 @@ Human Review にて以下を確定した（2026-06-07）。
 | 5 | phase_log フェーズ | MVP は **`feature_distribution_metric_recorded` に Normalization 記録を包含** | `normalization_distribution_metric_recorded` enum 追加なし |
 | 6 | BATCH-013 直接書込 | MVP は **BATCH-016 のみ INSERT / UPSERT** | BATCH-013 は `item_feature` 更新のみ |
 | 7 | raw 層の張り付き率列 | **`near_*_rate` / `mid_concentration_rate` は NULL 許容** | sigmoid 行での算出は BATCH-016 実装で推奨 |
+
+### 17.6 Human Review 決定事項（Issue #564 / `reco_score_distribution_metric`）
+
+| No | 論点 | 決定内容 | 備考 |
+| --: | ---- | -------- | ---- |
+| 1 | Observability §12.12 追加統計列 | MVP partial は **本表列のみ**（`skewness` 等は物理列化しない） | #556 §17.1 No.1 同型 |
+| 2 | `score_type` MVP 範囲 | **`context_score` / `final_score` の 2 値のみ** | `score_breakdown_json` 内訳は将来拡張 |
+| 3 | empty Result | **`sample_count >= 1` を要求し、0 件 Result では INSERT しない** | 空統計行を避ける |
+| 4 | `aggregation_scope` | MVP partial は **`run` のみ** | `daily` / `semantic_config_version` は将来 |
+| 5 | `batch_run_id` | MVP partial では **常に NULL**（CHECK 固定）。Batch 再集計導入時に CHECK 解除 | BATCH-016 系と責務分離 |
+| 6 | reco 書き込み | MVP partial では **reco のみ INSERT / UPSERT** | #556 / #557 とは逆 |
+| 7 | phase_log フェーズ名 | **`reco_quality_metric_recorded` は追加しない** | `phase_log_テーブル定義書` §5.7 |
+| 8 | 物理 schema | MVP は **`public` 単一 schema** | #556 §17.1 No.5 同型 |
+| 9 | Retention | **365 日以上**。`batch_run_log`（90 日）と**非連動** | #556 / #557 同型 |
 
 ---
 

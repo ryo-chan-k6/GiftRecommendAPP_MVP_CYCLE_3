@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP               |
 | MVP対象        | `partial`                                     |
 | 作成日         | 2026-06-16                                    |
-| 更新日         | 2026-06-16（Issue #564 初版・MVP partial 提案） |
+| 更新日         | 2026-06-16（Issue #564 初版） / 2026-06-16（Human Review #564 決定反映） |
 
 ---
 
@@ -87,9 +87,9 @@ Public API では返却しない（内部監視・品質分析データ）。
 | `context_score` | `recommendation_result_item.context_score` | 同一 `recommendation_result_id` の全 Item 行 |
 | `final_score` | `recommendation_result_item.final_score` | 同上 |
 
-> **`score_breakdown_json` 内訳**（`social_match` / `symbolic_match` / `feature_match` 等）は MVP partial では **物理列化しない**（§17.1 No.2 提案）。将来拡張時は JSON キー抽出または列追加を検討する。
+> **`score_breakdown_json` 内訳**（`social_match` / `symbolic_match` / `feature_match` 等）は MVP partial では **物理列化しない**（§17.1 No.2 決定済み）。将来拡張時は JSON キー抽出または列追加を検討する。
 
-> **0 件 Result**（`result_status = empty`）: Item 行が 0 件のため **Metric 行は INSERT しない**（`sample_count = 0` の統計行は意味が薄い。§17.1 No.3 提案）。
+> **0 件 Result**（`result_status = empty`）: Item 行が 0 件のため **Metric 行は INSERT しない**（`sample_count >= 1` を要求。§17.1 No.3 決定済み）。
 
 #### 5.2.2 集計対象 Result の選定
 
@@ -147,7 +147,7 @@ Public API では返却しない（内部監視・品質分析データ）。
 | -- | ---- | ----------------------- | -------------------------- | -------------- |
 | `run` | 1 回の Online 推薦実行（Result Item 集合） | **必須** | **必須** | **NULL** |
 
-> `daily` / `semantic_config_version` / `batch_run` は Observability §12.9 にあるが、**MVP partial では対象外**（§17.1 No.4 提案）。将来 Batch 再集計で拡張する。
+> `daily` / `semantic_config_version` / `batch_run` は Observability §12.9 にあるが、**MVP partial では対象外**（§17.1 No.4 決定済み）。将来 Batch 再集計で拡張する。
 
 ### 5.8 IF-OBS-005 / IF-DB-RECO-007 との保存 I/F
 
@@ -260,7 +260,7 @@ reco_score_distribution_metric（本テーブル）
 | `idx_rsdm_version_score` | `semantic_config_version_id`, `ranking_config_id`, `score_type` | btree | Config 比較・軸別参照 | |
 | `idx_rsdm_calculated_at` | `calculated_at` | btree | Retention DELETE | §13 |
 
-> 物理ER §9 / §10 に本テーブル関係・Index を反映するのは後続 Task（#564 スコープ外の物理ER 行追加は §17 参照）。
+> 物理ER §9 / §10 / §11 / §13 / §17.6 に本テーブル関係・Index・CHECK・Retention・Human Review 決定を反映済み（Issue #564）。
 
 ---
 
@@ -382,15 +382,14 @@ reco_score_distribution_metric（本テーブル）
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 物理ER §9 関係行追加 | 本テーブルの FK / 集計入力関係を物理ERへ反映する後続 Task | DDL / 物理ER Task | Epic #435 内 | 本 Task スコープ外 |
-| 2 | `score_breakdown_json` 内訳スコアの物理列化 | `social_match` 等を MVP partial に含めるか | Human | HR #564 | §17.1 No.2 |
-| 3 | 0 件 Result の Metric 扱い | INSERT しない方針でよいか | Human | HR #564 | §17.1 No.3 |
-| 4 | `daily` / `batch_run` スコープ拡張 | 日次 Batch 再集計をいつ導入するか | Human | 将来 Task | §17.1 No.4 |
-| 5 | `chk_rsdm_batch_run_null_mvp` 解除タイミング | 将来 Batch 再集計時に CHECK 変更が必要 | Human | 将来 Task | §17.1 No.5 |
+| 1 | `daily` / `batch_run` スコープ拡張 | 日次 Batch 再集計をいつ導入するか | Human | 将来 Task | §17.1 No.4 |
+| 2 | `chk_rsdm_batch_run_null_mvp` 解除タイミング | 将来 Batch 再集計時に CHECK 変更が必要 | Human | 将来 Task | §17.1 No.5 |
 
-### 17.1 Human Review 提案（Issue #564・#556 / #557 先例参考）
+### 17.1 Human Review 決定事項（Issue #564）
 
-| No | 論点 | 提案内容 | 備考 |
+Human Review にて以下を確定した（2026-06-16）。
+
+| No | 論点 | 決定内容 | 備考 |
 | --: | ---- | -------- | ---- |
 | 1 | Observability §12.12 追加統計列 | MVP partial は **本表の列のみ**（`skewness` 等は物理列化しない） | #556 / #557 §17.1 No.1 同型 |
 | 2 | `score_type` MVP 範囲 | **`context_score` / `final_score` の 2 値のみ** | `score_breakdown_json` 内訳は将来拡張 |

@@ -171,11 +171,8 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 human_decision_points:
-  - "ログ・Observability設計書 §12.12 汎用カラム候補のうち MVP partial で物理列化する範囲（#556 / #557 先例との一貫性）"
-  - "score_type / value_layer（context_score / final_score / social_match / symbolic_match / feature_match）の列設計"
-  - "aggregation_scope=run を MVP partial に含めるか、daily / semantic_config_version を含めるか"
-  - "batch_run_id 必須性（reco Online 記録では NULL 許容とするか）"
-  - "score_breakdown_json から抽出する matching 内訳スコアの MVP 採用範囲"
+  - "Human Review #564 決定済み（§17.1）。AI Review では決定内容と docs 反映の整合を確認する"
+  - "将来 Task: daily / batch_run スコープ拡張・chk_rsdm_batch_run_null_mvp 解除タイミング"
 
 risk_points:
   - "ログ・Observability設計書 §12.12 の汎用 metric カラム設計と Reco スコア専用テーブルへの落とし込み粒度"
@@ -190,5 +187,5 @@ notes:
   - "Issue #564 / Branch docs/task-564-reco-score-distribution-metric-table-spec"
   - "先行 merge 済み前提: #534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）、#543 / PR #548（recommendation_run）、#544 / PR #549（recommendation_result）、#545 / PR #550（recommendation_result_item）、#556 / PR #561（feature_distribution_metric）、#557 / PR #562（meaning_distribution_metric）"
   - "feature / meaning / normalization 系 Metric 本体定義の再作成は out_of_scope"
-  - "Human Review #556 / #557 先例を Reco スコア軸設計の参考基準とする（ただし reco 主更新・partial MVP の差分を明示）"
+  - "Human Review #564 決定済み（§17.1）。物理ER §17.6・テーブル一覧 §11 補足へ反映済み"
   - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"
