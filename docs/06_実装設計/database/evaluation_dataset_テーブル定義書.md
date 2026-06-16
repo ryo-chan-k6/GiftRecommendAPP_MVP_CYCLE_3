@@ -84,9 +84,9 @@
 | ---------- | ------ | ---- | ------ | ----- |
 | `evaluation_case` | `evaluation_dataset_id` | contains | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_case_dataset_id` / `uq_evaluation_case_dataset_label` / `idx_evaluation_case_dataset_active`（partial・#566 §17.1 確定） |
 | `evaluation_run` | `evaluation_dataset_id` | executed_by | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_run_dataset_id`（Index 引き継ぎ。`evaluation_run_テーブル定義書` §9） |
-| `evaluation_result` | `evaluation_dataset_id` | 冗長保持（再現性） | `LOGICAL` または `ON`（#567 以降で確定） | — |
+| `evaluation_result` | `evaluation_dataset_id` | 冗長保持（再現性） | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_result_dataset_id`（#573 §17.1 No.1 確定） |
 
-> **物理ER §9 整合**: Human Review §17.1 No.4 により `evaluation_run.evaluation_dataset_id` への物理 FK ON を確定。物理ER §9 FK 表・§17.7 に反映済み。
+> **物理ER §9 整合**: Human Review #565 §17.1 No.4 により `evaluation_run.evaluation_dataset_id` への物理 FK ON を確定。Human Review #573 §17.1 No.1 により `evaluation_result.evaluation_dataset_id` も物理 FK ON を確定。物理ER §9 FK 表・§17.7 / §17.10 に反映。
 
 ### 5.5 対象外
 
@@ -135,8 +135,9 @@
 | ------ | ------ | ---- | ------ | ---- |
 | `evaluation_case` | `evaluation_dataset_id` | contains | `ON` | 物理ER §9。1:N。DELETE RESTRICT（§17.1 No.4） |
 | `evaluation_run` | `evaluation_dataset_id` | executed_by | `ON` | 物理ER §9・§17.1 No.4。1:N。DELETE RESTRICT |
+| `evaluation_result` | `evaluation_dataset_id` | 冗長保持 | `ON` | 物理ER §9・#573 §17.1 No.1。1:N。DELETE RESTRICT |
 
-> **子テーブル側 DDL 方針（引き継ぎ）**: 子テーブルの `evaluation_dataset_id` → `evaluation_dataset.evaluation_dataset_id` に `REFERENCES ... ON DELETE RESTRICT` を付与する。親データセット削除前に case / run 行の整理が必要。
+> **子テーブル側 DDL 方針（引き継ぎ）**: 子テーブルの `evaluation_dataset_id` → `evaluation_dataset.evaluation_dataset_id` に `REFERENCES ... ON DELETE RESTRICT` を付与する。親データセット削除前に case / run / result 行の整理が必要。
 
 ### 8.2 物理ER §9 整合（Human Review #565 反映）
 
@@ -144,6 +145,7 @@
 | ---- | ----------------- | --------------- | ---- |
 | `evaluation_dataset` → `evaluation_case` contains | あり | あり（ON） | 整合 |
 | `evaluation_dataset` → `evaluation_run` executed_by | あり | あり（ON。§17.1 No.4 確定） | **#565 で §9 補完済み** |
+| `evaluation_dataset` → `evaluation_result` 冗長保持 | — | あり（ON。#573 §17.1 No.1 確定） | **#573 で §9 補完済み** |
 
 ---
 
