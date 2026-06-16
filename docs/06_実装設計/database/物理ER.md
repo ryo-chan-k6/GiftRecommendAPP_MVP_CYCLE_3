@@ -324,7 +324,7 @@ erDiagram
 | `staging_genre.external_genre_id` | `external_genre.external_genre_id` | upserts | `LOGICAL` | N:1 | Upsert キー `source` + `external_genre_id`（`staging_genre_テーブル定義書` §17.1 No.1〜2） |
 | `evaluation_dataset.evaluation_dataset_id` | `evaluation_case.evaluation_dataset_id` | contains | `ON` | 1:N | Human Review #566 確定。`evaluation_case_テーブル定義書` §17.1 No.5 |
 | `evaluation_dataset.evaluation_dataset_id` | `evaluation_run.evaluation_dataset_id` | executed_by | `ON` | 1:N | Human Review #565 確定。`evaluation_dataset_テーブル定義書` §17.1 No.4 |
-| `evaluation_run.evaluation_run_id` | `evaluation_result.evaluation_result_id` | produces | `ON` | 1:N | Human Review #567 確定。Case 単位。`evaluation_run_テーブル定義書` §17.1 No.8 |
+| `evaluation_result.evaluation_run_id` | `evaluation_run.evaluation_run_id` | produces | `ON` | 1:N | Human Review #567 確定。Case 単位。`evaluation_run_テーブル定義書` §17.1 No.9 |
 | `phase_log.owner_id` | `recommendation_run.recommendation_run_id` 等 | records | `LOGICAL` | N:1 | polymorphic: owner_type + owner_id |
 
 ---
@@ -412,13 +412,13 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `evaluation_case` | `idx_evaluation_case_dataset_active` | `evaluation_dataset_id` | btree（partial） | BATCH-018 有効ケース読取 | `WHERE is_active = true`（§17.1 No.6） |
 | `evaluation_case` | `idx_evaluation_case_request_id` | `recommendation_request_id` | btree | may_reference 逆引き | §17.1 No.4 LOGICAL FK |
 | `evaluation_case` | `idx_evaluation_case_created_at` | `created_at` DESC | btree | 監査・運用参照 | 時系列 Index 方針 |
-| `evaluation_run` | `idx_evaluation_run_dataset_id` | `evaluation_dataset_id` | btree | 親 FK 補助・Dataset 単位履歴 | `evaluation_dataset_テーブル定義書` §5.4・§17.1 No.8 |
+| `evaluation_run` | `idx_evaluation_run_dataset_id` | `evaluation_dataset_id` | btree | 親 FK 補助・Dataset 単位履歴 | `evaluation_dataset_テーブル定義書` §5.4・`evaluation_run_テーブル定義書` §9 |
 | `evaluation_run` | `idx_evaluation_run_status` | `evaluation_status`, `started_at` | btree | 状態監視・運用分析 | `evaluation_run_テーブル定義書` §9 |
-| `evaluation_run` | `idx_evaluation_run_batch_run_id` | `batch_run_id` | btree | BATCH-018 実行 trace | nullable LOGICAL FK（§17.1 No.2） |
-| `evaluation_run` | `idx_evaluation_run_semantic_config_version` | `semantic_config_version_id` | btree | version 被参照・分析 | LOGICAL FK（§17.1 No.3） |
-| `evaluation_run` | `idx_evaluation_run_model_version` | `model_version_id` | btree | version 被参照 | LOGICAL FK |
-| `evaluation_run` | `idx_evaluation_run_ranking_config` | `ranking_config_id` | btree | version 被参照 | LOGICAL FK |
-| `evaluation_run` | `idx_evaluation_run_created` | `created_at` DESC | btree | Retention DELETE / 監査 | 365 日（§17.1 No.6） |
+| `evaluation_run` | `idx_evaluation_run_batch_run_id` | `batch_run_id` | btree | BATCH-018 実行 trace | nullable LOGICAL FK（§17.9 No.2） |
+| `evaluation_run` | `idx_evaluation_run_semantic_config_version` | `semantic_config_version_id` | btree | version 被参照・分析 | LOGICAL FK（§17.9 No.4） |
+| `evaluation_run` | `idx_evaluation_run_model_version` | `model_version_id` | btree | version 被参照 | LOGICAL FK（§17.9 No.4） |
+| `evaluation_run` | `idx_evaluation_run_ranking_config` | `ranking_config_id` | btree | version 被参照 | LOGICAL FK（§17.9 No.4） |
+| `evaluation_run` | `idx_evaluation_run_created` | `created_at` DESC | btree | Retention DELETE / 監査 | 365 日（§17.9 No.7） |
 | `pair_master` | `uq_pair_relationship_occasion` | `relationship_code`, `occasion_code` | unique | 組み合わせ一意 | |
 
 ---
@@ -678,14 +678,16 @@ Human Review にて以下を確定した（2026-06-07）。
 
 | No | 論点 | 決定内容 | 備考 |
 | --: | ---- | -------- | ---- |
-| 1 | `recommendation_run_id` | **MVP は物理列なし** | `evaluation_result.recommendation_result_id` 経由で間接連携 |
-| 2 | `batch_run_id` | **nullable 採用**（LOGICAL FK） | §10 `idx_evaluation_run_batch_run_id` |
-| 3 | version 列 FK | **LOGICAL FK 維持**（物理 FK なし） | §17.1 No.8 踏襲。§10 version Index 3 本 |
-| 4 | `evaluation_run_phase_name` | **本 Task では enum 未定義** | phase_log DB CHECK 省略継続 |
-| 5 | 再実行方針 | **新規 Run INSERT**（同一 Run 再開なし） | 状態遷移設計書 §11.3 |
-| 6 | Retention | **365 日**（`created_at`）。MVP 自動 DELETE なし | evaluation_dataset と同値 |
-| 7 | 状態列名 | 物理列 **`evaluation_status`** / enum ID **`evaluation_run_status`** | enum定義書 §6.12 |
-| 8 | produces | **1 Run : N evaluation_result** | §9 FK 表 produces 1:N |
+| 1 | `recommendation_run_id` 物理列 | **MVP は物理列なし** | `evaluation_result.recommendation_result_id` 経由で間接連携 |
+| 2 | `batch_run_id` 物理列 | **nullable 採用**（LOGICAL FK） | §10 `idx_evaluation_run_batch_run_id` |
+| 3 | `evaluation_dataset_id` の物理 FK | **物理 FK ON** / `ON DELETE RESTRICT` | #565 §17.1 No.4 踏襲。§9 executed_by |
+| 4 | version 列の物理 FK | **LOGICAL FK 維持**（物理 FK なし） | semantic_config_version §17.1 No.8 踏襲。§10 version Index 3 本 |
+| 5 | `evaluation_run_phase_name` enum | **本 Task では enum 未定義** | phase_log DB CHECK 省略継続 |
+| 6 | Evaluation Run 再実行方針 | **新規 Run INSERT**（同一 Run 再開なし） | 状態遷移設計書 §11.3 |
+| 7 | Retention | **365 日**（`created_at`）。MVP 自動 DELETE なし | evaluation_dataset と同値 |
+| 8 | `evaluation_status` 列名 | 物理列 **`evaluation_status`** / enum ID **`evaluation_run_status`** | enum定義書 §6.12 |
+| 9 | produces カーディナリティ | **1 Run : N evaluation_result** | §9 FK 表 produces 1:N |
+| 10 | `evaluation_run_phase_log` 物理化 | **MVP 物理テーブルなし** | `phase_log`（`owner_type=evaluation_run`）に統合 |
 
 ---
 

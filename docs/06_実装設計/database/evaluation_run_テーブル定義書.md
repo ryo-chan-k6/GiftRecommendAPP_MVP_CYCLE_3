@@ -19,7 +19,7 @@
 
 `evaluation_dataset` に紐づき、実行時に使用した Config / Model / Ranking version を固定して **再現性** を担保する。IF-DB-BATCH-018（Evaluation 保存）の実行単位 DB 正本。
 
-Observability では `evaluation_run_id` を trace キーとして利用する（ログ・Observability設計書 §10.2）。
+Observability では `evaluation_run_id` を Evaluation Run 単位の識別子として利用する（`ログ・Observability設計書` §9 owner 表・§5.1 `recommendation_run_id` 同型）。
 
 ---
 
@@ -44,7 +44,7 @@ Observability では `evaluation_run_id` を trace キーとして利用する�
 | 主な更新主体 | batch（BATCH-018 / MOD-BATCH-039）、reco（evaluation mode 実行時の状態連携） |
 | 主な参照主体 | batch、reco、Observability / Admin 将来参照 |
 | MVP対象 | `partial` |
-| 関連物理ER | `docs/06_実装設計/database/物理ER.md` §7・§9・§12・§17.7 |
+| 関連物理ER | `docs/06_実装設計/database/物理ER.md` §7・§9・§12・§17.9 |
 
 ---
 
@@ -105,7 +105,8 @@ flowchart LR
 | テーブル一覧 §10 補足 | `mode = evaluation` の Recommendation Run 連携 | **`recommendation_run_id` 物理列なし** | MVP は `evaluation_result.recommendation_result_id` 経由で間接参照（§17.1 No.1） |
 | BATCH-018 文脈 | Batch 実行単位 trace | **`batch_run_id` nullable 採用** | LOGICAL FK。BATCH-018 起動 Run の親 Batch 追跡（§17.1 No.2） |
 | 物理ER timestamp 方針 | `created_at` / `updated_at` | **採用** | 行作成・`evaluation_status` 更新監査。`started_at` / `completed_at` とは別 |
-| Observability §10.2 | trace キー | **`evaluation_run_id` を正** | `trace_id` 物理列は持たない（phase_log / error_log の `trace_id` で横断連携可） |
+| 論理ER §12.2 管理主体 | `batch` のみ（論理ER 表記） | **batch 主・reco 限定的 UPDATE** | reco は IF-SHARED-004 evaluation mode 実行に伴う `running` / `failed` 更新のみ |
+| Observability | Run 単位識別子 / 横断追跡 | **`evaluation_run_id` を正** | 横断追跡は `trace_id`（`ログ・Observability設計書` §5.1・§9 owner 表）。`trace_id` 物理列は持たない |
 
 ### 5.5 Config / Model / Ranking Version 責務
 
@@ -116,7 +117,7 @@ semantic_config_version / model_version / ranking_config 各定義書・Human Re
 | 正本列 | **`semantic_config_version_id` / `model_version_id` / `ranking_config_id`** を本テーブルに **個別列** で保持 |
 | 解決 | batch / reco が BATCH-018 入力または evaluation mode payload から version を解決し、Run INSERT 時に **コピー** |
 | FK | 3 列とも **LOGICAL FK**（物理 FK なし）。INSERT 前に存在確認 |
-| 被参照 | semantic_config_version / model_version / ranking_config 各定義書 §8 と双方向整合（§17.1 No.3） |
+| 被参照 | semantic_config_version / model_version / ranking_config 各定義書 §8・§17.1 と双方向整合（§17.1 No.4） |
 
 ### 5.6 Log 連携（`phase_log` / `error_log`）
 
@@ -189,8 +190,8 @@ evaluation_dataset 定義書 §5.4 を正とする。
 | `evaluation_dataset_id` | `evaluation_dataset.evaluation_dataset_id` | `ON` | batch INSERT 前に Dataset 存在・`is_active=true` | 物理ER §9 executed_by。§17.7 No.4 |
 | `batch_run_id` | `batch_run_log.batch_run_id` | `LOGICAL` | BATCH-018 起動時に存在確認 | nullable。§5.4 |
 | `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | batch / reco 解決 + 存在確認 | semantic_config_version 定義書 §17.1 No.8 |
-| `model_version_id` | `model_version.model_version_id` | `LOGICAL` | 同上 | model_version 定義書 §8 |
-| `ranking_config_id` | `ranking_config.ranking_config_id` | `LOGICAL` | 同上 | ranking_config 定義書 §8 |
+| `model_version_id` | `model_version.model_version_id` | `LOGICAL` | 同上 | model_version 定義書 §17.1 No.6 |
+| `ranking_config_id` | `ranking_config.ranking_config_id` | `LOGICAL` | 同上 | ranking_config 定義書 §8・§17.1 |
 
 ### 8.2 被参照（子テーブル）
 
@@ -211,9 +212,9 @@ evaluation_dataset 定義書 §5.4 を正とする。
 | `idx_evaluation_run_dataset_id` | `evaluation_dataset_id` | btree | FK / Dataset 単位履歴参照 | evaluation_dataset 定義書 §5.4 で引き継ぎ確定 |
 | `idx_evaluation_run_status` | `evaluation_status`, `started_at` | btree | 状態監視・運用分析 | recommendation_run 同型 |
 | `idx_evaluation_run_batch_run_id` | `batch_run_id` | btree | BATCH-018 実行単位 trace | nullable |
-| `idx_evaluation_run_semantic_config_version` | `semantic_config_version_id` | btree | version 被参照・分析 | §17.1 No.3 |
-| `idx_evaluation_run_model_version` | `model_version_id` | btree | version 被参照 | 同上 |
-| `idx_evaluation_run_ranking_config` | `ranking_config_id` | btree | version 被参照 | 同上 |
+| `idx_evaluation_run_semantic_config_version` | `semantic_config_version_id` | btree | version 被参照・分析 | §17.1 No.4 |
+| `idx_evaluation_run_model_version` | `model_version_id` | btree | version 被参照 | §17.1 No.4 |
+| `idx_evaluation_run_ranking_config` | `ranking_config_id` | btree | version 被参照 | §17.1 No.4 |
 | `idx_evaluation_run_created` | `created_at` DESC | btree | 時系列一覧・Retention 将来 | evaluation_dataset 365 日方針と整合 |
 
 ---
@@ -239,7 +240,7 @@ evaluation_dataset 定義書 §5.4 を正とする。
 | ------ | ----------- | ------ | ------ | ---- |
 | `evaluation_status` | `evaluation_run_status` | `enum定義書` §6.12 / `packages/code-definitions/state/evaluation_run_status.yaml` | `queued`, `running`, `succeeded`, `failed`, `canceled` | `recommendation_run_status` とは **別 enum** |
 | — | `owner_type`（子 Log 参照用） | `enum定義書` §6.15 / `packages/code-definitions/application/owner_type.yaml` | `evaluation_run` | phase_log / error_log の owner |
-| — | `evaluation_run_phase_name` | **MVP 未定義** | — | enum定義書 §6.19。本 Task では packages 正本を新規作成しない（§17.1 No.4） |
+| — | `evaluation_run_phase_name` | **MVP 未定義** | — | enum定義書 §6.19。本 Task では packages 正本を新規作成しない（§17.1 No.5） |
 
 ### 11.1 状態遷移（Run 本体）
 
@@ -317,7 +318,7 @@ stateDiagram-v2
 -- 参考。制約名・Index・CHECK は DDL Task で最終確定。
 CREATE TABLE evaluation_run (
   evaluation_run_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  evaluation_dataset_id uuid NOT NULL REFERENCES evaluation_dataset(evaluation_dataset_id),
+  evaluation_dataset_id uuid NOT NULL REFERENCES evaluation_dataset(evaluation_dataset_id) ON DELETE RESTRICT,
   batch_run_id uuid,
   semantic_config_version_id uuid NOT NULL,
   model_version_id uuid NOT NULL,
@@ -373,12 +374,14 @@ CREATE TABLE evaluation_run (
 | --: | ---- | -------- | ------ | ---- |
 | 1 | `recommendation_run_id` 物理列 | **MVP は物理列なし**。`evaluation_result.recommendation_result_id` 経由で Recommendation Result と間接連携。テーブル一覧 §10 補足の「関連づけ可能」は後続拡張余地 | Human | 論理ER §12.2 に列なし |
 | 2 | `batch_run_id` 物理列 | **nullable 採用**（LOGICAL FK）。BATCH-018 実行 trace。未設定時は NULL 可 | Human | §5.4 |
-| 3 | version 列の物理 FK | **LOGICAL FK 維持**（物理 FK なし）。semantic_config_version §17.1 No.8 / recommendation_run 踏襲 | Human | §5.5 |
-| 4 | `evaluation_run_phase_name` enum | **本 Task では新規定義しない**。phase_log MVP DB CHECK 省略継続。packages 正本は Evaluation 系後続または enum Task へ | Human | enum定義書 §6.19 |
-| 5 | Evaluation Run 再実行方針 | **同一 Run を再開せず新規 Run INSERT** | Human | 状態遷移設計書 §11.3 |
-| 6 | Retention | **365 日**（`created_at` 基準）。MVP 自動 DELETE なし。evaluation_dataset と同値 | Human | evaluation_dataset §17.1 No.5 踏襲 |
-| 7 | `evaluation_status` 列名 | 物理列名 **`evaluation_status`**。packages 正本 ID は **`evaluation_run_status`** | Human | enum定義書 §6.12 |
-| 8 | produces カーディナリティ | **1 Run : N evaluation_result**（Case 単位） | Human | 物理ER §9 |
+| 3 | `evaluation_dataset_id` の物理 FK | **物理 FK ON** / **ON DELETE RESTRICT** | Human | #565 §17.1 No.4 踏襲。§8.1・§5.8 |
+| 4 | version 列の物理 FK | **LOGICAL FK 維持**（物理 FK なし）。semantic_config_version §17.1 No.8 / model_version §17.1 No.6 / ranking_config §8 踏襲 | Human | §5.5 |
+| 5 | `evaluation_run_phase_name` enum | **本 Task では新規定義しない**。phase_log MVP DB CHECK 省略継続。packages 正本は Evaluation 系後続または enum Task へ | Human | enum定義書 §6.19 |
+| 6 | Evaluation Run 再実行方針 | **同一 Run を再開せず新規 Run INSERT** | Human | 状態遷移設計書 §11.3 |
+| 7 | Retention | **365 日**（`created_at` 基準）。MVP 自動 DELETE なし。evaluation_dataset と同値 | Human | evaluation_dataset §17.1 No.5 踏襲 |
+| 8 | `evaluation_status` 列名 | 物理列名 **`evaluation_status`**。packages 正本 ID は **`evaluation_run_status`** | Human | enum定義書 §6.12 |
+| 9 | produces カーディナリティ | **1 Run : N evaluation_result**（Case 単位） | Human | 物理ER §9 |
+| 10 | `evaluation_run_phase_log` 物理化 | **MVP 物理テーブルなし**。`phase_log`（`owner_type=evaluation_run`）に統合 | Human | phase_log 定義書 §5.2 |
 
 ---
 
@@ -414,7 +417,7 @@ CREATE TABLE evaluation_run (
 - `evaluation_run_phase_log` が物理化しない方針が明記されている
 - `evaluation_run_id` が Observability trace キーとして明記されている
 - BATCH-018 / IF-DB-BATCH-018 / IF-SHARED-004 との I/F が一貫している
-- Human Review §17.1 No.1〜No.8 が反映されている
+- Human Review §17.1 No.1〜No.10 が反映されている
 - Retention 365 日が evaluation_dataset と整合している
 - DDL Task が CREATE TABLE を起こせる粒度である
 - secret や `.env` 実値が含まれていない

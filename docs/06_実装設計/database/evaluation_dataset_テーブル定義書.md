@@ -83,7 +83,7 @@
 | 子テーブル | 参照列 | 関係 | FK制約 | Index |
 | ---------- | ------ | ---- | ------ | ----- |
 | `evaluation_case` | `evaluation_dataset_id` | contains | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_case_dataset_id` / `uq_evaluation_case_dataset_label` / `idx_evaluation_case_dataset_active`（partial・#566 §17.1 確定） |
-| `evaluation_run` | `evaluation_dataset_id` | executed_by | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_run_dataset_id` 他（#567 §17.1 確定。`evaluation_run_テーブル定義書` §9） |
+| `evaluation_run` | `evaluation_dataset_id` | executed_by | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_run_dataset_id`（Index 引き継ぎ。`evaluation_run_テーブル定義書` §9） |
 | `evaluation_result` | `evaluation_dataset_id` | 冗長保持（再現性） | `LOGICAL` または `ON`（#567 以降で確定） | — |
 
 > **物理ER §9 整合**: Human Review §17.1 No.4 により `evaluation_run.evaluation_dataset_id` への物理 FK ON を確定。物理ER §9 FK 表・§17.7 に反映済み。
