@@ -82,7 +82,7 @@
 
 | 子テーブル | 参照列 | 関係 | FK制約 | Index |
 | ---------- | ------ | ---- | ------ | ----- |
-| `evaluation_case` | `evaluation_dataset_id` | contains | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_case_dataset_id`（#566 で確定） |
+| `evaluation_case` | `evaluation_dataset_id` | contains | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_case_dataset_id` / `uq_evaluation_case_dataset_label` / `idx_evaluation_case_dataset_active`（partial・#566 §17.1 確定） |
 | `evaluation_run` | `evaluation_dataset_id` | executed_by | `ON` / `ON DELETE RESTRICT` | `idx_evaluation_run_dataset_id`（#567 で確定） |
 | `evaluation_result` | `evaluation_dataset_id` | 冗長保持（再現性） | `LOGICAL` または `ON`（#567 以降で確定） | — |
 
@@ -299,14 +299,14 @@ BATCH-018 / MOD-BATCH-039 が評価データセットを解決する際の順序
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-018 / IF-SHARED-004 |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-018 入出力 |
 | 参照テーブル定義 | `docs/06_実装設計/database/semantic_config_テーブル定義書.md` | ルート正本テーブル章構成・`is_active` / version 方針参考 |
-| 子 Task | Issue #566 `evaluation_case` / Issue #567 `evaluation_run` | FK / Index 引き継ぎ先 |
+| 子 Task | Issue #566 `evaluation_case`（§17.1 確定済み） / Issue #567 `evaluation_run` | FK / Index 引き継ぎ先 |
 
 ---
 
 ## 19. レビュー観点
 
 - 論理ER §12.2・物理ER Mermaid ER・テーブル一覧 §10 No.51 と矛盾していない
-- `evaluation_case` との 1:N `contains` 関係が明記されている
+- `evaluation_case` との 1:N `contains` 関係が明記されている（子 #566 Human Review §17.1 No.1〜No.6 確定済み）
 - `evaluation_run` との 1:N `executed_by` 関係が明記されている
 - 物理ER §9 FK 表に `evaluation_run.executed_by`（ON）が反映されている
 - Human Review §17.1 No.1〜No.5（UNIQUE / semver / is_active / FK / Retention）が確定している
