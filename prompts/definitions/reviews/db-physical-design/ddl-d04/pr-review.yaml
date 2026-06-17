@@ -1,0 +1,188 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-d04-pr"
+  title: "d04 Item系DDL PRレビュー"
+  summary: "D04 Item 系 DDL Task の PR を AI Review する。`db/ddl/d04_item.sql` が 7 テーブル定義書・物理 ER・マイグレーション方針書と整合しているか、D01 / D02 / D03 適用後に実行可能か、D05 以降の前提として妥当かを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-601-d04-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 601
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d04.yaml"
+  source_branch: "chore/task-601-d04-ddl"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-d04.yaml"
+    required: true
+  issue:
+    number: 601
+    required: true
+  pr:
+    number: null
+    required: false
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D04 scope・7 テーブル一覧・MVP△ 方針との突合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 ファイル命名・バッチ順序・MVP△ 含有方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8–§11 FK・Index・§15 適用順序との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 値との突合"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL の参照"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "先行バッチ DDL の参照"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "D04-1 突合（self-ref FK 含む）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "D04-2 突合（`external_genre_id` LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: true
+      purpose: "D04-3 突合（`item_id` 物理 FK・partial unique 含む）"
+    - path: "docs/06_実装設計/database/item_review_summary_テーブル定義書.md"
+      required: true
+      purpose: "D04-4 突合（1:0..1・`item_id` 物理 FK 含む）"
+    - path: "docs/06_実装設計/database/external_attribute_テーブル定義書.md"
+      required: true
+      purpose: "D04-5 突合（MVP△・LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md"
+      required: true
+      purpose: "D04-6 突合（観測キー unique・LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/item_popularity_signal_テーブル定義書.md"
+      required: true
+      purpose: "D04-7 突合（親 Snapshot 物理 FK・冪等キー含む）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（D05 以降テーブル / supabase migrations / packages / apps / docs 変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  db:
+    - "D04 対象 7 テーブルが DDLバッチ分割表 §8 と一致しているか"
+    - "ファイル名が `d04_item.sql`（マイグレーション方針書 §8.1）であるか"
+    - "CREATE 順序が `external_genre` → `item` → 子テーブル → `ranking_snapshot` → `item_popularity_signal` と依存と整合しているか"
+    - "各テーブルの列・型・PK / UNIQUE / Index / CHECK がテーブル定義書と一致しているか"
+    - "enum 列が D01 で定義された論理 ID 型を参照しているか"
+    - "`external_genre.parent_external_genre_id` の self-ref 物理 FK（`ON DELETE RESTRICT`）が定義書どおり付与されているか"
+    - "`item_image` / `item_review_summary` の `item_id` 物理 FK（`ON DELETE RESTRICT`）が定義書どおり付与されているか"
+    - "`item_popularity_signal.ranking_snapshot_id` → `ranking_snapshot` の物理 FK（`ON DELETE RESTRICT`）が定義書どおり付与されているか"
+    - "`item.external_genre_id` / `ranking_snapshot.external_genre_id` / `item_popularity_signal.external_genre_id` / `item_popularity_signal.item_id` が LOGICAL のまま（物理 FK なし）であるか"
+    - "`external_attribute` が MVP△ として DDL に含まれ、定義書 §7〜§9 と整合しているか"
+    - "`item_image` の partial unique（主画像 1 件）が定義書どおりであるか"
+    - "`ranking_snapshot` の観測キー unique（`uq_ranking_snapshot_observation_key`）が定義書どおりであるか"
+    - "`item_popularity_signal` の冪等キー unique（`uq_ips_snapshot_rank`）が定義書どおりであるか"
+    - "D05 以降（Staging / Online 推薦）からの後追い物理 FK が誤って本ファイルに含まれていないか"
+    - "D01 / D02 / D03 適用後に本ファイルが実行可能か"
+    - "D05（#602）以降 Task の前提として妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "`external_attribute` MVP△ の DDL 含有と Task ⑤ migration 適用の go/no-go"
+  - "`item` → `external_genre` LOGICAL 維持（物理 FK 化しない）方針の確認"
+  - "ランキング Snapshot 2 層構造（`ranking_snapshot` ヘッダ → `item_popularity_signal` 明細）の整合確認"
+  - "`item_image` 主画像 partial unique と `item_review_summary` 1:0..1 制約の確認"
+
+risk_points:
+  - "7 テーブル横断での列名・型・制約の取りこぼし"
+  - "LOGICAL 参照列への誤った物理 FK 付与"
+  - "`external_attribute` の MVP△ と物理 ER §17 No.7 の解釈差"
+  - "`item_popularity_signal` の親 Snapshot 物理 FK と冪等キーの不一致"
+  - "partial unique / CHECK 制約の定義書との不一致"
+  - "D05（#602）以降 Task との適用順序依存"
+
+notes:
+  - "Batch D04 / change_id: `d04_item`"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d04.yaml"
+  - "Issue #601 / Branch chore/task-601-d04-ddl"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、D02（#599 / PR #615）、D03（#600 / PR #616）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "PR 作成後に `target.pr` を PR 番号へ更新すること"
