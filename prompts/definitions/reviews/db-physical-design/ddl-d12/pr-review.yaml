@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 625
   issue: 609
   task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d12.yaml"
   source_branch: "chore/task-609-d12-ddl"
@@ -71,7 +71,7 @@ input:
     number: 609
     required: true
   pr:
-    number: null
+    number: 625
     required: true
   diff:
     required: true
@@ -289,4 +289,4 @@ notes:
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d12.yaml"
   - "Issue #609 / Branch chore/task-609-d12-ddl"
   - "先行 merge 済み前提: D01（#611 / PR #614）〜 D11（#608 / PR #624）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
-  - "PR 番号は `/create-pr` 後に本 Review Definition の `target.pr` / `input.pr.number` を更新する"
+  - "Issue #609 / PR #625 / Branch chore/task-609-d12-ddl"
