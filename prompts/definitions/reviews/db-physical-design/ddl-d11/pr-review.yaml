@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 624
   issue: 608
   task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d11.yaml"
   source_branch: "chore/task-608-d11-ddl"
@@ -71,7 +71,7 @@ input:
     number: 608
     required: true
   pr:
-    number: null
+    number: 624
     required: true
   diff:
     required: true
@@ -305,4 +305,4 @@ notes:
   - "Issue #608 / Branch chore/task-608-d11-ddl"
   - "MVP○: 3 テーブル。MVP△: `reco_score_distribution_metric`（partial）"
   - "先行 merge 済み前提: D01（#611 / PR #614）〜 D10（#607 / PR #623）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
-  - "PR 番号は `/create-pr` 後に Review Definition の `target.pr` / `input.pr.number` を更新する"
+  - "PR #624 / Branch chore/task-608-d11-ddl"
