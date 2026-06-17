@@ -10,3 +10,5 @@ DDL・seed・検証 SQL を配置する。**DB migration の適用正本は `sup
 | `queries/` | 検証・運用 SQL | — |
 
 migration 適用・ローカル起動は [supabase/README.md](../supabase/README.md) を参照する。
+
+master seed の投入順・値の意味は [初期データ定義書](../docs/06_実装設計/database/初期データ定義書.md) を正とする。

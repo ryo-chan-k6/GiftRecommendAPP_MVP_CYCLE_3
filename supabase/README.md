@@ -14,10 +14,18 @@ Supabase CLI プロジェクト配置。DB migration の **適用正本** は `m
 # Supabase CLI インストール後
 supabase start
 supabase migration up
+
+# master seed（migration 完了後）
+export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+for f in db/seeds/masters/*.sql; do
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+done
 ```
 
 Redis は Supabase 外で Docker 起動する（[基盤構成設計書](../docs/06_実装設計/cross_cutting/基盤構成設計書.md) §5.5）。
 
 詳細は [マイグレーション方針書](../docs/06_実装設計/database/マイグレーション方針書.md) および Phase3 DB構築手順書を正とする。
 
-**DDL スモーク検証（Phase2）**: [ローカルDB検証手順書](../docs/06_実装設計/database/ローカルDB検証手順書.md)（WSL2 + Docker Desktop + Supabase CLI + `psql`）。`db/ddl/` の直接適用手順を含む。
+**初期データ**: [初期データ定義書](../docs/06_実装設計/database/初期データ定義書.md)（投入順・行数・固定 ID）。
+
+**DDL スモーク検証（Phase2）**: [ローカルDB検証手順書](../docs/06_実装設計/database/ローカルDB検証手順書.md)（WSL2 + Docker Desktop + Supabase CLI + `psql`）。Task ⑤ 以降は `supabase migration up` を正とする。
