@@ -385,7 +385,7 @@ Recommendation Requestの入力条件は、以下の4分類で整理する。
 | `candidate_limit`            | number  | 任意 | 内部候補取得件数        |
 | `include_reason`             | boolean | 任意 | 推薦理由を生成するか    |
 | `include_debug_info`         | boolean | 任意 | デバッグ情報を含めるか  |
-| `semantic_config_version_id` | string  | 任意 | 使用するSemantic Config |
+| `semantic_config_version_id` | string  | 任意 | 使用する Semantic Config Version（**内部 UUID**。表面 ID `semantic_config_v001` 等は採用しない） |
 | `model_version_id`           | string  | 任意 | 使用するModel Version   |
 
 ---
@@ -409,6 +409,8 @@ Recommendation Requestの入力条件は、以下の4分類で整理する。
 | `include_reason`     |  true |       true | false可 |
 | `include_debug_info` | false |       true |    true |
 | 結果保存             |  true |       true |    true |
+
+> **API 境界（evaluation / batch）:** Internal API（API-INT-002）では `execution.configName` + `execution.versionLabel` の composite で version 指定を受け付ける。api は解決後、永続化・Run 固定には本項の `semantic_config_version_id`（UUID）を用いる（`semantic_config_version_テーブル定義書` §17.1）。
 
 ---
 
@@ -485,7 +487,7 @@ Recommendation Requestの入力条件は、以下の4分類で整理する。
     "candidate_limit": 100,
     "include_reason": true,
     "include_debug_info": true,
-    "semantic_config_version_id": "semantic_config_v001",
+    "semantic_config_version_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
     "model_version_id": "model_v001"
   }
 }

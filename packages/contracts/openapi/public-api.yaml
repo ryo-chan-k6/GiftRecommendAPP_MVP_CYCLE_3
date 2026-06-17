@@ -921,24 +921,23 @@ components:
     SemanticConfigMastersData:
       type: object
       required:
-        - semanticConfigVersionId
+        - configName
+        - versionLabel
         - semanticConcepts
         - featureDefinitions
       description: Semantic Config スナップショット（API-PUB-007 §7.3.1）
       properties:
-        semanticConfigVersionId:
-          type: string
-          minLength: 1
-          description: 現行 Semantic Config Version ID
-          example: "semantic_config_v001"
-        versionLabel:
-          type: string
-          description: Version 表示ラベル
-          example: "v1.0.0"
         configName:
           type: string
-          description: Semantic Config 名称
+          minLength: 1
+          description: Semantic Config 系列名（親 semantic_config.config_name）
           example: "mvp-semantic-config"
+        versionLabel:
+          type: string
+          minLength: 1
+          pattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          description: Version ラベル（semver）。Public composite 参照の一部
+          example: "v1.0.0"
         semanticConcepts:
           type: array
           items:
@@ -1078,16 +1077,23 @@ components:
     FeatureRuleMastersData:
       type: object
       required:
-        - semanticConfigVersionId
+        - configName
+        - versionLabel
         - baseValueRules
         - conceptFeatureRules
       description: Feature Rule 一覧（API-PUB-008 §7.3.1）
       properties:
-        semanticConfigVersionId:
+        configName:
           type: string
           minLength: 1
-          description: 現行 Semantic Config Version ID（API-PUB-007 と一致）
-          example: "semantic_config_v001"
+          description: Semantic Config 系列名（API-PUB-007 と一致）
+          example: "mvp-semantic-config"
+        versionLabel:
+          type: string
+          minLength: 1
+          pattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          description: Version ラベル（semver）。API-PUB-007 と一致
+          example: "v1.0.0"
         baseValueRules:
           type: array
           description: 基準値 Rule 一覧（relationship / occasion。0 件も 200）
@@ -1535,9 +1541,8 @@ components:
     SemanticConfigMastersFullExample:
       value:
         data:
-          semanticConfigVersionId: "semantic_config_v001"
-          versionLabel: "v1.0.0"
           configName: "mvp-semantic-config"
+          versionLabel: "v1.0.0"
           semanticConcepts:
             - conceptCode: "formal_refined"
               conceptLabel: "フォーマルで上品"
@@ -1566,7 +1571,7 @@ components:
     SemanticConfigMastersEmptyConceptsExample:
       value:
         data:
-          semanticConfigVersionId: "semantic_config_v001"
+          configName: "mvp-semantic-config"
           versionLabel: "v1.0.0"
           semanticConcepts: []
           featureDefinitions:
@@ -1582,7 +1587,8 @@ components:
     FeatureRuleMastersFullExample:
       value:
         data:
-          semanticConfigVersionId: "semantic_config_v001"
+          configName: "mvp-semantic-config"
+          versionLabel: "v1.0.0"
           baseValueRules:
             - ruleType: "relationship"
               relationshipCode: "boss"
@@ -1605,7 +1611,8 @@ components:
     FeatureRuleMastersEmptyExample:
       value:
         data:
-          semanticConfigVersionId: "semantic_config_v001"
+          configName: "mvp-semantic-config"
+          versionLabel: "v1.0.0"
           baseValueRules: []
           conceptFeatureRules: []
         meta:

@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-05（Human Review 反映）           |
+| 更新日         | 2026-06-10（composite 参照・semantic_config_version 定義書 §17.1 追随） |
 
 ---
 
@@ -75,7 +75,7 @@ Relationship / Occasion マスタ（API-PUB-005 / 006）および Feature Rule�
 | 項目 | 内容 |
 | ---- | ---- |
 | 並列取得群 | API-PUB-005 / 006 / 007 / 008 |
-| Version 整合 | 本 API の `semanticConfigVersionId` は API-PUB-008（Feature Rule）の同一フィールドと一致する前提 |
+| Version 整合 | 本 API の **`configName` + `versionLabel`**（composite）は API-PUB-008 と一致する前提 |
 | 非公開情報 | `semantic_rule` のパターン・重み、`pair_rule`、正規化パラメータの詳細は本 API および API-PUB-008 の Public 応答に含めない |
 
 ---
@@ -102,7 +102,7 @@ MVP では `Authorization` は使用しない。GET のため `Content-Type` は
 | ---- | -- | ---- | ---- | ---- | -- |
 | -    | -  | -    | なし | -    | -  |
 
-MVP では Query Parameter を定義しない。将来、特定 Version を指定する `semanticConfigVersionId` を optional で追加可能（破壊的変更に該当しない追加のみ）。
+MVP では Query Parameter を定義しない。将来、特定 Version を指定する `configName` / `versionLabel` を optional で追加可能（破壊的変更に該当しない追加のみ）。
 
 ### 6.4 Request Body
 
@@ -155,9 +155,8 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 
 | 項目 | 型 | 必須 | 内容 | 備考 |
 | ---- | -- | ---- | ---- | ---- |
-| `semanticConfigVersionId` | `string` | `true` | 現行 Semantic Config Version ID | `semantic_config_version` 正本 |
-| `versionLabel` | `string` | `false` | Version 表示ラベル | 例: `v1.0.0` |
-| `configName` | `string` | `false` | Semantic Config 名称 | `semantic_config.config_name` 表面 |
+| `configName` | `string` | `true` | Semantic Config 系列名 | 親 `semantic_config.config_name`。api がアプリ層 JOIN で解決 |
+| `versionLabel` | `string` | `true` | Version ラベル（semver） | `semantic_config_version.version_label`。例: `v1.0.0` |
 | `semanticConcepts` | `array` | `true` | Semantic Concept 一覧 | `is_active = true` の行のみ（§14 決定事項 No.1） |
 | `semanticConcepts[].conceptCode` | `string` | `true` | Concept コード | snake_case 物理名を API では camelCase キーで表現 |
 | `semanticConcepts[].conceptLabel` | `string` | `true` | 表示ラベル | - |
@@ -177,7 +176,9 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 | `social` | `formality`, `safety`, `brand_appropriateness` |
 | `symbolic` | `emotion`, `novelty`, `intimacy`, `symbolic_identity`, `story_richness` |
 
-**返却しない項目（契約上明示）:** `semantic_rule` の `source_text_pattern` / `weight`、`pair_rule`、`feature_normalization_version` のパラメータ、`model_version_id`、内部 DB 主キー（`semantic_concept_id` 等）。Public 表面はコード体系（`conceptCode` / `featureCode` 等）のみとする（§14 決定事項 No.2）。
+**Public Version 参照:** `configName` + `versionLabel` の **composite** で現行 version を識別する。単一 `semanticConfigVersionId` 表面 ID は **返却しない**。内部 DB 主キー（`semantic_config_version_id` 等）も非公開。
+
+**返却しない項目（契約上明示）:** `semanticConfigVersionId`、`semantic_rule` の `source_text_pattern` / `weight`、`pair_rule`、`feature_normalization_version` のパラメータ、`model_version_id`、内部 DB 主キー（`semantic_concept_id` 等）。Public 表面はコード体系（`conceptCode` / `featureCode` 等）のみとする（§14 決定事項 No.2）。
 
 #### 7.3.2 `meta`
 
@@ -196,9 +197,8 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 ```json
 {
   "data": {
-    "semanticConfigVersionId": "semantic_config_v001",
-    "versionLabel": "v1.0.0",
     "configName": "mvp-semantic-config",
+    "versionLabel": "v1.0.0",
     "semanticConcepts": [
       {
         "conceptCode": "formal_refined",
@@ -245,7 +245,7 @@ Version あり・有効 Feature Definition 1 件以上の場合。Concept 0 件�
 ```json
 {
   "data": {
-    "semanticConfigVersionId": "semantic_config_v001",
+    "configName": "mvp-semantic-config",
     "versionLabel": "v1.0.0",
     "semanticConcepts": [],
     "featureDefinitions": [
@@ -361,12 +361,12 @@ Version あり・有効 Feature Definition 0 件の場合。
 
 |  No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
-| 1 | 正常系 | current Version 存在時 200、`semanticConfigVersionId` と配列が返る | contract |
+| 1 | 正常系 | current Version 存在時 200、`configName` + `versionLabel` と配列が返る | contract |
 | 2 | Concept 空配列 | Version あり・Concept 0 件で 200 + `semanticConcepts: []` | contract |
 | 3 | 設定未整備 | current Version なしで 500 / `GRS-CFG-001` | contract |
 | 4 | Feature 不足 | 有効 Feature Definition 0 件で 500 / `GRS-CFG-006` | contract |
 | 5 | validation | 未知 Query で 400 / `GRS-REQ-001` | contract |
-| 6 | version 整合 | API-PUB-008 と同一 `semanticConfigVersionId` | contract |
+| 6 | version 整合 | API-PUB-008 と同一 `configName` + `versionLabel` | contract |
 | 7 | generated client | OpenAPI 確定後、Orval 生成型と schema 一致 | typecheck |
 
 ---
@@ -377,6 +377,7 @@ Version あり・有効 Feature Definition 0 件の場合。
 | ---- | -------- | -------------- |
 | 2026-06-05 | 初版（Phase1 1a 契約面） | Issue #403 |
 | 2026-06-05 | Human Review 指摘反映（§14 決定事項確定・空配列方針整合） | PR #407 |
+| 2026-06-10 | Public Version 参照を `configName` + `versionLabel` composite に変更（`semanticConfigVersionId` 表面 ID 廃止） | Task #463 / `semantic_config_version_テーブル定義書` §17.1 |
 
 ---
 
@@ -388,6 +389,7 @@ Version あり・有効 Feature Definition 0 件の場合。
 | 2 | DB 主キー（`semantic_concept_id` 等）を Public に含めるか | **含めない**。コード体系（`conceptCode` / `featureCode` 等）のみ | Human | §7.3.1 |
 | 3 | Concept / Definition 0 件の HTTP Status | **Version あり・Concept 0 件は 200**、**Version あり・有効 Feature Definition 0 件は 500（`GRS-CFG-006`）** | Human | §7.2 / §7.4.2 / §7.4.3 |
 | 4 | 未知 Query を 400 とするか無視するか | **400（`GRS-REQ-001`）で拒否** | Human | §6.3 / §9 |
+| 5 | Public Version 参照キー | **`configName` + `versionLabel` composite**（両方必須）。`semanticConfigVersionId` 表面 ID は不採用 | Human | `semantic_config_version_テーブル定義書` §17.1 |
 
 ---
 
@@ -412,7 +414,7 @@ Version あり・有効 Feature Definition 0 件の場合。
 - API設計方針書・API一覧と整合している
 - Semantic Config / Concept / Feature Definition の Public 表面のみを返却している
 - 内部 Rule（semantic_rule / pair_rule / normalization）を含まない
-- API-PUB-008 との `semanticConfigVersionId` 整合が明記されている
+- API-PUB-008 との `configName` + `versionLabel` composite 整合が明記されている
 - OpenAPI 反映方針が明確である
 - 実装詳細（Repository / MOD-API フロー）を含めず契約面に限定している
 
@@ -422,4 +424,4 @@ Version あり・有効 Feature Definition 0 件の場合。
 
 - メトリクス: `masters_semantic_configs_request_count` / `masters_semantic_configs_error_count`（API一覧 §API-PUB-007）
 - trace_id: 任意（API一覧 §trace_id対象）
-- `semanticConfigVersionId` はレコメンド結果 Response には原則返却しない（API設計方針書 §18.4）が、マスタ参照 API では Version 整合のため返却する
+- マスタ参照 API では `configName` + `versionLabel` を返却し、レコメンド結果 Response には含めない（API設計方針書 §18.4）

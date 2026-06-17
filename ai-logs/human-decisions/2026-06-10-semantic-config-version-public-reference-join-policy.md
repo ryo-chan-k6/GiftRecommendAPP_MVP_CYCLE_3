@@ -111,6 +111,19 @@
 | 整合担保 | reco Run INSERT 前の存在確認 + run 表の `semantic_config_version_id` Index |
 | 将来 | `recommendation_run` 定義 Task で物理 FK ON + DELETE RESTRICT をオプション検討 |
 
+### 2.9 Contract Task 追随（2026-06-10）
+
+| 対象 | 変更内容 |
+| ---- | -------- |
+| API-PUB-007 / API-PUB-008 | Response `required` を `configName` + `versionLabel` に変更。`semanticConfigVersionId` 表面 ID を廃止 |
+| API-INT-002 | `execution.configName` + `execution.versionLabel`（evaluation / batch 再現用）。`debugPayload` 推奨キーも composite に更新 |
+| API-PUB-002 / API設計方針書 §18.4 | レコメンド結果に version 参照を含めない方針を維持し、記述を composite に整合 |
+| `public-api.yaml` | `SemanticConfigMastersData` / `FeatureRuleMastersData` schema・examples を更新 |
+| `internal-reco-api.yaml` | `ExecutionInput` から `semanticConfigVersionId` を削除し composite フィールドを追加 |
+| RecommendationRequest / RecommendationResult 定義書 | JSON 例の `semantic_config_version_id` を内部 UUID 形式へ更新 |
+| `2026-06-05-api-int-002-score-breakdown-debug-return-policy.md` | `debugPayload` 推奨キーを `configName` + `versionLabel` に改定 |
+| Task Definition / pr-review yaml | composite 参照文言へ追随 |
+
 ---
 
 ## 5. 未決事項（本判断の対象外）

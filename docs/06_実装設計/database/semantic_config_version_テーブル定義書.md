@@ -323,7 +323,7 @@ version 非現行化時は `is_current = false` に加え、運用で `valid_to`
 
 | No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
-| 1 | Public 参照キー | **`configName` + `versionLabel` の composite** を Public 参照とする。単一 `semanticConfigVersionId` 表面 ID は採用しない | Human | API 契約・OpenAPI 追随は Contract Task |
+| 1 | Public 参照キー | **`configName` + `versionLabel` の composite** を Public 参照とする。単一 `semanticConfigVersionId` 表面 ID は採用しない | Human | API-PUB-007/008、API-INT-002、`public-api.yaml` / `internal-reco-api.yaml` に反映済み（2026-06-10） |
 | 2 | `config_name` の保持先 | 親 `semantic_config` を正本とする。本テーブルへの denormalize・DB ビューは **採用しない** | Human | api（IF-DB-API-005）がアプリ層 JOIN で解決（§5.3.1） |
 | 3 | MVP 初期 `version_label` | **semver 形式 `v1.0.0`** を seed 正本とする | Human | §10 `chk_version_label_format` を semver 基本形に限定 |
 | 4 | 内部参照キー | Run / 子テーブル / 派生データは引き続き **`semantic_config_version_id`（UUID）** を用いる。Public 非公開 | Human | composite → UUID 解決は api / reco 境界で実施 |

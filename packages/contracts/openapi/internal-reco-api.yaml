@@ -332,8 +332,15 @@ components:
         evalCaseId:
           type: string
           description: mode=evaluation 時に使用
-        semanticConfigVersionId:
+        configName:
           type: string
+          description: evaluation / batch の Semantic Config 系列名。versionLabel とセット指定
+          example: "mvp-semantic-config"
+        versionLabel:
+          type: string
+          pattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          description: evaluation / batch の Version ラベル（semver）。configName とセット指定
+          example: "v1.0.0"
         modelVersionId:
           type: string
 
