@@ -7,7 +7,7 @@
 | ドキュメントID | `DB-DDL-BATCH-MVP-001` |
 | 親 Epic | #435 `docs/epic-435-db-physical-design` |
 | 正本関係 | 運用規約は [マイグレーション方針書.md](./マイグレーション方針書.md)。本書は **④ DDL Task 起票・進捗管理の正本** |
-| 更新日 | 2026-06-17 |
+| 更新日 | 2026-06-17（D01〜D13 merge 完了反映） |
 
 ---
 
@@ -49,19 +49,19 @@ D01（extension / enum）
 
 | Batch | change_id | テーブル数 | Issue 起票 | 備考 |
 | ----- | --------- | ---------: | ---------- | ---- |
-| D01 | `d01_extensions_and_enums` | — | ✅ Issue 化 | pgvector + enum 型 26 件 |
-| D02 | `d02_semantic_feature_definitions` | 12 | ✅ Issue 化 | Semantic / Feature 定義系 |
-| D03 | `d03_master_config` | 7 | ✅ Issue 化 | Master / Config |
-| D04 | `d04_item` | 7 | ✅ Issue 化 | Item 系 |
-| D05 | `d05_external_product_integration` | 10 | ✅ Issue 化 | 外部商品データ連携 |
-| D06 | `d06_item_derived` | 5 | ✅ Issue 化 | Item 派生 |
-| D07 | `d07_online_recommendation` | 6 | ✅ Issue 化 | Online 推薦 |
-| D08 | `d08_user_meaning` | 3 | ✅ Issue 化 | User 意味推定 |
-| D09 | `d09_evaluation` | 5 | ✅ Issue 化 | Evaluation（MVP△） |
-| D10 | `d10_log_observability` | 3 | ✅ Issue 化 | Log 3 件 |
-| D11 | `d11_metric` | 4 | ✅ Issue 化 | Metric 4 件（MVP△ 1） |
-| D12 | `d12_deferred_fk_indexes` | — | ✅ Issue 化 | 循環参照回避・後追い索引 |
-| D13 | `d13_ddl_cross_check` | — | ✅ Issue 化 | Epic 終盤ゲート（#582 型） |
+| D01 | `d01_extensions_and_enums` | — | ✅ 完了 | pgvector + enum 型 26 件 |
+| D02 | `d02_semantic_feature_definitions` | 12 | ✅ 完了 | Semantic / Feature 定義系 |
+| D03 | `d03_master_config` | 7 | ✅ 完了 | Master / Config |
+| D04 | `d04_item` | 7 | ✅ 完了 | Item 系 |
+| D05 | `d05_external_product_integration` | 10 | ✅ 完了 | 外部商品データ連携 |
+| D06 | `d06_item_derived` | 5 | ✅ 完了 | Item 派生 |
+| D07 | `d07_online_recommendation` | 6 | ✅ 完了 | Online 推薦 |
+| D08 | `d08_user_meaning` | 3 | ✅ 完了 | User 意味推定 |
+| D09 | `d09_evaluation` | 5 | ✅ 完了 | Evaluation（MVP△） |
+| D10 | `d10_log_observability` | 3 | ✅ 完了 | Log 3 件 |
+| D11 | `d11_metric` | 4 | ✅ 完了 | Metric 4 件（MVP△ 1） |
+| D12 | `d12_deferred_fk_indexes` | — | ✅ 完了 | 循環参照回避・後追い索引 |
+| D13 | `d13_ddl_cross_check` | — | ✅ 完了 | DDL 横断整合ゲート（#582 型） |
 
 ---
 
@@ -269,27 +269,29 @@ retention 詳細は ⑥ データ保持・削除方針書 Task で確定。DDL �
 | 2 | D07〜D11 | 5（#604〜#608） |
 | 3 | D12〜D13 | 2（#609〜#610） |
 
-D01 完了後に Wave 1（D02〜）へ着手する。
+D01 完了後に Wave 1（D02〜）へ着手する。**④ 全バッチ merge 完了**（Epic HEAD `690dbc6`）。次は ⑤ migration/seed。
 
 ---
 
-## 19. Issue 進捗（事実・起票時更新）
+## 19. Issue 進捗（事実）
+
+**Epic Branch HEAD**: `690dbc6`（2026-06-17）
 
 | Batch | Issue | PR | 状態 |
 | ----- | ----- | -- | ---- |
-| D01 | #611 | | OPEN |
-| D02 | #599 | | OPEN |
-| D03 | #600 | | OPEN |
-| D04 | #601 | | OPEN |
-| D05 | #602 | | OPEN |
-| D06 | #603 | | OPEN |
-| D07 | #604 | | OPEN |
-| D08 | #605 | | OPEN |
-| D09 | #606 | | OPEN |
-| D10 | #607 | | OPEN |
-| D11 | #608 | | OPEN |
-| D12 | #609 | | OPEN |
-| D13 | #610 | | OPEN |
+| D01 | #611 | #614 | CLOSED |
+| D02 | #599 | #615 | CLOSED |
+| D03 | #600 | #616 | CLOSED |
+| D04 | #601 | #617 | CLOSED |
+| D05 | #602 | #618 | CLOSED |
+| D06 | #603 | #619 | CLOSED |
+| D07 | #604 | #620 | CLOSED |
+| D08 | #605 | #621 | CLOSED |
+| D09 | #606 | #622 | CLOSED |
+| D10 | #607 | #623 | CLOSED |
+| D11 | #608 | #624 | CLOSED |
+| D12 | #609 | #625 | CLOSED |
+| D13 | #610 | #626 | CLOSED |
 
 ---
 
