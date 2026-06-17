@@ -1,0 +1,287 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-d10-pr"
+  title: "d10 Log系DDL PRレビュー"
+  summary: "D10 Log 系 DDL Task の PR を AI Review する。`db/ddl/d10_log_observability.sql` が 3 テーブル定義書・物理 ER・マイグレーション方針書と整合しているか、D01〜D09 適用後に実行可能か、D11 以降の前提として妥当かを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-607-d10-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 607
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d10.yaml"
+  source_branch: "chore/task-607-d10-ddl"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-d10.yaml"
+    required: true
+  issue:
+    number: 607
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D10 scope・3 テーブル一覧との突合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 ファイル命名・バッチ順序"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§10 Index・§11 CHECK・§15 適用順序・§17 MVP 対象との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 値との突合"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ・enum 型名の参照"
+    - path: "db/ddl/d07_online_recommendation.sql"
+      required: true
+      purpose: "先行バッチ DDL（`recommendation_run` owner 参照）"
+    - path: "db/ddl/d09_evaluation.sql"
+      required: true
+      purpose: "先行バッチ DDL（`evaluation_run` owner 参照）"
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: true
+      purpose: "D10-1 突合（run_status CHECK・終端 CHECK・batch_type 含む）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "D10-2 突合（polymorphic owner・owner 別 phase_name CHECK 含む）"
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      required: true
+      purpose: "D10-3 突合（owner_type CHECK・system owner NULL・error_code 形式 CHECK 含む）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（D11 以降テーブル / supabase migrations / packages / apps / docs 変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  db:
+    - "D10 対象 3 テーブルが DDLバッチ分割表 §14 と一致しているか"
+    - "ファイル名が `d10_log_observability.sql`（マイグレーション方針書 §8.1 / change_id `d10_log_observability`）であるか"
+    - "CREATE 順序が `batch_run_log` → `phase_log` → `error_log` と依存と整合しているか"
+    - "各テーブルの列・型・PK / Index / CHECK がテーブル定義書と一致しているか"
+    - "`batch_run_log` の `run_status` / `batch_type` CHECK と終端 / 非終端 `completed_at` CHECK が定義書どおりであるか"
+    - "`batch_run_log` の count / duration 非負 CHECK が定義書どおりであるか"
+    - "`phase_log` の MVP `owner_type` 3 値 CHECK が定義書どおりであるか"
+    - "`phase_log` の owner 別 `phase_name` CHECK（recommendation_run / batch_run）が定義書どおりであるか"
+    - "`phase_log` の `evaluation_run` owner 時 `phase_name` DB CHECK が MVP 省略であるか"
+    - "`phase_log` の終端 / 非終端 `completed_at` CHECK が定義書どおりであるか"
+    - "`error_log` の `owner_type` / `service` / `severity` CHECK が定義書どおりであるか"
+    - "`error_log` の `system` owner 時 `owner_id` NULL 可 CHECK が定義書どおりであるか"
+    - "`error_log` の `error_code` 形式 CHECK が定義書どおりであるか"
+    - "polymorphic owner および `batch_run_id` 被参照に物理 FK が付与されていないか"
+    - "D01〜D09 適用後に本ファイルが実行可能か"
+    - "D11（#608）以降 Task の前提として妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Review で確認してほしい事項が明記されている"
+    - "AI Review 結果を PR コメントに記録できる形式になっている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な DDL 不備がある"
+      - "PR 本文に必要情報が不足している"
+      - "検証結果または未実施理由が不足している"
+  needs_human_decision:
+    conditions:
+      - "polymorphic owner LOGICAL FK 方針の確認が必要"
+      - "phase_log evaluation_run phase_name CHECK 省略方針の確認が必要"
+      - "batch_run_log 終端 / 非終端 CHECK 表現の確認が必要"
+      - "error_log system owner NULL 方針の確認が必要"
+  split_required:
+    conditions:
+      - "D11 Metric 系テーブル CREATE が混在している"
+      - "supabase migration 変更が混在している"
+      - "別 Issue 化すべき設計変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - 607
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/ddl-d10.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "db schema review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definition の acceptance_criteria を満たしているか確認する"
+    - "PR 本文に検証結果・未実施理由・Human Review 観点が記載されているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definition はレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 PR レビューのため、レビュー結果は PR コメントを正本とする"
+
+risk_points:
+  - "3 テーブル横断での列名・型・制約の取りこぼし"
+  - "batch_run_log 終端 / 非終端 CHECK の表現漏れ"
+  - "phase_log owner 別 phase_name CHECK の取りこぼし"
+  - "error_log owner_type / system owner NULL CHECK の取りこぼし"
+  - "polymorphic owner への誤った物理 FK 付与"
+  - "D11（#608）以降 Task との適用順序依存"
+
+human_decision_points:
+  - "polymorphic owner（batch_run / recommendation_run / evaluation_run 等）の LOGICAL FK 方針"
+  - "phase_log `evaluation_run` owner 時 `phase_name` DB CHECK 省略方針"
+  - "batch_run_log `run_status` 終端 / 非終端 CHECK 表現"
+  - "error_log `owner_type=system` かつ `owner_id IS NULL` 方針"
+  - "retention 詳細は ⑥ Task 委譲（本 DDL は列・索引のみ）"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "D11 Metric 系テーブル CREATE が混在している場合"
+  - "supabase migration 変更が混在している場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+  - "AI が merge 判断を行う必要がある場合"
+
+notes:
+  - "Batch D10 / change_id: `d10_log_observability`"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d10.yaml"
+  - "Issue #607 / Branch chore/task-607-d10-ddl"
+  - "MVP○: 全 3 テーブル"
+  - "先行 merge 済み前提: D01（#611 / PR #614）〜 D09（#606 / PR #622）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"

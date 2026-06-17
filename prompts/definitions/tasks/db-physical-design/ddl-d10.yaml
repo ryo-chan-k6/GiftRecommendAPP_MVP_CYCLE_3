@@ -1,0 +1,283 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d10"
+  title: "d10:Log系DDL作成"
+  summary: "Phase2 子 Task ④ DDL のバッチ D10。Log 3 テーブル（`batch_run_log` / `phase_log` / `error_log`）の `CREATE TABLE` / Index / CHECK / バッチ内 FK を `db/ddl/d10_log_observability.sql` に定義し、D11 以降の前提を整える。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 611
+      purpose: "先行 D01（extension / enum 型。merge 済み前提）"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系。merge 済み前提）"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系。merge 済み前提）"
+    - number: 601
+      purpose: "先行 D04（Item 系。merge 済み前提）"
+    - number: 602
+      purpose: "先行 D05（外部商品データ連携系。merge 済み前提）"
+    - number: 603
+      purpose: "先行 D06（Item 派生データ系。merge 済み前提）"
+    - number: 604
+      purpose: "先行 D07（Online 推薦系。merge 済み前提）"
+    - number: 605
+      purpose: "先行 D08（User 意味推定系。merge 済み前提）"
+    - number: 606
+      purpose: "先行 D09（Evaluation 系。merge 済み前提）"
+    - number: 608
+      purpose: "後続 D11（Metric 系）"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+  related_prs:
+    - number: 614
+      purpose: "D01 DDL PR（merge 済み前提）"
+    - number: 615
+      purpose: "D02 DDL PR（merge 済み前提）"
+    - number: 616
+      purpose: "D03 DDL PR（merge 済み前提）"
+    - number: 617
+      purpose: "D04 DDL PR（merge 済み前提）"
+    - number: 618
+      purpose: "D05 DDL PR（merge 済み前提）"
+    - number: 619
+      purpose: "D06 DDL PR（merge 済み前提）"
+    - number: 620
+      purpose: "D07 DDL PR（merge 済み前提）"
+    - number: 621
+      purpose: "D08 DDL PR（merge 済み前提）"
+    - number: 622
+      purpose: "D09 DDL PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **バッチ D10（Log 系・MVP○）**。Batch / Online / Evaluation 横断の Observability 基盤となる Log 3 テーブルの基盤。
+  対象 3 テーブルは [DDLバッチ分割表.md](../../../docs/06_実装設計/database/DDLバッチ分割表.md) §14 に列挙される。
+  先行 D01（`db/ddl/d01_extensions_and_enums.sql`、Issue #611 / PR #614 merge 済み）〜 D09（`db/ddl/d09_evaluation.sql`、Issue #606 / PR #622 merge 済み）適用後に本バッチを実行する前提とする。
+  `batch_run_log` は Log 系ヘッダ。`phase_log` / `error_log` の polymorphic owner 参照は **LOGICAL 参照（物理 FK なし）** が正本方針。retention 詳細は ⑥ データ保持・削除方針書 Task で確定し、本 Task では列・索引のみ定義する。
+  Issue #607 / Branch `chore/task-607-d10-ddl` で作業する。
+
+objective: |
+  `db/ddl/d10_log_observability.sql` を作成し、D10 対象 3 テーブルの PostgreSQL DDL を各テーブル定義書・物理 ER・enum定義書・コード定義書・マイグレーション方針書と整合させる。
+  バッチ内の CREATE 順序は FK 依存に従う（`batch_run_log` → `phase_log` → `error_log`）。
+  polymorphic `owner_type` / `owner_id` および下流テーブルからの `batch_run_id` 参照は LOGICAL 参照のままとする。
+
+scope:
+  - "`db/ddl/d10_log_observability.sql` の新規作成"
+  - "D10 対象 3 テーブルの `CREATE TABLE`、PK、Index、CHECK"
+  - "  - `batch_run_log`"
+  - "  - `phase_log`"
+  - "  - `error_log`"
+  - "D01〜D09 適用済み前提で実行可能な SQL（enum 型は D01 参照、owner 正本テーブルは D05〜D09 参照）"
+  - "マイグレーション方針書 §8.1 のファイル命名・バッチ順序への準拠"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "D11 以降のテーブル `CREATE TABLE`（Metric 系）"
+  - "D12 遅延 FK / 索引追加（後追い制約 Task）"
+  - "`phase_log` / `error_log` の polymorphic owner 物理 FK（LOGICAL 方針）"
+  - "`api_call_log.batch_run_id` → `batch_run_log` 物理 FK（D05 先行のため LOGICAL 方針）"
+  - "`evaluation_run.batch_run_id` → `batch_run_log` 物理 FK（LOGICAL 方針）"
+  - "retention ポリシーの DDL 実装（列・索引のみ。保持期間は ⑥ Task で確定）"
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`db/seeds/**` の作成（Task ⑤）"
+  - "`packages/code-definitions/**` の変更"
+  - "`apps/**` 実装変更"
+  - "docs の変更（DDLバッチ分割表・テーブル定義書は参照のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D10 バッチ scope・3 テーブル一覧の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・バッチ順序"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§10 Index・§11 CHECK・§15 適用順序・§17 MVP 対象との整合確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型・論理 ID 分離の参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 制約値の参照"
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: true
+      purpose: "D10-1 `batch_run_log` DDL 正本（run_status CHECK・終端 CHECK・batch_type 含む）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "D10-2 `phase_log` DDL 正本（polymorphic owner・owner 別 phase_name CHECK 含む）"
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      required: true
+      purpose: "D10-3 `error_log` DDL 正本（owner_type CHECK・system owner NULL・error_code 形式 CHECK 含む）"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ DDL・enum 型名の参照"
+    - path: "db/ddl/d07_online_recommendation.sql"
+      required: true
+      purpose: "先行バッチ DDL（`recommendation_run` owner 参照）"
+    - path: "db/ddl/d09_evaluation.sql"
+      required: true
+      purpose: "先行バッチ DDL（`evaluation_run` owner 参照）"
+  templates: []
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d10_log_observability.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d10.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d10/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d10_log_observability.sql` に存在する"
+  - "D10 対象 3 テーブルが DDLバッチ分割表 §14 と一致する"
+  - "各テーブルの列・型・制約が対応するテーブル定義書と矛盾しない"
+  - "D01〜D09 適用済み前提で本ファイルが実行可能である"
+  - "`batch_run_log` の `run_status` / `batch_type` CHECK と終端 / 非終端 `completed_at` CHECK が定義書どおりである"
+  - "`batch_run_log` の count / duration 非負 CHECK が定義書どおりである"
+  - "`phase_log` の MVP `owner_type` 3 値 CHECK が定義書どおりである"
+  - "`phase_log` の owner 別 `phase_name` CHECK（recommendation_run / batch_run）が定義書どおりである"
+  - "`phase_log` の `evaluation_run` owner 時 `phase_name` DB CHECK は MVP 省略である"
+  - "`phase_log` の終端 / 非終端 `completed_at` CHECK が定義書どおりである"
+  - "`error_log` の `owner_type` / `service` / `severity` CHECK が定義書どおりである"
+  - "`error_log` の `system` owner 時 `owner_id` NULL 可 CHECK が定義書どおりである"
+  - "`error_log` の `error_code` 形式 CHECK が定義書どおりである"
+  - "polymorphic owner および `batch_run_id` 被参照に **物理 FK を付与していない**"
+  - "D11 以降テーブルの CREATE が誤って本ファイルに含まれていない"
+  - "`packages/code-definitions/**` および `apps/**` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d10-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 607
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 611
+      purpose: "先行 D01（extension / enum 型）完了"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系）完了"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系）完了"
+    - number: 601
+      purpose: "先行 D04（Item 系）完了"
+    - number: 602
+      purpose: "先行 D05（外部商品データ連携系）完了"
+    - number: 603
+      purpose: "先行 D06（Item 派生データ系）完了"
+    - number: 604
+      purpose: "先行 D07（Online 推薦系）完了"
+    - number: 605
+      purpose: "先行 D08（User 意味推定系）完了"
+    - number: 606
+      purpose: "先行 D09（Evaluation 系）完了"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-db-physical-design-ddl-d09"
+      issue: 606
+      purpose: "D09 `evaluation_run` owner 参照前提"
+    - task_id: "task-db-physical-design-ddl-d07"
+      issue: 604
+      purpose: "D07 `recommendation_run` owner 参照前提"
+    - task_id: "task-db-physical-design-ddl-d05"
+      issue: 602
+      purpose: "D05 `api_call_log.batch_run_id` LOGICAL 参照前提"
+  exclusive_files:
+    - "db/ddl/d10_log_observability.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d10.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d10/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "D10 対象 3 テーブルがすべて `CREATE TABLE` されていること"
+    - "各テーブルの PK / Index / CHECK がテーブル定義書 §7〜§10 と一致すること"
+    - "`batch_run_log` / `phase_log` / `error_log` の polymorphic owner 方針（LOGICAL）が定義書どおりであること"
+    - "D01〜D09 適用後に `psql` またはローカル DB 検証環境（#612）で構文・適用が通ること（可能な範囲）"
+    - "`apps/**`・`packages/code-definitions/**` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+  skip_reason:
+    "unit test": "DDL 参照用 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL のみ。適用正本は Task ⑤"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch D10 / change_id: `d10_log_observability`"
+  - "Issue #607 / Branch `chore/task-607-d10-ddl`"
+  - "MVP○: 全 3 テーブル。retention 詳細は ⑥ Task で確定"
+  - "先行 merge 済み前提: D01（#611 / PR #614）〜 D09（#606 / PR #622）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "後続: D11（#608）以降は本 Task 完了後に着手"
+  - "Human Review 論点: polymorphic owner LOGICAL FK 方針、phase_log evaluation_run phase_name CHECK 省略、batch_run_log 終端 CHECK、error_log system owner NULL 方針"
