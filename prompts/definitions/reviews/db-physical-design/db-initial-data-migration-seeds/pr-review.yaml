@@ -1,0 +1,143 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-db-initial-data-migration-seeds-pr"
+  title: "初期データ定義書・migration・master seed PRレビュー"
+  summary: "Phase2 ⑤ migration-seed Task の PR を AI Review する。初期データ定義書・統合 migration・master seed の整合、ローカル検証、Epic scope、Task PR 運用（Related to #627・集約 Issue 方針）を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-627-db-initial-data-migration-seeds"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 630
+  issue: 627
+  task_definition: "prompts/definitions/tasks/db-physical-design/db-initial-data-migration-seeds.yaml"
+  source_branch: "chore/task-627-db-initial-data-migration-seeds"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/db-initial-data-migration-seeds.yaml"
+    required: true
+  issue:
+    number: 627
+    required: true
+  pr:
+    number: 630
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: true
+      purpose: "seed 論理正本・投入順・固定 ID"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "migration 統合・seed 方針"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "Rule / Master 数値正本"
+    - path: "docs/04_ドメインモデル設計/Ranking定義書.md"
+      required: true
+      purpose: "ranking_config 正本"
+    - path: "prompts/definitions/epics/db-physical-design/epic.yaml"
+      required: true
+      purpose: "allowed_paths・child_task_areas"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（semantic_rule 完全 seed / test-data / apps）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+    - "PR 本文が `Related to #627` であるか（Closes 未使用）"
+    - "#628 / #629 集約方針と merge 後手動 close が明記されているか"
+    - "PR 差分が Epic `allowed_paths` 内か"
+  docs:
+    - "初期データ定義書の投入順・固定 UUID・行数が seed SQL と一致するか"
+    - "正本 docs 参照が適切か"
+  db:
+    - "migration が D01〜D12 統合で D13 検証 SQL を含まないか"
+    - "seed が FK 順で冪等投入できるか"
+    - "Featureルール / Ranking 定義書との数値整合"
+  security:
+    - "secret / .env 実値 / DB 接続文字列が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち / blocked）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "pair_master 180 件全組み合わせ投入方針の妥当性"
+  - "固定 UUID（semantic_config_id / semantic_config_version_id）の運用"
+  - "#628 / #629 の merge 後手動 close"
+
+risk_points:
+  - "3 Issue 集約 PR のため Status 同期は #627 のみ自動 close"
+  - "semantic_rule / concept_feature_rule の稀疏 seed は後続 Task 依存"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/db-initial-data-migration-seeds.yaml"
+  - "Issue #627 / PR #630 / Branch chore/task-627-db-initial-data-migration-seeds"
