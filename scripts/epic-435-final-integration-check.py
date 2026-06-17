@@ -178,9 +178,28 @@ def main() -> int:
             )
             musts += 1
 
-    # DDL vs migration table count
+    # DDL vs migration table count (expect 60; table specs remain 62)
     ddl_tables = extract_tables_from_ddl()
     mig_tables = extract_tables_from_migration()
+    expected_ddl_count = 60
+    if ddl_tables and len(ddl_tables) != expected_ddl_count:
+        findings.append(
+            {
+                "severity": "Blocker",
+                "category": "ddl_table_count",
+                "fact": f"db/ddl CREATE TABLE 件数が {expected_ddl_count} ではない: {len(ddl_tables)}",
+            }
+        )
+        blockers += 1
+    if mig_tables and len(mig_tables) != expected_ddl_count:
+        findings.append(
+            {
+                "severity": "Blocker",
+                "category": "migration_table_count",
+                "fact": f"supabase/migrations CREATE TABLE 件数が {expected_ddl_count} ではない: {len(mig_tables)}",
+            }
+        )
+        blockers += 1
     if ddl_tables and mig_tables and ddl_tables != mig_tables:
         only_ddl = sorted(ddl_tables - mig_tables)
         only_mig = sorted(mig_tables - ddl_tables)

@@ -1,9 +1,9 @@
 -- D04: Item tables
 -- change_id: d04_item
 -- Issue: #601
--- 正本: docs/06_実装設計/database/*_テーブル定義書.md（D04 対象 7 件）
+-- 正本: docs/06_実装設計/database/*_テーブル定義書.md（D04 対象 6 件 DDL / external_attribute は定義のみ）
 -- 適用順: D01 / D02 / D03 適用後。external_genre → item → 子テーブル → ranking_snapshot → item_popularity_signal
--- MVP△: external_attribute（DDL 参照用に含む。DDLバッチ分割表 §3）
+-- §17 No.7: external_attribute は MVP DDL 対象外（テーブル定義書のみ維持）
 -- LOGICAL 参照: item / ranking_snapshot / item_popularity_signal → external_genre（物理 FK なし）
 -- LOGICAL 参照: item_popularity_signal.item_id → item（nullable・物理 FK なし）
 
@@ -141,37 +141,7 @@ CREATE INDEX idx_item_review_summary_item_id
   ON item_review_summary (item_id);
 
 -- =============================================================================
--- 5. external_attribute（MVP△）
--- =============================================================================
-CREATE TABLE external_attribute (
-  source text NOT NULL DEFAULT 'rakuten',
-  external_genre_id bigint NOT NULL,
-  external_attribute_id bigint NOT NULL,
-  attribute_name varchar(255) NOT NULL,
-  attribute_group_name varchar(255),
-  fetched_at timestamptz NOT NULL,
-  PRIMARY KEY (source, external_genre_id, external_attribute_id),
-  CONSTRAINT chk_external_attribute_source_mvp CHECK (source = 'rakuten'),
-  CONSTRAINT chk_external_attribute_name_length CHECK (
-    char_length(attribute_name) BETWEEN 1 AND 255
-  ),
-  CONSTRAINT chk_external_attribute_group_length CHECK (
-    attribute_group_name IS NULL
-    OR char_length(attribute_group_name) BETWEEN 1 AND 255
-  ),
-  CONSTRAINT chk_external_attribute_id_positive CHECK (
-    external_attribute_id > 0
-  )
-);
-
-CREATE INDEX idx_external_attribute_genre
-  ON external_attribute (external_genre_id);
-
-CREATE INDEX idx_external_attribute_name
-  ON external_attribute (attribute_name);
-
--- =============================================================================
--- 6. ranking_snapshot
+-- 5. ranking_snapshot
 -- =============================================================================
 CREATE TABLE ranking_snapshot (
   ranking_snapshot_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

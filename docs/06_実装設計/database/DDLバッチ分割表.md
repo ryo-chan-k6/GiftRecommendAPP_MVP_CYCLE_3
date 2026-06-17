@@ -18,7 +18,7 @@
 | 粒度 | **1 バッチ（Dnn）= 1 論理変更 = 1 Issue = 1 Branch = 1 PR** → Epic Branch |
 | 成果物 | `db/ddl/{change_id}.sql`（設計参照用。適用正本は `supabase/migrations/`） |
 | 起票順 | D01 完了後に D02 → … → D13。Issue は **5 件前後の wave** で起票 |
-| MVP△ | `evaluation_*` / `external_attribute` / `staging_attribute` / `reco_score_distribution_metric` は DDL に含める（Task scope で go/no-go 再確認可） |
+| MVP△ | `evaluation_*` / `reco_score_distribution_metric` は DDL に含める（Task scope で go/no-go 再確認可）。`external_attribute` / `staging_attribute` は **DDL 不含**（物理ER §17 No.7・テーブル定義書のみ） |
 | D10/D11 | マイグレーション方針書 §8.1 の「Log / Observability 7 件」を **Log 3 + Metric 4** に分割して Issue 化 |
 
 ---
@@ -139,24 +139,24 @@ D01（extension / enum）
 
 ---
 
-## 8. D04 — Item 系（7）
+## 8. D04 — Item 系（6 DDL / `external_attribute` は定義のみ）
 
-| # | テーブル | MVP |
-| - | -------- | --- |
+| # | テーブル | MVP DDL |
+| - | -------- | ------- |
 | 1 | `external_genre` | ○ |
 | 2 | `item` | ○ |
 | 3 | `item_image` | ○ |
 | 4 | `item_review_summary` | ○ |
-| 5 | `external_attribute` | △ |
+| 5 | `external_attribute` | △（DDL 不含） |
 | 6 | `ranking_snapshot` | ○ |
 | 7 | `item_popularity_signal` | ○ |
 
 ---
 
-## 9. D05 — 外部商品データ連携系（10）
+## 9. D05 — 外部商品データ連携系（9 DDL / `staging_attribute` は定義のみ）
 
-| # | テーブル | MVP |
-| - | -------- | --- |
+| # | テーブル | MVP DDL |
+| - | -------- | ------- |
 | 1 | `fetch_cursor` | ○ |
 | 2 | `api_call_log` | ○ |
 | 3 | `raw_product_metadata` | ○ |
@@ -164,7 +164,7 @@ D01（extension / enum）
 | 5 | `staging_item_image` | ○ |
 | 6 | `staging_ranking_signal` | ○ |
 | 7 | `staging_genre` | ○ |
-| 8 | `staging_attribute` | △ |
+| 8 | `staging_attribute` | △（DDL 不含） |
 | 9 | `product_diff_result` | ○ |
 | 10 | `item_import_summary` | ○ |
 

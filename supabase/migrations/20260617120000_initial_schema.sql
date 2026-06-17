@@ -1,5 +1,5 @@
 -- Initial schema migration (MVP)
--- Issue: #628 | Epic: #435
+-- Issue: #628 | Epic: #435 | Task: #638
 -- Source: db/ddl/d01..d12 (D13 is validation-only, excluded)
 -- Policy: docs/06_実装設計/database/マイグレーション方針書.md §8.2
 
@@ -266,6 +266,7 @@ CREATE TYPE feedback_type AS ENUM (
   'result_bad',
   'comment'
 );
+
 -- <<< END d01_extensions_and_enums.sql
 
 -- >>> BEGIN d02_semantic_feature_definitions.sql
@@ -704,6 +705,7 @@ CREATE TABLE normalization_rule (
 
 CREATE INDEX idx_normalization_rule_version_active_lookup
   ON normalization_rule (semantic_config_version_id, is_active);
+
 -- <<< END d02_semantic_feature_definitions.sql
 
 -- >>> BEGIN d03_master_config.sql
@@ -949,6 +951,7 @@ ALTER TABLE pair_rule
   FOREIGN KEY (pair_id)
   REFERENCES pair_master (pair_id)
   ON DELETE RESTRICT;
+
 -- <<< END d03_master_config.sql
 
 -- >>> BEGIN d04_item.sql
@@ -957,7 +960,7 @@ ALTER TABLE pair_rule
 -- Issue: #601
 -- 正本: docs/06_実装設計/database/*_テーブル定義書.md（D04 対象 7 件）
 -- 適用順: D01 / D02 / D03 適用後。external_genre → item → 子テーブル → ranking_snapshot → item_popularity_signal
--- MVP△: external_attribute（DDL 参照用に含む。DDLバッチ分割表 §3）
+-- §17 No.7: external_attribute は MVP DDL 対象外（テーブル定義書のみ維持）
 -- LOGICAL 参照: item / ranking_snapshot / item_popularity_signal → external_genre（物理 FK なし）
 -- LOGICAL 参照: item_popularity_signal.item_id → item（nullable・物理 FK なし）
 
@@ -1095,37 +1098,7 @@ CREATE INDEX idx_item_review_summary_item_id
   ON item_review_summary (item_id);
 
 -- =============================================================================
--- 5. external_attribute（MVP△）
--- =============================================================================
-CREATE TABLE external_attribute (
-  source text NOT NULL DEFAULT 'rakuten',
-  external_genre_id bigint NOT NULL,
-  external_attribute_id bigint NOT NULL,
-  attribute_name varchar(255) NOT NULL,
-  attribute_group_name varchar(255),
-  fetched_at timestamptz NOT NULL,
-  PRIMARY KEY (source, external_genre_id, external_attribute_id),
-  CONSTRAINT chk_external_attribute_source_mvp CHECK (source = 'rakuten'),
-  CONSTRAINT chk_external_attribute_name_length CHECK (
-    char_length(attribute_name) BETWEEN 1 AND 255
-  ),
-  CONSTRAINT chk_external_attribute_group_length CHECK (
-    attribute_group_name IS NULL
-    OR char_length(attribute_group_name) BETWEEN 1 AND 255
-  ),
-  CONSTRAINT chk_external_attribute_id_positive CHECK (
-    external_attribute_id > 0
-  )
-);
-
-CREATE INDEX idx_external_attribute_genre
-  ON external_attribute (external_genre_id);
-
-CREATE INDEX idx_external_attribute_name
-  ON external_attribute (attribute_name);
-
--- =============================================================================
--- 6. ranking_snapshot
+-- 5. ranking_snapshot
 -- =============================================================================
 CREATE TABLE ranking_snapshot (
   ranking_snapshot_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1198,16 +1171,17 @@ CREATE INDEX idx_ips_external_item_code
 
 CREATE INDEX idx_ips_genre_period
   ON item_popularity_signal (external_genre_id, period);
+
 -- <<< END d04_item.sql
 
 -- >>> BEGIN d05_external_product_integration.sql
 -- D05: External product integration tables
 -- change_id: d05_external_product_integration
 -- Issue: #602
--- 正本: docs/06_実装設計/database/*_テーブル定義書.md（D05 対象 10 件）
+-- 正本: docs/06_実装設計/database/*_テーブル定義書.md（D05 対象 9 件 DDL / staging_attribute は定義のみ）
 -- 適用順: D01〜D04 適用後。fetch_cursor → api_call_log → raw_product_metadata → Staging 系 → product_diff_result → item_import_summary
--- MVP△: staging_attribute（DDL 参照用に含む。DDLバッチ分割表 §3）
--- LOGICAL 参照: Staging / Log 系は物理 FK なし（batch_run_log / item / external_genre / external_attribute 含む）
+-- §17 No.7: staging_attribute は MVP DDL 対象外（テーブル定義書のみ維持）
+-- LOGICAL 参照: Staging / Log 系は物理 FK なし（batch_run_log / item / external_genre 含む）
 
 -- =============================================================================
 -- 1. fetch_cursor
@@ -1543,40 +1517,7 @@ CREATE INDEX idx_staging_genre_source_id
   ON staging_genre (source, external_genre_id);
 
 -- =============================================================================
--- 8. staging_attribute（MVP△）
--- =============================================================================
-CREATE TABLE staging_attribute (
-  staging_attribute_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  raw_metadata_id uuid NOT NULL,
-  source text NOT NULL DEFAULT 'rakuten',
-  external_genre_id bigint NOT NULL,
-  external_attribute_id bigint NOT NULL,
-  attribute_name varchar(255) NOT NULL,
-  attribute_group_name varchar(255),
-  staged_at timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT uq_staging_attribute_raw_metadata_attr
-    UNIQUE (raw_metadata_id, external_genre_id, external_attribute_id),
-  CONSTRAINT chk_staging_attribute_source_mvp CHECK (source = 'rakuten'),
-  CONSTRAINT chk_staging_attribute_name_length CHECK (
-    char_length(attribute_name) BETWEEN 1 AND 255
-  ),
-  CONSTRAINT chk_staging_attribute_group_length CHECK (
-    attribute_group_name IS NULL
-    OR char_length(attribute_group_name) BETWEEN 1 AND 255
-  ),
-  CONSTRAINT chk_staging_attribute_id_positive CHECK (external_attribute_id > 0)
-);
-
-CREATE INDEX idx_staging_attribute_raw_metadata
-  ON staging_attribute (raw_metadata_id);
-
-CREATE INDEX idx_staging_attribute_source_genre_attr
-  ON staging_attribute (source, external_genre_id, external_attribute_id);
-
--- =============================================================================
--- 9. product_diff_result
+-- 8. product_diff_result
 -- =============================================================================
 CREATE TABLE product_diff_result (
   product_diff_result_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1660,6 +1601,7 @@ CREATE INDEX idx_item_import_summary_run
 
 CREATE INDEX idx_item_import_summary_source_api
   ON item_import_summary (source_api, summarized_at DESC);
+
 -- <<< END d05_external_product_integration.sql
 
 -- >>> BEGIN d06_item_derived.sql
@@ -1897,6 +1839,7 @@ CREATE INDEX idx_item_embedding_vector
   ON item_embedding
   USING hnsw (embedding_vector vector_cosine_ops)
   WITH (m = 16, ef_construction = 64);
+
 -- <<< END d06_item_derived.sql
 
 -- >>> BEGIN d07_online_recommendation.sql
@@ -2365,6 +2308,7 @@ CREATE INDEX idx_recommendation_feedback_target_submitted
 
 CREATE INDEX idx_recommendation_feedback_item_id
   ON recommendation_feedback (item_id);
+
 -- <<< END d07_online_recommendation.sql
 
 -- >>> BEGIN d08_user_meaning.sql
@@ -2474,6 +2418,7 @@ CREATE TABLE user_meaning (
 
 CREATE INDEX idx_user_meaning_run
   ON user_meaning (recommendation_run_id);
+
 -- <<< END d08_user_meaning.sql
 
 -- >>> BEGIN d09_evaluation.sql
@@ -2695,6 +2640,7 @@ CREATE INDEX idx_evaluation_metric_name
 
 CREATE INDEX idx_evaluation_metric_created_at
   ON evaluation_metric (created_at DESC);
+
 -- <<< END d09_evaluation.sql
 
 -- >>> BEGIN d10_log_observability.sql
@@ -2933,6 +2879,7 @@ CREATE INDEX idx_error_log_occurred
 
 CREATE INDEX idx_error_log_service
   ON error_log (service, occurred_at);
+
 -- <<< END d10_log_observability.sql
 
 -- >>> BEGIN d11_metric.sql
@@ -3373,6 +3320,7 @@ CREATE INDEX idx_rsdm_version_score
 
 CREATE INDEX idx_rsdm_calculated_at
   ON reco_score_distribution_metric (calculated_at);
+
 -- <<< END d11_metric.sql
 
 -- >>> BEGIN d12_deferred_fk_indexes.sql
@@ -3430,4 +3378,5 @@ ALTER TABLE reco_score_distribution_metric
   FOREIGN KEY (semantic_config_version_id)
   REFERENCES semantic_config_version (semantic_config_version_id)
   ON DELETE RESTRICT;
+
 -- <<< END d12_deferred_fk_indexes.sql
