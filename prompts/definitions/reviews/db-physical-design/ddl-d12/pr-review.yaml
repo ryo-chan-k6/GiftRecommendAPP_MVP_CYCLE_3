@@ -1,0 +1,292 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-d12-pr"
+  title: "d12 遅延FK/索引追加DDL PRレビュー"
+  summary: "D12 遅延 FK / 索引追加 DDL Task の PR を AI Review する。`db/ddl/d12_deferred_fk_indexes.sql` が D02〜D11 延期 FK・物理 ER・各テーブル定義書と整合しているか、D01〜D11 適用後に実行可能か、D13 以降の前提として妥当かを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-609-d12-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 609
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d12.yaml"
+  source_branch: "chore/task-609-d12-ddl"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-d12.yaml"
+    required: true
+  issue:
+    number: 609
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D12 scope・適用順序との突合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 ファイル命名・バッチ順序・D12 後追い FK 方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§9 FK・§10 Index・§11 制約・§17 決定事項との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 値との突合"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "延期 FK コメント・`normalization_rule` 列定義の参照"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "延期 FK コメント・`feature_normalization_version` 参照"
+    - path: "db/ddl/d06_item_derived.sql"
+      required: true
+      purpose: "HNSW 索引作成済み確認（重複回避）"
+    - path: "db/ddl/d11_metric.sql"
+      required: true
+      purpose: "Metric 延期 FK コメント・列定義の参照"
+    - path: "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+      required: true
+      purpose: "延期 FK（`fk_normalization_rule_feature_normalization_version`）突合"
+    - path: "docs/06_実装設計/database/feature_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "Metric FK（`fk_fdm_semantic_config_version_id`）突合"
+    - path: "docs/06_実装設計/database/meaning_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "Metric FK（`fk_mdm_semantic_config_version_id`）突合"
+    - path: "docs/06_実装設計/database/normalization_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "Metric FK（`fk_ndm_semantic_config_version_id`）突合"
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "Metric FK（`fk_rsdm_semantic_config_version_id`）突合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（CREATE TABLE / supabase migrations / packages / apps / docs 変更 / HNSW 重複）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  db:
+    - "ファイル名が `d12_deferred_fk_indexes.sql`（マイグレーション方針書 §8.1 / change_id `d12_deferred_fk_indexes`）であるか"
+    - "`normalization_rule` → `feature_normalization_version` の物理 FK が定義書どおりであるか（`ON DELETE RESTRICT`）"
+    - "Metric 4 テーブル → `semantic_config_version` の物理 FK が定義書どおりであるか"
+    - "D02〜D11 DDL コメントで延期と明記された物理 FK が漏れなく適用されているか"
+    - "既に D02〜D11 で適用済みの制約・索引を重複定義していないか"
+    - "`item_embedding` HNSW 索引を重複作成していないか"
+    - "LOGICAL FK 方針の参照先に誤って物理 FK を付与していないか"
+    - "新規 `CREATE TABLE` が誤って含まれていないか"
+    - "D01〜D11 適用後に本ファイルが実行可能か"
+    - "D13（#610）横断整合ゲートの前提として妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Review で確認してほしい事項が明記されている"
+    - "AI Review 結果を PR コメントに記録できる形式になっている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な DDL 不備がある"
+      - "PR 本文に必要情報が不足している"
+      - "検証結果または未実施理由が不足している"
+      - "延期 FK の取りこぼしまたは重複がある"
+  needs_human_decision:
+    conditions:
+      - "棚卸しで発見した追加延期 FK の採用要否判断が必要"
+      - "Metric LOGICAL 参照との境界確認が必要"
+      - "binding FK（normalization_rule）の ON DELETE 方針確認が必要"
+  split_required:
+    conditions:
+      - "新規テーブル CREATE が混在している"
+      - "supabase migration 変更が混在している"
+      - "別 Issue 化すべき設計変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - 609
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/ddl-d12.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "db schema review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definition の acceptance_criteria を満たしているか確認する"
+    - "PR 本文に検証結果・未実施理由・Human Review 観点が記載されているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definition はレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 PR レビューのため、レビュー結果は PR コメントを正本とする"
+
+risk_points:
+  - "D02〜D11 延期 FK 棚卸しの取りこぼし"
+  - "既適用制約・索引との重複"
+  - "Metric 系への誤った追加物理 FK"
+  - "LOGICAL FK 方針テーブルへの物理 FK 誤付与"
+  - "HNSW 索引の重複作成"
+  - "D13（#610）横断整合ゲートとの適用順序依存"
+
+human_decision_points:
+  - "棚卸しで発見した追加延期 FK の採用要否"
+  - "Metric `batch_run_id` 等 LOGICAL 参照との境界"
+  - "`normalization_rule` → `feature_normalization_version` binding FK の ON DELETE 方針"
+  - "D06 既存 HNSW 索引を維持し D12 で重複しない方針"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "新規テーブル CREATE が混在している場合"
+  - "supabase migration 変更が混在している場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+  - "AI が merge 判断を行う必要がある場合"
+
+notes:
+  - "Batch D12 / change_id: `d12_deferred_fk_indexes`"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d12.yaml"
+  - "Issue #609 / Branch chore/task-609-d12-ddl"
+  - "先行 merge 済み前提: D01（#611 / PR #614）〜 D11（#608 / PR #624）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "PR 番号は `/create-pr` 後に本 Review Definition の `target.pr` / `input.pr.number` を更新する"
