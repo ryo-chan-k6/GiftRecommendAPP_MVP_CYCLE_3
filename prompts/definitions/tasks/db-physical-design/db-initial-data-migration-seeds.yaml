@@ -1,0 +1,213 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-db-initial-data-migration-seeds"
+  title: "初期データ定義書・migration・master seed"
+  summary: "Epic #435 Phase2 ⑤（migration-seed）。D01〜D12 を統合した初期 migration、master seed 9 ファイル、初期データ定義書を整備し、ローカルで migration + seed 適用を検証する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 628
+      purpose: "初期 migration（本 PR に集約。merge 後 Human が手動 close）"
+    - number: 629
+      purpose: "master seed（本 PR に集約。merge 後 Human が手動 close）"
+    - number: 610
+      purpose: "先行 D13 DDL 横断整合（merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+    - number: 612
+      purpose: "ローカル DB 検証環境（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #435 子 Task ⑤（migration-seed）。Task ④ DDL（D01〜D12）完了後、
+  `supabase/migrations/` への統合 migration と `db/seeds/masters/` の master seed、
+  および seed 論理正本である初期データ定義書を作成する。
+  #627 / #628 / #629 は成果物単位の Issue だが、本 PR では #627 を Status 同期・merge close の正本 Task とし、
+  #628 / #629 は merge 後に Human が手動 close する（集約運用）。
+
+objective: |
+  1. `docs/06_実装設計/database/初期データ定義書.md` を seed 論理正本として作成する
+  2. `supabase/migrations/20260617120000_initial_schema.sql` に D01〜D12 を統合する（D13 検証 SQL は除外）
+  3. `db/seeds/masters/01..09_*.sql` に master seed を配置する
+  4. `supabase/README.md` / `db/README.md` に seed 手順リンクを追加する
+  5. ローカルで `supabase db reset --no-seed` および seed 投入を検証する
+
+scope:
+  - "`docs/06_実装設計/database/初期データ定義書.md` の新規作成"
+  - "`supabase/migrations/20260617120000_initial_schema.sql`（D01〜D12 統合）"
+  - "`db/seeds/masters/01..09_*.sql`（master seed 9 ファイル）"
+  - "`supabase/README.md` / `db/README.md` の seed 手順リンク更新"
+  - "Task / Review Definition の整備"
+  - "ローカル migration + seed 適用検証（PR 本文に記録）"
+
+out_of_scope:
+  - "`semantic_rule` / `concept_feature_rule` の完全 seed（MVP 最小 scope 外）"
+  - "`db/seeds/test-data/`（任意 Task 5-4）"
+  - "`reason_template` の seed"
+  - "`apps/**` 実装変更"
+  - "本番 / クラウド Supabase への link・適用"
+  - "CI workflow 追加（マイグレーション方針書 §14）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "migration 統合・seed 方針"
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D01〜D12 バッチ構成"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "Rule / Master seed 数値正本"
+    - path: "docs/04_ドメインモデル設計/Ranking定義書.md"
+      required: true
+      purpose: "ranking_config パラメータ正本"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "migration 統合参照元"
+    - path: "supabase/config.toml"
+      required: true
+      purpose: "ローカル DB port 54322"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      action: "create"
+      required: true
+      template: null
+    - path: "supabase/README.md"
+      action: "update"
+      required: true
+      template: null
+    - path: "db/README.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "supabase/migrations/20260617120000_initial_schema.sql"
+      action: "create"
+      required: true
+    - path: "db/seeds/masters/01_relationship_occasion_master.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/db-initial-data-migration-seeds.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/db-initial-data-migration-seeds/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "初期データ定義書が投入順・固定 ID・行数・正本参照を定義している"
+  - "migration が D01〜D12 を統合し、D13 検証 SQL を含まない"
+  - "master seed 9 ファイルが FK 順で投入可能である"
+  - "ローカルで migration 適用および全 seed 投入が成功している（PR 本文に記録）"
+  - "Task PR target が親 Epic Branch である"
+  - "Task PR 本文の Issue 参照は `Related to #627`（`Closes` 禁止）"
+  - "#628 / #629 は merge 後 Human 手動 close の集約方針が PR 本文に明記されている"
+
+branch:
+  no_branch: false
+  summary: "db-initial-data-migration-seeds"
+  name: "chore/task-627-db-initial-data-migration-seeds"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 627
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 609
+      purpose: "D12 DDL 完了（merge 済み前提）"
+    - number: 612
+      purpose: "ローカル DB 検証環境"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/初期データ定義書.md"
+    - "supabase/migrations/20260617120000_initial_schema.sql"
+    - "db/seeds/masters/**"
+    - "prompts/definitions/tasks/db-physical-design/db-initial-data-migration-seeds.yaml"
+    - "prompts/definitions/reviews/db-physical-design/db-initial-data-migration-seeds/pr-review.yaml"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "`supabase db reset --no-seed` で migration 適用成功"
+    - "`db/seeds/masters/*.sql` を ON_ERROR_STOP=1 で全投入成功"
+    - "seed 行数が初期データ定義書の期待値と一致"
+    - "D13 検証 SQL が migration に含まれていないこと"
+  not_required:
+    - "unit test"
+    - "CI workflow 追加"
+  skip_reason:
+    "unit test": "migration / seed 中心 Task のため"
+    "CI workflow 追加": "Phase2 では workflow 実装 out_of_scope"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "初期データ定義書と seed SQL の整合（投入順・固定 UUID・行数）"
+    - "Featureルール定義書 / Ranking定義書との数値一致"
+    - "migration と db/ddl の対応（D13 除外方針）"
+    - "Epic allowed_paths 内に収まっているか"
+    - "Task PR 本文の Related to #627 と集約 Issue 方針"
+    - "secret / .env 実値の非含有"
+  specialist_reviews:
+    docs: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+notes:
+  - "Issue #627 / Branch chore/task-627-db-initial-data-migration-seeds / PR #630"
+  - "#628 / #629 は本 PR に集約。merge 後 Human が手動 close"
+  - "後続: ⑥ data-retention-policy"
