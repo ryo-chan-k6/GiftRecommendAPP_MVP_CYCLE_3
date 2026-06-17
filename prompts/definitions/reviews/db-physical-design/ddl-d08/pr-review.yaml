@@ -1,0 +1,293 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-d08-pr"
+  title: "d08 User意味推定系DDL PRレビュー"
+  summary: "D08 User 意味推定系 DDL Task の PR を AI Review する。`db/ddl/d08_user_meaning.sql` が 3 テーブル定義書・物理 ER・マイグレーション方針書と整合しているか、D01〜D07 適用後に実行可能か、D09 以降の前提として妥当かを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-605-d08-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 605
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d08.yaml"
+  source_branch: "chore/task-605-d08-ddl"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-d08.yaml"
+    required: true
+  issue:
+    number: 605
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D08 scope・3 テーブル一覧との突合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 ファイル命名・バッチ順序"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§10 Index・§11 CHECK・§15 適用順序・§17 MVP 対象との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 値との突合"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL（`feature_definition` / `semantic_config_version` 参照）"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "先行バッチ DDL（`feature_normalization_version` 参照）"
+    - path: "db/ddl/d07_online_recommendation.sql"
+      required: true
+      purpose: "先行バッチ DDL（`recommendation_run` 参照）"
+    - path: "docs/06_実装設計/database/user_semantic_テーブル定義書.md"
+      required: true
+      purpose: "D08-1 突合（Run 1:1 unique・JSONB CHECK・version LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/user_feature_テーブル定義書.md"
+      required: true
+      purpose: "D08-2 突合（Run 内 8 軸 unique・MVP CHECK・normalization LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/user_meaning_テーブル定義書.md"
+      required: true
+      purpose: "D08-3 突合（Run 1:1 unique・lambda_ctx range・version 非 denormalize 含む）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（D09 以降テーブル / supabase migrations / packages / apps / docs 変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  db:
+    - "D08 対象 3 テーブルが DDLバッチ分割表 §12 と一致しているか"
+    - "ファイル名が `d08_user_meaning.sql`（マイグレーション方針書 §8.1 / change_id `d08_user_meaning`）であるか"
+    - "CREATE 順序が `user_semantic` → `user_feature` → `user_meaning` と依存と整合しているか"
+    - "各テーブルの列・型・PK / UNIQUE / Index / CHECK がテーブル定義書と一致しているか"
+    - "enum 列が D01 で定義された論理 ID 型を参照しているか"
+    - "`user_semantic.recommendation_run_id` → `recommendation_run` 物理 FK ON が定義書どおりであるか"
+    - "`user_semantic.uq_user_semantic_recommendation_run_id`（1 Run 1 行）が定義書どおりであるか"
+    - "`user_semantic.semantic_config_version_id` が LOGICAL のまま（物理 FK なし）であるか"
+    - "`user_semantic` の JSONB CHECK（object / concepts array）が定義書どおりであるか"
+    - "`user_feature.recommendation_run_id` → `recommendation_run` 物理 FK ON が定義書どおりであるか"
+    - "`user_feature.uq_user_feature_per_run_axis`（Run 内 8 軸 unique）が定義書どおりであるか"
+    - "`user_feature` の MVP `feature_code` / `feature_value` / `source_type` CHECK が定義書どおりであるか"
+    - "`user_feature.feature_code` / `feature_normalization_version_id` が LOGICAL のまま（物理 FK なし）であるか"
+    - "`user_meaning.recommendation_run_id` → `recommendation_run` 物理 FK ON が定義書どおりであるか"
+    - "`user_meaning.uq_user_meaning_recommendation_run`（1 Run 1 行）が定義書どおりであるか"
+    - "`user_meaning` に `semantic_config_version_id` 列が誤って denormalize されていないか"
+    - "`user_meaning` の `user_social` / `user_symbolic` / `lambda_ctx` range CHECK が定義書どおりであるか"
+    - "`user_meaning.feature_normalization_version_id` が LOGICAL のまま（物理 FK なし）であるか"
+    - "`user_feature` → `user_semantic` に誤った物理 FK が付与されていないか"
+    - "D01〜D07 適用後に本ファイルが実行可能か"
+    - "D09（#606）以降 Task の前提として妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Review で確認してほしい事項が明記されている"
+    - "AI Review 結果を PR コメントに記録できる形式になっている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な DDL 不備がある"
+      - "PR 本文に必要情報が不足している"
+      - "検証結果または未実施理由が不足している"
+  needs_human_decision:
+    conditions:
+      - "user_semantic JSONB CHECK 表現の確認が必要"
+      - "MVP 8 軸 `feature_code` CHECK 方針の確認が必要"
+      - "version LOGICAL FK 方針（user_semantic vs user_meaning 非 denormalize）の確認が必要"
+  split_required:
+    conditions:
+      - "D09 Evaluation 系テーブル CREATE が混在している"
+      - "supabase migration 変更が混在している"
+      - "別 Issue 化すべき設計変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - 605
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/ddl-d08.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "db schema review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definition の acceptance_criteria を満たしているか確認する"
+    - "PR 本文に検証結果・未実施理由・Human Review 観点が記載されているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definition はレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 PR レビューのため、レビュー結果は PR コメントを正本とする"
+
+risk_points:
+  - "3 テーブル横断での列名・型・制約の取りこぼし"
+  - "`uq_user_semantic_recommendation_run_id` / `uq_user_meaning_recommendation_run` の UNIQUE 定義漏れ"
+  - "`uq_user_feature_per_run_axis` の 8 軸 unique 定義漏れまたは CHECK 不一致"
+  - "version / definition 列への誤った物理 FK 付与"
+  - "`user_meaning` への `semantic_config_version_id` 誤 denormalize"
+  - "D09（#606）以降 Task との適用順序依存"
+
+human_decision_points:
+  - "user_semantic `extracted_semantic_json` JSONB CHECK 表現"
+  - "user_feature MVP 8 軸 `feature_code` CHECK 方針"
+  - "semantic_config_version / feature_normalization_version の LOGICAL FK 方針"
+  - "user_meaning の version 非 denormalize（Run 経由参照）方針"
+  - "`lambda_ctx` range CHECK（0.0〜1.0）の確認"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "D09 Evaluation 系テーブル CREATE が混在している場合"
+  - "supabase migration 変更が混在している場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+  - "AI が merge 判断を行う必要がある場合"
+
+notes:
+  - "Batch D08 / change_id: `d08_user_meaning`"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d08.yaml"
+  - "Issue #605 / Branch chore/task-605-d08-ddl"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、D02（#599 / PR #615）、D03（#600 / PR #616）、D04（#601 / PR #617）、D05（#602 / PR #618）、D06（#603 / PR #619）、D07（#604 / PR #620）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
