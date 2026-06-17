@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 626
   issue: 610
   task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d13.yaml"
   source_branch: "chore/task-610-d13-ddl"
@@ -71,7 +71,7 @@ input:
     number: 610
     required: true
   pr:
-    number: null
+    number: 626
     required: true
   diff:
     required: true
@@ -271,5 +271,5 @@ stop_conditions:
 notes:
   - "Batch D13 / change_id: `d13_ddl_cross_check`"
   - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d13.yaml"
-  - "Issue #610 / Branch chore/task-610-d13-ddl"
+  - "Issue #610 / PR #626 / Branch chore/task-610-d13-ddl"
   - "先行 merge 済み前提: D01（#611 / PR #614）〜 D12（#609 / PR #625）、#612（ローカル DB 検証）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
