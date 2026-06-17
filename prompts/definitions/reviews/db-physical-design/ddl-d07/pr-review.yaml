@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 620
   issue: 604
   task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d07.yaml"
   source_branch: "chore/task-604-d07-ddl"
@@ -71,7 +71,7 @@ input:
     number: 604
     required: true
   pr:
-    number: null
+    number: 620
     required: true
   diff:
     required: true
