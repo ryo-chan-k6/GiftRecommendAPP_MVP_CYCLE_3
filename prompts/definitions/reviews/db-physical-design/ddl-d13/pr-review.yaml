@@ -1,0 +1,275 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-d13-pr"
+  title: "d13 DDL横断整合チェック PRレビュー"
+  summary: "D13 DDL 横断整合チェック Task（#610）の PR を AI Review する。`db/ddl/d13_ddl_cross_check.sql` が D01〜D12 と docs の整合検証として妥当か、Blocker 修正・棚卸し結果・out_of_scope 混入・Epic 終盤ゲートとしての判断材料が PR に整理されているかを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-610-d13-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 610
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d13.yaml"
+  source_branch: "chore/task-610-d13-ddl"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-d13.yaml"
+    required: true
+  issue:
+    number: 610
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D13 scope・D01〜D12 対応・適用順序との突合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 ファイル命名・Epic 終盤ゲート方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§9 FK・§10 Index・§11 制約・§17 決定事項との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 26 件・論理 ID 分離との突合"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 値との突合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "62 テーブルと DDL の対応確認"
+    - path: "docs/06_実装設計/database/ローカルDB検証手順書.md"
+      required: true
+      purpose: "実 DB 検証手順・期待値との突合"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "D01 DDL 正本（enum / extension 検証基準）"
+    - path: "db/ddl/d12_deferred_fk_indexes.sql"
+      required: true
+      purpose: "D12 延期 FK 適用済み確認"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（supabase migrations / seeds / packages / apps / docs 大規模修正 / Epic merge）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+    - "PR 本文に棚卸し結果（事実 / 推論 / 未確認）と Blocker / Must / Should / Question 分類があるか"
+    - "Related to #610 が使われ、Closes #610 が使われていないか"
+  db:
+    - "ファイル名が `d13_ddl_cross_check.sql`（change_id `d13_ddl_cross_check`）であるか"
+    - "`d13_ddl_cross_check.sql` がスキーマ追加ではなく横断検証 SQL であるか"
+    - "enum 26 件・テーブル 62 件・主要物理 FK の検証観点が含まれるか"
+    - "D01 適用済み前提で D02〜D12 適用後に実行可能か"
+    - "Blocker 級不整合の D01〜D12 DDL 修正が定義書・物理 ER と整合しているか"
+    - "修正により D01〜D12 の適用順序・重複制約が破綻していないか"
+    - "LOGICAL FK 方針テーブルへの誤った物理 FK 追加がないか"
+    - "Task ⑤（supabase 統合）進行の判断材料が PR に記載されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Review で確認してほしい事項が明記されている"
+    - "AI Review 結果を PR コメントに記録できる形式になっている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "Blocker が未修正のまま残っていない（または Human 判断事項として明示されている）"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な DDL / 検証 SQL 不備がある"
+      - "PR 本文に棚卸し結果または検証結果が不足している"
+      - "Blocker 修正が不十分または根拠が不足している"
+      - "検証結果または未実施理由が不足している"
+  needs_human_decision:
+    conditions:
+      - "Blocker 修正が docs 仕様変更を伴う"
+      - "MVP△ テーブル含有の go/no-go 判断が必要"
+      - "LOGICAL FK 方針との境界確認が必要"
+      - "Task ⑤ 着手可否の判断が必要"
+  split_required:
+    conditions:
+      - "supabase migration 変更が混在している"
+      - "packages / apps 変更が混在している"
+      - "別 Issue 化すべき docs 大規模修正が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - 610
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/ddl-d13.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "db schema review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definition の acceptance_criteria を満たしているか確認する"
+    - "PR 本文に棚卸し結果・検証結果・未実施理由・Human Review 観点が記載されているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definition はレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 PR レビューのため、レビュー結果は PR コメントを正本とする"
+
+risk_points:
+  - "D01〜D12 棚卸しの取りこぼし"
+  - "Blocker 修正の根拠不足"
+  - "検証 SQL の期待値と実スキーマの乖離"
+  - "D01〜D12 DDL 修正による適用順序・重複制約の破綻"
+  - "LOGICAL FK 方針テーブルへの誤った物理 FK 追加"
+  - "Task ⑤ 着手判断の誤り"
+
+human_decision_points:
+  - "Blocker 修正が docs 仕様変更を伴う場合の採否"
+  - "MVP△ テーブル（evaluation_* / external_attribute / staging_attribute / reco_score_distribution_metric）の含有確認"
+  - "LOGICAL FK 方針との境界"
+  - "Task ⑤（supabase/migrations/ 統合）着手可否"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "supabase migration 変更が混在している場合"
+  - "packages / apps 変更が混在している場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+  - "AI が merge 判断を行う必要がある場合"
+
+notes:
+  - "Batch D13 / change_id: `d13_ddl_cross_check`"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d13.yaml"
+  - "Issue #610 / Branch chore/task-610-d13-ddl"
+  - "先行 merge 済み前提: D01（#611 / PR #614）〜 D12（#609 / PR #625）、#612（ローカル DB 検証）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
