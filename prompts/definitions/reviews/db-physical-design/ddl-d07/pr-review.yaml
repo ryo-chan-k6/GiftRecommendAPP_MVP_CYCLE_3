@@ -1,0 +1,311 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-d07-pr"
+  title: "d07 Online推薦系DDL PRレビュー"
+  summary: "D07 Online 推薦系 DDL Task の PR を AI Review する。`db/ddl/d07_online_recommendation.sql` が 6 テーブル定義書・物理 ER・マイグレーション方針書と整合しているか、D01〜D06 適用後に実行可能か、D08 以降の前提として妥当かを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-604-d07-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 620
+  issue: 604
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d07.yaml"
+  source_branch: "chore/task-604-d07-ddl"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-d07.yaml"
+    required: true
+  issue:
+    number: 604
+    required: true
+  pr:
+    number: 620
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D07 scope・6 テーブル一覧との突合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 ファイル命名・バッチ順序"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8–§11 FK・Index・§15 適用順序・§17 MVP 対象との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 値との突合"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL（`semantic_config_version` 参照）"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "先行バッチ DDL（`pair_master` / Config 系参照）"
+    - path: "db/ddl/d04_item.sql"
+      required: true
+      purpose: "先行バッチ DDL（`item` 参照）"
+    - path: "db/ddl/d05_external_product_integration.sql"
+      required: true
+      purpose: "先行バッチ DDL（適用順序確認）"
+    - path: "db/ddl/d06_item_derived.sql"
+      required: true
+      purpose: "先行バッチ DDL（適用順序確認）"
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+      purpose: "D07-1 突合（個別列 + JSONB payload・Master LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "D07-2 突合（`pair_id` 物理 FK・Config version LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+      purpose: "D07-3 突合（`uq_result_per_run`・version 列 LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+      purpose: "D07-4 突合（rank / item unique・Snapshot 列含む）"
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      required: true
+      purpose: "D07-5 突合（1 Item 1 Reason unique・`template_id` LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/recommendation_feedback_テーブル定義書.md"
+      required: true
+      purpose: "D07-6 突合（partial unique 3 件・trace LOGICAL 含む）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（D08 以降テーブル / supabase migrations / packages / apps / docs 変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  db:
+    - "D07 対象 6 テーブルが DDLバッチ分割表 §11 と一致しているか"
+    - "ファイル名が `d07_online_recommendation.sql`（マイグレーション方針書 §8.1）であるか"
+    - "CREATE 順序が `recommendation_request` → `recommendation_run` → `recommendation_result` → `recommendation_result_item` → `recommendation_reason` → `recommendation_feedback` と依存と整合しているか"
+    - "各テーブルの列・型・PK / UNIQUE / Index / CHECK がテーブル定義書と一致しているか"
+    - "enum 列が D01 で定義された論理 ID 型を参照しているか"
+    - "`recommendation_request` の個別条件列 + JSONB payload が定義書どおりであるか"
+    - "`recommendation_request` の `relationship_code` / `occasion_code` が LOGICAL のまま（Master 物理 FK なし）であるか"
+    - "`recommendation_run.recommendation_request_id` → `recommendation_request` 物理 FK ON が定義書どおりであるか"
+    - "`recommendation_run.pair_id` → `pair_master` 物理 FK ON が定義書どおりであるか"
+    - "`recommendation_run` の Config version 3 列が LOGICAL のまま（物理 FK なし）であるか"
+    - "`recommendation_result` の Request / Run 物理 FK ON が定義書どおりであるか"
+    - "`recommendation_result.uq_result_per_run`（1 Run 1 Result）が定義書どおりであるか"
+    - "`recommendation_result` の version 4 列が LOGICAL のまま（物理 FK なし）であるか"
+    - "`recommendation_result_item` の Result / Item 物理 FK ON が定義書どおりであるか"
+    - "`recommendation_result_item.uq_result_item_result_rank` / `uq_result_item_result_item` が定義書どおりであるか"
+    - "`recommendation_reason.recommendation_result_item_id` 物理 FK ON が定義書どおりであるか"
+    - "`recommendation_reason.uq_recommendation_reason_result_item` が定義書どおりであるか"
+    - "`recommendation_reason.template_id` が LOGICAL のまま（物理 FK なし）であるか"
+    - "`recommendation_feedback.recommendation_result_id` 物理 FK ON が定義書どおりであるか"
+    - "`recommendation_feedback` の partial unique 3 件が定義書どおりであるか"
+    - "`recommendation_feedback` の trace / Item / Reason 列に誤った物理 FK が付与されていないか"
+    - "D08（`user_semantic` 等）から Run への後追い物理 FK が誤って本ファイルに含まれていないか"
+    - "D01〜D06 適用後に本ファイルが実行可能か"
+    - "D08（#605）以降 Task の前提として妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Review で確認してほしい事項が明記されている"
+    - "AI Review 結果を PR コメントに記録できる形式になっている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な DDL 不備がある"
+      - "PR 本文に必要情報が不足している"
+      - "検証結果または未実施理由が不足している"
+  needs_human_decision:
+    conditions:
+      - "Request 個別列 + JSONB 併用の DDL 表現判断が必要"
+      - "Config version LOGICAL FK 方針の確認が必要"
+      - "Feedback partial unique の WHERE 句確認が必要"
+  split_required:
+    conditions:
+      - "D08 User 系テーブル CREATE が混在している"
+      - "supabase migration 変更が混在している"
+      - "別 Issue 化すべき設計変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - 604
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/ddl-d07.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "db schema review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definition の acceptance_criteria を満たしているか確認する"
+    - "PR 本文に検証結果・未実施理由・Human Review 観点が記載されているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definition はレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 PR レビューのため、レビュー結果は PR コメントを正本とする"
+
+risk_points:
+  - "6 テーブル横断での列名・型・制約の取りこぼし"
+  - "`uq_result_per_run` の UNIQUE 定義漏れまたは誤配置"
+  - "`recommendation_feedback` partial unique の WHERE 句不一致"
+  - "Master / Config 列への誤った物理 FK 付与"
+  - "D08 Run 被参照 FK の誤った先行付与"
+  - "D08（#605）以降 Task との適用順序依存"
+
+human_decision_points:
+  - "Request 個別列 + JSONB payload 併用の DDL 表現"
+  - "`pair_id` 物理 FK vs Config version 3 列 LOGICAL FK 方針の確認"
+  - "`uq_result_per_run`（1 Run 1 Result）の確認"
+  - "Feedback partial unique 3 件（session × target × feedback_type）の確認"
+  - "D08 から Run への後追い物理 FK 委譲方針の確認"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "D08 User 系テーブル CREATE が混在している場合"
+  - "supabase migration 変更が混在している場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+  - "AI が merge 判断を行う必要がある場合"
+
+notes:
+  - "Batch D07 / change_id: `d07_online_recommendation`"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d07.yaml"
+  - "Issue #604 / Branch chore/task-604-d07-ddl"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、D02（#599 / PR #615）、D03（#600 / PR #616）、D04（#601 / PR #617）、D05（#602 / PR #618）、D06（#603 / PR #619）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
