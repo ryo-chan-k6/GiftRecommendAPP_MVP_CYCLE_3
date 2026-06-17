@@ -1,0 +1,192 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-d06-pr"
+  title: "d06 Item派生データ系DDL PRレビュー"
+  summary: "D06 Item 派生データ系 DDL Task の PR を AI Review する。`db/ddl/d06_item_derived.sql` が 5 テーブル定義書・物理 ER・マイグレーション方針書と整合しているか、D01〜D05 適用後に実行可能か、D07 以降の前提として妥当かを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-603-d06-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 603
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-d06.yaml"
+  source_branch: "chore/task-603-d06-ddl"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-d06.yaml"
+    required: true
+  issue:
+    number: 603
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D06 scope・5 テーブル一覧との突合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 ファイル命名・バッチ順序"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8–§11 FK・Index・§15 適用順序・§17 HNSW との整合"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 値との突合"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ・enum 型名・pgvector extension の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL（`semantic_config_version` 参照）"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "先行バッチ DDL（`model_version` / `feature_normalization_version` 参照）"
+    - path: "db/ddl/d04_item.sql"
+      required: true
+      purpose: "先行バッチ DDL（`item` 参照）"
+    - path: "db/ddl/d05_external_product_integration.sql"
+      required: true
+      purpose: "先行バッチ DDL（適用順序確認）"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "D06-1 突合（partial unique・`item_id` 物理 FK 含む）"
+    - path: "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+      required: true
+      purpose: "D06-2 突合（`semantic_config_version_id` 物理 FK・冪等 unique 含む）"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "D06-3 突合（冪等 unique・`feature_normalization_version_id` LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/item_meaning_テーブル定義書.md"
+      required: true
+      purpose: "D06-4 突合（冪等 unique・`feature_normalization_version_id` LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+      purpose: "D06-5 突合（`model_version_id` 物理 FK・HNSW Index・冪等 unique 含む）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（D07 以降テーブル / supabase migrations / packages / apps / docs 変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  db:
+    - "D06 対象 5 テーブルが DDLバッチ分割表 §10 と一致しているか"
+    - "ファイル名が `d06_item_derived.sql`（マイグレーション方針書 §8.1）であるか"
+    - "CREATE 順序が `item_generation_queue` → `item_semantic` → `item_feature` → `item_meaning` → `item_embedding` と依存と整合しているか"
+    - "各テーブルの列・型・PK / UNIQUE / Index / CHECK がテーブル定義書と一致しているか"
+    - "enum 列が D01 で定義された論理 ID 型を参照しているか"
+    - "`item_generation_queue.item_id` → `item` 物理 FK ON が定義書どおりであるか"
+    - "`item_generation_queue` の partial unique（`uq_item_gen_queue_active_per_type`）が定義書どおりであるか"
+    - "`item_semantic` / `item_feature` / `item_meaning` の `semantic_config_version_id` 物理 FK ON が定義書どおりであるか"
+    - "`item_feature` の `uq_item_feature_idempotent` 冪等 unique が定義書どおりであるか"
+    - "`item_feature` / `item_meaning` の `feature_normalization_version_id` が LOGICAL のまま（物理 FK なし）であるか"
+    - "`item_meaning` の `uq_item_meaning_item_scv` 冪等 unique が定義書どおりであるか"
+    - "`item_embedding.model_version_id` → `model_version` 物理 FK ON が定義書どおりであるか"
+    - "`item_embedding` の `uq_item_embedding_idempotent` 冪等 unique が定義書どおりであるか"
+    - "`item_embedding` に HNSW Index（`idx_item_embedding_vector`）が定義されているか"
+    - "`item_generation_queue` と派生テーブル間に物理 FK が付与されていないか"
+    - "D07 以降（Online 推薦）からの後追い物理 FK が誤って本ファイルに含まれていないか"
+    - "D01〜D05 適用後に本ファイルが実行可能か"
+    - "D07（#604）以降 Task の前提として妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "`item_generation_queue` partial unique（active 行 `queued` / `processing`）の確認"
+  - "`item_feature` / `item_meaning` の `feature_normalization_version_id` LOGICAL FK 方針の確認"
+  - "`item_embedding` HNSW パラメータ（`m` / `ef_construction`）の MVP 扱い（方針のみ確定・具体値は性能検証）"
+  - "派生テーブル間・Queue 間の物理 FK なし方針の確認"
+  - "`item_feature` の `raw_feature_value` 列名（物理ER `feature_value` との読み替え）の確認"
+
+risk_points:
+  - "5 テーブル横断での列名・型・制約の取りこぼし"
+  - "`item_generation_queue` partial unique の WHERE 句不一致"
+  - "`item_feature` 冪等 unique 5 列構成の定義書との不一致"
+  - "`item_embedding` HNSW Index 定義漏れまたは pgvector 次元不一致"
+  - "`feature_normalization_version_id` への誤った物理 FK 付与"
+  - "Queue と派生テーブル間の誤った物理 FK 付与"
+  - "D07（#604）以降 Task との適用順序依存"
+
+notes:
+  - "Batch D06 / change_id: `d06_item_derived`"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/ddl-d06.yaml"
+  - "Issue #603 / Branch chore/task-603-d06-ddl"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、D02（#599 / PR #615）、D03（#600 / PR #616）、D04（#601 / PR #617）、D05（#602 / PR #618）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "PR 番号は `/create-pr` 後に本 Definition の `target.pr` / `input.pr.number` を更新する"
