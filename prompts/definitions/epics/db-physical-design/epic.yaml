@@ -154,6 +154,7 @@ epic_scope:
     - "ddl"
     - "migration-seed"
     - "data-retention-policy"
+    - "epic-final-integration-check"
 
 dependencies:
   epics: []
@@ -203,6 +204,7 @@ stop_conditions:
 
 notes:
   - "機能・領域単位 Epic（artifact_id 空）。workstream_key: db-physical-design"
-  - "子 Task 実行順: ① physical-er-spec → ② enum-code-definitions → ③ table-spec（並列可）→ ③′ related-docs-reflection-check（Epic マージ前ゲート）→ ④ ddl → ⑤ migration-seed → ⑥ data-retention-policy"
+  - "子 Task 実行順: ① physical-er-spec → ② enum-code-definitions → ③ table-spec（並列可）→ ③′ related-docs-reflection-check（Epic マージ前ゲート）→ ④ ddl → ⑤ migration-seed → ⑥ data-retention-policy → ⑥′ epic-final-integration-check（Epic PR 直前ゲート）"
   - "Epic マージ前ゲート Task: prompts/definitions/tasks/db-physical-design/related-docs-reflection-check.yaml（Issue #582）"
+  - "Epic PR 直前ゲート Task: prompts/definitions/tasks/db-physical-design/epic-final-integration-check.yaml（Issue #633）"
   - "Epic PR Review: prompts/definitions/reviews/db-physical-design/epic/pr-review.yaml"
