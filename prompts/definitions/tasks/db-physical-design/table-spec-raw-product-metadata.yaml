@@ -1,0 +1,227 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-raw-product-metadata"
+  title: "raw_product_metadata:Raw Product Metadataテーブル定義書作成"
+  summary: "物理ER・論理ER §9・状態遷移設計書・enum定義書・外部商品データ連携設計書を入力に、Object Storage 上 Raw JSON 本体への DB 側 Metadata 参照 `raw_product_metadata` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R02 No.4。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 505
+      purpose: "推奨: fetch_cursor テーブル定義書（api_call_log 経由連携の整合。未 merge 時も物理ER・論理ER §9.3 で着手可能）"
+    - number: 495
+      purpose: "Batch R01 No.3 item テーブル定義書（Staging→Item 経路の参照正本。merge 済み前提）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（merge 済み前提）"
+    - number: 500
+      purpose: "Task #495 PR（item。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R02 No.4。論理ER §9.2・テーブル一覧 §6 No.19。
+  Object Storage 上の Raw JSON 本体（`raw_product_object`）への DB 側 Metadata 参照。`import_status` 状態管理対象。
+  `fetch_cursor` → `api_call_log` → `raw_product_metadata` → `staging_*` の外部商品データ連携系中核テーブル。
+  親 Epic Branch 最新（enum #440 merge 済み、item #495 merge 済み前提）を前提とする。
+  推奨先行 Task #505（fetch_cursor）は未 merge でも、物理ER §9・論理ER §9.3・状態遷移設計書 §6.3 を正本として着手可能とする。
+  Issue #506 / Branch `docs/task-506-raw-product-metadata-table-spec` で作業する。
+
+objective: |
+  `raw_product_metadata` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `object_key` / `content_hash` と `raw_product_object`（Object Storage 正本）の 1 対 1 参照、`api_call_log` との produces 関係（LOGICAL FK）、`import_status` 状態遷移（状態遷移設計書 §6.3）を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の raw_product_metadata テーブル定義書作成"
+  - "物理ER Raw/Metadata 系・論理ER §9.2 / §9.3・テーブル一覧 §6 No.19 との突合"
+  - "状態遷移設計書 §6.3（import_status）・enum定義書 §6.7 raw_import_status との整合"
+  - "外部商品データ連携設計書 §8（Object Storage Key / Raw Metadata 項目）との突合・差分整理"
+  - "raw_product_object（Object Storage 正本・DB 非管理）との 1 対 1 参照方針の明記"
+  - "api_call_log との 1:N produces 関係（LOGICAL FK）の整理（api_call_log 本体定義は別 Task へ委譲）"
+  - "staging_item / staging_item_image / staging_ranking_signal / staging_genre への transforms_to 関係整理"
+  - "IF-DB-BATCH-004（Raw Metadata 保存）・ログ・Observability 設計書との整合"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "raw_product_object（Object Storage 正本・DB 非管理）のテーブル定義書"
+  - "api_call_log テーブル定義書（別 Task 化予定。本 Task では関係整理のみ）"
+  - "staging_* / product_diff_result 等の Staging 系テーブル定義書（Batch R03/R04）"
+  - "fetch_cursor テーブル定義書（#505）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系分類・api_call_log → raw_product_metadata produces（LOGICAL 1:N）・staging transforms_to・Index（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "import_status（raw_import_status）enum 参照・error_log owner_type"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 外部商品データ連携系エンティティ・§9.3 疑似差分取得構造・raw_product_object 分離方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.19 raw_product_metadata・外部商品データ連携系補足方針"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.3 Raw Product Metadata 状態遷移（raw_saved / staged / imported / skipped / failed）"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§8 Object Storage Key 設計・§8.4 Raw Metadata 項目・Raw 保存方針・Staging 変換上位方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Raw Metadata 正本区分（Metadata / Log）・Batch 管理主体"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-004 Raw Metadata 保存 I/F・trace キー（api_call_log_id / raw_product_metadata_id）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-001〜005 の Raw 保存・raw_product_metadata 作成フロー・取込状態管理"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "raw_product_metadata 追跡・Retention・trace 方針"
+    - path: "docs/05_アプリケーション設計/基盤/システム論理構成図.md"
+      required: true
+      purpose: "Object Storage と DB Metadata の責務分離"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "Batch R01 系テーブル定義書の章構成・Staging→Item 経路参考（merge 済み前提）"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "raw_product_metadata → staging_genre データフロー参考（§5.2。merge 済み前提）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-raw-product-metadata.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-raw-product-metadata/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "raw_product_metadata テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §9.2・テーブル一覧 §6 No.19 と矛盾しない"
+  - "Object Storage 参照（object_key / content_hash）と raw_product_object 1 対 1 参照方針が明記されている"
+  - "import_status 状態遷移（raw_saved / staged / imported / skipped / failed）が明記されている"
+  - "api_call_log との 1:N produces 関係（LOGICAL FK）が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "raw-product-metadata-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 506
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 505
+      purpose: "fetch_cursor テーブル定義書 merge（api_call_log 関係整合。推奨・未 merge 時も着手可能）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 api_call_log → raw_product_metadata produces（LOGICAL 1:N）との整合"
+    - "物理ER §10 idx_raw_metadata_status（import_status, fetched_at）との整合"
+    - "論理ER §9.2 属性（raw_metadata_id / api_call_log_id / object_key / source / source_api / content_hash / item_count / fetched_at / staged_at / imported_at / error_message）との整合"
+    - "論理ER §9.3 fetch_cursor → api_call_log → raw_product_metadata フローとの整合"
+    - "論理ER raw_product_metadata → raw_product_object 1 対 1 参照方針との整合"
+    - "状態遷移設計書 §6.3 状態一覧・遷移図との整合"
+    - "enum定義書 §6.7 raw_import_status との整合"
+    - "外部商品データ連携設計書 §8.3 Object Storage Key 設計・§8.4 Raw Metadata 項目との突合（差分は §5.4 等で明示）"
+    - "インターフェース一覧 IF-DB-BATCH-004 との整合"
+    - "バッチ設計方針書・ログ・Observability 設計書の Raw 保存・取込状態追跡方針との整合"
+    - "staging_* への transforms_to（raw_metadata_id 参照）関係が §8 等で整理されていること"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R02 No.4: raw_product_metadata（外部商品データ連携系）"
+  - "Issue #506 / Branch docs/task-506-raw-product-metadata-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#495 / PR #500（item）"
+  - "推奨先行: #505 fetch_cursor（未 merge 時は api_call_log 関係を物理ER・論理ER §9.3 ベースで整理）"
+  - "Human Review 論点: PK 列名（論理ER raw_metadata_id vs 外部商品データ連携設計書 raw_product_metadata_id）、外部商品データ連携設計書 §8.4 の追加項目（batch_run_id / request_params 等）の採否、content_hash vs response_content_hash 命名"
+  - "Human Review 論点: object_key の UNIQUE 方針（Raw 1 件 1 Metadata）、api_call_log_id nullable 方針"
+  - "api_call_log 本体は out_of_scope。produces 関係（api_call_log_id・trace）のみ本 Task で明記"
+  - "raw_product_object は DB 非管理。object_key / content_hash による 1 対 1 参照方針のみ定義"
+  - "後続 Task: staging_item 等（Batch R03/R04）、api_call_log 定義書は別 Task 化を検討"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

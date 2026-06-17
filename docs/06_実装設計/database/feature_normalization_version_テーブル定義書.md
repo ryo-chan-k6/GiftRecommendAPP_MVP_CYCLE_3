@@ -162,14 +162,20 @@ Item Feature 再生成の冪等キーは、テーブル一覧 §7 および物�
 | ------ | ------ | ------ | ---------- | ---- |
 | — | — | なし | — | 本テーブルは Config 根。他テーブルから参照される |
 
-### 8.1 被参照（論理）
+### 8.1 被参照（物理 FK ON）
+
+| 参照元 | 参照列 | 関係 | FK制約 | 備考 |
+| ------ | ------ | ---- | ------ | ---- |
+| `normalization_rule` | `feature_normalization_version_id` | resolves | `ON` | 意味 version ごとの正規化 binding 正本。`normalization_rule_テーブル定義書` §8・§17.1 No.3 **決定済み** |
+
+### 8.2 被参照（論理）
 
 | 参照元 | 参照列 | 関係 | FK制約 | 備考 |
 | ------ | ------ | ---- | ------ | ---- |
 | `user_feature` | `feature_normalization_version_id` | normalizes | `LOGICAL`（方針） | 論理ER §11.1・物理ER §9。reco が Run 実行時に解決・記録。物理 FK は `user_feature` テーブル定義 Task で DDL 確定 |
 | `item_feature` | `feature_normalization_version_id` | normalizes | `LOGICAL`（方針） | 論理ER §11.1・物理ER §9・§11。batch が生成時に解決・記録。§7.1 冪等キーに含む。物理 FK は `item_feature` テーブル定義 Task で DDL 確定 |
 
-> MVP 初期 DDL では本テーブル側に被参照 FK を載せない（model_version / relationship_master と同型の Master / Config 系慣例）。整合は batch / reco 側 version 解決 + seed 正本 + 派生行 INSERT 時の存在確認で担保する。
+> **被参照方針の切り分け**: `normalization_rule` はアプリ設計で固定される binding 正本のため **物理 FK ON**。`user_feature` / `item_feature` は大量派生再現記録のため MVP は **LOGICAL** 維持（§17.1 No.4）。本テーブル定義 §10 には outgoing FK は載せない（Master / Config 根テーブル慣例）。
 >
 > **論理ER §14 との差分**: 論理ER §14 関係表は `feature_normalization_version` → `item_feature` のみ記載するが、物理ER §9 および論理ER §11.1 は `user_feature` への参照も定義する。本定義書は物理ER を正として両方を LOGICAL 参照とする。論理ER §14 への `user_feature` 追記は別 docs Task で検討する。
 

@@ -1,0 +1,47 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "batch_type"
+  physical_name: "batch_type"
+  logical_name: "Batch Type"
+  category: "batch"
+  mvp_scope: true
+
+values:
+  - value: "external_fetch"
+    label: "External Fetch"
+    meaning: "外部 API 取得系 Batch（Raw 保存まで）"
+    terminal: true
+    enabled: true
+  - value: "staging"
+    label: "Staging"
+    meaning: "Raw → Staging 変換 Batch"
+    terminal: true
+    enabled: true
+  - value: "import"
+    label: "Import"
+    meaning: "差分判定・Item 反映・有効状態更新 Batch"
+    terminal: true
+    enabled: true
+  - value: "feature_generation"
+    label: "Feature Generation"
+    meaning: "意味 / Feature / Embedding 生成 Batch"
+    terminal: true
+    enabled: true
+  - value: "summary"
+    label: "Summary"
+    meaning: "Import Summary 集計 Batch"
+    terminal: true
+    enabled: true
+  - value: "maintenance"
+    label: "Maintenance"
+    meaning: "保守・Retention 等の運用 Batch"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "batch_run_log"
+    column: "batch_type"
+    constraint: "NULL可"
+    note: "Issue #534 Human Review 確定。batch_run_log_テーブル定義書 §11.3・§17.1 No.2"

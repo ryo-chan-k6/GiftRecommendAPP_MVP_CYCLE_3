@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-recommendation-reason-pr"
+  title: "recommendation_reason テーブル定義書 PRレビュー"
+  summary: "recommendation_reason テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §7.2・Reason生成定義書 §14 / §15.1・reason_template / recommendation_result_item 定義書・API-PUB-002 との整合、has / template_id LOGICAL 参照・reason_basis_json 方針・table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-546-recommendation-reason-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 551
+  issue: 546
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-reason.yaml"
+  source_branch: "docs/task-546-recommendation-reason-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-reason.yaml"
+    required: true
+  issue:
+    number: 546
+    required: true
+  pr:
+    number: 551
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Online推薦系・recommendation_result_item has（FK ON・MVP 実質 1:1 UNIQUE）・派生Snapshot 区分との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§7.2 属性・§14 Result Item → Reason 1対多関係との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§3 No.5 分類・用途・補足方針との整合"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "§14.2 reason_basis 構造・§15.1 論理項目との整合"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "§11 Reason / Feedback 関係との整合"
+    - path: "docs/06_実装設計/database/reason_template_テーブル定義書.md"
+      required: true
+      purpose: "template_id LOGICAL 参照・reason_basis_json 必須項目との双方向整合"
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 has / §5.5 Reason 非保持 / api JOIN / MVP 1:1 UNIQUE との双方向整合"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "reasonSummary / reasonBadges マッピング確認"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "reco 応答 Reason 項目マッピング確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-008 の確認"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "Reason 参照・Feedback 対象方針の確認"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（result_item / feedback / reason_template 再作成 / 物理ER follow-up / DDL / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §7.2 の主要属性と矛盾しないか（Reason生成定義書 §15.1 差分は明示されているか）"
+    - "テーブル一覧 §3 No.5 の分類・用途と一致しているか"
+    - "Reason生成定義書 §14.2 reason_basis 必須項目が reason_basis_json に反映されているか"
+    - "reason_template 定義書と章構成・MVP 方針が一貫しているか"
+    - "recommendation_result_item 定義書 §8.2 / §5.5 と双方向整合しているか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "recommendation_result_item → recommendation_reason の has 関係（FK ON・MVP 実質 1:1 UNIQUE）が明記されているか"
+    - "reason_template.reason_template_id への template_id LOGICAL 参照が明記されているか"
+    - "reason_basis_json に template_name / template_version 必須記録（方式 B）が明記されているか"
+    - "API-PUB-002 reasonSummary / reasonBadges と物理列の対応が整理されているか"
+    - "生成後原則 UPDATE しない方針（派生Snapshot）が明記されているか"
+  security:
+    - "reason_basis_json / reason_detail に prompt 全文・個人情報過剰保持を避ける方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "Reason 項目の保持先（Result Item 側）"
+    decision: "recommendation_reason_id / reason_status / reasonSummary 等は recommendation_result_item に保持しない（result_item 定義書 §5.5・§17.1）"
+  - id: 2
+    topic: "has 関係（Result Item → Reason）"
+    decision: "物理ER §9 は 1:N。recommendation_result_item_id 物理 FK ON。MVP DDL は UNIQUE で実質 1:1（§17.1 No.4 決定済み）"
+  - id: 3
+    topic: "Public API Reason 返却"
+    decision: "api が recommendation_reason を JOIN して reasonSummary / reasonBadges を Public 応答に組立（result_item 定義書 §5.5）"
+  - id: 4
+    topic: "recommendation_run_id / item_id 冗長列"
+    decision: "MVP 物理列なし（§17.1 No.1 決定済み）"
+  - id: 5
+    topic: "generation_method 物理列"
+    decision: "reason_basis_json のみ（§17.1 No.2 決定済み）"
+  - id: 6
+    topic: "model_version_id 保持"
+    decision: "MVP 物理列なし。recommendation_run.model_version_id を正本（§17.1 No.3 決定済み）"
+  - id: 7
+    topic: "1 Result Item : N Reason"
+    decision: "UNIQUE(recommendation_result_item_id) で実質 1:1（§17.1 No.4 決定済み）"
+
+risk_points:
+  - "Reason生成定義書 §15.1 と論理ER §7.2 の項目差分が §5.3 / §17.1 で明示されているか"
+  - "reason_template 定義書で指摘済みの物理ER §9 関係行未記載との follow-up 境界"
+
+notes:
+  - "Batch R06 No.4: recommendation_reason"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-recommendation-reason.yaml"
+  - "Issue #546 / Branch docs/task-546-recommendation-reason-table-spec"
+  - "Human Review #546 決定事項（§17.1 No.1〜4）が本文に反映されている"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

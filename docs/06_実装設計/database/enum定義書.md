@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP            |
 | MVP対象        | `yes`                                      |
 | 作成日         | 2026-06-07                                 |
-| 更新日         | 2026-06-07（Human Review 反映）            |
+| 更新日         | 2026-06-15（`feedback_type` 追加 #547） |
 
 ---
 
@@ -66,17 +66,24 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | API Call Status | `call_status` | state | Batch / 外部API | `yes` | |
 | Raw Import Status | `import_status` | state | Raw Metadata | `yes` | |
 | Fetch Cursor Status | `cursor_status` | state | Batch | `yes` | |
+| Fetch Cursor Type | `cursor_type` | batch | fetch_cursor | `yes` | id: `fetch_cursor_type`。Issue #505 |
+| Source API | `source_api` | batch | raw_product_metadata / api_call_log 等 | `yes` | id: `source_api`。Issue #506 |
 | Product Diff Status | `diff_status` | state | Staging / Diff | `yes` | |
 | Item Active Status | `active_status` | state | Item | `yes` | |
 | Item Generation Queue Status | `queue_status` | state | Batch | `yes` | |
 | Evaluation Run Status | `evaluation_status` | state | Evaluation | `yes` | |
 | Recommendation Request Mode | `request_mode` | application | Request | `yes` | ドメイン docs では `mode` |
 | Feedback Target Type | `feedback_target_type` | application | Feedback | `yes` | |
+| Feedback Type | `feedback_type` | application | Feedback | `yes` | id: `feedback_type`。Issue #547 |
 | Log Owner Type | `owner_type` | application | phase_log / error_log | `yes` | polymorphic |
 | Feature Code | `feature_code` | semantic | Feature / Meaning | `yes` | MVP 8 軸固定 |
 | Item Generation Type | `generation_type` | batch | item_generation_queue | `yes` | Human Review 確定 |
 | Recommendation Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `recommendation_run_phase_name` |
 | Batch Run Phase Name | `phase_name` | batch | phase_log | `yes` | id: `batch_run_phase_name` |
+| Batch Type | `batch_type` | batch | batch_run_log | `yes` | id: `batch_type`。Issue #534 |
+| Input Type | `input_type` | semantic | input_type_rule / reco | `yes` | Featureルール §11.1。Issue #477 |
+| Application Method | `application_method` | semantic | input_type_rule / reco | `yes` | ディスパッチ先コード。Issue #477 |
+| Concept Feature Polarity | `polarity` | semantic | concept_feature_rule | `yes` | API-PUB-008。Issue #476 決定 |
 
 ---
 
@@ -213,9 +220,11 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 
 ### 6.15 Log Owner Type (`owner_type`)
 
+> **`phase_log` と `error_log` の差分（Issue #535 確定）**: `owner_type` enum 全体は両テーブルで共通だが、**`phase_log` の MVP DB CHECK は `recommendation_run` / `batch_run` / `evaluation_run` の 3 値に限定**する。`item_generation_queue` 等は `error_log` のみ（`phase_log_テーブル定義書` §11.3）。
+
 | 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
 | -- | ------ | ---- | -------- | ----------- | ---- |
-| `recommendation_request` | Recommendation Request | Request を owner | phase / error log | `yes` | |
+| `recommendation_request` | Recommendation Request | Request を owner | error log | `yes` | `phase_log` MVP 対象外 |
 | `recommendation_run` | Recommendation Run | Run を owner | phase / error log | `yes` | |
 | `recommendation_result` | Recommendation Result | Result を owner | error log | `yes` | |
 | `recommendation_feedback` | Recommendation Feedback | Feedback を owner | error log | `yes` | |
@@ -268,6 +277,8 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | `reason_generated` | Reason Generated | Reason 生成完了 | Reason 生成 | `yes` | |
 | `response_built` | Response Built | Response 生成完了 | Response 構築 | `yes` | |
 
+> **Observability §10.3 との差分**: `reco_quality_metric_recorded` はログ・Observability設計書に列挙されるが、本 enum および MVP の `phase_log` CHECK には **含めない**。Metric テーブルで記録（`phase_log_テーブル定義書` §5.7）。
+
 ### 6.19 Batch Run Phase Name (`batch_run_phase_name`)
 
 正本: ログ・Observability設計書 §10.4。`phase_log` は 1 `batch_run_id` あたり主要フェーズ単位（十数行オーダー）で記録する。`owner_type = batch_run` 時のみ許可する。
@@ -292,6 +303,98 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 
 `evaluation_run_phase_name` は本 Task では定義しない。Evaluation 関連テーブル定義 Task（BATCH-018 前）で別途定義する。
 
+### 6.20 Input Type (`input_type`)
+
+正本: Featureルール定義書 §11.1。`input_type_rule` のディスパッチキー。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `relationship` | Relationship | 関係性 | Request relationship ブロック | `yes` | `application_method=relationship_rule` |
+| `occasion` | Occasion | 贈答目的 | Request occasion ブロック | `yes` | `application_method=occasion_rule` |
+| `preferred_condition` | Preferred Condition | 好み条件 | preferred_text 等 | `yes` | Concept Delta 加算 |
+| `non_preferred_condition` | Non-Preferred Condition | 避けたい条件 | non_preferred_text 等 | `yes` | Concept Delta 反転。`invert_delta=true` |
+| `ng_condition` | NG Condition | 絶対NG | ng_text 等 | `yes` | Hard Filter。Feature 統合不参加 |
+| `budget_condition` | Budget Condition | 予算 | budget 条件 | `yes` | Hard Filter。Feature 統合不参加 |
+| `free_text` | Free Text | 自由入力 | free_text | `yes` | Semantic 抽出後適用 |
+
+### 6.21 Application Method (`application_method`)
+
+正本: `input_type_rule_テーブル定義書` §5.1。reco の Rule ディスパッチ分岐キー。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `relationship_rule` | Relationship Rule | Relationship 基準値 Rule へディスパッチ | `input_type=relationship` | `yes` | |
+| `occasion_rule` | Occasion Rule | Occasion 基準値 Rule へディスパッチ | `input_type=occasion` | `yes` | |
+| `concept_feature_delta_add` | Concept Feature Delta Add | Concept 補正を加算 | `input_type=preferred_condition` | `yes` | |
+| `concept_feature_delta_invert` | Concept Feature Delta Invert | Concept 補正を反転適用 | `input_type=non_preferred_condition` | `yes` | `invert_delta=true` 必須（CHECK） |
+| `hard_filter_excluded` | Hard Filter Excluded | Feature Rule 非適用 | `input_type` が ng / budget | `yes` | |
+| `semantic_extraction_then_apply` | Semantic Extraction Then Apply | 抽出後 Concept Rule 適用 | `input_type=free_text` | `yes` | |
+
+### 6.22 Concept Feature Polarity (`polarity`)
+
+Human Review（Issue #476）にて MVP 候補値を確定した。`feature_delta` の大きさ（0.0〜1.0）に対する符号・方向を表す。packages/code-definitions 正本化は後続 enum Task で実施する。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `positive` | Positive | Feature 値を増加方向に補正 | Concept → Feature delta | `yes` | API-PUB-008 応答例のデフォルト |
+| `negative` | Negative | Feature 値を減少方向に補正 | Concept → Feature delta | `yes` | |
+| `mixed` | Mixed | 文脈依存・両方向の補正 | Concept → Feature delta | `yes` | reco 適用ロジックは実装 Task で確定 |
+
+### 6.23 Fetch Cursor Type (`fetch_cursor_type`)
+
+Human Review（Issue #505）にて走査戦略 5 値を確定した。`fetch_cursor_テーブル定義書` §5.4・§17.1 を正とする（`ranking_supplement` 粒度は #527 連携で §17.1 No.5 追補）。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `genre` | Genre | ジャンル別商品検索のページ走査 | BATCH-003・`target_external_genre_id` 必須 | `yes` | |
+| `keyword` | Keyword | キーワード検索のページ走査 | BATCH-003・`scope.keyword` 必須 | `yes` | |
+| `update_sort` | Update Sort | 更新順ソートによる棚卸し走査 | BATCH-003 | `yes` | |
+| `ranking_supplement` | Ranking Supplement | ランキング補完候補の走査 | BATCH-003 消費・BATCH-002 生産 | `yes` | **1 商品（`external_item_code`）単位**（§17.1 No.5） |
+| `recheck` | Recheck | 既存商品再確認 | BATCH-004・**1 商品（`external_item_code`）単位** | `yes` | §17.1 No.4 |
+
+### 6.24 Source API (`source_api`)
+
+Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の 4 値を正本化した。Observability §15.2 の短縮表記（`ranking` / `genre`）は **本 enum を正**とし、物理 DDL では採用しない。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `item_search` | Item Search | 楽天商品検索API | BATCH-003 / BATCH-004 等 | `yes` | fetch_cursor MVP は本値のみ（テーブル CHECK） |
+| `item_ranking` | Item Ranking | 楽天ランキングAPI | BATCH-002 | `yes` | |
+| `genre_search` | Genre Search | 楽天ジャンル検索API | BATCH-001 | `yes` | |
+| `attribute_search` | Attribute Search | 楽天属性検索API | 将来拡張 | `yes` | MVP では Raw 保存対象外の場合あり |
+
+### 6.25 Batch Type (`batch_type`)
+
+Human Review（Issue #534）にて Observability §13.2 の処理カテゴリを正本化した。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `external_fetch` | External Fetch | 外部 API 取得系 | BATCH-001〜004 | `yes` | |
+| `staging` | Staging | Raw → Staging 変換 | BATCH-005 | `yes` | |
+| `import` | Import | 差分判定・Item 反映・状態更新 | BATCH-006〜008 | `yes` | |
+| `feature_generation` | Feature Generation | 意味 / Feature / Embedding 生成 | BATCH-009〜016 | `yes` | |
+| `summary` | Summary | Import Summary 集計 | BATCH-017 | `yes` | |
+| `maintenance` | Maintenance | 保守・Retention 等 | 後続 Batch | `yes` | |
+
+`batch_name`（`BATCH-00N`）から `batch_type` への対応は `batch_run_log_テーブル定義書` §11.3 を正とする。
+
+### 6.26 Feedback Type (`feedback_type`)
+
+Recommendation Feedback定義書 §5.2・API-PUB-004 §6.4.1・`recommendation_feedback_テーブル定義書.md` §10.1 を正とする。`feedback_target_type` との整合は API Validation で担保する。
+
+| 値 | 表示名 | 意味 | 必須 `feedback_target_type` | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | --------------------------- | ----------- | ---- |
+| `item_good` | 商品候補として良い | 商品候補として適切 | `item` | `yes` | |
+| `item_bad` | 商品候補として微妙 | 商品候補として不適切 | `item` | `yes` | |
+| `item_not_match` | 文脈不一致 | 贈答文脈に合っていない | `item` | `yes` | |
+| `item_ng_violation` | NG違反 | NG 条件に反している | `item` | `yes` | |
+| `item_avoid_match` | avoid一致 | 避けたい条件に近い | `item` | `yes` | |
+| `reason_good` | 理由に納得 | 理由に納得できた | `reason` | `yes` | |
+| `reason_bad` | 理由に不納得 | 理由に納得できない | `reason` | `yes` | |
+| `result_good` | 推薦全体が良い | 推薦結果全体が適切 | `result` | `yes` | |
+| `result_bad` | 推薦全体が微妙 | 推薦結果全体が不適切 | `result` | `yes` | |
+| `comment` | 自由コメント | 定性コメント中心 | `result` / `item` / `reason` | `yes` | |
+
 ---
 
 ## 7. DB利用箇所
@@ -302,17 +405,25 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | `recommendation_result` | `result_status` | `recommendation_result_status` | NOT NULL | |
 | `recommendation_feedback` | `feedback_status` | `recommendation_feedback_status` | NOT NULL | |
 | `recommendation_feedback` | `feedback_target_type` | `feedback_target_type` | NOT NULL | |
+| `recommendation_feedback` | `feedback_type` | `feedback_type` | NOT NULL | Issue #547 |
 | `recommendation_request` | `request_mode` | `request_mode` | NOT NULL | |
 | `phase_log` | `phase_status` | `phase_status` | NOT NULL | |
 | `phase_log` | `phase_name` | `recommendation_run_phase_name` / `batch_run_phase_name` | NOT NULL | `owner_type` と組み合わせた CHECK |
-| `phase_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
+| `phase_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic。MVP CHECK は 3 値（§6.15） |
+| `phase_log` | `trace_id` | — | NULL可 | Observability 横断追跡（`phase_log_テーブル定義書` §5.4） |
 | `error_log` | `owner_type` | `owner_type` | NOT NULL | polymorphic |
 | `batch_run_log` | `run_status` | `batch_run_status` | NOT NULL | |
+| `batch_run_log` | `batch_type` | `batch_type` | NULL可 | Issue #534 確定 |
 | `api_call_log` | `call_status` | `api_call_status` | NOT NULL | |
+| `api_call_log` | `source_api` | `source_api` | NOT NULL | 論理ER §9.2。api_call_log 定義書（別 Task）で転記 |
 | `raw_product_metadata` | `import_status` | `raw_import_status` | NOT NULL | |
+| `raw_product_metadata` | `source_api` | `source_api` | NOT NULL | Issue #506 確定 |
+| `item_import_summary` | `source_api` | `source_api` | NOT NULL | 論理ER §9.2 |
 | `fetch_cursor` | `cursor_status` | `fetch_cursor_status` | NOT NULL | |
-| `product_diff_result` | `diff_status` | `product_diff_status` | NOT NULL | |
-| `staging_item` | `diff_status` | `product_diff_status` | NULL可 | |
+| `fetch_cursor` | `cursor_type` | `fetch_cursor_type` | NOT NULL | Issue #505 確定 |
+| `fetch_cursor` | `source_api` | `source_api` | NOT NULL | fetch_cursor 定義書 §10。MVP CHECK は `item_search` のみ |
+| `product_diff_result` | `diff_status` | `product_diff_status` | NOT NULL | `product_diff_result_テーブル定義書` §11 |
+| `staging_item` | `diff_status` | `product_diff_status` | NULL可 | `staging_item_テーブル定義書` §17.1 No.4。正本は `product_diff_result`（`product_diff_result_テーブル定義書` §11.2） |
 | `item` | `active_status` | `item_active_status` | NOT NULL | |
 | `item_generation_queue` | `queue_status` | `item_generation_queue_status` | NOT NULL | |
 | `item_generation_queue` | `generation_type` | `item_generation_type` | NOT NULL | Human Review 確定 |
@@ -320,6 +431,10 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | `feature_definition` | `feature_code` | `feature_code` | NOT NULL | MVP 8 軸 CHECK |
 | `item_feature` | `feature_code` | `feature_code` | NOT NULL | feature_definition 参照 |
 | `user_feature` | `feature_code` | `feature_code` | NOT NULL | feature_definition 参照 |
+| `input_type_rule` | `input_type` | `input_type` | NOT NULL | enum定義書 §6.20 |
+| `input_type_rule` | `application_method` | `application_method` | NOT NULL | enum定義書 §6.21。`input_type` と組み合わせ CHECK |
+| `concept_feature_rule` | `polarity` | `polarity` | NOT NULL | `chk_polarity_mvp` CHECK。enum定義書 §6.22。Issue #476 決定 |
+| `concept_feature_rule` | `feature_code` | `feature_code` | NOT NULL | MVP 8 軸 CHECK |
 
 ---
 
@@ -329,7 +444,10 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | --- | ------------------ | ---- | ------ | ---- |
 | API-PUB-002 等 | Request | `mode` | `request_mode` | OpenAPI 上は `mode`。DB 列名は `request_mode` |
 | API-PUB-004 等 | Request | `feedback_target_type` | `feedback_target_type` | |
+| API-PUB-004 等 | Request | `feedbackType` | `feedback_type` | API camelCase。DB 列名は `feedback_type` |
 | - | Response | `run_status` 等 | 各 state enum | MVP 初期 API では内部状態を直接公開しない設計。Contract Task で再確認 |
+| API-ADM-005 | Response | `batchType` / `runStatus` | `batch_type` / `batch_run_status` | Admin 専用。決定事項は batch_run_log 定義書 §5.6 |
+| API-PUB-008 | Response | `conceptFeatureRules[].polarity` | `polarity` | 任意応答。enum定義書 §6.22 と整合 |
 
 ---
 
@@ -339,8 +457,11 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 | ------------- | --------------------- | ------ | ---- | ---- |
 | `packages/code-definitions` | `state/*.yaml` 等 | 全 state enum | 正本 | 本 Task で作成 |
 | `apps/reco` | Run / Phase 記録 | `recommendation_run_status` 等 | 状態更新 | Phase4b 実装 |
-| `apps/batch` | Batch / Import | `batch_run_status` 等 | 状態更新 | Phase4b 実装 |
-| `apps/api` | Feedback 保存 | `feedback_*` | Validation | Phase4b 実装 |
+| `apps/batch` | Batch / Import | `batch_run_status` / `batch_type` 等 | 状態更新 | Phase4b 実装 |
+| `apps/batch` | Fetch Cursor Manager | `fetch_cursor_type` | 走査種別判定 | Issue #505 |
+| `apps/batch` | Raw Product Metadata Writer 等 | `source_api` | API 種別識別 | Issue #506 |
+| `apps/api` | Feedback 保存 | `feedback_status` / `feedback_target_type` / `feedback_type` | Validation | Phase4b 実装 |
+| `apps/reco` | User Feature 生成ディスパッチ | `input_type` / `application_method` | Rule 経路分岐 | Issue #477 |
 
 ---
 
@@ -357,7 +478,7 @@ Human Review にて `semantic` / `feature` / `embedding` の3値を確定した�
 
 | 項目 | 内容 |
 | ---- | ---- |
-| OpenAPI影響 | `partial`（`mode` / `feedback_target_type` のみ直接影響） |
+| OpenAPI影響 | `partial`（`mode` / `feedback_target_type` / `feedback_type` のみ直接影響） |
 | Orval影響 | `false`（本 Task では OpenAPI 未変更） |
 | generated影響 | `false` |
 | Contract Task要否 | `false`（enum 値確定のみ。OpenAPI enum 化は後続 Contract Task） |
@@ -398,8 +519,14 @@ DB 制約方針:
 | --: | ---- | ---- | ------ | ---- |
 | 1 | `item_generation_type`（semantic / feature / embedding） | **クローズ**（Human Review 確定） | Human | §6.17・`item_generation_type.yaml` を確定。テーブル定義 Task で意味を転記 |
 | 2 | Batch 用 `phase_name`（`batch_run_phase_name`） | **クローズ**（Human Review 確定） | Human | §6.19・Observability §10.4 の15値。物理ER §12 連携済 |
-| 3 | `source_type` / `embedding_source_type` | **方針確定済み**（YAML 正本化は後続） | Human | テーブル定義 Task（`user_feature`, `item_embedding`）で enum 定義書 + YAML 正本化 |
+| 3 | `source_type` / `embedding_source_type` | **クローズ**（Issue #516 HR。YAML 正本化は後続） | Human | §12.1・`item_embedding_テーブル定義書` §11。`user_feature.source_type` は §12.1 維持 |
 | 4 | `error_code` 正本化範囲 | **クローズ**（Human Review 確定） | Human | §10.2・`error/README.md`。Phase4a へ委譲 |
+| 5 | `input_type` / `application_method` | **クローズ**（Issue #477） | Human | §6.20–§6.21・`semantic/input_type.yaml`・`semantic/application_method.yaml` |
+| 6 | `polarity`（Concept Feature Polarity） | **クローズ**（Issue #476） | Human | §6.22。packages/code-definitions 正本化は後続 enum Task |
+| 7 | `fetch_cursor_type` | **クローズ**（Issue #505） | Human | §6.23・`batch/fetch_cursor_type.yaml`。fetch_cursor テーブル定義書で転記 |
+| 8 | `source_api` | **クローズ**（Issue #506） | Human | §6.24・`batch/source_api.yaml`。raw_product_metadata テーブル定義書 §17.1 No.4 |
+| 9 | `phase_log` owner_type / retention | **クローズ**（Issue #535 HR） | Human | §6.15 注記・物理ER §13（60日）・`phase_log_テーブル定義書` §11.3 / §13 |
+| 10 | `feedback_type` | **クローズ**（Issue #547） | Human | §6.26・`feedback_type.yaml`・`recommendation_feedback_テーブル定義書` §10.1 |
 
 ### 12.1 No.3 方針メモ（テーブル定義 Task 引き継ぎ）
 
@@ -411,10 +538,16 @@ DB 制約方針:
 
 **`item_embedding.embedding_source_type` → 論理 ID: `embedding_source_type`**
 
-- `embedding_source_version`（構築ルール version ID）とは別概念
+- `embedding_source_version`（構築ルール version ID）とは **別概念**。MVP では **DB 物理列に持たない**（Human Review #516 §17.1 No.2）
+- `embedding_source_version` の変更は **batch 層の Queue 登録トリガー**（`item_generation_queue` §5.6）。永続化は `embedding_source_type` + `embedding_input_hash` + `model_version_id` で行う
 - MVP 有効値は **`item_text_context` のみ**（enabled: true）
 - **`item_text_with_semantic`** は enum に定義するが MVP 初期は enabled: false
-- 再生成判定の主キーは `item_id + embedding_model_version_id + embedding_source_version + embedding_input_hash`
+
+**`item_embedding.embedding_input_hash`**
+
+- 論理ER §10.2・物理ER §11・テーブル一覧 §7 の物理列名は **`embedding_input_hash`**（旧 `source_text_hash` は使用しない。Human Review #516 §17.1 No.1）
+- DB 冪等キー（unique）: `item_id` + `model_version_id` + `embedding_input_hash`
+- 物理列 `model_version_id` は batch 設計書の `embedding_model_version_id` と同一概念
 
 Semantic ルールの `source_type`（`item_name`, `user_input` 等）とは **別論理 ID** とし、同名 enum の混在を避ける。
 
@@ -440,5 +573,10 @@ Semantic ルールの `source_type`（`item_name`, `user_input` 等）とは **�
 - error_code 全件を本 Task で確定していないことが明記されている（§10.2）
 - `batch_run_phase_name` が Observability §10.4 と一致している
 - `item_generation_type` が Human Review 判断どおり確定されている
+- `input_type` / `application_method` が Featureルール §11.1・input_type_rule テーブル定義書と一致している
+- `polarity` が concept_feature_rule テーブル定義書・API-PUB-008 と一致している（§6.22）
+- `fetch_cursor_type` が fetch_cursor テーブル定義書 §5.4 と一致している（§6.23）
+- `source_api` が raw_product_metadata テーブル定義書 §11・外部商品データ連携設計書 §8.4 と一致している（§6.24）
+- `embedding_source_type` / `embedding_input_hash` が enum定義書 §12.1・`item_embedding_テーブル定義書` と一致している（Issue #516）
 - packages/code-definitions のディレクトリ構成がプロジェクトディレクトリ構成定義書 §8.2 と一致している
 - secret や `.env` 実値が含まれていない

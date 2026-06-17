@@ -192,6 +192,8 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
 
 #### 7.4.1 正常系（200）
 
+> 応答例の `conceptCode` は SemanticConcept定義書 §6.1（MVP seed 18 code）に基づく。正本は `semantic_concept` テーブル定義書 §10.1。
+
 ```json
 {
   "data": {
@@ -205,8 +207,9 @@ X-Trace-Id: 550e8400-e29b-41d4-a716-446655440000
         "isActive": true
       },
       {
-        "conceptCode": "warm_gratitude",
-        "conceptLabel": "感謝が伝わる",
+        "conceptCode": "emotional_warm",
+        "conceptLabel": "温かい気持ち",
+        "conceptDescription": "感謝、思いやり、心の温度を感じる",
         "isActive": true
       }
     ],

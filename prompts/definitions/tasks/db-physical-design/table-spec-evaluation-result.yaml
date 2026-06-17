@@ -1,0 +1,296 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-evaluation-result"
+  title: "evaluation_result:Evaluation Resultテーブル定義書作成"
+  summary: "物理ER・論理ER §12.1 / §12.2・Evaluation評価定義書・テーブル一覧 §10 No.54・evaluation_run / evaluation_case / evaluation_dataset / recommendation_result テーブル定義書・BATCH-018 / IF-DB-BATCH-018 / IF-SHARED-004 を入力に、オフライン評価結果正本 `evaluation_result` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R09 No.1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 544
+      purpose: "recommendation_result テーブル定義書（may_reference 被参照正本。merge 済み前提）"
+    - number: 565
+      purpose: "evaluation_dataset テーブル定義書（冗長 evaluation_dataset_id 方針。merge 済み前提）"
+    - number: 566
+      purpose: "evaluation_case テーブル定義書（executed_as 親 Case・merge 済み前提）"
+    - number: 567
+      purpose: "evaluation_run テーブル定義書（produces 親 Run・merge 済み前提）"
+    - number: 574
+      purpose: "並行可能: evaluation_metric テーブル定義書（子テーブル・has 関係。Batch R09 No.2）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 549
+      purpose: "Task #544 PR（recommendation_result。merge 済み前提）"
+    - number: 570
+      purpose: "Task #565 PR（evaluation_dataset。merge 済み前提）"
+    - number: 571
+      purpose: "Task #566 PR（evaluation_case。merge 済み前提）"
+    - number: 572
+      purpose: "Task #567 PR（evaluation_run。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R09 No.1（Evaluation系最終バッチの先頭）。テーブル一覧 §10 No.54。MVP△。
+  評価実行の個別結果。`evaluation_run` に属し、`evaluation_case` を入力として IF-SHARED-004 / `mode=evaluation` で得た Recommendation Result と紐づく。
+  BATCH-018（Offline Evaluation Batch）・IF-DB-BATCH-018 の INSERT 対象のひとつ。MOD-BATCH-041 Evaluation Result Writer の書込先。
+  物理ER Evaluation系分類・論理ER §12.1 / §12.2・Evaluation評価定義書 §14.4 を前提とする。
+  親 Epic Branch 最新（enum #440、recommendation_result #544、evaluation_dataset #565、evaluation_case #566、evaluation_run #567 merge 済み）を前提とする。
+  Issue #573 / Branch `docs/task-573-evaluation-result-table-spec` で作業する。
+
+objective: |
+  `evaluation_result` の物理カラム・制約・Index を table-spec.md テンプレ準拠で定義する。
+  `evaluation_run` との produces（1:N）、`evaluation_case` との executed_as（1:N）、
+  `recommendation_result` との may_reference（LOGICAL FK）、冗長 `evaluation_dataset_id` の再現性方針、
+  `evaluation_metric` との has（1:N・子テーブル）関係を明記し、
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の evaluation_result テーブル定義書作成"
+  - "物理ER Evaluation系・§9 FK 関係（produces / executed_as / has / may_reference）・§10 Index・§11 制約との突合"
+  - "論理ER §12.1 Evaluation系 ER 図・§12.2 evaluation_result 属性との整合"
+  - "テーブル一覧 §10 No.54・Evaluation系補足（recommendation_result 間接連携・produces 1:N）との整合"
+  - "Evaluation評価定義書 §14.4 offline_eval_result 論理項目と evaluation_metric 分離方針の差分整理"
+  - "正本定義表・リソース一覧・リソース責務定義表・ログ・Observability設計書（長期保持候補）との突合"
+  - "evaluation_run_テーブル定義書 §5.2 / §8.1 / §17.1（produces・recommendation_result_id 経由連携）との双方向整合"
+  - "evaluation_case_テーブル定義書 §5.2 / §8.1（executed_as 被参照）との双方向整合"
+  - "evaluation_dataset_テーブル定義書 §5（冗長 evaluation_dataset_id・再評価追記方針）との双方向整合"
+  - "recommendation_result_テーブル定義書 §8.2（references LOGICAL 被参照）との双方向整合"
+  - "インターフェース一覧 IF-DB-BATCH-018 / IF-SHARED-004・処理構成定義書 §13 Offline Evaluation・バッチ処理一覧 BATCH-018 との整合"
+  - "API-INT-002 Reco推薦実行API契約仕様書（mode=evaluation 実行境界）との整合"
+  - "機能×モジュール対応表 MOD-BATCH-041 Evaluation Result Writer との整合"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "evaluation_metric テーブル定義書（R09 No.2 別 Task）"
+  - "evaluation_run / evaluation_case / evaluation_dataset / recommendation_result テーブル定義書の再作成（merge 済みを参照）"
+  - "human_eval_task / human_eval_result 等人手評価テーブル（MVP 未物理化）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+  - "BATCH-018 バッチ仕様書本体の作成（バッチ仕様書 Task の責務）"
+  - "Evaluation Metric 計算ロジックの実装詳細"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Evaluation系分類・§9 produces / executed_as FK / may_reference LOGICAL・§10 Index 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§12.1 Evaluation系 ER 図・§12.2 evaluation_result 属性"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§10 No.54 Evaluation Result・Evaluation系補足方針"
+    - path: "docs/04_ドメインモデル設計/Evaluation評価定義書.md"
+      required: true
+      purpose: "§5.2 評価ケース構成・§14.4 offline_eval_result 論理項目・メトリクス分離参考"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Evaluation Result 正本区分（派生 / Log）・batch 更新主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Evaluation Result リソース分類・更新主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "Evaluation Result 保存責務・正本 / 派生の境界"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-018 Evaluation保存・IF-SHARED-004 Offline Evaluation推薦実行"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "§13 Offline Evaluation フロー上の evaluation_result 保存位置"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-018 入出力・evaluation_result / evaluation_metric 対象テーブル"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Offline Evaluation Batch 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "evaluation_result 長期保持候補・改善履歴 trace"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-BATCH-041 Evaluation Result Writer 入出力"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§8.1 Evaluation Run 終端と Result 生成契機・再評価追記方針"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "mode=evaluation 実行と Result 生成の I/F 境界"
+    - path: "docs/06_実装設計/database/evaluation_run_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 produces 1:N・§8.1 被参照 FK ON・§17.1 No.1 / No.9（#567 merge 済み正本）"
+    - path: "docs/06_実装設計/database/evaluation_case_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 executed_as・§8.1 被参照 FK ON（#566 merge 済み正本）"
+    - path: "docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md"
+      required: true
+      purpose: "§5 冗長 evaluation_dataset_id・再評価追記・Retention 365 日（#565 merge 済み正本）"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 references LOGICAL 被参照・evaluation mode Result 連携（#544 merge 済み正本）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/evaluation_result_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-evaluation-result.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-evaluation-result/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "evaluation_result テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "evaluation_run / evaluation_case との関係（produces / executed_as）が明記されている"
+  - "recommendation_result との may_reference（LOGICAL FK）方針が明記されている"
+  - "物理ER・論理ER §12.2・テーブル一覧 §10 No.54 と矛盾しない"
+  - "evaluation_run_id / evaluation_case_id 物理 FK（ON / ON DELETE RESTRICT）が明記されている"
+  - "evaluation_dataset_id 冗長保持の再現性方針が明記されている"
+  - "evaluation_metric との has 1:N 関係（子テーブル・本 Task では列定義のみ言及）が明記されている"
+  - "Evaluation評価定義書 §14.4 と論理ER / evaluation_metric 分離の差分が整理されている"
+  - "BATCH-018 / IF-DB-BATCH-018 / MOD-BATCH-041 との I/F が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "evaluation-result-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 573
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 544
+      purpose: "recommendation_result テーブル定義書 完了（may_reference 被参照。merge 済み前提）"
+    - number: 565
+      purpose: "evaluation_dataset テーブル定義書 完了（冗長 dataset_id 方針。merge 済み前提）"
+    - number: 566
+      purpose: "evaluation_case テーブル定義書 完了（executed_as 親 Case。merge 済み前提）"
+    - number: 567
+      purpose: "evaluation_run テーブル定義書 完了（produces 親 Run。merge 済み前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/evaluation_result_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER Mermaid ER evaluation_run → evaluation_result produces / evaluation_case → evaluation_result executed_as との整合"
+    - "物理ER §9 evaluation_result.evaluation_run_id → evaluation_run produces（ON）1:N との整合"
+    - "論理ER §12.2 属性（evaluation_result_id, evaluation_run_id, evaluation_dataset_id, evaluation_case_id, recommendation_result_id, executed_at）との整合"
+    - "evaluation_run_テーブル定義書 §5.2 / §17.1 No.1 / No.9 との双方向整合"
+    - "evaluation_case_テーブル定義書 §8.1 executed_as FK ON との双方向整合"
+    - "evaluation_dataset_テーブル定義書 §5 冗長 evaluation_dataset_id・再評価追記方針との双方向整合"
+    - "recommendation_result_テーブル定義書 §8.2 references LOGICAL FK との双方向整合"
+    - "テーブル一覧 §10 No.54・Evaluation系補足（recommendation_result 間接連携）との整合"
+    - "Evaluation評価定義書 §14.4 と evaluation_metric 分離方針の差分整理"
+    - "BATCH-018 / IF-DB-BATCH-018 / IF-SHARED-004 / MOD-BATCH-041 との I/F 整合"
+    - "状態遷移設計書 §8.1.3 再評価追記（Result 上書きなし）との整合"
+    - "ログ・Observability設計書 長期保持候補との整合"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "evaluation_dataset_id の物理 FK"
+    decision: "物理 FK ON / ON DELETE RESTRICT（Run #567・Dataset #565 踏襲。冗長列だが整合性担保）"
+  - id: 2
+    topic: "(evaluation_run_id, evaluation_case_id) UNIQUE"
+    decision: "UNIQUE 制約採用（uq_evaluation_result_run_case）。Run × Case 冪等 INSERT"
+  - id: 3
+    topic: "recommendation_result_id の必須性"
+    decision: "nullable 採用。推薦失敗時も Result 行で trace。metric は子 evaluation_metric"
+  - id: 4
+    topic: "Evaluation §14.4 インライン metric 列"
+    decision: "物理化しない。evaluation_metric のみ（evaluation_case JSONB 分離方針踏襲）"
+  - id: 5
+    topic: "executed_at と created_at"
+    decision: "併用。executed_at = 業務完了時刻、created_at / updated_at = 監査"
+  - id: 6
+    topic: "Evaluation Result Retention"
+    decision: "365 日（created_at 基準）。MVP 自動 DELETE なし。evaluation_dataset / evaluation_run と同値"
+
+notes:
+  - "Batch R09 No.1: evaluation_result（Evaluation系 Result 正本）"
+  - "Issue #573 / Branch docs/task-573-evaluation-result-table-spec"
+  - "R09 並行: 後続 evaluation_metric（#574 想定）"
+  - "blocking 依存: #566 evaluation_case / #567 evaluation_run テーブル定義書（親 Epic merge 必須。未 merge 時は work-issue 停止）"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#544 / PR #549（recommendation_result）、#565 / PR #570（evaluation_dataset）、#566 / PR #571（evaluation_case）、#567 / PR #572（evaluation_run）"
+  - "Human Review §17.1 No.1〜No.6 確定済み（2026-06-16）。human_review_decisions を正とする"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

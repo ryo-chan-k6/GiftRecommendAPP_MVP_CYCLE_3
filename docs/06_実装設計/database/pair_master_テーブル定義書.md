@@ -228,6 +228,7 @@ Reco 実行時に `relationship_code` と `occasion_code` から `pair_id` を�
 | API契約 | `docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md` | Pair 非公開方針 |
 | API契約 | `docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API契約仕様書.md` | Pair 非公開方針 |
 | Featureルール | `docs/04_ドメインモデル設計/Featureルール定義書.md` | §17.3 pair_rule |
+| 参照テーブル定義 | `docs/06_実装設計/database/recommendation_request_テーブル定義書.md` | Request は `pair_id` 非保持・Run 側解決（Human Review #537 No.4） |
 
 ---
 

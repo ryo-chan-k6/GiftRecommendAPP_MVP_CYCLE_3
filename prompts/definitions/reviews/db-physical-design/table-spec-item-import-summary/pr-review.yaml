@@ -1,0 +1,196 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-item-import-summary-pr"
+  title: "item_import_summary テーブル定義書 PRレビュー"
+  summary: "item_import_summary テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §9.2・ログ・Observability設計書・バッチ設計方針書 BATCH-017・product_diff_result / staging_item / batch_run_log との整合、集計仕様・Retention・table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-533-item-import-summary-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 538
+  issue: 533
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-item-import-summary.yaml"
+  source_branch: "docs/task-533-item-import-summary-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-item-import-summary.yaml"
+    required: true
+  issue:
+    number: 533
+    required: true
+  pr:
+    number: 538
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/item_import_summary_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log系・batch_run_log summarizes 関係との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 エンティティ属性・§14 Log系・Batch / chunk単位集計"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.26 Item Import Summary との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§13.3 主要項目・§20.2 Retention・IF-OBS-006"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-017・§14.1 集計単位・GRS-BAT-005"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-017 INSERT・IF-OBS-006 集計項目"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "source_api enum との整合"
+    - path: "packages/code-definitions/batch/source_api.yaml"
+      required: true
+      purpose: "source_api packages 正本との整合"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "§5.1 件数集計責務境界・diff_status 集計元（#526 merge 済み正本）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "Staging → item 昇格フロー文脈（#517 merge 済み正本）"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（batch_run_log 本体 / product_diff_result / staging_item 再定義 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §9.2 の属性（item_import_summary_id / batch_run_id / source / source_api / 各 count / summarized_at）と矛盾しないか"
+    - "テーブル一覧 §6 No.26 の分類・用途・batch 更新主体と一致しているか"
+    - "ログ・Observability設計書 §13.3 主要項目との対応が整理されているか"
+    - "バッチ設計方針書 BATCH-017 入出力・集計タイミングが明記されているか"
+    - "product_diff_result / staging_item テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "Mermaid 構文が破綻していないか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "batch_run_log との summarizes 関係（batch_run_id）が明記されているか"
+    - "product_diff_result との集計関係（diff_status 別件数の由来）が明記されているか"
+    - "staging_item との関係（昇格フロー文脈・直接 FK なし）が明記されているか"
+    - "source_api enum 制約と packages 正本が一致しているか"
+    - "BATCH-017 INSERT 方針（IF-DB-BATCH-017）と集計粒度が明記されているか"
+    - "Retention 365日（Observability §20.2）が明記されているか"
+    - "Staging / Log 系と同様の物理 FK 方針（batch_run_log 未定義 #534 との整合）が整理されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "UNIQUE キー（batch_run_id + source_api）"
+    decision: "(batch_run_id, source_api) を冪等キーとする"
+  - id: 2
+    topic: "skipped_count と unavailable_count の定義境界"
+    decision: "§5.7 を正とする"
+  - id: 3
+    topic: "fetched_count の正本"
+    decision: "api_call_log.item_count 合計を正本"
+  - id: 4
+    topic: "item_ranking snapshot 件数列"
+    decision: "MVP では fetched_count のみ"
+  - id: 5
+    topic: "再集計方針"
+    decision: "INSERT 1 回 + ON CONFLICT DO NOTHING"
+  - id: 6
+    topic: "batch_run_log 物理 FK"
+    decision: "LOGICAL FK + Index"
+
+risk_points:
+  - "product_diff_result（#526 / PR #531）の diff_status 別件数と new/updated/unchanged/unavailable_count の対応漏れ"
+  - "staging_item（#517 / PR #522）昇格フローと集計タイミング（BATCH-007 後）の整理漏れ"
+  - "batch_run_log（#534 未作成）summarizes 関係の FK 方針が先行 Task と矛盾する可能性"
+  - "Observability §13.3 と論理ER §9.2 chunk 表の列差（unavailable_count 等）の整理漏れ"
+  - "ランキング workflow（ranking_snapshot 件数）と item_search workflow の集計粒度混在"
+
+notes:
+  - "Batch R05 No.1: item_import_summary"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-item-import-summary.yaml"
+  - "Issue #533 / Branch docs/task-533-item-import-summary-table-spec"
+  - "先行 Epic: #435 / docs/epic-435-db-physical-design"
+  - "先行 merge 済み前提: #526 / PR #531（product_diff_result）、#517 / PR #522（staging_item）"
+  - "PR 番号は /create-pr 後に本 Definition の target.pr / input.pr.number を更新する"
+  - "Human Review 決定事項（§17.1 No.1〜6）は item_import_summary テーブル定義書に反映済み"

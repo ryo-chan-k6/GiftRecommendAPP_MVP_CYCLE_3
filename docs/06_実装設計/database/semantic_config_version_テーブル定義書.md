@@ -190,10 +190,10 @@ version 非現行化時は `is_current = false` に加え、運用で `valid_to`
 | `relationship_rule` | `semantic_config_version_id` | contains | `ON` | Relationship → Feature 基準値ルール |
 | `occasion_rule` | `semantic_config_version_id` | contains | `ON` | Occasion → Feature 基準値ルール |
 | `pair_rule` | `semantic_config_version_id` | contains | `ON` | Pair 補正ルール |
-| `concept_feature_rule` | `semantic_config_version_id` | contains | `ON` | Concept → Feature 補正ルール |
+| `concept_feature_rule` | `semantic_config_version_id` | contains | `ON` | Concept → Feature 補正ルール。詳細は `concept_feature_rule_テーブル定義書` §8・§17.1 |
 | `normalization_rule` | `semantic_config_version_id` | contains | `ON` | Feature 正規化ルール |
-| `input_type_rule` | `semantic_config_version_id` | contains | `ON` | MVP partial |
-| `feature_integration_rule` | `semantic_config_version_id` | contains | `ON` | MVP partial |
+| `input_type_rule` | `semantic_config_version_id` | contains | `ON` | Human Review: MVP 物理 DDL 対象 |
+| `feature_integration_rule` | `semantic_config_version_id` | contains | `ON` | Human Review: MVP 物理 DDL 対象 |
 
 > 子テーブル側 DDL では `REFERENCES semantic_config_version(semantic_config_version_id) ON DELETE RESTRICT` を付与する想定。Rule 定義の詳細・CHECK は各子テーブル定義 Task で確定する。
 
@@ -203,8 +203,8 @@ version 非現行化時は `is_current = false` に加え、運用で `valid_to`
 | ------ | ------ | ---- | ------ | ---- |
 | `recommendation_run` | `semantic_config_version_id` | used_by | `LOGICAL` | 物理ER §9。Run 開始時に固定。再現性保持 |
 | `evaluation_run` | `semantic_config_version_id` | used_by | `LOGICAL` | 論理ER §12.2。Evaluation 系（MVP partial） |
-| `user_semantic` | `semantic_config_version_id` | generates_with | `LOGICAL` | 派生データ。詳細は別 Task |
-| `item_semantic` | `semantic_config_version_id` | generates_with | `ON` / `LOGICAL` | 派生データ。item 系 Task で FK 方針確定 |
+| `user_semantic` | `semantic_config_version_id` | generates_with | `LOGICAL` | 派生データ。`user_semantic_テーブル定義書` §8.1・§17.1 No.1（物理 FK なし）。Run 固定 version と一致必須 |
+| `item_semantic` | `semantic_config_version_id` | generates_with | `ON` | 派生データ。`item_semantic_テーブル定義書` §17.1 No.1 決定済み |
 | `item_feature` | `semantic_config_version_id` | generates_with | `ON` | Item 派生データ系。物理ER §10 Index 方針に整合 |
 
 > MVP 初期 DDL では `recommendation_run` / `evaluation_run` への物理 FK を張らない（§17.1 No.8）。整合は reco 側 Config 解決 + seed 正本 + Run INSERT 時の `semantic_config_version_id` 存在確認 + `recommendation_run.semantic_config_version_id` への Index で担保する。
@@ -342,7 +342,7 @@ version 非現行化時は `is_current = false` に加え、運用で `valid_to`
 | プロジェクト整合 | `model_version_テーブル定義書` §17.1 No.3、`ranking_config` と **同じ MVP 方針** | 将来の統一は可能だが MVP scope が広がる |
 | 将来拡張 | `recommendation_run` テーブル定義 Task で **物理 FK ON + DELETE RESTRICT** をオプション検討可 | — |
 
-**採用結論:** MVP は **LOGICAL のまま**。整合は reco Config 解決、Run INSERT 前の存在確認、`recommendation_run.semantic_config_version_id` / `evaluation_run.semantic_config_version_id` への Index（run テーブル定義 Task）で担保する。
+**採用結論:** MVP は **LOGICAL のまま**。整合は reco / batch Config 解決、Run INSERT 前の存在確認、`recommendation_run.semantic_config_version_id` / `evaluation_run.semantic_config_version_id` への Index（`evaluation_run_テーブル定義書` §9 `idx_evaluation_run_semantic_config_version`・§17.1 No.4 確定）で担保する。
 
 ---
 

@@ -207,6 +207,7 @@ Web UI の Occasion 選択肢（API-PUB-006）および Recommendation Request �
 | enum定義書 | `docs/06_実装設計/database/enum定義書.md` | コード定義正本（本テーブルは enum 列なし） |
 | API契約 | `docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API契約仕様書.md` | Response マッピング |
 | 参照テーブル定義 | `docs/06_実装設計/database/relationship_master_テーブル定義書.md` | Master 系方針（Human Review #443） |
+| 参照テーブル定義 | `docs/06_実装設計/database/recommendation_request_テーブル定義書.md` | Request 側 LOGICAL 参照（Human Review #537 No.2） |
 | Featureルール | `docs/04_ドメインモデル設計/Featureルール定義書.md` | §7.1 occasion_code 一覧 |
 
 ---
