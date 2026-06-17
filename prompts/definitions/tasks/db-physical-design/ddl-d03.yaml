@@ -1,0 +1,243 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d03"
+  title: "d03:Master/Config系DDL作成"
+  summary: "Phase2 子 Task ④ DDL のバッチ D03。Master / Config 系 7 テーブルの `CREATE TABLE` / Index / CHECK / バッチ内 FK を `db/ddl/d03_master_config.sql` に定義し、D02 から延期された `pair_rule` → `pair_master` 物理 FK を後追い付与する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 611
+      purpose: "先行 D01（extension / enum 型。merge 済み前提）"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系。merge 済み前提）"
+    - number: 601
+      purpose: "後続 D04（Item 系）"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+  related_prs:
+    - number: 614
+      purpose: "D01 DDL PR（merge 済み前提）"
+    - number: 615
+      purpose: "D02 DDL PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **バッチ D03（Master / Config 系）**。Online / Batch が参照する Relationship / Occasion / Pair / Model / Ranking / Reason Template / Feature 正規化 version の基盤となる。
+  対象 7 テーブルは [DDLバッチ分割表.md](../../../docs/06_実装設計/database/DDLバッチ分割表.md) §7 に列挙される。
+  先行 D01（`db/ddl/d01_extensions_and_enums.sql`、Issue #611 / PR #614 merge 済み）および D02（`db/ddl/d02_semantic_feature_definitions.sql`、Issue #599 / PR #615 merge 済み）適用後に本バッチを実行する前提とする。
+  D02 では `pair_rule.pair_id` → `pair_master` の物理 FK を延期している。本 Task で `pair_master` 作成後に `ALTER TABLE` で後追い付与する。
+  Issue #600 / Branch `chore/task-600-d03-ddl` で作業する。
+
+objective: |
+  `db/ddl/d03_master_config.sql` を作成し、D03 対象 7 テーブルの PostgreSQL DDL を各テーブル定義書・物理 ER・enum定義書・コード定義書・マイグレーション方針書と整合させる。
+  バッチ内の CREATE 順序は FK 依存に従う（`relationship_master` / `occasion_master` / `pair_master` → `model_version` / `ranking_config` / `feature_normalization_version` → `reason_template`）。
+  D02 延期分として `pair_rule` → `pair_master` の物理 FK を本ファイル末尾で `ALTER TABLE ... ADD CONSTRAINT` する。
+
+scope:
+  - "`db/ddl/d03_master_config.sql` の新規作成"
+  - "D03 対象 7 テーブルの `CREATE TABLE`、PK、UNIQUE、Index、CHECK、バッチ内で成立する物理 FK"
+  - "  - `relationship_master`"
+  - "  - `occasion_master`"
+  - "  - `pair_master`"
+  - "  - `model_version`"
+  - "  - `ranking_config`"
+  - "  - `reason_template`"
+  - "  - `feature_normalization_version`"
+  - "D02 延期 FK: `pair_rule.pair_id` → `pair_master.pair_id` の `ALTER TABLE ... ADD CONSTRAINT`（`ON DELETE RESTRICT`）"
+  - "D01 / D02 適用済み前提で実行可能な SQL（enum 型・拡張は D01 参照）"
+  - "マイグレーション方針書 §8.1 のファイル命名・バッチ順序への準拠"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "D04 以降のテーブル `CREATE TABLE`"
+  - "D02 延期 FK: `normalization_rule.feature_normalization_version_id` → `feature_normalization_version`（D12 後追い。列は D02 で定義済み）"
+  - "派生テーブル（`recommendation_run` / `user_feature` / `item_feature` 等）から Master / Config への物理 FK（各テーブル定義書の LOGICAL 参照方針に従い MVP では付与しない）"
+  - "`reason_template.relationship_code` / `occasion_code` から Master への物理 FK（LOGICAL 参照のまま）"
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`db/seeds/**` の作成（Task ⑤）"
+  - "`packages/code-definitions/**` の変更"
+  - "`apps/**` 実装変更"
+  - "docs の変更（DDLバッチ分割表・テーブル定義書は参照のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D03 バッチ scope・7 テーブル一覧・適用順序の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・バッチ順序・D12 後追い FK 方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§5 分解方針・§9 制約一覧・§15 適用順序との整合確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型・論理 ID 分離の参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 制約値の参照"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "D03-1 `relationship_master` DDL 正本"
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "D03-2 `occasion_master` DDL 正本"
+    - path: "docs/06_実装設計/database/pair_master_テーブル定義書.md"
+      required: true
+      purpose: "D03-3 `pair_master` DDL 正本（`pair_rule` 被参照 FK 方針含む）"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "D03-4 `model_version` DDL 正本"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "D03-5 `ranking_config` DDL 正本"
+    - path: "docs/06_実装設計/database/reason_template_テーブル定義書.md"
+      required: true
+      purpose: "D03-6 `reason_template` DDL 正本（Master への LOGICAL 参照方針含む）"
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "D03-7 `feature_normalization_version` DDL 正本"
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02 延期 FK（`pair_id` → `pair_master`）の制約名・ON DELETE 方針"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ DDL・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL・延期 FK 対象テーブル（`pair_rule`）の参照"
+  templates: []
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d03_master_config.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d03.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d03/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d03_master_config.sql` に存在する"
+  - "D03 対象 7 テーブルが DDLバッチ分割表 §7 と一致する"
+  - "各テーブルの列・型・制約が対応するテーブル定義書と矛盾しない"
+  - "D01 / D02 適用済み前提で本ファイルが実行可能である"
+  - "`pair_rule` → `pair_master` の延期物理 FK が `fk_pair_rule_pair_master`（または定義書同等）で付与されている"
+  - "`normalization_rule` → `feature_normalization_version` の物理 FK が本ファイルに含まれていない（D12 委譲）"
+  - "`packages/code-definitions/**` および `apps/**` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d03-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 600
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 611
+      purpose: "先行 D01（extension / enum 型）完了"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系）完了"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-db-physical-design-ddl-d02"
+      issue: 599
+      purpose: "D02 Semantic / Feature 定義系の適用前提（`pair_rule` 等）"
+  exclusive_files:
+    - "db/ddl/d03_master_config.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d03.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d03/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "D03 対象 7 テーブルがすべて `CREATE TABLE` されていること"
+    - "各テーブルの PK / UNIQUE / Index / CHECK がテーブル定義書 §7〜§9 と一致すること"
+    - "`pair_rule` → `pair_master` の延期物理 FK が定義書どおりであること"
+    - "`normalization_rule` → `feature_normalization_version` の物理 FK が本ファイルに含まれないこと"
+    - "`reason_template` の Master 参照が LOGICAL のまま（物理 FK なし）であること"
+    - "D01 / D02 適用後に `psql` またはローカル DB 検証環境（#612）で構文・適用が通ること（可能な範囲）"
+    - "`apps/**`・`packages/code-definitions/**` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+  skip_reason:
+    "unit test": "DDL 参照用 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL のみ。適用正本は Task ⑤"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch D03 / change_id: `d03_master_config`"
+  - "Issue #600 / Branch `chore/task-600-d03-ddl`"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、D02（#599 / PR #615）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "後続: D04（#601）以降は本 Task 完了後に着手"
+  - "D02 延期 FK: `pair_rule.pair_id` → `pair_master` は本 Task で後追い。`normalization_rule.feature_normalization_version_id` → `feature_normalization_version` は D12（#609）"
+  - "Human Review 論点: Master / Config 系の LOGICAL 参照方針、`reason_template` の Master code 列 CHECK 範囲、Config version 管理パターン（`is_current` / `config_name` 等）"
