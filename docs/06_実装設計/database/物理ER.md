@@ -566,7 +566,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | 項目 | 内容 |
 | ---- | ---- |
 | DDL作成単位 | テーブル群単位 → テーブル単位の順。Master / Config → Item → Online → Log / Metric の依存順を基本とする |
-| migration命名 | `YYYYMMDDHHMMSS_<summary>.sql`（db/migrations 正本は DDL Task） |
+| migration命名 | `YYYYMMDDHHMMSS_<summary>.sql`（supabase/migrations 適用正本は DDL Task） |
 | 適用順序 | enum / extension（pgvector）→ Master → Semantic → Item → 派生 → Online → Batch/Log → Metric → index / FK 追加（MVP は `public` schema のみ） |
 | rollback方針 | MVP では forward migration 主体。破壊的変更は down migration を Human Review 必須とする |
 | 破壊的変更有無 | `no`（本 Task 時点。DDL Task 時に再評価） |
