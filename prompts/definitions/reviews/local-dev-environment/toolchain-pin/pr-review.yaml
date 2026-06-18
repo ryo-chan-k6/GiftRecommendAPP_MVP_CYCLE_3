@@ -19,10 +19,10 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 652
   task_definition: "prompts/definitions/tasks/local-dev-environment/toolchain-pin.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "chore/task-652-toolchain-pin"
+  target_branch: "chore/epic-651-local-dev-environment"
 
 commands:
   primary: "/review-pr"
@@ -47,7 +47,7 @@ input:
     path: "prompts/definitions/tasks/local-dev-environment/toolchain-pin.yaml"
     required: true
   issue:
-    number: null
+    number: 652
     required: true
   pr:
     number: null
