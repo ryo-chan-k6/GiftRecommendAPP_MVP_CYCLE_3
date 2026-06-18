@@ -1,0 +1,236 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-phase3-process-doc-split-pr"
+  title: "Phase3a/3b分割・§6.4更新 PRレビュー"
+  summary: "Task #647 の PR を AI Review する。実装フェーズ実行プロセス設計書の Phase3a/3b 分割、§6.4 Task 表、§6.5 依存更新、§8.2 Human 判断反映、docs-only・out_of_scope 混入の有無を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-647-phase3-process-doc-split"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 647
+  task_definition: "prompts/definitions/tasks/phase3-process-doc-split/phase3-process-doc-split.yaml"
+  source_branch: "docs/task-647-phase3-process-doc-split"
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/phase3-process-doc-split/phase3-process-doc-split.yaml"
+    required: true
+  issue:
+    number: 647
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase3a/3b 分割・§6.4・§6.5・§8.2 の更新確認"
+    - path: "ai-logs/human-decisions/2026-06-18-local-dev-redis-docker-compose-adoption.md"
+      required: true
+      purpose: "§8.2 Human 判断との整合確認"
+  files:
+    - path: "prompts/definitions/tasks/phase3-process-doc-split/phase3-process-doc-split.yaml"
+      required: true
+    - path: "prompts/definitions/reviews/phase3-process-doc-split/pr-review.yaml"
+      required: true
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（phase3-process-doc-split.yaml）の scope を満たしているか"
+    - "out_of_scope（Epic A/C Definition 量産 / apps / packages / db / openapi / Issue 起票）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が develop であるか（親 Epic なし・develop 直 Task）"
+    - "PR 本文に Related to #647 が記載されているか"
+    - "PR 本文に変更内容・検証結果・未実施事項が記載されているか"
+    - "Task PR で Closes #647 を使っていないか"
+  docs:
+    - "§4 が Phase3a / Phase3b に分割されているか（Mermaid・説明表）"
+    - "§5 が Phase3a（完了）/ Phase3b（未着手）に分割されているか"
+    - "§6.4.1 に Phase3a 完了 Task 表（#437〜#581）があるか"
+    - "§6.4.2 / §6.4.3 に Phase3b Epic A / Epic C Task 表があるか"
+    - "Epic B defer が明記されているか"
+    - "§6.5 の Phase4a 依存が Phase3b Epic A 完了を指すか"
+    - "§8.2 に Human 判断（Redis compose / Epic B defer 等）が整理されているか"
+    - "Epic #436 / PR #584 完了注記が事実と整合しているか"
+    - "用語・正本関係に矛盾がないか（terminology.mdc）"
+  definitions:
+    - "Review Definition が本 PR head に含まれ、workstream 規約パスから解決できるか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "Review Definition が本 PR に含まれているか"
+    - "docs-only（apps / packages / db / openapi 差分なし）"
+    - "Human Review で確認してほしい事項が PR 本文に明記されているか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "Blocker が未修正のまま残っていない"
+      - "scope 外変更がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "§5 / §6.4 / §6.5 の分割・依存が再計画案と矛盾"
+      - "Phase3a 完了注記が事実と不整合"
+      - "Mermaid 構文破綻・表列数不一致"
+      - "PR 本文に必要情報が不足"
+  needs_human_decision:
+    conditions:
+      - "Phase3b Task 表の粒度・Epic 分割が再計画案と一致するかの最終判断"
+  split_required:
+    conditions:
+      - "Epic A / Epic C の Issue 起票や実装変更が混在"
+      - "ローカル開発手順書の Neon 削除が混在"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Review Definition が存在しない"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "00_共通"
+    status: "AI Review"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "project"
+
+dependencies:
+  epics: []
+  issues:
+    - 647
+    - 436
+  prs:
+    - 584
+  tasks:
+    - "prompts/definitions/tasks/phase3-process-doc-split/phase3-process-doc-split.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "Markdown 構文・表列数の目視確認"
+    - "docs-only 確認"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs-only Task"
+
+human_decision_points:
+  - "Phase3b Task 表の粒度・Epic 分割が再計画案と一致しているか"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/phase3-process-doc-split/phase3-process-doc-split.yaml"
+  - "Issue #647 / develop 直 Task（親 Epic なし）"
+  - "target.pr / input.pr.number は /create-pr 成功後に実 PR 番号へ反映する"

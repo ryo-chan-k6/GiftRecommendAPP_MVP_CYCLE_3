@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-phase3-process-doc-split"
+  title: "実装フェーズ実行プロセス設計書:Phase3a/3b分割・§6.4更新"
+  summary: "Phase3 環境再計画（Phase3a 完了 / Phase3b 未着手）に合わせ、実装フェーズ実行プロセス設計書の §4・§5・§6.4・§6.5・§7.2・§8.2 を更新する。"
+  phase: "00_共通"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: "develop"
+  related_issues:
+    - number: 436
+      purpose: "Phase3a Epic（environment-setup・merge 済み）"
+    - number: 584
+      purpose: "Phase3a Epic PR（develop merge 済み）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 環境再計画（2026-06-18）により、従来の Phase3 を Phase3a（設計・正本化・完了）と
+  Phase3b（開発環境構築・未着手）に分割する。Epic #436（environment-setup）は PR #584 で develop merge 済み。
+  本 Task はプロセス正本（実装フェーズ実行プロセス設計書）へ分割・Task 表・依存関係を反映する。
+
+objective: |
+  実装フェーズ実行プロセス設計書を Phase3a/3b 分割後の計画に合わせて更新し、
+  Phase3b Epic A / Epic C の Task 候補表と Phase4a 依存（Phase3b Epic A 完了）を明確化する。
+
+scope:
+  - "§4 段取り全体像: Phase3a / Phase3b 分割（Mermaid・説明表）"
+  - "§5 各Phase詳細: Phase3a（完了）/ Phase3b（未着手）節への分割、Epic #436 完了注記"
+  - "§6.4: 現行 5 Task を Phase3a に移し、Phase3b Epic A / C（Epic B defer）Task 表を追加"
+  - "§6.5: Phase3（env）依存を Phase3b Epic A 完了に明確化"
+  - "§7.2: Phase3b 並列方針の更新"
+  - "§8.2: Phase3b ローカル dev 環境の Human 判断（確定済み）の追記・整理"
+  - "本 Task 用 Task Definition / Review Definition の整備"
+
+out_of_scope:
+  - "Phase3b Epic A / Epic C の Epic Definition 作成"
+  - "Phase3b Epic A / Epic C の個別 Task Definition 量産"
+  - "ローカル開発手順書の Neon 削除（別 Task A3/A6）"
+  - "Issue #132 の Close 操作"
+  - "Epic A / Epic C の Issue 起票"
+  - "apps/** / packages/** / db/** / openapi/** の変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "更新対象の正本"
+    - path: "ai-logs/human-decisions/2026-06-18-local-dev-redis-docker-compose-adoption.md"
+      required: true
+      purpose: "§8.2 Human 判断の根拠"
+  files: []
+  issues:
+    - number: 647
+      required: true
+      purpose: "作業計画・完了条件"
+  prs:
+    - number: 584
+      required: false
+      purpose: "Phase3a Epic merge 済みの事実確認"
+
+output:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/phase3-process-doc-split/phase3-process-doc-split.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/phase3-process-doc-split/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "実装フェーズ実行プロセス設計書の Phase3a/3b 分割更新"
+  - "Phase3b Epic A / Epic C Task 候補表"
+  - "Task Definition / Review Definition"
+
+acceptance_criteria:
+  - "§5 が Phase3a（完了）/ Phase3b（未着手）に分割されている"
+  - "§6.4 に Phase3a 完了 Task 表と Phase3b Epic A/C Task 表がある"
+  - "§6.5 の Phase4a 依存が Phase3b Epic A 完了を指す"
+  - "§8.2 に Phase3b Human 判断（Epic B defer / Redis compose 等）が整理されている"
+  - "正本 docs 間で Phase3a/3b の用語・依存が一貫している"
+  - "Review Definition が prompts/definitions/reviews/phase3-process-doc-split/ に存在する"
+  - "secret、APIキー、.env 実値を含んでいない"
+
+branch:
+  no_branch: false
+  summary: "phase3-process-doc-split"
+  name: "docs/task-647-phase3-process-doc-split"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "00_共通"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-06-18"
+    due_date: null
+
+issue:
+  number: 647
+  unit: "task"
+  type: "docs"
+  area: "project"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 436
+      purpose: "Phase3a 完了（environment-setup）"
+  prs:
+    - number: 584
+      purpose: "Phase3a Epic merge 済み"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+    - "prompts/definitions/tasks/phase3-process-doc-split/phase3-process-doc-split.yaml"
+    - "prompts/definitions/reviews/phase3-process-doc-split/pr-review.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "Markdown 構文・表列数の目視確認"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "§4 Mermaid 構文が破綻していないこと"
+    - "§6.4 表の列数が揃っていること"
+    - "Epic #436 / PR #584 完了注記が事実と整合すること"
+    - "§6.5 Phase4a 依存表記が Phase3b Epic A 完了を指すこと"
+  not_required:
+    - "unit test"
+    - "自動 docs lint"
+  skip_reason:
+    "unit test": "docs のみの Task のため対象外"
+    "自動 docs lint": "CI 上の専用 docs lint 未整備"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Phase3a Epic #436 merge 済みの事実と整合"
+    - "Epic B defer / Epic C Layer2 先行の Human 判断反映"
+    - "§6.5 Phase4a 依存表記の更新"
+    - "Phase3b Task 表の粒度・Epic 分割が再計画案と一致しているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "none"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常作業のため Issue / PR を正本とする"
+
+stop_conditions:
+  - "正本 docs 間で Phase3a/3b の用語・依存が矛盾し、方針判断が必要な場合"
+  - "Epic A / Epic C の Issue 起票が本 Task の完了条件に含まれると判断された場合"
+
+notes:
+  - "Issue #647 / Branch docs/task-647-phase3-process-doc-split / PR target develop（親 Epic なし）"
+  - "Issue out_of_scope の Epic/Task Definition 作成は Phase3b Epic A/C 向けを指す。本 Task 自身の Definition は create-pr / review-pr 実行に必須"
