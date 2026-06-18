@@ -18,11 +18,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 650
   issue:
     number: 649
   task_definition: "prompts/definitions/tasks/phase3b/epic-a-definitions-bootstrap.yaml"
-  source_branch: null
+  source_branch: "chore/task-649-epic-a-definitions-bootstrap"
   target_branch: "develop"
 
 commands:
@@ -52,7 +52,7 @@ input:
     number: 649
     required: true
   pr:
-    number: null
+    number: 650
     required: true
 
 review_points:
