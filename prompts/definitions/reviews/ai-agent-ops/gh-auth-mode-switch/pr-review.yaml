@@ -1,0 +1,206 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-ai-agent-ops-gh-auth-mode-switch-pr"
+  title: "GH認証モード切替CLI PRレビュー"
+  summary: "gh-auth-mode.sh / gh-bot-auth.cjs 拡張 Task の PR を AI Review する。human / bot 切替、後方互換、docs 整合、secret 非含有を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  summary: "gh-auth-mode-switch"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/tasks/ai-agent-ops/gh-auth-mode-switch.yaml"
+  source_branch: null
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/ai-agent-ops/gh-auth-mode-switch.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md"
+      required: true
+      purpose: "一時的人間モード手順の正本"
+  files:
+    - path: ".github/scripts/gh-bot-auth.cjs"
+      required: true
+    - path: ".github/scripts/gh-auth-mode.sh"
+      required: true
+    - path: ".github/scripts/gh-bot-auth.test.cjs"
+      required: true
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "out_of_scope（workflow / apps / .gitignore）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が develop であるか"
+    - "PR author が okuri-ai-bot であるか"
+    - "PR 本文にテスト結果が記載されているか"
+  source:
+    - "verify / print-setup / print-git-user の後方互換"
+    - "print-human-setup / status / verify-human の実装妥当性"
+    - "gh-auth-mode.sh が eval / source 前提を help に明記しているか"
+  docs:
+    - "AI機械アカウント運用設計書 §5.1 / §5.2 が追加されているか"
+    - "bot PR ブランチへの人間 push 禁止が明記されているか"
+    - "github-operation.mdc §3.16 から docs 正本へ参照できるか"
+  security:
+    - "PAT / secret 実値が stdout / docs / テストに含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "node --test .github/scripts/gh-bot-auth.test.cjs pass"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "Blocker が未修正のまま残っていない"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "後方互換破壊"
+      - "docs と実装の手順不一致"
+      - "テスト未追加または fail"
+  needs_human_decision:
+    conditions:
+      - "human モードの verify 方針変更が必要"
+  split_required:
+    conditions:
+      - "workflow 変更が混在"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  issues: []
+  tasks:
+    - "prompts/definitions/tasks/ai-agent-ops/gh-auth-mode-switch.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".github/scripts/gh-bot-auth.cjs"
+    - ".github/scripts/gh-bot-auth.test.cjs"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "node --test .github/scripts/gh-bot-auth.test.cjs"
+  not_required:
+    - "apps integration test"
+
+human_decision_points: []
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/ai-agent-ops/gh-auth-mode-switch.yaml"
+  - "develop 直 Task（親 Epic なし）"
