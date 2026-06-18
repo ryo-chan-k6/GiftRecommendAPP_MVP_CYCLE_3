@@ -55,7 +55,7 @@ out_of_scope:
   - "テーブル定義書（Task ③）"
   - "DDL・migration（Task ④⑤）"
   - "apps/** 実装"
-  - "db/migrations ファイルの作成"
+  - "supabase/migrations ファイルの作成"
 
 input:
   docs:

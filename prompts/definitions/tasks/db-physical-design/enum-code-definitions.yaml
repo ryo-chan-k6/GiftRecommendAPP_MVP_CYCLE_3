@@ -62,7 +62,7 @@ out_of_scope:
   - "DDL・migration（Task ④⑤）"
   - "error_code 全件の実装正本化（エラーコード定義書は参照のみ。error/ は README のみ）"
   - "apps/** 実装"
-  - "db/migrations / db/seeds ファイルの作成"
+  - "supabase/migrations / db/seeds ファイルの作成"
   - "OpenAPI / generated 変更"
 
 input:

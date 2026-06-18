@@ -40,7 +40,7 @@ scope:
   - "物理ER 仕様書の作成（physical-er-spec.md 準拠）"
   - "enum・コード定義の整備（packages/code-definitions 連携）"
   - "テーブル定義書（1テーブル=1Task）"
-  - "DDL・db/migrations・db/seeds"
+  - "DDL・supabase/migrations・db/seeds"
   - "データ保持・削除方針書"
   - "Epic PR 用 Review Definition の整備"
 
@@ -80,7 +80,7 @@ output:
       required: true
       template: null
   files:
-    - path: "db/migrations/**"
+    - path: "supabase/migrations/**"
       action: "create_or_update"
       required: false
     - path: "db/seeds/**"
@@ -172,7 +172,7 @@ parallel_control:
     - "docs/06_実装設計/database/物理ER.md"
     - "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
     - "packages/code-definitions/**"
-    - "db/migrations/**"
+    - "supabase/migrations/**"
   conflict_risk: "medium"
   contract_impact: false
   generated_impact: false
