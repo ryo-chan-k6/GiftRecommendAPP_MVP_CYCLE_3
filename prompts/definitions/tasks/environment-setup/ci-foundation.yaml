@@ -1,0 +1,167 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-environment-setup-ci-foundation"
+  title: "CI基盤"
+  summary: "環境設計書 §19.8・CI・CD方針書を入力に、PR 品質ゲート用 GitHub Actions workflow 基盤を整備する。Phase3 子 Task ⑤。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-environment-setup"
+  epic_issue: "[Epic]environment-setup:環境設計・構築"
+  epic_issue_number: 436
+  epic_branch: "docs/epic-436-environment-setup"
+  related_issues:
+    - number: 437
+      purpose: "先行 Task ①（環境変数定義 §19）"
+    - number: 446
+      purpose: "先行 Task ②（.env.example）"
+    - number: 455
+      purpose: "先行 Task ③（infra/scripts）"
+    - number: 461
+      purpose: "先行 Task ④（ローカル開発手順）"
+  related_prs:
+    - number: 444
+      purpose: "Task ① PR（merge 済み）"
+    - number: 447
+      purpose: "Task ② PR（merge 済み）"
+    - number: 456
+      purpose: "Task ③ PR（merge 済み）"
+    - number: 464
+      purpose: "Task ④ PR（merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 子 Task ⑤。Task ①〜④（#437 / #446 / #455 / #461、PR #444 / #447 / #456 / #464 merge 済み）で環境変数正本・.env.example・infra/scripts・ローカル開発手順を整備済み。
+  Human 判断: `.github/workflows` 変更は Task ⑤ に集中。Issue type は chore。
+
+objective: |
+  CI・CD方針書と環境設計書 §19.8 に整合する PR 品質ゲート（GitHub Actions）の基盤を整備する。
+  MVP では PR 向け CI（lint / typecheck / build / env 名チェック等の最小セット）を優先し、hosted dev / production への CD は含めない。
+  secret 実値は workflow・docs に含めない。
+
+scope:
+  - "PR 品質ゲート用 `.github/workflows/**` の追加・更新（MVP 最小セット）"
+  - "環境設計書 §19.8・`.env.example` / `scripts/dev/check-env-names.sh` との整合（env 名チェック等）"
+  - "既存 AI 運用 workflow との役割分離の明記（破壊的変更は避ける）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "hosted dev / staging / production への CD・deploy workflow"
+  - "apps/** 実装・本格 unit test 追加"
+  - "db/** 変更・migration 実行"
+  - "環境設計書 §19 の内容変更（Task ① scope）"
+  - ".env.example の変更（Task ② scope）"
+  - "infra/scripts 骨格の追加（Task ③ scope）"
+  - "ローカル開発手順 docs 本文の変更（Task ④ scope）"
+  - "既存 workflow（issue-metadata / pr-created / AI Review 等）の破壊的変更"
+  - "secret 実値の記載"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19.8 CI / GitHub Actions 関連・§19.9 GitHub Actions 列"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "PR CI ジョブ構成・成功条件・secret 方針"
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: false
+      purpose: "local と CI の役割分離の参照"
+  files:
+    - path: ".env.example"
+      required: true
+      purpose: "env 名チェックの正本"
+    - path: "scripts/dev/check-env-names.sh"
+      required: true
+      purpose: "CI から呼び出し可能な env 名検査"
+    - path: ".github/workflows/**"
+      required: true
+      purpose: "既存 workflow との整合・役割分離"
+
+output:
+  docs: []
+  files:
+    - path: ".github/workflows/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/environment-setup/ci-foundation.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/environment-setup/ci-foundation/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "PR 向け CI workflow が CI・CD方針書・環境設計書 §19.8 と整合している"
+  - "workflow に secret 実値が含まれていない（`${{ secrets.* }}` 参照のみ）"
+  - "hosted dev / production CD・apps/** 実装・db/** 変更が含まれていない"
+  - "既存 AI 運用 workflow を破壊していない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "environment-setup-ci-foundation"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/**"
+  conflict_risk: "medium"
+  db_impact: false
+  depends_on:
+    - "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
+  blocks: []
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+    cicd: true
+
+human_decision_points:
+  - "Issue type: chore（workflow 変更が主成果物）（Human OK）"
+  - "Task ④ → ⑤ 順（Human OK 2026-06-07）"
+  - "`.github/workflows` 変更は Task ⑤ に集中（Epic 方針）"
+
+notes:
+  - "MVP では monorepo 各 app の full CI は段階的に拡張。本 Task は基盤 workflow の足場を優先する"
+  - "Review Definition は `/work-issue` で作成し `/create-pr` 前に Task Branch へ commit する"

@@ -1,0 +1,171 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-environment-setup-local-dev-guide"
+  title: "ローカル開発手順"
+  summary: "環境設計書 §19.9 local 列・scripts/dev・基盤構成設計書を入力に、ローカル開発手順 docs を正本化する。Phase3 子 Task ④。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-environment-setup"
+  epic_issue: "[Epic]environment-setup:環境設計・構築"
+  epic_issue_number: 436
+  epic_branch: "docs/epic-436-environment-setup"
+  related_issues:
+    - number: 437
+      purpose: "先行 Task ①（環境変数定義 §19）"
+    - number: 446
+      purpose: "先行 Task ②（.env.example）"
+    - number: 455
+      purpose: "先行 Task ③（infra/scripts）"
+  related_prs:
+    - number: 444
+      purpose: "Task ① PR（merge 済み）"
+    - number: 447
+      purpose: "Task ② PR（merge 済み）"
+    - number: 456
+      purpose: "Task ③ PR（merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 子 Task ④。Task ③（#455 / PR #456 merge 済み）で infra/・scripts/ 骨格と scripts/dev 最小補助を整備済み。
+  後続 Task ⑤（CI 基盤）の前提となる。
+  Human 判断（2026-06-07）: docker-compose 同梱なし・DB/Redis 手動起動または Neon 等クラウド dev 利用。
+
+objective: |
+  開発者がローカル環境を構築・起動・疎通確認できる手順を docs 正本として整備する。
+  環境変数は §19 / `.env.example` を参照し、`.env` Git 管理禁止を明記する。
+  secret 実値は記載しない。
+
+scope:
+  - "ローカル開発手順 docs の作成（docs/06_実装設計/cross_cutting/）"
+  - "README.md §11 から手順 docs への参照更新"
+  - "scripts/dev/README.md 等 Task ③ プレースホルダ参照の更新"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "docker-compose 等によるローカル DB/Redis 同梱（Human 判断）"
+  - "CI workflow 変更（Task ⑤）"
+  - "環境設計書 §19 の内容変更（Task ① scope）"
+  - ".env.example の変更（Task ② scope）"
+  - "infra/scripts 骨格の追加（Task ③ scope）"
+  - "apps/** 実装・起動スクリプト実装"
+  - "db/migrations 実行手順の詳細（Phase2 Epic scope）"
+  - "secret 実値の記載"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19 環境変数・§19.9 local 列・§7/§8 環境分離"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "Web/API/Reco/Batch 配置・通信経路"
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "§15 開発環境・monorepo 構成"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: false
+      purpose: ".env Git 管理禁止の参照"
+  files:
+    - path: ".env.example"
+      required: true
+      purpose: "local 列変数名・ポート参照"
+    - path: "scripts/dev/**"
+      required: true
+      purpose: "初回 .env セットアップ手順"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "create"
+      required: true
+      template: null
+  files:
+    - path: "README.md"
+      action: "update"
+      required: true
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/environment-setup/local-dev-guide/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "ローカル開発手順 docs が §19.9 local 列・.env Git 管理禁止と整合している"
+  - "scripts/dev 補助スクリプトの使い方が手順 docs から辿れる"
+  - "docker-compose 同梱・CI workflow 変更・apps/** / db/** 変更が含まれていない"
+  - "secret 実値が含まれていない"
+  - "README.md から手順 docs へ参照できる"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "environment-setup-local-dev-guide"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "README.md"
+  conflict_risk: "low"
+  db_impact: false
+  depends_on:
+    - "prompts/definitions/tasks/environment-setup/infra-scripts.yaml"
+  blocks:
+    - "prompts/definitions/tasks/environment-setup/ci-foundation.yaml"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "ローカル DB/Redis: docker-compose 同梱なし。手動起動または Neon 等（Human OK 2026-06-07）"
+  - "Task ④ → ⑤ 順（Human OK 2026-06-07）"
+
+notes:
+  - "apps/** の package.json scripts 未整備時は、手順 docs では計画コマンド・ポート・参照 docs を記載し、実装 Task へ委譲する"
+  - "Task ⑤ は .github/workflows 変更を Task ⑤ に集中"

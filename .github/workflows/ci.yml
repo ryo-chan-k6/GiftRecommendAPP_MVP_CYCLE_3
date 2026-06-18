@@ -1,0 +1,56 @@
+name: CI
+
+# PR 品質ゲートのエントリポイント（CI・CD方針書 §7–§9 / 環境設計書 §19.8）。
+#
+# 役割分離:
+# - 本 workflow 群（ci*.yml）: lint / typecheck / build / env / contract 等の品質ゲート
+# - 既存 workflow（issue-metadata / pr-created / definition-run 等）: AI 運用・Projects・Slack 通知
+#   破壊的変更は行わず、トリガー・permissions を混在させない。
+#
+# MVP 最小セット: env 名 / secret scan / OpenAPI+Orval。
+# ci-web.yml / ci-api.yml / ci-reco.yml 等はアプリ実装整備後に追加する。
+
+run-name: "ci · ${{ github.event_name }} · ${{ github.head_ref || github.ref_name }}"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  env-check:
+    uses: ./.github/workflows/ci-env.yml
+
+  security-check:
+    uses: ./.github/workflows/ci-security.yml
+
+  contract-check:
+    uses: ./.github/workflows/ci-contract.yml
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs:
+      - env-check
+      - security-check
+      - contract-check
+    if: always()
+    steps:
+      - name: Aggregate CI result
+        run: |
+          if [[ "${{ needs.env-check.result }}" != "success" ]] \
+            || [[ "${{ needs.security-check.result }}" != "success" ]] \
+            || [[ "${{ needs.contract-check.result }}" != "success" ]]; then
+            echo "CI quality gate failed."
+            exit 1
+          fi
+          echo "CI quality gate passed."
