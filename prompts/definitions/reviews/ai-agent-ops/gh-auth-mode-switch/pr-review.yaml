@@ -18,10 +18,10 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null
+  pr: 643
+  issue: 642
   task_definition: "prompts/definitions/tasks/ai-agent-ops/gh-auth-mode-switch.yaml"
-  source_branch: null
+  source_branch: "chore/task-642-gh-auth-mode-switch"
   target_branch: "develop"
   parent_epic_issue: null
   parent_epic_branch: null
@@ -69,10 +69,10 @@ input:
     path: "prompts/definitions/tasks/ai-agent-ops/gh-auth-mode-switch.yaml"
     required: true
   issue:
-    number: null
+    number: 642
     required: true
   pr:
-    number: null
+    number: 643
     required: true
   diff:
     required: true
