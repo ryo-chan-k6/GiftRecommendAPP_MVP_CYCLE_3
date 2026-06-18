@@ -11,9 +11,9 @@ review:
 target:
   pr: null
   issue:
-    number: null
+    number: 651
   task_definition: "prompts/definitions/epics/local-dev-environment/epic.yaml"
-  source_branch: null
+  source_branch: "chore/epic-651-local-dev-environment"
   target_branch: "develop"
 
 review_scope:
@@ -27,7 +27,7 @@ input:
     path: "prompts/definitions/epics/local-dev-environment/epic.yaml"
     required: true
   issue:
-    number: null
+    number: 651
     required: true
 
 review_points:

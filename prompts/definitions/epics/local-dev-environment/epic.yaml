@@ -153,7 +153,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "chore/epic-<issue-number>-local-dev-environment"
+  name: "chore/epic-651-local-dev-environment"
   summary: "local-dev-environment"
   base: "develop"
   target: "develop"
