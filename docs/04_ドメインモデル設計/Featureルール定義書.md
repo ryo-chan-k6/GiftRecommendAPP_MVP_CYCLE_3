@@ -66,7 +66,6 @@ Gift Meaning Space
 | Concept Feature Rule | `concept_feature_rule`     | Semantic ConceptからFeature補正値を生成する             |
 | Input Type Rule      | `input_type_rule`          | 好み・避けたい・NGなど入力種別ごとの適用方法            |
 | Integration Rule     | `feature_integration_rule` | 複数Feature入力を統合する                               |
-| Normalization Rule   | `normalization_rule`       | Feature raw値をnormalized値へ変換する                   |
 
 ---
 
@@ -943,16 +942,16 @@ normalized_value = sigmoid(z)
 
 ### 14.8 正規化パラメータの管理
 
-正規化パラメータは、`semantic_config_version` に含める。
+正規化パラメータ（`center_feature` / `k_feature` / `normalization_method` 等）は、`feature_normalization_version` で version 管理する。
 
-理由は、正規化は「意味の作り方」に影響するためである。
+batch / reco は現行 version を解決して正規化し、`user_feature` / `item_feature` に `feature_normalization_version_id` を記録して再現性を担保する。Public API には公開しない。
 
 | パラメータ           | 管理先                                           |
 | -------------------- | ------------------------------------------------ |
-| center_feature       | semantic_config_version                          |
-| k_feature            | semantic_config_version                          |
-| normalization_method | semantic_config_version                          |
-| 将来のμ / σ          | semantic_config_version または統計量管理テーブル |
+| center_feature       | feature_normalization_version                    |
+| k_feature            | feature_normalization_version                    |
+| normalization_method | feature_normalization_version                    |
+| 将来のμ / σ          | feature_normalization_version または統計量管理テーブル |
 
 ---
 
@@ -1006,8 +1005,6 @@ Featureルールは、すべて `semantic_config_version` に紐づけて管理�
 | pair_rule               | Relationship × Occasion → Feature Delta |
 | concept_feature_rule    | Semantic Concept → Feature Delta        |
 | integration_rule        | Feature統合ルール                       |
-| normalization_rule      | Feature値の正規化ルール                 |
-| normalization_parameter | sigmoidのcenter / k等                   |
 | raw_value_policy        | raw値保持方針                           |
 
 ---
@@ -1019,9 +1016,9 @@ Featureルールは「意味の作り方」である。
 
 | 項目                  | 管理先                  |
 | --------------------- | ----------------------- |
-| Feature生成           | semantic_config_version |
-| Feature正規化         | semantic_config_version |
-| Social / Symbolic射影 | semantic_config_version |
+| Feature生成           | semantic_config_version        |
+| Feature正規化         | feature_normalization_version  |
+| Social / Symbolic射影 | semantic_config_version        |
 | context_score計算     | model_version           |
 | popularity_score      | model_version           |
 | risk_score            | model_version           |
@@ -1085,23 +1082,11 @@ Featureルールは「意味の作り方」である。
 | polarity                   | positive / negative / mixed |
 | is_active                  | 有効フラグ                  |
 
----
-
-### 17.5 normalization_rule
-
-| 項目                       | 内容                             |
-| -------------------------- | -------------------------------- |
-| normalization_rule_id      | 正規化ルールID                   |
-| semantic_config_version_id | 意味定義バージョン               |
-| feature_code               | Featureコード                    |
-| normalization_method       | `sigmoid` / `z_score_sigmoid` 等 |
-| center_value               | sigmoidの中心値                  |
-| k_value                    | sigmoidの感度係数                |
-| is_active                  | 有効フラグ                       |
+> **物理テーブルへのマッピング（Human Review #476 決定）**: 論理項目 `concept_code` は物理列 **`semantic_concept_id`**（`semantic_concept` への物理 FK）で表現する。Public API 応答の `conceptCode` は JOIN で導出する。`feature_delta` は **0.0〜1.0**（大きさ）とし、符号・方向は `polarity` で表現する（pair_rule の signed delta とは分離）。MVP seed は初期 18 Concept 対象の **稀疏** 投入（全 18×8 完全行列は必須としない）。詳細は `docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md` §6・§17.1 を正とする。
 
 ---
 
-### 17.6 Feature生成結果
+### 17.5 Feature生成結果
 
 User Feature / Item Featureの生成結果は、論理的には以下を保持する。
 
@@ -1112,12 +1097,13 @@ User Feature / Item Featureの生成結果は、論理的には以下を保持�
 | feature_code               | Featureコード               |
 | raw_value                  | 未正規化Feature値           |
 | normalized_value           | sigmoid正規化後Feature値    |
-| semantic_config_version_id | 使用した意味定義バージョン  |
-| generated_at               | 生成日時                    |
+| semantic_config_version_id       | 使用した意味定義バージョン      |
+| feature_normalization_version_id | 使用した正規化パラメータversion |
+| generated_at                     | 生成日時                        |
 
 ---
 
-### 17.7 実装形式
+### 17.6 実装形式
 
 MVPでは、以下のいずれも許容する。
 
@@ -1214,7 +1200,7 @@ flowchart TD
 | relationship_rule    | 12分類すべて定義                  |
 | occasion_rule        | 15分類すべて定義                  |
 | pair_rule            | 代表的な組み合わせのみ定義        |
-| concept_feature_rule | 初期18Conceptを定義               |
+| concept_feature_rule | 初期18Conceptを対象とする稀疏seed（全18×8完全行列は必須としない） |
 | 統合ルール           | 加重平均 + Delta加算              |
 | 正規化               | 固定パラメータによるsigmoid正規化 |
 | raw値保持            | 必須                              |

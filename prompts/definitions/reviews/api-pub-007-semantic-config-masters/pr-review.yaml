@@ -80,7 +80,7 @@ review_points:
   - "GRS-CFG-* / GRS-DB-* エラーコード整合"
   - "Semantic Concept / Feature Definition の Public 表面のみ"
   - "内部 Rule（semantic_rule / pair_rule）非含有"
-  - "API-PUB-008 との semanticConfigVersionId 整合"
+  - "API-PUB-008 との configName + versionLabel composite 整合"
   - "実装面混入なし"
   - "OpenAPI 実変更なし"
 

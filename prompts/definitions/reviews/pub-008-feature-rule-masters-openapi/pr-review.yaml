@@ -22,9 +22,9 @@ review_points:
   contract:
     - "契約仕様書 §6〜§8 との整合（2グループ構成、各配列0件200、未知Query 400）"
     - "baseValueRules の ruleType discriminator（relationship/occasion）と条件付き必須"
-    - "pair_rule / normalization_rule 非露出、isActive 非露出"
+    - "pair_rule / 正規化パラメータ非露出、isActive 非露出"
     - "featureBaseValue / featureDelta が 0.0〜1.0"
-    - "API-PUB-005/006/007 とのコード・semanticConfigVersionId 整合"
+    - "API-PUB-005/006/007 とのコード・configName + versionLabel composite 整合"
     - "Orval / generated 未変更"
 
 issue:

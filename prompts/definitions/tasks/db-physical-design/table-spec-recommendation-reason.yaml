@@ -1,0 +1,291 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-recommendation-reason"
+  title: "recommendation_reason:Recommendation Reasonテーブル定義書作成"
+  summary: "物理ER・論理ER・Reason生成定義書・reason_template / recommendation_result_item テーブル定義書・API-PUB-002 を入力に、Online推薦理由派生Snapshot正本 `recommendation_reason` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R06 No.4。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 457
+      purpose: "reason_template テーブル定義書（template_id LOGICAL 参照正本。merge 済み前提）"
+    - number: 543
+      purpose: "recommendation_run テーブル定義書（Reason生成定義書 §15.1 run_id 文脈・merge 済み前提）"
+    - number: 544
+      purpose: "recommendation_result テーブル定義書（Online推薦フロー文脈・merge 済み前提）"
+    - number: 545
+      purpose: "recommendation_result_item テーブル定義書（has 関係の親 Result Item・§8.2 / §5.5。merge 済み前提）"
+    - number: 547
+      purpose: "後続: recommendation_feedback テーブル定義書（Batch R06 No.5）"
+  related_prs:
+    - number: 459
+      purpose: "Task #457 PR（reason_template。merge 済み前提）"
+    - number: 548
+      purpose: "Task #543 PR（recommendation_run。merge 済み前提）"
+    - number: 549
+      purpose: "Task #544 PR（recommendation_result。merge 済み前提）"
+    - number: 550
+      purpose: "Task #545 PR（recommendation_result_item。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R06 No.4。論理ER §7.2・テーブル一覧 §3 No.5。
+  推薦理由の派生Snapshot正本。`recommendation_result_item` ごとの理由文・バッジ・根拠を保持する。
+  IF-DB-RECO-008（Reason保存）の DB 正本。
+  `reason_template`（#457 / PR #459 merge 済み前提）を解決結果として `template_id` に論理参照する。
+  親 Epic Branch 最新（recommendation_run #543 / recommendation_result #544 / recommendation_result_item #545 merge 済み前提）を前提とする。
+  `recommendation_result_item_テーブル定義書.md` §8.2（has / FK ON・MVP 実質 1:1 UNIQUE）・§5.5（Reason 項目は本テーブル側・api JOIN 返却）と双方向整合する。
+  Issue #546 / Branch `docs/task-546-recommendation-reason-table-spec` で作業する。
+
+objective: |
+  `recommendation_reason` の物理カラム・制約・Index・`reason_basis_json` 保持方針を table-spec.md テンプレ準拠で定義する。
+  `recommendation_result_item` への has 関係（物理 FK ON・MVP 実質 1:1 UNIQUE）・`reason_template` への template_id LOGICAL 参照・Reason生成定義書 §14.2 / §15.1 との整合を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の recommendation_reason テーブル定義書作成"
+  - "物理ER Online推薦系・§9 FK（recommendation_result_item has）・§10 Index・§11 制約との突合"
+  - "論理ER §7.2 Online推薦系属性・§14 Result Item → Reason 関係との整合"
+  - "テーブル一覧 §3 No.5・Online推薦系補足（推薦理由文・理由要素）との整合"
+  - "Reason生成定義書 §14.1〜§14.3 reason_basis・§15.1 recommendation_reason 論理項目との整合"
+  - "RecommendationResult定義書 §11（Reason / Feedback 関係）・API 返却項目（reasonSummary / reasonBadges）との整合"
+  - "reason_template_テーブル定義書（template_id LOGICAL 参照・reason_basis_json 必須項目・方式 B 利用記録）との双方向整合"
+  - "recommendation_result_item_テーブル定義書 §8.2 / §5.5（has・Reason 項目非保持・api JOIN・MVP 1:1 UNIQUE）との双方向整合"
+  - "正本定義表・リソース一覧・リソース責務定義表・機能×モジュール対応表（MOD-RECO-023）との突合"
+  - "インターフェース一覧 IF-DB-RECO-008・処理構成定義書・処理フロー概要図・ログ・Observability設計書との整合"
+  - "API-PUB-002 / API-INT-002（reasonSummary / reasonBadges → DB 物理列マッピング）との整合"
+  - "認証・認可方針書（Reason 参照・Feedback 対象）・phase_log 設計（llm_prompt_version 参照）との整合"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "recommendation_result_item / recommendation_feedback テーブル定義書の再作成（#545 / #547 別 Task）"
+  - "reason_template テーブル定義書の再作成（#457 merge 済みを参照）"
+  - "recommendation_run / recommendation_result / recommendation_request テーブル定義書の再作成"
+  - "物理ER §9 への reason_template → recommendation_reason 関係行の追記（reason_template 定義書 follow-up と同方針）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Online推薦系分類・recommendation_result_item has recommendation_reason（FK ON・MVP 実質 1:1 UNIQUE）・派生Snapshot 区分"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§7.2 recommendation_reason 属性・§14 Result Item → Reason 1対多関係"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§3 No.5 Recommendation Reason・Online推薦系補足（推薦理由文・理由要素）"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "§14.1〜§14.3 reason_basis 構造・§15.1 recommendation_reason 論理項目・generation_method / template_id 方針"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "§11 Reason / Feedback 関係・Result Item 上の recommendation_reason_id 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Recommendation Reason 正本区分（派生 / Snapshot）・reco 保存主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Recommendation Reason リソース分類・更新主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "Reason 保存責務・正本 / 派生の境界"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-RECO-023 Reason Generator の入出力（recommendation_reason）"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-008 Reason保存 I/F"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "Reason生成・保存タイミング（Ranking / Result Item 後）"
+    - path: "docs/05_アプリケーション設計/アプリ/処理フロー概要図.md"
+      required: true
+      purpose: "Online推薦フロー上の Reason Generation 位置"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "Reason生成 Observability・recommendation_reason 作成タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "Reason Badge / Reason Summary は個別状態不要・生成後不変方針の参考"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "Reason 参照権限・Feedback 対象としての Reason 参照"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "reasonSummary / reasonBadges → DB 物理列マッピング・includeReason 方針"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "reco 応答の Reason 項目と DB 物理列マッピング"
+    - path: "docs/06_実装設計/database/reason_template_テーブル定義書.md"
+      required: true
+      purpose: "§8.1 template_id LOGICAL 参照（reason_template_id uuid）・reason_basis_json 必須項目（merge 済み前提）"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "Reason生成定義書 §15.1 recommendation_run_id 文脈・Run トレース（merge 済み前提）"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: false
+      purpose: "Online推薦フロー文脈参考（merge 済み前提）"
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 has / §5.5 Reason 項目非保持 / api JOIN / MVP 1:1 UNIQUE との双方向整合（merge 済み前提）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: false
+      purpose: "reason_basis_json 内 llm_prompt_version と phase_log 参照関係"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-reason.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-recommendation-reason/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "recommendation_reason テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "recommendation_result_item との has 関係（FK ON・MVP 実質 1:1 UNIQUE）が明記されている"
+  - "recommendation_result_item_テーブル定義書 §8.2 / §5.5 と双方向整合している（Reason 項目は本テーブル側）"
+  - "reason_template との template_id LOGICAL 参照（reason_template_id uuid）が明記されている"
+  - "reason_basis_json の必須項目（template_name / template_version 等）が Reason生成定義書 §14.2 / reason_template 定義書 §6.2 と整合している"
+  - "物理ER・論理ER §7.2・テーブル一覧 §3 No.5 と矛盾しない"
+  - "API-PUB-002 reasonSummary / reasonBadges と DB 物理列のマッピングが整理されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "recommendation-reason-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 546
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 457
+      purpose: "reason_template テーブル定義書 完了（template_id LOGICAL 参照正本。merge 済み前提）"
+    - number: 545
+      purpose: "recommendation_result_item テーブル定義書 完了（has 関係の親・§8.2 / §5.5。merge 済み前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 recommendation_result_item → recommendation_reason has（FK ON・MVP 実質 1:1 UNIQUE）との整合"
+    - "論理ER §7.2 属性（reason_badges_json / reason_summary / reason_detail / reason_points_json / caution_note / reason_basis_json）との整合"
+    - "論理ER §14 Result Item → Reason 1対多関係と MVP UNIQUE による実質 1:1 の差分整理"
+    - "Reason生成定義書 §15.1 論理項目との差分（run_id / item_id / generation_method / model_version_id）が §5.3 / §17.1 に明示されていること"
+    - "Reason生成定義書 §14.2 reason_basis 必須項目と reason_basis_json 物理列の対応"
+    - "reason_template 定義書 §8.1 template_id LOGICAL 参照・§6.2 方式 B 利用記録との双方向整合"
+    - "recommendation_result_item 定義書 §8.2 has / §5.5 Reason 非保持・api JOIN・1:1 UNIQUE との双方向整合"
+    - "IF-DB-RECO-008・処理構成定義書 Reason生成タイミングとの整合"
+    - "API-PUB-002 / API-INT-002 reasonSummary / reasonBadges マッピングとの整合"
+    - "認証・認可方針書 Reason 参照・Feedback 対象との整合"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "Reason 項目の保持先（Result Item 側）"
+    decision: "recommendation_reason_id / reason_status / reasonSummary 等は recommendation_result_item に保持しない（result_item 定義書 §5.5・§17.1）"
+  - id: 2
+    topic: "has 関係（Result Item → Reason）"
+    decision: "物理ER §9 は 1:N。recommendation_result_item_id 物理 FK ON。MVP DDL は UNIQUE(recommendation_result_item_id) で実質 1:1（§17.1 No.4 決定済み）"
+  - id: 3
+    topic: "Public API Reason 返却"
+    decision: "api が recommendation_reason を JOIN して reasonSummary / reasonBadges を Public 応答に組立（result_item 定義書 §5.5）"
+  - id: 4
+    topic: "recommendation_run_id / item_id 冗長列"
+    decision: "MVP 物理列なし。Result Item / Result / Run 経由で追跡（§17.1 No.1 決定済み）"
+  - id: 5
+    topic: "generation_method 物理列"
+    decision: "reason_basis_json のみ（generation_method キー必須）。物理 enum 列は採用しない（§17.1 No.2 決定済み）"
+  - id: 6
+    topic: "model_version_id 保持"
+    decision: "MVP 物理列なし。recommendation_run.model_version_id を正本（§17.1 No.3 決定済み）"
+  - id: 7
+    topic: "1 Result Item : N Reason"
+    decision: "UNIQUE(recommendation_result_item_id) で実質 1:1。将来 multi-reason は UNIQUE 解除（§17.1 No.4 決定済み）"
+
+notes:
+  - "Batch R06 No.4: recommendation_reason（Online推薦系）"
+  - "Issue #546 / Branch docs/task-546-recommendation-reason-table-spec"
+  - "Issue 本文のテーブル一覧参照 §4 は User意味推定系を指すため、正本は §3 No.5 を用いる"
+  - "先行 merge 済み前提: #457 / PR #459（reason_template）、#543 / PR #548（recommendation_run）、#544 / PR #549（recommendation_result）、#545 / PR #550（recommendation_result_item）"
+  - "後続 Task: #547 recommendation_feedback"
+  - "物理ER §9 への reason_template → recommendation_reason 関係行追記は reason_template 定義書と同様 follow-up"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

@@ -53,11 +53,11 @@ scope:
   - "API-PUB-007 の API 契約仕様書を新規作成する（成果物: API-PUB-007_Semantic設定取得API契約仕様書.md）"
   - "API基本情報（API ID / Public / GET / Endpoint / Provider / Consumer / 認証 / 冪等性 / MVP対象）を定義する"
   - "Request Header / Path / Query / Body（なし）を整理する"
-  - "Response Body（Semantic Config スナップショット: semanticConfigVersionId / semanticConcepts / featureDefinitions）を整理する"
+  - "Response Body（Semantic Config スナップショット: configName + versionLabel / semanticConcepts / featureDefinitions）を整理する"
   - "Error Response仕様（GRS-CFG-* / GRS-DB-* / GRS-REQ-*）を整理する"
   - "空配列・current Version 未設定の HTTP Status 方針を明示する"
   - "OpenAPI / Orval / generated 反映方針を整理する（方針のみ）"
-  - "API-PUB-008 との semanticConfigVersionId 整合方針を整理する"
+  - "API-PUB-008 との configName + versionLabel composite 整合方針を整理する"
   - "互換性・契約面テスト観点を整理する"
   - "未決事項・人間判断が必要な事項を明記する"
 
@@ -67,7 +67,7 @@ out_of_scope:
   - "Orval設定・generated の再生成"
   - "apps/api / apps/web / apps/reco の実装"
   - "API-PUB-008 の仕様書作成（別 Task #404）"
-  - "pair_rule / semantic_rule / normalization_rule の Public 返却"
+  - "pair_rule / semantic_rule / feature_normalization_version の Public 返却"
   - "DB schema 変更"
 
 input:

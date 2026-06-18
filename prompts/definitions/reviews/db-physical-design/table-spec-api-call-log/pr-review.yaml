@@ -1,0 +1,178 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-api-call-log-pr"
+  title: "api_call_log テーブル定義書 PRレビュー"
+  summary: "api_call_log テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §9・状態遷移設計書 §6.2・enum定義書・ログ・Observability設計書・fetch_cursor / raw_product_metadata テーブル定義書との整合、controls / produces 関係・call_status 遷移・Retention / マスキング方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-527-api-call-log-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 532
+  issue: 527
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-api-call-log.yaml"
+  source_branch: "docs/task-527-api-call-log-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-api-call-log.yaml"
+    required: true
+  issue:
+    number: 527
+    required: true
+  pr:
+    number: 532
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系・Log 系・LOGICAL FK・idx_api_call_log_batch 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 エンティティ属性・§9.3 フロー・§14 状態一覧との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.18 分類・用途との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.2 call_status 遷移・§11.2 rate_limited 異常系・§11.3 再実行方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "api_call_status / source_api enum との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§8.4 と api_call_log 責務境界（request_params / batch_run_id 等）の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§14 主要項目・保存禁止情報・Retention 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-002 / IF-OBS-004 の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Rate Limit → rate_limited 記録・Fetch Cursor 連動方針の確認"
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 controls・§5.3 rate_limited → paused との双方向整合"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 produces・api_call_log_id nullable・trace との双方向整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（fetch_cursor / raw_product_metadata 再作成 / batch_run_log 本体 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §9.2 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "テーブル一覧 §6 No.18 の分類・用途と一致しているか"
+    - "状態遷移設計書 §6.2 の状態一覧・遷移図が反映されているか"
+    - "ログ・Observability設計書 §14 との突合（started_at vs requested_at 等）が §5.4 等で整理されているか"
+    - "fetch_cursor / raw_product_metadata テーブル定義書と章構成・MVP 方針が一貫しているか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "batch_run_log → api_call_log / fetch_cursor → api_call_log の LOGICAL FK 関係が明記されているか"
+    - "api_call_log → raw_product_metadata の 1:N produces（LOGICAL FK）関係が明記されているか"
+    - "call_status（api_call_status）と enum定義書 §6.6 が一致しているか"
+    - "source_api と enum定義書 §6.24 が一致しているか"
+    - "fetch_cursor_id nullable 方針（BATCH-001/002 Log は NULL、BATCH-003 ranking_supplement 消費時は NOT NULL）と rate_limited → paused 連動（fetch_cursor 定義書 §5.3）が明記されているか"
+    - "物理ER §10 idx_api_call_log_batch（batch_run_id, requested_at）が反映されているか"
+    - "Retention 方針（ログ・Observability設計書）が § 等で明記されているか"
+  security:
+    - "§14.3 相当: API キー・Authorization Header・Secret を request_params_json 等に保存しない方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "論理ER requested_at/completed_at vs ログ・Observability設計書 started_at/completed_at の物理列名採用"
+  - "response_status vs http_status 命名（論理ER vs 外部商品データ連携設計書 §8.4）"
+  - "trace_id / request_params_hash / duration_ms / error_code の採否と nullable 方針"
+  - "fetch_cursor_id nullable（BATCH-001/002 vs BATCH-003 ranking_supplement）と rate_limited → paused 連動の MVP 必須性（fetch_cursor 定義書 §17.1 No.3 / No.5 との整合）"
+
+risk_points:
+  - "fetch_cursor / raw_product_metadata 定義書が api_call_log 側から逆参照しているため、双方向記述の粒度が本 Task のみで完結するか"
+  - "論理ER・ログ・Observability設計書・外部商品データ連携設計書間の列名差分整理が Human Review 論点として残る可能性"
+
+notes:
+  - "Batch R04 No.5: api_call_log"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-api-call-log.yaml"
+  - "Issue #527 / Branch docs/task-527-api-call-log-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#505 / PR #510（fetch_cursor）、#506 / PR #511（raw_product_metadata）"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

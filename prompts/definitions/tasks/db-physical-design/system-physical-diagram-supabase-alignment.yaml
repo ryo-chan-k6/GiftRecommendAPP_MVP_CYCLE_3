@@ -1,0 +1,185 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-system-physical-diagram-supabase-alignment"
+  title: "db-physical-design:システム物理構成図 Supabase整合"
+  summary: "PR #596 まで残存した `システム物理構成図.md` 内の Neon/S3 記述を、#592 #594 #596 で確定した Supabase 前提へ整合する。Phase2 ④ DDL 前提整備。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 591
+      purpose: "前提 Task（merge 済み前提）"
+    - number: 593
+      purpose: "前提 Task（merge 済み前提）"
+    - number: 595
+      purpose: "基盤 docs Supabase 横断整合（merge 済み前提）"
+    - number: 596
+      purpose: "直前 PR。本ファイルは out of scope として分離"
+  related_prs:
+    - number: 592
+      purpose: "前提 PR（merge 済み）"
+    - number: 594
+      purpose: "前提 PR（merge 済み）"
+    - number: 596
+      purpose: "前提 PR（merge 済み）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 ④ DDL 前提整備。PR #596 では基盤 docs 4 ファイルを Supabase 前提へ横断更新したが、
+  `システム物理構成図.md` は out of scope として後続 Task に分離されていた。
+  Human 確定済み Supabase 前提（Hosted PostgreSQL / Supabase Storage / api 境界での Auth 未接続）を物理構成図へ反映する。
+
+objective: |
+  `システム物理構成図.md` の DB / Object Storage / Secret / 通信表記を Supabase 前提へ統一し、
+  Neon / S3 前提の記述を除去する。MVP 補足として Supabase Auth 未接続（api 境界）を追記する。
+
+scope:
+  - "`docs/05_アプリケーション設計/基盤/システム物理構成図.md` の Supabase 整合"
+  - "DB 接続先表記を Supabase Hosted PostgreSQL へ更新"
+  - "Raw JSON 保存先を Supabase Storage へ更新"
+  - "必要な注記（MVP では Supabase Auth 未接続）の追加"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "`apps/**` 実装変更"
+  - "OpenAPI / generated 変更"
+  - "`infra/supabase/` の詳細設計"
+  - "環境変数定義書の全面改訂（Phase3 #436）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/システム物理構成図.md"
+      required: true
+      purpose: "更新対象正本"
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "#596 で更新済み Supabase / Storage / Secret 骨子との整合"
+    - path: "docs/05_アプリケーション設計/基盤/システム論理構成図.md"
+      required: true
+      purpose: "#596 で更新済み Raw 保存・配置記述との整合"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "Supabase Auth 未接続注記との整合"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "#596 で更新済み PostgreSQL + Storage 記述との整合"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/システム物理構成図.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/system-physical-diagram-supabase-alignment.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/system-physical-diagram-supabase-alignment/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "`システム物理構成図.md` 内に Neon / S3 前提の記述が残っていない"
+  - "#591 #593 #595 #596 と矛盾しない"
+  - "Task PR が作成され Human Review 可能な状態である"
+  - "Task PR 本文の Issue 参照は `Related to #597`（`Closes` 禁止）"
+  - "apps/** 変更がない"
+
+branch:
+  no_branch: false
+  summary: "db-physical-design-system-physical-diagram-supabase-alignment"
+  name: "docs/task-597-db-physical-design-system-physical-diagram-supabase-alignment"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 597
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 591
+      purpose: "前提 Task"
+    - number: 593
+      purpose: "前提 Task"
+    - number: 595
+      purpose: "基盤 docs 横断整合"
+    - number: 596
+      purpose: "直前 PR（本ファイル分離元）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/基盤/システム物理構成図.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "変更後ファイルに `Neon` / `S3` 文字列が残存しないこと"
+    - "#596 系基盤 docs の Supabase / Storage / Secret 骨子と矛盾しないこと"
+    - "PR 本文が `Related to #597` であること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "物理構成図内の DB / Storage / Secret 記述が #592 #594 #596 と矛盾しないか"
+    - "`SUPABASE_SERVICE_ROLE_KEY` の運用粒度（api/reco/batch 記載）が MVP 方針として妥当か"
+    - "「Supabase Auth 未接続」の注記位置・表現が他基盤 docs と整合しているか"
+    - "Task PR 本文の Issue 参照キーワード（Related to）"
+  specialist_reviews:
+    docs: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+notes:
+  - "Issue #597 / PR #598"
+  - "AI Review Must: PR 本文 `Closes #597` → `Related to #597`"
+  - "前提 PR #592 #594 #596 merge 済み"

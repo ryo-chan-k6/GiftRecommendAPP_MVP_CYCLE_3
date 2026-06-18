@@ -1,0 +1,212 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-occasion-rule"
+  title: "occasion_rule:Occasion Ruleテーブル定義書作成"
+  summary: "物理ER・論理ER・Featureルール定義書・API-PUB-008 を入力に、occasion_rule のテーブル定義書を作成する。Phase2 子 Task ③ Wave2 No.5（Semantic / Feature Rule 群）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 462
+      purpose: "Wave1 semantic_config（merge 済み前提）"
+    - number: 463
+      purpose: "Wave1 semantic_config_version（merge 済み前提）"
+    - number: 445
+      purpose: "occasion_master テーブル定義書（occasion_code 参照）"
+    - number: 470
+      purpose: "Wave2 No.1 feature_definition テーブル定義書（feature_code 参照）"
+    - number: 471
+      purpose: "Wave2 No.2 semantic_concept（merge 済み前提）"
+    - number: 472
+      purpose: "Wave2 No.3 semantic_rule（推奨着手順・非 blocking）"
+    - number: 473
+      purpose: "Wave2 No.4 relationship_rule テーブル定義書（merge 済み前提・Rule 群構成踏襲）"
+  related_prs:
+    - number: 485
+      purpose: "Task semantic_concept PR（merge 済み前提）"
+    - number: 486
+      purpose: "Task relationship_rule PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Wave2 No.5（Semantic / Feature Rule 群）。
+  Wave1（semantic_config / semantic_config_version）merge 済み前提。
+  推奨着手順: feature_definition → semantic_concept → semantic_rule → relationship_rule / occasion_rule / pair_rule → concept_feature_rule → partial 2 件。
+  Featureルール定義書 §17.2 および API-PUB-008 `baseValueRules[]`（`ruleType: occasion`）の DB 正本を確定する。
+
+objective: |
+  `occasion_rule` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の occasion_rule テーブル定義書作成"
+  - "物理ER §8–§11・論理ER §10.2・Featureルール定義書 §17.2 との突合"
+  - "API-PUB-008 baseValueRules（ruleType: occasion）との DB 列マッピング整理"
+  - "relationship_rule と同型の baseValueRules Rule 群（章構成・制約・API マッピング）方針を踏襲"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "他テーブルのテーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index・CHECK 方針（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feature_code / occasion_code enum 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 Semantic / Feature 系エンティティ属性"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 Semantic / Feature 定義系"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "Rule 定義 §17.2（occasion_rule 論理項目）"
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+      purpose: "baseValueRules[]（ruleType: occasion）Response マッピング"
+    - path: "docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API契約仕様書.md"
+      required: true
+      purpose: "occasionCode コード体系整合"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version_id FK 方針"
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "occasion_code LOGICAL 参照方針"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "feature_code 参照・MVP 8 軸整合・Rule 系章構成参考"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "同型 Rule 群構成踏襲（#473 Human Review §17.1 No.4）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-occasion-rule.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-occasion-rule/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "occasion_rule テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER §8–§11・論理ER §10.2・テーブル一覧 §8 と矛盾しない"
+  - "Featureルール定義書 §17.2 の論理項目が物理カラムとして整理されている"
+  - "API-PUB-008 baseValueRules（ruleType: occasion）の DB 列マッピングが明記されている"
+  - "occasion_master.occasion_code / feature_definition.feature_code との参照方針が明記されている"
+  - "relationship_rule と同型 Rule 群方針（semantic_config_version 所属・LOGICAL 参照・feature_base_value CHECK）が整理されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "occasion-rule-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 474
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 462
+      purpose: "Wave1 semantic_config 完了"
+    - number: 463
+      purpose: "Wave1 semantic_config_version 完了"
+    - number: 445
+      purpose: "occasion_master テーブル定義書 完了（occasion_code 参照）"
+    - number: 470
+      purpose: "Wave2 No.1 feature_definition テーブル定義書 完了（feature_code 参照）"
+    - number: 473
+      purpose: "Wave2 No.4 relationship_rule テーブル定義書 完了（Rule 群構成踏襲）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8–§11 とカラム・制約・Index の整合"
+    - "Featureルール定義書 §17.2 / §20.1（15 分類 × 8 軸）との整合"
+    - "API-PUB-008 baseValueRules（occasionCode / featureCode / featureBaseValue）マッピング"
+    - "occasion_master / feature_definition 参照方針（LOGICAL FK + CHECK）"
+    - "relationship_rule テーブル定義書との Rule 群一貫性（#473 §17.1 No.4 踏襲）"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Wave2 着手順 No.5: occasion_rule"
+  - "MVP: Occasion 15 分類 × Feature 8 軸 = 120 行 / version の基準値 Rule（Featureルール定義書 §20.1）"
+  - "API-PUB-008 baseValueRules[] 表面。OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
+  - "#471 merge 済み（PR #485）。#473 merge 済み（PR #486）。relationship_rule_テーブル定義書 §17.1 No.4 を踏襲"
+  - "relationship_rule / pair_rule テーブル定義 Task との Rule 群一貫性を Human Review で確認"

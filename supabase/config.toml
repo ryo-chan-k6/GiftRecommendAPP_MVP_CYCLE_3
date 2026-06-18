@@ -1,0 +1,35 @@
+# Supabase CLI ローカル開発設定（最小テンプレート）
+# 正本: docs/06_実装設計/database/マイグレーション方針書.md
+# クラウドプロジェクト link / デプロイ詳細は infra/supabase/（Phase3）
+
+project_id = "gift-reco-local"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+# MVP アプリは Supabase Auth に未接続。ローカルスタック整合のため有効のまま。
+
+[auth.email]
+enable_signup = false

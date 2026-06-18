@@ -1,0 +1,42 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "evaluation_run_status"
+  physical_name: "evaluation_status"
+  logical_name: "Evaluation Run Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "queued"
+    label: "待機"
+    meaning: "評価実行待ち"
+    terminal: false
+    enabled: true
+  - value: "running"
+    label: "実行中"
+    meaning: "評価実行中"
+    terminal: false
+    enabled: true
+  - value: "succeeded"
+    label: "成功"
+    meaning: "評価が正常終了"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "評価が異常終了"
+    terminal: true
+    enabled: true
+  - value: "canceled"
+    label: "中止"
+    meaning: "手動中断・タイムアウト"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "evaluation_run"
+    column: "evaluation_status"
+    constraint: "NOT NULL"
+    note: ""

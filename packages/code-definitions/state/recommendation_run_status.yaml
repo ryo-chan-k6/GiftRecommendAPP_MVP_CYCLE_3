@@ -1,0 +1,42 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "recommendation_run_status"
+  physical_name: "run_status"
+  logical_name: "Recommendation Run Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "accepted"
+    label: "受付済"
+    meaning: "apiが推薦依頼を受け付け、reco実行対象になった状態"
+    terminal: false
+    enabled: true
+  - value: "running"
+    label: "実行中"
+    meaning: "recoが推薦処理を開始した状態"
+    terminal: false
+    enabled: true
+  - value: "succeeded"
+    label: "成功"
+    meaning: "推薦処理が正常終了した状態"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "推薦処理が異常終了した状態"
+    terminal: true
+    enabled: true
+  - value: "canceled"
+    label: "中止"
+    meaning: "タイムアウトや明示的中断により処理を中止した状態"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "recommendation_run"
+    column: "run_status"
+    constraint: "NOT NULL"
+    note: "batch_run_log.run_status とは別 enum"

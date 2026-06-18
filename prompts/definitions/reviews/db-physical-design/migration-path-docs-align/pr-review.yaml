@@ -1,0 +1,222 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-migration-path-docs-align-pr"
+  title: "migration適用正本パスdocs整合 PRレビュー"
+  summary: "Phase2 フォローアップ Task #636 の PR を AI Review する。`supabase/migrations` 適用正本への docs / Definition 整合、マイグレーション方針書 §16.7 完了、docs-only・out_of_scope 混入の有無を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-636-migration-path-docs-align"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+target:
+  pr: 637
+  issue: 636
+  task_definition: "prompts/definitions/tasks/db-physical-design/migration-path-docs-align.yaml"
+  source_branch: "docs/task-636-migration-path-docs-align"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/migration-path-docs-align.yaml"
+    required: true
+  issue:
+    number: 636
+    required: true
+  pr:
+    number: 637
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase2 フロー L118 の更新確認"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§5 正本関係・§16.7 Task B 完了"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "migration 適用正本表記"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "§9.1 との整合（変更不要の確認）"
+  files:
+    - path: "prompts/definitions/epics/db-physical-design/epic.yaml"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/physical-er-spec.yaml"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/enum-code-definitions.yaml"
+      required: true
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（migration-path-docs-align.yaml）の scope を満たしているか"
+    - "out_of_scope（DDL / supabase/migrations スキーマ / apps / contracts）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が develop であるか（Epic 完了後フォローアップ Task）"
+    - "PR 本文に変更内容・検証結果が記載されているか"
+  docs:
+    - "実装フェーズ実行プロセス設計書 L118 が `supabase/migrations` / `db/seeds` になっているか"
+    - "物理ER の migration 適用正本表記が `supabase/migrations` になっているか"
+    - "マイグレーション方針書 §16.7 No.7 が完了状態か"
+    - "マイグレーション方針書 §4 out_of_scope の「別 Task」記述が解消されているか"
+    - "`db/migrations` 残存が「使用しない」旨の注記のみか"
+  definitions:
+    - "epic.yaml の scope / output / exclusive_files が `supabase/migrations/**` に整合しているか"
+    - "physical-er-spec.yaml / enum-code-definitions.yaml の out_of_scope パスが更新されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "Review Definition が本 PR に含まれているか"
+    - "docs-only（DB スキーマファイルの差分なし）"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "Blocker が未修正のまま残っていない"
+      - "scope 外変更がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "Phase2 フローと `supabase/migrations` 正本が矛盾"
+      - "epic/task Definition のパスが未更新"
+      - "DDL / migration スキーマ変更が混在"
+  needs_human_decision:
+    conditions:
+      - "プロジェクトディレクトリ構成定義書 §54 注記の扱い変更が必要"
+  split_required:
+    conditions:
+      - "DDL 60化（Task #638）の変更が混在"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Review Definition が存在しない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - 636
+    - 435
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/migration-path-docs-align.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "prompts/definitions/tasks/db-physical-design/ddl-remove-optional-attr-tables.yaml"
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "grep による db/migrations 残存確認"
+    - "docs-only 確認"
+  not_required:
+    - "unit test"
+    - "supabase db reset"
+
+human_decision_points:
+  - "Task #638（DDL 60化）との merge 順序（本 PR 先行推奨）"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/migration-path-docs-align.yaml"
+  - "Issue #636 / PR #637 / develop 直 Task（Epic #435 完了後フォローアップ）"

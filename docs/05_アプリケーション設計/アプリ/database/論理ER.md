@@ -135,7 +135,7 @@
 | Item系                   | item / item_image / item_review_summary / item_popularity_signal / item_generation_queue                                                       | 内部正本 / 派生 / 状態      |
 | 外部商品データ系         | fetch_cursor / api_call_log / raw_product_metadata / raw_product_object / product_diff_result                                                  | Raw / Metadata / Log / 状態 |
 | Staging系                | staging_item / staging_item_image / staging_ranking_signal / staging_genre                                                                     | 一時 / 中間                 |
-| Semantic / Feature系     | semantic_config / semantic_config_version / semantic_concept / feature_definition / semantic_rule / feature_rule / item_feature / user_feature | 設定正本 / 派生             |
+| Semantic / Feature系     | semantic_config / semantic_config_version / semantic_concept / feature_definition / semantic_rule / feature_rule / normalization_rule / item_semantic / item_feature / item_meaning / user_feature | 設定正本 / 派生             |
 | Embedding系              | item_embedding                                                                                                                                 | 派生                        |
 | Evaluation系             | evaluation_dataset / evaluation_case / evaluation_run / evaluation_result / evaluation_metric                                                  | 内部正本 / 派生 / Log       |
 | Log系                    | phase_log / error_log / batch_run_log / item_import_summary                                                                                    | Log                         |
@@ -303,6 +303,7 @@ erDiagram
     ITEM ||--o| ITEM_REVIEW_SUMMARY : "has"
     ITEM ||--o{ ITEM_POPULARITY_SIGNAL : "has"
     ITEM ||--o{ ITEM_FEATURE : "has"
+    ITEM ||--o{ ITEM_MEANING : "has"
     ITEM ||--o{ ITEM_EMBEDDING : "has"
     ITEM ||--o{ ITEM_GENERATION_QUEUE : "queued_for_generation"
 
@@ -312,7 +313,9 @@ erDiagram
     ITEM ||--o{ RECOMMENDATION_RESULT_ITEM : "snapshotted_by"
 
     SEMANTIC_CONFIG_VERSION ||--o{ ITEM_FEATURE : "generated_with"
+    SEMANTIC_CONFIG_VERSION ||--o{ ITEM_MEANING : "generated_with"
     FEATURE_NORMALIZATION_VERSION ||--o{ ITEM_FEATURE : "normalized_with"
+    FEATURE_NORMALIZATION_VERSION ||--o{ ITEM_MEANING : "normalized_with"
     MODEL_VERSION ||--o{ ITEM_EMBEDDING : "generated_with"
 ```
 
@@ -323,7 +326,7 @@ erDiagram
 | エンティティ           | 主キー                    | 主要属性                                                                                                                                                          | 状態カラム                | 正本区分            | 管理主体 |
 | ---------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------- | -------- |
 | item                   | item_id                   | source, external_item_code, item_name, item_caption, catchcopy, price, item_url, external_genre_id, shop_code, normalized_hash, first_fetched_at, last_checked_at | active_status / is_active | 内部正本            | batch    |
-| item_image             | item_image_id             | item_id, image_url, image_size_type, display_order, is_primary, source_api, fetched_at                                                                            | なし                      | 内部正本 / 外部参照 | batch    |
+| item_image             | item_image_id             | item_id, image_url, image_size_type, display_order, is_primary, fetched_at                                                                                        | なし                      | 内部正本 / 外部参照 | batch    |
 | item_review_summary    | item_review_summary_id    | item_id, review_average, review_count, fetched_at                                                                                                                 | なし                      | 派生 / 外部参照     | batch    |
 | item_popularity_signal | item_popularity_signal_id | item_id, external_item_code, external_genre_id, rank, period, last_build_date, fetched_at                                                                         | なし                      | 派生 / 外部参照     | batch    |
 | item_generation_queue  | item_generation_queue_id  | item_id, generation_type, retry_count, queued_at, started_at, completed_at, error_message                                                                         | queue_status              | 状態 / Queue        | batch    |
@@ -350,6 +353,18 @@ MVPでは画像バイナリを保存しない。
 2. smallImageUrls[0]
 3. 画像なしプレースホルダー
 ```
+
+出所・更新方針（Item 子テーブル共通）:
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 取得元 API | 楽天商品検索 API（`item_search`）。`item_review_summary` と同型で **行に `source` / `source_api` は持たない** |
+| マーケット識別 | 親 `item.source`（`item_id` FK 経由。MVP: `rakuten`） |
+| API トレース | 必要時は `staging_item_image.raw_metadata_id` → `raw_product_metadata.source_api` で参照 |
+| 履歴 | **最新のみ Upsert**。item 単位の同期置換（API から消えた URL は DELETE） |
+| `is_active` | **MVP 物理 DDL では持たない**（`external_genre` / `item_review_summary` と同型） |
+
+> **旧記載との差分**: §8.2 旧版は `source_api` を列挙していたが、物理テーブル化（Issue #497）に伴い **`item_popularity_signal` / `item_review_summary` と同様、出所列は持たない** 方針に統一する。
 
 ---
 
@@ -412,12 +427,12 @@ erDiagram
 | fetch_cursor           | fetch_cursor_id           | source, source_api, target_external_genre_id, cursor_type, cursor_value, last_fetched_at                                                | cursor_status | 状態            | batch          |
 | raw_product_metadata   | raw_metadata_id           | api_call_log_id, object_key, source, source_api, content_hash, item_count, fetched_at, staged_at, imported_at, error_message            | import_status | Metadata / Log  | batch          |
 | raw_product_object     | object_key                | storage_bucket, content_type, content_length, content_hash, stored_at                                                                   | なし          | Raw             | object storage |
-| staging_item           | staging_item_id           | raw_metadata_id, external_item_code, item_name, item_caption, catchcopy, price, item_url, external_genre_id, shop_code, normalized_hash | diff_status   | 一時 / 中間     | batch          |
+| staging_item           | staging_item_id           | raw_metadata_id, source, external_item_code, item_name, item_caption, catchcopy, price, item_url, external_genre_id, shop_code, availability, review_average, review_count, normalized_hash, staged_at | diff_status   | 一時 / 中間     | batch          |
 | staging_item_image     | staging_item_image_id     | raw_metadata_id, external_item_code, image_url, image_size_type, display_order, is_primary_candidate, staged_at                         | なし          | 一時 / 中間     | batch          |
 | staging_ranking_signal | staging_ranking_signal_id | raw_metadata_id, external_item_code, external_genre_id, rank, period, last_build_date, staged_at                                        | なし          | 一時 / 中間     | batch          |
-| staging_genre          | staging_genre_id          | raw_metadata_id, external_genre_id, genre_name, parent_external_genre_id, genre_level, staged_at                                        | なし          | 一時 / 中間     | batch          |
-| product_diff_result    | product_diff_result_id    | batch_run_id, external_item_code, old_hash, new_hash, judged_at                                                                         | diff_status   | 派生 / 判定結果 | batch          |
-| item_import_summary    | item_import_summary_id    | batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, skipped_count, failed_count, summarized_at  | なし          | Log / 集計      | batch          |
+| staging_genre          | staging_genre_id          | raw_metadata_id, source, external_genre_id, genre_name, parent_external_genre_id, genre_level, is_leaf, staged_at                        | なし          | 一時 / 中間     | batch          |
+| product_diff_result    | product_diff_result_id    | batch_run_id, staging_item_id, external_item_code, old_hash, new_hash, judged_at                                                         | diff_status   | 派生 / 判定結果 | batch          |
+| item_import_summary    | item_import_summary_id    | batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, unavailable_count, skipped_count, failed_count, feature_generated_count, embedding_generated_count, summarized_at | なし          | Log / 集計      | batch          |
 
 ---
 
@@ -457,6 +472,9 @@ erDiagram
     SEMANTIC_CONFIG_VERSION ||--o{ FEATURE_DEFINITION : "defines"
     SEMANTIC_CONFIG_VERSION ||--o{ SEMANTIC_RULE : "contains"
     SEMANTIC_CONFIG_VERSION ||--o{ FEATURE_RULE : "contains"
+    SEMANTIC_CONFIG_VERSION ||--o{ NORMALIZATION_RULE : "contains"
+
+    NORMALIZATION_RULE }o--|| FEATURE_NORMALIZATION_VERSION : "resolves"
 
     SEMANTIC_CONCEPT ||--o{ SEMANTIC_RULE : "detected_by"
     SEMANTIC_CONCEPT ||--o{ FEATURE_RULE : "maps_to_feature"
@@ -468,6 +486,7 @@ erDiagram
 
     ITEM ||--o{ ITEM_SEMANTIC : "generates"
     ITEM ||--o{ ITEM_FEATURE : "has"
+    ITEM ||--o{ ITEM_MEANING : "has"
     ITEM ||--o{ ITEM_EMBEDDING : "has"
 
     FEATURE_DEFINITION ||--o{ USER_FEATURE : "measured_as"
@@ -475,9 +494,11 @@ erDiagram
 
     SEMANTIC_CONFIG_VERSION ||--o{ USER_FEATURE : "generated_with"
     SEMANTIC_CONFIG_VERSION ||--o{ ITEM_FEATURE : "generated_with"
+    SEMANTIC_CONFIG_VERSION ||--o{ ITEM_MEANING : "generated_with"
 
     FEATURE_NORMALIZATION_VERSION ||--o{ USER_FEATURE : "normalizes"
     FEATURE_NORMALIZATION_VERSION ||--o{ ITEM_FEATURE : "normalizes"
+    FEATURE_NORMALIZATION_VERSION ||--o{ ITEM_MEANING : "normalizes"
 
     MODEL_VERSION ||--o{ ITEM_EMBEDDING : "generated_with"
 ```
@@ -494,12 +515,14 @@ erDiagram
 | feature_definition            | feature_definition_id            | semantic_config_version_id, feature_code, feature_label, feature_group, display_order, is_active                                                        | なし       | 設定正本 | database / reco |
 | semantic_rule                 | semantic_rule_id                 | semantic_config_version_id, rule_type, source_text_pattern, semantic_concept_id, weight, is_active                                                      | なし       | 設定正本 | database / reco |
 | feature_rule                  | feature_rule_id                  | semantic_config_version_id, semantic_concept_id, feature_definition_id, feature_delta, weight, is_active                                                | なし       | 設定正本 | database / reco |
+| normalization_rule            | normalization_rule_id            | semantic_config_version_id, normalization_method, feature_normalization_version_id, is_active                                                         | なし       | 設定正本 | database / batch / reco |
 | user_semantic                 | user_semantic_id                 | recommendation_run_id, semantic_config_version_id, extracted_semantic_json, generated_at                                                                | なし       | 派生     | reco            |
 | user_feature                  | user_feature_id                  | recommendation_run_id, feature_definition_id, feature_normalization_version_id, feature_value, source_type, generated_at                                | なし       | 派生     | reco            |
 | user_meaning                  | user_meaning_id                  | recommendation_run_id, user_social, user_symbolic, lambda_ctx, generated_at                                                                             | なし       | 派生     | reco            |
 | item_semantic                 | item_semantic_id                 | item_id, semantic_config_version_id, semantic_json, generated_at                                                                                        | なし       | 派生     | batch / reco    |
 | item_feature                  | item_feature_id                  | item_id, feature_definition_id, semantic_config_version_id, feature_normalization_version_id, raw_feature_value, normalized_feature_value, generated_at | なし       | 派生     | batch / reco    |
-| item_embedding                | item_embedding_id                | item_id, model_version_id, embedding_source_type, embedding_vector, source_text_hash, generated_at                                                      | なし       | 派生     | batch           |
+| item_meaning                  | item_meaning_id                  | item_id, semantic_config_version_id, feature_normalization_version_id, item_social, item_symbolic, generated_at                                         | なし       | 派生 / 推薦用正本 | batch / reco    |
+| item_embedding                | item_embedding_id                | item_id, model_version_id, embedding_source_type, embedding_input_hash, embedding_vector, generated_at                                                | なし       | 派生     | batch           |
 | feature_normalization_version | feature_normalization_version_id | normalization_method, parameter_json, is_current, generated_at                                                                                          | なし       | 設定正本 | batch / reco    |
 
 ---
@@ -521,6 +544,16 @@ MVPで扱うFeature軸は以下である。
 
 Feature値は `0.0〜1.0` の範囲で扱う。  
 正規化方式は、単純clipではなくsigmoid系正規化を前提とする。
+
+### 10.2.1 補足（物理分解・責務分離）
+
+| 論点 | 方針 |
+| ---- | ---- |
+| `feature_rule`（論理抽象） | 物理テーブルでは `relationship_rule` / `occasion_rule` / `pair_rule` / `concept_feature_rule` / `input_type_rule` / `feature_integration_rule` 等へ分解（物理ER §5） |
+| `normalization_rule` | 意味定義 version ごとの正規化 **binding**（方式 + 正規化パラメータ version 参照）。sigmoid パラメータ正本は `feature_normalization_version`（`normalization_rule_テーブル定義書` §5.1） |
+| `normalization_rule` → `feature_normalization_version` | アプリ設計で固定される binding のため **物理 FK ON**（`ON DELETE RESTRICT`）。派生 Feature からの参照は LOGICAL 維持 |
+| MVP 行モデル | `semantic_config_version` あたり 1 行（全 8 Feature 軸共通） |
+| `item_meaning` 行モデル | **1 商品 × 1 `semantic_config_version_id` あたり 1 行**（`item_feature` 8 行から Social / Symbolic 射影。詳細は `item_meaning_テーブル定義書`） |
 
 ---
 
@@ -554,8 +587,10 @@ erDiagram
 | occasion_master               | occasion_code                    | occasion_label, occasion_label_jp, is_active, display_order             | 設定正本 | database / api          |
 | model_version                 | model_version_id                 | provider, model_name, model_type, version_label, is_current, created_at | 設定正本 | database / reco / batch |
 | ranking_config                | ranking_config_id                | config_name, config_version, parameter_json, is_current, created_at     | 設定正本 | database / reco         |
-| reason_template               | reason_template_id               | template_name, template_type, template_body, is_active, created_at      | 設定正本 | database / reco         |
+| reason_template               | reason_template_id               | template_name, template_version, template_type, template_body, relationship_code, occasion_code, feature_code, is_active, created_at | 設定正本 | database / reco         |
 | feature_normalization_version | feature_normalization_version_id | normalization_method, parameter_json, is_current, generated_at          | 設定正本 | database / batch / reco |
+
+> **`reason_template` 補足（MVP）**: `template_version` と条件列（`relationship_code` / `occasion_code` / `feature_code`）を主要属性に含める。`tone` / `model_version_id` は不採用。版管理・利用記録・解決優先順位は `reason_template_テーブル定義書` および Reason生成定義書 §14.2 / §15.2 を正とする。
 
 ---
 
@@ -624,7 +659,7 @@ erDiagram
 | batch_run_log                | batch_run_id                    | batch_name, started_at, completed_at, success_count, failed_count, error_summary                                                | run_status    | Batch実行単位          |
 | api_call_log                 | api_call_log_id                 | batch_run_id, fetch_cursor_id, source, source_api, request_params_json, response_status, item_count, requested_at, completed_at | call_status   | 外部APIリクエスト単位  |
 | raw_product_metadata         | raw_metadata_id                 | api_call_log_id, object_key, content_hash, item_count, fetched_at, staged_at, imported_at, error_message                        | import_status | Rawレスポンス単位      |
-| item_import_summary          | item_import_summary_id          | batch_run_id, fetched_count, new_count, updated_count, unchanged_count, skipped_count, failed_count                             | なし          | Batch / chunk単位      |
+| item_import_summary          | item_import_summary_id          | batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, unavailable_count, skipped_count, failed_count, feature_generated_count, embedding_generated_count, summarized_at | なし          | Batch / source_api単位 |
 
 ---
 
@@ -661,6 +696,7 @@ erDiagram
 | item           | item_review_summary    | 1対0または1 | 1商品にレビュー要約                            |
 | item           | item_popularity_signal | 1対多       | ジャンル・期間別の人気シグナル                 |
 | item           | item_feature           | 1対多       | Feature軸ごとに値を持つ                        |
+| item           | item_meaning           | 1対多       | semantic_config_version 別に Social / Symbolic 射影を持つ |
 | item           | item_embedding         | 1対多       | model_version / source_type別にEmbeddingを持つ |
 | item           | item_generation_queue  | 1対多       | 意味生成・Embedding生成の再実行対象            |
 | external_genre | item                   | 1対多       | 1ジャンルに複数商品                            |
@@ -692,10 +728,14 @@ erDiagram
 | semantic_config_version       | feature_definition      | 1対多 | Feature軸定義              |
 | semantic_config_version       | semantic_rule           | 1対多 | Semantic抽出ルール         |
 | semantic_config_version       | feature_rule            | 1対多 | Feature推定ルール          |
+| semantic_config_version       | normalization_rule      | 1対0..1 | MVP は version あたり 1 行の正規化 binding |
+| normalization_rule            | feature_normalization_version | 多対1 | 正規化パラメータ version 参照（物理 FK ON） |
 | semantic_config_version       | recommendation_run      | 1対多 | Runで使用した設定version   |
 | model_version                 | recommendation_run      | 1対多 | Runで使用したモデルversion |
 | model_version                 | item_embedding          | 1対多 | Embedding生成モデル        |
 | feature_normalization_version | item_feature            | 1対多 | Feature正規化version       |
+| semantic_config_version       | item_meaning            | 1対多 | 意味体系 version 別の射影   |
+| feature_normalization_version | item_meaning            | 1対多 | 射影入力 Feature の正規化 version |
 
 ---
 
@@ -730,6 +770,7 @@ Online推薦中は、以下を更新しない。
 - item_review_summary
 - item_popularity_signal
 - item_feature
+- item_meaning
 - item_embedding
 - item_generation_queue
 - raw_product_metadata
@@ -767,6 +808,7 @@ Online推薦では、これらを参照するだけにする。
 - item_generation_queue
 - item_semantic
 - item_feature
+- item_meaning
 - item_embedding
 - item_import_summary
 - batch_run_log
@@ -835,7 +877,7 @@ Online推薦では、これらを参照するだけにする。
 | Staging保持期間          | Stagingデータを毎回削除するか、一定期間保持するか                       |
 | Raw保持期間              | Object Storage上のRaw JSONをどれくらい保持するか                        |
 | Item Popularity Signal   | rank履歴を追記で持つか、最新のみUpsertするか                            |
-| Item Image               | 画像URL履歴を持つか、最新のみ持つか                                     |
+| Item Image               | ~~画像URL履歴を持つか、最新のみ持つか~~ **決定済み: 最新のみ Upsert + item 単位同期置換**（§8.3・Issue #497） |
 | Item Feature世代管理     | item_id + semantic_config_version_id 単位で複数世代を保持するか         |
 | Item Embedding世代管理   | item_id + model_version_id + source_type 単位で複数世代を保持するか     |
 | FK制約                   | 外部IDやBatch系に物理FKを張るか、論理整合に留めるか                     |

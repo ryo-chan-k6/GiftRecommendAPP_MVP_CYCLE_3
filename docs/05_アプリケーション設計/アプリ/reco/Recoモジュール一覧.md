@@ -286,7 +286,7 @@ flowchart TD
 
 ### 主責務
 
-- 推薦実行で利用する設定Versionを決定する
+- 推薦実行で利用する設定Versionを決定する（IF-DB-RECO-001: `semantic_config_version` 表中心。親 `semantic_config` の JOIN は api マスタ参照（IF-DB-API-005）に限定）
 - Semantic抽出で利用するルールVersionを決定する
 - Feature生成で利用するルールVersionを決定する
 - Embedding / LLM / Reason生成モデルのVersionを決定する
