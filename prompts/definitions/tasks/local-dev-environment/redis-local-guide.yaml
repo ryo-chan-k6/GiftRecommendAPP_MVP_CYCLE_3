@@ -1,0 +1,188 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-redis-local-guide"
+  title: "Redisローカル起動手順（docker-compose.dev.yml）"
+  summary: "Human 判断（2026-06-18）に基づき、Redis 限定 docker-compose.dev.yml と scripts/dev 起動補助を同梱し、ローカル開発手順書 §3.2/§7 を更新する。Epic A Task A5。DB は Supabase CLI 維持。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic A Task A5。
+  Human 判断（2026-06-18、ai-logs/human-decisions/2026-06-18-local-dev-redis-docker-compose-adoption.md）により、Redis 限定 docker-compose を採用する。
+  DB（PostgreSQL）は Supabase CLI + Docker Desktop を正本のまま維持し、Postgres + Redis フル compose は不採用。
+  Phase3a（2026-06-07）の「docker-compose 同梱なし」は Redis 部分について本 Task で更新する。
+
+objective: |
+  開発者が `docker compose -f docker-compose.dev.yml up -d redis`（または scripts/dev ラッパ）で Redis を起動し、
+  `.env` の `REDIS_URL`（デフォルト `redis://localhost:6379/0`）で疎通確認できる手順を正本化する。
+
+scope:
+  - "ルート `docker-compose.dev.yml`（Redis サービスのみ）の作成"
+  - "`scripts/dev/start-redis.sh` 等の起動・停止補助スクリプト"
+  - "`scripts/dev/README.md` の 2026-06-07 記載更新（Redis compose 採用を反映）"
+  - "[ローカル開発手順書](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) §3.2 / §7 の Redis 手順更新"
+  - "Neon 不採用・Supabase CLI 前提への Redis 節整合（DB 詳細は Task A3 scope）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "PostgreSQL / Supabase CLI 起動手順の詳細（Task A3 `db-build-guide`）"
+  - "Postgres + Redis フル compose"
+  - "Neon 採用"
+  - "apps/** 実装・起動スクリプト（Task A6 `local-dev-runtime`）"
+  - "CI workflow 変更"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "§8.2 Phase3b 確定判断"
+    - path: "ai-logs/human-decisions/2026-06-18-local-dev-redis-docker-compose-adoption.md"
+      required: true
+      purpose: "Redis compose 採用の Human 判断正本"
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+      purpose: "§3.2 / §7 更新対象"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "REDIS_URL 等 §19 参照"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§9 local 環境（supabase start + Redis）整合"
+  files:
+    - path: ".env.example"
+      required: true
+      purpose: "REDIS_URL デフォルト port 6379"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "docker-compose.dev.yml"
+      action: "create"
+      required: true
+    - path: "scripts/dev/start-redis.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/redis-local-guide.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/redis-local-guide/pr-review.yaml"
+      action: "create"
+      required: false
+
+acceptance_criteria:
+  - "`docker-compose.dev.yml` に Redis サービスのみが定義されている（Postgres サービスなし）"
+  - "`scripts/dev/start-redis.sh` 等から compose 起動が可能"
+  - "ローカル開発手順書 §3.2 / §7 が Redis compose 採用・Supabase CLI DB 前提を反映している"
+  - "Neon を Redis/DB 正本として記載していない"
+  - "`./scripts/dev/check-env-names.sh --strict` が引き続き成功する（REDIS_URL 変数名）"
+  - "secret 実値が成果物に含まれていない"
+
+branch:
+  no_branch: true
+  summary: "redis-local-guide"
+  name: null
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Backlog"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  issues: []
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docker-compose.dev.yml"
+    - "scripts/dev/start-redis.sh"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "prompts/definitions/tasks/local-dev-environment/redis-local-guide.yaml"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "`docker compose -f docker-compose.dev.yml up -d redis` で Redis が起動する"
+    - "`redis-cli ping` または同等で PONG が返る（port 6379、`.env.example` と一致）"
+    - "compose に postgres / supabase サービスが含まれていない"
+  not_required:
+    - "unit test"
+    - "CI workflow 追加"
+  skip_reason:
+    "unit test": "infra/docs 中心 Task のため"
+    "CI workflow 追加": "Epic D / Epic C scope"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Human 判断 2026-06-18（Redis 限定 compose）が反映されているか"
+    - "Postgres compose が混入していないか"
+    - "Phase3a 2026-06-07 判断との supersede 関係が明確か"
+    - "Neon 記載が残っていないか（Redis/DB 節）"
+    - "secret / .env 実値の記載がないか"
+  specialist_reviews:
+    docs: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+human_decision_points: []
+
+notes:
+  - "Human 判断 2026-06-18: Redis 限定 compose 採用確定（ai-logs/human-decisions/2026-06-18-local-dev-redis-docker-compose-adoption.md）"
+  - "親 Epic `local-dev-environment` Issue 化前の Definition。`/start-epic` 後に parent.epic_* を更新する"
+  - "Task A3（db-build-guide）と並列着手可"
