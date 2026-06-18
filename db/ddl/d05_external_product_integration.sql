@@ -1,10 +1,10 @@
 -- D05: External product integration tables
 -- change_id: d05_external_product_integration
 -- Issue: #602
--- 正本: docs/06_実装設計/database/*_テーブル定義書.md（D05 対象 10 件）
+-- 正本: docs/06_実装設計/database/*_テーブル定義書.md（D05 対象 9 件 DDL / staging_attribute は定義のみ）
 -- 適用順: D01〜D04 適用後。fetch_cursor → api_call_log → raw_product_metadata → Staging 系 → product_diff_result → item_import_summary
--- MVP△: staging_attribute（DDL 参照用に含む。DDLバッチ分割表 §3）
--- LOGICAL 参照: Staging / Log 系は物理 FK なし（batch_run_log / item / external_genre / external_attribute 含む）
+-- §17 No.7: staging_attribute は MVP DDL 対象外（テーブル定義書のみ維持）
+-- LOGICAL 参照: Staging / Log 系は物理 FK なし（batch_run_log / item / external_genre 含む）
 
 -- =============================================================================
 -- 1. fetch_cursor
@@ -340,40 +340,7 @@ CREATE INDEX idx_staging_genre_source_id
   ON staging_genre (source, external_genre_id);
 
 -- =============================================================================
--- 8. staging_attribute（MVP△）
--- =============================================================================
-CREATE TABLE staging_attribute (
-  staging_attribute_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  raw_metadata_id uuid NOT NULL,
-  source text NOT NULL DEFAULT 'rakuten',
-  external_genre_id bigint NOT NULL,
-  external_attribute_id bigint NOT NULL,
-  attribute_name varchar(255) NOT NULL,
-  attribute_group_name varchar(255),
-  staged_at timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT uq_staging_attribute_raw_metadata_attr
-    UNIQUE (raw_metadata_id, external_genre_id, external_attribute_id),
-  CONSTRAINT chk_staging_attribute_source_mvp CHECK (source = 'rakuten'),
-  CONSTRAINT chk_staging_attribute_name_length CHECK (
-    char_length(attribute_name) BETWEEN 1 AND 255
-  ),
-  CONSTRAINT chk_staging_attribute_group_length CHECK (
-    attribute_group_name IS NULL
-    OR char_length(attribute_group_name) BETWEEN 1 AND 255
-  ),
-  CONSTRAINT chk_staging_attribute_id_positive CHECK (external_attribute_id > 0)
-);
-
-CREATE INDEX idx_staging_attribute_raw_metadata
-  ON staging_attribute (raw_metadata_id);
-
-CREATE INDEX idx_staging_attribute_source_genre_attr
-  ON staging_attribute (source, external_genre_id, external_attribute_id);
-
--- =============================================================================
--- 9. product_diff_result
+-- 8. product_diff_result
 -- =============================================================================
 CREATE TABLE product_diff_result (
   product_diff_result_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

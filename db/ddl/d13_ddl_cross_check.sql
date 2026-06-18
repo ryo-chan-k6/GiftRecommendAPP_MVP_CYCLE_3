@@ -117,7 +117,7 @@ END;
 $$;
 
 -- =============================================================================
--- 3. public テーブル 62 件（DDLバッチ分割表 D02〜D11）
+-- 3. public テーブル 60 件（DDLバッチ分割表 D02〜D11）
 -- =============================================================================
 DO $$
 DECLARE
@@ -131,11 +131,11 @@ DECLARE
     'ranking_config', 'reason_template', 'feature_normalization_version',
     -- D04
     'external_genre', 'item', 'item_image', 'item_review_summary',
-    'external_attribute', 'ranking_snapshot', 'item_popularity_signal',
+    'ranking_snapshot', 'item_popularity_signal',
     -- D05
     'fetch_cursor', 'api_call_log', 'raw_product_metadata', 'staging_item',
     'staging_item_image', 'staging_ranking_signal', 'staging_genre',
-    'staging_attribute', 'product_diff_result', 'item_import_summary',
+    'product_diff_result', 'item_import_summary',
     -- D06
     'item_generation_queue', 'item_semantic', 'item_feature', 'item_meaning', 'item_embedding',
     -- D07
@@ -159,7 +159,7 @@ BEGIN
   WHERE table_schema = 'public'
     AND table_type = 'BASE TABLE';
 
-  PERFORM _d13_assert_eq('public table count', v_count, 62);
+  PERFORM _d13_assert_eq('public table count', v_count, 60);
 
   SELECT coalesce(array_agg(e ORDER BY e), ARRAY[]::text[]) INTO v_missing
   FROM unnest(v_expected) AS e
@@ -253,7 +253,7 @@ $$;
 -- =============================================================================
 DO $$
 BEGIN
-  RAISE NOTICE '[D13] cross-check passed: vector extension, 26 enums, 62 tables, 5 deferred FKs, HNSW index, logical ID separation';
+  RAISE NOTICE '[D13] cross-check passed: vector extension, 26 enums, 60 tables, 5 deferred FKs, HNSW index, logical ID separation';
 END;
 $$;
 
