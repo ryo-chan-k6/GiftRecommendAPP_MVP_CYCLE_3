@@ -134,7 +134,13 @@ export interface ExecutionInput {
   includeDebugInfo?: boolean;
   /** mode=evaluation 時に使用 */
   evalCaseId?: string;
-  semanticConfigVersionId?: string;
+  /** evaluation / batch の Semantic Config 系列名。versionLabel とセット指定 */
+  configName?: string;
+  /**
+     * evaluation / batch の Version ラベル（semver）。configName とセット指定
+     * @pattern ^v[0-9]+\.[0-9]+\.[0-9]+$
+     */
+  versionLabel?: string;
   modelVersionId?: string;
 }
 
