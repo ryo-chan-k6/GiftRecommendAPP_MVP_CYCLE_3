@@ -1,0 +1,151 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-toolchain-pin"
+  title: "ツールチェーンpin整備"
+  summary: "Node / Python 等のバージョン pin と package.json engines を整備し、利用技術スタック整理表と整合する。Epic A Task A1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic A Task A1。Phase3a（#436 merge 済み）完了後、monorepo 起動基盤の前提として toolchain を pin する。
+  A2（monorepo-bootstrap）・A3（db-build-guide）・A5（redis-local-guide）と並列着手可能な単独先行 Task。
+
+objective: |
+  `.nvmrc` / `.node-version`、`package.json` の `engines`、Python pin（`.python-version` 等）を整備し、
+  利用技術スタック整理表と整合した開発者向け toolchain 正本を repo 上に反映する。
+
+scope:
+  - "`.nvmrc` / `.node-version` の作成・更新"
+  - "ルート `package.json` の `engines` 整備"
+  - "`.python-version`（または batch 向け pin ファイル）の整備"
+  - "[利用技術スタック整理表](docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md) との整合確認・必要なら docs 追記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "pnpm-workspace.yaml・各 app package.json scripts（Task A2）"
+  - "Supabase CLI pin（Task A3）"
+  - "apps/** 実装"
+  - "CI workflow 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "§15 開発環境・バージョン正本"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "runtime 前提"
+  files:
+    - path: "package.json"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      action: "update"
+      required: false
+      template: null
+  files:
+    - path: ".nvmrc"
+      action: "create_or_update"
+      required: true
+    - path: ".node-version"
+      action: "create_or_update"
+      required: false
+    - path: ".python-version"
+      action: "create_or_update"
+      required: true
+    - path: "package.json"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "Node / Python の pin ファイルが利用技術スタック整理表と矛盾しない"
+  - "`package.json` engines が記載されている"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "toolchain-pin"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  issues:
+    - number: 436
+      purpose: "Phase3a 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - ".nvmrc"
+    - ".node-version"
+    - ".python-version"
+    - "package.json"
+  conflict_risk: "low"
+  db_impact: false
+  blocks:
+    - "prompts/definitions/tasks/local-dev-environment/monorepo-bootstrap.yaml"
+
+test_policy:
+  manual_checks:
+    - "記載バージョンが利用技術スタック整理表と一致"
+  not_required:
+    - "unit test"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "親 Epic Issue 化前の Definition。`/start-epic` 後に parent.epic_* を更新"

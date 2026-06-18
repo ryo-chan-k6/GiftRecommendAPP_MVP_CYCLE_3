@@ -118,9 +118,8 @@ acceptance_criteria:
   - "secret 実値が成果物に含まれていない"
 
 branch:
-  no_branch: true
+  no_branch: false
   summary: "redis-local-guide"
-  name: null
   base: null
   target: null
   worktree_required: true
@@ -128,8 +127,8 @@ branch:
 project:
   fields:
     phase: "06_実装設計"
-    status: "Backlog"
-    priority: "medium"
+    status: "Todo"
+    priority: "high"
 
 issue:
   unit: "task"
@@ -141,6 +140,9 @@ dependencies:
   blocking: false
 
 parallel_control:
+  depends_on: []
+  blocks:
+    - "prompts/definitions/tasks/local-dev-environment/local-dev-runtime.yaml"
   exclusive_files:
     - "docker-compose.dev.yml"
     - "scripts/dev/start-redis.sh"

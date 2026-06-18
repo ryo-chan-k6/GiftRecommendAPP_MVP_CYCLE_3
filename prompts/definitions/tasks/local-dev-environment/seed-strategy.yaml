@@ -1,0 +1,145 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-seed-strategy"
+  title: "seed方針決定と最小seed投入"
+  summary: "`supabase/seed.sql` vs `db/seeds/` 方針を決定し、最小 master seed 投入 script を整備する。Epic A Task A4。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic A Task A4。ディレクトリ構成定義書・`supabase/README.md` で seed 配置が未決定。
+  Task A3（db-build-guide）完了後、Task A5 前に着手。Epic C C2（test-fixtures-seed）の前提の一部。
+
+objective: |
+  local dev 用 master seed の正本配置（`supabase/seed.sql` または `db/seeds/`）を決定し、
+  docs と `scripts/db/` から再現可能な最小 seed 投入手順を整備する。
+
+scope:
+  - "seed 方針の docs 正本化（DB構築手順書・マイグレーション方針書・supabase/README との整合）"
+  - "最小 master seed（開発用ダミーデータのみ）"
+  - "seed 投入 script（`scripts/db/`）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "システム/品質テスト用 fixture（Epic C C2）"
+  - "本番データ・個人情報を含む seed"
+  - "DDL / migration 変更（Phase2）"
+  - "大量マスタデータの本格投入"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+    - path: "docs/06_実装設計/database/DB構築手順書.md"
+      required: true
+      purpose: "A3 成果物（未作成時は A3 完了後に着手）"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+  files:
+    - path: "supabase/README.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/DB構築手順書.md"
+      action: "update"
+      required: true
+    - path: "supabase/README.md"
+      action: "update"
+      required: true
+  files:
+    - path: "supabase/seed.sql"
+      action: "create_or_update"
+      required: false
+    - path: "db/seeds/**"
+      action: "create_or_update"
+      required: false
+    - path: "scripts/db/**"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "seed 正本配置（seed.sql または db/seeds/）が docs で一意に決定されている"
+  - "最小 seed 投入が scripts または supabase CLI 手順で再現可能"
+  - "実個人情報・secret が seed に含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "seed-strategy"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/local-dev-environment/db-build-guide.yaml"
+  exclusive_files:
+    - "supabase/seed.sql"
+    - "db/seeds/**"
+    - "supabase/README.md"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "seed 投入後に参照整合（optional Human 手元）"
+  not_required:
+    - "full integration test"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+contract_gate:
+  required: false
+
+human_decision_points:
+  - "seed 正本: supabase/seed.sql vs db/seeds/ の最終配置（Task 内で docs 決定。Human Review で確認）"
+
+notes:
+  - "A3 完了前は Issue 起票のみ可、実作業は A3 merge 後"
