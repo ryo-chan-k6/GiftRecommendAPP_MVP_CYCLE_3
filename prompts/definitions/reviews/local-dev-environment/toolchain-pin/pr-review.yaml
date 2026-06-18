@@ -1,0 +1,67 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-dev-environment-toolchain-pin-pr"
+  title: "local-dev-environment toolchain-pin PRレビュー"
+  summary: "Epic A Task toolchain-pin の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: null
+  target: null
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/local-dev-environment/toolchain-pin.yaml"
+  source_branch: null
+  target_branch: null
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  generated: false
+  cicd: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/local-dev-environment/toolchain-pin.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+
+review_points:
+  - "Task Definition scope / out_of_scope との整合"
+  - "親 Epic allowed_paths 内に収まっているか"
+  - "agentic_process: Agent 必須のフルスタック起動を acceptance に含めていないか"
+  - "secret / .env 実値の非含有"
+  - "Phase2 migration / packages/contracts への越境がないか"
+
+human_review_points:
+  - "Human 手元確認（optional manual check）の記載が適切か"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に target.* / input.* へ反映"

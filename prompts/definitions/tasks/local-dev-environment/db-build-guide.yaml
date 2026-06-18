@@ -1,0 +1,147 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-db-build-guide"
+  title: "DB構築手順書・Supabase CLI pin"
+  summary: "DB構築手順書（P7）作成、Supabase CLI バージョン pin、`scripts/db/` 実行 script を整備する。Epic A Task A3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic A Task A3。マイグレーション方針書 §6.4・成果物一覧 P7 に基づき DB構築手順書が未作成。
+  Human 判断: ローカル DB は Supabase CLI + Docker Desktop（Neon 不採用）。
+  Phase2 migration 正本（`supabase/migrations/`）は利用のみ。DDL 変更は Phase2 scope。
+  A2・A5 と並列着手可。Epic C（C1 ci-db-ephemeral）の前提。
+
+objective: |
+  開発者が `supabase start` → `supabase migration up` まで docs 通り再現できる DB構築手順書を正本化し、
+  Supabase CLI バージョン pin と `scripts/db/` 補助 script を整備する。ローカル開発手順書 §7 から Neon 記載を削除する。
+
+scope:
+  - "**DB構築手順書**（`docs/06_実装設計/database/` または cross_cutting 配下の正本配置）"
+  - "Supabase CLI バージョン pin（例: `supabase/.temp` 以外の pin ファイル・docs 明記）"
+  - "`scripts/db/` 実行 script（migrate / status 等）"
+  - "[ローカル開発手順書](docs/06_実装設計/cross_cutting/ローカル開発手順書.md) §7 Neon 削除・Supabase CLI 前提へ更新"
+  - "WSL2 + Docker Desktop 前提の節（DB構築手順書へ統合）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "`supabase/migrations/**` の DDL 内容変更（Phase2）"
+  - "seed 方針決定の詳細（Task A4）"
+  - "Redis 手順（Task A5）"
+  - "apps/** 実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+  files:
+    - path: "supabase/README.md"
+      required: true
+    - path: "scripts/db/README.md"
+      required: false
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/DB構築手順書.md"
+      action: "create"
+      required: true
+      template: null
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "scripts/db/**"
+      action: "create_or_update"
+      required: true
+
+acceptance_criteria:
+  - "DB構築手順書が Supabase CLI + Docker Desktop 前提で `supabase start` / `migration up` を記載している"
+  - "Neon をローカル DB 正本として記載していない"
+  - "Supabase CLI バージョン pin が明記されている"
+  - "`supabase/migrations/` の DDL 差分がない"
+  - "Agent acceptance criteria に Cloud Agent 上の supabase start 成功を必須としていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "db-build-guide"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/DB構築手順書.md"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "scripts/db/**"
+  conflict_risk: "medium"
+  blocks:
+    - "prompts/definitions/tasks/local-dev-environment/seed-strategy.yaml"
+    - "prompts/definitions/epics/gha-test-environment/epic.yaml"
+
+test_policy:
+  manual_checks:
+    - "Human 手元で supabase start → migration up の手順再現（optional、Agent 必須条件にしない）"
+  not_required:
+    - "CI db ephemeral"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_decision_points:
+  - "ローカル DB: Supabase CLI + Docker Desktop、Neon 不採用（2026-06-18）"
+
+notes:
+  - "Epic C C1（ci-db-ephemeral）は A3/A4 完了後に着手"

@@ -1,0 +1,151 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-local-dev-runtime"
+  title: "ローカルdev起動runtime整備"
+  summary: "`scripts/dev/start-{web,api,reco}.sh` とローカル開発手順書 §9 を計画から実行手順へ更新する。Epic A Task A6。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic A Task A6。ローカル開発手順書 §9 は「整備後」計画記載のまま。
+  A2（monorepo-bootstrap）・A3（db-build-guide）・A5（redis-local-guide）完了後に単独着手。
+  起動順: reco → api → web（基盤構成設計書・環境設計書 §19 整合）。
+
+objective: |
+  `scripts/dev/start-web.sh` / `start-api.sh` / `start-reco.sh`（または Makefile 等）を整備し、
+  ローカル開発手順書 §9 を現行 repo で実行可能な手順として正本化する。
+  apps 未実装時は placeholder / skip 条件を docs 化する。
+
+scope:
+  - "`scripts/dev/start-{web,api,reco}.sh`（または同等の起動補助）"
+  - "[ローカル開発手順書](docs/06_実装設計/cross_cutting/ローカル開発手順書.md) §9 を実行手順へ更新"
+  - "ポート・env 前提・起動順（reco → api → web）の明記"
+  - "batch 起動 script 骨格への参照（本格運用は Phase4b defer）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "apps/** 本格実装・health 成功の実起動確認（Phase4a/4b）"
+  - "DB / Redis 初回構築詳細（A3 / A5 scope）"
+  - "monorepo workspace 新規作成（A2 scope）"
+  - "CI workflow"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+  files:
+    - path: ".env.example"
+      required: true
+    - path: "package.json"
+      required: true
+    - path: "scripts/dev/README.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/dev/start-web.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/start-api.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/start-reco.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§9 が reco → api → web の起動順・ポート・env 前提を記載している"
+  - "start-*.sh から monorepo scripts を呼び出す骨格がある"
+  - "apps 未実装時の skip / placeholder 条件が docs にある"
+  - "Agent acceptance criteria に全 app health 成功を必須としていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "local-dev-runtime"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/local-dev-environment/monorepo-bootstrap.yaml"
+    - "prompts/definitions/tasks/local-dev-environment/db-build-guide.yaml"
+    - "prompts/definitions/tasks/local-dev-environment/redis-local-guide.yaml"
+  exclusive_files:
+    - "scripts/dev/start-web.sh"
+    - "scripts/dev/start-api.sh"
+    - "scripts/dev/start-reco.sh"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  blocks:
+    - "prompts/definitions/tasks/local-dev-environment/local-smoke-check.yaml"
+
+test_policy:
+  manual_checks:
+    - "Human 手元で start  script の dry-run または --help（optional）"
+  not_required:
+    - "web→api→reco 結合成功"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "§2.5: Cloud Agent 上でのフルスタック起動は acceptance 必須にしない"

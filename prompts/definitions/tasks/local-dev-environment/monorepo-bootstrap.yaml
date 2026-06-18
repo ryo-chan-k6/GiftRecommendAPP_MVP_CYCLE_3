@@ -1,0 +1,141 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-monorepo-bootstrap"
+  title: "monorepo起動基盤整備"
+  summary: "pnpm workspace と web/api/reco（+ batch 骨格）の package.json scripts 骨格、ルート dev:* scripts を整備する。Epic A Task A2。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase3b Epic A Task A2。ルート package.json は Orval のみで pnpm workspace 未整備（Phase3 環境再計画 §1.2）。
+  Task A1（toolchain-pin）完了後に着手。A3（db-build-guide）・A5（redis-local-guide）と並列可。
+
+objective: |
+  `pnpm-workspace.yaml`、web / api / reco / batch の `package.json` scripts 骨格、ルート `dev:web` / `dev:api` / `dev:reco` 等を整備し、
+  Phase4 実装前でも repo 上で monorepo 起動の骨格が再現できる状態にする。
+
+scope:
+  - "ルート `pnpm-workspace.yaml` 作成"
+  - "apps/web, apps/api, apps/reco, apps/batch の `package.json`（または batch Python 骨格）scripts 整備"
+  - "ルート `package.json` に dev:* / 共通 script 追加"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "apps/** の本格実装・health endpoint（Phase4）"
+  - "DB / Redis 起動手順（A3 / A5）"
+  - "`scripts/dev/start-*.sh` 実装（Task A6）"
+  - "CI workflow（Epic D）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+  files:
+    - path: "package.json"
+      required: true
+
+output:
+  files:
+    - path: "pnpm-workspace.yaml"
+      action: "create"
+      required: true
+    - path: "package.json"
+      action: "update"
+      required: true
+    - path: "apps/web/package.json"
+      action: "create_or_update"
+      required: true
+    - path: "apps/api/package.json"
+      action: "create_or_update"
+      required: true
+    - path: "apps/reco/package.json"
+      action: "create_or_update"
+      required: true
+    - path: "apps/batch/package.json"
+      action: "create_or_update"
+      required: false
+
+acceptance_criteria:
+  - "`pnpm-workspace.yaml` が apps を包含している"
+  - "各 app に dev 起動用 script 骨格（placeholder 可）がある"
+  - "ルートから `dev:web` / `dev:api` / `dev:reco` 等が定義されている"
+  - "apps/**/src の実装変更がない（package.json 骨格のみ）"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "monorepo-bootstrap"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/local-dev-environment/toolchain-pin.yaml"
+  exclusive_files:
+    - "pnpm-workspace.yaml"
+    - "package.json"
+    - "apps/web/package.json"
+    - "apps/api/package.json"
+    - "apps/reco/package.json"
+  conflict_risk: "medium"
+  blocks:
+    - "prompts/definitions/tasks/local-dev-environment/local-dev-runtime.yaml"
+
+test_policy:
+  manual_checks:
+    - "`pnpm install` が workspace 解決できる（lockfile 更新含む）"
+  not_required:
+    - "apps 起動成功"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "batch は Python toolchain pin（A1）と package 骨格のみ。本格手順は Phase4b"
