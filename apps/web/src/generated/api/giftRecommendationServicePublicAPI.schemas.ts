@@ -380,14 +380,16 @@ export interface FeatureDefinitionMasterItem {
  */
 export interface SemanticConfigMastersData {
   /**
-     * 現行 Semantic Config Version ID
+     * Semantic Config 系列名（親 semantic_config.config_name）
      * @minLength 1
      */
-  semanticConfigVersionId: string;
-  /** Version 表示ラベル */
-  versionLabel?: string;
-  /** Semantic Config 名称 */
-  configName?: string;
+  configName: string;
+  /**
+     * Version ラベル（semver）。Public composite 参照の一部
+     * @minLength 1
+     * @pattern ^v[0-9]+\.[0-9]+\.[0-9]+$
+     */
+  versionLabel: string;
   semanticConcepts: SemanticConceptMasterItem[];
   /**
      * 有効 Feature Definition 一覧（0 件は 500 GRS-CFG-006）
@@ -506,10 +508,16 @@ export interface ConceptFeatureRuleMasterItem {
  */
 export interface FeatureRuleMastersData {
   /**
-     * 現行 Semantic Config Version ID（API-PUB-007 と一致）
+     * Semantic Config 系列名（API-PUB-007 と一致）
      * @minLength 1
      */
-  semanticConfigVersionId: string;
+  configName: string;
+  /**
+     * Version ラベル（semver）。API-PUB-007 と一致
+     * @minLength 1
+     * @pattern ^v[0-9]+\.[0-9]+\.[0-9]+$
+     */
+  versionLabel: string;
   /** 基準値 Rule 一覧（relationship / occasion。0 件も 200） */
   baseValueRules: BaseValueRuleMasterItem[];
   /** Concept Feature Rule 一覧（0 件も 200） */
