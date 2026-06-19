@@ -19,10 +19,10 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 662
   task_definition: "prompts/definitions/tasks/local-dev-environment/redis-local-guide.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "chore/task-662-redis-local-guide"
+  target_branch: "chore/epic-651-local-dev-environment"
 
 commands:
   primary: "/review-pr"
@@ -47,7 +47,7 @@ input:
     path: "prompts/definitions/tasks/local-dev-environment/redis-local-guide.yaml"
     required: true
   issue:
-    number: null
+    number: 662
     required: true
   pr:
     number: null
