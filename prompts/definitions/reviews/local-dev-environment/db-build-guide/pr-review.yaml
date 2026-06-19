@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 659
   issue:
     number: 658
   task_definition: "prompts/definitions/tasks/local-dev-environment/db-build-guide.yaml"
@@ -50,7 +50,7 @@ input:
     number: 658
     required: true
   pr:
-    number: null
+    number: 659
     required: true
 
 review_points:
