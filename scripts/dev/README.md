@@ -62,6 +62,28 @@ redis-cli -u "$REDIS_URL" PING
 ./scripts/dev/start-web.sh    # terminal 3 — http://localhost:3000
 ```
 
+### アプリ停止（web → api → reco）
+
+`start-*.sh` は `exec pnpm dev:*` で**前景実行**する。専用 stop script はなく、起動した各ターミナルで **`Ctrl+C`** する（起動順の逆: web → api → reco）。
+
+```bash
+# terminal 3 — web
+Ctrl+C
+
+# terminal 2 — api
+Ctrl+C
+
+# terminal 1 — reco
+Ctrl+C
+```
+
+| 項目 | 内容 |
+| ---- | ---- |
+| Redis | `./scripts/dev/stop-redis.sh`（§7.2。Docker コンテナは別途停止） |
+| プロセス残留時 | ポート **3000** / **3001** / **8000** を `lsof -i :<port>` 等で確認し、必要なら `kill <PID>` |
+
+Phase4 実装前（placeholder）は dev プロセスが即終了するため、通常は停止操作不要。
+
 | 項目 | 内容 |
 | ---- | ---- |
 | monorepo 正本 | ルート `package.json` の `dev:reco` / `dev:api` / `dev:web` |
