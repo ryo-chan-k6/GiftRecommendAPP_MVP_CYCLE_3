@@ -19,10 +19,10 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 658
   task_definition: "prompts/definitions/tasks/local-dev-environment/db-build-guide.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "docs/task-658-db-build-guide"
+  target_branch: "chore/epic-651-local-dev-environment"
 
 commands:
   primary: "/review-pr"
@@ -47,7 +47,7 @@ input:
     path: "prompts/definitions/tasks/local-dev-environment/db-build-guide.yaml"
     required: true
   issue:
-    number: null
+    number: 658
     required: true
   pr:
     number: null
