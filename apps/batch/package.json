@@ -1,0 +1,8 @@
+{
+  "name": "@gift-recommendation/batch",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "node -e \"console.log('[placeholder] batch CLI entry — Phase4b implementation pending'); process.exit(0)\""
+  }
+}

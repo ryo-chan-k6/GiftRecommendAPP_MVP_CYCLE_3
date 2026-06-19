@@ -17,12 +17,12 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 657
   issue:
-    number: null
+    number: 656
   task_definition: "prompts/definitions/tasks/local-dev-environment/monorepo-bootstrap.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "chore/task-656-monorepo-bootstrap"
+  target_branch: "chore/epic-651-local-dev-environment"
 
 commands:
   primary: "/review-pr"
@@ -47,10 +47,10 @@ input:
     path: "prompts/definitions/tasks/local-dev-environment/monorepo-bootstrap.yaml"
     required: true
   issue:
-    number: null
+    number: 656
     required: true
   pr:
-    number: null
+    number: 657
     required: true
 
 review_points:
