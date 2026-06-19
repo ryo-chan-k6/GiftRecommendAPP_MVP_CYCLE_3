@@ -17,6 +17,10 @@ importers:
 
   apps/api: {}
 
+  apps/batch: {}
+
+  apps/reco: {}
+
   apps/web: {}
 
   packages/contracts: {}
