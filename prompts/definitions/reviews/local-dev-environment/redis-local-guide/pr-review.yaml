@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 663
   issue:
     number: 662
   task_definition: "prompts/definitions/tasks/local-dev-environment/redis-local-guide.yaml"
@@ -50,7 +50,7 @@ input:
     number: 662
     required: true
   pr:
-    number: null
+    number: 663
     required: true
 
 review_points:
