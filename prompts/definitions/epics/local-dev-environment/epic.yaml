@@ -42,7 +42,7 @@ scope:
   - "ツールチェーン pin（Node / Python 等）"
   - "pnpm workspace・各 app の package.json scripts 骨格"
   - "DB構築手順書・Supabase CLI pin・scripts/db"
-  - "seed 方針（supabase/seed.sql vs db/seeds/）と最小 seed script"
+  - "seed 方針（supabase/seeds/masters + config.toml [db.seed]）と最小 seed script"
   - "Redis 限定 docker-compose.dev.yml + scripts/dev 起動補助"
   - "scripts/dev/start-{web,api,reco}.sh・ローカル開発手順書 §9 実行手順化"
   - "疎通チェック script（health / env / Redis / DB）"
@@ -126,9 +126,6 @@ output:
     - path: "supabase/**"
       action: "update"
       required: false
-    - path: "db/seeds/**"
-      action: "create_or_update"
-      required: false
   generated:
     expected: false
     paths: []
@@ -193,9 +190,8 @@ epic_scope:
     - "scripts/dev/**"
     - "scripts/db/**"
     - "supabase/config.toml"
-    - "supabase/seed.sql"
+    - "supabase/seeds/**"
     - "supabase/README.md"
-    - "db/seeds/**"
     - ".env.example"
     - ".github/workflows/ci-contract.yml"
     - "prompts/definitions/epics/local-dev-environment/**"

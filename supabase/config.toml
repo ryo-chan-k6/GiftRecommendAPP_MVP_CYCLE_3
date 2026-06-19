@@ -33,3 +33,7 @@ enabled = true
 
 [auth.email]
 enable_signup = false
+
+[db.seed]
+enabled = true
+sql_paths = ["./seeds/masters/*.sql"]

@@ -13,7 +13,7 @@
 
 - Docker Desktop（WSL2 バックエンド）の前提
 - Supabase CLI **バージョン pin**（`supabase/.cli-version`）
-- `supabase start` → `supabase migration up` までの手順
+- `supabase start` → `supabase migration up` → master seed 投入までの手順
 - `DATABASE_URL` 設定の目安（`.env` は Git 管理しない）
 - [`scripts/db/`](../../../scripts/db/README.md) 補助 script
 
@@ -22,7 +22,7 @@
 | 対象 | 正本 / 担当 |
 | ---- | ----------- |
 | `supabase/migrations/**` の DDL 内容変更 | Phase2 Epic |
-| master / test seed の詳細方針 | Task A4 `seed-strategy` |
+| test seed（`supabase/seeds/test-data/`）の詳細 | Epic C C2 |
 | Redis 起動 | Task A5 `redis-local-guide` |
 | クラウド Supabase への link / `db push` | `infra/supabase/`（将来 Task） |
 | apps 実装 | Phase4 |
@@ -38,6 +38,7 @@
 | ローカルポート・DB バージョン | [`supabase/config.toml`](../../../supabase/config.toml) | 接続先の根拠 |
 | Phase2 DDL スモーク（`db/ddl/` 直接適用） | [ローカルDB検証手順書](./ローカルDB検証手順書.md) | 別用途（migration 統合前の検証） |
 | ローカル開発全体 | [ローカル開発手順書](../cross_cutting/ローカル開発手順書.md) §7 | PostgreSQL 節は本書へリンク |
+| master seed SQL | [`supabase/seeds/masters/`](../../../supabase/seeds/masters/) + [`config.toml`](../../../supabase/config.toml) `[db.seed]` | 本書 §9 |
 | 環境変数 | [環境設計書 §19](../cross_cutting/環境設計書.md) | `DATABASE_URL` 等 |
 
 ---
@@ -176,13 +177,14 @@ cd <worktree-root>
 
 **期待**: 未適用 migration が順次適用され、エラーなく完了する。
 
-再検証で DB をクリーンにしたい場合:
+再検証で DB をクリーンにしたい場合（migration + master seed まで一発）:
 
 ```bash
-supabase db reset
-# または
-supabase stop && supabase start && supabase migration up
+./scripts/db/reset-local.sh
+# または: supabase db reset
 ```
+
+`db reset` は [`config.toml`](../../../supabase/config.toml) `[db.seed]` に従い `supabase/seeds/masters/*.sql` を自動投入する。
 
 > **注意**: `supabase db reset` はローカル DB データを破棄する。prod / クラウドには実行しない。
 
@@ -221,13 +223,46 @@ psql "$DATABASE_URL" -c 'SELECT 1'
 
 ---
 
-## 9. `scripts/db/` 補助 script
+## 9. master seed 投入
+
+### 9.1 正本
+
+| 項目 | 正本 |
+| ---- | ---- |
+| master seed SQL | [`supabase/seeds/masters/*.sql`](../../../supabase/seeds/masters/) |
+| CLI 設定 | [`supabase/config.toml`](../../../supabase/config.toml) → `[db.seed] sql_paths = ["./seeds/masters/*.sql"]` |
+| 論理定義（投入順・固定 ID） | [初期データ定義書](./初期データ定義書.md) |
+
+`supabase/seed.sql` 単体正本は採用しない。
+
+### 9.2 フルリセット（migration + master seed）
+
+```bash
+./scripts/db/reset-local.sh
+# または: supabase db reset
+```
+
+**期待**: migration 適用後、master seed 9 ファイルがエラーなく投入される。
+
+### 9.3 master seed のみ再投入
+
+migration 済みでデータのみ再投入する場合:
+
+```bash
+./scripts/db/seed-masters.sh
+```
+
+`psql` が必要（§4.2）。`DATABASE_URL` は `supabase status` の DB URL またはローカル既定を使用する。
+
+### 9.4 `scripts/db/` 補助 script 一覧
 
 | script | 用途 |
 | ------ | ---- |
 | [`check-cli-version.sh`](../../../scripts/db/check-cli-version.sh) | `supabase/.cli-version` と CLI 実バージョンの一致確認 |
 | [`start-local.sh`](../../../scripts/db/start-local.sh) | バージョン確認後に `supabase start` |
 | [`migrate-up.sh`](../../../scripts/db/migrate-up.sh) | `supabase migration up` |
+| [`reset-local.sh`](../../../scripts/db/reset-local.sh) | `supabase db reset`（migration + master seed） |
+| [`seed-masters.sh`](../../../scripts/db/seed-masters.sh) | master seed のみ再投入 |
 | [`status.sh`](../../../scripts/db/status.sh) | `supabase status` |
 | [`stop-local.sh`](../../../scripts/db/stop-local.sh) | `supabase stop` |
 
@@ -243,6 +278,7 @@ Human 手元での再現確認用。Agent の acceptance criteria には **必�
 - [ ] `./scripts/db/check-cli-version.sh` 成功
 - [ ] `./scripts/db/start-local.sh` 成功
 - [ ] `./scripts/db/migrate-up.sh` 成功
+- [ ] `./scripts/db/reset-local.sh` または `./scripts/db/seed-masters.sh` 成功（optional）
 - [ ] `psql "$DATABASE_URL" -c 'SELECT 1'` 成功（`.env` 設定後）
 
 ---
@@ -277,3 +313,4 @@ Human 手元での再現確認用。Agent の acceptance criteria には **必�
 | 日付 | 変更内容 | Task |
 | ---- | -------- | ---- |
 | 2026-06-19 | 初版作成（Supabase CLI + Docker Desktop、CLI pin、`scripts/db/`） | #658 |
+| 2026-06-19 | §9 master seed（`supabase/seeds/masters` + `config.toml` [db.seed]） | #660 |

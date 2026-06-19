@@ -1,13 +1,16 @@
 # supabase/
 
-Supabase CLI プロジェクト配置。DB migration の **適用正本** は `migrations/` とする。
+Supabase CLI プロジェクト配置。DB migration の **適用正本** は `migrations/`、master seed の **SQL 正本** は `seeds/masters/` とする。
 
 | パス | 役割 |
 | ---- | ---- |
 | `.cli-version` | Supabase CLI バージョン pin（正本） |
-| `config.toml` | Supabase CLI 設定（ローカルポート、DB バージョン等） |
+| `config.toml` | Supabase CLI 設定（ローカルポート、DB バージョン、`[db.seed]` 等） |
 | `migrations/` | 環境へ適用する SQL（Supabase CLI 管理） |
-| `seed.sql` | 任意（`db/seeds/` との関係は Task A4 で決定） |
+| `seeds/masters/` | master seed SQL 正本（`db reset` 時に自動投入） |
+| `seeds/test-data/` | ローカル / テスト用（自動 seed 外） |
+
+`supabase/seed.sql` 単体正本は **採用しない**。modular seeds + `config.toml` [db.seed] を正とする。
 
 ## Supabase CLI バージョン
 
@@ -24,19 +27,12 @@ Supabase CLI プロジェクト配置。DB migration の **適用正本** は `m
 ```bash
 ./scripts/db/start-local.sh
 ./scripts/db/migrate-up.sh
+./scripts/db/reset-local.sh    # migration + master seed（ローカル DB 全消去）
+./scripts/db/seed-masters.sh   # master seed のみ再投入
 ./scripts/db/status.sh
 ```
 
 `supabase status` の DB URL を `.env` の `DATABASE_URL` に合わせる（実値は Git 管理しない）。
-
-master seed（migration 完了後）の骨子は Task A4 まで暫定として以下を参照:
-
-```bash
-export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
-for f in db/seeds/masters/*.sql; do
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
-done
-```
 
 Redis は Supabase 外で起動する（[基盤構成設計書](../docs/06_実装設計/cross_cutting/基盤構成設計書.md) §5.5）。
 
