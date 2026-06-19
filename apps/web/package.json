@@ -1,5 +1,8 @@
 {
   "name": "@gift-recommendation/web",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "node -e \"console.log('[placeholder] Next.js dev server (port 3000) — Phase4 implementation pending'); process.exit(0)\""
+  }
 }

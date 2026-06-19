@@ -42,7 +42,7 @@ scope:
   - "ツールチェーン pin（Node / Python 等）"
   - "pnpm workspace・各 app の package.json scripts 骨格"
   - "DB構築手順書・Supabase CLI pin・scripts/db"
-  - "seed 方針（supabase/seed.sql vs db/seeds/）と最小 seed script"
+  - "seed 方針（supabase/seeds/masters + config.toml [db.seed]）と最小 seed script"
   - "Redis 限定 docker-compose.dev.yml + scripts/dev 起動補助"
   - "scripts/dev/start-{web,api,reco}.sh・ローカル開発手順書 §9 実行手順化"
   - "疎通チェック script（health / env / Redis / DB）"
@@ -126,9 +126,6 @@ output:
     - path: "supabase/**"
       action: "update"
       required: false
-    - path: "db/seeds/**"
-      action: "create_or_update"
-      required: false
   generated:
     expected: false
     paths: []
@@ -153,7 +150,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "chore/epic-<issue-number>-local-dev-environment"
+  name: "chore/epic-651-local-dev-environment"
   summary: "local-dev-environment"
   base: "develop"
   target: "develop"
@@ -193,10 +190,10 @@ epic_scope:
     - "scripts/dev/**"
     - "scripts/db/**"
     - "supabase/config.toml"
-    - "supabase/seed.sql"
+    - "supabase/seeds/**"
     - "supabase/README.md"
-    - "db/seeds/**"
     - ".env.example"
+    - ".github/workflows/ci-contract.yml"
     - "prompts/definitions/epics/local-dev-environment/**"
     - "prompts/definitions/tasks/local-dev-environment/**"
     - "prompts/definitions/reviews/local-dev-environment/**"
@@ -216,6 +213,7 @@ epic_scope:
     - ".env"
   child_task_areas:
     - "toolchain-pin"
+    - "ci-contract-node-align"
     - "monorepo-bootstrap"
     - "db-build-guide"
     - "seed-strategy"
@@ -335,7 +333,7 @@ stop_conditions:
 
 notes:
   - "workstream_key: local-dev-environment"
-  - "子 Task 実行順: A1 単独先行 → A2∥A3∥A5 → A4（A3 後）→ A6 → A7"
+  - "子 Task 実行順: A1 単独先行 → A1b（#652 後・ci-contract Node 24 統一）∥A2∥A3∥A5 → A4（A3 後）→ A6 → A7"
   - "Phase4a 前提「Phase3（env）」= Epic A 完了を指す"
   - "Epic PR Review: prompts/definitions/reviews/local-dev-environment/epic/pr-review.yaml"
   - "正本: テスト定義書 §4.1（agent_test_operations.level_map の根拠）"

@@ -52,7 +52,7 @@ db_usages:
 
 1. 関連 docs 更新
 2. 本ディレクトリ更新
-3. 必要に応じて `db/seeds/masters/` 更新（後続 Task）
+3. 必要に応じて `supabase/seeds/masters/` 更新（後続 Task）
 4. 実装・テスト参照箇所更新
 
 正本: [DevOps方針書](../../docs/05_アプリケーション設計/共通/DevOps方針書.md) §8

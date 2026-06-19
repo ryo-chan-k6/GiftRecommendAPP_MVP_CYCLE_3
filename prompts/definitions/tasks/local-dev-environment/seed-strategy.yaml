@@ -4,7 +4,7 @@ definition_type: "task"
 task:
   id: "task-local-dev-environment-seed-strategy"
   title: "seed方針決定と最小seed投入"
-  summary: "`supabase/seed.sql` vs `db/seeds/` 方針を決定し、最小 master seed 投入 script を整備する。Epic A Task A4。"
+  summary: "master seed 正本を supabase/seeds/masters + config.toml [db.seed] に決定し、最小 seed 投入 script を整備する。Epic A Task A4。"
   phase: "06_実装設計"
 
 work_mode: "ai-agent"
@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-local-dev-environment"
   epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 651
+  epic_branch: "chore/epic-651-local-dev-environment"
   related_issues: []
   related_prs: []
 
@@ -39,16 +39,17 @@ agent:
     - "docs-reviewer-ai"
 
 background: |
-  Phase3b Epic A Task A4。ディレクトリ構成定義書・`supabase/README.md` で seed 配置が未決定。
+  Phase3b Epic A Task A4。ディレクトリ構成定義書・`supabase/README.md` で seed 配置が未決定だった。
   Task A3（db-build-guide）完了後、Task A5 前に着手。Epic C C2（test-fixtures-seed）の前提の一部。
+  Human 判断（Issue #660）: master seed SQL 正本は `supabase/seeds/masters/`、`supabase/seed.sql` は採用しない。
 
 objective: |
-  local dev 用 master seed の正本配置（`supabase/seed.sql` または `db/seeds/`）を決定し、
-  docs と `scripts/db/` から再現可能な最小 seed 投入手順を整備する。
+  local dev 用 master seed の正本を `supabase/seeds/masters/` + `supabase/config.toml` [db.seed] に決定し、
+  docs と `scripts/db/` から Supabase CLI 前提で再現可能な最小 seed 投入手順を整備する。
 
 scope:
   - "seed 方針の docs 正本化（DB構築手順書・マイグレーション方針書・supabase/README との整合）"
-  - "最小 master seed（開発用ダミーデータのみ）"
+  - "最小 master seed（開発用ダミーデータのみ）を supabase/seeds/masters/ へ配置"
   - "seed 投入 script（`scripts/db/`）"
   - "Task / Review Definition の整備"
 
@@ -57,6 +58,7 @@ out_of_scope:
   - "本番データ・個人情報を含む seed"
   - "DDL / migration 変更（Phase2）"
   - "大量マスタデータの本格投入"
+  - "supabase/seed.sql 単体正本の採用"
 
 input:
   docs:
@@ -64,7 +66,7 @@ input:
       required: true
     - path: "docs/06_実装設計/database/DB構築手順書.md"
       required: true
-      purpose: "A3 成果物（未作成時は A3 完了後に着手）"
+      purpose: "A3 成果物・seed 手順追記先"
     - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
       required: true
   files:
@@ -80,18 +82,19 @@ output:
       action: "update"
       required: true
   files:
-    - path: "supabase/seed.sql"
+    - path: "supabase/config.toml"
+      action: "update"
+      required: true
+    - path: "supabase/seeds/**"
       action: "create_or_update"
-      required: false
-    - path: "db/seeds/**"
-      action: "create_or_update"
-      required: false
+      required: true
     - path: "scripts/db/**"
       action: "update"
       required: true
 
 acceptance_criteria:
-  - "seed 正本配置（seed.sql または db/seeds/）が docs で一意に決定されている"
+  - "seed 正本配置（supabase/seeds/masters + config.toml [db.seed]）が docs で一意に決定されている"
+  - "旧 db/seeds/ ディレクトリが削除され、参照 docs が supabase/seeds/ のみを正とする"
   - "最小 seed 投入が scripts または supabase CLI 手順で再現可能"
   - "実個人情報・secret が seed に含まれていない"
   - "Task PR target が親 Epic Branch"
@@ -116,8 +119,8 @@ parallel_control:
   depends_on:
     - "prompts/definitions/tasks/local-dev-environment/db-build-guide.yaml"
   exclusive_files:
-    - "supabase/seed.sql"
-    - "db/seeds/**"
+    - "supabase/config.toml"
+    - "supabase/seeds/**"
     - "supabase/README.md"
   conflict_risk: "medium"
   db_impact: true
@@ -139,7 +142,8 @@ contract_gate:
   required: false
 
 human_decision_points:
-  - "seed 正本: supabase/seed.sql vs db/seeds/ の最終配置（Task 内で docs 決定。Human Review で確認）"
+  - "seed 正本: supabase/seeds/masters + config.toml [db.seed]（supabase/seed.sql 非採用）。Human Review で確認"
 
 notes:
   - "A3 完了前は Issue 起票のみ可、実作業は A3 merge 後"
+  - "db/ddl/ は Phase2 設計参照として維持（Option A）"

@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-local-dev-environment"
   epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 651
+  epic_branch: "chore/epic-651-local-dev-environment"
   related_issues: []
   related_prs: []
 
@@ -100,8 +100,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "toolchain-pin"
-  base: null
-  target: null
+  base: "chore/epic-651-local-dev-environment"
+  target: "chore/epic-651-local-dev-environment"
   worktree_required: true
 
 project:
@@ -148,4 +148,6 @@ contract_gate:
   required: false
 
 notes:
-  - "親 Epic Issue 化前の Definition。`/start-epic` 後に parent.epic_* を更新"
+  - "Node/Python 具体版は利用技術スタック整理表 §15 および repo pin ファイルを正本とする（A1 で確定）"
+  - "Human 判断（2026-06-18）: Node.js 24 LTS、Python 3.14"
+  - "CI workflow の node-version 統一は本 Task scope 外（#653 で後続）"

@@ -17,12 +17,12 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 667
   issue:
-    number: null
+    number: 666
   task_definition: "prompts/definitions/tasks/local-dev-environment/local-smoke-check.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "chore/task-666-local-smoke-check"
+  target_branch: "chore/epic-651-local-dev-environment"
 
 commands:
   primary: "/review-pr"
@@ -47,10 +47,10 @@ input:
     path: "prompts/definitions/tasks/local-dev-environment/local-smoke-check.yaml"
     required: true
   issue:
-    number: null
+    number: 666
     required: true
   pr:
-    number: null
+    number: 667
     required: true
 
 review_points:
