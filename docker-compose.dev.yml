@@ -1,0 +1,18 @@
+# Gift Recommendation Service — local development compose (Redis only)
+#
+# Human 判断 2026-06-18: Redis 限定 compose 採用。PostgreSQL は Supabase CLI を正本とする。
+# 正本: docs/06_実装設計/cross_cutting/ローカル開発手順書.md §7.2
+#
+# 起動: docker compose -f docker-compose.dev.yml up -d redis
+# または: ./scripts/dev/start-redis.sh
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
