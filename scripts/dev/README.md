@@ -1,6 +1,6 @@
 # scripts/dev/
 
-ローカル開発向けの補助スクリプト（Task ③ / Task A5 / Task A6）。
+ローカル開発向けの補助スクリプト（Task ③ / Task A5 / Task A6 / Task A7）。
 
 ## 前提
 
@@ -30,6 +30,7 @@ Phase3a（2026-06-07）の「docker-compose 同梱なし」は **PostgreSQL 用 
 | ---------- | ---- |
 | [`copy-env-example.sh`](./copy-env-example.sh) | `.env.example` → `.env` コピー（既存 `.env` は上書きしない） |
 | [`check-env-names.sh`](./check-env-names.sh) | `.env.example` の MVP 必須変数名が `.env` に存在するか確認（**値は表示しない**） |
+| [`smoke-check.sh`](./smoke-check.sh) | env / DB / Redis / app health の段階疎通チェック（`--skip-*` 付き） |
 | [`start-redis.sh`](./start-redis.sh) | `docker-compose.dev.yml` で Redis を起動 |
 | [`stop-redis.sh`](./stop-redis.sh) | Redis コンテナを停止 |
 | [`start-reco.sh`](./start-reco.sh) | reco を `pnpm dev:reco` で起動（port **8000**） |
@@ -45,6 +46,12 @@ Phase3a（2026-06-07）の「docker-compose 同梱なし」は **PostgreSQL 用 
 ./scripts/dev/check-env-names.sh
 # .env を編集後
 ./scripts/dev/check-env-names.sh --strict
+
+# 疎通チェック（DB / Redis 起動後。Phase3b では --skip-apps 推奨）
+./scripts/dev/smoke-check.sh --skip-apps
+# インフラ込みの一例（psql / redis-cli / .env が揃っていること）
+# ./scripts/dev/smoke-check.sh --skip-apps   # placeholder 期間
+# ./scripts/dev/smoke-check.sh               # Phase4 以降（health 成功を確認）
 
 # Redis（Docker Desktop 起動済みであること）
 ./scripts/dev/start-redis.sh
