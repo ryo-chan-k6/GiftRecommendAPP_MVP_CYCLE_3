@@ -126,9 +126,6 @@ output:
     - path: "supabase/**"
       action: "update"
       required: false
-    - path: "db/seeds/**"
-      action: "create_or_update"
-      required: false
   generated:
     expected: false
     paths: []
@@ -195,7 +192,6 @@ epic_scope:
     - "supabase/config.toml"
     - "supabase/seeds/**"
     - "supabase/README.md"
-    - "db/seeds/**"
     - ".env.example"
     - ".github/workflows/ci-contract.yml"
     - "prompts/definitions/epics/local-dev-environment/**"

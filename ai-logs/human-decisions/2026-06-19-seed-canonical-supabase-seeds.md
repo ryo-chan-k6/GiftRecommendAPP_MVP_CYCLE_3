@@ -19,7 +19,7 @@
 - **master seed SQL 正本**: `supabase/seeds/masters/*.sql`
 - **CLI 設定**: `supabase/config.toml` → `[db.seed] sql_paths = ["./seeds/masters/*.sql"]`
 - **`supabase/seed.sql` 単体正本**: **非採用**
-- **`db/seeds/masters/`**: 移行後 README 誘導のみ
+- **`db/seeds/`**: 移行完了のため **削除**（正本は `supabase/seeds/`）
 - **`db/ddl/`**: Phase2 設計参照として **維持**（Option A。適用正本ではない）
 
 ---

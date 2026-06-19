@@ -88,16 +88,13 @@ output:
     - path: "supabase/seeds/**"
       action: "create_or_update"
       required: true
-    - path: "db/seeds/**"
-      action: "update"
-      required: true
-      purpose: "移行誘導 README のみ"
     - path: "scripts/db/**"
       action: "update"
       required: true
 
 acceptance_criteria:
   - "seed 正本配置（supabase/seeds/masters + config.toml [db.seed]）が docs で一意に決定されている"
+  - "旧 db/seeds/ ディレクトリが削除され、参照 docs が supabase/seeds/ のみを正とする"
   - "最小 seed 投入が scripts または supabase CLI 手順で再現可能"
   - "実個人情報・secret が seed に含まれていない"
   - "Task PR target が親 Epic Branch"
@@ -125,7 +122,6 @@ parallel_control:
     - "supabase/config.toml"
     - "supabase/seeds/**"
     - "supabase/README.md"
-    - "db/seeds/**"
   conflict_risk: "medium"
   db_impact: true
 

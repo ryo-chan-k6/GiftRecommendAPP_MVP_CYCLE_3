@@ -58,6 +58,8 @@ review_points:
   - "seed 正本が supabase/seeds/masters + config.toml [db.seed] で docs 一意に決定されているか"
   - "supabase/seed.sql 単体正本を採用していないか"
   - "db/ddl/ が誤って削除されていないか（参照専用維持）"
+  - "旧 db/seeds/ ディレクトリが削除されているか"
+  - "scripts/db/verify-seed-setup.sh が config.toml [db.seed] を検証できるか"
   - "親 Epic allowed_paths 内に収まっているか"
   - "agentic_process: Agent 必須のフルスタック起動を acceptance に含めていないか"
   - "secret / .env 実値の非含有"

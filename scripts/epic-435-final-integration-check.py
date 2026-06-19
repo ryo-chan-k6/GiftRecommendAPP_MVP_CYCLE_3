@@ -142,15 +142,48 @@ def main() -> int:
         )
         blockers += 1
 
-    # Master seeds
-    seed_dir = ROOT / "db/seeds/masters"
+    # Master seeds (supabase/seeds/masters + config.toml [db.seed])
+    seed_dir = ROOT / "supabase/seeds/masters"
+    config_path = ROOT / "supabase/config.toml"
+    if config_path.exists():
+        config_text = config_path.read_text(encoding="utf-8")
+        if "[db.seed]" not in config_text or "./seeds/masters/*.sql" not in config_text:
+            findings.append(
+                {
+                    "severity": "Blocker",
+                    "category": "seed_config_invalid",
+                    "fact": "supabase/config.toml [db.seed] に ./seeds/masters/*.sql が未設定",
+                }
+            )
+            blockers += 1
+    else:
+        findings.append(
+            {
+                "severity": "Blocker",
+                "category": "seed_config_missing",
+                "fact": "supabase/config.toml が存在しない",
+            }
+        )
+        blockers += 1
+
+    legacy_seed_dir = ROOT / "db/seeds/masters"
+    if legacy_seed_dir.exists():
+        findings.append(
+            {
+                "severity": "Must",
+                "category": "legacy_seed_dir",
+                "fact": "旧 db/seeds/masters/ が残存（supabase/seeds/masters へ移行済みのため削除すること）",
+            }
+        )
+        musts += 1
+
     for name in MASTER_SEEDS:
         if not (seed_dir / name).exists():
             findings.append(
                 {
                     "severity": "Blocker",
                     "category": "seed_missing",
-                    "fact": f"master seed 欠落: db/seeds/masters/{name}",
+                    "fact": f"master seed 欠落: supabase/seeds/masters/{name}",
                 }
             )
             blockers += 1
