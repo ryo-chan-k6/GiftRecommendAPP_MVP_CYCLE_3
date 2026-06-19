@@ -52,3 +52,30 @@ db_require_repo_root() {
   fi
   cd "${root}"
 }
+
+db_local_database_url() {
+  local url
+  if url="$(supabase status -o env 2>/dev/null | sed -n 's/^DB_URL="\(.*\)"$/\1/p' | head -n1)" && [[ -n "${url}" ]]; then
+    echo "${url}"
+    return 0
+  fi
+  if url="$(supabase status 2>/dev/null | sed -n 's/.*DB URL: //p' | head -n1)" && [[ -n "${url}" ]]; then
+    echo "${url}"
+    return 0
+  fi
+  echo "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+}
+
+db_seed_masters_dir() {
+  echo "$(db_root)/supabase/seeds/masters"
+}
+
+db_seed_master_files() {
+  local dir
+  dir="$(db_seed_masters_dir)"
+  if [[ ! -d "${dir}" ]]; then
+    echo "error: missing ${dir}" >&2
+    return 1
+  fi
+  find "${dir}" -maxdepth 1 -name '*.sql' -type f | sort
+}

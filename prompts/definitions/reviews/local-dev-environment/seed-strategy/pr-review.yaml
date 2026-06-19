@@ -19,10 +19,10 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 660
   task_definition: "prompts/definitions/tasks/local-dev-environment/seed-strategy.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "chore/task-660-seed-strategy"
+  target_branch: "chore/epic-651-local-dev-environment"
 
 commands:
   primary: "/review-pr"
@@ -47,7 +47,7 @@ input:
     path: "prompts/definitions/tasks/local-dev-environment/seed-strategy.yaml"
     required: true
   issue:
-    number: null
+    number: 660
     required: true
   pr:
     number: null
@@ -55,12 +55,16 @@ input:
 
 review_points:
   - "Task Definition scope / out_of_scope との整合"
+  - "seed 正本が supabase/seeds/masters + config.toml [db.seed] で docs 一意に決定されているか"
+  - "supabase/seed.sql 単体正本を採用していないか"
+  - "db/ddl/ が誤って削除されていないか（参照専用維持）"
   - "親 Epic allowed_paths 内に収まっているか"
   - "agentic_process: Agent 必須のフルスタック起動を acceptance に含めていないか"
   - "secret / .env 実値の非含有"
   - "Phase2 migration / packages/contracts への越境がないか"
 
 human_review_points:
+  - "seed 正本: supabase/seeds/masters + config.toml（supabase/seed.sql 非採用）"
   - "Human 手元確認（optional manual check）の記載が適切か"
 
 notes:
