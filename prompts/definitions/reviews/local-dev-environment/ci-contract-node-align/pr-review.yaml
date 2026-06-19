@@ -1,0 +1,138 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-dev-environment-ci-contract-node-align-pr"
+  title: "local-dev-environment ci-contract-node-align PRレビュー"
+  summary: "Epic A Task A1b。ci-contract.yml の Node.js 版統一 PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "chore/epic-651-local-dev-environment"
+  target: "chore/epic-651-local-dev-environment"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 653
+  task_definition: "prompts/definitions/tasks/local-dev-environment/ci-contract-node-align.yaml"
+  source_branch: "chore/task-653-ci-contract-node-align"
+  target_branch: "chore/epic-651-local-dev-environment"
+  parent_epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  parent_epic_branch: "chore/epic-651-local-dev-environment"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/local-dev-environment/ci-contract-node-align.yaml"
+    required: true
+  issue:
+    number: 653
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "chore/epic-651-local-dev-environment"
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "§15 バージョン正本・一時差分注記の解消"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "ci-contract ジョブの役割・PR 品質ゲート方針"
+  files:
+    - path: ".github/workflows/ci-contract.yml"
+      required: true
+      purpose: "Node.js 版更新対象"
+    - path: ".nvmrc"
+      required: false
+      purpose: "変更がないこと（Task A1 scope）"
+    - path: "package.json"
+      required: false
+      purpose: "engines 変更がないこと（Task A1 scope）"
+  ci_results:
+    required: true
+    source: "gh_pr_checks"
+
+review_points:
+  common:
+    - "Task Definition scope / out_of_scope との整合"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch であるか"
+    - "PR author が okuri-ai-bot であるか"
+    - "親 Epic allowed_paths 内に収まっているか"
+  cicd:
+    - "`ci-contract.yml` の `node-version` が Node 24 LTS（開発正本と major 一致）に更新されているか"
+    - "OpenAPI YAML 検証・Orval generate・generated diff 検証ステップが維持されているか"
+    - "`ci.yml` / AI 運用 workflow を変更していないか"
+    - "permissions が contents: read 等の最小限か"
+  docs:
+    - "利用技術スタック整理表 §15 の一時差分注記（#653 参照）が解消されているか"
+  security:
+    - "workflow に secret 実値が含まれていないか"
+  epic_scope:
+    - "A1 pin ファイル（`.nvmrc` / engines）の変更が混入していないか"
+    - "apps/** / db/** / packages/contracts/** への越境がないか"
+
+human_review_points:
+  - "GHA 上で ci-contract ジョブが Node 24 で成功しているか"
+  - "一時差分解消後の §15 記載が読み手に分かりやすいか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "ci-contract ジョブ構成が維持されている"
+      - "secret 非露出"
+  request_changes:
+    conditions:
+      - "node-version が開発正本と不一致"
+      - "OpenAPI / Orval 検証ステップの削除・破壊的変更"
+      - "A1 scope ファイルの混入変更"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/local-dev-environment/ci-contract-node-align.yaml"
+  - "PR 番号は /create-pr 後に target.pr / input.pr.number へ反映"
