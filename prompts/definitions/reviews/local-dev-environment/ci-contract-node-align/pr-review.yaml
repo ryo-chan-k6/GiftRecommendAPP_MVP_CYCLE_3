@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 655
   issue:
     number: 653
   task_definition: "prompts/definitions/tasks/local-dev-environment/ci-contract-node-align.yaml"
@@ -68,7 +68,7 @@ input:
     number: 653
     required: true
   pr:
-    number: null
+    number: 655
     required: true
   diff:
     required: true
