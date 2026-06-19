@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 657
   issue:
     number: 656
   task_definition: "prompts/definitions/tasks/local-dev-environment/monorepo-bootstrap.yaml"
@@ -50,7 +50,7 @@ input:
     number: 656
     required: true
   pr:
-    number: null
+    number: 657
     required: true
 
 review_points:
