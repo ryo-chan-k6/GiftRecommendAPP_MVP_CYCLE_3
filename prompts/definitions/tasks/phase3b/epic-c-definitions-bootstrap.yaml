@@ -1,0 +1,238 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-phase3b-epic-c-definitions-bootstrap"
+  title: "Phase3b Epic C（gha-test-environment）Definition bootstrap"
+  summary: "Phase3b Epic C + 子Task 6件の Epic/Task/Review Definition を整備し、Layer2 GHA テスト環境の `/start-epic` 前提を満たす。§2.6 Agent テスト運用を Epic Definition に反映する bootstrap chore Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - number: 651
+      purpose: "Phase3b Epic A（local-dev-environment）完了前提"
+  related_prs:
+    - number: 668
+      purpose: "Epic A PR merge 済み"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 環境再計画（2026-06-18）§2.8 に基づき、Phase3b Epic C（`gha-test-environment` / Layer2）を `/start-epic` する前に、
+  Epic Definition・子 Task 6件（C1〜C6）・Review Definition（Task PR + Epic PR）を prompts/definitions に整備する必要がある。
+  Epic A（Issue #651 / PR #668 merge 済み）を前提とし、Epic B（hosted-dev-environment）は defer のまま Definition を作成しない。
+
+objective: |
+  `prompts/definitions/epics/gha-test-environment/epic.yaml` および子 Task C1〜C6 の Task Definition、
+  `prompts/definitions/reviews/gha-test-environment/**` の Review Definition を作成する。
+  Epic Definition には Phase3 環境再計画 §2.6（全テストレベルの AI Agent 運用）・§2.7（Layer2 先行）・§2.8（Epic C スコープ）を反映する。
+  merge 後、`/start-epic @prompts/definitions/epics/gha-test-environment/epic.yaml` へ進める状態にする。
+
+scope:
+  - "Epic Definition: `prompts/definitions/epics/gha-test-environment/epic.yaml`（§2.6 / §2.7 / §2.8 反映含む）"
+  - "子 Task Definition 6件（ci-db-ephemeral / test-fixtures-seed / test-system-workflow / test-reco-quality-workflow / agent-test-dispatch / test-env-docs）"
+  - "Review Definition: 各 Task 用 `pr-review.yaml` + Epic PR 用 `reviews/gha-test-environment/epic/pr-review.yaml`"
+  - "本 bootstrap Task / Review Definition の整備"
+
+out_of_scope:
+  - "Epic C の実装（ci-db.yml / test-system.yml / fixture 実体）— 子 Task `/work-issue` で実施"
+  - "Epic B（hosted-dev-environment）Definition — defer"
+  - "Epic D（app CI: ci-web.yml 等）— Phase4a 後続"
+  - "Issue #132 の Close — 別 Todo（issue-132-disposition）"
+  - "apps/** 本格実装・packages/contracts 変更"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase3b §6.4.3 Epic C Task 表"
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§4.1 テストレベル・§2.6 Agent 運用の正本"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "Layer2 workflow_dispatch・§5.4 PR CI 分離"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§6.4 CI migration 検証・C1 前提"
+  files:
+    - path: "prompts/definitions/epics/local-dev-environment/epic.yaml"
+      required: true
+      purpose: "Epic A Definition 構造・agent_test_operations 参考"
+    - path: "prompts/definitions/tasks/phase3b/epic-a-definitions-bootstrap.yaml"
+      required: true
+      purpose: "bootstrap Task 構造参考"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/gha-test-environment/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/gha-test-environment/test-fixtures-seed.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/gha-test-environment/test-system-workflow.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/gha-test-environment/test-reco-quality-workflow.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/gha-test-environment/agent-test-dispatch.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/gha-test-environment/test-env-docs.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/gha-test-environment/epic/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/gha-test-environment/ci-db-ephemeral/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/gha-test-environment/test-fixtures-seed/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/gha-test-environment/test-system-workflow/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/gha-test-environment/test-reco-quality-workflow/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/gha-test-environment/agent-test-dispatch/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/gha-test-environment/test-env-docs/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/phase3b/epic-c-definitions-bootstrap.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/phase3b/epic-c-definitions-bootstrap/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Epic C Definition（gha-test-environment）"
+  - "子 Task Definition 6件 + Review Definition 7件（Task×6 + Epic×1）"
+  - "bootstrap Task / Review Definition"
+  - "merge 後 `/start-epic` 実行可能な状態"
+
+acceptance_criteria:
+  - "`prompts/definitions/epics/gha-test-environment/epic.yaml` が存在し、Layer2 スコープ・§2.6 Agent テスト運用が記載されている"
+  - "子 Task C1〜C6 の Definition が存在し、依存・並列・scope が Phase3 環境再計画 §2.8 と整合している"
+  - "各 Task に対応する Review Definition が存在する"
+  - "Epic PR 用 `reviews/gha-test-environment/epic/pr-review.yaml` が存在する"
+  - "Epic B Definition を作成していない（defer）"
+  - "secret 実値が含まれていない"
+  - "Task PR target が develop である（親 Epic なし chore）"
+
+branch:
+  no_branch: false
+  name: "chore/task-669-epic-c-definitions-bootstrap"
+  summary: "epic-c-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-19"
+    due_date: "2026-06-21"
+
+issue:
+  number: 669
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 651
+      purpose: "Epic A 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "prompts/definitions/epics/gha-test-environment/**"
+    - "prompts/definitions/tasks/gha-test-environment/**"
+    - "prompts/definitions/reviews/gha-test-environment/**"
+    - "prompts/definitions/tasks/phase3b/epic-c-definitions-bootstrap.yaml"
+    - "prompts/definitions/reviews/phase3b/epic-c-definitions-bootstrap/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "YAML schema 必須項目の目視確認"
+    - "Epic child_task_areas と Task ファイル名の対応"
+    - "§2.6 記載がテスト定義書 §4.1 と矛盾しないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Definition のみの chore Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope / allowed_paths が Phase3b Epic C と一致するか"
+    - "§2.6 / §2.7 / §2.8 が Epic Definition に反映されているか"
+    - "C1〜C6 の依存・並列が計画と一致するか"
+    - "Review Definition 3点セットが揃っているか"
+    - "Epic B defer が守られているか"
+    - "通常 PR CI に Layer2 workflow を混在させない設計原則が Task に反映されているか"
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+human_decision_points:
+  - "Phase3 環境再計画（2026-06-18）: Layer2（GHA ephemeral）先行、Epic B defer、cloud dev 常時起動なし"
+
+notes:
+  - "親 Epic なし・develop 直 Task（§7.6 bootstrap）"
+  - "merge 後: `/start-epic @prompts/definitions/epics/gha-test-environment/epic.yaml`"
+  - "Issue #669"

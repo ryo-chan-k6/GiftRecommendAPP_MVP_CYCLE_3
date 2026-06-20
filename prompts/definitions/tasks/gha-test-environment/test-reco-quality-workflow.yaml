@@ -1,0 +1,142 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-gha-test-environment-test-reco-quality-workflow"
+  title: "レコメンド品質評価workflow整備"
+  summary: "workflow_dispatch 可能な test-reco-quality.yml と固定評価ケース + 自動メトリクスを整備する。Epic C Task C4。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-gha-test-environment"
+  epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase3b Epic C Task C4。C1/C2 完了後、レコメンド品質評価（自動部分）用 Layer2 workflow を整備する。
+  テスト定義書 §9.7: Reco パイプライン + DB +（場合により）OpenAI。人手評価は MVP 必須 → Agent は自動メトリクス + artifact 出力、Human が最終判定。
+  MOD-RECO/API-INT 実装（Phase4b）整備前は workflow 骨格 + mock/skip を許容。
+
+objective: |
+  `.github/workflows/test-reco-quality.yml`（workflow_dispatch）を作成し、固定評価ケースで Reco パイプラインを実行し
+  自動メトリクスを GHA artifact / job summary に出力する。OpenAI は mock または GHA Secrets 注入。
+
+scope:
+  - "`.github/workflows/test-reco-quality.yml` 作成（workflow_dispatch）"
+  - "固定評価ケース + 自動メトリクス出力"
+  - "artifact 出力（Human 人手評価用データ含む）"
+  - "OpenAI mock / Secrets 注入方針"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "test-system.yml（Task C3）"
+  - "人手評価の最終判定（Human scope）"
+  - "ci.yml 品質ゲートへの混在"
+  - "MOD-RECO/API-INT 本格実装（Phase4b）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§9.7 レコメンド品質評価"
+  files:
+    - path: "tests/**"
+      required: false
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/**"
+      action: "update"
+      required: false
+  files:
+    - path: ".github/workflows/test-reco-quality.yml"
+      action: "create"
+      required: true
+    - path: "tests/**"
+      action: "create_or_update"
+      required: false
+
+acceptance_criteria:
+  - "test-reco-quality.yml が workflow_dispatch で起動可能"
+  - "固定ケースで実行可能（OpenAI mock または Secrets 注入）"
+  - "結果が GHA artifact / job summary に出力され Agent が読取可能"
+  - "人手評価を Agent 単独完了条件に含めていない"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "test-reco-quality-workflow"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
+    - "prompts/definitions/tasks/gha-test-environment/test-fixtures-seed.yaml"
+  exclusive_files:
+    - ".github/workflows/test-reco-quality.yml"
+  conflict_risk: "medium"
+  blocks:
+    - "prompts/definitions/tasks/gha-test-environment/agent-test-dispatch.yaml"
+
+test_policy:
+  manual_checks:
+    - "workflow_dispatch 実行と artifact 読取"
+    - "Human 人手評価は optional manual check（Agent 必須条件外）"
+  not_required:
+    - "OpenAI 実 API 常時実行"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "C1/C2 完了後。C3 と並列着手可"
+  - "Phase4b MOD-RECO/API-INT 整備後に本格化"

@@ -1,0 +1,50 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-test-environment-test-system-workflow-pr"
+  title: "gha-test-environment test-system-workflow PRレビュー"
+  summary: "Epic C Task test-system-workflow の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/gha-test-environment/test-system-workflow.yaml"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  cicd: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/gha-test-environment/test-system-workflow.yaml"
+    required: true
+
+review_points:
+  - "workflow_dispatch 起動可能か"
+  - "artifact / job summary が Agent 読取可能か"
+  - "ci.yml 品質ゲートと分離されているか"
+  - "Phase4b 未整備時の skip 条件が docs にあるか"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"

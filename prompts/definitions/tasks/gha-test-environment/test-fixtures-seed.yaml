@@ -1,0 +1,138 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-gha-test-environment-test-fixtures-seed"
+  title: "システム/品質テストfixture整備"
+  summary: "システムテスト・レコメンド品質評価用の fixture・最小 seed を整備する。Epic C Task C2。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-gha-test-environment"
+  epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase3b Epic C Task C2。C1（ci-db-ephemeral）完了後、Layer2 システム/品質テストで使用する
+  fixture・最小 seed を整備する。OpenAI は mock または GHA Secrets（dispatch 時のみ）とする。
+  C3/C4 の前提。
+
+objective: |
+  `tests/` 配下にシステム/品質テスト用 fixture を整備し、必要に応じて `supabase/seeds/` に
+  テスト専用最小 seed を追加する。C3/C4 workflow から参照可能な形にする。
+
+scope:
+  - "システム/品質テスト用 fixture（tests/ 配下）"
+  - "テスト用最小 seed（supabase/seeds/ または tests/fixtures/）"
+  - "OpenAI mock 方針の docs 明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "test-system.yml / test-reco-quality.yml 本体（Task C3/C4）"
+  - "apps/** 本格実装"
+  - "supabase/migrations DDL 変更"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "システム/品質評価の fixture 要件"
+  files:
+    - path: "supabase/seeds/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/**"
+      action: "update"
+      required: false
+  files:
+    - path: "tests/**"
+      action: "create_or_update"
+      required: true
+    - path: "supabase/seeds/**"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "C3/C4 から参照可能な fixture / seed が存在する"
+  - "OpenAI 依存は mock または Secrets 注入方針が docs に明記されている"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "test-fixtures-seed"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "infra"
+
+dependencies:
+  blocking: true
+  issues: []
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
+  exclusive_files:
+    - "tests/**"
+    - "supabase/seeds/**"
+  conflict_risk: "medium"
+  blocks:
+    - "prompts/definitions/tasks/gha-test-environment/test-system-workflow.yaml"
+    - "prompts/definitions/tasks/gha-test-environment/test-reco-quality-workflow.yaml"
+
+test_policy:
+  manual_checks:
+    - "fixture が C1 ephemeral DB と整合"
+  not_required:
+    - "full E2E pass"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "C1 完了後着手。C3/C4 前"

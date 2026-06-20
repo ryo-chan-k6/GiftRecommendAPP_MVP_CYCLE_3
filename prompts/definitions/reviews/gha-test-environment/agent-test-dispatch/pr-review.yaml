@@ -1,0 +1,45 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-test-environment-agent-test-dispatch-pr"
+  title: "gha-test-environment agent-test-dispatch PRレビュー"
+  summary: "Epic C Task agent-test-dispatch の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/gha-test-environment/agent-test-dispatch.yaml"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/gha-test-environment/agent-test-dispatch.yaml"
+    required: true
+
+review_points:
+  - "Layer2 dispatch 手順が Agent 実行可能か"
+  - "C3/C4 workflow が手順に含まれるか"
+  - "Commands 設計書との整合"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"
