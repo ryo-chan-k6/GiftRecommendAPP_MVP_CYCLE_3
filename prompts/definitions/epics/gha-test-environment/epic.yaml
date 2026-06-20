@@ -1,0 +1,306 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-gha-test-environment"
+  title: "gha-test-environment:Layer2 GHAテスト環境"
+  summary: "Phase3b Epic C。Cursor Cloud Agent が workflow_dispatch でフルスタック系テスト（システム/品質）を実行し結果を読める Layer2 基盤（GHA ephemeral DB + テスト workflow + Agent dispatch 手順 + docs）を整備する機能・領域単位 Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase3a（Epic #436）および Phase3b Epic A（Issue #651 / PR #668 merge 済み）で local dev 基盤を完了した。
+  Phase3b Epic C は **Layer2 GHA テスト環境**を担う（実装フェーズ実行プロセス設計書 §6.4.3、Phase3 環境再計画 §2.8）。
+  Human 判断: Layer2（GHA ephemeral）先行、cloud dev 常時起動なし、Epic B（hosted-dev-environment / Layer3）は defer。
+  Epic C は全テストレベルの Agent 運用のうち **システムテスト・レコメンド品質評価（自動部分）** にフォーカスする（§2.6）。単体・mock 結合は Epic D + Phase4 Task が担う。
+
+objective: |
+  Agent が `workflow_dispatch` で `test-system.yml` / `test-reco-quality.yml` を起動し、GHA run 結果・artifact を読み取れる Layer2 基盤を整備する。
+  Epic Branch 上で子 Task C1〜C6 を段階実行し、Epic PR で develop へ統合する。
+  通常 PR CI（ci.yml 群）には Layer2 workflow を含めず、実行時間・外部 API 依存による不安定化を避ける（CI・CD方針書 §5.4）。
+
+scope:
+  - "GHA 内 ephemeral DB workflow（ci-db.yml: supabase start + migration + seed）"
+  - "システム/品質テスト用 fixture・最小 seed（tests/ / db/seeds/）"
+  - "test-system.yml（workflow_dispatch）、主要 E2E 導線（API 中心）"
+  - "test-reco-quality.yml（workflow_dispatch）、固定評価ケース + 自動メトリクス"
+  - "Layer2 workflow 共通の Agent dispatch 手順 docs + Command 追記"
+  - "テスト環境・Agent テスト運用（全レベル対応表 §2.6）の docs 正本化"
+  - "Epic / Task / Review Definition の整備"
+
+out_of_scope:
+  - "クラウド dev 常時起動（Epic B / Layer3）— defer"
+  - "アプリ別 PR CI（Epic D: ci-web.yml / ci-api.yml / ci-reco.yml）"
+  - "local dev 基盤（Epic A `local-dev-environment`）— 完了済み"
+  - "apps/** 本格実装（Phase4a/4b）— C3/C4 は最小 API 前提で骨格のみ可"
+  - "db/migrations の DDL 内容変更（Phase2 Epic scope）"
+  - "production / staging deploy・CD workflow"
+  - "secret 実値の commit"
+  - "通常 PR CI への Layer2 workflow 混在"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase3b §6.4.3 Epic C Task 表"
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§4.1 テストレベル・システム/品質評価"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "Layer2 workflow_dispatch・§5.4 PR CI 分離"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§6.4 CI migration 検証"
+    - path: "docs/06_実装設計/database/DB構築手順書.md"
+      required: true
+      purpose: "Epic A A3 成果物（C1 前提）"
+  issues:
+    - number: 651
+      purpose: "Epic A 完了前提"
+  prs:
+    - number: 668
+      purpose: "Epic A PR merge 済み"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/**"
+      action: "create_or_update"
+      required: true
+      template: null
+    - path: "docs/06_実装設計/cross_cutting/**"
+      action: "update"
+      required: false
+      template: null
+  files:
+    - path: ".github/workflows/ci-db.yml"
+      action: "create"
+      required: false
+    - path: ".github/workflows/test-system.yml"
+      action: "create"
+      required: false
+    - path: ".github/workflows/test-reco-quality.yml"
+      action: "create"
+      required: false
+    - path: "tests/**"
+      action: "create_or_update"
+      required: false
+    - path: "supabase/seeds/**"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]gha-test-environment:Layer2 GHAテスト環境）"
+  - "Epic Branch（develop 起点）"
+  - "Layer2 テスト実行環境（GHA ephemeral DB + dispatch workflow + Agent 手順 + docs）"
+  - "Epic PR → develop（Human merge 待ち）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Epic Branch が develop から作成されている"
+  - "Agent（または Human）が `test-system.yml` を dispatch し、主要 API 導線が pass（Phase4b 最小 API 整備後）"
+  - "`test-reco-quality.yml` が固定ケースで実行可能（OpenAI mock または GHA Secrets 注入）"
+  - "結果が GHA artifact / job summary に出力され、Agent が読み取れる"
+  - "通常 PR CI（ci.yml 群）に Layer2 workflow が混在していない"
+  - "子 Task C1〜C6 が Epic Branch 上で完了可能な Definition がある"
+  - "secret 実値が成果物に含まれていない"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+
+branch:
+  no_branch: false
+  name: null
+  summary: "gha-test-environment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "infra"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/テスト/**"
+    - "docs/06_実装設計/cross_cutting/**"
+    - ".github/workflows/ci-db.yml"
+    - ".github/workflows/test-system.yml"
+    - ".github/workflows/test-reco-quality.yml"
+    - "tests/**"
+    - "supabase/seeds/**"
+    - "supabase/config.toml"
+    - "scripts/test/**"
+    - ".cursor/commands/**"
+    - "prompts/definitions/epics/gha-test-environment/**"
+    - "prompts/definitions/tasks/gha-test-environment/**"
+    - "prompts/definitions/reviews/gha-test-environment/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/**/generated/**"
+    - "supabase/migrations/**"
+    - ".github/workflows/ci-web.yml"
+    - ".github/workflows/ci-api.yml"
+    - ".github/workflows/ci-reco.yml"
+    - ".github/workflows/ci.yml"
+    - ".github/workflows/ci-contract.yml"
+    - ".env"
+    - "apps/web/src/**"
+    - "apps/api/src/**"
+    - "apps/reco/src/**"
+  child_task_areas:
+    - "ci-db-ephemeral"
+    - "test-fixtures-seed"
+    - "test-system-workflow"
+    - "test-reco-quality-workflow"
+    - "agent-test-dispatch"
+    - "test-env-docs"
+
+dependencies:
+  epics:
+    - id: "epic-local-dev-environment"
+      issue: 651
+      purpose: "Epic A A3/A4（DB 手順・seed）完了"
+  issues:
+    - number: 651
+      purpose: "Epic A 完了"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/epics/local-dev-environment/epic.yaml"
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/ci-db.yml"
+    - ".github/workflows/test-system.yml"
+    - ".github/workflows/test-reco-quality.yml"
+    - "docs/05_アプリケーション設計/テスト/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "secret 実値が含まれていないこと"
+    - "Phase2 migration 正本（supabase/migrations/）を変更していないこと"
+    - "Layer2 workflow が ci.yml 品質ゲートに混在していないこと"
+  not_required:
+    - "local supabase start（Human 手元）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+agentic_process:
+  summary: |
+    Layer2 テストは GHA workflow_dispatch 経由で Agent が実行・結果読取する。cloud dev 常時起動は不要。
+  constraints:
+    - "Agent の主経路: workflow_dispatch 起動 → GHA run 結果 / artifact 読取 → Fix ループ"
+    - "通常 PR CI（ci.yml 群）に Layer2 workflow を含めない（CI・CD方針書 §5.4）"
+    - "OpenAI 等外部 API は mock または GHA Secrets（dispatch 時のみ）で注入"
+    - "レコメンド品質の人手評価（テスト定義書 §9.7.3）は Agent 単独完了不可 → artifact 出力 → Human 判定"
+    - "C3/C4 本格 E2E は Phase4b 最小 API 整備後。Epic C 初期は workflow 骨格 + skip 条件可"
+  defer:
+    - "Epic B（hosted-dev-environment / Layer3 cloud dev URL 依存テスト）"
+    - "Epic D（app 別 PR CI）"
+
+agent_test_operations:
+  summary: |
+    Epic C は Layer2「基盤 + システム/品質 workflow」にフォーカスする。全テストレベルの Agent 運用の一部（§2.6）。
+  level_map:
+    - level: "技術検証テスト"
+      agent_use: "想定"
+      execution_path: "Layer2 tech-verify-*.yml（workflow_dispatch）"
+      epic_relation: "Epic C と同型。別 workflow として拡張可"
+    - level: "単体テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 PR CI（Epic D）+ Task PR 内 pnpm test / pytest"
+      epic_relation: "Epic C 外（Phase4a/4b）"
+    - level: "モジュール結合テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 PR CI + apps 内 tests/module/"
+      epic_relation: "Epic C 外（Phase4a/4b）"
+    - level: "コンポーネント結合テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 mock/fixture + PR CI"
+      epic_relation: "Epic C 外（Phase4b）"
+    - level: "システムテスト"
+      agent_use: "想定"
+      execution_path: "Layer2 test-system.yml（Epic C C3）"
+      epic_relation: "Epic C **明示スコープ**"
+    - level: "非機能テスト"
+      agent_use: "想定"
+      execution_path: "Layer2 perf-feasibility-*.yml + 将来 stg"
+      epic_relation: "Epic C 後続 or 別 Epic"
+    - level: "レコメンド品質評価"
+      agent_use: "想定（自動部分）+ Human 人手評価"
+      execution_path: "Layer2 test-reco-quality.yml（Epic C C4）"
+      epic_relation: "Epic C **明示スコープ**"
+    - level: "受入テスト"
+      agent_use: "想定（補助）"
+      execution_path: "Human 主導 + Agent 結果整理"
+      epic_relation: "Phase8"
+  common_pattern:
+    - "作成: Test AI / Worker AI がテストコード・fixture・workflow を Task scope 内で作成"
+    - "実行: workflow_dispatch（Layer2）— Agent は gh workflow run または docs 手順に従う"
+    - "読取: GHA run log / artifact / job summary を Agent が解釈"
+    - "Fix: Fixer AI または同一 Agent が失敗に応じて修正 → 再 dispatch"
+    - "記録: PR 本文・Task 完了条件・正本 docs"
+  epic_c_focus: |
+    Epic C 子 Task は GHA ephemeral 環境・dispatch workflow・fixture・Agent 手順 docs を中心とする。
+    C3/C4 の pass 条件は Phase4b 最小 API 整備後に本格化し、それ以前は workflow 骨格 + skip/placeholder を許容する。
+
+human_decision_points:
+  - "Layer2（GHA ephemeral）先行、cloud dev 常時起動なし（2026-06-18）"
+  - "Epic B（cloud dev / Layer3）defer（2026-06-18）"
+  - "Epic #132 supersede 予定（別 Todo）"
+
+stop_conditions:
+  - "secret 実値の記載が必要に見える場合"
+  - "supabase/migrations の DDL 変更が必要に見える場合（Phase2 Epic へ）"
+  - "Layer2 workflow を ci.yml 品質ゲートに混在させる必要がある場合（設計判断）"
+  - "Epic B / Epic A 実装を Epic C に混在させる必要がある場合"
+
+notes:
+  - "workstream_key: gha-test-environment"
+  - "子 Task 実行順: C1 単独先行 → C2 → C3∥C4（Phase4b 依存部分は骨格先行可）→ C5 → C6"
+  - "Epic PR Review: prompts/definitions/reviews/gha-test-environment/epic/pr-review.yaml"
+  - "正本: テスト定義書 §4.1（agent_test_operations.level_map の根拠）"
+  - "GHA 内 api/reco 起動 vs cloud dev URL input は C3 設計時に決定（Layer2 先行時は GHA 内完結を正）"

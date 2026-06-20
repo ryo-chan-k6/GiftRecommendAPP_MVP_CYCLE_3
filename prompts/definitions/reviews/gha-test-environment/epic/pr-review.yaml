@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-test-environment-epic-pr"
+  title: "Layer2 GHAテスト環境 Epic PRレビュー"
+  summary: "Phase3b Epic C PR（develop 向け）の AI Review。Layer2 基盤統合・§2.6/§2.7/§2.8 整合・secret 非露出・PR CI 分離を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/epics/gha-test-environment/epic.yaml"
+  source_branch: null
+  target_branch: "develop"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  cicd: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/gha-test-environment/epic.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+
+review_points:
+  common:
+    - "Epic acceptance_criteria（Layer2 dispatch / artifact 読取）を満たしているか"
+    - "agentic_process 制約（PR CI への Layer2 混在なし）"
+    - "agent_test_operations がテスト定義書 §4.1 と矛盾しないか"
+    - "Epic A / Epic B 実装が混在していないか"
+    - "supabase/migrations DDL 変更がないか"
+    - "secret 非露出"
+  docs:
+    - "テスト環境 docs・CI・CD方針書・テスト定義書の整合"
+  security:
+    - "GHA Secrets 参照方針・.env 実値の非 commit"
+  cicd:
+    - "ci-db.yml / test-system.yml / test-reco-quality.yml が ci.yml 品質ゲートと分離されているか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "forbidden_paths 外の変更がない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "infra"
+
+notes:
+  - "Epic Issue / PR 番号は /start-epic・/create-pr 後に反映"

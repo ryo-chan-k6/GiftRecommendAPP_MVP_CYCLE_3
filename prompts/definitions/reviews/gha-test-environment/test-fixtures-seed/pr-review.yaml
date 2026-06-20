@@ -1,0 +1,46 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-test-environment-test-fixtures-seed-pr"
+  title: "gha-test-environment test-fixtures-seed PRレビュー"
+  summary: "Epic C Task test-fixtures-seed の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/gha-test-environment/test-fixtures-seed.yaml"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/gha-test-environment/test-fixtures-seed.yaml"
+    required: true
+
+review_points:
+  - "Task scope / fixture が C3/C4 から参照可能か"
+  - "OpenAI mock / Secrets 方針の明記"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"

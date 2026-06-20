@@ -1,0 +1,145 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-gha-test-environment-ci-db-ephemeral"
+  title: "GHA ephemeral DB workflow整備"
+  summary: "GHA 内で supabase start + migration up + seed を実行する ci-db.yml を整備する。Epic C Task C1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-gha-test-environment"
+  epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - number: 651
+      purpose: "Epic A 完了（A3/A4 前提）"
+  related_prs:
+    - number: 668
+      purpose: "Epic A merge 済み"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic C Task C1。Epic A A3（DB構築手順書）・A4（seed 方針）完了後、Layer2 テストの DB 基盤として
+  GHA job 内 ephemeral DB を起動する workflow を整備する。マイグレーション方針書 §6.4 CI migration 検証に整合。
+  C2（test-fixtures-seed）・C3/C4 の前提。単独先行 Task。
+
+objective: |
+  `.github/workflows/ci-db.yml` を作成し、GHA runner 上で `supabase start` → `supabase migration up` → seed 実行まで
+  再現可能な ephemeral DB 環境を提供する。workflow_dispatch および他 Layer2 workflow からの reusable workflow 呼び出しを想定する。
+
+scope:
+  - "`.github/workflows/ci-db.yml` 作成"
+  - "GHA 内 supabase CLI 実行（start / migration up / seed）"
+  - "マイグレーション方針書 §6.4 との整合確認・必要な docs 追記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "test-system.yml / test-reco-quality.yml（Task C3/C4）"
+  - "システム/品質 fixture 詳細（Task C2）"
+  - "supabase/migrations DDL 変更（Phase2）"
+  - "通常 PR CI（ci.yml / ci-contract.yml）への混在"
+  - "apps/** 実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§6.4 CI migration 検証"
+    - path: "docs/06_実装設計/database/DB構築手順書.md"
+      required: true
+      purpose: "Epic A A3 成果物"
+  files:
+    - path: "supabase/config.toml"
+      required: true
+    - path: "supabase/seeds/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      action: "update"
+      required: false
+  files:
+    - path: ".github/workflows/ci-db.yml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "ci-db.yml が GHA 上で supabase start → migration up → seed を実行できる"
+  - "supabase/migrations の DDL 差分がない"
+  - "ci.yml 品質ゲートに Layer2 workflow が混在していない"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "ci-db-ephemeral"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  issues:
+    - number: 651
+      purpose: "Epic A A3/A4 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/ci-db.yml"
+  conflict_risk: "medium"
+  blocks:
+    - "prompts/definitions/tasks/gha-test-environment/test-fixtures-seed.yaml"
+
+test_policy:
+  manual_checks:
+    - "GHA workflow_dispatch または push トリガーで ci-db job が pass（optional、Agent は log 読取）"
+  not_required:
+    - "local supabase start"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "C2 前に単独先行。C3/C4 より先行可"

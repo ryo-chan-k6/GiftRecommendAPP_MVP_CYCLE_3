@@ -1,0 +1,132 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-gha-test-environment-agent-test-dispatch"
+  title: "Agent Layer2 dispatch手順整備"
+  summary: "Layer2 workflow 共通の Agent dispatch 手順 docs と Command 追記を整備する。Epic C Task C5。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-gha-test-environment"
+  epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic C Task C5。C3/C4 の workflow 整備後、Cursor Cloud Agent が Layer2 テストを
+  dispatch → 結果読取 → Fix する共通手順を docs + Command に正本化する。
+  tech-verify-*.yml 等の拡張 workflow も同手順で dispatch 可能にする。
+
+objective: |
+  Agent が `gh workflow run`（または同等）で Layer2 workflow を起動し、run 結果 / artifact を読み取る
+  手順を docs に記載し、必要に応じて `.cursor/commands/` を追記する。
+
+scope:
+  - "Layer2 Agent dispatch 手順 docs"
+  - "workflow 一覧・入力パラメータ・artifact 読取手順"
+  - "`.cursor/commands/` 追記（必要最小）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "Layer1 PR CI 手順（Epic D / 現行 ci.yml）"
+  - "cloud dev URL 依存手順（Epic B defer）"
+  - "workflow 本体の新規作成（C3/C4 scope）"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Commands設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+  files:
+    - path: ".github/workflows/test-system.yml"
+      required: false
+    - path: ".github/workflows/test-reco-quality.yml"
+      required: false
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/**"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/**"
+      action: "update"
+      required: false
+  files:
+    - path: ".cursor/commands/**"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "Agent が Layer2 workflow を dispatch し結果を読む手順が docs に記載されている"
+  - "test-system.yml / test-reco-quality.yml が手順に含まれている"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "agent-test-dispatch"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+dependencies:
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/gha-test-environment/test-system-workflow.yaml"
+    - "prompts/definitions/tasks/gha-test-environment/test-reco-quality-workflow.yaml"
+  exclusive_files:
+    - "docs/05_アプリケーション設計/テスト/**"
+    - ".cursor/commands/**"
+  conflict_risk: "low"
+  blocks:
+    - "prompts/definitions/tasks/gha-test-environment/test-env-docs.yaml"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "C3/C4 完了後着手"
