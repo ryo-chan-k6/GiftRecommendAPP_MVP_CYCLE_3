@@ -11,18 +11,25 @@ review:
 work_mode: "ai-agent"
 
 branch:
+  no_branch: false
+  name: "chore/task-672-ci-db-ephemeral"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
   worktree_required: true
 
 target:
   pr: null
   issue:
-    number: null
+    number: 672
   task_definition: "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "chore/task-672-ci-db-ephemeral"
+  target_branch: "chore/epic-671-gha-test-environment"
 
 commands:
   primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
 
 agent:
   primary: "reviewer-ai"
@@ -40,6 +47,12 @@ input:
   task_definition:
     path: "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
     required: true
+  issue:
+    number: 672
+    required: true
+  pr:
+    number: null
+    required: true
 
 review_points:
   - "Task Definition scope / out_of_scope との整合"
@@ -49,4 +62,4 @@ review_points:
   - "secret / .env 実値の非含有"
 
 notes:
-  - "Issue / PR 番号は /create-pr 後に target.* / input.* へ反映"
+  - "Issue #672。PR 番号は /create-pr 後に反映"
