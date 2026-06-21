@@ -1,0 +1,24 @@
+{
+  "description": "OpenAI chat.completions 理由文生成成功 mock",
+  "response": {
+    "id": "chatcmpl-fixture-reason-001",
+    "object": "chat.completion",
+    "created": 1717560000,
+    "model": "gpt-4o-mini",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "上司へのお礼として失礼がなく、上品さと感謝の伝わりやすさのバランスが良いため候補にしています。"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 120,
+      "completion_tokens": 42,
+      "total_tokens": 162
+    }
+  }
+}

@@ -14,7 +14,9 @@ parent:
   epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
   epic_issue_number: 671
   epic_branch: "chore/epic-671-gha-test-environment"
-  related_issues: []
+  related_issues:
+    - number: 672
+      purpose: "C1 ci-db-ephemeral 完了"
   related_prs: []
 
 commands:
@@ -89,6 +91,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
+  name: "test/task-674-test-fixtures-seed"
   summary: "test-fixtures-seed"
   base: "chore/epic-671-gha-test-environment"
   target: "chore/epic-671-gha-test-environment"
@@ -101,13 +104,16 @@ project:
     priority: "high"
 
 issue:
+  number: 674
   unit: "task"
   type: "test"
   area: "infra"
 
 dependencies:
   blocking: true
-  issues: []
+  issues:
+    - number: 672
+      purpose: "C1 ci-db-ephemeral 完了（PR #673 merge 済み）"
 
 parallel_control:
   depends_on:
