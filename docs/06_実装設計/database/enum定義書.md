@@ -39,7 +39,7 @@
 | 値の追加 | 後続 enum Task または Phase4a packages-foundation で Human Review 必須 |
 | 値の変更 | 破壊的変更。migration + Contract 影響を Human Review |
 | 値の削除 | MVP では原則禁止。無効化（`enabled: false`）を検討 |
-| DB / API / code連携 | 同一 `code_definition.id` を shared-types / seed 生成のキーとする |
+| DB / API / code連携 | 同一 `code_definition.id` を shared-types / seed 生成のキーとする（TypeScript カタログ正本: `packages/shared-types/`） |
 
 ### 4.1 同一 physical 列名の分離
 

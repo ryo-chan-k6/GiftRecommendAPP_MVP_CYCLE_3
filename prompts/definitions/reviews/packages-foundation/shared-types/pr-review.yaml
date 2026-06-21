@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 691
   task_definition: "prompts/definitions/tasks/packages-foundation/shared-types.yaml"
 
 commands:
