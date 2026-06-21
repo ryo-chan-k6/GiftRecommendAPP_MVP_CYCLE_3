@@ -190,7 +190,7 @@ for i in "${!CASE_IDS[@]}"; do
     --arg id "${CASE_IDS[$i]}" \
     --arg status "${CASE_STATUSES[$i]}" \
     --arg message "${CASE_MESSAGES[$i]}" \
-    '${arr} + [{id: $id, status: $status, message: $message}]')"
+    '$arr + [{id: $id, status: $status, message: $message}]')"
 done
 
 jq -n \
