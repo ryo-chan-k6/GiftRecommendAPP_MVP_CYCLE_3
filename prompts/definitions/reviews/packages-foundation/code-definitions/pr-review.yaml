@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 690
   issue:
     number: 689
   parent_epic_issue: 688
