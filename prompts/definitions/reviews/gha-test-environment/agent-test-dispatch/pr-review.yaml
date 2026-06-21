@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 681
   task_definition: "prompts/definitions/tasks/gha-test-environment/agent-test-dispatch.yaml"
 
 commands:
