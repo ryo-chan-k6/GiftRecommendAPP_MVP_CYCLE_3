@@ -74,6 +74,7 @@ temp/
 coverage/
 .coverage
 htmlcov/
+tests/recommendation-quality/output/
 
 # =========================
 # Misc
