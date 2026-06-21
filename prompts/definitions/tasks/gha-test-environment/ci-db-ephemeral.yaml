@@ -98,6 +98,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
+  name: "chore/task-672-ci-db-ephemeral"
   summary: "ci-db-ephemeral"
   base: "chore/epic-671-gha-test-environment"
   target: "chore/epic-671-gha-test-environment"
@@ -110,6 +111,7 @@ project:
     priority: "high"
 
 issue:
+  number: 672
   unit: "task"
   type: "chore"
   area: "infra"
