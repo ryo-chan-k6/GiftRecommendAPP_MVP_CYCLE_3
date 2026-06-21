@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0",
+  "taskId": "task-gha-test-environment-test-fixtures-seed",
+  "issue": 674,
+  "paths": {
+    "apiInput": "tests/fixtures/api-input",
+    "externalApiRakuten": "tests/fixtures/external-api/rakuten",
+    "externalApiOpenai": "tests/fixtures/external-api/openai",
+    "evaluation": "tests/fixtures/evaluation",
+    "errors": "tests/fixtures/errors",
+    "testSeedSql": "supabase/seeds/test-data",
+    "seedScript": "scripts/db/seed-test-data.sh"
+  },
+  "items": {
+    "item_001": {
+      "uuid": "b1111111-1111-4111-8111-111111111001",
+      "externalItemCode": "test-fixture-001",
+      "label": "上品な焼き菓子ギフトセット",
+      "role": "boss_thanks_primary"
+    },
+    "item_002": {
+      "uuid": "b1111111-1111-4111-8111-111111111002",
+      "externalItemCode": "test-fixture-002",
+      "label": "カジュアル雑貨セット",
+      "role": "low_formality_decoy"
+    },
+    "item_003": {
+      "uuid": "b1111111-1111-4111-8111-111111111003",
+      "externalItemCode": "test-fixture-003",
+      "label": "プレミアムワインギフト",
+      "role": "ng_alcohol"
+    }
+  },
+  "masterSeedRefs": {
+    "semanticConfigVersionId": "a1111111-1111-4111-8111-111111111102",
+    "relationshipCode": "boss",
+    "occasionCode": "thanks"
+  },
+  "workflows": {
+    "testSystem": ".github/workflows/test-system.yml",
+    "testRecoQuality": ".github/workflows/test-reco-quality.yml",
+    "ciDb": ".github/workflows/ci-db.yml"
+  }
+}

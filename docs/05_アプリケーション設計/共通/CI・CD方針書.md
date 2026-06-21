@@ -26,6 +26,7 @@
 | CI・CD方針書                       | GitHub Actionsを中心に、CI/CDのトリガー、ジョブ、品質ゲート、デプロイ方針を定義する |
 | テスト方針書                       | テスト全体の思想、対象範囲、品質方針を定義する                                      |
 | テスト定義書                       | テストレベル、テスト種別、テスト対象、観点を定義する                                |
+| テスト環境設計書                   | Layer1〜3 テスト環境、Layer2 workflow 一覧、Agent 運用対応表を定義する              |
 | 全体テスト計画書                   | テストフェーズの順序、開始条件、終了条件、品質ゲートを定義する                      |
 | バッチ実行スケジュール設計書       | 日次・週次・手動Batch workflowの実行順序とスケジュールを定義する                    |
 | プロジェクトディレクトリ構成定義書 | repo内のコード、docs、tests、db、workflowの配置方針を定義する                       |
@@ -959,6 +960,20 @@ GitHub Actions workflowファイルは、`.github/workflows/` 直下に配置す
 | `pr-*.yml`               | PR自動作成・自動更新   |
 | `tech-verify-*.yml`      | 技術検証               |
 | `perf-feasibility-*.yml` | 性能フィジビリティ検証 |
+| `test-*.yml`             | Layer2 システム / 品質テスト（`workflow_dispatch`） |
+| `ci-db.yml`              | Layer2 ephemeral DB 基盤（`workflow_dispatch` / `workflow_call`） |
+
+### 13.4 Layer2 テスト workflow
+
+Layer2 テスト workflow は **通常 PR 品質ゲート（Layer1 `ci.yml` 群）とは分離**し、`workflow_dispatch` で on-demand 実行する。環境構成・Agent 運用対応の正本は [テスト環境設計書.md](../テスト/テスト環境設計書.md) とする。
+
+| workflow | 用途 | PR CI 混在 |
+| -------- | ---- | ---------- |
+| `ci-db.yml` | GHA runner 上 ephemeral DB（migration + master seed） | 禁止 |
+| `test-system.yml` | Layer2 システムテスト（ephemeral DB + Redis） | 禁止 |
+| `test-reco-quality.yml` | Layer2 レコメンド品質評価 | 禁止 |
+
+Agent 向け dispatch 手順は [Layer2 Agent dispatch手順書.md](../テスト/Layer2%20Agent%20dispatch%E6%89%8B%E9%A0%86%E6%9B%B8.md) を正とする。Definition Run Harness（`definition-run.yml`）は Layer2 テスト dispatch とは別系統である。
 
 ### 23.3 Hotfix時のCI
 

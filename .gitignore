@@ -74,6 +74,7 @@ temp/
 coverage/
 .coverage
 htmlcov/
+tests/recommendation-quality/output/
 
 # =========================
 # Misc
@@ -97,6 +98,11 @@ htmlcov/
 *.sqlite
 *.db
 supabase/.temp/
+
+# =========================
+# Test outputs (Layer2 / local E2E)
+# =========================
+tests/e2e/results/
 
 # =========================
 # Docker（必要に応じて）

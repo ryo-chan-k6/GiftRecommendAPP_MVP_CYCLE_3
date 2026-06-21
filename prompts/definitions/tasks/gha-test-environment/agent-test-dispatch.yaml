@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-gha-test-environment"
   epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 671
+  epic_branch: "chore/epic-671-gha-test-environment"
   related_issues: []
   related_prs: []
 
@@ -91,7 +91,10 @@ acceptance_criteria:
 
 branch:
   no_branch: false
+  name: "docs/task-681-agent-test-dispatch"
   summary: "agent-test-dispatch"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
   worktree_required: true
 
 project:
@@ -101,6 +104,7 @@ project:
     priority: "medium"
 
 issue:
+  number: 681
   unit: "task"
   type: "docs"
   area: "infra"

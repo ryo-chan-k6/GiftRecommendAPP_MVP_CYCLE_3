@@ -132,7 +132,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "chore/epic-671-gha-test-environment"
   summary: "gha-test-environment"
   base: "develop"
   target: "develop"

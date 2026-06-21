@@ -1,0 +1,20 @@
+{
+  "description": "必須フィールド欠落（relationship なし）",
+  "occasion": {
+    "occasionCode": "thanks",
+    "occasionLabel": "お礼"
+  },
+  "budget": {
+    "budgetMin": 3000,
+    "budgetMax": 5000,
+    "currency": "JPY",
+    "taxIncluded": true
+  },
+  "execution": {
+    "mode": "ui",
+    "topK": 10,
+    "candidateLimit": 50,
+    "includeReason": false,
+    "includeDebugInfo": false
+  }
+}

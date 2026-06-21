@@ -12,9 +12,13 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-gha-test-environment"
   epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
-  epic_issue_number: null
-  epic_branch: null
-  related_issues: []
+  epic_issue_number: 671
+  epic_branch: "chore/epic-671-gha-test-environment"
+  related_issues:
+    - number: 672
+      purpose: "C1 ci-db-ephemeral 完了"
+    - number: 674
+      purpose: "C2 test-fixtures-seed 完了"
   related_prs: []
 
 commands:
@@ -92,7 +96,10 @@ acceptance_criteria:
 
 branch:
   no_branch: false
+  name: "test/task-677-test-reco-quality-workflow"
   summary: "test-reco-quality-workflow"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
   worktree_required: true
 
 project:
@@ -102,12 +109,18 @@ project:
     priority: "high"
 
 issue:
+  number: 677
   unit: "task"
   type: "test"
   area: "reco"
 
 dependencies:
   blocking: true
+  issues:
+    - number: 672
+      purpose: "C1 ci-db-ephemeral 完了（PR #673 merge 済み）"
+    - number: 674
+      purpose: "C2 test-fixtures-seed 完了（PR #675 merge 済み）"
 
 parallel_control:
   depends_on:
