@@ -16,7 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 689
+  parent_epic_issue: 688
+  parent_epic_branch: "chore/epic-688-packages-foundation"
   task_definition: "prompts/definitions/tasks/packages-foundation/code-definitions.yaml"
 
 commands:
