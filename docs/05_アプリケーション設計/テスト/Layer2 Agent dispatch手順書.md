@@ -103,19 +103,23 @@ flowchart TD
     D --> E{成功?}
     E -->|Yes| F[artifact / job summary を読取]
     E -->|No| G[失敗 log を分析]
-    G --> H[Fix（同一 Agent または Fixer AI）]
+    G --> K{自動 Fix 回数 < 2?}
+    K -->|Yes| H[Fix（同一 Agent または Fixer AI）]
     H --> I[commit / push]
-    I --> C
+    I --> L[Fix 回数 +1 を記録]
+    L --> C
+    K -->|No| M[作業停止 + Slack 通知]
+    M --> N[Issue / PR / ai-logs に記録]
     F --> J[PR 本文・Task 完了条件へ記録]
 ```
 
-Agent は以下を **1 サイクル** として繰り返す。
+Agent は以下を **1 サイクル** として繰り返す。ただし **§9 の自動 Fix 上限** を超えて Fix ループを継続してはならない。
 
 1. **dispatch** — `gh workflow run`
 2. **監視** — `gh run watch` または `gh run view`
 3. **読取** — job summary / artifact / JSON report
-4. **Fix** — 失敗時は scope 内で修正 → commit → 再 dispatch
-5. **記録** — PR 本文に run URL・入力・判定を記載（実施済みテストの正本）
+4. **Fix** — 失敗時かつ上限内のみ、scope 内で修正 → commit → 再 dispatch
+5. **記録** — PR 本文に run URL・入力・判定・Fix 回数を記載（実施済みテストの正本）
 
 ---
 
@@ -266,11 +270,41 @@ gh run view "${RUN_ID}" --repo "${REPO}" --json conclusion,status
 
 ## 9. Fix ループ
 
-Epic C `agent_test_operations.common_pattern` に従う。
+Epic C `agent_test_operations.common_pattern` に従う。ただし **コスト・ログ肥大・トークン消費の無制御化を防ぐ**ため、自動 Fix には上限を設ける。
+
+### 9.1 自動 Fix 上限（必須）
+
+| 項目 | 規則 |
+| ---- | ---- |
+| 上限 | **初回 Fix から最大 2 回** まで自動 Fix を実行してよい |
+| カウント対象 | Agent が失敗分析後に commit する Fix 試行（Fix #1, Fix #2） |
+| カウント対象外 | 初回 dispatch、Human 指示による手動 Fix、上限到達後の Fix |
+| 上限到達後 | **3 回目の Fix を自動実行しない**。作業停止し §9.4 の Slack 通知を行う |
+
+**Fix 回数の数え方（例）:**
 
 ```text
-dispatch → 読取 → 失敗分析 → Fix（/work-issue または /fix-review-comments）→ commit → 再 dispatch
+dispatch #1 → 失敗（Fix 回数 0）
+  → 自動 Fix #1 → commit → dispatch #2 → 失敗（Fix 回数 1）
+  → 自動 Fix #2 → commit → dispatch #3 → 失敗（Fix 回数 2）
+  → 自動 Fix 停止 → Slack 通知 → Human 判断待ち
 ```
+
+Agent は Fix ループを **無限に繰り返してはならない**。同一セッション内で dispatch / log 読取 / Fix を漫然と続けない。
+
+### 9.2 Fix 試行の記録
+
+各 Fix 試行前後で、以下を **Issue コメントまたは PR 本文** に累積記録する（Slack だけを正本にしない）。
+
+| 記録項目 | 内容 |
+| -------- | ---- |
+| Fix 回数 | `1 / 2` 形式 |
+| 対象 workflow run | run URL、workflow 名、inputs |
+| 失敗要約 | 失敗 job / ケース ID / 主要 log 抜粋（secret 除外） |
+| Fix 内容 | 変更ファイル、変更概要、commit SHA |
+| 再 dispatch 結果 | 成功 / 失敗 |
+
+### 9.3 Fix 担当
 
 | 段階 | 担当 | 記録先 |
 | ---- | ---- | ------ |
@@ -280,6 +314,66 @@ dispatch → 読取 → 失敗分析 → Fix（/work-issue または /fix-review
 | 品質人手評価 | Human | Issue / PR コメント |
 
 再 dispatch 前に **親 Epic Branch との merge 必要性** を確認する。Task Branch が古い場合は epic 最新化後に検証する（[worktree.mdc](../../../.cursor/rules/worktree.mdc)）。
+
+### 9.4 上限到達時の停止・Slack 通知
+
+2 回目の自動 Fix 後も Layer2 workflow が失敗する場合、Agent は **Fix ループを停止**し、[Slack通知運用設計書 §19](../../00_共通/AIエージェント運用/Slack通知運用設計書.md) に従って **作業停止・例外通知**（`error` / `incident_detected`）を送る。
+
+**通知レベル:** `error`（作業停止）  
+**通知種別:** `incident_detected`  
+**生成主体:** Agent（必要に応じて `slack-notify-manual.yml` 経由）
+
+Slack 本文には、最低限以下を含める。
+
+| 項目 | 記載内容 |
+| ---- | -------- |
+| 発生事象 | 失敗した workflow 名、run URL、inputs、失敗 job / ケース、主要エラー要約 |
+| Fix 対応内容 | Fix #1 / #2 それぞれの変更概要、commit SHA、再 dispatch 結果 |
+| 残課題 | 未解決の失敗原因、未確認事項、scope 外に見える問題 |
+| 推奨対応 | Human が次に取るべき action（例: 設計判断、別 Task 化、手動調査、inputs 変更） |
+
+**通知テンプレート:** [incident-detected.md](../../../prompts/templates/slack/incident-detected.md) をベースとし、Layer2 Fix ループ上限到達時は `summary` に上記 4 項目を Markdown 見出しで構造化する。
+
+**dispatch 例（bot 認証後）:**
+
+```bash
+gh workflow run "Slack manual notification" \
+  --repo "${REPO}" \
+  -f notification_type=incident_detected \
+  -f level=error \
+  -f title="Layer2 Fix ループ上限到達（自動 Fix 2 回後も失敗）" \
+  -f summary="$(cat <<'EOF'
+## 発生事象
+- workflow: Test System (Layer2)
+- run: <run_url>
+- 失敗要約: ...
+
+## Fix 対応内容
+- Fix #1: <commit_sha> — ...
+- Fix #2: <commit_sha> — ...
+
+## 残課題
+- ...
+
+## 推奨対応
+- ...
+EOF
+)" \
+  -f issue_number=<Issue番号> \
+  -f pr_number=<PR番号> \
+  -f human_action="Layer2 失敗原因の Human 判断と、3 回目以降の Fix 方針の決定" \
+  -f ai_log_path=ai-logs/incidents/<ファイル名>.md
+```
+
+**正本記録（Slack 通知と併せて必須）:**
+
+| 正本 | 記録内容 |
+| ---- | -------- |
+| Issue / PR コメント | 発生事象、Fix #1/#2、残課題、推奨対応、run URL |
+| `ai-logs/incidents/` | 上限到達 incident として同内容を保存（[AIログ運用ルール](../../00_共通/AIエージェント運用/AIログ運用ルール.md) §4） |
+| PR 本文 | 「テスト・検証結果」に Fix 上限到達・未解決を明記 |
+
+上限到達後、Agent は **Human 判断なしに 3 回目の Fix や追加 dispatch を自動実行してはならない**。
 
 ---
 
@@ -318,6 +412,9 @@ Task Definition の `test_policy.manual_checks` に「workflow_dispatch 実行�
 | Commands設計書 §29 | `docs/00_共通/AIエージェント運用/Commands設計書.md` |
 | Epic C Epic Definition | `prompts/definitions/epics/gha-test-environment/epic.yaml` |
 | Definition Run Harness 仕様書 | `docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md` |
+| Slack通知運用設計書 | `docs/00_共通/AIエージェント運用/Slack通知運用設計書.md` |
+| AIログ運用ルール | `docs/00_共通/AIエージェント運用/AIログ運用ルール.md` |
+| incident 通知テンプレート | `prompts/templates/slack/incident-detected.md` |
 | test-system workflow | `.github/workflows/test-system.yml` |
 | test-reco-quality workflow | `.github/workflows/test-reco-quality.yml` |
 
@@ -328,3 +425,4 @@ Task Definition の `test_policy.manual_checks` に「workflow_dispatch 実行�
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-06-21 | 初版（Epic C Task C5 / Issue #681） |
+| 2026-06-21 | §9 Fix ループ上限（自動 Fix 最大 2 回）と Slack エスカレーションを追加 |

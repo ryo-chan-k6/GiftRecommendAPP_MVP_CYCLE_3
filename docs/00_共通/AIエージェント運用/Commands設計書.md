@@ -1353,7 +1353,7 @@ Definition Run Harness（§29）とは別系統として、Epic C Layer2 テス�
 | 正本 | [Layer2 Agent dispatch手順書.md](../../05_アプリケーション設計/テスト/Layer2%20Agent%20dispatch%E6%89%8B%E9%A0%86%E6%9B%B8.md) |
 | トリガ | `workflow_dispatch`（GHA UI / `gh workflow run`） |
 | Agent 経路 | Cursor IDE Agent → `gh` CLI → GHA run → artifact / job summary 読取 |
-| Fix ループ | dispatch → 読取 → Fix → 再 dispatch（Epic C `agent_test_operations.common_pattern`） |
+| Fix ループ | dispatch → 読取 → Fix（**自動最大 2 回**）→ 再 dispatch。上限到達時は Slack `incident_detected` でエスカレーション |
 | Layer1 との分離 | 通常 PR CI（`ci.yml` 群）には Layer2 workflow を含めない |
 
 `/work-issue` 完了前に Layer2 検証が Task Definition `test_policy` で要求される場合、Agent は上記正本に従う（`.cursor/commands/work-issue.md` §Layer2 テスト dispatch）。

@@ -644,7 +644,7 @@ Task Definition の `test_policy` に workflow_dispatch 実行・artifact 読取
 | 1 | 対象 workflow（`test-system.yml` / `test-reco-quality.yml` 等）と `--ref`（Task Branch）を決定 |
 | 2 | bot 認証後 `gh workflow run` で dispatch（§0） |
 | 3 | `gh run watch` / `gh run view` / artifact ダウンロードで結果読取 |
-| 4 | 失敗時は scope 内 Fix → commit → 再 dispatch |
+| 4 | 失敗時は scope 内 Fix → commit → 再 dispatch（**自動 Fix は最大 2 回**。上限到達時は Slack `incident_detected` でエスカレーション。正本: 手順書 §9） |
 | 5 | PR 本文「テスト・検証結果」に run URL・入力・判定を記載 |
 
 Layer2 dispatch は Definition Run Harness（`/review-pr` 等）とは別系統である（Commands設計書 §29.5）。cloud dev URL 依存手順（Epic B defer）は out of scope。
