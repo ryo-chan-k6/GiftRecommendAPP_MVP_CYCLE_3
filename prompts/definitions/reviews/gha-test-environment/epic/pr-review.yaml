@@ -9,7 +9,7 @@ review:
   status: "ready"
 
 target:
-  pr: null
+  pr: 685
   issue:
     number: 671
   task_definition: "prompts/definitions/epics/gha-test-environment/epic.yaml"
