@@ -11,20 +11,30 @@ review:
 work_mode: "ai-agent"
 
 branch:
+  no_branch: false
+  name: "test/task-677-test-reco-quality-workflow"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
   worktree_required: true
 
 target:
   pr: null
   issue:
-    number: null
+    number: 677
   task_definition: "prompts/definitions/tasks/gha-test-environment/test-reco-quality-workflow.yaml"
+  source_branch: "test/task-677-test-reco-quality-workflow"
+  target_branch: "chore/epic-671-gha-test-environment"
 
 commands:
   primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
 
 agent:
   primary: "reviewer-ai"
   specialist:
+    docs: "docs-reviewer-ai"
     test: "test-ai"
     security: "reviewer-ai"
 
@@ -38,6 +48,9 @@ input:
   task_definition:
     path: "prompts/definitions/tasks/gha-test-environment/test-reco-quality-workflow.yaml"
     required: true
+  issue:
+    number: 677
+    required: true
 
 review_points:
   - "workflow_dispatch 起動可能か"
@@ -47,4 +60,4 @@ review_points:
   - "secret 非含有"
 
 notes:
-  - "Issue / PR 番号は /create-pr 後に反映"
+  - "Issue #677。PR 番号は /create-pr 後に反映"
