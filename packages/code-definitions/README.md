@@ -69,7 +69,7 @@ pnpm test
 - `code_definition.id` は snake_case の論理 ID とする（例: `recommendation_run_status`）
 - 同一 physical 列名（`run_status` 等）で意味が異なる場合は **別 id** とする
 - 値（`values[].value`）は snake_case、小文字英数字とアンダースコア
-- error_code は `GRS-{DOMAIN}-{NUMBER}`（`error/error_code_format.yaml` 参照）
+- error_code は `GRS-{DOMAIN}-{NUMBER}`（`error/error_code_format.yaml` 参照。DOMAIN 長 2〜4）
 
 ## 変更手順
 

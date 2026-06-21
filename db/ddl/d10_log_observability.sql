@@ -215,7 +215,7 @@ CREATE TABLE error_log (
     severity IN ('warn', 'error', 'critical')
   ),
   CONSTRAINT chk_error_log_error_code_format CHECK (
-    error_code ~ '^GRS-[A-Z]{3}-[0-9]{3}$'
+    error_code ~ '^GRS-[A-Z]{2,4}-[0-9]{3}$'
   )
 );
 
