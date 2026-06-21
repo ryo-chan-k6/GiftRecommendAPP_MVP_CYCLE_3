@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 699
   task_definition: "prompts/definitions/tasks/reco-foundation/pipeline-scaffold.yaml"
 
 commands:
