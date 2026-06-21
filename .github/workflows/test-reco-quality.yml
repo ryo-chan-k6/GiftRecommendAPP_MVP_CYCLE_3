@@ -1,0 +1,123 @@
+name: Test Reco Quality
+
+# Layer2 レコメンド品質評価（CI・CD方針書 / Epic C C4 / テスト定義書 §9.7）。
+# 固定評価ケース + 自動メトリクスを GHA artifact / job summary に出力する。
+# 通常 PR 品質ゲート（ci.yml）とは分離し、workflow_dispatch のみで利用する。
+
+run-name: "test-reco-quality · ${{ github.event_name }} · ${{ inputs.pipeline_mode }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pipeline_mode:
+        description: "パイプライン実行モード（Phase4b 前は skeleton）"
+        required: true
+        default: skeleton
+        type: choice
+        options:
+          - skeleton
+          - live
+      openai_mode:
+        description: "OpenAI 利用方針（mock または GHA Secrets 注入）"
+        required: true
+        default: mock
+        type: choice
+        options:
+          - mock
+          - secrets
+  push:
+    branches:
+      - test/task-677-test-reco-quality-workflow
+    paths:
+      - .github/workflows/test-reco-quality.yml
+      - tests/recommendation-quality/**
+      - tests/fixtures/evaluation/**
+      - tests/fixtures/api-input/**
+      - scripts/db/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-reco-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reco-quality:
+    runs-on: ubuntu-latest
+    env:
+      PIPELINE_MODE: ${{ inputs.pipeline_mode || 'skeleton' }}
+      OPENAI_MODE: ${{ inputs.openai_mode || 'mock' }}
+      RECO_BASE_URL: ${{ vars.RECO_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Read Supabase CLI pin
+        id: cli-pin
+        run: echo "version=$(tr -d '[:space:]' < supabase/.cli-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ steps.cli-pin.outputs.version }}
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Start ephemeral DB and apply seeds
+        run: |
+          bash scripts/db/verify-seed-setup.sh
+          bash scripts/db/check-cli-version.sh
+          bash scripts/db/start-local.sh
+          bash scripts/db/migrate-up.sh
+          bash scripts/db/seed-masters.sh
+          bash scripts/db/seed-test-data.sh
+
+      - name: Configure OpenAI mode
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [[ "${OPENAI_MODE}" == "mock" ]]; then
+            echo "info: OpenAI fixture mock mode（§8.1 既定）"
+            echo "OPENAI_MOCK_FIXTURE_DIR=tests/fixtures/external-api/openai" >> "$GITHUB_ENV"
+          elif [[ "${OPENAI_MODE}" == "secrets" ]]; then
+            if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+              echo "error: openai_mode=secrets ですが secrets.OPENAI_API_KEY が未設定です" >&2
+              exit 1
+            fi
+            echo "info: OpenAI secrets 注入モード（実 API は Human 判断後の限定利用）"
+          else
+            echo "error: unsupported openai_mode=${OPENAI_MODE}" >&2
+            exit 1
+          fi
+
+      - name: Run recommendation quality evaluation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node tests/recommendation-quality/run-evaluation.mjs \
+            --pipeline-mode "${PIPELINE_MODE}" \
+            --openai-mode "${OPENAI_MODE}" \
+            --output-dir tests/recommendation-quality/output
+
+      - name: Write job summary
+        if: always() && hashFiles('tests/recommendation-quality/output/summary.md') != ''
+        run: cat tests/recommendation-quality/output/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evaluation artifacts
+        if: always() && hashFiles('tests/recommendation-quality/output/report.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: reco-quality-evaluation-${{ github.run_id }}
+          path: tests/recommendation-quality/output/
+          if-no-files-found: error
+
+      - name: Stop Supabase stack
+        if: always()
+        run: bash scripts/db/stop-local.sh
