@@ -99,6 +99,11 @@ htmlcov/
 supabase/.temp/
 
 # =========================
+# Test outputs (Layer2 / local E2E)
+# =========================
+tests/e2e/results/
+
+# =========================
 # Docker（必要に応じて）
 # =========================
 docker-compose.override.yml
