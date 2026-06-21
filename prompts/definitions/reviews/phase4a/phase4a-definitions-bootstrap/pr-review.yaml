@@ -18,10 +18,12 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 687
   issue:
     number: 686
   task_definition: "prompts/definitions/tasks/phase4a/phase4a-definitions-bootstrap.yaml"
+  source_branch: "chore/task-686-phase4a-definitions-bootstrap"
+  target_branch: "develop"
 
 commands:
   primary: "/review-pr"
@@ -45,6 +47,9 @@ input:
     required: true
   issue:
     number: 686
+    required: true
+  pr:
+    number: 687
     required: true
 
 review_points:
@@ -71,4 +76,4 @@ human_review_points:
   - "packages-foundation と Phase2 enum-code-definitions Task の境界"
 
 notes:
-  - "Issue #686。PR 番号は /create-pr 後に反映"
+  - "Issue #686 / PR #687"
