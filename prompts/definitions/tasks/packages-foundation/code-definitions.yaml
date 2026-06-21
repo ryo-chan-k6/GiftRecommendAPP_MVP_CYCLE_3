@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-packages-foundation"
   epic_issue: "[Epic]packages-foundation:packages共通基盤"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 688
+  epic_branch: "chore/epic-688-packages-foundation"
   related_issues: []
   related_prs: []
 
