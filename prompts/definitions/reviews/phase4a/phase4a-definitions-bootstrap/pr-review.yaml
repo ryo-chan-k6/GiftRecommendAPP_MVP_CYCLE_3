@@ -1,0 +1,74 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-phase4a-definitions-bootstrap-pr"
+  title: "Phase4a foundation Definition bootstrap PRレビュー"
+  summary: "Phase4a foundation 5 Epic + 子Task 20件 Definition 作成 chore PR の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-686-phase4a-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 686
+  task_definition: "prompts/definitions/tasks/phase4a/phase4a-definitions-bootstrap.yaml"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/phase4a/phase4a-definitions-bootstrap.yaml"
+    required: true
+  issue:
+    number: 686
+    required: true
+
+review_points:
+  - "5 foundation Epic が §6.5 と整合しているか"
+  - "子 Task 20件の scope・依存・並列方針"
+  - "Review Definition（Task×20 + Epic×5 + bootstrap）が揃っているか"
+  - "epic_scope.forbidden_paths（packages/contracts / generated）"
+  - "Phase4b 本格実装を bootstrap / Epic scope 外としているか"
+  - "Phase3b 完了（#651 / #671）を dependencies に反映しているか"
+  - "secret 非含有"
+
+acceptance_criteria_check:
+  - id: "epic-count"
+    text: "foundation Epic Definition 5件存在"
+  - id: "task-count"
+    text: "子 Task Definition 20件存在"
+  - id: "reviews"
+    text: "Review Definition 26件（Task 20 + Epic 5 + bootstrap 1）存在"
+  - id: "forbidden-contracts"
+    text: "forbidden_paths に packages/contracts/**"
+
+human_review_points:
+  - "Phase4a Epic / Task 分割粒度が L2 実行に適切か"
+  - "packages-foundation と Phase2 enum-code-definitions Task の境界"
+
+notes:
+  - "Issue #686。PR 番号は /create-pr 後に反映"
