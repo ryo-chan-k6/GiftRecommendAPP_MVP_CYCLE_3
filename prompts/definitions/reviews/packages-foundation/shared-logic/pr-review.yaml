@@ -14,9 +14,9 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 694
   issue:
-    number: null
+    number: 693
   task_definition: "prompts/definitions/tasks/packages-foundation/shared-logic.yaml"
 
 commands:
