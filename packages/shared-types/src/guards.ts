@@ -1,4 +1,4 @@
-import { ERROR_CODE_PATTERN } from "./deps/code-definitions.js";
+import { ERROR_CODE_PATTERN } from "@gift-recommendation/code-definitions";
 import type { CodeDefinitionId, CodeDefinitionValue, CodeValueCatalog } from "./types.js";
 
 export function isCodeDefinitionValue(

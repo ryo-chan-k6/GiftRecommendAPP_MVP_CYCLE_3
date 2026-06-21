@@ -2,7 +2,7 @@ import {
   getPackageRoot,
   loadAllDefinitions,
   type LoadedDefinitions,
-} from "./deps/code-definitions.js";
+} from "@gift-recommendation/code-definitions";
 import type { CodeValueCatalog } from "./types.js";
 
 type CodeDefinitionEntry = LoadedDefinitions["codeDefinitions"][number];

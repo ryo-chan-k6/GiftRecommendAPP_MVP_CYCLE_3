@@ -39,6 +39,10 @@ importers:
   packages/contracts: {}
 
   packages/shared-types:
+    dependencies:
+      '@gift-recommendation/code-definitions':
+        specifier: workspace:*
+        version: link:../code-definitions
     devDependencies:
       '@types/node':
         specifier: ^22.15.21

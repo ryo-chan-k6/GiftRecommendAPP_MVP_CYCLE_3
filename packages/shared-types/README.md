@@ -23,7 +23,6 @@ Gift Recommendation Service MVP の TypeScript 横断型パッケージ。
 | `src/types.ts` | `CodeValueCatalog` 等の共通型 |
 | `src/catalog.ts` | code-definitions からカタログを構築 |
 | `src/guards.ts` | value / error_code の runtime 検証 |
-| `src/deps/code-definitions.ts` | code-definitions ビルド成果物への内部参照（Phase4a 骨格） |
 | `src/tests/` | 単体テスト |
 
 ## 利用例
@@ -50,8 +49,6 @@ pnpm test
 ```
 
 `pnpm test` は `@gift-recommendation/code-definitions` の build を先行実行する。
-
-> **Human Review 観点:** `code-definitions` の `package.json#exports` は `./dist/src/index.js` を指す必要がある（現状 `./dist/index.js`）。本 Task では scope 外のため `src/deps/` で dist を直接参照している。後続 Task で exports 修正後に workspace 依存へ移行可能。
 
 ## 変更手順
 

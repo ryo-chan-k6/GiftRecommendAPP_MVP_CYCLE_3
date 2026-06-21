@@ -13,6 +13,9 @@
     "build": "tsc -p tsconfig.json",
     "test": "pnpm --filter @gift-recommendation/code-definitions run build && pnpm run build && node --test dist/tests/**/*.test.js"
   },
+  "dependencies": {
+    "@gift-recommendation/code-definitions": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^22.15.21",
     "typescript": "^5.8.3"
