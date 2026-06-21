@@ -633,6 +633,24 @@ Status更新は、Commandが直接確定するのではなく、GitHub Actions�
 ```
 ---
 
+## Layer2 テスト dispatch（Epic C 関連 Task）
+
+Task Definition の `test_policy` に workflow_dispatch 実行・artifact 読取が含まれる場合、または Epic C（`gha-test-environment`）配下の Layer2 テスト検証が必要な場合、Agent は以下を実施する。
+
+**正本:** [Layer2 Agent dispatch手順書.md](../../docs/05_アプリケーション設計/テスト/Layer2%20Agent%20dispatch%E6%89%8B%E9%A0%86%E6%9B%B8.md)
+
+| 手順 | 内容 |
+| ---- | ---- |
+| 1 | 対象 workflow（`test-system.yml` / `test-reco-quality.yml` 等）と `--ref`（Task Branch）を決定 |
+| 2 | bot 認証後 `gh workflow run` で dispatch（§0） |
+| 3 | `gh run watch` / `gh run view` / artifact ダウンロードで結果読取 |
+| 4 | 失敗時は scope 内 Fix → commit → 再 dispatch |
+| 5 | PR 本文「テスト・検証結果」に run URL・入力・判定を記載 |
+
+Layer2 dispatch は Definition Run Harness（`/review-pr` 等）とは別系統である（Commands設計書 §29.5）。cloud dev URL 依存手順（Epic B defer）は out of scope。
+
+---
+
 ## 出力ルール
 
 - 事実と推論を分けて書く
