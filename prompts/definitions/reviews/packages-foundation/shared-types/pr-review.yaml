@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 692
   issue:
     number: 691
   task_definition: "prompts/definitions/tasks/packages-foundation/shared-types.yaml"
