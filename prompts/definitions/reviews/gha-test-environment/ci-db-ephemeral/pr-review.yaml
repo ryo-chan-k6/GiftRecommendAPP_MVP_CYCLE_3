@@ -18,7 +18,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 673
   issue:
     number: 672
   task_definition: "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
@@ -51,7 +52,7 @@ input:
     number: 672
     required: true
   pr:
-    number: null
+    number: 673
     required: true
 
 review_points:
@@ -62,4 +63,4 @@ review_points:
   - "secret / .env 実値の非含有"
 
 notes:
-  - "Issue #672。PR 番号は /create-pr 後に反映"
+  - "Issue #672 / PR #673"
