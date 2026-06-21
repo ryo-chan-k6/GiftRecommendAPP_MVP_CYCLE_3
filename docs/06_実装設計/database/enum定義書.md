@@ -497,7 +497,8 @@ GRS コード全件の重複定義は行わない（参照のみ）。
 DB 制約方針:
 
 - エラーコード全件の CHECK 列挙は **行わない**
-- **`error_code` 形式 CHECK のみ** を付与する（例: `^GRS-[A-Z]{3}-[0-9]{3}$`）
+- **`error_code` 形式 CHECK のみ** を付与する（正本: `packages/code-definitions/error/error_code_format.yaml`）
+- 形式 regex 例: `^GRS-[A-Z]{2,4}-[0-9]{3}$`（DOMAIN 長 2〜4。`DB` / `COM` / `AUTH` / `EVAL` 等。エラーコード定義書 §4.2）
 - 意味・retryable・HTTP status・user message 等は Phase4a YAML + CI 整合で管理する
 
 ---

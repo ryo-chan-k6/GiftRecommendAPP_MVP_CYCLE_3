@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "ITM"
+  domain_label: "Item"
+  mvp_scope: true
+  codes:
+    - code: "GRS-ITM-001"
+      internal_name: "Item Not Found"
+      http_status: 404
+      retryable: false
+      severity: warn
+      user_message_key: "error.itm.001"
+      owner_types: ["api_call", "recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-ITM-002"
+      internal_name: "Item Inactive"
+      http_status: 422
+      retryable: false
+      severity: warn
+      user_message_key: "error.itm.002"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-ITM-003"
+      internal_name: "Item Image Missing"
+      http_status: 422
+      retryable: false
+      severity: warn
+      user_message_key: "error.itm.003"
+      owner_types: ["recommendation_run", "api_call"]
+      mvp_scope: true
+    - code: "GRS-ITM-004"
+      internal_name: "Item Feature Missing"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.itm.004"
+      owner_types: ["recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-ITM-005"
+      internal_name: "Item Embedding Missing"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.itm.005"
+      owner_types: ["recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-ITM-006"
+      internal_name: "Item Snapshot Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.itm.006"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-ITM-999"
+      internal_name: "Item Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.itm.999"
+      owner_types: ["recommendation_run", "batch_run"]
+      mvp_scope: true

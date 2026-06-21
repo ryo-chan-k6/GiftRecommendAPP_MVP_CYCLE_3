@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "RAW"
+  domain_label: "Raw / Storage"
+  mvp_scope: true
+  codes:
+    - code: "GRS-RAW-001"
+      internal_name: "Raw Save Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.raw.001"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-RAW-002"
+      internal_name: "Raw Metadata Save Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.raw.002"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-RAW-003"
+      internal_name: "Raw Object Not Found"
+      http_status: 404
+      retryable: true
+      severity: warn
+      user_message_key: "error.raw.003"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-RAW-004"
+      internal_name: "Raw Read Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.raw.004"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-RAW-005"
+      internal_name: "Raw Hash Mismatch"
+      http_status: 500
+      retryable: false
+      severity: error
+      user_message_key: "error.raw.005"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-RAW-999"
+      internal_name: "Raw Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.raw.999"
+      owner_types: ["batch_run"]
+      mvp_scope: true

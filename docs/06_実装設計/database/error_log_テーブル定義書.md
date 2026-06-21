@@ -232,7 +232,7 @@ Secret 出力検知は **`severity = critical`** で記録する（§9.4）。
 | `chk_error_log_owner_id_required` | CHECK | `owner_id` | `owner_type = 'system' OR owner_id IS NOT NULL` | system 以外は NOT NULL |
 | `chk_error_log_service` | CHECK | `service` | `service IN ('api', 'reco', 'batch')` | Observability §9.2 |
 | `chk_error_log_severity` | CHECK | `severity` | `severity IN ('warn', 'error', 'critical')` | §9.2 |
-| `chk_error_log_error_code_format` | CHECK | `error_code` | `error_code ~ '^GRS-[A-Z]{3}-[0-9]{3}$'` | enum定義書 §10.2 |
+| `chk_error_log_error_code_format` | CHECK | `error_code` | `error_code ~ '^GRS-[A-Z]{2,4}-[0-9]{3}$'` | enum定義書 §10.2・`error_code_format.yaml` |
 
 ---
 
@@ -245,7 +245,7 @@ Secret 出力検知は **`severity = critical`** で記録する（§9.4）。
 | `owner_type` | `owner_type` | `enum定義書.md` §6.15 | §11.1 参照 | NOT NULL |
 | `service` | （code 未定義） | ログ・Observability設計書 §9.2 | `api`, `reco`, `batch` | CHECK |
 | `severity` | （code 未定義） | ログ・Observability設計書 §9.2 / エラーコード定義書 | `warn`, `error`, `critical` | CHECK |
-| `error_code` | GRS 形式 | `enum定義書.md` §10.2 | `^GRS-[A-Z]{3}-[0-9]{3}$` | 全件列挙 CHECK は **行わない** |
+| `error_code` | GRS 形式 | `enum定義書.md` §10.2 / `error_code_format.yaml` | `^GRS-[A-Z]{2,4}-[0-9]{3}$` | 全件列挙 CHECK は **行わない**。DOMAIN 長 2〜4 |
 | `retryable` | — | エラーコード定義書 | `true` / `false` | boolean |
 
 ### 11.1 `owner_type` 許容値（MVP）
@@ -478,7 +478,7 @@ Human Review #536 No.10 **決定済み**。Batch 系 Log は **Standalone 90 日
 | 1 | Observability §9.2 拡張列 | **`trace_id` / `request_id` / `service` / `severity` / `retryable` を MVP 物理 DDL に採用** | Human | §5.5・§6 |
 | 2 | `owner_type=system` | **`owner_id` NULL 可**（CHECK で明示） | Human | §8.1・§10 |
 | 3 | `phase_log_id` 列 | **採用しない**。owner polymorphic のみ | Human | §5.3 |
-| 4 | `error_code` CHECK | **形式 CHECK のみ**（§10.2）。全件列挙は Phase4a | Human | §10 |
+| 4 | `error_code` CHECK | **形式 CHECK のみ**（§10.2）。regex `^GRS-[A-Z]{2,4}-[0-9]{3}$`（DOMAIN 長 2〜4。Issue #689 HR 確定）。全件列挙は Phase4a YAML | Human | §10 |
 | 5 | Retention 具体日数 | **90 日**（Standalone）。削除 Batch 実装は MVP 外 | Human | §13.1 |
 | 9 | Retention 連動方針 | **二層 Retention**（§13.1 Standalone 90 日 + §13.2 Batch Run アンカー **90 日**一括パージ）。正本は本定義書 §13、`batch_run_log` §13.1 と整合 | Human | §13.2〜§13.3 |
 | 10 | Batch 系 Log Retention 統一 | **`api_call_log` / `phase_log` / `error_log` / `item_import_summary` / `batch_run_log` を 90 日に統一**（#534 / #535 / #533 cross-cutting） | Human | §13.3 |

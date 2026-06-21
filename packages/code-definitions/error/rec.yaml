@@ -1,0 +1,136 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "REC"
+  domain_label: "Recommendation / Reco"
+  mvp_scope: true
+  codes:
+    - code: "GRS-REC-001"
+      internal_name: "No Recommendation Candidates"
+      http_status: 200
+      retryable: false
+      severity: warn
+      user_message_key: "error.rec.001"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-002"
+      internal_name: "Recommendation Run Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.002"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-003"
+      internal_name: "Config Resolve Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.003"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-004"
+      internal_name: "Semantic Extraction Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.004"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-005"
+      internal_name: "User Feature Generation Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.005"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-006"
+      internal_name: "User Meaning Projection Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.006"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-007"
+      internal_name: "Query Embedding Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.007"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-008"
+      internal_name: "Pre Hard Filter Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.008"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-009"
+      internal_name: "Retrieval Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.009"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-010"
+      internal_name: "Post Hard Filter Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.010"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-011"
+      internal_name: "Matching Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.011"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-012"
+      internal_name: "Ranking Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.012"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-013"
+      internal_name: "Reason Generation Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.013"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-101"
+      internal_name: "Reco Timeout"
+      http_status: 504
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.101"
+      owner_types: ["recommendation_run", "api_call"]
+      mvp_scope: true
+    - code: "GRS-REC-201"
+      internal_name: "Run State Conflict"
+      http_status: 409
+      retryable: true
+      severity: warn
+      user_message_key: "error.rec.201"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-REC-999"
+      internal_name: "Reco Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.rec.999"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
