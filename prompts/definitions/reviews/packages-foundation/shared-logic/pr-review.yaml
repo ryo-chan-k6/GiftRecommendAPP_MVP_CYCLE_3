@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 693
   task_definition: "prompts/definitions/tasks/packages-foundation/shared-logic.yaml"
 
 commands:
