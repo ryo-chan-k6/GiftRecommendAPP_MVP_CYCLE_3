@@ -1,0 +1,136 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-packages-foundation"
+  title: "packages-foundation:packages共通基盤"
+  summary: "Phase4a。packages 横断の code-definitions / shared-types / shared-logic / test-fixtures を整備する Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4a 共通基盤 Epic（実装フェーズ実行プロセス設計書 §6.5）。
+  Phase3b（Epic A #651 / Epic C #671 merge 済み）完了後、Phase4b 縦串の前提となる packages-foundation を整備する。
+  他 foundation Epic と workstream 単位で並列 `/start-epic` 可。
+
+objective: |
+  Epic Branch 上で子 Task を実行し Phase4a 共通基盤骨格を整備。Epic PR で develop へ統合する。
+
+scope:
+  - "Feature/Semantic/error_code 等 code-definitions 骨格を Phase2 enum と整合。P1。"
+  - "apps/packages 横断 TypeScript 型 shared-types 骨格。P2。"
+  - "Feature Engine・正規化・Meaning 射影 shared-logic 骨格。P3。"
+  - "packages/test-fixtures 骨格。P4。"
+  - "Epic / Task / Review Definition 整備"
+
+out_of_scope:
+  - "Phase4b 識別子 Epic 本格実装"
+  - "packages/contracts/** 変更"
+  - "generated 手編集"
+  - "Epic D app CI"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+  issues:
+    - number: 651
+      purpose: "Phase3b Epic A 完了"
+    - number: 671
+      purpose: "Phase3b Epic C 完了"
+
+output:
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]packages-foundation:packages共通基盤）"
+  - "Phase4a packages-foundation 共通基盤骨格"
+  - "Epic PR → develop"
+
+acceptance_criteria:
+  - "子 Task Definition が存在する"
+  - "Phase4a scope 骨格が整備されている"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  summary: "packages-foundation"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "packages"
+
+epic_scope:
+  allowed_paths:
+    - "packages/code-definitions/**"
+    - "packages/shared-logic/**"
+    - "packages/shared-types/**"
+    - "packages/test-fixtures/**"
+    - "docs/05_アプリケーション設計/共通/**"
+    - "prompts/definitions/epics/packages-foundation/**"
+    - "prompts/definitions/tasks/packages-foundation/**"
+    - "prompts/definitions/reviews/packages-foundation/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/**"
+    - "supabase/migrations/**"
+  child_task_areas:
+    - "code-definitions"
+    - "shared-types"
+    - "shared-logic"
+    - "test-fixtures"
+
+dependencies:
+  issues:
+    - number: 651
+      purpose: "Phase3b Epic A 完了"
+    - number: 671
+      purpose: "Phase3b Epic C 完了"
+  blocking: true
+
+review:
+  human_review_required: true
+  ai_review_required: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "workstream_key: packages-foundation"
+  - "Phase4a — 他 foundation Epic と並列可"
