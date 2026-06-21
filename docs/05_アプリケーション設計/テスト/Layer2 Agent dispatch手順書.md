@@ -12,13 +12,16 @@ Epic C（`gha-test-environment`）Task C5 の成果物である。C3 / C4 で整
 
 | 成果物 | 役割 |
 | ------ | ---- |
+| テスト環境設計書 | Layer1〜3 境界、Layer2 環境・workflow 一覧、Agent 運用対応表（§2.6） |
 | CI・CD方針書 | PR CI（Layer1）と Layer2 workflow の分離方針 |
 | テスト定義書 | テストレベル・Layer2 skip 条件・fixture 方針 |
 | 本ドキュメント | **Agent 向け Layer2 dispatch / 結果読取 / Fix ループ手順** |
 | Definition Run Harness ワークフロー仕様書 | `/review-pr` 等 Definition Run の外部トリガ（Layer2 テストとは別系統） |
 | Commands設計書 §29 | Definition Run 通称・外部トリガ概要 |
 
-### 2.1 Layer1 と Layer2 の境界
+### 2.1 Layer1 / Layer2 / Layer3 の境界
+
+Layer1〜3 の定義・Epic C focus・全テストレベル Agent 運用対応表の正本は [テスト環境設計書.md](./テスト環境設計書.md) §2.1〜§2.6 とする。本節は dispatch 手順向けの要約である。
 
 | 区分 | 実行経路 | 典型 workflow | Agent の用途 |
 | ---- | -------- | ------------- | ------------ |
@@ -26,7 +29,7 @@ Epic C（`gha-test-environment`）Task C5 の成果物である。C3 / C4 で整
 | Layer2 | `workflow_dispatch` | `test-system.yml`, `test-reco-quality.yml` | システム / 品質テストの on-demand 実行 |
 | Layer3 | cloud dev URL（defer） | — | Epic B defer。本手順の対象外 |
 
-Layer2 workflow は **通常 PR CI に混在させない**（Epic C Epic Definition `agentic_process.constraints`、CI・CD方針書 §5.3.4 技術検証分離と同型）。
+Layer2 workflow は **通常 PR CI に混在させない**（Epic C Epic Definition `agentic_process.constraints`、CI・CD方針書 §13.4）。
 
 ### 2.2 Definition Run Harness との違い
 
@@ -407,6 +410,7 @@ Task Definition の `test_policy.manual_checks` に「workflow_dispatch 実行�
 
 | ドキュメント | パス |
 | ------------ | ---- |
+| テスト環境設計書 | `docs/05_アプリケーション設計/テスト/テスト環境設計書.md` |
 | CI・CD方針書 | `docs/05_アプリケーション設計/共通/CI・CD方針書.md` |
 | テスト定義書 | `docs/05_アプリケーション設計/テスト/テスト定義書.md` |
 | Commands設計書 §29 | `docs/00_共通/AIエージェント運用/Commands設計書.md` |

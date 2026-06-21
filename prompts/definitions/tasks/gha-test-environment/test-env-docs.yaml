@@ -92,6 +92,7 @@ project:
     priority: "medium"
 
 issue:
+  number: 683
   unit: "task"
   type: "docs"
   area: "docs"

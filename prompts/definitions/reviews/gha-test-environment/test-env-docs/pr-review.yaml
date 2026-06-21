@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 683
   task_definition: "prompts/definitions/tasks/gha-test-environment/test-env-docs.yaml"
 
 commands:
