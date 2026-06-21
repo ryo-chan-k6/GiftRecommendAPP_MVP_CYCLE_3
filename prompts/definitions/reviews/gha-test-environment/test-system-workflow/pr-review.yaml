@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 678
   issue:
     number: 676
   task_definition: "prompts/definitions/tasks/gha-test-environment/test-system-workflow.yaml"
@@ -51,6 +51,9 @@ input:
   issue:
     number: 676
     required: true
+  pr:
+    number: 678
+    required: true
 
 review_points:
   - "workflow_dispatch 起動可能か"
@@ -60,4 +63,4 @@ review_points:
   - "secret 非含有"
 
 notes:
-  - "Issue #676。PR 番号は /create-pr 後に反映"
+  - "Issue #676 / PR #678"
