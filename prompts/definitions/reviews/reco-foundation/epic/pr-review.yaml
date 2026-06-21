@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 698
   task_definition: "prompts/definitions/epics/reco-foundation/epic.yaml"
   target_branch: "develop"
 
