@@ -15,4 +15,8 @@ Supabase CLI 管理下の seed SQL 配置。正本は [`config.toml`](../config.
 
 ## test-data
 
-Epic C `test-fixtures-seed` で整備予定。自動 seed には含めない。
+Layer2 システム/品質テスト用最小 seed（Issue #674）。自動 seed には含めない。
+
+- SQL: `test-data/*.sql`
+- 投入: `./scripts/db/seed-test-data.sh`
+- fixture 索引: `tests/fixtures/manifest.json`

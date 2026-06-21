@@ -20,6 +20,7 @@ DB migration / seed / 検証 SQL 実行補助を配置するディレクトリ�
 | `migrate-up.sh` | `supabase migration up` |
 | `reset-local.sh` | `supabase db reset`（migration + master seed） |
 | `seed-masters.sh` | master seed のみ再投入（データ維持時） |
+| `seed-test-data.sh` | test-data seed を明示投入（Layer2 fixture 用。`db reset` 非対象） |
 | `verify-seed-setup.sh` | `supabase/seeds/masters` と `config.toml [db.seed]` の正本整合検証 |
 | `status.sh` | `supabase status` |
 | `stop-local.sh` | `supabase stop` |
@@ -32,6 +33,7 @@ DB migration / seed / 検証 SQL 実行補助を配置するディレクトリ�
 ./scripts/db/migrate-up.sh
 ./scripts/db/reset-local.sh
 ./scripts/db/seed-masters.sh
+./scripts/db/seed-test-data.sh
 ```
 
 ## 前提
