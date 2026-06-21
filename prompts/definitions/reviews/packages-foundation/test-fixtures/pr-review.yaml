@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 695
   task_definition: "prompts/definitions/tasks/packages-foundation/test-fixtures.yaml"
 
 commands:
