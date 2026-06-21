@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 684
   issue:
     number: 683
   task_definition: "prompts/definitions/tasks/gha-test-environment/test-env-docs.yaml"
