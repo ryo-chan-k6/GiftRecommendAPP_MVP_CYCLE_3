@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 700
   issue:
     number: 699
   task_definition: "prompts/definitions/tasks/reco-foundation/pipeline-scaffold.yaml"
