@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 706
   issue:
     number: 704
   task_definition: "prompts/definitions/tasks/reco-foundation/config-foundation.yaml"
