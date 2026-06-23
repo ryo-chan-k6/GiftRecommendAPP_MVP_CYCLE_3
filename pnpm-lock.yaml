@@ -15,7 +15,14 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  apps/api: {}
+  apps/api:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.21
+        version: 22.20.0
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   apps/batch: {}
 
