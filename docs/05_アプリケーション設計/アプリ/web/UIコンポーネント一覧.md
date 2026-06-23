@@ -88,7 +88,7 @@ W1（本 Task）では **定義のみ** を行い、`apps/web/src/components/**`
 | UI-041 | RecommendationCard | display  | 推薦商品カード                   |   ○ | defined  | SCR-004             |
 | UI-042 | PriceDisplay       | display  | 価格表示（通貨・範囲）             |   ○ | defined  | SCR-004, SCR-006    |
 | UI-043 | ReasonSummary      | display  | 推薦理由要約テキスト             |   ○ | defined  | SCR-004             |
-| UI-044 | RankBadge          | display  | 推薦順位表示（任意）             |   △ | defined  | SCR-004             |
+| UI-044 | RankBadge          | display  | 推薦順位表示                     |   ○ | defined  | SCR-004             |
 | UI-050 | Modal              | overlay  | モーダルシェル（オーバーレイ含む）|  ○ | defined  | SCR-005, SCR-007    |
 | UI-051 | ModalHeader        | overlay  | モーダルタイトル + 閉じる        |   ○ | defined  | SCR-005, SCR-007    |
 | UI-060 | Heading            | display  | 見出し（レベル対応）             |   ○ | defined  | 全画面              |
@@ -364,8 +364,8 @@ W2 では本一覧の **MVP ○** かつ **実装状態 defined** のコンポ�
 | ------ | -------- | ---------------------------- |
 | P0     | UI-020, UI-025, UI-002, UI-060, UI-061 | フォーム・レイアウトの最小セット |
 | P1     | UI-021〜024, UI-030〜034, UI-031〜032 | SCR-002, SCR-003, SCR-008/009 |
-| P2     | UI-040〜043, UI-050〜051, UI-062 | 結果一覧・モーダル・外部リンク   |
-| P3     | UI-001, UI-003, UI-010, UI-011, UI-044 | 補完・後続画面向け           |
+| P2     | UI-040〜044, UI-050〜051, UI-062 | 結果一覧・モーダル・外部リンク   |
+| P3     | UI-001, UI-003, UI-010, UI-011 | 補完・後続画面向け           |
 
 ### 7.2 component-test-scaffold（W4）
 
@@ -377,9 +377,14 @@ Vitest + Testing Library により、P0〜P1 コンポーネントの render / �
 
 | 項目                         | 現状                                   |
 | ---------------------------- | -------------------------------------- |
-| RankBadge（UI-044）の要否    | MVP △。順位の視覚強調が UX 上必要か    |
 | フォームライブラリ           | React Hook Form 等は W2 実装時に選定   |
 | `features/` と `components/` の境界 | 画面固有の複合部品は `features/` へ |
+
+### 8.1 確定事項（Human Review）
+
+| 項目 | 決定内容 | 確認日 |
+| ---- | -------- | ------ |
+| RankBadge（UI-044）の要否 | MVP 対象（○）。SCR-004 推薦結果一覧で順位を視覚表示する | 2026-06-23 |
 
 ---
 
@@ -388,3 +393,4 @@ Vitest + Testing Library により、P0〜P1 コンポーネントの render / �
 | 日付       | 変更内容               | 備考       |
 | ---------- | ---------------------- | ---------- |
 | 2026-06-23 | 初版作成（Phase4a W1） | Issue #725 |
+| 2026-06-23 | RankBadge（UI-044）を MVP ○ に確定 | Issue #728 |

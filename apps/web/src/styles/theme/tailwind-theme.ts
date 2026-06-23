@@ -39,8 +39,8 @@ export const tailwindThemeExtend = {
   spacing: tailwindSpacing,
   fontSize: tailwindFontSize,
   fontFamily: {
-    body: [...fontFamilyStacks.body],
-    heading: [...fontFamilyStacks.heading],
+    body: ["var(--font-body)", ...fontFamilyStacks.body],
+    heading: ["var(--font-heading)", ...fontFamilyStacks.heading],
   },
   borderRadius: {
     sm: radiiTokens["radius-sm"],

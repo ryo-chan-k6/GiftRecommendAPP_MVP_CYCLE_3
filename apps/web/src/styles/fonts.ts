@@ -1,8 +1,8 @@
 /**
  * フォント定義（正本: デザインルール.md §4.2）
  *
- * Phase4a では next/font 未導入のためスタックと公開 CDN URL のみ定義する。
- * 実読み込みは Phase4b Next.js 導入時に next/font/google へ移行する（§10.1）。
+ * next/font による実読み込みは `src/lib/fonts.ts`（App Router layout）で行う。
+ * 本ファイルは Tailwind theme とスタイルガイド向けのフォントスタック正本。
  */
 export const fontFamilyStacks = {
   body: ['"Noto Serif JP"', '"Hiragino Mincho ProN"', "serif"],
