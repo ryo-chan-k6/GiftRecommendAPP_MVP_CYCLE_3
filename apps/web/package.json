@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "pnpm run build && node --test dist/src/styles/**/*.test.js",
+    "preview:style-guide": "node src/styles/preview/serve.mjs",
     "dev": "node -e \"console.log('[placeholder] Next.js dev server (port 3000) — Phase4 implementation pending'); process.exit(0)\""
   },
   "devDependencies": {

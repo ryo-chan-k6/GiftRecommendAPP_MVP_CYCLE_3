@@ -10,8 +10,17 @@ Phase4a `web-foundation`（W3）のスタイル基盤。デザインルールの
 | `globals.css` | Tailwind エントリ + `:root` 変数 + base スタイル |
 | `tailwind.config.ts` | Tailwind 設定（content は後続 W2/W4 向けに components/app を見越し） |
 | `fonts.ts` | LP 準拠フォントスタック（next/font 接続は Phase4b） |
+| `preview/` | スタイルガイド静的プレビュー（`pnpm preview:style-guide`） |
 
 正本: `docs/05_アプリケーション設計/アプリ/web/デザインルール.md`
+
+## スタイルガイドのプレビュー
+
+```bash
+cd apps/web && pnpm preview:style-guide
+```
+
+http://localhost:3099/style-guide.html でカラー・フォント・部品サンプルを確認できる。
 
 ## Phase4b 以降
 
