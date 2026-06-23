@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 718
   issue:
     number: 715
   task_definition: "prompts/definitions/tasks/api-foundation/db-repository-foundation.yaml"
