@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 727
   task_definition: "prompts/definitions/tasks/web-foundation/styles-foundation.yaml"
 
 commands:
