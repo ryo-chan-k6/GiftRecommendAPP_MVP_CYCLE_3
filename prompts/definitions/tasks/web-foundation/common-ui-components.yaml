@@ -61,6 +61,12 @@ input:
     - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
       required: true
       purpose: "Phase4a §6.5"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "共通 UI 部品定義"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "スタイル・部品ルール"
 
 output:
   files:
