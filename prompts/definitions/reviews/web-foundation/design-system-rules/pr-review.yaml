@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 725
   task_definition: "prompts/definitions/tasks/web-foundation/design-system-rules.yaml"
 
 commands:
