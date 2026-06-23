@@ -1,13 +1,13 @@
 import type { ErrorRequestHandler } from "express";
 
 import {
+  buildErrorResponseBody,
   DEFAULT_UNEXPECTED_MESSAGE,
   DEFAULT_VALIDATION_MESSAGE,
   SCAFFOLD_ERROR_CODES,
-} from "../constants.js";
+} from "../../lib/error-response/index.js";
 import { resolveRequestMeta } from "../request-meta.js";
 import { ApiError, isApiError } from "./api-error.js";
-import { buildErrorResponseBody } from "./error-response.js";
 
 function toApiError(error: unknown): ApiError {
   if (isApiError(error)) {

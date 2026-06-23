@@ -6,6 +6,7 @@ Express error handler 骨格。Response 形式は OpenAPI `ErrorResponse` / エ�
 | -------------- | ---- |
 | `ApiError` | 業務・Validation エラーを middleware 境界へ伝播 |
 | `errorHandler` | 未知エラーを `GRS-COM-999` へマスクし JSON を返却 |
-| `buildErrorResponseBody` | Phase4a 暫定 formatter（A4 で lib 移管予定） |
+
+Response 組み立ては `apps/api/src/lib/error-response/`（A4）の `buildErrorResponseBody` を利用する。
 
 内部 stack trace / SQL / secret は Response へ返さない（API設計方針 §10）。

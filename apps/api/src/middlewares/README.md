@@ -26,7 +26,10 @@ errorHandler   ← 必ず末尾
 
 `registerFoundationMiddlewares` / `registerErrorMiddleware` を利用してもよい。
 
+## 関連モジュール
+
+- 共通 error response 組み立て: `apps/api/src/lib/error-response/`（A4）
+
 ## Phase4b 以降
 
-- 共通 error response 組み立ては `common-error-response` Task（A4）で `apps/api/src/lib/**` へ移管予定
 - route 実装・認証 middleware は Phase4b 識別子 Epic で追加
