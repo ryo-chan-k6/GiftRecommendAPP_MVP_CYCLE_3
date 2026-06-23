@@ -11,8 +11,9 @@ Thumbs.db
 # Windows
 Desktop.ini
 
-# VSCode
-.vscode/
+# VSCode（チーム共有設定のみ commit）
+.vscode/*
+!.vscode/settings.json
 
 # JetBrains
 .idea/
