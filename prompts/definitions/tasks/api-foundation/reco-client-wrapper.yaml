@@ -43,7 +43,7 @@ background: |
   Phase4b 縦串（MOD-RECO / API-INT / API-PUB / SCR）の前提となる共通基盤の一部。
 
 objective: |
-  `apps/api/src/infrastructure/reco/**` を Phase4a scope 内で整備し、単体テスト可能な骨格を提供する。
+  `apps/api/src/infrastructure/reco-client/**` を Phase4a scope 内で整備し、単体テスト可能な骨格を提供する。
 
 scope:
   - "骨格コード・ディレクトリ・最小テスト"
@@ -64,7 +64,7 @@ input:
 
 output:
   files:
-    - path: "apps/api/src/infrastructure/reco/**"
+    - path: "apps/api/src/infrastructure/reco-client/**"
       action: "create_or_update"
       required: true
 
@@ -98,7 +98,7 @@ parallel_control:
     - "prompts/definitions/tasks/api-foundation/middleware-foundation.yaml"
     - "prompts/definitions/tasks/api-foundation/logger-foundation.yaml"
   exclusive_files:
-    - "apps/api/src/infrastructure/reco/**"
+    - "apps/api/src/infrastructure/reco-client/**"
   conflict_risk: "medium"
   blocks:
     []
