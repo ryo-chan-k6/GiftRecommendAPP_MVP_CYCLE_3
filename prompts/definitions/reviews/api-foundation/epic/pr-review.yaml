@@ -16,8 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 710
   task_definition: "prompts/definitions/epics/api-foundation/epic.yaml"
+  source_branch: "feature/epic-710-api-foundation"
   target_branch: "develop"
 
 commands:
