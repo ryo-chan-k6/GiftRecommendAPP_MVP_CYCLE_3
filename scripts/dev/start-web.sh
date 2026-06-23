@@ -16,7 +16,7 @@ Prerequisites:
   - .env present (./scripts/dev/copy-env-example.sh)
   - api / reco running when testing browser → api flow
 
-Note: apps/web dev script is a placeholder until Phase4 implementation.
+Note: Next.js dev server（port 3000）。`apps/web` の `pnpm dev` をルート `dev:web` 経由で起動する。
 EOF
 }
 

@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-web-foundation"
   epic_issue: "[Epic]web-foundation:Web共通基盤"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 724
+  epic_branch: "feature/epic-724-web-foundation"
   related_issues: []
   related_prs: []
 
@@ -61,6 +61,9 @@ input:
     - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
       required: true
       purpose: "Phase4a §6.5"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "component test 対象部品"
 
 output:
   files:

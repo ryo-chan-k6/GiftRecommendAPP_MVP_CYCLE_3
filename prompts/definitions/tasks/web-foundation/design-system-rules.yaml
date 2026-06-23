@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-web-foundation"
   epic_issue: "[Epic]web-foundation:Web共通基盤"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 724
+  epic_branch: "feature/epic-724-web-foundation"
   related_issues: []
   related_prs: []
 
@@ -43,7 +43,7 @@ background: |
   Phase4b 縦串（MOD-RECO / API-INT / API-PUB / SCR）の前提となる共通基盤の一部。
 
 objective: |
-  `docs/05_アプリケーション設計/Web/**` を Phase4a scope 内で整備し、単体テスト可能な骨格を提供する。
+  `docs/05_アプリケーション設計/アプリ/web/**` を Phase4a scope 内で整備し、デザインルール・UIコンポーネント一覧を提供する。
 
 scope:
   - "骨格コード・ディレクトリ・最小テスト"
@@ -61,10 +61,13 @@ input:
     - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
       required: true
       purpose: "Phase4a §6.5"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "画面・UI 要件の前提"
 
 output:
   files:
-    - path: "docs/05_アプリケーション設計/Web/**"
+    - path: "docs/05_アプリケーション設計/アプリ/web/**"
       action: "create_or_update"
       required: true
 
@@ -97,7 +100,7 @@ parallel_control:
   depends_on:
     []
   exclusive_files:
-    - "docs/05_アプリケーション設計/Web/**"
+    - "docs/05_アプリケーション設計/アプリ/web/**"
   conflict_risk: "low"
   blocks:
     - "prompts/definitions/tasks/web-foundation/common-ui-components.yaml"
