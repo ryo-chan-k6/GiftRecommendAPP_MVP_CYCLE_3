@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 709
   issue:
     number: 707
   task_definition: "prompts/definitions/tasks/local-dev-environment/python-dev-pytest.yaml"
