@@ -1,6 +1,6 @@
-import type { ErrorDetail, ErrorResponseBody, RequestMeta } from "../types.js";
+import type { ErrorDetail, ErrorResponseBody, RequestMeta } from "./types.js";
 
-/** Phase4a 骨格。A4 common-error-response Task で apps/api/src/lib へ移管予定。 */
+/** OpenAPI ErrorResponse 形式の JSON body を組み立てる。内部詳細は含めない。 */
 export function buildErrorResponseBody(input: {
   code: string;
   message: string;
