@@ -29,6 +29,7 @@
 | 画面仕様書（識別子単位）  | `docs/06_実装設計/web/`（Phase4b 以降）                            |
 | 共通 UI 実装              | `apps/web/src/components/**`（web-foundation W2 以降）               |
 | スタイル基盤              | `apps/web/src/styles/**`（web-foundation W3 以降）                   |
+| ビジュアル基準（LP）      | [GiftRecommendAPP_LP](https://github.com/ryo-chan-k6/GiftRecommendAPP_LP)（`デザインルール.md` §2.3） |
 
 ---
 
@@ -47,4 +48,5 @@
 
 - [実装フェーズ実行プロセス設計書](../../../00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md) §6.5
 - [全体テスト計画書](../../テスト/全体テスト計画書.md)
-- [プロジェクトディレクトリ構成定義書](../../../00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md)
+- [デザインルール](./デザインルール.md)（LP ビジュアル基準含む）
+- [GiftRecommendAPP_LP](https://github.com/ryo-chan-k6/GiftRecommendAPP_LP)（ビジュアル参照・別リポジトリ）
