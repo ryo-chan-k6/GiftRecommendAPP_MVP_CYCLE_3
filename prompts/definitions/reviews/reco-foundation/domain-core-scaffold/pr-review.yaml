@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 701
   task_definition: "prompts/definitions/tasks/reco-foundation/domain-core-scaffold.yaml"
 
 commands:
