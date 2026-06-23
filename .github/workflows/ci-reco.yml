@@ -1,0 +1,34 @@
+name: CI Reco Check
+
+# Python workspace unit tests + apps/reco unit tests（最小 Layer1）。
+# apps/reco は reco-foundation merge 後に pytest が有効化される（未整備時は skip）。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  python-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Sync Python workspace
+        run: ./scripts/dev/setup-python.sh
+
+      - name: Run packages Python unit tests
+        run: ./scripts/dev/pytest-python.sh
+
+      - name: Run reco unit tests (when scaffold present)
+        run: ./scripts/dev/pytest-reco.sh

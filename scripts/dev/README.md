@@ -34,6 +34,10 @@ Phase3a（2026-06-07）の「docker-compose 同梱なし」は **PostgreSQL 用 
 | [`start-redis.sh`](./start-redis.sh) | `docker-compose.dev.yml` で Redis を起動 |
 | [`stop-redis.sh`](./stop-redis.sh) | Redis コンテナを停止 |
 | [`start-reco.sh`](./start-reco.sh) | reco を `pnpm dev:reco` で起動（port **8000**） |
+| [`setup-python.sh`](./setup-python.sh) | ルート uv workspace の `.venv` 作成・sync（worktree ごと） |
+| [`pytest-python.sh`](./pytest-python.sh) | `packages/shared-logic` / `test-fixtures` の pytest |
+| [`setup-python-reco.sh`](./setup-python-reco.sh) | `apps/reco/.venv` 作成（pyproject 整備後） |
+| [`pytest-reco.sh`](./pytest-reco.sh) | `apps/reco/tests/unit` の pytest（骨格 merge 後） |
 | [`start-api.sh`](./start-api.sh) | api を `pnpm dev:api` で起動（port **3001**） |
 | [`start-web.sh`](./start-web.sh) | web を `pnpm dev:web` で起動（port **3000**） |
 
@@ -91,10 +95,28 @@ Ctrl+C
 
 Phase4 実装前（placeholder）は dev プロセスが即終了するため、通常は停止操作不要。
 
+### Python 単体テスト（worktree ごと）
+
+```bash
+./scripts/dev/setup-python.sh
+./scripts/dev/pytest-python.sh
+
+# reco-foundation 骨格 merge 後
+./scripts/dev/setup-python-reco.sh
+./scripts/dev/pytest-reco.sh
+```
+
+| 項目 | 内容 |
+| ---- | ---- |
+| ツール | `uv` + `.python-version`（3.14） |
+| venv | ルート `.venv` + `apps/reco/.venv`（いずれも worktree ローカル） |
+| CI | `.github/workflows/ci-reco.yml`（Layer1 最小） |
+
 | 項目 | 内容 |
 | ---- | ---- |
 | monorepo 正本 | ルート `package.json` の `dev:reco` / `dev:api` / `dev:web` |
 | batch | ルート `pnpm dev:batch`（ジョブ単位 CLI。本格運用は Phase4b defer） |
 | placeholder | 各 app の `dev` script は Phase4 実装まで即終了する placeholder |
 
-| [ローカル開発手順書 §6–§10](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | 初回セットアップ・起動・疎通確認 |
+| [ローカル開発手順書 §6.2](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | Python 初回セットアップ |
+| [ローカル開発手順書 §6–§10](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | 起動・疎通確認 |

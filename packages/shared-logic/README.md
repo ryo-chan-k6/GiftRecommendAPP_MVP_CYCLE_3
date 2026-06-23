@@ -50,8 +50,16 @@ meaning = project_to_meaning(normalized, feature_codes=feature_codes)
 
 ```bash
 cd packages/shared-logic
-python -m pip install -e ".[dev]"
-pytest
+uv venv --python 3.14 .venv  # またはルート ./scripts/dev/setup-python.sh
+UV_PROJECT_ENVIRONMENT=.venv uv pip install -e ".[dev]"
+uv run pytest
+```
+
+ルート workspace 経由:
+
+```bash
+./scripts/dev/setup-python.sh
+./scripts/dev/pytest-python.sh
 ```
 
 ## 変更手順

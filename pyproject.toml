@@ -1,0 +1,20 @@
+[project]
+name = "gift-recommendation-service-python"
+version = "0.0.0"
+description = "Gift Recommendation Service Python uv workspace (packages; apps/reco は reco-foundation merge 後に members へ追加)"
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+  "packages/shared-logic",
+  "packages/test-fixtures",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.5",
+]
