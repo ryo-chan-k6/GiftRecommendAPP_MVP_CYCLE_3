@@ -1,0 +1,50 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-dev-environment-monorepo-typescript-ide-pr"
+  title: "local-dev-environment monorepo-typescript-ide PRレビュー"
+  summary: "monorepo TypeScript IDE基盤（tsconfig solution / .vscode）の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 716
+  task_definition: "prompts/definitions/tasks/local-dev-environment/monorepo-typescript-ide.yaml"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/local-dev-environment/monorepo-typescript-ide.yaml"
+    required: true
+
+review_points:
+  - "ルート tsconfig references が scope 内4パッケージを網羅している"
+  - "既存 package の build / test が維持されている"
+  - ".vscode/settings.json が commit 可能（gitignore 例外）"
+  - "composite 等による既存 build 破壊がない"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"
