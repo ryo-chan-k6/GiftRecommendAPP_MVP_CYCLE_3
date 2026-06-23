@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 711
   task_definition: "prompts/definitions/tasks/api-foundation/middleware-foundation.yaml"
 
 commands:
