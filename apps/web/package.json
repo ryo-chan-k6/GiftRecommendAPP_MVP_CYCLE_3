@@ -2,7 +2,18 @@
   "name": "@gift-recommendation/web",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "pnpm run build && node --test dist/src/styles/**/*.test.js",
+    "preview:style-guide": "node src/styles/preview/serve.mjs",
     "dev": "node -e \"console.log('[placeholder] Next.js dev server (port 3000) — Phase4 implementation pending'); process.exit(0)\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
   }
 }
