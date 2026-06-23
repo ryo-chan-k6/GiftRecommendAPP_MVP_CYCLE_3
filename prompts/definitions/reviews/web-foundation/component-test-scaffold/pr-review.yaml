@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 731
   task_definition: "prompts/definitions/tasks/web-foundation/component-test-scaffold.yaml"
 
 commands:

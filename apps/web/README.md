@@ -97,6 +97,18 @@ apps/web/
 
 ## 7. テスト観点
 
+### 7.1 component test（W4）
+
+共通 UI コンポーネントは `tests/component/**` で Vitest + Testing Library により検証する。
+
+```bash
+pnpm --filter @gift-recommendation/web test:component
+```
+
+対象の正本は `docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md` §7.2。
+
+### 7.2 画面・導線テスト
+
 最低限、以下を確認すること。
 
 - 主要導線が成立する
