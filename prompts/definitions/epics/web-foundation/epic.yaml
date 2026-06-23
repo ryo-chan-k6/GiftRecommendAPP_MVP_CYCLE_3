@@ -101,7 +101,7 @@ epic_scope:
     - "apps/web/tests/**"
     - "apps/web/package.json"
     - "apps/web/vitest.config.ts"
-    - "docs/05_アプリケーション設計/Web/**"
+    - "docs/05_アプリケーション設計/アプリ/web/**"
     - "prompts/definitions/epics/web-foundation/**"
     - "prompts/definitions/tasks/web-foundation/**"
     - "prompts/definitions/reviews/web-foundation/**"
