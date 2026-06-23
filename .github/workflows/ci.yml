@@ -7,8 +7,8 @@ name: CI
 # - 既存 workflow（issue-metadata / pr-created / definition-run 等）: AI 運用・Projects・Slack 通知
 #   破壊的変更は行わず、トリガー・permissions を混在させない。
 #
-# MVP 最小セット: env 名 / secret scan / OpenAPI+Orval。
-# ci-web.yml / ci-api.yml / ci-reco.yml 等はアプリ実装整備後に追加する。
+# MVP 最小セット: env 名 / secret scan / OpenAPI+Orval / Python workspace+reco pytest（ci-reco.yml）。
+# ci-web.yml / ci-api.yml 等はアプリ実装整備後に追加する。
 
 run-name: "ci · ${{ github.event_name }} · ${{ github.head_ref || github.ref_name }}"
 
@@ -36,6 +36,9 @@ jobs:
   contract-check:
     uses: ./.github/workflows/ci-contract.yml
 
+  reco-check:
+    uses: ./.github/workflows/ci-reco.yml
+
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
@@ -43,13 +46,15 @@ jobs:
       - env-check
       - security-check
       - contract-check
+      - reco-check
     if: always()
     steps:
       - name: Aggregate CI result
         run: |
           if [[ "${{ needs.env-check.result }}" != "success" ]] \
             || [[ "${{ needs.security-check.result }}" != "success" ]] \
-            || [[ "${{ needs.contract-check.result }}" != "success" ]]; then
+            || [[ "${{ needs.contract-check.result }}" != "success" ]] \
+            || [[ "${{ needs.reco-check.result }}" != "success" ]]; then
             echo "CI quality gate failed."
             exit 1
           fi

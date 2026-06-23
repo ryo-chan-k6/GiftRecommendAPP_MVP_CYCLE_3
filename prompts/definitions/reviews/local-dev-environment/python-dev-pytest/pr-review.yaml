@@ -1,0 +1,50 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-dev-environment-python-dev-pytest-pr"
+  title: "local-dev-environment python-dev-pytest PRレビュー"
+  summary: "Python uv workspace / pytest scripts / ci-reco.yml の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 707
+  task_definition: "prompts/definitions/tasks/local-dev-environment/python-dev-pytest.yaml"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/local-dev-environment/python-dev-pytest.yaml"
+    required: true
+
+review_points:
+  - "worktree ごと venv 方針と docs 整合"
+  - "uv.lock 再現性"
+  - "apps/reco 未 merge 時 skip 挙動"
+  - "ci-reco.yml が ci.yml summary に含まれる"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"

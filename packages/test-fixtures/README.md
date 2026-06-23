@@ -57,8 +57,9 @@ cd packages/test-fixtures
 pnpm install
 pnpm test
 
-python -m pip install -e ".[dev]"
-pytest
+# Python（ルート workspace 推奨）
+../../scripts/dev/setup-python.sh
+../../scripts/dev/pytest-python.sh
 ```
 
 正本: [DevOps方針書](../../docs/05_アプリケーション設計/共通/DevOps方針書.md) §8.2 / [プロジェクトディレクトリ構成定義書](../../docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md) §8
