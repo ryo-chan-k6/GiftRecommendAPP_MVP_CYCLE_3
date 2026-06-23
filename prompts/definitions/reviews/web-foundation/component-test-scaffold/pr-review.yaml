@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 732
   issue:
     number: 731
   task_definition: "prompts/definitions/tasks/web-foundation/component-test-scaffold.yaml"
