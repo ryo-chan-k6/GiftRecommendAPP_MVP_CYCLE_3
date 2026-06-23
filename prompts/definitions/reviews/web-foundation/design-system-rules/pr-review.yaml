@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 726
   issue:
     number: 725
   task_definition: "prompts/definitions/tasks/web-foundation/design-system-rules.yaml"
