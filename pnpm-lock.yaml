@@ -16,17 +16,7 @@ importers:
         version: 5.9.3
 
   apps/api:
-    dependencies:
-      express:
-        specifier: ^5.1.0
-        version: 5.2.1
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
     devDependencies:
-      '@types/express':
-        specifier: ^5.0.3
-        version: 5.0.6
       '@types/node':
         specifier: ^22.15.21
         version: 22.20.0

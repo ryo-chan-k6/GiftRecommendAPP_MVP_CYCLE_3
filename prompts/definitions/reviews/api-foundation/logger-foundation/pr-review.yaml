@@ -14,9 +14,9 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 714
   issue:
-    number: null
+    number: 712
   task_definition: "prompts/definitions/tasks/api-foundation/logger-foundation.yaml"
 
 commands:
