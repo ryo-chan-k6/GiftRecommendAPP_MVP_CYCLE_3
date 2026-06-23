@@ -5,7 +5,7 @@ export type RankBadgeProps = {
   className?: string;
 };
 
-/** MVP △ — 順位の視覚強調が必要かは Human Review 未確定（UI-044） */
+/** SCR-004 推薦結果一覧向けの順位表示（UI-044、MVP 対象） */
 export function RankBadge({ rank, className }: RankBadgeProps) {
   return (
     <span
