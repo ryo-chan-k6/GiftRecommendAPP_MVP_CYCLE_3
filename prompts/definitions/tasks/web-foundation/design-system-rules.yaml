@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-web-foundation"
   epic_issue: "[Epic]web-foundation:Web共通基盤"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 724
+  epic_branch: "feature/epic-724-web-foundation"
   related_issues: []
   related_prs: []
 
