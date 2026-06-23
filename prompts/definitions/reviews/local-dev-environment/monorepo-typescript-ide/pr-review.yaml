@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 717
   issue:
     number: 716
   task_definition: "prompts/definitions/tasks/local-dev-environment/monorepo-typescript-ide.yaml"
