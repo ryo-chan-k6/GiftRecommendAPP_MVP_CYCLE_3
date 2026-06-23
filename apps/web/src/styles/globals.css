@@ -41,7 +41,7 @@
   body {
     background-color: var(--color-bg);
     color: var(--color-text);
-    font-family: "Noto Serif JP", "Hiragino Mincho ProN", serif;
+    font-family: var(--font-body), "Noto Serif JP", "Hiragino Mincho ProN", serif;
     line-height: 1.8;
   }
 
