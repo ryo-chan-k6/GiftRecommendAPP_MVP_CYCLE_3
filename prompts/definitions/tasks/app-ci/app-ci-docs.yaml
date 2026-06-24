@@ -93,6 +93,7 @@ project:
     priority: "medium"
 
 issue:
+  number: 755
   unit: "task"
   type: "docs"
   area: "infra"
