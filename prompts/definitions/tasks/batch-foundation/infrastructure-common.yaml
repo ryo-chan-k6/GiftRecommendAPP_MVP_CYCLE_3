@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-batch-foundation"
   epic_issue: "[Epic]batch-foundation:Batch共通基盤"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 734
+  epic_branch: "feature/epic-734-batch-foundation"
   related_issues: []
   related_prs: []
 
