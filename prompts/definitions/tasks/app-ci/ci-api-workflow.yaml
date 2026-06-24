@@ -1,0 +1,115 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-app-ci-ci-api-workflow"
+  title: "ci-api workflow整備"
+  summary: "api 向け Layer1 PR CI（ci-api.yml）を整備し ci.yml から呼び出す。Epic D 子 Task D2。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-app-ci"
+  epic_issue: "[Epic]app-ci:アプリ別PR CI"
+  epic_branch: "feature/epic-app-ci"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic D 子 Task。Phase4a api-foundation（#710）完了後、apps/api の lint / build / unit を
+  PR 品質ゲートに載せる。
+
+objective: |
+  `.github/workflows/ci-api.yml` を作成し、`ci.yml` から path filter 付きで呼び出す。
+
+scope:
+  - "`.github/workflows/ci-api.yml` 作成"
+  - "`ci.yml` への api-check job 追加"
+  - "apps/api 変更時の path filter"
+
+out_of_scope:
+  - "ci-web / ci-reco / ci-batch"
+  - "Layer2 workflow"
+  - "DB 接続を要する結合テスト"
+  - "packages/contracts 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+  files:
+    - path: "apps/api/package.json"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      required: true
+
+output:
+  files:
+    - path: ".github/workflows/ci-api.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "ci-api.yml が ci.yml から呼ばれる"
+  - "apps/api 未変更 PR では skip 可能"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "ci-api-workflow"
+  base: "feature/epic-app-ci"
+  target: "feature/epic-app-ci"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "api"
+
+dependencies:
+  issues:
+    - number: 710
+      purpose: "api-foundation 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/ci-api.yml"
+  conflict_risk: "medium"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+
+contract_gate:
+  required: false

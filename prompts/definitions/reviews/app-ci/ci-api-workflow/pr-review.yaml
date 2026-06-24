@@ -1,0 +1,45 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-app-ci-ci-api-workflow-pr"
+  title: "app-ci ci-api-workflow PRレビュー"
+  summary: "Epic D ci-api-workflow PR の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  task_definition: "prompts/definitions/tasks/app-ci/ci-api-workflow.yaml"
+  target_branch: "feature/epic-app-ci"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/app-ci/ci-api-workflow.yaml"
+    required: true
+
+review_points:
+  - "ci-api.yml / ci.yml 配線"
+  - "path filter"
+  - "Layer2 非混在"
+  - "epic_scope 整合"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"
