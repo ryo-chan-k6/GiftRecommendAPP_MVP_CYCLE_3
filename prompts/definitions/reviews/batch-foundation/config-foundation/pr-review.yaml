@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 739
   task_definition: "prompts/definitions/tasks/batch-foundation/config-foundation.yaml"
 
 commands:
