@@ -95,6 +95,7 @@ project:
     priority: "high"
 
 issue:
+  number: 749
   unit: "task"
   type: "chore"
   area: "api"
