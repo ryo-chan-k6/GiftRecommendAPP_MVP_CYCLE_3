@@ -38,6 +38,8 @@ Phase3a（2026-06-07）の「docker-compose 同梱なし」は **PostgreSQL 用 
 | [`pytest-python.sh`](./pytest-python.sh) | `packages/shared-logic` / `test-fixtures` の pytest |
 | [`setup-python-reco.sh`](./setup-python-reco.sh) | `apps/reco/.venv` 作成（pyproject 整備後） |
 | [`pytest-reco.sh`](./pytest-reco.sh) | `apps/reco/tests/unit` の pytest（骨格 merge 後） |
+| [`setup-python-batch.sh`](./setup-python-batch.sh) | `apps/batch/.venv` 作成（pyproject 整備後） |
+| [`pytest-batch.sh`](./pytest-batch.sh) | `apps/batch/tests/unit` の pytest（骨格 merge 後） |
 | [`start-api.sh`](./start-api.sh) | api を `pnpm dev:api` で起動（port **3001**） |
 | [`start-web.sh`](./start-web.sh) | web を `pnpm dev:web` で起動（port **3000**） |
 
@@ -104,12 +106,16 @@ Phase4 実装前（placeholder）は dev プロセスが即終了するため、
 # reco-foundation 骨格 merge 後
 ./scripts/dev/setup-python-reco.sh
 ./scripts/dev/pytest-reco.sh
+
+# batch-foundation 骨格 merge 後
+./scripts/dev/setup-python-batch.sh
+./scripts/dev/pytest-batch.sh
 ```
 
 | 項目 | 内容 |
 | ---- | ---- |
 | ツール | `uv` + `.python-version`（3.14） |
-| venv | ルート `.venv` + `apps/reco/.venv`（いずれも worktree ローカル） |
+| venv | ルート `.venv` + `apps/reco/.venv` + `apps/batch/.venv`（いずれも worktree ローカル） |
 | CI | `.github/workflows/ci-reco.yml`（Layer1 最小） |
 
 | 項目 | 内容 |
