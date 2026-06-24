@@ -1,0 +1,36 @@
+name: CI Batch Check
+
+# Epic D（app-ci）管轄 — batch Layer1 PR CI（CI・CD方針書 §13 / ローカル開発手順書 §6.2）。
+# Task ci-batch-workflow（#753）で path filter 配線。
+#
+# 実行内容（scripts/dev と同じ経路）:
+#   pytest-batch.sh（apps/batch unit — pyproject / tests 未整備時は exit 0 skip）
+#
+# path filter は呼び出し元 ci.yml の changes job が担当する。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  python-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env (when pyproject present)
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Run batch unit tests (when scaffold present)
+        run: bash ./scripts/dev/pytest-batch.sh

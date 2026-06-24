@@ -99,6 +99,7 @@ project:
     priority: "high"
 
 issue:
+  number: 753
   unit: "task"
   type: "chore"
   area: "batch"
