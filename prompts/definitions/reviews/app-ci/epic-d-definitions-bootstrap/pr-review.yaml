@@ -18,6 +18,7 @@ branch:
   worktree_required: true
 
 target:
+  pr: 745
   task_definition: "prompts/definitions/tasks/app-ci/epic-d-definitions-bootstrap.yaml"
   source_branch: "chore/task-744-epic-d-definitions-bootstrap"
   target_branch: "develop"
@@ -69,5 +70,9 @@ human_review_points:
   - "Epic D 子 Task 分割粒度が L2 実行に適切か"
   - "ci-reco 統合 Task と #707 先行の境界"
 
+  pr:
+    number: 745
+    required: true
+
 notes:
-  - "Issue #744。PR 番号は /create-pr 後に反映"
+  - "Issue #744 / PR #745"
