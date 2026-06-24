@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 742
   issue:
     number: 741
   task_definition: "prompts/definitions/tasks/batch-foundation/application-scaffold.yaml"
