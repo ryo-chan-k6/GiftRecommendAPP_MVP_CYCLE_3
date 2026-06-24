@@ -68,7 +68,7 @@ apps/batch/
 │  └─ batch/
 │     ├─ main.py
 │     ├─ jobs/
-│     ├─ application/
+│     ├─ application/      # Phase4a 骨格あり（collector / transformer / loader / job_run）
 │     ├─ infrastructure/   # Phase4a 骨格あり（rakuten / db / object_storage / external_ai / logger）
 │     └─ config/           # Phase4a 骨格あり（env / settings / loader）
 ├─ tests/
@@ -78,7 +78,7 @@ apps/batch/
 └─ README.md
 ```
 
-Phase4a infrastructure の詳細は `src/batch/infrastructure/README.md`、config の詳細は `src/batch/config/README.md` を参照する。
+Phase4a application の詳細は `src/batch/application/README.md`、infrastructure の詳細は `src/batch/infrastructure/README.md`、config の詳細は `src/batch/config/README.md` を参照する。
 
 ---
 
