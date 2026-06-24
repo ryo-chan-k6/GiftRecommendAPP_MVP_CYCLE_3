@@ -7,8 +7,8 @@ name: CI
 # - 既存 workflow（issue-metadata / pr-created / definition-run 等）: AI 運用・Projects・Slack 通知
 #   破壊的変更は行わず、トリガー・permissions を混在させない。
 #
-# MVP 最小セット: env 名 / secret scan / OpenAPI+Orval / Python workspace+reco pytest（ci-reco.yml）。
-# ci-web.yml / ci-api.yml 等はアプリ実装整備後に追加する。
+# MVP 最小セット: env / secret scan / OpenAPI+Orval / app 別 Layer1（ci-web / ci-api / ci-reco / ci-batch）。
+# ci-web / ci-api / ci-reco / ci-batch は Epic D 管轄。該当 path 変更時のみ各 check を実行（path filter）。
 
 run-name: "ci · ${{ github.event_name }} · ${{ github.head_ref || github.ref_name }}"
 
@@ -27,6 +27,56 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect path changes
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      api: ${{ steps.filter.outputs.api }}
+      reco: ${{ steps.filter.outputs.reco }}
+      batch: ${{ steps.filter.outputs.batch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Filter app-related paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'tsconfig.base.json'
+              - '.github/workflows/ci-web.yml'
+              - '.github/workflows/ci.yml'
+            api:
+              - 'apps/api/**'
+              - 'tsconfig.base.json'
+              - '.github/workflows/ci-api.yml'
+              - '.github/workflows/ci.yml'
+            reco:
+              - 'apps/reco/**'
+              - 'packages/shared-logic/**'
+              - 'packages/test-fixtures/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.python-version'
+              - 'scripts/dev/setup-python.sh'
+              - 'scripts/dev/setup-python-reco.sh'
+              - 'scripts/dev/pytest-python.sh'
+              - 'scripts/dev/pytest-reco.sh'
+              - 'scripts/dev/_python-lib.sh'
+              - '.github/workflows/ci-reco.yml'
+              - '.github/workflows/ci.yml'
+            batch:
+              - 'apps/batch/**'
+              - '.python-version'
+              - 'scripts/dev/setup-python-batch.sh'
+              - 'scripts/dev/pytest-batch.sh'
+              - 'scripts/dev/_python-lib.sh'
+              - '.github/workflows/ci-batch.yml'
+              - '.github/workflows/ci.yml'
+
   env-check:
     uses: ./.github/workflows/ci-env.yml
 
@@ -36,8 +86,33 @@ jobs:
   contract-check:
     uses: ./.github/workflows/ci-contract.yml
 
+  web-check:
+    needs: changes
+    if: >-
+      needs.changes.outputs.web == 'true'
+      || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci-web.yml
+
+  api-check:
+    needs: changes
+    if: >-
+      needs.changes.outputs.api == 'true'
+      || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci-api.yml
+
   reco-check:
+    needs: changes
+    if: >-
+      needs.changes.outputs.reco == 'true'
+      || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/ci-reco.yml
+
+  batch-check:
+    needs: changes
+    if: >-
+      needs.changes.outputs.batch == 'true'
+      || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci-batch.yml
 
   summary:
     name: CI Summary
@@ -46,16 +121,38 @@ jobs:
       - env-check
       - security-check
       - contract-check
+      - web-check
+      - api-check
       - reco-check
+      - batch-check
     if: always()
     steps:
       - name: Aggregate CI result
         run: |
           if [[ "${{ needs.env-check.result }}" != "success" ]] \
             || [[ "${{ needs.security-check.result }}" != "success" ]] \
-            || [[ "${{ needs.contract-check.result }}" != "success" ]] \
-            || [[ "${{ needs.reco-check.result }}" != "success" ]]; then
+            || [[ "${{ needs.contract-check.result }}" != "success" ]]; then
             echo "CI quality gate failed."
+            exit 1
+          fi
+          web_result="${{ needs.web-check.result }}"
+          if [[ "${web_result}" != "success" && "${web_result}" != "skipped" ]]; then
+            echo "CI quality gate failed (web-check: ${web_result})."
+            exit 1
+          fi
+          api_result="${{ needs.api-check.result }}"
+          if [[ "${api_result}" != "success" && "${api_result}" != "skipped" ]]; then
+            echo "CI quality gate failed (api-check: ${api_result})."
+            exit 1
+          fi
+          reco_result="${{ needs.reco-check.result }}"
+          if [[ "${reco_result}" != "success" && "${reco_result}" != "skipped" ]]; then
+            echo "CI quality gate failed (reco-check: ${reco_result})."
+            exit 1
+          fi
+          batch_result="${{ needs.batch-check.result }}"
+          if [[ "${batch_result}" != "success" && "${batch_result}" != "skipped" ]]; then
+            echo "CI quality gate failed (batch-check: ${batch_result})."
             exit 1
           fi
           echo "CI quality gate passed."

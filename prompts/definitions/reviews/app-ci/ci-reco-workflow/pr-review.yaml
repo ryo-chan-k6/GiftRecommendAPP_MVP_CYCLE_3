@@ -14,8 +14,13 @@ branch:
   worktree_required: true
 
 target:
+  pr: 748
+  issue:
+    number: 747
+  parent_epic_issue: "[Epic]app-ci:アプリ別PR CI"
+  parent_epic_branch: "chore/epic-746-app-ci"
   task_definition: "prompts/definitions/tasks/app-ci/ci-reco-workflow.yaml"
-  target_branch: "feature/epic-app-ci"
+  target_branch: "chore/epic-746-app-ci"
 
 commands:
   primary: "/review-pr"

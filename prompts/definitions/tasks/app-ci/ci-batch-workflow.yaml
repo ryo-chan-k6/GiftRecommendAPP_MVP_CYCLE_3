@@ -12,7 +12,10 @@ work_mode: "ai-agent"
 parent:
   epic_id: "epic-app-ci"
   epic_issue: "[Epic]app-ci:アプリ別PR CI"
-  epic_branch: "feature/epic-app-ci"
+  epic_issue_number: 746
+  epic_branch: "chore/epic-746-app-ci"
+  related_issues: []
+  related_prs: []
 
 commands:
   primary: "/start-task"
@@ -85,8 +88,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "ci-batch-workflow"
-  base: "feature/epic-app-ci"
-  target: "feature/epic-app-ci"
+  base: "chore/epic-746-app-ci"
+  target: "chore/epic-746-app-ci"
   worktree_required: true
 
 project:
@@ -96,6 +99,7 @@ project:
     priority: "high"
 
 issue:
+  number: 753
   unit: "task"
   type: "chore"
   area: "batch"

@@ -1,0 +1,51 @@
+name: CI Web Check
+
+# Epic D（app-ci）管轄 — web Layer1 PR CI（CI・CD方針書 §13 / テスト環境設計書 §2.1）。
+# Task ci-web-workflow（#750）で path filter 配線。
+#
+# 実行内容:
+#   pnpm --filter @gift-recommendation/web lint
+#   pnpm --filter @gift-recommendation/web typecheck
+#   pnpm --filter @gift-recommendation/web build
+#   pnpm --filter @gift-recommendation/web test:component（Vitest unit — 存在時）
+#
+# path filter は呼び出し元 ci.yml の changes job が担当する。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  web-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint web
+        run: pnpm --filter @gift-recommendation/web lint
+
+      - name: Typecheck web
+        run: pnpm --filter @gift-recommendation/web typecheck
+
+      - name: Build web
+        run: pnpm --filter @gift-recommendation/web build
+
+      - name: Run web component unit tests
+        run: pnpm --filter @gift-recommendation/web test:component
