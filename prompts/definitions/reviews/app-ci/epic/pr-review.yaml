@@ -14,6 +14,7 @@ branch:
   worktree_required: true
 
 target:
+  pr: 757
   issue:
     number: 746
   task_definition: "prompts/definitions/epics/app-ci/epic.yaml"
