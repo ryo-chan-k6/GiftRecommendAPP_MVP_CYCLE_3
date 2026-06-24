@@ -14,7 +14,10 @@ branch:
   worktree_required: true
 
 target:
+  issue:
+    number: 746
   task_definition: "prompts/definitions/epics/app-ci/epic.yaml"
+  source_branch: "chore/epic-746-app-ci"
   target_branch: "develop"
 
 commands:
