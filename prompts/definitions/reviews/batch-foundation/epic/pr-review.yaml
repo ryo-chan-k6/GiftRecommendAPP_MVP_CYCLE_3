@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 743
   issue:
     number: 734
   task_definition: "prompts/definitions/epics/batch-foundation/epic.yaml"
