@@ -1,0 +1,121 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-app-ci-ci-batch-workflow"
+  title: "ci-batch workflow整備"
+  summary: "batch 向け Layer1 PR CI（ci-batch.yml）を整備し ci.yml から呼び出す。Epic D 子 Task D4。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-app-ci"
+  epic_issue: "[Epic]app-ci:アプリ別PR CI"
+  epic_branch: "feature/epic-app-ci"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic D 子 Task。Phase4a batch-foundation（#734）および #736（pytest-batch）完了後、
+  apps/batch の pytest を PR 品質ゲートに載せる。
+
+objective: |
+  `.github/workflows/ci-batch.yml` を作成し、`ci.yml` から path filter 付きで呼び出す。
+  `scripts/dev/pytest-batch.sh` を利用する。
+
+scope:
+  - "`.github/workflows/ci-batch.yml` 作成"
+  - "`ci.yml` への batch-check job 追加"
+  - "apps/batch 変更時の path filter"
+
+out_of_scope:
+  - "ci-web / ci-api / ci-reco"
+  - "Layer2 workflow"
+  - "batch 本格ジョブ実装（Phase4b）"
+  - "packages/contracts 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+  files:
+    - path: "apps/batch/pyproject.toml"
+      required: true
+    - path: "scripts/dev/pytest-batch.sh"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      required: true
+
+output:
+  files:
+    - path: ".github/workflows/ci-batch.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "ci-batch.yml が ci.yml から呼ばれる"
+  - "apps/batch 未変更 PR では skip 可能"
+  - "pyproject 未整備時 skip 条件が docs にある"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "ci-batch-workflow"
+  base: "feature/epic-app-ci"
+  target: "feature/epic-app-ci"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  issues:
+    - number: 734
+      purpose: "batch-foundation 完了"
+    - number: 736
+      purpose: "pytest-batch 先行"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/ci-batch.yml"
+  conflict_risk: "medium"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+
+contract_gate:
+  required: false

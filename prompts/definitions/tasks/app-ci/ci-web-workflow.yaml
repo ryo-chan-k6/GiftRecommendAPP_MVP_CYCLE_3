@@ -1,0 +1,135 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-app-ci-ci-web-workflow"
+  title: "ci-web workflow整備"
+  summary: "web 向け Layer1 PR CI（ci-web.yml）を整備し ci.yml から呼び出す。Epic D 子 Task D1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-app-ci"
+  epic_issue: "[Epic]app-ci:アプリ別PR CI"
+  epic_branch: "feature/epic-app-ci"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic D 子 Task。Phase4a web-foundation（#724）完了後、apps/web の lint / build / unit を
+  PR 品質ゲートに載せる。CI・CD方針書 §13、テスト環境設計書 Layer1 に整合。
+
+objective: |
+  `.github/workflows/ci-web.yml` を作成し、`ci.yml` から path filter 付きで呼び出す。
+  pnpm workspace 経由で apps/web の lint / typecheck / build / unit（存在時）を実行する。
+
+scope:
+  - "`.github/workflows/ci-web.yml` 作成"
+  - "`ci.yml` への web-check job 追加"
+  - "apps/web 変更時の path filter"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "ci-api / ci-reco / ci-batch（他子 Task）"
+  - "Layer2 workflow"
+  - "apps/web 本格実装（Phase4b）— 骨格未整備時 skip 可"
+  - "packages/contracts 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+      required: true
+  files:
+    - path: "apps/web/package.json"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      required: true
+    - path: ".github/workflows/ci-contract.yml"
+      required: true
+      purpose: "Node/pnpm バージョン参考"
+
+output:
+  files:
+    - path: ".github/workflows/ci-web.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "ci-web.yml が workflow_call または reusable として ci.yml から呼ばれる"
+  - "apps/web 未変更 PR では skip 可能"
+  - "Layer2 workflow が混在していない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "ci-web-workflow"
+  base: "feature/epic-app-ci"
+  target: "feature/epic-app-ci"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "web"
+
+dependencies:
+  issues:
+    - number: 724
+      purpose: "web-foundation 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/ci-web.yml"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "PR で web 変更時に ci-web job が起動（optional）"
+  not_required:
+    - "Playwright E2E"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "ci-api / ci-batch と ci.yml 更新が競合しうる — 子 Task 並列時は conflict 注意"

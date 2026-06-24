@@ -1,0 +1,46 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-app-ci-epic-pr"
+  title: "app-ci Epic PRレビュー"
+  summary: "Epic D app-ci Epic PR の AI Review"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  task_definition: "prompts/definitions/epics/app-ci/epic.yaml"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/app-ci/epic.yaml"
+    required: true
+
+review_points:
+  - "Layer1 ci-*.yml が整備され ci.yml から呼ばれる"
+  - "Layer2 workflow が混在していない"
+  - "epic_scope / forbidden_paths 整合"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"

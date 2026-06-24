@@ -1,0 +1,73 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-app-ci-epic-d-definitions-bootstrap-pr"
+  title: "Epic D app-ci Definition bootstrap PRレビュー"
+  summary: "Epic D app-ci Epic + 子Task 5件 Definition 作成 chore PR の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-744-epic-d-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  task_definition: "prompts/definitions/tasks/app-ci/epic-d-definitions-bootstrap.yaml"
+  source_branch: "chore/task-744-epic-d-definitions-bootstrap"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/app-ci/epic-d-definitions-bootstrap.yaml"
+    required: true
+  issue:
+    number: 744
+    required: true
+
+review_points:
+  - "app-ci Epic が CI・CD方針書 §13 / テスト環境設計書と整合しているか"
+  - "子 Task 5件の scope・依存・並列方針"
+  - "Review Definition（Task×5 + Epic×1 + bootstrap）が揃っているか"
+  - "Layer2（Epic C）との scope 分離"
+  - "ci-reco.yml 先行（#707）の扱い"
+  - "Phase4a 完了（#688〜#734）依存"
+  - "secret 非含有"
+
+acceptance_criteria_check:
+  - id: "epic-count"
+    text: "app-ci Epic Definition 1件存在"
+  - id: "task-count"
+    text: "子 Task Definition 5件存在"
+  - id: "reviews"
+    text: "Review Definition 7件（Task 5 + Epic 1 + bootstrap 1）存在"
+  - id: "layer2-separation"
+    text: "forbidden_paths に Layer2 workflow"
+
+human_review_points:
+  - "Epic D 子 Task 分割粒度が L2 実行に適切か"
+  - "ci-reco 統合 Task と #707 先行の境界"
+
+notes:
+  - "Issue #744。PR 番号は /create-pr 後に反映"

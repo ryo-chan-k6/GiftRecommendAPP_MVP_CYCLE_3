@@ -1,0 +1,46 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-app-ci-ci-reco-workflow-pr"
+  title: "app-ci ci-reco-workflow PRレビュー"
+  summary: "Epic D ci-reco-workflow PR の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  task_definition: "prompts/definitions/tasks/app-ci/ci-reco-workflow.yaml"
+  target_branch: "feature/epic-app-ci"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/app-ci/ci-reco-workflow.yaml"
+    required: true
+
+review_points:
+  - "#707 先行 ci-reco.yml の統合"
+  - "ci.yml reco-check 配線"
+  - "Layer2 非混在"
+  - "docs 整合"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"
