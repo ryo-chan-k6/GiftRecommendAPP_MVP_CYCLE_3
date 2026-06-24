@@ -59,36 +59,38 @@ Batch設計・実装前に、少なくとも以下を参照すること。
 
 ## 4. 想定ディレクトリ構成
 
+正本は `docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md` §7.4。
+
 ```text
 apps/batch/
+├─ pyproject.toml
 ├─ src/
-│  ├─ jobs/
-│  ├─ collectors/
-│  ├─ transformers/
-│  ├─ loaders/
-│  ├─ repositories/
-│  ├─ schemas/
-│  ├─ lib/
-│  ├─ config/
-│  └─ main.py
+│  └─ batch/
+│     ├─ main.py
+│     ├─ jobs/
+│     ├─ application/
+│     ├─ infrastructure/   # Phase4a 骨格あり（rakuten / db / object_storage / external_ai / logger）
+│     └─ config/
 ├─ tests/
+│  ├─ unit/
+│  ├─ module/
+│  └─ integration/
 └─ README.md
 ```
+
+Phase4a infrastructure の詳細は `src/batch/infrastructure/README.md` を参照する。
 
 ---
 
 ## 5. ディレクトリ責務
 
-| ディレクトリ       | 役割                     |
-| ------------------ | ------------------------ |
-| `src/jobs`         | 処理単位の開始・順序制御 |
-| `src/collectors`   | 外部データ取得           |
-| `src/transformers` | 内部形式への変換         |
-| `src/loaders`      | DB反映                   |
-| `src/repositories` | 永続化アクセス           |
-| `src/schemas`      | I/O定義                  |
-| `src/lib`          | 共通処理                 |
-| `src/config`       | 設定                     |
+| ディレクトリ              | 役割                                           |
+| ------------------------- | ---------------------------------------------- |
+| `src/batch/jobs`          | バッチジョブ単位の処理・順序制御               |
+| `src/batch/application`   | バッチ処理のアプリケーションサービス           |
+| `src/batch/infrastructure` | 外部 API、DB、Object Storage、外部 AI、logger |
+| `src/batch/config`        | 設定読込                                       |
+| `tests/unit`              | 単体テスト                                     |
 
 ---
 
