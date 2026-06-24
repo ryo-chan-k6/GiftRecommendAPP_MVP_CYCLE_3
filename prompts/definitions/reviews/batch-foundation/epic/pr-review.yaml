@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 734
   task_definition: "prompts/definitions/epics/batch-foundation/epic.yaml"
   target_branch: "develop"
 
