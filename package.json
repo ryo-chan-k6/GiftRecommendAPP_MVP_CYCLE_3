@@ -12,8 +12,10 @@
     "dev:batch": "pnpm --filter @gift-recommendation/batch dev",
     "setup:python": "./scripts/dev/setup-python.sh",
     "setup:python:reco": "./scripts/dev/setup-python-reco.sh",
+    "setup:python:batch": "./scripts/dev/setup-python-batch.sh",
     "test:python": "./scripts/dev/pytest-python.sh",
-    "test:reco": "./scripts/dev/pytest-reco.sh"
+    "test:reco": "./scripts/dev/pytest-reco.sh",
+    "test:batch": "./scripts/dev/pytest-batch.sh"
   },
   "devDependencies": {
     "orval": "^8.15.0",
