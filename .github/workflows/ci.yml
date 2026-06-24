@@ -8,6 +8,7 @@ name: CI
 #   破壊的変更は行わず、トリガー・permissions を混在させない。
 #
 # MVP 最小セット: env 名 / secret scan / OpenAPI+Orval / Python workspace+reco pytest（ci-reco.yml）。
+# ci-reco は Epic D 管轄。reco / Python workspace 変更時のみ reco-check を実行（path filter）。
 # ci-web.yml / ci-api.yml 等はアプリ実装整備後に追加する。
 
 run-name: "ci · ${{ github.event_name }} · ${{ github.head_ref || github.ref_name }}"
@@ -27,6 +28,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect path changes
+    runs-on: ubuntu-latest
+    outputs:
+      reco: ${{ steps.filter.outputs.reco }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Filter reco-related paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            reco:
+              - 'apps/reco/**'
+              - 'packages/shared-logic/**'
+              - 'packages/test-fixtures/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.python-version'
+              - 'scripts/dev/setup-python.sh'
+              - 'scripts/dev/setup-python-reco.sh'
+              - 'scripts/dev/pytest-python.sh'
+              - 'scripts/dev/pytest-reco.sh'
+              - 'scripts/dev/_python-lib.sh'
+              - '.github/workflows/ci-reco.yml'
+              - '.github/workflows/ci.yml'
+
   env-check:
     uses: ./.github/workflows/ci-env.yml
 
@@ -37,6 +67,10 @@ jobs:
     uses: ./.github/workflows/ci-contract.yml
 
   reco-check:
+    needs: changes
+    if: >-
+      needs.changes.outputs.reco == 'true'
+      || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/ci-reco.yml
 
   summary:
@@ -53,9 +87,13 @@ jobs:
         run: |
           if [[ "${{ needs.env-check.result }}" != "success" ]] \
             || [[ "${{ needs.security-check.result }}" != "success" ]] \
-            || [[ "${{ needs.contract-check.result }}" != "success" ]] \
-            || [[ "${{ needs.reco-check.result }}" != "success" ]]; then
+            || [[ "${{ needs.contract-check.result }}" != "success" ]]; then
             echo "CI quality gate failed."
+            exit 1
+          fi
+          reco_result="${{ needs.reco-check.result }}"
+          if [[ "${reco_result}" != "success" && "${reco_result}" != "skipped" ]]; then
+            echo "CI quality gate failed (reco-check: ${reco_result})."
             exit 1
           fi
           echo "CI quality gate passed."
