@@ -14,6 +14,11 @@ branch:
   worktree_required: true
 
 target:
+  pr: 752
+  issue:
+    number: 750
+  parent_epic_issue: "[Epic]app-ci:アプリ別PR CI"
+  parent_epic_branch: "chore/epic-746-app-ci"
   task_definition: "prompts/definitions/tasks/app-ci/ci-web-workflow.yaml"
   target_branch: "chore/epic-746-app-ci"
 

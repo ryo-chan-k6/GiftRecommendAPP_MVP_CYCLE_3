@@ -103,6 +103,7 @@ project:
     priority: "high"
 
 issue:
+  number: 750
   unit: "task"
   type: "chore"
   area: "web"
