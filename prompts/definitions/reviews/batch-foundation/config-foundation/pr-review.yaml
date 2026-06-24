@@ -14,10 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 740
   issue:
-    number: null
+    number: 739
   task_definition: "prompts/definitions/tasks/batch-foundation/config-foundation.yaml"
+  target_branch: "feature/epic-734-batch-foundation"
 
 commands:
   primary: "/review-pr"

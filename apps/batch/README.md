@@ -70,7 +70,7 @@ apps/batch/
 │     ├─ jobs/
 │     ├─ application/
 │     ├─ infrastructure/   # Phase4a 骨格あり（rakuten / db / object_storage / external_ai / logger）
-│     └─ config/
+│     └─ config/           # Phase4a 骨格あり（env / settings / loader）
 ├─ tests/
 │  ├─ unit/
 │  ├─ module/
@@ -78,7 +78,7 @@ apps/batch/
 └─ README.md
 ```
 
-Phase4a infrastructure の詳細は `src/batch/infrastructure/README.md` を参照する。
+Phase4a infrastructure の詳細は `src/batch/infrastructure/README.md`、config の詳細は `src/batch/config/README.md` を参照する。
 
 ---
 
