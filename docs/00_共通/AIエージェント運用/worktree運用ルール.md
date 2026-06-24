@@ -649,6 +649,9 @@ Pythonの場合、**uv** と **worktree ごとの `.venv`** を正とする（[�
 # reco 骨格 merge 後
 ./scripts/dev/setup-python-reco.sh
 ./scripts/dev/pytest-reco.sh
+# batch 骨格 merge 後
+./scripts/dev/setup-python-batch.sh
+./scripts/dev/pytest-batch.sh
 ```
 
 `python -m venv` / system `python3` 直叩きは使わない。worktree ごとに不要な依存再インストールが発生するが、`.venv` は Git 管理外のため並列 worktree と衝突しない。
