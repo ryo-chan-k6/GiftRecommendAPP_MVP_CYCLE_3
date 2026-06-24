@@ -1,7 +1,13 @@
 name: CI Reco Check
 
-# Python workspace unit tests + apps/reco unit tests（最小 Layer1）。
-# apps/reco は reco-foundation merge 後に pytest が有効化される（未整備時は skip）。
+# Epic D（app-ci）管轄 — reco Layer1 PR CI（CI・CD方針書 §13 / テスト環境設計書 §4.1）。
+# #707（local-dev-environment）で先行作成。Task ci-reco-workflow（#747）で path filter 配線・docs 正本を整理。
+#
+# 実行内容（scripts/dev と同じ経路）:
+#   setup-python.sh → pytest-python.sh（packages workspace）
+#   pytest-reco.sh（apps/reco unit — 骨格未整備時は exit 0 skip）
+#
+# path filter は呼び出し元 ci.yml の changes job が担当する。
 
 on:
   workflow_call:

@@ -107,6 +107,7 @@ project:
     priority: "high"
 
 issue:
+  number: 747
   unit: "task"
   type: "chore"
   area: "reco"
