@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 735
   task_definition: "prompts/definitions/tasks/batch-foundation/infrastructure-common.yaml"
 
 commands:
