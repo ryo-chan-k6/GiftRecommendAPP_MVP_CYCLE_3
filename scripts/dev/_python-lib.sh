@@ -34,3 +34,9 @@ python_lib_reco_tests_ready() {
   [[ -d "${root}/apps/reco/tests/unit" ]] \
     && python_lib_project_ready "${root}/apps/reco"
 }
+
+python_lib_batch_tests_ready() {
+  local root="$1"
+  [[ -d "${root}/apps/batch/tests/unit" ]] \
+    && python_lib_project_ready "${root}/apps/batch"
+}
