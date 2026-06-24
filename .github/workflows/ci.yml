@@ -7,9 +7,9 @@ name: CI
 # - 既存 workflow（issue-metadata / pr-created / definition-run 等）: AI 運用・Projects・Slack 通知
 #   破壊的変更は行わず、トリガー・permissions を混在させない。
 #
-# MVP 最小セット: env 名 / secret scan / OpenAPI+Orval / Python workspace+reco pytest（ci-reco.yml）。
-# ci-reco は Epic D 管轄。reco / Python workspace 変更時のみ reco-check を実行（path filter）。
-# ci-web.yml / ci-api.yml 等はアプリ実装整備後に追加する。
+# MVP 最小セット: env / secret scan / OpenAPI+Orval / app 別 Layer1（ci-api / ci-reco 等）。
+# ci-api / ci-reco は Epic D 管轄。該当 path 変更時のみ各 check を実行（path filter）。
+# ci-web.yml / ci-batch.yml 等はアプリ実装整備後に追加する。
 
 run-name: "ci · ${{ github.event_name }} · ${{ github.head_ref || github.ref_name }}"
 
@@ -32,16 +32,22 @@ jobs:
     name: Detect path changes
     runs-on: ubuntu-latest
     outputs:
+      api: ${{ steps.filter.outputs.api }}
       reco: ${{ steps.filter.outputs.reco }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Filter reco-related paths
+      - name: Filter app-related paths
         uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
+            api:
+              - 'apps/api/**'
+              - 'tsconfig.base.json'
+              - '.github/workflows/ci-api.yml'
+              - '.github/workflows/ci.yml'
             reco:
               - 'apps/reco/**'
               - 'packages/shared-logic/**'
@@ -66,6 +72,13 @@ jobs:
   contract-check:
     uses: ./.github/workflows/ci-contract.yml
 
+  api-check:
+    needs: changes
+    if: >-
+      needs.changes.outputs.api == 'true'
+      || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci-api.yml
+
   reco-check:
     needs: changes
     if: >-
@@ -80,6 +93,7 @@ jobs:
       - env-check
       - security-check
       - contract-check
+      - api-check
       - reco-check
     if: always()
     steps:
@@ -89,6 +103,11 @@ jobs:
             || [[ "${{ needs.security-check.result }}" != "success" ]] \
             || [[ "${{ needs.contract-check.result }}" != "success" ]]; then
             echo "CI quality gate failed."
+            exit 1
+          fi
+          api_result="${{ needs.api-check.result }}"
+          if [[ "${api_result}" != "success" && "${api_result}" != "skipped" ]]; then
+            echo "CI quality gate failed (api-check: ${api_result})."
             exit 1
           fi
           reco_result="${{ needs.reco-check.result }}"
