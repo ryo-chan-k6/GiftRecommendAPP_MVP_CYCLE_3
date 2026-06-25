@@ -1,0 +1,50 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-performance-feasibility-poc-plan-pr"
+  title: "reco-performance-feasibility-poc poc-plan PRレビュー"
+  summary: "Epic #759 Task poc-plan（Reco性能フィジビリティ検証計画書）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 767
+  issue:
+    number: 761
+  parent_epic_issue: 759
+  parent_epic_branch: "spike/epic-759-reco-performance-feasibility-poc"
+  task_definition: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-plan.yaml"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-plan.yaml"
+    required: true
+
+review_points:
+  - "Phase1 / Phase2 区分が Epic Definition と一致しているか"
+  - "TV-007 観点が計測ポイント・判定基準にマッピングされているか"
+  - "§13.2 暫定値（soft 2,000ms / hard 4,000ms、フェーズ別上限）が正確か"
+  - "Issue #758 Branch 参照の注記が適切か（MOD-RECO-001 develop 未マージ）"
+  - "worktree 運用ルールが計画書に記載されているか"
+  - "scope 外（apps/reco 変更、正式 docs 反映）が混入していないか"
+
+notes:
+  - "Issue #761 / PR #767"
