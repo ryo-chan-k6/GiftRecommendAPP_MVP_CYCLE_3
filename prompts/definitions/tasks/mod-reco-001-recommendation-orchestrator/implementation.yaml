@@ -1,0 +1,280 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-recommendation-orchestrator-implementation"
+  title: "MOD-RECO-001:Recommendation Orchestrator実装"
+  summary: "MOD-RECO-001（Recommendation Orchestrator / 推薦実行制御）のモジュール仕様書に基づき、apps/reco/src/reco/application/recommendation-orchestrator/** に実行制御本体（処理順序・実行コンテキスト・下位モジュール委譲ポート）を実装する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  related_issues:
+    - 758
+    - 764
+  related_prs:
+    - 760
+    - 765
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Epic #260 配下で MOD-RECO-001 モジュール仕様書（#758 / PR #760）および Reason fallback 後続 docs 整合（#764 / PR #765）が完了した。
+  本 Task では、モジュール仕様書 §4〜§13 に基づき Recommendation Orchestrator 本体を `apps/reco/src/reco/application/recommendation-orchestrator/**` に実装する。
+  下位 MOD-RECO-002〜029 は別 Epic のため、本 Task では **ポート（interface）定義＋スタブ実装**（または既存 `pipeline/**` スキャフォールドへの暫定委譲）で呼び出し順序・失敗時中断を満たす。
+  API-INT-002 エンドポイント層（`apps/reco/src/reco/api/**`）からの接続は [Epic]API-INT-002 配下 Task とする。
+
+objective: |
+  MOD-RECO-001 Recommendation Orchestrator の実行制御ロジックを実装し、Recoモジュール一覧 §5.2 の処理順序どおりに下位モジュールを呼び出し、正常時は Recommendation Result を、異常時は MOD-RECO-024 経由の標準化エラーを返却できる状態にする。
+  Reason 回復不能時は §10.3 に従い汎用 Reason を注入する。
+
+scope:
+  - "Recommendation Orchestrator 本体の新規実装（`apps/reco/src/reco/application/recommendation-orchestrator/**`）"
+  - "実行コンテキスト（execution_context）の初期化と下位モジュールへの受け渡し"
+  - "Recoモジュール一覧 §5.2 に準拠した処理順序制御（MOD-RECO-002〜023 の同期呼び出し）"
+  - "実行モード（ui / evaluation / batch）の判定と MOD-RECO-003 への mode 受け渡し"
+  - "フェーズ境界での MOD-RECO-028 Phase Log Writer への記録依頼（委譲）"
+  - "失敗時の MOD-RECO-024 Reco Error Handler 経由のエラー伝播"
+  - "Reason fallback 注入ロジック（§10.3 / Reason生成定義書 §17.2 汎用 Reason 文）"
+  - "下位モジュール用ポート（Protocol / interface）定義とスタブ実装（MVP）"
+  - "既存 `apps/reco/src/reco/pipeline/**` との接続方針の実装（暫定委譲可。epic_scope 内）"
+  - "必要最小限の domain 型・コンテキスト補助（`apps/reco/src/reco/domain/**`、Orchestrator 利用に限定）"
+  - "Task / Review Definition 整備（本ファイルおよび必要に応じて pr-review 更新）"
+
+out_of_scope:
+  - "他 Recoモジュール（MOD-RECO-002〜029）本体の本格実装"
+  - "API-INT-002（Reco推薦実行）エンドポイント層の設計・実装（`apps/reco/src/reco/api/**`）"
+  - "API-PUB-002（Public API）の設計・実装"
+  - "apps/api / apps/web / apps/batch の実装"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 変更・migration / DDL"
+  - "単体テスト Task 相当の網羅的テスト追加（後続 unit-test Task で実施）"
+  - "性能要件（バックエンド）§5 の確定値反映（PoC #759 後）"
+  - "Orchestrator 内のパイプライン自動リトライ（MVP では行わない）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "実装正本（責務・入出力・処理順序・例外・Reason fallback・タイムアウト暫定値）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "処理順序 §5.2・モジュール責務境界"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "Orchestrator 入力構造"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "Orchestrator 出力構造"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "§17.2 汎用 Reason 文（fallback 注入）"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-REC-* エラー伝播"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+      purpose: "Phase Log / Metric 委譲方針"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/pipeline/runner.py"
+      required: false
+      purpose: "既存 pipeline スキャフォールドとの接続判断"
+    - path: "apps/reco/src/reco/domain/recommendation/request.py"
+      required: false
+      purpose: "既存 domain 型の再利用"
+    - path: "apps/reco/src/reco/domain/recommendation/result.py"
+      required: false
+      purpose: "既存 domain 型の再利用"
+  issues:
+    - number: 758
+      purpose: "前提 Task（モジュール仕様書）"
+    - number: 764
+      purpose: "前提 Task（Reason fallback docs 整合）"
+  prs:
+    - number: 760
+      purpose: "前提 PR（モジュール仕様書）"
+    - number: 765
+      purpose: "前提 PR（Reason fallback docs 整合）"
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/**"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Recommendation Orchestrator 本体（`apps/reco/src/reco/application/recommendation-orchestrator/**`）"
+  - "実行コンテキスト初期化・処理順序制御"
+  - "下位モジュール用ポート定義とスタブ実装"
+  - "Phase Log / Error Handler 委譲接続"
+  - "Reason fallback 注入（§10.3）"
+  - "Task Definition（本ファイル）"
+
+acceptance_criteria:
+  - "`apps/reco/src/reco/application/recommendation-orchestrator/**` に Orchestrator 本体が実装されている"
+  - "モジュール仕様書 §5（責務）・§8（処理順序）・§10（状態・例外・Reason fallback）と矛盾しない"
+  - "Recoモジュール一覧 §5.2 の呼び出し順序がコード上で表現されている"
+  - "MOD-RECO-019（Final Score Calculator）の後に MOD-RECO-020（Final Ranker）が呼ばれる"
+  - "Orchestrator 本体が DB へ直接書き込まない（§11 準拠）"
+  - "API-INT-002 エンドポイント層（`apps/reco/src/reco/api/**`）の変更を含まない"
+  - "他 Recoモジュール（MOD-RECO-002〜029）本体の本格実装を含まない（ポート＋スタブに限定）"
+  - "Reason 回復不能時に §17.2 汎用 Reason 文を注入し `isFallback: true` 相当の情報を Result に反映できる"
+  - "epic_scope.allowed_paths 内に差分が収まっている"
+  - "secret、APIキー、.env 実値が含まれていない"
+  - "typecheck / 対象範囲の pytest が通る（実施結果を PR に記載）"
+
+branch:
+  no_branch: false
+  name: "feature/task-766-mod-reco-001-recommendation-orchestrator-implementation"
+  base: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  target: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - 758
+    - 764
+  prs:
+    - 760
+    - 765
+  tasks:
+    - "MOD-RECO-001 モジュール仕様書が Human Review 完了していること（#758）"
+    - "Reason fallback 後続 docs 整合が完了していること（#764）"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "typecheck"
+    - "unit test（Orchestrator スモーク・処理順序の最小確認）"
+    - "scope boundary check"
+    - "secret check"
+  commands:
+    - "cd apps/reco && python -m pytest tests/unit/ -q --tb=short"
+    - "cd apps/reco && python -m compileall src/reco/application/recommendation-orchestrator"
+  manual_checks:
+    - "モジュール仕様書 §8.2 の処理ステップ順とコードの呼び出し順が一致していることを確認する"
+    - "apps/reco/src/reco/api/** への変更が含まれていないことを確認する"
+    - "他 MOD-RECO-002〜029 本体ディレクトリへの変更が含まれていないことを確認する"
+    - "Orchestrator が DB 直書き込みを行っていないことを確認する"
+    - "secret、APIキー、.env 実値が含まれていないことを確認する"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "網羅的単体テスト（後続 unit-test Task）"
+  skip_reason:
+    "integration test": "下位 MOD スタブ前提のため本 Task では最小限。API-INT-002 接続は別 Epic"
+    "e2e test": "エンドポイント層未接続のため対象外"
+    "contract test": "OpenAPI 変更なし"
+    "網羅的単体テスト（後続 unit-test Task）": "Epic 計画上 unit-test を別 Task で実施"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "モジュール仕様書との整合（責務・処理順序・例外・Reason fallback）"
+    - "epic_scope 内に差分が収まっているか（api 層・他 MOD 本体を含まないか）"
+    - "下位モジュールはポート＋スタブに限定されているか"
+    - "既存 pipeline スキャフォールドとの関係が明確か（過剰な重複実装がないか）"
+    - "依存方向（application → domain、infrastructure 直結の回避）が守られているか"
+    - "Reason fallback 注入が §10.3 と一致しているか"
+    - "タイムアウト暫定値（§13.2）の扱いが仕様と矛盾していないか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "MOD-RECO-001 初回実装 Task。pipeline スキャフォールドとの接続判断を experiments に記録可。"
+
+risk_points:
+  - "既存 `apps/reco/src/reco/pipeline/**` と `application/recommendation-orchestrator/**` の責務重複・移行方針の判断"
+  - "下位 MOD-RECO-002〜029 が未実装のため、スタブの粒度が過不足になりやすい"
+  - "Reason fallback の Result 表現が domain 型と API 契約の中間表現で揺れる可能性"
+  - "タイムアウト hard 値は暫定（PoC 後更新）のため、実装と性能要件の乖離リスク"
+
+human_decision_points:
+  - "既存 `pipeline/runner.py` を Orchestrator 内部で暫定利用するか、application 層で独立実装するか"
+  - "下位モジュールポートの配置（`recommendation-orchestrator/ports/` vs `domain/` 配下）"
+  - "スタブ実装の初期粒度（no-op / 固定値 / 既存 pipeline step 委譲）"
+  - "タイムアウトウォッチドッグを本 Task で実装するか、後続 Task に委ねるか"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "モジュール仕様書 §16 に未決事項が残っている場合"
+  - "epic_scope.forbidden_paths 配下の変更が必要になった場合"
+  - "OpenAPI / generated / DB schema 変更が必要になった場合"
+  - "下位 MOD 本格実装が必要と判断された場合（別 Epic へ切り出す）"
+  - "secret や .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Issue #766"
+  - "worktree: feature-task-766-mod-reco-001-recommendation-orchestrator-implementation"
+  - "命名の正本は Task Definition設計書 §15.1。Branch: feature/task-766-mod-reco-001-recommendation-orchestrator-implementation"
+  - "単体テストの網羅的追加は後続 unit-test Task で実施（Epic child_task_areas: unit-test）"
+  - "API-INT-002 からの呼び出し接続は [Epic]API-INT-002 配下 Task"
