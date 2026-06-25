@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-performance-feasibility-poc-report-pr"
+  title: "reco-performance-feasibility-poc poc-report PRレビュー"
+  summary: "Epic #759 Task poc-report（Phase1 実行・結果記録）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 763
+  parent_epic_issue: 759
+  parent_epic_branch: "spike/epic-759-reco-performance-feasibility-poc"
+  task_definition: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-report.yaml"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-report.yaml"
+    required: true
+
+review_points:
+  - "Phase1 結果 doc に skeleton 実測値（local + GHA run ID）が記載されているか"
+  - "skeleton 実測が本処理性能を表さない旨が明記されているか"
+  - "§9.1.4 観点に基づく試算・見込みが整理されているか"
+  - "soft 2,000ms / hard 4,000ms に対する暫定判定（Go / Adjust / Block 候補）が Human 判断材料として記載されているか"
+  - "最終判定は Phase2 後であることが明確か"
+  - "設計反映メモに Phase2 live 追加計測チェックリストがあるか"
+  - "§13.2 正式更新を Phase1 で行っていないか（out of scope）"
+  - "secret 実値・local 計測 artifact の誤 commit がないか"
+  - "PR target が親 Epic Branch であるか"
+
+notes:
+  - "Issue #763 / Branch docs/task-763-reco-perf-report"
