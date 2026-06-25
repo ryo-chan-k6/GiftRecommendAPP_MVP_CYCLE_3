@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 780
   issue:
     number: 779
   task_definition: "prompts/definitions/tasks/mod-reco-003-config-version-resolver/module-spec.yaml"
