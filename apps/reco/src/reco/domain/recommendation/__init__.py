@@ -12,6 +12,7 @@ from reco.domain.recommendation.inputs import (
 )
 from reco.domain.recommendation.request import RecommendationRequest
 from reco.domain.recommendation.result import RecommendationResult, RecommendationResultItem
+from reco.domain.recommendation.result import ReasonStatus, ResultStatus
 from reco.domain.recommendation.run import RecommendationRun, RunStatus
 
 __all__ = [
@@ -25,6 +26,8 @@ __all__ = [
     "RecommendationRequest",
     "RecommendationResult",
     "RecommendationResultItem",
+    "ReasonStatus",
+    "ResultStatus",
     "RecommendationRun",
     "RelationshipCondition",
     "RunStatus",
