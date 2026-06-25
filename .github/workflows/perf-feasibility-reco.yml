@@ -1,9 +1,9 @@
 name: Perf Feasibility Reco
 
 # Layer2 Reco 性能フィジビリティ（CI・CD方針書 §12.2 / Epic #759 poc-harness）。
-# TV-007 向け bench を workflow_dispatch のみで実行する。通常 PR CI（ci.yml）とは分離。
+# 通常 PR CI（ci.yml）とは分離。本番運用は workflow_dispatch。Epic Branch 検証用に push も許可。
 
-run-name: "perf-feasibility-reco · ${{ github.event_name }} · ${{ inputs.pipeline_mode }}"
+run-name: "perf-feasibility-reco · ${{ github.event_name }} · ${{ inputs.pipeline_mode || 'skeleton' }}"
 
 on:
   workflow_dispatch:
@@ -26,6 +26,12 @@ on:
         required: true
         default: "3"
         type: string
+  push:
+    branches:
+      - spike/epic-759-reco-performance-feasibility-poc
+    paths:
+      - .github/workflows/perf-feasibility-reco.yml
+      - scripts/perf/**
 
 permissions:
   contents: read
@@ -38,9 +44,9 @@ jobs:
   reco-perf-bench:
     runs-on: ubuntu-latest
     env:
-      PIPELINE_MODE: ${{ inputs.pipeline_mode }}
-      ITERATIONS: ${{ inputs.iterations }}
-      WARMUP: ${{ inputs.warmup }}
+      PIPELINE_MODE: ${{ inputs.pipeline_mode || 'skeleton' }}
+      ITERATIONS: ${{ inputs.iterations || '50' }}
+      WARMUP: ${{ inputs.warmup || '3' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
