@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: "#760"
   issue: "#758"
   task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
   source_branch: "docs/task-758-mod-reco-001-recommendation-orchestrator-module-spec"
@@ -70,7 +70,7 @@ input:
     number: 758
     required: true
   pr:
-    number: null
+    number: 760
     required: true
   diff:
     required: true
