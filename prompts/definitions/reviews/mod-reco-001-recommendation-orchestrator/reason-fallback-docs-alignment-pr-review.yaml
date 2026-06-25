@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-reason-fallback-docs-alignment-pr"
+  title: "MOD-RECO-001 Reason fallback後続docs整合 PRレビュー"
+  summary: "Issue #764 Task の横断 docs 整合 PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue: "#764"
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/reason-fallback-docs-alignment.yaml"
+  source_branch: "docs/task-764-mod-reco-001-reason-fallback-docs-alignment"
+  target_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  parent_epic_issue: "#260"
+  parent_epic_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+
+review_scope:
+  docs: true
+  api_contract: true
+  db: true
+  project_operation: true
+
+review_points:
+  common:
+    - "MOD-RECO-001 §10.3 と 4 docs が整合しているか"
+    - "epic_scope 横断が Issue 本文の意図どおりか"
+    - "OpenAPI / generated / apps 変更が混在していないか"
+  docs:
+    - "API-INT-002 §7.3.2.1 / 例 / §14.1 No.4 が更新されているか"
+    - "API-PUB-002 §7.3.2.1 / §14.1 No.3 が更新されているか"
+    - "recommendation_reason の fallback INSERT 方針が一貫しているか"
+    - "状態遷移設計書 §11.1 が部分成功を記載しているか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "§17.1 対象 docs が MOD-RECO-001 §10.3 と矛盾しない"
+      - "scope 外変更がない"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
