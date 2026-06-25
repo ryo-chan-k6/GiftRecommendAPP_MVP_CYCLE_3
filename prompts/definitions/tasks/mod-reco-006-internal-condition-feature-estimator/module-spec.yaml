@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-006-internal-condition-feature-estimator-module-spec"
+  title: "MOD-RECO-006:Internal Condition Feature Estimatorモジュール仕様書作成"
+  summary: "MOD-RECO-006（Internal Condition Feature Estimator / 内部条件特徴量推定）のモジュール仕様書（docs/06_実装設計/reco/MOD-RECO-006_Internal Condition Feature Estimatorモジュール仕様書.md）を、Recoモジュール一覧および関連ドメイン定義書に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-006:Internal Condition Feature Estimator"
+  epic_issue_number: null
+  epic_branch: "feature/epic-<issue-number>-mod-reco-006-internal-condition-feature-estimator"
+  related_issues:
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator（呼び出し元・ポート契約）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、MOD-RECO-006（Internal Condition Feature Estimator）の Recoモジュール仕様書を作成する。
+  本 Task は当該モジュール本体に責務を限定し、API-INT-002 エンドポイント層や他 Recoモジュール本体の仕様は別 Epic / Task とする。
+  MOD-RECO-001 Orchestrator 仕様書のポート契約（`ExecutionContext` 入出力）と整合させる。
+
+objective: |
+  MOD-RECO-006 について、apps/reco 実装・単体テスト・レビューが可能な粒度のモジュール仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/module-spec.md に準拠する。
+
+scope:
+  - "MOD-RECO-006 のモジュール仕様書を新規作成する"
+  - "モジュール基本情報・主責務・対象外責務・入出力・処理フロー・例外・ログ・テスト観点を整理する"
+  - "Orchestrator（MOD-RECO-001）との呼び出し関係・失敗時の扱いを整理する"
+
+out_of_scope:
+  - "他 Recoモジュール本体のモジュール仕様書作成"
+  - "apps/reco の実装"
+  - "OpenAPI / DB schema 変更"
+  - "Recoモジュール一覧そのものの変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/04_ドメインモデル設計/Feature定義書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+  templates:
+    - path: "prompts/templates/docs/module-spec.md"
+      required: true
+      purpose: "モジュール仕様書標準フォーマット"
+      applies_to:
+        - "docs/06_実装設計/reco/MOD-RECO-006_Internal Condition Feature Estimatorモジュール仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-006_Internal Condition Feature Estimatorモジュール仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/module-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-006 モジュール仕様書"
+  - "Orchestrator との I/F 整理"
+  - "テスト観点・未決事項"
+
+acceptance_criteria:
+  - "docs/06_実装設計/reco/MOD-RECO-006_Internal Condition Feature Estimatorモジュール仕様書.md が作成されている"
+  - "prompts/templates/docs/module-spec.md の章構成に準拠している"
+  - "Recoモジュール一覧の MOD-RECO-006 と矛盾しない"
+  - "API-INT-002 エンドポイント層を責務範囲に含めていない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-mod-reco-006-internal-condition-feature-estimator-module-spec"
+  base: "feature/epic-<issue-number>-mod-reco-006-internal-condition-feature-estimator"
+  target: "feature/epic-<issue-number>-mod-reco-006-internal-condition-feature-estimator"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 260
+      purpose: "Orchestrator ポート契約の正本"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-006_Internal Condition Feature Estimatorモジュール仕様書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs作成Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Recoモジュール一覧との整合"
+    - "Orchestrator との I/F 明確性"
+    - "epic_scope 内に収まっているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+notes:
+  - "Definition bootstrap 由来スキャフォールド。Epic Issue 番号確定後に parent を更新する。"
+  - "workstream: mod-reco-006-internal-condition-feature-estimator"
