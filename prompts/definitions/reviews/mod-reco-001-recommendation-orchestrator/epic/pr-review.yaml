@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-recommendation-orchestrator-epic-pr"
+  title: "MOD-RECO-001 Recommendation Orchestrator Epic PRレビュー"
+  summary: "Epic #260（MOD-RECO-001 Recommendation Orchestrator）の develop 向け統合 PR を AI Review する。子 Task（モジュール仕様書 / Reason fallback docs 整合 / 実装 / 単体テスト）の成果を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 260
+  task_definition: "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+  source_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+    required: true
+  issue:
+    number: 260
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "Epic 正本成果物（責務・処理順序・例外・Reason fallback）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001 定義・§5.2 処理順序"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: false
+      purpose: "モジュール一覧整合"
+  child_tasks:
+    - issue: 758
+      pr: 760
+      task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+    - issue: 764
+      pr: 765
+      task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/reason-fallback-docs-alignment.yaml"
+    - issue: 766
+      pr: 770
+      task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/implementation.yaml"
+    - issue: 771
+      pr: 772
+      task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/unit-test.yaml"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Epic Definition（epic.yaml）の scope / out_of_scope / acceptance_criteria を満たしているか"
+    - "Epic PR の source が feature/epic-260-mod-reco-001-recommendation-orchestrator、target が develop であるか"
+    - "PR 本文に Closes #260（または運用に沿った Epic Issue 参照）があるか"
+    - "子 Task Issue（#758 / #764 / #766 / #771）が Done または Epic 統合完了として整理されているか"
+    - "子 Task PR（#760 / #765 / #770 / #772）の成果が Epic diff に含まれているか"
+    - "dependencies.epics が空である方針（MOD-* Epic 原則独立）と矛盾しないか"
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "epic_scope.allowed_paths 内に差分が収まっているか"
+    - "epic_scope.forbidden_paths（apps/reco/src/reco/api/**、他 MOD 本体、apps/api|web|batch、openapi、db）への変更がないか"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/** が実装の中心であるか"
+    - "横断 docs（#764: API-INT-002 / API-PUB-002 / recommendation_reason / 状態遷移設計書）が Reason fallback 方針と整合しているか"
+    - "apps/reco/tests/unit/application/** が単体テスト成果として含まれることの妥当性（epic_scope 追記要否の Human 判断含む）"
+  docs:
+    - "MOD-RECO-001 モジュール仕様書が子 Task 成果として Epic に含まれているか"
+    - "モジュール仕様書 §16 未決事項が解消済みであるか"
+    - "Reason fallback（§10.3）と後続 docs 整合（#764）が矛盾していないか"
+  source:
+    - "Orchestrator 実装がモジュール仕様書の責務（契機管理＋委譲）と整合しているか"
+    - "下位 MOD-RECO-002〜029 はポート＋スタブに限定され、本格実装が混入していないか"
+    - "Orchestrator が DB 直書き込みを行っていないか（§11）"
+    - "Recoモジュール一覧 §5.2 の処理順序がコード上で表現されているか"
+  tests:
+    - "単体テストがモジュール仕様書 §14 unit 観点（No.1〜9, 12, 13）をカバーしているか"
+    - "pytest 実行結果が Epic PR 本文に記載されているか"
+    - "integration 観点（§14 No.10, 11, 14）が Epic PR で未実施として明記されているか"
+  security:
+    - "テスト fixture / ログに secret や個人情報が含まれていないか"
+  project_operation:
+    - "Task PR を develop に直接向けていないか（子 PR は Epic Branch 向けであったか）"
+    - "Epic は Phase4b 縦串（仕様書→実装→単体テスト）完了後の develop 統合であるか"
+
+acceptance_check:
+  use_epic_acceptance_criteria: true
+  additional_criteria:
+    - "child_task_areas（module-spec / implementation / unit-test）の成果が Epic diff に含まれる"
+    - "API-INT-002 エンドポイント層の実装が Epic に含まれない"
+    - "OpenAPI / generated / DB migration の変更が含まれない"
+    - "Human Review で確認してほしい事項が PR 本文に明記されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "epic_scope 外の変更がない"
+      - "子 Task 成果の横断整合に Blocker がない"
+      - "テスト・検証結果の記載が十分である"
+  request_changes:
+    conditions:
+      - "epic_scope.forbidden_paths への変更が混入している"
+      - "モジュール仕様書と実装・テストの矛盾がある"
+      - "子 Task 未完了の成果が含まれている"
+      - "PR 本文の検証結果・未実施事項の記載が不足している"
+  needs_human_decision:
+    conditions:
+      - "epic_scope.allowed_paths に tests パスを追記すべきかの判断が必要"
+      - "横断 docs（#764）を Epic PR に含める範囲の妥当性判断が必要"
+      - "develop 反映タイミング（API-INT-002 との依存）について判断が必要"
+  blocked:
+    conditions:
+      - "Epic diff を確認できない"
+      - "子 Task Issue / PR の対応が不明"
+      - "secret 漏えいの疑いがある"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  tasks:
+    - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/module-spec.yaml"
+    - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/reason-fallback-docs-alignment.yaml"
+    - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/implementation.yaml"
+    - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/unit-test.yaml"
+
+notes:
+  - "Epic Issue #260"
+  - "review.target.pr / input.pr.number は /create-pr 成功後に実 PR 番号へ反映する"
+  - "Epic PR 本文には Closes #260 を記載してよい（Task PR とは異なる）"
+  - "epic.yaml の ai_review_required は false だが、本 Review Definition は /review-pr 手動実行および pr-created 解決用"
