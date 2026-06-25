@@ -6,7 +6,7 @@ review:
   title: "MOD-RECO-002〜027 Definition bootstrap PRレビュー"
   summary: "MOD-RECO-002〜027 Epic/Task/Review Definition 作成 chore PR の AI Review"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 775
   issue:
     number: 774
   task_definition: "prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
@@ -46,7 +46,7 @@ input:
     number: 774
     required: true
   pr:
-    number: null
+    number: 775
     required: true
 
 review_points:
