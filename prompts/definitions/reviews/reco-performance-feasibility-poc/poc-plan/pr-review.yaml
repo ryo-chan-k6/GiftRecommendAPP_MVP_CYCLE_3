@@ -14,6 +14,7 @@ branch:
   worktree_required: true
 
 target:
+  pr: 767
   issue:
     number: 761
   parent_epic_issue: 759
@@ -46,4 +47,4 @@ review_points:
   - "scope 外（apps/reco 変更、正式 docs 反映）が混入していないか"
 
 notes:
-  - "Issue #761 / PR 番号は /create-pr 後に target.pr を反映"
+  - "Issue #761 / PR #767"
