@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）               |
 | MVP対象        | `○`                                                      |
 | 作成日         | 2026-06-25                                               |
-| 更新日         | 2026-06-25                                               |
+| 更新日         | 2026-06-26                                               |
 
 ---
 
@@ -60,6 +60,8 @@ Recommendation Orchestrator（推薦実行制御）は、Reco オンライン推
 - 正常終了時に `Recommendation Result`（Response 相当）を呼び出し元へ返却する
 - 異常終了時に **Error Code**（`GRS-REC-*`）とともに失敗応答を呼び出し元へ返却する
 - 推薦全体の **処理時間計測**（`recommendation_latency_ms`）の起点・終点を管理する
+- `MOD-RECO-021` / `022` が成功した後、**Reason 生成の成否にかかわらず `Recommendation Result` を返却**する（§10.3）
+- `MOD-RECO-023` が回復不能な場合、Reason生成定義書 §17.2 の **汎用 Reason 文**を注入し `isFallback: true` として返却する
 
 ### 5.2 対象外責務
 
@@ -125,7 +127,7 @@ Recommendation Orchestrator（推薦実行制御）は、Reco オンライン推
 | `MOD-RECO-020` Final Ranker | 呼び出し | 表示順位 rank 決定 | パイプライン中断、`GRS-REC-012` | **順位決定**責務。スコア計算は含まない |
 | `MOD-RECO-021` Recommendation Result Builder | 呼び出し | recommendation_result 生成 | パイプライン中断、`GRS-REC-012` | |
 | `MOD-RECO-022` Result Snapshot Builder | 呼び出し | 表示時点 Snapshot 生成 | パイプライン中断、`GRS-REC-012` | |
-| `MOD-RECO-023` Reason Generator | 呼び出し | 推薦理由生成 | 方針により部分成功または中断、`GRS-REC-013` | Reason 失敗時の部分返却は未決（§16） |
+| `MOD-RECO-023` Reason Generator | 呼び出し | 推薦理由生成 | 回復不能時は §10.3 に従い汎用 Reason 注入で継続 | `021`/`022` 成功後は Run 失敗にしない |
 | `MOD-RECO-024` Reco Error Handler | 呼び出し | 例外の標準化・ログ接続 | エラー応答生成の前提 | 各フェーズ失敗時 |
 | `MOD-RECO-025` Metric Logger | 呼び出し（任意） | 件数・処理時間・分布メトリクス記録 | 記録失敗は推薦結果に影響させない | MVP対象 `△` |
 | `MOD-RECO-028` Phase Log Writer | 呼び出し | phase_log 永続化 | 記録失敗は推薦結果に影響させない（warn ログ） | 各フェーズ境界 |
@@ -159,16 +161,18 @@ flowchart TD
     RT --> MT[Matching フェーズ<br/>014→015→016]
     MT --> RK[Ranking フェーズ<br/>017→018→019→020]
     RK --> OUT[出力フェーズ<br/>021→022→023]
-    OUT --> MET[Metric 記録依頼（任意）]
-    MET --> SUCCESS([Recommendation Result 返却])
+    OUT -->|021/022 失敗| ERR[MOD-RECO-024 Error Handler]
+    OUT -->|023 回復不能| FB[汎用 Reason 注入<br/>isFallback=true]
+    FB --> MET[Metric 記録依頼（任意）]
+    OUT -->|023 成功| MET
+    MET --> SUCCESS([Recommendation Result 返却 HTTP 200])
 
-    R002 -->|失敗| ERR[MOD-RECO-024 Error Handler]
+    R002 -->|失敗| ERR
     R003 -->|失敗| ERR
     UM -->|失敗| ERR
     RT -->|失敗| ERR
     MT -->|失敗| ERR
     RK -->|失敗| ERR
-    OUT -->|失敗| ERR
     ERR --> ELOG[MOD-RECO-029 Error Log 依頼]
     ELOG --> FAIL([標準化エラー返却])
 
@@ -209,8 +213,10 @@ Recoモジュール一覧 §5.2 の処理順序に従う。Orchestrator は各�
 | 21 | 最終順位生成 | final_score / diversity | ranked_items | `MOD-RECO-020` |
 | 22 | Recommendation Result 生成 | ranked_items / score_breakdown | recommendation_result | `MOD-RECO-021` |
 | 23 | Result Snapshot 生成 | ranked_items / item values | result item snapshot | `MOD-RECO-022` |
-| 24 | Reason 生成 | snapshot / score_breakdown / context | recommendation_reason | `MOD-RECO-023` |
-| 25 | 正常終了・Result 返却 | 上記成果物 | `recommendation_result` | 呼び出し元へ返却 |
+| 24 | Reason 生成 | snapshot / score_breakdown / context | recommendation_reason | `MOD-RECO-023`。失敗時は §10.3 |
+| 25 | 正常終了・Result 返却 | 上記成果物 | `recommendation_result` | HTTP 200。Reason fallback 含む |
+
+**処理順序の正本**: Recoモジュール一覧 §5.2 を正とする。処理構成定義書 §5.4 および処理フロー概要図は抽象フローとして参照する。
 
 **0件結果**: 候補 0 件は各下位モジュールの責務で検知する。最終的に表示対象 0 件の場合、HTTP 200 と `GRS-REC-001`（推薦候補0件）を返す方針はエラーコード定義書に従い、`MOD-RECO-024` と呼び出し元（api）で最終化する。
 
@@ -223,6 +229,7 @@ Recoモジュール一覧 §5.2 の処理順序に従う。Orchestrator は各�
 | パイプライン制御 | Recoモジュール一覧 §5.2 の順序どおりに同期的に各モジュールを呼び出す（MVP） |
 | 実行モード分岐 | `ui` / `evaluation` / `batch` に応じて `MOD-RECO-003` へ mode を渡し、利用 config を切り替える |
 | Ranking 責務分離 | `MOD-RECO-019`（final_score）→ `MOD-RECO-020`（rank）の順で呼び出す。機能×モジュール対応表と整合 |
+| Reason fallback | `MOD-RECO-023` 回復不能時、Reason生成定義書 §17.2 汎用 Reason を注入し `isFallback: true` とする（§10.3） |
 
 ---
 
@@ -248,11 +255,11 @@ Orchestrator が管理する推薦実行の論理状態（`recommendation_run.st
 | 状態 | 意味 | 遷移条件 | 記録先 |
 | ---- | ---- | -------- | ------ |
 | `running` | パイプライン実行中 | Run 記録成功後、Result 返却前 | `recommendation_run` / Phase Log |
-| `succeeded` | 正常終了 | 全必須フェーズ成功、Result 返却 | `recommendation_run` |
-| `failed` | 異常終了 | いずれかの必須フェーズ失敗 | `recommendation_run` / Error Log |
+| `succeeded` | 正常終了 | Result 返却完了（Reason fallback 含む） | `recommendation_run` |
+| `failed` | 異常終了 | `021`/`022` 以前の必須フェーズ失敗、または Result 返却不能 | `recommendation_run` / Error Log |
 | `empty_result` | 0件結果（ビジネス上の空結果） | 候補 0 件だが処理は完了 | `recommendation_run`（`GRS-REC-001`） |
 
-**リトライ**: MVP では Orchestrator 単体でのパイプライン自動リトライは行わない。呼び出し元（`apps/api`）または人間操作による再実行に委ねる（§16 未決事項参照）。
+**リトライ**: MVP では Orchestrator 単体でのパイプライン自動リトライは行わない。呼び出し元（`apps/api`）または人間操作による再実行に委ねる。
 
 ### 10.2 例外
 
@@ -269,13 +276,34 @@ Orchestrator が管理する推薦実行の論理状態（`recommendation_run.st
 | Retrieval 失敗 | `GRS-REC-009` | `MOD-RECO-012` 失敗 | 500 系 | 同上 |
 | Post Hard Filter 失敗 | `GRS-REC-010` | `MOD-RECO-013` 失敗 | 500 系 | 同上 |
 | Matching 失敗 | `GRS-REC-011` | `MOD-RECO-014`〜`016` 失敗 | 500 系 | 同上 |
-| Ranking 失敗 | `GRS-REC-012` | `MOD-RECO-017`〜`022` 失敗 | 500 系 | 同上 |
-| Reason 生成失敗 | `GRS-REC-013` | `MOD-RECO-023` 失敗 | 500 系（部分成功方針は §16） | 同上 |
-| Reco タイムアウト | `GRS-REC-101` | 推薦全体または下位処理がタイムアウト | 504 系 | Error Log |
+| Ranking / Result 構築失敗 | `GRS-REC-012` | `MOD-RECO-017`〜`022` 失敗 | 500 系 | 同上 |
+| Reason フェーズ致命失敗 | `GRS-REC-013` | `021`/`022` 成功後も Result 返却不能 | 500 系 | Error Log（critical） |
+| Reco タイムアウト | `GRS-REC-101` | 推薦全体 hard timeout 超過（§13） | 504 系 | Error Log |
 | Run 状態不整合 | `GRS-REC-201` | 実行状態の競合 | 409 系 | Error Log |
 | 想定外エラー | `GRS-REC-999` | 上記に分類できない例外 | 500 系 | Error Log（critical） |
 
 Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-024` が返す標準化結果を呼び出し元へ伝播する。
+
+### 10.3 Reason 失敗時の部分成功（確定方針）
+
+`MOD-RECO-021` / `022` が成功し Result Item が生成できた場合、Reason 生成の成否にかかわらず **Recommendation Result を HTTP 200 で返却**する。
+
+| 条件 | Orchestrator の扱い | API 表現（目標） | DB（目標） |
+| ---- | ------------------- | ---------------- | ---------- |
+| `MOD-RECO-023` 成功 | 通常 Reason を返却 | `reasonStatus: completed`, `isFallback: false` | `recommendation_reason` に INSERT |
+| `MOD-RECO-023` 内部フォールバック（§17.3） | 成功扱い | `reasonStatus: completed`, `isFallback: true` | INSERT（fallback 由来を `reason_basis` に記録） |
+| `MOD-RECO-023` 回復不能（Orchestrator 注入） | §17.2 汎用 Reason 文を注入 | `reasonStatus: completed`, `isFallback: true`, 非空 `reasonSummary` | INSERT（fallback 由来を記録） |
+| 一部 Item のみ Reason 失敗 | 他 Item は通常、失敗 Item は上記注入 | Run `resultStatus: partial` 可 | Item 単位で fallback 行を INSERT |
+
+**汎用 Reason 文（正本）** — Reason生成定義書 §17.2:
+
+```text
+今回の条件に対して、候補商品の中でも比較的バランスの良い商品です。
+```
+
+**`GRS-REC-013` の適用**: Item 単位の Reason 失敗（Result 返却継続）では使用しない。`021`/`022` 成功後に Result 自体を返却できない致命ケースに限定する。
+
+**後続整合**: API-INT-002 / API-PUB-002 契約、recommendation_reason テーブル定義書、状態遷移設計書 §11.1 は本方針へ更新する（別 Task。§17 参照）。
 
 ---
 
@@ -315,6 +343,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | `retrieval_candidate_count` | Retrieval 候補数 | Run | 同上 |
 | `post_filter_candidate_count` | Post Hard Filter 後候補数 | Run | 同上 |
 | `final_result_count` | 最終推薦件数 | Run | 品質・空結果率 |
+| `reason_fallback_count` | Reason 汎用文注入件数 | Run / Item | fallback 品質監視 |
 
 メトリクスの永続化は `MOD-RECO-025` Metric Logger に委譲する（MVP対象 `△`）。Orchestrator は計測起点・終点と、下位モジュールからのカウント受け渡しを担う。
 
@@ -322,14 +351,35 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 ## 13. 性能・非機能
 
+### 13.1 方針概要
+
 | 観点 | 方針 |
 | ---- | ---- |
-| レイテンシ | 推薦全体の目標値は非機能要件定義書・SLO 設計に従う。Orchestrator は `recommendation_latency_ms` を計測する |
-| 計算量 | パイプラインは MVP では **直列実行**。下位モジュールの計算量は各モジュール仕様書に委譲 |
-| タイムアウト | 推薦全体タイムアウト超過時は `GRS-REC-101` を返す。具体値は実装・運用 Task で設定（API-INT-002 契約と整合） |
-| リトライ | Orchestrator 内の自動リトライは MVP では **行わない**（§16 参照） |
-| キャッシュ | Orchestrator 本体ではキャッシュを持たない。config / embedding キャッシュは下位モジュールまたは infra 層 |
-| 並列実行 | MVP ではパイプライン内のモジュール並列実行は行わない。同一 run_id の二重実行は `GRS-REC-201` で拒否 |
+| レイテンシ | soft / hard の二段制御。Orchestrator は `recommendation_latency_ms` を計測する |
+| 計算量 | パイプラインは MVP では **直列実行** |
+| タイムアウト | 全体 **hard 4,000ms** 超過で `GRS-REC-101`。フェーズ別は §13.2 |
+| リトライ | Orchestrator 内の自動リトライは MVP では **行わない** |
+| キャッシュ | Orchestrator 本体ではキャッシュを持たない |
+| 並列実行 | MVP ではパイプライン内のモジュール並列実行は行わない |
+
+### 13.2 タイムアウト（暫定値）
+
+正本引用: 性能要件（バックエンド）§3.1・§5.1・§5.2。数値の実現可能性は **PoC（全体テスト計画書 TV-007）** で検証し、検証後に本節および性能要件を更新する。
+
+| 種別 | 対象 | 暫定値 | 超過時の扱い |
+| ---- | ---- | ------ | ------------ |
+| soft（SLO 監視） | 推薦パイプライン全体 | **2,000ms**（p95 目標） | Metric / warn のみ。処理継続 |
+| hard（中断） | 推薦パイプライン全体 | **4,000ms** | パイプライン中断 → `GRS-REC-101` |
+| hard | Config 解決（`003`） | **300ms** | 中断 → `GRS-REC-003` |
+| hard | User Meaning 一括（`004`〜`010`） | **1,000ms** | 中断 → 該当 `GRS-REC-004`〜`007` |
+| hard | Retrieval 一括（`011`〜`013`） | **1,000ms** | 中断 → `GRS-REC-008`〜`010` |
+| hard | Matching 一括（`014`〜`016`） | **500ms** | 中断 → `GRS-REC-011` |
+| hard | Ranking 一括（`017`〜`020`） | **1,000ms** | 中断 → `GRS-REC-012` |
+| hard | Output 一括（`021`〜`023`） | **500ms** | `021`/`022` 失敗 → `GRS-REC-012`；`023` 失敗 → §10.3 fallback |
+
+**全体ウォッチドッグ**: フェーズ別上限の合計より **パイプライン全体 4,000ms** を優先する。api → reco 呼び出し timeout（性能要件 §5.1 内部 Reco API 4 秒）と整合させる。
+
+**PoC 連携**: `[Epic]PoC:Reco性能フィジビリティ検証` の成果を `docs/90_PoC/性能フィジビリティ/` に記録し、検証後に本節を更新する。
 
 ---
 
@@ -347,8 +397,10 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 8 | Phase Log 契機 | 主要フェーズの開始・終了で `MOD-RECO-028` が呼ばれること | unit / integration |
 | 9 | Error Log 接続 | 失敗時に `MOD-RECO-024`→`MOD-RECO-029` が呼ばれること | unit / integration |
 | 10 | DB / ログ | Run / Phase / Error が下位モジュール経由で記録されること（Orchestrator 直書き込みなし） | integration |
-| 11 | タイムアウト | 全体タイムアウト時に `GRS-REC-101` になること | integration |
+| 11 | タイムアウト | 全体 hard 4,000ms 超過時に `GRS-REC-101` になること | integration |
 | 12 | trace 伝播 | `trace_id` が Phase Log / 構造化ログに引き継がれること | unit |
+| 13 | Reason fallback | `023` 回復不能時に §17.2 汎用 Reason が注入され HTTP 200 で Result が返ること | unit / integration |
+| 14 | Reason 部分失敗 | 複数 Item で一部のみ fallback のとき Run が `partial` になり得ること | integration |
 
 ---
 
@@ -359,6 +411,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-25 | 初版作成 | Issue #758 |
+| 2026-06-26 | Human Review 反映（責務・Reason fallback・タイムアウト暫定値・未決事項解消） | Issue #758 |
 
 ---
 
@@ -366,12 +419,18 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Orchestrator の責務範囲（Phase Log / Error Handling / Config 解決をどこまで内包するか） | 契機管理と実装の境界がモジュール間で重複しうる | Human Reviewer | - | 本仕様書は契機管理＋委譲方針で記載 |
-| 2 | 物理配置パス `apps/reco/src/reco/application/recommendation-orchestrator/**` の最終確定 | Epic 定義と旧想定パスの差異 | Human Reviewer | - | Epic `epic_scope.allowed_paths` を採用 |
-| 3 | `MOD-RECO-002` / `003` の呼び出し詳細を本仕様書でどこまで記述するか | 各モジュール仕様書 Task との線引き | Human Reviewer | - | 依存関係表・処理ステップで概要のみ記載 |
-| 4 | Reason 生成失敗時の部分成功（Result のみ返却）を許容するか | `GRS-REC-013` と UX のトレードオフ | Human Reviewer | - | Reason生成定義書と合わせて判断 |
-| 5 | 推薦パイプライン処理順序の優先正本（処理構成定義書 / 処理フロー概要図 / Recoモジュール一覧 §5） | 抽象度の異なる複数 docs が存在 | Human Reviewer | - | 本仕様書は Recoモジュール一覧 §5.2 を正とする |
-| 6 | 推薦全体・フェーズ別タイムアウトの具体値 | API-INT-002 契約・運用 SLO との整合 | 実装 Task / 運用 | - | 実装仕様書で確定 |
+| - | なし | - | - | - | §16.1 の論点は確定済み |
+
+### 16.1 確定済み論点（Issue #758 Human Review）
+
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | Orchestrator 責務範囲 | **契機管理＋委譲**。Phase Log / Error Log 物理書き込みは `028`/`029`、`024` に委譲 |
+| 2 | 物理配置パス | `apps/reco/src/reco/application/recommendation-orchestrator/**`（Epic `epic_scope` 準拠） |
+| 3 | `002`/`003` 記述粒度 | 依存関係表・処理ステップの **概要のみ**（各モジュール仕様書 Task に委譲） |
+| 4 | Reason 失敗時の部分成功 | `021`/`022` 成功後は **Result 返却優先**。回復不能時は §17.2 汎用 Reason 注入 + `isFallback: true` |
+| 5 | 処理順序の正本 | **Recoモジュール一覧 §5.2** |
+| 6 | タイムアウト | soft **2,000ms** / hard **4,000ms**（性能要件 §5 暫定引用）。**PoC 検証後に更新** |
 
 ---
 
@@ -392,6 +451,18 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | API-INT-002 契約仕様書 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | 呼び出し I/F（エンドポイント層は out of scope） |
 | module-spec テンプレート | `prompts/templates/docs/module-spec.md` | 章構成 |
 | Epic Definition | `prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml` | allowed_paths |
+| 性能要件（バックエンド） | `docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md` | タイムアウト暫定値の引用元 |
+| 全体テスト計画書 | `docs/05_アプリケーション設計/テスト/全体テスト計画書.md` | TV-007 Reco 性能フィジビリティ |
+| PoC 成果物 | `docs/90_PoC/性能フィジビリティ/` | タイムアウト検証結果（別 Epic） |
+
+### 17.1 後続整合 Task（本仕様書の確定方針を反映する別 Task）
+
+| 対象 | 整合内容 |
+| ---- | -------- |
+| API-INT-002 / API-PUB-002 契約仕様書 | Reason 失敗時も非空 `reasonSummary` + `isFallback: true`（§10.3） |
+| recommendation_reason テーブル定義書 | fallback 時も INSERT、`reason_basis` に fallback 由来を記録 |
+| 状態遷移設計書 §11.1 | Reason 失敗時の「Result 全体失敗」記述を部分成功方針へ更新 |
+| 性能要件（バックエンド）§5 | PoC 検証結果に基づく hard / soft 値の見直し |
 
 ---
 
@@ -404,7 +475,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 - 依存モジュール（`MOD-RECO-002`〜`029`）の呼び出し方向・用途・失敗時の扱いが明確である
 - `MOD-RECO-019`（Final Score Calculator）と `MOD-RECO-020`（Final Ranker）の責務分離が明確である
 - Phase Log / Error Log の出力タイミングが整理されている
-- 未決事項が隠れずに明記されている
+- Reason fallback（§10.3）とタイムアウト暫定値（§13.2）が明記されている
 - secret や `.env` 実値が含まれていない
 
 ---
@@ -414,4 +485,5 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 - 本仕様書は `MOD-RECO-001` の **実行制御** 責務に限定する。各下位 `MOD-RECO-*` の詳細は別 Task のモジュール仕様書で定義する
 - `API-INT-002` エンドポイント層は `[Epic]API-INT-002` 配下で設計・実装する
 - Batch モジュール `MOD-RECO-026` / `027` はオンライン推薦パイプラインからは直接呼び出さない（事前生成データを参照）
-- Human Review では §16 の未決事項、特に責務境界と物理配置パスの確定を確認すること
+- 配置パスは `apps/reco/src/reco/application/recommendation-orchestrator/**` に確定（旧想定 `apps/reco/src/modules/**` は採用しない）
+- タイムアウト hard 値は PoC（`docs/90_PoC/性能フィジビリティ/`）完了後に §13.2 を更新する
