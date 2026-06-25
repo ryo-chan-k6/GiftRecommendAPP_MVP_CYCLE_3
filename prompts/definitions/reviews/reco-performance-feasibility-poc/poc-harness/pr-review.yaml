@@ -1,0 +1,50 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-performance-feasibility-poc-harness-pr"
+  title: "reco-performance-feasibility-poc poc-harness PRレビュー"
+  summary: "Epic #759 Task poc-harness（計測ハーネス）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 762
+  parent_epic_issue: 759
+  parent_epic_branch: "spike/epic-759-reco-performance-feasibility-poc"
+  task_definition: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-harness.yaml"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-harness.yaml"
+    required: true
+
+review_points:
+  - "skeleton モードが apps/reco 無変更で完走するか"
+  - "perf-feasibility-reco.yml が workflow_dispatch のみで ci.yml と分離されているか"
+  - "フェーズ別 p50/p95 が JSON/Markdown に出力されるか"
+  - "live モード拡張点が README に明記されているか"
+  - "secret 実値が含まれていないか"
+
+notes:
+  - "Issue #762"
