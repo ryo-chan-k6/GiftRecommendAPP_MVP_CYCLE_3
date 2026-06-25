@@ -34,6 +34,11 @@ def _ensure_import_aliases() -> None:
 _ensure_import_aliases()
 
 from .errors import MODULE_ID, RunRecorderError, RunStateConflictError  # noqa: E402
+from .factory import (  # noqa: E402
+    SCAFFOLD_PAIR_ID,
+    SCAFFOLD_PAIR_KEY,
+    build_scaffold_run_recorder,
+)
 from .recorder import RecommendationRunRecorder  # noqa: E402
 
 __all__ = [
@@ -41,6 +46,9 @@ __all__ = [
     "RecommendationRunRecorder",
     "RunRecorderError",
     "RunStateConflictError",
+    "SCAFFOLD_PAIR_ID",
+    "SCAFFOLD_PAIR_KEY",
+    "build_scaffold_run_recorder",
 ]
 
 _virtual = sys.modules[_IMPORT_ROOT]

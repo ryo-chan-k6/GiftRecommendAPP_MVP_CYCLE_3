@@ -18,11 +18,12 @@ from reco.application.recommendation_orchestrator.stubs import (
     StubConfigResolver,
     StubPipelineModule,
     StubReasonGenerator,
-    StubRunRecorder,
 )
+from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
 from reco.domain import (
     ExecutionCondition,
     ExecutionMode,
+    OccasionCondition,
     ReasonStatus,
     RecommendationRequest,
     RecommendationResult,
@@ -36,6 +37,7 @@ def _sample_request(*, mode: ExecutionMode = ExecutionMode.UI) -> Recommendation
     return RecommendationRequest(
         request_id="req-orchestrator-1",
         relationship=RelationshipCondition(relationship_code="friend"),
+        occasion=OccasionCondition(occasion_code="birthday"),
         execution=ExecutionCondition(mode=mode, top_k=5),
     )
 
@@ -186,7 +188,6 @@ def test_downstream_failure_stops_pipeline_and_returns_error() -> None:
     ports, helpers = build_default_stub_ports()
     ports = _ports_with(
         ports,
-        run_recorder=StubRunRecorder(),
         config_resolver=StubConfigResolver(should_fail=True),
     )
 
@@ -209,7 +210,7 @@ def test_run_recorder_failure_after_config_resolver() -> None:
     ports, helpers = build_default_stub_ports()
     ports = _ports_with(
         ports,
-        run_recorder=StubRunRecorder(should_fail=True),
+        run_recorder=build_scaffold_run_recorder(should_fail=True),
     )
 
     outcome = RecommendationOrchestrator(ports).run(
