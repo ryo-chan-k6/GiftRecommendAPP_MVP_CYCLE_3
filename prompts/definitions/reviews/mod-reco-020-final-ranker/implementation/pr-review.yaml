@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-number: null
+    number: null
   task_definition: "prompts/definitions/tasks/mod-reco-020-final-ranker/implementation.yaml"
   source_branch: null
   target_branch: "feature/epic-<issue-number>-mod-reco-020-final-ranker"
@@ -29,8 +29,8 @@ commands:
 agent:
   primary: "reviewer-ai"
   specialist:
-docs: "docs-reviewer-ai"
-test: "test-ai"
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
 
 review_scope:
   docs: false
@@ -41,8 +41,8 @@ review_scope:
 
 input:
   task_definition:
-path: "prompts/definitions/tasks/mod-reco-020-final-ranker/implementation.yaml"
-required: true
+    path: "prompts/definitions/tasks/mod-reco-020-final-ranker/implementation.yaml"
+    required: true
 
 review_points:
   - "Task Definition scope / acceptance_criteria 充足"

@@ -56,29 +56,29 @@ out_of_scope:
 input:
   docs:
     - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
-  required: true
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
-  required: true
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
-  required: true
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
-  required: true
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
-  required: false
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
-  required: false
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
-  required: false
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
-  required: false
-  purpose: "モジュール設計・実装の前提確認"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
   templates: []
   files: []
   issues:
@@ -107,7 +107,9 @@ acceptance_criteria:
   - "Epic Issue が作成されている"
   - "Issue タイトルが [Epic]MOD-RECO-009:User Context Builder 形式である"
   - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
   - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が apps/reco/src/reco/application/** 等のモジュール層と整合している（成果物化方針書 §3.5.2）"
   - "epic_scope.forbidden_paths に apps/reco/src/reco/api/** が明示されている"
 
 branch:
@@ -136,6 +138,8 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/reco/MOD-RECO-009_User Context Builderモジュール仕様書.md"
     - "apps/reco/src/reco/application/user-context-builder/**"
+    - "apps/reco/src/reco/domain/**"
+    - "apps/reco/src/reco/pipeline/**"
     - "apps/reco/tests/unit/application/user-context-builder/**"
     - "apps/reco/tests/module/user-context-builder/**"
     - "prompts/definitions/tasks/mod-reco-009-user-context-builder/**"
@@ -143,6 +147,31 @@ epic_scope:
   forbidden_paths:
     - "apps/reco/src/reco/api/**"
     - "apps/reco/src/reco/application/recommendation-orchestrator/**"
+    - "apps/reco/src/reco/application/recommendation-run-recorder/**"
+    - "apps/reco/src/reco/application/config-version-resolver/**"
+    - "apps/reco/src/reco/application/user-semantic-extractor/**"
+    - "apps/reco/src/reco/application/external-condition-feature-estimator/**"
+    - "apps/reco/src/reco/application/internal-condition-feature-estimator/**"
+    - "apps/reco/src/reco/application/user-feature-generator/**"
+    - "apps/reco/src/reco/application/user-meaning-projector/**"
+    - "apps/reco/src/reco/application/query-embedding-generator/**"
+    - "apps/reco/src/reco/application/pre-hard-filter-executor/**"
+    - "apps/reco/src/reco/application/candidate-retriever/**"
+    - "apps/reco/src/reco/application/post-hard-filter-executor/**"
+    - "apps/reco/src/reco/application/feature-matcher/**"
+    - "apps/reco/src/reco/application/meaning-match-aggregator/**"
+    - "apps/reco/src/reco/application/context-scorer/**"
+    - "apps/reco/src/reco/application/popularity-scorer/**"
+    - "apps/reco/src/reco/application/risk-scorer/**"
+    - "apps/reco/src/reco/application/final-score-calculator/**"
+    - "apps/reco/src/reco/application/final-ranker/**"
+    - "apps/reco/src/reco/application/recommendation-result-builder/**"
+    - "apps/reco/src/reco/application/result-snapshot-builder/**"
+    - "apps/reco/src/reco/application/reason-generator/**"
+    - "apps/reco/src/reco/application/item-semantic-generator/**"
+    - "apps/reco/src/reco/application/item-feature-generator/**"
+    - "apps/reco/src/modules/**"
+    - "apps/reco/src/app/**"
     - "apps/api/**"
     - "apps/web/**"
     - "apps/batch/**"

@@ -18,23 +18,23 @@ parent:
 commands:
   primary: "/work-issue"
   allowed:
-- "/work-issue"
-- "/create-pr"
-- "/fix-review-comments"
-- "/summarize-work"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
   next:
-success: "/create-pr"
-review_fix: "/fix-review-comments"
-blocked: null
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
 
 agent:
   primary: "worker-ai"
   support:
-- "orchestrator-ai"
-- "support-ai"
-- "test-ai"
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
   review:
-- "reviewer-ai"
+    - "reviewer-ai"
 
 background: |
   Epic 配下で MOD-RECO-008 モジュール仕様書 Task 完了後、モジュール本体を `apps/reco/src/reco/application/user-meaning-projector/**` に実装する。
@@ -59,37 +59,37 @@ out_of_scope:
 
 input:
   docs:
-- path: "docs/06_実装設計/reco/MOD-RECO-008_User Meaning Projectorモジュール仕様書.md"
-  required: true
-  purpose: "実装正本"
-- path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
-  required: true
-  purpose: "ポート契約・呼び出し関係"
-- path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
-  required: true
-  purpose: "モジュール責務境界"
+    - path: "docs/06_実装設計/reco/MOD-RECO-008_User Meaning Projectorモジュール仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "ポート契約・呼び出し関係"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "モジュール責務境界"
   templates: []
   files:
-- path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
-  required: true
-  purpose: "下位モジュールポート契約"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      required: true
+      purpose: "下位モジュールポート契約"
   issues: []
   prs: []
 
 output:
   docs: []
   files:
-- path: "apps/reco/src/reco/application/user-meaning-projector/**"
-  action: "create"
-  required: true
+    - path: "apps/reco/src/reco/application/user-meaning-projector/**"
+      action: "create"
+      required: true
   tests: []
   generated:
-expected: false
-paths: []
-handling: "none"
+    expected: false
+    paths: []
+    handling: "none"
   logs:
-ai_logs_required: false
-path: null
+    ai_logs_required: false
+    path: null
 
 deliverables:
   - "MOD-RECO-008 モジュール本体実装"
@@ -112,9 +112,9 @@ branch:
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
-phase: "07_開発・単体テスト"
-status: "Todo"
-priority: "high"
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
 
 issue:
   unit: "task"
@@ -126,14 +126,14 @@ dependencies:
   issues: []
   prs: []
   tasks:
-- "MOD-RECO-008 モジュール仕様書 Task が Human Review 完了していること"
+    - "MOD-RECO-008 モジュール仕様書 Task が Human Review 完了していること"
   blocking: true
 
 parallel_control:
   depends_on:
-- "task-mod-reco-008-user-meaning-projector-module-spec"
+    - "task-mod-reco-008-user-meaning-projector-module-spec"
   exclusive_files:
-- "apps/reco/src/reco/application/user-meaning-projector/**"
+    - "apps/reco/src/reco/application/user-meaning-projector/**"
   conflict_risk: "medium"
   contract_impact: false
   generated_impact: false
@@ -141,28 +141,28 @@ parallel_control:
 
 test_policy:
   required:
-- "typecheck"
-- "unit test（最小スモーク）"
-- "secret check"
+    - "typecheck"
+    - "unit test（最小スモーク）"
+    - "secret check"
   commands:
-- "cd apps/reco && python -m compileall src/reco/application/user-meaning-projector"
+    - "cd apps/reco && python -m compileall src/reco/application/user-meaning-projector"
   not_required:
-- "integration test"
+    - "integration test"
   skip_reason:
-"integration test": "下位モジュール単体のため後続または API-INT 接続後"
+    "integration test": "下位モジュール単体のため後続または API-INT 接続後"
 
 review:
   human_review_required: true
   ai_review_required: true
   review_points:
-- "モジュール仕様書との整合"
-- "Orchestrator ポート契約との整合"
-- "epic_scope 内に差分が収まっているか"
+    - "モジュール仕様書との整合"
+    - "Orchestrator ポート契約との整合"
+    - "epic_scope 内に差分が収まっているか"
   specialist_reviews:
-docs: false
-test: false
-contract: false
-security: false
+    docs: false
+    test: false
+    contract: false
+    security: false
 
 operation_logging:
   level: "standard"

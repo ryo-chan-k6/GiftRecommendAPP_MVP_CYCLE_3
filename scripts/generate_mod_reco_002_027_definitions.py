@@ -6,6 +6,8 @@ from __future__ import annotations
 from pathlib import Path
 from textwrap import dedent
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 PROMPTS = ROOT / "prompts" / "definitions"
 
@@ -349,18 +351,56 @@ def app_path(m: dict[str, object]) -> str:
 
 
 def yaml_docs(paths: list[str], purpose: str = "モジュール設計・実装の前提確認") -> str:
-    lines = []
-    for p in paths:
+    """Embed under ``docs:`` inside an 8-space dedent template.
+
+    The first output line is substituted into a template row that already has
+    8 leading spaces, so its indent differs from subsequent lines.
+    """
+    lines: list[str] = []
+    for index, p in enumerate(paths):
         req = "true" if p in COMMON_DOCS[:4] or "Recoモジュール一覧" in p else "false"
-        lines.append(f'    - path: "{p}"')
-        lines.append(f"      required: {req}")
-        lines.append(f'      purpose: "{purpose}"')
+        item_indent = "    " if index == 0 else "            "
+        field_indent = "              "
+        lines.append(f'{item_indent}- path: "{p}"')
+        lines.append(f"{field_indent}required: {req}")
+        lines.append(f'{field_indent}purpose: "{purpose}"')
+    return "\n".join(lines)
+
+
+def output_file_entries(paths: list[str], *, first_row_embedded: bool = True) -> str:
+    lines: list[str] = []
+    for index, path in enumerate(paths):
+        item_indent = "    " if first_row_embedded and index == 0 else "            "
+        field_indent = "              "
+        lines.append(f'{item_indent}- path: "{path}"')
+        lines.append(f'{field_indent}action: "create"')
+        lines.append(f'{field_indent}required: true')
+    return "\n".join(lines)
+
+
+def sibling_forbidden_paths(m: dict[str, object]) -> str:
+    paths = ['apps/reco/src/reco/application/recommendation-orchestrator/**']
+    slug = m["slug"]
+    for other in MODULES:
+        if other["slug"] != slug:
+            paths.append(f'apps/reco/src/reco/application/{other["slug"]}/**')
+    paths.extend(["apps/reco/src/modules/**", "apps/reco/src/app/**"])
+    lines: list[str] = []
+    for index, path in enumerate(paths):
+        indent = "    " if index == 0 else "            "
+        lines.append(f'{indent}- "{path}"')
     return "\n".join(lines)
 
 
 def write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(dedent(content).rstrip() + "\n", encoding="utf-8")
+    path.write_text(content.rstrip() + "\n", encoding="utf-8")
+
+
+def validate_yaml_files(paths: list[Path]) -> None:
+    for path in paths:
+        with path.open(encoding="utf-8") as fh:
+            yaml.safe_load(fh)
 
 
 def gen_epic(m: dict[str, object]) -> str:
@@ -459,7 +499,9 @@ def gen_epic(m: dict[str, object]) -> str:
           - "Epic Issue が作成されている"
           - "Issue タイトルが [Epic]{mid}:{physical} 形式である"
           - "Epic Branch が develop から作成されている"
+          - "Branch base / PR target が develop である"
           - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+          - "epic_scope.allowed_paths が apps/reco/src/reco/application/** 等のモジュール層と整合している（成果物化方針書 §3.5.2）"
           - "epic_scope.forbidden_paths に apps/reco/src/reco/api/** が明示されている"
 
         branch:
@@ -488,13 +530,15 @@ def gen_epic(m: dict[str, object]) -> str:
           allowed_paths:
             - "{spec_doc_path(m)}"
             - "{app_path(m)}"
+            - "apps/reco/src/reco/domain/**"
+            - "apps/reco/src/reco/pipeline/**"
             - "apps/reco/tests/unit/application/{slug}/**"
             - "apps/reco/tests/module/{slug}/**"
             - "prompts/definitions/tasks/{ws}/**"
             - "prompts/definitions/reviews/{ws}/**"
           forbidden_paths:
             - "apps/reco/src/reco/api/**"
-            - "apps/reco/src/reco/application/recommendation-orchestrator/**"
+        {sibling_forbidden_paths(m)}
             - "apps/api/**"
             - "apps/web/**"
             - "apps/batch/**"
@@ -1254,24 +1298,18 @@ def gen_review_task(m: dict[str, object], task_kind: str, task_file: str, title_
 
 
 def gen_bootstrap(issue_number: int | None = None) -> str:
-    issue_line = f"  number: {issue_number}" if issue_number else "  number: null"
+    issue_value = issue_number if issue_number is not None else "null"
     branch_name = (
         f"chore/task-{issue_number}-mod-reco-002-027-definitions-bootstrap"
         if issue_number
         else "chore/task-<issue-number>-mod-reco-002-027-definitions-bootstrap"
     )
-    epic_outputs = "\n".join(
-        f'    - path: "prompts/definitions/epics/{workstream(m)}/epic.yaml"\n      action: "create"\n      required: true'
-        for m in MODULES
-    )
-    task_globs = "\n".join(
-        f'    - path: "prompts/definitions/tasks/{workstream(m)}/**"\n      action: "create"\n      required: true'
-        for m in MODULES
-    )
-    review_globs = "\n".join(
-        f'    - path: "prompts/definitions/reviews/{workstream(m)}/**"\n      action: "create"\n      required: true'
-        for m in MODULES
-    )
+    epic_paths = [f"prompts/definitions/epics/{workstream(m)}/epic.yaml" for m in MODULES]
+    task_paths = [f"prompts/definitions/tasks/{workstream(m)}/**" for m in MODULES]
+    review_paths = [f"prompts/definitions/reviews/{workstream(m)}/**" for m in MODULES]
+    epic_outputs = output_file_entries(epic_paths, first_row_embedded=True)
+    task_globs = output_file_entries(task_paths, first_row_embedded=True)
+    review_globs = output_file_entries(review_paths, first_row_embedded=True)
     module_list = ", ".join(mod_id(m) for m in MODULES)
     return dedent(
         f"""\
@@ -1415,7 +1453,7 @@ def gen_bootstrap(issue_number: int | None = None) -> str:
             priority: "high"
 
         issue:
-        {issue_line}
+          number: {issue_value}
           unit: "task"
           type: "chore"
           area: "reco"
@@ -1485,14 +1523,14 @@ def gen_bootstrap(issue_number: int | None = None) -> str:
     )
 
 
-def gen_bootstrap_review(issue_number: int | None = None) -> str:
+def gen_bootstrap_review(issue_number: int | None = None, pr_number: int | None = None) -> str:
     branch = (
         f"chore/task-{issue_number}-mod-reco-002-027-definitions-bootstrap"
         if issue_number
         else "chore/task-<issue-number>-mod-reco-002-027-definitions-bootstrap"
     )
-    issue_block = f"    number: {issue_number}" if issue_number else "    number: null"
-    pr_block = "  pr: null"
+    issue_value = issue_number if issue_number is not None else "null"
+    pr_value = pr_number if pr_number is not None else "null"
     return dedent(
         f"""\
         schema_version: "1.0"
@@ -1503,7 +1541,7 @@ def gen_bootstrap_review(issue_number: int | None = None) -> str:
           title: "MOD-RECO-002〜027 Definition bootstrap PRレビュー"
           summary: "MOD-RECO-002〜027 Epic/Task/Review Definition 作成 chore PR の AI Review"
           type: "task_pr_review"
-          status: "draft"
+          status: "ready"
 
         work_mode: "ai-agent"
 
@@ -1515,9 +1553,9 @@ def gen_bootstrap_review(issue_number: int | None = None) -> str:
           worktree_required: true
 
         target:
-          {pr_block}
+          pr: {pr_value}
           issue:
-        {issue_block}
+            number: {issue_value}
           task_definition: "prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
           source_branch: "{branch}"
           target_branch: "develop"
@@ -1539,6 +1577,12 @@ def gen_bootstrap_review(issue_number: int | None = None) -> str:
           task_definition:
             path: "prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
             required: true
+          issue:
+            number: {issue_value}
+            required: true
+          pr:
+            number: {pr_value}
+            required: true
 
         review_points:
           - "Epic 24 / Task 72 / Review 97 のファイル数"
@@ -1552,16 +1596,24 @@ def gen_bootstrap_review(issue_number: int | None = None) -> str:
     )
 
 
-def main(issue_number: int | None = None) -> None:
+def main(issue_number: int | None = None, pr_number: int | None = None) -> None:
     created = 0
+    touched: list[Path] = []
     for m in MODULES:
         ws = workstream(m)
-        write(PROMPTS / "epics" / ws / "epic.yaml", gen_epic(m))
+        epic_path = PROMPTS / "epics" / ws / "epic.yaml"
+        write(epic_path, gen_epic(m))
+        touched.append(epic_path)
         created += 1
-        write(PROMPTS / "tasks" / ws / "module-spec.yaml", gen_module_spec(m))
-        write(PROMPTS / "tasks" / ws / "implementation.yaml", gen_implementation(m))
-        write(PROMPTS / "tasks" / ws / "unit-test.yaml", gen_unit_test(m))
-        created += 3
+        for name, gen in (
+            ("module-spec.yaml", gen_module_spec),
+            ("implementation.yaml", gen_implementation),
+            ("unit-test.yaml", gen_unit_test),
+        ):
+            task_path = PROMPTS / "tasks" / ws / name
+            write(task_path, gen(m))
+            touched.append(task_path)
+            created += 1
         write(PROMPTS / "reviews" / ws / "epic" / "pr-review.yaml", gen_review_epic(m))
         write(
             PROMPTS / "reviews" / ws / "module-spec" / "pr-review.yaml",
@@ -1575,16 +1627,25 @@ def main(issue_number: int | None = None) -> None:
             PROMPTS / "reviews" / ws / "unit-test" / "pr-review.yaml",
             gen_review_task(m, "unit-test", "unit-test.yaml", "単体テスト"),
         )
+        touched.extend(
+            [
+                PROMPTS / "reviews" / ws / "epic" / "pr-review.yaml",
+                PROMPTS / "reviews" / ws / "module-spec" / "pr-review.yaml",
+                PROMPTS / "reviews" / ws / "implementation" / "pr-review.yaml",
+                PROMPTS / "reviews" / ws / "unit-test" / "pr-review.yaml",
+            ]
+        )
         created += 4
 
-    write(
-        PROMPTS / "tasks" / "mod-reco-002-027-definitions-bootstrap.yaml",
-        gen_bootstrap(issue_number),
+    bootstrap_path = PROMPTS / "tasks" / "mod-reco-002-027-definitions-bootstrap.yaml"
+    write(bootstrap_path, gen_bootstrap(issue_number))
+    touched.append(bootstrap_path)
+    bootstrap_review_path = (
+        PROMPTS / "reviews" / "mod-reco-002-027-definitions-bootstrap" / "pr-review.yaml"
     )
-    write(
-        PROMPTS / "reviews" / "mod-reco-002-027-definitions-bootstrap" / "pr-review.yaml",
-        gen_bootstrap_review(issue_number),
-    )
+    write(bootstrap_review_path, gen_bootstrap_review(issue_number, pr_number))
+    touched.append(bootstrap_review_path)
+    validate_yaml_files(touched)
     print(f"Generated definitions for {len(MODULES)} modules (+ bootstrap). YAML files touched: {created + 2}")
 
 
@@ -1593,5 +1654,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--issue-number", type=int, default=None)
+    parser.add_argument("--pr-number", type=int, default=None)
     args = parser.parse_args()
-    main(args.issue_number)
+    main(args.issue_number, args.pr_number)

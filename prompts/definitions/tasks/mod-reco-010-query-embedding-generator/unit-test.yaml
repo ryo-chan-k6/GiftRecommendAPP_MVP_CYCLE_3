@@ -18,23 +18,23 @@ parent:
 commands:
   primary: "/work-issue"
   allowed:
-- "/work-issue"
-- "/create-pr"
-- "/fix-review-comments"
-- "/summarize-work"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
   next:
-success: "/create-pr"
-review_fix: "/fix-review-comments"
-blocked: null
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
 
 agent:
   primary: "test-ai"
   support:
-- "worker-ai"
-- "support-ai"
+    - "worker-ai"
+    - "support-ai"
   review:
-- "reviewer-ai"
-- "test-ai"
+    - "reviewer-ai"
+    - "test-ai"
 
 background: |
   MOD-RECO-010 実装 Task 完了後、モジュール仕様書 §14 の unit 観点に沿った pytest テストを整備する。
@@ -57,17 +57,17 @@ out_of_scope:
 
 input:
   docs:
-- path: "docs/06_実装設計/reco/MOD-RECO-010_Query Embedding Generatorモジュール仕様書.md"
-  required: true
-  purpose: "§14 テスト観点の正本"
-- path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
-  required: true
-  purpose: "エラー期待値"
+    - path: "docs/06_実装設計/reco/MOD-RECO-010_Query Embedding Generatorモジュール仕様書.md"
+      required: true
+      purpose: "§14 テスト観点の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "エラー期待値"
   templates: []
   files:
-- path: "apps/reco/src/reco/application/query-embedding-generator/**"
-  required: true
-  purpose: "テスト対象"
+    - path: "apps/reco/src/reco/application/query-embedding-generator/**"
+      required: true
+      purpose: "テスト対象"
   issues: []
   prs: []
 
@@ -75,16 +75,16 @@ output:
   docs: []
   files: []
   tests:
-- path: "apps/reco/tests/unit/application/query-embedding-generator/**"
-  action: "create_or_update"
-  required: true
+    - path: "apps/reco/tests/unit/application/query-embedding-generator/**"
+      action: "create_or_update"
+      required: true
   generated:
-expected: false
-paths: []
-handling: "none"
+    expected: false
+    paths: []
+    handling: "none"
   logs:
-ai_logs_required: false
-path: null
+    ai_logs_required: false
+    path: null
 
 deliverables:
   - "§14 unit 観点に対応する pytest テストスイート"
@@ -107,9 +107,9 @@ branch:
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
-phase: "07_開発・単体テスト"
-status: "Todo"
-priority: "high"
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
 
 issue:
   unit: "task"
@@ -121,15 +121,15 @@ dependencies:
   issues: []
   prs: []
   tasks:
-- "MOD-RECO-010 実装 Task が Epic Branch にマージ済みであること"
+    - "MOD-RECO-010 実装 Task が Epic Branch にマージ済みであること"
   blocking: true
 
 parallel_control:
   depends_on:
-- "task-mod-reco-010-query-embedding-generator-implementation"
+    - "task-mod-reco-010-query-embedding-generator-implementation"
   exclusive_files:
-- "apps/reco/tests/unit/application/query-embedding-generator/**"
-- "apps/reco/tests/module/query-embedding-generator/**"
+    - "apps/reco/tests/unit/application/query-embedding-generator/**"
+    - "apps/reco/tests/module/query-embedding-generator/**"
   conflict_risk: "low"
   contract_impact: false
   generated_impact: false
@@ -137,27 +137,27 @@ parallel_control:
 
 test_policy:
   required:
-- "unit test"
-- "pytest"
-- "coverage mapping"
+    - "unit test"
+    - "pytest"
+    - "coverage mapping"
   commands:
-- "cd apps/reco && python -m pytest tests/unit/application/query-embedding-generator/ -v --tb=short"
-- "cd apps/reco && python -m pytest tests/unit/ -q --tb=short"
+    - "cd apps/reco && python -m pytest tests/unit/application/query-embedding-generator/ -v --tb=short"
+    - "cd apps/reco && python -m pytest tests/unit/ -q --tb=short"
   not_required:
-- "integration test"
+    - "integration test"
 
 review:
   human_review_required: true
   ai_review_required: true
   review_points:
-- "§14 unit 観点のカバレッジ"
-- "テストの再現性・安定性"
-- "epic_scope 外変更の有無"
+    - "§14 unit 観点のカバレッジ"
+    - "テストの再現性・安定性"
+    - "epic_scope 外変更の有無"
   specialist_reviews:
-docs: false
-test: true
-contract: false
-security: false
+    docs: false
+    test: true
+    contract: false
+    security: false
 
 operation_logging:
   level: "standard"

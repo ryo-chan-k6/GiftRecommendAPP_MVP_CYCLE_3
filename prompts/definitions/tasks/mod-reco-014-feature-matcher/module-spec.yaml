@@ -62,29 +62,29 @@ out_of_scope:
 input:
   docs:
     - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
-  required: true
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
-  required: true
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
-  required: true
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
-  required: true
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
-  required: false
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
-  required: false
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
-  required: false
-  purpose: "モジュール設計・実装の前提確認"
-- path: "docs/04_ドメインモデル設計/Matching定義書.md"
-  required: false
-  purpose: "モジュール設計・実装の前提確認"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
   templates:
     - path: "prompts/templates/docs/module-spec.md"
       required: true
