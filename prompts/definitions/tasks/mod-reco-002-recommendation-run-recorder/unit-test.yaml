@@ -46,6 +46,7 @@ objective: |
 
 scope:
   - "`apps/reco/tests/unit/application/recommendation-run-recorder/**` または `apps/reco/tests/module/recommendation-run-recorder/**` へのテスト追加"
+  - "`apps/reco/tests/unit/infrastructure/db/repositories/recommendation_run*` への Repository 単体テスト（任意・推奨）"
   - "モジュール仕様書 §14 unit 観点のカバレッジ整理"
   - "テスト用 fixture / mock（モジュール専用）"
 
@@ -78,6 +79,9 @@ output:
     - path: "apps/reco/tests/unit/application/recommendation-run-recorder/**"
       action: "create_or_update"
       required: true
+    - path: "apps/reco/tests/unit/infrastructure/db/repositories/recommendation_run*"
+      action: "create_or_update"
+      required: false
   generated:
     expected: false
     paths: []
@@ -130,6 +134,7 @@ parallel_control:
   exclusive_files:
     - "apps/reco/tests/unit/application/recommendation-run-recorder/**"
     - "apps/reco/tests/module/recommendation-run-recorder/**"
+    - "apps/reco/tests/unit/infrastructure/db/repositories/recommendation_run*"
   conflict_risk: "low"
   contract_impact: false
   generated_impact: false

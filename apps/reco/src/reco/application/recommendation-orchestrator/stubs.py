@@ -40,11 +40,18 @@ class StubRunRecorder:
         if self.should_fail:
             raise RuntimeError("run recorder failed")
 
+        versions = context.config_versions
         run_id = context.run_id or f"run-{uuid4()}"
         context.recommendation_run = RecommendationRun(
             run_id=run_id,
             request_id=context.recommendation_request.request_id,
-            status=RunStatus.RUNNING,
+            status=RunStatus.ACCEPTED,
+            semantic_config_version=versions.get("semantic_config_version"),
+            model_version=versions.get("model_version"),
+        )
+        # Stub: simulate accepted INSERT → running UPDATE before User Meaning phase.
+        context.recommendation_run = context.recommendation_run.with_status(
+            RunStatus.RUNNING
         )
         context.completed_modules.append(self.module_id)
         return context

@@ -210,7 +210,7 @@ flowchart TD
 | 順序 | モジュールID | モジュール名 | 主な入力 | 主な出力 |
 | --- | --- | --- | --- | --- |
 | 1 | `MOD-RECO-001` | 推薦実行制御 | Recommendation Request | execution context |
-| 2 | `MOD-RECO-002` | Recommendation Run記録 | execution context | recommendation_run |
+| 2 | `MOD-RECO-002` | Recommendation Run記録 | execution context（`003` 解決後の version 3 列含む） | recommendation_run |
 | 3 | `MOD-RECO-003` | Config / Version解決 | request context | config_version / model_version |
 | 4 | `MOD-RECO-004` | Semantic抽出 | request text / relationship / occasion | semantic_extraction_result |
 | 5 | `MOD-RECO-005` | 外部条件特徴量推定 | relationship / occasion | external_feature_estimate |
@@ -232,6 +232,8 @@ flowchart TD
 | 21 | `MOD-RECO-021` | Recommendation Result生成 | ranked_items / score_breakdown | recommendation_result |
 | 22 | `MOD-RECO-022` | Result Snapshot生成 | ranked_items / item current values | result item snapshot |
 | 23 | `MOD-RECO-023` | Reason生成 | result_item snapshot / score_breakdown / context | recommendation_reason |
+
+**Orchestrator 物理呼び出し順（`MOD-RECO-002` / `003`）**: `recommendation_run` INSERT には version 3 列が必須のため、Orchestrator は **MOD-RECO-003 実行後**に MOD-RECO-002 の INSERT（`accepted`）を呼ぶ（`MOD-RECO-001` / `MOD-RECO-002` モジュール仕様書 §8.2.1）。上表の「順序」はモジュール ID に対応する論理整理であり、物理呼び出し順と矛盾する場合はモジュール仕様書の呼び出し順を正とする。
 
 ---
 

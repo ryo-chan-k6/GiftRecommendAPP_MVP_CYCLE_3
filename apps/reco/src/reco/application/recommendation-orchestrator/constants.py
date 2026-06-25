@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-# Recoモジュール一覧 §5.2 / モジュール仕様書 §8.2 の呼び出し順序
+# MOD-RECO-001 §8.2.1 物理呼び出し順（003→002 INSERT 後、004〜023）
 ORCHESTRATOR_MODULE_ORDER: tuple[str, ...] = (
-    "MOD-RECO-002",
     "MOD-RECO-003",
+    "MOD-RECO-002",
     "MOD-RECO-004",
     "MOD-RECO-005",
     "MOD-RECO-006",
