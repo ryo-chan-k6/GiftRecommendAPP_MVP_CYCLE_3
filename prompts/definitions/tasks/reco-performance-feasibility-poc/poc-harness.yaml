@@ -1,0 +1,168 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-performance-feasibility-poc-harness"
+  title: "Reco性能計測ハーネス整備"
+  summary: "Phase1 skeleton 実測と Phase2 live 計測で再利用可能な reco_pipeline_bench.py と GHA workflow を整備する。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-performance-feasibility-poc"
+  epic_issue: "[Epic]PoC:Reco性能フィジビリティ検証"
+  epic_issue_number: 759
+  epic_branch: "spike/epic-759-reco-performance-feasibility-poc"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #759 Phase1 Task 3。Phase1 では scaffold パイプライン（apps/reco 変更なし）の skeleton モードで実測し、
+  Phase2 では Epic #260 完了後に live モードを有効化する。
+  参考実装: `.github/workflows/test-reco-quality.yml`（workflow_dispatch、Layer2 分離）。
+
+objective: |
+  `scripts/perf/reco_pipeline_bench.py`（skeleton モード + live 拡張点予約）、`scripts/perf/README.md`、
+  `.github/workflows/perf-feasibility-reco.yml`（workflow_dispatch のみ）を整備する。
+
+scope:
+  - "reco_pipeline_bench.py: skeleton モード（scaffold 実測）、フェーズ別 perf_counter、p50/p95、JSON/Markdown 出力"
+  - "live モード CLI インターフェースの予約（Phase2 Task 5 で実装・有効化）"
+  - "scripts/perf/README.md: モード別実行手順、worktree 実行例"
+  - ".github/workflows/perf-feasibility-reco.yml: Layer2 / workflow_dispatch"
+
+out_of_scope:
+  - "apps/reco/src/** の変更"
+  - "live モードの本格実装（Phase2 poc-live-verification Task）"
+  - "通常 PR CI（ci.yml 群）への perf workflow 混在"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "Layer2 workflow_dispatch 分離"
+    - path: "prompts/definitions/epics/reco-performance-feasibility-poc/epic.yaml"
+      required: true
+  files:
+    - path: ".github/workflows/test-reco-quality.yml"
+      required: true
+      purpose: "Layer2 workflow 参考"
+    - path: "apps/reco/src/reco/pipeline/_scaffold.py"
+      required: true
+      purpose: "skeleton 実測対象"
+
+output:
+  docs: []
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      action: "create"
+      required: true
+    - path: "scripts/perf/README.md"
+      action: "create"
+      required: true
+    - path: ".github/workflows/perf-feasibility-reco.yml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "local で skeleton モードが完走する"
+  - "GHA workflow_dispatch で skeleton モードが完走する（または骨格 + 手動確認手順が README にある）"
+  - "フェーズ別 p50/p95 が JSON/Markdown で出力される"
+  - "live モード拡張点が README に記載されている"
+  - "通常 PR CI に perf-feasibility workflow が混在していない"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "spike/task-762-reco-perf-harness"
+  summary: "reco-perf-harness"
+  base: "spike/epic-759-reco-performance-feasibility-poc"
+  target: "spike/epic-759-reco-performance-feasibility-poc"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-26"
+    due_date: "2026-06-27"
+
+issue:
+  number: 762
+  unit: "task"
+  type: "spike"
+  area: "reco"
+
+dependencies:
+  blocking: false
+  issues: []
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-plan.yaml"
+  exclusive_files:
+    - "scripts/perf/**"
+    - ".github/workflows/perf-feasibility-reco.yml"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "local skeleton モード実行"
+    - "workflow_dispatch 実行（可能な範囲）"
+    - "secret 実値が出力・commit されていないこと"
+  not_required:
+    - "live モード実行（Phase2）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "skeleton モードが apps/reco 無変更で動作するか"
+    - "perf workflow が ci.yml 品質ゲートと分離されているか"
+    - "live モード拡張点の明確さ"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+human_decision_points: []
+
+stop_conditions:
+  - "apps/reco/src/** の変更が必要と判明した場合（Epic #260 へ）"
+  - "secret 実値の記載が必要に見える場合"
+
+notes:
+  - "専用 worktree 例: spike-task-762-reco-perf-harness"
+  - "Issue #762 / Branch spike/task-762-reco-perf-harness"
+  - "poc-plan 完了後に着手推奨（計画書の計測ポイント参照）"

@@ -1,0 +1,166 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-performance-feasibility-poc-report"
+  title: "Reco性能フィジビリティPhase1実行・結果記録"
+  summary: "Phase1 skeleton 実測と試算を実行し、結果 doc・設計反映メモを記録する。Phase2 への引き継ぎ項目を整理する。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-performance-feasibility-poc"
+  epic_issue: "[Epic]PoC:Reco性能フィジビリティ検証"
+  epic_issue_number: 759
+  epic_branch: "spike/epic-759-reco-performance-feasibility-poc"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #759 Phase1 Task 4。Task 3 で整備した計測ハーネスを用いて Phase1 検証を実行し、
+  skeleton 実測値・設計値との差分・試算・見込み（テスト定義書 §9.1.4）を記録する。
+  §13.2 暫定値に対する暫定判定は Human 判断材料とし、最終判定は Phase2 後とする。
+
+objective: |
+  Phase1 検証を実行し、結果 doc・設計反映メモを作成する。
+  Phase2 live 検証で追加計測すべき項目のチェックリストを整理する。
+
+scope:
+  - "Phase1 skeleton 実測の実行（reco_pipeline_bench.py skeleton モード）"
+  - "Reco性能フィジビリティ検証結果_Phase1.md の作成"
+  - "設計反映メモ.md の作成（§13.2 更新候補、Phase2 追加計測チェックリスト）"
+  - "必要に応じ ai-logs/experiments/ への experiment log"
+
+out_of_scope:
+  - "live 実測（Phase2 poc-live-verification Task）"
+  - "性能要件・MOD-RECO-001 への正式 docs 更新"
+  - "apps/reco/src/** の変更"
+  - "計測ハーネス本体の新規作成（poc-harness で整備済みを利用）"
+
+input:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md"
+      required: true
+      purpose: "検証手順・判定基準"
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§9.1.4"
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      required: true
+      purpose: "Phase1 計測実行"
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase1.md"
+      action: "create"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "Phase1 結果 doc が存在し、skeleton 実測値・試算・見込みが記載されている"
+  - "soft/hard 暫定値に対する暫定判定（Go / Adjust / Block 候補）が Human 判断材料として整理されている"
+  - "設計反映メモに Phase2 live 検証で追加計測すべき項目がチェックリスト化されている"
+  - "secret 実値が成果物に含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-763-reco-perf-report"
+  summary: "reco-perf-report"
+  base: "spike/epic-759-reco-performance-feasibility-poc"
+  target: "spike/epic-759-reco-performance-feasibility-poc"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-26"
+    due_date: "2026-06-27"
+
+issue:
+  number: 763
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  blocking: true
+  issues: []
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-plan.yaml"
+    - "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-harness.yaml"
+  exclusive_files:
+    - "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase1.md"
+    - "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+  conflict_risk: "low"
+
+test_policy:
+  manual_checks:
+    - "skeleton モード計測の再現実行"
+    - "結果 doc と実測 JSON/Markdown の整合"
+  not_required:
+    - "live モード計測"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "暫定判定が実測根拠付きで整理されているか（Phase1 は見込み含む）"
+    - "Phase2 引き継ぎ項目の網羅性"
+    - "Epic 完了条件（Phase1）の解釈が明確か"
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+  reason: "PoC 実測結果は experiment log 対象となり得る"
+
+human_decision_points:
+  - "Phase1 暫定判定（Go / Adjust / Block）の Human 確認"
+  - "Epic #759 Phase1 完了と Epic Done の関係"
+
+stop_conditions:
+  - "poc-harness の skeleton モードが未完了で計測不能な場合"
+
+notes:
+  - "専用 worktree 例: spike-task-763-reco-perf-report"
+  - "Issue #763 / Branch docs/task-763-reco-perf-report"
+  - "poc-harness 完了後に着手"
