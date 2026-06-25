@@ -7,12 +7,13 @@ from enum import StrEnum
 
 
 class RunStatus(StrEnum):
-    """Execution lifecycle for a single recommendation run."""
+    """Execution lifecycle for a single recommendation run (DB enum aligned)."""
 
-    PENDING = "pending"
+    ACCEPTED = "accepted"
     RUNNING = "running"
-    COMPLETED = "completed"
+    SUCCEEDED = "succeeded"
     FAILED = "failed"
+    CANCELED = "canceled"
 
 
 @dataclass(frozen=True)
@@ -21,7 +22,7 @@ class RecommendationRun:
 
     run_id: str
     request_id: str
-    status: RunStatus = RunStatus.PENDING
+    status: RunStatus = RunStatus.ACCEPTED
     semantic_config_version: str | None = None
     model_version: str | None = None
 

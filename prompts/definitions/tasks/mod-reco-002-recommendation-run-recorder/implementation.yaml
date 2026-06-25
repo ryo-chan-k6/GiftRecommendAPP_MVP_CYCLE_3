@@ -82,6 +82,12 @@ output:
     - path: "apps/reco/src/reco/application/recommendation-run-recorder/**"
       action: "create"
       required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/recommendation_run*"
+      action: "create"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/pair_master*"
+      action: "create"
+      required: false
   tests: []
   generated:
     expected: false
@@ -97,6 +103,7 @@ deliverables:
 
 acceptance_criteria:
   - "`apps/reco/src/reco/application/recommendation-run-recorder/**` に実装がある"
+  - "`apps/reco/src/reco/infrastructure/db/repositories/recommendation_run*` に Repository 実装がある"
   - "モジュール仕様書と矛盾しない"
   - "apps/reco/src/reco/api/** を変更していない"
   - "他 MOD 本体ディレクトリを変更していない"
@@ -134,6 +141,8 @@ parallel_control:
     - "task-mod-reco-002-recommendation-run-recorder-module-spec"
   exclusive_files:
     - "apps/reco/src/reco/application/recommendation-run-recorder/**"
+    - "apps/reco/src/reco/infrastructure/db/repositories/recommendation_run*"
+    - "apps/reco/src/reco/infrastructure/db/repositories/pair_master*"
   conflict_risk: "medium"
   contract_impact: false
   generated_impact: false
@@ -145,7 +154,7 @@ test_policy:
     - "unit test（最小スモーク）"
     - "secret check"
   commands:
-    - "cd apps/reco && python -m compileall src/reco/application/recommendation-run-recorder"
+    - "cd apps/reco && python -m compileall src/reco/application/recommendation-run-recorder src/reco/infrastructure/db/repositories/recommendation_run"
   not_required:
     - "integration test"
   skip_reason:

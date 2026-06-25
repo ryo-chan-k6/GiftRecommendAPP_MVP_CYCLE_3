@@ -28,6 +28,7 @@ from reco.domain import (
     RecommendationResult,
     RelationshipCondition,
     ResultStatus,
+    RunStatus,
 )
 
 
@@ -56,6 +57,8 @@ def test_ui_mode_success_returns_recommendation_result() -> None:
     assert outcome.recommendation_result.item_count > 0
     assert outcome.execution_context is not None
     assert outcome.execution_context.execution_mode == ExecutionMode.UI
+    assert outcome.execution_context.recommendation_run is not None
+    assert outcome.execution_context.recommendation_run.status is RunStatus.SUCCEEDED
 
 
 # §14 No.2 正常系（evaluation / batch mode）
@@ -196,6 +199,30 @@ def test_downstream_failure_stops_pipeline_and_returns_error() -> None:
     assert outcome.reco_error is not None
     assert outcome.reco_error.error_code == "GRS-REC-003"
     assert outcome.execution_context is not None
+    assert "MOD-RECO-002" not in outcome.execution_context.completed_modules
+    assert "MOD-RECO-004" not in outcome.execution_context.completed_modules
+    assert helpers["error_handler"].error_log_events
+
+
+# §14 No.7b MOD-RECO-002 失敗（003 成功後に 002 が失敗）
+def test_run_recorder_failure_after_config_resolver() -> None:
+    ports, helpers = build_default_stub_ports()
+    ports = _ports_with(
+        ports,
+        run_recorder=StubRunRecorder(should_fail=True),
+    )
+
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-run-recorder-fail",
+    )
+
+    assert outcome.success is False
+    assert outcome.reco_error is not None
+    assert outcome.reco_error.error_code == "GRS-REC-002"
+    assert outcome.execution_context is not None
+    assert "MOD-RECO-003" in outcome.execution_context.completed_modules
+    assert "MOD-RECO-002" not in outcome.execution_context.completed_modules
     assert "MOD-RECO-004" not in outcome.execution_context.completed_modules
     assert helpers["error_handler"].error_log_events
 
