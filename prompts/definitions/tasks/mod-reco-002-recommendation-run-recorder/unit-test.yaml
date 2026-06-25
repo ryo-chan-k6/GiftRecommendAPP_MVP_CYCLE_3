@@ -1,0 +1,167 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-002-recommendation-run-recorder-unit-test"
+  title: "MOD-RECO-002:Recommendation Run Recorder単体テスト"
+  summary: "MOD-RECO-002（Recommendation Run Recorder）実装に対し、モジュール仕様書 §14 の unit 観点を満たす単体テストを追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-002:Recommendation Run Recorder"
+  epic_issue_number: null
+  epic_branch: "feature/epic-<issue-number>-mod-reco-002-recommendation-run-recorder"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+- "/work-issue"
+- "/create-pr"
+- "/fix-review-comments"
+- "/summarize-work"
+  next:
+success: "/create-pr"
+review_fix: "/fix-review-comments"
+blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+- "worker-ai"
+- "support-ai"
+  review:
+- "reviewer-ai"
+- "test-ai"
+
+background: |
+  MOD-RECO-002 実装 Task 完了後、モジュール仕様書 §14 の unit 観点に沿った pytest テストを整備する。
+  本番 DB / 外部 API に依存しない fixture / mock を用いる。
+
+objective: |
+  MOD-RECO-002 の単体テストを整備し、pytest で再現可能な検証を提供する。
+  §14 unit 観点とテストケースの対応表を PR に記載する。
+
+scope:
+  - "`apps/reco/tests/unit/application/recommendation-run-recorder/**` または `apps/reco/tests/module/recommendation-run-recorder/**` へのテスト追加"
+  - "モジュール仕様書 §14 unit 観点のカバレッジ整理"
+  - "テスト用 fixture / mock（モジュール専用）"
+
+out_of_scope:
+  - "integration test / e2e test"
+  - "Orchestrator 統合テスト（別 Task）"
+  - "モジュール本体の機能追加（テスト成立に必要な最小修正のみ可）"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+- path: "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+  required: true
+  purpose: "§14 テスト観点の正本"
+- path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+  required: true
+  purpose: "エラー期待値"
+  templates: []
+  files:
+- path: "apps/reco/src/reco/application/recommendation-run-recorder/**"
+  required: true
+  purpose: "テスト対象"
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests:
+- path: "apps/reco/tests/unit/application/recommendation-run-recorder/**"
+  action: "create_or_update"
+  required: true
+  generated:
+expected: false
+paths: []
+handling: "none"
+  logs:
+ai_logs_required: false
+path: null
+
+deliverables:
+  - "§14 unit 観点に対応する pytest テストスイート"
+  - "観点とテストケースの対応表（PR 本文）"
+  - "pytest 実行結果"
+
+acceptance_criteria:
+  - "モジュール仕様書 §14 unit 観点がテストでカバーされている"
+  - "`cd apps/reco && python -m pytest tests/unit/ -q` が成功する"
+  - "本番 DB / 外部 API / secret に依存していない"
+  - "epic_scope 外の変更を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-<issue-number>-mod-reco-002-recommendation-run-recorder-unit-test"
+  base: "feature/epic-<issue-number>-mod-reco-002-recommendation-run-recorder"
+  target: "feature/epic-<issue-number>-mod-reco-002-recommendation-run-recorder"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+phase: "07_開発・単体テスト"
+status: "Todo"
+priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+- "MOD-RECO-002 実装 Task が Epic Branch にマージ済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+- "task-mod-reco-002-recommendation-run-recorder-implementation"
+  exclusive_files:
+- "apps/reco/tests/unit/application/recommendation-run-recorder/**"
+- "apps/reco/tests/module/recommendation-run-recorder/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+- "unit test"
+- "pytest"
+- "coverage mapping"
+  commands:
+- "cd apps/reco && python -m pytest tests/unit/application/recommendation-run-recorder/ -v --tb=short"
+- "cd apps/reco && python -m pytest tests/unit/ -q --tb=short"
+  not_required:
+- "integration test"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+- "§14 unit 観点のカバレッジ"
+- "テストの再現性・安定性"
+- "epic_scope 外変更の有無"
+  specialist_reviews:
+docs: false
+test: true
+contract: false
+security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "Definition bootstrap 由来スキャフォールド。"
+  - "workstream: mod-reco-002-recommendation-run-recorder"

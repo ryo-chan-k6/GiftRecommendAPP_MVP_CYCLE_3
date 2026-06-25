@@ -1,0 +1,233 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-mod-reco-005-external-condition-feature-estimator"
+  title: "MOD-RECO-005:External Condition Feature Estimator"
+  summary: "MOD-RECO-005（External Condition Feature Estimator / 外部条件特徴量推定）に関するモジュール仕様書・実装・単体テストを管理するEpic。MOD-RECO-001 Orchestrator から呼び出され、推薦パイプラインの User Meaning 責務を担う（処理種別: OL）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計および 07_開発・単体テストにおいて、MOD-RECO-005（External Condition Feature Estimator）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  本モジュールは Recoモジュール一覧 §4 / §6 の User Meaning 分類モジュール（処理種別: OL、MVP対象 ○）である。
+  MOD-RECO-001 Recommendation Orchestrator から `ExecutionContext` 経由で呼び出される。
+  本 Epic は **Recoモジュール本体**（`apps/reco/src/reco/application/external-condition-feature-estimator/**`）に限定し、エンドポイント層（`apps/reco/src/reco/api/**`）は [Epic]API-INT-002 配下とする。
+  並列着手ウェーブ目安: 1（bootstrap Issue 参照）。
+
+objective: |
+  MOD-RECO-005 に関する Epic Issue と Epic Branch を作成し、配下 Task（モジュール仕様書 / 実装 / 単体テスト）の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "MOD-RECO-005 に関する子 Task の作業単位を整理する（モジュール仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/mod-reco-005-external-condition-feature-estimator/**）を整理する"
+
+out_of_scope:
+  - "API-INT-002 エンドポイント層（`apps/reco/src/reco/api/**`）"
+  - "API-PUB-002 Public API 実装"
+  - "MOD-RECO-001 Orchestrator 本体の変更（別 Epic #260）"
+  - "他 Recoモジュール（当該 MOD-RECO-005 以外）本体の設計・実装"
+  - "画面（SCR-*）の設計・実装"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 変更（専用 Task へ切り出し）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+  required: true
+  purpose: "モジュール設計・実装の前提確認"
+- path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+  required: true
+  purpose: "モジュール設計・実装の前提確認"
+- path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+  required: true
+  purpose: "モジュール設計・実装の前提確認"
+- path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+  required: true
+  purpose: "モジュール設計・実装の前提確認"
+- path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+  required: false
+  purpose: "モジュール設計・実装の前提確認"
+- path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+  required: false
+  purpose: "モジュール設計・実装の前提確認"
+- path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+  required: false
+  purpose: "モジュール設計・実装の前提確認"
+- path: "docs/04_ドメインモデル設計/Feature定義書.md"
+  required: false
+  purpose: "モジュール設計・実装の前提確認"
+- path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+  required: false
+  purpose: "モジュール設計・実装の前提確認"
+  templates: []
+  files: []
+  issues:
+    - number: 260
+      purpose: "前提 Epic（MOD-RECO-001 Recommendation Orchestrator 完了）"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]MOD-RECO-005:External Condition Feature Estimator）"
+  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-mod-reco-005-external-condition-feature-estimator）"
+  - "子 Task 候補一覧（モジュール仕様書 / 実装 / 単体テスト）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]MOD-RECO-005:External Condition Feature Estimator 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.forbidden_paths に apps/reco/src/reco/api/** が明示されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-<issue-number>-mod-reco-005-external-condition-feature-estimator"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: "MOD-RECO-005"
+  allowed_paths:
+    - "docs/06_実装設計/reco/MOD-RECO-005_External Condition Feature Estimatorモジュール仕様書.md"
+    - "apps/reco/src/reco/application/external-condition-feature-estimator/**"
+    - "apps/reco/tests/unit/application/external-condition-feature-estimator/**"
+    - "apps/reco/tests/module/external-condition-feature-estimator/**"
+    - "prompts/definitions/tasks/mod-reco-005-external-condition-feature-estimator/**"
+    - "prompts/definitions/reviews/mod-reco-005-external-condition-feature-estimator/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/api/**"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/**"
+    - "apps/api/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "module-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator 完了（ポート契約・処理順序の正本）"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/application/external-condition-feature-estimator/**"
+    - "docs/06_実装設計/reco/MOD-RECO-005_External Condition Feature Estimatorモジュール仕様書.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が MOD-RECO-005 モジュール本体に閉じているか確認する"
+    - "apps/reco/src/reco/api/** への変更が混入していないか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が MOD-RECO-005 本体に閉じているか"
+    - "epic_scope.allowed_paths / forbidden_paths が成果物化方針書 §3.5.2 と整合しているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Epic Definition bootstrap 由来のスキャフォールド。"
+
+risk_points:
+  - "物理配置パス（application/external-condition-feature-estimator/**）の最終確定"
+  - "Orchestrator スタブ差し替えタイミングとの整合"
+  - "domain/** / infrastructure/** への横断変更が必要になった場合の別 Task 化"
+
+human_decision_points:
+  - "物理配置パス（application/external-condition-feature-estimator/** vs pipeline/**）の採用可否"
+  - "並列ウェーブ 1 での着手タイミング"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "Recoモジュール一覧に MOD-RECO-005 が存在しない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "apps/reco/src/reco/api 配下への変更を本 Epic 配下 Task で実施する必要が出た場合"
+
+notes:
+  - "Epic は作業管理単位。成果物正本は子 Task で作成する。"
+  - "命名の正本は Task Definition設計書 §15.0・§15.1。"
+  - "子 Task: prompts/definitions/tasks/mod-reco-005-external-condition-feature-estimator/module-spec.yaml"
+  - "MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。#260 は関連 Issue として記載。"
+  - "bootstrap: prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"

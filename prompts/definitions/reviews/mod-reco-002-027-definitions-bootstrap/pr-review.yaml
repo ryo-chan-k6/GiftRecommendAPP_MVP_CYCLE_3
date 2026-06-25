@@ -1,0 +1,59 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-002-027-definitions-bootstrap-pr"
+  title: "MOD-RECO-002〜027 Definition bootstrap PRレビュー"
+  summary: "MOD-RECO-002〜027 Epic/Task/Review Definition 作成 chore PR の AI Review"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-774-mod-reco-002-027-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 774
+  task_definition: "prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+  source_branch: "chore/task-774-mod-reco-002-027-definitions-bootstrap"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+    required: true
+  issue:
+    number: 774
+    required: true
+  pr:
+    number: null
+    required: true
+
+review_points:
+  - "Epic 24 / Task 72 / Review 97 のファイル数"
+  - "MOD-RECO-001 構造との整合"
+  - "024/025/028/029 が含まれていないこと"
+  - "生成スクリプトの再現性"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新"
