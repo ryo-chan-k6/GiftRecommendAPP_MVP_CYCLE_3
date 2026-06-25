@@ -1,0 +1,191 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-recommendation-orchestrator-implementation-pr"
+  title: "MOD-RECO-001 Recommendation Orchestrator実装 PRレビュー"
+  summary: "Issue #766 Task（Recommendation Orchestrator 実装）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: "#766"
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/implementation.yaml"
+  source_branch: "feature/task-766-mod-reco-001-recommendation-orchestrator-implementation"
+  target_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  parent_epic_issue: "#260"
+  parent_epic_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/implementation.yaml"
+    required: true
+  issue:
+    number: 766
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "実装正本（責務・処理順序・例外・Reason fallback）との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "§5.2 処理順序との整合確認"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: false
+      purpose: "Result / Reason フィールドとの整合確認"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: false
+      purpose: "§17.2 汎用 Reason 文との整合確認"
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition（implementation.yaml）の scope を満たしているか"
+    - "out_of_scope（他 MOD-RECO-* 本体 / API-INT-002 エンドポイント層 / OpenAPI / DB）の変更が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に変更内容、検証結果、未実施事項が記載されているか"
+    - "Task PR で Related to #766 を使用し Closes を使っていないか"
+    - "PR target が親 Epic Branch であるか"
+  source:
+    - "モジュール仕様書 §5（責務）・§8（処理順序）・§10（例外・Reason fallback）と矛盾しないか"
+    - "Recoモジュール一覧 §5.2 の呼び出し順序がコード上で表現されているか"
+    - "MOD-RECO-019 の後に MOD-RECO-020 が呼ばれるか"
+    - "下位モジュールはポート＋スタブに限定されているか"
+    - "Orchestrator が DB 直書き込みを行っていないか"
+    - "依存方向（application → domain、infrastructure 直結の回避）が守られているか"
+    - "Reason fallback 注入が §10.3 と一致しているか"
+    - "既存 pipeline スキャフォールドとの責務重複が過剰でないか"
+  tests:
+    - "Orchestrator スモーク・処理順序の最小確認テストが含まれているか"
+    - "未実施テストの理由が PR 本文に記載されているか"
+  security:
+    - "secret や .env 実値が含まれていないか"
+  epic_scope:
+    - "epic_scope.allowed_paths 内に差分が収まっているか"
+    - "apps/reco/src/reco/api/** への変更が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Reviewで確認してほしい事項が明記されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "モジュール仕様書との不整合がある"
+      - "テスト不足または検証結果の記載不足がある"
+  needs_human_decision:
+    conditions:
+      - "pipeline スキャフォールドとの統合方針の判断が必要"
+      - "タイムアウトウォッチドッグ実装タイミングの判断が必要"
+  split_required:
+    conditions:
+      - "API-INT-002 エンドポイント層の変更が混在している"
+      - "他 MOD-RECO-* 本体の変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  tasks:
+    - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/implementation.yaml"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/implementation.yaml"
+  - "review.target.pr / input.pr.number は /create-pr 後に反映"
