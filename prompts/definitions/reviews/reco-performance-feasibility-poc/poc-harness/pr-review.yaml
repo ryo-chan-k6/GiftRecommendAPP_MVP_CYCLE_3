@@ -14,6 +14,7 @@ branch:
   worktree_required: true
 
 target:
+  pr: 768
   issue:
     number: 762
   parent_epic_issue: 759
@@ -47,4 +48,4 @@ review_points:
   - "secret 実値が含まれていないか"
 
 notes:
-  - "Issue #762"
+  - "Issue #762 / PR #768"
