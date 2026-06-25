@@ -106,8 +106,8 @@ Recommendation Orchestrator（推薦実行制御）は、Reco オンライン推
 
 | 依存先 | 方向 | 用途 | 失敗時の扱い | 備考 |
 | ------ | ---- | ---- | ------------ | ---- |
-| `MOD-RECO-002` Recommendation Run Recorder | 呼び出し | 推薦実行単位（`recommendation_run`）の記録開始 | パイプライン中断、`GRS-REC-002` 相当 | 処理順序 2 |
-| `MOD-RECO-003` Config Version Resolver | 呼び出し | 利用 config / model version の解決 | パイプライン中断、`GRS-REC-003` | 処理順序 3 |
+| `MOD-RECO-002` Recommendation Run Recorder | 呼び出し | 推薦実行単位（`recommendation_run`）の記録開始 | パイプライン中断、`GRS-REC-002` 相当 | 論理順序 2。**物理呼び出しは `003` 解決後**（§8.3.7） |
+| `MOD-RECO-003` Config Version Resolver | 呼び出し | 利用 config / model version の解決 | パイプライン中断、`GRS-REC-003` | 論理順序 3。**物理呼び出しは `002` INSERT より前**（§8.3.7） |
 | `MOD-RECO-004` User Semantic Extractor | 呼び出し | Semantic Concept 抽出 | パイプライン中断、`GRS-REC-004` | User Meaning フェーズ |
 | `MOD-RECO-005` External Condition Feature Estimator | 呼び出し | relationship / occasion から Feature 推定 | パイプライン中断、`GRS-REC-005` | |
 | `MOD-RECO-006` Internal Condition Feature Estimator | 呼び出し | preferred / non_preferred / free text から Feature 推定 | パイプライン中断、`GRS-REC-005` | |
@@ -154,9 +154,9 @@ Recommendation Orchestrator（推薦実行制御）は、Reco オンライン推
 flowchart TD
     START([API-INT-002 から Recommendation Request 受付]) --> INIT[実行コンテキスト初期化]
     INIT --> P0[Phase: request_received 記録依頼]
-    P0 --> R002[MOD-RECO-002 Run 記録]
-    R002 --> R003[MOD-RECO-003 Config 解決]
-    R003 --> UM[User Meaning フェーズ<br/>004→005→006→007→008→009→010]
+    P0 --> R003[MOD-RECO-003 Config 解決]
+    R003 --> R002[MOD-RECO-002 Run 記録]
+    R002 --> UM[User Meaning フェーズ<br/>004→005→006→007→008→009→010]
     UM --> RT[Retrieval フェーズ<br/>011→012→013]
     RT --> MT[Matching フェーズ<br/>014→015→016]
     MT --> RK[Ranking フェーズ<br/>017→018→019→020]
@@ -192,8 +192,8 @@ Recoモジュール一覧 §5.2 の処理順序に従う。Orchestrator は各�
 | --: | ---- | ---- | ---- | ---- |
 | 1 | 実行コンテキスト初期化 | `recommendation_request`, `trace_id` | `execution_context` | mode 判定を含む |
 | 2 | Phase Log（request_received） | `execution_context` | phase 記録依頼 | `MOD-RECO-028` |
-| 3 | Recommendation Run 記録 | `execution_context` | `recommendation_run` | `MOD-RECO-002` |
-| 4 | Config / Version 解決 | request context, mode | config_version 群 | `MOD-RECO-003` |
+| 3 | Config / Version 解決 | request context, mode | `config_versions` 群 | `MOD-RECO-003`。**物理呼び出しは `002` より前** |
+| 4 | Recommendation Run 記録 | `execution_context`, `config_versions` | `recommendation_run` | `MOD-RECO-002`。version 3 列を渡して INSERT |
 | 5 | Semantic 抽出 | request text / relationship / occasion | semantic_extraction_result | `MOD-RECO-004` |
 | 6 | 外部条件 Feature 推定 | relationship / occasion | external_feature_estimate | `MOD-RECO-005` |
 | 7 | 内部条件 Feature 推定 | preferred / non_preferred / free text | internal_feature_estimate | `MOD-RECO-006` |
@@ -216,7 +216,7 @@ Recoモジュール一覧 §5.2 の処理順序に従う。Orchestrator は各�
 | 24 | Reason 生成 | snapshot / score_breakdown / context | recommendation_reason | `MOD-RECO-023`。失敗時は §10.3 |
 | 25 | 正常終了・Result 返却 | 上記成果物 | `recommendation_result` | HTTP 200。Reason fallback 含む |
 
-**処理順序の正本**: Recoモジュール一覧 §5.2 を正とする。処理構成定義書 §5.4 および処理フロー概要図は抽象フローとして参照する。
+**処理順序の正本**: Recoモジュール一覧 §5.2 の **論理順序**（モジュール番号）を正とする。`MOD-RECO-002` / `003` については、`recommendation_run` INSERT に version 3 列必須のため **物理呼び出しは `003` 解決 → `002` INSERT** とする（`MOD-RECO-003` モジュール仕様書 §8.3.7）。処理構成定義書 §5.4 および処理フロー概要図は抽象フローとして参照する。
 
 **0件結果**: 候補 0 件は各下位モジュールの責務で検知する。最終的に表示対象 0 件の場合、HTTP 200 と `GRS-REC-001`（推薦候補0件）を返す方針はエラーコード定義書に従い、`MOD-RECO-024` と呼び出し元（api）で最終化する。
 
@@ -389,7 +389,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | --: | ---- | -------- | ---- |
 | 1 | 正常系（ui mode） | 全モジュール成功時に `Recommendation Result` が返ること | unit |
 | 2 | 正常系（evaluation / batch mode） | mode に応じた config 解決・パイプライン起動が行われること | unit |
-| 3 | 処理順序 | `MOD-RECO-002`→`003`→…→`023` の呼び出し順が Recoモジュール一覧 §5.2 と一致すること | unit |
+| 3 | 処理順序 | 論理順序が Recoモジュール一覧 §5.2 と一致すること。`002`/`003` の **物理呼び出しは `003` 解決 → `002` INSERT**（`MOD-RECO-003` §8.3.7） | unit |
 | 4 | Ranking 責務分離 | `MOD-RECO-019` の後に `MOD-RECO-020` が呼ばれること | unit |
 | 5 | 境界値（0件） | 候補 0 件時に `GRS-REC-001` 相当の扱いになること | unit |
 | 6 | 例外系（下位失敗） | 各フェーズ失敗でパイプラインが中断し、対応する `GRS-REC-*` が伝播すること | unit |
@@ -412,6 +412,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | ---- | -------- | -------------- |
 | 2026-06-25 | 初版作成 | Issue #758 |
 | 2026-06-26 | Human Review 反映（責務・Reason fallback・タイムアウト暫定値・未決事項解消） | Issue #758 |
+| 2026-06-25 | `003` 先行解決 → `002` INSERT の物理呼び出し順を §8.1 / §8.2 に反映 | Issue #779 / `MOD-RECO-003` §8.3.7 |
 
 ---
 
@@ -431,6 +432,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 4 | Reason 失敗時の部分成功 | `021`/`022` 成功後は **Result 返却優先**。回復不能時は §17.2 汎用 Reason 注入 + `isFallback: true` |
 | 5 | 処理順序の正本 | **Recoモジュール一覧 §5.2** |
 | 6 | タイムアウト | soft **2,000ms** / hard **4,000ms**（性能要件 §5 暫定引用）。**PoC 検証後に更新** |
+| 7 | `002`/`003` 物理呼び出し順 | **`MOD-RECO-003` 解決 → `MOD-RECO-002` INSERT**。allocate / commit 分割は不採用 | Human | `MOD-RECO-003` §8.3.7・§16.1 No.1 |
 
 ---
 
@@ -449,6 +451,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | RecommendationResult定義書 | `docs/04_ドメインモデル設計/RecommendationResult定義書.md` | 出力構造 |
 | Retrieval / Matching / Ranking / Reason生成定義書 | `docs/04_ドメインモデル設計/` 配下 | フェーズ前提 |
 | API-INT-002 契約仕様書 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | 呼び出し I/F（エンドポイント層は out of scope） |
+| MOD-RECO-003 仕様書 | `docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md` | Config 解決・`002`/`003` 物理呼び出し順（§8.3.7） |
 | module-spec テンプレート | `prompts/templates/docs/module-spec.md` | 章構成 |
 | Epic Definition | `prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml` | allowed_paths |
 | 性能要件（バックエンド） | `docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md` | タイムアウト暫定値の引用元 |
