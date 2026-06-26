@@ -6,7 +6,7 @@ review:
   title: "MOD-RECO-004 モジュール仕様書 PRレビュー"
   summary: "MOD-RECO-004（User Semantic Extractor）モジュール仕様書 Task の PR を AI Review する"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 799
   issue:
-    number: null
+    number: 798
   task_definition: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/module-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-798-mod-reco-004-user-semantic-extractor-module-spec"
   target_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
   parent_epic_issue: 797
   parent_epic_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
@@ -40,6 +40,10 @@ review_scope:
   security: true
 
 input:
+  issue:
+    number: 798
+  pr:
+    number: 799
   task_definition:
     path: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/module-spec.yaml"
     required: true
@@ -50,4 +54,4 @@ review_points:
   - "secret 非含有"
 
 notes:
-  - "Issue / PR 確定後に target.* / input.issue.number / input.pr.number を更新する"
+  - "PR #799 作成時に target.* / input.issue.number / input.pr.number を反映済み"
