@@ -117,7 +117,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-002-recommendation-run-recorder"
+  name: "feature/epic-776-mod-reco-002-recommendation-run-recorder"
   base: "develop"
   target: "develop"
   worktree_required: false
