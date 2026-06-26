@@ -18,16 +18,18 @@ from reco.application.recommendation_orchestrator.stubs import (
     StubConfigResolver,
     StubPipelineModule,
     StubReasonGenerator,
-    StubRunRecorder,
 )
+from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
 from reco.domain import (
     ExecutionCondition,
     ExecutionMode,
+    OccasionCondition,
     ReasonStatus,
     RecommendationRequest,
     RecommendationResult,
     RelationshipCondition,
     ResultStatus,
+    RunStatus,
 )
 
 
@@ -35,6 +37,7 @@ def _sample_request(*, mode: ExecutionMode = ExecutionMode.UI) -> Recommendation
     return RecommendationRequest(
         request_id="req-orchestrator-1",
         relationship=RelationshipCondition(relationship_code="friend"),
+        occasion=OccasionCondition(occasion_code="birthday"),
         execution=ExecutionCondition(mode=mode, top_k=5),
     )
 
@@ -56,12 +59,23 @@ def test_ui_mode_success_returns_recommendation_result() -> None:
     assert outcome.recommendation_result.item_count > 0
     assert outcome.execution_context is not None
     assert outcome.execution_context.execution_mode == ExecutionMode.UI
+    assert outcome.execution_context.recommendation_run is not None
+    assert outcome.execution_context.recommendation_run.status is RunStatus.SUCCEEDED
+    assert "model_versions.embedding" in outcome.execution_context.config_versions
 
 
-# §14 No.2 正常系（evaluation / batch mode）
+def test_default_stub_ports_wires_config_version_resolver() -> None:
+    from reco.application.config_version_resolver import ConfigVersionResolver
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.config_resolver, ConfigVersionResolver)
+
+
+# §14 No.2 正常系（evaluation / batch mode）— Stub が execution_mode を echo する挙動
 @pytest.mark.parametrize("mode", [ExecutionMode.EVALUATION, ExecutionMode.BATCH])
 def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> None:
     ports, _ = build_default_stub_ports()
+    ports = _ports_with(ports, config_resolver=StubConfigResolver())
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(mode=mode),
         trace_id=f"trace-{mode.value}",
@@ -183,7 +197,6 @@ def test_downstream_failure_stops_pipeline_and_returns_error() -> None:
     ports, helpers = build_default_stub_ports()
     ports = _ports_with(
         ports,
-        run_recorder=StubRunRecorder(),
         config_resolver=StubConfigResolver(should_fail=True),
     )
 
@@ -196,6 +209,30 @@ def test_downstream_failure_stops_pipeline_and_returns_error() -> None:
     assert outcome.reco_error is not None
     assert outcome.reco_error.error_code == "GRS-REC-003"
     assert outcome.execution_context is not None
+    assert "MOD-RECO-002" not in outcome.execution_context.completed_modules
+    assert "MOD-RECO-004" not in outcome.execution_context.completed_modules
+    assert helpers["error_handler"].error_log_events
+
+
+# §14 No.7b MOD-RECO-002 失敗（003 成功後に 002 が失敗）
+def test_run_recorder_failure_after_config_resolver() -> None:
+    ports, helpers = build_default_stub_ports()
+    ports = _ports_with(
+        ports,
+        run_recorder=build_scaffold_run_recorder(should_fail=True),
+    )
+
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-run-recorder-fail",
+    )
+
+    assert outcome.success is False
+    assert outcome.reco_error is not None
+    assert outcome.reco_error.error_code == "GRS-REC-002"
+    assert outcome.execution_context is not None
+    assert "MOD-RECO-003" in outcome.execution_context.completed_modules
+    assert "MOD-RECO-002" not in outcome.execution_context.completed_modules
     assert "MOD-RECO-004" not in outcome.execution_context.completed_modules
     assert helpers["error_handler"].error_log_events
 

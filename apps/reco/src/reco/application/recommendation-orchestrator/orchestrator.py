@@ -110,7 +110,7 @@ class RecommendationOrchestrator:
 
         if context.recommendation_run is not None:
             context.recommendation_run = context.recommendation_run.with_status(
-                RunStatus.COMPLETED
+                RunStatus.SUCCEEDED
             )
 
         if self._ports.metric_logger is not None:
@@ -130,8 +130,8 @@ class RecommendationOrchestrator:
         )
 
     def _execute_pipeline(self, context: ExecutionContext) -> ExecutionContext:
-        context = self._invoke_run_recorder(context)
         context = self._invoke_config_resolver(context)
+        context = self._invoke_run_recorder(context)
 
         for module in self._ports.ordered_pipeline_modules():
             if module.module_id in {"MOD-RECO-021", "MOD-RECO-022"}:

@@ -38,7 +38,8 @@ agent:
 
 background: |
   Epic 配下で MOD-RECO-003 モジュール仕様書 Task 完了後、モジュール本体を `apps/reco/src/reco/application/config-version-resolver/**` に実装する。
-  Orchestrator（MOD-RECO-001）のポート契約に適合する実装とし、スタブ差し替えは別 Task または Orchestrator 側 wiring Task で扱う。
+  Orchestrator（MOD-RECO-001）のポート契約に適合する実装とする。
+  配線方針は `MOD-RECO-001` §8.4（3 段階ハイブリッド）に従う。起動フェーズ（002/003）は `stubs.py` へ本実装配線可。それ以外のフェーズ Wiring は別 Task。
 
 objective: |
   MOD-RECO-003 モジュール本体を実装し、モジュール仕様書の責務・入出力・例外方針を満たす。
@@ -46,12 +47,14 @@ objective: |
 
 scope:
   - "`apps/reco/src/reco/application/config-version-resolver/**` へのモジュール本体実装"
-  - "Orchestrator ポート（PipelineModulePort 等）に適合する公開 I/F"
+  - "Orchestrator ポート（ConfigResolverPort）に適合する公開 I/F"
+  - "Orchestrator 統合テスト（明示 DI、`test_orchestrator_integration.py`）"
+  - "起動フェーズ Wiring：`recommendation-orchestrator/stubs.py` の `config_resolver` を本実装へ（`MOD-RECO-001` §8.4.2）"
   - "必要最小限の domain / infrastructure 利用（epic_scope 内）"
   - "実装スモークテスト（最小限）"
 
 out_of_scope:
-  - "Orchestrator 本体のスタブ差し替え（別 Task）"
+  - "起動フェーズ以外の Orchestrator スタブ差し替え（フェーズ Wiring Task）"
   - "API-INT-002 エンドポイント層"
   - "他 Recoモジュール本体"
   - "OpenAPI / DB schema 変更"
@@ -98,6 +101,8 @@ deliverables:
 acceptance_criteria:
   - "`apps/reco/src/reco/application/config-version-resolver/**` に実装がある"
   - "モジュール仕様書と矛盾しない"
+  - "Orchestrator 統合テスト（`test_orchestrator_integration.py`）が存在する"
+  - "起動フェーズ：`build_default_stub_ports` が `ConfigVersionResolver` を参照する"
   - "apps/reco/src/reco/api/** を変更していない"
   - "他 MOD 本体ディレクトリを変更していない"
   - "secret、APIキー、.env 実値が含まれていない"

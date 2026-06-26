@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from uuid import uuid4
 
 from reco.domain.recommendation.inputs import ExecutionMode
@@ -12,7 +15,55 @@ from reco.domain.recommendation.result import (
     RecommendationResultItem,
     ResultStatus,
 )
-from reco.domain.recommendation.run import RecommendationRun, RunStatus
+
+
+def _ensure_run_recorder_package() -> None:
+    import_root = "reco.application.recommendation_run_recorder"
+    if import_root in sys.modules:
+        return
+
+    init_path = (
+        Path(__file__).resolve().parent.parent
+        / "recommendation-run-recorder/__init__.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        import_root,
+        init_path,
+        submodule_search_locations=[str(init_path.parent)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("failed to load recommendation run recorder package")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+
+def _ensure_config_version_resolver_package() -> None:
+    import_root = "reco.application.config_version_resolver"
+    if import_root in sys.modules:
+        return
+
+    init_path = (
+        Path(__file__).resolve().parent.parent
+        / "config-version-resolver/__init__.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        import_root,
+        init_path,
+        submodule_search_locations=[str(init_path.parent)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("failed to load config version resolver package")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+
+_ensure_run_recorder_package()
+_ensure_config_version_resolver_package()
+
+from reco.application.config_version_resolver import build_default_config_resolver  # noqa: E402
+from reco.application.recommendation_run_recorder import build_scaffold_run_recorder  # noqa: E402
 
 from .errors import RecoError
 from .execution_context import ExecutionContext
@@ -27,27 +78,7 @@ from .ports import (
     ReasonGenerationOutcome,
     ReasonGenerationResult,
     ReasonGeneratorPort,
-    RunRecorderPort,
 )
-
-
-@dataclass
-class StubRunRecorder:
-    module_id: str = "MOD-RECO-002"
-    should_fail: bool = False
-
-    def record_run(self, context: ExecutionContext) -> ExecutionContext:
-        if self.should_fail:
-            raise RuntimeError("run recorder failed")
-
-        run_id = context.run_id or f"run-{uuid4()}"
-        context.recommendation_run = RecommendationRun(
-            run_id=run_id,
-            request_id=context.recommendation_request.request_id,
-            status=RunStatus.RUNNING,
-        )
-        context.completed_modules.append(self.module_id)
-        return context
 
 
 @dataclass
@@ -60,9 +91,9 @@ class StubConfigResolver:
             raise RuntimeError("config resolver failed")
 
         context.config_versions = {
-            "semantic_config_version": "scaffold-semantic-v1",
-            "model_version": "scaffold-model-v1",
-            "ranking_config": "scaffold-ranking-v1",
+            "semantic_config_version_id": "scaffold-semantic-v1",
+            "model_version_id": "scaffold-model-v1",
+            "ranking_config_id": "scaffold-ranking-v1",
             "execution_mode": context.execution_mode.value,
         }
         context.completed_modules.append(self.module_id)
@@ -216,8 +247,8 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     metric_logger = StubMetricLogger()
 
     ports = OrchestratorPorts(
-        run_recorder=StubRunRecorder(),
-        config_resolver=StubConfigResolver(),
+        run_recorder=build_scaffold_run_recorder(),
+        config_resolver=build_default_config_resolver(),
         user_semantic_extractor=StubPipelineModule(
             "MOD-RECO-004", "semantic_extracted"
         ),

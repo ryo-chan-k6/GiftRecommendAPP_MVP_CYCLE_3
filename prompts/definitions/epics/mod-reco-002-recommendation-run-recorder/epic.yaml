@@ -117,7 +117,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-002-recommendation-run-recorder"
+  name: "feature/epic-776-mod-reco-002-recommendation-run-recorder"
   base: "develop"
   target: "develop"
   worktree_required: false
@@ -142,8 +142,11 @@ epic_scope:
     - "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
     - "apps/reco/src/reco/application/recommendation-run-recorder/**"
     - "apps/reco/src/reco/domain/**"
+    - "apps/reco/src/reco/infrastructure/db/repositories/recommendation_run*"
+    - "apps/reco/src/reco/infrastructure/db/repositories/pair_master*"
     - "apps/reco/src/reco/pipeline/**"
     - "apps/reco/tests/unit/application/recommendation-run-recorder/**"
+    - "apps/reco/tests/unit/infrastructure/db/repositories/recommendation_run*"
     - "apps/reco/tests/module/recommendation-run-recorder/**"
     - "prompts/definitions/tasks/mod-reco-002-recommendation-run-recorder/**"
     - "prompts/definitions/reviews/mod-reco-002-recommendation-run-recorder/**"
@@ -259,4 +262,5 @@ notes:
   - "命名の正本は Task Definition設計書 §15.0・§15.1。"
   - "子 Task: prompts/definitions/tasks/mod-reco-002-recommendation-run-recorder/module-spec.yaml"
   - "MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。#260 は関連 Issue として記載。"
+  - "Issue #777 exception_scope: module-spec Task のみ recommendation-orchestrator/** の最小整合を許可（forbidden_paths 例外。Human 判断）"
   - "bootstrap: prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"

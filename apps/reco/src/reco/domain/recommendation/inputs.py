@@ -78,6 +78,7 @@ class ExecutionCondition:
     include_reason: bool | None = None
     include_debug_info: bool | None = None
     eval_case_id: str | None = None
+    semantic_config_version_id: str | None = None
     config_name: str | None = None
     version_label: str | None = None
     model_version_id: str | None = None
