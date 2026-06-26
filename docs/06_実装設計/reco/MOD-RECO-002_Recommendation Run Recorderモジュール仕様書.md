@@ -370,6 +370,7 @@ Error Code の正本はエラーコード定義書。本モジュールは例外
 | 2026-06-26 | Epic `allowed_paths` に infrastructure Repository パスを追記 | Issue #777 |
 | 2026-06-27 | 関連正本 docs 横断整合（MOD-RECO-001・Recoモジュール一覧・状態遷移・機能×モジュール対応表） | Issue #777 |
 | 2026-06-27 | exception_scope: Orchestrator 003→002 呼び出し順・RunStatus DB enum 整合 | Issue #777 |
+| 2026-06-27 | Orchestrator `build_default_stub_ports` を `RecommendationRunRecorder` 参照へ更新 | Issue #783 |
 
 ---
 
@@ -421,12 +422,15 @@ sequenceDiagram
 | 層 | 配置パス | 責務 |
 | -- | -------- | ---- |
 | Application | `apps/reco/src/reco/application/recommendation-run-recorder/` | `RunRecorderPort` 実装、状態遷移、Pair 解決オーケストレーション |
+| Application | `apps/reco/src/reco/application/recommendation-run-recorder/factory.py` | MVP scaffold 向け `build_scaffold_run_recorder`（in-memory Repository 配線） |
 | Domain | `apps/reco/src/reco/domain/recommendation/run.py` | `RecommendationRun` エンティティ、`run_status` enum（DB enum と整合） |
 | Infrastructure | `apps/reco/src/reco/infrastructure/db/repositories/recommendation_run_repository.py` | `recommendation_run` の INSERT / UPDATE（`session.py` 利用） |
 | Infrastructure | `apps/reco/src/reco/infrastructure/db/repositories/pair_master_reader.py`（任意） | Pair 解決用 SELECT。単純なら Repository 内に同居可 |
 | Logger | `apps/reco/src/reco/infrastructure/logger/` | 構造化ログ出力（既存 scaffold） |
 
 **根拠（事実）**: 現行リポジトリには `infrastructure/db/session.py`、`domain/recommendation/run.py`、`application/recommendation-orchestrator/ports.py`（`RunRecorderPort`）が存在する。`pipeline/**` は計算ステージ用であり Run 永続化は配置しない。
+
+**Orchestrator 配線（MVP）**: `MOD-RECO-001` の `build_default_stub_ports`（`application/recommendation-orchestrator/stubs.py`）は、Run 記録に **`StubRunRecorder` ではなく `RecommendationRunRecorder`**（`build_scaffold_run_recorder` 経由・in-memory Repository）を参照する。他下位モジュールは引き続きスタブ実装。
 
 **Epic scope**: `epic.yaml` の `allowed_paths` に `infrastructure/db/repositories/recommendation_run*` / `pair_master*` および対応 unit test パスを **追記済み**（Issue #777）。
 
@@ -456,6 +460,7 @@ Issue #777 exception_scope により、以下は本 Issue で整合済み。
 | ---- | -------- | ---- |
 | `MOD-RECO-001` Orchestrator 実装 | `_execute_pipeline` の呼び出し順 **003 → 002（INSERT）**、`ORCHESTRATOR_MODULE_ORDER` | Issue #777 で完了 |
 | `domain/recommendation/run.py` | `RunStatus` を DB enum へ整合 | Issue #777 で完了 |
+| `MOD-RECO-001` Orchestrator スタブ配線 | `build_default_stub_ports` が `RecommendationRunRecorder` を参照 | Issue #783 で完了 |
 
 ---
 
@@ -477,4 +482,5 @@ Issue #777 exception_scope により、以下は本 Issue で整合済み。
 - `API-INT-002` エンドポイント層は `[Epic]API-INT-002` 配下で設計・実装する
 - 配置パスは `apps/reco/src/reco/application/recommendation-run-recorder/**`（application）と `infrastructure/db/repositories/`（Repository）に分離（§16.3）
 - Orchestrator 呼び出し順（003 → 002 INSERT）は Issue #777 exception_scope で実装整合済み（`application/recommendation-orchestrator/**`）
+- Orchestrator の MVP デフォルトポート（`build_default_stub_ports`）は Run 記録に `RecommendationRunRecorder` を配線済み（Issue #783）
 - `recommendation_run` の DDL / migration は本 Epic の DB 専用 Task で実施する（本 Task は docs のみ）
