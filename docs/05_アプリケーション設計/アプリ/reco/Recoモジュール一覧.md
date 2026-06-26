@@ -236,7 +236,6 @@ flowchart TD
 **Orchestrator 物理呼び出し順（`MOD-RECO-002` / `003`）**: `recommendation_run` INSERT には version 3 列が必須のため、Orchestrator は **MOD-RECO-003 実行後**に MOD-RECO-002 の INSERT（`accepted`）を呼ぶ（`MOD-RECO-001` / `MOD-RECO-002` モジュール仕様書 §8.2.1）。上表の「順序」はモジュール ID に対応する論理整理であり、物理呼び出し順と矛盾する場合はモジュール仕様書の呼び出し順を正とする。
 
 **Orchestrator 配線（Wiring）**: 下位モジュール本体実装と `build_default_stub_ports` への本実装配線は **3 段階ハイブリッド**（`MOD-RECO-001` モジュール仕様書 §8.4）。起動フェーズ（`002` / `003`）は配線済み。`004`〜`023` はフェーズ単位 Wiring Task で順次差し替える。
-
 ---
 
 ## 6. モジュール詳細

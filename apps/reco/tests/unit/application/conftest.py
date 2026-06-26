@@ -5,11 +5,9 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-_SRC_ROOT = Path(__file__).resolve().parents[3] / "src/reco/application"
 
-
-def _load_hyphenated_package(import_root: str, directory_name: str) -> None:
-    init_path = _SRC_ROOT / directory_name / "__init__.py"
+def _load_package(import_root: str, init_relative: str) -> None:
+    init_path = Path(__file__).resolve().parents[3] / init_relative
     spec = importlib.util.spec_from_file_location(
         import_root,
         init_path,
@@ -22,15 +20,27 @@ def _load_hyphenated_package(import_root: str, directory_name: str) -> None:
     spec.loader.exec_module(module)
 
 
-_load_hyphenated_package(
-    "reco.application.recommendation_orchestrator",
-    "recommendation-orchestrator",
-)
-_load_hyphenated_package(
-    "reco.application.recommendation_run_recorder",
-    "recommendation-run-recorder",
-)
-_load_hyphenated_package(
-    "reco.application.config_version_resolver",
-    "config-version-resolver",
-)
+def _load_orchestrator_package() -> None:
+    _load_package(
+        "reco.application.recommendation_orchestrator",
+        "src/reco/application/recommendation-orchestrator/__init__.py",
+    )
+
+
+def _load_run_recorder_package() -> None:
+    _load_package(
+        "reco.application.recommendation_run_recorder",
+        "src/reco/application/recommendation-run-recorder/__init__.py",
+    )
+
+
+def _load_config_version_resolver_package() -> None:
+    _load_package(
+        "reco.application.config_version_resolver",
+        "src/reco/application/config-version-resolver/__init__.py",
+    )
+
+
+_load_run_recorder_package()
+_load_orchestrator_package()
+_load_config_version_resolver_package()

@@ -22,24 +22,28 @@ if TYPE_CHECKING:
         ExecutionContext,
     )
 
+_VERSION_KEY_CANDIDATES: tuple[tuple[str, ...], ...] = (
+    ("semantic_config_version_id", "semantic_config_version"),
+    ("model_version_id", "model_version", "model_versions.embedding"),
+    ("ranking_config_id", "ranking_config"),
+)
+
+
 def _resolve_config_version_ids(
     config_versions: dict[str, str],
 ) -> tuple[str, str, str] | None:
-    semantic_id = config_versions.get("semantic_config_version_id") or config_versions.get(
-        "semantic_config_version"
-    )
-    # MOD-RECO-003 §9.1: Run 列 model_version_id には embedding を代表値として記録
-    model_id = (
-        config_versions.get("model_version_id")
-        or config_versions.get("model_version")
-        or config_versions.get("model_versions.embedding")
-    )
-    ranking_id = config_versions.get("ranking_config_id") or config_versions.get(
-        "ranking_config"
-    )
-    if not semantic_id or not model_id or not ranking_id:
-        return None
-    return semantic_id, model_id, ranking_id
+    resolved: list[str] = []
+    for keys in _VERSION_KEY_CANDIDATES:
+        value = None
+        for key in keys:
+            candidate = config_versions.get(key)
+            if candidate:
+                value = candidate
+                break
+        if not value:
+            return None
+        resolved.append(value)
+    return resolved[0], resolved[1], resolved[2]
 
 
 def _to_domain_run(record: RecommendationRunRecord) -> RecommendationRun:
