@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 796
   issue:
     number: 778
   task_definition: "prompts/definitions/epics/mod-reco-003-config-version-resolver/epic.yaml"
