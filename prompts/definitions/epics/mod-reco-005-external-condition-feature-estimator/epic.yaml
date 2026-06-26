@@ -103,7 +103,7 @@ output:
 
 deliverables:
   - "Epic Issue（タイトル: [Epic]MOD-RECO-005:External Condition Feature Estimator）"
-  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-mod-reco-005-external-condition-feature-estimator）"
+  - "Epic Branch（develop 起点 / feature/epic-805-mod-reco-005-external-condition-feature-estimator）"
   - "子 Task 候補一覧（モジュール仕様書 / 実装 / 単体テスト）"
 
 acceptance_criteria:
@@ -117,7 +117,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-005-external-condition-feature-estimator"
+  name: "feature/epic-805-mod-reco-005-external-condition-feature-estimator"
   base: "develop"
   target: "develop"
   worktree_required: false
