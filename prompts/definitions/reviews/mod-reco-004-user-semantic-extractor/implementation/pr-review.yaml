@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 801
   issue:
     number: 800
   task_definition: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/implementation.yaml"
