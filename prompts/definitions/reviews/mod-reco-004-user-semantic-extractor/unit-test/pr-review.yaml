@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 803
   issue:
     number: 802
   task_definition: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/unit-test.yaml"
