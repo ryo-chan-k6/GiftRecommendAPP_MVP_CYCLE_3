@@ -61,12 +61,21 @@ def test_ui_mode_success_returns_recommendation_result() -> None:
     assert outcome.execution_context.execution_mode == ExecutionMode.UI
     assert outcome.execution_context.recommendation_run is not None
     assert outcome.execution_context.recommendation_run.status is RunStatus.SUCCEEDED
+    assert "model_versions.embedding" in outcome.execution_context.config_versions
 
 
-# §14 No.2 正常系（evaluation / batch mode）
+def test_default_stub_ports_wires_config_version_resolver() -> None:
+    from reco.application.config_version_resolver import ConfigVersionResolver
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.config_resolver, ConfigVersionResolver)
+
+
+# §14 No.2 正常系（evaluation / batch mode）— Stub が execution_mode を echo する挙動
 @pytest.mark.parametrize("mode", [ExecutionMode.EVALUATION, ExecutionMode.BATCH])
 def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> None:
     ports, _ = build_default_stub_ports()
+    ports = _ports_with(ports, config_resolver=StubConfigResolver())
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(mode=mode),
         trace_id=f"trace-{mode.value}",

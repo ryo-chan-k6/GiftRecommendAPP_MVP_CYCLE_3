@@ -106,8 +106,8 @@ Recommendation Orchestrator（推薦実行制御）は、Reco オンライン推
 
 | 依存先 | 方向 | 用途 | 失敗時の扱い | 備考 |
 | ------ | ---- | ---- | ------------ | ---- |
-| `MOD-RECO-003` Config Version Resolver | 呼び出し | 利用 config / model version の解決 | パイプライン中断、`GRS-REC-003` | 物理呼び出し順 2（Recoモジュール一覧 §5.2 順序 3） |
-| `MOD-RECO-002` Recommendation Run Recorder | 呼び出し | 推薦実行単位（`recommendation_run`）の INSERT / 状態遷移 | パイプライン中断、`GRS-REC-002` 相当 | 物理呼び出し順 3（§8.2.1）。`003` 解決後に INSERT |
+| `MOD-RECO-003` Config Version Resolver | 呼び出し | 利用 config / model version の解決 | パイプライン中断、`GRS-REC-003` | 物理呼び出し順 2。論理順序 3。**`002` INSERT より前**（§8.2.1 / `MOD-RECO-003` §8.3.7） |
+| `MOD-RECO-002` Recommendation Run Recorder | 呼び出し | 推薦実行単位（`recommendation_run`）の INSERT / 状態遷移 | パイプライン中断、`GRS-REC-002` 相当 | 物理呼び出し順 3。論理順序 2。**`003` 解決後に INSERT**（§8.2.1） |
 | `MOD-RECO-004` User Semantic Extractor | 呼び出し | Semantic Concept 抽出 | パイプライン中断、`GRS-REC-004` | User Meaning フェーズ |
 | `MOD-RECO-005` External Condition Feature Estimator | 呼び出し | relationship / occasion から Feature 推定 | パイプライン中断、`GRS-REC-005` | |
 | `MOD-RECO-006` Internal Condition Feature Estimator | 呼び出し | preferred / non_preferred / free text から Feature 推定 | パイプライン中断、`GRS-REC-005` | |
@@ -196,8 +196,8 @@ Recoモジュール一覧 §5.2 のモジュール整理に従い、Orchestrator
 | --: | ---- | ---- | ---- | ---- |
 | 1 | 実行コンテキスト初期化 | `recommendation_request`, `trace_id` | `execution_context` | mode 判定を含む |
 | 2 | Phase Log（request_received） | `execution_context` | phase 記録依頼 | `MOD-RECO-028` |
-| 3 | Config / Version 解決 | request context, mode | config_version 群 | `MOD-RECO-003` |
-| 4 | Recommendation Run 記録（INSERT accepted） | `execution_context`（version 解決済み） | `recommendation_run` | `MOD-RECO-002` |
+| 3 | Config / Version 解決 | request context, mode | `config_versions` 群 | `MOD-RECO-003`。**物理呼び出しは `002` INSERT より前** |
+| 4 | Recommendation Run 記録（INSERT accepted） | `execution_context`（version 解決済み） | `recommendation_run` | `MOD-RECO-002`。version 3 列を渡して INSERT |
 | 5 | Semantic 抽出 | request text / relationship / occasion | semantic_extraction_result | `MOD-RECO-004` |
 | 6 | 外部条件 Feature 推定 | relationship / occasion | external_feature_estimate | `MOD-RECO-005` |
 | 7 | 内部条件 Feature 推定 | preferred / non_preferred / free text | internal_feature_estimate | `MOD-RECO-006` |
@@ -220,7 +220,7 @@ Recoモジュール一覧 §5.2 のモジュール整理に従い、Orchestrator
 | 24 | Reason 生成 | snapshot / score_breakdown / context | recommendation_reason | `MOD-RECO-023`。失敗時は §10.3 |
 | 25 | 正常終了・Result 返却 | 上記成果物 | `recommendation_result` | HTTP 200。Reason fallback 含む |
 
-**処理順序の正本**: Recoモジュール一覧 §5.2（モジュール ID 順）および本仕様書 §8.2.1（`003`→`002` INSERT の物理呼び出し順）。処理構成定義書 §5.4 および処理フロー概要図は抽象フローとして参照する。
+**処理順序の正本**: Recoモジュール一覧 §5.2 の **論理順序**（モジュール ID 順）を正とする。`MOD-RECO-002` / `003` については、`recommendation_run` INSERT に version 3 列必須のため **物理呼び出しは `003` 解決 → `002` INSERT** とする（§8.2.1、`MOD-RECO-003` モジュール仕様書 §8.3.7）。処理構成定義書 §5.4 および処理フロー概要図は抽象フローとして参照する。
 
 **0件結果**: 候補 0 件は各下位モジュールの責務で検知する。最終的に表示対象 0 件の場合、HTTP 200 と `GRS-REC-001`（推薦候補0件）を返す方針はエラーコード定義書に従い、`MOD-RECO-024` と呼び出し元（api）で最終化する。
 
@@ -234,6 +234,45 @@ Recoモジュール一覧 §5.2 のモジュール整理に従い、Orchestrator
 | 実行モード分岐 | `ui` / `evaluation` / `batch` に応じて `MOD-RECO-003` へ mode を渡し、利用 config を切り替える |
 | Ranking 責務分離 | `MOD-RECO-019`（final_score）→ `MOD-RECO-020`（rank）の順で呼び出す。機能×モジュール対応表と整合 |
 | Reason fallback | `MOD-RECO-023` 回復不能時、Reason生成定義書 §17.2 汎用 Reason を注入し `isFallback: true` とする（§10.3） |
+
+### 8.4 下位モジュール配線方針（Wiring・Human 決定）
+
+Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モジュール本体実装**と **`build_default_stub_ports` への本実装配線（Wiring）** は分離する。Wiring とは `StubXxx` クラスの削除ではなく、MVP デフォルト composition で **本実装 Port を参照する**ことである。`StubXxx` は失敗注入・Orchestrator 単体テスト用に **残す**。
+
+#### 8.4.1 3 段階（ハイブリッド）
+
+| 段階 | タイミング | 成果物 | 備考 |
+| ---- | ---------- | ------ | ---- |
+| 1. モジュール実装 Task | 各 `MOD-RECO-*` Epic の implementation Task | モジュール本体、Port 適合、**Orchestrator 統合テスト（明示 DI）** | 原則 **`stubs.py` は変更しない** |
+| 2. フェーズ Wiring Task | Epic 内の integration milestone | `build_default_stub_ports` の該当 Port を本実装へ差し替え | **フェーズ単位**（下表）。並列 Task 競合を避ける |
+| 3. Composition 完成 Task | `MOD-RECO-001` Epic 締め | 本番 DI（DB Repository 等）、E2E 強化 | API-INT-002 接続後 |
+
+#### 8.4.2 フェーズ Wiring 単位（MVP）
+
+| Wiring フェーズ | 対象モジュール | 状態 |
+| --------------- | -------------- | ---- |
+| 起動 | `003` Config Version Resolver、`002` Run Recorder | **配線済み**（`build_default_config_resolver` / `build_scaffold_run_recorder`） |
+| User Meaning | `004`〜`010` | 未配線（スタブ） |
+| Retrieval | `011`〜`013` | 未配線 |
+| Matching | `014`〜`016` | 未配線 |
+| Ranking | `017`〜`020` | 未配線 |
+| 出力 | `021`〜`023` | 未配線 |
+
+**例外（起動フェーズ）**: `002` / `003` はモジュール間 I/F（version 3 列、`003`→`002` 物理順）が強く、`002` 実装 Task（#783）および `003` 実装完了時点で **起動フェーズ Wiring を実施済み**とする。
+
+#### 8.4.3 Task Definition との関係
+
+- 各モジュール **implementation Task** の `out_of_scope` に「Orchestrator 本体のスタブ差し替え（**起動フェーズを除く**）」を記載する
+- **integration Task 相当**: モジュール Task 必須成果物として `tests/unit/application/<module>/test_orchestrator_integration.py`（または同等）を 1 本以上置き、**明示 DI** で Orchestrator 連携を検証する
+- **Wiring Task** は `MOD-RECO-001` Epic またはフェーズ代表 Epic 配下で Issue 化し、`recommendation-orchestrator/stubs.py` の `exclusive_files` として直列化する
+
+#### 8.4.4 配置
+
+| 責務 | 配置 |
+| ---- | ---- |
+| `StubXxx` 実装 | `application/recommendation-orchestrator/stubs.py` |
+| MVP デフォルト composition | `build_default_stub_ports()`（同上） |
+| 本番 composition（将来） | `apps/reco` の composition root（別 Task） |
 
 ---
 
@@ -416,7 +455,9 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | ---- | -------- | -------------- |
 | 2026-06-25 | 初版作成 | Issue #758 |
 | 2026-06-26 | Human Review 反映（責務・Reason fallback・タイムアウト暫定値・未決事項解消） | Issue #758 |
+| 2026-06-25 | `003` 先行解決 → `002` INSERT の物理呼び出し順を §8.1 / §8.2 に反映 | Issue #779 / `MOD-RECO-003` §8.3.7 |
 | 2026-06-27 | MOD-RECO-002 整合（`003`→`002` INSERT の物理呼び出し順・§8.2.1 追加） | Issue #777 |
+| 2026-06-26 | §8.4 下位モジュール配線方針（3 段階ハイブリッド）を Human 決定として反映 | 配線方針採用 |
 
 ---
 
@@ -436,7 +477,8 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 4 | Reason 失敗時の部分成功 | `021`/`022` 成功後は **Result 返却優先**。回復不能時は §17.2 汎用 Reason 注入 + `isFallback: true` |
 | 5 | 処理順序の正本 | **Recoモジュール一覧 §5.2**（モジュール ID 順）。**物理呼び出し順**は `003`→`002` INSERT（§8.2.1、`MOD-RECO-002` §8.2.1 と整合） |
 | 6 | タイムアウト | soft **2,000ms** / hard **4,000ms**（性能要件 §5 暫定引用）。**PoC 検証後に更新** |
-| 7 | `002`/`003` 呼び出し順 | **`MOD-RECO-003` 解決後に `MOD-RECO-002` INSERT**（Issue #777 / `MOD-RECO-002` §16.1 No.1） |
+| 7 | `002`/`003` 物理呼び出し順 | **`MOD-RECO-003` 解決 → `MOD-RECO-002` INSERT**。allocate / commit 分割は不採用 | Human | §8.2.1、`MOD-RECO-003` §8.3.7・§16.1 No.1 |
+| 8 | 下位モジュール配線（Wiring） | **3 段階ハイブリッド**（§8.4）。実装 Task + フェーズ Wiring + Composition 完成 | Human | §8.4 |
 
 ---
 
@@ -455,6 +497,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | RecommendationResult定義書 | `docs/04_ドメインモデル設計/RecommendationResult定義書.md` | 出力構造 |
 | Retrieval / Matching / Ranking / Reason生成定義書 | `docs/04_ドメインモデル設計/` 配下 | フェーズ前提 |
 | API-INT-002 契約仕様書 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | 呼び出し I/F（エンドポイント層は out of scope） |
+| MOD-RECO-003 仕様書 | `docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md` | Config 解決・`002`/`003` 物理呼び出し順（§8.3.7） |
 | module-spec テンプレート | `prompts/templates/docs/module-spec.md` | 章構成 |
 | Epic Definition | `prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml` | allowed_paths |
 | 性能要件（バックエンド） | `docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md` | タイムアウト暫定値の引用元 |

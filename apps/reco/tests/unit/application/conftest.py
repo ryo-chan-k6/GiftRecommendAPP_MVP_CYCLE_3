@@ -1,4 +1,4 @@
-"""Test bootstrap for hyphenated recommendation-orchestrator package path."""
+"""Test bootstrap for hyphenated application package paths."""
 
 from __future__ import annotations
 
@@ -34,5 +34,13 @@ def _load_run_recorder_package() -> None:
     )
 
 
+def _load_config_version_resolver_package() -> None:
+    _load_package(
+        "reco.application.config_version_resolver",
+        "src/reco/application/config-version-resolver/__init__.py",
+    )
+
+
 _load_run_recorder_package()
 _load_orchestrator_package()
+_load_config_version_resolver_package()

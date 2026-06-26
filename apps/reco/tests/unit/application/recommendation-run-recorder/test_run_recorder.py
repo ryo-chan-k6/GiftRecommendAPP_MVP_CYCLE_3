@@ -155,6 +155,25 @@ def test_record_run_accepts_fallback_version_keys() -> None:
     assert stored.ranking_config_id == "rc-fallback"
 
 
+
+def test_record_run_accepts_model_versions_embedding_key() -> None:
+    """MOD-RECO-003 §9.1: model_versions.embedding を Run 列 model_version_id へマップ."""
+    recorder = build_recorder()
+    context = _sample_context(
+        config_versions={
+            "semantic_config_version_id": "scv-1",
+            "model_versions.embedding": "mv-embedding-1",
+            "ranking_config_id": "rc-1",
+        },
+    )
+
+    updated = recorder.record_run(context)
+
+    assert updated.run_id is not None
+    stored = recorder.run_repository.get_by_id(updated.run_id)
+    assert stored is not None
+    assert stored.model_version_id == "mv-embedding-1"
+
 # §14 No.7 例外系（FK 違反）— unit: 存在しない recommendation_request_id
 def test_record_run_fails_when_request_does_not_exist() -> None:
     recorder = build_recorder(known_request_ids={"req-other"})

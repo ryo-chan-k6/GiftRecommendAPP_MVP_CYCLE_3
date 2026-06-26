@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 796
   issue:
-    number: null
+    number: 778
   task_definition: "prompts/definitions/epics/mod-reco-003-config-version-resolver/epic.yaml"
-  source_branch: "feature/epic-<issue-number>-mod-reco-003-config-version-resolver"
+  source_branch: "feature/epic-778-mod-reco-003-config-version-resolver"
   target_branch: "develop"
 
 commands:

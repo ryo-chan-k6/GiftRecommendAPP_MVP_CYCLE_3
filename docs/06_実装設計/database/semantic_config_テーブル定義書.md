@@ -177,12 +177,14 @@ Feature 8 軸（`formality` 等）は本テーブルには保持せず、`featur
 reco / api が Semantic Config を解決する際の順序は以下とする（§17.1 No.1）。
 
 1. **親系列フィルタ**: `semantic_config.is_active = true` の系列のみ対象。`is_active = false` の系列は **解決対象外**（スキップ。エラーにしない）
-2. **系列選択**:
-   - Run 実行時に Treatment 系列が **明示割当** されている場合はその系列を使用（割当ロジックは MOD-RECO-003 Task で具体化。本 Task では決定しない）
-   - 割当なし、または複数 `is_active = true` が存在する fallback 時は **`config_name = 'mvp_semantic_config'` 固定**
-3. **子 version 解決**: 選択系列配下で `semantic_config_version.is_current = true` の version を解決
+2. **系列選択**（Treatment 系列の明示割当は **MOD-RECO-003 Config Version Resolverモジュール仕様書 §8.3.1** で具体化済み）:
+   - `execution.semantic_config_version_id`（UUID）指定時は当該 version の親系列（`is_active = true` 必須）
+   - `execution.configName` + `execution.versionLabel`（composite）指定時は composite で特定した系列
+   - `execution.configName` のみ指定時は指定系列内で `is_current = true` を解決
+   - 上記いずれもなし、または複数 `is_active = true` の fallback 時は **`config_name = 'mvp_semantic_config'` 固定**
+3. **子 version 解決**: 選択系列配下で `semantic_config_version.is_current = true` の version を解決（UUID / composite 明示時は §8.3.1 優先）
 
-> **A/B 前提**: 複数系列を同時 `is_active = true` にする想定。Default = `mvp_semantic_config`、Treatment = 非 default 系列の明示割当は後続 Resolver Task（MOD-RECO-003）で設計する。
+> **A/B 前提**: 複数系列を同時 `is_active = true` にする想定。Default = `mvp_semantic_config`、Treatment = 非 default 系列の明示割当。専用 `ab_test_flag` 列は MVP では設けない（`MOD-RECO-003` §8.3.1）。
 
 ---
 
@@ -248,7 +250,7 @@ reco / api が Semantic Config を解決する際の順序は以下とする（�
 
 | No | 論点 | 決定内容 | 決定者 | 備考 |
 | --: | ---- | -------- | ------ | ---- |
-| 1 | `is_active` と `semantic_config_version.is_current` の解決階層 | 解決順序は **親系列 → 子 version**（§12.1）。`is_active = false` の系列は解決対象外（スキップ）。複数 `is_active = true` 時の fallback は **`config_name = 'mvp_semantic_config'` 固定**。Treatment 系列の Run 明示割当は MOD-RECO-003 Task で具体化する | Human | 段階A（本 PR）で決定。段階Bは Resolver Task |
+| 1 | `is_active` と `semantic_config_version.is_current` の解決階層 | 解決順序は **親系列 → 子 version**（§12.1）。`is_active = false` の系列は解決対象外（スキップ）。複数 `is_active = true` 時の fallback は **`config_name = 'mvp_semantic_config'` 固定**。Treatment 系列の Run 明示割当は **MOD-RECO-003 §8.3.1** で具体化済み（`execution.configName` / composite / UUID の3経路） | Human | 段階A（#467）+ 段階B（#779 Resolver 仕様書） |
 | 2 | MVP の `config_name` 系列数 | **複数系列を許容**（A/B 用に複数系列を同時 `is_active = true` とする想定）。`is_active` partial unique は **付与しない**。MVP seed は default 系列（`mvp_semantic_config`）必須 | Human | §10・§12 と整合 |
 | 4 | 親 DELETE と FK RESTRICT | `semantic_config_version.semantic_config_id` への **DELETE RESTRICT** を採用。子 version 存在時は親物理 DELETE 不可 | Human | §8.1・§13 と整合 |
 | 5 | API-PUB-007 `configName` 公開範囲 | `semantic_config_id` / `semantic_config_version_id` / Rule 詳細は **非公開**。`config_name` は `configName` 表面公開候補。API-PUB-007 MVP は **default 系列（`mvp_semantic_config`）のスナップショット返却** を前提とする | Human | api 層マッピング（DB snake_case → API 表面表記）は API 実装 Task で確定 |
@@ -267,6 +269,7 @@ reco / api が Semantic Config を解決する際の順序は以下とする（�
 | API契約 | `docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md` | `configName` 表面マッピング |
 | 参照テーブル定義 | `docs/06_実装設計/database/relationship_master_テーブル定義書.md` | Master / Config 系構成踏襲 |
 | 参照テーブル定義 | `docs/06_実装設計/database/ranking_config_テーブル定義書.md` | Config 系 UUID PK・系列管理構成参考 |
+| MOD-RECO-003 仕様書 | `docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md` | Treatment 系列明示割当・解決ルール正本（§8.3.1） |
 
 ---
 

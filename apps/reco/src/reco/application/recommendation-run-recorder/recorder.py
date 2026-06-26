@@ -22,9 +22,9 @@ if TYPE_CHECKING:
         ExecutionContext,
     )
 
-_VERSION_KEY_CANDIDATES: tuple[tuple[str, str], ...] = (
+_VERSION_KEY_CANDIDATES: tuple[tuple[str, ...], ...] = (
     ("semantic_config_version_id", "semantic_config_version"),
-    ("model_version_id", "model_version"),
+    ("model_version_id", "model_version", "model_versions.embedding"),
     ("ranking_config_id", "ranking_config"),
 )
 
@@ -33,8 +33,13 @@ def _resolve_config_version_ids(
     config_versions: dict[str, str],
 ) -> tuple[str, str, str] | None:
     resolved: list[str] = []
-    for primary, fallback in _VERSION_KEY_CANDIDATES:
-        value = config_versions.get(primary) or config_versions.get(fallback)
+    for keys in _VERSION_KEY_CANDIDATES:
+        value = None
+        for key in keys:
+            candidate = config_versions.get(key)
+            if candidate:
+                value = candidate
+                break
         if not value:
             return None
         resolved.append(value)
