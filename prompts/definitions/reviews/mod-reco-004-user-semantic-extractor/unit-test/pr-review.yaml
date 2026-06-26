@@ -19,9 +19,9 @@ target:
     number: null
   task_definition: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/unit-test.yaml"
   source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-004-user-semantic-extractor"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-004-user-semantic-extractor"
+  target_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
+  parent_epic_issue: 797
+  parent_epic_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
 
 commands:
   primary: "/review-pr"

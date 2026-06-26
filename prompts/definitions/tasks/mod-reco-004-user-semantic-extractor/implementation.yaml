@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-004:User Semantic Extractor"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-004-user-semantic-extractor"
+  epic_issue_number: 797
+  epic_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
   related_issues: []
   related_prs: []
 
