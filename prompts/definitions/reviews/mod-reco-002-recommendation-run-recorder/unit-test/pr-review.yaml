@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 785
   task_definition: "prompts/definitions/tasks/mod-reco-002-recommendation-run-recorder/unit-test.yaml"
   source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-002-recommendation-run-recorder"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-002-recommendation-run-recorder"
+  target_branch: "feature/epic-776-mod-reco-002-recommendation-run-recorder"
+  parent_epic_issue: 776
+  parent_epic_branch: "feature/epic-776-mod-reco-002-recommendation-run-recorder"
 
 commands:
   primary: "/review-pr"
