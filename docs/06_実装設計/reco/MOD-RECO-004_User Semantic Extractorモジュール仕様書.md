@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）               |
 | MVP対象        | `○`                                                      |
 | 作成日         | 2026-06-26                                               |
-| 更新日         | 2026-06-26                                               |
+| 更新日         | 2026-06-26（§16.1 Human 決定反映）                       |
 
 ---
 
@@ -109,7 +109,7 @@ User Semantic Extractor（Semantic抽出）は、Reco オンライン推薦パ�
 | ---- | --------- | ------ | ---- | ---- |
 | `semantic_extraction_result` | ドメインオブジェクト（実装 Task で型定義） | `execution_context`、下位 `MOD-RECO-*` | 抽出 Concept 集合の正本（Run 内メモリ） | Semanticルール定義書 §17.2 相当 |
 | `semantic_extraction_result.concepts[]` | Concept 配列 | `MOD-RECO-006` / `009` / `013` | 各 Concept の code / intent / confidence 等 | `user_semantic.extracted_semantic_json` と同型 |
-| `semantic_extraction_result.hard_filter_candidates[]` | Hard Filter 候補配列 | `MOD-RECO-011` / `013`（間接） | NG / 予算等の分離結果 | Semanticルール定義書 §17.3 相当 |
+| `semantic_extraction_result.hard_filter_candidates[]` | Hard Filter 候補配列 | `MOD-RECO-011`（merge 参照）、`013`（間接） | NG 等の正規化候補。`execution_context` 経由で渡す（§8.3.5） | Semanticルール定義書 §17.3。`domain/**` 共有型 |
 | `semantic_extraction_result.user_semantic_id` | `uuid` | ログ・下位モジュール | 永続化行 ID | INSERT 成功後 |
 | `execution_context.semantic_extraction_result` | 上記への参照 | Orchestrator 受け渡し | 後続フェーズ入力 | Orchestrator Port 契約 |
 | `reco_error` | 標準化 reco エラー | Orchestrator | 抽出失敗時 | `GRS-REC-004` |
@@ -200,7 +200,7 @@ flowchart TD
 | 4 | input_type 判定 | 各テキスト | `preferred_condition` / `non_preferred_condition` / `free_text` / `ng_condition` | Semanticルール定義書 §3.1 |
 | 5 | Hard Filter 候補分離 | `ng_condition` / 予算キーワード | `hard_filter_candidates[]` | Semantic Concept 化しない（§8.3.3） |
 | 6 | Rule ベース抽出 | テキスト + `semantic_rule` | Concept 候補 | keyword → phrase → pattern 順 |
-| 7 | LLM 補助分類 | 曖昧入力 + Concept カタログ | 追加 Concept 候補 | External AI API Client。timeout は §13 |
+| 7 | LLM 補助分類（on-demand） | §8.3.4 条件を満たす場合のみ | 追加 Concept 候補 | 1 Run 最大 1 回。External AI API Client |
 | 8 | Confidence 付与・閾値適用 | 候補 Concept | 採用 Concept 集合 | `>= 0.60` 採用（§8.3.2） |
 | 9 | 重複統合 | 採用 Concept | 統合後 Concept 集合 | 同一 `concept_code` は confidence 最大 |
 | 10 | JSON 組み立て | 統合 Concept | `extracted_semantic_json` | `user_semantic` §5.3 スキーマ |
@@ -221,8 +221,9 @@ Semanticルール定義書 §18.1（User 入力抽出フロー）および §17.
 
 | 項目 | 内容 |
 | ---- | ---- |
-| Rule 優先順 | keyword / phrase / pattern ルールを先に適用し、不足分を LLM 補助で補完 |
-| MVP 実装方式 | `semantic_rule`（DB）+ seed 投入 + **LLM 補助**（YAML / JSON 辞書併用可） |
+| Rule 優先順 | keyword / phrase / pattern ルールを先に適用し、不足分を **LLM on-demand** で補完（§8.3.4） |
+| MVP 実装方式 | `semantic_rule`（DB）+ seed 投入 + **LLM 補助（条件付き）**（YAML / JSON 辞書併用可）。`extraction_method` デフォルトは `hybrid` |
+| LLM 呼び出し | **Rule-first + LLM-on-demand**。1 Run あたり **最大 1 回**（§8.3.4） |
 | Concept 有効性 | 当該 `semantic_config_version_id` かつ `semantic_concept.is_active = true` のみ出力 |
 | relationship / occasion | 構造化コードは **上書きしない**。自由文内の関係・用途言及のみ補助候補として解釈可（Semanticルール定義書 §3.3） |
 | 否定文脈 | 「〜ではない」「〜すぎない」は `assertion_polarity` / `input_intent` で表現（Semanticルール定義書 §19.1） |
@@ -234,7 +235,7 @@ Semanticルール定義書 §18.1（User 入力抽出フロー）および §17.
 | ---------- | ------------------ | --------------------- | ---- |
 | `preferred_condition` | `preferred_text`, `preferred_keywords` | `prefer` | 好み・期待方向 |
 | `non_preferred_condition` | `non_preferred_text`, `non_preferred_keywords` | `avoid` | 避けたい傾向。**NG 条件ではない** |
-| `free_text` | `free_text`, `raw_input_text` | `prefer` / `avoid` / `neutral` | LLM 比重を高めてよい |
+| `free_text` | `free_text`, `raw_input_text` | `prefer` / `avoid` / `neutral` | §8.3.4 に従い LLM on-demand の主対象 |
 | `ng_condition` | `ng_text`, `ng_keywords` | —（Hard Filter へ） | §8.3.3 |
 
 Recoモジュール一覧 §6.3 注意点: `non_preferred` は Hard Filter の NG 条件と **区別**する。
@@ -259,12 +260,77 @@ Recoモジュール一覧 §6.3 注意点: `non_preferred` は Hard Filter の N
 
 例外: `ng_text` に意味的ニュアンスのみ含む場合（例: 「派手すぎるのは NG」）は `ng_candidate` intent の Concept 抽出を **許容**するが、カテゴリ / 属性の **絶対除外**は Hard Filter へ委譲する。
 
-#### 8.3.4 Orchestrator Port 契約（概要）
+#### 8.3.4 LLM 呼び出し境界（確定方針）
+
+Semanticルール定義書 §6.2 / §6.3 / §13.1 に従い、MVP では **Rule-first + LLM-on-demand** とする。LLM は必須ではなく、**1 Run あたり最大 1 回**にまとめる。
+
+**入力種別ごとの LLM 要否**
+
+| 入力 | LLM | 備考 |
+| ---- | --- | ---- |
+| `preferred_keywords` / `non_preferred_keywords` | **不要** | 明示キーワードは Rule のみ |
+| `preferred_text` / `non_preferred_text` | **任意** | Rule で `confidence >= 0.60` が取れればスキップ |
+| `free_text` | **on-demand** | Rule 不足時の主対象（下表「呼び出す条件」） |
+| 全テキスト空 | **不要** | `concepts: []` で成功 |
+| `ng_condition` のみ（構造化 NG） | **不要** | Hard Filter 候補分離のみ（§8.3.3） |
+
+**LLM を呼び出す条件（いずれか）**
+
+1. `free_text` が非空で、Rule 抽出後に `confidence >= 0.60` の Concept が **0 件**
+2. Rule ヒットはあるが最大 confidence が **`0.40〜0.59`**（弱採用帯）で、入力が短文・曖昧
+3. `preferred_text` / `non_preferred_text` に Rule 未ヒットの自然文が残っている
+
+**LLM を呼び出さない条件**
+
+- keyword / phrase で採用 Concept が十分（例: 2 件以上、または max confidence `>= 0.80`）
+- 入力が keywords のみで Rule 完結
+- 上表の「不要」行に該当
+
+**実装制約**
+
+- 複数フィールドの曖昧分は **1 プロンプトに統合**（Semanticルール定義書 §13.2 形式）
+- LLM 失敗時は **即 `GRS-REC-004`**（モジュール内リトライなし。§10.2）
+- LLM 出力は Concept 候補 + confidence + evidence_text に限定（Feature 値・final_score は出力しない）
+
+#### 8.3.5 `hard_filter_candidates` 受け渡し（確定方針）
+
+**コンテナ**: `execution_context.semantic_extraction_result.hard_filter_candidates[]` に格納する。MVP では Orchestrator 側で `execution_context` トップレベルへ flatten **しない**。
+
+```text
+execution_context
+  ├─ request.ng_condition / request.budget_condition  … 構造化正本（011 が primary）
+  └─ semantic_extraction_result
+       ├─ concepts[]
+       └─ hard_filter_candidates[]   … 本モジュール出力
+```
+
+**`HardFilterCandidate` 型（MVP 最小項目）**
+
+| フィールド | 型 / 値 | 備考 |
+| ---------- | ------- | ---- |
+| `filter_type` | `category` / `attribute` / `budget` / `delivery` 等 | Semanticルール定義書 §15.1 |
+| `filter_value` | string | 正規化後の除外値 |
+| `evidence_text` | string | 根拠（必須） |
+| `confidence` | number | 0.0〜1.0 |
+| `source_type` | `ng_condition` / `free_text` 等 | 抽出元 |
+| `status` | `candidate` 固定（MVP） | §17.3。`011` 内での confirmed / ignored は任意 |
+
+**責務分担**
+
+| 主体 | 責務 |
+| ---- | ---- |
+| `MOD-RECO-004` | `ng_text` / 混在 free_text から候補を **生成・正規化**（Semantic Concept 化しない） |
+| `MOD-RECO-011` | `request.ng_condition` / `request.budget_condition` を **primary** に適用し、`hard_filter_candidates[]` を **merge / dedup**（詳細は `MOD-RECO-011` 仕様書 Task） |
+| `MOD-RECO-013` | Semantic NG 照合は `concepts[]` 側（`ng_candidate` 等）。Hard Filter 候補とは別 |
+
+**型の配置**: `apps/reco/src/reco/domain/**` に `HardFilterCandidate` を置き、`004` / `011` で共有（Epic `allowed_paths` 準拠）。
+
+#### 8.3.6 Orchestrator Port 契約（概要）
 
 | 方向 | 契約 |
 | ---- | ---- |
 | 呼び出し | `extract_semantics(execution_context) -> execution_context`（メソッド名は実装 Task で確定） |
-| 成功 | `execution_context.semantic_extraction_result` が設定される |
+| 成功 | `execution_context.semantic_extraction_result` が設定される（`concepts[]` + `hard_filter_candidates[]`） |
 | 失敗 | 例外または `reco_error`（`GRS-REC-004`）を Orchestrator へ返却。後続 `005`〜`023` は **呼ばれない** |
 | Phase Log | Orchestrator が `semantic_extracted` の started / succeeded / failed を `MOD-RECO-028` へ依頼 |
 | Wiring | User Meaning フェーズ（`004`〜`010`）は **未配線（スタブ）**（MOD-RECO-001 §8.4.2）。本モジュール実装 Task 完了後、フェーズ Wiring Task で差し替え |
@@ -363,16 +429,26 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 ## 13. 性能・非機能
 
+### 13.1 方針概要
+
 | 観点 | 方針 |
 | ---- | ---- |
-| レイテンシ | 単独 hard timeout **300ms**（暫定）。User Meaning 一括（`004`〜`010`）**hard 1,000ms** 内に収める（MOD-RECO-001 §13.2） |
-| 計算量 | 入力テキスト長 × Rule 数 + LLM 1 回（MVP 目安）。Run 内直列 |
-| タイムアウト | LLM 呼び出しは External AI API Client の timeout に従う。超過時 `GRS-REC-004` |
+| レイテンシ | MVP 初版では **モジュール単体 hard timeout を設けない**。User Meaning 一括（`004`〜`010`）**hard 1,000ms** を上位ガードとする（MOD-RECO-001 §13.2） |
+| 計算量 | 入力テキスト長 × Rule 数 + LLM **最大 1 回**（on-demand 時のみ。§8.3.4）。Run 内直列 |
+| タイムアウト | 本モジュール単体の hard 上限は **MVP では未定義**。Orchestrator の User Meaning 一括ウォッチドッグ（1,000ms）が適用される。LLM 呼び出し時は External AI API Client の timeout に従い、超過時 `GRS-REC-004` |
 | リトライ | モジュール内自動リトライ **なし**（§10.2） |
 | キャッシュ | 同一 Run 内で `semantic_rule` / `semantic_concept` のメモリキャッシュ可 |
 | 並列実行 | MVP では入力フィールド間の並列抽出は **行わない**（直列で十分） |
 
-**PoC 連携**: タイムアウト暫定値は PoC（`docs/90_PoC/性能フィジビリティ/`）検証後に更新する（MOD-RECO-001 §13.2 と同方針）。
+### 13.2 タイムアウト（MVP 決定）
+
+| 種別 | 対象 | MVP 値 | 超過時の扱い |
+| ---- | ---- | ------ | ------------ |
+| hard | `MOD-RECO-004` 単体 | **なし**（PoC 後に確定） | — |
+| hard（上位） | User Meaning 一括（`004`〜`010`） | **1,000ms** | 該当 `GRS-REC-004`〜`007`（MOD-RECO-001 §13.2） |
+| hard（全体） | 推薦パイプライン全体 | **4,000ms** | `GRS-REC-101` |
+
+**PoC 連携**: `MOD-RECO-004` 単体の soft / hard 値は PoC（`docs/90_PoC/性能フィジビリティ/`）の実測後に §13.2 へ追記する。MVP 初版実装では **一括 1,000ms のみ**を前提とする。
 
 ---
 
@@ -396,7 +472,10 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 14 | DB 永続化 | INSERT 後 `extracted_semantic_json` が §5.3 スキーマを満たすこと | integration |
 | 15 | Orchestrator 連携 | 明示 DI で Orchestrator が `004` 成功後に `005` を呼ぶこと | integration |
 | 16 | ログ | `trace_id` が構造化ログに含まれ、入力全文・secret が含まれないこと | unit |
-| 17 | タイムアウト | hard timeout 超過で `GRS-REC-004` となること | integration |
+| 17 | タイムアウト | User Meaning 一括 hard 1,000ms 超過で `GRS-REC-004` となること（単体 hard は MVP 未設定） | integration |
+| 18 | LLM on-demand（スキップ） | Rule で十分な Concept が取れた場合に LLM が呼ばれないこと | unit |
+| 19 | LLM on-demand（呼び出し） | `free_text` ありかつ Rule 0 件時に LLM が 1 回だけ呼ばれること | unit |
+| 20 | hard_filter 受け渡し | `hard_filter_candidates[]` が `semantic_extraction_result` 内に格納され、top-level flatten されないこと | unit |
 
 ---
 
@@ -407,6 +486,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-26 | 初版作成 | Issue #798 |
+| 2026-06-26 | §16.1 Human 決定反映（LLM on-demand / タイムアウト / hard_filter 受け渡し） | Issue #798 |
 
 ---
 
@@ -414,9 +494,16 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | LLM 呼び出しの必須 / 任意境界 | Rule のみで足りる入力と LLM 必須入力の切り分けが実装詳細に影響 | Human + 実装 Task | 実装 Task 着手前 | MVP は LLM 補助 **許容**（Semanticルール定義書 §17.4） |
-| 2 | 単体 hard timeout 300ms の妥当性 | PoC 未完了。User Meaning 一括 1,000ms との配分 | Human | PoC 完了後 | MOD-RECO-001 §13.2 参照 |
-| 3 | `hard_filter_candidates` の Orchestrator 受け渡し形式 | `011` / `013` への具体的 Port 型は Pre Hard Filter 仕様書 Task で確定 | 実装 Task | `MOD-RECO-011` 仕様書作成時 | 本仕様書では分離 **責務のみ**確定 |
+| 1 | `MOD-RECO-004` 単体 soft / hard timeout | PoC 実測前のため数値未確定 | Human | PoC 完了後 | §13.2。MVP 初版は一括 1,000ms のみ |
+| 2 | `MOD-RECO-011` における `hard_filter_candidates` merge / dedup 詳細 | Pre Hard Filter 仕様書 Task で Port 詳細を確定 | 実装 Task | `MOD-RECO-011` 仕様書作成時 | 本仕様書 §8.3.5 で受け渡し方針は確定済み |
+
+### 16.1 確定済み論点（Issue #798 Human 判断）
+
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | LLM 呼び出し境界 | **Rule-first + LLM-on-demand**。1 Run 最大 1 回。詳細は §8.3.4 |
+| 2 | タイムアウト（MVP 初版） | **モジュール単体 hard を設けない**。User Meaning 一括 **hard 1,000ms** のみ。単体値は PoC 後に §13.2 へ追記 |
+| 3 | `hard_filter_candidates` 受け渡し | `semantic_extraction_result.hard_filter_candidates[]` + `execution_context` 経由。`011` が Request を primary に merge。詳細は §8.3.5 |
 
 ---
 
@@ -451,6 +538,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 - `non_preferred` と `ng_condition` / Hard Filter の責務境界が明確である
 - `user_semantic` テーブル定義書 §5.3 の JSON スキーマと整合している
 - Feature 生成（`005`〜`007`）の責務が混入していない
+- LLM on-demand 境界（§8.3.4）と MVP タイムアウト方針（§13.2：単体 hard なし）が明記されている
+- `hard_filter_candidates` の受け渡し（§8.3.5）と `011` との責務分担が明確である
 - secret や `.env` 実値が含まれていない
 
 ---
