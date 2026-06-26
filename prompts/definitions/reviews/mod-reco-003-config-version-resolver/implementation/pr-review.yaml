@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 781
   task_definition: "prompts/definitions/tasks/mod-reco-003-config-version-resolver/implementation.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-003-config-version-resolver"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-003-config-version-resolver"
+  source_branch: "feature/task-781-mod-reco-003-config-version-resolver-implementation"
+  target_branch: "feature/epic-778-mod-reco-003-config-version-resolver"
+  parent_epic_issue: 778
+  parent_epic_branch: "feature/epic-778-mod-reco-003-config-version-resolver"
 
 commands:
   primary: "/review-pr"

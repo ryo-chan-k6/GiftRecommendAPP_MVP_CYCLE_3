@@ -430,7 +430,7 @@ sequenceDiagram
 
 **根拠（事実）**: 現行リポジトリには `infrastructure/db/session.py`、`domain/recommendation/run.py`、`application/recommendation-orchestrator/ports.py`（`RunRecorderPort`）が存在する。`pipeline/**` は計算ステージ用であり Run 永続化は配置しない。
 
-**Orchestrator 配線（MVP）**: `MOD-RECO-001` の `build_default_stub_ports`（`application/recommendation-orchestrator/stubs.py`）は、Run 記録に **`StubRunRecorder` ではなく `RecommendationRunRecorder`**（`build_scaffold_run_recorder` 経由・in-memory Repository）を参照する。他下位モジュールは引き続きスタブ実装。
+**Orchestrator 配線（MVP）**: `MOD-RECO-001` の `build_default_stub_ports`（`application/recommendation-orchestrator/stubs.py`）は、起動フェーズとして **`RecommendationRunRecorder`**（`build_scaffold_run_recorder`）と **`ConfigVersionResolver`**（`build_default_config_resolver`）を参照する（`MOD-RECO-001` §8.4）。`004`〜`023` は引き続きスタブ実装。
 
 **Epic scope**: `epic.yaml` の `allowed_paths` に `infrastructure/db/repositories/recommendation_run*` / `pair_master*` および対応 unit test パスを **追記済み**（Issue #777）。
 

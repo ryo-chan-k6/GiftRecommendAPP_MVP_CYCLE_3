@@ -235,6 +235,45 @@ Recoモジュール一覧 §5.2 のモジュール整理に従い、Orchestrator
 | Ranking 責務分離 | `MOD-RECO-019`（final_score）→ `MOD-RECO-020`（rank）の順で呼び出す。機能×モジュール対応表と整合 |
 | Reason fallback | `MOD-RECO-023` 回復不能時、Reason生成定義書 §17.2 汎用 Reason を注入し `isFallback: true` とする（§10.3） |
 
+### 8.4 下位モジュール配線方針（Wiring・Human 決定）
+
+Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モジュール本体実装**と **`build_default_stub_ports` への本実装配線（Wiring）** は分離する。Wiring とは `StubXxx` クラスの削除ではなく、MVP デフォルト composition で **本実装 Port を参照する**ことである。`StubXxx` は失敗注入・Orchestrator 単体テスト用に **残す**。
+
+#### 8.4.1 3 段階（ハイブリッド）
+
+| 段階 | タイミング | 成果物 | 備考 |
+| ---- | ---------- | ------ | ---- |
+| 1. モジュール実装 Task | 各 `MOD-RECO-*` Epic の implementation Task | モジュール本体、Port 適合、**Orchestrator 統合テスト（明示 DI）** | 原則 **`stubs.py` は変更しない** |
+| 2. フェーズ Wiring Task | Epic 内の integration milestone | `build_default_stub_ports` の該当 Port を本実装へ差し替え | **フェーズ単位**（下表）。並列 Task 競合を避ける |
+| 3. Composition 完成 Task | `MOD-RECO-001` Epic 締め | 本番 DI（DB Repository 等）、E2E 強化 | API-INT-002 接続後 |
+
+#### 8.4.2 フェーズ Wiring 単位（MVP）
+
+| Wiring フェーズ | 対象モジュール | 状態 |
+| --------------- | -------------- | ---- |
+| 起動 | `003` Config Version Resolver、`002` Run Recorder | **配線済み**（`build_default_config_resolver` / `build_scaffold_run_recorder`） |
+| User Meaning | `004`〜`010` | 未配線（スタブ） |
+| Retrieval | `011`〜`013` | 未配線 |
+| Matching | `014`〜`016` | 未配線 |
+| Ranking | `017`〜`020` | 未配線 |
+| 出力 | `021`〜`023` | 未配線 |
+
+**例外（起動フェーズ）**: `002` / `003` はモジュール間 I/F（version 3 列、`003`→`002` 物理順）が強く、`002` 実装 Task（#783）および `003` 実装完了時点で **起動フェーズ Wiring を実施済み**とする。
+
+#### 8.4.3 Task Definition との関係
+
+- 各モジュール **implementation Task** の `out_of_scope` に「Orchestrator 本体のスタブ差し替え（**起動フェーズを除く**）」を記載する
+- **integration Task 相当**: モジュール Task 必須成果物として `tests/unit/application/<module>/test_orchestrator_integration.py`（または同等）を 1 本以上置き、**明示 DI** で Orchestrator 連携を検証する
+- **Wiring Task** は `MOD-RECO-001` Epic またはフェーズ代表 Epic 配下で Issue 化し、`recommendation-orchestrator/stubs.py` の `exclusive_files` として直列化する
+
+#### 8.4.4 配置
+
+| 責務 | 配置 |
+| ---- | ---- |
+| `StubXxx` 実装 | `application/recommendation-orchestrator/stubs.py` |
+| MVP デフォルト composition | `build_default_stub_ports()`（同上） |
+| 本番 composition（将来） | `apps/reco` の composition root（別 Task） |
+
 ---
 
 ## 9. データ項目マッピング
@@ -418,6 +457,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-06-26 | Human Review 反映（責務・Reason fallback・タイムアウト暫定値・未決事項解消） | Issue #758 |
 | 2026-06-25 | `003` 先行解決 → `002` INSERT の物理呼び出し順を §8.1 / §8.2 に反映 | Issue #779 / `MOD-RECO-003` §8.3.7 |
 | 2026-06-27 | MOD-RECO-002 整合（`003`→`002` INSERT の物理呼び出し順・§8.2.1 追加） | Issue #777 |
+| 2026-06-26 | §8.4 下位モジュール配線方針（3 段階ハイブリッド）を Human 決定として反映 | 配線方針採用 |
 
 ---
 
@@ -438,6 +478,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 5 | 処理順序の正本 | **Recoモジュール一覧 §5.2**（モジュール ID 順）。**物理呼び出し順**は `003`→`002` INSERT（§8.2.1、`MOD-RECO-002` §8.2.1 と整合） |
 | 6 | タイムアウト | soft **2,000ms** / hard **4,000ms**（性能要件 §5 暫定引用）。**PoC 検証後に更新** |
 | 7 | `002`/`003` 物理呼び出し順 | **`MOD-RECO-003` 解決 → `MOD-RECO-002` INSERT**。allocate / commit 分割は不採用 | Human | §8.2.1、`MOD-RECO-003` §8.3.7・§16.1 No.1 |
+| 8 | 下位モジュール配線（Wiring） | **3 段階ハイブリッド**（§8.4）。実装 Task + フェーズ Wiring + Composition 完成 | Human | §8.4 |
 
 ---
 

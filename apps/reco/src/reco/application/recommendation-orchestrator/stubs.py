@@ -38,8 +38,31 @@ def _ensure_run_recorder_package() -> None:
     spec.loader.exec_module(module)
 
 
-_ensure_run_recorder_package()
+def _ensure_config_version_resolver_package() -> None:
+    import_root = "reco.application.config_version_resolver"
+    if import_root in sys.modules:
+        return
 
+    init_path = (
+        Path(__file__).resolve().parent.parent
+        / "config-version-resolver/__init__.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        import_root,
+        init_path,
+        submodule_search_locations=[str(init_path.parent)],
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("failed to load config version resolver package")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+
+_ensure_run_recorder_package()
+_ensure_config_version_resolver_package()
+
+from reco.application.config_version_resolver import build_default_config_resolver  # noqa: E402
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder  # noqa: E402
 
 from .errors import RecoError
@@ -225,7 +248,7 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
 
     ports = OrchestratorPorts(
         run_recorder=build_scaffold_run_recorder(),
-        config_resolver=StubConfigResolver(),
+        config_resolver=build_default_config_resolver(),
         user_semantic_extractor=StubPipelineModule(
             "MOD-RECO-004", "semantic_extracted"
         ),

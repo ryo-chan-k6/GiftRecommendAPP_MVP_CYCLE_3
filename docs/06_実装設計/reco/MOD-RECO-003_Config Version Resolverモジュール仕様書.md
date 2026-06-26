@@ -486,6 +486,7 @@ Error Code の正本はエラーコード定義書。本モジュールは **詳
 | 2026-06-25 | 初版作成 | Issue #779 |
 | 2026-06-25 | §16 決定事項反映（Orchestrator 順序・Treatment I/F・embedding 代表・evaluation Ranking・早期失敗・batch コンテキスト） | Issue #779 |
 | 2026-06-25 | 関連正本横断更新（`MOD-RECO-001`・`semantic_config`・batch 設計書・バッチ処理一覧） | Issue #779 |
+| 2026-06-26 | 起動フェーズ Wiring：`build_default_stub_ports` が本モジュールを参照（`MOD-RECO-001` §8.4） | 配線方針採用 |
 
 ---
 
@@ -554,5 +555,6 @@ Error Code の正本はエラーコード定義書。本モジュールは **詳
 - 本仕様書は `MOD-RECO-003` の **Config / Version 解決** 責務に限定する
 - `API-INT-002` エンドポイント層は `[Epic]API-INT-002` 配下で設計・実装する
 - 配置パスは `apps/reco/src/reco/application/config-version-resolver/**` に確定（implementation Task Definition 準拠）
+- **Orchestrator 配線（起動フェーズ）**: `build_default_stub_ports` は `build_default_config_resolver()` を参照する（`MOD-RECO-001` §8.4.2）。`StubConfigResolver` は失敗系 unit テスト用に残す
 - batch からの利用は処理種別 `共通` に基づく。個別 BATCH モジュールとの I/F 詳細は各 batch 仕様で補足する
 - DB DDL / migration は本 Epic の DB 専用 Task で実施する（本 Task は docs のみ）
