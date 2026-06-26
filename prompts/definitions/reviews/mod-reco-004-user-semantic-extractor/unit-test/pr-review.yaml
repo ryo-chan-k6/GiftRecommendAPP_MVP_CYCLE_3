@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 802
   task_definition: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/unit-test.yaml"
-  source_branch: null
+  source_branch: "test/task-802-mod-reco-004-user-semantic-extractor-unit-test"
   target_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
   parent_epic_issue: 797
   parent_epic_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
