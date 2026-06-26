@@ -27,6 +27,10 @@ _load_hyphenated_package(
     "recommendation-orchestrator",
 )
 _load_hyphenated_package(
+    "reco.application.recommendation_run_recorder",
+    "recommendation-run-recorder",
+)
+_load_hyphenated_package(
     "reco.application.config_version_resolver",
     "config-version-resolver",
 )
