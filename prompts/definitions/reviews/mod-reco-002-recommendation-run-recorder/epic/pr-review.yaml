@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 787
   issue:
     number: 776
   task_definition: "prompts/definitions/epics/mod-reco-002-recommendation-run-recorder/epic.yaml"
