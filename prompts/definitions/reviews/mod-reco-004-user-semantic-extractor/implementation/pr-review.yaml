@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 801
   issue:
-    number: null
+    number: 800
   task_definition: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/implementation.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-004-user-semantic-extractor"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-004-user-semantic-extractor"
+  source_branch: "feature/task-800-mod-reco-004-user-semantic-extractor-implementation"
+  target_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
+  parent_epic_issue: 797
+  parent_epic_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
 
 commands:
   primary: "/review-pr"
