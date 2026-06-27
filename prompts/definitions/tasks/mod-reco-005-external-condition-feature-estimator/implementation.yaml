@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-005:External Condition Feature Estimator"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-005-external-condition-feature-estimator"
+  epic_issue_number: 805
+  epic_branch: "feature/epic-805-mod-reco-005-external-condition-feature-estimator"
   related_issues: []
   related_prs: []
 

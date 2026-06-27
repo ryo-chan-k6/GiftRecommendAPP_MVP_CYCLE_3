@@ -4,12 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from time import perf_counter
+from typing import TYPE_CHECKING
 
 from reco.domain.recommendation.inputs import ExecutionMode
 from reco.domain.recommendation.request import RecommendationRequest
 from reco.domain.recommendation.result import RecommendationResult
 from reco.domain.recommendation.run import RecommendationRun
 from reco.domain.semantic_extraction import SemanticExtractionResult
+
+if TYPE_CHECKING:
+    from reco.application.external_condition_feature_estimator.models import (
+        ExternalFeatureEstimate,
+    )
 
 
 @dataclass
@@ -26,6 +32,7 @@ class ExecutionContext:
     ranked_items: list[dict[str, object]] = field(default_factory=list)
     recommendation_result: RecommendationResult | None = None
     semantic_extraction_result: SemanticExtractionResult | None = None
+    external_feature_estimate: ExternalFeatureEstimate | None = None
 
     completed_modules: list[str] = field(default_factory=list)
     phase_log_events: list[dict[str, object]] = field(default_factory=list)
