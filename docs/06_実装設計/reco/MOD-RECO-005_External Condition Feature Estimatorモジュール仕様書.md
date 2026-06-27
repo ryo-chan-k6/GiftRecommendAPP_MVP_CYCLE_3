@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）               |
 | MVP対象        | `○`                                                      |
 | 作成日         | 2026-06-26                                               |
-| 更新日         | 2026-06-26                                               |
+| 更新日         | 2026-06-26（§16.1 Human 決定反映）                       |
 
 ---
 
@@ -412,6 +412,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-26 | 初版作成 | Issue #806 |
+| 2026-06-26 | §16.1 Human 決定反映（タイムアウト / Phase Log / 永続化方針） | Issue #806 |
 
 ---
 
@@ -419,9 +420,15 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `MOD-RECO-005` 単体 soft / hard timeout | PoC 実測前のため数値未確定 | Human | PoC 完了後 | §13.2。MVP 初版は一括 1,000ms のみ |
-| 2 | 外部 / 内部 Feature 推定の専用 `phase_name` 追加 | 現行 `phase_log` CHECK に該当値なし | Human / Observability Task | 任意 | §12。構造化ログで代替 |
-| 3 | `external_feature_raw` 分解値の Run 永続化 | 監査・再現性と storage のトレードオフ | Human | 将来 | 現状は `007` 統合後のみ `user_feature` 保存 |
+| - | なし | - | - | - | - |
+
+### 16.1 確定済み論点（Issue #806 Human 判断）
+
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | タイムアウト（MVP 初版） | **モジュール単体 hard を設けない**。User Meaning 一括 **hard 1,000ms** のみ。単体 soft / hard 値は PoC 後に §13.2 へ追記 |
+| 2 | 外部 / 内部 Feature 推定の Phase Log | 専用 `phase_name` は **追加しない**。構造化ログ（§12）で代替。`user_feature_generated`（`007`）まで Phase を細分化しない |
+| 3 | `external_feature_raw` 分解値の Run 永続化 | **永続化しない**。`execution_context` 上のメモリ正本のみ。DB 保存は `MOD-RECO-007` が統合・正規化後の `user_feature` 8 行のみ（`user_feature_テーブル定義書` §5.3） |
 
 ---
 
