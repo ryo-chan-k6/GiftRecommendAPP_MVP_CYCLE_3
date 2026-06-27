@@ -260,3 +260,4 @@ notes:
   - "子 Task: prompts/definitions/tasks/mod-reco-005-external-condition-feature-estimator/module-spec.yaml"
   - "MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。#260 は関連 Issue として記載。"
   - "bootstrap: prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+  - "exception_scope: unit-test Task または follow-up 最小整合修正のみ recommendation-orchestrator/execution_context.py への external_feature_estimate フィールド追加を許可（forbidden_paths 例外。Human 判断）"
