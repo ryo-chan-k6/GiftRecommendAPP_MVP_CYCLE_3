@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 813
   task_definition: "prompts/definitions/epics/mod-reco-006-internal-condition-feature-estimator/epic.yaml"
-  source_branch: "feature/epic-<issue-number>-mod-reco-006-internal-condition-feature-estimator"
+  source_branch: "feature/epic-813-mod-reco-006-internal-condition-feature-estimator"
   target_branch: "develop"
 
 commands:
