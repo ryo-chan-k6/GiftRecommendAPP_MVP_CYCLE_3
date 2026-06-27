@@ -50,10 +50,68 @@ from reco.infrastructure.logger.logger import ScaffoldRecoLogger
 
 DEFAULT_RUN_ID = "run-external-feature-estimator-1"
 
+# Featureルール定義書 §6.2 / §8.2 の代表値（in_memory_repository と同一）
+BOSS_RELATIONSHIP_FEATURES = {
+    "formality": 0.85,
+    "safety": 0.85,
+    "brand_appropriateness": 0.85,
+    "emotion": 0.35,
+    "novelty": 0.25,
+    "intimacy": 0.20,
+    "symbolic_identity": 0.35,
+    "story_richness": 0.35,
+}
+
+BIRTHDAY_OCCASION_FEATURES = {
+    "formality": 0.40,
+    "safety": 0.55,
+    "brand_appropriateness": 0.50,
+    "emotion": 0.75,
+    "novelty": 0.65,
+    "intimacy": 0.65,
+    "symbolic_identity": 0.65,
+    "story_richness": 0.60,
+}
+
+OTHER_RELATIONSHIP_FEATURES = {
+    "formality": 0.50,
+    "safety": 0.60,
+    "brand_appropriateness": 0.50,
+    "emotion": 0.40,
+    "novelty": 0.40,
+    "intimacy": 0.40,
+    "symbolic_identity": 0.40,
+    "story_richness": 0.40,
+}
+
+OTHER_OCCASION_FEATURES = {
+    "formality": 0.50,
+    "safety": 0.60,
+    "brand_appropriateness": 0.50,
+    "emotion": 0.50,
+    "novelty": 0.40,
+    "intimacy": 0.40,
+    "symbolic_identity": 0.40,
+    "story_richness": 0.40,
+}
+
 
 @pytest.fixture
 def sample_context() -> ExecutionContext:
     return _sample_context()
+
+
+def _request_with_codes(
+    relationship_code: str,
+    occasion_code: str,
+    *,
+    request_id: str = "req-external-1",
+) -> RecommendationRequest:
+    return RecommendationRequest(
+        request_id=request_id,
+        relationship=RelationshipCondition(relationship_code=relationship_code),
+        occasion=OccasionCondition(occasion_code=occasion_code),
+    )
 
 
 def _sample_context(
@@ -61,11 +119,7 @@ def _sample_context(
     request: RecommendationRequest | None = None,
     run_id: str = DEFAULT_RUN_ID,
 ) -> ExecutionContext:
-    resolved_request = request or RecommendationRequest(
-        request_id="req-external-1",
-        relationship=RelationshipCondition(relationship_code="lover"),
-        occasion=OccasionCondition(occasion_code="birthday"),
-    )
+    resolved_request = request or _request_with_codes("lover", "birthday")
     return ExecutionContext(
         recommendation_request=resolved_request,
         trace_id="trace-external-feature-estimator",
