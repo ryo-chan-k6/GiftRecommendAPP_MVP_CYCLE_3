@@ -128,7 +128,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-mod-reco-006-internal-condition-feature-estimator-module-spec"
+  name: "docs/task-814-mod-reco-006-internal-condition-feature-estimator-module-spec"
   base: "feature/epic-813-mod-reco-006-internal-condition-feature-estimator"
   target: "feature/epic-813-mod-reco-006-internal-condition-feature-estimator"
   worktree_required: true
