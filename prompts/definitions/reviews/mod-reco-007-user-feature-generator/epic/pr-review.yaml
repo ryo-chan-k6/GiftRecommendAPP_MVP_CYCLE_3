@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 821
   task_definition: "prompts/definitions/epics/mod-reco-007-user-feature-generator/epic.yaml"
-  source_branch: "feature/epic-<issue-number>-mod-reco-007-user-feature-generator"
+  source_branch: "feature/epic-821-mod-reco-007-user-feature-generator"
   target_branch: "develop"
 
 commands:
