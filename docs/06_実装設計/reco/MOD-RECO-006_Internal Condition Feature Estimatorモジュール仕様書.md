@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）               |
 | MVP対象        | `○`                                                      |
 | 作成日         | 2026-06-28                                               |
-| 更新日         | 2026-06-28                                               |
+| 更新日         | 2026-06-28（§16.1 Human 決定反映 — 全論点確定）         |
 
 ---
 
@@ -119,7 +119,7 @@ Internal Condition Feature Estimator（内部条件特徴量推定）は、Reco 
 | `execution_context.internal_feature_estimate` | 上記への参照 | Orchestrator 受け渡し | 後続フェーズ入力 | Orchestrator Port 契約 |
 | `reco_error` | 標準化 reco エラー | Orchestrator | 推定失敗時 | `GRS-REC-005` |
 
-**永続化**: 本モジュールは **DB へ INSERT しない**。`user_feature` への永続化および `user_feature_raw` / `user_feature_normalized` の生成は `MOD-RECO-007` が担当する（`user_feature_テーブル定義書` §5.4）。内部条件 Delta の寄与分解も MVP では DB に保存しない（`MOD-RECO-005` §11 と同型方針。§16 未決事項参照）。
+**永続化**: 本モジュールは **DB へ INSERT しない**。`user_feature` への永続化および `user_feature_raw` / `user_feature_normalized` の生成は `MOD-RECO-007` が担当する（`user_feature_テーブル定義書` §5.4）。内部条件 Delta の寄与分解も MVP では DB に保存しない（`MOD-RECO-005` §11 と同型方針。§16.1 No.3 確定済み）。
 
 **MVP 8 軸 `feature_code` 正本**: `formality`, `safety`, `brand_appropriateness`, `emotion`, `novelty`, `intimacy`, `symbolic_identity`, `story_richness`（Feature定義書 / enum定義書 §6.16）。
 
@@ -249,20 +249,37 @@ base_delta = feature_delta * polarity_sign * confidence
 | パラメータ | 内容 |
 | ---------- | ---- |
 | `feature_delta` | `concept_feature_rule.feature_delta`（0.0〜1.0） |
-| `polarity_sign` | `positive` → `+1`、`negative` → `-1`、`mixed` → 軸定義に従う（`concept_feature_rule_テーブル定義書` §5.3） |
+| `polarity_sign` | §8.3.1.1 の解決式 |
 | `confidence` | `concepts[].confidence` |
+
+##### 8.3.1.1 `polarity_sign` 解決（MVP）
+
+| `concept_feature_rule.polarity` | `polarity_sign` | 備考 |
+| ------------------------------- | --------------: | ---- |
+| `positive` | `+1` | enum定義書 §6.22 |
+| `negative` | `-1` | 同上 |
+| `mixed` | `+1`（`input_intent` が `prefer` / `neutral`）<br>`-1`（`input_intent` が `avoid`） | SemanticConcept §9.3 の文脈依存は Post-MVP。MVP は intent 基準 |
+
+**`non_preferred_condition` 由来の §11.3 反転（× `-1`）との関係**
+
+| `polarity` | `non_preferred` 追加反転 | 理由 |
+| ---------- | ------------------------ | ---- |
+| `positive` / `negative` | **適用する**（`polarity_sign` 算出後に × `-1`） | Featureルール定義書 §11.3 |
+| `mixed` | **適用しない** | `input_intent` / `source_type` で符号化済み。二重反転防止 |
+
+**MVP seed 方針（§16.1 No.5 確定済み）**: sparse seed では `polarity = mixed` 行を **原則投入しない**。Concept × 軸ごとに Featureルール定義書 §10.3 の符号に従い `positive` / `negative` で行を分ける（`concept_feature_rule_テーブル定義書` §17.1 No.5）。`relationship` / `occasion` による mixed 符号の動的切替は MVP scope 外（Post-MVP Task 化）。
 
 **入力種別ごとの集約先と追加係数**
 
 | `source_type` | 集約先 | 追加係数 | 備考 |
 | ------------- | ------ | -------- | ---- |
 | `preferred_condition` | `preferred_delta[axis]` | `× 1.00` | Featureルール定義書 §12.3 `preferred_delta` weight |
-| `non_preferred_condition` | `avoid_delta[axis]` | `× -1.00` | §11.3「Concept Feature Delta × -1」 |
+| `non_preferred_condition` | `avoid_delta[axis]` | `× -1.00`（`polarity` が `positive` / `negative` の Rule 行のみ） | §11.3。`mixed` 行は §8.3.1.1 により追加反転しない |
 | `free_text` | `free_text_delta[axis]` | `× 0.70` | §12.3 `free_text_weight` |
 
 同一 `source_type` 内で複数 Concept が同一軸に寄与する場合、**加算**して集約する。
 
-**否定 Concept**（`not_too_much` / `not_too_safe` 等）: `004` が `preferred_condition` として抽出した場合は Rule 定義 Delta を **そのまま** `preferred_delta` へ加算する（Featureルール定義書 §11.4）。`non_preferred_condition` として抽出された場合は §11.3 の反転を **追加で**適用する。
+**否定 Concept**（`not_too_much` / `not_too_safe` 等）: `004` が `preferred_condition` として抽出した場合は Rule 定義 Delta を **そのまま** `preferred_delta` へ加算する（Featureルール定義書 §11.4）。`non_preferred_condition` として抽出された場合は §11.3 の反転を **追加で**適用する（`polarity = mixed` 行を除く — §8.3.1.1）。
 
 #### 8.3.2 内部条件 Delta 統合式（MVP）
 
@@ -330,7 +347,7 @@ internal_feature_delta[axis]
 | `config_versions.semantic_config_version_id` | `version_id` | `internal_feature_estimate.semantic_config_version_id` | エコー | Run と一致必須 |
 | — | — | `execution_context.internal_feature_estimate` | コンテキストへ格納 | `007` 入力 |
 
-**Request テキストとの関係**: `request.preferred_condition.*` 等は `004` が Concept 化した結果が `concepts[]` に反映されていることを前提とする。Request と `concepts[]` の不整合検出は MVP では **警告ログのみ**（Hard fail にしない。§16 未決事項参照）。
+**Request テキストとの関係**: `request.preferred_condition.*` 等は `004` が Concept 化した結果が `concepts[]` に反映されていることを前提とする。Request と `concepts[]` の不整合検出は MVP では **警告ログのみ**（Hard fail にしない。§16.1 No.4 確定済み）。
 
 ---
 
@@ -383,7 +400,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | ---- | ---- |
 | 本モジュール出力 | **メモリのみ**（`execution_context`） |
 | 最終 User Feature | `MOD-RECO-007` が `user_feature` へ 8 行 INSERT（IF-DB-RECO-003） |
-| 寄与分解 | MVP では DB に保存しない（§16 未決事項参照） |
+| 寄与分解 | MVP では DB に保存しない（§16.1 No.3 確定済み） |
 
 ---
 
@@ -414,7 +431,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | ---- | ---- |
 | レイテンシ | MVP 初版では **モジュール単体 hard timeout を設けない**。User Meaning 一括（`004`〜`010`）**hard 1,000ms** を上位ガードとする（MOD-RECO-001 §13.2） |
 | 計算量 | Concept 数 × 8 軸の Rule ルックアップ + 軽量加算。DB は version + concept インデックス利用 |
-| タイムアウト | 本モジュール単体の hard 上限は **MVP では未定義**（§16 未決事項参照）。Orchestrator の User Meaning 一括ウォッチドッグ（1,000ms）が適用される |
+| タイムアウト | 本モジュール単体の hard 上限は **MVP では設けない**（§16.1 No.1 確定済み）。Orchestrator の User Meaning 一括ウォッチドッグ（1,000ms）が適用される |
 | リトライ | モジュール内自動リトライ **なし**（§10.2） |
 | キャッシュ | 同一 Run 内で Rule 行のメモリキャッシュ可。同一 `semantic_config_version_id` の Run 間キャッシュは実装 Task で検討 |
 | 並列実行 | MVP では `005` と `006` を Orchestrator が **直列**呼び出し。モジュール内並列は不要 |
@@ -423,7 +440,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | 種別 | 対象 | MVP 値 | 超過時の扱い |
 | ---- | ---- | ------ | ------------ |
-| hard | `MOD-RECO-006` 単体 | **なし**（PoC 後に確定 — §16 未決事項） | — |
+| hard | `MOD-RECO-006` 単体 | **なし**（PoC 後に §13.2 へ追記可 — §16.1 No.1 確定済み） | — |
 | hard（上位） | User Meaning 一括（`004`〜`010`） | **1,000ms** | 該当 `GRS-REC-004`〜`007`（MOD-RECO-001 §13.2） |
 | hard（全体） | 推薦パイプライン全体 | **4,000ms** | `GRS-REC-101` |
 
@@ -463,6 +480,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-28 | 初版作成 | Issue #814 |
+| 2026-06-28 | §16.1 Human 決定反映（No.1〜4 確定、No.5 推奨案を §8.3.1.1 へ追記） | Issue #814 |
+| 2026-06-28 | §16.1 No.5 確定（`mixed` polarity 符号解決） | Issue #814 |
 
 ---
 
@@ -470,11 +489,17 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | タイムアウト（MVP 初版） | `MOD-RECO-005` Issue #806 ではモジュール単体 hard なしが確定済み。本モジュールも同型とするか | Human | PoC 前 | 推奨: 単体 hard なし、User Meaning 一括 1,000ms のみ |
-| 2 | 外部 / 内部 Feature 推定の Phase Log | 専用 `phase_name` を追加するか | Human | MVP 前 | 推奨: 追加しない（`MOD-RECO-005` §16.1 と同型） |
-| 3 | `internal_feature_delta` 分解値の Run 永続化 | `preferred_delta` 等を DB 保存するか | Human | MVP 前 | 推奨: 永続化しない（`execution_context` のみ） |
-| 4 | Request と `concepts[]` の不整合 | Request に preferred があるが `concepts[]` に prefer Concept が無い場合の扱い | Human | 実装前 | 推奨: 警告ログのみ（`004` 責務として fail は `004` 側） |
-| 5 | `mixed` polarity の軸別符号 | `concept_feature_rule.polarity = mixed` 時の軸別符号解決の実装詳細 | Human | 実装 Task 前 | `concept_feature_rule_テーブル定義書` §5.3 参照 |
+| - | なし | - | - | - | - |
+
+### 16.1 確定済み論点（Issue #814 Human 判断）
+
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | タイムアウト（MVP 初版） | **モジュール単体 hard を設けない**。User Meaning 一括 **hard 1,000ms** のみ。単体 soft / hard 値は PoC 後に §13.2 へ追記 |
+| 2 | 外部 / 内部 Feature 推定の Phase Log | 専用 `phase_name` は **追加しない**。構造化ログ（§12）で代替。`user_feature_generated`（`007`）まで Phase を細分化しない |
+| 3 | `internal_feature_delta` 分解値の Run 永続化 | **永続化しない**。`execution_context` 上のメモリ正本のみ。DB 保存は `MOD-RECO-007` が統合・正規化後の `user_feature` 8 行のみ（`user_feature_テーブル定義書` §5.3） |
+| 4 | Request と `concepts[]` の不整合 | **警告ログのみ**（Hard fail にしない）。Semantic 抽出失敗の fail は `MOD-RECO-004` 責務 |
+| 5 | `mixed` polarity の符号解決 | **実行時**: `input_intent` 基準（`prefer` / `neutral` → `+1`、`avoid` → `-1`）。`mixed` 行には §11.3 追加反転を **適用しない**（§8.3.1.1）。**seed**: MVP sparse seed では `mixed` 行を原則使わず §10.3 符号を `positive` / `negative` 行に分解。**Post-MVP**: `relationship` / `occasion` 文脈切替（SemanticConcept §9.3）は将来 Task 化 |
 
 ---
 
