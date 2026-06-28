@@ -100,7 +100,7 @@ output:
 
 deliverables:
   - "Epic Issue（タイトル: [Epic]MOD-RECO-007:User Feature Generator）"
-  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-mod-reco-007-user-feature-generator）"
+  - "Epic Branch（develop 起点 / feature/epic-821-mod-reco-007-user-feature-generator）"
   - "子 Task 候補一覧（モジュール仕様書 / 実装 / 単体テスト）"
 
 acceptance_criteria:
@@ -114,7 +114,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-007-user-feature-generator"
+  name: "feature/epic-821-mod-reco-007-user-feature-generator"
   base: "develop"
   target: "develop"
   worktree_required: false
