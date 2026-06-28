@@ -125,7 +125,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-mod-reco-008-user-meaning-projector-module-spec"
+  name: "docs/task-830-mod-reco-008-user-meaning-projector-module-spec"
   base: "feature/epic-829-mod-reco-008-user-meaning-projector"
   target: "feature/epic-829-mod-reco-008-user-meaning-projector"
   worktree_required: true
