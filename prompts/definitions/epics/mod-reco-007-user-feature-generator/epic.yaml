@@ -114,7 +114,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-007-user-feature-generator"
+  name: "feature/epic-821-mod-reco-007-user-feature-generator"
   base: "develop"
   target: "develop"
   worktree_required: false

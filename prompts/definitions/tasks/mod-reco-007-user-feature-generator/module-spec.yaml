@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-007:User Feature Generator"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-007-user-feature-generator"
+  epic_issue_number: 821
+  epic_branch: "feature/epic-821-mod-reco-007-user-feature-generator"
   related_issues:
     - number: 260
       purpose: "MOD-RECO-001 Orchestrator（呼び出し元・ポート契約）"
