@@ -125,9 +125,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-mod-reco-007-user-feature-generator-module-spec"
-  base: "feature/epic-<issue-number>-mod-reco-007-user-feature-generator"
-  target: "feature/epic-<issue-number>-mod-reco-007-user-feature-generator"
+  name: "docs/task-822-mod-reco-007-user-feature-generator-module-spec"
+  base: "feature/epic-821-mod-reco-007-user-feature-generator"
+  target: "feature/epic-821-mod-reco-007-user-feature-generator"
   worktree_required: true
 
 project:

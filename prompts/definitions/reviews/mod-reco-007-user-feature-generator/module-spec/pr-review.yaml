@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 822
   task_definition: "prompts/definitions/tasks/mod-reco-007-user-feature-generator/module-spec.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-007-user-feature-generator"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-007-user-feature-generator"
+  source_branch: "docs/task-822-mod-reco-007-user-feature-generator-module-spec"
+  target_branch: "feature/epic-821-mod-reco-007-user-feature-generator"
+  parent_epic_issue: 821
+  parent_epic_branch: "feature/epic-821-mod-reco-007-user-feature-generator"
 
 commands:
   primary: "/review-pr"
