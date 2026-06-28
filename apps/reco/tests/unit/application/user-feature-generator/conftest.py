@@ -1,4 +1,4 @@
-"""Test bootstrap and shared fixtures for MOD-RECO-007 smoke tests."""
+"""Test bootstrap and shared fixtures for MOD-RECO-007 unit tests."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ from reco.application.user_feature_generator import (  # noqa: E402
 )
 from reco.infrastructure.logger.logger import ScaffoldRecoLogger
 
-DEFAULT_RUN_ID = "run-user-feature-generator-smoke-1"
+DEFAULT_RUN_ID = "run-user-feature-generator-1"
 
 
 def _uniform_vector(value: float) -> dict[str, float]:
@@ -104,18 +104,19 @@ def _sample_internal_estimate(
 
 def _sample_context(
     *,
+    request: RecommendationRequest | None = None,
     run_id: str = DEFAULT_RUN_ID,
     external_feature_estimate: ExternalFeatureEstimate | None = None,
     internal_feature_estimate: InternalFeatureEstimate | None = None,
 ) -> ExecutionContext:
-    request = RecommendationRequest(
-        request_id="req-user-feature-smoke",
+    resolved_request = request or RecommendationRequest(
+        request_id="req-user-feature-1",
         relationship=RelationshipCondition(relationship_code="lover"),
         occasion=OccasionCondition(occasion_code="birthday"),
     )
     context = ExecutionContext(
-        recommendation_request=request,
-        trace_id="trace-user-feature-smoke",
+        recommendation_request=resolved_request,
+        trace_id="trace-user-feature-generator",
         execution_mode=ExecutionMode.UI,
         config_versions={
             "semantic_config_version_id": DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
@@ -124,7 +125,7 @@ def _sample_context(
         },
         recommendation_run=RecommendationRun(
             run_id=run_id,
-            request_id=request.request_id,
+            request_id=resolved_request.request_id,
             status=RunStatus.RUNNING,
             semantic_config_version=DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
             model_version="mv-1",
@@ -139,19 +140,28 @@ def _sample_context(
 
 def build_generator_with_registered_run(
     context: ExecutionContext,
+    *,
+    normalization_rules: InMemoryNormalizationRuleRepository | None = None,
+    user_features: InMemoryUserFeatureRepository | None = None,
+    logger: ScaffoldRecoLogger | None = None,
+    register_run: bool = True,
+    register_user_semantic: bool = True,
 ) -> tuple[UserFeatureGenerator, InMemoryUserFeatureRepository]:
+    resolved_user_features = user_features or InMemoryUserFeatureRepository()
     run_validation = InMemoryRunValidation()
-    user_features = InMemoryUserFeatureRepository()
     assert context.run_id is not None
     semantic_version_id = context.config_versions["semantic_config_version_id"]
-    run_validation.register_run(context.run_id, semantic_version_id)
-    user_features.register_user_semantic(context.run_id)
+    if register_run:
+        run_validation.register_run(context.run_id, semantic_version_id)
+    if register_user_semantic:
+        resolved_user_features.register_user_semantic(context.run_id)
     generator = UserFeatureGenerator(
-        normalization_rules=InMemoryNormalizationRuleRepository(
+        normalization_rules=normalization_rules
+        or InMemoryNormalizationRuleRepository(
             binding=build_default_normalization_binding(),
         ),
-        user_features=user_features,
+        user_features=resolved_user_features,
         run_validation=run_validation,
-        logger=ScaffoldRecoLogger(),
+        logger=logger or ScaffoldRecoLogger(),
     )
-    return generator, user_features
+    return generator, resolved_user_features
