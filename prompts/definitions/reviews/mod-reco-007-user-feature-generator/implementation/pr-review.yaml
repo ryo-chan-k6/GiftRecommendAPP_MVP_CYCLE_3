@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 825
   issue:
     number: 824
   task_definition: "prompts/definitions/tasks/mod-reco-007-user-feature-generator/implementation.yaml"
