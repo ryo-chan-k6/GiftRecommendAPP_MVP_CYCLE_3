@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 817
   issue:
-    number: null
+    number: 816
   task_definition: "prompts/definitions/tasks/mod-reco-006-internal-condition-feature-estimator/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-816-mod-reco-006-internal-condition-feature-estimator-implementation"
   target_branch: "feature/epic-813-mod-reco-006-internal-condition-feature-estimator"
   parent_epic_issue: 813
   parent_epic_branch: "feature/epic-813-mod-reco-006-internal-condition-feature-estimator"
