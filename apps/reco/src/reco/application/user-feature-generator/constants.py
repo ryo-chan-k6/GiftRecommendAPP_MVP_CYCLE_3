@@ -1,0 +1,19 @@
+"""MOD-RECO-007 User Feature Generator constants."""
+
+from __future__ import annotations
+
+MODULE_ID = "MOD-RECO-007"
+PHASE_NAME = "user_feature_generated"
+SURFACE_ERROR_CODE = "GRS-REC-005"
+
+NORMALIZATION_METHOD_SIGMOID = "sigmoid"
+SOURCE_TYPE_AGGREGATED = "aggregated"
+
+DEFAULT_CENTER_FEATURE = 0.5
+DEFAULT_K_FEATURE = 4.0
+FEATURE_VALUE_DECIMAL_PLACES = 6
+
+GUARD_CLIP_MIN = 0.0
+GUARD_CLIP_MAX = 1.0
+
+DEFAULT_FEATURE_NORMALIZATION_VERSION_ID = "fnv-mvp-sigmoid-default"
