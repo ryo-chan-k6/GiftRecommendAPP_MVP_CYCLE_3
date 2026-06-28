@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 815
   issue:
     number: 814
   task_definition: "prompts/definitions/tasks/mod-reco-006-internal-condition-feature-estimator/module-spec.yaml"
