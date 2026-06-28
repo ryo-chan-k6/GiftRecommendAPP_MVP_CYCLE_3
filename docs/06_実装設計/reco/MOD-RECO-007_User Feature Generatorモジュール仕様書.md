@@ -282,8 +282,33 @@ sigmoid(x) = 1 / (1 + exp(-x))
 | 観点 | 方針 |
 | ---- | ---- |
 | 出力値域 | 理論上 (0, 1)。DB 保存時は `numeric(8,6)` かつ CHECK `0.0〜1.0` |
-| 最終 clip | 浮動小数誤差等のため `[0.0, 1.0]` へ clamp してよい（sigmoid 後の安全処理のみ） |
+| 最終 clip | sigmoid 後のみ §8.3.3.1 `guard_clip` を適用（raw への clip は禁止） |
 | raw 保持 | `user_feature.user_feature_raw` に Run 内メモリ正本として保持（§12.5） |
+
+##### 8.3.3.1 sigmoid 後 guard_clip（MVP 確定）
+
+Featureルール定義書 §3.7 の `guard_clip(normalized_value, 0.0, 1.0)` を正とする。主正規化の代替ではなく、浮動小数誤差・`numeric(8,6)` / CHECK 整合の **最終安全ガード** のみに用いる。
+
+```text
+sigmoid_value = sigmoid(k_feature * (user_feature_raw[axis] - center_feature))
+
+if sigmoid_value is NaN or is_infinite(sigmoid_value):
+  fail with GRS-REC-005
+
+feature_value = guard_clip(sigmoid_value, 0.0, 1.0)
+feature_value = round_to_scale(feature_value, 6)   # numeric(8,6) 整合
+```
+
+| 項目 | MVP 確定値 | 備考 |
+| ---- | ---------- | ---- |
+| `guard_clip` 下限 | **`0.0`（ inclusive ）** | Feature定義書 §3.1 値域と一致 |
+| `guard_clip` 上限 | **`1.0`（ inclusive ）** | `chk_user_feature_value_range` と一致 |
+| 算式 | `min(1.0, max(0.0, sigmoid_value))` | 端点 0.0 / 1.0 は有効値（open interval 化しない） |
+| DB 保存前丸め | **小数第 6 位**（round half to even 可） | `numeric(8,6)` 列整合 |
+| NaN / ±Inf | **`GRS-REC-005` で失敗** | 0.5 等への黙示的フォールバックは行わない |
+| clip 発動監視 | pre-guard 値が `[0.0, 1.0]` 外の軸数を Metric 記録可 | §12.1 `user_feature_guard_clip_applied_count`。sigmoid 単体では稀 |
+
+**採用理由（要約）**: sigmoid（`k=4`, `center=0.5`）は理論上 (0, 1) だが、極端 raw や浮動小数演算で `1.0` 超過・微小負値が起こり得る。閾値を `[0.0, 1.0]` 以外に設けると Feature定義書・DB CHECK と二重管理になり、意味の潰れも生じうるため、正本どおり **端点固定の guard_clip のみ** とする。
 
 #### 8.3.4 入力欠落・異常時の扱い
 
@@ -408,12 +433,22 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 **Phase Log（MVP）**: User Meaning フェーズにおいて **`user_feature_generated` は本モジュール成功時に記録する**（`005` / `006` には専用 `phase_name` なし — MOD-RECO-005 §12 と対比）。`semantic_extracted`（`004`）の次の User Meaning 系 Phase 正本は本値とする（ログ・Observability設計書 §10.3、`phase_log_テーブル定義書` §11.2）。
 
+**INSERT と Phase Log のトランザクション境界（MVP 確定）**
+
+| 観点 | 方針 |
+| ---- | ---- |
+| 実行順 | `user_feature` 8 行 INSERT **成功後**に Phase Log 依頼（best-effort） |
+| 同一 DB トランザクション | **含めない**。Phase Log 失敗で Feature INSERT をロールバックしない |
+| Phase Log 失敗時 | 警告ログ + Metric 記録。**推薦結果・Run 成功・`execution_context.user_feature` は維持**（MOD-RECO-001 / `MOD-RECO-028` 方針） |
+| 本モジュールの成功判定 | **8 行 INSERT 完了**をもって成功。Phase Log 成否は成功条件に含めない |
+
 ### 12.1 メトリクス
 
 | Metric | 内容 | 集計単位 | 用途 |
 | ------ | ---- | -------- | ---- |
 | `user_feature_generation_latency_ms` | User Feature 生成処理時間（統合 + 正規化 + INSERT） | Run | ボトルネック分析 |
 | `user_feature_raw_out_of_range_count` | raw 値が [0,1] 外となった軸数 | Run | 正規化前分布監視 |
+| `user_feature_guard_clip_applied_count` | guard_clip 適用前に `[0.0, 1.0]` 外だった軸数 | Run | sigmoid 後安全ガード監視 |
 
 ---
 
@@ -451,8 +486,10 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 5 | 正常系（DB INSERT） | 成功時に `user_feature` へ 8 行 INSERT され、値・version が一致すること | unit / integration |
 | 6 | 正常系（Phase Log） | 成功時に `user_feature_generated` Phase Log 依頼が行われること | integration |
 | 7 | version 整合 | 出力 `feature_normalization_version_id` が binding 解決結果と一致すること | unit |
-| 8 | 境界値（raw 超域） | raw が 1.0 超でも sigmoid 後に DB CHECK 内に収まること | unit |
+| 8 | 境界値（raw 超域） | raw が 1.0 超でも sigmoid + guard_clip 後に DB CHECK 内に収まること | unit |
 | 9 | 境界値（center = 0.5） | raw = 0.5 で normalized ≈ 0.5 となること（§14.3 例） | unit |
+| 9a | guard_clip 端点 | sigmoid 出力が 1.0000001 等のとき `feature_value = 1.0` となること | unit |
+| 9b | NaN / Inf | sigmoid 結果が NaN / ±Inf のとき `GRS-REC-005` となること | unit |
 | 10 | 例外系（estimate 欠落） | `external_feature_estimate` または `internal_feature_estimate` 欠落で `GRS-REC-005` となること | unit |
 | 11 | 例外系（8 軸キー欠落） | raw / delta の軸欠落で `GRS-REC-005` となること | unit |
 | 12 | 例外系（正規化 Rule 欠落） | `normalization_rule` 欠落で `GRS-REC-005` となること | unit |
@@ -475,6 +512,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-28 | 初版作成 | Issue #822 |
+| 2026-06-28 | §8.3.3.1 guard_clip 確定・§12 Phase Log トランザクション境界確定 | Issue #822 Human 判断 |
 
 ---
 
@@ -482,8 +520,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | sigmoid 後 clip の有無・閾値 | 浮動小数誤差対策の実装詳細 | reco 実装 Task | 実装 PR 前 | §8.3.3 は安全 clip を許容。具体閾値は実装 Task で確定 |
-| 2 | `user_feature` INSERT と Phase Log のトランザクション境界 | INSERT 成功後 Phase Log 失敗時の扱い | Human / reco 実装 | 実装 PR 前 | Phase Log 失敗は推薦結果に影響させない（MOD-RECO-001 方針） |
+| - | なし | - | - | - | - |
 
 ### 16.1 確定済み論点（`005` / `006` Human 判断と整合）
 
@@ -494,6 +531,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 3 | raw / 分解値の Run 永続化 | **`user_feature_raw` および `005` / `006` 分解値は DB に保存しない**。正規化後 `user_feature` 8 行のみ（`user_feature_テーブル定義書` §5.3） |
 | 4 | 正規化方式 | MVP は **固定パラメータ sigmoid**（Featureルール定義書 §14.2）。`normalization_rule` → `feature_normalization_version` binding で解決 |
 | 5 | `source_type` | **`aggregated` 固定**（全 8 行） |
+| 6 | sigmoid 後 guard_clip | **`guard_clip(v, 0.0, 1.0)`** → **小数第 6 位丸め** → INSERT。NaN / ±Inf は **`GRS-REC-005`**（§8.3.3.1） |
+| 7 | INSERT と Phase Log のトランザクション境界 | INSERT **成功で本モジュール成功**。Phase Log は **best-effort・別トランザクション**。Phase Log 失敗は **推薦結果に影響させない**（§12） |
 
 ---
 
