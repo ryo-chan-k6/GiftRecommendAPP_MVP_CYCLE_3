@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-006:Internal Condition Feature Estimator"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-006-internal-condition-feature-estimator"
+  epic_issue_number: 813
+  epic_branch: "feature/epic-813-mod-reco-006-internal-condition-feature-estimator"
   related_issues: []
   related_prs: []
 
@@ -99,9 +99,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-mod-reco-006-internal-condition-feature-estimator-unit-test"
-  base: "feature/epic-<issue-number>-mod-reco-006-internal-condition-feature-estimator"
-  target: "feature/epic-<issue-number>-mod-reco-006-internal-condition-feature-estimator"
+  name: "test/task-818-mod-reco-006-internal-condition-feature-estimator-unit-test"
+  base: "feature/epic-813-mod-reco-006-internal-condition-feature-estimator"
+  target: "feature/epic-813-mod-reco-006-internal-condition-feature-estimator"
   worktree_required: true
 
 project:
