@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 820
   issue:
     number: 813
   task_definition: "prompts/definitions/epics/mod-reco-006-internal-condition-feature-estimator/epic.yaml"
