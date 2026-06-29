@@ -1,0 +1,71 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-009-reco-module-list-lambda-ctx-boundary-alignment-pr"
+  title: "MOD-RECO-009 Recoモジュール一覧λ_ctx境界整合 PRレビュー"
+  summary: "Issue #839 Task の Recoモジュール一覧 `lambda_ctx` 境界整合 PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 839
+  task_definition: "prompts/definitions/tasks/mod-reco-009-user-context-builder/reco-module-list-lambda-ctx-boundary-alignment.yaml"
+  source_branch: "docs/task-839-mod-reco-009-reco-module-list-lambda-ctx-boundary-alignment"
+  target_branch: "feature/epic-837-mod-reco-009-user-context-builder"
+  parent_epic_issue: 837
+  parent_epic_branch: "feature/epic-837-mod-reco-009-user-context-builder"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+review_points:
+  common:
+    - "Recoモジュール一覧の `MOD-RECO-008` / `MOD-RECO-009` 記載がモジュール仕様書と矛盾しないか"
+    - "`user_meaning_テーブル定義書` §5.4 のモジュール境界と一致しているか"
+    - "epic_scope 横断（`docs/05_.../Recoモジュール一覧.md` 更新）が Task Definition の意図どおりか"
+    - "apps 実装・OpenAPI / generated / DB schema 変更が混在していないか"
+  docs:
+    - "Recoモジュール一覧 §4 / §5.2 / §6.7 / §6.8 / §8.1 が更新されているか"
+    - "`MOD-RECO-008` から `λ_ctx` 算出責務が除去されているか"
+    - "`MOD-RECO-009` に `lambda_ctx` 算出・`user_meaning` INSERT が明記されているか"
+    - "MOD-RECO-009 モジュール仕様書 §16 未決 No.2 が解消されているか"
+    - "MOD-RECO-008 仕様書の Issue #839 参照が完了状態に更新されているか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Recoモジュール一覧と MOD-RECO-008 / MOD-RECO-009 モジュール仕様書が `lambda_ctx` 境界で矛盾しない"
+      - "scope 外変更がない"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
