@@ -12,6 +12,7 @@ from reco.application.recommendation_orchestrator.execution_context import (
 )
 from reco.domain import (
     ExecutionMode,
+    NonPreferredCondition,
     OccasionCondition,
     PreferredCondition,
     RecommendationRequest,
@@ -218,3 +219,36 @@ def build_builder_with_registered_run(
         logger=logger or ScaffoldRecoLogger(),
     )
     return builder, user_meaning_repo, user_features, run_validation
+
+
+def _alternate_request() -> RecommendationRequest:
+    return RecommendationRequest(
+        request_id="req-user-context-builder-alt",
+        relationship=RelationshipCondition(
+            relationship_code="friend",
+            relationship_label="友人",
+        ),
+        occasion=OccasionCondition(
+            occasion_code="thanks",
+            occasion_label="お礼",
+        ),
+        preferred_condition=PreferredCondition(preferred_text="別の希望テキスト"),
+        non_preferred_condition=NonPreferredCondition(
+            non_preferred_text="カジュアルすぎるものは避けたい",
+        ),
+        free_text="追加の自由記述",
+    )
+
+
+def _minimal_request() -> RecommendationRequest:
+    return RecommendationRequest(
+        request_id="req-user-context-builder-minimal",
+        relationship=RelationshipCondition(
+            relationship_code="boss",
+            relationship_label="上司",
+        ),
+        occasion=OccasionCondition(
+            occasion_code="thanks",
+            occasion_label="お礼",
+        ),
+    )
