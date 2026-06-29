@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-009:User Context Builder"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-009-user-context-builder"
+  epic_issue_number: 837
+  epic_branch: "feature/epic-837-mod-reco-009-user-context-builder"
   related_issues: []
   related_prs: []
 
@@ -105,8 +105,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   name: "feature/task-<issue-number>-mod-reco-009-user-context-builder-implementation"
-  base: "feature/epic-<issue-number>-mod-reco-009-user-context-builder"
-  target: "feature/epic-<issue-number>-mod-reco-009-user-context-builder"
+  base: "feature/epic-837-mod-reco-009-user-context-builder"
+  target: "feature/epic-837-mod-reco-009-user-context-builder"
   worktree_required: true
 
 project:
