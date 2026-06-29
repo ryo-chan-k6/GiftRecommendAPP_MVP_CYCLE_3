@@ -99,7 +99,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-mod-reco-008-user-meaning-projector-unit-test"
+  name: "test/task-834-mod-reco-008-user-meaning-projector-unit-test"
   base: "feature/epic-829-mod-reco-008-user-meaning-projector"
   target: "feature/epic-829-mod-reco-008-user-meaning-projector"
   worktree_required: true

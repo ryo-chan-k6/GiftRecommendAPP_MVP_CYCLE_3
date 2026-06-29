@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 834
   task_definition: "prompts/definitions/tasks/mod-reco-008-user-meaning-projector/unit-test.yaml"
-  source_branch: null
+  source_branch: "test/task-834-mod-reco-008-user-meaning-projector-unit-test"
   target_branch: "feature/epic-829-mod-reco-008-user-meaning-projector"
   parent_epic_issue: 829
   parent_epic_branch: "feature/epic-829-mod-reco-008-user-meaning-projector"
