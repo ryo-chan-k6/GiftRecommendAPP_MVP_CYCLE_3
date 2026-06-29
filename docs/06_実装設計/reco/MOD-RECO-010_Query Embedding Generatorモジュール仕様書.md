@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）        |
 | MVP対象        | `○`                                               |
 | 作成日         | 2026-06-29                                        |
-| 更新日         | 2026-06-29                                        |
+| 更新日         | 2026-06-29（`non_preferred_embedding` MVP 対象外を反映） |
 
 ---
 
@@ -18,6 +18,8 @@
 Query Embedding Generator（Query Embedding 生成）は、Reco オンライン推薦パイプラインの **User Meaning フェーズ末尾**（Retrieval フェーズ直前）において、`MOD-RECO-009` User Context Builder が組み立てた **`user_context`**（特に `preferred_context.embedding_query_text`）を入力として、**Retrieval 用の Query Embedding ベクトル**を外部 Embedding API 経由で生成し、`execution_context` へ返却するモジュールである。`MOD-RECO-001` Recommendation Orchestrator から **`MOD-RECO-009` の直後**に呼び出され、完了後 **`query_embedding_generated` Phase Log** を依頼する。
 
 本モジュールは **Query Embedding 生成・`query_embedding` ドメインオブジェクト組み立て** に責務を限定し、User Context 組み立て・Hard Filter・候補商品抽出・Matching / Ranking 計算は行わない。`009` が `execution_context.user_context` を設定済みであること、および `003` が `config_versions.model_versions.embedding` を解決済みであることを前提とする。
+
+MVP では **外部 Embedding API 呼び出しを Run あたり 1 回**（`preferred_embedding` のみ）に限定する。`non_preferred_condition` の扱いは **Feature 系統**（`MOD-RECO-006`〜`007` → Matching `avoid_similarity` → Ranking `avoid_risk`）を正とし、**`non_preferred_embedding` は生成しない**（将来の MVP 機能拡張候補。§16.1 No.11）。
 
 ---
 
@@ -54,8 +56,7 @@ Query Embedding Generator（Query Embedding 生成）は、Reco オンライン�
 
 - `execution_context.user_context.preferred_context.embedding_query_text` を **Embedding 生成入力テキストの正本**として受け取り、**`preferred_embedding`**（1536 次元ベクトル）を生成する
 - Run 解決済み **`config_versions.model_versions.embedding`**（`model_version_id`）に対応する Embedding モデルで API 呼び出しを行い、**`item_embedding` と同一モデル**であることを保証する（`MOD-RECO-003` §9.1）
-- 生成結果を **`query_embedding`** ドメインオブジェクトとして `execution_context` へ返却し、後続 `MOD-RECO-012` Candidate Retriever 等へ引き渡す
-- `user_context.non_preferred_context.avoid_query_text` が非空の場合、**任意で** `non_preferred_embedding` を追加生成する（Recoモジュール一覧 §6.9）
+- 生成結果を **`query_embedding`** ドメインオブジェクトとして `execution_context` へ返却し、後続 `MOD-RECO-012` Candidate Retriever へ引き渡す
 - 生成成功後、**Phase Log**（`phase_name = query_embedding_generated`）を Orchestrator / `MOD-RECO-028` 経由で依頼する
 - 回復不能な Query Embedding 生成失敗時に **`GRS-REC-007`** 相当のエラーを Orchestrator へ返却し、パイプライン中断を促す
 
@@ -75,6 +76,8 @@ Query Embedding Generator（Query Embedding 生成）は、Reco オンライン�
 - Public API 向けレスポンス形式への変換（`apps/api` 責務）
 - OpenAPI / Orval / generated の変更
 - DB schema / DDL の変更
+- **`non_preferred_embedding` 生成**（MVP 対象外。avoid は Feature 系統で処理。§8.3.2）
+- **`non_preferred_context.avoid_query_text` の参照・消費**（`009` が保持するが、本モジュールは `embedding_query_text` のみ使用）
 
 ---
 
@@ -87,9 +90,7 @@ Query Embedding Generator（Query Embedding 生成）は、Reco オンライン�
 | `execution_context` | パイプライン実行コンテキスト | `true` | `MOD-RECO-001` | 生成の起点 | `run_id` / `trace_id` / `config_versions` を含む |
 | `execution_context.user_context` | User Context ドメインオブジェクト | `true` | `MOD-RECO-009` | **Embedding 入力文脈** | §6.1.1 |
 | `execution_context.user_context.preferred_context` | Value Object | `true` | `MOD-RECO-009` | 好み検索用 query 集合 | Retrieval §9.2 |
-| `execution_context.user_context.preferred_context.embedding_query_text` | `string` | `true` | `MOD-RECO-009` | **preferred Embedding 生成テキスト** | 本モジュールは再構成しない（MVP） |
-| `execution_context.user_context.non_preferred_context` | Value Object | `false` | `MOD-RECO-009` | 避けたい文脈（主 query 外） | UM-06 |
-| `execution_context.user_context.non_preferred_context.avoid_query_text` | `string` | `false` | `MOD-RECO-009` | **non_preferred Embedding 生成テキスト**（任意） | 非空時のみ 2 回目 API 呼び出し |
+| `execution_context.user_context.preferred_context.embedding_query_text` | `string` | `true` | `MOD-RECO-009` | **Embedding 生成テキスト（唯一の API 入力）** | 本モジュールは再構成しない（MVP） |
 | `execution_context.config_versions.model_versions.embedding` | `uuid` | `true` | `MOD-RECO-003` | Embedding モデル version | `item_embedding.model_version_id` と整合必須 |
 | `execution_context.run_id` | `uuid` | `true` | `MOD-RECO-002` | Run 整合・ログ相関 | `recommendation_run_id` |
 
@@ -110,14 +111,13 @@ Query Embedding Generator（Query Embedding 生成）は、Reco オンライン�
 | 出力 | 型 / 構造 | 利用先 | 用途 | 備考 |
 | ---- | --------- | ------ | ---- | ---- |
 | `query_embedding` | ドメインオブジェクト（実装 Task で型定義） | `execution_context`、下位 `MOD-RECO-*` | Vector Retrieval 入力 | §6.2.1 |
-| `query_embedding.preferred_embedding` | Embedding Value Object | `MOD-RECO-012` | 主 Vector 検索 | 必須 |
-| `query_embedding.non_preferred_embedding` | Embedding Value Object | `MOD-RECO-012`（任意） | 避けたい方向の補助検索 | `avoid_query_text` 非空時のみ |
+| `query_embedding.preferred_embedding` | Embedding Value Object | `MOD-RECO-012` | Vector 検索（主 query） | 必須。MVP は本フィールドのみ |
 | `execution_context.query_embedding` | 上記への参照 | Orchestrator Port 契約 | 後続フェーズ入力 | |
 | `reco_error` | 標準化 reco エラー | Orchestrator | 回復不能失敗時 | `GRS-REC-007` |
 
 #### 6.2.1 `query_embedding` 構造（MVP）
 
-ドメインモデル・コンテキスト境界定義書を正とする。
+MVP では **`preferred_embedding` のみ**を含む。ドメインモデル上の `non_preferred_embedding` は **本モジュールでは生成しない**（§8.3.2・§16.1 No.11）。
 
 | フィールド | 型 | 必須 | 内容 |
 | ---------- | -- | ---- | ---- |
@@ -125,19 +125,16 @@ Query Embedding Generator（Query Embedding 生成）は、Reco オンライン�
 | `preferred_embedding.model_version_id` | `uuid` | `true` | 生成に使用した `model_version_id` |
 | `preferred_embedding.dimensions` | `number` | `true` | ベクトル次元数（MVP: **1536** 固定） |
 | `preferred_embedding.source_text_hash` | `string` | `false` | 入力テキストの hash（監査・再現性。ログには hash のみ） |
-| `non_preferred_embedding.vector` | `number[]` | `false` | 避けたい文脈の Embedding |
-| `non_preferred_embedding.model_version_id` | `uuid` | `false` | 同上（`preferred` と同一 version） |
-| `non_preferred_embedding.dimensions` | `number` | `false` | 同上 |
 
 **永続化**: 本モジュールは **`query_embedding` を DB へ書き込まない**（正本定義表 §5.10：派生 / 一時・Run 内生成）。Public API へ **ベクトル値を返さない**（API一覧・バッチ設計方針書と整合）。
 
-**`query_embedding` とドメイン用語の対応**
+**`query_embedding` とドメイン用語の対応（MVP）**
 
 | モジュール一覧の出力名 | ドメインオブジェクト内フィールド |
 | ---------------------- | -------------------------------- |
-| `query_embedding` | ルートオブジェクト（`preferred_embedding` を必須含有） |
+| `query_embedding` | ルートオブジェクト（`preferred_embedding` のみ含有） |
 | —（内包） | `preferred_embedding` |
-| —（内包・任意） | `non_preferred_embedding` |
+| `non_preferred_embedding` | **MVP では出力しない**（将来拡張候補） |
 
 ---
 
@@ -160,7 +157,8 @@ Query Embedding Generator（Query Embedding 生成）は、Reco オンライン�
 
 | モジュール | 利用する出力 |
 | ---------- | ------------ |
-| `MOD-RECO-012` Candidate Retriever | `query_embedding.preferred_embedding`（必須）。`non_preferred_embedding` は MVP では任意参照 |
+| `MOD-RECO-012` Candidate Retriever | `query_embedding.preferred_embedding`（必須） |
+| `MOD-RECO-014`〜`020` Matching / Ranking | **直接は利用しない**。avoid は Feature 系統（§8.3.2） |
 | `MOD-RECO-011` Pre Hard Filter Executor | **直接は利用しない**（Orchestrator 順序上、本モジュールの後に実行） |
 
 ### 7.2 参照データ
@@ -190,13 +188,9 @@ config_versions.model_versions.embedding（003 解決済み）
 flowchart TD
     START([Orchestrator から execution_context 受付]) --> VAL[入力検証・user_context / embedding_query_text / model_version 確認]
     VAL -->|失敗| ERR[GRS-REC-007]
-    VAL --> API1[External AI API: preferred_embedding 生成]
+    VAL --> API1[External AI API: preferred_embedding 生成<br/>Run あたり 1 回]
     API1 -->|失敗| ERR
-    API1 --> CHK{avoid_query_text 非空?}
-    CHK -->|yes| API2[External AI API: non_preferred_embedding 生成]
-    CHK -->|no| BUILD
-    API2 -->|失敗| ERR
-    API2 --> BUILD[query_embedding 組み立て]
+    API1 --> BUILD[query_embedding 組み立て]
     BUILD --> PH[Phase Log query_embedding_generated 依頼]
     PH --> OK([成功 return])
 
@@ -210,11 +204,10 @@ flowchart TD
 | 1 | 入力検証 | `execution_context` | — | `run_id` / `user_context` / `embedding_query_text` / `model_versions.embedding` 必須 |
 | 2 | Run 整合確認（任意） | `recommendation_run_id` | — | Run 存在。`model_version_id` が `config_versions` と一致 |
 | 3 | モデル解決 | `model_versions.embedding` | Embedding モデル物理名 | External AI API Client 経由 |
-| 4 | preferred Embedding 生成 | `embedding_query_text` | `preferred_embedding` | IF-EXT-005。§8.3.1 |
-| 5 | non_preferred Embedding 生成（任意） | `avoid_query_text` | `non_preferred_embedding` | 非空時のみ。§8.3.2 |
-| 6 | `query_embedding` 組み立て | 上記 | `query_embedding` | `execution_context` へ格納 |
-| 7 | Phase Log 依頼 | 生成成功 | phase 記録依頼 | `query_embedding_generated` |
-| 8 | 結果返却 | 組み立て結果 | `execution_context.query_embedding` | 後続 `011` / `012` へ |
+| 4 | preferred Embedding 生成 | `embedding_query_text` | `preferred_embedding` | IF-EXT-005。**Run あたり 1 回**。§8.3.1 |
+| 5 | `query_embedding` 組み立て | 上記 | `query_embedding` | `preferred_embedding` のみ。`execution_context` へ格納 |
+| 6 | Phase Log 依頼 | 生成成功 | phase 記録依頼 | `query_embedding_generated` |
+| 7 | 結果返却 | 組み立て結果 | `execution_context.query_embedding` | 後続 `011` / `012` へ |
 
 **Orchestrator 呼び出し順序（正本: MOD-RECO-001 §8.2.1）**
 
@@ -246,16 +239,16 @@ flowchart TD
 | metadata | `run_id`, `trace_id`, `purpose = query_embedding_preferred`（ベクトル・API キーは含めない） |
 | 物理実装 | infrastructure 層（secret は env 経由。本モジュールは Client Port のみ依存） |
 
-#### 8.3.2 non_preferred Embedding 生成（MVP・任意）
+#### 8.3.2 `non_preferred_embedding` は MVP 対象外（avoid の Feature 系統）
 
-| 項目 | 内容 |
-| ---- | ---- |
-| トリガー | `user_context.non_preferred_context.avoid_query_text` が **非空**（空白のみは空扱い） |
-| 入力テキスト | `avoid_query_text` をそのまま使用（`009` 正本） |
-| モデル | `preferred_embedding` と **同一** `model_version_id` |
-| 主 query との関係 | **別 API 呼び出し**。`embedding_query_text` へ混在させない（Retrieval §9.4） |
-| MVP 利用 | `MOD-RECO-012` が Vector 検索の **主 query としては使用しない**（§16.1 No.2） |
-| スキップ | `avoid_query_text` 空のとき `non_preferred_embedding` は **省略**（失敗にしない） |
+MVP では **外部 API 利用最小化**のため、`non_preferred_embedding` は **生成しない**。`user_context.non_preferred_context` は `009` が保持するが、本モジュールは **参照・消費しない**。
+
+| 観点 | MVP 方針 |
+| ---- | -------- |
+| avoid の正本経路 | **Feature 系統**：`006` 内部条件推定 → `007` User Feature → Matching `avoid_similarity`（Matching定義書 §10）→ Ranking `avoid_risk`（Ranking定義書 §8.5） |
+| Hard Filter | `non_preferred_condition` は **Hard Filter にしない**（Retrieval定義書 §8.5） |
+| 本モジュール | **`embedding_query_text` からの 1 回 API のみ**。2 回目呼び出しは行わない |
+| 将来拡張 | MVP 機能拡張で `non_preferred_embedding` 生成を追加する場合は、別 Task で本仕様書・`012` 仕様を更新する（§16.1 No.11） |
 
 #### 8.3.3 入力欠落・異常時の扱い
 
@@ -270,7 +263,6 @@ flowchart TD
 | External API タイムアウト | 失敗（詳細 `GRS-LLM-101`） | 表面 `GRS-REC-007` |
 | External API 5xx / 生成失敗 | 失敗（詳細 `GRS-LLM-103`） | 表面 `GRS-REC-007` |
 | External API レート制限 | 失敗（詳細 `GRS-LLM-102`） | 表面 `GRS-REC-007` |
-| `avoid_query_text` 空 | `non_preferred_embedding` 省略 | —（成功） |
 
 ---
 
@@ -278,10 +270,9 @@ flowchart TD
 
 | 入力項目 | 内部項目 | 出力項目 | 変換内容 | 備考 |
 | -------- | -------- | -------- | -------- | ---- |
-| `user_context.preferred_context.embedding_query_text` | `embedding_request.text` | `preferred_embedding.vector` | External AI API Embedding 生成 | テキスト再構成なし |
+| `user_context.preferred_context.embedding_query_text` | `embedding_request.text` | `preferred_embedding.vector` | External AI API Embedding 生成（**1 回**） | テキスト再構成なし |
 | `config_versions.model_versions.embedding` | `embedding_request.model_version_id` | `preferred_embedding.model_version_id` | モデル ID 引き継ぎ | `item_embedding` と一致 |
-| `user_context.non_preferred_context.avoid_query_text` | `embedding_request.text`（2 回目） | `non_preferred_embedding.vector` | 任意・別呼び出し | 非空時のみ |
-| — | — | `query_embedding` | 上記をルートに格納 | `execution_context` へ設定 |
+| — | — | `query_embedding` | `preferred_embedding` のみルートに格納 | `execution_context` へ設定 |
 
 ---
 
@@ -341,7 +332,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | 種別 | 内容 | 出力タイミング | 保存先 | 備考 |
 | ---- | ---- | -------------- | ------ | ---- |
-| 構造化ログ | Embedding 生成サマリ（`run_id`, `model_version_id`, `dimensions`, `has_non_preferred`, `duration_ms`） | 生成完了時 | アプリログ | `trace_id` 必須。入力全文・ベクトル・secret は含めない |
+| 構造化ログ | Embedding 生成サマリ（`run_id`, `model_version_id`, `dimensions`, `duration_ms`） | 生成完了時 | アプリログ | `trace_id` 必須。入力全文・ベクトル・secret は含めない |
 | Phase Log 依頼 | `query_embedding_generated` | 生成成功時 | `phase_log`（`MOD-RECO-028`） | ログ・Observability設計書 §10.3 |
 | Error Log 依頼 | `GRS-REC-007` / `GRS-LLM-*` 詳細 | 失敗時 | `error_log`（`MOD-RECO-029`） | `MOD-RECO-024` 経由 |
 | Metric 依頼 | `embedding_call_count` / `embedding_latency_ms` | API 呼び出し時 | Metric Logger（`MOD-RECO-025`） | API一覧・MVP 対象 |
@@ -351,9 +342,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | Metric | 内容 | 集計単位 | 用途 |
 | ------ | ---- | -------- | ---- |
 | `query_embedding_generation_latency_ms` | Query Embedding 生成処理時間（API 含む） | Run | ボトルネック分析 |
-| `embedding_call_count` | Embedding API 呼び出し回数（preferred + non_preferred） | Run | コスト・外部依存監視 |
+| `embedding_call_count` | Embedding API 呼び出し回数（MVP: **1 回 / Run**） | Run | コスト・外部依存監視 |
 | `embedding_failure_count` | Embedding 生成失敗件数 | Run | 外部 API 品質監視 |
-| `non_preferred_embedding_skipped_count` | `avoid_query_text` 空で 2 回目呼び出しを省略した件数 | Run | 利用状況監視 |
 
 ---
 
@@ -364,11 +354,11 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 観点 | 方針 |
 | ---- | ---- |
 | レイテンシ | MVP 初版では **モジュール単体 hard timeout を設けない**。User Meaning 一括（`004`〜`010`）**hard 1,000ms** を上位ガードとする（MOD-RECO-001 §13.2） |
-| 計算量 | External API 呼び出し **1〜2 回**（`avoid_query_text` 非空時は 2 回）。Run 内直列 |
+| 計算量 | External API 呼び出し **1 回 / Run**（`preferred_embedding` のみ）。Run 内直列 |
 | タイムアウト | 本モジュール単体の hard 上限は **MVP では設けない**。Orchestrator の User Meaning 一括ウォッチドッグ（1,000ms）が適用される。API Client の soft timeout は infrastructure 実装 Task で定義 |
 | リトライ | モジュール内自動リトライ **なし**（§10.2） |
 | キャッシュ | 同一 Run 内・同一入力テキストの Embedding **キャッシュは MVP では行わない**（実装単純化） |
-| 並列実行 | `preferred` / `non_preferred` の **2 回目呼び出しも直列**（MVP）。並列化は PoC 後に検討可 |
+| 並列実行 | 不要（API **1 回**・Orchestrator 直列呼び出し） |
 
 ### 13.2 タイムアウト（MVP）
 
@@ -388,8 +378,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 1 | 正常系（preferred） | `embedding_query_text` から 1536 次元 `preferred_embedding` が生成されること | unit |
 | 2 | 正常系（model version） | 出力 `model_version_id` が `config_versions.model_versions.embedding` と一致すること | unit |
 | 3 | 正常系（出力受け渡し） | `query_embedding` が `execution_context` に格納され `012` が参照できること | unit / integration |
-| 4 | 正常系（non_preferred 任意） | `avoid_query_text` 非空時に `non_preferred_embedding` が追加されること | unit |
-| 5 | 正常系（non_preferred 省略） | `avoid_query_text` 空時に 2 回目 API を呼ばず成功すること | unit |
+| 4 | 正常系（API 1 回） | `avoid_query_text` 非空でも Embedding API が **1 回のみ**呼ばれること | unit |
+| 5 | 正常系（non_preferred 非生成） | 成功時 `query_embedding` に `non_preferred_embedding` が **含まれない**こと | unit |
 | 6 | 正常系（Phase Log） | 生成成功後に `query_embedding_generated` が依頼されること | integration |
 | 7 | テキスト再構成なし | `009` 供給の `embedding_query_text` が API 入力としてそのまま渡ること | unit |
 | 8 | 境界値（最小文脈） | relationship / occasion のみの短い `embedding_query_text` で成功すること | unit |
@@ -415,6 +405,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-29 | 初版作成 | Issue #849 |
+| 2026-06-29 | `non_preferred_embedding` を MVP 対象外に変更（外部 API 最小化・Feature 系統 avoid） | Issue #849 Human 判断 |
 
 ---
 
@@ -423,7 +414,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
 | 1 | Embedding API Client の soft timeout 具体値 | User Meaning 一括 1,000ms 内に収めるため、単体 Client timeout の推奨値が PoC 実測前は未確定 | Human + Worker | infrastructure 実装 Task 前 | MVP はモジュール単体 hard なし。§13.2 |
-| 2 | `non_preferred_embedding` の `MOD-RECO-012` 利用方式 | ドメインモデルは両 Embedding を Retrieval 入力とするが、MVP Vector 検索が `preferred` のみか、negative similarity に `non_preferred` を使うかは `012` 仕様に依存 | Human | `MOD-RECO-012` module-spec 前 | 本モジュールは **生成まで**を責務とし、検索アルゴリズムは `012` へ委譲 |
+| 2 | `non_preferred_embedding` の将来実装 | MVP 機能拡張で 2 回目 API 生成を再導入する場合の利用モジュール・アルゴリズム | Human | 拡張 Task 起票時 | §16.1 No.11。現 MVP では **生成しない** |
 
 ### 16.1 確定済み論点
 
@@ -439,6 +430,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 8 | Orchestrator 順序 | **`009` 直後・`011` 直前**（論理順序 11。MOD-RECO-001 §8.2.1） |
 | 9 | モジュール内リトライ | **なし**（MVP） |
 | 10 | Public API 露出 | Embedding ベクトルは **返さない** |
+| 11 | `non_preferred_embedding` | **MVP では生成しない**。avoid は Feature 系統（Matching `avoid_similarity` / Ranking `avoid_risk`）。外部 API は **Run あたり 1 回** |
 
 ---
 
@@ -450,7 +442,9 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | モジュール一覧 | `docs/05_アプリケーション設計/アプリ/モジュール一覧.md` | 全体配置 |
 | 機能×モジュール対応表 | `docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md` | 入出力・パイプライン順序 |
 | Retrieval定義書 | `docs/04_ドメインモデル設計/Retrieval定義書.md` | Query Build・Vector Retrieval |
-| ドメインモデル | `docs/04_ドメインモデル設計/ドメインモデル.md` | `preferred_embedding` / `non_preferred_embedding` |
+| ドメインモデル | `docs/04_ドメインモデル設計/ドメインモデル.md` | `preferred_embedding`（MVP）。`non_preferred_embedding` は将来拡張 |
+| Matching定義書 | `docs/04_ドメインモデル設計/Matching定義書.md` | avoid の Feature 系統（§10） |
+| Ranking定義書 | `docs/04_ドメインモデル設計/Ranking定義書.md` | `avoid_risk`（§8.5） |
 | コンテキスト境界定義書 | `docs/04_ドメインモデル設計/コンテキスト境界定義書.md` | User Meaning → Retrieval 連携 |
 | 正本定義表 | `docs/05_アプリケーション設計/アプリ/database/正本定義表.md` | Query Embedding 一時データ方針 |
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | `GRS-REC-007` / `GRS-LLM-*` |
@@ -473,6 +467,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 - `MOD-RECO-009` との `embedding_query_text` 境界が明確（再構成しない）
 - Orchestrator との I/F（`execution_context` 入出力）と `GRS-REC-007` 失敗時のパイプライン中断が明確
 - `item_embedding` とのモデル・次元整合（1536 / 同一 `model_version_id`）が後続実装可能な粒度である
+- MVP で **`non_preferred_embedding` を生成しない**方針と、avoid の Feature 系統への委譲が明確である
+- 外部 Embedding API が **Run あたり 1 回**であることが明確である
 - 入力、出力、依存モジュール、例外、ログ、テスト観点が後続実装可能な粒度である
 - secret や `.env` 実値が含まれていない
 
@@ -482,3 +478,4 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 - 本仕様書は **Query Embedding 生成モジュール本体**に限定する。候補商品の pgvector 検索・Hybrid 検索の詳細は `MOD-RECO-012` 仕様書で定義する
 - External AI API Client の concrete 実装（timeout・rate limit・secret 注入）は infrastructure / Epic 横断 Task の scope とする。本モジュールは **Port 契約**のみ定義する
+- **`non_preferred_embedding` の将来実装**は、外部 API コスト・Retrieval / Matching への影響が大きいため、MVP 機能拡張 Task として別途 Human 判断・docs 更新後に実装する

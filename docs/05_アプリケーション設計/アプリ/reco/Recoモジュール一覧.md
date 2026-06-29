@@ -124,7 +124,7 @@ Recommendation Resultを生成する
 | `MOD-RECO-007` | User Feature生成 | User Feature Generator | User Meaning | 外部条件・内部条件を統合してUser Featureを生成する | OL | ○ |
 | `MOD-RECO-008` | User Meaning射影 | User Meaning Projector | User Meaning | User Featureからsocial / symbolicをGift Meaning Spaceへ射影する | OL | ○ |
 | `MOD-RECO-009` | User Context生成 | User Context Builder | User Meaning | λ_ctx算出・user_meaning INSERT・Retrieval用のpreferred / non_preferred contextを生成する | OL | ○ |
-| `MOD-RECO-010` | Query Embedding生成 | Query Embedding Generator | Retrieval | Retrieval用のquery embeddingを生成する | OL | ○ |
+| `MOD-RECO-010` | Query Embedding生成 | Query Embedding Generator | Retrieval | `preferred_context` から Retrieval 用 query embedding を生成する（MVP: 外部 API 1回/Run） | OL | ○ |
 | `MOD-RECO-011` | Pre Hard Filter | Pre Hard Filter Executor | Retrieval | Retrieval前に商品集合を絞り込む | OL | ○ |
 | `MOD-RECO-012` | 候補商品抽出 | Candidate Retriever | Retrieval | Pre Hard Filter後の商品集合から候補商品を抽出する | OL | ○ |
 | `MOD-RECO-013` | Post Hard Filter | Post Hard Filter Executor | Retrieval | Retrieval後の候補からSemantic NG・重複・不整合を除外する | OL | ○ |
@@ -218,7 +218,7 @@ flowchart TD
 | 7 | `MOD-RECO-007` | User Feature生成 | external_feature_estimate / internal_feature_estimate | user_feature |
 | 8 | `MOD-RECO-008` | User Meaning射影 | user_feature | user_social / user_symbolic |
 | 9 | `MOD-RECO-009` | User Context生成 | user_social / user_symbolic / semantic_extraction_result / user_feature / preferred条件 / non_preferred条件 | user_context / λ_ctx / user_meaning（完成） |
-| 10 | `MOD-RECO-010` | Query Embedding生成 | user_context | query_embedding |
+| 10 | `MOD-RECO-010` | Query Embedding生成 | user_context（`embedding_query_text`） | query_embedding（`preferred_embedding`） |
 | 11 | `MOD-RECO-011` | Pre Hard Filter | request / item / budget / ng条件 | pre_filtered_item_pool |
 | 12 | `MOD-RECO-012` | 候補商品抽出 | query_embedding / item_embedding / pre_filtered_item_pool | retrieval_candidate |
 | 13 | `MOD-RECO-013` | Post Hard Filter | retrieval_candidate / semantic NG / avoid条件 | validated_candidate |
@@ -469,16 +469,22 @@ flowchart TD
 | 分類 | Retrieval |
 | 処理種別 | OL |
 | MVP対象 | ○ |
-| 主な入力 | user_context |
-| 主な出力 | query_embedding |
-| 関連定義 | Retrieval定義書 |
+| 主な入力 | user_context（`preferred_context.embedding_query_text`） |
+| 主な出力 | query_embedding（`preferred_embedding`） |
+| 関連定義 | Retrieval定義書 / `MOD-RECO-010` モジュール仕様書 |
 
 ### 主責務
 
-- user_contextから検索用Embeddingを生成する
-- preferred context用のEmbeddingを生成する
-- 必要に応じてnon_preferred context用のEmbeddingを生成する
-- Model Version管理で解決されたEmbeddingモデルを利用する
+- `user_context.preferred_context.embedding_query_text` から検索用 Embedding（`preferred_embedding`）を生成する
+- 生成結果を `query_embedding` として後続候補商品抽出へ渡す
+- Model Version 管理で解決された Embedding モデルを利用する（`item_embedding` と同一 `model_version_id`）
+
+### MVP方針
+
+- 外部 Embedding API は **Run あたり 1 回**に限定する
+- **`non_preferred_embedding` は生成しない**。`non_preferred_condition` の avoid は **Feature 系統**（`MOD-RECO-006`〜`007` → Matching `avoid_similarity` → Ranking `avoid_risk`）で扱う
+- 詳細は `docs/06_実装設計/reco/MOD-RECO-010_Query Embedding Generatorモジュール仕様書.md` を正とする
+- `non_preferred_embedding` の将来実装は MVP 機能拡張 Task で検討する
 
 ---
 
