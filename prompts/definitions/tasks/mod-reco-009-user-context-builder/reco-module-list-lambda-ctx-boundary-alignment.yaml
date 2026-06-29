@@ -3,7 +3,7 @@ definition_type: "task"
 
 task:
   id: "task-mod-reco-009-reco-module-list-lambda-ctx-boundary-alignment"
-  title: "MOD-RECO-009:Recoモジュール一覧λ_ctx境界整合"
+  title: "MOD-RECO-009:Recoモジュール一覧λ_ctx責務境界整合"
   summary: "MOD-RECO-008 / MOD-RECO-009 モジュール仕様書および `user_meaning_テーブル定義書` §5.4 で確定した `lambda_ctx` 責務境界に合わせ、Recoモジュール一覧の `MOD-RECO-008` / `MOD-RECO-009` 記載を修正する docs 整合 Task。"
 
 work_mode: "ai-agent"
@@ -17,18 +17,19 @@ parent:
       purpose: "MOD-RECO-008 モジュール仕様書（`λ_ctx` 境界確定 §16.1 No.9）"
     - number: 838
       purpose: "MOD-RECO-009 モジュール仕様書（未決 No.2 を本 Task で解消）"
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator（§8.2 処理順序・データフロー参照）"
   related_prs: []
 
 commands:
-  primary: "/start-task"
+  primary: "/work-issue"
   allowed:
-    - "/start-task"
     - "/work-issue"
     - "/create-pr"
     - "/fix-review-comments"
     - "/summarize-work"
   next:
-    success: "/work-issue"
+    success: "/create-pr"
     review_fix: "/fix-review-comments"
     blocked: null
 
@@ -42,9 +43,9 @@ agent:
     - "docs-reviewer-ai"
 
 background: |
-  Issue #830（MOD-RECO-008 モジュール仕様書）および Human Review で、`lambda_ctx`（`λ_ctx`）算出・`user_meaning` INSERT 主体は **MOD-RECO-009**、Social / Symbolic 射影のみは **MOD-RECO-008** と確定した（`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本とする）。
+  Issue #830（MOD-RECO-008 モジュール仕様書）および Issue #838（MOD-RECO-009 モジュール仕様書）の Human 判断により、`lambda_ctx`（`λ_ctx`）算出・`user_meaning` INSERT 主体は **MOD-RECO-009**、Social / Symbolic 射影のみは **MOD-RECO-008** と確定した（`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本とする）。
   一方、`docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` の §4 / §5.2 / §6.7 / §8.1 等では、依然として `MOD-RECO-008` が `λ_ctx` を算出する記載が残っており、確定モジュール仕様書と矛盾する。
-  MOD-RECO-009 モジュール仕様書（Issue #838）§16 未決事項 No.2 および §19 備考で、本 Task（Issue #839）への切り出しが明示されている。
+  MOD-RECO-009 モジュール仕様書 §16 未決事項 No.2 および §19 備考で、本 Task（Issue #839）への切り出しが明示されている。
 
 objective: |
   Recoモジュール一覧を、確定済み `lambda_ctx` モジュール境界（`008` = 射影のみ、`009` = `lambda_ctx` 算出・`user_meaning` INSERT・User Context 生成）と矛盾しない状態に更新する。
@@ -68,7 +69,7 @@ out_of_scope:
   - "コンテキスト境界定義書 UM-05 等、ドメイン正本の用語変更（別 Task 候補）"
   - "機能×モジュール対応表の変更（現状 `008` 出力に `λ_ctx` なしで整合済み。差分があれば報告のみ）"
   - "Orchestrator 実装・Wiring 変更"
-  - "Recoモジュール一覧以外の横断 docs 一括修正（本 Task は一覧中心）"
+  - "MOD-RECO-001 §8.2 ステップ表の変更（必要時は脚注のみ・本 Task では一覧中心）"
 
 input:
   docs:
@@ -93,6 +94,9 @@ input:
     - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
       required: false
       purpose: "`MOD-RECO-009` 行の横断確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: false
+      purpose: "§8.2 データフロー横断確認"
   templates: []
   files: []
   issues:
@@ -100,6 +104,8 @@ input:
       purpose: "前提 Task（MOD-RECO-008 モジュール仕様書・`λ_ctx` 境界）"
     - number: 838
       purpose: "前提 Task（MOD-RECO-009 モジュール仕様書）"
+    - number: 839
+      purpose: "本 Task Issue"
   prs: []
 
 output:
@@ -154,7 +160,7 @@ project:
   fields:
     phase: "06_実装設計"
     status: "Todo"
-    priority: "high"
+    priority: "medium"
     planned_start: null
     due_date: null
 
@@ -241,10 +247,8 @@ operation_logging:
 risk_points:
   - "epic_scope.allowed_paths 外（`docs/05_.../Recoモジュール一覧.md`）の更新が必要"
   - "§8.1 データフローの表現粒度（`λ_ctx` 独立行 vs `009` ステップ内包）の読み手解釈"
-  - "前提 Task #838 のモジュール仕様書が Epic Branch に未マージの場合、作業開始不可"
 
-human_decision_points:
-  - "§8.1 Online推薦データフローで `λ_ctx` を独立行で示すか、`user_context` 生成ステップに内包するか"
+human_decision_points: []
 
 stop_conditions:
   - "必須 `input.docs`（MOD-RECO-008 / MOD-RECO-009 モジュール仕様書）が Epic Branch 上に存在しない場合"
