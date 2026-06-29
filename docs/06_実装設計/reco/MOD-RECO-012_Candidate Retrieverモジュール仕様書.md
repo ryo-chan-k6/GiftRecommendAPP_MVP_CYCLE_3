@@ -429,20 +429,21 @@ Retrieval 系メトリクス（`retrieval_candidate_count` 等）は実装 Task 
 | 日付 | 変更内容 | 関連 Issue / PR |
 | ---- | -------- | --------------- |
 | 2026-06-30 | 初版作成（`pre_hard_filter` 統合版） | Issue #865 |
+| 2026-06-30 | §16 未決事項テーブルを module-spec テンプレート列に整合（AI Review 指摘対応） | PR #866 |
 
 ---
 
 ## 16. 未決事項
 
-| No | 論点 | 判断者 | 備考 |
-| --: | ---- | ------ | ---- |
-| 1 | `materialized_ids` 閾値 | Human + Worker | テスト用小規模 materialize 上限 |
-| 2 | NG キーワード正規化 | Human | 実装 Task 前 |
-| 3 | `availability_filter` MVP 判定 | Human | `active_status` 整合 |
-| 4 | `session_table` 採用条件 | Human + Worker | predicate のみで足りるか |
-| 5 | `candidate_limit` 既定値 | Human | Retrieval定義書・API 整合 |
-| 6 | Retrieval 系 Metric 名 | Worker | Observability 設計書 |
-| 7 | 0 件時の retrieval スキップ | Worker | 性能 vs 観測のトレードオフ |
+| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
+| --: | ---- | ---------------- | ------ | ---- | ---- |
+| 1 | `materialized_ids` 閾値 | テスト用小規模 materialize の上限が未確定 | Human + Worker | 実装 Task 起票前 | predicate 第一候補との併用方針 |
+| 2 | NG キーワード正規化 | Filter predicate 生成の前提が未確定 | Human | 実装 Task 起票前 | 実装 Task 前 |
+| 3 | `availability_filter` MVP 判定 | `active_status` との整合方針が未確定 | Human | 実装 Task 起票前 | `active_status` 整合 |
+| 4 | `session_table` 採用条件 | predicate のみで足りるかの判断が必要 | Human + Worker | 実装 Task 起票前 | 実装着手前に Human 判断推奨 |
+| 5 | `candidate_limit` 既定値 | Retrieval定義書・API との整合が未確定 | Human | 実装 Task 起票前 | 実装着手前に Human 判断推奨 |
+| 6 | Retrieval 系 Metric 名 | Observability 設計書との命名整合が未確定 | Worker | 実装 Task 中 | Observability 設計書 |
+| 7 | 0 件時の retrieval スキップ | 性能と観測のトレードオフが未確定 | Worker | 実装 Task 中 | 性能 vs 観測のトレードオフ |
 
 ### 16.1 確定済み論点
 
