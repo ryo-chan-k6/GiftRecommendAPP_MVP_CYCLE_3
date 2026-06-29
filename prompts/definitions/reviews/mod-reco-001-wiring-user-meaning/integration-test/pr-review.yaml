@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-user-meaning-integration-test-pr"
+  title: "MOD-RECO-001 User Meaning 統合テスト PRレビュー"
+  summary: "User Meaning フェーズ配線後の Orchestrator デフォルト composition 経路テスト更新 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 859
+  issue:
+    number: 858
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-user-meaning/integration-test.yaml"
+  source_branch: "test/task-858-mod-reco-001-wiring-user-meaning-integration-test"
+  target_branch: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+  parent_epic_issue: 788
+  parent_epic_branch: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-user-meaning/integration-test.yaml"
+    required: true
+
+review_points:
+  - "デフォルト composition 経路テストが User Meaning 本実装（004〜010）を通過しているか"
+  - "build_wired_default_composition_ports が in-memory 共有接続の意図を満たしているか"
+  - "stubs.py および MOD-RECO-004〜010 モジュール本体への不要な変更がないか"
+  - "テストが本番 DB / 外部 API / secret に依存していないか"
+  - "wiring Task（#856 / PR #857）マージ後の前提が PR 本文で説明されているか"
+  - "Task PR target が Epic Branch であるか"
+  - "pytest 実行結果が PR 本文に記載されているか"
+
+notes:
+  - "test_execution_mode_is_passed_to_config_resolver は StubConfigResolver 検証のため User Meaning Stub 経路を維持"
