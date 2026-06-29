@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-010:Query Embedding Generator"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-010-query-embedding-generator"
+  epic_issue_number: 848
+  epic_branch: "feature/epic-848-mod-reco-010-query-embedding-generator"
   related_issues: []
   related_prs: []
 
@@ -99,9 +99,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-mod-reco-010-query-embedding-generator-unit-test"
-  base: "feature/epic-<issue-number>-mod-reco-010-query-embedding-generator"
-  target: "feature/epic-<issue-number>-mod-reco-010-query-embedding-generator"
+  name: "test/task-853-mod-reco-010-query-embedding-generator-unit-test"
+  base: "feature/epic-848-mod-reco-010-query-embedding-generator"
+  target: "feature/epic-848-mod-reco-010-query-embedding-generator"
   worktree_required: true
 
 project:
