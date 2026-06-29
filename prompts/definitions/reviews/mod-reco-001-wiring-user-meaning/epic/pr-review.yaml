@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 860
   issue:
     number: 788
   task_definition: "prompts/definitions/epics/mod-reco-001-wiring-user-meaning/epic.yaml"
@@ -65,7 +65,7 @@ input:
     number: 788
     required: true
   pr:
-    number: null
+    number: 860
     required: true
   diff:
     required: true
