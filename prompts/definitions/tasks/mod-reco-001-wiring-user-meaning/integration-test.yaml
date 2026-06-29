@@ -115,7 +115,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-mod-reco-001-wiring-user-meaning-integration-test"
+  name: "test/task-858-mod-reco-001-wiring-user-meaning-integration-test"
   base: "feature/epic-788-mod-reco-001-wiring-user-meaning"
   target: "feature/epic-788-mod-reco-001-wiring-user-meaning"
   worktree_required: true
@@ -207,7 +207,6 @@ stop_conditions:
   - "モジュール本体の修正がテスト成立に不可欠で scope を超える"
 
 notes:
+  - "Task Issue: #858"
+  - "前提 wiring Task: #856（PR #857）"
   - "Epic Issue: #788"
-  - "Epic child_task_areas: integration-test"
-  - "workstream: mod-reco-001-wiring-user-meaning"
-  - "wiring Task 完了後に /start-task で起票"
