@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 840
   issue:
     number: 838
   task_definition: "prompts/definitions/tasks/mod-reco-009-user-context-builder/module-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-838-mod-reco-009-user-context-builder-module-spec"
   target_branch: "feature/epic-837-mod-reco-009-user-context-builder"
   parent_epic_issue: 837
   parent_epic_branch: "feature/epic-837-mod-reco-009-user-context-builder"
