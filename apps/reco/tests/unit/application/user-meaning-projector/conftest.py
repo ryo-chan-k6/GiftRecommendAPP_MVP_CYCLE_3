@@ -1,4 +1,4 @@
-"""Test bootstrap and shared fixtures for MOD-RECO-008 smoke tests."""
+"""Test bootstrap and shared fixtures for MOD-RECO-008 unit tests."""
 
 from __future__ import annotations
 
@@ -12,7 +12,9 @@ from reco.application.recommendation_orchestrator.execution_context import (
 )
 from reco.domain import (
     ExecutionMode,
+    NonPreferredCondition,
     OccasionCondition,
+    PreferredCondition,
     RecommendationRequest,
     RecommendationRun,
     RelationshipCondition,
@@ -49,6 +51,7 @@ from reco.application.user_meaning_projector import (  # noqa: E402
     InMemoryMeaningProjectionConfigRepository,
     InMemoryRunValidation,
     InMemoryUserFeatureReadRepository,
+    MeaningProjectionWeights,
     UserFeatureRow,
     UserMeaningProjector,
     build_default_projection_weights,
@@ -63,14 +66,19 @@ def _uniform_vector(value: float) -> dict[str, float]:
     return {code: value for code in MVP_FEATURE_CODES}
 
 
-def _sample_user_feature(*, run_id: str = DEFAULT_RUN_ID) -> UserFeature:
+def _sample_user_feature(
+    *,
+    run_id: str = DEFAULT_RUN_ID,
+    features: dict[str, float] | None = None,
+    feature_normalization_version_id: str = DEFAULT_FEATURE_NORMALIZATION_VERSION_ID,
+) -> UserFeature:
     generated_at = datetime.now(UTC)
-    features = _uniform_vector(0.5)
+    vector = features or _uniform_vector(0.5)
     return UserFeature(
         recommendation_run_id=run_id,
-        features=features,
-        user_feature_raw=features,
-        feature_normalization_version_id=DEFAULT_FEATURE_NORMALIZATION_VERSION_ID,
+        features=vector,
+        user_feature_raw=vector,
+        feature_normalization_version_id=feature_normalization_version_id,
         semantic_config_version_id=DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
         generated_at=generated_at,
     )
@@ -80,8 +88,9 @@ def _sample_context(
     *,
     run_id: str = DEFAULT_RUN_ID,
     user_feature: UserFeature | None = None,
+    request: RecommendationRequest | None = None,
 ) -> ExecutionContext:
-    request = RecommendationRequest(
+    request = request or RecommendationRequest(
         request_id="req-user-meaning-projector-1",
         relationship=RelationshipCondition(relationship_code="lover"),
         occasion=OccasionCondition(occasion_code="birthday"),
@@ -107,32 +116,66 @@ def _sample_context(
     return context
 
 
+def _user_feature_rows_from_vector(
+    features: dict[str, float],
+    *,
+    feature_normalization_version_id: str = DEFAULT_FEATURE_NORMALIZATION_VERSION_ID,
+) -> tuple[UserFeatureRow, ...]:
+    return tuple(
+        UserFeatureRow(
+            feature_code=axis,
+            feature_value=features[axis],
+            feature_normalization_version_id=feature_normalization_version_id,
+        )
+        for axis in MVP_FEATURE_CODES
+    )
+
+
 def build_projector_with_registered_run(
     context: ExecutionContext,
-) -> UserMeaningProjector:
+    *,
+    logger: ScaffoldRecoLogger | None = None,
+    projection_weights: MeaningProjectionWeights | None = None,
+    register_run: bool = True,
+    user_feature_rows: tuple[UserFeatureRow, ...] | None = None,
+    projection_config: InMemoryMeaningProjectionConfigRepository | None = None,
+) -> tuple[UserMeaningProjector, InMemoryUserFeatureReadRepository, InMemoryRunValidation]:
     assert context.run_id is not None
     user_feature = context.user_feature  # type: ignore[attr-defined]
     semantic_version_id = context.config_versions["semantic_config_version_id"]
 
     run_validation = InMemoryRunValidation()
-    run_validation.register_run(context.run_id, semantic_version_id)
+    if register_run:
+        run_validation.register_run(context.run_id, semantic_version_id)
 
-    user_feature_rows = tuple(
-        UserFeatureRow(
-            feature_code=axis,
-            feature_value=user_feature.features[axis],
-            feature_normalization_version_id=user_feature.feature_normalization_version_id,
-        )
-        for axis in MVP_FEATURE_CODES
+    rows = user_feature_rows or _user_feature_rows_from_vector(
+        user_feature.features,
+        feature_normalization_version_id=user_feature.feature_normalization_version_id,
     )
     user_features = InMemoryUserFeatureReadRepository()
-    user_features.register_user_features(context.run_id, user_feature_rows)
+    user_features.register_user_features(context.run_id, rows)
 
-    return UserMeaningProjector(
-        projection_config=InMemoryMeaningProjectionConfigRepository(
-            weights=build_default_projection_weights(),
-        ),
+    config = projection_config or InMemoryMeaningProjectionConfigRepository(
+        weights=projection_weights or build_default_projection_weights(),
+    )
+
+    projector = UserMeaningProjector(
+        projection_config=config,
         user_features=user_features,
         run_validation=run_validation,
-        logger=ScaffoldRecoLogger(),
+        logger=logger or ScaffoldRecoLogger(),
+    )
+    return projector, user_features, run_validation
+
+
+def _alternate_request() -> RecommendationRequest:
+    return RecommendationRequest(
+        request_id="req-user-meaning-projector-alt",
+        relationship=RelationshipCondition(relationship_code="lover"),
+        occasion=OccasionCondition(occasion_code="birthday"),
+        preferred_condition=PreferredCondition(preferred_text="別テキスト"),
+        non_preferred_condition=NonPreferredCondition(
+            non_preferred_text="避けたい特徴",
+        ),
+        free_text="追加の自由記述",
     )
