@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 849
   task_definition: "prompts/definitions/tasks/mod-reco-010-query-embedding-generator/module-spec.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-010-query-embedding-generator"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-010-query-embedding-generator"
+  source_branch: "docs/task-849-mod-reco-010-query-embedding-generator-module-spec"
+  target_branch: "feature/epic-848-mod-reco-010-query-embedding-generator"
+  parent_epic_issue: 848
+  parent_epic_branch: "feature/epic-848-mod-reco-010-query-embedding-generator"
 
 commands:
   primary: "/review-pr"
