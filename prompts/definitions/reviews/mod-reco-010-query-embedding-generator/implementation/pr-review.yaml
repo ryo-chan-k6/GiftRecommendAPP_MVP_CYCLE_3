@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 852
   issue:
     number: 851
   task_definition: "prompts/definitions/tasks/mod-reco-010-query-embedding-generator/implementation.yaml"
