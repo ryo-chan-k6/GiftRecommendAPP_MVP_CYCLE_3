@@ -100,7 +100,7 @@ output:
 
 deliverables:
   - "Epic Issue（タイトル: [Epic]MOD-RECO-011:Pre Hard Filter Executor）"
-  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-mod-reco-011-pre-hard-filter-executor）"
+  - "Epic Branch（develop 起点 / feature/epic-861-mod-reco-011-pre-hard-filter-executor）"
   - "子 Task 候補一覧（モジュール仕様書 / 実装 / 単体テスト）"
 
 acceptance_criteria:
@@ -114,10 +114,10 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-011-pre-hard-filter-executor"
+  name: "feature/epic-861-mod-reco-011-pre-hard-filter-executor"
   base: "develop"
   target: "develop"
-  worktree_required: false
+  worktree_required: true
 
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
@@ -252,6 +252,7 @@ stop_conditions:
   - "apps/reco/src/reco/api 配下への変更を本 Epic 配下 Task で実施する必要が出た場合"
 
 notes:
+  - "Epic Issue: #861"
   - "Epic は作業管理単位。成果物正本は子 Task で作成する。"
   - "命名の正本は Task Definition設計書 §15.0・§15.1。"
   - "子 Task: prompts/definitions/tasks/mod-reco-011-pre-hard-filter-executor/module-spec.yaml"
