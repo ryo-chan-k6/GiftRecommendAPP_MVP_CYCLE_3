@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 838
   task_definition: "prompts/definitions/tasks/mod-reco-009-user-context-builder/module-spec.yaml"
   source_branch: null
   target_branch: "feature/epic-837-mod-reco-009-user-context-builder"

@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）        |
 | MVP対象        | `○`                                               |
 | 作成日         | 2026-06-29                                        |
-| 更新日         | 2026-06-29                                        |
+| 更新日         | 2026-06-29（Human 判断反映）                      |
 
 ---
 
@@ -193,8 +193,8 @@ Retrieval定義書 §9.2 / ドメインモデル §4.3 を正とする。
 ```text
 semantic_config_version_id（Run / config_versions）
   → lambda_ctx_rule（relationship_code × occasion_code 等）
-  → 未設定時は user_social / user_symbolic からのヒューリスティック（§8.3.1）
-  → 算出不能時は 0.5 固定 + error_log 警告
+  → Rule 未設定時は 0.5 固定（Social / Symbolic バランス型）+ error_log 警告
+  → 算術異常（NaN / ±Inf）時は GRS-REC-005
 ```
 
 ---
@@ -269,8 +269,7 @@ Matching定義書 §4.5 / §9.3 および `user_meaning_テーブル定義書` �
 | --: | ---- | ---- |
 | 1 | Rule Lookup | `LambdaContextRuleRepository.get_lambda_ctx(semantic_config_version_id, relationship_code, occasion_code)` が返す基準値 |
 | 2 | Pair 補正 | `pair_rule` に `lambda_ctx_delta` が定義されている場合は加算（Featureルール定義書 §9 と同型の拡張。未設定時は 0） |
-| 3 | 射影ヒューリスティック | Rule 未設定時、`user_symbolic` を **`lambda_ctx` の初期値**として採用（Symbolic 寄り = 高い `lambda_ctx`） |
-| 4 | フォールバック | 上記すべて不能 → **`0.5`** + warning |
+| 3 | フォールバック | Rule 未設定・算出不能時 → **`0.5` 固定**（Social / Symbolic バランス型）+ warning |
 
 **guard_clip（MVP）**
 
@@ -295,8 +294,9 @@ result = round_to_scale(clipped, 4)   # numeric(6,4) 列整合
 | ---- | ---- |
 | インターフェース | `LambdaContextRuleRepository.get_lambda_ctx(semantic_config_version_id, relationship_code, occasion_code)` |
 | 返却型 | `number \| null`（`null` = Rule 未設定） |
-| 物理 Lookup | `semantic_config_version` 配下設定（infrastructure 実装 Task で JSON 列・JOIN 経路を確定） |
-| Rule 未設定 | 射影ヒューリスティック（優先 3）へフォールバック |
+| 物理 Lookup | `semantic_config_version` 配下設定（**未整備**。別 Task で JSON 列・JOIN 経路・seed を確定） |
+| Rule 未設定 | **`0.5` 固定** + warning（優先 3 フォールバック） |
+| MVP 実装 | `InMemoryLambdaContextRuleRepository`（常に `null` 返却）で優先 3 へ到達可能。DB 接続は別 Task |
 
 #### 8.3.2 preferred context 組み立て（MVP）
 
@@ -349,7 +349,7 @@ embedding_query_text =
 | 8 行の `feature_normalization_version_id` 不一致 | 失敗（**多数決不採用**） | `GRS-REC-005` |
 | `semantic_extraction_result` 欠落 | 失敗 | `GRS-REC-005` |
 | `relationship` / `occasion` 欠落 | 失敗 | `GRS-REC-005` |
-| `lambda_ctx` Rule 未設定 | **0.5 または射影ヒューリスティック** + warning | 継続 |
+| `lambda_ctx` Rule 未設定 | **`0.5` 固定** + warning | 継続 |
 | `lambda_ctx` NaN / ±Inf | 失敗 | `GRS-REC-005` |
 | `user_meaning` INSERT 失敗（UNIQUE 違反等） | 失敗 | `GRS-REC-005` |
 | `semantic_config_version_id` 不一致 / Run 未存在 | 失敗 | `GRS-REC-005` |
@@ -521,21 +521,20 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 | 4 | 正常系（embedding_query_text） | Retrieval §9.3 例と同型の自然文が生成されること | unit |
 | 5 | 正常系（non_preferred 分離） | `non_preferred_text` が `embedding_query_text` に **含まれない**こと | unit |
 | 6 | 正常系（lambda_ctx Rule） | Rule 設定時に期待値が返ること | unit |
-| 7 | 正常系（lambda_ctx ヒューリスティック） | Rule 未設定時に射影ヒューリスティックが適用されること | unit |
-| 8 | 正常系（lambda_ctx フォールバック） | 算出不能時に `0.5` で INSERT し warning が記録されること | unit / integration |
-| 9 | 正常系（user_meaning INSERT） | IF-DB-RECO-003 経路で 1 行 INSERT されること | integration |
-| 10 | 正常系（Phase Log） | INSERT 成功後に `user_meaning_projected` が依頼されること | integration |
-| 11 | 正常系（出力受け渡し） | `user_context` / `user_meaning.lambda_ctx` が `execution_context` に格納されること | unit |
-| 12 | 境界値（入力全空） | preferred / non_preferred / free_text 全空でも最小 context で成功すること | unit |
-| 13 | 境界値（lambda_ctx 端点） | `0.0` / `1.0` がそのまま保存されること | unit |
-| 14 | guard_clip | 理論値が 1.00001 等のとき clip 後 1.0 となること | unit |
-| 15 | NaN / Inf | `lambda_ctx` が NaN / ±Inf のとき `GRS-REC-005` となること | unit |
-| 16 | 例外系（user_meaning 欠落） | `008` 未実行相当で `GRS-REC-005` となること | unit |
-| 17 | 例外系（DB 8 行欠落） | `user_feature` 8 行なしで `GRS-REC-005` となること | unit / integration |
-| 18 | 例外系（INSERT 重複） | 同一 Run 2 回目 INSERT で `GRS-REC-005` となること | integration |
-| 19 | 非再推定 | Request 変更のみでは `008` 未再実行時に射影座標が変わらないこと | unit |
-| 20 | Orchestrator 連携 | `008` 成功後に `009` を呼び、`009` 失敗時に `010` 以降を呼ばないこと | integration |
-| 21 | ログ | `trace_id` が構造化ログに含まれ、secret・生テキスト全文が含まれないこと | unit |
+| 7 | 正常系（lambda_ctx フォールバック） | Rule 未設定・算出不能時に `0.5` で INSERT し warning が記録されること | unit / integration |
+| 8 | 正常系（user_meaning INSERT） | IF-DB-RECO-003 経路で 1 行 INSERT されること | integration |
+| 9 | 正常系（Phase Log） | INSERT 成功後に `user_meaning_projected` が依頼されること | integration |
+| 10 | 正常系（出力受け渡し） | `user_context` / `user_meaning.lambda_ctx` が `execution_context` に格納されること | unit |
+| 11 | 境界値（入力全空） | preferred / non_preferred / free_text 全空でも最小 context で成功すること | unit |
+| 12 | 境界値（lambda_ctx 端点） | `0.0` / `1.0` がそのまま保存されること | unit |
+| 13 | guard_clip | 理論値が 1.00001 等のとき clip 後 1.0 となること | unit |
+| 14 | NaN / Inf | `lambda_ctx` が NaN / ±Inf のとき `GRS-REC-005` となること | unit |
+| 15 | 例外系（user_meaning 欠落） | `008` 未実行相当で `GRS-REC-005` となること | unit |
+| 16 | 例外系（DB 8 行欠落） | `user_feature` 8 行なしで `GRS-REC-005` となること | unit / integration |
+| 17 | 例外系（INSERT 重複） | 同一 Run 2 回目 INSERT で `GRS-REC-005` となること | integration |
+| 18 | 非再推定 | Request 変更のみでは `008` 未再実行時に射影座標が変わらないこと | unit |
+| 19 | Orchestrator 連携 | `008` 成功後に `009` を呼び、`009` 失敗時に `010` 以降を呼ばないこと | integration |
+| 20 | ログ | `trace_id` が構造化ログに含まれ、secret・生テキスト全文が含まれないこと | unit |
 
 ---
 
@@ -546,6 +545,7 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-29 | 初版作成 | Issue #838 |
+| 2026-06-29 | Human 判断反映（`lambda_ctx` フォールバック確定・未決整理） | Issue #838 |
 
 ---
 
@@ -553,9 +553,8 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `lambda_ctx_rule` の物理スキーマ（JSON 列名・seed 初期値） | infrastructure 実装 Task で DB Lookup 経路を確定する必要がある | Human + Worker | 実装 Task 前 | 論理 I/F は §8.3.1 を正本とする |
-| 2 | 射影ヒューリスティック（Rule 未設定時の `user_symbolic` 採用） | ドメイン docs に明示式がなく、MVP 暫定案として記載 | Human | 実装 Task 前 | §8.3.1 優先 3。Rule seed 整備後は優先 1 のみで足りる想定 |
-| 3 | Recoモジュール一覧 §6.7 の `λ_ctx` 算出責務記載 | `008` 仕様書 §16.1 No.9 と一覧表記が矛盾。正本は `user_meaning_テーブル定義書` §5.4 | Human | 別 docs Task | **本 Task scope 外** |
+| 1 | `lambda_ctx_rule` の物理スキーマ（JSON 列名・seed 初期値） | `user_meaning.lambda_ctx` 列は整備済みだが、Rule Lookup 用の物理正本（テーブル or JSON + seed）が未設計。別 Task 化が必要 | Human + Worker | Rule DB 接続 Task 前 | 論理 I/F は §8.3.1。MVP は `InMemory` + **`0.5` フォールバック**で実装可 |
+| 2 | Recoモジュール一覧 §6.7 の `λ_ctx` 算出責務記載 | `008` 仕様書 §16.1 No.9 と一覧表記が矛盾。正本は `user_meaning_テーブル定義書` §5.4 | Human | 別 docs Task | **Issue #839**（本 Task scope 外） |
 
 ### 16.1 確定済み論点（`user_meaning_テーブル定義書` Human Review #555 / `MOD-RECO-008` §16.1 と整合）
 
@@ -569,7 +568,8 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 | 6 | NG 条件 | **Hard Filter 責務**。本モジュールの主 query に混在しない |
 | 7 | 値域 | **`lambda_ctx` は 0.0〜1.0**（`numeric(6,4)`） |
 | 8 | 8 行 version 不一致 | **INSERT 拒否**（`GRS-REC-005`）。多数決不採用 |
-| 9 | `λ_ctx` と Recoモジュール一覧 §6.7 | **`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本**とする。一覧修正は別 Task |
+| 9 | `λ_ctx` と Recoモジュール一覧 §6.7 | **`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本**とする。一覧修正は Issue #839 |
+| 10 | Rule 未設定時の `lambda_ctx` | **`0.5` 固定**（Social / Symbolic バランス型）+ warning。射影ヒューリスティック（`user_symbolic` 採用）は **不採用** |
 
 ---
 
@@ -617,4 +617,4 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 - 本仕様書は `MOD-RECO-009` の **User Context 生成・`lambda_ctx` 算出・`user_meaning` 永続化** 責務に限定する
 - 配置パスは Epic `epic_scope.allowed_paths` に従い `apps/reco/src/reco/application/user-context-builder/**` を正とする
 - User Meaning フェーズ Wiring（`004`〜`010` スタブ差し替え）は Orchestrator 実装 / Wiring Task の責務であり、本 Task scope 外である
-- Recoモジュール一覧 §6.7 / §5.2 に残る `λ_ctx` 算出責務の記載修正は別 docs Task 候補（本 Task scope 外。`MOD-RECO-008` §19 と同型）
+- Recoモジュール一覧 §6.7 / §5.2 に残る `λ_ctx` 算出責務の記載修正は **Issue #839**（`prompts/definitions/tasks/mod-reco-009-user-context-builder/reco-module-list-lambda-ctx-boundary-alignment.yaml`）

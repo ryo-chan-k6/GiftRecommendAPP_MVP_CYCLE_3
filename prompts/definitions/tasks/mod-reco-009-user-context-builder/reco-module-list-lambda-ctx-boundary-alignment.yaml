@@ -1,0 +1,146 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-009-reco-module-list-lambda-ctx-boundary-alignment"
+  title: "MOD-RECO-009:Recoモジュール一覧λ_ctx責務境界整合"
+  summary: "MOD-RECO-008 / MOD-RECO-009 モジュール仕様書および user_meaning_テーブル定義書 §5.4 に基づき、Recoモジュール一覧の λ_ctx 算出責務記載を修正する横断 docs 整合 Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-009:User Context Builder"
+  epic_issue_number: 837
+  epic_branch: "feature/epic-837-mod-reco-009-user-context-builder"
+  related_issues:
+    - number: 838
+      purpose: "前提 Task（MOD-RECO-009 モジュール仕様書）"
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator（§8.2 処理順序・データフロー参照）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Issue #838（MOD-RECO-009 モジュール仕様書）の Human 判断により、λ_ctx 算出主体は MOD-RECO-009 と確定した。
+  正本は user_meaning_テーブル定義書 §5.4 および MOD-RECO-008 §16.1 No.9 である。
+  一方、Recoモジュール一覧 §4 / §5.2 / §6.7 / §8.1 には MOD-RECO-008 が λ_ctx を算出する旧記載が残っており、モジュール境界と矛盾する。
+
+objective: |
+  Recoモジュール一覧の λ_ctx 算出責務を MOD-RECO-009 へ移管し、MOD-RECO-008 の入出力記載から λ_ctx を除去する。
+  必要に応じて MOD-RECO-001 §8.2 の脚注または論理 I/O 説明を整合させる。
+
+scope:
+  - "Recoモジュール一覧 §4 一覧表の MOD-RECO-008 / 009 主責務修正"
+  - "Recoモジュール一覧 §5.2 処理順序表の 008 出力・009 入出力修正"
+  - "Recoモジュール一覧 §6.7 MOD-RECO-008 から λ_ctx 算出責務削除"
+  - "Recoモジュール一覧 §6.8 MOD-RECO-009 に lambda_ctx 算出責務追加"
+  - "Recoモジュール一覧 §8.1 データフロー図の λ_ctx 位置修正"
+  - "MOD-RECO-001 §8.2 ステップ表の λ_ctx 論理 I/O 脚注（必要時）"
+
+out_of_scope:
+  - "各 MOD-RECO-* モジュール仕様書本文の変更（008 / 009 は確定済み）"
+  - "user_meaning_テーブル定義書の変更"
+  - "OpenAPI / generated 変更"
+  - "apps 実装変更"
+  - "DB migration / DDL 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-009_User Context Builderモジュール仕様書.md"
+      required: true
+      purpose: "λ_ctx 算出主体・入出力の正本"
+    - path: "docs/06_実装設計/reco/MOD-RECO-008_User Meaning Projectorモジュール仕様書.md"
+      required: true
+      purpose: "射影のみ責務・§16.1 No.9 境界正本"
+    - path: "docs/06_実装設計/database/user_meaning_テーブル定義書.md"
+      required: true
+      purpose: "§5.4 lambda_ctx 算出主体"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "更新対象"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: false
+      purpose: "§8.2 データフロー横断確認"
+  issues:
+    - number: 838
+      purpose: "前提 Task（モジュール仕様書）"
+    - number: 839
+      purpose: "本 Task Issue"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      action: "update"
+      required: true
+  files: []
+
+deliverables:
+  - "λ_ctx 算出責務が MOD-RECO-009 に移管された Recoモジュール一覧"
+  - "MOD-RECO-008 出力が user_social / user_symbolic のみと記載された Recoモジュール一覧"
+
+acceptance_criteria:
+  - "Recoモジュール一覧 §6.7 に λ_ctx 算出責務が記載されていない"
+  - "Recoモジュール一覧 §6.8 に lambda_ctx 算出責務が記載されている"
+  - "§5.2 の 008 出力に λ_ctx が含まれていない"
+  - "§5.2 の 009 入出力が MOD-RECO-009 仕様書と矛盾しない"
+  - "user_meaning_テーブル定義書 §5.4 / MOD-RECO-008 §16.1 No.9 と矛盾しない"
+  - "OpenAPI / generated / apps 実装変更が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-839-mod-reco-009-reco-module-list-lambda-ctx-boundary-alignment"
+  base: "feature/epic-837-mod-reco-009-user-context-builder"
+  target: "feature/epic-837-mod-reco-009-user-context-builder"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+  reason: "Recoモジュール一覧への λ_ctx 責務境界横断 docs 整合"
+
+human_decision_points:
+  - "MOD-RECO-001 §8.2 ステップ表への脚注追加要否"
+
+notes:
+  - "Issue #839"
+  - "MOD-RECO-009 モジュール仕様書 §16 No.2 から派生"
+  - "先例: task-mod-reco-001-reason-fallback-docs-alignment（Issue #764）"
