@@ -99,9 +99,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-mod-reco-010-query-embedding-generator-unit-test"
-  base: "feature/epic-<issue-number>-mod-reco-010-query-embedding-generator"
-  target: "feature/epic-<issue-number>-mod-reco-010-query-embedding-generator"
+  name: "test/task-853-mod-reco-010-query-embedding-generator-unit-test"
+  base: "feature/epic-848-mod-reco-010-query-embedding-generator"
+  target: "feature/epic-848-mod-reco-010-query-embedding-generator"
   worktree_required: true
 
 project:
