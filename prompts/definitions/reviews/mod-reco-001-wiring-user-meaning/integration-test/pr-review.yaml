@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 859
   issue:
     number: 858
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-user-meaning/integration-test.yaml"
@@ -54,5 +54,4 @@ review_points:
   - "pytest 実行結果が PR 本文に記載されているか"
 
 notes:
-  - "Issue / PR 確定後に target.pr を更新する"
   - "test_execution_mode_is_passed_to_config_resolver は StubConfigResolver 検証のため User Meaning Stub 経路を維持"
