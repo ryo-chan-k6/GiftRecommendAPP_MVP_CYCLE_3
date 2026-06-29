@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）        |
 | MVP対象        | `○`                                               |
 | 作成日         | 2026-06-29                                        |
-| 更新日         | 2026-06-29                                        |
+| 更新日         | 2026-06-29（§16 推奨案確定）                      |
 
 ---
 
@@ -42,7 +42,7 @@ User Meaning Projector（User Meaning 射影）は、Reco オンライン推薦�
 | 所属Epic | `MOD-RECO-008`（Epic Issue #829） |
 | MVP対象 | `○` |
 | 主な呼び出し元 | `MOD-RECO-001` Recommendation Orchestrator |
-| 主な呼び出し先 | Semantic Config Repository（射影重み参照） |
+| 主な呼び出し先 | Meaning Projection Config Repository（射影重み参照） |
 
 `MOD-API-*` / `MOD-RECO-*` / `MOD-BATCH-*` 配下の Task では、該当モジュール ID の責務範囲に変更を限定する。`MOD-RECO-*` では `apps/reco/src/reco/api/**` の API-INT エンドポイント層を対象に含めない。エンドポイント層の変更が必要な場合は、該当する `API-INT-*` Epic 配下 Task として扱う。
 
@@ -150,7 +150,7 @@ User Meaning Projector（User Meaning 射影）は、Reco オンライン推薦�
 | データ | 参照元 | 用途 | version / config | 備考 |
 | ------ | ------ | ---- | ---------------- | ---- |
 | `user_feature` | DB | 8 行存在・version 整合検証 | Run 固定 | 読み取りのみ。本モジュールは UPDATE しない |
-| `semantic_config_version` | DB | Social / Symbolic 射影重み | `config_versions.semantic_config_version_id` | GiftMeaningSpace §5.4。読み取りのみ |
+| `semantic_config_version` | DB | Social / Symbolic 射影重み | `config_versions.semantic_config_version_id` | GiftMeaningSpace §5.4。`MeaningProjectionConfigRepository` 経由で読取 |
 | `recommendation_run` | DB | Run 存在・version 整合 | Run 固定 | SELECT 検証 |
 
 **射影重み解決フロー（正本: GiftMeaningSpace §5.4 / `user_meaning_テーブル定義書` §5.3）**
@@ -249,10 +249,20 @@ user_symbolic =
 
 | ステップ | 内容 |
 | -------- | ---- |
-| 1 | `semantic_config_version_id` で `semantic_config_version` を Lookup |
-| 2 | 設定内 Social / Symbolic 射影重み（`w_formality` 等）を読取 |
+| 1 | `MeaningProjectionConfigRepository.get_weights(semantic_config_version_id)` を呼び出す（§16.1 No.8） |
+| 2 | 返却重み（`w_formality` / `w_safety` / `w_brand_appropriateness` / `w_emotion` / `w_novelty` / `w_intimacy` / `w_symbolic_identity` / `w_story_richness`）を取得 |
 | 3 | 全重み未設定 → 各グループ **単純平均**（`user_meaning_テーブル定義書` §17.1 No.3） |
-| 4 | 一部のみ設定 → 設定済み重みを用い、未設定軸は等重み 1 で扱う（実装 Task で Repository 契約を確定） |
+| 4 | 一部のみ設定 → 設定済み重みを用い、未設定軸は等重み 1 で扱い、グループ内で正規化 |
+
+**Repository I/F（MVP 確定・論理正本）**
+
+| 項目 | 内容 |
+| ---- | ---- |
+| インターフェース | `MeaningProjectionConfigRepository.get_weights(semantic_config_version_id)` |
+| 返却型 | 8 軸射影重み（各 `number \| null`） |
+| 論理正本 | GiftMeaningSpace §5.2 / §5.3 / §5.4 |
+| 物理 Lookup | `semantic_config_version` 配下設定（infrastructure 実装 Task で JSON 列・JOIN 経路を確定） |
+| 失敗時 | 重み解決不能 → **`GRS-REC-006`** |
 
 #### 8.3.3 射影後 guard_clip（MVP）
 
@@ -295,7 +305,7 @@ result = round_to_scale(clipped, 4)   # numeric(6,4) 列整合
 | 呼び出し | `project_user_meaning(execution_context) -> execution_context`（メソッド名は実装 Task で確定） |
 | 成功 | `execution_context.user_meaning` に `user_social` / `user_symbolic` が設定される（`lambda_ctx` 未設定） |
 | 失敗 | 例外または `reco_error`（`GRS-REC-006`）を Orchestrator へ返却。後続 `009`〜`023` は **呼ばれない** |
-| Phase Log | 本モジュール単体では **`user_meaning_projected` を記録しない**（`user_meaning` INSERT 成功後。§12） |
+| Phase Log | 本モジュール単体では **`user_meaning_projected` を記録しない**（`009` が INSERT 成功後に記録。§16.1 No.10） |
 | Wiring | User Meaning フェーズ（`004`〜`010`）は **未配線（スタブ）**（MOD-RECO-001 §8.4.2）。本モジュール実装 Task 完了後、フェーズ Wiring Task で差し替え |
 
 ---
@@ -353,13 +363,14 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | -------- | ---- | -------- | ---------------- | ---- |
 | — | — | — | — | **本モジュールは DML を行わない** |
 
-**`user_meaning` INSERT 方針（`009` との境界）**
+**`user_meaning` INSERT 方針（`009` との境界・§16.1 No.10 確定）**
 
 | 観点 | 方針 |
 | ---- | ---- |
-| INSERT 主体 | **`MOD-RECO-009` 完了後**（`lambda_ctx` 算出後）に IF-DB-RECO-003 で 1 行 INSERT |
+| INSERT 主体 | **`MOD-RECO-009`** が `UserMeaningRepository` 経由で IF-DB-RECO-003 1 行 INSERT |
 | 本モジュールの成果 | `execution_context.user_meaning`（`user_social` / `user_symbolic`）を **メモリ正本**として `009` へ引き渡す |
 | `lambda_ctx` | `009` が算出。算出不能時は **`0.5` 固定**で INSERT（`user_meaning_テーブル定義書` §17.1 No.8） |
+| Phase Log | **`user_meaning_projected`** は INSERT 成功後に **`009` が依頼**（§12） |
 | 冪等性 | 同一 Run への 2 回目 INSERT は `uq_user_meaning_recommendation_run` で拒否 |
 | UPDATE / DELETE | **禁止**（MVP） |
 
@@ -381,7 +392,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | Error Log 依頼 | `GRS-REC-006` 詳細 | 失敗時 | `error_log`（`MOD-RECO-029`） | `MOD-RECO-024` 経由 |
 | Metric 依頼 | `user_meaning_projection_latency_ms` | 射影完了時 | Metric Logger（`MOD-RECO-025`） | MVP 対象 `△` |
 
-**Phase Log（MVP）**: **`user_meaning_projected` は本モジュールでは記録しない**。`user_meaning` 行 INSERT 成功後に `009` または INSERT 担当が記録する（ログ・Observability設計書 §10.3、`user_meaning_テーブル定義書` §12.1 step 10、`phase_log_テーブル定義書` §11.2）。
+**Phase Log（MVP）**: **`user_meaning_projected` は本モジュールでは記録しない**。`user_meaning` 行 INSERT 成功後に **`MOD-RECO-009` が記録**する（§16.1 No.10、ログ・Observability設計書 §10.3、`user_meaning_テーブル定義書` §12.1 step 10）。
 
 ### 12.1 メトリクス
 
@@ -451,6 +462,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-06-29 | 初版作成 | Issue #830 |
+| 2026-06-29 | §16 未決 3 件を推奨案で確定（`λ_ctx` 境界・Repository 契約・INSERT 主体） | Issue #830 Human 判断 |
 
 ---
 
@@ -458,9 +470,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Recoモジュール一覧 §6.7 の `λ_ctx` 記載 | 一覧・Orchestrator ステップ表は `008` 出力に `λ_ctx` を含むが、`user_meaning_テーブル定義書` §5.4 は **`009` 算出**を正とする | Human | PoC 前 | 本仕様書は **テーブル定義書を正**として `009` へ委譲。一覧整合は別 Task 候補 |
-| 2 | 射影重みの Repository 契約 | `semantic_config_version` 内の重み JSON 構造は DDL / Repository Task で物理確定 | Worker AI（実装 Task） | 実装 Task 着手前 | GiftMeaningSpace §5.4 を論理正本とする |
-| 3 | `user_meaning` INSERT の実装主体 | `009` が INSERT するか、共通 Repository に委譲するかは実装 Task で確定 | Worker AI（`009` 実装 Task） | `009` module-spec 作成時 | 本モジュールは **INSERT しない** 方針で固定 |
+| - | なし | - | - | - | - |
 
 ### 16.1 確定済み論点（`user_meaning_テーブル定義書` Human Review #555 と整合）
 
@@ -473,6 +483,9 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 5 | 値域 | **`user_social` / `user_symbolic` は 0.0〜1.0**（`numeric(6,4)`） |
 | 6 | `lambda_ctx` | **`MOD-RECO-009` 算出**。算出不能時 **`0.5` 固定 INSERT**（`009` 側） |
 | 7 | タイムアウト（MVP 初版） | **モジュール単体 hard を設けない**。User Meaning 一括 **hard 1,000ms** のみ |
+| 8 | 射影重み Repository 契約 | **`MeaningProjectionConfigRepository.get_weights(semantic_config_version_id)`** を正とする。返却型は 8 軸重み（`w_formality` 等、GiftMeaningSpace §5.2 / §5.3）。**全重み未設定時は単純平均**。物理 JSON 列・Lookup 経路は infrastructure 実装 Task で確定するが、論理 I/F は本行を正本とする |
+| 9 | `λ_ctx` と Recoモジュール一覧 §6.7 | **`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本**とし、`008` は `user_social` / `user_symbolic` のみ算出。一覧・Orchestrator ステップ表の `λ_ctx` 記載は **パイプライン論理 I/O**（`009` 算出前のステップ表現）として読み替える。**一覧 docs の文言修正は本 Task scope 外**（別 docs Task 候補） |
+| 10 | `user_meaning` INSERT 主体 | **`MOD-RECO-009` が IF-DB-RECO-003 で 1 行 INSERT** する。`008` 出力（`user_social` / `user_symbolic`）と `009` 算出 `lambda_ctx` を合成し、`UserMeaningRepository` 経由で永続化。成功後 **`user_meaning_projected` Phase Log** を記録。`008` は **DML しない** |
 
 ---
 
@@ -516,4 +529,4 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 - 本仕様書は `MOD-RECO-008` の **User Feature → Social / Symbolic 射影** 責務に限定する
 - 配置パスは Epic `epic_scope.allowed_paths` に従い `apps/reco/src/reco/application/user-meaning-projector/**` を正とする
 - User Meaning フェーズ Wiring（`004`〜`010` スタブ差し替え）は Orchestrator 実装 / Wiring Task の責務であり、本 Task scope 外である
-- Recoモジュール一覧 §6.7 が `λ_ctx` を本モジュール出力に含む記載と、`user_meaning_テーブル定義書` の `009` 算出正本の差分は §16 No.1 に整理した。Human Review で一覧側の更新要否を判断する
+- `λ_ctx` 責務境界・INSERT 主体・Repository 契約は §16.1 No.8〜10 で確定済み。Recoモジュール一覧 §6.7 の `λ_ctx` 記載修正は別 docs Task 候補（本 Task scope 外）
