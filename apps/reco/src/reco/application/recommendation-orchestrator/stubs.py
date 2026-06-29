@@ -17,14 +17,12 @@ from reco.domain.recommendation.result import (
 )
 
 
-def _ensure_run_recorder_package() -> None:
-    import_root = "reco.application.recommendation_run_recorder"
+def _ensure_application_package(import_root: str, package_dir: str) -> None:
     if import_root in sys.modules:
         return
 
     init_path = (
-        Path(__file__).resolve().parent.parent
-        / "recommendation-run-recorder/__init__.py"
+        Path(__file__).resolve().parent.parent / package_dir / "__init__.py"
     )
     spec = importlib.util.spec_from_file_location(
         import_root,
@@ -32,38 +30,106 @@ def _ensure_run_recorder_package() -> None:
         submodule_search_locations=[str(init_path.parent)],
     )
     if spec is None or spec.loader is None:
-        raise RuntimeError("failed to load recommendation run recorder package")
+        raise RuntimeError(f"failed to load application package: {import_root}")
 
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+
+
+def _ensure_run_recorder_package() -> None:
+    _ensure_application_package(
+        "reco.application.recommendation_run_recorder",
+        "recommendation-run-recorder",
+    )
 
 
 def _ensure_config_version_resolver_package() -> None:
-    import_root = "reco.application.config_version_resolver"
-    if import_root in sys.modules:
-        return
-
-    init_path = (
-        Path(__file__).resolve().parent.parent
-        / "config-version-resolver/__init__.py"
+    _ensure_application_package(
+        "reco.application.config_version_resolver",
+        "config-version-resolver",
     )
-    spec = importlib.util.spec_from_file_location(
-        import_root,
-        init_path,
-        submodule_search_locations=[str(init_path.parent)],
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError("failed to load config version resolver package")
 
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+
+def _ensure_user_semantic_extractor_package() -> None:
+    _ensure_application_package(
+        "reco.application.user_semantic_extractor",
+        "user-semantic-extractor",
+    )
+
+
+def _ensure_external_condition_feature_estimator_package() -> None:
+    _ensure_application_package(
+        "reco.application.external_condition_feature_estimator",
+        "external-condition-feature-estimator",
+    )
+
+
+def _ensure_internal_condition_feature_estimator_package() -> None:
+    _ensure_application_package(
+        "reco.application.internal_condition_feature_estimator",
+        "internal-condition-feature-estimator",
+    )
+
+
+def _ensure_user_feature_generator_package() -> None:
+    _ensure_application_package(
+        "reco.application.user_feature_generator",
+        "user-feature-generator",
+    )
+
+
+def _ensure_user_meaning_projector_package() -> None:
+    _ensure_application_package(
+        "reco.application.user_meaning_projector",
+        "user-meaning-projector",
+    )
+
+
+def _ensure_user_context_builder_package() -> None:
+    _ensure_application_package(
+        "reco.application.user_context_builder",
+        "user-context-builder",
+    )
+
+
+def _ensure_query_embedding_generator_package() -> None:
+    _ensure_application_package(
+        "reco.application.query_embedding_generator",
+        "query-embedding-generator",
+    )
 
 
 _ensure_run_recorder_package()
 _ensure_config_version_resolver_package()
+_ensure_user_semantic_extractor_package()
+_ensure_external_condition_feature_estimator_package()
+_ensure_internal_condition_feature_estimator_package()
+_ensure_user_feature_generator_package()
+_ensure_user_meaning_projector_package()
+_ensure_user_context_builder_package()
+_ensure_query_embedding_generator_package()
 
 from reco.application.config_version_resolver import build_default_config_resolver  # noqa: E402
+from reco.application.external_condition_feature_estimator import (  # noqa: E402
+    build_default_external_condition_feature_estimator,
+)
+from reco.application.internal_condition_feature_estimator import (  # noqa: E402
+    build_default_internal_condition_feature_estimator,
+)
+from reco.application.query_embedding_generator import (  # noqa: E402
+    build_default_query_embedding_generator,
+)
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder  # noqa: E402
+from reco.application.user_context_builder import build_default_user_context_builder  # noqa: E402
+from reco.application.user_feature_generator import (  # noqa: E402
+    build_default_user_feature_generator,
+)
+from reco.application.user_meaning_projector import (  # noqa: E402
+    build_default_user_meaning_projector,
+)
+from reco.application.user_semantic_extractor import (  # noqa: E402
+    build_default_user_semantic_extractor,
+)
 
 from .errors import RecoError
 from .execution_context import ExecutionContext
@@ -249,27 +315,13 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     ports = OrchestratorPorts(
         run_recorder=build_scaffold_run_recorder(),
         config_resolver=build_default_config_resolver(),
-        user_semantic_extractor=StubPipelineModule(
-            "MOD-RECO-004", "semantic_extracted"
-        ),
-        external_feature_estimator=StubPipelineModule(
-            "MOD-RECO-005", "external_feature_estimated"
-        ),
-        internal_feature_estimator=StubPipelineModule(
-            "MOD-RECO-006", "internal_feature_estimated"
-        ),
-        user_feature_generator=StubPipelineModule(
-            "MOD-RECO-007", "user_feature_generated"
-        ),
-        user_meaning_projector=StubPipelineModule(
-            "MOD-RECO-008", "user_meaning_projected"
-        ),
-        user_context_builder=StubPipelineModule(
-            "MOD-RECO-009", "user_context_built"
-        ),
-        query_embedding_generator=StubPipelineModule(
-            "MOD-RECO-010", "query_embedding_generated"
-        ),
+        user_semantic_extractor=build_default_user_semantic_extractor(),
+        external_feature_estimator=build_default_external_condition_feature_estimator(),
+        internal_feature_estimator=build_default_internal_condition_feature_estimator(),
+        user_feature_generator=build_default_user_feature_generator(),
+        user_meaning_projector=build_default_user_meaning_projector(),
+        user_context_builder=build_default_user_context_builder(),
+        query_embedding_generator=build_default_query_embedding_generator(),
         pre_hard_filter=StubPipelineModule("MOD-RECO-011", "pre_hard_filtered"),
         candidate_retriever=StubPipelineModule("MOD-RECO-012", "retrieval_completed"),
         post_hard_filter=StubPipelineModule("MOD-RECO-013", "post_hard_filtered"),
