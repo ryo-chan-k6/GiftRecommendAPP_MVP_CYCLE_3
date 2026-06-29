@@ -1,0 +1,212 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-user-meaning-integration-test"
+  title: "MOD-RECO-001:Orchestrator Wiring（User Meaning）統合テスト"
+  summary: "User Meaning フェーズ配線後の Orchestrator デフォルト経路について、`test_recommendation_orchestrator.py` 等の期待値を本実装 Port に合わせて更新し、デフォルト composition が green になることを検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（User Meaning）"
+  epic_issue_number: 788
+  epic_branch: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+  related_issues:
+    - 260
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #788 配下で wiring Task により `build_default_stub_ports()` の User Meaning フェーズ Port が本実装へ差し替えられた後、Orchestrator デフォルト経路テストの期待値を更新する。
+  モジュール仕様書 §8.4.3 では、各モジュール implementation Task に明示 DI による Orchestrator 統合テストを必須成果物としている。本 Task は **デフォルト composition 経路**（build_default_stub_ports）の検証を担当する。
+
+objective: |
+  配線後の Orchestrator デフォルト経路テストを green にし、User Meaning フェーズ 7 モジュールがデフォルト composition で正しく呼び出されることを pytest で検証する。
+
+scope:
+  - "`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` の期待値更新・ケース追加"
+  - "User Meaning フェーズ配線後のデフォルト経路（build_default_stub_ports）の検証"
+  - "completed_modules / ExecutionContext キー等、本実装 Port に合わせたアサーション整理"
+  - "テスト用 fixture / helper の最小限整理（Orchestrator デフォルト経路専用）"
+
+out_of_scope:
+  - "stubs.py の Port 差し替え（wiring Task）"
+  - "MOD-RECO-004〜010 モジュール本体の変更（テスト成立に必要な最小修正のみ可。要 PR 説明）"
+  - "integration test（E2E）/ contract test"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / DB schema 変更"
+  - "本番 DB / 外部 API 依存テスト"
+  - "段階3 Composition 完成（本番 DI）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針・デフォルト composition（§8.4）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "User Meaning フェーズ処理順序"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線後の build_default_stub_ports()"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+      purpose: "テスト対象"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "更新対象テスト"
+  issues:
+    - number: 788
+      purpose: "親 Epic"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "配線後デフォルト経路の green な pytest スイート"
+  - "更新したテスト観点とケースの対応（PR 本文）"
+  - "pytest 実行結果（成功ログ）"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-user-meaning/integration-test/pr-review.yaml`、PR 作成前に整備）"
+
+acceptance_criteria:
+  - "wiring Task が Epic Branch にマージ済みである"
+  - "`cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+  - "デフォルト経路テストが User Meaning フェーズ 7 モジュールの本実装呼び出しを反映している"
+  - "stubs.py に変更がない（またはテスト成立に必要な最小修正のみで PR に説明がある）"
+  - "MOD-RECO-004〜010 モジュール本体への不要な変更がない"
+  - "テストが本番 DB / 外部 API / secret に依存していない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "test/task-858-mod-reco-001-wiring-user-meaning-integration-test"
+  base: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+  target: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-30"
+    due_date: "2026-07-02"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 788
+      purpose: "親 Epic"
+  prs: []
+  tasks:
+    - "task-mod-reco-001-wiring-user-meaning-wiring が Epic Branch にマージ済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-user-meaning-wiring"
+  blocks: []
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+    - "cd apps/reco && uv run pytest tests/unit/ -q"
+  manual_checks:
+    - "wiring Task PR が merge 済みで stubs.py が本実装 Port を参照していること"
+    - "User Meaning フェーズの completed_modules / context キーが本実装と一致していること"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "integration test（E2E）": "段階3 Composition 完成 Task の範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "デフォルト経路テストの期待値が配線後の本実装 Port と整合しているか"
+    - "stubs.py への不要な変更がないか"
+    - "モジュール本体への不要な変更がないか"
+    - "テストが flakey な外部依存を持たないか"
+    - "wiring Task との依存関係（直列）が守られているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "統合テスト更新は Issue / PR で管理"
+
+risk_points:
+  - "wiring Task 未完了では本 Task を着手できない"
+  - "本実装 Port の ExecutionContext 副作用がテスト期待値とずれる可能性"
+
+human_decision_points:
+  - "デフォルト経路テストの期待値更新が妥当か（Human Review）"
+  - "本実装 Port の副作用（context キー等）のテスト粒度"
+
+stop_conditions:
+  - "wiring Task が未完了"
+  - "stubs.py の追加変更が必要になった（wiring Task へ戻す）"
+  - "モジュール本体の修正がテスト成立に不可欠で scope を超える"
+
+notes:
+  - "Task Issue: #858"
+  - "前提 wiring Task: #856（PR #857）"
+  - "Epic Issue: #788"
