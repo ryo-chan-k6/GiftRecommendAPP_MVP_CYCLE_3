@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-008:User Meaning Projector"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-008-user-meaning-projector"
+  epic_issue_number: 829
+  epic_branch: "feature/epic-829-mod-reco-008-user-meaning-projector"
   related_issues: []
   related_prs: []
 
@@ -99,9 +99,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-mod-reco-008-user-meaning-projector-unit-test"
-  base: "feature/epic-<issue-number>-mod-reco-008-user-meaning-projector"
-  target: "feature/epic-<issue-number>-mod-reco-008-user-meaning-projector"
+  name: "test/task-834-mod-reco-008-user-meaning-projector-unit-test"
+  base: "feature/epic-829-mod-reco-008-user-meaning-projector"
+  target: "feature/epic-829-mod-reco-008-user-meaning-projector"
   worktree_required: true
 
 project:
