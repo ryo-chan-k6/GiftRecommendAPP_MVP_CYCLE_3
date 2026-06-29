@@ -463,6 +463,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | ---- | -------- | -------------- |
 | 2026-06-29 | 初版作成 | Issue #830 |
 | 2026-06-29 | §16 未決 3 件を推奨案で確定（`λ_ctx` 境界・Repository 契約・INSERT 主体） | Issue #830 Human 判断 |
+| 2026-06-29 | Recoモジュール一覧 `λ_ctx` 責務境界整合（§16.1 No.9 参照更新） | Issue #839 |
 
 ---
 
@@ -484,7 +485,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 6 | `lambda_ctx` | **`MOD-RECO-009` 算出**。算出不能時 **`0.5` 固定 INSERT**（`009` 側） |
 | 7 | タイムアウト（MVP 初版） | **モジュール単体 hard を設けない**。User Meaning 一括 **hard 1,000ms** のみ |
 | 8 | 射影重み Repository 契約 | **`MeaningProjectionConfigRepository.get_weights(semantic_config_version_id)`** を正とする。返却型は 8 軸重み（`w_formality` 等、GiftMeaningSpace §5.2 / §5.3）。**全重み未設定時は単純平均**。物理 JSON 列・Lookup 経路は infrastructure 実装 Task で確定するが、論理 I/F は本行を正本とする |
-| 9 | `λ_ctx` と Recoモジュール一覧 §6.7 | **`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本**とし、`008` は `user_social` / `user_symbolic` のみ算出。一覧・Orchestrator ステップ表の `λ_ctx` 記載は **パイプライン論理 I/O**（`009` 算出前のステップ表現）として読み替える。**一覧 docs の文言修正は本 Task scope 外**（別 docs Task 候補） |
+| 9 | `λ_ctx` と Recoモジュール一覧 §6.7 | **`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本**とし、`008` は `user_social` / `user_symbolic` のみ算出。一覧修正は **Issue #839** で完了（`Recoモジュール一覧` §4 / §5.2 / §6.7 / §6.8 / §8.1） |
 | 10 | `user_meaning` INSERT 主体 | **`MOD-RECO-009` が IF-DB-RECO-003 で 1 行 INSERT** する。`008` 出力（`user_social` / `user_symbolic`）と `009` 算出 `lambda_ctx` を合成し、`UserMeaningRepository` 経由で永続化。成功後 **`user_meaning_projected` Phase Log** を記録。`008` は **DML しない** |
 
 ---
@@ -529,4 +530,4 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 - 本仕様書は `MOD-RECO-008` の **User Feature → Social / Symbolic 射影** 責務に限定する
 - 配置パスは Epic `epic_scope.allowed_paths` に従い `apps/reco/src/reco/application/user-meaning-projector/**` を正とする
 - User Meaning フェーズ Wiring（`004`〜`010` スタブ差し替え）は Orchestrator 実装 / Wiring Task の責務であり、本 Task scope 外である
-- `λ_ctx` 責務境界・INSERT 主体・Repository 契約は §16.1 No.8〜10 で確定済み。Recoモジュール一覧 §6.7 の `λ_ctx` 記載修正は別 docs Task 候補（本 Task scope 外）
+- `λ_ctx` 責務境界・INSERT 主体・Repository 契約は §16.1 No.8〜10 で確定済み。Recoモジュール一覧の `λ_ctx` 記載修正は **Issue #839** で完了

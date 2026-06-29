@@ -546,6 +546,7 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 | ---- | -------- | -------------- |
 | 2026-06-29 | 初版作成 | Issue #838 |
 | 2026-06-29 | Human 判断反映（`lambda_ctx` フォールバック確定・未決整理） | Issue #838 |
+| 2026-06-29 | Recoモジュール一覧 `λ_ctx` 責務境界整合（§16 未決 No.2 解消） | Issue #839 |
 
 ---
 
@@ -554,7 +555,6 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
 | 1 | `lambda_ctx_rule` の物理スキーマ（JSON 列名・seed 初期値） | `user_meaning.lambda_ctx` 列は整備済みだが、Rule Lookup 用の物理正本（テーブル or JSON + seed）が未設計。別 Task 化が必要 | Human + Worker | Rule DB 接続 Task 前 | 論理 I/F は §8.3.1。MVP は `InMemory` + **`0.5` フォールバック**で実装可 |
-| 2 | Recoモジュール一覧 §6.7 の `λ_ctx` 算出責務記載 | `008` 仕様書 §16.1 No.9 と一覧表記が矛盾。正本は `user_meaning_テーブル定義書` §5.4 | Human | 別 docs Task | **Issue #839**（本 Task scope 外） |
 
 ### 16.1 確定済み論点（`user_meaning_テーブル定義書` Human Review #555 / `MOD-RECO-008` §16.1 と整合）
 
@@ -568,8 +568,9 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 | 6 | NG 条件 | **Hard Filter 責務**。本モジュールの主 query に混在しない |
 | 7 | 値域 | **`lambda_ctx` は 0.0〜1.0**（`numeric(6,4)`） |
 | 8 | 8 行 version 不一致 | **INSERT 拒否**（`GRS-REC-005`）。多数決不採用 |
-| 9 | `λ_ctx` と Recoモジュール一覧 §6.7 | **`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本**とする。一覧修正は Issue #839 |
+| 9 | `λ_ctx` と Recoモジュール一覧 | **`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本**とする。一覧修正は **Issue #839** で完了（`Recoモジュール一覧` §4 / §5.2 / §6.7 / §6.8 / §8.1） |
 | 10 | Rule 未設定時の `lambda_ctx` | **`0.5` 固定**（Social / Symbolic バランス型）+ warning。射影ヒューリスティック（`user_symbolic` 採用）は **不採用** |
+| 11 | Recoモジュール一覧 `λ_ctx` 責務記載 | **Issue #839** で `MOD-RECO-008` から `λ_ctx` 算出責務を除去し、`MOD-RECO-009` へ移管済み |
 
 ---
 
@@ -617,4 +618,3 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 - 本仕様書は `MOD-RECO-009` の **User Context 生成・`lambda_ctx` 算出・`user_meaning` 永続化** 責務に限定する
 - 配置パスは Epic `epic_scope.allowed_paths` に従い `apps/reco/src/reco/application/user-context-builder/**` を正とする
 - User Meaning フェーズ Wiring（`004`〜`010` スタブ差し替え）は Orchestrator 実装 / Wiring Task の責務であり、本 Task scope 外である
-- Recoモジュール一覧 §6.7 / §5.2 に残る `λ_ctx` 算出責務の記載修正は **Issue #839**（`prompts/definitions/tasks/mod-reco-009-user-context-builder/reco-module-list-lambda-ctx-boundary-alignment.yaml`）

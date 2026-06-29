@@ -26,7 +26,7 @@
 | Featureルール定義書 | Feature値算出・正規化方針の前提 |
 | Semantic Concept定義書 | Semantic抽出対象の前提 |
 | Semanticルール定義書 | Semantic抽出・変換ルールの前提 |
-| Gift Meaning Space定義書 | Social / Symbolic / λ_ctx算出の前提 |
+| Gift Meaning Space定義書 | Social / Symbolic 射影の前提 |
 
 ---
 
@@ -122,8 +122,8 @@ Recommendation Resultを生成する
 | `MOD-RECO-005` | 外部条件特徴量推定 | External Condition Feature Estimator | User Meaning | relationship / occasionからFeatureを推定する | OL | ○ |
 | `MOD-RECO-006` | 内部条件特徴量推定 | Internal Condition Feature Estimator | User Meaning | preferred / non_preferred / free textからFeatureを推定する | OL | ○ |
 | `MOD-RECO-007` | User Feature生成 | User Feature Generator | User Meaning | 外部条件・内部条件を統合してUser Featureを生成する | OL | ○ |
-| `MOD-RECO-008` | User Meaning射影 | User Meaning Projector | User Meaning | User Featureからsocial / symbolic / λ_ctxを算出する | OL | ○ |
-| `MOD-RECO-009` | User Context生成 | User Context Builder | User Meaning | Retrieval用のpreferred / non_preferred contextを生成する | OL | ○ |
+| `MOD-RECO-008` | User Meaning射影 | User Meaning Projector | User Meaning | User Featureからsocial / symbolicをGift Meaning Spaceへ射影する | OL | ○ |
+| `MOD-RECO-009` | User Context生成 | User Context Builder | User Meaning | λ_ctx算出・user_meaning INSERT・Retrieval用のpreferred / non_preferred contextを生成する | OL | ○ |
 | `MOD-RECO-010` | Query Embedding生成 | Query Embedding Generator | Retrieval | Retrieval用のquery embeddingを生成する | OL | ○ |
 | `MOD-RECO-011` | Pre Hard Filter | Pre Hard Filter Executor | Retrieval | Retrieval前に商品集合を絞り込む | OL | ○ |
 | `MOD-RECO-012` | 候補商品抽出 | Candidate Retriever | Retrieval | Pre Hard Filter後の商品集合から候補商品を抽出する | OL | ○ |
@@ -216,8 +216,8 @@ flowchart TD
 | 5 | `MOD-RECO-005` | 外部条件特徴量推定 | relationship / occasion | external_feature_estimate |
 | 6 | `MOD-RECO-006` | 内部条件特徴量推定 | preferred / non_preferred / free text | internal_feature_estimate |
 | 7 | `MOD-RECO-007` | User Feature生成 | external_feature_estimate / internal_feature_estimate | user_feature |
-| 8 | `MOD-RECO-008` | User Meaning射影 | user_feature | user_social / user_symbolic / λ_ctx |
-| 9 | `MOD-RECO-009` | User Context生成 | semantic_extraction_result / user_feature | user_context |
+| 8 | `MOD-RECO-008` | User Meaning射影 | user_feature | user_social / user_symbolic |
+| 9 | `MOD-RECO-009` | User Context生成 | user_social / user_symbolic / semantic_extraction_result / user_feature / preferred条件 / non_preferred条件 | user_context / λ_ctx / user_meaning（完成） |
 | 10 | `MOD-RECO-010` | Query Embedding生成 | user_context | query_embedding |
 | 11 | `MOD-RECO-011` | Pre Hard Filter | request / item / budget / ng条件 | pre_filtered_item_pool |
 | 12 | `MOD-RECO-012` | 候補商品抽出 | query_embedding / item_embedding / pre_filtered_item_pool | retrieval_candidate |
@@ -419,7 +419,7 @@ flowchart TD
 | 処理種別 | OL |
 | MVP対象 | ○ |
 | 主な入力 | user_feature |
-| 主な出力 | user_social / user_symbolic / λ_ctx |
+| 主な出力 | user_social / user_symbolic |
 | 関連定義 | Gift Meaning Space定義書 |
 
 ### 主責務
@@ -427,8 +427,9 @@ flowchart TD
 - User FeatureをGift Meaning Spaceへ射影する
 - Social方向の強さを算出する
 - Symbolic方向の強さを算出する
-- 贈答リスク許容度である `λ_ctx` を算出する
-- Rankingや多様性制御に利用する補正係数を後続へ渡す
+- 射影結果（`user_social` / `user_symbolic`）を `execution_context` へ返却し、後続 `MOD-RECO-009` へ引き渡す
+
+**注記**: `λ_ctx`（`lambda_ctx`）算出・`user_meaning` テーブル INSERT は **`MOD-RECO-009`** 責務（`user_meaning_テーブル定義書` §5.4 / `MOD-RECO-008` モジュール仕様書 §16.1 No.9）。
 
 ---
 
@@ -439,15 +440,17 @@ flowchart TD
 | モジュールID | `MOD-RECO-009` |
 | モジュール名 | User Context生成 |
 | 物理名 | User Context Builder |
-| 分類 | User Meaning / Retrieval |
+| 分類 | User Meaning |
 | 処理種別 | OL |
 | MVP対象 | ○ |
-| 主な入力 | semantic_extraction_result / user_feature / preferred条件 / non_preferred条件 |
-| 主な出力 | user_context |
-| 関連定義 | Retrieval定義書 / Semanticルール定義書 |
+| 主な入力 | user_social / user_symbolic（`MOD-RECO-008`）/ semantic_extraction_result / user_feature / preferred条件 / non_preferred条件 |
+| 主な出力 | user_context / λ_ctx / user_meaning（完成） |
+| 関連定義 | Retrieval定義書 / Semanticルール定義書 / `user_meaning_テーブル定義書` |
 
 ### 主責務
 
+- 贈答リスク許容度である `λ_ctx`（`lambda_ctx`）を算出する（Matching定義書 §4.5）
+- `008` 出力と合成し **`user_meaning` テーブルへ 1 行 INSERT** する（IF-DB-RECO-003）
 - Retrievalで利用する検索文脈を生成する
 - preferred contextを生成する
 - non_preferred contextを生成する
@@ -1018,7 +1021,9 @@ semantic_extraction_result
 ↓
 user_feature
 ↓
-user_social / user_symbolic / λ_ctx
+user_social / user_symbolic
+↓
+λ_ctx（MOD-RECO-009 算出）
 ↓
 user_context
 ↓
