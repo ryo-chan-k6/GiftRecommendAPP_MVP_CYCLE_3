@@ -20,6 +20,7 @@ from reco.application.recommendation_orchestrator.stubs import (
     StubReasonGenerator,
 )
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
+from recommendation_orchestrator_helpers import ports_with_user_meaning_stubs
 from reco.domain import (
     ExecutionCondition,
     ExecutionMode,
@@ -49,6 +50,7 @@ def _ports_with(ports: OrchestratorPorts, **overrides: object) -> OrchestratorPo
 # §14 No.1 正常系（ui mode）
 def test_ui_mode_success_returns_recommendation_result() -> None:
     ports, _ = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(mode=ExecutionMode.UI),
         trace_id="trace-ui",
@@ -71,10 +73,34 @@ def test_default_stub_ports_wires_config_version_resolver() -> None:
     assert isinstance(ports.config_resolver, ConfigVersionResolver)
 
 
+def test_default_stub_ports_wires_user_meaning_modules() -> None:
+    from reco.application.external_condition_feature_estimator import (
+        ExternalConditionFeatureEstimator,
+    )
+    from reco.application.internal_condition_feature_estimator import (
+        InternalConditionFeatureEstimator,
+    )
+    from reco.application.query_embedding_generator import QueryEmbeddingGenerator
+    from reco.application.user_context_builder import UserContextBuilder
+    from reco.application.user_feature_generator import UserFeatureGenerator
+    from reco.application.user_meaning_projector import UserMeaningProjector
+    from reco.application.user_semantic_extractor import UserSemanticExtractor
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.user_semantic_extractor, UserSemanticExtractor)
+    assert isinstance(ports.external_feature_estimator, ExternalConditionFeatureEstimator)
+    assert isinstance(ports.internal_feature_estimator, InternalConditionFeatureEstimator)
+    assert isinstance(ports.user_feature_generator, UserFeatureGenerator)
+    assert isinstance(ports.user_meaning_projector, UserMeaningProjector)
+    assert isinstance(ports.user_context_builder, UserContextBuilder)
+    assert isinstance(ports.query_embedding_generator, QueryEmbeddingGenerator)
+
+
 # §14 No.2 正常系（evaluation / batch mode）— Stub が execution_mode を echo する挙動
 @pytest.mark.parametrize("mode", [ExecutionMode.EVALUATION, ExecutionMode.BATCH])
 def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> None:
     ports, _ = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
     ports = _ports_with(ports, config_resolver=StubConfigResolver())
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(mode=mode),
@@ -88,7 +114,9 @@ def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> Non
 
 # §14 No.3 処理順序
 def test_orchestrator_runs_all_modules_in_order() -> None:
-    orchestrator = RecommendationOrchestrator()
+    ports, _ = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
+    orchestrator = RecommendationOrchestrator(ports)
     outcome = orchestrator.run(
         _sample_request(),
         trace_id="trace-1",
@@ -103,6 +131,7 @@ def test_orchestrator_runs_all_modules_in_order() -> None:
 # §14 No.4 Ranking 責務分離
 def test_final_score_calculator_runs_before_final_ranker() -> None:
     ports, _ = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
     call_order: list[str] = []
 
     def track(module: StubPipelineModule) -> None:
@@ -129,6 +158,7 @@ def test_final_score_calculator_runs_before_final_ranker() -> None:
 # §14 No.5 境界値（0件）— Orchestrator は空 Result を正常終了。GRS-REC-001 は api 層で付与。
 def test_zero_candidates_completes_with_empty_result() -> None:
     ports, helpers = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
 
     def build_empty_result(context):
         context.completed_modules.append("MOD-RECO-021")
@@ -171,6 +201,8 @@ def test_pipeline_module_failure_propagates_error_code(
     blocked_module: str,
 ) -> None:
     ports, helpers = build_default_stub_ports()
+    if module_attr in ("candidate_retriever", "risk_scorer"):
+        ports = ports_with_user_meaning_stubs(ports)
     failing = getattr(ports, module_attr)
     failed_module = StubPipelineModule(
         module_id=failing.module_id,
@@ -240,6 +272,7 @@ def test_run_recorder_failure_after_config_resolver() -> None:
 # §14 No.8 Phase Log 契機（unit: スタブ呼び出し記録）
 def test_phase_log_records_major_phase_boundaries() -> None:
     ports, helpers = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(),
         trace_id="trace-phase-log",
@@ -281,6 +314,7 @@ def test_error_handler_records_failure_for_error_log_delegation() -> None:
 # §14 No.12 trace 伝播
 def test_trace_id_propagates_to_phase_log_and_metrics() -> None:
     ports, helpers = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
     trace_id = "trace-propagation-xyz"
 
     outcome = RecommendationOrchestrator(ports).run(
@@ -298,6 +332,7 @@ def test_trace_id_propagates_to_phase_log_and_metrics() -> None:
 # §14 No.13 Reason fallback
 def test_reason_fallback_injects_generic_reason() -> None:
     ports, _ = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
     ports = _ports_with(
         ports,
         reason_generator=StubReasonGenerator(

@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
+
+_APPLICATION_TESTS = Path(__file__).resolve().parent
+if str(_APPLICATION_TESTS) not in sys.path:
+    sys.path.insert(0, str(_APPLICATION_TESTS))
 
 
 def _load_package(import_root: str, init_relative: str) -> None:

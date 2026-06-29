@@ -144,7 +144,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/task-mod-reco-001-wiring-user-meaning-wiring"
+  name: "feature/task-856-mod-reco-001-wiring-user-meaning-wiring"
   base: "feature/epic-788-mod-reco-001-wiring-user-meaning"
   target: "feature/epic-788-mod-reco-001-wiring-user-meaning"
   worktree_required: true
@@ -255,6 +255,7 @@ stop_conditions:
   - "Retrieval 以降フェーズの配線が必要になった"
 
 notes:
+  - "Task Issue: #856"
   - "Epic Issue: #788"
   - "親 Issue: #260（[Epic]MOD-RECO-001:Recommendation Orchestrator）"
   - "配線方針正本は MOD-RECO-001 モジュール仕様書 §8.4"
