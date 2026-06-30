@@ -210,7 +210,7 @@ Issue #867 / Step 4（横断 docs Task）により、以下の正本を **012 �
 | --: | ------------- | -------- | ------ |
 | 3 | 012 モジュール仕様書 Task | 専用 worktree | `MOD-RECO-012_...モジュール仕様書.md` | **完了**（Issue #865 / PR #866） |
 | 4 | 横断 docs 更新 Task | 専用 worktree | Recoモジュール一覧・001・エラー・モジュール一覧等（§9 参照） | **完了**（Issue #867 / PR #868） |
-| 5 | Epic / Definition 整理 Task（新規） | 専用 worktree | #861 クローズ、012 Epic scope、011 implementation キャンセル |
+| 5 | Epic / Definition 整理 Task | 専用 worktree | #861 クローズ、012 Epic scope、011 implementation キャンセル | **完了**（Issue #869 / PR 予定） |
 | 6 | 012 実装 Task（新規） | 専用 worktree | `candidate-retriever/pre-hard-filter/**` 等 |
 
 運用: **1 Issue = 1 Branch = 1 worktree = 1 PR**（`.cursor/rules/worktree.mdc`）
@@ -225,6 +225,7 @@ Issue #867 / Step 4（横断 docs Task）により、以下の正本を **012 �
 | 2026-06-30 | `pre_filtered_item_pool` 物理表現を predicate 中心に改訂（仕様書案） | Issue #862 Human フィードバック |
 | 2026-06-30 | **`MOD-RECO-011` 廃止・`012` 統合を確定**。本文を廃止・移行記録へ全面改訂 | Issue #862 Pivot |
 | 2026-06-30 | Step 4 横断 docs 整合完了 | Issue #867 |
+| 2026-06-30 | Step 5 Epic / Definition 整理完了（#861 クローズ・012 scope 拡張） | Issue #869 |
 
 ---
 
@@ -239,8 +240,9 @@ Issue #867 / Step 4（横断 docs Task）により、以下の正本を **012 �
 | MOD-RECO-004 / 010 仕様書 | `docs/06_実装設計/reco/` 配下 | 境界参照 |
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | `GRS-REC-008` |
 | ログ・Observability設計書 | `docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md` | Phase / Metric |
-| Epic #861 Definition | `prompts/definitions/epics/mod-reco-011-pre-hard-filter-executor/epic.yaml` | Step 5 で整理 |
-| Epic #012 Definition | `prompts/definitions/epics/mod-reco-012-candidate-retriever/epic.yaml` | Step 5 で scope 拡張 |
+| 2026-06-30 | Step 5 Epic / Definition 整理完了 | Issue #869 |
+| Epic #861 Definition | `prompts/definitions/epics/mod-reco-011-pre-hard-filter-executor/epic.yaml` | Step 5 で廃止状態へ更新済み |
+| Epic #012 Definition | `prompts/definitions/epics/mod-reco-012-candidate-retriever/epic.yaml` | Step 5 で scope 拡張済み |
 
 ---
 
