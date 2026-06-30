@@ -88,11 +88,13 @@ Online 推薦の対象は **DB 取り込み済み item**（Retrieval定義書 §
 - `execution_context.request.budget` に基づく **予算 Filter**（Retrieval §8.3）
 - `execution_context.request.ng_condition` を **primary** とする NG Filter（Recommendation Request定義書 §9）
 - `execution_context.semantic_extraction_result.hard_filter_candidates[]` の **merge / dedup**（`MOD-RECO-004` §8.3.5）
-- `item.is_active` / `active_status` による **商品有効状態 Filter**
-- **availability_filter**・**data_quality_filter**（Retrieval §8.2 / 処理構成定義書 §6.2）
+- `item.is_active = true` **かつ** `active_status = 'active'` による **商品有効状態 Filter**（MVP では Retrieval §8.6 の `availability_filter` を **本 Filter に吸収**。独立 `availability_filter` は実装しない）
+- **data_quality_filter**（Retrieval §8.2 / 処理構成定義書 §6.2）
 - **`filter_predicate` 組み立て**および **`pre_filtered_item_pool`** 生成（§6.2）
-- （任意）`EXISTS` / `COUNT` による **0 件早期確認**（vector 検索スキップ判断。実装 Task で確定）
+- `total_after_filter = 0` 時の **Vector 検索スキップ判断**（§8.1・§13。空 `retrieval_candidate` を返却）
 - **`pre_filter_candidate_count`** の算出・Orchestrator への受け渡し
+
+**NG 正規化**: `request.ng_condition` は **api 側で正規化済み**（API-INT-002）。reco は **再正規化せず** merge / dedup 後に predicate 化する（§8.3.2）。
 
 **`pre_hard_filter` が行わないこと**: pgvector 検索、Semantic NG 照合、`query_embedding` の消費（Filter 判定に使用しない）
 
@@ -100,7 +102,7 @@ Online 推薦の対象は **DB 取り込み済み item**（Retrieval定義書 §
 
 - `pre_filtered_item_pool`（**predicate / handle 参照**）を検索対象とする **Vector Retrieval**（MVP 必須）
 - `execution_context.query_embedding.preferred_embedding` と `item_embedding` の類似度検索（`item_embedding` と同一 `model_version_id`）
-- **`candidate_limit`** に基づく候補件数制御（Retrieval定義書）
+- **`candidate_limit`** に基づく候補件数制御。値は `execution_context.request.execution.candidateLimit` を使用し、未指定時は mode 別デフォルト（§8.3.4）
 - **`retrieval_candidate`** ドメインオブジェクトの組み立て（`item_id`、類似度、取得根拠等。実装 Task で型定義）
 - predicate を Vector 検索 SQL の `WHERE` / subquery に **埋め込む**（§8.3.4）
 
@@ -146,16 +148,16 @@ Online 推薦の対象は **DB 取り込み済み item**（Retrieval定義書 §
 
 | 値 | MVP 本番 | 内容 |
 | -- | -------- | ---- |
-| `predicate` | **第一候補** | `filter_predicate`（§6.2.2） |
-| `session_table` | 第二候補 | `session_handle`（Run スコープ一時表） |
-| `materialized_ids` | 限定（テスト・閾値以下） | `item_ids[]`。本番前提にしない |
+| `predicate` | **第一候補（MVP 本番のみ）** | `filter_predicate`（§6.2.2） |
+| `session_table` | **MVP 不採用** | Post-MVP 性能 Task で再検討（§16.1 No.10） |
+| `materialized_ids` | **テスト専用（上限 100 件）** | `item_ids[]`。本番経路では使用しない |
 
 #### 6.2.2 `filter_predicate`（`representation = predicate` 時）
 
 | フィールド | 必須 | 内容 |
 | ---------- | ---- | ---- |
 | `merged_filter_conditions` | `true` | merge 済み NG / budget 等（§8.3.2） |
-| `active_only` | `true` | MVP: `true` 固定 |
+| `active_only` | `true` | MVP: `true` 固定（`is_active = true` かつ `active_status = 'active'`） |
 | `data_quality_rules` | `false` | URL / 画像必須等 |
 | `repository_query_ref` | `false` | infrastructure Query テンプレート ID |
 
@@ -247,7 +249,14 @@ flowchart TD
 
 #### 8.2.1 Filter 適用順（`pre_hard_filter`・正本: Retrieval §8.6）
 
-1. `active_item_filter` → 2. `availability_filter` → 3. `budget_filter` → 4. `ng_category_filter` → 5. `ng_keyword_filter` → 6. `data_quality_filter` → 7. `duplicate_item_filter`（MVP 簡易可）
+MVP では以下を適用する。Retrieval §8.6 の `availability_filter` は **`active_item_filter` に吸収**し、独立 Filter としては実装しない。
+
+1. `active_item_filter`（`is_active = true` かつ `active_status = 'active'`）
+2. `budget_filter`
+3. `ng_category_filter`
+4. `ng_keyword_filter`
+5. `data_quality_filter`
+6. `duplicate_item_filter`（MVP 簡易可）
 
 ### 8.3 アルゴリズム / 計算仕様
 
@@ -270,6 +279,8 @@ flowchart TD
 
 競合時は 1 件に統合。`non_preferred_condition` は対象外。
 
+**NG 正規化（MVP）**: `ngText` / `ngKeywords` / `ngCategories` は **api 側で正規化済み**（API-INT-002）を前提とする。reco は再正規化せず、正規化済み文字列を predicate へ変換する。SQL インジェクション防止のエスケープ / 述語組み立てのみ reco 責務とする。
+
 #### 8.3.3 Pre / Post Hard Filter 境界
 
 | 観点 | `pre_hard_filter`（本モジュール内） | `MOD-RECO-013` |
@@ -291,7 +302,8 @@ LIMIT :candidate_limit
 
 - `filter_predicate` は `pre_hard_filter` が組み立てたものを **同一 Query 内**で再利用する
 - 全 item の in-memory 列挙・百万件 `IN (...)` 展開を **前提にしない**
-- `candidate_limit` は内部取得件数（Retrieval定義書。`top_k` との分離は Orchestrator / 下位で維持）
+- `candidate_limit` は `execution_context.request.execution.candidateLimit` を使用する。未指定時デフォルト: `ui` / `evaluation` = **50**、`batch` = **100**（API-INT-002・Retrieval §14.2）
+- `candidate_limit < top_k` のときは **`max(candidate_limit, top_k)`** に補正する（Retrieval §14.3）
 
 #### 8.3.5 Orchestrator Port 契約（MVP）
 
@@ -369,10 +381,11 @@ LIMIT :candidate_limit
 | Metric | 内容 | 集計単位 |
 | ------ | ---- | -------- |
 | `pre_filter_candidate_count` | Pre Filter 後候補数 | Run |
-| `pre_hard_filter_latency_ms` | Pre 処理時間 | Run |
-| `pre_hard_filter_exclusion_rate` | 除外率 | Run |
+| `pre_hard_filter_latency_ms` | Pre 処理時間（012 サブフェーズ分） | Run |
+| `retrieval_candidate_count` | Retrieval 候補数 | Run |
+| `retrieval_latency_ms` | Retrieval 処理時間（012 サブフェーズ分。013 は含まない） | Run |
 
-Retrieval 系メトリクス（`retrieval_candidate_count` 等）は実装 Task / Observability 設計書と整合させる（§16）。
+`pre_hard_filter_exclusion_rate` は MVP では **記録しない**（Post-MVP で Observability 設計書へ追記検討）。
 
 ---
 
@@ -384,7 +397,7 @@ Retrieval 系メトリクス（`retrieval_candidate_count` 等）は実装 Task 
 | 計算量 | Filter / Retrieval とも DB 内評価。`uuid[]` 全件メモリ保持は本番前提にしない |
 | リトライ | なし |
 | キャッシュ | Run 横断 item キャッシュなし（MVP） |
-| 0 件早期打ち切り | `total_after_filter = 0` 時に vector 検索をスキップしてよい（実装 Task で確定） |
+| 0 件早期打ち切り | `total_after_filter = 0` 時は **Vector 検索 SQL を実行しない**。空 `retrieval_candidate`（`total_retrieved = 0`）を返却し、`retrieval_completed` Phase Log と `retrieval_candidate_count = 0` を記録する（`GRS-REC-009` にはしない） |
 
 ---
 
@@ -396,7 +409,7 @@ Retrieval 系メトリクス（`retrieval_candidate_count` 等）は実装 Task 
 | --: | ---- | -------- | ---- |
 | 1 | budget / ng / active | 各 Filter が predicate に反映される | unit |
 | 2 | merge | `request.ng` primary + candidates dedup | unit |
-| 3 | 0 件 Pre | 成功・`GRS-REC-008` にならない | unit |
+| 3 | 0 件 Pre | 成功・`GRS-REC-008` にならない。vector スキップ・空 candidate・`retrieval_completed` 維持 | unit |
 | 4 | predicate 表現 | 本番経路で `representation = predicate` | unit |
 | 5 | non_preferred 除外 | Hard Filter されない | unit |
 | 6 | query_embedding 非依存 | Filter 結果に embedding が影響しない | unit |
@@ -406,7 +419,7 @@ Retrieval 系メトリクス（`retrieval_candidate_count` 等）は実装 Task 
 | No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
 | 7 | Vector 正常系 | predicate 適用下で類似度順に取得 | unit |
-| 8 | candidate_limit | 上限件数が守られる | unit |
+| 8 | candidate_limit | 上限件数が守られる。未指定時 ui/evaluation=50、batch=100 | unit |
 | 9 | model_version | `query_embedding` と `item_embedding` の version 整合 | unit |
 | 10 | DB 失敗 | `GRS-REC-009` | unit |
 
@@ -430,6 +443,7 @@ Retrieval 系メトリクス（`retrieval_candidate_count` 等）は実装 Task 
 | ---- | -------- | --------------- |
 | 2026-06-30 | 初版作成（`pre_hard_filter` 統合版） | Issue #865 |
 | 2026-06-30 | §16 未決事項テーブルを module-spec テンプレート列に整合（AI Review 指摘対応） | PR #866 |
+| 2026-06-30 | §16 未決事項 7 件を Human 判断で確定し §16.1 へ移管 | PR #866 / Human Review |
 
 ---
 
@@ -437,13 +451,7 @@ Retrieval 系メトリクス（`retrieval_candidate_count` 等）は実装 Task 
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `materialized_ids` 閾値 | テスト用小規模 materialize の上限が未確定 | Human + Worker | 実装 Task 起票前 | predicate 第一候補との併用方針 |
-| 2 | NG キーワード正規化 | Filter predicate 生成の前提が未確定 | Human | 実装 Task 起票前 | 実装 Task 前 |
-| 3 | `availability_filter` MVP 判定 | `active_status` との整合方針が未確定 | Human | 実装 Task 起票前 | `active_status` 整合 |
-| 4 | `session_table` 採用条件 | predicate のみで足りるかの判断が必要 | Human + Worker | 実装 Task 起票前 | 実装着手前に Human 判断推奨 |
-| 5 | `candidate_limit` 既定値 | Retrieval定義書・API との整合が未確定 | Human | 実装 Task 起票前 | 実装着手前に Human 判断推奨 |
-| 6 | Retrieval 系 Metric 名 | Observability 設計書との命名整合が未確定 | Worker | 実装 Task 中 | Observability 設計書 |
-| 7 | 0 件時の retrieval スキップ | 性能と観測のトレードオフが未確定 | Worker | 実装 Task 中 | 性能 vs 観測のトレードオフ |
+| - | なし | - | - | - | MVP 着手前論点は §16.1 へ移管済み（Human Review 2026-06-30） |
 
 ### 16.1 確定済み論点
 
@@ -455,6 +463,13 @@ Retrieval 系メトリクス（`retrieval_candidate_count` 等）は実装 Task 
 | 4 | Retrieval 失敗 | `GRS-REC-009` |
 | 5 | pool 物理表現 | 本番 **`predicate` 第一候補** |
 | 6 | 配置 | `candidate-retriever/pre-hard-filter/**` |
+| 7 | `materialized_ids` 閾値 | 本番 **不使用**。テスト専用上限 **100 件**（超過時テスト失敗） |
+| 8 | NG キーワード正規化 | **api 正本**（API-INT-002）。reco は merge + predicate 化のみ（再正規化しない） |
+| 9 | `availability_filter` MVP | **独立 Filter なし**。`active_item_filter` に吸収（`is_active = true` かつ `active_status = 'active'`） |
+| 10 | `session_table` MVP | **不採用**（predicate のみ）。Post-MVP 性能 Task で再検討 |
+| 11 | `candidate_limit` 既定値 | `request.execution.candidateLimit` を使用。未指定時: `ui` / `evaluation` = **50**、`batch` = **100**。`candidate_limit < top_k` 時は `max(candidate_limit, top_k)` |
+| 12 | Retrieval 系 Metric 名 | `retrieval_candidate_count` / `retrieval_latency_ms`（012 サブフェーズ分）。`pre_hard_filter_latency_ms` は記録。`pre_hard_filter_exclusion_rate` は MVP 省略 |
+| 13 | 0 件時 retrieval スキップ | `total_after_filter = 0` で vector SQL **スキップ**。空 candidate + `retrieval_completed` + `retrieval_candidate_count = 0`（`GRS-REC-009` にしない） |
 
 ---
 
