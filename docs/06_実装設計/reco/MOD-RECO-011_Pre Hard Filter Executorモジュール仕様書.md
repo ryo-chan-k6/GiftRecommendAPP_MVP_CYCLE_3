@@ -209,7 +209,7 @@ Issue #867 / Step 4（横断 docs Task）により、以下の正本を **012 �
 | Step | Issue（予定） | worktree | 成果物 |
 | --: | ------------- | -------- | ------ |
 | 3 | 012 モジュール仕様書 Task | 専用 worktree | `MOD-RECO-012_...モジュール仕様書.md` | **完了**（Issue #865 / PR #866） |
-| 4 | 横断 docs 更新 Task | 専用 worktree | Recoモジュール一覧・001・エラー・Observability 等 | **完了**（Issue #867 / PR #868） |
+| 4 | 横断 docs 更新 Task | 専用 worktree | Recoモジュール一覧・001・エラー・モジュール一覧等（§9 参照） | **完了**（Issue #867 / PR #868） |
 | 5 | Epic / Definition 整理 Task（新規） | 専用 worktree | #861 クローズ、012 Epic scope、011 implementation キャンセル |
 | 6 | 012 実装 Task（新規） | 専用 worktree | `candidate-retriever/pre-hard-filter/**` 等 |
 
