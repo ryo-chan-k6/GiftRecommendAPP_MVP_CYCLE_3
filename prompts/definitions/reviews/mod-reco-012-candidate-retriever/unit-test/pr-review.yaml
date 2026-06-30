@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 874
   issue:
     number: 873
   task_definition: "prompts/definitions/tasks/mod-reco-012-candidate-retriever/unit-test.yaml"
