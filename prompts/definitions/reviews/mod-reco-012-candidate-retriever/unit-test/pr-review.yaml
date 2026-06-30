@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 874
   issue:
-    number: null
+    number: 873
   task_definition: "prompts/definitions/tasks/mod-reco-012-candidate-retriever/unit-test.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-012-candidate-retriever"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-012-candidate-retriever"
+  source_branch: "test/task-873-mod-reco-012-candidate-retriever-unit-test"
+  target_branch: "feature/epic-864-mod-reco-012-candidate-retriever"
+  parent_epic_issue: 864
+  parent_epic_branch: "feature/epic-864-mod-reco-012-candidate-retriever"
 
 commands:
   primary: "/review-pr"
