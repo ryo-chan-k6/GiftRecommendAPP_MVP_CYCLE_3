@@ -68,7 +68,7 @@ MVP では **外部 Embedding API 呼び出しを Run あたり 1 回**（`prefe
 - `MOD-RECO-002` Recommendation Run 記録（Run INSERT は完了済みであることを前提とする）
 - **User Context 組み立て**（`embedding_query_text` 再構成を含む。`MOD-RECO-009` 責務）
 - **Semantic 抽出・User Feature 統合・User Meaning 射影**（`MOD-RECO-004`〜`008` 責務）
-- **Pre / Post Hard Filter 実行**（`MOD-RECO-011` / `013` 責務）
+- **Pre / Post Hard Filter 実行**（`MOD-RECO-012`（`pre_hard_filter`）/ `013` 責務）
 - **候補商品抽出（pgvector 類似検索）**（`MOD-RECO-012` 責務）
 - **Item Embedding 生成・永続化**（BATCH-015 / `item_embedding` 責務。OL では参照のみ）
 - **`query_embedding` の DB 永続化**（正本定義表：派生 / 一時・Run 内メモリ正本）
@@ -159,7 +159,7 @@ MVP では **`preferred_embedding` のみ**を含む。ドメインモデル上�
 | ---------- | ------------ |
 | `MOD-RECO-012` Candidate Retriever | `query_embedding.preferred_embedding`（必須） |
 | `MOD-RECO-014`〜`020` Matching / Ranking | **直接は利用しない**。avoid は Feature 系統（§8.3.2） |
-| `MOD-RECO-011` Pre Hard Filter Executor | **直接は利用しない**（Orchestrator 順序上、本モジュールの後に実行） |
+| `MOD-RECO-012` Candidate Retriever | **直接は利用しない**（Orchestrator 順序上、本モジュールの後に **1 回**呼び出し。内部で `pre_hard_filter` → `retrieval`） |
 
 ### 7.2 参照データ
 
@@ -207,12 +207,12 @@ flowchart TD
 | 4 | preferred Embedding 生成 | `embedding_query_text` | `preferred_embedding` | IF-EXT-005。**Run あたり 1 回**。§8.3.1 |
 | 5 | `query_embedding` 組み立て | 上記 | `query_embedding` | `preferred_embedding` のみ。`execution_context` へ格納 |
 | 6 | Phase Log 依頼 | 生成成功 | phase 記録依頼 | `query_embedding_generated` |
-| 7 | 結果返却 | 組み立て結果 | `execution_context.query_embedding` | 後続 `011` / `012` へ |
+| 7 | 結果返却 | 組み立て結果 | `execution_context.query_embedding` | 後続 `012` へ |
 
 **Orchestrator 呼び出し順序（正本: MOD-RECO-001 §8.2.1）**
 
 ```text
-… → MOD-RECO-009 User Context 生成 → MOD-RECO-010 Query Embedding 生成 → MOD-RECO-011 Pre Hard Filter → MOD-RECO-012 候補商品抽出 → …
+… → MOD-RECO-009 User Context 生成 → MOD-RECO-010 Query Embedding 生成 → MOD-RECO-012 候補商品抽出（内部: `pre_hard_filter` → `retrieval`）→ …
 ```
 
 本モジュールは User Meaning フェーズの **論理順序 11** である。`MOD-RECO-009` 完了後に Orchestrator が呼び出す（Recoモジュール一覧 §5.2）。
@@ -389,7 +389,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 12 | 例外系（model version 欠落） | `model_versions.embedding` 欠落で `GRS-REC-007` となること | unit |
 | 13 | 例外系（次元不一致） | API が 1536 以外を返したとき `GRS-REC-007` となること | unit |
 | 14 | 例外系（NaN / Inf） | ベクトルに異常値含有で `GRS-REC-007` となること | unit |
-| 15 | 例外系（API 失敗） | External AI API 失敗で `GRS-REC-007` となり `011` 以降が呼ばれないこと | unit / integration |
+| 15 | 例外系（API 失敗） | External AI API 失敗で `GRS-REC-007` となり `012` 以降が呼ばれないこと | unit / integration |
 | 16 | 例外系（API タイムアウト） | Client timeout で `GRS-REC-007`（詳細 `GRS-LLM-101`）となること | unit |
 | 17 | DB 非書込 | 成功時も `query_embedding` テーブル等へ書き込まれないこと | unit |
 | 18 | Orchestrator 連携 | `009` 成功後に `010` を呼び、`010` 失敗時に `012` を呼ばないこと | integration |
@@ -427,7 +427,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 5 | 永続化 | **`query_embedding` は DB へ書かない**（正本定義表 §5.10） |
 | 6 | 失敗時 Error Code | 表面 **`GRS-REC-007`**（Orchestrator）。詳細は `GRS-LLM-101`〜`103` |
 | 7 | Phase Log | **`query_embedding_generated`** を生成成功後に依頼（ログ・Observability設計書） |
-| 8 | Orchestrator 順序 | **`009` 直後・`011` 直前**（論理順序 11。MOD-RECO-001 §8.2.1） |
+| 8 | Orchestrator 順序 | **`009` 直後・`012` 直前**（論理順序 11。MOD-RECO-001 §8.2.1） |
 | 9 | モジュール内リトライ | **なし**（MVP） |
 | 10 | Public API 露出 | Embedding ベクトルは **返さない** |
 | 11 | `non_preferred_embedding` | **MVP では生成しない**。avoid は Feature 系統（Matching `avoid_similarity` / Ranking `avoid_risk`）。外部 API は **Run あたり 1 回** |
