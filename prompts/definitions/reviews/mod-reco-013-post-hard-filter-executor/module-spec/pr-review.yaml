@@ -19,9 +19,9 @@ target:
     number: null
   task_definition: "prompts/definitions/tasks/mod-reco-013-post-hard-filter-executor/module-spec.yaml"
   source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-013-post-hard-filter-executor"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-013-post-hard-filter-executor"
+  target_branch: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
+  parent_epic_issue: 876
+  parent_epic_branch: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
 
 commands:
   primary: "/review-pr"
