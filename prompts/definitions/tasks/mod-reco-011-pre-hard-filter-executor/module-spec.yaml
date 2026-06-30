@@ -4,18 +4,24 @@ definition_type: "task"
 task:
   id: "task-mod-reco-011-pre-hard-filter-executor-module-spec"
   title: "MOD-RECO-011:Pre Hard Filter Executorモジュール仕様書作成"
-  summary: "MOD-RECO-011（Pre Hard Filter Executor / Pre Hard Filter）のモジュール仕様書（docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md）を、Recoモジュール一覧および関連ドメイン定義書に基づいて作成する。"
+  summary: "**Pivot 完了**（Issue #862 / PR #863）。独立モジュール仕様書ではなく廃止・移行記録を作成。移行先は MOD-RECO-012（Epic #864）。"
+  status: "ready"
 
 work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-011:Pre Hard Filter Executor"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-011-pre-hard-filter-executor"
+  epic_issue_number: 861
+  epic_branch: "feature/epic-861-mod-reco-011-pre-hard-filter-executor"
   related_issues:
-    - number: 260
-      purpose: "MOD-RECO-001 Orchestrator（呼び出し元・ポート契約）"
-  related_prs: []
+    - number: 862
+      purpose: "本 Task Issue（Pivot 完了）"
+    - number: 864
+      purpose: "移行先 Epic"
+    - number: 869
+      purpose: "Step 5 Epic クローズ・Definition 整理"
+  related_prs:
+    - 863
 
 commands:
   primary: "/start-task"
@@ -40,13 +46,12 @@ agent:
     - "docs-reviewer-ai"
 
 background: |
-  06_実装設計において、MOD-RECO-011（Pre Hard Filter Executor）の Recoモジュール仕様書を作成する。
-  本 Task は当該モジュール本体に責務を限定し、API-INT-002 エンドポイント層や他 Recoモジュール本体の仕様は別 Epic / Task とする。
-  MOD-RECO-001 Orchestrator 仕様書のポート契約（`ExecutionContext` 入出力）と整合させる。
+  Issue #862 で Human 判断により MOD-RECO-011 独立モジュール廃止・012 統合が確定した。
+  本 Task は当初「モジュール仕様書作成」であったが、**廃止・移行記録**（Pivot）として PR #863 で完了した。
+  Epic #861 は Step 5（#869）でクローズする。
 
 objective: |
-  MOD-RECO-011 について、apps/reco 実装・単体テスト・レビューが可能な粒度のモジュール仕様書を作成する。
-  作成する仕様書は prompts/templates/docs/module-spec.md に準拠する。
+  **達成済み**: 廃止・移行記録を正本 docs として整備し、後続 Step（横断 docs / Definition 整理 / 012 実装）の前提を確定する。
 
 scope:
   - "MOD-RECO-011 のモジュール仕様書を新規作成する"
@@ -98,9 +103,8 @@ input:
 output:
   docs:
     - path: "docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md"
-      action: "create"
+      action: "update"
       required: true
-      template: "prompts/templates/docs/module-spec.md"
   files: []
   tests: []
   generated:
@@ -125,16 +129,16 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-mod-reco-011-pre-hard-filter-executor-module-spec"
-  base: "feature/epic-<issue-number>-mod-reco-011-pre-hard-filter-executor"
-  target: "feature/epic-<issue-number>-mod-reco-011-pre-hard-filter-executor"
+  name: "docs/task-862-mod-reco-011-pre-hard-filter-executor-module-spec"
+  base: "feature/epic-861-mod-reco-011-pre-hard-filter-executor"
+  target: "feature/epic-861-mod-reco-011-pre-hard-filter-executor"
   worktree_required: true
 
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "06_実装設計"
-    status: "Todo"
+    status: "Done"
     priority: "high"
 
 issue:
@@ -145,9 +149,12 @@ issue:
 dependencies:
   epics: []
   issues:
-    - number: 260
-      purpose: "Orchestrator ポート契約の正本"
-  prs: []
+    - number: 862
+      purpose: "本 Task Issue（完了）"
+    - number: 864
+      purpose: "移行先 Epic"
+  prs:
+    - 863
   tasks: []
   blocking: false
 
@@ -188,5 +195,6 @@ operation_logging:
     experiments: true
 
 notes:
-  - "Definition bootstrap 由来スキャフォールド。Epic Issue 番号確定後に parent を更新する。"
-  - "workstream: mod-reco-011-pre-hard-filter-executor"
+  - "**Pivot 完了**（Issue #862 / PR #863）。成果物は廃止・移行記録。"
+  - "移行先実装正本: `docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md`（#865 / #866）"
+  - "workstream: mod-reco-011-pre-hard-filter-executor（廃止）"

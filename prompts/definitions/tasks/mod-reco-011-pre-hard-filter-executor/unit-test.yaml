@@ -4,16 +4,22 @@ definition_type: "task"
 task:
   id: "task-mod-reco-011-pre-hard-filter-executor-unit-test"
   title: "MOD-RECO-011:Pre Hard Filter Executor単体テスト"
-  summary: "MOD-RECO-011（Pre Hard Filter Executor）実装に対し、モジュール仕様書 §14 の unit 観点を満たす単体テストを追加する。"
+  summary: "**キャンセル**（Issue #862 廃止）。独立 `pre-hard-filter-executor` の単体テストは行わない。012 Epic #864 配下 unit-test Task へ移管。"
+  status: "deprecated"
 
 work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-011:Pre Hard Filter Executor"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-011-pre-hard-filter-executor"
-  related_issues: []
-  related_prs: []
+  epic_issue_number: 861
+  epic_branch: "feature/epic-861-mod-reco-011-pre-hard-filter-executor"
+  related_issues:
+    - number: 862
+      purpose: "廃止 Pivot（着手禁止の根拠）"
+    - number: 864
+      purpose: "移行先 Epic"
+  related_prs:
+    - 863
 
 commands:
   primary: "/work-issue"
@@ -37,12 +43,11 @@ agent:
     - "test-ai"
 
 background: |
-  MOD-RECO-011 実装 Task 完了後、モジュール仕様書 §14 の unit 観点に沿った pytest テストを整備する。
-  本番 DB / 外部 API に依存しない fixture / mock を用いる。
+  **本 Task はキャンセル（deprecated）**。Issue #862 廃止により独立 `pre-hard-filter-executor` の単体テストは実施しない。
+  012 統合後のテストは Epic #864 配下 unit-test Task で `candidate-retriever/**` を対象とする。
 
 objective: |
-  MOD-RECO-011 の単体テストを整備し、pytest で再現可能な検証を提供する。
-  §14 unit 観点とテストケースの対応表を PR に記載する。
+  **実施しない**。本 Definition は誤着手防止のため残置する。
 
 scope:
   - "`apps/reco/tests/unit/application/pre-hard-filter-executor/**` または `apps/reco/tests/module/pre-hard-filter-executor/**` へのテスト追加"
@@ -163,5 +168,6 @@ operation_logging:
   level: "standard"
 
 notes:
-  - "Definition bootstrap 由来スキャフォールド。"
-  - "workstream: mod-reco-011-pre-hard-filter-executor"
+  - "**キャンセル（deprecated）**。Issue 未作成。着手禁止。"
+  - "移行先: `prompts/definitions/tasks/mod-reco-012-candidate-retriever/unit-test.yaml`（Epic #864）"
+  - "workstream: mod-reco-011-pre-hard-filter-executor（廃止）"
