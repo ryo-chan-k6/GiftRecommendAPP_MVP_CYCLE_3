@@ -4,7 +4,8 @@ definition_type: "epic"
 epic:
   id: "epic-mod-reco-011-pre-hard-filter-executor"
   title: "MOD-RECO-011:Pre Hard Filter Executor"
-  summary: "MOD-RECO-011（Pre Hard Filter Executor / Pre Hard Filter）に関するモジュール仕様書・実装・単体テストを管理するEpic。MOD-RECO-001 Orchestrator から呼び出され、推薦パイプラインの Retrieval 責務を担う（処理種別: OL）。"
+  summary: "**廃止**（Issue #862 / PR #863）。独立モジュールとしての Epic は打ち切り。Pre Hard Filter 責務は [Epic]MOD-RECO-012:Candidate Retriever（#864）内サブモジュール `pre_hard_filter` へ移管。"
+  status: "deprecated"
 
 work_mode: "ai-agent"
 
@@ -27,16 +28,16 @@ agent:
     - "reviewer-ai"
 
 background: |
-  06_実装設計および 07_開発・単体テストにおいて、MOD-RECO-011（Pre Hard Filter Executor）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
-  本モジュールは Recoモジュール一覧 §4 / §6 の Retrieval 分類モジュール（処理種別: OL、MVP対象 ○）である。
-  MOD-RECO-001 Recommendation Orchestrator から `ExecutionContext` 経由で呼び出される。
-  本 Epic は **Recoモジュール本体**（`apps/reco/src/reco/application/pre-hard-filter-executor/**`）に限定し、エンドポイント層（`apps/reco/src/reco/api/**`）は [Epic]API-INT-002 配下とする。
-  並列着手ウェーブ目安: 2（bootstrap Issue 参照）。
+  **本 Epic は廃止済み**（Human 判断・Issue #862 Pivot / PR #863）。
+  当初は MOD-RECO-011（Pre Hard Filter Executor）の設計・実装・テストを Epic Issue #861 で管理する予定であった。
+  廃止後、Pre Hard Filter 責務は MOD-RECO-012（Candidate Retriever / Epic #864）内サブモジュール `pre_hard_filter` に統合する。
+  移行記録正本: `docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md`
+  Issue #861 は Step 5（Issue #869 / PR 予定）でクローズする。
 
 objective: |
-  MOD-RECO-011 に関する Epic Issue と Epic Branch を作成し、配下 Task（モジュール仕様書 / 実装 / 単体テスト）の作業単位を整理する。
-  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
-  develop への統合は本 Epic PR のみで行う。
+  **達成済み（廃止確定）**: モジュール仕様書 Task（#862）は廃止・移行記録 Pivot として完了。
+  **実施しない**: implementation / unit-test Task、Epic PR の develop 統合、`pre-hard-filter-executor/**` 実装。
+  後続作業は Epic #864 配下で実施する。
 
 scope:
   - "MOD-RECO-011 に関する子 Task の作業単位を整理する（モジュール仕様書 / 実装 / 単体テスト）"
@@ -114,7 +115,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-011-pre-hard-filter-executor"
+  name: "feature/epic-861-mod-reco-011-pre-hard-filter-executor"
   base: "develop"
   target: "develop"
   worktree_required: false
@@ -123,7 +124,7 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "Todo"
+    status: "Done"
     priority: "high"
     planned_start: null
     due_date: null
@@ -188,9 +189,21 @@ dependencies:
   issues:
     - number: 260
       purpose: "MOD-RECO-001 Orchestrator 完了（ポート契約・処理順序の正本）"
-  prs: []
+    - number: 862
+      purpose: "廃止 Pivot 完了（移行記録）"
+    - number: 864
+      purpose: "移行先 Epic（MOD-RECO-012）"
+    - number: 869
+      purpose: "Step 5 Definition 整理・本 Epic クローズ"
+  prs:
+    - 863
   tasks: []
   blocking: false
+
+superseded_by:
+  epic_issue_number: 864
+  artifact_id: "MOD-RECO-012"
+  reason: "独立モジュール廃止・pre_hard_filter を 012 内サブモジュールへ統合"
 
 parallel_control:
   depends_on: []
@@ -252,8 +265,8 @@ stop_conditions:
   - "apps/reco/src/reco/api 配下への変更を本 Epic 配下 Task で実施する必要が出た場合"
 
 notes:
-  - "Epic は作業管理単位。成果物正本は子 Task で作成する。"
-  - "命名の正本は Task Definition設計書 §15.0・§15.1。"
-  - "子 Task: prompts/definitions/tasks/mod-reco-011-pre-hard-filter-executor/module-spec.yaml"
-  - "MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。#260 は関連 Issue として記載。"
-  - "bootstrap: prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+  - "**廃止 Epic**。Issue #861 は Step 5 でクローズ（#869）。"
+  - "Epic Branch `feature/epic-861-mod-reco-011-pre-hard-filter-executor` は merge 不要（廃止）。"
+  - "module-spec Task（#862）は Pivot 完了。implementation / unit-test は deprecated（着手禁止）。"
+  - "移行先: Epic #864 / `prompts/definitions/epics/mod-reco-012-candidate-retriever/epic.yaml`"
+  - "MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。#260 / #864 は関連 Issue として記載。"

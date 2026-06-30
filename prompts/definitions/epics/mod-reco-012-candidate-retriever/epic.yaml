@@ -4,7 +4,7 @@ definition_type: "epic"
 epic:
   id: "epic-mod-reco-012-candidate-retriever"
   title: "MOD-RECO-012:Candidate Retriever"
-  summary: "MOD-RECO-012（Candidate Retriever / 候補商品抽出）に関するモジュール仕様書・実装・単体テストを管理するEpic。MOD-RECO-001 Orchestrator から呼び出され、推薦パイプラインの Retrieval 責務を担う（処理種別: OL）。"
+  summary: "MOD-RECO-012（Candidate Retriever / 候補商品抽出）に関するモジュール仕様書・実装・単体テストを管理するEpic。`MOD-RECO-011` 廃止後は `pre_hard_filter` を本モジュール内サブモジュールとして統合し、Orchestrator から `010` 後に 1 回呼び出される（処理種別: OL）。"
 
 work_mode: "ai-agent"
 
@@ -28,10 +28,10 @@ agent:
 
 background: |
   06_実装設計および 07_開発・単体テストにおいて、MOD-RECO-012（Candidate Retriever）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
-  本モジュールは Recoモジュール一覧 §4 / §6 の Retrieval 分類モジュール（処理種別: OL、MVP対象 ○）である。
-  MOD-RECO-001 Recommendation Orchestrator から `ExecutionContext` 経由で呼び出される。
+  `MOD-RECO-011`（Pre Hard Filter Executor）は独立モジュールとして廃止し、Pre Hard Filter 責務は本 Epic 内サブモジュール `pre_hard_filter` に統合する（Issue #862 / PR #863）。横断 docs 整合は Issue #867 / PR #868 で Epic Branch へ反映済み。
+  本モジュールは Recoモジュール一覧 §6.11 の Retrieval 分類モジュール（処理種別: OL、MVP対象 ○）である。
+  MOD-RECO-001 Recommendation Orchestrator から `010` 完了後に **1 回**呼び出される（内部: `pre_hard_filter` → `retrieval`）。
   本 Epic は **Recoモジュール本体**（`apps/reco/src/reco/application/candidate-retriever/**`）に限定し、エンドポイント層（`apps/reco/src/reco/api/**`）は [Epic]API-INT-002 配下とする。
-  並列着手ウェーブ目安: 2（bootstrap Issue 参照）。
 
 objective: |
   MOD-RECO-012 に関する Epic Issue と Epic Branch を作成し、配下 Task（モジュール仕様書 / 実装 / 単体テスト）の作業単位を整理する。
@@ -39,10 +39,11 @@ objective: |
   develop への統合は本 Epic PR のみで行う。
 
 scope:
-  - "MOD-RECO-012 に関する子 Task の作業単位を整理する（モジュール仕様書 / 実装 / 単体テスト）"
+  - "MOD-RECO-012 に関する子 Task の作業単位を整理する（モジュール仕様書 / 横断 docs / Epic Definition 整理 / 実装 / 単体テスト）"
   - "Epic Issue を作成する"
   - "Epic Branch を develop から作成する"
   - "子 Task Definition の配置方針（prompts/definitions/tasks/mod-reco-012-candidate-retriever/**）を整理する"
+  - "`pre_hard_filter` サブモジュール統合後の epic_scope（物理配置・観測・エラー発生元）を維持する"
 
 out_of_scope:
   - "API-INT-002 エンドポイント層（`apps/reco/src/reco/api/**`）"
@@ -114,7 +115,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-012-candidate-retriever"
+  name: "feature/epic-864-mod-reco-012-candidate-retriever"
   base: "develop"
   target: "develop"
   worktree_required: false
@@ -137,13 +138,18 @@ epic_scope:
   artifact_id: "MOD-RECO-012"
   allowed_paths:
     - "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md"
     - "apps/reco/src/reco/application/candidate-retriever/**"
+    - "apps/reco/src/reco/application/candidate-retriever/pre-hard-filter/**"
+    - "apps/reco/src/reco/application/candidate-retriever/retrieval/**"
     - "apps/reco/src/reco/domain/**"
     - "apps/reco/src/reco/pipeline/**"
     - "apps/reco/tests/unit/application/candidate-retriever/**"
     - "apps/reco/tests/module/candidate-retriever/**"
     - "prompts/definitions/tasks/mod-reco-012-candidate-retriever/**"
     - "prompts/definitions/reviews/mod-reco-012-candidate-retriever/**"
+    - "prompts/definitions/epics/mod-reco-011-pre-hard-filter-executor/epic.yaml"
+    - "prompts/definitions/tasks/mod-reco-011-pre-hard-filter-executor/**"
   forbidden_paths:
     - "apps/reco/src/reco/api/**"
     - "apps/reco/src/reco/application/recommendation-orchestrator/**"
@@ -180,6 +186,8 @@ epic_scope:
     - "db/**"
   child_task_areas:
     - "module-spec"
+    - "cross-docs-alignment"
+    - "epic-definition-cleanup"
     - "implementation"
     - "unit-test"
 
@@ -188,7 +196,18 @@ dependencies:
   issues:
     - number: 260
       purpose: "MOD-RECO-001 Orchestrator 完了（ポート契約・処理順序の正本）"
-  prs: []
+    - number: 862
+      purpose: "MOD-RECO-011 廃止・移行記録"
+    - number: 865
+      purpose: "MOD-RECO-012 モジュール仕様書"
+    - number: 867
+      purpose: "011 廃止横断 docs 整合（Epic Branch 反映）"
+    - number: 869
+      purpose: "Epic / Definition 整理（Step 5・#861 クローズ）"
+    - number: 861
+      purpose: "廃止 Epic（Step 5 でクローズ）"
+  prs:
+    - 868
   tasks: []
   blocking: false
 
@@ -253,7 +272,8 @@ stop_conditions:
 
 notes:
   - "Epic は作業管理単位。成果物正本は子 Task で作成する。"
-  - "命名の正本は Task Definition設計書 §15.0・§15.1。"
-  - "子 Task: prompts/definitions/tasks/mod-reco-012-candidate-retriever/module-spec.yaml"
-  - "MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。#260 は関連 Issue として記載。"
-  - "bootstrap: prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+  - "Epic Branch: `feature/epic-864-mod-reco-012-candidate-retriever`（Issue #864）"
+  - "横断 docs 整合 Task: Issue #867（PR #868 merge 済み）"
+  - "Epic / Definition 整理 Task: Issue #869（Step 5・#861 クローズ）"
+  - "物理配置: `candidate-retriever/pre-hard-filter/**` + `candidate-retriever/retrieval/**`（Orchestrator は 012 を 1 回呼び出し）"
+  - "子 Task: module-spec（#865）/ cross-docs-alignment（#867）/ epic-definition-cleanup（#869）/ implementation / unit-test"

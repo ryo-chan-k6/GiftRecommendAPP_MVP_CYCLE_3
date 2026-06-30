@@ -115,8 +115,7 @@ Recommendation Orchestrator（推薦実行制御）は、Reco オンライン推
 | `MOD-RECO-008` User Meaning Projector | 呼び出し | social / symbolic / λ_ctx 算出 | パイプライン中断、`GRS-REC-006` | |
 | `MOD-RECO-009` User Context Builder | 呼び出し | Retrieval 用 context 生成 | パイプライン中断、`GRS-REC-005` | |
 | `MOD-RECO-010` Query Embedding Generator | 呼び出し | query embedding 生成 | パイプライン中断、`GRS-REC-007` | |
-| `MOD-RECO-011` Pre Hard Filter Executor | 呼び出し | Retrieval 前の商品集合絞り込み | パイプライン中断、`GRS-REC-008` | |
-| `MOD-RECO-012` Candidate Retriever | 呼び出し | 候補商品抽出 | パイプライン中断、`GRS-REC-009` | |
+| `MOD-RECO-012` Candidate Retriever | 呼び出し | Pre Hard Filter（内部 `pre_hard_filter`）と Vector Retrieval（内部 `retrieval`） | パイプライン中断、`GRS-REC-008` / `GRS-REC-009` | Orchestrator から **1 回**呼び出し |
 | `MOD-RECO-013` Post Hard Filter Executor | 呼び出し | Retrieval 後の除外 | パイプライン中断、`GRS-REC-010` | |
 | `MOD-RECO-014` Feature Matcher | 呼び出し | feature 一致度計算 | パイプライン中断、`GRS-REC-011` | |
 | `MOD-RECO-015` Meaning Match Aggregator | 呼び出し | social_match / symbolic_match 集約 | パイプライン中断、`GRS-REC-011` | |
@@ -157,7 +156,7 @@ flowchart TD
     P0 --> R003[MOD-RECO-003 Config 解決]
     R003 --> R002[MOD-RECO-002 Run INSERT]
     R002 --> UM[User Meaning フェーズ<br/>004→005→006→007→008→009→010]
-    UM --> RT[Retrieval フェーズ<br/>011→012→013]
+    UM --> RT[Retrieval フェーズ<br/>012→013]
     RT --> MT[Matching フェーズ<br/>014→015→016]
     MT --> RK[Ranking フェーズ<br/>017→018→019→020]
     RK --> OUT[出力フェーズ<br/>021→022→023]
@@ -205,20 +204,19 @@ Recoモジュール一覧 §5.2 のモジュール整理に従い、Orchestrator
 | 9 | User Meaning 射影 | user_feature | user_social / user_symbolic / λ_ctx | `MOD-RECO-008` |
 | 10 | User Context 生成 | semantic / user_feature | user_context | `MOD-RECO-009` |
 | 11 | Query Embedding 生成 | user_context | query_embedding | `MOD-RECO-010` |
-| 12 | Pre Hard Filter | request / item / budget / ng | pre_filtered_item_pool | `MOD-RECO-011` |
-| 13 | 候補商品抽出 | query_embedding / item_embedding / pool | retrieval_candidate | `MOD-RECO-012` |
-| 14 | Post Hard Filter | retrieval_candidate / semantic NG | validated_candidate | `MOD-RECO-013` |
-| 15 | feature 一致度計算 | user_feature / item_feature | feature_match | `MOD-RECO-014` |
-| 16 | 意味マッチ集約 | feature_match | social_match / symbolic_match | `MOD-RECO-015` |
-| 17 | 文脈スコア算出 | matches / λ_ctx | context_score | `MOD-RECO-016` |
-| 18 | 人気補正算出 | popularity signals | popularity_score | `MOD-RECO-017` |
-| 19 | リスク補正算出 | risk signals / context | risk_penalty | `MOD-RECO-018` |
-| 20 | 最終スコア算出 | context / popularity / risk | final_score | `MOD-RECO-019` |
-| 21 | 最終順位生成 | final_score / diversity | ranked_items | `MOD-RECO-020` |
-| 22 | Recommendation Result 生成 | ranked_items / score_breakdown | recommendation_result | `MOD-RECO-021` |
-| 23 | Result Snapshot 生成 | ranked_items / item values | result item snapshot | `MOD-RECO-022` |
-| 24 | Reason 生成 | snapshot / score_breakdown / context | recommendation_reason | `MOD-RECO-023`。失敗時は §10.3 |
-| 25 | 正常終了・Result 返却 | 上記成果物 | `recommendation_result` | HTTP 200。Reason fallback 含む |
+| 12 | 候補商品抽出 | execution_context | pre_filtered_item_pool / retrieval_candidate | `MOD-RECO-012`（内部: `pre_hard_filter` → `retrieval`） |
+| 13 | Post Hard Filter | retrieval_candidate / semantic NG | validated_candidate | `MOD-RECO-013` |
+| 14 | feature 一致度計算 | user_feature / item_feature | feature_match | `MOD-RECO-014` |
+| 15 | 意味マッチ集約 | feature_match | social_match / symbolic_match | `MOD-RECO-015` |
+| 16 | 文脈スコア算出 | matches / λ_ctx | context_score | `MOD-RECO-016` |
+| 17 | 人気補正算出 | popularity signals | popularity_score | `MOD-RECO-017` |
+| 18 | リスク補正算出 | risk signals / context | risk_penalty | `MOD-RECO-018` |
+| 19 | 最終スコア算出 | context / popularity / risk | final_score | `MOD-RECO-019` |
+| 20 | 最終順位生成 | final_score / diversity | ranked_items | `MOD-RECO-020` |
+| 21 | Recommendation Result 生成 | ranked_items / score_breakdown | recommendation_result | `MOD-RECO-021` |
+| 22 | Result Snapshot 生成 | ranked_items / item values | result item snapshot | `MOD-RECO-022` |
+| 23 | Reason 生成 | snapshot / score_breakdown / context | recommendation_reason | `MOD-RECO-023`。失敗時は §10.3 |
+| 24 | 正常終了・Result 返却 | 上記成果物 | `recommendation_result` | HTTP 200。Reason fallback 含む |
 
 **処理順序の正本**: Recoモジュール一覧 §5.2 の **論理順序**（モジュール ID 順）を正とする。`MOD-RECO-002` / `003` については、`recommendation_run` INSERT に version 3 列必須のため **物理呼び出しは `003` 解決 → `002` INSERT** とする（§8.2.1、`MOD-RECO-003` モジュール仕様書 §8.3.7）。処理構成定義書 §5.4 および処理フロー概要図は抽象フローとして参照する。
 
@@ -253,7 +251,7 @@ Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モ�
 | --------------- | -------------- | ---- |
 | 起動 | `003` Config Version Resolver、`002` Run Recorder | **配線済み**（`build_default_config_resolver` / `build_scaffold_run_recorder`） |
 | User Meaning | `004`〜`010` | 未配線（スタブ） |
-| Retrieval | `011`〜`013` | 未配線 |
+| Retrieval | `012`〜`013` | 未配線 |
 | Matching | `014`〜`016` | 未配線 |
 | Ranking | `017`〜`020` | 未配線 |
 | 出力 | `021`〜`023` | 未配線 |
@@ -315,8 +313,8 @@ Orchestrator が管理する推薦実行の論理状態（`recommendation_run.st
 | User Feature 系失敗 | `GRS-REC-005` | `MOD-RECO-005`〜`009` 失敗 | 500 系 | 同上 |
 | User Meaning 射影失敗 | `GRS-REC-006` | `MOD-RECO-008` 失敗 | 500 系 | 同上 |
 | Query Embedding 失敗 | `GRS-REC-007` | `MOD-RECO-010` 失敗 | 500 系 | 同上 |
-| Pre Hard Filter 失敗 | `GRS-REC-008` | `MOD-RECO-011` 失敗 | 500 系 | 同上 |
-| Retrieval 失敗 | `GRS-REC-009` | `MOD-RECO-012` 失敗 | 500 系 | 同上 |
+| Pre Hard Filter 失敗 | `GRS-REC-008` | `MOD-RECO-012`（`pre_hard_filter`）失敗 | 500 系 | 同上 |
+| Retrieval 失敗 | `GRS-REC-009` | `MOD-RECO-012`（`retrieval`）失敗 | 500 系 | 同上 |
 | Post Hard Filter 失敗 | `GRS-REC-010` | `MOD-RECO-013` 失敗 | 500 系 | 同上 |
 | Matching 失敗 | `GRS-REC-011` | `MOD-RECO-014`〜`016` 失敗 | 500 系 | 同上 |
 | Ranking / Result 構築失敗 | `GRS-REC-012` | `MOD-RECO-017`〜`022` 失敗 | 500 系 | 同上 |
@@ -415,7 +413,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | hard（中断） | 推薦パイプライン全体 | **4,000ms** | パイプライン中断 → `GRS-REC-101` |
 | hard | Config 解決（`003`） | **300ms** | 中断 → `GRS-REC-003` |
 | hard | User Meaning 一括（`004`〜`010`） | **1,000ms** | 中断 → 該当 `GRS-REC-004`〜`007` |
-| hard | Retrieval 一括（`011`〜`013`） | **1,000ms** | 中断 → `GRS-REC-008`〜`010` |
+| hard | Retrieval 一括（`012`〜`013`） | **1,000ms** | 中断 → `GRS-REC-008`〜`010` |
 | hard | Matching 一括（`014`〜`016`） | **500ms** | 中断 → `GRS-REC-011` |
 | hard | Ranking 一括（`017`〜`020`） | **1,000ms** | 中断 → `GRS-REC-012` |
 | hard | Output 一括（`021`〜`023`） | **500ms** | `021`/`022` 失敗 → `GRS-REC-012`；`023` 失敗 → §10.3 fallback |
@@ -458,6 +456,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-06-25 | `003` 先行解決 → `002` INSERT の物理呼び出し順を §8.1 / §8.2 に反映 | Issue #779 / `MOD-RECO-003` §8.3.7 |
 | 2026-06-27 | MOD-RECO-002 整合（`003`→`002` INSERT の物理呼び出し順・§8.2.1 追加） | Issue #777 |
 | 2026-06-26 | §8.4 下位モジュール配線方針（3 段階ハイブリッド）を Human 決定として反映 | 配線方針採用 |
+| 2026-06-30 | `MOD-RECO-011` 廃止に伴い `010 → 012` 1 呼び出し（内部 `pre_hard_filter` → `retrieval`）へ更新。`GRS-REC-008` / `009` 発生元を `MOD-RECO-012` に整合 | Issue #867 / PR #868 |
 
 ---
 
