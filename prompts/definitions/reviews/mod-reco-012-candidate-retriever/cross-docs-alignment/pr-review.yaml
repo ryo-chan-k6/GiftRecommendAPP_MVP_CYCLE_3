@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 868
   issue:
     number: 867
   task_definition: "prompts/definitions/tasks/mod-reco-012-candidate-retriever/cross-docs-alignment.yaml"
@@ -47,7 +47,7 @@ input:
     number: 867
     required: true
   pr:
-    number: null
+    number: 868
     required: true
 
 review_points:
