@@ -23,7 +23,7 @@
 | 判断者 | Human Review（Issue #862 設計議論に基づく） |
 | 移行先 | **`MOD-RECO-012`（Candidate Retriever）内サブモジュール `pre_hard_filter`** |
 | 維持する概念 | パイプライン上の **Pre Hard Filter フェーズ**、論理リソース **`pre_filtered_item_pool`** |
-| 実装正本（移行先） | `docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md`（**未作成**。Step 3 Task で作成） |
+| 実装正本（移行先） | `docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md`（**作成済み**。Issue #865 / PR #866） |
 
 **廃止理由（要約）**
 
@@ -35,7 +35,7 @@
 
 - 旧「モジュール仕様書」案の設計判断・移管対象を記録する
 - **実装・単体テストの正本は `MOD-RECO-012` 仕様書**とする
-- Recoモジュール一覧等の横断正本は **Step 4（横断 docs Task）完了まで暫定的に旧記述が残る**（§9 参照）
+- Recoモジュール一覧等の横断正本は **Step 4（横断 docs Task）完了済み**（Issue #867 / PR #868、§9 参照）
 
 ---
 
@@ -161,19 +161,19 @@ flowchart LR
 
 ---
 
-## 7. 012 仕様書への移管チェックリスト（Step 3）
+## 7. 012 仕様書への移管チェックリスト（Step 3 完了）
 
-`MOD-RECO-012_Candidate Retrieverモジュール仕様書.md` 作成時に、以下を **必ず** 含める。
+`MOD-RECO-012_Candidate Retrieverモジュール仕様書.md`（Issue #865 / PR #866）に、以下を **充足済み**。
 
-- [ ] サブモジュール構成（`pre_hard_filter` / `retrieval`）
-- [ ] Orchestrator Port（`010` 後の **1 回呼び出し**）
-- [ ] `hard_filter_candidates` 受け取りと merge 方針（§5 表）
-- [ ] `pre_filtered_item_pool` 論理・物理表現（§6）
-- [ ] `GRS-REC-008` / `pre_hard_filter_completed` / `pre_filter_candidate_count` の発火タイミング
-- [ ] `013` / `010` / `004` との責務境界
-- [ ] 配置: `candidate-retriever/pre-hard-filter/**`
-- [ ] 本廃止記録への参照（設計経緯）
-- [ ] テスト観点（旧 011 案 §14 相当を `pre_hard_filter` 単体 + 012 結合に再配置）
+- [x] サブモジュール構成（`pre_hard_filter` / `retrieval`）
+- [x] Orchestrator Port（`010` 後の **1 回呼び出し**）
+- [x] `hard_filter_candidates` 受け取りと merge 方針（§5 表）
+- [x] `pre_filtered_item_pool` 論理・物理表現（§6）
+- [x] `GRS-REC-008` / `pre_hard_filter_completed` / `pre_filter_candidate_count` の発火タイミング
+- [x] `013` / `010` / `004` との責務境界
+- [x] 配置: `candidate-retriever/pre-hard-filter/**`
+- [x] 本廃止記録への参照（設計経緯）
+- [x] テスト観点（旧 011 案 §14 相当を `pre_hard_filter` 単体 + 012 結合に再配置）
 
 ---
 
@@ -182,24 +182,25 @@ flowchart LR
 | 項目 | 内容 |
 | ---- | ---- |
 | 独立 Epic 実装 | `apps/reco/src/reco/application/pre-hard-filter-executor/**` は **作成しない** |
-| Orchestrator からの `011` 呼び出し | 実装しない（001 更新は Step 4 / 実装 Task） |
+| Orchestrator からの `011` 呼び出し | 実装しない（001 docs 更新は Step 4 完了。実装は Step 6 Task） |
 | Epic #861 配下の implementation / unit-test Task | **着手しない**（Step 5 でキャンセル） |
 | 011 単体での DB COUNT | 独立モジュールとして実施しない |
 
 ---
 
-## 9. 横断 docs 更新前の暫定整合
+## 9. 横断 docs 更新（Step 4 完了）
 
-Step 4（横断 docs Task）完了まで、以下の正本は **旧記述（`MOD-RECO-011` 独立モジュール）が残る**。
+Issue #867 / Step 4（横断 docs Task）により、以下の正本を **012 統合版**へ更新済み（2026-06-30）。
 
-| 正本 | 暫定状態 | 更新 Task |
-| ---- | -------- | --------- |
-| Recoモジュール一覧 §4 / §5.2 / §6.10 | `MOD-RECO-011` 行あり | Step 4 |
-| MOD-RECO-001 仕様書 | `011` 呼び出し記載 | Step 4 |
-| エラーコード定義書 | 発生元が `011` 想定の記述 | Step 4 |
-| 機能一覧・処理構成定義書 等 | 同上 | Step 4 |
+| 正本 | 更新内容 |
+| ---- | -------- |
+| Recoモジュール一覧 §4 / §5 / §6.10 / §6.11 | `MOD-RECO-011` 独立行廃止・`012` 統合記述 |
+| MOD-RECO-001 仕様書 | `010 → 012` 1 呼び出し・`008`/`009` 発生元 |
+| エラーコード定義書 | `GRS-REC-008` / `009` 発生元を `MOD-RECO-012` に明記 |
+| モジュール一覧・機能×モジュール対応表・処理構成定義書・機能一覧 | モジュール対応を `012` 統合版へ更新 |
+| MOD-RECO-010 仕様書 | パイプライン順序参照を更新 |
 
-**読み方**: 本廃止記録と矛盾する横断 docs の `MOD-RECO-011` 記述は、**更新前の暫定**とみなす。実装判断は本記録および（Step 3 完了後の）012 仕様書を優先する。
+**読み方**: 本廃止記録と横断 docs は整合済み。実装判断は本記録および `MOD-RECO-012` モジュール仕様書を正とする。
 
 ---
 
@@ -207,8 +208,8 @@ Step 4（横断 docs Task）完了まで、以下の正本は **旧記述（`MOD
 
 | Step | Issue（予定） | worktree | 成果物 |
 | --: | ------------- | -------- | ------ |
-| 3 | 012 モジュール仕様書 Task（新規） | 専用 worktree | `MOD-RECO-012_...モジュール仕様書.md` |
-| 4 | 横断 docs 更新 Task（新規） | 専用 worktree | Recoモジュール一覧・001・エラー・Observability 等 |
+| 3 | 012 モジュール仕様書 Task | 専用 worktree | `MOD-RECO-012_...モジュール仕様書.md` | **完了**（Issue #865 / PR #866） |
+| 4 | 横断 docs 更新 Task | 専用 worktree | Recoモジュール一覧・001・エラー・モジュール一覧等（§9 参照） | **完了**（Issue #867 / PR #868） |
 | 5 | Epic / Definition 整理 Task（新規） | 専用 worktree | #861 クローズ、012 Epic scope、011 implementation キャンセル |
 | 6 | 012 実装 Task（新規） | 専用 worktree | `candidate-retriever/pre-hard-filter/**` 等 |
 
@@ -223,6 +224,7 @@ Step 4（横断 docs Task）完了まで、以下の正本は **旧記述（`MOD
 | 2026-06-30 | 初版としてモジュール仕様書案を作成 | Issue #862 |
 | 2026-06-30 | `pre_filtered_item_pool` 物理表現を predicate 中心に改訂（仕様書案） | Issue #862 Human フィードバック |
 | 2026-06-30 | **`MOD-RECO-011` 廃止・`012` 統合を確定**。本文を廃止・移行記録へ全面改訂 | Issue #862 Pivot |
+| 2026-06-30 | Step 4 横断 docs 整合完了 | Issue #867 |
 
 ---
 
@@ -230,10 +232,10 @@ Step 4（横断 docs Task）完了まで、以下の正本は **旧記述（`MOD
 
 | 種別 | パス | 用途 |
 | ---- | ---- | ---- |
-| 移行先（未作成） | `docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md` | 実装正本 |
+| 移行先（作成済み） | `docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md` | 実装正本（Issue #865 / PR #866） |
 | Retrieval定義書 | `docs/04_ドメインモデル設計/Retrieval定義書.md` | Hard Filter ドメイン正本 |
-| Recoモジュール一覧 | `docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` | Step 4 で更新 |
-| MOD-RECO-001 仕様書 | `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` | Step 4 で更新 |
+| Recoモジュール一覧 | `docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` | Step 4 で更新済み（Issue #867） |
+| MOD-RECO-001 仕様書 | `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` | Step 4 で更新済み（Issue #867） |
 | MOD-RECO-004 / 010 仕様書 | `docs/06_実装設計/reco/` 配下 | 境界参照 |
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | `GRS-REC-008` |
 | ログ・Observability設計書 | `docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md` | Phase / Metric |

@@ -245,8 +245,6 @@ flowchart TD
 … → MOD-RECO-010 → MOD-RECO-012（内部: pre_hard_filter → retrieval）→ MOD-RECO-013 → …
 ```
 
-**暫定整合**: MOD-RECO-001 仕様書 §8.2.1 は Step 4（横断 docs Task）完了まで旧記述（`011`→`012` 分離）が残る。実装判断は本仕様書を正とする。
-
 #### 8.2.1 Filter 適用順（`pre_hard_filter`・正本: Retrieval §8.6）
 
 MVP では以下を適用する。Retrieval §8.6 の `availability_filter` は **`active_item_filter` に吸収**し、独立 Filter としては実装しない。
@@ -442,6 +440,7 @@ LIMIT :candidate_limit
 | 日付 | 変更内容 | 関連 Issue / PR |
 | ---- | -------- | --------------- |
 | 2026-06-30 | 初版作成（`pre_hard_filter` 統合版） | Issue #865 |
+| 2026-06-30 | Step 4 横断 docs 整合に伴う暫定注記解消 | Issue #867 |
 | 2026-06-30 | §16 未決事項テーブルを module-spec テンプレート列に整合（AI Review 指摘対応） | PR #866 |
 | 2026-06-30 | §16 未決事項 7 件を Human 判断で確定し §16.1 へ移管 | PR #866 / Human Review |
 
@@ -480,7 +479,7 @@ LIMIT :candidate_limit
 | 011 廃止記録 | `docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md` | 設計経緯・移管元 |
 | Recoモジュール一覧 | `docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` | §6.11 |
 | Retrieval定義書 | `docs/04_ドメインモデル設計/Retrieval定義書.md` | Hard Filter・Vector |
-| MOD-RECO-001 | `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` | 呼び出し（Step 4 で更新） |
+| MOD-RECO-001 | `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` | 呼び出し |
 | MOD-RECO-004 / 010 / 013 | `docs/06_実装設計/reco/` 配下 | 境界 |
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | `008` / `009` |
 | Epic Definition | `prompts/definitions/epics/mod-reco-012-candidate-retriever/epic.yaml` | allowed_paths |
@@ -489,7 +488,7 @@ LIMIT :candidate_limit
 
 ## 18. レビュー観点
 
-- Recoモジュール一覧 §6.11 のモジュール名・分類と矛盾しない（§6.10 の 011 行は Step 4 まで暫定）
+- Recoモジュール一覧 §6.11 のモジュール名・分類と矛盾しない
 - `pre_hard_filter` / `retrieval` の責務境界が明確
 - `MOD-RECO-011` 廃止記録（#863）と整合
 - Orchestrator **1 呼び出し**・`GRS-REC-008` / `009` の切り分けが明確
@@ -505,4 +504,3 @@ LIMIT :candidate_limit
 - 本仕様書は **`MOD-RECO-012` 実装の正本**である。旧 `MOD-RECO-011` モジュール仕様書案の技術詳細は本書へ移管済み
 - Keyword / Hybrid / Fallback Retrieval は MVP 外（Retrieval定義書。別 Task で拡張）
 - Item Repository の concrete Query・索引は infrastructure / 実装 Task の scope
-- 横断 docs（Recoモジュール一覧・MOD-RECO-001 等）の `011` 記述更新は **Step 4** の scope
