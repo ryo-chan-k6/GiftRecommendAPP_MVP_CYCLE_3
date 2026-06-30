@@ -209,3 +209,5 @@ operation_logging:
 notes:
   - "workstream: mod-reco-012-candidate-retriever"
   - "Step 5（Epic / Definition 整理）。次は Step 6（012 実装 Task）。"
+  - "PR 本文の Task Definition は本 yaml 1 件のみバッククォートで明示すること（他 Task yaml を併記すると Fixer dispatch が ambiguous_definition_in_text で失敗）。"
+  - "Task PR は Related to #<issue> を使用（Closes は Epic PR 向け）。"
