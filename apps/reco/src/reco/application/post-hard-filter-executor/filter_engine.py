@@ -213,7 +213,7 @@ def _empty_result() -> PostHardFilterResult:
 
 
 def _require_retrieval_candidate(context: ExecutionContext) -> RetrievalCandidate:
-    retrieval_candidate = getattr(context, "retrieval_candidate", None)
+    retrieval_candidate = context.retrieval_candidate
     if retrieval_candidate is None:
         raise PostHardFilterError("retrieval_candidate is required on execution_context")
     return retrieval_candidate

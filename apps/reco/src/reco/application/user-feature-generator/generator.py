@@ -135,7 +135,7 @@ class UserFeatureGenerator:
                 "external_feature_estimate is required on execution_context",
             )
 
-        internal_estimate = getattr(context, "internal_feature_estimate", None)
+        internal_estimate = context.internal_feature_estimate
         if internal_estimate is None:
             raise UserFeatureGenerationError(
                 "internal_feature_estimate is required on execution_context",
@@ -175,8 +175,7 @@ class UserFeatureGenerator:
 
 
 def _attach_user_feature(context: ExecutionContext, user_feature: UserFeature) -> None:
-    # execution_context への型付きフィールド追加は Wiring Task で行う。
-    context.user_feature = user_feature  # type: ignore[attr-defined]
+    context.user_feature = user_feature
 
 
 def build_default_user_feature_generator() -> UserFeatureGenerator:
