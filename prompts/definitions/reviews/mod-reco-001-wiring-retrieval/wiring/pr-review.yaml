@@ -54,7 +54,10 @@ review_points:
   - "exclusive_files（stubs.py）の直列化方針に反していないか"
   - "Task PR target が Epic Branch であるか"
   - "test_recommendation_orchestrator.py の red が配線起因であることと integration-test Task 委譲が PR に明記されているか"
+  - "execution-context-typed-fields / integration-retest follow-up（playbook 順序 3〜4）委譲が PR に明記されているか"
+  - "execution_context.py への変更が混入していないか"
 
 notes:
   - "Issue / PR 確定後に target.pr / target.issue.number を更新する"
   - "配線 PR 単体では Orchestrator デフォルト経路テストが red になることを許容（integration-test Task で green 化）"
+  - "playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"

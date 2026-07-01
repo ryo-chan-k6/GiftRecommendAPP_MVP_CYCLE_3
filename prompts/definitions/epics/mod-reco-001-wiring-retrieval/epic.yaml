@@ -40,7 +40,8 @@ objective: |
 scope:
   - "Retrieval フェーズ（MOD-RECO-012 / MOD-RECO-013）の build_default_stub_ports() 配線 Task を Issue 化する"
   - "対象 Port: pre_hard_filter, candidate_retriever, post_hard_filter（011 廃止後の Port スロット整合を含む）"
-  - "配線後の Orchestrator デフォルト経路テスト（test_recommendation_orchestrator.py 等）を更新する"
+  - "配線後の Orchestrator デフォルト経路テスト（test_recommendation_orchestrator.py 等）を Epic Branch で更新する"
+  - "Epic develop merge 後の ExecutionContext 型付き化 / integration 再テスト follow-up Task 起票（playbook 順序 3〜4）"
   - "Epic Branch を develop から作成する"
   - "子 Task Definition の配置方針（prompts/definitions/tasks/mod-reco-001-wiring-retrieval/**）を整理する"
 
@@ -52,6 +53,8 @@ out_of_scope:
   - "段階3 Composition 完成（本番 DI / DB Repository / E2E 強化）"
   - "StubXxx クラスの削除"
   - "Orchestrator 本体の Port 数・呼び出し順の設計変更（別 Epic / docs Task）"
+  - "execution_context.py の型付きフィールド追加（develop 直 follow-up Task #887。playbook 順序 3）"
+  - "integration 再テストの getattr 置換（develop 直 follow-up Task #892。playbook 順序 4）"
   - "API-INT-002 エンドポイント層"
   - "OpenAPI / Orval / generated 変更"
   - "DB schema 変更"
@@ -117,6 +120,18 @@ acceptance_criteria:
   - "StubXxx は失敗注入・明示 DI テスト用に残存している"
   - "Orchestrator デフォルト経路の関連テストが green"
   - "配下 Wiring Task PR が merge され、Epic PR が develop へ統合可能"
+  - "playbook 順序 3〜4 follow-up Task（#887 / #892）が起票されている"
+
+follow_up_tasks_outside_epic:
+  - task_area: "execution-context-typed-fields"
+    issue_number: 887
+    branch_scope: "develop"
+  - task_area: "integration-retest"
+    issue_number: 892
+    branch_scope: "develop"
+    depends_on:
+      - 887
+      - 891
 
 branch:
   no_branch: false
@@ -247,6 +262,7 @@ notes:
   - "親 Issue: #260（[Epic]MOD-RECO-001:Recommendation Orchestrator）"
   - "Epic Branch: `feature/epic-789-mod-reco-001-wiring-retrieval`（Issue #789）"
   - "配線方針正本は MOD-RECO-001 モジュール仕様書 §8.4"
+  - "follow-up playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"
   - "子 Task 候補: prompts/definitions/tasks/mod-reco-001-wiring-retrieval/wiring.yaml（後続 /start-task で起票）"
   - "PR 作成前に prompts/definitions/reviews/mod-reco-001-wiring-retrieval/epic/pr-review.yaml を Epic Branch に含める（ai_review_required: true）"
   - "MOD-RECO-011 Epic #861 は廃止。Retrieval 前提は Epic #864 / #876 の implementation 完了"

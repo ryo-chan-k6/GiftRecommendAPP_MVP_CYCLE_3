@@ -1,0 +1,133 @@
+schema_version: "1.0"
+definition_type: "playbook"
+
+playbook:
+  id: "playbook-mod-reco-001-wiring-phase-follow-up"
+  title: "MOD-RECO-001:フェーズ Wiring 後続 Task チェーン（ExecutionContext型付き化含む）"
+  summary: |
+    フェーズ Wiring Epic（User Meaning / Retrieval / Matching 等）完了後に漏れやすい
+    ExecutionContext 型付き化および integration 再テストを、標準 Task チェーンとして定義する正本。
+    各 Wiring Epic / wiring Task / integration-test Task Definition から参照する。
+
+work_mode: "reference"
+
+background: |
+  User Meaning / Retrieval Wiring では、implementation 時に各モジュールが `execution_context` へ
+  動的付与（`# type: ignore[attr-defined]`）していた。Wiring Task scope は `stubs.py` のみのため、
+  型付きフィールド追加は別 Task（#887）として develop 直 follow-up で実施した。
+  integration-test（#858 / #886）では暫定として `getattr` で context を検証し、
+  型付き化後に integration 再テスト（#891 / #892）で直接参照へ置換した。
+  本 playbook は Matching 以降の Wiring Epic 起票時に同様の漏れを防ぐ。
+
+standard_task_chain:
+  - order: 1
+    task_area: "wiring"
+    issue_type: "feature"
+    branch_scope: "epic_branch"
+    primary_files:
+      - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+    must_not_change:
+      - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+    delegates_to:
+      - "integration-test"
+      - "execution-context-typed-fields"
+    notes: "配線 PR 単体で test_recommendation_orchestrator が red になることを許容。PR に委譲先を明記。"
+
+  - order: 2
+    task_area: "integration-test"
+    issue_type: "test"
+    branch_scope: "epic_branch"
+    primary_files:
+      - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    interim_pattern: |
+      ExecutionContext の新規フィールドは `getattr(ctx, \"<field>\", None)` で存在確認してよい（型付き化前）。
+      型付き直接参照は後続 integration-retest Task に委譲する。
+    must_not_change:
+      - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+    delegates_to:
+      - "execution-context-typed-fields"
+      - "integration-retest"
+
+  - order: 3
+    task_area: "execution-context-typed-fields"
+    issue_type: "chore"
+    branch_scope: "develop_direct"
+    primary_files:
+      - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      - "対象フェーズ MOD-RECO-* の generator / projector / executor 等（attach / getattr 整理）"
+    start_gate: "当該 Wiring Epic が develop に merge 済みであること"
+    must_not_change:
+      - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    delegates_to:
+      - "integration-retest"
+    reference_definitions:
+      - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/execution-context-typed-fields.yaml"
+      - "prompts/definitions/_examples/mod-reco-001-wiring-phase-template/execution-context-typed-fields.yaml"
+
+  - order: 4
+    task_area: "integration-retest"
+    issue_type: "test"
+    branch_scope: "develop_direct"
+    primary_files:
+      - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    start_gate: "execution-context-typed-fields Task が develop に merge 済みであること"
+    objective: "integration-test で暫定使用した getattr アサーションを型付き直接参照へ置換"
+    reference_definitions:
+      - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/integration-retest-user-meaning.yaml"
+      - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/integration-retest-retrieval.yaml"
+      - "prompts/definitions/_examples/mod-reco-001-wiring-phase-template/integration-retest.yaml"
+
+module_implementation_rules:
+  - "モジュール implementation Task の `out_of_scope` に Orchestrator stubs 差し替えを含める（§8.4.3）"
+  - "モジュール内コメント「Wiring Task で型付きフィールド追加」は禁止。代わりに execution-context-typed-fields Task へ委譲と記載"
+  - "Wiring Task で `execution_context.py` を変更しない"
+  - "型付き化はフェーズ単位または横断単位で Issue 化し、`execution_context.py` を exclusive_files とする"
+
+epic_issue_body_appendix: |
+  ## 16. ExecutionContext型付き化 follow-up（必須チェーン）
+
+  本 Epic の子 Task は **wiring → integration-test** までを Epic Branch で実施する。
+  Epic develop merge 後、以下を **別 Task（develop 直 PR）** で必ず起票する（漏れ防止）。
+
+  | 順序 | Task 種別 | 概要 | 正本 |
+  | ---- | --------- | ---- | ---- |
+  | 3 | chore | ExecutionContext 型付きフィールド拡張（当該フェーズ） | wiring-phase-follow-up-playbook.yaml |
+  | 4 | test | integration 再テスト（getattr → 型付き直接参照） | 同上 |
+
+  詳細: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
+
+wiring_task_issue_body_appendix: |
+  ## 15. ExecutionContext型付き化（本 Task scope 外・必須 follow-up）
+
+  - 本 Task は `stubs.py` 配線のみ。`execution_context.py` の型付きフィールド追加は **行わない**。
+  - モジュール実装時の動的付与（`# type: ignore[attr-defined]`）は、Epic develop merge 後の
+    **execution-context-typed-fields Task** で解消する（playbook 順序 3）。
+  - `test_recommendation_orchestrator.py` の型付き直接参照化は **integration-retest Task**（playbook 順序 4）。
+  - 正本: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
+
+integration_test_issue_body_appendix: |
+  ## 15. ExecutionContext assert の暫定方針と follow-up
+
+  - 型付き化前は ExecutionContext 新規フィールドを `getattr(ctx, \"<field>\", None)` で検証してよい。
+  - 型付き直接参照への置換は **integration-retest Task**（playbook 順序 4）に委譲する。
+  - `execution_context.py` 変更は **execution-context-typed-fields Task**（playbook 順序 3）。
+  - 正本: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
+
+historical_references:
+  user_meaning:
+    wiring_epic: 788
+    wiring_task: 856
+    integration_test: 858
+    execution_context_typed_fields: 887
+    integration_retest: 891
+  retrieval:
+    wiring_epic: 789
+    wiring_task: 884
+    integration_test: 886
+    execution_context_typed_fields: 887
+    integration_retest: 892
+
+notes:
+  - "Matching（MOD-RECO-014〜016）以降の Wiring Epic 起票時は本 playbook を Epic / wiring / integration-test Definition に必ず参照記載する"
+  - "MOD-RECO-001 モジュール仕様書 §8.4.3 との整合を維持する"

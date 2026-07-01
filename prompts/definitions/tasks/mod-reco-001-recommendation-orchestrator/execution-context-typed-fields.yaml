@@ -253,6 +253,7 @@ stop_conditions:
 
 notes:
   - "Related Epic: #260（クローズ済み・履歴参照）"
+  - "playbook 順序 3（本 Task）。チェーン正本: wiring-phase-follow-up-playbook.yaml"
   - "作業開始ゲート: Epic #789 develop merge 後"
   - "workstream: mod-reco-001-recommendation-orchestrator"
   - "後続: User Meaning / Retrieval integration 再テスト Task（別 Issue）"
