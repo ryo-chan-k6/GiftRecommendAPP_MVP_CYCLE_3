@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-retrieval-wiring-pr"
+  title: "MOD-RECO-001 Retrieval Wiring PRレビュー"
+  summary: "Retrieval フェーズ（MOD-RECO-012 / MOD-RECO-013）の Orchestrator 本実装配線 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 885
+  issue:
+    number: 884
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-retrieval/wiring.yaml"
+  source_branch: "feature/task-884-mod-reco-001-wiring-retrieval-wiring"
+  target_branch: "feature/epic-789-mod-reco-001-wiring-retrieval"
+  parent_epic_issue: 789
+  parent_epic_branch: "feature/epic-789-mod-reco-001-wiring-retrieval"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-retrieval/wiring.yaml"
+    required: true
+
+review_points:
+  - "stubs.py の変更が Retrieval フェーズ Port に限定されているか"
+  - "モジュール本体（MOD-RECO-012 / MOD-RECO-013）への変更が混入していないか"
+  - "StubXxx クラスが削除されていないか"
+  - "起動・User Meaning フェーズの配線が維持されているか"
+  - "011 廃止後 pre_hard_filter Port 配線が §8.4 と矛盾しないか"
+  - "factory 選択（build_default_*）が各モジュール __init__.py の公開 I/F と一致しているか"
+  - "exclusive_files（stubs.py）の直列化方針に反していないか"
+  - "Task PR target が Epic Branch であるか"
+  - "test_recommendation_orchestrator.py の red が配線起因であることと integration-test Task 委譲が PR に明記されているか"
+
+notes:
+  - "Issue / PR 確定後に target.pr / target.issue.number を更新する"
+  - "配線 PR 単体では Orchestrator デフォルト経路テストが red になることを許容（integration-test Task で green 化）"
