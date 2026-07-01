@@ -23,6 +23,7 @@ from reco.application.recommendation_run_recorder import build_scaffold_run_reco
 from recommendation_orchestrator_helpers import (
     _RETRIEVAL_MODULE_IDS,
     _USER_MEANING_MODULE_IDS,
+    assert_user_meaning_execution_context_populated,
     build_wired_default_composition_ports,
     ports_with_retrieval_stubs,
     ports_with_user_meaning_stubs,
@@ -139,12 +140,7 @@ def test_default_composition_populates_user_meaning_execution_context() -> None:
     assert outcome.success is True
     ctx = outcome.execution_context
     assert ctx is not None
-    assert ctx.semantic_extraction_result is not None
-    assert ctx.external_feature_estimate is not None
-    assert getattr(ctx, "user_feature", None) is not None
-    assert getattr(ctx, "user_meaning", None) is not None
-    assert getattr(ctx, "user_context", None) is not None
-    assert getattr(ctx, "query_embedding", None) is not None
+    assert_user_meaning_execution_context_populated(ctx)
 
 
 def test_default_composition_completes_retrieval_phase_modules() -> None:
