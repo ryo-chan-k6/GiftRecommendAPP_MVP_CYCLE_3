@@ -40,6 +40,9 @@ agent:
 background: |
   Epic #788 配下で wiring Task により `build_default_stub_ports()` の User Meaning フェーズ Port が本実装へ差し替えられた後、Orchestrator デフォルト経路テストの期待値を更新する。
   モジュール仕様書 §8.4.3 では、各モジュール implementation Task に明示 DI による Orchestrator 統合テストを必須成果物としている。本 Task は **デフォルト composition 経路**（build_default_stub_ports）の検証を担当する。
+  ExecutionContext の User Meaning フィールドは型付き化前のため、暫定として `getattr(ctx, \"<field>\", None)` で存在確認してよい。
+  型付き直接参照への置換は playbook 順序 4（#891）に委譲する。型付き化本体は playbook 順序 3（#887）。
+  正本: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
 
 objective: |
   配線後の Orchestrator デフォルト経路テストを green にし、User Meaning フェーズ 7 モジュールがデフォルト composition で正しく呼び出されることを pytest で検証する。
@@ -47,11 +50,13 @@ objective: |
 scope:
   - "`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` の期待値更新・ケース追加"
   - "User Meaning フェーズ配線後のデフォルト経路（build_default_stub_ports）の検証"
-  - "completed_modules / ExecutionContext キー等、本実装 Port に合わせたアサーション整理"
+  - "completed_modules / ExecutionContext キー等、本実装 Port に合わせたアサーション整理（getattr 暫定可）"
   - "テスト用 fixture / helper の最小限整理（Orchestrator デフォルト経路専用）"
 
 out_of_scope:
   - "stubs.py の Port 差し替え（wiring Task）"
+  - "`execution_context.py` の型付きフィールド追加（playbook 順序 3 / #887）"
+  - "getattr から型付き直接参照への置換（playbook 順序 4 / #891）"
   - "MOD-RECO-004〜010 モジュール本体の変更（テスト成立に必要な最小修正のみ可。要 PR 説明）"
   - "integration test（E2E）/ contract test"
   - "API-INT-002 エンドポイント層"
@@ -148,6 +153,9 @@ parallel_control:
   depends_on:
     - "task-mod-reco-001-wiring-user-meaning-wiring"
   blocks: []
+  post_epic_follow_up:
+    - "task-mod-reco-001-execution-context-typed-fields（#887）"
+    - "task-mod-reco-001-execution-context-integration-retest-user-meaning（#891）"
   exclusive_files:
     - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
   conflict_risk: "low"
@@ -210,3 +218,5 @@ notes:
   - "Task Issue: #858"
   - "前提 wiring Task: #856（PR #857）"
   - "Epic Issue: #788"
+  - "follow-up playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"
+  - "post-epic follow-up: #887（型付き化）, #891（integration 再テスト）"
