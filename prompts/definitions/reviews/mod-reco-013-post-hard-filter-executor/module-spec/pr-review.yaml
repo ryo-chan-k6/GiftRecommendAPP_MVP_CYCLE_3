@@ -6,7 +6,7 @@ review:
   title: "MOD-RECO-013 モジュール仕様書 PRレビュー"
   summary: "MOD-RECO-013（Post Hard Filter Executor）モジュール仕様書 Task の PR を AI Review する"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 878
   issue:
-    number: null
+    number: 877
   task_definition: "prompts/definitions/tasks/mod-reco-013-post-hard-filter-executor/module-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-877-mod-reco-013-post-hard-filter-executor-module-spec"
   target_branch: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
   parent_epic_issue: 876
   parent_epic_branch: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
@@ -43,11 +43,47 @@ input:
   task_definition:
     path: "prompts/definitions/tasks/mod-reco-013-post-hard-filter-executor/module-spec.yaml"
     required: true
+  issue:
+    number: 877
+    required: true
+  pr:
+    number: 878
+    required: true
+  templates:
+    deliverables:
+      - path: "prompts/templates/docs/module-spec.md"
+        required: true
+        applies_to:
+          - "docs/06_実装設計/reco/MOD-RECO-013_Post Hard Filter Executorモジュール仕様書.md"
 
 review_points:
-  - "Task Definition scope / acceptance_criteria 充足"
-  - "epic_scope 内に差分が収まっているか"
-  - "secret 非含有"
+  common:
+    - "Task Definition scope / acceptance_criteria 充足"
+    - "out_of_scope 変更が混在していないか"
+    - "PR target が親 Epic Branch であるか"
+    - "secret 非含有"
+  docs:
+    - "module-spec テンプレート章構成に準拠しているか"
+    - "Recoモジュール一覧 §6.12 と整合しているか"
+    - "Pre/Post Hard Filter 境界（012 vs 013）が明確か"
+    - "§16.1 確定論点（avoid 検知のみ・NG concept_code 照合等）が一貫しているか"
+    - "Orchestrator Port 契約・GRS-REC-010 が MOD-RECO-001 と整合しているか"
+  architecture:
+    - "004 / 012 / 014 との責務境界が明確か"
+    - "epic_scope 内に差分が収まっているか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須（Blocker/Must）がない"
+      - "scope 外変更がない"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
 
 notes:
-  - "Issue / PR 確定後に target.* / input.issue.number / input.pr.number を更新する"
+  - "PR head に本 Review Definition を同梱すること（review_definition_not_found 防止）"
