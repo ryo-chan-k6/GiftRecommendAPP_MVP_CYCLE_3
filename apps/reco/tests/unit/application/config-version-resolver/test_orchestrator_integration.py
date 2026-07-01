@@ -15,7 +15,10 @@ from reco.application.recommendation_orchestrator import (
     RecommendationOrchestrator,
     build_default_stub_ports,
 )
-from recommendation_orchestrator_helpers import ports_with_user_meaning_stubs
+from recommendation_orchestrator_helpers import (
+    ports_with_retrieval_stubs,
+    ports_with_user_meaning_stubs,
+)
 from reco.domain import (
     ExecutionCondition,
     ExecutionMode,
@@ -47,6 +50,7 @@ def test_config_resolver_runs_before_run_recorder_and_inserts_run() -> None:
         config_resolver=build_default_config_resolver(),
     )
     ports = ports_with_user_meaning_stubs(ports)
+    ports = ports_with_retrieval_stubs(ports)
 
     outcome = RecommendationOrchestrator(ports).run(
         _integration_request(),

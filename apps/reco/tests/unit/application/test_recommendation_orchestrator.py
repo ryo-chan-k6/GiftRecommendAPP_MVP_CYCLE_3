@@ -21,8 +21,10 @@ from reco.application.recommendation_orchestrator.stubs import (
 )
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
 from recommendation_orchestrator_helpers import (
+    _RETRIEVAL_MODULE_IDS,
     _USER_MEANING_MODULE_IDS,
     build_wired_default_composition_ports,
+    ports_with_retrieval_stubs,
     ports_with_user_meaning_stubs,
 )
 from reco.domain import (
@@ -78,6 +80,15 @@ def test_default_stub_ports_wires_config_version_resolver() -> None:
 
     ports, _ = build_default_stub_ports()
     assert isinstance(ports.config_resolver, ConfigVersionResolver)
+
+
+def test_default_stub_ports_wires_retrieval_modules() -> None:
+    from reco.application.candidate_retriever import CandidateRetriever
+    from reco.application.post_hard_filter_executor import PostHardFilterExecutor
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.candidate_retriever, CandidateRetriever)
+    assert isinstance(ports.post_hard_filter, PostHardFilterExecutor)
 
 
 def test_default_stub_ports_wires_user_meaning_modules() -> None:
@@ -136,11 +147,45 @@ def test_default_composition_populates_user_meaning_execution_context() -> None:
     assert getattr(ctx, "query_embedding", None) is not None
 
 
+def test_default_composition_completes_retrieval_phase_modules() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-retrieval-phase",
+    )
+
+    assert outcome.success is True
+    assert outcome.execution_context is not None
+    completed = outcome.execution_context.completed_modules
+    for module_id in _RETRIEVAL_MODULE_IDS:
+        assert module_id in completed
+    assert completed.index("MOD-RECO-010") < completed.index("MOD-RECO-012")
+    assert completed.index("MOD-RECO-012") < completed.index("MOD-RECO-013")
+
+
+def test_default_composition_populates_retrieval_execution_context() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-retrieval-context",
+    )
+
+    assert outcome.success is True
+    ctx = outcome.execution_context
+    assert ctx is not None
+    assert getattr(ctx, "pre_filtered_item_pool", None) is not None
+    assert getattr(ctx, "retrieval_candidate", None) is not None
+    assert getattr(ctx, "retrieval_candidate_count", None) is not None
+    assert getattr(ctx, "validated_retrieval_candidate", None) is not None
+    assert getattr(ctx, "post_filter_candidate_count", None) is not None
+
+
 # §14 No.2 正常系（evaluation / batch mode）— Stub が execution_mode を echo する挙動
 @pytest.mark.parametrize("mode", [ExecutionMode.EVALUATION, ExecutionMode.BATCH])
 def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> None:
     ports, _ = build_default_stub_ports()
     ports = ports_with_user_meaning_stubs(ports)
+    ports = ports_with_retrieval_stubs(ports)
     ports = _ports_with(ports, config_resolver=StubConfigResolver())
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(mode=mode),
@@ -385,10 +430,11 @@ def test_reason_fallback_injects_generic_reason() -> None:
     assert item.reason_status == ReasonStatus.COMPLETED
 
 
-# Orchestrator 単体: User Meaning を Stub に戻して下流のみ検証する従来経路
+# Orchestrator 単体: User Meaning / Retrieval を Stub に戻して下流のみ検証する従来経路
 def test_orchestrator_with_user_meaning_stubs_still_completes_pipeline() -> None:
     ports, _ = build_default_stub_ports()
     ports = ports_with_user_meaning_stubs(ports)
+    ports = ports_with_retrieval_stubs(ports)
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(),
         trace_id="trace-stub-user-meaning",
