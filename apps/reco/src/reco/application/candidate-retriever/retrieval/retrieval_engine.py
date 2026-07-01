@@ -54,7 +54,7 @@ def run_retrieval(
     if pool.total_after_filter == 0:
         return RetrievalCandidate(candidates=(), total_retrieved=0)
 
-    query_embedding = getattr(context, "query_embedding", None)
+    query_embedding = context.query_embedding
     if query_embedding is None:
         raise RetrievalError("query_embedding is required on execution_context")
 

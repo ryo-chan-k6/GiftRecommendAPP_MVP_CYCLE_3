@@ -89,7 +89,7 @@ class CandidateRetriever:
             raise PreHardFilterError(
                 "semantic_extraction_result is required on execution_context",
             )
-        query_embedding = getattr(context, "query_embedding", None)
+        query_embedding = context.query_embedding
         if query_embedding is None:
             raise PreHardFilterError("query_embedding is required on execution_context")
 
@@ -124,13 +124,12 @@ def _attach_outputs(
     context: ExecutionContext,
     result: CandidateRetrieverResult,
 ) -> None:
-    # execution_context への型付きフィールド追加は Wiring Task で行う。
-    context.pre_filtered_item_pool = result.pre_filtered_item_pool  # type: ignore[attr-defined]
-    context.retrieval_candidate = result.retrieval_candidate  # type: ignore[attr-defined]
-    context.pre_filter_candidate_count = result.pre_filter_candidate_count  # type: ignore[attr-defined]
-    context.pre_hard_filter_latency_ms = result.pre_hard_filter_latency_ms  # type: ignore[attr-defined]
-    context.retrieval_latency_ms = result.retrieval_latency_ms  # type: ignore[attr-defined]
-    context.retrieval_candidate_count = result.retrieval_candidate_count  # type: ignore[attr-defined]
+    context.pre_filtered_item_pool = result.pre_filtered_item_pool
+    context.retrieval_candidate = result.retrieval_candidate
+    context.pre_filter_candidate_count = result.pre_filter_candidate_count
+    context.pre_hard_filter_latency_ms = result.pre_hard_filter_latency_ms
+    context.retrieval_latency_ms = result.retrieval_latency_ms
+    context.retrieval_candidate_count = result.retrieval_candidate_count
 
 
 def build_default_candidate_retriever() -> CandidateRetriever:

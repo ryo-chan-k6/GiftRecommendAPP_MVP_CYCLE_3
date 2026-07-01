@@ -158,8 +158,7 @@ def _attach_internal_feature_estimate(
     context: ExecutionContext,
     estimate: InternalFeatureEstimate,
 ) -> None:
-    # execution_context への型付きフィールド追加は Wiring Task で行う。
-    context.internal_feature_estimate = estimate  # type: ignore[attr-defined]
+    context.internal_feature_estimate = estimate
 
 
 def _count_applied_by_source_type(

@@ -13,9 +13,27 @@ from reco.domain.recommendation.run import RecommendationRun
 from reco.domain.semantic_extraction import SemanticExtractionResult
 
 if TYPE_CHECKING:
+    from reco.application.candidate_retriever.models import (
+        PreFilteredItemPool,
+        RetrievalCandidate,
+    )
     from reco.application.external_condition_feature_estimator.models import (
         ExternalFeatureEstimate,
     )
+    from reco.application.internal_condition_feature_estimator.models import (
+        InternalFeatureEstimate,
+    )
+    from reco.application.post_hard_filter_executor.models import (
+        ExcludedCandidateLog,
+        ValidatedRetrievalCandidate,
+    )
+    from reco.application.query_embedding_generator.models import QueryEmbedding
+    from reco.application.user_context_builder.models import (
+        CompletedUserMeaning,
+        UserContext,
+    )
+    from reco.application.user_feature_generator.models import UserFeature
+    from reco.application.user_meaning_projector.models import UserMeaningProjection
 
 
 @dataclass
@@ -33,6 +51,24 @@ class ExecutionContext:
     recommendation_result: RecommendationResult | None = None
     semantic_extraction_result: SemanticExtractionResult | None = None
     external_feature_estimate: ExternalFeatureEstimate | None = None
+
+    internal_feature_estimate: InternalFeatureEstimate | None = None
+    user_feature: UserFeature | None = None
+    user_meaning: UserMeaningProjection | CompletedUserMeaning | None = None
+    user_context: UserContext | None = None
+    query_embedding: QueryEmbedding | None = None
+
+    pre_filtered_item_pool: PreFilteredItemPool | None = None
+    retrieval_candidate: RetrievalCandidate | None = None
+    pre_filter_candidate_count: int | None = None
+    pre_hard_filter_latency_ms: int | None = None
+    retrieval_latency_ms: int | None = None
+    retrieval_candidate_count: int | None = None
+
+    validated_retrieval_candidate: ValidatedRetrievalCandidate | None = None
+    excluded_candidate_log: ExcludedCandidateLog | None = None
+    post_filter_candidate_count: int | None = None
+    post_hard_filter_latency_ms: int | None = None
 
     completed_modules: list[str] = field(default_factory=list)
     phase_log_events: list[dict[str, object]] = field(default_factory=list)

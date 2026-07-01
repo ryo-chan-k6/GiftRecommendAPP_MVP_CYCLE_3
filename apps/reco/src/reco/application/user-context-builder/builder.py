@@ -145,12 +145,12 @@ class UserContextBuilder:
                 "semantic_config_version_id is required on execution_context.config_versions",
             )
 
-        projection = getattr(context, "user_meaning", None)
+        projection = context.user_meaning
         if projection is None:
             raise UserContextBuildError("user_meaning is required on execution_context")
         self._validate_projection(projection)
 
-        user_feature = getattr(context, "user_feature", None)
+        user_feature = context.user_feature
         if user_feature is None:
             raise UserContextBuildError("user_feature is required on execution_context")
 
@@ -280,9 +280,8 @@ def _attach_outputs(
     context: ExecutionContext,
     result: UserContextBuildResult,
 ) -> None:
-    # execution_context への型付きフィールド追加は Wiring Task で行う。
-    context.user_context = result.user_context  # type: ignore[attr-defined]
-    context.user_meaning = result.completed_user_meaning  # type: ignore[attr-defined]
+    context.user_context = result.user_context
+    context.user_meaning = result.completed_user_meaning
 
 
 def build_default_user_context_builder() -> UserContextBuilder:

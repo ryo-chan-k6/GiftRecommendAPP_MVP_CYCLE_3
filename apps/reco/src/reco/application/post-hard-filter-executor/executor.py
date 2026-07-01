@@ -83,11 +83,10 @@ class PostHardFilterExecutor:
 
 
 def _attach_outputs(context: ExecutionContext, result: PostHardFilterResult) -> None:
-    # execution_context への型付きフィールド追加は Wiring Task で行う。
-    context.validated_retrieval_candidate = result.validated_retrieval_candidate  # type: ignore[attr-defined]
-    context.excluded_candidate_log = result.excluded_candidate_log  # type: ignore[attr-defined]
-    context.post_filter_candidate_count = result.post_filter_candidate_count  # type: ignore[attr-defined]
-    context.post_hard_filter_latency_ms = result.post_hard_filter_latency_ms  # type: ignore[attr-defined]
+    context.validated_retrieval_candidate = result.validated_retrieval_candidate
+    context.excluded_candidate_log = result.excluded_candidate_log
+    context.post_filter_candidate_count = result.post_filter_candidate_count
+    context.post_hard_filter_latency_ms = result.post_hard_filter_latency_ms
 
 
 def build_default_post_hard_filter_executor() -> PostHardFilterExecutor:

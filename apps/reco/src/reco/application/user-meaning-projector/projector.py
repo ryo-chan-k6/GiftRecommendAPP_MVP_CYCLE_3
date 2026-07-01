@@ -94,7 +94,7 @@ class UserMeaningProjector:
                 "semantic_config_version_id is required on execution_context.config_versions",
             )
 
-        user_feature = getattr(context, "user_feature", None)
+        user_feature = context.user_feature
         if user_feature is None:
             raise UserMeaningProjectionError(
                 "user_feature is required on execution_context",
@@ -197,8 +197,7 @@ def _attach_user_meaning(
     context: ExecutionContext,
     projection: UserMeaningProjection,
 ) -> None:
-    # execution_context への型付きフィールド追加は Wiring Task で行う。
-    context.user_meaning = projection  # type: ignore[attr-defined]
+    context.user_meaning = projection
 
 
 def build_default_user_meaning_projector() -> UserMeaningProjector:

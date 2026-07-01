@@ -106,7 +106,7 @@ class QueryEmbeddingGenerator:
         if run_id is None:
             raise QueryEmbeddingGenerationError("run_id is required on execution_context")
 
-        user_context = getattr(context, "user_context", None)
+        user_context = context.user_context
         if user_context is None:
             raise QueryEmbeddingGenerationError("user_context is required on execution_context")
 
@@ -170,8 +170,7 @@ def _attach_query_embedding(
     context: ExecutionContext,
     query_embedding: QueryEmbedding,
 ) -> None:
-    # execution_context への型付きフィールド追加は Wiring Task で行う。
-    context.query_embedding = query_embedding  # type: ignore[attr-defined]
+    context.query_embedding = query_embedding
 
 
 def build_default_query_embedding_generator() -> QueryEmbeddingGenerator:
