@@ -182,6 +182,48 @@ def assert_user_meaning_execution_context_populated(
     assert context.query_embedding is not None
 
 
+def assert_retrieval_execution_context_populated(
+    context: ExecutionContext,
+) -> None:
+    """Default composition 後に Retrieval フェーズの型付きフィールドと観測系メトリクスを検証する。"""
+    pool = context.pre_filtered_item_pool
+    candidate = context.retrieval_candidate
+    validated = context.validated_retrieval_candidate
+
+    assert pool is not None
+    assert candidate is not None
+    assert validated is not None
+
+    pre_filter_count = context.pre_filter_candidate_count
+    retrieval_count = context.retrieval_candidate_count
+    post_filter_count = context.post_filter_candidate_count
+    pre_filter_latency_ms = context.pre_hard_filter_latency_ms
+    retrieval_latency_ms = context.retrieval_latency_ms
+    post_filter_latency_ms = context.post_hard_filter_latency_ms
+
+    assert pre_filter_count is not None
+    assert retrieval_count is not None
+    assert post_filter_count is not None
+    assert pre_filter_latency_ms is not None
+    assert retrieval_latency_ms is not None
+    assert post_filter_latency_ms is not None
+
+    assert pre_filter_count == pool.total_after_filter
+    assert retrieval_count == candidate.total_retrieved
+    assert retrieval_count == len(candidate.candidates)
+    assert post_filter_count == validated.total_validated
+    assert post_filter_count == len(validated.candidates)
+
+    # default in-memory catalog（active 2 件）経路の期待値
+    assert pre_filter_count == 2
+    assert retrieval_count == 2
+    assert post_filter_count == 2
+
+    assert pre_filter_latency_ms >= 0
+    assert retrieval_latency_ms >= 0
+    assert post_filter_latency_ms >= 0
+
+
 def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     """User Meaning 本実装を共有 in-memory 状態で接続したデフォルト composition。"""
     from reco.application.external_condition_feature_estimator import (
@@ -307,6 +349,7 @@ def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str
 __all__ = [
     "_RETRIEVAL_MODULE_IDS",
     "_USER_MEANING_MODULE_IDS",
+    "assert_retrieval_execution_context_populated",
     "assert_user_meaning_execution_context_populated",
     "build_wired_default_composition_ports",
     "ports_with_retrieval_stubs",
