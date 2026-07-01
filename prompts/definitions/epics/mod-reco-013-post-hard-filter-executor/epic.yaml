@@ -100,7 +100,7 @@ output:
 
 deliverables:
   - "Epic Issue（タイトル: [Epic]MOD-RECO-013:Post Hard Filter Executor）"
-  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-mod-reco-013-post-hard-filter-executor）"
+  - "Epic Branch（develop 起点 / feature/epic-876-mod-reco-013-post-hard-filter-executor）"
   - "子 Task 候補一覧（モジュール仕様書 / 実装 / 単体テスト）"
 
 acceptance_criteria:
@@ -114,7 +114,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-013-post-hard-filter-executor"
+  name: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
   base: "develop"
   target: "develop"
   worktree_required: false
@@ -257,3 +257,4 @@ notes:
   - "子 Task: prompts/definitions/tasks/mod-reco-013-post-hard-filter-executor/module-spec.yaml"
   - "MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。#260 は関連 Issue として記載。"
   - "bootstrap: prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+  - "Epic Branch: `feature/epic-876-mod-reco-013-post-hard-filter-executor`（Issue #876）"

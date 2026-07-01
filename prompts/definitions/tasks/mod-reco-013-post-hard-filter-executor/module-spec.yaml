@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-013:Post Hard Filter Executor"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-013-post-hard-filter-executor"
+  epic_issue_number: 876
+  epic_branch: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
   related_issues:
     - number: 260
       purpose: "MOD-RECO-001 Orchestrator（呼び出し元・ポート契約）"
@@ -126,8 +126,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   name: "docs/task-<issue-number>-mod-reco-013-post-hard-filter-executor-module-spec"
-  base: "feature/epic-<issue-number>-mod-reco-013-post-hard-filter-executor"
-  target: "feature/epic-<issue-number>-mod-reco-013-post-hard-filter-executor"
+  base: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
+  target: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
   worktree_required: true
 
 project:
