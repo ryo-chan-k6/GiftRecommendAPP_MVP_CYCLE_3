@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 879
   task_definition: "prompts/definitions/tasks/mod-reco-013-post-hard-filter-executor/implementation.yaml"
   source_branch: null
   target_branch: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
