@@ -23,6 +23,7 @@ from reco.application.recommendation_run_recorder import build_scaffold_run_reco
 from recommendation_orchestrator_helpers import (
     _RETRIEVAL_MODULE_IDS,
     _USER_MEANING_MODULE_IDS,
+    assert_retrieval_execution_context_populated,
     assert_user_meaning_execution_context_populated,
     build_wired_default_composition_ports,
     ports_with_retrieval_stubs,
@@ -169,11 +170,7 @@ def test_default_composition_populates_retrieval_execution_context() -> None:
     assert outcome.success is True
     ctx = outcome.execution_context
     assert ctx is not None
-    assert getattr(ctx, "pre_filtered_item_pool", None) is not None
-    assert getattr(ctx, "retrieval_candidate", None) is not None
-    assert getattr(ctx, "retrieval_candidate_count", None) is not None
-    assert getattr(ctx, "validated_retrieval_candidate", None) is not None
-    assert getattr(ctx, "post_filter_candidate_count", None) is not None
+    assert_retrieval_execution_context_populated(ctx)
 
 
 # §14 No.2 正常系（evaluation / batch mode）— Stub が execution_mode を echo する挙動
