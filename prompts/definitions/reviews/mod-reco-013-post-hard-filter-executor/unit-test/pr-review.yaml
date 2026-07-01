@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 882
   issue:
-    number: null
+    number: 881
   task_definition: "prompts/definitions/tasks/mod-reco-013-post-hard-filter-executor/unit-test.yaml"
-  source_branch: null
+  source_branch: "test/task-881-mod-reco-013-post-hard-filter-executor-unit-test"
   target_branch: "feature/epic-876-mod-reco-013-post-hard-filter-executor"
   parent_epic_issue: 876
   parent_epic_branch: "feature/epic-876-mod-reco-013-post-hard-filter-executor"

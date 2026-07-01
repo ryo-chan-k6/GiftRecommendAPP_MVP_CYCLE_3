@@ -29,7 +29,7 @@ from reco.domain.semantic_extraction.models import (
     HardFilterCandidate,
     SemanticExtractionResult,
 )
-from reco.infrastructure.logger.logger import ScaffoldRecoLogger
+from reco.infrastructure.logger.logger import RecoLogger, ScaffoldRecoLogger
 
 
 def _load_package(import_root: str, relative_path: str) -> None:
@@ -72,20 +72,48 @@ DEFAULT_RUN_ID = "run-post-hard-filter-1"
 def _sample_semantic_extraction_result(
     *,
     concepts: tuple[ExtractedSemanticConcept, ...] = (),
+    hard_filter_candidates: tuple[HardFilterCandidate, ...] | None = None,
 ) -> SemanticExtractionResult:
     return SemanticExtractionResult(
         concepts=concepts,
         hard_filter_candidates=(
-            HardFilterCandidate(
-                filter_type="ng_category",
-                filter_value="fashion",
-                evidence_text="避けたい",
-                confidence=0.8,
-                source_type="semantic",
-            ),
+            hard_filter_candidates
+            if hard_filter_candidates is not None
+            else (
+                HardFilterCandidate(
+                    filter_type="ng_category",
+                    filter_value="fashion",
+                    evidence_text="避けたい",
+                    confidence=0.8,
+                    source_type="semantic",
+                ),
+            )
         ),
         user_semantic_id="user-semantic-1",
         semantic_config_version_id=DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
+    )
+
+
+def build_item_record(
+    *,
+    item_id: str,
+    name: str = "テスト商品",
+    price: int = 5000,
+    is_active: bool = True,
+    active_status: str = "active",
+    has_image: bool = True,
+    semantic_concepts: tuple[ItemSemanticConcept, ...] = (
+        ItemSemanticConcept(concept_code="practical", confidence=0.9),
+    ),
+) -> InMemoryItemRecord:
+    return InMemoryItemRecord(
+        item_id=item_id,
+        name=name,
+        price=price,
+        is_active=is_active,
+        active_status=active_status,
+        has_image=has_image,
+        semantic_concepts=semantic_concepts,
     )
 
 
@@ -94,6 +122,9 @@ def _sample_context(
     run_id: str = DEFAULT_RUN_ID,
     retrieval_candidate: RetrievalCandidate | None = None,
     concepts: tuple[ExtractedSemanticConcept, ...] = (),
+    hard_filter_candidates: tuple[HardFilterCandidate, ...] | None = None,
+    ng_keywords: tuple[str, ...] = ("カジュアル",),
+    ng_categories: tuple[str, ...] = (),
     trace_id: str = "trace-post-hard-filter",
 ) -> ExecutionContext:
     request = RecommendationRequest(
@@ -108,7 +139,10 @@ def _sample_context(
         ),
         preferred_condition=PreferredCondition(preferred_text="実用的なギフト"),
         budget=BudgetCondition(budget_min=3000, budget_max=10000),
-        ng_condition=NgCondition(ng_keywords=("カジュアル",), ng_categories=()),
+        ng_condition=NgCondition(
+            ng_keywords=ng_keywords,
+            ng_categories=ng_categories,
+        ),
         execution=ExecutionCondition(mode=ExecutionMode.UI, candidate_limit=10),
     )
     context = ExecutionContext(
@@ -126,7 +160,10 @@ def _sample_context(
             semantic_config_version=DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
             model_version=DEFAULT_EMBEDDING_MODEL_VERSION_ID,
         ),
-        semantic_extraction_result=_sample_semantic_extraction_result(concepts=concepts),
+        semantic_extraction_result=_sample_semantic_extraction_result(
+            concepts=concepts,
+            hard_filter_candidates=hard_filter_candidates,
+        ),
     )
     context.retrieval_candidate = retrieval_candidate or RetrievalCandidate(  # type: ignore[attr-defined]
         candidates=(
@@ -142,6 +179,7 @@ def build_executor_with_repository(
     context: ExecutionContext,
     *,
     item_repository: InMemoryItemRepository | None = None,
+    logger: RecoLogger | None = None,
 ) -> tuple[PostHardFilterExecutor, InMemoryItemRepository]:
     repo = item_repository or InMemoryItemRepository(
         items={
@@ -169,6 +207,6 @@ def build_executor_with_repository(
     )
     executor = PostHardFilterExecutor(
         item_repository=repo,
-        logger=ScaffoldRecoLogger(),
+        logger=logger or ScaffoldRecoLogger(),
     )
     return executor, repo
