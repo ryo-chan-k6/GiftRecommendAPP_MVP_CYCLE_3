@@ -125,10 +125,7 @@ _ensure_query_embedding_generator_package()
 _ensure_candidate_retriever_package()
 _ensure_post_hard_filter_executor_package()
 
-from reco.application.candidate_retriever import (  # noqa: E402
-    PRE_FILTER_PHASE_NAME,
-    build_default_candidate_retriever,
-)
+from reco.application.candidate_retriever import build_default_candidate_retriever  # noqa: E402
 from reco.application.config_version_resolver import build_default_config_resolver  # noqa: E402
 from reco.application.external_condition_feature_estimator import (  # noqa: E402
     build_default_external_condition_feature_estimator,
@@ -187,30 +184,6 @@ class StubConfigResolver:
         }
         context.completed_modules.append(self.module_id)
         return context
-
-
-@dataclass
-class IntegratedPreHardFilterPort:
-    """011 廃止後の pre_hard_filter Port（012 内部統合との Orchestrator スロット整合）。
-
-    Pre Hard Filter 実処理は MOD-RECO-012 内部で実行される。本 Port は
-    ORCHESTRATOR_MODULE_ORDER 上の MOD-RECO-011 スロットと Phase 境界のみを
-    維持する pass-through である。
-    """
-
-    module_id: str
-    phase_name: str
-
-    def execute(self, context: ExecutionContext) -> ExecutionContext:
-        context.completed_modules.append(self.module_id)
-        return context
-
-
-def build_integrated_pre_hard_filter_port() -> IntegratedPreHardFilterPort:
-    return IntegratedPreHardFilterPort(
-        module_id="MOD-RECO-011",
-        phase_name=PRE_FILTER_PHASE_NAME,
-    )
 
 
 @dataclass
@@ -369,7 +342,6 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
         user_meaning_projector=build_default_user_meaning_projector(),
         user_context_builder=build_default_user_context_builder(),
         query_embedding_generator=build_default_query_embedding_generator(),
-        pre_hard_filter=build_integrated_pre_hard_filter_port(),
         candidate_retriever=build_default_candidate_retriever(),
         post_hard_filter=build_default_post_hard_filter_executor(),
         feature_matcher=StubPipelineModule("MOD-RECO-014", "feature_matched"),
