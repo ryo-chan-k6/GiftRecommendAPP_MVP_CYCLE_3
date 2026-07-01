@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 893
   issue:
     number: 891
   task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/integration-retest-user-meaning.yaml"
