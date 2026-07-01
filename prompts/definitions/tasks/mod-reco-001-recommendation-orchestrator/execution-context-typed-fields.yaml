@@ -1,0 +1,258 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-execution-context-typed-fields"
+  title: "MOD-RECO-001:ExecutionContext型付きフィールド拡張（User Meaning / Retrieval）"
+  summary: "`ExecutionContext` に User Meaning（006〜010）および Retrieval（012 / 013）の中間成果物フィールドを型付きで追加し、各モジュールの動的付与（`# type: ignore[attr-defined]`）と `getattr` 依存を解消する。PR target は Human 判断により `develop` 直（Epic #260 クローズ済みの横断 follow-up）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "履歴参照（Epic クローズ済み）。PR 本文は Related to #260"
+    - number: 789
+      purpose: "Retrieval Wiring Epic（develop merge 完了が作業開始前提）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  User Meaning / Retrieval 各モジュール実装では `_attach_*` 時に `execution_context` へ動的付与（`# type: ignore[attr-defined]`）している。
+  コメント上は「Wiring Task で型付きフィールド追加」とあるが、Wiring Task scope 外のため未実施のまま残っている。
+  Epic #260（MOD-RECO-001:Recommendation Orchestrator）はクローズ済みのため、本 Task は **develop ベース・develop 向け PR** の横断 follow-up として実施する（Human 判断）。
+  **作業開始前提**: Epic #789（Orchestrator Wiring Retrieval）が `develop` に merge 済みであること（Retrieval 配線・integration-test 反映後）。
+
+objective: |
+  `apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py` に User Meaning / Retrieval フェーズの型付きフィールドを追加し、
+  006〜010 / 012 / 013 の `_attach_*` およびモジュール内 `getattr(context, ...)` を直接参照へ置換する。
+  Orchestrator 統合テストの `getattr` アサーション更新は **後続横断 integration 再テスト Task** に委譲する。
+
+scope:
+  - "`execution_context.py` への型付きフィールド追加（User Meaning: internal_feature_estimate, user_feature, user_meaning, user_context, query_embedding）"
+  - "`execution_context.py` への型付きフィールド追加（Retrieval: pre_filtered_item_pool, retrieval_candidate, 観測系 count/latency, validated_retrieval_candidate, excluded_candidate_log 等）"
+  - "006 / 007 / 008 / 009 / 010 / 012 / 013 の `_attach_*` から `# type: ignore[attr-defined]` 除去"
+  - "上記モジュール内の `getattr(context, ...)` を直接参照へ置換（None チェックは維持）"
+  - "誤解を招く「Wiring Task で型付きフィールド追加」コメントの削除または修正"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/execution-context-typed-fields/pr-review.yaml`）"
+
+out_of_scope:
+  - "`stubs.py` の Port 配線変更"
+  - "`test_recommendation_orchestrator.py` の assert 更新（後続 integration 再テスト Task）"
+  - "Matching 以降フェーズの ExecutionContext フィールド"
+  - "段階3 Composition 完成（本番 DI）"
+  - "OpenAPI / DB schema 変更"
+  - "MOD-RECO-014 Feature Matcher 実装"
+  - "Epic #260 の Reopen / Epic Branch 再利用"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "execution_context 受け渡し・§8.4 配線方針"
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      required: true
+      purpose: "012 出力キー（pre_filtered_item_pool / retrieval_candidate 等）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-013_Post Hard Filter Executorモジュール仕様書.md"
+      required: true
+      purpose: "013 出力キー（validated_retrieval_candidate / excluded_candidate_log 等）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "フェーズ処理順序"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      required: true
+      purpose: "型付きフィールド追加対象"
+    - path: "apps/reco/src/reco/application/user-feature-generator/generator.py"
+      required: true
+      purpose: "user_feature attach"
+    - path: "apps/reco/src/reco/application/user-meaning-projector/projector.py"
+      required: true
+      purpose: "user_meaning attach / read"
+    - path: "apps/reco/src/reco/application/user-context-builder/builder.py"
+      required: true
+      purpose: "user_context / completed user_meaning attach"
+    - path: "apps/reco/src/reco/application/internal-condition-feature-estimator/estimator.py"
+      required: true
+      purpose: "internal_feature_estimate attach"
+    - path: "apps/reco/src/reco/application/query-embedding-generator/generator.py"
+      required: true
+      purpose: "query_embedding attach / read"
+    - path: "apps/reco/src/reco/application/candidate-retriever/retriever.py"
+      required: true
+      purpose: "Retrieval attach"
+    - path: "apps/reco/src/reco/application/post-hard-filter-executor/executor.py"
+      required: true
+      purpose: "Post Hard Filter attach"
+  issues:
+    - number: 260
+      purpose: "履歴参照（Epic クローズ済み）"
+    - number: 789
+      purpose: "Retrieval Wiring Epic（develop merge 前提）"
+    - number: 887
+      purpose: "本 Task Issue"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "型付き ExecutionContext（User Meaning / Retrieval 範囲）"
+  - "attach / read 側の `# type: ignore` / `getattr` 解消"
+  - "PR 本文の develop 直 merge 例外理由（Related to #260 / #789）"
+  - "Review Definition"
+  - "pytest 実行結果（`tests/unit/` 成功ログ）"
+
+acceptance_criteria:
+  - "Epic #789 が develop に merge 済みである（作業開始前提）"
+  - "`execution_context.py` に User Meaning / Retrieval の型付きフィールドが定義されている"
+  - "対象モジュールの `_attach_*` に `# type: ignore[attr-defined]` が残っていない"
+  - "対象モジュール内の `getattr(context, ...)` が直接参照に置換されている"
+  - "`stubs.py` に変更がない"
+  - "`test_recommendation_orchestrator.py` に変更がない（後続 Task 委譲）"
+  - "`cd apps/reco && uv run pytest tests/unit/ -q` が成功する"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "chore/task-887-mod-reco-001-execution-context-typed-fields"
+  summary: "mod-reco-001-execution-context-typed-fields"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-01"
+    due_date: "2026-07-03"
+
+issue:
+  number: 887
+  unit: "task"
+  type: "chore"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 789
+      purpose: "Retrieval Wiring Epic が develop に merge 済みであること"
+  issues:
+    - number: 789
+      purpose: "develop merge 完了確認"
+  prs: []
+  tasks:
+    - "task-mod-reco-001-wiring-retrieval-integration-test 完了（推奨・同一 develop 取り込みバッチ）"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-retrieval-integration-test"
+  blocks:
+    - "MOD-RECO-014 Feature Matcher 着手（推奨）"
+    - "Orchestrator integration 再テスト（User Meaning / Retrieval）"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/ -q"
+  manual_checks:
+    - "Epic #789 / integration-test Task が develop に merge 済みであること"
+    - "user_meaning の型（UserMeaningProjection | CompletedUserMeaning）が Human Review で妥当であること"
+  not_required:
+    - "test_recommendation_orchestrator.py の assert 更新"
+  skip_reason:
+    "test_recommendation_orchestrator.py の assert 更新": "後続横断 integration 再テスト Task に委譲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "ExecutionContext フィールド名・型が各モジュール仕様書と整合しているか"
+    - "user_meaning の Union 型（008 projection / 009 completed）が妥当か"
+    - "develop 直 PR 例外が PR 本文で説明されているか"
+    - "stubs.py / test_recommendation_orchestrator.py への不要な変更がないか"
+    - "getattr 置換漏れがないか"
+    - "pytest 全 unit が green か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #260 クローズ後の横断 follow-up。develop 直 PR 例外を cross-cutting に記録可"
+
+risk_points:
+  - "Epic #789 develop merge 前に着手すると Retrieval 配線前提とずれる"
+  - "user_meaning の型設計（008 vs 009）で Human 判断が必要"
+  - "execution_context.py exclusive により他 Task と競合しうる"
+
+human_decision_points:
+  - "Epic #260 クローズ後の develop 直 PR 例外の承認（Human Review）"
+  - "user_meaning フィールド型（UserMeaningProjection | CompletedUserMeaning 等）の確定"
+  - "観測系 int フィールドの default（None vs 0）"
+
+stop_conditions:
+  - "Epic #789 が develop に未 merge"
+  - "正本 docs 間で ExecutionContext キー定義が矛盾"
+  - "stubs.py 変更が必要になった"
+  - "integration 再テストを本 Task scope に取り込む必要が出た"
+
+notes:
+  - "Related Epic: #260（クローズ済み・履歴参照）"
+  - "作業開始ゲート: Epic #789 develop merge 後"
+  - "workstream: mod-reco-001-recommendation-orchestrator"
+  - "後続: User Meaning / Retrieval integration 再テスト Task（別 Issue）"
