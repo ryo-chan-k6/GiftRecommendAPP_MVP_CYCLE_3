@@ -5,7 +5,9 @@ User Meaning 配線後の ``build_default_stub_ports()`` は 004〜010 を本実
 ``build_wired_default_composition_ports()`` を用いる。
 
 Orchestrator 本体の挙動のみを切り出すテストでは、当該フェーズを Stub に戻す
-``ports_with_user_meaning_stubs()`` を引き続き利用できる。
+``ports_with_user_meaning_stubs()`` / ``ports_with_retrieval_stubs()`` を利用する。
+User Meaning を Stub に戻す場合は Retrieval 本実装が 010 出力を要求するため、
+同時に ``ports_with_retrieval_stubs()`` も適用する。
 """
 
 from __future__ import annotations
@@ -38,6 +40,11 @@ _USER_MEANING_MODULE_IDS: tuple[str, ...] = tuple(
     module_id for _, module_id, _ in _USER_MEANING_STUB_PORTS
 )
 
+_RETRIEVAL_STUB_PORTS: tuple[tuple[str, str, str], ...] = (
+    ("candidate_retriever", "MOD-RECO-012", "retrieval_completed"),
+    ("post_hard_filter", "MOD-RECO-013", "post_hard_filtered"),
+)
+
 
 def ports_with_user_meaning_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
     """User Meaning フェーズ Port を StubPipelineModule に差し替える。"""
@@ -46,6 +53,17 @@ def ports_with_user_meaning_stubs(ports: OrchestratorPorts) -> OrchestratorPorts
         **{
             attr: StubPipelineModule(module_id=module_id, phase_name=phase_name)
             for attr, module_id, phase_name in _USER_MEANING_STUB_PORTS
+        },
+    )
+
+
+def ports_with_retrieval_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
+    """Retrieval フェーズ Port を StubPipelineModule に差し替える。"""
+    return replace(
+        ports,
+        **{
+            attr: StubPipelineModule(module_id=module_id, phase_name=phase_name)
+            for attr, module_id, phase_name in _RETRIEVAL_STUB_PORTS
         },
     )
 
@@ -270,5 +288,6 @@ def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str
 __all__ = [
     "_USER_MEANING_MODULE_IDS",
     "build_wired_default_composition_ports",
+    "ports_with_retrieval_stubs",
     "ports_with_user_meaning_stubs",
 ]

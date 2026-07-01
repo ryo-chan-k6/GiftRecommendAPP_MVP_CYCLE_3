@@ -99,6 +99,20 @@ def _ensure_query_embedding_generator_package() -> None:
     )
 
 
+def _ensure_candidate_retriever_package() -> None:
+    _ensure_application_package(
+        "reco.application.candidate_retriever",
+        "candidate-retriever",
+    )
+
+
+def _ensure_post_hard_filter_executor_package() -> None:
+    _ensure_application_package(
+        "reco.application.post_hard_filter_executor",
+        "post-hard-filter-executor",
+    )
+
+
 _ensure_run_recorder_package()
 _ensure_config_version_resolver_package()
 _ensure_user_semantic_extractor_package()
@@ -108,10 +122,16 @@ _ensure_user_feature_generator_package()
 _ensure_user_meaning_projector_package()
 _ensure_user_context_builder_package()
 _ensure_query_embedding_generator_package()
+_ensure_candidate_retriever_package()
+_ensure_post_hard_filter_executor_package()
 
+from reco.application.candidate_retriever import build_default_candidate_retriever  # noqa: E402
 from reco.application.config_version_resolver import build_default_config_resolver  # noqa: E402
 from reco.application.external_condition_feature_estimator import (  # noqa: E402
     build_default_external_condition_feature_estimator,
+)
+from reco.application.post_hard_filter_executor import (  # noqa: E402
+    build_default_post_hard_filter_executor,
 )
 from reco.application.internal_condition_feature_estimator import (  # noqa: E402
     build_default_internal_condition_feature_estimator,
@@ -322,9 +342,8 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
         user_meaning_projector=build_default_user_meaning_projector(),
         user_context_builder=build_default_user_context_builder(),
         query_embedding_generator=build_default_query_embedding_generator(),
-        pre_hard_filter=StubPipelineModule("MOD-RECO-011", "pre_hard_filtered"),
-        candidate_retriever=StubPipelineModule("MOD-RECO-012", "retrieval_completed"),
-        post_hard_filter=StubPipelineModule("MOD-RECO-013", "post_hard_filtered"),
+        candidate_retriever=build_default_candidate_retriever(),
+        post_hard_filter=build_default_post_hard_filter_executor(),
         feature_matcher=StubPipelineModule("MOD-RECO-014", "feature_matched"),
         meaning_match_aggregator=StubPipelineModule(
             "MOD-RECO-015", "meaning_match_aggregated"

@@ -105,7 +105,6 @@ class OrchestratorPorts:
     user_meaning_projector: PipelineModulePort
     user_context_builder: PipelineModulePort
     query_embedding_generator: PipelineModulePort
-    pre_hard_filter: PipelineModulePort
     candidate_retriever: PipelineModulePort
     post_hard_filter: PipelineModulePort
     feature_matcher: PipelineModulePort
@@ -131,7 +130,6 @@ class OrchestratorPorts:
             self.user_meaning_projector,
             self.user_context_builder,
             self.query_embedding_generator,
-            self.pre_hard_filter,
             self.candidate_retriever,
             self.post_hard_filter,
             self.feature_matcher,
