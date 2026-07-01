@@ -169,6 +169,19 @@ def _build_scaffold_external_feature_rules():
     return rules
 
 
+def assert_user_meaning_execution_context_populated(
+    context: ExecutionContext,
+) -> None:
+    """Default composition 後に User Meaning フェーズの型付きフィールドが設定されていることを検証する。"""
+    assert context.semantic_extraction_result is not None
+    assert context.external_feature_estimate is not None
+    assert context.internal_feature_estimate is not None
+    assert context.user_feature is not None
+    assert context.user_meaning is not None
+    assert context.user_context is not None
+    assert context.query_embedding is not None
+
+
 def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     """User Meaning 本実装を共有 in-memory 状態で接続したデフォルト composition。"""
     from reco.application.external_condition_feature_estimator import (
@@ -294,6 +307,7 @@ def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str
 __all__ = [
     "_RETRIEVAL_MODULE_IDS",
     "_USER_MEANING_MODULE_IDS",
+    "assert_user_meaning_execution_context_populated",
     "build_wired_default_composition_ports",
     "ports_with_retrieval_stubs",
     "ports_with_user_meaning_stubs",
