@@ -19,6 +19,7 @@ class RecommendationRunRecord:
     pair_id: str
     semantic_config_version_id: str
     model_version_id: str
+    matching_config_id: str
     ranking_config_id: str
     run_status: RunStatus
     started_at: datetime | None = None
@@ -37,6 +38,7 @@ class RecommendationRunRepository(Protocol):
         *,
         semantic_config_version_id: str,
         model_version_id: str,
+        matching_config_id: str,
         ranking_config_id: str,
     ) -> bool: ...
 
@@ -47,6 +49,7 @@ class RecommendationRunRepository(Protocol):
         pair_id: str,
         semantic_config_version_id: str,
         model_version_id: str,
+        matching_config_id: str,
         ranking_config_id: str,
     ) -> RecommendationRunRecord: ...
 
@@ -81,6 +84,7 @@ class InMemoryRecommendationRunRepository:
         *,
         semantic_config_version_id: str,
         model_version_id: str,
+        matching_config_id: str,
         ranking_config_id: str,
     ) -> bool:
         if not self.known_version_ids:
@@ -88,6 +92,7 @@ class InMemoryRecommendationRunRepository:
         return (
             semantic_config_version_id in self.known_version_ids
             and model_version_id in self.known_version_ids
+            and matching_config_id in self.known_version_ids
             and ranking_config_id in self.known_version_ids
         )
 
@@ -98,6 +103,7 @@ class InMemoryRecommendationRunRepository:
         pair_id: str,
         semantic_config_version_id: str,
         model_version_id: str,
+        matching_config_id: str,
         ranking_config_id: str,
     ) -> RecommendationRunRecord:
         if self.should_fail_on_write:
@@ -110,6 +116,7 @@ class InMemoryRecommendationRunRepository:
             pair_id=pair_id,
             semantic_config_version_id=semantic_config_version_id,
             model_version_id=model_version_id,
+            matching_config_id=matching_config_id,
             ranking_config_id=ranking_config_id,
             run_status=RunStatus.ACCEPTED,
             created_at=now,
@@ -143,6 +150,7 @@ class InMemoryRecommendationRunRepository:
             pair_id=current.pair_id,
             semantic_config_version_id=current.semantic_config_version_id,
             model_version_id=current.model_version_id,
+            matching_config_id=current.matching_config_id,
             ranking_config_id=current.ranking_config_id,
             run_status=run_status,
             started_at=started_at if started_at is not None else current.started_at,

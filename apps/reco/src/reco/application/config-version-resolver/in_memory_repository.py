@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .models import (
+    MatchingConfigRecord,
     ModelVersionRecord,
     RankingConfigRecord,
     ReasonTemplateRecord,
@@ -20,6 +21,27 @@ DEFAULT_EMBEDDING_MODEL_VERSION_ID = "b1111111-1111-4111-8111-111111111101"
 DEFAULT_LLM_MODEL_VERSION_ID = "b1111111-1111-4111-8111-111111111102"
 DEFAULT_RANKING_MODEL_VERSION_ID = "b1111111-1111-4111-8111-111111111103"
 DEFAULT_RANKING_CONFIG_ID = "c1111111-1111-4111-8111-111111111101"
+DEFAULT_MATCHING_CONFIG_ID = "c1111111-1111-4111-8111-111111111102"
+
+DEFAULT_MATCHING_PARAMETER_JSON: dict[str, object] = {
+    "distance_method": "absolute_distance",
+    "feature_match_method": "one_minus_distance",
+    "social_feature_weights": {
+        "formality": 0.333,
+        "safety": 0.333,
+        "brand_appropriateness": 0.333,
+    },
+    "symbolic_feature_weights": {
+        "emotion": 0.200,
+        "novelty": 0.200,
+        "intimacy": 0.200,
+        "symbolic_identity": 0.200,
+        "story_richness": 0.200,
+    },
+    "context_score_formula": "lambda_ctx_weighted",
+    "avoid_similarity_method": "mvp_default",
+    "threshold_rule": {"strong_match": 0.80, "normal_match": 0.60},
+}
 
 
 def build_default_in_memory_repository() -> InMemoryConfigRepository:
@@ -75,6 +97,14 @@ def build_default_in_memory_repository() -> InMemoryConfigRepository:
                 is_current=True,
             ),
         ],
+        matching_configs=[
+            MatchingConfigRecord(
+                matching_config_id=DEFAULT_MATCHING_CONFIG_ID,
+                config_name="mvp_matching_config",
+                is_current=True,
+                parameter_json=DEFAULT_MATCHING_PARAMETER_JSON,
+            ),
+        ],
         reason_templates=[
             ReasonTemplateRecord("d1111111-1111-4111-8111-111111111101", "summary", True),
             ReasonTemplateRecord("d1111111-1111-4111-8111-111111111102", "detail", True),
@@ -98,6 +128,7 @@ class InMemoryConfigRepository:
     )
     model_versions: list[ModelVersionRecord] = field(default_factory=list)
     ranking_configs: list[RankingConfigRecord] = field(default_factory=list)
+    matching_configs: list[MatchingConfigRecord] = field(default_factory=list)
     reason_templates: list[ReasonTemplateRecord] = field(default_factory=list)
     feature_definition_counts: dict[str, int] = field(default_factory=dict)
 
@@ -175,6 +206,12 @@ class InMemoryConfigRepository:
 
     def get_current_ranking_config(self) -> RankingConfigRecord | None:
         current = [record for record in self.ranking_configs if record.is_current]
+        if len(current) != 1:
+            return None
+        return current[0]
+
+    def get_current_matching_config(self) -> MatchingConfigRecord | None:
+        current = [record for record in self.matching_configs if record.is_current]
         if len(current) != 1:
             return None
         return current[0]

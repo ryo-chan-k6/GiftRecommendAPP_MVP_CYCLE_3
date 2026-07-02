@@ -17,4 +17,18 @@ REASON_TEMPLATE_TYPES: Final[tuple[str, ...]] = (
     "caution",
 )
 
+SOCIAL_FEATURE_WEIGHT_KEYS: Final[tuple[str, ...]] = (
+    "formality",
+    "safety",
+    "brand_appropriateness",
+)
+
+SYMBOLIC_FEATURE_WEIGHT_KEYS: Final[tuple[str, ...]] = (
+    "emotion",
+    "novelty",
+    "intimacy",
+    "symbolic_identity",
+    "story_richness",
+)
+
 SURFACE_ERROR_CODE: Final[str] = "GRS-REC-003"
