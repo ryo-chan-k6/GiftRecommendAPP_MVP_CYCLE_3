@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 927
   issue:
-    number: null
+    number: 926
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-matching/wiring.yaml"
-  source_branch: "feature/task-<issue-number>-mod-reco-001-wiring-matching-wiring"
+  source_branch: "feature/task-926-mod-reco-001-wiring-matching-wiring"
   target_branch: "feature/epic-790-mod-reco-001-wiring-matching"
   parent_epic_issue: 790
   parent_epic_branch: "feature/epic-790-mod-reco-001-wiring-matching"
