@@ -113,6 +113,27 @@ def _ensure_post_hard_filter_executor_package() -> None:
     )
 
 
+def _ensure_feature_matcher_package() -> None:
+    _ensure_application_package(
+        "reco.application.feature_matcher",
+        "feature-matcher",
+    )
+
+
+def _ensure_meaning_match_aggregator_package() -> None:
+    _ensure_application_package(
+        "reco.application.meaning_match_aggregator",
+        "meaning-match-aggregator",
+    )
+
+
+def _ensure_context_scorer_package() -> None:
+    _ensure_application_package(
+        "reco.application.context_scorer",
+        "context-scorer",
+    )
+
+
 _ensure_run_recorder_package()
 _ensure_config_version_resolver_package()
 _ensure_user_semantic_extractor_package()
@@ -124,11 +145,19 @@ _ensure_user_context_builder_package()
 _ensure_query_embedding_generator_package()
 _ensure_candidate_retriever_package()
 _ensure_post_hard_filter_executor_package()
+_ensure_feature_matcher_package()
+_ensure_meaning_match_aggregator_package()
+_ensure_context_scorer_package()
 
 from reco.application.candidate_retriever import build_default_candidate_retriever  # noqa: E402
 from reco.application.config_version_resolver import build_default_config_resolver  # noqa: E402
 from reco.application.external_condition_feature_estimator import (  # noqa: E402
     build_default_external_condition_feature_estimator,
+)
+from reco.application.context_scorer import build_default_context_scorer  # noqa: E402
+from reco.application.feature_matcher import build_default_feature_matcher  # noqa: E402
+from reco.application.meaning_match_aggregator import (  # noqa: E402
+    build_default_meaning_match_aggregator,
 )
 from reco.application.post_hard_filter_executor import (  # noqa: E402
     build_default_post_hard_filter_executor,
@@ -345,11 +374,9 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
         query_embedding_generator=build_default_query_embedding_generator(),
         candidate_retriever=build_default_candidate_retriever(),
         post_hard_filter=build_default_post_hard_filter_executor(),
-        feature_matcher=StubPipelineModule("MOD-RECO-014", "feature_matched"),
-        meaning_match_aggregator=StubPipelineModule(
-            "MOD-RECO-015", "meaning_match_aggregated"
-        ),
-        context_scorer=StubPipelineModule("MOD-RECO-016", "context_scored"),
+        feature_matcher=build_default_feature_matcher(),
+        meaning_match_aggregator=build_default_meaning_match_aggregator(),
+        context_scorer=build_default_context_scorer(),
         popularity_scorer=StubPipelineModule("MOD-RECO-017", "popularity_scored"),
         risk_scorer=StubPipelineModule("MOD-RECO-018", "risk_scored"),
         final_score_calculator=final_score_calculator,
