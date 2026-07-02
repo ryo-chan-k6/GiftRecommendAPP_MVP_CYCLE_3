@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 900
   issue:
-    number: null
+    number: 899
   task_definition: "prompts/definitions/tasks/mod-reco-014-feature-matcher/implementation.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-014-feature-matcher"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-014-feature-matcher"
+  source_branch: "feature/task-899-mod-reco-014-feature-matcher-implementation"
+  target_branch: "feature/epic-896-mod-reco-014-feature-matcher"
+  parent_epic_issue: 896
+  parent_epic_branch: "feature/epic-896-mod-reco-014-feature-matcher"
 
 commands:
   primary: "/review-pr"
