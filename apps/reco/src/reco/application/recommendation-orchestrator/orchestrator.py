@@ -16,6 +16,18 @@ from reco.domain.recommendation.result import (
 from reco.domain.recommendation.run import RunStatus
 
 from .constants import GENERIC_REASON_SUMMARY, MODULE_ERROR_CODES, ORCHESTRATOR_MODULE_ORDER
+
+# MOD-RECO-014 §16.1 No.8: Matching 対象 0 件時に Orchestrator がスキップするモジュール
+_MATCHING_RANKING_MODULE_IDS: frozenset[str] = frozenset(
+    {
+        "MOD-RECO-015",
+        "MOD-RECO-016",
+        "MOD-RECO-017",
+        "MOD-RECO-018",
+        "MOD-RECO-019",
+        "MOD-RECO-020",
+    }
+)
 from .errors import ModuleExecutionError, RecoError
 from .execution_context import ExecutionContext
 from .ports import (
@@ -132,8 +144,15 @@ class RecommendationOrchestrator:
     def _execute_pipeline(self, context: ExecutionContext) -> ExecutionContext:
         context = self._invoke_config_resolver(context)
         context = self._invoke_run_recorder(context)
+        matching_zero_short_circuit = False
 
         for module in self._ports.ordered_pipeline_modules():
+            if (
+                matching_zero_short_circuit
+                and module.module_id in _MATCHING_RANKING_MODULE_IDS
+            ):
+                continue
+
             if module.module_id in {"MOD-RECO-021", "MOD-RECO-022"}:
                 context = self._invoke_pipeline_module(context, module)
                 continue
@@ -151,6 +170,13 @@ class RecommendationOrchestrator:
                 continue
 
             context = self._invoke_pipeline_module(context, module)
+
+            if (
+                module.module_id == "MOD-RECO-014"
+                and self._should_short_circuit_after_feature_matcher(context)
+            ):
+                context = self._prepare_empty_result_after_matching_zero(context)
+                matching_zero_short_circuit = True
 
         context = self._invoke_reason_generator(context)
         self._assert_module_order(context)
@@ -274,8 +300,51 @@ class RecommendationOrchestrator:
         )
         return updated
 
+    def _should_short_circuit_after_feature_matcher(
+        self,
+        context: ExecutionContext,
+    ) -> bool:
+        """MOD-RECO-014 成功後、Matching 対象 0 件なら 015 以降を呼ばない（§16.1 No.8）。"""
+        candidate_count = getattr(context, "feature_matcher_candidate_count", None)
+        if candidate_count == 0:
+            return True
+
+        feature_match_result = getattr(context, "feature_match_result", None)
+        if feature_match_result is None:
+            return False
+
+        if feature_match_result.total_matched == 0:
+            return True
+        return not feature_match_result.entries
+
+    def _prepare_empty_result_after_matching_zero(
+        self,
+        context: ExecutionContext,
+    ) -> ExecutionContext:
+        run_id = context.run_id or "run-empty"
+        context.recommendation_result = RecommendationResult(
+            run_id=run_id,
+            request_id=context.recommendation_request.request_id,
+            items=(),
+            result_status=ResultStatus.EMPTY,
+            version_info=dict(context.config_versions),
+        )
+        return context
+
+    def _expected_completed_modules(self, context: ExecutionContext) -> list[str]:
+        if (
+            "MOD-RECO-014" in context.completed_modules
+            and self._should_short_circuit_after_feature_matcher(context)
+        ):
+            return [
+                module_id
+                for module_id in ORCHESTRATOR_MODULE_ORDER
+                if module_id not in _MATCHING_RANKING_MODULE_IDS
+            ]
+        return list(ORCHESTRATOR_MODULE_ORDER)
+
     def _assert_module_order(self, context: ExecutionContext) -> None:
-        expected = [module_id for module_id in ORCHESTRATOR_MODULE_ORDER]
+        expected = self._expected_completed_modules(context)
         actual = [
             module_id
             for module_id in context.completed_modules

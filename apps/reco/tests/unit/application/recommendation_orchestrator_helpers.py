@@ -1,15 +1,19 @@
 """Orchestrator 単体テスト向け Port 差し替え・配線ヘルパー。
 
-User Meaning / Retrieval 配線後の ``build_default_stub_ports()`` は
-004〜010 および 012 / 013 を本実装とする。
+User Meaning / Retrieval / Matching 配線後の ``build_default_stub_ports()`` は
+004〜010 および 012 / 013 / 014 / 015 / 016 を本実装とする。
 デフォルト composition 経路では User Meaning 向けに in-memory Repository を
 共有接続する ``build_wired_default_composition_ports()`` を用いる。
-Retrieval 本実装は ``build_default_stub_ports()`` 同梱の in-memory Repository を利用する。
+Retrieval / Matching 本実装は ``build_default_stub_ports()`` 同梱の in-memory Repository を利用する。
 
 Orchestrator 本体の挙動のみを切り出すテストでは、当該フェーズを Stub に戻す
-``ports_with_user_meaning_stubs()`` / ``ports_with_retrieval_stubs()`` を利用する。
+``ports_with_user_meaning_stubs()`` / ``ports_with_retrieval_stubs()`` /
+``ports_with_matching_stubs()`` を利用する。
 User Meaning を Stub に戻す場合は Retrieval 本実装が 010 出力を要求するため、
 同時に ``ports_with_retrieval_stubs()`` も適用する。
+Matching 本実装は Retrieval 出力を要求するため、Matching を Stub に戻す前段で
+Retrieval も Stub 化するか、Matching 単体検証用に ``ports_with_matching_stubs()``
+を併用する。
 """
 
 from __future__ import annotations
@@ -51,6 +55,16 @@ _RETRIEVAL_MODULE_IDS: tuple[str, ...] = tuple(
     module_id for _, module_id, _ in _RETRIEVAL_STUB_PORTS
 )
 
+_MATCHING_STUB_PORTS: tuple[tuple[str, str, str], ...] = (
+    ("feature_matcher", "MOD-RECO-014", "feature_matched"),
+    ("meaning_match_aggregator", "MOD-RECO-015", "meaning_match_aggregated"),
+    ("context_scorer", "MOD-RECO-016", "context_scored"),
+)
+
+_MATCHING_MODULE_IDS: tuple[str, ...] = tuple(
+    module_id for _, module_id, _ in _MATCHING_STUB_PORTS
+)
+
 
 def ports_with_user_meaning_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
     """User Meaning フェーズ Port を StubPipelineModule に差し替える。"""
@@ -70,6 +84,17 @@ def ports_with_retrieval_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
         **{
             attr: StubPipelineModule(module_id=module_id, phase_name=phase_name)
             for attr, module_id, phase_name in _RETRIEVAL_STUB_PORTS
+        },
+    )
+
+
+def ports_with_matching_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
+    """Matching フェーズ Port を StubPipelineModule に差し替える。"""
+    return replace(
+        ports,
+        **{
+            attr: StubPipelineModule(module_id=module_id, phase_name=phase_name)
+            for attr, module_id, phase_name in _MATCHING_STUB_PORTS
         },
     )
 
@@ -224,6 +249,90 @@ def assert_retrieval_execution_context_populated(
     assert post_filter_latency_ms >= 0
 
 
+def assert_matching_execution_context_populated(
+    context: ExecutionContext,
+) -> None:
+    """Default composition 後に Matching フェーズの副作用を検証する（型付き化前は getattr）。"""
+    feature_match_result = getattr(context, "feature_match_result", None)
+    meaning_match_result = getattr(context, "meaning_match_result", None)
+    context_score_result = getattr(context, "context_score_result", None)
+
+    feature_matcher_candidate_count = getattr(
+        context,
+        "feature_matcher_candidate_count",
+        None,
+    )
+    feature_matcher_excluded_count = getattr(
+        context,
+        "feature_matcher_excluded_count",
+        None,
+    )
+    feature_matcher_latency_ms = getattr(context, "feature_matcher_latency_ms", None)
+    meaning_match_aggregator_candidate_count = getattr(
+        context,
+        "meaning_match_aggregator_candidate_count",
+        None,
+    )
+    meaning_match_aggregator_latency_ms = getattr(
+        context,
+        "meaning_match_aggregator_latency_ms",
+        None,
+    )
+    context_scorer_candidate_count = getattr(
+        context,
+        "context_scorer_candidate_count",
+        None,
+    )
+    context_scorer_latency_ms = getattr(context, "context_scorer_latency_ms", None)
+
+    assert feature_match_result is not None
+    assert meaning_match_result is not None
+    assert context_score_result is not None
+    assert feature_matcher_candidate_count is not None
+    assert feature_matcher_excluded_count is not None
+    assert feature_matcher_latency_ms is not None
+    assert meaning_match_aggregator_candidate_count is not None
+    assert meaning_match_aggregator_latency_ms is not None
+    assert context_scorer_candidate_count is not None
+    assert context_scorer_latency_ms is not None
+
+    assert feature_matcher_candidate_count == feature_match_result.total_matched
+    assert feature_matcher_candidate_count == len(feature_match_result.entries)
+    assert meaning_match_aggregator_candidate_count == meaning_match_result.total_aggregated
+    assert meaning_match_aggregator_candidate_count == len(meaning_match_result.entries)
+    assert context_scorer_candidate_count == context_score_result.total_scored
+    assert context_scorer_candidate_count == len(context_score_result.entries)
+
+    # default in-memory catalog（active 2 件）経路の期待値
+    assert feature_matcher_candidate_count == 2
+    assert meaning_match_aggregator_candidate_count == 2
+    assert context_scorer_candidate_count == 2
+
+    assert feature_matcher_latency_ms >= 0
+    assert meaning_match_aggregator_latency_ms >= 0
+    assert context_scorer_latency_ms >= 0
+
+
+def build_wired_ports_with_zero_matching_candidates() -> tuple[
+    OrchestratorPorts,
+    dict[str, object],
+]:
+    """Matching 対象 0 件（item_feature 欠損で全候補除外）のデフォルト composition。"""
+    from reco.application.feature_matcher import FeatureMatcher
+    from reco.application.feature_matcher.in_memory_repository import (
+        InMemoryItemFeatureRepository,
+        InMemoryFeatureNormalizationRepository,
+    )
+
+    ports, helpers = build_wired_default_composition_ports()
+    feature_matcher = FeatureMatcher(
+        item_feature_repository=InMemoryItemFeatureRepository(),
+        normalization=InMemoryFeatureNormalizationRepository(),
+    )
+    wired_ports = replace(ports, feature_matcher=feature_matcher)
+    return wired_ports, helpers
+
+
 def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     """User Meaning 本実装を共有 in-memory 状態で接続したデフォルト composition。"""
     from reco.application.external_condition_feature_estimator import (
@@ -347,11 +456,15 @@ def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str
 
 
 __all__ = [
+    "_MATCHING_MODULE_IDS",
     "_RETRIEVAL_MODULE_IDS",
     "_USER_MEANING_MODULE_IDS",
+    "assert_matching_execution_context_populated",
     "assert_retrieval_execution_context_populated",
     "assert_user_meaning_execution_context_populated",
     "build_wired_default_composition_ports",
+    "build_wired_ports_with_zero_matching_candidates",
+    "ports_with_matching_stubs",
     "ports_with_retrieval_stubs",
     "ports_with_user_meaning_stubs",
 ]

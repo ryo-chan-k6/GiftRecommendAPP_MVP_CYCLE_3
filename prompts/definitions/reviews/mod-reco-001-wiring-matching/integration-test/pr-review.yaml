@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 928
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-matching/integration-test.yaml"
-  source_branch: "test/task-<issue-number>-mod-reco-001-wiring-matching-integration-test"
+  source_branch: "test/task-928-mod-reco-001-wiring-matching-integration-test"
   target_branch: "feature/epic-790-mod-reco-001-wiring-matching"
   parent_epic_issue: 790
   parent_epic_branch: "feature/epic-790-mod-reco-001-wiring-matching"
