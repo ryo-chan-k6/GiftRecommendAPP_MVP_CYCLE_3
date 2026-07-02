@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 901
   task_definition: "prompts/definitions/tasks/mod-reco-014-feature-matcher/unit-test.yaml"
   source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-014-feature-matcher"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-014-feature-matcher"
+  target_branch: "feature/epic-896-mod-reco-014-feature-matcher"
+  parent_epic_issue: 896
+  parent_epic_branch: "feature/epic-896-mod-reco-014-feature-matcher"
 
 commands:
   primary: "/review-pr"
