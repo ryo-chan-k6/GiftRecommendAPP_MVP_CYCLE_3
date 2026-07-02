@@ -136,6 +136,7 @@ erDiagram
 
     semantic_config_version ||--o{ recommendation_run : "used_by"
     model_version ||--o{ recommendation_run : "used_by"
+    matching_config ||--o{ recommendation_run : "used_by"
     ranking_config ||--o{ recommendation_run : "used_by"
     feature_normalization_version ||--o{ user_feature : "normalizes"
     feature_normalization_version ||--o{ item_feature : "normalizes"
@@ -180,7 +181,7 @@ erDiagram
 | 外部商品データ連携系 | `fetch_cursor`, `api_call_log`, `raw_product_metadata`, `staging_item`, `staging_item_image`, `staging_ranking_signal`, `staging_genre`, `product_diff_result`, `item_import_summary` | Batch による Raw 参照・Staging・Item 反映 | `yes` |
 | Item派生データ系 | `item_generation_queue`, `item_semantic`, `item_feature`, `item_meaning`, `item_embedding` | Batch 事前生成の推薦用派生データ | `yes` |
 | Semantic / Feature定義系 | `semantic_config`, `semantic_config_version`, `semantic_concept`, `feature_definition`, `semantic_rule`, 各種 `*_rule` | 意味・Feature 定義と変換ルール（設定正本） | `yes` |
-| Master / Config系 | `relationship_master`, `occasion_master`, `pair_master`, `model_version`, `ranking_config`, `reason_template`, `feature_normalization_version` | 入力マスタ・モデル・Ranking・理由・正規化 version | `yes` |
+| Master / Config系 | `relationship_master`, `occasion_master`, `pair_master`, `model_version`, `matching_config`, `ranking_config`, `reason_template`, `feature_normalization_version` | 入力マスタ・モデル・Matching・Ranking・理由・正規化 version | `yes` |
 | Evaluation系 | `evaluation_dataset`, `evaluation_case`, `evaluation_run`, `evaluation_result`, `evaluation_metric` | オフライン評価 | `partial` |
 | Log / Observability系 | `batch_run_log`, `phase_log`, `error_log`, 各種 `*_metric` | 実行記録・分布監視 | `partial`（`reco_score_distribution_metric` は任意） |
 
@@ -188,7 +189,7 @@ erDiagram
 
 ## 8. テーブル一覧
 
-テーブル名の正本は `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` とする。MVP では `external_attribute` / `staging_attribute` を除く **60 テーブル** を作成する。
+テーブル名の正本は `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` とする。MVP では `external_attribute` / `staging_attribute` を除く **61 テーブル** を作成する。
 
 | テーブル名 | 論理名 | 分類 | 正本区分 | 主な更新主体 | MVP対象 |
 | ---------- | ------ | ---- | -------- | ------------ | ------- |
@@ -239,6 +240,7 @@ erDiagram
 | `occasion_master` | Occasion Master | Master / Config系 | 設定正本 | database / api | `yes` |
 | `pair_master` | Pair Master | Master / Config系 | 設定正本 | database / api / reco | `yes` |
 | `model_version` | Model Version | Master / Config系 | 設定正本 | database / reco / batch | `yes` |
+| `matching_config` | Matching Config | Master / Config系 | 設定正本 | database / reco | `yes` |
 | `ranking_config` | Ranking Config | Master / Config系 | 設定正本 | database / reco | `yes` |
 | `reason_template` | Reason Template | Master / Config系 | 設定正本 | database / reco | `yes` |
 | `feature_normalization_version` | Feature Normalization Version | Master / Config系 | 設定正本 | database / batch / reco | `yes` |
@@ -289,6 +291,7 @@ erDiagram
 | `semantic_config_version.semantic_config_version_id` | `recommendation_run.semantic_config_version_id` | used_by | `LOGICAL` | 1:N | 再現性保持 |
 | `semantic_config_version.semantic_config_version_id` | `user_semantic.semantic_config_version_id` | generates_with | `LOGICAL` | 1:N | Run 固定 version と一致必須。`user_semantic_テーブル定義書` §17.1 No.1・No.4 |
 | `model_version.model_version_id` | `recommendation_run.model_version_id` | used_by | `LOGICAL` | 1:N | |
+| `matching_config.matching_config_id` | `recommendation_run.matching_config_id` | used_by | `LOGICAL` | 1:N | |
 | `ranking_config.ranking_config_id` | `recommendation_run.ranking_config_id` | used_by | `LOGICAL` | 1:N | |
 | `feature_normalization_version.feature_normalization_version_id` | `user_feature.feature_normalization_version_id` | normalizes | `LOGICAL` | 1:N | |
 | `feature_normalization_version.feature_normalization_version_id` | `item_feature.feature_normalization_version_id` | normalizes | `LOGICAL` | 1:N | |
@@ -362,6 +365,11 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `item_embedding` | `idx_item_embedding_item_model` | `item_id`, `model_version_id` | btree | Online 参照 | vector Index は別途 |
 | `item_embedding` | `idx_item_embedding_vector` | `embedding_vector` | hnsw | 類似検索 | §17 No.6 |
 | `recommendation_run` | `idx_recommendation_run_pair_id` | `pair_id` | btree | Pair 参照 | §17 No.1 |
+| `recommendation_run` | `idx_recommendation_run_matching_config` | `matching_config_id` | btree | version 被参照 | LOGICAL FK |
+| `recommendation_result` | `idx_recommendation_result_matching_config` | `matching_config_id` | btree | Run スナップショット参照 | LOGICAL FK |
+| `matching_config` | `uq_matching_config_name_version` | `config_name`, `config_version` | unique | lineage 一意 | D14 |
+| `matching_config` | `uq_matching_config_current_per_name` | `config_name` | unique partial | 現行 Config 解決 | `WHERE is_current = true` |
+| `matching_config` | `idx_matching_config_name_created` | `config_name`, `created_at` DESC | btree | version 履歴参照 | D14 |
 | `phase_log` | `idx_phase_log_owner` | `owner_type`, `owner_id`, `started_at` | btree | Run/Batch 追跡 | Run phase log 統合先 |
 | `phase_log` | `idx_phase_log_created` | `created_at` | btree | Retention DELETE | Issue #535 確定。`phase_log_テーブル定義書` §9 |
 | `error_log` | `idx_error_log_owner` | `owner_type`, `owner_id`, `occurred_at` | btree | 障害調査 | |
@@ -422,6 +430,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `evaluation_run` | `idx_evaluation_run_batch_run_id` | `batch_run_id` | btree | BATCH-018 実行 trace | nullable LOGICAL FK（§17.9 No.2） |
 | `evaluation_run` | `idx_evaluation_run_semantic_config_version` | `semantic_config_version_id` | btree | version 被参照・分析 | LOGICAL FK（§17.9 No.4） |
 | `evaluation_run` | `idx_evaluation_run_model_version` | `model_version_id` | btree | version 被参照 | LOGICAL FK（§17.9 No.4） |
+| `evaluation_run` | `idx_evaluation_run_matching_config` | `matching_config_id` | btree | version 被参照 | LOGICAL FK（§17.9 No.4） |
 | `evaluation_run` | `idx_evaluation_run_ranking_config` | `ranking_config_id` | btree | version 被参照 | LOGICAL FK（§17.9 No.4） |
 | `evaluation_run` | `idx_evaluation_run_created` | `created_at` DESC | btree | Retention DELETE / 監査 | 365 日（§17.9 No.7） |
 | `evaluation_result` | `uq_evaluation_result_run_case` | `evaluation_run_id`, `evaluation_case_id` | unique | Run × Case 冪等 INSERT | `evaluation_result_テーブル定義書` §7・§17.1 No.2 |

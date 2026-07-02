@@ -26,7 +26,7 @@ Observability では `evaluation_run_id` を Evaluation Run 単位の識別子�
 ## 3. 目的
 
 - オフライン評価フロー **Dataset → Run → Result** の **実行正本** として、評価処理 1 回分の状態（`evaluation_status`）を管理する
-- **`semantic_config_version_id` / `model_version_id` / `ranking_config_id`** を個別列で保持し、評価再現性を担保する
+- **`semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id`** を個別列で保持し、評価再現性を担保する
 - `evaluation_result` / `evaluation_metric` の **親 Run** として参照される
 - `phase_log` / `error_log` の **owner**（`owner_type = evaluation_run`）として Log 連携する
 - 後続 DDL Task が migration を作成できる粒度まで設計を確定する
@@ -84,7 +84,7 @@ flowchart LR
 | 親 Dataset | `evaluation_dataset_id` → **`evaluation_dataset`**（**物理 FK ON**。1:N executed_by） |
 | 子 Result | **`evaluation_result.evaluation_run_id`** → 本テーブル（**物理 FK ON**。1:N produces） |
 | 再評価 | 同一 Dataset に対し **複数 Run** が存在し得る（状態遷移設計書 §8.1.3） |
-| 再現性 | Run 作成時に version 3 列を **固定**（§5.5） |
+| 再現性 | Run 作成時に version 4 列を **固定**（§5.5） |
 
 > **双方向整合**: `evaluation_result_テーブル定義書`（#573 §17.1 確定）§8.1 produces 1:N・`uq_evaluation_result_run_case` UNIQUE と整合。Run 側は本 Task で **Run 列定義と被参照方針** を正本とする。
 
@@ -101,7 +101,7 @@ flowchart LR
 
 | 出典 | 列・概念 | 本テーブル（MVP 物理 DDL） | 扱い |
 | ---- | -------- | ---------------------------- | ---- |
-| 論理ER §12.2 | `evaluation_run_id`, `evaluation_dataset_id`, version 3 列, `started_at`, `completed_at`, `evaluation_status` | **採用** | 一致 |
+| 論理ER §12.2 | `evaluation_run_id`, `evaluation_dataset_id`, version 4 列, `started_at`, `completed_at`, `evaluation_status` | **採用** | 一致 |
 | テーブル一覧 §10 補足 | `mode = evaluation` の Recommendation Run 連携 | **`recommendation_run_id` 物理列なし** | MVP は `evaluation_result.recommendation_result_id` 経由で間接参照（§17.1 No.1） |
 | BATCH-018 文脈 | Batch 実行単位 trace | **`batch_run_id` nullable 採用** | LOGICAL FK。BATCH-018 起動 Run の親 Batch 追跡（§17.1 No.2） |
 | 物理ER timestamp 方針 | `created_at` / `updated_at` | **採用** | 行作成・`evaluation_status` 更新監査。`started_at` / `completed_at` とは別 |
@@ -114,9 +114,9 @@ semantic_config_version / model_version / ranking_config 各定義書・Human Re
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 正本列 | **`semantic_config_version_id` / `model_version_id` / `ranking_config_id`** を本テーブルに **個別列** で保持 |
+| 正本列 | **`semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id`** を本テーブルに **個別列** で保持 |
 | 解決 | batch / reco が BATCH-018 入力または evaluation mode payload から version を解決し、Run INSERT 時に **コピー** |
-| FK | 3 列とも **LOGICAL FK**（物理 FK なし）。INSERT 前に存在確認 |
+| FK | 4 列とも **LOGICAL FK**（物理 FK なし）。INSERT 前に存在確認 |
 | 被参照 | semantic_config_version / model_version / ranking_config 各定義書 §8・§17.1 と双方向整合（§17.1 No.4） |
 
 ### 5.6 Log 連携（`phase_log` / `error_log`）
@@ -135,7 +135,7 @@ semantic_config_version / model_version / ranking_config 各定義書・Human Re
 
 | 方向 | 内容 |
 | ---- | ---- |
-| 入力 | `evaluation_dataset_id`、解決済み version 3 列、（任意）`batch_run_id` |
+| 入力 | `evaluation_dataset_id`、解決済み version 4 列、（任意）`batch_run_id` |
 | 出力 | `evaluation_run_id`、更新後 `evaluation_status` / タイムスタンプ |
 | 連携 | IF-SHARED-004 経由で reco pipeline 実行。Phase / Error Log Writer が同一 `evaluation_run_id` を owner として記録 |
 
@@ -160,12 +160,13 @@ evaluation_dataset 定義書 §5.4 を正とする。
 | 3 | `batch_run_id` | Batch Run ID | `uuid` | `no` | — | LOGICAL | — | `NULL` | BATCH-018 実行単位 trace。`batch_run_log` 論理参照（§5.4） |
 | 4 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Semantic Config Version。再現性固定 |
 | 5 | `model_version_id` | Model Version ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Model Version |
-| 6 | `ranking_config_id` | Ranking Config ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Ranking Config |
-| 7 | `evaluation_status` | Evaluation Status | `varchar(32)` | `yes` | — | — | — | `'queued'` | `evaluation_run_status` enum |
-| 8 | `started_at` | Started At | `timestamptz` | `no` | — | — | — | `NULL` | 評価実行開始日時。`running` 遷移時に設定 |
-| 9 | `completed_at` | Completed At | `timestamptz` | `no` | — | — | — | `NULL` | 終端状態到達日時（`succeeded` / `failed` / `canceled`） |
-| 10 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | Run 行作成日時（`queued` INSERT 時） |
-| 11 | `updated_at` | Updated At | `timestamptz` | `yes` | — | — | — | `now()` | 最終 `evaluation_status` 更新日時 |
+| 6 | `matching_config_id` | Matching Config ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Matching Config |
+| 7 | `ranking_config_id` | Ranking Config ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Ranking Config |
+| 8 | `evaluation_status` | Evaluation Status | `varchar(32)` | `yes` | — | — | — | `'queued'` | `evaluation_run_status` enum |
+| 9 | `started_at` | Started At | `timestamptz` | `no` | — | — | — | `NULL` | 評価実行開始日時。`running` 遷移時に設定 |
+| 10 | `completed_at` | Completed At | `timestamptz` | `no` | — | — | — | `NULL` | 終端状態到達日時（`succeeded` / `failed` / `canceled`） |
+| 11 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | Run 行作成日時（`queued` INSERT 時） |
+| 12 | `updated_at` | Updated At | `timestamptz` | `yes` | — | — | — | `now()` | 最終 `evaluation_status` 更新日時 |
 
 > **MVP で採用しない列**: `recommendation_run_id`（§5.4・§17.1 No.1）、`trace_id`（Log 側で連携）、`pair_id`（Evaluation 系では Case 入力正本が `evaluation_case`）
 
@@ -191,6 +192,7 @@ evaluation_dataset 定義書 §5.4 を正とする。
 | `batch_run_id` | `batch_run_log.batch_run_id` | `LOGICAL` | BATCH-018 起動時に存在確認 | nullable。§5.4 |
 | `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | batch / reco 解決 + 存在確認 | semantic_config_version 定義書 §17.1 No.8 |
 | `model_version_id` | `model_version.model_version_id` | `LOGICAL` | 同上 | model_version 定義書 §17.1 No.6 |
+| `matching_config_id` | `matching_config.matching_config_id` | `LOGICAL` | 同上 | matching_config 定義書 §8 |
 | `ranking_config_id` | `ranking_config.ranking_config_id` | `LOGICAL` | 同上 | ranking_config 定義書 §8・§17.1 |
 
 ### 8.2 被参照（子テーブル）
@@ -214,6 +216,7 @@ evaluation_dataset 定義書 §5.4 を正とする。
 | `idx_evaluation_run_batch_run_id` | `batch_run_id` | btree | BATCH-018 実行単位 trace | nullable |
 | `idx_evaluation_run_semantic_config_version` | `semantic_config_version_id` | btree | version 被参照・分析 | §17.1 No.4 |
 | `idx_evaluation_run_model_version` | `model_version_id` | btree | version 被参照 | §17.1 No.4 |
+| `idx_evaluation_run_matching_config` | `matching_config_id` | btree | version 被参照 | §17.1 No.4 |
 | `idx_evaluation_run_ranking_config` | `ranking_config_id` | btree | version 被参照 | §17.1 No.4 |
 | `idx_evaluation_run_created` | `created_at` DESC | btree | 時系列一覧・Retention 将来 | evaluation_dataset 365 日方針と整合 |
 
@@ -280,7 +283,7 @@ stateDiagram-v2
 **INSERT 手順（batch / MOD-BATCH-039）**
 
 1. `evaluation_dataset` を参照（`evaluation_dataset_id`、`is_active = true`）
-2. BATCH-018 入力または workflow パラメータから version 3 列を解決
+2. BATCH-018 入力または workflow パラメータから version 4 列を解決
 3. 同一 BATCH-018 実行の `batch_run_id` を設定（存在する場合）
 4. `evaluation_status = queued` で INSERT（`created_at` / `updated_at` 設定）
 5. `phase_log` に評価開始フェーズを記録（`owner_type=evaluation_run`）
@@ -322,6 +325,7 @@ CREATE TABLE evaluation_run (
   batch_run_id uuid,
   semantic_config_version_id uuid NOT NULL,
   model_version_id uuid NOT NULL,
+  matching_config_id uuid NOT NULL,
   ranking_config_id uuid NOT NULL,
   evaluation_status varchar(32) NOT NULL DEFAULT 'queued',
   started_at timestamptz,
@@ -412,7 +416,7 @@ CREATE TABLE evaluation_run (
 - `evaluation_dataset` との 1:N executed_by 関係（物理 FK ON）が明記されている
 - `evaluation_result_テーブル定義書`（#573）§8.1 produces 1:N・`uq_evaluation_result_run_case` UNIQUE と双方向整合している
 - `evaluation_status` と状態遷移設計書 §8.1・enum定義書 §6.12 が一致している
-- version 3 列の LOGICAL FK と Index 方針が Config 定義書と双方向整合している
+- version 4 列の LOGICAL FK と Index 方針が Config 定義書と双方向整合している
 - `idx_evaluation_run_dataset_id` が evaluation_dataset 定義書 §5.4 と一致している
 - phase_log / error_log との `owner_type=evaluation_run` 連携が明記されている
 - `evaluation_run_phase_log` が物理化しない方針が明記されている

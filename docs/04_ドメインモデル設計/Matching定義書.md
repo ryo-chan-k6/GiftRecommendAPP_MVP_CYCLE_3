@@ -706,7 +706,7 @@ MVPでは、推薦理由生成に使うFeatureは上位2〜3個に制限する�
 
 ### 13.1 Matchingでmodel_version管理するもの
 
-Matchingロジックは、`model_version` に紐づけて管理する。
+Matchingロジックは、論理上 `model_version` に紐づけて管理する。
 
 | 管理対象                 | 内容                                     |
 | ------------------------ | ---------------------------------------- |
@@ -717,6 +717,8 @@ Matchingロジックは、`model_version` に紐づけて管理する。
 | context_score_formula    | context_score算出式                      |
 | avoid_similarity_method  | avoid_similarity算出方式                 |
 | threshold_rule           | strong / weak match判定閾値              |
+
+> **MVP DB 正本マッピング（Human 判断 案 B）**: 論理上 §13.1 の Matching パラメータは `model_version` 管理と記載するが、MVP DB 正本では `matching_config.parameter_json` にマッピングする。`ranking_config` と対称の独立 Config 次元であり、`model_version` とは FK なし。Run 再現性は `recommendation_run.matching_config_id`（および Result / Evaluation Run スナップショット列）で保持する。詳細は [matching_config_テーブル定義書](../06_実装設計/database/matching_config_テーブル定義書.md) を参照する。
 
 ---
 
