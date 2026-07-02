@@ -42,6 +42,14 @@ class RankingConfigRecord:
 
 
 @dataclass(frozen=True)
+class MatchingConfigRecord:
+    matching_config_id: str
+    config_name: str
+    is_current: bool
+    parameter_json: dict[str, object]
+
+
+@dataclass(frozen=True)
 class ReasonTemplateRecord:
     reason_template_id: str
     template_type: str
@@ -74,6 +82,9 @@ class ResolvedConfigVersions:
     semantic_config_version_id: str
     model_versions: dict[str, str]
     ranking_config_id: str | None = None
+    matching_config_id: str | None = None
+    social_feature_weights: dict[str, float] | None = None
+    symbolic_feature_weights: dict[str, float] | None = None
     reason_template_catalog_ok: bool | None = None
     resolution_metadata: ResolutionMetadata = field(default_factory=ResolutionMetadata)
 
@@ -86,6 +97,14 @@ class ResolvedConfigVersions:
             result[f"model_versions.{model_type}"] = version_id
         if self.ranking_config_id is not None:
             result["ranking_config_id"] = self.ranking_config_id
+        if self.matching_config_id is not None:
+            result["matching_config_id"] = self.matching_config_id
+        if self.social_feature_weights is not None:
+            for feature_code, weight in self.social_feature_weights.items():
+                result[f"social_feature_weights.{feature_code}"] = str(weight)
+        if self.symbolic_feature_weights is not None:
+            for feature_code, weight in self.symbolic_feature_weights.items():
+                result[f"symbolic_feature_weights.{feature_code}"] = str(weight)
         if self.reason_template_catalog_ok is not None:
             result["reason_template_catalog_ok"] = (
                 "true" if self.reason_template_catalog_ok else "false"

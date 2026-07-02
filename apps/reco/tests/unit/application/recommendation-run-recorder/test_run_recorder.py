@@ -122,6 +122,16 @@ def test_record_run_fails_when_pair_unresolved() -> None:
         {},
         {"semantic_config_version_id": "scv-1"},
         {"semantic_config_version_id": "scv-1", "model_version_id": "mv-1"},
+        {
+            "semantic_config_version_id": "scv-1",
+            "model_version_id": "mv-1",
+            "ranking_config_id": "rc-1",
+        },
+        {
+            "semantic_config_version_id": "scv-1",
+            "model_version_id": "mv-1",
+            "matching_config_id": "mc-1",
+        },
     ],
 )
 def test_record_run_fails_when_version_columns_missing(
@@ -141,6 +151,7 @@ def test_record_run_accepts_fallback_version_keys() -> None:
         config_versions={
             "semantic_config_version": "scv-fallback",
             "model_version": "mv-fallback",
+            "matching_config": "mc-fallback",
             "ranking_config": "rc-fallback",
         },
     )
@@ -152,6 +163,7 @@ def test_record_run_accepts_fallback_version_keys() -> None:
     assert stored is not None
     assert stored.semantic_config_version_id == "scv-fallback"
     assert stored.model_version_id == "mv-fallback"
+    assert stored.matching_config_id == "mc-fallback"
     assert stored.ranking_config_id == "rc-fallback"
 
 
@@ -163,6 +175,7 @@ def test_record_run_accepts_model_versions_embedding_key() -> None:
         config_versions={
             "semantic_config_version_id": "scv-1",
             "model_versions.embedding": "mv-embedding-1",
+            "matching_config_id": "mc-1",
             "ranking_config_id": "rc-1",
         },
     )
@@ -173,6 +186,15 @@ def test_record_run_accepts_model_versions_embedding_key() -> None:
     stored = recorder.run_repository.get_by_id(updated.run_id)
     assert stored is not None
     assert stored.model_version_id == "mv-embedding-1"
+
+
+def test_record_run_persists_matching_config_id() -> None:
+    recorder = build_recorder()
+    updated = recorder.record_run(_sample_context())
+
+    stored = recorder.run_repository.get_by_id(updated.run_id)
+    assert stored is not None
+    assert stored.matching_config_id == "mc-1"
 
 # §14 No.7 例外系（FK 違反）— unit: 存在しない recommendation_request_id
 def test_record_run_fails_when_request_does_not_exist() -> None:
@@ -187,7 +209,7 @@ def test_record_run_fails_when_request_does_not_exist() -> None:
 
 def test_record_run_fails_when_config_version_ids_do_not_exist() -> None:
     recorder = build_recorder(
-        known_version_ids={"scv-1", "mv-1"},
+        known_version_ids={"scv-1", "mv-1", "mc-1"},
     )
 
     with pytest.raises(RunRecorderError) as exc_info:
@@ -233,6 +255,7 @@ def test_apply_transition_rejects_accepted_to_succeeded() -> None:
         pair_id="pair-1",
         semantic_config_version_id="scv-1",
         model_version_id="mv-1",
+        matching_config_id="mc-1",
         ranking_config_id="rc-1",
     )
     context = _sample_context()

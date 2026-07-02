@@ -6,6 +6,7 @@ from dataclasses import replace
 
 from reco.application.config_version_resolver import (
     DEFAULT_EMBEDDING_MODEL_VERSION_ID,
+    DEFAULT_MATCHING_CONFIG_ID,
     DEFAULT_RANKING_CONFIG_ID,
     DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
     build_default_config_resolver,
@@ -68,6 +69,7 @@ def test_config_resolver_runs_before_run_recorder_and_inserts_run() -> None:
         DEFAULT_EMBEDDING_MODEL_VERSION_ID
     )
     assert ctx.config_versions["ranking_config_id"] == DEFAULT_RANKING_CONFIG_ID
+    assert ctx.config_versions["matching_config_id"] == DEFAULT_MATCHING_CONFIG_ID
 
     completed = ctx.completed_modules
     assert "MOD-RECO-003" in completed

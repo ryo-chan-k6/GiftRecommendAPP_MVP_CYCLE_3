@@ -179,6 +179,7 @@ class StubConfigResolver:
         context.config_versions = {
             "semantic_config_version_id": "scaffold-semantic-v1",
             "model_version_id": "scaffold-model-v1",
+            "matching_config_id": "scaffold-matching-v1",
             "ranking_config_id": "scaffold-ranking-v1",
             "execution_mode": context.execution_mode.value,
         }

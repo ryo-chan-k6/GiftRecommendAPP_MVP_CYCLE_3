@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from .models import (
+    MatchingConfigRecord,
     ModelVersionRecord,
     RankingConfigRecord,
     ReasonTemplateRecord,
@@ -44,6 +45,8 @@ class ConfigRepositoryPort(Protocol):
     def get_current_model_version(self, model_type: str) -> ModelVersionRecord | None: ...
 
     def get_current_ranking_config(self) -> RankingConfigRecord | None: ...
+
+    def get_current_matching_config(self) -> MatchingConfigRecord | None: ...
 
     def count_feature_definitions(self, semantic_config_version_id: str) -> int: ...
 

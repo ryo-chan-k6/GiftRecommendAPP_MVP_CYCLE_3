@@ -11,6 +11,7 @@ from reco.application.config_version_resolver import (
     BatchResolveContext,
     ConfigResolveError,
     DEFAULT_EMBEDDING_MODEL_VERSION_ID,
+    DEFAULT_MATCHING_CONFIG_ID,
     DEFAULT_RANKING_CONFIG_ID,
     DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
     GenerationType,
@@ -52,6 +53,9 @@ def test_ui_mode_resolves_default_config_versions() -> None:
         DEFAULT_RANKING_MODEL_VERSION_ID
     )
     assert context.config_versions["ranking_config_id"] == DEFAULT_RANKING_CONFIG_ID
+    assert context.config_versions["matching_config_id"] == DEFAULT_MATCHING_CONFIG_ID
+    assert context.config_versions["social_feature_weights.formality"] == "0.333"
+    assert context.config_versions["symbolic_feature_weights.emotion"] == "0.2"
     assert context.config_versions["reason_template_catalog_ok"] == "true"
     assert context.config_versions["resolution_metadata.resolution_path"] == (
         "default_series_current"
@@ -216,6 +220,34 @@ def test_missing_ranking_config_raises_cfg_004() -> None:
     assert exc_info.value.detail_code == "GRS-CFG-004"
 
 
+# matching_config 失敗
+def test_missing_matching_config_raises_cfg_007() -> None:
+    repository = build_default_in_memory_repository()
+    repository = replace(repository, matching_configs=[])
+
+    with pytest.raises(ConfigResolveError) as exc_info:
+        build_resolver(repository).resolve(ui_context())
+
+    assert exc_info.value.detail_code == "GRS-CFG-007"
+
+
+def test_invalid_matching_feature_weights_raises_cfg_007() -> None:
+    repository = build_default_in_memory_repository()
+    invalid_matching = replace(
+        repository.matching_configs[0],
+        parameter_json={"social_feature_weights": {}, "symbolic_feature_weights": {}},
+    )
+    repository = replace(
+        repository,
+        matching_configs=[invalid_matching],
+    )
+
+    with pytest.raises(ConfigResolveError) as exc_info:
+        build_resolver(repository).resolve(ui_context())
+
+    assert exc_info.value.detail_code == "GRS-CFG-007"
+
+
 # §14 No.10 Feature 定義不足
 def test_missing_feature_definition_raises_cfg_006() -> None:
     repository = build_default_in_memory_repository()
@@ -258,6 +290,7 @@ def test_resolve_populates_execution_context_config_versions() -> None:
     assert "semantic_config_version_id" in updated.config_versions
     assert updated.config_versions["model_versions.embedding"]
     assert updated.config_versions["ranking_config_id"]
+    assert updated.config_versions["matching_config_id"]
     assert "MOD-RECO-003" in updated.completed_modules
 
 
@@ -275,6 +308,7 @@ def test_batch_semantic_generation_resolves_embedding_and_llm() -> None:
     assert resolved.model_versions["embedding"] == DEFAULT_EMBEDDING_MODEL_VERSION_ID
     assert resolved.model_versions["llm"] == DEFAULT_LLM_MODEL_VERSION_ID
     assert resolved.ranking_config_id is None
+    assert resolved.matching_config_id is None
     assert resolved.reason_template_catalog_ok is None
 
 

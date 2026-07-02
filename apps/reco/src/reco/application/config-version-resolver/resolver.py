@@ -12,12 +12,15 @@ from .constants import (
     MODULE_ID,
     REASON_TEMPLATE_TYPES,
     REQUIRED_MODEL_TYPES,
+    SOCIAL_FEATURE_WEIGHT_KEYS,
+    SYMBOLIC_FEATURE_WEIGHT_KEYS,
 )
 from .errors import ConfigResolveError
 from .in_memory_repository import build_default_in_memory_repository
 from .models import (
     BatchResolveContext,
     GenerationType,
+    MatchingConfigRecord,
     ResolutionMetadata,
     ResolvedConfigVersions,
     SemanticConfigRecord,
@@ -90,16 +93,27 @@ class ConfigVersionResolver:
         )
 
         ranking_config_id = None
+        matching_config_id = None
+        social_feature_weights = None
+        symbolic_feature_weights = None
         reason_catalog_ok = None
         if mode != ExecutionMode.BATCH:
             ranking = self._resolve_ranking_config()
             ranking_config_id = ranking.ranking_config_id
+            matching = self._resolve_matching_config()
+            matching_config_id = matching.matching_config_id
+            social_feature_weights, symbolic_feature_weights = (
+                self._extract_matching_feature_weights(matching)
+            )
             reason_catalog_ok = self._validate_reason_template_catalog()
 
         return ResolvedConfigVersions(
             semantic_config_version_id=semantic_version_id,
             model_versions=model_versions,
             ranking_config_id=ranking_config_id,
+            matching_config_id=matching_config_id,
+            social_feature_weights=social_feature_weights,
+            symbolic_feature_weights=symbolic_feature_weights,
             reason_template_catalog_ok=reason_catalog_ok,
             resolution_metadata=metadata,
         )
@@ -339,6 +353,55 @@ class ConfigVersionResolver:
         if ranking is None:
             raise ConfigResolveError("GRS-CFG-004", "ranking config resolve failed")
         return ranking
+
+    def _resolve_matching_config(self) -> MatchingConfigRecord:
+        matching = self.repository.get_current_matching_config()
+        if matching is None:
+            raise ConfigResolveError("GRS-CFG-007", "matching config resolve failed")
+        return matching
+
+    def _extract_matching_feature_weights(
+        self,
+        matching: MatchingConfigRecord,
+    ) -> tuple[dict[str, float], dict[str, float]]:
+        parameter_json = matching.parameter_json
+        social_raw = parameter_json.get("social_feature_weights")
+        symbolic_raw = parameter_json.get("symbolic_feature_weights")
+        if not isinstance(social_raw, dict) or not isinstance(symbolic_raw, dict):
+            raise ConfigResolveError(
+                "GRS-CFG-007",
+                "matching config parameter_json missing feature weight maps",
+            )
+
+        social_weights = self._parse_feature_weight_map(
+            social_raw,
+            required_keys=SOCIAL_FEATURE_WEIGHT_KEYS,
+            map_name="social_feature_weights",
+        )
+        symbolic_weights = self._parse_feature_weight_map(
+            symbolic_raw,
+            required_keys=SYMBOLIC_FEATURE_WEIGHT_KEYS,
+            map_name="symbolic_feature_weights",
+        )
+        return social_weights, symbolic_weights
+
+    def _parse_feature_weight_map(
+        self,
+        raw_map: dict[str, object],
+        *,
+        required_keys: tuple[str, ...],
+        map_name: str,
+    ) -> dict[str, float]:
+        parsed: dict[str, float] = {}
+        for feature_code in required_keys:
+            value = raw_map.get(feature_code)
+            if not isinstance(value, (int, float)):
+                raise ConfigResolveError(
+                    "GRS-CFG-007",
+                    f"matching config {map_name}.{feature_code} is missing or invalid",
+                )
+            parsed[feature_code] = float(value)
+        return parsed
 
     def _assert_feature_definitions(self, semantic_config_version_id: str) -> None:
         if self.repository.count_feature_definitions(semantic_config_version_id) < 1:
