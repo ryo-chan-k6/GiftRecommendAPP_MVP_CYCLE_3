@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 914
   issue:
     number: 913
   task_definition: "prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/implementation.yaml"
@@ -72,7 +72,7 @@ input:
     number: 913
     required: true
   pr:
-    number: null
+    number: 914
     required: true
   diff:
     required: true
