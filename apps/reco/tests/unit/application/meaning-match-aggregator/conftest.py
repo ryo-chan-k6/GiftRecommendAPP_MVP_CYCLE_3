@@ -61,6 +61,11 @@ from reco.application.meaning_match_aggregator import (  # noqa: E402
     AGGREGATION_METHOD_WEIGHTED_AVERAGE,
     MeaningMatchAggregator,
 )
+from reco.application.meaning_match_aggregator.models import (  # noqa: E402
+    MeaningMatchAggregatorRunMetrics,
+    MeaningMatchResult,
+)
+from reco.infrastructure.logger.logger import ScaffoldRecoLogger  # noqa: E402
 
 DEFAULT_RUN_ID = "run-meaning-match-aggregator-1"
 
@@ -84,16 +89,39 @@ def _default_config_versions() -> dict[str, str]:
     return versions
 
 
+def _axis_matches_uniform(match_value: float) -> dict[str, float]:
+    return {axis: match_value for axis in MVP_FEATURE_CODES}
+
+
 def _feature_match_entry(
     *,
     item_id: str,
     match_value: float,
     matching_config_id: str = DEFAULT_MATCHING_CONFIG_ID,
 ) -> FeatureMatchEntry:
-    features = {
-        axis: FeatureAxisMatch(distance=1.0 - match_value, match=match_value)
-        for axis in MVP_FEATURE_CODES
-    }
+    return _feature_match_entry_with_matches(
+        item_id=item_id,
+        axis_matches=_axis_matches_uniform(match_value),
+        matching_config_id=matching_config_id,
+    )
+
+
+def _feature_match_entry_with_matches(
+    *,
+    item_id: str,
+    axis_matches: dict[str, float],
+    matching_config_id: str = DEFAULT_MATCHING_CONFIG_ID,
+    distance_overrides: dict[str, float] | None = None,
+) -> FeatureMatchEntry:
+    features: dict[str, FeatureAxisMatch] = {}
+    for axis in MVP_FEATURE_CODES:
+        match = axis_matches[axis]
+        distance = (
+            distance_overrides[axis]
+            if distance_overrides and axis in distance_overrides
+            else 1.0 - match
+        )
+        features[axis] = FeatureAxisMatch(distance=distance, match=match)
     return FeatureMatchEntry(
         item_id=item_id,
         features=features,
@@ -157,5 +185,17 @@ def _sample_context(
     return context
 
 
-def build_aggregator() -> MeaningMatchAggregator:
-    return MeaningMatchAggregator()
+def build_aggregator(
+    *,
+    logger: ScaffoldRecoLogger | None = None,
+) -> MeaningMatchAggregator:
+    if logger is None:
+        return MeaningMatchAggregator()
+    return MeaningMatchAggregator(logger=logger)
+
+
+def run_aggregation_from_context(
+    context: ExecutionContext,
+) -> tuple[MeaningMatchResult, MeaningMatchAggregatorRunMetrics]:
+    aggregator = build_aggregator()
+    return aggregator.aggregate_meaning_match(context)
