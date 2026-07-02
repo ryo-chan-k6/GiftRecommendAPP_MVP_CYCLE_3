@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 911
   issue:
     number: 907
   task_definition: "prompts/definitions/tasks/mod-reco-003-config-version-resolver/matching-config-resolution.yaml"
@@ -72,7 +72,7 @@ input:
     number: 907
     required: true
   pr:
-    number: null
+    number: 911
     required: true
   diff:
     required: true
