@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-02                                 |
-| 更新日         | 2026-07-02                                 |
+| 更新日         | 2026-07-02（§16 Human 判断反映）         |
 
 ---
 
@@ -57,7 +57,8 @@ Feature Matcher（feature 一致度計算）は、Reco オンライン推薦パ�
 
 - `MOD-RECO-013` 完了後、Orchestrator から **1 回**呼び出され、`validated_retrieval_candidate` に含まれる候補 `item_id` 集合に対して Matching を実行する
 - `execution_context.user_feature.features`（正規化済み 8 軸、0.0〜1.0）と、Run 解決済み `semantic_config_version_id` に紐づく **`item_feature.normalized_feature_value`**（商品 × 8 軸）を **Feature 単位の絶対距離**（Matching定義書 §5.2）で比較する
-- 各 Feature について `feature_distance[f] = abs(user[f] - item[f])`、`feature_match[f] = 1.0 - feature_distance[f]` を算出する（Matching定義書 §6.2）
+- 各 Feature について `feature_distance[f]` / `feature_match[f]` を算出し、候補ごとに **`meaning_distance` を常時算出**する（§8.3.3）
+- **`avoid_similarity`** を `internal_feature_estimate.avoid_delta` から構成した avoid 専用ベクトルで算出する（§8.3.5。`avoid_delta` 全零時は省略）
 - 候補ごとに **`feature_match_result`**（8 軸 distance / match、メタデータ）を組み立て、`execution_context` へ返却し **`MOD-RECO-015`** へ引き渡す
 - **`item_feature` 不在・欠損**候補について、§8.3.4 の方針に従い除外または Feature 補完を行う
 - 成功時に **Matching フェーズ向け Metric**（§12.1）を Orchestrator / `MOD-RECO-025` 経由で依頼する
@@ -92,7 +93,8 @@ Feature Matcher（feature 一致度計算）は、Reco オンライン推薦パ�
 | `execution_context.validated_retrieval_candidate` | 候補集合 | `true` | `MOD-RECO-013` | 候補 `item_id` 列 | §6.2.3 参照 |
 | `execution_context.config_versions` | Config 群 | `true` | `MOD-RECO-003` | `semantic_config_version_id` | item_feature 参照 |
 | `execution_context.run_id` | `uuid` | `true` | `MOD-RECO-002` | ログ相関 | |
-| `execution_context.internal_feature_estimate` | 内部条件 Feature 推定 | `false` | `MOD-RECO-006` | 任意 `avoid_similarity` | §8.3.5 |
+| `execution_context.internal_feature_estimate` | 内部条件 Feature 推定 | `true` | `MOD-RECO-006` | `avoid_similarity` 入力（`avoid_delta`） | §8.3.5。`006` 完了済み前提 |
+| `execution_context.internal_feature_estimate.avoid_delta` | `Record<feature_code, number>` | `true` | `MOD-RECO-006` | `non_preferred_feature_normalized` 構成 | 全軸 0 の場合は `avoid_similarity` 省略 |
 | `item_feature`（DB） | 行集合 | 条件付き | batch（BATCH-012/013） | Item 側 8 軸 | IF-DB-RECO-005 |
 
 **前提**: `MOD-RECO-002` Run INSERT、`MOD-RECO-004`〜`013` が完了済み（Orchestrator 論理順序 13 まで）。`user_feature` は 8 軸すべて存在すること。
@@ -127,8 +129,8 @@ Feature Matcher（feature 一致度計算）は、Reco オンライン推薦パ�
 | `entries[]` | `true` | 候補ごとの Feature Match 結果（除外候補は含めない） |
 | `entries[].item_id` | `true` | 候補商品 ID |
 | `entries[].features` | `true` | Feature 別結果マップ（§6.2.2.1） |
-| `entries[].avoid_similarity` | `false` | 任意。Matching定義書 §10.2 |
-| `entries[].meaning_distance` | `false` | 任意。Matching定義書 §11.3 |
+| `entries[].avoid_similarity` | `false` | Matching定義書 §10.2。`avoid_delta` 全零時は省略（`null`） |
+| `entries[].meaning_distance` | `true` | Matching定義書 §11.3。**MVP 常時出力**（§16.1 No.7） |
 | `entries[].calculated_at` | `true` | 算出日時（UTC） |
 | `entries[].model_version_id` | `false` | Matching ロジック version（MVP では config 解決値をエコー可） |
 | `total_matched` | `true` | `entries` 件数 |
@@ -143,7 +145,7 @@ Feature Matcher（feature 一致度計算）は、Reco オンライン推薦パ�
 | `match_method` | `false` | MVP: `one_minus_distance` 固定可 |
 | `imputed` | `false` | Feature 欠損補完（0.5）を適用した場合 `true` |
 
-**0 件の扱い**: 入力候補 0 件・全候補除外とも **モジュールとしては成功**可能。最終 `GRS-REC-001`（推薦候補 0 件）は Orchestrator 管轄。
+**0 件の扱い**: 入力候補 0 件・全候補除外とも **モジュールとしては成功**可能（空 `feature_match_result`）。**全候補 Matching 対象外**の場合、Orchestrator は **`MOD-RECO-015` 以降を呼ばず早期 0 件終了**し、最終 `GRS-REC-001` へ進む（§16.1 No.8）。
 
 #### 6.2.3 `validated_retrieval_candidate`（入力・参照）
 
@@ -159,6 +161,7 @@ Feature Matcher（feature 一致度計算）は、Reco オンライン推薦パ�
 | ------ | ---- | ---- | ------ | ---- |
 | `MOD-RECO-001` | 被呼び出し | Matching フェーズ契機 | — | `013` 直後・`015` 直前 |
 | `MOD-RECO-007` | 間接 | `user_feature` | 未到達 | 入力正本 |
+| `MOD-RECO-006` | 間接 | `internal_feature_estimate.avoid_delta` | 未到達 | `avoid_similarity` 入力 |
 | `MOD-RECO-013` | 間接 | `validated_retrieval_candidate` | 未到達 | 候補正本 |
 | `MOD-RECO-015` | 下位利用 | `feature_match_result` | — | 集約入力 |
 | Item Feature Repository（IF-DB-RECO-005） | 呼び出し | `item_feature` 8 行読込 | `GRS-REC-011`（回復不能時） | |
@@ -188,11 +191,10 @@ flowchart TD
     CHECK_UF -->|Yes| CHECK_C{validated_retrieval_candidate\n件数 > 0?}
     CHECK_C -->|No| EMPTY[空 feature_match_result 生成]
     CHECK_C -->|Yes| LOAD[item_feature バッチ読込]
-    LOAD --> LOOP[候補ごとに 8 軸 distance / match 算出]
-    LOOP --> OPT{avoid_similarity\n算出対象?}
-    OPT -->|Yes| AVOID[avoid_similarity 算出]
-    OPT -->|No| BUILD[feature_match_result 組立]
-    AVOID --> BUILD
+    LOAD --> NP[non_preferred_feature_normalized 構成<br/>§8.3.5]
+    NP --> LOOP[候補ごとに distance / match<br/>+ meaning_distance 算出]
+    LOOP --> AVOID[avoid_similarity 算出<br/>avoid_delta 非零時]
+    AVOID --> BUILD[feature_match_result 組立]
     BUILD --> MET[Metric 設定]
     EMPTY --> MET
     MET --> SUCCESS([execution_context 返却])
@@ -210,10 +212,11 @@ flowchart TD
 | 1 | 入力検証 | `execution_context` | — | `user_feature` 必須。候補 0 件は Step 2 へ |
 | 2 | User Feature 検証 | `user_feature.features` | — | 8 軸欠損時 `GRS-REC-011` |
 | 3 | Item Feature 読込 | `candidates[].item_id` | `item_feature` 8 行 × n | バッチ SELECT 推奨 |
-| 4 | 候補ごと Feature Match 算出 | user / item 8 軸 | 中間結果 | §8.3.1 |
-| 5 | 任意 avoid_similarity 算出 | `internal_feature_estimate` 等 | 候補別値 | §8.3.5。MVP 任意 |
-| 6 | 結果組立 | 中間結果 | `feature_match_result` | §6.2.2 |
-| 7 | 観測値設定 | 件数 | `feature_matcher_*_count` | Orchestrator へ |
+| 4 | `non_preferred_feature_normalized` 構成 | `avoid_delta`, 正規化パラメータ | 8 軸ベクトル | §8.3.5。Run 内 1 回 |
+| 5 | 候補ごと Feature Match + `meaning_distance` | user / item 8 軸 | 中間結果 | §8.3.1・§8.3.3 |
+| 6 | `avoid_similarity` 算出 | `non_preferred` / item | 候補別値 | §8.3.5。`avoid_delta` 全零時は省略 |
+| 7 | 結果組立 | 中間結果 | `feature_match_result` | §6.2.2 |
+| 8 | 観測値設定 | 件数 | `feature_matcher_*_count` | Orchestrator へ |
 
 **候補処理順（MVP）**: `validated_retrieval_candidate.candidates[]` の **入力順序を維持**する（Retrieval 類似度順。Post Filter 通過順）。
 
@@ -254,15 +257,21 @@ feature_match.formality = 1.0 - 0.15 = 0.85
 | Symbolic | `symbolic_identity` | 象徴性 |
 | Symbolic | `story_richness` | ストーリー性 |
 
-#### 8.3.3 任意指標 `meaning_distance`（MVP 任意）
+#### 8.3.3 `meaning_distance`（MVP 常時出力）
 
-Matching定義書 §11.3 に従い、分析・デバッグ用途として 8 次元ユークリッド距離を **候補ごとに算出してよい**。
+Matching定義書 §11.3 に従い、Matching 成功候補ごとに 8 次元ユークリッド距離を **常時算出**し、`entries[].meaning_distance` に設定する（§16.1 No.7）。
 
 ```text
 meaning_distance = sqrt( Σ_f (user[f] - item[f])^2 )
 ```
 
-Ranking 入力としては使用しない（`context_score` は `MOD-RECO-016` 責務）。
+| 項目 | 内容 |
+| ---- | ---- |
+| 入力 | `user_feature.features[f]` と `item_feature.normalized_feature_value[f]`（§8.3.1 と同一。補完・clip 後） |
+| 値域 | **0.0 以上、理論最大 √8 ≈ 2.83**（各軸 0.0〜1.0 前提） |
+| 解釈 | **小さいほど** User / Item の意味ベクトル全体が近い |
+| Ranking 利用 | **なし**（`context_score` は `MOD-RECO-016` 責務） |
+| 空入力 / 全除外 | 算出対象なし（`entries` 空） |
 
 #### 8.3.4 Feature / Item Feature 欠損・異常値
 
@@ -277,22 +286,34 @@ Matching定義書 §16 を正とし、MVP では以下を採用する。
 | `semantic_config_version_id` 不一致 | **候補除外** + warn ログ |
 | 参照 DB 障害 | **`GRS-REC-011`**（パイプライン中断） |
 
-**全候補除外**: 入力候補はあったが `item_feature` 欠損等ですべて除外された場合、**モジュールとしては成功**（空 `feature_match_result.entries`）。Orchestrator が後続 `015` 以降の 0 件扱い・`GRS-REC-001` 判定を行う。
+**全候補除外**: 入力候補はあったが `item_feature` 欠損等ですべて除外された場合、**モジュールとしては成功**（空 `feature_match_result.entries`、`feature_matcher_candidate_count = 0`）。Orchestrator は **`MOD-RECO-015` 以降（Matching / Ranking フェーズ）を呼ばず早期 0 件終了**し、`GRS-REC-001` 相当の空結果パスへ進む（§16.1 No.8。MOD-RECO-001 §8.2 0 件結果方針と整合）。
 
-#### 8.3.5 任意 `avoid_similarity`（MVP 任意）
+#### 8.3.5 `avoid_similarity`（MVP）
 
-Matching定義書 §10.2〜§10.3 に従う。
+Matching定義書 §10.2〜§10.3 に従う。主 Matching（§8.3.1）への `user_feature` には avoid 効果が **既に反映済み**（Matching定義書 §10.1）であるため、`avoid_similarity` は **avoid 専用ベクトル**と Item Feature の近さを **補助指標**として別途算出する（Ranking の `avoid_risk` 入力候補）。
+
+##### 8.3.5.1 `non_preferred_feature_normalized` の構成（Human 判断確定・§16.1 No.6）
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 必須性 | **MVP では必須ではない**（算出省略可） |
-| 意味 | 避けたい意味方向に Item がどれくらい近いか（0.0〜1.0 想定） |
-| 入力候補 | `execution_context.internal_feature_estimate`（`MOD-RECO-006`）の avoid 系 Delta、または Matching定義書 §10.1 に従い User Feature に反映済みの avoid 効果 |
-| 算出 | 補助ベクトルと `item_feature` の Feature Match 式（§8.3.1）を **同一式**で適用 |
-| 減点 | **行わない**。Ranking の `avoid_risk` へ委譲（Ranking定義書 §8.5） |
-| Post との境界 | `MOD-RECO-013` の avoid 観測（concept 重複）は **Hard Exclude しない**。順位影響は本 Feature 系統または Ranking 側（MOD-RECO-013 §8.3.2） |
+| 入力正本 | `execution_context.internal_feature_estimate.avoid_delta`（`MOD-RECO-006` §6.2） |
+| 採用理由 | avoid 専用 Delta が Run 内メモリ正本として既に存在し、`user_feature`（外部条件 + 内部条件統合済み）と **分離**できるため |
+| 不採用 | `user_feature.features` をそのまま使用 — 主 Matching と avoid 近さが混同され Matching定義書 §10.1 / §10.2 の責務分離に反する |
+| raw 構成 | `avoid_feature_raw[f] = 0.5 + avoid_delta[f]`（中立 baseline `0.5` + avoid 専用 Delta。Matching定義書 §16.2 の中立値と整合） |
+| 正規化 | `MOD-RECO-007` と **同一 sigmoid**（`user_feature.feature_normalization_version_id` → `feature_normalization_version.parameter_json`）を `avoid_feature_raw[f]` に適用 |
+| 出力 | `non_preferred_feature_normalized[f]`（0.0〜1.0）。Run 内一時変数（`execution_context` 新規フィールドは **追加しない**） |
 
-**入力ベクトル詳細**は §16.1 No.1 を参照（Human 判断前は実装 Task で §16.1 確定後に合わせる）。
+##### 8.3.5.2 `avoid_similarity` 算出
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 前提 | 8 軸のいずれかで `avoid_delta[f] != 0` |
+| 軸一致度 | `axis_match[f] = 1.0 - abs(non_preferred_feature_normalized[f] - item[f])`（§8.3.1 と同一式） |
+| 集約 | **`avoid_similarity = mean(axis_match[f])`**（8 軸算術平均。MVP 固定） |
+| 値域 | **0.0〜1.0**（高いほど避けたい意味方向に Item が近い） |
+| 省略 | 全軸 `avoid_delta[f] == 0` の場合、`entries[].avoid_similarity` は **`null` またはフィールド省略** |
+| 減点 | **行わない**。Ranking の `avoid_risk` へ委譲（Ranking定義書 §8.5） |
+| Post との境界 | `MOD-RECO-013` の avoid 観測（concept 重複）は **Hard Exclude しない**。順位影響は本 Feature 系統 → Ranking（MOD-RECO-013 §8.3.2） |
 
 #### 8.3.6 Orchestrator Port 契約（MVP）
 
@@ -300,6 +321,7 @@ Matching定義書 §10.2〜§10.3 に従う。
 | ---- | ---- |
 | 呼び出し | `match_features(execution_context) -> execution_context`（名称は実装 Task で確定） |
 | 成功 | `feature_match_result` / `feature_matcher_candidate_count` / `feature_matcher_excluded_count` が設定される |
+| 成功（Matching 対象 0 件） | 空 `feature_match_result` で **成功**。Orchestrator は **`015` 以降をスキップ**して早期 0 件終了（§16.1 No.8） |
 | 失敗 | `GRS-REC-011`。`015` 以降は呼ばれない |
 | Phase Log | **`matching_completed` は Matching フェーズ（`014`〜`016`）完了後に Orchestrator が記録**（§12） |
 | Wiring | Matching フェーズ（`014`〜`016`）は **未配線（スタブ）**（MOD-RECO-001 §8.4.2） |
@@ -314,6 +336,8 @@ Matching定義書 §10.2〜§10.3 に従う。
 | `item_feature.normalized_feature_value[f]` | `item[f]` | 同上 | 読込のみ | IF-DB-RECO-005 |
 | `validated_retrieval_candidate.candidates[].item_id` | 候補キー | `entries[].item_id` | 1:1 | 除外候補は entries に含めない |
 | `validated_retrieval_candidate.candidates[].similarity_score` | — | （引き継ぎなし） | 本モジュールでは変更しない | 後続 Ranking 入力は別経路 |
+| user / item 8 軸 | `user[f]`, `item[f]` | `entries[].meaning_distance` | §8.3.3 ユークリッド距離 | MVP 常時 |
+| `avoid_delta` + item | `non_preferred[f]`, `item[f]` | `entries[].avoid_similarity` | §8.3.5 軸平均 match | avoid 非零時 |
 | — | 算出 | `feature_matcher_candidate_count` | `entries` 件数 | Metric |
 | — | 除外 | `feature_matcher_excluded_count` | §8.3.4 | Metric |
 
@@ -334,7 +358,7 @@ Matching定義書 §10.2〜§10.3 に従う。
 | 例外 | Error Code | 発生条件 | 呼び出し元への返却 | ログ |
 | ---- | ---------- | -------- | ------------------ | ---- |
 | Matching 失敗 | `GRS-REC-011` | `user_feature` 欠損・DB 参照不能・内部エラー | 500 系・中断 | Error Log + Phase failed |
-| 候補 0 件（入力 / 出力） | — | 入力 0 件 or 全候補 Matching 対象外 | **成功**。後続へ | `feature_matcher_candidate_count = 0` |
+| 候補 0 件（入力 / 出力） | — | 入力 0 件 or 全候補 Matching 対象外 | **成功**。Orchestrator は **`015` 以降スキップ**（§16.1 No.8） | `feature_matcher_candidate_count = 0` |
 
 **リトライ**: モジュール内自動リトライ **なし**（MVP）。
 
@@ -394,7 +418,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | リトライ | なし |
 | キャッシュ | Run 横断 item_feature キャッシュなし（MVP） |
 | 並列実行 | 同一 Run 内 1 回・同期実行 |
-| 0 件早期終了 | 入力 0 件時は計算スキップ。空 output を返却 |
+| 0 件早期終了 | 入力 0 件 / 全候補 Matching 対象外時は計算スキップ。空 output を返却。Orchestrator が **`015` 以降を呼ばない**（§16.1 No.8） |
 
 ---
 
@@ -412,11 +436,13 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 8 | 値域外 | guard_clip 後に計算され Metric が記録されること | unit |
 | 9 | 入力 0 件 | 成功・空 `feature_match_result`・`GRS-REC-011` にならないこと | unit |
 | 10 | 全候補除外 | 成功・`feature_matcher_candidate_count = 0` になること | unit |
-| 11 | avoid_similarity 任意 | 算出 ON/OFF 両方で後続へ渡せること（ON 時は entries に値あり） | unit |
-| 12 | Orchestrator 連携 | `013` 後 1 回呼び出し・失敗時 `015` 未到達 | integration |
-| 13 | Metric | `feature_matcher_*` / 除外・補完 Metric が記録されること | integration |
-| 14 | ログ | `trace_id` あり・Feature 値全量・secret なし | unit |
-| 15 | DB 読み取り | `semantic_config_version_id` で 8 行 SELECT されること | unit / integration |
+| 11 | 早期 0 件終了 | Matching 対象 0 件時に Orchestrator が `015` 以降を呼ばないこと | integration |
+| 12 | meaning_distance 常時 | Matching 成功候補すべてに `meaning_distance` が設定されること | unit |
+| 13 | avoid_similarity | `avoid_delta` 非零時に算出・全零時に省略されること | unit |
+| 14 | Orchestrator 連携 | `013` 後 1 回呼び出し・失敗時 `015` 未到達 | integration |
+| 15 | Metric | `feature_matcher_*` / 除外・補完 Metric が記録されること | integration |
+| 16 | ログ | `trace_id` あり・Feature 値全量・secret なし | unit |
+| 17 | DB 読み取り | `semantic_config_version_id` で 8 行 SELECT されること | unit / integration |
 
 ---
 
@@ -427,6 +453,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連 Issue / PR |
 | ---- | -------- | --------------- |
 | 2026-07-02 | 初版作成 | Issue #897 |
+| 2026-07-02 | §16 No.6〜8 を Human 判断で確定（`avoid_similarity` / `meaning_distance` / 早期 0 件終了） | Issue #897 / Human Review |
 
 ---
 
@@ -434,9 +461,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `avoid_similarity` 入力ベクトル | Matching定義書 §10.2 の `non_preferred_feature_normalized` を `execution_context` のどのフィールドから構成するか未確定 | Human | 実装 Task 着手前 | §8.3.5。MVP では算出省略可 |
-| 2 | `meaning_distance` MVP 採用 | 任意指標を常時出力するか、デバッグ時のみとするか | Human | 実装 Task 着手前 | §8.3.3 |
-| 3 | item_feature 全欠損時の後続 | 全候補除外後に `015` を空入力で呼ぶか、Orchestrator が早期 0 件終了するか | Human / Orchestrator | Wiring Task 前 | 現状は空 `feature_match_result` で成功 |
+| - | なし | - | - | - | MVP 着手前論点は §16.1 へ移管済み（Human Review 2026-07-02） |
 
 ### 16.1 確定済み論点
 
@@ -447,6 +472,9 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 3 | Social / Symbolic 集約 | **本モジュール scope 外**（`MOD-RECO-015` 責務） |
 | 4 | item_feature 更新 | Online 推薦中は **SELECT のみ**（batch 生成物を参照） |
 | 5 | Phase Log | **`matching_completed` は `014`〜`016` 完了後に Orchestrator が記録** |
+| 6 | `avoid_similarity` 入力ベクトル | **`internal_feature_estimate.avoid_delta`** から `avoid_feature_raw[f] = 0.5 + avoid_delta[f]` を構成し、`user_feature.feature_normalization_version_id` と同一 sigmoid で **`non_preferred_feature_normalized`** を生成。`avoid_similarity = mean(1.0 - abs(non_preferred[f] - item[f]))`。全軸 `avoid_delta == 0` 時は省略（§8.3.5） |
+| 7 | `meaning_distance` MVP 採用 | **常時出力**。Matching 成功候補ごとに `entries[].meaning_distance` を必ず設定（§8.3.3） |
+| 8 | item_feature 全欠損時の後続 | 全候補 Matching 対象外時、本モジュールは **成功**（空 `feature_match_result`）。Orchestrator は **`MOD-RECO-015` 以降を呼ばず早期 0 件終了**し `GRS-REC-001` パスへ（MOD-RECO-001 §8.2） |
 
 ---
 
