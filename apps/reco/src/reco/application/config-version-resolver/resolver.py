@@ -395,7 +395,7 @@ class ConfigVersionResolver:
         parsed: dict[str, float] = {}
         for feature_code in required_keys:
             value = raw_map.get(feature_code)
-            if not isinstance(value, (int, float)):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ConfigResolveError(
                     "GRS-CFG-007",
                     f"matching config {map_name}.{feature_code} is missing or invalid",

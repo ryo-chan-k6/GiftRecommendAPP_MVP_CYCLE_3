@@ -15,7 +15,7 @@
 
 ## 2. 概要
 
-Config Version Resolver（Config / Version解決）は、Reco 推薦パイプラインおよび batch 商品意味生成パイプラインにおいて、**利用する設定・モデル Version** を DB 正本から解決し、`execution_context` へ引き渡すモジュールである。`MOD-RECO-001` Recommendation Orchestrator から **`MOD-RECO-002` の Run INSERT より前**に呼び出され（§8.3.7）、Semantic / Feature ルール、Embedding / LLM モデル、Ranking パラメータの **再現性固定** に必要な version ID 群を確定する。
+Config Version Resolver（Config / Version解決）は、Reco 推薦パイプラインおよび batch 商品意味生成パイプラインにおいて、**利用する設定・モデル Version** を DB 正本から解決し、`execution_context` へ引き渡すモジュールである。`MOD-RECO-001` Recommendation Orchestrator から **`MOD-RECO-002` の Run INSERT より前**に呼び出され（§8.3.8）、Semantic / Feature ルール、Embedding / LLM モデル、Matching / Ranking パラメータの **再現性固定** に必要な version ID 群を確定する。
 
 本モジュールは **設定解決** に責務を限定し、Semantic 抽出・Feature 生成・Ranking 計算・Reason 文面生成などのドメイン計算は行わない。DB への書き込みは行わず、IF-DB-RECO-001（Config / Version 参照）に基づく **読み取り専用** の解決を担う。
 
@@ -59,7 +59,7 @@ Config Version Resolver（Config / Version解決）は、Reco 推薦パイプラ
 - Ranking 計算に利用する **`ranking_config_id`** を解決する（現行有効 `is_current = true`）
 - 解決結果を **`execution_context.config_versions`**（または同等構造）へ格納し、下位 `MOD-RECO-*` および `MOD-RECO-002` Recommendation Run Recorder へ引き渡す
 - **実行モード**（`ui` / `evaluation` / `batch`）および Request 上の **明示 version 指定** に応じて解決方針を切り替える
-- 解決した `semantic_config_version_id` 配下に **Feature 定義が存在すること**を解決時に検証する（不足時は `GRS-CFG-006` で **早期失敗**。§8.3.5）
+- 解決した `semantic_config_version_id` 配下に **Feature 定義が存在すること**を解決時に検証する（不足時は `GRS-CFG-006` で **早期失敗**。§8.3.6）
 - Reason 生成フェーズの前提として、**`reason_template` カタログの利用可能性**（`is_active = true` の行が存在すること）を検証する（OL のみ。BT は §8.3.8）
 - 解決失敗時に **詳細 Error Code**（`GRS-CFG-*`）を生成し、Orchestrator へ **`GRS-REC-003`** 相当として伝播する（`MOD-RECO-024` 経由が原則）
 - batch 起点の商品意味生成（BATCH-009〜015）において、キュー行または実行コンテキストに含まれる version ヒントを解釈し、同一解決ロジックを適用する
@@ -427,7 +427,7 @@ Recoモジュール一覧 §5.2 の論理順序（`002` Run 記録 → `003` Con
 | Ranking Config 解決失敗 | `GRS-CFG-004` | `ranking_config` 解決不能 | 同上 | 同上 |
 | Matching Config 解決失敗 | `GRS-CFG-007` | `matching_config` 解決不能、`parameter_json` 重み欠落 | 同上 | 同上 |
 | Master 不足 | `GRS-CFG-005` | relationship / occasion マスタ不足（本モジュールでは **通常発生しない**。Pair 解決は `002` 責務） | — | 参考定義のみ |
-| Feature 定義不足 | `GRS-CFG-006` | 解決した `semantic_config_version_id` 配下に `feature_definition` が存在しない | `GRS-REC-003` | **解決時早期失敗**（§8.3.5） |
+| Feature 定義不足 | `GRS-CFG-006` | 解決した `semantic_config_version_id` 配下に `feature_definition` が存在しない | `GRS-REC-003` | **解決時早期失敗**（§8.3.6） |
 | Reason カタログ不足 | `GRS-CFG-006` | active `reason_template` 欠落（OL） | `GRS-REC-003` | 同上 |
 | Config 想定外 | `GRS-CFG-999` | 上記に分類できない DB / 解決エラー | `GRS-REC-003` | Error Log（critical） |
 | パイプライン表面コード | `GRS-REC-003` | Orchestrator へ伝播する **Reco 推薦失敗** の表面コード | 500 系 | `MOD-RECO-024` が `GRS-CFG-*` を集約 |
@@ -490,7 +490,7 @@ Error Code の正本はエラーコード定義書。本モジュールは **詳
 
 | No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
-| 1 | 正常系（ui） | デフォルト系列 + 全 `model_type` + ranking が解決される | unit |
+| 1 | 正常系（ui） | デフォルト系列 + 全 `model_type` + `matching_config`（Feature 重み含む）+ ranking が解決される | unit |
 | 2 | 正常系（evaluation） | 明示 `semantic_config_version_id` が検証され採用される | unit |
 | 3 | 正常系（composite） | `configName` + `versionLabel` で UUID 解決 | unit |
 | 4 | 系列選択 | 複数 `is_active` 時に `mvp_semantic_config` へ fallback | unit |
@@ -522,6 +522,7 @@ Error Code の正本はエラーコード定義書。本モジュールは **詳
 | 2026-06-25 | §16 決定事項反映（Orchestrator 順序・Treatment I/F・embedding 代表・evaluation Ranking・早期失敗・batch コンテキスト） | Issue #779 |
 | 2026-06-25 | 関連正本横断更新（`MOD-RECO-001`・`semantic_config`・batch 設計書・バッチ処理一覧） | Issue #779 |
 | 2026-06-26 | 起動フェーズ Wiring：`build_default_stub_ports` が本モジュールを参照（`MOD-RECO-001` §8.4） | 配線方針採用 |
+| 2026-07-02 | `matching_config` 解決・Feature 重みの `config_versions` 展開・`GRS-CFG-007` 追加（§8.3.4） | Issue #907 / PR #911 |
 
 ---
 
@@ -538,8 +539,8 @@ Error Code の正本はエラーコード定義書。本モジュールは **詳
 | 1 | Orchestrator 呼び出し順序と Run INSERT | **`MOD-RECO-003` 解決 → `MOD-RECO-002` INSERT** の契機調整を採用。allocate / commit 分割は不採用 | Human | §8.3.7。`MOD-RECO-001` §8.1 / §8.2 反映済み |
 | 2 | Treatment 系列の明示割当 I/F | MVP では **`execution.configName`（系列）** / **`execution.configName` + `execution.versionLabel`（composite）** / **`execution.semantic_config_version_id`（UUID）** の 3 経路。専用 A/B フラグは設けない。未指定時は `mvp_semantic_config` | Human | §8.3.1 |
 | 3 | `recommendation_run.model_version_id` の代表値 | **`model_versions.embedding`** を Run 列に記録。`llm` / `ranking` は `execution_context` のみ | Human | §9.1 |
-| 4 | evaluation 時の Ranking Config | **Request からの上書きなし**。`is_current` 現行解決のみ。BATCH-018 の再現性は `evaluation_run.ranking_config_id` | Human | §8.3.4 |
-| 5 | `GRS-CFG-006` の検証タイミング | **解決時早期失敗**（`feature_definition` 存在確認） | Human | §8.3.5 |
+| 4 | evaluation 時の Ranking Config | **Request からの上書きなし**。`is_current` 現行解決のみ。BATCH-018 の再現性は `evaluation_run.ranking_config_id` | Human | §8.3.5 |
+| 5 | `GRS-CFG-006` の検証タイミング | **解決時早期失敗**（`feature_definition` 存在確認） | Human | §8.3.6 |
 | 6 | batch コンテキストの入力型 | **`BatchResolveContext`**（§6.2）を正とし、`generation_type` 別に解決スコープを切替（§8.3.8） | Human | Queue 行に version 列なし（テーブル定義書 §6） |
 
 ---

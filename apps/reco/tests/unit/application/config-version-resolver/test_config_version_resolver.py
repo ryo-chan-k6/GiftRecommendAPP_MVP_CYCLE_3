@@ -18,11 +18,16 @@ from reco.application.config_version_resolver import (
     build_default_config_resolver,
     build_default_in_memory_repository,
 )
+from reco.application.config_version_resolver.constants import (
+    SOCIAL_FEATURE_WEIGHT_KEYS,
+    SYMBOLIC_FEATURE_WEIGHT_KEYS,
+)
 from reco.application.config_version_resolver.in_memory_repository import (
     DEFAULT_LLM_MODEL_VERSION_ID,
     DEFAULT_RANKING_MODEL_VERSION_ID,
 )
 from reco.application.config_version_resolver.models import (
+    MatchingConfigRecord,
     ModelVersionRecord,
     SemanticConfigVersionRecord,
 )
@@ -54,6 +59,10 @@ def test_ui_mode_resolves_default_config_versions() -> None:
     )
     assert context.config_versions["ranking_config_id"] == DEFAULT_RANKING_CONFIG_ID
     assert context.config_versions["matching_config_id"] == DEFAULT_MATCHING_CONFIG_ID
+    for feature_code in SOCIAL_FEATURE_WEIGHT_KEYS:
+        assert f"social_feature_weights.{feature_code}" in context.config_versions
+    for feature_code in SYMBOLIC_FEATURE_WEIGHT_KEYS:
+        assert f"symbolic_feature_weights.{feature_code}" in context.config_versions
     assert context.config_versions["social_feature_weights.formality"] == "0.333"
     assert context.config_versions["symbolic_feature_weights.emotion"] == "0.2"
     assert context.config_versions["reason_template_catalog_ok"] == "true"
@@ -246,6 +255,56 @@ def test_invalid_matching_feature_weights_raises_cfg_007() -> None:
         build_resolver(repository).resolve(ui_context())
 
     assert exc_info.value.detail_code == "GRS-CFG-007"
+
+
+def test_ambiguous_current_matching_configs_raises_cfg_007() -> None:
+    repository = build_default_in_memory_repository()
+    duplicate_current = MatchingConfigRecord(
+        matching_config_id="c1111111-1111-4111-8111-111111111199",
+        config_name="duplicate_matching_config",
+        is_current=True,
+        parameter_json=repository.matching_configs[0].parameter_json,
+    )
+    repository = replace(
+        repository,
+        matching_configs=[*repository.matching_configs, duplicate_current],
+    )
+
+    with pytest.raises(ConfigResolveError) as exc_info:
+        build_resolver(repository).resolve(ui_context())
+
+    assert exc_info.value.detail_code == "GRS-CFG-007"
+
+
+def test_bool_matching_feature_weight_raises_cfg_007() -> None:
+    repository = build_default_in_memory_repository()
+    parameter_json = dict(repository.matching_configs[0].parameter_json)
+    social_weights = dict(parameter_json["social_feature_weights"])  # type: ignore[arg-type]
+    social_weights["formality"] = True
+    parameter_json["social_feature_weights"] = social_weights
+    invalid_matching = replace(
+        repository.matching_configs[0],
+        parameter_json=parameter_json,
+    )
+    repository = replace(
+        repository,
+        matching_configs=[invalid_matching],
+    )
+
+    with pytest.raises(ConfigResolveError) as exc_info:
+        build_resolver(repository).resolve(ui_context())
+
+    assert exc_info.value.detail_code == "GRS-CFG-007"
+
+
+def test_evaluation_mode_resolves_matching_config() -> None:
+    updated = build_default_config_resolver().resolve(
+        evaluation_context(semantic_config_version_id=TREATMENT_SEMANTIC_CONFIG_VERSION_ID)
+    )
+
+    assert updated.config_versions["matching_config_id"] == DEFAULT_MATCHING_CONFIG_ID
+    assert updated.config_versions["social_feature_weights.formality"] == "0.333"
+    assert updated.config_versions["symbolic_feature_weights.emotion"] == "0.2"
 
 
 # §14 No.10 Feature 定義不足
