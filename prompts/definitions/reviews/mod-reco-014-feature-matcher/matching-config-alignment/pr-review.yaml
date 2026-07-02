@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 912
   issue:
     number: 908
   task_definition: "prompts/definitions/tasks/mod-reco-014-feature-matcher/matching-config-alignment.yaml"
@@ -72,7 +72,7 @@ input:
     number: 908
     required: true
   pr:
-    number: null
+    number: 912
     required: true
   diff:
     required: true
