@@ -12,8 +12,12 @@ parent:
   epic_issue: "[Epic]MOD-RECO-015:Meaning Match Aggregator"
   epic_issue_number: 904
   epic_branch: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
-  related_issues: []
-  related_prs: []
+  related_issues:
+    - number: 913
+      purpose: "MOD-RECO-015 実装 Task（PR #914 Epic merge 済み）"
+  related_prs:
+    - number: 914
+      purpose: "#913 Epic merge"
 
 commands:
   primary: "/work-issue"
@@ -99,9 +103,10 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-mod-reco-015-meaning-match-aggregator-unit-test"
-  base: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
-  target: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
+  summary: "mod-reco-015-meaning-match-aggregator-unit-test"
+  name: "test/task-915-mod-reco-015-meaning-match-aggregator-unit-test"
+  base: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  target: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
   worktree_required: true
 
 project:
@@ -112,16 +117,23 @@ project:
     priority: "high"
 
 issue:
+  number: 915
   unit: "task"
   type: "test"
   area: "reco"
 
 dependencies:
   epics: []
-  issues: []
-  prs: []
+  issues:
+    - number: 913
+      purpose: "実装 Task 完了（blocking）"
+    - number: 904
+      purpose: "親 Epic"
+  prs:
+    - number: 914
+      purpose: "#913 Epic merge"
   tasks:
-    - "MOD-RECO-015 実装 Task が Epic Branch にマージ済みであること"
+    - "task-mod-reco-015-meaning-match-aggregator-implementation"
   blocking: true
 
 parallel_control:
@@ -163,5 +175,6 @@ operation_logging:
   level: "standard"
 
 notes:
-  - "Definition bootstrap 由来スキャフォールド。"
+  - "Issue #915 本文を起票正本とする"
   - "workstream: mod-reco-015-meaning-match-aggregator"
+  - "前提: #913 PR #914 Epic merge 済み"
