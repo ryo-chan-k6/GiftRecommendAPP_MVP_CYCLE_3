@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-02                                 |
-| 更新日         | 2026-07-02                                 |
+| 更新日         | 2026-07-02 / 2026-07-02（Issue #908: `matching_config_id` 用語整合） |
 
 ---
 
@@ -112,7 +112,7 @@ Meaning Match Aggregator（意味マッチ集約）は、Reco オンライン推
 | `entries[].item_id` | `true` | 候補商品 ID |
 | `entries[].features[feature_code].match` | `true` | 8 軸すべての `feature_match[f]`（0.0〜1.0） |
 | `entries[].features[feature_code].imputed` | `false` | 補完軸の有無（Metric 用にエコー可） |
-| `entries[].model_version_id` | `false` | Matching ロジック version（結果へエコー可） |
+| `entries[].matching_config_id` | `false` | Matching ロジック version（`MOD-RECO-014` 出力。結果へエコー可） |
 | `total_matched` | `true` | `entries` 件数（整合検証用） |
 
 本モジュールは `entries[].features[f].distance` / `meaning_distance` / `avoid_similarity` を **変更せず**、`feature_match_result` をそのまま `execution_context` に残す（読み取り専用）。
@@ -129,7 +129,7 @@ Meaning Match Aggregator（意味マッチ集約）は、Reco オンライン推
 | `entries[].symbolic_match` | `true` | Symbolic 系一致度（0.0〜1.0） |
 | `entries[].aggregation_method` | `true` | MVP: `weighted_average` 固定 |
 | `entries[].calculated_at` | `true` | 算出日時（UTC） |
-| `entries[].model_version_id` | `true` | 集約に使用した Matching ロジック `model_version_id`（重み解決キー。§8.3.2） |
+| `entries[].matching_config_id` | `true` | 集約に使用した Matching ロジック `matching_config_id`（重み解決キー。§8.3.2） |
 | `total_aggregated` | `true` | `entries` 件数 |
 
 **軸別 match は含めない**: 候補ごとの 8 軸 `feature_match` は **`execution_context.feature_match_result`**（`MOD-RECO-014` 出力）を正本とする。本モジュールは `social_match` / `symbolic_match` のみを追加する（§6.2.3）。
@@ -170,7 +170,7 @@ Matching定義書 §14.3〜§14.4 の軸別項目は DB 論理モデルであり
 | データ | 参照元 | 用途 | version / config | 備考 |
 | ------ | ------ | ---- | ---------------- | ---- |
 | `feature_match_result` | `execution_context`（`MOD-RECO-014` 出力） | 集約入力・軸別 match 正本 | Run 内メモリ | DB 参照なし |
-| Matching 重み | `config_versions`（`MOD-RECO-003` 解決） | `social_feature_weights` / `symbolic_feature_weights` | `model_version_id` 紐づけ | §8.3.2。MVP 初期 seed は均等重み |
+| Matching 重み | `config_versions`（`MOD-RECO-003` 解決） | `social_feature_weights` / `symbolic_feature_weights` | `matching_config_id` 紐づけ | §8.3.2。MVP 初期 seed は均等重み |
 
 本モジュールは **DB を直接参照しない**（純粋計算）。
 
@@ -209,7 +209,7 @@ flowchart TD
 | 1 | 入力検証 | `execution_context` | — | `feature_match_result` 必須 |
 | 2 | 空入力判定 | `entries[]` | — | 0 件は Step 6 へ（空 output） |
 | 3 | エントリ検証 | 各 `entries[].features` | — | 8 軸 `match` 欠損時 `GRS-REC-011` |
-| 4 | 重み解決 | `config_versions` / `model_version_id` | Social / Symbolic 重みマップ | §8.3.2。`model_version` 参照 |
+| 4 | 重み解決 | `config_versions` / `matching_config_id` | Social / Symbolic 重みマップ | §8.3.2。`matching_config` 参照 |
 | 5 | 候補ごと集約 | 軸別 `match` + 重み | `social_match` / `symbolic_match` | §8.3.1 |
 | 6 | 結果組立 | 中間結果 | `meaning_match_result` | §6.2.2 |
 | 7 | 観測値設定 | 件数 | `meaning_match_aggregator_candidate_count` | Orchestrator へ |
@@ -253,19 +253,19 @@ symbolic_match
   / 1.0
 ```
 
-#### 8.3.2 Feature 重み（`model_version` 参照）
+#### 8.3.2 Feature 重み（`matching_config` 参照）
 
-重みの正本は **Matching定義書** §13.1。本モジュールは **コード内固定値ではなく**、`model_version` に紐づく `social_feature_weights` / `symbolic_feature_weights` を参照して集約する。
+重みの正本は **Matching定義書** §13.1。本モジュールは **コード内固定値ではなく**、`matching_config_id` に紐づく `social_feature_weights` / `symbolic_feature_weights` を参照して集約する。
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 解決キー | `feature_match_result.entries[].model_version_id`（`MOD-RECO-014` と同一の Matching ロジック version。Run 内で一貫していること） |
+| 解決キー | `feature_match_result.entries[].matching_config_id`（`MOD-RECO-014` と同一の Matching ロジック version。Run 内で一貫していること） |
 | 重み取得元 | `execution_context.config_versions` に `MOD-RECO-003` が解決済みの Matching 重み（`social_feature_weights` / `symbolic_feature_weights`）。物理格納先（seed / config JSON 等）は実装 Task で確定 |
 | 集約式 | §8.3.1 の加重平均。各 Feature の `w` は上記重みマップから取得 |
 | 重み合計 0 | **`0.0` を返却**（Matching定義書 §15.2 `weighted_average`） |
 | 重み欠損・不正 | **`GRS-REC-011`**（Run 内で重みが解決できない場合） |
 
-**MVP 初期 seed（均等重み）**: 初期 `model_version` 設定では、Matching定義書 §7.2 / §8.2 と同等の **均等重み**を設定してよい。
+**MVP 初期 seed（均等重み）**: 初期 `matching_config` 設定では、Matching定義書 §7.2 / §8.2 と同等の **均等重み**を設定してよい。
 
 | 分類 | Feature | MVP 初期重み `w` |
 | ---- | ------- | -----------------: |
@@ -278,7 +278,7 @@ symbolic_match
 | Symbolic | `symbolic_identity` | 0.200 |
 | Symbolic | `story_richness` | 0.200 |
 
-`meaning_match_result.entries[].model_version_id` には、集約に使用した Matching ロジック version を **必ず記録**する（再現性・分析用）。
+`meaning_match_result.entries[].matching_config_id` には、集約に使用した Matching ロジック version を **必ず記録**する（再現性・分析用）。
 
 #### 8.3.3 Feature 軸一覧（MVP 固定）
 
@@ -323,8 +323,8 @@ symbolic_match
 | 入力項目 | 内部項目 | 出力項目 | 変換内容 | 備考 |
 | -------- | -------- | -------- | -------- | ---- |
 | `feature_match_result.entries[].item_id` | 候補キー | `meaning_match_result.entries[].item_id` | 1:1 エコー | 順序維持 |
-| `features.*.match`（8 軸） | `match[f]` | `social_match` / `symbolic_match` | §8.3.1 加重平均（`model_version` 重み） | 軸別は `feature_match_result` に残す |
-| `entries[].model_version_id` | Matching version | `entries[].model_version_id` | 集約に使用した version を記録 | §8.3.2 |
+| `features.*.match`（8 軸） | `match[f]` | `social_match` / `symbolic_match` | §8.3.1 加重平均（`matching_config` 重み） | 軸別は `feature_match_result` に残す |
+| `entries[].matching_config_id` | Matching version | `entries[].matching_config_id` | 集約に使用した version を記録 | §8.3.2 |
 | — | 算出 | `meaning_match_aggregator_candidate_count` | `entries` 件数 | Metric |
 | — | 固定 | `entries[].aggregation_method` | `weighted_average` | MVP |
 
@@ -416,13 +416,13 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 1 | 正常系（Social 集約） | 均等重み加重平均と `social_match` が一致すること | unit |
 | 2 | 正常系（Symbolic 集約） | 均等重み加重平均と `symbolic_match` が一致すること | unit |
 | 3 | 正常系（候補複数） | 候補ごとに `entries[]` が生成され入力順が維持されること | unit |
-| 4 | `model_version` 重み参照 | seed の均等重みで `social_match` / `symbolic_match` が算出されること | unit |
+| 4 | `matching_config` 重み参照 | seed の均等重みで `social_match` / `symbolic_match` が算出されること | unit |
 | 5 | 軸別 match 非重複 | `meaning_match_result` に軸別内訳がなく、`feature_match_result` が参照可能なこと | unit |
 | 6 | 境界値（完全一致） | 全軸 match = 1.0 のとき `social_match` / `symbolic_match` = 1.0 | unit |
 | 7 | 境界値（最大不一致） | 全軸 match = 0.0 のとき `social_match` / `symbolic_match` = 0.0 | unit |
 | 8 | feature_match_result 欠損 | `GRS-REC-011` になること | unit |
 | 9 | 8 軸 match 欠損 | `GRS-REC-011` になること（本モジュールで補完しない） | unit |
-| 10 | 重み欠損 | `model_version` 重みが解決できない場合 `GRS-REC-011` になること | unit |
+| 10 | 重み欠損 | `matching_config` 重みが解決できない場合 `GRS-REC-011` になること | unit |
 | 11 | 入力 0 件 | 成功・空 `meaning_match_result`・`GRS-REC-011` にならないこと | unit |
 | 12 | 値域外 match | clip 後に集約され Metric が記録されること | unit |
 | 13 | Orchestrator 連携 | `014` 後 1 回呼び出し・失敗時 `016` 未到達 | integration |
@@ -441,7 +441,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | ---- | -------- | --------------- |
 | 2026-07-02 | 初版作成 | Issue #905 |
 | 2026-07-02 | §8.1 Orchestrator 呼び出し注記追加 | Issue #905 |
-| 2026-07-02 | §8.3.2 `model_version` 重み参照・§6.2.3 軸別 match 参照先を Human 判断で確定 | Issue #905 / Human Review |
+| 2026-07-02 | §8.3.2 `matching_config` 重み参照・§6.2.3 軸別 match 参照先を Human 判断で確定 | Issue #905 / Human Review |
+| 2026-07-02 | `model_version_id` 参照を `matching_config_id` に統一（`MOD-RECO-014` 出力整合） | Issue #908 |
 
 ---
 
@@ -463,7 +464,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 6 | Phase Log | **`matching_completed` は `014`〜`016` 完了後に Orchestrator が記録** |
 | 7 | 0 件早期終了 | Matching 対象 0 件時、Orchestrator は通常 **`015` 以降を呼ばない**（`MOD-RECO-014` §16.1 No.8） |
 | 8 | DB 参照 | 本モジュールは **DB を直接参照しない** |
-| 9 | Feature 重み | **`model_version` 参照**（`social_feature_weights` / `symbolic_feature_weights`）。MVP 初期 seed は **均等重み**（§8.3.2） |
+| 9 | Feature 重み | **`matching_config` 参照**（`social_feature_weights` / `symbolic_feature_weights`）。MVP 初期 seed は **均等重み**（§8.3.2） |
 | 10 | 軸別 match（分析） | **`meaning_match_result` には含めない**。Run 内正本は **`feature_match_result`**（`MOD-RECO-014`）。分布は **`MOD-RECO-025`** / `reco_score_distribution_metric`（§6.2.3） |
 
 ---
@@ -480,7 +481,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | Gift Meaning Space定義書 | `docs/04_ドメインモデル設計/Gift Meaning Space定義書.md` | Social / Symbolic 分類 |
 | MOD-RECO-001 | `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` | 呼び出し・`GRS-REC-011` |
 | MOD-RECO-014 | `docs/06_実装設計/reco/MOD-RECO-014_Feature Matcherモジュール仕様書.md` | 直前モジュール・入力正本・軸別 match 正本 |
-| MOD-RECO-003 | `docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md` | `config_versions` / `model_version` 解決 |
+| MOD-RECO-003 | `docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md` | `config_versions` / `matching_config_id` 解決 |
 | MOD-RECO-025 | Recoモジュール一覧 §6.25 | 軸別 match 分布 Metric（分析） |
 | リソース一覧 | `docs/05_アプリケーション設計/アプリ/database/リソース一覧.md` | `meaning_match_result` |
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | `GRS-REC-011` |
@@ -508,4 +509,4 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 - Recoモジュール一覧 §6.14 の主な入力 `feature_match` は、本仕様書では **`feature_match_result`**（`MOD-RECO-014` 正本）と同義
 - Recoモジュール一覧 §6.14 の主な出力 `social_match` / `symbolic_match` は、本仕様書では **`meaning_match_result.entries[]` 内フィールド**として格納する
 - 軸別 Feature Match の分析は **`MOD-RECO-014` の `feature_match_result`** を参照する。`015` への重複格納や専用分析モジュールの新設は不要（§6.2.3）
-- Feature 重みは **`model_version` 参照**とし、MVP 初期 seed では均等重みを設定する（§8.3.2 / §16.1 No.9）
+- Feature 重みは **`matching_config` 参照**とし、MVP 初期 seed では均等重みを設定する（§8.3.2 / §16.1 No.9）

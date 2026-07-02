@@ -25,13 +25,14 @@ if TYPE_CHECKING:
 _VERSION_KEY_CANDIDATES: tuple[tuple[str, ...], ...] = (
     ("semantic_config_version_id", "semantic_config_version"),
     ("model_version_id", "model_version", "model_versions.embedding"),
+    ("matching_config_id", "matching_config"),
     ("ranking_config_id", "ranking_config"),
 )
 
 
 def _resolve_config_version_ids(
     config_versions: dict[str, str],
-) -> tuple[str, str, str] | None:
+) -> tuple[str, str, str, str] | None:
     resolved: list[str] = []
     for keys in _VERSION_KEY_CANDIDATES:
         value = None
@@ -43,7 +44,7 @@ def _resolve_config_version_ids(
         if not value:
             return None
         resolved.append(value)
-    return resolved[0], resolved[1], resolved[2]
+    return resolved[0], resolved[1], resolved[2], resolved[3]
 
 
 def _to_domain_run(record: RecommendationRunRecord) -> RecommendationRun:
@@ -93,13 +94,14 @@ class RecommendationRunRecorder:
         if version_ids is None:
             raise RunRecorderError(
                 "GRS-REC-002",
-                "config version 3 columns are not set on execution_context",
+                "config version columns are not set on execution_context",
             )
 
-        semantic_id, model_id, ranking_id = version_ids
+        semantic_id, model_id, matching_id, ranking_id = version_ids
         if not self.run_repository.version_exists(
             semantic_config_version_id=semantic_id,
             model_version_id=model_id,
+            matching_config_id=matching_id,
             ranking_config_id=ranking_id,
         ):
             raise RunRecorderError(
@@ -113,6 +115,7 @@ class RecommendationRunRecorder:
                 pair_id=pair_id,
                 semantic_config_version_id=semantic_id,
                 model_version_id=model_id,
+                matching_config_id=matching_id,
                 ranking_config_id=ranking_id,
             )
         except Exception as exc:

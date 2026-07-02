@@ -48,6 +48,7 @@ _load_run_recorder_package()
 DEFAULT_CONFIG_VERSIONS: dict[str, str] = {
     "semantic_config_version_id": "scv-1",
     "model_version_id": "mv-1",
+    "matching_config_id": "mc-1",
     "ranking_config_id": "rc-1",
 }
 

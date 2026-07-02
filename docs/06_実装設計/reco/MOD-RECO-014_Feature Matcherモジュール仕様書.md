@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-02                                 |
-| 更新日         | 2026-07-02（§16 Human 判断反映）         |
+| 更新日         | 2026-07-02（§16 Human 判断反映） / 2026-07-02（Issue #908: `matching_config_id` 出力統一） |
 
 ---
 
@@ -91,7 +91,7 @@ Feature Matcher（feature 一致度計算）は、Reco オンライン推薦パ�
 | `execution_context.user_feature` | User Feature ドメインオブジェクト | `true` | `MOD-RECO-007` | Matching ユーザー側入力 | §6.2.1 |
 | `execution_context.user_feature.features` | `Record<feature_code, number>` | `true` | `MOD-RECO-007` | 正規化 8 軸 | 0.0〜1.0 |
 | `execution_context.validated_retrieval_candidate` | 候補集合 | `true` | `MOD-RECO-013` | 候補 `item_id` 列 | §6.2.3 参照 |
-| `execution_context.config_versions` | Config 群 | `true` | `MOD-RECO-003` | `semantic_config_version_id` | item_feature 参照 |
+| `execution_context.config_versions` | Config 群 | `true` | `MOD-RECO-003` | `semantic_config_version_id`（item_feature 参照）/ `matching_config_id`（出力エコー） | §6.2.2 |
 | `execution_context.run_id` | `uuid` | `true` | `MOD-RECO-002` | ログ相関 | |
 | `execution_context.internal_feature_estimate` | 内部条件 Feature 推定 | `true` | `MOD-RECO-006` | `avoid_similarity` 入力（`avoid_delta`） | §8.3.5。`006` 完了済み前提 |
 | `execution_context.internal_feature_estimate.avoid_delta` | `Record<feature_code, number>` | `true` | `MOD-RECO-006` | `non_preferred_feature_normalized` 構成 | 全軸 0 の場合は `avoid_similarity` 省略 |
@@ -132,7 +132,7 @@ Feature Matcher（feature 一致度計算）は、Reco オンライン推薦パ�
 | `entries[].avoid_similarity` | `false` | Matching定義書 §10.2。`avoid_delta` 全零時は省略（`null`） |
 | `entries[].meaning_distance` | `true` | Matching定義書 §11.3。**MVP 常時出力**（§16.1 No.7） |
 | `entries[].calculated_at` | `true` | 算出日時（UTC） |
-| `entries[].model_version_id` | `false` | Matching ロジック version（MVP では config 解決値をエコー可） |
+| `entries[].matching_config_id` | `true` | `MOD-RECO-003` が解決した Matching Config ID（全 entries へ同一値をエコー） |
 | `total_matched` | `true` | `entries` 件数 |
 | `total_excluded` | `true` | item_feature 欠損等で Matching 対象外とした件数 |
 
@@ -332,6 +332,7 @@ Matching定義書 §10.2〜§10.3 に従う。主 Matching（§8.3.1）への `u
 
 | 入力項目 | 内部項目 | 出力項目 | 変換内容 | 備考 |
 | -------- | -------- | -------- | -------- | ---- |
+| `config_versions.matching_config_id` | — | `entries[].matching_config_id` | 1:1 エコー（Run 内一貫） | `MOD-RECO-003` 解決値。`MOD-RECO-015` 重み解決キー |
 | `user_feature.features[f]` | `user[f]` | `entries[].features[f].match` / `.distance` | §8.3.1 絶対距離 → 1 - distance | |
 | `item_feature.normalized_feature_value[f]` | `item[f]` | 同上 | 読込のみ | IF-DB-RECO-005 |
 | `validated_retrieval_candidate.candidates[].item_id` | 候補キー | `entries[].item_id` | 1:1 | 除外候補は entries に含めない |
@@ -454,6 +455,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | ---- | -------- | --------------- |
 | 2026-07-02 | 初版作成 | Issue #897 |
 | 2026-07-02 | §16 No.6〜8 を Human 判断で確定（`avoid_similarity` / `meaning_distance` / 早期 0 件終了） | Issue #897 / Human Review |
+| 2026-07-02 | 出力 version キーを `matching_config_id` に統一（案 B。`model_version_id` 削除） | Issue #908 |
 
 ---
 
@@ -475,6 +477,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 6 | `avoid_similarity` 入力ベクトル | **`internal_feature_estimate.avoid_delta`** から `avoid_feature_raw[f] = 0.5 + avoid_delta[f]` を構成し、`user_feature.feature_normalization_version_id` と同一 sigmoid で **`non_preferred_feature_normalized`** を生成。`avoid_similarity = mean(1.0 - abs(non_preferred[f] - item[f]))`。全軸 `avoid_delta == 0` 時は省略（§8.3.5） |
 | 7 | `meaning_distance` MVP 採用 | **常時出力**。Matching 成功候補ごとに `entries[].meaning_distance` を必ず設定（§8.3.3） |
 | 8 | item_feature 全欠損時の後続 | 全候補 Matching 対象外時、本モジュールは **成功**（空 `feature_match_result`）。Orchestrator は **`MOD-RECO-015` 以降を呼ばず早期 0 件終了**し `GRS-REC-001` パスへ（MOD-RECO-001 §8.2） |
+| 9 | Matching ロジック version キー | 出力は **`entries[].matching_config_id`**（案 B）。`model_version_id` は **MVP では使用しない**（後方互換 alias なし）。Matching定義書 §14.2 の `model_version_id` 論理列は **`matching_config_id` へマッピング**する（§17 注記） |
 
 ---
 

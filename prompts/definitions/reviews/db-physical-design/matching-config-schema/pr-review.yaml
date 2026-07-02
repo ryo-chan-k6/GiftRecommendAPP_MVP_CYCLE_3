@@ -1,0 +1,155 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-matching-config-schema-pr"
+  title: "matching_config 物理設計整備 PRレビュー"
+  summary: "matching_config テーブル定義書・増分 DDL・seed・Run 再現性列追随 Task（Issue #906）の PR を AI Review する。ranking_config 対称性、Matching定義書 §13 マッピング、develop 向け増分 schema の妥当性を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-906-matching-config-schema"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 906
+  task_definition: "prompts/definitions/tasks/db-physical-design/matching-config-schema.yaml"
+  source_branch: "docs/task-906-matching-config-schema"
+  target_branch: "develop"
+  parent_epic_issue: 435
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/matching-config-schema.yaml"
+    required: true
+  issue:
+    number: 906
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/database/matching_config_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "対称設計・章構成の正本"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "エンティティ属性との整合"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+      purpose: "§13.1 マッピング注記・parameter_json キー整合"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "matching_config_id 追随列の整合"
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D14 追記の整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope / acceptance_criteria を満たしているか"
+    - "out_of_scope（apps/reco 実装・OpenAPI / generated・ranking_config 破壊的変更）が混在していないか"
+    - "Task PR target が develop であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "ranking_config_テーブル定義書と章構成・Config 系責務が対称か"
+    - "Matching定義書 §13.1 の MVP DB 正本 = matching_config マッピング注記が妥当か"
+    - "物理ER / 論理ER / テーブル一覧 / run 定義書の追随が過不足ないか"
+  db:
+    - "matching_config DDL が ranking_config と同型の制約・Index 方針か"
+    - "recommendation_run / result / evaluation_run の matching_config_id が ranking_config_id と同型の LOGICAL 参照か"
+    - "増分 migration がローカル適用可能か（PR 本文の smoke 結果）"
+    - "seed で is_current = true の matching_config が 1 系列存在するか"
+    - "parameter_json MVP キーと均等重み seed が Issue #906 §14 と整合するか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "案 B（matching_config 新設）と ranking_config の対称性"
+  - "matching_config_id 追加範囲（run / result / evaluation_run）"
+  - "parameter_json の MVP 必須キーと seed 初期値"
+
+risk_points:
+  - "Matching定義書 §13.1（model_version 論理）と matching_config 物理正本のマッピング説明の十分性"
+  - "Epic #904 / #905 が develop 未 merge 時の用語参照（PR #909）"
+  - "既存 migration / seed への追記による再実行性"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/matching-config-schema.yaml"
+  - "前提 Issue: #905（MOD-RECO-015 モジュール仕様書）、親 Epic #435（Done）"
+  - "Human 判断: 案 B（matching_config 新設）採用済み"

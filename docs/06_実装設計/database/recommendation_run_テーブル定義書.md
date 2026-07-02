@@ -27,7 +27,7 @@ Public API および Observability では `recommendation_run_id` を trace キ�
 
 - Online推薦フロー **Request → Run → Result** の **実行正本** として、推薦処理 1 回分の状態（`run_status`）を管理する
 - 実行時解決した **`pair_id`** を Run 単位で固定する（物理ER §17 No.1）
-- **`semantic_config_version_id` / `model_version_id` / `ranking_config_id`** を個別列で保持し、再現性を担保する（Human Review #537 No.4 / No.6）
+- **`semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id`** を個別列で保持し、再現性を担保する（Human Review #537 No.4 / No.6）
 - `recommendation_result` および User 派生データ（`user_semantic` 等）の **親 Run** として参照される
 - `phase_log` / `error_log` の **owner**（`owner_type = recommendation_run`）として Log 連携する
 - 後続 DDL Task が migration を作成できる粒度まで設計を確定する
@@ -103,7 +103,7 @@ flowchart LR
 
 | 出典 | 列・概念 | 本テーブル（MVP 物理 DDL） | 扱い |
 | ---- | -------- | -------------------------- | ---- |
-| 論理ER §3 | `recommendation_run_id`, `recommendation_request_id`, version 3 列, `started_at`, `completed_at`, `run_status` | **採用** | 一致 |
+| 論理ER §3 | `recommendation_run_id`, `recommendation_request_id`, version 4 列, `started_at`, `completed_at`, `run_status` | **採用** | 一致 |
 | 論理ER §3 | `pair_id` | **採用** | 論理ER 表に未記載。物理ER §17 No.1 で Run 側保持 **決定済み** |
 | 状態遷移 §5.1.3 | `error_summary` | **物理列なし** | Run 障害詳細は **`error_log`**。Batch の `batch_run_log.error_summary` パターンは Online Run には適用しない（error_log 定義書 §5.2） |
 | 物理ER timestamp 方針 | `created_at` / `updated_at` | **採用** | 行作成・`run_status` 更新監査。`started_at` / `completed_at` とは別（パイプライン実行区間） |
@@ -115,11 +115,11 @@ recommendation_request 定義書 §5.7・Human Review #537 No.4 / No.6 を正と
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 正本列 | **`semantic_config_version_id` / `model_version_id` / `ranking_config_id`** を本テーブルに **個別列** で保持 |
+| 正本列 | **`semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id`** を本テーブルに **個別列** で保持 |
 | Request 側 | version **個別列なし**。evaluation 指定は `validated_payload` のみ |
 | 解決 | reco が IF-DB-RECO-001 で現行 Config を解決（ui）または payload から読取（evaluation）し、Run INSERT 時に **コピー** |
-| FK | 3 列とも **LOGICAL FK**（物理 FK なし）。INSERT 前に reco が存在確認 |
-| 被参照 | semantic_config_version / model_version / ranking_config 各定義書 §8 と双方向整合 |
+| FK | 4 列とも **LOGICAL FK**（物理 FK なし）。INSERT 前に reco が存在確認 |
+| 被参照 | semantic_config_version / model_version / matching_config / ranking_config 各定義書 §8 と双方向整合 |
 
 ### 5.6 Log 連携（`phase_log` / `error_log`）
 
@@ -137,7 +137,7 @@ recommendation_request 定義書 §5.7・Human Review #537 No.4 / No.6 を正と
 
 | 方向 | 内容 |
 | ---- | ---- |
-| 入力 | `recommendation_request_id`、解決済み `pair_id`、解決済み version 3 列 |
+| 入力 | `recommendation_request_id`、解決済み `pair_id`、解決済み version 4 列 |
 | 出力 | `recommendation_run_id`、更新後 `run_status` / タイムスタンプ |
 | 連携 | Phase Log Writer / Error Log Writer が同一 `recommendation_run_id` を owner として記録 |
 
@@ -152,12 +152,13 @@ recommendation_request 定義書 §5.7・Human Review #537 No.4 / No.6 を正と
 | 3 | `pair_id` | Pair ID | `uuid` | `yes` | — | `ON` | — | — | 実行時解決 Pair。`pair_master` 物理 FK（§17 No.1） |
 | 4 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Semantic Config Version。再現性固定 |
 | 5 | `model_version_id` | Model Version ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Model Version（Embedding / LLM 等） |
-| 6 | `ranking_config_id` | Ranking Config ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Ranking Config |
-| 7 | `run_status` | Run Status | `varchar(32)` | `yes` | — | — | — | `'accepted'` | `recommendation_run_status` enum |
-| 8 | `started_at` | Started At | `timestamptz` | `no` | — | — | — | `NULL` | パイプライン開始日時。`running` 遷移時に設定 |
-| 9 | `completed_at` | Completed At | `timestamptz` | `no` | — | — | — | `NULL` | 終端状態到達日時（`succeeded` / `failed` / `canceled`） |
-| 10 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | Run 行作成日時（`accepted` INSERT 時。§5.4） |
-| 11 | `updated_at` | Updated At | `timestamptz` | `yes` | — | — | — | `now()` | 最終 `run_status` 更新日時 |
+| 6 | `matching_config_id` | Matching Config ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Matching Config |
+| 7 | `ranking_config_id` | Ranking Config ID | `uuid` | `yes` | — | LOGICAL | — | — | 使用 Ranking Config |
+| 8 | `run_status` | Run Status | `varchar(32)` | `yes` | — | — | — | `'accepted'` | `recommendation_run_status` enum |
+| 9 | `started_at` | Started At | `timestamptz` | `no` | — | — | — | `NULL` | パイプライン開始日時。`running` 遷移時に設定 |
+| 10 | `completed_at` | Completed At | `timestamptz` | `no` | — | — | — | `NULL` | 終端状態到達日時（`succeeded` / `failed` / `canceled`） |
+| 11 | `created_at` | Created At | `timestamptz` | `yes` | — | — | — | `now()` | Run 行作成日時（`accepted` INSERT 時。§5.4） |
+| 12 | `updated_at` | Updated At | `timestamptz` | `yes` | — | — | — | `now()` | 最終 `run_status` 更新日時 |
 
 > **MVP で採用しない列**: `error_summary`（§5.4）、`trace_id`（Request / Log 側で連携）、`user_id`（認証 Epic まで追加しない）
 
@@ -183,6 +184,7 @@ recommendation_request 定義書 §5.7・Human Review #537 No.4 / No.6 を正と
 | `pair_id` | `pair_master.pair_id` | `ON` | reco Pair 解決 + seed 正本 | 物理ER §9 resolved_at_run。§11 `fk_recommendation_run_pair` |
 | `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | reco Config 解決 + 存在確認 | semantic_config_version 定義書 §17.1 No.8 |
 | `model_version_id` | `model_version.model_version_id` | `LOGICAL` | 同上 | model_version 定義書 §8 |
+| `matching_config_id` | `matching_config.matching_config_id` | `LOGICAL` | 同上 | matching_config 定義書 §8 |
 | `ranking_config_id` | `ranking_config.ranking_config_id` | `LOGICAL` | 同上 | ranking_config 定義書 §8 |
 
 ### 8.2 被参照（子テーブル）
@@ -208,6 +210,7 @@ recommendation_request 定義書 §5.7・Human Review #537 No.4 / No.6 を正と
 | `idx_recommendation_run_pair_id` | `pair_id` | btree | Pair 参照・分析 | 物理ER §10。§17 No.1 |
 | `idx_recommendation_run_semantic_config_version` | `semantic_config_version_id` | btree | version 被参照・分析 | semantic_config_version 定義書 §17.1 No.8 |
 | `idx_recommendation_run_model_version` | `model_version_id` | btree | version 被参照 | model_version 定義書 |
+| `idx_recommendation_run_matching_config` | `matching_config_id` | btree | version 被参照 | matching_config 定義書 |
 | `idx_recommendation_run_ranking_config` | `ranking_config_id` | btree | version 被参照 | ranking_config 定義書 |
 | `idx_recommendation_run_created` | `created_at` DESC | btree | 時系列一覧・Retention 将来 | Online コア長期保持 |
 
@@ -275,7 +278,7 @@ stateDiagram-v2
 
 1. `recommendation_request` を参照（`recommendation_request_id`）
 2. `relationship_code` + `occasion_code` から `pair_id` を解決
-3. IF-DB-RECO-001 で version 3 列を解決
+3. IF-DB-RECO-001 で version 4 列を解決
 4. `run_status = accepted` で INSERT（`created_at` / `updated_at` 設定）
 5. `phase_log` に `request_received` / `config_resolved` 等を記録（IF-DB-RECO-009）
 6. 以降、状態遷移に応じて UPDATE
@@ -402,7 +405,7 @@ CREATE TABLE recommendation_run (
 - テーブル一覧 §3 No.2・論理ER §14.1・物理ER §9 / §10 / §11 / §17 と矛盾していない
 - Online推薦フロー（request → run → result）の **実行単位** として明記されている
 - `recommendation_request` との executes（ON）・`recommendation_result` との produces（ON + `uq_result_per_run`）が明記されている
-- `pair_id` 物理 FK と version 3 列 LOGICAL FK が DDL 展開可能な粒度である
+- `pair_id` 物理 FK と version 4 列 LOGICAL FK が DDL 展開可能な粒度である
 - `run_status` と enum定義書 §6.1 / packages 正本が一致している
 - `phase_log` / `error_log` の owner 連携と `recommendation_run_phase_log` 非物理化が明記されている
 - recommendation_request 定義書 §5.7 と双方向整合している

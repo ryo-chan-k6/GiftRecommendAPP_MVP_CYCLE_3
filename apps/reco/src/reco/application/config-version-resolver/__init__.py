@@ -42,6 +42,7 @@ from .constants import (  # noqa: E402
 from .errors import ConfigResolveError  # noqa: E402
 from .in_memory_repository import (  # noqa: E402
     DEFAULT_EMBEDDING_MODEL_VERSION_ID,
+    DEFAULT_MATCHING_CONFIG_ID,
     DEFAULT_RANKING_CONFIG_ID,
     DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
     InMemoryConfigRepository,
@@ -59,6 +60,7 @@ __all__ = [
     "ConfigResolveError",
     "ConfigVersionResolver",
     "DEFAULT_EMBEDDING_MODEL_VERSION_ID",
+    "DEFAULT_MATCHING_CONFIG_ID",
     "DEFAULT_RANKING_CONFIG_ID",
     "DEFAULT_SEMANTIC_CONFIG_NAME",
     "DEFAULT_SEMANTIC_CONFIG_VERSION_ID",

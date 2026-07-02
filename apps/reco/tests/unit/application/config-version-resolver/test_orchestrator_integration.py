@@ -6,6 +6,7 @@ from dataclasses import replace
 
 from reco.application.config_version_resolver import (
     DEFAULT_EMBEDDING_MODEL_VERSION_ID,
+    DEFAULT_MATCHING_CONFIG_ID,
     DEFAULT_RANKING_CONFIG_ID,
     DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
     build_default_config_resolver,
@@ -15,6 +16,7 @@ from reco.application.recommendation_orchestrator import (
     RecommendationOrchestrator,
     build_default_stub_ports,
 )
+from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
 from recommendation_orchestrator_helpers import (
     ports_with_retrieval_stubs,
     ports_with_user_meaning_stubs,
@@ -44,10 +46,12 @@ def _ports_with(ports: OrchestratorPorts, **overrides: object) -> OrchestratorPo
 
 def test_config_resolver_runs_before_run_recorder_and_inserts_run() -> None:
     """§14 No.13: 003 先行解決後に 002 INSERT が成功する（本実装配線）."""
+    run_recorder = build_scaffold_run_recorder()
     ports, _ = build_default_stub_ports()
     ports = _ports_with(
         ports,
         config_resolver=build_default_config_resolver(),
+        run_recorder=run_recorder,
     )
     ports = ports_with_user_meaning_stubs(ports)
     ports = ports_with_retrieval_stubs(ports)
@@ -68,6 +72,7 @@ def test_config_resolver_runs_before_run_recorder_and_inserts_run() -> None:
         DEFAULT_EMBEDDING_MODEL_VERSION_ID
     )
     assert ctx.config_versions["ranking_config_id"] == DEFAULT_RANKING_CONFIG_ID
+    assert ctx.config_versions["matching_config_id"] == DEFAULT_MATCHING_CONFIG_ID
 
     completed = ctx.completed_modules
     assert "MOD-RECO-003" in completed
@@ -80,3 +85,7 @@ def test_config_resolver_runs_before_run_recorder_and_inserts_run() -> None:
         DEFAULT_SEMANTIC_CONFIG_VERSION_ID
     )
     assert ctx.recommendation_run.model_version == DEFAULT_EMBEDDING_MODEL_VERSION_ID
+
+    stored = run_recorder.run_repository.get_by_id(ctx.recommendation_run.run_id)
+    assert stored is not None
+    assert stored.matching_config_id == DEFAULT_MATCHING_CONFIG_ID
