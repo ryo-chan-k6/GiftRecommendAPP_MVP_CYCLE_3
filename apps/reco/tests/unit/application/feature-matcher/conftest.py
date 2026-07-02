@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -66,6 +67,7 @@ from reco.application.feature_matcher import (  # noqa: E402
     InMemoryItemFeatureRecord,
     InMemoryItemFeatureRepository,
     build_uniform_item_features,
+    run_feature_matching,
 )
 from reco.application.internal_condition_feature_estimator.models import (  # noqa: E402
     InternalFeatureEstimate,
@@ -166,6 +168,58 @@ def _sample_context(
         total_excluded=0,
     )
     return context
+
+
+@dataclass
+class TrackingItemFeatureRepository(InMemoryItemFeatureRepository):
+    """fetch_item_features 呼び出しを記録するテスト用 repository。"""
+
+    fetch_calls: list[tuple[tuple[str, ...], str]] = field(default_factory=list)
+
+    def fetch_item_features(
+        self,
+        item_ids: tuple[str, ...],
+        semantic_config_version_id: str,
+    ) -> dict[str, dict[str, float]]:
+        self.fetch_calls.append((item_ids, semantic_config_version_id))
+        return super().fetch_item_features(item_ids, semantic_config_version_id)
+
+
+def build_item_record(
+    *,
+    item_id: str,
+    features: dict[str, float] | None = None,
+    semantic_config_version_id: str = DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
+) -> InMemoryItemFeatureRecord:
+    return InMemoryItemFeatureRecord(
+        item_id=item_id,
+        semantic_config_version_id=semantic_config_version_id,
+        features=features if features is not None else build_uniform_item_features(0.5),
+    )
+
+
+def run_matching_from_context(
+    context: ExecutionContext,
+    *,
+    item_repository: InMemoryItemFeatureRepository | None = None,
+    normalization: InMemoryFeatureNormalizationRepository | None = None,
+) -> tuple:
+    norm = normalization or InMemoryFeatureNormalizationRepository()
+    _, repo = build_matcher_with_repository(
+        context,
+        item_repository=item_repository,
+        normalization=norm,
+    )
+    return run_feature_matching(
+        user_feature=context.user_feature,  # type: ignore[arg-type]
+        internal_feature_estimate=context.internal_feature_estimate,  # type: ignore[arg-type]
+        validated_retrieval_candidate=context.validated_retrieval_candidate,  # type: ignore[attr-defined]
+        semantic_config_version_id=str(
+            context.config_versions["semantic_config_version_id"],
+        ),
+        item_feature_repository=repo,
+        normalization=norm,
+    )
 
 
 def build_matcher_with_repository(
