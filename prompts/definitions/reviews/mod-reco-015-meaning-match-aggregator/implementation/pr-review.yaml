@@ -4,50 +4,126 @@ definition_type: "review"
 review:
   id: "review-mod-reco-015-meaning-match-aggregator-implementation-pr"
   title: "MOD-RECO-015 実装 PRレビュー"
-  summary: "MOD-RECO-015（Meaning Match Aggregator）実装 Task の PR を AI Review する"
+  summary: "MOD-RECO-015（Meaning Match Aggregator）実装 Task（Issue #913）の PR を AI Review する。モジュール仕様書整合、Orchestrator ポート契約、matching_config_id / 重み参照の整合を確認する。"
   type: "task_pr_review"
   status: "draft"
 
 work_mode: "ai-agent"
 
 branch:
+  no_branch: false
+  name: "feature/task-913-mod-reco-015-meaning-match-aggregator-implementation"
+  base: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  target: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
   worktree_required: true
 
 target:
   pr: null
   issue:
-    number: null
+    number: 913
   task_definition: "prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/implementation.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
+  source_branch: "feature/task-913-mod-reco-015-meaning-match-aggregator-implementation"
+  target_branch: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  parent_epic_issue: 904
+  parent_epic_branch: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
 
 commands:
   primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
 
 agent:
   primary: "reviewer-ai"
+  support:
+    - "support-ai"
   specialist:
     docs: "docs-reviewer-ai"
     test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
 
 review_scope:
   docs: false
   source: true
-  tests: false
-  project_operation: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
   security: true
+  project_operation: true
 
 input:
   task_definition:
     path: "prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/implementation.yaml"
     required: true
+  issue:
+    number: 913
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-015_Meaning Match Aggregatorモジュール仕様書.md"
+      required: true
+      purpose: "実装正本（#908 matching_config_id 版）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "ポート契約"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: true
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
 
 review_points:
-  - "Task Definition scope / acceptance_criteria 充足"
-  - "epic_scope 内に差分が収まっているか"
-  - "secret 非含有"
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "out_of_scope（Orchestrator wiring / API / 他 MOD / OpenAPI）が混在していないか"
+    - "Task PR target が親 Epic Branch であるか"
+  source:
+    - "meaning-match-aggregator がモジュール仕様書の入出力・例外方針を満たすか"
+    - "matching_config_id / config_versions 重み参照が #908 後仕様と一致するか"
+    - "apps/reco/src/reco/api/** を変更していないか"
+    - "epic_scope.allowed_paths 内に差分が収まっているか"
+  tests:
+    - "最小スモークテストが PR 本文または CI で確認できるか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "config_versions 重みマップの物理名・ネスト（MOD-RECO-003 仕様書 §8.3.4）との実装一致"
+
+risk_points:
+  - "上流 #014 / #003 の I/F 形状と実装のズレ"
+  - "Orchestrator スタブ差し替え未実施時の統合テスト不足"
 
 notes:
-  - "Issue / PR 確定後に target.* / input.issue.number / input.pr.number を更新する"
+  - "対応 Task Definition: prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/implementation.yaml"
+  - "前提: #905 PR #909、#908 PR #912、Epic Branch develop 取り込み済み"
