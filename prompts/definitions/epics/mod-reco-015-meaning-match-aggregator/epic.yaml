@@ -114,7 +114,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
+  name: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
   base: "develop"
   target: "develop"
   worktree_required: false
