@@ -6,7 +6,7 @@ review:
   title: "MOD-RECO-014 モジュール仕様書 PRレビュー"
   summary: "MOD-RECO-014（Feature Matcher）モジュール仕様書 Task の PR を AI Review する"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 898
   issue:
     number: 897
   task_definition: "prompts/definitions/tasks/mod-reco-014-feature-matcher/module-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-897-mod-reco-014-feature-matcher-module-spec"
   target_branch: "feature/epic-896-mod-reco-014-feature-matcher"
   parent_epic_issue: 896
   parent_epic_branch: "feature/epic-896-mod-reco-014-feature-matcher"
@@ -43,6 +43,18 @@ input:
   task_definition:
     path: "prompts/definitions/tasks/mod-reco-014-feature-matcher/module-spec.yaml"
     required: true
+  issue:
+    number: 897
+    required: true
+  pr:
+    number: 898
+    required: true
+  templates:
+    deliverables:
+      - path: "prompts/templates/docs/module-spec.md"
+        required: true
+        applies_to:
+          - "docs/06_実装設計/reco/MOD-RECO-014_Feature Matcherモジュール仕様書.md"
 
 review_points:
   - "Task Definition scope / acceptance_criteria 充足"
@@ -50,4 +62,4 @@ review_points:
   - "secret 非含有"
 
 notes:
-  - "Issue / PR 確定後に target.* / input.issue.number / input.pr.number を更新する"
+  - "PR #898 作成時に target.* / input.issue.number / input.pr.number を反映済み"
