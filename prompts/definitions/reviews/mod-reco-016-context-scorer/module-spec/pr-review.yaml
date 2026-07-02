@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 920
   issue:
-    number: null
+    number: 919
   task_definition: "prompts/definitions/tasks/mod-reco-016-context-scorer/module-spec.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-016-context-scorer"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-016-context-scorer"
+  source_branch: "docs/task-919-mod-reco-016-context-scorer-module-spec"
+  target_branch: "feature/epic-918-mod-reco-016-context-scorer"
+  parent_epic_issue: 918
+  parent_epic_branch: "feature/epic-918-mod-reco-016-context-scorer"
 
 commands:
   primary: "/review-pr"
