@@ -1,0 +1,61 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-matching-integration-test-pr"
+  title: "MOD-RECO-001 Matching 統合テスト PRレビュー"
+  summary: "Matching フェーズ配線後の Orchestrator デフォルト composition 経路テスト更新および §19 早期 0 件終了 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-matching/integration-test.yaml"
+  source_branch: "test/task-<issue-number>-mod-reco-001-wiring-matching-integration-test"
+  target_branch: "feature/epic-790-mod-reco-001-wiring-matching"
+  parent_epic_issue: 790
+  parent_epic_branch: "feature/epic-790-mod-reco-001-wiring-matching"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-matching/integration-test.yaml"
+    required: true
+
+review_points:
+  - "デフォルト composition 経路テストが Matching 本実装（014 / 015 / 016）を通過しているか"
+  - "§19 早期 0 件終了: 014 成功後 015 未呼び出し・空 Result 成功"
+  - "§19: 014 失敗時 GRS-REC-011 で中断（015 未到達）"
+  - "§19: Matching 対象 ≥ 1 時は 015 以降が従来どおり呼ばれる"
+  - "stubs.py および MOD-RECO-014 / 015 / 016 モジュール本体への不要な変更がないか"
+  - "execution_context.py への変更がないか"
+  - "テストが本番 DB / 外部 API / secret に依存していないか"
+  - "wiring Task マージ後の前提が PR 本文で説明されているか"
+  - "Task PR target が Epic Branch であるか"
+  - "pytest 実行結果が PR 本文に記載されているか"
+
+notes:
+  - "Issue / PR 確定後に target.* / input.issue.number を更新する"
+  - "§19 正本: Issue #897 / MOD-RECO-014 モジュール仕様書"
