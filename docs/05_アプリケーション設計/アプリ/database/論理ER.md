@@ -139,7 +139,7 @@
 | Embedding系              | item_embedding                                                                                                                                 | 派生                        |
 | Evaluation系             | evaluation_dataset / evaluation_case / evaluation_run / evaluation_result / evaluation_metric                                                  | 内部正本 / 派生 / Log       |
 | Log系                    | phase_log / error_log / batch_run_log / item_import_summary                                                                                    | Log                         |
-| Master / Config系        | relationship_master / occasion_master / model_version / ranking_config / reason_template / feature_normalization_version                       | 設定正本                    |
+| Master / Config系        | relationship_master / occasion_master / model_version / matching_config / ranking_config / reason_template / feature_normalization_version                       | 設定正本                    |
 
 ---
 
@@ -260,7 +260,7 @@ erDiagram
 | エンティティ                 | 主キー                          | 主要属性                                                                                                                              | 状態カラム      | 正本区分            | 管理主体 |
 | ---------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------------- | -------- |
 | recommendation_request       | recommendation_request_id       | request_mode, relationship_code, occasion_code, budget_min, budget_max, preferred_text, non_preferred_text, ng_text, requested_at     | なし            | 内部正本            | api      |
-| recommendation_run           | recommendation_run_id           | recommendation_request_id, semantic_config_version_id, model_version_id, ranking_config_id, started_at, completed_at                  | run_status      | 内部正本 / Log      | reco     |
+| recommendation_run           | recommendation_run_id           | recommendation_request_id, semantic_config_version_id, model_version_id, matching_config_id, ranking_config_id, started_at, completed_at                  | run_status      | 内部正本 / Log      | reco     |
 | recommendation_run_phase_log | recommendation_run_phase_log_id | recommendation_run_id, phase_name, started_at, completed_at, detail_json                                                              | phase_status    | Log                 | reco     |
 | recommendation_result        | recommendation_result_id        | recommendation_request_id, recommendation_run_id, result_count, generated_at                                                          | result_status   | 内部正本            | reco     |
 | recommendation_result_item   | recommendation_result_item_id   | recommendation_result_id, item_id, rank, final_score, score_breakdown_json, Snapshot項目                                              | なし            | 内部正本 / Snapshot | reco     |
@@ -587,6 +587,7 @@ erDiagram
 | occasion_master               | occasion_code                    | occasion_label, occasion_label_jp, is_active, display_order             | 設定正本 | database / api          |
 | model_version                 | model_version_id                 | provider, model_name, model_type, version_label, is_current, created_at | 設定正本 | database / reco / batch |
 | ranking_config                | ranking_config_id                | config_name, config_version, parameter_json, is_current, created_at     | 設定正本 | database / reco         |
+| matching_config               | matching_config_id               | config_name, config_version, parameter_json, is_current, created_at     | 設定正本 | database / reco         |
 | reason_template               | reason_template_id               | template_name, template_version, template_type, template_body, relationship_code, occasion_code, feature_code, is_active, created_at | 設定正本 | database / reco         |
 | feature_normalization_version | feature_normalization_version_id | normalization_method, parameter_json, is_current, generated_at          | 設定正本 | database / batch / reco |
 
@@ -619,7 +620,7 @@ erDiagram
 | ------------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------- | -------------- | ---------------- |
 | evaluation_dataset       | evaluation_dataset_id       | dataset_name, dataset_description, dataset_version, is_active, created_at                                        | なし              | 内部正本       | batch / database |
 | evaluation_case          | evaluation_case_id          | evaluation_dataset_id, input_condition_json, expected_result_json, case_label, is_active, created_at             | なし              | 内部正本       | batch / database |
-| evaluation_run           | evaluation_run_id           | evaluation_dataset_id, semantic_config_version_id, model_version_id, ranking_config_id, started_at, completed_at | evaluation_status | Log / 実行単位 | batch            |
+| evaluation_run           | evaluation_run_id           | evaluation_dataset_id, semantic_config_version_id, model_version_id, matching_config_id, ranking_config_id, started_at, completed_at | evaluation_status | Log / 実行単位 | batch            |
 | evaluation_result        | evaluation_result_id        | evaluation_run_id, evaluation_dataset_id, evaluation_case_id, recommendation_result_id, executed_at              | なし              | 派生 / Log     | batch            |
 | evaluation_metric        | evaluation_metric_id        | evaluation_result_id, metric_name, metric_value, metric_detail_json                                              | なし              | 派生           | batch            |
 | feedback_analysis_result | feedback_analysis_result_id | recommendation_feedback_id, analysis_type, analysis_result_json, analyzed_at                                     | なし              | 派生           | batch            |

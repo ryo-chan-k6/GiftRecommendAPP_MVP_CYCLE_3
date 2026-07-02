@@ -107,7 +107,7 @@ flowchart LR
 | RecommendationResult §10.1 | `created_at` | **`generated_at`** | 論理ER `generated_at` と同一意味（§17.1 No.3） |
 | RecommendationResult §10.1 | `displayed_at`, `expired_at` | **MVP 物理列あり（NULL 可）** | 画面表示・有効期限は将来利用。MVP は未使用可 |
 | RecommendationResult §10.1 | `ranking_config_version_id` | **`ranking_config_id`** | Run / ranking_config 定義書に合わせ物理名統一。ドメイン定義書 §10.1 との差分 |
-| RecommendationResult §10.1 | version 3 列 + reason template | **採用（Run 由来 3 列は NOT NULL・LOGICAL FK）** | Run §5.5 からコピー。§5.7 |
+| RecommendationResult §10.1 | version 4 列 + reason template | **採用（Run 由来 4 列は NOT NULL・LOGICAL FK）** | Run §5.5 からコピー。§5.7 |
 | recommendation_run §5.4 | `trace_id` | **物理列なし（Run 側）** | 本テーブルは **`recommendation_request.trace_id`** を生成時スナップショット（Run 定義書 §5.4） |
 | RecommendationResult §10.1 | `result_payload`, `debug_payload` | **採用（jsonb）** | API 返却補助・debug 用 |
 | RecommendationResult §9.1 例 | `result_status: completed` | **DB は `generated`** | API 層マッピング（§5.6） |
@@ -190,10 +190,10 @@ recommendation_run 定義書 §5.5・§17.1 No.2 / No.3・RecommendationResult�
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 実行コンテキスト正本 | **`recommendation_run`** に `semantic_config_version_id` / `model_version_id` / `ranking_config_id` を **NOT NULL 個別列** で保持（Run 定義書 §6） |
-| Result ヘッダ | Result Build INSERT 時に Run 3 列を **そのままコピー**（同名・同値）。加えて Reason 生成で解決した **`reason_template_version_id`** のみ Result 側追加（Run には列なし） |
-| 物理列名 | Run と一致: `semantic_config_version_id` / `model_version_id` / `ranking_config_id`。ドメイン定義書の `ranking_config_version_id` は **`ranking_config_id`** にマッピング（§5.4） |
-| FK 方針 | 4 列とも **LOGICAL FK**（物理 FK なし。Run §17.1 No.3 踏襲） |
+| 実行コンテキスト正本 | **`recommendation_run`** に `semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id` を **NOT NULL 個別列** で保持（Run 定義書 §6） |
+| Result ヘッダ | Result Build INSERT 時に Run 4 列を **そのままコピー**（同名・同値）。加えて Reason 生成で解決した **`reason_template_version_id`** のみ Result 側追加（Run には列なし） |
+| 物理列名 | Run と一致: `semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id`。ドメイン定義書の `ranking_config_version_id` は **`ranking_config_id`** にマッピング（§5.4） |
+| FK 方針 | 5 列とも **LOGICAL FK**（物理 FK なし。Run §17.1 No.3 踏襲） |
 | 目的 | Config 更新後も **当時の Result / Item / Reason** を再現・評価できるようにする |
 | Run 状態連携 | Result INSERT 成功後、Run は `run_status = succeeded` へ遷移（Run 定義書 §11.1・状態遷移設計書 §5.1） |
 
@@ -222,14 +222,15 @@ recommendation_run 定義書 §5.5・§17.1 No.2 / No.3・RecommendationResult�
 | 11 | `caution_message` | Caution Message | `text` | `no` | — | — | — | `NULL` | 注意表示 |
 | 12 | `semantic_config_version_id` | Semantic Config Version ID | `uuid` | `yes` | — | LOGICAL | — | — | Run からコピー（Run 定義書 §6 No.4） |
 | 13 | `model_version_id` | Model Version ID | `uuid` | `yes` | — | LOGICAL | — | — | Run からコピー（Run 定義書 §6 No.5） |
-| 14 | `ranking_config_id` | Ranking Config ID | `uuid` | `yes` | — | LOGICAL | — | — | Run からコピー（Run 定義書 §6 No.6。ranking_config 定義書 §8） |
-| 15 | `reason_template_version_id` | Reason Template Version ID | `uuid` | `no` | — | LOGICAL | — | `NULL` | Reason 生成時解決。Run には列なし（Result 側のみ） |
-| 16 | `result_payload` | Result Payload | `jsonb` | `no` | — | — | — | `NULL` | 返却 metadata 等の補助 JSON |
-| 17 | `debug_payload` | Debug Payload | `jsonb` | `no` | — | — | — | `NULL` | debug 返却時のみ |
-| 18 | `trace_id` | Trace ID | `text` | `no` | — | — | — | `NULL` | 横断 trace |
-| 19 | `generated_at` | Generated At | `timestamptz` | `yes` | — | — | — | `now()` | Result 生成完了日時（論理ER `generated_at` 相当） |
-| 20 | `displayed_at` | Displayed At | `timestamptz` | `no` | — | — | — | `NULL` | 初回画面表示日時（MVP 未使用可） |
-| 21 | `expired_at` | Expired At | `timestamptz` | `no` | — | — | — | `NULL` | 有効期限（MVP 未使用可） |
+| 14 | `matching_config_id` | Matching Config ID | `uuid` | `yes` | — | LOGICAL | — | — | Run からコピー（Run 定義書 §6 No.6。matching_config 定義書 §8） |
+| 15 | `ranking_config_id` | Ranking Config ID | `uuid` | `yes` | — | LOGICAL | — | — | Run からコピー（Run 定義書 §6 No.7。ranking_config 定義書 §8） |
+| 16 | `reason_template_version_id` | Reason Template Version ID | `uuid` | `no` | — | LOGICAL | — | `NULL` | Reason 生成時解決。Run には列なし（Result 側のみ） |
+| 17 | `result_payload` | Result Payload | `jsonb` | `no` | — | — | — | `NULL` | 返却 metadata 等の補助 JSON |
+| 18 | `debug_payload` | Debug Payload | `jsonb` | `no` | — | — | — | `NULL` | debug 返却時のみ |
+| 19 | `trace_id` | Trace ID | `text` | `no` | — | — | — | `NULL` | 横断 trace |
+| 20 | `generated_at` | Generated At | `timestamptz` | `yes` | — | — | — | `now()` | Result 生成完了日時（論理ER `generated_at` 相当） |
+| 21 | `displayed_at` | Displayed At | `timestamptz` | `no` | — | — | — | `NULL` | 初回画面表示日時（MVP 未使用可） |
+| 22 | `expired_at` | Expired At | `timestamptz` | `no` | — | — | — | `NULL` | 有効期限（MVP 未使用可） |
 
 > **MVP で採用しない列**: `user_id`（認証 Epic まで追加しない）。`updated_at` は生成後不変方針のため省略。
 
@@ -254,6 +255,7 @@ recommendation_run 定義書 §5.5・§17.1 No.2 / No.3・RecommendationResult�
 | `recommendation_run_id` | `recommendation_run.recommendation_run_id` | `ON` | 物理 FK + UNIQUE | 1:0..1 produces |
 | `semantic_config_version_id` | `semantic_config_version.semantic_config_version_id` | `LOGICAL` | reco 解決済み ID のみ保存 | 物理 FK なし |
 | `model_version_id` | `model_version.model_version_id` | `LOGICAL` | 同上 | 物理 FK なし |
+| `matching_config_id` | `matching_config.matching_config_id` | `LOGICAL` | Run §8.1・matching_config 定義書 §8 と双方向整合 | 物理 FK なし |
 | `ranking_config_id` | `ranking_config.ranking_config_id` | `LOGICAL` | Run §8.1・ranking_config 定義書 §8 と双方向整合 | 物理 FK なし |
 | `reason_template_version_id` | `reason_template` 系 version | `LOGICAL` | Reason 定義書連携 | 物理 FK なし |
 
@@ -278,6 +280,7 @@ recommendation_run 定義書 §5.5・§17.1 No.2 / No.3・RecommendationResult�
 | `idx_recommendation_result_request_id` | `recommendation_request_id` | btree | Request 別 Result 一覧 | 再実行 trace |
 | `idx_recommendation_result_generated` | `generated_at` DESC | btree | 時系列分析・Retention 候補 | Observability |
 | `idx_recommendation_result_status` | `result_status`, `generated_at` DESC | btree | 状態別集計 | empty / failed 分析 |
+| `idx_recommendation_result_matching_config` | `matching_config_id` | btree | Run スナップショット参照 | LOGICAL FK |
 | `idx_recommendation_result_trace` | `trace_id` | btree | 横断 trace 検索 | nullable |
 
 ---
@@ -339,7 +342,7 @@ stateDiagram-v2
 1. Ranking 完了後、top_k 件を抽出
 2. `result_status` を件数から決定（`generated` / `empty`）
 3. **`recommendation_request`** から `request_mode`・`trace_id` をスナップショット（Run 本体に `trace_id` 列なし。Run 定義書 §5.4）
-4. **`recommendation_run`** から version 3 列（`semantic_config_version_id` / `model_version_id` / `ranking_config_id`）をコピー
+4. **`recommendation_run`** から version 4 列（`semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id`）をコピー
 5. Result ヘッダ INSERT → `recommendation_result_item` へ続けて INSERT（同一トランザクション推奨）
 6. Run を `run_status = succeeded` に UPDATE（`completed_at` 設定。Run 定義書 §11.1）
 7. api へ Internal API レスポンス返却 → Public API へマッピング
@@ -388,6 +391,7 @@ CREATE TABLE recommendation_result (
   caution_message text,
   semantic_config_version_id uuid NOT NULL,
   model_version_id uuid NOT NULL,
+  matching_config_id uuid NOT NULL,
   ranking_config_id uuid NOT NULL,
   reason_template_version_id uuid,
   result_payload jsonb,
@@ -442,7 +446,7 @@ CREATE TABLE recommendation_result (
 | 2 | `uq_result_per_run` | `recommendation_run_id` UNIQUE（1 Run 1 Result） | 物理ER §11 |
 | 3 | `generated_at` 物理列名 | 論理ER `generated_at` と同一意味。物理名 **`generated_at`** | RecommendationResult §10.1 `created_at` との差分は §5.4 |
 | 4 | Online推薦コア Retention | MVP DELETE なし。具体期間は Phase2 ⑥ Task | Observability 180〜365 日候補を注記 |
-| 5 | version 列の保持先 | Run 側が実行正本（3 列 NOT NULL）。Result は INSERT 時に **同名 3 列をコピー** + `reason_template_version_id` のみ Result 追加 | §5.7・Run 定義書 §5.5 |
+| 5 | version 列の保持先 | Run 側が実行正本（4 列 NOT NULL）。Result は INSERT 時に **同名 4 列をコピー** + `reason_template_version_id` のみ Result 追加 | §5.7・Run 定義書 §5.5 |
 | 6 | 0 件結果 | error ではなく `result_status=empty` の正常 Result | テーブル一覧 §3 補足 |
 | 7 | API 層 `resultStatus` マッピング | **3 層モデル**: DB（`generated`/`empty`/`failed`）／INT（reco↔api）／PUB（UI 向け `completed`/`empty`/`partial`）。0 件は **DB・PUB・INT すべて `empty` に統一**（INT-002 は #469 で修正） | §5.6.1〜5.6.4 |
 
