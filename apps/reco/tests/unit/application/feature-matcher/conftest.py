@@ -9,6 +9,7 @@ from pathlib import Path
 
 from reco.application.config_version_resolver import (
     DEFAULT_EMBEDDING_MODEL_VERSION_ID,
+    DEFAULT_MATCHING_CONFIG_ID,
     DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
 )
 from reco.application.recommendation_orchestrator.execution_context import (
@@ -148,6 +149,7 @@ def _sample_context(
         config_versions={
             "semantic_config_version_id": DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
             "model_versions.embedding": DEFAULT_EMBEDDING_MODEL_VERSION_ID,
+            "matching_config_id": DEFAULT_MATCHING_CONFIG_ID,
         },
         recommendation_run=RecommendationRun(
             run_id=run_id,
@@ -217,6 +219,7 @@ def run_matching_from_context(
         semantic_config_version_id=str(
             context.config_versions["semantic_config_version_id"],
         ),
+        matching_config_id=str(context.config_versions["matching_config_id"]),
         item_feature_repository=repo,
         normalization=norm,
     )

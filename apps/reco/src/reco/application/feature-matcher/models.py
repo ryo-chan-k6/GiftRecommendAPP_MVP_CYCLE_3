@@ -24,8 +24,8 @@ class FeatureMatchEntry:
     features: dict[str, FeatureAxisMatch]
     meaning_distance: float
     calculated_at: datetime
+    matching_config_id: str
     avoid_similarity: float | None = None
-    model_version_id: str | None = None
 
 
 @dataclass(frozen=True)

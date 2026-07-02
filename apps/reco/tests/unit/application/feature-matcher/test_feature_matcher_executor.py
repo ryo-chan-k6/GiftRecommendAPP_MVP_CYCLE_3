@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from conftest import (
     _sample_context,
     build_matcher_with_repository,
 )
 from reco.application.feature_matcher import MODULE_ID, PHASE_NAME
+from reco.application.feature_matcher.errors import FeatureMatcherError
 from reco.infrastructure.logger.logger import ScaffoldRecoLogger
 
 
@@ -51,3 +54,12 @@ def test_execute_attaches_feature_match_result_and_metrics_to_execution_context(
     assert result_context.feature_match_imputed_axis_count is not None  # type: ignore[attr-defined]
     assert result_context.feature_value_out_of_range_count is not None  # type: ignore[attr-defined]
     assert "MOD-RECO-014" in result_context.completed_modules
+
+
+def test_execute_raises_when_matching_config_id_missing() -> None:
+    context = _sample_context(run_id="run-feature-matcher-no-matching-config")
+    del context.config_versions["matching_config_id"]
+    matcher, _ = build_matcher_with_repository(context)
+
+    with pytest.raises(FeatureMatcherError, match="matching_config_id is required"):
+        matcher.execute(context)

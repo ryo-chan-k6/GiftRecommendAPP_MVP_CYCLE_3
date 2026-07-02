@@ -47,6 +47,7 @@ def run_feature_matching(
     internal_feature_estimate: InternalFeatureEstimate,
     validated_retrieval_candidate: ValidatedRetrievalCandidate,
     semantic_config_version_id: str,
+    matching_config_id: str,
     item_feature_repository: ItemFeatureRepositoryPort,
     normalization: FeatureNormalizationPort,
 ) -> tuple[FeatureMatchResult, FeatureMatcherRunMetrics]:
@@ -126,13 +127,13 @@ def run_feature_matching(
             FeatureMatchEntry(
                 item_id=candidate.item_id,
                 features=feature_results,
-                avoid_similarity=avoid_similarity,
                 meaning_distance=round_to_scale(
                     meaning_distance,
                     FEATURE_VALUE_DECIMAL_PLACES,
                 ),
                 calculated_at=calculated_at,
-                model_version_id=semantic_config_version_id,
+                matching_config_id=matching_config_id,
+                avoid_similarity=avoid_similarity,
             ),
         )
 

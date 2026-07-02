@@ -48,9 +48,13 @@ class FeatureMatcher:
         context: ExecutionContext,
     ) -> tuple[FeatureMatchResult, FeatureMatcherRunMetrics]:
         started = perf_counter()
-        user_feature, internal_estimate, validated_candidate, semantic_version_id = (
-            self._validate_context(context)
-        )
+        (
+            user_feature,
+            internal_estimate,
+            validated_candidate,
+            semantic_version_id,
+            matching_config_id,
+        ) = self._validate_context(context)
 
         try:
             result, metrics = run_feature_matching(
@@ -58,6 +62,7 @@ class FeatureMatcher:
                 internal_feature_estimate=internal_estimate,
                 validated_retrieval_candidate=validated_candidate,
                 semantic_config_version_id=semantic_version_id,
+                matching_config_id=matching_config_id,
                 item_feature_repository=self.item_feature_repository,
                 normalization=self.normalization,
             )
@@ -82,7 +87,13 @@ class FeatureMatcher:
     def _validate_context(
         self,
         context: ExecutionContext,
-    ) -> tuple[UserFeature, InternalFeatureEstimate, ValidatedRetrievalCandidate, str]:
+    ) -> tuple[
+        UserFeature,
+        InternalFeatureEstimate,
+        ValidatedRetrievalCandidate,
+        str,
+        str,
+    ]:
         if context.run_id is None:
             raise FeatureMatcherError("run_id is required on execution_context")
 
@@ -90,6 +101,12 @@ class FeatureMatcher:
         if not semantic_version_id:
             raise FeatureMatcherError(
                 "semantic_config_version_id is required on execution_context.config_versions",
+            )
+
+        matching_config_id = context.config_versions.get("matching_config_id")
+        if not matching_config_id:
+            raise FeatureMatcherError(
+                "matching_config_id is required on execution_context.config_versions",
             )
 
         user_feature = context.user_feature
@@ -118,6 +135,7 @@ class FeatureMatcher:
             internal_estimate,
             validated_candidate,
             str(semantic_version_id),
+            str(matching_config_id),
         )
 
     def _log_matching_completed(

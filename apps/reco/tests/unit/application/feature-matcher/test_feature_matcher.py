@@ -377,3 +377,12 @@ def test_run_feature_matching_fetches_item_features_with_semantic_config_version
     item_ids, semantic_version_id = repo.fetch_calls[0]
     assert item_ids == ("item-001", "item-002")
     assert semantic_version_id == DEFAULT_SEMANTIC_CONFIG_VERSION_ID
+
+
+def test_run_feature_matching_echoes_matching_config_id_on_all_entries() -> None:
+    context = _sample_context()
+    result, _ = run_matching_from_context(context)
+
+    assert len(result.entries) > 0
+    for entry in result.entries:
+        assert entry.matching_config_id == context.config_versions["matching_config_id"]
