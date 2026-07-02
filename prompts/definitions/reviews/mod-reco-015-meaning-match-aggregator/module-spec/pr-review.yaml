@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 905
   task_definition: "prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/module-spec.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
+  source_branch: "docs/task-905-mod-reco-015-meaning-match-aggregator-module-spec"
+  target_branch: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  parent_epic_issue: 904
+  parent_epic_branch: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
 
 commands:
   primary: "/review-pr"

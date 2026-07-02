@@ -125,9 +125,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-mod-reco-015-meaning-match-aggregator-module-spec"
-  base: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
-  target: "feature/epic-<issue-number>-mod-reco-015-meaning-match-aggregator"
+  name: "docs/task-905-mod-reco-015-meaning-match-aggregator-module-spec"
+  base: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  target: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
   worktree_required: true
 
 project:
