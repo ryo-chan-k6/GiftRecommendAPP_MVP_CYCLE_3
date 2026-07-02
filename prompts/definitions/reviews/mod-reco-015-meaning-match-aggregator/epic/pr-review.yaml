@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 917
   issue:
     number: 904
   task_definition: "prompts/definitions/epics/mod-reco-015-meaning-match-aggregator/epic.yaml"
@@ -66,7 +66,7 @@ input:
     number: 904
     required: true
   pr:
-    number: null
+    number: 917
     required: true
   diff:
     required: true
