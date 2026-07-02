@@ -114,7 +114,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-014-feature-matcher"
+  name: "feature/epic-896-mod-reco-014-feature-matcher"
   base: "develop"
   target: "develop"
   worktree_required: false
