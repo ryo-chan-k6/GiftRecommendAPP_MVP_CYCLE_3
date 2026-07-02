@@ -61,7 +61,11 @@ _load_package(
     "src/reco/application/context-scorer",
 )
 
-from reco.application.context_scorer import ContextScorer  # noqa: E402
+from reco.application.context_scorer import (  # noqa: E402
+    ContextScorer,
+    ContextScoreResult,
+    ContextScorerRunMetrics,
+)
 from reco.application.meaning_match_aggregator.models import (  # noqa: E402
     MeaningMatchEntry,
     MeaningMatchResult,
@@ -180,3 +184,10 @@ def build_scorer(
     if logger is None:
         return ContextScorer()
     return ContextScorer(logger=logger)
+
+
+def run_scoring_from_context(
+    context: ExecutionContext,
+) -> tuple[ContextScoreResult, ContextScorerRunMetrics]:
+    scorer = build_scorer()
+    return scorer.score_context(context)
