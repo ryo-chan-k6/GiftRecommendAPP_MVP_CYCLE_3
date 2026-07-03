@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 938
   task_definition: "prompts/definitions/tasks/mod-reco-017-popularity-scorer/implementation.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-017-popularity-scorer"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-017-popularity-scorer"
+  source_branch: "feature/task-938-mod-reco-017-popularity-scorer-implementation"
+  target_branch: "feature/epic-935-mod-reco-017-popularity-scorer"
+  parent_epic_issue: 935
+  parent_epic_branch: "feature/epic-935-mod-reco-017-popularity-scorer"
 
 commands:
   primary: "/review-pr"
