@@ -10,10 +10,14 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-017:Popularity Scorer"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-017-popularity-scorer"
-  related_issues: []
-  related_prs: []
+  epic_issue_number: "#935"
+  epic_branch: "feature/epic-935-mod-reco-017-popularity-scorer"
+  related_issues:
+    - number: 938
+      purpose: "MOD-RECO-017 実装 Task（前提・merge 済み PR #939）"
+  related_prs:
+    - number: 939
+      purpose: "実装 PR（merge 済み）"
 
 commands:
   primary: "/work-issue"
@@ -99,9 +103,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-mod-reco-017-popularity-scorer-unit-test"
-  base: "feature/epic-<issue-number>-mod-reco-017-popularity-scorer"
-  target: "feature/epic-<issue-number>-mod-reco-017-popularity-scorer"
+  name: "test/task-940-mod-reco-017-popularity-scorer-unit-test"
+  base: "feature/epic-935-mod-reco-017-popularity-scorer"
+  target: "feature/epic-935-mod-reco-017-popularity-scorer"
   worktree_required: true
 
 project:
