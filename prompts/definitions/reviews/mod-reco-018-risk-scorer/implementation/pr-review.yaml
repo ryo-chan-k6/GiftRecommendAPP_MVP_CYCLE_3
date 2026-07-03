@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 947
   issue:
     number: 946
   task_definition: "prompts/definitions/tasks/mod-reco-018-risk-scorer/implementation.yaml"
