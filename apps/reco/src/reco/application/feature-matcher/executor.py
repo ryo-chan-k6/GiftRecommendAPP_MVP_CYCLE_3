@@ -162,18 +162,12 @@ def _attach_outputs(
     result: FeatureMatchResult,
     metrics: FeatureMatcherRunMetrics,
 ) -> None:
-    context.feature_match_result = result  # type: ignore[attr-defined]
-    context.feature_matcher_candidate_count = (  # type: ignore[attr-defined]
-        metrics.feature_matcher_candidate_count
-    )
-    context.feature_matcher_excluded_count = metrics.feature_matcher_excluded_count  # type: ignore[attr-defined]
-    context.feature_matcher_latency_ms = metrics.feature_matcher_latency_ms  # type: ignore[attr-defined]
-    context.feature_match_imputed_axis_count = (  # type: ignore[attr-defined]
-        metrics.feature_match_imputed_axis_count
-    )
-    context.feature_value_out_of_range_count = (  # type: ignore[attr-defined]
-        metrics.feature_value_out_of_range_count
-    )
+    context.feature_match_result = result
+    context.feature_matcher_candidate_count = metrics.feature_matcher_candidate_count
+    context.feature_matcher_excluded_count = metrics.feature_matcher_excluded_count
+    context.feature_matcher_latency_ms = metrics.feature_matcher_latency_ms
+    context.feature_match_imputed_axis_count = metrics.feature_match_imputed_axis_count
+    context.feature_value_out_of_range_count = metrics.feature_value_out_of_range_count
 
 
 def build_default_feature_matcher() -> FeatureMatcher:

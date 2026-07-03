@@ -69,7 +69,7 @@ class ContextScorer:
         if context.run_id is None:
             raise ContextScorerError("run_id is required on execution_context")
 
-        meaning_match_result = getattr(context, "meaning_match_result", None)
+        meaning_match_result = context.meaning_match_result
         if meaning_match_result is None:
             raise ContextScorerError(
                 "meaning_match_result is required on execution_context",
@@ -115,15 +115,13 @@ def _attach_outputs(
     result: ContextScoreResult,
     metrics: ContextScorerRunMetrics,
 ) -> None:
-    context.context_score_result = result  # type: ignore[attr-defined]
-    context.context_scorer_candidate_count = (  # type: ignore[attr-defined]
-        metrics.context_scorer_candidate_count
-    )
-    context.context_scorer_latency_ms = metrics.context_scorer_latency_ms  # type: ignore[attr-defined]
-    context.context_score_value_out_of_range_count = (  # type: ignore[attr-defined]
+    context.context_score_result = result
+    context.context_scorer_candidate_count = metrics.context_scorer_candidate_count
+    context.context_scorer_latency_ms = metrics.context_scorer_latency_ms
+    context.context_score_value_out_of_range_count = (
         metrics.context_score_value_out_of_range_count
     )
-    context.lambda_ctx_applied = metrics.lambda_ctx_applied  # type: ignore[attr-defined]
+    context.lambda_ctx_applied = metrics.lambda_ctx_applied
 
 
 def build_default_context_scorer() -> ContextScorer:
