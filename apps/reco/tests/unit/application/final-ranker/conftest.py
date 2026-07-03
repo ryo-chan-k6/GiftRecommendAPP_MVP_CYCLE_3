@@ -1,4 +1,4 @@
-"""Test bootstrap and shared fixtures for MOD-RECO-020 smoke tests."""
+"""Test bootstrap and shared fixtures for MOD-RECO-020 unit tests."""
 
 from __future__ import annotations
 
@@ -72,6 +72,8 @@ from reco.application.feature_matcher.models import (  # noqa: E402
 )
 from reco.application.final_ranker import (  # noqa: E402
     FinalRanker,
+    FinalRankerRunMetrics,
+    RankedItems,
     build_default_final_ranker,
 )
 from reco.application.final_score_calculator.models import (  # noqa: E402
@@ -222,3 +224,10 @@ def build_ranker(*, logger: ScaffoldRecoLogger | None = None) -> FinalRanker:
     if logger is None:
         return build_default_final_ranker()
     return FinalRanker(logger=logger)
+
+
+def run_ranking_from_context(
+    context: ExecutionContext,
+) -> tuple[RankedItems, FinalRankerRunMetrics]:
+    ranker = build_ranker()
+    return ranker.rank_candidates(context)
