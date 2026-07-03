@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 961
   issue:
     number: 960
   task_definition: "prompts/definitions/tasks/mod-reco-020-final-ranker/module-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-960-mod-reco-020-final-ranker-module-spec"
   target_branch: "feature/epic-959-mod-reco-020-final-ranker"
   parent_epic_issue: 959
   parent_epic_branch: "feature/epic-959-mod-reco-020-final-ranker"
