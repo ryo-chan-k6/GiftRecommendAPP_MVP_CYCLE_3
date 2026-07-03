@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-03                                 |
-| 更新日         | 2026-07-03                                 |
+| 更新日         | 2026-07-03（Human Review: §16 論点確定）   |
 
 ---
 
@@ -146,7 +146,7 @@ MVP では以下を Popularity 算出入力とする（Ranking定義書 §4.3 / 
 | データ | 参照元 | 物理列 | 必須 | 備考 |
 | ------ | ------ | ------ | ---- | ---- |
 | Item Review Summary | `item_review_summary` | `review_average`, `review_count` | 条件付き | 行不在時は §8.3.4 で補完 |
-| Item Popularity Signal | `item_popularity_signal` + `ranking_snapshot` | `rank` 等 | **MVP 算入なし** | §16.1 No.1。将来拡張 |
+| Item Popularity Signal | `item_popularity_signal` + `ranking_snapshot` | `rank` 等 | **MVP 算入なし** | §16.1 No.1 / No.11。Post-MVP 別 Task |
 
 ---
 
@@ -309,7 +309,7 @@ popularity_score = 0.60 * 0.80 + 0.40 * 0.91 ≈ 0.844
 }
 ```
 
-> **注記**: 現行 `ranking_config_テーブル定義書` §6.1 の MVP seed には `popularity_weights` キーが未収載。本モジュールは **Ranking定義書 §7.3 の初期重みを暗黙デフォルト**として使用し、`parameter_json` にキーが存在する場合はそちらを優先する（§16.1 No.2）。
+> **注記**: 現行 `ranking_config_テーブル定義書` §6.1 の MVP seed には `popularity_weights` キーが未収載。本モジュールは **Ranking定義書 §7.3 の初期重みを暗黙デフォルト**として使用し、`parameter_json` にキーが存在する場合はそちらを優先する。seed 正式反映は **MOD-RECO-017 Epic 外 Task**（§16.1 No.12）。
 
 #### 8.3.3 DB 参照方針（`item_review_summary`）
 
@@ -407,7 +407,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | テーブル | 操作 | 用途 | 備考 |
 | -------- | ---- | ---- | ---- |
 | `item_review_summary` | SELECT | レビュー評価・件数 | 候補 `item_id` 一括。MVP 必須 |
-| `item_popularity_signal` | SELECT（任意） | ランキング順位 | **MVP 算入対象外**（§16.1 No.1） |
+| `item_popularity_signal` | SELECT（任意） | ランキング順位 | **MVP 算入対象外**（§16.1 No.11） |
 | `ranking_snapshot` | SELECT（任意） | 最新 Snapshot 選択 | IF-DB-RECO-006。MVP 算入対象外 |
 
 **方針**: `popularity_score` の Run 結果永続化は **`MOD-RECO-021` Recommendation Result Builder** が `recommendation_result_item.score_breakdown_json` 等へ反映する（`recommendation_result_item_テーブル定義書` §6）。
@@ -485,6 +485,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連 Issue / PR |
 | ---- | -------- | --------------- |
 | 2026-07-03 | 初版作成 | Issue #936 |
+| 2026-07-03 | §16 論点 2 件を Human Review 確定（rank MVP 除外・seed 別 Task 化） | Issue #936 |
 
 ---
 
@@ -492,16 +493,15 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `item_popularity_signal.rank` の MVP 算入 | Ranking §4.3 は rank 入力を列挙するが §7.2 MVP 式は rating/count のみ。`item_popularity_signal_テーブル定義書` §5.7 も後続 Task 委譲 | Human | 実装 Task 前 | §16.1 No.1 参照 |
-| 2 | `ranking_config.parameter_json` への `popularity_weights` 正式 seed 反映 | 現行 seed（`ranking_config_テーブル定義書` §6.1）にキー未収載 | Human | 実装 Task 前 | 暗黙デフォルトで着手可 |
+| - | なし | - | - | - | MVP 着手前論点は §16.1 へ移管済み |
 
 ### 16.1 確定済み論点
 
 | No | 論点 | 確定内容 |
 | --: | ---- | -------- |
-| 1 | MVP 算入シグナル | **`item_review_summary.review_average` / `review_count` のみ**。`item_popularity_signal.rank` は **MVP 算入しない**（将来拡張は §16 未決 No.1） |
+| 1 | MVP 算入シグナル | **`item_review_summary.review_average` / `review_count` のみ**。`item_popularity_signal.rank` は **MVP 算入しない**（§16.1 No.11） |
 | 2 | 算出式 | MVP は **`rating_review_count_weighted`**（Ranking定義書 §7.2） |
-| 3 | 初期重み | `w_rating=0.60` / `w_review_count=0.40`（Ranking定義書 §7.3。`parameter_json` 優先） |
+| 3 | 初期重み | `w_rating=0.60` / `w_review_count=0.40`（Ranking定義書 §7.3。`parameter_json` 優先。seed 未反映時は暗黙デフォルト §16.1 No.12） |
 | 4 | 出力フィールド名 | **`execution_context.popularity_score_result`** |
 | 5 | 入力正本（候補） | **`execution_context.context_score_result`**（`016` 出力） |
 | 6 | 欠損時 | **中立補完でパイプライン継続**（Ranking定義書 §7.5 / §16.1）。DB 障害のみ `GRS-REC-012` |
@@ -509,6 +509,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 8 | 0 件早期終了 | Matching 対象 0 件時、Orchestrator は通常 **`017` 以降を呼ばない** |
 | 9 | スコア精度 | **`round_to_scale(..., 6)`**（`recommendation_result_item` の numeric 列と整合） |
 | 10 | 安全寄り文脈での人気重視 | **`popularity_score` 自体は文脈非依存**。文脈別重みは **`MOD-RECO-019` + `ranking_config.ranking_weights.popularity`**（Recoモジュール一覧 §6.16 主責務の解釈） |
+| 11 | `item_popularity_signal.rank` の MVP 算入 | **MVP 算入しない**（Human Review 2026-07-03）。Ranking §7.2 の MVP 式および §4.3「主に rating/count 利用」と整合。`rank` は API-PUB-003 `popularityBadge` 表示用途と分離。Post-MVP で `ranking_rank_weighted` 等を **別 Task** 化 |
+| 12 | `popularity_weights` seed 反映 | **`ranking_config.parameter_json` への `popularity_formula` / `popularity_weights` 追加は MOD-RECO-017 Epic 外の docs/chore Task** で実施（Human Review 2026-07-03）。更新正本: `ranking_config_テーブル定義書` §6.1 / `初期データ定義書` §8.9。本 Epic **実装 Task は暗黙デフォルトで着手可** |
 
 ---
 
@@ -552,6 +554,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 - 物理配置は Epic `allowed_paths` に従い `apps/reco/src/reco/application/popularity-scorer/**` を第一候補とする（Epic #935 `epic_scope.allowed_paths` と整合）
 - Orchestrator Wiring は Ranking フェーズ（`017`〜`020`）単位で実施する（MOD-RECO-001 §8.4.2）
-- Recoモジュール一覧 §6.16 の主な入力 `item popularity signals` は、MVP では **`item_review_summary`（レビュー評価・件数）** として具体化する。`item_popularity_signal`（ランキング順位）は §16 未決事項
+- Recoモジュール一覧 §6.16 の主な入力 `item popularity signals` は、MVP では **`item_review_summary`（レビュー評価・件数）** として具体化する。`item_popularity_signal.rank` は MVP 算入対象外（§16.1 No.11）
+- `ranking_config` seed への `popularity_weights` 反映は Epic 外 Task とし、実装 Task は §8.3.2 暗黙デフォルトで着手する（§16.1 No.12）
 - Recoモジュール一覧 §6.16 の主な出力 `popularity_score` は、本仕様書では **`popularity_score_result.entries[].popularity_score`** として格納する
 - Ranking定義書 §12.3 の優先度（`context_score > popularity_score > risk_penalty`）は **`MOD-RECO-019` の `ranking_weights`** で実現し、本モジュールは **素の `popularity_score` のみ**を供給する
