@@ -294,7 +294,7 @@ def test_section19_zero_matching_skips_matching_ranking_and_returns_empty_result
     assert "MOD-RECO-016" not in completed
     assert "MOD-RECO-017" not in completed
     assert "MOD-RECO-020" not in completed
-    assert getattr(outcome.execution_context, "feature_matcher_candidate_count", None) == 0
+    assert outcome.execution_context.feature_matcher_candidate_count == 0
     assert outcome.recommendation_result is not None
     assert outcome.recommendation_result.item_count == 0
     assert outcome.recommendation_result.result_status == ResultStatus.EMPTY
@@ -315,7 +315,7 @@ def test_section19_matching_target_present_runs_meaning_match_aggregator() -> No
     assert "MOD-RECO-014" in completed
     assert "MOD-RECO-015" in completed
     assert "MOD-RECO-016" in completed
-    assert getattr(outcome.execution_context, "feature_matcher_candidate_count", None) == 2
+    assert outcome.execution_context.feature_matcher_candidate_count == 2
 
 
 # §19 No.3 — MOD-RECO-014 失敗時は GRS-REC-011 で中断（015 未到達）
