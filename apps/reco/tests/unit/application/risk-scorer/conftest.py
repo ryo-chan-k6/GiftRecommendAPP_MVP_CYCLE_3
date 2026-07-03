@@ -71,7 +71,9 @@ from reco.application.popularity_scorer.models import (  # noqa: E402
     PopularityScoreResult,
 )
 from reco.application.risk_scorer import (  # noqa: E402
+    RiskPenaltyResult,
     RiskScorer,
+    RiskScorerRunMetrics,
     build_default_risk_scorer,
 )
 
@@ -109,10 +111,11 @@ def _feature_match_entry(
     item_id: str,
     avoid_similarity: float | None = 0.30,
     imputed_axes: tuple[str, ...] = ("formality", "safety"),
+    features: dict[str, FeatureAxisMatch] | None = None,
 ) -> FeatureMatchEntry:
     return FeatureMatchEntry(
         item_id=item_id,
-        features=_feature_axis_matches(imputed_axes=imputed_axes),
+        features=features if features is not None else _feature_axis_matches(imputed_axes=imputed_axes),
         meaning_distance=1.0,
         calculated_at=datetime.now(UTC),
         matching_config_id=DEFAULT_MATCHING_CONFIG_ID,
@@ -234,3 +237,10 @@ def build_scorer(*, logger: ScaffoldRecoLogger | None = None) -> RiskScorer:
     if logger is None:
         return build_default_risk_scorer()
     return RiskScorer(logger=logger)
+
+
+def run_scoring_from_context(
+    context: ExecutionContext,
+) -> tuple[RiskPenaltyResult, RiskScorerRunMetrics]:
+    scorer = build_scorer()
+    return scorer.score_risk(context)
