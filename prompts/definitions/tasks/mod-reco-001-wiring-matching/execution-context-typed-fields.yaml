@@ -158,6 +158,7 @@ project:
     due_date: "2026-07-05"
 
 issue:
+  number: 931
   unit: "task"
   type: "chore"
   area: "reco"

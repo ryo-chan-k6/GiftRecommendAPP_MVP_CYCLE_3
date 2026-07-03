@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 931
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-matching/execution-context-typed-fields.yaml"
-  source_branch: "chore/task-<issue-number>-mod-reco-001-wiring-matching-execution-context-typed-fields"
+  source_branch: "chore/task-931-mod-reco-001-wiring-matching-execution-context-typed-fields"
   target_branch: "develop"
   parent_epic_issue: 790
   parent_epic_branch: "develop"

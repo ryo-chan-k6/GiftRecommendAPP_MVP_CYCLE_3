@@ -76,7 +76,7 @@ class MeaningMatchAggregator:
         if context.run_id is None:
             raise MeaningMatchAggregatorError("run_id is required on execution_context")
 
-        feature_match_result = getattr(context, "feature_match_result", None)
+        feature_match_result = context.feature_match_result
         if feature_match_result is None:
             raise MeaningMatchAggregatorError(
                 "feature_match_result is required on execution_context",
@@ -115,14 +115,12 @@ def _attach_outputs(
     result: MeaningMatchResult,
     metrics: MeaningMatchAggregatorRunMetrics,
 ) -> None:
-    context.meaning_match_result = result  # type: ignore[attr-defined]
-    context.meaning_match_aggregator_candidate_count = (  # type: ignore[attr-defined]
+    context.meaning_match_result = result
+    context.meaning_match_aggregator_candidate_count = (
         metrics.meaning_match_aggregator_candidate_count
     )
-    context.meaning_match_aggregator_latency_ms = (  # type: ignore[attr-defined]
-        metrics.meaning_match_aggregator_latency_ms
-    )
-    context.meaning_match_value_out_of_range_count = (  # type: ignore[attr-defined]
+    context.meaning_match_aggregator_latency_ms = metrics.meaning_match_aggregator_latency_ms
+    context.meaning_match_value_out_of_range_count = (
         metrics.meaning_match_value_out_of_range_count
     )
 

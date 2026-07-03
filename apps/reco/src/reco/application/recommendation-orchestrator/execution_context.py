@@ -20,9 +20,12 @@ if TYPE_CHECKING:
     from reco.application.external_condition_feature_estimator.models import (
         ExternalFeatureEstimate,
     )
+    from reco.application.context_scorer.models import ContextScoreResult
+    from reco.application.feature_matcher.models import FeatureMatchResult
     from reco.application.internal_condition_feature_estimator.models import (
         InternalFeatureEstimate,
     )
+    from reco.application.meaning_match_aggregator.models import MeaningMatchResult
     from reco.application.post_hard_filter_executor.models import (
         ExcludedCandidateLog,
         ValidatedRetrievalCandidate,
@@ -69,6 +72,24 @@ class ExecutionContext:
     excluded_candidate_log: ExcludedCandidateLog | None = None
     post_filter_candidate_count: int | None = None
     post_hard_filter_latency_ms: int | None = None
+
+    feature_match_result: FeatureMatchResult | None = None
+    feature_matcher_candidate_count: int | None = None
+    feature_matcher_excluded_count: int | None = None
+    feature_matcher_latency_ms: int | None = None
+    feature_match_imputed_axis_count: int | None = None
+    feature_value_out_of_range_count: int | None = None
+
+    meaning_match_result: MeaningMatchResult | None = None
+    meaning_match_aggregator_candidate_count: int | None = None
+    meaning_match_aggregator_latency_ms: int | None = None
+    meaning_match_value_out_of_range_count: int | None = None
+
+    context_score_result: ContextScoreResult | None = None
+    context_scorer_candidate_count: int | None = None
+    context_scorer_latency_ms: int | None = None
+    context_score_value_out_of_range_count: int | None = None
+    lambda_ctx_applied: float | None = None
 
     completed_modules: list[str] = field(default_factory=list)
     phase_log_events: list[dict[str, object]] = field(default_factory=list)
