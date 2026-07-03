@@ -171,19 +171,6 @@ function workstreamReviewConventionPath(taskDefinitionPath) {
   return `${DEFINITION_ROOT}reviews/${workstream}/${REVIEW_FILE_NAME}`;
 }
 
-function taskTypeReviewConventionPath(taskDefinitionPath) {
-  const taskPath = normalizePath(taskDefinitionPath);
-  if (!taskPath.startsWith(`${DEFINITION_ROOT}tasks/`)) return "";
-  const relative = taskPath.slice(`${DEFINITION_ROOT}tasks/`.length);
-  const parts = relative.split("/");
-  if (parts.length < 2) return "";
-  const filename = parts[parts.length - 1];
-  const taskType = filename.replace(/\.ya?ml$/i, "");
-  if (!taskType || taskType === "task") return "";
-  const workstreamParts = parts.slice(0, -1);
-  return `${DEFINITION_ROOT}reviews/${workstreamParts.join("/")}/${taskType}/${REVIEW_FILE_NAME}`;
-}
-
 function resolveReviewDefinitionFromTaskPath(taskDefinitionPath, workspaceRoot) {
   const workspace = nonEmpty(workspaceRoot) || process.cwd();
   const taskPath = normalizePath(taskDefinitionPath);
@@ -198,16 +185,6 @@ function resolveReviewDefinitionFromTaskPath(taskDefinitionPath, workspaceRoot) 
   const sibling = siblingReviewDefinitionForTask(taskPath, workspace);
   if (sibling) {
     return { ok: true, path: sibling, source: "task_sibling", task_definition: taskPath };
-  }
-
-  const taskTypeReview = taskTypeReviewConventionPath(taskPath);
-  if (taskTypeReview && fileExists(path.join(workspace, taskTypeReview))) {
-    return {
-      ok: true,
-      path: taskTypeReview,
-      source: "task_type_review_convention",
-      task_definition: taskPath,
-    };
   }
 
   const workstreamReview = workstreamReviewConventionPath(taskPath);
@@ -527,7 +504,6 @@ module.exports = {
   extractReviewType,
   epicReviewConventionPath,
   workstreamReviewConventionPath,
-  taskTypeReviewConventionPath,
   resolveReviewDefinitionFromTaskPath,
   extractAiReviewRequired,
   listReviewDefinitionFiles,

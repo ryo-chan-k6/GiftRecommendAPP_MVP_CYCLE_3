@@ -280,16 +280,20 @@ def test_run_risk_scoring_raises_grs_rec_012_for_unsupported_formula() -> None:
 
 # §14 No.16 責務境界
 def test_run_risk_scoring_does_not_emit_final_score_or_ranking_fields() -> None:
-    context = _single_entry_context()
+    context = _single_entry_context(avoid_similarity=0.30)
 
     result, _ = run_scoring_from_context(context)
 
+    entry = result.entries[0]
     entry_field_names = {field.name for field in fields(RiskPenaltyEntry)}
     assert "final_score" not in entry_field_names
     assert "popularity_score" not in entry_field_names
     assert "context_score" not in entry_field_names
     assert "rank" not in entry_field_names
-    assert result.entries[0].risk_penalty is not None
+    assert entry.risk_penalty is not None
+    # avoid は Matching 出力をそのまま利用し、独立再算出しない。
+    assert entry.avoid_similarity_used == pytest.approx(0.30)
+    assert entry.avoid_risk == entry.avoid_similarity_used
 
 
 # §14 No.19 入力 result 不変
