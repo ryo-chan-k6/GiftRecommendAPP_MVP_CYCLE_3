@@ -1,0 +1,224 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-matching-integration-retest"
+  title: "MOD-RECO-001:ExecutionContext型付き化後 統合テスト再検証（Matching）"
+  summary: "Matching ExecutionContext 型付きフィールド追加後、`test_recommendation_orchestrator.py` の Matching 向け `getattr` アサーションを型付き直接参照へ置換し、デフォルト composition 経路の検証を型安全化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（Matching）"
+  epic_issue_number: 790
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "履歴参照（Epic クローズ済み）。PR 本文は Related to #260"
+    - number: 790
+      purpose: "Matching Wiring Epic（履歴参照）"
+    - number: 928
+      purpose: "初回 Matching integration-test Task（配線後 green 化・§19）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Issue #928（Matching integration-test）では配線後のデフォルト composition と §19 早期 0 件終了を green 化したが、
+  ExecutionContext の Matching フィールドは型付き化前のため `getattr` で存在確認していた。
+  Matching execution-context-typed-fields Task merge 後、本 Task で当該テストを型付き直接参照へ更新する。
+  正本: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
+
+objective: |
+  `test_default_composition_populates_matching_execution_context` / §19 関連テスト等の Matching 向けアサーションを
+  ExecutionContext 型付きフィールドの直接参照へ置換し、pytest green を維持する。
+
+scope:
+  - "`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` の Matching 向け `getattr` アサーション置換"
+  - "`recommendation_orchestrator_helpers.py` の `assert_matching_execution_context_populated` を型付き直接参照へ整理"
+  - "テスト用 helper の最小限整理（Matching context assert 専用）"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-matching/integration-retest/pr-review.yaml`）"
+
+out_of_scope:
+  - "`execution_context.py` のフィールド追加（execution-context-typed-fields Task）"
+  - "User Meaning / Retrieval 向け `getattr` アサーション置換（#891 / #892 Task）"
+  - "stubs.py / モジュール本体の変更（テスト成立に必要な最小修正のみ可。要 PR 説明）"
+  - "integration test（E2E）/ contract test"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "execution_context 受け渡し・§8.4 配線方針"
+    - path: "docs/06_実装設計/reco/MOD-RECO-014_Feature Matcherモジュール仕様書.md"
+      required: true
+      purpose: "§19 / Port 契約"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      required: true
+      purpose: "型付きフィールド定義（execution-context-typed-fields 成果物）"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "更新対象テスト"
+    - path: "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+      required: false
+      purpose: "helper 最小整理"
+  issues:
+    - number: 260
+      purpose: "履歴参照"
+    - number: 790
+      purpose: "Matching Wiring Epic"
+    - number: 928
+      purpose: "初回 integration-test"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Matching ExecutionContext 型付き直接参照の green pytest"
+  - "更新したテスト観点とケースの対応（PR 本文）"
+  - "pytest 実行結果（成功ログ）"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "Matching execution-context-typed-fields Task が develop に merge 済みである（作業開始前提）"
+  - "Matching 向け `getattr(ctx, ...)` アサーションが型付き直接参照に置換されている"
+  - "`cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+  - "`execution_context.py` / `stubs.py` に変更がない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "test/task-<issue-number>-mod-reco-001-wiring-matching-integration-retest"
+  summary: "mod-reco-001-wiring-matching-integration-retest"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-03"
+    due_date: "2026-07-05"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 790
+      purpose: "Matching Wiring Epic develop merge 完了"
+  issues:
+    - number: 790
+      purpose: "Epic develop merge 確認"
+    - number: 928
+      purpose: "初回 integration-test"
+  prs: []
+  tasks:
+    - "task-mod-reco-001-wiring-matching-execution-context-typed-fields が develop に merge 済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-matching-execution-context-typed-fields"
+  blocks: []
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+    - "cd apps/reco && uv run pytest tests/unit/ -q"
+  manual_checks:
+    - "Matching execution-context-typed-fields Task merge 済みで ExecutionContext 型付きフィールドが参照可能であること"
+    - "Matching context テストが getattr ではなく直接参照になっていること"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "integration test（E2E）": "段階3 Composition 完成 Task の範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Matching ExecutionContext アサーションが型定義と整合しているか"
+    - "getattr 置換漏れが Matching 範囲にないか"
+    - "§19 関連テストが型付き参照後も green であるか"
+    - "execution_context.py / stubs.py への不要な変更がないか"
+    - "develop 直 PR 例外が PR 本文で説明されているか"
+    - "pytest 実行結果が PR 本文に記載されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "統合テスト再検証は Issue / PR で管理"
+
+risk_points:
+  - "execution-context-typed-fields Task 未 merge では型付きフィールドが未定義のため着手不可"
+  - "test ファイル exclusive により他 integration-retest Task と競合しうる"
+
+human_decision_points:
+  - "観測系 int フィールド assert の粒度（存在のみ vs 値検証）"
+
+stop_conditions:
+  - "Matching execution-context-typed-fields Task が develop に未 merge"
+  - "execution_context.py の追加変更が必要になった（typed-fields Task へ戻す）"
+
+notes:
+  - "playbook 順序 4（Matching）。正本: wiring-phase-follow-up-playbook.yaml"
+  - "Related to #260 / #790 / #928"
+  - "workstream: mod-reco-001-wiring-matching"
