@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-03                                 |
-| 更新日         | 2026-07-03                                 |
+| 更新日         | 2026-07-03（Human Review: §16 No.1 論点確定） |
 
 ---
 
@@ -383,7 +383,7 @@ risk_penalty = 0.50 * 0.30 + 0.30 * 0.25 + 0.20 * 0.20 = 0.245
 | 未対応 `risk_formula` | **`GRS-REC-012`** | 中断 |
 | 内部計算エラー | **`GRS-REC-012`** | 中断 |
 
-**`item_feature_confidence` の MVP 代理算出**（Ranking定義書 §8.7。`item_feature` テーブルに confidence 列がないため）:
+**`item_feature_confidence` の MVP 代理算出**（Ranking定義書 §8.7 / §16.1 No.3 確定。`item_feature` テーブルに confidence 列がないため）:
 
 ```text
 imputed_count = count(features[f].imputed == true)  # 8 軸
@@ -537,6 +537,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連 Issue / PR |
 | ---- | -------- | --------------- |
 | 2026-07-03 | 初版作成 | Issue #944 |
+| 2026-07-03 | §16 No.1 を Human Review 確定（`item_feature_confidence` MVP 代理式・Post-MVP 移行方針） | Issue #944 |
 
 ---
 
@@ -544,7 +545,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `item_feature_confidence` の正本列追加 | batch / DB 側で信頼度を永続化する場合、代理式から置き換えが必要 | Human | 実装 Task 前 | §16.1 No.3 で MVP 代理式を暫定確定 |
+| - | なし | - | - | - | MVP 着手前論点は §16.1 へ移管済み |
 
 ### 16.1 確定済み論点
 
@@ -552,7 +553,8 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | --: | ---- | -------- |
 | 1 | MVP 算入リスク要素 | **`avoid_risk` / `social_low_risk` / `data_quality_risk` のみ**（Ranking定義書 §8.3）。`ng_near_miss_risk` / `over_symbolic_risk` は **MVP 算入しない** |
 | 2 | Post-MVP リスク要素 | `ng_near_miss_risk` / `over_symbolic_risk` は **別 Task** で `risk_formula` 拡張時に算入 |
-| 3 | `item_feature_confidence` | **`feature_match_result.entries[].features[].imputed` から `(8 - imputed_count) / 8` を代理算出**。全軸 imputed 情報欠損時は **`0.5`**（Ranking定義書 §16.1） |
+| 3 | `item_feature_confidence`（MVP 正本） | **`feature_match_result.entries[].features[].imputed` から `(8 - imputed_count) / 8.0` を代理算出**（Human Review 2026-07-03）。全軸 imputed 情報欠損時は **`0.5`**（Ranking定義書 §16.1）。**`item_feature` への confidence 列追加は MVP 対象外** |
+| 3a | `item_feature_confidence`（Post-MVP 移行） | batch/DB Task で item 単位信頼度を永続化 → **`MOD-RECO-014` が `feature_match_result.entries[].item_feature_confidence` を出力** → **`MOD-RECO-018` / `023` は 014 出力を読む**。018 内代理式は Post-MVP で削除。**MOD-RECO-018 Epic 外 Task** |
 | 4 | 算出式 | MVP は **`avoid_social_data_quality_weighted`**（Ranking定義書 §8.3） |
 | 5 | 初期重み | `w_avoid=0.50` / `w_social=0.30` / `w_data_quality=0.20`（Ranking定義書 §8.4。`parameter_json` 優先） |
 | 6 | `social_threshold` | **`0.60`**（Ranking定義書 §8.6。`parameter_json` 優先可） |
