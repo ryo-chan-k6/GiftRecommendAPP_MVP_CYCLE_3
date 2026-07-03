@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-020:Final Ranker"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-020-final-ranker"
+  epic_issue_number: 959
+  epic_branch: "feature/epic-959-mod-reco-020-final-ranker"
   related_issues: []
   related_prs: []
 
@@ -104,9 +104,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/task-<issue-number>-mod-reco-020-final-ranker-implementation"
-  base: "feature/epic-<issue-number>-mod-reco-020-final-ranker"
-  target: "feature/epic-<issue-number>-mod-reco-020-final-ranker"
+  name: "feature/task-962-mod-reco-020-final-ranker-implementation"
+  base: "feature/epic-959-mod-reco-020-final-ranker"
+  target: "feature/epic-959-mod-reco-020-final-ranker"
   worktree_required: true
 
 project:
