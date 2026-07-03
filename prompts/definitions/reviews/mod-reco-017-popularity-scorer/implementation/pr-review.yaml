@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 939
   issue:
     number: 938
   task_definition: "prompts/definitions/tasks/mod-reco-017-popularity-scorer/implementation.yaml"
