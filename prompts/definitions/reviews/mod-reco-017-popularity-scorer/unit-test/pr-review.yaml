@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 941
   issue:
     number: 940
   task_definition: "prompts/definitions/tasks/mod-reco-017-popularity-scorer/unit-test.yaml"
