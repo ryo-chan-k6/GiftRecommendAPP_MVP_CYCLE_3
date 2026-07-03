@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 963
   issue:
-    number: null
+    number: 962
   task_definition: "prompts/definitions/tasks/mod-reco-020-final-ranker/implementation.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-020-final-ranker"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-020-final-ranker"
+  source_branch: "feature/task-962-mod-reco-020-final-ranker-implementation"
+  target_branch: "feature/epic-959-mod-reco-020-final-ranker"
+  parent_epic_issue: 959
+  parent_epic_branch: "feature/epic-959-mod-reco-020-final-ranker"
 
 commands:
   primary: "/review-pr"
