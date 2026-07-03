@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 942
   issue:
-    number: null
+    number: 935
   task_definition: "prompts/definitions/epics/mod-reco-017-popularity-scorer/epic.yaml"
-  source_branch: "feature/epic-<issue-number>-mod-reco-017-popularity-scorer"
+  source_branch: "feature/epic-935-mod-reco-017-popularity-scorer"
   target_branch: "develop"
 
 commands:
