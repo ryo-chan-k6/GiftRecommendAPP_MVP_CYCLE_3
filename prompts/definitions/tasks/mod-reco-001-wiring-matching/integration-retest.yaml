@@ -139,6 +139,7 @@ project:
     due_date: "2026-07-05"
 
 issue:
+  number: 933
   unit: "task"
   type: "test"
   area: "reco"

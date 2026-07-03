@@ -252,38 +252,20 @@ def assert_retrieval_execution_context_populated(
 def assert_matching_execution_context_populated(
     context: ExecutionContext,
 ) -> None:
-    """Default composition 後に Matching フェーズの副作用を検証する（型付き化前は getattr）。"""
-    feature_match_result = getattr(context, "feature_match_result", None)
-    meaning_match_result = getattr(context, "meaning_match_result", None)
-    context_score_result = getattr(context, "context_score_result", None)
+    """Default composition 後に Matching フェーズの副作用を型付きフィールドで検証する。"""
+    feature_match_result = context.feature_match_result
+    meaning_match_result = context.meaning_match_result
+    context_score_result = context.context_score_result
 
-    feature_matcher_candidate_count = getattr(
-        context,
-        "feature_matcher_candidate_count",
-        None,
+    feature_matcher_candidate_count = context.feature_matcher_candidate_count
+    feature_matcher_excluded_count = context.feature_matcher_excluded_count
+    feature_matcher_latency_ms = context.feature_matcher_latency_ms
+    meaning_match_aggregator_candidate_count = (
+        context.meaning_match_aggregator_candidate_count
     )
-    feature_matcher_excluded_count = getattr(
-        context,
-        "feature_matcher_excluded_count",
-        None,
-    )
-    feature_matcher_latency_ms = getattr(context, "feature_matcher_latency_ms", None)
-    meaning_match_aggregator_candidate_count = getattr(
-        context,
-        "meaning_match_aggregator_candidate_count",
-        None,
-    )
-    meaning_match_aggregator_latency_ms = getattr(
-        context,
-        "meaning_match_aggregator_latency_ms",
-        None,
-    )
-    context_scorer_candidate_count = getattr(
-        context,
-        "context_scorer_candidate_count",
-        None,
-    )
-    context_scorer_latency_ms = getattr(context, "context_scorer_latency_ms", None)
+    meaning_match_aggregator_latency_ms = context.meaning_match_aggregator_latency_ms
+    context_scorer_candidate_count = context.context_scorer_candidate_count
+    context_scorer_latency_ms = context.context_scorer_latency_ms
 
     assert feature_match_result is not None
     assert meaning_match_result is not None
