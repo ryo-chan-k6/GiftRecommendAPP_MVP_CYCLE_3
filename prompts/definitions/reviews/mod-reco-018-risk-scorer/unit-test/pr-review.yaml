@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 949
   issue:
-    number: null
+    number: 948
   task_definition: "prompts/definitions/tasks/mod-reco-018-risk-scorer/unit-test.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-018-risk-scorer"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-018-risk-scorer"
+  source_branch: "test/task-948-mod-reco-018-risk-scorer-unit-test"
+  target_branch: "feature/epic-943-mod-reco-018-risk-scorer"
+  parent_epic_issue: 943
+  parent_epic_branch: "feature/epic-943-mod-reco-018-risk-scorer"
 
 commands:
   primary: "/review-pr"
