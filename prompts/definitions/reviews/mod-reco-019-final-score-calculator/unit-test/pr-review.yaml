@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 957
   issue:
     number: 956
   task_definition: "prompts/definitions/tasks/mod-reco-019-final-score-calculator/unit-test.yaml"
