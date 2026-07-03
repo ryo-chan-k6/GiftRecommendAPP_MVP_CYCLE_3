@@ -21,11 +21,15 @@ from reco.application.recommendation_orchestrator.stubs import (
 )
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
 from recommendation_orchestrator_helpers import (
+    _MATCHING_MODULE_IDS,
     _RETRIEVAL_MODULE_IDS,
     _USER_MEANING_MODULE_IDS,
+    assert_matching_execution_context_populated,
     assert_retrieval_execution_context_populated,
     assert_user_meaning_execution_context_populated,
     build_wired_default_composition_ports,
+    build_wired_ports_with_zero_matching_candidates,
+    ports_with_matching_stubs,
     ports_with_retrieval_stubs,
     ports_with_user_meaning_stubs,
 )
@@ -91,6 +95,17 @@ def test_default_stub_ports_wires_retrieval_modules() -> None:
     ports, _ = build_default_stub_ports()
     assert isinstance(ports.candidate_retriever, CandidateRetriever)
     assert isinstance(ports.post_hard_filter, PostHardFilterExecutor)
+
+
+def test_default_stub_ports_wires_matching_modules() -> None:
+    from reco.application.context_scorer import ContextScorer
+    from reco.application.feature_matcher import FeatureMatcher
+    from reco.application.meaning_match_aggregator import MeaningMatchAggregator
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.feature_matcher, FeatureMatcher)
+    assert isinstance(ports.meaning_match_aggregator, MeaningMatchAggregator)
+    assert isinstance(ports.context_scorer, ContextScorer)
 
 
 def test_default_stub_ports_wires_user_meaning_modules() -> None:
@@ -173,12 +188,44 @@ def test_default_composition_populates_retrieval_execution_context() -> None:
     assert_retrieval_execution_context_populated(ctx)
 
 
+def test_default_composition_completes_matching_phase_modules() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-matching-phase",
+    )
+
+    assert outcome.success is True
+    assert outcome.execution_context is not None
+    completed = outcome.execution_context.completed_modules
+    for module_id in _MATCHING_MODULE_IDS:
+        assert module_id in completed
+    assert completed.index("MOD-RECO-013") < completed.index("MOD-RECO-014")
+    assert completed.index("MOD-RECO-014") < completed.index("MOD-RECO-015")
+    assert completed.index("MOD-RECO-015") < completed.index("MOD-RECO-016")
+    assert completed.index("MOD-RECO-016") < completed.index("MOD-RECO-017")
+
+
+def test_default_composition_populates_matching_execution_context() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-matching-context",
+    )
+
+    assert outcome.success is True
+    ctx = outcome.execution_context
+    assert ctx is not None
+    assert_matching_execution_context_populated(ctx)
+
+
 # §14 No.2 正常系（evaluation / batch mode）— Stub が execution_mode を echo する挙動
 @pytest.mark.parametrize("mode", [ExecutionMode.EVALUATION, ExecutionMode.BATCH])
 def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> None:
     ports, _ = build_default_stub_ports()
     ports = ports_with_user_meaning_stubs(ports)
     ports = ports_with_retrieval_stubs(ports)
+    ports = ports_with_matching_stubs(ports)
     ports = _ports_with(ports, config_resolver=StubConfigResolver())
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(mode=mode),
@@ -229,6 +276,71 @@ def test_final_score_calculator_runs_before_final_ranker() -> None:
 
     assert outcome.success is True
     assert call_order.index("MOD-RECO-019") < call_order.index("MOD-RECO-020")
+
+
+# §19 No.1 / No.4 / No.5 — Matching 対象 0 件時の Orchestrator 早期終了
+def test_section19_zero_matching_skips_matching_ranking_and_returns_empty_result() -> None:
+    ports, helpers = build_wired_ports_with_zero_matching_candidates()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-section19-zero-matching",
+    )
+
+    assert outcome.success is True
+    assert outcome.execution_context is not None
+    completed = outcome.execution_context.completed_modules
+    assert "MOD-RECO-014" in completed
+    assert "MOD-RECO-015" not in completed
+    assert "MOD-RECO-016" not in completed
+    assert "MOD-RECO-017" not in completed
+    assert "MOD-RECO-020" not in completed
+    assert getattr(outcome.execution_context, "feature_matcher_candidate_count", None) == 0
+    assert outcome.recommendation_result is not None
+    assert outcome.recommendation_result.item_count == 0
+    assert outcome.recommendation_result.result_status == ResultStatus.EMPTY
+    assert helpers["metric_logger"].recorded[-1]["final_result_count"] == 0
+
+
+# §19 No.2 — Matching 対象 ≥ 1 のとき 015 以降が呼ばれる
+def test_section19_matching_target_present_runs_meaning_match_aggregator() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-section19-matching-present",
+    )
+
+    assert outcome.success is True
+    assert outcome.execution_context is not None
+    completed = outcome.execution_context.completed_modules
+    assert "MOD-RECO-014" in completed
+    assert "MOD-RECO-015" in completed
+    assert "MOD-RECO-016" in completed
+    assert getattr(outcome.execution_context, "feature_matcher_candidate_count", None) == 2
+
+
+# §19 No.3 — MOD-RECO-014 失敗時は GRS-REC-011 で中断（015 未到達）
+def test_section19_feature_matcher_failure_aborts_before_meaning_match_aggregator() -> None:
+    ports, helpers = _wired_ports()
+    ports = _ports_with(
+        ports,
+        feature_matcher=StubPipelineModule(
+            module_id="MOD-RECO-014",
+            phase_name="feature_matched",
+            should_fail=True,
+        ),
+    )
+
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-section19-feature-matcher-fail",
+    )
+
+    assert outcome.success is False
+    assert outcome.reco_error is not None
+    assert outcome.reco_error.error_code == "GRS-REC-011"
+    assert outcome.execution_context is not None
+    assert "MOD-RECO-015" not in outcome.execution_context.completed_modules
+    assert helpers["error_handler"].error_log_events
 
 
 # §14 No.5 境界値（0件）— Orchestrator は空 Result を正常終了。GRS-REC-001 は api 層で付与。
@@ -428,6 +540,7 @@ def test_orchestrator_with_user_meaning_stubs_still_completes_pipeline() -> None
     ports, _ = build_default_stub_ports()
     ports = ports_with_user_meaning_stubs(ports)
     ports = ports_with_retrieval_stubs(ports)
+    ports = ports_with_matching_stubs(ports)
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(),
         trace_id="trace-stub-user-meaning",

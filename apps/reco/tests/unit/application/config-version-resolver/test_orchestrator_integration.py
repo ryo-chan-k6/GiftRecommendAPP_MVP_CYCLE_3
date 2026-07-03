@@ -18,6 +18,7 @@ from reco.application.recommendation_orchestrator import (
 )
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
 from recommendation_orchestrator_helpers import (
+    ports_with_matching_stubs,
     ports_with_retrieval_stubs,
     ports_with_user_meaning_stubs,
 )
@@ -55,6 +56,7 @@ def test_config_resolver_runs_before_run_recorder_and_inserts_run() -> None:
     )
     ports = ports_with_user_meaning_stubs(ports)
     ports = ports_with_retrieval_stubs(ports)
+    ports = ports_with_matching_stubs(ports)
 
     outcome = RecommendationOrchestrator(ports).run(
         _integration_request(),

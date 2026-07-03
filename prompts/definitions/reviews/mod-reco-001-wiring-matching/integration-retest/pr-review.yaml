@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-matching-integration-retest-pr"
+  title: "MOD-RECO-001 Matching ExecutionContext型付き化後 統合テスト再検証 PRレビュー"
+  summary: "Matching integration 再テスト Task PR を AI Review する（develop 直 PR）"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-matching/integration-retest.yaml"
+  source_branch: "test/task-<issue-number>-mod-reco-001-wiring-matching-integration-retest"
+  target_branch: "develop"
+  parent_epic_issue: 790
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-matching/integration-retest.yaml"
+    required: true
+
+review_points:
+  - "Matching ExecutionContext アサーションが typed-fields Task 型定義と整合しているか"
+  - "Matching 範囲の getattr 置換漏れがないか"
+  - "§19 関連テストが型付き参照後も green であるか"
+  - "execution_context.py / stubs.py への不要な変更がないか"
+  - "Matching typed-fields Task merge 後の develop 最新を base にしているか"
+  - "develop 直 PR 例外が PR 本文で説明されているか"
+  - "pytest 実行結果が PR 本文に記載されているか"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / source_branch / target.pr を更新する"

@@ -127,6 +127,12 @@ historical_references:
     integration_test: 886
     execution_context_typed_fields: 887
     integration_retest: 892
+  matching:
+    wiring_epic: 790
+    wiring_task: 926
+    integration_test: 928
+    execution_context_typed_fields: null
+    integration_retest: null
 
 notes:
   - "Matching（MOD-RECO-014〜016）以降の Wiring Epic 起票時は本 playbook を Epic / wiring / integration-test Definition に必ず参照記載する"

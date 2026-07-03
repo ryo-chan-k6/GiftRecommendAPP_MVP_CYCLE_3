@@ -1,0 +1,78 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-matching-epic-pr"
+  title: "MOD-RECO-001 Orchestrator Wiring（Matching）Epic PRレビュー"
+  summary: "Epic #790（MOD-RECO-001 Orchestrator Wiring Matching）の develop 向け統合 PR を AI Review する。子 Task（wiring / integration-test）の成果と §19 早期 0 件終了を横断確認する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 790
+  task_definition: "prompts/definitions/epics/mod-reco-001-wiring-matching/epic.yaml"
+  source_branch: "feature/epic-790-mod-reco-001-wiring-matching"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: true
+  tests: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/mod-reco-001-wiring-matching/epic.yaml"
+    required: true
+  issue:
+    number: 790
+    required: true
+
+review_points:
+  common:
+    - "epic_scope.allowed_paths / forbidden_paths 整合"
+    - "子 Task（wiring / integration-test）完了と Epic Branch 反映"
+    - "apps/reco/src/reco/application/**/（recommendation-orchestrator 以外）へのモジュール本体変更非含有"
+    - "execution_context.py への変更非含有"
+    - "secret 非含有"
+  test:
+    - "test_recommendation_orchestrator.py が green"
+    - "§19 早期 0 件終了が integration-test Task で満たされている"
+    - "015 未呼び出し・空 Result 成功・014 失敗時 GRS-REC-011 中断"
+
+notes:
+  - "Epic PR 作成時に target.pr を更新する"
+  - "前提 Epic: #896（014）/ #904（015）/ #918（016）"
+  - "§19 正本: Issue #897 / MOD-RECO-014 モジュール仕様書"
