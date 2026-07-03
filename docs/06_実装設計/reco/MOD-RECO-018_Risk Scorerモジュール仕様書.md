@@ -356,7 +356,7 @@ risk_penalty = 0.50 * 0.30 + 0.30 * 0.25 + 0.20 * 0.20 = 0.245
 }
 ```
 
-> **注記**: 現行 `ranking_config_テーブル定義書` §6.1 の MVP seed には `risk_formula` / `risk_weights` / `social_threshold` キーが未収載。本モジュールは **Ranking定義書 §8.3〜§8.4 の初期値を暗黙デフォルト**として使用し、`parameter_json` にキーが存在する場合はそちらを優先する。seed 正式反映は **MOD-RECO-018 Epic 外 Task**（§16.1 No.12）。
+> **注記**: 現行 `ranking_config_テーブル定義書` §6.1 の MVP seed には `risk_formula` / `risk_weights` / `social_threshold` キーが未収載。本モジュールは **Ranking定義書 §8.3〜§8.4 の初期値を暗黙デフォルト**として使用し、`parameter_json` にキーが存在する場合はそちらを優先する。seed 正式反映は **MOD-RECO-018 Epic 外 Task**（§16.1 No.15）。
 
 #### 8.3.3 Run 内メモリ参照方針
 
