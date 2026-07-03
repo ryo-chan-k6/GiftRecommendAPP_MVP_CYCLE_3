@@ -62,6 +62,8 @@ from reco.application.context_scorer.models import (  # noqa: E402
 )
 from reco.application.final_score_calculator import (  # noqa: E402
     FinalScoreCalculator,
+    FinalScoreCalculatorRunMetrics,
+    FinalScoreResult,
     build_default_final_score_calculator,
 )
 from reco.application.popularity_scorer.models import (  # noqa: E402
@@ -219,3 +221,10 @@ def build_scorer(*, logger: ScaffoldRecoLogger | None = None) -> FinalScoreCalcu
     if logger is None:
         return build_default_final_score_calculator()
     return FinalScoreCalculator(logger=logger)
+
+
+def run_scoring_from_context(
+    context: ExecutionContext,
+) -> tuple[FinalScoreResult, FinalScoreCalculatorRunMetrics]:
+    scorer = build_scorer()
+    return scorer.calculate_final_score(context)
