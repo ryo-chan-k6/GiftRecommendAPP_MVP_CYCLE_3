@@ -1,8 +1,9 @@
-"""Test bootstrap and shared fixtures for MOD-RECO-017 smoke tests."""
+"""Test bootstrap and shared fixtures for MOD-RECO-017 unit tests."""
 
 from __future__ import annotations
 
 import importlib.util
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -55,7 +56,9 @@ from reco.application.context_scorer.models import (  # noqa: E402
 from reco.application.popularity_scorer import (  # noqa: E402
     InMemoryItemReviewSummaryRepository,
     ItemReviewSummary,
+    PopularityScoreResult,
     PopularityScorer,
+    PopularityScorerRunMetrics,
     build_default_popularity_scorer,
 )
 
@@ -168,3 +171,26 @@ def build_scorer(
     if logger is None:
         return build_default_popularity_scorer(repo)
     return PopularityScorer(review_summary_repository=repo, logger=logger)
+
+
+@dataclass
+class TrackingItemReviewSummaryRepository(InMemoryItemReviewSummaryRepository):
+    """fetch_review_summaries 呼び出しを記録するテスト用 repository。"""
+
+    fetch_calls: list[tuple[str, ...]] = field(default_factory=list)
+
+    def fetch_review_summaries(
+        self,
+        item_ids: tuple[str, ...],
+    ) -> dict[str, ItemReviewSummary]:
+        self.fetch_calls.append(item_ids)
+        return super().fetch_review_summaries(item_ids)
+
+
+def run_scoring_from_context(
+    context: ExecutionContext,
+    *,
+    repository: InMemoryItemReviewSummaryRepository | None = None,
+) -> tuple[PopularityScoreResult, PopularityScorerRunMetrics]:
+    scorer = build_scorer(repository=repository)
+    return scorer.score_popularity(context)
