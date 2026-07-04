@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 986
   issue:
-    number: null
+    number: 985
   task_definition: "prompts/definitions/tasks/mod-reco-022-result-snapshot-builder/module-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-985-mod-reco-022-result-snapshot-builder-module-spec"
   target_branch: "feature/epic-984-mod-reco-022-result-snapshot-builder"
   parent_epic_issue: 984
   parent_epic_branch: "feature/epic-984-mod-reco-022-result-snapshot-builder"
