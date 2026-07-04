@@ -19,9 +19,9 @@ target:
     number: null
   task_definition: "prompts/definitions/tasks/mod-reco-021-recommendation-result-builder/module-spec.yaml"
   source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-021-recommendation-result-builder"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-021-recommendation-result-builder"
+  target_branch: "feature/epic-976-mod-reco-021-recommendation-result-builder"
+  parent_epic_issue: 976
+  parent_epic_branch: "feature/epic-976-mod-reco-021-recommendation-result-builder"
 
 commands:
   primary: "/review-pr"
