@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 987
   task_definition: "prompts/definitions/tasks/mod-reco-022-result-snapshot-builder/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-987-mod-reco-022-result-snapshot-builder-implementation"
   target_branch: "feature/epic-984-mod-reco-022-result-snapshot-builder"
   parent_epic_issue: 984
   parent_epic_branch: "feature/epic-984-mod-reco-022-result-snapshot-builder"
@@ -42,6 +42,12 @@ review_scope:
 input:
   task_definition:
     path: "prompts/definitions/tasks/mod-reco-022-result-snapshot-builder/implementation.yaml"
+    required: true
+  issue:
+    number: 987
+    required: true
+  pr:
+    number: null
     required: true
 
 review_points:
