@@ -1,19 +1,22 @@
 """Orchestrator 単体テスト向け Port 差し替え・配線ヘルパー。
 
-User Meaning / Retrieval / Matching 配線後の ``build_default_stub_ports()`` は
-004〜010 および 012 / 013 / 014 / 015 / 016 を本実装とする。
+User Meaning / Retrieval / Matching / Ranking 配線後の ``build_default_stub_ports()`` は
+004〜010、012 / 013、014 / 015 / 016、017 / 018 / 019 / 020 を本実装とする。
 デフォルト composition 経路では User Meaning 向けに in-memory Repository を
 共有接続する ``build_wired_default_composition_ports()`` を用いる。
-Retrieval / Matching 本実装は ``build_default_stub_ports()`` 同梱の in-memory Repository を利用する。
+Retrieval / Matching / Ranking 本実装は ``build_default_stub_ports()`` 同梱の
+in-memory Repository を利用する。
 
 Orchestrator 本体の挙動のみを切り出すテストでは、当該フェーズを Stub に戻す
 ``ports_with_user_meaning_stubs()`` / ``ports_with_retrieval_stubs()`` /
-``ports_with_matching_stubs()`` を利用する。
+``ports_with_matching_stubs()`` / ``ports_with_ranking_stubs()`` を利用する。
 User Meaning を Stub に戻す場合は Retrieval 本実装が 010 出力を要求するため、
 同時に ``ports_with_retrieval_stubs()`` も適用する。
 Matching 本実装は Retrieval 出力を要求するため、Matching を Stub に戻す前段で
 Retrieval も Stub 化するか、Matching 単体検証用に ``ports_with_matching_stubs()``
 を併用する。
+Ranking 本実装は Matching 出力を要求するため、Ranking を Stub に戻す場合は
+``ports_with_ranking_stubs()`` を併用する。
 """
 
 from __future__ import annotations
@@ -65,6 +68,17 @@ _MATCHING_MODULE_IDS: tuple[str, ...] = tuple(
     module_id for _, module_id, _ in _MATCHING_STUB_PORTS
 )
 
+_RANKING_STUB_PORTS: tuple[tuple[str, str, str], ...] = (
+    ("popularity_scorer", "MOD-RECO-017", "popularity_scored"),
+    ("risk_scorer", "MOD-RECO-018", "risk_scored"),
+    ("final_score_calculator", "MOD-RECO-019", "final_score_calculated"),
+    ("final_ranker", "MOD-RECO-020", "final_ranked"),
+)
+
+_RANKING_MODULE_IDS: tuple[str, ...] = tuple(
+    module_id for _, module_id, _ in _RANKING_STUB_PORTS
+)
+
 
 def ports_with_user_meaning_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
     """User Meaning フェーズ Port を StubPipelineModule に差し替える。"""
@@ -97,6 +111,78 @@ def ports_with_matching_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
             for attr, module_id, phase_name in _MATCHING_STUB_PORTS
         },
     )
+
+
+def ports_with_ranking_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
+    """Ranking フェーズ Port を StubPipelineModule に差し替える。"""
+    return replace(
+        ports,
+        **{
+            attr: StubPipelineModule(module_id=module_id, phase_name=phase_name)
+            for attr, module_id, phase_name in _RANKING_STUB_PORTS
+        },
+    )
+
+
+def _patch_downstream_stubs_for_real_ranking(ports: OrchestratorPorts) -> OrchestratorPorts:
+    """Ranking 本実装配線後、021/022 Stub の ranked_items list append を回避する。"""
+    from reco.application.final_ranker.models import RankedItems
+    from reco.domain import RecommendationResult, RecommendationResultItem, ResultStatus
+
+    snapshot_builder = ports.snapshot_builder
+
+    def snapshot_execute(context: ExecutionContext) -> ExecutionContext:
+        context.completed_modules.append(snapshot_builder.module_id)
+        return context
+
+    snapshot_builder.execute = snapshot_execute  # type: ignore[method-assign]
+
+    result_builder = ports.result_builder
+
+    def result_execute(context: ExecutionContext) -> ExecutionContext:
+        context.completed_modules.append(result_builder.module_id)
+        if context.recommendation_result is not None:
+            return context
+
+        run_id = context.run_id or "run-scaffold"
+        ranked_items = context.ranked_items
+        if isinstance(ranked_items, RankedItems) and ranked_items.entries:
+            items = tuple(
+                RecommendationResultItem(
+                    item_id=entry.item_id,
+                    rank=entry.rank,
+                    final_score=entry.final_score,
+                    reason_summary=None,
+                    reason_status=None,
+                    is_fallback=False,
+                )
+                for entry in ranked_items.entries
+            )
+            result_status = ResultStatus.COMPLETED
+        else:
+            items = (
+                RecommendationResultItem(
+                    item_id="item-scaffold-1",
+                    rank=1,
+                    final_score=0.75,
+                    reason_summary=None,
+                    reason_status=None,
+                    is_fallback=False,
+                ),
+            )
+            result_status = ResultStatus.COMPLETED
+
+        context.recommendation_result = RecommendationResult(
+            run_id=run_id,
+            request_id=context.recommendation_request.request_id,
+            items=items,
+            result_status=result_status,
+            version_info=dict(context.config_versions),
+        )
+        return context
+
+    result_builder.execute = result_execute  # type: ignore[method-assign]
+    return ports
 
 
 @dataclass
@@ -295,6 +381,70 @@ def assert_matching_execution_context_populated(
     assert context_scorer_latency_ms >= 0
 
 
+def assert_ranking_execution_context_populated(
+    context: ExecutionContext,
+) -> None:
+    """Default composition 後に Ranking フェーズの副作用を検証する（型付き化前は getattr）。"""
+    popularity_score_result = getattr(context, "popularity_score_result", None)
+    risk_penalty_result = getattr(context, "risk_penalty_result", None)
+    final_score_result = getattr(context, "final_score_result", None)
+    ranked_items = context.ranked_items
+
+    popularity_scorer_candidate_count = getattr(
+        context,
+        "popularity_scorer_candidate_count",
+        None,
+    )
+    popularity_scorer_latency_ms = getattr(context, "popularity_scorer_latency_ms", None)
+    risk_scorer_candidate_count = getattr(context, "risk_scorer_candidate_count", None)
+    risk_scorer_latency_ms = getattr(context, "risk_scorer_latency_ms", None)
+    final_score_calculator_candidate_count = getattr(
+        context,
+        "final_score_calculator_candidate_count",
+        None,
+    )
+    final_score_calculator_latency_ms = getattr(
+        context,
+        "final_score_calculator_latency_ms",
+        None,
+    )
+    final_ranker_selected_count = getattr(context, "final_ranker_selected_count", None)
+    final_ranker_latency_ms = getattr(context, "final_ranker_latency_ms", None)
+
+    assert popularity_score_result is not None
+    assert risk_penalty_result is not None
+    assert final_score_result is not None
+    assert ranked_items is not None
+    assert popularity_scorer_candidate_count is not None
+    assert popularity_scorer_latency_ms is not None
+    assert risk_scorer_candidate_count is not None
+    assert risk_scorer_latency_ms is not None
+    assert final_score_calculator_candidate_count is not None
+    assert final_score_calculator_latency_ms is not None
+    assert final_ranker_selected_count is not None
+    assert final_ranker_latency_ms is not None
+
+    assert popularity_scorer_candidate_count == popularity_score_result.total_scored
+    assert popularity_scorer_candidate_count == len(popularity_score_result.entries)
+    assert risk_scorer_candidate_count == risk_penalty_result.total_scored
+    assert risk_scorer_candidate_count == len(risk_penalty_result.entries)
+    assert final_score_calculator_candidate_count == final_score_result.total_scored
+    assert final_score_calculator_candidate_count == len(final_score_result.entries)
+    assert final_ranker_selected_count == ranked_items.total_selected
+    assert final_ranker_selected_count == len(ranked_items.entries)
+
+    # default in-memory catalog（active 2 件）経路の期待値
+    assert popularity_scorer_candidate_count == 2
+    assert risk_scorer_candidate_count == 2
+    assert final_score_calculator_candidate_count == 2
+    assert final_ranker_selected_count == 2
+
+    assert popularity_scorer_latency_ms >= 0
+    assert risk_scorer_latency_ms >= 0
+    assert final_score_calculator_latency_ms >= 0
+    assert final_ranker_latency_ms >= 0
+
+
 def build_wired_ports_with_zero_matching_candidates() -> tuple[
     OrchestratorPorts,
     dict[str, object],
@@ -312,7 +462,7 @@ def build_wired_ports_with_zero_matching_candidates() -> tuple[
         normalization=InMemoryFeatureNormalizationRepository(),
     )
     wired_ports = replace(ports, feature_matcher=feature_matcher)
-    return wired_ports, helpers
+    return _patch_downstream_stubs_for_real_ranking(wired_ports), helpers
 
 
 def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
@@ -434,19 +584,22 @@ def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str
         user_context_builder=user_context_builder,
         query_embedding_generator=query_embedding_generator,
     )
-    return wired_ports, helpers
+    return _patch_downstream_stubs_for_real_ranking(wired_ports), helpers
 
 
 __all__ = [
     "_MATCHING_MODULE_IDS",
+    "_RANKING_MODULE_IDS",
     "_RETRIEVAL_MODULE_IDS",
     "_USER_MEANING_MODULE_IDS",
     "assert_matching_execution_context_populated",
+    "assert_ranking_execution_context_populated",
     "assert_retrieval_execution_context_populated",
     "assert_user_meaning_execution_context_populated",
     "build_wired_default_composition_ports",
     "build_wired_ports_with_zero_matching_candidates",
     "ports_with_matching_stubs",
+    "ports_with_ranking_stubs",
     "ports_with_retrieval_stubs",
     "ports_with_user_meaning_stubs",
 ]
