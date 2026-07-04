@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 973
   issue:
     number: 972
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-ranking/execution-context-typed-fields.yaml"
