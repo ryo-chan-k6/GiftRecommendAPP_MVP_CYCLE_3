@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 988
   issue:
     number: 987
   task_definition: "prompts/definitions/tasks/mod-reco-022-result-snapshot-builder/implementation.yaml"
@@ -47,7 +47,7 @@ input:
     number: 987
     required: true
   pr:
-    number: null
+    number: 988
     required: true
 
 review_points:
