@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 991
   issue:
     number: 984
   task_definition: "prompts/definitions/epics/mod-reco-022-result-snapshot-builder/epic.yaml"
