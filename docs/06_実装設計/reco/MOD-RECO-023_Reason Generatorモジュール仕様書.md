@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-04                                 |
-| 更新日         | 2026-07-04                                 |
+| 更新日         | 2026-07-05                                 |
 
 ---
 
@@ -47,7 +47,7 @@ Reason Generator（Reason生成）は、Reco オンライン推薦パイプラ�
 | 所属Epic | `MOD-RECO-023`（Epic Issue #992） |
 | MVP対象 | `○` |
 | 主な呼び出し元 | `MOD-RECO-001` Recommendation Orchestrator |
-| 主な呼び出し先 | `ReasonTemplateRepository` / `RecommendationReasonRepository`（`infrastructure/db/`）、`ExternalAiApiClient`（LLM 整形・任意） |
+| 主な呼び出し先 | `ReasonTemplateRepository` / `ItemSemanticReadRepository` / `RecommendationReasonRepository`（`infrastructure/db/`）、`ExternalAiApiClient`（LLM 整形・config 有効時のみ） |
 
 `MOD-API-*` / `MOD-RECO-*` / `MOD-BATCH-*` 配下の Task では、該当モジュール ID の責務範囲に変更を限定する。`MOD-RECO-*` では `apps/reco/src/reco/api/**` の API-INT エンドポイント層を対象に含めない。
 
@@ -58,9 +58,9 @@ Reason Generator（Reason生成）は、Reco オンライン推薦パイプラ�
 ### 5.1 主責務
 
 - `MOD-RECO-022` 完了後、Orchestrator から **1 回**呼び出され、`execution_context.recommendation_result.items[]` を **1 Item あたり 1 Reason** として処理する
-- 各 Item について、Ranking / Matching / Feature / Semantic / Item Snapshot 情報から **Reason 根拠（`reason_basis`）を選定**する（Reason生成定義書 §7〜§11）
+- 各 Item について、Ranking / Matching / Feature / **`item_semantic`（Batch 正本）** / Item Snapshot 情報から **Reason 根拠（`reason_basis`）を選定**する（Reason生成定義書 §7〜§11、§8.3.8）
 - `reason_template` を解決し（`reason_template_テーブル定義書` §7.1）、**テンプレートベースで文面を生成**する（MVP 基本方式）
-- 必要に応じ **LLM 整形**を行う（根拠外事実の追加禁止。Reason生成定義書 §12）
+- 必要に応じ **LLM 整形**を行う（**`RECO_REASON_LLM_REFINEMENT_ENABLED=true` 時のみ**。根拠外事実の追加禁止。Reason生成定義書 §12）
 - **禁止表現チェック**・妥当性検証を行い、`reason_summary` / `reason_detail` / `reason_points` / `reason_badges` / `caution_note` を組み立てる
 - **`reason_basis_json`**（`template_name` / `template_version` / `used_features` / `used_scores` / `generation_method` 等）を構築する（`recommendation_reason_テーブル定義書` §5.4）
 - 成功時または **内部フォールバック時**に **`recommendation_reason` 行を INSERT** し、採番した `recommendation_reason_id` をドメインへ書き戻す
@@ -114,8 +114,9 @@ Reason Generator（Reason生成）は、Reco オンライン推薦パイプラ�
 | `items[]` | `rank` / `final_score` / `context_score` / `score_breakdown_json` / `snapshot` | 主入力・表示文脈 |
 | `feature_match_result.entries[]` | `match`（8 軸） | `strong_match_features` / `weak_match_features` |
 | `meaning_match_result.entries[]` | `social_match` / `symbolic_match` | 文脈理由・`used_scores` |
-| `items[].snapshot` | `item_name_snapshot` / `item_catchcopy_snapshot` 等 | Item 固有表現・`evidence_text` 接続 |
-| Item Semantic 派生データ（任意） | `evidence_text` / `concept_code` | `used_semantic_evidence`（Batch 事前生成。MVP は Snapshot テキストからの簡易導出も可） |
+| `item_semantic` | `semantic_json.concepts[]`（`concept_code` / `evidence_texts`） | **`used_semantic_evidence`（商品側根拠）** | Batch 正本（§8.3.8） |
+| `semantic_extraction_result`（任意） | `concepts[].evidence_text` | **`used_semantic_evidence`（ユーザー入力側根拠）** | `MOD-RECO-004` 成果物 |
+| `items[].snapshot` | `item_name_snapshot` 等 | 表示文脈・テンプレート補助 | **`evidence_text` の正本ではない** |
 
 ### 6.2 出力（本モジュール → Orchestrator）
 
@@ -205,6 +206,7 @@ Reason生成定義書 §8.3 / §11.1 を正とする。本モジュールが `fe
 | データ | 参照元 | 用途 | version / config | 備考 |
 | ------ | ------ | ---- | ---------------- | ---- |
 | `reason_template` | DB | 文面テンプレート解決 | `is_active = true` | §8.3.2 |
+| `item_semantic` | DB（Batch 正本） | 商品側 `evidence_text` / Concept 根拠 | `semantic_config_version_id` = Run 解決値 | §8.3.8。`item_semantic_テーブル定義書` §5.3 |
 | `relationship_master` / `occasion_master` | DB（任意） | ラベル変換 | — | 未整備時はコード内マップ |
 | `recommendation_result_item` | DB（`022` INSERT 済み） | FK 整合確認 | — | 読取のみ |
 | Run 内メモリ（`feature_match_result` 等） | `execution_context` | 根拠選定 | — | 永続化は本モジュール |
@@ -245,17 +247,18 @@ flowchart TD
 | No | 処理 | 入力 | 出力 | 補足 |
 | --: | ---- | ---- | ---- | ---- |
 | 1 | 入力検証 | `execution_context` | — | `items` / `022` 前提 |
-| 2 | Item ループ開始 | `items[]` | — | 順序は `rank` 昇順を推奨 |
-| 3 | 根拠選定 | Feature / Score / Snapshot | `strong_match_features` 等 | Reason生成定義書 §11.1 |
-| 4 | テンプレート解決 | relationship / occasion / feature | `template_id` | `reason_template_テーブル定義書` §7.1 |
-| 5 | 文面生成 | テンプレート + 根拠 | summary / detail / points / badges | §8.3.3 |
-| 6 | LLM 整形（任意） | 根拠ファクトのみ | 整形文面 | §8.3.4 |
-| 7 | 妥当性検証 | 生成文面 | 採用 / 差し替え | 禁止表現 §8.3.5 |
-| 8 | `caution_note` 判定 | `risk_penalty` / weak_match | `caution_note` or null | §8.3.6 |
-| 9 | `reason_basis_json` 組立 | 上記 | JSON | §6.2.2 |
-| 10 | DB INSERT | Reason 行 | `recommendation_reason_id` | 同一トランザクション推奨 |
-| 11 | ドメイン書き戻し | DB 結果 | `items[].reason` 等 | API 変換は api 層 |
-| 12 | 集計・返却 | 全 Item 完了 | `reason_generator_*` | Metric §12.1 |
+| 2 | `item_semantic` 一括読取 | `items[].item_id` + Run `semantic_config_version_id` | `semantic_json` マップ | §8.3.8 |
+| 3 | Item ループ開始 | `items[]` | — | 順序は `rank` 昇順を推奨 |
+| 4 | 根拠選定 | Feature / Score / `item_semantic` | `strong_match_features` 等 | Reason生成定義書 §11.1 |
+| 5 | テンプレート解決 | relationship / occasion / feature | `template_id` | `reason_template_テーブル定義書` §7.1 |
+| 6 | 文面生成 | テンプレート + 根拠 | summary / detail / points / badges | §8.3.3 |
+| 7 | LLM 整形（config 有効時） | 根拠ファクトのみ | 整形文面 | §8.3.4。default OFF |
+| 8 | 妥当性検証 | 生成文面 | 採用 / 差し替え | 禁止表現 §8.3.5 |
+| 9 | `caution_note` 判定 | `risk_penalty` / weak_match | `caution_note` or null | §8.3.6 |
+| 10 | `reason_basis_json` 組立 | 上記 | JSON | §6.2.2 |
+| 11 | DB INSERT | Reason 行 | `recommendation_reason_id` | 同一トランザクション推奨 |
+| 12 | ドメイン書き戻し | DB 結果 | `items[].reason` 等 | API 変換は api 層 |
+| 13 | 集計・返却 | 全 Item 完了 | `reason_generator_*` | Metric §12.1 |
 
 **処理順序の正本**: Recoモジュール一覧 §5.2 論理順序 23（`MOD-RECO-023`）。物理呼び出しは **`022` 直後・Result 返却直前**（`MOD-RECO-001` §8.2）。
 
@@ -271,7 +274,9 @@ flowchart TD
 | 主理由 | `feature_match >= 0.80` の Feature（§8.3 / §11.1） |
 | 優先順位 | context → strong_match → relationship/occasion → popularity → risk（§7.1） |
 | `reason_points` | 2〜3 個（§11.2） |
-| LLM | **任意**。失敗時はテンプレート結果を採用（§17.3） |
+| 商品側 `evidence_text` | **`item_semantic.semantic_json` から読取**（§8.3.8）。Snapshot テキストからの導出は行わない |
+| LLM 整形 | **MVP 初期 default OFF**（§8.3.4）。env フラグでコード変更なしに ON 可能 |
+| LLM 失敗時 | テンプレート結果を採用（§17.3）。Run 失敗にしない |
 | 再現性 | `recommendation_run.model_version_id` を Run 正本とし、本テーブルには物理保持しない |
 
 #### 8.3.2 テンプレート解決
@@ -297,15 +302,34 @@ Reason生成定義書 §10 のテンプレート群を基本とする。
 | `reason_badges` | `FEATURE_BADGE_MAP`（§11.3 / §16.2） |
 | `caution_note` | §8.3.6 条件時のみ |
 
-#### 8.3.4 LLM 整形（任意・MVP）
+#### 8.3.4 LLM 整形（config 有効時のみ・MVP）
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 目的 | 自然文整形のみ（Reason生成定義書 §12.1） |
+| MVP 初期 default | **OFF**（テンプレートのみで Reason 生成。Reason生成定義書 §20.1） |
+| 有効化スイッチ | 環境変数 **`RECO_REASON_LLM_REFINEMENT_ENABLED`**（boolean、**default `false`**）。`true` のときのみ本節の LLM 整形を実行する |
+| 切替方針 | **コード変更・再デプロイなし**で ON/OFF 可能とする（env / DI 注入）。品質検証・Evaluation 時に env を `true` にして比較する |
+| 呼び出し上限 | LLM 有効時も **Run あたり最大 1 回**（`MOD-RECO-004` on-demand パターン踏襲）。Item 単位の逐次 LLM 呼び出しは **行わない** |
+| 目的 | 自然文整形のみ（Reason生成定義書 §12.1）。根拠の新規生成は禁止 |
 | 入力 | `allowed_reason_facts` / `forbidden_claims` / `tone` / `max_length` |
 | 出力 | JSON（`reason_summary` / `reason_points` / `caution_note`） |
-| 失敗 | テンプレート結果をそのまま使用（§17.3） |
+| 失敗 | テンプレート結果をそのまま使用（§17.3）。Item 内部 fallback。Run 失敗にしない |
 | Secret | API キーは server 側 env のみ。ログ・DB に出力しない |
+| Client 契約 | timeout / retry は §13 および §16.1 No.15 を正とする。concrete 実装は External AI API Client（infrastructure 横断） |
+
+#### 8.3.8 商品側 `evidence_text` 取得（`item_semantic` 正本）
+
+Human 判断（Issue #993）により、商品側 Semantic 根拠は **Batch 正本 `item_semantic`** から読み取る。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 正本 | `item_semantic_テーブル定義書` §5.3 の `semantic_json` |
+| 読取キー | `item_id` + `semantic_config_version_id`（`execution_context.recommendation_run` / `config_versions` から Run 解決値を使用） |
+| 取得フィールド | `semantic_json.concepts[].concept_code` / `confidence` / **`evidence_texts`**（string[]） |
+| Reason へのマッピング | `evidence_texts[]` を `reason_basis_json.used_semantic_evidence[]` へ展開。各要素の `evidence_text` は配列先頭または Feature 整合する Concept の根拠を採用（Reason生成定義書 §14.2 構造） |
+| Item Evidence テンプレート | §10.6。`evidence_text` は **商品説明由来の Batch 抽出根拠**のみ使用。Snapshot 列の自由引用は **行わない** |
+| 欠損時 | 行不存在・`concepts[]` 空・`evidence_texts` 空 → **Item Evidence テンプレートをスキップ**し Feature Match ベースで Reason 生成（Reason生成定義書 §17.1）。Run 失敗にしない |
+| 禁止 | Snapshot（`item_catchcopy_snapshot` 等）から `evidence_text` を **推測生成**すること（ハルシネーション防止） |
 
 #### 8.3.5 禁止表現チェック
 
@@ -344,6 +368,7 @@ Reason生成定義書 §11.4 を正とする。
 | -------- | -------- | -------- | -------- | ---- |
 | `items[].score_breakdown_json` | `used_scores` | `reason_basis_json.used_scores` | 抜粋コピー | 数値を本文に直書きしない |
 | `feature_match_result` JOIN | `strong_match_features` | 文面 / badges | 閾値 0.80 | §6.2.3 |
+| `item_semantic.semantic_json` | `used_semantic_evidence` | `reason_basis_json` | `evidence_texts` → `evidence_text` 展開 | §8.3.8 |
 | `recommendation_request.relationship` | `relationship_label` | テンプレート埋め込み | マスタ変換 | |
 | `recommendation_request.occasion` | `occasion_label` | 同上 | 同上 | |
 | `reason_template` 行 | テンプレート本文 | summary / detail 等 | プレースホルダ置換 | `template_id` 記録 |
@@ -433,11 +458,13 @@ API 上の `reasonStatus: completed` は **行の存在**で導出する（DB �
 
 | 観点 | 方針 |
 | ---- | ---- |
-| レイテンシ | Item 数（`top_k`、通常 ≤ 20）に比例。LLM 利用時は timeout を設定（実装 Task で具体値） |
-| 計算量 | O(top_k × テンプレート解決)。DB は Item 単位 INSERT |
-| タイムアウト | LLM 呼び出しのみ個別 timeout。超過時テンプレート fallback |
-| リトライ | MVP では LLM / INSERT の自動リトライは **1 回まで**（汎用文再 INSERT） |
-| キャッシュ | `reason_template` の Run 内読取キャッシュ可 |
+| レイテンシ | Item 数（`top_k`、通常 ≤ 20）に比例。LLM **default OFF** のため MVP 初期はテンプレート + DB 読取が主 |
+| 計算量 | O(top_k ×（テンプレート解決 + `item_semantic` 読取）)。DB は Item 単位 INSERT |
+| 上位ガード | 出力フェーズ（`021`〜`023`）hard **500ms**（`MOD-RECO-001` §13.2）。本モジュール単体 hard は **MVP では設けない** |
+| LLM timeout | **`RECO_REASON_LLM_REFINEMENT_ENABLED=true` 時のみ**適用。**connect + read 合算 300ms**（1 回あたり）。超過時テンプレート fallback |
+| LLM retry | **0 回**（本モジュール内）。`MOD-RECO-004` と同様。Client 共通層でも Reason 経路は **再試行しない** |
+| INSERT retry | 汎用文での **再 INSERT 試行は 1 回まで**（§10.2） |
+| キャッシュ | `reason_template` / **`item_semantic`（Run 内 `item_id` 一括読取）** のキャッシュ可 |
 | 並列実行 | MVP は **Item 順次処理**（同一 TX 整合のため） |
 
 ---
@@ -466,6 +493,11 @@ API 上の `reasonStatus: completed` は **行の存在**で導出する（DB �
 | 18 | ログ | `trace_id` あり・secret / `reason_basis_json` 全文なし | unit |
 | 19 | トランザクション | `022` INSERT と同一 TX でロールバックされること（Wiring 後） | integration |
 | 20 | 部分成功 | 一部 Item のみ fallback でも他 Item は通常 Reason であること | integration |
+| 21 | `item_semantic` 読取 | `semantic_json.concepts[].evidence_texts` が `used_semantic_evidence` に反映されること | unit / integration |
+| 22 | `item_semantic` 欠損 | 行不存在時に Run 失敗せず Feature ベース Reason になること（§8.3.8） | unit |
+| 23 | LLM default OFF | `RECO_REASON_LLM_REFINEMENT_ENABLED` 未設定 / `false` で External AI API Client が呼ばれないこと | unit |
+| 24 | LLM ON 切替 | env `true` で LLM 整形が 1 Run 1 回実行されること | integration |
+| 25 | LLM timeout | 300ms 超過でテンプレート fallback となり Run 継続すること | unit / integration |
 
 ---
 
@@ -476,6 +508,7 @@ API 上の `reasonStatus: completed` は **行の存在**で導出する（DB �
 | 日付 | 変更内容 | 関連 Issue / PR |
 | ---- | -------- | --------------- |
 | 2026-07-04 | 初版作成 | Issue #993 |
+| 2026-07-05 | §16.1 No.14〜16 確定（`item_semantic` 正本・LLM default OFF・Client timeout/retry） | Issue #993 Human 判断 |
 
 ---
 
@@ -483,9 +516,7 @@ API 上の `reasonStatus: completed` は **行の存在**で導出する（DB �
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Item Semantic / `evidence_text` の取得元 | Batch 事前生成テーブル vs Snapshot テキスト簡易導出 | Human | 実装 Task 前 | MVP は簡易導出可（§6.1.1） |
-| 2 | LLM 利用のデフォルト on/off | コスト・レイテンシ影響 | Human | 実装 Task 前 | Reason生成定義書 §20.1 は「任意」 |
-| 3 | `ExternalAiApiClient` の timeout / retry 具体値 | 非機能要件との整合 | Human | 実装 Task 前 | §13 方針のみ本書で定義 |
+| - | なし | - | - | - | - |
 
 ### 16.1 確定済み論点
 
@@ -504,6 +535,9 @@ API 上の `reasonStatus: completed` は **行の存在**で導出する（DB �
 | 11 | Phase Log | **`reason_generated` は Orchestrator が記録** |
 | 12 | API 変換 | Public / Internal レスポンスは **`apps/api` 層** |
 | 13 | `reason_template` Run 検証 | **`MOD-RECO-003` が OL で実施**。本モジュールは Item 単位解決のみ |
+| 14 | 商品側 `evidence_text` 取得元 | **`item_semantic.semantic_json`（Batch 正本）** から読取。Snapshot からの簡易導出は **不採用**（§8.3.8） |
+| 15 | LLM 整形 default | **MVP 初期 OFF**。環境変数 **`RECO_REASON_LLM_REFINEMENT_ENABLED`**（default `false`）で **コード変更なし**に ON/OFF。有効時は **Run あたり最大 1 回**（§8.3.4） |
+| 16 | External AI API Client（Reason 経路） | **timeout 300ms（connect+read）/ retry 0**。超過・失敗時はテンプレート fallback。concrete Client は infrastructure 横断 Task の scope（§13） |
 
 ---
 
@@ -521,6 +555,7 @@ API 上の `reasonStatus: completed` は **行の存在**で導出する（DB �
 | Config Resolver 仕様書 | `docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md` | テンプレートカタログ検証 |
 | recommendation_reason 定義 | `docs/06_実装設計/database/recommendation_reason_テーブル定義書.md` | DB 正本 |
 | reason_template 定義 | `docs/06_実装設計/database/reason_template_テーブル定義書.md` | テンプレート解決 |
+| item_semantic 定義 | `docs/06_実装設計/database/item_semantic_テーブル定義書.md` | 商品側 `evidence_text` 正本 |
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | `GRS-REC-013` 等 |
 | ログ・Observability設計書 | `docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md` | Reason メトリクス |
 
@@ -541,6 +576,7 @@ API 上の `reasonStatus: completed` は **行の存在**で導出する（DB �
 ## 19. 備考
 
 - Reason生成定義書 §16 の疑似コード（`select_reason_features` / `generate_reason_badges` 等）は実装 Task の参考とする
-- 機能×モジュール対応表の **Reason Template Repository** / **External AI API Client** は infrastructure 層 Port として実装 Task で定義する
+- 機能×モジュール対応表の **Reason Template Repository** / **Item Semantic Read Repository** / **External AI API Client** は infrastructure 層 Port として実装 Task で定義する
+- LLM 品質検証時は **`RECO_REASON_LLM_REFINEMENT_ENABLED=true`** を設定し、同一 Run で template-only / LLM-refined の `reason_basis_json.generation_method` を比較する
 - 実装配置は `prompts/definitions/tasks/mod-reco-023-reason-generator/implementation.yaml` と一致させる
 - API-PUB-002 / API-INT-002 の `reasonStatus` / `isFallback` 契約詳細は Contract Task で本仕様書 §10 と双方向整合する

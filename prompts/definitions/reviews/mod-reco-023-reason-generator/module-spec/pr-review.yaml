@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 993
   task_definition: "prompts/definitions/tasks/mod-reco-023-reason-generator/module-spec.yaml"
   source_branch: null
   target_branch: "feature/epic-992-mod-reco-023-reason-generator"
