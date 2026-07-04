@@ -22,6 +22,9 @@ if TYPE_CHECKING:
     )
     from reco.application.context_scorer.models import ContextScoreResult
     from reco.application.feature_matcher.models import FeatureMatchResult
+    from reco.application.final_score_calculator.models import FinalScoreResult
+    from reco.application.popularity_scorer.models import PopularityScoreResult
+    from reco.application.risk_scorer.models import RiskPenaltyResult
     from reco.application.internal_condition_feature_estimator.models import (
         InternalFeatureEstimate,
     )
@@ -90,6 +93,32 @@ class ExecutionContext:
     context_scorer_latency_ms: int | None = None
     context_score_value_out_of_range_count: int | None = None
     lambda_ctx_applied: float | None = None
+
+    popularity_score_result: PopularityScoreResult | None = None
+    popularity_scorer_candidate_count: int | None = None
+    popularity_scorer_latency_ms: int | None = None
+    popularity_missing_signal_count: int | None = None
+    popularity_score_value_out_of_range_count: int | None = None
+
+    risk_penalty_result: RiskPenaltyResult | None = None
+    risk_scorer_candidate_count: int | None = None
+    risk_scorer_latency_ms: int | None = None
+    risk_missing_signal_count: int | None = None
+    risk_penalty_value_out_of_range_count: int | None = None
+    avoid_risk_nonzero_count: int | None = None
+
+    final_score_result: FinalScoreResult | None = None
+    final_score_calculator_candidate_count: int | None = None
+    final_score_calculator_latency_ms: int | None = None
+    final_score_excluded_candidate_count: int | None = None
+    final_score_value_out_of_range_count: int | None = None
+
+    final_ranker_selected_count: int | None = None
+    final_ranker_latency_ms: int | None = None
+    final_ranker_mmr_applied: bool | None = None
+    mmr_rank_shift_count: int | None = None
+    final_ranker_feature_match_missing_count: int | None = None
+    top_k_clipped: bool | None = None
 
     completed_modules: list[str] = field(default_factory=list)
     phase_log_events: list[dict[str, object]] = field(default_factory=list)

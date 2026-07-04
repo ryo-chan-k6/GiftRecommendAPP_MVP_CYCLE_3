@@ -105,16 +105,13 @@ def _attach_outputs(
     result: PopularityScoreResult,
     metrics: PopularityScorerRunMetrics,
 ) -> None:
-    # ExecutionContext typed fields are added by MOD-RECO-001 wiring Task.
-    context.popularity_score_result = result  # type: ignore[attr-defined]
-    context.popularity_scorer_candidate_count = (  # type: ignore[attr-defined]
+    context.popularity_score_result = result
+    context.popularity_scorer_candidate_count = (
         metrics.popularity_scorer_candidate_count
     )
-    context.popularity_scorer_latency_ms = metrics.popularity_scorer_latency_ms  # type: ignore[attr-defined]
-    context.popularity_missing_signal_count = (  # type: ignore[attr-defined]
-        metrics.popularity_missing_signal_count
-    )
-    context.popularity_score_value_out_of_range_count = (  # type: ignore[attr-defined]
+    context.popularity_scorer_latency_ms = metrics.popularity_scorer_latency_ms
+    context.popularity_missing_signal_count = metrics.popularity_missing_signal_count
+    context.popularity_score_value_out_of_range_count = (
         metrics.popularity_score_value_out_of_range_count
     )
 

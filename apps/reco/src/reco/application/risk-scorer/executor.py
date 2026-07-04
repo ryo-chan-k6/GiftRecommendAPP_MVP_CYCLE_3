@@ -79,7 +79,7 @@ class RiskScorer:
         if context.run_id is None:
             raise RiskScorerError("run_id is required on execution_context")
 
-        popularity_score_result = getattr(context, "popularity_score_result", None)
+        popularity_score_result = context.popularity_score_result
         if popularity_score_result is None:
             raise RiskScorerError(
                 "popularity_score_result is required on execution_context",
@@ -124,14 +124,14 @@ def _attach_outputs(
     result: RiskPenaltyResult,
     metrics: RiskScorerRunMetrics,
 ) -> None:
-    context.risk_penalty_result = result  # type: ignore[attr-defined]
-    context.risk_scorer_candidate_count = metrics.risk_scorer_candidate_count  # type: ignore[attr-defined]
-    context.risk_scorer_latency_ms = metrics.risk_scorer_latency_ms  # type: ignore[attr-defined]
-    context.risk_missing_signal_count = metrics.risk_missing_signal_count  # type: ignore[attr-defined]
-    context.risk_penalty_value_out_of_range_count = (  # type: ignore[attr-defined]
+    context.risk_penalty_result = result
+    context.risk_scorer_candidate_count = metrics.risk_scorer_candidate_count
+    context.risk_scorer_latency_ms = metrics.risk_scorer_latency_ms
+    context.risk_missing_signal_count = metrics.risk_missing_signal_count
+    context.risk_penalty_value_out_of_range_count = (
         metrics.risk_penalty_value_out_of_range_count
     )
-    context.avoid_risk_nonzero_count = metrics.avoid_risk_nonzero_count  # type: ignore[attr-defined]
+    context.avoid_risk_nonzero_count = metrics.avoid_risk_nonzero_count
 
 
 def build_default_risk_scorer() -> RiskScorer:
