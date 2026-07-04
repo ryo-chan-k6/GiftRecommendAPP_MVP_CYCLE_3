@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 978
   issue:
     number: 977
   task_definition: "prompts/definitions/tasks/mod-reco-021-recommendation-result-builder/module-spec.yaml"
