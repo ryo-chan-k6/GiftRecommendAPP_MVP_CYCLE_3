@@ -114,7 +114,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-022-result-snapshot-builder"
+  name: "feature/epic-984-mod-reco-022-result-snapshot-builder"
   base: "develop"
   target: "develop"
   worktree_required: false
