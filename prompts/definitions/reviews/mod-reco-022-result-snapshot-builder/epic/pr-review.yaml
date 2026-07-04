@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 984
   task_definition: "prompts/definitions/epics/mod-reco-022-result-snapshot-builder/epic.yaml"
-  source_branch: "feature/epic-<issue-number>-mod-reco-022-result-snapshot-builder"
+  source_branch: "feature/epic-984-mod-reco-022-result-snapshot-builder"
   target_branch: "develop"
 
 commands:
