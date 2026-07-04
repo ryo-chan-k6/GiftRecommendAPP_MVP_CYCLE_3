@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-04                                 |
-| 更新日         | 2026-07-04                                 |
+| 更新日         | 2026-07-04（§16 未決 3 件を推奨案で確定）  |
 
 ---
 
@@ -158,7 +158,7 @@ Recommendation Result Builder（Recommendation Result生成）は、Reco オン�
 | `model_version_id` | `true` | Run からコピー |
 | `matching_config_id` | `true` | Run からコピー |
 | `ranking_config_id` | `true` | Run からコピー |
-| `reason_template_version_id` | `false` | MVP では **NULL 可**（§16.1 No.2） |
+| `reason_template_version_id` | `false` | MVP では **`NULL` 固定**（§16.1 No.13） |
 | `generated_at` | `true` | ヘッダ生成日時（UTC） |
 | `display_message` / `caution_message` | `false` | 0 件時等の補足 |
 | `result_payload` / `debug_payload` | `false` | API 補助 JSON（evaluation / debug 時） |
@@ -352,7 +352,7 @@ DB 正本は **`generated` / `empty` / `failed`**（`recommendation_result_テ�
 | ---- | ---- |
 | 呼び出し回数 | Run あたり **1 回**（`020` 成功後） |
 | 成功 | `recommendation_result` / `recommendation_result_id` / `result_builder_header_persisted=true` |
-| 成功（0 件） | empty ヘッダ・明細 0 件・**`022` は Snapshot 不要でスキップ可**（実装 Task で Port 確定） |
+| 成功（0 件） | empty ヘッダ・明細 0 件・**`022` / `023` は Orchestrator が呼ばない**（§16.1 No.12） |
 | 失敗 | `GRS-REC-012`。`022` / `023` は呼ばれない |
 | Reason 失敗時 | 本モジュール成功後は **`023` 失敗でも Result 返却継続**（`MOD-RECO-001` §10.3） |
 | Phase Log | **`result_generated` は本モジュール成功後に Orchestrator が記録依頼**（§12） |
@@ -434,7 +434,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | `recommendation_run` | SELECT | version 4 列コピー | `run_id` キー |
 | `item` 系 | — | **参照しない** | Snapshot は `022` |
 
-**方針**: `rank` / `final_score` / `context_score` / `score_breakdown_json` の Run 結果永続化は、**明細 INSERT 時**に `recommendation_result_item` へ反映する（`recommendation_result_item_テーブル定義書` §6）。ヘッダの `result_item_count` は明細 INSERT 完了後に **`022` 側で整合**するか、事前に本モジュールが設定した値と一致させる（§16.1 No.3）。
+**方針**: `rank` / `final_score` / `context_score` / `score_breakdown_json` の Run 結果永続化は、**明細 INSERT 時**に `recommendation_result_item` へ反映する（`recommendation_result_item_テーブル定義書` §6）。ヘッダの `result_item_count` は **021 ヘッダ INSERT 時に確定**し、`022` は同一トランザクション内で **同件数の Item INSERT 完了を検証**する（ヘッダ UPDATE は行わない。§16.1 No.14）。
 
 ---
 
@@ -508,6 +508,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 日付 | 変更内容 | 関連 Issue / PR |
 | ---- | -------- | --------------- |
 | 2026-07-04 | 初版作成 | Issue #977 |
+| 2026-07-04 | §16 未決 3 件を推奨案で確定 | Issue #977 |
 
 ---
 
@@ -515,9 +516,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 0 件時の `022` 呼び出し | Snapshot 不要のためスキップ可否 | Worker / Orchestrator | 実装 Task | §8.3.6 暫定: スキップ可 |
-| 2 | `reason_template_version_id` の設定タイミング | 023 前 INSERT か 023 解決値か。MVP は NULL 可 | Human | 実装前 | テーブル定義書 §5.7 |
-| 3 | `result_item_count` の確定タイミング | 021 INSERT 時固定か 022 完了後検証か | Worker | 実装 Task | §11.1 暫定: 021 で設定し 022 で一致確認 |
+| - | なし | - | - | - | - |
 
 ### 16.1 確定済み論点
 
@@ -534,7 +533,10 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | 9 | Reason 失敗後 | **`021`/`022` 成功後は `023` 失敗でも Result 返却継続**（`MOD-RECO-001` §10.3） |
 | 10 | Phase Log | **`result_generated` は本モジュール成功後に Orchestrator が記録** |
 | 11 | API 変換 | Public / Internal レスポンス変換は **`apps/api` / API-INT 層**（本モジュール外） |
-| 12 | `rank` 起点 | **1 始まり**（`ranked_items` からエコー） |
+| 12 | 0 件時の `022` / `023` 呼び出し | **`result_item_count = 0` のとき Orchestrator は `MOD-RECO-022` / `023` を呼ばない**（Snapshot・Reason 対象なし）。`021` 成功のみで出力フェーズ完了扱いとする |
+| 13 | `reason_template_version_id` | **021 ヘッダ INSERT 時は `NULL` 固定**（MVP 非採用）。Reason テンプレート版は **`recommendation_reason` 側の `template_name` + `template_version`** で記録（`reason_template_テーブル定義書` §5.3 方式 B）。Result ヘッダ UPDATE は MVP で行わない |
+| 14 | `result_item_count` 確定 | **021 ヘッダ INSERT 時に `ranked_items.total_selected` を設定して確定**。`022` は同一 DB トランザクション内で **同件数の Item INSERT を完了**し、commit 前に件数一致を検証する（不一致時はロールバック → `GRS-REC-012`）。ヘッダ UPDATE は行わない |
+| 15 | `rank` 起点 | **1 始まり**（`ranked_items` からエコー） |
 
 ---
 
@@ -548,6 +550,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は `MOD-RECO-
 | RecommendationResult定義書 | `docs/04_ドメインモデル設計/RecommendationResult定義書.md` | ドメイン正本 |
 | recommendation_result テーブル定義書 | `docs/06_実装設計/database/recommendation_result_テーブル定義書.md` | ヘッダ DDL |
 | recommendation_result_item テーブル定義書 | `docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md` | 明細 DDL |
+| reason_template テーブル定義書 | `docs/06_実装設計/database/reason_template_テーブル定義書.md` | Reason テンプレート版記録（§16.1 No.13） |
 | MOD-RECO-001 | `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` | 呼び出し・`GRS-REC-012`・§10.3 |
 | MOD-RECO-002 | `docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md` | Run / version 正本 |
 | MOD-RECO-020 | `docs/06_実装設計/reco/MOD-RECO-020_Final Rankerモジュール仕様書.md` | 直前モジュール・`ranked_items` |
