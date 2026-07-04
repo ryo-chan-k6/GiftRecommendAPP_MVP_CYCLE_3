@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 975
   issue:
     number: 974
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-ranking/integration-retest.yaml"
