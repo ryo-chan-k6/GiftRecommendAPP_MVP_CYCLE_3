@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 969
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-ranking/integration-test.yaml"
-  source_branch: "test/task-<issue-number>-mod-reco-001-wiring-ranking-integration-test"
+  source_branch: "test/task-969-mod-reco-001-wiring-ranking-integration-test"
   target_branch: "feature/epic-791-mod-reco-001-wiring-ranking"
   parent_epic_issue: 791
   parent_epic_branch: "feature/epic-791-mod-reco-001-wiring-ranking"
