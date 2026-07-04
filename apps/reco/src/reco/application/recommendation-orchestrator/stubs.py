@@ -262,19 +262,10 @@ class StubPipelineModule:
     module_id: str
     phase_name: str
     should_fail: bool = False
-    artifact_key: str | None = None
 
     def execute(self, context: ExecutionContext) -> ExecutionContext:
         if self.should_fail:
             raise RuntimeError(f"{self.module_id} failed")
-
-        if self.artifact_key is not None:
-            context.ranked_items.append(
-                {
-                    "module_id": self.module_id,
-                    "artifact": self.artifact_key,
-                }
-            )
 
         context.completed_modules.append(self.module_id)
         return context
@@ -381,12 +372,10 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     result_builder = StubPipelineModule(
         module_id="MOD-RECO-021",
         phase_name="response_built",
-        artifact_key="recommendation_result",
     )
     snapshot_builder = StubPipelineModule(
         module_id="MOD-RECO-022",
         phase_name="snapshot_built",
-        artifact_key="result_snapshot",
     )
 
     phase_log_writer = StubPhaseLogWriter()

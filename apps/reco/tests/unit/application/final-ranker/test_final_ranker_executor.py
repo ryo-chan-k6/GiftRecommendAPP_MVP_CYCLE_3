@@ -82,12 +82,13 @@ def test_execute_attaches_ranked_items_and_metrics_to_execution_context() -> Non
 
     result_context = ranker.execute(context)
 
-    ranked_items = result_context.ranked_items  # type: ignore[assignment]
+    ranked_items = result_context.ranked_items
+    assert ranked_items is not None
     assert ranked_items.total_selected == 1
-    assert result_context.final_ranker_selected_count == 1  # type: ignore[attr-defined]
-    assert result_context.final_ranker_latency_ms is not None  # type: ignore[attr-defined]
-    assert result_context.final_ranker_mmr_applied is not None  # type: ignore[attr-defined]
-    assert result_context.mmr_rank_shift_count is not None  # type: ignore[attr-defined]
+    assert result_context.final_ranker_selected_count == 1
+    assert result_context.final_ranker_latency_ms is not None
+    assert result_context.final_ranker_mmr_applied is not None
+    assert result_context.mmr_rank_shift_count is not None
     assert MODULE_ID in result_context.completed_modules
 
 
