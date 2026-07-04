@@ -22,14 +22,17 @@ from reco.application.recommendation_orchestrator.stubs import (
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
 from recommendation_orchestrator_helpers import (
     _MATCHING_MODULE_IDS,
+    _RANKING_MODULE_IDS,
     _RETRIEVAL_MODULE_IDS,
     _USER_MEANING_MODULE_IDS,
     assert_matching_execution_context_populated,
+    assert_ranking_execution_context_populated,
     assert_retrieval_execution_context_populated,
     assert_user_meaning_execution_context_populated,
     build_wired_default_composition_ports,
     build_wired_ports_with_zero_matching_candidates,
     ports_with_matching_stubs,
+    ports_with_ranking_stubs,
     ports_with_retrieval_stubs,
     ports_with_user_meaning_stubs,
 )
@@ -106,6 +109,19 @@ def test_default_stub_ports_wires_matching_modules() -> None:
     assert isinstance(ports.feature_matcher, FeatureMatcher)
     assert isinstance(ports.meaning_match_aggregator, MeaningMatchAggregator)
     assert isinstance(ports.context_scorer, ContextScorer)
+
+
+def test_default_stub_ports_wires_ranking_modules() -> None:
+    from reco.application.final_ranker import FinalRanker
+    from reco.application.final_score_calculator import FinalScoreCalculator
+    from reco.application.popularity_scorer import PopularityScorer
+    from reco.application.risk_scorer import RiskScorer
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.popularity_scorer, PopularityScorer)
+    assert isinstance(ports.risk_scorer, RiskScorer)
+    assert isinstance(ports.final_score_calculator, FinalScoreCalculator)
+    assert isinstance(ports.final_ranker, FinalRanker)
 
 
 def test_default_stub_ports_wires_user_meaning_modules() -> None:
@@ -219,6 +235,37 @@ def test_default_composition_populates_matching_execution_context() -> None:
     assert_matching_execution_context_populated(ctx)
 
 
+def test_default_composition_completes_ranking_phase_modules() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-ranking-phase",
+    )
+
+    assert outcome.success is True
+    assert outcome.execution_context is not None
+    completed = outcome.execution_context.completed_modules
+    for module_id in _RANKING_MODULE_IDS:
+        assert module_id in completed
+    assert completed.index("MOD-RECO-016") < completed.index("MOD-RECO-017")
+    assert completed.index("MOD-RECO-017") < completed.index("MOD-RECO-018")
+    assert completed.index("MOD-RECO-018") < completed.index("MOD-RECO-019")
+    assert completed.index("MOD-RECO-019") < completed.index("MOD-RECO-020")
+
+
+def test_default_composition_populates_ranking_execution_context() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-ranking-context",
+    )
+
+    assert outcome.success is True
+    ctx = outcome.execution_context
+    assert ctx is not None
+    assert_ranking_execution_context_populated(ctx)
+
+
 # §14 No.2 正常系（evaluation / batch mode）— Stub が execution_mode を echo する挙動
 @pytest.mark.parametrize("mode", [ExecutionMode.EVALUATION, ExecutionMode.BATCH])
 def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> None:
@@ -226,6 +273,7 @@ def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> Non
     ports = ports_with_user_meaning_stubs(ports)
     ports = ports_with_retrieval_stubs(ports)
     ports = ports_with_matching_stubs(ports)
+    ports = ports_with_ranking_stubs(ports)
     ports = _ports_with(ports, config_resolver=StubConfigResolver())
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(mode=mode),
@@ -255,27 +303,15 @@ def test_orchestrator_runs_all_modules_in_order() -> None:
 # §14 No.4 Ranking 責務分離
 def test_final_score_calculator_runs_before_final_ranker() -> None:
     ports, _ = _wired_ports()
-    call_order: list[str] = []
-
-    def track(module: StubPipelineModule) -> None:
-        original = module.execute
-
-        def wrapped(context):
-            call_order.append(module.module_id)
-            return original(context)
-
-        module.execute = wrapped  # type: ignore[method-assign]
-
-    track(ports.final_score_calculator)  # type: ignore[arg-type]
-    track(ports.final_ranker)  # type: ignore[arg-type]
-
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(),
         trace_id="trace-ranking-order",
     )
 
     assert outcome.success is True
-    assert call_order.index("MOD-RECO-019") < call_order.index("MOD-RECO-020")
+    assert outcome.execution_context is not None
+    completed = outcome.execution_context.completed_modules
+    assert completed.index("MOD-RECO-019") < completed.index("MOD-RECO-020")
 
 
 # §19 No.1 / No.4 / No.5 — Matching 対象 0 件時の Orchestrator 早期終了
@@ -541,6 +577,7 @@ def test_orchestrator_with_user_meaning_stubs_still_completes_pipeline() -> None
     ports = ports_with_user_meaning_stubs(ports)
     ports = ports_with_retrieval_stubs(ports)
     ports = ports_with_matching_stubs(ports)
+    ports = ports_with_ranking_stubs(ports)
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(),
         trace_id="trace-stub-user-meaning",
