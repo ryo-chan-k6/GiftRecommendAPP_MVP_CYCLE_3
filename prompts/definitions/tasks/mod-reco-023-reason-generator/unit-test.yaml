@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-023:Reason Generator"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-023-reason-generator"
+  epic_issue_number: 992
+  epic_branch: "feature/epic-992-mod-reco-023-reason-generator"
   related_issues: []
   related_prs: []
 
@@ -100,8 +100,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   name: "test/task-<issue-number>-mod-reco-023-reason-generator-unit-test"
-  base: "feature/epic-<issue-number>-mod-reco-023-reason-generator"
-  target: "feature/epic-<issue-number>-mod-reco-023-reason-generator"
+  base: "feature/epic-992-mod-reco-023-reason-generator"
+  target: "feature/epic-992-mod-reco-023-reason-generator"
   worktree_required: true
 
 project:
