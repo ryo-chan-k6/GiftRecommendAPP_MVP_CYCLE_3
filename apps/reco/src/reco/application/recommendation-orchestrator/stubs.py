@@ -134,6 +134,34 @@ def _ensure_context_scorer_package() -> None:
     )
 
 
+def _ensure_popularity_scorer_package() -> None:
+    _ensure_application_package(
+        "reco.application.popularity_scorer",
+        "popularity-scorer",
+    )
+
+
+def _ensure_risk_scorer_package() -> None:
+    _ensure_application_package(
+        "reco.application.risk_scorer",
+        "risk-scorer",
+    )
+
+
+def _ensure_final_score_calculator_package() -> None:
+    _ensure_application_package(
+        "reco.application.final_score_calculator",
+        "final-score-calculator",
+    )
+
+
+def _ensure_final_ranker_package() -> None:
+    _ensure_application_package(
+        "reco.application.final_ranker",
+        "final-ranker",
+    )
+
+
 _ensure_run_recorder_package()
 _ensure_config_version_resolver_package()
 _ensure_user_semantic_extractor_package()
@@ -148,6 +176,10 @@ _ensure_post_hard_filter_executor_package()
 _ensure_feature_matcher_package()
 _ensure_meaning_match_aggregator_package()
 _ensure_context_scorer_package()
+_ensure_popularity_scorer_package()
+_ensure_risk_scorer_package()
+_ensure_final_score_calculator_package()
+_ensure_final_ranker_package()
 
 from reco.application.candidate_retriever import build_default_candidate_retriever  # noqa: E402
 from reco.application.config_version_resolver import build_default_config_resolver  # noqa: E402
@@ -155,13 +187,22 @@ from reco.application.external_condition_feature_estimator import (  # noqa: E40
     build_default_external_condition_feature_estimator,
 )
 from reco.application.context_scorer import build_default_context_scorer  # noqa: E402
+from reco.application.final_ranker import build_default_final_ranker  # noqa: E402
+from reco.application.final_score_calculator import (  # noqa: E402
+    build_default_final_score_calculator,
+)
 from reco.application.feature_matcher import build_default_feature_matcher  # noqa: E402
 from reco.application.meaning_match_aggregator import (  # noqa: E402
     build_default_meaning_match_aggregator,
 )
+from reco.application.popularity_scorer import (  # noqa: E402
+    build_default_in_memory_item_review_summary_repository,
+    build_default_popularity_scorer,
+)
 from reco.application.post_hard_filter_executor import (  # noqa: E402
     build_default_post_hard_filter_executor,
 )
+from reco.application.risk_scorer import build_default_risk_scorer  # noqa: E402
 from reco.application.internal_condition_feature_estimator import (  # noqa: E402
     build_default_internal_condition_feature_estimator,
 )
@@ -347,16 +388,6 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
         phase_name="snapshot_built",
         artifact_key="result_snapshot",
     )
-    final_score_calculator = StubPipelineModule(
-        module_id="MOD-RECO-019",
-        phase_name="final_score_calculated",
-        artifact_key="final_score",
-    )
-    final_ranker = StubPipelineModule(
-        module_id="MOD-RECO-020",
-        phase_name="ranked",
-        artifact_key="ranked_items",
-    )
 
     phase_log_writer = StubPhaseLogWriter()
     error_handler = StubErrorHandler()
@@ -377,10 +408,12 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
         feature_matcher=build_default_feature_matcher(),
         meaning_match_aggregator=build_default_meaning_match_aggregator(),
         context_scorer=build_default_context_scorer(),
-        popularity_scorer=StubPipelineModule("MOD-RECO-017", "popularity_scored"),
-        risk_scorer=StubPipelineModule("MOD-RECO-018", "risk_scored"),
-        final_score_calculator=final_score_calculator,
-        final_ranker=final_ranker,
+        popularity_scorer=build_default_popularity_scorer(
+            build_default_in_memory_item_review_summary_repository(),
+        ),
+        risk_scorer=build_default_risk_scorer(),
+        final_score_calculator=build_default_final_score_calculator(),
+        final_ranker=build_default_final_ranker(),
         result_builder=result_builder,
         snapshot_builder=snapshot_builder,
         reason_generator=StubReasonGenerator(),
