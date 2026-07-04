@@ -77,7 +77,7 @@ class FinalRanker:
         if context.run_id is None:
             raise FinalRankerError("run_id is required on execution_context")
 
-        final_score_result = getattr(context, "final_score_result", None)
+        final_score_result = context.final_score_result
         if final_score_result is None:
             raise FinalRankerError(
                 "final_score_result is required on execution_context",
@@ -124,14 +124,14 @@ def _attach_outputs(
     metrics: FinalRankerRunMetrics,
 ) -> None:
     context.ranked_items = result  # type: ignore[assignment]
-    context.final_ranker_selected_count = metrics.final_ranker_selected_count  # type: ignore[attr-defined]
-    context.final_ranker_latency_ms = metrics.final_ranker_latency_ms  # type: ignore[attr-defined]
-    context.final_ranker_mmr_applied = metrics.final_ranker_mmr_applied  # type: ignore[attr-defined]
-    context.mmr_rank_shift_count = metrics.mmr_rank_shift_count  # type: ignore[attr-defined]
-    context.final_ranker_feature_match_missing_count = (  # type: ignore[attr-defined]
+    context.final_ranker_selected_count = metrics.final_ranker_selected_count
+    context.final_ranker_latency_ms = metrics.final_ranker_latency_ms
+    context.final_ranker_mmr_applied = metrics.final_ranker_mmr_applied
+    context.mmr_rank_shift_count = metrics.mmr_rank_shift_count
+    context.final_ranker_feature_match_missing_count = (
         metrics.final_ranker_feature_match_missing_count
     )
-    context.top_k_clipped = metrics.top_k_clipped  # type: ignore[attr-defined]
+    context.top_k_clipped = metrics.top_k_clipped
 
 
 def build_default_final_ranker() -> FinalRanker:

@@ -84,7 +84,7 @@ class FinalScoreCalculator:
         if context.run_id is None:
             raise FinalScoreCalculatorError("run_id is required on execution_context")
 
-        risk_penalty_result = getattr(context, "risk_penalty_result", None)
+        risk_penalty_result = context.risk_penalty_result
         if risk_penalty_result is None:
             raise FinalScoreCalculatorError(
                 "risk_penalty_result is required on execution_context",
@@ -96,7 +96,7 @@ class FinalScoreCalculator:
                 "context_score_result is required on execution_context",
             )
 
-        popularity_score_result = getattr(context, "popularity_score_result", None)
+        popularity_score_result = context.popularity_score_result
         if popularity_score_result is None:
             raise FinalScoreCalculatorError(
                 "popularity_score_result is required on execution_context",
@@ -132,17 +132,15 @@ def _attach_outputs(
     result: FinalScoreResult,
     metrics: FinalScoreCalculatorRunMetrics,
 ) -> None:
-    context.final_score_result = result  # type: ignore[attr-defined]
-    context.final_score_calculator_candidate_count = (  # type: ignore[attr-defined]
+    context.final_score_result = result
+    context.final_score_calculator_candidate_count = (
         metrics.final_score_calculator_candidate_count
     )
-    context.final_score_calculator_latency_ms = (  # type: ignore[attr-defined]
-        metrics.final_score_calculator_latency_ms
-    )
-    context.final_score_excluded_candidate_count = (  # type: ignore[attr-defined]
+    context.final_score_calculator_latency_ms = metrics.final_score_calculator_latency_ms
+    context.final_score_excluded_candidate_count = (
         metrics.final_score_excluded_candidate_count
     )
-    context.final_score_value_out_of_range_count = (  # type: ignore[attr-defined]
+    context.final_score_value_out_of_range_count = (
         metrics.final_score_value_out_of_range_count
     )
 
