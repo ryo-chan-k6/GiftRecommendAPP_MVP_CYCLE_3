@@ -72,8 +72,10 @@ from reco.application.meaning_match_aggregator.models import (  # noqa: E402
 )
 from reco.application.popularity_scorer.models import PopularityScoreEntry, PopularityScoreResult  # noqa: E402
 from reco.application.recommendation_result_builder import (  # noqa: E402
+    BuiltRecommendationResult,
     InMemoryRecommendationResultRepository,
     RecommendationResultBuilder,
+    RecommendationResultBuilderRunMetrics,
     build_default_recommendation_result_builder,
 )
 from reco.application.risk_scorer.models import RiskPenaltyEntry, RiskPenaltyResult  # noqa: E402
@@ -178,6 +180,7 @@ def _risk_entry(item_id: str = "item-001") -> RiskPenaltyEntry:
 def _sample_context(
     *,
     run_id: str = DEFAULT_RUN_ID,
+    trace_id: str = "trace-result-builder",
     ranked_items: RankedItems | None = None,
     context_score_result: ContextScoreResult | None = None,
     meaning_match_result: MeaningMatchResult | None = None,
@@ -207,7 +210,7 @@ def _sample_context(
     )
     context = ExecutionContext(
         recommendation_request=request,
-        trace_id="trace-result-builder",
+        trace_id=trace_id,
         execution_mode=ExecutionMode.UI,
         config_versions=config_versions or _default_config_versions(),
         recommendation_run=RecommendationRun(
@@ -252,3 +255,11 @@ def build_result_builder(
         result_repository=repository or InMemoryRecommendationResultRepository(),
         logger=logger or ScaffoldRecoLogger(),
     )
+
+
+def run_build_from_context(
+    context: ExecutionContext,
+) -> tuple[BuiltRecommendationResult, RecommendationResultBuilderRunMetrics]:
+    from reco.application.recommendation_result_builder import build_recommendation_result
+
+    return build_recommendation_result(context)
