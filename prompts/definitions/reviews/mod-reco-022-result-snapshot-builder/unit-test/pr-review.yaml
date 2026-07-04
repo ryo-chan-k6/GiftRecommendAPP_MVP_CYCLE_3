@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 990
   issue:
-    number: null
+    number: 989
   task_definition: "prompts/definitions/tasks/mod-reco-022-result-snapshot-builder/unit-test.yaml"
-  source_branch: null
+  source_branch: "test/task-989-mod-reco-022-result-snapshot-builder-unit-test"
   target_branch: "feature/epic-984-mod-reco-022-result-snapshot-builder"
   parent_epic_issue: 984
   parent_epic_branch: "feature/epic-984-mod-reco-022-result-snapshot-builder"
@@ -42,6 +42,12 @@ review_scope:
 input:
   task_definition:
     path: "prompts/definitions/tasks/mod-reco-022-result-snapshot-builder/unit-test.yaml"
+    required: true
+  issue:
+    number: 989
+    required: true
+  pr:
+    number: 990
     required: true
 
 review_points:

@@ -1,4 +1,4 @@
-"""Test bootstrap and shared fixtures for MOD-RECO-022 smoke tests."""
+"""Test bootstrap and shared fixtures for MOD-RECO-022 unit tests."""
 
 from __future__ import annotations
 
@@ -42,6 +42,7 @@ from reco.application.result_snapshot_builder import (  # noqa: E402
     InMemoryRecommendationResultItemRepository,
     ResultSnapshotBuilder,
     SnapshotBuilderInputItem,
+    SnapshotBuilderRunMetrics,
     build_default_result_snapshot_builder,
     encode_builder_items,
 )
@@ -75,6 +76,8 @@ def _sample_builder_item(
 def _sample_context(
     *,
     items: tuple[SnapshotBuilderInputItem, ...] | None = None,
+    run_id: str = DEFAULT_RUN_ID,
+    trace_id: str = "trace-snapshot-builder",
 ) -> ExecutionContext:
     builder_items = items or (_sample_builder_item(),)
     version_info = {
@@ -84,10 +87,10 @@ def _sample_context(
     }
     context = ExecutionContext(
         recommendation_request=RecommendationRequest(request_id="req-001"),
-        trace_id="trace-snapshot-builder",
+        trace_id=trace_id,
         execution_mode=ExecutionMode.UI,
         recommendation_run=RecommendationRun(
-            run_id=DEFAULT_RUN_ID,
+            run_id=run_id,
             request_id="req-001",
             status=RunStatus.RUNNING,
         ),
@@ -114,26 +117,62 @@ def build_snapshot_builder(
     *,
     item_reader: InMemoryItemSnapshotReadRepository | None = None,
     item_repository: InMemoryRecommendationResultItemRepository | None = None,
+    logger: ScaffoldRecoLogger | None = None,
 ) -> ResultSnapshotBuilder:
     return ResultSnapshotBuilder(
         item_reader=item_reader or _default_item_reader(),
         item_repository=item_repository or InMemoryRecommendationResultItemRepository(),
-        logger=ScaffoldRecoLogger(),
+        logger=logger or ScaffoldRecoLogger(),
     )
+
+
+def _default_item_source(
+    *,
+    item_id: str = DEFAULT_ITEM_ID,
+    item_name: str = "実用的ギフト",
+    price: int = 5000,
+    item_url: str = "https://example.com/items/item-001",
+    catchcopy: str | None = "毎日使える定番ギフト",
+    shop_code: str | None = "shop-001",
+    primary_image_url: str | None = "https://example.com/images/item-001.jpg",
+    review_summary: ItemReviewSummary | None = ItemReviewSummary(
+        review_average=4.0,
+        review_count=120,
+    ),
+) -> InMemoryItemSnapshotSource:
+    return InMemoryItemSnapshotSource(
+        item_id=item_id,
+        item_name=item_name,
+        price=price,
+        item_url=item_url,
+        catchcopy=catchcopy,
+        shop_code=shop_code,
+        primary_image_url=primary_image_url,
+        review_summary=review_summary,
+    )
+
+
+def _item_reader_with_sources(
+    *sources: InMemoryItemSnapshotSource,
+) -> InMemoryItemSnapshotReadRepository:
+    repo = InMemoryItemSnapshotReadRepository()
+    for source in sources:
+        repo.register_item(source)
+    return repo
 
 
 def _default_item_reader() -> InMemoryItemSnapshotReadRepository:
-    repo = InMemoryItemSnapshotReadRepository()
-    repo.register_item(
-        InMemoryItemSnapshotSource(
-            item_id=DEFAULT_ITEM_ID,
-            item_name="実用的ギフト",
-            price=5000,
-            item_url="https://example.com/items/item-001",
-            catchcopy="毎日使える定番ギフト",
-            shop_code="shop-001",
-            primary_image_url="https://example.com/images/item-001.jpg",
-            review_summary=ItemReviewSummary(review_average=4.0, review_count=120),
-        ),
+    return _item_reader_with_sources(_default_item_source())
+
+
+def run_build_snapshots_from_context(
+    context: ExecutionContext,
+    *,
+    item_reader: InMemoryItemSnapshotReadRepository | None = None,
+    item_repository: InMemoryRecommendationResultItemRepository | None = None,
+) -> tuple[tuple[SnapshotBuilderInputItem, ...], SnapshotBuilderRunMetrics]:
+    builder = build_snapshot_builder(
+        item_reader=item_reader,
+        item_repository=item_repository,
     )
-    return repo
+    return builder.build_snapshots(context)
