@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 983
   issue:
     number: 976
   task_definition: "prompts/definitions/epics/mod-reco-021-recommendation-result-builder/epic.yaml"
