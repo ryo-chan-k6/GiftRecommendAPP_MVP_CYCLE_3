@@ -125,8 +125,7 @@ def ports_with_ranking_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
 
 
 def _patch_downstream_stubs_for_real_ranking(ports: OrchestratorPorts) -> OrchestratorPorts:
-    """Ranking 本実装配線後、021/022 Stub の ranked_items list append を回避する。"""
-    from reco.application.final_ranker.models import RankedItems
+    """Ranking 本実装配線後、021 が RankedItems から recommendation_result を組み立てる。"""
     from reco.domain import RecommendationResult, RecommendationResultItem, ResultStatus
 
     snapshot_builder = ports.snapshot_builder
@@ -146,7 +145,7 @@ def _patch_downstream_stubs_for_real_ranking(ports: OrchestratorPorts) -> Orches
 
         run_id = context.run_id or "run-scaffold"
         ranked_items = context.ranked_items
-        if isinstance(ranked_items, RankedItems) and ranked_items.entries:
+        if ranked_items is not None and ranked_items.entries:
             items = tuple(
                 RecommendationResultItem(
                     item_id=entry.item_id,
@@ -384,32 +383,22 @@ def assert_matching_execution_context_populated(
 def assert_ranking_execution_context_populated(
     context: ExecutionContext,
 ) -> None:
-    """Default composition 後に Ranking フェーズの副作用を検証する（型付き化前は getattr）。"""
-    popularity_score_result = getattr(context, "popularity_score_result", None)
-    risk_penalty_result = getattr(context, "risk_penalty_result", None)
-    final_score_result = getattr(context, "final_score_result", None)
+    """Default composition 後に Ranking フェーズの副作用を型付きフィールドで検証する。"""
+    popularity_score_result = context.popularity_score_result
+    risk_penalty_result = context.risk_penalty_result
+    final_score_result = context.final_score_result
     ranked_items = context.ranked_items
 
-    popularity_scorer_candidate_count = getattr(
-        context,
-        "popularity_scorer_candidate_count",
-        None,
+    popularity_scorer_candidate_count = context.popularity_scorer_candidate_count
+    popularity_scorer_latency_ms = context.popularity_scorer_latency_ms
+    risk_scorer_candidate_count = context.risk_scorer_candidate_count
+    risk_scorer_latency_ms = context.risk_scorer_latency_ms
+    final_score_calculator_candidate_count = (
+        context.final_score_calculator_candidate_count
     )
-    popularity_scorer_latency_ms = getattr(context, "popularity_scorer_latency_ms", None)
-    risk_scorer_candidate_count = getattr(context, "risk_scorer_candidate_count", None)
-    risk_scorer_latency_ms = getattr(context, "risk_scorer_latency_ms", None)
-    final_score_calculator_candidate_count = getattr(
-        context,
-        "final_score_calculator_candidate_count",
-        None,
-    )
-    final_score_calculator_latency_ms = getattr(
-        context,
-        "final_score_calculator_latency_ms",
-        None,
-    )
-    final_ranker_selected_count = getattr(context, "final_ranker_selected_count", None)
-    final_ranker_latency_ms = getattr(context, "final_ranker_latency_ms", None)
+    final_score_calculator_latency_ms = context.final_score_calculator_latency_ms
+    final_ranker_selected_count = context.final_ranker_selected_count
+    final_ranker_latency_ms = context.final_ranker_latency_ms
 
     assert popularity_score_result is not None
     assert risk_penalty_result is not None

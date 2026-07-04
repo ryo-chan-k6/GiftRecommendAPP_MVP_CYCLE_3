@@ -22,12 +22,13 @@ def test_execute_assigns_rank_one_for_single_candidate() -> None:
 
     result_context = ranker.execute(context)
 
-    ranked_items = result_context.ranked_items  # type: ignore[assignment]
+    ranked_items = result_context.ranked_items
+    assert ranked_items is not None
     assert ranked_items.total_selected == 1
     assert ranked_items.entries[0].rank == 1
     assert ranked_items.entries[0].item_id == "item-001"
     assert ranked_items.mmr_applied is False
-    assert result_context.final_ranker_selected_count == 1  # type: ignore[attr-defined]
+    assert result_context.final_ranker_selected_count == 1
     assert "MOD-RECO-020" in result_context.completed_modules
 
 
@@ -39,10 +40,11 @@ def test_execute_with_empty_final_score_entries_succeeds() -> None:
 
     result_context = ranker.execute(context)
 
-    ranked_items = result_context.ranked_items  # type: ignore[assignment]
+    ranked_items = result_context.ranked_items
+    assert ranked_items is not None
     assert ranked_items.total_selected == 0
     assert ranked_items.entries == ()
-    assert result_context.final_ranker_selected_count == 0  # type: ignore[attr-defined]
+    assert result_context.final_ranker_selected_count == 0
 
 
 def test_execute_limits_output_to_top_k() -> None:
@@ -62,7 +64,8 @@ def test_execute_limits_output_to_top_k() -> None:
 
     result_context = ranker.execute(context)
 
-    ranked_items = result_context.ranked_items  # type: ignore[assignment]
+    ranked_items = result_context.ranked_items
+    assert ranked_items is not None
     assert ranked_items.total_selected == 3
     assert ranked_items.top_k_used == 3
     assert [entry.rank for entry in ranked_items.entries] == [1, 2, 3]
@@ -93,7 +96,8 @@ def test_execute_applies_mmr_and_updates_diversity_breakdown() -> None:
 
     result_context = ranker.execute(context)
 
-    ranked_items = result_context.ranked_items  # type: ignore[assignment]
+    ranked_items = result_context.ranked_items
+    assert ranked_items is not None
     assert ranked_items.mmr_applied is True
     assert ranked_items.entries[0].item_id == "item-a"
     assert ranked_items.entries[1].item_id == "item-c"
@@ -101,7 +105,7 @@ def test_execute_applies_mmr_and_updates_diversity_breakdown() -> None:
     assert isinstance(diversity, dict)
     assert diversity["method"] == "mmr"
     assert diversity["lambda_mmr"] == pytest.approx(0.75)
-    assert result_context.final_ranker_mmr_applied is True  # type: ignore[attr-defined]
+    assert result_context.final_ranker_mmr_applied is True
 
 
 def test_execute_clips_top_k_and_continues() -> None:
@@ -110,9 +114,10 @@ def test_execute_clips_top_k_and_continues() -> None:
 
     result_context = ranker.execute(context)
 
-    ranked_items = result_context.ranked_items  # type: ignore[assignment]
+    ranked_items = result_context.ranked_items
+    assert ranked_items is not None
     assert ranked_items.top_k_used == 1
-    assert result_context.top_k_clipped is True  # type: ignore[attr-defined]
+    assert result_context.top_k_clipped is True
 
 
 def test_execute_does_not_mutate_input_results() -> None:

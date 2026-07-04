@@ -123,7 +123,7 @@ def _attach_outputs(
     result: RankedItems,
     metrics: FinalRankerRunMetrics,
 ) -> None:
-    context.ranked_items = result  # type: ignore[assignment]
+    context.ranked_items = result
     context.final_ranker_selected_count = metrics.final_ranker_selected_count
     context.final_ranker_latency_ms = metrics.final_ranker_latency_ms
     context.final_ranker_mmr_applied = metrics.final_ranker_mmr_applied

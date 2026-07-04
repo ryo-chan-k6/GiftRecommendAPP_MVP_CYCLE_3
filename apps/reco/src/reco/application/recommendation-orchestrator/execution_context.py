@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     )
     from reco.application.context_scorer.models import ContextScoreResult
     from reco.application.feature_matcher.models import FeatureMatchResult
+    from reco.application.final_ranker.models import RankedItems
     from reco.application.final_score_calculator.models import FinalScoreResult
     from reco.application.popularity_scorer.models import PopularityScoreResult
     from reco.application.risk_scorer.models import RiskPenaltyResult
@@ -53,7 +54,7 @@ class ExecutionContext:
 
     recommendation_run: RecommendationRun | None = None
     config_versions: dict[str, str] = field(default_factory=dict)
-    ranked_items: list[dict[str, object]] = field(default_factory=list)
+    ranked_items: RankedItems | None = None
     recommendation_result: RecommendationResult | None = None
     semantic_extraction_result: SemanticExtractionResult | None = None
     external_feature_estimate: ExternalFeatureEstimate | None = None
