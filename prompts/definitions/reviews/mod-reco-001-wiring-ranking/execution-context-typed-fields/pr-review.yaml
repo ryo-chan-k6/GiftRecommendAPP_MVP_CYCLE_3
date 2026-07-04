@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-ranking-execution-context-typed-fields-pr"
+  title: "MOD-RECO-001 Ranking ExecutionContext型付き化 PRレビュー"
+  summary: "Ranking フェーズ ExecutionContext 型付きフィールド拡張 Task の PR を AI Review する（develop 直 PR）"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 972
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-ranking/execution-context-typed-fields.yaml"
+  source_branch: "chore/task-972-mod-reco-001-wiring-ranking-execution-context-typed-fields"
+  target_branch: "develop"
+  parent_epic_issue: 791
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-ranking/execution-context-typed-fields.yaml"
+    required: true
+
+review_points:
+  - "ExecutionContext フィールド名・型が MOD-RECO-017 / 018 / 019 / 020 仕様と整合しているか"
+  - "develop 直 PR 例外が PR 本文で説明されているか（Related to #260 / #791）"
+  - "stubs.py / test_recommendation_orchestrator.py への不要な変更がないか"
+  - "`getattr` / `# type: ignore[attr-defined]` の置換漏れがないか"
+  - "pytest tests/unit/ 実行結果が PR 本文に記載されているか"
+  - "Epic #791 develop merge 後の作業であることが PR 本文で説明されているか"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / source_branch / target.pr を更新する"
