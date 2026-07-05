@@ -9,12 +9,6 @@ from pathlib import Path
 from uuid import uuid4
 
 from reco.domain.recommendation.inputs import ExecutionMode
-from reco.domain.recommendation.result import (
-    ReasonStatus,
-    RecommendationResult,
-    RecommendationResultItem,
-    ResultStatus,
-)
 
 
 def _ensure_application_package(import_root: str, package_dir: str) -> None:
@@ -162,6 +156,27 @@ def _ensure_final_ranker_package() -> None:
     )
 
 
+def _ensure_recommendation_result_builder_package() -> None:
+    _ensure_application_package(
+        "reco.application.recommendation_result_builder",
+        "recommendation-result-builder",
+    )
+
+
+def _ensure_result_snapshot_builder_package() -> None:
+    _ensure_application_package(
+        "reco.application.result_snapshot_builder",
+        "result-snapshot-builder",
+    )
+
+
+def _ensure_reason_generator_package() -> None:
+    _ensure_application_package(
+        "reco.application.reason_generator",
+        "reason-generator",
+    )
+
+
 _ensure_run_recorder_package()
 _ensure_config_version_resolver_package()
 _ensure_user_semantic_extractor_package()
@@ -180,6 +195,9 @@ _ensure_popularity_scorer_package()
 _ensure_risk_scorer_package()
 _ensure_final_score_calculator_package()
 _ensure_final_ranker_package()
+_ensure_recommendation_result_builder_package()
+_ensure_result_snapshot_builder_package()
+_ensure_reason_generator_package()
 
 from reco.application.candidate_retriever import build_default_candidate_retriever  # noqa: E402
 from reco.application.config_version_resolver import build_default_config_resolver  # noqa: E402
@@ -209,7 +227,14 @@ from reco.application.internal_condition_feature_estimator import (  # noqa: E40
 from reco.application.query_embedding_generator import (  # noqa: E402
     build_default_query_embedding_generator,
 )
+from reco.application.reason_generator import build_default_reason_generator  # noqa: E402
+from reco.application.recommendation_result_builder import (  # noqa: E402
+    build_default_recommendation_result_builder,
+)
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder  # noqa: E402
+from reco.application.result_snapshot_builder import (  # noqa: E402
+    build_default_result_snapshot_builder,
+)
 from reco.application.user_context_builder import build_default_user_context_builder  # noqa: E402
 from reco.application.user_feature_generator import (  # noqa: E402
     build_default_user_feature_generator,
@@ -369,15 +394,6 @@ class StubMetricLogger:
 def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     """Create MVP stub ports with deterministic scaffold behavior."""
 
-    result_builder = StubPipelineModule(
-        module_id="MOD-RECO-021",
-        phase_name="response_built",
-    )
-    snapshot_builder = StubPipelineModule(
-        module_id="MOD-RECO-022",
-        phase_name="snapshot_built",
-    )
-
     phase_log_writer = StubPhaseLogWriter()
     error_handler = StubErrorHandler()
     metric_logger = StubMetricLogger()
@@ -403,16 +419,13 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
         risk_scorer=build_default_risk_scorer(),
         final_score_calculator=build_default_final_score_calculator(),
         final_ranker=build_default_final_ranker(),
-        result_builder=result_builder,
-        snapshot_builder=snapshot_builder,
-        reason_generator=StubReasonGenerator(),
+        result_builder=build_default_recommendation_result_builder(),
+        snapshot_builder=build_default_result_snapshot_builder(),
+        reason_generator=build_default_reason_generator(),
         error_handler=error_handler,
         phase_log_writer=phase_log_writer,
         metric_logger=metric_logger,
     )
-
-    # Post-process hooks wired into result_builder via monkey-patch style closure
-    _attach_result_builder_hook(result_builder, ports)
 
     helpers = {
         "phase_log_writer": phase_log_writer,
@@ -420,39 +433,6 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
         "metric_logger": metric_logger,
     }
     return ports, helpers
-
-
-def _attach_result_builder_hook(
-    result_builder: StubPipelineModule,
-    ports: OrchestratorPorts,
-) -> None:
-    original_execute = result_builder.execute
-
-    def execute(context: ExecutionContext) -> ExecutionContext:
-        updated = original_execute(context)
-        if updated.recommendation_result is not None:
-            return updated
-
-        run_id = updated.run_id or "run-scaffold"
-        updated.recommendation_result = RecommendationResult(
-            run_id=run_id,
-            request_id=updated.recommendation_request.request_id,
-            items=(
-                RecommendationResultItem(
-                    item_id="item-scaffold-1",
-                    rank=1,
-                    final_score=0.75,
-                    reason_summary=None,
-                    reason_status=None,
-                    is_fallback=False,
-                ),
-            ),
-            result_status=ResultStatus.COMPLETED,
-            version_info=dict(updated.config_versions),
-        )
-        return updated
-
-    result_builder.execute = execute  # type: ignore[method-assign]
 
 
 def resolve_execution_mode(

@@ -22,16 +22,19 @@ from reco.application.recommendation_orchestrator.stubs import (
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
 from recommendation_orchestrator_helpers import (
     _MATCHING_MODULE_IDS,
+    _OUTPUT_MODULE_IDS,
     _RANKING_MODULE_IDS,
     _RETRIEVAL_MODULE_IDS,
     _USER_MEANING_MODULE_IDS,
     assert_matching_execution_context_populated,
+    assert_output_execution_context_populated,
     assert_ranking_execution_context_populated,
     assert_retrieval_execution_context_populated,
     assert_user_meaning_execution_context_populated,
     build_wired_default_composition_ports,
     build_wired_ports_with_zero_matching_candidates,
     ports_with_matching_stubs,
+    ports_with_output_stubs,
     ports_with_ranking_stubs,
     ports_with_retrieval_stubs,
     ports_with_user_meaning_stubs,
@@ -122,6 +125,17 @@ def test_default_stub_ports_wires_ranking_modules() -> None:
     assert isinstance(ports.risk_scorer, RiskScorer)
     assert isinstance(ports.final_score_calculator, FinalScoreCalculator)
     assert isinstance(ports.final_ranker, FinalRanker)
+
+
+def test_default_stub_ports_wires_output_modules() -> None:
+    from reco.application.reason_generator import ReasonGenerator
+    from reco.application.recommendation_result_builder import RecommendationResultBuilder
+    from reco.application.result_snapshot_builder import ResultSnapshotBuilder
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.result_builder, RecommendationResultBuilder)
+    assert isinstance(ports.snapshot_builder, ResultSnapshotBuilder)
+    assert isinstance(ports.reason_generator, ReasonGenerator)
 
 
 def test_default_stub_ports_wires_user_meaning_modules() -> None:
@@ -266,6 +280,36 @@ def test_default_composition_populates_ranking_execution_context() -> None:
     assert_ranking_execution_context_populated(ctx)
 
 
+def test_default_composition_completes_output_phase_modules() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-output-phase",
+    )
+
+    assert outcome.success is True
+    assert outcome.execution_context is not None
+    completed = outcome.execution_context.completed_modules
+    for module_id in _OUTPUT_MODULE_IDS:
+        assert module_id in completed
+    assert completed.index("MOD-RECO-020") < completed.index("MOD-RECO-021")
+    assert completed.index("MOD-RECO-021") < completed.index("MOD-RECO-022")
+    assert completed.index("MOD-RECO-022") < completed.index("MOD-RECO-023")
+
+
+def test_default_composition_populates_output_execution_context() -> None:
+    ports, _ = _wired_ports()
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-output-context",
+    )
+
+    assert outcome.success is True
+    ctx = outcome.execution_context
+    assert ctx is not None
+    assert_output_execution_context_populated(ctx)
+
+
 # §14 No.2 正常系（evaluation / batch mode）— Stub が execution_mode を echo する挙動
 @pytest.mark.parametrize("mode", [ExecutionMode.EVALUATION, ExecutionMode.BATCH])
 def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> None:
@@ -274,6 +318,7 @@ def test_execution_mode_is_passed_to_config_resolver(mode: ExecutionMode) -> Non
     ports = ports_with_retrieval_stubs(ports)
     ports = ports_with_matching_stubs(ports)
     ports = ports_with_ranking_stubs(ports)
+    ports = ports_with_output_stubs(ports)
     ports = _ports_with(ports, config_resolver=StubConfigResolver())
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(mode=mode),
@@ -396,6 +441,14 @@ def test_zero_candidates_completes_with_empty_result() -> None:
         return context
 
     ports.result_builder.execute = build_empty_result  # type: ignore[method-assign]
+
+    snapshot_builder = ports.snapshot_builder
+
+    def snapshot_execute(context):
+        context.completed_modules.append(snapshot_builder.module_id)
+        return context
+
+    ports.snapshot_builder.execute = snapshot_execute  # type: ignore[method-assign]
 
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(),
@@ -578,6 +631,7 @@ def test_orchestrator_with_user_meaning_stubs_still_completes_pipeline() -> None
     ports = ports_with_retrieval_stubs(ports)
     ports = ports_with_matching_stubs(ports)
     ports = ports_with_ranking_stubs(ports)
+    ports = ports_with_output_stubs(ports)
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(),
         trace_id="trace-stub-user-meaning",
