@@ -506,7 +506,7 @@ def assert_ranking_execution_context_populated(
 def assert_output_execution_context_populated(
     context: ExecutionContext,
 ) -> None:
-    """Default composition 後に Output フェーズの副作用を検証する。"""
+    """Default composition 後に Output フェーズの副作用を型付きフィールドで検証する。"""
     recommendation_result = context.recommendation_result
     assert recommendation_result is not None
     assert recommendation_result.item_count > 0
@@ -514,9 +514,51 @@ def assert_output_execution_context_populated(
 
     version_info = recommendation_result.version_info or {}
     assert version_info.get("recommendation_result_id")
-    assert version_info.get("snapshot_builder_items_persisted") == "true"
-    assert version_info.get("snapshot_builder_item_count")
-    assert version_info.get("reason_generator_item_count")
+
+    result_builder_item_count = context.result_builder_item_count
+    result_builder_latency_ms = context.result_builder_latency_ms
+    result_builder_header_persisted = context.result_builder_header_persisted
+    snapshot_builder_item_count = context.snapshot_builder_item_count
+    snapshot_builder_latency_ms = context.snapshot_builder_latency_ms
+    snapshot_builder_items_persisted = context.snapshot_builder_items_persisted
+    reason_generator_item_count = context.reason_generator_item_count
+    reason_generator_success_count = context.reason_generator_success_count
+    reason_generator_fallback_count = context.reason_generator_fallback_count
+    reason_generator_persisted = context.reason_generator_persisted
+    reason_generation_latency_ms = context.reason_generation_latency_ms
+
+    assert result_builder_item_count is not None
+    assert result_builder_latency_ms is not None
+    assert result_builder_header_persisted is not None
+    assert snapshot_builder_item_count is not None
+    assert snapshot_builder_latency_ms is not None
+    assert snapshot_builder_items_persisted is not None
+    assert reason_generator_item_count is not None
+    assert reason_generator_success_count is not None
+    assert reason_generator_fallback_count is not None
+    assert reason_generator_persisted is not None
+    assert reason_generation_latency_ms is not None
+
+    assert result_builder_header_persisted is True
+    assert snapshot_builder_items_persisted is True
+    assert reason_generator_persisted is True
+
+    assert result_builder_item_count == recommendation_result.item_count
+    assert snapshot_builder_item_count == recommendation_result.item_count
+    assert reason_generator_item_count == recommendation_result.item_count
+    assert (
+        reason_generator_success_count + reason_generator_fallback_count
+        == reason_generator_item_count
+    )
+
+    # default in-memory catalog（active 2 件）経路の期待値
+    assert result_builder_item_count == 2
+    assert snapshot_builder_item_count == 2
+    assert reason_generator_item_count == 2
+
+    assert result_builder_latency_ms >= 0
+    assert snapshot_builder_latency_ms >= 0
+    assert reason_generation_latency_ms >= 0
 
     first_item = recommendation_result.items[0]
     assert first_item.reason_summary is not None
