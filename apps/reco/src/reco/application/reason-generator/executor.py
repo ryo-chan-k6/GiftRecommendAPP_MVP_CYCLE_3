@@ -174,6 +174,11 @@ def _attach_outputs(
         items=tuple(updated_items),
         version_info=version_info,
     )
+    context.reason_generator_item_count = metrics.reason_generator_item_count
+    context.reason_generator_success_count = metrics.reason_generator_success_count
+    context.reason_generator_fallback_count = metrics.reason_generator_fallback_count
+    context.reason_generator_persisted = metrics.reason_generator_persisted
+    context.reason_generation_latency_ms = metrics.reason_generation_latency_ms
 
 
 def build_default_reason_generator() -> ReasonGenerator:

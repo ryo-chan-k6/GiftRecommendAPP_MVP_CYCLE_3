@@ -36,8 +36,8 @@ class RecommendationResultBuilder:
     phase_name: str = PHASE_NAME
 
     def execute(self, context: ExecutionContext) -> ExecutionContext:
-        built, _metrics = self.build_result(context)
-        _attach_outputs(context, built)
+        built, metrics = self.build_result(context)
+        _attach_outputs(context, built, metrics)
         context.completed_modules.append(self.module_id)
         return context
 
@@ -94,8 +94,14 @@ class RecommendationResultBuilder:
 def _attach_outputs(
     context: ExecutionContext,
     built: BuiltRecommendationResult,
+    metrics: RecommendationResultBuilderRunMetrics,
 ) -> None:
     context.recommendation_result = to_domain_recommendation_result(built)
+    context.result_builder_item_count = metrics.result_builder_item_count
+    context.result_builder_latency_ms = metrics.result_builder_latency_ms
+    context.result_builder_header_persisted = metrics.result_builder_header_persisted
+    context.zero_result_header_count = metrics.zero_result_header_count
+    context.score_breakdown_partial_count = metrics.score_breakdown_partial_count
 
 
 def build_default_recommendation_result_builder() -> RecommendationResultBuilder:
