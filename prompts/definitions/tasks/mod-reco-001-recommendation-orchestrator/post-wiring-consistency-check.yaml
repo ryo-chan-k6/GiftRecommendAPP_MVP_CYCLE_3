@@ -1,0 +1,349 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-post-wiring-consistency-check"
+  title: "MOD-RECO-001:フェーズWiring完了後 整合チェック"
+  summary: "User Meaning / Retrieval / Matching / Ranking / 出力 のフェーズ Wiring および follow-up（ExecutionContext 型付き化 / integration 再テスト）完了後、MOD-RECO-001 の配線状態・§14 テスト観点・docs 正本を横断確認し、段階3（Composition）および 024/028/029 着手前のギャップを可視化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（Recommendation Orchestrator）"
+    - number: 788
+      purpose: "User Meaning Wiring Epic（develop merge 済み前提）"
+    - number: 789
+      purpose: "Retrieval Wiring Epic"
+    - number: 790
+      purpose: "Matching Wiring Epic"
+    - number: 791
+      purpose: "Ranking Wiring Epic"
+    - number: 792
+      purpose: "出力 Wiring Epic"
+    - number: 1008
+      purpose: "出力 integration-retest（playbook 順序4 最終）"
+  related_prs:
+    - number: 1004
+      purpose: "Epic #792 develop merge"
+    - number: 1008
+      purpose: "出力 integration-retest develop merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "support-ai"
+  support:
+    - "test-ai"
+    - "worker-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  MOD-RECO-001 §8.4 段階2（フェーズ Wiring）および各フェーズ follow-up（playbook 順序 3〜4）が develop に統合された。
+  段階3（Composition 完成）および MOD-RECO-024〜029 着手前に、Orchestrator 全体の配線状態・テストカバレッジ・docs 正本の整合を確認し、
+  後続 Task 起票判断の材料（ギャップ表・推奨順序）を PR で残す。
+  本 Task は **監査・docs 更新・Stub で足りる unit ギャップの最小補完** に限定し、本格 integration / E2E / 024〜029 実装は行わない。
+
+objective: |
+  develop 上の `build_default_stub_ports()` 配線状態、ExecutionContext 型付きフィールド、
+  `test_recommendation_orchestrator.py` と MOD-RECO-001 §14 の対応、docs 正本（§8.4.2 等）を横断確認する。
+  ギャップ表と後続 Task 推奨順序（024/028/029 → Composition → 025 / 026/027）を PR 本文に整理する。
+  配線状態が古い docs を最小限更新する。
+
+scope:
+  - "配線状態監査（002〜023 本実装 / 024〜029 Stub 状態の一覧化）"
+  - "MOD-RECO-001 §14 テスト観点 vs 既存 pytest のカバレッジギャップ表（unit / integration 区分）"
+  - "ExecutionContext 型付きフィールドと各フェーズ executor `_attach_outputs` の整合確認（読み取りのみ。変更はギャップ報告）"
+  - "docs 正本更新: MOD-RECO-001 §8.4.2 フェーズ Wiring 状態表（未配線 → 配線済みへの反映）"
+  - "Stub で再現可能な §14 unit ギャップが判明した場合のみ、最小限の pytest 追加（要 PR 説明・Human Review）"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/post-wiring-consistency-check/pr-review.yaml`）"
+
+out_of_scope:
+  - "integration test / E2E（§14 No.10, 11, 14）の新規実装"
+  - "段階3 Composition 完成（本番 DI / DB Repository 配線）"
+  - "MOD-RECO-024〜029 のモジュール仕様書・実装・単体テスト"
+  - "`stubs.py` への 024/028/029 本実装配線"
+  - "`execution_context.py` のフィールド追加"
+  - "OpenAPI / Orval / generated / DB schema 変更"
+  - "API-INT-002 エンドポイント層"
+  - "後続 Epic / Task の自動起票（推奨案の記載のみ。Issue 作成は Human 判断）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§8.4 配線方針・§14 テスト観点・更新対象（§8.4.2）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "§5.2 処理順序・024〜029 位置づけ"
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: false
+      purpose: "integration 観点の後続 Task 参照"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "build_default_stub_ports 配線状態の正本"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      required: true
+      purpose: "型付きフィールド整合（読み取り）"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+      purpose: "処理順・委譲（読み取り）"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "§14 カバレッジ対照"
+    - path: "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+      required: true
+      purpose: "フェーズ別 assert helper 対照"
+    - path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"
+      required: true
+      purpose: "段階2 完了定義・段階3 境界"
+  issues:
+    - number: 260
+      purpose: "親 Epic"
+    - number: 788
+      purpose: "User Meaning Wiring Epic"
+    - number: 789
+      purpose: "Retrieval Wiring Epic"
+    - number: 790
+      purpose: "Matching Wiring Epic"
+    - number: 791
+      purpose: "Ranking Wiring Epic"
+    - number: 792
+      purpose: "出力 Wiring Epic"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "§8.4.2 配線状態表・必要に応じ §15 変更履歴"
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: false
+      purpose: "Stub で足りる unit ギャップのみ最小追加"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "配線状態一覧（002〜029、本実装 / Stub / BT 間接参照）"
+  - "§14 テスト観点カバレッジギャップ表（No.1〜14、 covered / partial / not_covered / deferred_integration）"
+  - "ExecutionContext 型付きフィールド横断確認結果（フェーズ別）"
+  - "後続 Task 推奨順序（024/028/029 → Composition → 025 / 026・027）— PR 本文。Issue 起票は Human 判断"
+  - "MOD-RECO-001 §8.4.2 docs 更新"
+  - "pytest 実行結果（`tests/unit/` 成功ログ）"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "全フェーズ Wiring Epic（#788〜#792）および各 follow-up（typed-fields / integration-retest）が develop merge 済みである（作業開始前提）"
+  - "PR 本文に配線状態一覧と §14 ギャップ表が記載されている"
+  - "MOD-RECO-001 §8.4.2 が develop 上の配線状態と一致している"
+  - "integration 観点（§14 No.10, 11, 14）は本 Task で未実施であることを PR に明記している"
+  - "024〜029 実装・Composition は後続 Task 推奨として整理され、本 Task scope で着手していない"
+  - "`cd apps/reco && uv run pytest tests/unit/ -q` が成功する"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "chore/task-1009-mod-reco-001-post-wiring-consistency-check"
+  summary: "mod-reco-001-post-wiring-consistency-check"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-06"
+    due_date: "2026-07-10"
+
+issue:
+  number: 1009
+  unit: "task"
+  type: "chore"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 788
+      purpose: "User Meaning Wiring develop merge"
+    - number: 789
+      purpose: "Retrieval Wiring develop merge"
+    - number: 790
+      purpose: "Matching Wiring develop merge"
+    - number: 791
+      purpose: "Ranking Wiring develop merge"
+    - number: 792
+      purpose: "出力 Wiring develop merge"
+  issues:
+    - number: 792
+      purpose: "最終 Wiring Epic（出力）merge 確認"
+    - number: 1008
+      purpose: "出力 integration-retest merge 確認"
+  prs:
+    - number: 1008
+      purpose: "playbook 順序4 完了の目安"
+  tasks:
+    - "全フェーズ wiring-phase-follow-up playbook 順序 3〜4 が develop 取り込み済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-output-integration-retest"
+  blocks:
+    - "MOD-RECO-024/028/029 Epic 起票判断"
+    - "MOD-RECO-001 段階3 Composition Epic 起票判断"
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/"
+  commands:
+    - "cd apps/reco && uv sync --extra dev && uv run pytest tests/unit/ -q"
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  manual_checks:
+    - "stubs.py の 002〜023 が build_default_* を参照していること"
+    - "024/025/028/029 が Stub のままであること"
+    - "§8.4.2 更新が他 docs と矛盾しないこと"
+  not_required:
+    - "integration test（E2E）"
+    - "contract test"
+  skip_reason:
+    "integration test（E2E）": "段階3 Composition / 024〜029 実装後に別 Task"
+    "contract test": "OpenAPI 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "配線状態一覧が develop 実装と一致しているか"
+    - "§14 ギャップ表の unit / integration 区分が妥当か"
+    - "docs 更新が最小限で正本整合しているか"
+    - "本 Task scope 外（integration / 024〜029 実装）に着手していないか"
+    - "後続 Task 推奨順序が Human 判断材料として十分か"
+    - "develop 直 PR 例外理由が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "Wiring 完了後の横断整合チェック。ギャップは PR / 後続 Issue 化"
+
+risk_points:
+  - "§14 unit / integration 境界の解釈揺れ"
+  - "ギャップ表作成中に scope が integration 実装へ拡大しやすい"
+  - "docs 更新が MOD-RECO-001 以外へ波及しやすい"
+
+human_decision_points:
+  - "§14 unit ギャップを本 Task で pytest 追加するか、後続 unit-test Task に委譲するか"
+  - "後続 Epic 起票順序（024/028/029 vs Composition）の確定"
+  - "025（MVP △）を MVP 必須に含めるか"
+  - "026/027（BT）を Batch トラックで並行起票するか"
+
+stop_conditions:
+  - "いずれかの Wiring Epic または follow-up Task が develop に未 merge"
+  - "配線状態と docs の矛盾解消に execution_context.py / stubs.py 変更が必要になった（別 Task へ）"
+  - "integration テスト実装が必要と判断され scope を超える場合"
+
+notes:
+  - "推奨ロードマップ ①（整合チェック）。正本: 前回 Human 合意（024/028/029 → Composition → 025 / 026・027）"
+  - "workstream: mod-reco-001-post-wiring"
+  - "Related to #260 / #788〜#792 / playbook follow-up 各 Task"
+  - "PR 本文テンプレ: 配線表・§14 ギャップ表・後続推奨・docs 差分"
+
+audit_checklist:
+  wiring_status:
+    - module_range: "002-003"
+      expected: "本実装配線済み"
+    - module_range: "004-010"
+      expected: "本実装配線済み（User Meaning Wiring #788）"
+    - module_range: "012-013"
+      expected: "本実装配線済み（Retrieval #789）"
+    - module_range: "014-016"
+      expected: "本実装配線済み（Matching #790）"
+    - module_range: "017-020"
+      expected: "本実装配線済み（Ranking #791）"
+    - module_range: "021-023"
+      expected: "本実装配線済み（出力 #792）"
+    - module_range: "024"
+      expected: "StubErrorHandler（段階3 / 024 Epic 前）"
+    - module_range: "025"
+      expected: "StubMetricLogger（MVP △）"
+    - module_range: "028"
+      expected: "StubPhaseLogWriter"
+    - module_range: "029"
+      expected: "024 経由 Stub（Error Log 物理書き込み未実装）"
+    - module_range: "026-027"
+      expected: "OL 非呼び出し（BT 間接参照）"
+
+  section_14_matrix_columns:
+    - "no"
+    - "観点"
+    - "種別"
+    - "coverage_status"
+    - "existing_test_reference"
+    - "follow_up_task"
+
+  coverage_status_values:
+    - "covered"
+    - "partial"
+    - "not_covered_unit"
+    - "deferred_integration"
+
+  recommended_follow_up_order:
+    - order: 1
+      area: "MOD-RECO-024/028/029"
+      note: "OL ログ・エラー系 module 実装 → Wiring"
+    - order: 2
+      area: "段階3 Composition"
+      note: "本番 DI / DB / integration（§14 No.10, 11, 14）"
+    - order: 3
+      area: "MOD-RECO-025"
+      note: "MVP △。Human 判断で前倒し可"
+    - order: 4
+      area: "MOD-RECO-026/027"
+      note: "Batch トラック並行"
