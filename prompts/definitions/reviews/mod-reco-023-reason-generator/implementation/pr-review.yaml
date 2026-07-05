@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 996
   issue:
-    number: null
+    number: 995
   task_definition: "prompts/definitions/tasks/mod-reco-023-reason-generator/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-995-mod-reco-023-reason-generator-implementation"
   target_branch: "feature/epic-992-mod-reco-023-reason-generator"
   parent_epic_issue: 992
   parent_epic_branch: "feature/epic-992-mod-reco-023-reason-generator"
@@ -42,6 +42,12 @@ review_scope:
 input:
   task_definition:
     path: "prompts/definitions/tasks/mod-reco-023-reason-generator/implementation.yaml"
+    required: true
+  issue:
+    number: 995
+    required: true
+  pr:
+    number: 996
     required: true
 
 review_points:
