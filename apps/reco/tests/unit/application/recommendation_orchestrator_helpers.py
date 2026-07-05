@@ -1,15 +1,17 @@
 """Orchestrator 単体テスト向け Port 差し替え・配線ヘルパー。
 
-User Meaning / Retrieval / Matching / Ranking 配線後の ``build_default_stub_ports()`` は
-004〜010、012 / 013、014 / 015 / 016、017 / 018 / 019 / 020 を本実装とする。
+User Meaning / Retrieval / Matching / Ranking / Output 配線後の
+``build_default_stub_ports()`` は 004〜010、012 / 013、014 / 015 / 016、
+017 / 018 / 019 / 020、021 / 022 / 023 を本実装とする。
 デフォルト composition 経路では User Meaning 向けに in-memory Repository を
 共有接続する ``build_wired_default_composition_ports()`` を用いる。
-Retrieval / Matching / Ranking 本実装は ``build_default_stub_ports()`` 同梱の
-in-memory Repository を利用する。
+Retrieval / Matching / Ranking / Output 本実装は ``build_default_stub_ports()``
+同梱の in-memory Repository を利用する。
 
 Orchestrator 本体の挙動のみを切り出すテストでは、当該フェーズを Stub に戻す
 ``ports_with_user_meaning_stubs()`` / ``ports_with_retrieval_stubs()`` /
-``ports_with_matching_stubs()`` / ``ports_with_ranking_stubs()`` を利用する。
+``ports_with_matching_stubs()`` / ``ports_with_ranking_stubs()`` /
+``ports_with_output_stubs()`` を利用する。
 User Meaning を Stub に戻す場合は Retrieval 本実装が 010 出力を要求するため、
 同時に ``ports_with_retrieval_stubs()`` も適用する。
 Matching 本実装は Retrieval 出力を要求するため、Matching を Stub に戻す前段で
@@ -17,6 +19,8 @@ Retrieval も Stub 化するか、Matching 単体検証用に ``ports_with_match
 を併用する。
 Ranking 本実装は Matching 出力を要求するため、Ranking を Stub に戻す場合は
 ``ports_with_ranking_stubs()`` を併用する。
+Output 本実装は Ranking 出力を要求するため、上流を Stub 化したパイプライン検証では
+``ports_with_output_stubs()`` を併用する。
 """
 
 from __future__ import annotations
@@ -25,7 +29,10 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from reco.application.recommendation_orchestrator import OrchestratorPorts, build_default_stub_ports
-from reco.application.recommendation_orchestrator.stubs import StubPipelineModule
+from reco.application.recommendation_orchestrator.stubs import (
+    StubPipelineModule,
+    StubReasonGenerator,
+)
 
 if TYPE_CHECKING:
     from reco.application.recommendation_orchestrator.execution_context import (
@@ -79,6 +86,17 @@ _RANKING_MODULE_IDS: tuple[str, ...] = tuple(
     module_id for _, module_id, _ in _RANKING_STUB_PORTS
 )
 
+_OUTPUT_STUB_PORTS: tuple[tuple[str, str, str], ...] = (
+    ("result_builder", "MOD-RECO-021", "result_built"),
+    ("snapshot_builder", "MOD-RECO-022", "snapshot_built"),
+)
+
+_OUTPUT_MODULE_IDS: tuple[str, ...] = (
+    "MOD-RECO-021",
+    "MOD-RECO-022",
+    "MOD-RECO-023",
+)
+
 
 def ports_with_user_meaning_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
     """User Meaning フェーズ Port を StubPipelineModule に差し替える。"""
@@ -124,8 +142,59 @@ def ports_with_ranking_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
     )
 
 
-def _patch_downstream_stubs_for_real_ranking(ports: OrchestratorPorts) -> OrchestratorPorts:
-    """Ranking 本実装配線後、021 が RankedItems から recommendation_result を組み立てる。"""
+def ports_with_output_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
+    """Output フェーズ Port を scaffold Stub に差し替える。"""
+    from reco.domain import RecommendationResult, RecommendationResultItem, ResultStatus
+
+    result_builder = StubPipelineModule(
+        module_id="MOD-RECO-021",
+        phase_name="result_built",
+    )
+    original_result_execute = result_builder.execute
+
+    def result_execute(context: ExecutionContext) -> ExecutionContext:
+        updated = original_result_execute(context)
+        if updated.recommendation_result is not None:
+            return updated
+
+        run_id = updated.run_id or "run-scaffold"
+        updated.recommendation_result = RecommendationResult(
+            run_id=run_id,
+            request_id=updated.recommendation_request.request_id,
+            items=(
+                RecommendationResultItem(
+                    item_id="item-scaffold-1",
+                    rank=1,
+                    final_score=0.75,
+                    reason_summary=None,
+                    reason_status=None,
+                    is_fallback=False,
+                ),
+            ),
+            result_status=ResultStatus.COMPLETED,
+            version_info=dict(updated.config_versions),
+        )
+        return updated
+
+    result_builder.execute = result_execute  # type: ignore[method-assign]
+
+    return replace(
+        ports,
+        **{
+            attr: StubPipelineModule(module_id=module_id, phase_name=phase_name)
+            for attr, module_id, phase_name in _OUTPUT_STUB_PORTS
+            if attr != "result_builder"
+        },
+        result_builder=result_builder,
+        reason_generator=StubReasonGenerator(),
+    )
+
+
+def _patch_output_stubs_for_matching_zero_short_circuit(
+    ports: OrchestratorPorts,
+) -> OrchestratorPorts:
+    """Matching 0 件 short-circuit 後も 021 / 022 が呼ばれる経路向け scaffold Output Stub。"""
+    from reco.application.final_ranker.models import RankedItems
     from reco.domain import RecommendationResult, RecommendationResultItem, ResultStatus
 
     snapshot_builder = ports.snapshot_builder
@@ -145,7 +214,7 @@ def _patch_downstream_stubs_for_real_ranking(ports: OrchestratorPorts) -> Orches
 
         run_id = context.run_id or "run-scaffold"
         ranked_items = context.ranked_items
-        if ranked_items is not None and ranked_items.entries:
+        if isinstance(ranked_items, RankedItems) and ranked_items.entries:
             items = tuple(
                 RecommendationResultItem(
                     item_id=entry.item_id,
@@ -434,6 +503,26 @@ def assert_ranking_execution_context_populated(
     assert final_ranker_latency_ms >= 0
 
 
+def assert_output_execution_context_populated(
+    context: ExecutionContext,
+) -> None:
+    """Default composition 後に Output フェーズの副作用を検証する。"""
+    recommendation_result = context.recommendation_result
+    assert recommendation_result is not None
+    assert recommendation_result.item_count > 0
+    assert recommendation_result.result_status is not None
+
+    version_info = recommendation_result.version_info or {}
+    assert version_info.get("recommendation_result_id")
+    assert version_info.get("snapshot_builder_items_persisted") == "true"
+    assert version_info.get("snapshot_builder_item_count")
+    assert version_info.get("reason_generator_item_count")
+
+    first_item = recommendation_result.items[0]
+    assert first_item.reason_summary is not None
+    assert first_item.reason_status is not None
+
+
 def build_wired_ports_with_zero_matching_candidates() -> tuple[
     OrchestratorPorts,
     dict[str, object],
@@ -451,7 +540,7 @@ def build_wired_ports_with_zero_matching_candidates() -> tuple[
         normalization=InMemoryFeatureNormalizationRepository(),
     )
     wired_ports = replace(ports, feature_matcher=feature_matcher)
-    return _patch_downstream_stubs_for_real_ranking(wired_ports), helpers
+    return _patch_output_stubs_for_matching_zero_short_circuit(wired_ports), helpers
 
 
 def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
@@ -573,21 +662,24 @@ def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str
         user_context_builder=user_context_builder,
         query_embedding_generator=query_embedding_generator,
     )
-    return _patch_downstream_stubs_for_real_ranking(wired_ports), helpers
+    return wired_ports, helpers
 
 
 __all__ = [
     "_MATCHING_MODULE_IDS",
+    "_OUTPUT_MODULE_IDS",
     "_RANKING_MODULE_IDS",
     "_RETRIEVAL_MODULE_IDS",
     "_USER_MEANING_MODULE_IDS",
     "assert_matching_execution_context_populated",
+    "assert_output_execution_context_populated",
     "assert_ranking_execution_context_populated",
     "assert_retrieval_execution_context_populated",
     "assert_user_meaning_execution_context_populated",
     "build_wired_default_composition_ports",
     "build_wired_ports_with_zero_matching_candidates",
     "ports_with_matching_stubs",
+    "ports_with_output_stubs",
     "ports_with_ranking_stubs",
     "ports_with_retrieval_stubs",
     "ports_with_user_meaning_stubs",

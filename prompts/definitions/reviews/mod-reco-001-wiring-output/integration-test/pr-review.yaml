@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1002
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-output/integration-test.yaml"
-  source_branch: "test/task-<issue-number>-mod-reco-001-wiring-output-integration-test"
+  source_branch: "test/task-1002-mod-reco-001-wiring-output-integration-test"
   target_branch: "feature/epic-792-mod-reco-001-wiring-output"
   parent_epic_issue: 792
   parent_epic_branch: "feature/epic-792-mod-reco-001-wiring-output"

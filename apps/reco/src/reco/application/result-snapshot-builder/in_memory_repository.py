@@ -144,6 +144,18 @@ def build_default_in_memory_item_snapshot_read_repository() -> (
             review_summary=ItemReviewSummary(review_average=4.0, review_count=120),
         ),
     )
+    repo.register_item(
+        InMemoryItemSnapshotSource(
+            item_id="item-002",
+            item_name="バランス型ギフト",
+            price=4500,
+            item_url="https://example.com/items/item-002",
+            catchcopy="贈りやすい定番ギフト",
+            shop_code="shop-001",
+            primary_image_url="https://example.com/images/item-002.jpg",
+            review_summary=ItemReviewSummary(review_average=3.8, review_count=80),
+        ),
+    )
     return repo
 
 
