@@ -247,16 +247,25 @@ Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モ�
 
 #### 8.4.2 フェーズ Wiring 単位（MVP）
 
-| Wiring フェーズ | 対象モジュール | 状態 |
-| --------------- | -------------- | ---- |
-| 起動 | `003` Config Version Resolver、`002` Run Recorder | **配線済み**（`build_default_config_resolver` / `build_scaffold_run_recorder`） |
-| User Meaning | `004`〜`010` | 未配線（スタブ） |
-| Retrieval | `012`〜`013` | 未配線 |
-| Matching | `014`〜`016` | 未配線 |
-| Ranking | `017`〜`020` | 未配線 |
-| 出力 | `021`〜`023` | 未配線 |
+段階2（フェーズ Wiring）完了時点の `build_default_stub_ports()` 配線状態。正本は `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py`。
+
+| Wiring フェーズ | 対象モジュール | 状態 | 備考 |
+| --------------- | -------------- | ---- | ---- |
+| 起動 | `002` Run Recorder、`003` Config Version Resolver | **配線済み** | `build_scaffold_run_recorder` / `build_default_config_resolver` |
+| User Meaning | `004`〜`010` | **配線済み** | Wiring Epic #788。各 `build_default_*` |
+| Retrieval | `012` Candidate Retriever、`013` Post Hard Filter Executor | **配線済み** | Wiring Epic #789 |
+| Matching | `014`〜`016` | **配線済み** | Wiring Epic #790 |
+| Ranking | `017`〜`020` | **配線済み** | Wiring Epic #791 |
+| 出力 | `021`〜`023` | **配線済み** | Wiring Epic #792 |
+| エラー処理 | `024` Error Handler | **Stub** | `StubErrorHandler`。段階3 / MOD-RECO-024 Epic 前 |
+| メトリクス | `025` Metric Logger | **Stub** | `StubMetricLogger`。MVP 対象 `△` |
+| フェーズログ | `028` Phase Log Writer | **Stub** | `StubPhaseLogWriter` |
+| エラーログ | `029` Error Log Writer | **024 経由 Stub** | 物理書き込み未実装（`029` 本実装は後続 Task） |
+| BT 間接参照 | `026` Item Semantic Extractor、`027` Item Feature Generator | **OL 非呼び出し** | Batch トラック。Orchestrator からは参照しない |
 
 **例外（起動フェーズ）**: `002` / `003` はモジュール間 I/F（version 3 列、`003`→`002` 物理順）が強く、`002` 実装 Task（#783）および `003` 実装完了時点で **起動フェーズ Wiring を実施済み**とする。
+
+**段階3（Composition）着手前の残課題**: `024` / `028` / `029` の本実装配線、本番 DI（DB Repository 等）、§14 integration 観点（No.10 / 11 / 14）は後続 Task とする。
 
 #### 8.4.3 Task Definition との関係
 
@@ -457,6 +466,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-06-27 | MOD-RECO-002 整合（`003`→`002` INSERT の物理呼び出し順・§8.2.1 追加） | Issue #777 |
 | 2026-06-26 | §8.4 下位モジュール配線方針（3 段階ハイブリッド）を Human 決定として反映 | 配線方針採用 |
 | 2026-06-30 | `MOD-RECO-011` 廃止に伴い `010 → 012` 1 呼び出し（内部 `pre_hard_filter` → `retrieval`）へ更新。`GRS-REC-008` / `009` 発生元を `MOD-RECO-012` に整合 | Issue #867 / PR #868 |
+| 2026-07-06 | §8.4.2 を段階2完了後の配線状態へ更新（`004`〜`023` 配線済み、`024`/`025`/`028`/`029` Stub、`026`/`027` BT 間接） | Issue #1009 |
 
 ---
 
