@@ -121,6 +121,25 @@ class ExecutionContext:
     final_ranker_feature_match_missing_count: int | None = None
     top_k_clipped: bool | None = None
 
+    result_builder_item_count: int | None = None
+    result_builder_latency_ms: int | None = None
+    result_builder_header_persisted: bool | None = None
+    zero_result_header_count: int | None = None
+    score_breakdown_partial_count: int | None = None
+
+    snapshot_builder_item_count: int | None = None
+    snapshot_builder_latency_ms: int | None = None
+    snapshot_builder_items_persisted: bool | None = None
+    snapshot_build_success: bool | None = None
+    snapshot_null_image_count: int | None = None
+    snapshot_null_review_count: int | None = None
+
+    reason_generator_item_count: int | None = None
+    reason_generator_success_count: int | None = None
+    reason_generator_fallback_count: int | None = None
+    reason_generator_persisted: bool | None = None
+    reason_generation_latency_ms: int | None = None
+
     completed_modules: list[str] = field(default_factory=list)
     phase_log_events: list[dict[str, object]] = field(default_factory=list)
     error_log_events: list[dict[str, object]] = field(default_factory=list)

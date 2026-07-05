@@ -135,6 +135,12 @@ def _attach_outputs(
         items=domain_items,
         version_info=version_info,
     )
+    context.snapshot_builder_item_count = metrics.snapshot_builder_item_count
+    context.snapshot_builder_latency_ms = metrics.snapshot_builder_latency_ms
+    context.snapshot_builder_items_persisted = metrics.snapshot_builder_items_persisted
+    context.snapshot_build_success = metrics.snapshot_build_success
+    context.snapshot_null_image_count = metrics.snapshot_null_image_count
+    context.snapshot_null_review_count = metrics.snapshot_null_review_count
 
 
 def build_default_result_snapshot_builder() -> ResultSnapshotBuilder:
