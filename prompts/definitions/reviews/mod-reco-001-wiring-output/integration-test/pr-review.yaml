@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-output-integration-test-pr"
+  title: "MOD-RECO-001 出力 Wiring 統合テスト PRレビュー"
+  summary: "出力フェーズ配線後の Orchestrator デフォルト経路テスト更新 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-output/integration-test.yaml"
+  source_branch: "test/task-<issue-number>-mod-reco-001-wiring-output-integration-test"
+  target_branch: "feature/epic-792-mod-reco-001-wiring-output"
+  parent_epic_issue: 792
+  parent_epic_branch: "feature/epic-792-mod-reco-001-wiring-output"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-output/integration-test.yaml"
+    required: true
+
+review_points:
+  - "デフォルト経路テストの期待値が配線後の本実装 Port と整合しているか"
+  - "stubs.py への不要な変更がないか"
+  - "execution_context.py への変更がないか"
+  - "モジュール本体への不要な変更がないか"
+  - "テストが flakey な外部依存を持たないか"
+  - "wiring Task との依存関係（直列）が守られているか"
+  - "Task PR target が Epic Branch であるか"
+
+notes:
+  - "Issue / PR 確定後に target.pr / target.issue.number を更新する"
+  - "playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"
