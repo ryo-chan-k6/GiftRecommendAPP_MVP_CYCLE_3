@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1004
   issue:
     number: 792
   task_definition: "prompts/definitions/epics/mod-reco-001-wiring-output/epic.yaml"
