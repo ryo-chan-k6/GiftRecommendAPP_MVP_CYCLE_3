@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -296,6 +297,19 @@ def to_domain_recommendation_result(
     }
     if built.header.candidate_count is not None:
         version_info["candidate_count"] = str(built.header.candidate_count)
+
+    for item in built.items:
+        version_info[f"item:{item.item_id}:recommendation_result_item_id"] = (
+            item.recommendation_result_item_id
+        )
+        version_info[f"item:{item.item_id}:is_displayed"] = (
+            "true" if item.is_displayed else "false"
+        )
+        version_info[f"item:{item.item_id}:score_breakdown_json"] = json.dumps(
+            item.score_breakdown_json,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
 
     return RecommendationResult(
         run_id=built.header.recommendation_run_id,
