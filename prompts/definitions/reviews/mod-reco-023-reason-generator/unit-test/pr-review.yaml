@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 998
   issue:
     number: 997
   task_definition: "prompts/definitions/tasks/mod-reco-023-reason-generator/unit-test.yaml"
