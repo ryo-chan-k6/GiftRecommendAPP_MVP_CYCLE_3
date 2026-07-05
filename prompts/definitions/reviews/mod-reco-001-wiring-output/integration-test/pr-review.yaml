@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1003
   issue:
     number: 1002
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-output/integration-test.yaml"
