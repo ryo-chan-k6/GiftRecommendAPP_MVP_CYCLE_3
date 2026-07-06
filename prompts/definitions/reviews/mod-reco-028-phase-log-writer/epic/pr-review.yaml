@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1042
   issue:
     number: 1035
   task_definition: "prompts/definitions/epics/mod-reco-028-phase-log-writer/epic.yaml"
