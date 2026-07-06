@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1021
   task_definition: "prompts/definitions/tasks/mod-reco-029-error-log-writer/implementation.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-029-error-log-writer"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-029-error-log-writer"
+  source_branch: "feature/task-1021-mod-reco-029-error-log-writer-implementation"
+  target_branch: "feature/epic-1018-mod-reco-029-error-log-writer"
+  parent_epic_issue: 1018
+  parent_epic_branch: "feature/epic-1018-mod-reco-029-error-log-writer"
 
 commands:
   primary: "/review-pr"
