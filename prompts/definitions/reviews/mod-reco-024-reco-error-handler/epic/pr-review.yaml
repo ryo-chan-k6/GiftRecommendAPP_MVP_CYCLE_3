@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1028
   issue:
     number: 1013
   task_definition: "prompts/definitions/epics/mod-reco-024-reco-error-handler/epic.yaml"

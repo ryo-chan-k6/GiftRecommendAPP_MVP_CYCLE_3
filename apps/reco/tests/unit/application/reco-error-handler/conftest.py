@@ -34,10 +34,18 @@ _load_package(
     "reco.application.candidate_retriever",
     "src/reco/application/candidate-retriever",
 )
+_load_package(
+    "reco.application.error_log_writer",
+    "src/reco/application/error-log-writer",
+)
 
 from reco.application.candidate_retriever.errors import (  # noqa: E402
     PreHardFilterError,
     RetrievalError,
+)
+from reco.application.error_log_writer import (  # noqa: E402
+    ErrorLogWriter,
+    InMemoryErrorLogRepository,
 )
 from reco.application.reco_error_handler import (  # noqa: E402
     ErrorLogWriteRequest,
@@ -45,6 +53,7 @@ from reco.application.reco_error_handler import (  # noqa: E402
     build_default_reco_error_handler,
 )
 from reco.application.reco_error_handler.executor import NoOpErrorLogWriter  # noqa: E402
+from reco.application.recommendation_orchestrator.errors import RecoError  # noqa: E402
 
 DEFAULT_RUN_ID = "run-reco-error-handler-1"
 DEFAULT_REQUEST_ID = "req-reco-error-handler-1"
@@ -69,10 +78,23 @@ def _sample_context(*, include_run: bool = True) -> ExecutionContext:
 
 def build_error_handler(
     *,
-    error_log_writer: NoOpErrorLogWriter | None = None,
+    error_log_writer: NoOpErrorLogWriter | ErrorLogWriter | None = None,
 ) -> RecoErrorHandler:
     writer = error_log_writer or NoOpErrorLogWriter()
     return RecoErrorHandler(
         error_log_writer=writer,
         logger=ScaffoldRecoLogger(),
     )
+
+
+def build_error_handler_with_writer(
+    repository: InMemoryErrorLogRepository | None = None,
+) -> tuple[RecoErrorHandler, InMemoryErrorLogRepository]:
+    repo = repository or InMemoryErrorLogRepository()
+    writer = ErrorLogWriter(repository=repo)
+    handler = RecoErrorHandler(
+        error_log_writer=writer,
+        logger=ScaffoldRecoLogger(),
+        append_test_seam_events=False,
+    )
+    return handler, repo
