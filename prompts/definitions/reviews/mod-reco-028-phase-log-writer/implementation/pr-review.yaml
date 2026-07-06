@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1039
   issue:
     number: 1038
   task_definition: "prompts/definitions/tasks/mod-reco-028-phase-log-writer/implementation.yaml"
