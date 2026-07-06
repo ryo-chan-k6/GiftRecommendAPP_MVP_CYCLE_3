@@ -103,7 +103,7 @@ output:
 
 deliverables:
   - "Epic Issue（タイトル: [Epic]MOD-RECO-024:Reco Error Handler）"
-  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-mod-reco-024-reco-error-handler）"
+  - "Epic Branch（develop 起点 / feature/epic-1013-mod-reco-024-reco-error-handler）"
   - "子 Task 候補一覧（モジュール仕様書 / 実装 / 単体テスト）"
 
 acceptance_criteria:
@@ -117,7 +117,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-024-reco-error-handler"
+  name: "feature/epic-1013-mod-reco-024-reco-error-handler"
   base: "develop"
   target: "develop"
   worktree_required: false
