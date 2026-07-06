@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1032
   issue:
     number: 1030
   task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-error-handling/wiring.yaml"
