@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-06                                 |
-| 更新日         | 2026-07-06（初版・001 Port 契約整理）      |
+| 更新日         | 2026-07-06（§16.1 Human Review 反映）      |
 
 ---
 
@@ -19,7 +19,7 @@ Phase Log Writer（Phase Log記録）は、**`phase_log` テーブルへの物�
 
 Orchestrator は各処理フェーズの **開始・終了・失敗契機** を管理し、本モジュールは **永続化・項目マッピング・`started`→終端 UPDATE** を担当する。`error_log` への物理書き込みは **`MOD-RECO-029` Error Log Writer**（`MOD-RECO-024` 経由）責務であり、本モジュールの対象外とする。
 
-**現行実装（移行期）**: Orchestrator 配線（`MOD-RECO-001` §8.4.2）では `StubPhaseLogWriter` がデフォルト DI され、`phase_log` への物理書き込みは未実行である。本仕様書は **本リリース向けの目標仕様** を定義する。本実装差し替えは **028 実装 Task** および **MOD-RECO-001 Epic（#260）配下 Wiring Task** で段階的に行う（§16.2）。
+**現行実装（移行期）**: Orchestrator 配線（`MOD-RECO-001` §8.4.2）では `StubPhaseLogWriter` がデフォルト DI され、`phase_log` への物理書き込みは未実行である。本仕様書は **本リリース向けの目標仕様** を定義する。本実装差し替えは **028 実装 Task** および **MOD-RECO-001 Epic（#260）配下 Wiring Task** で段階的に行う（§16.3）。
 
 ---
 
@@ -146,7 +146,7 @@ def record_phase(
 | `phase_log` 項目定義 | `phase_log_テーブル定義書` | INSERT / UPDATE 列・CHECK 制約 | MVP schema 固定 | DDL 変更は別 Task |
 | `recommendation_run_phase_name` | enum定義書 §6.18 / `recommendation_run_phase_name.yaml` | `phase_name` 妥当性 | 14 値（§8.5） | DB CHECK 正本 |
 | `phase_status` | enum定義書 §6.4 | 状態遷移 | 4 値 | `started`→終端 1 回 UPDATE |
-| Phase 一覧 | ログ・Observability設計書 §10.3 | 記録対象フェーズの意味 | — | enum 外名称は §16.1 No.2 |
+| Phase 一覧 | ログ・Observability設計書 §10.3 | 記録対象フェーズの意味 | — | enum 外名称は §16.1 No.8 |
 
 ---
 
@@ -214,7 +214,7 @@ flowchart TD
 
 `phase_log` の DB CHECK（`owner_type=recommendation_run`）は **`recommendation_run_phase_name` 14 値** のみ許可する（`phase_log_テーブル定義書` §11.2）。
 
-Orchestrator / 下位モジュール定数には **enum 外の内部名称**（例: `run_recorded`, `feature_matched`, `ranked`）が存在する。MVP 方針は §16.1 No.2 を正とする。
+Orchestrator / 下位モジュール定数には **enum 外の内部名称**（例: `run_recorded`, `feature_matched`, `ranked`）が存在する。MVP 方針は §16.1 No.8 / No.9 を正とする。
 
 **Observability 正本（14 値）**:
 
@@ -383,10 +383,11 @@ Stub 互換のキー構成（テスト観察用）:
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-06 | 初版作成 | Issue #1036 |
+| 2026-07-06 | §16.1 に Human Review 確定（enum 外 phase / 集約粒度 / detail_json / skipped） | Issue #1036 |
 
 ---
 
-## 16. 設計方針（確定 / 未決）
+## 16. 設計方針（Human Review 確定）
 
 ### 16.1 確定事項
 
@@ -399,15 +400,31 @@ Stub 互換のキー構成（テスト観察用）:
 | 5 | `run_id` 未確定 | **バッファ + flush**（§8.4）。`owner_id` NOT NULL 制約を満たす |
 | 6 | error_log 境界 | 詳細障害は **029**。`phase_log.error_code` は **フェーズ失敗要約** のみ（§5.6） |
 | 7 | Orchestrator Wiring | 028 実装 Task で `PhaseLogWriter` 本体を作成。**Stub 差し替えは MOD-RECO-001 Wiring Task**（#260） |
+| 8 | enum 外 `phase_name` | **MVP: DB 書き込みスキップ + `context.phase_log_events` + warn**。`recommendation_run_phase_name` 14 値への正規化は **#260 Orchestrator 整合 Task**（028 内マッピングは行わない） |
+| 9 | 集約 phase の記録粒度 | **記録契機・`phase_name` の正本は Orchestrator**。DB には Observability §10.3 の **14 集約名のみ** 永続化。028 は渡された名称を enum 検証するのみ（`MOD-RECO-014` 等の単独記録方針は Orchestrator 側で担保） |
+| 10 | `detail_json` 自動抽出 | **MVP: `module_id` + allowlist 付き安全サマリのみ**（§16.1.1）。Request 全文 / prompt 全文は含めない。拡張は Metric Logger 整合後 |
+| 11 | `skipped` サポート | **028 Repository / Writer は `skipped` 終端 UPDATE を実装**。Orchestrator の `PhaseStatus` 追加と呼び出し site は **#260 別 Task**（MVP では未使用可） |
 
-### 16.2 未決事項（Human Review 推奨）
+#### 16.1.1 `detail_json` allowlist（MVP）
 
-| No | 論点 | 判断が必要な理由 | 推奨案 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- |
-| 1 | enum 外 `phase_name` の扱い | Orchestrator / 下位定数（`run_recorded`, `feature_matched` 等）が DB 14 値と不一致 | **MVP: enum 外は DB スキップ + in-memory + warn**。正規化は **#260 Orchestrator 整合 Task** で段階対応 | §8.5 |
-| 2 | 集約 phase の記録粒度 | Observability は `matching_completed` 等の **フェーズ集約名**、現行 Orchestrator は **モジュール単位名** を多数記録 | Human が集約タイミング（Orchestrator vs 028 内マッピング）を選択 | `MOD-RECO-014` 等は単独記録しない方針 |
-| 3 | `detail_json` 自動抽出範囲 | 候補件数等を 028 が `ExecutionContext` から自動付与するか | **MVP: `module_id` + 安全な count フィールドのみ**。拡張は Metric Logger と整合後 | §5.5 |
-| 4 | `skipped` サポート | DB enum に存在するが `PhaseStatus` に未収録 | **028 Repository は `skipped` UPDATE を許容**。Orchestrator 拡張は別 Task | enum定義書 §6.4 |
+終端 UPDATE 時、以下が `ExecutionContext` に存在する場合のみ `detail_json` へマージする（`phase_log_テーブル定義書` §5.5 準拠）。
+
+| キー | 由来 |
+| ---- | ---- |
+| `source_module_id` | `record_phase()` の `module_id` 引数 |
+| `pre_filter_candidate_count` | `context.pre_filter_candidate_count` |
+| `retrieval_candidate_count` | `context.retrieval_candidate_count` |
+| `post_filter_candidate_count` | `context.post_filter_candidate_count` |
+| `final_result_count` | `context.recommendation_result.item_count`（存在時） |
+| `*_latency_ms` | 各モジュール計測 latency フィールド（存在するもののみ） |
+
+allowlist 外フィールドの自動シリアライズは **行わない**。追加は Issue 化して拡張する。
+
+### 16.2 未決事項
+
+| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
+| --: | ---- | ---------------- | ------ | ---- | ---- |
+| - | なし | - | - | - | §16.1 の論点は Human Review にて確定済み |
 
 ### 16.3 後続 Task（横断修正の実施タイミング）
 
@@ -417,7 +434,7 @@ Stub 互換のキー構成（テスト観察用）:
 | 2 | MOD-RECO-028 implementation | #1035 | `phase-log-writer/**`、`PhaseLogRepository` |
 | 3 | MOD-RECO-001 Wiring（既存 / 追補） | #260 | `StubPhaseLogWriter` → 本実装差し替え、§14 integration |
 | 4 | MOD-RECO-028 unit-test | #1035 | §14 網羅テスト |
-| 5 | Orchestrator phase_name 整合（**新規 Issue 推奨**） | #260 | enum 14 値への呼び出し統一（§16.2 No.1 / No.2） |
+| 5 | Orchestrator phase_name 整合（**新規 Issue 推奨**） | #260 | enum 14 値への呼び出し統一・集約契機の整理（§16.1 No.8 / No.9） |
 
 ---
 
