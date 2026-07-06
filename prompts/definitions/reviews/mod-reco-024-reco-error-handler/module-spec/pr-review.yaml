@@ -16,11 +16,11 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1014
   task_definition: "prompts/definitions/tasks/mod-reco-024-reco-error-handler/module-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-1014-mod-reco-024-reco-error-handler-module-spec"
   target_branch: "feature/epic-1013-mod-reco-024-reco-error-handler"
-  parent_epic_issue: null
+  parent_epic_issue: 1013
   parent_epic_branch: "feature/epic-1013-mod-reco-024-reco-error-handler"
 
 commands:
