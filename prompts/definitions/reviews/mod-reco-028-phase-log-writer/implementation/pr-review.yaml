@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1039
   issue:
-    number: null
+    number: 1038
   task_definition: "prompts/definitions/tasks/mod-reco-028-phase-log-writer/implementation.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-028-phase-log-writer"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-028-phase-log-writer"
+  source_branch: "feature/task-1038-mod-reco-028-phase-log-writer-implementation"
+  target_branch: "feature/epic-1035-mod-reco-028-phase-log-writer"
+  parent_epic_issue: 1035
+  parent_epic_branch: "feature/epic-1035-mod-reco-028-phase-log-writer"
 
 commands:
   primary: "/review-pr"
