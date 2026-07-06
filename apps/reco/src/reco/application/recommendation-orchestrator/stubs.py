@@ -184,6 +184,13 @@ def _ensure_error_log_writer_package() -> None:
     )
 
 
+def _ensure_phase_log_writer_package() -> None:
+    _ensure_application_package(
+        "reco.application.phase_log_writer",
+        "phase-log-writer",
+    )
+
+
 def _build_default_orchestrator_error_handler():
     """Wire MOD-RECO-024 with MOD-RECO-029 InMemory writer for MVP composition."""
     _ensure_error_log_writer_package()
@@ -194,6 +201,14 @@ def _build_default_orchestrator_error_handler():
         error_log_writer=build_default_error_log_writer(),
         append_test_seam_events=True,
     )
+
+
+def _build_default_orchestrator_phase_log_writer():
+    """Wire MOD-RECO-028 with InMemory repository for MVP composition."""
+    _ensure_phase_log_writer_package()
+    from reco.application.phase_log_writer import build_default_phase_log_writer
+
+    return build_default_phase_log_writer()
 
 
 _ensure_run_recorder_package()
@@ -414,7 +429,7 @@ class StubMetricLogger:
 def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     """Create MVP stub ports with deterministic scaffold behavior."""
 
-    phase_log_writer = StubPhaseLogWriter()
+    phase_log_writer = _build_default_orchestrator_phase_log_writer()
     error_handler = _build_default_orchestrator_error_handler()
     metric_logger = StubMetricLogger()
 
