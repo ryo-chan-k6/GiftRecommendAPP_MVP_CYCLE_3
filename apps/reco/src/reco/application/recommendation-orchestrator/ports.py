@@ -68,6 +68,7 @@ class ErrorHandlerPort(Protocol):
         error_code: str,
         message: str,
         phase_name: str | None = None,
+        cause: BaseException | None = None,
     ) -> RecoError: ...
 
 
