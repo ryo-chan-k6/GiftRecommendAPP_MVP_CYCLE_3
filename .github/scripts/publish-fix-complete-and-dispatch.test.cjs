@@ -46,6 +46,13 @@ test("extractPrBodyReplacements: fix-complete コメントから置換表を抽�
   assert.deepEqual(replacements, [{ find: "Closes #1009", replace: "Related to #1009" }]);
 });
 
+test("applyPrBodyReplacements: replace 値の \\r\\n / \\n エスケープを解釈する", () => {
+  const next = publish.applyPrBodyReplacements("before\r\nafter", [
+    { find: "before\r\nafter", replace: "line1\\r\\nline2" },
+  ]);
+  assert.equal(next, "line1\r\nline2");
+});
+
 test("publishFixCompleteAndDispatch: PR Body 置換をコメント投稿前に適用する", async () => {
   const calls = [];
   const comment = `${SAMPLE_COMMENT}

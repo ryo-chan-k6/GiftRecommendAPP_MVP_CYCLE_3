@@ -114,9 +114,16 @@ function applyPrBodyReplacements(body, replacements) {
   let next = String(body || "");
   for (const { find, replace } of replacements || []) {
     if (!find || !next.includes(find)) continue;
-    next = next.split(find).join(replace);
+    const unescapedReplace = unescapeReplacement(replace);
+    next = next.split(find).join(unescapedReplace);
   }
   return next;
+}
+
+function unescapeReplacement(value) {
+  return String(value ?? "")
+    .replace(/\\r\\n/g, "\r\n")
+    .replace(/\\n/g, "\n");
 }
 
 async function patchPullRequestBodyFromComment({
@@ -558,6 +565,7 @@ module.exports = {
   resolveFixOutcome,
   extractPrBodyReplacements,
   applyPrBodyReplacements,
+  unescapeReplacement,
   patchPullRequestBodyFromComment,
   postPullRequestComment,
   publishFixCompleteAndDispatch,
