@@ -16,11 +16,11 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1040
   task_definition: "prompts/definitions/tasks/mod-reco-028-phase-log-writer/unit-test.yaml"
-  source_branch: null
+  source_branch: "test/task-1040-mod-reco-028-phase-log-writer-unit-test"
   target_branch: "feature/epic-1035-mod-reco-028-phase-log-writer"
-  parent_epic_issue: null
+  parent_epic_issue: 1035
   parent_epic_branch: "feature/epic-1035-mod-reco-028-phase-log-writer"
 
 commands:
