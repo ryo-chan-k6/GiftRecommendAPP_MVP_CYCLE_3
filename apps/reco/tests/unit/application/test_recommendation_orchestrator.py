@@ -33,6 +33,7 @@ from recommendation_orchestrator_helpers import (
     assert_user_meaning_execution_context_populated,
     build_wired_default_composition_ports,
     build_wired_ports_with_zero_matching_candidates,
+    in_memory_error_log_records,
     ports_with_matching_stubs,
     ports_with_output_stubs,
     ports_with_ranking_stubs,
@@ -92,6 +93,13 @@ def test_default_stub_ports_wires_config_version_resolver() -> None:
 
     ports, _ = build_default_stub_ports()
     assert isinstance(ports.config_resolver, ConfigVersionResolver)
+
+
+def test_default_stub_ports_wires_reco_error_handler() -> None:
+    from reco.application.reco_error_handler import RecoErrorHandler
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.error_handler, RecoErrorHandler)
 
 
 def test_default_stub_ports_wires_retrieval_modules() -> None:
@@ -421,7 +429,7 @@ def test_section19_feature_matcher_failure_aborts_before_meaning_match_aggregato
     assert outcome.reco_error.error_code == "GRS-REC-011"
     assert outcome.execution_context is not None
     assert "MOD-RECO-015" not in outcome.execution_context.completed_modules
-    assert helpers["error_handler"].error_log_events
+    assert outcome.execution_context.error_log_events
 
 
 # §14 No.5 境界値（0件）— Orchestrator は空 Result を正常終了。GRS-REC-001 は api 層で付与。
@@ -495,7 +503,7 @@ def test_pipeline_module_failure_propagates_error_code(
     assert outcome.reco_error.error_code == error_code
     assert outcome.execution_context is not None
     assert blocked_module not in outcome.execution_context.completed_modules
-    assert helpers["error_handler"].error_log_events
+    assert outcome.execution_context.error_log_events
 
 
 # §14 No.7 依存モジュール失敗（MOD-RECO-003）
@@ -517,7 +525,7 @@ def test_downstream_failure_stops_pipeline_and_returns_error() -> None:
     assert outcome.execution_context is not None
     assert "MOD-RECO-002" not in outcome.execution_context.completed_modules
     assert "MOD-RECO-004" not in outcome.execution_context.completed_modules
-    assert helpers["error_handler"].error_log_events
+    assert outcome.execution_context.error_log_events
 
 
 # §14 No.7b MOD-RECO-002 失敗（003 成功後に 002 が失敗）
@@ -540,7 +548,7 @@ def test_run_recorder_failure_after_config_resolver() -> None:
     assert "MOD-RECO-003" in outcome.execution_context.completed_modules
     assert "MOD-RECO-002" not in outcome.execution_context.completed_modules
     assert "MOD-RECO-004" not in outcome.execution_context.completed_modules
-    assert helpers["error_handler"].error_log_events
+    assert outcome.execution_context.error_log_events
 
 
 # §14 No.8 Phase Log 契機（unit: スタブ呼び出し記録）
@@ -563,7 +571,7 @@ def test_phase_log_records_major_phase_boundaries() -> None:
     assert any(event["phase_status"] == "succeeded" for event in config_events)
 
 
-# §14 No.9 Error Log 接続（unit: MOD-RECO-024 委譲のスタブ記録）
+# §14 No.9 Error Log 接続（integration: MOD-RECO-024→029 本実装）
 def test_error_handler_records_failure_for_error_log_delegation() -> None:
     ports, helpers = build_default_stub_ports()
     ports = _ports_with(ports, config_resolver=StubConfigResolver(should_fail=True))
@@ -575,13 +583,21 @@ def test_error_handler_records_failure_for_error_log_delegation() -> None:
     )
 
     assert outcome.success is False
-    error_events = helpers["error_handler"].error_log_events
+    assert outcome.execution_context is not None
+    error_events = outcome.execution_context.error_log_events
     assert len(error_events) == 1
     assert error_events[0]["module_id"] == "MOD-RECO-003"
     assert error_events[0]["error_code"] == "GRS-REC-003"
     assert error_events[0]["trace_id"] == trace_id
-    assert outcome.execution_context is not None
-    assert outcome.execution_context.error_log_events == error_events
+
+    # §14 No.10 (001 / 024 / 029): Orchestrator 失敗時に 029 InMemory error_log へ永続化
+    records = in_memory_error_log_records(helpers["error_handler"])
+    assert len(records) == 1
+    record = records[0]
+    assert record.trace_id == trace_id
+    assert record.error_code == "GRS-REC-003"
+    assert record.error_detail_json["source_module_id"] == "MOD-RECO-003"
+    assert record.request_id == _sample_request().request_id
 
 
 # §14 No.12 trace 伝播
