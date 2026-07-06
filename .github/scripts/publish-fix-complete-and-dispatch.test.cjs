@@ -33,6 +33,76 @@ test("resolveFixOutcome: overrideが優先される", () => {
   assert.equal(value, "split_required");
 });
 
+test("extractPrBodyReplacements: fix-complete コメントから置換表を抽出する", () => {
+  const comment = `${SAMPLE_COMMENT}
+
+### PR Body 置換
+
+| find | replace |
+| ---- | ------- |
+| \`Closes #1009\` | \`Related to #1009\` |
+`;
+  const replacements = publish.extractPrBodyReplacements(comment);
+  assert.deepEqual(replacements, [{ find: "Closes #1009", replace: "Related to #1009" }]);
+});
+
+test("applyPrBodyReplacements: replace 値の \\r\\n / \\n エスケープを解釈する", () => {
+  const next = publish.applyPrBodyReplacements("before\r\nafter", [
+    { find: "before\r\nafter", replace: "line1\\r\\nline2" },
+  ]);
+  assert.equal(next, "line1\r\nline2");
+});
+
+test("publishFixCompleteAndDispatch: PR Body 置換をコメント投稿前に適用する", async () => {
+  const calls = [];
+  const comment = `${SAMPLE_COMMENT}
+
+### PR Body 置換
+
+| find | replace |
+| ---- | ------- |
+| \`Closes #1009\` | \`Related to #1009\` |
+`;
+  const result = await publish.publishFixCompleteAndDispatch({
+    repository: "o/r",
+    prNumber: 1010,
+    commentBody: comment,
+    token: "t",
+    fetchImpl: async (url, options = {}) => {
+      const method = options.method || "GET";
+      calls.push({ url, method, body: options.body });
+      if (url.includes("/pulls/1010") && (!options.method || options.method === "GET")) {
+        return {
+          ok: true,
+          json: async () => ({ body: "Summary\n\nCloses #1009\n" }),
+        };
+      }
+      if (url.includes("/pulls/1010") && options.method === "PATCH") {
+        return {
+          ok: true,
+          json: async () => ({ body: JSON.parse(options.body).body }),
+        };
+      }
+      if (url.includes("/issues/1010/comments") && options.method === "POST") {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ html_url: "https://example.com/comment/1", id: 1 }),
+        };
+      }
+      if (url.includes("/dispatches")) {
+        return { ok: true, status: 204, async text() { return ""; } };
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.pr_body_patch.reason, "pr_body_patched");
+  const patchCall = calls.find((c) => c.url.includes("/pulls/1010") && c.method === "PATCH");
+  assert.ok(patchCall);
+  assert.match(JSON.parse(patchCall.body || "{}").body || "", /Related to #1009/);
+});
+
 test("publishFixCompleteAndDispatch: dry_runではAPIを呼ばない", async () => {
   let called = 0;
   const result = await publish.publishFixCompleteAndDispatch({
