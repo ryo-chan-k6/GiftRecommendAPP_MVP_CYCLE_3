@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-error-handling-wiring-pr"
+  title: "MOD-RECO-001 Wiring（ログ・エラー）配線 PRレビュー"
+  summary: "Orchestrator Wiring（ログ・エラー）配線 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1030
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-error-handling/wiring.yaml"
+  source_branch: "feature/task-1030-mod-reco-001-wiring-error-handling-wiring"
+  target_branch: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+  parent_epic_issue: 1029
+  parent_epic_branch: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-error-handling/wiring.yaml"
+    required: true
+
+review_points:
+  - "Task Definition scope / acceptance_criteria 充足"
+  - "error_handler 配線と cause 委譲のみに diff が限定されているか"
+  - "029 DI が 024 経由であるか"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 確定後に target.pr を更新する"
