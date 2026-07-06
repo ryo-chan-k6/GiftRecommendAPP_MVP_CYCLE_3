@@ -6,7 +6,7 @@ review:
   title: "MOD-RECO-024/028/029 Definition bootstrap PRレビュー"
   summary: "MOD-RECO-024/028/029 Epic/Task/Review Definition 作成 chore PR の AI Review"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1012
   issue:
     number: 1011
   task_definition: "prompts/definitions/tasks/mod-reco-024-028-029-definitions-bootstrap.yaml"
@@ -42,6 +42,12 @@ input:
   task_definition:
     path: "prompts/definitions/tasks/mod-reco-024-028-029-definitions-bootstrap.yaml"
     required: true
+  issue:
+    number: 1011
+    required: true
+  pr:
+    number: 1012
+    required: true
 
 review_points:
   - "Epic 3 / Task 9 / Review 13 のファイル数"
@@ -52,4 +58,4 @@ review_points:
   - "生成スクリプトの再現性"
 
 notes:
-  - "Issue / PR 確定後に target.issue.number / source_branch / target.pr を更新する"
+  - "PR #1012 作成済み。AI Review は `/review-pr @prompts/definitions/reviews/mod-reco-024-028-029-definitions-bootstrap/pr-review.yaml` で実行"
