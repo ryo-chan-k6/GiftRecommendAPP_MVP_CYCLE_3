@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1024
   issue:
-    number: null
+    number: 1023
   task_definition: "prompts/definitions/tasks/mod-reco-029-error-log-writer/unit-test.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-029-error-log-writer"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-029-error-log-writer"
+  source_branch: "test/task-1023-mod-reco-029-error-log-writer-unit-test"
+  target_branch: "feature/epic-1018-mod-reco-029-error-log-writer"
+  parent_epic_issue: 1018
+  parent_epic_branch: "feature/epic-1018-mod-reco-029-error-log-writer"
 
 commands:
   primary: "/review-pr"
