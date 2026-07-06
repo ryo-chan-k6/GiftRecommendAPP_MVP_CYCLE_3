@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1034
   issue:
     number: 1029
   task_definition: "prompts/definitions/epics/mod-reco-001-wiring-error-handling/epic.yaml"
