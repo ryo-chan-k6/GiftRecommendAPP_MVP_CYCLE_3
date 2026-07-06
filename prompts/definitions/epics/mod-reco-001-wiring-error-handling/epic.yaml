@@ -148,6 +148,8 @@ epic_scope:
     - "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
     - "apps/reco/src/reco/application/recommendation-orchestrator/__init__.py"
     - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+    - "apps/reco/tests/unit/application/recommendation-run-recorder/test_run_recorder.py"
     - "prompts/definitions/tasks/mod-reco-001-wiring-error-handling/**"
     - "prompts/definitions/reviews/mod-reco-001-wiring-error-handling/**"
     - "prompts/definitions/epics/mod-reco-001-wiring-error-handling/**"

@@ -707,6 +707,23 @@ def build_wired_default_composition_ports() -> tuple[OrchestratorPorts, dict[str
     return wired_ports, helpers
 
 
+def in_memory_error_log_records(error_handler: object) -> list:
+    """Return MOD-RECO-029 InMemory records wired through default error_handler."""
+    from reco.application.error_log_writer.repository import InMemoryErrorLogRepository
+    from reco.application.reco_error_handler import RecoErrorHandler
+
+    if not isinstance(error_handler, RecoErrorHandler):
+        msg = "expected RecoErrorHandler from build_default_stub_ports()"
+        raise TypeError(msg)
+
+    repository = getattr(error_handler.error_log_writer, "repository", None)
+    if not isinstance(repository, InMemoryErrorLogRepository):
+        msg = "expected InMemoryErrorLogRepository in default error_log_writer"
+        raise TypeError(msg)
+
+    return repository.records
+
+
 __all__ = [
     "_MATCHING_MODULE_IDS",
     "_OUTPUT_MODULE_IDS",
@@ -720,6 +737,7 @@ __all__ = [
     "assert_user_meaning_execution_context_populated",
     "build_wired_default_composition_ports",
     "build_wired_ports_with_zero_matching_candidates",
+    "in_memory_error_log_records",
     "ports_with_matching_stubs",
     "ports_with_output_stubs",
     "ports_with_ranking_stubs",

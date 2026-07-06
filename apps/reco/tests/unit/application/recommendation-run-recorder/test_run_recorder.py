@@ -290,7 +290,7 @@ def test_orchestrator_stops_when_run_recorder_fails() -> None:
     assert outcome.execution_context is not None
     assert "MOD-RECO-003" in outcome.execution_context.completed_modules
     assert "MOD-RECO-002" not in outcome.execution_context.completed_modules
-    assert helpers["error_handler"].error_log_events
+    assert outcome.execution_context.error_log_events
 
 
 # §14 No.11 DB / ログ — integration 観点のため本 Task では Orchestrator 側で部分確認
