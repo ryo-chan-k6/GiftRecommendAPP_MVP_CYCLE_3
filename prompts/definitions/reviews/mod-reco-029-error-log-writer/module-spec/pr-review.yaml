@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1020
   issue:
     number: 1019
   task_definition: "prompts/definitions/tasks/mod-reco-029-error-log-writer/module-spec.yaml"
