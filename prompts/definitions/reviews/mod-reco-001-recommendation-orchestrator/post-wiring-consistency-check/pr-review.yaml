@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1010
   issue:
     number: 1009
   task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-wiring-consistency-check.yaml"
@@ -51,7 +51,9 @@ review_points:
   - "integration / 024〜029 実装に scope が漏れていないか"
   - "後続 Task 推奨順序が PR に整理されているか"
   - "develop 直 PR 例外が PR 本文で説明されているか"
+  - "exception_scope（publish-fix-complete-and-dispatch）が Task Definition と PR 本文で整合しているか"
   - "pytest green が維持されているか"
 
 notes:
-  - "Issue / PR 確定後に target.issue.number / source_branch / target.pr を更新する"
+  - "target.pr: 1010（Issue #1009）"
+  - "exception_scope: Human 判断により fix-complete dispatch CLI を本 PR に含める"

@@ -76,6 +76,15 @@ scope:
   - "Stub で再現可能な §14 unit ギャップが判明した場合のみ、最小限の pytest 追加（要 PR 説明・Human Review）"
   - "Review Definition（`prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/post-wiring-consistency-check/pr-review.yaml`）"
 
+exception_scope:
+  reason: "Issue #1009 Human 判断により、fix-complete dispatch 時の PR Body 置換 bot fallback を本 Task PR に含める（AI Review 指摘対応の運用改善）"
+  paths:
+    - ".github/scripts/publish-fix-complete-and-dispatch.cjs"
+    - ".github/scripts/publish-fix-complete-and-dispatch.test.cjs"
+  allowed_changes:
+    - "fix-complete コメント投稿と repository_dispatch を原子的に実行する CLI の bot fallback 経由 PR Body 更新"
+    - "上記 CLI の unit test 追加"
+
 out_of_scope:
   - "integration test / E2E（§14 No.10, 11, 14）の新規実装"
   - "段階3 Composition 完成（本番 DI / DB Repository 配線）"
@@ -138,7 +147,15 @@ output:
       action: "update"
       required: true
       purpose: "§8.4.2 配線状態表・必要に応じ §15 変更履歴"
-  files: []
+  files:
+    - path: ".github/scripts/publish-fix-complete-and-dispatch.cjs"
+      action: "update"
+      required: false
+      purpose: "exception_scope: fix-complete dispatch の PR Body bot fallback"
+    - path: ".github/scripts/publish-fix-complete-and-dispatch.test.cjs"
+      action: "create"
+      required: false
+      purpose: "exception_scope: publish-fix-complete-and-dispatch unit test"
   tests:
     - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
       action: "update"
@@ -168,6 +185,7 @@ acceptance_criteria:
   - "integration 観点（§14 No.10, 11, 14）は本 Task で未実施であることを PR に明記している"
   - "024〜029 実装・Composition は後続 Task 推奨として整理され、本 Task scope で着手していない"
   - "`cd apps/reco && uv run pytest tests/unit/ -q` が成功する"
+  - "exception_scope 変更がある場合、PR 本文に Human 判断根拠と変更目的を明記している"
   - "secret、APIキー、.env 実値が含まれていない"
 
 branch:
@@ -258,6 +276,7 @@ review:
     - "本 Task scope 外（integration / 024〜029 実装）に着手していないか"
     - "後続 Task 推奨順序が Human 判断材料として十分か"
     - "develop 直 PR 例外理由が PR 本文で説明されているか"
+    - "exception_scope（fix-complete dispatch CLI）が Human 判断根拠とともに PR に記載されているか"
   specialist_reviews:
     docs: true
     test: true
@@ -294,6 +313,7 @@ notes:
   - "workstream: mod-reco-001-post-wiring"
   - "Related to #260 / #788〜#792 / playbook follow-up 各 Task"
   - "PR 本文テンプレ: 配線表・§14 ギャップ表・後続推奨・docs 差分"
+  - "exception_scope: Issue #1009 Human 判断により publish-fix-complete-and-dispatch.cjs / .test.cjs を PR #1010 に含める"
 
 audit_checklist:
   wiring_status:
