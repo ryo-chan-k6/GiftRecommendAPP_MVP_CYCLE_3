@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-mod-reco-001-wiring-phase-log"
+  title: "MOD-RECO-001:Orchestrator Wiring（フェーズログ）"
+  summary: "MOD-RECO-001 Recommendation Orchestrator のフェーズログ経路（MOD-RECO-028 Phase Log Writer）について、build_default_stub_ports() の phase_log_writer Port を本実装へ差し替える Wiring milestone Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  MOD-RECO-028 Phase Log Writer の module-spec / implementation / unit-test が develop に統合済み（Epic #1035）。
+  MOD-RECO-001 モジュール仕様書 §8.4.2 では `028` Phase Log Writer は `StubPhaseLogWriter` のままである。
+  MOD-RECO-028 モジュール仕様書 §16.3 順序3 として、Orchestrator Wiring（stubs.py）を本 Epic で Issue 化する。
+  親 Epic #260（MOD-RECO-001:Recommendation Orchestrator）配下の milestone。develop への統合は本 Epic PR のみ。
+
+objective: |
+  フェーズログ経路の Orchestrator Wiring を Epic Issue / 配下 Task で管理し、recommendation-orchestrator/stubs.py の競合を Epic 単位で直列化する。
+  配下 Task の PR target は本 Epic Branch とし、develop への統合は本 Epic PR のみで行う。
+  デフォルト composition で phase_log 永続化（InMemory repository）を有効化する。
+
+scope:
+  - "phase_log_writer Port の build_default_stub_ports() 本実装配線 Task を Issue 化する"
+  - "配線後の Orchestrator デフォルト経路 integration テスト（028 phase_log 接続）を Epic Branch で更新する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置（prompts/definitions/tasks/mod-reco-001-wiring-phase-log/**）"
+
+out_of_scope:
+  - "MOD-RECO-028 Phase Log Writer モジュール本体の新規実装（Epic #1035 配下 Task）"
+  - "MOD-RECO-024 / 029 エラー経路の再配線"
+  - "MOD-RECO-025 Metric Logger 配線"
+  - "Orchestrator phase_name enum 14 値整合（028 §16.3 順序5・別 Task 推奨）"
+  - "他フェーズ（User Meaning / Retrieval / Matching / Ranking / 出力）の再配線"
+  - "段階3 Composition 完成（本番 DB Repository / E2E 強化）"
+  - "StubPhaseLogWriter 等の削除"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針・§8.4.2・§14 No.8"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "§16.3 Wiring scope・Orchestrator 連携"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "028 責務確認"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線対象 build_default_stub_ports()"
+  issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1035
+      purpose: "MOD-RECO-028 Epic 完了（develop 統合済み）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+  tests:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]MOD-RECO-001:Orchestrator Wiring（フェーズログ））"
+  - "Epic Branch（develop 起点 / feature/epic-1043-mod-reco-001-wiring-phase-log）"
+  - "子 Task: prompts/definitions/tasks/mod-reco-001-wiring-phase-log/wiring.yaml"
+  - "子 Task: prompts/definitions/tasks/mod-reco-001-wiring-phase-log/integration-test.yaml"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が存在する"
+  - "Epic Branch が develop から作成されている"
+  - "build_default_stub_ports() の phase_log_writer が PhaseLogWriter 本実装（InMemory repository）を参照している"
+  - "Orchestrator 正常/失敗経路で phase_log 接続が integration テストで確認できる"
+  - "StubPhaseLogWriter は失敗注入・明示 DI 用に残存している"
+  - "配下 Wiring / integration-test Task PR が merge され、Epic PR が develop へ統合可能"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1043-mod-reco-001-wiring-phase-log"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-07"
+    due_date: "2026-07-11"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: "MOD-RECO-001"
+  allowed_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+    - "apps/reco/tests/unit/application/recommendation-run-recorder/test_run_recorder.py"
+    - "prompts/definitions/tasks/mod-reco-001-wiring-phase-log/**"
+    - "prompts/definitions/reviews/mod-reco-001-wiring-phase-log/**"
+    - "prompts/definitions/epics/mod-reco-001-wiring-phase-log/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/application/phase-log-writer/**"
+    - "apps/reco/src/reco/application/reco-error-handler/**"
+    - "apps/reco/src/reco/application/error-log-writer/**"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+    - "apps/reco/src/reco/application/**/"
+    - "apps/reco/src/reco/api/**"
+    - "apps/api/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "wiring"
+    - "integration-test"
+
+dependencies:
+  epics:
+    - number: 1035
+      purpose: "MOD-RECO-028 Phase Log Writer Epic 完了（develop 統合済み）"
+  issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1038
+      purpose: "MOD-RECO-028 implementation Task 完了"
+    - number: 1040
+      purpose: "MOD-RECO-028 unit-test Task 完了"
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  not_required:
+    - "integration test（E2E）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "stubs.py の変更がフェーズログ経路に限定されているか"
+    - "MOD-RECO-028 モジュール本体への変更が混入していないか"
+    - "build_default_phase_log_writer 経由で InMemory repository が接続されているか"
+    - "StubPhaseLogWriter が削除されていないか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "Epic Issue: #1043"
+  - "親 Issue: #260（[Epic]MOD-RECO-001:Recommendation Orchestrator）"
+  - "Epic Branch: feature/epic-1043-mod-reco-001-wiring-phase-log"
+  - "子 Task Issue: #1044 wiring / #1045 integration-test"
+  - "workstream_key: mod-reco-001-wiring-phase-log"

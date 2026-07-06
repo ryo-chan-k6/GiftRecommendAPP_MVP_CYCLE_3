@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-phase-log-integration-test-pr"
+  title: "MOD-RECO-001 Wiring（フェーズログ）統合テスト PRレビュー"
+  summary: "Orchestrator Wiring（フェーズログ）統合テスト Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1045
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-phase-log/integration-test.yaml"
+  source_branch: "test/task-1045-mod-reco-001-wiring-phase-log-integration-test"
+  target_branch: "feature/epic-1043-mod-reco-001-wiring-phase-log"
+  parent_epic_issue: 1043
+  parent_epic_branch: "feature/epic-1043-mod-reco-001-wiring-phase-log"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-phase-log/integration-test.yaml"
+    required: true
+
+review_points:
+  - "§14 integration 観点のカバレッジ"
+  - "テストの再現性・安定性"
+  - "epic_scope 外変更の有無"
+
+notes:
+  - "Issue / PR 確定後に target.pr を更新する"
