@@ -9,7 +9,14 @@ from reco.application.recommendation_orchestrator.execution_context import (
     ExecutionContext,
 )
 from reco.application.recommendation_orchestrator.ports import PhaseStatus
-from reco.domain import ExecutionMode, RecommendationRequest, RecommendationRun, RunStatus
+from reco.domain import (
+    ExecutionMode,
+    RecommendationRequest,
+    RecommendationResult,
+    RecommendationResultItem,
+    RecommendationRun,
+    RunStatus,
+)
 
 
 def _load_package(import_root: str, relative_path: str) -> None:
@@ -39,6 +46,18 @@ from reco.application.phase_log_writer import (  # noqa: E402
 DEFAULT_RUN_ID = "run-phase-log-writer-1"
 DEFAULT_REQUEST_ID = "req-phase-log-writer-1"
 DEFAULT_TRACE_ID = "trace-phase-log-writer-1"
+
+STUB_COMPATIBLE_EVENT_KEYS = frozenset(
+    {
+        "phase_name",
+        "phase_status",
+        "module_id",
+        "error_code",
+        "duration_ms",
+        "trace_id",
+        "run_id",
+    }
+)
 
 
 def build_writer(
@@ -83,10 +102,51 @@ def record_succeeded(
     *,
     phase_name: str = "request_received",
     duration_ms: int = 12,
+    module_id: str | None = "MOD-RECO-001",
 ) -> None:
     writer.record_phase(
         context,
         phase_name=phase_name,
         phase_status=PhaseStatus.SUCCEEDED,
+        module_id=module_id,
         duration_ms=duration_ms,
     )
+
+
+def record_failed(
+    writer: PhaseLogWriter,
+    context: ExecutionContext,
+    *,
+    phase_name: str = "request_received",
+    error_code: str = "GRS-REC-011",
+    duration_ms: int = 15,
+    module_id: str | None = "MOD-RECO-014",
+) -> None:
+    writer.record_phase(
+        context,
+        phase_name=phase_name,
+        phase_status=PhaseStatus.FAILED,
+        module_id=module_id,
+        error_code=error_code,
+        duration_ms=duration_ms,
+    )
+
+
+def sample_rich_context(*, include_run: bool = True) -> ExecutionContext:
+    """Context with sensitive caller fields and allowlisted summary counters."""
+    context = sample_context(include_run=include_run)
+    context.caller_context = {
+        "prompt": "full user prompt that must not appear in detail_json",
+        "api_key": "sk-test-secret-key",
+        "authorization": "Bearer test-token",
+    }
+    context.pre_filter_candidate_count = 42
+    context.retrieval_candidate_count = 30
+    context.post_filter_candidate_count = 18
+    context.pre_hard_filter_latency_ms = 11
+    context.recommendation_result = RecommendationResult(
+        run_id=DEFAULT_RUN_ID,
+        request_id=DEFAULT_REQUEST_ID,
+        items=(RecommendationResultItem(item_id="item-1", rank=1),),
+    )
+    return context
