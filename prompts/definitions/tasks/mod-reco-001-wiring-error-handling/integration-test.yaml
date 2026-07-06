@@ -1,0 +1,179 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-error-handling-integration-test"
+  title: "MOD-RECO-001:Orchestrator Wiring（ログ・エラー）統合テスト"
+  summary: "ログ・エラー配線後の Orchestrator デフォルト経路について、test_recommendation_orchestrator.py 等で 024→029 Error Log 接続（§14 integration）を検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（ログ・エラー）"
+  epic_issue_number: 1029
+  epic_branch: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1030
+      purpose: "wiring Task 完了"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #1029 配下で wiring Task（#1030）により error_handler 本実装配線完了後、Orchestrator デフォルト composition の integration 観点を検証する。
+  対象: MOD-RECO-001 §14 No.9、MOD-RECO-024 §14 No.10、MOD-RECO-029 §14 No.10。
+  InMemory ErrorLogRepository 等、本番 DB 非依存の fixture / mock を用いる。
+
+objective: |
+  配線後の Orchestrator デフォルト経路テストを green にし、失敗時 024→029 Error Log 接続を pytest で検証する。
+
+scope:
+  - "`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` の期待値更新・ケース追加"
+  - "024→029 Error Log 接続のデフォルト composition 検証"
+  - "テスト用 fixture / helper（Orchestrator デフォルト経路専用）"
+
+out_of_scope:
+  - "stubs.py / ports.py / orchestrator.py の配線変更（wiring Task）"
+  - "024 / 029 モジュール本体の変更（テスト成立に必要な最小修正のみ可）"
+  - "integration test（E2E）/ API contract test"
+  - "本番 DB / 外部 API 依存テスト"
+  - "028 Phase Log / 025 Metric 配線"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§14 No.9"
+    - path: "docs/06_実装設計/reco/MOD-RECO-024_Reco Error Handlerモジュール仕様書.md"
+      required: true
+      purpose: "§14 No.10"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "§14 No.10"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線後 build_default_stub_ports()"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "更新対象"
+  issues:
+    - number: 1029
+      purpose: "親 Epic"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "§14 integration 観点に対応する pytest 更新"
+  - "観点とテストケースの対応表（PR 本文）"
+
+acceptance_criteria:
+  - "MOD-RECO-001 / 024 / 029 §14 integration 観点がテストでカバーされている"
+  - "`cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+  - "本番 DB / 外部 API / secret に依存していない"
+
+branch:
+  no_branch: false
+  name: "test/task-<issue-number>-mod-reco-001-wiring-error-handling-integration-test"
+  base: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+  target: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1029
+      purpose: "親 Epic"
+    - number: 1030
+      purpose: "wiring Task 完了"
+  prs: []
+  tasks:
+    - "task-mod-reco-001-wiring-error-handling-wiring"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-error-handling-wiring"
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "pytest"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -v --tb=short"
+    - "cd apps/reco && uv run pytest tests/unit/ -q --tb=short"
+  not_required:
+    - "integration test（E2E）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§14 integration 観点のカバレッジ"
+    - "テストの再現性・安定性"
+    - "epic_scope 外変更の有無"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "Issue: #1031"
+  - "workstream: mod-reco-001-wiring-error-handling"

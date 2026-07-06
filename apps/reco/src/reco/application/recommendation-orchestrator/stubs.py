@@ -177,6 +177,25 @@ def _ensure_reason_generator_package() -> None:
     )
 
 
+def _ensure_error_log_writer_package() -> None:
+    _ensure_application_package(
+        "reco.application.error_log_writer",
+        "error-log-writer",
+    )
+
+
+def _build_default_orchestrator_error_handler():
+    """Wire MOD-RECO-024 with MOD-RECO-029 InMemory writer for MVP composition."""
+    _ensure_error_log_writer_package()
+    from reco.application.error_log_writer import build_default_error_log_writer
+    from reco.application.reco_error_handler import RecoErrorHandler
+
+    return RecoErrorHandler(
+        error_log_writer=build_default_error_log_writer(),
+        append_test_seam_events=True,
+    )
+
+
 _ensure_run_recorder_package()
 _ensure_config_version_resolver_package()
 _ensure_user_semantic_extractor_package()
@@ -325,6 +344,7 @@ class StubErrorHandler:
         error_code: str,
         message: str,
         phase_name: str | None = None,
+        cause: BaseException | None = None,
     ) -> RecoError:
         event = {
             "module_id": module_id,
@@ -395,7 +415,7 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
     """Create MVP stub ports with deterministic scaffold behavior."""
 
     phase_log_writer = StubPhaseLogWriter()
-    error_handler = StubErrorHandler()
+    error_handler = _build_default_orchestrator_error_handler()
     metric_logger = StubMetricLogger()
 
     ports = OrchestratorPorts(

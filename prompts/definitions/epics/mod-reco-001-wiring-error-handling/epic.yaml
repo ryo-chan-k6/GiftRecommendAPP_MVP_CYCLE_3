@@ -1,0 +1,234 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-mod-reco-001-wiring-error-handling"
+  title: "MOD-RECO-001:Orchestrator Wiring（ログ・エラー）"
+  summary: "MOD-RECO-001 Recommendation Orchestrator のログ・エラー経路（MOD-RECO-024 Reco Error Handler + MOD-RECO-029 Error Log Writer DI）について、build_default_stub_ports() の error_handler Port を本実装へ差し替え、Orchestrator から cause 委譲を接続する Wiring milestone Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  MOD-RECO-024 / MOD-RECO-029 の module-spec / implementation / unit-test が develop に統合済み（Epic #1013 / #1018）。
+  MOD-RECO-001 モジュール仕様書 §8.4.2 では `024` Error Handler / `029` Error Log Writer（024 経由）は Stub のままである。
+  MOD-RECO-024 モジュール仕様書 §16.2 順序3 として、Orchestrator Wiring（ports.py / orchestrator.py / stubs.py）を本 Epic で Issue 化する。
+  029 は Orchestrator から直接呼ばず、024 本実装への DI で接続する（§16.1）。
+  親 Epic #260（MOD-RECO-001:Recommendation Orchestrator）配下の milestone。develop への統合は本 Epic PR のみ。
+
+objective: |
+  ログ・エラー経路の Orchestrator Wiring を Epic Issue / 配下 Task で管理し、recommendation-orchestrator/stubs.py 等の競合を Epic 単位で直列化する。
+  配下 Task の PR target は本 Epic Branch とし、develop への統合は本 Epic PR のみで行う。
+  パイプライン本番方針（024→029 Error Log 接続）への切替は本 Epic 完了後とする。
+
+scope:
+  - "error_handler Port の build_default_stub_ports() 本実装配線 Task を Issue 化する"
+  - "ErrorHandlerPort / orchestrator.py の cause 委譲接続"
+  - "配線後の Orchestrator デフォルト経路 integration テスト（024→029）を Epic Branch で更新する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置（prompts/definitions/tasks/mod-reco-001-wiring-error-handling/**）"
+
+out_of_scope:
+  - "MOD-RECO-024 / MOD-RECO-029 モジュール本体の新規実装（各 MOD-RECO-* Epic 配下 Task）"
+  - "MOD-RECO-028 Phase Log Writer / MOD-RECO-025 Metric Logger 配線"
+  - "他フェーズ（User Meaning / Retrieval / Matching / Ranking / 出力）の再配線"
+  - "段階3 Composition 完成（本番 DI / DB Repository / E2E 強化）"
+  - "StubErrorHandler / StubPhaseLogWriter 等の削除"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針・§8.4.2・§14 No.9"
+    - path: "docs/06_実装設計/reco/MOD-RECO-024_Reco Error Handlerモジュール仕様書.md"
+      required: true
+      purpose: "§16.2 Wiring scope・cause 委譲"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "024→029 Port・§14 No.10"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "024 / 029 責務確認"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線対象 build_default_stub_ports()"
+  issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1029
+      purpose: "本 Epic Issue"
+    - number: 1013
+      purpose: "MOD-RECO-024 Epic 完了（develop 統合済み）"
+    - number: 1018
+      purpose: "MOD-RECO-029 Epic 完了（develop 統合済み）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/__init__.py"
+  tests:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]MOD-RECO-001:Orchestrator Wiring（ログ・エラー））"
+  - "Epic Branch（develop 起点 / feature/epic-1029-mod-reco-001-wiring-error-handling）"
+  - "子 Task: prompts/definitions/tasks/mod-reco-001-wiring-error-handling/wiring.yaml"
+  - "子 Task: prompts/definitions/tasks/mod-reco-001-wiring-error-handling/integration-test.yaml"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue #1029 が存在する"
+  - "Epic Branch が develop から作成されている"
+  - "build_default_stub_ports() の error_handler が RecoErrorHandler（029 DI 込み）を参照している"
+  - "Orchestrator 失敗時に 024→029 Error Log 接続が integration テストで確認できる"
+  - "StubErrorHandler は失敗注入・明示 DI 用に残存している"
+  - "配下 Wiring / integration-test Task PR が merge され、Epic PR が develop へ統合可能"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-06"
+    due_date: "2026-07-10"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: "MOD-RECO-001"
+  allowed_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/__init__.py"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+    - "apps/reco/tests/unit/application/recommendation-run-recorder/test_run_recorder.py"
+    - "prompts/definitions/tasks/mod-reco-001-wiring-error-handling/**"
+    - "prompts/definitions/reviews/mod-reco-001-wiring-error-handling/**"
+    - "prompts/definitions/epics/mod-reco-001-wiring-error-handling/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/application/reco-error-handler/**"
+    - "apps/reco/src/reco/application/error-log-writer/**"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+    - "apps/reco/src/reco/application/**/"
+    - "apps/reco/src/reco/api/**"
+    - "apps/api/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "wiring"
+    - "integration-test"
+
+dependencies:
+  epics:
+    - number: 1013
+      purpose: "MOD-RECO-024 Reco Error Handler Epic 完了（develop 統合済み）"
+    - number: 1018
+      purpose: "MOD-RECO-029 Error Log Writer Epic 完了（develop 統合済み）"
+  issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1016
+      purpose: "MOD-RECO-024 implementation Task 完了"
+    - number: 1021
+      purpose: "MOD-RECO-029 implementation Task 完了"
+    - number: 1026
+      purpose: "MOD-RECO-024 unit-test Task 完了"
+    - number: 1023
+      purpose: "MOD-RECO-029 unit-test Task 完了"
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  not_required:
+    - "integration test（E2E）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "stubs.py / ports.py / orchestrator.py の変更がログ・エラー経路に限定されているか"
+    - "MOD-RECO-024 / 029 モジュール本体への変更が混入していないか"
+    - "024→029 DI が build_default_reco_error_handler 経由で接続されているか"
+    - "cause 委譲が Orchestrator から 024 へ渡されているか"
+    - "StubErrorHandler が削除されていないか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "Epic Issue: #1029"
+  - "親 Issue: #260（[Epic]MOD-RECO-001:Recommendation Orchestrator）"
+  - "Epic Branch: feature/epic-1029-mod-reco-001-wiring-error-handling"
+  - "子 Task Issue: #1030 wiring / #1031 integration-test"
+  - "workstream_key: mod-reco-001-wiring-error-handling"

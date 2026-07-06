@@ -92,6 +92,7 @@ class RecommendationOrchestrator:
                 error_code=exc.error_code,
                 message=str(exc),
                 phase_name=exc.phase_name,
+                cause=exc.__cause__,
             )
             self._ports.phase_log_writer.record_phase(
                 context,
