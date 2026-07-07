@@ -29,6 +29,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from reco.application.recommendation_orchestrator import OrchestratorPorts, build_default_stub_ports
+from reco.application.recommendation_orchestrator.orchestrator import RecommendationOrchestrator
 from reco.application.recommendation_orchestrator.stubs import (
     StubPipelineModule,
     StubReasonGenerator,
@@ -759,6 +760,17 @@ def in_memory_metric_log_records(metric_logger: object) -> list:
     return repository.records
 
 
+def build_orchestrator_with_elapsed_ms(
+    ports: OrchestratorPorts,
+    elapsed_ms: int,
+) -> RecommendationOrchestrator:
+    """§14 No.11 向け injectable clock。実 sleep なしで hard timeout を再現する。"""
+    return RecommendationOrchestrator(
+        ports,
+        elapsed_ms_provider=lambda: elapsed_ms,
+    )
+
+
 __all__ = [
     "_MATCHING_MODULE_IDS",
     "_OUTPUT_MODULE_IDS",
@@ -772,6 +784,7 @@ __all__ = [
     "assert_user_meaning_execution_context_populated",
     "build_wired_default_composition_ports",
     "build_wired_ports_with_zero_matching_candidates",
+    "build_orchestrator_with_elapsed_ms",
     "in_memory_error_log_records",
     "in_memory_metric_log_records",
     "in_memory_phase_log_records",

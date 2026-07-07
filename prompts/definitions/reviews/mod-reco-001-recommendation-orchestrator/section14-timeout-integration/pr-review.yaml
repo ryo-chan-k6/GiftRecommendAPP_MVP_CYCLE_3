@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-section14-timeout-integration-pr"
+  title: "MOD-RECO-001 §14 No.11 タイムアウト integration PRレビュー"
+  summary: "§14 No.11（hard 4,000ms → GRS-REC-101）実装・integration テスト Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1069
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/section14-timeout-integration.yaml"
+  source_branch: "feature/task-1069-mod-reco-001-section14-timeout-integration"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/section14-timeout-integration.yaml"
+    required: true
+
+review_points:
+  - "§14 No.11 / §13.2 hard 4,000ms と実装が一致しているか"
+  - "GRS-REC-101 の返却経路が error_handler / phase_log と整合しているか"
+  - "§14 No.11 integration テストが injectable clock 等で安定しているか"
+  - "既存 Orchestrator テストの regression がないか"
+  - "soft timeout / フェーズ別 timeout / No.10 / No.14 等 scope 外変更がないか"
+  - "develop 直 PR 理由が PR 本文で説明されているか"
+
+notes:
+  - "target.pr: PR 作成後に更新し PR 差分に含める"
+  - "Related Issue #1069"

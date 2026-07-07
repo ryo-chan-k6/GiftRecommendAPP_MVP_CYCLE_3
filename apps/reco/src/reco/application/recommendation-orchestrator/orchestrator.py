@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from time import perf_counter
 
@@ -15,7 +16,13 @@ from reco.domain.recommendation.result import (
 )
 from reco.domain.recommendation.run import RunStatus
 
-from .constants import GENERIC_REASON_SUMMARY, MODULE_ERROR_CODES, ORCHESTRATOR_MODULE_ORDER
+from .constants import (
+    GENERIC_REASON_SUMMARY,
+    MODULE_ERROR_CODES,
+    ORCHESTRATOR_MODULE_ORDER,
+    PIPELINE_HARD_TIMEOUT_MS,
+    PIPELINE_TIMEOUT_ERROR_CODE,
+)
 from .phase_name import normalize_orchestrator_phase_name, resolve_aggregated_phase_name
 
 # MOD-RECO-014 §16.1 No.8: Matching 対象 0 件時に Orchestrator がスキップするモジュール
@@ -39,6 +46,8 @@ from .ports import (
 from .reason_fallback import inject_generic_reason_fallback
 from .stubs import build_default_stub_ports, resolve_execution_mode
 
+_ORCHESTRATOR_MODULE_ID = "MOD-RECO-001"
+
 
 @dataclass(frozen=True)
 class OrchestratorOutcome:
@@ -53,10 +62,17 @@ class OrchestratorOutcome:
 class RecommendationOrchestrator:
     """Controls reco online pipeline order and delegates to downstream modules."""
 
-    def __init__(self, ports: OrchestratorPorts | None = None) -> None:
+    def __init__(
+        self,
+        ports: OrchestratorPorts | None = None,
+        *,
+        elapsed_ms_provider: Callable[[], int] | None = None,
+    ) -> None:
         if ports is None:
             ports, _ = build_default_stub_ports()
         self._ports = ports
+        # テスト向け injectable clock。未指定時は ExecutionContext の経過時間を使用する。
+        self._elapsed_ms_provider = elapsed_ms_provider
 
     @property
     def ports(self) -> OrchestratorPorts:
@@ -189,7 +205,33 @@ class RecommendationOrchestrator:
         self._assert_module_order(context)
         return context
 
+    def _pipeline_elapsed_ms(self, context: ExecutionContext) -> int:
+        if self._elapsed_ms_provider is not None:
+            return self._elapsed_ms_provider()
+        return context.recommendation_latency_ms
+
+    def _ensure_pipeline_within_hard_timeout(self, context: ExecutionContext) -> None:
+        """§13.2 全体 hard timeout。超過時は GRS-REC-101 でパイプラインを中断する。"""
+        elapsed_ms = self._pipeline_elapsed_ms(context)
+        if elapsed_ms <= PIPELINE_HARD_TIMEOUT_MS:
+            return
+
+        failed_phase_name = normalize_orchestrator_phase_name(
+            _ORCHESTRATOR_MODULE_ID,
+            "pipeline_control",
+        )
+        raise ModuleExecutionError(
+            _ORCHESTRATOR_MODULE_ID,
+            (
+                f"pipeline hard timeout exceeded "
+                f"({elapsed_ms}ms > {PIPELINE_HARD_TIMEOUT_MS}ms)"
+            ),
+            error_code=PIPELINE_TIMEOUT_ERROR_CODE,
+            phase_name=failed_phase_name,
+        )
+
     def _invoke_run_recorder(self, context: ExecutionContext) -> ExecutionContext:
+        self._ensure_pipeline_within_hard_timeout(context)
         # MOD-RECO-002: enum 外 run_recorded は記録せず Run 永続化のみ（028 §16.1 No.8/9）
         module = self._ports.run_recorder
         try:
@@ -232,6 +274,7 @@ class RecommendationOrchestrator:
         )
 
     def _invoke_reason_generator(self, context: ExecutionContext) -> ExecutionContext:
+        self._ensure_pipeline_within_hard_timeout(context)
         module = self._ports.reason_generator
         phase_name = resolve_aggregated_phase_name(
             module.module_id,
@@ -300,6 +343,7 @@ class RecommendationOrchestrator:
         raw_phase_name: str,
         action,
     ) -> ExecutionContext:
+        self._ensure_pipeline_within_hard_timeout(context)
         phase_name = resolve_aggregated_phase_name(module_id, raw_phase_name)
         started = perf_counter()
 

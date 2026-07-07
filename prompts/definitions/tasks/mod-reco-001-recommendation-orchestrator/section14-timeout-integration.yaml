@@ -1,0 +1,262 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-section14-timeout-integration"
+  title: "MOD-RECO-001:§14 No.11 タイムアウト integration"
+  summary: "MOD-RECO-001 §14 No.11（全体 hard 4,000ms 超過 → GRS-REC-101）を満たす Orchestrator ウォッチドッグ実装と integration テストを追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（Recommendation Orchestrator・CLOSED 参考）"
+    - number: 1067
+      purpose: "Metric Wiring docs 追随完了（段階2 docs 正本整合）"
+    - number: 1068
+      purpose: "Task #1067 develop merge PR"
+  related_prs:
+    - number: 1068
+      purpose: "Task #1067 develop merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  段階2（フェーズ Wiring）および docs 追随（#1067 / #1068）完了後、MOD-RECO-001 §268 が段階3着手前残課題として
+  §14 integration 観点 No.10 / 11 / 14 を明示している。
+  本 Task はその第一項目 No.11（全体 hard 4,000ms 超過 → GRS-REC-101）に限定する。
+  `PIPELINE_HARD_TIMEOUT_MS = 4_000` は constants.py に定義済みだが、Orchestrator 本体にウォッチドッグ未実装。
+  `GRS-REC-101` は reco-error-handler/constants.py に定義済み。
+
+objective: |
+  Recommendation Orchestrator にパイプライン全体 hard timeout ウォッチドッグを実装し、
+  超過時に `GRS-REC-101` を返す §14 No.11 integration テストを green にする。
+
+scope:
+  - "`orchestrator.py` パイプライン全体 hard timeout（4,000ms）ウォッチドッグ実装"
+  - "超過時 `ModuleExecutionError` / `error_handler` 経由で `GRS-REC-101` を返却"
+  - "`test_recommendation_orchestrator.py` §14 No.11 integration ケース追加"
+  - "`recommendation_orchestrator_helpers.py` 等の slow stub / injectable clock helper"
+  - "必要最小限の constants / errors 調整（既存定数の利用を優先）"
+  - "Task / Review Definition 配置"
+
+out_of_scope:
+  - "soft timeout（2,000ms SLO）の Metric / warn 実装（§13.2 soft 行）"
+  - "フェーズ別 hard timeout（§13.2 個別上限）"
+  - "§14 No.10（観測系横断 DB/ログ）/ No.14（Reason partial）"
+  - "PoC 性能検証（Epic #759）および §13.2 数値の変更"
+  - "段階3 Composition / API-INT-002"
+  - "stubs.py 配線変更"
+  - "024 / 028 / 029 / 025 モジュール本体の仕様変更（テスト成立に必要な最小修正のみ可）"
+  - "docs 正本更新（実装と矛盾する場合のみ最小追記）"
+  - "OpenAPI / Orval / generated / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§13.2 / §14 No.11 / §268 残課題"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-REC-101 定義"
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: false
+      purpose: "4,000ms 暫定値の引用元"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+      purpose: "ウォッチドッグ実装対象"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+      required: true
+      purpose: "PIPELINE_HARD_TIMEOUT_MS 参照"
+    - path: "apps/reco/src/reco/application/reco-error-handler/constants.py"
+      required: true
+      purpose: "GRS-REC-101 定義"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "§14 No.11 integration テスト追加"
+    - path: "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+      required: false
+      purpose: "slow stub / clock helper"
+  issues:
+    - number: 1069
+      purpose: "本 Task Issue"
+    - number: 1067
+      purpose: "直前 docs 追随 Task"
+  prs:
+    - number: 1068
+      purpose: "docs 追随 merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      action: "update"
+      required: true
+      purpose: "hard timeout ウォッチドッグ"
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+      purpose: "§14 No.11 integration"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "パイプライン全体 4,000ms hard timeout ウォッチドッグ"
+  - "超過時 GRS-REC-101 の OrchestratorOutcome / error_handler 連携"
+  - "§14 No.11 integration pytest"
+  - "PR 本文: 観点↔テスト対応表・実装方針（injectable clock）"
+
+acceptance_criteria:
+  - "4,000ms 超過シナリオで reco_error.error_code == GRS-REC-101"
+  - "正常系・既存 §14 テストが regression なし"
+  - "テストが実 sleep / 本番 DB / 外部 API に依存しない"
+  - "§13.2 の 4,000ms 暫定値を変更していない（PoC 委譲維持）"
+  - "scope 外（No.10 / No.14 / soft timeout / フェーズ別 timeout）に着手していない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1069-mod-reco-001-section14-timeout-integration"
+  summary: "mod-reco-001-section14-timeout-integration"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-11"
+
+issue:
+  number: 1069
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1068
+      purpose: "docs 追随 merge 確認"
+    - number: 1067
+      purpose: "段階2 docs 正本整合完了"
+  prs:
+    - number: 1068
+      purpose: "Task #1067 merge"
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-post-metric-wiring-docs-alignment"
+  blocks:
+    - "task-mod-reco-001-section14-observability-integration（No.10）"
+    - "task-mod-reco-001-section14-reason-partial-integration（No.14）"
+    - "MOD-RECO-001 段階3 Composition Epic 起票判断"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "pytest"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -v --tb=short"
+    - "cd apps/reco && uv run pytest tests/unit/application/ -q --tb=short"
+  manual_checks:
+    - "GRS-REC-101 が error_handler / error_log 経路と整合していること"
+    - "injectable clock により CI 上で安定すること"
+  not_required:
+    - "integration test（E2E）"
+    - "API contract test"
+  skip_reason:
+    "integration test（E2E）": "Orchestrator unit/integration 範囲。API-INT-002 は別 Epic"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§14 No.11 / §13.2 hard 4,000ms と実装が一致しているか"
+    - "GRS-REC-101 の返却経路（error_handler / phase_log / error_log）が妥当か"
+    - "テストが flaky でないか（実 sleep 不使用）"
+    - "soft timeout / フェーズ別 timeout 等 scope 外に着手していないか"
+    - "develop 直 PR 理由が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "§14 integration 第一項目。横断影響は PR 本文で記載"
+
+risk_points:
+  - "perf_counter ベースと injectable clock の設計境界"
+  - "timeout 発生モジュールの phase_name / module_id 表記"
+  - "既存 ModuleExecutionError 経路との整合"
+
+human_decision_points:
+  - "injectable clock を Orchestrator コンストラクタ引数とするか、テスト専用 slow stub のみとするか（推奨: テスト helper + elapsed 注入可能な最小 API）"
+  - "timeout 時の Run status（failed）と metric 非記録（025 §14 No.11 失敗経路）の整合"
+
+stop_conditions:
+  - "§13.2 の 4,000ms 暫定値変更が必要と判断された場合（PoC / Human 判断）"
+  - "フェーズ別 timeout 実装が必要と判断された場合（scope 外）"
+  - "API contract / OpenAPI 変更が必要になった場合"
+
+notes:
+  - "workstream: mod-reco-001-section14-integration"
+  - "Related to #1067 / #1068 / #260"
+  - "後続: No.10 観測横断 / No.14 Reason partial / Composition Epic bootstrap"
+
+audit_checklist:
+  section14_no11_expected:
+    - condition: "パイプライン elapsed > PIPELINE_HARD_TIMEOUT_MS"
+      expected_error_code: "GRS-REC-101"
+      expected_success: false
+      test_type: "integration"

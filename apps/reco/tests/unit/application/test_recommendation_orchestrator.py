@@ -9,6 +9,7 @@ import pytest
 from reco.application.recommendation_orchestrator import (
     GENERIC_REASON_SUMMARY,
     ORCHESTRATOR_MODULE_ORDER,
+    PIPELINE_HARD_TIMEOUT_MS,
     OrchestratorPorts,
     ReasonGenerationOutcome,
     RecommendationOrchestrator,
@@ -36,6 +37,7 @@ from recommendation_orchestrator_helpers import (
     assert_user_meaning_execution_context_populated,
     build_wired_default_composition_ports,
     build_wired_ports_with_zero_matching_candidates,
+    build_orchestrator_with_elapsed_ms,
     in_memory_error_log_records,
     in_memory_metric_log_records,
     in_memory_phase_log_records,
@@ -684,6 +686,56 @@ def test_failure_run_does_not_record_metrics() -> None:
     metric_logger = helpers["metric_logger"]
     assert metric_logger.recorded == []
     assert in_memory_metric_log_records(metric_logger) == []
+
+
+# §14 No.11 タイムアウト（integration: MOD-RECO-001 §14 No.11 — hard 4,000ms → GRS-REC-101）
+def test_pipeline_hard_timeout_returns_grs_rec_101() -> None:
+    ports, helpers = build_default_stub_ports()
+    trace_id = "trace-pipeline-timeout"
+    outcome = build_orchestrator_with_elapsed_ms(
+        ports,
+        elapsed_ms=PIPELINE_HARD_TIMEOUT_MS + 1,
+    ).run(
+        _sample_request(),
+        trace_id=trace_id,
+    )
+
+    assert outcome.success is False
+    assert outcome.reco_error is not None
+    assert outcome.reco_error.error_code == "GRS-REC-101"
+    assert outcome.reco_error.module_id == "MOD-RECO-001"
+    assert outcome.execution_context is not None
+    assert "MOD-RECO-004" not in outcome.execution_context.completed_modules
+    assert outcome.execution_context.error_log_events
+
+    metric_logger = helpers["metric_logger"]
+    assert metric_logger.recorded == []
+    assert in_memory_metric_log_records(metric_logger) == []
+
+    records = in_memory_error_log_records(helpers["error_handler"])
+    assert len(records) == 1
+    assert records[0].trace_id == trace_id
+    assert records[0].error_code == "GRS-REC-101"
+    assert records[0].error_detail_json["source_module_id"] == "MOD-RECO-001"
+
+
+def test_pipeline_hard_timeout_boundary_does_not_trigger_at_limit() -> None:
+    ports, _ = build_default_stub_ports()
+    ports = ports_with_user_meaning_stubs(ports)
+    ports = ports_with_retrieval_stubs(ports)
+    ports = ports_with_matching_stubs(ports)
+    ports = ports_with_ranking_stubs(ports)
+    ports = ports_with_output_stubs(ports)
+    outcome = build_orchestrator_with_elapsed_ms(
+        ports,
+        elapsed_ms=PIPELINE_HARD_TIMEOUT_MS,
+    ).run(
+        _sample_request(),
+        trace_id="trace-timeout-boundary",
+    )
+
+    assert outcome.success is True
+    assert outcome.recommendation_result is not None
 
 
 # §14 No.9 Error Log 接続（integration: MOD-RECO-024→029 本実装）
