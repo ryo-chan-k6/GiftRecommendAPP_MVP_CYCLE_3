@@ -1,0 +1,310 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-orchestrator-phase-name-alignment"
+  title: "MOD-RECO-001:Orchestrator phase_name enum整合"
+  summary: "Epic #1043（028 本実装配線）および Task #1049（docs 正本追随）完了後、Orchestrator の `record_phase()` 呼び出しを `recommendation_run_phase_name` 14 値（Observability §10.3）へ統一し、enum 外名称による phase_log DB スキップを解消する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（Recommendation Orchestrator・CLOSED 参考）"
+    - number: 1043
+      purpose: "フェーズログ Wiring Epic（028 本実装配線 develop merge 済み）"
+    - number: 1049
+      purpose: "ログ・観測 Wiring 完了後 docs 正本追随"
+    - number: 1035
+      purpose: "MOD-RECO-028 Epic（module 実装正本）"
+  related_prs:
+    - number: 1048
+      purpose: "Epic #1043 develop merge"
+    - number: 1050
+      purpose: "Task #1049 develop merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  MOD-RECO-028 §8.5 / §16.1 No.8 / No.9 により、DB 永続化対象の `phase_name` 正本は Observability §10.3 の 14 集約名である。
+  028 内での名称マッピングは行わず、**Orchestrator が 028 へ渡す名称を enum 14 値に統一する**（028 §16.3 順序5）。
+  Epic #1043 merge 後、`build_default_stub_ports()` は 028 本実装を配線済みだが、Orchestrator / 下位モジュール定数には enum 外名称が残存している。
+  例: `run_recorded`, `pipeline_failed`, `pipeline_control`, `feature_matched`, `ranked`, `result_built`, `snapshot_built` 等。
+  現状 028 は enum 外を in-memory イベント + warn のみとし DB INSERT をスキップするため、段階3 Composition 前に Orchestrator 側で整合が必要。
+
+objective: |
+  Orchestrator の Phase Log 記録契機を 14 集約名へ揃え、主要フェーズ境界で `PhaseLogWriterPort.record_phase()` に enum 妥当な `phase_name` のみ渡す。
+  下位モジュール内部の `PHASE_NAME` 定数は、Orchestrator 集約層で正規化するか、必要最小限の定数更新で 14 値へ寄せる（実装判断は PR 本文で説明）。
+  関連 pytest を更新し、InMemory Repository 経由で enum 妥当名称が永続化されることを確認する。
+
+scope:
+  - "`orchestrator.py` の `record_phase()` 呼び出し site の phase_name 集約・正規化（14 値準拠）"
+  - "enum 外固定名称（`run_recorded`, `pipeline_failed`, `pipeline_control` 等）の扱い整理"
+  - "下位モジュール `module.phase_name` と 14 集約名の対応表を PR 本文に記載"
+  - "必要最小限: 下位モジュール `constants.py` の `PHASE_NAME` 更新（Orchestrator 正規化のみで足りる場合は変更しない）"
+  - "024 経由 error_detail_json の `phase_name` が Orchestrator 集約名と矛盾しないよう整合（読み取り・最小修正）"
+  - "`test_recommendation_orchestrator.py` および phase-log / wiring integration 関連テスト更新"
+  - "Review Definition 配置"
+
+out_of_scope:
+  - "`phase-log-writer/validation.py` への名称マッピング追加（028 scope 外）"
+  - "`packages/code-definitions` / enum 定義書の値追加・変更"
+  - "`PhaseStatus.skipped` 追加と Orchestrator 呼び出し site（028 §16.1 No.11）"
+  - "段階3 Composition（本番 DB Repository DI）"
+  - "MOD-RECO-025 Metric Logger 配線"
+  - "OpenAPI / Orval / generated / DB schema 変更"
+  - "docs 大規模更新（必要なら MOD-RECO-001 §15 変更履歴 1 行のみ可）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§8 / §12 Phase Log 契機・§14 No.8"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "§8.5 enum 整合・§16.1 No.8/9 / §16.3 順序5"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§10.3 Recommendation Run Phase 14 値正本"
+    - path: "packages/code-definitions/batch/recommendation_run_phase_name.yaml"
+      required: true
+      purpose: "enum 14 値コード正本"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+      purpose: "主要更新対象"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      required: true
+      purpose: "Port 契約（読み取り）"
+    - path: "apps/reco/src/reco/application/phase-log-writer/validation.py"
+      required: true
+      purpose: "enum 検証ロジック（読み取り・変更しない）"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "Orchestrator テスト更新"
+  issues:
+    - number: 1043
+      purpose: "フェーズログ Wiring Epic"
+    - number: 1049
+      purpose: "docs 正本追随 Task"
+    - number: 1051
+      purpose: "本 Task Issue"
+  prs:
+    - number: 1048
+      purpose: "028 本実装配線 merge"
+    - number: 1050
+      purpose: "#1049 merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/application/phase-log-writer/"
+      action: "update"
+      required: false
+      purpose: "enum 整合に伴う期待値更新が必要な場合のみ"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Orchestrator → 028 の phase_name が enum 14 値に統一"
+  - "module.phase_name → 14 集約名対応表（PR 本文）"
+  - "InMemory phase_log 永続化で enum 妥当名称が記録される pytest 証跡"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "Epic #1043 / Task #1049 が develop merge 済みである（作業開始前提）"
+  - "正常系 Orchestrator 実行で `record_phase()` に渡る主要 phase_name が 14 値に収まる"
+  - "enum 外名称（`run_recorded`, `pipeline_failed`, `feature_matched`, `ranked` 等）が 028 へそのまま渡らない"
+  - "`cd apps/reco && uv run pytest tests/unit/ -q` が成功する"
+  - "028 validation.py へのマッピング追加を行っていない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1051-mod-reco-001-orchestrator-phase-name-alignment"
+  summary: "mod-reco-001-orchestrator-phase-name-alignment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-07"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1051
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 1043
+      purpose: "028 本実装配線 develop merge"
+  issues:
+    - number: 1049
+      purpose: "docs 正本追随 merge 確認"
+    - number: 1048
+      purpose: "Epic #1043 PR merge 確認"
+  prs:
+    - number: 1050
+      purpose: "Task #1049 merge"
+    - number: 1048
+      purpose: "Epic #1043 merge"
+  tasks:
+    - "task-mod-reco-001-post-log-observability-wiring-docs-alignment"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-post-log-observability-wiring-docs-alignment"
+  blocks:
+    - "MOD-RECO-001 段階3 Composition Epic 起票判断"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/"
+  commands:
+    - "cd apps/reco && uv sync --extra dev && uv run pytest tests/unit/ -q"
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  manual_checks:
+    - "028 validation.py を変更していないこと"
+    - "14 値一覧が Observability §10.3 / recommendation_run_phase_name.yaml と一致すること"
+    - "PR 本文に module → 集約 phase_name 対応表があること"
+  not_required:
+    - "integration test（E2E / DB）"
+    - "contract test"
+  skip_reason:
+    "integration test（E2E / DB）": "段階3 Composition Task。本 Task は InMemory 永続化確認まで"
+    "contract test": "OpenAPI 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "14 集約名への統一が MOD-RECO-028 §16.1 No.8/9 と一致しているか"
+    - "028 内マッピングを追加していないか"
+    - "集約粒度（Matching / Ranking 等）が Observability §10.3 と矛盾しないか"
+    - "error_log の phase_name 整合が崩れていないか"
+    - "pytest green が維持されているか"
+    - "develop 直 PR 理由が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "028 本実装配線後の Orchestrator 整合 Task"
+
+risk_points:
+  - "下位モジュール PHASE_NAME 変更 vs Orchestrator 正規化のみの判断"
+  - "Matching 0 件 short-circuit 等の例外経路での phase_name 漏れ"
+  - "024 error_detail_json の phase_name 表記揺れ"
+
+human_decision_points:
+  - "002 Run Recorder を `run_recorded` ではなく既存 14 値のどれに集約するか（例: request_received 内包 vs 記録省略）"
+  - "失敗時 `pipeline_failed` / `pipeline_control` を 14 値のどれで表すか（failed 終端 UPDATE の phase_name）"
+  - "021/022 の `result_built` / `snapshot_built` を `result_generated` へ集約する粒度"
+
+stop_conditions:
+  - "14 値への集約方針が docs 正本と矛盾し Human 判断が必要"
+  - "enum / packages/code-definitions 変更が必要になった"
+  - "028 validation.py 変更が必要と判断された（別 Task へ）"
+
+notes:
+  - "workstream: mod-reco-001-orchestrator-phase-name-alignment"
+  - "Related to #260 / #1043 / #1049 / MOD-RECO-028 §16.3 順序5"
+  - "PR 本文: 対応表・enum 外→14 値マッピング方針・pytest 結果"
+
+alignment_reference:
+  enum_14_values:
+    - "request_received"
+    - "config_resolved"
+    - "semantic_extracted"
+    - "user_feature_generated"
+    - "user_meaning_projected"
+    - "query_embedding_generated"
+    - "pre_hard_filter_completed"
+    - "retrieval_completed"
+    - "post_hard_filter_completed"
+    - "matching_completed"
+    - "ranking_completed"
+    - "result_generated"
+    - "reason_generated"
+    - "response_built"
+  known_non_enum_orchestrator:
+    - "run_recorded"
+    - "pipeline_failed"
+    - "pipeline_control"
+  known_non_enum_modules:
+    - "external_feature_estimated"
+    - "internal_feature_estimated"
+    - "feature_matched"
+    - "meaning_match_aggregated"
+    - "context_scored"
+    - "popularity_scored"
+    - "risk_scored"
+    - "final_score_calculated"
+    - "ranked"
+    - "result_built"
+    - "snapshot_built"
