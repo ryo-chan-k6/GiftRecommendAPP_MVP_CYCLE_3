@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-orchestrator-phase-name-alignment-pr"
+  title: "MOD-RECO-001 Orchestrator phase_name enum整合 PRレビュー"
+  summary: "028 本実装配線後の Orchestrator phase_name 14 値統一 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1051
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/orchestrator-phase-name-alignment.yaml"
+  source_branch: "feature/task-1051-mod-reco-001-orchestrator-phase-name-alignment"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/orchestrator-phase-name-alignment.yaml"
+    required: true
+
+review_points:
+  - "14 集約名統一が MOD-RECO-028 §16.1 No.8/9 と一致しているか"
+  - "028 validation.py へのマッピング追加がないか"
+  - "enum 外名称が 028 へ渡らないか"
+  - "module → 集約 phase_name 対応表が PR 本文にあるか"
+  - "error_log phase_name 整合が維持されているか"
+  - "pytest green が維持されているか"
+  - "develop 直 PR 理由が PR 本文で説明されているか"
+  - "Composition / enum 変更 / skipped 対応など scope 外に漏れていないか"
+
+notes:
+  - "target.pr: PR 作成後に更新し PR 差分に含める"
+  - "Related Issue #1051"
