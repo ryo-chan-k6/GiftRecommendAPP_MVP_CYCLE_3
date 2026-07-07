@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-06                                 |
-| 更新日         | 2026-07-06（§16.1 Human Review 反映）      |
+| 更新日         | 2026-07-07（Orchestrator 本実装配線完了反映）      |
 
 ---
 
@@ -19,7 +19,7 @@ Phase Log Writer（Phase Log記録）は、**`phase_log` テーブルへの物�
 
 Orchestrator は各処理フェーズの **開始・終了・失敗契機** を管理し、本モジュールは **永続化・項目マッピング・`started`→終端 UPDATE** を担当する。`error_log` への物理書き込みは **`MOD-RECO-029` Error Log Writer**（`MOD-RECO-024` 経由）責務であり、本モジュールの対象外とする。
 
-**現行実装（移行期）**: Orchestrator 配線（`MOD-RECO-001` §8.4.2）では `StubPhaseLogWriter` がデフォルト DI され、`phase_log` への物理書き込みは未実行である。本仕様書は **本リリース向けの目標仕様** を定義する。本実装差し替えは **028 実装 Task** および **MOD-RECO-001 Epic（#260）配下 Wiring Task** で段階的に行う（§16.3）。
+**現行実装（Orchestrator 配線）**: Epic #1043（PR #1048 develop merge 済み）により、`build_default_stub_ports()` では `_build_default_orchestrator_phase_log_writer()` が配線され、`build_default_phase_log_writer()` 本実装（InMemory Repository + `_OrchestratorPhaseLogWriterAdapter`）が接続されている。`StubPhaseLogWriter` クラスは composition test 互換の参照として `stubs.py` に残存する。
 
 ---
 
@@ -384,6 +384,7 @@ Stub 互換のキー構成（テスト観察用）:
 | ---- | -------- | -------------- |
 | 2026-07-06 | 初版作成 | Issue #1036 |
 | 2026-07-06 | §16.1 に Human Review 確定（enum 外 phase / 集約粒度 / detail_json / skipped） | Issue #1036 |
+| 2026-07-07 | §2 移行期記述・§16.3 / §17 / §19 を Orchestrator 本実装配線完了（#1043）へ追随 | Issue #1049 |
 
 ---
 
@@ -399,7 +400,7 @@ Stub 互換のキー構成（テスト観察用）:
 | 4 | Port / Context 正本 | **`PhaseLogWriterPort` / `ExecutionContext` は Orchestrator 配下**（028 は import のみ） |
 | 5 | `run_id` 未確定 | **バッファ + flush**（§8.4）。`owner_id` NOT NULL 制約を満たす |
 | 6 | error_log 境界 | 詳細障害は **029**。`phase_log.error_code` は **フェーズ失敗要約** のみ（§5.6） |
-| 7 | Orchestrator Wiring | 028 実装 Task で `PhaseLogWriter` 本体を作成。**Stub 差し替えは MOD-RECO-001 Wiring Task**（#260） |
+| 7 | Orchestrator Wiring | Epic #1043 で **完了**（develop merge, PR #1048）。`StubPhaseLogWriter` → 本実装差し替え済み |
 | 8 | enum 外 `phase_name` | **MVP: DB 書き込みスキップ + `context.phase_log_events` + warn**。`recommendation_run_phase_name` 14 値への正規化は **#260 Orchestrator 整合 Task**（028 内マッピングは行わない） |
 | 9 | 集約 phase の記録粒度 | **記録契機・`phase_name` の正本は Orchestrator**。DB には Observability §10.3 の **14 集約名のみ** 永続化。028 は渡された名称を enum 検証するのみ（`MOD-RECO-014` 等の単独記録方針は Orchestrator 側で担保） |
 | 10 | `detail_json` 自動抽出 | **MVP: `module_id` + allowlist 付き安全サマリのみ**（§16.1.1）。Request 全文 / prompt 全文は含めない。拡張は Metric Logger 整合後 |
@@ -432,7 +433,7 @@ allowlist 外フィールドの自動シリアライズは **行わない**。�
 | --: | ---- | ---- | ---- |
 | 1 | MOD-RECO-028 module-spec | #1035 | 本仕様書（当 Task） |
 | 2 | MOD-RECO-028 implementation | #1035 | `phase-log-writer/**`、`PhaseLogRepository` |
-| 3 | MOD-RECO-001 Wiring（既存 / 追補） | #260 | `StubPhaseLogWriter` → 本実装差し替え、§14 integration |
+| 3 | MOD-RECO-001 Wiring（フェーズログ） | #1043 | **完了**（develop merge, PR #1048）。`StubPhaseLogWriter` → 本実装差し替え |
 | 4 | MOD-RECO-028 unit-test | #1035 | §14 網羅テスト |
 | 5 | Orchestrator phase_name 整合（**新規 Issue 推奨**） | #260 | enum 14 値への呼び出し統一・集約契機の整理（§16.1 No.8 / No.9） |
 
@@ -451,7 +452,8 @@ allowlist 外フィールドの自動シリアライズは **行わない**。�
 | Error Log Writer 仕様書 | `docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md` | 029 との対比 |
 | Run Recorder 仕様書 | `docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md` | owner / flush 前提 |
 | Port / Context 型 | `apps/reco/src/reco/application/recommendation-orchestrator/ports.py`, `execution_context.py` | 実装参照 |
-| Stub 参考 | `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` | `StubPhaseLogWriter` |
+| Orchestrator 配線（正本） | `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` | `_build_default_orchestrator_phase_log_writer()`（028 本実装 + Adapter） |
+| Stub 参考 | `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` | `StubPhaseLogWriter`（composition test 互換参照） |
 | Repository 参考 | `apps/reco/src/reco/infrastructure/db/repositories/recommendation_run_repository.py` | パターン参考 |
 
 ---
@@ -471,6 +473,6 @@ allowlist 外フィールドの自動シリアライズは **行わない**。�
 ## 19. 備考
 
 - 推奨着手順（bootstrap #1011）: **024 → 029 → 028**。029 完了を 028 の必須依存とはしない（独立 Epic）
-- `MOD-RECO-001` §8.4.2 の `StubPhaseLogWriter` 差し替えは **Wiring Task（#260）** scope
+- Epic #1043 により `MOD-RECO-001` §8.4.2 の `StubPhaseLogWriter` 差し替えは **完了**（develop merge 済み）
 - batch / api からの `phase_log` 記録は **別モジュール / app** 責務。本モジュールは **reco Online 推薦経路（Orchestrator 直呼び）** に限定する
 - Run INSERT と Phase Log の **同一 DB トランザクションは MVP では必須としない**（`MOD-RECO-002` §11）

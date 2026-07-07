@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-06                                 |
-| 更新日         | 2026-07-06（§16 設計方針確定・本リリース向け I/F 整理） |
+| 更新日         | 2026-07-07（Orchestrator 本実装配線完了反映）           |
 
 ---
 
@@ -19,7 +19,7 @@ Reco Error Handler（Reco Error処理）は、`MOD-RECO-001` Recommendation Orch
 
 本モジュールは **エラー標準化・ログ接続・メッセージ粒度制御** に責務を限定し、推薦計算ロジック、Run / Phase Log の物理書き込み、Public / Internal API レスポンス形式への変換は行わない。Error Code の正本は **エラーコード定義書**、`error_log` 物理項目の正本は **`error_log_テーブル定義書`** を正とする。
 
-**現行実装（移行期）**: `MOD-RECO-001` §8.4.2 に従い、`build_default_stub_ports()` では `StubErrorHandler` が配線され、表面 code 映射は Orchestrator `constants.py` の `MODULE_ERROR_CODES` に残存している。本仕様書は **本リリース向けの目標仕様** を定義する。Orchestrator 側の委譲・配線変更は **MOD-RECO-001 Epic（#260）配下 Wiring Task** で実施する（§16.1）。
+**現行実装（Orchestrator 配線）**: Epic #1029（PR #1034 develop merge 済み）により、`build_default_stub_ports()` では `_build_default_orchestrator_error_handler()` が配線され、`RecoErrorHandler` + `029`（`build_default_error_log_writer()` InMemory）が接続されている。`StubErrorHandler` クラスは composition test 互換の参照として `stubs.py` に残存する。`cause` 優先移行・Orchestrator `constants.py` からの mapping 削除は **別 Task**（§16.2 順序 5）。
 
 ---
 
@@ -375,6 +375,7 @@ Error Code の正本はエラーコード定義書。Orchestrator は本モジ�
 | ---- | -------- | -------------- |
 | 2026-07-06 | 初版作成 | Issue #1014 |
 | 2026-07-06 | §16 設計方針確定（本リリース向けエラー委譲・029 Port 直呼び・`RecoDomainError`） | Issue #1014 Human 判断 |
+| 2026-07-07 | §2 移行期記述・§16.2 / §17 / §19 を Orchestrator 本実装配線完了（#1029）へ追随 | Issue #1049 |
 
 ---
 
@@ -399,10 +400,11 @@ Human Review（Issue #1014）にて、以下を **本リリース向けの確定
 | --: | ---- | ---- | ---- |
 | 1 | MOD-RECO-024 implementation | #1013 | `reco-error-handler/**`、`MODULE_SURFACE_ERROR_CODES`、`RecoDomainError`、029 Port 呼び出し（Stub 可） |
 | 2 | MOD-RECO-029 implementation | #1013 | `error-log-writer/**`、024→029 本接続 |
-| 3 | MOD-RECO-001 Wiring（**新規 Issue 推奨**） | #260 | `ports.py` 拡張、`orchestrator.py` 委譲、`constants.py` から mapping 削除、`stubs.py` 本実装差し替え、テスト更新 |
+| 3 | MOD-RECO-001 Wiring（ログ・エラー） | #1029 | **完了**（develop merge, PR #1034）。`stubs.py` で 024+029 DI 配線 |
 | 4 | MOD-RECO-024 unit-test | #1013 | §14 網羅テスト + Orchestrator integration（Wiring 後） |
+| 5 | Orchestrator `cause` 優先移行（**新規 Issue 推奨**） | #260 | `ports.py` 拡張、`orchestrator.py` 委譲、`constants.py` から mapping 削除 |
 
-**パイプライン挙動が本番方針に切り替わるのは順序 3（Orchestrator Wiring）完了後** である。順序 1〜2 では 024 単体・029 連携を unit / 明示 DI で検証する。
+**Orchestrator 上の 024+029 本実装配線は順序 3（Epic #1029）完了後** に切り替わっている。`cause` 優先移行（順序 5）は後続 Task とする。
 
 ### 16.3 未決事項
 
@@ -423,7 +425,8 @@ Human Review（Issue #1014）にて、以下を **本リリース向けの確定
 | Orchestrator 仕様書 | `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` | §8.4 Port・§14 テスト |
 | error_log テーブル定義書 | `docs/06_実装設計/database/error_log_テーブル定義書.md` | Error Log 物理項目 |
 | Port 定義（コード・移行期） | `apps/reco/src/reco/application/recommendation-orchestrator/ports.py` | 現行 `ErrorHandlerPort`（Wiring Task で拡張） |
-| Stub 参照実装 | `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` | `StubErrorHandler`（移行期） |
+| Orchestrator 配線（正本） | `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` | `_build_default_orchestrator_error_handler()`（024+029 DI） |
+| Stub 参照実装 | `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` | `StubErrorHandler`（composition test 互換参照） |
 | Domain error Protocol（予定） | `apps/reco/src/reco/domain/errors.py` | `RecoDomainError`（§8.3.4） |
 | 012 構造化例外（参考） | `apps/reco/src/reco/application/candidate-retriever/errors.py` | `PreHardFilterError` / `RetrievalError` |
 
@@ -442,7 +445,6 @@ Human Review（Issue #1014）にて、以下を **本リリース向けの確定
 
 ## 19. 備考
 
-- Epic 配線方針: `MOD-RECO-001` §8.4.2 では `024` は **Stub**。本リリース方針確定後は **024 実装 → 029 実装 → MOD-RECO-001 Wiring** の順で本番経路へ移行（§16.2）
-- 推奨着手順（Epic bootstrap）: **024 → 029 → 028**（Issue #1011 参照）。Orchestrator Wiring は 024 実装マージ後に **MOD-RECO-001 Epic で Issue 化**
+- Epic 配線方針: Epic #1029 により `MOD-RECO-001` §8.4.2 で `024`+`029` DI 配線が **完了**（develop merge 済み）。`cause` 優先移行は §16.2 順序 5
+- 推奨着手順（Epic bootstrap）: **024 → 029 → 028**（Issue #1011 参照）。ログ・エラー Orchestrator Wiring は Epic #1029 で完了
 - Reason 部分成功（`MOD-RECO-023` Item 単位 fallback）では **`GRS-REC-013` を発行しない**（`MOD-RECO-001` §10.3）
-- `MOD-RECO-001` 仕様書 §8.4 / §10.2 の更新は **Orchestrator Wiring Task 完了時** に実施（本 Task scope 外）
