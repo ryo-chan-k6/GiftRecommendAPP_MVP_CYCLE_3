@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）               |
 | MVP対象        | `○`                                                      |
 | 作成日         | 2026-06-25                                               |
-| 更新日         | 2026-07-07（§8.4.2 ログ・観測 Wiring 完了反映）          |
+| 更新日         | 2026-07-08（§8.4.2 Metric Wiring 完了反映）              |
 
 ---
 
@@ -128,7 +128,7 @@ Recommendation Orchestrator（推薦実行制御）は、Reco オンライン推
 | `MOD-RECO-022` Result Snapshot Builder | 呼び出し | 表示時点 Snapshot 生成 | パイプライン中断、`GRS-REC-012` | |
 | `MOD-RECO-023` Reason Generator | 呼び出し | 推薦理由生成 | 回復不能時は §10.3 に従い汎用 Reason 注入で継続 | `021`/`022` 成功後は Run 失敗にしない |
 | `MOD-RECO-024` Reco Error Handler | 呼び出し | 例外の標準化・ログ接続 | エラー応答生成の前提 | 各フェーズ失敗時 |
-| `MOD-RECO-025` Metric Logger | 呼び出し（任意） | 件数・処理時間・分布メトリクス記録 | 記録失敗は推薦結果に影響させない | MVP対象 `△` |
+| `MOD-RECO-025` Metric Logger | 呼び出し（任意） | 件数・処理時間・分布メトリクス記録 | 記録失敗は推薦結果に影響させない | MVP対象 `○` |
 | `MOD-RECO-028` Phase Log Writer | 呼び出し | phase_log 永続化 | 記録失敗は推薦結果に影響させない（warn ログ） | 各フェーズ境界 |
 | `MOD-RECO-029` Error Log Writer | 間接呼び出し | error_log 永続化 | `MOD-RECO-024` 経由 | 失敗時 |
 | `MOD-RECO-026` Item Semantic Generator | 直接呼び出しなし | BT 事前生成データの間接利用 | OL では対象外 | 処理種別 `BT` |
@@ -258,14 +258,14 @@ Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モ�
 | Ranking | `017`〜`020` | **配線済み** | Wiring Epic #791 |
 | 出力 | `021`〜`023` | **配線済み** | Wiring Epic #792 |
 | エラー処理 | `024` Error Handler | **配線済み** | `_build_default_orchestrator_error_handler()` → `RecoErrorHandler` + `029` DI。Wiring Epic #1029 |
-| メトリクス | `025` Metric Logger | **Stub** | `StubMetricLogger`。MVP 対象 `△` |
+| メトリクス | `025` Metric Logger | **配線済み** | `_build_default_orchestrator_metric_logger()` → `build_default_metric_logger`（本実装、InMemory）。Wiring Epic #1061 |
 | フェーズログ | `028` Phase Log Writer | **配線済み** | `_build_default_orchestrator_phase_log_writer()` → `build_default_phase_log_writer`（本実装 + Adapter）。Wiring Epic #1043 |
 | エラーログ | `029` Error Log Writer | **024 経由 DI（配線済み）** | `024` 内 `build_default_error_log_writer()`（InMemory）。Wiring Epic #1029 |
 | BT 間接参照 | `026` Item Semantic Extractor、`027` Item Feature Generator | **OL 非呼び出し** | Batch トラック。Orchestrator からは参照しない |
 
 **例外（起動フェーズ）**: `002` / `003` はモジュール間 I/F（version 3 列、`003`→`002` 物理順）が強く、`002` 実装 Task（#783）および `003` 実装完了時点で **起動フェーズ Wiring を実施済み**とする。
 
-**段階3（Composition）着手前の残課題**: 本番 DI（DB Repository 等）、`025` Metric Logger 本実装配線、§14 integration 観点（No.10 / 11 / 14）は後続 Task とする。`024` / `028` / `029` の Orchestrator 本実装配線は Epic #1029 / #1043 により完了（develop merge 済み）。
+**段階3（Composition）着手前の残課題**: 本番 DI（DB Repository 等）、§14 integration 観点（No.10 / 11 / 14）は後続 Task とする。`024` / `025` / `028` / `029` の Orchestrator 本実装配線は Epic #1029 / #1043 / #1061 により完了（develop merge 済み）。`StubMetricLogger` クラスは §8.4.1 に従い明示 DI 用に `stubs.py` に残存する。
 
 #### 8.4.3 Task Definition との関係
 
@@ -395,7 +395,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | `final_result_count` | 最終推薦件数 | Run | 品質・空結果率 |
 | `reason_fallback_count` | Reason 汎用文注入件数 | Run / Item | fallback 品質監視 |
 
-メトリクスの永続化は `MOD-RECO-025` Metric Logger に委譲する（MVP対象 `△`）。Orchestrator は計測起点・終点と、下位モジュールからのカウント受け渡しを担う。
+メトリクスの永続化は `MOD-RECO-025` Metric Logger に委譲する（MVP対象 `○`）。Orchestrator は計測起点・終点と、下位モジュールからのカウント受け渡しを担う。
 
 ---
 
@@ -468,6 +468,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-06-30 | `MOD-RECO-011` 廃止に伴い `010 → 012` 1 呼び出し（内部 `pre_hard_filter` → `retrieval`）へ更新。`GRS-REC-008` / `009` 発生元を `MOD-RECO-012` に整合 | Issue #867 / PR #868 |
 | 2026-07-06 | §8.4.2 を段階2完了後の配線状態へ更新（`004`〜`023` 配線済み、`024`/`025`/`028`/`029` Stub、`026`/`027` BT 間接） | Issue #1009 |
 | 2026-07-07 | §8.4.2 / 段階3着手前残課題をログ・観測 Wiring 完了後へ更新（`024`+`029` DI / `028` 本実装配線済み、`025` Stub 維持） | Issue #1049 |
+| 2026-07-08 | §8.4.2 / §131 / 段階3着手前残課題を Metric Wiring 完了後へ更新（`025` 本実装配線済み、MVP `○`） | Issue #1067 |
 
 ---
 
