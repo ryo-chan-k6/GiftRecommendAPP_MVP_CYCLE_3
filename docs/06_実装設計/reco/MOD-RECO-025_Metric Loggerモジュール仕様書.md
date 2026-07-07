@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-07                                 |
-| 更新日         | 2026-07-07                                 |
+| 更新日         | 2026-07-08（Orchestrator 本実装配線完了反映）      |
 
 ---
 
@@ -19,7 +19,7 @@ Metric Logger（Metric記録）は、**推薦 Run 成功終端における件数
 
 Orchestrator はパイプライン全体の計測起点・終点および下位モジュールが `ExecutionContext` に書き込んだカウント / レイテンシを集約する。本モジュールは **Metric の正規化・Repository 経由の永続化・Run 内観察用バッファ** を担当する。`phase_log` / `error_log` への物理書き込みは **`MOD-RECO-028` / `MOD-RECO-029`** 責務であり、本モジュールの対象外とする。
 
-**現行実装（Orchestrator 配線）**: `build_default_stub_ports()` では `StubMetricLogger` が配線されている（`stubs.py`）。本 Epic（#1053）の implementation Task 完了後に `metric-logger/**` 本実装へ差し替える。**Orchestrator Wiring（`stubs.py` 差し替え）は別 Epic** scope とする。
+**現行実装（Orchestrator 配線）**: Epic #1061（PR #1066 develop merge 済み）により、`build_default_stub_ports()` では `_build_default_orchestrator_metric_logger()` が配線され、`build_default_metric_logger()` 本実装（InMemory Repository）が接続されている。`StubMetricLogger` クラスは composition test 互換の参照として `stubs.py` に残存する。
 
 ---
 
@@ -77,7 +77,6 @@ Orchestrator はパイプライン全体の計測起点・終点および下位�
 - Public API（`API-PUB-002`）向けレスポンス形式・HTTP status 変換
 - OpenAPI / Orval / generated の変更
 - DB schema / DDL の変更（Composition Task へ委譲）
-- **`stubs.py` への Wiring 差し替え**（別 Wiring Epic scope）
 
 ---
 
@@ -133,7 +132,7 @@ class MetricLoggerPort(Protocol):
 
 | 依存先 | 方向 | 用途 | 失敗時の扱い | 備考 |
 | ------ | ---- | ---- | ------------ | ---- |
-| `MOD-RECO-001` Recommendation Orchestrator | 被呼び出し | `record_metrics()` 契機・`ExecutionContext` 供給 | — | Wiring は別 Epic |
+| `MOD-RECO-001` Recommendation Orchestrator | 被呼び出し | `record_metrics()` 契機・`ExecutionContext` 供給 | — | Epic #1061 Wiring 完了 |
 | `MetricLoggerRepository` | 呼び出し | Metric 永続化 | catch し warn。推薦継続 | Protocol + InMemory（MVP） |
 | `MOD-RECO-002` Recommendation Run Recorder | 間接 | `context.run_id` 確定 | `run_id` NULL 時は warn + スキップまたは部分記録 | §8.3 |
 
@@ -146,7 +145,7 @@ class MetricLoggerPort(Protocol):
 | 分布 Metric 設計 | 同上 §12 | 将来拡張 | — | MVP 対象外 |
 | `reco_score_distribution_metric` | DB テーブル定義書 | 段階3 永続化参考 | — | MVP InMemory では未使用 |
 
-**025→001 結合**: 025 は `recommendation-orchestrator` から **Port・ExecutionContext のみ import** する。Orchestrator 本体 / `stubs.py` の変更は Epic #1053 `forbidden_paths` により **Wiring Task** scope とする。
+**025→001 結合**: 025 は `recommendation-orchestrator` から **Port・ExecutionContext のみ import** する。Orchestrator 本体 / `stubs.py` の Wiring 差し替えは Epic #1061（PR #1066 develop merge 済み）で **完了**。
 
 ---
 
@@ -306,7 +305,7 @@ flowchart TD
 
 - Postgres `MetricLoggerRepository` 実装
 - `metric_log` / distribution 系テーブルへの INSERT
-- Orchestrator DI（`stubs.py` 差し替え）は **Wiring Epic**（`mod-reco-001-wiring-metric` 想定）
+- Orchestrator DI（`stubs.py` 差し替え）は Epic #1061 で **完了**（develop merge, PR #1066）
 
 ---
 
@@ -372,6 +371,7 @@ flowchart TD
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-07 | 初版作成 | Issue #1054 |
+| 2026-07-08 | §2 移行期記述・§16.1 / §16.3 / §19 を Orchestrator 本実装配線完了（#1061）へ追随 | Issue #1067 |
 
 ---
 
@@ -387,9 +387,9 @@ Epic #1053 Human 判断および Task #1054 作業に基づく。
 | 2 | 呼び出し経路 | **Orchestrator 成功終端から `MetricLoggerPort.record_metrics()` 直呼び**が正本。024 / 028 / 029 経由ではない |
 | 3 | 失敗時の影響 | **025 記録失敗は推薦返却をブロックしない**。本モジュール内で catch し warn のみ（028 / 029 同型） |
 | 4 | MVP 永続化 | **InMemory Repository を正**とする。Postgres 永続化は **段階3 Composition Task** へ委譲 |
-| 5 | Orchestrator Wiring | **`stubs.py` 差し替えは本 Epic scope 外**。implementation 完了後 **別 Wiring Epic** で実施 |
+| 5 | Orchestrator Wiring | Epic #1061 で **完了**（develop merge, PR #1066）。`StubMetricLogger` → 本実装差し替え済み |
 | 6 | 入力型の正本 | **`ExecutionContext` は Orchestrator `execution_context.py`**。025 は import のみ |
-| 7 | Recoモジュール一覧 MVP 表記 | 一覧 §6.23.5 は現行 **`△` のまま**（本 Task はモジュール仕様書のみ作成）。**○ への更新は implementation merge 前後の follow-up** とする（epic_scope 許可済み） |
+| 7 | Recoモジュール一覧 MVP 表記 | 一覧 §6.23.5 を **`○` に更新**（Epic #1053 Human 判断。Task #1067） |
 
 ### 16.2 MVP Metric 最小集合（Human 判断）
 
@@ -417,7 +417,7 @@ Observability §11.2 / §12、Recoモジュール一覧 §10.2（「初期は処
 | 1 | MOD-RECO-025 module-spec | #1053 | 本仕様書（当 Task） |
 | 2 | MOD-RECO-025 implementation | #1053 | `metric-logger/**`、`MetricLoggerRepository`（InMemory） |
 | 3 | MOD-RECO-025 unit-test | #1053 | §14 網羅テスト |
-| 4 | MOD-RECO-001 Wiring（Metric） | 別 Epic（未作成） | `stubs.py` → 本実装 DI |
+| 4 | MOD-RECO-001 Wiring（Metric） | #1061 | **完了**（develop merge, PR #1066）。`StubMetricLogger` → 本実装 DI |
 | 5 | Composition（Metric DB） | 段階3 | Postgres Repository / 分布テーブル |
 
 ---
@@ -433,7 +433,7 @@ Observability §11.2 / §12、Recoモジュール一覧 §10.2（「初期は処
 | Error Log Writer 仕様書 | `docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md` | non-blocking 方針参考 |
 | reco_score_distribution_metric 定義書 | `docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md` | 段階3 DB 参考 |
 | MetricLoggerPort | `apps/reco/src/reco/application/recommendation-orchestrator/ports.py` | Port 契約 |
-| StubMetricLogger | `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` | Stub 参照（Wiring は別 Epic） |
+| StubMetricLogger | `apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` | Stub 参照（composition test 互換。明示 DI 用に残存） |
 | Orchestrator 呼び出し | `apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py` | 成功終端契機 |
 | ExecutionContext | `apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py` | 入力フィールド正本 |
 
@@ -454,6 +454,6 @@ Observability §11.2 / §12、Recoモジュール一覧 §10.2（「初期は処
 
 ## 19. 備考
 
-- 現行 `StubMetricLogger`（`stubs.py`）は Tier 1 の部分集合（`recommendation_latency_ms`, `reason_fallback_count`, `final_result_count`, `trace_id`, `run_id`）のみ記録する。implementation Task で §16.2 Tier 1 へ拡張する。
+- `StubMetricLogger`（`stubs.py`）は Tier 1 の部分集合のみ記録する参照実装として残存する。`build_default_stub_ports()` では本実装 `build_default_metric_logger()` が配線済み（Epic #1061）。
 - `metric_log` 物理テーブル DDL は未整備。InMemory のキー設計は §9.1 を正とし、DDL 確定時にマイグレーション Task で列を追加する。
-- Recoモジュール一覧の MVP `△` 表記は、本仕様書（`○`）との差分として §16.1 No.7 に明示した。一覧更新は epic_scope 許可範囲の follow-up とする。
+- Recoモジュール一覧 §6.23.5 の MVP 表記は Task #1067 で **`○` に更新済み**（Epic #1053 Human 判断）。

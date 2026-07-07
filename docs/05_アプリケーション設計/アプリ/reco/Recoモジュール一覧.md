@@ -903,7 +903,7 @@ Reason生成
 | 物理名 | Metric Logger |
 | 分類 | ログ・観測 |
 | 処理種別 | 共通 |
-| MVP対象 | △ |
+| MVP対象 | ○ |
 | 主な入力 | latency / count / score distribution |
 | 主な出力 | metric_log |
 
