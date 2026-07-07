@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1054
   task_definition: "prompts/definitions/tasks/mod-reco-025-metric-logger/module-spec.yaml"
-  source_branch: "docs/task-<issue-number>-mod-reco-025-metric-logger-module-spec"
+  source_branch: "docs/task-1054-mod-reco-025-metric-logger-module-spec"
   target_branch: "feature/epic-1053-mod-reco-025-metric-logger"
   parent_epic_issue: 1053
   parent_epic_branch: "feature/epic-1053-mod-reco-025-metric-logger"
