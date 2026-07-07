@@ -1,4 +1,4 @@
-"""Shared fixtures for MOD-RECO-025 smoke tests."""
+"""Shared fixtures for MOD-RECO-025 unit tests."""
 
 from __future__ import annotations
 
@@ -41,6 +41,7 @@ from reco.application.metric_logger import (  # noqa: E402
     InMemoryMetricLoggerRepository,
     MetricLogger,
 )
+from reco.infrastructure.logger.logger import RecoLogger, ScaffoldRecoLogger  # noqa: E402
 
 DEFAULT_RUN_ID = "run-metric-logger-1"
 DEFAULT_REQUEST_ID = "req-metric-logger-1"
@@ -85,9 +86,10 @@ TIER_1B_KEYS = frozenset(
 
 def build_logger(
     repository: InMemoryMetricLoggerRepository | None = None,
+    logger: RecoLogger | None = None,
 ) -> tuple[MetricLogger, InMemoryMetricLoggerRepository]:
     repo = repository or InMemoryMetricLoggerRepository()
-    return MetricLogger(repository=repo), repo
+    return MetricLogger(repository=repo, logger=logger or ScaffoldRecoLogger()), repo
 
 
 def sample_context(*, include_run: bool = True) -> ExecutionContext:
