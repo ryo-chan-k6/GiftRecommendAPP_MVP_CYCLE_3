@@ -7,6 +7,7 @@ from conftest import (
     DEFAULT_TRACE_ID,
     STUB_COMPATIBLE_KEYS,
     TIER_1_KEYS,
+    TIER_1B_KEYS,
     build_logger,
     sample_context,
     sample_rich_context,
@@ -35,6 +36,10 @@ def test_record_metrics_persists_tier_1_metrics() -> None:
     assert record.final_result_count == 2
     assert record.recommendation_empty is False
     assert record.reason_fallback_count == 2
+    assert record.retrieval_phase_latency_ms == 33
+    assert record.matching_latency_ms == 60
+    assert record.ranking_latency_ms == 70
+    assert record.reason_generation_latency_ms == 40
     assert record.metric_source == METRIC_SOURCE
     assert record.recorded_at.tzinfo is not None
 
@@ -53,6 +58,36 @@ def test_record_metrics_appends_stub_compatible_observation_buffer() -> None:
     assert observation["final_result_count"] == 2
     assert observation["reason_fallback_count"] == 2
     assert TIER_1_KEYS.issubset(observation.keys())
+    assert TIER_1B_KEYS.issubset(observation.keys())
+
+
+def test_record_metrics_sums_partial_tier_1b_latencies() -> None:
+    metric_logger, repo = build_logger()
+    context = sample_context()
+    context.pre_hard_filter_latency_ms = 10
+    context.feature_matcher_latency_ms = 25
+    context.final_ranker_latency_ms = 30
+
+    metric_logger.record_metrics(context)
+
+    record = repo.records[0]
+    assert record.retrieval_phase_latency_ms == 10
+    assert record.matching_latency_ms == 25
+    assert record.ranking_latency_ms == 30
+    assert record.reason_generation_latency_ms is None
+
+
+def test_record_metrics_tier_1b_latencies_are_none_when_all_inputs_missing() -> None:
+    metric_logger, repo = build_logger()
+    context = sample_context()
+
+    metric_logger.record_metrics(context)
+
+    record = repo.records[0]
+    assert record.retrieval_phase_latency_ms is None
+    assert record.matching_latency_ms is None
+    assert record.ranking_latency_ms is None
+    assert record.reason_generation_latency_ms is None
 
 
 def test_record_metrics_records_zero_result_run() -> None:

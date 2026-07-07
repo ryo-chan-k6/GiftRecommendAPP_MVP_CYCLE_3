@@ -19,5 +19,9 @@ class MetricRecord:
     final_result_count: int
     recommendation_empty: bool
     reason_fallback_count: int
+    retrieval_phase_latency_ms: int | None
+    matching_latency_ms: int | None
+    ranking_latency_ms: int | None
+    reason_generation_latency_ms: int | None
     recorded_at: datetime
     metric_source: str
