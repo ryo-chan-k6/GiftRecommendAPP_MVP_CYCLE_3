@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1055
   issue:
     number: 1054
   task_definition: "prompts/definitions/tasks/mod-reco-025-metric-logger/module-spec.yaml"
