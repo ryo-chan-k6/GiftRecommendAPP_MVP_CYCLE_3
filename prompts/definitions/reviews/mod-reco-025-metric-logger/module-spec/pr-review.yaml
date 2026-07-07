@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-025-metric-logger-module-spec-pr"
+  title: "MOD-RECO-025 モジュール仕様書 PRレビュー"
+  summary: "MOD-RECO-025（Metric Logger）モジュール仕様書 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/mod-reco-025-metric-logger/module-spec.yaml"
+  source_branch: "docs/task-<issue-number>-mod-reco-025-metric-logger-module-spec"
+  target_branch: "feature/epic-1053-mod-reco-025-metric-logger"
+  parent_epic_issue: 1053
+  parent_epic_branch: "feature/epic-1053-mod-reco-025-metric-logger"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-025-metric-logger/module-spec.yaml"
+    required: true
+
+review_points:
+  - "Task Definition scope / acceptance_criteria 充足"
+  - "Observability §11.2 / §11.3 整合"
+  - "MetricLoggerPort 契約整合"
+  - "MVP Metric 範囲と InMemory / DB 境界の明確性"
+  - "epic_scope 内に差分が収まっているか"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / target.pr を更新する"
