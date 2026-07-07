@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1060
   issue:
     number: 1053
   task_definition: "prompts/definitions/epics/mod-reco-025-metric-logger/epic.yaml"
