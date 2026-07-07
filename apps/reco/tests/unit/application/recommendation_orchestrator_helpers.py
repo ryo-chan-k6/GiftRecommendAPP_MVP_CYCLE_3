@@ -743,6 +743,25 @@ def in_memory_phase_log_records(phase_log_writer: object) -> list:
     return list(repository.records.values())
 
 
+def in_memory_recommendation_run_records(run_recorder: object) -> list:
+    """Return MOD-RECO-002 InMemory runs wired through default run_recorder."""
+    from reco.application.recommendation_run_recorder import RecommendationRunRecorder
+    from reco.infrastructure.db.repositories.recommendation_run_repository import (
+        InMemoryRecommendationRunRepository,
+    )
+
+    if not isinstance(run_recorder, RecommendationRunRecorder):
+        msg = "expected RecommendationRunRecorder from build_default_stub_ports()"
+        raise TypeError(msg)
+
+    repository = run_recorder.run_repository
+    if not isinstance(repository, InMemoryRecommendationRunRepository):
+        msg = "expected InMemoryRecommendationRunRepository in default run_recorder"
+        raise TypeError(msg)
+
+    return list(repository.runs.values())
+
+
 def in_memory_metric_log_records(metric_logger: object) -> list:
     """Return MOD-RECO-025 InMemory records wired through default metric_logger."""
     from reco.application.metric_logger import MetricLogger
@@ -788,6 +807,7 @@ __all__ = [
     "in_memory_error_log_records",
     "in_memory_metric_log_records",
     "in_memory_phase_log_records",
+    "in_memory_recommendation_run_records",
     "ports_with_matching_stubs",
     "ports_with_output_stubs",
     "ports_with_ranking_stubs",
