@@ -41,6 +41,7 @@ from recommendation_orchestrator_helpers import (
     in_memory_error_log_records,
     in_memory_metric_log_records,
     in_memory_phase_log_records,
+    in_memory_recommendation_run_records,
     ports_with_matching_stubs,
     ports_with_output_stubs,
     ports_with_ranking_stubs,
@@ -736,6 +737,83 @@ def test_pipeline_hard_timeout_boundary_does_not_trigger_at_limit() -> None:
 
     assert outcome.success is True
     assert outcome.recommendation_result is not None
+
+
+# §14 No.10 DB / ログ（integration: Run / Phase / Metric が下位モジュール経由で永続化）
+def test_section14_no10_success_run_delegates_observability_to_downstream_modules() -> None:
+    ports, helpers = _wired_ports()
+    request = _sample_request()
+    trace_id = "trace-section14-no10-success"
+
+    outcome = RecommendationOrchestrator(ports).run(request, trace_id=trace_id)
+
+    assert outcome.success is True
+    context = outcome.execution_context
+    assert context is not None
+    run_id = context.run_id
+    assert run_id is not None
+
+    run_records = in_memory_recommendation_run_records(ports.run_recorder)
+    assert len(run_records) == 1
+    run_record = run_records[0]
+    assert run_record.run_id == run_id
+    assert run_record.request_id == request.request_id
+    assert run_record.run_status is RunStatus.RUNNING
+
+    phase_records = in_memory_phase_log_records(helpers["phase_log_writer"])
+    assert phase_records
+    assert all(record.trace_id == trace_id for record in phase_records)
+    assert all(record.owner_id == run_id for record in phase_records)
+
+    metric_records = in_memory_metric_log_records(helpers["metric_logger"])
+    assert len(metric_records) == 1
+    assert metric_records[0].recommendation_run_id == run_id
+    assert metric_records[0].trace_id == trace_id
+
+    assert in_memory_error_log_records(helpers["error_handler"]) == []
+
+
+def test_section14_no10_failure_run_delegates_error_and_phase_to_downstream_modules() -> None:
+    ports, helpers = _wired_ports()
+    ports = _ports_with(
+        ports,
+        user_semantic_extractor=StubPipelineModule(
+            module_id="MOD-RECO-004",
+            phase_name="semantic_extracted",
+            should_fail=True,
+        ),
+    )
+    request = _sample_request()
+    trace_id = "trace-section14-no10-failure"
+
+    outcome = RecommendationOrchestrator(ports).run(request, trace_id=trace_id)
+
+    assert outcome.success is False
+    assert outcome.reco_error is not None
+    assert outcome.reco_error.error_code == "GRS-REC-004"
+    context = outcome.execution_context
+    assert context is not None
+    run_id = context.run_id
+    assert run_id is not None
+    assert "MOD-RECO-002" in context.completed_modules
+    assert "MOD-RECO-004" not in context.completed_modules
+
+    run_records = in_memory_recommendation_run_records(ports.run_recorder)
+    assert len(run_records) == 1
+    assert run_records[0].run_id == run_id
+
+    error_records = in_memory_error_log_records(helpers["error_handler"])
+    assert len(error_records) == 1
+    assert error_records[0].trace_id == trace_id
+    assert error_records[0].error_code == "GRS-REC-004"
+    assert error_records[0].request_id == request.request_id
+
+    phase_records = in_memory_phase_log_records(helpers["phase_log_writer"])
+    assert phase_records
+    assert any(record.phase_status == "failed" for record in phase_records)
+    assert all(record.trace_id == trace_id for record in phase_records)
+
+    assert in_memory_metric_log_records(helpers["metric_logger"]) == []
 
 
 # §14 No.9 Error Log 接続（integration: MOD-RECO-024→029 本実装）
