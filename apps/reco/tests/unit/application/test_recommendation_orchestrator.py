@@ -37,6 +37,7 @@ from recommendation_orchestrator_helpers import (
     build_wired_default_composition_ports,
     build_wired_ports_with_zero_matching_candidates,
     in_memory_error_log_records,
+    in_memory_metric_log_records,
     in_memory_phase_log_records,
     ports_with_matching_stubs,
     ports_with_output_stubs,
@@ -104,6 +105,13 @@ def test_default_stub_ports_wires_reco_error_handler() -> None:
 
     ports, _ = build_default_stub_ports()
     assert isinstance(ports.error_handler, RecoErrorHandler)
+
+
+def test_default_stub_ports_wires_metric_logger() -> None:
+    from reco.application.metric_logger import MetricLogger
+
+    ports, _ = build_default_stub_ports()
+    assert isinstance(ports.metric_logger, MetricLogger)
 
 
 def test_default_stub_ports_wires_retrieval_modules() -> None:
@@ -614,6 +622,68 @@ def test_phase_log_records_major_phase_boundaries() -> None:
     )
     assert config_record.phase_status == "succeeded"
     assert config_record.trace_id == trace_id
+
+
+# §14 No.10 Metric 接続（integration: MOD-RECO-001→025 本実装 / 025 §14 No.10）
+def test_success_run_records_tier_1_metrics_via_default_composition() -> None:
+    from reco.application.metric_logger.constants import METRIC_SOURCE
+
+    ports, helpers = _wired_ports()
+    trace_id = "trace-metric-success"
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id=trace_id,
+    )
+
+    assert outcome.success is True
+    assert outcome.execution_context is not None
+    run_id = outcome.execution_context.run_id
+    assert run_id is not None
+
+    metric_logger = helpers["metric_logger"]
+    assert len(metric_logger.recorded) == 1
+    observation = metric_logger.recorded[0]
+    assert observation["trace_id"] == trace_id
+    assert observation["run_id"] == run_id
+    assert observation["recommendation_run_id"] == run_id
+    assert observation["final_result_count"] == 2
+    assert observation["recommendation_empty"] is False
+    assert observation["metric_source"] == METRIC_SOURCE
+    for key in (
+        "recommendation_latency_ms",
+        "pre_filter_candidate_count",
+        "retrieval_candidate_count",
+        "post_filter_candidate_count",
+        "reason_fallback_count",
+        "recorded_at",
+    ):
+        assert key in observation
+
+    persisted = in_memory_metric_log_records(metric_logger)
+    assert len(persisted) == 1
+    record = persisted[0]
+    assert record.trace_id == trace_id
+    assert record.recommendation_run_id == run_id
+    assert record.final_result_count == 2
+    assert record.recommendation_empty is False
+    assert record.metric_source == METRIC_SOURCE
+
+
+# §14 No.11 Metric 非記録（integration: 025 §14 No.11 — 失敗 Run で record_metrics 未呼び出し）
+def test_failure_run_does_not_record_metrics() -> None:
+    ports, helpers = build_default_stub_ports()
+    ports = _ports_with(ports, config_resolver=StubConfigResolver(should_fail=True))
+    trace_id = "trace-metric-failure"
+
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id=trace_id,
+    )
+
+    assert outcome.success is False
+    metric_logger = helpers["metric_logger"]
+    assert metric_logger.recorded == []
+    assert in_memory_metric_log_records(metric_logger) == []
 
 
 # §14 No.9 Error Log 接続（integration: MOD-RECO-024→029 本実装）
