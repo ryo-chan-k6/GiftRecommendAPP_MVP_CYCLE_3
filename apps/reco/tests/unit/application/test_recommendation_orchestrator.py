@@ -20,6 +20,9 @@ from reco.application.recommendation_orchestrator.stubs import (
     StubReasonGenerator,
 )
 from reco.application.recommendation_run_recorder import build_scaffold_run_recorder
+from reco.application.recommendation_orchestrator.phase_name import (
+    ALLOWED_RECOMMENDATION_RUN_PHASE_NAMES,
+)
 from recommendation_orchestrator_helpers import (
     _MATCHING_MODULE_IDS,
     _OUTPUT_MODULE_IDS,
@@ -431,6 +434,7 @@ def test_section19_feature_matcher_failure_aborts_before_meaning_match_aggregato
     assert outcome.execution_context is not None
     assert "MOD-RECO-015" not in outcome.execution_context.completed_modules
     assert outcome.execution_context.error_log_events
+    assert outcome.reco_error.phase_name == "matching_completed"
 
 
 # §14 No.5 境界値（0件）— Orchestrator は空 Result を正常終了。GRS-REC-001 は api 層で付与。
@@ -550,6 +554,7 @@ def test_run_recorder_failure_after_config_resolver() -> None:
     assert "MOD-RECO-002" not in outcome.execution_context.completed_modules
     assert "MOD-RECO-004" not in outcome.execution_context.completed_modules
     assert outcome.execution_context.error_log_events
+    assert outcome.reco_error.phase_name == "request_received"
 
 
 # §14 No.8 Phase Log 契機（integration: MOD-RECO-001→028 本実装）
@@ -568,6 +573,21 @@ def test_phase_log_records_major_phase_boundaries() -> None:
     assert "request_received" in phase_names
     assert "config_resolved" in phase_names
     assert "response_built" in phase_names
+    assert "matching_completed" in phase_names
+    assert "ranking_completed" in phase_names
+    assert "result_generated" in phase_names
+    assert phase_names.isdisjoint(
+        {
+            "run_recorded",
+            "pipeline_failed",
+            "pipeline_control",
+            "feature_matched",
+            "ranked",
+            "result_built",
+            "snapshot_built",
+        }
+    )
+    assert phase_names <= ALLOWED_RECOMMENDATION_RUN_PHASE_NAMES
 
     config_events = [event for event in events if event["phase_name"] == "config_resolved"]
     assert any(event["phase_status"] == "started" for event in config_events)
@@ -578,6 +598,10 @@ def test_phase_log_records_major_phase_boundaries() -> None:
     persisted_phase_names = {record.phase_name for record in records}
     assert "request_received" in persisted_phase_names
     assert "config_resolved" in persisted_phase_names
+    assert "matching_completed" in persisted_phase_names
+    assert "ranking_completed" in persisted_phase_names
+    assert "result_generated" in persisted_phase_names
+    assert persisted_phase_names <= ALLOWED_RECOMMENDATION_RUN_PHASE_NAMES
 
     request_record = next(
         record for record in records if record.phase_name == "request_received"

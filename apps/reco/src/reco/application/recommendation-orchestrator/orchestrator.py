@@ -16,6 +16,7 @@ from reco.domain.recommendation.result import (
 from reco.domain.recommendation.run import RunStatus
 
 from .constants import GENERIC_REASON_SUMMARY, MODULE_ERROR_CODES, ORCHESTRATOR_MODULE_ORDER
+from .phase_name import normalize_orchestrator_phase_name, resolve_aggregated_phase_name
 
 # MOD-RECO-014 §16.1 No.8: Matching 対象 0 件時に Orchestrator がスキップするモジュール
 _MATCHING_RANKING_MODULE_IDS: frozenset[str] = frozenset(
@@ -86,17 +87,21 @@ class RecommendationOrchestrator:
         try:
             context = self._execute_pipeline(context)
         except ModuleExecutionError as exc:
+            failed_phase_name = normalize_orchestrator_phase_name(
+                exc.module_id,
+                exc.phase_name,
+            )
             reco_error = self._ports.error_handler.handle(
                 context,
                 module_id=exc.module_id,
                 error_code=exc.error_code,
                 message=str(exc),
-                phase_name=exc.phase_name,
+                phase_name=failed_phase_name,
                 cause=exc.__cause__,
             )
             self._ports.phase_log_writer.record_phase(
                 context,
-                phase_name=exc.phase_name or "pipeline_failed",
+                phase_name=failed_phase_name,
                 phase_status=PhaseStatus.FAILED,
                 module_id=exc.module_id,
                 error_code=exc.error_code,
@@ -176,6 +181,7 @@ class RecommendationOrchestrator:
                 module.module_id == "MOD-RECO-014"
                 and self._should_short_circuit_after_feature_matcher(context)
             ):
+                context = self._record_matching_completed_after_short_circuit(context)
                 context = self._prepare_empty_result_after_matching_zero(context)
                 matching_zero_short_circuit = True
 
@@ -184,20 +190,36 @@ class RecommendationOrchestrator:
         return context
 
     def _invoke_run_recorder(self, context: ExecutionContext) -> ExecutionContext:
+        # MOD-RECO-002: enum 外 run_recorded は記録せず Run 永続化のみ（028 §16.1 No.8/9）
         module = self._ports.run_recorder
-        return self._invoke_step(
-            context,
-            module_id=module.module_id,
-            phase_name="run_recorded",
-            action=lambda ctx: module.record_run(ctx),
-        )
+        try:
+            return module.record_run(context)
+        except Exception as exc:  # noqa: BLE001 - delegated to MOD-RECO-024
+            error_code = MODULE_ERROR_CODES[module.module_id]
+            failed_phase_name = normalize_orchestrator_phase_name(
+                module.module_id,
+                "run_recorded",
+            )
+            self._ports.phase_log_writer.record_phase(
+                context,
+                phase_name=failed_phase_name,
+                phase_status=PhaseStatus.FAILED,
+                module_id=module.module_id,
+                error_code=error_code,
+            )
+            raise ModuleExecutionError(
+                module.module_id,
+                str(exc),
+                error_code=error_code,
+                phase_name=failed_phase_name,
+            ) from exc
 
     def _invoke_config_resolver(self, context: ExecutionContext) -> ExecutionContext:
         module = self._ports.config_resolver
         return self._invoke_step(
             context,
             module_id=module.module_id,
-            phase_name="config_resolved",
+            raw_phase_name="config_resolved",
             action=lambda ctx: module.resolve(ctx),
         )
 
@@ -205,17 +227,30 @@ class RecommendationOrchestrator:
         return self._invoke_step(
             context,
             module_id=module.module_id,
-            phase_name=module.phase_name,
+            raw_phase_name=module.phase_name,
             action=lambda ctx: module.execute(ctx),
         )
 
     def _invoke_reason_generator(self, context: ExecutionContext) -> ExecutionContext:
         module = self._ports.reason_generator
+        phase_name = resolve_aggregated_phase_name(
+            module.module_id,
+            module.phase_name,
+        )
+        if phase_name is None:
+            msg = f"phase_name is not configured for {module.module_id}"
+            raise ModuleExecutionError(
+                module.module_id,
+                msg,
+                error_code=MODULE_ERROR_CODES[module.module_id],
+                phase_name=module.phase_name,
+            )
+
         started = perf_counter()
 
         self._ports.phase_log_writer.record_phase(
             context,
-            phase_name=module.phase_name,
+            phase_name=phase_name,
             phase_status=PhaseStatus.STARTED,
             module_id=module.module_id,
         )
@@ -227,7 +262,7 @@ class RecommendationOrchestrator:
             context = inject_generic_reason_fallback(context)
             self._ports.phase_log_writer.record_phase(
                 context,
-                phase_name=module.phase_name,
+                phase_name=phase_name,
                 phase_status=PhaseStatus.SUCCEEDED,
                 module_id=module.module_id,
                 duration_ms=duration_ms,
@@ -239,7 +274,7 @@ class RecommendationOrchestrator:
                 module.module_id,
                 "recommendation result missing before reason merge",
                 error_code=MODULE_ERROR_CODES[module.module_id],
-                phase_name=module.phase_name,
+                phase_name=phase_name,
             )
 
         context.recommendation_result = _merge_reason_into_result(
@@ -250,7 +285,7 @@ class RecommendationOrchestrator:
 
         self._ports.phase_log_writer.record_phase(
             context,
-            phase_name=module.phase_name,
+            phase_name=phase_name,
             phase_status=PhaseStatus.SUCCEEDED,
             module_id=module.module_id,
             duration_ms=duration_ms,
@@ -262,24 +297,31 @@ class RecommendationOrchestrator:
         context: ExecutionContext,
         *,
         module_id: str,
-        phase_name: str,
+        raw_phase_name: str,
         action,
     ) -> ExecutionContext:
+        phase_name = resolve_aggregated_phase_name(module_id, raw_phase_name)
         started = perf_counter()
-        self._ports.phase_log_writer.record_phase(
-            context,
-            phase_name=phase_name,
-            phase_status=PhaseStatus.STARTED,
-            module_id=module_id,
-        )
+
+        if phase_name is not None:
+            self._ports.phase_log_writer.record_phase(
+                context,
+                phase_name=phase_name,
+                phase_status=PhaseStatus.STARTED,
+                module_id=module_id,
+            )
 
         try:
             updated = action(context)
         except Exception as exc:  # noqa: BLE001 - delegated to MOD-RECO-024
             error_code = MODULE_ERROR_CODES.get(module_id, "GRS-REC-999")
+            failed_phase_name = normalize_orchestrator_phase_name(
+                module_id,
+                raw_phase_name,
+            )
             self._ports.phase_log_writer.record_phase(
                 context,
-                phase_name=phase_name,
+                phase_name=failed_phase_name,
                 phase_status=PhaseStatus.FAILED,
                 module_id=module_id,
                 error_code=error_code,
@@ -288,18 +330,38 @@ class RecommendationOrchestrator:
                 module_id,
                 str(exc),
                 error_code=error_code,
-                phase_name=phase_name,
+                phase_name=failed_phase_name,
             ) from exc
 
         duration_ms = int((perf_counter() - started) * 1_000)
-        self._ports.phase_log_writer.record_phase(
-            updated,
-            phase_name=phase_name,
-            phase_status=PhaseStatus.SUCCEEDED,
-            module_id=module_id,
-            duration_ms=duration_ms,
-        )
+        if phase_name is not None:
+            self._ports.phase_log_writer.record_phase(
+                updated,
+                phase_name=phase_name,
+                phase_status=PhaseStatus.SUCCEEDED,
+                module_id=module_id,
+                duration_ms=duration_ms,
+            )
         return updated
+
+    def _record_matching_completed_after_short_circuit(
+        self,
+        context: ExecutionContext,
+    ) -> ExecutionContext:
+        """MOD-RECO-014 §16.1 No.8: 015 以降スキップ時も matching_completed を記録する。"""
+        self._ports.phase_log_writer.record_phase(
+            context,
+            phase_name="matching_completed",
+            phase_status=PhaseStatus.STARTED,
+            module_id="MOD-RECO-014",
+        )
+        self._ports.phase_log_writer.record_phase(
+            context,
+            phase_name="matching_completed",
+            phase_status=PhaseStatus.SUCCEEDED,
+            module_id="MOD-RECO-014",
+        )
+        return context
 
     def _should_short_circuit_after_feature_matcher(
         self,
@@ -356,7 +418,10 @@ class RecommendationOrchestrator:
                 "MOD-RECO-001",
                 f"module order mismatch: expected {expected}, got {actual}",
                 error_code="GRS-REC-002",
-                phase_name="pipeline_control",
+                phase_name=normalize_orchestrator_phase_name(
+                    "MOD-RECO-001",
+                    "pipeline_control",
+                ),
             )
 
 
