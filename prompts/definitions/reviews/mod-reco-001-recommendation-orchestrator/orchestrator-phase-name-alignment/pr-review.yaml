@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1052
   issue:
     number: 1051
   task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/orchestrator-phase-name-alignment.yaml"
