@@ -34,6 +34,7 @@ from recommendation_orchestrator_helpers import (
     build_wired_default_composition_ports,
     build_wired_ports_with_zero_matching_candidates,
     in_memory_error_log_records,
+    in_memory_phase_log_records,
     ports_with_matching_stubs,
     ports_with_output_stubs,
     ports_with_ranking_stubs,
@@ -551,16 +552,18 @@ def test_run_recorder_failure_after_config_resolver() -> None:
     assert outcome.execution_context.error_log_events
 
 
-# §14 No.8 Phase Log 契機（unit: スタブ呼び出し記録）
+# §14 No.8 Phase Log 契機（integration: MOD-RECO-001→028 本実装）
 def test_phase_log_records_major_phase_boundaries() -> None:
     ports, helpers = _wired_ports()
+    trace_id = "trace-phase-log"
     outcome = RecommendationOrchestrator(ports).run(
         _sample_request(),
-        trace_id="trace-phase-log",
+        trace_id=trace_id,
     )
 
     assert outcome.success is True
-    events = helpers["phase_log_writer"].events
+    assert outcome.execution_context is not None
+    events = outcome.execution_context.phase_log_events
     phase_names = {event["phase_name"] for event in events}
     assert "request_received" in phase_names
     assert "config_resolved" in phase_names
@@ -569,6 +572,24 @@ def test_phase_log_records_major_phase_boundaries() -> None:
     config_events = [event for event in events if event["phase_name"] == "config_resolved"]
     assert any(event["phase_status"] == "started" for event in config_events)
     assert any(event["phase_status"] == "succeeded" for event in config_events)
+
+    # §14 No.12 (001 / 028): Orchestrator 正常 Run で主要 phase が InMemory phase_log へ永続化
+    records = in_memory_phase_log_records(helpers["phase_log_writer"])
+    persisted_phase_names = {record.phase_name for record in records}
+    assert "request_received" in persisted_phase_names
+    assert "config_resolved" in persisted_phase_names
+
+    request_record = next(
+        record for record in records if record.phase_name == "request_received"
+    )
+    assert request_record.phase_status == "started"
+    assert request_record.trace_id == trace_id
+
+    config_record = next(
+        record for record in records if record.phase_name == "config_resolved"
+    )
+    assert config_record.phase_status == "succeeded"
+    assert config_record.trace_id == trace_id
 
 
 # §14 No.9 Error Log 接続（integration: MOD-RECO-024→029 本実装）
@@ -613,8 +634,14 @@ def test_trace_id_propagates_to_phase_log_and_metrics() -> None:
     assert outcome.success is True
     assert outcome.execution_context is not None
     assert outcome.execution_context.trace_id == trace_id
-    assert all(event["trace_id"] == trace_id for event in helpers["phase_log_writer"].events)
+    phase_log_events = outcome.execution_context.phase_log_events
+    assert all(event["trace_id"] == trace_id for event in phase_log_events)
     assert helpers["metric_logger"].recorded[-1]["trace_id"] == trace_id
+
+    # §14 No.14 (001 / 028): trace_id が永続化 phase_log 行にも設定される
+    records = in_memory_phase_log_records(helpers["phase_log_writer"])
+    assert records
+    assert all(record.trace_id == trace_id for record in records)
 
 
 # §14 No.13 Reason fallback
