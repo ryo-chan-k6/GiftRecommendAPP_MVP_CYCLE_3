@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-section14-reason-partial-integration-pr"
+  title: "MOD-RECO-001 §14 No.14 Reason partial integration PRレビュー"
+  summary: "§14 No.14 integration Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1073
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/section14-reason-partial-integration.yaml"
+  source_branch: "feature/task-1073-mod-reco-001-section14-reason-partial-integration"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/section14-reason-partial-integration.yaml"
+    required: true
+
+review_points:
+  - "§14 No.14（部分 fallback → partial）が integration テストでカバーされているか"
+  - "No.13（全 Item fallback）と区別されているか"
+  - "002 run_status partial 永続化など scope 外に着手していないか"
+
+notes:
+  - "target.pr: PR 作成後に更新"
+  - "Related Issue #1073"
