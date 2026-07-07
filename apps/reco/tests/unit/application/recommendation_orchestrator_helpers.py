@@ -742,6 +742,23 @@ def in_memory_phase_log_records(phase_log_writer: object) -> list:
     return list(repository.records.values())
 
 
+def in_memory_metric_log_records(metric_logger: object) -> list:
+    """Return MOD-RECO-025 InMemory records wired through default metric_logger."""
+    from reco.application.metric_logger import MetricLogger
+    from reco.application.metric_logger.repository import InMemoryMetricLoggerRepository
+
+    if not isinstance(metric_logger, MetricLogger):
+        msg = "expected MetricLogger from build_default_stub_ports()"
+        raise TypeError(msg)
+
+    repository = metric_logger.repository
+    if not isinstance(repository, InMemoryMetricLoggerRepository):
+        msg = "expected InMemoryMetricLoggerRepository in default metric_logger"
+        raise TypeError(msg)
+
+    return repository.records
+
+
 __all__ = [
     "_MATCHING_MODULE_IDS",
     "_OUTPUT_MODULE_IDS",
@@ -756,6 +773,7 @@ __all__ = [
     "build_wired_default_composition_ports",
     "build_wired_ports_with_zero_matching_candidates",
     "in_memory_error_log_records",
+    "in_memory_metric_log_records",
     "in_memory_phase_log_records",
     "ports_with_matching_stubs",
     "ports_with_output_stubs",

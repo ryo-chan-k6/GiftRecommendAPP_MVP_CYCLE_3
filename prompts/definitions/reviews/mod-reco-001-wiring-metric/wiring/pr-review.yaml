@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-metric-wiring-pr"
+  title: "MOD-RECO-001 Wiring（Metric）配線 PRレビュー"
+  summary: "Orchestrator Wiring（Metric）配線 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1063
+  issue:
+    number: 1062
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-metric/wiring.yaml"
+  source_branch: "feature/task-1062-mod-reco-001-wiring-metric-wiring"
+  target_branch: "feature/epic-1061-mod-reco-001-wiring-metric"
+  parent_epic_issue: 1061
+  parent_epic_branch: "feature/epic-1061-mod-reco-001-wiring-metric"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-metric/wiring.yaml"
+    required: true
+
+review_points:
+  - "metric_logger 配線のみに diff が限定されているか"
+  - "025 モジュール本体への変更がないか"
+  - "build_default_metric_logger 接続が正しいか"
+  - "StubMetricLogger が削除されていないか"
+  - "integration-test Task 委譲が PR 本文に明記されているか"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / target.pr を更新する"

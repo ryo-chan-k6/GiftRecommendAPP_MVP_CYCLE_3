@@ -191,6 +191,13 @@ def _ensure_phase_log_writer_package() -> None:
     )
 
 
+def _ensure_metric_logger_package() -> None:
+    _ensure_application_package(
+        "reco.application.metric_logger",
+        "metric-logger",
+    )
+
+
 def _build_default_orchestrator_error_handler():
     """Wire MOD-RECO-024 with MOD-RECO-029 InMemory writer for MVP composition."""
     _ensure_error_log_writer_package()
@@ -240,6 +247,14 @@ def _build_default_orchestrator_phase_log_writer() -> _OrchestratorPhaseLogWrite
     from reco.application.phase_log_writer import build_default_phase_log_writer
 
     return _OrchestratorPhaseLogWriterAdapter(writer=build_default_phase_log_writer())
+
+
+def _build_default_orchestrator_metric_logger():
+    """Wire MOD-RECO-025 with InMemory repository for MVP composition."""
+    _ensure_metric_logger_package()
+    from reco.application.metric_logger import build_default_metric_logger
+
+    return build_default_metric_logger()
 
 
 _ensure_run_recorder_package()
@@ -462,7 +477,7 @@ def build_default_stub_ports() -> tuple[OrchestratorPorts, dict[str, object]]:
 
     phase_log_writer = _build_default_orchestrator_phase_log_writer()
     error_handler = _build_default_orchestrator_error_handler()
-    metric_logger = StubMetricLogger()
+    metric_logger = _build_default_orchestrator_metric_logger()
 
     ports = OrchestratorPorts(
         run_recorder=build_scaffold_run_recorder(),
