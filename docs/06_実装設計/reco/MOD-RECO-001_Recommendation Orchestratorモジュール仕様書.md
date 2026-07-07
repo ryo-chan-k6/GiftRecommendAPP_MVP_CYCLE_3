@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）               |
 | MVP対象        | `○`                                                      |
 | 作成日         | 2026-06-25                                               |
-| 更新日         | 2026-07-06                                               |
+| 更新日         | 2026-07-07（§8.4.2 ログ・観測 Wiring 完了反映）          |
 
 ---
 
@@ -257,15 +257,15 @@ Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モ�
 | Matching | `014`〜`016` | **配線済み** | Wiring Epic #790 |
 | Ranking | `017`〜`020` | **配線済み** | Wiring Epic #791 |
 | 出力 | `021`〜`023` | **配線済み** | Wiring Epic #792 |
-| エラー処理 | `024` Error Handler | **Stub** | `StubErrorHandler`。段階3 / MOD-RECO-024 Epic 前 |
+| エラー処理 | `024` Error Handler | **配線済み** | `_build_default_orchestrator_error_handler()` → `RecoErrorHandler` + `029` DI。Wiring Epic #1029 |
 | メトリクス | `025` Metric Logger | **Stub** | `StubMetricLogger`。MVP 対象 `△` |
-| フェーズログ | `028` Phase Log Writer | **Stub** | `StubPhaseLogWriter` |
-| エラーログ | `029` Error Log Writer | **024 経由 Stub** | 物理書き込み未実装（`029` 本実装は後続 Task） |
+| フェーズログ | `028` Phase Log Writer | **配線済み** | `_build_default_orchestrator_phase_log_writer()` → `build_default_phase_log_writer`（本実装 + Adapter）。Wiring Epic #1043 |
+| エラーログ | `029` Error Log Writer | **024 経由 DI（配線済み）** | `024` 内 `build_default_error_log_writer()`（InMemory）。Wiring Epic #1029 |
 | BT 間接参照 | `026` Item Semantic Extractor、`027` Item Feature Generator | **OL 非呼び出し** | Batch トラック。Orchestrator からは参照しない |
 
 **例外（起動フェーズ）**: `002` / `003` はモジュール間 I/F（version 3 列、`003`→`002` 物理順）が強く、`002` 実装 Task（#783）および `003` 実装完了時点で **起動フェーズ Wiring を実施済み**とする。
 
-**段階3（Composition）着手前の残課題**: `024` / `028` / `029` の本実装配線、本番 DI（DB Repository 等）、§14 integration 観点（No.10 / 11 / 14）は後続 Task とする。
+**段階3（Composition）着手前の残課題**: 本番 DI（DB Repository 等）、`025` Metric Logger 本実装配線、§14 integration 観点（No.10 / 11 / 14）は後続 Task とする。`024` / `028` / `029` の Orchestrator 本実装配線は Epic #1029 / #1043 により完了（develop merge 済み）。
 
 #### 8.4.3 Task Definition との関係
 
@@ -467,6 +467,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-06-26 | §8.4 下位モジュール配線方針（3 段階ハイブリッド）を Human 決定として反映 | 配線方針採用 |
 | 2026-06-30 | `MOD-RECO-011` 廃止に伴い `010 → 012` 1 呼び出し（内部 `pre_hard_filter` → `retrieval`）へ更新。`GRS-REC-008` / `009` 発生元を `MOD-RECO-012` に整合 | Issue #867 / PR #868 |
 | 2026-07-06 | §8.4.2 を段階2完了後の配線状態へ更新（`004`〜`023` 配線済み、`024`/`025`/`028`/`029` Stub、`026`/`027` BT 間接） | Issue #1009 |
+| 2026-07-07 | §8.4.2 / 段階3着手前残課題をログ・観測 Wiring 完了後へ更新（`024`+`029` DI / `028` 本実装配線済み、`025` Stub 維持） | Issue #1049 |
 
 ---
 

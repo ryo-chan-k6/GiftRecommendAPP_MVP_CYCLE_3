@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-06                                 |
-| 更新日         | 2026-07-06（初版・024→029 Port 連携整理）  |
+| 更新日         | 2026-07-07（Orchestrator 本実装配線完了反映）  |
 
 ---
 
@@ -19,7 +19,7 @@ Error Log Writer（Error Log記録）は、**`error_log` テーブルへの物�
 
 本モジュールは **永続化・項目マッピング・INSERT 失敗の例外伝播** に責務を限定し、Error Code の標準化（`GRS-REC-*` への集約）、メッセージマスキング、Public / Internal API レスポンス形式への変換は **`MOD-RECO-024` 責務**とする。`error_log` 物理項目の正本は **`error_log_テーブル定義書`**、Error Code の正本は **エラーコード定義書** を正とする。
 
-**現行実装（移行期）**: `MOD-RECO-024` 実装（Epic #1013）では `NoOpErrorLogWriter` がデフォルト DI され、物理 INSERT は未実行である。本仕様書は **本リリース向けの目標仕様** を定義する。Orchestrator / 024 側の本実装差し替えは **024 実装マージ後の 029 実装 Task** および **MOD-RECO-001 Epic（#260）配下 Wiring Task** で段階的に行う（§16.2）。
+**現行実装（Orchestrator 配線）**: Epic #1029（PR #1034 develop merge 済み）により、`024` 経由で `build_default_error_log_writer()`（InMemory）が Orchestrator composition に DI されている。Orchestrator から 029 への直接呼び出しは行わない（§7.1）。
 
 ---
 
@@ -125,7 +125,7 @@ def write(self, request: ErrorLogWriteRequest) -> None: ...
 | `ErrorLogRepository` | 呼び出し | `error_log` INSERT | 例外伝播 | infrastructure 層 |
 | PostgreSQL `error_log` | 永続化 | 行保存 | DB 例外を Repository 経由で返却 | IF-DB-RECO-009 |
 
-**Orchestrator との関係**: `MOD-RECO-001` §8.4.2 では移行期 Stub 配線があるが、**本リリース方針では Orchestrator → 024 → 029** の間接経路が正本である。Orchestrator から 029 への直接 `write()` は **Wiring Task scope 外**（本 Epic forbidden_paths に Orchestrator 含む）。
+**Orchestrator との関係**: Epic #1029 により `MOD-RECO-001` §8.4.2 で **024 経由 DI 配線が完了**している。**本リリース方針では Orchestrator → 024 → 029** の間接経路が正本である。Orchestrator から 029 への直接 `write()` は **Wiring Task scope 外**（本 Epic forbidden_paths に Orchestrator 含む）。
 
 ### 7.2 参照データ
 
@@ -290,6 +290,7 @@ flowchart TD
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-06 | 初版作成 | Issue #1019 |
+| 2026-07-07 | §2 / §7.1 / §16 / §19 を Orchestrator 本実装配線完了（#1029）へ追随 | Issue #1049 |
 
 ---
 
@@ -306,7 +307,7 @@ flowchart TD
 | 3 | `error_log.error_code` | **表面 `GRS-REC-*`**（024 が決定）。詳細 code は `error_detail_json.detail_error_code` |
 | 4 | 入力型の正本 | **`ErrorLogWriteRequest` は 024 `models.py`**。029 は import のみ（Epic forbidden_paths により 024 本体は変更しない） |
 | 5 | `occurred_at` | **029 が INSERT 時に設定**（024 は event 組み立てのみ） |
-| 6 | Orchestrator Wiring | 024 実装への 029 DI 差し替えは **029 実装 Task**。パイプライン全体切替は **MOD-RECO-001 Wiring Task**（#260） |
+| 6 | Orchestrator Wiring | Epic #1029 で **完了**（develop merge, PR #1034）。024 経由 029 DI 配線済み |
 
 ### 16.2 後続 Task（横断修正の実施タイミング）
 
@@ -314,7 +315,7 @@ flowchart TD
 | --: | ---- | ---- | ---- |
 | 1 | MOD-RECO-029 module-spec | #1018 | 本仕様書（当 Task） |
 | 2 | MOD-RECO-029 implementation | #1018 | `error-log-writer/**`、`ErrorLogRepository`、024 DI 接続 |
-| 3 | MOD-RECO-001 Wiring（**新規 Issue 推奨**） | #260 | Orchestrator / 024 Stub 差し替え、integration テスト |
+| 3 | MOD-RECO-001 Wiring（ログ・エラー） | #1029 | **完了**（develop merge, PR #1034）。024 経由 029 DI 配線 |
 | 4 | MOD-RECO-029 unit-test | #1018 | §14 網羅テスト |
 | 5 | MOD-RECO-024 unit-test | #1013 | §14 網羅 + 024→029 連携（029 実装後） |
 
@@ -349,5 +350,5 @@ flowchart TD
 ## 19. 備考
 
 - 推奨着手順（bootstrap #1011）: **024 → 029 → 028**。024 実装（#1016 / PR #1017）マージ済みを前提に 029 に着手する
-- `MOD-RECO-001` §8.4.2 Stub 配線の更新は **Orchestrator Wiring Task** scope（本 Epic 外）
+- Epic #1029 により `MOD-RECO-001` §8.4.2 の 024 経由 029 DI 配線は **完了**（develop merge 済み）
 - batch 系からの `error_log` INSERT は **別モジュール / app** 責務。本モジュールは **reco Online 推薦経路（024 委譲）** に限定する
