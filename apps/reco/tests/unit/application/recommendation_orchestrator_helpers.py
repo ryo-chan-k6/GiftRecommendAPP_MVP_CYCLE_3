@@ -724,6 +724,24 @@ def in_memory_error_log_records(error_handler: object) -> list:
     return repository.records
 
 
+def in_memory_phase_log_records(phase_log_writer: object) -> list:
+    """Return MOD-RECO-028 InMemory records wired through default phase_log_writer."""
+    from reco.application.phase_log_writer.repository import InMemoryPhaseLogRepository
+    from reco.application.phase_log_writer.writer import PhaseLogWriter
+
+    writer = getattr(phase_log_writer, "writer", phase_log_writer)
+    if not isinstance(writer, PhaseLogWriter):
+        msg = "expected PhaseLogWriter behind default phase_log_writer adapter"
+        raise TypeError(msg)
+
+    repository = writer.repository
+    if not isinstance(repository, InMemoryPhaseLogRepository):
+        msg = "expected InMemoryPhaseLogRepository in default phase_log_writer"
+        raise TypeError(msg)
+
+    return list(repository.records.values())
+
+
 __all__ = [
     "_MATCHING_MODULE_IDS",
     "_OUTPUT_MODULE_IDS",
@@ -738,6 +756,7 @@ __all__ = [
     "build_wired_default_composition_ports",
     "build_wired_ports_with_zero_matching_candidates",
     "in_memory_error_log_records",
+    "in_memory_phase_log_records",
     "ports_with_matching_stubs",
     "ports_with_output_stubs",
     "ports_with_ranking_stubs",
