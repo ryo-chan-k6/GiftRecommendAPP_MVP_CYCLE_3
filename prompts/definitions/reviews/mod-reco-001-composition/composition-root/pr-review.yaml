@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-composition-composition-root-pr"
+  title: "composition root PRレビュー"
+  summary: "Composition Epic 工程 ④ composition root Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1085
+  issue:
+    number: 1084
+  task_definition: "prompts/definitions/tasks/mod-reco-001-composition/composition-root.yaml"
+  source_branch: "feature/task-1084-composition-root"
+  target_branch: "feature/epic-1076-mod-reco-001-composition"
+  parent_epic_issue: 1076
+  parent_epic_branch: "feature/epic-1076-mod-reco-001-composition"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-composition/composition-root.yaml"
+    required: true
+
+review_points:
+  - "MVP デフォルト vs 本番 composition の責務分離"
+  - "002/028/029/025 Postgres DI 配線"
+  - "stubs/orchestrator/ports 非変更"
+  - "Tier 1 / Tier 2 Metric 境界"
+  - "composition 単体テストと実行結果"
+  - "secret 非露出"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / target.pr / source_branch を更新する"
+  - "Related Epic #1076"
