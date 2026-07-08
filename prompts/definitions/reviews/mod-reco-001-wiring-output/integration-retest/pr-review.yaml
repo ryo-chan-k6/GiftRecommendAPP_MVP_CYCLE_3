@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-output-integration-retest-pr"
+  title: "MOD-RECO-001 出力 integration 再テスト PRレビュー"
+  summary: "出力 ExecutionContext 型付き化後の Orchestrator デフォルト経路テスト更新 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1007
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-output/integration-retest.yaml"
+  source_branch: "test/task-1007-mod-reco-001-wiring-output-integration-retest"
+  target_branch: "develop"
+  parent_epic_issue: 792
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-output/integration-retest.yaml"
+    required: true
+
+review_points:
+  - "Output ExecutionContext アサーションが型定義と整合しているか"
+  - "execution_context.py / stubs.py への不要な変更がないか"
+  - "デフォルト composition Output テストが green であるか"
+  - "develop 直 PR 例外が PR 本文で説明されているか"
+  - "Task PR target が develop であるか"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / source_branch / target.pr を更新する"

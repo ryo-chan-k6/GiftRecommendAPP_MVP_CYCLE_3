@@ -1,0 +1,247 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-api-int-001-reco-health-check"
+  title: "API-INT-001:Recoヘルスチェック"
+  summary: "API-INT-001（Recoヘルスチェック / Internal API、GET /internal/reco/v1/health）に関するAPI仕様書・OpenAPI（internal）連携・recoエンドポイント実装・単体テストを管理するEpic。apps/api からの Reco 稼働確認用。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/create-contract-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計および 07_開発・単体テストにおいて、API-INT-001（Recoヘルスチェック / Internal API）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。Epic の Projects Phase は完了ゲート（07）、子 Task で成果物工程（06 / 07）を管理する。
+  本 API は apps/api → apps/reco 間の内部ヘルスチェックであり、`GET /internal/reco/v1/health` を提供する。
+  本 Epic は apps/reco の **エンドポイント層**（`apps/reco/src/reco/api/**`）の責務に限定し、推薦ロジック本体（`apps/reco/src/reco/application/**`）の変更は含めない。
+  子 Task は Internal API 仕様書・OpenAPI（internal）連携（Contract Task として分離想定）・reco エンドポイント実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+  Phase1（1a 契約仕様書・1b OpenAPI・1c generated）の `develop` 反映は識別子 Epic PR ではなく **Phase1 マイルストーン Epic** 経由とする（[実装フェーズ実行プロセス設計書](../../../docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md) §6.2）。
+
+objective: |
+  API-INT-001 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths（apps/reco/src/reco/api 等のエンドポイント層）から外れないことをガードする。
+  推薦ロジック本体（apps/reco/src/reco/application 等）の変更は依存 Epic（[Epic]MOD-RECO-001 等）配下の Task として切る運用を明示する。
+  Phase1 成果（契約仕様書・OpenAPI・generated）の `develop` 反映は **Phase1 マイルストーン Epic**（`phase1-api-contract-foundation` 等）経由とする。本 Epic PR による `develop` merge は **Phase4b 縦串完了時のみ**（実装仕様書→実装→単体テスト完了後）。
+
+scope:
+  - "API-INT-001 に関する子 Task の作業単位を整理する（API仕様書 / OpenAPI連携 / reco エンドポイント実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/api-int-001-reco-health-check/**）を整理する"
+  - "OpenAPI（internal）変更を Contract Task として分離する方針を明示する"
+  - "依存横断 Epic [Epic]API-CONTRACT-ORVAL（#367）の Status を子 Task 開始前に確認する運用を明示する"
+
+out_of_scope:
+  - "API-INT-002（Reco推薦実行）の仕様・実装変更（[Epic]API-INT-002 で扱う）"
+  - "Recoモジュール本体の設計・実装（[Epic]MOD-RECO-001 等で扱う）"
+  - "apps/api Public API の仕様・実装変更（[Epic]API-PUB-* で扱う）"
+  - "画面（SCR-*）の設計・実装"
+  - "Batch 実装"
+  - "DB schema 変更"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-INT-001 の endpoint / Internal API / Method / MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Internal API の URL 設計・Method・Error 形式を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: false
+      purpose: "Reco エンドポイント層とモジュール群の境界を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "Internal API の Error Response を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "reco_health_check_count 等の metric 方針を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）・API-INT Epic の典型 allowed_paths（§3.5.2）を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]API-INT-001:Recoヘルスチェック）"
+  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-int-001-reco-health-check）"
+  - "子 Task 候補一覧（API仕様書 / OpenAPI / reco エンドポイント実装 / 単体テスト）"
+  - "epic_scope.allowed_paths / forbidden_paths による配下 Task のファイル境界宣言"
+  - "依存横断 Epic [Epic]API-CONTRACT-ORVAL（#367）の参照"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]API-INT-001:Recoヘルスチェック 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "epic_scope.allowed_paths が apps/reco/src/reco/api/** に限定されている"
+  - "epic_scope.forbidden_paths に apps/reco/src/reco/application/** が明示されている"
+  - "dependencies.epics に横断 Epic #367（API-CONTRACT-ORVAL）が記載されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-<issue-number>-int-001-reco-health-check"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+epic_scope:
+  artifact_id: "API-INT-001"
+  allowed_paths:
+    - "docs/06_実装設計/api/API-INT-001_*"
+    - "apps/reco/src/reco/api/**"
+    - "apps/api/src/lib/reco-client/**"
+    - "apps/api/src/infrastructure/reco-client/**"
+    - "apps/api/src/generated/reco-client/**"
+    - "packages/contracts/openapi/**"
+    - "packages/contracts/schemas/**"
+    - "prompts/definitions/tasks/api-int-001-reco-health-check/**"
+    - "prompts/definitions/reviews/api-int-001-reco-health-check/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/application/**"
+    - "apps/reco/src/reco/domain/**"
+    - "apps/reco/src/reco/pipeline/**"
+    - "apps/reco/src/modules/**"
+    - "apps/reco/src/app/**"
+    - "apps/reco/src/domain/**"
+    - "apps/api/src/app/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "api-spec"
+    - "openapi"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 367
+      title: "[Epic]API-CONTRACT-ORVAL"
+      purpose: "横断 Epic。1b OpenAPI / 1c Orval・generated 成果の供給元（Issue #367 コメント参照）"
+
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "medium"
+  contract_impact: true
+  generated_impact: true
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が Internal API エンドポイント層に閉じているか確認する"
+    - "apps/reco/src/reco/application 変更が混入していないか確認する"
+    - "依存横断 Epic #367（API-CONTRACT-ORVAL）の有無を確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "contract test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+    "contract test": "OpenAPI（internal）変更を伴う子 Task でのみ実施するため、Epic 直下では対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が Internal API エンドポイント層に閉じているか（application 層を含めていないか）"
+    - "issue.area が api であることと allowed_paths（reco/api）の整合"
+    - "dependencies.epics に横断 Epic #367（API-CONTRACT-ORVAL）が記載されているか"
+    - "Epic PR target が develop であるか（Phase4b 縦串完了時のみ merge）"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: true
+  reason: "本 Epic は OpenAPI（internal）/ reco-client 境界に影響するため、横断影響が判明した時点で ai-logs/cross-cutting への記録余地を残す。"
+
+risk_points:
+  - "apps/reco/src/reco/application の変更が誤って配下 Task に混入する可能性"
+  - "横断 Epic #367 が未整備のまま子 Task を開始する運用ミス"
+  - "識別子 Epic PR を Phase4b 前に develop へ merge しようとする運用ミス"
+
+human_decision_points:
+  - "OpenAPI（internal）変更を Contract Task として分離するタイミング"
+  - "第2波 Phase1 マイルストーン Epic への統合タイミング"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "API一覧に API-INT-001 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "apps/reco/src/reco/application 配下への変更を本 Epic 配下 Task で実施する必要が出た場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、API仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "issue.area は api（Internal API だが api→reco 接続確認の横断境界）"
+  - "依存横断 Epic Issue #367（API-CONTRACT-ORVAL）は dependencies.epics に記載済み"
+  - "Phase1 develop 反映はマイルストーン Epic 経由。識別子 Epic PR の develop merge は Phase4b 縦串完了時のみ"

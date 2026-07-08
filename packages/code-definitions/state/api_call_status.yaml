@@ -1,0 +1,42 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "api_call_status"
+  physical_name: "call_status"
+  logical_name: "API Call Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "requested"
+    label: "要求済"
+    meaning: "外部APIリクエスト開始"
+    terminal: false
+    enabled: true
+  - value: "succeeded"
+    label: "成功"
+    meaning: "外部APIレスポンス取得成功"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "外部API取得失敗"
+    terminal: true
+    enabled: true
+  - value: "rate_limited"
+    label: "レート制限"
+    meaning: "レート制限により取得失敗"
+    terminal: true
+    enabled: true
+  - value: "skipped"
+    label: "スキップ"
+    meaning: "取得条件により呼び出しをスキップ"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "api_call_log"
+    column: "call_status"
+    constraint: "NOT NULL"
+    note: ""

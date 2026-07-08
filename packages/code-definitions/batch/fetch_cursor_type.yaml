@@ -1,0 +1,42 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "fetch_cursor_type"
+  physical_name: "cursor_type"
+  logical_name: "Fetch Cursor Type"
+  category: "batch"
+  mvp_scope: true
+
+values:
+  - value: "genre"
+    label: "Genre"
+    meaning: "ジャンル別商品検索のページ走査（BATCH-003）"
+    terminal: true
+    enabled: true
+  - value: "keyword"
+    label: "Keyword"
+    meaning: "キーワード検索のページ走査（BATCH-003）"
+    terminal: true
+    enabled: true
+  - value: "update_sort"
+    label: "Update Sort"
+    meaning: "更新順ソートによる棚卸し走査（BATCH-003）"
+    terminal: true
+    enabled: true
+  - value: "ranking_supplement"
+    label: "Ranking Supplement"
+    meaning: "BATCH-002 未登録 itemCode 補完候補（BATCH-003 消費）。1商品（external_item_code）単位"
+    terminal: true
+    enabled: true
+  - value: "recheck"
+    label: "Recheck"
+    meaning: "既存商品再確認（BATCH-004）。1商品（external_item_code）単位"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "fetch_cursor"
+    column: "cursor_type"
+    constraint: "NOT NULL"
+    note: "Issue #505 Human Review 確定。fetch_cursor_テーブル定義書 §5.4・§17.1 No.2"

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "packageId": "packages-test-fixtures",
+  "paths": {
+    "fixturesRoot": "fixtures",
+    "feature": "fixtures/feature",
+    "recommendation": "fixtures/recommendation"
+  },
+  "items": {
+    "mvp_user_features_baseline": {
+      "path": "fixtures/feature/mvp-user-features-baseline.json",
+      "role": "baseline_user_feature_vector_for_unit_tests"
+    },
+    "recommendation_request_boss_thanks_minimal": {
+      "path": "fixtures/recommendation/request-boss-thanks-minimal.json",
+      "role": "minimal_recommendation_request_for_unit_tests"
+    }
+  }
+}

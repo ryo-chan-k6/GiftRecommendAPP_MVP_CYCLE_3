@@ -1,0 +1,182 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-staging-ranking-signal-pr"
+  title: "staging_ranking_signal テーブル定義書 PRレビュー"
+  summary: "staging_ranking_signal テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §9.2・テーブル一覧 §6 No.22・外部商品データ連携設計書・raw_product_metadata / ranking_snapshot / staging_item / item_popularity_signal テーブル定義書との整合、transforms_to / 昇格経路 / Staging 系 FK 方針と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-524-staging-ranking-signal-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 529
+  issue: 524
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-staging-ranking-signal.yaml"
+  source_branch: "docs/task-524-staging-ranking-signal-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-staging-ranking-signal.yaml"
+    required: true
+  issue:
+    number: 524
+    required: true
+  pr:
+    number: 529
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/staging_ranking_signal_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系・transforms_to / upserts・§17 Staging 系 FK 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§8.4 Item Popularity Signal 方針・§9.2 Staging 系属性・§14.4 関係との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.22 分類・用途・Staging 補足方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§4.3 楽天ランキング API・§13 ランキング Staging 方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-005 / IF-DB-BATCH-008・trace キーの確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-005 Staging 変換・BATCH-002 Snapshot 反映・§11.5 / §12.3 の確認"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "transforms_to 親 Metadata・§8 被参照関係（#506 merge 済み正本）"
+    - path: "docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 staging 経路・2 層 Snapshot 構造・昇格先ヘッダ（#496 merge 済み正本）"
+    - path: "docs/06_実装設計/database/item_popularity_signal_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 staging 経路・冗長列・昇格先明細（#504 merge 済み正本）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "§5 責務境界・BATCH-005 sibling Staging 関係（#517 merge 済み正本）"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "external_genre_id（bigint）・§8.2 LOGICAL 参照（#494 merge 済み正本）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "period 等 enum 参照との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（ranking_snapshot / item_popularity_signal 再定義 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §9.2 の属性（staging_ranking_signal_id / raw_metadata_id / external_item_code / external_genre_id / rank / period / last_build_date / staged_at）と矛盾しないか"
+    - "論理ER §8.4 の楽天ランキング API 項目マッピング（itemName / itemPrice / imageUrl / itemUrl 非反映）と一致しているか"
+    - "テーブル一覧 §6 No.22 の分類・用途と一致しているか"
+    - "raw_product_metadata / staging_item / ranking_snapshot テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "外部商品データ連携設計書 §4.3 / §13 のランキング Staging 方針が反映されているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "raw_product_metadata → staging_ranking_signal transforms_to（raw_metadata_id・LOGICAL FK）関係が明記されているか"
+    - "staging_ranking_signal → ranking_snapshot → item_popularity_signal 昇格経路が §5 / §12 に整理されているか"
+    - "staging_item との責務分離（商品属性 vs ランキング信号・rank / lastBuildDate 委譲）が明記されているか"
+    - "external_genre.external_genre_id（bigint）への LOGICAL FK 方針が明記されているか"
+    - "Staging 系物理 FK なし（LOGICAL + Index）方針が §8 等で明記されているか"
+    - "BATCH-005 作成・BATCH-002 / IF-DB-BATCH-008 昇格の更新主体（batch）が妥当か"
+    - "論理ER §14.4 直接 upserts と物理設計 2 層 Snapshot 経路の差分が明示されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "itemCode 未解決時の external_item_code のみ保持・後続 item 補完取得の扱い（§12 記載の暫定方針で Human Review 可）"
+  - "Reco モジュール仕様書へ委譲: Online 選定拡張・popularity_score への ranking_rank 組み込み（§17.2。本 Task scope 外）"
+
+risk_points:
+  - "raw_product_metadata（#506 / PR #511）との raw_metadata_id 参照・import_status 連動の引き継ぎ"
+  - "ranking_snapshot（#496 / PR #501）・item_popularity_signal（#504 / PR #509）との昇格経路・冗長列の一貫性"
+  - "staging_item（#517 / PR #522）・staging_item_image（#523 / PR #528）との external_item_code 紐づけ・BATCH-005 sibling 整合"
+  - "外部商品データ連携設計書 §4.3 ランキング API 項目と Staging 列の対応漏れ"
+  - "論理ER §14.4 と物理ER 2 層 Snapshot 経路の記述差分"
+
+notes:
+  - "Batch R04 No.2: staging_ranking_signal"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-staging-ranking-signal.yaml"
+  - "Issue #524 / Branch docs/task-524-staging-ranking-signal-table-spec"
+  - "Human Review #524 確定済み: UNIQUE / source 非採用 / 2 層 Snapshot / Retention（§17.1）"
+  - "先行 merge 済み前提: #494 / PR #499（external_genre）、#496 / PR #501（ranking_snapshot）、#504 / PR #509（item_popularity_signal）、#506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）、#523 / PR #528（staging_item_image）"
+  - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"

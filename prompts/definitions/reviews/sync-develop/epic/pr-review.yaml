@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-epic-sync-develop-pr"
+  title: "Epic Branch develop同期 PRレビュー"
+  summary: "識別子 / 横断 Epic Branch へ develop を取り込む同期 PR の AI Review。merge コンフリクト解消・scope 外変更混入・OpenAPI base 整合を確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/epics/api-contract-orval/epic.yaml"
+  source_branch: null
+  target_branch: null
+
+review_scope:
+  docs: true
+  project_operation: true
+  contract: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/api-contract-orval/epic.yaml"
+    required: false
+  issue:
+    number: null
+    required: true
+
+review_points:
+  common:
+    - "PR target が親 Epic Branch（feature/epic-*）であること"
+    - "develop 直接 merge ではなく Epic Branch への同期であること"
+    - "scope 外（apps 実装層）の変更が混入していないこと"
+    - "author=okuri-ai-bot であること"
+  docs:
+    - "develop 取り込みにより第2波 Epic Definition 等が意図どおり含まれること"
+  contract:
+    - "第1波 OpenAPI / Orval 基盤（packages/contracts）が維持されていること"
+    - "merge により public-api.yaml / internal-reco-api.yaml が破損していないこと"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "merge がコンフリクトなく完了している、または解消が妥当である"
+      - "Epic scope 外変更が混入していない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "api"

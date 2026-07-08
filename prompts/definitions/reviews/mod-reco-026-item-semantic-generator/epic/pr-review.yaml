@@ -1,0 +1,50 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-026-item-semantic-generator-epic-pr"
+  title: "MOD-RECO-026 Epic PRレビュー"
+  summary: "MOD-RECO-026（Item Semantic Generator）Epic の develop 向け統合 PR を AI Review する"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/epics/mod-reco-026-item-semantic-generator/epic.yaml"
+  source_branch: "feature/epic-<issue-number>-mod-reco-026-item-semantic-generator"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/mod-reco-026-item-semantic-generator/epic.yaml"
+    required: true
+
+review_points:
+  - "scope / epic_scope.allowed_paths 整合"
+  - "子 Task 3件（module-spec / implementation / unit-test）完了"
+  - "apps/reco/src/reco/api/** 非含有"
+  - "secret 非含有"
+
+notes:
+  - "Epic Issue / PR 確定後に target.issue.number / target.pr を更新する"

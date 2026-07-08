@@ -1,5 +1,20 @@
 {
   "name": "@gift-recommendation/api",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "pnpm run build && node --test dist/tests/**/*.test.js",
+    "dev": "node -e \"console.log('[placeholder] Express API dev server (port 3001) — Phase4 implementation pending'); process.exit(0)\""
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3"
+  }
 }

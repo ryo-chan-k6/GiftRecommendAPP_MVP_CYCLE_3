@@ -1,0 +1,166 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-enum-code-definitions"
+  title: "DB enum・コード定義整備"
+  summary: "物理ER・状態遷移設計書・正本定義表を入力に、MVP向け enum/コード定義書と packages/code-definitions を整備する。Phase2 子 Task ②。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 438
+      purpose: "先行 Task ① 物理ER（merge 済み前提）"
+  related_prs:
+    - number: 439
+      purpose: "Task ① PR（merge 済み前提）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ②。実装フェーズ実行プロセス設計書 §6.3 の「enum/コード定義」に対応。
+  Task ① 物理ER §12 で列挙した状態・enum を正本化し、後続テーブル定義・DDL Task の前提とする。
+  Phase4a packages-foundation の code-definitions Epic とディレクトリ構成を整合させる。
+
+objective: |
+  物理ER・論理ER・状態遷移設計書に基づき、MVP DB 関連の enum/コード値を docs と packages/code-definitions に正本化する。
+  テーブル定義書 Task が参照できる粒度まで確定する。
+
+scope:
+  - "enum-spec.md テンプレ準拠の enum 定義書作成（DB 関連 enum を網羅）"
+  - "packages/code-definitions 初期構成（state / application / semantic / batch）"
+  - "物理ER §12・論理ER 状態一覧・状態遷移設計書との突合"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "テーブル定義書（Task ③）"
+  - "DDL・migration（Task ④⑤）"
+  - "error_code 全件の実装正本化（エラーコード定義書は参照のみ。error/ は README のみ）"
+  - "apps/** 実装"
+  - "supabase/migrations / db/seeds ファイルの作成"
+  - "OpenAPI / generated 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§12 状態・enum 連携の入力正本"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "状態カラム・DB 利用箇所の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "状態値・遷移の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "正本区分の整合"
+    - path: "docs/05_アプリケーション設計/共通/DevOps方針書.md"
+      required: true
+      purpose: "code-definitions 運用方針"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "packages/code-definitions 配置"
+  templates:
+    - path: "prompts/templates/docs/enum-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/enum-spec.md"
+  files:
+    - path: "packages/code-definitions/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/enum-code-definitions.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/db-physical-design/enum-code-definitions/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "enum 定義書が docs/06_実装設計/database/ に存在する"
+  - "packages/code-definitions に MVP DB 関連 enum が配置されている"
+  - "物理ER §12・論理ER・状態遷移設計書と矛盾しない"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "db-physical-design-enum-code-definitions"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 438
+      purpose: "Task ① 物理ER 完了"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/enum定義書.md"
+    - "packages/code-definitions/**"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §12・論理ER 状態一覧との整合"
+    - "packages/code-definitions ディレクトリ構成がプロジェクトディレクトリ構成定義書と一致"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs / code-definitions 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "親 Epic Issue / Branch は /start-task 後に parent ブロックを更新する"
+  - "error_code 全件は Phase4a packages-foundation と整合。本 Task では error/ README のみ"

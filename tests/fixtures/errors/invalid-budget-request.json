@@ -1,0 +1,24 @@
+{
+  "description": "budgetMin > budgetMax の異常系リクエスト",
+  "relationship": {
+    "relationshipCode": "boss",
+    "relationshipLabel": "上司"
+  },
+  "occasion": {
+    "occasionCode": "thanks",
+    "occasionLabel": "お礼"
+  },
+  "budget": {
+    "budgetMin": 8000,
+    "budgetMax": 3000,
+    "currency": "JPY",
+    "taxIncluded": true
+  },
+  "execution": {
+    "mode": "ui",
+    "topK": 10,
+    "candidateLimit": 50,
+    "includeReason": false,
+    "includeDebugInfo": false
+  }
+}

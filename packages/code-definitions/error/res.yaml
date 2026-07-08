@@ -1,0 +1,48 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "RES"
+  domain_label: "Recommendation Result"
+  mvp_scope: true
+  codes:
+    - code: "GRS-RES-001"
+      internal_name: "Result Not Found"
+      http_status: 404
+      retryable: false
+      severity: warn
+      user_message_key: "error.res.001"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-RES-002"
+      internal_name: "Result Save Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.res.002"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-RES-003"
+      internal_name: "Result Item Save Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.res.003"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-RES-004"
+      internal_name: "Result Snapshot Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.res.004"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-RES-005"
+      internal_name: "Result State Conflict"
+      http_status: 409
+      retryable: false
+      severity: warn
+      user_message_key: "error.res.005"
+      owner_types: ["recommendation_run", "api_call"]
+      mvp_scope: true

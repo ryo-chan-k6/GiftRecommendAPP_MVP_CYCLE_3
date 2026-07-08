@@ -1,0 +1,152 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-014-matching-config-alignment-pr"
+  title: "MOD-RECO-014 matching_config_id整合 PRレビュー"
+  summary: "MOD-RECO-014 matching_config_id 整合対応 Task（Issue #908）の PR を AI Review する。014 出力 → 015 入力のキー一致、破壊的フィールド改名の影響、Epic scope 例外（015 仕様書）の妥当性を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "feature/task-908-mod-reco-014-matching-config-alignment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: 912
+  issue:
+    number: 908
+  task_definition: "prompts/definitions/tasks/mod-reco-014-feature-matcher/matching-config-alignment.yaml"
+  source_branch: "feature/task-908-mod-reco-014-matching-config-alignment"
+  target_branch: "develop"
+  parent_epic_issue: 896
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-014-feature-matcher/matching-config-alignment.yaml"
+    required: true
+  issue:
+    number: 908
+    required: true
+  pr:
+    number: 912
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-014_Feature Matcherモジュール仕様書.md"
+      required: true
+      purpose: "更新成果物の内容確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-015_Meaning Match Aggregatorモジュール仕様書.md"
+      required: true
+      purpose: "用語整合更新の確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md"
+      required: true
+      purpose: "#907 後の config_versions.matching_config_id"
+    - path: "docs/06_実装設計/database/matching_config_テーブル定義書.md"
+      required: true
+      purpose: "matching_config DB 正本"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+      purpose: "§13 / §14.2 マッピング"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "ExecutionContext 契約"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: true
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "out_of_scope（DB DDL / MOD-RECO-003 本体 / MOD-RECO-015 実装 / OpenAPI）が混在していないか"
+    - "Task PR target が develop であるか"
+    - "#906 + #907 merge 前提が満たされているか"
+  docs:
+    - "MOD-RECO-014 仕様書の出力キーが matching_config_id に統一されているか"
+    - "model_version_id の扱い（削除 or deprecated）が明記されているか"
+    - "MOD-RECO-015 §6 / §8.3.2 の用語が matching_config_id に更新されているか"
+    - "Matching定義書 §14.2 との docs マッピング注記が適切か"
+  source:
+    - "feature-matcher が config_versions.matching_config_id を全 entries へエコーするか"
+    - "pipeline 型定義が feature_match_result 形状と一致しているか"
+    - "apps/reco/src/reco/api/** を変更していないか"
+    - "MOD-RECO-003 解決値と entries の matching_config_id が一致するか"
+  tests:
+    - "feature-matcher unit test（matching_config_id エコー）が更新されているか"
+    - "既存 module test の破壊的変更追随が確認できるか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "Epic #896 allowed_paths 外の MOD-RECO-015 仕様書更新の妥当性"
+  - "MOD-RECO-015 仕様書の develop 取り込み方法（Epic #904 / PR #909 からの追加）"
+  - "model_version_id 完全削除 vs deprecated 注記の最終判断"
+  - "Matching定義書 §14.2 への注記要否"
+
+risk_points:
+  - "破壊的フィールド改名による pipeline / test の横断影響"
+  - "MOD-RECO-015 仕様書が develop 未反映時の取り込みと Epic #904 との重複"
+  - "Matching定義書 §14.2 model_version_id 記載との用語不整合"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/mod-reco-014-feature-matcher/matching-config-alignment.yaml"
+  - "前提: #906 PR #910、#907 PR #911 develop merge 済み、親 Epic #896 Done"

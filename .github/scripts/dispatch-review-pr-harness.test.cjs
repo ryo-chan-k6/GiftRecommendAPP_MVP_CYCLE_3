@@ -230,6 +230,40 @@ test("shouldSkipHarnessAutoDispatch: 手動 CLI（context なし）は skip し�
   assert.equal(result.skip, false);
 });
 
+test("shouldSkipFixerHarnessAutoDispatch: unit: epic ラベルで skip", () => {
+  const result = auto.shouldSkipFixerHarnessAutoDispatch({
+    context: "request-changes",
+    pullLabels: [{ name: "unit: epic" }],
+    issueLabels: [],
+    changedFiles: [{ filename: "docs/foo.md" }],
+    headRef: "feature/task-432-phase1-wave2",
+  });
+  assert.equal(result.skip, true);
+  assert.equal(result.reason, "epic_pr");
+});
+
+test("shouldSkipFixerHarnessAutoDispatch: epic branch で skip", () => {
+  const result = auto.shouldSkipFixerHarnessAutoDispatch({
+    context: "request-changes",
+    pullLabels: [],
+    issueLabels: [],
+    changedFiles: [{ filename: "docs/foo.md" }],
+    headRef: "feature/epic-432-phase1-wave2-api-contract-foundation",
+  });
+  assert.equal(result.skip, true);
+  assert.equal(result.reason, "epic_pr");
+});
+
+test("shouldSkipFixerHarnessAutoDispatch: Review PR harness は epic を skip しない", () => {
+  const result = auto.shouldSkipHarnessAutoDispatch({
+    context: "request-changes",
+    pullLabels: [{ name: "unit: epic" }],
+    issueLabels: [],
+    changedFiles: [{ filename: "docs/foo.md" }],
+  });
+  assert.equal(result.skip, false);
+});
+
 test("dispatchReviewPrHarness: automation_only_changes は skipped", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "dispatch-auto-"));
   const reviewPath = "prompts/definitions/_e2e/sample/pr-review.yaml";

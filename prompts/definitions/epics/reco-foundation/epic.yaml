@@ -1,0 +1,131 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-foundation"
+  title: "reco-foundation:Reco共通基盤"
+  summary: "Phase4a。Reco pipeline / domain / infrastructure / config 共通基盤 Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4a 共通基盤 Epic（実装フェーズ実行プロセス設計書 §6.5）。
+  Phase3b（Epic A #651 / Epic C #671 merge 済み）完了後、Phase4b 縦串の前提となる reco-foundation を整備する。
+  他 foundation Epic と workstream 単位で並列 `/start-epic` 可。
+
+objective: |
+  Epic Branch 上で子 Task を実行し Phase4a 共通基盤骨格を整備。Epic PR で develop へ統合する。
+
+scope:
+  - "pipeline 枠組み骨格。R1。"
+  - "domain/ 中核骨格。R2。"
+  - "db / vector_store / external_ai / logger 骨格。R3。"
+  - "config / env 読取骨格。R4。"
+  - "Epic / Task / Review Definition 整備"
+
+out_of_scope:
+  - "Phase4b 識別子 Epic 本格実装"
+  - "packages/contracts/** 変更"
+  - "generated 手編集"
+  - "Epic D app CI"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+  issues:
+    - number: 651
+      purpose: "Epic A 完了"
+    - number: 671
+      purpose: "Epic C 完了"
+
+output:
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]reco-foundation:Reco共通基盤）"
+  - "Phase4a reco-foundation 共通基盤骨格"
+  - "Epic PR → develop"
+
+acceptance_criteria:
+  - "子 Task Definition が存在する"
+  - "Phase4a scope 骨格が整備されている"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  summary: "reco-foundation"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  allowed_paths:
+    - "apps/reco/**"
+    - "docs/05_アプリケーション設計/Reco/**"
+    - "prompts/definitions/epics/reco-foundation/**"
+    - "prompts/definitions/tasks/reco-foundation/**"
+    - "prompts/definitions/reviews/reco-foundation/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+  child_task_areas:
+    - "pipeline-scaffold"
+    - "domain-core-scaffold"
+    - "infrastructure-scaffold"
+    - "config-foundation"
+
+dependencies:
+  issues:
+    - number: 651
+      purpose: "Epic A 完了"
+    - number: 671
+      purpose: "Epic C 完了"
+  blocking: true
+
+review:
+  human_review_required: true
+  ai_review_required: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "workstream_key: reco-foundation"
+  - "Phase4a — 他 foundation Epic と並列可"

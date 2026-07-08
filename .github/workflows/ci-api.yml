@@ -1,0 +1,44 @@
+name: CI API Check
+
+# Epic D（app-ci）管轄 — api Layer1 PR CI（CI・CD方針書 §5.3 / §13）。
+# Task ci-api-workflow（#749）で path filter 配線。
+#
+# 実行内容:
+#   pnpm --filter @gift-recommendation/api build（TypeScript build / typecheck）
+#   pnpm --filter @gift-recommendation/api test（unit — node --test）
+#
+# apps/api に eslint 未整備のため lint は本 workflow 対象外（build で strict typecheck）。
+# path filter は呼び出し元 ci.yml の changes job が担当する。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  api-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build api
+        run: pnpm --filter @gift-recommendation/api build
+
+      - name: Run api unit tests
+        run: pnpm --filter @gift-recommendation/api test

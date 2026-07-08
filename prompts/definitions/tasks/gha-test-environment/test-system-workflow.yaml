@@ -1,0 +1,161 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-gha-test-environment-test-system-workflow"
+  title: "システムテストworkflow整備"
+  summary: "workflow_dispatch 可能な test-system.yml と主要 E2E 導線（API 中心）を整備する。Epic C Task C3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-gha-test-environment"
+  epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
+  epic_issue_number: 671
+  epic_branch: "chore/epic-671-gha-test-environment"
+  related_issues:
+    - number: 672
+      purpose: "C1 ci-db-ephemeral 完了"
+    - number: 674
+      purpose: "C2 test-fixtures-seed 完了"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase3b Epic C Task C3。C1/C2 完了後、システムテスト用 Layer2 workflow を整備する。
+  テスト定義書 §4.1 システムテスト: web→api→reco→DB の E2E。Layer2 先行時は **GHA 内完結を正**とする。
+  Phase4b 最小 API（health endpoint）整備前は workflow 骨格 + skip/placeholder を許容する。
+
+objective: |
+  `.github/workflows/test-system.yml`（workflow_dispatch）を作成し、GHA 内 ephemeral DB + api/reco 起動（または将来 cloud dev URL input）で
+  主要 API 導線の E2E テストを実行できるようにする。結果を GHA artifact / job summary に出力する。
+
+scope:
+  - "`.github/workflows/test-system.yml` 作成（workflow_dispatch）"
+  - "GHA 内 api/reco 起動 or reusable ci-db 呼び出し"
+  - "主要 E2E 導線（API 中心）。web Playwright は後続 Task 化可"
+  - "artifact / job summary 出力（Agent 読取可能）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "test-reco-quality.yml（Task C4）"
+  - "web Playwright E2E（後続 Task 化可）"
+  - "ci.yml 品質ゲートへの混在"
+  - "apps/** 本格実装（Phase4b scope、最小 health のみ Epic C で利用可）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "システムテスト定義"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "Layer2 workflow_dispatch"
+  files:
+    - path: ".github/workflows/ci-db.yml"
+      required: false
+      purpose: "C1 成果物（reusable 想定）"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/**"
+      action: "update"
+      required: false
+  files:
+    - path: ".github/workflows/test-system.yml"
+      action: "create"
+      required: true
+    - path: "tests/**"
+      action: "create_or_update"
+      required: false
+
+acceptance_criteria:
+  - "test-system.yml が workflow_dispatch で起動可能"
+  - "GHA run 結果 / artifact が Agent 読取可能な形式で出力される"
+  - "Phase4b 最小 API 整備後、主要 API 導線が pass（それ以前は skip 条件を docs に明記）"
+  - "ci.yml 品質ゲートに混在していない"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "test/task-676-test-system-workflow"
+  summary: "test-system-workflow"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 676
+  unit: "task"
+  type: "test"
+  area: "infra"
+
+dependencies:
+  blocking: true
+  issues:
+    - number: 672
+      purpose: "C1 ci-db-ephemeral 完了（PR #673 merge 済み）"
+    - number: 674
+      purpose: "C2 test-fixtures-seed 完了（PR #675 merge 済み）"
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
+    - "prompts/definitions/tasks/gha-test-environment/test-fixtures-seed.yaml"
+  exclusive_files:
+    - ".github/workflows/test-system.yml"
+  conflict_risk: "medium"
+  blocks:
+    - "prompts/definitions/tasks/gha-test-environment/agent-test-dispatch.yaml"
+
+test_policy:
+  manual_checks:
+    - "workflow_dispatch 実行と log / artifact 読取"
+  not_required:
+    - "web Playwright E2E"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+human_decision_points:
+  - "GHA 内 api/reco 起動 vs cloud dev URL input — Layer2 先行時は GHA 内完結を正（C3 設計時）"
+
+notes:
+  - "C1/C2 完了後。Phase4b 最小 API 依存部分は骨格先行可"
+  - "C4 と並列着手可（fixture 共有）"

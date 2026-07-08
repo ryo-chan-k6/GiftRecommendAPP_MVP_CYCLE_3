@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-post-log-observability-wiring-docs-alignment-pr"
+  title: "MOD-RECO-001 ログ・観測Wiring完了後 docs正本追随 PRレビュー"
+  summary: "Epic #1029 / #1043 merge 後の docs 正本追随 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1050
+  issue:
+    number: 1049
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-log-observability-wiring-docs-alignment.yaml"
+  source_branch: "docs/task-1049-mod-reco-001-post-log-observability-wiring-docs-alignment"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-log-observability-wiring-docs-alignment.yaml"
+    required: true
+
+review_points:
+  - "§8.4.2 が stubs.py / develop 配線状態と一致しているか"
+  - "024/028/029 移行期記述の更新が過不足ないか"
+  - "025 Stub / 026-027 BT 間接の記載が維持されているか"
+  - "docs-only diff であるか（apps/reco ソース変更なし）"
+  - "develop 直 PR 理由が PR 本文で説明されているか"
+  - "phase_name enum 整合など scope 外作業に着手していないか"
+
+notes:
+  - "target.pr: PR 作成後に更新し PR 差分に含める"
+  - "Related Issue #1049"

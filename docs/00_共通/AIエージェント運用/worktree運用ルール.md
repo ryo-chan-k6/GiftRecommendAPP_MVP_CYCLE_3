@@ -641,16 +641,20 @@ Node.js / pnpmの場合、以下を確認する。
 ```bash
 pnpm install
 ```
-Pythonの場合、仮想環境の扱いをプロジェクト方針に合わせる。
+Pythonの場合、**uv** と **worktree ごとの `.venv`** を正とする（[ローカル開発手順書 §6.2](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md)）。
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+./scripts/dev/setup-python.sh
+./scripts/dev/pytest-python.sh
+# reco 骨格 merge 後
+./scripts/dev/setup-python-reco.sh
+./scripts/dev/pytest-reco.sh
+# batch 骨格 merge 後
+./scripts/dev/setup-python-batch.sh
+./scripts/dev/pytest-batch.sh
 ```
-ただし、worktreeごとに不要な依存再インストールを繰り返すと容量が増えるため、環境構築方針は別途定める。
 
-MVP段階では、必要に応じてworktreeごとに依存関係を準備してよい。
+`python -m venv` / system `python3` 直叩きは使わない。worktree ごとに不要な依存再インストールが発生するが、`.venv` は Git 管理外のため並列 worktree と衝突しない。
 
 ---
 

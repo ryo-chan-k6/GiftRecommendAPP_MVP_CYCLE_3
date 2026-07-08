@@ -1,0 +1,17 @@
+"""MOD-RECO-012 Candidate Retriever constants."""
+
+from __future__ import annotations
+
+MODULE_ID = "MOD-RECO-012"
+PHASE_NAME = "retrieval_completed"
+
+SURFACE_ERROR_CODE_PRE_FILTER = "GRS-REC-008"
+SURFACE_ERROR_CODE_RETRIEVAL = "GRS-REC-009"
+
+PRE_FILTER_PHASE_NAME = "pre_hard_filter_completed"
+RETRIEVAL_METHOD_VECTOR = "vector"
+
+DEFAULT_CANDIDATE_LIMIT_UI = 50
+DEFAULT_CANDIDATE_LIMIT_BATCH = 100
+
+MATERIALIZED_IDS_TEST_LIMIT = 100

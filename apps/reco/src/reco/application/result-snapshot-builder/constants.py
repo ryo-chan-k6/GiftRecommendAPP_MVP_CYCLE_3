@@ -1,0 +1,12 @@
+"""MOD-RECO-022 Result Snapshot Builder constants."""
+
+from __future__ import annotations
+
+MODULE_ID = "MOD-RECO-022"
+PHASE_NAME = "snapshot_built"
+SURFACE_ERROR_CODE = "GRS-REC-012"
+ITEM_INFO_ERROR_CODE = "GRS-ITM-006"
+RESULT_ITEM_SAVE_ERROR_CODE = "GRS-RES-003"
+SNAPSHOT_BUILD_ERROR_CODE = "GRS-RES-004"
+
+BUILDER_ITEMS_VERSION_INFO_KEY = "_builder_items"

@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-test-environment-ci-db-ephemeral-pr"
+  title: "gha-test-environment ci-db-ephemeral PRレビュー"
+  summary: "Epic C Task ci-db-ephemeral の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-672-ci-db-ephemeral"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
+  worktree_required: true
+
+target:
+  pr:
+    number: 673
+  issue:
+    number: 672
+  task_definition: "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
+  source_branch: "chore/task-672-ci-db-ephemeral"
+  target_branch: "chore/epic-671-gha-test-environment"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  cicd: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/gha-test-environment/ci-db-ephemeral.yaml"
+    required: true
+  issue:
+    number: 672
+    required: true
+  pr:
+    number: 673
+    required: true
+
+review_points:
+  - "Task Definition scope / out_of_scope との整合"
+  - "親 Epic allowed_paths 内に収まっているか"
+  - "ci.yml 品質ゲートへの Layer2 混在がないか"
+  - "supabase/migrations DDL 変更がないか"
+  - "secret / .env 実値の非含有"
+
+notes:
+  - "Issue #672 / PR #673"

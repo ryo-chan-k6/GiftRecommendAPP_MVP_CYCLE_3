@@ -235,7 +235,7 @@ OpenAPIやコード定義の更新に伴い、生成物が必要な場合は再�
 | web → api API client | `packages/contracts/openapi/public-api.yaml`        | `apps/web/src/generated/api/`         |
 | api → reco client    | `packages/contracts/openapi/internal-reco-api.yaml` | `apps/api/src/generated/reco-client/` |
 | TypeScript型         | OpenAPI / code-definitions                          | 生成または同期対象                    |
-| DB seed              | code-definitions / master定義                       | `db/seeds/` 配下のseed                |
+| DB seed              | code-definitions / master定義                       | `supabase/seeds/` 配下の seed         |
 
 ---
 
@@ -410,7 +410,7 @@ Feature / Semantic は単なるenumではなく、レコメンドロジックの
 | ------------ | ------------------------------------- |
 | 設計上の定義 | docs配下のFeature定義・Semantic定義   |
 | 機械可読定義 | `packages/code-definitions/semantic/` |
-| DB投入       | `db/seeds/masters/`                   |
+| DB投入       | `supabase/seeds/masters/`             |
 | 実装参照     | `packages/shared-logic/` 等           |
 | テスト参照   | `packages/test-fixtures/` / `tests/`  |
 

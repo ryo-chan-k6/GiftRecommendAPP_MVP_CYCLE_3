@@ -1,0 +1,248 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-app-ci-epic-d-definitions-bootstrap"
+  title: "Epic D（app-ci）Definition bootstrap"
+  summary: "Epic D（app-ci / Layer1 PR CI）Epic + 子 Task 5件 + Review Definition を整備し、`/start-epic` 前提を満たす bootstrap chore Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - number: 688
+      purpose: "Phase4a packages-foundation 完了"
+    - number: 698
+      purpose: "Phase4a reco-foundation 完了"
+    - number: 710
+      purpose: "Phase4a api-foundation 完了"
+    - number: 724
+      purpose: "Phase4a web-foundation 完了"
+    - number: 734
+      purpose: "Phase4a batch-foundation 完了"
+  related_prs:
+    - number: 686
+      purpose: "Phase4a Definition bootstrap Issue"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase4a（5 foundation Epic #688 / #698 / #710 / #724 / #734、最終 batch #734: 2026-06-24）完了後、
+  Epic D（app-ci / Layer1 PR CI）を `/start-epic` する前に Definition 一式を prompts/definitions に整備する。
+  実装フェーズ実行プロセス設計書 §6.4（Epic D 後続）、CI・CD方針書 §13（ci-web/api/reco/batch.yml）、
+  テスト環境設計書（Layer1 / Epic D 拡張予定）に整合させる。
+  `ci-reco.yml` は local-dev-environment Task #707 で先行作成済み。Epic D 子 Task で統合・拡張する。
+
+objective: |
+  `prompts/definitions/epics/app-ci/epic.yaml` および子 Task 5件（ci-web / ci-api / ci-reco / ci-batch workflow + app-ci-docs）の
+  Task Definition、`prompts/definitions/reviews/app-ci/**` の Review Definition を作成する。
+  Epic Definition には Layer1 PR CI 方針・Epic C（Layer2）との分離・`agent_test_operations`（単体/mock 結合）を反映する。
+  merge 後、`/start-epic @prompts/definitions/epics/app-ci/epic.yaml` へ進める状態にする。
+
+scope:
+  - "Epic Definition 1件（app-ci）"
+  - "子 Task Definition 5件（ci-web-workflow / ci-api-workflow / ci-reco-workflow / ci-batch-workflow / app-ci-docs）"
+  - "Review Definition: 各 Task pr-review.yaml + Epic epic/pr-review.yaml"
+  - "本 bootstrap Task / Review Definition"
+
+out_of_scope:
+  - "Epic D 実装（ci-*.yml 本体・ci.yml 配線）— 子 Task `/work-issue` で実施"
+  - "Layer2 workflow（test-system.yml / test-reco-quality.yml 等）— Epic C 管轄"
+  - "Phase4b 識別子 Epic 実装"
+  - "packages/contracts/** 変更・generated 手編集"
+  - "Epic B（hosted-dev-environment）— defer"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Epic D §6.4 / Phase4a 完了前提"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "§13 workflow 分割・Layer1 PR CI"
+    - path: "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+      required: true
+      purpose: "Layer1 / Epic D 拡張・agent_test_operations 整合"
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§4.1 テストレベル・Layer1 単体/mock 結合"
+  files:
+    - path: "prompts/definitions/tasks/phase4a/phase4a-definitions-bootstrap.yaml"
+      required: true
+      purpose: "bootstrap Task 構造参考"
+    - path: "prompts/definitions/epics/gha-test-environment/epic.yaml"
+      required: true
+      purpose: "Layer2 Epic との分離・agent_test_operations 参考"
+    - path: ".github/workflows/ci.yml"
+      required: true
+      purpose: "現行 CI エントリ・reco-check 配線"
+    - path: ".github/workflows/ci-reco.yml"
+      required: true
+      purpose: "#707 先行成果・Epic D reco 子 Task 前提"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/app-ci/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/app-ci/ci-web-workflow.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/app-ci/ci-api-workflow.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/app-ci/ci-reco-workflow.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/app-ci/ci-batch-workflow.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/app-ci/app-ci-docs.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/app-ci/epic/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/app-ci/ci-web-workflow/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/app-ci/ci-api-workflow/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/app-ci/ci-reco-workflow/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/app-ci/ci-batch-workflow/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/app-ci/app-ci-docs/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/app-ci/epic-d-definitions-bootstrap.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/app-ci/epic-d-definitions-bootstrap/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Epic D（app-ci）Epic Definition 1件"
+  - "子 Task Definition 5件 + Review Definition 7件（Task×5 + Epic×1 + bootstrap×1）"
+  - "bootstrap Task / Review Definition"
+  - "merge 後 `/start-epic @prompts/definitions/epics/app-ci/epic.yaml` 実行可能"
+
+acceptance_criteria:
+  - "app-ci Epic Definition が存在し CI・CD方針書 §13 と整合"
+  - "子 Task 5件が存在し epic_scope.child_task_areas と対応"
+  - "各 Task + Epic + bootstrap の Review Definition が存在"
+  - "Layer2（Epic C）workflow を scope 外としている"
+  - "ci-reco.yml 先行（#707）を reco 子 Task で扱う旨が明記されている"
+  - "secret 実値が含まれていない"
+  - "Task PR target が develop（親 Epic なし chore）"
+
+branch:
+  no_branch: false
+  name: "chore/task-744-epic-d-definitions-bootstrap"
+  summary: "epic-d-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 744
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 688
+      purpose: "packages-foundation 完了"
+    - number: 698
+      purpose: "reco-foundation 完了"
+    - number: 710
+      purpose: "api-foundation 完了"
+    - number: 724
+      purpose: "web-foundation 完了"
+    - number: 734
+      purpose: "batch-foundation 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "prompts/definitions/epics/app-ci/**"
+    - "prompts/definitions/tasks/app-ci/**"
+    - "prompts/definitions/reviews/app-ci/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "YAML 必須項目目視"
+    - "Epic×1 / Task×5 / Review×7 のファイル数"
+    - "child_task_areas と Task ファイル名対応"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Definition のみ chore"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "CI・CD方針書 §13 / テスト環境設計書 Layer1 との整合"
+    - "Epic C（Layer2）との scope 分離"
+    - "ci-reco.yml 先行（#707）の扱い"
+    - "Review Definition 3点セット"
+    - "Phase4a 完了（#688〜#734）依存"
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+notes:
+  - "親 Epic なし・develop 直 Task（§7.6 bootstrap）"
+  - "merge 後: `/start-epic @prompts/definitions/epics/app-ci/epic.yaml`"
+  - "workstream_key: app-ci"

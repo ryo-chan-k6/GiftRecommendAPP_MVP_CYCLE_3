@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-api-pub-007-semantic-config-masters-openapi-fragment"
+  title: "API-PUB-007:Semantic設定取得OpenAPI断片反映"
+  summary: "API-PUB-007（GET /api/v1/masters/semantic-configs）の契約仕様書に基づき public-api.yaml へ OpenAPI 断片を追加する。"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "phase1_wave2"
+  related_issue: "#403"
+  related_pr: "#407"
+  related_task_definition: "prompts/definitions/tasks/api-pub-007-semantic-config-masters/api-contract-spec.yaml"
+  reason: "Phase1 1b 直列 merge（#367）。#425（PUB-006）完了後の次手。"
+
+change:
+  api_name: "Semantic設定取得"
+  api_kind: "public"
+  endpoint: "GET /api/v1/masters/semantic-configs"
+  method: "GET"
+  change_type: "add_endpoint"
+  breaking_change: false
+
+scope:
+  - "public-api.yaml に GET /api/v1/masters/semantic-configs を追加"
+  - "SemanticConceptMasterItem / FeatureDefinitionMasterItem 等の components schema を追加"
+
+out_of_scope:
+  - "Orval 再生成（1c）"
+  - "internal-reco-api.yaml"
+  - "apps 実装"
+
+branch:
+  name: "feature/task-426-pub-007-semantic-config-masters-openapi"
+  base: "feature/epic-367-api-contract-orval"
+  target: "feature/epic-367-api-contract-orval"
+
+dependencies:
+  epics:
+    - issue: 367
+      title: "[Epic]API-CONTRACT-ORVAL"
+    - issue: 389
+      title: "[Epic]API-PUB-007:Semantic設定取得"
+  issues:
+    - "#403"
+    - "#407"
+  prs:
+    - "#425"
+
+parallel_control:
+  exclusive_files:
+    - "packages/contracts/openapi/public-api.yaml"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"

@@ -1,0 +1,208 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-evaluation-metric-pr"
+  title: "evaluation_metric テーブル定義書 PRレビュー"
+  summary: "evaluation_metric テーブル定義書 Task の PR を AI Review する。物理ER・論理ER §12.2・Evaluation評価定義書 §10・テーブル一覧 §10 No.55・evaluation_run / evaluation_result テーブル定義書・BATCH-018 / IF-DB-BATCH-018 / MOD-BATCH-040 との整合、Metric 行設計・table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-574-evaluation-metric-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 578
+  issue: 574
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-evaluation-metric.yaml"
+  source_branch: "docs/task-574-evaluation-metric-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-evaluation-metric.yaml"
+    required: true
+  issue:
+    number: 574
+    required: true
+  pr:
+    number: 578
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/evaluation_metric_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Evaluation系・evaluation_result → evaluation_metric has FK / Index 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§12.1 Evaluation系 ER・§12.2 evaluation_metric 属性との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§10 No.55 分類・用途・Evaluation系補足方針との整合"
+    - path: "docs/04_ドメインモデル設計/Evaluation評価定義書.md"
+      required: true
+      purpose: "§10.3 評価指標・§14.4 offline_eval_result 論理項目との差分確認"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "Evaluation Result / Evaluation Metric 追記中心方針の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Evaluation Metric 派生区分・更新主体の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-018 Evaluation保存の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-018 入出力・メトリクス保存対象の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-BATCH-040 / MOD-BATCH-041 入出力の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-EVAL-004 Evaluation Metric Failed の確認"
+    - path: "docs/06_実装設計/database/evaluation_run_テーブル定義書.md"
+      required: true
+      purpose: "Result 経由間接親・再評価追記方針（#567 merge 済み正本）"
+    - path: "docs/06_実装設計/database/evaluation_result_テーブル定義書.md"
+      required: true
+      purpose: "has 関係・evaluation_result_id FK / Index 双方向整合（#573 merge 済み正本）"
+    - path: "docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md"
+      required: true
+      purpose: "Retention / 再評価追記方針の確認"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（evaluation_result 再作成 / evaluation_run 再作成 / metric 計算実装 / enum 新規作成 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "Offline Evaluation フロー（result → metric）の指標保存正本として明記されているか"
+    - "論理ER §12.2 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "テーブル一覧 §10 No.55 の分類・用途と一致しているか"
+    - "Evaluation評価定義書 §10.3 指標と metric_name 命名の対応が整理されているか"
+    - "evaluation_run / evaluation_result 定義書と章構成・MVP 方針が一貫しているか"
+    - "BATCH-018 / IF-DB-BATCH-018 / MOD-BATCH-040 との I/F が一貫しているか"
+  db:
+    - "PK / Index / CHECK / FK が DDL Task へ展開できる粒度か"
+    - "evaluation_result → evaluation_metric has（ON）1:N 関係が明記されているか"
+    - "evaluation_run 直接 FK がない方針（Result 経由）が明記されているか"
+    - "metric_name / metric_value / metric_detail_json の責務分離が明記されているか"
+    - "冪等キー（evaluation_result_id + metric_name 等）と BATCH-018 再実行方針が明記されているか"
+    - "Retention / 再評価追記方針が evaluation_dataset / evaluation_run と整合しているか"
+    - "物理ER §9 / §10 に本 Task 確定内容が反映可能な粒度か"
+  security:
+    - "metric_detail_json に個人情報・secret を過剰保持しない方針が明記されているか"
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "evaluation_result_id 物理 FK"
+    decision: "物理 FK ON / ON DELETE RESTRICT（§17.1 No.1）"
+  - id: 2
+    topic: "evaluation_run_id 物理列"
+    decision: "MVP は物理列なし。evaluation_result 経由間接参照（§17.1 No.2）"
+  - id: 3
+    topic: "metric_name 命名"
+    decision: "snake_case `{base}_at_{k}`（例: precision_at_10）。§17.1 No.3"
+  - id: 4
+    topic: "冪等キー"
+    decision: "uq_evaluation_metric_result_name（Result × metric_name UNIQUE）。§17.1 No.4"
+  - id: 5
+    topic: "metric_value 型"
+    decision: "numeric(12,6) NOT NULL。DB 0〜1 CHECK なし。§17.1 No.5"
+  - id: 6
+    topic: "metric_detail_json"
+    decision: "nullable JSONB。§17.1 No.6"
+  - id: 7
+    topic: "Retention"
+    decision: "365 日（created_at）。§17.1 No.7"
+  - id: 8
+    topic: "再評価上書き"
+    decision: "Metric 行は追記のみ。§17.1 No.8"
+
+risk_points:
+  - "Evaluation評価定義書 §14.4 列正規化モデルと論理ER EAV 行モデルの説明一貫性"
+  - "metric_name カタログ拡張時の enum / packages 正本化タイミング"
+  - "evaluation_result / evaluation_run Retention 365 日との双方向整合"
+
+notes:
+  - "Batch R09 No.2: evaluation_metric"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-evaluation-metric.yaml"
+  - "Issue #574 / Branch docs/task-574-evaluation-metric-table-spec"
+  - "blocking 依存: #567 / #573 merge 済み（PR #577）"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 No.1〜No.8）"
+  - "PR 番号は /create-pr 後に本 Review Definition の target.pr / input.pr.number を更新する"

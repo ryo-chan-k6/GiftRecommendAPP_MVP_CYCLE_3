@@ -1,0 +1,281 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-024-028-029-definitions-bootstrap"
+  title: "MOD-RECO-024/028/029:Recoログ・エラー系Definition bootstrap"
+  summary: "MOD-RECO-024（Reco Error Handler）/ 028（Phase Log Writer）/ 029（Error Log Writer）の識別子単位 Epic Definition + 子 Task 3件（module-spec / implementation / unit-test）+ Review Definition を整備し、各 `/start-epic` 前提を満たす bootstrap chore Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - number: 260
+      purpose: "MOD-RECO-001 Recommendation Orchestrator Epic"
+    - number: 774
+      purpose: "MOD-RECO-002〜027 Definition bootstrap（024/028/029 は out_of_scope）"
+    - number: 1009
+      purpose: "フェーズ Wiring 完了後整合チェック（後続起票判断）"
+  related_prs:
+    - number: 1010
+      purpose: "整合チェック Task develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  MOD-RECO-002〜027 bootstrap（#774）では 024 / 025 / 028 / 029 を out_of_scope とし、別 bootstrap 候補としていた。
+  フェーズ Wiring（#788〜#792）および整合チェック（#1009 / #1010）完了後、OL ログ・エラー系（024 / 028 / 029）の module 実装着手前に Definition 一式を prompts/definitions に整備する。
+  実装フェーズ実行プロセス設計書 §6.6 / 成果物化方針書 §3.5.2 に整合させる。
+  推奨着手順: **024（Error Handler）→ 029（Error Log Writer）→ 028（Phase Log Writer）**（024→029 連携を優先。028 は Orchestrator 直接呼び出しで比較的独立）。
+  参考: `prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml` / `scripts/generate_mod_reco_002_027_definitions.py`
+
+objective: |
+  MOD-RECO-024 / 028 / 029 の Epic Definition 3件 + 子 Task Definition 9件 + Review Definition 13件 + 本 bootstrap Review + 生成スクリプト（任意）を作成する。
+  merge 後、各 workstream で `/start-epic @prompts/definitions/epics/<workstream>/epic.yaml` へ進める状態にする。
+
+scope:
+  - "Epic Definition 3件（MOD-RECO-024 / 028 / 029）"
+  - "子 Task Definition 9件（各 Epic × module-spec / implementation / unit-test）"
+  - "Review Definition 13件（Epic×3 + Task×9 + bootstrap×1）"
+  - "本 bootstrap Task / Review Definition"
+  - "生成スクリプト `scripts/generate_mod_reco_024_028_029_definitions.py`（002-027 スクリプトを参考に 3 モジュール向け）"
+
+out_of_scope:
+  - "各 MOD-RECO Epic の実装（モジュール仕様書・コード・テスト本体）"
+  - "MOD-RECO-025 Metric Logger の Definition（MVP △・別 Task 化）"
+  - "Orchestrator stubs.py への 024/028/029 Wiring Task"
+  - "段階3 Composition 完成 Task"
+  - "packages/contracts/** 変更・generated 手編集"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "§6.23 ログ・観測モジュール（024/028/029）の正本"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "024/028/029 委譲・Port 契約・§14 テスト観点"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "024 標準化エラー（GRS-REC-*）"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "phase_log / error_log 永続化方針"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串・並列方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針 §3.5"
+  files:
+    - path: "prompts/definitions/epics/mod-reco-021-recommendation-result-builder/epic.yaml"
+      required: true
+      purpose: "Epic Definition 構造参考"
+    - path: "prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+      required: true
+      purpose: "bootstrap Task 構造参考"
+    - path: "scripts/generate_mod_reco_002_027_definitions.py"
+      required: false
+      purpose: "生成スクリプト参考"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/mod-reco-024-reco-error-handler/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-028-phase-log-writer/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-029-error-log-writer/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-024-reco-error-handler/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-028-phase-log-writer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-029-error-log-writer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-024-reco-error-handler/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-028-phase-log-writer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-029-error-log-writer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-024-028-029-definitions-bootstrap.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-024-028-029-definitions-bootstrap/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "scripts/generate_mod_reco_024_028_029_definitions.py"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Epic Definition 3件（024 / 028 / 029）"
+  - "子 Task Definition 9件（module-spec / implementation / unit-test ×3）"
+  - "Review Definition 13件（Epic/Task Review + bootstrap Review）"
+  - "生成スクリプト 1件"
+  - "merge 後 `/start-epic` 実行可能（推奨順: 024 → 029 → 028）"
+
+acceptance_criteria:
+  - "MOD-RECO-024 / 028 / 029 の Epic / Task / Review Definition が存在する"
+  - "各 Epic に child_task_areas（module-spec / implementation / unit-test）がある"
+  - "epic_scope.forbidden_paths に apps/reco/src/reco/api/** が含まれる"
+  - "epic_scope.allowed_paths に各 application/<module>/** と docs/06_実装設計/reco/MOD-RECO-0** が含まれる"
+  - "MOD-RECO-021 Epic Definition 構造と整合（識別子単位 Epic）"
+  - "025 が scope 外であること"
+  - "生成スクリプトで再生成可能である"
+  - "secret 実値が含まれていない"
+  - "Task PR target が develop（親 Epic なし chore）"
+
+branch:
+  no_branch: false
+  name: "chore/task-1011-mod-reco-024-028-029-definitions-bootstrap"
+  summary: "mod-reco-024-028-029-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-06"
+    due_date: "2026-07-10"
+
+issue:
+  number: 1011
+  unit: "task"
+  type: "chore"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator 正本"
+    - number: 774
+      purpose: "002〜027 bootstrap 完了（024/028/029 は別 bootstrap）"
+    - number: 1009
+      purpose: "整合チェック Task（後続起票判断）"
+  prs:
+    - number: 1010
+      purpose: "整合チェック develop merge"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "prompts/definitions/epics/mod-reco-024-reco-error-handler/**"
+    - "prompts/definitions/epics/mod-reco-028-phase-log-writer/**"
+    - "prompts/definitions/epics/mod-reco-029-error-log-writer/**"
+    - "prompts/definitions/tasks/mod-reco-024-reco-error-handler/**"
+    - "prompts/definitions/tasks/mod-reco-028-phase-log-writer/**"
+    - "prompts/definitions/tasks/mod-reco-029-error-log-writer/**"
+    - "prompts/definitions/reviews/mod-reco-024-reco-error-handler/**"
+    - "prompts/definitions/reviews/mod-reco-028-phase-log-writer/**"
+    - "prompts/definitions/reviews/mod-reco-029-error-log-writer/**"
+    - "prompts/definitions/tasks/mod-reco-024-028-029-definitions-bootstrap.yaml"
+    - "scripts/generate_mod_reco_024_028_029_definitions.py"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "Epic 3件 / Task 9件 / Review 13件のファイル数"
+    - "各 Epic の epic_scope.allowed_paths 目視"
+    - "YAML 必須項目目視"
+    - "workstream 物理名（reco-error-handler / phase-log-writer / error-log-writer）整合"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Definition のみ chore"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Recoモジュール一覧 §6.23 とのモジュール ID / 物理名整合"
+    - "MOD-RECO-001 §8.4 / §14 との Port・委譲関係整合"
+    - "MOD-RECO-021 Epic Definition 構造との整合"
+    - "025 が scope 外であること"
+    - "024→029 連携が Epic dependencies / notes に反映されていること"
+    - "Review Definition 4点セット（Epic + 3 Task）×3"
+    - "生成スクリプトの再現性"
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+modules:
+  - module_id: "MOD-RECO-024"
+    workstream_key: "mod-reco-024-reco-error-handler"
+    physical_name: "Reco Error Handler"
+    application_dir: "reco-error-handler"
+    processing_type: "OL"
+    mvp: true
+    recommended_start_order: 1
+  - module_id: "MOD-RECO-029"
+    workstream_key: "mod-reco-029-error-log-writer"
+    physical_name: "Error Log Writer"
+    application_dir: "error-log-writer"
+    processing_type: "共通"
+    mvp: true
+    recommended_start_order: 2
+  - module_id: "MOD-RECO-028"
+    workstream_key: "mod-reco-028-phase-log-writer"
+    physical_name: "Phase Log Writer"
+    application_dir: "phase-log-writer"
+    processing_type: "共通"
+    mvp: true
+    recommended_start_order: 3
+
+notes:
+  - "親 Epic なし・develop 直 Task（bootstrap chore）"
+  - "対象: MOD-RECO-024, MOD-RECO-028, MOD-RECO-029（025 は out_of_scope）"
+  - "merge 後: `/start-epic @prompts/definitions/epics/mod-reco-024-reco-error-handler/epic.yaml` 等"
+  - "workstream_key: mod-reco-024-028-029-definitions-bootstrap"
+  - "正本: Recoモジュール一覧 §6.23 / MOD-RECO-001 §8.4"

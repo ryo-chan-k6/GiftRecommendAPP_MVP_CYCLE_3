@@ -1,0 +1,187 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-migration-path-docs-align"
+  title: "db-physical-design:migration適用正本パスdocs整合"
+  summary: "Phase2 フォローアップ。設計書・Definition の `db/migrations` 表記を `supabase/migrations` 適用正本に整合し、マイグレーション方針書 §16.7 Task B を完了する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "develop"
+  related_issues:
+    - number: 435
+      purpose: "親 Epic（CLOSED・develop merge 済み）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #435 は CLOSED（develop merge 済み）。Phase2 完了後の残課題として、
+  実装フェーズ実行プロセス設計書 L118 の `db/migrations` 表記が、
+  マイグレーション方針書 §5・プロジェクトディレクトリ構成定義書 §9.1 の
+  `supabase/migrations/` 適用正本と矛盾していた。本 Task は docs-only で整合する。
+
+objective: |
+  migration 適用正本を `supabase/migrations/` に揃えるため、設計書・epic/task Definition・
+  マイグレーション方針書 §16.7 を更新し、Phase2 フロー説明の矛盾を解消する。
+
+scope:
+  - "実装フェーズ実行プロセス設計書 §6.3 L118: `supabase/migrations` / `db/seeds`"
+  - "物理ER: migration 適用正本表記の更新"
+  - "epic.yaml / physical-er-spec.yaml / enum-code-definitions.yaml のパス整合"
+  - "マイグレーション方針書: §16.7 Task B 完了、out_of_scope の別 Task 記述解消"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "DDL / supabase/migrations スキーマ変更"
+  - "db/seeds 変更"
+  - "apps/** 実装"
+  - "packages/contracts/**・generated 変更"
+  - "プロジェクトディレクトリ構成定義書の §54 注記削除（意図的残存）"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase2 フロー L118 の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§5 正本関係・§16.7 Task B"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "migration 命名・適用正本表記"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "§9.1 supabase/migrations 正本（変更不要の確認用）"
+  files:
+    - path: "prompts/definitions/epics/db-physical-design/epic.yaml"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/physical-er-spec.yaml"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/enum-code-definitions.yaml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/epics/db-physical-design/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/physical-er-spec.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/enum-code-definitions.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/migration-path-docs-align.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/migration-path-docs-align/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "docs/ 内で Phase2 フロー説明が `supabase/migrations` と矛盾しない"
+  - "`db/migrations` 残存は「使用しない」旨の注記のみ（ディレクトリ構成定義書・マイグレーション方針書）"
+  - "epic/task Definition の output / exclusive paths が `supabase/migrations/**` に整合"
+  - "マイグレーション方針書 §16.7 No.7 が完了状態"
+  - "docs-only（DB スキーマ変更なし）"
+  - "Review Definition が prompts/definitions/reviews/db-physical-design/migration-path-docs-align/ に存在する"
+
+branch:
+  no_branch: false
+  summary: "migration-path-docs-align"
+  name: "docs/task-636-migration-path-docs-align"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "medium"
+
+issue:
+  number: 636
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic（完了済み）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+    - "docs/06_実装設計/database/マイグレーション方針書.md"
+    - "prompts/definitions/epics/db-physical-design/epic.yaml"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "grep で Phase2 フロー docs の `db/migrations` 残存が意図どおりか"
+    - "docs-only（supabase/migrations・db/ddl 差分なし）"
+  not_required:
+    - "unit test"
+    - "supabase db reset"
+  skip_reason:
+    "unit test": "docs-only Task"
+    "supabase db reset": "DB スキーマ変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装フェーズ設計書 L118 とマイグレーション方針書 §5 の整合"
+    - "epic.yaml scope/output/exclusive_files のパス整合"
+    - "out_of_scope（DDL/migration 変更）が混在していないか"
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+notes:
+  - "Issue #636 / PR target develop（Epic #435 完了後フォローアップ）"
+  - "Task 2（DDL 60化 #638）とはマイグレーション方針書の同時編集あり。直列 merge 推奨"

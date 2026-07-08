@@ -1,0 +1,48 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "EVAL"
+  domain_label: "Evaluation"
+  mvp_scope: true
+  codes:
+    - code: "GRS-EVAL-001"
+      internal_name: "Evaluation Dataset Not Found"
+      http_status: 404
+      retryable: false
+      severity: warn
+      user_message_key: "error.eval.001"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-EVAL-002"
+      internal_name: "Invalid Evaluation Case"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.eval.002"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-EVAL-003"
+      internal_name: "Evaluation Run Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.eval.003"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-EVAL-004"
+      internal_name: "Evaluation Metric Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.eval.004"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-EVAL-999"
+      internal_name: "Evaluation Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.eval.999"
+      owner_types: ["batch_run"]
+      mvp_scope: true

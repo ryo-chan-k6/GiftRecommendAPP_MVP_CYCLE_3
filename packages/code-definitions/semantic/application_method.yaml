@@ -1,0 +1,47 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "application_method"
+  physical_name: "application_method"
+  logical_name: "Application Method"
+  category: "semantic"
+  mvp_scope: true
+
+values:
+  - value: "relationship_rule"
+    label: "Relationship Rule"
+    meaning: "relationship_rule テーブルへディスパッチ"
+    terminal: true
+    enabled: true
+  - value: "occasion_rule"
+    label: "Occasion Rule"
+    meaning: "occasion_rule テーブルへディスパッチ"
+    terminal: true
+    enabled: true
+  - value: "concept_feature_delta_add"
+    label: "Concept Feature Delta Add"
+    meaning: "preferred 経路。concept_feature_rule 加算"
+    terminal: true
+    enabled: true
+  - value: "concept_feature_delta_invert"
+    label: "Concept Feature Delta Invert"
+    meaning: "non_preferred 経路。concept_feature_rule 反転適用"
+    terminal: true
+    enabled: true
+  - value: "hard_filter_excluded"
+    label: "Hard Filter Excluded"
+    meaning: "Feature Rule 非適用。Hard Filter へ委譲"
+    terminal: true
+    enabled: true
+  - value: "semantic_extraction_then_apply"
+    label: "Semantic Extraction Then Apply"
+    meaning: "semantic_rule 抽出後 concept_feature_rule 適用（free_text）"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "input_type_rule"
+    column: "application_method"
+    constraint: "NOT NULL"
+    note: "input_type との組み合わせ CHECK（§17.1 No.8）"

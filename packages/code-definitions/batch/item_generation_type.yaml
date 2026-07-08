@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "item_generation_type"
+  physical_name: "generation_type"
+  logical_name: "Item Generation Type"
+  category: "batch"
+  mvp_scope: true
+
+values:
+  - value: "semantic"
+    label: "Semantic"
+    meaning: "Item Semantic 生成パイプライン区間（BATCH-010 相当）"
+    terminal: true
+    enabled: true
+  - value: "feature"
+    label: "Feature"
+    meaning: "Item Feature 生成パイプライン区間（BATCH-011〜013 相当）"
+    terminal: true
+    enabled: true
+  - value: "embedding"
+    label: "Embedding"
+    meaning: "Item Embedding 生成パイプライン区間（BATCH-014〜015 相当）"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "item_generation_queue"
+    column: "generation_type"
+    constraint: "NOT NULL"
+    note: "Human Review 確定。BATCH-009 初回キュー登録時デフォルトは semantic。部分再生成は該当区間の値でキュー登録"

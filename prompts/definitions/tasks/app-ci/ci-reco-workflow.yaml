@@ -1,0 +1,138 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-app-ci-ci-reco-workflow"
+  title: "ci-reco workflow統合拡張"
+  summary: "先行 ci-reco.yml（#707）を Epic D scope で統合・拡張し path filter / batch pytest 連携を整理する。Epic D 子 Task D3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-app-ci"
+  epic_issue: "[Epic]app-ci:アプリ別PR CI"
+  epic_issue_number: 746
+  epic_branch: "chore/epic-746-app-ci"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic D 子 Task。local-dev-environment Task #707 で `ci-reco.yml` と `ci.yml` reco-check が先行作成済み。
+  Phase4a reco-foundation（#698）merge 後、Epic D として path filter・docs 正本・責務境界を整理する。
+  packages Python unit + apps/reco unit の Layer1 実行を正本化する。
+
+objective: |
+  既存 `.github/workflows/ci-reco.yml` を Epic D 管轄として整理し、
+  apps/reco / packages Python 変更時のみ実行する path filter を `ci.yml` に反映する。
+  未整備時 skip 条件を docs に明記する。
+
+scope:
+  - "`.github/workflows/ci-reco.yml` 更新（#707 成果の統合）"
+  - "`ci.yml` reco-check の path filter / needs 整理"
+  - "scripts/dev pytest 連携の docs 追記"
+  - "ローカル開発手順書 §6.2 との整合（必要最小）"
+
+out_of_scope:
+  - "ci-web / ci-api / ci-batch 新規（他子 Task）"
+  - "Layer2 workflow"
+  - "ci-reco.yml の全面削除・再設計（破壊的変更は Human 判断）"
+  - "packages/contracts 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  files:
+    - path: ".github/workflows/ci-reco.yml"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/python-dev-pytest.yaml"
+      required: true
+      purpose: "#707 Task Definition 参考"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: false
+  files:
+    - path: ".github/workflows/ci-reco.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "ci-reco.yml が Epic D scope として docs / Definition で説明されている"
+  - "reco / Python workspace 変更時に CI が実行される"
+  - "#707 先行成果を破壊せず統合している"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "ci-reco-workflow"
+  base: "chore/epic-746-app-ci"
+  target: "chore/epic-746-app-ci"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 747
+  unit: "task"
+  type: "chore"
+  area: "reco"
+
+dependencies:
+  issues:
+    - number: 698
+      purpose: "reco-foundation 完了"
+    - number: 707
+      purpose: "ci-reco.yml 先行"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/ci-reco.yml"
+  conflict_risk: "medium"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "推奨: Epic D 子 Task の先行着手候補"

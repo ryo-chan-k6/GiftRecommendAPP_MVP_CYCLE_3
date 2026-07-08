@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "CFG"
+  domain_label: "Config / Master"
+  mvp_scope: true
+  codes:
+    - code: "GRS-CFG-001"
+      internal_name: "Current Config Not Found"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.cfg.001"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-CFG-002"
+      internal_name: "Semantic Config Resolve Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.cfg.002"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-CFG-003"
+      internal_name: "Model Version Resolve Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.cfg.003"
+      owner_types: ["recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-CFG-004"
+      internal_name: "Ranking Config Resolve Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.cfg.004"
+      owner_types: ["recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-CFG-005"
+      internal_name: "Master Data Missing"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.cfg.005"
+      owner_types: ["api_call", "recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-CFG-006"
+      internal_name: "Feature Definition Missing"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.cfg.006"
+      owner_types: ["recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-CFG-999"
+      internal_name: "Config Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.cfg.999"
+      owner_types: ["recommendation_run", "batch_run"]
+      mvp_scope: true

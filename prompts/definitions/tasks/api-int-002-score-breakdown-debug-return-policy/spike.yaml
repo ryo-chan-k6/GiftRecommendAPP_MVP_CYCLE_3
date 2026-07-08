@@ -55,7 +55,7 @@ objective: |
   - debug返却条件を満たすとき: resultItems[].scoreBreakdown 推奨、data.metadata.debugPayload 推奨（契約上必須ではない）
   - ui かつ includeDebugInfo=false、または batch かつ includeDebugInfo=false: 両方省略
   - 欠落時: SCORE_BREAKDOWN_MISSING 相当をログ（phase_log / error_log）に記録し HTTP 200 継続。warnings[] には載せない
-  - metadata.debugPayload: open object（追加キー許容）。推奨キーは evalCaseId / semanticConfigVersionId / modelVersionId / rankingConfigVersionId / phaseSummary
+  - metadata.debugPayload: open object（追加キー許容）。推奨キーは evalCaseId / configName / versionLabel / modelVersionId / rankingConfigVersionId / phaseSummary
   - Public API 非表面化: api が scoreBreakdown / metadata.debugPayload を Public へ渡さない（現行維持）
 
 scope:

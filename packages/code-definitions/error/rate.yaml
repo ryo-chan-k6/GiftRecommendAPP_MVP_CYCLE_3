@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "RATE"
+  domain_label: "Rate Limit"
+  mvp_scope: true
+  codes:
+    - code: "GRS-RATE-001"
+      internal_name: "Too Many Recommendation Requests"
+      http_status: 429
+      retryable: true
+      severity: warn
+      user_message_key: "error.rate.001"
+      owner_types: ["api_call", "recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-RATE-002"
+      internal_name: "Too Many Feedback Requests"
+      http_status: 429
+      retryable: true
+      severity: warn
+      user_message_key: "error.rate.002"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-RATE-003"
+      internal_name: "Too Many API Requests"
+      http_status: 429
+      retryable: true
+      severity: warn
+      user_message_key: "error.rate.003"
+      owner_types: ["api_call"]
+      mvp_scope: true
