@@ -4,11 +4,63 @@ info:
   version: 1.0.0
   description: |
     api（apps/api）→ reco（apps/reco）向け Internal API 契約正本。
-    MVP 対象: API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）。
+    MVP 対象:
+    - API-INT-001 Recoヘルスチェック（GET /internal/reco/v1/health）
+    - API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
 paths:
+  /internal/reco/v1/health:
+    get:
+      operationId: getRecoHealth
+      tags:
+        - RecoHealth
+      summary: Recoヘルスチェック（API-INT-001）
+      description: |
+        reco（apps/reco）の稼働状態を返す。推薦パイプラインは実行しない。
+        Provider: apps/reco / Consumer: apps/api。
+        MVP 二値運用: DB OK → status ok、DB NG またはプロセス NG → status unavailable（HTTP 503）。
+      security:
+        - InternalApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/XInternalApiKey"
+        - $ref: "#/components/parameters/XTraceIdOptional"
+        - $ref: "#/components/parameters/XRequestIdOptional"
+      responses:
+        "200":
+          description: reco 稼働確認成功（status ok）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoHealthSuccessResponse"
+              examples:
+                ok:
+                  $ref: "#/components/examples/RecoHealthOkExample"
+        "401":
+          description: Internal API Key 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "403":
+          description: 権限不足
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（status unavailable 相当）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
   /internal/reco/v1/recommendations/run:
     post:
       operationId: runRecoRecommendation
@@ -119,8 +171,70 @@ components:
       schema:
         type: string
         example: "req_01HZYX"
+    XTraceIdOptional:
+      name: X-Trace-Id
+      in: header
+      required: false
+      description: 横断追跡 ID（指定時は Response meta.traceId へ反映）
+      schema:
+        type: string
+        example: "550e8400-e29b-41d4-a716-446655440000"
+    XRequestIdOptional:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: API リクエスト ID（指定時は Response meta.requestId へ反映）
+      schema:
+        type: string
+        example: "req_01HZYX"
 
   schemas:
+    RecoHealthStatus:
+      type: string
+      enum:
+        - ok
+        - degraded
+        - unavailable
+      description: |
+        reco 稼働状態（API-INT-001 契約仕様書 §7.3.1）。
+        MVP では ok / unavailable の二値運用。degraded は将来拡張用。
+
+    RecoHealthData:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          $ref: "#/components/schemas/RecoHealthStatus"
+        service:
+          type: string
+          description: サービス識別子（固定値 reco）
+          enum:
+            - reco
+          example: "reco"
+        version:
+          type: string
+          description: アプリケーションバージョン（任意）
+          example: "0.1.0"
+        checkedAt:
+          type: string
+          format: date-time
+          description: 確認日時（ISO 8601）
+
+    RecoHealthSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/RecoHealthData"
+            meta:
+              $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
     RelationshipInput:
       type: object
       required:
@@ -218,8 +332,15 @@ components:
         evalCaseId:
           type: string
           description: mode=evaluation 時に使用
-        semanticConfigVersionId:
+        configName:
           type: string
+          description: evaluation / batch の Semantic Config 系列名。versionLabel とセット指定
+          example: "mvp-semantic-config"
+        versionLabel:
+          type: string
+          pattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          description: evaluation / batch の Version ラベル（semver）。configName とセット指定
+          example: "v1.0.0"
         modelVersionId:
           type: string
 
@@ -442,6 +563,17 @@ components:
               $ref: "../schemas/common.yaml#/components/schemas/Meta"
 
   examples:
+    RecoHealthOkExample:
+      value:
+        data:
+          status: "ok"
+          service: "reco"
+          version: "0.1.0"
+          checkedAt: "2026-06-05T12:00:00+09:00"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          generatedAt: "2026-06-05T12:00:00+09:00"
+
     RecoRecommendationRunRequestExample:
       value:
         recommendationRequestId: "request_001"

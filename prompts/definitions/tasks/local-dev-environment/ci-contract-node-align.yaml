@@ -1,0 +1,178 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-ci-contract-node-align"
+  title: "ci-contract Node.js版統一"
+  summary: "`.github/workflows/ci-contract.yml` の Node.js 実行版を開発 toolchain 正本（Node 24 LTS）に揃え、利用技術スタック整理表 §15 との一時差分を解消する。Epic A Task A1b。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: 651
+  epic_branch: "chore/epic-651-local-dev-environment"
+  related_issues:
+    - number: 652
+      purpose: "先行 Task A1（toolchain-pin）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic A Task A1b。Task A1（#652 toolchain-pin）で `.nvmrc` / `package.json#engines` を Node 24 LTS に pin した後、
+  PR 品質ゲートの `ci-contract.yml` が Node 22 のまま残る一時差分を解消する。
+  Phase3a（#581 ci-foundation）で整備した OpenAPI / Orval 検証 workflow の Node 版のみを更新し、ジョブ構成そのものは変更しない。
+
+objective: |
+  `ci-contract.yml` の `actions/setup-node` を Node 24 LTS（開発正本と同一 major）に更新し、
+  利用技術スタック整理表 §15 から「#653 で統一する」一時注記を除去する。
+  Task / Review Definition を整備する。
+
+scope:
+  - "`.github/workflows/ci-contract.yml` の `node-version` を Node 24 LTS に更新"
+  - "`.nvmrc` / `package.json#engines` との major 整合確認（pin ファイル自体の変更は A1 scope）"
+  - "[利用技術スタック整理表](docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md) §15 の一時差分注記の解消"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "`.nvmrc` / `.node-version` / `.python-version` / `package.json` engines の変更（Task A1）"
+  - "`ci.yml` / `ci-env.yml` / `ci-security.yml` および AI 運用 workflow の変更"
+  - "`ci-web.yml` / `ci-api.yml` / `ci-reco.yml`（Epic D）"
+  - "OpenAPI / Orval 生成ロジック・generated 差分の手動編集"
+  - "apps/** 実装"
+  - "db/** 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "§15 開発環境・バージョン正本"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "ci-contract ジョブの役割・PR 品質ゲート方針"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19.8 CI / GitHub Actions 関連"
+  files:
+    - path: ".github/workflows/ci-contract.yml"
+      required: true
+    - path: ".nvmrc"
+      required: true
+      purpose: "Node 24 LTS pin 正本（A1 成果物）"
+    - path: "package.json"
+      required: true
+      purpose: "`engines.node` 正本（A1 成果物）"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: ".github/workflows/ci-contract.yml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/ci-contract-node-align.yaml"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/ci-contract-node-align/pr-review.yaml"
+      action: "create_or_update"
+      required: true
+
+acceptance_criteria:
+  - "`ci-contract.yml` の `node-version` が Node 24 LTS（開発正本と major 一致）である"
+  - "利用技術スタック整理表 §15 に ci-contract との一時差分注記が残っていない"
+  - "OpenAPI 検証・Orval generate・generated diff 検証の workflow ステップ構成が維持されている"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "ci-contract-node-align"
+  base: "chore/epic-651-local-dev-environment"
+  target: "chore/epic-651-local-dev-environment"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 653
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  issues:
+    - number: 436
+      purpose: "Phase3a 完了"
+    - number: 652
+      purpose: "Task A1（toolchain-pin）完了・Epic Branch merge 済み"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/ci-contract.yml"
+    - "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+  conflict_risk: "low"
+  db_impact: false
+  blocks: []
+
+test_policy:
+  manual_checks:
+    - "`ci-contract.yml` の node-version が `.nvmrc` / engines と major 一致"
+    - "GHA 上で ci-contract ジョブが成功する（PR CI）"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "CI workflow の node-version 更新のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic allowed_paths 内（`.github/workflows/ci-contract.yml`）に収まっているか"
+    - "A1 pin ファイルを変更していないか"
+    - "ci-contract の OpenAPI / Orval 検証ステップが維持されているか"
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+human_decision_points:
+  - "Human 判断（2026-06-18）: Node.js 24 LTS（A1 と同一）"
+
+notes:
+  - "Epic A 子 Task 実行順: A1（#652）→ A1b（本 Task）∥A2∥A3∥A5"
+  - "親 Epic の `allowed_paths` に `.github/workflows/ci-contract.yml` が含まれること（#652 PR で追加）"
+  - "Review Definition: prompts/definitions/reviews/local-dev-environment/ci-contract-node-align/pr-review.yaml"

@@ -1,0 +1,274 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-composition-postgres-observability-repositories"
+  title: "MOD-RECO-001:観測系Postgres Repository実装"
+  summary: "Composition Epic #1076 直列工程 ③。002 Run / 028 Phase Log / 029 Error Log / 025 Metric Logger の Postgres Repository を apps/reco/infrastructure/db に実装する。Tier 1 は metric_log、Tier 2 は reco_score_distribution_metric。InMemory 正本は維持し composition root DI は工程 ④ へ委譲。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Composition（段階3）"
+  epic_issue_number: 1076
+  epic_branch: "feature/epic-1076-mod-reco-001-composition"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1078
+      purpose: "工程 ① metric_log テーブル定義書"
+    - number: 1080
+      purpose: "工程 ② metric_log DDL / migration（develop merge 済み前提）"
+    - number: 1053
+      purpose: "MOD-RECO-025 Metric Logger Epic 完了"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Composition Epic #1076 直列工程 ③。
+  段階2 Wiring 完了後、観測系モジュール（002 / 028 / 029 / 025）は InMemory Repository を MVP 正本としている。
+  Human 判断（2026-07-08）により Postgres 永続化は Tier 1（metric_log）と Tier 2（reco_score_distribution_metric）の両方を段階3 Composition で実施する。
+  工程 ①（#1078 / #1079）テーブル定義書、工程 ②（#1080 / #1081 develop merge）DDL / migration は完了済み。
+  Epic Branch は develop（#1081 含む）を取り込み済み。既存 `recommendation_run_repository.py` は InMemory + Protocol のみで、Postgres 実装は未整備。
+
+objective: |
+  観測系 4 モジュール向け Postgres Repository を `apps/reco/src/reco/infrastructure/db/` に実装し、各 Application 層 Protocol / モデルと整合させる。
+  - MOD-RECO-002 → recommendation_run
+  - MOD-RECO-028 → phase_log
+  - MOD-RECO-029 → error_log
+  - MOD-RECO-025 Tier 1 → metric_log
+  - MOD-RECO-025 Tier 2 → reco_score_distribution_metric（MVP partial: context_score / final_score）
+  DatabaseSession を実 DB 接続可能な境界に拡張し、Repository 単体テスト（InMemory 相当の振る舞い検証 + DB  integration 可能範囲）を追加する。
+
+scope:
+  - "Postgres RecommendationRunRepository（MOD-RECO-002 / IF-DB-RECO-002）"
+  - "Postgres PhaseLogRepository（MOD-RECO-028）"
+  - "Postgres ErrorLogRepository（MOD-RECO-029）"
+  - "Postgres MetricLoggerRepository Tier 1（MOD-RECO-025 → metric_log）"
+  - "Postgres ScoreDistributionMetricRepository Tier 2（MOD-RECO-025 → reco_score_distribution_metric）"
+  - "DatabaseSession / 接続境界の実装拡張（環境変数ベース。secret 非 commit）"
+  - "infrastructure/db/repositories/__init__.py 等の export 整理"
+  - "Repository 単体 / integration テスト追加（apps/reco/tests/）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "composition root / build_production_* DI（工程 ④）"
+  - "stubs.py / orchestrator.py / ports.py 変更"
+  - "DDL / migration 追加（工程 ② 完了済み）"
+  - "InMemory Repository 削除"
+  - "§14 E2E integration 強化（工程 ⑤）"
+  - "OpenAPI / generated / apps/api / apps/web 変更"
+  - "Batch / Evaluation 向け metric_log 拡張"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+      required: true
+      purpose: "Run 記録 I/F・永続化境界"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "phase_log 更新仕様"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "error_log 更新仕様"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "§9.1 Tier 1 / §9.2 Tier 1b / Tier 2 境界"
+    - path: "docs/06_実装設計/database/metric_log_テーブル定義書.md"
+      required: true
+      purpose: "Tier 1 DDL 正本"
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "Tier 2 DDL 正本"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "phase_log DDL 正本"
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      required: true
+      purpose: "error_log DDL 正本"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "recommendation_run DDL 正本"
+    - path: "apps/reco/src/reco/infrastructure/README.md"
+      required: true
+      purpose: "infrastructure 配置方針"
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+      purpose: "接続境界拡張ベース"
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/recommendation_run_repository.py"
+      required: true
+      purpose: "Protocol / InMemory 参考"
+    - path: "apps/reco/src/reco/application/metric-logger/models.py"
+      required: true
+      purpose: "MetricRecord 写像"
+    - path: "apps/reco/src/reco/application/metric-logger/repository.py"
+      required: true
+      purpose: "InMemory Metric Repository 正本"
+    - path: "apps/reco/src/reco/application/phase-log-writer/repository.py"
+      required: true
+      purpose: "PhaseLog Repository Protocol"
+    - path: "apps/reco/src/reco/application/error-log-writer/repository.py"
+      required: true
+      purpose: "ErrorLog Repository Protocol"
+    - path: "db/ddl/d15_metric_log.sql"
+      required: true
+      purpose: "metric_log DDL"
+    - path: "db/ddl/d11_metric.sql"
+      required: true
+      purpose: "reco_score_distribution_metric DDL"
+    - path: "prompts/definitions/epics/mod-reco-001-composition/epic.yaml"
+      required: true
+      purpose: "Epic scope / Human 判断"
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/postgres_*.py"
+      action: "create"
+      required: true
+    - path: "apps/reco/tests/unit/infrastructure/db/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-001-composition/postgres-observability-repositories.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-001-composition/postgres-observability-repositories/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "002 / 028 / 029 / 025 に対応する Postgres Repository が infrastructure/db に存在する"
+  - "025 Tier 1 は metric_log 列と MetricRecord が 1:1 写像される"
+  - "025 Tier 2 は reco_score_distribution_metric へ context_score / final_score を永続化できる（MVP partial）"
+  - "InMemory Repository が削除されていない"
+  - "stubs.py / orchestrator.py / ports.py に変更がない"
+  - "composition root（apps/reco/src/reco/composition/**）に変更がない"
+  - "OpenAPI / generated 変更がない"
+  - "Repository テストが追加され、ローカル実行可能（DB 未起動時は skip 理由を PR に明記可）"
+  - "Task PR target が Epic Branch（feature/epic-1076-mod-reco-001-composition）"
+
+branch:
+  no_branch: false
+  summary: "postgres-observability-repositories"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-12"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1076
+      purpose: "親 Composition Epic"
+    - number: 1078
+      purpose: "工程 ① テーブル定義書完了"
+    - number: 1080
+      purpose: "工程 ② DDL / migration 完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-mod-reco-001-composition-metric-log-table-spec"
+      issue: 1078
+    - task_id: "task-mod-reco-001-composition-db-migration-metric-log"
+      issue: 1080
+  blocks:
+    - "task-mod-reco-001-composition-composition-root"
+  exclusive_files:
+    - "apps/reco/src/reco/infrastructure/db/repositories/postgres_recommendation_run_repository.py"
+    - "apps/reco/src/reco/infrastructure/db/repositories/postgres_phase_log_repository.py"
+    - "apps/reco/src/reco/infrastructure/db/repositories/postgres_error_log_repository.py"
+    - "apps/reco/src/reco/infrastructure/db/repositories/postgres_metric_log_repository.py"
+    - "apps/reco/src/reco/infrastructure/db/repositories/postgres_reco_score_distribution_metric_repository.py"
+    - "apps/reco/src/reco/infrastructure/db/session.py"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/infrastructure/db/**"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/infrastructure/db -q --tb=short"
+  manual_checks:
+    - "MetricRecord → metric_log 列写像"
+    - "Tier 2 が Tier 1 テーブルに混入しない"
+    - "InMemory 実装の維持"
+    - "forbidden_paths（stubs / orchestrator / ports）非変更"
+  not_required:
+    - "apps/reco/tests/integration（工程 ⑤）"
+  skip_reason:
+    "apps/reco/tests/integration（工程 ⑤）": "E2E 強化は工程 ⑤ Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "002/028/029/025 Protocol と Postgres 実装の整合"
+    - "Tier 1 / Tier 2 責務分離（metric_log vs reco_score_distribution_metric）"
+    - "InMemory 維持・stubs 非変更"
+    - "composition root 未変更（DI は工程 ④）"
+    - "Epic allowed_paths 内のみ"
+    - "secret / DATABASE_URL 非 commit"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+  reason: "観測系 Postgres Repository は DB / infrastructure 横断 Task"
+
+human_decision_points:
+  - "【確定 2026-07-08】025 Postgres 永続化は Tier 1 + Tier 2 両方（Epic #1076）"
+  - "【確定 2026-07-08】composition root DI は工程 ④。本 Task は Repository 実装のみ"
+
+stop_conditions:
+  - "DB ドライバ選定が Epic scope 外の大規模基盤変更を要する"
+  - "DDL 追加が必要と判明した場合（工程 ② へエスカレーション）"
+
+notes:
+  - "Composition 直列工程 ③"
+  - "workstream: mod-reco-001-composition"
+  - "Related Epic #1076"
+  - "後続: composition-root.yaml（工程 ④）"

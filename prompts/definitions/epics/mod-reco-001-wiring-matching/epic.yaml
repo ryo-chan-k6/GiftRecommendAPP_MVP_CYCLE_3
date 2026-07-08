@@ -1,0 +1,291 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-mod-reco-001-wiring-matching"
+  title: "MOD-RECO-001:Orchestrator Wiring（Matching）"
+  summary: "MOD-RECO-001 Recommendation Orchestrator の Matching フェーズ（MOD-RECO-014〜016）について、各モジュール implementation 完了後に build_default_stub_ports() の該当 Port を本実装へ差し替える Wiring milestone Epic。stubs.py の競合をフェーズ単位で直列化する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  MOD-RECO-001 Recommendation Orchestrator の下位モジュール配線方針（モジュール仕様書 §8.4）において、段階2: フェーズ Wiring Task を Epic Issue として管理する。
+  起動フェーズ（MOD-RECO-002 / 003）および User Meaning / Retrieval フェーズは別 Epic で配線済み。本 Epic は Matching フェーズ（MOD-RECO-014〜016）について、各モジュール implementation Task 完了後に build_default_stub_ports() の該当 Port を本実装へ差し替える milestone である。
+  StubXxx クラスは削除せず、MVP デフォルト composition の参照先のみ本実装に変更する（§8.4.1）。
+  親 Epic #260（MOD-RECO-001:Recommendation Orchestrator）配下の milestone だが、develop への統合は本 Epic PR のみで行う（Epic Branch は develop 起点）。
+  §19 引き継ぎ: MOD-RECO-014 完了後 Matching 対象 0 件時の Orchestrator 早期 0 件終了は integration-test Task で実装・テストする（orchestrator.py 変更。wiring Task scope 外）。正本は Issue #897 / MOD-RECO-014 モジュール仕様書 §8.3.4 / §8.3.6 / §16.1 No.8。
+
+objective: |
+  Matching フェーズの Orchestrator Wiring を Epic Issue / 配下 Task で管理し、recommendation-orchestrator/stubs.py の競合をフェーズ単位で直列化する。
+  配下 Task の PR target は本 Epic Branch とし、develop への統合は本 Epic PR のみで行う。
+  Epic develop merge 後の ExecutionContext 型付き化 / integration 再テスト follow-up Task 起票（playbook 順序 3〜4）までを Epic 完了条件に含める。
+
+scope:
+  - "Matching フェーズ（MOD-RECO-014〜016）の build_default_stub_ports() 配線 Task を Issue 化する"
+  - "対象 Port: feature_matcher, meaning_match_aggregator, context_scorer"
+  - "配線後の Orchestrator デフォルト経路テスト（test_recommendation_orchestrator.py 等）を Epic Branch で更新する"
+  - "各モジュールの test_orchestrator_integration.py（明示 DI）が green であることを Wiring 前提条件とする"
+  - "§19: MOD-RECO-014 完了後 Matching 対象 0 件時の Orchestrator 早期 0 件終了を integration-test Task で実装・テストする"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/mod-reco-001-wiring-matching/**）を整理する"
+
+out_of_scope:
+  - "対象モジュール（MOD-RECO-014〜016）本体の新規実装（各 MOD-RECO-* Epic 配下 Task）"
+  - "起動フェーズ（002 / 003）の再配線"
+  - "User Meaning / Retrieval フェーズの再配線"
+  - "他フェーズの Wiring（別 Epic）"
+  - "段階3 Composition 完成（本番 DI / DB Repository / E2E 強化）"
+  - "StubXxx クラスの削除"
+  - "execution_context.py の型付きフィールド追加（develop 直 follow-up Task。playbook 順序 3）"
+  - "integration 再テストの getattr 置換（develop 直 follow-up Task。playbook 順序 4）"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針・フェーズ単位・stubs.py 配置の正本（§8.4）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "対象モジュール（MOD-RECO-014〜016）の責務確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-014_Feature Matcherモジュール仕様書.md"
+      required: true
+      purpose: "Matching 対象 0 件時の Orchestrator 早期終了・Port 契約の正本（Issue #897 / §19）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-015_Meaning Match Aggregatorモジュール仕様書.md"
+      required: true
+      purpose: "015 Port I/F・ExecutionContext キーの正本"
+    - path: "docs/06_実装設計/reco/MOD-RECO-016_Context Scorerモジュール仕様書.md"
+      required: true
+      purpose: "016 Port I/F・ExecutionContext キーの正本"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）を確認するため"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線対象の build_default_stub_ports()"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+      purpose: "§19 早期 0 件終了のパイプライン分岐実装対象（integration-test Task）"
+  issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 790
+      purpose: "本 Epic Issue"
+    - number: 897
+      purpose: "MOD-RECO-014 モジュール仕様書 Task（§19 正本 docs）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/__init__.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+  tests:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]MOD-RECO-001:Orchestrator Wiring（Matching））"
+  - "Epic Branch（develop 起点 / feature/epic-790-mod-reco-001-wiring-matching）"
+  - "子 Task 候補: prompts/definitions/tasks/mod-reco-001-wiring-matching/wiring.yaml"
+  - "子 Task 候補: prompts/definitions/tasks/mod-reco-001-wiring-matching/integration-test.yaml"
+  - "§19 早期 0 件終了（integration-test Task）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue #790 が存在する"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "対象フェーズ（MOD-RECO-014〜016）の Port が build_default_stub_ports() で本実装を参照している"
+  - "StubXxx は失敗注入・明示 DI テスト用に残存している"
+  - "Orchestrator デフォルト経路の関連テストが green"
+  - "§19: Matching 対象 0 件時に Orchestrator が MOD-RECO-015 以降（Matching / Ranking: 015〜020）を呼ばず、空 Result で正常終了する（integration-test Task）"
+  - "配下 Wiring Task PR が merge され、Epic PR が develop へ統合可能"
+  - "playbook 順序 3（execution-context-typed-fields）Task が起票されている（Epic develop merge 後）"
+  - "playbook 順序 4（integration-retest）Task が起票されている"
+
+follow_up_tasks_outside_epic:
+  - task_area: "execution-context-typed-fields"
+    branch_scope: "develop"
+    template: "prompts/definitions/_examples/mod-reco-001-wiring-phase-template/execution-context-typed-fields.yaml"
+    start_gate: "本 Epic が develop に merge 済み"
+  - task_area: "integration-retest"
+    branch_scope: "develop"
+    template: "prompts/definitions/_examples/mod-reco-001-wiring-phase-template/integration-retest.yaml"
+    start_gate: "execution-context-typed-fields Task が develop に merge 済み"
+
+branch:
+  no_branch: false
+  name: "feature/epic-790-mod-reco-001-wiring-matching"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-06-26"
+    due_date: "2026-06-28"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: "MOD-RECO-001"
+  allowed_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/__init__.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "prompts/definitions/tasks/mod-reco-001-wiring-matching/**"
+    - "prompts/definitions/reviews/mod-reco-001-wiring-matching/**"
+    - "prompts/definitions/epics/mod-reco-001-wiring-matching/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+    - "apps/reco/src/reco/application/**/"
+    - "apps/reco/src/reco/api/**"
+    - "apps/api/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "wiring"
+    - "integration-test"
+
+dependencies:
+  epics:
+    - number: 896
+      purpose: "MOD-RECO-014 Feature Matcher Epic 完了"
+    - number: 904
+      purpose: "MOD-RECO-015 Meaning Match Aggregator Epic 完了"
+    - number: 918
+      purpose: "MOD-RECO-016 Context Scorer Epic 完了"
+  issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 897
+      purpose: "MOD-RECO-014 モジュール仕様書 Task 完了（§19 正本 docs）"
+    - number: 899
+      purpose: "MOD-RECO-014 implementation Task 完了"
+    - number: 913
+      purpose: "MOD-RECO-015 implementation Task 完了"
+    - number: 921
+      purpose: "MOD-RECO-016 implementation Task 完了"
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  manual_checks:
+    - "MOD-RECO-014〜016 の unit test / test_orchestrator_integration.py が green であること"
+    - "stubs.py の変更が Matching フェーズ Port に限定されているか"
+    - "モジュール本体（MOD-RECO-014〜016）への変更が混入していないか"
+    - "§19 早期 0 件終了が integration-test Task で検証されているか"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "integration test（E2E）": "段階3 Composition 完成 Task の範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "stubs.py の変更が Matching フェーズ Port に限定されているか"
+    - "モジュール本体（MOD-RECO-014〜016）への変更が混入していないか"
+    - "Port I/F（ExecutionContext キー等）が各モジュール integration テストと一致しているか"
+    - "exclusive_files（stubs.py）の直列化方針に反していないか"
+    - "§19 早期 0 件終了が orchestrator.py + テストで検証されているか（015 未呼び出し・GRS-REC-011 非発火）"
+    - "integration-test Task が §19 を満たすこと"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Wiring milestone は Issue / PR で管理"
+
+risk_points:
+  - "stubs.py の exclusive_files により配下 Task は直列化が必要"
+  - "§19 早期 0 件終了の orchestrator.py 変更が wiring Task と混在しやすい"
+  - "デフォルト経路テストの期待値更新が複数モジュール配線で累積する"
+
+human_decision_points:
+  - "対象モジュール implementation Task がすべて完了しているか（Wiring 着手タイミング）"
+  - "デフォルト経路テストの期待値更新が妥当か"
+  - "§19 の早期終了が MOD-RECO-014 仕様書 §16.1 No.8 および MOD-RECO-001 §8.2 0 件結果方針と整合しているか"
+
+stop_conditions:
+  - "前提モジュール Epic の implementation Task が未完了"
+  - "stubs.py 以外のモジュール本体変更が必要になった（例外: §19 の orchestrator.py 変更は integration-test Task で想定内）"
+  - "正本 docs（§8.4）と Task Definition の配線方針が矛盾した"
+  - "MOD-RECO-014 モジュール仕様書（Issue #897）が未 merge で §19 の Port 契約が未確定"
+
+notes:
+  - "Epic Issue: #790"
+  - "親 Issue: #260（[Epic]MOD-RECO-001:Recommendation Orchestrator）"
+  - "Epic Branch: feature/epic-790-mod-reco-001-wiring-matching"
+  - "配線方針正本は MOD-RECO-001 モジュール仕様書 §8.4"
+  - "§19 引き継ぎ正本: Issue #897 / MOD-RECO-014 モジュール仕様書"
+  - "follow-up playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"
+  - "子 Task 候補: prompts/definitions/tasks/mod-reco-001-wiring-matching/wiring.yaml（/start-task で起票）"
+  - "PR 作成前に prompts/definitions/reviews/mod-reco-001-wiring-matching/epic/pr-review.yaml を Epic Branch に含める"

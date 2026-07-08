@@ -1,0 +1,10 @@
+schema_version: "1.0"
+definition_type: "error_code_format"
+
+error_code_format:
+  pattern: "^GRS-[A-Z]{2,4}-[0-9]{3}$"
+  example: "GRS-COM-001"
+  description: |
+    Gift Recommendation Service 共通エラーコード形式。
+    人間可読正本: docs/05_アプリケーション設計/アプリ/エラーコード定義書.md §4.1–§4.2。
+    DOMAIN 長は 2〜4（例: DB=2, COM=3, AUTH=4）。NUMBER は 3 桁固定。

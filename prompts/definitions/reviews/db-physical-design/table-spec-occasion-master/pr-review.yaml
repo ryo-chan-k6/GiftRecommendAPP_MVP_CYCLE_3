@@ -1,0 +1,145 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-occasion-master-pr"
+  title: "occasion_master テーブル定義書 PRレビュー"
+  summary: "occasion_master テーブル定義書 Task の PR を AI Review する。物理ER・論理ER・API-PUB-006 との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-445-occasion-master-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 445
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-occasion-master.yaml"
+  source_branch: "docs/task-445-occasion-master-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-occasion-master.yaml"
+    required: true
+  issue:
+    number: 445
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "Master 系テーブル定義書との一貫性確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "エンティティ属性との整合"
+    - path: "docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API契約仕様書.md"
+      required: true
+      purpose: "API 公開列マッピング確認"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（他テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §11.1 の属性と矛盾しないか（論理ER 差分は明示されているか）"
+    - "API-PUB-006 の occasionLabel / displayOrder マッピングが明記されているか"
+    - "occasion_label_jp / is_active の API 非公開が明記されているか"
+    - "relationship_master テーブル定義書と Master 系方針が一貫しているか"
+  db:
+    - "PK / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "recommendation_request.occasion_code との LOGICAL 参照方針が明記されているか"
+    - "Master 系の保持・削除方針が妥当か"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "occasion_label と occasion_label_jp の MVP 物理 DDL 採用（Human Review #443 踏襲）"
+  - "occasion_code 追加時の migration / seed 更新フロー"
+
+risk_points:
+  - "Featureルール定義書 §7.1 の occasion_code 一覧と seed 内容の乖離（seed Task へ引き継ぎ）"
+  - "pair_master テーブル定義 Task との FK 方針の一貫性"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-occasion-master.yaml"
+  - "先行 Task: #440 / PR #441（enum 定義）、#442 / PR #443（relationship_master テーブル定義）"

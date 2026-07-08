@@ -1,0 +1,182 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-feature-normalization-version"
+  title: "feature_normalization_version:Feature Normalization Versionテーブル定義書作成"
+  summary: "物理ER・論理ER・Featureルール定義書・テーブル一覧を入力に、feature_normalization_version のテーブル定義書を作成する。Phase2 子 Task ③（テーブル定義）の Config 系 Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 442
+      purpose: "先行 Task ③ relationship_master テーブル定義書（merge 済み前提）"
+    - number: 445
+      purpose: "先行 Task ③ occasion_master テーブル定義書（merge 済み前提）"
+    - number: 450
+      purpose: "先行 Config Task model_version テーブル定義書（version 管理パターン参考）"
+    - number: 451
+      purpose: "先行 Config Task ranking_config テーブル定義書（version 管理パターン参考）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（merge 済み前提）"
+    - number: 443
+      purpose: "Task ③ relationship_master PR（merge 済み前提）"
+    - number: 448
+      purpose: "Task ③ occasion_master PR（merge 済み前提）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③。実装フェーズ実行プロセス設計書 §6.3 の「テーブル定義書（1テーブル=1Task）」に対応。
+  物理ER §15 適用順序どおり Master / Config 系を継続する。
+  model_version / ranking_config の Config version 管理パターン（is_current / partial unique / parameter_json）を踏襲する。
+
+objective: |
+  `feature_normalization_version` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の feature_normalization_version テーブル定義書作成"
+  - "物理ER §8–§11・論理ER §11.1・Featureルール定義書 §14 との突合"
+  - "model_version / ranking_config テーブル定義書の version 管理パターン踏襲"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "他テーブルのテーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index・冪等キー方針（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（normalization_method は本 Task で候補値を定義）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§11.1 エンティティ属性・§14 関係"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§9 Master / Config系・§7 item_feature 冪等キー"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "§14 sigmoid 正規化・center_feature / k_feature 初期値"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "Config version 管理パターン（is_current / partial unique）参考"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "parameter_json / immutable version パターン参考"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "Master / Config 系テーブル定義書の構成踏襲"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-feature-normalization-version.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-feature-normalization-version/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "feature_normalization_version テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §11.1・テーブル一覧 §9 と矛盾しない"
+  - "user_feature / item_feature への LOGICAL FK 方針が明記されている"
+  - "item_feature 冪等キーへの feature_normalization_version_id 含有が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "feature-normalization-version-table-spec"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8–§11 とカラム・制約・冪等キーの整合"
+    - "Featureルール定義書 §14.3 の parameter_json 初期値との整合"
+    - "model_version / ranking_config との version 管理パターン一貫性"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "テーブル一覧 §1.1: Task 識別子は物理テーブル名 feature_normalization_version を使用"
+  - "論点: semantic_config_version との責務分担、is_current 解決単位、generated_at vs created_at、Feature 軸別パラメータ"
+  - "normalization_method enum の YAML 正本化は後続 enum Task へ引き継ぎ"

@@ -1,0 +1,92 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-012-candidate-retriever-module-spec-pr"
+  title: "MOD-RECO-012 モジュール仕様書 PRレビュー"
+  summary: "MOD-RECO-012（Candidate Retriever）モジュール仕様書 Task の PR を AI Review する。`pre_hard_filter` サブモジュール統合（011 廃止後）を含む。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 866
+  issue:
+    number: 865
+  task_definition: "prompts/definitions/tasks/mod-reco-012-candidate-retriever/module-spec.yaml"
+  source_branch: "docs/task-865-mod-reco-012-candidate-retriever-module-spec"
+  target_branch: "feature/epic-864-mod-reco-012-candidate-retriever"
+  parent_epic_issue: 864
+  parent_epic_branch: "feature/epic-864-mod-reco-012-candidate-retriever"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-012-candidate-retriever/module-spec.yaml"
+    required: true
+  issue:
+    number: 865
+    required: true
+  pr:
+    number: 866
+    required: true
+  templates:
+    deliverables:
+      - path: "prompts/templates/docs/module-spec.md"
+        required: true
+        applies_to:
+          - "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria 充足"
+    - "out_of_scope 変更が混在していないか"
+    - "PR target が親 Epic Branch であるか"
+    - "secret 非含有"
+  docs:
+    - "module-spec テンプレート章構成に準拠しているか"
+    - "MOD-RECO-011 廃止記録（#863）と整合しているか"
+    - "`pre_hard_filter` / `retrieval` サブモジュール責務が明確か"
+    - "Orchestrator 1 呼び出し（010→012）が明記されているか"
+    - "GRS-REC-008 / 009、Phase Log、Metric の発火タイミングが明確か"
+    - "`pre_filtered_item_pool` が predicate 中心で本番 uuid[] 全件具体化を前提にしていないか"
+    - "横断 docs 未更新（Recoモジュール一覧・001）が暫定注記されているか"
+  architecture:
+    - "004 / 010 / 013 との責務境界が明確か"
+    - "epic_scope 内に差分が収まっているか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須（Blocker/Must）がない"
+      - "scope 外変更がない"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+
+notes:
+  - "PR head に本 Review Definition を同梱すること（review_definition_not_found 防止）"
+  - "横断 docs の 011 記述更新は Step 4 scope。本 PR では暫定整合注記で可"

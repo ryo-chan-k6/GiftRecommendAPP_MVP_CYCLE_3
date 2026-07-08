@@ -1,0 +1,34 @@
+{
+  "description": "恋人への誕生日 — 品質評価用第2ケース（予算・文脈差分）",
+  "relationship": {
+    "relationshipCode": "lover",
+    "relationshipLabel": "恋人"
+  },
+  "occasion": {
+    "occasionCode": "birthday",
+    "occasionLabel": "誕生日"
+  },
+  "budget": {
+    "budgetMin": 5000,
+    "budgetMax": 10000,
+    "currency": "JPY",
+    "taxIncluded": true
+  },
+  "preferredCondition": {
+    "preferredText": "特別感があり、サプライズ感のあるもの"
+  },
+  "nonPreferredCondition": {
+    "nonPreferredText": "実用品だけの選択肢は避けたい"
+  },
+  "ngCondition": {
+    "ngText": ""
+  },
+  "freeText": "初めて迎える誕生日。記念に残る、感情が伝わるギフトを探している",
+  "execution": {
+    "mode": "evaluation",
+    "topK": 10,
+    "candidateLimit": 50,
+    "includeReason": true,
+    "includeDebugInfo": true
+  }
+}

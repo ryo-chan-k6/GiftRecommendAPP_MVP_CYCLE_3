@@ -1,0 +1,80 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "BAT"
+  domain_label: "Batch"
+  mvp_scope: true
+  codes:
+    - code: "GRS-BAT-001"
+      internal_name: "Batch Run Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.bat.001"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-BAT-002"
+      internal_name: "Batch Partially Succeeded"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.bat.002"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-BAT-003"
+      internal_name: "Batch Already Running"
+      http_status: 409
+      retryable: true
+      severity: warn
+      user_message_key: "error.bat.003"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-BAT-004"
+      internal_name: "Staging Transform Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.bat.004"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-BAT-005"
+      internal_name: "Item Import Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.bat.005"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-BAT-006"
+      internal_name: "Cursor Update Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.bat.006"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-BAT-007"
+      internal_name: "Product Diff Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.bat.007"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-BAT-008"
+      internal_name: "Item Generation Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.bat.008"
+      owner_types: ["batch_run"]
+      mvp_scope: true
+    - code: "GRS-BAT-999"
+      internal_name: "Batch Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.bat.999"
+      owner_types: ["batch_run"]
+      mvp_scope: true

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "description": "レコメンド品質評価 — 固定評価ケース（テスト定義書 §9.7）",
+  "cases": [
+    {
+      "id": "eval-boss-thanks-001",
+      "title": "上司へのお礼（退職）",
+      "requestFixture": "tests/fixtures/api-input/recommendation-run-boss-thanks.json",
+      "expectedObservations": {
+        "primaryItemIds": ["item_001"],
+        "excludedItemIds": ["item_003"],
+        "budgetMin": 3000,
+        "budgetMax": 5000,
+        "ngKeywords": ["アルコール", "ワイン"]
+      },
+      "autoMetrics": [
+        "budget_compliance",
+        "ng_avoidance",
+        "top1_formality_score"
+      ],
+      "humanReviewRequired": true
+    },
+    {
+      "id": "eval-lover-birthday-001",
+      "title": "恋人への誕生日（特別感）",
+      "requestFixture": "tests/fixtures/api-input/recommendation-run-lover-birthday.json",
+      "expectedObservations": {
+        "primaryItemIds": [],
+        "excludedItemIds": [],
+        "budgetMin": 5000,
+        "budgetMax": 10000,
+        "ngKeywords": []
+      },
+      "autoMetrics": [
+        "budget_compliance",
+        "result_item_count",
+        "emotion_score_distribution"
+      ],
+      "humanReviewRequired": true
+    }
+  ]
+}

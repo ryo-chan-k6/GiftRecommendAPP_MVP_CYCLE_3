@@ -1,0 +1,8 @@
+{
+  "name": "@gift-recommendation/reco",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "node -e \"console.log('[placeholder] FastAPI dev server (port 8000) — Phase4 implementation pending'); process.exit(0)\""
+  }
+}

@@ -1,0 +1,250 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-phase3b-epic-a-definitions-bootstrap"
+  title: "Phase3b Epic A（local-dev-environment）Definition bootstrap"
+  summary: "Phase3b Epic A + 子Task 7件の Epic/Task/Review Definition を整備し、§2.6 AI Agent テスト運用を Epic Definition に反映する。`/start-epic` 前提の鶏卵解消用 chore Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - number: 436
+      purpose: "Phase3a Epic（environment-setup）完了前提"
+  related_prs:
+    - number: 584
+      purpose: "Phase3a Epic PR（merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 環境再計画（2026-06-18）に基づき、Phase3b の Epic A（`local-dev-environment`）を `/start-epic` する前に、
+  Epic Definition・子 Task 7件（A1〜A7）・Review Definition（Task PR + Epic PR）を prompts/definitions に整備する必要がある。
+  Definition なしでは `/start-epic` / `/start-task` が実行できないため、本 chore Task で bootstrap する（実装フェーズ実行プロセス設計書 §7.6）。
+  Phase3a（Epic #436 / PR #584 merge 済み）を前提とし、Epic B（hosted-dev-environment）は defer のまま Definition を作成しない。
+
+objective: |
+  `prompts/definitions/epics/local-dev-environment/epic.yaml` および子 Task A1〜A7 の Task Definition、
+  `prompts/definitions/reviews/local-dev-environment/**` の Review Definition を作成する。
+  Epic Definition には Phase3 環境再計画 §2.5（Agentic Process 制約）・§2.6（全テストレベルの AI Agent 運用）を反映する。
+  merge 後、`/start-epic @prompts/definitions/epics/local-dev-environment/epic.yaml` へ進める状態にする。
+
+scope:
+  - "Epic Definition: `prompts/definitions/epics/local-dev-environment/epic.yaml`（§2.5 / §2.6 反映含む）"
+  - "子 Task Definition 7件（toolchain-pin / monorepo-bootstrap / db-build-guide / seed-strategy / redis-local-guide / local-dev-runtime / local-smoke-check）"
+  - "Review Definition: 各 Task 用 `pr-review.yaml` + Epic PR 用 `reviews/local-dev-environment/epic/pr-review.yaml`"
+  - "本 bootstrap Task / Review Definition の整備"
+  - "既存 `redis-local-guide.yaml`（worktree 上で epic 整合に更新）"
+
+out_of_scope:
+  - "Epic A の実装（monorepo / DB 手順 / scripts 実体・apps 起動）— 子 Task `/work-issue` で実施"
+  - "Epic C（gha-test-environment）Definition — A3 完了後の別 Todo"
+  - "Epic B（hosted-dev-environment）Definition — defer"
+  - "Issue #132 の Close — 別 Todo（issue-132-disposition）"
+  - "apps/** 実装・`packages/contracts/**` 変更"
+  - "`.github/workflows/**` の本格変更（Epic C / Epic D scope）"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase3b・Epic A Task 表・§8.2 Human 判断"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19 環境変数・local 列"
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+      purpose: "Phase3a 計画手順・Phase3b 更新対象の把握"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "A3/A4 DB・seed 方針"
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§2.6 全テストレベル Agent 運用の正本"
+    - path: "ai-logs/human-decisions/2026-06-18-local-dev-redis-docker-compose-adoption.md"
+      required: true
+      purpose: "A5 Redis compose 採用の Human 判断"
+  files:
+    - path: "prompts/definitions/epics/environment-setup/epic.yaml"
+      required: true
+      purpose: "Phase3a Epic Definition 構造参考"
+    - path: "prompts/definitions/tasks/local-dev-environment/redis-local-guide.yaml"
+      required: false
+      purpose: "A5 既存ドラフト（あれば整合更新）"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/local-dev-environment/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/toolchain-pin.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/monorepo-bootstrap.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/db-build-guide.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/seed-strategy.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/redis-local-guide.yaml"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/local-dev-runtime.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/local-smoke-check.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/epic/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/toolchain-pin/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/monorepo-bootstrap/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/db-build-guide/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/seed-strategy/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/redis-local-guide/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/local-dev-runtime/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/local-smoke-check/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/phase3b/epic-a-definitions-bootstrap.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/phase3b/epic-a-definitions-bootstrap/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Epic A Definition（local-dev-environment）"
+  - "子 Task Definition 7件 + Review Definition 8件（Task×7 + Epic×1）"
+  - "bootstrap Task / Review Definition"
+  - "merge 後 `/start-epic` 実行可能な状態"
+
+acceptance_criteria:
+  - "`prompts/definitions/epics/local-dev-environment/epic.yaml` が存在し、§2.5 Agentic Process 制約・§2.6 全テストレベル Agent 運用が記載されている"
+  - "子 Task A1〜A7 の Definition が存在し、依存・並列・scope が Phase3 環境再計画と整合している"
+  - "各 Task に対応する Review Definition（`reviews/local-dev-environment/<task>/pr-review.yaml`）が存在する"
+  - "Epic PR 用 `reviews/local-dev-environment/epic/pr-review.yaml` が存在する"
+  - "Epic B Definition を作成していない（defer）"
+  - "secret 実値が含まれていない"
+  - "Task PR target が develop である（親 Epic なし chore）"
+
+branch:
+  no_branch: false
+  summary: "epic-a-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-18"
+    due_date: "2026-06-20"
+
+issue:
+  number: 649
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 436
+      purpose: "Phase3a 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "prompts/definitions/epics/local-dev-environment/**"
+    - "prompts/definitions/tasks/local-dev-environment/**"
+    - "prompts/definitions/reviews/local-dev-environment/**"
+    - "prompts/definitions/tasks/phase3b/**"
+    - "prompts/definitions/reviews/phase3b/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "YAML schema 必須項目の目視確認"
+    - "Epic child_task_areas と Task ファイル名の対応"
+    - "§2.6 記載がテスト定義書 §4.1 と矛盾しないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Definition のみの chore Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope / allowed_paths が Phase3b Epic A と一致するか"
+    - "§2.5 / §2.6 が Epic Definition に反映されているか"
+    - "A1〜A7 の依存・並列が計画と一致するか"
+    - "Review Definition 3点セットが揃っているか"
+    - "Epic B defer が守られているか"
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+human_decision_points:
+  - "Phase3 環境再計画（2026-06-18）: Supabase CLI + Docker、Neon 不採用、Redis 限定 compose、Epic B defer、Layer2 先行"
+
+notes:
+  - "親 Epic なし・develop 直 Task（§7.6 bootstrap）"
+  - "merge 後: `/start-epic @prompts/definitions/epics/local-dev-environment/epic.yaml`"

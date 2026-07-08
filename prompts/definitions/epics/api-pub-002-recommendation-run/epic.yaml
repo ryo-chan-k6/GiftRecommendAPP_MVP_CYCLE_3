@@ -32,12 +32,13 @@ background: |
   06_実装設計および 07_開発・単体テストにおいて、API-PUB-002（レコメンド実行 / Public API）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。Epic の Projects Phase は完了ゲート（07）、子 Task で成果物工程（06 / 07）を管理する。
   本 API は web 向けに `POST /api/v1/recommendations` を提供し、Recommendation Request を受け取り、apps/api → apps/reco（API-INT-002）への内部呼び出しを経て Recommendation Result を返す MVP の中核 API である。
   子 Task は Public API 仕様書・OpenAPI 連携（Contract Task として分離想定）・apps/api 実装・apps/web の API client 利用・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+  Phase1（1a 契約仕様書・1b OpenAPI・1c generated）の `develop` 反映は識別子 Epic PR ではなく **Phase1 マイルストーン Epic** 経由とする（[実装フェーズ実行プロセス設計書](../../../docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md) §6.2）。
 
 objective: |
   API-PUB-002 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
   配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
   apps/reco の実装変更が必要になった場合は、本 Epic ではなく依存 Epic（[Epic]API-INT-002 / [Epic]MOD-RECO-001）配下の Task として切る運用を明示する。
-  develop への統合は本 Epic PR のみで行う。
+  Phase1 成果（契約仕様書・OpenAPI・generated）の `develop` 反映は **Phase1 マイルストーン Epic**（`phase1-api-contract-foundation` 等）経由とする。本 Epic PR による `develop` merge は **Phase4b 縦串完了時のみ**（実装仕様書→実装→単体テスト完了後）。
 
 scope:
   - "API-PUB-002 に関する子 Task の作業単位を整理する（API仕様書 / OpenAPI連携 / api実装 / api-client / 単体テスト）"

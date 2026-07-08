@@ -1,0 +1,312 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-recommendation-run"
+  title: "recommendation_run:Recommendation Runテーブル定義書作成"
+  summary: "物理ER・論理ER・状態遷移設計書・enum定義書・recommendation_request / Config / Master / Log テーブル定義書・API-INT-002 を入力に、Online推薦実行正本 `recommendation_run` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R06 No.1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（run_status / owner_type / recommendation_run_phase_name 等。merge 済み前提）"
+    - number: 449
+      purpose: "pair_master テーブル定義書（pair_id 物理 FK 参照正本。merge 済み前提）"
+    - number: 450
+      purpose: "model_version テーブル定義書（used_by LOGICAL 参照正本。merge 済み前提）"
+    - number: 451
+      purpose: "ranking_config テーブル定義書（used_by LOGICAL 参照正本。merge 済み前提）"
+    - number: 463
+      purpose: "semantic_config_version テーブル定義書（used_by LOGICAL 参照正本。merge 済み前提）"
+    - number: 535
+      purpose: "phase_log テーブル定義書（recommendation_run_phase_log 統合・records 関係。merge 済み前提）"
+    - number: 536
+      purpose: "error_log テーブル定義書（may_have 関係。merge 済み前提）"
+    - number: 537
+      purpose: "recommendation_request テーブル定義書（executes 親 FK・Request → Run → Result フロー。merge 済み前提）"
+    - number: 544
+      purpose: "並行可能: recommendation_result テーブル定義書（Online コア・別 Task）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 465
+      purpose: "Task #449 PR（pair_master。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R06 No.1。論理ER §3 / §14.1・テーブル一覧 §3 No.2。
+  Online推薦実行単位の正本。`recommendation_request` に紐づく run ライフサイクル（Request → Run → Result）の中核。
+  IF-DB-RECO-001（Config / Version 参照）・IF-DB-RECO-002（Recommendation Run 保存）の DB 正本。
+  親 Epic Branch 最新（enum #440、pair_master #449、Config / Version #450 / #451 / #463、Log #535 / #536、recommendation_request #537 merge 済み前提）を前提とする。
+  Issue #543 / Branch `docs/task-543-recommendation-run-table-spec` で作業する。
+
+objective: |
+  `recommendation_run` の物理カラム・制約・Index・実行状態（`run_status`）を table-spec.md テンプレ準拠で定義する。
+  `recommendation_request` との 1:N executes 関係、`recommendation_result` との 1:0..1 produces 関係、`pair_id` 物理 FK、`semantic_config_version_id` / `model_version_id` / `ranking_config_id` LOGICAL FK、phase_log / error_log との Log 連携を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の recommendation_run テーブル定義書作成"
+  - "物理ER Online推薦系・§9 FK 関係（executes / produces / resolved_at_run / used_by / records / may_have）・§10 Index・§11 制約・§12 run_status との突合"
+  - "論理ER §3 recommendation_run 属性・§14.1 Request → Run → Result フロー・§13 recommendation_run_phase_log 統合方針との整合"
+  - "テーブル一覧 §3 No.2・Online推薦系補足（Run 単位状態 / pair 解決 / version 再現性）との整合"
+  - "状態遷移設計書 §5.1 Recommendation Run 状態遷移・§5.1.4 Phase Log 方針・§13 ER 対応との整合"
+  - "enum定義書 §6.1 recommendation_run_status・§6.15 owner_type（recommendation_run）との整合"
+  - "packages/code-definitions/state/recommendation_run_status.yaml との整合"
+  - "recommendation_request_テーブル定義書 §5.7 Config / Model Version 責務境界・pair_id Run 側保持との双方向整合"
+  - "pair_master / semantic_config_version / model_version / ranking_config テーブル定義書（被参照 FK / Index 方針）との双方向整合"
+  - "phase_log / error_log テーブル定義書（owner_type=recommendation_run・records / may_have 関係）との双方向整合"
+  - "正本定義表・リソース一覧・リソース責務定義表・ログ・Observability設計書（trace キー）との突合"
+  - "インターフェース一覧 IF-DB-RECO-001 / IF-DB-RECO-002 / IF-DB-RECO-009・処理構成定義書・処理フロー概要図との整合"
+  - "API-INT-002 Reco推薦実行API契約仕様書（Run 生成・状態返却の DB 正本）との整合"
+  - "機能×モジュール対応表 MOD-RECO-002 Recommendation Run Recorder との整合"
+  - "物理ER §17 No.1（pair_id Run 保持）・§17.1 No.4 / No.6（version 列 Run 正本・LOGICAL FK）の反映"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "recommendation_result / recommendation_result_item / recommendation_reason / recommendation_feedback 等の Online推薦系子テーブル定義書（R06 以降別 Task）"
+  - "user_semantic / user_feature / user_meaning テーブル定義書"
+  - "recommendation_run_phase_log 独立テーブル（MVP では phase_log に統合）"
+  - "recommendation_request / pair_master / Config / Log テーブル定義書の再作成（merge 済みを参照）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Online推薦系分類・recommendation_run FK / Index / §17 No.1 / used_by LOGICAL"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "run_status（§6.1）・owner_type recommendation_run（§6.15）・recommendation_run_phase_name（§6.18）参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§3 recommendation_run 属性・§14.1 Request → Run → Result フロー・§13 phase_log 統合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§3 No.2 Recommendation Run・Online推薦系補足方針"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§5.1 run_status 状態遷移・§5.1.4 Phase Log 方針・§13 ER 対応"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Recommendation Run 正本区分（実行正本 / 状態）・reco 更新主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Recommendation Run リソース分類・更新主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "Run 保存責務・正本 / 派生の境界"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-001 / IF-DB-RECO-002 / IF-DB-RECO-009"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "Recommendation Run 保存タイミング（reco パイプライン開始〜終了）"
+    - path: "docs/05_アプリケーション設計/アプリ/処理フロー概要図.md"
+      required: true
+      purpose: "Online推薦フロー上の Run 保存位置"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "recommendation_run_id trace キー・Phase Log 設計・Observability 連携"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-RECO-002 Recommendation Run Recorder 入出力"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "Reco 推薦実行と Run / Result 生成の I/F 境界"
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+      purpose: "§5.7 version 列 Run 側正本・executes 1:N・pair_id 非保持との双方向整合（merge 済み前提）"
+    - path: "docs/06_実装設計/database/pair_master_テーブル定義書.md"
+      required: true
+      purpose: "pair_id 物理 FK（resolved_at_run）・§17 No.1 整合（merge 済み前提）"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "used_by LOGICAL 被参照・再現性保持（merge 済み前提）"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "used_by LOGICAL 被参照（merge 済み前提）"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "used_by LOGICAL 被参照（merge 済み前提）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "owner_type=recommendation_run・recommendation_run_phase_log 統合・records 関係（merge 済み前提）"
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      required: true
+      purpose: "owner_type=recommendation_run・may_have 関係（merge 済み前提）"
+  packages:
+    - path: "packages/code-definitions/state/recommendation_run_status.yaml"
+      required: true
+      purpose: "run_status packages 正本"
+    - path: "packages/code-definitions/batch/recommendation_run_phase_name.yaml"
+      required: false
+      purpose: "phase_log 連携時の phase_name 許容値参考（Run 本体列ではない）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-run.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-recommendation-run/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "recommendation_run テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "recommendation_request / recommendation_result との関係（executes / produces）が明記されている"
+  - "物理ER・論理ER §3 / §14.1・テーブル一覧 §3 No.2 と矛盾しない"
+  - "run_status（enum）と状態遷移設計書 §5.1 が一致している"
+  - "pair_id 物理 FK（pair_master 参照）と semantic_config_version_id / model_version_id / ranking_config_id LOGICAL FK が明記されている"
+  - "phase_log / error_log との owner_type=recommendation_run 連携方針が明記されている"
+  - "recommendation_run_phase_log が物理化しない方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "recommendation-run-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 543
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 537
+      purpose: "recommendation_request テーブル定義書 完了（merge 済み前提）"
+    - number: 535
+      purpose: "phase_log テーブル定義書 完了（Log 系 R05。merge 済み前提）"
+    - number: 536
+      purpose: "error_log テーブル定義書 完了（Log 系 R05。merge 済み前提）"
+    - number: 449
+      purpose: "pair_master テーブル定義書 完了（pair_id 物理 FK。merge 済み前提）"
+    - number: 463
+      purpose: "semantic_config_version テーブル定義書 完了（merge 済み前提）"
+    - number: 450
+      purpose: "model_version テーブル定義書 完了（merge 済み前提）"
+    - number: 451
+      purpose: "ranking_config テーブル定義書 完了（merge 済み前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 recommendation_request → recommendation_run executes（ON）・recommendation_run → recommendation_result produces（ON）との整合"
+    - "物理ER §9 pair_master → recommendation_run resolved_at_run（ON）・semantic_config_version / model_version / ranking_config used_by（LOGICAL）との整合"
+    - "物理ER §10 idx_recommendation_run_request_id / idx_recommendation_run_status / idx_recommendation_run_pair_id との整合"
+    - "物理ER §11 fk_recommendation_run_pair 制約との整合"
+    - "論理ER §3 属性（recommendation_request_id, semantic_config_version_id, model_version_id, ranking_config_id, started_at, completed_at, run_status）との整合"
+    - "論理ER §14.1 Request → Run → Result フロー・再実行 1:N 方針との整合"
+    - "テーブル一覧 §3 No.2・Online推薦系補足（Run 単位状態 / pair / version）との整合"
+    - "状態遷移設計書 §5.1 run_status 遷移・started_at / completed_at 設定契機との整合"
+    - "enum定義書 §6.1 recommendation_run_status・packages/code-definitions/state/recommendation_run_status.yaml との整合"
+    - "recommendation_request 定義書 §5.7 version 列 Run 側正本・pair_id Run 側との双方向整合"
+    - "pair_master / semantic_config_version / model_version / ranking_config 定義書との被参照 FK 整合"
+    - "phase_log / error_log 定義書 owner_type=recommendation_run 連携との双方向整合"
+    - "recommendation_run_phase_log 非物理化（phase_log 統合）方針の明記"
+    - "インターフェース一覧 IF-DB-RECO-001 / IF-DB-RECO-002 / IF-DB-RECO-009 との整合"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "pair_id の保持先"
+    decision: "`recommendation_run` に保持。`recommendation_request` は relationship_code / occasion_code のみ（物理ER §17 No.1）"
+  - id: 2
+    topic: "semantic_config_version_id / model_version_id / ranking_config_id 保持先"
+    decision: "個別列正本は recommendation_run。Request は validated_payload のみ（Human Review #537 No.4）"
+  - id: 3
+    topic: "version 列の物理 FK"
+    decision: "semantic_config_version_id / model_version_id / ranking_config_id は LOGICAL FK 維持（物理 FK なし）。pair_id のみ物理 FK ON（Human Review #537 No.6）"
+  - id: 4
+    topic: "recommendation_run_phase_log 物理化"
+    decision: "MVP 物理テーブルなし。phase_log（owner_type=recommendation_run）に統合"
+  - id: 5
+    topic: "Online推薦コア Retention"
+    decision: "MVP DELETE なし。具体保持期間は Phase2 ⑥ データ保持方針 Task で確定"
+  - id: 6
+    topic: "Run 再実行方針"
+    decision: "同一 Run を再開せず、同一 Request に対する新規 Run として再実行（状態遷移設計書 §11）"
+
+notes:
+  - "Batch R06 No.1: recommendation_run（Online推薦系）"
+  - "Issue #543 / Branch docs/task-543-recommendation-run-table-spec"
+  - "Issue 本文のテーブル一覧参照 §4 は User意味推定系を指すため、正本は §3 No.2 を用いる"
+  - "R06 後続: recommendation_result / recommendation_result_item 等は別 Task（#544 以降）"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#449 / PR #465（pair_master）、#450 / #451 / #463（Config / Version）、#535 / #536（Log）、#537（recommendation_request）"
+  - "Human Review 決定事項: human_review_decisions 参照（物理ER §17 / #537 §17.1 踏襲）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

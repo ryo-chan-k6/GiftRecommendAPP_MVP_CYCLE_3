@@ -1,0 +1,41 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "phase_status"
+  physical_name: "phase_status"
+  logical_name: "Phase Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "started"
+    label: "開始"
+    meaning: "フェーズ開始"
+    terminal: false
+    enabled: true
+  - value: "succeeded"
+    label: "成功"
+    meaning: "フェーズ正常終了"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "フェーズ失敗"
+    terminal: true
+    enabled: true
+  - value: "skipped"
+    label: "スキップ"
+    meaning: "条件により実行不要"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "phase_log"
+    column: "phase_status"
+    constraint: "NOT NULL"
+    note: "汎用フェーズログ"
+  - table: "recommendation_run_phase_log"
+    column: "phase_status"
+    constraint: "NOT NULL"
+    note: "Online推薦フェーズ（論理ER上。物理ERでは phase_log 統合）"

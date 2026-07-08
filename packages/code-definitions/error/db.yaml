@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "DB"
+  domain_label: "Database"
+  mvp_scope: true
+  codes:
+    - code: "GRS-DB-001"
+      internal_name: "Database Connection Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.db.001"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-DB-002"
+      internal_name: "Database Read Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.db.002"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-DB-003"
+      internal_name: "Database Write Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.db.003"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-DB-004"
+      internal_name: "Unique Constraint Violation"
+      http_status: 409
+      retryable: false
+      severity: warn
+      user_message_key: "error.db.004"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-DB-005"
+      internal_name: "State Update Conflict"
+      http_status: 409
+      retryable: true
+      severity: warn
+      user_message_key: "error.db.005"
+      owner_types: ["recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-DB-006"
+      internal_name: "Transaction Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.db.006"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-DB-999"
+      internal_name: "Database Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.db.999"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true

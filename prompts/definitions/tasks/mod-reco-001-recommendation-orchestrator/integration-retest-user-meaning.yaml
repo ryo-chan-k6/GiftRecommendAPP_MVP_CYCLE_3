@@ -1,0 +1,223 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-execution-context-integration-retest-user-meaning"
+  title: "MOD-RECO-001:ExecutionContext型付き化後 統合テスト再検証（User Meaning）"
+  summary: "Issue #887 で ExecutionContext に型付きフィールド追加後、`test_recommendation_orchestrator.py` の User Meaning 向け `getattr` アサーションを型付き直接参照へ置換し、デフォルト composition 経路の検証を型安全化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "履歴参照（Epic クローズ済み）。PR 本文は Related to #260"
+    - number: 858
+      purpose: "初回 User Meaning integration-test Task（配線後 green 化）"
+    - number: 887
+      purpose: "ExecutionContext 型付きフィールド拡張 Task（作業開始前提）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Issue #858（User Meaning integration-test）では配線後のデフォルト composition を green 化したが、
+  ExecutionContext の User Meaning フィールド（user_feature / user_meaning / user_context / query_embedding）は
+  `#887` 型付き化完了前のため `getattr` で存在確認していた。
+  Issue #887 merge 後、本 Task で当該テストを型付き直接参照へ更新する。
+  Epic #260 はクローズ済みのため、**develop ベース・develop 向け PR** の横断 follow-up として実施する。
+
+objective: |
+  `test_default_composition_populates_user_meaning_execution_context` 等の User Meaning 向けアサーションを
+  ExecutionContext 型付きフィールドの直接参照へ置換し、pytest green を維持する。
+
+scope:
+  - "`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` の User Meaning 向け `getattr` アサーション置換"
+  - "User Meaning フェーズ向け ExecutionContext 型付きフィールド直接参照への整理（internal_feature_estimate 含む）"
+  - "テスト用 helper の最小限整理（User Meaning context assert 専用）"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/integration-retest-user-meaning/pr-review.yaml`）"
+
+out_of_scope:
+  - "`execution_context.py` のフィールド追加（#887 Task）"
+  - "Retrieval 向け `getattr` アサーション置換（後続 integration-retest-retrieval Task）"
+  - "stubs.py / モジュール本体の変更（テスト成立に必要な最小修正のみ可。要 PR 説明）"
+  - "integration test（E2E）/ contract test"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "execution_context 受け渡し・§8.4 配線方針"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      required: true
+      purpose: "型付きフィールド定義（#887 成果物）"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "更新対象テスト"
+    - path: "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+      required: false
+      purpose: "helper 最小整理"
+  issues:
+    - number: 260
+      purpose: "履歴参照"
+    - number: 858
+      purpose: "初回 integration-test"
+    - number: 887
+      purpose: "型付き化 Task（blocking）"
+    - number: 891
+      purpose: "本 Task Issue"
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "User Meaning ExecutionContext 型付き直接参照の green pytest"
+  - "更新したテスト観点とケースの対応（PR 本文）"
+  - "pytest 実行結果（成功ログ）"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "Issue #887 が develop に merge 済みである（作業開始前提）"
+  - "User Meaning 向け `getattr(ctx, ...)` アサーションが型付き直接参照に置換されている"
+  - "`cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+  - "`execution_context.py` / `stubs.py` に変更がない"
+  - "Retrieval 向け `getattr` テストは本 Task scope 外のまま（後続 Task 委譲）"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "test/task-891-mod-reco-001-execution-context-integration-retest-user-meaning"
+  summary: "mod-reco-001-execution-context-integration-retest-user-meaning"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-01"
+    due_date: "2026-07-04"
+
+issue:
+  number: 891
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 887
+      purpose: "ExecutionContext 型付き化 develop merge 完了"
+  prs: []
+  tasks:
+    - "task-mod-reco-001-execution-context-typed-fields が develop に merge 済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-execution-context-typed-fields"
+  blocks:
+    - "task-mod-reco-001-execution-context-integration-retest-retrieval（同一 test ファイルの直列推奨）"
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+    - "cd apps/reco && uv run pytest tests/unit/ -q"
+  manual_checks:
+    - "Issue #887 develop merge 済みで ExecutionContext 型付きフィールドが参照可能であること"
+    - "User Meaning context テストが getattr ではなく直接参照になっていること"
+  not_required:
+    - "Retrieval 向け getattr 置換"
+  skip_reason:
+    "Retrieval 向け getattr 置換": "後続 integration-retest-retrieval Task に委譲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "User Meaning ExecutionContext アサーションが #887 型定義と整合しているか"
+    - "getattr 置換漏れが User Meaning 範囲にないか"
+    - "execution_context.py / stubs.py への不要な変更がないか"
+    - "develop 直 PR 例外が PR 本文で説明されているか"
+    - "pytest 実行結果が PR 本文に記載されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "統合テスト再検証は Issue / PR で管理"
+
+risk_points:
+  - "Issue #887 未 merge では型付きフィールドが未定義のため着手不可"
+  - "Retrieval retest Task と test ファイル競合"
+
+human_decision_points:
+  - "User Meaning context assert の粒度（型のみ vs 値検証）"
+
+stop_conditions:
+  - "Issue #887 が develop に未 merge"
+  - "execution_context.py の追加変更が必要になった（#887 へ戻す）"
+  - "Retrieval 向け assert 更新を本 Task scope に取り込む必要が出た"
+
+notes:
+  - "Task Issue: #891"
+  - "Related to #260 / #858 / #887"
+  - "作業開始ゲート: Issue #887 develop merge 後"
+  - "workstream: mod-reco-001-recommendation-orchestrator"

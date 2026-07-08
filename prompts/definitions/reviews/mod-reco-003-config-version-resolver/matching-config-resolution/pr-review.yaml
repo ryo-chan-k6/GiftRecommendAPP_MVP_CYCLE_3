@@ -1,0 +1,147 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-003-matching-config-resolution-pr"
+  title: "MOD-RECO-003 matching_config解決 PRレビュー"
+  summary: "MOD-RECO-003 matching_config 解決対応 Task（Issue #907）の PR を AI Review する。ranking_config 対称性、config_versions 形状、Run 再現性、Epic scope 例外の最小限性を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "feature/task-907-mod-reco-003-matching-config-resolution"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: 911
+  issue:
+    number: 907
+  task_definition: "prompts/definitions/tasks/mod-reco-003-config-version-resolver/matching-config-resolution.yaml"
+  source_branch: "feature/task-907-mod-reco-003-matching-config-resolution"
+  target_branch: "develop"
+  parent_epic_issue: 778
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-003-config-version-resolver/matching-config-resolution.yaml"
+    required: true
+  issue:
+    number: 907
+    required: true
+  pr:
+    number: 911
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md"
+      required: true
+      purpose: "更新成果物の内容確認"
+    - path: "docs/06_実装設計/database/matching_config_テーブル定義書.md"
+      required: true
+      purpose: "matching_config DB 正本との整合"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "対称設計の参照"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "ExecutionContext / config_versions 契約"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+      purpose: "§13.1 マッピング"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: true
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "out_of_scope（DB DDL / MOD-RECO-014・015 本体 / OpenAPI）が混在していないか"
+    - "Task PR target が develop であるか"
+    - "#906 merge 前提（matching_config テーブル・Run 列）が満たされているか"
+  docs:
+    - "MOD-RECO-003 仕様書に matching_config_id 解決・重み引き渡しが明記されているか"
+    - "ranking_config 解決フローと対称か"
+    - "案 B（matching_config）と model_version の責務分担が明確か"
+  source:
+    - "ResolvedConfigVersions / config_versions に matching_config_id と重みが格納されるか"
+    - "is_current = true の matching_config 解決ロジックが ranking_config と対称か"
+    - "Run Recorder が matching_config_id を記録するか（必要最小限の変更か）"
+    - "apps/reco/src/reco/api/** を変更していないか"
+  tests:
+    - "config-version-resolver unit test（成功 / 失敗）が更新されているか"
+    - "run recorder smoke が PR 本文または CI で確認できるか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "config_versions 追加フィールドの物理名・ネスト（Issue #907 §11）"
+  - "Epic forbidden_paths 例外（recommendation-run-recorder / infrastructure）の変更範囲"
+  - "MOD-RECO-015 §8.3.2 との config_versions 形状一致"
+
+risk_points:
+  - "Epic #778 epic_scope.forbidden_paths と Issue #907 scope（run-recorder 追随）の整合"
+  - "MOD-RECO-015 モジュール仕様書が develop 未反映時の用語参照（Epic #904 / PR #909）"
+  - "Orchestrator 統合テストパスの有無・更新要否"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/mod-reco-003-config-version-resolver/matching-config-resolution.yaml"
+  - "前提: #906 PR #910 develop merge 済み、親 Epic #778 Done"

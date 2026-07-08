@@ -1,0 +1,182 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-local-db-verification-env"
+  title: "ローカルDB検証環境構築（Docker/Supabase/psql）"
+  summary: "D01 DDL 実 DB 検証の前提として、WSL2 上の Docker Desktop + Supabase CLI + psql によるローカル Postgres 15 + pgvector 環境と検証手順書を整備する。Phase3 全体環境構築とは分離した最小スコープ。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+    - number: 611
+      purpose: "後続 D01 DDL Task（本 Task merge 後に段階 C 再開）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #435 子 Task ④ DDL（D01: #611）の段階 C（実 DB 適用検証）を進めるには、WSL2 上で Docker / Supabase CLI / `psql` によるローカル Postgres 15 + pgvector 環境が必要である。
+  Epic #435 の `out_of_scope` に Phase3 環境構築（environment-setup Epic）があるため、本 Task は **D01 DDL スモーク検証に必要な最小ツールチェーンと手順書** に限定する。
+
+objective: |
+  1. `docs/06_実装設計/database/ローカルDB検証手順書.md` を正本として作成する（対象 OS: Windows + WSL2）
+  2. `supabase/README.md` から上記手順書へリンクする
+  3. Human が手順に従い `docker` / `supabase` / `psql` の version 確認および `supabase start` スモークを実施できる状態にする
+
+scope:
+  - "WSL2 上の Docker Desktop 連携・`postgresql-client`（`psql`）・Supabase CLI 導入手順の文書化"
+  - "`supabase start` によるローカル Postgres 15 + pgvector の起動手順"
+  - "`db/ddl/*.sql` のスモーク適用手順（D01 適用前チェック・検証 SQL の雛形）"
+  - "検証結果の記録テンプレート（PR 本文記載用）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "Phase3 全体の環境構築（Epic #436 相当）"
+  - "Redis / apps `.env` 整備"
+  - "`supabase/migrations/` 統合（Task ⑤）"
+  - "本番 / クラウド Supabase への link・適用"
+  - "D01 DDL 本体の作成（#611 scope）"
+  - "`apps/**` 実装変更"
+
+input:
+  docs:
+    - path: "supabase/README.md"
+      required: true
+      purpose: "既存ローカル開発骨子・リンク更新先"
+    - path: "supabase/config.toml"
+      required: true
+      purpose: "DB port 54322・PG 15 の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§5.1 db/ddl 参照用適用・§13 pgvector 方針"
+    - path: "docs/00_共通/AIエージェント運用/worktree運用ルール.md"
+      required: true
+      purpose: "worktree パス・並列作業前提"
+    - path: "db/README.md"
+      required: false
+      purpose: "db/ddl と supabase/migrations の役割分担"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/ローカルDB検証手順書.md"
+      action: "create"
+      required: true
+      template: null
+    - path: "supabase/README.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/local-db-verification-env.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/local-db-verification-env/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "ローカルDB検証手順書が `docs/06_実装設計/database/` に存在し、WSL2 + Docker Desktop + Supabase CLI + `psql` の手順が読める"
+  - "`supabase/README.md` から手順書へリンクされている"
+  - "Human が手順に従い `docker version` / `supabase --version` / `psql --version` の確認まで成功している（PR 本文にコマンド出力を記載。secret なし）"
+  - "`supabase start` によるローカル DB 起動スモークが成功している（PR 本文に記録）"
+  - "Task PR target が親 Epic Branch"
+  - "Task PR 本文の Issue 参照は `Related to #612`（`Closes` 禁止）"
+
+branch:
+  no_branch: false
+  summary: "local-db-verification-env"
+  name: "chore/task-612-local-db-verification-env"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 612
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/ローカルDB検証手順書.md"
+    - "prompts/definitions/tasks/db-physical-design/local-db-verification-env.yaml"
+    - "prompts/definitions/reviews/db-physical-design/local-db-verification-env/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "手順書のコマンドが `supabase/config.toml`（port 54322、PG 15）と矛盾しないこと"
+    - "マイグレーション方針書 §5.1（db/ddl は参照用・直接 psql 適用）と手順が整合すること"
+    - "out_of_scope（Redis / apps / migrations 統合）が手順書に混入していないこと"
+    - "PR 本文が `Related to #612` であること"
+  not_required:
+    - "unit test"
+    - "CI workflow 追加"
+  skip_reason:
+    "unit test": "docs 中心 Task のため"
+    "CI workflow 追加": "Phase2 では workflow 実装 out_of_scope（マイグレーション方針書 §14）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "手順書が Windows + WSL2 前提で読み進められるか"
+    - "Epic #435 out_of_scope（Phase3 環境構築）と本 Task scope が明確に分離されているか"
+    - "D01 検証 SQL が #611 と共通化できる形か"
+    - "secret / .env 実値の記載がないか"
+    - "Task PR 本文の Issue 参照キーワード（Related to）"
+  specialist_reviews:
+    docs: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+notes:
+  - "Issue #612 / Branch chore/task-612-local-db-verification-env"
+  - "後続: #611 段階 C は本 Task merge 後に再開"
+  - "Human 作業: Docker Desktop インストールは Windows 側（Agent 不可）"

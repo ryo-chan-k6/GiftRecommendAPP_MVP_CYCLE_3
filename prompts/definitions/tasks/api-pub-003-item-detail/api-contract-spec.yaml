@@ -1,0 +1,323 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-003-item-detail-api-contract-spec"
+  title: "API-PUB-003:商品詳細取得API契約仕様書作成"
+  summary: "API-PUB-003（商品詳細取得 / Public API、GET /api/v1/items/{itemId}）の API 契約仕様書（API-PUB-003_商品詳細取得API契約仕様書.md）を、api-contract-spec.md 準拠で作成する。実装面は別 Task（api-implementation-spec.yaml）へ分離する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-003:商品詳細取得"
+  epic_issue_number: 385
+  epic_branch: "feature/epic-385-pub-003-item-detail"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase1 ① API契約仕様書（1a）として、API-PUB-003（商品詳細取得 / Public API）の契約面（Request / Response / Error / Validation / 互換性 / OpenAPI 反映方針）を確定する。
+  実装フェーズ実行プロセス設計書 §4.1（分離後モデル）に従い、Item 参照 Repository・MOD-API 連携・内部 DTO マッピング・結合テスト観点などの実装面は本 Task の対象外とし、`api-implementation-spec.yaml` で Phase4 実装設計時に作成する。
+  本 API は Item / Item Image / External Item Reference / Popularity Signal を Public 向け表面化する。Feature / Embedding 等の内部推薦データは返却しない（API設計方針書 §18.4 準拠）。
+
+objective: |
+  API-PUB-003（商品詳細取得 / Public API、`GET /api/v1/items/{itemId}`）について、Contract Gate および後続 OpenAPI Contract Task の入力となる API 契約仕様書を作成する。
+  成果物は prompts/templates/docs/api-contract-spec.md に準拠し、契約面のみを記載する（api-implementation-spec.md の章は含めない）。
+  OpenAPI / Orval / generated の実ファイル変更は後続 Contract Task へ分離する。
+
+scope:
+  - "API-PUB-003 の API 契約仕様書を新規作成する（成果物: API-PUB-003_商品詳細取得API契約仕様書.md）"
+  - "API基本情報（API ID / API種別 Public / Method GET / Endpoint /api/v1/items/{itemId} / Base URL / Version / Provider apps/api / Consumer apps/web / 認証要否 / 冪等性 / MVP対象）を定義する"
+  - "Request Header / Path Parameters（itemId）/ Query Parameters / Request Body（なし）を整理する"
+  - "Response Header / Status Code / Response Body（Item 表面・画像・外部 EC URL・レビュー情報等）を整理する"
+  - "Error Response仕様（GRS-ITM-* / GRS-DB-* / GRS-REQ-* 等）を整理する"
+  - "商品不存在時 404（GRS-ITM-001）方針を明示する（API一覧 §API-PUB-003）"
+  - "バリデーション仕様を整理する"
+  - "OpenAPI / Orval / generated 反映方針（packages/contracts/openapi/public-api.yaml、apps/web/src/generated/api/ 再生成）を整理する（方針のみ。ファイル変更は out_of_scope）"
+  - "API-PUB-002 Response `items[]` とのフィールド整合方針を整理する"
+  - "互換性・破壊的変更・契約面テスト観点を整理する"
+  - "未決事項・人間判断が必要な事項を明記する"
+
+out_of_scope:
+  - "API実装仕様書（api-implementation-spec.md 準拠）の作成（prompts/definitions/tasks/api-pub-003-item-detail/api-implementation-spec.yaml）"
+  - "処理概要（MOD-API-* / Item 参照 Repository の詳細フロー）・内部 DTO マッピング・provider/consumer 実装影響の詳細・結合テスト観点の確定"
+  - "apps/reco（MOD-RECO-022 Result Snapshot Builder 等）の設計・実装"
+  - "OpenAPI定義ファイル（packages/contracts/openapi/public-api.yaml 等）の作成・更新"
+  - "Orval設定ファイル（orval.config.ts）の作成・更新"
+  - "generated API client（apps/web/src/generated/api/）の再生成"
+  - "apps/api の実装"
+  - "apps/web の実装（画面側 SCR-006 等）"
+  - "apps/batch の実装"
+  - "DB schema 変更"
+  - "DDL 作成・変更"
+  - "認証・認可方式そのものの変更"
+  - "API一覧全体の再設計"
+  - "Item Feature / Item Embedding の Public 返却"
+  - "画面仕様書（SCR-006 等）の作成"
+  - "他 API（API-PUB-001 / 002 / 004〜008 / API-INT-*）の仕様書作成"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "URL 設計、HTTP Method、認証、エラー形式、Response 構造（data/meta）、Public 返却禁止項目等を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-003 の endpoint、API種別、Provider、Consumer、MVP対象、関連画面、関連リソース、関連エラーコードを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "Error Response、HTTP Status、GRS-ITM-* / GRS-DB-* エラーコード参照、ユーザー向け表示方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Item / Item Image / Item Review Summary / Item Popularity Signal / External Item Reference の正本関係を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "Item 系リソースの管理・参照責務を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: false
+      purpose: "Item 表面フィールド（itemName / catchcopy / itemCaption 等）の由来を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: false
+      purpose: "IF-PUB-003 の入出力概要を確認するため"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: false
+      purpose: "Public API の認証要否・権限条件を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+      purpose: "trace_id / access_log / metric 方針を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: false
+      purpose: "推薦結果 Item 表面フィールドとの整合を確認するため"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase1 1a（契約面のみ）と Phase4 実装仕様書分離の正本を確認するため"
+  templates:
+    - path: "prompts/templates/docs/api-contract-spec.md"
+      required: true
+      purpose: "API 契約仕様書の標準フォーマット"
+      applies_to:
+        - "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+  files: []
+  issues:
+    - number: 399
+      required: true
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-contract-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/api-pub-003-item-detail/api-contract-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/api-pub-003-item-detail/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-PUB-003（商品詳細取得）API 契約仕様書（API-PUB-003_商品詳細取得API契約仕様書.md）"
+  - "Request / Response / Error Response / Validation 定義"
+  - "商品不存在 404 方針"
+  - "OpenAPI / Orval / generated 反映方針（方針整理のみ）"
+  - "互換性・契約面テスト観点"
+  - "未決事項・人間判断事項の整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md が作成されている"
+  - "prompts/templates/docs/api-contract-spec.md に準拠している（実装面章・内部処理詳細を含まない）"
+  - "API設計方針書と矛盾する URL / HTTP Method / 認証 / Error 形式を定義していない"
+  - "API一覧の API-PUB-003 と矛盾する endpoint / HTTP Method / API種別 / MVP対象 / Provider / Consumer / 関連画面 / 関連リソース を定義していない"
+  - "Item 系リソース（Item / Item Image / External Item Reference / Popularity Signal）の Public 表面が整理されている"
+  - "Error Response とエラーコードがエラーコード定義書（GRS-ITM-* / GRS-DB-*）と整合している"
+  - "商品不存在時 404（GRS-ITM-001）方針が明記されている"
+  - "OpenAPI / Orval / generated の扱いと Contract Task 分離方針が記載されている"
+  - "本Task内で OpenAPI / Orval / generated / 実装ファイルを変更していない"
+  - "api-implementation-spec.md 相当の処理フロー・MOD-API 詳細・結合テスト観点を本成果物に含めていない"
+  - "Task タイトル・成果物ファイル名が分離後モデル（契約/実装の別成果物）と整合している"
+  - "未決事項がある場合、未決事項として明記されている"
+  - "secret、APIキー、.env 実値、接続文字列の実値を含んでいない"
+  - "Human Review で確認してほしい事項が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-399-pub-003-item-detail-api-contract-spec"
+  base: "feature/epic-385-pub-003-item-detail"
+  target: "feature/epic-385-pub-003-item-detail"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics:
+    - issue: 385
+      title: "[Epic]API-PUB-003:商品詳細取得"
+      purpose: "親 Epic。Task PR target は feature/epic-385-pub-003-item-detail"
+  issues: []
+  prs: []
+  tasks:
+    - "API設計方針書が作成済みであること"
+    - "API一覧が作成済みであること"
+    - "エラーコード定義書が作成済みであること"
+    - "Item 系リソース正本定義（正本定義表）が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "prompts/definitions/tasks/api-pub-003-item-detail/api-implementation-spec.yaml"
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "template conformity check"
+    - "api design consistency check"
+    - "api list consistency check"
+    - "request response consistency check"
+    - "error response consistency check"
+    - "contract impact check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+  manual_checks:
+    - "api-contract-spec.md の章構成に準拠していることを確認する"
+    - "実装面（処理フロー・MOD-API 詳細・Repository 詳細）が混入していないことを確認する"
+    - "API設計方針書と矛盾がないことを確認する"
+    - "API一覧の API-PUB-003 と整合していることを確認する"
+    - "API-PUB-002 の items[] 表面フィールドと整合していることを確認する"
+    - "OpenAPI / Orval / generated の変更を本Taskに含めていないことを確認する"
+    - "secret、.env 実値が含まれていないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs作成Taskであり、source code変更を含まないため対象外"
+    "integration test": "docs作成Taskであり、実装変更を含まないため対象外"
+    "e2e test": "docs作成Taskであり、画面実装・API実装を含まないため対象外"
+    "contract test": "OpenAPI 定義 / generated 変更を含まないため対象外。contract impact check は必須"
+    "typecheck": "source code 変更を含まないため対象外"
+    "build": "source code 変更を含まないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "API 契約仕様書として粒度が過不足ないか（契約面のみ）"
+    - "API一覧の API-PUB-003 と内容が整合しているか"
+    - "API設計方針書と URL / Method / 認証 / Error 形式が整合しているか"
+    - "Item 系リソースの Public 表面が過不足なく整理されているか"
+    - "API-PUB-002 items[] とのフィールド整合が明記されているか"
+    - "商品不存在 404 方針が明記されているか"
+    - "実装面（MOD-API フロー・Repository 詳細）が混入していないか"
+    - "OpenAPI / Orval / generated 変更が Contract Task として分離されているか"
+    - "後続 api-implementation-spec Task との境界が明確か"
+    - "未決事項が隠れずに明記されているか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常の docs 作成作業は ai-logs に保存しない。必須 input 不足、作業停止、横断影響が判明した場合は incident または cross-cutting として記録する。"
+
+risk_points:
+  - "Item 表面フィールドと API-PUB-002 items[] の命名・必須/任意が揺れる可能性"
+  - "画像なし（GRS-ITM-003）を HTTP エラーとするか 200 正常系とするか判断が必要になる可能性"
+  - "Popularity Signal を Public Response に含める範囲判断が必要になる可能性"
+  - "MVP の認証要否（非認証想定）と認証・認可方針書との差異が判明する可能性"
+  - "後続 OpenAPI Contract Task で契約仕様書との差分修正が必要になる可能性"
+
+human_decision_points:
+  - "API-PUB-003 の正式 Endpoint（`GET /api/v1/items/{itemId}`）と認証要否（MVP では非認証）の最終確認"
+  - "Response Body に含める Popularity Signal / Genre 情報の範囲（契約面として確定する範囲）"
+  - "画像なし時の HTTP Status（200 + optional フィールド vs 422 GRS-ITM-003）の最終確認"
+  - "非 active 商品（GRS-ITM-002）の扱い（422 vs 404 マスク）の最終確認"
+  - "OpenAPI（paths/items/{itemId}）更新を後続 Contract Task として分離するかの確認"
+
+stop_conditions:
+  - "必須 `input.docs` が存在しない場合"
+  - "必須 `input.templates` が存在しない場合"
+  - "必須 `input.docs` 間に矛盾があり、AI Agent だけで判断できない場合"
+  - "API一覧に API-PUB-003 が存在しない場合"
+  - "正式 Endpoint / HTTP Method / API種別 が確定できない場合"
+  - "Item 系リソースと API 契約の対応が確定できない場合"
+  - "実装面仕様の作成が必要と判明した場合（api-implementation-spec Task へ分離）"
+  - "OpenAPI 変更が必要になった場合（Contract Task として分離）"
+  - "Orval 再生成が必要になった場合（Contract Task として分離）"
+  - "generated ファイルの手動編集が必要に見える場合"
+  - "DB schema 変更が必要になった場合"
+  - "認証・認可仕様変更が必要になった場合"
+  - "secret や .env 実値を扱う必要が出た場合"
+  - "scope 外の実装作業が必要になった場合"
+  - "本Task差分が親 Epic #385 の epic_scope.allowed_paths から外れた場合"
+
+notes:
+  - "本Taskは Phase1 ① API契約仕様書（1a）。実装フェーズ実行プロセス設計書 §4.1・§5 Phase1 に準拠。"
+  - "実装面は prompts/definitions/tasks/api-pub-003-item-detail/api-implementation-spec.yaml（Phase4 実装設計）で作成予定。"
+  - "Issue #399 / Epic #385。OpenAPI・Orval・generated・apps 実装は Contract Task / 実装 Task へ分離。"
+  - "出力先は docs/06_実装設計/api/（プロジェクトディレクトリ構成定義書 §10.5）。"

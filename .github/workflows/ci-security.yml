@@ -1,0 +1,23 @@
+name: CI Security Check
+
+# secret 混入簡易検出と workflow / OpenAPI の YAML 構文確認（CI・CD方針書 §9.2）。
+# secret 参照は GitHub Secrets（${{ secrets.* }}）のみとし、workflow に実値を直書きしない。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Secret pattern scan
+        run: bash .github/scripts/ci-check-secrets.sh
+
+      - name: Validate YAML syntax
+        run: bash .github/scripts/ci-validate-yaml.sh

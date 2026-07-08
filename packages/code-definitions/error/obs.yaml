@@ -1,0 +1,40 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "OBS"
+  domain_label: "Observability"
+  mvp_scope: true
+  codes:
+    - code: "GRS-OBS-001"
+      internal_name: "Error Log Write Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.obs.001"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-OBS-002"
+      internal_name: "Phase Log Write Failed"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.obs.002"
+      owner_types: ["recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-OBS-003"
+      internal_name: "Trace Id Missing"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.obs.003"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-OBS-999"
+      internal_name: "Observability Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.obs.999"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true

@@ -1,0 +1,161 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-025-metric-logger-unit-test"
+  title: "MOD-RECO-025:Metric Logger単体テスト"
+  summary: "MOD-RECO-025（Metric Logger）実装に対し、モジュール仕様書 §14 の unit 観点を満たす単体テストを追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-025:Metric Logger"
+  epic_issue_number: 1053
+  epic_branch: "feature/epic-1053-mod-reco-025-metric-logger"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  MOD-RECO-025 実装 Task 完了後、モジュール仕様書 §14 の unit 観点に沿った pytest を整備する。
+  本番 DB / 外部 API に依存しない fixture / InMemory Repository を用いる。
+
+objective: |
+  MOD-RECO-025 の単体テストを整備し、pytest で再現可能な検証を提供する。
+  §14 unit 観点とテストケースの対応表を PR に記載する。
+
+scope:
+  - "`apps/reco/tests/unit/application/metric-logger/**` へのテスト追加"
+  - "モジュール仕様書 §14 unit 観点のカバレッジ整理"
+  - "記録失敗 non-blocking・InMemory 永続化の検証"
+
+out_of_scope:
+  - "Orchestrator 統合テスト / Wiring 検証（別 Wiring Epic）"
+  - "integration test / e2e / DB test"
+  - "モジュール本体の機能追加（テスト成立に必要な最小修正のみ可）"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "§14 テスト観点"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/metric-logger/**"
+      required: true
+      purpose: "テスト対象"
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/metric-logger/**"
+      action: "create_or_update"
+      required: true
+
+deliverables:
+  - "§14 unit 観点に対応する pytest スイート"
+  - "観点とテストケース対応表（PR 本文）"
+  - "pytest 実行結果"
+
+acceptance_criteria:
+  - "モジュール仕様書 §14 unit 観点がテストでカバーされている"
+  - "`cd apps/reco && uv run pytest tests/unit/ -q` が成功する"
+  - "本番 DB / 外部 API / secret に依存していない"
+  - "epic_scope 外の変更を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-<issue-number>-mod-reco-025-metric-logger-unit-test"
+  base: "feature/epic-1053-mod-reco-025-metric-logger"
+  target: "feature/epic-1053-mod-reco-025-metric-logger"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "task-mod-reco-025-metric-logger-implementation が Epic Branch にマージ済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-025-metric-logger-implementation"
+  exclusive_files:
+    - "apps/reco/tests/unit/application/metric-logger/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/metric-logger/"
+    - "apps/reco/tests/unit/"
+  commands:
+    - "cd apps/reco && uv sync --extra dev && uv run pytest tests/unit/application/metric-logger/ -q"
+    - "cd apps/reco && uv run pytest tests/unit/ -q"
+  not_required:
+    - "integration test"
+  skip_reason:
+    "integration test": "Wiring / Composition Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§14 unit カバレッジ妥当性"
+    - "non-blocking 失敗系の検証"
+    - "pytest green"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+
+notes:
+  - "Related Epic #1053"

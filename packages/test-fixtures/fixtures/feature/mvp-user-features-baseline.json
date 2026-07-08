@@ -1,0 +1,23 @@
+{
+  "description": "MVP 8 軸の baseline User Feature ベクトル（単体テスト用）",
+  "featureCodes": [
+    "formality",
+    "safety",
+    "brand_appropriateness",
+    "emotion",
+    "novelty",
+    "intimacy",
+    "symbolic_identity",
+    "story_richness"
+  ],
+  "values": {
+    "formality": 0.75,
+    "safety": 0.85,
+    "brand_appropriateness": 0.7,
+    "emotion": 0.6,
+    "novelty": 0.35,
+    "intimacy": 0.4,
+    "symbolic_identity": 0.55,
+    "story_richness": 0.45
+  }
+}

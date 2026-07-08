@@ -1,0 +1,296 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d07"
+  title: "d07:Online推薦系DDL作成"
+  summary: "Phase2 子 Task ④ DDL のバッチ D07。Recommendation Request → Run → Result チェーンおよび Result Item / Reason / Feedback 系 6 テーブルの `CREATE TABLE` / Index / CHECK / バッチ内 FK を `db/ddl/d07_online_recommendation.sql` に定義し、D08 以降の前提を整える。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 611
+      purpose: "先行 D01（extension / enum 型。merge 済み前提）"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系。merge 済み前提）"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系。merge 済み前提）"
+    - number: 601
+      purpose: "先行 D04（Item 系。merge 済み前提）"
+    - number: 602
+      purpose: "先行 D05（外部商品データ連携系。merge 済み前提）"
+    - number: 603
+      purpose: "先行 D06（Item 派生データ系。merge 済み前提）"
+    - number: 605
+      purpose: "後続 D08（User 意味推定系）"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+  related_prs:
+    - number: 614
+      purpose: "D01 DDL PR（merge 済み前提）"
+    - number: 615
+      purpose: "D02 DDL PR（merge 済み前提）"
+    - number: 616
+      purpose: "D03 DDL PR（merge 済み前提）"
+    - number: 617
+      purpose: "D04 DDL PR（merge 済み前提）"
+    - number: 618
+      purpose: "D05 DDL PR（merge 済み前提）"
+    - number: 619
+      purpose: "D06 DDL PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **バッチ D07（Online 推薦系）**。Online 推薦フロー Request → Run → Result チェーンおよび Result Item / Reason / Feedback の基盤となる。
+  対象 6 テーブルは [DDLバッチ分割表.md](../../../docs/06_実装設計/database/DDLバッチ分割表.md) §11 に列挙される。
+  先行 D01（`db/ddl/d01_extensions_and_enums.sql`、Issue #611 / PR #614 merge 済み）、D02（`db/ddl/d02_semantic_feature_definitions.sql`、Issue #599 / PR #615 merge 済み）、D03（`db/ddl/d03_master_config.sql`、Issue #600 / PR #616 merge 済み）、D04（`db/ddl/d04_item.sql`、Issue #601 / PR #617 merge 済み）、D05（`db/ddl/d05_external_product_integration.sql`、Issue #602 / PR #618 merge 済み）、D06（`db/ddl/d06_item_derived.sql`、Issue #603 / PR #619 merge 済み）適用後に本バッチを実行する前提とする。
+  `relationship_master` / `occasion_master` / Config 系 / trace 列は **LOGICAL 参照（物理 FK なし）** が正本方針。`pair_id` のみ `pair_master` への物理 FK ON（物理ER §17 No.1）。
+  Issue #604 / Branch `chore/task-604-d07-ddl` で作業する。
+
+objective: |
+  `db/ddl/d07_online_recommendation.sql` を作成し、D07 対象 6 テーブルの PostgreSQL DDL を各テーブル定義書・物理 ER・enum定義書・コード定義書・マイグレーション方針書と整合させる。
+  バッチ内の CREATE 順序は FK 依存に従う（`recommendation_request` → `recommendation_run` → `recommendation_result` → `recommendation_result_item` → `recommendation_reason` → `recommendation_feedback`）。
+  D08（`user_semantic` / `user_feature` / `user_meaning`）から Run への後追い物理 FK は本 Task では付与しない。
+
+scope:
+  - "`db/ddl/d07_online_recommendation.sql` の新規作成"
+  - "D07 対象 6 テーブルの `CREATE TABLE`、PK、UNIQUE、Index、CHECK、バッチ内で成立する物理 FK"
+  - "  - `recommendation_request`"
+  - "  - `recommendation_run`"
+  - "  - `recommendation_result`"
+  - "  - `recommendation_result_item`"
+  - "  - `recommendation_reason`"
+  - "  - `recommendation_feedback`"
+  - "D01〜D06 適用済み前提で実行可能な SQL（enum 型は D01 参照、`pair_master` / Config 系は D03 参照、`item` は D04 参照）"
+  - "マイグレーション方針書 §8.1 のファイル命名・バッチ順序への準拠"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "D08 以降のテーブル `CREATE TABLE`（`user_semantic` / `user_feature` / `user_meaning` 等）"
+  - "D08 から `recommendation_run` への後追い物理 FK（各テーブル定義書の D08 Task 委譲方針に従い MVP では付与しない）"
+  - "D09 以降 Evaluation / Metric 系テーブルの `CREATE TABLE`"
+  - "D10 `batch_run_log` 等 Log 系テーブルの `CREATE TABLE`"
+  - "`recommendation_request` → Master 系の後追い物理 FK（`relationship_code` / `occasion_code` は LOGICAL + Index 方針）"
+  - "`recommendation_run` / `recommendation_result` の Config version 列への物理 FK（LOGICAL + Index 方針）"
+  - "`recommendation_reason.template_id` → `reason_template` 物理 FK（LOGICAL 方針）"
+  - "`recommendation_feedback` の trace / Item / Reason 列への物理 FK（Result 以外は LOGICAL 方針）"
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`db/seeds/**` の作成（Task ⑤）"
+  - "`packages/code-definitions/**` の変更"
+  - "`apps/**` 実装変更"
+  - "docs の変更（DDLバッチ分割表・テーブル定義書は参照のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D07 バッチ scope・6 テーブル一覧の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・バッチ順序"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8–§11 FK・Index・§15 適用順序・§17 MVP 対象との整合確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型・論理 ID 分離の参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 制約値の参照"
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+      purpose: "D07-1 `recommendation_request` DDL 正本（個別列 + JSONB payload・Master LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "D07-2 `recommendation_run` DDL 正本（`pair_id` 物理 FK・Config version LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+      purpose: "D07-3 `recommendation_result` DDL 正本（`uq_result_per_run`・version 列 LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+      purpose: "D07-4 `recommendation_result_item` DDL 正本（rank / item unique・Snapshot 列含む）"
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      required: true
+      purpose: "D07-5 `recommendation_reason` DDL 正本（1 Item 1 Reason unique・`template_id` LOGICAL 含む）"
+    - path: "docs/06_実装設計/database/recommendation_feedback_テーブル定義書.md"
+      required: true
+      purpose: "D07-6 `recommendation_feedback` DDL 正本（partial unique 3 件・trace LOGICAL 含む）"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ DDL・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL（`semantic_config_version` 参照）"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "先行バッチ DDL（`pair_master` / `model_version` / `ranking_config` / `reason_template` 参照）"
+    - path: "db/ddl/d04_item.sql"
+      required: true
+      purpose: "先行バッチ DDL（`item` 参照）"
+    - path: "db/ddl/d05_external_product_integration.sql"
+      required: true
+      purpose: "先行バッチ DDL（適用順序確認）"
+    - path: "db/ddl/d06_item_derived.sql"
+      required: true
+      purpose: "先行バッチ DDL（適用順序確認）"
+  templates: []
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d07_online_recommendation.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d07.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d07/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d07_online_recommendation.sql` に存在する"
+  - "D07 対象 6 テーブルが DDLバッチ分割表 §11 と一致する"
+  - "各テーブルの列・型・制約が対応するテーブル定義書と矛盾しない"
+  - "D01〜D06 適用済み前提で本ファイルが実行可能である"
+  - "`recommendation_request` の個別条件列 + `request_payload` / `validated_payload`（JSONB）が定義書どおりである"
+  - "`recommendation_request` の `relationship_code` / `occasion_code` が LOGICAL 参照のまま（Master への物理 FK なし）である"
+  - "`recommendation_run.recommendation_request_id` → `recommendation_request` 物理 FK ON が定義書どおりである"
+  - "`recommendation_run.pair_id` → `pair_master` 物理 FK ON が定義書どおりである"
+  - "`recommendation_run` の `semantic_config_version_id` / `model_version_id` / `ranking_config_id` が LOGICAL 参照のまま（物理 FK なし）である"
+  - "`recommendation_result.recommendation_request_id` / `recommendation_run_id` 物理 FK ON が定義書どおりである"
+  - "`recommendation_result` の `uq_result_per_run`（1 Run 1 Result）が定義書どおりである"
+  - "`recommendation_result` の version 4 列が LOGICAL 参照のまま（物理 FK なし）である"
+  - "`recommendation_result_item.recommendation_result_id` / `item_id` 物理 FK ON が定義書どおりである"
+  - "`recommendation_result_item` の `uq_result_item_result_rank` / `uq_result_item_result_item` が定義書どおりである"
+  - "`recommendation_reason.recommendation_result_item_id` 物理 FK ON と `uq_recommendation_reason_result_item` が定義書どおりである"
+  - "`recommendation_reason.template_id` が LOGICAL 参照のまま（物理 FK なし）である"
+  - "`recommendation_feedback.recommendation_result_id` 物理 FK ON が定義書どおりである"
+  - "`recommendation_feedback` の partial unique 3 件（session × target × feedback_type）が定義書どおりである"
+  - "`recommendation_feedback` の trace / Item / Reason 列に誤った物理 FK が付与されていない"
+  - "D08（`user_semantic` 等）から Run への後追い物理 FK が誤って本ファイルに含まれていない"
+  - "`packages/code-definitions/**` および `apps/**` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d07-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 604
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 611
+      purpose: "先行 D01（extension / enum 型）完了"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系）完了"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系）完了"
+    - number: 601
+      purpose: "先行 D04（Item 系）完了"
+    - number: 602
+      purpose: "先行 D05（外部商品データ連携系）完了"
+    - number: 603
+      purpose: "先行 D06（Item 派生データ系）完了"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-db-physical-design-ddl-d06"
+      issue: 603
+      purpose: "D06 適用順序前提（バッチ順序。FK 直接依存なし）"
+    - task_id: "task-db-physical-design-ddl-d03"
+      issue: 600
+      purpose: "D03 Master / Config 系（`pair_master` / Config version）の適用前提"
+    - task_id: "task-db-physical-design-ddl-d04"
+      issue: 601
+      purpose: "D04 Item 系（`item`）の適用前提"
+  exclusive_files:
+    - "db/ddl/d07_online_recommendation.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d07.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d07/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "D07 対象 6 テーブルがすべて `CREATE TABLE` されていること"
+    - "各テーブルの PK / UNIQUE / Index / CHECK がテーブル定義書 §7〜§9 と一致すること"
+    - "`recommendation_result.uq_result_per_run` が定義書どおりであること"
+    - "`recommendation_result_item` の rank / item unique が定義書どおりであること"
+    - "`recommendation_reason.uq_recommendation_reason_result_item` が定義書どおりであること"
+    - "`recommendation_feedback` の partial unique 3 件が定義書どおりであること"
+    - "Master / Config / trace 列に誤った物理 FK が付与されていないこと"
+    - "D01〜D06 適用後に `psql` またはローカル DB 検証環境（#612）で構文・適用が通ること（可能な範囲）"
+    - "`apps/**`・`packages/code-definitions/**` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+  skip_reason:
+    "unit test": "DDL 参照用 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL のみ。適用正本は Task ⑤"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch D07 / change_id: `d07_online_recommendation`"
+  - "Issue #604 / Branch `chore/task-604-d07-ddl`"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、D02（#599 / PR #615）、D03（#600 / PR #616）、D04（#601 / PR #617）、D05（#602 / PR #618）、D06（#603 / PR #619）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "後続: D08（#605）以降は本 Task 完了後に着手"
+  - "Human Review 論点: Request 個別列 + JSONB 併用、`pair_id` 物理 FK vs Config version LOGICAL FK、`uq_result_per_run`、Feedback partial unique、D08 Run 被参照 FK の後追い委譲"

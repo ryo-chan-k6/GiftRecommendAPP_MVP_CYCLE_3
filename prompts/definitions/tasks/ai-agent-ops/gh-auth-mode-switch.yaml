@@ -1,0 +1,176 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-ai-agent-ops-gh-auth-mode-switch"
+  title: "GH認証モード切替CLI整備"
+  summary: "machine account（okuri-ai-bot）と人間アカウント（ryo-chan-k6）の GitHub 認証を同一ターミナル内で切り替える CLI（gh-auth-mode.sh / gh-bot-auth.cjs 拡張）を整備する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  AI 主導開発では bot PAT（GH_BOT_TOKEN）で commit / push / PR 作成を行う。
+  一方、人間が一時的に個人アカウントで commit / push する場合は GH_TOKEN を unset する必要がある。
+  手順の繰り返し利用のため、gh-bot-auth.cjs 拡張と gh-auth-mode.sh ラッパーで ON/OFF をツール化する。
+
+objective: |
+  eval / source 可能な human / bot / status サブコマンドを提供し、
+  AI機械アカウント運用設計書と整合した一時的人間モード手順を docs 正本化する。
+
+scope:
+  - ".github/scripts/gh-bot-auth.cjs（print-human-setup / status / verify-human）"
+  - ".github/scripts/gh-auth-mode.sh（human / bot / status ラッパー）"
+  - ".github/scripts/gh-bot-auth.test.cjs"
+  - "docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md（§5.1 / §5.2）"
+  - ".cursor/rules/github-operation.mdc §3.16 参照追記"
+  - "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md（gh-auth-mode.sh 1行）"
+  - "prompts/definitions/tasks/ai-agent-ops/gh-auth-mode-switch.yaml（本 Task）"
+  - "prompts/definitions/reviews/ai-agent-ops/gh-auth-mode-switch/pr-review.yaml"
+
+out_of_scope:
+  - "~/.bashrc への gra-human / gra-bot 自動設定（docs に任意手順のみ）"
+  - ".github/workflows/** 変更"
+  - "apps/** / packages/**"
+  - ".gitignore 変更（別対応）"
+  - "GH_BOT_TOKEN / PAT 実値の記載"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md"
+      required: true
+      purpose: "machine account 運用正本"
+  files:
+    - path: ".github/scripts/gh-bot-auth.cjs"
+      required: true
+    - path: ".github/ai-bot-account.json"
+      required: true
+
+output:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      action: "update"
+      required: true
+  files:
+    - path: ".github/scripts/gh-bot-auth.cjs"
+      action: "update"
+      required: true
+    - path: ".github/scripts/gh-auth-mode.sh"
+      action: "create"
+      required: true
+    - path: ".github/scripts/gh-bot-auth.test.cjs"
+      action: "update"
+      required: true
+    - path: ".cursor/rules/github-operation.mdc"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/ai-agent-ops/gh-auth-mode-switch.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/ai-agent-ops/gh-auth-mode-switch/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "GH認証モード切替 CLI（human / bot / status）"
+  - "単体テスト"
+  - "運用 docs 更新"
+
+acceptance_criteria:
+  - "eval \"$(bash .github/scripts/gh-auth-mode.sh human)\" で GH_TOKEN / GITHUB_TOKEN が unset される"
+  - "eval \"$(bash .github/scripts/gh-auth-mode.sh bot)\" で okuri-ai-bot として verify できる"
+  - "bash .github/scripts/gh-auth-mode.sh status で現在モードが表示される"
+  - "node --test .github/scripts/gh-bot-auth.test.cjs が pass"
+  - "既存 verify / print-setup / print-git-user の後方互換が維持される"
+  - "secret / PAT 実値が成果物に含まれない"
+  - "Task PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "gh-auth-mode-switch"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+issue:
+  number: 642
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+milestone:
+  name: null
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "bot / human 切替の後方互換"
+    - "bot PR ブランチへの人間 push 禁止が docs に明記されているか"
+    - "secret 非含有"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  required:
+    - "node --test .github/scripts/gh-bot-auth.test.cjs"
+  commands:
+    - "node --test .github/scripts/gh-bot-auth.test.cjs"
+  manual_checks:
+    - "eval human → status → eval bot → status の手動確認（任意）"
+  not_required:
+    - "apps integration test"
+  skip_reason:
+    "apps integration test": "scripts / docs のみ"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+
+notes:
+  - "親 Epic なし・develop 直 Task"
+  - "正本: AI機械アカウント運用設計書"

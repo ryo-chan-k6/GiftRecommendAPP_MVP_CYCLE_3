@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-phase1-wave2-orval-regenerate-pr"
+  title: "Phase1第2波 Orval再生成（1c）Contract Task PRレビュー"
+  summary: "第2波 1b 完了後の Orval 一括再生成 PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue:
+    number: 430
+  task_definition: "prompts/definitions/contracts/phase1-wave2-orval-regenerate/orval-regenerate.yaml"
+  target_branch: "feature/epic-367-api-contract-orval"
+
+review_points:
+  common:
+    - "author=okuri-ai-bot"
+    - "PR target=feature/epic-367-api-contract-orval"
+  contract:
+    - "generated のみ変更（OpenAPI / orval.config 未変更）"
+    - "手動編集なし（orval v8.15.0 ヘッダ）"
+    - "publicApi: health/items/feedback/masters/recommendations タグ分割"
+    - "internalRecoApi: reco-health + reco-recommendations"
+    - "第2波 8 API + INT-001 の operationId が generated に反映されていること"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"

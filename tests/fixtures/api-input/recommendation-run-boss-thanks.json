@@ -1,0 +1,34 @@
+{
+  "description": "上司へのお礼 — Public API RecommendationRunRequest / Reco API 整合（OpenAPI examples 準拠）",
+  "relationship": {
+    "relationshipCode": "boss",
+    "relationshipLabel": "上司"
+  },
+  "occasion": {
+    "occasionCode": "thanks",
+    "occasionLabel": "お礼"
+  },
+  "budget": {
+    "budgetMin": 3000,
+    "budgetMax": 5000,
+    "currency": "JPY",
+    "taxIncluded": true
+  },
+  "preferredCondition": {
+    "preferredText": "上品で、感謝が伝わるもの"
+  },
+  "nonPreferredCondition": {
+    "nonPreferredText": "カジュアルすぎるものは避けたい"
+  },
+  "ngCondition": {
+    "ngText": "アルコールはNG"
+  },
+  "freeText": "退職する上司に、お礼として失礼がなく、少し気の利いたものを贈りたい",
+  "execution": {
+    "mode": "ui",
+    "topK": 10,
+    "candidateLimit": 50,
+    "includeReason": true,
+    "includeDebugInfo": false
+  }
+}

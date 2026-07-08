@@ -1,0 +1,262 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-item-embedding"
+  title: "item_embedding:Item Embeddingテーブル定義書作成"
+  summary: "物理ER・論理ER・テーブル一覧・model_version / item 派生系テーブル定義書・バッチ設計を入力に、Retrieval 用 Embedding 正本 `item_embedding` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R03 No.4。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 495
+      purpose: "Batch R01 No.3 item テーブル定義書（merge 済み・§8.2 item_id 物理 FK ON 正本）"
+    - number: 450
+      purpose: "Wave2 model_version テーブル定義書（merge 済み・item_embedding への ON FK 方針正本）"
+    - number: 507
+      purpose: "Batch R02 No.5 item_generation_queue テーブル定義書（merge 済み・再生成トリガー・IF-DB-BATCH-012 連携）"
+    - number: 513
+      purpose: "Batch R03 No.1 item_semantic テーブル定義書（merge 済み・#518）"
+    - number: 514
+      purpose: "Batch R03 No.2 item_feature テーブル定義書（merge 済み・#519）"
+    - number: 515
+      purpose: "並行: item_meaning テーブル定義書（Batch R03 No.3。未 merge 時は論理ER・テーブル一覧 §7 No.30 を参照）"
+  related_prs:
+    - number: 500
+      purpose: "Task item PR（merge 済み）"
+    - number: 453
+      purpose: "Task model_version PR（merge 済み）"
+    - number: 512
+      purpose: "Task item_generation_queue PR（merge 済み）"
+    - number: 518
+      purpose: "Task item_semantic PR（merge 済み）"
+    - number: 519
+      purpose: "Task item_feature PR（merge 済み）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R03 No.4。論理ER §10.2・テーブル一覧 §7 No.31。
+  Item Embedding（Retrieval 用ベクトル）の商品側正本。pgvector 想定。Batch 事前生成・Online 参照のみの責務境界を物理定義する。
+  親 Epic Branch 最新（item #495 / model_version #450 / item_generation_queue #507 / item_semantic #513 / item_feature #514 merge 済み）を前提とする。
+  BATCH-014（embedding_input_hash 算出）→ BATCH-015（Item Embedding 生成）の出力先テーブル。
+  Issue #516 / Branch `docs/task-516-item-embedding-table-spec` で作業する。
+
+objective: |
+  `item_embedding` の物理カラム・制約・Index（btree / HNSW vector）・更新仕様を table-spec.md テンプレ準拠で定義する。
+  冪等キー（`item_id` + `model_version_id` + `embedding_input_hash`）と
+  `model_version_id` / `embedding_source_type` / `embedding_vector` の保持・参照方針を明記し、
+  `model_version` および `item_meaning`（Item派生データ系・Matching 用スカラー正本）との関係を整理し、
+  後続 DDL Task が migration（pgvector extension 含む）を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の item_embedding テーブル定義書作成"
+  - "物理ER Item派生データ系・論理ER §10.2・テーブル一覧 §7 No.31 との突合"
+  - "物理ER §9 FK（item_id ON / model_version_id ON）・§10 Index（idx_item_embedding_item_model / idx_item_embedding_vector HNSW）・§11 制約（uq_item_embedding_idempotent）との整合"
+  - "物理ER §17 No.6（HNSW 第一候補）・§15 migration 適用順序（pgvector extension）の反映"
+  - "model_version_テーブル定義書 §8.1（generates_with ON FK）・enum定義書 §12.1 No.3（embedding_source_type）との整合"
+  - "item_テーブル定義書 §8.2 / item_generation_queue_テーブル定義書 §5 / §12 との再生成トリガー・Queue 消化先整合"
+  - "item_feature_テーブル定義書 §5 / §8 との Item派生データ系パイプライン（feature → meaning → embedding）参照整理"
+  - "item_meaning との関係整理（同一 item_id 配下の派生正本・Matching vs Retrieval 責務分離。未 merge 時は論理ER・テーブル一覧を正とする）"
+  - "BATCH-014 / BATCH-015・バッチ依存関係図・インターフェース一覧 IF-DB-BATCH-015 との整合"
+  - "論理ER §16.1 / §16.2 Online/Batch 責務境界（batch 更新・Online 参照のみ）の反映"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "item_meaning テーブル定義書本体（別 Task #515 / Batch R03 No.3）"
+  - "user_embedding / query_embedding テーブル定義書（User意味推定系・別 Task）"
+  - "embedding_input_hash 算出ロジックの実装詳細（BATCH-014 バッチ仕様書の責務）"
+  - "embedding_source_type の packages/code-definitions YAML 正本化（本 Task では enum定義書 §12.1 方針の転記まで。YAML 正本化は後続 enum Task）"
+  - "DDL・migration / seed（pgvector extension 適用 DDL 含む）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item派生データ系分類・FK・Index・制約・pgvector/HNSW 方針（§8–§11・§15・§17 No.6）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "embedding_source_type 方針（§12.1 No.3）・item_generation_type（embedding）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 item_embedding エンティティ属性・§14 関係・§16 Online/Batch 責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§7 No.31 item_embedding・冪等キー・embedding_input_hash 補足"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Item Embedding 正本区分・Batch/Online 責務・Retrieval 用途"
+    - path: "docs/04_ドメインモデル設計/コンテキスト境界定義書.md"
+      required: true
+      purpose: "Retrieval Context と item_embedding の責務（RT-01〜05・IM-04）"
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "pgvector 採用・item_embedding の技術前提"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-014 / BATCH-015 の入出力・再生成判定・embedding_input_hash 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-014〜015 の更新タイミング・item_embedding 列マッピング"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "BATCH-014 → BATCH-015 依存・再実行単位（item_id + model_version_id + embedding_input_hash）"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-015 Embedding 入力 hash 保存・item_generation_queue 連携"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "MOD-BATCH-035 Item Text Context Builder / MOD-BATCH-036 Item Embedding Generator"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_id 物理 FK（ON）被参照・§5.1 責務境界"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "§8.1 item_embedding への ON FK 方針（generates_with）・embedding_model_version_id 用語補足"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "§5 Queue → item_embedding 消化先・§12 embedding 再生成トリガー・generation_type=embedding"
+    - path: "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+      required: true
+      purpose: "Item派生データ系先行テーブル・BATCH-010 出力・embedding 入力文脈との参照整理"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "Item派生データ系パイプライン・feature_input_hash / item_meaning 連携の参照整理"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-item-embedding.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-item-embedding/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "item_embedding テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §10.2・テーブル一覧 §7 No.31 と矛盾しない"
+  - "冪等キー（item_id + model_version_id + embedding_input_hash）が明記されている"
+  - "model_version_id への ON FK 方針と model_version_テーブル定義書 §8.1 との整合が明記されている"
+  - "item_meaning との関係（Item派生データ系・Matching 用スカラー正本 vs Retrieval 用ベクトル正本・パイプライン順序）が明記されている"
+  - "embedding_vector（pgvector）・HNSW Index（idx_item_embedding_vector）方針が明記されている"
+  - "embedding_input_hash / embedding_source_type の保持方針が明記されている"
+  - "論理ER §16.1 / §16.2（Batch 更新・Online 参照のみ）が反映されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "item-embedding-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 516
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 495
+      purpose: "item テーブル定義書 完了（§8.2 item_id 物理 FK ON 正本）"
+    - number: 450
+      purpose: "model_version テーブル定義書 完了（item_embedding への ON FK 方針正本）"
+    - number: 507
+      purpose: "item_generation_queue テーブル定義書 完了（再生成トリガー・Queue 連携）"
+    - number: 513
+      purpose: "item_semantic テーブル定義書 完了（Item派生データ系先行・入力文脈参照）"
+    - number: 514
+      purpose: "item_feature テーブル定義書 完了（Item派生データ系パイプライン参照）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 FK 表（item_id ON・model_version_id ON）との整合"
+    - "物理ER §10 idx_item_embedding_item_model / idx_item_embedding_vector（HNSW）との整合"
+    - "物理ER §11 uq_item_embedding_idempotent との整合"
+    - "論理ER §10.2 属性（item_embedding_id / item_id / model_version_id / embedding_source_type / embedding_vector / source_text_hash / generated_at）との整合（物理名差分は §8.1 で明示。source_text_hash vs embedding_input_hash）"
+    - "テーブル一覧 §7 No.31・冪等キー補足・embedding_input_hash 保持方針との整合"
+    - "model_version_テーブル定義書 §8.1（generates_with ON FK）・§5.2 用語補足（embedding_model_version_id）との整合"
+    - "item_generation_queue_テーブル定義書 §12（embedding 再生成トリガー → generation_type=embedding）との整合"
+    - "item_feature_テーブル定義書 §5 パイプライン（item_meaning 射影・item_embedding 後続）との整合"
+    - "enum定義書 §12.1 No.3 embedding_source_type 方針（item_text_context MVP 有効）との整合"
+    - "BATCH-014 / BATCH-015・バッチ依存関係図の再実行単位との整合"
+    - "論理ER §16.1 / §16.2 Online/Batch 責務境界の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R03 No.4: item_embedding（Item派生データ系 / 派生・推薦用正本 / Retrieval 用ベクトル）"
+  - "Issue #516 / Branch docs/task-516-item-embedding-table-spec"
+  - "先行 merge 済み: #495 / PR #500（item）、#450 / PR #453（model_version）、#507 / PR #512（item_generation_queue）、#513 / PR #518（item_semantic）、#514 / PR #519（item_feature）"
+  - "並行 Task: #515 item_meaning（未 merge 時は論理ER・テーブル一覧 §7 No.30・item_feature 定義書 §5 を正として着手。Matching 用スカラー正本との関係は参照整理のみ）"
+  - "Issue #516 依存表の #473 は relationship_rule Task のため、model_version は #450 を正とする"
+  - "Human Review 論点: source_text_hash（論理ER）vs embedding_input_hash（物理ER・テーブル一覧）の物理名、embedding_source_version 列の物理化要否、vector 次元数の定義粒度、HNSW パラメータ（m / ef_construction）の MVP 記載範囲"
+  - "Human Review 論点: model_version_id 物理 FK ON 詳細（ON DELETE RESTRICT 等）、Upsert 上書き vs 履歴行保持、pgvector extension 適用タイミング（DDL Task 引き継ぎ）"
+  - "後続 Task: staging_item（Batch R04）等。OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

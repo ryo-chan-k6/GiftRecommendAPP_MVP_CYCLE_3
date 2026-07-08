@@ -1,0 +1,253 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-matching-integration-test"
+  title: "MOD-RECO-001:Orchestrator Wiring（Matching）統合テスト"
+  summary: "Matching フェーズ配線後の Orchestrator デフォルト経路について、`test_recommendation_orchestrator.py` 等の期待値を本実装 Port に合わせて更新し、§19 早期 0 件終了を含めてデフォルト composition が green になることを検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（Matching）"
+  epic_issue_number: 790
+  epic_branch: "feature/epic-790-mod-reco-001-wiring-matching"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 897
+      purpose: "MOD-RECO-014 モジュール仕様書（§19 正本 docs）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  §19 引き継ぎ（Issue #897 / MOD-RECO-014 モジュール仕様書 §8.3.4 / §8.3.6 / §16.1 No.8）:
+  MOD-RECO-014 Feature Matcher が成功返却したうえで Matching 対象候補が 0 件の場合、Orchestrator は MOD-RECO-015 以降（Matching / Ranking: 015〜020）を呼び出さず、MOD-RECO-001 §8.2 の 0 件結果方針に従い空 RecommendationResult で正常終了する。
+  検知信号（主信号 + 防御的チェック推奨）: feature_matcher_candidate_count == 0 / feature_match_result.total_matched == 0 / feature_match_result.entries が空。
+  MOD-RECO-014 失敗時（GRS-REC-011）は short-circuit しない（従来どおり中断）。
+  execution_context.py は変更しない（型付きフィールドは playbook 順序 3）。検知は暫定 getattr 可。
+  Epic #790 配下で wiring Task により `build_default_stub_ports()` の Matching フェーズ Port が本実装へ差し替えられた後、Orchestrator デフォルト経路テストの期待値を更新する。
+  本 Task は **orchestrator.py の §19 short-circuit 実装** と **test_recommendation_orchestrator.py 更新** を担当する。stubs.py 配線は wiring Task の責務。
+  型付き直接参照への置換は playbook 順序 4 に委譲する。
+  正本: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
+
+objective: |
+  配線後の Orchestrator デフォルト経路テストを green にし、Matching フェーズ（MOD-RECO-014 / 015 / 016）がデフォルト composition で正しく呼び出されることを pytest で検証する。
+  あわせて §19 に従い、Matching 対象 0 件時の Orchestrator 早期 0 件終了を orchestrator.py に実装し、テストで検証する。
+
+scope:
+  - "`apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py` に MOD-RECO-014 実行直後の short-circuit を追加する"
+  - "short-circuit 時: MOD-RECO-015 / 016 / 017 / 018 / 019 / 020 を呼び出さない（completed_modules に含めない）"
+  - "short-circuit 時: 空 Result パスへ遷移（既存 test_zero_candidates_completes_with_empty_result と整合）"
+  - "`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` の期待値更新・ケース追加"
+  - "Matching フェーズ配線後のデフォルト経路（build_default_stub_ports）の検証"
+  - "completed_modules / ExecutionContext キー等、本実装 Port に合わせたアサーション整理（getattr 暫定可）"
+  - "テスト用 fixture / helper の最小限整理（Orchestrator デフォルト経路専用）"
+
+out_of_scope:
+  - "stubs.py の Port 差し替え（wiring Task）"
+  - "`execution_context.py` の型付きフィールド追加（playbook 順序 3）"
+  - "getattr から型付き直接参照への置換（playbook 順序 4）"
+  - "MOD-RECO-014 / 015 / 016 モジュール本体の変更（テスト成立に必要な最小修正のみ可。要 PR 説明）"
+  - "MOD-RECO-014 本体の Matching 算出ロジック変更"
+  - "integration test（E2E）/ contract test"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / DB schema 変更"
+  - "本番 DB / 外部 API 依存テスト"
+  - "段階3 Composition 完成（本番 DI）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針・0 件結果方針（§8.2 / §8.4）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-014_Feature Matcherモジュール仕様書.md"
+      required: true
+      purpose: "§19 Port 契約・早期 0 件終了の正本（#897）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "Matching フェーズ処理順序"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線後の build_default_stub_ports()"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+      purpose: "§19 short-circuit 実装対象"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "更新対象テスト"
+  issues:
+    - number: 790
+      purpose: "親 Epic"
+    - number: 897
+      purpose: "MOD-RECO-014 モジュール仕様書（§19 正本）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "§19 早期 0 件終了の orchestrator.py 実装"
+  - "配線後デフォルト経路の green な pytest スイート"
+  - "更新したテスト観点とケースの対応（PR 本文）"
+  - "pytest 実行結果（成功ログ）"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-matching/integration-test/pr-review.yaml`、PR 作成前に整備）"
+
+acceptance_criteria:
+  - "wiring Task が Epic Branch にマージ済みである"
+  - "`cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+  - "デフォルト経路テストが Matching フェーズ（014 / 015 / 016）の本実装呼び出しを反映している"
+  - "§19 No.1: 全候補 Matching 対象外シナリオで 014 成功後、015 が呼ばれない"
+  - "§19 No.2: Matching 対象 ≥ 1 のとき従来どおり 015 以降が呼ばれる"
+  - "§19 No.3: 014 失敗時は GRS-REC-011 で中断（015 未到達）"
+  - "§19 No.4: 早期終了時 outcome.success is True、result_status == EMPTY"
+  - "§19 No.5: 必要に応じ feature_matcher_candidate_count == 0 が記録される（getattr 暫定可）"
+  - "stubs.py に変更がない（またはテスト成立に必要な最小修正のみで PR に説明がある）"
+  - "execution_context.py に変更がない"
+  - "MOD-RECO-014 / 015 / 016 モジュール本体への不要な変更がない"
+  - "テストが本番 DB / 外部 API / secret に依存していない"
+
+branch:
+  no_branch: false
+  name: "test/task-<issue-number>-mod-reco-001-wiring-matching-integration-test"
+  base: "feature/epic-790-mod-reco-001-wiring-matching"
+  target: "feature/epic-790-mod-reco-001-wiring-matching"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-03"
+    due_date: "2026-07-05"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 790
+      purpose: "親 Epic"
+    - number: 897
+      purpose: "MOD-RECO-014 モジュール仕様書 merge 済み（§19 正本）"
+  prs: []
+  tasks:
+    - "task-mod-reco-001-wiring-matching-wiring が Epic Branch にマージ済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-matching-wiring"
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+    - "cd apps/reco && uv run pytest tests/unit/ -q"
+  manual_checks:
+    - "wiring Task PR が merge 済みで stubs.py が本実装 Port を参照していること"
+    - "Matching フェーズの completed_modules / context キーが本実装と一致していること"
+    - "§19 015 未呼び出し・GRS-REC-011 非発火がテストで確認されていること"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "integration test（E2E）": "段階3 Composition 完成 Task の範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "デフォルト経路テストの期待値が配線後の本実装 Port と整合しているか"
+    - "§19 早期 0 件終了が MOD-RECO-014 仕様書 §16.1 No.8 および MOD-RECO-001 §8.2 と整合しているか"
+    - "015 未呼び出し・空 Result 成功・014 失敗時 GRS-REC-011 中断がテストされているか"
+    - "stubs.py への不要な変更がないか"
+    - "execution_context.py への変更がないか"
+    - "モジュール本体への不要な変更がないか"
+    - "テストが flakey な外部依存を持たないか"
+    - "wiring Task との依存関係（直列）が守られているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "統合テスト更新は Issue / PR で管理"
+
+risk_points:
+  - "wiring Task 未完了では本 Task を着手できない"
+  - "§19 short-circuit と Ranking フェーズ境界の設計判断"
+  - "本実装 Port の ExecutionContext 副作用がテスト期待値とずれる可能性"
+
+human_decision_points:
+  - "デフォルト経路テストの期待値更新が妥当か（Human Review）"
+  - "§19 早期終了時の Output フェーズ（021 以降）最小呼び出し設計"
+
+stop_conditions:
+  - "wiring Task が未完了"
+  - "stubs.py の追加変更が必要になった（wiring Task へ戻す）"
+  - "MOD-RECO-014 モジュール仕様書（#897）が未 merge"
+  - "モジュール本体の修正がテスト成立に不可欠で scope を超える"
+
+notes:
+  - "Epic Issue: #790"
+  - "workstream: mod-reco-001-wiring-matching"
+  - "§19 正本: Issue #897 / MOD-RECO-014 モジュール仕様書"
+  - "follow-up playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"

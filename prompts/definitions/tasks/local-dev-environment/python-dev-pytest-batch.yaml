@@ -1,0 +1,164 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-python-dev-pytest-batch"
+  title: "Batch Python開発環境pytest実行基盤整備"
+  summary: "batch-foundation 向け setup-python-batch / pytest-batch と docs 正本化。Human 判断: #735 完了前に並列着手可、pyproject 未整備時は skip。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: 651
+  epic_branch: "chore/epic-651-local-dev-environment"
+  related_issues:
+    - number: 735
+      purpose: "batch-foundation infrastructure-common（apps/batch pyproject 骨格）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4a batch-foundation（Issue #735）で `apps/batch/pyproject.toml` と infrastructure 骨格が整備中。
+  reco と同様、Agent が system python3 を直叩きせず worktree ごと venv で pytest できるよう、
+  local-dev-environment Epic 配下に batch 向け dev script を追加する。
+  Epic #651 は develop へ merge 済み（PR #668）のため、本 Task PR target は develop とする。
+
+objective: |
+  任意 worktree で `./scripts/dev/setup-python-batch.sh` → `pytest-batch.sh` を実行できる状態にする。
+  `apps/batch/pyproject.toml` 未整備時は reco 同型の skip 挙動とし、#735 merge 後に本 script で単体テストを再現可能にする。
+
+scope:
+  - "scripts/dev/setup-python-batch.sh / pytest-batch.sh"
+  - "scripts/dev/_python-lib.sh（batch 向け ready 判定）"
+  - "package.json scripts（setup:python:batch / test:batch）"
+  - "ローカル開発手順書 §6.2、worktree運用ルール §33、scripts/dev/README.md"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "apps/batch/src/** の骨格実装（batch-foundation Epic）"
+  - "ci-batch.yml（Epic D defer）"
+  - "Layer2 workflow 変更"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/worktree運用ルール.md"
+      required: true
+  files:
+    - path: ".python-version"
+      required: true
+    - path: "scripts/dev/setup-python-reco.sh"
+      required: true
+      purpose: "reco 同型 script の参照実装"
+    - path: "scripts/dev/_python-lib.sh"
+      required: true
+
+output:
+  files:
+    - path: "scripts/dev/setup-python-batch.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/pytest-batch.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/_python-lib.sh"
+      action: "update"
+      required: true
+    - path: "package.json"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/worktree運用ルール.md"
+      action: "update"
+      required: false
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "新規 worktree で setup-python-batch.sh → pytest-batch.sh が実行可能（pyproject 未整備時は skip で exit 0）"
+  - "batch-foundation merge 後は pytest-batch.sh が apps/batch/tests/unit を実行できる"
+  - "system python3 直叩きを docs 正本が要求していない"
+  - "Task PR target が develop"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  summary: "python-dev-pytest-batch"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-06-24"
+    due_date: "2026-06-26"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "scripts/dev/setup-python-batch.sh"
+    - "scripts/dev/pytest-batch.sh"
+    - "scripts/dev/_python-lib.sh"
+  conflict_risk: "low"
+
+test_policy:
+  commands:
+    - "./scripts/dev/setup-python-batch.sh"
+    - "./scripts/dev/pytest-batch.sh"
+  manual_checks:
+    - "#735 ブランチまたは develop merge 後に pytest-batch.sh が apps/batch/tests/unit を実行できる"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Epic #651 merge 済みのため PR target は develop"
+  - "apps/batch/src/** は epic_scope forbidden のため本 Task では触らない"
+  - "Issue #735 と並列可。pyproject 未 merge 時は skip 挙動で検証"

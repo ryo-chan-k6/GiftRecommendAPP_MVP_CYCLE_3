@@ -1,0 +1,47 @@
+schema_version: "1.0"
+definition_type: "task"
+
+# テンプレート: フェーズ wiring Task。/start-task 起票時にコピーして編集する。
+
+task:
+  id: "task-mod-reco-001-wiring-<phase-slug>-wiring"
+  title: "MOD-RECO-001:Orchestrator Wiring（<Phase Name>）配線"
+  summary: "<Phase Name> フェーズについて、build_default_stub_ports() の該当 Port を本実装へ差し替える。"
+
+work_mode: "ai-agent"
+
+background: |
+  フェーズ Wiring Task テンプレート。scope は stubs.py のみ。
+  ExecutionContext 型付きフィールド追加は playbook 順序 3 の別 Task（develop 直）で実施する。
+  正本: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml
+
+objective: |
+  対象フェーズ Port を build_default_stub_ports() で本実装 factory に差し替える。
+  デフォルト経路テストの期待値更新は integration-test Task へ委譲する。
+
+scope:
+  - "stubs.py の対象フェーズ Port 差し替え"
+  - "build_default_* factory の import / _ensure_* 読み込み"
+
+out_of_scope:
+  - "対象モジュール本体の変更"
+  - "execution_context.py の型付きフィールド追加（playbook 順序 3）"
+  - "test_recommendation_orchestrator.py の型付き直接参照化（playbook 順序 4）"
+  - "Orchestrator デフォルト経路テストの期待値更新（integration-test Task）"
+  - "StubXxx クラスの削除"
+
+parallel_control:
+  blocks:
+    - "task-mod-reco-001-wiring-<phase-slug>-integration-test"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+
+review:
+  review_points:
+    - "execution_context.py への変更が混入していないか"
+    - "integration-test / execution-context-typed-fields 委譲が PR 本文に明記されているか"
+    - "誤解を招く「Wiring Task で型付きフィールド追加」コメントを新規追加していないか"
+
+notes:
+  - "Issue 本文 §15 に playbook の wiring_task_issue_body_appendix を含める"
+  - "playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"

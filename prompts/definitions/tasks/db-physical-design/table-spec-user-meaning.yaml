@@ -1,0 +1,268 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-user-meaning"
+  title: "user_meaning:User Meaningテーブル定義書作成"
+  summary: "物理ER・論理ER・GiftMeaningSpace・テーブル一覧・recommendation_run / user_feature 生成系設計書を入力に、User Feature を Social / Symbolic へ射影した User Meaning `user_meaning` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R07 No.3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 543
+      purpose: "Batch R06 No.1 recommendation_run テーブル定義書（merge 済み前提・recommendation_run_id 物理 FK ON 正本）"
+    - number: 553
+      purpose: "Batch R07 No.1 user_semantic テーブル定義書（merge 済み・先行入力正本）"
+    - number: 554
+      purpose: "Batch R07 No.2 user_feature テーブル定義書（merge 済み・生成元 Feature 正本）"
+    - number: 515
+      purpose: "Batch R03 No.3 item_meaning テーブル定義書（merge 推奨・item_meaning 対称性正本）"
+    - number: 463
+      purpose: "Config semantic_config_version テーブル定義書（merge 済み前提・射影重み version 参照）"
+  related_prs:
+    - number: 548
+      purpose: "Task #543 PR（recommendation_run。merge 済み前提）"
+    - number: 520
+      purpose: "Task #515 PR（item_meaning。merge 推奨・対称性参照）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R07 No.3。テーブル一覧 §4 No.9。
+  User Feature を Social / Symbolic へ射影した User 側 Meaning。Online 推薦時に reco が生成・参照する。
+  物理ER §4.1 User意味推定系・§9 `recommendation_run.recommendation_run_id → user_meaning.recommendation_run_id`（generates / ON / 1:0..1）を前提とする。
+  先行 Task #543（recommendation_run / PR #548 merge 済み）の recommendation_run_id 物理 FK ON 方針を踏襲する。
+  先行 Task #553（user_semantic）・#554（user_feature）merge 済み。生成元 Feature 正本は `user_feature_テーブル定義書` の `feature_value` 列とする。
+  対称参照 Task #515（item_meaning / PR #520 merge 推奨）の Social / Symbolic 射影ルール・値域を踏襲する。
+  Issue #555 / Branch `docs/task-555-user-meaning-table-spec` で作業する。
+
+objective: |
+  `user_meaning` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `user_feature`（正規化済み Feature）から `user_social` / `user_symbolic` への射影・`lambda_ctx` 保持方針を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の user_meaning テーブル定義書作成"
+  - "物理ER User意味推定系・FK・Index 方針との突合"
+  - "論理ER §10.2 user_meaning 属性・item_meaning 対称性・テーブル一覧 §4 No.9・正本定義表 user_social / user_symbolic との整合"
+  - "GiftMeaningSpace定義書 §5–§7 Social / Symbolic 射影ルール・semantic_config_version 重みとの整合"
+  - "Matching定義書 §4.5 lambda_ctx・§9 Context Score 算出前提との整合"
+  - "処理構成定義書・機能×モジュール対応表 MOD-RECO-008 User Meaning Projector / MOD-RECO-009 User Context Builder との生成経路整理"
+  - "インターフェース一覧 IF-DB-RECO-003（user_semantic / user_feature / user_meaning 保存）との整合"
+  - "状態遷移設計書 user_meaning_projected Phase・phase_log 連携との整合"
+  - "recommendation_run_テーブル定義書 §8.2 被参照関係・semantic_config_version_id Run 側保持との version 再現性整理"
+  - "user_feature テーブル定義書（#554 merge 済み）・user_semantic テーブル定義書（#553 merge 済み）との生成元 Feature / パイプライン関係整理"
+  - "item_meaning_テーブル定義書（#515 merge 済み時）との Social / Symbolic 対称性・version 参照粒度差整理"
+  - "ログ・Observability設計書 user_social_mean / user_symbolic_mean 等メトリクス列との責務境界整理"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "user_semantic / user_feature テーブル定義書本体（Batch R07 別 Task）"
+  - "item_meaning / item_feature テーブル定義書の再作成（#515 / #514 を参照）"
+  - "meaning_distribution_metric テーブル定義書（Metric 系別 Task）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "User意味推定系分類・§9 recommendation_run → user_meaning generates（ON 1:0..1）・§10 Index 方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feature_code（MVP 8 軸）・recommendation_run_phase_name（user_meaning_projected）等の enum 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 user_meaning 属性・§10.3 Feature 8 軸・§16 Online/Batch 責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§4 No.9 user_meaning・User意味推定系補足・version 再現性方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "User Meaning 正本区分（user_social / user_symbolic）・reco 更新主体"
+    - path: "docs/04_ドメインモデル設計/GiftMeaningSpace定義書.md"
+      required: true
+      purpose: "§5 Social / Symbolic 座標・§6.1 User Meaning 射影・§7 正規化後算出方針"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+      purpose: "User Meaning × Item Meaning 比較・lambda_ctx・Context Score 算出前提"
+    - path: "docs/04_ドメインモデル設計/Feature定義書.md"
+      required: true
+      purpose: "8 次元 Feature 定義・User / Item 共通 Feature 空間"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "Online 推薦パイプライン・User Meaning 射影フェーズ"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-RECO-008 User Meaning Projector / MOD-RECO-009 User Context Builder 入出力"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-RECO-003 User Semantic / Feature / Meaning 保存 I/F"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "user_meaning_projected Phase・推薦 Run フェーズ遷移"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "user_social_mean / user_symbolic_mean 等メトリクス列と user_meaning の責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: false
+      purpose: "User Meaning リソース分類・保存単位参考"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: false
+      purpose: "User意味推定系責務境界参考"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 recommendation_run_id 物理 FK ON 被参照・semantic_config_version_id Run 側保持（#543 merge 済み前提）"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "射影重み・意味体系 version（semantic_config_version_id）参照"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "8 軸 feature_code 正本・Social / Symbolic グループ分類"
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "user_feature 正規化 version との生成再現性・LOGICAL 参照方針"
+    - path: "docs/06_実装設計/database/item_meaning_テーブル定義書.md"
+      required: true
+      purpose: "#515 merge 済み時の item_meaning 対称性正本（Social / Symbolic 射影・値域・責務境界）"
+    - path: "docs/06_実装設計/database/user_semantic_テーブル定義書.md"
+      required: true
+      purpose: "#553 merge 済み・先行入力・パイプライン順序正本"
+    - path: "docs/06_実装設計/database/user_feature_テーブル定義書.md"
+      required: true
+      purpose: "#554 merge 済み・生成元 Feature 正本（feature_value / 冪等キー / FK 方針）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/user_meaning_テーブル定義書.md"
+      action: "update"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-user-meaning.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-user-meaning/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "user_meaning テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §10.2・テーブル一覧 §4 No.9 と矛盾しない"
+  - "user_feature から user_meaning への生成関係（Online / IF-DB-RECO-003 / MOD-RECO-008）が明記されている"
+  - "user_social / user_symbolic（または同等の Social / Symbolic 射影列）の保持方針が明記されている"
+  - "lambda_ctx の保持方針と Matching / Context Score 利用が明記されている"
+  - "recommendation_run 経由の semantic_config_version 再現性方針が明記されている"
+  - "item_meaning との対称性・差分（Run 単位 / lambda_ctx / version 参照粒度）が整理されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "user-meaning-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 555
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 543
+      purpose: "Batch R06 No.1 recommendation_run テーブル定義書 完了（merge 済み前提）"
+    - number: 553
+      purpose: "Batch R07 No.1 user_semantic テーブル定義書 完了（merge 済み前提）"
+    - number: 554
+      purpose: "Batch R07 No.2 user_feature テーブル定義書 完了（merge 済み前提）"
+    - number: 515
+      purpose: "Batch R03 No.3 item_meaning テーブル定義書（merge 推奨・対称性参照）"
+    - number: 463
+      purpose: "semantic_config_version テーブル定義書 完了（merge 済み前提）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/user_meaning_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 recommendation_run → user_meaning generates（ON 1:0..1）との整合"
+    - "テーブル一覧 §4 No.9（User Meaning / Social・Symbolic 保存）との整合"
+    - "GiftMeaningSpace定義書 §5–§7 Social / Symbolic 射影ルールとの整合"
+    - "論理ER §10.2 user_meaning（user_social / user_symbolic / lambda_ctx）属性との整合"
+    - "Matching定義書 §4.5 lambda_ctx・§9 Context Score 算出前提との整合"
+    - "IF-DB-RECO-003 による user_semantic / user_feature / user_meaning 保存 I/F との整合"
+    - "状態遷移設計書 user_meaning_projected Phase との整合"
+    - "recommendation_run_テーブル定義書 §8.2 recommendation_run_id 物理 FK ON 被参照との整合"
+    - "semantic_config_version / feature_definition / feature_normalization_version 参照方針整合"
+    - "item_meaning_テーブル定義書（#515 merge 時）との対称性・version 参照粒度差整理"
+    - "user_feature テーブル定義書（#554 merge 済み）との feature_value 射影入力・8 行 version 整合"
+    - "ログ・Observability設計書 user_social_mean 等と meaning_distribution_metric の責務境界"
+    - "論理ER §16.1（Item 派生は Online 更新しない）と User 派生（Online 生成）の責務境界"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R07 No.3: user_meaning（No.1 user_semantic #553 / No.2 user_feature #554 merge 済み）"
+  - "Issue #555 / Branch docs/task-555-user-meaning-table-spec"
+  - "先行 merge 済み前提: #543 / PR #548（recommendation_run）、#463（semantic_config_version）、#553（user_semantic）、#554（user_feature）"
+  - "対称参照 merge 推奨: #515 / PR #520（item_meaning）"
+  - "Human Review #555 決定済み: user_social / user_symbolic = numeric(6,4) スカラー、semantic_config_version_id は Run 経由、lambda_ctx 行保持（算出不能時 0.5 固定 INSERT）、UNIQUE(recommendation_run_id)、mean/std は Metric 系のみ、8 行 version 不一致は射影拒否、射影入力は user_feature.feature_value"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

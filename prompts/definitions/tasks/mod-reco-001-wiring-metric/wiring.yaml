@@ -1,0 +1,200 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-metric-wiring"
+  title: "MOD-RECO-001:Orchestrator Wiring（Metric）配線"
+  summary: "Metric 経路（MOD-RECO-025）について、build_default_stub_ports() の metric_logger Port を MetricLogger 本実装（InMemory repository）へ差し替える。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（Metric）"
+  epic_issue_number: 1061
+  epic_branch: "feature/epic-1061-mod-reco-001-wiring-metric"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1053
+      purpose: "MOD-RECO-025 Epic 完了"
+  related_prs:
+    - number: 1060
+      purpose: "Epic #1053 develop merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic 配下の Metric Wiring Task。MOD-RECO-025 §16.3 順序4 に従い、Orchestrator デフォルト composition の metric_logger を本実装へ差し替える。
+  `build_default_metric_logger()`（InMemory MetricLoggerRepository）を stubs.py から DI する。
+  MetricLogger は Stub 互換の `.recorded` 観察バッファを持つ（025 仕様書 §9.4）。
+  Orchestrator 本体（ports.py / orchestrator.py）は MetricLoggerPort 契約が既存のため変更しない。
+  integration テスト期待値更新は integration-test Task へ委譲する。
+  `stubs.py` は exclusive_files のため Epic 配下で直列実行する。
+
+objective: |
+  metric_logger Port を build_default_stub_ports() で MetricLogger 本実装へ差し替える。
+  デフォルト経路 integration テストの green 化は integration-test Task に委譲する。
+
+scope:
+  - "`apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` の metric_logger Port 差し替え"
+  - "`_ensure_metric_logger_package()` / `_build_default_orchestrator_metric_logger()` 等の factory 接続（028/024 パターン準拠）"
+  - "metric-logger の `build_default_metric_logger` import と package 読み込み"
+
+out_of_scope:
+  - "MOD-RECO-025 モジュール本体の変更"
+  - "`ports.py` / `orchestrator.py` の変更（Port 契約は既存）"
+  - "`execution_context.py` の型付きフィールド追加"
+  - "`test_recommendation_orchestrator.py` の期待値更新（integration-test Task）"
+  - "024 / 028 / 029 / phase_log 経路の再配線"
+  - "他フェーズ Port の再配線"
+  - "`StubMetricLogger` クラスの削除"
+  - "段階3 Composition（Postgres Metric Repository）"
+  - "MOD-RECO-001 モジュール仕様書 §8.4.2 更新（Epic PR / 別 docs Task）"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針（§8.4）・§12.2"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "§16.3 Wiring scope・Stub 互換"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線対象"
+    - path: "apps/reco/src/reco/application/metric-logger/__init__.py"
+      required: true
+      purpose: "MOD-RECO-025 factory"
+  issues:
+    - number: 1061
+      purpose: "親 Epic"
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "metric_logger Port 本実装配線"
+  - "InMemory MetricLoggerRepository 接続方針の PR 本文説明"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-metric/wiring/pr-review.yaml`）"
+
+acceptance_criteria:
+  - "build_default_stub_ports() の metric_logger が MetricLogger 本実装を参照している"
+  - "StubMetricLogger クラス定義は残存している"
+  - "025 モジュール本体ディレクトリに変更がない"
+  - "integration-test Task へ委譲事項が PR 本文に明記されている"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-mod-reco-001-wiring-metric-wiring"
+  base: "feature/epic-1061-mod-reco-001-wiring-metric"
+  target: "feature/epic-1061-mod-reco-001-wiring-metric"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-12"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 1053
+      purpose: "MOD-RECO-025 Epic 完了"
+  issues:
+    - number: 1061
+      purpose: "親 Epic"
+  prs:
+    - number: 1060
+      purpose: "Epic #1053 merge"
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-mod-reco-001-wiring-metric-integration-test"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "compileall（orchestrator 配線対象）"
+  commands:
+    - "cd apps/reco && python3 -m compileall src/reco/application/recommendation-orchestrator"
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "test_recommendation_orchestrator green": "integration-test Task で green 化"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "metric_logger 配線のみに diff が限定されているか"
+    - "025 モジュール本体への変更がないか"
+    - "StubMetricLogger が削除されていないか"
+    - "integration-test Task 委譲が PR 本文に明記されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "workstream: mod-reco-001-wiring-metric"
+  - "Related Epic #1061 / #1053"

@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-staging-item-image-pr"
+  title: "staging_item_image テーブル定義書 PRレビュー"
+  summary: "staging_item_image テーブル定義書 Task の PR を AI Review する。物理ER 外部商品データ連携系・論理ER §9.2 / §14.4・raw_product_metadata / staging_item / item_image テーブル定義書との整合、transforms_to / Upsert 反映・主画像候補・BATCH-005/007 連携と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-523-staging-item-image-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 528
+  issue: 523
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-staging-item-image.yaml"
+  source_branch: "docs/task-523-staging-item-image-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-staging-item-image.yaml"
+    required: true
+  issue:
+    number: 523
+    required: true
+  pr:
+    number: 528
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/staging_item_image_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系・transforms_to / upserts / Retention §13 方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 エンティティ属性・§14.4 Raw/Staging/Item 関係・is_primary_candidate"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.21 分類・用途・Staging 補足方針との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§11 商品画像データ・§11.3–§11.4 主画像選定・楽天 API 画像項目マッピング"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Staging Item Image リソース分類・Item Image 責務境界"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "image_size_type 等 enum 参照との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-005・trace キー（raw_metadata_id）の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-005 / BATCH-007 と staging_item_image 作成/参照タイミングの確認"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "transforms_to 親 Metadata・raw_metadata_id 被参照（#506 merge 済み正本）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "兄弟 Staging 紐づけ・BATCH-005 同時保存（#517 merge 済み正本）"
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: true
+      purpose: "Upsert 先・同期置換・is_primary 算出（#497 merge 済み正本）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "item.source 解決・Upsert 後 item_image 反映順序（#495 merge 済み正本）"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（staging_item / item_image / raw_product_metadata 本体 / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §9.2 の属性（staging_item_image_id / raw_metadata_id / external_item_code / image_url / image_size_type / display_order / is_primary_candidate / staged_at）と矛盾しないか"
+    - "テーブル一覧 §6 No.21 の分類・用途と一致しているか"
+    - "外部商品データ連携設計書 §11 楽天 API 画像項目（smallImageUrls / mediumImageUrls / imageFlag）のマッピングが整理されているか"
+    - "raw_product_metadata / staging_item / item_image テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "source / source_system / source_api を staging_item_image 行に持たない方針が明示されているか"
+    - "MVP では画像バイナリ非保存であることが明記されているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "raw_product_metadata → staging_item_image transforms_to（raw_metadata_id・LOGICAL FK）関係が明記されているか"
+    - "staging_item との兄弟紐づけ（raw_metadata_id + external_item_code）が明記されているか"
+    - "staging_item_image → item_image Upsert 反映（external_item_code + item.source → item_id、image_url キー）が明記されているか"
+    - "is_primary_candidate と item_image.is_primary の算出/反映関係が明記されているか"
+    - "BATCH-005 INSERT 冪等キーと BATCH-007 読取・反映タイミングが §12 に定義されているか"
+    - "Staging 系物理 FK なし（LOGICAL + Index）方針が §8 等で明記されているか"
+    - "物理ER §13 Retention（成功 Batch 後即 DELETE）が明記されているか"
+    - "item_image_テーブル定義書 §12.1 の同期置換（DELETE）が Staging → Item 経路で引き継がれているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_review_decisions:
+  - topic: "BATCH-005 冪等 UNIQUE キー"
+    decision: "(raw_metadata_id, external_item_code, image_url)"
+    status: "decided"
+  - topic: "source 列"
+    decision: "staging_item_image 行には持たない"
+    status: "decided"
+  - topic: "is_primary_candidate partial unique"
+    decision: "採用 + BATCH-005 内算出"
+    status: "decided"
+  - topic: "Staging 同期置換"
+    decision: "BATCH-005 内で実施"
+    status: "decided"
+
+risk_points:
+  - "raw_product_metadata（#506 / PR #511）との raw_metadata_id 参照・import_status 連動の引き継ぎ"
+  - "staging_item（#517 / PR #522）との external_item_code 一貫性・BATCH-005 同時 INSERT タイミング"
+  - "item_image（#497 / PR #502）への Upsert キー・同期 DELETE・is_primary partial unique 引き継ぎ"
+  - "item（#495 / PR #500）との item.source 解決タイミング（item Upsert 後に item_image 反映）"
+  - "楽天 API 画像配列展開順と display_order / is_primary_candidate の対応漏れ"
+
+notes:
+  - "Batch R04 No.1: staging_item_image"
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-staging-item-image.yaml"
+  - "Issue #523 / Branch docs/task-523-staging-item-image-table-spec"
+  - "先行 merge 済み前提: #506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）、#497 / PR #502（item_image）、#495 / PR #500（item）"
+  - "Human Review #523 決定済み: UNIQUE キー / source 不採用 / is_primary_candidate partial unique / BATCH-005 同期置換"
+  - "PR 作成後: target.pr / input.pr.number / review.status を更新すること"

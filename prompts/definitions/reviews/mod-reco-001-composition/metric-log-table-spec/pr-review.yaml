@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-composition-metric-log-table-spec-pr"
+  title: "metric_log テーブル定義書 PRレビュー"
+  summary: "Composition Epic 工程 ① metric_log テーブル定義書 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1079
+  issue:
+    number: 1078
+  task_definition: "prompts/definitions/tasks/mod-reco-001-composition/metric-log-table-spec.yaml"
+  source_branch: "docs/task-1078-metric-log-table-spec"
+  target_branch: "feature/epic-1076-mod-reco-001-composition"
+  parent_epic_issue: 1076
+  parent_epic_branch: "feature/epic-1076-mod-reco-001-composition"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-composition/metric-log-table-spec.yaml"
+    required: true
+
+review_points:
+  - "MOD-RECO-025 §9.1 / MetricRecord 列との 1:1 対応"
+  - "Tier 2 分布 Metric が reco_score_distribution_metric 責務と分離されているか"
+  - "phase_log / error_log / recommendation_run との整合"
+  - "DDL / migration が工程 ② 委譲として明記されているか"
+  - "apps/** 変更がないか"
+  - "Epic #1076 scope 内か"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / target.pr を更新する"
+  - "Related Epic #1076"
