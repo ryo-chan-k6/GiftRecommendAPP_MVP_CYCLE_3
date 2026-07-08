@@ -141,7 +141,7 @@ Recommendation Resultを生成する
 | `MOD-RECO-028` | Phase Log記録 | Phase Log Writer | ログ・観測 | 処理段階別の開始・終了・成功・失敗を記録する | 共通 | ○ |
 | `MOD-RECO-029` | Error Log記録 | Error Log Writer | ログ・観測 | エラー内容、発生箇所、対象データを記録する | 共通 | ○ |
 | `MOD-RECO-024` | Reco Error処理 | Reco Error Handler | ログ・観測 | reco内のエラーを処理しログへ接続する | OL | ○ |
-| `MOD-RECO-025` | Metric記録 | Metric Logger | ログ・観測 | 件数、処理時間、スコア分布等を記録する | 共通 | △ |
+| `MOD-RECO-025` | Metric記録 | Metric Logger | ログ・観測 | 件数、処理時間、スコア分布等を記録する | 共通 | ○ |
 | `MOD-RECO-026` | Item Semantic抽出 | Item Semantic Generator | 商品意味推定支援 | 商品情報からSemantic Conceptを抽出する | BT | ○ |
 | `MOD-RECO-027` | Item Feature生成 | Item Feature Generator | 商品意味推定支援 | item_semantic等からItem Featureを生成する | BT | ○ |
 
