@@ -117,10 +117,10 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-mod-reco-026-item-semantic-generator"
+  name: "feature/epic-1092-mod-reco-026-item-semantic-generator"
   base: "develop"
   target: "develop"
-  worktree_required: false
+  worktree_required: true
 
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
@@ -128,10 +128,11 @@ project:
     phase: "07_開発・単体テスト"
     status: "Todo"
     priority: "high"
-    planned_start: null
-    due_date: null
+    planned_start: "2026-07-09"
+    due_date: "2026-07-11"
 
 issue:
+  number: 1092
   unit: "epic"
   type: "feature"
   area: "reco"

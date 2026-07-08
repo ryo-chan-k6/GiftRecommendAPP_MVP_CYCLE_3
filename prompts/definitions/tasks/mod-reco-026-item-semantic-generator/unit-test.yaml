@@ -10,8 +10,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]MOD-RECO-026:Item Semantic Generator"
-  epic_issue_number: null
-  epic_branch: "feature/epic-<issue-number>-mod-reco-026-item-semantic-generator"
+  epic_issue_number: 1092
+  epic_branch: "feature/epic-1092-mod-reco-026-item-semantic-generator"
   related_issues: []
   related_prs: []
 
@@ -100,8 +100,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   name: "test/task-<issue-number>-mod-reco-026-item-semantic-generator-unit-test"
-  base: "feature/epic-<issue-number>-mod-reco-026-item-semantic-generator"
-  target: "feature/epic-<issue-number>-mod-reco-026-item-semantic-generator"
+  base: "feature/epic-1092-mod-reco-026-item-semantic-generator"
+  target: "feature/epic-1092-mod-reco-026-item-semantic-generator"
   worktree_required: true
 
 project:
