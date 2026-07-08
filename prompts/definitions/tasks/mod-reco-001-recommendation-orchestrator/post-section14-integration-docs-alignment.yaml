@@ -1,0 +1,278 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-post-section14-integration-docs-alignment"
+  title: "MOD-RECO-001:§14 integration完了後 docs正本追随"
+  summary: "Task #1071 / #1073 / #1074（§14 No.10 / No.11 / No.14 integration）develop merge 後、MOD-RECO-001 §268 / §15 と Recoモジュール一覧 §4 の未追随記述を develop 上の実装・テスト状態へ追随させる docs-only Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（Recommendation Orchestrator・CLOSED 参考）"
+    - number: 1071
+      purpose: "§14 No.10 観測系横断 integration Task"
+    - number: 1073
+      purpose: "§14 No.14 Reason partial integration Task"
+    - number: 1067
+      purpose: "前回 docs 追随 Task（Metric Wiring 完了後）"
+  related_prs:
+    - number: 1072
+      purpose: "§14 No.10 develop merge"
+    - number: 1070
+      purpose: "§14 No.11 develop merge"
+    - number: 1074
+      purpose: "§14 No.14 develop merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  §14 integration（No.10 / No.11 / No.14）は PR #1072 / #1070 / #1074 により develop merge 済み。
+  一方、MOD-RECO-001 §268 段階3着手前残課題は「§14 integration 観点（No.10 / 11 / 14）は後続 Task」のまま残存している。
+  また Recoモジュール一覧 §4 サマリ表の `MOD-RECO-025` が △ のまま（§6.23.5 は ○）。
+  本 Task は docs 正本追随に限定し、ソースコード変更は行わない。
+
+objective: |
+  develop 上の §14 integration 完了状態と docs 正本（MOD-RECO-001 §268 / §15、Recoモジュール一覧 §4）を整合させる。
+  段階3 Composition Epic 起票の docs 前提を整える。PR 本文に更新前後サマリを記載する。
+
+scope:
+  - "MOD-RECO-001 §268 段階3着手前残課題の更新（§14 No.10/11/14 完了を反映、残課題を本番 DI / Composition に限定）"
+  - "MOD-RECO-001 §15 変更履歴の追記"
+  - "Recoモジュール一覧 §4 サマリ表 MOD-RECO-025 MVP △ → ○（§6.23.5 との整合）"
+  - "Task / Review Definition 配置"
+
+out_of_scope:
+  - "`apps/reco` ソースコード変更"
+  - "§14 integration 新規実装・テスト追加"
+  - "段階3 Composition 実装（Epic #1076 配下 Task）"
+  - "MOD-RECO-001 §8.4.2 の再更新（#1067 完了済み）"
+  - "MOD-RECO-025 モジュール仕様書更新（#1067 完了済み）"
+  - "OpenAPI / Orval / generated / DB schema 変更"
+  - "後続 Epic / Task の自動起票"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§268 / §15 更新対象"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "§4 サマリ表 MVP 表記"
+  templates: []
+  files:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "§14 No.10/11/14 integration テスト存在確認（読み取りのみ）"
+  issues:
+    - number: 1071
+      purpose: "§14 No.10 Task"
+    - number: 1073
+      purpose: "§14 No.14 Task"
+    - number: 1075
+      purpose: "本 Task Issue"
+  prs:
+    - number: 1072
+      purpose: "§14 No.10 merge"
+    - number: 1070
+      purpose: "§14 No.11 merge"
+    - number: 1074
+      purpose: "§14 No.14 merge"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "§268 / §15"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      action: "update"
+      required: true
+      purpose: "§4 MVP △ → ○"
+  files: []
+  tests:
+    expected: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-001 §268 が §14 integration 完了後の残課題（本番 DI / Composition）のみを示す"
+  - "Recoモジュール一覧 §4 の MOD-RECO-025 が MVP ○ と §6.23.5 一致"
+  - "PR 本文の更新前後サマリ（§14 完了 / §4 △→○ / 段階3 残課題）"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "PR #1072 / #1070 / #1074 が develop merge 済みである（作業開始前提）"
+  - "§268 から §14 No.10/11/14 の後続 Task 記述が除外されている"
+  - "§268 の残課題が本番 DI（DB Repository 等）/ composition root / E2E に限定されている"
+  - "Recoモジュール一覧 §4 の MOD-RECO-025 が ○ である"
+  - "apps/reco ソース変更が含まれていない（docs-only diff）"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1075-mod-reco-001-post-section14-integration-docs-alignment"
+  summary: "mod-reco-001-post-section14-integration-docs-alignment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-10"
+
+issue:
+  number: 1075
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1071
+      purpose: "§14 No.10 Task merge 確認"
+    - number: 1073
+      purpose: "§14 No.14 Task merge 確認"
+    - number: 1072
+      purpose: "§14 No.10 PR merge 確認"
+    - number: 1070
+      purpose: "§14 No.11 PR merge 確認"
+    - number: 1074
+      purpose: "§14 No.14 PR merge 確認"
+    - number: 1067
+      purpose: "前回 docs 追随 Task merge 確認"
+  prs:
+    - number: 1072
+      purpose: "§14 No.10 integration merge"
+    - number: 1070
+      purpose: "§14 No.11 timeout integration merge"
+    - number: 1074
+      purpose: "§14 No.14 reason partial integration merge"
+  tasks:
+    - id: "task-mod-reco-001-section14-observability-integration"
+      purpose: "§14 No.10 完了前提"
+    - id: "task-mod-reco-001-section14-reason-partial-integration"
+      purpose: "§14 No.14 完了前提"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-section14-reason-partial-integration"
+  blocks:
+    - "MOD-RECO-001 段階3 Composition Epic 起票判断（docs 前提）"
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "test_recommendation_orchestrator.py に §14 No.10/11/14 相当の integration ケースが存在すること"
+    - "§4 △→○ 更新が §6.23.5 と矛盾しないこと"
+    - "docs diff のみであること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs-only Task。ソース変更なし"
+    "integration test": "§14 integration は完了済み。本 Task は docs 追随のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§268 が develop 上の §14 integration 完了状態と一致しているか"
+    - "段階3 残課題が Composition Epic scope と矛盾しないか"
+    - "Recoモジュール一覧 §4 △→○ が §6.23.5 / #1067 と整合しているか"
+    - "docs-only diff であるか（ソース変更なし）"
+    - "develop 直 PR 理由が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "§14 integration 完了後の docs 正本追随。横断影響は PR 本文で記載"
+
+risk_points:
+  - "§268 更新と Composition Epic 起票条件の混同"
+  - "§4 のみ △→○ 更新し §6.23.5 を再変更してしまうリスク（最小 diff）"
+
+human_decision_points: []
+
+stop_conditions:
+  - "§14 integration PR が develop merge 済みでない"
+  - "docs 更新にソース変更が必要と判断された場合"
+  - "正本 docs 間で §14 完了状態の解釈が矛盾する場合"
+
+notes:
+  - "workstream: mod-reco-001-post-section14-integration-docs"
+  - "Related to #1071 / #1072 / #1070 / #1073 / #1074 / #1067"
+  - "PR 本文: §14 完了サマリ・§4 △→○・段階3 残課題"
+
+audit_checklist:
+  section_14_expected:
+    - no: 10
+      pr: 1072
+      status: "develop merge 済み"
+    - no: 11
+      pr: 1070
+      status: "develop merge 済み"
+    - no: 14
+      pr: 1074
+      status: "develop merge 済み"
+  reco_module_list:
+    - section: "§4"
+      module: "MOD-RECO-025"
+      before: "△"
+      after: "○"
+    - section: "§6.23.5"
+      module: "MOD-RECO-025"
+      expected: "○（変更なし）"
