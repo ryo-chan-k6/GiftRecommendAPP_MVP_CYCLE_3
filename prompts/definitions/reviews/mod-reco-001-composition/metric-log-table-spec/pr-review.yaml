@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1079
   issue:
     number: 1078
   task_definition: "prompts/definitions/tasks/mod-reco-001-composition/metric-log-table-spec.yaml"
