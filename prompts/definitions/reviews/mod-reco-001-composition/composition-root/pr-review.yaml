@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1085
   issue:
     number: 1084
   task_definition: "prompts/definitions/tasks/mod-reco-001-composition/composition-root.yaml"
