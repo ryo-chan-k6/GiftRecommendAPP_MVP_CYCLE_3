@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-06                                 |
-| 更新日         | 2026-07-07（Orchestrator 本実装配線完了反映）  |
+| 更新日         | 2026-07-09（Postgres composition 完了反映）  |
 
 ---
 
@@ -20,6 +20,8 @@ Error Log Writer（Error Log記録）は、**`error_log` テーブルへの物�
 本モジュールは **永続化・項目マッピング・INSERT 失敗の例外伝播** に責務を限定し、Error Code の標準化（`GRS-REC-*` への集約）、メッセージマスキング、Public / Internal API レスポンス形式への変換は **`MOD-RECO-024` 責務**とする。`error_log` 物理項目の正本は **`error_log_テーブル定義書`**、Error Code の正本は **エラーコード定義書** を正とする。
 
 **現行実装（Orchestrator 配線）**: Epic #1029（PR #1034 develop merge 済み）により、`024` 経由で `build_default_error_log_writer()`（InMemory）が Orchestrator composition に DI されている。Orchestrator から 029 への直接呼び出しは行わない（§7.1）。
+
+**本番 composition（Postgres）**: Epic #1076（PR #1088 develop merge 済み）により、`build_production_ports()` では `024` 経由で `ErrorLogWriter(repository=PostgresErrorLogRepository(...))` が `composition/observability.py` 経由で配線される。MVP デフォルトは InMemory のまま。
 
 ---
 
@@ -234,6 +236,8 @@ flowchart TD
 
 **Repository 方針**: `RecommendationRunRepository`（`infrastructure/db/repositories/`）と同型の Protocol + InMemory 実装 + 本番 PostgreSQL 実装を用意する。InMemory は unit test / 024 連携 smoke で使用する。
 
+**本番 composition 経路**: `apps/reco/src/reco/composition/observability.py` → `RecoErrorHandler(error_log_writer=ErrorLogWriter(repository=PostgresErrorLogRepository(...)))`。
+
 ---
 
 ## 12. ログ・メトリクス
@@ -291,6 +295,7 @@ flowchart TD
 | ---- | -------- | -------------- |
 | 2026-07-06 | 初版作成 | Issue #1019 |
 | 2026-07-07 | §2 / §7.1 / §16 / §19 を Orchestrator 本実装配線完了（#1029）へ追随 | Issue #1049 |
+| 2026-07-09 | §2 / §11 に Postgres composition 経路を追記（#1076 merge） | Issue #1089 |
 
 ---
 
@@ -318,6 +323,7 @@ flowchart TD
 | 3 | MOD-RECO-001 Wiring（ログ・エラー） | #1029 | **完了**（develop merge, PR #1034）。024 経由 029 DI 配線 |
 | 4 | MOD-RECO-029 unit-test | #1018 | §14 網羅テスト |
 | 5 | MOD-RECO-024 unit-test | #1013 | §14 網羅 + 024→029 連携（029 実装後） |
+| 6 | Composition（Postgres） | #1076 | **完了**（develop merge, PR #1088）。`build_production_ports` 経由 Postgres 配線 |
 
 ---
 
