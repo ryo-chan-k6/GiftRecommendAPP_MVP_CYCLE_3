@@ -1,0 +1,221 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-composition-metric-log-table-spec"
+  title: "metric_log:Metric Logテーブル定義書作成"
+  summary: "MOD-RECO-025 Tier 1（Run 集約 Metric）Postgres 永続化の正本として metric_log テーブル定義書を作成する。Composition Epic #1076 直列工程 ①。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Composition（段階3）"
+  epic_issue_number: 1076
+  epic_branch: "feature/epic-1076-mod-reco-001-composition"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1053
+      purpose: "MOD-RECO-025 Metric Logger Epic 完了"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Composition Epic #1076 直列工程 ①。
+  Human 判断（2026-07-08）により、025 Postgres 永続化は Tier 1（レイテンシ・件数・fallback 等）と Tier 2（§12 分布 Metric）の両方を段階3 Composition で実施する。
+  Tier 1 は本テーブル `metric_log`、Tier 2 は既存 `reco_score_distribution_metric` を正本とする。
+  MOD-RECO-025 §9.1 / §9.2 および現行 `MetricRecord`（InMemory）を物理 DDL へ写像する。
+  metric_log 物理テーブル定義書は未整備（MOD-RECO-025 §19）。DDL / migration は Task ②（db/**）へ委譲する。
+
+objective: |
+  `metric_log` の物理カラム・制約・Index・更新仕様を table-spec 形式で定義する。
+  後続 DDL Task（工程 ②）および Postgres MetricLoggerRepository Task（工程 ③）が migration / 実装できる粒度まで確定する。
+
+scope:
+  - "table-spec 形式の metric_log テーブル定義書作成"
+  - "MOD-RECO-025 §9.1 Tier 1 / §9.2 Tier 1b と MetricRecord 列の対応明記"
+  - "reco_score_distribution_metric（Tier 2）との責務境界明記"
+  - "phase_log / error_log / recommendation_run との trace 連携方針"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "DDL・migration（工程 ② db/** Task）"
+  - "Postgres MetricLoggerRepository 実装（工程 ③）"
+  - "reco_score_distribution_metric 定義書の変更（Tier 2 正本は既存）"
+  - "テーブル一覧・物理ER・論理ER の更新（別 docs 追随 Task）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更"
+  - "Batch / Evaluation 向け metric_log 拡張（MVP は reco Online Run Tier 1）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "§8.4 / §9.1 / §9.2 / §16.2 Tier 1+1b 正本"
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "Tier 2 責務境界・IF-OBS-005 参考"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "Log 系テーブル構成・Retention 参考"
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      required: true
+      purpose: "trace_id / service 列・Log 系方針参考"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "recommendation_run_id LOGICAL FK・Run trace 参考"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§11.2 Run 集約 Metric"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "Log / Metric 分類確認"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: false
+      purpose: "Log 系 FK 方針参考"
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/データ管理要件.md"
+      required: false
+      purpose: "metric_log 保持方針参考"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+  files:
+    - path: "apps/reco/src/reco/application/metric-logger/models.py"
+      required: true
+      purpose: "MetricRecord 列写像正本"
+    - path: "prompts/definitions/epics/mod-reco-001-composition/epic.yaml"
+      required: true
+      purpose: "Composition Epic scope・Human 判断"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/metric_log_テーブル定義書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/mod-reco-001-composition/metric-log-table-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-001-composition/metric-log-table-spec/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "metric_log テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "MOD-RECO-025 §9.1 / MetricRecord 列と物理カラムが 1:1 で対応している"
+  - "Tier 2 分布 Metric は reco_score_distribution_metric 責務と明記され、本テーブルに混在しない"
+  - "1 recommendation_run = 1 metric_log 行（Run 集約 Tier 1）が明記されている"
+  - "DDL / migration は out_of_scope として工程 ② へ委譲されている"
+  - "apps/** 変更がない"
+  - "Task PR target が Epic Branch（feature/epic-1076-mod-reco-001-composition）"
+
+branch:
+  no_branch: false
+  summary: "metric-log-table-spec"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-10"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1076
+      purpose: "親 Composition Epic"
+    - number: 1053
+      purpose: "MOD-RECO-025 implementation 完了（MetricRecord 正本）"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-mod-reco-001-composition-db-migration"
+    - "task-mod-reco-001-composition-postgres-observability-repositories"
+  exclusive_files:
+    - "docs/06_実装設計/database/metric_log_テーブル定義書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "MetricRecord 列と §6 カラム定義の対応"
+    - "reco_score_distribution_metric との責務分離"
+    - "recommendation_run_id UNIQUE（1 Run 1 行）"
+    - "phase_log / error_log との trace 連携記載"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+    - "migration test"
+  skip_reason:
+    "unit test": "docs 整備 Task のため"
+    "migration test": "DDL は工程 ②"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "MOD-RECO-025 §9.1 / MetricRecord との列整合"
+    - "Tier 1 / Tier 2（reco_score_distribution_metric）責務分離"
+    - "Log 系既存定義書（phase_log / error_log）との一貫性"
+    - "DDL 委譲境界が明確か"
+    - "Epic #1076 allowed_paths 内の成果物のみか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+  reason: "metric_log 新規テーブル定義は DB 横断前提 Task"
+
+human_decision_points:
+  - "【確定 2026-07-08】Tier 1 Run 集約 Metric は metric_log へ Postgres 永続化（Epic #1076 human_decision_points 反映）"
+  - "【確定 2026-07-08】Tier 2 分布 Metric は reco_score_distribution_metric（既存定義書）へ Postgres 永続化"
+
+stop_conditions:
+  - "MetricRecord 列と Observability §11.2 の対応が確定できない"
+  - "Tier 1 / Tier 2 境界が reco_score_distribution_metric 定義書と矛盾する"
+
+notes:
+  - "Composition 直列工程: ① metric_log テーブル定義書 → ② db migration → ③ postgres-observability-repositories → ④ composition-root → ⑤ e2e-integration-test"
+  - "workstream: mod-reco-001-composition"
+  - "Related Epic #1076"
