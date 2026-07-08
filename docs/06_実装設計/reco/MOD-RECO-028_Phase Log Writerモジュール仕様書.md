@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-06                                 |
-| 更新日         | 2026-07-07（Orchestrator 本実装配線完了反映）      |
+| 更新日         | 2026-07-09（Postgres composition 完了反映）      |
 
 ---
 
@@ -20,6 +20,8 @@ Phase Log Writer（Phase Log記録）は、**`phase_log` テーブルへの物�
 Orchestrator は各処理フェーズの **開始・終了・失敗契機** を管理し、本モジュールは **永続化・項目マッピング・`started`→終端 UPDATE** を担当する。`error_log` への物理書き込みは **`MOD-RECO-029` Error Log Writer**（`MOD-RECO-024` 経由）責務であり、本モジュールの対象外とする。
 
 **現行実装（Orchestrator 配線）**: Epic #1043（PR #1048 develop merge 済み）により、`build_default_stub_ports()` では `_build_default_orchestrator_phase_log_writer()` が配線され、`build_default_phase_log_writer()` 本実装（InMemory Repository + `_OrchestratorPhaseLogWriterAdapter`）が接続されている。`StubPhaseLogWriter` クラスは composition test 互換の参照として `stubs.py` に残存する。
+
+**本番 composition（Postgres）**: Epic #1076（PR #1088 develop merge 済み）により、`build_production_ports()` では `PostgresPhaseLogRepository` が `composition/observability.py` 経由で配線される。MVP デフォルトは InMemory のまま。
 
 ---
 
@@ -319,6 +321,8 @@ Stub 互換のキー構成（テスト観察用）:
 
 **Repository 方針**: `RecommendationRunRepository` / `ErrorLogRepository`（029）と同型の Protocol + InMemory 実装 + 本番 PostgreSQL 実装を用意する。InMemory は unit test / Orchestrator 連携 smoke で使用する。
 
+**本番 composition 経路**: `apps/reco/src/reco/composition/observability.py` の `build_production_observability_modules()` → `PhaseLogWriter(repository=PostgresPhaseLogRepository(...))`。
+
 ---
 
 ## 12. ログ・メトリクス
@@ -385,6 +389,7 @@ Stub 互換のキー構成（テスト観察用）:
 | 2026-07-06 | 初版作成 | Issue #1036 |
 | 2026-07-06 | §16.1 に Human Review 確定（enum 外 phase / 集約粒度 / detail_json / skipped） | Issue #1036 |
 | 2026-07-07 | §2 移行期記述・§16.3 / §17 / §19 を Orchestrator 本実装配線完了（#1043）へ追随 | Issue #1049 |
+| 2026-07-09 | §2 / §11 に Postgres composition 経路を追記（#1076 merge） | Issue #1089 |
 
 ---
 
@@ -436,6 +441,7 @@ allowlist 外フィールドの自動シリアライズは **行わない**。�
 | 3 | MOD-RECO-001 Wiring（フェーズログ） | #1043 | **完了**（develop merge, PR #1048）。`StubPhaseLogWriter` → 本実装差し替え |
 | 4 | MOD-RECO-028 unit-test | #1035 | §14 網羅テスト |
 | 5 | Orchestrator phase_name 整合（**新規 Issue 推奨**） | #260 | enum 14 値への呼び出し統一・集約契機の整理（§16.1 No.8 / No.9） |
+| 6 | Composition（Postgres） | #1076 | **完了**（develop merge, PR #1088）。`build_production_ports` 経由 Postgres 配線 |
 
 ---
 

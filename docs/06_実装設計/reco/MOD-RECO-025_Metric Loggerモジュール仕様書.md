@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`） |
 | MVP対象        | `○`                                        |
 | 作成日         | 2026-07-07                                 |
-| 更新日         | 2026-07-08（Orchestrator 本実装配線完了反映）      |
+| 更新日         | 2026-07-09（Postgres composition 完了反映）      |
 
 ---
 
@@ -20,6 +20,8 @@ Metric Logger（Metric記録）は、**推薦 Run 成功終端における件数
 Orchestrator はパイプライン全体の計測起点・終点および下位モジュールが `ExecutionContext` に書き込んだカウント / レイテンシを集約する。本モジュールは **Metric の正規化・Repository 経由の永続化・Run 内観察用バッファ** を担当する。`phase_log` / `error_log` への物理書き込みは **`MOD-RECO-028` / `MOD-RECO-029`** 責務であり、本モジュールの対象外とする。
 
 **現行実装（Orchestrator 配線）**: Epic #1061（PR #1066 develop merge 済み）により、`build_default_stub_ports()` では `_build_default_orchestrator_metric_logger()` が配線され、`build_default_metric_logger()` 本実装（InMemory Repository）が接続されている。`StubMetricLogger` クラスは composition test 互換の参照として `stubs.py` に残存する。
+
+**本番 composition（Postgres）**: Epic #1076（PR #1088 develop merge 済み）により、`build_production_ports()` / `CompositionMode.PRODUCTION` では `PostgresMetricLogRepository`（Tier 1）が `composition/observability.py` 経由で配線される。MVP デフォルト（`build_default_stub_ports()`）は InMemory のまま。
 
 ---
 
@@ -201,7 +203,7 @@ flowchart TD
 | ---- | ------------ | ----------------- |
 | Run 集約（レイテンシ・候補件数・0件・fallback） | **記録する**（§16.2） | `metric_log` 相当へ INSERT |
 | モジュール別 `*_latency_ms` | **主要フェーズのみ**（§16.2 Tier 1b） | 同上 |
-| §12 分布（`final_score_distribution` 等） | **記録しない** | `reco_score_distribution_metric` 等 |
+| §12 分布（`final_score_distribution` 等） | **記録しない** | Repository 存在（#1076）だが Orchestrator 非接続 |
 | 下位モジュールからの個別 Metric 依頼 | **行わない**（Orchestrator 集約のみ） | 必要に応じて拡張 Task |
 
 ### 8.5 永続化・リトライ方針
@@ -253,7 +255,7 @@ flowchart TD
 | `user_feature_distribution` / `user_social_distribution` / `user_symbolic_distribution` | 段階3 / batch 集計 |
 | `lambda_ctx_distribution` | 同上 |
 | `social_match_distribution` / `symbolic_match_distribution` / `feature_match_distribution` | `reco_score_distribution_metric` 等 |
-| `final_score_distribution` | `reco_score_distribution_metric`（テーブル定義書） |
+| `final_score_distribution` | `reco_score_distribution_metric`（テーブル定義書）。Repository は #1076 で存在するが Orchestrator 非接続 |
 | `recommendation_run_count` / `recommendation_success_count`（サービス横断） | monitoring / 日次 batch |
 
 ### 9.4 Stub 互換（現行 `StubMetricLogger`）
@@ -303,9 +305,9 @@ flowchart TD
 
 **Composition Task 委譲境界**:
 
-- Postgres `MetricLoggerRepository` 実装
-- `metric_log` / distribution 系テーブルへの INSERT
-- Orchestrator DI（`stubs.py` 差し替え）は Epic #1061 で **完了**（develop merge, PR #1066）
+- Postgres `MetricLoggerRepository` 実装（Tier 1）は Epic #1076 で **完了**（develop merge, PR #1088）。配線正本: `composition/observability.py`
+- Tier 2 分布 Metric（`reco_score_distribution_metric`）は Repository 存在のみ。Orchestrator からの記録は MVP 対象外（§9.3）
+- MVP デフォルト Wiring（InMemory）は Epic #1061 **完了**（develop merge, PR #1066）
 
 ---
 
@@ -372,6 +374,7 @@ flowchart TD
 | ---- | -------- | -------------- |
 | 2026-07-07 | 初版作成 | Issue #1054 |
 | 2026-07-08 | §2 移行期記述・§16.1 / §16.3 / §19 を Orchestrator 本実装配線完了（#1061）へ追随 | Issue #1067 |
+| 2026-07-09 | §2 / §9 / §16 の Postgres composition 完了反映（#1076 merge、Tier 1 配線・Tier 2 非接続） | Issue #1089 |
 
 ---
 
@@ -386,7 +389,7 @@ Epic #1053 Human 判断および Task #1054 作業に基づく。
 | 1 | MVP 対象 | **MOD-RECO-025 は MVP 必須（○）** として実装する（Epic #1053 Human 判断） |
 | 2 | 呼び出し経路 | **Orchestrator 成功終端から `MetricLoggerPort.record_metrics()` 直呼び**が正本。024 / 028 / 029 経由ではない |
 | 3 | 失敗時の影響 | **025 記録失敗は推薦返却をブロックしない**。本モジュール内で catch し warn のみ（028 / 029 同型） |
-| 4 | MVP 永続化 | **InMemory Repository を正**とする。Postgres 永続化は **段階3 Composition Task** へ委譲 |
+| 4 | MVP 永続化 | **MVP デフォルトは InMemory Repository を正**とする。**本番 composition**（`build_production_ports()`）では Postgres Tier 1 Metric が Epic #1076 で配線済み。Tier 2 分布は Orchestrator 非接続 |
 | 5 | Orchestrator Wiring | Epic #1061 で **完了**（develop merge, PR #1066）。`StubMetricLogger` → 本実装差し替え済み |
 | 6 | 入力型の正本 | **`ExecutionContext` は Orchestrator `execution_context.py`**。025 は import のみ |
 | 7 | Recoモジュール一覧 MVP 表記 | 一覧 §6.23.5 を **`○` に更新**（Epic #1053 Human 判断。Task #1067） |
@@ -418,7 +421,7 @@ Observability §11.2 / §12、Recoモジュール一覧 §10.2（「初期は処
 | 2 | MOD-RECO-025 implementation | #1053 | `metric-logger/**`、`MetricLoggerRepository`（InMemory） |
 | 3 | MOD-RECO-025 unit-test | #1053 | §14 網羅テスト |
 | 4 | MOD-RECO-001 Wiring（Metric） | #1061 | **完了**（develop merge, PR #1066）。`StubMetricLogger` → 本実装 DI |
-| 5 | Composition（Metric DB） | 段階3 | Postgres Repository / 分布テーブル |
+| 5 | Composition（Metric DB） | #1076 | **完了**（develop merge, PR #1088）。Postgres Tier 1 Repository / `build_production_ports` 配線 |
 
 ---
 

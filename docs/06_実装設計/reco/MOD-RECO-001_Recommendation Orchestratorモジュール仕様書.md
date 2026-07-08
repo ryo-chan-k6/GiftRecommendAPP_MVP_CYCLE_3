@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）               |
 | MVP対象        | `○`                                                      |
 | 作成日         | 2026-06-25                                               |
-| 更新日         | 2026-07-08（§8.4.2 Metric Wiring 完了反映）              |
+| 更新日         | 2026-07-09（段階3 Composition 完了反映）                |
 
 ---
 
@@ -243,7 +243,7 @@ Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モ�
 | ---- | ---------- | ------ | ---- |
 | 1. モジュール実装 Task | 各 `MOD-RECO-*` Epic の implementation Task | モジュール本体、Port 適合、**Orchestrator 統合テスト（明示 DI）** | 原則 **`stubs.py` は変更しない** |
 | 2. フェーズ Wiring Task | Epic 内の integration milestone | `build_default_stub_ports` の該当 Port を本実装へ差し替え | **フェーズ単位**（下表）。並列 Task 競合を避ける |
-| 3. Composition 完成 Task | `MOD-RECO-001` Epic 締め | 本番 DI（DB Repository 等）、E2E 強化 | API-INT-002 接続後 |
+| 3. Composition 完成 Task | Epic #1076（develop merge 済み） | composition root、Postgres 観測 Repository、§14 No.10 E2E | 残: **API-INT-002 接続** |
 
 #### 8.4.2 フェーズ Wiring 単位（MVP）
 
@@ -265,7 +265,7 @@ Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モ�
 
 **例外（起動フェーズ）**: `002` / `003` はモジュール間 I/F（version 3 列、`003`→`002` 物理順）が強く、`002` 実装 Task（#783）および `003` 実装完了時点で **起動フェーズ Wiring を実施済み**とする。
 
-**段階3（Composition）着手前の残課題**: 本番 DI（DB Repository 等）、composition root、E2E 強化。§14 integration（No.10 / 11 / 14）は PR #1072 / #1070 / #1074 により develop merge 済み（`test_recommendation_orchestrator.py` に integration ケースあり）。`024` / `025` / `028` / `029` の Orchestrator 本実装配線は Epic #1029 / #1043 / #1061 により完了（develop merge 済み）。`StubMetricLogger` クラスは §8.4.1 に従い明示 DI 用に `stubs.py` に残存する。
+**段階3（Composition）完了後の残課題**: Epic #1076（PR #1088 develop merge 済み）により composition root（`apps/reco/src/reco/composition/**`）、観測系 Postgres Repository（`002` / `024`+`029` / `028` / `025` Tier 1）、§14 No.10 Postgres E2E（`test_section14_no10_postgres_observability.py`）が完了。**MVP デフォルト composition**（`build_default_stub_ports()` / `CompositionMode.DEFAULT`）は維持する。残課題は **API-INT-002 エンドポイント層接続** 等。Tier 2 分布 Metric（`reco_score_distribution_metric`）は Repository 存在のみで Orchestrator 非接続（MVP 対象外のまま）。`StubMetricLogger` 等は §8.4.1 に従い明示 DI 用に `stubs.py` に残存する。
 
 #### 8.4.3 Task Definition との関係
 
@@ -278,8 +278,8 @@ Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モ�
 | 責務 | 配置 |
 | ---- | ---- |
 | `StubXxx` 実装 | `application/recommendation-orchestrator/stubs.py` |
-| MVP デフォルト composition | `build_default_stub_ports()`（同上） |
-| 本番 composition（将来） | `apps/reco` の composition root（別 Task） |
+| MVP デフォルト composition | `build_default_stub_ports()`（`CompositionMode.DEFAULT` → `build_composition_ports(DEFAULT)`。同上） |
+| 本番 composition | `apps/reco/src/reco/composition/**`（`build_composition_ports(PRODUCTION)` / `build_production_ports()`。観測系 Postgres、他 Port は MVP default 維持） |
 
 ---
 
@@ -470,6 +470,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-07-07 | §8.4.2 / 段階3着手前残課題をログ・観測 Wiring 完了後へ更新（`024`+`029` DI / `028` 本実装配線済み、`025` Stub 維持） | Issue #1049 |
 | 2026-07-08 | §8.4.2 / §131 / 段階3着手前残課題を Metric Wiring 完了後へ更新（`025` 本実装配線済み、MVP `○`） | Issue #1067 |
 | 2026-07-08 | §268 / 段階3着手前残課題を §14 integration 完了後へ更新（No.10/11/14 develop merge 済み、残課題を本番 DI / composition root / E2E に限定） | Issue #1075 |
+| 2026-07-09 | §268 / §8.4.1 / §8.4.4 を段階3 Composition 完了後へ更新（#1076 merge、MVP default 維持、残課題を API-INT-002 接続等に限定） | Issue #1089 |
 
 ---
 
