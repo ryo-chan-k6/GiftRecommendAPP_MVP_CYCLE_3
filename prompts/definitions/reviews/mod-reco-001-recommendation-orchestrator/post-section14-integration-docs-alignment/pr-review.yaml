@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-post-section14-integration-docs-alignment-pr"
+  title: "MOD-RECO-001 §14 integration完了後 docs正本追随 PRレビュー"
+  summary: "§14 No.10/11/14 develop merge 後の docs 正本追随 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1077
+  issue:
+    number: 1075
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-section14-integration-docs-alignment.yaml"
+  source_branch: "docs/task-1075-mod-reco-001-post-section14-integration-docs-alignment"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-section14-integration-docs-alignment.yaml"
+    required: true
+
+review_points:
+  - "§268 が §14 integration 完了状態と一致しているか"
+  - "段階3 残課題が Composition Epic scope と矛盾しないか"
+  - "Recoモジュール一覧 §4 △→○ が §6.23.5 / #1067 と整合しているか"
+  - "docs-only diff であるか（apps/reco ソース変更なし）"
+  - "develop 直 PR 理由が PR 本文で説明されているか"
+  - "§8.4.2 / MOD-RECO-025 仕様書など scope 外 docs に着手していないか"
+
+notes:
+  - "target.pr: PR 作成後に更新し PR 差分に含める"
+  - "Related Issue #1075"

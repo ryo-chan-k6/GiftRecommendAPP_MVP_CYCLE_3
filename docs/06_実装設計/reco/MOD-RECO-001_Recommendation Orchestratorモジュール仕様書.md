@@ -265,7 +265,7 @@ Orchestrator から下位 `MOD-RECO-*`（002〜023）を呼び出す際、**モ�
 
 **例外（起動フェーズ）**: `002` / `003` はモジュール間 I/F（version 3 列、`003`→`002` 物理順）が強く、`002` 実装 Task（#783）および `003` 実装完了時点で **起動フェーズ Wiring を実施済み**とする。
 
-**段階3（Composition）着手前の残課題**: 本番 DI（DB Repository 等）、§14 integration 観点（No.10 / 11 / 14）は後続 Task とする。`024` / `025` / `028` / `029` の Orchestrator 本実装配線は Epic #1029 / #1043 / #1061 により完了（develop merge 済み）。`StubMetricLogger` クラスは §8.4.1 に従い明示 DI 用に `stubs.py` に残存する。
+**段階3（Composition）着手前の残課題**: 本番 DI（DB Repository 等）、composition root、E2E 強化。§14 integration（No.10 / 11 / 14）は PR #1072 / #1070 / #1074 により develop merge 済み（`test_recommendation_orchestrator.py` に integration ケースあり）。`024` / `025` / `028` / `029` の Orchestrator 本実装配線は Epic #1029 / #1043 / #1061 により完了（develop merge 済み）。`StubMetricLogger` クラスは §8.4.1 に従い明示 DI 用に `stubs.py` に残存する。
 
 #### 8.4.3 Task Definition との関係
 
@@ -469,6 +469,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-07-06 | §8.4.2 を段階2完了後の配線状態へ更新（`004`〜`023` 配線済み、`024`/`025`/`028`/`029` Stub、`026`/`027` BT 間接） | Issue #1009 |
 | 2026-07-07 | §8.4.2 / 段階3着手前残課題をログ・観測 Wiring 完了後へ更新（`024`+`029` DI / `028` 本実装配線済み、`025` Stub 維持） | Issue #1049 |
 | 2026-07-08 | §8.4.2 / §131 / 段階3着手前残課題を Metric Wiring 完了後へ更新（`025` 本実装配線済み、MVP `○`） | Issue #1067 |
+| 2026-07-08 | §268 / 段階3着手前残課題を §14 integration 完了後へ更新（No.10/11/14 develop merge 済み、残課題を本番 DI / composition root / E2E に限定） | Issue #1075 |
 
 ---
 
