@@ -43,7 +43,10 @@ from .ports import (
     PhaseStatus,
     ReasonGenerationOutcome,
 )
-from .reason_fallback import inject_generic_reason_fallback
+from .reason_fallback import (
+    apply_partial_result_status_if_needed,
+    inject_generic_reason_fallback,
+)
 from .stubs import build_default_stub_ports, resolve_execution_mode
 
 _ORCHESTRATOR_MODULE_ID = "MOD-RECO-001"
@@ -320,11 +323,15 @@ class RecommendationOrchestrator:
                 phase_name=phase_name,
             )
 
-        context.recommendation_result = _merge_reason_into_result(
-            context.recommendation_result,
-            reason_summary=result.reason_summary or GENERIC_REASON_SUMMARY,
-            is_fallback=result.is_fallback,
-        )
+        if context.reason_generator_item_count is not None:
+            # MOD-RECO-023 already merged per-Item reasons onto recommendation_result.
+            context = apply_partial_result_status_if_needed(context)
+        else:
+            context.recommendation_result = _merge_reason_into_result(
+                context.recommendation_result,
+                reason_summary=result.reason_summary or GENERIC_REASON_SUMMARY,
+                is_fallback=result.is_fallback,
+            )
 
         self._ports.phase_log_writer.record_phase(
             context,

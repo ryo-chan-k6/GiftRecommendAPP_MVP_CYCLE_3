@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 from reco.application.recommendation_orchestrator import OrchestratorPorts, build_default_stub_ports
 from reco.application.recommendation_orchestrator.orchestrator import RecommendationOrchestrator
 from reco.application.recommendation_orchestrator.stubs import (
+    StubPartialFallbackReasonGenerator,
     StubPipelineModule,
     StubReasonGenerator,
 )
@@ -97,6 +98,20 @@ _OUTPUT_MODULE_IDS: tuple[str, ...] = (
     "MOD-RECO-022",
     "MOD-RECO-023",
 )
+
+
+def ports_with_partial_fallback_reason_generator(
+    ports: OrchestratorPorts,
+    *,
+    fallback_item_ids: frozenset[str],
+) -> OrchestratorPorts:
+    """Replace MOD-RECO-023 with a per-Item partial fallback stub."""
+    return replace(
+        ports,
+        reason_generator=StubPartialFallbackReasonGenerator(
+            fallback_item_ids=fallback_item_ids,
+        ),
+    )
 
 
 def ports_with_user_meaning_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:

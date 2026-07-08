@@ -16,6 +16,7 @@ from reco.application.recommendation_orchestrator import (
     build_default_stub_ports,
 )
 from reco.application.recommendation_orchestrator.stubs import (
+    StubPartialFallbackReasonGenerator,
     StubConfigResolver,
     StubPipelineModule,
     StubReasonGenerator,
@@ -868,7 +869,7 @@ def test_trace_id_propagates_to_phase_log_and_metrics() -> None:
     assert all(record.trace_id == trace_id for record in records)
 
 
-# §14 No.13 Reason fallback
+# §14 No.13 Reason fallback（全 Item 回復不能注入）
 def test_reason_fallback_injects_generic_reason() -> None:
     ports, _ = _wired_ports()
     ports = _ports_with(
@@ -885,10 +886,47 @@ def test_reason_fallback_injects_generic_reason() -> None:
 
     assert outcome.success is True
     assert outcome.recommendation_result is not None
+    assert outcome.recommendation_result.result_status is not ResultStatus.PARTIAL
+    assert all(item.is_fallback for item in outcome.recommendation_result.items)
     item = outcome.recommendation_result.items[0]
     assert item.reason_summary == GENERIC_REASON_SUMMARY
     assert item.is_fallback is True
     assert item.reason_status == ReasonStatus.COMPLETED
+
+
+# §14 No.14 Reason 部分失敗（integration: 複数 Item で一部のみ fallback → partial）
+def test_section14_no14_partial_reason_fallback_marks_result_status_partial() -> None:
+    ports, _ = _wired_ports()
+    ports = _ports_with(
+        ports,
+        reason_generator=StubPartialFallbackReasonGenerator(
+            fallback_item_ids=frozenset({"item-002"}),
+        ),
+    )
+
+    outcome = RecommendationOrchestrator(ports).run(
+        _sample_request(),
+        trace_id="trace-section14-no14-partial",
+    )
+
+    assert outcome.success is True
+    result = outcome.recommendation_result
+    assert result is not None
+    assert result.result_status == ResultStatus.PARTIAL
+    assert len(result.items) >= 2
+
+    fallback_items = [item for item in result.items if item.is_fallback]
+    success_items = [item for item in result.items if not item.is_fallback]
+    assert fallback_items
+    assert success_items
+    assert len(fallback_items) < len(result.items)
+    assert fallback_items[0].reason_summary == GENERIC_REASON_SUMMARY
+    assert success_items[0].reason_summary != GENERIC_REASON_SUMMARY
+
+    context = outcome.execution_context
+    assert context is not None
+    assert context.reason_generator_fallback_count == len(fallback_items)
+    assert context.reason_generator_success_count == len(success_items)
 
 
 # Orchestrator 単体: User Meaning / Retrieval を Stub に戻して下流のみ検証する従来経路
