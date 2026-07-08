@@ -1,0 +1,168 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-002-reco-recommendation-run-api-implementation-spec-pr"
+  title: "API-INT-002 Reco推薦実行API実装仕様書 PRレビュー"
+  summary: "API-INT-002（Reco推薦実行 / Internal API）API実装仕様書作成 Task（api-implementation-spec.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1091
+  task_definition: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-implementation-spec.yaml"
+  source_branch: "docs/task-1091-api-int-002-reco-recommendation-run-api-implementation-spec"
+  target_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  parent_epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  parent_epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-implementation-spec.yaml"
+    required: true
+  issue:
+    number: 1091
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-366-api-int-002-reco-recommendation-run"
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "作成成果物（実装面）の内容確認"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "前提契約との整合確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "Orchestrator 接続・エンドポイント層境界の整合確認"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables:
+      - path: "prompts/templates/docs/api-implementation-spec.md"
+        required: true
+        purpose: "Task成果物が api-implementation-spec.md に沿って作成されているか確認するため"
+        applies_to:
+          - "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+
+review_points:
+  common:
+    - "Task Definition（api-implementation-spec.yaml）の scope を満たしているか"
+    - "acceptance_criteria を満たしているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+  docs:
+    - "api-implementation-spec.md の章構成に準拠しているか"
+    - "契約面（api-contract-spec.md 相当）の再掲が混入していないか"
+    - "build_production_ports / Orchestrator 接続が記載されているか"
+    - "エラーマップ・trace 伝播が設計書と整合しているか"
+  api_contract:
+    - "OpenAPI / generated 変更が混在していないか"
+    - "契約仕様書との矛盾がないか"
+  security:
+    - "secret や .env 実値が含まれていないか"
+  epic_scope:
+    - "PR差分が親Epic epic_scope.allowed_paths 内に収まっているか"
+    - "apps/reco 実装変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "docs 不備がある"
+  needs_human_decision:
+    conditions:
+      - "Epic Branch 先行差分の追随要否判断が必要"
+  split_required:
+    conditions:
+      - "OpenAPI / generated 変更が混在している"
+      - "apps/reco 実装変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+notes:
+  - "Issue / PR 確定後に target.issue / target.pr / input.issue.number / input.pr.number を更新する"
+  - "対応 Task Definition: prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-implementation-spec.yaml"
