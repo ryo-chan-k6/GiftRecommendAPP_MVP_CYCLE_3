@@ -15,6 +15,7 @@ from reco.application.config_version_resolver.in_memory_repository import (
     DEFAULT_SEMANTIC_CONFIG_ID,
     DEFAULT_SEMANTIC_CONFIG_VERSION_ID,
 )
+from reco.application.recommendation_orchestrator import OrchestratorPorts
 from reco.application.recommendation_run_recorder import (
     SCAFFOLD_PAIR_KEY,
     RecommendationRunRecorder,
@@ -38,6 +39,153 @@ _DEFAULT_RANKING_PARAMETER_JSON = {
     "top_k_default": 10,
     "diversity_method": "mmr",
 }
+
+_MODEL_VERSION_SEED_ROWS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        DEFAULT_EMBEDDING_MODEL_VERSION_ID,
+        "openai",
+        "text-embedding-3-small",
+        "embedding",
+    ),
+    (
+        "b1111111-1111-4111-8111-111111111102",
+        "openai",
+        "gpt-4o-mini",
+        "llm",
+    ),
+    (
+        "b1111111-1111-4111-8111-111111111103",
+        "internal",
+        "mvp_ranking_v1",
+        "ranking",
+    ),
+)
+
+
+def _row_exists(session: DatabaseSession, sql: str, params: tuple[object, ...]) -> bool:
+    return session.query_one(sql, params) is not None
+
+
+def _ensure_model_version_row(
+    session: DatabaseSession,
+    *,
+    model_version_id: str,
+    provider: str,
+    model_name: str,
+    model_type: str,
+) -> None:
+    """Align model_version rows with in-memory DEFAULT_* IDs (master seed 共存)."""
+    if _row_exists(
+        session,
+        "SELECT 1 FROM model_version WHERE model_version_id = %s",
+        (model_version_id,),
+    ):
+        return
+
+    conflict = session.query_one(
+        """
+        SELECT model_version_id
+        FROM model_version
+        WHERE provider = %s
+          AND model_name = %s
+          AND model_type = %s
+          AND version_label = %s
+        """,
+        (provider, model_name, model_type, "v001"),
+    )
+    if conflict is not None and str(conflict["model_version_id"]) != model_version_id:
+        old_id = str(conflict["model_version_id"])
+        session.execute(
+            "DELETE FROM item_embedding WHERE model_version_id = %s",
+            (old_id,),
+        )
+        session.execute(
+            "DELETE FROM model_version WHERE model_version_id = %s",
+            (old_id,),
+        )
+
+    session.execute(
+        """
+        INSERT INTO model_version (
+          model_version_id,
+          provider,
+          model_name,
+          model_type,
+          version_label,
+          is_current,
+          created_at
+        ) VALUES (%s, %s, %s, %s, %s, true, %s)
+        ON CONFLICT (model_version_id) DO NOTHING
+        """,
+        (
+            model_version_id,
+            provider,
+            model_name,
+            model_type,
+            "v001",
+            datetime.now(UTC),
+        ),
+    )
+
+
+def _ensure_named_config_row(
+    session: DatabaseSession,
+    *,
+    table: str,
+    id_column: str,
+    config_id: str,
+    config_name: str,
+    config_version: str,
+    parameter_json: dict[str, object],
+) -> None:
+    """Align ranking/matching config rows with in-memory DEFAULT_* IDs."""
+    if _row_exists(
+        session,
+        f"SELECT 1 FROM {table} WHERE {id_column} = %s",
+        (config_id,),
+    ):
+        return
+
+    conflict = session.query_one(
+        f"""
+        SELECT {id_column}
+        FROM {table}
+        WHERE config_name = %s
+          AND config_version = %s
+        """,
+        (config_name, config_version),
+    )
+    if conflict is not None and str(conflict[id_column]) != config_id:
+        old_id = str(conflict[id_column])
+        session.execute(
+            f"DELETE FROM recommendation_run WHERE {id_column} = %s",
+            (old_id,),
+        )
+        session.execute(
+            f"DELETE FROM {table} WHERE {id_column} = %s",
+            (old_id,),
+        )
+
+    session.execute(
+        f"""
+        INSERT INTO {table} (
+          {id_column},
+          config_name,
+          config_version,
+          parameter_json,
+          is_current,
+          created_at
+        ) VALUES (%s, %s, %s, %s::jsonb, true, %s)
+        ON CONFLICT ({id_column}) DO NOTHING
+        """,
+        (
+            config_id,
+            config_name,
+            config_version,
+            json.dumps(parameter_json),
+            datetime.now(UTC),
+        ),
+    )
 
 
 def ensure_observability_ddl(session: DatabaseSession) -> bool:
@@ -95,88 +243,32 @@ def ensure_config_version_seed_rows(session: DatabaseSession) -> None:
         ),
     )
 
-    for model_version_id, provider, model_name, model_type in (
-        (
-            DEFAULT_EMBEDDING_MODEL_VERSION_ID,
-            "openai",
-            "text-embedding-3-small",
-            "embedding",
-        ),
-        (
-            "b1111111-1111-4111-8111-111111111102",
-            "openai",
-            "gpt-4o-mini",
-            "llm",
-        ),
-        (
-            "b1111111-1111-4111-8111-111111111103",
-            "internal",
-            "mvp_ranking_v1",
-            "ranking",
-        ),
-    ):
-        session.execute(
-            """
-            INSERT INTO model_version (
-              model_version_id,
-              provider,
-              model_name,
-              model_type,
-              version_label,
-              is_current,
-              created_at
-            ) VALUES (%s, %s, %s, %s, %s, true, %s)
-            ON CONFLICT (model_version_id) DO NOTHING
-            """,
-            (
-                model_version_id,
-                provider,
-                model_name,
-                model_type,
-                "v001",
-                datetime.now(UTC),
-            ),
+    for model_version_id, provider, model_name, model_type in _MODEL_VERSION_SEED_ROWS:
+        _ensure_model_version_row(
+            session,
+            model_version_id=model_version_id,
+            provider=provider,
+            model_name=model_name,
+            model_type=model_type,
         )
 
-    session.execute(
-        """
-        INSERT INTO ranking_config (
-          ranking_config_id,
-          config_name,
-          config_version,
-          parameter_json,
-          is_current,
-          created_at
-        ) VALUES (%s, %s, %s, %s::jsonb, true, %s)
-        ON CONFLICT (ranking_config_id) DO NOTHING
-        """,
-        (
-            DEFAULT_RANKING_CONFIG_ID,
-            "mvp_ranking_config",
-            "v001",
-            json.dumps(_DEFAULT_RANKING_PARAMETER_JSON),
-            datetime.now(UTC),
-        ),
+    _ensure_named_config_row(
+        session,
+        table="ranking_config",
+        id_column="ranking_config_id",
+        config_id=DEFAULT_RANKING_CONFIG_ID,
+        config_name="mvp_ranking_config",
+        config_version="v001",
+        parameter_json=_DEFAULT_RANKING_PARAMETER_JSON,
     )
-    session.execute(
-        """
-        INSERT INTO matching_config (
-          matching_config_id,
-          config_name,
-          config_version,
-          parameter_json,
-          is_current,
-          created_at
-        ) VALUES (%s, %s, %s, %s::jsonb, true, %s)
-        ON CONFLICT (matching_config_id) DO NOTHING
-        """,
-        (
-            DEFAULT_MATCHING_CONFIG_ID,
-            "mvp_matching_config",
-            "v001",
-            json.dumps(DEFAULT_MATCHING_PARAMETER_JSON),
-            datetime.now(UTC),
-        ),
+    _ensure_named_config_row(
+        session,
+        table="matching_config",
+        id_column="matching_config_id",
+        config_id=DEFAULT_MATCHING_CONFIG_ID,
+        config_name="mvp_matching_config",
+        config_version="v001",
+        parameter_json=DEFAULT_MATCHING_PARAMETER_JSON,
     )
 
 
@@ -242,51 +334,109 @@ def insert_recommendation_request(
     )
 
 
+def _patch_run_recorder_pair_reader(
+    run_recorder: RecommendationRunRecorder,
+    *,
+    pair_id: str,
+) -> RecommendationRunRecorder:
+    return replace(
+        run_recorder,
+        pair_reader=InMemoryPairMasterReader(
+            pairs={SCAFFOLD_PAIR_KEY: pair_id},
+        ),
+    )
+
+
+def _merge_wired_pipeline_with_production_observability(
+    session: DatabaseSession,
+    *,
+    production_ports: OrchestratorPorts,
+    production_helpers: dict[str, object],
+) -> tuple[OrchestratorPorts, dict[str, object]]:
+    """本番 observability（Postgres）と wired パイプライン（unit §14 相当）を接続する。"""
+    from recommendation_orchestrator_helpers import (
+        _wrap_run_recorder_for_in_memory_registration,
+        build_wired_default_composition_ports,
+    )
+
+    wired_ports, wired_helpers = build_wired_default_composition_ports()
+    run_recorder = production_ports.run_recorder
+    if not isinstance(run_recorder, RecommendationRunRecorder):
+        msg = "expected RecommendationRunRecorder in production composition"
+        raise TypeError(msg)
+
+    run_recorder = _wrap_run_recorder_for_in_memory_registration(
+        run_recorder,
+        semantic_run_validation=wired_ports.user_semantic_extractor.run_validation,
+        embedding_run_validation=wired_ports.query_embedding_generator.run_validation,
+    )
+
+    ports = replace(
+        wired_ports,
+        run_recorder=run_recorder,
+        phase_log_writer=production_ports.phase_log_writer,
+        error_handler=production_ports.error_handler,
+        metric_logger=production_ports.metric_logger,
+    )
+    helpers = {
+        **wired_helpers,
+        **production_helpers,
+        "phase_log_writer": production_ports.phase_log_writer,
+        "error_handler": production_ports.error_handler,
+        "metric_logger": production_ports.metric_logger,
+    }
+    return ports, helpers
+
+
 def build_production_ports_for_postgres(
     session: DatabaseSession,
-) -> tuple[object, dict[str, object]]:
+) -> tuple[OrchestratorPorts, dict[str, object]]:
     """Build production composition and align pair_id with Postgres FK."""
     ensure_config_version_seed_rows(session)
     pair_id = resolve_postgres_pair_id(session)
-    ports, helpers = build_production_ports(database_session=session)
-    run_recorder = ports.run_recorder
+    production_ports, production_helpers = build_production_ports(
+        database_session=session,
+    )
+    run_recorder = production_ports.run_recorder
     if not isinstance(run_recorder, RecommendationRunRecorder):
         msg = "expected RecommendationRunRecorder from build_production_ports()"
         raise TypeError(msg)
 
-    patched_recorder = replace(
-        run_recorder,
-        pair_reader=InMemoryPairMasterReader(
-            pairs={SCAFFOLD_PAIR_KEY: pair_id},
-        ),
+    production_ports = replace(
+        production_ports,
+        run_recorder=_patch_run_recorder_pair_reader(run_recorder, pair_id=pair_id),
     )
-    ports = replace(ports, run_recorder=patched_recorder)
-    return ports, helpers
+    return _merge_wired_pipeline_with_production_observability(
+        session,
+        production_ports=production_ports,
+        production_helpers=production_helpers,
+    )
 
 
 def build_composition_ports_production_for_postgres(
     session: DatabaseSession,
-) -> tuple[object, dict[str, object]]:
+) -> tuple[OrchestratorPorts, dict[str, object]]:
     """Exercise CompositionMode.PRODUCTION selection with Postgres session."""
     ensure_config_version_seed_rows(session)
     pair_id = resolve_postgres_pair_id(session)
-    ports, helpers = build_composition_ports(
+    production_ports, production_helpers = build_composition_ports(
         CompositionMode.PRODUCTION,
         database_session=session,
     )
-    run_recorder = ports.run_recorder
+    run_recorder = production_ports.run_recorder
     if not isinstance(run_recorder, RecommendationRunRecorder):
         msg = "expected RecommendationRunRecorder from build_composition_ports(PRODUCTION)"
         raise TypeError(msg)
 
-    patched_recorder = replace(
-        run_recorder,
-        pair_reader=InMemoryPairMasterReader(
-            pairs={SCAFFOLD_PAIR_KEY: pair_id},
-        ),
+    production_ports = replace(
+        production_ports,
+        run_recorder=_patch_run_recorder_pair_reader(run_recorder, pair_id=pair_id),
     )
-    ports = replace(ports, run_recorder=patched_recorder)
-    return ports, helpers
+    return _merge_wired_pipeline_with_production_observability(
+        session,
+        production_ports=production_ports,
+        production_helpers=production_helpers,
+    )
 
 
 def sample_integration_request(*, request_id: str) -> RecommendationRequest:
