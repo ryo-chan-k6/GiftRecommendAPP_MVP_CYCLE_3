@@ -393,6 +393,96 @@ class StubReasonGenerator:
 
 
 @dataclass
+class StubPartialFallbackReasonGenerator:
+    """Simulate MOD-RECO-023 per-Item success/fallback for Orchestrator integration tests."""
+
+    module_id: str = "MOD-RECO-023"
+    phase_name: str = "reason_generated"
+    fallback_item_ids: frozenset[str] = frozenset()
+    success_reason_summary: str = "scaffold reason"
+
+    def generate(self, context: ExecutionContext) -> ReasonGenerationResult:
+        from reco.domain.recommendation.result import (
+            ReasonStatus,
+            RecommendationResult,
+            RecommendationResultItem,
+        )
+
+        from .constants import GENERIC_REASON_SUMMARY
+
+        result = context.recommendation_result
+        if result is None:
+            context.completed_modules.append(self.module_id)
+            return ReasonGenerationResult(outcome=ReasonGenerationOutcome.UNRECOVERABLE)
+
+        updated_items: list[RecommendationResultItem] = []
+        fallback_count = 0
+        success_count = 0
+
+        for item in result.items:
+            if item.item_id in self.fallback_item_ids:
+                updated_items.append(
+                    RecommendationResultItem(
+                        item_id=item.item_id,
+                        rank=item.rank,
+                        final_score=item.final_score,
+                        reason_summary=GENERIC_REASON_SUMMARY,
+                        reason_status=ReasonStatus.COMPLETED,
+                        is_fallback=True,
+                    )
+                )
+                fallback_count += 1
+                continue
+
+            updated_items.append(
+                RecommendationResultItem(
+                    item_id=item.item_id,
+                    rank=item.rank,
+                    final_score=item.final_score,
+                    reason_summary=self.success_reason_summary,
+                    reason_status=ReasonStatus.COMPLETED,
+                    is_fallback=False,
+                )
+            )
+            success_count += 1
+
+        version_info = dict(result.version_info or {})
+        version_info.update(
+            {
+                "reason_generator_item_count": str(len(updated_items)),
+                "reason_generator_success_count": str(success_count),
+                "reason_generator_fallback_count": str(fallback_count),
+                "reason_generator_persisted": "true",
+                "reason_generation_latency_ms": "0",
+            },
+        )
+        context.recommendation_result = RecommendationResult(
+            run_id=result.run_id,
+            request_id=result.request_id,
+            items=tuple(updated_items),
+            result_status=result.result_status,
+            version_info=version_info,
+        )
+        context.reason_generator_item_count = len(updated_items)
+        context.reason_generator_success_count = success_count
+        context.reason_generator_fallback_count = fallback_count
+        context.reason_generator_persisted = True
+        context.reason_generation_latency_ms = 0
+        context.completed_modules.append(self.module_id)
+
+        if fallback_count == 0:
+            outcome = ReasonGenerationOutcome.SUCCESS
+        else:
+            outcome = ReasonGenerationOutcome.INTERNAL_FALLBACK
+
+        return ReasonGenerationResult(
+            outcome=outcome,
+            reason_summary=self.success_reason_summary,
+            is_fallback=fallback_count > 0,
+        )
+
+
+@dataclass
 class StubErrorHandler:
     module_id: str = "MOD-RECO-024"
     error_log_events: list[dict[str, object]] = field(default_factory=list)
