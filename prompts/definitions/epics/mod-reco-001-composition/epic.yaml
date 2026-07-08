@@ -1,0 +1,288 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-mod-reco-001-composition"
+  title: "MOD-RECO-001:Orchestrator Composition（段階3）"
+  summary: "MOD-RECO-001 Recommendation Orchestrator の段階3 Composition milestone。MVP デフォルト composition（InMemory / stubs.py）から、apps/reco composition root・Postgres Repository 本番 DI・§14 観測系 E2E 強化へ移行する Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  段階2 Wiring（002〜023 + 024/025/028/029）は develop 上で完了している。
+  §14 integration（No.10 / No.11 / No.14）も PR #1072 / #1070 / #1074 merge 済み。
+  MOD-RECO-001 §8.4.4 および各観測系モジュール仕様書では、InMemory Repository を MVP 正とし、Postgres 永続化と composition root は段階3 Composition へ委譲している。
+  親 Epic #260（MOD-RECO-001:Recommendation Orchestrator）配下の milestone。develop への統合は本 Epic PR のみ。
+
+objective: |
+  段階3 Composition を Epic Issue / 配下 Task で管理し、本番 DI（Postgres Repository）・composition root・E2E integration を develop へ統合可能な単位に分割する。
+  配下 Task の PR target は本 Epic Branch とし、develop への統合は本 Epic PR のみで行う。
+  MVP デフォルト composition（`build_default_stub_ports()` / InMemory）は維持し、本番 composition は別 builder として追加する。
+
+scope:
+  - "apps/reco composition root（本番 DI エントリ）の設計・実装 Task を Issue 化する"
+  - "観測系 Postgres Repository（002 Run / 028 Phase Log / 029 Error Log / 025 Metric 等）DI Task を Issue 化する"
+  - "§14 No.10 相当の DB / ログ永続化 E2E integration 強化 Task を Issue 化する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置（prompts/definitions/tasks/mod-reco-001-composition/**）"
+  - "Epic / 子 Task 向け Review Definition 配置方針の整理"
+
+out_of_scope:
+  - "段階2 Wiring の再実施（stubs.py 本実装配線の巻き戻し）"
+  - "§14 integration 新規実装（No.10/11/14 は develop merge 済み）"
+  - "docs 正本追随（Task #1075 配下）"
+  - "API-INT-002 エンドポイント層実装"
+  - "MOD-RECO-002〜023 モジュール本体の新規機能追加（Repository DI 接続を除く）"
+  - "MOD-RECO-026/027 Batch Epic（別トラック）"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 新規 DDL（既存テーブル定義書にない変更）"
+  - "StubXxx クラスの削除"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§8.4.4 composition 配置・段階3 残課題・§14"
+    - path: "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+      required: false
+      purpose: "Run 記録 Postgres Repository 参考"
+    - path: "docs/06_実装設計/reco/MOD-RECO-024_Reco Error Handlerモジュール仕様書.md"
+      required: false
+      purpose: "Error 経路 DI 参考"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: false
+      purpose: "Postgres Metric Repository 参考"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: false
+      purpose: "Postgres PhaseLog Repository 参考"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      required: false
+      purpose: "Postgres ErrorLog Repository 参考"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001 責務境界確認"
+    - path: "apps/reco/src/reco/infrastructure/README.md"
+      required: true
+      purpose: "infrastructure 配置方針"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "MVP デフォルト composition 参照"
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/recommendation_run_repository.py"
+      required: false
+      purpose: "既存 Postgres Repository 骨格参考"
+  issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1075
+      purpose: "§14 integration 完了後 docs 追随 Task（並行可・docs 前提）"
+  prs:
+    - number: 1072
+      purpose: "§14 No.10 develop merge"
+    - number: 1070
+      purpose: "§14 No.11 develop merge"
+    - number: 1074
+      purpose: "§14 No.14 develop merge"
+
+output:
+  docs: []
+  files:
+    - "apps/reco/src/reco/composition/**"
+    - "apps/reco/src/reco/infrastructure/db/**"
+    - "apps/reco/tests/integration/**"
+  tests:
+    - "apps/reco/tests/integration/**"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]MOD-RECO-001:Orchestrator Composition（段階3））"
+  - "Epic Branch（develop 起点 / feature/epic-1076-mod-reco-001-composition）"
+  - "子 Task 候補: composition-root / postgres-observability-repositories / e2e-integration-test"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+  - "Epic Review Definition（reviews/mod-reco-001-composition/epic/pr-review.yaml）"
+
+acceptance_criteria:
+  - "Epic Issue が存在する"
+  - "Epic Branch が develop から作成されている"
+  - "composition root が apps/reco に配置され、MVP デフォルト composition と責務分離されている"
+  - "観測系 Postgres Repository DI が composition root から接続可能である"
+  - "§14 No.10 相当の E2E integration が Epic Branch で green である"
+  - "StubXxx および build_default_stub_ports() が削除されていない"
+  - "配下 Task PR が merge され、Epic PR が develop へ統合可能"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1076-mod-reco-001-composition"
+  summary: "mod-reco-001-composition"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-12"
+
+issue:
+  number: 1076
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: "MOD-RECO-001"
+  allowed_paths:
+    - "apps/reco/src/reco/composition/**"
+    - "apps/reco/src/reco/infrastructure/db/**"
+    - "apps/reco/src/reco/infrastructure/logger/**"
+    - "apps/reco/src/reco/application/recommendation-run-recorder/**"
+    - "apps/reco/src/reco/application/phase-log-writer/**"
+    - "apps/reco/src/reco/application/error-log-writer/**"
+    - "apps/reco/src/reco/application/reco-error-handler/**"
+    - "apps/reco/src/reco/application/metric-logger/**"
+    - "apps/reco/tests/integration/**"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+    - "prompts/definitions/tasks/mod-reco-001-composition/**"
+    - "prompts/definitions/reviews/mod-reco-001-composition/**"
+    - "prompts/definitions/epics/mod-reco-001-composition/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+    - "apps/reco/src/reco/application/user-meaning/**"
+    - "apps/reco/src/reco/application/retrieval/**"
+    - "apps/reco/src/reco/application/matching/**"
+    - "apps/reco/src/reco/application/ranking/**"
+    - "apps/reco/src/reco/application/reason/**"
+    - "apps/reco/src/reco/api/**"
+    - "apps/api/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "packages/contracts/**"
+    - "db/**"
+  child_task_areas:
+    - "composition-root"
+    - "postgres-repository"
+    - "e2e-integration-test"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1075
+      purpose: "§14 integration 完了後 docs 追随（並行可）"
+  prs:
+    - number: 1072
+      purpose: "§14 No.10 merge"
+    - number: 1070
+      purpose: "§14 No.11 merge"
+    - number: 1074
+      purpose: "§14 No.14 merge"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-post-section14-integration-docs-alignment"
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/composition/**"
+    - "apps/reco/src/reco/infrastructure/db/repositories/**"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "apps/reco/tests/integration/**"
+  commands:
+    - "cd apps/reco && uv run pytest tests/integration -q"
+  manual_checks:
+    - "MVP デフォルト composition（build_default_stub_ports）が維持されているか"
+    - "Postgres Repository DI が composition root から選択可能か"
+    - "§14 No.10 E2E が Epic Branch で green か"
+  not_required:
+    - "API-INT-002 endpoint E2E"
+  skip_reason:
+    "API-INT-002 endpoint E2E": "API-INT-002 Epic 配下 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "epic_scope / allowed_paths が段階3 Composition に閉じているか"
+    - "stubs.py / orchestrator.py への変更が混入していないか"
+    - "MVP デフォルト composition と本番 composition の責務分離が明確か"
+    - "Postgres Repository が既存 DB 定義書と整合しているか"
+    - "§14 E2E 強化が No.10 観点を満たしているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "段階3 Composition は DB / infrastructure 横断影響あり"
+
+risk_points:
+  - "Postgres Repository 実装と既存 InMemory テストの二重保守"
+  - "composition root 配置と API-INT-002 エンドポイント層の境界混同"
+  - "DB migration / schema 変更の別 Task 化漏れ"
+
+human_decision_points:
+  - "Postgres Repository の MVP 対象範囲（002/028/029/025 のどこまでを Epic 内で完結させるか）は子 Task 起票時に分割判断する"
+
+stop_conditions:
+  - "DB schema 変更が Epic scope を超える"
+  - "OpenAPI / generated 変更が必要"
+  - "stubs.py の MVP デフォルト composition 削除が必要と判断された場合（Human 確認）"
+
+notes:
+  - "Epic Issue: #1076"
+  - "親 Issue: #260（[Epic]MOD-RECO-001:Recommendation Orchestrator）"
+  - "Epic Branch: feature/epic-1076-mod-reco-001-composition"
+  - "workstream_key: mod-reco-001-composition"
+  - "子 Task 起票候補（bootstrap 後）:"
+  - "  1. composition-root.yaml"
+  - "  2. postgres-observability-repositories.yaml"
+  - "  3. e2e-integration-test.yaml"
