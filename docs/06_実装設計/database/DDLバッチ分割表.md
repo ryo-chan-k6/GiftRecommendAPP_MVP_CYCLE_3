@@ -7,7 +7,7 @@
 | ドキュメントID | `DB-DDL-BATCH-MVP-001` |
 | 親 Epic | #435 `docs/epic-435-db-physical-design` |
 | 正本関係 | 運用規約は [マイグレーション方針書.md](./マイグレーション方針書.md)。本書は **④ DDL Task 起票・進捗管理の正本** |
-| 更新日 | 2026-07-02（D14 matching_config 追記） |
+| 更新日 | 2026-07-08（D15 metric_log 追記） |
 
 ---
 
@@ -63,6 +63,7 @@ D01（extension / enum）
 | D12 | `d12_deferred_fk_indexes` | — | ✅ 完了 | 循環参照回避・後追い索引 |
 | D13 | `d13_ddl_cross_check` | — | ✅ 完了 | DDL 横断整合ゲート（#582 型） |
 | D14 | `d14_matching_config` | 1 + 列追加 3 | ✅ Issue #906 | matching_config 新設 + Run 再現性列 |
+| D15 | `d15_metric_log` | 1 | ✅ Issue #1080 | metric_log 新設（Composition 工程 ② / develop 増分） |
 
 ---
 
@@ -280,7 +281,23 @@ retention 詳細は ⑥ データ保持・削除方針書 Task で確定。DDL �
 
 ---
 
-## 19. Issue 起票 wave
+## 19. D15 — metric_log 増分（Issue #1080）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 出力 | `db/ddl/d15_metric_log.sql` |
+| migration | `supabase/migrations/20260708120000_metric_log.sql` |
+| 対象 | `metric_log` CREATE（MOD-RECO-025 Tier 1 / Tier 1b Run 集約 Metric） |
+| 前提 | D01〜D14 適用済み（`recommendation_run` LOGICAL 参照）。工程 ① テーブル定義書（#1078 / PR #1079） |
+| 備考 | Composition Epic #1076 工程 ②。Tier 2 は D11 `reco_score_distribution_metric` 既存正本 |
+
+| # | テーブル / 変更 | MVP |
+| - | --------------- | --- |
+| 1 | `metric_log` CREATE | ○ |
+
+---
+
+## 20. Issue 起票 wave
 
 | Wave | Batch | Issue 数 |
 | ---- | ----- | --------: |
@@ -293,7 +310,7 @@ D01 完了後に Wave 1（D02〜）へ着手する。**④ 全バッチ merge �
 
 ---
 
-## 20. Issue 進捗（事実）
+## 21. Issue 進捗（事実）
 
 **Epic Branch HEAD**: `690dbc6`（2026-06-17）
 
@@ -313,10 +330,11 @@ D01 完了後に Wave 1（D02〜）へ着手する。**④ 全バッチ merge �
 | D12 | #609 | #625 | CLOSED |
 | D13 | #610 | #626 | CLOSED |
 | D14 | #906 | — | In Progress |
+| D15 | #1080 | — | In Progress |
 
 ---
 
-## 21. 関連資料
+## 22. 関連資料
 
 | 種別 | パス |
 | ---- | ---- |

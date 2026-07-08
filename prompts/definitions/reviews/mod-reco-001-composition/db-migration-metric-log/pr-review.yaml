@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-composition-db-migration-metric-log-pr"
+  title: "metric_log DDL / migration PRレビュー"
+  summary: "Composition Epic 工程 ② metric_log DDL / migration Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1081
+  issue:
+    number: 1080
+  task_definition: "prompts/definitions/tasks/mod-reco-001-composition/db-migration-metric-log.yaml"
+  source_branch: "chore/task-1080-metric-log-ddl"
+  target_branch: "develop"
+  parent_epic_issue: 435
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-composition/db-migration-metric-log.yaml"
+    required: true
+
+review_points:
+  - "metric_log_テーブル定義書 §6〜§10 との DDL 整合"
+  - "db/ddl と supabase/migrations の内容一致"
+  - "LOGICAL FK 方針（recommendation_run 物理 FK なし）"
+  - "reco_score_distribution_metric 非変更"
+  - "apps/** 変更なし"
+  - "PR target が develop であること"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / target.pr を更新する"
+  - "Related Composition Epic #1076"
