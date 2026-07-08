@@ -39,7 +39,7 @@ objective: |
 
 scope:
   - "apps/reco composition root（本番 DI エントリ）の設計・実装 Task を Issue 化する"
-  - "観測系 Postgres Repository（002 Run / 028 Phase Log / 029 Error Log / 025 Metric 等）DI Task を Issue 化する"
+  - "観測系 Postgres Repository（002 Run / 028 Phase Log / 029 Error Log / 025 Metric Tier 1+2）DI Task を Issue 化する"
   - "§14 No.10 相当の DB / ログ永続化 E2E integration 強化 Task を Issue 化する"
   - "Epic Branch を develop から作成する"
   - "子 Task Definition の配置（prompts/definitions/tasks/mod-reco-001-composition/**）"
@@ -68,8 +68,14 @@ input:
       required: false
       purpose: "Error 経路 DI 参考"
     - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "§8.4 / §9.1 Tier 1・§16.2 Tier 2 Postgres 永続化境界"
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "025 Tier 2（§12 分布 Metric）Postgres 正本"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
       required: false
-      purpose: "Postgres Metric Repository 参考"
+      purpose: "§11.2 Run 集約 Metric・§12 分布 Metric 参考"
     - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
       required: false
       purpose: "Postgres PhaseLog Repository 参考"
@@ -130,7 +136,7 @@ acceptance_criteria:
   - "Epic Issue が存在する"
   - "Epic Branch が develop から作成されている"
   - "composition root が apps/reco に配置され、MVP デフォルト composition と責務分離されている"
-  - "観測系 Postgres Repository DI が composition root から接続可能である"
+  - "観測系 Postgres Repository DI が composition root から接続可能である（025 は Tier 1 `metric_log` 相当 + Tier 2 `reco_score_distribution_metric` の両方）"
   - "§14 No.10 相当の E2E integration が Epic Branch で green である"
   - "StubXxx および build_default_stub_ports() が削除されていない"
   - "配下 Task PR が merge され、Epic PR が develop へ統合可能"
@@ -232,7 +238,7 @@ test_policy:
     - "cd apps/reco && uv run pytest tests/integration -q"
   manual_checks:
     - "MVP デフォルト composition（build_default_stub_ports）が維持されているか"
-    - "Postgres Repository DI が composition root から選択可能か"
+    - "Postgres Repository DI が composition root から選択可能か（025 Tier 1+2 含む）"
     - "§14 No.10 E2E が Epic Branch で green か"
   not_required:
     - "API-INT-002 endpoint E2E"
@@ -246,7 +252,7 @@ review:
     - "epic_scope / allowed_paths が段階3 Composition に閉じているか"
     - "stubs.py / orchestrator.py への変更が混入していないか"
     - "MVP デフォルト composition と本番 composition の責務分離が明確か"
-    - "Postgres Repository が既存 DB 定義書と整合しているか"
+    - "Postgres Repository が既存 DB 定義書と整合しているか（025 Tier 1: metric_log 相当 / Tier 2: reco_score_distribution_metric）"
     - "§14 E2E 強化が No.10 観点を満たしているか"
     - "Epic PR target が develop であるか"
   specialist_reviews:
@@ -268,9 +274,12 @@ risk_points:
   - "Postgres Repository 実装と既存 InMemory テストの二重保守"
   - "composition root 配置と API-INT-002 エンドポイント層の境界混同"
   - "DB migration / schema 変更の別 Task 化漏れ"
+  - "025 Tier 1（metric_log 相当）と Tier 2（reco_score_distribution_metric）の二系統 Postgres 永続化の責務境界"
+  - "metric_log 物理テーブル定義書未整備による 025 Tier 1 Postgres 着手遅延"
 
 human_decision_points:
-  - "Postgres Repository の MVP 対象範囲（002/028/029/025 のどこまでを Epic 内で完結させるか）は子 Task 起票時に分割判断する"
+  - "【確定 2026-07-08】025 Postgres 永続化は Tier 1（レイテンシ・件数・fallback 等 → metric_log 相当）と Tier 2（§12 分布 Metric → reco_score_distribution_metric）の両方を段階3 Composition で実施する"
+  - "metric_log テーブル定義書・db migration は Epic #1076 外（allowed_paths / forbidden_paths）の前提 Task として別途起票する"
 
 stop_conditions:
   - "DB schema 変更が Epic scope を超える"
@@ -283,6 +292,10 @@ notes:
   - "Epic Branch: feature/epic-1076-mod-reco-001-composition"
   - "workstream_key: mod-reco-001-composition"
   - "子 Task 起票候補（bootstrap 後）:"
+  - "  0. metric-log-table-spec.yaml（工程 ① metric_log テーブル定義書）"
   - "  1. composition-root.yaml"
-  - "  2. postgres-observability-repositories.yaml"
+  - "  2. postgres-observability-repositories.yaml（002/028/029 + 025 Tier 1+2 Postgres Repository）"
   - "  3. e2e-integration-test.yaml"
+  - "前提 Task（Epic #1076 外・Human 判断反映）:"
+  - "  - metric_log テーブル定義書（docs Task。025 Tier 1 Postgres 正本）"
+  - "  - db migration（db/** Task。metric_log / 必要時 reco_score_distribution_metric）"

@@ -48,6 +48,7 @@ review_points:
   - "MVP デフォルト composition 維持（stubs.py 非変更）"
   - "§14 No.10 E2E 強化の妥当性"
   - "DB / infrastructure 横断影響の説明"
+  - "025 Metric Postgres（Tier 1 metric_log 相当 + Tier 2 reco_score_distribution_metric）の整合"
   - "secret 非含有"
 
 notes:
