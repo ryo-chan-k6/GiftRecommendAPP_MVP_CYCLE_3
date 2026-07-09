@@ -2,11 +2,11 @@ schema_version: "1.0"
 definition_type: "review"
 
 review:
-  id: "review-api-pub-002-implementation-spec-pr"
+  id: "review-api-pub-002-recommendation-run-api-implementation-spec-pr"
   title: "API-PUB-002 レコメンド実行API実装仕様書 PRレビュー"
-  summary: "API-PUB-002 実装仕様書作成 Task（#364）の PR を AI Review する"
+  summary: "API-PUB-002 実装仕様書作成 Task（api-implementation-spec.yaml / #364）の PR を AI Review する"
   type: "task_pr_review"
-  status: "ready"
+  status: "draft"
 
 work_mode: "ai-agent"
 
@@ -18,10 +18,10 @@ branch:
   worktree_required: false
 
 target:
-  pr: 365
+  pr: null
   issue:
     number: 364
-  task_definition: null
+  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml"
   source_branch: "docs/task-364-api-pub-002-recommendation-run-api-spec"
   target_branch: "feature/epic-357-api-pub-002-recommendation-run"
   parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
@@ -29,54 +29,35 @@ target:
 
 commands:
   primary: "/review-pr"
-  allowed:
-    - "/review-pr"
-    - "/summarize-work"
-  next:
-    approve_for_human_review: "Human Review"
-    request_changes: "/fix-review-comments"
-    needs_human_decision: "Human Decision"
-    split_required: "/start-task"
-    blocked: null
 
 agent:
   primary: "reviewer-ai"
-  support:
-    - "support-ai"
   specialist:
     docs: "docs-reviewer-ai"
-    test: null
     contract: "contract-ai"
-    security: null
-  next:
-    fixer: "fixer-ai"
-    human: "human-reviewer"
 
 review_scope:
   docs: true
-  source: false
-  tests: false
   api_contract: true
-  db: false
-  generated: true
-  cicd: false
   security: true
   project_operation: true
 
 input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml"
+    required: true
   issue:
     number: 364
     required: true
   pr:
-    number: 365
+    number: null
     required: true
-  diff:
-    required: true
-    compare_with: "feature/epic-357-api-pub-002-recommendation-run"
   docs:
     - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
       required: true
     - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
       required: true
   templates:
     deliverables:
@@ -87,15 +68,20 @@ input:
 
 review_points:
   common:
-    - "契約仕様書（PR #359）と矛盾する Public I/F 再定義がないか"
+    - "実装面に限定されているか（契約面再掲なし）"
+    - "createRecoClient / API-INT-002 連携が記載されているか"
+    - "契約仕様書（#358）と矛盾しないか"
     - "OpenAPI / apps 実装が混入していないか"
-    - "epic_scope 内の docs のみか"
+    - "epic_scope 内か"
+  api_contract:
+    - "Internal resultItems → Public items のマッピングが明確か"
+    - "GRS-AUTH-* → Public 500 GRS-REC-002 が記載されているか"
 
 result_policy:
   approve_for_human_review:
     conditions:
-      - "実装仕様書が api-implementation-spec テンプレートに沿っている"
-      - "契約仕様書への参照が正しい"
+      - "acceptance_criteria を満たしている"
+      - "scope 外変更がない"
 
 status_policy:
   current_status: "AI Review"
@@ -103,4 +89,4 @@ status_policy:
   on_request_changes: "In Progress"
 
 notes:
-  - "Task Definition は Epic 分割モデルに合わせ Issue #364 で実装仕様書のみ作成"
+  - "旧 PR #365 は close 済み。PR 作成後に target.pr を更新する"
