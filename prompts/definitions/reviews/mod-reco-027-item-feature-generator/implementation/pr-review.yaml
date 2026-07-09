@@ -16,12 +16,12 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1110
   task_definition: "prompts/definitions/tasks/mod-reco-027-item-feature-generator/implementation.yaml"
   source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-027-item-feature-generator"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-027-item-feature-generator"
+  target_branch: "feature/epic-1104-mod-reco-027-item-feature-generator"
+  parent_epic_issue: 1104
+  parent_epic_branch: "feature/epic-1104-mod-reco-027-item-feature-generator"
 
 commands:
   primary: "/review-pr"
