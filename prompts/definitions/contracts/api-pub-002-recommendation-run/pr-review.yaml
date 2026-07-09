@@ -1,0 +1,152 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-recommendation-run-openapi-sync-pr"
+  title: "API-PUB-002 レコメンド実行OpenAPI契約反映 PRレビュー"
+  summary: "API-PUB-002 OpenAPI Contract Task（openapi-sync.yaml / #1126）の PR を AI Review する"
+  type: "contract_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1126
+  task_definition: "prompts/definitions/contracts/api-pub-002-recommendation-run/openapi-sync.yaml"
+  source_branch: "contract/task-1126-api-pub-002-recommendation-run-openapi-sync"
+  target_branch: "feature/epic-357-api-pub-002-recommendation-run"
+  parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  parent_epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: true
+  db: false
+  generated: true
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/contracts/api-pub-002-recommendation-run/openapi-sync.yaml"
+    required: true
+  issue:
+    number: 1126
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-357-api-pub-002-recommendation-run"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "OpenAPI 反映の入力正本（§6〜§10・§14.1）"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+      purpose: "Phase4b 位置づけ・Contract Gate 後続 Task との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Success/Error envelope・0 件方針・Public 非表示スコア"
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+    - path: "apps/web/src/generated/api/"
+      required: true
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: true
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Contract Definition（openapi-sync.yaml）の scope を満たしているか"
+    - "out_of_scope（契約 docs 変更 / apps/api 実装 / internal-reco-api.yaml 変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch であるか"
+    - "Task PR で Closes #1126 を使っていないか（Related to を使用）"
+  api_contract:
+    - "public-api.yaml の POST /api/v1/recommendations が契約仕様書 §6〜§10 と矛盾しないか"
+    - "operationId が runRecommendation であるか"
+    - "PublicRecommendationResultItem に isFallback が定義されているか"
+    - "reasonSummary の description が §7.3.2.1 / #764 方針と整合しているか"
+    - "ResultStatus enum が completed / empty / partial であるか"
+    - "0 件 example が resultStatus: empty かつ meta.resultCode: GRS-REC-001 を含むか"
+    - "§14.1 の maxLength が該当 schema に反映されているか"
+  generated:
+    - "apps/web/src/generated/api/ が Orval 再生成のみか（手動編集なし）"
+    - "generated 差分が OpenAPI 変更と対応しているか"
+  tests:
+    - "ci-contract（ci-validate-yaml + orval）/ apps/web build 結果が PR 本文に記載されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+  branch:
+    - "PR target が feature/epic-357-api-pub-002-recommendation-run であるか"
+  epic_scope:
+    - "allowed_paths（packages/contracts/openapi / apps/web/src/generated/api）内に収まっているか"
+    - "forbidden_paths（apps/api 実装 / apps/web 画面 / internal-reco-api.yaml）への変更がないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "契約仕様書・実装仕様書 docs を変更していない"
+    - "implementation_gate 後続 Task（apps/api 実装）への影響が PR 本文に記載されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "ci-contract / web build が SUCCESS"
+      - "generated 手動編集なし"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "契約仕様書 §10・§14.1 との不整合"
+      - "generated 手動編集または Orval 未実行"
+      - "ci-contract / web build 失敗"
+
+notes:
+  - "resolve-review-definition.cjs はファイル名 pr-review.yaml を正とする。Contract Definition 同ディレクトリに配置"
+  - "契約仕様書 Task（#358）用 reviews/api-pub-002-recommendation-run/pr-review.yaml とは別定義"
