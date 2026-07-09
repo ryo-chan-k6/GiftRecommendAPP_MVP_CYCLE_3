@@ -195,3 +195,4 @@ notes:
   - "対応 Task Definition: prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
   - "review.target.pr / input.pr.number / input.issue.number / target.source_branch は Issue 起票後に反映"
   - "resolve-review-definition.cjs は pr-review.yaml 固定名を探索。本ファイルパスを PR head に含める"
+  - "Human 判断（2026-07-10）: 実装仕様書 §10 No.2（0 件正常系）は実接続 integration に残す。unit のスタブ 0 件は Response マッピング確認に限定"

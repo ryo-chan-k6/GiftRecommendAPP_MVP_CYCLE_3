@@ -168,7 +168,7 @@ acceptance_criteria:
   - "既存スモークテストが引き続き成功する"
   - "`pnpm --filter @gift-recommendation/api build` が SUCCESS"
   - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
-  - "integration 観点（実装仕様書 §10 No.1, 2, 4, 5, 7, 9 等）は本 Task で未実施であることを PR に明記している"
+  - "integration 観点（実装仕様書 §10 No.1, 2, 4, 5, 7, 9 等）は本 Task で未実施であることを PR に明記している（§10 No.2 は Human 判断により実接続 integration に残す。unit のスタブ 0 件は Response マッピング確認に限定）"
   - "テストが本番 DB / 外部 API / secret に依存していない"
   - "Public API 層の不要な機能変更を含まない（テスト成立に必要な最小修正のみ）"
   - "OpenAPI / generated / apps/reco / apps/web の変更を含まない"
@@ -297,9 +297,9 @@ risk_points:
   - "実装仕様書 §11 未決事項（GRS-REQ-006 / 502 vs 500）を unit で確定扱いしてしまうリスク"
 
 human_decision_points:
-  - "実装仕様書 §10 No.2（0 件）を unit（スタブ）で検証するか、integration に残すか"
+  - "【決定済 2026-07-10】実装仕様書 §10 No.2（0 件正常系）は実接続の integration に残す。本 Task のスタブ 0 件は Response マッピング（empty / GRS-REC-001）確認に限定し、§10 No.2 完了条件とはしない"
   - "実装仕様書 §11 No.1（GRS-REQ-006）を本 Task の Validation テストに含めるか、未決のままスキップするか"
-  - "integration 観点（§10 No.1, 4, 5, 7, 9）を別 Task 化するタイミング"
+  - "integration 観点（§10 No.1, 2, 4, 5, 7, 9）を別 Task 化するタイミング"
   - "Epic #357 の develop merge 判断タイミング（本 Task 完了後）"
 
 stop_conditions:
@@ -319,6 +319,7 @@ notes:
   - "Review Definition: prompts/definitions/reviews/api-pub-002-recommendation-run/unit-test/pr-review.yaml"
   - "既存スモーク（#1129）: Validation（必須欠落）、0 件 empty マッピング、Public フィルタ、Error Mapper の一部"
   - "本 Task で追加想定: 予算矛盾、Validation 追加ケース、createRecoClient mode、trace meta、Error Mapper 網羅、§12 対応表"
+  - "Human 判断（2026-07-10）: §10 No.2（0 件正常系）は実接続 integration に残す。unit スタブ 0 件はマッピング確認のみ"
   - "Issue #1130"
   - "worktree: test-task-1130-api-pub-002-recommendation-run-unit-test"
   - "起票: /start-task @prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
