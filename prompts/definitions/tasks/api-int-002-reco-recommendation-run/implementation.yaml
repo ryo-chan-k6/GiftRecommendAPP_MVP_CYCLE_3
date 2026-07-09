@@ -1,0 +1,313 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-002-reco-recommendation-run-implementation"
+  title: "API-INT-002:Reco推薦実行エンドポイント実装"
+  summary: "API-INT-002（Reco推薦実行 / Internal API、`POST /internal/reco/v1/recommendations/run`）の apps/reco エンドポイント層（`apps/reco/src/reco/api/**`）を新規実装する。MOD-RECO-001 Orchestrator を CompositionMode.PRODUCTION で呼び出し、契約仕様書・実装仕様書に沿った Request/Response マッピングとエラーハンドリングを提供する（Phase4b 2/3）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: 366
+  epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  related_issues:
+    - 1091
+    - 1097
+  related_prs:
+    - 1094
+    - 1099
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase4b 縦串（実装仕様書 → OpenAPI Contract → reco エンドポイント実装 → 単体テスト）の 2/3 である。
+  前提として API実装仕様書（#1091 / PR #1094）および OpenAPI Contract Task（#1097 / PR #1099）が親 Epic Branch に merge 済みであること。
+  現状 `apps/reco/src/reco/api/**` は未実装。MOD-RECO-001 Composition（#1076 / PR #1088）により `build_production_ports()` / `RecommendationOrchestrator.run()` は利用可能。
+  本 Task では FastAPI エンドポイント層を新規作成し、Internal API Key 認証・Request/Response マッピング・Orchestrator 委譲・エラーマップを実装する。
+
+objective: |
+  `POST /internal/reco/v1/recommendations/run` を apps/reco 上で提供し、契約仕様書および実装仕様書に沿った HTTP I/F を実装する。
+  CompositionMode.PRODUCTION で Orchestrator を呼び出し、正常系（0 件含む）・異常系・debug 返却条件を満たす Response を返却できる状態にする。
+
+scope:
+  - "FastAPI アプリケーション新規実装（`apps/reco/src/reco/api/**`）"
+  - "`POST /internal/reco/v1/recommendations/run` ルート実装"
+  - "Internal API Key 認証（`X-Internal-Api-Key` / `RECO_INTERNAL_API_KEY`）"
+  - "Request Mapper（API DTO camelCase → domain RecommendationRequest）"
+  - "Response Mapper（domain RecommendationResult → `data` + `meta`、契約上 `data.resultItems`）"
+  - "Error Mapper（RecoError / Validation → HTTP + GRS-*）"
+  - "trace / request_id の Header ↔ meta 一致"
+  - "debug 返却条件（§7.3.8）に基づく scoreBreakdown / debugPayload / reasonData 組立"
+  - "CompositionMode.PRODUCTION 固定での Orchestrator DI"
+  - "Task / Review Definition 整備（本ファイルおよび pr-review.yaml）"
+
+out_of_scope:
+  - "packages/contracts/openapi/** の変更"
+  - "apps/api/src/generated/reco-client/** の再生成"
+  - "apps/api reco-client wrapper 実装（ScaffoldRecoClient 置換）"
+  - "apps/reco/src/reco/application/** の推薦ロジック変更"
+  - "契約仕様書・実装仕様書 docs の変更"
+  - "DB schema 変更・migration"
+  - "網羅的単体テスト Task（Phase4b 3/3 で実施）"
+  - "apps/web / apps/batch の変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "実装正本（処理フロー・マッピング・DI・認証・debug 方針）"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "Response 外形・Validation・Error 一覧の参照"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Internal API の URL / Method / Error 形式"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "Internal API Key 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* エラーマップ"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "trace / phase_log / access log 方針"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "Request マッピング正本"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "Response マッピング正本"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: false
+      purpose: "エンドポイント層と MOD-RECO-001 の境界確認"
+  templates: []
+  files:
+    - path: "packages/contracts/openapi/internal-reco-api.yaml"
+      required: true
+      purpose: "OpenAPI 正本（Contract Task 反映済み。実装の schema 参照用）"
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+      purpose: "build_production_ports / build_composition_ports"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/"
+      required: true
+      purpose: "RecommendationOrchestrator.run 呼び出し先"
+    - path: "apps/reco/src/reco/domain/recommendation/request.py"
+      required: false
+      purpose: "既存 domain 型の再利用"
+    - path: "apps/reco/src/reco/domain/recommendation/result.py"
+      required: false
+      purpose: "既存 domain 型の再利用"
+  issues:
+    - number: 1091
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 1097
+      purpose: "前提 Contract Task（OpenAPI 契約反映）"
+  prs:
+    - number: 1094
+      purpose: "前提 PR（実装仕様書）"
+    - number: 1099
+      purpose: "前提 PR（OpenAPI Contract）"
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/api/**"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/reco/tests/**"
+      action: "create_or_update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "FastAPI エンドポイント層（`apps/reco/src/reco/api/**`）"
+  - "POST /internal/reco/v1/recommendations/run 実装"
+  - "認証・マッピング・エラーハンドリング・Orchestrator 接続"
+  - "Task / Review Definition（本ファイル・pr-review.yaml）"
+
+acceptance_criteria:
+  - "`apps/reco/src/reco/api/**` にエンドポイント層が実装されている"
+  - "実装仕様書 §3〜§8（処理フロー・マッピング・認証・debug・エラー）と矛盾しない"
+  - "契約仕様書の Response 外形（`data.resultItems` / `WarningItem[]` / 0 件 `completed`）を満たす"
+  - "CompositionMode.PRODUCTION で Orchestrator を呼び出している"
+  - "OpenAPI / generated / apps/api wrapper の変更を含まない"
+  - "apps/reco/src/reco/application/** の推薦ロジック本体変更を含まない"
+  - "epic_scope.allowed_paths 内に差分が収まっている"
+  - "reco unit test またはスモークテストが最低限通る（結果を PR に記載）"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1103-api-int-002-reco-recommendation-run-implementation"
+  summary: "api-int-002-reco-recommendation-run-implementation"
+  base: "feature/epic-366-api-int-002-reco-recommendation-run"
+  target: "feature/epic-366-api-int-002-reco-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  number: 1103
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 366
+      purpose: "親 Epic（API-INT-002）"
+  issues:
+    - number: 1091
+      purpose: "API実装仕様書 Task 完了"
+    - number: 1097
+      purpose: "OpenAPI Contract Task 完了"
+  prs:
+    - number: 1094
+      purpose: "実装仕様書 Epic Branch merge"
+    - number: 1099
+      purpose: "OpenAPI Contract Epic Branch merge"
+  tasks:
+    - "task-api-int-002-reco-recommendation-run-api-implementation-spec（#1091 merge 済み）"
+    - "contract-api-int-002-reco-recommendation-run-openapi-sync（#1097 merge 済み）"
+    - "MOD-RECO-001 Composition（#1076 / PR #1088）が develop に存在すること"
+  blocking: true
+
+contract_gate:
+  required: true
+  gate_id: "contract-api-int-002-reco-recommendation-run-openapi-sync"
+  prerequisite_contract_tasks:
+    - issue: "#1097"
+      definition: "prompts/definitions/contracts/api-int-002-reco-recommendation-run/openapi-sync.yaml"
+  verify_at:
+    - "/start-task"
+    - "/work-issue"
+  blocked_message: "Contract Gate未通過。先行 Contract Task #1097 の親 Epic Branch マージと generated 再生成を確認してください。"
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/contracts/api-int-002-reco-recommendation-run/openapi-sync.yaml"
+    - "prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-implementation-spec.yaml"
+  blocks:
+    - "API-INT-002 単体テスト Task（Phase4b 3/3）"
+  exclusive_files:
+    - "apps/reco/src/reco/api/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "reco unit test（エンドポイント層スモーク）"
+    - "typecheck / compile"
+    - "scope boundary check"
+    - "secret check"
+  commands:
+    - "cd apps/reco && python -m pytest tests/ -q --tb=short -k 'api or recommendation' || true"
+    - "cd apps/reco && python -m compileall src/reco/api"
+  manual_checks:
+    - "実装仕様書 §4.1 処理フローがコード上で表現されていることを確認する"
+    - "0 件正規系で resultStatus: completed / resultItemCount: 0 となることを確認する"
+    - "OpenAPI / generated / apps/api の変更が含まれていないことを確認する"
+    - "apps/reco/src/reco/application/** への変更が含まれていないことを確認する"
+    - "secret、APIキー、.env 実値が含まれていないことを確認する"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract-check（OpenAPI 変更なし）"
+    - "網羅的単体テスト（後続 unit-test Task）"
+  skip_reason:
+    "integration test": "Orchestrator 実接続の結合は後続または別環境で実施"
+    "e2e test": "API-PUB-002 / apps/api 経路は別 Task"
+    "contract-check（OpenAPI 変更なし）": "本 Task は OpenAPI 変更を含まない"
+    "網羅的単体テスト（後続 unit-test Task）": "Phase4b 3/3 で実施"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書・契約仕様書との整合（マッピング・認証・debug・エラー）"
+    - "Contract Gate 前提（OpenAPI Contract #1097 merge 済み）を満たしているか"
+    - "epic_scope 内に差分が収まっているか（application 層・OpenAPI・api wrapper を含まないか）"
+    - "CompositionMode.PRODUCTION 固定か"
+    - "data.resultItems / WarningItem[] / 0 件 completed の契約準拠"
+    - "trace_id / request_id の meta 一致"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "API-INT-002 初回エンドポイント実装。Orchestrator 接続・マッピング判断の横断影響を cross-cutting に記録可。"
+
+risk_points:
+  - "domain RecommendationResult 型が Phase4a scaffold のため、Response マッピングで domain 拡張が必要になる可能性"
+  - "Orchestrator スタブ前提の下位 MOD により、実レスポンスの中身が最小限になる可能性"
+  - "FastAPI 起動方法（uvicorn エントリ）と既存 reco アプリ構成の整合"
+  - "Pydantic schema と OpenAPI 正本の二重管理（Contract Task 後の追随）"
+
+human_decision_points:
+  - "domain 型拡張が必要になった場合、application 層変更ではなく domain 最小拡張か別 Task 化か"
+  - "FastAPI lifespan での Orchestrator シングルトン vs リクエストスコープ DI"
+  - "MOD-RECO-001 Epic（#260）が Done でなくても Composition merge を前提に着手するか（実装仕様書 §3.3 参照）"
+
+stop_conditions:
+  - "Contract Gate 未通過（#1097 / PR #1099 が親 Epic Branch に未 merge）"
+  - "必須 input.docs が存在しない場合"
+  - "OpenAPI / generated 変更が必要になった場合（Contract Task へ分離）"
+  - "apps/reco/src/reco/application/** の変更が必要になった場合（MOD-RECO-001 Epic へ分離）"
+  - "apps/api wrapper 実装変更が必要になった場合（別 Task へ分離）"
+  - "secret や .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Issue #1103"
+  - "worktree: feature-task-1103-api-int-002-reco-recommendation-run-implementation"
+  - "Phase4b 2/3。後続: 単体テスト Task → Epic PR → develop"
+  - "Review Definition: prompts/definitions/reviews/api-int-002-reco-recommendation-run/implementation/pr-review.yaml"
+  - "PR target は親 Epic Branch（develop 不可）"
+  - "Task PR では Related to #<issue> を使用（Closes 禁止）"
