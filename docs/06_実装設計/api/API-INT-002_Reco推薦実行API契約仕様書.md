@@ -29,7 +29,7 @@ api（`apps/api`）から reco（`apps/reco` エンドポイント層）へ、�
 
 - api→reco 間の Request / Response / Error / Validation を確定し、Contract Gate および後続 OpenAPI Contract Task の入力とする。
 - Recommendation Request / Result 定義書・API設計方針書・API一覧・エラーコード定義書と整合した Internal 契約面を提供する。
-- Public API（API-PUB-002）が内部呼び出しする先の I/F 境界を明確にする（Public 表面仕様は別契約仕様書を正とする）。
+- Public API（API-PUB-002）が内部呼び出しする先の I/F 境界を明確にする（Public 表面仕様は `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` を正とする）。
 
 ---
 
@@ -75,7 +75,7 @@ api が Public API（API-PUB-002）で Recommendation Request を受け付け・
 | Consumer モジュール | `MOD-API-005`（Reco Client）— 本 API の呼び出し責務 |
 | Provider 境界 | `apps/reco` エンドポイント層（HTTP I/F）。推薦ロジック本体は application 層 |
 | 推薦パイプライン | `MOD-RECO-001`（Recommendation Orchestrator）等 — 契約上は「reco 内で実行される処理」として参照のみ。詳細は Recoモジュール一覧・モジュール仕様書を正とする |
-| 上流 Public API | `API-PUB-002`（レコメンド実行）— web↔api 契約は別文書 |
+| 上流 Public API | `API-PUB-002`（レコメンド実行）— 契約正本は `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` |
 
 ### 5.5 Public API 連携（契約上の前提のみ）
 
@@ -325,7 +325,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 
 Ranking / Matching 等の先行フェーズ失敗で Item 自体が存在しない場合は、本節の Reason 失敗とは別扱いとする。
 
-**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` / `metadata.debugPayload` 等を Public Response から除外する。Public へ渡す Reason 関連は **`reasonSummary` / `reasonBadges` / `cautionNote`** のみ（API設計方針書 §21.3、API-PUB-002 契約仕様書（未作成）参照）。
+**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` / `metadata.debugPayload` 等を Public Response から除外する。Public へ渡す Reason 関連は **`reasonSummary` / `reasonBadges` / `cautionNote`** のみ（API設計方針書 §21.3、`API-PUB-002_レコメンド実行API契約仕様書.md` §7.3.2.1 参照）。
 
 #### 7.3.3 `meta`
 
@@ -647,6 +647,8 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
 
 ### 8.2 Error一覧（本 API で想定する代表）
 
+Public 向け Error Response の契約正本は `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` §8 とする。
+
 | Status | Error Code | 発生条件 | Response概要 | Public 向けマップ（API-PUB-002） |
 | -----: | ---------- | -------- | ------------ | -------------------------------- |
 | 401 | `GRS-AUTH-001` | Internal API Key 不正 | 認証失敗 | §8.2.1 参照（500 + `GRS-REC-002`） |
@@ -688,7 +690,7 @@ api（`apps/api`）が reco（API-INT-002）呼び出しで受け取る `GRS-AUT
 
 実装詳細（MOD-API-013 Error Handler、reco-client 例外変換、単体テスト）は API-INT-002 実装仕様書 Task で定義する。判断記録は `ai-logs/human-decisions/2026-06-05-api-int-002-internal-401-public-map-policy.md` を参照。
 
-`GRS-REC-001` は **HTTP 200** の正常系（0 件）として扱い、§7.4.2 を参照。エラー Response 一覧には含めない。
+`GRS-REC-001` は **HTTP 200** の正常系（0 件）として扱い、§7.4.2 および `API-PUB-002_レコメンド実行API契約仕様書.md` §7.4.2 を参照。エラー Response 一覧には含めない。
 
 `GRS-REQ-003`（予算未指定）・`GRS-REQ-004` / `005`（関係性・用途未指定）は、api 側 Public Validation で解消済みのため、本 API では原則返却しない。
 
