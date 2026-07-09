@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1098
   issue:
     number: 1096
   task_definition: "prompts/definitions/tasks/mod-reco-026-item-semantic-generator/implementation.yaml"
