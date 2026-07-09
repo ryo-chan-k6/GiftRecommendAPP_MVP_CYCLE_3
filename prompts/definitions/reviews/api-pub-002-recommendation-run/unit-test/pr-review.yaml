@@ -19,9 +19,9 @@ branch:
 
 target:
   pr: null
-  issue: null
+  issue: 1130
   task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
-  source_branch: "test/task-<issue-number>-api-pub-002-recommendation-run-unit-test"
+  source_branch: "test/task-1130-api-pub-002-recommendation-run-unit-test"
   target_branch: "feature/epic-357-api-pub-002-recommendation-run"
   parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
   parent_epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
@@ -68,7 +68,7 @@ input:
     path: "prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
     required: true
   issue:
-    number: null
+    number: 1130
     required: true
   pr:
     number: null
@@ -181,6 +181,7 @@ project:
     priority: "high"
 
 issue:
+  number: 1130
   unit: "task"
   type: "test"
   area: "api"

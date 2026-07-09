@@ -177,7 +177,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-api-pub-002-recommendation-run-unit-test"
+  name: "test/task-1130-api-pub-002-recommendation-run-unit-test"
   summary: "api-pub-002-recommendation-run-unit-test"
   base: "feature/epic-357-api-pub-002-recommendation-run"
   target: "feature/epic-357-api-pub-002-recommendation-run"
@@ -193,6 +193,7 @@ project:
     due_date: null
 
 issue:
+  number: 1130
   unit: "task"
   type: "test"
   area: "api"
@@ -318,4 +319,6 @@ notes:
   - "Review Definition: prompts/definitions/reviews/api-pub-002-recommendation-run/unit-test/pr-review.yaml"
   - "既存スモーク（#1129）: Validation（必須欠落）、0 件 empty マッピング、Public フィルタ、Error Mapper の一部"
   - "本 Task で追加想定: 予算矛盾、Validation 追加ケース、createRecoClient mode、trace meta、Error Mapper 網羅、§12 対応表"
+  - "Issue #1130"
+  - "worktree: test-task-1130-api-pub-002-recommendation-run-unit-test"
   - "起票: /start-task @prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
