@@ -63,7 +63,7 @@ Item Semantic Generator（Item Semantic 抽出）は、**Batch（BATCH-010）** 
 - 同一 `concept_code` の重複を **confidence 最大値で統合**する（Semanticルール定義書 §14.2）
 - **`confidence >= 0.60`** を通常採用ラインとする（Semanticルール定義書 §9.4）
 - 構造化結果を **`semantic_json`** として組み立て、`item_semantic` テーブルへ **Upsert** する（`item_id` + `semantic_config_version_id` 冪等キー）
-- 入力不変かつ既存行ありの場合、Batch 側 skip 方針に従い **生成スキップ**を返却してよい（`item_semantic_テーブル定義書` §5.5、バッチ設計方針書 §14.1）
+- 入力不変かつ既存行ありの場合、Batch 側 skip 方針に従い **生成スキップ**を返却してよい（`item_semantic_テーブル定義書` §5.5、バッチ設計方針書 §17.3）
 - 抽出失敗時に **`GRS-BAT-008`** 相当のエラーを Batch 呼び出し元へ返却し、当該 Queue 行を `failed` へ遷移させる
 
 ### 5.2 対象外責務
@@ -101,7 +101,7 @@ Item Semantic Generator（Item Semantic 抽出）は、**Batch（BATCH-010）** 
 | `context.item_caption` | `string` | `false` | `item`（catchcopy 等） | Semantic 抽出 | source_type=`item_caption` |
 | `context.item_description` | `string` | `false` | `item` | Semantic 抽出（主ソース） | source_type=`item_description` |
 | `context.genre_name` | `string` | `false` | `external_genre` 等 | 補助文脈 | source_type=`item_genre` |
-| `context.attributes` | `string[]` | `false` | `item` 属性 | 補助 Concept 候補 | source_type=`item_attribute`（内部正規化可） |
+| `context.attributes` | `string[]` | `false` | `item` 属性 | 補助 Concept 候補 | 内部では `source_type=item_tag` として Rule 適用（Semanticルール定義書 §3.2） |
 | `context.tags` | `string[]` | `false` | `item` タグ | 補助 Concept 候補 | source_type=`item_tag` |
 | `context.review_texts` | `string[]` | `false` | レビュー集約 | 補助抽出 | source_type=`item_review`。MVP は Feature 入力に含めないが Semantic 補助可 |
 | `context.brand_name` | `string` | `false` | `item` | 補助文脈 | source_type=`item_brand` |
@@ -313,7 +313,7 @@ Semanticルール定義書 §6.2 / §13.1 に従い、MVP では **Rule-first + 
 | 結果 | 不変なら `status = skipped`。Queue は `skipped` 可（`item_semantic_テーブル定義書` §5.5） |
 | 再生成 | 入力変更・version 変更・既存行なし・failed 再実行時は生成する |
 
-正本: バッチ設計方針書 §14.1 / §17.3。`semantic_input_hash` は `feature_input_hash`（BATCH-011）と **別算出・別保持**（§16.1 No.2）。
+正本: バッチ設計方針書 §13.2 / §17.3。`semantic_input_hash` は `feature_input_hash`（BATCH-011）と **別算出・別保持**（§16.1 No.2）。
 
 #### 8.3.7 MOD-RECO-001（Orchestrator）との関係
 
@@ -482,7 +482,7 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-09 | 初版作成 | Issue #1093 |
-| 2026-07-09 | Phase Log 経路（Batch Logger / 028 非使用）整理、§16.2 推奨案追加 | Issue #1093 |
+| 2026-07-09 | Phase Log 経路（Batch Logger / 028 非使用）整理 | Issue #1093 |
 | 2026-07-09 | §16.1 Human 決定反映（timeout / semantic_input_hash / item_review / phase_log） | Issue #1093 |
 
 ---
