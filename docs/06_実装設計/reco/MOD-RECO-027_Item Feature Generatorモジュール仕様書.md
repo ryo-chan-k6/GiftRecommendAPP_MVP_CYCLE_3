@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco` / `apps/batch`） |
 | MVP対象        | `○`                                                      |
 | 作成日         | 2026-07-09                                               |
-| 更新日         | 2026-07-09                                               |
+| 更新日         | 2026-07-09（§16.1 Human 決定反映）                       |
 
 ---
 
@@ -43,7 +43,7 @@ Item Feature Generator（Item Feature 生成）は、**Batch（BATCH-012）** �
 | 所属Epic | `MOD-RECO-027`（Epic Issue #1104） |
 | MVP対象 | `○` |
 | 主な呼び出し元 | BATCH-012（`apps/batch`）、`item_generation_queue` 消化処理（`generation_type = feature`） |
-| 主な呼び出し先 | Feature Rule Repository（`concept_feature_rule` 等）/ `item_semantic` Repository / `item_feature` Repository、`MOD-RECO-003` Config Version Resolver（batch 経由） |
+| 主な呼び出し先 | Feature Rule Repository（`concept_feature_rule` 等）/ `item_semantic` Repository / `item_feature` Repository、`packages/shared-logic`（Feature Engine 純粋計算）、`MOD-RECO-003` Config Version Resolver（batch 経由） |
 
 `MOD-API-*` / `MOD-RECO-*` / `MOD-BATCH-*` 配下の Task では、該当モジュール ID の責務範囲に変更を限定する。`MOD-RECO-*` では `apps/reco/src/reco/api/**` の API-INT エンドポイント層を対象に含めない。エンドポイント層の変更が必要な場合は、該当する `API-INT-*` Epic 配下 Task として扱う。
 
@@ -53,7 +53,7 @@ Item Feature Generator（Item Feature 生成）は、**Batch（BATCH-012）** �
 
 ### 5.1 主責務
 
-- 対象 `item_id` の **`item_semantic.semantic_json.concepts[]`** および商品メタデータを、Featureルール定義書 §13（Item Feature Rule）に従い **8 軸 `item_feature_raw`** へ変換する
+- 対象 `item_id` の **`item_semantic.semantic_json.concepts[]`** を、Featureルール定義書 §13（Item Feature Rule）に従い **8 軸 `item_feature_raw`** へ変換する（メタデータは BATCH-010 Semantic 経由で Concept に反映済みとする — §16.1 No.2）
 - 生成時点の **`semantic_config_version_id`**（`MOD-RECO-003` 解決結果）に紐づく **`concept_feature_rule`** / **`feature_definition`** を参照する
 - MVP 統合式の起点 **`neutral_base = 0.5`** を各軸に適用し、Concept 由来 Delta を **`Σ(concept_feature_delta × source_weight × confidence)`** で加算する（Featureルール定義書 §13.3）
 - **`source_type`**（`item_name` / `item_caption` / `item_description` / `item_genre` / `item_tag` / `item_brand` 等）に応じた **source_weight** を Featureルール定義書 §13.2 に従い適用する
@@ -75,6 +75,8 @@ Item Feature Generator（Item Feature 生成）は、**Batch（BATCH-012）** �
 - **Feature 正規化**（sigmoid / z-score 等、`MOD-BATCH-034` Feature Normalizer、BATCH-013 責務）
 - **Item Meaning 射影**・**Item Embedding 生成**（BATCH-013 以降 / `MOD-BATCH-036` 責務）
 - **User Feature 生成**（`MOD-RECO-007`、処理種別 `OL`）
+- **Item Metadata / Review の直接 Feature Delta**（Featureルール定義書 §4.2 の独立項。MVP は **Concept 経由のみ** — §16.1 No.2）
+- **`packages/feature_engine` の新設**（中核は既存 `packages/shared-logic` — §16.1 No.3）
 - **Matching / Ranking / Retrieval** 計算
 - Batch workflow 定義・GitHub Actions 設定（`apps/batch` / CI Task 責務）
 - Phase Log / Error Log の **物理書き込み契機管理**（**Batch Logger**（`apps/batch`）/ Batch Error Handler 経由。本モジュールは結果・エラーを返却。`MOD-RECO-028` は OL 専用のため **使用しない**）
@@ -142,6 +144,7 @@ Item Feature Generator（Item Feature 生成）は、**Batch（BATCH-012）** �
 | BATCH-011（間接前提） | 間接依存 | `feature_input_hash` の前提 | hash 欠落時は本モジュール未到達 | 本モジュールは hash を再算出しない |
 | `MOD-RECO-003` Config Version Resolver | 間接依存（Batch 側が先に呼ぶ） | `semantic_config_version_id` / normalization binding | `003` 失敗時は本モジュール未到達 | `BatchResolveContext.generation_type = feature` |
 | `MOD-RECO-026` Item Semantic Generator | 間接依存（BATCH-010） | `item_semantic` 入力 | Semantic 未生成時 `GRS-BAT-008` | 直接呼び出しなし |
+| `packages/shared-logic` Feature Engine | 呼び出し | delta 統合・clip 等の純粋計算 | 計算異常時 `GRS-BAT-008` | §8.3.6。Item アダプタは reco 側 |
 | Batch Error Handler | 間接連携 | 例外の標準化 | Queue `failed` | `apps/batch` 側 |
 | Batch Logger（`apps/batch`） | 間接連携 | BATCH-012 Run 単位の `phase_log` 記録 | 記録失敗は当該 Item 結果に影響させない方針 | `owner_type = batch_run`。`MOD-RECO-028` は **経由しない** |
 
@@ -185,8 +188,8 @@ flowchart TD
 
     LOAD --> BASE[各軸 neutral_base=0.5 設定]
     BASE --> DELTA[Concept ごとに delta 加算<br/>source_weight × confidence]
-    DELTA --> META[メタデータ補助 delta 適用<br/>MVP は Rule 完結時は省略可]
-    META --> CLIP[8 軸 raw を 0.0〜1.0 clip]
+    DELTA --> ENG[shared-logic Feature Engine<br/>delta 統合]
+    ENG --> CLIP[8 軸 raw を 0.0〜1.0 clip]
     CLIP --> BUILD[item_feature 8 行組み立て]
 
     BUILD --> UPSERT[item_feature Upsert<br/>raw のみ・normalized=NULL]
@@ -207,11 +210,12 @@ flowchart TD
 | 4 | skip 判定 | 冪等キー 5 列 + `feature_input_hash` | `skipped` または継続 | バッチ処理一覧 §6.2 |
 | 5 | Rule 読込 | version | `concept_feature_rule` 集合 | 稀疏 seed 可（Featureルール定義書 §20.1） |
 | 6 | 軸ごと raw 初期化 | — | `raw[axis] = 0.5` | §8.3.1 |
-| 7 | Concept Delta 加算 | `semantic_json.concepts[]` | 更新後 raw | §8.3.2 |
-| 8 | raw clip | 算出 raw | clip 後 raw | §8.3.3 |
-| 9 | 8 行組み立て | clip 後 raw × 8 軸 | Upsert DTO | `normalized_feature_value = NULL` |
-| 10 | 永続化 | 冪等キー + raw | `item_feature` 8 行 | Upsert |
-| 11 | 結果返却 | 永続化結果 | `item_feature_generation_result` | Batch が Queue status を更新 |
+| 7 | Concept Delta 加算 | `semantic_json.concepts[]` | 更新後 raw | §8.3.1 / §8.3.2。Metadata / Review 直接 Delta は **適用しない**（§16.1 No.2） |
+| 8 | shared-logic 統合 | base + deltas | 統合後 raw | §8.3.6 `integrate_feature_deltas` 等 |
+| 9 | raw clip | 算出 raw | clip 後 raw | §8.3.3 |
+| 10 | 8 行組み立て | clip 後 raw × 8 軸 | Upsert DTO | `normalized_feature_value = NULL` |
+| 11 | 永続化 | 冪等キー + raw | `item_feature` 8 行 | Upsert |
+| 12 | 結果返却 | 永続化結果 | `item_feature_generation_result` | Batch が Queue status を更新 |
 
 **Batch 呼び出し順序（正本: バッチ処理一覧 BATCH-009〜013）**
 
@@ -233,7 +237,7 @@ Featureルール定義書 §13（Item Feature Rule）および §18.2（Item Fea
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 生成方式 | `concept_feature_rule` + `item_semantic` Concept 集合。共通 Feature Engine の Item パス（バッチ設計方針書 §13.4） |
+| 生成方式 | `concept_feature_rule` + `item_semantic` Concept 集合。中核計算は **`packages/shared-logic`** Feature Engine（§8.3.6） |
 | 起点 | **`neutral_base = 0.5`**（全 8 軸。Featureルール定義書 §13.3 / §13.4） |
 | Concept 0 件 | 全軸 raw = 0.5（clip 後も 0.5）で **成功** |
 | Rule version | 当該 `semantic_config_version_id` かつ `concept_feature_rule.is_active = true` のみ |
@@ -242,7 +246,7 @@ Featureルール定義書 §13（Item Feature Rule）および §18.2（Item Fea
 
 #### 8.3.1 Item Feature raw 統合式（MVP）
 
-Featureルール定義書 §13.3 を正とする。
+Featureルール定義書 §13.3 を正とする。§4.2 の `Item Metadata Feature Delta` / `Item Review Feature Delta` は **論理分解**であり、MVP 実装では **Concept 経由（§13.3）のみ** を適用する（§16.1 No.2）。
 
 ```text
 item_feature_raw[axis]
@@ -252,15 +256,16 @@ item_feature_raw[axis]
       × source_weight(concept.source_type)
       × concept.confidence
     )
-  + optional_metadata_delta[axis]   // MVP では Rule 側で吸収できれば 0
 ```
 
 | パラメータ | 供給元 | 備考 |
 | ---------- | ------ | ---- |
 | `neutral_base` | 固定 `0.5` | Concept 未抽出商品を中立扱い（§13.4） |
 | `concept_feature_delta` | `concept_feature_rule` | `feature_delta` × `polarity` |
-| `source_weight` | Featureルール定義書 §13.2 | `item_description=1.00` 等 |
-| `confidence` | `item_semantic.semantic_json.concepts[]` | Semantic 抽出結果 |
+| `source_weight` | Featureルール定義書 §13.2 | `item_description=1.00` 等。メタデータ強弱は Concept の `source_type` で表現 |
+| `confidence` | `item_semantic.semantic_json.concepts[]` | Semantic 抽出結果（BATCH-010） |
+
+**MVP 対象外（§16.1 No.2）**: Featureルール定義書 §4.2 の独立項 `Item Metadata Feature Delta` / `Item Review Feature Delta` は **加算しない**。メタデータは BATCH-010 Semantic 抽出入力として間接反映し、Review は Feature hash / Feature 推定要素から除外する（バッチ設計方針書 §13.3）。
 
 **8 軸ループ**: MVP 固定 8 `feature_code` すべてについて上式を適用する。Rule ヒットなし軸は `neutral_base` のまま。
 
@@ -305,9 +310,28 @@ item_feature_raw[axis]
 | 成功 | `status = generated` または `skipped`。8 軸 raw / `item_feature_ids` / hash / normalization version が設定される |
 | 失敗 | 例外または `batch_error`（表面 `GRS-BAT-008`）。当該 Queue 行は **failed**（Batch 側が更新） |
 | Phase Log | **Batch Logger** が BATCH-012 Run 単位で `item_feature_generated`（`batch_run_phase_name`）を `phase_log` へ記録（`owner_type = batch_run` / `owner_id = batch_run_id`）。`MOD-RECO-028` Phase Log Writer（OL 専用）は **使用しない** |
-| 配置 | reco 側は **application 層 Port + 実装**。batch 側は DI で reco モジュールを注入 |
+| 配置 | reco 側は **application 層 Port + 実装**（§8.3.6）。batch 側は DI で reco モジュールを注入 |
 
-#### 8.3.6 MOD-RECO-001（Orchestrator）との関係
+#### 8.3.6 Feature Engine / DI 境界（MVP 確定）
+
+バッチ設計方針書 §4.4 の「共通 Feature Engine」は、既存 **`packages/shared-logic`** を正本とする（`packages/feature_engine` の新設は **行わない** — §16.1 No.3）。
+
+```text
+apps/batch (BATCH-012)
+  └─ DI → apps/reco/application/item-feature-generator/   [Port 実装・永続化・Batch I/F]
+            ├─ 呼び出し → packages/shared-logic/feature_engine.py   [delta 統合・clip 等の純粋計算]
+            └─ Repository → concept_feature_rule / item_feature（apps/reco infra 層）
+```
+
+| レイヤ | 配置 | 責務 |
+| ------ | ---- | ---- |
+| 純粋計算 | `packages/shared-logic` | `integrate_feature_deltas`, `clip_feature_vector`, 将来の Concept→Delta 変換 |
+| Item 固有 | `apps/reco/.../item-feature-generator/` | context 検証、Rule 読込、Semantic→Delta 変換、Upsert、Batch 返却 |
+| Batch 起動 | `apps/batch` | Queue 消化、Config 解決（`003`）、Logger / Error Handler |
+
+> バッチ設計方針書 §4.4 の `packages/feature_engine` 表記は **`packages/shared-logic` への読み替え**とする。docs 追随は別 Task で実施する（本 Epic scope 外）。
+
+#### 8.3.7 MOD-RECO-001（Orchestrator）との関係
 
 | 観点 | 方針 |
 | ---- | ---- |
@@ -411,7 +435,7 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 
 | Metric | 内容 | 集計単位 | 用途 |
 | ------ | ---- | -------- | ---- |
-| `item_feature_generation_latency_ms` | Item Feature raw 生成処理時間 | Item / Batch Run | ボトルネック分析 |
+| `item_feature_generation_latency_ms` | Item Feature raw 生成処理時間 | Item / Batch Run | ボトルネック分析。PoC 後に p95 閾値を設定（§16.1 No.1） |
 | `item_feature_concept_count` | 入力 Concept 件数 | Item | 品質・空入力監視 |
 | `item_feature_rule_hit_count` | 適用 Rule ヒット件数 | Item | Rule カバレッジ |
 | `item_feature_raw_clip_applied_count` | raw clip 発動軸数 | Item | 統合式・Rule 強度監視 |
@@ -427,7 +451,7 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 | ---- | ---- |
 | レイテンシ | Batch 処理のため Online SLO（4,000ms）の対象外。Item 単位の処理時間目標は PoC / Batch 性能 Task で確定 |
 | 計算量 | Concept 数 × Rule 数（8 軸）。MVP は LLM 不使用 |
-| タイムアウト | 本モジュール単体 hard timeout は MVP 初版 **設けない**（§16） |
+| タイムアウト | 本モジュール単体 hard timeout は MVP 初版 **設けない**（§16.1 No.1） |
 | リトライ | モジュール内自動リトライ **なし**（§10.2） |
 | キャッシュ | 同一 Batch Run 内で `concept_feature_rule` / `feature_definition` のメモリキャッシュ可 |
 | 並列実行 | 同一 `item_id` + `semantic_config_version_id` + `feature_input_hash` の **二重 processing 禁止**（バッチ設計方針書 §18.1）。Batch 側 concurrency で制御 |
@@ -436,10 +460,12 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 
 | 種別 | 対象 | MVP 値 | 超過時の扱い |
 | ---- | ---- | ------ | ------------ |
-| hard | 本モジュール単体 | **なし** | — |
+| hard | 本モジュール単体 | **なし**（§16.1 No.1） | — |
+| soft 監視 | `item_feature_generation_latency_ms` p95 | **PoC 後に数値確定**（暫定目標 500ms/Item を記録可。超過は失敗にしない） | Metric / 構造化ログのみ |
 | 依存 | DB / Rule 読込 | インフラ / Client 設定に従う | `GRS-BAT-008` |
+| Batch 全体 | BATCH-012 workflow | Batch CI / 運用 Task で別管理 | 本モジュール scope 外 |
 
-**PoC 連携**: Item 単位 soft / hard の **数値**は PoC 実測後に §13.2 へ追記する。
+**PoC 連携**: soft 監視の **p95 閾値**は PoC 実測後に §13.2 へ追記する。hard timeout 方針（なし）は §16.1 No.1 で確定済み。
 
 ---
 
@@ -467,6 +493,8 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 | 18 | hash 再算出なし | 本モジュールが `feature_input_hash` を再算出しないこと | architecture |
 | 19 | 正規化非実施 | sigmoid 正規化が本モジュールに含まれないこと | architecture |
 | 20 | Upsert 冪等 | 同一冪等キー再実行時に 8 行が上書きされ件数が増えないこと | integration |
+| 21 | Metadata 直接 Delta 非適用 | §4.2 の独立 Metadata / Review Delta が加算されないこと | unit / architecture |
+| 22 | shared-logic 利用 | delta 統合・clip が `packages/shared-logic` 経由であること | architecture |
 
 ---
 
@@ -477,6 +505,7 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-09 | 初版作成 | Issue #1105 |
+| 2026-07-09 | §16.1 Human 決定反映（timeout / Metadata Delta / Feature Engine 配置） | Issue #1105 |
 
 ---
 
@@ -484,9 +513,15 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | 本モジュール単体 soft / hard timeout **数値** | PoC / Batch 実測前のため数値未確定 | Human | PoC 完了後 | §13.2。方針（MVP hard なし）は §13.1 で記載 |
-| 2 | メタデータ直接 Delta（`Item Metadata Feature Delta`）の MVP 適用範囲 | Featureルール定義書 §4.2 と §13.3 の詳細差分。Concept 経由で足りるか | Human | 実装 Task 前 | 実装 Task で Rule seed と合わせて確定 |
-| 3 | 共通 Feature Engine の packages 配置と reco からの DI 境界 | バッチ設計方針書 §4.4 の packages 化タイミング | Human | 実装 Epic | 本仕様書は Item パス責務のみ定義 |
+| 1 | soft 監視 `item_feature_generation_latency_ms` の **p95 閾値** | PoC / Batch 実測前のため数値未確定 | Human | PoC 完了後 | §13.2。hard なし方針は §16.1 No.1 で確定済み |
+
+### 16.1 確定済み論点（Issue #1105 Human 判断）
+
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | 本モジュール単体 timeout（MVP 方針） | **MVP 初版はモジュール単体 hard を設けない**（`MOD-RECO-026` §16.1 No.1 同型）。DB / Client 超過時 `GRS-BAT-008`。soft 監視は `item_feature_generation_latency_ms` の p95 のみ PoC 後に設定（超過は失敗にしない）。Batch workflow 全体上限は Batch CI / 運用 Task で別管理。§13.2 |
+| 2 | Metadata / Review 直接 Delta の MVP 範囲 | **Concept 経由（§13.3）のみ**を正とする。Featureルール定義書 §4.2 の独立項 `Item Metadata Feature Delta` / `Item Review Feature Delta` は **MVP 対象外**。メタデータは BATCH-010 Semantic 経由で間接反映。Review は Feature hash / Feature 推定から除外。§8.3.1 |
+| 3 | Feature Engine 配置と DI 境界 | 中核は **`packages/shared-logic`**（既存 `feature_engine.py`）。`MOD-RECO-027` は `apps/reco/application/item-feature-generator/` に Item 入力アダプタ + Port 実装を置く。**`packages/feature_engine` は新設しない**。バッチ設計方針書 §4.4 の `packages/feature_engine` は shared-logic への読み替え。§8.3.6 |
 
 ---
 
@@ -511,6 +546,8 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 | MOD-RECO-026 仕様書 | `docs/06_実装設計/reco/MOD-RECO-026_Item Semantic Generatorモジュール仕様書.md` | 上流 Batch モジュール |
 | MOD-RECO-007 仕様書 | `docs/06_実装設計/reco/MOD-RECO-007_User Feature Generatorモジュール仕様書.md` | User 側 Feature 生成（OL） |
 | MOD-RECO-028 仕様書 | `docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md` | OL 専用（BT では不使用） |
+| 実装フェーズ実行プロセス設計書 | `docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md` | `packages/shared-logic` 配置 |
+| packages/shared-logic | `packages/shared-logic/src/gift_recommendation/shared_logic/feature_engine.py` | Feature Engine 実装正本 |
 | module-spec テンプレート | `prompts/templates/docs/module-spec.md` | 章構成 |
 | Epic Definition | `prompts/definitions/epics/mod-reco-027-item-feature-generator/epic.yaml` | allowed_paths |
 
@@ -527,6 +564,8 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 - Feature 入力 hash 算出（BATCH-011）・Feature 正規化（BATCH-013 / `MOD-BATCH-034`）の責務が混入していない
 - Item Semantic 抽出（`MOD-RECO-026`）の責務が混入していない
 - MVP は **ルールベース**（LLM 不使用）であることが明記されている
+- §16.1 No.2: Metadata / Review **直接 Delta が MVP 対象外**であること
+- §16.1 No.3: 中核計算が **`packages/shared-logic`**、Item アダプタが **`apps/reco`** であること
 - Phase Log は **Batch Logger** + `owner_type = batch_run` + `item_feature_generated` で記録し、`MOD-RECO-028`（OL 専用）を BT 経路に混在させていない
 - secret や `.env` 実値が含まれていない
 
@@ -537,6 +576,8 @@ Error Code の正本はエラーコード定義書。Batch 側 Error Handler が
 - 本仕様書は `MOD-RECO-027` の **Item Feature raw 生成** 責務に限定する
 - 実装は `apps/reco`、起動は `apps/batch`（BATCH-012）が担う。API-INT エンドポイント層は `[Epic]API-INT-002` 配下とする
 - 上流は `MOD-RECO-026`（BATCH-010）+ BATCH-011、下流は `MOD-BATCH-034`（BATCH-013）である
-- Orchestrator Port 契約（`execution_context`）は Online 推薦用であり、本 BT モジュールには **別コンテキスト**を適用する（§8.3.6）
+- Orchestrator Port 契約（`execution_context`）は Online 推薦用であり、本 BT モジュールには **別コンテキスト**を適用する（§8.3.7）
 - `phase_log` テーブルは OL / BT 共通だが、BT の物理 INSERT は **Batch Logger**（`apps/batch`）が担い、`MOD-RECO-028` Phase Log Writer（Orchestrator 直呼び・OL 専用）とは経路を分ける
 - User 側の対称モジュールは `MOD-RECO-007` User Feature Generator（処理種別 `OL`、統合 + sigmoid まで実施）である
+- Featureルール定義書 §4.2 は論理分解、MVP 実装式は §13.3（Concept 経由のみ）を正とする（§16.1 No.2）
+- 共通 Feature Engine の中核は `packages/shared-logic`。`packages/feature_engine` 新設は行わない（§16.1 No.3）
