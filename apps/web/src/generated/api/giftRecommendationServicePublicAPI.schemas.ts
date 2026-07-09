@@ -657,10 +657,16 @@ export interface PublicRecommendationResultItem {
   itemImageUrl?: string;
   itemCatchcopy?: string;
   shopName?: string;
-  /** 推薦理由（短文）。includeReason=true 時は原則返却、生成のみ失敗時は省略可 */
+  /**
+     * 推薦理由（短文）。includeReason=true かつ Item 存続時は必須（非空）。
+     * Reason 失敗時は §17.2 汎用 Reason を返し isFallback: true とする（MOD-RECO-001 §10.3 / API-INT-002 §7.3.2.1）。
+     * OpenAPI required では表現できないため description で条件付き必須とする（契約仕様書 §7.3.2.1）。
+     */
   reasonSummary?: string;
   reasonBadges?: ReasonBadge[];
   cautionNote?: string;
+  /** Reason 汎用文由来か。api が Internal の isFallback をマッピング。true 時は汎用 Reason 表示（§7.3.2.1） */
+  isFallback?: boolean;
 }
 
 export interface RecommendationRunResponseData {
