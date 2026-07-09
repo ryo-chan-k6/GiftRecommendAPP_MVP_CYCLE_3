@@ -1,0 +1,351 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-api-int-002-reco-recommendation-run-openapi-sync"
+  title: "API-INT-002:Reco推薦実行OpenAPI契約反映"
+  summary: "確定済み API-INT-002 契約仕様書 §10 に基づき packages/contracts/openapi/internal-reco-api.yaml を更新し、Orval で apps/api/src/generated/reco-client/ を再生成する（reco エンドポイント実装 Task の Contract Gate 前提）。"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "cross-cutting-handover"
+  related_issue: "#1097"
+  related_pr: null
+  related_task_definition: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml"
+  reason: "Human Review #1091（実装仕様書 §12 No.4 確定）および ai-logs/cross-cutting/2026-07-09-api-int-002-openapi-contract-task-handover.md に基づく Phase4b OpenAPI Contract Task"
+
+commands:
+  primary: "/create-contract-task"
+  allowed:
+    - "/create-contract-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    pr: "/create-pr"
+    review: "/review-pr"
+    blocked: null
+
+agent:
+  primary: "contract-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "worker-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+
+change:
+  api_name: "Reco推薦実行"
+  api_kind: "internal"
+  endpoint: "POST /internal/reco/v1/recommendations/run"
+  method: "POST"
+  change_type: "update_openapi_schema"
+  breaking_change: true
+  backward_compatibility: "breaking_for_generated_types"
+  reason: "契約仕様書確定分（#373/#375/#376）を OpenAPI 正本へ反映し、data.items→data.resultItems / WarningItem[] / MetricSummary / ReasonData 等を整合させる"
+
+scope:
+  - "packages/contracts/openapi/internal-reco-api.yaml を API-INT-002_Reco推薦実行API契約仕様書.md §10 差分リストに沿って更新する"
+  - "data.resultItems / WarningItem[] / MetricSummary / ReasonData / reasonStatus / debugPayload 等を schema・example に反映する"
+  - "0 件正規系 example を resultStatus: completed + warnings オブジェクト配列に修正する"
+  - "orval.config.ts に従い pnpm orval で apps/api/src/generated/reco-client/ を再生成する"
+  - "contract-check（OpenAPI YAML 検証 + Orval + generated 差分整合）を通過する"
+  - "apps/api build（typecheck）を通過する"
+
+out_of_scope:
+  - "API-INT-002_Reco推薦実行API契約仕様書.md の変更（契約確定済み）"
+  - "API-INT-002_Reco推薦実行API実装仕様書.md の変更"
+  - "apps/reco エンドポイント層実装"
+  - "apps/api reco-client wrapper 実装（ScaffoldRecoClient 置換は次 Task）"
+  - "apps/web generated（Internal API 非利用）"
+  - "orval.config.ts の変更"
+  - "DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "OpenAPI 反映の入力正本（§10 差分リスト）"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "Phase4b 位置づけ・Contract Gate 後続 Task との整合確認"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: true
+      purpose: "Contract Gate / implementation_gate 運用確認"
+  templates: []
+  files: []
+  issues:
+    - "#368"
+    - "#1091"
+  prs:
+    - "#372"
+    - "#1094"
+  openapi:
+    path: "packages/contracts/openapi/internal-reco-api.yaml"
+    required: true
+  orval:
+    path: "orval.config.ts"
+    required: true
+  generated:
+    paths:
+      - "apps/api/src/generated/reco-client/"
+    required: true
+
+output:
+  docs: []
+  files: []
+  openapi:
+    - path: "packages/contracts/openapi/internal-reco-api.yaml"
+      action: "update"
+      required: true
+  orval: []
+  generated:
+    - path: "apps/api/src/generated/reco-client/"
+      action: "regenerate"
+      required: true
+  tests: []
+  logs:
+    ai_logs_required: false
+    path: null
+
+impact:
+  api_design:
+    affected: false
+    note: "API設計方針そのものは変更しない"
+  api_list:
+    affected: false
+    note: "endpoint 追加・変更なし。schema 追随のみ"
+  api_spec:
+    affected: false
+    note: "契約仕様書は確定済み。OpenAPI を契約へ追随"
+  openapi:
+    affected: true
+    note: "internal-reco-api.yaml の API-INT-002 部分を契約仕様書 §10 に整合"
+  orval:
+    affected: true
+    note: "OpenAPI 変更後に reco-client 再生成が必要"
+  generated:
+    affected: true
+    note: "apps/api/src/generated/reco-client/ に型・フィールド名差分"
+  provider:
+    affected: false
+    note: "apps/reco 実装は次 Task（本 Task は OpenAPI + generated のみ）"
+  consumer:
+    affected: true
+    note: "generated 型が変わる。wrapper 実装変更は次 Task"
+  tests:
+    affected: false
+    note: "apps/api 利用側 wrapper 未実装のため contract test 更新は次 Task"
+  docs:
+    affected: false
+    note: "契約 docs は変更しない"
+  db:
+    affected: false
+    note: "DB schema 変更なし"
+  cicd:
+    affected: true
+    note: "contract-check / api-check が generated 差分を検証"
+  security:
+    affected: false
+    note: "認証・secret 方針変更なし"
+
+provider_consumer:
+  providers:
+    - name: "apps/reco"
+      affected: false
+      responsibility: "Internal API Provider（エンドポイント層）"
+      required_changes:
+        - "本 Task では OpenAPI 参照のみ。実装は次 Task"
+  consumers:
+    - name: "apps/api"
+      affected: true
+      responsibility: "Internal Reco API Consumer（MOD-API-005）"
+      required_changes:
+        - "generated reco-client 型差分の確認（本 Task）"
+        - "ScaffoldRecoClient 置換は reco エンドポイント実装 Task"
+  compatibility_notes:
+    - "data.items → data.resultItems は generated 型に対する破壊的変更"
+    - "Contract Task 完了まで reco エンドポイント実装を開始しない"
+  rollout_order:
+    - "OpenAPI（internal-reco-api.yaml）更新"
+    - "Orval 再生成（apps/api/src/generated/reco-client/）"
+    - "contract-check / apps/api build"
+    - "Human Review → 親 Epic Branch merge"
+    - "reco エンドポイント実装 Task 開始"
+
+generation_policy:
+  generated_expected: true
+  manual_edit_allowed: false
+  source_files:
+    - "packages/contracts/openapi/internal-reco-api.yaml"
+  regenerate_commands:
+    - "pnpm orval"
+  output_paths:
+    - "apps/api/src/generated/reco-client/"
+  verification_commands:
+    - "bash .github/scripts/ci-validate-yaml.sh"
+    - "pnpm orval"
+    - "git diff --exit-code -- apps/api/src/generated/reco-client"
+    - "pnpm --filter @gift-recommendation/api build"
+
+implementation_gate:
+  enabled: true
+  gate_id: "contract-api-int-002-reco-recommendation-run-openapi-sync"
+  prerequisite_checks:
+    - "contract_pr_merged_to_parent_epic_branch"
+    - "openapi_in_packages_contracts"
+    - "orval_regenerated_if_generated_impact"
+    - "generated_not_manually_edited"
+    - "human_review_if_breaking_change"
+  releases_implementation_for:
+    - "API-INT-002 reco エンドポイント実装 Task（Phase4b 2/3）"
+  notes:
+    - "gate_id は後続 Implementation Task の contract_gate.gate_id と一致させる"
+
+deliverables:
+  - "更新済み internal-reco-api.yaml（契約仕様書 §10 整合）"
+  - "再生成済み apps/api/src/generated/reco-client/"
+  - "Contract Task Issue / PR"
+
+acceptance_criteria:
+  - "internal-reco-api.yaml が契約仕様書 §10 の差分リストを満たす"
+  - "data.resultItems / WarningItem[] / 0 件 completed / MetricSummary が YAML に反映されている"
+  - "ReasonData / ReasonDataItem / reasonStatus / debugPayload が schema に反映されている"
+  - "Orval 再生成済み。generated は手動編集なし"
+  - "contract-check（ci-validate-yaml + orval + generated 整合）SUCCESS"
+  - "pnpm --filter @gift-recommendation/api build SUCCESS"
+  - "契約仕様書・実装仕様書との矛盾がない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "contract/task-1097-api-int-002-internal-reco-openapi-sync"
+  base: "feature/epic-366-api-int-002-reco-recommendation-run"
+  target: "feature/epic-366-api-int-002-reco-recommendation-run"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+parent:
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: 366
+  epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+
+dependencies:
+  epics:
+    - issue: 366
+      title: "[Epic]API-INT-002:Reco推薦実行"
+  issues:
+    - "#368"
+    - "#1091"
+  prs:
+    - "#372"
+    - "#1094"
+  tasks:
+    - "task-api-int-002-reco-recommendation-run-api-contract-spec（#368 merge 済み）"
+    - "task-api-int-002-reco-recommendation-run-api-implementation-spec（#1091 / #1094 merge 済み）"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-api-int-002-reco-recommendation-run-api-implementation-spec"
+  blocks:
+    - "API-INT-002 reco エンドポイント実装 Task（Phase4b 2/3）"
+  exclusive_files:
+    - "packages/contracts/openapi/internal-reco-api.yaml"
+    - "apps/api/src/generated/reco-client/**"
+  conflict_risk: "medium"
+  generated_impact: true
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "OpenAPI YAML validation"
+    - "Orval generation"
+    - "generated diff consistency"
+    - "api build"
+  commands:
+    - "bash .github/scripts/ci-validate-yaml.sh"
+    - "pnpm orval"
+    - "pnpm --filter @gift-recommendation/api build"
+  manual_checks:
+    - "data.items が resultItems に改名されていることを確認する"
+    - "warnings が WarningItem[] であることを確認する"
+    - "0 件 example が resultStatus: completed であることを確認する"
+    - "generated 差分が OpenAPI 変更と対応していることを確認する"
+    - "generated ファイルを手動編集していないことを確認する"
+  not_required:
+    - "apps/reco unit test"
+    - "e2e test"
+  skip_reason:
+    "apps/reco unit test": "provider 実装は次 Task のため対象外"
+    "e2e test": "OpenAPI Contract Task。contract-check と api build を優先"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "契約仕様書 §10 差分リストとの整合"
+    - "data.items → data.resultItems の破壊的変更が明示されているか"
+    - "WarningItem / MetricSummary / ReasonData schema の妥当性"
+    - "0 件正規系で resultStatus: completed（empty enum は description で注記）"
+    - "generated を手動編集していないか"
+    - "apps/reco 実装が scope 外であるか"
+    - "契約仕様書・実装仕様書 docs を変更していないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "OpenAPI / Orval / generated 横断影響。引継ぎ元 ai-logs/cross-cutting/2026-07-09-api-int-002-openapi-contract-task-handover.md"
+
+risk_points:
+  - "generated 型名・フィールド変更により後続 Implementation Task で compile 影響"
+  - "empty resultStatus を enum に残す場合の description 不足"
+  - "ReasonData schema の粒度が過不足ないか"
+
+human_decision_points:
+  - "ResultStatus enum に empty を残す場合、0 件正規系では completed を使う旨を description で明記する（#373 確定）"
+
+stop_conditions:
+  - "契約仕様書 §10 と OpenAPI 更新方針が矛盾する場合"
+  - "PR #1094 が親 Epic Branch に merge されていない場合"
+  - "generated ファイルの手動編集が必要に見える場合"
+  - "apps/reco / apps/api wrapper 実装変更が必要になった場合（Implementation Task へ分離）"
+
+notes:
+  - "正本入力: docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md §10"
+  - "親 Epic #366 / Branch feature/epic-366-api-int-002-reco-recommendation-run"
+  - "PR target は親 Epic Branch（develop 不可）"
+  - "Review Definition は prompts/definitions/reviews/api-int-002-reco-recommendation-run/ 配下に Contract Task 用を別途配置"

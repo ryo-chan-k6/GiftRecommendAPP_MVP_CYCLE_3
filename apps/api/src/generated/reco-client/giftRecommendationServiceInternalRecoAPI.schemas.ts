@@ -165,6 +165,10 @@ export interface RecoRecommendationRunRequest {
   recommendationRequest: NormalizedRecommendationRequest;
 }
 
+/**
+ * Run 単位の結果状態（API-INT-002 契約仕様書 §7.3.1）。
+ * MVP 0 件正規系では `completed` を使用する（`empty` は enum に残すが 0 件 HTTP 200 正規系では使用しない）。
+ */
 export type ResultStatus = typeof ResultStatus[keyof typeof ResultStatus];
 
 
@@ -174,6 +178,44 @@ export const ResultStatus = {
   partial: 'partial',
 } as const;
 
+/**
+ * 警告の重大度。未指定時は reco 実装で warn 想定（契約仕様書 §7.3.4）。
+ */
+export type WarningSeverity = typeof WarningSeverity[keyof typeof WarningSeverity];
+
+
+export const WarningSeverity = {
+  info: 'info',
+  warn: 'warn',
+} as const;
+
+/**
+ * パイプライン診断警告（契約仕様書 §7.3.4）。Transient（DB 非永続）。
+ */
+export interface WarningItem {
+  /** 警告コード（SCREAMING_SNAKE_CASE）。MVP 一覧は契約仕様書 §7.3.6 */
+  code: string;
+  severity?: WarningSeverity;
+  /** 運用・デバッグ向け補足。Public へは渡さない */
+  message?: string;
+}
+
+/**
+ * Feature 分布サマリ（mean / p95 のみ。契約仕様書 §7.3.5）
+ */
+export interface FeatureDistributionStat {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  mean?: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  p95?: number;
+}
+
 export interface CandidateCounts {
   retrievalCount?: number;
   matchingCount?: number;
@@ -181,9 +223,20 @@ export interface CandidateCounts {
 }
 
 /**
- * スコア内訳（evaluation / includeDebugInfo 時は推奨。詳細キーは実装 Task で確定）
+ * スコア内訳（debug返却条件 §7.3.8: mode=evaluation OR includeDebugInfo=true 時は推奨。契約上必須ではない）。
  */
 export interface ScoreBreakdown { [key: string]: unknown }
+
+/**
+ * Reason 生成状態（契約仕様書 §7.3.2.1）。
+ * MVP は Item 存続時 `completed` のみ（Reason fallback 時も completed）。
+ */
+export type ReasonStatus = typeof ReasonStatus[keyof typeof ReasonStatus];
+
+
+export const ReasonStatus = {
+  completed: 'completed',
+} as const;
 
 export interface ReasonBadge {
   label?: string;
@@ -205,27 +258,111 @@ export interface InternalRecommendationResultItem {
   itemCatchcopy?: string;
   shopName?: string;
   contextScore: number;
+  /** Social 軸一致度（Recommendation Result 定義書 §6.2） */
+  socialMatch?: number;
+  /** Symbolic 軸一致度（Recommendation Result 定義書 §6.2） */
+  symbolicMatch?: number;
   popularityScore?: number;
   riskPenalty?: number;
   finalScore: number;
   scoreBreakdown?: ScoreBreakdown;
+  /**
+     * 推薦理由（短文）。includeReason=true かつ Item 存続時は必須（非空）。
+     * OpenAPI required では表現できないため description で条件付き必須とする（契約仕様書 §7.3.2.1）。
+     */
   reasonSummary?: string;
+  /** 推薦理由 ID（reasonStatus=completed かつ Reason 永続化時は返却推奨） */
+  recommendationReasonId?: string;
+  reasonStatus?: ReasonStatus;
   reasonBadges?: ReasonBadge[];
   cautionNote?: string;
+  /** Ranking Fallback 候補または Reason 汎用文注入（MOD-RECO-001 §10.3）由来 */
+  isFallback?: boolean;
 }
+
+/**
+ * 根拠 JSON（debug / evaluation 時は推奨）
+ */
+export type ReasonDataItemReasonBasis = { [key: string]: unknown };
+
+export type ReasonDataItemGenerationMethod = typeof ReasonDataItemGenerationMethod[keyof typeof ReasonDataItemGenerationMethod];
+
+
+export const ReasonDataItemGenerationMethod = {
+  template: 'template',
+  llm_refined: 'llm_refined',
+  hybrid: 'hybrid',
+} as const;
+
+/**
+ * Run レベル Reason 詳細の 1 Item 分（契約仕様書 §7.3.9）
+ */
+export interface ReasonDataItem {
+  recommendationResultItemId: string;
+  itemId: string;
+  reasonStatus: ReasonStatus;
+  /** includeReason=true かつ Item 存続時は必須（非空） */
+  reasonSummary?: string;
+  isFallback?: boolean;
+  reasonDetail?: string;
+  reasonPoints?: string[];
+  reasonBadges?: ReasonBadge[];
+  cautionNote?: string;
+  /** 根拠 JSON（debug / evaluation 時は推奨） */
+  reasonBasis?: ReasonDataItemReasonBasis;
+  generationMethod?: ReasonDataItemGenerationMethod;
+  modelVersionId?: string;
+}
+
+/**
+ * Run レベルの内部 Reason 詳細（契約仕様書 §7.3.9）。
+ * 任意。includeReason=true かつ（includeDebugInfo=true OR mode=evaluation）時は返却推奨。
+ */
+export interface ReasonData {
+  items: ReasonDataItem[];
+}
+
+/**
+ * Run 単位 debug 情報（debug返却条件 §7.3.8 参照）。
+ * MVP 推奨キー: evalCaseId, configName, versionLabel, modelVersionId, rankingConfigVersionId, phaseSummary
+ */
+export type RecoRunMetadataDebugPayload = { [key: string]: unknown };
 
 /**
  * バージョン・mode 等（evaluation 時は推奨）
  */
 export interface RecoRunMetadata {
   mode?: string;
+  /**
+     * Run 単位 debug 情報（debug返却条件 §7.3.8 参照）。
+     * MVP 推奨キー: evalCaseId, configName, versionLabel, modelVersionId, rankingConfigVersionId, phaseSummary
+     */
+  debugPayload?: RecoRunMetadataDebugPayload;
   [key: string]: unknown;
  }
 
 /**
- * Reco 品質メトリクス用サマリ（詳細キーは OpenAPI Task / Human Review で確定）
+ * フェーズ別処理時間（ms）。キー例: retrieval, matching, ranking, reason
  */
-export interface MetricSummary { [key: string]: unknown }
+export type MetricSummaryPhaseDurationMs = {[key: string]: number};
+
+/**
+ * Feature 名 → { mean, p95 }（0〜1 想定）
+ */
+export type MetricSummaryFeatureDistribution = {[key: string]: FeatureDistributionStat};
+
+/**
+ * Run 単位の品質サマリ（Transient。契約仕様書 §7.3.5）。
+ * candidateCounts はフェーズ別件数、metricSummary は時間・分布と役割を分ける。
+ */
+export interface MetricSummary {
+  /** 推薦全体の処理時間（ms） */
+  recommendationLatencyMs?: number;
+  /** フェーズ別処理時間（ms）。キー例: retrieval, matching, ranking, reason */
+  phaseDurationMs?: MetricSummaryPhaseDurationMs;
+  /** Feature 名 → { mean, p95 }（0〜1 想定） */
+  featureDistribution?: MetricSummaryFeatureDistribution;
+}
 
 export interface RecoRecommendationRunResponseData {
   recommendationRunId: string;
@@ -237,10 +374,12 @@ export interface RecoRecommendationRunResponseData {
   fallbackUsed: boolean;
   displayMessage?: string;
   candidateCounts?: CandidateCounts;
-  /** 警告コードまたはメッセージ（要素構造は Human Review で確定） */
-  warnings?: string[];
+  /** パイプライン診断警告一覧（WarningItem[]。契約仕様書 §7.3.4） */
+  warnings?: WarningItem[];
   metricSummary?: MetricSummary;
-  items: InternalRecommendationResultItem[];
+  reasonData?: ReasonData;
+  /** 推薦結果 Item 一覧（API設計方針書 §21.3 の resultItems）。0 件時は空配列 [] */
+  resultItems: InternalRecommendationResultItem[];
   metadata?: RecoRunMetadata;
 }
 
