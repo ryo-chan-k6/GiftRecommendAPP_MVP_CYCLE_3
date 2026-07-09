@@ -8,9 +8,16 @@ export type RecoHealth = {
   backend: string;
 };
 
+export type RecoTraceContext = {
+  traceId?: string;
+  requestId?: string;
+};
+
 export type RecoRecommendationRunInput = {
   recommendationRequestId: string;
   recommendationRequest: Record<string, unknown>;
+  traceId: string;
+  requestId: string;
 };
 
 export type RecoRecommendationRunResult = {
@@ -18,9 +25,17 @@ export type RecoRecommendationRunResult = {
   recommendationResultId: string;
   recommendationRequestId: string;
   items: Array<Record<string, unknown>>;
+  resultStatus?: string;
+  resultItemCount?: number;
+  meta?: {
+    traceId?: string;
+    requestId?: string;
+    resultCode?: string;
+  };
 };
 
 export type RecoClientConfig = {
   baseUrl: string;
   apiKey?: string;
+  timeoutMs?: number;
 };
