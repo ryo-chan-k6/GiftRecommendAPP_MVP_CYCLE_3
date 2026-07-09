@@ -1,0 +1,293 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-002-reco-recommendation-run-reco-client-orval-nodenext"
+  title: "API-INT-002:Orval reco-client NodeNext整合（Phase1）"
+  summary: "Phase 0（#1112 / PR #1117）の暫定回避（paths.ts 手書き + 独自 transport）を解消する。`internalRecoApi` の Orval 設定を apps/api（NodeNext）向けに最適化し、generated reco-client を再生成して wrapper を generated 関数呼び出しへ寄せる。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: 366
+  epic_branch: "develop"
+  related_issues:
+    - 1112
+    - 1118
+  related_prs:
+    - 1117
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "contract-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase 0（#1112 / PR #1117）で `GeneratedRecoClient` 本実装を develop へマージ済み。
+  現状は `apps/api` の `NodeNext`（`tsconfig.base.json`）と Orval 既定出力（拡張子なし相対 import）の不整合により、generated endpoint モジュールを直接 import できない。
+  暫定として schema import + `paths.ts` 手書き定数 + 独自 `transport.ts` で API-INT-001 / API-INT-002 を呼び出している。
+  本 Task は段階導入プラン Phase 1 として、Orval 設定と generated 出力を api consumer 向けに整合させ、wrapper の重複 transport を削減する。
+
+objective: |
+  `orval.config.ts` の `internalRecoApi` を apps/api（NodeNext）向けに最適化し、Orval 再生成後に generated endpoint を wrapper から import 可能にする。
+  custom mutator（`recoFetch`）で base URL / Internal API Key / trace Header / timeout を共通化し、認証・trace・エラー変換の wrapper 責務は維持する。
+
+scope:
+  - "`orval.config.ts` の `internalRecoApi` を api（NodeNext）向けに分離・最適化（tsconfig 連動・mutator 導入）"
+  - "`apps/api/src/infrastructure/reco-client/orval-mutator.ts` 等の mutator 追加"
+  - "`npm run orval` による `apps/api/src/generated/reco-client/**` 再生成（OpenAPI 変更なし）"
+  - "`apps/api/src/infrastructure/reco-client/**` の `paths.ts` / `transport.ts` を generated 関数呼び出しへ寄せる"
+  - "reco-client wrapper 単体テストの更新"
+  - "CI 強化（api build で generated endpoint import が通ることの担保）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "`packages/contracts/openapi/*.yaml` の変更"
+  - "`publicApi`（web / bundler）側の Orval 設定変更"
+  - "generated ファイルの手動編集"
+  - "apps/reco 変更"
+  - "apps/api Public API（API-PUB-002）ルート実装"
+  - "apps/web / apps/batch 変更"
+  - "integration / e2e（実 HTTP 結合）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "Orval / generated / wrapper 責務分担"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "api→reco 接続・認証・エラーマップ"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "Request/Response・Header・Error"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Internal API 呼び出し方針"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* マップ"
+  templates: []
+  files:
+    - path: "orval.config.ts"
+      required: true
+      purpose: "internalRecoApi 設定正本"
+    - path: "apps/api/tsconfig.json"
+      required: true
+      purpose: "NodeNext プロファイル"
+    - path: "tsconfig.base.json"
+      required: true
+      purpose: "共通 TS 設定"
+    - path: "apps/api/src/generated/reco-client/**"
+      required: true
+      purpose: "Orval 再生成対象"
+    - path: "apps/api/src/infrastructure/reco-client/**"
+      required: true
+      purpose: "wrapper 寄せ対象"
+    - path: ".github/workflows/ci-api.yml"
+      required: false
+      purpose: "CI 強化候補"
+    - path: ".github/workflows/ci-contract.yml"
+      required: false
+      purpose: "Orval 再生成ゲート"
+  issues:
+    - number: 1112
+      purpose: "Phase 0 reco-client wrapper 完了"
+    - number: 1118
+      purpose: "本 Task Issue"
+  prs:
+    - number: 1117
+      purpose: "Phase 0 wrapper merge"
+
+output:
+  docs: []
+  files:
+    - path: "orval.config.ts"
+      action: "update"
+      required: true
+    - path: "apps/api/src/infrastructure/reco-client/orval-mutator.ts"
+      action: "create_or_update"
+      required: true
+    - path: "apps/api/src/infrastructure/reco-client/transport.ts"
+      action: "update"
+      required: true
+    - path: "apps/api/src/infrastructure/reco-client/paths.ts"
+      action: "update_or_remove"
+      required: false
+    - path: ".github/workflows/ci-api.yml"
+      action: "update"
+      required: false
+  tests:
+    - path: "apps/api/tests/unit/infrastructure/reco-client/**"
+      action: "update"
+      required: true
+  generated:
+    expected: true
+    paths:
+      - "apps/api/src/generated/reco-client/**"
+    handling: "orval_regenerate_only"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "api 向け internalRecoApi Orval 設定"
+  - "recoFetch mutator"
+  - "generated reco-client 再生成差分"
+  - "wrapper の generated 関数利用への移行"
+  - "CI による NodeNext import 再発防止"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "`internalRecoApi` の Orval 設定が api（NodeNext）向けに更新されている"
+  - "generated reco-client が Orval 再生成され、endpoint モジュールを wrapper から import 可能"
+  - "`paths.ts` 手書き定数による暫定回避が削減または解消されている"
+  - "generated ファイルを手動編集していない"
+  - "OpenAPI / packages/contracts の変更を含まない"
+  - "`cd apps/api && npm test -- --testPathPattern=reco-client` が成功する"
+  - "`cd apps/api && npm run build` が成功する"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "refactor/task-1118-api-int-002-reco-orval-nodenext"
+  summary: "api-int-002-reco-orval-nodenext"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-10"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1118
+  unit: "task"
+  type: "refactor"
+  area: "api"
+
+dependencies:
+  epics:
+    - number: 366
+      purpose: "親 Epic（API-INT-002）。CLOSED / develop マージ済み"
+  issues:
+    - number: 1112
+      purpose: "Phase 0 reco-client wrapper 完了"
+  prs:
+    - number: 1117
+      purpose: "Phase 0 wrapper merge"
+  tasks: []
+  blocking: true
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at: []
+  blocked_message: null
+
+parallel_control:
+  depends_on:
+    - "task-api-int-002-reco-recommendation-run-reco-client-wrapper"
+  blocks:
+    - "API-PUB-002 実装 Task の api→reco HTTP 呼び出し（generated 直呼び前提の安定化）"
+  exclusive_files:
+    - "orval.config.ts"
+    - "apps/api/src/generated/reco-client/**"
+    - "apps/api/src/infrastructure/reco-client/**"
+    - ".github/workflows/ci-api.yml"
+  conflict_risk: "high"
+  generated_impact: true
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "Orval 再生成"
+    - "apps/api unit test（reco-client wrapper）"
+    - "apps/api build"
+    - "secret check"
+  commands:
+    - "npm run orval"
+    - "cd apps/api && npm test -- --testPathPattern=reco-client"
+    - "cd apps/api && npm run build"
+  manual_checks:
+    - "generated 手編集がないことを確認する"
+    - "OpenAPI 変更が含まれていないことを確認する"
+    - "publicApi 側 generated に意図しない差分がないことを確認する"
+  not_required:
+    - "integration test（api→reco 実 HTTP）"
+    - "e2e test"
+  skip_reason:
+    "integration test（api→reco 実 HTTP）": "reco 実サービス起動の結合は API-PUB-002 または別環境で実施"
+    "e2e test": "Public API 未実装"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Orval 設定が consumer 別方針（web=bundler / api=NodeNext）と整合しているか"
+    - "generated 手編集・OpenAPI 変更がないか"
+    - "wrapper の認証・trace・timeout・GRS-* エラー変換が維持されているか"
+    - "publicApi 側に意図しない影響がないか"
+    - "CI で NodeNext import 再発防止が担保されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Orval / generated / tsconfig 横断影響あり。api→reco 接続境界の恒久整備。"
+
+risk_points:
+  - "Orval 8.15.0 で tsconfig 連動（.js import 生成）が未対応の可能性"
+  - "`orval.config.ts` は親 Epic `allowed_paths` 外の横断ファイル"
+  - "他 worktree との `orval.config.ts` / generated 同時編集競合"
+  - "mutator 導入後の wrapper / generated 責務分界の解釈揺れ"
+
+human_decision_points:
+  - "Orval 8.15.0 で tsconfig 連動が未対応の場合、バージョンアップまたは代替策（post-generate 等）の判断"
+  - "Epic #366 CLOSED 後の develop 直 PR target で問題ないか（Issue #1118 で合意済み）"
+  - "`orval.config.ts` / CI workflow 変更が親 Epic allowed_paths 外であることの許容"
+
+stop_conditions:
+  - "OpenAPI / packages/contracts 変更が必要になった場合（Contract Task へ分離）"
+  - "Orval tsconfig 連動が実現不能で、代替方針の Human 判断が必要な場合"
+  - "apps/reco 側の変更が必要になった場合"
+  - "secret や .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Issue #1118"
+  - "worktree: refactor-task-1118-api-int-002-reco-orval-nodenext"
+  - "Branch: refactor/task-1118-api-int-002-reco-orval-nodenext"
+  - "先行: #1112 / PR #1117（Phase 0）"
+  - "Epic #366 CLOSED。Branch base / PR target は develop"
