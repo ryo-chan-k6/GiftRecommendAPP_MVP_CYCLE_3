@@ -80,10 +80,12 @@ def _resolve_top_k(context: ExecutionContext) -> int:
 
 
 def _build_candidate_counts(context: ExecutionContext) -> CandidateCountsResponse:
-    return CandidateCountsResponse(
-        retrieval_count=context.retrieval_candidate_count,
-        matching_count=context.feature_matcher_candidate_count,
-        ranking_count=context.final_ranker_selected_count,
+    return CandidateCountsResponse.model_validate(
+        {
+            "retrievalCount": context.retrieval_candidate_count,
+            "matchingCount": context.feature_matcher_candidate_count,
+            "rankingCount": context.final_ranker_selected_count,
+        },
     )
 
 
@@ -136,9 +138,11 @@ def _build_metric_summary(context: ExecutionContext) -> MetricSummaryResponse | 
     if not phase_duration and context.recommendation_latency_ms == 0:
         return None
 
-    return MetricSummaryResponse(
-        recommendation_latency_ms=context.recommendation_latency_ms,
-        phase_duration_ms=phase_duration or None,
+    return MetricSummaryResponse.model_validate(
+        {
+            "recommendationLatencyMs": context.recommendation_latency_ms,
+            "phaseDurationMs": phase_duration or None,
+        },
     )
 
 
