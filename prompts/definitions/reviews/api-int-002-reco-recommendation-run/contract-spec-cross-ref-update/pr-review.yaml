@@ -1,0 +1,96 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-002-reco-recommendation-run-contract-spec-cross-ref-update-pr"
+  title: "API-INT-002 契約仕様書 API-PUB-002参照更新 PRレビュー"
+  summary: "API-INT-002 契約仕様書の API-PUB-002 参照パス更新 Task（contract-spec-cross-ref-update.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1122
+  task_definition: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/contract-spec-cross-ref-update.yaml"
+  source_branch: "docs/task-1122-api-int-002-contract-spec-pub002-ref-update"
+  target_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  parent_epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  parent_epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: false
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/contract-spec-cross-ref-update.yaml"
+    required: true
+  issue:
+    number: 1122
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-366-api-int-002-reco-recommendation-run"
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "更新成果物（§5.5 / §15 の参照のみ）"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "参照先正本パス確認"
+
+review_points:
+  - "参照パスのみの更新であり、契約定義本文が変更されていないか"
+  - "「未作成」表記が解消されているか"
+  - "Public / Internal 境界記述と矛盾していないか"
+
+acceptance_criteria:
+  - "§5.5 / §15 の参照が現行正本と一致している"
+  - "契約定義（Request/Response/Error）に diff がない"
+
+human_review_points:
+  - "§5.5 実装正本行追加の要否"
