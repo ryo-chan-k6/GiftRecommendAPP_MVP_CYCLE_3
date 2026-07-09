@@ -247,7 +247,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "contract/task-<issue-number>-api-pub-002-recommendation-run-openapi-sync"
+  name: "contract/task-1126-api-pub-002-recommendation-run-openapi-sync"
   base: "feature/epic-357-api-pub-002-recommendation-run"
   target: "feature/epic-357-api-pub-002-recommendation-run"
   worktree_required: true
@@ -262,6 +262,7 @@ project:
     due_date: "2026-07-11"
 
 issue:
+  number: 1126
   unit: "task"
   type: "feature"
   area: "api"
