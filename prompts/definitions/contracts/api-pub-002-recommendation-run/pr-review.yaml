@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1127
   issue: 1126
   task_definition: "prompts/definitions/contracts/api-pub-002-recommendation-run/openapi-sync.yaml"
   source_branch: "contract/task-1126-api-pub-002-recommendation-run-openapi-sync"
@@ -69,7 +69,7 @@ input:
     number: 1126
     required: true
   pr:
-    number: null
+    number: 1127
     required: true
   diff:
     required: true
