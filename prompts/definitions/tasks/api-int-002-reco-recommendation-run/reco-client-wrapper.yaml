@@ -147,8 +147,8 @@ branch:
   no_branch: false
   name: "feature/task-1112-api-int-002-reco-client-wrapper"
   summary: "api-int-002-reco-client-wrapper"
-  base: "feature/epic-366-api-int-002-reco-recommendation-run"
-  target: "feature/epic-366-api-int-002-reco-recommendation-run"
+  base: "develop"
+  target: "develop"
   worktree_required: true
 
 project:
@@ -267,6 +267,6 @@ notes:
   - "Issue #1112"
   - "worktree: feature-task-1112-api-int-002-reco-client-wrapper"
   - "Branch: feature/task-1112-api-int-002-reco-client-wrapper"
-  - "Epic PR: #1111。merge 後に develop へ rebase 推奨"
+  - "Epic PR #1111 develop merge 済み。Branch base / PR target は develop"
   - "API-PUB-002 Epic #357 の api→reco 接続前提"
   - "Phase4a api-foundation #710 scaffold とは別（本 Task は API-INT-002 向け本実装）"

@@ -22,7 +22,7 @@ target:
   issue: 1112
   task_definition: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/reco-client-wrapper.yaml"
   source_branch: "feature/task-1112-api-int-002-reco-client-wrapper"
-  target_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  target_branch: "develop"
   parent_epic_issue: "[Epic]API-INT-002:Reco推薦実行"
   parent_epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
 
@@ -75,7 +75,7 @@ input:
     required: true
   diff:
     required: true
-    compare_with: "feature/epic-366-api-int-002-reco-recommendation-run"
+    compare_with: "develop"
   docs:
     - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
       required: true
