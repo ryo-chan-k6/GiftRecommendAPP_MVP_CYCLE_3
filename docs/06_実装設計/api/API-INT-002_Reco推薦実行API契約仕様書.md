@@ -83,8 +83,8 @@ api が Public API（API-PUB-002）で Recommendation Request を受け付け・
 | ---- | ---- |
 | 上流 API ID | `API-PUB-002`（レコメンド実行） |
 | Method / Endpoint | `POST` `/api/v1/recommendations` |
-| 契約正本（現時点） | `docs/05_アプリケーション設計/アプリ/api/API一覧.md`（API-PUB-002 行）、`docs/05_アプリケーション設計/アプリ/api/API設計方針書.md` §21（Public / Internal 境界） |
-| 契約仕様書（未作成） | `API-PUB-002_レコメンド実行API契約仕様書.md` は別 Task 成果物。本 Task では参照のみとし、未作成ファイルを正本として記載しない |
+| 契約正本 | `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` |
+| 補足参照 | `docs/05_アプリケーション設計/アプリ/api/API一覧.md`（API-PUB-002 行）、`docs/05_アプリケーション設計/アプリ/api/API設計方針書.md` §21（Public / Internal 境界） |
 | 本書との境界 | Request/Response の **Internal 向け I/F** のみ本書で定義。api による Public↔Internal 変換・エラー整形は実装仕様書 Task で定義 |
 
 ---
@@ -837,7 +837,7 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
 | Reason生成 | `docs/04_ドメインモデル設計/Reason生成定義書.md` | reason 項目 |
 | Recoモジュール一覧 | `docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` | MOD-RECO-001 参照 |
 | 機能×モジュール対応表 | `docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md` | MOD-API-005 / MOD-RECO-001 |
-| 上流 Public API | `docs/05_アプリケーション設計/アプリ/api/API一覧.md`（API-PUB-002 行）、`docs/05_アプリケーション設計/アプリ/api/API設計方針書.md` §21 | web↔api 契約（契約仕様書は未作成） |
+| 上流 Public API（参照） | `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` | web↔api 間の Public 契約 |
 | Task Definition | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml` | #368 scope |
 | 実装仕様（別Task） | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-implementation-spec.yaml`（予定） | Phase4 |
 
