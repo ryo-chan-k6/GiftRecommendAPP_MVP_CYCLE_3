@@ -85,19 +85,24 @@ def build_generator_with_registered_item(
     context: ItemFeatureGenerationContext,
     *,
     should_fail_upsert: bool = False,
+    concept_rules: InMemoryConceptFeatureRuleRepository | None = None,
+    normalization_rules: InMemoryNormalizationRuleRepository | None = None,
+    item_feature_repository: InMemoryItemFeatureRepository | None = None,
+    logger: ScaffoldRecoLogger | None = None,
 ) -> ItemFeatureGenerator:
-    concept_rules, normalization_rules, feature_definitions, item_validation, _ = (
+    default_concept_rules, default_normalization_rules, feature_definitions, item_validation, _ = (
         build_default_in_memory_repositories()
     )
     assert isinstance(item_validation, InMemoryItemValidation)
     item_validation.register_item(context.item_id)
     return ItemFeatureGenerator(
-        concept_feature_rules=concept_rules,
-        normalization_rules=normalization_rules,
+        concept_feature_rules=concept_rules or default_concept_rules,
+        normalization_rules=normalization_rules or default_normalization_rules,
         feature_definitions=feature_definitions,
         item_validation=item_validation,
-        item_feature_repository=InMemoryItemFeatureRepository(
+        item_feature_repository=item_feature_repository
+        or InMemoryItemFeatureRepository(
             should_fail_on_upsert=should_fail_upsert,
         ),
-        logger=ScaffoldRecoLogger(),
+        logger=logger or ScaffoldRecoLogger(),
     )
