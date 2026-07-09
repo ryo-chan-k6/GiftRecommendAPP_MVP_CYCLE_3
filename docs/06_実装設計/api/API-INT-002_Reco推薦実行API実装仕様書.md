@@ -73,8 +73,8 @@ apps/reco/src/reco/api/
 | ---- | ---- |
 | Composition 正本 | `apps/reco/src/reco/composition/`（`builder.py`, `config.py`） |
 | 本番 DI 関数 | `build_production_ports()` — Postgres 観測系（Run Recorder / Phase Log / Error Log / Metric Logger Tier 1）を配線 |
-| モード選択 | `build_composition_ports(CompositionMode.PRODUCTION)` を **reco 本番・結合テストのデフォルト** とする |
-| 開発・単体 | `CompositionMode.DEFAULT`（`build_default_stub_ports()`）は Orchestrator 単体テスト・InMemory 観測向け。エンドポイント層のデフォルトは **PRODUCTION** |
+| モード選択 | `build_composition_ports(CompositionMode.PRODUCTION)` を **固定**（本番 / staging / ローカル docker compose 含む） |
+| 開発・単体 | `CompositionMode.DEFAULT`（`build_default_stub_ports()`）は **Orchestrator 単体テストおよび DI 明示注入時のみ**。環境変数でのランタイム切替は MVP では導入しない（Human Review #1091 確定） |
 | Orchestrator | `RecommendationOrchestrator(ports=...)` を lifespan で 1 インスタンス生成し、リクエストごとに `run()` を呼び出す |
 | DB URL | `resolve_database_url()`（環境変数 `DATABASE_URL`）。Secret はログ・Response に出力しない |
 
@@ -84,7 +84,7 @@ apps/reco/src/reco/api/
 
 | 項目 | 方針 |
 | ---- | ---- |
-| 方式 | `X-Internal-Api-Key` Header と環境変数（例: `RECO_INTERNAL_API_KEY`）の **定数時間比較** |
+| 方式 | `X-Internal-Api-Key` Header と環境変数 **`RECO_INTERNAL_API_KEY`** の **定数時間比較**（api / reco 同一値。Human Review #1091 確定） |
 | 配置 | FastAPI `Depends` または middleware。route handler より前段 |
 | 失敗 | 401 + `GRS-AUTH-001`（不正）/ `GRS-AUTH-004`（未指定）。`error_log` に記録（Secret 非出力） |
 | 403 | MVP reco 側では Key の有無のみ。403（`GRS-AUTH-002` 等）は api 側事前検証または将来拡張。reco は Key 不一致を 401 に集約 |
@@ -115,9 +115,9 @@ flowchart TD
     MAP_RES --> DEBUG{debug返却条件?<br/>§7.3.8}
     DEBUG -->|Yes| ATTACH_DBG[scoreBreakdown / debugPayload / reasonData 組立]
     DEBUG -->|No| STRIP_DBG[内部 debug フィールド省略]
-    ATTACH_DBG --> PHASE[phase_log: response_built]
-    STRIP_DBG --> PHASE
-    PHASE --> OK[200 data + meta]
+    ATTACH_DBG --> ORCH_END[Orchestrator 内 response_built 記録済み]
+    STRIP_DBG --> ORCH_END
+    ORCH_END --> OK[200 data + meta]
     ERR_MAP --> ERR_HTTP[4xx/5xx error + meta]
 ```
 
@@ -132,7 +132,7 @@ flowchart TD
 7. **Outcome 分岐:** `OrchestratorOutcome.success=true` なら Response 組立。`reco_error` ありなら Error Mapper へ。
 8. **Response 組立:** domain `RecommendationResult` および ExecutionContext 付帯情報から `data` + `meta` を生成。0 件時は `resultStatus: completed`、`resultItemCount: 0`、`meta.resultCode: GRS-REC-001`。
 9. **debug 露出:** `execution.mode=evaluation` OR `includeDebugInfo=true` のときのみ `scoreBreakdown` / `metadata.debugPayload` / `reasonData` を組立（推奨。欠落時も 200）。
-10. **phase_log:** 受付時 `request_received`（Orchestrator 内）、Response 返却直前にエンドポイント層または Orchestrator 終了処理で `response_built` を記録。
+10. **phase_log:** `request_received` 〜 `reason_generated` および **`response_built` は Orchestrator 終了時に記録**（エンドポイント層では二重記録しない）。HTTP 受付・応答は access log。
 11. **trace 反映:** Response `meta.traceId` / `meta.requestId` を Request Header と **完全一致** させる。
 
 ---
@@ -210,8 +210,9 @@ flowchart TD
 | reco 側 | FastAPI + Pydantic。generated は **使用しない**（Provider） |
 | api 側 | Orval 生成関数を wrapper 経由で呼ぶ（Consumer）。generated 手動編集禁止 |
 | 本 Task | OpenAPI / Orval / generated **変更なし**。wrapper 実装は apps/api 実装 Task |
+| 次 Task | **#1091 merge 後**、reco エンドポイント実装 Task **直前**に OpenAPI Contract Task を Epic Branch 上で実施（Human Review #1091 確定。引継ぎ: `ai-logs/cross-cutting/2026-07-09-api-int-002-openapi-contract-task-handover.md`） |
 
-**既知の OpenAPI ↔ 契約差分（Consumer 実装時に注意）**
+**既知の OpenAPI ↔ 契約差分（Contract Task で解消予定）**
 
 | 項目 | 契約仕様書（正） | OpenAPI（現状） | 対応 |
 | ---- | ---------------- | --------------- | ---- |
@@ -302,11 +303,22 @@ api 生成 X-Trace-Id / X-Request-Id
 | ---------- | ---- | -------- |
 | `request_received` | リクエスト受付 | Orchestrator 開始時（既存） |
 | `config_resolved` 〜 `reason_generated` | パイプライン各フェーズ | 各 MOD-RECO-* / Orchestrator（既存） |
-| `response_built` | HTTP Response 組立完了 | エンドポイント層または Orchestrator 終了処理（**新規接続**） |
+| `response_built` | パイプライン完了（Response 生成完了） | **Orchestrator 終了時のみ**（エンドポイント層では記録しない。Human Review #1091 確定） |
 
 Phase 名一覧の正本: ログ・Observability設計書 §10.3。
 
-### 8.2 debug 欠落時の内部記録
+### 8.2 MVP `warnings` 発火閾値（実装面）
+
+契約仕様書 §7.3.6 のコードに対する MVP 初期閾値（Human Review #1091 確定）。定数は実装 Task でモジュール集約し、C4 reco-quality 後に調整可。
+
+| code | 発火条件（MVP） |
+| ---- | --------------- |
+| `LOW_CANDIDATES_AFTER_MATCHING` | `matchingCount >= 1` **かつ** `matchingCount < min(topK, 5)`（`topK` は Request `execution.topK`、未指定時 ui デフォルト 10） |
+| `FEATURE_DISTRIBUTION_SKEW` | `metricSummary.featureDistribution` の **いずれか 1 次元**で `mean > 0.85` **または** `mean < 0.15` |
+
+`NO_CANDIDATES_AFTER_RETRIEVAL` は Retrieval 後 0 件（契約 §7.4.2）。閾値不要。
+
+### 8.3 debug 欠落時の内部記録
 
 | 条件 | 記録 | HTTP |
 | ---- | ---- | ---- |
@@ -352,18 +364,27 @@ Phase 名一覧の正本: ログ・Observability設計書 §10.3。
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-09 | 初版（実装面のみ。契約仕様書 #368 / Composition #1076 を前提） | #1091 |
+| 2026-07-09 | Human Review 確定：§12 未決事項 5 件を確定（§3.3 / §3.4 / §8.1 / §8.2 反映） | #1091 |
 
 ---
 
 ## 12. 未決事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | エンドポイント層の **デフォルト CompositionMode** を PRODUCTION 固定とするか、環境変数で DEFAULT に切替可能とするか | local 開発の DB 依存・テスト容易性とのトレードオフ | Human + reco 実装 Task | reco EPIC 実装前 | 本書 §3.3 は PRODUCTION 推奨 |
-| 2 | `response_built` phase の記録主体（エンドポイント層 vs Orchestrator 終了フック） | phase_log 責務境界 | Human + reco 実装 Task | 同上 | ログ設計書 §10.3 整合 |
-| 3 | FastAPI `RECO_INTERNAL_API_KEY` 等の **環境変数名** 最終確定 | DevOps / secret 管理 | Human | deploy 前 | 認証・認可方針書と整合 |
-| 4 | OpenAPI `data.items` → `data.resultItems` 修正タイミング | Contract Task スケジュール | Human | Contract Task 起票時 | §6 差分表参照 |
-| 5 | `LOW_CANDIDATES_AFTER_MATCHING` / `FEATURE_DISTRIBUTION_SKEW` の発火閾値 | reco 実装 Task での具体値 | reco 実装 Task | 実装 Task | 契約上コードのみ確定 |
+本節の論点は Human Review（#1091）で確定済み。判断記録の正本は `ai-logs/human-decisions/2026-07-09-api-int-002-implementation-spec-human-review-decisions.md`。
+
+### 12.1 確定済み（本書へ反映済み）
+
+| No | 論点 | 確定内容 | 反映箇所 |
+| --: | ---- | -------- | -------- |
+| 1 | デフォルト `CompositionMode` | **PRODUCTION 固定**。環境変数切替は MVP 非導入。`DEFAULT` は単体テスト DI のみ | §3.3 |
+| 2 | `response_built` 記録主体 | **Orchestrator 終了時に一本化**。エンドポイント層は access log のみ | §4.1 / §4.2 / §8.1 |
+| 3 | Internal API Key 環境変数名 | **`RECO_INTERNAL_API_KEY` 確定**（Header `X-Internal-Api-Key`） | §3.4 |
+| 4 | OpenAPI 差分修正タイミング | **#1091 merge 後**、reco エンドポイント実装 Task **直前**に Contract Task 実施 | §6、引継ぎメモ（cross-cutting） |
+| 5 | `warnings` 発火閾値 | `LOW_CANDIDATES`: `matchingCount >= 1` かつ `< min(topK, 5)` / `SKEW`: feature `mean > 0.85` or `< 0.15` | §8.2 |
+
+### 12.2 未決（人間判断待ち）
+
+（現時点、未決事項なし）
 
 ---
 
@@ -384,6 +405,8 @@ Phase 名一覧の正本: ログ・Observability設計書 §10.3。
 | OpenAPI | `packages/contracts/openapi/internal-reco-api.yaml` | generated 入力（差分あり） |
 | Human 判断 | `ai-logs/human-decisions/2026-06-05-api-int-002-internal-401-public-map-policy.md` | Public 認証マップ |
 | Human 判断 | `ai-logs/human-decisions/2026-06-05-api-int-002-score-breakdown-debug-return-policy.md` | debug 返却条件 |
+| Human 判断 | `ai-logs/human-decisions/2026-07-09-api-int-002-implementation-spec-human-review-decisions.md` | 本書 §12 確定事項 |
+| 引継ぎ | `ai-logs/cross-cutting/2026-07-09-api-int-002-openapi-contract-task-handover.md` | OpenAPI Contract Task（#1091 後続） |
 
 ---
 
@@ -397,7 +420,7 @@ Phase 名一覧の正本: ログ・Observability設計書 §10.3。
 - debug返却条件・Reason fallback・0 件正常系の実装方針が契約仕様書 §7.3 / §7.4 と一致しているか
 - provider（apps/reco）/ consumer（apps/api）の実装影響が整理されているか
 - OpenAPI 差分が明示され、本 Task で YAML 変更していないことが明確か
-- 未決事項が隠れず §12 に記載されているか
+- §12 確定事項が §3 / §8 と矛盾していないか
 - secret、API キー、`.env` 実値が含まれていないか
 
 ---
