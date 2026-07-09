@@ -215,7 +215,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/task-<issue-number>-api-pub-002-recommendation-run-implementation"
+  name: "feature/task-1128-api-pub-002-recommendation-run-implementation"
   summary: "api-pub-002-recommendation-run-implementation"
   base: "feature/epic-357-api-pub-002-recommendation-run"
   target: "feature/epic-357-api-pub-002-recommendation-run"
@@ -231,6 +231,7 @@ project:
     due_date: null
 
 issue:
+  number: 1128
   unit: "task"
   type: "feature"
   area: "api"
@@ -374,4 +375,5 @@ notes:
   - "PR target は親 Epic Branch（develop 不可）"
   - "Task PR では Related to #<issue> を使用（Closes 禁止）"
   - "Review Definition: prompts/definitions/reviews/api-pub-002-recommendation-run/implementation/pr-review.yaml"
-  - "起票: /start-task @prompts/definitions/tasks/api-pub-002-recommendation-run/implementation.yaml"
+  - "Issue #1128"
+  - "worktree: feature-task-1128-api-pub-002-recommendation-run-implementation"
