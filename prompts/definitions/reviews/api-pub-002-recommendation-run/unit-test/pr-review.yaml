@@ -18,10 +18,10 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null
+  pr: 1131
+  issue: 1130
   task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
-  source_branch: "test/task-<issue-number>-api-pub-002-recommendation-run-unit-test"
+  source_branch: "test/task-1130-api-pub-002-recommendation-run-unit-test"
   target_branch: "feature/epic-357-api-pub-002-recommendation-run"
   parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
   parent_epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
@@ -68,10 +68,10 @@ input:
     path: "prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
     required: true
   issue:
-    number: null
+    number: 1130
     required: true
   pr:
-    number: null
+    number: 1131
     required: true
   diff:
     required: true
@@ -181,6 +181,7 @@ project:
     priority: "high"
 
 issue:
+  number: 1130
   unit: "task"
   type: "test"
   area: "api"
@@ -194,3 +195,4 @@ notes:
   - "対応 Task Definition: prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
   - "review.target.pr / input.pr.number / input.issue.number / target.source_branch は Issue 起票後に反映"
   - "resolve-review-definition.cjs は pr-review.yaml 固定名を探索。本ファイルパスを PR head に含める"
+  - "Human 判断（2026-07-10）: 実装仕様書 §10 No.2（0 件正常系）は実接続 integration に残す。unit のスタブ 0 件は Response マッピング確認に限定"

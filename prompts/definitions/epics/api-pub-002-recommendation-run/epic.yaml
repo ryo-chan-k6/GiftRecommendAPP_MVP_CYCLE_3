@@ -143,6 +143,7 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-PUB-002_*"
     - "apps/api/src/app/recommendations/**"
+    - "apps/api/tests/unit/app/recommendations/**"
     - "packages/contracts/openapi/**"
     - "packages/contracts/schemas/**"
     - "apps/web/src/generated/api/**"
