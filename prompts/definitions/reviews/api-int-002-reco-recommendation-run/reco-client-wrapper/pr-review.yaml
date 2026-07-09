@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1117
   issue: 1112
   task_definition: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/reco-client-wrapper.yaml"
   source_branch: "feature/task-1112-api-int-002-reco-client-wrapper"
@@ -71,7 +71,7 @@ input:
     number: 1112
     required: true
   pr:
-    number: null
+    number: 1117
     required: true
   diff:
     required: true
