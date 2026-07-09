@@ -135,7 +135,7 @@
 | 記録したいもの | 保存先 | 理由 |
 | --- | --- | --- |
 | 推薦実行の現在状態 | recommendation_run.run_status | 状態として検索しやすくするため |
-| 推薦実行の各フェーズ履歴 | phase_log / recommendation_run_phase_log | 処理段階ごとの成功・失敗を追跡するため |
+| 推薦実行の各フェーズ履歴 | `phase_log` | 処理段階ごとの成功・失敗を追跡するため（論理上の `recommendation_run_phase_log` は物理テーブル化せず `phase_log` に統合。`phase_log_テーブル定義書` §5.2） |
 | 推薦実行のエラー詳細 | error_log | エラーコード、trace_id、詳細を検索するため |
 | 推薦結果の商品明細 | recommendation_result_item | 結果表示と再現性のため |
 | 推薦時点の商品情報 | recommendation_result_itemのSnapshot項目 | 後続の商品更新に影響されないようにするため |
@@ -452,6 +452,8 @@ flowchart TD
 | reason_generated | Reason生成完了 |
 | response_built | Response生成完了 |
 | reco_quality_metric_recorded | Reco品質メトリクス記録完了 |
+
+> **MVP 物理設計（Issue #535 確定）**: 上表の `reco_quality_metric_recorded` は Observability 上のフェーズ候補であるが、`phase_log.phase_name` の DB CHECK（`recommendation_run_phase_name`）には **含めない**。Reco 品質メトリクスは `reco_score_distribution_metric` 等の Metric テーブルで記録する（`phase_log_テーブル定義書` §5.7）。
 
 ---
 
@@ -849,7 +851,7 @@ Batchでは、以下を追跡する。
 | item_import_summary_id | Import Summary ID |
 | batch_run_id | Batch Run ID |
 | source | rakuten |
-| source_api | item_search / ranking / genre |
+| source_api | item_search / item_ranking / genre_search / attribute_search |
 | fetched_count | API取得件数 |
 | new_count | 新規件数 |
 | updated_count | 更新件数 |
@@ -908,7 +910,7 @@ Batchでは、以下を追跡する。
 | batch_run_id | Batch Run ID |
 | fetch_cursor_id | Fetch Cursor ID |
 | source | rakuten |
-| source_api | item_search / ranking / genre |
+| source_api | item_search / item_ranking / genre_search / attribute_search |
 | request_params_hash | リクエスト条件のHash |
 | request_params_json | マスキング済みリクエスト条件 |
 | response_status | HTTPステータスまたは外部APIステータス |
@@ -953,7 +955,7 @@ Raw JSON本体はObject Storageに保存し、DBには `raw_product_metadata` �
 | api_call_log_id | API Call Log ID |
 | object_key | Object Storage上のRaw JSON参照キー |
 | source | rakuten |
-| source_api | item_search / ranking / genre |
+| source_api | item_search / item_ranking / genre_search / attribute_search |
 | content_hash | Raw JSONのHash |
 | item_count | Raw内の商品件数 |
 | import_status | raw_saved / staged / imported / skipped / failed |
@@ -1273,11 +1275,11 @@ Recommendation RequestやFeedbackには自由入力が含まれる。
 
 | データ | 推奨保持期間 | 備考 |
 | --- | --- | --- |
-| error_log | 90日〜180日 | 障害調査用 |
-| phase_log | 30日〜90日 | 処理追跡用 |
-| batch_run_log | 180日〜365日 | Batch実行履歴 |
-| api_call_log | 90日〜180日 | 外部API調査用 |
-| item_import_summary | 365日 | 商品データ推移を見るため長め |
+| error_log | **90日**（物理設計確定） | 障害調査用。`error_log_テーブル定義書` §13（Issue #536） |
+| phase_log | **90日**（物理設計確定） | 処理追跡用。Batch 系 Log 統一（Issue #536 No.10）。`phase_log_テーブル定義書` §13 |
+| batch_run_log | **90日**（物理設計確定） | Batch実行履歴。BATCH-RET-001 アンカー。`batch_run_log_テーブル定義書` §13 |
+| api_call_log | **90日**（物理設計確定） | 外部API調査用。`api_call_log_テーブル定義書` §13 |
+| item_import_summary | **90日**（物理設計確定） | Batch 系 Log 統一（旧 365 日から短縮）。`item_import_summary_テーブル定義書` §13 |
 | raw_product_metadata | 180日〜365日 | Raw再処理要件次第 |
 | Raw Product Object | 30日〜180日 | Object Storageコスト次第 |
 | recommendation_run | 180日〜365日 | 評価・改善用途 |
@@ -1287,6 +1289,7 @@ Recommendation RequestやFeedbackには自由入力が含まれる。
 | meaning_distribution_metric | 365日以上 | Gift Meaning空間の品質推移 |
 | normalization_distribution_metric | 365日以上 | 正規化方式の妥当性検証 |
 | evaluation_result | 長期保持候補 | モデル比較・改善履歴 |
+| evaluation_dataset | **365日**（物理設計確定） | 評価基準正本。MVP は自動 DELETE なし。`evaluation_dataset_テーブル定義書` §13（#565） |
 
 ---
 
@@ -1326,8 +1329,8 @@ MVP初期では、厳密な自動削除よりも、以下を優先する。
 
 | 論点 | 判断内容 |
 | --- | --- |
-| recommendation_run_phase_logを残すか | 汎用phase_logへ統合するか、Reco専用ログとして分けるか |
-| phase_logのowner設計 | owner_type / owner_id方式にするか |
+| recommendation_run_phase_logを残すか | **確定**: 汎用 `phase_log` へ統合し物理テーブルは作成しない（`phase_log_テーブル定義書` §5.2） |
+| phase_logのowner設計 | **確定**: `owner_type` / `owner_id` 方式。MVP の `phase_log.owner_type` は `recommendation_run` / `batch_run` / `evaluation_run` の 3 値（`phase_log_テーブル定義書` §11.3） |
 | error_logのowner設計 | owner_type / owner_id方式にするか |
 | Reco品質メトリクスのテーブル分割 | feature / meaning / normalizationを分けるか、汎用metricに統合するか |
 | ログテーブルのschema | logスキーマに分離するか |
@@ -1523,12 +1526,12 @@ API一覧では、以下の列を追加することを推奨する。
 また、以下の判断事項を明記する。
 
 ```
-- recommendation_run_phase_logをphase_logへ統合するか
+- recommendation_run_phase_logをphase_logへ統合するか → **確定**（Issue #535。`phase_log_テーブル定義書` §5.2）
 - logスキーマを分けるか
 - metric系テーブルを独立させるか、汎用metric_summaryへ統合するか
-- trace_id / error_code / owner_id / occurred_atにindexを張るか
+- trace_id / error_code / owner_id / occurred_atにindexを張るか → **phase_log**: `trace_id` 列・`idx_phase_log_trace` 採用（Issue #535 §5.4・§9）
 - feature_code / metric_type / aggregation_scopeにindexを張るか
-- ログ系テーブルのretentionをどうするか
+- ログ系テーブルのretentionをどうするか → **Batch 系 Log 一式 90日統一**（Issue #536 No.10。`error_log` / `phase_log` / `api_call_log` / `item_import_summary` / `batch_run_log` + BATCH-RET-001）
 ```
 
 ---

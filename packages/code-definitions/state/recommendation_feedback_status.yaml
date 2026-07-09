@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "recommendation_feedback_status"
+  physical_name: "feedback_status"
+  logical_name: "Recommendation Feedback Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "submitted"
+    label: "送信済"
+    meaning: "Feedbackが正常に保存された状態"
+    terminal: true
+    enabled: true
+  - value: "invalid"
+    label: "無効"
+    meaning: "Validationエラーで保存されなかった状態"
+    terminal: true
+    enabled: true
+  - value: "ignored"
+    label: "無視"
+    meaning: "重複送信や対象不整合により保存対象外とした状態"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "recommendation_feedback"
+    column: "feedback_status"
+    constraint: "NOT NULL"
+    note: ""

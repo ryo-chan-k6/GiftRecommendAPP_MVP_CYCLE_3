@@ -1,0 +1,288 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-product-diff-result"
+  title: "product_diff_result:Product Diff Resultテーブル定義書作成"
+  summary: "物理ER・論理ER §9.2 / §9.3・状態遷移設計書 §6.5・テーブル一覧・外部商品データ連携設計書・staging_item / item / raw_product_metadata テーブル定義書を入力に、商品差分判定結果正本 `product_diff_result` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R04 No.4。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提・product_diff_status）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書（取込上流 Metadata。merge 済み前提）"
+    - number: 517
+      purpose: "staging_item テーブル定義書（judged_as 元 Staging・normalized_hash 比較入力。merge 済み前提）"
+    - number: 495
+      purpose: "item テーブル定義書（比較先正本・Upsert 先。merge 済み前提）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 511
+      purpose: "Task #506 PR（raw_product_metadata。merge 済み前提）"
+    - number: 522
+      purpose: "Task #517 PR（staging_item。merge 済み前提）"
+    - number: 500
+      purpose: "Task #495 PR（item。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R04 No.4。論理ER §9.2・テーブル一覧 §6 No.25。
+  取込前後の商品差分判定結果。Staging → 本番昇格（BATCH-007）・有効状態更新（BATCH-008）・意味生成キュー登録（BATCH-009）の判断根拠。
+  BATCH-006（Product Diff Detector / `MOD-BATCH-014`）で `staging_item.normalized_hash` と `item.normalized_hash` を比較し、`new` / `updated` / `unchanged` / `unavailable` を確定する。
+  親 Epic Branch 最新（enum #440、raw_product_metadata #506、staging_item #517、item #495 merge 済み前提）を前提とする。
+  Issue #526 / Branch `docs/task-526-product-diff-result-table-spec` で作業する。
+
+objective: |
+  `product_diff_result` の物理カラム・制約・Index・差分種別（`product_diff_status`）を table-spec.md テンプレ準拠で定義する。
+  `staging_item` との judged_as 関係（`staging_item_id`）、`item` との hash 比較経路（`source` + `external_item_code` → `old_hash` / `new_hash`）、BATCH-006 INSERT / BATCH-007〜009 読取・Retention 方針を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の product_diff_result テーブル定義書作成"
+  - "物理ER 外部商品データ連携系・論理ER §9.2 / §9.3 / §14.4・テーブル一覧 §6 No.25 との突合"
+  - "状態遷移設計書 §6.5 Product Diff Result 状態・enum定義書 product_diff_status との整合"
+  - "packages/code-definitions/state/product_diff_status.yaml との突合"
+  - "外部商品データ連携設計書 §6.3〜§6.4（差分判定・normalized_hash 対象）・§7 フローとの突合"
+  - "staging_item_テーブル定義書 §5.4 judged_as / §12.3 BATCH-006 差分判定フローとの整合"
+  - "item_テーブル定義書 §12（Staging→Item Upsert・normalized_hash 冪等方針）との突合"
+  - "raw_product_metadata_テーブル定義書 §8（取込上流 trace 経路）との整合"
+  - "バッチ設計方針書 BATCH-006 / BATCH-007 / BATCH-008 / BATCH-009・§17.1 冪等キーとの整合"
+  - "バッチ処理一覧・バッチ依存関係図・機能×モジュール対応表（MOD-BATCH-012〜014 / Product Diff Result Repository）との整合"
+  - "インターフェース一覧 IF-DB-BATCH-006（Product Diff 保存）との整合"
+  - "物理ER §10 Index（idx_product_diff_batch_code）・§11 制約・§13 Retention 方針の明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "staging_item / item / raw_product_metadata テーブル定義書（先行 Task 完了済み）"
+  - "staging_item_image / staging_ranking_signal / staging_genre / item_import_summary テーブル定義書（別 Task）"
+  - "api_call_log / batch_run_log テーブル定義書"
+  - "meaning_input_diff テーブル定義書（BATCH-009 入力の別概念）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "外部商品データ連携系分類・staging_item → product_diff_result judged_as・Index §10・Retention §13"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "diff_status（product_diff_status）enum 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§9.2 エンティティ属性・§9.3 疑似差分取得構造・§14.4 staging_item → product_diff_result 関係"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§6 No.25 product_diff_result・Retention 補足方針"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§6.5 Product Diff Result 状態（new / updated / unchanged / unavailable）・判定フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§6.3 新規・更新・変更なし判定・§6.4 hash 対象項目・§7 連携フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Product Diff Result リソース分類・派生 / 判定結果の責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Product Diff Result 正本区分（派生 / 一時）・Batch 管理主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "差分判定責務・Batch 内判定結果の位置づけ"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-006 Product Diff 保存・trace キー"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-006 差分判定・BATCH-007〜009 読取・§17.1 冪等キー（batch_run_id + external_item_code）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-006 入出力・Product Diff Result Repository・BATCH-007〜009 依存"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "BATCH-006 → BATCH-007 / BATCH-008 / BATCH-009 依存関係"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-BATCH-012〜014・Product Diff Result Repository と product_diff_result の責務"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-012 Normalized Payload Builder / MOD-BATCH-013 Hash Calculator / MOD-BATCH-014 Product Diff Detector"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "product_diff_result / batch_run_id trace キー・Retention 方針"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "§5.4 judged_as・§12.3 BATCH-006 差分判定フロー・diff_status 二重保持方針（merge 済み前提）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§12 Staging→Item Upsert・normalized_hash 比較先・hash 変更なし時 last_checked_at のみ更新（merge 済み前提）"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "取込上流 trace（raw_metadata_id 経由）・Staging 変換完了前提（merge 済み前提）"
+    - path: "packages/code-definitions/state/product_diff_status.yaml"
+      required: true
+      purpose: "diff_status packages 正本・product_diff_result / staging_item 利用箇所"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-product-diff-result.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-product-diff-result/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "product_diff_result テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §9.2 / §9.3・テーブル一覧 §6 No.25 と矛盾しない"
+  - "staging_item → product_diff_result judged_as（staging_item_id・LOGICAL 1:0..1）関係が明記されている"
+  - "staging_item / item との差分判定フロー（normalized_hash 比較・new / updated / unchanged / unavailable）が §12 に明記されている"
+  - "old_hash / new_hash と item.normalized_hash / staging_item.normalized_hash の対応が明記されている"
+  - "diff_status（product_diff_status）と enum定義書 / packages 正本が一致している"
+  - "判定正本は product_diff_result、staging_item.diff_status は NULL 可の二重保持（任意 UPDATE）が明記されている"
+  - "BATCH-006 INSERT 冪等キー（batch_run_id + external_item_code）と BATCH-007〜009 読取タイミングが明記されている"
+  - "物理ER §10 Index（idx_product_diff_batch_code）・§13 Retention（成功時短期 / 失敗時 7〜14 日 DELETE）が明記されている"
+  - "Staging 系と同様に物理 FK なし（LOGICAL + Index）方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "product-diff-result-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 526
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "enum/コード定義 完了（product_diff_status 正本）"
+    - number: 506
+      purpose: "raw_product_metadata テーブル定義書 完了（取込上流 Metadata）"
+    - number: 517
+      purpose: "staging_item テーブル定義書 完了（judged_as 元・BATCH-005 normalized_hash）"
+    - number: 495
+      purpose: "item テーブル定義書 完了（比較先・Upsert 先正本）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER staging_item → product_diff_result judged_as（LOGICAL 1:0..1・staging_item_id）との整合"
+    - "物理ER §10 idx_product_diff_batch_code（batch_run_id, external_item_code）との整合"
+    - "論理ER §9.2 属性（product_diff_result_id / batch_run_id / external_item_code / old_hash / new_hash / judged_at / diff_status）との整合"
+    - "論理ER §9.3 疑似差分取得フロー（new / updated / unchanged / unavailable 分岐）との整合"
+    - "テーブル一覧 §6 No.25 分類・Retention 補足との整合"
+    - "状態遷移設計書 §6.5 各 diff_status の意味・後続処理との整合"
+    - "enum定義書 / packages/code-definitions/state/product_diff_status.yaml との整合"
+    - "外部商品データ連携設計書 §6.3 判定条件との整合"
+    - "staging_item_テーブル定義書 §5.4 / §12.3 BATCH-006 フローとの整合"
+    - "item_テーブル定義書 §12 normalized_hash 比較・Upsert 経路との整合"
+    - "バッチ設計方針書 §17.1 冪等キー（batch_run_id + external_item_code）との整合"
+    - "インターフェース一覧 IF-DB-BATCH-006 との整合"
+    - "物理ER §13 Retention 方針の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_review_decisions:
+  - id: "hr-526-1"
+    topic: "BATCH-006 冪等 UNIQUE キー"
+    decision: "batch_run_id + external_item_code（バッチ設計方針書 §17.1）"
+    status: "decided"
+  - id: "hr-526-2"
+    topic: "diff_status 正本"
+    decision: "product_diff_result を正本。staging_item.diff_status は NULL 可・任意 UPDATE（staging_item #517 §17.1 No.4）"
+    status: "decided"
+  - id: "hr-526-3"
+    topic: "judged_as 参照列"
+    decision: "product_diff_result.staging_item_id → staging_item.staging_item_id（LOGICAL FK・物理 FK なし）"
+    status: "decided"
+  - id: "hr-526-4"
+    topic: "hash 列命名"
+    decision: "new_hash = staging_item.normalized_hash、old_hash = 既存 item.normalized_hash（new 時 NULL）"
+    status: "decided"
+  - id: "hr-526-5"
+    topic: "source 列"
+    decision: "product_diff_result 行には持たない。Item 突合は staging_item.source + external_item_code"
+    status: "decided"
+
+notes:
+  - "Batch R04 No.4: product_diff_result（外部商品データ連携系 / 差分判定結果）"
+  - "Issue #526 / Branch docs/task-526-product-diff-result-table-spec"
+  - "Issue 本文のテーブル一覧参照 §8 は semantic_config を指すため、正本は §6 No.25 を用いる"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#506 / PR #511（raw_product_metadata）、#517 / PR #522（staging_item）、#495 / PR #500（item）"
+  - "BATCH-006 は BATCH-005 後続。normalized_hash 算出は BATCH-005 内（staging_item #517 §17.1 No.5）"
+  - "BATCH-007 / BATCH-008 / BATCH-009 は product_diff_result を読取。unchanged 時 Item 業務列更新なし（item #495 §12）"
+  - "Human Review #526 決定済み: 上記 human_review_decisions / product_diff_result_テーブル定義書 §17.1 参照"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

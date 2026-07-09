@@ -1,0 +1,176 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-025-metric-logger-implementation"
+  title: "MOD-RECO-025:Metric Logger実装"
+  summary: "MOD-RECO-025（Metric Logger）のモジュール仕様書に基づき、`apps/reco/src/reco/application/metric-logger/**` にモジュール本体（InMemory Repository）を実装する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-025:Metric Logger"
+  epic_issue_number: 1053
+  epic_branch: "feature/epic-1053-mod-reco-025-metric-logger"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Epic 配下で MOD-RECO-025 モジュール仕様書 Task 完了後、モジュール本体を `apps/reco/src/reco/application/metric-logger/**` に実装する。
+  `MetricLoggerPort.record_metrics(context)` に適合する実装とする。
+  Orchestrator `stubs.py` 差し替えは別 Wiring Epic scope。
+
+objective: |
+  MOD-RECO-025 モジュール本体を実装し、モジュール仕様書の責務・入出力・例外方針を満たす。
+  単体テストの網羅的追加は後続 unit-test Task に委譲する。
+
+scope:
+  - "`apps/reco/src/reco/application/metric-logger/**` へのモジュール本体実装"
+  - "`build_default_metric_logger()` 等の composition エントリ（InMemory）"
+  - "MetricLoggerPort 適合の公開 I/F"
+  - "必要最小限のスモークテスト"
+
+out_of_scope:
+  - "Orchestrator stubs.py Wiring（別 Epic）"
+  - "Postgres Metric Repository（Composition Task）"
+  - "API-INT-002 エンドポイント層"
+  - "他 Recoモジュール本体"
+  - "OpenAPI / DB schema 変更"
+  - "網羅的単体テスト（unit-test Task）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "Port 契約"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      required: true
+      purpose: "MetricLoggerPort"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "StubMetricLogger 互換参考"
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/metric-logger/**"
+      action: "create"
+      required: true
+  tests: []
+
+deliverables:
+  - "MOD-RECO-025 モジュール本体実装（InMemory）"
+  - "build_default_metric_logger() 公開 I/F"
+
+acceptance_criteria:
+  - "`apps/reco/src/reco/application/metric-logger/**` に実装がある"
+  - "モジュール仕様書と矛盾しない"
+  - "recommendation-orchestrator/** を変更していない"
+  - "apps/reco/src/reco/api/** を変更していない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-mod-reco-025-metric-logger-implementation"
+  base: "feature/epic-1053-mod-reco-025-metric-logger"
+  target: "feature/epic-1053-mod-reco-025-metric-logger"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "task-mod-reco-025-metric-logger-module-spec が Epic Branch にマージ済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-025-metric-logger-module-spec"
+  blocks:
+    - "task-mod-reco-025-metric-logger-unit-test"
+  exclusive_files:
+    - "apps/reco/src/reco/application/metric-logger/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/（既存 green 維持）"
+  commands:
+    - "cd apps/reco && uv sync --extra dev && uv run pytest tests/unit/ -q"
+  not_required:
+    - "網羅的 module unit test"
+  skip_reason:
+    "網羅的 module unit test": "unit-test Task へ委譲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "モジュール仕様書整合"
+    - "MetricLoggerPort 適合"
+    - "Orchestrator / stubs 非変更"
+    - "InMemory のみ（DB 変更なし）"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+
+stop_conditions:
+  - "モジュール仕様書未 merge で実装方針が確定できない"
+  - "Postgres Repository 実装が必要と判断された（Composition Task へ）"
+
+notes:
+  - "Related Epic #1053"

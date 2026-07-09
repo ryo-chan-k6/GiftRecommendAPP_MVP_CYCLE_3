@@ -121,9 +121,10 @@ Fixer 完了後の **再 AI Review** は既存の `fix-ready` → `pr-ready-for-
 | 解決物 | 方針 |
 | ------ | ---- |
 | Task Definition | PR 本文 / Issue 本文 / PR head の branch summary / PR changed files から解決（review 側と同型） |
-| Review Definition | Fixer 用 `pr-review.yaml` が無い場合は **Task Definition パス**を `--definition` で Harness に渡す（`/fix-review-comments @task.yaml` と同型） |
+| Contract Definition（1b OpenAPI 等） | `prompts/definitions/contracts/**` の `definition_type: contract`。PR / Issue 本文の Contract Definition、PR changed files、Review Definition の `target.task_definition` から解決 |
+| Review Definition | Fixer 用 `pr-review.yaml` が無い場合は **Task / Contract Definition パス**を `--definition` で Harness に渡す（`/fix-review-comments @<definition>` と同型） |
 
-Review Definition 専用ファイルの要否は Task2 で確定する。最低限 Task Definition パス解決で動作すること。
+`fix-review-comments` の Definition Run Harness は `definition_type: task` に加え **`contract` を許容**する（`definition-run-prompt-builder.cjs`）。Contract Task PR で `request_changes` となった場合も Fixer auto-dispatch の対象とする。
 
 ### 6.3 CLI 出力
 
@@ -139,6 +140,7 @@ Review Definition 専用ファイルの要否は Task2 で確定する。最低�
 | ---- | ---- | ------------ |
 | PR from fork | skip（job success） | `fork_pr` |
 | `type: infra` / `area: infra` ラベル | skip | `infra_pr` |
+| Epic PR（`unit: epic` ラベル、または `feature/epic-*` branch） | skip | `epic_pr` |
 | 変更ファイルが `.github/` のみ | skip | `automation_only_changes` |
 | Review Result が `request_changes` 以外 | Step1 で dispatch 出力 false | （dispatch step 未実行） |
 | Fixer 不要（Task Definition で `ai_review` 相当の gate が false） | 将来拡張。Task2 で要否判断 | — |
@@ -177,11 +179,16 @@ node .github/scripts/dispatch-fix-review-harness.cjs \
   --context request-changes
 ```
 
-オプションで `--definition prompts/definitions/tasks/.../task.yaml` を明示可能とする。
+オプションで `--definition prompts/definitions/tasks/.../task.yaml` または `prompts/definitions/contracts/.../*.yaml` を明示可能とする。
 
 ### 8.3 Harness job 失敗（dispatch 成功後）
 
 Definition Run Harness 本体が失敗した場合は [Definition Run Harnessワークフロー仕様書](./Definition%20Run%20Harnessワークフロー仕様書.md) §16.2 に従う（Fixer harness live-run の recovery）。
+
+| 失敗種別 | 典型原因 | recovery |
+| -------- | -------- | -------- |
+| post-verify Branch 違反 | （修正前）PR head への正当 push を誤検知 | develop に Task #360 修正を取り込み再 dispatch |
+| Agent 成功・fix-complete 未投稿 | Cloud Agent の GitHub write 不可 | Harness `publish-fix-complete-harness-fallback`（`GH_BOT_TOKEN`）または手動 `publish-fix-complete-and-dispatch.cjs` / fix-ready workflow_dispatch |
 
 ---
 

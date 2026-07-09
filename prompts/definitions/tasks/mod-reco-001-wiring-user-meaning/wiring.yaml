@@ -1,0 +1,275 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-user-meaning-wiring"
+  title: "MOD-RECO-001:Orchestrator Wiring（User Meaning）配線"
+  summary: "User Meaning フェーズ（MOD-RECO-004〜010）について、`build_default_stub_ports()` の該当 Port を本実装へ差し替え、MVP デフォルト composition の参照先を更新する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（User Meaning）"
+  epic_issue_number: 788
+  epic_branch: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+  related_issues:
+    - 260
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #788 配下のフェーズ Wiring Task である。MOD-RECO-001 モジュール仕様書 §8.4 に従い、各モジュール implementation Task 完了後に `recommendation-orchestrator/stubs.py` の `build_default_stub_ports()` で User Meaning フェーズ Port を本実装へ差し替える。
+  `StubXxx` クラスは削除せず、失敗注入・明示 DI テスト用に残す（§8.4.1）。
+  起動フェーズ（002 / 003）は配線済みのため変更しない。
+  `stubs.py` は `exclusive_files` のため、本 Task は Epic 配下で直列実行する。
+  **ExecutionContext 型付きフィールド追加は本 Task scope 外**であり、Epic develop merge 後の follow-up Task（playbook 順序 3: #887）で実施する。
+  正本: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
+
+objective: |
+  User Meaning フェーズ 7 Port（004〜010）を `build_default_stub_ports()` で本実装 factory に差し替え、Orchestrator デフォルト経路が実モジュールを参照する状態にする。
+  デフォルト経路テストの期待値更新は後続 integration-test Task に委譲する。
+  ExecutionContext 型付き化および integration 再テストは playbook 順序 3〜4（#887 / #891）へ委譲する。
+
+scope:
+  - "`apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` の User Meaning フェーズ Port 差し替え"
+  - "対象 Port: user_semantic_extractor, external_feature_estimator, internal_feature_estimator, user_feature_generator, user_meaning_projector, user_context_builder, query_embedding_generator"
+  - "各モジュールの `build_default_*` factory（in-memory MVP composition）の import と `_ensure_*` パッケージ読み込み（002 / 003 と同パターン）"
+  - "必要に応じた `recommendation-orchestrator/__init__.py` の export 整理（epic_scope 内）"
+
+out_of_scope:
+  - "MOD-RECO-004〜010 モジュール本体の変更"
+  - "`execution_context.py` の型付きフィールド追加（playbook 順序 3 / #887）"
+  - "`test_recommendation_orchestrator.py` の型付き直接参照化（playbook 順序 4 / #891）"
+  - "起動フェーズ（002 / 003）の再配線"
+  - "Retrieval 以降フェーズの Port 差し替え"
+  - "`StubXxx` クラスの削除"
+  - "Orchestrator デフォルト経路テストの期待値更新（integration-test Task）"
+  - "段階3 Composition 完成（本番 DI / DB Repository）"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針・フェーズ単位の正本（§8.4）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "対象モジュール（004〜010）の責務・処理順序"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線対象の build_default_stub_ports()"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      required: true
+      purpose: "Port 名・PipelineModulePort 契約"
+    - path: "apps/reco/src/reco/application/user-semantic-extractor/__init__.py"
+      required: true
+      purpose: "MOD-RECO-004 factory 参照"
+    - path: "apps/reco/src/reco/application/external-condition-feature-estimator/__init__.py"
+      required: true
+      purpose: "MOD-RECO-005 factory 参照"
+    - path: "apps/reco/src/reco/application/internal-condition-feature-estimator/__init__.py"
+      required: true
+      purpose: "MOD-RECO-006 factory 参照"
+    - path: "apps/reco/src/reco/application/user-feature-generator/__init__.py"
+      required: true
+      purpose: "MOD-RECO-007 factory 参照"
+    - path: "apps/reco/src/reco/application/user-meaning-projector/__init__.py"
+      required: true
+      purpose: "MOD-RECO-008 factory 参照"
+    - path: "apps/reco/src/reco/application/user-context-builder/__init__.py"
+      required: true
+      purpose: "MOD-RECO-009 factory 参照"
+    - path: "apps/reco/src/reco/application/query-embedding-generator/__init__.py"
+      required: true
+      purpose: "MOD-RECO-010 factory 参照"
+  issues:
+    - number: 788
+      purpose: "親 Epic"
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/__init__.py"
+      action: "update"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "User Meaning フェーズ 7 Port の本実装配線（stubs.py）"
+  - "配線対象 Port と factory 関数の対応表（PR 本文）"
+  - "Task Definition（本ファイル）"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-user-meaning/wiring/pr-review.yaml`、PR 作成前に整備）"
+
+acceptance_criteria:
+  - "build_default_stub_ports() の User Meaning フェーズ 7 Port が本実装 factory を参照している"
+  - "StubPipelineModule（004〜010）の参照が build_default_stub_ports() から除去されている"
+  - "StubXxx クラス定義は残存している"
+  - "起動フェーズ（002 / 003）の配線に変更がない"
+  - "MOD-RECO-004〜010 モジュール本体ディレクトリに変更がない"
+  - "Retrieval 以降フェーズの StubPipelineModule 参照に変更がない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-856-mod-reco-001-wiring-user-meaning-wiring"
+  base: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+  target: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-28"
+    due_date: "2026-06-30"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 797
+      purpose: "MOD-RECO-004 User Semantic Extractor Epic 完了"
+    - number: 805
+      purpose: "MOD-RECO-005 External Condition Feature Estimator Epic 完了"
+    - number: 813
+      purpose: "MOD-RECO-006 Internal Condition Feature Estimator Epic 完了"
+    - number: 821
+      purpose: "MOD-RECO-007 User Feature Generator Epic 完了"
+    - number: 829
+      purpose: "MOD-RECO-008 User Meaning Projector Epic 完了"
+    - number: 837
+      purpose: "MOD-RECO-009 User Context Builder Epic 完了"
+    - number: 848
+      purpose: "MOD-RECO-010 Query Embedding Generator Epic 完了"
+  issues:
+    - number: 788
+      purpose: "親 Epic"
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-mod-reco-001-wiring-user-meaning-integration-test"
+  post_epic_follow_up:
+    - "task-mod-reco-001-execution-context-typed-fields（#887）"
+    - "task-mod-reco-001-execution-context-integration-retest-user-meaning（#891）"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "compileall（stubs.py）"
+    - "既存 Orchestrator 単体テスト（配線のみ PR では失敗許容を PR に明記。integration-test Task で green 化）"
+  commands:
+    - "cd apps/reco && python -m compileall src/reco/application/recommendation-orchestrator/stubs.py"
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  manual_checks:
+    - "各モジュール implementation PR が Epic Branch に取り込まれていること"
+    - "Port I/F（ExecutionContext キー等）が各モジュール unit test と一致していること"
+    - "stubs.py の変更が User Meaning フェーズ Port に限定されていること"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "integration test（E2E）": "段階3 Composition 完成 Task の範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "stubs.py の変更が User Meaning フェーズ Port（004〜010）に限定されているか"
+    - "モジュール本体（MOD-RECO-004〜010）への変更が混入していないか"
+    - "StubXxx クラスが削除されていないか"
+    - "起動フェーズ（002 / 003）の配線が維持されているか"
+    - "factory 選択（build_default_*）が各モジュール __init__.py の公開 I/F と一致しているか"
+    - "exclusive_files（stubs.py）の直列化方針に反していないか"
+    - "integration-test / execution-context-typed-fields 委譲が PR 本文に明記されているか"
+    - "execution_context.py への変更が混入していないか"
+    - "Task PR target が Epic Branch であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Wiring は Issue / PR で管理"
+
+risk_points:
+  - "前提モジュール Epic の implementation Task が未完了の場合、配線着手不可"
+  - "stubs.py exclusive_files により Epic 配下 Task は直列化が必要"
+  - "配線 PR 単体では test_recommendation_orchestrator.py が red になる可能性（integration-test Task で解消）"
+
+human_decision_points:
+  - "対象モジュール implementation Task がすべて完了しているか（着手タイミング）"
+  - "build_default_* と build_scaffold_* のどちらをデフォルト composition に採用するか"
+
+stop_conditions:
+  - "前提モジュール Epic の implementation Task が未完了"
+  - "stubs.py 以外のモジュール本体変更が必要になった"
+  - "正本 docs（§8.4）と配線方針が矛盾した"
+  - "Retrieval 以降フェーズの配線が必要になった"
+
+notes:
+  - "Task Issue: #856"
+  - "Epic Issue: #788"
+  - "follow-up playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"
+  - "post-epic follow-up: #887（型付き化）, #891（integration 再テスト）"
+  - "親 Issue: #260（[Epic]MOD-RECO-001:Recommendation Orchestrator）"
+  - "配線方針正本は MOD-RECO-001 モジュール仕様書 §8.4"
+  - "workstream: mod-reco-001-wiring-user-meaning"
+  - "想定 factory: build_default_user_semantic_extractor / build_default_external_condition_feature_estimator / build_default_internal_condition_feature_estimator / build_default_user_feature_generator / build_default_user_meaning_projector / build_default_user_context_builder / build_default_query_embedding_generator"

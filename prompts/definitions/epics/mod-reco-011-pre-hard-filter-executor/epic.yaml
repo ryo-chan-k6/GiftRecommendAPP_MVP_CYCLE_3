@@ -1,0 +1,272 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-mod-reco-011-pre-hard-filter-executor"
+  title: "MOD-RECO-011:Pre Hard Filter Executor"
+  summary: "**廃止**（Issue #862 / PR #863）。独立モジュールとしての Epic は打ち切り。Pre Hard Filter 責務は [Epic]MOD-RECO-012:Candidate Retriever（#864）内サブモジュール `pre_hard_filter` へ移管。"
+  status: "deprecated"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  **本 Epic は廃止済み**（Human 判断・Issue #862 Pivot / PR #863）。
+  当初は MOD-RECO-011（Pre Hard Filter Executor）の設計・実装・テストを Epic Issue #861 で管理する予定であった。
+  廃止後、Pre Hard Filter 責務は MOD-RECO-012（Candidate Retriever / Epic #864）内サブモジュール `pre_hard_filter` に統合する。
+  移行記録正本: `docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md`
+  Issue #861 は Step 5（Issue #869 / PR 予定）でクローズする。
+
+objective: |
+  **達成済み（廃止確定）**: モジュール仕様書 Task（#862）は廃止・移行記録 Pivot として完了。
+  **実施しない**: implementation / unit-test Task、Epic PR の develop 統合、`pre-hard-filter-executor/**` 実装。
+  後続作業は Epic #864 配下で実施する。
+
+scope:
+  - "MOD-RECO-011 に関する子 Task の作業単位を整理する（モジュール仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/mod-reco-011-pre-hard-filter-executor/**）を整理する"
+
+out_of_scope:
+  - "API-INT-002 エンドポイント層（`apps/reco/src/reco/api/**`）"
+  - "API-PUB-002 Public API 実装"
+  - "MOD-RECO-001 Orchestrator 本体の変更（別 Epic #260）"
+  - "他 Recoモジュール（当該 MOD-RECO-011 以外）本体の設計・実装"
+  - "画面（SCR-*）の設計・実装"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema 変更（専用 Task へ切り出し）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+  templates: []
+  files: []
+  issues:
+    - number: 260
+      purpose: "前提 Epic（MOD-RECO-001 Recommendation Orchestrator 完了）"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]MOD-RECO-011:Pre Hard Filter Executor）"
+  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-mod-reco-011-pre-hard-filter-executor）"
+  - "子 Task 候補一覧（モジュール仕様書 / 実装 / 単体テスト）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]MOD-RECO-011:Pre Hard Filter Executor 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が apps/reco/src/reco/application/** 等のモジュール層と整合している（成果物化方針書 §3.5.2）"
+  - "epic_scope.forbidden_paths に apps/reco/src/reco/api/** が明示されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-861-mod-reco-011-pre-hard-filter-executor"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Done"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: "MOD-RECO-011"
+  allowed_paths:
+    - "docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md"
+    - "apps/reco/src/reco/application/pre-hard-filter-executor/**"
+    - "apps/reco/src/reco/domain/**"
+    - "apps/reco/src/reco/pipeline/**"
+    - "apps/reco/tests/unit/application/pre-hard-filter-executor/**"
+    - "apps/reco/tests/module/pre-hard-filter-executor/**"
+    - "prompts/definitions/tasks/mod-reco-011-pre-hard-filter-executor/**"
+    - "prompts/definitions/reviews/mod-reco-011-pre-hard-filter-executor/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/api/**"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/**"
+    - "apps/reco/src/reco/application/recommendation-run-recorder/**"
+    - "apps/reco/src/reco/application/config-version-resolver/**"
+    - "apps/reco/src/reco/application/user-semantic-extractor/**"
+    - "apps/reco/src/reco/application/external-condition-feature-estimator/**"
+    - "apps/reco/src/reco/application/internal-condition-feature-estimator/**"
+    - "apps/reco/src/reco/application/user-feature-generator/**"
+    - "apps/reco/src/reco/application/user-meaning-projector/**"
+    - "apps/reco/src/reco/application/user-context-builder/**"
+    - "apps/reco/src/reco/application/query-embedding-generator/**"
+    - "apps/reco/src/reco/application/candidate-retriever/**"
+    - "apps/reco/src/reco/application/post-hard-filter-executor/**"
+    - "apps/reco/src/reco/application/feature-matcher/**"
+    - "apps/reco/src/reco/application/meaning-match-aggregator/**"
+    - "apps/reco/src/reco/application/context-scorer/**"
+    - "apps/reco/src/reco/application/popularity-scorer/**"
+    - "apps/reco/src/reco/application/risk-scorer/**"
+    - "apps/reco/src/reco/application/final-score-calculator/**"
+    - "apps/reco/src/reco/application/final-ranker/**"
+    - "apps/reco/src/reco/application/recommendation-result-builder/**"
+    - "apps/reco/src/reco/application/result-snapshot-builder/**"
+    - "apps/reco/src/reco/application/reason-generator/**"
+    - "apps/reco/src/reco/application/item-semantic-generator/**"
+    - "apps/reco/src/reco/application/item-feature-generator/**"
+    - "apps/reco/src/modules/**"
+    - "apps/reco/src/app/**"
+    - "apps/api/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "module-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator 完了（ポート契約・処理順序の正本）"
+    - number: 862
+      purpose: "廃止 Pivot 完了（移行記録）"
+    - number: 864
+      purpose: "移行先 Epic（MOD-RECO-012）"
+    - number: 869
+      purpose: "Step 5 Definition 整理・本 Epic クローズ"
+  prs:
+    - 863
+  tasks: []
+  blocking: false
+
+superseded_by:
+  epic_issue_number: 864
+  artifact_id: "MOD-RECO-012"
+  reason: "独立モジュール廃止・pre_hard_filter を 012 内サブモジュールへ統合"
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/application/pre-hard-filter-executor/**"
+    - "docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が MOD-RECO-011 モジュール本体に閉じているか確認する"
+    - "apps/reco/src/reco/api/** への変更が混入していないか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が MOD-RECO-011 本体に閉じているか"
+    - "epic_scope.allowed_paths / forbidden_paths が成果物化方針書 §3.5.2 と整合しているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Epic Definition bootstrap 由来のスキャフォールド。"
+
+risk_points:
+  - "物理配置パス（application/pre-hard-filter-executor/**）の最終確定"
+  - "Orchestrator スタブ差し替えタイミングとの整合"
+  - "domain/** / infrastructure/** への横断変更が必要になった場合の別 Task 化"
+
+human_decision_points:
+  - "物理配置パス（application/pre-hard-filter-executor/** vs pipeline/**）の採用可否"
+  - "並列ウェーブ 2 での着手タイミング"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "Recoモジュール一覧に MOD-RECO-011 が存在しない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "apps/reco/src/reco/api 配下への変更を本 Epic 配下 Task で実施する必要が出た場合"
+
+notes:
+  - "**廃止 Epic**。Issue #861 は Step 5 でクローズ（#869）。"
+  - "Epic Branch `feature/epic-861-mod-reco-011-pre-hard-filter-executor` は merge 不要（廃止）。"
+  - "module-spec Task（#862）は Pivot 完了。implementation / unit-test は deprecated（着手禁止）。"
+  - "移行先: Epic #864 / `prompts/definitions/epics/mod-reco-012-candidate-retriever/epic.yaml`"
+  - "MOD-* Epic は原則 dependencies.epics なし（成果物化方針書 §3.5.3）。#260 / #864 は関連 Issue として記載。"

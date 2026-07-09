@@ -1,0 +1,80 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "VAL"
+  domain_label: "Validation"
+  mvp_scope: true
+  codes:
+    - code: "GRS-VAL-001"
+      internal_name: "Invalid Request Body"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.001"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-VAL-002"
+      internal_name: "Required Field Missing"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.002"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-VAL-003"
+      internal_name: "Invalid Field Type"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.003"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-VAL-004"
+      internal_name: "Invalid Field Length"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.004"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-VAL-005"
+      internal_name: "Invalid Budget Range"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.005"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-VAL-006"
+      internal_name: "Invalid Master Code"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.006"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-VAL-007"
+      internal_name: "Invalid Rating"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.007"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-VAL-008"
+      internal_name: "Invalid Text Input"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.008"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-VAL-009"
+      internal_name: "Request Too Large"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.val.009"
+      owner_types: ["api_call"]
+      mvp_scope: true

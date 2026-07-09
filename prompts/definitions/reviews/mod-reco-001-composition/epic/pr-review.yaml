@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-composition-epic-pr"
+  title: "MOD-RECO-001 Composition（段階3）Epic PRレビュー"
+  summary: "Orchestrator Composition（段階3）Epic の develop 向け統合 PR を AI Review する"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1088
+  issue:
+    number: 1076
+  task_definition: "prompts/definitions/epics/mod-reco-001-composition/epic.yaml"
+  source_branch: "feature/epic-1076-mod-reco-001-composition"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/mod-reco-001-composition/epic.yaml"
+    required: true
+
+review_points:
+  - "epic_scope / allowed_paths 整合"
+  - "composition root / Postgres Repository / E2E 子 Task 完了"
+  - "MVP デフォルト composition 維持（stubs.py 非変更）"
+  - "§14 No.10 E2E 強化の妥当性"
+  - "DB / infrastructure 横断影響の説明"
+  - "025 Metric Postgres（Tier 1 metric_log 相当 + Tier 2 reco_score_distribution_metric）の整合"
+  - "secret 非含有"
+
+notes:
+  - "Epic PR 作成後に target.pr を更新する"
+  - "Related Issue #1076"

@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-004-user-semantic-extractor-module-spec-pr"
+  title: "MOD-RECO-004 モジュール仕様書 PRレビュー"
+  summary: "MOD-RECO-004（User Semantic Extractor）モジュール仕様書 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 799
+  issue:
+    number: 798
+  task_definition: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/module-spec.yaml"
+  source_branch: "docs/task-798-mod-reco-004-user-semantic-extractor-module-spec"
+  target_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
+  parent_epic_issue: 797
+  parent_epic_branch: "feature/epic-797-mod-reco-004-user-semantic-extractor"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  issue:
+    number: 798
+  pr:
+    number: 799
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/module-spec.yaml"
+    required: true
+
+review_points:
+  - "Task Definition scope / acceptance_criteria 充足"
+  - "epic_scope 内に差分が収まっているか"
+  - "secret 非含有"
+
+notes:
+  - "PR #799 作成時に target.* / input.issue.number / input.pr.number を反映済み"

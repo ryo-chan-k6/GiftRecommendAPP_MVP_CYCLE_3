@@ -16,6 +16,7 @@ GitHub は PR author 自身に Approve / Request changes を許可しない。AI
 | ---- | ---- |
 | アカウント定義 | `.github/ai-bot-account.json` |
 | 認証検証 CLI | `.github/scripts/gh-bot-auth.cjs` |
+| 認証モード切替ラッパー | `.github/scripts/gh-auth-mode.sh` |
 | PAT 設定例 | `.github/gh-bot.env.example` |
 | Cursor Rule | `.cursor/rules/github-operation.mdc` §3.16 |
 | Human Review 経路 | [PRレビュー完了時Status更新ワークフロー仕様書](../../06_実装設計/github_actions/PRレビュー完了時Status更新ワークフロー仕様書.md) §5.2 |
@@ -46,7 +47,7 @@ Organization 移行は MVP Cycle 3 では行わない。bot は **Collaborator�
 
 ## 5. AI Agent 作業前の必須手順
 
-GitHub へ **書き込む** 操作（commit / push / `gh issue create` / `gh pr create` / `publish-ai-review-and-dispatch.cjs`）の前:
+GitHub へ **書き込む** 操作（commit / push / `gh issue create` / `gh pr create` / **既存 PR への追加 push** / `gh pr edit` / `publish-ai-review-and-dispatch.cjs` / `publish-fix-complete-and-dispatch.cjs`）の前:
 
 ```bash
 node .github/scripts/gh-bot-auth.cjs verify
@@ -57,21 +58,67 @@ eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
 
 commit author は bot 名義に揃える（`print-git-user` の JSON を `git -c user.name=... -c user.email=...` に利用）。
 
+### 5.1 一時的人間モード（human / bot 切替 CLI）
+
+人間（`ryo-chan-k6`）が **一時的に** 個人アカウントで commit / push する場合、または Human Review 前に bot 認証を解除する場合は、同一ターミナル内で以下を使う。
+
+**重要:** `human` / `bot` の setup 出力は **必ず `eval` または `source`** する（サブシェル実行では環境変数が残らない）。
+
+```bash
+# 人間モード ON（GH_TOKEN / GITHUB_TOKEN を unset）
+eval "$(bash .github/scripts/gh-auth-mode.sh human)"
+
+# 状態確認
+bash .github/scripts/gh-auth-mode.sh status
+
+# 人間として commit / push ...
+
+# bot モード ON（AI 作業再開）
+eval "$(bash .github/scripts/gh-auth-mode.sh bot)"
+bash .github/scripts/gh-auth-mode.sh status
+```
+
+| 用途 | 推奨モード |
+| ---- | ---------- |
+| AI Task の commit / push / PR 作成 | bot |
+| 個人の軽い chore（Task ブランチ上） | human（作業後 bot に戻す） |
+| Human Review（Approve / Request changes） | human |
+| 既存 bot PR ブランチへの追加 push | **bot のみ**（author 混在禁止） |
+
+`verify-human`（任意）:
+
+```bash
+node .github/scripts/gh-bot-auth.cjs verify-human
+```
+
+### 5.2 任意: shell 関数（`gra-human` 等）
+
+リポジトリ外（`~/.bashrc` 等）に、繰り返し利用用の関数を定義してよい。パスは環境に合わせる。
+
+```bash
+gra-human() { eval "$(bash "$HOME/GitHub/GiftRecommendAPP_MVP_CYCLE_3/.github/scripts/gh-auth-mode.sh" human)"; }
+gra-bot()   { eval "$(bash "$HOME/GitHub/GiftRecommendAPP_MVP_CYCLE_3/.github/scripts/gh-auth-mode.sh" bot)"; }
+gra-status(){ bash "$HOME/GitHub/GiftRecommendAPP_MVP_CYCLE_3/.github/scripts/gh-auth-mode.sh" status; }
+```
+
 ---
 
 ## 6. Human Review
 
 | 操作 | 実施者 | 備考 |
 | ---- | ------ | ---- |
-| PR Review → Approve | `ryo-chan-k6` | bot 認証を **解除**（`unset GH_TOKEN` または人間用 gh セッション） |
-| PR Review → Request changes | `ryo-chan-k6` | コメントのみでは Status 連動しない。正式 PR Review 必須 |
+| PR Review → Approve | `ryo-chan-k6` | `eval "$(bash .github/scripts/gh-auth-mode.sh human)"` または `unset GH_TOKEN` |
+| PR Review → Request changes | `ryo-chan-k6` | 同上 |
 | merge | `ryo-chan-k6` | AI Agent は merge しない |
+
+Request changes 時: コメントのみでは Status 連動しない。正式 PR Review 必須。
 
 ---
 
 ## 7. 禁止事項
 
-- 人間 PAT で AI 作業用 PR を open すること（author が人間になり Human Review 不可）
+- 人間 PAT で AI 作業用 PR を open・更新すること（author が人間になり Human Review の Approve / Request changes 不可）
+- 既存 **bot author PR ブランチ** に人間モードで push すること（author 混在）
 - `GH_BOT_TOKEN` を Issue / PR / docs / リポジトリに記載すること
 - machine account で Human Review（Approve / Request changes）すること
 - machine account で merge すること

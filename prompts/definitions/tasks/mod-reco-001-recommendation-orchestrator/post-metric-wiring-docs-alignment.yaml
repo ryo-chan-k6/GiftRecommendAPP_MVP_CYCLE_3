@@ -1,0 +1,286 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-post-metric-wiring-docs-alignment"
+  title: "MOD-RECO-001:Metric Wiring完了後 docs正本追随"
+  summary: "Epic #1053（025 module）および Epic #1061（Metric Wiring）develop merge 後、MOD-RECO-001 §8.4.2 と MOD-RECO-025 / Recoモジュール一覧の移行期記述を develop 上の配線状態（025 本実装 DI）へ追随させる docs-only Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（Recommendation Orchestrator・CLOSED 参考）"
+    - number: 1053
+      purpose: "025 Metric Logger Epic（develop merge 済み）"
+    - number: 1061
+      purpose: "Metric Wiring Epic（develop merge 済み）"
+    - number: 1049
+      purpose: "前回 docs 追随 Task（025 Stub 記載のまま）"
+  related_prs:
+    - number: 1060
+      purpose: "Epic #1053 develop merge"
+    - number: 1066
+      purpose: "Epic #1061 develop merge"
+    - number: 1050
+      purpose: "Task #1049 develop merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #1053 / #1061 により `build_default_stub_ports()` の `metric_logger` が
+  `_build_default_orchestrator_metric_logger()` → `build_default_metric_logger()`（025 本実装）へ差し替え済み。
+  一方、MOD-RECO-001 §8.4.2 / 段階3着手前残課題、MOD-RECO-025 移行期記述、Recoモジュール一覧 MVP 表記は
+  Task #1049 時点（025 Stub / △）のまま残存している。
+  本 Task は docs 正本追随に限定し、ソースコード変更は行わない。
+
+objective: |
+  develop 上の stubs.py 配線状態と docs 正本（MOD-RECO-001 §8.4.2 / 段階3着手前残課題、
+  MOD-RECO-025 §2 / §16.3、Recoモジュール一覧 §6.23.5）を整合させる。
+  PR 本文に更新前後の配線状態サマリを記載する。
+
+scope:
+  - "MOD-RECO-001 §8.4.2 フェーズ Wiring 状態表の更新（025 を配線済みへ）"
+  - "MOD-RECO-001 §131 MVP 表記の更新（025 △ → ○）"
+  - "MOD-RECO-001 §268 段階3着手前残課題の更新（025 本実装配線完了を反映）"
+  - "MOD-RECO-001 §15 変更履歴の追記"
+  - "MOD-RECO-025 §2 移行期記述・Orchestrator 関係節の Wiring 完了反映（最小 diff）"
+  - "MOD-RECO-025 §16.3 順序表該当行の更新"
+  - "Recoモジュール一覧 §6.23.5 MVP △ → ○"
+  - "Task / Review Definition 配置"
+
+out_of_scope:
+  - "`stubs.py` および apps/reco ソースコード変更"
+  - "024/028/029 docs 更新（Task #1049 で完了済み）"
+  - "段階3 Composition 完成（本番 DI / DB Repository 配線）"
+  - "§14 integration 新規実装・テスト追加"
+  - "026/027 Batch 間接参照の docs 更新"
+  - "OpenAPI / Orval / generated / DB schema 変更"
+  - "後続 Epic / Task の自動起票"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§8.4.2 / §131 / §268 更新対象"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "§2 移行期・§16.3 順序表"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "§6.23.5 MVP 表記"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線状態の参照正本（読み取りのみ）"
+  issues:
+    - number: 1053
+      purpose: "025 Metric Logger Epic"
+    - number: 1061
+      purpose: "Metric Wiring Epic"
+    - number: 1067
+      purpose: "本 Task Issue"
+  prs:
+    - number: 1060
+      purpose: "Epic #1053 merge"
+    - number: 1066
+      purpose: "Epic #1061 merge"
+    - number: 1050
+      purpose: "Task #1049 merge"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "§8.4.2 / §131 / §268 / §15"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "移行期・Wiring 完了反映"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      action: "update"
+      required: true
+      purpose: "§6.23.5 MVP △ → ○"
+  files: []
+  tests:
+    expected: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-001 §8.4.2 が develop 配線状態と一致（025 本実装 DI 済み）"
+  - "MOD-RECO-025 の移行期記述が Wiring 完了後の状態を反映"
+  - "Recoモジュール一覧 §6.23.5 が MVP ○ と一致"
+  - "PR 本文の配線状態サマリ（024+029 DI / 028 本実装 / 025 本実装 / 026-027 BT 間接 / StubMetricLogger は明示 DI 用残存）"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "Epic #1053 / #1061 が develop merge 済みである（作業開始前提）"
+  - "§8.4.2 の 025 が Stub ではなく配線済み（本実装 DI）として記載されている"
+  - "026/027 は BT 間接参照のままである"
+  - "段階3残課題から 025 Wiring が除外されている"
+  - "MOD-RECO-025 §2 / §16.3 が Orchestrator 本実装配線完了を反映している"
+  - "Recoモジュール一覧 §6.23.5 が MVP ○ である"
+  - "apps/reco ソース変更が含まれていない（docs-only diff）"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1067-mod-reco-001-post-metric-wiring-docs-alignment"
+  summary: "mod-reco-001-post-metric-wiring-docs-alignment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-11"
+
+issue:
+  number: 1067
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 1053
+      purpose: "025 Metric Logger develop merge"
+    - number: 1061
+      purpose: "Metric Wiring develop merge"
+  issues:
+    - number: 1060
+      purpose: "Epic #1053 PR merge 確認"
+    - number: 1066
+      purpose: "Epic #1061 PR merge 確認"
+    - number: 1049
+      purpose: "前回 docs 追随 Task merge 確認"
+  prs:
+    - number: 1060
+      purpose: "025 Metric Logger Epic merge"
+    - number: 1066
+      purpose: "Metric Wiring Epic merge"
+    - number: 1050
+      purpose: "ログ・観測 docs 追随 Task merge"
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-metric-integration-test"
+  blocks:
+    - "MOD-RECO-001 段階3 Composition Epic 起票判断（docs 前提）"
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+    - "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "stubs.py の metric_logger が _build_default_orchestrator_metric_logger() を参照していること"
+    - "§8.4.2 更新が MOD-RECO-025 仕様書と矛盾しないこと"
+    - "docs diff のみであること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs-only Task。ソース変更なし"
+    "integration test": "段階3 Composition / 別 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§8.4.2 が stubs.py / develop 実装と一致しているか"
+    - "025 移行期記述の更新が過不足ないか"
+    - "026-027 BT 間接 / StubMetricLogger 明示 DI 用残存の記載が維持されているか"
+    - "Recoモジュール一覧 MVP ○ 更新が Human 判断（#1053）と一致しているか"
+    - "docs-only diff であるか（ソース変更なし）"
+    - "develop 直 PR 理由が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Metric Wiring 完了後の docs 正本追随。横断影響は PR 本文で記載"
+
+risk_points:
+  - "StubMetricLogger クラス残存と §8.4.2 本実装配線済み表記の説明不足"
+  - "§16.3 順序表の『完了』表記が Composition Epic 起票条件と混同されやすい"
+
+human_decision_points:
+  - "Recoモジュール一覧 MVP △ → ○ は Epic #1053 Human 判断済み。本 Task で反映する"
+
+stop_conditions:
+  - "stubs.py の配線状態が Issue 前提と異なる（Human 確認）"
+  - "docs 更新にソース変更が必要と判断された場合"
+  - "正本 docs 間で Wiring 完了状態の解釈が矛盾する場合"
+
+notes:
+  - "workstream: mod-reco-001-post-metric-wiring-docs"
+  - "Related to #1053 / #1061 / #1049"
+  - "PR 本文: 配線状態サマリ・docs 差分概要・後続 Task（Composition / §14 integration）"
+
+audit_checklist:
+  wiring_status_expected:
+    - module: "024"
+      expected: "RecoErrorHandler（_build_default_orchestrator_error_handler）+ 029 DI"
+    - module: "025"
+      expected: "build_default_metric_logger（_build_default_orchestrator_metric_logger）"
+    - module: "028"
+      expected: "build_default_phase_log_writer（本実装）"
+    - module: "029"
+      expected: "024 経由 DI（build_default_error_log_writer）"
+    - module: "026"
+      expected: "BT 間接参照（Orchestrator 直接配線なし）"
+    - module: "027"
+      expected: "BT 間接参照（Orchestrator 直接配線なし）"

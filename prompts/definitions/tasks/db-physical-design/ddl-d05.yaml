@@ -1,0 +1,273 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d05"
+  title: "d05:外部商品データ連携系DDL作成"
+  summary: "Phase2 子 Task ④ DDL のバッチ D05。Batch 連携・Staging・Raw Metadata 系 10 テーブルの `CREATE TABLE` / Index / CHECK / バッチ内 FK を `db/ddl/d05_external_product_integration.sql` に定義し、D06 以降の前提を整える。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 611
+      purpose: "先行 D01（extension / enum 型。merge 済み前提）"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系。merge 済み前提）"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系。merge 済み前提）"
+    - number: 601
+      purpose: "先行 D04（Item 系。merge 済み前提）"
+    - number: 603
+      purpose: "後続 D06（Item 派生データ系）"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+  related_prs:
+    - number: 614
+      purpose: "D01 DDL PR（merge 済み前提）"
+    - number: 615
+      purpose: "D02 DDL PR（merge 済み前提）"
+    - number: 616
+      purpose: "D03 DDL PR（merge 済み前提）"
+    - number: 617
+      purpose: "D04 DDL PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **バッチ D05（外部商品データ連携系）**。Batch による Raw 参照・Staging・差分判定・Import Summary の基盤となる。
+  対象 10 テーブルは [DDLバッチ分割表.md](../../../docs/06_実装設計/database/DDLバッチ分割表.md) §9 に列挙される。`staging_attribute` は MVP△（DDL 参照用に含める。DDLバッチ分割表 §3）。
+  先行 D01（`db/ddl/d01_extensions_and_enums.sql`、Issue #611 / PR #614 merge 済み）、D02（`db/ddl/d02_semantic_feature_definitions.sql`、Issue #599 / PR #615 merge 済み）、D03（`db/ddl/d03_master_config.sql`、Issue #600 / PR #616 merge 済み）、D04（`db/ddl/d04_item.sql`、Issue #601 / PR #617 merge 済み）適用後に本バッチを実行する前提とする。
+  Staging 系・Log 系は **物理 FK なし（LOGICAL + Index）** が正本方針（物理ER §9・§13、各テーブル定義書 §8）。
+  Issue #602 / Branch `chore/task-602-d05-ddl` で作業する。
+
+objective: |
+  `db/ddl/d05_external_product_integration.sql` を作成し、D05 対象 10 テーブルの PostgreSQL DDL を各テーブル定義書・物理 ER・enum定義書・コード定義書・マイグレーション方針書と整合させる。
+  バッチ内の CREATE 順序は FK 依存に従う（`fetch_cursor` → `api_call_log` → `raw_product_metadata` → Staging 系 → `product_diff_result` → `item_import_summary`）。
+  `batch_run_log`（D10）への参照は LOGICAL のまま（物理 FK なし）。`item` / `external_genre` / `external_attribute` への参照も LOGICAL 維持。
+
+scope:
+  - "`db/ddl/d05_external_product_integration.sql` の新規作成"
+  - "D05 対象 10 テーブルの `CREATE TABLE`、PK、UNIQUE、Index、CHECK、バッチ内で成立する物理 FK"
+  - "  - `fetch_cursor`"
+  - "  - `api_call_log`"
+  - "  - `raw_product_metadata`"
+  - "  - `staging_item`"
+  - "  - `staging_item_image`"
+  - "  - `staging_ranking_signal`"
+  - "  - `staging_genre`"
+  - "  - `staging_attribute`（MVP△。DDL 参照用に含める）"
+  - "  - `product_diff_result`"
+  - "  - `item_import_summary`"
+  - "D01〜D04 適用済み前提で実行可能な SQL（enum 型・拡張は D01 参照、`item` / `external_genre` / `external_attribute` は D04 参照）"
+  - "マイグレーション方針書 §8.1 のファイル命名・バッチ順序への準拠"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "D06 以降のテーブル `CREATE TABLE`（`item_semantic` / `recommendation_request` 等）"
+  - "D10 `batch_run_log` 等 Log 系テーブルの `CREATE TABLE`（`api_call_log` / `item_import_summary` からの LOGICAL 参照のみ）"
+  - "D04 Item 系から Staging / Raw への後追い物理 FK（各テーブル定義書の LOGICAL 参照方針に従い MVP では付与しない）"
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`db/seeds/**` の作成（Task ⑤）"
+  - "`packages/code-definitions/**` の変更"
+  - "`apps/**` 実装変更"
+  - "docs の変更（DDLバッチ分割表・テーブル定義書は参照のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D05 バッチ scope・10 テーブル一覧・MVP△ 方針の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・バッチ順序・MVP△ 含有方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§9–§13 FK・Index・§15 適用順序・§17 MVP 対象との整合確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型・論理 ID 分離の参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 制約値の参照"
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+      purpose: "D05-1 `fetch_cursor` DDL 正本（`target_external_genre_id` LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+      purpose: "D05-2 `api_call_log` DDL 正本（`batch_run_id` / `fetch_cursor_id` LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+      purpose: "D05-3 `raw_product_metadata` DDL 正本（`api_call_log_id` LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "D05-4 `staging_item` DDL 正本（冪等 unique・LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/staging_item_image_テーブル定義書.md"
+      required: true
+      purpose: "D05-5 `staging_item_image` DDL 正本（partial unique・LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/staging_ranking_signal_テーブル定義書.md"
+      required: true
+      purpose: "D05-6 `staging_ranking_signal` DDL 正本（冪等 unique・LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/staging_genre_テーブル定義書.md"
+      required: true
+      purpose: "D05-7 `staging_genre` DDL 正本（冪等 unique・LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/staging_attribute_テーブル定義書.md"
+      required: true
+      purpose: "D05-8 `staging_attribute` DDL 正本（MVP△・LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "D05-9 `product_diff_result` DDL 正本（`staging_item_id` LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/item_import_summary_テーブル定義書.md"
+      required: true
+      purpose: "D05-10 `item_import_summary` DDL 正本（`batch_run_id` LOGICAL 参照・冪等 unique 含む）"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ DDL・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL の参照"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "先行バッチ DDL の参照"
+    - path: "db/ddl/d04_item.sql"
+      required: true
+      purpose: "先行バッチ DDL（`item` / `external_genre` / `external_attribute` 参照）"
+  templates: []
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d05_external_product_integration.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d05.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d05/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d05_external_product_integration.sql` に存在する"
+  - "D05 対象 10 テーブルが DDLバッチ分割表 §9 と一致する"
+  - "各テーブルの列・型・制約が対応するテーブル定義書と矛盾しない"
+  - "D01〜D04 適用済み前提で本ファイルが実行可能である"
+  - "Staging 系テーブルに誤った物理 FK が付与されていない（LOGICAL + Index 方針）"
+  - "`api_call_log` / `item_import_summary` の `batch_run_id` が LOGICAL 参照のまま（物理 FK なし）である"
+  - "`staging_item` / `staging_item_image` / `staging_ranking_signal` / `staging_genre` / `staging_attribute` の冪等 unique が定義書どおりである"
+  - "`staging_item_image` の partial unique（主画像候補 1 件）が定義書どおりである"
+  - "`item_import_summary` の `(batch_run_id, source_api)` 冪等 unique が定義書どおりである"
+  - "`packages/code-definitions/**` および `apps/**` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d05-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 602
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 611
+      purpose: "先行 D01（extension / enum 型）完了"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系）完了"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系）完了"
+    - number: 601
+      purpose: "先行 D04（Item 系）完了"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-db-physical-design-ddl-d04"
+      issue: 601
+      purpose: "D04 Item 系（`item` / `external_genre` / `external_attribute`）の適用前提"
+  exclusive_files:
+    - "db/ddl/d05_external_product_integration.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d05.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d05/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "D05 対象 10 テーブルがすべて `CREATE TABLE` されていること"
+    - "各テーブルの PK / UNIQUE / Index / CHECK がテーブル定義書 §7〜§9 と一致すること"
+    - "Staging 系に物理 FK が付与されていないこと"
+    - "`api_call_log` / `item_import_summary` の `batch_run_id` に物理 FK が付与されていないこと"
+    - "`staging_item` / `staging_item_image` / `staging_ranking_signal` / `staging_genre` の冪等 unique が定義書どおりであること"
+    - "`staging_item_image` の partial unique（`is_primary_candidate = true`）が定義書どおりであること"
+    - "`item_import_summary` の `(batch_run_id, source_api)` UNIQUE が定義書どおりであること"
+    - "D01〜D04 適用後に `psql` またはローカル DB 検証環境（#612）で構文・適用が通ること（可能な範囲）"
+    - "`apps/**`・`packages/code-definitions/**` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+  skip_reason:
+    "unit test": "DDL 参照用 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL のみ。適用正本は Task ⑤"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch D05 / change_id: `d05_external_product_integration`"
+  - "Issue #602 / Branch `chore/task-602-d05-ddl`"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、D02（#599 / PR #615）、D03（#600 / PR #616）、D04（#601 / PR #617）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "後続: D06（#603）以降は本 Task 完了後に着手"
+  - "MVP△: `staging_attribute` は DDL 参照用に含める（DDLバッチ分割表 §3）。MVP migration 適用の go/no-go は Task ⑤ で再確認"
+  - "Human Review 論点: `staging_attribute` MVP△ の DDL 含有、Staging 系物理 FK なし方針、`batch_run_log`（D10 未作成）への LOGICAL 参照維持、`item_import_summary` 冪等キー"

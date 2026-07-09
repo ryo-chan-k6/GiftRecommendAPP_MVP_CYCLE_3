@@ -1,0 +1,265 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-009-reco-module-list-lambda-ctx-boundary-alignment"
+  title: "MOD-RECO-009:Recoモジュール一覧λ_ctx責務境界整合"
+  summary: "MOD-RECO-008 / MOD-RECO-009 モジュール仕様書および `user_meaning_テーブル定義書` §5.4 で確定した `lambda_ctx` 責務境界に合わせ、Recoモジュール一覧の `MOD-RECO-008` / `MOD-RECO-009` 記載を修正する docs 整合 Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-009:User Context Builder"
+  epic_issue_number: 837
+  epic_branch: "feature/epic-837-mod-reco-009-user-context-builder"
+  related_issues:
+    - number: 830
+      purpose: "MOD-RECO-008 モジュール仕様書（`λ_ctx` 境界確定 §16.1 No.9）"
+    - number: 838
+      purpose: "MOD-RECO-009 モジュール仕様書（未決 No.2 を本 Task で解消）"
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator（§8.2 処理順序・データフロー参照）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Issue #830（MOD-RECO-008 モジュール仕様書）および Issue #838（MOD-RECO-009 モジュール仕様書）の Human 判断により、`lambda_ctx`（`λ_ctx`）算出・`user_meaning` INSERT 主体は **MOD-RECO-009**、Social / Symbolic 射影のみは **MOD-RECO-008** と確定した（`user_meaning_テーブル定義書` §5.4 をモジュール境界の正本とする）。
+  一方、`docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` の §4 / §5.2 / §6.7 / §8.1 等では、依然として `MOD-RECO-008` が `λ_ctx` を算出する記載が残っており、確定モジュール仕様書と矛盾する。
+  MOD-RECO-009 モジュール仕様書 §16 未決事項 No.2 および §19 備考で、本 Task（Issue #839）への切り出しが明示されている。
+
+objective: |
+  Recoモジュール一覧を、確定済み `lambda_ctx` モジュール境界（`008` = 射影のみ、`009` = `lambda_ctx` 算出・`user_meaning` INSERT・User Context 生成）と矛盾しない状態に更新する。
+  併せて MOD-RECO-009 モジュール仕様書の §16 未決事項 No.2 を解消し、docs 間の参照を一貫させる。
+
+scope:
+  - "Recoモジュール一覧 §4 一覧表の `MOD-RECO-008` / `MOD-RECO-009` 主責務・入出力文言を修正する"
+  - "Recoモジュール一覧 §5.2 処理順序表の `MOD-RECO-008` 出力から `λ_ctx` を除去し、`MOD-RECO-009` の入出力に `lambda_ctx` / `user_meaning` 完成を反映する"
+  - "Recoモジュール一覧 §6.7 User Meaning射影から `λ_ctx` 算出責務を除去する（出力は `user_social` / `user_symbolic` のみ）"
+  - "Recoモジュール一覧 §6.8 User Context生成に `lambda_ctx` 算出・`user_meaning` INSERT（IF-DB-RECO-003）責務を追記する"
+  - "Recoモジュール一覧 §8.1 Online推薦データフローで `λ_ctx` の算出タイミングを `MOD-RECO-009` に整合させる"
+  - "MOD-RECO-009 モジュール仕様書 §16 未決事項 No.2 を解消する（確定済み論点へ移行または削除）"
+  - "MOD-RECO-008 モジュール仕様書 §16.1 No.9 / §19 備考の「別 docs Task」参照を Issue #839 完了状態へ更新する"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-009-user-context-builder/reco-module-list-lambda-ctx-boundary-alignment/pr-review.yaml`）を整備する"
+
+out_of_scope:
+  - "apps/reco の実装"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema / migration / DDL 変更"
+  - "`lambda_ctx_rule` 物理スキーマ設計（MOD-RECO-009 仕様書 §16 未決 No.1）"
+  - "コンテキスト境界定義書 UM-05 等、ドメイン正本の用語変更（別 Task 候補）"
+  - "機能×モジュール対応表の変更（現状 `008` 出力に `λ_ctx` なしで整合済み。差分があれば報告のみ）"
+  - "Orchestrator 実装・Wiring 変更"
+  - "MOD-RECO-001 §8.2 ステップ表の変更（必要時は脚注のみ・本 Task では一覧中心）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "更新対象・現行記載の確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-008_User Meaning Projectorモジュール仕様書.md"
+      required: true
+      purpose: "`λ_ctx` 境界確定の正本（§16.1 No.9）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-009_User Context Builderモジュール仕様書.md"
+      required: true
+      purpose: "`lambda_ctx` 算出・INSERT 責務の正本・未決 No.2 解消先"
+    - path: "docs/06_実装設計/database/user_meaning_テーブル定義書.md"
+      required: true
+      purpose: "モジュール境界の正本（§5.4）"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+      purpose: "`lambda_ctx` 利用前提（§4.5 / §9）"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "横断整合確認（変更は原則 out_of_scope）"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: false
+      purpose: "`MOD-RECO-009` 行の横断確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: false
+      purpose: "§8.2 データフロー横断確認"
+  templates: []
+  files: []
+  issues:
+    - number: 830
+      purpose: "前提 Task（MOD-RECO-008 モジュール仕様書・`λ_ctx` 境界）"
+    - number: 838
+      purpose: "前提 Task（MOD-RECO-009 モジュール仕様書）"
+    - number: 839
+      purpose: "本 Task Issue"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-009_User Context Builderモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-008_User Meaning Projectorモジュール仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/reviews/mod-reco-009-user-context-builder/reco-module-list-lambda-ctx-boundary-alignment/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "`lambda_ctx` 境界と整合した Recoモジュール一覧（§4 / §5.2 / §6.7 / §6.8 / §8.1）"
+  - "MOD-RECO-009 モジュール仕様書 §16 未決 No.2 の解消"
+  - "MOD-RECO-008 / MOD-RECO-009 仕様書間の相互参照更新"
+  - "Review Definition（pr-review.yaml）"
+
+acceptance_criteria:
+  - "Recoモジュール一覧で `MOD-RECO-008` の主責務・主な出力に `λ_ctx` 算出が含まれていない"
+  - "Recoモジュール一覧で `MOD-RECO-009` に `lambda_ctx` 算出および `user_meaning` INSERT 責務が明記されている"
+  - "Recoモジュール一覧 §5.2 の `MOD-RECO-008` / `MOD-RECO-009` 入出力が MOD-RECO-008 / MOD-RECO-009 モジュール仕様書と矛盾しない"
+  - "Recoモジュール一覧 §8.1 が `λ_ctx` を `MOD-RECO-009` 完了後の成果物として表現している"
+  - "MOD-RECO-009 モジュール仕様書 §16 未決事項 No.2 が解消されている"
+  - "`user_meaning_テーブル定義書` §5.4 のモジュール境界と矛盾しない"
+  - "apps/reco 実装・OpenAPI / DB schema 変更が含まれていない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-839-mod-reco-009-reco-module-list-lambda-ctx-boundary-alignment"
+  base: "feature/epic-837-mod-reco-009-user-context-builder"
+  target: "feature/epic-837-mod-reco-009-user-context-builder"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 830
+      purpose: "MOD-RECO-008 モジュール仕様書（`λ_ctx` 境界確定）"
+    - number: 838
+      purpose: "MOD-RECO-009 モジュール仕様書（本 Task の切り出し元）"
+  prs: []
+  tasks:
+    - "task-mod-reco-008-user-meaning-projector-module-spec"
+    - "task-mod-reco-009-user-context-builder-module-spec"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-009-user-context-builder-module-spec"
+  blocks: []
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+    - "docs/06_実装設計/reco/MOD-RECO-009_User Context Builderモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-008_User Meaning Projectorモジュール仕様書.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at:
+    - "/start-task"
+    - "/work-issue"
+  checks: []
+  blocked_message: null
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Recoモジュール一覧 §4 / §5.2 / §6.7 / §6.8 / §8.1 の `λ_ctx` 記載がモジュール仕様書と一致しているか確認する"
+    - "機能×モジュール対応表 §7.1 と矛盾があれば報告する（本 Task では原則変更しない）"
+  not_required:
+    - "unit test"
+    - "e2e test"
+  skip_reason:
+    "unit test": "docs整合Taskのため対象外"
+    "e2e test": "docs整合Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "`lambda_ctx` 責務境界が `user_meaning_テーブル定義書` §5.4 と一致しているか"
+    - "Recoモジュール一覧の `MOD-RECO-008` / `MOD-RECO-009` 記載が両モジュール仕様書と矛盾しないか"
+    - "epic_scope.allowed_paths 外の docs 更新が意図どおりか"
+    - "scope 外（実装・OpenAPI・DB schema）の変更が混入していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "Recoモジュール一覧と複数モジュール仕様書の横断 docs 整合"
+
+risk_points:
+  - "epic_scope.allowed_paths 外（`docs/05_.../Recoモジュール一覧.md`）の更新が必要"
+  - "§8.1 データフローの表現粒度（`λ_ctx` 独立行 vs `009` ステップ内包）の読み手解釈"
+
+human_decision_points: []
+
+stop_conditions:
+  - "必須 `input.docs`（MOD-RECO-008 / MOD-RECO-009 モジュール仕様書）が Epic Branch 上に存在しない場合"
+  - "`user_meaning_テーブル定義書` §5.4 と MOD-RECO-008 / MOD-RECO-009 仕様書の責務境界が矛盾している場合"
+  - "依存 Issue #830 / #838 が未完了の場合"
+  - "Recoモジュール一覧修正に伴い OpenAPI / DB schema 変更が必要と判断された場合"
+  - "コンテキスト境界定義書 UM-05 等、ドメイン正本の用語変更が必要と判断された場合"
+
+notes:
+  - "Issue #839"
+  - "切り出し元: MOD-RECO-009 モジュール仕様書 §16 未決 No.2 / §19 備考"
+  - "正本関係: モジュール境界は `user_meaning_テーブル定義書` §5.4 > モジュール仕様書 > Recoモジュール一覧"
+  - "Human承認済み（2026-06-29）: epic_scope 横断で `docs/05_.../Recoモジュール一覧.md` を本 Task PR で更新してよい"
+  - "workstream: mod-reco-009-user-context-builder"

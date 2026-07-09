@@ -1,0 +1,42 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "item_generation_queue_status"
+  physical_name: "queue_status"
+  logical_name: "Item Generation Queue Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "queued"
+    label: "待機"
+    meaning: "生成待ち"
+    terminal: false
+    enabled: true
+  - value: "processing"
+    label: "処理中"
+    meaning: "生成処理中"
+    terminal: false
+    enabled: true
+  - value: "succeeded"
+    label: "成功"
+    meaning: "生成成功"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "生成失敗"
+    terminal: true
+    enabled: true
+  - value: "skipped"
+    label: "スキップ"
+    meaning: "生成不要"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "item_generation_queue"
+    column: "queue_status"
+    constraint: "NOT NULL"
+    note: ""

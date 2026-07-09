@@ -1,0 +1,104 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+# テンプレート: Matching / Ranking / 出力 等の今後のフェーズ Wiring Epic 起票時にコピーして編集する。
+# 正本チェーン: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml
+
+epic:
+  id: "epic-mod-reco-001-wiring-<phase-slug>"
+  title: "MOD-RECO-001:Orchestrator Wiring（<Phase Name>）"
+  summary: "MOD-RECO-001 Recommendation Orchestrator の <Phase Name> フェーズ（MOD-RECO-<module-range>）について、各モジュール implementation 完了後に build_default_stub_ports() の該当 Port を本実装へ差し替える Wiring milestone Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  MOD-RECO-001 モジュール仕様書 §8.4 に従うフェーズ Wiring Epic テンプレート。
+  子 Task は Epic Branch 上で wiring → integration-test を直列実施する。
+  Epic develop merge 後は playbook 順序 3〜4（ExecutionContext 型付き化 / integration 再テスト）を
+  **develop 直 Task** として必ず起票する（漏れ防止）。
+  正本: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml
+
+objective: |
+  <Phase Name> フェーズの Orchestrator Wiring を Epic Issue / 配下 Task で管理し、stubs.py の競合をフェーズ単位で直列化する。
+  develop merge 後の ExecutionContext 型付き化 follow-up Task 起票までを Epic 完了条件に含める。
+
+scope:
+  - "<Phase Name> フェーズの build_default_stub_ports() 配線 Task を Issue 化する"
+  - "配線後の Orchestrator デフォルト経路テスト（test_recommendation_orchestrator.py）を Epic Branch で更新する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition（wiring / integration-test）の配置"
+
+out_of_scope:
+  - "対象モジュール本体の新規実装（各 MOD-RECO-* Epic 配下 Task）"
+  - "execution_context.py の型付きフィールド追加（develop 直 follow-up Task。playbook 順序 3）"
+  - "integration 再テストの getattr 置換（develop 直 follow-up Task。playbook 順序 4）"
+  - "他フェーズの Wiring（別 Epic）"
+  - "段階3 Composition 完成"
+  - "StubXxx クラスの削除"
+
+epic_scope:
+  artifact_id: "MOD-RECO-001"
+  allowed_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/__init__.py"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "prompts/definitions/tasks/mod-reco-001-wiring-<phase-slug>/**"
+    - "prompts/definitions/reviews/mod-reco-001-wiring-<phase-slug>/**"
+    - "prompts/definitions/epics/mod-reco-001-wiring-<phase-slug>/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+    - "apps/reco/src/reco/application/**/"
+  child_task_areas:
+    - "wiring"
+    - "integration-test"
+
+follow_up_tasks_outside_epic:
+  - task_area: "execution-context-typed-fields"
+    branch_scope: "develop"
+    template: "prompts/definitions/_examples/mod-reco-001-wiring-phase-template/execution-context-typed-fields.yaml"
+    start_gate: "本 Epic が develop に merge 済み"
+  - task_area: "integration-retest"
+    branch_scope: "develop"
+    template: "prompts/definitions/_examples/mod-reco-001-wiring-phase-template/integration-retest.yaml"
+    start_gate: "execution-context-typed-fields Task が develop に merge 済み"
+
+branch:
+  no_branch: false
+  name: "feature/epic-<issue-number>-mod-reco-001-wiring-<phase-slug>"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+acceptance_criteria:
+  - "Epic Branch 上で wiring / integration-test Task が完了している"
+  - "Epic PR が develop に merge 済みである"
+  - "playbook 順序 3（execution-context-typed-fields）Task が起票されている"
+  - "playbook 順序 4（integration-retest）Task が起票されている"
+
+notes:
+  - "テンプレート正本。コピー後に <phase-slug> / <Phase Name> / module-range を置換する"
+  - "Issue 本文 §16 に playbook の epic_issue_body_appendix を含める"
+  - "playbook: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml"

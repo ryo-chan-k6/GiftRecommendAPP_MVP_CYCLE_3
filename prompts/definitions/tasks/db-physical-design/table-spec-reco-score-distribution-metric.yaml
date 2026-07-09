@@ -1,0 +1,268 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-reco-score-distribution-metric"
+  title: "reco_score_distribution_metric:Reco Score Distribution Metricテーブル定義書作成"
+  summary: "物理ER・テーブル一覧 §11 No.62・ログ・Observability設計書・batch_run_log / recommendation_result / recommendation_result_item テーブル定義書を入力に、Matching / Ranking スコア分布 Observability 指標 `reco_score_distribution_metric` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R08 No.2。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（batch_run_phase_name 等。merge 済み前提）"
+    - number: 534
+      purpose: "Batch R05 No.2 batch_run_log テーブル定義書（merge 済み・Batch 実行単位 LOGICAL 参照）"
+    - number: 535
+      purpose: "Batch R05 No.3 phase_log テーブル定義書（merge 済み・Reco 品質 Metric trace 境界）"
+    - number: 543
+      purpose: "Batch R06 No.1 recommendation_run テーブル定義書（merge 済み・Run 単位 trace 正本）"
+    - number: 544
+      purpose: "Batch R06 No.2 recommendation_result テーブル定義書（merge 済み・Result ヘッダ trace 正本）"
+    - number: 545
+      purpose: "Batch R06 No.3 recommendation_result_item テーブル定義書（merge 済み・スコア集計入力正本）"
+    - number: 556
+      purpose: "Batch R07 No.4 feature_distribution_metric テーブル定義書（merge 済み・Metric 系列対称設計正本）"
+    - number: 557
+      purpose: "Batch R07 No.5 meaning_distribution_metric テーブル定義書（merge 済み・Metric 系列対称設計正本）"
+    - number: 563
+      purpose: "Batch R08 No.1 normalization_distribution_metric テーブル定義書（並行 Task。BATCH-016 系 Metric 境界参照）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 539
+      purpose: "Task #534 PR（batch_run_log。merge 済み前提）"
+    - number: 540
+      purpose: "Task #535 PR（phase_log。merge 済み前提）"
+    - number: 548
+      purpose: "Task #543 PR（recommendation_run。merge 済み前提）"
+    - number: 549
+      purpose: "Task #544 PR（recommendation_result。merge 済み前提）"
+    - number: 550
+      purpose: "Task #545 PR（recommendation_result_item。merge 済み前提）"
+    - number: 561
+      purpose: "Task #556 PR（feature_distribution_metric。merge 済み前提）"
+    - number: 562
+      purpose: "Task #557 PR（meaning_distribution_metric。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R08 No.2。テーブル一覧 §11 No.62。
+  Matching / Ranking スコア分布の Observability 指標。MVP は `partial`（△）。主な更新主体は **reco**（Online 推薦実行時）。
+  物理ER §8 Log / Observability系 / Metric 分類・`metric` schema 候補を前提とする。
+  親 Epic Branch 最新（batch_run_log #534、recommendation_run #543、recommendation_result #544、recommendation_result_item #545、
+  feature_distribution_metric #556、meaning_distribution_metric #557 merge 済み）を前提とする。
+  `feature_distribution_metric_テーブル定義書` / `meaning_distribution_metric_テーブル定義書` の §5.5 / §5.7 / §17.1（Human Review 先例）を Metric 系列の対称設計参考とする。
+  Issue #564 / Branch `docs/task-564-reco-score-distribution-metric-table-spec` で作業する。
+
+objective: |
+  `reco_score_distribution_metric` の物理カラム・制約・Index・集計粒度を table-spec.md テンプレ準拠で定義する。
+  `batch_run_log` / `recommendation_result` / `recommendation_result_item` との関係（LOGICAL FK・集計入力・Run / Result trace）と
+  reco 実行時の Metric 保存方針・ログ・Observability設計書 §11.2 / §12.9–§12.12 / §22.3 のスコア分布方針を明記し、
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の reco_score_distribution_metric テーブル定義書作成"
+  - "物理ER Log / Observability系・Metric 分類・§8–§11 との突合"
+  - "テーブル一覧 §11 No.62・Log / Observability 系補足（Metric 系・retention）との整合"
+  - "ログ・Observability設計書 §11.2 推薦Runメトリクス・§12.9 集計粒度（run / daily / version）・§12.10–§12.12 分布メトリクス候補カラム・§20.2 Retention との突合・差分整理"
+  - "ログ・Observability設計書 §22.3 reco 記録方針（matching score / final_score 分布）との整合"
+  - "論理ER §14 Online推薦フロー・RecommendationResult定義書 §15.1 スコア項目との整合"
+  - "batch_run_log_テーブル定義書 §5.2 LOGICAL FK 方針との整合（batch_run_id 任意参照・trace 境界）"
+  - "recommendation_run_テーブル定義書との Run 単位 trace・version スナップショット整合"
+  - "recommendation_result_テーブル定義書との Result ヘッダ trace・1 Run : 0..1 Result 境界整合"
+  - "recommendation_result_item_テーブル定義書 §5 / §6 との集計入力責務境界（個別スコア vs 分布統計量）"
+  - "phase_log_テーブル定義書 §5.7 Reco 品質メトリクス記録境界（phase 名追加なし方針）との整合"
+  - "feature_distribution_metric_テーブル定義書 / meaning_distribution_metric_テーブル定義書 との対称設計（aggregation_scope・冪等キー・Retention・entity_type / value_layer 境界）参考"
+  - "feature_distribution_metric / meaning_distribution_metric / normalization_distribution_metric との責務分離（本 Task は Matching / Ranking スコア軸のみ）"
+  - "インターフェース一覧 IF-OBS-005（Metric 記録・△）・IF-DB-RECO-007 保存フローとの整合整理"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "feature_distribution_metric / meaning_distribution_metric / normalization_distribution_metric テーブル定義書の再作成（merge 済み / 並行 Task を参照）"
+  - "batch_run_log / phase_log / recommendation_run / recommendation_result / recommendation_result_item テーブル定義書の再作成（merge 済みを参照）"
+  - "BATCH-016 分布メトリクス集計 Batch の再定義（Feature / Meaning / Normalization 系の責務）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+  - "候補全件スコアの永続化（Observability §12.10 方針どおり Result Item 上位 K 件のみ正本）"
+  - "enum定義書への reco 専用 phase 追加（必要時は Human Review 論点として整理のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log / Observability系・Metric 分類・schema 候補 metric・§8–§11・reco_score partial 方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "batch_run_phase_name・result_status / run_status 等参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§14 Online推薦フロー・Request → Run → Result → Item 関係"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§11 No.62 reco_score_distribution_metric・Metric 系補足・retention 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§11.2 推薦Runメトリクス・§12.9–§12.12 分布メトリクス・§16.8 / §17.2 Reco品質・§20.2 Retention・§22.3 reco 記録方針"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "§15.1 スコア項目・context_score / final_score / score_breakdown 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-OBS-005 Metric 記録・IF-DB-RECO-007 Recommendation Result 保存"
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 LOGICAL FK・Batch 実行単位 trace・Retention 90 日（#534 merge 済み正本）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "§5.7 Reco 品質メトリクスは Metric テーブル記録・phase 名非追加方針（#535 merge 済み正本）"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "Run 単位 trace・semantic_config_version / ranking_config スナップショット（#543 merge 済み正本）"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+      purpose: "Result ヘッダ trace・1 Run : 0..1 Result・result_status 境界（#544 merge 済み正本）"
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+      purpose: "context_score / final_score / score_breakdown_json 集計入力正本（#545 merge 済み正本）"
+    - path: "docs/06_実装設計/database/feature_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 / §5.7 / §17.1 Metric 系列対称設計正本（#556 merge 済み正本）"
+    - path: "docs/06_実装設計/database/meaning_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 / §5.7 / §17.1 Metric 系列対称設計正本（#557 merge 済み正本）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-reco-score-distribution-metric.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-reco-score-distribution-metric/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "reco_score_distribution_metric テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・テーブル一覧 §11 No.62 と矛盾しない"
+  - "batch_run_log との関係（batch_run_id LOGICAL FK・任意性・trace 境界）が明記されている"
+  - "recommendation_result / recommendation_result_item との集計入力責務境界（個別スコア vs 分布統計量）が明記されている"
+  - "context_score / final_score / matching 内訳スコアの MVP 採用範囲が明記されている"
+  - "reco 実行時の Metric 保存方針（Online 推薦・主更新主体 reco）が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "reco-score-distribution-metric-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 564
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 534
+      purpose: "batch_run_log テーブル定義書 完了（merge 済み前提）"
+    - number: 544
+      purpose: "recommendation_result テーブル定義書 完了（Result trace 正本。merge 済み前提）"
+    - number: 545
+      purpose: "recommendation_result_item テーブル定義書 完了（スコア集計入力。merge 済み前提）"
+    - number: 556
+      purpose: "feature_distribution_metric テーブル定義書 完了（Metric 系列対称設計参考。merge 済み前提）"
+    - number: 557
+      purpose: "meaning_distribution_metric テーブル定義書 完了（Metric 系列対称設計参考。merge 済み前提）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER Log / Observability系・Metric 分類・partial MVP 方針との整合"
+    - "テーブル一覧 §11 No.62（reco 更新・Matching / Ranking スコア分布）との整合"
+    - "ログ・Observability設計書 §12.12 主要カラム候補と物理列の対応整理"
+    - "batch_run_log_テーブル定義書との batch_run_id LOGICAL FK・任意性・Retention 差分の双方向整合"
+    - "recommendation_result_テーブル定義書との Result trace・1 Run : 0..1 Result 境界整合"
+    - "recommendation_result_item_テーブル定義書との責務分離（個別スコア列 vs 本テーブル分布統計量）"
+    - "feature_distribution_metric / meaning_distribution_metric テーブル定義書との対称設計（列構造・aggregation_scope・冪等キー・Retention）参考整合"
+    - "phase_log_テーブル定義書 §5.7 との Reco 品質 Metric 記録境界整合"
+    - "IF-OBS-005 / IF-DB-RECO-007 との保存 I/F 整理"
+    - "Retention 方針（ログ・Observability設計書 §20.2 および Metric 系列先例）が明記されていること"
+    - "feature / meaning / normalization 系 Metric との責務分離が §5 等で明記されていること"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R08 No.2: reco_score_distribution_metric（No.1 normalization_distribution_metric は #563 並行 Task）"
+  - "Issue #564 / Branch docs/task-564-reco-score-distribution-metric-table-spec"
+  - "先行 merge 済み前提: #534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）、#543 / PR #548（recommendation_run）、#544 / PR #549（recommendation_result）、#545 / PR #550（recommendation_result_item）、#556 / PR #561（feature_distribution_metric）、#557 / PR #562（meaning_distribution_metric）、#563（normalization_distribution_metric）"
+  - "Human Review #564 決定済み（§17.1）: aggregation_scope=run・score_type 2 値・empty Result INSERT なし・batch_run_id NULL 固定・reco 主更新・phase 非追加・public 単一 schema・Retention 365 日以上"
+  - "物理ER §9 / §10 / §11 / §13 / §17.6 に #564 Human Review 決定を反映済み"
+  - "後続 Task: DDL migration 等"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

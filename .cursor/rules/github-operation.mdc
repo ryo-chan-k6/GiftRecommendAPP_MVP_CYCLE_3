@@ -386,20 +386,25 @@ AI Agentがcommitを作成する場合は、必ず `git-commit-message.mdc` を�
 
 ### 3.16 Machine Account 認証（Human Review 前提）
 
-AI Agent が GitHub へ **書き込む** 操作（commit / push / Issue 作成 / PR 作成 / AI Review dispatch）を行う前に、**machine account**（`.github/ai-bot-account.json` の `machine_account_login`、現行: `okuri-ai-bot`）として認証すること。
+AI Agent が GitHub へ **書き込む** 操作（commit / push / Issue 作成 / PR 作成・更新 / AI Review dispatch）を行う前に、**machine account**（`.github/ai-bot-account.json` の `machine_account_login`、現行: `okuri-ai-bot`）として認証すること。
 
 | 操作 | 認証 |
 | ---- | ---- |
-| commit / push / `gh issue create` / `gh pr create` | machine account PAT（`GH_BOT_TOKEN`） |
+| commit / push / `gh issue create` / `gh pr create` / `gh pr edit`（本文・タイトル） | machine account PAT（`GH_BOT_TOKEN`） |
+| 既存 PR への追加 push（レビュー指摘対応・Harness 後の修正含む） | 同上（**PR author を bot のまま維持**） |
 | Human Review（Approve / Request changes）/ merge | 人間アカウント（`ryo-chan-k6`）。bot 認証を使わない |
+
+**PR author が人間（`ryo-chan-k6` 等）の場合:** GitHub は author 自身に Approve / Request changes を許可しない。AI Agent は人間 PAT で PR を open・更新してはならない。
 
 **作業開始前（必須）:**
 
 ```bash
 node .github/scripts/gh-bot-auth.cjs verify
 eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+# または: eval "$(bash .github/scripts/gh-auth-mode.sh bot)"
 ```
 
+- 一時的人間モード切替は [AI機械アカウント運用設計書](../../docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md) §5.1（`gh-auth-mode.sh`）を正とする。
 - PAT は **machine account で発行した Classic PAT**（`repo`）。人間アカウントの PAT では PR author が人間になり、Human Review 正式経路が使えない。
 - PAT は `~/.config/gift-recommend/gh-bot.env` に保管（`.github/gh-bot.env.example` 参照）。リポジトリに commit しない。
 - 詳細は [AI機械アカウント運用設計書](../../docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md) を正とする。

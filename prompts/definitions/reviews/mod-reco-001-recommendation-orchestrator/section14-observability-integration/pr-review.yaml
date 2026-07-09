@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-section14-observability-integration-pr"
+  title: "MOD-RECO-001 §14 No.10 観測系横断 integration PRレビュー"
+  summary: "§14 No.10 横断 integration テスト Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1071
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/section14-observability-integration.yaml"
+  source_branch: "test/task-1071-mod-reco-001-section14-observability-integration"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/section14-observability-integration.yaml"
+    required: true
+
+review_points:
+  - "§14 No.10（Run/Phase/Error 下位委譲）が横断テストでカバーされているか"
+  - "正常 Run で Metric 永続化も横断確認されているか"
+  - "既存テストとの役割分担が明確か"
+  - "scope 外（Orchestrator 本体 / stubs 配線）変更がないか"
+
+notes:
+  - "target.pr: PR 作成後に更新"
+  - "Related Issue #1071"

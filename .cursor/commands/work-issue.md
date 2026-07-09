@@ -24,7 +24,7 @@ Issue作成・Branch作成が未完了の場合は、原則として `/start-tas
 例：
 
 ```text
-/work-issue @prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml
+/work-issue @prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml
 ```
 Definitionなしでの実行は原則禁止する。
 
@@ -93,7 +93,12 @@ push / commit の前に bot 認証を確認する（[github-operation.mdc](../..
 ```bash
 node .github/scripts/gh-bot-auth.cjs verify
 eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+GIT_USER_JSON="$(node .github/scripts/gh-bot-auth.cjs print-git-user)"
+GIT_NAME="$(node -e "console.log(JSON.parse(process.argv[1]).name)" "$GIT_USER_JSON")"
+GIT_EMAIL="$(node -e "console.log(JSON.parse(process.argv[1]).email)" "$GIT_USER_JSON")"
 ```
+
+commit は **必ず** bot 名義（例: `git -c user.name="$GIT_NAME" -c user.email="$GIT_EMAIL" commit ...`）。push は `GH_BOT_TOKEN` を `GH_TOKEN` に export した状態で行う。人間アカウントの `gh auth login` のまま push しない（PR author が人間になり Human Review 不可）。
 
 ### 1. Issueを確認する
 
@@ -333,6 +338,8 @@ Task Definitionの `test_policy` に従い、必要なテスト・検証を実�
 ### 12. commitを作成する
 
 変更内容がTask Definitionのscope内であり、自己確認が完了した場合はcommitを作成する。
+
+**commit 前**に §0 の `print-git-user` で取得した `GIT_NAME` / `GIT_EMAIL` を使用する（ハードコード禁止）。未実行の場合は §0 に戻ってから commit する。
 
 commit作成時は以下を確認する。
 
@@ -624,6 +631,24 @@ Status更新は、Commandが直接確定するのではなく、GitHub Actions�
 ### 推奨対応
 -
 ```
+---
+
+## Layer2 テスト dispatch（Epic C 関連 Task）
+
+Task Definition の `test_policy` に workflow_dispatch 実行・artifact 読取が含まれる場合、または Epic C（`gha-test-environment`）配下の Layer2 テスト検証が必要な場合、Agent は以下を実施する。
+
+**正本:** [Layer2 Agent dispatch手順書.md](../../docs/05_アプリケーション設計/テスト/Layer2%20Agent%20dispatch%E6%89%8B%E9%A0%86%E6%9B%B8.md)
+
+| 手順 | 内容 |
+| ---- | ---- |
+| 1 | 対象 workflow（`test-system.yml` / `test-reco-quality.yml` 等）と `--ref`（Task Branch）を決定 |
+| 2 | bot 認証後 `gh workflow run` で dispatch（§0） |
+| 3 | `gh run watch` / `gh run view` / artifact ダウンロードで結果読取 |
+| 4 | 失敗時は scope 内 Fix → commit → 再 dispatch（**自動 Fix は最大 2 回**。上限到達時は Slack `incident_detected` でエスカレーション。正本: 手順書 §9） |
+| 5 | PR 本文「テスト・検証結果」に run URL・入力・判定を記載 |
+
+Layer2 dispatch は Definition Run Harness（`/review-pr` 等）とは別系統である（Commands設計書 §29.5）。cloud dev URL 依存手順（Epic B defer）は out of scope。
+
 ---
 
 ## 出力ルール

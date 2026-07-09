@@ -1,0 +1,384 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d13"
+  title: "d13:DDL横断整合チェックDDL作成"
+  summary: "Phase2 子 Task ④ DDL の終盤ゲート D13。D01〜D12 の `db/ddl/*.sql` をテーブル定義書・物理 ER・enum 定義書・コード定義書と横断突合し、`db/ddl/d13_ddl_cross_check.sql` に検証 SQL を整備する。Blocker 級不整合は本 Task Branch 上で D01〜D12 DDL を修正する（#582 型ゲート）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 611
+      purpose: "先行 D01（extension / enum 型。merge 済み前提）"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系。merge 済み前提）"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系。merge 済み前提）"
+    - number: 601
+      purpose: "先行 D04（Item 系。merge 済み前提）"
+    - number: 602
+      purpose: "先行 D05（外部商品データ連携系。merge 済み前提）"
+    - number: 603
+      purpose: "先行 D06（Item 派生データ系。merge 済み前提）"
+    - number: 604
+      purpose: "先行 D07（Online 推薦系。merge 済み前提）"
+    - number: 605
+      purpose: "先行 D08（User 意味推定系。merge 済み前提）"
+    - number: 606
+      purpose: "先行 D09（Evaluation 系。merge 済み前提）"
+    - number: 607
+      purpose: "先行 D10（Log 系。merge 済み前提）"
+    - number: 608
+      purpose: "先行 D11（Metric 系。merge 済み前提）"
+    - number: 609
+      purpose: "先行 D12（遅延 FK / 索引追加。merge 済み前提）"
+    - number: 612
+      purpose: "ローカル DB 検証環境（merge 済み前提。実 DB 検証に利用）"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+    - number: 582
+      purpose: "Epic マージ前 docs 横断ゲート（参考。本 Task は DDL 横断ゲート）"
+  related_prs:
+    - number: 614
+      purpose: "D01 DDL PR（merge 済み前提）"
+    - number: 615
+      purpose: "D02 DDL PR（merge 済み前提）"
+    - number: 616
+      purpose: "D03 DDL PR（merge 済み前提）"
+    - number: 617
+      purpose: "D04 DDL PR（merge 済み前提）"
+    - number: 618
+      purpose: "D05 DDL PR（merge 済み前提）"
+    - number: 619
+      purpose: "D06 DDL PR（merge 済み前提）"
+    - number: 620
+      purpose: "D07 DDL PR（merge 済み前提）"
+    - number: 621
+      purpose: "D08 DDL PR（merge 済み前提）"
+    - number: 622
+      purpose: "D09 DDL PR（merge 済み前提）"
+    - number: 623
+      purpose: "D10 DDL PR（merge 済み前提）"
+    - number: 624
+      purpose: "D11 DDL PR（merge 済み前提）"
+    - number: 625
+      purpose: "D12 DDL PR（merge 済み前提）"
+    - number: 613
+      purpose: "ローカル DB 検証環境 PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **終盤ゲート D13（DDL 横断整合チェック）**。D01〜D12 の `db/ddl/*.sql` が揃った後、テーブル定義書・物理 ER・enum 定義書・コード定義書との整合を確認する Epic 終盤ゲート Task（#582 / #469 と同型のチェックリスト + 修正 PR）。
+  対象 scope は [DDLバッチ分割表.md](../../../docs/06_実装設計/database/DDLバッチ分割表.md) §17 および [マイグレーション方針書.md](../../../docs/06_実装設計/database/マイグレーション方針書.md) §8.1・§8.2 を正とする。
+  先行 D01（`db/ddl/d01_extensions_and_enums.sql`、Issue #611 / PR #614 merge 済み）〜 D12（`db/ddl/d12_deferred_fk_indexes.sql`、Issue #609 / PR #625 merge 済み）適用後に本バッチを実行する前提とする。
+  `db/ddl/d13_ddl_cross_check.sql` は **スキーマ追加用ではなく**、D01〜D12 適用済み DB に対する横断検証 SQL（件数・存在確認・主要制約の突合）を集約する。
+  Issue #610 / Branch `chore/task-610-d13-ddl` で作業する。
+
+objective: |
+  1. D01〜D12 の `db/ddl/*.sql` を棚卸しし、テーブル定義書・物理 ER・enum 定義書・コード定義書・DDLバッチ分割表と横断突合する。
+  2. `db/ddl/d13_ddl_cross_check.sql` を作成し、D01 適用済み前提で D02〜D12 適用後に実行可能な検証 SQL を定義する。
+  3. 不整合を事実 / 推論 / 未確認に区分し、Blocker / Must / Should / Question に分類する（チェックリストは PR 本文に記載）。
+  4. Blocker 級不整合は本 Task Branch 上で `db/ddl/d01_*.sql`〜`d12_*.sql` を修正する（同一 PR に含める）。
+  5. Task ⑤（`supabase/migrations/` 統合）および Epic PR → develop 進行の判断材料を PR 本文に整理する。
+
+scope:
+  - "`db/ddl/d13_ddl_cross_check.sql` の新規作成"
+  - "D01〜D12 DDL と docs の横断整合チェック（enum 26 件・MVP 対象 62 テーブル・物理 FK / 索引 / CHECK の主要観点）"
+  - "チェック観点に沿った棚卸し結果の一覧化（事実 / 推論 / 未確認、Blocker / Must / Should / Question）"
+  - "Blocker 級不整合の `db/ddl/d01_*.sql`〜`d12_*.sql` 修正（本 Task scope 内で同一 PR に含める）"
+  - "D01（extension / enum 型）適用済み前提で D02〜D12 + D13 検証 SQL が実行可能であることの確認"
+  - "ローカル DB 検証手順書に沿った実 DB 検証（可能な範囲）"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`db/seeds/**` の作成（Task ⑤）"
+  - "docs の仕様再設計・大規模修正（本 Task は DDL 横断整合が主目的。docs 修正は Blocker 級かつ DDL 修正だけでは解消不能な場合は Human 判断）"
+  - "Epic PR の merge（Human 判断）"
+  - "`develop` への直接反映"
+  - "`packages/code-definitions/**` の変更"
+  - "`packages/contracts/**`・generated の変更"
+  - "`apps/**` 実装変更"
+  - "generated の手動編集"
+  - "新規テーブル・enum 型の追加（D01〜D12 で未作成のオブジェクト新設）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D13 バッチ scope・D01〜D12 対応・適用順序の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・バッチ順序・Epic 終盤ゲート方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§9 FK・§10 Index・§11 制約・§17 決定事項との整合確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "§4.1 論理 ID 分離・§5 enum 一覧・§6 値定義の正本"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 制約値の参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "62 テーブルと定義書ファイルの対応・MVP 対象確認"
+    - path: "docs/06_実装設計/database/ローカルDB検証手順書.md"
+      required: true
+      purpose: "D01〜D12 適用・検証 SQL の手順正本"
+    - path: "docs/06_実装設計/database/"
+      required: true
+      purpose: "62 件の *_テーブル定義書.md の横断突合（glob 参照）"
+  templates:
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（棚卸し結果・判断材料の記載。/create-pr）"
+  files:
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "D01 DDL 正本（enum / extension 検証の基準）"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "D02 DDL 正本"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "D03 DDL 正本"
+    - path: "db/ddl/d04_item.sql"
+      required: true
+      purpose: "D04 DDL 正本"
+    - path: "db/ddl/d05_external_product_integration.sql"
+      required: true
+      purpose: "D05 DDL 正本"
+    - path: "db/ddl/d06_item_derived.sql"
+      required: true
+      purpose: "D06 DDL 正本"
+    - path: "db/ddl/d07_online_recommendation.sql"
+      required: true
+      purpose: "D07 DDL 正本"
+    - path: "db/ddl/d08_user_meaning.sql"
+      required: true
+      purpose: "D08 DDL 正本"
+    - path: "db/ddl/d09_evaluation.sql"
+      required: true
+      purpose: "D09 DDL 正本"
+    - path: "db/ddl/d10_log_observability.sql"
+      required: true
+      purpose: "D10 DDL 正本"
+    - path: "db/ddl/d11_metric.sql"
+      required: true
+      purpose: "D11 DDL 正本"
+    - path: "db/ddl/d12_deferred_fk_indexes.sql"
+      required: true
+      purpose: "D12 DDL 正本（延期 FK 適用済み確認）"
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d13_ddl_cross_check.sql"
+      action: "create"
+      required: true
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d03_master_config.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d04_item.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d05_external_product_integration.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d06_item_derived.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d07_online_recommendation.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d08_user_meaning.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d09_evaluation.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d10_log_observability.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d11_metric.sql"
+      action: "update"
+      required: false
+    - path: "db/ddl/d12_deferred_fk_indexes.sql"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d13.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d13/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "D01〜D12 横断整合チェック結果一覧（PR 本文。事実 / 推論 / 未確認の区分付き）"
+  - "Blocker / Must / Should / Question 分類表（PR 本文）"
+  - "`db/ddl/d13_ddl_cross_check.sql`（D01〜D12 適用後の検証 SQL）"
+  - "Blocker 級不整合の D01〜D12 DDL 修正差分（該当時）"
+  - "Task ⑤ / Epic PR 進行の判断材料（PR 本文）"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d13_ddl_cross_check.sql` に存在する"
+  - "D13 scope が DDLバッチ分割表 §17 と一致する"
+  - "D01〜D12 の横断整合チェックが実施され、結果が PR 本文に一覧化されている"
+  - "不整合の区分（事実 / 推論 / 未確認）と重要度（Blocker / Must / Should / Question）が明示されている"
+  - "Blocker 級不整合は修正済み、または Human 判断事項として明示されている"
+  - "`vector` 拡張・enum 型 26 件・public テーブル 62 件（MVP 対象）の主要検証が `d13_ddl_cross_check.sql` に含まれる"
+  - "D01 適用済み前提で D02〜D12 適用後に `d13_ddl_cross_check.sql` が実行可能である"
+  - "テーブル定義書・enum 定義書・物理 ER と矛盾する Blocker が未修正のまま残っていない"
+  - "`packages/code-definitions/**`・`apps/**`・`supabase/migrations/` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d13-ddl"
+  name: "chore/task-610-d13-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-06-17"
+
+issue:
+  number: 610
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 611
+      purpose: "先行 D01（extension / enum 型）完了"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系）完了"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系）完了"
+    - number: 601
+      purpose: "先行 D04（Item 系）完了"
+    - number: 602
+      purpose: "先行 D05（外部商品データ連携系）完了"
+    - number: 603
+      purpose: "先行 D06（Item 派生データ系）完了"
+    - number: 604
+      purpose: "先行 D07（Online 推薦系）完了"
+    - number: 605
+      purpose: "先行 D08（User 意味推定系）完了"
+    - number: 606
+      purpose: "先行 D09（Evaluation 系）完了"
+    - number: 607
+      purpose: "先行 D10（Log 系）完了"
+    - number: 608
+      purpose: "先行 D11（Metric 系）完了"
+    - number: 609
+      purpose: "先行 D12（遅延 FK / 索引追加）完了"
+    - number: 612
+      purpose: "ローカル DB 検証環境完了"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - task_id: "task-db-physical-design-ddl-d12"
+      issue: 609
+      purpose: "D12 延期 FK 適用後の横断ゲート前提"
+    - task_id: "task-db-physical-design-local-db-verification-env"
+      issue: 612
+      purpose: "実 DB 検証手順の正本"
+  exclusive_files:
+    - "db/ddl/d13_ddl_cross_check.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d13.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d13/pr-review.yaml"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "D01〜D12 DDL とテーブル定義書・物理 ER・enum 定義書の突合が実施されていること"
+    - "`d13_ddl_cross_check.sql` が D01〜D12 適用後に構文エラーなく実行できること（ローカル DB 検証手順書に沿う）"
+    - "enum 26 件・テーブル 62 件・主要物理 FK の検証観点が SQL に含まれること"
+    - "Blocker 修正後に D01〜D12 の再適用または差分検証が可能であること"
+    - "`apps/**`・`packages/code-definitions/**`・`supabase/migrations/` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+    - "CI workflow 追加"
+  skip_reason:
+    "unit test": "DDL 横断検証 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL と検証 SQL のみ"
+    "CI workflow 追加": "マイグレーション方針書 §14 で Phase2 out_of_scope"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 Task 作業のため、作業計画は Issue、結果は PR を正本とする"
+
+notes:
+  - "Batch D13 / change_id: `d13_ddl_cross_check`"
+  - "Issue #610 / Branch `chore/task-610-d13-ddl`"
+  - "先行 merge 済み前提: D01（#611 / PR #614）〜 D12（#609 / PR #625）、#612（ローカル DB 検証）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "後続: Task ⑤（`supabase/migrations/` 統合）は本 Task 完了後に着手"
+  - "Human Review 論点: 棚卸し網羅性、Blocker 修正の妥当性、MVP△ テーブル含有、LOGICAL FK 方針との境界、Task ⑤ 進行可否"

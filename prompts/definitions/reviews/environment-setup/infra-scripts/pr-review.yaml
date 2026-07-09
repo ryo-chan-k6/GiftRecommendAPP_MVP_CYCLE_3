@@ -1,0 +1,215 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-environment-setup-infra-scripts-pr"
+  title: "infra/scripts整備 PRレビュー"
+  summary: "Phase3 子 Task ③。infra/・scripts/ 骨格整備と Review Definition 整備の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-455-environment-setup-infra-scripts"
+  base: "docs/epic-436-environment-setup"
+  target: "docs/epic-436-environment-setup"
+  worktree_required: true
+
+target:
+  pr: 456
+  issue:
+    number: 455
+  task_definition: "prompts/definitions/tasks/environment-setup/infra-scripts.yaml"
+  source_branch: "docs/task-455-environment-setup-infra-scripts"
+  target_branch: "docs/epic-436-environment-setup"
+  parent_epic_issue: "[Epic]environment-setup:環境設計・構築"
+  parent_epic_branch: "docs/epic-436-environment-setup"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/environment-setup/infra-scripts.yaml"
+    required: true
+  issue:
+    number: 455
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-436-environment-setup"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19.9・§7/§8 との整合確認"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "§12–13 配置正本との整合確認"
+  files:
+    - path: "infra/**"
+      required: true
+      purpose: "infra 骨格・README 確認"
+    - path: "scripts/**"
+      required: true
+      purpose: "scripts 骨格・README・dev 最小補助確認"
+    - path: ".env.example"
+      required: false
+      purpose: "変更がないこと（Task ② scope 外）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（infra-scripts.yaml）の scope を満たしているか"
+    - "Human 判断（docker-compose なし / infra README のみ / scripts/ai README のみ）が反映されているか"
+    - "out_of_scope（Task ④ docs / Task ⑤ workflow / apps/** / db/**）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch であるか"
+    - "Task PR で Related to #<Task Issue> を使用し Closes を使っていないか"
+    - "PR author が okuri-ai-bot であるか"
+  docs:
+    - "infra/・scripts/ README が §19.9 local 列・構成定義書 §12–13 と整合しているか"
+    - "環境分離方針（§7/§8）が README に反映されているか"
+  security:
+    - "secret 実値が含まれていないか"
+    - "scripts が .env 実値を読み取って出力しないか"
+  db:
+    - "db/** 変更が混入していないか"
+  cicd:
+    - "CI workflow 変更が混入していないか（Task ⑤ scope）"
+  epic_scope:
+    - "PR 差分が environment-setup Epic の epic_scope.allowed_paths 内か"
+    - "forbidden_paths（apps / db / .env）への変更がないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "Human 判断 4 点が PR 本文 §13 に記載されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "Human 判断 scope 外の成果物が含まれていない"
+      - "secret 非露出"
+  request_changes:
+    conditions:
+      - "構成定義書とディレクトリ構成が不一致"
+      - "docker-compose / deploy 設定 / scripts/ai 実装が混入"
+  blocked:
+    conditions:
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+dependencies:
+  epics:
+    - "prompts/definitions/epics/environment-setup/epic.yaml"
+  issues:
+    - number: 436
+      purpose: "親 Epic"
+    - number: 446
+      purpose: "先行 Task ②"
+  tasks:
+    - "prompts/definitions/tasks/environment-setup/env-example.yaml"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/environment-setup/env-example.yaml"
+  blocks:
+    - "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
+    - "prompts/definitions/tasks/environment-setup/ci-foundation.yaml"
+  exclusive_files:
+    - "infra/**"
+    - "scripts/**"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "infra/scripts 骨格整備 Task のため"
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+
+human_decision_points:
+  - "Human 判断 2026-06-07 確定事項が成果物に反映されているか"
+  - "scripts/dev 最小補助の粒度が Task ④ の前提として十分か"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/environment-setup/infra-scripts.yaml"
+  - "Human 判断 2026-06-07: docker-compose なし / infra README のみ / scripts/ai README のみ / ④→⑤ 順"

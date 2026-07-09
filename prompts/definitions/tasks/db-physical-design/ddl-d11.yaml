@@ -1,0 +1,310 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d11"
+  title: "d11:Metric系DDL作成"
+  summary: "Phase2 子 Task ④ DDL のバッチ D11。Metric 4 テーブル（`feature_distribution_metric` / `meaning_distribution_metric` / `normalization_distribution_metric` / `reco_score_distribution_metric`）の `CREATE TABLE` / Index / CHECK / UNIQUE を `db/ddl/d11_metric.sql` に定義し、D12 以降の前提を整える。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 611
+      purpose: "先行 D01（extension / enum 型。merge 済み前提）"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系。merge 済み前提）"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系。merge 済み前提）"
+    - number: 601
+      purpose: "先行 D04（Item 系。merge 済み前提）"
+    - number: 602
+      purpose: "先行 D05（外部商品データ連携系。merge 済み前提）"
+    - number: 603
+      purpose: "先行 D06（Item 派生データ系。merge 済み前提）"
+    - number: 604
+      purpose: "先行 D07（Online 推薦系。merge 済み前提）"
+    - number: 605
+      purpose: "先行 D08（User 意味推定系。merge 済み前提）"
+    - number: 606
+      purpose: "先行 D09（Evaluation 系。merge 済み前提）"
+    - number: 607
+      purpose: "先行 D10（Log 系。merge 済み前提）"
+    - number: 609
+      purpose: "後続 D12（遅延 FK / 索引追加）"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+  related_prs:
+    - number: 614
+      purpose: "D01 DDL PR（merge 済み前提）"
+    - number: 615
+      purpose: "D02 DDL PR（merge 済み前提）"
+    - number: 616
+      purpose: "D03 DDL PR（merge 済み前提）"
+    - number: 617
+      purpose: "D04 DDL PR（merge 済み前提）"
+    - number: 618
+      purpose: "D05 DDL PR（merge 済み前提）"
+    - number: 619
+      purpose: "D06 DDL PR（merge 済み前提）"
+    - number: 620
+      purpose: "D07 DDL PR（merge 済み前提）"
+    - number: 621
+      purpose: "D08 DDL PR（merge 済み前提）"
+    - number: 622
+      purpose: "D09 DDL PR（merge 済み前提）"
+    - number: 623
+      purpose: "D10 DDL PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **バッチ D11（Metric 系・MVP△ 1 件含む）**。Batch / Online 横断の分布 Metric 4 テーブルの基盤。
+  対象 4 テーブルは [DDLバッチ分割表.md](../../../docs/06_実装設計/database/DDLバッチ分割表.md) §15 に列挙される。
+  先行 D01（`db/ddl/d01_extensions_and_enums.sql`、Issue #611 / PR #614 merge 済み）〜 D10（`db/ddl/d10_log_observability.sql`、Issue #607 / PR #623 merge 済み）適用後に本バッチを実行する前提とする。
+  参照先テーブル（`batch_run_log` / `semantic_config_version` / `feature_definition` / `item_feature` / `item_meaning` / `user_meaning` / `feature_normalization_version` / `recommendation_run` / `recommendation_result` / `ranking_config`）への参照は **LOGICAL 参照（物理 FK なし）** が正本方針。
+  retention 詳細は ⑥ データ保持・削除方針書 Task で確定し、本 Task では列・索引・CHECK のみ定義する。
+  Issue #608 / Branch `chore/task-608-d11-ddl` で作業する。
+
+objective: |
+  `db/ddl/d11_metric.sql` を作成し、D11 対象 4 テーブルの PostgreSQL DDL を各テーブル定義書・物理 ER・enum定義書・コード定義書・マイグレーション方針書と整合させる。
+  バッチ内の CREATE 順序は Metric 系列の依存に従う（`feature_distribution_metric` → `meaning_distribution_metric` → `normalization_distribution_metric` → `reco_score_distribution_metric`）。
+  参照先への物理 FK は付与せず、UNIQUE / 部分 UNIQUE / CHECK / Index をテーブル定義書 §7〜§10 どおりに定義する。
+
+scope:
+  - "`db/ddl/d11_metric.sql` の新規作成"
+  - "D11 対象 4 テーブルの `CREATE TABLE`、PK、Index、CHECK、UNIQUE"
+  - "  - `feature_distribution_metric`（MVP○）"
+  - "  - `meaning_distribution_metric`（MVP○）"
+  - "  - `normalization_distribution_metric`（MVP○）"
+  - "  - `reco_score_distribution_metric`（MVP△ / partial）"
+  - "D01〜D10 適用済み前提で実行可能な SQL（enum 型は D01 参照、LOGICAL 参照元は D02〜D10 参照）"
+  - "マイグレーション方針書 §8.1 のファイル命名・バッチ順序（change_id: `d11_metric`）への準拠"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "D12 遅延 FK / 索引追加（後追い制約 Task）"
+  - "D10 Log 3 テーブルの `CREATE TABLE`（D10 完了済み）"
+  - "`phase_log.phase_name` への Metric 記録 phase 追加（enum / CHECK 更新は別 Task）"
+  - "Metric 参照先テーブルへの **物理 FK** 付与（LOGICAL 方針）"
+  - "retention ポリシーの DDL 実装（列・索引のみ。保持期間は ⑥ Task で確定）"
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`db/seeds/**` の作成（Task ⑤）"
+  - "`packages/code-definitions/**` の変更"
+  - "`apps/**` 実装変更"
+  - "docs の変更（DDLバッチ分割表・テーブル定義書は参照のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D11 バッチ scope・4 テーブル一覧の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・バッチ順序"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§10 Index・§11 CHECK・§15 適用順序・§17 MVP 対象との整合確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型・論理 ID 分離の参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 制約値の参照"
+    - path: "docs/06_実装設計/database/feature_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "D11-1 `feature_distribution_metric` DDL 正本（MVP feature_code CHECK・value_layer / aggregation_scope CHECK・部分 UNIQUE 含む）"
+    - path: "docs/06_実装設計/database/meaning_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "D11-2 `meaning_distribution_metric` DDL 正本（entity_type / value_layer / lambda_ctx CHECK・normalization version 必須 CHECK 含む）"
+    - path: "docs/06_実装設計/database/normalization_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "D11-3 `normalization_distribution_metric` DDL 正本（raw / sigmoid value_layer CHECK・z_score MVP 除外含む）"
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "D11-4 `reco_score_distribution_metric` DDL 正本（MVP partial・score_type / aggregation_scope CHECK・batch_run_id NULL 固定 CHECK 含む）"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ DDL・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL（`semantic_config_version` / `feature_definition` 参照）"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "先行バッチ DDL（`feature_normalization_version` / `ranking_config` 参照）"
+    - path: "db/ddl/d06_item_derived.sql"
+      required: true
+      purpose: "先行バッチ DDL（`item_feature` / `item_meaning` 集計入力参照）"
+    - path: "db/ddl/d07_online_recommendation.sql"
+      required: true
+      purpose: "先行バッチ DDL（`recommendation_run` / `recommendation_result` 参照）"
+    - path: "db/ddl/d08_user_meaning.sql"
+      required: true
+      purpose: "先行バッチ DDL（`user_meaning` 集計入力参照）"
+    - path: "db/ddl/d10_log_observability.sql"
+      required: true
+      purpose: "先行バッチ DDL（`batch_run_log` LOGICAL 参照）"
+  templates: []
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d11_metric.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d11.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d11/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d11_metric.sql` に存在する"
+  - "D11 対象 4 テーブルが DDLバッチ分割表 §15 と一致する"
+  - "各テーブルの列・型・制約が対応するテーブル定義書と矛盾しない"
+  - "D01〜D10 適用済み前提で本ファイルが実行可能である"
+  - "`feature_distribution_metric` の MVP `feature_code` CHECK・`value_layer` / `aggregation_scope` CHECK・batch_run 必須 CHECK・部分 UNIQUE が定義書どおりである"
+  - "`feature_distribution_metric` の normalized 層 `feature_normalization_version_id` 必須 CHECK が定義書どおりである"
+  - "`meaning_distribution_metric` の entity_type / value_layer / lambda_ctx 組み合わせ CHECK が定義書どおりである"
+  - "`meaning_distribution_metric` の `feature_normalization_version_id` NOT NULL CHECK が定義書どおりである"
+  - "`normalization_distribution_metric` の MVP `value_layer`（raw / sigmoid のみ）CHECK が定義書どおりである"
+  - "`normalization_distribution_metric` の `feature_normalization_version_id` NOT NULL CHECK が定義書どおりである"
+  - "`reco_score_distribution_metric` の MVP partial `score_type` / `aggregation_scope=run` CHECK が定義書どおりである"
+  - "`reco_score_distribution_metric` の run / result 必須 CHECK・`batch_run_id IS NULL` MVP CHECK・`sample_count >= 1` CHECK が定義書どおりである"
+  - "Metric 参照先への **物理 FK を付与していない**"
+  - "D12 以降テーブルの CREATE が誤って本ファイルに含まれていない"
+  - "`packages/code-definitions/**` および `apps/**` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d11-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 608
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 611
+      purpose: "先行 D01（extension / enum 型）完了"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系）完了"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系）完了"
+    - number: 601
+      purpose: "先行 D04（Item 系）完了"
+    - number: 602
+      purpose: "先行 D05（外部商品データ連携系）完了"
+    - number: 603
+      purpose: "先行 D06（Item 派生データ系）完了"
+    - number: 604
+      purpose: "先行 D07（Online 推薦系）完了"
+    - number: 605
+      purpose: "先行 D08（User 意味推定系）完了"
+    - number: 606
+      purpose: "先行 D09（Evaluation 系）完了"
+    - number: 607
+      purpose: "先行 D10（Log 系）完了"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-db-physical-design-ddl-d10"
+      issue: 607
+      purpose: "D10 `batch_run_log` LOGICAL 参照前提"
+    - task_id: "task-db-physical-design-ddl-d02"
+      issue: 599
+      purpose: "D02 `semantic_config_version` / `feature_definition` 参照前提"
+    - task_id: "task-db-physical-design-ddl-d06"
+      issue: 603
+      purpose: "D06 `item_feature` / `item_meaning` 集計入力参照前提"
+    - task_id: "task-db-physical-design-ddl-d08"
+      issue: 605
+      purpose: "D08 `user_meaning` 集計入力参照前提"
+    - task_id: "task-db-physical-design-ddl-d07"
+      issue: 604
+      purpose: "D07 `recommendation_run` / `recommendation_result` 参照前提"
+  exclusive_files:
+    - "db/ddl/d11_metric.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d11.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d11/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "D11 対象 4 テーブルがすべて `CREATE TABLE` されていること"
+    - "各テーブルの PK / Index / CHECK / UNIQUE がテーブル定義書 §7〜§10 と一致すること"
+    - "Metric 参照先への LOGICAL 参照方針（物理 FK なし）が定義書どおりであること"
+    - "D01〜D10 適用後に `psql` またはローカル DB 検証環境（#612）で構文・適用が通ること（可能な範囲）"
+    - "`apps/**`・`packages/code-definitions/**` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+  skip_reason:
+    "unit test": "DDL 参照用 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL のみ。適用正本は Task ⑤"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch D11 / change_id: `d11_metric`"
+  - "Issue #608 / Branch `chore/task-608-d11-ddl`"
+  - "MVP○: 3 テーブル。MVP△: `reco_score_distribution_metric`（partial）"
+  - "先行 merge 済み前提: D01（#611 / PR #614）〜 D10（#607 / PR #623）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "後続: D12（#609）以降は本 Task 完了後に着手"
+  - "Human Review 論点: Metric LOGICAL FK 方針、normalized 層 normalization version 必須 CHECK、meaning lambda_ctx user-only CHECK、normalization z_score MVP 除外、reco_score MVP partial（batch_run_id NULL 固定・score_type 限定）"

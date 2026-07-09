@@ -1,3 +1,24 @@
 {
-  "private": true
+  "name": "gift-recommendation-service",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "orval": "orval",
+    "dev:web": "pnpm --filter @gift-recommendation/web dev",
+    "dev:api": "pnpm --filter @gift-recommendation/api dev",
+    "dev:reco": "pnpm --filter @gift-recommendation/reco dev",
+    "dev:batch": "pnpm --filter @gift-recommendation/batch dev",
+    "setup:python": "./scripts/dev/setup-python.sh",
+    "setup:python:reco": "./scripts/dev/setup-python-reco.sh",
+    "setup:python:batch": "./scripts/dev/setup-python-batch.sh",
+    "test:python": "./scripts/dev/pytest-python.sh",
+    "test:reco": "./scripts/dev/pytest-reco.sh",
+    "test:batch": "./scripts/dev/pytest-batch.sh"
+  },
+  "devDependencies": {
+    "orval": "^8.20.0",
+    "typescript": "^5.8.3"
+  }
 }

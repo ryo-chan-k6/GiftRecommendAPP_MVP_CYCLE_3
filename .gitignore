@@ -11,8 +11,9 @@ Thumbs.db
 # Windows
 Desktop.ini
 
-# VSCode
-.vscode/
+# VSCode（チーム共有設定のみ commit）
+.vscode/*
+!.vscode/settings.json
 
 # JetBrains
 .idea/
@@ -28,6 +29,7 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
 
 # Logs
 npm-debug.log*
@@ -74,6 +76,7 @@ temp/
 coverage/
 .coverage
 htmlcov/
+tests/recommendation-quality/output/
 
 # =========================
 # Misc
@@ -96,6 +99,12 @@ htmlcov/
 # =========================
 *.sqlite
 *.db
+supabase/.temp/
+
+# =========================
+# Test outputs (Layer2 / local E2E)
+# =========================
+tests/e2e/results/
 
 # =========================
 # Docker（必要に応じて）

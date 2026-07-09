@@ -1,0 +1,91 @@
+name: CI DB Ephemeral
+
+# Layer2 ephemeral DB（CI・CD方針書 / Epic C C1）。
+# GHA runner 上で supabase start → migration up → master seed を実行する。
+# 通常 PR 品質ゲート（ci.yml）とは分離し、workflow_dispatch / workflow_call のみで利用する。
+
+run-name: "ci-db · ${{ github.event_name }} · ${{ github.head_ref || github.ref_name }}"
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      database_url:
+        description: Ephemeral PostgreSQL connection URL on the runner
+        value: ${{ jobs.ephemeral-db.outputs.database_url }}
+  push:
+    branches:
+      - chore/task-672-ci-db-ephemeral
+    paths:
+      - .github/workflows/ci-db.yml
+      - supabase/**
+      - scripts/db/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-db-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ephemeral-db:
+    runs-on: ubuntu-latest
+    outputs:
+      database_url: ${{ steps.db-url.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Read Supabase CLI pin
+        id: cli-pin
+        run: echo "version=$(tr -d '[:space:]' < supabase/.cli-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ steps.cli-pin.outputs.version }}
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Verify seed setup
+        run: bash scripts/db/verify-seed-setup.sh
+
+      - name: Verify Supabase CLI pin
+        run: bash scripts/db/check-cli-version.sh
+
+      - name: Start ephemeral Supabase stack
+        run: bash scripts/db/start-local.sh
+
+      - name: Apply migrations
+        run: bash scripts/db/migrate-up.sh
+
+      - name: Apply master seed
+        run: bash scripts/db/seed-masters.sh
+
+      - name: Verify migration and seed
+        run: |
+          # shellcheck source=scripts/db/_lib.sh
+          source scripts/db/_lib.sh
+          db_require_repo_root
+          DATABASE_URL="$(db_local_database_url)"
+          psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -c "SELECT 1"
+          feature_count="$(psql "${DATABASE_URL}" -t -A -c "SELECT COUNT(*) FROM feature_definition WHERE is_active = true")"
+          if [[ "${feature_count}" -lt 8 ]]; then
+            echo "error: expected at least 8 active feature_definition rows, got ${feature_count}" >&2
+            exit 1
+          fi
+          echo "info: migration and master seed verification passed (${feature_count} feature_definition rows)"
+
+      - name: Export DATABASE_URL
+        id: db-url
+        run: |
+          # shellcheck source=scripts/db/_lib.sh
+          source scripts/db/_lib.sh
+          db_require_repo_root
+          echo "url=$(db_local_database_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Stop Supabase stack
+        if: always()
+        run: bash scripts/db/stop-local.sh

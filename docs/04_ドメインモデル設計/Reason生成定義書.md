@@ -652,9 +652,12 @@ Reasonの説明可能性・デバッグ・評価のために保持する。
     "popularity_score": 0.72,
     "risk_penalty": 0.10
   },
-  "template_id": "social_reason_boss_thanks_v1"
+  "template_name": "social_reason_boss_thanks",
+  "template_version": 1
 }
 ```
+
+> **テンプレート利用記録（MVP）**: `reason_basis` では版サフィックス付き文字列 ID（例: `social_reason_boss_thanks_v1`）は用いない。`template_name`（安定 ID）と `template_version`（整数）を必須で記録する。物理設計の正本は `reason_template_テーブル定義書` §6.2。
 
 ---
 
@@ -665,7 +668,9 @@ Reasonの説明可能性・デバッグ・評価のために保持する。
 | used_features | 必須 |
 | used_semantic_evidence | 可能な限り保持 |
 | used_scores | 必須 |
-| template_id | 必須 |
+| template_name | 必須 |
+| template_version | 必須 |
+| template_type | 推奨（summary / detail / point / caution） |
 | llm_prompt_version | LLM利用時は必須 |
 | generated_text | 必須 |
 
@@ -688,9 +693,9 @@ Reasonの説明可能性・デバッグ・評価のために保持する。
 | reason_points | 箇条書き理由JSON |
 | reason_badges | 表示ラベルJSON |
 | caution_note | 補足・注意文 |
-| reason_basis | Reason根拠JSON |
+| reason_basis | Reason根拠JSON（§14.2。`template_name` + `template_version` を含む） |
 | generation_method | template / llm_refined / hybrid |
-| template_id | 使用テンプレートID |
+| template_id | 使用テンプレートID（`reason_template.reason_template_id` の uuid。物理列名は `template_id`） |
 | model_version_id | Reason生成ロジックバージョン |
 | generated_at | 生成日時 |
 
@@ -702,15 +707,25 @@ Reasonテンプレートは、論理的には以下を持つ。
 
 | 項目 | 内容 |
 |---|---|
-| reason_template_id | テンプレートID |
+| reason_template_id | テンプレートID（uuid。`recommendation_reason.template_id` が論理参照） |
+| template_name | 安定ID（版サフィックス `_v1` 等は含めない。例: `social_reason_boss_thanks`） |
+| template_version | テンプレート版（integer。同一 `template_name` 内で 1 から採番） |
 | template_type | summary / detail / point / caution |
-| relationship_code | 適用Relationship |
-| occasion_code | 適用Occasion |
-| feature_code | 適用Feature |
-| template_text | テンプレート本文 |
-| tone | 表現トーン |
-| model_version_id | 適用モデルバージョン |
+| relationship_code | 適用Relationship（NULL は全 Relationship） |
+| occasion_code | 適用Occasion（NULL は全 Occasion） |
+| feature_code | 適用Feature（NULL は Feature 非依存） |
+| template_body | テンプレート本文（論理別名: `template_text`） |
 | is_active | 有効フラグ |
+| created_at | 作成日時 |
+
+**MVP 不採用（`reason_template` エンティティ）:**
+
+| 項目 | 方針 |
+|---|---|
+| tone | 不採用。表現差は `template_body` と条件列で管理 |
+| model_version_id | 不採用。`reason_template` は `model_version` 非依存の独立正本 |
+
+版管理・利用記録・解決優先順位の詳細は `docs/06_実装設計/database/reason_template_テーブル定義書.md` §5.3 / §6.2 / §7.1 を正とする。
 
 ---
 
@@ -931,7 +946,7 @@ Human Evaluation
 ↓
 低評価Reasonの分析
 ↓
-used_feature / evidence_text / template_id確認
+used_feature / evidence_text / template_name / template_version 確認
 ↓
 Reason Template修正
 ↓
@@ -1010,7 +1025,7 @@ model_version更新
 | reason_detail | 説明性評価 |
 | reason_basis | 根拠性評価 |
 | used_features | Feature別Reason評価 |
-| template_id | テンプレート改善分析 |
+| template_name / template_version | テンプレート改善分析 |
 | caution_note | 不安喚起の妥当性評価 |
 
 ---

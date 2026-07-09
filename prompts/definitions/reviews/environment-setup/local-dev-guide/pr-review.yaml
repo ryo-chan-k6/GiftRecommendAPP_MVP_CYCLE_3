@@ -1,0 +1,130 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-environment-setup-local-dev-guide-pr"
+  title: "ローカル開発手順 PRレビュー"
+  summary: "Phase3 子 Task ④。ローカル開発手順 docs 整備と Review Definition 整備の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-461-environment-setup-local-dev-guide"
+  base: "docs/epic-436-environment-setup"
+  target: "docs/epic-436-environment-setup"
+  worktree_required: true
+
+target:
+  pr: 464
+  issue:
+    number: 461
+  task_definition: "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
+  source_branch: "docs/task-461-environment-setup-local-dev-guide"
+  target_branch: "docs/epic-436-environment-setup"
+  parent_epic_issue: "[Epic]environment-setup:環境設計・構築"
+  parent_epic_branch: "docs/epic-436-environment-setup"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
+    required: true
+  issue:
+    number: 461
+    required: true
+  pr:
+    number: 464
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-436-environment-setup"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+      purpose: "手順 docs 本体確認"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19.9 local 列・§19.10 引き渡しとの整合確認"
+  files:
+    - path: "README.md"
+      required: true
+      purpose: "§11 参照更新確認"
+    - path: "scripts/dev/README.md"
+      required: true
+      purpose: "正本 docs へのリンク確認"
+    - path: ".env.example"
+      required: false
+      purpose: "変更がないこと（Task ② scope 外）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "gh_pr_checks"
+
+review_points:
+  - "Task Definition scope / out_of_scope との整合"
+  - "§19.9 local 列・.env Git 管理禁止の記載"
+  - "Human 判断 2026-06-07（docker-compose なし）の反映"
+  - "secret 実値の非含有"
+  - "out_of_scope（Task ⑤ CI / apps/** / db/** / docker-compose）が混在していないか"
+  - "README / scripts/dev から手順 docs へ辿れること"
+
+acceptance_criteria_check:
+  - id: "local-env-matrix"
+    text: "§19.9 local 列・.env Git 管理禁止と整合"
+  - id: "scripts-dev-link"
+    text: "scripts/dev 補助の使い方が辿れる"
+  - id: "human-decision"
+    text: "docker-compose 同梱なし等 Human 判断反映"
+  - id: "no-secrets"
+    text: "secret 実値なし"
+  - id: "scope-clean"
+    text: "apps/** / db/** / CI 変更なし"
+
+human_review_points:
+  - "手順 docs の粒度が MVP ローカル開発の入口として十分か"
+  - "DB/Redis 手動起動方針の説明が開発者に伝わるか"
+  - "apps 起動手順（計画記載）が後続実装 Task と矛盾しないか"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に target.* / input.* へ反映"

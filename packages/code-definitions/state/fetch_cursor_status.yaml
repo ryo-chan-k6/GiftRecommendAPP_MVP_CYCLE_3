@@ -1,0 +1,37 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "fetch_cursor_status"
+  physical_name: "cursor_status"
+  logical_name: "Fetch Cursor Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "active"
+    label: "有効"
+    meaning: "取得対象として有効"
+    terminal: false
+    enabled: true
+  - value: "paused"
+    label: "一時停止"
+    meaning: "一時停止中"
+    terminal: false
+    enabled: true
+  - value: "exhausted"
+    label: "走査完了"
+    meaning: "取得範囲を一通り走査済み"
+    terminal: true
+    enabled: true
+  - value: "failed"
+    label: "失敗"
+    meaning: "カーソル更新や取得処理に失敗"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "fetch_cursor"
+    column: "cursor_status"
+    constraint: "NOT NULL"
+    note: ""

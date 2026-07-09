@@ -1,0 +1,150 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-002-reco-recommendation-run-reco-client-wrapper-pr"
+  title: "API-INT-002 reco-client wrapper PRレビュー"
+  summary: "API-INT-002 reco-client wrapper Task（reco-client-wrapper.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1117
+  issue: 1112
+  task_definition: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/reco-client-wrapper.yaml"
+  source_branch: "feature/task-1112-api-int-002-reco-client-wrapper"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  parent_epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-int-002-reco-recommendation-run/reco-client-wrapper.yaml"
+    required: true
+  issue:
+    number: 1112
+    required: true
+  pr:
+    number: 1117
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+  files:
+    - path: "apps/api/src/infrastructure/reco-client/**"
+      required: true
+    - path: "apps/api/src/generated/reco-client/**"
+      required: false
+      purpose: "手編集なし確認"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "generated 手編集・OpenAPI 変更・reco 本体変更がないか"
+    - "PR target が親 Epic Branch であるか"
+  api_contract:
+    - "Orval generated client の利用が正しいか"
+    - "Internal API Key / trace Header が契約と一致するか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria: []
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "generated 手編集または OpenAPI 変更がある"
+      - "テスト不足がある"
+  needs_human_decision:
+    conditions:
+      - "ScaffoldRecoClient 置換方針の判断が必要"
+      - "API-PUB-002 との着手順序に影響する設計判断が必要"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "secret 漏えいの疑いがある"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "AI Review"

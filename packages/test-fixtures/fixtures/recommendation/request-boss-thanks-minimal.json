@@ -1,0 +1,21 @@
+{
+  "description": "上司へのお礼 — 単体テスト向け最小 Recommendation Request",
+  "relationship": {
+    "relationshipCode": "boss",
+    "relationshipLabel": "上司"
+  },
+  "occasion": {
+    "occasionCode": "thanks",
+    "occasionLabel": "お礼"
+  },
+  "budget": {
+    "budgetMin": 3000,
+    "budgetMax": 5000,
+    "currency": "JPY",
+    "taxIncluded": true
+  },
+  "execution": {
+    "mode": "ui",
+    "topK": 10
+  }
+}

@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-025-metric-logger-unit-test-pr"
+  title: "MOD-RECO-025 単体テスト PRレビュー"
+  summary: "MOD-RECO-025（Metric Logger）単体テスト Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1059
+  issue:
+    number: 1058
+  task_definition: "prompts/definitions/tasks/mod-reco-025-metric-logger/unit-test.yaml"
+  source_branch: "test/task-1058-mod-reco-025-metric-logger-unit-test"
+  target_branch: "feature/epic-1053-mod-reco-025-metric-logger"
+  parent_epic_issue: 1053
+  parent_epic_branch: "feature/epic-1053-mod-reco-025-metric-logger"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-025-metric-logger/unit-test.yaml"
+    required: true
+
+review_points:
+  - "§14 unit カバレッジ妥当性"
+  - "non-blocking 失敗系の検証"
+  - "本番 DB / 外部 API 非依存"
+  - "pytest green"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / target.pr を更新する"

@@ -1,0 +1,121 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-app-ci-app-ci-docs"
+  title: "app-ci Layer1 docs正本化"
+  summary: "テスト環境設計書の Layer1 / Epic D 対応表を正本化し Epic C との境界を明記する。Epic D 子 Task D5。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-app-ci"
+  epic_issue: "[Epic]app-ci:アプリ別PR CI"
+  epic_issue_number: 746
+  epic_branch: "chore/epic-746-app-ci"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic D 子 Task。Epic C Task C6 で Layer2 基盤 docs は整備済み。
+  Epic D 完了時点で Layer1（ci-web / ci-api / ci-reco / ci-batch）の Agent 運用対応表を
+  テスト環境設計書に反映する。
+
+objective: |
+  `docs/05_アプリケーション設計/テスト/テスト環境設計書.md` を更新し、
+  Layer1 workflow 一覧・Epic D 管轄・Epic C との分離を正本化する。
+
+scope:
+  - "テスト環境設計書 Layer1 / Epic D 節の更新"
+  - "agent_test_operations.level_map との整合"
+  - "ci-*.yml 一覧表"
+
+out_of_scope:
+  - "Layer2 workflow 本体変更"
+  - "テスト定義書 §4.1 の構造変更"
+  - "workflow 実装（D1〜D4 子 Task）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+  files:
+    - path: "prompts/definitions/epics/app-ci/epic.yaml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "Layer1 ci-*.yml がテスト環境設計書に列挙されている"
+  - "Epic C（Layer2）との境界が明記されている"
+  - "Epic D agent_test_operations と矛盾しない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "app-ci-docs"
+  base: "chore/epic-746-app-ci"
+  target: "chore/epic-746-app-ci"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+
+issue:
+  number: 755
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+dependencies:
+  issues: []
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+  conflict_risk: "low"
+  blocks: []
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "D1〜D4 の workflow merge 後が理想だが、骨格先行の docs 更新も可"

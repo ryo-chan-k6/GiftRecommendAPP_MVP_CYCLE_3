@@ -4,6 +4,7 @@ const slack = require("./slack-notify.cjs");
 const resolver = require("./resolve-review-definition.cjs");
 const taskResolver = require("./resolve-task-definition.cjs");
 const harness = require("./dispatch-definition-run.cjs");
+const requestIssueResolver = require("./resolve-harness-request-issue.cjs");
 
 function nonEmpty(value) {
   return String(value || "").trim();
@@ -253,6 +254,8 @@ const INFRA_HARNESS_SKIP_LABELS = Object.freeze([
   "area:infra",
 ]);
 
+const EPIC_HARNESS_SKIP_LABELS = Object.freeze(["unit: epic", "unit:epic"]);
+
 const AUTOMATION_ONLY_CHANGED_FILE_PREFIXES = Object.freeze([".github/"]);
 
 function normalizeLabelNames(labels) {
@@ -262,6 +265,16 @@ function normalizeLabelNames(labels) {
 function hasInfraHarnessSkipLabel(labels) {
   const names = normalizeLabelNames(labels);
   return names.some((name) => INFRA_HARNESS_SKIP_LABELS.includes(name));
+}
+
+function hasEpicHarnessSkipLabel(labels) {
+  const names = normalizeLabelNames(labels);
+  return names.some((name) => EPIC_HARNESS_SKIP_LABELS.includes(name));
+}
+
+function isEpicHarnessBranch(headRef) {
+  const branchInfo = resolver.parseBranchRef(nonEmpty(headRef));
+  return branchInfo?.unit === "epic";
 }
 
 function changedFilesAreAutomationOnly(files) {
@@ -289,6 +302,25 @@ function shouldSkipHarnessAutoDispatch({ context, pullLabels, issueLabels, chang
 
   if (changedFilesAreAutomationOnly(changedFiles)) {
     return { skip: true, reason: "automation_only_changes" };
+  }
+
+  return { skip: false };
+}
+
+function shouldSkipFixerHarnessAutoDispatch({ context, pullLabels, issueLabels, changedFiles, headRef }) {
+  const base = shouldSkipHarnessAutoDispatch({ context, pullLabels, issueLabels, changedFiles });
+  if (base.skip) return base;
+
+  if (!isHarnessAutoDispatchContext(context)) {
+    return { skip: false };
+  }
+
+  if (hasEpicHarnessSkipLabel(pullLabels) || hasEpicHarnessSkipLabel(issueLabels)) {
+    return { skip: true, reason: "epic_pr" };
+  }
+
+  if (isEpicHarnessBranch(headRef)) {
+    return { skip: true, reason: "epic_pr" };
   }
 
   return { skip: false };
@@ -371,11 +403,14 @@ async function dispatchReviewPrHarness({
     return { ok: true, skipped: true, reason: "fork_pr" };
   }
 
-  const relatedIssue =
-    Number(issueNumber) ||
-    Number(slack.relatedIssueNumber(pull.body || "")) ||
-    resolver.parseBranchRef(pull.head?.ref || "")?.issueNumber ||
-    null;
+  const workspace = nonEmpty(workspaceRoot) || process.cwd();
+  let relatedIssue =
+    requestIssueResolver.resolveHarnessRequestIssue({
+      workspaceRoot: workspace,
+      pull,
+      issueNumberArg: issueNumber,
+      reviewDefinitionPath: definition,
+    }) || null;
 
   let issueBody = "";
   let issueLabels = [];
@@ -429,7 +464,6 @@ async function dispatchReviewPrHarness({
     };
   }
 
-  const workspace = nonEmpty(workspaceRoot) || process.cwd();
   const headRef = pull.head?.ref || "";
   const reviewResolution = await resolveReviewDefinitionForPull({
     workspaceRoot: workspace,
@@ -485,6 +519,14 @@ async function dispatchReviewPrHarness({
       task_definition: aiReviewGate.task_definition || null,
     };
   }
+
+  relatedIssue =
+    requestIssueResolver.resolveHarnessRequestIssue({
+      workspaceRoot: workspace,
+      pull,
+      issueNumberArg: issueNumber,
+      reviewDefinitionPath: reviewResolution.path,
+    }) || relatedIssue;
 
   const dispatchResult = await harness.dispatchDefinitionRun({
     owner: resolvedRepo.owner,
@@ -630,14 +672,18 @@ if (require.main === module) {
 
 module.exports = {
   AUTOMATION_ONLY_CHANGED_FILE_PREFIXES,
+  EPIC_HARNESS_SKIP_LABELS,
   HARNESS_AUTO_DISPATCH_CONTEXTS,
   INFRA_HARNESS_SKIP_LABELS,
   buildHarnessDirectRecoveryCommand,
   buildRecoveryCommand,
   changedFilesAreAutomationOnly,
   dispatchReviewPrHarness,
+  hasEpicHarnessSkipLabel,
   hasInfraHarnessSkipLabel,
+  isEpicHarnessBranch,
   isHarnessAutoDispatchContext,
+  shouldSkipFixerHarnessAutoDispatch,
   shouldSkipForContext,
   shouldSkipHarnessAutoDispatch,
 };

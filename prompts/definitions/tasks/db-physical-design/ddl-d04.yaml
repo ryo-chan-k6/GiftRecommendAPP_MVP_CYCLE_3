@@ -1,0 +1,250 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d04"
+  title: "d04:Item系DDL作成"
+  summary: "Phase2 子 Task ④ DDL のバッチ D04。Item 正本・ランキング Snapshot 系 7 テーブルの `CREATE TABLE` / Index / CHECK / バッチ内 FK を `db/ddl/d04_item.sql` に定義し、D05 以降の前提を整える。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 611
+      purpose: "先行 D01（extension / enum 型。merge 済み前提）"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系。merge 済み前提）"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系。merge 済み前提）"
+    - number: 602
+      purpose: "後続 D05（外部商品データ連携系）"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+  related_prs:
+    - number: 614
+      purpose: "D01 DDL PR（merge 済み前提）"
+    - number: 615
+      purpose: "D02 DDL PR（merge 済み前提）"
+    - number: 616
+      purpose: "D03 DDL PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **バッチ D04（Item 系）**。Online / Batch が参照する商品正本・補助情報・ランキング Snapshot の基盤となる。
+  対象 7 テーブルは [DDLバッチ分割表.md](../../../docs/06_実装設計/database/DDLバッチ分割表.md) §8 に列挙される。`external_attribute` は MVP△（DDL 参照用に含める。DDLバッチ分割表 §3）。
+  先行 D01（`db/ddl/d01_extensions_and_enums.sql`、Issue #611 / PR #614 merge 済み）、D02（`db/ddl/d02_semantic_feature_definitions.sql`、Issue #599 / PR #615 merge 済み）、D03（`db/ddl/d03_master_config.sql`、Issue #600 / PR #616 merge 済み）適用後に本バッチを実行する前提とする。
+  Issue #601 / Branch `chore/task-601-d04-ddl` で作業する。
+
+objective: |
+  `db/ddl/d04_item.sql` を作成し、D04 対象 7 テーブルの PostgreSQL DDL を各テーブル定義書・物理 ER・enum定義書・コード定義書・マイグレーション方針書と整合させる。
+  バッチ内の CREATE 順序は FK 依存に従う（`external_genre` → `item` → `item_image` / `item_review_summary` / `external_attribute` → `ranking_snapshot` → `item_popularity_signal`）。
+  `item` / `ranking_snapshot` / `item_popularity_signal` から `external_genre` への参照は LOGICAL のまま（物理 FK なし）。`item_popularity_signal.ranking_snapshot_id` → `ranking_snapshot` は物理 FK ON。
+
+scope:
+  - "`db/ddl/d04_item.sql` の新規作成"
+  - "D04 対象 7 テーブルの `CREATE TABLE`、PK、UNIQUE、Index、CHECK、バッチ内で成立する物理 FK"
+  - "  - `external_genre`"
+  - "  - `item`"
+  - "  - `item_image`"
+  - "  - `item_review_summary`"
+  - "  - `external_attribute`（MVP△。DDL 参照用に含める）"
+  - "  - `ranking_snapshot`"
+  - "  - `item_popularity_signal`"
+  - "D01 / D02 / D03 適用済み前提で実行可能な SQL（enum 型・拡張は D01 参照）"
+  - "マイグレーション方針書 §8.1 のファイル命名・バッチ順序への準拠"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "D05 以降のテーブル `CREATE TABLE`（`staging_item` / `fetch_cursor` 等）"
+  - "D05 以降バッチから Item 系への後追い物理 FK（各テーブル定義書の LOGICAL 参照方針に従い MVP では付与しない）"
+  - "`recommendation_result_item` 等 Online 推薦系から Item / Snapshot への物理 FK（D07。LOGICAL / snapshot 列コピー方針）"
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`db/seeds/**` の作成（Task ⑤）"
+  - "`packages/code-definitions/**` の変更"
+  - "`apps/**` 実装変更"
+  - "docs の変更（DDLバッチ分割表・テーブル定義書は参照のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D04 バッチ scope・7 テーブル一覧・MVP△ 方針の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・バッチ順序・MVP△ 含有方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8–§11 FK・Index・§15 適用順序・§17 MVP 対象との整合確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型・論理 ID 分離の参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 制約値の参照"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "D04-1 `external_genre` DDL 正本（self-ref FK 含む）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "D04-2 `item` DDL 正本（`external_genre_id` LOGICAL 参照方針含む）"
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: true
+      purpose: "D04-3 `item_image` DDL 正本（`item_id` 物理 FK・partial unique 含む）"
+    - path: "docs/06_実装設計/database/item_review_summary_テーブル定義書.md"
+      required: true
+      purpose: "D04-4 `item_review_summary` DDL 正本（1:0..1・`item_id` 物理 FK 含む）"
+    - path: "docs/06_実装設計/database/external_attribute_テーブル定義書.md"
+      required: true
+      purpose: "D04-5 `external_attribute` DDL 正本（MVP△・LOGICAL 参照方針含む）"
+    - path: "docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md"
+      required: true
+      purpose: "D04-6 `ranking_snapshot` DDL 正本（観測キー unique・LOGICAL 参照含む）"
+    - path: "docs/06_実装設計/database/item_popularity_signal_テーブル定義書.md"
+      required: true
+      purpose: "D04-7 `item_popularity_signal` DDL 正本（親 Snapshot 物理 FK・冪等キー含む）"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ DDL・enum 型名の参照"
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      required: true
+      purpose: "先行バッチ DDL の参照"
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "先行バッチ DDL の参照"
+  templates: []
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d04_item.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d04.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d04/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d04_item.sql` に存在する"
+  - "D04 対象 7 テーブルが DDLバッチ分割表 §8 と一致する"
+  - "各テーブルの列・型・制約が対応するテーブル定義書と矛盾しない"
+  - "D01 / D02 / D03 適用済み前提で本ファイルが実行可能である"
+  - "`external_genre` self-ref FK（`parent_external_genre_id`）が定義書どおり付与されている"
+  - "`item_image` / `item_review_summary` の `item_id` 物理 FK（`ON DELETE RESTRICT`）が定義書どおり付与されている"
+  - "`item_popularity_signal.ranking_snapshot_id` → `ranking_snapshot` の物理 FK（`ON DELETE RESTRICT`）が定義書どおり付与されている"
+  - "`item` / `ranking_snapshot` / `item_popularity_signal` から `external_genre` への参照が LOGICAL のまま（物理 FK なし）である"
+  - "`item_popularity_signal.item_id` が LOGICAL 参照のまま（nullable・物理 FK なし）である"
+  - "`packages/code-definitions/**` および `apps/**` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d04-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 601
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 611
+      purpose: "先行 D01（extension / enum 型）完了"
+    - number: 599
+      purpose: "先行 D02（Semantic / Feature 定義系）完了"
+    - number: 600
+      purpose: "先行 D03（Master / Config 系）完了"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-db-physical-design-ddl-d03"
+      issue: 600
+      purpose: "D03 Master / Config 系の適用前提"
+  exclusive_files:
+    - "db/ddl/d04_item.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d04.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d04/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "D04 対象 7 テーブルがすべて `CREATE TABLE` されていること"
+    - "各テーブルの PK / UNIQUE / Index / CHECK がテーブル定義書 §7〜§9 と一致すること"
+    - "`external_genre` self-ref FK が定義書どおりであること"
+    - "`item_image` / `item_review_summary` の `item_id` 物理 FK が定義書どおりであること"
+    - "`item_popularity_signal` → `ranking_snapshot` の物理 FK が定義書どおりであること"
+    - "`external_genre_id` / `item_id` の LOGICAL 参照列に誤った物理 FK が付与されていないこと"
+    - "D01 / D02 / D03 適用後に `psql` またはローカル DB 検証環境（#612）で構文・適用が通ること（可能な範囲）"
+    - "`apps/**`・`packages/code-definitions/**` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+  skip_reason:
+    "unit test": "DDL 参照用 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL のみ。適用正本は Task ⑤"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch D04 / change_id: `d04_item`"
+  - "Issue #601 / Branch `chore/task-601-d04-ddl`"
+  - "先行 merge 済み前提: D01（#611 / PR #614）、D02（#599 / PR #615）、D03（#600 / PR #616）、#440（enum）、#587（コード定義）、#589（マイグレーション方針）"
+  - "後続: D05（#602）以降は本 Task 完了後に着手"
+  - "MVP△: `external_attribute` は DDL 参照用に含める（DDLバッチ分割表 §3）。MVP migration 適用の go/no-go は Task ⑤ で再確認"
+  - "Human Review 論点: `external_attribute` MVP△ の DDL 含有、`item` → `external_genre` LOGICAL 維持、ランキング Snapshot 2 層構造（`ranking_snapshot` → `item_popularity_signal`）、partial unique（`item_image` 主画像 1 件）"

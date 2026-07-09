@@ -1,0 +1,49 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-app-ci-app-ci-docs-pr"
+  title: "app-ci app-ci-docs PRレビュー"
+  summary: "Epic D app-ci-docs PR の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 756
+  issue:
+    number: 755
+  parent_epic_issue: "[Epic]app-ci:アプリ別PR CI"
+  parent_epic_branch: "chore/epic-746-app-ci"
+  task_definition: "prompts/definitions/tasks/app-ci/app-ci-docs.yaml"
+  target_branch: "chore/epic-746-app-ci"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/app-ci/app-ci-docs.yaml"
+    required: true
+
+review_points:
+  - "テスト環境設計書 Layer1 / Epic D 整合"
+  - "Epic C 境界の明記"
+  - "agent_test_operations 矛盾なし"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"

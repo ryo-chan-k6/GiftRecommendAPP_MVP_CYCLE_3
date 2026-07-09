@@ -5,6 +5,7 @@ const resolver = require("./resolve-review-definition.cjs");
 const taskResolver = require("./resolve-task-definition.cjs");
 const harness = require("./dispatch-definition-run.cjs");
 const reviewAuto = require("./dispatch-review-pr-harness.cjs");
+const requestIssueResolver = require("./resolve-harness-request-issue.cjs");
 
 function nonEmpty(value) {
   return String(value || "").trim();
@@ -85,34 +86,15 @@ async function resolveTaskDefinitionForPull({
   changedFiles,
 }) {
   const headRef = pull.head?.ref || "";
-  const branchInfo = resolver.parseBranchRef(headRef);
-  let taskResolution = taskResolver.resolveTaskDefinition({
+  return taskResolver.resolveTaskDefinition({
     workspaceRoot,
     prBody: pull.body || "",
     issueBody,
     headRef,
     issueNumber,
     definitionOverride,
+    changedFiles,
   });
-
-  if (taskResolution.ok) {
-    return taskResolution;
-  }
-
-  const shouldFallback =
-    taskResolution.reason === "ambiguous_definition_in_text" ||
-    taskResolution.reason === "task_definition_not_found";
-
-  if (!shouldFallback) {
-    return taskResolution;
-  }
-
-  const fromPrFiles = taskResolver.pickTaskDefinitionFromChangedFiles(changedFiles, branchInfo);
-  if (fromPrFiles) {
-    return { ok: true, path: fromPrFiles, source: "pr_changed_files" };
-  }
-
-  return taskResolution;
 }
 
 function buildHarnessDirectRecoveryCommand({
@@ -187,11 +169,14 @@ async function dispatchFixReviewHarness({
     return { ok: true, skipped: true, reason: "fork_pr" };
   }
 
-  const relatedIssue =
-    Number(issueNumber) ||
-    Number(slack.relatedIssueNumber(pull.body || "")) ||
-    resolver.parseBranchRef(pull.head?.ref || "")?.issueNumber ||
-    null;
+  const workspaceEarly = nonEmpty(workspaceRoot) || process.cwd();
+  let relatedIssue =
+    requestIssueResolver.resolveHarnessRequestIssue({
+      workspaceRoot: workspaceEarly,
+      pull,
+      issueNumberArg: issueNumber,
+      reviewDefinitionPath: definition,
+    }) || null;
 
   let issueBody = "";
   let issueLabels = [];
@@ -230,24 +215,26 @@ async function dispatchFixReviewHarness({
     });
   }
 
-  const infraSkip = reviewAuto.shouldSkipHarnessAutoDispatch({
+  const headRef = pull.head?.ref || "";
+
+  const fixerSkip = reviewAuto.shouldSkipFixerHarnessAutoDispatch({
     context: dispatchContext,
     pullLabels,
     issueLabels,
     changedFiles,
+    headRef,
   });
-  if (infraSkip.skip) {
+  if (fixerSkip.skip) {
     return {
       ok: true,
       skipped: true,
-      reason: infraSkip.reason,
+      reason: fixerSkip.reason,
       pr_number: String(pr),
       issue_number: relatedIssue ? String(relatedIssue) : null,
     };
   }
 
   const workspace = nonEmpty(workspaceRoot) || process.cwd();
-  const headRef = pull.head?.ref || "";
   const taskResolution = await resolveTaskDefinitionForPull({
     workspaceRoot: workspace,
     pull,
@@ -268,12 +255,25 @@ async function dispatchFixReviewHarness({
         owner: resolvedRepo.owner,
         repo: resolvedRepo.repo,
         prNumber: pr,
+        definition: definition || "",
         issueNumber: relatedIssue,
         requestedBy,
         context: dispatchContext || "request-changes",
       }),
     };
   }
+
+  const reviewFromTask = resolver.resolveReviewDefinitionFromTaskPath(
+    taskResolution.path,
+    workspace,
+  );
+  relatedIssue =
+    requestIssueResolver.resolveHarnessRequestIssue({
+      workspaceRoot: workspace,
+      pull,
+      issueNumberArg: issueNumber,
+      reviewDefinitionPath: reviewFromTask.ok ? reviewFromTask.path : "",
+    }) || relatedIssue;
 
   const dispatchResult = await harness.dispatchDefinitionRun({
     owner: resolvedRepo.owner,

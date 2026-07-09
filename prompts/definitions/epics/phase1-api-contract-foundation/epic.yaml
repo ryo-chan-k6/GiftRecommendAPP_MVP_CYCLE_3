@@ -1,0 +1,251 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-phase1-api-contract-foundation"
+  title: "Phase1 API Contract基盤"
+  summary: "Phase1 第1波（API-PUB-002 / API-INT-002）の契約仕様書・OpenAPI・Orval/generated を識別子/横断 Epic Branch から統合し、Contract Gate 通過後に 1 本の Epic PR で develop に反映するマイルストーン Epic。識別子 Epic（#357 / #366）は Phase4b 縦串用に Open 維持。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+
+background: |
+  識別子単位 Epic（API-PUB-002 / API-INT-002）は Phase1 + Phase4b の縦串管理のため、Phase1 単体では develop に merge できない。
+  第1波の契約 docs（1a）・OpenAPI（1b）・Orval/generated（1c）は、識別子 Epic Branch（#357 / #366）および横断 Epic Branch（#367）上で完了している。
+  本 Epic は機能・領域単位の Phase1 マイルストーン（例外）として、上記成果を staging 統合し Contract Gate §4 を満たしたうえで develop へ 1 本の Epic PR で反映する。
+  識別子 Epic #357 / #366 / 横断 Epic #367 は CLOSE せず、Phase4b および第2波 1b 作業の PR target として継続利用する。
+
+objective: |
+  Phase1 第1波の API Contract 基盤（PUB-002 / INT-002 の契約仕様書、packages/contracts/openapi、orval.config.ts、generated）をマイルストーン Epic Branch に統合する。
+  Contract Gate §4 を満たしたうえで Epic PR を develop に向け、Human merge により Phase1 第1波の develop 反映を完了する。
+  識別子 Epic の develop merge は Phase4b 縦串完了時に限定し、Phase1 の develop 反映は本 Epic PR のみとする。
+
+scope:
+  - "feature/epic-367-api-contract-orval から OpenAPI / orval / generated を統合"
+  - "feature/epic-366-api-int-002-reco-recommendation-run から INT-002 契約仕様書（§14 反映含む）を統合"
+  - "feature/epic-357-api-pub-002-recommendation-run から PUB-002 契約仕様書を統合"
+  - "マイルストーン Epic Branch 上で Contract Gate §4 を確認"
+  - "Epic PR（okuri-ai-bot author）を develop に向けて作成"
+  - "epic/pr-review.yaml の整備と target.pr 更新"
+
+out_of_scope:
+  - "apps/** の実装変更（Phase4b）"
+  - "識別子 Epic #357 / #366 の Issue CLOSE"
+  - "横断 Epic #367 の廃止"
+  - "PR #365（PUB-002 実装仕様書）の merge"
+  - "第2波 8 API の一括起票"
+  - "Phase4b 縦串（実装仕様書→実装→単体テスト）"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase1 マイルストーン Epic の位置づけ（§6.2）を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: true
+      purpose: "Gate §4 / §6 の通過条件を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "機能・領域単位 Epic 例外（§3.5.1）を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "第1波対象 API（PUB-002 / INT-002）の確認"
+  templates: []
+  files: []
+  issues:
+    - number: 357
+      purpose: "識別子 Epic API-PUB-002（1a 成果供給）"
+    - number: 366
+      purpose: "識別子 Epic API-INT-002（1a 成果供給）"
+    - number: 367
+      purpose: "横断 Epic API-CONTRACT-ORVAL（1b/1c 成果供給）"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: true
+    paths:
+      - "apps/web/src/generated/api/"
+      - "apps/api/src/generated/reco-client/"
+    handling: "orval_regenerate_only"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]Phase1 API Contract基盤）"
+  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-phase1-api-contract-foundation）"
+  - "統合済み packages/contracts/openapi（PUB-002 + INT-002 実体）"
+  - "統合済み orval.config.ts + generated"
+  - "統合済み API-PUB-002 / API-INT-002 契約仕様書"
+  - "Epic PR → develop（Human merge 待ち）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]Phase1 API Contract基盤 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "packages/contracts/openapi に PUB-002 / INT-002 の実体が反映されている（develop 上の空プレースホルダ解消）"
+  - "Orval 再生成済み、generated 手動編集なし"
+  - "Contract Gate §4 が充足している"
+  - "epic/pr-review.yaml が Branch 上に存在する"
+  - "Epic PR author が okuri-ai-bot である"
+  - "#357 / #366 / #367 は CLOSE されていない"
+
+branch:
+  no_branch: false
+  name: "feature/epic-<issue-number>-phase1-api-contract-foundation"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/06_実装設計/api/API-PUB-002_*"
+    - "docs/06_実装設計/api/API-INT-002_*"
+    - "packages/contracts/**"
+    - "orval.config.ts"
+    - "apps/web/src/generated/api/**"
+    - "apps/api/src/generated/reco-client/**"
+    - "prompts/definitions/epics/phase1-api-contract-foundation/**"
+    - "prompts/definitions/reviews/phase1-api-contract-foundation/**"
+    - "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+    - "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+    - "prompts/definitions/epics/api-int-002-reco-recommendation-run/epic.yaml"
+    - "prompts/definitions/epics/api-pub-002-recommendation-run/epic.yaml"
+    - ".cursor/commands/start-epic.md"
+    - ".cursor/commands/create-pr.md"
+  forbidden_paths:
+    - "apps/api/src/app/**"
+    - "apps/reco/**"
+    - "apps/web/src/app/**"
+    - "apps/web/src/features/**"
+    - "apps/batch/**"
+    - "db/**"
+    - "openapi/**"
+  child_task_areas: []
+
+dependencies:
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "1a 契約仕様書成果の供給元"
+    - issue: 366
+      title: "[Epic]API-INT-002:Reco推薦実行"
+      purpose: "1a 契約仕様書成果の供給元"
+    - issue: 367
+      title: "[Epic]API-CONTRACT-ORVAL"
+      purpose: "1b OpenAPI / 1c Orval・generated 成果の供給元"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "packages/contracts/openapi/public-api.yaml"
+    - "packages/contracts/openapi/internal-reco-api.yaml"
+    - "orval.config.ts"
+  conflict_risk: "high"
+  contract_impact: true
+  generated_impact: true
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "統合後の OpenAPI が PUB-002 / INT-002 契約仕様書と整合しているか"
+    - "generated 差分が Orval 生成由来のみか"
+    - "Contract Gate §4 全項目を確認する"
+    - "Epic PR author が okuri-ai-bot か確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Phase1 契約基盤統合のため apps 実装テストは Phase4b で実施"
+    "integration test": "Phase1 契約基盤統合のため Phase4b で実施"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "epic_scope 内のファイルのみが変更されているか"
+    - "PUB-002 / INT-002 契約仕様書・OpenAPI・generated が揃っているか"
+    - "Contract Gate §4 が充足しているか"
+    - "識別子 Epic PR（#357 / #366）ではなくマイルストーン Epic PR で develop 反映しているか"
+    - "epic/pr-review.yaml が存在し review.type が epic_pr_review であるか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "OpenAPI / Orval / generated の横断統合のため、不整合が判明した時点で ai-logs/cross-cutting へ記録する。"
+
+risk_points:
+  - "epic-366 に混入した OpenAPI/generated と epic-367 系の重複・競合"
+  - "develop 上の空プレースホルダとの merge conflict"
+  - "PR author が human になり Request changes 不可（#369 再発）"
+  - "pr-review.yaml 未作成による review_definition_not_found（#369 再発）"
+
+human_decision_points:
+  - "統合 merge の conflict 解消方針（#367 系 OpenAPI を正本優先）"
+  - "Epic PR の Human merge 判断"
+
+stop_conditions:
+  - "Contract Gate §4 が未充足のまま Epic PR を作成しようとした場合"
+  - "epic/pr-review.yaml が未作成の場合"
+  - "gh pr create 時に bot 認証が未設定の場合"
+  - "apps 実装変更が統合差分に含まれた場合"
+
+notes:
+  - "workstream_key: phase1-api-contract-foundation。Phase1 第1波マイルストーン Epic（機能・領域単位・例外）。"
+  - "識別子 Epic の develop merge は Phase4b 縦串完了時。Phase1 develop 反映は本 Epic のみ。"
+  - "Review Definition: prompts/definitions/reviews/phase1-api-contract-foundation/epic/pr-review.yaml"

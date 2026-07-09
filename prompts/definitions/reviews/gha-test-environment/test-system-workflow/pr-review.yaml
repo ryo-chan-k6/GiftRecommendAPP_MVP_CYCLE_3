@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-test-environment-test-system-workflow-pr"
+  title: "gha-test-environment test-system-workflow PRレビュー"
+  summary: "Epic C Task test-system-workflow の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "test/task-676-test-system-workflow"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
+  worktree_required: true
+
+target:
+  pr: 678
+  issue:
+    number: 676
+  task_definition: "prompts/definitions/tasks/gha-test-environment/test-system-workflow.yaml"
+  source_branch: "test/task-676-test-system-workflow"
+  target_branch: "chore/epic-671-gha-test-environment"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  cicd: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/gha-test-environment/test-system-workflow.yaml"
+    required: true
+  issue:
+    number: 676
+    required: true
+  pr:
+    number: 678
+    required: true
+
+review_points:
+  - "workflow_dispatch 起動可能か"
+  - "artifact / job summary が Agent 読取可能か"
+  - "ci.yml 品質ゲートと分離されているか"
+  - "Phase4b 未整備時の skip 条件が docs にあるか"
+  - "secret 非含有"
+
+notes:
+  - "Issue #676 / PR #678"

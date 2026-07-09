@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-dev-environment-epic-pr"
+  title: "ローカルdev実行環境 Epic PRレビュー"
+  summary: "Phase3b Epic A PR（develop 向け）の AI Review。local dev 基盤統合・§2.5/§2.6 整合・secret 非露出を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+target:
+  pr: 668
+  issue:
+    number: 651
+  task_definition: "prompts/definitions/epics/local-dev-environment/epic.yaml"
+  source_branch: "chore/epic-651-local-dev-environment"
+  target_branch: "develop"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  cicd: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/local-dev-environment/epic.yaml"
+    required: true
+  issue:
+    number: 651
+    required: true
+
+review_points:
+  common:
+    - "Epic acceptance_criteria（DB/Redis/env/§9 手順）を満たしているか"
+    - "agentic_process 制約（Cloud Agent に supabase start 必須を課していないか）"
+    - "agent_test_operations がテスト定義書 §4.1 と矛盾しないか"
+    - "Epic B / Epic C 実装が混在していないか"
+    - "supabase/migrations DDL 変更がないか"
+    - "secret 非露出"
+  docs:
+    - "DB構築手順書・ローカル開発手順書・環境設計書 §19 の整合"
+  security:
+    - ".env 実値・service role key の非 commit"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "forbidden_paths 外の変更がない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "infra"
+
+notes:
+  - "Epic Issue / PR 番号は /start-epic・/create-pr 後に反映"
