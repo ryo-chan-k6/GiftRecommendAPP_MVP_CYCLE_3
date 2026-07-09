@@ -1,0 +1,213 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-recommendation-run-implementation-pr"
+  title: "API-PUB-002 レコメンド実行API実装 PRレビュー"
+  summary: "API-PUB-002 apps/api 実装 Task（implementation.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/implementation.yaml"
+  source_branch: "feature/task-<issue-number>-api-pub-002-recommendation-run-implementation"
+  target_branch: "feature/epic-357-api-pub-002-recommendation-run"
+  parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  parent_epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: true
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-002-recommendation-run/implementation.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-357-api-pub-002-recommendation-run"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+      purpose: "実装正本との整合確認"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "Public Validation・Response・Error 参照"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "api→reco 連携・エラーマップ参照"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: false
+      purpose: "GRS-* エラーマップ"
+  files:
+    - path: "apps/api/src/app/recommendations/**"
+      required: true
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: false
+      purpose: "OpenAPI 正本参照（変更なし確認）"
+    - path: "apps/api/src/lib/reco-client/factory.ts"
+      required: false
+      purpose: "createRecoClient 利用境界確認（変更なし確認）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: true
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition（implementation.yaml）の scope を満たしているか"
+    - "Contract Gate（#1126 / openapi-sync）前提を満たしているか"
+    - "out_of_scope（OpenAPI / generated / apps/reco / apps/web / reco-client wrapper 本体変更）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch であるか"
+    - "Task PR で Closes を使っていないか（Related to を使用）"
+    - "実装仕様書 §11 未決事項の扱いが PR で明示されているか"
+  source:
+    - "実装仕様書 §3〜§9（処理フロー・マッピング・reco-client・エラー・trace）と矛盾しないか"
+    - "createRecoClient({ mode: \"generated\" }) 経由のみ reco を呼び出しているか（直接 generated import 禁止）"
+    - "0 件正規系で resultStatus: empty / meta.resultCode: GRS-REC-001 の契約準拠か"
+    - "Public Response に scoreBreakdown / finalScore / warnings 等の内部フィールドが含まれないか"
+    - "Internal 401 → Public 500 GRS-REC-002（認証詳細非露出）か"
+    - "trace_id / request_id が Header と meta で一致するか"
+    - "apps/reco/** への変更がないか"
+    - "apps/api/src/infrastructure/reco-client/** への機能追加がないか"
+  tests:
+    - "api build / 最小スモーク unit test 結果が PR 本文に記載されているか"
+    - "未実施テストの理由が明記されているか"
+  api_contract:
+    - "OpenAPI / apps/web generated の変更が含まれていないか"
+    - "契約仕様書の Public Response 外形（items[] / isFallback）と整合しているか"
+  generated:
+    - "apps/api/src/generated/reco-client/** の手動編集や Orval 再実行差分が含まれていないか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+    - "RECO_INTERNAL_API_KEY 等がログ・レスポンスに露出していないか"
+  branch:
+    - "PR target が feature/epic-357-api-pub-002-recommendation-run であるか"
+  epic_scope:
+    - "allowed_paths（apps/api/src/app/recommendations/**）内に収まっているか"
+    - "forbidden_paths（apps/reco / apps/web/src/app / openapi 変更）への違反がないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "Contract Gate 前提（#1126 merge 済み）が PR 本文または diff で確認できる"
+    - "後続単体テスト Task（Phase4b 4/4）への影響が PR 本文に記載されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "Contract Gate 前提を満たしている"
+      - "scope 外変更がない"
+      - "修正必須事項がない"
+  request_changes:
+    conditions:
+      - "実装仕様書・契約仕様書との不整合"
+      - "OpenAPI / generated / apps/reco の scope 外変更"
+      - "reco-client wrapper 本体の意図しない変更"
+      - "テスト不足または検証結果の記載不足"
+  needs_human_decision:
+    conditions:
+      - "実装仕様書 §11 の未決事項（GRS-REQ-006 / 502 vs 500 / displayMessage）の判断が必要"
+      - "apps/api/src/index.ts 等 epic_scope 外へのルートマウント判断が必要"
+  split_required:
+    conditions:
+      - "OpenAPI Contract 変更が混在している"
+      - "apps/web / apps/reco 実装が混在している"
+      - "DB schema / migration 変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Contract Gate 未充足が確認された"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+dependencies:
+  tasks:
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/implementation.yaml"
+    - "prompts/definitions/contracts/api-pub-002-recommendation-run/openapi-sync.yaml"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/api-pub-002-recommendation-run/implementation.yaml"
+  - "review.target.pr / input.pr.number / input.issue.number / target.source_branch は Issue 起票後に反映"
+  - "resolve-review-definition.cjs は pr-review.yaml 固定名を探索。本ファイルパスを PR head に含める"

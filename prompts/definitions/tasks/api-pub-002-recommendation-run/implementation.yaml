@@ -1,0 +1,377 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-002-recommendation-run-implementation"
+  title: "API-PUB-002:レコメンド実行API実装"
+  summary: "API-PUB-002（レコメンド実行 / Public API、`POST /api/v1/recommendations`）の apps/api 実装（MOD-API-001〜006）を新規実装する。契約仕様書・実装仕様書・OpenAPI Contract（#1126）を前提に、Validation・Request 永続化・createRecoClient 経由の API-INT-002 呼び出し・Public Response 整形・エラーマップを提供する（Phase4b 3/4）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  epic_issue_number: 357
+  epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+  related_issues:
+    - number: 358
+      purpose: "前提 Task（API契約仕様書 develop 反映済み）"
+    - number: 364
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 1126
+      purpose: "前提 Contract Task（OpenAPI 契約反映）"
+    - number: 366
+      purpose: "依存 Epic（API-INT-002 完了）"
+    - number: 1112
+      purpose: "前提 Task（reco-client wrapper / createRecoClient）"
+  related_prs:
+    - number: 359
+      purpose: "契約仕様書 develop merge"
+    - number: 1120
+      purpose: "実装仕様書 Epic Branch merge"
+    - number: 1127
+      purpose: "OpenAPI Contract Epic Branch merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase4b 縦串（実装仕様書 → OpenAPI Contract → apps/api 実装 → 単体テスト）の 3/4 である。
+  前提として API実装仕様書（#364 / PR #1120）および OpenAPI Contract Task（#1126 / PR #1127）が親 Epic Branch に merge 済みであること。
+  現状 `apps/api/src/app/recommendations/**` は未実装。Phase4a `api-foundation` により middleware / logger / db scaffold / error-response / reco-client wrapper（`createRecoClient` / `GeneratedRecoClient`、#1112 develop merge 済み）は利用可能。
+  本 Task では Express ルート層（MOD-API-001〜006）を新規作成し、Public Validation・Request 永続化・API-INT-002 呼び出し・Public Response マッピング・エラーマップを実装する。
+  網羅的単体テストは Phase4b 4/4 の後続 unit-test Task に委譲する。
+
+objective: |
+  `POST /api/v1/recommendations` を apps/api 上で提供し、契約仕様書および実装仕様書に沿った HTTP I/F を実装する。
+  `createRecoClient({ mode: "generated" })` 経由で API-INT-002 を呼び出し、正常系（0 件含む）・Validation 異常系・reco / transport 失敗時の Public Error を返却できる状態にする。
+
+scope:
+  - "`apps/api/src/app/recommendations/**` への MOD-API-001〜006 新規実装（routes / controller / validator / application-service / request-repository / response-mapper / types）"
+  - "`POST /api/v1/recommendations` Express Router の提供（親アプリへマウント可能な `Router` エクスポート）"
+  - "契約仕様書 §9 に基づく Public Request Validation（Zod 等、既存 validation middleware 方針に整合）"
+  - "`recommendation_request` 永続化（MOD-API-004。`apps/api/src/infrastructure/db/**` scaffold 利用）"
+  - "Public Body → API-INT-002 Request マッピング（§5.1。`execution.mode=ui` 固定）"
+  - "`createRecoClient().runRecommendation()` 呼び出し（MOD-API-005。wrapper 経由のみ）"
+  - "Internal Result → Public `data` / `meta` マッピング（§5.2。スコア系・debug フィールド除外、`items[]` / `isFallback` / 0 件 `empty`）"
+  - "reco / transport 失敗 → Public HTTP / GRS-* エラーマップ（§7.3。`error-mapper.ts` / Application Service 連携）"
+  - "trace / request_id の Header ↔ `meta` 一貫（`request-meta` middleware 整合）"
+  - "access_log / error_log の最小記録（既存 logger 利用）"
+  - "実装スモーク単体テスト（最小限。網羅は後続 Task）"
+  - "Task / Review Definition 整備（本ファイルおよび pr-review.yaml）"
+
+out_of_scope:
+  - "packages/contracts/openapi/** の変更"
+  - "apps/web/src/generated/api/** の再生成"
+  - "apps/api/src/generated/reco-client/** の手動編集・再生成"
+  - "apps/api/src/infrastructure/reco-client/** の wrapper 本体変更（#1112 正本。バグ修正のみ可・要 PR 説明）"
+  - "apps/reco/** の変更"
+  - "apps/web/** の変更（画面・api-client wrapper）"
+  - "API-PUB-002 / API-INT-002 契約仕様書・実装仕様書 docs の変更"
+  - "DB schema 変更・migration・seed"
+  - "網羅的単体テスト Task（Phase4b 4/4）"
+  - "結合テスト・E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+      purpose: "実装正本（処理フロー・マッピング・reco-client・エラー・trace）"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "Public Validation・Response・Error 一覧の参照"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "api→reco 連携・Internal I/F・エラーマップの前提"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "Internal Request/Response 外形の参照"
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+      purpose: "Request 永続化（MOD-API-004）の DB 正本"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Public API の URL / Method / Error / タイムアウト方針"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-002 の連携フロー・責務確認"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-API-001〜006 責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* エラーマップ"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "access_log / trace 方針"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "Request マッピング正本"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "Response マッピング正本"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: true
+      purpose: "Contract Gate / implementation_gate 運用確認"
+  templates: []
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+      purpose: "OpenAPI 正本（Contract Task #1126 反映済み。schema 参照用）"
+    - path: "apps/api/src/lib/reco-client/factory.ts"
+      required: true
+      purpose: "createRecoClient DI 正本"
+    - path: "apps/api/src/infrastructure/reco-client/README.md"
+      required: true
+      purpose: "reco-client wrapper 責務・呼び出し境界"
+    - path: "apps/api/src/infrastructure/reco-client/client.ts"
+      required: true
+      purpose: "GeneratedRecoClient / runRecommendation"
+    - path: "apps/api/src/infrastructure/reco-client/error-mapper.ts"
+      required: true
+      purpose: "Internal GRS-* → RecoError 変換"
+    - path: "apps/api/src/infrastructure/db/repository.ts"
+      required: true
+      purpose: "Repository scaffold 基底"
+    - path: "apps/api/src/middlewares/request-meta.ts"
+      required: true
+      purpose: "traceId / requestId ミドルウェア"
+    - path: "apps/api/src/lib/error-response/build-error-response.ts"
+      required: true
+      purpose: "Public Error Response 組立"
+  issues:
+    - number: 364
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 1126
+      purpose: "前提 Contract Task（OpenAPI 契約反映）"
+    - number: 358
+      purpose: "前提 Task（API契約仕様書）"
+    - number: 1112
+      purpose: "前提 Task（reco-client wrapper）"
+  prs:
+    - number: 1120
+      purpose: "前提 PR（実装仕様書）"
+    - number: 1127
+      purpose: "前提 PR（OpenAPI Contract）"
+    - number: 359
+      purpose: "前提 PR（契約仕様書 develop merge）"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/app/recommendations/**"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/api/tests/unit/app/recommendations/**"
+      action: "create_or_update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-API-001〜006 実装（`apps/api/src/app/recommendations/**`）"
+  - "POST /api/v1/recommendations の Validation・永続化・reco 呼び出し・Response 整形・エラーマップ"
+  - "最小スモーク単体テスト（任意・実装 PR 内）"
+  - "Task / Review Definition（本ファイル・pr-review.yaml）"
+
+acceptance_criteria:
+  - "`apps/api/src/app/recommendations/**` に Public API 実装がある"
+  - "実装仕様書 §3〜§9（処理フロー・マッピング・reco-client・エラー・trace）と矛盾しない"
+  - "契約仕様書の Public Response 外形（`data.items[]` / `isFallback` / 0 件 `empty` / `meta.resultCode: GRS-REC-001`）を満たす"
+  - "`createRecoClient({ mode: \"generated\" })` 経由で reco を呼び出している（直接 generated import 禁止）"
+  - "Public Response に `scoreBreakdown` / `finalScore` / `warnings` 等の内部フィールドが含まれない"
+  - "OpenAPI / generated / apps/web の変更を含まない"
+  - "apps/reco/** の変更を含まない"
+  - "epic_scope.allowed_paths 内に差分が収まっている"
+  - "`pnpm --filter @gift-recommendation/api build` が SUCCESS"
+  - "最小スモーク単体テストまたは手動確認結果を PR に記載"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-api-pub-002-recommendation-run-implementation"
+  summary: "api-pub-002-recommendation-run-implementation"
+  base: "feature/epic-357-api-pub-002-recommendation-run"
+  target: "feature/epic-357-api-pub-002-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+dependencies:
+  epics:
+    - number: 357
+      purpose: "親 Epic（API-PUB-002）"
+    - number: 366
+      purpose: "依存 Epic（API-INT-002 完了・reco 内部 API 利用可能）"
+  issues:
+    - number: 364
+      purpose: "API実装仕様書 Task 完了"
+    - number: 1126
+      purpose: "OpenAPI Contract Task 完了"
+    - number: 358
+      purpose: "API契約仕様書（develop 正本）"
+    - number: 1112
+      purpose: "reco-client wrapper（createRecoClient）完了"
+  prs:
+    - number: 1120
+      purpose: "実装仕様書 Epic Branch merge"
+    - number: 1127
+      purpose: "OpenAPI Contract Epic Branch merge"
+    - number: 359
+      purpose: "契約仕様書 develop merge"
+  tasks:
+    - "task-api-pub-002-recommendation-run-api-implementation-spec（#364 / PR #1120 Epic merge 済み）"
+    - "contract-api-pub-002-recommendation-run-openapi-sync（#1126 / PR #1127 Epic merge 済み）"
+    - "task-api-int-002-reco-recommendation-run-implementation（API-INT-002 reco エンドポイント実装完了）"
+    - "task-api-foundation-reco-client-wrapper（#1112 develop merge 済み）"
+  blocking: true
+
+contract_gate:
+  required: true
+  gate_id: "contract-api-pub-002-recommendation-run-openapi-sync"
+  prerequisite_contract_tasks:
+    - issue: "#1126"
+      definition: "prompts/definitions/contracts/api-pub-002-recommendation-run/openapi-sync.yaml"
+  verify_at:
+    - "/start-task"
+    - "/work-issue"
+  blocked_message: "Contract Gate未通過。先行 Contract Task #1126 の親 Epic Branch マージと Orval 再生成（apps/web generated）を確認してください。"
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/contracts/api-pub-002-recommendation-run/openapi-sync.yaml"
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml"
+  blocks:
+    - "API-PUB-002 apps/api 単体テスト Task（Phase4b 4/4）"
+  exclusive_files:
+    - "apps/api/src/app/recommendations/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "api build（typecheck）"
+    - "unit test（最小スモーク）"
+    - "scope boundary check"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api build"
+    - "pnpm --filter @gift-recommendation/api test"
+  manual_checks:
+    - "実装仕様書 §4.1 処理フローがコード上で表現されていることを確認する"
+    - "0 件正規系で resultStatus: empty / resultItemCount: 0 / meta.resultCode: GRS-REC-001 となることを確認する"
+    - "Public Response に内部スコア・debug フィールドが含まれないことを確認する"
+    - "OpenAPI / generated / apps/web / apps/reco の変更が含まれていないことを確認する"
+    - "createRecoClient wrapper 経由のみ reco を呼び出していることを確認する"
+    - "secret、APIキー、.env 実値が含まれていないことを確認する"
+  not_required:
+    - "integration test（実 reco 接続）"
+    - "e2e test"
+    - "contract-check（OpenAPI 変更なし）"
+    - "apps/web build"
+    - "網羅的単体テスト（後続 unit-test Task）"
+  skip_reason:
+    "integration test（実 reco 接続）": "Orchestrator 実接続の結合は後続 unit-test / 結合環境で実施"
+    "e2e test": "SCR-002 / apps/web は別 Epic"
+    "contract-check（OpenAPI 変更なし）": "本 Task は OpenAPI 変更を含まない"
+    "apps/web build": "consumer 実装は別 Task"
+    "網羅的単体テスト（後続 unit-test Task）": "Phase4b 4/4 で実施"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書・契約仕様書との整合（Validation・マッピング・エラー・trace）"
+    - "Contract Gate 前提（OpenAPI Contract #1126 merge 済み）を満たしているか"
+    - "epic_scope 内に差分が収まっているか（OpenAPI・generated・apps/reco・infrastructure/reco-client 本体変更を含まないか）"
+    - "createRecoClient({ mode: \"generated\" }) 利用・直接 generated import 禁止の遵守"
+    - "0 件 completed → Public empty / GRS-REC-001 の契約準拠"
+    - "Internal 401 → Public 500 GRS-REC-002（認証詳細非露出）"
+    - "実装仕様書 §11 未決事項の扱いが PR で明示されているか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "API-PUB-002 初回 Public API 実装。api→reco マッピング・エラー分類の横断影響を cross-cutting に記録可。"
+
+risk_points:
+  - "実装仕様書 §11 の未決事項（GRS-REQ-006 判定、502 vs 500、displayMessage 文案）により Human Review が必要"
+  - "`apps/api/src/index.ts` への Router マウントが epic_scope 外のため、エンドポイント起動確認方法が限られる可能性"
+  - "recommendation_request 永続化が DB 未接続環境では scaffold / スタブ依存になる可能性"
+  - "API-INT-002 の `data.resultItems` と generated schema 名の差分を mapper が正しく吸収する必要"
+
+human_decision_points:
+  - "実装仕様書 §11 No.1: `GRS-REQ-006`（条件厳しすぎ）の api 側 422 化条件"
+  - "実装仕様書 §11 No.2: transport 失敗時 502 vs 500 の最終 HTTP"
+  - "実装仕様書 §11 No.3: 0 件時 `displayMessage` の固定文案 vs 動的生成"
+  - "`apps/api/src/index.ts` 等 epic_scope 外ファイルへのルートマウントが必要な場合の扱い（Epic scope 拡張 vs 別 Task）"
+  - "recommendation_request 永続化が DB 未準備時に scaffold Repository で進めるか"
+
+stop_conditions:
+  - "Contract Gate 未通過（#1126 / PR #1127 が親 Epic Branch に未 merge）"
+  - "必須 input.docs が存在しない場合"
+  - "OpenAPI / generated 変更が必要になった場合（Contract Task へ分離）"
+  - "apps/reco/** の変更が必要になった場合（API-INT-002 / MOD-RECO Epic へ分離）"
+  - "apps/api/src/infrastructure/reco-client/** の機能追加が必要になった場合（別 Task へ分離。バグ修正のみ例外）"
+  - "DB schema 変更が必要になった場合"
+  - "破壊的 Public API 変更が必要と判明した場合（Human 判断待ち）"
+  - "secret や .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Phase4b 3/4。後続: 単体テスト Task（4/4）→ Epic PR → develop"
+  - "正本: docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+  - "親 Epic #357 / Branch feature/epic-357-api-pub-002-recommendation-run"
+  - "PR target は親 Epic Branch（develop 不可）"
+  - "Task PR では Related to #<issue> を使用（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/api-pub-002-recommendation-run/implementation/pr-review.yaml"
+  - "起票: /start-task @prompts/definitions/tasks/api-pub-002-recommendation-run/implementation.yaml"
