@@ -18,7 +18,7 @@
     "test:batch": "./scripts/dev/pytest-batch.sh"
   },
   "devDependencies": {
-    "orval": "^8.15.0",
+    "orval": "^8.20.0",
     "typescript": "^5.8.3"
   }
 }

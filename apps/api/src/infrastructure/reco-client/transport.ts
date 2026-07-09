@@ -3,11 +3,8 @@ import type {
   RecoRecommendationRunRequest,
   RecoRecommendationRunSuccessResponse,
 } from "../../generated/reco-client/giftRecommendationServiceInternalRecoAPI.schemas.js";
-import {
-  buildRecoFetchInit,
-  buildRecoRequestUrl,
-  resolveRecoRequestTimeoutMs,
-} from "./config.js";
+import { getRecoHealth } from "../../generated/reco-client/reco-health/reco-health.js";
+import { runRecoRecommendation } from "../../generated/reco-client/reco-recommendations/reco-recommendations.js";
 import {
   assertRecoClientReady,
   mapRecoErrorResponse,
@@ -15,12 +12,12 @@ import {
 } from "./error-mapper.js";
 import { parseRecoErrorResponse } from "./mapper.js";
 import {
-  RECO_HEALTH_PATH,
-  RECO_RECOMMENDATIONS_RUN_PATH,
-} from "./paths.js";
+  runWithRecoFetchRuntime,
+  type RecoFetch,
+} from "./orval-mutator.js";
 import type { RecoClientConfig, RecoTraceContext } from "./types.js";
 
-export type RecoFetch = typeof fetch;
+export type { RecoFetch } from "./orval-mutator.js";
 
 type RecoGeneratedCallOptions = {
   config: RecoClientConfig;
@@ -28,123 +25,68 @@ type RecoGeneratedCallOptions = {
   fetchImpl?: RecoFetch;
 };
 
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit,
-  timeoutMs: number,
-  fetchImpl: RecoFetch,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetchImpl(url, {
-      ...init,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function parseJsonBody<T>(response: Response): Promise<T> {
-  const body = [204, 205, 304].includes(response.status)
-    ? null
-    : await response.text();
-
-  return (body ? JSON.parse(body) : {}) as T;
-}
-
-/** Invoke API-INT-001 via generated-compatible path with wrapper fetch/header policy. */
-export async function callGetRecoHealth(
+function createRecoFetchRuntime(
   options: RecoGeneratedCallOptions,
-): Promise<RecoHealthSuccessResponse> {
+): {
+  config: RecoClientConfig;
+  trace?: RecoTraceContext;
+  fetchImpl?: RecoFetch;
+} {
+  return {
+    config: options.config,
+    trace: options.trace,
+    fetchImpl: options.fetchImpl,
+  };
+}
+
+async function invokeGeneratedCall<T>(
+  options: RecoGeneratedCallOptions,
+  call: () => Promise<{ data: unknown; status: number }>,
+): Promise<T> {
   assertRecoClientReady(options.config);
 
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const timeoutMs = resolveRecoRequestTimeoutMs(options.config);
-  const requestInit = buildRecoFetchInit(
-    options.config,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-    },
-    options.trace,
-  );
-  const url = buildRecoRequestUrl(options.config.baseUrl, RECO_HEALTH_PATH);
-
   try {
-    const response = await fetchWithTimeout(
-      url,
-      requestInit,
-      timeoutMs,
-      fetchImpl,
-    );
-    const data = await parseJsonBody<RecoHealthSuccessResponse | unknown>(
-      response,
+    const response = await runWithRecoFetchRuntime(
+      createRecoFetchRuntime(options),
+      call,
     );
 
     if (response.status !== 200) {
       throw mapRecoErrorResponse(
         response.status,
-        parseRecoErrorResponse(data),
+        parseRecoErrorResponse(response.data),
       );
     }
 
-    return data as RecoHealthSuccessResponse;
+    return response.data as T;
   } catch (error) {
     throw mapRecoTransportError(error);
   }
 }
 
-/** Invoke API-INT-002 via generated-compatible path with wrapper fetch/header policy. */
+/** Invoke API-INT-001 via generated reco-client with wrapper error mapping. */
+export async function callGetRecoHealth(
+  options: RecoGeneratedCallOptions,
+): Promise<RecoHealthSuccessResponse> {
+  return invokeGeneratedCall<RecoHealthSuccessResponse>(options, () =>
+    getRecoHealth({
+      headers: {
+        Accept: "application/json",
+      },
+    }),
+  );
+}
+
+/** Invoke API-INT-002 via generated reco-client with wrapper error mapping. */
 export async function callRunRecoRecommendation(
   request: RecoRecommendationRunRequest,
   options: RecoGeneratedCallOptions,
 ): Promise<RecoRecommendationRunSuccessResponse> {
-  assertRecoClientReady(options.config);
-
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const timeoutMs = resolveRecoRequestTimeoutMs(options.config);
-  const requestInit = buildRecoFetchInit(
-    options.config,
-    {
-      method: "POST",
+  return invokeGeneratedCall<RecoRecommendationRunSuccessResponse>(options, () =>
+    runRecoRecommendation(request, {
       headers: {
         Accept: "application/json",
-        "Content-Type": "application/json",
       },
-      body: JSON.stringify(request),
-    },
-    options.trace,
+    }),
   );
-  const url = buildRecoRequestUrl(
-    options.config.baseUrl,
-    RECO_RECOMMENDATIONS_RUN_PATH,
-  );
-
-  try {
-    const response = await fetchWithTimeout(
-      url,
-      requestInit,
-      timeoutMs,
-      fetchImpl,
-    );
-    const data = await parseJsonBody<RecoRecommendationRunSuccessResponse | unknown>(
-      response,
-    );
-
-    if (response.status !== 200) {
-      throw mapRecoErrorResponse(
-        response.status,
-        parseRecoErrorResponse(data),
-      );
-    }
-
-    return data as RecoRecommendationRunSuccessResponse;
-  } catch (error) {
-    throw mapRecoTransportError(error);
-  }
 }

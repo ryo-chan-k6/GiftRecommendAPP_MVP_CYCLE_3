@@ -30,10 +30,6 @@ export {
   toRecoRecommendationRunRequest,
   toRecoRecommendationRunResult,
 } from "./mapper.js";
-export {
-  RECO_HEALTH_PATH,
-  RECO_RECOMMENDATIONS_RUN_PATH,
-} from "./paths.js";
 export { callGetRecoHealth, callRunRecoRecommendation } from "./transport.js";
 export type { RecoFetch } from "./transport.js";
 export type {
