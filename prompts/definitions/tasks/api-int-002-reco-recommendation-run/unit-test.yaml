@@ -1,0 +1,298 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-002-reco-recommendation-run-unit-test"
+  title: "API-INT-002:Reco推薦実行単体テスト"
+  summary: "API-INT-002（Reco推薦実行 / Internal API）エンドポイント層（`apps/reco/src/reco/api/**`）に対し、契約仕様書 §12・実装仕様書 §10 の unit 観点を満たす pytest 単体テストを `apps/reco/tests/unit/api/**` に追加・拡充する（Phase4b 3/3）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: 366
+  epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  related_issues:
+    - 1091
+    - 1097
+    - 1103
+  related_prs:
+    - 1094
+    - 1099
+    - 1106
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 縦串（実装仕様書 → OpenAPI Contract → reco エンドポイント実装 → 単体テスト）の 3/3 である。
+  実装 Task（#1103 / PR #1106）により `apps/reco/src/reco/api/**` と最小スモークテスト（`test_recommendations_run_smoke.py` 4 ケース）が親 Epic Branch に merge 済みである。
+  実装 Task の `out_of_scope` として網羅的単体テストは本 Task に委譲されていた。
+  本 Task では Orchestrator をスタブ差し替え（`dependency_overrides`）し、認証・Validation・Response マッピング・Error Mapper・debug 返却・`WarningItem[]` / trace meta を unit 範囲で検証する。
+
+objective: |
+  API-INT-002 エンドポイント層の単体テストを契約仕様書 §12（contract / unit 相当）および実装仕様書 §10 の unit 範囲に沿って整備し、pytest で再現可能な検証を提供する。
+  既存 4 スモークテストを活かしつつ、不足観点（Validation・trace・warnings・resultItems マッピング・debug 返却・Error Mapper 網羅）を追加する。
+
+scope:
+  - "エンドポイント層単体テストの追加・拡充（`apps/reco/tests/unit/api/**`）"
+  - "契約仕様書 §12 の unit 相当観点（auth / validation / trace / 0 件 / warnings / debug / Response 外形）のカバレッジ整理とテストケース追加"
+  - "実装仕様書 §10 のうちスタブ Orchestrator で検証可能な観点の unit テスト追加"
+  - "既存スモークテスト（`test_recommendations_run_smoke.py`）の維持・整理（fixture 共通化は過剰にしない）"
+  - "テスト用 fixture / helper の整理（API 層テスト専用）"
+  - "Task / Review Definition 整備（本ファイルおよび `prompts/definitions/reviews/api-int-002-reco-recommendation-run/unit-test/pr-review.yaml`）"
+  - "親 Epic `epic_scope.allowed_paths` への `apps/reco/tests/unit/api/**` 追記（#1106 でのスモークテスト追加と整合）"
+
+out_of_scope:
+  - "integration test（Orchestrator PRODUCTION 実パイプライン・DB / LLM 障害シミュレーション）"
+  - "e2e test / contract test（OpenAPI generated client typecheck）"
+  - "OpenAPI / generated / packages/contracts 変更"
+  - "apps/api reco-client wrapper 実装・変更"
+  - "apps/reco/src/reco/application/** / domain 本体の機能追加（テスト成立に必要な最小修正のみ可。要 PR 説明）"
+  - "エンドポイント層の機能追加（バグ修正のみ可）"
+  - "本番 DB / 外部 API 依存テスト"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "§12 契約面テスト観点・Validation・Response schema の正本"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "§10 実装テスト観点・マッピング・認証・debug の正本"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "Internal API Key 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* 期待値"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: false
+      purpose: "テスト入力 fixture 設計"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: false
+      purpose: "テスト期待値設計"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/api/**"
+      required: true
+      purpose: "テスト対象"
+    - path: "apps/reco/tests/unit/api/test_recommendations_run_smoke.py"
+      required: true
+      purpose: "既存スモークテスト（拡充起点）"
+    - path: "apps/reco/tests/unit/api/conftest.py"
+      required: false
+      purpose: "既存 fixture"
+  issues:
+    - number: 1103
+      purpose: "前提 Task（実装）"
+    - number: 1091
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 1097
+      purpose: "前提 Contract Task（OpenAPI）"
+  prs:
+    - number: 1106
+      purpose: "前提 PR（実装）"
+    - number: 1099
+      purpose: "前提 PR（OpenAPI Contract）"
+    - number: 1094
+      purpose: "前提 PR（実装仕様書）"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/api-int-002-reco-recommendation-run/epic.yaml"
+      action: "update"
+      required: false
+  tests:
+    - path: "apps/reco/tests/unit/api/test_recommendations_run_smoke.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/api/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "契約仕様書 §12 unit 相当観点に対応する pytest テストスイート"
+  - "テスト観点とテストケースの対応表（PR 本文またはコメント）"
+  - "pytest 実行結果（成功ログ）"
+  - "Task Definition（本ファイル）"
+  - "Review Definition（`prompts/definitions/reviews/api-int-002-reco-recommendation-run/unit-test/pr-review.yaml`）"
+
+acceptance_criteria:
+  - "契約仕様書 §12 の unit 相当観点（auth / validation / trace / 0 件 / warnings / debug / Response 外形）がテストケースとしてカバーされている（対応表を PR に記載）"
+  - "既存 4 スモークテストが引き続き成功する"
+  - "`cd apps/reco && python -m pytest tests/unit/api/ -v --tb=short` が成功する"
+  - "`cd apps/reco && python -m pytest tests/unit/ -q --tb=short` が成功する（他テストへの悪影響なし）"
+  - "integration 観点（実装仕様書 §10 No.1, 3, 4, 11 等）は本 Task で未実施であることを PR に明記している"
+  - "テストが本番 DB / 外部 API / secret に依存していない"
+  - "エンドポイント層の不要な機能変更を含まない（テスト成立に必要な最小修正のみ）"
+  - "OpenAPI / generated / apps/api wrapper の変更を含まない"
+  - "epic_scope 内に差分が収まっている"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "test/task-1107-api-int-002-reco-recommendation-run-unit-test"
+  summary: "api-int-002-reco-recommendation-run-unit-test"
+  base: "feature/epic-366-api-int-002-reco-recommendation-run"
+  target: "feature/epic-366-api-int-002-reco-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  number: 1107
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 366
+      purpose: "親 Epic（API-INT-002）"
+  issues:
+    - number: 1103
+      purpose: "実装 Task 完了"
+    - number: 1091
+      purpose: "API実装仕様書 Task 完了"
+    - number: 1097
+      purpose: "OpenAPI Contract Task 完了"
+  prs:
+    - number: 1106
+      purpose: "実装 Epic Branch merge"
+    - number: 1099
+      purpose: "OpenAPI Contract Epic Branch merge"
+    - number: 1094
+      purpose: "実装仕様書 Epic Branch merge"
+  tasks:
+    - "task-api-int-002-reco-recommendation-run-implementation（#1103 / PR #1106 merge 済み）"
+  blocking: true
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at: []
+  blocked_message: null
+
+parallel_control:
+  depends_on:
+    - "task-api-int-002-reco-recommendation-run-implementation"
+  blocks:
+    - "API-INT-002 Epic PR → develop（Phase4b 完了後）"
+  exclusive_files:
+    - "apps/reco/tests/unit/api/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "pytest"
+    - "coverage mapping（§12 契約面観点との対応）"
+    - "secret check"
+  commands:
+    - "cd apps/reco && python -m pytest tests/unit/api/ -v --tb=short"
+    - "cd apps/reco && python -m pytest tests/unit/ -q --tb=short"
+  manual_checks:
+    - "§12 観点ごとに対応テストケース名または PR 表でトレースできることを確認する"
+    - "スタブ Orchestrator 前提で安定して再現可能であることを確認する"
+    - "テスト fixture に実データ・secret が含まれていないことを確認する"
+    - "apps/reco/src/reco/api/** への変更がテスト成立に必要な最小限であることを確認する"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test（OpenAPI 変更なし）"
+    - "generated client typecheck"
+  skip_reason:
+    "integration test": "実装仕様書 §10 の結合・パイプライン障害は別 Task / 別環境で実施"
+    "e2e test": "API-PUB-002 / apps/api 経路は別 Task"
+    "contract test（OpenAPI 変更なし）": "本 Task は OpenAPI 変更を含まない"
+    "generated client typecheck": "apps/api wrapper は別 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "契約仕様書 §12・実装仕様書 §10 の unit 範囲カバレッジが過不足ないか"
+    - "テストがスタブ前提で安定して再現可能か"
+    - "既存実装の意図と矛盾するアサーションがないか"
+    - "integration 観点を unit で無理に検証していないか"
+    - "エンドポイント層への変更がテスト成立に必要な最小限か"
+    - "epic_scope 外（OpenAPI / generated / apps/api / application 本体）の変更が混入していないか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "単体テスト Task。§12 カバレッジ対応表を PR に記載する。"
+
+risk_points:
+  - "契約仕様書 §12 と実装仕様書 §10 の unit / integration 境界の解釈揺れ"
+  - "domain RecommendationResult scaffold による Item フィールドフォールバックのテスト期待値設計"
+  - "FEATURE_DISTRIBUTION_SKEW 警告は metricSummary 未実装で MVP 初期未発火の可能性"
+  - "スタブ Orchestrator が実装詳細に過度に結合し、リファクタでテストが脆くなる可能性"
+
+human_decision_points:
+  - "domain `RecommendationResult` scaffold による Item フィールドフォールバックの MVP 許容性（#1106 Human Review 観点の継承）"
+  - "`FEATURE_DISTRIBUTION_SKEW` 警告の unit テストでの扱い（metricSummary 未実装時は未発火を許容するか）"
+  - "integration 観点（§10 No.1, 3, 4, 11）を別 Task 化するタイミング"
+
+stop_conditions:
+  - "前提実装（#1103 / PR #1106）が親 Epic Branch に未マージの場合"
+  - "契約仕様書 §12 と実装の乖離があり、テスト追加前に実装修正が必要な場合（別 Task または Human 判断）"
+  - "integration test が必要と判断され scope を超える場合"
+  - "OpenAPI / generated / DB schema 変更が必要になった場合"
+  - "secret や .env 実値をテストに含める必要が出た場合"
+
+notes:
+  - "Issue #1107"
+  - "worktree: test-task-1107-api-int-002-reco-recommendation-run-unit-test"
+  - "Branch: test/task-1107-api-int-002-reco-recommendation-run-unit-test（type: test）"
+  - "§12 既存スモーク（実装 PR #1106）: auth 2 件、0 件 completed、Orchestrator エラー 504"
+  - "Phase4b 3/3。完了後は Epic PR → develop 統合の判断へ"
+  - "§12 本 Task で追加想定: validation、trace、warnings、resultItems マッピング、debug 返却、Error Mapper 追加ケース"
