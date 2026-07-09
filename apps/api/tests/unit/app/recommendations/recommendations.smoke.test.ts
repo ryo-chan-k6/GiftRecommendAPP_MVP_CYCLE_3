@@ -166,7 +166,7 @@ test("mapRecoErrorToApiError maps GRS-REC-101 to 504", () => {
   assert.equal(apiError.code, PUBLIC_ERROR_CODES.RECO_TIMEOUT);
 });
 
-test("RecommendationApplicationService calls createRecoClient path via scaffold", async () => {
+test("RecommendationApplicationService runs with scaffold reco-client stub", async () => {
   const { RecommendationApplicationService } = await import(
     "../../../../src/app/recommendations/application-service.js"
   );
@@ -216,5 +216,6 @@ test("RecommendationApplicationService calls createRecoClient path via scaffold"
   assert.equal(recoClient.runRecommendationCalls.length, 1);
   assert.equal(response.data.items.length, 1);
   assert.equal(response.data.resultStatus, "completed");
+  assert.equal(response.meta.traceId, "trace-1");
   assert.equal(isRecoError(undefined), false);
 });
