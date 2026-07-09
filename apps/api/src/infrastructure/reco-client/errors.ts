@@ -1,4 +1,4 @@
-/** Infrastructure-level reco client errors (Phase4a scaffold). */
+/** Infrastructure-level reco client errors. */
 
 export type RecoErrorCode =
   | "RECO_UNAVAILABLE"
@@ -9,6 +9,7 @@ export class RecoError extends Error {
   readonly code: RecoErrorCode;
   readonly retryable: boolean;
   readonly statusCode?: number;
+  readonly upstreamCode?: string;
   readonly cause?: unknown;
 
   constructor(input: {
@@ -16,6 +17,7 @@ export class RecoError extends Error {
     message: string;
     retryable?: boolean;
     statusCode?: number;
+    upstreamCode?: string;
     cause?: unknown;
   }) {
     super(input.message, { cause: input.cause });
@@ -23,6 +25,7 @@ export class RecoError extends Error {
     this.code = input.code;
     this.retryable = input.retryable ?? false;
     this.statusCode = input.statusCode;
+    this.upstreamCode = input.upstreamCode;
     this.cause = input.cause;
   }
 }
