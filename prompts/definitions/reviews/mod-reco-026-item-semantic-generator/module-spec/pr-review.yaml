@@ -14,14 +14,14 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1095
   issue:
-    number: null
+    number: 1093
   task_definition: "prompts/definitions/tasks/mod-reco-026-item-semantic-generator/module-spec.yaml"
-  source_branch: null
-  target_branch: "feature/epic-<issue-number>-mod-reco-026-item-semantic-generator"
-  parent_epic_issue: null
-  parent_epic_branch: "feature/epic-<issue-number>-mod-reco-026-item-semantic-generator"
+  source_branch: "docs/task-1093-mod-reco-026-item-semantic-generator-module-spec"
+  target_branch: "feature/epic-1092-mod-reco-026-item-semantic-generator"
+  parent_epic_issue: 1092
+  parent_epic_branch: "feature/epic-1092-mod-reco-026-item-semantic-generator"
 
 commands:
   primary: "/review-pr"
