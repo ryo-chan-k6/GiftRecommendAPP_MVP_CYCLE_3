@@ -73,7 +73,8 @@ web（`apps/web`）から api（`apps/api`）へ、贈答条件に基づくギ�
 | 内部 API ID | `API-INT-002`（Reco推薦実行） |
 | Method / Endpoint | `POST` `/internal/reco/v1/recommendations/run` |
 | 呼び出し元 | `apps/api`（本 Public API の Provider） |
-| 契約正本 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md`（未作成時は [API一覧](../../05_アプリケーション設計/アプリ/api/API一覧.md) §API-INT-002） |
+| 契約正本 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` |
+| 実装正本（参照のみ） | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md` |
 | 本書との境界 | Request/Response の **Public 向け表面**のみ本書で定義。api→reco 間の Request/Response 変換・モジュール責務は実装仕様書 Task で定義 |
 
 ---
@@ -475,7 +476,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-* |
 | Recommendation Request | `docs/04_ドメインモデル設計/RecommendationRequest定義書.md` | Request Body |
 | Recommendation Result | `docs/04_ドメインモデル設計/RecommendationResult定義書.md` | Response 項目のドメイン根拠 |
-| 内部 API（参照） | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md` | 未作成時は API一覧 §API-INT-002 |
+| 内部 API（参照） | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | api→reco 間の Internal 契約 |
 | Task Definition | `prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml` | #358 scope |
 | 実装仕様（別Task） | `prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml` | Phase4 |
 
