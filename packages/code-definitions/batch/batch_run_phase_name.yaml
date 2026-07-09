@@ -1,0 +1,92 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "batch_run_phase_name"
+  physical_name: "phase_name"
+  logical_name: "Batch Run Phase Name"
+  category: "batch"
+  mvp_scope: true
+
+values:
+  - value: "batch_started"
+    label: "Batch Started"
+    meaning: "Batch 開始"
+    terminal: true
+    enabled: true
+  - value: "cursor_loaded"
+    label: "Cursor Loaded"
+    meaning: "Fetch Cursor 読込"
+    terminal: true
+    enabled: true
+  - value: "external_api_called"
+    label: "External API Called"
+    meaning: "外部 API 呼び出し"
+    terminal: true
+    enabled: true
+  - value: "raw_saved"
+    label: "Raw Saved"
+    meaning: "Raw JSON 保存"
+    terminal: true
+    enabled: true
+  - value: "raw_metadata_saved"
+    label: "Raw Metadata Saved"
+    meaning: "Raw Metadata 保存"
+    terminal: true
+    enabled: true
+  - value: "staging_transformed"
+    label: "Staging Transformed"
+    meaning: "Staging 変換"
+    terminal: true
+    enabled: true
+  - value: "diff_judged"
+    label: "Diff Judged"
+    meaning: "疑似差分判定"
+    terminal: true
+    enabled: true
+  - value: "item_imported"
+    label: "Item Imported"
+    meaning: "Item 反映"
+    terminal: true
+    enabled: true
+  - value: "item_image_imported"
+    label: "Item Image Imported"
+    meaning: "Item Image 反映"
+    terminal: true
+    enabled: true
+  - value: "popularity_signal_imported"
+    label: "Popularity Signal Imported"
+    meaning: "Popularity Signal 反映"
+    terminal: true
+    enabled: true
+  - value: "item_feature_generated"
+    label: "Item Feature Generated"
+    meaning: "Item Feature 生成"
+    terminal: true
+    enabled: true
+  - value: "item_embedding_generated"
+    label: "Item Embedding Generated"
+    meaning: "Item Embedding 生成"
+    terminal: true
+    enabled: true
+  - value: "feature_distribution_metric_recorded"
+    label: "Feature Distribution Metric Recorded"
+    meaning: "Feature 分布メトリクス記録"
+    terminal: true
+    enabled: true
+  - value: "summary_created"
+    label: "Summary Created"
+    meaning: "Import Summary 作成"
+    terminal: true
+    enabled: true
+  - value: "batch_completed"
+    label: "Batch Completed"
+    meaning: "Batch 完了"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "phase_log"
+    column: "phase_name"
+    constraint: "NOT NULL"
+    note: "owner_type=batch_run 時のみ許可。Observability §10.4 正本"

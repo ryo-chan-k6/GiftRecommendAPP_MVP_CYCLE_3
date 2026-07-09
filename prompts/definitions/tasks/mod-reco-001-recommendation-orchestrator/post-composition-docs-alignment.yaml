@@ -1,0 +1,286 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-post-composition-docs-alignment"
+  title: "MOD-RECO-001:Composition完了後 docs正本追随"
+  summary: "Epic #1076（段階3 Composition / PR #1088）develop merge 後、MOD-RECO-001 §268 / §8.4.4 と観測系モジュール仕様書の移行期記述を develop 上の composition / Postgres Repository 実装状態へ追随させる docs-only Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（Recommendation Orchestrator・CLOSED 参考）"
+    - number: 1076
+      purpose: "段階3 Composition Epic（develop merge 済み）"
+    - number: 1075
+      purpose: "前回 docs 追随 Task（§14 integration 完了後）"
+  related_prs:
+    - number: 1088
+      purpose: "Epic #1076 develop merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #1076 / PR #1088 により `apps/reco/src/reco/composition/**`（`build_composition_ports` / `build_production_ports`）、
+  観測系 Postgres Repository（002 / 024+029 / 028 / 025 Tier 1+2）、
+  `tests/integration/test_section14_no10_postgres_observability.py` が develop に統合された。
+  一方、MOD-RECO-001 §268 は「段階3着手前の残課題」、§8.4.4 は本番 composition「将来」表記のまま。
+  MOD-RECO-025 等は「Postgres 永続化は段階3 Composition Task へ委譲」の移行期記述が残存している。
+  本 Task は docs 正本追随に限定し、ソースコード変更は行わない。
+
+objective: |
+  develop 上の段階3 Composition 完了状態と docs 正本（MOD-RECO-001 §268 / §8.4.1 / §8.4.4 / §15、
+  MOD-RECO-025 / 028 / 029 の Postgres composition 反映）を整合させる。
+  API-INT-002 Phase4b 着手前の docs 前提を整える。PR 本文に更新前後サマリを記載する。
+
+scope:
+  - "MOD-RECO-001 §268 段階3残課題の更新（Composition 完了を反映、残課題を API-INT-002 接続等に限定）"
+  - "MOD-RECO-001 §8.4.1 段階3行・§8.4.4 本番 composition 配置表の更新"
+  - "MOD-RECO-001 §15 変更履歴の追記"
+  - "MOD-RECO-025 §2 / §9 / §16 の Postgres composition 完了反映（最小 diff）"
+  - "MOD-RECO-028 / 029 の composition Postgres 経路追記（最小 diff）"
+  - "Task / Review Definition 配置"
+
+out_of_scope:
+  - "`apps/reco` ソースコード変更"
+  - "段階3 Composition 新規実装・テスト追加"
+  - "API-INT-002 エンドポイント実装"
+  - "MOD-RECO-001 §8.4.2 フェーズ Wiring 表の再更新（段階2 完了状態は維持）"
+  - "§14 integration 新規実装"
+  - "OpenAPI / Orval / generated / DB schema 変更"
+  - "後続 Epic / Task の自動起票"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§268 / §8.4.1 / §8.4.4 / §15 更新対象"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "§2 移行期・§9 / §16 Postgres composition"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "Postgres composition 経路"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "Postgres composition 経路"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+      purpose: "composition root 参照正本（読み取りのみ）"
+    - path: "apps/reco/src/reco/composition/observability.py"
+      required: true
+      purpose: "Postgres observability 配線参照"
+    - path: "apps/reco/tests/integration/test_section14_no10_postgres_observability.py"
+      required: true
+      purpose: "§14 No.10 Postgres E2E 参照"
+  issues:
+    - number: 1076
+      purpose: "Composition Epic"
+    - number: 1084
+      purpose: "composition root Task"
+    - number: 1082
+      purpose: "Postgres Repository Task"
+    - number: 1086
+      purpose: "E2E integration Task"
+    - number: 1089
+      purpose: "本 Task Issue"
+  prs:
+    - number: 1088
+      purpose: "Epic #1076 merge"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "§268 / §8.4.1 / §8.4.4 / §15"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "Postgres composition 完了反映"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      action: "update"
+      required: false
+      purpose: "Postgres composition 経路"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      action: "update"
+      required: false
+      purpose: "Postgres composition 経路"
+  files: []
+  tests:
+    expected: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-001 §268 / §8.4.4 が develop composition 実装と一致"
+  - "段階3残課題が API-INT-002 接続等に限定されている"
+  - "MOD-RECO-025 の Postgres composition 記述が Epic #1076 完了状態を反映"
+  - "PR 本文の composition 完了サマリ（DEFAULT vs PRODUCTION / observability Postgres / E2E）"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "Epic #1076 / PR #1088 が develop merge 済みである（作業開始前提）"
+  - "§268 が「着手前」ではなく Composition 完了後の残課題表記になっている"
+  - "§8.4.4 の本番 composition が `apps/reco/src/reco/composition/**` を指している"
+  - "MVP デフォルト composition（`build_default_stub_ports`）維持が明記されている"
+  - "MOD-RECO-025 の「段階3へ委譲」移行期記述が Postgres 実装完了を反映している"
+  - "apps/reco ソース変更が含まれていない（docs-only diff）"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1089-mod-reco-001-post-composition-docs-alignment"
+  summary: "mod-reco-001-post-composition-docs-alignment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-09"
+    due_date: "2026-07-11"
+
+issue:
+  number: 1089
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 1076
+      purpose: "Composition Epic develop merge"
+  issues:
+    - number: 1084
+      purpose: "composition root merge 確認"
+    - number: 1082
+      purpose: "Postgres Repository merge 確認"
+    - number: 1086
+      purpose: "E2E integration merge 確認"
+    - number: 1075
+      purpose: "前回 docs 追随 Task merge 確認"
+  prs:
+    - number: 1088
+      purpose: "Composition Epic merge"
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "epic-mod-reco-001-composition"
+  blocks:
+    - "API-INT-002 Phase4b 着手判断（docs 前提）"
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "builder.py の build_composition_ports / build_production_ports が §8.4.4 と一致すること"
+    - "observability.py の Postgres 配線が MOD-RECO-025 / 028 / 029 記述と矛盾しないこと"
+    - "docs diff のみであること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs-only Task。ソース変更なし"
+    "integration test": "E2E は Epic #1076 で完了済み"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§268 / §8.4.4 が composition 実装と一致しているか"
+    - "MVP デフォルト composition 維持の記載があるか"
+    - "段階3残課題が API-INT-002 接続に限定されているか"
+    - "025 / 028 / 029 移行期記述の更新が過不足ないか"
+    - "docs-only diff であるか（ソース変更なし）"
+    - "develop 直 PR 理由が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Composition 完了後の docs 正本追随。横断影響は PR 本文で記載"
+
+risk_points:
+  - "§268 更新と API-INT-002 着手条件の混同"
+  - "Tier 2 分布 Metric（Orchestrator 非接続）と Postgres Repository 存在の説明不足"
+
+human_decision_points: []
+
+stop_conditions:
+  - "Epic #1076 / PR #1088 が develop merge 済みでない"
+  - "composition 実装状態が Issue 前提と異なる（Human 確認）"
+  - "docs 更新にソース変更が必要と判断された場合"
+  - "正本 docs 間で Composition 完了状態の解釈が矛盾する場合"
+
+notes:
+  - "workstream: mod-reco-001-post-composition-docs"
+  - "Related to #1076 / #1088 / #1075"
+  - "PR 本文: DEFAULT vs PRODUCTION composition サマリ・残課題（API-INT-002）"
+
+audit_checklist:
+  composition_expected:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      symbols:
+        - "build_composition_ports"
+        - "build_production_ports"
+    - path: "apps/reco/src/reco/composition/observability.py"
+      modules: ["002", "024", "028", "029", "025"]
+    - test: "apps/reco/tests/integration/test_section14_no10_postgres_observability.py"
+  remaining_after_docs:
+    - "API-INT-002 エンドポイント層接続"
+    - "MVP デフォルト composition 維持（stubs.py 非変更）"

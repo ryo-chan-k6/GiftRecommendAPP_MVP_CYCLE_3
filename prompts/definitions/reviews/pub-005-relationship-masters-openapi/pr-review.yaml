@@ -1,0 +1,30 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-005-relationship-masters-openapi-pr"
+  title: "API-PUB-005 OpenAPI断片 Contract Task PRレビュー"
+  summary: "API-PUB-005 Relationshipマスタ取得 OpenAPI 断片の #367 反映 PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue:
+    number: 422
+  task_definition: "prompts/definitions/contracts/api-pub-005-relationship-masters/openapi-fragment.yaml"
+  target_branch: "feature/epic-367-api-contract-orval"
+
+review_points:
+  common:
+    - "author=okuri-ai-bot"
+    - "PR target=feature/epic-367-api-contract-orval"
+  contract:
+    - "契約仕様書 §6〜§8 との整合（0件200、Queryなし、Pair非露出）"
+    - "API-PUB-002 RelationshipInput 命名・maxLength 整合"
+    - "Orval / generated 未変更"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"

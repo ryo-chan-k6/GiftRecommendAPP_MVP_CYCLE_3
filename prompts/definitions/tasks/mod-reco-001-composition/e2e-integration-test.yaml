@@ -1,0 +1,228 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-composition-e2e-integration-test"
+  title: "MOD-RECO-001:§14 No.10 DB永続化 E2E integration"
+  summary: "Composition Epic #1076 直列工程 ⑤。本番 composition（build_production_ports）経由で §14 No.10 相当の Run / Phase / Error / Metric（Tier 1+2）Postgres 永続化を apps/reco/tests/integration で検証する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Composition（段階3）"
+  epic_issue_number: 1076
+  epic_branch: "feature/epic-1076-mod-reco-001-composition"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1071
+      purpose: "§14 No.10 InMemory 横断 integration（develop merge 済み参考）"
+    - number: 1084
+      purpose: "工程 ④ composition root 完了"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Composition Epic #1076 直列工程 ⑤（最終子 Task）。
+  工程 ①〜④ により metric_log DDL / Postgres Repository / composition root が Epic Branch に揃った。
+  develop merge 済みの §14 No.10 unit integration（#1071）は InMemory 永続化を検証している。
+  本 Task では本番 composition + 実 Postgres を用い、Orchestrator 実行後に recommendation_run / phase_log / error_log / metric_log / reco_score_distribution_metric への永続化を integration テストで確認する。
+
+objective: |
+  `apps/reco/tests/integration/**` に §14 No.10 相当の DB / ログ永続化 E2E integration テストを追加し、Epic Branch で green にする。
+  - `build_composition_ports(CompositionMode.PRODUCTION)` または `build_production_ports()` 経由の Orchestrator 実行
+  - 成功 Run / 失敗 Run で観測系テーブル行を検証
+  - 025 Tier 1（metric_log）と Tier 2（reco_score_distribution_metric）の責務分離を DB 行で確認
+  - DATABASE_URL 未設定・DB 未到達時は skip 理由を PR に明記
+
+scope:
+  - "apps/reco/tests/integration/** 新設（conftest / helpers / §14 No.10 Postgres 永続化ケース）"
+  - "本番 composition + Postgres 向け integration fixture（DATABASE_URL / DDL 前提）"
+  - "成功 Run: Run + Phase + Metric（Tier 1+2）永続化検証"
+  - "失敗 Run: Run + Phase + Error 永続化検証（Metric 非記録または空を確認）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "stubs.py / orchestrator.py / ports.py 変更"
+  - "composition root / infrastructure/db Repository 本体の機能追加（工程 ④ / ③ 完了済み）"
+  - "InMemory Repository 削除"
+  - "DDL / migration 追加"
+  - "§14 No.11 / No.14 の新規実装（develop merge 済み）"
+  - "OpenAPI / generated / apps/api / apps/web 変更"
+  - "API-INT-002 エンドポイント E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§14 No.10 DB / ログ"
+    - path: "docs/06_実装設計/database/metric_log_テーブル定義書.md"
+      required: true
+      purpose: "Tier 1 永続化検証"
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "Tier 2 永続化検証"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: false
+      purpose: "Run 永続化検証"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: false
+      purpose: "Phase 永続化検証"
+    - path: "docs/06_実装設計/database/error_log_テーブル定義書.md"
+      required: false
+      purpose: "Error 永続化検証"
+  files:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+      purpose: "本番 composition エントリ"
+    - path: "apps/reco/tests/unit/infrastructure/db/conftest.py"
+      required: true
+      purpose: "Postgres fixture 参考"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "§14 No.10 InMemory ケース参考"
+    - path: "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+      required: true
+      purpose: "Orchestrator テスト helper 参考"
+    - path: "prompts/definitions/epics/mod-reco-001-composition/epic.yaml"
+      required: true
+      purpose: "Epic scope / test_policy"
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/tests/integration/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-001-composition/e2e-integration-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-001-composition/e2e-integration-test/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "apps/reco/tests/integration/** に §14 No.10 Postgres 永続化 integration テストが存在する"
+  - "本番 composition 経由で成功 Run の Run / Phase / Metric（Tier 1+2）が DB に記録される"
+  - "本番 composition 経由で失敗 Run の Error / Phase が DB に記録される"
+  - "Tier 1 metric_log と Tier 2 reco_score_distribution_metric が混在しない"
+  - "stubs.py / orchestrator.py / ports.py に変更がない"
+  - "MVP デフォルト composition（build_default_stub_ports）が削除されていない"
+  - "`cd apps/reco && uv run pytest tests/integration -q` が Epic Branch で実行可能（DB 未起動時 skip 理由を PR に明記可）"
+  - "Task PR target が Epic Branch（feature/epic-1076-mod-reco-001-composition）"
+
+branch:
+  no_branch: false
+  summary: "e2e-integration-test"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-12"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1076
+      purpose: "親 Composition Epic"
+    - number: 1084
+      purpose: "工程 ④ composition root 完了（merge 済み前提）"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-mod-reco-001-composition-composition-root"
+      issue: 1084
+  blocks: []
+  exclusive_files:
+    - "apps/reco/tests/integration/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/integration/**"
+  commands:
+    - "cd apps/reco && uv run pytest tests/integration -q --tb=short"
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q --tb=short"
+  manual_checks:
+    - "§14 No.10 観点（Run/Phase/Error/Metric 委譲 + Postgres 永続化）"
+    - "Tier 1 / Tier 2 責務分離"
+    - "forbidden_paths 非変更"
+    - "DATABASE_URL skip 方針の PR 明記"
+  not_required:
+    - "API-INT-002 endpoint E2E"
+  skip_reason:
+    "API-INT-002 endpoint E2E": "API-INT-002 Epic 配下 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§14 No.10 Postgres 永続化が integration でカバーされているか"
+    - "本番 composition 経路の妥当性"
+    - "Tier 1 / Tier 2 Metric 責務分離"
+    - "stubs.py / orchestrator.py / ports.py 非変更"
+    - "InMemory 既存 unit integration との重複が許容範囲か"
+    - "Epic allowed_paths 内のみ"
+    - "secret / DATABASE_URL 非 commit"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+  reason: "Postgres E2E integration は DB / composition 横断 Task"
+
+human_decision_points:
+  - "【確定 2026-07-08】Epic #1076 完了条件に §14 No.10 E2E green を含む"
+  - "【確定 2026-07-08】API-INT-002 endpoint E2E は out of scope"
+
+stop_conditions:
+  - "composition root 不足により本番 composition テストが組めない（工程 ④ へエスカレーション）"
+  - "DDL 追加が必要と判明した場合（Epic 外 Task へエスカレーション）"
+  - "stubs.py / orchestrator.py / ports.py 変更が必要と判明した場合（Human 確認）"
+
+notes:
+  - "Composition 直列工程 ⑤（最終子 Task）"
+  - "workstream: mod-reco-001-composition"
+  - "Related Epic #1076"
+  - "Epic 完了後: Epic PR → develop"

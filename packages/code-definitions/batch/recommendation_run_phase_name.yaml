@@ -1,0 +1,91 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "recommendation_run_phase_name"
+  physical_name: "phase_name"
+  logical_name: "Recommendation Run Phase Name"
+  category: "batch"
+  mvp_scope: true
+
+values:
+  - value: "request_received"
+    label: "Request Received"
+    meaning: "推薦依頼受付"
+    terminal: true
+    enabled: true
+  - value: "config_resolved"
+    label: "Config Resolved"
+    meaning: "Config / Version 解決"
+    terminal: true
+    enabled: true
+  - value: "semantic_extracted"
+    label: "Semantic Extracted"
+    meaning: "Semantic 抽出"
+    terminal: true
+    enabled: true
+  - value: "user_feature_generated"
+    label: "User Feature Generated"
+    meaning: "User Feature 生成"
+    terminal: true
+    enabled: true
+  - value: "user_meaning_projected"
+    label: "User Meaning Projected"
+    meaning: "User Meaning 射影"
+    terminal: true
+    enabled: true
+  - value: "query_embedding_generated"
+    label: "Query Embedding Generated"
+    meaning: "Query Embedding 生成"
+    terminal: true
+    enabled: true
+  - value: "pre_hard_filter_completed"
+    label: "Pre Hard Filter Completed"
+    meaning: "Pre Hard Filter 完了"
+    terminal: true
+    enabled: true
+  - value: "retrieval_completed"
+    label: "Retrieval Completed"
+    meaning: "候補商品抽出完了"
+    terminal: true
+    enabled: true
+  - value: "post_hard_filter_completed"
+    label: "Post Hard Filter Completed"
+    meaning: "Post Hard Filter 完了"
+    terminal: true
+    enabled: true
+  - value: "matching_completed"
+    label: "Matching Completed"
+    meaning: "Matching 完了"
+    terminal: true
+    enabled: true
+  - value: "ranking_completed"
+    label: "Ranking Completed"
+    meaning: "Ranking 完了"
+    terminal: true
+    enabled: true
+  - value: "result_generated"
+    label: "Result Generated"
+    meaning: "Recommendation Result 生成完了"
+    terminal: true
+    enabled: true
+  - value: "reason_generated"
+    label: "Reason Generated"
+    meaning: "Reason 生成完了"
+    terminal: true
+    enabled: true
+  - value: "response_built"
+    label: "Response Built"
+    meaning: "Response 生成完了"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "phase_log"
+    column: "phase_name"
+    constraint: "NOT NULL"
+    note: "owner_type=recommendation_run 等"
+  - table: "recommendation_run_phase_log"
+    column: "phase_name"
+    constraint: "NOT NULL"
+    note: "論理ER上。物理ERでは phase_log 統合"

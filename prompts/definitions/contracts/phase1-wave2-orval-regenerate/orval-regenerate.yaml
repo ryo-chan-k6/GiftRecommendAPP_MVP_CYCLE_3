@@ -1,0 +1,71 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-phase1-wave2-orval-regenerate"
+  title: "Phase1第2波:Orval再生成（1c）"
+  summary: "第2波 1b（#413〜#429）で反映した public-api.yaml / internal-reco-api.yaml の全差分に対し、Orval で generated を一括再生成する。"
+  type: "orval_regenerate"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "phase1_wave2"
+  related_issue: "#367"
+  related_pr: "#429"
+  reason: "第2波 1b 全 API（PUB-001/003/004/005/006/007/008 + INT-001）完了後の 1c 集約再生成。"
+
+change:
+  api_name: "Phase1第2波 全API"
+  api_kind: "public_and_internal"
+  change_type: "orval_regenerate"
+  breaking_change: false
+
+scope:
+  - "npm run orval による apps/web/src/generated/api/** 再生成"
+  - "npm run orval による apps/api/src/generated/reco-client/** 再生成"
+
+out_of_scope:
+  - "packages/contracts/openapi/*.yaml の変更（1b 完了済み）"
+  - "orval.config.ts の変更"
+  - "apps 実装・利用側コード変更"
+
+branch:
+  name: "feature/task-430-phase1-wave2-orval-regenerate"
+  base: "feature/epic-367-api-contract-orval"
+  target: "feature/epic-367-api-contract-orval"
+
+dependencies:
+  epics:
+    - issue: 367
+      title: "[Epic]API-CONTRACT-ORVAL"
+  issues:
+    - "#412"
+    - "#414"
+    - "#416"
+    - "#420"
+    - "#422"
+    - "#424"
+    - "#426"
+    - "#428"
+  prs:
+    - "#413"
+    - "#415"
+    - "#417"
+    - "#421"
+    - "#423"
+    - "#425"
+    - "#427"
+    - "#429"
+
+parallel_control:
+  exclusive_files:
+    - "apps/web/src/generated/api/**"
+    - "apps/api/src/generated/reco-client/**"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"

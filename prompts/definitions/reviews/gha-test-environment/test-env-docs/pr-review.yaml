@@ -1,0 +1,45 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-test-environment-test-env-docs-pr"
+  title: "gha-test-environment test-env-docs PRレビュー"
+  summary: "Epic C Task test-env-docs の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 684
+  issue:
+    number: 683
+  task_definition: "prompts/definitions/tasks/gha-test-environment/test-env-docs.yaml"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/gha-test-environment/test-env-docs.yaml"
+    required: true
+
+review_points:
+  - "§2.6 全レベル対応表がテスト定義書 §4.1 と矛盾しないか"
+  - "Epic C focus（システム/品質 Layer2）が明記されているか"
+  - "Layer1/Layer2/Layer3 境界の明確性"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に反映"

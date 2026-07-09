@@ -1,0 +1,90 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-007-semantic-config-masters-pr"
+  title: "API-PUB-007 Semantic設定取得API契約仕様書 PRレビュー"
+  summary: "API-PUB-007（Semantic設定取得 / Public API）API契約仕様書作成 Task（api-contract-spec.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 403
+  task_definition: "prompts/definitions/tasks/api-pub-007-semantic-config-masters/api-contract-spec.yaml"
+  source_branch: "docs/task-403-pub-007-semantic-config-masters-api-contract-spec"
+  target_branch: "feature/epic-389-pub-007-semantic-config-masters"
+  parent_epic_issue: "[Epic]API-PUB-007:Semantic設定取得"
+  parent_epic_branch: "feature/epic-389-pub-007-semantic-config-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: true
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-007-semantic-config-masters/api-contract-spec.yaml"
+    required: true
+  issue:
+    number: 403
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-389-pub-007-semantic-config-masters"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+
+review_points:
+  - "API一覧 API-PUB-007 との整合"
+  - "GRS-CFG-* / GRS-DB-* エラーコード整合"
+  - "Semantic Concept / Feature Definition の Public 表面のみ"
+  - "内部 Rule（semantic_rule / pair_rule）非含有"
+  - "API-PUB-008 との configName + versionLabel composite 整合"
+  - "実装面混入なし"
+  - "OpenAPI 実変更なし"
+
+acceptance_criteria:
+  - "契約仕様書が api-contract-spec テンプレ準拠"
+  - "Task Definition scope 内"
+  - "secret 不含"

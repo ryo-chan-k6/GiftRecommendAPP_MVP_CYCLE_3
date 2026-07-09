@@ -1,0 +1,277 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-recommendation-orchestrator-unit-test"
+  title: "MOD-RECO-001:Recommendation Orchestrator単体テスト"
+  summary: "MOD-RECO-001（Recommendation Orchestrator）実装（#766 / PR #770）に対し、モジュール仕様書 §14 の unit 観点を満たす単体テストを apps/reco/tests/unit/application/** に追加・拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  related_issues:
+    - 758
+    - 764
+    - 766
+  related_prs:
+    - 760
+    - 765
+    - 770
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #260 配下で MOD-RECO-001 実装 Task（#766 / PR #770）が完了し、`apps/reco/src/reco/application/recommendation-orchestrator/**` と最小スモークテスト（`test_recommendation_orchestrator.py` 4 ケース）が Epic Branch に取り込まれた。
+  実装 Task の `out_of_scope` として網羅的単体テストは本 Task に委譲されていた。
+  本 Task ではモジュール仕様書 §14 の **unit** 観点を対象とし、スタブポートを用いた Orchestrator 単体テストを整備する。
+
+objective: |
+  Recommendation Orchestrator の単体テストをモジュール仕様書 §14（unit 行）に沿って整備し、pytest で再現可能な検証を提供する。
+  既存 4 テストを活かしつつ、不足観点（実行モード、0 件結果、各フェーズ失敗伝播、Phase Log 契機、trace 伝播など）を追加する。
+
+scope:
+  - "Orchestrator 単体テストの追加・拡充（`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` および同ディレクトリ配下の関連テスト）"
+  - "モジュール仕様書 §14 の unit 観点（No.1〜9, 12, 13）のカバレッジ整理とテストケース追加"
+  - "Reason fallback（§10.3）の単体テスト拡充（既存テストの補強・境界ケース）"
+  - "スタブポート（`stubs.py`）を利用した下位モジュール失敗・処理順序の検証"
+  - "実行モード（ui / evaluation / batch）ごとの config 解決呼び出し検証"
+  - "trace_id の実行コンテキスト・Phase Log 委譲への伝播検証（unit 範囲）"
+  - "テスト用 fixture / helper の整理（Orchestrator テスト専用、過剰共通化は避ける）"
+  - "Task / Review Definition 整備（本ファイルおよび `prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/unit-test-pr-review.yaml`）"
+
+out_of_scope:
+  - "integration test（§14 No.10 DB/ログ、No.11 タイムアウト hard、No.14 Reason 部分失敗の Run partial）"
+  - "e2e test / contract test"
+  - "Orchestrator 本体の機能追加・リファクタ（テスト成立に必要な最小修正のみ可。要 PR 説明）"
+  - "他 Recoモジュール（MOD-RECO-002〜029）本体の本格実装"
+  - "API-INT-002 エンドポイント層（`apps/reco/src/reco/api/**`）"
+  - "OpenAPI / generated / DB schema 変更"
+  - "本番 DB / 外部 API 依存テスト"
+  - "タイムアウト hard 4,000ms の実時間計測テスト（integration 扱い）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§14 テスト観点・§10 状態・例外・Reason fallback の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "§5.2 処理順序の正本"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "テスト入力 fixture 設計"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+      purpose: "テスト期待値設計"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "§17.2 汎用 Reason 文（fallback 期待値）"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-REC-* 期待値"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+      purpose: "テスト対象"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      required: true
+      purpose: "ポートモック設計"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "スタブ利用・失敗注入"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "既存スモークテスト（拡充起点）"
+  issues:
+    - number: 766
+      purpose: "前提 Task（実装）"
+    - number: 758
+      purpose: "前提 Task（モジュール仕様書）"
+  prs:
+    - number: 770
+      purpose: "前提 PR（実装）"
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/application/**"
+      action: "create_or_update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "モジュール仕様書 §14 unit 観点に対応する pytest テストスイート"
+  - "テスト観点とテストケースの対応表（PR 本文またはコメント）"
+  - "pytest 実行結果（成功ログ）"
+  - "Task Definition（本ファイル）"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-recommendation-orchestrator/unit-test-pr-review.yaml`）"
+
+acceptance_criteria:
+  - "モジュール仕様書 §14 の unit 観点（No.1〜9, 12, 13）がテストケースとしてカバーされている（対応表を PR に記載）"
+  - "既存 4 テストが引き続き成功する"
+  - "`cd apps/reco && python -m pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+  - "`cd apps/reco && python -m pytest tests/unit/ -q` が成功する（他テストへの悪影響なし）"
+  - "integration 観点（§14 No.10, 11, 14）は本 Task で未実施であることを PR に明記している"
+  - "テストが本番 DB / 外部 API / secret に依存していない"
+  - "Orchestrator 本体の不要な機能変更を含まない（テスト成立に必要な最小修正のみ）"
+  - "epic_scope 外（api 層・他 MOD 本体・OpenAPI / DB）の変更を含まない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "test/task-771-mod-reco-001-recommendation-orchestrator-unit-test"
+  base: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  target: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - 766
+    - 758
+    - 764
+  prs:
+    - 770
+    - 760
+    - 765
+  tasks:
+    - "MOD-RECO-001 実装 Task（#766 / PR #770）が Epic Branch にマージ済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-recommendation-orchestrator-implementation"
+  blocks: []
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/application/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "pytest"
+    - "coverage mapping（§14 unit 観点との対応）"
+    - "secret check"
+  commands:
+    - "cd apps/reco && python -m pytest tests/unit/application/test_recommendation_orchestrator.py -v --tb=short"
+    - "cd apps/reco && python -m pytest tests/unit/ -q --tb=short"
+  manual_checks:
+    - "§14 unit 観点ごとに対応テストケース名または PR 表でトレースできることを確認する"
+    - "失敗注入テストが他モジュール本体実装に依存していないことを確認する"
+    - "テスト fixture に実データ・secret が含まれていないことを確認する"
+    - "apps/reco/src/reco/api/** への変更が含まれていないことを確認する"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "performance test（タイムアウト hard 実測）"
+  skip_reason:
+    "integration test": "§14 No.10/11/14 は integration 扱い。API-INT-002 接続後に別 Task 化を検討"
+    "e2e test": "エンドポイント層未接続のため対象外"
+    "contract test": "OpenAPI 変更なし"
+    "performance test（タイムアウト hard 実測）": "PoC #759 後の integration / 性能 Task で検証"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "モジュール仕様書 §14 unit 観点のカバレッジが過不足ないか"
+    - "テストがスタブ前提で安定して再現可能か"
+    - "既存実装の意図と矛盾するアサーションがないか"
+    - "integration 観点を unit で無理に検証していないか"
+    - "Orchestrator 本体への変更がテスト成立に必要な最小限か"
+    - "epic_scope 外の変更が混入していないか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "単体テスト Task。§14 カバレッジ対応表を PR に記載する。"
+
+risk_points:
+  - "§14 の unit / integration 境界の解釈揺れ（特に Phase Log・タイムアウト）"
+  - "スタブの失敗注入が実装詳細に過度に結合し、リファクタでテストが脆くなる可能性"
+  - "実装 Task で追加済みの 4 テストと重複・矛盾するケース追加"
+
+human_decision_points:
+  - "親 Epic `epic_scope.allowed_paths` に `apps/reco/tests/unit/application/**` を追記するか（#770 実装 PR で当該パス変更済み・child_task_area: unit-test）"
+  - "§14 No.8（Phase Log 契機）を unit のみでどこまで検証するか（スタブ呼び出し記録の粒度）"
+  - "§14 No.9（Error Log 接続）を unit のみでどこまで検証するか（024→029 委譲のスタブ記録粒度）"
+  - "0 件結果（GRS-REC-001）をスタブで再現する fixture 設計"
+  - "integration 観点（No.10/11/14）を別 Task 化するタイミング（API-INT-002 接続前後）"
+
+stop_conditions:
+  - "前提実装（#766 / PR #770）が Epic Branch に未マージの場合"
+  - "モジュール仕様書 §14 と実装の乖離があり、テスト追加前に実装修正が必要な場合（別 Task または Human 判断）"
+  - "integration test が必要と判断され scope を超える場合"
+  - "OpenAPI / DB schema 変更が必要になった場合"
+  - "secret や .env 実値をテストに含める必要が出た場合"
+
+notes:
+  - "Issue #771"
+  - "worktree: test-task-771-mod-reco-001-recommendation-orchestrator-unit-test"
+  - "Branch: test/task-771-mod-reco-001-recommendation-orchestrator-unit-test（type: test）"
+  - "Epic #260 child_task_areas の最終区分（unit-test）。完了後は Epic PR → develop 統合の判断へ"
+  - "§14 既存スモーク（実装 PR #770）: No.3 処理順序、No.4 Ranking 責務分離、No.13 Reason fallback、No.7 003 失敗中断"
+  - "§14 本 Task で追加想定: No.1 ui mode、No.2 evaluation/batch mode、No.5 0件、No.6 各フェーズ失敗、No.8 Phase Log（unit 範囲）、No.9 Error Log（unit 範囲）、No.12 trace 伝播"
+  - "§14 本 Task 対象外（integration）: No.10 DB/ログ、No.11 タイムアウト hard、No.14 Reason partial"

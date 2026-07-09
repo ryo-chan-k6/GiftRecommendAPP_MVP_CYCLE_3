@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-024-reco-error-handler-unit-test-pr"
+  title: "MOD-RECO-024 単体テスト PRレビュー"
+  summary: "MOD-RECO-024（Reco Error Handler）単体テスト Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1027
+  issue:
+    number: 1026
+  task_definition: "prompts/definitions/tasks/mod-reco-024-reco-error-handler/unit-test.yaml"
+  source_branch: "test/task-1026-mod-reco-024-reco-error-handler-unit-test"
+  target_branch: "feature/epic-1013-mod-reco-024-reco-error-handler"
+  parent_epic_issue: 1013
+  parent_epic_branch: "feature/epic-1013-mod-reco-024-reco-error-handler"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-024-reco-error-handler/unit-test.yaml"
+    required: true
+
+review_points:
+  - "Task Definition scope / acceptance_criteria 充足"
+  - "epic_scope 内に差分が収まっているか"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 確定後に target.* / input.issue.number / input.pr.number を更新する"

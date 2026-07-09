@@ -1,0 +1,250 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-phase4a-definitions-bootstrap"
+  title: "Phase4a foundation Epic Definition bootstrap"
+  summary: "Phase4a 共通基盤 5 Epic（packages / web / api / reco / batch foundation）+ 子 Task 20件 + Review Definition を整備し、各 `/start-epic` 前提を満たす bootstrap chore Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - number: 651
+      purpose: "Phase3b Epic A 完了"
+    - number: 671
+      purpose: "Phase3b Epic C 完了"
+  related_prs:
+    - number: 668
+      purpose: "Epic A Epic PR merge 済み"
+    - number: 685
+      purpose: "Epic C Epic PR merge 済み"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b（Epic A #651 / Epic C #671、Epic PR #668 / #685 merge 済み）完了後、Phase4a 共通基盤 Epic を `/start-epic` する前に
+  Definition 一式を prompts/definitions に整備する（実装フェーズ実行プロセス設計書 §6.5、Phase3 環境再計画 §1.2）。
+  5 workstream（packages / web / api / reco / batch foundation）は **並列** `/start-epic` 可。
+  Phase4b 識別子 Epic（MOD-RECO-001 等）の本格実装 Definition は本 bootstrap scope 外（既存 Phase1/4b Epic Definition を利用）。
+
+objective: |
+  Phase4a foundation 5 Epic + 子 Task 20件 + Review Definition（Task×20 + Epic×5 + bootstrap）を作成する。
+  merge 後、各 workstream で `/start-epic @prompts/definitions/epics/<workstream>/epic.yaml` へ進める状態にする。
+
+scope:
+  - "Epic Definition 5件（packages-foundation / web-foundation / api-foundation / reco-foundation / batch-foundation）"
+  - "子 Task Definition 20件（§6.5 Task 表に対応）"
+  - "Review Definition: 各 Task pr-review.yaml + 各 Epic epic/pr-review.yaml"
+  - "本 bootstrap Task / Review Definition"
+
+out_of_scope:
+  - "Phase4a 実装（apps/** / packages/** 骨格コード本体）— 各 foundation Epic 子 Task で実施"
+  - "Phase4b 識別子 Epic 実装 Task の新規作成（既存 mod-reco-001 等は変更しない）"
+  - "packages/contracts/** 変更・generated 手編集"
+  - "Epic D（ci-web.yml 等）"
+  - "Epic B（hosted-dev-environment）— defer"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4a §6.5 / §6.6"
+    - path: "docs/05_アプリケーション設計/共通/DevOps方針書.md"
+      required: true
+      purpose: "code-definitions 位置づけ §8"
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "monorepo packages 構成"
+  files:
+    - path: "prompts/definitions/tasks/phase3b/epic-c-definitions-bootstrap.yaml"
+      required: true
+      purpose: "bootstrap Task 構造参考"
+    - path: "prompts/definitions/epics/local-dev-environment/epic.yaml"
+      required: true
+      purpose: "Epic Definition 構造参考"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/packages-foundation/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/web-foundation/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/api-foundation/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/reco-foundation/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/batch-foundation/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/packages-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/web-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/api-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/reco-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/packages-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/web-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/api-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/reco-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-foundation/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/phase4a/phase4a-definitions-bootstrap.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/phase4a/phase4a-definitions-bootstrap/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Phase4a foundation Epic Definition 5件"
+  - "子 Task Definition 20件 + Review Definition 25件（Task×20 + Epic×5）"
+  - "bootstrap Task / Review Definition"
+  - "merge 後 各 foundation `/start-epic` 実行可能"
+  - "Issue #686"
+
+acceptance_criteria:
+  - "5 foundation Epic Definition が存在し §6.5 と整合"
+  - "子 Task 20件が存在し epic_scope.child_task_areas と対応"
+  - "各 Task + Epic + bootstrap の Review Definition が存在"
+  - "epic_scope.forbidden_paths に packages/contracts/** が含まれる"
+  - "Phase4b 本格実装を bootstrap scope 外としている"
+  - "secret 実値が含まれていない"
+  - "Task PR target が develop（親 Epic なし chore）"
+
+branch:
+  no_branch: false
+  name: "chore/task-686-phase4a-definitions-bootstrap"
+  summary: "phase4a-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 686
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 651
+      purpose: "Epic A 完了"
+    - number: 671
+      purpose: "Epic C 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "prompts/definitions/epics/packages-foundation/**"
+    - "prompts/definitions/epics/web-foundation/**"
+    - "prompts/definitions/epics/api-foundation/**"
+    - "prompts/definitions/epics/reco-foundation/**"
+    - "prompts/definitions/epics/batch-foundation/**"
+    - "prompts/definitions/tasks/packages-foundation/**"
+    - "prompts/definitions/tasks/web-foundation/**"
+    - "prompts/definitions/tasks/api-foundation/**"
+    - "prompts/definitions/tasks/reco-foundation/**"
+    - "prompts/definitions/tasks/batch-foundation/**"
+    - "prompts/definitions/reviews/**/packages-foundation/**"
+    - "prompts/definitions/reviews/**/web-foundation/**"
+    - "prompts/definitions/reviews/**/api-foundation/**"
+    - "prompts/definitions/reviews/**/reco-foundation/**"
+    - "prompts/definitions/reviews/**/batch-foundation/**"
+    - "prompts/definitions/tasks/phase4a/phase4a-definitions-bootstrap.yaml"
+    - "prompts/definitions/reviews/phase4a/phase4a-definitions-bootstrap/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "YAML 必須項目目視"
+    - "Epic×5 / Task×20 / Review×26 のファイル数"
+    - "child_task_areas と Task ファイル名対応"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Definition のみ chore"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§6.5 Phase4a Task 表との整合"
+    - "5 Epic 並列方針・依存（Phase3b 完了）"
+    - "forbidden_paths（contracts / generated）"
+    - "Review Definition 3点セット"
+    - "Phase4b 識別子 Epic 実装を scope 外としているか"
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+notes:
+  - "親 Epic なし・develop 直 Task（§7.6 bootstrap）"
+  - "merge 後: `/start-epic` を workstream 単位で並列実行可"
+  - "推奨着手順: packages-foundation → reco-foundation / api-foundation 並列 → web / batch 並列"

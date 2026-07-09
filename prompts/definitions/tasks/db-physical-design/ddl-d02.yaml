@@ -1,0 +1,246 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d02"
+  title: "d02:Semantic/Feature定義系DDL作成"
+  summary: "Phase2 子 Task ④ DDL のバッチ D02。Semantic / Feature 定義系 12 テーブルの `CREATE TABLE` / Index / CHECK / バッチ内 FK を `db/ddl/d02_semantic_feature_definitions.sql` に定義し、D03 以降の前提を整える。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 611
+      purpose: "先行 D01（extension / enum 型。merge 済み前提）"
+    - number: 600
+      purpose: "後続 D03（Master / Config）"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+  related_prs:
+    - number: 614
+      purpose: "D01 DDL PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **バッチ D02（Semantic / Feature 定義系）**。FK 依存の浅い層であり、D03 以降の Master / Item / Online 推薦系の前提となる。
+  対象 12 テーブルは [DDLバッチ分割表.md](../../../docs/06_実装設計/database/DDLバッチ分割表.md) §6 に列挙される。
+  先行 D01（`db/ddl/d01_extensions_and_enums.sql`、Issue #611 / PR #614 merge 済み）適用後に本バッチを実行する前提とする。
+  Issue #599 / Branch `chore/task-599-d02-ddl` で作業する。
+
+objective: |
+  `db/ddl/d02_semantic_feature_definitions.sql` を作成し、D02 対象 12 テーブルの PostgreSQL DDL を各テーブル定義書・物理 ER・enum定義書・コード定義書・マイグレーション方針書と整合させる。
+  バッチ内の CREATE 順序は FK 依存に従う（`semantic_config` → `semantic_config_version` → `semantic_concept` / `feature_definition` → 各 `*_rule`）。
+
+scope:
+  - "`db/ddl/d02_semantic_feature_definitions.sql` の新規作成"
+  - "D02 対象 12 テーブルの `CREATE TABLE`、PK、UNIQUE、Index、CHECK、バッチ内で成立する物理 FK"
+  - "  - `semantic_config`"
+  - "  - `semantic_config_version`"
+  - "  - `feature_definition`"
+  - "  - `semantic_concept`"
+  - "  - `semantic_rule`"
+  - "  - `relationship_rule`"
+  - "  - `occasion_rule`"
+  - "  - `pair_rule`"
+  - "  - `concept_feature_rule`"
+  - "  - `input_type_rule`"
+  - "  - `feature_integration_rule`"
+  - "  - `normalization_rule`"
+  - "D01 適用済み前提で実行可能な SQL（enum 型・拡張は D01 参照）"
+  - "マイグレーション方針書 §8.1 のファイル命名・バッチ順序への準拠"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "D03 以降のテーブル `CREATE TABLE`（`feature_normalization_version` 等）"
+  - "D03 テーブルへの物理 FK の `ALTER TABLE ... ADD CONSTRAINT`（`normalization_rule.feature_normalization_version_id` 等。D12 で後追い）"
+  - "Master テーブル（`relationship_master` 等）への物理 FK（各 Rule 定義書の LOGICAL 参照方針に従い MVP では付与しない）"
+  - "version 内 Concept 整合の複合 FK（`semantic_rule` 等。seed / reco 運用で担保）"
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`db/seeds/**` の作成（Task ⑤）"
+  - "`packages/code-definitions/**` の変更"
+  - "`apps/**` 実装変更"
+  - "docs の変更（DDLバッチ分割表・テーブル定義書は参照のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D02 バッチ scope・12 テーブル一覧・適用順序の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・バッチ順序・D12 後追い FK 方針"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§5 分解方針・§9 制約一覧・§15 適用順序との整合確認"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 列型・論理 ID 分離の参照（型定義は D01 正本）"
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+      purpose: "コード列・CHECK 制約値の参照"
+    - path: "docs/06_実装設計/database/semantic_config_テーブル定義書.md"
+      required: true
+      purpose: "D02-1 `semantic_config` DDL 正本"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "D02-2 `semantic_config_version` DDL 正本"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "D02-3 `feature_definition` DDL 正本"
+    - path: "docs/06_実装設計/database/semantic_concept_テーブル定義書.md"
+      required: true
+      purpose: "D02-4 `semantic_concept` DDL 正本"
+    - path: "docs/06_実装設計/database/semantic_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-5 `semantic_rule` DDL 正本"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-6 `relationship_rule` DDL 正本"
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-7 `occasion_rule` DDL 正本"
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-8 `pair_rule` DDL 正本"
+    - path: "docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-9 `concept_feature_rule` DDL 正本"
+    - path: "docs/06_実装設計/database/input_type_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-10 `input_type_rule` DDL 正本"
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-11 `feature_integration_rule` DDL 正本"
+    - path: "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+      required: true
+      purpose: "D02-12 `normalization_rule` DDL 正本（D03 跨ぎ FK は out_of_scope）"
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      required: true
+      purpose: "先行バッチ DDL・enum 型名の参照"
+  templates: []
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d02_semantic_feature_definitions.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d02.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d02/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d02_semantic_feature_definitions.sql` に存在する"
+  - "D02 対象 12 テーブルが DDLバッチ分割表 §6 と一致する"
+  - "各テーブルの列・型・制約が対応するテーブル定義書と矛盾しない"
+  - "D01 適用済み前提で本ファイル単体が実行可能である（D03 跨ぎ物理 FK を含まない）"
+  - "`semantic_config` → `semantic_config_version` → 子 Rule 群の CREATE 順序が FK 依存と整合する"
+  - "`packages/code-definitions/**` および `apps/**` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d02-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 599
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 611
+      purpose: "先行 D01（extension / enum 型）完了"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-db-physical-design-ddl-d01"
+      issue: 611
+      purpose: "D01 extension / enum 型の適用前提"
+  exclusive_files:
+    - "db/ddl/d02_semantic_feature_definitions.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d02.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d02/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "D02 対象 12 テーブルがすべて `CREATE TABLE` されていること"
+    - "各テーブルの PK / UNIQUE / Index / CHECK がテーブル定義書 §7〜§9 と一致すること"
+    - "`semantic_config_version_id` への物理 FK が Rule 系テーブルで定義書どおりであること"
+    - "`normalization_rule.feature_normalization_version_id` 列は存在するが、D03 跨ぎ物理 FK は本ファイルに含まれないこと"
+    - "D01 適用後に `psql` またはローカル DB 検証環境（#612）で構文・適用が通ること（可能な範囲）"
+    - "`apps/**`・`packages/code-definitions/**` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+  skip_reason:
+    "unit test": "DDL 参照用 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL のみ。適用正本は Task ⑤"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch D02 / change_id: `d02_semantic_feature_definitions`"
+  - "Issue #599 / Branch `chore/task-599-d02-ddl`"
+  - "先行: D01（#611 / PR #614 merge 済み）"
+  - "後続: D03（#600）以降は本 Task 完了後に着手"
+  - "`normalization_rule` → `feature_normalization_version` の物理 FK は D03 テーブル依存のため D12 後追い（列定義のみ本 Task）"
+  - "Human Review 論点: Rule 系の LOGICAL 参照（`feature_code` / `relationship_code` 等）の CHECK 範囲、version 内整合の seed 担保方針"

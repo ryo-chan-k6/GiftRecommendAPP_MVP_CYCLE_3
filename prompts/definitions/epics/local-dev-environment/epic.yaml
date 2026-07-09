@@ -1,0 +1,339 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-local-dev-environment"
+  title: "local-dev-environment:ローカルdev実行環境"
+  summary: "Phase3b Epic A。Human 日常開発向け local 環境（Supabase CLI + Docker Desktop、Redis 限定 compose、monorepo 起動骨格、DB 構築手順、seed 方針、web/api/reco dev 起動骨格）を整備する機能・領域単位 Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3a（Epic #436 / PR #584 merge 済み）で環境変数 §19、`.env.example`、infra/scripts 骨格、ローカル開発手順（計画）、CI 品質ゲートを完了した。
+  Phase3b Epic A は **local** 実行環境の構築を担う（実装フェーズ実行プロセス設計書 §8.2、Phase3 環境再計画 2026-06-18）。
+  Human 判断: ローカル DB は Supabase CLI + Docker Desktop（Neon 不採用）、Redis は限定 `docker-compose.dev.yml` 採用、Epic B（cloud dev / Layer3）は defer。
+  web / api / reco を主対象とし、batch は起動 script 骨格のみ。実アプリ health・web→api→reco 結合の実起動確認は Phase4a/4b で更新する。
+
+objective: |
+  開発者が 1 手順で DB + Redis + `.env` + web/api/reco の dev 起動骨格まで到達できる状態を整備する。
+  Epic Branch 上で子 Task A1〜A7 を段階実行し、Epic PR で develop へ統合する。
+  Cursor Cloud Agent 運用を壊さない制約（§2.5）と、全テストレベルの Agent 運用との関係（§2.6）を Epic 設計に明示する。
+
+scope:
+  - "ツールチェーン pin（Node / Python 等）"
+  - "pnpm workspace・各 app の package.json scripts 骨格"
+  - "DB構築手順書・Supabase CLI pin・scripts/db"
+  - "seed 方針（supabase/seeds/masters + config.toml [db.seed]）と最小 seed script"
+  - "Redis 限定 docker-compose.dev.yml + scripts/dev 起動補助"
+  - "scripts/dev/start-{web,api,reco}.sh・ローカル開発手順書 §9 実行手順化"
+  - "疎通チェック script（health / env / Redis / DB）"
+  - "Epic / Task / Review Definition の整備"
+
+out_of_scope:
+  - "クラウド dev（Epic B / Layer3）— defer"
+  - "GHA Layer2 テスト環境（Epic C `gha-test-environment`）"
+  - "アプリ別 PR CI（Epic D `ci-web.yml` 等）"
+  - "apps/** の本格実装・health 成功の実起動確認（Phase4a/4b）"
+  - "db/migrations の DDL 内容変更（Phase2 Epic scope）"
+  - "production / staging deploy・CD workflow"
+  - "secret 実値の commit"
+  - "Neon 採用"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase3b・§8.2 Human 判断"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19 環境変数正本"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "app 配置・通信経路"
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+      purpose: "§9 起動手順更新対象"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "local DB・seed・CI migration 整合"
+    - path: "docs/05_アプリケーション設計/基盤/利用技術スタック整理表.md"
+      required: true
+      purpose: "toolchain / monorepo"
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§4.1 テストレベル（§2.6 Agent 運用対応表の正本）"
+  issues:
+    - number: 436
+      purpose: "Phase3a 完了前提"
+  prs:
+    - number: 584
+      purpose: "Phase3a Epic PR merge 済み"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/**"
+      action: "update"
+      required: true
+      template: null
+    - path: "docs/06_実装設計/database/**"
+      action: "create_or_update"
+      required: false
+      template: null
+  files:
+    - path: ".nvmrc"
+      action: "create_or_update"
+      required: false
+    - path: ".node-version"
+      action: "create_or_update"
+      required: false
+    - path: ".python-version"
+      action: "create_or_update"
+      required: false
+    - path: "pnpm-workspace.yaml"
+      action: "create"
+      required: false
+    - path: "package.json"
+      action: "update"
+      required: false
+    - path: "docker-compose.dev.yml"
+      action: "create"
+      required: false
+    - path: "scripts/dev/**"
+      action: "create_or_update"
+      required: false
+    - path: "scripts/db/**"
+      action: "create_or_update"
+      required: false
+    - path: "supabase/**"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]local-dev-environment:ローカルdev実行環境）"
+  - "Epic Branch（develop 起点）"
+  - "local dev 実行環境（infra 疎通 + dev script 骨格 + docs）"
+  - "Epic PR → develop（Human merge 待ち）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Epic Branch が develop から作成されている"
+  - "`supabase start` → `supabase migration up` → master seed が docs 通り再現可能"
+  - "Redis 起動〜 `REDIS_URL` 疎通確認可能"
+  - "`./scripts/dev/check-env-names.sh --strict` 成功"
+  - "ローカル開発手順書 §9 が現行 repo で実行可能な手順として記載されている"
+  - "子 Task A1〜A7 が Epic Branch 上で完了可能な Definition がある"
+  - "secret 実値が成果物に含まれていない"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+
+branch:
+  no_branch: false
+  name: "chore/epic-651-local-dev-environment"
+  summary: "local-dev-environment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "infra"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/06_実装設計/cross_cutting/**"
+    - "docs/06_実装設計/database/**"
+    - ".nvmrc"
+    - ".node-version"
+    - ".python-version"
+    - "package.json"
+    - "pnpm-workspace.yaml"
+    - "pnpm-lock.yaml"
+    - "apps/web/package.json"
+    - "apps/api/package.json"
+    - "apps/reco/package.json"
+    - "apps/batch/package.json"
+    - "apps/batch/pyproject.toml"
+    - "docker-compose.dev.yml"
+    - "scripts/dev/**"
+    - "scripts/db/**"
+    - "supabase/config.toml"
+    - "supabase/seeds/**"
+    - "supabase/README.md"
+    - ".env.example"
+    - ".github/workflows/ci-contract.yml"
+    - "prompts/definitions/epics/local-dev-environment/**"
+    - "prompts/definitions/tasks/local-dev-environment/**"
+    - "prompts/definitions/reviews/local-dev-environment/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/**/generated/**"
+    - "apps/web/src/**"
+    - "apps/api/src/**"
+    - "apps/reco/src/**"
+    - "apps/batch/src/**"
+    - "supabase/migrations/**"
+    - ".github/workflows/ci-web.yml"
+    - ".github/workflows/ci-api.yml"
+    - ".github/workflows/ci-reco.yml"
+    - ".github/workflows/test-system.yml"
+    - ".github/workflows/test-reco-quality.yml"
+    - ".env"
+  child_task_areas:
+    - "toolchain-pin"
+    - "ci-contract-node-align"
+    - "monorepo-bootstrap"
+    - "db-build-guide"
+    - "seed-strategy"
+    - "redis-local-guide"
+    - "local-dev-runtime"
+    - "local-smoke-check"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 436
+      purpose: "Phase3a 完了"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "prompts/definitions/epics/gha-test-environment/epic.yaml"
+  exclusive_files:
+    - "pnpm-workspace.yaml"
+    - "package.json"
+    - "docker-compose.dev.yml"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "secret 実値が含まれていないこと"
+    - "Phase2 migration 正本（supabase/migrations/）を変更していないこと"
+    - "Agent acceptance criteria に supabase start 成功を必須にしていないこと（§2.5）"
+  not_required:
+    - "unit test"
+    - "GHA ephemeral フルスタックテスト"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+agentic_process:
+  summary: |
+    Cursor Cloud Agent + GitHub 運用は cloud dev なしで成立する。Epic A はこの経路を壊さないことを制約とする。
+  constraints:
+    - "Task Branch / worktree / okuri-ai-bot commit・push・PR は Git のみ依存（cloud dev 不要）"
+    - "PR 品質ゲートは GHA ci*.yml（repo checkout + Node/pnpm）のみ（cloud dev 不要）"
+    - "AI Review / Human Review は PR 差分・docs ベース（cloud dev 不要）"
+    - "Agent の acceptance criteria は「docs / scripts / CI が通る」に留め、フルスタック起動は Human 手元確認または optional manual check とする"
+    - "supabase start 手順は docs 正本として整備するが、Cloud Agent 実行前提にしない（Docker 非保証）"
+    - "CI 品質ゲートと AI 運用 workflow の分離を維持（ci.yml L7–8 方針）"
+  defer:
+    - "Epic B（hosted-dev-environment / Layer3 cloud dev）"
+    - "結合/E2E の cloud dev URL 依存テスト（Epic C Layer2 または将来 Epic B）"
+
+agent_test_operations:
+  summary: |
+    プロジェクト全体ではすべてのテストレベルで AI Agent 運用を想定するが、Epic A の Phase3b 成果物は local dev 基盤にフォーカスする。
+    システムテスト・レコメンド品質評価の Layer2 環境は Epic C が担う。単体・mock 結合の Layer1 は Epic D + Phase4 Task が担う。
+  level_map:
+    - level: "技術検証テスト"
+      agent_use: "想定"
+      execution_path: "Layer2 tech-verify-*.yml（workflow_dispatch）"
+      epic_relation: "Epic C と同型。Epic A 外"
+    - level: "単体テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 PR CI（Epic D）+ Task PR 内 pnpm test / pytest"
+      epic_relation: "Phase4a/4b 各 Task"
+    - level: "モジュール結合テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 PR CI + apps 内 tests/module/"
+      epic_relation: "Phase4a/4b 各 Task"
+    - level: "コンポーネント結合テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 mock/fixture + PR CI"
+      epic_relation: "Phase4b"
+    - level: "システムテスト"
+      agent_use: "想定"
+      execution_path: "Layer2 test-system.yml（Epic C C3）"
+      epic_relation: "Epic C 明示スコープ（Epic A 外）"
+    - level: "非機能テスト"
+      agent_use: "想定"
+      execution_path: "Layer2 perf-feasibility-*.yml + 将来 stg"
+      epic_relation: "Epic C 後続 or 別 Epic"
+    - level: "レコメンド品質評価"
+      agent_use: "想定（自動部分）+ Human 人手評価"
+      execution_path: "Layer2 test-reco-quality.yml（Epic C C4）"
+      epic_relation: "Epic C 明示スコープ（Epic A 外）"
+    - level: "受入テスト"
+      agent_use: "想定（補助）"
+      execution_path: "Human 主導 + Agent 結果整理"
+      epic_relation: "Phase8"
+  common_pattern:
+    - "作成: Test AI / Worker AI がテストコード・fixture・Definition を Task scope 内で作成"
+    - "実行: PR CI（Layer1）または workflow_dispatch（Layer2）または Task 内コマンド"
+    - "読取: CI log / GHA artifact / PR check を Agent が解釈"
+    - "Fix: Fixer AI または同一 Agent が失敗に応じて修正 → 再実行"
+    - "記録: PR 本文・Task 完了条件・正本 docs"
+  epic_a_focus: |
+    Epic A 子 Task の test_policy は docs/scripts 検証・env 名チェック・optional Human 手元確認を中心とし、
+    Layer2 フルスタックテストの完了を acceptance_criteria に含めない。
+
+human_decision_points:
+  - "ローカル DB: Supabase CLI + Docker Desktop 確定、Neon 不採用（2026-06-18）"
+  - "Redis: 限定 docker-compose.dev.yml 採用（Task A5、2026-06-18）"
+  - "Epic B（cloud dev）defer、Layer2（Epic C）先行（2026-06-18）"
+  - "Epic #132 supersede 予定（別 Todo）"
+
+stop_conditions:
+  - "secret 実値の記載が必要に見える場合"
+  - "supabase/migrations の DDL 変更が必要に見える場合（Phase2 Epic へ）"
+  - "apps/** 本格実装が Epic A scope に必要と判断された場合（Phase4 へ）"
+  - "Epic B / Epic C の実装を Epic A に混在させる必要がある場合"
+
+notes:
+  - "workstream_key: local-dev-environment"
+  - "子 Task 実行順: A1 単独先行 → A1b（#652 後・ci-contract Node 24 統一）∥A2∥A3∥A5 → A4（A3 後）→ A6 → A7"
+  - "Phase4a 前提「Phase3（env）」= Epic A 完了を指す"
+  - "Epic PR Review: prompts/definitions/reviews/local-dev-environment/epic/pr-review.yaml"
+  - "正本: テスト定義書 §4.1（agent_test_operations.level_map の根拠）"

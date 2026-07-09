@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-environment-setup-epic-pr"
+  title: "環境設計・構築 Epic PRレビュー"
+  summary: "Phase3 Epic PR（develop 向け）の AI Review。環境変数・infra/scripts・CI 基盤統合と secret 非露出を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+target:
+  pr: null
+  issue:
+    number: 436
+  task_definition: "prompts/definitions/epics/environment-setup/epic.yaml"
+  source_branch: "docs/epic-436-environment-setup"
+  target_branch: "develop"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  cicd: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/environment-setup/epic.yaml"
+    required: true
+  issue:
+    number: 436
+    required: true
+
+review_points:
+  common:
+    - "Epic Definition scope / out_of_scope を満たしているか"
+    - "secret 実値が成果物に含まれていないか"
+    - "db/** 変更がないか（Phase2 との分離）"
+    - "Epic PR target=develop であるか"
+  docs:
+    - "環境設計書・.env.example が整合しているか"
+  cicd:
+    - "CI workflow 変更が意図範囲内か"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "secret 非露出"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+issue:
+  unit: "epic"
+  type: "docs"
+  area: "infra"

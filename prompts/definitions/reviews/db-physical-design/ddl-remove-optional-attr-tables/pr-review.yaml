@@ -1,0 +1,219 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-ddl-remove-optional-attr-tables-pr"
+  title: "DDL/migration 60化 PRレビュー"
+  summary: "Phase2 フォローアップ Task #638 の PR を AI Review する。external_attribute / staging_attribute 除去、DDL/migration 60 件一致、検証結果、破壊的変更（initial_schema 上書き）の PR 記載を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-638-ddl-remove-optional-attr-tables"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+target:
+  pr: 639
+  issue: 638
+  task_definition: "prompts/definitions/tasks/db-physical-design/ddl-remove-optional-attr-tables.yaml"
+  source_branch: "chore/task-638-ddl-remove-optional-attr-tables"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/ddl-remove-optional-attr-tables.yaml"
+    required: true
+  issue:
+    number: 638
+    required: true
+  pr:
+    number: 639
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§17 No.7 60 テーブル方針"
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+    - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      required: true
+      purpose: "§4.1 DDL/migration 60 表記"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§12/§16 MVP△ 確定"
+  files:
+    - path: "db/ddl/d04_item.sql"
+      required: true
+    - path: "db/ddl/d05_external_product_integration.sql"
+      required: true
+    - path: "db/ddl/d13_ddl_cross_check.sql"
+      required: true
+    - path: "supabase/migrations/20260617120000_initial_schema.sql"
+      required: true
+    - path: "scripts/epic-435-final-integration-check.py"
+      required: true
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "out_of_scope（テーブル定義書削除 / apps / 新規 migration ファイル）が混在していないか"
+    - "PR target が develop であるか"
+    - "PR 本文に検証結果が記載されているか"
+  docs:
+    - "成果物一覧 §4.1 が DDL/migration 60・定義書 62 と一致しているか"
+    - "DDLバッチ分割表で external/staging が DDL 不含になっているか"
+    - "マイグレーション方針書 §16 No.5 が 60 テーブル方針で確定しているか"
+  db:
+    - "external_attribute / staging_attribute の CREATE TABLE が ddl/migration から除去されているか"
+    - "d13 が 60 件期待になっているか"
+    - "epic-435-final-integration-check.py: table_spec=62, ddl/migration=60"
+    - "他テーブルへの物理 FK 影響がないか（除去は単純）"
+  tests:
+    - "supabase db reset + d13 cross-check の実施結果が PR にあるか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "Review Definition が PR に含まれているか"
+    - "Task #636 merge 後の develop ベースで rebase 済みか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "静的チェック blockers=0"
+      - "d13 が pass"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "DDL/migration テーブル数が 60 でない"
+      - "検証結果が PR 本文に不足"
+      - "テーブル定義書が削除されている"
+  needs_human_decision:
+    conditions:
+      - "既存ローカル DB 環境への影響判断が必要"
+  blocked:
+    conditions:
+      - "Review Definition が存在しない"
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - 638
+    - 636
+    - 435
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/ddl-remove-optional-attr-tables.yaml"
+  blocking: false
+
+parallel_control:
+  conflict_risk: "medium"
+  db_impact: true
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "python3 scripts/epic-435-final-integration-check.py"
+    - "supabase db reset --yes"
+    - "d13_ddl_cross_check.sql"
+  not_required:
+    - "unit test"
+
+human_decision_points:
+  - "初期 migration 上書きのため既存ローカル DB は supabase db reset 必須"
+  - "evaluation / reco_score_distribution_metric の DDL 含有はスコープ外のまま"
+
+notes:
+  - "Issue #638 / PR #639"
+  - "Task #636 merge 後 rebase 済み前提"

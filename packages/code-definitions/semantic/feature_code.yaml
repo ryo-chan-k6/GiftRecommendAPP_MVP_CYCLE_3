@@ -1,0 +1,65 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "feature_code"
+  physical_name: "feature_code"
+  logical_name: "Feature Code"
+  category: "semantic"
+  mvp_scope: true
+
+values:
+  - value: "formality"
+    label: "Formality"
+    meaning: "Social Feature: 関係性がフォーマルか"
+    terminal: true
+    enabled: true
+  - value: "safety"
+    label: "Safety"
+    meaning: "Social Feature: 外しにくさを重視すべきか"
+    terminal: true
+    enabled: true
+  - value: "brand_appropriateness"
+    label: "Brand Appropriateness"
+    meaning: "Social Feature: ブランド適合性"
+    terminal: true
+    enabled: true
+  - value: "emotion"
+    label: "Emotion"
+    meaning: "Symbolic Feature: 感情訴求"
+    terminal: true
+    enabled: true
+  - value: "novelty"
+    label: "Novelty"
+    meaning: "Symbolic Feature: 新規性"
+    terminal: true
+    enabled: true
+  - value: "intimacy"
+    label: "Intimacy"
+    meaning: "Symbolic Feature: 親密さ"
+    terminal: true
+    enabled: true
+  - value: "symbolic_identity"
+    label: "Symbolic Identity"
+    meaning: "Symbolic Feature: 象徴的アイデンティティ"
+    terminal: true
+    enabled: true
+  - value: "story_richness"
+    label: "Story Richness"
+    meaning: "Symbolic Feature: ストーリー性"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "feature_definition"
+    column: "feature_code"
+    constraint: "NOT NULL"
+    note: "MVP 8 軸固定"
+  - table: "item_feature"
+    column: "feature_code"
+    constraint: "NOT NULL"
+    note: "feature_definition 経由も可"
+  - table: "user_feature"
+    column: "feature_code"
+    constraint: "NOT NULL"
+    note: "feature_definition 経由も可"

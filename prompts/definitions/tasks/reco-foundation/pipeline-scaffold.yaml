@@ -1,0 +1,120 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-foundation-pipeline-scaffold"
+  title: "Reco pipeline骨格整備"
+  summary: "pipeline 枠組み骨格。R1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-foundation"
+  epic_issue: "[Epic]reco-foundation:Reco共通基盤"
+  epic_issue_number: 698
+  epic_branch: "feature/epic-698-reco-foundation"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4a Epic `reco-foundation` 子 Task。Phase3b 完了後、pipeline 枠組み骨格。R1。
+  Phase4b 縦串（MOD-RECO / API-INT / API-PUB / SCR）の前提となる共通基盤の一部。
+
+objective: |
+  `apps/reco/**/pipeline/**` を Phase4a scope 内で整備し、単体テスト可能な骨格を提供する。
+
+scope:
+  - "骨格コード・ディレクトリ・最小テスト"
+  - "関連 docs 追記（必要最小）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "Phase4b 識別子 Epic 本格実装"
+  - "packages/contracts/** 変更・generated 手編集"
+  - "Layer2 workflow 変更"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4a §6.5"
+
+output:
+  files:
+    - path: "apps/reco/**/pipeline/**"
+      action: "create_or_update"
+      required: true
+
+acceptance_criteria:
+  - "Phase4a scope 内骨格が存在する"
+  - "packages/contracts / generated を手編集していない"
+  - "secret 実値が含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "pipeline-scaffold"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  blocking: true
+
+parallel_control:
+  depends_on:
+    []
+  exclusive_files:
+    - "apps/reco/**/pipeline/**"
+  conflict_risk: "low"
+  blocks:
+    - "prompts/definitions/tasks/reco-foundation/domain-core-scaffold.yaml"
+
+test_policy:
+  manual_checks:
+    - "scope 内 lint / unit（可能な範囲）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "親 Epic `/start-epic` 後に着手"

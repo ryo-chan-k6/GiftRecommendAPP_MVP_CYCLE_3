@@ -209,7 +209,7 @@ Human 経路では Review Result のパースは行わないため、本節は A
 ### 6.3 紐づく Issue の特定
 
 1. `client_payload.pr_number` から PR を取得する
-2. PR 本文の `Related to #<n>` / `Closes #<n>` 等から Task Issue 番号を解決する（[Task Definition設計書.md](../../00_共通/AIエージェント運用/Task%20Definition設計書.md) §22・§39 を参照）
+2. `resolveStatusSyncTargetIssue` で Task Issue 番号を解決する（Branch `task-<N>` 優先、§2 対象Issue の `Related to`、Epic Branch は `epic-<N>`）。正本は `slack-notify.cjs`（[Task Definition設計書.md](../../00_共通/AIエージェント運用/Task%20Definition設計書.md) §22・§39 と整合）
 3. 解決できない場合は §5.4 に従いジョブ失敗とする
 
 ### 6.4 dispatch ヘルパー
@@ -237,13 +237,14 @@ Human 経路では Review Result のパースは行わないため、本節は A
 
 ### 7.1 Fixer harness 自動 dispatch（Epic #308）
 
-[Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) §5 を正本とする。同一 job 内 2 step 構成。
+[Fixer自動dispatch設計書](./Fixer自動dispatch設計書.md) §5 を正本とする。**2 job 構成**（Status 同期の success と Fixer dispatch 失敗を分離する）。
 
-| Step | 内容 |
-| ---- | ---- |
-| Step 1（`id: sync-status`） | §7 の Status 更新・Slack・確認コメント。`reviewResult === request_changes` かつ `dry_run` でないとき `dispatch_fixer=true` を output |
-| Step 2 | PR head checkout（Task Definition 解決用） |
-| Step 3 | `node .github/scripts/dispatch-fix-review-harness.cjs --context request-changes --requested-by pr-review-status-sync` |
+| Job | 内容 |
+| --- | ---- |
+| `sync-project-status` | §7 の Status 更新・Slack・確認コメント。`reviewResult === request_changes` かつ `dry_run` でないとき `dispatch_fixer=true` を output |
+| `dispatch-fixer` | PR head checkout → `dispatch-fix-review-harness.cjs`。失敗時は Slack 通知（job は failure のまま） |
+
+対象 Issue は `slack.resolveStatusSyncTargetIssue` により **Task Branch の `task-<N>` を Epic の `Related to` より優先**して解決する（§6.3）。
 
 | 条件 | Fixer dispatch |
 | ---- | -------------- |

@@ -1,0 +1,284 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-recommendation-request"
+  title: "recommendation_request:Recommendation Requestテーブル定義書作成"
+  summary: "物理ER・論理ER・RecommendationRequest定義書・enum定義書・Master テーブル定義書・API-PUB-002 を入力に、Online推薦リクエスト正本 `recommendation_request` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R05 No.5。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（request_mode 等。merge 済み前提）"
+    - number: 442
+      purpose: "relationship_master テーブル定義書（relationship_code LOGICAL 参照正本。merge 済み前提）"
+    - number: 445
+      purpose: "occasion_master テーブル定義書（occasion_code LOGICAL 参照正本。merge 済み前提）"
+    - number: 449
+      purpose: "pair_master テーブル定義書（pair_id は Run 側保持方針の正本。merge 済み前提）"
+    - number: 538
+      purpose: "並行可能: item_import_summary テーブル定義書（Log 系・別 Task）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 443
+      purpose: "Task #442 PR（relationship_master。merge 済み前提）"
+    - number: 448
+      purpose: "Task #445 PR（occasion_master。merge 済み前提）"
+    - number: 465
+      purpose: "Task #449 PR（pair_master。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R05 No.5。論理ER §14.1・テーブル一覧 §3 No.1。
+  Online推薦リクエスト正本。request → run → result フローの起点（R06 `recommendation_run` 等の前提）。
+  IF-DB-API-001（Recommendation Request 保存）の DB 正本。
+  親 Epic Branch 最新（enum #440、relationship_master #442、occasion_master #445、pair_master #449 merge 済み前提）を前提とする。
+  Issue #537 / Branch `docs/task-537-recommendation-request-table-spec` で作業する。
+
+objective: |
+  `recommendation_request` の物理カラム・制約・Index・入力コンテキスト保持方針（個別カラム + JSONB 併用）を table-spec.md テンプレ準拠で定義する。
+  Online推薦フロー（Request → Run → Result）の起点、`relationship_master` / `occasion_master` との LOGICAL 参照、後続 `recommendation_run` への 1:N executes 関係を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の recommendation_request テーブル定義書作成"
+  - "物理ER Online推薦系・§9 FK 関係・§11 制約（§17 No.2）・§12 request_mode との突合"
+  - "論理ER §3 / §14.1 Recommendation Request → Run → Result フローとの整合"
+  - "テーブル一覧 §3 No.1・Online推薦系補足（mode / budget / payload 方針）との整合"
+  - "RecommendationRequest定義書 §10 状態・§11 DB 項目・§11.2 payload 併用方針との整合"
+  - "enum定義書 §6.13 request_mode・§6.15 owner_type（recommendation_request）との整合"
+  - "packages/code-definitions/application/request_mode.yaml との整合"
+  - "API-PUB-002 レコメンド実行API契約仕様書（request body → DB 列マッピング）との整合"
+  - "インターフェース一覧 IF-DB-API-001・処理構成定義書・処理フロー概要図との整合"
+  - "正本定義表・リソース一覧・リソース責務定義表・ログ・Observability設計書（trace キー）との突合"
+  - "認証・認可方針書（user_id nullable 方針）との整合"
+  - "relationship_master / occasion_master / pair_master テーブル定義書（LOGICAL 参照・pair_id 保持先）との双方向整合"
+  - "物理ER §17 No.1（pair_id は recommendation_run 保持）・No.2（個別カラム + JSONB 併用）の反映"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "recommendation_run / recommendation_result / recommendation_result_item 等の Online推薦系テーブル定義書（R06 以降別 Task）"
+  - "user_semantic / user_feature / user_meaning テーブル定義書"
+  - "relationship_master / occasion_master / pair_master テーブル定義書の再作成（merge 済みを参照）"
+  - "recommendation_request_condition 独立テーブル（MVP では非採用）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Online推薦系分類・recommendation_request → run/result LOGICAL FK・§11 制約・§17 No.1 / No.2"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "request_mode（§6.13）・owner_type recommendation_request（§6.15）参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§3 recommendation_request 属性・§14.1 Request → Run → Result フロー"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§3 No.1 Recommendation Request・Online推薦系補足方針"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "§10 状態・§11 DB 項目・§11.2 request_payload / validated_payload 併用方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Recommendation Request 正本区分（内部正本）・api 保存主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: true
+      purpose: "Recommendation Request リソース分類・更新主体"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      required: true
+      purpose: "Request 保存責務・正本 / 派生の境界"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-API-001 Recommendation Request 保存 I/F"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "Recommendation Request 保存タイミング（api 検証後・reco 呼び出し前）"
+    - path: "docs/05_アプリケーション設計/アプリ/処理フロー概要図.md"
+      required: true
+      purpose: "Online推薦フロー上の Request 保存位置"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "recommendation_request_id trace キー・Observability 連携"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "user_id nullable 方針・Request 作成権限"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "request body 項目と DB 物理列のマッピング（mode → request_mode 等）"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 selected_by LOGICAL 参照・relationship_code 整合（merge 済み前提）"
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 selected_by LOGICAL 参照・occasion_code 整合（merge 済み前提）"
+    - path: "docs/06_実装設計/database/pair_master_テーブル定義書.md"
+      required: true
+      purpose: "§17 No.1 pair_id 保持先（Run 側）・Request は relationship_code / occasion_code のみ（merge 済み前提）"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: false
+      purpose: "Run 状態遷移（§5.1）参考。Request 本体 status は RecommendationRequest定義書 §10 を優先"
+  packages:
+    - path: "packages/code-definitions/application/request_mode.yaml"
+      required: true
+      purpose: "request_mode packages 正本"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-recommendation-request.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-recommendation-request/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "recommendation_request テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "Online推薦フロー（request → run → result）の起点として明記されている"
+  - "物理ER・論理ER §3 / §14.1・テーブル一覧 §3 No.1 と矛盾しない"
+  - "個別カラム + request_payload / validated_payload（JSONB）併用方針（物理ER §17 No.2）が明記されている"
+  - "relationship_master / occasion_master との LOGICAL 参照（selected_by）が明記されている"
+  - "pair_id は recommendation_run 側保持（物理ER §17 No.1）であり Request には保持しない方針が明記されている"
+  - "request_mode（enum）と API-PUB-002 mode マッピングが明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "recommendation-request-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 537
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 442
+      purpose: "relationship_master テーブル定義書 完了（merge 済み前提）"
+    - number: 445
+      purpose: "occasion_master テーブル定義書 完了（merge 済み前提）"
+    - number: 449
+      purpose: "pair_master テーブル定義書 完了（pair_id 保持先方針。merge 済み前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §9 recommendation_request → recommendation_run / recommendation_result executes / has 関係との整合"
+    - "物理ER §11 / §17 No.2 個別カラム + JSONB 併用方針との整合"
+    - "論理ER §3 属性（request_mode, relationship_code, occasion_code, budget_min/max, preferred_text 等, requested_at）との整合"
+    - "論理ER §14.1 Request → Run → Result フローとの整合"
+    - "テーブル一覧 §3 No.1・補足（mode / budget / payload / pair 方針）との整合"
+    - "RecommendationRequest定義書 §11 項目表・§11.2 payload 併用との整合"
+    - "enum定義書 §6.13 request_mode・packages/code-definitions/application/request_mode.yaml との整合"
+    - "API-PUB-002 request body → DB 列マッピング（mode → request_mode 等）との整合"
+    - "relationship_master / occasion_master 定義書 §5.2 LOGICAL 参照との双方向整合"
+    - "pair_master 定義書・物理ER §17 No.1（pair_id は Run 側）との整合"
+    - "認証・認可方針書 user_id nullable 方針との整合"
+    - "インターフェース一覧 IF-DB-API-001 との整合"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+human_decision_points: []
+
+human_review_decisions:
+  - id: 1
+    topic: "request_status 物理列"
+    decision: "MVP 物理列なし。Validation 失敗は INSERT しない。成功行は暗黙 accepted"
+  - id: 2
+    topic: "user_id nullable 列"
+    decision: "MVP 物理列なし。認証 Epic まで追加しない"
+  - id: 3
+    topic: "requested_at vs created_at"
+    decision: "物理名 created_at。論理ER requested_at と同一意味"
+  - id: 4
+    topic: "semantic_config_version_id / model_version_id 保持先"
+    decision: "個別列正本は recommendation_run。Request は validated_payload のみ（evaluation 指定の記録）"
+  - id: 5
+    topic: "Online推薦コア Retention"
+    decision: "MVP DELETE なし。具体保持期間は Phase2 ⑥ データ保持方針 Task で確定"
+  - id: 6
+    topic: "version 列の物理 FK"
+    decision: "recommendation_run 側は LOGICAL FK 維持（物理 FK なし）"
+
+notes:
+  - "Batch R05 No.5: recommendation_request（Online推薦系）"
+  - "Issue #537 / Branch docs/task-537-recommendation-request-table-spec"
+  - "Issue 本文のテーブル一覧参照 §4 は User意味推定系を指すため、正本は §3 No.1 を用いる"
+  - "R06 recommendation_run 等は本 Task の後続 Task。Request 側から 1:N executes 関係のみ整理"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#442 / PR #443（relationship_master）、#445 / PR #448（occasion_master）、#449 / PR #465（pair_master）"
+  - "Human Review 決定事項: human_review_decisions 参照（§17.1 確定済み）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

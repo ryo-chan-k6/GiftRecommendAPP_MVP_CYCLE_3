@@ -1,0 +1,250 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-item-semantic"
+  title: "item_semantic:Item Semanticテーブル定義書作成"
+  summary: "物理ER・論理ER §10.2・テーブル一覧 §7 No.28・item / semantic_config_version / item_generation_queue テーブル定義書・バッチ設計方針書を入力に、Batch 生成する商品側 Semantic Concept 派生データ `item_semantic` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R03 No.1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 495
+      purpose: "Batch R01 No.3 item テーブル定義書（merge 済み前提・item_id 物理 FK ON 正本）"
+    - number: 462
+      purpose: "Batch2-1 semantic_config テーブル定義書（merge 済み前提）"
+    - number: 463
+      purpose: "Batch2-2 semantic_config_version テーブル定義書（merge 済み前提・version 紐づけ正本）"
+    - number: 507
+      purpose: "Batch R02 No.5 item_generation_queue テーブル定義書（merge 済み前提・BATCH-010 入力）"
+    - number: 471
+      purpose: "参考: semantic_concept テーブル定義書（concept_code 参照整合）"
+    - number: 472
+      purpose: "参考: semantic_rule テーブル定義書（BATCH-010 抽出ルール整合）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 500
+      purpose: "Task #495 PR（item。merge 済み前提）"
+    - number: 512
+      purpose: "Task #507 PR（item_generation_queue。merge 推奨・未 merge 時は worktree 参照可）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R03 No.1。論理ER §10.2・テーブル一覧 §7 No.28。
+  Batch（BATCH-010）で生成する商品側 Semantic Concept 派生データ。Online 推薦（reco）では参照のみ。
+  親 Epic Branch 最新（enum #440 merge 済み、item #495 merge 済み、semantic_config 系 #462–#463 merge 済み、item_generation_queue #507 merge 推奨）を前提とする。
+  `semantic_config_version_id` との version 紐づけ方針は本 Task で確定する（`semantic_config_version_テーブル定義書` §8.2 は ON / LOGICAL 候補を記載）。
+  Issue #513 / Branch `docs/task-513-item-semantic-table-spec` で作業する。
+
+objective: |
+  `item_semantic` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `semantic_config_version_id` との version 紐づけ方針・`semantic_json` 保持方針・BATCH-010 入出力・再生成冪等方針を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の item_semantic テーブル定義書作成"
+  - "物理ER Item派生データ系・論理ER §10.2 との突合"
+  - "item / semantic_config_version 参照整合（FK 方針・Index・冪等キー）"
+  - "item_generation_queue（BATCH-010 入力）・item_テーブル定義書との生成経路整理"
+  - "semantic_concept / semantic_rule との concept_code 参照整合（semantic_json 内）"
+  - "バッチ設計方針書 BATCH-010・バッチ処理一覧・バッチ依存関係図との入出力整合"
+  - "論理ER §16 Online/Batch 責務境界（batch 更新・reco 参照のみ）の反映"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "item_feature / item_meaning / item_embedding テーブル定義書（同 Batch R03 他 Task）"
+  - "feature_input_hash / embedding_input_hash の永続化先テーブル定義"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item派生データ系分類・item / semantic_config_version 関係・Index 方針（§8–§12）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（本テーブルは state enum なし）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 Semantic / Feature / Embedding 系エンティティ属性・§16 Online/Batch 責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§7 No.28 item_semantic・Item派生データ系補足・再生成判定方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Item Semantic 派生データ正本区分・Batch 生成 / Online 参照責務"
+    - path: "docs/04_ドメインモデル設計/SemanticConcept定義書.md"
+      required: true
+      purpose: "Concept コード体系・semantic_json 内 concept 参照方針"
+    - path: "docs/04_ドメインモデル設計/Semanticルール定義書.md"
+      required: true
+      purpose: "BATCH-010 抽出ルール・confidence / weight 算出前提"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "BATCH-010 入出力・意味影響項目・semantic_config_version 解決"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-010 入出力・item_generation_queue / item_semantic 更新タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "BATCH-009 → BATCH-010 → BATCH-011 依存・item_semantic 位置づけ"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "MOD-RECO-026 Item Semantic Generator・Batch パイプライン"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "BATCH-010 / MOD-RECO-026 入出力・item_semantic 責務"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_id 物理 FK（ON）被参照・商品属性正本（merge 済み前提）"
+    - path: "docs/06_実装設計/database/semantic_config_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version 親系列・configName 解決階層"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "§8.2 item_semantic 被参照（ON / LOGICAL 候補）・version 解決方針"
+    - path: "docs/06_実装設計/database/semantic_concept_テーブル定義書.md"
+      required: true
+      purpose: "semantic_json 内 concept_code 参照・semantic_concept_id との LOGICAL 関係"
+    - path: "docs/06_実装設計/database/semantic_rule_テーブル定義書.md"
+      required: true
+      purpose: "BATCH-010 抽出ルール正本・派生データは concept_code 参照"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "§8.3 Queue → item_semantic 生成経路・version 列非保持方針（#507 merge 推奨）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-item-semantic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-item-semantic/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "item_semantic テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §10.2・テーブル一覧 §7 No.28 と矛盾しない"
+  - "semantic_config_version_id との version 紐づけ方針（FK 制約・解決タイミング・冪等キー）が明記されている"
+  - "item_id への物理 FK（ON）・semantic_json / generated_at 保持方針が明記されている"
+  - "BATCH-010 入出力・item_generation_queue との生成経路が整理されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "item-semantic-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 513
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 495
+      purpose: "item テーブル定義書 完了（§8.2 item_id 物理 FK ON 正本）"
+    - number: 462
+      purpose: "semantic_config テーブル定義書 完了"
+    - number: 463
+      purpose: "semantic_config_version テーブル定義書 完了（version 紐づけ前提）"
+    - number: 507
+      purpose: "item_generation_queue テーブル定義書 完了（BATCH-010 入力。merge 推奨）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER Item派生データ系・§9–§11 とカラム・制約・Index の整合"
+    - "論理ER §10.2 属性（item_semantic_id / item_id / semantic_config_version_id / semantic_json / generated_at）との整合"
+    - "論理ER §16.1 / §16.2 Online/Batch 責務境界（batch 更新・reco 参照のみ）との整合"
+    - "semantic_config_version_テーブル定義書 §8.2 被参照方針との整合（FK ON vs LOGICAL）"
+    - "item_テーブル定義書 §8.2 item_id 物理 FK（ON）との整合"
+    - "item_generation_queue_テーブル定義書 §8.3 Queue → item_semantic 生成経路との整合"
+    - "semantic_concept / semantic_rule テーブル定義書との concept_code 参照整合"
+    - "バッチ設計方針書 BATCH-010 入出力・Config Version Resolver 解決タイミングとの整合"
+    - "テーブル一覧 §7 補足（再生成判定・version 変更）との整合"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R03 No.1: item_semantic（テーブル一覧 §7 No.28）"
+  - "Issue #513 / Branch docs/task-513-item-semantic-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#495 / PR #500（item）、#462–#463（semantic_config 系）"
+  - "merge 推奨: #507 / PR #512（item_generation_queue）。未 merge 時も LOGICAL 参照で着手可能"
+  - "Human Review 論点: semantic_config_version_id 物理 FK（ON）vs LOGICAL、Upsert / Unique キー（item_id + semantic_config_version_id vs 履歴行保持）、semantic_json スキーマ粒度"
+  - "Human Review 論点: version 解決タイミング（BATCH-010 実行時 is_current 解決 vs 行に固定）、item_feature 後続 Task との FK / 冪等キー一貫性"
+  - "後続 Task: item_feature / item_meaning / item_embedding（同 Batch R03）"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

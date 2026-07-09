@@ -24,7 +24,7 @@ const COMMAND_REGISTRY = Object.freeze({
     requires_target_pr_on_live_run: true,
   }),
   "fix-review-comments": Object.freeze({
-    definition_type: "task",
+    definition_type: Object.freeze(["task", "contract"]),
     default_ref: "develop",
     dry_run_supported: true,
     live_run_supported: true,
@@ -201,7 +201,16 @@ function extractDefinitionType(yamlText) {
   return match ? match[1].trim() : "";
 }
 
+function normalizeExpectedDefinitionTypes(expectedType) {
+  if (Array.isArray(expectedType)) {
+    return expectedType.map((value) => String(value || "").trim()).filter(Boolean);
+  }
+  const single = String(expectedType || "").trim();
+  return single ? [single] : [];
+}
+
 function validateDefinitionType(absolutePath, expectedType, { fsImpl = fs } = {}) {
+  const expectedTypes = normalizeExpectedDefinitionTypes(expectedType);
   let yamlText = "";
   try {
     yamlText = fsImpl.readFileSync(absolutePath, "utf8");
@@ -218,10 +227,11 @@ function validateDefinitionType(absolutePath, expectedType, { fsImpl = fs } = {}
       `definition_type is missing in: ${absolutePath}`,
     );
   }
-  if (actual !== expectedType) {
+  if (expectedTypes.length > 0 && !expectedTypes.includes(actual)) {
+    const expectedLabel = expectedTypes.join('" or "');
     throw new ValidationError(
       "definition_type_mismatch",
-      `definition_type mismatch: expected "${expectedType}", got "${actual}" in ${absolutePath}`,
+      `definition_type mismatch: expected "${expectedLabel}", got "${actual}" in ${absolutePath}`,
     );
   }
   return actual;

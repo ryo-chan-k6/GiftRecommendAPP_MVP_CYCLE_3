@@ -1,0 +1,30 @@
+{
+  "caseId": "eval-lover-birthday-001",
+  "pipelineMode": "skeleton",
+  "openaiMode": "mock",
+  "resultItems": [
+    {
+      "itemId": "item_001",
+      "rank": 1,
+      "price": 7800,
+      "label": "上品な焼き菓子ギフトセット",
+      "features": {
+        "formality": 0.7,
+        "emotion": 0.82,
+        "novelty": 0.75
+      }
+    },
+    {
+      "itemId": "item_002",
+      "rank": 2,
+      "price": 6500,
+      "label": "カジュアル雑貨セット",
+      "features": {
+        "formality": 0.55,
+        "emotion": 0.78,
+        "novelty": 0.8
+      }
+    }
+  ],
+  "reason": "特別感と親しみやすさのバランスが取れた候補として選定しています。"
+}

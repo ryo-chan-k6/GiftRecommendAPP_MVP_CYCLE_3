@@ -943,7 +943,7 @@ Recommendation APIは、MVPの中核APIである。
 | finalScore              | MVP画面で表示しないため |
 | scoreBreakdown          | 内部検証用のため        |
 | modelVersionId          | UI表示対象ではないため  |
-| semanticConfigVersionId | UI表示対象ではないため  |
+| configName / versionLabel | マスタ参照 API（API-PUB-007/008）用。レコメンド結果 Response には含めない |
 | reasonBasis             | 内部根拠のため          |
 | rawFeatureValues        | 内部処理用のため        |
 | embedding               | 内部処理用のため        |

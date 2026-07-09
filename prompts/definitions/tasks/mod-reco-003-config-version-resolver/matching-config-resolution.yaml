@@ -1,0 +1,243 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-003-matching-config-resolution"
+  title: "MOD-RECO-003:matching_config解決対応"
+  summary: "Human 判断（案 B）に基づき、MOD-RECO-003 が Run 開始時に matching_config を解決し execution_context.config_versions へ Social / Symbolic Feature 重みを渡す。仕様書更新・Resolver / Run Recorder 追随・最小テストを行う。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-003:Config Version Resolver"
+  epic_issue_number: 778
+  epic_branch: "develop"
+  related_issues:
+    - number: 906
+      purpose: "matching_config DB Task（PR #910 develop merge 済み）"
+    - number: 905
+      purpose: "MOD-RECO-015 モジュール仕様書（config_versions 参照形状の用語確定）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  親 Epic #778 は Done（develop merge 済み）。前提 Task #906（matching_config テーブル + seed + Run 列）は PR #910 で develop merge 済み。
+  現行 MOD-RECO-003 実装は semantic_config_version_id / model_versions.* / ranking_config_id を解決するが matching_config は未解決。
+  MOD-RECO-015 は config_versions から Social / Symbolic Feature 重みを参照する（§8.3.2）。
+  Human 判断（2026-07-02）: Matching パラメータ正本は matching_config（案 B）。本 Task は Resolver が is_current = true の matching_config を解決し config_versions へ渡す。
+
+objective: |
+  1. MOD-RECO-003 モジュール仕様書を更新し、matching_config_id 解決と parameter_json 重みの config_versions への引き渡しを定義する。
+  2. apps/reco/src/reco/application/config-version-resolver/** を更新し matching_config を解決する。
+  3. ResolvedConfigVersions / execution_context.config_versions に matching_config_id および Matching 重みを追加する。
+  4. MOD-RECO-002 Recommendation Run Recorder が recommendation_run.matching_config_id を記録できるよう必要最小限の追随を行う。
+
+scope:
+  - "docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md 更新（matching_config_id / 重み解決・§8 系フロー・失敗時エラー・案 B 責務分担）"
+  - "apps/reco/src/reco/application/config-version-resolver/models.py 更新（ResolvedConfigVersions.matching_config_id 等）"
+  - "apps/reco/src/reco/application/config-version-resolver/resolver.py 更新"
+  - "apps/reco/src/reco/application/config-version-resolver/in_memory_repository.py 更新（テスト用 default）"
+  - "DB repository（存在する場合）への matching_config SELECT 追加"
+  - "apps/reco/src/reco/application/recommendation-run-recorder/** の matching_config_id 記録追随（#906 DDL 前提・必要最小限）"
+  - "apps/reco/src/reco/infrastructure/db/repositories/recommendation_run_repository.py 更新（必要最小限）"
+  - "Orchestrator 統合テストの追随（存在する場合）"
+  - "config-version-resolver unit test 更新（matching_config 解決成功 / 失敗）"
+  - "run recorder smoke（matching_config_id 記録）"
+  - "Task / Review Definition の整備（本ファイルおよび pr-review.yaml）"
+
+out_of_scope:
+  - "DB DDL / seed / テーブル定義書（#906）"
+  - "MOD-RECO-014 / MOD-RECO-015 本体実装"
+  - "MOD-RECO-016 Context Scorer 実装（docs に parameter_json 参照設計の予告は可）"
+  - "OpenAPI / generated 変更"
+  - "網羅的 unit-test Task 相当のテスト追加"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md"
+      required: true
+      purpose: "更新正本"
+    - path: "docs/06_実装設計/database/matching_config_テーブル定義書.md"
+      required: true
+      purpose: "#906 成果物・DB 正本"
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "対称参照"
+    - path: "docs/06_実装設計/reco/MOD-RECO-015_Meaning Match Aggregatorモジュール仕様書.md"
+      required: false
+      purpose: "config_versions 参照形状（develop 未反映時は Epic #904 / Issue #905 / PR #909 を参照）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "ポート契約・ExecutionContext"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+      purpose: "§13.1 マッピング"
+  files:
+    - path: "apps/reco/src/reco/application/config-version-resolver/resolver.py"
+      required: true
+      purpose: "Resolver 実装正本"
+    - path: "apps/reco/src/reco/application/config-version-resolver/models.py"
+      required: true
+      purpose: "ResolvedConfigVersions 型"
+    - path: "apps/reco/src/reco/application/recommendation-run-recorder/recorder.py"
+      required: true
+      purpose: "matching_config_id 記録追随"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/application/config-version-resolver/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/application/recommendation-run-recorder/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/recommendation_run_repository.py"
+      action: "update"
+      required: false
+    - path: "apps/reco/tests/unit/application/config-version-resolver/**"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-003-config-version-resolver/matching-config-resolution.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-003-config-version-resolver/matching-config-resolution/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-003 仕様書（matching_config 解決）"
+  - "Config Version Resolver 実装更新"
+  - "Run Recorder matching_config_id 追随"
+  - "最小 unit / integration test 更新"
+
+acceptance_criteria:
+  - "#906（matching_config DB）が develop merge 済みである"
+  - "MOD-RECO-003 仕様書に matching_config_id 解決・重み引き渡しが定義されている"
+  - "Resolver が is_current = true の matching_config を解決し config_versions に格納する"
+  - "Run Recorder が matching_config_id を記録する（#906 DDL 前提）"
+  - "関連 unit / integration test が更新され、CI が通る"
+  - "Task / Review Definition が作成されている"
+  - "apps/reco/src/reco/api/** を変更していない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  summary: "mod-reco-003-matching-config-resolution"
+  name: "feature/task-907-mod-reco-003-matching-config-resolution"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 907
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 906
+      purpose: "matching_config DB Task merge 済み（blocking）"
+    - number: 778
+      purpose: "親 Epic（Done）"
+  prs:
+    - number: 910
+      purpose: "#906 develop merge"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md"
+    - "apps/reco/src/reco/application/config-version-resolver/**"
+    - "apps/reco/src/reco/application/recommendation-run-recorder/**"
+    - "apps/reco/src/reco/infrastructure/db/repositories/recommendation_run_repository.py"
+    - "apps/reco/tests/unit/application/config-version-resolver/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "typecheck / compileall"
+    - "config-version-resolver unit test（matching_config 成功 / 失敗）"
+    - "run recorder smoke（matching_config_id 記録）"
+    - "secret check"
+  commands:
+    - "cd apps/reco && python -m compileall src/reco/application/config-version-resolver src/reco/application/recommendation-run-recorder"
+  not_required:
+    - "網羅的 unit-test Task 相当"
+  skip_reason:
+    "網羅的 unit-test Task 相当": "本 Task は最小スモークのみ。網羅は別 Task 化可"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "ranking_config 解決と対称か"
+    - "MOD-RECO-015 / MOD-RECO-014 が参照する config_versions 形状と一致しているか"
+    - "Run 再現性（matching_config_id 記録）が担保されているか"
+    - "Epic #778 forbidden_paths 例外（run-recorder / infrastructure）が必要最小限か"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "案 B（matching_config 新設）採用済み。ranking_config 解決と対称か Human Review で確認"
+  - "config_versions 追加フィールド（matching_config_id / social_feature_weights / symbolic_feature_weights）の物理名・ネスト（Issue #907 §11）"
+  - "Epic epic_scope.forbidden_paths の recommendation-run-recorder への例外は Issue #907 scope として Human 判断済み（必要最小限のみ）"
+
+notes:
+  - "Issue #907 本文を起票正本とする"
+  - "PR target / base: develop（親 Epic #778 Done）"
+  - "config_versions 追加フィールド案は Issue #907 §11 を参照"

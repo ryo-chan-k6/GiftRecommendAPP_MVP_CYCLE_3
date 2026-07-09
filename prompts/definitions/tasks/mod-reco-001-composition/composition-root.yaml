@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-composition-composition-root"
+  title: "MOD-RECO-001:composition root実装"
+  summary: "Composition Epic #1076 直列工程 ④。apps/reco/composition に本番 DI エントリを配置し、工程 ③ の観測系 Postgres Repository を Orchestrator へ選択可能に接続する。MVP デフォルト composition（build_default_stub_ports / InMemory）は維持する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Composition（段階3）"
+  epic_issue_number: 1076
+  epic_branch: "feature/epic-1076-mod-reco-001-composition"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1082
+      purpose: "工程 ③ 観測系 Postgres Repository 完了"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Composition Epic #1076 直列工程 ④。
+  段階3 では MOD-RECO-001 §8.4.4 に従い、本番 composition を `apps/reco/src/reco/composition/**` に配置する。
+  工程 ③（#1082 / #1083 merge 済み）で 002 / 028 / 029 / 025（Tier 1 metric_log + Tier 2 reco_score_distribution_metric）の Postgres Repository が infrastructure/db に実装済み。
+  本 Task では composition root から当該 Repository を DI 可能にし、MVP デフォルト composition（`build_default_stub_ports()` / InMemory）との責務分離を明確化する。
+
+objective: |
+  `apps/reco/src/reco/composition/**` に本番 composition builder / エントリを実装する。
+  - DatabaseSession（`DATABASE_URL` / `create_database_session`）経由で Postgres Repository を生成
+  - 002 Run Recorder / 028 Phase Log / 029 Error Log / 025 Metric Logger（Tier 1+2）を OrchestratorPorts へ配線
+  - 非観測系ポートは MVP デフォルト composition と同等の本実装を再利用し、観測系のみ Postgres へ差し替え可能にする
+  - デフォルト vs 本番 composition の選択 API を composition 層に集約（stubs.py は変更しない）
+
+scope:
+  - "apps/reco/src/reco/composition/** 新設（本番 builder / factory / 設定境界）"
+  - "Postgres Repository DI 配線（002 / 028 / 029 / 025 Tier 1+2）"
+  - "DatabaseSession 生成と observability モジュール factory 接続"
+  - "composition builder 単体テスト（apps/reco/tests/unit/composition/**）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "stubs.py / orchestrator.py / ports.py 変更"
+  - "infrastructure/db Repository 本体の新規実装・大幅改修（工程 ③ 完了済み）"
+  - "InMemory Repository 削除"
+  - "§14 E2E integration 強化（工程 ⑤）"
+  - "DDL / migration 追加"
+  - "OpenAPI / generated / apps/api / apps/web 変更"
+  - "API-INT-002 エンドポイント層実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§8.4.4 composition 配置・段階3 残課題"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "MOD-RECO-001 責務境界"
+    - path: "apps/reco/src/reco/infrastructure/README.md"
+      required: true
+      purpose: "infrastructure / composition 境界"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: false
+      purpose: "025 Tier 1+2 DI 参考"
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "MVP デフォルト composition 参照（変更禁止）"
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+      purpose: "DatabaseSession / create_database_session"
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/__init__.py"
+      required: true
+      purpose: "Postgres Repository export"
+    - path: "prompts/definitions/epics/mod-reco-001-composition/epic.yaml"
+      required: true
+      purpose: "Epic scope / forbidden_paths"
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/composition/**"
+      action: "create"
+      required: true
+    - path: "apps/reco/tests/unit/composition/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-001-composition/composition-root.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-001-composition/composition-root/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "apps/reco/src/reco/composition/** に本番 composition builder が存在する"
+  - "002 / 028 / 029 / 025（Tier 1+2）の Postgres Repository DI が composition root から選択可能"
+  - "MVP デフォルト composition（build_default_stub_ports）が削除・変更されていない"
+  - "stubs.py / orchestrator.py / ports.py に変更がない"
+  - "composition builder 単体テストが追加されている"
+  - "OpenAPI / generated 変更がない"
+  - "Task PR target が Epic Branch（feature/epic-1076-mod-reco-001-composition）"
+
+branch:
+  no_branch: false
+  summary: "composition-root"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-12"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1076
+      purpose: "親 Composition Epic"
+    - number: 1082
+      purpose: "工程 ③ Postgres Repository 完了（merge 済み前提）"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-mod-reco-001-composition-postgres-observability-repositories"
+      issue: 1082
+  blocks:
+    - "task-mod-reco-001-composition-e2e-integration-test"
+  exclusive_files:
+    - "apps/reco/src/reco/composition/**"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/composition/**"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/composition -q --tb=short"
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q --tb=short"
+  manual_checks:
+    - "MVP デフォルト composition 維持"
+    - "Postgres observability DI が builder から選択可能"
+    - "forbidden_paths 非変更"
+  not_required:
+    - "apps/reco/tests/integration（工程 ⑤）"
+  skip_reason:
+    "apps/reco/tests/integration（工程 ⑤）": "E2E 強化は工程 ⑤ Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "MVP デフォルト vs 本番 composition の責務分離"
+    - "002/028/029/025 Postgres DI 配線の整合"
+    - "stubs.py / orchestrator.py / ports.py 非変更"
+    - "Tier 1 / Tier 2 Metric 永続化境界の維持"
+    - "Epic allowed_paths 内のみ"
+    - "secret / DATABASE_URL 非 commit"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+  reason: "composition root は infrastructure / Orchestrator DI 横断 Task"
+
+human_decision_points:
+  - "【確定 2026-07-08】MVP デフォルト composition は維持し、本番 composition は別 builder として追加（Epic #1076）"
+  - "【確定 2026-07-08】観測系 Postgres DI は composition root で接続（工程 ④）"
+
+stop_conditions:
+  - "stubs.py / orchestrator.py / ports.py 変更が必要と判明した場合（Human 確認）"
+  - "infrastructure/db Repository 本体の不足が判明した場合（工程 ③ へエスカレーション）"
+
+notes:
+  - "Composition 直列工程 ④"
+  - "workstream: mod-reco-001-composition"
+  - "Related Epic #1076"
+  - "後続: e2e-integration-test.yaml（工程 ⑤）"

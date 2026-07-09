@@ -1,0 +1,168 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-section14-observability-integration"
+  title: "MOD-RECO-001:§14 No.10 観測系横断 integration"
+  summary: "MOD-RECO-001 §14 No.10（Run / Phase / Error が下位モジュール経由で記録）を、デフォルト composition の横断 integration テストで検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（CLOSED 参考）"
+    - number: 1069
+      purpose: "§14 No.11 タイムアウト Task"
+    - number: 1070
+      purpose: "Task #1069 develop merge PR"
+  related_prs:
+    - number: 1070
+      purpose: "§14 No.11 merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  §14 No.11（#1069 / #1070）完了後、段階3着手前残課題の §14 integration は No.10 / No.14 が残る。
+  No.10 は Run（002）/ Phase（028）/ Error（024→029）が Orchestrator 直書き込みではなく下位モジュール経由で永続化されることを確認する。
+  成功 Run では Metric（025）も併せて横断確認する（001 §12.2 委譲）。
+
+objective: |
+  デフォルト composition 正常 Run / 失敗 Run で InMemory 永続化を横断検証する §14 No.10 integration テストを追加し pytest を green にする。
+
+scope:
+  - "`recommendation_orchestrator_helpers.py` に `in_memory_recommendation_run_records` 追加"
+  - "`test_recommendation_orchestrator.py` §14 No.10 横断 integration ケース追加"
+  - "Task / Review Definition 配置"
+
+out_of_scope:
+  - "Orchestrator 本体の新機能実装（helper 追加のみ可）"
+  - "§14 No.11 / No.14"
+  - "段階3 Composition / docs 正本更新"
+  - "stubs.py 配線変更"
+  - "本番 DB / E2E / API contract"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§14 No.10"
+    - path: "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+      required: false
+      purpose: "Run 永続化"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: false
+      purpose: "Phase 永続化"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      required: false
+      purpose: "Error 永続化"
+  files:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+    - path: "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+      required: true
+
+output:
+  docs: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "§14 No.10 横断 integration pytest（正常 Run / 失敗 Run）"
+  - "in_memory_recommendation_run_records helper"
+  - "PR 本文: 観点↔テスト対応表"
+
+acceptance_criteria:
+  - "正常 Run で Run + Phase + Metric が InMemory 永続化される"
+  - "正常 Run で error_log が空である"
+  - "失敗 Run で Error Log が 024→029 経由で永続化される"
+  - "`cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+
+branch:
+  no_branch: false
+  name: "test/task-1071-mod-reco-001-section14-observability-integration"
+  summary: "mod-reco-001-section14-observability-integration"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-11"
+
+issue:
+  number: 1071
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  issues:
+    - number: 1069
+      purpose: "§14 No.11 完了"
+    - number: 1070
+      purpose: "§14 No.11 merge"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-section14-timeout-integration"
+  blocks:
+    - "task-mod-reco-001-section14-reason-partial-integration（No.14）"
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+  conflict_risk: "low"
+
+test_policy:
+  required:
+    - "pytest"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -v --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§14 No.10 観点（Run/Phase/Error 委譲）が横断テストでカバーされているか"
+    - "既存 No.8/9/025 テストとの重複が許容範囲か"
+    - "docs-only / scope 外変更がないか"
+  specialist_reviews:
+    test: true
+
+notes:
+  - "workstream: mod-reco-001-section14-integration"
+  - "Related #1069 / #1070"

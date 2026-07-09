@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OKURI 贈 — Style Guide (Phase4a W3)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style-guide.css" />
+  </head>
+  <body>
+    <main class="sg-page">
+      <header class="sg-hero">
+        <p class="sg-section-label">Phase4a / styles-foundation</p>
+        <h1>Style Guide</h1>
+        <p>
+          Gift Recommendation Service MVP のデザイントークン・部品スタイルのプレビューです。
+          正本は <code>docs/05_アプリケーション設計/アプリ/web/デザインルール.md</code> および
+          <code>apps/web/src/styles/tokens/</code> です。
+        </p>
+      </header>
+
+      <section class="sg-section" aria-labelledby="colors-heading">
+        <h2 id="colors-heading">Colors</h2>
+        <div class="sg-grid sg-grid--colors">
+          <div class="sg-swatch">
+            <div class="sg-swatch__color" style="background: var(--color-bg)"></div>
+            <div class="sg-swatch__meta">
+              <strong>color-bg</strong>
+              <code>#FAF7F2</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div class="sg-swatch__color" style="background: var(--color-surface)"></div>
+            <div class="sg-swatch__meta">
+              <strong>color-surface</strong>
+              <code>#FFFFFF</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div
+              class="sg-swatch__color"
+              style="background: var(--color-surface-muted)"
+            ></div>
+            <div class="sg-swatch__meta">
+              <strong>color-surface-muted</strong>
+              <code>#F2EDE3</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div class="sg-swatch__color" style="background: var(--color-text)"></div>
+            <div class="sg-swatch__meta">
+              <strong>color-text</strong>
+              <code>#2A1F18</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div
+              class="sg-swatch__color"
+              style="background: var(--color-text-secondary)"
+            ></div>
+            <div class="sg-swatch__meta">
+              <strong>color-text-secondary</strong>
+              <code>#8B6F5E</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div class="sg-swatch__color" style="background: var(--color-primary)"></div>
+            <div class="sg-swatch__meta">
+              <strong>color-primary</strong>
+              <code>#4A3728</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div class="sg-swatch__color" style="background: var(--color-accent)"></div>
+            <div class="sg-swatch__meta">
+              <strong>color-accent</strong>
+              <code>#C9A96E</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div
+              class="sg-swatch__color"
+              style="background: var(--color-accent-light)"
+            ></div>
+            <div class="sg-swatch__meta">
+              <strong>color-accent-light</strong>
+              <code>#E8D5B0</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div class="sg-swatch__color" style="background: var(--color-success)"></div>
+            <div class="sg-swatch__meta">
+              <strong>color-success</strong>
+              <code>#7A8C6E</code>
+            </div>
+          </div>
+          <div class="sg-swatch">
+            <div class="sg-swatch__color" style="background: var(--color-error)"></div>
+            <div class="sg-swatch__meta">
+              <strong>color-error</strong>
+              <code>#C4857A</code>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sg-section" aria-labelledby="typography-heading">
+        <h2 id="typography-heading">Typography</h2>
+        <div class="sg-type-sample">
+          <div class="sg-type-display">贈る想いを、意味で選ぶ</div>
+          <p class="sg-type-small">text-display / Shippori Mincho / 1.875rem</p>
+        </div>
+        <div class="sg-type-sample">
+          <div class="sg-type-h1">レコメンド条件を入力</div>
+          <p class="sg-type-small">text-h1 / Shippori Mincho / 1.5rem</p>
+        </div>
+        <div class="sg-type-sample">
+          <div class="sg-type-h2">推薦結果一覧</div>
+          <p class="sg-type-small">text-h2 / Shippori Mincho / 1.25rem</p>
+        </div>
+        <div class="sg-type-sample">
+          <div class="sg-type-body">
+            本文テキストのサンプルです。贈答シーンにふさわしい落ち着いたトーンで、推薦理由を読みやすく表示します。
+          </div>
+          <p class="sg-type-small">text-body / Noto Serif JP / 1rem / line-height 1.8</p>
+        </div>
+        <div class="sg-type-sample">
+          <div class="sg-type-label">予算（円）</div>
+          <p class="sg-type-small">text-label / Noto Serif JP / 0.875rem / weight 500</p>
+        </div>
+      </section>
+
+      <section class="sg-section" aria-labelledby="spacing-heading">
+        <h2 id="spacing-heading">Spacing</h2>
+        <div class="sg-spacing-row">
+          <span>space-4</span>
+          <div class="sg-spacing-bar" style="width: 16px"></div>
+          <span>16px</span>
+        </div>
+        <div class="sg-spacing-row">
+          <span>space-6</span>
+          <div class="sg-spacing-bar" style="width: 24px"></div>
+          <span>24px</span>
+        </div>
+        <div class="sg-spacing-row">
+          <span>space-8</span>
+          <div class="sg-spacing-bar" style="width: 32px"></div>
+          <span>32px</span>
+        </div>
+        <div class="sg-spacing-row">
+          <span>space-12</span>
+          <div class="sg-spacing-bar" style="width: 48px"></div>
+          <span>48px</span>
+        </div>
+      </section>
+
+      <section class="sg-section" aria-labelledby="buttons-heading">
+        <h2 id="buttons-heading">Buttons</h2>
+        <div class="sg-buttons">
+          <button type="button" class="sg-btn sg-btn--primary sg-btn--lg">
+            レコメンドを実行
+          </button>
+          <button type="button" class="sg-btn sg-btn--primary">送信</button>
+          <button type="button" class="sg-btn sg-btn--primary sg-btn--sm">詳細</button>
+          <button type="button" class="sg-btn sg-btn--secondary">戻る</button>
+          <button type="button" class="sg-btn sg-btn--ghost">キャンセル</button>
+        </div>
+      </section>
+
+      <section class="sg-section" aria-labelledby="card-heading">
+        <h2 id="card-heading">Card</h2>
+        <article class="sg-card">
+          <h3>ギフトカードのサンプル</h3>
+          <p>推薦理由の要約テキストがここに入ります。価格・商品名とあわせて表示します。</p>
+          <button type="button" class="sg-btn sg-btn--primary sg-btn--sm">詳細を見る</button>
+        </article>
+      </section>
+
+      <section class="sg-section" aria-labelledby="radius-heading">
+        <h2 id="radius-heading">Radius &amp; Shadow</h2>
+        <div class="sg-radius-demo">
+          <div class="sg-radius-box sg-radius-box--sm">radius-sm</div>
+          <div class="sg-radius-box sg-radius-box--md">radius-md</div>
+          <div class="sg-radius-box sg-radius-box--lg">radius-lg</div>
+        </div>
+      </section>
+
+      <section class="sg-section" aria-labelledby="status-heading">
+        <h2 id="status-heading">Status</h2>
+        <div class="sg-status">
+          <span class="sg-status--success">完了しました</span>
+          <span class="sg-status--warning">ご注意ください</span>
+          <span class="sg-status--error">入力内容を確認してください</span>
+        </div>
+      </section>
+
+      <footer class="sg-footer">
+        Phase4a プレビュー専用。Next.js 本番画面は Phase4b 以降で
+        <code>globals.css</code> 経由に接続します。
+      </footer>
+    </main>
+  </body>
+</html>

@@ -153,18 +153,19 @@
 
 ---
 
-## 11. セットアップ（開発準備中）
+## 11. セットアップ（ローカル開発）
 
-本プロジェクトは現在設計フェーズのため、
-セットアップ手順は未確定。
+ローカル開発手順の正本:
 
-実装フェーズで以下を定義予定：
+- [ローカル開発手順書](docs/06_実装設計/cross_cutting/ローカル開発手順書.md)
 
-- 各アプリの起動方法（web / api / reco / batch）
-- 必要な環境変数
-- DB接続設定
-- Docker構成（必要な場合）
-- ローカル開発フロー
+関連:
+
+- [環境設計書 §19](docs/06_実装設計/cross_cutting/環境設計書.md) — 環境変数定義
+- [`.env.example`](.env.example) — 変数名・ダミー値
+- [`scripts/dev/`](scripts/dev/README.md) — `.env` 作成・変数名チェック補助
+
+MVP では docker-compose を同梱しない。PostgreSQL / Redis は手動起動または Neon 等クラウド dev を利用する。
 
 ---
 

@@ -1,0 +1,32 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "feedback_target_type"
+  physical_name: "feedback_target_type"
+  logical_name: "Feedback Target Type"
+  category: "application"
+  mvp_scope: true
+
+values:
+  - value: "result"
+    label: "結果全体"
+    meaning: "Recommendation Result 全体への Feedback"
+    terminal: true
+    enabled: true
+  - value: "item"
+    label: "商品"
+    meaning: "Recommendation Result Item への Feedback"
+    terminal: true
+    enabled: true
+  - value: "reason"
+    label: "理由"
+    meaning: "Recommendation Reason への Feedback"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "recommendation_feedback"
+    column: "feedback_target_type"
+    constraint: "NOT NULL"
+    note: ""

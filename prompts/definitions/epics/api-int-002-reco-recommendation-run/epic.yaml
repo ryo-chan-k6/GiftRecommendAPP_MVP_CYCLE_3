@@ -33,12 +33,13 @@ background: |
   本 API は apps/api → apps/reco 間の内部 API であり、Recommendation Request を受け取り、Recoモジュール群（MOD-RECO-001 推薦実行制御を起点とする推薦パイプライン）を駆動して Recommendation Result を返す。
   本 Epic は apps/reco の **エンドポイント層**（`apps/reco/src/reco/api/**`）の責務に限定し、推薦ロジックそのもの（Orchestrator / Retrieval / Matching / Ranking / Reason 生成）の変更は依存 Epic（[Epic]MOD-RECO-001 等）配下の Task として扱う。
   子 Task は Internal API 仕様書・OpenAPI（internal）連携（Contract Task として分離想定）・reco エンドポイント実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+  Phase1（1a 契約仕様書・1b OpenAPI・1c generated）の `develop` 反映は識別子 Epic PR ではなく **Phase1 マイルストーン Epic** 経由とする（[実装フェーズ実行プロセス設計書](../../../docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md) §6.2）。
 
 objective: |
   API-INT-002 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
   配下 Task の差分が epic_scope.allowed_paths（apps/reco/src/reco/api 等のエンドポイント層）から外れないことをガードする。
   推薦ロジックそのもの（apps/reco/src/reco/application 等）の変更は依存 Epic（[Epic]MOD-RECO-001 等）配下の Task として切る運用を明示する。
-  develop への統合は本 Epic PR のみで行う。
+  Phase1 成果（契約仕様書・OpenAPI・generated）の `develop` 反映は **Phase1 マイルストーン Epic**（`phase1-api-contract-foundation` 等）経由とする。本 Epic PR による `develop` merge は **Phase4b 縦串完了時のみ**（実装仕様書→実装→単体テスト完了後）。
 
 scope:
   - "API-INT-002 に関する子 Task の作業単位を整理する（API仕様書 / OpenAPI連携 / reco エンドポイント実装 / 単体テスト）"
@@ -144,6 +145,7 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-INT-002_*"
     - "apps/reco/src/reco/api/**"
+    - "apps/reco/tests/unit/api/**"
     - "apps/api/src/lib/reco-client/**"
     - "apps/api/src/infrastructure/reco-client/**"
     - "apps/api/src/generated/reco-client/**"
@@ -250,6 +252,6 @@ stop_conditions:
 notes:
   - "Epic は作業管理単位であり、API仕様書本体・実装・テストの正本は子 Task で作成する"
   - "命名の正本は Task Definition設計書 §15.0（Epic タイトル規約）・§15.2（個別API Task）"
-  - "本 Epic 配下の最初の子 Task は prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-spec.yaml"
+  - "本 Epic 配下の契約面 Task 正本は prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml"
   - "依存 Epic Issue 番号は実 Issue 起票後に dependencies.epics へ追記する（成果物化方針書 §3.5.3）"
   - "OpenAPI（internal）/ generated 変更を伴う子 Task は Contract Definition として分離する（成果物化方針書 §3）"
