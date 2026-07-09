@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1123
   issue: 1121
   task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/contract-spec-cross-ref-update.yaml"
   source_branch: "docs/task-1121-api-pub-002-contract-spec-int002-ref-update"
@@ -70,7 +70,7 @@ input:
     number: 1121
     required: true
   pr:
-    number: null
+    number: 1123
     required: true
   diff:
     required: true
