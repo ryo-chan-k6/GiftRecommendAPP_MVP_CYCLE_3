@@ -27,6 +27,7 @@ Options:
 
 Notes:
   - Loads .env from repo root when present (values are never printed).
+  - Redis: uses redis-cli when in PATH; otherwise PING via docker compose exec on running redis service.
   - App health failures do not fail the script in Phase3b (placeholder / not started).
   - See docs/06_実装設計/cross_cutting/ローカル開発手順書.md §10.
 EOF
@@ -96,6 +97,29 @@ require_var() {
   return 0
 }
 
+# redis-cli が PATH にない場合、docker-compose.dev.yml の redis コンテナ経由で PING する
+redis_ping() {
+  local url="${1:-}"
+  local reply=""
+
+  if command -v redis-cli >/dev/null 2>&1; then
+    reply="$(redis-cli -u "${url}" PING 2>/dev/null || true)"
+    printf '%s' "${reply}"
+    return 0
+  fi
+
+  local compose_file="${ROOT}/docker-compose.dev.yml"
+  if [[ -f "${compose_file}" ]] && command -v docker >/dev/null 2>&1; then
+    if docker compose -f "${compose_file}" ps --status running --services 2>/dev/null | grep -qx redis; then
+      reply="$(docker compose -f "${compose_file}" exec -T redis redis-cli PING 2>/dev/null || true)"
+      printf '%s' "${reply}"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 # --- 2. PostgreSQL ---
 if [[ "${SKIP_DB}" -eq 0 ]]; then
   run_step "PostgreSQL"
@@ -117,15 +141,19 @@ fi
 # --- 3. Redis ---
 if [[ "${SKIP_REDIS}" -eq 0 ]]; then
   run_step "Redis"
-  if ! command -v redis-cli >/dev/null 2>&1; then
-    echo "fail: redis-cli not found in PATH" >&2
+  if ! require_var REDIS_URL; then
     failures=$((failures + 1))
-  elif ! require_var REDIS_URL; then
+  elif ! redis_ping "${REDIS_URL}" >/dev/null; then
+    echo "fail: redis-cli not found and Redis container not running (install redis-cli or run ./scripts/dev/start-redis.sh)" >&2
     failures=$((failures + 1))
   else
-    redis_reply="$(redis-cli -u "${REDIS_URL}" PING 2>/dev/null || true)"
+    redis_reply="$(redis_ping "${REDIS_URL}")"
     if [[ "${redis_reply}" == "PONG" ]]; then
-      echo "ok: Redis (PONG)"
+      if command -v redis-cli >/dev/null 2>&1; then
+        echo "ok: Redis (PONG via redis-cli)"
+      else
+        echo "ok: Redis (PONG via docker compose exec redis)"
+      fi
     else
       echo "fail: Redis unreachable (run ./scripts/dev/start-redis.sh)" >&2
       failures=$((failures + 1))

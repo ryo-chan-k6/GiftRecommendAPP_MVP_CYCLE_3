@@ -40,4 +40,18 @@ DB migration / seed / 検証 SQL 実行補助を配置するディレクトリ�
 
 - **Supabase CLI + Docker Desktop**（WSL2）。Neon をローカル DB 正本としない
 - master seed 正本: `supabase/seeds/masters/` + [`supabase/config.toml`](../../supabase/config.toml) `[db.seed]`
-- ローカル接続 env: `DATABASE_URL`（[環境設計書 §19.5 / §19.6 / §19.7](../../docs/06_実装設計/cross_cutting/環境設計書.md)）
+- ローカル接続 env: `DATABASE_URL`（[環境設計書 §19.5 / §19.6 / §19.7](../../docs/06_実装設計/cross_cutting/環境設計書.md)）。Supabase CLI 利用時は [`.env.example`](../../.env.example) のダミー（port **54322**）または `supabase status` の DB URL に合わせる
+
+## 疎通確認（smoke-check 連携）
+
+DB 起動・migration 後、リポジトリルートで以下を実行する（正本: [ローカル開発手順書 §10](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md)）。
+
+```bash
+./scripts/dev/check-env-names.sh --strict
+./scripts/dev/smoke-check.sh --skip-apps
+```
+
+| チェック | 前提 |
+| -------- | ---- |
+| PostgreSQL | `./scripts/db/start-local.sh` 済み、`DATABASE_URL` がローカル Supabase URL |
+| Redis | `./scripts/dev/start-redis.sh` 済み（別 Task A5） |

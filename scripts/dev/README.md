@@ -55,13 +55,14 @@ Phase3a（2026-06-07）の「docker-compose 同梱なし」は **PostgreSQL 用 
 
 # 疎通チェック（DB / Redis 起動後。Phase3b では --skip-apps 推奨）
 ./scripts/dev/smoke-check.sh --skip-apps
-# インフラ込みの一例（psql / redis-cli / .env が揃っていること）
-# ./scripts/dev/smoke-check.sh --skip-apps   # placeholder 期間
-# ./scripts/dev/smoke-check.sh               # Phase4 以降（health 成功を確認）
+# インフラのみ（env チェック省略例）
+# ./scripts/dev/smoke-check.sh --skip-env --skip-db --skip-apps   # Redis docker のみ確認
+# Phase4 以降（PUB-001 / INT-001 完了後）: health 成功も確認
+# ./scripts/dev/smoke-check.sh
 
 # Redis（Docker Desktop 起動済みであること）
 ./scripts/dev/start-redis.sh
-redis-cli -u "$REDIS_URL" PING
+redis-cli -u "$REDIS_URL" PING   # 未インストール時は smoke-check が docker 経由で PING
 ./scripts/dev/stop-redis.sh
 ```
 
@@ -126,3 +127,13 @@ Phase4 実装前（placeholder）は dev プロセスが即終了するため、
 
 | [ローカル開発手順書 §6.2](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | Python 初回セットアップ |
 | [ローカル開発手順書 §6–§10](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | 起動・疎通確認 |
+
+### 疎通確認（smoke-check）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 一括実行 | `./scripts/dev/smoke-check.sh`（`--skip-*` 対応） |
+| env | `./scripts/dev/check-env-names.sh --strict` |
+| PostgreSQL | `psql "$DATABASE_URL" -c 'SELECT 1'`（`DATABASE_URL` は [DB構築手順書 §8](../../docs/06_実装設計/database/DB構築手順書.md) / `supabase status` に合わせる） |
+| Redis | `redis-cli -u "$REDIS_URL" PING`、または `redis-cli` 未インストール時は smoke-check が **docker compose exec** 経由で PING |
+| app health | Phase4 / PUB-001・INT-001 完了前は **optional**（script は skip、exit 0） |
