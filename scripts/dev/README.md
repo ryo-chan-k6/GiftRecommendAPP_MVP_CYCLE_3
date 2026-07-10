@@ -124,7 +124,9 @@ Phase4 実装前でも **web** は Next.js が待受するため、停止時は 
 | monorepo 正本 | ルート `package.json` の `dev:reco` / `dev:api` / `dev:web` |
 | batch | ルート `pnpm dev:batch`（ジョブ単位 CLI。本格運用は Phase4b defer） |
 | web | `apps/web` の `dev` は **Next.js 実起動**（`pnpm install` 後に `./scripts/dev/start-web.sh`） |
-| api / reco | `dev` script は **placeholder**（即終了）。health 200 は PUB-001 / INT-001 の別 Issue |
+| api | Express + `GET /api/v1/health`（`pnpm install` 後に `./scripts/dev/start-api.sh`） |
+| reco | uvicorn + `GET /internal/reco/v1/health`（`setup-python-reco.sh` 後に `./scripts/dev/start-reco.sh`。`X-Internal-Api-Key` 必須） |
+| batch | `dev` script は **placeholder**（即終了） |
 
 | [ローカル開発手順書 §6.2](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | Python 初回セットアップ |
 | [ローカル開発手順書 §6–§10](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | 起動・疎通確認 |
@@ -137,4 +139,4 @@ Phase4 実装前でも **web** は Next.js が待受するため、停止時は 
 | env | `./scripts/dev/check-env-names.sh --strict` |
 | PostgreSQL | `psql "$DATABASE_URL" -c 'SELECT 1'`（`DATABASE_URL` は [DB構築手順書 §8](../../docs/06_実装設計/database/DB構築手順書.md) / `supabase status` に合わせる） |
 | Redis | `redis-cli -u "$REDIS_URL" PING`、または `redis-cli` 未インストール時は smoke-check が **docker compose exec** 経由で PING |
-| app health | web は起動可能。api / reco health は PUB-001・INT-001 完了前は **optional**（script は skip、exit 0） |
+| app health | web / api / reco 起動後は health 200 を期待。未起動時は smoke-check が skip（exit 0） |
