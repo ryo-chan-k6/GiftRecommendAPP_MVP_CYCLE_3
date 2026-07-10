@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1134
   issue:
     number: 1133
   task_definition: "prompts/definitions/tasks/local-dev-environment/local-verify-follow-up.yaml"
@@ -50,7 +50,7 @@ input:
     number: 1133
     required: true
   pr:
-    number: null
+    number: 1134
     required: true
 
 review_points:
@@ -67,5 +67,5 @@ human_review_points:
   - "未解決ギャップの後続 Task 化方針"
 
 notes:
-  - "Issue / PR 番号は /create-pr 後に target.* / input.* へ反映"
+  - "Issue #1133 / PR #1134 を /create-pr 後に target.* / input.* へ反映"
   - "親 Epic Branch: develop（Human 判断）"
