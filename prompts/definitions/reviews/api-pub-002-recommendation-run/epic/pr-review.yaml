@@ -1,0 +1,225 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-recommendation-run-epic-pr"
+  title: "API-PUB-002 レコメンド実行 Epic PRレビュー"
+  summary: "Epic #357（API-PUB-002 レコメンド実行）の develop 向け統合 PR を AI Review する。Phase4b 縦串（実装仕様書 / OpenAPI Contract / apps/api 実装 / 単体テスト）および関連 docs Task の成果を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1132
+  issue:
+    number: 357
+  task_definition: "prompts/definitions/epics/api-pub-002-recommendation-run/epic.yaml"
+  source_branch: "feature/epic-357-api-pub-002-recommendation-run"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  parent_epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/api-pub-002-recommendation-run/epic.yaml"
+    required: true
+  issue:
+    number: 357
+    required: true
+  pr:
+    number: 1132
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "契約面正本（#358 develop 反映済み。Epic 差分に参照パス更新等を含む場合あり）"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+      purpose: "実装面正本"
+  child_tasks:
+    - issue: 358
+      pr: 359
+      task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
+      note: "契約仕様書（develop merge 済み。Phase1）"
+    - issue: 1121
+      pr: 1123
+      task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/contract-spec-cross-ref-update.yaml"
+      note: "契約仕様書の API-INT-002 参照パス更新"
+    - issue: 364
+      pr: 1120
+      task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml"
+      note: "実装仕様書（Phase4b 1/4）"
+    - issue: 1126
+      pr: 1127
+      task_definition: "prompts/definitions/contracts/api-pub-002-recommendation-run/openapi-sync.yaml"
+      note: "OpenAPI Contract（Phase4b 2/4）"
+    - issue: 1128
+      pr: 1129
+      task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/implementation.yaml"
+      note: "apps/api 実装（Phase4b 3/4）"
+    - issue: 1130
+      pr: 1131
+      task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
+      note: "apps/api 単体テスト（Phase4b 4/4）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Epic Definition（epic.yaml）の scope / out_of_scope / acceptance_criteria を満たしているか"
+    - "Epic PR の source が feature/epic-357-api-pub-002-recommendation-run、target が develop であるか"
+    - "PR 本文に Closes #357（または運用に沿った Epic Issue 参照）があるか"
+    - "Phase4b 子 Task（#364 / #1126 / #1128 / #1130）が Epic 統合完了として整理されているか"
+    - "子 Task PR（#1120 / #1127 / #1129 / #1131）の成果が Epic diff に含まれているか"
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "epic_scope.allowed_paths 内に差分が収まっているか"
+    - "epic_scope.forbidden_paths（apps/reco/**、apps/batch/**、apps/web/src/app/**、apps/web/src/features/**、db/**）への変更がないか"
+    - "Public API 層（apps/api/src/app/recommendations/**）が実装の中心であるか"
+    - "apps/reco 推薦ロジック変更が本 Epic に混入していないか"
+  docs:
+    - "契約仕様書・実装仕様書が子 Task 成果として Epic に含まれているか（または develop 正本と矛盾しないか）"
+    - "API-INT-002 参照パス更新（#1121）が契約仕様書と整合しているか"
+  source:
+    - "apps/api recommendations 実装が実装仕様書 §3〜§9 と整合しているか"
+    - "createRecoClient({ mode: \"generated\" }) 経由のみ reco を呼び出しているか"
+    - "Public Response に内部スコア・debug フィールドが含まれないか"
+  api_contract:
+    - "packages/contracts/openapi/public-api.yaml の変更が契約仕様書と整合しているか"
+    - "apps/web/src/generated/api/** が Orval 再生成結果であるか（手編集なし）"
+  tests:
+    - "apps/api/tests/unit/app/recommendations/** が契約仕様書 §12 / 実装仕様書 §10 unit 観点をカバーしているか"
+    - "api build / test 実行結果が Epic PR 本文に記載されているか"
+    - "integration 観点が Epic PR で未実施として明記されているか"
+  security:
+    - "RECO_INTERNAL_API_KEY 等の実値がコード・テストに含まれていないか"
+    - "Internal 401 → Public 500 GRS-REC-002（認証詳細非露出）方針が維持されているか"
+  project_operation:
+    - "Task PR を develop に直接向けていないか（子 PR は Epic Branch 向けであったか）"
+    - "Phase4b 縦串完了後の develop 統合であるか（実装フェーズ実行プロセス設計書 §6.2）"
+
+acceptance_check:
+  use_epic_acceptance_criteria: true
+  additional_criteria:
+    - "child_task_areas（api-spec / openapi / implementation / unit-test）の成果が Epic diff に含まれる"
+    - "apps/reco/** 変更が Epic に含まれない"
+    - "SCR-002 / apps/web 画面実装が Epic に含まれない"
+    - "Human Review で確認してほしい事項が PR 本文に明記されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "epic_scope 外の変更がない"
+      - "子 Task 成果の横断整合に Blocker がない"
+      - "テスト・検証結果の記載が十分である"
+  request_changes:
+    conditions:
+      - "epic_scope.forbidden_paths への変更が混入している"
+      - "契約仕様書・実装仕様書・OpenAPI・実装・テストの矛盾がある"
+      - "子 Task 未完了の成果が含まれている"
+      - "PR 本文の検証結果・未実施事項の記載が不足している"
+  needs_human_decision:
+    conditions:
+      - "実装仕様書 §11 未決事項（GRS-REQ-006 / 502 vs 500 / displayMessage）の develop 反映可否判断が必要"
+      - "develop 取り込み時の競合解消方針判断が必要"
+  blocked:
+    conditions:
+      - "Epic diff を確認できない"
+      - "子 Task Issue / PR の対応が不明"
+      - "secret 漏えいの疑いがある"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+dependencies:
+  tasks:
+    - "prompts/definitions/epics/api-pub-002-recommendation-run/epic.yaml"
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml"
+    - "prompts/definitions/contracts/api-pub-002-recommendation-run/openapi-sync.yaml"
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/implementation.yaml"
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/unit-test.yaml"
+
+notes:
+  - "Epic PR target は develop。Closes #357 を使用可"
+  - "review.target.pr / input.pr.number は /create-pr 後に反映"
+  - "Phase4b 縦串完了後の識別子 Epic → develop 統合（実装フェーズ実行プロセス設計書 §6.2）"
+  - "契約仕様書本体（#358 / PR #359）は develop 反映済み。Epic diff は主に Phase4b 成果 + 参照パス更新"
+  - "resolve-review-definition.cjs は reviews/<workstream>/epic/pr-review.yaml を探索"

@@ -1,0 +1,379 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-api-pub-002-recommendation-run-openapi-sync"
+  title: "API-PUB-002:レコメンド実行OpenAPI契約反映"
+  summary: "確定済み API-PUB-002 契約仕様書（#358 / §10・§14.1）および実装仕様書（#364）を前提に packages/contracts/openapi/public-api.yaml を同期し、Orval で apps/web/src/generated/api/ を再生成する（apps/api 実装 Task の Contract Gate 前提）。"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "api-pub-002-implementation-spec"
+  related_issue: "#364"
+  related_pr: "#1120"
+  related_task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
+  reason: "実装仕様書 §11 No.4（Epic #357 縦串 2/4）および契約仕様書 §10 に基づく Phase4b Public OpenAPI Contract Task。Phase1 基盤 YAML 存在下での契約確定分への追随・差分同期。"
+
+commands:
+  primary: "/create-contract-task"
+  allowed:
+    - "/create-contract-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    pr: "/create-pr"
+    review: "/review-pr"
+    blocked: null
+
+agent:
+  primary: "contract-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "worker-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+
+change:
+  api_name: "レコメンド実行"
+  api_kind: "public"
+  endpoint: "POST /api/v1/recommendations"
+  method: "POST"
+  change_type: "update_openapi_schema"
+  breaking_change: false
+  backward_compatibility: "compatible_optional_field_addition"
+  reason: "契約仕様書確定分（#358/#359/#764）を OpenAPI 正本へ反映し、isFallback / reasonSummary 方針 / maxLength / 0 件 meta.resultCode 等を整合させる。operationId は runRecommendation で確定。"
+
+scope:
+  - "packages/contracts/openapi/public-api.yaml の POST /api/v1/recommendations および関連 components を API-PUB-002_レコメンド実行API契約仕様書.md §6〜§10・§14.1 に沿って同期する"
+  - "operationId を runRecommendation で確定する（契約 §10）"
+  - "PublicRecommendationResultItem に isFallback を追加し、reasonSummary の description を §7.3.2.1 / #764（MOD-RECO-001 §10.3）に整合させる"
+  - "§14.1 の maxLength（preferredText/nonPreferredText: 500、ngText: 300、freeText: 800、relationshipLabel/occasionLabel: 50）が schema に反映されていることを確認・不足分を補正する"
+  - "ResultStatus enum（completed / empty / partial）および 0 件 example（resultStatus: empty、meta.resultCode: GRS-REC-001）を契約 §7.4.2 と一致させる"
+  - "execution.topK（1〜50）・candidateLimit・mode 等の Validation 制約を schema description / minimum / maximum で表現する"
+  - "Error Response（400/422/409/500/502/503/504）が common.yaml ErrorResponse を参照していることを維持する"
+  - "orval.config.ts に従い pnpm orval で apps/web/src/generated/api/ を再生成する（publicApi 出力のみが本 Task の主対象。internalRecoApi 再生成は副作用として許容）"
+  - "ci-contract（OpenAPI YAML 検証 + Orval + generated 整合）を通過する"
+  - "apps/web build（typecheck）を通過する"
+
+out_of_scope:
+  - "API-PUB-002_レコメンド実行API契約仕様書.md の変更（契約確定済み #358）"
+  - "API-PUB-002_レコメンド実行API実装仕様書.md の変更（#364 正本）"
+  - "packages/contracts/openapi/internal-reco-api.yaml の変更（API-INT-002 Contract Task 管轄）"
+  - "orval.config.ts の変更"
+  - "apps/api / apps/reco の実装"
+  - "apps/web 画面実装（SCR-002 等）"
+  - "apps/web/src/lib/** wrapper 実装（別 Task）"
+  - "DB schema 変更"
+  - "他 Public API path の OpenAPI 断片変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "OpenAPI 反映の入力正本（§6〜§10・§14.1）"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+      purpose: "Phase4b 位置づけ・Contract Gate 後続 Task との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Success/Error envelope・0 件方針・Public 非表示スコア（§18.4）"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* エラーコード・HTTP Status 整合"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: true
+      purpose: "Contract Gate / implementation_gate 運用確認"
+  templates: []
+  files: []
+  issues:
+    - "#358"
+    - "#364"
+    - "#357"
+  prs:
+    - "#359"
+    - "#1120"
+  openapi:
+    path: "packages/contracts/openapi/public-api.yaml"
+    required: true
+  orval:
+    path: "orval.config.ts"
+    required: true
+  generated:
+    paths:
+      - "apps/web/src/generated/api/"
+    required: true
+
+output:
+  docs: []
+  files: []
+  openapi:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      action: "update"
+      required: true
+  orval: []
+  generated:
+    - path: "apps/web/src/generated/api/"
+      action: "regenerate"
+      required: true
+  tests: []
+  logs:
+    ai_logs_required: false
+    path: null
+
+impact:
+  api_design:
+    affected: false
+    note: "API設計方針そのものは変更しない"
+  api_list:
+    affected: false
+    note: "endpoint 追加・変更なし。schema 追随のみ"
+  api_spec:
+    affected: false
+    note: "契約仕様書は確定済み。OpenAPI を契約へ追随"
+  openapi:
+    affected: true
+    note: "public-api.yaml の API-PUB-002 部分を契約仕様書 §10・§14.1 に整合"
+  orval:
+    affected: true
+    note: "OpenAPI 変更後に web generated api-client 再生成が必要"
+  generated:
+    affected: true
+    note: "apps/web/src/generated/api/ に型・フィールド差分（isFallback 追加等）"
+  provider:
+    affected: false
+    note: "apps/api 実装は次 Task（本 Task は OpenAPI + generated のみ）"
+  consumer:
+    affected: true
+    note: "apps/web generated 型が変わる。wrapper / 画面実装変更は別 Task"
+  tests:
+    affected: false
+    note: "apps/api / web 利用側未実装のため contract test 更新は次 Task"
+  docs:
+    affected: false
+    note: "契約 docs は変更しない"
+  db:
+    affected: false
+    note: "DB schema 変更なし"
+  cicd:
+    affected: true
+    note: "ci-contract が generated 差分を検証"
+  security:
+    affected: false
+    note: "認証・secret 方針変更なし（MVP 非認証維持）"
+
+provider_consumer:
+  providers:
+    - name: "apps/api"
+      affected: false
+      responsibility: "Public API Provider（MOD-API-001〜006）"
+      required_changes:
+        - "本 Task では OpenAPI 参照のみ。実装は次 Task"
+  consumers:
+    - name: "apps/web"
+      affected: true
+      responsibility: "Public API Consumer（SCR-002 系）"
+      required_changes:
+        - "generated api-client 型差分の確認（本 Task）"
+        - "画面・wrapper 実装は別 Task"
+  compatibility_notes:
+    - "isFallback 等の optional フィールド追加は後方互換（契約 §11）"
+    - "Contract Task 完了まで apps/api 実装 Task を開始しない"
+  rollout_order:
+    - "OpenAPI（public-api.yaml）更新"
+    - "Orval 再生成（apps/web/src/generated/api/）"
+    - "ci-contract / apps/web build"
+    - "Human Review → 親 Epic Branch merge"
+    - "apps/api 実装 Task 開始"
+
+generation_policy:
+  generated_expected: true
+  manual_edit_allowed: false
+  source_files:
+    - "packages/contracts/openapi/public-api.yaml"
+  regenerate_commands:
+    - "pnpm orval"
+  output_paths:
+    - "apps/web/src/generated/api/"
+  verification_commands:
+    - "bash .github/scripts/ci-validate-yaml.sh"
+    - "pnpm orval"
+    - "git diff --exit-code -- apps/web/src/generated/api"
+    - "pnpm --filter @gift-recommendation/web build"
+
+implementation_gate:
+  enabled: true
+  gate_id: "contract-api-pub-002-recommendation-run-openapi-sync"
+  prerequisite_checks:
+    - "contract_pr_merged_to_parent_epic_branch"
+    - "openapi_in_packages_contracts"
+    - "orval_regenerated_if_generated_impact"
+    - "generated_not_manually_edited"
+    - "human_review_if_breaking_change"
+  releases_implementation_for:
+    - "API-PUB-002 apps/api 実装 Task（Phase4b 3/4）"
+    - "API-PUB-002 apps/api 単体テスト Task（Phase4b 4/4）"
+  notes:
+    - "gate_id は後続 Implementation Task の contract_gate.gate_id と一致させる"
+
+deliverables:
+  - "更新済み public-api.yaml（契約仕様書 §10・§14.1 整合）"
+  - "再生成済み apps/web/src/generated/api/"
+  - "Contract Task Issue / PR"
+
+acceptance_criteria:
+  - "public-api.yaml の POST /api/v1/recommendations が契約仕様書 §6〜§10 と矛盾しない"
+  - "operationId が runRecommendation である"
+  - "PublicRecommendationResultItem に isFallback が定義されている"
+  - "reasonSummary の description が §7.3.2.1 / #764 方針と整合している"
+  - "ResultStatus enum が completed / empty / partial である"
+  - "0 件 example が resultStatus: empty かつ meta.resultCode: GRS-REC-001 を含む"
+  - "§14.1 の maxLength が該当 schema に反映されている"
+  - "Orval 再生成済み。generated は手動編集なし"
+  - "ci-contract（ci-validate-yaml + orval）SUCCESS"
+  - "pnpm --filter @gift-recommendation/web build SUCCESS"
+  - "契約仕様書・実装仕様書 docs を変更していない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "contract/task-1126-api-pub-002-recommendation-run-openapi-sync"
+  base: "feature/epic-357-api-pub-002-recommendation-run"
+  target: "feature/epic-357-api-pub-002-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-09"
+    due_date: "2026-07-11"
+
+issue:
+  number: 1126
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  epic_issue_number: 357
+  epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+
+dependencies:
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+  issues:
+    - "#358"
+    - "#364"
+  prs:
+    - "#359"
+    - "#1120"
+  tasks:
+    - "task-api-pub-002-recommendation-run-api-contract-spec（#358 / PR #359 develop merge 済み）"
+    - "task-api-pub-002-recommendation-run-api-implementation-spec（#364 / PR #1120 Epic merge 済み）"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-api-pub-002-recommendation-run-api-implementation-spec"
+  blocks:
+    - "API-PUB-002 apps/api 実装 Task（Phase4b 3/4）"
+    - "API-PUB-002 apps/api 単体テスト Task（Phase4b 4/4）"
+  exclusive_files:
+    - "packages/contracts/openapi/public-api.yaml"
+    - "apps/web/src/generated/api/**"
+  conflict_risk: "medium"
+  generated_impact: true
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "OpenAPI YAML validation"
+    - "Orval generation"
+    - "generated diff consistency"
+    - "web build"
+  commands:
+    - "bash .github/scripts/ci-validate-yaml.sh"
+    - "pnpm orval"
+    - "pnpm --filter @gift-recommendation/web build"
+  manual_checks:
+    - "isFallback が PublicRecommendationResultItem に存在すること"
+    - "0 件 example の meta.resultCode が GRS-REC-001 であること"
+    - "generated 差分が OpenAPI 変更と対応していること"
+    - "generated ファイルを手動編集していないこと"
+    - "internal-reco-api.yaml を変更していないこと"
+    - "apps/api / apps/reco 実装が scope 外であること"
+  not_required:
+    - "apps/api unit test"
+    - "apps/web e2e test"
+    - "integration test"
+  skip_reason:
+    "apps/api unit test": "provider 実装は次 Task のため対象外"
+    "apps/web e2e test": "画面実装は別 Epic のため対象外"
+    "integration test": "OpenAPI Contract Task。ci-contract と web build を優先"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "契約仕様書 §10・§14.1 との整合"
+    - "isFallback / reasonSummary 方針（#764）の反映"
+    - "0 件正規系（empty + GRS-REC-001）の example 妥当性"
+    - "operationId runRecommendation の確定"
+    - "generated を手動編集していないか"
+    - "apps/api 実装が scope 外であるか"
+    - "契約仕様書・実装仕様書 docs を変更していないか"
+    - "epic_scope.allowed_paths 内に収まっているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "OpenAPI / Orval / generated 横断影響。Phase4b Contract Task。"
+
+risk_points:
+  - "pnpm orval が internalRecoApi も再生成し、無関係な generated 差分が混入する可能性"
+  - "Phase1 基盤 YAML と契約確定分の差分洗い出し漏れ"
+  - "isFallback 追加により web generated 型が変わり、後続実装で compile 影響"
+
+human_decision_points:
+  - "execution.mode enum に evaluation / batch を残すか（契約は Public MVP で ui のみ許可。schema enum 維持 vs description のみは Contract PR で確認）"
+  - "reasonSummary の OpenAPI required 表現（includeReason 条件付き必須は server 側 Validation。schema 上は optional 維持でよいか）"
+
+stop_conditions:
+  - "契約仕様書と OpenAPI 更新方針が矛盾する場合"
+  - "PR #1120 が親 Epic Branch に merge されていない場合"
+  - "generated ファイルの手動編集が必要に見える場合"
+  - "apps/api / apps/web 実装変更が必要になった場合（Implementation Task へ分離）"
+  - "internal-reco-api.yaml の変更が必要になった場合（API-INT-002 Contract Task へ分離）"
+  - "破壊的変更が必要と判明した場合（Human 判断待ち）"
+
+notes:
+  - "正本入力: docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md §10・§14.1"
+  - "親 Epic #357 / Branch feature/epic-357-api-pub-002-recommendation-run"
+  - "PR target は親 Epic Branch（develop 不可）"
+  - "Review Definition は prompts/definitions/reviews/api-pub-002-recommendation-run/ 配下に Contract Task 用を別途配置（/work-issue 後）"
+  - "構造の参考: prompts/definitions/contracts/api-int-002-reco-recommendation-run/openapi-sync.yaml"

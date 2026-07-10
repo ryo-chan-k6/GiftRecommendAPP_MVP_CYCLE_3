@@ -1,0 +1,205 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-002-recommendation-run-contract-spec-cross-ref-update"
+  title: "API-PUB-002:契約仕様書のAPI-INT-002参照パス更新"
+  summary: "API-PUB-002 契約仕様書（#358 正本）に残る API-INT-002 参照パスの旧表記（統合仕様書ファイル名・未作成フォールバック）を、契約/実装分離モデルに合わせて更新する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  epic_issue_number: 357
+  epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+  related_issues:
+    - 358
+    - 364
+    - 1122
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md`（Task #358 / develop 反映済み）の §5.4 および §15 に、API-INT-002 契約正本として旧統合ファイル名 `API-INT-002_Reco推薦実行API仕様書.md` と「未作成時は API一覧」フォールバックが残っている。
+  API-INT-002 契約仕様書・実装仕様書は Epic #366 配下 Task により develop 上に存在する。本 Task は契約内容の再定義ではなく、相互参照パスの docs メンテナンスのみを行う。
+
+objective: |
+  API-PUB-002 契約仕様書の API-INT-002 参照を現行正本パスへ更新し、「未作成」表記を解消する。
+  §5.4 には契約正本に加え、実装正本（参照のみ）行の追加を推奨する（契約面本文への実装再掲は行わない）。
+
+scope:
+  - "API-PUB-002_レコメンド実行API契約仕様書.md §5.4 の `契約正本` 行を `API-INT-002_Reco推薦実行API契約仕様書.md` へ更新し、「未作成」フォールバックを削除する"
+  - "同ファイル §15 関連資料の `内部 API（参照）` 行を同上に更新する"
+  - "（推奨）§5.4 に `実装正本（参照のみ）` 行を追加（`API-INT-002_Reco推薦実行API実装仕様書.md`）"
+  - "Task Definition / Review Definition の整備（本 Task）"
+
+out_of_scope:
+  - "Request / Response / Error / Validation 等の契約定義変更"
+  - "API-INT-002 契約仕様書本体の編集（Epic #366 配下 Task #1122）"
+  - "API-PUB-002 実装仕様書（#364）の変更"
+  - "packages/contracts/openapi/**、Orval、generated"
+  - "apps/api / apps/web / apps/reco 実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "修正対象（§5.4 / §15）"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "API-INT-002 契約正本パス確認"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "API-INT-002 実装正本パス確認（§5.4 追記用）"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: false
+      purpose: "API-INT-002 / API-PUB-002 行との整合確認"
+  templates: []
+  files: []
+  issues:
+    - 358
+    - 1122
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      action: "update"
+      required: true
+      template: null
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-PUB-002 契約仕様書の API-INT-002 参照パス更新（§5.4 / §15）"
+  - "Task Definition / Review Definition"
+
+acceptance_criteria:
+  - "§5.4 / §15 に「未作成」表記が残っていない"
+  - "参照パスが `API-INT-002_Reco推薦実行API契約仕様書.md` と一致する"
+  - "契約面のみを正本とする境界記述（§5.4 `本書との境界`）が維持されている"
+  - "Request / Response / Error 定義に変更がない（参照更新のみ）"
+  - "OpenAPI / generated / apps 実装ファイルを変更していない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1121-api-pub-002-contract-spec-int002-ref-update"
+  base: "feature/epic-357-api-pub-002-recommendation-run"
+  target: "feature/epic-357-api-pub-002-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-09"
+    due_date: "2026-07-11"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+  number: 1121
+
+dependencies:
+  epics: []
+  issues:
+    - 358
+  prs: []
+  tasks:
+    - "API-INT-002 契約仕様書が develop 上に存在すること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "cross-reference link check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+  manual_checks:
+    - "§5.4 / §15 の参照パスが実在ファイルと一致すること"
+    - "契約定義本文に変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "contract test"
+  skip_reason:
+    "unit test": "docs メンテナンス Task のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "参照パスのみの更新であり、契約定義が変更されていないか"
+    - "契約/実装分離モデルに沿った表記か"
+    - "§5.4 `本書との境界` と矛盾していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 docs メンテナンス。停止時のみ incident 記録。"
+
+human_decision_points:
+  - "§5.4 に実装仕様書行を追加するか（最小修正＝契約正本のみでも可）"
+
+stop_conditions:
+  - "契約定義の変更が必要と判明した場合"
+  - "API-INT-002 正本パスが develop 上で確認できない場合"
+  - "正本 docs 間の矛盾解消に設計判断が必要な場合"
+
+notes:
+  - "Issue #1121。API-INT-002 逆参照は #1122（Epic #366）。"
+  - "Issue #364 実装仕様書 Task（PR #1120）とは独立。"
