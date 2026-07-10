@@ -1,0 +1,78 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-recommendation-run-request-db-persist-pr"
+  title: "API-PUB-002 recommendation_request実DB永続化 PRレビュー"
+  summary: "Epic #357 クローズ後 follow-up Task request-db-persist（#1139）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1139
+  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/request-db-persist.yaml"
+  source_branch: "feature/task-1139-api-pub-002-request-db-persist"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-002-recommendation-run/request-db-persist.yaml"
+    required: true
+  issue:
+    number: 1139
+    required: true
+  pr:
+    number: null
+    required: true
+
+review_points:
+  - "SQL injection / parameter binding が守られているか"
+  - "scaffold と実 session の切替境界が明確か（DATABASE_URL）"
+  - "migration / OpenAPI / generated を増やしていないか"
+  - "ローカル開発手順書 §10.4.4 No.2 が更新されているか"
+  - "接続文字列・ログに secret / .env 実値が出ないか"
+  - "#1138 依存と Epic #357 クローズ後 develop 直 PR 例外が PR 本文で説明されているか"
+  - "unit test が実 DB に依存していないか"
+
+human_review_points:
+  - "Epic #357 クローズ後の develop 直 PR 例外の承認"
+  - "api の DB アクセス方針（session 実装の置き場所・責務）の承認"
+  - "ローカルのみ実 DB / CI は mock・scaffold のまま、の test 方針"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に target.pr / input.pr へ反映"
+  - "親 Epic Branch: develop（Human 判断・Epic #357 CLOSED follow-up）"

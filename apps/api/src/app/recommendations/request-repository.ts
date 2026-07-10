@@ -14,7 +14,7 @@ export type RecommendationRequestRepositoryOptions = {
   tableName?: string;
 };
 
-/** MOD-API-004: recommendation_request 永続化（scaffold / DB session 利用）。 */
+/** MOD-API-004: recommendation_request 永続化（DbSession 経由。実 DB / scaffold）。 */
 export class RecommendationRequestRepository {
   readonly session: DbSession;
   readonly tableName: string;
@@ -67,12 +67,49 @@ export class RecommendationRequestRepository {
 
     try {
       await this.session.execute(
-        `INSERT INTO ${this.tableName} (recommendation_request_id, request_mode, relationship_code, occasion_code, request_payload, validated_payload, trace_id, created_at, validated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `INSERT INTO ${this.tableName} (
+          recommendation_request_id,
+          request_mode,
+          relationship_code,
+          occasion_code,
+          budget_min,
+          budget_max,
+          currency,
+          tax_included,
+          preferred_text,
+          non_preferred_text,
+          ng_text,
+          free_text,
+          top_k,
+          candidate_limit,
+          include_reason,
+          include_debug_info,
+          request_payload,
+          validated_payload,
+          trace_id,
+          created_at,
+          validated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+          $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, $19, $20, $21
+        )`,
         [
           id,
           record.requestMode,
           record.relationshipCode,
           record.occasionCode,
+          record.budgetMin ?? null,
+          record.budgetMax ?? null,
+          record.currency,
+          record.taxIncluded ?? null,
+          record.preferredText ?? null,
+          record.nonPreferredText ?? null,
+          record.ngText ?? null,
+          record.freeText ?? null,
+          record.topK ?? null,
+          record.candidateLimit ?? null,
+          record.includeReason ?? null,
+          record.includeDebugInfo ?? null,
           JSON.stringify(record.requestPayload),
           JSON.stringify(record.validatedPayload),
           record.traceId,

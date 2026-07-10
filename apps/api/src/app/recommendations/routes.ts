@@ -1,7 +1,10 @@
 import { Router } from "express";
 
 import { createRecoClient } from "../../lib/reco-client/factory.js";
-import { ScaffoldDbSession } from "../../infrastructure/db/session.js";
+import {
+  createDbSession,
+  type DbSession,
+} from "../../infrastructure/db/index.js";
 import type { ApiLogger } from "../../infrastructure/logger/logger.js";
 import type { RecoClient } from "../../infrastructure/reco-client/client.js";
 import {
@@ -15,7 +18,7 @@ export type RecommendationsRouterDeps = {
   applicationService?: RecommendationApplicationService;
   recoClient?: RecoClient;
   logger?: ApiLogger;
-  dbSession?: ScaffoldDbSession;
+  dbSession?: DbSession;
 };
 
 function createDefaultApplicationService(
@@ -26,7 +29,7 @@ function createDefaultApplicationService(
     createRecoClient({
       mode: "generated",
     });
-  const dbSession = deps.dbSession ?? new ScaffoldDbSession();
+  const dbSession = deps.dbSession ?? createDbSession();
   const requestRepository = new RecommendationRequestRepository({
     session: dbSession,
   });

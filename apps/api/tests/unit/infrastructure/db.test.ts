@@ -1,9 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  createDbSession,
   DbError,
   isDbError,
   maskDatabaseUrl,
+  PostgresDbSession,
   ScaffoldDbRepository,
   ScaffoldDbSession,
 } from "../../../src/infrastructure/db/index.js";
@@ -111,4 +113,89 @@ test("maskDatabaseUrl redacts credentials", () => {
     "postgresql://***REDACTED***:***REDACTED***@db.example.com:5432/gift_reco",
   );
   assert.equal(maskDatabaseUrl(""), "");
+});
+
+test("createDbSession uses scaffold when URL is missing or scaffold://", () => {
+  const missing = createDbSession({ databaseUrl: null });
+  const empty = createDbSession({ databaseUrl: "  " });
+  const scaffoldScheme = createDbSession({
+    databaseUrl: "scaffold://local",
+  });
+  const forced = createDbSession({
+    databaseUrl: "postgresql://u:p@localhost:5432/db",
+    forceScaffold: true,
+  });
+
+  assert.equal(missing.backend, "scaffold");
+  assert.equal(empty.backend, "scaffold");
+  assert.equal(scaffoldScheme.backend, "scaffold");
+  assert.equal(forced.backend, "scaffold");
+});
+
+test("createDbSession uses postgres when URL is set", async () => {
+  const session = createDbSession({
+    databaseUrl: "postgresql://app_user:secret-pass@127.0.0.1:54322/postgres",
+  });
+
+  assert.equal(session.backend, "postgres");
+  assert.ok(session instanceof PostgresDbSession);
+  assert.equal(
+    session.connectionInfo,
+    "postgresql://***REDACTED***:***REDACTED***@127.0.0.1:54322/postgres",
+  );
+  await session.end();
+});
+
+test("PostgresDbSession query/execute use parameterized pool.query", async () => {
+  const calls: Array<{ sql: string; params: unknown[] }> = [];
+  const pool = {
+    query: async (sql: string, params: unknown[]) => {
+      calls.push({ sql, params });
+      return { rows: [{ ok: 1 }], rowCount: 1 };
+    },
+    end: async () => undefined,
+  };
+
+  const session = new PostgresDbSession({
+    connectionString:
+      "postgresql://app_user:secret-pass@127.0.0.1:54322/postgres",
+    pool: pool as never,
+  });
+
+  const result = await session.query("SELECT 1 AS ok WHERE id = $1", ["x"]);
+  const affected = await session.execute(
+    "INSERT INTO recommendation_request (recommendation_request_id) VALUES ($1)",
+    ["id-1"],
+  );
+
+  assert.deepEqual(result.rows, [{ ok: 1 }]);
+  assert.equal(affected, 1);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0]?.params, ["x"]);
+  assert.deepEqual(calls[1]?.params, ["id-1"]);
+});
+
+test("PostgresDbSession wraps pool errors as DbError", async () => {
+  const pool = {
+    query: async () => {
+      throw new Error("connection refused");
+    },
+    end: async () => undefined,
+  };
+
+  const session = new PostgresDbSession({
+    connectionString:
+      "postgresql://app_user:secret-pass@127.0.0.1:54322/postgres",
+    pool: pool as never,
+  });
+
+  await assert.rejects(
+    () => session.query("SELECT 1"),
+    (error: unknown) => {
+      assert.equal(isDbError(error), true);
+      assert.equal((error as DbError).code, "DB_QUERY_FAILED");
+      assert.equal((error as DbError).retryable, true);
+      return true;
+    },
+  );
 });
