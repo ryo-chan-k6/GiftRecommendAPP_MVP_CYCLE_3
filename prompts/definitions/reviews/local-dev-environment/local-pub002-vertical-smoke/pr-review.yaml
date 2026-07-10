@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1142
   issue:
     number: 1137
   task_definition: "prompts/definitions/tasks/local-dev-environment/local-pub002-vertical-smoke.yaml"
@@ -50,7 +50,7 @@ input:
     number: 1137
     required: true
   pr:
-    number: null
+    number: 1142
     required: true
 
 review_points:
@@ -66,5 +66,5 @@ human_review_points:
   - "縦串失敗時の最小 seed 拡充 vs 後続 Task 切り出し判断"
 
 notes:
-  - "Issue / PR 番号は /create-pr 後に target.* / input.* へ反映"
+  - "PR #1142 / Issue #1137 を /create-pr 後に target.* / input.* へ反映済み"
   - "親 Epic Branch: develop（Human 判断）"
