@@ -1,0 +1,243 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-local-pub002-vertical-smoke"
+  title: "local-dev-environment:ローカルPUB-002縦串スモーク"
+  summary: "Epic #651 クローズ後 follow-up（レーン 0c）。develop 上で API-PUB-002 Recommendation Run をローカル実行し、必要最小限の test-data / 手順ギャップを埋める。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: 651
+  epic_branch: "develop"
+  related_issues:
+    - number: 651
+      purpose: "履歴参照（Epic クローズ済み）。PR 本文は Related to #651 を使わず履歴のみ"
+    - number: 1133
+      purpose: "レーン 0a 疎通検証完了"
+    - number: 1135
+      purpose: "レーン 0b api/reco health 完了"
+    - number: 357
+      purpose: "API-PUB-002 Epic（develop merge 済み・縦串対象）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  レーン 0a（#1133）で smoke-check / docs 整合、0b（#1135）で api/reco 最小 health は完了済み。
+  API-PUB-002（#357）は develop merge 済みだが、ローカルで Recommendation Run 縦串を再現・確認する作業は未 Task 化だった。
+  実装フェーズ並列計画（2026-07-10 Human 判断）により、レーン 0c として明示 Task 化する。
+  Epic #651 Reopen は行わず、develop ベース・develop 向け PR の横断 follow-up とする。
+
+objective: |
+  master seed + test-data seed 適用後、api / reco 起動上で API-PUB-002 Recommendation Run をローカル実行する。
+  成功条件・失敗時の既知ギャップを PR 本文と手順書に記録し、縦串に必要な最小 test-data / 手順ギャップを埋める。
+
+scope:
+  - "master seed + `./scripts/db/seed-test-data.sh` 適用後の前提確認"
+  - "api / reco 起動（#1135 成果物）上での API-PUB-002 Recommendation Run ローカル実行"
+  - "成功条件・失敗時の既知ギャップを PR 本文と手順書に記録"
+  - "縦串に必要な最小 test-data ギャップ埋め（`supabase/seeds/test-data/**` / 手順書。広げすぎない）"
+  - "`docs/06_実装設計/cross_cutting/ローカル開発手順書.md` / `scripts/dev/README.md` / `scripts/db/README.md` の必要更新"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "Batch 意味生成の実 DB 実行（レーン B3）"
+  - "Epic C（gha-test-environment）の CI fixture 全面整備"
+  - "API-PUB-001 / API-INT-001 本格実装仕様書・縦串（レーン 2/3）"
+  - "SCR-002 画面実装"
+  - "OpenAPI / Orval / generated 変更"
+  - "`supabase/migrations/**` 変更"
+  - "Epic #651 Reopen"
+  - "大規模評価用 fixture / 本番相当データ投入"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+    - path: "supabase/seeds/test-data/README.md"
+      required: true
+  files:
+    - path: "scripts/db/seed-test-data.sh"
+      required: true
+    - path: "scripts/db/seed-masters.sh"
+      required: true
+    - path: "scripts/dev/smoke-check.sh"
+      required: true
+    - path: "scripts/dev/start-api.sh"
+      required: true
+    - path: "scripts/dev/start-reco.sh"
+      required: true
+    - path: "scripts/dev/README.md"
+      required: true
+    - path: "scripts/db/README.md"
+      required: true
+    - path: ".env.example"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: false
+    - path: "scripts/db/README.md"
+      action: "update"
+      required: false
+    - path: "supabase/seeds/test-data/README.md"
+      action: "update"
+      required: false
+    - path: "supabase/seeds/test-data/01_test_items.sql"
+      action: "update"
+      required: false
+    - path: "supabase/seeds/test-data/02_test_item_derived.sql"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "Task Definition / Issue / Branch / worktree が存在する"
+  - "ローカルで PUB-002 実行手順が手順書または PR 本文に再現可能に記載されている"
+  - "実行結果（成功 / 既知失敗と原因）が PR に記録されている"
+  - "縦串に必要な最小 test-data ギャップが埋められている、または不足点と後続 Task が明示されている"
+  - "Epic #651 Reopen なし・PR target が develop"
+  - "Task / Review Definition が Task Branch 上に存在する"
+  - "secret / .env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "chore/task-1137-local-pub002-vertical-smoke"
+  summary: "local-pub002-vertical-smoke"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-11"
+    due_date: "2026-07-13"
+
+issue:
+  number: 1137
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics:
+    - number: 651
+      purpose: "local-dev-environment 基盤（CLOSED・履歴参照）"
+    - number: 357
+      purpose: "API-PUB-002 develop merge 済み（縦串対象）"
+  issues:
+    - number: 1133
+      purpose: "レーン 0a 完了"
+    - number: 1135
+      purpose: "レーン 0b 完了"
+  prs:
+    - number: 1134
+      purpose: "local-verify-follow-up merge"
+    - number: 1136
+      purpose: "local-apps-health-runtime merge"
+  tasks:
+    - "prompts/definitions/tasks/local-dev-environment/local-verify-follow-up.yaml（完了）"
+    - "prompts/definitions/tasks/local-dev-environment/local-apps-health-runtime.yaml（完了）"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/local-dev-environment/local-apps-health-runtime.yaml"
+  exclusive_files:
+    - "supabase/seeds/test-data/**"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "low"
+
+test_policy:
+  manual_checks:
+    - "./scripts/dev/check-env-names.sh --strict"
+    - "./scripts/db/seed-test-data.sh（master seed 適用後）"
+    - "./scripts/dev/start-reco.sh / start-api.sh"
+    - "API-PUB-002 Recommendation Run のローカル実行（curl 等）"
+  not_required:
+    - "Batch 意味生成の実 DB 実行"
+    - "Epic C CI fixture 全面整備"
+    - "PUB-002 の新規実装変更（既存 develop 実装の検証が主）"
+  skip_reason:
+    "Batch 意味生成": "レーン B3 で管理"
+    "Epic C fixture": "gha-test-environment 後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Task Definition scope / out_of_scope との整合"
+    - "PUB-002 ローカル実行結果が PR に記録されているか"
+    - "test-data 変更が最小ギャップ埋めに留まっているか"
+    - "Batch / Epic C / OpenAPI / migration への越境がないか"
+    - "secret / .env 実値の非含有"
+    - "Epic #651 クローズ後 develop 直 PR 例外が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #651 クローズ後 follow-up。PUB-002 ローカル縦串のギャップ・develop 直 PR 例外を記録可"
+
+human_decision_points:
+  - "Epic #651 クローズ後の develop 直 PR 例外の承認"
+  - "縦串失敗時に最小 seed 拡充で止めるか、後続 Task に切り出すかの判断"
+
+stop_conditions:
+  - "OpenAPI / generated 変更が必要になった"
+  - "DB migration 変更が必要になった"
+  - "Batch 意味生成や Epic C 全面整備を本 Task に取り込む必要が出た"
+  - "PUB-002 本格バグ修正が大規模になり別 Issue 分割が必要"
+
+notes:
+  - "実装フェーズ並列計画 レーン 0c"
+  - "Related Epic: #651（クローズ済み）/ #357（PUB-002）"
+  - "Related: #1133 / #1135"
+  - "workstream: local-dev-environment"
+  - "Review Definition: prompts/definitions/reviews/local-dev-environment/local-pub002-vertical-smoke/pr-review.yaml"

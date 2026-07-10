@@ -1,0 +1,70 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-dev-environment-local-pub002-vertical-smoke-pr"
+  title: "local-dev-environment local-pub002-vertical-smoke PRレビュー"
+  summary: "Epic #651 クローズ後 follow-up Task local-pub002-vertical-smoke（レーン 0c）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1137
+  task_definition: "prompts/definitions/tasks/local-dev-environment/local-pub002-vertical-smoke.yaml"
+  source_branch: "chore/task-1137-local-pub002-vertical-smoke"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  generated: false
+  cicd: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/local-dev-environment/local-pub002-vertical-smoke.yaml"
+    required: true
+  issue:
+    number: 1137
+    required: true
+  pr:
+    number: null
+    required: true
+
+review_points:
+  - "Task Definition scope / out_of_scope との整合"
+  - "PUB-002 ローカル実行結果が PR 本文に記録されているか"
+  - "test-data 変更が最小ギャップ埋めに留まっているか"
+  - "Batch / Epic C / OpenAPI / migration への越境がないか"
+  - "secret / .env 実値の非含有"
+  - "Epic #651 クローズ後 develop 直 PR 例外が PR 本文で説明されているか"
+
+human_review_points:
+  - "develop 直 PR 例外（Epic #651 クローズ後 follow-up）の承認"
+  - "縦串失敗時の最小 seed 拡充 vs 後続 Task 切り出し判断"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に target.* / input.* へ反映"
+  - "親 Epic Branch: develop（Human 判断）"
