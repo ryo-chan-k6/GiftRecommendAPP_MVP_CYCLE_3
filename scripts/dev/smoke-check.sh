@@ -16,19 +16,19 @@ Runs staged local smoke checks from repository root:
   1. Environment variable names (check-env-names.sh --strict)
   2. PostgreSQL (psql SELECT 1 via DATABASE_URL)
   3. Redis (redis-cli PING via REDIS_URL)
-  4. App health (reco / api / web — optional until Phase4)
+  4. App health (reco / api / web — skip if not listening)
 
 Options:
   --skip-env     Skip environment variable name check
   --skip-db      Skip PostgreSQL check
   --skip-redis   Skip Redis check
-  --skip-apps    Skip app health checks (recommended during Phase3b placeholder)
+  --skip-apps    Skip app health checks
   -h, --help     Show this help
 
 Notes:
   - Loads .env from repo root when present (values are never printed).
   - Redis: uses redis-cli when in PATH; otherwise PING via docker compose exec on running redis service.
-  - App health failures do not fail the script in Phase3b (placeholder / not started).
+  - App health not listening / non-200 is skip (does not fail the script).
   - See docs/06_実装設計/cross_cutting/ローカル開発手順書.md §10.
 EOF
 }
@@ -177,19 +177,19 @@ check_http_health() {
   done
 
   if ! code="$(curl "${curl_args[@]}" "${url}" 2>/dev/null)"; then
-    echo "skip: ${name} not listening (${url}) — Phase4 placeholder or app not started"
+    echo "skip: ${name} not listening (${url}) — start app or use --skip-apps"
     return 0
   fi
 
   if [[ "${code}" == "200" ]]; then
     echo "ok: ${name} health (HTTP ${code})"
   else
-    echo "skip: ${name} health returned HTTP ${code} (Phase4 implementation pending — not a failure in Phase3b)"
+    echo "skip: ${name} health returned HTTP ${code} (not treated as required failure)"
   fi
 }
 
 if [[ "${SKIP_APPS}" -eq 0 ]]; then
-  run_step "App health (optional until Phase4)"
+  run_step "App health (web / api / reco)"
   reco_headers=()
   if [[ -n "${RECO_INTERNAL_API_KEY:-}" ]]; then
     reco_headers=(-H "X-Internal-Api-Key: ${RECO_INTERNAL_API_KEY}")
@@ -207,5 +207,5 @@ if [[ "${failures}" -gt 0 ]]; then
   exit 1
 fi
 
-echo "result: OK (required checks passed; app health skips are expected before Phase4)"
+echo "result: OK (required checks passed; app health skips mean process not listening)"
 exit 0

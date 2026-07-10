@@ -16,7 +16,7 @@ Prerequisites:
   - .env present (./scripts/dev/copy-env-example.sh)
   - reco reachable when testing api → reco (start reco first)
 
-Note: apps/api dev script is a placeholder until Phase4 implementation.
+Note: Express API（port 3001）。`apps/api` の `pnpm dev` をルート `dev:api` 経由で起動する。
 EOF
 }
 
@@ -37,7 +37,12 @@ if [[ ! -f "${ROOT}/package.json" ]]; then
   exit 1
 fi
 
-if [[ ! -f "${ROOT}/.env" ]]; then
+if [[ -f "${ROOT}/.env" ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "${ROOT}/.env"
+  set +a
+else
   echo "warn: .env not found. Run ./scripts/dev/copy-env-example.sh and edit values."
 fi
 
