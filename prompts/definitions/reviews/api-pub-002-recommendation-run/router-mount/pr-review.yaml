@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1143
   issue:
     number: 1138
   task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/router-mount.yaml"
@@ -56,7 +56,7 @@ input:
     number: 1138
     required: true
   pr:
-    number: null
+    number: 1143
     required: true
 
 review_points:
