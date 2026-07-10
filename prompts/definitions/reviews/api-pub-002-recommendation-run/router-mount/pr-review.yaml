@@ -1,0 +1,76 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-recommendation-run-router-mount-pr"
+  title: "API-PUB-002 レコメンド実行Routerマウント PRレビュー"
+  summary: "Epic #357 クローズ後 follow-up Task router-mount（#1138）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1138
+  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/router-mount.yaml"
+  source_branch: "feature/task-1138-api-pub-002-router-mount"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-002-recommendation-run/router-mount.yaml"
+    required: true
+  issue:
+    number: 1138
+    required: true
+  pr:
+    number: null
+    required: true
+
+review_points:
+  - "マウント path が `/api/v1/recommendations` と一致するか"
+  - "health との共存・middleware 順序"
+  - "scope 外（DB / reco / OpenAPI / migration）に触れていないか"
+  - "ローカル開発手順書の未マウント記述が更新されているか"
+  - "Epic #357 クローズ後 develop 直 PR 例外が PR 本文で説明されているか"
+  - "secret / .env 実値の非含有"
+
+human_review_points:
+  - "Epic #357 クローズ後の develop 直 PR 例外の承認"
+  - "マウントのみで止め、実 DB 置換を別 Issue のままにする判断"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に target.pr / input.pr へ反映"
+  - "親 Epic Branch: develop（Human 判断）"
