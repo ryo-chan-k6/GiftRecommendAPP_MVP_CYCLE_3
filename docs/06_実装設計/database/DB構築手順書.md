@@ -212,7 +212,7 @@ psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c "SELECT versio
 
 1. `supabase status` で DB URL を確認する
 2. リポジトリルート `.env` の `DATABASE_URL` を **ローカル Supabase の URL** に合わせる
-3. [`.env.example`](../../../.env.example) のダミー値（`localhost:5432`）はテンプレートであり、Supabase CLI 利用時は **54322** を使う
+3. [`.env.example`](../../../.env.example) の `DATABASE_URL` ダミーは Supabase CLI ローカル既定（port **54322**）に合わせている。実環境では `supabase status` の DB URL を `.env` に設定する
 
 api / reco が DB に接続する前に:
 
