@@ -140,3 +140,4 @@ Phase4 実装前でも **web** は Next.js が待受するため、停止時は 
 | PostgreSQL | `psql "$DATABASE_URL" -c 'SELECT 1'`（`DATABASE_URL` は [DB構築手順書 §8](../../docs/06_実装設計/database/DB構築手順書.md) / `supabase status` に合わせる） |
 | Redis | `redis-cli -u "$REDIS_URL" PING`、または `redis-cli` 未インストール時は smoke-check が **docker compose exec** 経由で PING |
 | app health | web / api / reco 起動後は health 200 を期待。未起動時は smoke-check が skip（exit 0） |
+| API-PUB-002 縦串 | [ローカル開発手順書 §10.4](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md)（Issue #1137）。`POST /api/v1/recommendations` は現状 404（Router 未マウント）。手順・既知ギャップは手順書を正本とする |

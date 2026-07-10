@@ -55,3 +55,4 @@ DB 起動・migration 後、リポジトリルートで以下を実行する（�
 | -------- | ---- |
 | PostgreSQL | `./scripts/db/start-local.sh` 済み、`DATABASE_URL` がローカル Supabase URL |
 | Redis | `./scripts/dev/start-redis.sh` 済み（別 Task A5） |
+| API-PUB-002 縦串前 | master seed 後に `./scripts/db/seed-test-data.sh`（item fixture）。手順・既知ギャップは [ローカル開発手順書 §10.4](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md)（Issue #1137） |
