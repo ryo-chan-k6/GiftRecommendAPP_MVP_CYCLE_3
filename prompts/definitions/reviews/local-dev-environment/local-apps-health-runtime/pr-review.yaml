@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1136
   issue:
     number: 1135
   task_definition: "prompts/definitions/tasks/local-dev-environment/local-apps-health-runtime.yaml"
@@ -50,7 +50,7 @@ input:
     number: 1135
     required: true
   pr:
-    number: null
+    number: 1136
     required: true
 
 review_points:
