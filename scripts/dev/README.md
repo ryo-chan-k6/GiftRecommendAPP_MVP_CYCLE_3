@@ -53,11 +53,11 @@ Phase3a（2026-06-07）の「docker-compose 同梱なし」は **PostgreSQL 用 
 # .env を編集後
 ./scripts/dev/check-env-names.sh --strict
 
-# 疎通チェック（DB / Redis 起動後。Phase3b では --skip-apps 推奨）
+# 疎通チェック（DB / Redis 起動後。api / reco placeholder 期間は --skip-apps 推奨）
 ./scripts/dev/smoke-check.sh --skip-apps
 # インフラのみ（env チェック省略例）
 # ./scripts/dev/smoke-check.sh --skip-env --skip-db --skip-apps   # Redis docker のみ確認
-# Phase4 以降（PUB-001 / INT-001 完了後）: health 成功も確認
+# web 起動後、または PUB-001 / INT-001 完了後: apps 疎通も確認
 # ./scripts/dev/smoke-check.sh
 
 # Redis（Docker Desktop 起動済みであること）
@@ -96,7 +96,7 @@ Ctrl+C
 | Redis | `./scripts/dev/stop-redis.sh`（§7.2。Docker コンテナは別途停止） |
 | プロセス残留時 | ポート **3000** / **3001** / **8000** を `lsof -i :<port>` 等で確認し、必要なら `kill <PID>` |
 
-Phase4 実装前（placeholder）は dev プロセスが即終了するため、通常は停止操作不要。
+Phase4 実装前でも **web** は Next.js が待受するため、停止時は `Ctrl+C` が必要。api / reco / batch が placeholder の場合は即終了するため、通常は停止操作不要。
 
 ### Python 単体テスト（worktree ごと）
 
@@ -123,7 +123,8 @@ Phase4 実装前（placeholder）は dev プロセスが即終了するため、
 | ---- | ---- |
 | monorepo 正本 | ルート `package.json` の `dev:reco` / `dev:api` / `dev:web` |
 | batch | ルート `pnpm dev:batch`（ジョブ単位 CLI。本格運用は Phase4b defer） |
-| placeholder | 各 app の `dev` script は Phase4 実装まで即終了する placeholder |
+| web | `apps/web` の `dev` は **Next.js 実起動**（`pnpm install` 後に `./scripts/dev/start-web.sh`） |
+| api / reco | `dev` script は **placeholder**（即終了）。health 200 は PUB-001 / INT-001 の別 Issue |
 
 | [ローカル開発手順書 §6.2](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | Python 初回セットアップ |
 | [ローカル開発手順書 §6–§10](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) | 起動・疎通確認 |
@@ -136,4 +137,4 @@ Phase4 実装前（placeholder）は dev プロセスが即終了するため、
 | env | `./scripts/dev/check-env-names.sh --strict` |
 | PostgreSQL | `psql "$DATABASE_URL" -c 'SELECT 1'`（`DATABASE_URL` は [DB構築手順書 §8](../../docs/06_実装設計/database/DB構築手順書.md) / `supabase status` に合わせる） |
 | Redis | `redis-cli -u "$REDIS_URL" PING`、または `redis-cli` 未インストール時は smoke-check が **docker compose exec** 経由で PING |
-| app health | Phase4 / PUB-001・INT-001 完了前は **optional**（script は skip、exit 0） |
+| app health | web は起動可能。api / reco health は PUB-001・INT-001 完了前は **optional**（script は skip、exit 0） |
