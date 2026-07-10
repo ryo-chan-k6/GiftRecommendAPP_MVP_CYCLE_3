@@ -17,7 +17,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1144
   issue:
     number: 1139
   task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/request-db-persist.yaml"
@@ -56,7 +56,7 @@ input:
     number: 1139
     required: true
   pr:
-    number: null
+    number: 1144
     required: true
 
 review_points:
