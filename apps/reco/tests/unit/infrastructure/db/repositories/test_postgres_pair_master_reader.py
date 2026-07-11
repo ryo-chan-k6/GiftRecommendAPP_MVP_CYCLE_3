@@ -25,9 +25,25 @@ def test_postgres_pair_master_reader_resolves_active_pair() -> None:
 
     assert resolved == pair_id
     assert session.operations[0][0] == "query"
-    assert "pair_master" in session.operations[0][1]
-    assert "is_active" in session.operations[0][1]
+    sql = session.operations[0][1]
+    assert "pair_master" in sql
+    assert "is_active = true" in sql
     assert session.operations[0][2] == ("boss", "thanks")
+
+
+def test_postgres_pair_master_reader_ignores_inactive_pair() -> None:
+    """is_active=false 相当（行なし）では None を返す。"""
+    session = ScriptedDatabaseSession(scripted_query_results=[[]])
+    reader = PostgresPairMasterReader(session=session)
+
+    assert (
+        reader.resolve_pair_id(
+            relationship_code="boss",
+            occasion_code="thanks",
+        )
+        is None
+    )
+    assert "is_active = true" in session.operations[0][1]
 
 
 def test_postgres_pair_master_reader_returns_none_when_missing() -> None:

@@ -18,6 +18,7 @@ from reco.composition import (
 )
 from reco.composition.observability import build_production_observability_modules
 from reco.infrastructure.db.repositories.pair_master_reader import (
+    InMemoryPairMasterReader,
     PostgresPairMasterReader,
 )
 from reco.infrastructure.db.repositories.postgres_error_log_repository import (
@@ -43,6 +44,7 @@ def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
     ports, helpers = build_composition_ports(CompositionMode.DEFAULT)
 
     assert type(ports.run_recorder) is type(expected_ports.run_recorder)
+    assert isinstance(ports.run_recorder.pair_reader, InMemoryPairMasterReader)
     assert type(ports.metric_logger) is type(expected_ports.metric_logger)
     assert set(helpers) == set(expected_helpers)
 
@@ -54,6 +56,7 @@ def test_build_production_ports_replaces_observability_modules_only() -> None:
     ports, helpers = build_production_ports(database_session=session)
 
     assert type(ports.run_recorder) is RecommendationRunRecorder
+    assert isinstance(ports.run_recorder.pair_reader, PostgresPairMasterReader)
     assert type(ports.phase_log_writer) is PhaseLogWriter
     assert type(ports.error_handler) is RecoErrorHandler
     assert type(ports.metric_logger) is MetricLogger
@@ -107,6 +110,7 @@ def test_build_composition_ports_production_selects_postgres_observability() -> 
     )
 
     assert isinstance(ports.run_recorder, RecommendationRunRecorder)
+    assert isinstance(ports.run_recorder.pair_reader, PostgresPairMasterReader)
     assert isinstance(
         helpers["score_distribution_metric_repository"],
         PostgresScoreDistributionMetricRepository,
