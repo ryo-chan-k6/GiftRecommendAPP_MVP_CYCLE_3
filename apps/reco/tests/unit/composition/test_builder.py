@@ -17,6 +17,7 @@ from reco.composition import (
     build_production_ports,
 )
 from reco.composition.observability import build_production_observability_modules
+from reco.application.config_version_resolver import ProductionConfigRepository
 from reco.infrastructure.db.repositories.pair_master_reader import (
     InMemoryPairMasterReader,
     PostgresPairMasterReader,
@@ -49,7 +50,7 @@ def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
     assert set(helpers) == set(expected_helpers)
 
 
-def test_build_production_ports_replaces_observability_modules_only() -> None:
+def test_build_production_ports_replaces_observability_and_config_resolver() -> None:
     default_ports, _ = build_default_stub_ports()
     session = ScaffoldDatabaseSession(backend="scaffold-production-test")
 
@@ -60,8 +61,9 @@ def test_build_production_ports_replaces_observability_modules_only() -> None:
     assert type(ports.phase_log_writer) is PhaseLogWriter
     assert type(ports.error_handler) is RecoErrorHandler
     assert type(ports.metric_logger) is MetricLogger
+    assert isinstance(ports.config_resolver.repository, ProductionConfigRepository)
+    assert ports.config_resolver is not default_ports.config_resolver
 
-    assert type(default_ports.config_resolver) is type(ports.config_resolver)
     assert type(default_ports.candidate_retriever) is type(ports.candidate_retriever)
     assert type(default_ports.reason_generator) is type(ports.reason_generator)
 
@@ -75,6 +77,7 @@ def test_build_production_ports_replaces_observability_modules_only() -> None:
         repositories.score_distribution_metric_repository,
         PostgresScoreDistributionMetricRepository,
     )
+    assert helpers["config_repository"] is ports.config_resolver.repository
 
 
 def test_build_production_observability_modules_wires_postgres_repositories() -> None:
@@ -135,12 +138,13 @@ def test_build_production_ports_preserves_non_observability_ports_from_default()
     ports, _ = build_production_ports(database_session=session)
     expected = replace(
         default_ports,
+        config_resolver=ports.config_resolver,
         run_recorder=ports.run_recorder,
         phase_log_writer=ports.phase_log_writer,
         error_handler=ports.error_handler,
         metric_logger=ports.metric_logger,
     )
 
-    assert type(expected.config_resolver) is type(ports.config_resolver)
+    assert isinstance(ports.config_resolver.repository, ProductionConfigRepository)
     assert type(expected.final_ranker) is type(ports.final_ranker)
     assert type(expected.snapshot_builder) is type(ports.snapshot_builder)

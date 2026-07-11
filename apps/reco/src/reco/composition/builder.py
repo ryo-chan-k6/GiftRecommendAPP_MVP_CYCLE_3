@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from reco.application.config_version_resolver import (
+    ConfigVersionResolver,
+    build_production_config_repository,
+)
 from reco.application.recommendation_orchestrator import (
     OrchestratorPorts,
     build_default_stub_ports,
@@ -19,16 +23,20 @@ def build_production_ports(
     database_url: str | None = None,
     database_session: DatabaseSession | None = None,
 ) -> tuple[OrchestratorPorts, dict[str, object]]:
-    """Build production composition with Postgres observability and MVP default elsewhere."""
+    """Build production composition with Postgres observability and config versions."""
 
     base_ports, base_helpers = build_default_stub_ports()
     session = database_session or create_database_session(
         resolve_database_url(database_url),
     )
     observability = build_production_observability_modules(session)
+    config_resolver = ConfigVersionResolver(
+        repository=build_production_config_repository(session),
+    )
 
     ports = replace(
         base_ports,
+        config_resolver=config_resolver,  # type: ignore[arg-type]
         run_recorder=observability["run_recorder"],  # type: ignore[arg-type]
         phase_log_writer=observability["phase_log_writer"],  # type: ignore[arg-type]
         error_handler=observability["error_handler"],  # type: ignore[arg-type]
@@ -37,6 +45,7 @@ def build_production_ports(
     helpers = {
         **base_helpers,
         **observability,
+        "config_repository": config_resolver.repository,
     }
     return ports, helpers
 

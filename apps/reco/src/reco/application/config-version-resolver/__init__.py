@@ -53,6 +53,11 @@ from .models import (  # noqa: E402
     GenerationType,
     ResolvedConfigVersions,
 )
+from .postgres_repository import (  # noqa: E402
+    PostgresConfigRepository,
+    ProductionConfigRepository,
+    build_production_config_repository,
+)
 from .resolver import ConfigVersionResolver, build_default_config_resolver  # noqa: E402
 
 __all__ = [
@@ -67,11 +72,14 @@ __all__ = [
     "GenerationType",
     "InMemoryConfigRepository",
     "MODULE_ID",
+    "PostgresConfigRepository",
+    "ProductionConfigRepository",
     "REQUIRED_MODEL_TYPES",
     "ResolvedConfigVersions",
     "SURFACE_ERROR_CODE",
     "build_default_config_resolver",
     "build_default_in_memory_repository",
+    "build_production_config_repository",
 ]
 
 _virtual = sys.modules[_IMPORT_ROOT]
