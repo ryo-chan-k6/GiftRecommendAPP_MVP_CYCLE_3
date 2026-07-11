@@ -1,0 +1,238 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-002-recommendation-run-request-db-persist"
+  title: "API-PUB-002:recommendation_request実DB永続化"
+  summary: "Epic #357 クローズ後 follow-up。ScaffoldDbSession を DATABASE_URL 経由の実 PostgreSQL session に差し替え、PUB-002 で recommendation_request を実永続化する（#1137 縦串スモークで確認したギャップ No.2）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  epic_issue_number: 357
+  epic_branch: "develop"
+  related_issues:
+    - number: 357
+      purpose: "履歴参照（Epic クローズ済み）"
+    - number: 1137
+      purpose: "ローカル縦串スモークで scaffold 永続化ギャップを確認"
+    - number: 1138
+      purpose: "Router マウント（先行・完了推奨）"
+    - number: 1128
+      purpose: "recommendations モジュール実装"
+  related_prs:
+    - number: 1142
+      purpose: "縦串スモーク（既知ギャップ記録）"
+    - number: 1143
+      purpose: "Router マウント merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  RecommendationRequestRepository は ScaffoldDbSession 経由で INSERT 相当を呼ぶが、scaffold は実 PostgreSQL に書かない。
+  reco の production Run Recorder は recommendation_request 行の存在を要求する（#1137 診断: recommendation_request not found）。
+  #1138 / PR #1143 で Router はマウント済み。本 Task で実 DB 永続化を行い、発行 ID で reco が Request を参照できる状態にする。
+  Epic #357 Reopen は行わず、develop ベース・develop 向け PR の横断 follow-up とする。
+
+objective: |
+  PUB-002 処理で recommendation_request をローカル PostgreSQL に実永続化し、発行した recommendationRequestId で reco が Request を参照できる状態にする。
+  失敗時は既存 Public エラー方針と整合させる。ローカル開発手順書 §10.4.4 No.2 を更新する。
+
+scope:
+  - "api 側の実 DB session（DATABASE_URL）導入、または既存基盤があればそれを利用"
+  - "RecommendationRequestRepository / Router 依存注入を実 session に切り替え（ローカル dev で実 DB）"
+  - "recommendation_request テーブルへの INSERT が成功し、psql で行を確認できること"
+  - "失敗時の Public エラー（REQUEST_SAVE_FAILED 等）との整合"
+  - "単体テスト: session mock / 実 DB は test_policy で明示（CI は mock / scaffold）"
+  - "ローカル開発手順書 §10.4.4 No.2 の記述更新"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "supabase/migrations/** 変更（テーブルは既存前提）"
+  - "OpenAPI / Orval / generated 変更"
+  - "reco pair_reader / config version / production ports 全面置換（別 Issue #1140 / #1141）"
+  - "Batch / Epic C fixture 全面整備"
+  - "本番 Neon 接続や secret 実値の docs 記載"
+  - "Epic #357 Reopen"
+  - "SCR-002 / web 画面"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+  files:
+    - path: "apps/api/src/app/recommendations/request-repository.ts"
+      required: true
+    - path: "apps/api/src/app/recommendations/routes.ts"
+      required: true
+    - path: "apps/api/src/infrastructure/db/session.ts"
+      required: true
+    - path: "apps/api/src/app.ts"
+      required: true
+    - path: "supabase/migrations/20260617120000_initial_schema.sql"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/api/src/infrastructure/db/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/api/src/app/recommendations/routes.ts"
+      action: "update"
+      required: true
+    - path: "apps/api/src/app/recommendations/request-repository.ts"
+      action: "update"
+      required: false
+    - path: "apps/api/package.json"
+      action: "update"
+      required: false
+    - path: "apps/api/tests/unit/infrastructure/**"
+      action: "create_or_update"
+      required: false
+
+acceptance_criteria:
+  - "Task Definition / Review Definition が作成され、Issue に path が反映されている"
+  - "PUB-002 実行後に recommendation_request 行が DB に存在する（ローカル DATABASE_URL）"
+  - "発行 ID が Response / reco 呼び出しに渡る"
+  - "migration 変更がない"
+  - "secret / .env 実値が commit・docs に含まれない"
+  - "PR target が develop（Epic #357 クローズ後 follow-up 例外を PR 本文で説明）"
+  - "unit test が CI で実 DB に依存しない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1139-api-pub-002-request-db-persist"
+  summary: "api-pub-002-request-db-persist"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-11"
+    due_date: "2026-07-13"
+
+issue:
+  number: 1139
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+dependencies:
+  epics:
+    - number: 357
+      purpose: "API-PUB-002 develop merge 済み（CLOSED・履歴）"
+  issues:
+    - number: 1138
+      purpose: "Router マウント完了（PUB-002 到達前提）"
+    - number: 1137
+      purpose: "縦串スモークで scaffold ギャップ確認"
+    - number: 1128
+      purpose: "recommendations モジュール実装済み"
+  prs:
+    - number: 1143
+      purpose: "Router マウント merge"
+    - number: 1142
+      purpose: "縦串スモーク merge"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "apps/api/src/infrastructure/db/**"
+    - "apps/api/src/app/recommendations/routes.ts"
+    - "apps/api/src/app/recommendations/request-repository.ts"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "apps/api unit tests（Repository / session。実 DB 非依存）"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  manual_checks:
+    - "DATABASE_URL 設定済みで start-api 後、PUB-002 curl → psql で recommendation_request 行確認"
+  not_required:
+    - "INT-002 完全成功（pair / config version）"
+    - "production DB 接続"
+    - "e2e / SCR-002"
+  skip_reason:
+    "INT-002 完全成功": "後続 Issue（#1140 pair_reader / #1141 config version）依存"
+    "production DB 接続": "禁止。ローカル DATABASE_URL のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "SQL injection / parameter binding"
+    - "scaffold と実 session の切替境界が明確か"
+    - "migration を増やしていないか"
+    - "#1138 との依存関係が PR 本文で明示されているか"
+    - "接続文字列・ログに secret が出ないこと"
+    - "Epic #357 クローズ後 develop 直 PR 例外の説明"
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #357 クローズ後 follow-up。実 DB session 導入の横断影響を記録可"
+
+human_decision_points:
+  - "Epic #357 クローズ後の develop 直 PR 例外の承認"
+  - "api の DB アクセス方針（session 実装の置き場所・責務）の承認"
+  - "ローカルのみ実 DB / CI は mock・scaffold のまま、の test 方針"
+
+stop_conditions:
+  - "migration が必要になった"
+  - "OpenAPI / generated 変更が必要になった"
+  - "DB 権限・RLS 等で設計判断が必要になった"
+  - "reco 側修正が本 Task に必須になった"
+
+notes:
+  - "縦串チェーン順序: Router マウント（#1138 完了）→ 本 Issue → pair_master reader（#1140）→ config version 整合（#1141）"
+  - "Related: #1137 / #1138 / #1128 / #357"
+  - "workstream: api-pub-002-recommendation-run"
+  - "Review Definition: prompts/definitions/reviews/api-pub-002-recommendation-run/request-db-persist/pr-review.yaml"
