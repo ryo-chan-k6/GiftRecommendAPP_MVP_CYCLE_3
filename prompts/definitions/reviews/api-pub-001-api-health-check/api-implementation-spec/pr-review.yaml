@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1156
   issue: 1155
   task_definition: "prompts/definitions/tasks/api-pub-001-api-health-check/api-implementation-spec.yaml"
   source_branch: "docs/task-1155-api-pub-001-api-health-check-api-implementation-spec"
@@ -70,7 +70,7 @@ input:
     number: 1155
     required: true
   pr:
-    number: null
+    number: 1156
     required: true
   diff:
     required: true
