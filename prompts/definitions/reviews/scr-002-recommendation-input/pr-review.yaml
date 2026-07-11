@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1154
   issue: 1152
   task_definition: "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
   source_branch: "docs/task-1152-scr-002-recommendation-input-screen-spec"
@@ -70,7 +70,7 @@ input:
     number: 1152
     required: true
   pr:
-    number: null
+    number: 1154
     required: true
   diff:
     required: true
