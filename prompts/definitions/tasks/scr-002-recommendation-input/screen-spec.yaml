@@ -19,7 +19,9 @@ parent:
       purpose: "親 Epic"
     - number: 357
       purpose: "依存 Epic（API-PUB-002 develop merge 済み）"
-  related_prs: []
+  related_prs:
+    - number: 1154
+      purpose: "本 Task PR（親 Epic Branch 向け）"
 
 commands:
   primary: "/start-task"
