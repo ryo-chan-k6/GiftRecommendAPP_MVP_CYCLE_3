@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 
 import { createCorsMiddleware } from "./cors/index.js";
 import { errorHandler } from "./error/index.js";
@@ -16,6 +16,8 @@ export * from "./validation/index.js";
  * errorHandler は routes 登録後に必ず末尾へ配置する。
  */
 export function registerFoundationMiddlewares(app: Express): void {
+  // PUB-002 等の JSON body を req.body へ載せる（未設定だと body が undefined のまま）
+  app.use(express.json());
   app.use(requestMetaMiddleware);
   app.use(createCorsMiddleware());
 }
