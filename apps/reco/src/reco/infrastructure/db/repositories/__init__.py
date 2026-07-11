@@ -3,6 +3,7 @@
 from reco.infrastructure.db.repositories.pair_master_reader import (
     InMemoryPairMasterReader,
     PairMasterReader,
+    PostgresPairMasterReader,
 )
 from reco.infrastructure.db.repositories.postgres_error_log_repository import (
     PostgresErrorLogRepository,
@@ -34,6 +35,7 @@ __all__ = [
     "InMemoryPairMasterReader",
     "InMemoryRecommendationRunRepository",
     "PairMasterReader",
+    "PostgresPairMasterReader",
     "PostgresErrorLogRepository",
     "PostgresMetricLogRepository",
     "PostgresPhaseLogRepository",

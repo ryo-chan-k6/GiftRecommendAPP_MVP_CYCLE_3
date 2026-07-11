@@ -8,12 +8,10 @@ from reco.application.error_log_writer import ErrorLogWriter
 from reco.application.metric_logger import MetricLogger
 from reco.application.phase_log_writer import PhaseLogWriter
 from reco.application.reco_error_handler import RecoErrorHandler
-from reco.application.recommendation_run_recorder import (
-    SCAFFOLD_PAIR_ID,
-    SCAFFOLD_PAIR_KEY,
-    RecommendationRunRecorder,
+from reco.application.recommendation_run_recorder import RecommendationRunRecorder
+from reco.infrastructure.db.repositories.pair_master_reader import (
+    PostgresPairMasterReader,
 )
-from reco.infrastructure.db.repositories.pair_master_reader import InMemoryPairMasterReader
 from reco.infrastructure.db.repositories.postgres_error_log_repository import (
     PostgresErrorLogRepository,
 )
@@ -71,9 +69,7 @@ def build_production_observability_modules(
 
     run_recorder = RecommendationRunRecorder(
         run_repository=as_recommendation_run_repository(repositories.run_repository),
-        pair_reader=InMemoryPairMasterReader(
-            pairs={SCAFFOLD_PAIR_KEY: SCAFFOLD_PAIR_ID},
-        ),
+        pair_reader=PostgresPairMasterReader(session=session),
         logger=ScaffoldRecoLogger(),
     )
     phase_log_writer = PhaseLogWriter(
