@@ -19,9 +19,9 @@ branch:
 
 target:
   pr: null
-  issue: null  # 対応 Task Issue 番号を /start-task 後に追記
+  issue: 1152
   task_definition: "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
-  source_branch: "docs/task-<issue-number>-scr-002-recommendation-input-screen-spec"
+  source_branch: "docs/task-1152-scr-002-recommendation-input-screen-spec"
   target_branch: "feature/epic-1147-scr-002-recommendation-input"
   parent_epic_issue: "[Epic]SCR-002:レコメンド条件入力画面"
   parent_epic_branch: "feature/epic-1147-scr-002-recommendation-input"
@@ -67,7 +67,7 @@ input:
     path: "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
     required: true
   issue:
-    number: null
+    number: 1152
     required: true
   pr:
     number: null
