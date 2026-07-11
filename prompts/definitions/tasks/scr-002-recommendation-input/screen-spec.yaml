@@ -10,9 +10,13 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]SCR-002:レコメンド条件入力画面"
-  epic_issue_number: null  # 実Issue起票後に追記。/start-task §5.1 で GitHub 実在確認。
-  epic_branch: "feature/epic-<issue-number>-scr-002-recommendation-input"
-  related_issues: []
+  epic_issue_number: 1147
+  epic_branch: "feature/epic-1147-scr-002-recommendation-input"
+  related_issues:
+    - number: 1147
+      purpose: "親 Epic"
+    - number: 357
+      purpose: "依存 Epic（API-PUB-002 develop merge 済み）"
   related_prs: []
 
 commands:
@@ -127,9 +131,9 @@ acceptance_criteria:
 branch:
   no_branch: false
   name: "docs/task-<issue-number>-scr-002-recommendation-input-screen-spec"
-  base: "feature/epic-<issue-number>-scr-002-recommendation-input"
-  target: "feature/epic-<issue-number>-scr-002-recommendation-input"
-  worktree_required: false
+  base: "feature/epic-1147-scr-002-recommendation-input"
+  target: "feature/epic-1147-scr-002-recommendation-input"
+  worktree_required: true
 
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
@@ -137,8 +141,8 @@ project:
     phase: "06_実装設計"
     status: "Todo"
     priority: "high"
-    planned_start: null
-    due_date: null
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
 
 issue:
   unit: "task"
@@ -146,7 +150,10 @@ issue:
   area: "web"
 
 dependencies:
-  epics: []  # 依存Epic [Epic]API-PUB-002:レコメンド実行 の実Issue番号確定後に追加する。
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "レコメンド実行 API（develop merge 済み）。画面仕様の呼び出し先正本"
   issues: []
   prs: []
   tasks:
@@ -206,8 +213,9 @@ stop_conditions:
   - "画面一覧に SCR-002 が存在しない場合"
 
 notes:
-  - "本Taskは画面仕様書作成の試作Taskである。命名の正本は Task Definition設計書 §15.1（共通）・§15.3（画面）。"
+  - "命名の正本は Task Definition設計書 §15.1（共通）・§15.3（画面）。"
   - "Issueタイトル: [Task]SCR-002:レコメンド条件入力画面仕様書作成"
-  - "親Epicは [Epic]SCR-002:レコメンド条件入力画面（識別子単位Epic方針 / 成果物化方針書 §3.5）。実Issue起票後に parent.epic_issue_number / branch.base / branch.target を実値へ更新する。"
-  - "依存Epicは [Epic]API-PUB-002:レコメンド実行。実Issue起票後に dependencies.epics へ追記する（成果物化方針書 §3.5.3）。"
-  - "Epic Definition の正本は prompts/definitions/epics/scr-002-recommendation-input/epic.yaml。"
+  - "親Epic: #1147 [Epic]SCR-002:レコメンド条件入力画面 / Branch: feature/epic-1147-scr-002-recommendation-input"
+  - "依存Epic: #357 [Epic]API-PUB-002:レコメンド実行（成果物化方針書 §3.5.3）"
+  - "Epic Definition の正本は prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
+  - "次手順: /start-task @prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"

@@ -1,0 +1,206 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-002-recommendation-input-implementation"
+  title: "SCR-002:レコメンド条件入力画面実装"
+  summary: "SCR-002（レコメンド条件入力画面）を apps/web に実装する。画面仕様書および API-PUB-002 / API-PUB-005〜008 を前提に、条件入力 UI・マスタ取得・レコメンド実行呼び出しを提供する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-002:レコメンド条件入力画面"
+  epic_issue_number: 1147
+  epic_branch: "feature/epic-1147-scr-002-recommendation-input"
+  related_issues:
+    - number: 1147
+      purpose: "親 Epic"
+    - number: 357
+      purpose: "依存 Epic（API-PUB-002 develop merge 済み）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  SCR-002 Epic（#1147）の実装 Task。画面仕様書 Task 完了後、かつ PUB-005〜008 マスタ API 実装完了後に着手する（実装フェーズ並列計画・Human 判断）。
+  本 Definition はレーン1時点で先行作成し、/start-task は着手条件充足後に実行する。
+
+objective: |
+  SCR-002 の条件入力画面を apps/web 上で実装し、マスタ取得・バリデーション・API-PUB-002 呼び出し・画面状態遷移を画面仕様書どおりに提供する。
+
+scope:
+  - "apps/web/src/app/recommendations/** および apps/web/src/features/recommendation-input/** への画面実装"
+  - "API-PUB-005〜008 マスタ取得と選択肢表示"
+  - "API-PUB-002 レコメンド実行呼び出し（generated api-client 利用）"
+  - "入力バリデーション・エラー表示・ローディング等の画面状態"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "画面仕様書の新規作成（screen-spec Task）"
+  - "OpenAPI / Orval / generated の手編集"
+  - "apps/api / apps/reco / apps/batch の変更"
+  - "共通 UI（apps/web/src/components/**）の新規横断追加（web-foundation / 共通UI Epic の範囲）"
+  - "E2E 全面整備"
+  - "網羅的単体テスト（unit-test Task に委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "実装正本（表示・入力・状態・遷移・利用 API）"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-002 行との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "遷移元・遷移先の確認"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+      purpose: "入力項目・バリデーションのドメイン正本"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-002 / API-PUB-005〜008 の確認"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/web/src/app/recommendations/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/web/src/features/recommendation-input/**"
+      action: "create_or_update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-002 画面実装"
+  - "マスタ取得・レコメンド実行の UI 連携"
+
+acceptance_criteria:
+  - "画面仕様書の必須入力・状態・遷移が実装されている"
+  - "API-PUB-002 / API-PUB-005〜008 を generated api-client 経由で呼び出している"
+  - "epic_scope.allowed_paths 外へ変更していない"
+  - "secret / .env 実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-scr-002-recommendation-input-implementation"
+  base: "feature/epic-1147-scr-002-recommendation-input"
+  target: "feature/epic-1147-scr-002-recommendation-input"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Backlog"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "レコメンド実行 API"
+  issues: []
+  prs: []
+  tasks:
+    - "画面仕様書 Task（screen-spec）が親 Epic Branch に merge 済みであること"
+    - "API-PUB-005〜008 マスタ API 実装が完了していること（Human 判断・着手条件）"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "screen-spec"
+  blocks:
+    - "unit-test"
+  exclusive_files:
+    - "apps/web/src/app/recommendations/**"
+    - "apps/web/src/features/recommendation-input/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "smoke / component 最小確認"
+  commands: []
+  manual_checks:
+    - "画面仕様書の主要状態が再現できること"
+  not_required:
+    - "unit test 網羅"
+  skip_reason:
+    "unit test 網羅": "unit-test Task に委譲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面仕様書との差分がないか"
+    - "epic_scope.allowed_paths 内か"
+    - "generated 手編集がないか"
+    - "secret 非含有か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の実装 Task。作業計画は Issue、レビューは PR を正本とする。"
+
+stop_conditions:
+  - "画面仕様書が未作成の場合"
+  - "PUB-005〜008 マスタ API が未完了のまま着手が求められた場合（Human 確認）"
+  - "OpenAPI / generated 手編集が必要に見える場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-002:レコメンド条件入力画面実装"
+  - "親Epic: #1147 / Branch: feature/epic-1147-scr-002-recommendation-input"
+  - "レーン1時点では Definition のみ作成。/start-task はマスタ API 完了後"
+  - "Review Definition は /start-task 時に prompts/definitions/reviews/scr-002-recommendation-input/implementation/pr-review.yaml を追加する"
