@@ -1,0 +1,169 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-001-api-health-check-api-implementation-spec-pr"
+  title: "API-PUB-001 APIヘルスチェックAPI実装仕様書 PRレビュー"
+  summary: "API-PUB-001（APIヘルスチェック / Public API）API実装仕様書作成 Task（api-implementation-spec.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1155
+  task_definition: "prompts/definitions/tasks/api-pub-001-api-health-check/api-implementation-spec.yaml"
+  source_branch: "docs/task-1155-api-pub-001-api-health-check-api-implementation-spec"
+  target_branch: "feature/epic-384-pub-001-api-health-check"
+  parent_epic_issue: "[Epic]API-PUB-001:APIヘルスチェック"
+  parent_epic_branch: "feature/epic-384-pub-001-api-health-check"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-001-api-health-check/api-implementation-spec.yaml"
+    required: true
+  issue:
+    number: 1155
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-384-pub-001-api-health-check"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+      required: true
+      purpose: "作成成果物（実装面）の内容確認"
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI契約仕様書.md"
+      required: true
+      purpose: "前提契約との整合確認"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables:
+      - path: "prompts/templates/docs/api-implementation-spec.md"
+        required: true
+        purpose: "Task成果物が api-implementation-spec.md に沿って作成されているか確認するため"
+        applies_to:
+          - "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+
+review_points:
+  common:
+    - "Task Definition（api-implementation-spec.yaml）の scope を満たしているか"
+    - "acceptance_criteria を満たしているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+  docs:
+    - "api-implementation-spec.md の章構成に準拠しているか"
+    - "契約面（api-contract-spec.md 相当）の再掲が混入していないか"
+    - "Express / request-meta / 集約 status 境界が記載されているか"
+    - "依存個別結果を Response に載せない方針が契約と整合しているか"
+    - "エラーマップ・trace 伝播・api_request_count / api_error_count が設計書と整合しているか"
+    - "#1135 先行実装とのギャップが未決事項に明示されているか"
+  api_contract:
+    - "OpenAPI / generated 変更が混在していないか"
+    - "契約仕様書・OpenAPI との矛盾がないか（503 ErrorResponse / degraded=200 の明示があるか）"
+  security:
+    - "secret や .env 実値が含まれていないか"
+  epic_scope:
+    - "PR差分が親Epic epic_scope.allowed_paths 内に収まっているか"
+    - "apps/api 実装変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "docs 不備がある"
+  needs_human_decision:
+    conditions:
+      - "MVP 依存 probe 方針（A/B）の判断が必要"
+      - "Epic Branch への develop 取込タイミング判断が必要"
+  split_required:
+    conditions:
+      - "OpenAPI / generated 変更が混在している"
+      - "apps/api 実装変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新する"
+  - "対応 Task Definition: prompts/definitions/tasks/api-pub-001-api-health-check/api-implementation-spec.yaml"
+  - "対応 Issue: #1155"
