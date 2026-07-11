@@ -17,6 +17,9 @@ from reco.composition import (
     build_production_ports,
 )
 from reco.composition.observability import build_production_observability_modules
+from reco.infrastructure.db.repositories.pair_master_reader import (
+    PostgresPairMasterReader,
+)
 from reco.infrastructure.db.repositories.postgres_error_log_repository import (
     PostgresErrorLogRepository,
 )
@@ -78,6 +81,7 @@ def test_build_production_observability_modules_wires_postgres_repositories() ->
     run_recorder = modules["run_recorder"]
     assert isinstance(run_recorder, RecommendationRunRecorder)
     assert isinstance(run_recorder.run_repository, PostgresRecommendationRunRepository)
+    assert isinstance(run_recorder.pair_reader, PostgresPairMasterReader)
 
     phase_log_writer = modules["phase_log_writer"]
     assert isinstance(phase_log_writer, PhaseLogWriter)
