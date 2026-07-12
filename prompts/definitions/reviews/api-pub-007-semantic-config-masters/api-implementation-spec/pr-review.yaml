@@ -1,0 +1,147 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-007-semantic-config-masters-api-implementation-spec-pr"
+  title: "API-PUB-007 Semantic設定取得API実装仕様書 PRレビュー"
+  summary: "API-PUB-007（Semantic設定取得 / Public API）API実装仕様書作成 Task（api-implementation-spec.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1189
+  issue: 1188
+  task_definition: "prompts/definitions/tasks/api-pub-007-semantic-config-masters/api-implementation-spec.yaml"
+  source_branch: "docs/task-1188-api-pub-007-semantic-config-masters-api-implementation-spec"
+  target_branch: "feature/epic-389-pub-007-semantic-config-masters"
+  parent_epic_issue: "[Epic]API-PUB-007:Semantic設定取得"
+  parent_epic_branch: "feature/epic-389-pub-007-semantic-config-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-007-semantic-config-masters/api-implementation-spec.yaml"
+    required: true
+  issue:
+    number: 1188
+    required: true
+  pr:
+    number: 1189
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-389-pub-007-semantic-config-masters"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance を満たしているか"
+    - "Task PR target が親 Epic Branch か"
+  docs:
+    - "api-implementation-spec.md 準拠・契約面再掲なし"
+    - "current Version 解決と GRS-CFG-001/006 境界が契約と整合"
+    - "内部 UUID / Rule 非公開が明記されているか"
+  api_contract:
+    - "OpenAPI / generated 変更が混在していないか"
+  security:
+    - "secret / .env 実値がないか"
+  epic_scope:
+    - "allowed_paths 内か"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+  request_changes:
+    conditions:
+      - "docs 不備がある"
+  needs_human_decision:
+    conditions:
+      - "PUB-008 共通化方針の確定が必要"
+  split_required:
+    conditions:
+      - "OpenAPI / apps 実装変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+notes:
+  - "Issue / PR 作成後に番号を更新する"
+  - "親 Epic: #389"
