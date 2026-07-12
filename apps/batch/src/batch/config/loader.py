@@ -46,6 +46,7 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         database_url=_read_optional_str(source, "DATABASE_URL"),
         openai_api_key=_read_optional_str(source, "OPENAI_API_KEY"),
         rakuten_application_id=_read_optional_str(source, "RAKUTEN_APPLICATION_ID"),
+        rakuten_access_key=_read_optional_str(source, "RAKUTEN_ACCESS_KEY"),
         object_storage_bucket=_read_optional_str(source, "OBJECT_STORAGE_BUCKET"),
         object_storage_endpoint=_read_optional_str(source, "OBJECT_STORAGE_ENDPOINT"),
         object_storage_access_key=_read_optional_str(source, "OBJECT_STORAGE_ACCESS_KEY"),

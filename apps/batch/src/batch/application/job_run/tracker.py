@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
-JobRunStatus = Literal["pending", "running", "succeeded", "failed"]
+JobRunStatus = Literal["pending", "running", "succeeded", "partially_succeeded", "failed"]
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,118 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-001-rakuten-genre-sync-batch-spec-pr"
+  title: "BATCH-001 楽天ジャンル同期バッチ仕様書 PRレビュー"
+  summary: "BATCH-001（楽天ジャンル同期Batch）バッチ仕様書作成 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1162-batch-001-rakuten-genre-sync-batch-spec"
+  base: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  target: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  worktree_required: true
+
+target:
+  pr: 1163
+  issue: 1162
+  task_definition: "prompts/definitions/tasks/batch-001-rakuten-genre-sync/batch-spec.yaml"
+  source_branch: "docs/task-1162-batch-001-rakuten-genre-sync-batch-spec"
+  target_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  parent_epic_issue: "[Epic]BATCH-001:楽天ジャンル同期Batch"
+  parent_epic_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-001-rakuten-genre-sync/batch-spec.yaml"
+    required: true
+  issue:
+    number: 1162
+    required: true
+  pr:
+    number: 1163
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-001 行との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "実行方式・Raw/Staging・ログ方針との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "楽天 API 連携・ジャンル取得方針との整合確認"
+    - path: "prompts/templates/docs/batch-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（実装 / workflow YAML / DB schema / 他 Batch）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "batch-spec.md テンプレの主要章が充足しているか"
+    - "バッチ処理一覧の BATCH-001 と Batch ID・処理概要・入出力・依存が一致しているか"
+    - "後続 BATCH-002 / BATCH-003 との依存関係が明記されているか"
+    - "冪等キー・ログ・エラーコード参照が実装可能な粒度か"
+  security:
+    - "secret / .env 実値 / APIキー実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+notes:
+  - "Issue #1162。PR 番号は /create-pr 後に target.pr / input.pr.number を更新する"
+  - "対応 Task Definition: prompts/definitions/tasks/batch-001-rakuten-genre-sync/batch-spec.yaml"
