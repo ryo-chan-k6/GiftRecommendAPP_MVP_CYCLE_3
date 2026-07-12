@@ -1,6 +1,9 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 
-import { createDbSession } from "../../infrastructure/db/factory.js";
+import {
+  createDbSession,
+  type DbSession,
+} from "../../infrastructure/db/index.js";
 import type { ApiLogger } from "../../infrastructure/logger/logger.js";
 import { ApiError } from "../../middlewares/error/api-error.js";
 import { resolveRequestMeta } from "../../middlewares/request-meta.js";
@@ -10,6 +13,8 @@ import {
   MASTERS_RELATIONSHIPS_METRICS,
   MASTERS_RELATIONSHIPS_PATH,
 } from "./constants.js";
+import { createOccasionController } from "./occasion-controller.js";
+import { OccasionMasterRepository } from "./occasion-repository.js";
 import {
   isDatabaseUrlConfigured,
   RelationshipMasterRepository,
@@ -23,8 +28,14 @@ import type {
 
 export type MastersRouterDeps = {
   logger?: ApiLogger;
+  /** API-PUB-005: Relationship 読取（未指定時は DATABASE_URL 有無で既定実装）。 */
   relationshipReader?: RelationshipMasterReader;
   generatedAtFactory?: () => string;
+  /** API-PUB-006: Occasion 用 DbSession（未指定時は createDbSession）。 */
+  dbSession?: DbSession;
+  occasionRepository?: OccasionMasterRepository;
+  /** API-PUB-006: false で GRS-CFG-005。既定 true。 */
+  mastersConfigResolved?: boolean;
 };
 
 function createDefaultRelationshipReader(): RelationshipMasterReader {
@@ -47,9 +58,10 @@ function toPublicItems(
 }
 
 /**
- * API-PUB-005: GET /api/v1/masters/relationships
- * 契約正本: packages/contracts/openapi/public-api.yaml（getMastersRelationships）
- * 実装正本: docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API実装仕様書.md
+ * Public masters Router。
+ * - API-PUB-005: GET /relationships
+ * - API-PUB-006: GET /occasions
+ * 後続 PUB-007 / 008 も同一 Router へ追加可。
  */
 export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
   const router = Router();
@@ -58,6 +70,16 @@ export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
     deps.relationshipReader ?? createDefaultRelationshipReader();
   const generatedAtFactory =
     deps.generatedAtFactory ?? (() => new Date().toISOString());
+
+  const dbSession = deps.dbSession ?? createDbSession();
+  const occasionRepository =
+    deps.occasionRepository ??
+    new OccasionMasterRepository({ session: dbSession });
+  const getOccasions = createOccasionController({
+    repository: occasionRepository,
+    logger: deps.logger,
+    mastersConfigResolved: deps.mastersConfigResolved,
+  });
 
   router.get(
     "/relationships",
@@ -139,6 +161,8 @@ export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
       })();
     },
   );
+
+  router.get("/occasions", getOccasions);
 
   return router;
 }
