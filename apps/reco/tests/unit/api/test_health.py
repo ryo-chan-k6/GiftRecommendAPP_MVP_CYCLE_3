@@ -117,3 +117,45 @@ def test_health_trace_optional_server_generated(client: TestClient) -> None:
     assert meta["traceId"]
     assert meta["requestId"]
     assert meta["traceId"] != _DEFAULT_TRACE_ID
+
+
+def test_health_trace_propagation_exact_match(client: TestClient) -> None:
+    """実装仕様書 §10 No.5: X-Trace-Id 指定時に meta.traceId が一致する。"""
+    response = client.get(_HEALTH_PATH, headers=_health_headers())
+    assert response.status_code == 200
+    meta = response.json()["meta"]
+    assert meta["traceId"] == _DEFAULT_TRACE_ID
+    assert meta["requestId"] == _DEFAULT_REQUEST_ID
+
+
+def test_health_idempotent_repeated_ok(client: TestClient) -> None:
+    """実装仕様書 §10 No.6 / 契約 §12 No.4: 連続呼び出しで副作用なし（カウンタ以外）。"""
+    first = client.get(_HEALTH_PATH, headers=_health_headers())
+    second = client.get(_HEALTH_PATH, headers=_health_headers())
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json()["data"]["status"] == "ok"
+    assert second.json()["data"]["status"] == "ok"
+    assert first.json()["data"]["service"] == second.json()["data"]["service"] == "reco"
+    # metric は加算されるが、Response 外形は同一（副作用なし）
+    assert get_health_metric_count("ok") == 2
+    assert get_health_metric_count() == 2
+
+
+def test_health_response_and_metric_log_do_not_leak_secrets(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """実装仕様書 §10 No.8: Response / metric ログに Key・DATABASE_URL 実値を出さない。"""
+    secret_key = _TEST_INTERNAL_API_KEY
+    with caplog.at_level("INFO", logger="reco.api.health.metric"):
+        response = client.get(_HEALTH_PATH, headers=_health_headers())
+    assert response.status_code == 200
+    body_text = response.text
+    assert secret_key not in body_text
+    assert "DATABASE_URL" not in body_text
+    assert "postgresql://" not in body_text.lower()
+    # metric 構造化ログにも Key 実値を含めない
+    joined = "\n".join(record.getMessage() for record in caplog.records)
+    assert secret_key not in joined
+    assert "DATABASE_URL" not in joined
