@@ -1,0 +1,151 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-001-api-health-check-epic-pr"
+  title: "API-PUB-001 Epic PRレビュー"
+  summary: "API-PUB-001 Epic Branch の develop 向け PR を AI Review する"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 384
+  task_definition: "prompts/definitions/epics/api-pub-001-api-health-check/epic.yaml"
+  source_branch: "feature/epic-384-pub-001-api-health-check"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-PUB-001:APIヘルスチェック"
+  parent_epic_branch: "feature/epic-384-pub-001-api-health-check"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/api-pub-001-api-health-check/epic.yaml"
+    required: true
+  issue:
+    number: 384
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI契約仕様書.md"
+      required: true
+
+review_points:
+  common:
+    - "Epic 縦串（実装仕様書→実装→UT）が揃っているか"
+    - "PR target が develop か"
+    - "INT-001 develop merge 後であるか（merge 順）"
+  source:
+    - "apps/api/src/app/health/** に閉じているか"
+    - "方針 A（プロセスのみ）から逸脱していないか"
+  tests:
+    - "health smoke / errors UT が含まれているか"
+  api_contract:
+    - "本 Epic 差分に OpenAPI / generated の意図しない変更が無いか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "差分が epic_scope.allowed_paths 内か"
+    - "forbidden_paths（apps/reco 等）に触れていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "縦串完了"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "縦串不足または scope 逸脱"
+  needs_human_decision:
+    conditions:
+      - "merge 順・破壊的影響の判断が必要"
+  split_required:
+    conditions:
+      - "別 Epic 差分が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新する"
+  - "対応 Epic Issue: #384"
