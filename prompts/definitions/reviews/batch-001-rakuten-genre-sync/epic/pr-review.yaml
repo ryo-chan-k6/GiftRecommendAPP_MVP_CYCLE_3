@@ -6,7 +6,7 @@ review:
   title: "BATCH-001 楽天ジャンル同期Batch Epic PRレビュー"
   summary: "BATCH-001 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1185
   issue:
     number: 1161
   task_definition: "prompts/definitions/epics/batch-001-rakuten-genre-sync/epic.yaml"
@@ -58,3 +58,4 @@ review_points:
 notes:
   - "Issue #1161。PR 番号は /create-pr 後に反映"
   - "縦串完了後に status を ready へ更新する"
+  - "PR #1185 を反映済み（縦串完了）"
