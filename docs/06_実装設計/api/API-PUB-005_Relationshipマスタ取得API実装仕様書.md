@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-07-12                                |
-| 更新日         | 2026-07-12                                |
+| 更新日         | 2026-07-12（Human Review 確定反映）       |
 
 ---
 
@@ -47,7 +47,7 @@
 | 認証 | **MVP は非認証**（契約仕様書 §4）。`Authorization` 検証なし |
 | 冪等性 | 副作用なし。同一 Request の繰り返し可（SELECT のみ） |
 | Pair 情報 | **Public Response に含めない**（`pair_master` は参照しない） |
-| キャッシュ | **MVP 既定: 都度 SELECT**（プロセス内キャッシュ導入は §11 未決） |
+| キャッシュ | **MVP 既定: 都度 SELECT**（プロセス内キャッシュは MVP 非導入。Human Review #1168 確定） |
 
 ### 3.2 エンドポイント層の配置
 
@@ -73,7 +73,7 @@ apps/api/src/
 | MOD-API-011 Master Controller | `GET /relationships` 受付、meta 解決、Repository 呼び出し、成功 / 失敗 Response 組立、metric 境界 |
 | MOD-API-012 Master Repository | `relationship_master` から `is_active = true` の行を `ORDER BY display_order, relationship_code` で取得。内部行 DTO を返却 |
 
-**共通化メモ（推奨・未確定）:** PUB-006〜008 も同一 `masters` Router 配下を想定する。Repository の共通基底は後続で検討可。本仕様書は **Relationship 読取に閉じる**（§11）。
+**Repository 配置（確定）:** PUB-006〜008 も同一 `masters` Router 配下を想定する。MOD-API-012 は **Relationship 専用 Repository** とし、共通基底は後続 Task で検討可（Human Review #1168 確定）。本仕様書は Relationship 読取に閉じる。
 
 `apps/reco/**` / `apps/batch/**` / `apps/web/src/app/**` / `apps/web/src/features/**` は **変更しない**（親 Epic `forbidden_paths`）。
 
@@ -167,7 +167,7 @@ flowchart TD
 | -------------- | ------------ | -------- | ---- |
 | `relationship_code` | `data.relationships[].relationshipCode` | snake → camel | PK。必須 |
 | `relationship_label` | `data.relationships[].relationshipLabel` | そのまま | 必須。UI 表示名 |
-| `display_order` | `data.relationships[].displayOrder` | integer | optional 可。DB は NOT NULL DEFAULT 0 |
+| `display_order` | `data.relationships[].displayOrder` | integer | optional 可。DB は NOT NULL DEFAULT 0。コード側フォールバックは不要（Human Review #1168 確定） |
 | （フィルタ専用）`is_active` | — | **Response に含めない** | `true` 行のみ取得 |
 | — | `meta.traceId` | meta から | 任意 Header と一致 |
 | — | `meta.requestId` | meta から | 任意 Header と一致 |
@@ -269,16 +269,25 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-12 | 初版作成 | #1166 |
+| 2026-07-12 | Human Review 確定：§11 未決事項 3 件を確定（§3.1 / §3.2 / §5.2 反映） | #1166 / PR #1168 |
 
 ---
 
 ## 11. 未決事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | MOD-API-012 を Relationship 専用にするか、PUB-006 以降と共通 Repository にするか | ディレクトリ・DI 設計に影響 | Human | 実装 Task 開始前 | 本仕様書は Relationship 読取に閉じ、共通化は推奨のみ |
-| 2 | プロセス内キャッシュ（TTL）を MVP で導入するか | 性能・鮮度・実装コスト | Human | 実装 Task 開始前 | 既定案: 都度 SELECT |
-| 3 | `displayOrder` 欠落時のコード側フォールバック要否 | DB は NOT NULL DEFAULT 0 のため通常不要 | Human | 任意 | 契約はフォールバック可と記載。DB 正本ならコード補完不要 |
+本節の論点は Human Review（PR #1168）で確定済み。
+
+### 11.1 確定済み（本書へ反映済み）
+
+| No | 論点 | 確定内容 | 反映箇所 |
+| --: | ---- | -------- | -------- |
+| 1 | MOD-API-012 共通化 | **Relationship 専用 Repository**。PUB-006 以降の共通基底は後続 Task で検討可。本仕様書は Relationship 読取に閉じる | §3.2 |
+| 2 | キャッシュ | **MVP は都度 SELECT**。プロセス内キャッシュ（TTL）は導入しない | §3.1 |
+| 3 | `displayOrder` フォールバック | DB `NOT NULL DEFAULT 0` を正とし、**コード側フォールバックは不要** | §5.2 |
+
+### 11.2 未決（人間判断待ち）
+
+（現時点、未決事項なし）
 
 ---
 
@@ -307,7 +316,7 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 - provider / consumer の実装影響が整理されている
 - ログ・監視・結合テスト観点が整理されている
 - secret や `.env` 実値が含まれていない
-- Human Review で確認してほしい事項（§11）が明示されている
+- §11 確定事項が §3 / §5 と矛盾していないか
 
 ---
 
@@ -315,4 +324,4 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 
 - 本 Task は Phase4b 縦串の 1/3（実装面仕様書）。後続は apps/api 実装 → 単体テスト → Epic PR → develop。
 - Task PR target は親 Epic Branch `feature/epic-387-pub-005-relationship-masters`。
-- PUB-006 実装仕様書は本仕様書をスタイル参考にしてよい（Repository 共通化は各 Task / Human 判断）。
+- PUB-006 実装仕様書は本仕様書をスタイル参考にしてよい（Repository 共通化は後続 Task で検討。本書は Relationship 専用を確定）。
