@@ -54,6 +54,8 @@ class ScaffoldObjectStorageClient:
     put_calls: list[dict[str, object]] = field(default_factory=list)
     get_calls: list[ObjectRef] = field(default_factory=list)
     fail_on_put: bool = False
+    # N 回 put 成功後に失敗させる（同一 Run 内の部分失敗を unit で再現するため）
+    fail_after_n_puts: int | None = None
 
     def put_object(
         self,
@@ -64,6 +66,14 @@ class ScaffoldObjectStorageClient:
     ) -> StoredObject:
         if self.fail_on_put:
             raise ObjectStorageError(code="GRS-RAW-001", message="scaffold forced put failure")
+        if (
+            self.fail_after_n_puts is not None
+            and len(self.put_calls) >= self.fail_after_n_puts
+        ):
+            raise ObjectStorageError(
+                code="GRS-RAW-001",
+                message="scaffold forced put failure after successful puts",
+            )
         stored = StoredObject(ref=ref, content_type=content_type, body=body)
         self.objects[(ref.bucket, ref.key)] = stored
         self.put_calls.append(

@@ -12,6 +12,7 @@ from batch.application.genre_sync import (
     GENRE_SYNC_PHASES,
     GenreSyncJob,
     GenreSyncRepositories,
+    RawGenreArtifact,
     build_genre_raw_object_key,
     content_hash_for_payload,
     external_genre_idempotency_key,
@@ -75,9 +76,7 @@ def test_genre_sync_happy_path_upserts_external_genre() -> None:
     assert len(repos.object_storage.put_calls) == 2
     assert all(meta["import_status"] == "staged" for meta in repos.raw_metadata.values())
     assert all(phase in result.completed_phases for phase in ("plan", "finalize"))
-    assert set(GENRE_SYNC_PHASES).issubset(
-        set(result.completed_phases) | {"fetch", "adapt", "raw_save", "stage", "upsert"}
-    )
+    assert set(GENRE_SYNC_PHASES).issubset(set(result.completed_phases))
 
 
 def test_genre_sync_default_plan_uses_root_genre() -> None:
@@ -195,23 +194,43 @@ def test_raw_object_key_and_content_hash_are_stable() -> None:
 
 
 def test_same_content_hash_skips_object_storage_rewrite() -> None:
-    repos = _repos()
-    client = _client_with_genres()
-    job = GenreSyncJob(rakuten_client=client, repositories=repos)
+    """§16 No.3 / 仕様書 §11: 同一 object_key + content_hash なら put を skip する。"""
 
-    job.run(job_run_id="job-same", target_genre_ids=("100",))
+    repos = _repos()
+    object_key = "raw/rakuten/genre/dt=2026-07-12/batch_run_id=test/api_001.json"
+    body = b'{"genre":{"genreId":"100","jaName":"Gifts"}}'
+    content_hash = content_hash_for_payload(body)
+    artifact = RawGenreArtifact(
+        object_key=object_key,
+        content_hash=content_hash,
+        api_call_log_id="api_001",
+        genre_id="100",
+        body=body,
+    )
+
+    repos.save_raw(artifact)
     first_puts = len(repos.object_storage.put_calls)
 
-    # Different job_run_id → different object_key → put grows; upsert key collapses.
-    job.run(job_run_id="job-same-2", target_genre_ids=("100",))
-    assert len(repos.object_storage.put_calls) == first_puts + 1
-    assert len(repos.external_genres) == 1
+    repos.save_raw(
+        RawGenreArtifact(
+            object_key=object_key,
+            content_hash=content_hash,
+            api_call_log_id="api_002",
+            genre_id="100",
+            body=body,
+        )
+    )
+
+    assert len(repos.object_storage.put_calls) == first_puts
+    assert repos.raw_metadata[object_key]["api_call_log_id"] == "api_002"
 
 
 # --- §16 No.4 Rate Limit ---
 
 
 def test_genre_sync_rate_limit_records_ext_102() -> None:
+    # §16 No.4: MVP unit では scaffold が即 GRS-EXT-102 を返す。
+    # 待機・再試行ループ本体は integration / 本番 Rate Limiter 側で検証する。
     client = _client_with_genres()
     client.rate_limited_genre_ids.add("101")
     repos = _repos()
@@ -309,10 +328,10 @@ def test_genre_sync_raw_save_failure_records_raw_001() -> None:
 
 
 def test_genre_sync_raw_save_partial_failure() -> None:
-    """First genre succeeds; second fails when storage starts failing mid-run."""
+    """§16 No.6: 同一 Run 内で先ジャンル成功・後ジャンル Raw 失敗を検証する。"""
 
     client = _client_with_genres()
-    storage = ScaffoldObjectStorageClient()
+    storage = ScaffoldObjectStorageClient(fail_after_n_puts=1)
     repos = GenreSyncRepositories(
         object_storage=storage,
         db_writer=ScaffoldDbWriter(),
@@ -320,14 +339,13 @@ def test_genre_sync_raw_save_partial_failure() -> None:
     )
     job = GenreSyncJob(rakuten_client=client, repositories=repos)
 
-    # Succeed first genre, then force put failure for remaining.
-    first = job.run(job_run_id="job-raw-a", target_genre_ids=("100",))
-    assert first.status == "succeeded"
-    storage.fail_on_put = True
+    result = job.run(job_run_id="job-raw-partial", target_genre_ids=("100", "101"))
 
-    second = job.run(job_run_id="job-raw-b", target_genre_ids=("101",))
-    assert second.status == "failed"
-    assert "GRS-RAW-001" in second.error_codes
+    assert result.status == "partially_succeeded"
+    assert result.succeeded_genre_ids == ["100"]
+    assert result.failed_genre_ids == ["101"]
+    assert "GRS-RAW-001" in result.error_codes
+    assert "GRS-BAT-002" in result.error_codes
     assert ("rakuten", "100") in repos.external_genres
     assert ("rakuten", "101") not in repos.external_genres
 
