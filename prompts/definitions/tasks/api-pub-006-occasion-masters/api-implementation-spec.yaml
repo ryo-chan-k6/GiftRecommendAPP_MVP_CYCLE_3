@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 388
   epic_branch: "feature/epic-388-pub-006-occasion-masters"
   related_issues:
+    - number: 1171
+      purpose: "本 Task Issue"
     - number: 388
       purpose: "親 Epic"
     - number: 402
@@ -211,7 +213,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-api-pub-006-occasion-masters-api-implementation-spec"
+  name: "docs/task-1171-api-pub-006-occasion-masters-api-implementation-spec"
   summary: "api-pub-006-occasion-masters-api-implementation-spec"
   base: "feature/epic-388-pub-006-occasion-masters"
   target: "feature/epic-388-pub-006-occasion-masters"
@@ -221,7 +223,7 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "06_実装設計"
-    status: "Todo"
+    status: "In Progress"
     priority: "high"
     planned_start: "2026-07-12"
     due_date: "2026-07-14"
