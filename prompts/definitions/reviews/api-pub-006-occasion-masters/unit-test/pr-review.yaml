@@ -19,9 +19,9 @@ branch:
 
 target:
   pr: null
-  issue: null
+  issue: 1182
   task_definition: "prompts/definitions/tasks/api-pub-006-occasion-masters/unit-test.yaml"
-  source_branch: "test/task-<issue-number>-api-pub-006-occasion-masters-unit-test"
+  source_branch: "test/task-1182-api-pub-006-occasion-masters-unit-test"
   target_branch: "feature/epic-388-pub-006-occasion-masters"
   parent_epic_issue: "[Epic]API-PUB-006:Occasionマスタ取得"
   parent_epic_branch: "feature/epic-388-pub-006-occasion-masters"
@@ -67,7 +67,7 @@ input:
     path: "prompts/definitions/tasks/api-pub-006-occasion-masters/unit-test.yaml"
     required: true
   issue:
-    number: null
+    number: 1182
     required: true
   pr:
     number: null
