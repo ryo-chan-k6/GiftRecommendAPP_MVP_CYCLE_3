@@ -69,6 +69,8 @@ test("unavailable resolveStatus returns 503 GRS-COM-003 ErrorResponse without da
     assert.equal(response.status, 503);
     const body = (await response.json()) as ErrorBody;
     assert.equal(body.error.code, API_HEALTH_ERROR_CODES.UNAVAILABLE);
+    assert.equal(body.error.retryable, true);
+    assert.match(body.error.message, /サービスを利用できません/);
     assert.equal("data" in body, false);
     assert.ok(body.meta.traceId);
     assert.ok(body.meta.requestId);
