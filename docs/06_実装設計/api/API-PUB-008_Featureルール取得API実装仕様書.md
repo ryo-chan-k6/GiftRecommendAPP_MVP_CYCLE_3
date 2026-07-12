@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-07-12                                |
-| 更新日         | 2026-07-12                                |
+| 更新日         | 2026-07-12（AI Review 指摘反映）          |
 
 ---
 
@@ -91,9 +91,24 @@ apps/api/src/app/masters/
 
 | 項目 | 方針 |
 | ---- | ---- |
-| 正本テーブル | `semantic_config_version`（および契約が参照する current 指定） |
-| 成功時 | `configName` / `versionLabel` を Response `data` に載せる（API-PUB-007 と一致する系列） |
+| 正本テーブル | `semantic_config_version` + 親 `semantic_config`（`semantic_config_version_テーブル定義書` §5.2 / §5.3.1） |
+| 解決階層（2 段階） | **第 1 層**: 親 `semantic_config.is_active = true` の系列のみ対象。**第 2 層**: 対象系列内で `semantic_config_version.is_current = true` の version 行を解決 |
+| `configName` | 本テーブルに保持しない。`semantic_config_version` と `semantic_config` を `semantic_config_id` で **アプリ層 JOIN** し、親 `semantic_config.config_name` を取得する |
+| `versionLabel` | `semantic_config_version.version_label` をそのまま Response へ |
+| 成功時 | `configName` / `versionLabel` を Response `data` に載せる（API-PUB-007 と一致する composite 参照） |
 | 未設定 | **HTTP 500 `GRS-CFG-001`**（空配列とは区別。契約確定） |
+
+**参照クエリ例（api・概念）:**
+
+```sql
+SELECT scv.*, sc.config_name
+FROM semantic_config_version scv
+INNER JOIN semantic_config sc ON sc.semantic_config_id = scv.semantic_config_id
+WHERE sc.is_active = true
+  AND scv.is_current = true;
+```
+
+> 系列が `is_active = false` の場合、その系列に属する version は解決対象外とする。`semantic_config_version_id`（UUID）は内部参照専用で Public Response に含めない。
 
 #### 3.5.2 Rule 読取
 
@@ -168,26 +183,36 @@ flowchart TD
 
 | 内部項目 / DTO | Response項目 | 変換内容 | 備考 |
 | -------------- | ------------ | -------- | ---- |
-| current Version 系列名 | `data.configName` | そのまま | API-PUB-007 整合 |
-| current Version ラベル | `data.versionLabel` | そのまま | 例: `v1.0.0` |
-| relationship_rule 行 | `data.baseValueRules[]` | `ruleType=relationship` | active のみ |
-| occasion_rule 行 | `data.baseValueRules[]` | `ruleType=occasion` | active のみ |
-| コード / feature / baseValue | `relationshipCode` or `occasionCode` / `featureCode` / `featureBaseValue` | snake→camel | 契約どおり条件付き必須 |
-| concept_feature_rule 行 | `data.conceptFeatureRules[]` | conceptCode / featureCode / featureDelta / polarity | polarity optional |
-| `is_active` | — | **含めない** | フィルタ専用 |
+| 親 `semantic_config.config_name` | `data.configName` | JOIN 後そのまま | §3.5.1。API-PUB-007 整合 |
+| `semantic_config_version.version_label` | `data.versionLabel` | そのまま | 例: `v1.0.0` |
+| `relationship_rule.relationship_code` | `data.baseValueRules[].relationshipCode` | snake → camel | `ruleType=relationship` 時必須 |
+| `relationship_rule.feature_code` | `data.baseValueRules[].featureCode` | snake → camel | MVP 8 軸 |
+| `relationship_rule.feature_base_value` | `data.baseValueRules[].featureBaseValue` | numeric | 0.0〜1.0 |
+| `occasion_rule.occasion_code` | `data.baseValueRules[].occasionCode` | snake → camel | `ruleType=occasion` 時必須 |
+| `occasion_rule.feature_code` | `data.baseValueRules[].featureCode` | snake → camel | MVP 8 軸 |
+| `occasion_rule.feature_base_value` | `data.baseValueRules[].featureBaseValue` | numeric | 0.0〜1.0 |
+| （派生）`ruleType` | `data.baseValueRules[].ruleType` | `relationship` / `occasion` | DB 列ではなく読取元テーブルで決定 |
+| `semantic_concept.concept_code`（`semantic_concept_id` JOIN） | `data.conceptFeatureRules[].conceptCode` | JOIN 後 snake → camel | concept_feature_rule テーブル定義書 §8.1 |
+| `concept_feature_rule.feature_code` | `data.conceptFeatureRules[].featureCode` | snake → camel | MVP 8 軸 |
+| `concept_feature_rule.feature_delta` | `data.conceptFeatureRules[].featureDelta` | numeric | 0.0〜1.0 |
+| `concept_feature_rule.polarity` | `data.conceptFeatureRules[].polarity` | そのまま | optional |
+| （フィルタ専用）`is_active` | — | **Response に含めない** | 3 Rule テーブル共通 |
 | pair_rule 等 | — | **含めない** | Public 非公開 |
 | — | `meta.traceId` / `requestId` / `generatedAt` | meta から | — |
 
 ### 5.3 Error Mapping（実装面）
 
-| 内部状況 | HTTP | Error Code |
-| -------- | ---: | ---------- |
-| current Version 未設定 | 500 | `GRS-CFG-001` |
-| マスタ設定解決不能 | 500 | `GRS-CFG-005` |
-| DB 読取失敗 | 500 | `GRS-DB-002` |
-| DB 一時不可 | 503 | `GRS-DB-001` |
-| 設定系想定外 | 500 | `GRS-CFG-999` |
-| 想定外 | 500 | `GRS-COM-999` |
+| 内部状況 | HTTP | Error Code | 備考 |
+| -------- | ---: | ---------- | ---- |
+| current Version 未設定 | 500 | `GRS-CFG-001` | 空配列と区別 |
+| マスタ設定解決不能 | 500 | `GRS-CFG-005` | Rule 参照処理が継続不能 |
+| DB 接続失敗 | 500 | `GRS-DB-001` | エラーコード定義書 §19 正本。契約 Error 表 §8.2 と一致 |
+| DB 読取失敗 | 500 | `GRS-DB-002` | 接続成功後のクエリ失敗 |
+| DB 一時不可 | 503 | `GRS-DB-001` | 契約 Error 表 §8.2。同一 code で HTTP のみ 503 に分岐 |
+| 設定系想定外 | 500 | `GRS-CFG-999` | — |
+| 想定外 | 500 | `GRS-COM-999` | — |
+
+> **`GRS-DB-001` の HTTP 分岐:** エラーコード定義書は接続失敗を **500** とする。契約仕様書 §8.2 は接続失敗 **500** と一時不可 **503** の両方に `GRS-DB-001` を割り当てる。実装では障害種別（接続失敗 vs 一時不可）に応じて HTTP を切り分ける。本 Task では契約・エラーコード定義書を正とし、OpenAPI / Contract 変更は行わない。
 
 詳細メッセージは契約仕様書・エラーコード定義書を正とする。
 
@@ -259,6 +284,7 @@ flowchart TD
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-12 | 初版作成 | #1190 |
+| 2026-07-12 | AI Review 指摘反映（§3.5.1 Version 2 段階解決・configName JOIN、§5.2 DB snake 列名、§5.3 `GRS-DB-001` HTTP 整合） | #1190 / PR #1191 |
 
 ---
 
