@@ -13,6 +13,7 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "DATABASE_URL",
     "OPENAI_API_KEY",
     "RAKUTEN_APPLICATION_ID",
+    "RAKUTEN_ACCESS_KEY",
     "OBJECT_STORAGE_BUCKET",
     "OBJECT_STORAGE_ENDPOINT",
     "OBJECT_STORAGE_ACCESS_KEY",
@@ -58,6 +59,7 @@ class BatchSettings:
     database_url: str | None
     openai_api_key: str | None
     rakuten_application_id: str | None
+    rakuten_access_key: str | None
     object_storage_bucket: str | None
     object_storage_endpoint: str | None
     object_storage_access_key: str | None
@@ -110,6 +112,7 @@ class BatchSettings:
             "database_url='***', "
             "openai_api_key='***', "
             "rakuten_application_id='***', "
+            "rakuten_access_key='***', "
             "object_storage_access_key='***', "
             "object_storage_secret_key='***', "
             "batch_internal_token='***', "

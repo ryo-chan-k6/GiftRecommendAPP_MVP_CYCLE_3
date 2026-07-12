@@ -16,9 +16,11 @@ from batch.infrastructure.object_storage import (
 from batch.infrastructure.rakuten import (
     RakutenApiClient,
     RakutenGenre,
+    RakutenGenreApiError,
     RakutenItem,
     RakutenRankingEntry,
     ScaffoldRakutenApiClient,
+    adapt_genre_raw_payload,
 )
 
 __all__ = [
@@ -33,6 +35,7 @@ __all__ = [
     "ObjectStorageClient",
     "RakutenApiClient",
     "RakutenGenre",
+    "RakutenGenreApiError",
     "RakutenItem",
     "RakutenRankingEntry",
     "ScaffoldBatchLogger",
@@ -41,4 +44,5 @@ __all__ = [
     "ScaffoldObjectStorageClient",
     "ScaffoldRakutenApiClient",
     "StoredObject",
+    "adapt_genre_raw_payload",
 ]
