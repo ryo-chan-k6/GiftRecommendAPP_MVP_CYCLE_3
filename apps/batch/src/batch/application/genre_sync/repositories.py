@@ -39,7 +39,7 @@ class GenreSyncRepositories:
             # Same content_hash: skip Object Storage rewrite (仕様書 §11)
             self.raw_metadata[artifact.object_key] = {
                 **existing_meta,
-                "import_status": "raw_saved",
+                "import_status": existing_meta.get("import_status", "raw_saved"),
                 "api_call_log_id": artifact.api_call_log_id,
                 "genre_id": artifact.genre_id,
                 "source": SOURCE_RAKUTEN,

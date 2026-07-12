@@ -120,7 +120,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-batch-001-rakuten-genre-sync-unit-test"
+  name: "test/task-1178-batch-001-rakuten-genre-sync-unit-test"
   summary: "batch-001-rakuten-genre-sync-unit-test"
   base: "feature/epic-1161-batch-001-rakuten-genre-sync"
   target: "feature/epic-1161-batch-001-rakuten-genre-sync"
@@ -130,12 +130,13 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "Todo"
+    status: "In Progress"
     priority: "high"
     planned_start: null
     due_date: null
 
 issue:
+  number: 1178
   unit: "task"
   type: "test"
   area: "batch"
@@ -213,4 +214,4 @@ stop_conditions:
 notes:
   - "Issueタイトル: [Task]BATCH-001:楽天ジャンル同期Batch単体テスト"
   - "縦串完了後は Epic PR → develop（Human merge 判断）"
-  - "parent / branch の issue 番号は /start-task 後に実値へ更新する"
+  - "Issue #1178 / Branch test/task-1178-batch-001-rakuten-genre-sync-unit-test"
