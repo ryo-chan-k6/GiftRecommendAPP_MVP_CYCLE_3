@@ -1,5 +1,22 @@
 {
   "name": "@gift-recommendation/api",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "pnpm run build && node --test dist/tests/**/*.test.js",
+    "dev": "pnpm run build && node dist/src/index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.4",
+    "typescript": "^5.8.3"
+  }
 }

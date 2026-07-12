@@ -1,0 +1,276 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-epic-final-integration-check"
+  title: "db-physical-design:Epic終盤整合チェック"
+  summary: "Phase2 ①〜⑥ 成果物・DDL/migration/seed・enum/コード定義/テーブル定義・db/ と docs の横断整合を棚卸しし、Blocker 級は修正する Epic PR 直前ゲート Task（#582 / D13 型）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 582
+      purpose: "③完了時 docs 横断ゲート（merge 済み前提）"
+    - number: 469
+      purpose: "OpenAPI/Orval 同期ゲート（merge 済み前提）"
+    - number: 610
+      purpose: "D13 DDL 横断ゲート（merge 済み前提）"
+    - number: 627
+      purpose: "⑤ migration/seed（merge 済み前提）"
+    - number: 631
+      purpose: "⑥ データ保持・削除方針書（merge 済み前提）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ①〜⑥（物理ER・enum/コード定義・テーブル定義書・DDL・migration/seed・データ保持方針）完了後、
+  Epic PR → develop（Human 判断）の直前に、成果物横断整合を確認する Epic 終盤ゲート Task。
+  #582（docs 反映漏れ）・#469（OpenAPI/Orval）・D13（DDL 横断）を補完し、Epic 全体の進行可否判断材料を PR 本文に整理する。
+
+objective: |
+  ①〜⑥ 成果物、DDL/migration/seed、enum・コード定義・テーブル定義、db/ と docs の横断整合を棚卸しする。
+  事実 / 推論 / 未確認を区別して一覧化し、Blocker 級は本 Task Branch 上で修正する。
+  Epic PR → develop 進行可否の判断材料を PR 本文に整理する。
+
+scope:
+  - "Phase2 成果物（物理ER・enum定義書・コード定義書・テーブル定義書 62 件・DDL・マイグレーション方針書・初期データ定義書・migration・master seed・データ保持・削除方針書）の存在・正本パス確認"
+  - "成果物一覧 §4.1 のステータス更新（①〜⑥ 完了反映）"
+  - "（未作成）プレースホルダファイルの整理（作成済み成果物と重複する空ファイル等）"
+  - "db/ddl・supabase/migrations・db/seeds と docs の横断突合（件数・命名・参照関係）"
+  - "反映漏れ・不整合の一覧化（事実 / 推論 / 未確認、Blocker / Must / Should / Question）"
+  - "Blocker 級不整合の docs / 軽微な整合修正（本 Task scope 内）"
+  - "Epic PR → develop 進行可否の判断材料を PR 本文に記載"
+  - "Task / Review Definition の整備"
+  - "Epic Definition（epic.yaml）への終盤ゲート Task 追記"
+
+out_of_scope:
+  - "Epic PR の merge（Human 判断）"
+  - "Task PR の merge（Human Review 後に Human が実施）"
+  - "`develop` への直接反映"
+  - "DDL / migration / seed の仕様再設計・大規模変更"
+  - "apps/** 実装変更"
+  - "packages/contracts/**・generated の変更"
+  - "OpenAPI / Orval の再同期（#469 完了前提）"
+
+input:
+  docs:
+    - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      required: true
+      purpose: "§4.1 Phase2 成果物ステータス正本"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/コード定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/データ保持・削除方針書.md"
+      required: true
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/"
+      required: true
+      purpose: "62 件テーブル定義書 glob"
+  files:
+    - path: "db/ddl/"
+      required: true
+    - path: "supabase/migrations/"
+      required: true
+    - path: "db/seeds/masters/"
+      required: true
+    - path: "prompts/definitions/epics/db-physical-design/epic.yaml"
+      required: true
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/epic-final-integration-check.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/epic-final-integration-check/pr-review.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/db-physical-design/epic.yaml"
+      action: "update"
+      required: true
+    - path: "scripts/epic-435-final-integration-check.py"
+      action: "create"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic 終盤横断整合チェック結果一覧（PR 本文）"
+  - "Blocker / Must / Should / Question 分類表"
+  - "Blocker 級不整合の修正差分（該当時）"
+  - "Epic PR → develop 進行可否の判断材料（PR 本文）"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "①〜⑥ 成果物の棚卸しが実施されている"
+  - "反映漏れ・不整合が一覧化され、事実 / 推論 / 未確認が区別されている"
+  - "Blocker 級の不整合は修正済み、または Human 判断事項として明示されている"
+  - "Epic PR → develop 進行可否の判断材料が PR に記載されている"
+  - "Task PR target が親 Epic Branch である"
+  - "out_of_scope（Epic merge / develop 直接 / apps / OpenAPI 再同期）に該当する変更が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-633-epic-final-integration-check"
+  summary: "epic-final-integration-check"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-17"
+    due_date: "2026-06-19"
+
+issue:
+  number: 633
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 582
+      purpose: "docs 横断ゲート完了"
+    - number: 469
+      purpose: "OpenAPI/Orval 同期完了"
+    - number: 610
+      purpose: "D13 DDL ゲート完了"
+    - number: 627
+      purpose: "⑤ migration/seed 完了"
+    - number: 631
+      purpose: "⑥ データ保持方針完了"
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "Epic PR → develop（本 Task 完了・Human Review 後）"
+  exclusive_files:
+    - "docs/00_共通/成果物管理/成果物一覧.md"
+    - "prompts/definitions/epics/db-physical-design/epic.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "epic final integration check script"
+  commands:
+    - "python3 scripts/epic-435-final-integration-check.py"
+  manual_checks:
+    - "成果物一覧 §4.1 が ①〜⑥ 完了状態と一致"
+    - "supabase/migrations/ が非空で db/ddl と整合"
+    - "db/seeds/masters/ が初期データ定義書と整合"
+    - "（未作成）プレースホルダと作成済み成果物の重複がない"
+    - "apps/** / packages/contracts/** 変更なし"
+  not_required:
+    - "unit test"
+    - "e2e test"
+  skip_reason:
+    "unit test": "Epic 終盤横断チェック Task のため"
+    "e2e test": "Epic 終盤横断チェック Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "①〜⑥ 棚卸し結果が事実 / 推論 / 未確認で区別されているか"
+    - "Blocker 級の扱いが適切か"
+    - "Epic PR 進行判断材料が PR 本文に記載されているか"
+    - "out_of_scope 変更が混在していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "Epic 終盤横断影響の棚卸し。通常結果は PR を正本とする。"
+
+risk_points:
+  - "成果物一覧 §4.1 の更新漏れ"
+  - "migration と db/ddl の転記差分"
+  - "プレースホルダファイル残存"
+  - "MVP△ テーブルの go/no-go 判断"
+
+human_decision_points:
+  - "Epic PR → develop の merge 可否（Human 判断。本 Task は判断材料の整理まで）"
+  - "MVP△ テーブル 4 件の Epic 含有方針の最終確認"
+  - "Blocker と Must の境界"
+
+stop_conditions:
+  - "正本 docs 間で矛盾があり、AI が独断で解消できない場合"
+  - "Blocker 修正に DDL / migration 大規模変更が必要になった場合"
+  - "①〜⑥ の前提成果物が Epic Branch に存在しない場合"
+
+notes:
+  - "Epic PR 直前ゲート。#582・#469・D13 を補完する全体整合チェック"
+  - "Review Definition: prompts/definitions/reviews/db-physical-design/epic-final-integration-check/pr-review.yaml"
+  - "棚卸し結果の正本は PR 本文"

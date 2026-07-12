@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "COM"
+  domain_label: "Common"
+  mvp_scope: true
+  codes:
+    - code: "GRS-COM-001"
+      internal_name: "Bad Request"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.com.001"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-COM-002"
+      internal_name: "Timeout"
+      http_status: 504
+      retryable: true
+      severity: error
+      user_message_key: "error.com.002"
+      owner_types: ["api_call", "recommendation_run"]
+      mvp_scope: true
+    - code: "GRS-COM-003"
+      internal_name: "Service Unavailable"
+      http_status: 503
+      retryable: true
+      severity: error
+      user_message_key: "error.com.003"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-COM-004"
+      internal_name: "Resource Not Found"
+      http_status: 404
+      retryable: false
+      severity: warn
+      user_message_key: "error.com.004"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-COM-005"
+      internal_name: "Conflict"
+      http_status: 409
+      retryable: false
+      severity: warn
+      user_message_key: "error.com.005"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-COM-006"
+      internal_name: "Unsupported Operation"
+      http_status: 400
+      retryable: false
+      severity: warn
+      user_message_key: "error.com.006"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-COM-999"
+      internal_name: "Unexpected Error"
+      http_status: 500
+      retryable: true
+      severity: error
+      user_message_key: "error.com.999"
+      owner_types: ["api_call", "recommendation_run", "batch_run"]
+      mvp_scope: true

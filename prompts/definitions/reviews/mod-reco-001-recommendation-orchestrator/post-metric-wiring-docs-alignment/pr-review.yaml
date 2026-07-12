@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-post-metric-wiring-docs-alignment-pr"
+  title: "MOD-RECO-001 Metric Wiring完了後 docs正本追随 PRレビュー"
+  summary: "Epic #1053 / #1061 merge 後の docs 正本追随 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1068
+  issue:
+    number: 1067
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-metric-wiring-docs-alignment.yaml"
+  source_branch: "docs/task-1067-mod-reco-001-post-metric-wiring-docs-alignment"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-metric-wiring-docs-alignment.yaml"
+    required: true
+
+review_points:
+  - "§8.4.2 が stubs.py / develop 配線状態と一致しているか"
+  - "025 移行期記述の更新が過不足ないか"
+  - "026-027 BT 間接 / StubMetricLogger 明示 DI 用残存の記載が維持されているか"
+  - "Recoモジュール一覧 MVP ○ 更新が Human 判断と一致しているか"
+  - "docs-only diff であるか（apps/reco ソース変更なし）"
+  - "develop 直 PR 理由が PR 本文で説明されているか"
+  - "024/028/029 docs 更新など scope 外作業に着手していないか"
+
+notes:
+  - "target.pr: PR 作成後に更新し PR 差分に含める"
+  - "Related Issue #1067"

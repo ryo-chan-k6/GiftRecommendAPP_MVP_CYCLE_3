@@ -1,0 +1,200 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-025-metric-logger-module-spec"
+  title: "MOD-RECO-025:Metric Loggerモジュール仕様書作成"
+  summary: "MOD-RECO-025（Metric Logger / Metric記録）のモジュール仕様書（docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md）を、Recoモジュール一覧 §6.23.5 およびログ・Observability設計書に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-025:Metric Logger"
+  epic_issue_number: 1053
+  epic_branch: "feature/epic-1053-mod-reco-025-metric-logger"
+  related_issues:
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator（MetricLoggerPort 契約）"
+    - number: 1051
+      purpose: "phase_name 整合完了"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Human 判断により MOD-RECO-025 を MVP 必須として実装する。
+  06_実装設計において MOD-RECO-025 の Recoモジュール仕様書を作成する。
+  Orchestrator パイプライン成功終端から `MetricLoggerPort.record_metrics(context)` で呼び出される。
+  記録失敗は推薦結果をブロックしない（028 / 029 と同型の non-blocking 方針）。
+  MVP 実装は InMemory Repository を正とし、Postgres 永続化は段階3 Composition Task へ委譲する。
+
+objective: |
+  MOD-RECO-025 について、apps/reco 実装・単体テスト・レビューが可能な粒度のモジュール仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/module-spec.md に準拠する。
+
+scope:
+  - "MOD-RECO-025 のモジュール仕様書を新規作成する"
+  - "モジュール基本情報・主責務・対象外責務・入出力・処理フロー・例外・ログ・テスト観点を整理する"
+  - "Orchestrator（MOD-RECO-001）MetricLoggerPort 契約との整合"
+  - "Observability §11.2 / §11.3 の MVP Metric 範囲を Human 判断とともに確定記載"
+  - "InMemory 永続化方針と Composition（DB）委譲境界の明記"
+
+out_of_scope:
+  - "apps/reco の実装"
+  - "Orchestrator stubs.py Wiring"
+  - "OpenAPI / DB schema / migration 変更"
+  - "Postgres Metric Repository 実装詳細（Composition Task）"
+  - "他 Recoモジュール本体のモジュール仕様書作成"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "§6.23.5 Metric記録"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§11.2 / §11.3 / §12 Metric 設計"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "MetricLoggerPort・§12.2 Metric 委譲"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: false
+      purpose: "ログ・観測モジュール記述参考"
+    - path: "docs/06_実装設計/database/reco_score_distribution_metric_テーブル定義書.md"
+      required: false
+      purpose: "将来 DB 永続化参考"
+  templates:
+    - path: "prompts/templates/docs/module-spec.md"
+      required: true
+      purpose: "モジュール仕様書標準フォーマット"
+      applies_to:
+        - "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      required: true
+      purpose: "MetricLoggerPort 契約"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "StubMetricLogger 参照"
+  issues:
+    - number: 1053
+      purpose: "親 Epic"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      action: "create"
+      required: true
+  files: []
+
+deliverables:
+  - "MOD-RECO-025 モジュール仕様書（正本）"
+  - "MVP Metric 範囲表（PR 本文または仕様書 §16）"
+
+acceptance_criteria:
+  - "モジュール仕様書が module-spec テンプレートに準拠している"
+  - "MetricLoggerPort / StubMetricLogger との I/F が明確である"
+  - "記録失敗時 non-blocking 方針が明記されている"
+  - "InMemory MVP / DB Composition 委譲境界が明記されている"
+  - "Orchestrator Wiring / Composition が scope 外である"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue-number>-mod-reco-025-metric-logger-module-spec"
+  base: "feature/epic-1053-mod-reco-025-metric-logger"
+  target: "feature/epic-1053-mod-reco-025-metric-logger"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 1053
+      purpose: "親 Epic Branch"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-mod-reco-025-metric-logger-implementation"
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Observability §11.2 / §11.3 との整合"
+    - "MOD-RECO-001 MetricLoggerPort 契約整合"
+    - "MVP Metric 範囲が Human 判断として明確か"
+    - "InMemory / DB 境界が明確か"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+
+human_decision_points:
+  - "Recoモジュール一覧 MVP △ → ○ を本 Task で更新するか（epic_scope 許可済み）"
+  - "MVP Metric 最小集合（Orchestrator 集約のみ vs 分布 Metric 一部含む）"
+
+stop_conditions:
+  - "Observability 正本と MVP 範囲の解釈が矛盾し Human 判断が必要"
+
+notes:
+  - "workstream: mod-reco-025-metric-logger"
+  - "Related Epic #1053"

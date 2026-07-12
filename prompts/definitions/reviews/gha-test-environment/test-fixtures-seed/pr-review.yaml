@@ -1,0 +1,63 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-test-environment-test-fixtures-seed-pr"
+  title: "gha-test-environment test-fixtures-seed PRレビュー"
+  summary: "Epic C Task test-fixtures-seed の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "test/task-674-test-fixtures-seed"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
+  worktree_required: true
+
+target:
+  pr: 675
+  issue:
+    number: 674
+  task_definition: "prompts/definitions/tasks/gha-test-environment/test-fixtures-seed.yaml"
+  source_branch: "test/task-674-test-fixtures-seed"
+  target_branch: "chore/epic-671-gha-test-environment"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/gha-test-environment/test-fixtures-seed.yaml"
+    required: true
+  issue:
+    number: 674
+    required: true
+  pr:
+    number: 675
+    required: true
+
+review_points:
+  - "Task scope / fixture が C3/C4 から参照可能か"
+  - "OpenAI mock / Secrets 方針の明記"
+  - "C1 ephemeral DB（ci-db.yml）との seed 整合"
+  - "secret 非含有"
+
+notes:
+  - "Issue #674 / PR #675"

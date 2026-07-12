@@ -1,0 +1,63 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-phase1-wave2-api-contract-foundation-epic-pr"
+  title: "Phase1第2波 API Contract基盤 Epic PRレビュー"
+  summary: "Phase1 第2波マイルストーン Epic PR（develop 向け）の AI Review。8 API の契約 docs・OpenAPI・generated 統合と Contract Gate §4 を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+target:
+  pr: 433
+  issue:
+    number: 432
+  task_definition: "prompts/definitions/epics/phase1-wave2-api-contract-foundation/epic.yaml"
+  source_branch: "feature/epic-432-phase1-wave2-api-contract-foundation"
+  target_branch: "develop"
+
+review_scope:
+  docs: true
+  project_operation: true
+  contract: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/phase1-wave2-api-contract-foundation/epic.yaml"
+    required: true
+  issue:
+    number: 432
+    required: true
+
+review_points:
+  common:
+    - "Epic Definition scope / out_of_scope を満たしているか"
+    - "epic_scope.forbidden_paths（apps 実装層）への変更がないか"
+    - "epic-367 の第2波 OpenAPI/generated と識別子 Epic の 1a 契約仕様書が統合されているか"
+    - "Epic PR target=develop / author=okuri-ai-bot であるか"
+    - "Closes #<Epic Issue> が PR 本文にあるか"
+  docs:
+    - "第2波 8 API の契約仕様書が docs/06_実装設計/api/ に存在するか"
+    - "Contract Gate §4・§6 と整合しているか"
+  contract:
+    - "packages/contracts/openapi に第2波 8 API（PUB-001/003/004/005/006/007/008 + INT-001）が反映されているか"
+    - "generated が Orval 再生成済みで手動編集がないか"
+    - "Contract Gate §4 全項目が充足しているか"
+    - "第1波（PUB-002/INT-002）の既存定義を破壊していないか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "scope外変更（apps 実装）が混入していない"
+      - "Contract Gate §4 が充足している"
+      - "#367 / #384〜#391 が CLOSE されていない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"

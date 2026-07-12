@@ -1,0 +1,89 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-008-feature-rule-masters-pr"
+  title: "API-PUB-008 Featureルール取得API契約仕様書 PRレビュー"
+  summary: "API-PUB-008（Featureルール取得 / Public API）API契約仕様書作成 Task（api-contract-spec.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 404
+  task_definition: "prompts/definitions/tasks/api-pub-008-feature-rule-masters/api-contract-spec.yaml"
+  source_branch: "docs/task-404-pub-008-feature-rule-masters-api-contract-spec"
+  target_branch: "feature/epic-390-pub-008-feature-rule-masters"
+  parent_epic_issue: "[Epic]API-PUB-008:Featureルール取得"
+  parent_epic_branch: "feature/epic-390-pub-008-feature-rule-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: true
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-008-feature-rule-masters/api-contract-spec.yaml"
+    required: true
+  issue:
+    number: 404
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-390-pub-008-feature-rule-masters"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+
+review_points:
+  - "API一覧 API-PUB-008 との整合"
+  - "Featureルール定義書 §17 との整合"
+  - "Pair Rule 非公開の明示"
+  - "API-PUB-005/006/007 コード整合"
+  - "実装面混入なし"
+  - "OpenAPI 実変更なし"
+
+acceptance_criteria:
+  - "契約仕様書が api-contract-spec テンプレ準拠"
+  - "Task Definition scope 内"
+  - "secret 不含"

@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-composition-postgres-observability-repositories-pr"
+  title: "観測系 Postgres Repository PRレビュー"
+  summary: "Composition Epic 工程 ③ 観測系 Postgres Repository Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1083
+  issue:
+    number: 1082
+  task_definition: "prompts/definitions/tasks/mod-reco-001-composition/postgres-observability-repositories.yaml"
+  source_branch: "feature/task-1082-postgres-observability-repositories"
+  target_branch: "feature/epic-1076-mod-reco-001-composition"
+  parent_epic_issue: 1076
+  parent_epic_branch: "feature/epic-1076-mod-reco-001-composition"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-composition/postgres-observability-repositories.yaml"
+    required: true
+
+review_points:
+  - "002/028/029/025 Protocol と Postgres 実装の整合"
+  - "Tier 1 metric_log / Tier 2 reco_score_distribution_metric 責務分離"
+  - "InMemory 維持・stubs/orchestrator/ports 非変更"
+  - "composition root 未変更"
+  - "テスト追加と実行結果"
+  - "secret 非露出"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / target.pr を更新する"
+  - "Related Epic #1076"

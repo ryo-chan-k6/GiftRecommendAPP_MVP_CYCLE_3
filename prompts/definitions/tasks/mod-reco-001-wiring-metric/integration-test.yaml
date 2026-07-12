@@ -1,0 +1,178 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-metric-integration-test"
+  title: "MOD-RECO-001:Orchestrator Wiring（Metric）統合テスト"
+  summary: "Metric 配線後の Orchestrator デフォルト経路について、test_recommendation_orchestrator.py 等で 025 Metric 接続（§14 integration）を検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（Metric）"
+  epic_issue_number: 1061
+  epic_branch: "feature/epic-1061-mod-reco-001-wiring-metric"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic 配下で wiring Task により metric_logger 本実装配線完了後、Orchestrator デフォルト composition の integration 観点を検証する。
+  対象: MOD-RECO-001 §12.2 / §14（Metric 記録）、MOD-RECO-025 §14 No.10 / No.11。
+  InMemory MetricLoggerRepository / `.recorded` 観察バッファ等、本番 DB 非依存の helper を用いる。
+
+objective: |
+  配線後の Orchestrator デフォルト経路テストを green にし、025 Metric 接続を pytest で検証する。
+
+scope:
+  - "`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` の期待値更新・ケース追加"
+  - "025 Metric 接続のデフォルト composition 検証（成功 Run で記録、失敗 Run で未呼び出し）"
+  - "テスト用 fixture / helper（Orchestrator デフォルト経路専用）"
+
+out_of_scope:
+  - "stubs.py の配線変更（wiring Task）"
+  - "025 モジュール本体の変更（テスト成立に必要な最小修正のみ可）"
+  - "integration test（E2E）/ API contract test"
+  - "本番 DB / 外部 API 依存テスト"
+  - "段階3 Composition"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§12.2 Metric 委譲"
+    - path: "docs/06_実装設計/reco/MOD-RECO-025_Metric Loggerモジュール仕様書.md"
+      required: true
+      purpose: "§14 No.10 / No.11"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線後 build_default_stub_ports()"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "更新対象"
+    - path: "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+      required: false
+      purpose: "helper 更新対象"
+  issues:
+    - number: 1061
+      purpose: "親 Epic"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "§14 integration 観点に対応する pytest 更新"
+  - "観点とテストケースの対応表（PR 本文）"
+  - "成功 Run Metric 記録 / 失敗 Run 非記録の検証"
+
+acceptance_criteria:
+  - "MOD-RECO-001 / 025 §14 integration 観点がテストでカバーされている"
+  - "成功 Run で metric_logger.recorded（または同等）に Tier 1 Metric が記録される"
+  - "失敗 Run で record_metrics() が呼ばれない（025 §14 No.11）"
+  - "`cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+  - "本番 DB / 外部 API / secret に依存していない"
+
+branch:
+  no_branch: false
+  name: "test/task-<issue-number>-mod-reco-001-wiring-metric-integration-test"
+  base: "feature/epic-1061-mod-reco-001-wiring-metric"
+  target: "feature/epic-1061-mod-reco-001-wiring-metric"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1061
+      purpose: "親 Epic"
+  prs: []
+  tasks:
+    - "task-mod-reco-001-wiring-metric-wiring"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-metric-wiring"
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "pytest"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -v --tb=short"
+    - "cd apps/reco && uv run pytest tests/unit/ -q --tb=short"
+  not_required:
+    - "integration test（E2E）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§14 integration 観点のカバレッジ（No.10 成功 / No.11 失敗）"
+    - "テストの再現性・安定性"
+    - "epic_scope 外変更の有無"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "workstream: mod-reco-001-wiring-metric"
+  - "Related Epic #1061"

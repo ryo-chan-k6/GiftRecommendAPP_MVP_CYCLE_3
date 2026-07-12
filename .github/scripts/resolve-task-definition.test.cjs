@@ -56,3 +56,63 @@ test("resolveTaskDefinition: review yaml は override 不可", () => {
   assert.equal(result.ok, false);
   assert.equal(result.reason, "definition_override_not_task");
 });
+
+test("resolveTaskDefinition: Contract Definition を override で解決", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "task-def-"));
+  const contractPath =
+    "prompts/definitions/contracts/api-pub-003-item-detail/openapi-fragment.yaml";
+  write(path.join(root, contractPath), 'definition_type: "contract"\n');
+
+  const result = taskResolver.resolveTaskDefinition({
+    workspaceRoot: root,
+    definitionOverride: contractPath,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.path, contractPath);
+  assert.equal(result.source, "override");
+  assert.equal(result.definition_kind, "contract");
+});
+
+test("resolveTaskDefinition: PR #417 相当を review changed files から解決", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "task-def-"));
+  const contractPath =
+    "prompts/definitions/contracts/api-pub-003-item-detail/openapi-fragment.yaml";
+  const reviewPath = "prompts/definitions/reviews/pub-003-item-detail-openapi/pr-review.yaml";
+  write(path.join(root, contractPath), 'definition_type: "contract"\n');
+  write(
+    path.join(root, reviewPath),
+    [
+      'definition_type: "review"',
+      "target:",
+      `  task_definition: "${contractPath}"`,
+      "  issue:",
+      "    number: 416",
+    ].join("\n"),
+  );
+
+  const prBody = [
+    "| Definition | `prompts/definitions/contracts/api-pub-003-item-detail/openapi-fragment.yaml` |",
+    "## Review Definition",
+    "`prompts/definitions/reviews/pub-003-item-detail-openapi/pr-review.yaml`",
+    "Related to #416",
+  ].join("\n");
+
+  const result = taskResolver.resolveTaskDefinition({
+    workspaceRoot: root,
+    prBody,
+    issueBody: "",
+    headRef: "feature/task-416-pub-003-item-detail-openapi",
+    issueNumber: 416,
+    changedFiles: [
+      { filename: "packages/contracts/openapi/public-api.yaml" },
+      { filename: contractPath },
+      { filename: reviewPath },
+    ],
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.path, contractPath);
+  assert.equal(result.definition_kind, "contract");
+  assert.match(result.source, /contract|review/);
+});

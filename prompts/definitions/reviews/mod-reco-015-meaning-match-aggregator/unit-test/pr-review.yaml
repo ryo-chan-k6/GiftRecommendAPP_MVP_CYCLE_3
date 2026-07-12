@@ -1,0 +1,124 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-015-meaning-match-aggregator-unit-test-pr"
+  title: "MOD-RECO-015 単体テスト PRレビュー"
+  summary: "MOD-RECO-015（Meaning Match Aggregator）単体テスト Task（Issue #915）の PR を AI Review する。§14 unit 観点カバレッジ、テスト再現性、epic_scope 整合を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "test/task-915-mod-reco-015-meaning-match-aggregator-unit-test"
+  base: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  target: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  worktree_required: true
+
+target:
+  pr: 916
+  issue:
+    number: 915
+  task_definition: "prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/unit-test.yaml"
+  source_branch: "test/task-915-mod-reco-015-meaning-match-aggregator-unit-test"
+  target_branch: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  parent_epic_issue: 904
+  parent_epic_branch: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/unit-test.yaml"
+    required: true
+  issue:
+    number: 915
+    required: true
+  pr:
+    number: 916
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-015_Meaning Match Aggregatorモジュール仕様書.md"
+      required: true
+      purpose: "§14 テスト観点正本"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: true
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "out_of_scope（integration / Orchestrator 統合 / 機能追加）が混在していないか"
+    - "Task PR target が親 Epic Branch であるか"
+  tests:
+    - "モジュール仕様書 §14 unit 観点がテストでカバーされているか"
+    - "PR 本文に観点とテストケースの対応表があるか"
+    - "`cd apps/reco && python -m pytest tests/unit/ -q` が PR 本文または CI で成功しているか"
+    - "本番 DB / 外部 API / secret に依存していないか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "§14 未カバー観点を許容する場合の理由と後続 Task 化要否"
+
+risk_points:
+  - "実装 PR #914 の最小スモークと §14 網羅の重複・不足"
+  - "テスト成立のためのモジュール本体最小修正の範囲"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/unit-test.yaml"
+  - "前提: #913 PR #914 Epic merge 済み"

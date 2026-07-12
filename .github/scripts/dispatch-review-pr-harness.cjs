@@ -254,6 +254,8 @@ const INFRA_HARNESS_SKIP_LABELS = Object.freeze([
   "area:infra",
 ]);
 
+const EPIC_HARNESS_SKIP_LABELS = Object.freeze(["unit: epic", "unit:epic"]);
+
 const AUTOMATION_ONLY_CHANGED_FILE_PREFIXES = Object.freeze([".github/"]);
 
 function normalizeLabelNames(labels) {
@@ -263,6 +265,16 @@ function normalizeLabelNames(labels) {
 function hasInfraHarnessSkipLabel(labels) {
   const names = normalizeLabelNames(labels);
   return names.some((name) => INFRA_HARNESS_SKIP_LABELS.includes(name));
+}
+
+function hasEpicHarnessSkipLabel(labels) {
+  const names = normalizeLabelNames(labels);
+  return names.some((name) => EPIC_HARNESS_SKIP_LABELS.includes(name));
+}
+
+function isEpicHarnessBranch(headRef) {
+  const branchInfo = resolver.parseBranchRef(nonEmpty(headRef));
+  return branchInfo?.unit === "epic";
 }
 
 function changedFilesAreAutomationOnly(files) {
@@ -290,6 +302,25 @@ function shouldSkipHarnessAutoDispatch({ context, pullLabels, issueLabels, chang
 
   if (changedFilesAreAutomationOnly(changedFiles)) {
     return { skip: true, reason: "automation_only_changes" };
+  }
+
+  return { skip: false };
+}
+
+function shouldSkipFixerHarnessAutoDispatch({ context, pullLabels, issueLabels, changedFiles, headRef }) {
+  const base = shouldSkipHarnessAutoDispatch({ context, pullLabels, issueLabels, changedFiles });
+  if (base.skip) return base;
+
+  if (!isHarnessAutoDispatchContext(context)) {
+    return { skip: false };
+  }
+
+  if (hasEpicHarnessSkipLabel(pullLabels) || hasEpicHarnessSkipLabel(issueLabels)) {
+    return { skip: true, reason: "epic_pr" };
+  }
+
+  if (isEpicHarnessBranch(headRef)) {
+    return { skip: true, reason: "epic_pr" };
   }
 
   return { skip: false };
@@ -641,14 +672,18 @@ if (require.main === module) {
 
 module.exports = {
   AUTOMATION_ONLY_CHANGED_FILE_PREFIXES,
+  EPIC_HARNESS_SKIP_LABELS,
   HARNESS_AUTO_DISPATCH_CONTEXTS,
   INFRA_HARNESS_SKIP_LABELS,
   buildHarnessDirectRecoveryCommand,
   buildRecoveryCommand,
   changedFilesAreAutomationOnly,
   dispatchReviewPrHarness,
+  hasEpicHarnessSkipLabel,
   hasInfraHarnessSkipLabel,
+  isEpicHarnessBranch,
   isHarnessAutoDispatchContext,
+  shouldSkipFixerHarnessAutoDispatch,
   shouldSkipForContext,
   shouldSkipHarnessAutoDispatch,
 };

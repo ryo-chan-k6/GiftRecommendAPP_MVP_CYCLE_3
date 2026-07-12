@@ -1,0 +1,210 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-db-physical-design"
+  title: "db-physical-design:DB物理設計・構築"
+  summary: "L2 Phase2。論理ER・正本定義表を入力に、物理ER・enum/コード定義・テーブル定義書・DDL・migration/seed・データ保持方針を段階的に確定する機能・領域単位 Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  実装フェーズ実行プロセス設計書（L1 #338 merge 済み）§6.3 Phase2 に基づく。
+  Phase0（#348 merge 済み）・Phase1 第1波/第2波マイルストーン（#381/#432 merge 済み）完了後、Human 依頼により Phase2 を Phase4b より先行着手する。
+  入力は完成済みの論理ER・テーブル一覧・正本定義表。apps 実装変更は Phase4b へ分離する。
+
+objective: |
+  Phase2 の DB 設計/構築成果を Epic Branch 上で段階的に積み上げ、Contract Gate 相当の設計整合を満たしたうえで Epic PR により develop へ統合する。
+  子 Task は ①物理ER → ②enum/コード定義 → ③テーブル定義書（テーブル単位）→ ④DDL → ⑤migration/seed → ⑥データ保持・削除方針の順を基本とする。
+
+scope:
+  - "物理ER 仕様書の作成（physical-er-spec.md 準拠）"
+  - "enum・コード定義の整備（packages/code-definitions 連携）"
+  - "テーブル定義書（1テーブル=1Task）"
+  - "DDL・supabase/migrations・db/seeds"
+  - "データ保持・削除方針書"
+  - "Epic PR 用 Review Definition の整備"
+
+out_of_scope:
+  - "apps/** の Repository 実装・API 実装（Phase4b）"
+  - "packages/contracts/**・generated の変更"
+  - "本番 DB への migration 適用・データ削除の実行"
+  - "Phase3 環境構築（environment-setup Epic）"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase2 スコープ・Task 分割の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "物理ER 変換の入力正本"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "テーブル定義 Task 分割の根拠"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "正本・enum 整合の根拠"
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      required: false
+      purpose: "リソース責務の参照"
+  issues:
+    - number: 348
+      purpose: "Phase0 完了前提"
+    - number: 432
+      purpose: "Phase1 完了前提"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/**"
+      action: "create_or_update"
+      required: true
+      template: null
+  files:
+    - path: "supabase/migrations/**"
+      action: "create_or_update"
+      required: false
+    - path: "db/seeds/**"
+      action: "create_or_update"
+      required: false
+    - path: "packages/code-definitions/**"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]db-physical-design:DB物理設計・構築）"
+  - "Epic Branch（develop 起点）"
+  - "物理ER・テーブル定義・DDL・migration/seed・データ保持方針"
+  - "Epic PR → develop（Human merge 待ち）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Epic Branch が develop から作成されている"
+  - "子 Task ① 物理ER が Epic Branch 上で完了可能な Definition がある"
+  - "epic_scope.forbidden_paths（apps 実装層）への変更がない"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+
+branch:
+  no_branch: false
+  name: "docs/epic-435-db-physical-design"
+  summary: "db-physical-design"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-06"
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "docs"
+  area: "db"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/database/**"
+    - "docs/06_実装設計/database/**"
+    - "db/**"
+    - "packages/code-definitions/**"
+    - "prompts/definitions/epics/db-physical-design/**"
+    - "prompts/definitions/tasks/db-physical-design/**"
+    - "prompts/definitions/reviews/db-physical-design/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/contracts/**"
+    - "apps/web/src/generated/**"
+    - "apps/api/src/generated/**"
+    - "infra/**"
+    - ".github/workflows/**"
+  child_task_areas:
+    - "physical-er-spec"
+    - "enum-code-definitions"
+    - "table-spec"
+    - "related-docs-reflection-check"
+    - "ddl"
+    - "migration-seed"
+    - "data-retention-policy"
+    - "epic-final-integration-check"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 348
+      purpose: "Phase0 完了"
+    - number: 432
+      purpose: "Phase1 マイルストーン完了"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/database/物理ER.md"
+    - "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+    - "packages/code-definitions/**"
+    - "supabase/migrations/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "論理ER・テーブル一覧との整合"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 初期 Task は docs 中心のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    contract: false
+
+human_decision_points:
+  - "Phase2 を Phase4b より先行着手（Human 依頼 2026-06-06）"
+  - "子 Task は直列基本。③テーブル定義はテーブル単位で並列可（exclusive_files 遵守）"
+
+stop_conditions:
+  - "論理ERと物理設計の矛盾が Human 判断を要する場合"
+  - "破壊的 schema 変更が production 影響を伴う場合"
+
+notes:
+  - "機能・領域単位 Epic（artifact_id 空）。workstream_key: db-physical-design"
+  - "子 Task 実行順: ① physical-er-spec → ② enum-code-definitions → ③ table-spec（並列可）→ ③′ related-docs-reflection-check（Epic マージ前ゲート）→ ④ ddl → ⑤ migration-seed → ⑥ data-retention-policy → ⑥′ epic-final-integration-check（Epic PR 直前ゲート）"
+  - "Epic マージ前ゲート Task: prompts/definitions/tasks/db-physical-design/related-docs-reflection-check.yaml（Issue #582）"
+  - "Epic PR 直前ゲート Task: prompts/definitions/tasks/db-physical-design/epic-final-integration-check.yaml（Issue #633）"
+  - "Epic PR Review: prompts/definitions/reviews/db-physical-design/epic/pr-review.yaml"

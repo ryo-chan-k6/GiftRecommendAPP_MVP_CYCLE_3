@@ -1,0 +1,146 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-002-reco-recommendation-run-openapi-sync-pr"
+  title: "API-INT-002 Reco推薦実行OpenAPI契約反映 PRレビュー"
+  summary: "API-INT-002 OpenAPI Contract Task（openapi-sync.yaml / #1097）の PR を AI Review する"
+  type: "contract_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1099
+  issue: 1097
+  task_definition: "prompts/definitions/contracts/api-int-002-reco-recommendation-run/openapi-sync.yaml"
+  source_branch: "contract/task-1097-api-int-002-internal-reco-openapi-sync"
+  target_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  parent_epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  parent_epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: true
+  db: false
+  generated: true
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/contracts/api-int-002-reco-recommendation-run/openapi-sync.yaml"
+    required: true
+  issue:
+    number: 1097
+    required: true
+  pr:
+    number: 1099
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-366-api-int-002-reco-recommendation-run"
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "OpenAPI 反映の入力正本（§10 差分リスト）"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "Phase4b 位置づけ・後続 Implementation Task との整合"
+  files:
+    - path: "packages/contracts/openapi/internal-reco-api.yaml"
+      required: true
+    - path: "apps/api/src/generated/reco-client/"
+      required: true
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: true
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Contract Definition（openapi-sync.yaml）の scope を満たしているか"
+    - "out_of_scope（契約 docs 変更 / apps/reco 実装 / wrapper 実装）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch であるか"
+    - "Task PR で Closes #1097 を使っていないか（Related to を使用）"
+  api_contract:
+    - "internal-reco-api.yaml が契約仕様書 §10 差分リスト（resultItems / WarningItem / MetricSummary / ReasonData 等）を満たすか"
+    - "data.items → data.resultItems の破壊的変更が PR 本文に明示されているか"
+    - "0 件正規系 example が resultStatus: completed か"
+    - "ResultStatus enum の empty に 0 件非使用の description があるか"
+  generated:
+    - "generated reco-client が Orval 再生成のみか（手動編集なし）"
+    - "generated 差分が OpenAPI 変更と対応しているか"
+  tests:
+    - "contract-check / apps/api build 結果が PR 本文に記載されているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+  branch:
+    - "PR target が feature/epic-366-api-int-002-reco-recommendation-run であるか"
+  epic_scope:
+    - "allowed_paths（packages/contracts/openapi / apps/api/src/generated/reco-client）内に収まっているか"
+    - "forbidden_paths（apps/reco/application / apps/api/src/app 等）への変更がないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "契約仕様書 docs を変更していない"
+    - "implementation_gate 後続 Task（reco エンドポイント実装）への影響が PR 本文に記載されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "contract-check / api build が SUCCESS"
+      - "generated 手動編集なし"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "契約仕様書 §10 との不整合"
+      - "generated 手動編集または Orval 未実行"
+      - "contract-check 失敗"
+
+notes:
+  - "resolve-review-definition.cjs はファイル名 pr-review.yaml を正とする。Contract Definition 同ディレクトリに配置"
+  - "契約仕様書 Task（#368）用 reviews/api-int-002-reco-recommendation-run/pr-review.yaml とは別定義"

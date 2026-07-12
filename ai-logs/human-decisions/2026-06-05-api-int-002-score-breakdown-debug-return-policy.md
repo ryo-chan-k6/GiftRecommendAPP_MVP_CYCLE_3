@@ -47,7 +47,9 @@ Internal API（API-INT-002）における `scoreBreakdown`（Item 単位）と `
 | -------- | -------------- |
 | `debug_payload`（Recommendation Result 定義書） | `data.metadata.debugPayload`（Run 単位・open object） |
 
-推奨キー（MVP・列挙のみ）: `evalCaseId`, `semanticConfigVersionId`, `modelVersionId`, `rankingConfigVersionId`, `phaseSummary`。追加キーは許容する。
+推奨キー（MVP・列挙のみ）: `evalCaseId`, `configName`, `versionLabel`, `modelVersionId`, `rankingConfigVersionId`, `phaseSummary`。追加キーは許容する。
+
+> **改定（2026-06-10 / Task #463）:** Semantic Config 参照は旧 `semanticConfigVersionId` から **`configName` + `versionLabel` composite** へ更新。API-INT-002 契約仕様書 §7.3.8 と整合。
 
 ### 2.4 欠落時の tolerant 処理
 

@@ -1,0 +1,204 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-environment-setup"
+  title: "environment-setup:環境設計・構築"
+  summary: "L2 Phase3。環境設計書・基盤構成設計書を入力に、環境変数定義・.env.example・infra/scripts・ローカル開発手順・CI基盤を段階的に確定する機能・領域単位 Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  実装フェーズ実行プロセス設計書（L1 #338 merge 済み）§6.4 Phase3 に基づく。
+  Phase0（#348 merge 済み）・Phase1（#432 merge 済み）完了後、Human 依頼により Phase3 を Phase4b より先行着手する。
+  Phase2（db-physical-design）と並列実行する。secret 実値は記載しない。
+
+objective: |
+  Phase3 の環境設計/構築成果を Epic Branch 上で段階的に積み上げ、Epic PR により develop へ統合する。
+  子 Task は ①環境変数定義書 → ②.env.example → ③infra/scripts → ④ローカル開発手順 / ⑤CI基盤の順を基本とする。
+
+scope:
+  - "環境変数定義書の作成・更新"
+  - ".env.example の整備（変数名のみ・ダミー値）"
+  - "infra/・scripts/ の設計・追加"
+  - "ローカル開発手順 docs"
+  - "CI 基盤 workflow の整備（Task ⑤）"
+  - "Epic PR 用 Review Definition の整備"
+
+out_of_scope:
+  - "apps/** のアプリケーション実装"
+  - "db/migrations の内容変更（Phase2 Epic）"
+  - "production への deploy 実行・secret 実値の commit"
+  - "Phase2 DB 物理設計（db-physical-design Epic）"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase3 スコープ・Task 分割の正本"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "環境変数・実行環境の入力正本"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "infra/scripts の入力正本"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: false
+      purpose: "CI 基盤 Task の参照"
+  issues:
+    - number: 348
+      purpose: "Phase0 完了前提"
+    - number: 432
+      purpose: "Phase1 完了前提"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/**"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: ".env.example"
+      action: "update"
+      required: true
+    - path: "infra/**"
+      action: "create_or_update"
+      required: false
+    - path: "scripts/**"
+      action: "create_or_update"
+      required: false
+    - path: ".github/workflows/**"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]environment-setup:環境設計・構築）"
+  - "Epic Branch（develop 起点）"
+  - "環境変数定義・.env.example・infra/scripts・開発手順・CI 基盤"
+  - "Epic PR → develop（Human merge 待ち）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Epic Branch が develop から作成されている"
+  - "子 Task ① 環境変数定義書が Epic Branch 上で完了可能な Definition がある"
+  - "secret 実値が成果物に含まれていない"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+
+branch:
+  no_branch: false
+  name: "docs/epic-436-environment-setup"
+  summary: "environment-setup"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-06"
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "docs"
+  area: "infra"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/06_実装設計/cross_cutting/**"
+    - "docs/00_共通/**"
+    - ".env.example"
+    - "infra/**"
+    - "scripts/**"
+    - ".github/workflows/**"
+    - "prompts/definitions/epics/environment-setup/**"
+    - "prompts/definitions/tasks/environment-setup/**"
+    - "prompts/definitions/reviews/environment-setup/**"
+  forbidden_paths:
+    - "apps/**"
+    - "db/**"
+    - "packages/contracts/**"
+    - "apps/web/src/generated/**"
+    - "apps/api/src/generated/**"
+    - ".env"
+  child_task_areas:
+    - "env-var-definition-doc"
+    - "env-example"
+    - "infra-scripts"
+    - "local-dev-guide"
+    - "ci-foundation"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 348
+      purpose: "Phase0 完了"
+    - number: 432
+      purpose: "Phase1 マイルストーン完了"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".env.example"
+    - "docs/06_実装設計/cross_cutting/環境設計書.md"
+    - ".github/workflows/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "secret 実値が含まれていないこと"
+    - "Phase2 Epic（db/**）への変更がないこと"
+  not_required:
+    - "unit test"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "Phase3 を Phase4b より先行着手（Human 依頼 2026-06-06）"
+  - "Phase2 と並列。`.github/workflows` 変更は Task ⑤ で集中管理"
+
+stop_conditions:
+  - "secret 実値の記載が必要に見える場合"
+  - "production 環境への直接反映が必要に見える場合"
+
+notes:
+  - "機能・領域単位 Epic（artifact_id 空）。workstream_key: environment-setup"
+  - "子 Task 実行順: ① env-var-definition-doc → ② env-example → ③ infra-scripts → ④ local-dev-guide / ⑤ ci-foundation"
+  - "Epic PR Review: prompts/definitions/reviews/environment-setup/epic/pr-review.yaml"

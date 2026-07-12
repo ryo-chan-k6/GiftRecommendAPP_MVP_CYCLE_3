@@ -1,0 +1,419 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-002-027-definitions-bootstrap"
+  title: "MOD-RECO-002〜027:RecoモジュールDefinition bootstrap"
+  summary: "MOD-RECO-002〜027（24モジュール、024/025/028/029除く）の識別子単位 Epic Definition + 子 Task 3件（module-spec / implementation / unit-test）+ Review Definition を整備し、各 `/start-epic` 前提を満たす bootstrap chore Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - number: 260
+      purpose: "MOD-RECO-001 Recommendation Orchestrator Epic 完了"
+    - number: 698
+      purpose: "Phase4a reco-foundation 完了"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  MOD-RECO-001（Epic #260）完了後、残り Reco パイプラインモジュール MOD-RECO-002, MOD-RECO-003, MOD-RECO-004, MOD-RECO-005, MOD-RECO-006, MOD-RECO-007, MOD-RECO-008, MOD-RECO-009, MOD-RECO-010, MOD-RECO-011, MOD-RECO-012, MOD-RECO-013, MOD-RECO-014, MOD-RECO-015, MOD-RECO-016, MOD-RECO-017, MOD-RECO-018, MOD-RECO-019, MOD-RECO-020, MOD-RECO-021, MOD-RECO-022, MOD-RECO-023, MOD-RECO-026, MOD-RECO-027 および BT モジュール（026 / 027）を
+  識別子単位 Epic として `/start-epic` する前に Definition 一式を prompts/definitions に整備する。
+  実装フェーズ実行プロセス設計書 §6.6 / 成果物化方針書 §3.5.2 に整合させる。
+  24 Epic は **並列** `/start-epic` 可だが、推奨ウェーブ（0: 002-003 / 1: 004-009 / 2: 010-013 / 3: 014-016 / 4: 017-020 / 5: 021-023 / bt: 026-027）に従い着手する。
+  生成スクリプト: scripts/generate_mod_reco_002_027_definitions.py
+
+objective: |
+  MOD-RECO-002〜027 の Epic Definition 24件 + 子 Task Definition 72件 + Review Definition 97件 + 本 bootstrap を作成する。
+  merge 後、各 workstream で `/start-epic @prompts/definitions/epics/<workstream>/epic.yaml` へ進める状態にする。
+
+scope:
+  - "Epic Definition 24件（MOD-RECO-002〜027、024/025/028/029 は対象外）"
+  - "子 Task Definition 72件（各 Epic × module-spec / implementation / unit-test）"
+  - "Review Definition 97件（Epic×24 + Task×72 + bootstrap×1）"
+  - "本 bootstrap Task / Review Definition"
+  - "生成スクリプト scripts/generate_mod_reco_002_027_definitions.py"
+
+out_of_scope:
+  - "各 MOD-RECO Epic の実装（モジュール仕様書・コード・テスト本体）"
+  - "MOD-RECO-024 / 025 / 028 / 029 の Definition（別 bootstrap 候補）"
+  - "Orchestrator スタブ差し替え wiring Task"
+  - "packages/contracts/** 変更・generated 手編集"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "モジュール名・物理名・分類・処理種別の正本"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串・並列方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針 §3.5"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "ポート契約・処理順序の正本"
+  files:
+    - path: "prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml"
+      required: true
+      purpose: "Epic Definition 構造参考"
+    - path: "prompts/definitions/tasks/phase4a/phase4a-definitions-bootstrap.yaml"
+      required: true
+      purpose: "bootstrap Task 構造参考"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/mod-reco-002-recommendation-run-recorder/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-003-config-version-resolver/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-004-user-semantic-extractor/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-005-external-condition-feature-estimator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-006-internal-condition-feature-estimator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-007-user-feature-generator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-008-user-meaning-projector/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-009-user-context-builder/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-010-query-embedding-generator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-011-pre-hard-filter-executor/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-012-candidate-retriever/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-013-post-hard-filter-executor/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-014-feature-matcher/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-015-meaning-match-aggregator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-016-context-scorer/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-017-popularity-scorer/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-018-risk-scorer/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-019-final-score-calculator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-020-final-ranker/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-021-recommendation-result-builder/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-022-result-snapshot-builder/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-023-reason-generator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-026-item-semantic-generator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/mod-reco-027-item-feature-generator/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-002-recommendation-run-recorder/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-003-config-version-resolver/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-004-user-semantic-extractor/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-005-external-condition-feature-estimator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-006-internal-condition-feature-estimator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-007-user-feature-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-008-user-meaning-projector/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-009-user-context-builder/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-010-query-embedding-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-011-pre-hard-filter-executor/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-012-candidate-retriever/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-013-post-hard-filter-executor/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-014-feature-matcher/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-015-meaning-match-aggregator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-016-context-scorer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-017-popularity-scorer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-018-risk-scorer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-019-final-score-calculator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-020-final-ranker/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-021-recommendation-result-builder/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-022-result-snapshot-builder/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-023-reason-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-026-item-semantic-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-027-item-feature-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-002-recommendation-run-recorder/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-003-config-version-resolver/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-004-user-semantic-extractor/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-005-external-condition-feature-estimator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-006-internal-condition-feature-estimator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-007-user-feature-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-008-user-meaning-projector/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-009-user-context-builder/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-010-query-embedding-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-011-pre-hard-filter-executor/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-012-candidate-retriever/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-013-post-hard-filter-executor/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-014-feature-matcher/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-015-meaning-match-aggregator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-016-context-scorer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-017-popularity-scorer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-018-risk-scorer/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-019-final-score-calculator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-020-final-ranker/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-021-recommendation-result-builder/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-022-result-snapshot-builder/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-023-reason-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-026-item-semantic-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-027-item-feature-generator/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-002-027-definitions-bootstrap/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "scripts/generate_mod_reco_002_027_definitions.py"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Epic Definition 24件"
+  - "子 Task Definition 72件"
+  - "Review Definition 97件（Epic/Task Review + bootstrap Review）"
+  - "生成スクリプト 1件"
+  - "merge 後 各 `/start-epic` 実行可能"
+
+acceptance_criteria:
+  - "MOD-RECO-002〜027 の Epic / Task / Review Definition が存在する"
+  - "各 Epic に child_task_areas（module-spec / implementation / unit-test）がある"
+  - "epic_scope.forbidden_paths に apps/reco/src/reco/api/** が含まれる"
+  - "MOD-RECO-001 epic.yaml 構造と整合（識別子単位 Epic）"
+  - "生成スクリプトで再生成可能である"
+  - "secret 実値が含まれていない"
+  - "Task PR target が develop（親 Epic なし chore）"
+
+branch:
+  no_branch: false
+  name: "chore/task-774-mod-reco-002-027-definitions-bootstrap"
+  summary: "mod-reco-002-027-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 774
+  unit: "task"
+  type: "chore"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 260
+      purpose: "MOD-RECO-001 完了"
+    - number: 698
+      purpose: "reco-foundation 完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "prompts/definitions/epics/mod-reco-00*/**"
+    - "prompts/definitions/epics/mod-reco-01*/**"
+    - "prompts/definitions/epics/mod-reco-02*/**"
+    - "prompts/definitions/tasks/mod-reco-00*/**"
+    - "prompts/definitions/tasks/mod-reco-01*/**"
+    - "prompts/definitions/tasks/mod-reco-02*/**"
+    - "prompts/definitions/reviews/mod-reco-00*/**"
+    - "prompts/definitions/reviews/mod-reco-01*/**"
+    - "prompts/definitions/reviews/mod-reco-02*/**"
+    - "prompts/definitions/tasks/mod-reco-002-027-definitions-bootstrap.yaml"
+    - "scripts/generate_mod_reco_002_027_definitions.py"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "Epic 24件 / Task 72件 / Review 97件のファイル数"
+    - "各 Epic の epic_scope.allowed_paths 目視"
+    - "YAML 必須項目目視"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Definition のみ chore"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Recoモジュール一覧とのモジュール ID / 物理名整合"
+    - "MOD-RECO-001 Definition 構造との整合"
+    - "並列ウェーブ注記の妥当性"
+    - "024/025/028/029 が scope 外であること"
+    - "Review Definition 4点セット（Epic + 3 Task）×24"
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+notes:
+  - "親 Epic なし・develop 直 Task（bootstrap chore）"
+  - "対象: MOD-RECO-002, MOD-RECO-003, MOD-RECO-004, MOD-RECO-005, MOD-RECO-006, MOD-RECO-007, MOD-RECO-008, MOD-RECO-009, MOD-RECO-010, MOD-RECO-011, MOD-RECO-012, MOD-RECO-013, MOD-RECO-014, MOD-RECO-015, MOD-RECO-016, MOD-RECO-017, MOD-RECO-018, MOD-RECO-019, MOD-RECO-020, MOD-RECO-021, MOD-RECO-022, MOD-RECO-023, MOD-RECO-026, MOD-RECO-027"
+  - "merge 後: `/start-epic @prompts/definitions/epics/mod-reco-002-recommendation-run-recorder/epic.yaml` 等"
+  - "workstream_key: mod-reco-002-027-definitions-bootstrap"

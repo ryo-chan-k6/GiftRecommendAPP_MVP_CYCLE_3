@@ -1,0 +1,77 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-002-config-version-align-pr"
+  title: "MOD-RECO-002 Run Recorder config version整合 PRレビュー"
+  summary: "Epic #357 クローズ後縦串 follow-up Task config-version-align（#1141）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: 1146
+  issue:
+    number: 1141
+  task_definition: "prompts/definitions/tasks/mod-reco-002-recommendation-run-recorder/config-version-align.yaml"
+  source_branch: "feature/task-1141-mod-reco-002-config-version-align"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-002-recommendation-run-recorder/config-version-align.yaml"
+    required: true
+  issue:
+    number: 1141
+    required: true
+  pr:
+    number: 1146
+    required: true
+
+review_points:
+  - "修正が version 解決整合に閉じているか（stub ports 全面置換なし）"
+  - "hardcode の偽 UUID を増やしていないか"
+  - "master seed / is_current との整合が再現可能か"
+  - "ローカル開発手順書 §10.4.4 No.4 の config version 記述が更新されているか"
+  - "migration / OpenAPI / generated を増やしていないか"
+  - "Epic #357 クローズ後 develop 直 PR 例外と MOD-RECO-002 識別子 follow-up 例外が PR 本文で説明されているか"
+
+human_review_points:
+  - "stub ports 全面 production 化を本 Issue に含めない判断の承認"
+  - "seed 変更が含まれる場合の採否"
+  - "Parent を #357 follow-up とする例外の承認"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に target.pr / input.pr へ反映"
+  - "親 Epic Branch: develop（Human 判断・Epic #357 CLOSED 縦串 follow-up）"

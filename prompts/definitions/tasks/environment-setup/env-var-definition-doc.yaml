@@ -1,0 +1,125 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-environment-setup-env-var-definition-doc"
+  title: "環境変数定義書作成・更新"
+  summary: "環境設計書・基盤構成設計書を入力に、環境変数定義を docs 正本として整理する。Phase3 子 Task ①。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-environment-setup"
+  epic_issue: "[Epic]environment-setup:環境設計・構築"
+  epic_issue_number: 436
+  epic_branch: "docs/epic-436-environment-setup"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 子 Task ①。実装フェーズ実行プロセス設計書 §6.4 の「環境変数定義書」に対応。
+  後続 Task（.env.example / infra/scripts）の前提となる。
+
+objective: |
+  環境設計書・基盤構成設計書と整合する環境変数定義を docs に明文化する。
+  secret は変数名・用途・区分のみ記載し、実値は含めない。
+
+scope:
+  - "環境設計書の環境変数関連節の整理・追記"
+  - "アプリ別（web/api/reco/batch）の環境変数一覧の明文化"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - ".env.example の更新（Task ②）"
+  - "infra/scripts の実装（Task ③）"
+  - "CI workflow 変更（Task ⑤）"
+  - "apps/** 実装"
+  - "secret 実値の記載"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "環境変数の入力正本"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "インフラ・実行環境の参照"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: false
+      purpose: "CI 関連 env の参照"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "prompts/definitions/tasks/environment-setup/env-var-definition-doc.yaml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/environment-setup/env-var-definition-doc/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "環境変数定義が環境設計書に整理されている"
+  - "secret 実値が含まれていない"
+  - "db/**・apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "environment-setup-env-var-definition-doc"
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/cross_cutting/環境設計書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+notes:
+  - "親 Epic Issue / Branch は /start-task 後に parent ブロックを更新する"

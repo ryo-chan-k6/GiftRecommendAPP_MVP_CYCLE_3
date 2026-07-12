@@ -1,0 +1,290 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-app-ci"
+  title: "app-ci:アプリ別PR CI"
+  summary: "Epic D。Phase4a 完了後、web / api / reco / batch の Layer1 PR CI（ci-*.yml）を整備し、単体・mock 結合の Agent 運用基盤を提供する機能・領域単位 Epic。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4a（#688 / #698 / #710 / #724 / #734 merge 済み、2026-06-24）完了後の後続 Epic（実装フェーズ実行プロセス設計書 §6.4）。
+  Epic C（gha-test-environment / Layer2）と分離し、PR 品質ゲート（Layer1）として app 別 `ci-*.yml` を整備する（CI・CD方針書 §13）。
+  `ci-reco.yml` は local-dev-environment Task #707 で先行作成済み。Epic D 子 Task `ci-reco-workflow` で統合・拡張する。
+
+objective: |
+  Epic Branch 上で子 Task 5件を実行し、web / api / reco / batch の Layer1 PR CI を整備する。
+  `ci.yml` エントリから各 app workflow を呼び出し、Agent が Task PR 内で lint / build / unit（mock 前提）を実行・Fix できる基盤とする。
+  Epic PR で develop へ統合する。
+
+scope:
+  - "`.github/workflows/ci-web.yml`（web lint / build / unit）"
+  - "`.github/workflows/ci-api.yml`（api lint / build / unit）"
+  - "`.github/workflows/ci-reco.yml` 統合・拡張（#707 先行成果）"
+  - "`.github/workflows/ci-batch.yml`（batch pytest / lint）"
+  - "`ci.yml` への app 別 job 配線・path filter"
+  - "テスト環境設計書 Layer1 / Epic D 対応表の docs 更新"
+  - "Epic / Task / Review Definition 整備"
+
+out_of_scope:
+  - "Layer2 workflow（ci-db.yml / test-system.yml / test-reco-quality.yml）— Epic C 管轄"
+  - "Epic B（hosted-dev-environment / Layer3）— defer"
+  - "Phase4b 識別子 Epic 本格実装"
+  - "packages/contracts/** 変更・generated 手編集"
+  - "CD / deploy workflow"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Epic D §6.4"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "§13 workflow 分割"
+    - path: "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+      required: true
+      purpose: "Layer1 / agent_test_operations"
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§4.1 テストレベル"
+  issues:
+    - number: 688
+      purpose: "packages-foundation 完了"
+    - number: 698
+      purpose: "reco-foundation 完了"
+    - number: 710
+      purpose: "api-foundation 完了"
+    - number: 724
+      purpose: "web-foundation 完了"
+    - number: 734
+      purpose: "batch-foundation 完了"
+    - number: 707
+      purpose: "ci-reco.yml 先行（local-dev-environment）"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+      action: "update"
+      required: true
+  files:
+    - path: ".github/workflows/ci-web.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/ci-api.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/ci-reco.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/ci-batch.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]app-ci:アプリ別PR CI）"
+  - "Layer1 app 別 PR CI（ci-web / ci-api / ci-reco / ci-batch + ci.yml 配線）"
+  - "テスト環境設計書 Layer1 拡張"
+  - "Epic PR → develop"
+
+acceptance_criteria:
+  - "子 Task Definition 5件が存在する"
+  - "各 app の PR CI が ci.yml から呼び出され、path filter で無関係変更時 skip 可能"
+  - "Layer2 workflow が ci.yml 品質ゲートに混在していない"
+  - "ci-reco.yml 先行（#707）が Epic D scope で整理されている"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  summary: "app-ci"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "infra"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - ".github/workflows/ci-web.yml"
+    - ".github/workflows/ci-api.yml"
+    - ".github/workflows/ci-reco.yml"
+    - ".github/workflows/ci-batch.yml"
+    - ".github/workflows/ci.yml"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "scripts/dev/**"
+    - "package.json"
+    - "pnpm-workspace.yaml"
+    - "pyproject.toml"
+    - "uv.lock"
+    - "docs/05_アプリケーション設計/テスト/**"
+    - "prompts/definitions/epics/app-ci/**"
+    - "prompts/definitions/tasks/app-ci/**"
+    - "prompts/definitions/reviews/app-ci/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/**/generated/**"
+    - ".github/workflows/ci-db.yml"
+    - ".github/workflows/test-system.yml"
+    - ".github/workflows/test-reco-quality.yml"
+    - "supabase/migrations/**"
+    - ".env"
+  child_task_areas:
+    - "ci-web-workflow"
+    - "ci-api-workflow"
+    - "ci-reco-workflow"
+    - "ci-batch-workflow"
+    - "app-ci-docs"
+
+dependencies:
+  epics:
+    - id: "epic-gha-test-environment"
+      issue: 671
+      purpose: "Layer2 分離・Epic C 完了"
+    - id: "epic-local-dev-environment"
+      issue: 651
+      purpose: "ci-reco.yml 先行（#707）前提"
+  issues:
+    - number: 688
+      purpose: "packages-foundation"
+    - number: 698
+      purpose: "reco-foundation"
+    - number: 710
+      purpose: "api-foundation"
+    - number: 724
+      purpose: "web-foundation"
+    - number: 734
+      purpose: "batch-foundation"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/epics/packages-foundation/epic.yaml"
+    - "prompts/definitions/epics/web-foundation/epic.yaml"
+    - "prompts/definitions/epics/api-foundation/epic.yaml"
+    - "prompts/definitions/epics/reco-foundation/epic.yaml"
+    - "prompts/definitions/epics/batch-foundation/epic.yaml"
+  exclusive_files:
+    - ".github/workflows/ci-web.yml"
+    - ".github/workflows/ci-api.yml"
+    - ".github/workflows/ci-reco.yml"
+    - ".github/workflows/ci-batch.yml"
+    - ".github/workflows/ci.yml"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "各 ci-*.yml が PR で dispatch 可能（optional）"
+    - "Layer2 workflow が ci.yml に混在していない"
+  not_required:
+    - "フルスタック E2E"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    security: true
+
+agentic_process:
+  summary: |
+    Layer1 PR CI は push / pull_request で自動実行。Agent は PR check 結果を読み取り Fix する。
+    Layer2（Epic C）とは workflow を分離する。
+  constraints:
+    - "Agent の主経路: Task PR → CI pass → AI Review"
+    - "Layer2 workflow を ci.yml 品質ゲートに含めない"
+    - "apps 未実装時は skip / placeholder で workflow 骨格のみ可"
+    - "CI 品質ゲートと AI 運用 workflow（definition-run 等）の分離を維持"
+
+agent_test_operations:
+  summary: |
+    Epic D は Layer1「単体・mock 結合」の Agent 運用基盤を担う（§2.6）。システム/品質は Epic C。
+  level_map:
+    - level: "単体テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 PR CI（本 Epic）+ Task PR 内 pnpm test / pytest"
+      epic_relation: "Epic D **明示スコープ**"
+    - level: "モジュール結合テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 PR CI + apps 内 tests/module/"
+      epic_relation: "Epic D + Phase4b Task"
+    - level: "コンポーネント結合テスト"
+      agent_use: "想定"
+      execution_path: "Layer1 mock/fixture + PR CI"
+      epic_relation: "Phase4b"
+    - level: "システムテスト"
+      agent_use: "想定"
+      execution_path: "Layer2 test-system.yml（Epic C）"
+      epic_relation: "Epic C 管轄（本 Epic 外）"
+    - level: "レコメンド品質評価"
+      agent_use: "想定"
+      execution_path: "Layer2 test-reco-quality.yml（Epic C）"
+      epic_relation: "Epic C 管轄（本 Epic 外）"
+  common_pattern:
+    - "作成: Worker / Test AI がテスト・workflow を Task scope 内で作成"
+    - "実行: PR CI（Layer1）または Task 内コマンド"
+    - "読取: CI log / PR check を Agent が解釈"
+    - "Fix: Fixer AI または同一 Agent が修正 → 再 push"
+    - "記録: PR 本文・正本 docs"
+  epic_d_focus: |
+    Epic D 子 Task は app 別 ci-*.yml と ci.yml 配線を中心とする。
+    apps 骨格未整備時は skip 条件を workflow / docs に明記する。
+
+human_decision_points:
+  - "Phase4a 完了後に Epic D 着手（2026-06-24）"
+  - "ci-reco.yml は #707 先行、Epic D で統合"
+
+stop_conditions:
+  - "Layer2 workflow を ci.yml に混在させる必要がある場合"
+  - "packages/contracts 変更が必要な場合"
+  - "secret 実値の記載が必要な場合"
+
+notes:
+  - "workstream_key: app-ci"
+  - "子 Task 推奨順: ci-reco-workflow（統合）→ ci-web / ci-api / ci-batch 並列可 → app-ci-docs"
+  - "Epic PR Review: prompts/definitions/reviews/app-ci/epic/pr-review.yaml"

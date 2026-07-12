@@ -114,15 +114,22 @@ function extractYamlScalar(content, key) {
   return match ? nonEmpty(match[1]) : "";
 }
 
+/**
+ * トップレベル `target:` ブロックを返す。
+ * `branch.target` などネストされた target キーと誤マッチしない。
+ */
+function extractTopLevelTargetBlock(reviewContent) {
+  const match = /(?:^|\n)target:\s*[\s\S]*?(?=\n[a-z_]+:|\n\S|\s*$)/i.exec(String(reviewContent || ""));
+  return match ? match[0].replace(/^\n/, "") : "";
+}
+
 function extractTaskDefinitionPath(reviewContent) {
-  const targetBlock = /target:\s*[\s\S]*?(?=\n[a-z_]+:|\n\S|\s*$)/i.exec(String(reviewContent || ""));
-  const block = targetBlock ? targetBlock[0] : reviewContent;
+  const block = extractTopLevelTargetBlock(reviewContent) || reviewContent;
   return normalizePath(extractYamlScalar(block, "task_definition"));
 }
 
 function extractTargetIssueNumber(reviewContent) {
-  const issueBlock = /target:\s*[\s\S]*?(?=\n[a-z_]+:|\n\S|\s*$)/i.exec(String(reviewContent || ""));
-  const block = issueBlock ? issueBlock[0] : reviewContent;
+  const block = extractTopLevelTargetBlock(reviewContent) || reviewContent;
   const issueSection = /issue:\s*[\s\S]*?(?=\n\s{0,2}[a-z_]+:|\s*$)/i.exec(block);
   const scoped = issueSection ? issueSection[0] : block;
   const nestedValue = extractYamlScalar(scoped, "number");
@@ -141,8 +148,7 @@ function extractTargetIssueNumber(reviewContent) {
 }
 
 function extractTargetPrNumber(reviewContent) {
-  const targetBlock = /target:\s*[\s\S]*?(?=\n[a-z_]+:|\n\S|\s*$)/i.exec(String(reviewContent || ""));
-  const block = targetBlock ? targetBlock[0] : reviewContent;
+  const block = extractTopLevelTargetBlock(reviewContent) || reviewContent;
   const value = extractYamlScalar(block, "pr");
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -171,6 +177,26 @@ function workstreamReviewConventionPath(taskDefinitionPath) {
   return `${DEFINITION_ROOT}reviews/${workstream}/${REVIEW_FILE_NAME}`;
 }
 
+/**
+ * tasks/<workstream>/<name>.yaml → reviews/<workstream>/<name>/pr-review.yaml
+ * workstream 直下の pr-review.yaml より具体的な Task 単位 Review を優先する。
+ */
+function taskNamedReviewConventionPath(taskDefinitionPath) {
+  const taskPath = normalizePath(taskDefinitionPath);
+  if (!taskPath.startsWith(`${DEFINITION_ROOT}tasks/`)) return "";
+  const segments = taskPath.split("/");
+  const tasksIndex = segments.indexOf("tasks");
+  if (tasksIndex < 0 || tasksIndex + 2 >= segments.length) return "";
+  const workstream = segments[tasksIndex + 1];
+  const fileName = segments[segments.length - 1];
+  if (!workstream || !fileName) return "";
+  const taskNameMatch = /^(.+)\.ya?ml$/i.exec(fileName);
+  if (!taskNameMatch) return "";
+  const taskName = taskNameMatch[1];
+  if (!taskName) return "";
+  return `${DEFINITION_ROOT}reviews/${workstream}/${taskName}/${REVIEW_FILE_NAME}`;
+}
+
 function resolveReviewDefinitionFromTaskPath(taskDefinitionPath, workspaceRoot) {
   const workspace = nonEmpty(workspaceRoot) || process.cwd();
   const taskPath = normalizePath(taskDefinitionPath);
@@ -187,6 +213,16 @@ function resolveReviewDefinitionFromTaskPath(taskDefinitionPath, workspaceRoot) 
     return { ok: true, path: sibling, source: "task_sibling", task_definition: taskPath };
   }
 
+  const taskNamedReview = taskNamedReviewConventionPath(taskPath);
+  if (taskNamedReview && fileExists(path.join(workspace, taskNamedReview))) {
+    return {
+      ok: true,
+      path: taskNamedReview,
+      source: "task_named_review_convention",
+      task_definition: taskPath,
+    };
+  }
+
   const workstreamReview = workstreamReviewConventionPath(taskPath);
   if (workstreamReview && fileExists(path.join(workspace, workstreamReview))) {
     return {
@@ -201,7 +237,7 @@ function resolveReviewDefinitionFromTaskPath(taskDefinitionPath, workspaceRoot) 
     ok: false,
     reason: "review_definition_not_found",
     task_definition: taskPath,
-    hint: `Task Definition と同ディレクトリの ${REVIEW_FILE_NAME}、または ${workstreamReviewConventionPath(taskPath) || "reviews/<workstream>/pr-review.yaml"} を作成してください。`,
+    hint: `Task Definition と同ディレクトリの ${REVIEW_FILE_NAME}、${taskNamedReviewConventionPath(taskPath) || "reviews/<workstream>/<task-name>/pr-review.yaml"}、または ${workstreamReviewConventionPath(taskPath) || "reviews/<workstream>/pr-review.yaml"} を作成してください。`,
   };
 }
 
@@ -504,6 +540,8 @@ module.exports = {
   extractReviewType,
   epicReviewConventionPath,
   workstreamReviewConventionPath,
+  taskNamedReviewConventionPath,
+  extractTopLevelTargetBlock,
   resolveReviewDefinitionFromTaskPath,
   extractAiReviewRequired,
   listReviewDefinitionFiles,

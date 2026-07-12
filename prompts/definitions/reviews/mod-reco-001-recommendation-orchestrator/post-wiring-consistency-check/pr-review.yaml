@@ -1,0 +1,59 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-post-wiring-consistency-check-pr"
+  title: "MOD-RECO-001 フェーズWiring完了後 整合チェック PRレビュー"
+  summary: "Wiring 全フェーズ完了後の Orchestrator 横断整合チェック Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1010
+  issue:
+    number: 1009
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-wiring-consistency-check.yaml"
+  source_branch: "chore/task-1009-mod-reco-001-post-wiring-consistency-check"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/post-wiring-consistency-check.yaml"
+    required: true
+
+review_points:
+  - "配線状態一覧が stubs.py / develop 実装と一致しているか"
+  - "§14 ギャップ表の unit / integration 区分と coverage_status が妥当か"
+  - "MOD-RECO-001 §8.4.2 更新が過不足ないか"
+  - "integration / 024〜029 実装に scope が漏れていないか"
+  - "後続 Task 推奨順序が PR に整理されているか"
+  - "develop 直 PR 例外が PR 本文で説明されているか"
+  - "exception_scope（publish-fix-complete-and-dispatch）が Task Definition と PR 本文で整合しているか"
+  - "pytest green が維持されているか"
+
+notes:
+  - "target.pr: 1010（Issue #1009）"
+  - "exception_scope: Human 判断により fix-complete dispatch CLI を本 PR に含める"

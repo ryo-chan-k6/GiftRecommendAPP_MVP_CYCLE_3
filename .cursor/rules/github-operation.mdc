@@ -401,8 +401,10 @@ AI Agent が GitHub へ **書き込む** 操作（commit / push / Issue 作成 /
 ```bash
 node .github/scripts/gh-bot-auth.cjs verify
 eval "$(node .github/scripts/gh-bot-auth.cjs print-setup)"
+# または: eval "$(bash .github/scripts/gh-auth-mode.sh bot)"
 ```
 
+- 一時的人間モード切替は [AI機械アカウント運用設計書](../../docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md) §5.1（`gh-auth-mode.sh`）を正とする。
 - PAT は **machine account で発行した Classic PAT**（`repo`）。人間アカウントの PAT では PR author が人間になり、Human Review 正式経路が使えない。
 - PAT は `~/.config/gift-recommend/gh-bot.env` に保管（`.github/gh-bot.env.example` 参照）。リポジトリに commit しない。
 - 詳細は [AI機械アカウント運用設計書](../../docs/00_共通/AIエージェント運用/AI機械アカウント運用設計書.md) を正とする。

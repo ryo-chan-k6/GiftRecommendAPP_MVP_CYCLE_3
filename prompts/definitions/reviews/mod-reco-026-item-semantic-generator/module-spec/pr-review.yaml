@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-026-item-semantic-generator-module-spec-pr"
+  title: "MOD-RECO-026 モジュール仕様書 PRレビュー"
+  summary: "MOD-RECO-026（Item Semantic Generator）モジュール仕様書 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1095
+  issue:
+    number: 1093
+  task_definition: "prompts/definitions/tasks/mod-reco-026-item-semantic-generator/module-spec.yaml"
+  source_branch: "docs/task-1093-mod-reco-026-item-semantic-generator-module-spec"
+  target_branch: "feature/epic-1092-mod-reco-026-item-semantic-generator"
+  parent_epic_issue: 1092
+  parent_epic_branch: "feature/epic-1092-mod-reco-026-item-semantic-generator"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-026-item-semantic-generator/module-spec.yaml"
+    required: true
+
+review_points:
+  - "Task Definition scope / acceptance_criteria 充足"
+  - "epic_scope 内に差分が収まっているか"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 確定後に target.* / input.issue.number / input.pr.number を更新する"

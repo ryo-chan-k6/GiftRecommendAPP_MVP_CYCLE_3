@@ -1,0 +1,82 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-phase3b-epic-c-definitions-bootstrap-pr"
+  title: "Phase3b Epic C Definition bootstrap PRレビュー"
+  summary: "Epic C + 子Task 6件の Epic/Task/Review Definition 作成 chore PR の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-669-epic-c-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: 670
+  issue:
+    number: 669
+  task_definition: "prompts/definitions/tasks/phase3b/epic-c-definitions-bootstrap.yaml"
+  source_branch: "chore/task-669-epic-c-definitions-bootstrap"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: false
+  cicd: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/phase3b/epic-c-definitions-bootstrap.yaml"
+    required: true
+  issue:
+    number: 669
+    required: true
+  pr:
+    number: 670
+    required: true
+
+review_points:
+  - "Epic Definition に agentic_process / agent_test_operations（§2.6 / §2.7 / §2.8）が反映されているか"
+  - "子 Task C1〜C6 の scope・依存・並列が Phase3 環境再計画と一致するか"
+  - "Review Definition（Epic + 各 Task + 本 bootstrap）が揃っているか"
+  - "Epic B Definition が作成されていないか（defer）"
+  - "epic_scope.allowed_paths / forbidden_paths の妥当性"
+  - "Layer2 workflow を ci.yml 品質ゲートに混在させない設計原則"
+  - "secret 非含有"
+
+acceptance_criteria_check:
+  - id: "epic-c-def"
+    text: "epics/gha-test-environment/epic.yaml 存在・Layer2 / §2.6 記載"
+  - id: "child-tasks"
+    text: "子 Task C1〜C6 Definition 存在"
+  - id: "reviews"
+    text: "Task×6 + Epic×1 Review Definition 存在"
+  - id: "no-epic-b"
+    text: "Epic B 未作成"
+
+human_review_points:
+  - "Epic C 子 Task 分割粒度が L2 実行に適切か"
+  - "C3/C4 の Phase4b 依存と骨格先行の記載が妥当か"
+
+notes:
+  - "Issue #669。PR 番号は /create-pr 後に反映"

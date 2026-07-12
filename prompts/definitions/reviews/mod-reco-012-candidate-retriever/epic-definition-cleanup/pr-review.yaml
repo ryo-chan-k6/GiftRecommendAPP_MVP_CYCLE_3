@@ -1,0 +1,77 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-012-epic-definition-cleanup-pr"
+  title: "MOD-RECO-012 Epic/Definition整理（011廃止）PRレビュー"
+  summary: "Issue #869 Task の Step 5（Epic #861 クローズ・Definition 整理）PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 870
+  issue:
+    number: 869
+  task_definition: "prompts/definitions/tasks/mod-reco-012-candidate-retriever/epic-definition-cleanup.yaml"
+  source_branch: "chore/task-869-mod-reco-012-epic-definition-cleanup"
+  target_branch: "feature/epic-864-mod-reco-012-candidate-retriever"
+  parent_epic_issue: 864
+  parent_epic_branch: "feature/epic-864-mod-reco-012-candidate-retriever"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-012-candidate-retriever/epic-definition-cleanup.yaml"
+    required: true
+  issue:
+    number: 869
+    required: true
+  pr:
+    number: 870
+    required: true
+
+review_points:
+  common:
+    - "Task Definition acceptance_criteria 充足"
+    - "scope 外変更（apps / OpenAPI / DB）が混在していないか"
+    - "PR target が親 Epic Branch であるか"
+  docs:
+    - "011 廃止記録 §10 Step 5 が完了反映されているか"
+    - "012 epic.yaml の pre_hard_filter 統合 scope が 012 仕様書と整合しているか"
+    - "011 implementation / unit-test が deprecated かつ移行先が明記されているか"
+    - "Epic #861 クローズコメントが適切か（GitHub 上）"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須（Blocker/Must）がない"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+
+notes:
+  - "PR head に本 Review Definition を同梱すること"
+  - "PR 番号確定後に target.pr を更新する"

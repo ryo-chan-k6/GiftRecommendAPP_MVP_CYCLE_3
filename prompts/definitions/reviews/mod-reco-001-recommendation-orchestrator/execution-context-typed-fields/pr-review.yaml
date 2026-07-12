@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-execution-context-typed-fields-pr"
+  title: "MOD-RECO-001 ExecutionContext型付き化 PRレビュー"
+  summary: "ExecutionContext 型付きフィールド拡張 Task の PR を AI Review する（develop 直 PR 例外）"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 890
+  issue:
+    number: 887
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/execution-context-typed-fields.yaml"
+  source_branch: "chore/task-887-mod-reco-001-execution-context-typed-fields"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/execution-context-typed-fields.yaml"
+    required: true
+
+review_points:
+  - "ExecutionContext フィールド名・型が 006〜010 / 012 / 013 仕様と整合しているか"
+  - "user_meaning の Union 型設計が Human 判断どおりか"
+  - "develop 直 PR 例外が PR 本文で説明されているか（Related to #260 / #789）"
+  - "stubs.py / test_recommendation_orchestrator.py への不要な変更がないか"
+  - "`getattr` / `# type: ignore[attr-defined]` の置換漏れがないか"
+  - "pytest tests/unit/ 実行結果が PR 本文に記載されているか"
+  - "Epic #789 develop merge 後の作業であることが PR 本文で説明されているか"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / source_branch / input.pr.number を更新する"

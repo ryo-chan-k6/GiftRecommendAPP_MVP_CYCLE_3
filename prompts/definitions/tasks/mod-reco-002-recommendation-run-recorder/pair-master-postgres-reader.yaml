@@ -1,0 +1,234 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-002-pair-master-postgres-reader"
+  title: "MOD-RECO-002:pair_master Postgres reader配線"
+  summary: "Epic #357 クローズ後縦串 follow-up。production composition の pair_reader を InMemory scaffold から PostgresPairMasterReader へ置換し、pair_master（boss×thanks 等）から pair_id を解決する（#1137 §10.4.4 No.3）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  epic_issue_number: 357
+  epic_branch: "develop"
+  related_issues:
+    - number: 357
+      purpose: "縦串 follow-up 親（CLOSED・履歴。Epic Reopen なし）"
+    - number: 776
+      purpose: "MOD-RECO-002 実装 Epic（CLOSED・履歴参照）"
+    - number: 1137
+      purpose: "ローカル縦串スモークで InMemory pair_reader ギャップを確認"
+    - number: 1139
+      purpose: "recommendation_request 実DB永続化（縦串確認の先行）"
+  related_prs:
+    - number: 1142
+      purpose: "縦串スモーク（既知ギャップ記録）"
+    - number: 1144
+      purpose: "実DB永続化 merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  build_production_observability_modules は Run Recorder に Postgres repository を渡す一方、
+  pair_reader は InMemoryPairMasterReader({("friend","birthday"): SCAFFOLD_PAIR_ID}) のまま。
+  master seed の pair_master には boss × thanks 等が存在するが参照されない。
+  #1137 診断では INT-002 が pair_id could not be resolved（HTTP 500 GRS-REC-002）となった。
+  #1139 / PR #1144 で api 側実 DB 永続化は完了。本 Task で production pair_reader を Postgres 実装へ置換する。
+  Parent は縦串 follow-up として #357（CLOSED）/ develop 直 PR とする（MOD-RECO-002 専用 Epic 新規起票なし。Human 判断）。
+
+objective: |
+  production composition で pair_master を PostgreSQL から解決し、少なくとも boss × thanks
+  （および master seed 上の有効ペア）で pair_id 解決が成功する状態にする。
+  scaffold / DEFAULT composition の InMemory は維持する。ローカル開発手順書 §10.4.4 No.3 を更新する。
+
+scope:
+  - "PostgresPairMasterReader 実装: relationship_code × occasion_code → pair_id（is_active=true）"
+  - "build_production_observability_modules の pair_reader を Postgres 実装へ置換"
+  - "unit / 必要なら ScriptedDatabaseSession による reader テスト"
+  - "composition wiring テスト更新"
+  - "ローカル開発手順書 §10.4.4 No.3 更新"
+  - "scaffold / DEFAULT composition の InMemory は維持"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "Run Recorder の config version 整合（別 Issue #1141）"
+  - "candidate retrieval 以降の stub ports 全面 production 化"
+  - "OpenAPI / migration 変更"
+  - "api Router / 実 DB 永続化（#1138 / #1139）"
+  - "Batch 意味生成"
+  - "Epic #357 / #776 Reopen"
+  - "MOD-RECO-002 専用 Epic 新規起票"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/pair_master_テーブル定義書.md"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/observability.py"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/pair_master_reader.py"
+      required: true
+    - path: "apps/reco/src/reco/application/recommendation-run-recorder/recorder.py"
+      required: true
+    - path: "apps/reco/src/reco/application/recommendation-run-recorder/factory.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/pair_master_reader.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/composition/observability.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/__init__.py"
+      action: "update"
+      required: false
+    - path: "apps/reco/tests/unit/**"
+      action: "create_or_update"
+      required: false
+
+acceptance_criteria:
+  - "Task Definition / Review Definition が作成され、Issue に path が反映されている"
+  - "production composition で DB 上の boss×thanks が pair_id 解決できる（PostgresPairMasterReader）"
+  - "scaffold pair 固定（friend/birthday のみ）に production が依存しない"
+  - "DEFAULT / scaffold composition の InMemory が壊れていない"
+  - "migration / OpenAPI 変更がない"
+  - "手順書 §10.4.4 No.3 が更新されている"
+  - "PR target が develop（Epic #357 クローズ後 follow-up 例外を PR 本文で説明）"
+
+branch:
+  no_branch: false
+  name: "feature/task-1140-mod-reco-002-pair-master-postgres-reader"
+  summary: "mod-reco-002-pair-master-postgres-reader"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-11"
+    due_date: "2026-07-13"
+
+issue:
+  number: 1140
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 357
+      purpose: "縦串 follow-up 親（CLOSED・履歴）"
+    - number: 776
+      purpose: "MOD-RECO-002 実装 Epic（CLOSED・履歴）"
+  issues:
+    - number: 1139
+      purpose: "実DB永続化完了（縦串確認の先行・推奨）"
+    - number: 1137
+      purpose: "縦串スモークで pair 解決ギャップ確認"
+  prs:
+    - number: 1144
+      purpose: "実DB永続化 merge"
+    - number: 1142
+      purpose: "縦串スモーク merge"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "apps/reco/src/reco/infrastructure/db/repositories/pair_master_reader.py"
+    - "apps/reco/src/reco/composition/observability.py"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "reco unit test（PostgresPairMasterReader / composition wiring。実 DB 非依存）"
+  commands:
+    - "./scripts/dev/pytest-reco.sh tests/unit/infrastructure/db/repositories tests/unit/composition"
+  manual_checks:
+    - "依存充足時: INT-002 で pair_id could not be resolved が消えること（config version は #1141）"
+  not_required:
+    - "config version 整合完了"
+    - "商品ランキング品質"
+    - "production DB 接続"
+  skip_reason:
+    "config version 整合完了": "別 Issue #1141"
+    "商品ランキング品質": "別スコープ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Protocol 境界（PairMasterReader）を壊していないか"
+    - "production のみ置換で DEFAULT/scaffold が壊れていないか"
+    - "SQL が is_active 等の既存制約と整合するか"
+    - "Epic #357 クローズ後 develop 直 PR 例外の説明"
+    - "識別子 MOD-RECO-002 と Parent #357（API-PUB-002）follow-up 例外が明示されているか"
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #357 クローズ後縦串 follow-up。pair_reader 置換の横断影響を記録可"
+
+human_decision_points:
+  - "Parent を #357 follow-up とする例外（MOD-RECO-002 専用 Epic を新規起票しない判断）の承認"
+  - "Epic #357 クローズ後の develop 直 PR 例外の承認"
+  - "Task 識別子 MOD-RECO-002 と Parent Epic 識別子 API-PUB-002 の不一致を縦串 follow-up 例外として許容する判断"
+
+stop_conditions:
+  - "pair_master スキーマ変更が必要になった"
+  - "FK / seed 不整合で Human 判断が必要になった"
+  - "OpenAPI / migration 変更が必要になった"
+  - "config version 整合が本 Task に必須になった"
+
+notes:
+  - "縦串チェーン: Router（#1138）→ 実DB（#1139）→ 本 Issue → config version（#1141）"
+  - "Related: #1137 / #1138 / #1139 / #357 / #776"
+  - "workstream: mod-reco-002-recommendation-run-recorder"
+  - "Review Definition: prompts/definitions/reviews/mod-reco-002-recommendation-run-recorder/pair-master-postgres-reader/pr-review.yaml"

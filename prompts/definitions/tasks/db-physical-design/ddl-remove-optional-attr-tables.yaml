@@ -1,0 +1,191 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-remove-optional-attr-tables"
+  title: "db-physical-design:DDL/migrationからMVP△2テーブル除去（60化）"
+  summary: "Phase2 フォローアップ。Human 判断（方針B）に基づき external_attribute / staging_attribute を DDL/migration から除去し、物理ER §17 No.7 と実装を 60 テーブルで一致させる。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "develop"
+  related_issues:
+    - number: 636
+      purpose: "migration パス docs 整合（merge 済み前提）"
+    - number: 435
+      purpose: "親 Epic（CLOSED）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #435 完了後フォローアップ Task 2。物理ER §17 No.7 では MVP で
+  external_attribute / staging_attribute を作成しない（60 テーブル）が、
+  DDL/migration には 62 テーブル含有の矛盾が残っていた。
+  Human 判断（方針B）で DDL/migration から 2 テーブルを除去する。
+
+objective: |
+  物理ER §17 No.7・テーブル定義書の「MVP DDL は作成しない」と
+  db/ddl / supabase/migrations の実体を 60 テーブルで一致させる。
+  テーブル定義書 62 件は維持（2 件は定義のみ・DDL 未作成）。
+
+scope:
+  - "db/ddl/d04_item.sql から external_attribute 除去"
+  - "db/ddl/d05_external_product_integration.sql から staging_attribute 除去"
+  - "supabase/migrations/20260617120000_initial_schema.sql を d01..d12 再統合で上書き"
+  - "db/ddl/d13_ddl_cross_check.sql 期待 60 件に更新"
+  - "DDLバッチ分割表・成果物一覧・マイグレーション方針書 §12/§16 更新"
+  - "scripts/epic-435-final-integration-check.py の分離検証"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "external_attribute_テーブル定義書.md / staging_attribute_テーブル定義書.md の削除"
+  - "evaluation 系・reco_score_distribution_metric の DDL 変更"
+  - "apps/** 実装"
+  - "新規 supabase/migrations ファイル追加（2 本目）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§17 No.7 MVP 60 テーブル方針"
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+    - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/成果物管理/成果物一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "db/ddl/d04_item.sql"
+      action: "update"
+      required: true
+    - path: "db/ddl/d05_external_product_integration.sql"
+      action: "update"
+      required: true
+    - path: "db/ddl/d13_ddl_cross_check.sql"
+      action: "update"
+      required: true
+    - path: "supabase/migrations/20260617120000_initial_schema.sql"
+      action: "update"
+      required: true
+    - path: "scripts/epic-435-final-integration-check.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-remove-optional-attr-tables.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-remove-optional-attr-tables/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "db/ddl と supabase/migrations の CREATE TABLE が 60 件で一致"
+  - "テーブル定義書は 62 件維持（2 件は定義のみ）"
+  - "物理ER §17 No.7 と DDL/migration が一致"
+  - "epic-435-final-integration-check.py が blockers=0"
+  - "d13 cross-check が 60 tables で pass"
+  - "成果物一覧・DDLバッチ分割表の Question 注記が解消"
+  - "Review Definition が存在する"
+
+branch:
+  no_branch: false
+  summary: "ddl-remove-optional-attr-tables"
+  name: "chore/task-638-ddl-remove-optional-attr-tables"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "medium"
+
+issue:
+  number: 638
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 636
+      purpose: "migration パス docs 整合（先行 merge）"
+    - number: 435
+      purpose: "親 Epic"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "db/ddl/d04_item.sql"
+    - "db/ddl/d05_external_product_integration.sql"
+    - "supabase/migrations/20260617120000_initial_schema.sql"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "python3 scripts/epic-435-final-integration-check.py"
+    - "supabase db reset --yes"
+    - "db/ddl/d13_ddl_cross_check.sql"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "DB schema chore Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "物理ER §17 No.7 と DDL/migration 60 件の一致"
+    - "初期 migration 上書きの影響（reset 必須）の PR 記載"
+    - "evaluation / reco_score_distribution_metric は DDL 含有のまま（スコープ外）"
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+notes:
+  - "Issue #638 / PR target develop"
+  - "Task #636 merge 後に rebase 推奨"

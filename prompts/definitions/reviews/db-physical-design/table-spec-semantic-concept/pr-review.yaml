@@ -1,0 +1,164 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-semantic-concept-pr"
+  title: "semantic_concept テーブル定義書 PRレビュー"
+  summary: "semantic_concept テーブル定義書 Task の PR を AI Review する。物理ER §8–§11・論理ER §10.2・SemanticConcept定義書・API-PUB-007 との整合と table-spec テンプレ準拠を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-471-semantic-concept-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 485
+  issue: 471
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-semantic-concept.yaml"
+  source_branch: "docs/task-471-semantic-concept-table-spec"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-semantic-concept.yaml"
+    required: true
+  issue:
+    number: 471
+    required: true
+  pr:
+    number: 485
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/semantic_concept_テーブル定義書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "Wave2 兄弟テーブル定義書との一貫性確認"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "親 FK・version 管理方針との整合"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§8–§11 Semantic/Feature定義系・FK との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 エンティティ属性との整合"
+    - path: "docs/04_ドメインモデル設計/SemanticConcept定義書.md"
+      required: true
+      purpose: "Concept コード体系・意味定義との整合"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "Concept → Feature 変換の入力 Concept 定義"
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "semanticConcepts マッピング・Public 非公開方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 Semantic / Feature 定義系との整合"
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テンプレート章構成との整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（他テーブル / DDL / migration / apps / OpenAPI）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+  docs:
+    - "table-spec.md テンプレの主要章が充足しているか"
+    - "論理ER §10.2 の属性（semantic_concept_id / semantic_config_version_id / concept_code / concept_label / concept_description / is_active）と矛盾しないか"
+    - "feature_definition テーブル定義書と章構成・MVP 方針が一貫しているか"
+    - "SemanticConcept定義書の Concept コード・意味定義と矛盾しないか"
+    - "Public API 非公開（semantic_concept_id）と API-PUB-007 conceptCode 表面公開の境界が明記されているか"
+  db:
+    - "PK / Unique / Index / CHECK が DDL Task へ展開できる粒度か"
+    - "semantic_config_version_id への物理 FK（ON）方針が明記されているか"
+    - "semantic_rule / concept_feature_rule からの被参照（ON FK）が §8.1 に整理されているか"
+    - "version 内 concept_code UNIQUE 方針が妥当か"
+    - "is_active=false の行を API 返却対象外とする方針が API-PUB-007 と一致しているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "MVP 初期 Concept セット（件数・concept_code 一覧）の確定"
+  - "concept_description の MVP 必須性と CHECK 上限"
+  - "concept_code の命名規則（snake_case）と将来拡張の境界"
+  - "version 内 UNIQUE（semantic_config_version_id + concept_code）"
+  - "Concept 0 件時の API-PUB-007 200 + 空配列方針との seed 前提"
+
+risk_points:
+  - "semantic_rule / concept_feature_rule テーブル定義 Task への FK / Index 引き継ぎ"
+  - "reco Semantic 抽出が concept_code を参照する前提との整合"
+  - "API-PUB-007 が conceptCode のみ表面公開する一方、semantic_concept_id は非公開という二層構造"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-semantic-concept.yaml"
+  - "先行 Task: #462 / #463（Wave1 merge 済み）、#470 / PR #479（feature_definition merge 済み）"
+  - "Wave2 No.2: semantic_concept"

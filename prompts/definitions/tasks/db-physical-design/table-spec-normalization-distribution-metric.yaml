@@ -1,0 +1,281 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-normalization-distribution-metric"
+  title: "normalization_distribution_metric:Normalization Distribution Metricテーブル定義書作成"
+  summary: "物理ER・テーブル一覧 §11 No.61・ログ・Observability設計書 §12.6–§12.12・BATCH-013 / BATCH-016・batch_run_log / feature_normalization_version / item_feature / feature_distribution_metric / meaning_distribution_metric テーブル定義書を入力に、正規化前後（raw / z-score / sigmoid）分布 Observability 指標 `normalization_distribution_metric` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R08 No.1。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（feature_code / batch_run_phase_name 等。merge 済み前提）"
+    - number: 458
+      purpose: "Config feature_normalization_version テーブル定義書（merge 済み・正規化 version 正本 / LOGICAL FK 方針）"
+    - number: 470
+      purpose: "Wave2 feature_definition テーブル定義書（merge 済み・feature_code 正本）"
+    - number: 514
+      purpose: "Batch R03 No.2 item_feature テーブル定義書（merge 済み・正規化前後値の集計入力正本）"
+    - number: 534
+      purpose: "Batch R05 No.2 batch_run_log テーブル定義書（merge 済み・Batch 実行単位 LOGICAL 参照）"
+    - number: 535
+      purpose: "Batch R05 No.3 phase_log テーブル定義書（merge 済み・Metric 記録 trace 境界）"
+    - number: 556
+      purpose: "Batch R07 No.4 feature_distribution_metric テーブル定義書（merge 済み・Metric 系列対称設計正本）"
+    - number: 557
+      purpose: "Batch R07 No.5 meaning_distribution_metric テーブル定義書（merge 済み・Metric 系列対称設計正本）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（enum。merge 済み前提）"
+    - number: 460
+      purpose: "Task #458 PR（feature_normalization_version。merge 済み前提）"
+    - number: 479
+      purpose: "Task #470 PR（feature_definition。merge 済み前提）"
+    - number: 519
+      purpose: "Task #514 PR（item_feature。merge 済み前提）"
+    - number: 539
+      purpose: "Task #534 PR（batch_run_log。merge 済み前提）"
+    - number: 540
+      purpose: "Task #535 PR（phase_log。merge 済み前提）"
+    - number: 561
+      purpose: "Task #556 PR（feature_distribution_metric。merge 済み前提）"
+    - number: 562
+      purpose: "Task #557 PR（meaning_distribution_metric。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R08 No.1。テーブル一覧 §11 No.61。
+  正規化前後（raw / z-score / sigmoid）分布の Observability 指標。BATCH-013（Feature 正規化）で候補生成、BATCH-016（分布メトリクス集計 Batch）で batch が `item_feature` 等から集計して本テーブルへ保存する。
+  物理ER §8 Log / Observability系 / Metric 分類・`metric` schema 候補を前提とする。
+  親 Epic Branch 最新（enum #440、feature_normalization_version #458、item_feature #514、batch_run_log #534、phase_log #535、feature_distribution_metric #556、meaning_distribution_metric #557 merge 済み）を前提とする。
+  `feature_distribution_metric_テーブル定義書` / `meaning_distribution_metric_テーブル定義書` §5.5 / §5.8 / §17.1（Human Review #556 / #557 決定済み）を Metric 系列の対称設計正本として踏襲する。
+  Issue #563 / Branch `docs/task-563-normalization-distribution-metric-table-spec` で作業する。
+
+objective: |
+  `normalization_distribution_metric` の物理カラム・制約・Index・集計粒度を table-spec.md テンプレ準拠で定義する。
+  `batch_run_log` / `feature_normalization_version` / `item_feature` との関係（LOGICAL FK・正規化 version 再現性・集計入力・raw / z-score / sigmoid 軸）と
+  BATCH-013 / BATCH-016 / IF-DB-BATCH-016 保存 I/F・ログ・Observability設計書 §12.6–§12.12 の正規化分布統計量方針を明記し、
+  後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の normalization_distribution_metric テーブル定義書作成"
+  - "物理ER Log / Observability系・Metric 分類・§8–§11 との突合"
+  - "テーブル一覧 §11 No.61・Log / Observability 系補足（Metric 系・retention）との整合"
+  - "ログ・Observability設計書 §12.6 正規化分布メトリクス・§12.10 集計単位・§12.11–§12.12 分布メトリクス候補カラム・§20.2 Retention（365日以上）との突合・差分整理"
+  - "バッチ処理一覧 BATCH-013 / BATCH-016・バッチ設計方針書・バッチ依存関係図・機能×モジュール対応表 MOD-BATCH-038 との整合"
+  - "インターフェース一覧 IF-DB-BATCH-016（分布メトリクス保存・INSERT）との整合"
+  - "batch_run_log_テーブル定義書 §5.2 親子・LOGICAL FK 方針との整合（batch_run_id 参照）"
+  - "feature_normalization_version_テーブル定義書 §5.2 / §7.1 / §8.2 との関係（正規化 version 正本・LOGICAL FK・冪等キー・再現性）"
+  - "item_feature_テーブル定義書 §5.3 / §8 との集計入力（raw_feature_value / normalized_feature_value・feature_normalization_version_id）責務境界"
+  - "feature_distribution_metric_テーブル定義書 §5.5 / §5.8 / §17.1 との対称設計（aggregation_scope・冪等キー・Retention・value_layer 境界）整合"
+  - "meaning_distribution_metric_テーブル定義書 §5.5 / §5.6 / §17.1 との Metric 系列整合（phase_log trace 境界含む）"
+  - "phase_log_テーブル定義書 feature_distribution_metric_recorded フェーズとの trace 境界（normalization 専用 phase の要否整理）"
+  - "feature_distribution_metric / meaning_distribution_metric / reco_score_distribution_metric との責務分離（本 Task は正規化前後分布のみ）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "feature_distribution_metric / meaning_distribution_metric / reco_score_distribution_metric テーブル定義書の再作成（#556 / #557 merge 済みを参照）"
+  - "batch_run_log / phase_log / error_log / item_feature / feature_normalization_version テーブル定義書の再作成（merge 済みを参照）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+  - "正規化アルゴリズム・分布集計ロジックの実装詳細（BATCH-013 / BATCH-016 バッチ仕様書の責務）"
+  - "enum定義書への normalization_distribution_metric_recorded 追加（必要時は Human Review 論点として整理のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Log / Observability系・Metric 分類・schema 候補 metric・§8–§11・Retention 方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "feature_code（§6.16）・batch_run_phase_name（§6.15 feature_distribution_metric_recorded 等）・entity_type / value_layer 候補参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 item_feature 属性・§11.1 feature_normalization_version・§13 Log / 状態管理系・batch_run_log 関係"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§11 No.61 normalization_distribution_metric・Metric 系補足・retention 方針"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "§14 sigmoid 正規化・center_feature / k_feature・z-score 拡張方針参照"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "§12.6 正規化分布メトリクス・§12.10 集計単位・§12.11–§12.12 分布メトリクスカラム候補・§20.2 Retention・sigmoid 正常性検証"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-013 正規化出力候補・BATCH-016 入出力・対象テーブル・実行タイミング"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "正規化分布メトリクス記録方針・Normalization Statistics Manager 責務"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "BATCH-013 / BATCH-016 と item_feature / metric テーブルの依存"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: true
+      purpose: "MOD-BATCH-038 Normalization Statistics Manager / BATCH-016 入出力"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-016 分布メトリクス保存（INSERT）"
+    - path: "docs/06_実装設計/database/batch_run_log_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 LOGICAL FK・Batch 実行単位 trace・適用順序（#534 merge 済み正本）"
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "§5.2 正規化 version 正本・§7.1 冪等キー・§8.2 LOGICAL FK 方針（#458 merge 済み正本）"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "§5.3 feature_normalization_version_id 保持・§8 集計入力（raw / normalized 値）（#514 merge 済み正本）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "feature_distribution_metric_recorded フェーズ・Metric 記録 trace 境界（#535 merge 済み正本）"
+    - path: "docs/06_実装設計/database/feature_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 / §5.8 / §17.1 Metric 系列対称設計正本（aggregation_scope・冪等キー・Retention・value_layer 境界）（#556 merge 済み正本）"
+    - path: "docs/06_実装設計/database/meaning_distribution_metric_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 / §5.6 / §17.1 Metric 系列対称設計正本（phase_log trace 境界）（#557 merge 済み正本）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/normalization_distribution_metric_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-normalization-distribution-metric.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-normalization-distribution-metric/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "normalization_distribution_metric テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・テーブル一覧 §11 No.61 と矛盾しない"
+  - "batch_run_log との関係（batch_run_id LOGICAL FK・集計スコープ）が明記されている"
+  - "feature_normalization_version との関係（feature_normalization_version_id LOGICAL FK・正規化 version 再現性・集計スコープ）が明記されている"
+  - "item_feature との集計入力責務境界（個別 Feature 値 vs 正規化前後分布統計量）が明記されている"
+  - "raw / z-score / sigmoid 変換段階（value_layer）の扱いが明記されている"
+  - "BATCH-013 / BATCH-016 / IF-DB-BATCH-016 保存 I/F が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "normalization-distribution-metric-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 563
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了（merge 済み前提）"
+    - number: 458
+      purpose: "feature_normalization_version テーブル定義書 完了（正規化 version 正本。merge 済み前提）"
+    - number: 514
+      purpose: "item_feature テーブル定義書 完了（集計入力。merge 済み前提）"
+    - number: 534
+      purpose: "batch_run_log テーブル定義書 完了（Batch 実行単位参照。merge 済み前提）"
+    - number: 556
+      purpose: "feature_distribution_metric テーブル定義書 完了（Metric 系列対称設計正本。merge 済み前提）"
+    - number: 557
+      purpose: "meaning_distribution_metric テーブル定義書 完了（Metric 系列対称設計正本。merge 済み前提）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/normalization_distribution_metric_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER Log / Observability系・Metric 分類との整合"
+    - "テーブル一覧 §11 No.61（batch 更新・正規化前後分布）との整合"
+    - "ログ・Observability設計書 §12.6 / §12.12 主要カラム候補と物理列の対応整理"
+    - "batch_run_log_テーブル定義書との batch_run_id LOGICAL FK・trace 方針の双方向整合"
+    - "feature_normalization_version_テーブル定義書 §5.2 / §7.1 / §8.2 との LOGICAL FK・正規化 version 再現性・集計スコープ整合"
+    - "item_feature_テーブル定義書 §5.3 との責務分離（mean / std は本テーブルのみ）"
+    - "feature_distribution_metric_テーブル定義書 §5.5 / §5.8 / §17.1 との対称設計（列構造・aggregation_scope・冪等キー・Retention）整合"
+    - "meaning_distribution_metric_テーブル定義書 §5.5 / §5.6 / §17.1 との Metric 系列整合"
+    - "BATCH-013 / BATCH-016 / IF-DB-BATCH-016 INSERT 保存 I/F との整合"
+    - "Retention 方針（ログ・Observability設計書 §20.2: 365日以上）が明記されていること"
+    - "feature_distribution_metric / meaning_distribution_metric との責務分離（正規化前後分布のみ）が §5 等で明記されていること"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R08 No.1: normalization_distribution_metric（No.2 reco_score_distribution_metric 等は別 Task）"
+  - "Issue #563 / Branch docs/task-563-normalization-distribution-metric-table-spec"
+  - "先行 merge 済み前提: #440 / PR #441（enum）、#458 / PR #460（feature_normalization_version）、#514 / PR #519（item_feature）、#534 / PR #539（batch_run_log）、#535 / PR #540（phase_log）、#556 / PR #561（feature_distribution_metric）、#557 / PR #562（meaning_distribution_metric）"
+  - "Human Review #556 / #557 先例: aggregation_scope MVP は batch_run / daily / semantic_config_version、Retention 365日以上・batch_run_log 非連動、public 単一 schema、Observability §12.12 の skewness 等は MVP 物理列化しない、phase_log は feature_distribution_metric_recorded 1 フェーズ代表"
+  - "論点: value_layer（raw / z_score / sigmoid vs feature_distribution の raw / normalized との境界）、z-score 中間統計の MVP 物理列化範囲、冪等キー（再集計時の Upsert vs 追記）"
+  - "Human Review 論点: ログ・Observability設計書 §12.6 / §12.12 汎用カラム候補のうち MVP で物理列化する範囲（#556 / #557 先例との一貫性）"
+  - "Human Review 論点: MVP は sigmoid-only 正規化（feature_normalization_version §6）前提で z-score 列を将来拡張として扱うか、物理列として予約するか"
+  - "Human Review 論点: feature_normalization_version_id 必須条件（value_layer=sigmoid / normalized 時のみ vs 全行）"
+  - "Human Review 論点: BATCH-013 候補生成と BATCH-016 本保存の責務境界（同一テーブル vs 段階別）"
+  - "Human Review 論点: enum batch_run_phase_name に normalization 専用 phase を追加するか、feature_distribution_metric_recorded に包含するか（#557 §17.1 No.5 先例：追加しない）"
+  - "後続 Task: reco_score_distribution_metric 等 Metric 系"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
+  - "成果物: docs/06_実装設計/database/normalization_distribution_metric_テーブル定義書.md（#563 work-issue 作成済み）"

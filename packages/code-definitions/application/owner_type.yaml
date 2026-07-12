@@ -1,0 +1,71 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "owner_type"
+  physical_name: "owner_type"
+  logical_name: "Log Owner Type"
+  category: "application"
+  mvp_scope: true
+
+values:
+  - value: "recommendation_request"
+    label: "Recommendation Request"
+    meaning: "Recommendation Request を owner とする"
+    terminal: true
+    enabled: true
+  - value: "recommendation_run"
+    label: "Recommendation Run"
+    meaning: "Recommendation Run を owner とする"
+    terminal: true
+    enabled: true
+  - value: "recommendation_result"
+    label: "Recommendation Result"
+    meaning: "Recommendation Result を owner とする"
+    terminal: true
+    enabled: true
+  - value: "recommendation_feedback"
+    label: "Recommendation Feedback"
+    meaning: "Recommendation Feedback を owner とする"
+    terminal: true
+    enabled: true
+  - value: "batch_run"
+    label: "Batch Run"
+    meaning: "Batch Run を owner とする"
+    terminal: true
+    enabled: true
+  - value: "api_call"
+    label: "API Call"
+    meaning: "API Call Log を owner とする"
+    terminal: true
+    enabled: true
+  - value: "raw_product_metadata"
+    label: "Raw Metadata"
+    meaning: "Raw Product Metadata を owner とする"
+    terminal: true
+    enabled: true
+  - value: "item_generation_queue"
+    label: "Generation Queue"
+    meaning: "Item Generation Queue を owner とする"
+    terminal: true
+    enabled: true
+  - value: "evaluation_run"
+    label: "Evaluation Run"
+    meaning: "Evaluation Run を owner とする"
+    terminal: true
+    enabled: true
+  - value: "system"
+    label: "System"
+    meaning: "システム全体・owner_id NULL 可"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "phase_log"
+    column: "owner_type"
+    constraint: "NOT NULL"
+    note: "owner_id と polymorphic 参照"
+  - table: "error_log"
+    column: "owner_type"
+    constraint: "NOT NULL"
+    note: "owner_id と polymorphic 参照"

@@ -1,0 +1,68 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-api-int-001-reco-health-check-openapi-fragment"
+  title: "API-INT-001:RecoヘルスチェックOpenAPI断片反映"
+  summary: "API-INT-001（GET /internal/reco/v1/health）の契約仕様書に基づき packages/contracts/openapi/internal-reco-api.yaml へ OpenAPI 断片を追加する。"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "phase1_wave2"
+  related_issue: "#392"
+  related_pr: "#396"
+  related_task_definition: "prompts/definitions/tasks/api-int-001-reco-health-check/api-contract-spec.yaml"
+  reason: "Phase1 1a（#392/#396）完了後の 1b OpenAPI 直列 merge（#367）。PUB-001（#413）の次手。"
+
+change:
+  api_name: "Recoヘルスチェック"
+  api_kind: "internal"
+  endpoint: "GET /internal/reco/v1/health"
+  method: "GET"
+  change_type: "add_endpoint"
+  breaking_change: false
+  backward_compatibility: "compatible"
+
+scope:
+  - "internal-reco-api.yaml に GET /internal/reco/v1/health を追加"
+  - "RecoHealth schema と optional trace/request header parameters を追加"
+
+out_of_scope:
+  - "Orval 再生成（1c）"
+  - "public-api.yaml"
+  - "apps 実装変更"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-int-001-reco-health-check-openapi"
+  base: "feature/epic-367-api-contract-orval"
+  target: "feature/epic-367-api-contract-orval"
+
+dependencies:
+  epics:
+    - issue: 367
+      title: "[Epic]API-CONTRACT-ORVAL"
+    - issue: 391
+      title: "[Epic]API-INT-001:Recoヘルスチェック"
+  issues:
+    - "#392"
+    - "#413"
+  prs:
+    - "#396"
+    - "#413"
+
+parallel_control:
+  exclusive_files:
+    - "packages/contracts/openapi/internal-reco-api.yaml"
+  conflict_risk: "high"
+  contract_impact: true
+  generated_impact: false
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"

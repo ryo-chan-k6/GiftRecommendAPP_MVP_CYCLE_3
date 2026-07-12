@@ -96,6 +96,106 @@ async function postPullRequestComment({
   return { ok: true, html_url: data.html_url || "", id: data.id };
 }
 
+function extractPrBodyReplacements(text) {
+  const normalized = String(text || "");
+  if (!/###\s*PR\s*Body\s*置換/i.test(normalized)) return [];
+
+  const replacements = [];
+  for (const row of normalized.matchAll(/^\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|/gm)) {
+    const find = nonEmpty(row[1]);
+    const replace = row[2] ?? "";
+    if (!find || find === "find" || find.startsWith("---")) continue;
+    replacements.push({ find, replace });
+  }
+  return replacements;
+}
+
+function applyPrBodyReplacements(body, replacements) {
+  let next = String(body || "");
+  for (const { find, replace } of replacements || []) {
+    if (!find || !next.includes(find)) continue;
+    const unescapedReplace = unescapeReplacement(replace);
+    next = next.split(find).join(unescapedReplace);
+  }
+  return next;
+}
+
+function unescapeReplacement(value) {
+  return String(value ?? "")
+    .replace(/\\r\\n/g, "\r\n")
+    .replace(/\\n/g, "\n");
+}
+
+async function patchPullRequestBodyFromComment({
+  owner,
+  repo,
+  prNumber,
+  commentBody,
+  token,
+  dryRun,
+  fetchImpl,
+}) {
+  const replacements = extractPrBodyReplacements(commentBody);
+  if (!replacements.length) {
+    return { ok: true, skipped: true, reason: "no_pr_body_replacements" };
+  }
+
+  const pr = Number(prNumber);
+  if (!Number.isInteger(pr) || pr <= 0) {
+    throw new Error(`Invalid pr_number: ${prNumber}`);
+  }
+
+  const send = fetchImpl || global.fetch;
+  if (typeof send !== "function") {
+    throw new Error("fetch is unavailable");
+  }
+
+  const pullUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${pr}`;
+  const pullResponse = await send(pullUrl, { headers: authHeaders(token) });
+  if (!pullResponse.ok) {
+    const text = await pullResponse.text().catch(() => "");
+    throw new Error(`Failed to load PR body: HTTP ${pullResponse.status} ${text}`.trim());
+  }
+  const pull = await pullResponse.json();
+  const currentBody = String(pull.body || "");
+  const nextBody = applyPrBodyReplacements(currentBody, replacements);
+  if (nextBody === currentBody) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: "pr_body_unchanged",
+      replacements,
+    };
+  }
+
+  if (dryRun) {
+    return {
+      ok: true,
+      dryRun: true,
+      skipped: false,
+      reason: "pr_body_patched",
+      replacements,
+    };
+  }
+
+  const patchResponse = await send(pullUrl, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ body: nextBody }),
+  });
+  if (!patchResponse.ok) {
+    const text = await patchResponse.text().catch(() => "");
+    throw new Error(`Failed to patch PR body: HTTP ${patchResponse.status} ${text}`.trim());
+  }
+
+  return {
+    ok: true,
+    skipped: false,
+    reason: "pr_body_patched",
+    replacements,
+  };
+}
+
 function buildRecoveryCommand({ owner, repo, prNumber, fixOutcome, commentFile }) {
   const repoArg = `--repository ${owner}/${repo}`;
   const parts = [
@@ -131,6 +231,19 @@ async function publishFixCompleteAndDispatch({
   const body = readCommentBody({ commentBody, commentFile });
   const normalizedOutcome = resolveFixOutcome({ commentBody: body, fixOutcomeOverride: fixOutcome });
 
+  let prBodyPatchResult = null;
+  if (!dispatchOnly) {
+    prBodyPatchResult = await patchPullRequestBodyFromComment({
+      owner: resolved.owner,
+      repo: resolved.repo,
+      prNumber,
+      commentBody: body,
+      token: authToken,
+      dryRun,
+      fetchImpl,
+    });
+  }
+
   let commentResult = null;
   if (!dispatchOnly) {
     if (!slack.isFixCompleteResultComment(body)) {
@@ -157,6 +270,7 @@ async function publishFixCompleteAndDispatch({
       pr_number: String(prNumber),
       fix_outcome: normalizedOutcome,
       comment: commentResult,
+      pr_body_patch: prBodyPatchResult,
       dispatch: null,
       dispatch_skipped: true,
       dispatch_skip_reason: "fix_outcome_not_ready_for_ai_review",
@@ -182,6 +296,7 @@ async function publishFixCompleteAndDispatch({
       pr_number: String(prNumber),
       fix_outcome: normalizedOutcome,
       comment: commentResult,
+      pr_body_patch: prBodyPatchResult,
       dispatch: dispatchResult,
       dispatch_skipped: false,
       dispatch_only: Boolean(dispatchOnly),
@@ -448,6 +563,10 @@ module.exports = {
   READY_FOR_AI_REVIEW_WORKFLOW_FILE,
   DISPATCH_RUN_TITLE_RE,
   resolveFixOutcome,
+  extractPrBodyReplacements,
+  applyPrBodyReplacements,
+  unescapeReplacement,
+  patchPullRequestBodyFromComment,
   postPullRequestComment,
   publishFixCompleteAndDispatch,
   verifyFixCompleteDispatch,

@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-018-risk-scorer-implementation-pr"
+  title: "MOD-RECO-018 実装 PRレビュー"
+  summary: "MOD-RECO-018（Risk Scorer）実装 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 947
+  issue:
+    number: 946
+  task_definition: "prompts/definitions/tasks/mod-reco-018-risk-scorer/implementation.yaml"
+  source_branch: "feature/task-946-mod-reco-018-risk-scorer-implementation"
+  target_branch: "feature/epic-943-mod-reco-018-risk-scorer"
+  parent_epic_issue: 943
+  parent_epic_branch: "feature/epic-943-mod-reco-018-risk-scorer"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: false
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-018-risk-scorer/implementation.yaml"
+    required: true
+
+review_points:
+  - "Task Definition scope / acceptance_criteria 充足"
+  - "epic_scope 内に差分が収まっているか"
+  - "secret 非含有"
+
+notes:
+  - "Issue / PR 確定後に target.* / input.issue.number / input.pr.number を更新する"

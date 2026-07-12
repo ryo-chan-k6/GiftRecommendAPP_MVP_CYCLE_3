@@ -1,0 +1,272 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-002-reco-recommendation-run-reco-client-wrapper"
+  title: "API-INT-002:reco-client wrapper実装"
+  summary: "Phase4a `ScaffoldRecoClient` を Orval 生成 reco-client（`apps/api/src/generated/reco-client/**`）経由の本実装に置換し、API-INT-002（POST /internal/reco/v1/recommendations/run）および API-INT-001 ヘルスチェックを apps/api から呼び出せる infrastructure 境界を提供する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-INT-002:Reco推薦実行"
+  epic_issue_number: 366
+  epic_branch: "feature/epic-366-api-int-002-reco-recommendation-run"
+  related_issues:
+    - 1103
+    - 1107
+    - 1097
+  related_prs:
+    - 1106
+    - 1109
+    - 1099
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "contract-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 縦串（実装仕様書 → OpenAPI Contract → reco エンドポイント実装 → 単体テスト）は完了し、Epic PR → develop 統合が進行中または完了する。
+  OpenAPI Contract Task（#1097 / PR #1099）で `internal-reco-api.yaml` 更新と `apps/api/src/generated/reco-client/**` 再生成が完了している。
+  現状 `apps/api/src/infrastructure/reco-client/` は Phase4a の `ScaffoldRecoClient`（HTTP 非呼び出しプレースホルダ）のみ。
+  本 Task では generated client を利用した本番向け wrapper を実装し、API-PUB-002 実装 Task の api→reco 接続前提を整える。
+
+objective: |
+  `ScaffoldRecoClient` を維持しつつ、Orval 生成関数を内部利用する本番向け `RecoClient` 実装（またはファクトリ）を `apps/api/src/infrastructure/reco-client/**`（必要なら `apps/api/src/lib/reco-client/**`）に追加する。
+  Internal API Key・trace Header・エラーマップ・タイムアウト方針を実装仕様書・契約仕様書に沿って提供する。
+
+scope:
+  - "`apps/api/src/infrastructure/reco-client/**` の本実装追加（generated 呼び出し・Header 付与・エラー変換）"
+  - "必要最小の `apps/api/src/lib/reco-client/**` 追加（DI / ファクトリ・設定読み込み）"
+  - "`ScaffoldRecoClient` のテスト互換維持または移行（既存 unit test の更新）"
+  - "API-INT-001 health / API-INT-002 recommendations/run の wrapper 呼び出し"
+  - "wrapper 単体テスト（`apps/api/tests/unit/infrastructure/reco-client/**`）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "OpenAPI / packages/contracts 変更"
+  - "generated（`apps/api/src/generated/reco-client/**`）の手動編集"
+  - "apps/api Public API（API-PUB-002）エンドポイント実装"
+  - "apps/reco エンドポイント層・推薦ロジック本体の変更"
+  - "apps/web / apps/batch 変更"
+  - "DB schema 変更"
+  - "e2e / integration test（api→reco 実 HTTP は別 Task または API-PUB-002 結合時）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "api→reco 接続・認証・エラーマップ"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "Request/Response・Header・Error"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Internal API 呼び出し方針"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* マップ"
+  templates: []
+  files:
+    - path: "apps/api/src/infrastructure/reco-client/**"
+      required: true
+      purpose: "置換対象（ScaffoldRecoClient）"
+    - path: "apps/api/src/generated/reco-client/**"
+      required: true
+      purpose: "Orval 生成 client（参照のみ）"
+    - path: "apps/api/tests/unit/infrastructure/reco-client.test.ts"
+      required: true
+      purpose: "既存 scaffold テスト"
+  issues:
+    - number: 1103
+      purpose: "reco エンドポイント実装完了"
+    - number: 1097
+      purpose: "OpenAPI Contract 完了"
+  prs:
+    - number: 1106
+      purpose: "reco エンドポイント merge"
+    - number: 1099
+      purpose: "generated reco-client merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/infrastructure/reco-client/**"
+      action: "update"
+      required: true
+    - path: "apps/api/src/lib/reco-client/**"
+      action: "create_or_update"
+      required: false
+  tests:
+    - path: "apps/api/tests/unit/infrastructure/reco-client/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Orval generated reco-client を利用する RecoClient 本実装"
+  - "Internal API Key / trace Header 付与"
+  - "GRS-* エラー変換（RecoError 等）"
+  - "wrapper 単体テスト"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "`apps/api/src/infrastructure/reco-client/**` に generated 利用の本実装が追加されている"
+  - "generated ファイルを手動編集していない"
+  - "OpenAPI / packages/contracts の変更を含まない"
+  - "apps/reco/** の変更を含まない"
+  - "apps/api Public API ルート実装を含まない"
+  - "`cd apps/api && npm test -- --testPathPattern=reco-client` またはプロジェクト標準コマンドで wrapper テストが成功する"
+  - "secret、APIキー、.env 実値が含まれていない"
+  - "epic_scope 内に差分が収まっている"
+
+branch:
+  no_branch: false
+  name: "feature/task-1112-api-int-002-reco-client-wrapper"
+  summary: "api-int-002-reco-client-wrapper"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  number: 1112
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+dependencies:
+  epics:
+    - number: 366
+      purpose: "親 Epic（API-INT-002）。Phase4b 完了後に着手"
+  issues:
+    - number: 1103
+      purpose: "reco エンドポイント実装完了"
+    - number: 1097
+      purpose: "OpenAPI Contract 完了"
+  prs:
+    - number: 1106
+      purpose: "reco エンドポイント Epic merge"
+    - number: 1099
+      purpose: "OpenAPI Contract Epic merge"
+  tasks:
+    - "Phase4b 縦串完了（Epic PR #1111 → develop merge 前後で着手可否を Human 判断）"
+  blocking: true
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at: []
+  blocked_message: null
+
+parallel_control:
+  depends_on:
+    - "task-api-int-002-reco-recommendation-run-implementation"
+    - "contract-api-int-002-reco-recommendation-run-openapi-sync"
+  blocks:
+    - "API-PUB-002 実装 Task の api→reco HTTP 呼び出し"
+  exclusive_files:
+    - "apps/api/src/infrastructure/reco-client/**"
+    - "apps/api/src/lib/reco-client/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/api unit test（reco-client wrapper）"
+    - "secret check"
+  commands:
+    - "cd apps/api && npm test -- --testPathPattern=reco-client"
+  manual_checks:
+    - "generated 手編集がないことを確認する"
+    - "OpenAPI 変更が含まれていないことを確認する"
+  not_required:
+    - "integration test（api→reco 実 HTTP）"
+    - "e2e test"
+  skip_reason:
+    "integration test（api→reco 実 HTTP）": "reco 実サービス起動の結合は API-PUB-002 または別環境で実施"
+    "e2e test": "Public API 未実装"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "generated client の利用方法が Orval 方針と整合しているか"
+    - "Internal API Key / trace Header が契約仕様書と一致するか"
+    - "エラーマップが実装仕様書・エラーコード定義書と整合するか"
+    - "ScaffoldRecoClient との後方互換・テスト移行が妥当か"
+    - "epic_scope 外（reco 本体 / Public API / OpenAPI）の変更がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "api→reco 接続境界の初回本実装。API-PUB-002 への横断影響あり。"
+
+risk_points:
+  - "Epic PR merge 前後で Branch base / PR target の切替（develop rebase）が必要になる可能性"
+  - "API-PUB-002 実装前後の着手タイミング判断"
+  - "generated 型と infrastructure 型のマッピング複雑化"
+  - "タイムアウト・retry 方針の解釈揺れ"
+
+human_decision_points:
+  - "Epic PR merge 後に Branch を develop へ rebase してから実装着手するか（推奨: Epic merge 後）"
+  - "API-PUB-002 実装 Task との並行 / 直列（wrapper 完了を API-PUB-002 の前提とするか）"
+  - "ScaffoldRecoClient を残すか、本実装へ完全置換するか"
+  - "reco ベース URL・Internal API Key の設定源（環境変数名）"
+
+stop_conditions:
+  - "前提 Epic PR が未 merge で develop に generated / reco 実装が存在しない場合（rebase 後に再確認）"
+  - "OpenAPI / generated 変更が必要になった場合（Contract Task へ分離）"
+  - "apps/reco 側の変更が必要になった場合"
+  - "secret や .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Issue #1112"
+  - "worktree: feature-task-1112-api-int-002-reco-client-wrapper"
+  - "Branch: feature/task-1112-api-int-002-reco-client-wrapper"
+  - "Epic PR #1111 develop merge 済み。Branch base / PR target は develop"
+  - "API-PUB-002 Epic #357 の api→reco 接続前提"
+  - "Phase4a api-foundation #710 scaffold とは別（本 Task は API-INT-002 向け本実装）"

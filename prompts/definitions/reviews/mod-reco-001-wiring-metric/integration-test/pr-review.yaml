@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-metric-integration-test-pr"
+  title: "MOD-RECO-001 Wiring（Metric）統合テスト PRレビュー"
+  summary: "Orchestrator Wiring（Metric）統合テスト Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1065
+  issue:
+    number: 1064
+  task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-metric/integration-test.yaml"
+  source_branch: "test/task-1064-mod-reco-001-wiring-metric-integration-test"
+  target_branch: "feature/epic-1061-mod-reco-001-wiring-metric"
+  parent_epic_issue: 1061
+  parent_epic_branch: "feature/epic-1061-mod-reco-001-wiring-metric"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-wiring-metric/integration-test.yaml"
+    required: true
+
+review_points:
+  - "025 §14 No.10 / No.11 カバレッジ"
+  - "成功 Run Metric 記録 / 失敗 Run 非記録の検証"
+  - "pytest green"
+  - "epic_scope 外変更の有無"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / target.pr を更新する"
