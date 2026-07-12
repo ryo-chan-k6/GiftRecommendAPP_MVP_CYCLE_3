@@ -1,0 +1,144 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-006-occasion-masters-unit-test-pr"
+  title: "API-PUB-006 Occasionマスタ取得単体テスト PRレビュー"
+  summary: "API-PUB-006 Occasionマスタ取得単体テスト Task（unit-test.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/tasks/api-pub-006-occasion-masters/unit-test.yaml"
+  source_branch: "test/task-<issue-number>-api-pub-006-occasion-masters-unit-test"
+  target_branch: "feature/epic-388-pub-006-occasion-masters"
+  parent_epic_issue: "[Epic]API-PUB-006:Occasionマスタ取得"
+  parent_epic_branch: "feature/epic-388-pub-006-occasion-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-006-occasion-masters/unit-test.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-388-pub-006-occasion-masters"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API実装仕様書.md"
+      required: true
+      purpose: "§9 テスト観点正本"
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch か"
+  tests:
+    - "§9 fixture 観点がカバーまたは明示スキップされているか"
+    - "空配列と GRS-CFG-005 / GRS-DB-002 が区別されているか"
+    - "ErrorResponse に stack / secret が無いこと"
+  security:
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "差分が epic_scope.allowed_paths 内か（tests 追記含む）"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+  request_changes:
+    conditions:
+      - "テスト不足がある"
+  needs_human_decision:
+    conditions:
+      - "実 DB 結合が必要に見える"
+  split_required:
+    conditions:
+      - "OpenAPI / generated 変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "api"
+
+notes:
+  - "Issue / PR 作成後に target.issue / target.pr / input.*.number / source_branch を更新する"
+  - "親 Epic: #388"
