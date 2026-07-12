@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                         |
 | 作成日         | 2026-07-12                                  |
-| 更新日         | 2026-07-12                                  |
+| 更新日         | 2026-07-12（Human Review 判断反映）         |
 
 ---
 
@@ -91,7 +91,7 @@ apps/reco/src/reco/api/
 | 条件 | 方針 |
 | ---- | ---- |
 | `DATABASE_URL` 設定あり | Postgres へ軽量 probe（例: `SELECT 1` 相当）。成功 → `ok`、失敗 → 503 |
-| `DATABASE_URL` 未設定 | **本番相当では不可**（起動失敗または 503）。ローカル最小（#1135）の scaffold 許容は Human Review 論点（§11） |
+| `DATABASE_URL` 未設定 | **本番 / staging では不可**（起動失敗または 503）。**local-dev のみ** scaffold probe を許容（#1135 互換。§11 判断確定） |
 | Redis | 任意。結果に影響させない |
 | probe タイムアウト | 短時間（目安 1s 以内）。実装 Task で定数化 |
 
@@ -111,11 +111,10 @@ flowchart TD
     META --> PROBE{DB health_check}
     PROBE -->|OK| OK200[200 data.status=ok<br/>+ meta]
     PROBE -->|NG| E503[503 ErrorResponse<br/>GRS-COM-003]
-    AUTH --> METRIC[reco_health_check_count<br/>成功/失敗を記録]
-    PROBE --> METRIC
+    E401 --> METRIC[reco_health_check_count<br/>成功/失敗を記録]
     OK200 --> METRIC
     E503 --> METRIC
-    E401 --> METRIC
+    METRIC --> END([完了])
 ```
 
 ### 4.2 処理詳細
@@ -190,7 +189,7 @@ flowchart TD
 | provider | `apps/reco` エンドポイント層 |
 | 責務     | GET health 受付、認証、DB probe、Response / Error 組立、trace 伝播、metric |
 | 影響有無 | `○`（#1135 最小実装あり → 契約準拠への整備） |
-| 必要対応 | `routes/health.py` の契約・OpenAPI 整合、metric 配線、ローカル scaffold 方針の確定 |
+| 必要対応 | `routes/health.py` の契約・OpenAPI 整合、metric 配線、local-dev scaffold / 本番 DB 必須の環境分岐 |
 
 - `GET /internal/reco/v1/health` ハンドラ（既存最小実装を本仕様に追随）
 - `require_internal_api_key` 再利用（INT-002 と同型）
@@ -202,9 +201,10 @@ flowchart TD
 | -------- | ---- |
 | consumer | `apps/api`（MOD-API-005 Reco Client） |
 | 責務     | 起動時・定期・レコメンド前の reco 疎通確認 |
-| 影響有無 | `△`（呼び出し実装は後続。Public API-PUB-001 とは別） |
-| 必要対応 | generated `getRecoHealth` + wrapper、timeout、エラーの内部ログ保持 |
+| 影響有無 | `△`（呼び出し実装は **後続 Task**。本 Epic の reco エンドポイント実装 Task には含めない） |
+| 必要対応 | generated `getRecoHealth` + wrapper、timeout、エラーの内部ログ保持（別 Task） |
 
+- **scope 分割（§11 判断確定）:** reco エンドポイント実装 Task を先行し、apps/api consumer 配線は同一 Epic の後続 Task または別 Task とする
 - api → reco の HTTP timeout は短め（health 用途）。具体値は apps/api 実装 Task
 - Internal `GRS-AUTH-*` を Public へそのまま露出しない（必要なら Public 側でマスク）
 
@@ -228,7 +228,7 @@ flowchart TD
 | 契約仕様書 §7.2 本文 | 「503 と `data.status: unavailable`」 | 散文上の表現。機械可読正本（OpenAPI）および §8（error 時は `data` なし）と併読し、**503 は ErrorResponse** とする |
 | #1135 先行実装 | `raise reco_error_from_code("GRS-COM-003")` | OpenAPI 整合。後続実装 Task で維持 |
 
-契約 §7.2 の「`data.status: unavailable`」と OpenAPI の差は **Human Review 論点**（§11）。実装・UT は OpenAPI を優先する。
+**Human Review 判断（§11）:** 503 の正本は **OpenAPI `ErrorResponse`** とする。契約 §7.2 の「`data.status: unavailable`」は散文上の表現であり、実装・UT は OpenAPI / §8（error 時は `data` なし）に従う。契約散文の追随は別 docs Task とする。
 
 #### 7.3.3 trace_id / request_id 伝播
 
@@ -291,13 +291,15 @@ phase_log（推薦パイプライン用）は **記録しない**。
 
 ---
 
-## 11. 未決事項
+## 11. Human Review 判断事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `DATABASE_URL` 未設定時の scaffold probe 許容 | #1135 はローカル最小で scaffold を許容。本番相当実装では不可とするか | Human | 実装 Task 前 | 推奨: 本番/staging は DB 必須。local-dev のみ scaffold 可を明示 |
-| 2 | 契約 §7.2「`data.status: unavailable`」と OpenAPI 503 ErrorResponse の表現差 | 実装・UT の正が揺れる | Human | 本 PR Human Review | 推奨: OpenAPI / §8 に合わせ ErrorResponse を正とし、契約散文は別 docs Task で追随可 |
-| 3 | apps/api からの health 呼び出しを本 Epic 実装に含めるか | Epic `allowed_paths` に reco-client あり。scope 分割要否 | Human | 実装 Task 起票時 | 推奨: reco エンドポイント実装 → 別途 api consumer 配線（または同一 Epic の後続 Task） |
+Human Review（PR #1150）にて推奨案を採用し、以下を **実装面の判断確定** とする。
+
+|  No | 論点 | Human Review 判断 | 実装への適用 |
+| --: | ---- | ----------------- | ------------ |
+| 1 | `DATABASE_URL` 未設定時の scaffold probe 許容 | **本番 / staging は DB 必須**（未設定時は起動失敗または 503）。**local-dev のみ** scaffold probe を許容（#1135 互換） | §3.5 / §7.1。環境判定で probe 実装を分岐 |
+| 2 | 契約 §7.2「`data.status: unavailable`」と OpenAPI 503 ErrorResponse の表現差 | **OpenAPI / §8 に合わせ `ErrorResponse` を正** とする。契約散文の追随は別 docs Task | §7.3.2。503 は `{ error, meta }` のみ。`data` は返さない |
+| 3 | apps/api からの health 呼び出しを本 Epic 実装に含めるか | **reco エンドポイント実装を先行**し、apps/api consumer 配線は **後続 Task**（同一 Epic 内の別 Task 可） | §7.2 / §6。本 Epic の reco 実装 Task scope 外 |
 
 ---
 
@@ -321,7 +323,7 @@ phase_log（推薦パイプライン用）は **記録しない**。
 - 実装面に限定され、契約面の再掲が混入していない
 - 契約仕様書・OpenAPI と矛盾しない（503 形式は OpenAPI 優先を明示）
 - FastAPI / Internal API Key / DB probe 境界が明確
-- `#1135` 先行実装とのギャップが未決事項に明示されている
+- `#1135` 先行実装とのギャップが Human Review 判断事項（§11）に明示されている
 - provider / consumer 影響が整理されている
 - `reco_health_check_count` の記録境界がある
 - secret / `.env` 実値が含まれていない
@@ -344,3 +346,4 @@ phase_log（推薦パイプライン用）は **記録しない**。
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-12 | 初版（実装面のみ。Phase4b 1/3） | #1149 |
+| 2026-07-12 | Human Review 判断反映（§11 推奨案確定、Mermaid 可読性改善） | #1149 / PR #1150 |
