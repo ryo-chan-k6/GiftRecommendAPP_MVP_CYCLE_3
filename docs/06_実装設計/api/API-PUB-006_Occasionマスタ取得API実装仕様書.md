@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-07-12                                |
-| 更新日         | 2026-07-12                                |
+| 更新日         | 2026-07-12（Human Review 反映）           |
 
 ---
 
@@ -47,7 +47,7 @@
 | 認証 | **MVP は非認証**（契約仕様書 §4）。`Authorization` 検証なし |
 | 冪等性 | 副作用なし。同一 Request の繰り返し可（SELECT のみ） |
 | Pair 情報 | **Public Response に含めない**（`pair_master` は参照しない） |
-| キャッシュ | **MVP 既定: 都度 SELECT**（プロセス内キャッシュ導入は §11 未決） |
+| キャッシュ | **MVP では都度 SELECT**（プロセス内キャッシュは導入しない。§11 判断確定） |
 
 ### 3.2 エンドポイント層の配置
 
@@ -73,7 +73,7 @@ apps/api/src/
 | MOD-API-011 Master Controller | `GET /occasions` 受付、meta 解決、Repository 呼び出し、成功 / 失敗 Response 組立、metric 境界 |
 | MOD-API-012 Master Repository | `occasion_master` から `is_active = true` の行を `ORDER BY display_order, occasion_code` で取得。内部行 DTO を返却 |
 
-**共通化メモ（推奨・未確定）:** PUB-005 / PUB-007 / PUB-008 も同一 `masters` Router 配下を想定する。Repository の共通基底は後続で検討可。本仕様書は **Occasion 読取に閉じる**（§11）。
+**Repository 方針（§11 判断確定）:** MOD-API-012 は **Occasion 専用**（`occasionRepository.ts`）とする。PUB-005 / PUB-007 / PUB-008 も同一 `masters` Router 配下を想定するが、Repository 共通化は後続 Task で検討可。本仕様書は **Occasion 読取に閉じる**。
 
 `apps/reco/**` / `apps/batch/**` / `apps/web/src/app/**` / `apps/web/src/features/**` は **変更しない**（親 Epic `forbidden_paths`）。
 
@@ -167,7 +167,7 @@ flowchart TD
 | -------------- | ------------ | -------- | ---- |
 | `occasion_code` | `data.occasions[].occasionCode` | snake → camel | PK。必須 |
 | `occasion_label` | `data.occasions[].occasionLabel` | そのまま | 必須。UI 表示名 |
-| `display_order` | `data.occasions[].displayOrder` | integer | optional 可。DB は NOT NULL DEFAULT 0 |
+| `display_order` | `data.occasions[].displayOrder` | integer | optional 可。DB は NOT NULL DEFAULT 0。コード側フォールバックは不要（§11） |
 | （フィルタ専用）`is_active` | — | **Response に含めない** | `true` 行のみ取得 |
 | — | `meta.traceId` | meta から | 任意 Header と一致 |
 | — | `meta.requestId` | meta から | 任意 Header と一致 |
@@ -269,16 +269,19 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-12 | 初版作成 | #1171 |
+| 2026-07-12 | Human Review（PR #1172）指摘対応。§11 推奨案を判断確定へ反映 | #1172 |
 
 ---
 
-## 11. 未決事項
+## 11. Human Review 判断事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | MOD-API-012 を Occasion 専用にするか、PUB-005 等と共通 Repository にするか | ディレクトリ・DI 設計に影響 | Human | 実装 Task 開始前 | 本仕様書は Occasion 読取に閉じ、共通化は推奨のみ |
-| 2 | プロセス内キャッシュ（TTL）を MVP で導入するか | 性能・鮮度・実装コスト | Human | 実装 Task 開始前 | 既定案: 都度 SELECT |
-| 3 | `displayOrder` 欠落時のコード側フォールバック要否 | DB は NOT NULL DEFAULT 0 のため通常不要 | Human | 任意 | 契約はフォールバック可と記載。DB 正本ならコード補完不要 |
+Human Review（PR #1172）にて推奨案を採用し、以下を **実装面の判断確定** とする。
+
+|  No | 論点 | Human Review 判断 | 実装への適用 |
+| --: | ---- | ----------------- | ------------ |
+| 1 | MOD-API-012 を Occasion 専用にするか、PUB-005 等と共通 Repository にするか | **Occasion 専用 Repository** とする。PUB-005 等との共通化は後続 Task で検討可 | §3.2。`occasionRepository.ts` を新規作成。共通化は本仕様書の scope 外 |
+| 2 | プロセス内キャッシュ（TTL）を MVP で導入するか | **MVP では導入しない**（都度 SELECT） | §3.1。キャッシュ層は実装しない |
+| 3 | `displayOrder` 欠落時のコード側フォールバック要否 | **コード側フォールバックは不要**（DB は NOT NULL DEFAULT 0 を正とする） | §5.2。DB 列をそのままマッピング |
 
 ---
 
@@ -307,7 +310,7 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 - provider / consumer の実装影響が整理されている
 - ログ・監視・結合テスト観点が整理されている
 - secret や `.env` 実値が含まれていない
-- Human Review で確認してほしい事項（§11）が明示されている
+- Human Review 判断事項（§11）が判断確定として記載されている
 
 ---
 
@@ -315,4 +318,4 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 
 - 本 Task は Phase4b 縦串の 1/3（実装面仕様書）。後続は apps/api 実装 → 単体テスト → Epic PR → develop。
 - Task PR target は親 Epic Branch `feature/epic-388-pub-006-occasion-masters`。
-- PUB-005 実装仕様書をスタイル参考にした（Repository 共通化は各 Task / Human 判断）。
+- PUB-005 実装仕様書をスタイル参考にした。Repository 共通化は §11 にて Occasion 専用を確定（後続 Task で検討可）。
