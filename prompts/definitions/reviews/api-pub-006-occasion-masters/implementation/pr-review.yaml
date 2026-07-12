@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1179
   issue: 1176
   task_definition: "prompts/definitions/tasks/api-pub-006-occasion-masters/implementation.yaml"
   source_branch: "feature/task-1176-api-pub-006-occasion-masters-implementation"
@@ -70,7 +70,7 @@ input:
     number: 1176
     required: true
   pr:
-    number: null
+    number: 1179
     required: true
   diff:
     required: true
