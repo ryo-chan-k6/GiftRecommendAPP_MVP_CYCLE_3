@@ -10,12 +10,17 @@ from fastapi import APIRouter, Depends, Header
 from fastapi.responses import JSONResponse
 
 from reco.api.auth.internal_api_key import require_internal_api_key
-from reco.api.errors import reco_error_from_code
+from reco.api.errors import default_message
+from reco.api.metrics.health_metrics import record_reco_health_check
 from reco.api.middleware.trace_context import HEADER_REQUEST_ID, HEADER_TRACE_ID
 from reco.config.loader import load_reco_settings
 from reco.infrastructure.db.session import PostgresDatabaseSession, ScaffoldDatabaseSession
 
 router = APIRouter(prefix="/internal/reco/v1", tags=["RecoHealth"])
+
+SERVICE_NAME = "reco"
+APP_VERSION = "0.1.0"
+HEALTH_PATH_SUFFIX = "/internal/reco/v1/health"
 
 
 def _resolve_trace_meta(
@@ -32,9 +37,28 @@ def _resolve_trace_meta(
 def _probe_database() -> bool:
     settings = load_reco_settings()
     if settings.database_url is None or settings.database_url.strip() == "":
-        # DATABASE_URL 未設定時は scaffold でプロセス稼働のみ確認（ローカル最小）
+        # ローカル最小: DATABASE_URL 未設定時は scaffold でプロセス稼働のみ確認
+        # （実装仕様書 §11 No.1 推奨。本番/staging では DATABASE_URL 必須想定）
         return ScaffoldDatabaseSession().health_check().is_available
     return PostgresDatabaseSession(database_url=settings.database_url).health_check().is_available
+
+
+def _error_response(
+    *,
+    status_code: int,
+    error_code: str,
+    meta: dict[str, str],
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": {
+                "code": error_code,
+                "message": default_message(error_code),
+            },
+            "meta": meta,
+        },
+    )
 
 
 @router.get(
@@ -51,16 +75,28 @@ async def get_reco_health(
     checked_at = datetime.now(tz=UTC).isoformat()
 
     if not _probe_database():
-        # OpenAPI: unavailable は HTTP 503 + ErrorResponse
-        raise reco_error_from_code("GRS-COM-003")
+        # OpenAPI: 503 + ErrorResponse（data なし）
+        record_reco_health_check(
+            result="unavailable",
+            http_status=503,
+            trace_id=meta["traceId"],
+            request_id=meta["requestId"],
+        )
+        return _error_response(status_code=503, error_code="GRS-COM-003", meta=meta)
 
+    record_reco_health_check(
+        result="ok",
+        http_status=200,
+        trace_id=meta["traceId"],
+        request_id=meta["requestId"],
+    )
     return JSONResponse(
         status_code=200,
         content={
             "data": {
                 "status": "ok",
-                "service": "reco",
-                "version": "0.1.0",
+                "service": SERVICE_NAME,
+                "version": APP_VERSION,
                 "checkedAt": checked_at,
             },
             "meta": {

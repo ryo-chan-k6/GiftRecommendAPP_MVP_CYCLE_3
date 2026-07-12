@@ -1,0 +1,140 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-001-reco-health-check-implementation-pr"
+  title: "API-INT-001 Recoヘルスチェックエンドポイント実装 PRレビュー"
+  summary: "API-INT-001 health エンドポイント実装 Task（#1153）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1153
+  task_definition: "prompts/definitions/tasks/api-int-001-reco-health-check/implementation.yaml"
+  source_branch: "feature/task-1153-api-int-001-reco-health-check-implementation"
+  target_branch: "feature/epic-391-int-001-reco-health-check"
+  parent_epic_issue: "[Epic]API-INT-001:Recoヘルスチェック"
+  parent_epic_branch: "feature/epic-391-int-001-reco-health-check"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-int-001-reco-health-check/implementation.yaml"
+    required: true
+  issue:
+    number: 1153
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-391-int-001-reco-health-check"
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI実装仕様書.md"
+      required: true
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+  source:
+    - "実装仕様書・OpenAPI と整合するか"
+    - "application 層変更が混入していないか"
+    - "503 が ErrorResponse か"
+    - "reco_health_check_count 境界があるか"
+  tests:
+    - "health unit test が主要ケースを覆っているか"
+  security:
+    - "secret / .env 実値がないか"
+  epic_scope:
+    - "allowed_paths 内か"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+  request_changes:
+    conditions:
+      - "実装またはテスト不備がある"
+  needs_human_decision:
+    conditions:
+      - "DATABASE_URL scaffold 方針など Human 判断が必要"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新する"
