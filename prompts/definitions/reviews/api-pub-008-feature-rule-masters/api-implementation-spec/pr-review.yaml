@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1191
   issue: 1190
   task_definition: "prompts/definitions/tasks/api-pub-008-feature-rule-masters/api-implementation-spec.yaml"
   source_branch: "docs/task-1190-api-pub-008-feature-rule-masters-api-implementation-spec"
@@ -70,7 +70,7 @@ input:
     number: 1190
     required: true
   pr:
-    number: null
+    number: 1191
     required: true
   diff:
     required: true

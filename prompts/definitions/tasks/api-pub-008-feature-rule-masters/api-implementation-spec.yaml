@@ -30,6 +30,8 @@ parent:
     - number: 463
       purpose: "前提 Task（semantic_config_version テーブル定義・関連）"
   related_prs:
+    - number: 1191
+      purpose: "本 Task PR（実装仕様書）"
     - number: 408
       purpose: "契約仕様書 Task PR（develop 反映済み）"
     - number: 429
