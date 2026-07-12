@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-07-12                                |
-| 更新日         | 2026-07-12                                |
+| 更新日         | 2026-07-13                                |
 
 ---
 
@@ -48,7 +48,7 @@
 | 冪等性 | 副作用なし。同一 Request の繰り返し可（SELECT のみ） |
 | Public 識別 | **`configName` + `versionLabel` composite**。内部 UUID は非公開 |
 | 非公開 | `semantic_rule` / `pair_rule` / 正規化パラメータ詳細 / 内部 PK |
-| キャッシュ | **MVP 既定: 都度 SELECT**（§11） |
+| キャッシュ | **都度 SELECT**（プロセス内キャッシュは導入しない。§11 判断確定） |
 
 ### 3.2 エンドポイント層の配置
 
@@ -56,22 +56,24 @@ PUB-005 / PUB-006 で `createMastersRouter` が存在する。本 API は同一 
 
 ```text
 apps/api/src/app/masters/
-├── routes.ts                         # GET /semantic-configs を追加
-├── semantic-config-controller.ts     # MOD-API-011（本 API 受付・組立）※新規
-├── semantic-config-repository.ts     # MOD-API-012（Version 解決 + Concept/Feature 読取）※新規
-├── relationship-repository.ts        # PUB-005（変更しない）
-├── occasion-controller.ts            # PUB-006（変更しない）
-├── occasion-repository.ts            # PUB-006（変更しない）
-├── constants.ts / types.ts           # 本 API 用定数・DTO を追記可
+├── routes.ts                              # GET /semantic-configs を追加
+├── semantic-config-version-resolver.ts    # PUB-007 / PUB-008 共通 current Version 解決 ※新規
+├── semantic-config-controller.ts          # MOD-API-011（本 API 受付・組立）※新規
+├── semantic-config-repository.ts          # MOD-API-012（Concept / Feature 読取。Version は共通 Resolver を利用）※新規
+├── relationship-repository.ts             # PUB-005（変更しない）
+├── occasion-controller.ts                 # PUB-006（変更しない）
+├── occasion-repository.ts                 # PUB-006（変更しない）
+├── constants.ts / types.ts                # 本 API 用定数・DTO を追記可
 └── index.ts
 ```
 
 | モジュール | 責務（本 API） |
 | ---------- | -------------- |
 | MOD-API-011 Master Controller | `GET /semantic-configs` 受付、未知 Query 検査、meta 解決、Repository 呼び出し、成功 / 失敗 Response、metric |
-| MOD-API-012 Master Repository | current Version 解決（親 `is_active` → 子 `is_current` → JOIN `config_name`）、Concept / Feature Definition の active 行取得 |
+| current Version Resolver（共通） | 親 `is_active` → 子 `is_current` → JOIN `config_name`。PUB-007 / PUB-008 から同一実装を呼ぶ（§11 判断確定） |
+| MOD-API-012 Master Repository | 共通 Resolver で Version 解決後、Concept / Feature Definition の active 行取得 |
 
-**共通化メモ（推奨・未確定）:** PUB-008 も同一 current Version 解決を使う。本仕様書は **PUB-007 読取に閉じ**、共通 Repository 抽出は後続 Task / Human 判断（§11）。
+**共通化方針（§11 判断確定）:** current Version 解決のみを MVP 時点から PUB-007 / PUB-008 共通モジュール化する。Concept / Feature 読取や Rule 読取まで含む全体 Repository の共通化は行わない。本仕様書 scope では共通 Resolver を新規追加し、PUB-008 実装 Task はそれを再利用する。
 
 `apps/reco/**` / `apps/batch/**` / `apps/web/src/app/**` / `apps/web/src/features/**` は **変更しない**。
 
@@ -82,7 +84,7 @@ apps/api/src/app/masters/
 | request-meta | 既存 Trace / Request ID 解決を再利用。Header 任意・未指定時はサーバ採番可（現行 middleware は requestId を採番） |
 | DB | Postgres。接続文字列実値をログ・Response に出さない |
 | Reco Client | **使用しない** |
-| DATABASE_URL 未設定 | 設定解決不能として `GRS-CFG-001` または `GRS-CFG-005` 相当で失敗（実装 Task で PUB-005/006 の既定と揃える。推奨: current 解決不能と同様に **`GRS-CFG-001`**） |
+| DATABASE_URL 未設定 | 設定解決不能として **`GRS-CFG-001`**（§11 判断確定。PUB-005/006 の `GRS-CFG-005` とは本 API で揃えない） |
 
 ### 3.4 認証（実装面）
 
@@ -145,7 +147,7 @@ MVP では系列あたり current 1 件を想定（部分 UNIQUE）。複数行�
 | Version あり・有効 Feature 0 件 | 500 `GRS-CFG-006` |
 | DB 読取失敗 | 500 `GRS-DB-002`（一時不可は 503 `GRS-DB-001`） |
 | 未知 Query | 400 `GRS-REQ-001` |
-| 接続設定欠落等 | 500 `GRS-CFG-001`（推奨）または既存 masters と揃えた設定エラー |
+| 接続設定欠落等 | 500 `GRS-CFG-001`（§11 判断確定） |
 
 ---
 
@@ -252,7 +254,7 @@ generated は手動編集しない。
 | ---- | ---- |
 | provider | `apps/api` |
 | 影響有無 | `あり`（後続実装 Task） |
-| 必要対応 | `createMastersRouter` に `GET /semantic-configs` 追加、Repository / Controller 新規、metric / error 配線 |
+| 必要対応 | `createMastersRouter` に `GET /semantic-configs` 追加、共通 Version Resolver / Controller / Repository 新規、metric / error 配線 |
 
 ### 7.2 consumer
 
@@ -299,16 +301,19 @@ generated は手動編集しない。
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-12 | 初版作成 | #1188 |
+| 2026-07-13 | §11 判断確定（Version 解決共通化 / 都度 SELECT / `GRS-CFG-001`）を本文へ反映 | #1188 |
 
 ---
 
-## 11. 未決事項
+## 11. Human Review 判断事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Version 解決 Repository を PUB-008 と共通化するか | 重複実装 vs 早期共通化 | Human | 実装 Task 開始前 | 本仕様書は PUB-007 専用を推奨 |
-| 2 | プロセス内キャッシュ | 性能 vs 鮮度 | Human | 任意 | 既定: 都度 SELECT |
-| 3 | DATABASE_URL 未設定時の Error Code | PUB-005/006 は `GRS-CFG-005`。本 API は current 不足が `GRS-CFG-001` | Human | 実装時 | 推奨: 本 API は `GRS-CFG-001` に寄せる |
+Human 判断により推奨案を採用し、以下を **実装面の判断確定** とする。
+
+|  No | 論点 | Human 判断 | 実装への適用 |
+| --: | ---- | ---------- | ------------ |
+| 1 | Version 解決を PUB-008 と共通化するか | **MVP 時点から共通化する**（current Version 解決のみ。全体 Repository 共通化はしない） | §3.2。`semantic-config-version-resolver.ts` を新規追加。PUB-008 は再利用 |
+| 2 | プロセス内キャッシュ | **導入しない**（都度 SELECT）。更新鮮度を優先 | §3.1。キャッシュ層は実装しない |
+| 3 | DATABASE_URL 未設定時の Error Code | **`GRS-CFG-001`** に寄せる（PUB-005/006 の `GRS-CFG-005` とは揃えない） | §3.3 / §3.5.4 |
 
 ---
 
@@ -329,6 +334,8 @@ generated は手動編集しない。
 
 - 契約仕様書と実装方針が整合している（特に Concept 0 件と Feature 0 件の非対称）
 - current Version 解決手順がテーブル定義書と一致している
+- PUB-007 / PUB-008 共通 Version Resolver 方針が明確である（§11）
+- 都度 SELECT・`GRS-CFG-001` 方針が §3 と矛盾していない
 - 内部 UUID / Rule 非公開が明確である
 - 既存 masters Router 拡張方針が後続実装 Task の入力として十分である
 - OpenAPI / apps 実装変更を本 Task に含めていない
