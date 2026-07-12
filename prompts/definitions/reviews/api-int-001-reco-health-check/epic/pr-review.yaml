@@ -6,7 +6,7 @@ review:
   title: "API-INT-001 Recoヘルスチェック Epic PRレビュー"
   summary: "Epic #391（API-INT-001 Recoヘルスチェック）の develop 向け統合 PR を AI Review する。Phase4b 縦串（実装仕様書 / reco エンドポイント実装 / 単体テスト）の成果を横断確認する。契約仕様書・OpenAPI 断片は Phase1 で develop 反映済み。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1164
   issue:
     number: 391
   task_definition: "prompts/definitions/epics/api-int-001-reco-health-check/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 391
     required: true
   pr:
-    number: null
+    number: 1164
     required: true
   diff:
     required: true
