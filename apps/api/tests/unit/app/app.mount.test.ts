@@ -48,3 +48,18 @@ test("POST /api/v1/recommendations is mounted (not 404)", async () => {
     assert.notEqual(response.status, 404);
   });
 });
+
+test("GET /api/v1/masters/occasions is mounted (200 empty on scaffold)", async () => {
+  await withAppServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/masters/occasions`, {
+      headers: { Accept: "application/json" },
+    });
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as {
+      data?: { occasions?: unknown[] };
+      meta?: { count?: number };
+    };
+    assert.ok(Array.isArray(body.data?.occasions));
+    assert.equal(body.meta?.count, body.data?.occasions?.length);
+  });
+});
