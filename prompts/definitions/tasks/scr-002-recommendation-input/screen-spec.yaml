@@ -13,11 +13,15 @@ parent:
   epic_issue_number: 1147
   epic_branch: "feature/epic-1147-scr-002-recommendation-input"
   related_issues:
+    - number: 1152
+      purpose: "本 Task Issue"
     - number: 1147
       purpose: "親 Epic"
     - number: 357
       purpose: "依存 Epic（API-PUB-002 develop merge 済み）"
-  related_prs: []
+  related_prs:
+    - number: 1154
+      purpose: "本 Task PR（親 Epic Branch 向け）"
 
 commands:
   primary: "/start-task"
@@ -130,7 +134,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-scr-002-recommendation-input-screen-spec"
+  name: "docs/task-1152-scr-002-recommendation-input-screen-spec"
   base: "feature/epic-1147-scr-002-recommendation-input"
   target: "feature/epic-1147-scr-002-recommendation-input"
   worktree_required: true
@@ -139,7 +143,7 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "06_実装設計"
-    status: "Todo"
+    status: "In Progress"
     priority: "high"
     planned_start: "2026-07-12"
     due_date: "2026-07-14"
@@ -215,7 +219,8 @@ stop_conditions:
 notes:
   - "命名の正本は Task Definition設計書 §15.1（共通）・§15.3（画面）。"
   - "Issueタイトル: [Task]SCR-002:レコメンド条件入力画面仕様書作成"
+  - "本 Task Issue: #1152 / Branch: docs/task-1152-scr-002-recommendation-input-screen-spec"
   - "親Epic: #1147 [Epic]SCR-002:レコメンド条件入力画面 / Branch: feature/epic-1147-scr-002-recommendation-input"
   - "依存Epic: #357 [Epic]API-PUB-002:レコメンド実行（成果物化方針書 §3.5.3）"
   - "Epic Definition の正本は prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
-  - "次手順: /start-task @prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
+  - "後続: /create-pr → AI Review → Human Review"
