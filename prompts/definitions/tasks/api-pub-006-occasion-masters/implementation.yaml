@@ -26,6 +26,8 @@ parent:
     - number: 445
       purpose: "前提 Task（occasion_master テーブル定義書）"
   related_prs:
+    - number: 1179
+      purpose: "本 Task PR（実装）"
     - number: 1172
       purpose: "実装仕様書 Task PR（親 Epic Branch merge 済み）"
     - number: 410
