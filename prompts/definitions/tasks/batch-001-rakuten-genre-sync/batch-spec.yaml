@@ -109,7 +109,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-batch-001-rakuten-genre-sync-batch-spec"
+  name: "docs/task-1162-batch-001-rakuten-genre-sync-batch-spec"
   base: "feature/epic-1161-batch-001-rakuten-genre-sync"
   target: "feature/epic-1161-batch-001-rakuten-genre-sync"
   worktree_required: true
@@ -118,10 +118,10 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "06_実装設計"
-    status: "Todo"
+    status: "In Progress"
     priority: "high"
-    planned_start: null
-    due_date: null
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
 
 issue:
   unit: "task"
