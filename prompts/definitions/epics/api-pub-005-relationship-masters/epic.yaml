@@ -140,12 +140,16 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-PUB-005_*"
     - "apps/api/src/app/masters/**"
+    - "apps/api/src/app.ts"
+    - "apps/api/tests/unit/app/masters/**"
+    - "apps/api/tests/unit/app/app.mount.test.ts"
     - "packages/contracts/openapi/**"
     - "packages/contracts/schemas/**"
     - "apps/web/src/generated/api/**"
     - "apps/web/src/lib/**"
     - "prompts/definitions/tasks/api-pub-005-relationship-masters/**"
     - "prompts/definitions/reviews/api-pub-005-relationship-masters/**"
+    - "prompts/definitions/epics/api-pub-005-relationship-masters/**"
   forbidden_paths:
     - "apps/reco/**"
     - "apps/batch/**"
