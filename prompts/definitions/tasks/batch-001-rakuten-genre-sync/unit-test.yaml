@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-001-rakuten-genre-sync-unit-test"
+  title: "BATCH-001:楽天ジャンル同期Batch単体テスト"
+  summary: "BATCH-001（楽天ジャンル同期Batch）実装に対し、バッチ仕様書 §16 の unit 観点カバレッジを整理・拡充する。実装 Task の最小 UT を維持しつつ、不足ケースを fixture / mock で追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-001:楽天ジャンル同期Batch"
+  epic_issue_number: "#1161"
+  epic_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  related_issues:
+    - number: 1170
+      purpose: "前提（実装 Task・CLOSED）"
+    - number: 1162
+      purpose: "前提（バッチ仕様書 Task・CLOSED）"
+  related_prs:
+    - number: 1174
+      purpose: "実装 Task PR（Epic Branch merge 済み）"
+    - number: 1163
+      purpose: "バッチ仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b レーン B1 縦串の UT。実装 Task #1170 / PR #1174 は Epic Branch merge 済み。
+  本 Task はバッチ仕様書 §16 の unit 観点対応表を PR に明示し、不足ケースを
+  `apps/batch/tests/unit/**` へ拡充する。実楽天API / 実 DB は禁止（fixture / mock 正）。
+
+objective: |
+  BATCH-001 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串（仕様書→実装→UT）を完了可能にする。
+
+scope:
+  - "バッチ仕様書 §16 unit 観点のカバレッジ表を PR 本文に記載する"
+  - "`apps/batch/tests/unit/**` へのテスト追加・拡充（genre_sync 中心）"
+  - "テスト成立に必要な最小の実装修正（例: GRS-RAW-001 / GRS-EXT-102 の注入経路）"
+  - "Task / Review Definition の実Issue・Branch反映"
+
+out_of_scope:
+  - "integration test（実楽天API / 実 DB / 実 Object Storage）"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema / migration 変更"
+  - "他 Batch のテスト"
+  - "機能追加を主目的とする実装変更（テスト成立に必要な最小修正以外）"
+  - "Epic PR の develop merge（Human 判断）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: false
+      purpose: "GRS-EXT / GRS-RAW / GRS-BAT 期待値の参照"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/genre_sync/**"
+      required: true
+      purpose: "テスト対象"
+    - path: "apps/batch/tests/unit/application/test_genre_sync.py"
+      required: true
+      purpose: "実装 Task で追加済みの最小 UT"
+  issues:
+    - number: 1170
+      purpose: "前提実装"
+  prs:
+    - number: 1174
+      purpose: "実装 PR（merge 済み）"
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/batch/tests/unit/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "§16 unit 観点カバレッジ表（PR 本文）"
+  - "不足ケースの pytest 追加"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "バッチ仕様書 §16 の unit 観点（No.1〜7）がテストまたは明示スキップ理由でカバーされている"
+  - "`cd apps/batch && uv run python -m pytest tests/unit -q` が SUCCESS"
+  - "実楽天API / 実 DB に依存しない"
+  - "OpenAPI / generated / migration 変更を含まない"
+  - "親 Epic の epic_scope.allowed_paths 内"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-<issue-number>-batch-001-rakuten-genre-sync-unit-test"
+  summary: "batch-001-rakuten-genre-sync-unit-test"
+  base: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  target: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 734
+      title: "[Epic]batch-foundation:Batch共通基盤"
+      purpose: "Phase4a Batch 共通基盤（CLOSED）"
+  issues:
+    - number: 1170
+      purpose: "実装 Task（CLOSED）"
+  prs:
+    - number: 1174
+      purpose: "実装 PR Epic merge 済み（blocking）"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-001-rakuten-genre-sync-implementation"
+  blocks: []
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_genre_sync.py"
+    - "apps/batch/tests/unit/application/test_genre_sync_*.py"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit -q --tb=short"
+  not_required:
+    - "integration test"
+    - "contract test"
+  skip_reason:
+    "integration test": "実楽天API / 実DBは課金・環境依存のため fixture/mock unit で代替"
+    "contract test": "Batch は HTTP API 化しないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "仕様書 §16 カバレッジが十分か（不足はスキップ理由明示）"
+    - "実外部依存がないか"
+    - "secret 非露出"
+    - "PR target が親 Epic Branch であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 UT は ai-logs に保存しない"
+
+stop_conditions:
+  - "実装 PR #1174 が親 Epic Branch に merge されていない場合"
+  - "実楽天API検証が必須に見える場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-001:楽天ジャンル同期Batch単体テスト"
+  - "縦串完了後は Epic PR → develop（Human merge 判断）"
+  - "parent / branch の issue 番号は /start-task 後に実値へ更新する"
