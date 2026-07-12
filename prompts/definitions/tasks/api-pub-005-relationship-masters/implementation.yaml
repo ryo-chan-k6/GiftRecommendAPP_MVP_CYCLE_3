@@ -1,0 +1,303 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-005-relationship-masters-implementation"
+  title: "API-PUB-005:Relationshipマスタ取得エンドポイント実装"
+  summary: "API-PUB-005（Relationshipマスタ取得 / Public API、`GET /api/v1/masters/relationships`）を、契約仕様書・OpenAPI・実装仕様書（#1166 / PR #1168）に沿って apps/api（MOD-API-011 / MOD-API-012）へ実装する（Phase4b 2/3）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-005:Relationshipマスタ取得"
+  epic_issue_number: 387
+  epic_branch: "feature/epic-387-pub-005-relationship-masters"
+  related_issues:
+    - number: 1175
+      purpose: "本 Task Issue"
+    - number: 387
+      purpose: "親 Epic"
+    - number: 1166
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 401
+      purpose: "前提 Task（API契約仕様書）"
+    - number: 422
+      purpose: "前提 Task（OpenAPI 断片）"
+    - number: 442
+      purpose: "前提 Task（relationship_master テーブル定義書）"
+  related_prs:
+    - number: 1168
+      purpose: "実装仕様書 Task PR（親 Epic Branch merge 済み）"
+    - number: 409
+      purpose: "契約仕様書 merge"
+    - number: 423
+      purpose: "OpenAPI 断片 develop merge"
+    - number: 443
+      purpose: "テーブル定義書 develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 縦串の 2/3（apps/api 実装）。前提: 実装仕様書 #1166 / PR #1168 が親 Epic Branch に merge 済み。
+  契約・OpenAPI・relationship_master テーブル定義は develop 反映済み。
+  Provider は apps/api（`apps/api/src/app/masters/**`）、Consumer は apps/web（SCR-002・本 Task 対象外）。
+  MVP は都度 SELECT・非認証・Pair 非公開。網羅 UT は後続 unit-test Task に委譲し、本 Task では最小スモークを含める。
+
+objective: |
+  `GET /api/v1/masters/relationships` を契約・OpenAPI・実装仕様書に沿って apps/api 上で提供する。
+  MOD-API-011 / MOD-API-012、`relationship_master` 読取、Response 組立、エラーマップ、metric 境界を実装する。
+
+scope:
+  - "`apps/api/src/app/masters/**` の新規実装（Router / Repository）"
+  - "`GET /api/v1/masters/relationships` の成功 Response（relationships + meta）"
+  - "`is_active=true` フィルタと `ORDER BY display_order, relationship_code`"
+  - "0 件時 200 空配列と GRS-CFG-005 / GRS-DB-002 の境界"
+  - "trace / requestId の Header ↔ meta 一貫（`resolveRequestMeta`）"
+  - "masters_relationships_request_count / masters_relationships_error_count の最小記録"
+  - "`createApp` への Router mount"
+  - "最小スモーク単体テスト"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "packages/contracts/openapi/** の変更"
+  - "Orval / generated の再生成・手動編集"
+  - "apps/web/** の変更"
+  - "apps/reco/** の変更"
+  - "API-PUB-005 契約仕様書・実装仕様書 docs の変更"
+  - "DB schema 変更・migration・seed 変更"
+  - "API-PUB-006〜008 の実装"
+  - "プロセス内キャッシュ導入"
+  - "網羅的単体テスト Task（Phase4b 3/3）"
+  - "結合テスト・E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API実装仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md"
+      required: true
+      purpose: "契約面参照"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "読取条件・列"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+  templates: []
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+      purpose: "OpenAPI 正本（変更しない）"
+    - path: "apps/api/src/app.ts"
+      required: true
+    - path: "apps/api/src/app/health/routes.ts"
+      required: true
+      purpose: "GET Router / metric パターン参照"
+    - path: "apps/api/src/app/recommendations/request-repository.ts"
+      required: true
+      purpose: "DbSession Repository パターン参照"
+    - path: "apps/api/src/middlewares/request-meta.ts"
+      required: true
+    - path: "apps/api/src/infrastructure/db/**"
+      required: true
+  issues:
+    - number: 1166
+      purpose: "前提実装仕様書 Task"
+    - number: 422
+      purpose: "前提 OpenAPI"
+  prs:
+    - number: 1168
+      purpose: "実装仕様書 PR（Epic merge 必須）"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/app/masters/**"
+      action: "create"
+      required: true
+    - path: "apps/api/src/app.ts"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/api/tests/unit/app/masters/**"
+      action: "create"
+      required: true
+    - path: "apps/api/tests/unit/app/app.mount.test.ts"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "契約準拠の GET /api/v1/masters/relationships（apps/api/src/app/masters/**）"
+  - "createApp への mount"
+  - "最小スモーク単体テスト"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "`GET /api/v1/masters/relationships` が注入 Repository で 200 と契約外形を返す"
+  - "`is_active=true` のみ返却し Response に isActive / Pair を含めない"
+  - "0 件は 200 空配列、設定解決不能は 500 GRS-CFG-005、DB 失敗は 500 GRS-DB-002"
+  - "masters_relationships_request_count / error_count が記録境界どおり動く（logger 注入検証）"
+  - "実装仕様書・契約仕様書・OpenAPI と矛盾しない"
+  - "OpenAPI / generated / apps/web / apps/reco の変更を含まない"
+  - "epic_scope.allowed_paths 内に差分が収まっている"
+  - "`pnpm --filter @gift-recommendation/api test`（または build + masters 関連 test）が SUCCESS"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1175-api-pub-005-relationship-masters-implementation"
+  summary: "api-pub-005-relationship-masters-implementation"
+  base: "feature/epic-387-pub-005-relationship-masters"
+  target: "feature/epic-387-pub-005-relationship-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1175
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+contract_gate:
+  required: true
+  gate_id: "api-pub-005-phase1"
+  prerequisite_contract_tasks:
+    - issue: 422
+      definition: "prompts/definitions/contracts/api-pub-005-relationship-masters/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue 開始前"
+  blocked_message: "OpenAPI 断片 #422 / PR #423 および実装仕様書 #1166 / PR #1168 の親 Epic Branch merge を確認するまで /work-issue を開始しない"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1166
+      purpose: "実装仕様書 Task"
+    - number: 422
+      purpose: "OpenAPI 断片"
+  prs:
+    - number: 1168
+      purpose: "実装仕様書 Epic Branch merge（blocking）"
+  tasks:
+    - "API-PUB-005_Relationshipマスタ取得API実装仕様書.md が親 Epic Branch に存在すること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-005-relationship-masters/api-implementation-spec.yaml"
+  blocks:
+    - "API-PUB-005 単体テスト Task"
+  exclusive_files:
+    - "apps/api/src/app/masters/**"
+    - "apps/api/src/app.ts"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "build or typecheck"
+    - "masters smoke unit tests"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  manual_checks:
+    - "GET /api/v1/masters/relationships が契約外形を満たすこと（注入 Repository または実 DB）"
+    - "OpenAPI / generated 変更が混入していないこと"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+  skip_reason:
+    "integration test": "網羅は後続 unit-test / 結合 Task"
+    "e2e test": "本 Task 対象外"
+    "contract test": "OpenAPI 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書 §3〜§9 と矛盾しないか"
+    - "空配列と GRS-CFG-005 / GRS-DB-002 境界が正しいか"
+    - "epic_scope.allowed_paths 内か"
+    - "secret / .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常実装は ai-logs に保存しない。Gate 未充足・契約矛盾で停止した場合は記録する。"
+
+risk_points:
+  - "PR #1168 未 merge のまま実装を開始する運用ミス"
+  - "DATABASE_URL 未設定時の GRS-CFG-005 と scaffold 空配列の取り違え"
+  - "PUB-006 共通化を本 Task で広げすぎる"
+
+human_decision_points:
+  - "MOD-API-012 共通化は後続（本 Task は Relationship 専用）"
+  - "キャッシュは導入しない（実装仕様書既定）"
+
+stop_conditions:
+  - "PR #1168 が親 Epic Branch に merge されていない場合"
+  - "実装仕様書が親 Epic Branch に存在しない場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "DB schema / migration 変更が必要になった場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "epic_scope.allowed_paths 外の変更が必要になった場合"
+
+notes:
+  - "本 Task は Phase4b 2/3。後続は unit-test Task。"
+  - "実装仕様書 PR #1168 merge 済みを前提に /work-issue を開始する。"
+  - "Issue 起票後に branch.name / issue.number を実番号へ反映する。"
