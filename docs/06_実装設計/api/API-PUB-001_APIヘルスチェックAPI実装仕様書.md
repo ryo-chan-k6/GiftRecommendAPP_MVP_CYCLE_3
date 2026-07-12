@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-07-12                                |
-| 更新日         | 2026-07-12                                |
+| 更新日         | 2026-07-12（Human Review #1156 反映）     |
 
 ---
 
@@ -71,7 +71,7 @@ apps/api/src/
 | 項目 | 方針 |
 | ---- | ---- |
 | request-meta | 既存 `resolveRequestMeta` を再利用。Header 任意・未指定時はサーバ採番 |
-| DB / reco probe | **MVP 推奨: プロセス稼働確認のみ**（内部依存チェックなし）。実施する場合も結果は集約 `status` にのみ反映し、個別結果は表面化しない（§3.5・§11） |
+| DB / reco probe | **MVP 確定: 方針 A（プロセス稼働確認のみ）**（Human Review #1156 確定）。内部依存チェックは行わない。依存監視は INT-001 / インフラへ分離 |
 | Settings | 環境変数名のみ参照可。Secret / 接続文字列実値をログ・Response に出さない |
 | Reco Client / Recommendation | **使用しない** |
 
@@ -90,16 +90,16 @@ apps/api/src/
 | ------------- | ---- | ---- |
 | `ok` | api プロセスが正常応答可能 | 200 |
 | `degraded` | api は応答するが一部依存に劣化あり | **200 固定** |
-| `unavailable` | api が正常な Health を返せない | **503**（ErrorResponse。§7.3） |
+| `unavailable` | api が正常な Health を返せない | **503**（ErrorResponse。本書 §7.3） |
 
-**MVP 推奨運用（Human Review 論点 §11）:**
+**MVP 確定運用（Human Review #1156 確定）:**
 
-| 方針 | 内容 |
-| ---- | ---- |
-| A（推奨） | **プロセス応答可能なら常に `ok`（200）**。DB / reco の内部 probe は行わない。監視は「プロセス生存」に寄せる |
-| B | 内部で DB / reco を短時間 probe し、劣化時は `degraded`（200）、全滅時は 503。個別結果は Response に含めない |
+| 方針 | 内容 | MVP |
+| ---- | ---- | --- |
+| A | **プロセス応答可能なら常に `ok`（200）**。DB / reco の内部 probe は行わない。監視は「プロセス生存」に寄せる | **採用** |
+| B | 内部で DB / reco を短時間 probe し、劣化時は `degraded`（200）、全滅時は 503。個別結果は Response に含めない | 不採用 |
 
-#1135 先行実装は方針 A 相当（常に `ok`）。方針 B を採る場合は probe タイムアウト・閾値を実装 Task で定数化する。
+#1135 先行実装は方針 A 相当（常に `ok`）。MVP では `degraded` 経路は通常発生しない（契約 enum は維持）。
 
 ---
 
@@ -110,7 +110,7 @@ apps/api/src/
 ```mermaid
 flowchart TD
     START([GET /api/v1/health]) --> META[trace/request meta 解決<br/>Header任意・未指定時はサーバ採番]
-    META --> JUDGE{稼働判定<br/>MVP推奨: プロセス応答のみ}
+    META --> JUDGE{稼働判定<br/>MVP確定: 方針A プロセス応答のみ}
     JUDGE -->|ok| OK200[200 data.status=ok<br/>service=okuri + meta]
     JUDGE -->|degraded| DEG200[200 data.status=degraded<br/>+ meta]
     JUDGE -->|unavailable| E503[503 ErrorResponse<br/>GRS-COM-003]
@@ -125,9 +125,9 @@ flowchart TD
 ### 4.2 処理詳細
 
 1. **meta 解決:** `X-Trace-Id` / `X-Request-Id` は **任意**（契約・API一覧）。指定時は Response `meta` へ **一致反映**。未指定時はサーバ側で採番してよい（#1135 先行実装と同型）。
-2. **稼働判定:** §3.5 に従う。MVP 推奨はプロセス応答のみで `ok`。
+2. **稼働判定:** §3.5 に従う。MVP 確定（方針 A）はプロセス応答のみで常に `ok`。
 3. **成功 Response（200）:** `data`（`status` / `service` / `apiVersion` / `checkedAt`）+ `meta`（`traceId` / `requestId` / `generatedAt`）。`service` は固定 **`okuri`**。`apiVersion` は **`v1`**。
-4. **degraded（200）:** 方針 B 採用時のみ。`data.status: degraded`。HTTP は 200 固定。
+4. **degraded（200）:** MVP では不採用（方針 A 確定）。契約 enum は維持するが、通常経路では発生しない。
 5. **unavailable / 依存不全:** HTTP **503** + `ErrorResponse`（`error.code: GRS-COM-003`）。`data` は返さない（契約 §8.1）。
 6. **想定外:** 500 + `GRS-COM-999`。stack trace は Response に含めない。
 7. **タイムアウト:** 内部処理がタイムアウトする場合 504 + `GRS-COM-002`（契約 §8.2）。MVP 方針 A では通常発生しない。
@@ -151,7 +151,7 @@ flowchart TD
 
 | 内部項目 / DTO | Response項目 | 変換内容 | 備考 |
 | -------------- | ------------ | -------- | ---- |
-| 判定結果 | `data.status` | `ok` または `degraded` | MVP 推奨は常に `ok` |
+| 判定結果 | `data.status` | `ok`（MVP 確定） | 方針 A により常に `ok` |
 | 固定 | `data.service` | `"okuri"` | Human Review 確定 |
 | 固定 | `data.apiVersion` | `"v1"` | URL パスと整合 |
 | 判定完了時刻 | `data.checkedAt` | ISO 8601 | api 側生成。任意 |
@@ -195,7 +195,7 @@ flowchart TD
 | provider | `apps/api`（`apps/api/src/app/health/**`） |
 | 責務     | GET health 受付、meta 解決、稼働判定、Response / Error 組立、trace 伝播、metric |
 | 影響有無 | `○`（#1135 最小実装あり → 契約準拠への整備） |
-| 必要対応 | `routes.ts` の契約・OpenAPI 整合（`status` enum・`degraded` / 503）、metric 配線、Epic Branch への develop 取込 |
+| 必要対応 | `routes.ts` の契約・OpenAPI 整合（`status` enum・503 経路）、metric 配線。**着手は API-INT-001 Epic Branch の develop 取込完了後**（§14） |
 
 - `GET /api/v1/health` ハンドラ（既存最小実装を本仕様に追随）
 - `resolveRequestMeta` 再利用
@@ -231,7 +231,7 @@ flowchart TD
 | ---- | ---- | ------------ |
 | OpenAPI（#412） | 503 → `ErrorResponse` | **実装はこれに従う** |
 | 契約仕様書 §7.2 | `unavailable` → 503 | 成功時 `data` と error 時を混在させない。503 は ErrorResponse |
-| #1135 先行実装 | 常に 200 / `ok` | ギャップ。後続実装 Task で 503 経路を整備（方針 B 時）または方針 A 維持を確定 |
+| #1135 先行実装 | 常に 200 / `ok` | 方針 A と整合。後続実装 Task で 503 経路（想定外・unavailable）を整備 |
 
 #### 7.3.3 trace_id / request_id 伝播
 
@@ -269,7 +269,7 @@ phase_log（推薦パイプライン用）は **記録しない**。
 | 項目 | 方針 |
 | ---- | ---- |
 | エンドポイント全体 | 軽量。推薦 hard timeout とは別枠。目安数百 ms 以内 |
-| 内部 probe（方針 B 時） | 短時間（目安 ≤ 1s）。実装 Task で定数化 |
+| 内部 probe | **MVP 不実施**（方針 A 確定）。将来方針 B を採る場合は短時間（目安 ≤ 1s）を実装 Task で定数化 |
 | api 側 retry | **行わない**（監視側のリトライポリシーに委譲） |
 | 監視側 retry | 無限リトライ禁止 |
 | 副作用 | なし（冪等） |
@@ -281,7 +281,7 @@ phase_log（推薦パイプライン用）は **記録しない**。
 |  No | 観点 | 確認内容 | 種別 |
 | --: | ---- | -------- | ---- |
 | 1 | 正常系 | → 200、`data.status=ok`、`data.service=okuri`、`data.apiVersion=v1` | unit / integration |
-| 2 | degraded | 方針 B 時: → 200、`data.status=degraded` | unit |
+| 2 | degraded | MVP 不採用（方針 A 確定）。契約 enum 維持のため将来方針 B 時に再検討 | — |
 | 3 | unavailable | → 503 `GRS-COM-003`、`ErrorResponse`、`data` なし | unit |
 | 4 | 想定外 | → 500 `GRS-COM-999`、stack 非露出 | unit |
 | 5 | trace 伝播 | `X-Trace-Id` 指定時に `meta.traceId` 一致 | unit |
@@ -299,9 +299,7 @@ phase_log（推薦パイプライン用）は **記録しない**。
 
 |  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | MVP で内部依存 probe（DB / reco）を実施するか | 契約は集約 status のみ。#1135 はプロセスのみ。方針 A/B で実装量が変わる | Human | 実装 Task 前 | **推奨: 方針 A（プロセスのみ）**。依存監視は INT-001 / インフラへ分離 |
-| 2 | 方針 B 採用時の degraded 閾値・タイムアウト | 実装定数の確定が必要 | Human | 方針 B 採択時 | 推奨: probe ≤ 1s。片方 NG で degraded、両方 NG で 503 等 |
-| 3 | Epic Branch への develop 取込タイミング | Epic は develop から乖離。#1135 health コードが Epic 上に無い | Human | 実装 Task 前 | **推奨: 実装 Task 開始前に develop 取込 PR**。本 docs Task は契約 docs のみで完了可 |
+| - | なし | Human Review #1156 で §3.5・§14 の論点を確定済み | - | - | 方針 A 採用、実装設計以降は INT-001 develop 取込後 |
 
 ---
 
@@ -326,7 +324,7 @@ phase_log（推薦パイプライン用）は **記録しない**。
 - 契約仕様書・OpenAPI と矛盾しない（503 は ErrorResponse、`degraded` は 200）
 - Express / request-meta / 集約 status 境界が明確
 - 依存個別結果を Response に載せない方針が契約と整合している
-- `#1135` 先行実装とのギャップが未決事項に明示されている
+- `#1135` 先行実装とのギャップが方針 A 確定と整合している
 - provider / consumer 影響が整理されている
 - `api_request_count` / `api_error_count` の記録境界がある
 - secret / `.env` 実値が含まれていない
@@ -338,8 +336,12 @@ phase_log（推薦パイプライン用）は **記録しない**。
 ## 14. 備考
 
 - 本 Task は docs のみ。apps / OpenAPI / generated は変更しない。
+- **Human Review #1156 確定事項:**
+  - MVP は **方針 A（プロセスのみ）** を採用。DB / reco の内部 probe は行わない。
+  - 方針 B（degraded 閾値・タイムアウト）は方針 A 採用のため対応不要。
+  - **API-PUB-001 の実装設計以降**（apps/api 実装・単体テスト等）は、**API-INT-001 Epic Branch が develop へ取込完了後**に着手する。それまでは本 Issue（#1155）は実装仕様書作成（docs 変更）のみ。
 - develop merge 順: **INT-001 Epic PR → PUB-001 Epic PR**（実装フェーズ並列計画 Human 判断）。
-- 後続縦串: 実装 Task → 単体テスト Task → Epic PR → develop。
+- 後続縦串: 実装 Task → 単体テスト Task → Epic PR → develop（実装 Task 着手は INT-001 develop 取込後）。
 - Task Definition: `prompts/definitions/tasks/api-pub-001-api-health-check/api-implementation-spec.yaml`
 - 関連 Issue: #1155 / 親 Epic #384
 
@@ -350,3 +352,4 @@ phase_log（推薦パイプライン用）は **記録しない**。
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-12 | 初版（実装面のみ。Phase4b 1/3） | #1155 |
+| 2026-07-12 | Human Review #1156 反映（方針 A 確定、未決事項解消、INT-001 後に実装着手） | #1156 |
