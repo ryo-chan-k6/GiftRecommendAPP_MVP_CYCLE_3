@@ -90,7 +90,7 @@ test("GET /api/v1/health is idempotent (no side-effectful state change)", async 
   });
 });
 
-test("createHealthRouter records api_health_check via optional logger", async () => {
+test("createHealthRouter records api_request_count via optional logger", async () => {
   const logger = new ScaffoldApiLogger();
   const app = express();
   registerFoundationMiddlewares(app);
@@ -103,7 +103,7 @@ test("createHealthRouter records api_health_check via optional logger", async ()
   });
 
   const events = logger.records.filter(
-    (r: StructuredLogRecord) => r.eventName === "api_health_check",
+    (r: StructuredLogRecord) => r.eventName === "api_request_count",
   );
   assert.equal(events.length, 1);
   assert.equal(events[0]?.attributes?.status, API_HEALTH_STATUS_OK);
@@ -112,4 +112,19 @@ test("createHealthRouter records api_health_check via optional logger", async ()
   const attrs = events[0]?.attributes ?? {};
   assert.equal("databaseUrl" in attrs, false);
   assert.equal("apiKey" in attrs, false);
+});
+
+test("POST /api/v1/health is not allowed (405 or 404 from routing)", async () => {
+  await withListeningApp(createApp(), async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/health`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    assert.notEqual(response.status, 200);
+    assert.ok(
+      response.status === 404 || response.status === 405,
+      `expected 404 or 405, got ${response.status}`,
+    );
+  });
 });

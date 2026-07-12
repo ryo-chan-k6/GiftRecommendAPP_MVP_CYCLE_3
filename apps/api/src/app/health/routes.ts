@@ -33,8 +33,8 @@ export function createHealthRouter(deps: HealthRouterDeps = {}): Router {
           requestId: meta.requestId,
         });
 
-        // access / metric 境界（api_request_count 相当）。Secret は載せない。
-        boundLogger?.info("api_health_check", {
+        // access / metric 境界（API一覧: api_request_count）。Secret は載せない。
+        boundLogger?.info("api_request_count", {
           path: "/api/v1/health",
           method: "GET",
           status: API_HEALTH_STATUS_OK,
@@ -59,10 +59,13 @@ export function createHealthRouter(deps: HealthRouterDeps = {}): Router {
         });
       } catch (error) {
         // 想定外は error middleware へ。Response に stack / 内部詳細を載せない。
-        logger?.error("api_health_check_failed", {
-          path: "/api/v1/health",
-          httpStatus: 500,
-        });
+        const meta = resolveRequestMeta(res);
+        logger
+          ?.bind({ traceId: meta.traceId, requestId: meta.requestId })
+          .error("api_error_count", {
+            path: "/api/v1/health",
+            httpStatus: 500,
+          });
         next(error);
       }
     },
