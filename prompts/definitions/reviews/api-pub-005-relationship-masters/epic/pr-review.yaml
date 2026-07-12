@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1186
   issue:
     number: 387
   task_definition: "prompts/definitions/epics/api-pub-005-relationship-masters/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 387
     required: true
   pr:
-    number: null
+    number: 1186
     required: true
   diff:
     required: true
