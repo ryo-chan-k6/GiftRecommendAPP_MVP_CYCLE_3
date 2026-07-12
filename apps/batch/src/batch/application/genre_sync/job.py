@@ -156,14 +156,23 @@ class GenreSyncJob:
             )
             raise
 
+        # adapt（fetch 成功後の payload 不正は api_call_log を failed に記録する）
+        try:
+            genre = adapt_genre_raw_payload(raw_payload, requested_genre_id=genre_id)
+        except RakutenGenreApiError as exc:
+            self._repos.record_api_call(
+                api_call_log_id=api_call_log_id,
+                genre_id=genre_id,
+                status="failed",
+                error_code=exc.code,
+            )
+            raise
+
         self._repos.record_api_call(
             api_call_log_id=api_call_log_id,
             genre_id=genre_id,
             status="succeeded",
         )
-
-        # adapt
-        genre = adapt_genre_raw_payload(raw_payload, requested_genre_id=genre_id)
 
         # raw_save
         body = json.dumps(raw_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")

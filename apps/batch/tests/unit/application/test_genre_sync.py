@@ -75,8 +75,7 @@ def test_genre_sync_happy_path_upserts_external_genre() -> None:
     assert repos.external_genres[("rakuten", "100")].parent_external_genre_id == "0"
     assert len(repos.object_storage.put_calls) == 2
     assert all(meta["import_status"] == "staged" for meta in repos.raw_metadata.values())
-    assert all(phase in result.completed_phases for phase in ("plan", "finalize"))
-    assert set(GENRE_SYNC_PHASES).issubset(set(result.completed_phases))
+    assert result.completed_phases == list(GENRE_SYNC_PHASES)
 
 
 def test_genre_sync_default_plan_uses_root_genre() -> None:
@@ -223,6 +222,18 @@ def test_same_content_hash_skips_object_storage_rewrite() -> None:
 
     assert len(repos.object_storage.put_calls) == first_puts
     assert repos.raw_metadata[object_key]["api_call_log_id"] == "api_002"
+    repos.raw_metadata[object_key]["import_status"] = "staged"
+    repos.save_raw(
+        RawGenreArtifact(
+            object_key=object_key,
+            content_hash=content_hash,
+            api_call_log_id="api_003",
+            genre_id="100",
+            body=body,
+        )
+    )
+    assert repos.raw_metadata[object_key]["import_status"] == "staged"
+    assert repos.raw_metadata[object_key]["api_call_log_id"] == "api_003"
 
 
 # --- §16 No.4 Rate Limit ---
@@ -307,6 +318,9 @@ def test_genre_sync_invalid_payload_partial_failure() -> None:
     assert result.succeeded_genre_ids == ["100"]
     assert result.failed_genre_ids == ["bad"]
     assert "GRS-EXT-103" in result.error_codes
+    bad_api = [log for log in repos.api_call_logs if log["genre_id"] == "bad"]
+    assert bad_api and bad_api[-1]["status"] == "failed"
+    assert bad_api[-1]["error_code"] == "GRS-EXT-103"
 
 
 # --- §16 No.6 Raw失敗 ---
@@ -348,6 +362,9 @@ def test_genre_sync_raw_save_partial_failure() -> None:
     assert "GRS-BAT-002" in result.error_codes
     assert ("rakuten", "100") in repos.external_genres
     assert ("rakuten", "101") not in repos.external_genres
+    assert any(
+        e["code"] == "GRS-RAW-001" and e.get("genre_id") == "101" for e in repos.error_logs
+    )
 
 
 # --- §16 No.7 secret非含有 ---
