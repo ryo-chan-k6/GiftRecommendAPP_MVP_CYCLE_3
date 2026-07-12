@@ -141,6 +141,7 @@ epic_scope:
     - "apps/batch/src/batch/infrastructure/db/**"
     - "apps/batch/src/batch/infrastructure/logger/**"
     - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
     - ".github/workflows/batch-rakuten-genre-sync*.yml"
     - "prompts/definitions/epics/batch-001-rakuten-genre-sync/**"
     - "prompts/definitions/tasks/batch-001-rakuten-genre-sync/**"
