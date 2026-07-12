@@ -20,6 +20,7 @@ from batch.application.genre_sync.models import (
 from batch.application.genre_sync.repositories import GenreSyncRepositories
 from batch.application.job_run import JobRunTracker, ScaffoldJobRunTracker
 from batch.infrastructure.logger import BatchLogger, ScaffoldBatchLogger
+from batch.infrastructure.object_storage import ObjectStorageError
 from batch.infrastructure.rakuten import (
     RakutenApiClient,
     RakutenGenreApiError,
@@ -98,6 +99,15 @@ class GenreSyncJob:
                         genre_id=genre_id,
                         error_code=exc.code,
                     )
+                except ObjectStorageError as exc:
+                    result.failed_genre_ids.append(genre_id)
+                    result.error_codes.append(exc.code)
+                    self._repos.record_error(code=exc.code, summary=exc.message, genre_id=genre_id)
+                    bound_logger.error(
+                        "genre_sync.raw_save_failed",
+                        genre_id=genre_id,
+                        error_code=exc.code,
+                    )
                 except Exception as exc:  # noqa: BLE001 — finalize partial failure
                     result.failed_genre_ids.append(genre_id)
                     result.error_codes.append("GRS-BAT-001")
@@ -135,7 +145,17 @@ class GenreSyncJob:
         api_call_log_id = f"api_{uuid.uuid4().hex[:12]}"
 
         # fetch
-        raw_payload = self._rakuten.fetch_genre_raw(genre_id=genre_id)
+        try:
+            raw_payload = self._rakuten.fetch_genre_raw(genre_id=genre_id)
+        except RakutenGenreApiError as exc:
+            self._repos.record_api_call(
+                api_call_log_id=api_call_log_id,
+                genre_id=genre_id,
+                status="failed",
+                error_code=exc.code,
+            )
+            raise
+
         self._repos.record_api_call(
             api_call_log_id=api_call_log_id,
             genre_id=genre_id,

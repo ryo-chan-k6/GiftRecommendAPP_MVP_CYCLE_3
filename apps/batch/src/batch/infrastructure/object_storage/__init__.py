@@ -3,6 +3,7 @@
 from batch.infrastructure.object_storage.client import (
     ObjectRef,
     ObjectStorageClient,
+    ObjectStorageError,
     ScaffoldObjectStorageClient,
     StoredObject,
 )
@@ -10,6 +11,7 @@ from batch.infrastructure.object_storage.client import (
 __all__ = [
     "ObjectRef",
     "ObjectStorageClient",
+    "ObjectStorageError",
     "ScaffoldObjectStorageClient",
     "StoredObject",
 ]

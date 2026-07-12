@@ -64,6 +64,7 @@ class ScaffoldRakutenApiClient:
     genres: dict[str, RakutenGenre] = field(default_factory=dict)
     raw_responses: dict[str, dict[str, object]] = field(default_factory=dict)
     fail_genre_ids: set[str] = field(default_factory=set)
+    rate_limited_genre_ids: set[str] = field(default_factory=set)
     search_calls: list[dict[str, object]] = field(default_factory=list)
     ranking_calls: list[dict[str, object]] = field(default_factory=list)
     genre_calls: list[dict[str, object]] = field(default_factory=list)
@@ -78,24 +79,14 @@ class ScaffoldRakutenApiClient:
 
     def fetch_genre(self, *, genre_id: str) -> RakutenGenre | None:
         self.genre_calls.append({"genre_id": genre_id})
-        if genre_id in self.fail_genre_ids:
-            raise RakutenGenreApiError(
-                genre_id=genre_id,
-                code="GRS-EXT-100",
-                message="scaffold forced genre fetch failure",
-            )
+        self._raise_if_forced_failure(genre_id)
         return self.genres.get(genre_id)
 
     def fetch_genre_raw(self, *, genre_id: str) -> dict[str, object]:
         """Return Raw JSON-compatible payload for Object Storage persistence."""
 
         self.genre_calls.append({"genre_id": genre_id, "mode": "raw"})
-        if genre_id in self.fail_genre_ids:
-            raise RakutenGenreApiError(
-                genre_id=genre_id,
-                code="GRS-EXT-100",
-                message="scaffold forced genre fetch failure",
-            )
+        self._raise_if_forced_failure(genre_id)
         if genre_id in self.raw_responses:
             return dict(self.raw_responses[genre_id])
 
@@ -117,3 +108,17 @@ class ScaffoldRakutenApiClient:
             ),
             "children": [{"genreId": child_id} for child_id in genre.children],
         }
+
+    def _raise_if_forced_failure(self, genre_id: str) -> None:
+        if genre_id in self.rate_limited_genre_ids:
+            raise RakutenGenreApiError(
+                genre_id=genre_id,
+                code="GRS-EXT-102",
+                message="scaffold forced rate limit",
+            )
+        if genre_id in self.fail_genre_ids:
+            raise RakutenGenreApiError(
+                genre_id=genre_id,
+                code="GRS-EXT-100",
+                message="scaffold forced genre fetch failure",
+            )

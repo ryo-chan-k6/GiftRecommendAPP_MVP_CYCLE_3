@@ -12,16 +12,16 @@ work_mode: "ai-agent"
 
 branch:
   no_branch: false
-  name: null
+  name: "test/task-1178-batch-001-rakuten-genre-sync-unit-test"
   base: "feature/epic-1161-batch-001-rakuten-genre-sync"
   target: "feature/epic-1161-batch-001-rakuten-genre-sync"
   worktree_required: true
 
 target:
   pr: null
-  issue: null
+  issue: 1178
   task_definition: "prompts/definitions/tasks/batch-001-rakuten-genre-sync/unit-test.yaml"
-  source_branch: null
+  source_branch: "test/task-1178-batch-001-rakuten-genre-sync-unit-test"
   target_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
   parent_epic_issue: "[Epic]BATCH-001:楽天ジャンル同期Batch"
   parent_epic_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
@@ -67,7 +67,7 @@ input:
     path: "prompts/definitions/tasks/batch-001-rakuten-genre-sync/unit-test.yaml"
     required: true
   issue:
-    number: null
+    number: 1178
     required: true
   pr:
     number: null
@@ -91,4 +91,5 @@ review_points:
     - "secret / .env 実値がないか"
 
 notes:
-  - "Issue / PR 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
+  - "Issue #1178 / Branch test/task-1178-batch-001-rakuten-genre-sync-unit-test"
+  - "PR 番号は /create-pr 後に反映し status を ready へ更新する"
