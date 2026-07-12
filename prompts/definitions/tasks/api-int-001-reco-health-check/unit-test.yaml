@@ -1,0 +1,266 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-001-reco-health-check-unit-test"
+  title: "API-INT-001:Recoヘルスチェック単体テスト"
+  summary: "API-INT-001（Recoヘルスチェック / Internal API）エンドポイント層に対し、契約仕様書 §12・実装仕様書 §10 の unit 観点を満たす pytest 単体テストを `apps/reco/tests/unit/api/test_health.py` に拡充する（Phase4b 3/3）。実装 Task #1153 の既存ケースを維持しつつ、冪等・Secret 非露出などの残ギャップを埋める。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-INT-001:Recoヘルスチェック"
+  epic_issue_number: 391
+  epic_branch: "feature/epic-391-int-001-reco-health-check"
+  related_issues:
+    - number: 1159
+      purpose: "本 Task Issue"
+    - number: 1153
+      purpose: "前提 Task（エンドポイント実装・既存 UT 追加）"
+    - number: 1149
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 414
+      purpose: "前提 Task（OpenAPI 断片）"
+  related_prs:
+    - number: 1158
+      purpose: "実装 Task PR（Epic Branch merge 済み）"
+    - number: 1150
+      purpose: "実装仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 縦串（実装仕様書 → 実装 → 単体テスト）の 3/3 である。
+  実装 Task（#1153 / PR #1158）により health エンドポイントと最小 UT（ok / auth 欠落・不正 / DB NG / trace 任意）が親 Epic Branch に merge 済みである。
+  実装仕様書 §10 のうち、冪等（No.6）と Secret 非露出（No.8）が専用ケースとして未整備のため、本 Task で拡充する。
+  親 Epic `epic_scope.allowed_paths` に `apps/reco/tests/unit/api/**` が未記載のため、本 Task で追記する（#1158 でのテスト追加と整合）。
+
+objective: |
+  API-INT-001 エンドポイント層の単体テストを契約仕様書 §12（unit 相当）および実装仕様書 §10 の unit 範囲に沿って整備し、pytest で再現可能な検証を提供する。
+  既存 `test_health.py` を維持しつつ、不足観点を追加する。Epic PR → develop の前提を満たす。
+
+scope:
+  - "エンドポイント層単体テストの拡充（`apps/reco/tests/unit/api/test_health.py`）"
+  - "実装仕様書 §10 の unit 観点（正常系 / auth / DB NG / trace / 冪等 / metric / Secret）のカバレッジ整理と不足ケース追加"
+  - "契約仕様書 §12 の unit 相当観点との対応表を PR 本文に記載"
+  - "親 Epic `epic_scope.allowed_paths` への `apps/reco/tests/unit/api/**` 追記"
+  - "Task / Review Definition 整備（本ファイルおよび `prompts/definitions/reviews/api-int-001-reco-health-check/unit-test/pr-review.yaml`）"
+
+out_of_scope:
+  - "integration test（実 DB / 実 Postgres 障害シミュレーション）"
+  - "e2e test / contract test（OpenAPI generated client typecheck）"
+  - "OpenAPI / generated / packages/contracts 変更"
+  - "apps/api reco-client wrapper 実装・変更"
+  - "apps/reco/src/reco/application/** 変更"
+  - "エンドポイント層の機能追加（バグ修正のみ可）"
+  - "本番 DB / 外部 API 依存テスト"
+  - "Epic PR の develop merge（Human 判断）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md"
+      required: true
+      purpose: "§12 契約面テスト観点の正本"
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI実装仕様書.md"
+      required: true
+      purpose: "§10 実装テスト観点の正本"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: false
+      purpose: "Internal API Key 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "GRS-* 期待値"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/api/routes/health.py"
+      required: true
+      purpose: "テスト対象"
+    - path: "apps/reco/src/reco/api/metrics/health_metrics.py"
+      required: true
+      purpose: "metric 検証対象"
+    - path: "apps/reco/tests/unit/api/test_health.py"
+      required: true
+      purpose: "既存 UT（拡充起点）"
+  issues:
+    - number: 1153
+      purpose: "前提実装 Task"
+    - number: 1149
+      purpose: "前提実装仕様書 Task"
+  prs:
+    - number: 1158
+      purpose: "実装 PR"
+    - number: 1150
+      purpose: "実装仕様書 PR"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/api-int-001-reco-health-check/epic.yaml"
+      action: "update"
+      required: true
+      purpose: "allowed_paths に tests を追記"
+  tests:
+    - path: "apps/reco/tests/unit/api/test_health.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "実装仕様書 §10 unit 観点に対応する pytest テストスイート拡充"
+  - "テスト観点とテストケースの対応表（PR 本文）"
+  - "pytest 実行結果（成功ログ）"
+  - "Epic epic_scope.allowed_paths への tests 追記"
+  - "Task Definition / Review Definition"
+
+acceptance_criteria:
+  - "実装仕様書 §10 No.1〜8 の unit 観点がテストケースとしてカバーされている（対応表を PR に記載）"
+  - "既存 health UT が引き続き成功する"
+  - "`cd apps/reco && python -m pytest tests/unit/api/test_health.py -v --tb=short` が成功する"
+  - "`cd apps/reco && python -m pytest tests/unit/api/ -q --tb=short` が成功する（他テストへの悪影響なし）"
+  - "親 Epic `allowed_paths` に `apps/reco/tests/unit/api/**` が追記されている"
+  - "テストが本番 DB / 外部 API / secret に依存していない"
+  - "エンドポイント層の不要な機能変更を含まない"
+  - "OpenAPI / generated / apps/api wrapper の変更を含まない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "test/task-1159-api-int-001-reco-health-check-unit-test"
+  summary: "api-int-001-reco-health-check-unit-test"
+  base: "feature/epic-391-int-001-reco-health-check"
+  target: "feature/epic-391-int-001-reco-health-check"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1159
+  unit: "task"
+  type: "test"
+  area: "api"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1153
+      purpose: "実装 Task 完了"
+    - number: 1149
+      purpose: "API実装仕様書 Task 完了"
+  prs:
+    - number: 1158
+      purpose: "実装 Epic Branch merge"
+    - number: 1150
+      purpose: "実装仕様書 Epic Branch merge"
+  tasks:
+    - "task-api-int-001-reco-health-check-implementation（#1153 / PR #1158 merge 済み）"
+  blocking: true
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-int-001-reco-health-check/implementation.yaml"
+  blocks:
+    - "API-INT-001 Epic PR → develop（Phase4b 完了後）"
+  exclusive_files:
+    - "apps/reco/tests/unit/api/test_health.py"
+    - "prompts/definitions/epics/api-int-001-reco-health-check/epic.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "pytest"
+    - "coverage mapping（§10 / §12 観点との対応）"
+    - "secret check"
+  commands:
+    - "cd apps/reco && python -m pytest tests/unit/api/test_health.py -v --tb=short"
+    - "cd apps/reco && python -m pytest tests/unit/api/ -q --tb=short"
+  manual_checks:
+    - "§10 観点ごとに対応テストケース名または PR 表でトレースできることを確認する"
+    - "テスト fixture に実データ・secret が含まれていないことを確認する"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "generated client typecheck"
+  skip_reason:
+    "integration test": "実 DB 障害は別環境・別 Task"
+    "e2e test": "apps/api 経路は別 Task"
+    "contract test": "OpenAPI 変更なし"
+    "generated client typecheck": "apps/api wrapper は別 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書 §10・契約仕様書 §12 の unit 範囲カバレッジが過不足ないか"
+    - "既存実装の意図と矛盾するアサーションがないか"
+    - "integration 観点を unit で無理に検証していないか"
+    - "epic_scope 外の変更が混入していないか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の UT 作業は ai-logs に保存しない。テスト失敗原因が特定できない場合は incident として記録可。"
+
+human_decision_points:
+  - "本 Task merge 後に Epic PR → develop へ進めてよいか（Phase4b 縦串完了判定）"
+
+stop_conditions:
+  - "必須 input.docs / 既存 test_health.py が存在しない場合"
+  - "実装変更なしではテストが成立しないが、機能追加が必要に見える場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "epic_scope.allowed_paths 外の変更が必要になった場合"
+
+notes:
+  - "本Taskは API-INT-001 の Phase4b 3/3（単体テスト）。"
+  - "親 Epic Issue #391 / Branch feature/epic-391-int-001-reco-health-check。Task PR は親 Epic Branch を target とする。"
+  - "develop merge は INT-001 → PUB-001 の順（実装フェーズ並列計画）。"
