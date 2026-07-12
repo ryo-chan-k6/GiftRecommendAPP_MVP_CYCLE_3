@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1177
   issue: 1175
   task_definition: "prompts/definitions/tasks/api-pub-005-relationship-masters/implementation.yaml"
   source_branch: "feature/task-1175-api-pub-005-relationship-masters-implementation"
@@ -70,7 +70,7 @@ input:
     number: 1175
     required: true
   pr:
-    number: null
+    number: 1177
     required: true
   diff:
     required: true
