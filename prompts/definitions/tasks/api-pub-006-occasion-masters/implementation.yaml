@@ -1,0 +1,302 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-006-occasion-masters-implementation"
+  title: "API-PUB-006:Occasionマスタ取得エンドポイント実装"
+  summary: "API-PUB-006（Occasionマスタ取得 / Public API、`GET /api/v1/masters/occasions`）を、契約仕様書・OpenAPI・実装仕様書（#1171 / PR #1172）に沿って apps/api masters に実装する（Phase4b 2/3）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-006:Occasionマスタ取得"
+  epic_issue_number: 388
+  epic_branch: "feature/epic-388-pub-006-occasion-masters"
+  related_issues:
+    - number: 388
+      purpose: "親 Epic"
+    - number: 1171
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 402
+      purpose: "前提 Task（API契約仕様書）"
+    - number: 424
+      purpose: "前提 Task（OpenAPI 断片）"
+    - number: 445
+      purpose: "前提 Task（occasion_master テーブル定義書）"
+  related_prs:
+    - number: 1172
+      purpose: "実装仕様書 Task PR（親 Epic Branch merge 済み）"
+    - number: 410
+      purpose: "契約仕様書 Epic Branch / develop 反映済み"
+    - number: 425
+      purpose: "OpenAPI 断片 develop merge"
+    - number: 448
+      purpose: "occasion_master テーブル定義書 develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase4b 縦串の 2/3（apps/api 実装）。前提: 実装仕様書 #1171 / PR #1172 が親 Epic Branch に merge 済み。
+  契約・OpenAPI・occasion_master テーブル定義は develop 反映済み。
+  Provider は apps/api（`apps/api/src/app/masters/**`）、Consumer は apps/web（SCR-002・本 Task 対象外）。
+  Pair 情報は Public Response に含めない。網羅的単体テストは後続 unit-test Task に委譲する。
+
+objective: |
+  `GET /api/v1/masters/occasions` を契約・OpenAPI・実装仕様書に沿って apps/api 上で提供する。
+  Express Router（MOD-API-011 / MOD-API-012）、`occasion_master` 読取（`is_active=true` / ORDER BY）、
+  Response 組立（is_active / Pair 非公開）、0 件空配列と GRS-CFG-005 境界、
+  エラーマップ、masters_occasions_* metric 境界を整える。
+
+scope:
+  - "`apps/api/src/app/masters/**` の新規実装（Router / Controller / Occasion Repository）"
+  - "`GET /api/v1/masters/occasions` の成功 Response（`data.occasions` + `meta`）"
+  - "`occasion_master` の `is_active=true` フィルタと `ORDER BY display_order, occasion_code`"
+  - "0 件時 200 空配列と GRS-DB-002 / GRS-CFG-005 のエラー境界"
+  - "trace / requestId の Header ↔ meta 一貫（`resolveRequestMeta`）"
+  - "`masters_occasions_request_count` / `masters_occasions_error_count` の最小記録（logger 境界）"
+  - "親アプリへの Router mount（`/api/v1/masters`）"
+  - "実装スモーク単体テスト（最小限。網羅は後続 Task）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "packages/contracts/openapi/** の変更"
+  - "Orval / generated の再生成・手動編集"
+  - "apps/web/** の変更"
+  - "apps/reco/** の変更"
+  - "API-PUB-006 契約仕様書・実装仕様書 docs の変更"
+  - "DB schema 変更・migration・seed 変更"
+  - "API-PUB-005 / 007 / 008 のエンドポイント実装（Router 共通化は閉じすぎない範囲で可だが、本 Task の必須は occasions のみ）"
+  - "網羅的単体テスト Task（Phase4b 3/3）"
+  - "結合テスト・E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API実装仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API契約仕様書.md"
+      required: true
+      purpose: "契約面参照"
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "読取条件・列マッピング"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: false
+  templates: []
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+      purpose: "OpenAPI 正本（変更しない）"
+    - path: "apps/api/src/app.ts"
+      required: true
+      purpose: "Router mount"
+    - path: "apps/api/src/middlewares/request-meta.ts"
+      required: true
+    - path: "apps/api/src/infrastructure/db/"
+      required: true
+      purpose: "DbSession / createDbSession"
+  issues:
+    - number: 1171
+      purpose: "前提実装仕様書 Task"
+    - number: 424
+      purpose: "前提 OpenAPI"
+  prs:
+    - number: 1172
+      purpose: "実装仕様書 PR（Epic merge 必須）"
+    - number: 425
+      purpose: "OpenAPI 断片 develop merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/app/masters/**"
+      action: "create"
+      required: true
+    - path: "apps/api/src/app.ts"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/api/tests/**/masters/**"
+      action: "create_or_update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "契約準拠の GET /api/v1/masters/occasions（apps/api/src/app/masters/**）"
+  - "MOD-API-011 / MOD-API-012 責務分離と Router mount"
+  - "最小スモーク単体テスト（任意・実装 PR 内）"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "`GET /api/v1/masters/occasions` が 200 で `data.occasions` + `meta`（count 一致）を返す"
+  - "`is_active` / Pair を Response に含めていない"
+  - "有効行 0 件で 200 空配列になる"
+  - "DB 失敗時に `GRS-DB-002`、設定解決不能時に `GRS-CFG-005` を返す経路がある"
+  - "実装仕様書・契約仕様書・OpenAPI と矛盾しない"
+  - "OpenAPI / generated / apps/web / apps/reco の変更を含まない"
+  - "epic_scope.allowed_paths 内に差分が収まっている"
+  - "`pnpm --filter @gift-recommendation/api build` または同等 typecheck / test が SUCCESS"
+  - "最小スモークまたは手動確認結果を PR に記載"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-api-pub-006-occasion-masters-implementation"
+  summary: "api-pub-006-occasion-masters-implementation"
+  base: "feature/epic-388-pub-006-occasion-masters"
+  target: "feature/epic-388-pub-006-occasion-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+contract_gate:
+  required: true
+  gate_id: "api-pub-006-phase1"
+  prerequisite_contract_tasks:
+    - issue: 424
+      definition: "prompts/definitions/contracts/api-pub-006-occasion-masters/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue 開始前"
+  blocked_message: "OpenAPI 断片 #424 / PR #425 および実装仕様書 #1171 / PR #1172 の親 Epic Branch merge を確認するまで /work-issue を開始しない"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1171
+      purpose: "実装仕様書 Task"
+    - number: 424
+      purpose: "OpenAPI 断片"
+  prs:
+    - number: 1172
+      purpose: "実装仕様書 Epic Branch merge（blocking）"
+    - number: 425
+      purpose: "OpenAPI develop merge"
+  tasks:
+    - "API-PUB-006_Occasionマスタ取得API実装仕様書.md が親 Epic Branch に存在すること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-006-occasion-masters/api-implementation-spec.yaml"
+  blocks:
+    - "API-PUB-006 単体テスト Task"
+  exclusive_files:
+    - "apps/api/src/app/masters/**"
+    - "apps/api/src/app.ts"
+  conflict_risk: "medium"
+  generated_impact: false
+  conflict_notes: "PUB-005 実装と app.ts / masters Router を同時編集する場合は合流順序に注意"
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "build or typecheck"
+    - "smoke unit or manual occasions check"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api build"
+    - "pnpm --filter @gift-recommendation/api test"
+  manual_checks:
+    - "GET /api/v1/masters/occasions が契約外形を満たすこと"
+    - "OpenAPI / generated 変更が混入していないこと"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+  skip_reason:
+    "integration test": "網羅は後続 unit-test / 結合 Task"
+    "e2e test": "本 Task 対象外"
+    "contract test": "OpenAPI 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書 §3〜§9 と矛盾しないか"
+    - "is_active / Pair 非公開・0件空配列 / GRS-CFG-005 境界が契約と整合しているか"
+    - "epic_scope.allowed_paths 内か"
+    - "secret / .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常実装は ai-logs に保存しない。Gate 未充足や Repository 共通化で停止した場合は記録する。"
+
+risk_points:
+  - "PR #1172 未 merge のまま実装を開始する運用ミス"
+  - "PUB-005 実装と masters Router / app.ts の競合"
+  - "Repository 共通化を本 Task で閉じすぎる / 開きすぎる"
+
+human_decision_points:
+  - "MOD-API-012 を Occasion 専用にするか、PUB-005 等と共通 Repository にするか（本 Task は Occasion 読取に閉じる）"
+  - "マスタキャッシュ導入可否（既定: 都度 SELECT）"
+
+stop_conditions:
+  - "PR #1172 が親 Epic Branch に merge されていない場合（/work-issue 開始不可）"
+  - "実装仕様書が親 Epic Branch に存在しない場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "epic_scope.allowed_paths 外の変更が必要になった場合"
+
+notes:
+  - "本 Task は Phase4b 2/3。後続は unit-test Task。"
+  - "構造の参考: api-pub-001-api-health-check/implementation.yaml および recommendations Router。"
+  - "次手順: /start-task @prompts/definitions/tasks/api-pub-006-occasion-masters/implementation.yaml"
