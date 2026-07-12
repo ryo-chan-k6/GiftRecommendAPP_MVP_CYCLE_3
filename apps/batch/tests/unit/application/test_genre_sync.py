@@ -76,6 +76,9 @@ def test_genre_sync_happy_path_upserts_external_genre() -> None:
     assert len(repos.object_storage.put_calls) == 2
     assert all(meta["import_status"] == "staged" for meta in repos.raw_metadata.values())
     assert result.completed_phases == list(GENRE_SYNC_PHASES)
+    succeeded_api = [log for log in repos.api_call_logs if log["status"] == "succeeded"]
+    assert len(succeeded_api) == 2
+    assert {log["genre_id"] for log in succeeded_api} == {"100", "101"}
 
 
 def test_genre_sync_default_plan_uses_root_genre() -> None:
@@ -296,6 +299,10 @@ def test_genre_sync_all_failures_marks_failed() -> None:
     assert set(result.failed_genre_ids) == {"100", "101"}
     assert "GRS-EXT-100" in result.error_codes
     assert "GRS-BAT-001" in result.error_codes
+    failed_api = [log for log in repos.api_call_logs if log["status"] == "failed"]
+    assert len(failed_api) == 2
+    assert all(log["error_code"] == "GRS-EXT-100" for log in failed_api)
+    assert any(e["code"] == "GRS-EXT-100" for e in repos.error_logs)
 
 
 def test_genre_sync_invalid_payload_partial_failure() -> None:
@@ -378,7 +385,15 @@ def test_api_call_and_error_logs_do_not_contain_secret_fields() -> None:
 
     job.run(job_run_id="job-sec", target_genre_ids=("100", "101"))
 
-    forbidden = ("Authorization", "accessKey", "access_key", "RAKUTEN_ACCESS_KEY", "Bearer ")
+    forbidden = (
+        "Authorization",
+        "accessKey",
+        "access_key",
+        "RAKUTEN_ACCESS_KEY",
+        "object_storage_secret_key",
+        "application_id",
+        "Bearer ",
+    )
     blob = json.dumps({"api": repos.api_call_logs, "err": repos.error_logs}, ensure_ascii=False)
     for token in forbidden:
         assert token not in blob
