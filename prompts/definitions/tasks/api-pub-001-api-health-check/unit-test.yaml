@@ -1,0 +1,210 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-001-api-health-check-unit-test"
+  title: "API-PUB-001:APIヘルスチェック単体テスト"
+  summary: "API-PUB-001（APIヘルスチェック）エンドポイント層に対し、実装仕様書 §10 の unit 観点カバレッジを整理・拡充する（Phase4b 3/3）。実装 Task #1157 のスモーク UT を維持しつつ、残ギャップがあれば埋める。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-001:APIヘルスチェック"
+  epic_issue_number: 384
+  epic_branch: "feature/epic-384-pub-001-api-health-check"
+  related_issues:
+    - number: 1167
+      purpose: "本 Task Issue"
+    - number: 1157
+      purpose: "前提 Task（エンドポイント実装・スモーク UT）"
+    - number: 1155
+      purpose: "前提 Task（API実装仕様書）"
+  related_prs:
+    - number: 1165
+      purpose: "実装 Task PR（親 Epic Branch merge が /work-issue 開始条件）"
+    - number: 1156
+      purpose: "実装仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 縦串の 3/3。実装 Task（#1157 / PR #1165）で health とスモーク UT（ok / trace / 冪等 / metric / Secret / 非 GET）が追加される。
+  本 Task は実装仕様書 §10 の unit 観点カバレッジ表を PR に明示し、不足があれば `apps/api/tests/unit/app/health/**` を拡充する。
+  方針 A（プロセスのみ）のため degraded / DB probe / 503 経路の実 DB テストは対象外。
+
+objective: |
+  API-PUB-001 の unit テストを実装仕様書 §10 に沿って充足し、Epic PR → develop の前提を満たす。
+
+scope:
+  - "エンドポイント層単体テストの拡充またはカバレッジ確認（`apps/api/tests/unit/app/health/**`）"
+  - "実装仕様書 §10 の unit 観点対応表を PR 本文に記載"
+  - "不足ケースがあれば追加（方針 A 範囲）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "方針 B（DB / reco 内部 probe）のテスト"
+  - "integration / e2e / contract test"
+  - "OpenAPI / generated 変更"
+  - "apps/web / apps/reco 変更"
+  - "createApp への本番 logger 本配線（Human が別 Task 化した場合のみ）"
+  - "Epic PR の develop merge（Human 判断）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+      required: true
+      purpose: "§10 実装テスト観点の正本"
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI契約仕様書.md"
+      required: true
+      purpose: "契約外形"
+  templates: []
+  files:
+    - path: "apps/api/src/app/health/routes.ts"
+      required: true
+    - path: "apps/api/tests/unit/app/health/health.smoke.test.ts"
+      required: true
+  issues:
+    - number: 1157
+      purpose: "前提実装"
+  prs:
+    - number: 1165
+      purpose: "実装 PR（blocking）"
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/api/tests/unit/app/health/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "§10 unit 観点カバレッジ表（PR 本文）"
+  - "不足ケースのテスト追加（必要な場合）"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "実装仕様書 §10 の unit 観点（方針 A 範囲）がテストまたは明示スキップ理由でカバーされている"
+  - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
+  - "OpenAPI / generated / apps/web / apps/reco 変更を含まない"
+  - "epic_scope.allowed_paths 内"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1167-api-pub-001-api-health-check-unit-test"
+  summary: "api-pub-001-api-health-check-unit-test"
+  base: "feature/epic-384-pub-001-api-health-check"
+  target: "feature/epic-384-pub-001-api-health-check"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1167
+  unit: "task"
+  type: "test"
+  area: "api"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1157
+      purpose: "実装 Task"
+  prs:
+    - number: 1165
+      purpose: "実装 PR Epic merge（blocking）"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-001-api-health-check/implementation.yaml"
+  blocks: []
+  exclusive_files:
+    - "apps/api/tests/unit/app/health/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "build or typecheck"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  not_required:
+    - "integration test"
+    - "e2e test"
+  skip_reason:
+    "integration test": "方針 A・fixture ベース unit で十分"
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§10 カバレッジが十分か"
+    - "方針 A から逸脱していないか"
+    - "secret 非露出"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 UT は ai-logs に保存しない"
+
+risk_points:
+  - "PR #1165 未 merge のまま開始する運用ミス"
+
+human_decision_points:
+  - "createApp logger 本配線を本 UT Task に含めるか（推奨: 含めない）"
+
+stop_conditions:
+  - "PR #1165 が親 Epic Branch に merge されていない場合"
+  - "方針 B テストが必要になった場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+
+notes:
+  - "INT-001 #1159 と同型。実装 PR merge まで /work-issue 開始不可。"
+  - "後続: Epic PR → develop（INT-001 済みのため PUB-001 可）。"
