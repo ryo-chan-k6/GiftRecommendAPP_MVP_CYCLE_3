@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-int-001-reco-health-check-epic-pr"
+  title: "API-INT-001 Recoヘルスチェック Epic PRレビュー"
+  summary: "Epic #391（API-INT-001 Recoヘルスチェック）の develop 向け統合 PR を AI Review する。Phase4b 縦串（実装仕様書 / reco エンドポイント実装 / 単体テスト）の成果を横断確認する。契約仕様書・OpenAPI 断片は Phase1 で develop 反映済み。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue:
+    number: 391
+  task_definition: "prompts/definitions/epics/api-int-001-reco-health-check/epic.yaml"
+  source_branch: "feature/epic-391-int-001-reco-health-check"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-INT-001:Recoヘルスチェック"
+  parent_epic_branch: "feature/epic-391-int-001-reco-health-check"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/api-int-001-reco-health-check/epic.yaml"
+    required: true
+  issue:
+    number: 391
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md"
+      required: true
+      purpose: "契約面正本（Phase1 develop 反映済み）"
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI実装仕様書.md"
+      required: true
+      purpose: "実装面正本（本 Epic 差分）"
+  child_tasks:
+    - issue: 1149
+      pr: 1150
+      task_definition: "prompts/definitions/tasks/api-int-001-reco-health-check/api-implementation-spec.yaml"
+    - issue: 1153
+      pr: 1158
+      task_definition: "prompts/definitions/tasks/api-int-001-reco-health-check/implementation.yaml"
+    - issue: 1159
+      pr: 1160
+      task_definition: "prompts/definitions/tasks/api-int-001-reco-health-check/unit-test.yaml"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Epic Definition（epic.yaml）の scope / out_of_scope / acceptance_criteria を満たしているか"
+    - "Epic PR の source が feature/epic-391-int-001-reco-health-check、target が develop であるか"
+    - "PR 本文に Closes #391 があるか"
+    - "Phase4b 子 Task（#1149 / #1153 / #1159）が Epic 統合完了として整理されているか"
+    - "子 Task PR（#1150 / #1158 / #1160）の成果が Epic diff に含まれているか"
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "epic_scope.allowed_paths 内に差分が収まっているか"
+    - "epic_scope.forbidden_paths（apps/reco/src/reco/application/**、apps/api/src/app/**、apps/web/**、db）への変更がないか"
+    - "apps/reco エンドポイント層（apps/reco/src/reco/api/**）が実装の中心であるか"
+    - "apps/api consumer 配線が本 Epic に混入していないか（別 Task 想定）"
+  docs:
+    - "実装仕様書が子 Task 成果として Epic に含まれているか"
+    - "契約仕様書が develop 上に存在し、実装仕様書と矛盾していないか"
+  source:
+    - "health エンドポイントが実装仕様書と整合しているか"
+    - "推薦パイプライン（application 層）を呼び出していないか"
+    - "503 が ErrorResponse（GRS-COM-003）であるか（OpenAPI 準拠）"
+  api_contract:
+    - "本 Epic diff に OpenAPI / generated の破壊的変更が混入していないか（Phase1 は develop 済み）"
+  tests:
+    - "apps/reco/tests/unit/api/test_health.py が実装仕様書 §10 unit 観点をカバーしているか"
+    - "pytest 実行結果が Epic PR 本文に記載されているか"
+    - "integration 観点が未実施として明記されているか"
+  security:
+    - "Internal API Key の実値がコード・テストに含まれていないか"
+  project_operation:
+    - "Task PR を develop に直接向けていないか（子 PR は Epic Branch 向けであったか）"
+    - "Phase4b 縦串完了後の develop 統合であるか"
+    - "develop merge 順（INT-001 → PUB-001）が PR 本文で明示されているか"
+
+acceptance_check:
+  use_epic_acceptance_criteria: true
+  additional_criteria:
+    - "child_task_areas（api-spec / openapi / implementation / unit-test）のうち Phase4b 成果が Epic diff に含まれる"
+    - "apps/api consumer 実装が Epic に含まれない（別 Task）"
+    - "API-PUB-001 実装が Epic に含まれない"
+    - "Human Review で確認してほしい事項が PR 本文に明記されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "epic_scope 外の変更がない"
+      - "子 Task 成果の横断整合に Blocker がない"
+      - "テスト・検証結果の記載が十分である"
+  request_changes:
+    conditions:
+      - "epic_scope.forbidden_paths への変更が混入している"
+      - "実装仕様書・実装・テストの矛盾がある"
+      - "PR 本文の検証結果・未実施事項の記載が不足している"
+  needs_human_decision:
+    conditions:
+      - "develop 反映タイミングと PUB-001 着手順序について判断が必要"
+  blocked:
+    conditions:
+      - "Epic diff を確認できない"
+      - "secret 漏えいの疑いがある"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を実番号へ更新する"
+  - "Phase1 契約仕様書 #392 / OpenAPI #414 は develop 反映済み。本 Epic diff は Phase4b 縦串が中心"
