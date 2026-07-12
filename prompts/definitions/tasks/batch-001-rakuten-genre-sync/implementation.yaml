@@ -1,0 +1,286 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-001-rakuten-genre-sync-implementation"
+  title: "BATCH-001:楽天ジャンル同期Batch実装"
+  summary: "BATCH-001（楽天ジャンル同期Batch）をバッチ仕様書に基づき apps/batch へ実装する。楽天ジャンル検索API連携（fixture/mock可）、Raw保存、Staging、external_genre upsert、および workflow YAML を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-001:楽天ジャンル同期Batch"
+  epic_issue_number: "#1161"
+  epic_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  related_issues:
+    - number: 1162
+      purpose: "前提（バッチ仕様書 Task・CLOSED）"
+  related_prs:
+    - number: 1163
+      purpose: "バッチ仕様書 Epic Branch merge 済み"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b レーン B1 Fetch 起点。バッチ仕様書 #1162 / PR #1163 は Epic Branch merge 済み。
+  Phase4a batch-foundation（#734）の infrastructure / application / config 骨格上に、
+  BATCH-001 のジャンル同期ジョブを実装する。
+  Batch は HTTP API 化しないため Contract Gate は不要。
+  実楽天APIへの課金・大量呼出は禁止し、unit は fixture / mock を正とする。
+
+objective: |
+  BATCH-001 について、仕様書の処理ステップ（plan → fetch → adapt → raw_save → stage → upsert → finalize）を
+  apps/batch 上で実行可能な実装と、起動用 workflow（batch-rakuten-genre-sync.yml）を整備する。
+
+scope:
+  - "BATCH-001 ジョブの application 層実装（fetch_plan 解決・Phase 実行・部分失敗方針）"
+  - "Rakuten Genre API Client / Adapter の実装または scaffold 拡張（実API呼出は設定時のみ。unitはmock）"
+  - "Raw Object Writer / Raw Metadata Writer / Staging / external_genre upsert の配線"
+  - "batch_run_log / phase_log / api_call_log / error_log 連携（既存 logger / job_run 骨格の利用）"
+  - ".github/workflows/batch-rakuten-genre-sync.yml の新規作成（schedule / workflow_dispatch）"
+  - "実装に必要な最小 unit test（fixture / mock。主要正常系・冪等・API失敗）"
+  - "Task / Review Definition の実Issue・Branch反映"
+
+out_of_scope:
+  - "バッチ仕様書の全面書き換え（軽微な実装追随注記以外）"
+  - "他 Batch（BATCH-002〜019）の実装"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema / migration 変更"
+  - "本番楽天APIへの大量・課金影響のある実呼出検証"
+  - "専用の包括的 UT Task（後続 unit-test Task で扱う網羅マトリクス）"
+  - "週次オーケストレータ（batch-weekly-orchestrator.yml）本体の新規作成・改修（子workflow起動契約の記載に留める）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+      purpose: "実装の正本（処理ステップ・入出力・冪等・エラー）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-001 行との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Raw/Staging・モジュール・object_key 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "楽天ジャンル検索APIパラメータ・用途"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: false
+      purpose: "workflow 名・起動方式の参照"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/**"
+      required: true
+      purpose: "ジョブ骨格（runner / stages / context）"
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+      purpose: "Rakuten client scaffold"
+    - path: "apps/batch/src/batch/infrastructure/object_storage/**"
+      required: true
+      purpose: "Raw Object Writer 骨格"
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+      purpose: "DB writer 骨格"
+    - path: "apps/batch/src/batch/config/**"
+      required: true
+      purpose: "設定・環境変数名"
+  issues:
+    - number: 1162
+      purpose: "バッチ仕様書 Task"
+  prs:
+    - number: 1163
+      purpose: "バッチ仕様書 merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/object_storage/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/src/batch/infrastructure/logger/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/src/batch/config/**"
+      action: "update"
+      required: false
+    - path: ".github/workflows/batch-rakuten-genre-sync.yml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-001-rakuten-genre-sync/implementation.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/batch-001-rakuten-genre-sync/implementation/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-001 ジャンル同期ジョブ実装"
+  - "batch-rakuten-genre-sync.yml"
+  - "最小 unit test（fixture / mock）"
+
+acceptance_criteria:
+  - "バッチ仕様書の主要 Phase（plan/fetch/adapt/raw_save/stage/upsert/finalize）がコード上で追跡できる"
+  - "Rakuten Genre 取得が Protocol / mock 経由で単体テスト可能である"
+  - "external_genre の冪等キー（source + external_genre_id）方針が実装または明示コメントで担保されている"
+  - ".github/workflows/batch-rakuten-genre-sync.yml が存在し、workflow_dispatch（および schedule または親orchestratorからの呼び出し前提）を持つ"
+  - "secret / .env 実値 / 楽天APIキー実値をコード・fixture・workflow・ログに含まない"
+  - "OpenAPI / generated / DB migration を変更していない"
+  - "親 Epic の epic_scope.allowed_paths 外を編集していない"
+  - "最小 unit test が CI またはローカルで実行可能である"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-batch-001-rakuten-genre-sync-implementation"
+  summary: "batch-001-rakuten-genre-sync-implementation"
+  base: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  target: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 734
+      title: "[Epic]batch-foundation:Batch共通基盤"
+      purpose: "Phase4a Batch 共通基盤（CLOSED / Done）"
+  issues:
+    - number: 1162
+      purpose: "バッチ仕様書（CLOSED）"
+  prs:
+    - number: 1163
+      purpose: "バッチ仕様書 Epic Branch merge 済み"
+  tasks:
+    - "バッチ仕様書が親 Epic Branch に取り込まれていること"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-001-rakuten-genre-sync-batch-spec"
+  blocks:
+    - "task-batch-001-rakuten-genre-sync-unit-test"
+  exclusive_files:
+    - "apps/batch/src/batch/application/**"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - ".github/workflows/batch-rakuten-genre-sync.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-001 最小）"
+    - "compileall"
+    - "secret check"
+  commands:
+    - "cd apps/batch && python -m compileall src/batch"
+    - "cd apps/batch && python -m pytest tests/unit -q --tb=short"
+  manual_checks:
+    - "バッチ仕様書の BATCH-001 と実装の Batch ID / 処理概要が一致すること"
+    - "workflow に secret 実値が直書きされていないこと"
+  not_required:
+    - "integration test（実楽天API）"
+    - "contract test"
+  skip_reason:
+    "integration test（実楽天API）": "課金・Rate Limit 影響のため fixture/mock を正とする。実API検証は別途 Human 判断"
+    "contract test": "Batch は HTTP API 化しないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "バッチ仕様書の処理ステップ・冪等・エラー方針と実装が整合しているか"
+    - "epic_scope.allowed_paths 内に閉じているか"
+    - "Contract Gate / OpenAPI 変更が混入していないか"
+    - "secret / .env 実値が含まれていないか"
+    - "実楽天APIへの不用意な本番呼出がないか（unitはmock）"
+    - "PR target が親 Epic Branch であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch 実装の初期縦串。作業計画は Issue、成果は PR / docs、横断は必要時のみ ai-logs。"
+
+human_decision_points:
+  - "仕様書 §18 No.2: Staging→external_genre を本 Batch 内完結とする基本案で実装する（Human 未異議時の推奨）。委譲案が必要なら実装中に停止して確認する"
+  - "仕様書 §18 No.1: MVP初期ジャンルID一覧は config/fixture のプレースホルダとし、本番値は Human が Secrets/設定で投入する"
+  - "包括的 UT マトリクスは後続 unit-test Task に分離する"
+
+stop_conditions:
+  - "必須 input.docs（バッチ仕様書）が存在しない場合"
+  - "親 Epic Issue / Branch が未確定の場合"
+  - "OpenAPI / generated / migration 変更が必要になった場合"
+  - "epic_scope.allowed_paths 外の編集が必要になった場合"
+  - "実楽天APIへの大量・課金影響のある検証が必須に見える場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "命名の正本は Task Definition設計書 §15.1・§15.4。Issueタイトル: [Task]BATCH-001:楽天ジャンル同期Batch実装"
+  - "Contract Gate 不要（Batch は HTTP API 化しない）"
+  - "後続: unit-test Task Definition を別途作成し縦串を完了する"
+  - "parent / branch の issue 番号プレースホルダは /start-task 成功後に実値へ更新する"
