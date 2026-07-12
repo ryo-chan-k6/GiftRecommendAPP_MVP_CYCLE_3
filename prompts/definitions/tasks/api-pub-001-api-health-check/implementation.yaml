@@ -1,0 +1,293 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-001-api-health-check-implementation"
+  title: "API-PUB-001:APIヘルスチェックエンドポイント実装"
+  summary: "API-PUB-001（APIヘルスチェック / Public API、`GET /api/v1/health`）の apps/api health エンドポイントを、契約仕様書・OpenAPI・実装仕様書（#1155 / PR #1156）に沿って整備する（#1135 先行実装の契約準拠追随・metric 含む。Phase4b 2/3）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-001:APIヘルスチェック"
+  epic_issue_number: 384
+  epic_branch: "feature/epic-384-pub-001-api-health-check"
+  related_issues:
+    - number: 1157
+      purpose: "本 Task Issue"
+    - number: 384
+      purpose: "親 Epic"
+    - number: 1155
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 395
+      purpose: "前提 Task（API契約仕様書）"
+    - number: 412
+      purpose: "前提 Task（OpenAPI 断片）"
+    - number: 1135
+      purpose: "ローカル最小 health 先行実装（develop）"
+  related_prs:
+    - number: 1156
+      purpose: "実装仕様書 Task PR（親 Epic Branch への merge が /work-issue 開始条件）"
+    - number: 398
+      purpose: "契約仕様書 Epic Branch merge"
+    - number: 413
+      purpose: "OpenAPI 断片 develop merge"
+    - number: 1136
+      purpose: "ローカル最小 health develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase4b 縦串の 2/3（apps/api 実装）。前提: 実装仕様書 #1155 / PR #1156 が親 Epic Branch に merge 済みであること。
+  契約・OpenAPI は #395 / #412 で確定済み。#1135 / PR #1136 の最小 health が develop にあり、Epic Branch への develop 取込が実装前に必要（Human Review 論点）。
+  MVP 推奨は実装仕様書 §3.5 方針 A（プロセス稼働確認のみ・常に ok）。方針 B（内部依存 probe）は Human 承認後のみ。
+  網羅的単体テストは後続 unit-test Task に委譲する。
+
+objective: |
+  `GET /api/v1/health` を契約・OpenAPI・実装仕様書に沿って apps/api 上で提供する。
+  Express Router（`apps/api/src/app/health/**`）、request-meta、集約 status、エラーマップ、access / metric 境界を整える。
+
+scope:
+  - "`apps/api/src/app/health/**` の契約準拠整備（#1135 先行実装の追随）"
+  - "`GET /api/v1/health` の Response（`data.status` / `service=okuri` / `apiVersion=v1` / `checkedAt` + `meta`）"
+  - "trace / requestId の Header ↔ meta 一貫（`resolveRequestMeta`）"
+  - "unavailable / 想定外時の ErrorResponse（方針 A では経路は最小でよいが、組立方針は実装仕様書に合わせる）"
+  - "access_log / api_request_count / api_error_count の最小記録（既存 logger 方針に整合）"
+  - "親アプリへの Router mount 確認（`/api/v1`）"
+  - "実装スモーク単体テスト（最小限。網羅は後続 Task）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "packages/contracts/openapi/** の変更"
+  - "Orval / generated の再生成・手動編集"
+  - "apps/web/** の変更"
+  - "apps/reco/** の変更"
+  - "API-PUB-001 契約仕様書・実装仕様書 docs の変更"
+  - "DB schema 変更・migration"
+  - "方針 B（DB / reco 内部 probe）の実装（Human が方針 B を採択した場合のみ別途 scope 拡張）"
+  - "網羅的単体テスト Task（Phase4b 3/3）"
+  - "結合テスト・E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI契約仕様書.md"
+      required: true
+      purpose: "契約面参照"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: false
+  templates: []
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+      purpose: "OpenAPI 正本（変更しない）"
+    - path: "apps/api/src/app/health/routes.ts"
+      required: true
+      purpose: "#1135 先行実装（develop 取込後）"
+    - path: "apps/api/src/middlewares/request-meta.ts"
+      required: true
+    - path: "apps/api/src/app.ts"
+      required: true
+      purpose: "Router mount 確認"
+  issues:
+    - number: 1155
+      purpose: "前提実装仕様書 Task"
+    - number: 412
+      purpose: "前提 OpenAPI"
+    - number: 1135
+      purpose: "先行実装"
+  prs:
+    - number: 1156
+      purpose: "実装仕様書 PR（Epic merge 必須）"
+    - number: 1136
+      purpose: "先行 health develop merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/app/health/**"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/api/tests/**/health/**"
+      action: "create_or_update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "契約準拠の GET /api/v1/health（apps/api/src/app/health/**）"
+  - "request-meta / ErrorResponse 方針との整合"
+  - "最小スモーク単体テスト（任意・実装 PR 内）"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "`GET /api/v1/health` が 200 で `data.status=ok` / `service=okuri` / `apiVersion=v1` を返す"
+  - "実装仕様書・契約仕様書・OpenAPI と矛盾しない"
+  - "依存個別結果を Response に載せていない"
+  - "OpenAPI / generated / apps/web / apps/reco の変更を含まない"
+  - "epic_scope.allowed_paths 内に差分が収まっている"
+  - "`pnpm --filter @gift-recommendation/api build` が SUCCESS（または同等 typecheck）"
+  - "最小スモークまたは手動確認結果を PR に記載"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1157-api-pub-001-api-health-check-implementation"
+  summary: "api-pub-001-api-health-check-implementation"
+  base: "feature/epic-384-pub-001-api-health-check"
+  target: "feature/epic-384-pub-001-api-health-check"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1157
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+contract_gate:
+  required: true
+  gate_id: "api-pub-001-phase1"
+  prerequisite_contract_tasks:
+    - issue: 412
+      definition: "prompts/definitions/contracts/api-pub-001-api-health-check/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue 開始前"
+  blocked_message: "OpenAPI 断片 #412 / PR #413 および実装仕様書 #1155 / PR #1156 の親 Epic Branch merge を確認するまで /work-issue を開始しない"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1155
+      purpose: "実装仕様書 Task"
+    - number: 412
+      purpose: "OpenAPI 断片"
+  prs:
+    - number: 1156
+      purpose: "実装仕様書 Epic Branch merge（blocking）"
+  tasks:
+    - "API-PUB-001_APIヘルスチェックAPI実装仕様書.md が親 Epic Branch に存在すること"
+    - "Epic Branch に develop の health 先行実装が取込まれていること（Human 承認後）"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-001-api-health-check/api-implementation-spec.yaml"
+  blocks:
+    - "API-PUB-001 単体テスト Task"
+  exclusive_files:
+    - "apps/api/src/app/health/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "build or typecheck"
+    - "smoke unit or manual health check"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api build"
+  manual_checks:
+    - "GET /api/v1/health が契約外形を満たすこと"
+    - "OpenAPI / generated 変更が混入していないこと"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+  skip_reason:
+    "integration test": "網羅は後続 unit-test / 結合 Task"
+    "e2e test": "本 Task 対象外"
+    "contract test": "OpenAPI 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書 §3〜§9 と矛盾しないか"
+    - "方針 A（プロセスのみ）から逸脱していないか（方針 B は Human 承認時のみ）"
+    - "epic_scope.allowed_paths 内か"
+    - "secret / .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常実装は ai-logs に保存しない。Gate 未充足・方針 B 強制が必要になった場合は停止して記録する。"
+
+risk_points:
+  - "PR #1156 未 merge のまま実装を開始する運用ミス"
+  - "Epic Branch 未取込のまま #1135 コードが無い状態で実装する"
+  - "方針 B を Human なしに実装する"
+
+human_decision_points:
+  - "MVP 依存 probe 方針 A（推奨）/ B の確定（実装仕様書 §11）"
+  - "Epic Branch への develop 取込タイミング"
+
+stop_conditions:
+  - "PR #1156 が親 Epic Branch に merge されていない場合（/work-issue 開始不可）"
+  - "実装仕様書が親 Epic Branch に存在しない場合"
+  - "方針 B が必要と判明し Human 承認がない場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "epic_scope.allowed_paths 外の変更が必要になった場合"
+
+notes:
+  - "本 Task は Phase4b 2/3。後続は unit-test Task。"
+  - "INT-001 #1153 と同様、実装仕様書 PR merge まで /work-issue を開始しない。"
+  - "develop merge 順: INT-001 Epic → PUB-001 Epic。"
