@@ -15,6 +15,7 @@ def scaffold_batch_settings(*, app_env: AppEnv = AppEnv.DEV) -> BatchSettings:
         database_url="scaffold://database",
         openai_api_key="scaffold-openai-api-key",
         rakuten_application_id="scaffold-rakuten-application-id",
+        rakuten_access_key="scaffold-rakuten-access-key",
         object_storage_bucket="scaffold-raw-bucket",
         object_storage_endpoint="https://scaffold-storage.example",
         object_storage_access_key="scaffold-object-storage-access-key",

@@ -13,6 +13,8 @@ parent:
   epic_issue_number: "#1161"
   epic_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
   related_issues:
+    - number: 1170
+      purpose: "本 Task Issue"
     - number: 1162
       purpose: "前提（バッチ仕様書 Task・CLOSED）"
   related_prs:
@@ -171,7 +173,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/task-<issue-number>-batch-001-rakuten-genre-sync-implementation"
+  name: "feature/task-1170-batch-001-rakuten-genre-sync-implementation"
   summary: "batch-001-rakuten-genre-sync-implementation"
   base: "feature/epic-1161-batch-001-rakuten-genre-sync"
   target: "feature/epic-1161-batch-001-rakuten-genre-sync"
@@ -181,12 +183,13 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "Todo"
+    status: "In Progress"
     priority: "high"
-    planned_start: null
-    due_date: null
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
 
 issue:
+  number: 1170
   unit: "task"
   type: "feature"
   area: "batch"
@@ -283,4 +286,4 @@ notes:
   - "命名の正本は Task Definition設計書 §15.1・§15.4。Issueタイトル: [Task]BATCH-001:楽天ジャンル同期Batch実装"
   - "Contract Gate 不要（Batch は HTTP API 化しない）"
   - "後続: unit-test Task Definition を別途作成し縦串を完了する"
-  - "parent / branch の issue 番号プレースホルダは /start-task 成功後に実値へ更新する"
+  - "本 Task Issue: #1170 / Branch: feature/task-1170-batch-001-rakuten-genre-sync-implementation"
