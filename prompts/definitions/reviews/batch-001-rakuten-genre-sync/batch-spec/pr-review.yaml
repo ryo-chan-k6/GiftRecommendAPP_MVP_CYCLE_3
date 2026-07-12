@@ -6,22 +6,22 @@ review:
   title: "BATCH-001 楽天ジャンル同期バッチ仕様書 PRレビュー"
   summary: "BATCH-001（楽天ジャンル同期Batch）バッチ仕様書作成 Task の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
 branch:
   no_branch: false
-  name: null
+  name: "docs/task-1162-batch-001-rakuten-genre-sync-batch-spec"
   base: "feature/epic-1161-batch-001-rakuten-genre-sync"
   target: "feature/epic-1161-batch-001-rakuten-genre-sync"
   worktree_required: true
 
 target:
-  pr: null
-  issue: null
+  pr: 1163
+  issue: 1162
   task_definition: "prompts/definitions/tasks/batch-001-rakuten-genre-sync/batch-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-1162-batch-001-rakuten-genre-sync-batch-spec"
   target_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
   parent_epic_issue: "[Epic]BATCH-001:楽天ジャンル同期Batch"
   parent_epic_branch: "feature/epic-1161-batch-001-rakuten-genre-sync"
@@ -68,10 +68,10 @@ input:
     path: "prompts/definitions/tasks/batch-001-rakuten-genre-sync/batch-spec.yaml"
     required: true
   issue:
-    number: null
+    number: 1162
     required: true
   pr:
-    number: null
+    number: 1163
     required: true
   diff:
     required: true
@@ -114,5 +114,5 @@ acceptance_criteria:
     - "Human Review 観点の明示"
 
 notes:
-  - "Issue / PR 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
+  - "Issue #1162。PR 番号は /create-pr 後に target.pr / input.pr.number を更新する"
   - "対応 Task Definition: prompts/definitions/tasks/batch-001-rakuten-genre-sync/batch-spec.yaml"
