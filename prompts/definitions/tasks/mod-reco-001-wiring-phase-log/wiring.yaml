@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-phase-log-wiring"
+  title: "MOD-RECO-001:Orchestrator Wiring（フェーズログ）配線"
+  summary: "フェーズログ経路（MOD-RECO-028）について、build_default_stub_ports() の phase_log_writer Port を PhaseLogWriter 本実装（InMemory repository）へ差し替える。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（フェーズログ）"
+  epic_issue_number: 1043
+  epic_branch: "feature/epic-1043-mod-reco-001-wiring-phase-log"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1035
+      purpose: "MOD-RECO-028 Epic 完了"
+    - number: 1038
+      purpose: "MOD-RECO-028 implementation 完了"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic 配下のフェーズ Wiring Task。MOD-RECO-028 §16.3 順序3 に従い、Orchestrator デフォルト composition の phase_log_writer を本実装へ差し替える。
+  `build_default_phase_log_writer()`（InMemory PhaseLogRepository）を stubs.py から DI する。
+  Orchestrator 本体（ports.py / orchestrator.py）は PhaseLogWriterPort 契約が既存のため変更しない（028 §16.1 No.7）。
+  integration テスト期待値更新は integration-test Task へ委譲する。
+  `stubs.py` は exclusive_files のため Epic 配下で直列実行する。
+
+objective: |
+  phase_log_writer Port を build_default_stub_ports() で PhaseLogWriter 本実装へ差し替える。
+  デフォルト経路 integration テストの green 化は integration-test Task に委譲する。
+
+scope:
+  - "`apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` の phase_log_writer Port 差し替え"
+  - "`_ensure_phase_log_writer_package()` / `_build_default_orchestrator_phase_log_writer()` 等の factory 接続"
+  - "phase-log-writer の `build_default_phase_log_writer` import と package 読み込み"
+
+out_of_scope:
+  - "MOD-RECO-028 モジュール本体の変更"
+  - "`ports.py` / `orchestrator.py` の変更（Port 契約は既存）"
+  - "`execution_context.py` の型付きフィールド追加"
+  - "`test_recommendation_orchestrator.py` の期待値更新（integration-test Task）"
+  - "024 / 029 エラー経路 / 025 Metric Logger 配線"
+  - "他フェーズ Port の再配線"
+  - "`StubPhaseLogWriter` クラスの削除"
+  - "Orchestrator phase_name enum 整合（028 §16.3 順序5）"
+  - "段階3 Composition（本番 DB Repository）"
+  - "MOD-RECO-001 モジュール仕様書 §8.4.2 更新（Epic PR / 別 docs Task）"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針（§8.4）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "§16.3 Wiring scope"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線対象"
+    - path: "apps/reco/src/reco/application/phase-log-writer/__init__.py"
+      required: true
+      purpose: "MOD-RECO-028 factory"
+  issues:
+    - number: 1043
+      purpose: "親 Epic"
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "phase_log_writer Port 本実装配線"
+  - "InMemory PhaseLogRepository 接続方針の PR 本文説明"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-phase-log/wiring/pr-review.yaml`）"
+
+acceptance_criteria:
+  - "build_default_stub_ports() の phase_log_writer が PhaseLogWriter 本実装を参照している"
+  - "StubPhaseLogWriter クラス定義は残存している"
+  - "028 モジュール本体ディレクトリに変更がない"
+  - "integration-test Task へ委譲事項が PR 本文に明記されている"
+
+branch:
+  no_branch: false
+  name: "feature/task-1044-mod-reco-001-wiring-phase-log-wiring"
+  base: "feature/epic-1043-mod-reco-001-wiring-phase-log"
+  target: "feature/epic-1043-mod-reco-001-wiring-phase-log"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-07"
+    due_date: "2026-07-11"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 1035
+      purpose: "MOD-RECO-028 Epic 完了"
+  issues:
+    - number: 1043
+      purpose: "親 Epic"
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-mod-reco-001-wiring-phase-log-integration-test"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "compileall（orchestrator 配線対象）"
+  commands:
+    - "cd apps/reco && python3 -m compileall src/reco/application/recommendation-orchestrator"
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "test_recommendation_orchestrator green": "integration-test Task で green 化"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "phase_log_writer 配線のみに diff が限定されているか"
+    - "028 モジュール本体への変更がないか"
+    - "StubPhaseLogWriter が削除されていないか"
+    - "integration-test Task 委譲が PR 本文に明記されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "Issue: #1044"
+  - "workstream: mod-reco-001-wiring-phase-log"

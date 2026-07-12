@@ -1,0 +1,222 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-environment-setup-ci-foundation-pr"
+  title: "CI基盤 PRレビュー"
+  summary: "Phase3 子 Task ⑤。PR 品質ゲート用 GitHub Actions workflow 基盤と Review Definition 整備の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-581-environment-setup-ci-foundation"
+  base: "docs/epic-436-environment-setup"
+  target: "docs/epic-436-environment-setup"
+  worktree_required: true
+
+target:
+  pr: 583
+  issue:
+    number: 581
+  task_definition: "prompts/definitions/tasks/environment-setup/ci-foundation.yaml"
+  source_branch: "chore/task-581-environment-setup-ci-foundation"
+  target_branch: "docs/epic-436-environment-setup"
+  parent_epic_issue: "[Epic]environment-setup:環境設計・構築"
+  parent_epic_branch: "docs/epic-436-environment-setup"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/environment-setup/ci-foundation.yaml"
+    required: true
+  issue:
+    number: 581
+    required: true
+  pr:
+    number: 583
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-436-environment-setup"
+  docs:
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+      purpose: "PR CI ジョブ構成・成功条件・secret 方針との整合"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "§19.8 CI / GitHub Actions 関連との整合"
+  files:
+    - path: ".github/workflows/ci.yml"
+      required: true
+      purpose: "PR 品質ゲート entry workflow"
+    - path: ".github/workflows/ci-env.yml"
+      required: true
+      purpose: "env 名チェック workflow"
+    - path: ".github/workflows/ci-security.yml"
+      required: true
+      purpose: "secret scan / YAML 構文 workflow"
+    - path: ".github/workflows/ci-contract.yml"
+      required: true
+      purpose: "OpenAPI / Orval 整合 workflow"
+    - path: ".github/scripts/ci-check-secrets.sh"
+      required: true
+      purpose: "secret 簡易検出スクリプト"
+    - path: ".github/scripts/ci-validate-yaml.sh"
+      required: true
+      purpose: "YAML 構文検証スクリプト"
+    - path: "scripts/dev/check-env-names.sh"
+      required: false
+      purpose: "変更がないこと（Task ③ scope）"
+    - path: ".env.example"
+      required: false
+      purpose: "変更がないこと（Task ② scope）"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: true
+    source: "gh_pr_checks"
+
+review_points:
+  common:
+    - "Task Definition scope / out_of_scope との整合"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch であるか"
+    - "Task PR で Related to #581 を使用し Closes を使っていないか"
+    - "PR author が okuri-ai-bot であるか"
+  cicd:
+    - "ci.yml が ci-env / ci-security / ci-contract を workflow_call で集約しているか"
+    - "pull_request トリガーで PR 品質ゲートとして動作するか"
+    - "hosted dev / production CD workflow が含まれていないか"
+    - "既存 AI 運用 workflow（issue-metadata / pr-created / definition-run 等）を破壊していないか"
+    - "permissions が contents: read 等の最小限か"
+  security:
+    - "workflow に secret 実値が含まれていないか（${{ secrets.* }} 参照のみ）"
+    - "ci-check-secrets.sh が .env.example を除外しているか"
+  epic_scope:
+    - "apps/** 実装・db/** 変更が混入していないか"
+    - "out_of_scope（.env.example / ローカル開発手順 docs / infra/scripts 骨格）が混在していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "CI workflow が CI・CD方針書・環境設計書 §19.8 と整合している"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "secret 非露出"
+      - "既存 AI 運用 workflow との競合がない"
+  request_changes:
+    conditions:
+      - "CD / deploy workflow が混入"
+      - "secret 直書きまたは permissions 過剰"
+      - "env 名チェックと .env.example / check-env-names.sh の不整合"
+  blocked:
+    conditions:
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics:
+    - "prompts/definitions/epics/environment-setup/epic.yaml"
+  issues:
+    - number: 436
+      purpose: "親 Epic"
+    - number: 461
+      purpose: "先行 Task ④"
+  tasks:
+    - "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/environment-setup/local-dev-guide.yaml"
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/**"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "local workflow validation"
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "CI 基盤 Task のため apps 本格テストは後続"
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+
+human_decision_points:
+  - "PR CI の MVP 最小セットが Phase4 着手に足るか"
+  - "secret 参照が secrets.* のみで、permissions が最小限か"
+  - "既存 AI 運用 workflow との競合・破壊的変更がないか"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/environment-setup/ci-foundation.yaml"
+  - "Issue / PR 番号は /create-pr 後に target.pr / input.pr.number へ反映"

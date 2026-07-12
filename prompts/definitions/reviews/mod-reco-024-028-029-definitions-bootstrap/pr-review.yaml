@@ -1,0 +1,61 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-024-028-029-definitions-bootstrap-pr"
+  title: "MOD-RECO-024/028/029 Definition bootstrap PRレビュー"
+  summary: "MOD-RECO-024/028/029 Epic/Task/Review Definition 作成 chore PR の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-1011-mod-reco-024-028-029-definitions-bootstrap"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: 1012
+  issue:
+    number: 1011
+  task_definition: "prompts/definitions/tasks/mod-reco-024-028-029-definitions-bootstrap.yaml"
+  source_branch: "chore/task-1011-mod-reco-024-028-029-definitions-bootstrap"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-024-028-029-definitions-bootstrap.yaml"
+    required: true
+  issue:
+    number: 1011
+    required: true
+  pr:
+    number: 1012
+    required: true
+
+review_points:
+  - "Epic 3 / Task 9 / Review 13 のファイル数"
+  - "Recoモジュール一覧 §6.23 との整合"
+  - "MOD-RECO-001 Port・委譲関係との整合"
+  - "025 が含まれていないこと"
+  - "024→029 連携が Definition に反映されていること"
+  - "生成スクリプトの再現性"
+
+notes:
+  - "PR #1012 作成済み。AI Review は `/review-pr @prompts/definitions/reviews/mod-reco-024-028-029-definitions-bootstrap/pr-review.yaml` で実行"

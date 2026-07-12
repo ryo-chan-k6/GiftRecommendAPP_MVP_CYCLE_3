@@ -1,0 +1,134 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-local-smoke-check"
+  title: "ローカル疎通チェック整備"
+  summary: "web/api/reco health・DB/Redis/env 名の疎通チェック script と docs 追記を整備する。Epic A Task A7・Epic 完了前。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: 651
+  epic_branch: "chore/epic-651-local-dev-environment"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic A Task A7。Epic A 完了条件の疎通確認を script + docs で整備する。
+  Task A6（local-dev-runtime）完了後、Epic PR 前に着手。
+  apps 未実装時は placeholder endpoint または skip 条件を docs / script に明示する（§2.5）。
+
+objective: |
+  `./scripts/dev/check-env-names.sh --strict` に加え、DB / Redis / web・api・reco health の疎通チェック script を整備し、
+  ローカル開発手順書に検証手順を追記する。実 health 成功は Phase4 まで optional とする。
+
+scope:
+  - "疎通チェック script（env / DB / Redis / health）"
+  - "ローカル開発手順書への検証手順追記"
+  - "`scripts/dev/README.md` 更新"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "E2E / システムテスト（Epic C）"
+  - "apps 本格 health 実装（Phase4）"
+  - "CI workflow 追加"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+  files:
+    - path: "scripts/dev/check-env-names.sh"
+      required: true
+    - path: ".env.example"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/dev/smoke-check.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "`./scripts/dev/check-env-names.sh --strict` が引き続き成功する前提を維持"
+  - "smoke-check script が DB / Redis / health を段階チェックできる（skip 条件付き可）"
+  - "apps 未実装時の skip が script と docs で明示されている"
+  - "Layer2 フルスタックテスト完了を acceptance に含めていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "local-smoke-check"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/local-dev-environment/local-dev-runtime.yaml"
+  exclusive_files:
+    - "scripts/dev/smoke-check.sh"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "low"
+
+test_policy:
+  manual_checks:
+    - "`./scripts/dev/check-env-names.sh --strict`"
+    - "smoke-check の --skip-apps 等（実装時）の動作"
+  not_required:
+    - "health endpoint 実成功"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Epic A 完了前の最終 Task"

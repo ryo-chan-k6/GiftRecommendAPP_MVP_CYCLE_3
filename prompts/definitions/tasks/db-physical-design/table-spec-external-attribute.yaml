@@ -1,0 +1,220 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-external-attribute"
+  title: "external_attribute:External Attributeテーブル定義書作成"
+  summary: "物理ER・論理ER・テーブル一覧・外部商品データ連携設計書・item / staging_item テーブル定義書を入力に、楽天属性情報の外部参照マスタ `external_attribute` のテーブル定義書を作成する。Phase2 子 Task ③ Batch R09 No.3（最終バッチ）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 495
+      purpose: "Batch R01 No.3 item テーブル定義書（attributeIds / normalized_hash 方針。merge 済み前提）"
+    - number: 517
+      purpose: "Batch R04 No.1 staging_item テーブル定義書（Staging 系章構成・Retention 方針参考。merge 済み前提）"
+    - number: 494
+      purpose: "Batch R01 No.2 external_genre テーブル定義書（外部参照マスタ章構成参考。merge 済み前提）"
+  related_prs:
+    - number: 500
+      purpose: "Task #495 PR（item。merge 済み前提）"
+    - number: 522
+      purpose: "Task #517 PR（staging_item。merge 済み前提）"
+    - number: 499
+      purpose: "Task #494 PR（external_genre。merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R09 No.3（最終バッチ）。テーブル一覧 §5 No.14。
+  楽天属性情報の外部参照マスタ。保持する場合は Feature 推定補助の候補情報として扱う。
+  MVP では **任意テーブル（△）** であり、物理ER では MVP DDL 作成対象 60 テーブルから除外されているが、本 Task では **テーブル定義書として設計を文書化** し、採用判断・後続 DDL Task への引き継ぎを可能にする。
+  楽天商品検索APIの `attributeIds` / `attributeFlag`、楽天属性検索API（任意）、ジャンル検索APIの `attributes` / `tagGroups` 正規化結果が入力候補となる。
+  `item` テーブル定義書では MVP 時点で `attributeIds` は normalized_hash 入力に含めるのみとし、属性マスタ参照は未作成前提である。
+  親 Epic Branch 最新（#495 item / #517 staging_item merge 済み前提）を前提とする。
+
+objective: |
+  `external_attribute` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `item`（`attributeIds` シグナル）・`staging_attribute`（反映前 Staging）との関係、MVP 任意テーブルであること、Batch Upsert 方針を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の external_attribute テーブル定義書作成"
+  - "物理ER Item系・外部商品データ連携系との突合"
+  - "論理ER・テーブル一覧 §5 No.14・§5 補足 No.9（MVP任意）・§6 No.24 staging_attribute との整合"
+  - "外部商品データ連携設計書 §4.5 楽天属性検索API・§12.2–§12.3 属性データ連携・attributeIds マッピングとの整合"
+  - "item_テーブル定義書 §12.3 attributeIds / normalized_hash 方針との参照関係整理"
+  - "staging_attribute → external_attribute Upsert 関係の参照方針を明記（staging_attribute 本体定義は別 Task）"
+  - "正本定義表・モジュール一覧 MOD-BATCH-031 External Attribute Updater との整合"
+  - "外部商品データ連携設計書 §10.3 の `item_attribute` 表記と `external_attribute` 物理名の差分解消方針整理"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "staging_attribute テーブル定義書本体（別 Task）"
+  - "item / item_image / item_review_summary 等のテーブル定義書（本 Task では attributeIds 参照方針の整理のみ）"
+  - "DDL・migration（Task ④⑤。MVP では物理ER 上も作成しない方針）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "Item系分類・external_attribute MVP 対象外（§17 No.7）・FK / Index 方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "source 等 enum 参照（該当時）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "商品系・外部商品データ連携系エンティティ属性（論理ER 未詳細時はテーブル一覧・外部商品データ連携設計書と突合）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§5 No.14 External Attribute・§5 補足 No.9（MVP任意）・§6 No.24 staging_attribute"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "External Attribute 正本区分（外部参照・MVP任意・Upsert可）"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "§4.5 楽天属性検索API・§6.4 attributeIds・§10.3 / §12.2–§12.3 属性データ連携・Adapter 正規化"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-031 External Attribute Updater の入出力・責務"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "属性マスタ Upsert / 差分反映方針（external_attribute 等）"
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      required: true
+      purpose: "属性 Staging / 反映フロー（`item_attribute` 表記との突合）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "§12.3 attributeIds / normalized_hash 方針（#495 merge 済み前提）"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "Staging 系章構成・Retention・LOGICAL FK 方針参考（#517 merge 済み前提）"
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+      purpose: "外部参照マスタ章構成・Upsert 方針・楽天API マッピング表の参考（#494 merge 済み前提）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/external_attribute_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-external-attribute.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-external-attribute/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "external_attribute テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・テーブル一覧 §5 No.14 と矛盾しない"
+  - "MVP 任意テーブル（△）であり、物理ER §17 No.7 で MVP DDL 作成対象外であることが明記されている"
+  - "item（attributeIds シグナル）との参照・連携方針が明記されている"
+  - "staging_attribute → external_attribute Upsert 関係が参照方針として整理されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "external-attribute-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 575
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 495
+      purpose: "item テーブル定義書 完了（attributeIds 方針正本。merge 済み前提）"
+    - number: 517
+      purpose: "staging_item テーブル定義書 完了（Staging 系参考正本。merge 済み前提）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/external_attribute_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER Item系・§17 No.7（MVP DDL 対象外）との整合"
+    - "テーブル一覧 §5 No.14・§5 補足 No.9（MVP任意）との整合"
+    - "外部商品データ連携設計書 §4.5 / §12.3 属性データ・attributeIds マッピングとの整合"
+    - "item_テーブル定義書 §12.3 attributeIds（normalized_hash 入力のみ）との参照関係"
+    - "staging_attribute → external_attribute Upsert 方針の明記"
+    - "外部商品データ連携設計書 §10.3 `item_attribute` と物理名 `external_attribute` の差分解消"
+    - "MOD-BATCH-031 External Attribute Updater との入出力整合"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R09 No.3: external_attribute（Phase2 子 Task ③ 最終バッチ）"
+  - "Issue #575 / Branch docs/task-575-external-attribute-table-spec"
+  - "先行 merge 済み前提: #495 / PR #500（item）、#517 / PR #522（staging_item）、#494 / PR #499（external_genre 章構成参考）"
+  - "論点: external_attribute_id(PK)、source、attribute_name、external_genre_id（任意）、attribute_value / attribute_type、is_leaf 相当、fetched_at 等 — 楽天API 正規化結果と突合して確定"
+  - "Human Review: MVP で DDL 作成するか（物理ER は no）、item.attributeIds との LOGICAL 参照方針、ジャンル紐づけ要否、楽天属性検索API 採用要否"
+  - "外部商品データ連携設計書 §10.3 の `item_attribute` はテーブル一覧 `external_attribute` との名称差分。本 Task で物理 DDL 方針として解消する"
+  - "論理ER に external_attribute 詳細属性が未掲載の場合は、テーブル一覧・外部商品データ連携設計書を正として不足分を明示する"
+  - "staging_attribute 本体定義は out_of_scope。関係整理のみ本 Task で明記"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

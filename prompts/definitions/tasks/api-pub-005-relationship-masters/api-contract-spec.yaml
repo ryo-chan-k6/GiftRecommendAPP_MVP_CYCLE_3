@@ -1,0 +1,285 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-005-relationship-masters-api-contract-spec"
+  title: "API-PUB-005:Relationshipマスタ取得API契約仕様書作成"
+  summary: "API-PUB-005（Relationshipマスタ取得 / Public API、GET /api/v1/masters/relationships）の API 契約仕様書（API-PUB-005_Relationshipマスタ取得API契約仕様書.md）を、api-contract-spec.md 準拠で作成する。実装面は別 Task（api-implementation-spec.yaml）へ分離する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-005:Relationshipマスタ取得"
+  epic_issue_number: 387
+  epic_branch: "feature/epic-387-pub-005-relationship-masters"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase1 ① API契約仕様書（1a）として、API-PUB-005（Relationshipマスタ取得 / Public API）の契約面（Request / Response / Error / Validation / 互換性 / OpenAPI 反映方針）を確定する。
+  実装フェーズ実行プロセス設計書 §4.1（分離後モデル）に従い、処理フロー・MOD-API 連携・依存コンポーネント詳細チェック・結合テスト観点などの実装面は本 Task の対象外とし、`api-implementation-spec.yaml` で Phase4 実装設計時に作成する。
+  API-INT-001（Recoヘルスチェック）は別 Epic/Task の対象。本 Task では Public I/F の契約確定に必要な範囲で Relationship Master 選択肢の表面定義のみ行う。
+
+objective: |
+  API-PUB-005（Relationshipマスタ取得 / Public API、`GET /api/v1/masters/relationships`）について、Contract Gate および後続 OpenAPI Contract Task の入力となる API 契約仕様書を作成する。
+  成果物は prompts/templates/docs/api-contract-spec.md に準拠し、契約面のみを記載する（api-implementation-spec.md の章は含めない）。
+  OpenAPI / Orval / generated の実ファイル変更は後続 Contract Task へ分離する。
+
+scope:
+  - "API-PUB-005 の API 契約仕様書を新規作成する（成果物: API-PUB-005_Relationshipマスタ取得API契約仕様書.md）"
+  - "API基本情報（API ID / API種別 Public / Method GET / Endpoint /api/v1/masters/relationships / Base URL / Version / Provider apps/api / Consumer apps/web（SCR-002） / 認証要否 / 冪等性 / MVP対象）を定義する"
+  - "Request Header / Path Parameters / Query Parameters / Request Body（なし）を整理する"
+  - "Response Header / Status Code / Response Body（Relationship 選択肢一覧）を整理する"
+  - "Error Response仕様（GRS-CFG-* / GRS-DB-*）を整理する"
+  - "バリデーション仕様を整理する"
+  - "OpenAPI / Orval / generated 反映方針（packages/contracts/openapi/public-api.yaml、apps/web/src/generated/api/ 再生成）を整理する（方針のみ。ファイル変更は out_of_scope）"
+  - "互換性・破壊的変更・契約面テスト観点を整理する"
+  - "未決事項・人間判断が必要な事項を明記する"
+
+out_of_scope:
+  - "API実装仕様書（api-implementation-spec.md 準拠）の作成（prompts/definitions/tasks/api-pub-005-relationship-masters/api-implementation-spec.yaml）"
+  - "処理概要（MOD-API-011 / MOD-API-012 の詳細フロー）・Master Repository マッピング詳細・provider/consumer 実装影響の詳細・結合テスト観点の確定"
+  - "API-PUB-006〜008（他マスタ取得）の個別API仕様書作成"
+  - "Reco モジュール（MOD-RECO-*）本体の設計・実装"
+  - "OpenAPI定義ファイル（packages/contracts/openapi/public-api.yaml 等）の作成・更新"
+  - "Orval設定ファイル（orval.config.ts）の作成・更新"
+  - "generated API client（apps/web/src/generated/api/）の再生成"
+  - "apps/api の実装"
+  - "apps/web の実装"
+  - "apps/reco の実装"
+  - "DB schema 変更"
+  - "DDL 作成・変更"
+  - "認証・認可方式そのものの変更"
+  - "API一覧全体の再設計"
+  - "他 API（API-PUB-001〜004 / 006〜008 / API-INT-001 / 002）の仕様書作成"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "URL 設計、HTTP Method、認証、エラー形式、バージョニング、Response 構造（data/meta）等の API 設計方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-005 の endpoint、API種別、Provider、Consumer、MVP対象、関連エラーコード、Relationship Master 選択肢を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "Error Response、HTTP Status、GRS-CFG-* / GRS-DB-* エラーコード参照、ユーザー向け表示方針を確認するため"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: false
+      purpose: "Public API の認証要否・権限条件を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+      purpose: "trace_id / access_log / metric 方針を確認するため"
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/論理ER.md"
+      required: false
+      purpose: "relationship_master 属性を確認するため"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase1 1a（契約面のみ）と Phase4 実装仕様書分離の正本を確認するため"
+  templates:
+    - path: "prompts/templates/docs/api-contract-spec.md"
+      required: true
+      purpose: "API 契約仕様書の標準フォーマット"
+      applies_to:
+        - "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-contract-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-PUB-005（Relationshipマスタ取得）API 契約仕様書（API-PUB-005_Relationshipマスタ取得API契約仕様書.md）"
+  - "Request / Response / Error Response / Validation 定義"
+  - "OpenAPI / Orval / generated 反映方針（方針整理のみ）"
+  - "互換性・契約面テスト観点"
+  - "未決事項・人間判断事項の整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md が作成されている"
+  - "prompts/templates/docs/api-contract-spec.md に準拠している（実装面章・内部処理詳細を含まない）"
+  - "API設計方針書と矛盾する URL / HTTP Method / 認証 / Error 形式を定義していない"
+  - "API一覧の API-PUB-005 と矛盾する endpoint / HTTP Method / API種別 / MVP対象 / Provider / Consumer / Relationship Master 選択肢 を定義していない"
+  - "Error Response とエラーコードがエラーコード定義書（GRS-CFG-* / GRS-DB-*）と整合している"
+  - "OpenAPI / Orval / generated の扱いと Contract Task 分離方針が記載されている"
+  - "本Task内で OpenAPI / Orval / generated / 実装ファイルを変更していない"
+  - "api-implementation-spec.md 相当の処理フロー・MOD-API 詳細・結合テスト観点を本成果物に含めていない"
+  - "Task タイトル・成果物ファイル名が分離後モデル（契約/実装の別成果物）と整合している"
+  - "未決事項がある場合、未決事項として明記されている"
+  - "secret、APIキー、.env 実値、接続文字列の実値を含んでいない"
+  - "Human Review で確認してほしい事項が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-401-api-pub-005-relationship-masters-api-contract-spec"
+  base: "feature/epic-387-pub-005-relationship-masters"
+  target: "feature/epic-387-pub-005-relationship-masters"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "API設計方針書が作成済みであること"
+    - "API一覧が作成済みであること"
+    - "エラーコード定義書が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "prompts/definitions/tasks/api-pub-005-relationship-masters/api-implementation-spec.yaml"
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "template conformity check"
+    - "api design consistency check"
+    - "api list consistency check"
+    - "request response consistency check"
+    - "error response consistency check"
+    - "contract impact check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md"
+  manual_checks:
+    - "api-contract-spec.md の章構成に準拠していることを確認する"
+    - "実装面（処理フロー・MOD-API 詳細・依存チェック詳細）が混入していないことを確認する"
+    - "API設計方針書と矛盾がないことを確認する"
+    - "API一覧の API-PUB-005 と整合していることを確認する"
+    - "OpenAPI / Orval / generated の変更を本Taskに含めていないことを確認する"
+    - "secret、.env 実値が含まれていないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs作成Taskであり、source code変更を含まないため対象外"
+    "integration test": "docs作成Taskであり、実装変更を含まないため対象外"
+    "e2e test": "docs作成Taskであり、画面実装・API実装を含まないため対象外"
+    "contract test": "OpenAPI 定義 / generated 変更を含まないため対象外。contract impact check は必須"
+    "typecheck": "source code 変更を含まないため対象外"
+    "build": "source code 変更を含まないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "API 契約仕様書として粒度が過不足ないか（契約面のみ）"
+    - "API一覧の API-PUB-005 と内容が整合しているか"
+    - "API設計方針書と URL / Method / 認証 / Error 形式が整合しているか"
+    - "Relationship 選択肢一覧の Response が契約として確定可能か"
+    - "実装面（MOD-API フロー・依存チェック詳細）が混入していないか"
+    - "OpenAPI / Orval / generated 変更が Contract Task として分離されているか"
+    - "後続 api-implementation-spec Task との境界が明確か"
+    - "未決事項が隠れずに明記されているか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常の docs 作成作業は ai-logs に保存しない。必須 input 不足、作業停止、横断影響が判明した場合は incident または cross-cutting として記録する。"
+
+risk_points:
+  - "Relationship 選択肢 Response 構造・Pair 非露出・空配列 vs GRS-CFG-005 境界の判断が必要になる可能性"
+  - "MVP の認証要否（非認証想定）と認証・認可方針書との差異が判明する可能性"
+  - "後続 OpenAPI Contract Task で契約仕様書との差分修正が必要になる可能性"
+
+human_decision_points:
+  - "API-PUB-005 の正式 Endpoint（`GET /api/v1/masters/relationships`）と認証要否（MVP では非認証）の最終確認"
+  - "`relationshipLabel` 正本列と Pair 非露出（DB / reco）の契約面への含め方"
+  - "OpenAPI（paths/masters/relationships）更新を後続 Contract Task として分離するかの確認"
+
+stop_conditions:
+  - "必須 `input.docs` が存在しない場合"
+  - "必須 `input.templates` が存在しない場合"
+  - "必須 `input.docs` 間に矛盾があり、AI Agent だけで判断できない場合"
+  - "API一覧に API-PUB-005 が存在しない場合"
+  - "正式 Endpoint / HTTP Method / API種別 が確定できない場合"
+  - "実装面仕様の作成が必要と判明した場合（api-implementation-spec Task へ分離）"
+  - "OpenAPI 変更が必要になった場合（Contract Task として分離）"
+  - "Orval 再生成が必要になった場合（Contract Task として分離）"
+  - "generated ファイルの手動編集が必要に見える場合"
+  - "DB schema 変更が必要になった場合"
+  - "認証・認可仕様変更が必要になった場合"
+  - "secret や .env 実値を扱う必要が出た場合"
+  - "scope 外の実装作業が必要になった場合"
+  - "本Task差分が親 Epic #387 の epic_scope.allowed_paths から外れた場合"
+
+notes:
+  - "本Taskは Phase1 ① API契約仕様書（1a）。実装フェーズ実行プロセス設計書 §4.1・§5 Phase1 に準拠。"
+  - "実装面は prompts/definitions/tasks/api-pub-005-relationship-masters/api-implementation-spec.yaml（Phase4 実装設計）で作成予定。"
+  - "親 Epic #387 / Branch feature/epic-387-pub-005-relationship-masters。OpenAPI・Orval・generated・apps 実装は Contract Task / 実装 Task へ分離。"
+  - "出力先は docs/06_実装設計/api/（プロジェクトディレクトリ構成定義書 §10.5）。"

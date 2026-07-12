@@ -1,0 +1,120 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-gha-test-environment-test-env-docs"
+  title: "テスト環境docs正本化"
+  summary: "テスト環境・Agent テスト運用（全レベル対応表 §2.6）の docs を正本化する。Epic C Task C6・Epic 完了前。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-gha-test-environment"
+  epic_issue: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
+  epic_issue_number: 671
+  epic_branch: "chore/epic-671-gha-test-environment"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic C Task C6。C3〜C5 完了後、Epic PR 前にテスト環境・Agent テスト運用の docs を正本化する。
+  Epic C = システム/品質 focus である旨、全テストレベル対応表（§2.6）、Layer1/Layer2/Layer3 の境界を明記する。
+
+objective: |
+  テスト環境 docs（Layer2 GHA ephemeral、workflow 一覧、Agent 運用パターン）を正本化し、
+  テスト定義書・CI・CD方針書・Epic C Epic Definition の agent_test_operations と整合させる。
+
+scope:
+  - "テスト環境 docs 正本化（docs/05_アプリケーション設計/テスト/ 等）"
+  - "全テストレベル Agent 運用対応表（§2.6）の docs 反映"
+  - "Epic C focus（システム/品質 Layer2）の明記"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "Phase8 受入テスト docs 詳細"
+  - "Epic B cloud dev docs"
+  - "workflow 実装変更（C1〜C5 scope）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: true
+    - path: "prompts/definitions/epics/gha-test-environment/epic.yaml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/**"
+      action: "create_or_update"
+      required: true
+
+acceptance_criteria:
+  - "Layer2 テスト環境・Agent dispatch 手順が docs 正本として記載されている"
+  - "§2.6 全レベル対応表がテスト定義書 §4.1 と矛盾しない"
+  - "Epic C = システム/品質 focus である旨が明記されている"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "test-env-docs"
+  base: "chore/epic-671-gha-test-environment"
+  target: "chore/epic-671-gha-test-environment"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+
+issue:
+  number: 683
+  unit: "task"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/gha-test-environment/agent-test-dispatch.yaml"
+  exclusive_files:
+    - "docs/05_アプリケーション設計/テスト/**"
+  conflict_risk: "low"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "C5 完了後、Epic PR 前"

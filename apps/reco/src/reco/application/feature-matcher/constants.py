@@ -1,0 +1,15 @@
+"""MOD-RECO-014 Feature Matcher constants."""
+
+from __future__ import annotations
+
+MODULE_ID = "MOD-RECO-014"
+PHASE_NAME = "feature_matched"
+SURFACE_ERROR_CODE = "GRS-REC-011"
+
+MATCH_METHOD_ONE_MINUS_DISTANCE = "one_minus_distance"
+IMPUTED_FEATURE_VALUE = 0.5
+AVOID_FEATURE_BASELINE = 0.5
+
+GUARD_CLIP_MIN = 0.0
+GUARD_CLIP_MAX = 1.0
+FEATURE_VALUE_DECIMAL_PLACES = 6

@@ -1,0 +1,254 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-ranking-execution-context-typed-fields"
+  title: "MOD-RECO-001:ExecutionContext型付きフィールド拡張（Ranking）"
+  summary: "Epic #791 develop merge 後、`ExecutionContext` に Ranking フェーズ（MOD-RECO-017 / 018 / 019 / 020）の中間成果物フィールドを型付きで追加し、各モジュールの動的付与（`# type: ignore[attr-defined]`）と `getattr` 依存を解消する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（Ranking）"
+  epic_issue_number: 791
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "履歴参照（Epic クローズ済み）。PR 本文は Related to #260"
+    - number: 791
+      purpose: "Ranking Wiring Epic（develop merge 完了が作業開始前提）"
+    - number: 969
+      purpose: "Ranking integration-test Task（配線後 green 化）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Ranking 各モジュール（017 / 018 / 019 / 020）実装では `_attach_*` 時に `execution_context` へ動的付与（`# type: ignore[attr-defined]`）している。
+  wiring / integration-test Task scope 外のため、Epic #791 develop merge 後の follow-up Task（playbook 順序 3）として実施する。
+  User Meaning / Retrieval / Matching 型付き化（#887 / #931）には Ranking フィールドは含まれない。
+  正本: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
+
+objective: |
+  `execution_context.py` に Ranking フェーズの型付きフィールドを追加し、
+  MOD-RECO-017 / 018 / 019 / 020 の `_attach_*` およびモジュール内 `getattr(context, ...)` を直接参照へ置換する。
+  `test_recommendation_orchestrator.py` の `getattr` アサーション更新は **integration-retest Task** に委譲する。
+
+scope:
+  - "`execution_context.py` への Ranking 型付きフィールド追加（popularity_score_result / risk_penalty_result / final_score_result および観測系 count / latency 等）"
+  - "MOD-RECO-017 / 018 / 019 / 020 executor の `_attach_*` から `# type: ignore[attr-defined]` 除去"
+  - "018 / 019 / 020 executor 内の `getattr(context, ...)` を直接参照へ置換（None チェックは維持）"
+  - "誤解を招く「Wiring Task で型付きフィールド追加」コメントの削除または修正"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-ranking/execution-context-typed-fields/pr-review.yaml`）"
+
+out_of_scope:
+  - "`stubs.py` の Port 配線変更"
+  - "`test_recommendation_orchestrator.py` の assert 更新（integration-retest Task へ委譲）"
+  - "User Meaning / Retrieval / Matching フェーズの ExecutionContext フィールド（#887 / #931 成果物）"
+  - "段階3 Composition 完成（本番 DI）"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "execution_context 受け渡し・§8.4 配線方針"
+    - path: "docs/06_実装設計/reco/MOD-RECO-017_Popularity Scorerモジュール仕様書.md"
+      required: true
+      purpose: "017 出力キー"
+    - path: "docs/06_実装設計/reco/MOD-RECO-018_Risk Scorerモジュール仕様書.md"
+      required: true
+      purpose: "018 出力キー"
+    - path: "docs/06_実装設計/reco/MOD-RECO-019_Final Score Calculatorモジュール仕様書.md"
+      required: true
+      purpose: "019 出力キー"
+    - path: "docs/06_実装設計/reco/MOD-RECO-020_Final Rankerモジュール仕様書.md"
+      required: true
+      purpose: "020 出力キー・観測系フィールド"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "Ranking フェーズ処理順序"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      required: true
+      purpose: "型付きフィールド追加対象"
+    - path: "apps/reco/src/reco/application/popularity-scorer/executor.py"
+      required: true
+      purpose: "017 attach"
+    - path: "apps/reco/src/reco/application/risk-scorer/executor.py"
+      required: true
+      purpose: "018 attach / read"
+    - path: "apps/reco/src/reco/application/final-score-calculator/executor.py"
+      required: true
+      purpose: "019 attach / read"
+    - path: "apps/reco/src/reco/application/final-ranker/executor.py"
+      required: true
+      purpose: "020 attach / read"
+  issues:
+    - number: 260
+      purpose: "履歴参照"
+    - number: 791
+      purpose: "Ranking Wiring Epic（develop merge 前提）"
+    - number: 969
+      purpose: "Ranking integration-test 完了"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "型付き ExecutionContext（Ranking 範囲）"
+  - "017 / 018 / 019 / 020 attach / read 側の `# type: ignore` / `getattr` 解消"
+  - "PR 本文の develop 直 merge 例外理由（Related to #260 / #791）"
+  - "Review Definition"
+  - "pytest 実行結果（`tests/unit/` 成功ログ）"
+
+acceptance_criteria:
+  - "Epic #791 が develop に merge 済みである（作業開始前提）"
+  - "`execution_context.py` に Ranking フェーズの型付きフィールドが定義されている"
+  - "017 / 018 / 019 / 020 executor の `_attach_*` に `# type: ignore[attr-defined]` が残っていない"
+  - "018 / 019 / 020 executor 内の `getattr(context, ...)` が直接参照に置換されている"
+  - "`stubs.py` に変更がない"
+  - "`test_recommendation_orchestrator.py` に変更がない（後続 Task 委譲）"
+  - "`cd apps/reco && uv run pytest tests/unit/ -q` が成功する"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "chore/task-<issue-number>-mod-reco-001-wiring-ranking-execution-context-typed-fields"
+  summary: "mod-reco-001-wiring-ranking-execution-context-typed-fields"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-04"
+    due_date: "2026-07-06"
+
+issue:
+  number: 972
+  unit: "task"
+  type: "chore"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 791
+      purpose: "Ranking Wiring Epic が develop に merge 済みであること"
+  issues:
+    - number: 791
+      purpose: "develop merge 完了確認"
+    - number: 969
+      purpose: "Ranking integration-test 完了"
+  prs:
+    - number: 971
+      purpose: "Epic #791 develop merge PR"
+  tasks:
+    - "task-mod-reco-001-wiring-ranking-integration-test が develop 取り込み済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-ranking-integration-test"
+  blocks:
+    - "task-mod-reco-001-wiring-ranking-integration-retest"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/ -q"
+  manual_checks:
+    - "Epic #791 / integration-test Task #969 が develop に merge 済みであること"
+    - "Ranking フィールド型が各モジュール仕様書と整合していること"
+  not_required:
+    - "test_recommendation_orchestrator.py の assert 更新"
+  skip_reason:
+    "test_recommendation_orchestrator.py の assert 更新": "integration-retest Task に委譲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "ExecutionContext フィールド名・型が 017 / 018 / 019 / 020 仕様書と整合しているか"
+    - "develop 直 PR 例外が PR 本文で説明されているか（Related to #260 / #791）"
+    - "stubs.py / test_recommendation_orchestrator.py への不要な変更がないか"
+    - "getattr / `# type: ignore[attr-defined]` の置換漏れがないか"
+    - "pytest 全 unit が green か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #791 develop merge 後の follow-up。develop 直 PR"
+
+risk_points:
+  - "Epic #791 develop merge 前に着手すると Ranking 配線前提とずれる"
+  - "execution_context.py exclusive により他 Task と競合しうる"
+
+human_decision_points:
+  - "Epic #791 develop merge 後の develop 直 PR 例外の承認（Human Review）"
+  - "観測系 int フィールドの default（None vs 0）"
+
+stop_conditions:
+  - "Epic #791 が develop に未 merge"
+  - "正本 docs 間で ExecutionContext キー定義が矛盾"
+  - "stubs.py 変更が必要になった"
+  - "integration 再テストを本 Task scope に取り込む必要が出た"
+
+notes:
+  - "playbook 順序 3（Ranking）。正本: wiring-phase-follow-up-playbook.yaml"
+  - "作業開始ゲート: Epic #791 develop merge 後"
+  - "workstream: mod-reco-001-wiring-ranking"
+  - "後続: integration-retest Task（playbook 順序 4）"

@@ -1,0 +1,231 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-error-handling-wiring"
+  title: "MOD-RECO-001:Orchestrator Wiring（ログ・エラー）配線"
+  summary: "ログ・エラー経路（MOD-RECO-024 + 029 DI）について、build_default_stub_ports() の error_handler Port を本実装へ差し替え、ErrorHandlerPort / orchestrator.py で cause 委譲を接続する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（ログ・エラー）"
+  epic_issue_number: 1029
+  epic_branch: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001:Recommendation Orchestrator）"
+    - number: 1013
+      purpose: "MOD-RECO-024 Epic 完了"
+    - number: 1018
+      purpose: "MOD-RECO-029 Epic 完了"
+    - number: 1016
+      purpose: "MOD-RECO-024 implementation 完了"
+    - number: 1021
+      purpose: "MOD-RECO-029 implementation 完了"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #1029 配下のフェーズ Wiring Task。MOD-RECO-024 §16.2 順序3 に従い、Orchestrator デフォルト composition の error_handler を本実装へ差し替える。
+  029 Error Log Writer は Orchestrator から直接配線せず、`build_default_reco_error_handler(error_log_writer=build_default_error_log_writer())` 等で 024 へ DI する。
+  `ErrorHandlerPort.handle()` に `cause` 引数を追加し、`orchestrator.py` の `ModuleExecutionError` 捕捉経路から `cause=exc` を渡す（024 §16.1 No.6）。
+  `MODULE_ERROR_CODES`（Orchestrator constants）の surface 決定責務は 024 へ移行済みのため、Orchestrator 側の重複 mapping 削除を wiring scope に含めてよい（Human Review 必須）。
+  integration テスト期待値更新は integration-test Task（#1031）へ委譲する。
+  `stubs.py` は exclusive_files のため Epic 配下で直列実行する。
+
+objective: |
+  error_handler Port を build_default_stub_ports() で RecoErrorHandler 本実装（029 ErrorLogWriter DI 込み）へ差し替え、Orchestrator から cause 委譲を接続する。
+  デフォルト経路 integration テストの green 化は integration-test Task に委譲する。
+
+scope:
+  - "`apps/reco/src/reco/application/recommendation-orchestrator/stubs.py` の error_handler Port 差し替え"
+  - "`apps/reco/src/reco/application/recommendation-orchestrator/ports.py` の ErrorHandlerPort に `cause` 追加"
+  - "`apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py` の `_ports.error_handler.handle(..., cause=...)` 接続"
+  - "`constants.py` の `MODULE_ERROR_CODES` 等、024 へ移行済み surface mapping の Orchestrator 側整理（最小 diff）"
+  - "reco-error-handler / error-log-writer の `build_default_*` factory import と package 読み込み"
+  - "必要に応じた `recommendation-orchestrator/__init__.py` export 整理（epic_scope 内）"
+
+out_of_scope:
+  - "MOD-RECO-024 / MOD-RECO-029 モジュール本体の変更"
+  - "`execution_context.py` の型付きフィールド追加"
+  - "`test_recommendation_orchestrator.py` の期待値更新（integration-test Task）"
+  - "028 Phase Log / 025 Metric Logger 配線"
+  - "他フェーズ Port の再配線"
+  - "`StubErrorHandler` クラスの削除"
+  - "段階3 Composition（本番 DB Repository）"
+  - "MOD-RECO-001 モジュール仕様書 §8.4.2 更新（Epic PR / 別 docs Task）"
+  - "API-INT-002 エンドポイント層"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針（§8.4）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-024_Reco Error Handlerモジュール仕様書.md"
+      required: true
+      purpose: "§16.2 Wiring scope・cause 委譲"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "024→029 DI"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線対象"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      required: true
+      purpose: "ErrorHandlerPort"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+      purpose: "cause 委譲"
+    - path: "apps/reco/src/reco/application/reco-error-handler/__init__.py"
+      required: true
+      purpose: "MOD-RECO-024 factory"
+    - path: "apps/reco/src/reco/application/error-log-writer/__init__.py"
+      required: true
+      purpose: "MOD-RECO-029 factory"
+  issues:
+    - number: 1029
+      purpose: "親 Epic"
+    - number: 260
+      purpose: "親 Epic（MOD-RECO-001）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "error_handler Port 本実装配線"
+  - "cause 委譲接続"
+  - "029 DI 接続方針の PR 本文説明"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-error-handling/wiring/pr-review.yaml`）"
+
+acceptance_criteria:
+  - "build_default_stub_ports() の error_handler が RecoErrorHandler 本実装（029 DI 込み）を参照している"
+  - "Orchestrator が ModuleExecutionError 捕捉時に cause を 024 へ渡している"
+  - "StubErrorHandler クラス定義は残存している"
+  - "024 / 029 モジュール本体ディレクトリに変更がない"
+  - "integration-test Task へ委譲事項が PR 本文に明記されている"
+
+branch:
+  no_branch: false
+  name: "feature/task-<issue-number>-mod-reco-001-wiring-error-handling-wiring"
+  base: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+  target: "feature/epic-1029-mod-reco-001-wiring-error-handling"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-06"
+    due_date: "2026-07-10"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 1013
+      purpose: "MOD-RECO-024 Epic 完了"
+    - number: 1018
+      purpose: "MOD-RECO-029 Epic 完了"
+  issues:
+    - number: 1029
+      purpose: "親 Epic"
+    - number: 1016
+      purpose: "MOD-RECO-024 implementation 完了"
+    - number: 1021
+      purpose: "MOD-RECO-029 implementation 完了"
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-mod-reco-001-wiring-error-handling-integration-test"
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "compileall（orchestrator 配線対象）"
+  commands:
+    - "cd apps/reco && python -m compileall src/reco/application/recommendation-orchestrator"
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "test_recommendation_orchestrator green": "integration-test Task（#1031）で green 化"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "error_handler 配線と cause 委譲のみに diff が限定されているか"
+    - "024 / 029 モジュール本体への変更がないか"
+    - "029 DI が 024 factory 経由であるか"
+    - "StubErrorHandler が削除されていないか"
+    - "integration-test Task 委譲が PR 本文に明記されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "Issue: #1030"
+  - "workstream: mod-reco-001-wiring-error-handling"

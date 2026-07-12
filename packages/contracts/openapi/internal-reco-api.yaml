@@ -4,11 +4,63 @@ info:
   version: 1.0.0
   description: |
     api（apps/api）→ reco（apps/reco）向け Internal API 契約正本。
-    MVP 対象: API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）。
+    MVP 対象:
+    - API-INT-001 Recoヘルスチェック（GET /internal/reco/v1/health）
+    - API-INT-002 Reco推薦実行（POST /internal/reco/v1/recommendations/run）
 servers:
   - url: /
     description: Base URL は環境変数で定義（パスを正とする）
 paths:
+  /internal/reco/v1/health:
+    get:
+      operationId: getRecoHealth
+      tags:
+        - RecoHealth
+      summary: Recoヘルスチェック（API-INT-001）
+      description: |
+        reco（apps/reco）の稼働状態を返す。推薦パイプラインは実行しない。
+        Provider: apps/reco / Consumer: apps/api。
+        MVP 二値運用: DB OK → status ok、DB NG またはプロセス NG → status unavailable（HTTP 503）。
+      security:
+        - InternalApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/XInternalApiKey"
+        - $ref: "#/components/parameters/XTraceIdOptional"
+        - $ref: "#/components/parameters/XRequestIdOptional"
+      responses:
+        "200":
+          description: reco 稼働確認成功（status ok）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoHealthSuccessResponse"
+              examples:
+                ok:
+                  $ref: "#/components/examples/RecoHealthOkExample"
+        "401":
+          description: Internal API Key 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "403":
+          description: 権限不足
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "500":
+          description: 内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
+        "503":
+          description: 一時利用不可（status unavailable 相当）
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
   /internal/reco/v1/recommendations/run:
     post:
       operationId: runRecoRecommendation
@@ -43,8 +95,8 @@ paths:
               examples:
                 completed:
                   $ref: "#/components/examples/RecoRecommendationRunSuccessCompletedExample"
-                empty:
-                  $ref: "#/components/examples/RecoRecommendationRunSuccessEmptyExample"
+                zeroItemsCompleted:
+                  $ref: "#/components/examples/RecoRecommendationRunSuccessZeroItemsExample"
         "400":
           description: Request 不正
           content:
@@ -119,8 +171,70 @@ components:
       schema:
         type: string
         example: "req_01HZYX"
+    XTraceIdOptional:
+      name: X-Trace-Id
+      in: header
+      required: false
+      description: 横断追跡 ID（指定時は Response meta.traceId へ反映）
+      schema:
+        type: string
+        example: "550e8400-e29b-41d4-a716-446655440000"
+    XRequestIdOptional:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: API リクエスト ID（指定時は Response meta.requestId へ反映）
+      schema:
+        type: string
+        example: "req_01HZYX"
 
   schemas:
+    RecoHealthStatus:
+      type: string
+      enum:
+        - ok
+        - degraded
+        - unavailable
+      description: |
+        reco 稼働状態（API-INT-001 契約仕様書 §7.3.1）。
+        MVP では ok / unavailable の二値運用。degraded は将来拡張用。
+
+    RecoHealthData:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          $ref: "#/components/schemas/RecoHealthStatus"
+        service:
+          type: string
+          description: サービス識別子（固定値 reco）
+          enum:
+            - reco
+          example: "reco"
+        version:
+          type: string
+          description: アプリケーションバージョン（任意）
+          example: "0.1.0"
+        checkedAt:
+          type: string
+          format: date-time
+          description: 確認日時（ISO 8601）
+
+    RecoHealthSuccessResponse:
+      allOf:
+        - $ref: "../schemas/common.yaml#/components/schemas/SuccessEnvelope"
+        - type: object
+          required:
+            - data
+            - meta
+          properties:
+            data:
+              $ref: "#/components/schemas/RecoHealthData"
+            meta:
+              $ref: "../schemas/common.yaml#/components/schemas/Meta"
+
     RelationshipInput:
       type: object
       required:
@@ -218,8 +332,15 @@ components:
         evalCaseId:
           type: string
           description: mode=evaluation 時に使用
-        semanticConfigVersionId:
+        configName:
           type: string
+          description: evaluation / batch の Semantic Config 系列名。versionLabel とセット指定
+          example: "mvp-semantic-config"
+        versionLabel:
+          type: string
+          pattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          description: evaluation / batch の Version ラベル（semver）。configName とセット指定
+          example: "v1.0.0"
         modelVersionId:
           type: string
 
@@ -268,6 +389,47 @@ components:
         - completed
         - empty
         - partial
+      description: |
+        Run 単位の結果状態（API-INT-002 契約仕様書 §7.3.1）。
+        MVP 0 件正規系では `completed` を使用する（`empty` は enum に残すが 0 件 HTTP 200 正規系では使用しない）。
+
+    WarningSeverity:
+      type: string
+      enum:
+        - info
+        - warn
+      description: 警告の重大度。未指定時は reco 実装で warn 想定（契約仕様書 §7.3.4）。
+
+    WarningItem:
+      type: object
+      required:
+        - code
+      description: パイプライン診断警告（契約仕様書 §7.3.4）。Transient（DB 非永続）。
+      properties:
+        code:
+          type: string
+          description: 警告コード（SCREAMING_SNAKE_CASE）。MVP 一覧は契約仕様書 §7.3.6
+          example: "NO_CANDIDATES_AFTER_RETRIEVAL"
+        severity:
+          $ref: "#/components/schemas/WarningSeverity"
+        message:
+          type: string
+          description: 運用・デバッグ向け補足。Public へは渡さない
+
+    FeatureDistributionStat:
+      type: object
+      properties:
+        mean:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        p95:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+      description: Feature 分布サマリ（mean / p95 のみ。契約仕様書 §7.3.5）
 
     CandidateCounts:
       type: object
@@ -285,7 +447,16 @@ components:
     ScoreBreakdown:
       type: object
       additionalProperties: true
-      description: スコア内訳（evaluation / includeDebugInfo 時は推奨。詳細キーは実装 Task で確定）
+      description: |
+        スコア内訳（debug返却条件 §7.3.8: mode=evaluation OR includeDebugInfo=true 時は推奨。契約上必須ではない）。
+
+    ReasonStatus:
+      type: string
+      enum:
+        - completed
+      description: |
+        Reason 生成状態（契約仕様書 §7.3.2.1）。
+        MVP は Item 存続時 `completed` のみ（Reason fallback 時も completed）。
 
     ReasonBadge:
       type: object
@@ -340,6 +511,14 @@ components:
           type: number
           format: float
           example: 0.82
+        socialMatch:
+          type: number
+          format: float
+          description: Social 軸一致度（Recommendation Result 定義書 §6.2）
+        symbolicMatch:
+          type: number
+          format: float
+          description: Symbolic 軸一致度（Recommendation Result 定義書 §6.2）
         popularityScore:
           type: number
           format: float
@@ -356,12 +535,80 @@ components:
           $ref: "#/components/schemas/ScoreBreakdown"
         reasonSummary:
           type: string
+          description: |
+            推薦理由（短文）。includeReason=true かつ Item 存続時は必須（非空）。
+            OpenAPI required では表現できないため description で条件付き必須とする（契約仕様書 §7.3.2.1）。
+        recommendationReasonId:
+          type: string
+          description: 推薦理由 ID（reasonStatus=completed かつ Reason 永続化時は返却推奨）
+        reasonStatus:
+          $ref: "#/components/schemas/ReasonStatus"
         reasonBadges:
           type: array
           items:
             $ref: "#/components/schemas/ReasonBadge"
         cautionNote:
           type: string
+        isFallback:
+          type: boolean
+          description: Ranking Fallback 候補または Reason 汎用文注入（MOD-RECO-001 §10.3）由来
+
+    ReasonDataItem:
+      type: object
+      required:
+        - recommendationResultItemId
+        - itemId
+        - reasonStatus
+      description: Run レベル Reason 詳細の 1 Item 分（契約仕様書 §7.3.9）
+      properties:
+        recommendationResultItemId:
+          type: string
+        itemId:
+          type: string
+        reasonStatus:
+          $ref: "#/components/schemas/ReasonStatus"
+        reasonSummary:
+          type: string
+          description: includeReason=true かつ Item 存続時は必須（非空）
+        isFallback:
+          type: boolean
+        reasonDetail:
+          type: string
+        reasonPoints:
+          type: array
+          items:
+            type: string
+        reasonBadges:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReasonBadge"
+        cautionNote:
+          type: string
+        reasonBasis:
+          type: object
+          additionalProperties: true
+          description: 根拠 JSON（debug / evaluation 時は推奨）
+        generationMethod:
+          type: string
+          enum:
+            - template
+            - llm_refined
+            - hybrid
+        modelVersionId:
+          type: string
+
+    ReasonData:
+      type: object
+      required:
+        - items
+      description: |
+        Run レベルの内部 Reason 詳細（契約仕様書 §7.3.9）。
+        任意。includeReason=true かつ（includeDebugInfo=true OR mode=evaluation）時は返却推奨。
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReasonDataItem"
 
     RecoRunMetadata:
       type: object
@@ -371,11 +618,38 @@ components:
         mode:
           type: string
           example: "ui"
+        debugPayload:
+          type: object
+          additionalProperties: true
+          description: |
+            Run 単位 debug 情報（debug返却条件 §7.3.8 参照）。
+            MVP 推奨キー: evalCaseId, configName, versionLabel, modelVersionId, rankingConfigVersionId, phaseSummary
 
     MetricSummary:
       type: object
-      additionalProperties: true
-      description: Reco 品質メトリクス用サマリ（詳細キーは OpenAPI Task / Human Review で確定）
+      description: |
+        Run 単位の品質サマリ（Transient。契約仕様書 §7.3.5）。
+        candidateCounts はフェーズ別件数、metricSummary は時間・分布と役割を分ける。
+      properties:
+        recommendationLatencyMs:
+          type: integer
+          description: 推薦全体の処理時間（ms）
+          example: 842
+        phaseDurationMs:
+          type: object
+          additionalProperties:
+            type: integer
+          description: "フェーズ別処理時間（ms）。キー例: retrieval, matching, ranking, reason"
+          example:
+            retrieval: 120
+            matching: 210
+            ranking: 95
+            reason: 380
+        featureDistribution:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/FeatureDistributionStat"
+          description: Feature 名 → { mean, p95 }（0〜1 想定）
 
     RecoRecommendationRunResponseData:
       type: object
@@ -387,7 +661,7 @@ components:
         - topK
         - resultItemCount
         - fallbackUsed
-        - items
+        - resultItems
       properties:
         recommendationRunId:
           type: string
@@ -416,15 +690,18 @@ components:
         warnings:
           type: array
           items:
-            type: string
-          description: 警告コードまたはメッセージ（要素構造は Human Review で確定）
+            $ref: "#/components/schemas/WarningItem"
+          description: パイプライン診断警告一覧（WarningItem[]。契約仕様書 §7.3.4）
           example: []
         metricSummary:
           $ref: "#/components/schemas/MetricSummary"
-        items:
+        reasonData:
+          $ref: "#/components/schemas/ReasonData"
+        resultItems:
           type: array
           items:
             $ref: "#/components/schemas/InternalRecommendationResultItem"
+          description: 推薦結果 Item 一覧（API設計方針書 §21.3 の resultItems）。0 件時は空配列 []
         metadata:
           $ref: "#/components/schemas/RecoRunMetadata"
 
@@ -442,6 +719,17 @@ components:
               $ref: "../schemas/common.yaml#/components/schemas/Meta"
 
   examples:
+    RecoHealthOkExample:
+      value:
+        data:
+          status: "ok"
+          service: "reco"
+          version: "0.1.0"
+          checkedAt: "2026-06-05T12:00:00+09:00"
+        meta:
+          traceId: "550e8400-e29b-41d4-a716-446655440000"
+          generatedAt: "2026-06-05T12:00:00+09:00"
+
     RecoRecommendationRunRequestExample:
       value:
         recommendationRequestId: "request_001"
@@ -486,7 +774,21 @@ components:
             matchingCount: 45
             rankingCount: 10
           warnings: []
-          items:
+          metricSummary:
+            recommendationLatencyMs: 842
+            phaseDurationMs:
+              retrieval: 120
+              matching: 210
+              ranking: 95
+              reason: 380
+            featureDistribution:
+              formality:
+                mean: 0.62
+                p95: 0.88
+              emotion:
+                mean: 0.55
+                p95: 0.79
+          resultItems:
             - recommendationResultItemId: "result_item_001"
               itemId: "item_001"
               rank: 1
@@ -496,10 +798,14 @@ components:
               itemImageUrl: "https://example.com/item/001.jpg"
               shopName: "Example Shop"
               contextScore: 0.82
+              socialMatch: 0.86
+              symbolicMatch: 0.76
               popularityScore: 0.64
               riskPenalty: 0.08
               finalScore: 0.78
+              isFallback: false
               reasonSummary: "上司へのお礼として失礼がなく、上品さと感謝の伝わりやすさのバランスが良いため候補にしています。"
+              reasonStatus: "completed"
           metadata:
             mode: "ui"
         meta:
@@ -507,13 +813,13 @@ components:
           requestId: "req_01HZYX"
           generatedAt: "2026-06-04T12:00:00+09:00"
 
-    RecoRecommendationRunSuccessEmptyExample:
+    RecoRecommendationRunSuccessZeroItemsExample:
       value:
         data:
           recommendationRunId: "run_002"
           recommendationResultId: "result_002"
           recommendationRequestId: "request_002"
-          resultStatus: "empty"
+          resultStatus: "completed"
           topK: 10
           resultItemCount: 0
           fallbackUsed: false
@@ -523,8 +829,9 @@ components:
             matchingCount: 0
             rankingCount: 0
           warnings:
-            - "NO_CANDIDATES_AFTER_RETRIEVAL"
-          items: []
+            - code: "NO_CANDIDATES_AFTER_RETRIEVAL"
+              severity: "warn"
+          resultItems: []
         meta:
           traceId: "550e8400-e29b-41d4-a716-446655440001"
           requestId: "req_01HZYY"

@@ -1,0 +1,63 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-001-api-health-check-openapi-pr"
+  title: "API-PUB-001 OpenAPI断片 Contract Task PRレビュー"
+  summary: "API-PUB-001（GET /api/v1/health）の OpenAPI 断片を #367 横断 Epic Branch へ反映する Contract Task PR の AI Review。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+target:
+  pr: null
+  issue:
+    number: 412
+  task_definition: "prompts/definitions/contracts/api-pub-001-api-health-check/openapi-fragment.yaml"
+  source_branch: null
+  target_branch: "feature/epic-367-api-contract-orval"
+  parent_epic_issue: "[Epic]API-CONTRACT-ORVAL:API契約基盤"
+  parent_epic_branch: "feature/epic-367-api-contract-orval"
+
+review_scope:
+  docs: false
+  project_operation: true
+  contract: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/contracts/api-pub-001-api-health-check/openapi-fragment.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+
+review_points:
+  common:
+    - "PR target が feature/epic-367-api-contract-orval であること"
+    - "author=okuri-ai-bot であること"
+    - "§2 対象Issue と Branch 名 task-<番号> が一致すること"
+  contract:
+    - "GET /api/v1/health が契約仕様書 §4〜§8 と整合しているか"
+    - "data.status enum（ok/degraded/unavailable）と service=okuri が定義されているか"
+    - "API-PUB-002 既存 path が維持されているか"
+    - "Orval / generated が本 PR に含まれていないか（1c 分離）"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "OpenAPI 断片が契約仕様書と一致"
+      - "scope 外（generated / apps 実装）が混入していない"
+
+status_policy:
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"

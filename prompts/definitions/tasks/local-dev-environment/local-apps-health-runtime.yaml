@@ -1,0 +1,249 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-local-apps-health-runtime"
+  title: "local-dev-environment:api/recoローカル起動とhealth疎通"
+  summary: "Epic #651 クローズ後 follow-up。api/reco の placeholder を実 HTTP 待受に差し替え、OpenAPI 準拠の health 200 をローカル smoke-check で確認する（レーン 0）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: 651
+  epic_branch: "develop"
+  related_issues:
+    - number: 651
+      purpose: "履歴参照（Epic クローズ済み）。PR 本文は Related to #651"
+    - number: 1133
+      purpose: "先行 follow-up（検証・docs）。本 Task はその残課題"
+    - number: 384
+      purpose: "API-PUB-001 Epic（本格実装は別途。本 Task は最小 health）"
+    - number: 391
+      purpose: "API-INT-001 Epic（本格実装は別途。本 Task は最小 health）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Task #1133 で smoke-check / docs 整合は完了。api / reco の `dev` は placeholder のまま health 200 未達。
+  Human 判断により、PUB-001 / INT-001 本格 Epic を待たず local-dev follow-up として最小 HTTP サーバ + OpenAPI 準拠 health を整備する。
+  Epic #651 Reopen は行わず、develop ベース・develop 向け PR とする。
+
+objective: |
+  `start-api.sh` / `start-reco.sh` で api（3001）/ reco（8000）が待受し、
+  `GET /api/v1/health` と `GET /internal/reco/v1/health`（Internal API Key）が HTTP 200 を返す。
+  `smoke-check.sh`（apps 含む）で ok を確認し、手順書を更新する。
+
+scope:
+  - "`apps/api`: Express エントリ + GET /api/v1/health（public-api.yaml / API-PUB-001）+ package.json `dev` 差し替え"
+  - "`apps/reco`: GET /internal/reco/v1/health（internal-reco-api.yaml / API-INT-001・X-Internal-Api-Key）+ uvicorn 起動の `dev` 差し替え"
+  - "`scripts/dev/start-api.sh` / `start-reco.sh` の必要最小限整備（.env 読込等）"
+  - "`docs/06_実装設計/cross_cutting/ローカル開発手順書.md` / `scripts/dev/README.md` 更新"
+  - "Task / Review Definition 整備"
+  - "smoke-check で api / reco health 200 を確認し PR 本文に記録"
+
+out_of_scope:
+  - "API-PUB-001 / API-INT-001 実装仕様書の新規作成"
+  - "レコメンド縦串 E2E / test-data 拡充"
+  - "OpenAPI / Orval / generated 変更"
+  - "CI workflow 追加・変更"
+  - "Epic #651 Reopen"
+  - "`supabase/migrations/**` 変更"
+  - "batch 本格起動"
+  - "recommendations 以外の Public API 本格実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md"
+      required: true
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+    - path: "packages/contracts/openapi/internal-reco-api.yaml"
+      required: true
+  files:
+    - path: "apps/api/package.json"
+      required: true
+    - path: "apps/reco/package.json"
+      required: true
+    - path: "apps/reco/src/reco/api/main.py"
+      required: true
+    - path: "scripts/dev/smoke-check.sh"
+      required: true
+    - path: "scripts/dev/start-api.sh"
+      required: true
+    - path: "scripts/dev/start-reco.sh"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/api/package.json"
+      action: "update"
+      required: true
+    - path: "apps/api/src/index.ts"
+      action: "create"
+      required: true
+    - path: "apps/api/src/app.ts"
+      action: "create"
+      required: true
+    - path: "apps/api/src/app/health/routes.ts"
+      action: "create"
+      required: true
+    - path: "apps/reco/package.json"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/api/main.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/api/routes/health.py"
+      action: "create"
+      required: true
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: true
+    - path: "scripts/dev/start-api.sh"
+      action: "update"
+      required: false
+    - path: "scripts/dev/start-reco.sh"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "`./scripts/dev/start-api.sh` で api が port 3001 待受する"
+  - "`./scripts/dev/start-reco.sh` で reco が port 8000 待受する"
+  - "`GET /api/v1/health` が HTTP 200（SuccessEnvelope）"
+  - "`GET /internal/reco/v1/health` が HTTP 200（X-Internal-Api-Key 付き）"
+  - "`./scripts/dev/smoke-check.sh` で api / reco health が ok"
+  - "手順書・README が現状と一致"
+  - "Epic #651 Reopen なし・PR target が develop"
+  - "Task / Review Definition が Task Branch 上に存在する"
+
+branch:
+  no_branch: false
+  name: "chore/task-1135-local-apps-health-runtime"
+  summary: "local-apps-health-runtime"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-10"
+    due_date: "2026-07-12"
+
+issue:
+  number: 1135
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics:
+    - number: 651
+      purpose: "local-dev-environment 基盤（CLOSED・履歴参照）"
+  issues:
+    - number: 1133
+      purpose: "先行 follow-up 完了"
+  prs:
+    - number: 1134
+      purpose: "local-verify-follow-up merge"
+  tasks:
+    - "prompts/definitions/tasks/local-dev-environment/local-verify-follow-up.yaml（完了）"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/local-dev-environment/local-verify-follow-up.yaml"
+  exclusive_files:
+    - "apps/api/package.json"
+    - "apps/api/src/index.ts"
+    - "apps/api/src/app.ts"
+    - "apps/reco/package.json"
+    - "apps/reco/src/reco/api/main.py"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "./scripts/dev/check-env-names.sh --strict"
+    - "./scripts/dev/start-reco.sh（別ターミナル）"
+    - "./scripts/dev/start-api.sh（別ターミナル）"
+    - "./scripts/dev/smoke-check.sh"
+  not_required:
+    - "PUB-001 / INT-001 実装仕様書"
+    - "レコメンド縦串 E2E"
+  skip_reason:
+    "実装仕様書": "本 Task は OpenAPI 契約を正本とした最小ローカル runtime。本格実装仕様は PUB-001 / INT-001 別 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Task Definition scope / out_of_scope との整合"
+    - "OpenAPI（PUB-001 / INT-001）との response 整合"
+    - "reco health の Internal API Key 必須"
+    - "secret / .env 実値の非含有"
+    - "Epic #651 クローズ後 develop 直 PR 例外が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #651 クローズ後 follow-up。apps health 最小実装の横断影響を記録可"
+
+human_decision_points:
+  - "Epic #651 クローズ後の develop 直 PR 例外の承認"
+  - "local-dev follow-up として PUB-001 / INT-001 最小 health を先行する方針"
+
+stop_conditions:
+  - "OpenAPI 変更が必要になった"
+  - "DB migration 変更が必要になった"
+  - "generated 手動編集が必要に見える"
+
+notes:
+  - "Related Issue: #1133 / PR #1134"
+  - "Related Epic: #651（クローズ済み）"
+  - "OpenAPI 正本を変更せず実装する"
+  - "Review Definition: prompts/definitions/reviews/local-dev-environment/local-apps-health-runtime/pr-review.yaml"

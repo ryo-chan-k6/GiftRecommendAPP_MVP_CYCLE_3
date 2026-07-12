@@ -1,0 +1,259 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-matching-config-schema"
+  title: "matching_config:Matching Config物理設計整備（テーブル定義・DDL・seed）"
+  summary: "Human 判断（案 B）に基づき matching_config を ranking_config と対称に新設する。テーブル定義書・増分 DDL・seed・Run 再現性列（matching_config_id）追随を整備し、後続 Reco Config 解決 Task の DB 正本とする。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "develop"
+  related_issues:
+    - number: 905
+      purpose: "MOD-RECO-015 モジュール仕様書（matching_config 経由解決の用語確定。PR #909 merge 済み・Epic Branch 反映）"
+    - number: 451
+      purpose: "先行 Config Task ranking_config テーブル定義書（対称設計の正本）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #435 は Done（develop merge 済み）。MOD-RECO-015 モジュール仕様書（Issue #905 / PR #909）で、
+  Social / Symbolic 集約重みは matching_config 経由で解決する前提を Human 判断（案 B）で確定した。
+  現行 DB 正本には ranking_config は存在するが matching_config は未存在。model_version への JSON 列追加（案 A）は採用しない。
+  Matching定義書 §13.1 は論理上 model_version 管理を記載するが、MVP DB 正本は matching_config.parameter_json にマッピングする（ranking_config と同型の責務分担）。
+
+objective: |
+  1. matching_config テーブル定義書を ranking_config_テーブル定義書.md と対称の粒度で作成する。
+  2. 増分 DDL（db/ddl/ + supabase/migrations/）で matching_config テーブルを追加する。
+  3. MVP 初期 seed（均等 Feature 重み）を supabase/seeds/masters/ に追加する。
+  4. Run 再現性のため recommendation_run.matching_config_id（および必要な追随列）を docs / DDL に反映する。
+  後続 Task（MOD-RECO-003 / MOD-RECO-014 / MOD-RECO-015 実装）が DB 正本を参照できる状態にする。
+
+scope:
+  - "docs/06_実装設計/database/matching_config_テーブル定義書.md 新規作成（prompts/templates/docs/table-spec.md 準拠）"
+  - "ranking_config_テーブル定義書.md の章構成・制約方針を踏襲（config_name / config_version / parameter_json / is_current / created_at）"
+  - "parameter_json MVP キー定義（social_feature_weights / symbolic_feature_weights および Matching定義書 §13.1 のその他キー列挙）"
+  - "増分 DDL 作成（例: db/ddl/d14_matching_config.sql、適用正本 supabase/migrations/{timestamp}_matching_config.sql）"
+  - "seed 追加（supabase/seeds/masters/09_config_versions.sql または専用 seed。config_name 初期値案: mvp_matching_config）"
+  - "MVP 初期 seed: Social / Symbolic Feature 重みは均等（Matching定義書 §7.2 / §8.2 相当）"
+  - "recommendation_run / recommendation_result / evaluation_run への matching_config_id 列追加（ranking_config_id と同型の LOGICAL 参照方針）"
+  - "関連 docs 追随（物理ER / 論理ER / テーブル一覧 / run 定義書 / Matching定義書 §13.1 マッピング注記 / DDLバッチ分割表 D14 追記）"
+  - "Task / Review Definition の整備（本ファイルおよび pr-review.yaml）"
+
+out_of_scope:
+  - "apps/reco/** 実装（MOD-RECO-003 Task へ）"
+  - "MOD-RECO-014 / MOD-RECO-015 モジュール実装・仕様書本体の大幅改稿（§13 マッピング注記は本 Task で実施）"
+  - "OpenAPI / generated 変更"
+  - "ranking_config / model_version 既存行の破壊的変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/ranking_config_テーブル定義書.md"
+      required: true
+      purpose: "対称設計の正本"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "Config 系責務分担・version 管理パターン参考"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: true
+      purpose: "matching_config_id 追随列の正本"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+      purpose: "Run スナップショット列追随"
+    - path: "docs/06_実装設計/database/evaluation_run_テーブル定義書.md"
+      required: true
+      purpose: "evaluation_run.matching_config_id 追随"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "エンティティ属性・正本区分"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "Master / Config 系一覧"
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+      purpose: "§7.2 / §8.2 / §13.1 パラメータ正本"
+    - path: "docs/06_実装設計/reco/MOD-RECO-015_Meaning Match Aggregatorモジュール仕様書.md"
+      required: true
+      purpose: "matching_config 経由解決の用語確定（#905 成果物。develop 未反映時は Issue #905 / PR #909 を参照）"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "増分 migration 命名・適用方針"
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D14 追記先"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "テーブル定義書標準フォーマット"
+  files:
+    - path: "db/ddl/d03_master_config.sql"
+      required: true
+      purpose: "ranking_config DDL 参照"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/matching_config_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_run_テーブル定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      action: "update"
+      required: true
+  files:
+    - path: "db/ddl/d14_matching_config.sql"
+      action: "create"
+      required: true
+    - path: "supabase/migrations/*_matching_config.sql"
+      action: "create"
+      required: true
+    - path: "supabase/seeds/masters/09_config_versions.sql"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/matching-config-schema.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/matching-config-schema/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "matching_config_テーブル定義書.md が存在し、ranking_config と対称の責務分担が明記されている"
+  - "parameter_json に Social / Symbolic Feature 重みキーが定義され、MVP 均等 seed 例が記載されている"
+  - "増分 DDL + supabase migration が作成され、ローカル適用可能である"
+  - "seed で is_current = true の matching_config が 1 系列存在する"
+  - "recommendation_run.matching_config_id（および追随先）の LOGICAL 参照方針が docs / DDL に反映されている"
+  - "Matching定義書 §13.1 に MVP DB 正本 = matching_config のマッピング注記がある"
+  - "apps/** 変更がない"
+  - "Task / Review Definition が作成されている"
+
+branch:
+  no_branch: false
+  summary: "matching-config-schema"
+  name: "docs/task-906-matching-config-schema"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 906
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 905
+      purpose: "MOD-RECO-015 モジュール仕様書 merge 済み（用語確定の正本）"
+    - number: 435
+      purpose: "親 Epic（Done）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/matching_config_テーブル定義書.md"
+    - "db/ddl/d14_matching_config.sql"
+    - "supabase/migrations/*_matching_config.sql"
+    - "supabase/seeds/masters/09_config_versions.sql"
+  conflict_risk: "medium"
+  db_impact: true
+  generated_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "physical/logical ER / テーブル一覧整合"
+    - "ranking_config 定義書との章構成一貫性"
+    - "migration 適用 + seed 再実行 smoke（local DB）"
+    - "apps/** 無変更確認"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "DB docs + schema Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "案 B（matching_config 新設）が ranking_config と対称か"
+    - "Run 再現性列（matching_config_id）の追加範囲が過不足ないか"
+    - "Matching定義書 §13 マッピング注記の妥当性"
+    - "develop 向け増分 schema の破壊的変更がないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "案 B（matching_config 新設）採用済み。ranking_config との対称性を Human Review で最終確認"
+  - "recommendation_run / result / evaluation_run への matching_config_id 追加範囲"
+  - "parameter_json の MVP 必須キーと seed 初期値（Issue #906 §14 参照）"
+
+notes:
+  - "Issue #906 本文を起票正本とする"
+  - "PR target / base: develop（親 Epic #435 Done のため）"
+  - "MOD-RECO-015 モジュール仕様書は Epic #904 経由で develop 未 merge の場合、Issue #905 / PR #909 を用語参照正本とする"

@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-foundation-epic-pr"
+  title: "reco-foundation Epic PRレビュー"
+  summary: "Epic #698 の develop 向け統合PR（#708）を AI Review する"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 708
+  issue:
+    number: 698
+  task_definition: "prompts/definitions/epics/reco-foundation/epic.yaml"
+  source_branch: "feature/epic-698-reco-foundation"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/reco-foundation/epic.yaml"
+    required: true
+  issue:
+    number: 698
+    required: true
+  pr:
+    number: 708
+    required: true
+
+review_points:
+  - "scope / epic_scope.allowed_paths 整合"
+  - "packages/contracts / generated 非手編集"
+  - "Phase4b 本格実装を scope 外に保つ"
+  - "secret 非含有"
+
+notes:
+  - "PR #708 作成後に target.pr / input.pr.number を反映"

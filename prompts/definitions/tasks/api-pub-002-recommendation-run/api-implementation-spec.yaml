@@ -1,0 +1,234 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-002-recommendation-run-api-implementation-spec"
+  title: "API-PUB-002:レコメンド実行API実装仕様書作成"
+  summary: "API-PUB-002（レコメンド実行 / Public API、`POST /api/v1/recommendations`）のAPI実装仕様書（API-PUB-002_レコメンド実行API実装仕様書.md）を、確定済み契約仕様書（#358 develop 正本）・API-INT-002 実装仕様書・reco-client（#1112/#1118 develop マージ済み）を前提に、prompts/templates/docs/api-implementation-spec.md 準拠で作成する（実装面のみ）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  epic_issue_number: 357
+  epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+  related_issues:
+    - number: 364
+      purpose: "本 Task Issue"
+    - number: 357
+      purpose: "親 Epic"
+    - number: 358
+      purpose: "前提 Task（API契約仕様書 develop 反映済み）"
+    - number: 366
+      purpose: "依存 Epic（API-INT-002 完了）"
+  related_prs:
+    - number: 359
+      purpose: "契約仕様書 Task PR（develop merge 済み）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 1/3（Public API 実装面仕様書）。契約面は `API-PUB-002_レコメンド実行API契約仕様書.md`（#358 / develop 正本）を前提とする。
+  API-INT-002（reco 内部 API）の契約・実装仕様書および reco-client wrapper（`createRecoClient` / `GeneratedRecoClient`、#1112/#1118 develop merge 済み）を前提に、apps/api の MOD-API-001〜006 責務・api→reco 連携・Public Response 整形を整理する。
+  旧 PR #365 は develop 乖離のため close 済み。本 Task は develop 取込後の Epic / Task Branch 上で作業をやり直す。
+
+objective: |
+  API-PUB-002 について、apps/api 実装 Task / 単体テスト Task が参照可能な粒度の **API実装仕様書（実装面のみ）** を新規作成する。
+  `createRecoClient` 経由の API-INT-002 呼び出し、Internal → Public マッピング、エラーマップ、trace 伝播を明記する。
+  契約面（`api-contract-spec.md`）の再掲は行わない。
+
+scope:
+  - "API-PUB-002 実装仕様書を新規作成する（API-PUB-002_レコメンド実行API実装仕様書.md）"
+  - "前提契約・API-INT-002 実装仕様書参照を整理する"
+  - "MOD-API-001〜006 の処理フロー（Mermaid）と責務を整理する"
+  - "Public Request / Response と内部 DTO・API-INT-002 I/F のマッピングを整理する"
+  - "createRecoClient / GeneratedRecoClient / runRecoRecommendation 利用方針を整理する"
+  - "provider（apps/api）/ consumer（apps/web）の実装影響を整理する"
+  - "reco エラーマップ（Internal → Public HTTP / GRS コード）と trace 伝播を整理する"
+  - "実装結合テスト観点を整理する"
+  - "未決事項・人間判断事項を明記する"
+
+out_of_scope:
+  - "API-PUB-002_レコメンド実行API契約仕様書.md の全面書き換え（#358 正本を維持）"
+  - "api-contract-spec.md 相当の契約面再掲"
+  - "OpenAPI（public-api.yaml）/ Orval / generated ファイル変更"
+  - "apps/api / apps/web / apps/reco の実装"
+  - "API-INT-002 reco エンドポイント実装"
+  - "DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "確定済み契約面の正本"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "api→reco 連携・Internal I/F・エラーマップの前提"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "Internal Request/Response 外形の参照"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: true
+  templates:
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      required: true
+      applies_to:
+        - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+  files:
+    - path: "apps/api/src/lib/reco-client/factory.ts"
+      required: true
+      purpose: "createRecoClient DI 正本"
+    - path: "apps/api/src/infrastructure/reco-client/README.md"
+      required: true
+      purpose: "reco-client wrapper 責務"
+  issues:
+    - number: 358
+      purpose: "契約仕様書 Task"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-implementation-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "API-PUB-002_レコメンド実行API実装仕様書.md"
+  - "MOD-API-001〜006 処理フロー"
+  - "createRecoClient / API-INT-002 連携方針"
+  - "Public ↔ Internal マッピング"
+  - "実装結合テスト観点"
+
+acceptance_criteria:
+  - "API-PUB-002_レコメンド実行API実装仕様書.md が作成されている"
+  - "api-implementation-spec.md 準拠で契約面再掲が混入していない"
+  - "契約仕様書（#358）を前提契約として参照している"
+  - "API-INT-002 実装仕様書・createRecoClient を前提に api→reco 連携が記載されている"
+  - "OpenAPI / generated / apps 実装変更を含まない"
+  - "Human Review 観点が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-364-api-pub-002-recommendation-run-api-spec"
+  summary: "api-pub-002-recommendation-run-api-implementation-spec"
+  base: "feature/epic-357-api-pub-002-recommendation-run"
+  target: "feature/epic-357-api-pub-002-recommendation-run"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-09"
+    due_date: "2026-07-11"
+
+issue:
+  number: 364
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics:
+    - number: 366
+      purpose: "API-INT-002 完了（reco 内部 API・reco-client 前提）"
+  issues:
+    - number: 358
+      purpose: "API-PUB-002 契約仕様書"
+  prs:
+    - number: 359
+      purpose: "契約仕様書 develop merge"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"
+  blocks:
+    - "API-PUB-002 OpenAPI Contract Task"
+    - "API-PUB-002 apps/api 実装 Task"
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+  manual_checks:
+    - "契約仕様書との整合"
+    - "API-INT-002 実装仕様書との api→reco 境界整合"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs Task"
+    "integration test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装面に限定されているか"
+    - "createRecoClient / API-INT-002 連携が明確か"
+    - "契約仕様書と矛盾しないか"
+    - "epic_scope 内か"
+  specialist_reviews:
+    docs: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+
+notes:
+  - "旧 PR #365 close 済み。Branch 名は既存 docs/task-364-* を再利用"
+  - "worktree: GiftRecommendAPP_MVP_CYCLE_3_worktrees/docs-task-364-api-pub-002-recommendation-run-api-spec"

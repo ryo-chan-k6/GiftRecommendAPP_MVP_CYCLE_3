@@ -1,0 +1,218 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-012-cross-docs-alignment"
+  title: "MOD-RECO-012:011廃止横断docs整合"
+  summary: "MOD-RECO-011 廃止・012 統合（#862/#863）および MOD-RECO-012 モジュール仕様書（#865/#866）に合わせ、Recoモジュール一覧・MOD-RECO-001・エラーコード等の横断 docs から独立 `MOD-RECO-011` 記述を更新する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-012:Candidate Retriever"
+  epic_issue_number: 864
+  epic_branch: "feature/epic-864-mod-reco-012-candidate-retriever"
+  related_issues:
+    - number: 862
+      purpose: "MOD-RECO-011 廃止・移行記録 Pivot"
+    - number: 865
+      purpose: "MOD-RECO-012 モジュール仕様書（正本）"
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator（呼び出し順・エラー伝播）"
+  related_prs:
+    - 863
+    - 866
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Issue #862 / PR #863 で `MOD-RECO-011` 独立モジュール廃止・`MOD-RECO-012` 内 `pre_hard_filter` 統合が確定した。
+  Issue #865 / PR #866 で MOD-RECO-012 モジュール仕様書が正本として作成された。
+  一方、Recoモジュール一覧・MOD-RECO-001・エラーコード定義書等には旧 `MOD-RECO-011` 独立モジュール記述が残っており、廃止記録 §9 の Step 4 対象である。
+
+objective: |
+  横断 docs を、Orchestrator `010 → 012` 1 呼び出し（内部 `pre_hard_filter` → `retrieval`）および `GRS-REC-008` / `009` の発生元（012 サブモジュール）と矛盾しない状態に更新する。
+
+scope:
+  - "Recoモジュール一覧 §4 / §5 / §6.10 / §6.11 の `MOD-RECO-011` 独立行・処理順序を 012 統合版へ更新する"
+  - "MOD-RECO-001 仕様書の呼び出し順・依存・エラー発生元を 012 統合版へ更新する"
+  - "エラーコード定義書に `GRS-REC-008` / `009` の発生元（MOD-RECO-012）を追記する"
+  - "モジュール一覧・機能×モジュール対応表・処理構成定義書・機能一覧のモジュール対応を更新する"
+  - "MOD-RECO-012 仕様書の Step 4 暫定注記を解消する"
+  - "MOD-RECO-011 廃止記録 §9 を Step 4 完了状態へ更新する"
+  - "MOD-RECO-010 仕様書のパイプライン順序参照を更新する"
+  - "Review Definition を整備する"
+
+out_of_scope:
+  - "apps/reco の実装"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema / migration 変更"
+  - "Epic #861 クローズ・011 implementation Task キャンセル（Step 5）"
+  - "MOD-RECO-004 / 005 / 006 / 009 モジュール仕様書の詳細改訂（参照は Step 6 以降または別 Task）"
+  - "012 実装 Task（Step 6）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      required: true
+      purpose: "統合後の正本"
+    - path: "docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md"
+      required: true
+      purpose: "廃止・移行記録"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+  templates: []
+  files: []
+  issues:
+    - number: 867
+      purpose: "本 Task Issue"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/処理構成定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/機能一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-010_Query Embedding Generatorモジュール仕様書.md"
+      action: "update"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "横断 docs の 011→012 統合整合"
+  - "Orchestrator 1 呼び出し・008/009 発生元の一貫性"
+  - "暫定注記の解消"
+
+acceptance_criteria:
+  - "Recoモジュール一覧に独立 `MOD-RECO-011` モジュール行が残っていない（廃止注記 §6.10 は可）"
+  - "MOD-RECO-001 の処理順序が `010 → 012`（内部 pre_hard_filter → retrieval）と整合している"
+  - "エラーコード定義書で `GRS-REC-008` / `009` の発生元が MOD-RECO-012 と整合している"
+  - "apps 実装・OpenAPI / DB 変更が含まれていない"
+  - "secret が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-867-mod-reco-012-cross-docs-alignment"
+  base: "feature/epic-864-mod-reco-012-candidate-retriever"
+  target: "feature/epic-864-mod-reco-012-candidate-retriever"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 865
+      purpose: "前提 Task（MOD-RECO-012 モジュール仕様書）"
+    - number: 862
+      purpose: "前提 Task（011 廃止記録）"
+  prs:
+    - 866
+  tasks: []
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs 整合 Task のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "011 廃止記録・012 仕様書との整合"
+    - "Orchestrator 1 呼び出しの一貫性"
+    - "scope 外変更の混入"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+notes:
+  - "workstream: mod-reco-012-candidate-retriever"
+  - "Step 4（横断 docs）。Step 5 は Epic #861 整理。"

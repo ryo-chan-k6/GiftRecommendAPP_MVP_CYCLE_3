@@ -1,0 +1,186 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-item"
+  title: "item:Itemテーブル定義書作成"
+  summary: "物理ER・論理ER・enum定義書・外部商品データ連携設計書を入力に、Online推薦の内部商品正本 `item` のテーブル定義書を作成する。Phase2 子 Task ③（テーブル定義）Batch R01 No.3。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 493
+      purpose: "Batch R01 No.1 normalization_rule テーブル定義書（merge 済み・#498）"
+    - number: 494
+      purpose: "Batch R01 No.2 external_genre テーブル定義書（genre 参照整合。merge 推奨・未 merge）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② PR（merge 済み前提）"
+    - number: 498
+      purpose: "Batch R01 No.1 normalization_rule PR（merge 済み）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R01 No.3。論理ER §18.2 物理テーブル化優先度「高」。
+  Online推薦で参照する内部商品正本。Batch 更新・Online 参照のみの責務境界を物理定義する。
+  親 Epic Branch 最新（MVP 作成対象 60 テーブル・normalization_rule merge 済み #498）を前提とする。
+  先行 Task ② enum 定義書（#440 merge 済み前提）を参照する。
+  `external_genre` テーブル定義書（#494）は genre 参照整合のため merge 推奨だが、物理ER §9 では `item.external_genre_id` は LOGICAL のまま。未 merge 時も本 Task は LOGICAL 参照方針で着手可能とする。
+
+objective: |
+  `item` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `normalized_hash` / `active_status` / 楽天商品検索API由来属性の保持方針を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+
+scope:
+  - "table-spec.md テンプレ準拠の item テーブル定義書作成"
+  - "物理ER Item系・Staging→Item Upsert 関係との突合"
+  - "論理ER §8.2・テーブル一覧 §5 No.10・外部商品データ連携設計書との整合"
+  - "Online推薦中に更新しない方針（論理ER §16.1）の反映"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "item_image / item_review_summary 等の子テーブル定義書（別 Task）"
+  - "DDL・migration / seed"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index・Upsert キー方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "active_status（item_active_status）等の enum 参照"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "エンティティ属性・正本区分・Online/Batch 責務境界"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "テーブル分類・用途・冪等キー"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "normalized_hash 対象・Staging→Item Upsert・楽天API属性マッピング"
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      required: true
+      purpose: "Item 正本区分・外部API属性の正本関係"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+      purpose: "API 公開列と DB 列のマッピング・非 active 判定（GRS-ITM-002）"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-item.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-item/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "item テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER・論理ER §8.2・テーブル一覧 §5 と矛盾しない"
+  - "normalized_hash / active_status / external_item_code 冪等方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "item-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 495
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic 完了前提"
+    - number: 440
+      purpose: "Task ② enum/コード定義 完了"
+    - number: 494
+      purpose: "external_genre テーブル定義書 merge（genre 参照整合。推奨）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/item_テーブル定義書.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8・§11 とカラム・制約・Index の整合"
+    - "論理ER §8.2・§15 状態カラム（active_status）との整合"
+    - "外部商品データ連携設計書 §6.4 normalized_hash 対象との整合"
+    - "staging_item.external_item_code → item Upsert キー（source + external_item_code）の明記"
+    - "論理ER §16.1 Online推薦中に item を更新しない方針の明記"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch R01 No.3: item（No.1 normalization_rule #498 merge 済み、No.2 external_genre #494 未 merge）"
+  - "Issue #495 / Branch docs/task-495-item-table-spec"
+  - "テーブル一覧 §1.1: Task 識別子は物理テーブル名 item を使用。§5 No.10 が item、No.13 が external_genre"
+  - "Human Review 論点: external_genre_id の物理 FK vs LOGICAL 参照（normalization_rule §17.1.1 比較表形式を踏襲可）、normalized_hash 算出対象フィールド"
+  - "後続 Task: item_image（#497）等は item 定義書完了後に着手可能"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"

@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-execution-context-integration-retest-user-meaning-pr"
+  title: "MOD-RECO-001 ExecutionContext型付き化後 User Meaning 統合テスト再検証 PRレビュー"
+  summary: "ExecutionContext 型付き化後の User Meaning integration 再テスト Task PR を AI Review する（develop 直 PR）"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 893
+  issue:
+    number: 891
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/integration-retest-user-meaning.yaml"
+  source_branch: "test/task-891-mod-reco-001-execution-context-integration-retest-user-meaning"
+  target_branch: "develop"
+  parent_epic_issue: 260
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/integration-retest-user-meaning.yaml"
+    required: true
+
+review_points:
+  - "User Meaning ExecutionContext アサーションが #887 型定義と整合しているか"
+  - "User Meaning 範囲の getattr 置換漏れがないか"
+  - "execution_context.py / stubs.py への不要な変更がないか"
+  - "Retrieval 向け getattr は後続 Task 委譲のままか"
+  - "Issue #887 develop merge 後の作業であることが PR 本文で説明されているか"
+  - "develop 直 PR 例外が PR 本文で説明されているか（Related to #260 / #887 / #858）"
+  - "pytest 実行結果が PR 本文に記載されているか"
+
+notes:
+  - "Issue / PR 確定後に target.issue.number / source_branch / input.pr.number を更新する"

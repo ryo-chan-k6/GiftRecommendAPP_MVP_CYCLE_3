@@ -140,7 +140,7 @@ flowchart LR
 | 2    | 画面設計書           | 1画面 = 1Task              | `screen-spec.md` | 画面一覧、画面遷移図、API一覧、API仕様書。命名 §15.3               |
 | 3    | OpenAPI定義書        | 1 API変更 = 1Contract Task | `openapi-spec.md` | API仕様書、API設計方針書、エラーコード定義書                         |
 | 4    | 物理ER               | 1成果物 = 1Task            | `physical-er-spec.md` | 論理ER、テーブル一覧、正本定義表                                 |
-| 5    | テーブル定義書       | 1テーブル = 1Task          | `table-spec.md`  | 物理ER、論理ER、enum定義書、コード定義書。Task識別子は物理テーブル名 |
+| 5    | テーブル定義書       | 1テーブル = 1Task          | `table-spec.md`  | 物理ER、論理ER、enum定義書。Task識別子は物理テーブル名 |
 | 6    | DDL                  | 1変更単位 = 1Task          | `.sql`           | テーブル定義書、マイグレーション方針書                               |
 | 7    | バッチ仕様書         | 1バッチ = 1Task            | `batch-spec.md`  | バッチ処理一覧、外部商品データ連携設計書。命名 §15.4（Batch ID: `BATCH-*`） |
 | 8    | Recoモジュール仕様書 | 1モジュールID = 1Task        | `module-spec.md` | Recoモジュール一覧、Matching / Ranking / Retrieval定義書             |

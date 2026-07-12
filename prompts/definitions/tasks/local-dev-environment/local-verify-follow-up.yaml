@@ -1,0 +1,210 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-local-verify-follow-up"
+  title: "local-dev-environment:ローカル疎通検証・ギャップ埋め"
+  summary: "Epic #651 完了後・API-PUB-002 develop merge 後の develop 上で smoke-check 実行、api/reco health・DB/Redis 検証、手順書・README ギャップ修正を行う横断 follow-up Task（レーン 0）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: 651
+  epic_branch: "develop"
+  related_issues:
+    - number: 651
+      purpose: "履歴参照（Epic クローズ済み）。PR 本文は Related to #651"
+    - number: 357
+      purpose: "API-PUB-002 Epic develop merge 済み（health / reco 縦串前提）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3b Epic A（local-dev-environment #651）は CLOSED 済み。Task A7（local-smoke-check #666）で script / docs の骨格は develop 上に存在する。
+  実装フェーズ並列計画（レーン 0）により、PUB-002 縦串完了後の **実運用検証** と手順書・README 整合を埋める follow-up Task として起票する。
+  Epic #651 Reopen は行わず、**develop ベース・develop 向け PR** の横断 Task として実施する（Human 判断・実装フェーズ実行プロセス設計書 §6.4.2 フォローアップ）。
+
+objective: |
+  develop 上で `./scripts/dev/smoke-check.sh`（および必要な `--skip-*`）を実行し、env / DB / Redis / apps health の実態を確認する。
+  手順書・`scripts/dev/README.md`・`scripts/db/README.md` と実態のギャップを修正し、以降の API / Batch 実装 Task が参照できる検証手順を整備する。
+  api / reco health の成功可否は実装進捗に応じて docs / script に明示する（未実装時は skip 条件を維持）。
+
+scope:
+  - "`scripts/dev/smoke-check.sh` / `check-env-names.sh` の実行結果に基づく検証・必要最小限の script 修正"
+  - "develop 上の `apps/api` / `apps/reco` health 疎通確認（起動可能な範囲）"
+  - "PostgreSQL / Redis 接続検証手順の docs 整合"
+  - "`docs/06_実装設計/cross_cutting/ローカル開発手順書.md` ギャップ修正"
+  - "`scripts/dev/README.md` / `scripts/db/README.md` 更新"
+  - "Task / Review Definition の整備"
+  - "検証結果サマリ（PR 本文・未解決ギャップの明示）"
+
+out_of_scope:
+  - "レコメンド縦串用 test-data 拡充（別 Task 候補）"
+  - "E2E / システムテスト（Epic C `gha-test-environment`）"
+  - "apps 本格 health 実装（PUB-001 / INT-001 Task scope）"
+  - "CI workflow 追加・変更"
+  - "Epic #651 Reopen / Epic Branch 再利用"
+  - "`supabase/migrations/**` 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+    - path: "docs/06_実装設計/database/DB構築手順書.md"
+      required: true
+  files:
+    - path: "scripts/dev/smoke-check.sh"
+      required: true
+    - path: "scripts/dev/check-env-names.sh"
+      required: true
+    - path: "scripts/dev/README.md"
+      required: true
+    - path: "scripts/db/README.md"
+      required: true
+    - path: ".env.example"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/dev/smoke-check.sh"
+      action: "update"
+      required: false
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: true
+    - path: "scripts/db/README.md"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "develop 上で `./scripts/dev/check-env-names.sh --strict` が成功する前提を維持"
+  - "smoke-check を実行し、結果（成功 / skip / 既知ギャップ）を PR 本文に記録している"
+  - "DB / Redis 検証手順が手順書・README と一致している"
+  - "apps health 未成功時の skip 条件が script と docs で明示されている"
+  - "Epic #651 Reopen なし・PR target が develop"
+  - "Task / Review Definition が Task Branch 上に存在する"
+
+branch:
+  no_branch: false
+  name: "chore/task-1133-local-verify-follow-up"
+  summary: "local-verify-follow-up"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-10"
+    due_date: "2026-07-12"
+
+issue:
+  number: 1133
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics:
+    - number: 651
+      purpose: "local-dev-environment 基盤（CLOSED・履歴参照）"
+    - number: 357
+      purpose: "API-PUB-002 develop merge 済み（検証対象の前提）"
+  issues:
+    - number: 666
+      purpose: "local-smoke-check 完了（script 骨格）"
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/local-dev-environment/local-smoke-check.yaml（完了）"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/local-dev-environment/local-smoke-check.yaml"
+  exclusive_files:
+    - "scripts/dev/smoke-check.sh"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "scripts/dev/README.md"
+  conflict_risk: "low"
+
+test_policy:
+  manual_checks:
+    - "./scripts/dev/check-env-names.sh --strict"
+    - "./scripts/dev/smoke-check.sh --skip-apps（インフラのみ）"
+    - "./scripts/dev/smoke-check.sh（apps 起動後・health 確認可能な場合）"
+  not_required:
+    - "全 app health の必須成功（PUB-001 / INT-001 未完了時）"
+  skip_reason:
+    "全 app health の必須成功": "PUB-001 / INT-001 実装前は --skip-apps または optional 扱いを docs に明示"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Task Definition scope / out_of_scope との整合"
+    - "Epic #651 クローズ後の develop 直 PR 例外が PR 本文で説明されているか"
+    - "smoke-check 実行結果と docs 記載の一致"
+    - "secret / .env 実値の非含有"
+    - "supabase/migrations / packages/contracts への越境がないか"
+  specialist_reviews:
+    docs: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #651 クローズ後の横断 follow-up。検証ギャップ・develop 直 PR 例外を cross-cutting / incident に記録可"
+
+human_decision_points:
+  - "Epic #651 クローズ後の develop 直 PR 例外の承認（Human Review）"
+  - "apps health を acceptance 必須に含めるか（PUB-001 / INT-001 進捗依存）"
+
+stop_conditions:
+  - "正本 docs 間でローカル検証手順が矛盾"
+  - "DB migration 変更が必要になった"
+  - "test-data 拡充を本 Task scope に取り込む必要が出た"
+
+notes:
+  - "Related Epic: #651（クローズ済み・履歴参照）"
+  - "Related Epic: #357（API-PUB-002・develop merge 済み）"
+  - "実装フェーズ並列計画 レーン 0（1 worktree・横断変更は直列 merge）"
+  - "workstream: local-dev-environment"
+  - "Review Definition: prompts/definitions/reviews/local-dev-environment/local-verify-follow-up/pr-review.yaml"

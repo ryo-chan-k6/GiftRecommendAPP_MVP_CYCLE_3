@@ -1,0 +1,46 @@
+schema_version: "1.0"
+definition_type: "task"
+
+# テンプレート: フェーズ ExecutionContext 型付き化 Task（develop 直 PR）。
+
+task:
+  id: "task-mod-reco-001-execution-context-typed-fields-<phase-slug>"
+  title: "MOD-RECO-001:ExecutionContext型付きフィールド拡張（<Phase Name>）"
+  summary: "当該フェーズモジュールの execution_context 動的付与を型付きフィールドへ移行する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_branch: "develop"
+
+background: |
+  当該 Wiring Epic develop merge 後の follow-up Task（playbook 順序 3）。
+  正本: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml
+  参考実装: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/execution-context-typed-fields.yaml（#887）
+
+scope:
+  - "execution_context.py への当該フェーズ型付きフィールド追加"
+  - "対象モジュールの _attach_* から # type: ignore[attr-defined] 除去"
+  - "対象モジュール内 getattr(context, ...) の直接参照化"
+
+out_of_scope:
+  - "stubs.py 変更"
+  - "test_recommendation_orchestrator.py 更新（integration-retest Task へ委譲）"
+
+branch:
+  base: "develop"
+  target: "develop"
+
+dependencies:
+  blocking: true
+  issues:
+    - number: null
+      purpose: "当該 Wiring Epic develop merge 完了"
+
+parallel_control:
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+
+notes:
+  - "作業開始ゲート: 当該 Wiring Epic develop merge 後"

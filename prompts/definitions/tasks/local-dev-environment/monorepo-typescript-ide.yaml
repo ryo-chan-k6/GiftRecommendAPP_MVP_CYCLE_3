@@ -1,0 +1,171 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-monorepo-typescript-ide"
+  title: "monorepo TypeScript IDE基盤整備"
+  summary: "pnpm workspace 横断で IDE が TypeScript パッケージを正しく解析できるよう、ルート tsconfig solution と .vscode/settings.json を整備する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: 651
+  epic_branch: "chore/epic-651-local-dev-environment"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  pnpm workspace では依存が各パッケージ node_modules に隔離され、ルート tsconfig がないため、
+  IDE（Cursor/VS Code）が apps/api 等で express 等のモジュール解決エラーを表示する。
+  worktree 横断で再現する構造問題。Epic #651 merge 済みのため PR target は develop（#707 と同型）。
+
+objective: |
+  tsconfig.base.json、ルート tsconfig.json（project references）、.vscode/settings.json を整備し、
+  任意 worktree で IDE が既存 TypeScript パッケージを正しく解析できる状態にする。
+
+scope:
+  - "ルート tsconfig.base.json / tsconfig.json"
+  - ".vscode/settings.json（.gitignore 例外整備含む）"
+  - "既存 tsconfig.json（packages/code-definitions、shared-types、test-fixtures）の extends 整合"
+  - "apps/api/tsconfig.json（develop 上未存在のため新規作成・references 用）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "apps/web・apps/batch の tsconfig 新規作成"
+  - "Python（apps/reco）IDE 設定"
+  - "CI workflow 変更"
+  - "アプリ本格実装"
+  - "composite: true による build 挙動変更（既存 build 維持を優先）"
+
+input:
+  docs: []
+  files:
+    - path: "packages/code-definitions/tsconfig.json"
+      required: true
+    - path: "packages/shared-types/tsconfig.json"
+      required: true
+    - path: "packages/test-fixtures/tsconfig.json"
+      required: true
+    - path: "package.json"
+      required: true
+
+output:
+  files:
+    - path: "tsconfig.base.json"
+      action: "create"
+      required: true
+    - path: "tsconfig.json"
+      action: "create"
+      required: true
+    - path: ".vscode/settings.json"
+      action: "create"
+      required: true
+    - path: ".gitignore"
+      action: "update"
+      required: true
+    - path: "apps/api/tsconfig.json"
+      action: "create"
+      required: true
+    - path: "packages/code-definitions/tsconfig.json"
+      action: "update"
+      required: true
+    - path: "packages/shared-types/tsconfig.json"
+      action: "update"
+      required: true
+    - path: "packages/test-fixtures/tsconfig.json"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/local-dev-environment/monorepo-typescript-ide.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/local-dev-environment/monorepo-typescript-ide/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "ルート tsconfig solution が4パッケージ（apps/api + packages 3件）を references する"
+  - "新規 worktree で pnpm install 後、TypeScript パッケージで IDE モジュール解決が改善する"
+  - "既存 package の pnpm run build / pnpm run test が維持される"
+  - "Task PR target が develop"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  summary: "monorepo-typescript-ide"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+  number: 716
+
+dependencies:
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "tsconfig.base.json"
+    - "tsconfig.json"
+    - ".vscode/settings.json"
+    - ".gitignore"
+    - "apps/api/tsconfig.json"
+    - "packages/code-definitions/tsconfig.json"
+    - "packages/shared-types/tsconfig.json"
+    - "packages/test-fixtures/tsconfig.json"
+  conflict_risk: "low"
+
+test_policy:
+  commands:
+    - "pnpm install"
+    - "cd packages/code-definitions && pnpm run test"
+    - "cd packages/shared-types && pnpm run test"
+    - "cd packages/test-fixtures && pnpm run test"
+  manual_checks:
+    - "apps/api middleware merge 後、worktree で express 等の IDE 解決を確認"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+    test: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "develop 上 apps/api に test script 未整備のため api テストは本 Task では未実施可"
+  - "apps/api middleware（#713）は別 PR。本 Task は IDE 基盤のみ"

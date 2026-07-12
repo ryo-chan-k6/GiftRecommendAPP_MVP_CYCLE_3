@@ -1,0 +1,142 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-local-db-verification-env-pr"
+  title: "ローカルDB検証環境構築 PRレビュー"
+  summary: "ローカル DB 検証環境構築 Task の PR を AI Review する。手順書の scope / out_of_scope、supabase/config.toml との整合、#611 D01 検証との接続、Task PR 運用（Related to）を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "chore/task-612-local-db-verification-env"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+target:
+  pr: 613
+  issue: 612
+  task_definition: "prompts/definitions/tasks/db-physical-design/local-db-verification-env.yaml"
+  source_branch: "chore/task-612-local-db-verification-env"
+  target_branch: "docs/epic-435-db-physical-design"
+  parent_epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  parent_epic_branch: "docs/epic-435-db-physical-design"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/local-db-verification-env.yaml"
+    required: true
+  issue:
+    number: 612
+    required: true
+  pr:
+    number: 613
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-435-db-physical-design"
+  docs:
+    - path: "docs/06_実装設計/database/ローカルDB検証手順書.md"
+      required: true
+      purpose: "本 Task 主成果物の scope・手順・検証 SQL"
+    - path: "supabase/README.md"
+      required: true
+      purpose: "手順書へのリンク追加"
+    - path: "supabase/config.toml"
+      required: true
+      purpose: "port 54322・PG 15 との整合"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§5.1 db/ddl 参照用・§13 pgvector 方針"
+    - path: "docs/00_共通/AIエージェント運用/worktree運用ルール.md"
+      required: false
+      purpose: "worktree 前提の記載整合"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition の scope を満たしているか"
+    - "out_of_scope（Phase3 環境構築 / Redis / apps / migrations 統合）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "Task PR target が親 Epic Branch であるか"
+    - "PR 本文に Human スモーク結果（version 確認・supabase start）が記載されているか"
+  docs:
+    - "手順書が Windows + WSL2 で実行可能な順序か（Docker Desktop → WSL ツール）"
+    - "D01 適用・検証 SQL が #611 と共通化できるか"
+    - "再検証時の DB リセット手順（supabase db reset 等）が記載されているか"
+    - "`supabase/README.md` から手順書へリンクされているか"
+  db:
+    - "手順がマイグレーション方針書 §5.1（db/ddl は参照用・psql 直接適用）と矛盾しないか"
+    - "ローカル DB 接続先が config.toml（port 54322）と一致するか"
+  security:
+    - "secret / .env 実値 / 本番接続文字列が含まれていないか"
+
+acceptance_criteria:
+  review_outputs:
+    - "AI Review 結論（Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち）"
+    - "Blocker / Must / Should / Question の整理"
+    - "Human Review 観点の明示"
+
+human_decision_points:
+  - "Human スモーク（docker / supabase / psql version・supabase start）の実施結果が PR 本文に十分か"
+
+risk_points:
+  - "Docker Desktop WSL Integration 未設定による docker コマンド失敗"
+  - "ポート 54322 競合"
+  - "手順書 merge 前に #611 段階 C を実施して検証手順の正本が PR に載らない"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/local-db-verification-env.yaml"
+  - "Issue #612 / Branch chore/task-612-local-db-verification-env"
+  - "後続: #611 段階 C は本 Task merge 後"

@@ -1,0 +1,244 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-002-config-version-align"
+  title: "MOD-RECO-002:Run Recorder config version整合"
+  summary: "Epic #357 クローズ後縦串 follow-up。production composition の config_resolver を DB の is_current version と整合させ、Run Recorder の version_exists 失敗（#1137 §10.4.4 No.4）を解消する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  epic_issue_number: 357
+  epic_branch: "develop"
+  related_issues:
+    - number: 357
+      purpose: "縦串 follow-up 親（CLOSED・履歴。Epic Reopen なし）"
+    - number: 776
+      purpose: "MOD-RECO-002 実装 Epic（CLOSED・履歴参照）"
+    - number: 1137
+      purpose: "縦串スモークで config version 不整合を確認"
+    - number: 1140
+      purpose: "pair_master Postgres reader（先行・完了推奨）"
+  related_prs:
+    - number: 1142
+      purpose: "縦串スモーク（既知ギャップ記録）"
+    - number: 1145
+      purpose: "pair_master reader merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  #1137 診断で、recommendation_request 行と scaffold pair まで進めても INT-002 は
+  HTTP 500 GRS-REC-002 / one or more config version ids do not exist となった。
+  RecommendationRunRecorder は execution_context.config_versions の semantic/model/matching/ranking id を
+  run_repository.version_exists で DB 確認する。production composition は observability のみ Postgres 置換し、
+  config_resolver は InMemory 固定 UUID（b/c1111…）のまま。master seed の model/matching/ranking は
+  gen_random_uuid() のため不一致。本 Task は version 解決整合まで。retrieval 以降の stub ports 全面置換は out of scope。
+
+objective: |
+  production composition 上で Run Recorder の config version 解決が master seed（ローカル DB）と整合し、
+  version_exists 失敗で Run 作成が止まらない状態にする。
+  stub ports 全面置換は含めない。手順書 §10.4.4 No.4 の config version 部分を更新する。
+
+scope:
+  - "config version id の解決経路調査と、DB 上の current version と一致させる最小修正"
+  - "production composition で ConfigVersionResolver が DB is_current を参照する配線（または同等の最小整合）"
+  - "version_exists がローカル master seed で true になること"
+  - "unit / 必要なら ScriptedDatabaseSession テスト"
+  - "ローカル開発手順書 §10.4.4 No.4 のうち config version 部分を更新"
+  - "Task / Review Definition 整備"
+  - "seed 変更が必要な場合は Human 承認を PR に明示（原則は seed 変更なしで DB 読取を優先）"
+
+out_of_scope:
+  - "candidate retrieval / matching / ranking 等の stub → production ports 全面置換"
+  - "Batch 意味生成・Embedding 実 API 呼び出し必須化"
+  - "OpenAPI / migration 変更"
+  - "api Router / 実 DB（#1138 / #1139）"
+  - "pair_master reader（#1140）"
+  - "推薦品質評価・大規模 fixture"
+  - "Epic #357 / #776 Reopen"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+      required: true
+    - path: "supabase/seeds/masters/09_config_versions.sql"
+      required: true
+    - path: "supabase/seeds/masters/03_semantic_config.sql"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-run-recorder/recorder.py"
+      required: true
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+    - path: "apps/reco/src/reco/application/config-version-resolver/**"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/postgres_recommendation_run_repository.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/application/config-version-resolver/**"
+      action: "create_or_update"
+      required: false
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/**"
+      action: "create_or_update"
+      required: false
+    - path: "apps/reco/tests/unit/**"
+      action: "create_or_update"
+      required: false
+    - path: "supabase/seeds/masters/09_config_versions.sql"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "Task Definition / Review Definition が作成され、Issue に path が反映されている"
+  - "ローカル master seed 上で version_exists 相当が成功する（production composition）"
+  - "INT-002 が「config version ids do not exist」で止まらない（依存 Issue 充足時。stub 応答・0 件は許容）"
+  - "stub ports 全面置換を含まない"
+  - "migration / OpenAPI 変更なし（seed 変更時は Human 承認を PR 明示）"
+  - "手順書 §10.4.4 No.4 の config version 記述が更新されている"
+  - "PR target が develop（Epic #357 クローズ後 follow-up 例外を PR 本文で説明）"
+
+branch:
+  no_branch: false
+  name: "feature/task-1141-mod-reco-002-config-version-align"
+  summary: "mod-reco-002-config-version-align"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-11"
+    due_date: "2026-07-13"
+
+issue:
+  number: 1141
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 357
+      purpose: "縦串 follow-up 親（CLOSED・履歴）"
+    - number: 776
+      purpose: "MOD-RECO-002 実装 Epic（CLOSED・履歴）"
+  issues:
+    - number: 1140
+      purpose: "pair_master reader 完了（縦串確認の先行・推奨）"
+    - number: 1139
+      purpose: "実DB永続化"
+    - number: 1138
+      purpose: "Router マウント"
+    - number: 1137
+      purpose: "縦串スモークで config version ギャップ確認"
+  prs:
+    - number: 1145
+      purpose: "pair_master reader merge"
+    - number: 1144
+      purpose: "実DB永続化 merge"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "apps/reco/src/reco/composition/**"
+    - "apps/reco/src/reco/application/config-version-resolver/**"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "reco unit test（config repository / composition wiring。実 DB 非依存）"
+  commands:
+    - "./scripts/dev/pytest-reco.sh tests/unit/application/config-version-resolver tests/unit/composition"
+  manual_checks:
+    - "依存 #1138 #1139 #1140 充足時: INT-002 が config version ids do not exist で止まらないこと"
+  not_required:
+    - "実商品ランキング品質"
+    - "stub ports 全面 production 化"
+    - "Epic C CI fixture 全面"
+  skip_reason:
+    "実商品ランキング品質": "stub ports 残存を許容"
+    "stub ports 全面 production 化": "本 Issue out of scope（別 Issue / Epic）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "修正が version 解決整合に閉じているか"
+    - "hardcode の偽 UUID を増やしていないか"
+    - "master seed との整合が再現可能か"
+    - "stub ports 全面置換を含んでいないか"
+    - "Epic #357 クローズ後 develop 直 PR 例外の説明"
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #357 クローズ後縦串 follow-up。config version 整合の横断影響を記録可"
+
+human_decision_points:
+  - "stub ports 全面 production 化を本 Issue に含めない判断の承認"
+  - "seed 変更が必要になった場合の採否"
+  - "Parent を #357 follow-up とする例外（MOD-RECO-002 専用 Epic 新規起票なし）の承認"
+  - "Epic #357 クローズ後の develop 直 PR 例外の承認"
+
+stop_conditions:
+  - "migration が必要になった"
+  - "version モデル自体の設計変更が必要になった"
+  - "pipeline production 化までやらないと完了とみなせない要求が出た場合（別 Issue 化を提案して停止）"
+
+notes:
+  - "縦串チェーン最終段（Run Recorder 手前）: 本 Issue。その先（retrieval 以降）は別 Issue / Epic 候補"
+  - "Related: #1137 / #1138 / #1139 / #1140 / #357 / #776"
+  - "workstream: mod-reco-002-recommendation-run-recorder"
+  - "Review Definition: prompts/definitions/reviews/mod-reco-002-recommendation-run-recorder/config-version-align/pr-review.yaml"
+  - "推奨実装方針: production で Postgres ConfigRepository（is_current 読取）を配線。reason_template 未 seed 時は catalog 検証のみ InMemory fallback 可"

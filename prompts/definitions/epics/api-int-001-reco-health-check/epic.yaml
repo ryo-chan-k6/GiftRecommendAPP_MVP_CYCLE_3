@@ -140,6 +140,7 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-INT-001_*"
     - "apps/reco/src/reco/api/**"
+    - "apps/reco/tests/unit/api/**"
     - "apps/api/src/lib/reco-client/**"
     - "apps/api/src/infrastructure/reco-client/**"
     - "apps/api/src/generated/reco-client/**"

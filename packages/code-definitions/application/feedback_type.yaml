@@ -1,0 +1,77 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "feedback_type"
+  physical_name: "feedback_type"
+  logical_name: "Feedback Type"
+  category: "application"
+  mvp_scope: true
+
+values:
+  - value: "item_good"
+    label: "商品候補として良い"
+    meaning: "Recommendation Result Item が候補として適切"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: item"
+  - value: "item_bad"
+    label: "商品候補として微妙"
+    meaning: "Recommendation Result Item が候補として不適切"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: item"
+  - value: "item_not_match"
+    label: "贈答文脈に合っていない"
+    meaning: "文脈・条件と Recommendation Result Item が不一致"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: item"
+  - value: "item_ng_violation"
+    label: "NG条件に反している"
+    meaning: "Hard Filter / NG 条件違反の疑い"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: item"
+  - value: "item_avoid_match"
+    label: "避けたい条件に近い"
+    meaning: "avoid / risk 条件に近い商品"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: item"
+  - value: "reason_good"
+    label: "理由に納得できた"
+    meaning: "Recommendation Reason に納得"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: reason"
+  - value: "reason_bad"
+    label: "理由に納得できない"
+    meaning: "Recommendation Reason に納得できない"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: reason"
+  - value: "result_good"
+    label: "推薦全体が良い"
+    meaning: "Recommendation Result 全体が適切"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: result"
+  - value: "result_bad"
+    label: "推薦全体が微妙"
+    meaning: "Recommendation Result 全体が不適切"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: result"
+  - value: "comment"
+    label: "自由コメント"
+    meaning: "定性コメント中心の Feedback"
+    terminal: true
+    enabled: true
+    note: "required feedback_target_type: result / item / reason"
+
+db_usages:
+  - table: "recommendation_feedback"
+    column: "feedback_type"
+    constraint: "NOT NULL"
+    note: "冪等キー要素。API feedbackType と同一。MVP CHECK は本 YAML の enabled 値"

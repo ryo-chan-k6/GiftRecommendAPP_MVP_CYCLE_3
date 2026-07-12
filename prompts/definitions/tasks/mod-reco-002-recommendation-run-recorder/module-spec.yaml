@@ -1,0 +1,255 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-002-recommendation-run-recorder-module-spec"
+  title: "MOD-RECO-002:Recommendation Run Recorderモジュール仕様書作成"
+  summary: "MOD-RECO-002（Recommendation Run Recorder / Recommendation Run記録）のモジュール仕様書（docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md）を、Recoモジュール一覧および関連ドメイン定義書に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-002:Recommendation Run Recorder"
+  epic_issue_number: 776
+  epic_branch: "feature/epic-776-mod-reco-002-recommendation-run-recorder"
+  related_issues:
+    - number: 260
+      purpose: "MOD-RECO-001 Orchestrator（呼び出し元・ポート契約）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、MOD-RECO-002（Recommendation Run Recorder）の Recoモジュール仕様書を作成する。
+  本 Task は当該モジュール本体に責務を限定し、API-INT-002 エンドポイント層や他 Recoモジュール本体の仕様は別 Epic / Task とする。
+  MOD-RECO-001 Orchestrator 仕様書のポート契約（`ExecutionContext` 入出力）と整合させる。
+
+objective: |
+  MOD-RECO-002 について、apps/reco 実装・単体テスト・レビューが可能な粒度のモジュール仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/module-spec.md に準拠する。
+  確定方針に合わせ、関連正本 docs（Orchestrator 仕様書・Recoモジュール一覧・状態遷移設計書・機能×モジュール対応表）の横断整合も本 Task で行う。
+
+scope:
+  - "MOD-RECO-002 のモジュール仕様書を新規作成する"
+  - "モジュール基本情報・主責務・対象外責務・入出力・処理フロー・例外・ログ・テスト観点を整理する"
+  - "Orchestrator（MOD-RECO-001）との呼び出し関係・失敗時の扱いを整理する"
+  - "MOD-RECO-002 確定方針（003→002 INSERT・reco が accepted INSERT）に合わせ関連正本 docs を整合更新する"
+
+exception_scope:
+  reason: "Issue #777 Human 判断により、正本整合に必要な最小限の apps/reco 変更を本 Task に含める（Epic #776 forbidden_paths の例外）"
+  paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/**"
+    - "apps/reco/src/reco/domain/recommendation/run.py"
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/tests/unit/domain/test_domain_scaffold.py"
+  allowed_changes:
+    - "Orchestrator 物理呼び出し順（003→002）と ORCHESTRATOR_MODULE_ORDER の整合"
+    - "RunStatus を DB enum（accepted/running/succeeded/failed/canceled）へ整合"
+    - "上記に伴う stub / 単体テストの最小更新"
+
+out_of_scope:
+  - "他 Recoモジュール本体のモジュール仕様書の新規作成（MOD-RECO-001 は呼び出し順整合のための限定的更新のみ）"
+  - "MOD-RECO-002 本体実装（recommendation-run-recorder/**）"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/06_実装設計/database/recommendation_run_テーブル定義書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: false
+      purpose: "モジュール設計・実装の前提確認"
+  templates:
+    - path: "prompts/templates/docs/module-spec.md"
+      required: true
+      purpose: "モジュール仕様書標準フォーマット"
+      applies_to:
+        - "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/module-spec.md"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "003→002 INSERT 物理呼び出し順の整合"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      action: "update"
+      required: true
+      purpose: "§5.2 物理呼び出し順脚注・入力列整合"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      action: "update"
+      required: true
+      purpose: "accepted 更新主体（reco INSERT）の明確化"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      action: "update"
+      required: true
+      purpose: "§7.1 物理呼び出し順・002 入力整合"
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/**"
+      action: "update"
+      required: true
+      purpose: "exception_scope: 003→002 物理呼び出し順"
+    - path: "apps/reco/src/reco/domain/recommendation/run.py"
+      action: "update"
+      required: true
+      purpose: "exception_scope: RunStatus DB enum 整合"
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/domain/test_domain_scaffold.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-002 モジュール仕様書"
+  - "Orchestrator との I/F 整理"
+  - "関連正本 docs の横断整合"
+  - "exception_scope: Orchestrator 呼び出し順・RunStatus の最小実装整合"
+  - "テスト観点・未決事項"
+
+acceptance_criteria:
+  - "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md が作成されている"
+  - "prompts/templates/docs/module-spec.md の章構成に準拠している"
+  - "Recoモジュール一覧の MOD-RECO-002 と矛盾しない（物理呼び出し順脚注含む）"
+  - "MOD-RECO-001 モジュール仕様書・状態遷移設計書・機能×モジュール対応表が 003→002 INSERT / reco accepted 方針と整合している"
+  - "exception_scope: Orchestrator が 003→002 順で呼び出し、ORCHESTRATOR_MODULE_ORDER と一致する"
+  - "exception_scope: RunStatus が DB enum（accepted/running/succeeded/failed/canceled）と一致する"
+  - "`cd apps/reco && python -m pytest tests/unit/application/test_recommendation_orchestrator.py tests/unit/domain/test_domain_scaffold.py -q` が成功する"
+  - "API-INT-002 エンドポイント層を責務範囲に含めていない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-777-mod-reco-002-recommendation-run-recorder-module-spec"
+  base: "feature/epic-776-mod-reco-002-recommendation-run-recorder"
+  target: "feature/epic-776-mod-reco-002-recommendation-run-recorder"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 260
+      purpose: "Orchestrator ポート契約の正本"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-002_Recommendation Run Recorderモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+    - "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+    - "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/**"
+    - "apps/reco/src/reco/domain/recommendation/run.py"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+    - "exception_scope unit test"
+  commands:
+    - "cd apps/reco && python -m pytest tests/unit/application/test_recommendation_orchestrator.py tests/unit/domain/test_domain_scaffold.py -q --tb=short"
+  not_required:
+    - "unit test（MOD-RECO-002 本体）"
+  skip_reason:
+    "unit test（MOD-RECO-002 本体）": "MOD-RECO-002 実装 Task まで対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Recoモジュール一覧との整合"
+    - "Orchestrator との I/F 明確性"
+    - "関連正本 docs 横断整合（003→002 INSERT・reco accepted）"
+    - "epic_scope 内に収まっているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+notes:
+  - "Definition bootstrap 由来スキャフォールド。Epic Issue 番号確定後に parent を更新する。"
+  - "workstream: mod-reco-002-recommendation-run-recorder"
+  - "Issue #777 exception_scope: Epic #776 forbidden_paths（recommendation-orchestrator/**）の例外として呼び出し順・RunStatus の最小整合を含む"

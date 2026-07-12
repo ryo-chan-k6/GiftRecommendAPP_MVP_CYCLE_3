@@ -1,5 +1,6 @@
 "use strict";
 
+const { execSync } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -72,6 +73,10 @@ function resolveBotToken({ config, tokenOverride } = {}) {
   return loadTokenFromEnvFile(cfg.envFile, cfg.tokenEnvVar);
 }
 
+function resolveEffectiveGhToken() {
+  return nonEmpty(process.env.GH_TOKEN) || nonEmpty(process.env.GITHUB_TOKEN);
+}
+
 function authHeaders(token) {
   return {
     Authorization: `Bearer ${token}`,
@@ -97,6 +102,18 @@ async function fetchGitHubLogin({ token, fetchImpl }) {
     login: nonEmpty(data.login),
     id: data.id,
   };
+}
+
+function fetchGhCliLogin({ ghExecImpl } = {}) {
+  if (typeof ghExecImpl === "function") {
+    return nonEmpty(ghExecImpl());
+  }
+  return nonEmpty(
+    execSync("gh api user --jq .login", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }),
+  );
 }
 
 async function verifyBotAuth({
@@ -161,6 +178,165 @@ function formatShellSetup(result) {
   ].join("\n");
 }
 
+function formatHumanShellSetup(config) {
+  const cfg = config || loadBotAccountConfig();
+  const human = cfg.humanReviewerLogin || "human-reviewer";
+  return [
+    `# Human account auth (${human}) — temporary mode`,
+    "unset GH_TOKEN",
+    "unset GITHUB_TOKEN",
+    `# verify: gh api user --jq .login  # => ${human}`,
+  ].join("\n");
+}
+
+async function verifyHumanAuth({ config, ghExecImpl } = {}) {
+  const cfg = config || loadBotAccountConfig();
+  if (!cfg.humanReviewerLogin) {
+    return {
+      ok: false,
+      reason: "human_reviewer_missing",
+      message: "human_reviewer_login is not configured in ai-bot-account.json",
+      config: cfg,
+    };
+  }
+
+  if (resolveEffectiveGhToken()) {
+    return {
+      ok: false,
+      reason: "bot_env_active",
+      message:
+        "GH_TOKEN / GITHUB_TOKEN is set. Run eval \"$(bash .github/scripts/gh-auth-mode.sh human)\" first.",
+      config: cfg,
+    };
+  }
+
+  let login;
+  try {
+    login = fetchGhCliLogin({ ghExecImpl });
+  } catch (error) {
+    return {
+      ok: false,
+      reason: "gh_cli_error",
+      message: error.message || String(error),
+      config: cfg,
+    };
+  }
+
+  if (!login) {
+    return {
+      ok: false,
+      reason: "gh_login_missing",
+      message: "Could not resolve login from gh CLI. Run gh auth login as the human reviewer.",
+      config: cfg,
+    };
+  }
+
+  if (login !== cfg.humanReviewerLogin) {
+    return {
+      ok: false,
+      reason: "wrong_login",
+      message: `Expected human reviewer ${cfg.humanReviewerLogin} but gh authenticated as ${login}.`,
+      login,
+      config: cfg,
+    };
+  }
+
+  return {
+    ok: true,
+    login,
+    config: cfg,
+  };
+}
+
+async function resolveAuthMode({ config, fetchImpl, ghExecImpl } = {}) {
+  const cfg = config || loadBotAccountConfig();
+  const effectiveToken = resolveEffectiveGhToken();
+
+  if (effectiveToken) {
+    let loginInfo;
+    try {
+      loginInfo = await fetchGitHubLogin({ token: effectiveToken, fetchImpl });
+    } catch (error) {
+      return {
+        mode: "unknown",
+        login: "",
+        source: "env_token",
+        message: error.message,
+        config: cfg,
+      };
+    }
+
+    if (loginInfo.login === cfg.machineAccountLogin) {
+      return {
+        mode: "bot",
+        login: loginInfo.login,
+        source: "env_token",
+        config: cfg,
+      };
+    }
+
+    return {
+      mode: "unknown",
+      login: loginInfo.login,
+      source: "env_token",
+      message: `GH_TOKEN is set but login is neither ${cfg.machineAccountLogin} nor ${cfg.humanReviewerLogin}.`,
+      config: cfg,
+    };
+  }
+
+  let login;
+  try {
+    login = fetchGhCliLogin({ ghExecImpl });
+  } catch (error) {
+    return {
+      mode: "unknown",
+      login: "",
+      source: "gh_cli",
+      message: error.message || String(error),
+      config: cfg,
+    };
+  }
+
+  if (login === cfg.humanReviewerLogin) {
+    return {
+      mode: "human",
+      login,
+      source: "gh_cli",
+      config: cfg,
+    };
+  }
+
+  if (login === cfg.machineAccountLogin) {
+    return {
+      mode: "unknown",
+      login,
+      source: "gh_cli",
+      message: "Machine account detected via gh CLI without GH_TOKEN. Use print-setup for bot mode.",
+      config: cfg,
+    };
+  }
+
+  return {
+    mode: "unknown",
+    login,
+    source: "gh_cli",
+    message: `Unexpected gh login: ${login}`,
+    config: cfg,
+  };
+}
+
+function formatStatusLine(result) {
+  const cfg = result.config;
+  if (result.mode === "bot") {
+    return `mode=bot login=${result.login} source=${result.source} (expected: ${cfg.machineAccountLogin})`;
+  }
+  if (result.mode === "human") {
+    return `mode=human login=${result.login} source=${result.source} (expected: ${cfg.humanReviewerLogin})`;
+  }
+  const detail = result.message ? ` message=${result.message}` : "";
+  return `mode=unknown login=${result.login || "n/a"} source=${result.source}${detail}`;
+}
+
 async function main(argv) {
   const args = argv.slice(2);
   const command = args[0] || "verify";
@@ -178,6 +354,16 @@ async function main(argv) {
     return;
   }
 
+  if (command === "verify-human") {
+    const result = await verifyHumanAuth();
+    if (!result.ok) {
+      console.error(result.message);
+      process.exit(1);
+    }
+    console.log(`OK: human mode ready as ${result.login}`);
+    return;
+  }
+
   if (command === "print-setup") {
     const result = await verifyBotAuth();
     if (!result.ok) {
@@ -185,6 +371,12 @@ async function main(argv) {
       process.exit(1);
     }
     console.log(formatShellSetup(result));
+    return;
+  }
+
+  if (command === "print-human-setup") {
+    const cfg = loadBotAccountConfig();
+    console.log(formatHumanShellSetup(cfg));
     return;
   }
 
@@ -198,7 +390,20 @@ async function main(argv) {
     return;
   }
 
-  console.error(`Unknown command: ${command}. Use verify | print-setup | print-git-user`);
+  if (command === "status") {
+    const result = await resolveAuthMode();
+    console.log(formatStatusLine(result));
+    if (result.mode === "unknown") {
+      process.exit(1);
+    }
+    return;
+  }
+
+  console.error(
+    "Unknown command: " +
+      command +
+      ". Use verify | verify-human | print-setup | print-human-setup | print-git-user | status",
+  );
   process.exit(1);
 }
 
@@ -213,7 +418,13 @@ module.exports = {
   DEFAULT_CONFIG_PATH,
   loadBotAccountConfig,
   resolveBotToken,
+  resolveEffectiveGhToken,
   verifyBotAuth,
+  verifyHumanAuth,
+  resolveAuthMode,
   formatShellSetup,
+  formatHumanShellSetup,
+  formatStatusLine,
+  fetchGhCliLogin,
   expandHome,
 };

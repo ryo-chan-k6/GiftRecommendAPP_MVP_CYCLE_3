@@ -1,0 +1,22 @@
+name: CI Env Check
+
+# 環境変数名の整合（環境設計書 §19.8 / CI・CD方針書 §5.3.10）。
+# AI 運用 workflow（issue-metadata / pr-created 等）とは独立した PR 品質ゲート。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  env-names:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Verify .env.example active variable names
+        run: |
+          cp .env.example .env
+          bash scripts/dev/check-env-names.sh --strict

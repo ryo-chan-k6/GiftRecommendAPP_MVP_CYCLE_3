@@ -1,0 +1,192 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-ddl-d01"
+  title: "d01:拡張/enum型DDL作成"
+  summary: "Phase2 子 Task ④ DDL の先頭バッチ D01。pgvector 拡張と enum定義書 §5 の論理 ID 26 件を `db/ddl/d01_extensions_and_enums.sql` に定義し、D02 以降のテーブル DDL の前提を整える。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 440
+      purpose: "先行 Task ② enum/コード定義（merge 済み前提）"
+    - number: 587
+      purpose: "コード定義書（packages/code-definitions 正本。merge 済み前提）"
+    - number: 589
+      purpose: "マイグレーション方針書（merge 済み前提）"
+    - number: 599
+      purpose: "後続 D02（本 Task 完了後に着手）"
+  related_prs:
+    - number: 441
+      purpose: "Task ② enum PR（merge 済み前提）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase2 子 Task ④ DDL の **先頭バッチ（D01）**。全テーブル DDL（D02〜）より先に `pgvector` 拡張と enum 型を定義する。
+  `enum定義書.md` §4.1 に従い、PostgreSQL 型名には **論理 ID**（例: `recommendation_run_status`）を使用する。
+  同一物理列名 `run_status` / `phase_name` は論理 ID で分離する（`recommendation_run_status` vs `batch_run_status`、`recommendation_run_phase_name` vs `batch_run_phase_name`）。
+  親 Epic Branch 最新（enum定義書 #440 / コード定義書 #587 / マイグレーション方針書 #589 merge 済み、テーブル定義書 62 件完了）を前提とする。
+  Issue #611 / Branch `chore/task-611-d01-extensions-and-enums-ddl` で作業する。
+
+objective: |
+  `db/ddl/d01_extensions_and_enums.sql` を作成し、以下を `enum定義書.md`・物理 ER §12・マイグレーション方針書 §8.1 / §13 と整合させる。
+  1. `CREATE EXTENSION IF NOT EXISTS vector;`
+  2. `enum定義書.md` §5 の論理 ID **26 件**の `CREATE TYPE`（値は §6 準拠、`enabled: yes` の値のみ）
+
+scope:
+  - "`db/ddl/d01_extensions_and_enums.sql` の新規作成"
+  - "`CREATE EXTENSION IF NOT EXISTS vector;`"
+  - "以下 26 型の `CREATE TYPE`（値は `enum定義書.md` §6 準拠）"
+  - "  - `recommendation_run_status`, `recommendation_result_status`, `recommendation_feedback_status`"
+  - "  - `phase_status`, `batch_run_status`, `api_call_status`, `raw_import_status`"
+  - "  - `fetch_cursor_status`, `fetch_cursor_type`, `source_api`, `product_diff_status`"
+  - "  - `item_active_status`, `item_generation_queue_status`, `evaluation_run_status`"
+  - "  - `request_mode`, `feedback_target_type`, `feedback_type`, `owner_type`"
+  - "  - `feature_code`, `item_generation_type`"
+  - "  - `recommendation_run_phase_name`, `batch_run_phase_name`, `batch_type`"
+  - "  - `input_type`, `application_method`, `polarity`"
+  - "同一物理列名 `run_status` / `phase_name` の論理 ID 分離（enum定義書 §4.1）"
+  - "マイグレーション方針書 §8.1 のファイル命名・バッチ順序への準拠"
+  - "Task / Review Definition の整備（本 Task で未作成の場合）"
+
+out_of_scope:
+  - "テーブル `CREATE TABLE`（D02 以降）"
+  - "`phase_log.phase_name` の owner 別 CHECK（各テーブル DDL Task）"
+  - "`evaluation_run_phase_name` の定義（Evaluation 系で別途検討）"
+  - "`supabase/migrations/` への統合（Task ⑤）"
+  - "`packages/code-definitions/**` の変更"
+  - "`apps/**` 実装変更"
+  - "docs の変更（DDLバッチ分割表・enum定義書は参照のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D01 バッチ scope・enum 型一覧・適用順序の正本"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "§8.1 DDL ファイル命名・§13 pgvector 拡張方針"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "§4.1 論理 ID 分離・§5 enum 一覧・§6 値定義の正本"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "§12 状態・enum連携との整合確認"
+  templates: []
+
+output:
+  docs: []
+  files:
+    - path: "db/ddl/d01_extensions_and_enums.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/db-physical-design/ddl-d01.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/ddl-d01/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "DDL ファイルが `db/ddl/d01_extensions_and_enums.sql` に存在する"
+  - "`vector` 拡張と enum 型 26 件が `enum定義書.md` §5・§6 と一致する"
+  - "`recommendation_run_status` と `batch_run_status` が別型として定義されている"
+  - "`recommendation_run_phase_name` と `batch_run_phase_name` が別型として定義されている"
+  - "D02 以降のテーブル DDL が本ファイル適用後に実行可能な前提が満たされている"
+  - "`packages/code-definitions/**` および `apps/**` に変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "d01-extensions-and-enums-ddl"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 611
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 435
+      purpose: "親 Epic"
+    - number: 440
+      purpose: "enum定義書・コード定義書完了"
+    - number: 589
+      purpose: "マイグレーション方針書完了"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "db/ddl/d01_extensions_and_enums.sql"
+    - "prompts/definitions/tasks/db-physical-design/ddl-d01.yaml"
+    - "prompts/definitions/reviews/db-physical-design/ddl-d01/pr-review.yaml"
+  conflict_risk: "low"
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "`enum定義書.md` §5 の 26 論理 ID がすべて `CREATE TYPE` されていること"
+    - "各 enum の値が `enum定義書.md` §6 の `enabled: yes` 行と一致すること（順序含む）"
+    - "`recommendation_run_status` と `batch_run_status` の値集合が混同されていないこと"
+    - "`CREATE EXTENSION IF NOT EXISTS vector;` がファイル先頭付近にあること"
+    - "SQL 構文が PostgreSQL / Supabase で妥当であること（可能なら `psql` または CI 相当の構文チェック）"
+    - "`apps/**`・`packages/code-definitions/**` に意図しない変更がないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "supabase migration apply"
+  skip_reason:
+    "unit test": "DDL 参照用 SQL のためアプリ unit test 対象外"
+    "integration test": "migration 適用は Task ⑤（supabase 統合）で実施"
+    "supabase migration apply": "本 Task は `db/ddl/` 参照用 DDL のみ。適用正本は Task ⑤"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+
+contract_gate:
+  required: false
+
+notes:
+  - "Batch D01 / change_id: `d01_extensions_and_enums`"
+  - "Issue #611 / Branch `chore/task-611-d01-extensions-and-enums-ddl`"
+  - "後続: D02（#599）以降は本 Task 完了後に着手"
+  - "`evaluation_run_phase_name` は out_of_scope（enum定義書 §6.19 注記）"
+  - "Human Review 論点: enum 値の順序・欠落、`owner_type` 全値の DDL 化（phase_log CHECK 制限はテーブル DDL で実施）"

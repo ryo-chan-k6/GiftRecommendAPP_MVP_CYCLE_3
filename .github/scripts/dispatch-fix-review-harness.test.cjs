@@ -90,6 +90,79 @@ test("dispatchFixReviewHarness: Task Definition 解決成功時に fix-review-co
   assert.match(result.recovery_command, /dispatch-fix-review-harness\.cjs/);
 });
 
+test("dispatchFixReviewHarness: Epic PR（unit: epic ラベル）で skip", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "fix-dispatch-"));
+  const epicPath = "prompts/definitions/epics/phase1-wave2-api-contract-foundation/epic.yaml";
+  write(path.join(root, epicPath), 'definition_type: "epic"\n');
+
+  const result = await fixer.dispatchFixReviewHarness({
+    owner: "o",
+    repo: "r",
+    prNumber: 433,
+    issueNumber: 432,
+    context: "request-changes",
+    workspaceRoot: root,
+    token: "token",
+    fetchImpl: async (url) => {
+      if (url.includes("/pulls/433/files")) {
+        return jsonResponse([{ filename: "docs/foo.md" }]);
+      }
+      if (url.includes("/pulls/433")) {
+        return jsonResponse({
+          body: "Related to #432",
+          head: { ref: "feature/epic-432-phase1-wave2-api-contract-foundation", repo: { full_name: "o/r" } },
+          labels: [{ name: "unit: epic" }],
+        });
+      }
+      if (url.includes("/issues/432")) {
+        return jsonResponse({ body: "", labels: [{ name: "unit: epic" }] });
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "epic_pr");
+});
+
+test("dispatchFixReviewHarness: Epic PR（epic branch のみ）で skip", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "fix-dispatch-"));
+
+  const result = await fixer.dispatchFixReviewHarness({
+    owner: "o",
+    repo: "r",
+    prNumber: 433,
+    issueNumber: 432,
+    context: "request-changes",
+    workspaceRoot: root,
+    token: "token",
+    fetchImpl: async (url) => {
+      if (url.includes("/pulls/433/files")) {
+        return jsonResponse([{ filename: "docs/foo.md" }]);
+      }
+      if (url.includes("/pulls/433")) {
+        return jsonResponse({
+          body: "Related to #432",
+          head: { ref: "feature/epic-432-phase1-wave2-api-contract-foundation", repo: { full_name: "o/r" } },
+          labels: [],
+        });
+      }
+      if (url.includes("/issues/432")) {
+        return jsonResponse({ body: "", labels: [{ name: "type: feature" }] });
+      }
+      if (url.includes("/issues/433")) {
+        return jsonResponse({ body: "", labels: [] });
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, "epic_pr");
+});
+
 test("dispatchFixReviewHarness: infra ラベルで skip（request-changes context）", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "fix-dispatch-"));
   const taskPath = "prompts/definitions/tasks/fixer-auto-dispatch/fixer-dispatch-script.yaml";
@@ -191,4 +264,74 @@ test("buildClientPayload: fix-review-comments live-run payload", () => {
   assert.equal(payload.command, "fix-review-comments");
   assert.equal(payload.run_mode, "live-run");
   assert.equal(payload.target_pr, "324");
+});
+
+test("dispatchFixReviewHarness: Contract Task PR から fix-review-comments を dispatch", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "fix-dispatch-contract-"));
+  const contractPath =
+    "prompts/definitions/contracts/api-pub-003-item-detail/openapi-fragment.yaml";
+  const reviewPath = "prompts/definitions/reviews/pub-003-item-detail-openapi/pr-review.yaml";
+  write(path.join(root, contractPath), 'definition_type: "contract"\n');
+  write(
+    path.join(root, reviewPath),
+    [
+      'definition_type: "review"',
+      "target:",
+      `  task_definition: "${contractPath}"`,
+      "  issue:",
+      "    number: 416",
+    ].join("\n"),
+  );
+
+  let dispatchBody = null;
+  const result = await fixer.dispatchFixReviewHarness({
+    owner: "o",
+    repo: "r",
+    prNumber: 417,
+    issueNumber: 416,
+    context: "request-changes",
+    workspaceRoot: root,
+    token: "token",
+    fetchImpl: async (url, init) => {
+      if (url.includes("/pulls/417/files")) {
+        return jsonResponse([
+          { filename: "packages/contracts/openapi/public-api.yaml" },
+          { filename: contractPath },
+          { filename: reviewPath },
+        ]);
+      }
+      if (url.includes("/pulls/417") && !url.includes("/files")) {
+        return jsonResponse({
+          body: [
+            "| Definition | `prompts/definitions/contracts/api-pub-003-item-detail/openapi-fragment.yaml` |",
+            "Related to #416",
+          ].join("\n"),
+          head: { ref: "feature/task-416-pub-003-item-detail-openapi", repo: { full_name: "o/r" } },
+          labels: [],
+        });
+      }
+      if (url.includes("/issues/416")) {
+        return jsonResponse({
+          body: `Contract Definition\n\`${contractPath}\``,
+          labels: [{ name: "type: feature" }],
+        });
+      }
+      if (url.includes("/issues/417")) {
+        return jsonResponse({
+          body: "Related to #416",
+          labels: [{ name: "type: feature" }],
+        });
+      }
+      if (url.endsWith("/dispatches") && init?.method === "POST") {
+        dispatchBody = JSON.parse(init.body);
+        return { ok: true, status: 204, text: async () => "" };
+      }
+      throw new Error(`unexpected url: ${url}`);
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.task_definition, contractPath);
+  assert.equal(dispatchBody.client_payload.command, "fix-review-comments");
+  assert.equal(dispatchBody.client_payload.definition, contractPath);
 });

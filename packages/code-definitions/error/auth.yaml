@@ -1,0 +1,48 @@
+schema_version: "1.0"
+definition_type: "error_catalog"
+
+error_catalog:
+  domain: "AUTH"
+  domain_label: "Auth / Authorization"
+  mvp_scope: true
+  codes:
+    - code: "GRS-AUTH-001"
+      internal_name: "Internal Authentication Failed"
+      http_status: 401
+      retryable: false
+      severity: warn
+      user_message_key: "error.auth.001"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-AUTH-002"
+      internal_name: "Forbidden Operation"
+      http_status: 403
+      retryable: false
+      severity: warn
+      user_message_key: "error.auth.002"
+      owner_types: ["api_call", "batch_run"]
+      mvp_scope: true
+    - code: "GRS-AUTH-003"
+      internal_name: "Public Access Denied"
+      http_status: 403
+      retryable: false
+      severity: warn
+      user_message_key: "error.auth.003"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-AUTH-004"
+      internal_name: "Missing Internal Credential"
+      http_status: 401
+      retryable: false
+      severity: warn
+      user_message_key: "error.auth.004"
+      owner_types: ["api_call"]
+      mvp_scope: true
+    - code: "GRS-AUTH-005"
+      internal_name: "Batch Operation Denied"
+      http_status: 403
+      retryable: false
+      severity: warn
+      user_message_key: "error.auth.005"
+      owner_types: ["batch_run"]
+      mvp_scope: true

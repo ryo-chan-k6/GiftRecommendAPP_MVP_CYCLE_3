@@ -1,0 +1,341 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-001-api-health-check-api-implementation-spec"
+  title: "API-PUB-001:APIヘルスチェックAPI実装仕様書作成"
+  summary: "API-PUB-001（APIヘルスチェック / Public API、`GET /api/v1/health`）のAPI実装仕様書（API-PUB-001_APIヘルスチェックAPI実装仕様書.md）を、確定済み契約仕様書（#395）・OpenAPI断片（#412）・ログ・Observability設計書に基づき、prompts/templates/docs/api-implementation-spec.md に準拠して作成する（実装面のみ。契約面再掲・OpenAPIファイル変更・apps/api実装は対象外）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-001:APIヘルスチェック"
+  epic_issue_number: 384
+  epic_branch: "feature/epic-384-pub-001-api-health-check"
+  related_issues:
+    - number: 1155
+      purpose: "本 Task Issue"
+    - number: 384
+      purpose: "親 Epic"
+    - number: 395
+      purpose: "前提 Task（API契約仕様書・Epic Branch / develop 反映済み）"
+    - number: 412
+      purpose: "前提 Task（OpenAPI 断片・develop 反映済み）"
+  related_prs:
+    - number: 398
+      purpose: "契約仕様書 Task PR（Epic Branch merge 済み）"
+    - number: 413
+      purpose: "OpenAPI 断片 Task PR（develop merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 縦串の 1/3（実装面仕様書）。契約面は `API-PUB-001_APIヘルスチェックAPI契約仕様書.md`（#395 / PR #398）を正とする。
+  OpenAPI 断片（#412 / PR #413）は develop 反映済み。本 Task は契約・OpenAPI を変更せず、apps/api の health エンドポイント実装 Task が参照可能な **実装面のみ** を整理する。
+  本 API は推薦パイプラインを実行しない軽量ヘルスチェックである。依存（DB / reco）の個別結果は契約上表面化せず、集約 `status`（`ok` / `degraded` / `unavailable`）のみを返す。
+  ローカル最小 health（#1135 / PR #1136）は疎通用の先行実装であり、本実装仕様書を正として後続実装 Task で契約準拠へ揃える。
+  Provider は apps/api（`apps/api/src/app/health/**`）、Consumer は apps/web / 運用確認（監視・疎通確認）とする。
+  develop merge は INT-001 Epic PR の後（並列計画 Human 判断）。
+
+objective: |
+  API-PUB-001（APIヘルスチェック / Public API）について、apps/api health 実装 Task / 単体テスト Task が参照可能な粒度の **API実装仕様書（実装面のみ）** を新規作成する。
+  成果物は prompts/templates/docs/api-implementation-spec.md に準拠し、契約面（`api-contract-spec.md`）の章は再掲しない。
+  Express ルーター、Request meta（trace / requestId）、Response 組立、集約 status 判定（依存チェックの内部方針）、エラーマップ、ログ・メトリクス書き込み境界を明記する。
+  OpenAPI 正本パスおよび generated client 利用方針は実装影響として記載するが、本 Task では当該ファイルを変更しない。
+
+scope:
+  - "API-PUB-001（APIヘルスチェック / Public API）のAPI実装仕様書を新規作成する（成果物ファイル名: API-PUB-001_APIヘルスチェックAPI実装仕様書.md）"
+  - "前提契約（契約仕様書パス / OpenAPI / Contract Gate 状態）を整理する"
+  - "実装方針（Express Router / request-meta / 集約 status 判定 / DI）を整理する"
+  - "処理フロー（Mermaid）と処理詳細を整理する（Request 受付 → meta 解決 → 稼働判定 → Response 組立）"
+  - "Request Header / Response Body の内部DTOマッピングを整理する（GET・Body なし）"
+  - "generated client 利用方針（apps/web 側・任意疎通）を整理する（記載のみ）"
+  - "provider（apps/api health）/ consumer（apps/web・運用確認）の実装影響を整理する"
+  - "エラーマップ（unavailable / 内部例外 → HTTP / GRS コード）と trace 伝播を整理する"
+  - "ログ・メトリクス（api_request_count / api_error_count）書き込み境界（実装面）を整理する"
+  - "依存チェック（DB / reco）を契約上表面化しない前提での内部判定方針を整理する"
+  - "実装結合テスト観点を整理する"
+  - "非機能（タイムアウト・軽量性・副作用なし・認証不要）の実装面を整理する"
+  - "未決事項・人間判断が必要な事項を明記する"
+
+out_of_scope:
+  - "API-INT-001（Recoヘルスチェック / Internal API）の仕様・実装仕様書作成・変更"
+  - "API-PUB-002（レコメンド実行）の仕様・実装仕様書変更"
+  - "prompts/templates/docs/api-contract-spec.md に準拠する契約面章（Request/Response/Error の契約再掲・OpenAPI schema 詳細）"
+  - "API-PUB-001_APIヘルスチェックAPI契約仕様書.md の変更（契約確定済みを前提）"
+  - "OpenAPI定義ファイル（packages/contracts/openapi/public-api.yaml）の作成・更新"
+  - "Orval設定ファイル（orval.config.ts）の作成・更新"
+  - "generated API client（apps/web/src/generated/api/ 等）の再生成"
+  - "apps/api の実装（health Router を含む）"
+  - "apps/web の実装"
+  - "apps/reco の実装"
+  - "DB schema変更"
+  - "認証・認可方式そのものの変更"
+  - "画面仕様書の作成"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI契約仕様書.md"
+      required: true
+      purpose: "確定済み契約面の正本（本書の前提契約）"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "Public API 実装方針・data/meta 構造の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-001 の endpoint / metric / 関連確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+      purpose: "エラーマップ・HTTP Status 対応の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+      purpose: "trace_id / access_log / api_request_count / api_error_count の実装面確認"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: false
+      purpose: "MVP 非認証（Public health）の実装面確認"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "apps/api モジュール境界の確認（health 専用 MOD の有無）"
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI実装仕様書.md"
+      required: false
+      purpose: "同一 Health 系の実装仕様書スタイル参考（存在する場合）"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: false
+      purpose: "Phase4b 縦串（実装仕様書→実装→単体テスト）の位置づけ確認"
+  templates:
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      required: true
+      purpose: "API実装仕様書（実装面）を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: false
+      purpose: "OpenAPI 正本パス・health operation 参照（本Taskでは変更しない）"
+    - path: "apps/api/src/app/health/routes.ts"
+      required: false
+      purpose: "ローカル最小 health（#1135）の先行実装参照。仕様書正本化のギャップ確認用（Epic Branch 未取込の場合は develop 参照）"
+  issues:
+    - number: 395
+      purpose: "前提契約仕様書 Task"
+    - number: 412
+      purpose: "前提 OpenAPI 断片 Task"
+    - number: 1135
+      purpose: "ローカル最小 health 先行実装（ギャップ参照）"
+  prs:
+    - number: 398
+      purpose: "契約仕様書 PR"
+    - number: 413
+      purpose: "OpenAPI 断片 PR"
+    - number: 1136
+      purpose: "ローカル最小 health PR"
+  openapi:
+    path: "packages/contracts/openapi/public-api.yaml"
+    required: false
+    purpose: "generated client 利用方針記載の参照（本Taskではファイル変更しない）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-implementation-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-PUB-001（APIヘルスチェック）API実装仕様書（ファイル名: API-PUB-001_APIヘルスチェックAPI実装仕様書.md）"
+  - "処理フロー（Mermaid）と処理詳細"
+  - "Request Header / Response 内部DTOマッピング"
+  - "集約 status 判定・依存チェック内部方針（契約上は表面化しない）"
+  - "エラーマップ・trace 伝播"
+  - "provider / consumer 実装影響整理"
+  - "実装結合テスト観点"
+  - "未決事項・人間判断事項の整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md が作成されている"
+  - "prompts/templates/docs/api-implementation-spec.md の実装面章に準拠している（api-contract-spec.md の契約面再掲を含んでいない）"
+  - "前提契約として API-PUB-001_APIヘルスチェックAPI契約仕様書.md を参照している"
+  - "Express Router / request-meta / 集約 status 判定の実装方針が記載されている"
+  - "依存（DB / reco）の個別結果を契約 Response に載せない方針が明記されている"
+  - "エラーマップと trace_id 伝播がエラーコード定義書・ログ設計書と整合している"
+  - "api_request_count / api_error_count のメトリクス書き込み境界が記載されている"
+  - "Provider が apps/api、Consumer が apps/web / 運用確認であることが明記されている"
+  - "OpenAPI / Orval / generated のファイル変更を本Taskに含めていない"
+  - "apps/api / apps/web / apps/reco のソースコード変更を本Taskに含めていない"
+  - "未決事項がある場合、未決事項として明記されている"
+  - "secret、APIキー、.env 実値、接続文字列の実値を含んでいない"
+  - "Human Review で確認してほしい事項が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-1155-api-pub-001-api-health-check-api-implementation-spec"
+  summary: "api-pub-001-api-health-check-api-implementation-spec"
+  base: "feature/epic-384-pub-001-api-health-check"
+  target: "feature/epic-384-pub-001-api-health-check"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1155
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 395
+      purpose: "API-PUB-001 契約仕様書 Task 完了"
+    - number: 412
+      purpose: "API-PUB-001 OpenAPI 断片 Task 完了"
+  prs:
+    - number: 398
+      purpose: "契約仕様書 Epic Branch merge"
+    - number: 413
+      purpose: "OpenAPI 断片 develop merge"
+  tasks:
+    - "API-PUB-001_APIヘルスチェックAPI契約仕様書.md が存在すること"
+    - "packages/contracts/openapi/public-api.yaml に health が存在すること（変更はしない）"
+    - "エラーコード定義書・ログ・Observability設計書が存在すること"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-001-api-health-check/api-contract-spec.yaml"
+  blocks:
+    - "API-PUB-001 apps/api health 実装 Task"
+    - "API-PUB-001 単体テスト Task"
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "template conformity check"
+    - "architecture consistency check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-PUB-001_APIヘルスチェックAPI実装仕様書.md"
+  manual_checks:
+    - "api-implementation-spec.md の章構成に準拠していることを確認する"
+    - "api-contract-spec.md の契約面再掲が混入していないことを確認する"
+    - "契約仕様書（API-PUB-001_APIヘルスチェックAPI契約仕様書.md）を前提契約として参照していることを確認する"
+    - "Express / request-meta / 集約 status 方針が記載されていることを確認する"
+    - "apps/api / apps/web の実装変更を本Taskに含めていないことを確認する"
+    - "secret、APIキー、.env 実値が含まれていないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "実装面 docs 作成 Task であり、source code 変更を含まないため対象外"
+    "integration test": "実装面 docs 作成 Task であり、実装変更を含まないため対象外"
+    "e2e test": "実装面 docs 作成 Task であり、画面・API 実装を含まないため対象外"
+    "contract test": "OpenAPI 定義変更を含まないため対象外"
+    "typecheck": "source code 変更を含まないため対象外"
+    "build": "source code 変更を含まないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "API実装仕様書として粒度が過不足ないか（実装面に限定されているか）"
+    - "契約仕様書を前提とし、契約面再掲が混入していないか"
+    - "Express / request-meta / 集約 status 判定方針が明確か"
+    - "依存（DB / reco）を契約 Response に載せない方針が契約と整合しているか"
+    - "エラーマップ・trace 伝播・api_request_count / api_error_count が設計書と整合しているか"
+    - "provider（apps/api）/ consumer（apps/web・運用確認）の実装影響が明確か"
+    - "後続 apps/api health 実装 Task の入力として十分か"
+    - "親 Epic epic_scope（docs のみ本Task）と本Task差分が整合しているか"
+    - "#1135 先行実装とのギャップが未決事項または後続実装 Task へ明示されているか"
+    - "未決事項が隠れずに明記されているか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常の実装面 docs 作成作業は ai-logs に保存しない。契約と先行実装のギャップ、依存チェック範囲の判断で停止した場合は incident または cross-cutting として記録する。"
+
+risk_points:
+  - "#1135 ローカル最小 health と契約仕様書の status enum（ok/degraded/unavailable）の差分"
+  - "依存チェック（DB / reco）を内部で実施するか、MVP ではプロセス応答のみとするかの実装判断"
+  - "Epic Branch が develop から乖離しており、#1135 先行コードが Epic 上に無い点"
+  - "契約 docs 変更が必要と判明する可能性（別 Task へ分離）"
+
+human_decision_points:
+  - "MVP 実装で DB / reco 依存チェックを内部実施するか、プロセス稼働確認のみとするか（契約は集約 status のみ）"
+  - "degraded 判定の内部閾値・タイムアウトをどこまで本仕様書で固定するか"
+  - "Epic Branch への develop 取込を本 Task 前に行うか（実装 Task 開始前必須の可能性）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "API-PUB-001_APIヘルスチェックAPI契約仕様書.md が存在しない場合"
+  - "必須 input.templates が存在しない場合"
+  - "契約仕様書と実装前提が矛盾し、AI Agent だけで判断できない場合"
+  - "OpenAPI 定義ファイルの作成・更新が必要になった場合"
+  - "apps/api または apps/web の実装変更が必要になった場合"
+  - "secret や .env 実値を扱う必要が出た場合"
+  - "本Task差分が親 Epic epic_scope.allowed_paths から外れた場合"
+
+notes:
+  - "本Taskは API-PUB-001 の **実装面** 専用 Task（Phase4b 1/3）。構造の参考は api-int-001-reco-health-check/api-implementation-spec.yaml。"
+  - "契約面は API-PUB-001_APIヘルスチェックAPI契約仕様書.md（#395）を正とする。"
+  - "親 Epic Issue #384 / Branch feature/epic-384-pub-001-api-health-check。Task PR は親 Epic Branch を target とする。"
+  - "後続: apps/api health 実装 Task → 単体テスト Task → Epic PR → develop（Phase4b 縦串完了時のみ。develop merge は INT-001 の後）。"
+  - "Definition 配置は develop または Epic Branch 上。Issue 起票後に実 Issue 番号を branch.name / related_issues へ反映する。"

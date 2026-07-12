@@ -1,0 +1,174 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-dev-environment-python-dev-pytest"
+  title: "Python開発環境pytest実行基盤整備"
+  summary: "uv workspace・worktree ごと venv・scripts/dev・ci-reco.yml 最小 Layer1 を整備する。Human 判断: worktree ごと venv、Phase2 lock まで一括、reco-foundation 直後に最小 CI。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-local-dev-environment"
+  epic_issue: "[Epic]local-dev-environment:ローカルdev実行環境"
+  epic_issue_number: 651
+  epic_branch: "chore/epic-651-local-dev-environment"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4a reco-foundation 作業で Agent が system python3 を誤用し pytest 未実施となった。
+  Human 判断（2026-06-23）: worktree ごと venv、uv workspace + uv.lock（Phase2 まで一括）、
+  local-dev-environment Epic 配下、reco-foundation 直後に ci-reco.yml 最小 CI。
+
+objective: |
+  任意 worktree で `./scripts/dev/setup-python.sh` → `pytest-python.sh`、
+  reco 骨格 merge 後は `setup-python-reco.sh` → `pytest-reco.sh` を実行できる状態にする。
+  ルート uv workspace（packages）と uv.lock を正本化し、Layer1 ci-reco.yml を ci.yml に接続する。
+
+scope:
+  - "ルート pyproject.toml（uv workspace）・uv.lock"
+  - "scripts/dev/setup-python*.sh / pytest-*.sh / _python-lib.sh"
+  - "package.json scripts（setup:python / test:python / test:reco）"
+  - ".github/workflows/ci-reco.yml と ci.yml 連携"
+  - "ローカル開発手順書 §6.2、worktree運用ルール §33、scripts/dev/README.md"
+  - "packages/shared-logic README 開発手順"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "apps/reco 骨格実装（reco-foundation Epic）"
+  - "ci-web.yml / ci-api.yml（Epic D 本格）"
+  - "Layer2 test-system / test-reco-quality"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/worktree運用ルール.md"
+      required: true
+  files:
+    - path: ".python-version"
+      required: true
+    - path: "packages/shared-logic/pyproject.toml"
+      required: true
+    - path: "packages/test-fixtures/pyproject.toml"
+      required: true
+
+output:
+  files:
+    - path: "pyproject.toml"
+      action: "create"
+      required: true
+    - path: "uv.lock"
+      action: "create"
+      required: true
+    - path: "scripts/dev/setup-python.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/pytest-python.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/setup-python-reco.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/pytest-reco.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/_python-lib.sh"
+      action: "create"
+      required: true
+    - path: ".github/workflows/ci-reco.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/ci.yml"
+      action: "update"
+      required: true
+    - path: "package.json"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "新規 worktree で setup-python.sh → pytest-python.sh が成功する"
+  - "uv.lock が commit されている"
+  - "system python3 直叩きを docs 正本が要求していない"
+  - "apps/reco 未 merge 時は pytest-reco.sh / ci-reco が skip 可能"
+  - "reco-foundation merge 後は pytest-reco.sh が apps/reco/tests/unit を実行できる"
+  - "Task PR target が親 Epic Branch"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  summary: "python-dev-pytest"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "pyproject.toml"
+    - "uv.lock"
+    - "scripts/dev/setup-python.sh"
+    - "scripts/dev/pytest-python.sh"
+    - "scripts/dev/setup-python-reco.sh"
+    - "scripts/dev/pytest-reco.sh"
+    - ".github/workflows/ci-reco.yml"
+  conflict_risk: "low"
+
+test_policy:
+  commands:
+    - "./scripts/dev/setup-python.sh"
+    - "./scripts/dev/pytest-python.sh"
+    - "./scripts/dev/pytest-reco.sh"
+  manual_checks:
+    - "reco-foundation ブランチ上で pytest-reco.sh 成功（merge 後または検証用 checkout）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Human 判断: ci-reco.yml は Epic D defer の例外（reco 最小 Layer1）"
+  - "reco-foundation merge 後、必要に応じて pyproject.toml workspace members に apps/reco を追加"

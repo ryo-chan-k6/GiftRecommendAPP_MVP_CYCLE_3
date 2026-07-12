@@ -1,0 +1,71 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-dev-environment-local-verify-follow-up-pr"
+  title: "local-dev-environment local-verify-follow-up PRレビュー"
+  summary: "Epic #651 クローズ後 follow-up Task local-verify-follow-up の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: 1134
+  issue:
+    number: 1133
+  task_definition: "prompts/definitions/tasks/local-dev-environment/local-verify-follow-up.yaml"
+  source_branch: "chore/task-1133-local-verify-follow-up"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  generated: false
+  cicd: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/local-dev-environment/local-verify-follow-up.yaml"
+    required: true
+  issue:
+    number: 1133
+    required: true
+  pr:
+    number: 1134
+    required: true
+
+review_points:
+  - "Task Definition scope / out_of_scope との整合"
+  - "Epic #651 クローズ後 develop 直 PR 例外が PR 本文で説明されているか"
+  - "smoke-check 実行結果と docs / README 記載の一致"
+  - "agentic_process: 手元未実施の検証を acceptance 達成として報告していないか"
+  - "secret / .env 実値の非含有"
+  - "supabase/migrations / packages/contracts への越境がないか"
+
+human_review_points:
+  - "develop 直 PR 例外（Epic #651 クローズ後 follow-up）の承認"
+  - "apps health を optional とした判断が妥当か"
+  - "未解決ギャップの後続 Task 化方針"
+
+notes:
+  - "Issue #1133 / PR #1134 を /create-pr 後に target.* / input.* へ反映"
+  - "親 Epic Branch: develop（Human 判断）"

@@ -1,0 +1,231 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-normalization-rule"
+  title: "normalization_rule:Normalization Ruleテーブル定義書作成"
+  summary: "物理ER・論理ER・Featureルール定義書・テーブル一覧を入力に、normalization_rule のテーブル定義書を作成する。Phase2 子 Task ③ Batch R01 No.1（Semantic / Feature 定義系残件）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-db-physical-design"
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "docs/epic-435-db-physical-design"
+  related_issues:
+    - number: 462
+      purpose: "Wave1 semantic_config（merge 済み前提）"
+    - number: 463
+      purpose: "Wave1 semantic_config_version（merge 済み前提）"
+    - number: 458
+      purpose: "feature_normalization_version テーブル定義書（責務分離・正規化パラメータ正本参考・merge 済み前提）"
+    - number: 470
+      purpose: "Wave2 No.1 feature_definition テーブル定義書（merge 済み前提）"
+    - number: 473
+      purpose: "Wave2 Rule 群 merge 済み前提（relationship_rule）"
+    - number: 474
+      purpose: "Wave2 Rule 群 merge 済み前提（occasion_rule）"
+    - number: 475
+      purpose: "Wave2 Rule 群 merge 済み前提（pair_rule）"
+    - number: 476
+      purpose: "Wave2 Rule 群 merge 済み前提（concept_feature_rule）"
+    - number: 477
+      purpose: "Wave2 Rule 群 merge 済み前提（input_type_rule）"
+    - number: 478
+      purpose: "Wave2 Rule 群 merge 済み前提（feature_integration_rule）"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2 子 Task ③ Batch R01 No.1。実装フェーズ実行プロセス設計書 §6.3 の「テーブル定義書（1テーブル=1Task）」に対応。
+  Semantic / Feature 定義系の残件。Master / Config 系および Feature Rule 群（#462–#478 等）merge 済みを前提とする。
+  `semantic_config_version` §8.1 では `normalization_rule` を子テーブル（contains / ON FK）として先行定義しているが、物理ER §8 一覧・テーブル一覧 §8 には未掲載。
+  Issue #493 / Branch `docs/task-493-normalization-rule-table-spec` で作業する。
+
+objective: |
+  `normalization_rule` の物理カラム・制約・Index・更新仕様を table-spec.md テンプレ準拠で定義する。
+  `feature_normalization_version`（正規化 version / パラメータ正本）との責務分離を明記し、後続 DDL Task が migration を作成できる粒度まで確定する。
+  あわせて物理ER §8・§5 分解一覧およびテーブル一覧 §8 へ `normalization_rule` を追記し、正本 docs 間の未掲載ギャップを解消する。
+
+scope:
+  - "table-spec.md テンプレ準拠の normalization_rule テーブル定義書作成"
+  - "物理ER.md への normalization_rule 行追加（§8 テーブル一覧・§5 feature_rule 分解一覧・必要に応じて FK/Index 方針）"
+  - "テーブル一覧.md §8 への normalization_rule 行追加（§9 以降の通し No. 繰り下げ・§13 集計更新を含む）"
+  - "物理ER Semantic/Feature定義系・FK方針との突合"
+  - "論理ER.md への normalization_rule エンティティ追記（§10.1 ER 図・§10.2 定義・§14.5 関係表）"
+  - "論理ER §10.2・semantic_config_version §8.1・Featureルール定義書 §14 との整合"
+  - "先行 merge 済みテーブル定義書（feature_definition / feature_normalization_version / relationship_rule 等）の章構成を踏襲"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "他テーブルのテーブル定義書"
+  - "DDL・migration（Task ④⑤）"
+  - "db/seeds ファイルの作成（Task ⑤）"
+  - "apps/** 実装"
+  - "OpenAPI / generated 変更（#469 へ委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "テーブル分類・FK・Index・CHECK 方針（§8–§11）"
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      required: true
+      purpose: "enum 参照（feature_code / normalization_method 等）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "§10.2 Semantic / Feature 系エンティティ属性・feature_rule 分解方針"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+      purpose: "§8 Semantic / Feature 定義系・§9 Master / Config 系との分類整理"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "§14 Feature正規化ルール・§16.2 管理先分離"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version_id 被参照（contains）方針・normalization_rule 子テーブル先行定義"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "feature_code 参照・Rule 系テーブルとの整合"
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "正規化パラメータ正本・責務分離（§5.1）・parameter_json パターン参考"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version 子 Rule テーブルの章構成・FK 方針参考"
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+      purpose: "成果物テンプレート"
+    - path: "prompts/templates/pr/task-pr.md"
+      required: true
+      purpose: "PR 本文テンプレート（/create-pr）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/table-spec.md"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      action: "update"
+      required: true
+      purpose: "§8 テーブル一覧・§5 feature_rule 分解一覧へ normalization_rule を追記"
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      action: "update"
+      required: true
+      purpose: "§8 Semantic/Feature定義系へ normalization_rule を追記（No. 繰り下げ・§13 集計更新）"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      action: "update"
+      required: true
+      purpose: "§10.1 ER 図・§10.2 エンティティ・§14.5 関係表へ normalization_rule を追記"
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-normalization-rule.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-normalization-rule/pr-review.yaml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "normalization_rule テーブル定義書が docs/06_実装設計/database/ に存在する"
+  - "物理ER §8 に normalization_rule 行が追加され、§5 feature_rule 分解一覧に normalization_rule が含まれる"
+  - "テーブル一覧 §8 に normalization_rule 行が追加され、§9 以降の通し No. と §13 集計が整合している"
+  - "物理ER・テーブル一覧・semantic_config_version §8.1・テーブル定義書の4点が矛盾しない"
+  - "論理ER §10.2・§14.5 に normalization_rule が追記され、Featureルール定義書 §14 と矛盾しない"
+  - "`feature_normalization_version` との責務分離が §5.1 / §17 で明記されている"
+  - "semantic_config_version_id への物理 FK（ON DELETE RESTRICT）方針が明記されている"
+  - "feature_normalization_version_id への物理 FK（ON DELETE RESTRICT）方針が明記されている"
+  - "Public API 非公開方針が明記されている"
+  - "apps/** 変更がない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "normalization-rule-table-spec"
+  base: "docs/epic-435-db-physical-design"
+  target: "docs/epic-435-db-physical-design"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 493
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - number: 462
+      purpose: "Wave1 semantic_config 完了"
+    - number: 463
+      purpose: "Wave1 semantic_config_version 完了"
+    - number: 458
+      purpose: "feature_normalization_version テーブル定義書 完了（責務分離参考）"
+    - number: 470
+      purpose: "feature_definition テーブル定義書 完了（feature_code 参照）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+    - "docs/06_実装設計/database/物理ER.md"
+    - "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+    - "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "物理ER §8–§11 とカラム・制約・Index の整合"
+    - "物理ER §8 追記行とテーブル定義書の分類・正本区分・MVP 対象が一致していること"
+    - "テーブル一覧 §8 追記行と §13 集計（Semantic/Feature定義系・合計）が一致していること"
+    - "テーブル一覧 §9 以降の通し No. 繰り下げが漏れなく実施されていること"
+    - "論理ER §10.2・§14.5 への追記と属性・関係の整合"
+    - "Featureルール定義書 §14.2 / §14.3 / §14.8 と正規化方式・パラメータ正本の整合"
+    - "feature_normalization_version テーブル定義書 §5.1 との責務分離"
+    - "semantic_config_version §8.1 contains FK 方針との整合"
+    - "relationship_rule 等 Rule 系テーブル定義書との章構成一貫性"
+    - "apps 実装層への変更がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Phase2 docs 整備 Task のため"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "Batch R01 No.1: normalization_rule"
+  - "Issue 本文「テーブル一覧 §8 No.43」の解釈: §8 節（Semantic/Feature定義系）へ No.43 として normalization_rule を追加する意図。現状の §9 No.43（relationship_master）とは別物。追加時は §9 以降の通し No. を +1 繰り下げる"
+  - "GiftMeaningSpace §7.4 は正規化方針を semantic_config_version 配下とする一方、Featureルール定義書 §14.8 / §16.2 はパラメータ正本を feature_normalization_version とする。本 Task で責務境界を整理する"
+  - "OpenAPI / generated は Epic 終盤 Task #469 で一括同期"
+  - "Issue #493 / Branch docs/task-493-normalization-rule-table-spec"

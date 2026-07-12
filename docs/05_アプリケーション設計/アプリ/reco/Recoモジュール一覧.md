@@ -26,7 +26,7 @@
 | Featureルール定義書 | Feature値算出・正規化方針の前提 |
 | Semantic Concept定義書 | Semantic抽出対象の前提 |
 | Semanticルール定義書 | Semantic抽出・変換ルールの前提 |
-| Gift Meaning Space定義書 | Social / Symbolic / λ_ctx算出の前提 |
+| Gift Meaning Space定義書 | Social / Symbolic 射影の前提 |
 
 ---
 
@@ -122,11 +122,10 @@ Recommendation Resultを生成する
 | `MOD-RECO-005` | 外部条件特徴量推定 | External Condition Feature Estimator | User Meaning | relationship / occasionからFeatureを推定する | OL | ○ |
 | `MOD-RECO-006` | 内部条件特徴量推定 | Internal Condition Feature Estimator | User Meaning | preferred / non_preferred / free textからFeatureを推定する | OL | ○ |
 | `MOD-RECO-007` | User Feature生成 | User Feature Generator | User Meaning | 外部条件・内部条件を統合してUser Featureを生成する | OL | ○ |
-| `MOD-RECO-008` | User Meaning射影 | User Meaning Projector | User Meaning | User Featureからsocial / symbolic / λ_ctxを算出する | OL | ○ |
-| `MOD-RECO-009` | User Context生成 | User Context Builder | User Meaning | Retrieval用のpreferred / non_preferred contextを生成する | OL | ○ |
-| `MOD-RECO-010` | Query Embedding生成 | Query Embedding Generator | Retrieval | Retrieval用のquery embeddingを生成する | OL | ○ |
-| `MOD-RECO-011` | Pre Hard Filter | Pre Hard Filter Executor | Retrieval | Retrieval前に商品集合を絞り込む | OL | ○ |
-| `MOD-RECO-012` | 候補商品抽出 | Candidate Retriever | Retrieval | Pre Hard Filter後の商品集合から候補商品を抽出する | OL | ○ |
+| `MOD-RECO-008` | User Meaning射影 | User Meaning Projector | User Meaning | User Featureからsocial / symbolicをGift Meaning Spaceへ射影する | OL | ○ |
+| `MOD-RECO-009` | User Context生成 | User Context Builder | User Meaning | λ_ctx算出・user_meaning INSERT・Retrieval用のpreferred / non_preferred contextを生成する | OL | ○ |
+| `MOD-RECO-010` | Query Embedding生成 | Query Embedding Generator | Retrieval | `preferred_context` から Retrieval 用 query embedding を生成する | OL | ○ |
+| `MOD-RECO-012` | 候補商品抽出 | Candidate Retriever | Retrieval | 内部で Pre Hard Filter（`pre_hard_filter`）と Vector Retrieval（`retrieval`）を順に実行し候補商品を抽出する | OL | ○ |
 | `MOD-RECO-013` | Post Hard Filter | Post Hard Filter Executor | Retrieval | Retrieval後の候補からSemantic NG・重複・不整合を除外する | OL | ○ |
 | `MOD-RECO-014` | feature一致度計算 | Feature Matcher | Matching | User FeatureとItem FeatureをFeature単位で比較する | OL | ○ |
 | `MOD-RECO-015` | 意味マッチ集約 | Meaning Match Aggregator | Matching | feature一致度からsocial_match / symbolic_matchを集約する | OL | ○ |
@@ -142,7 +141,7 @@ Recommendation Resultを生成する
 | `MOD-RECO-028` | Phase Log記録 | Phase Log Writer | ログ・観測 | 処理段階別の開始・終了・成功・失敗を記録する | 共通 | ○ |
 | `MOD-RECO-029` | Error Log記録 | Error Log Writer | ログ・観測 | エラー内容、発生箇所、対象データを記録する | 共通 | ○ |
 | `MOD-RECO-024` | Reco Error処理 | Reco Error Handler | ログ・観測 | reco内のエラーを処理しログへ接続する | OL | ○ |
-| `MOD-RECO-025` | Metric記録 | Metric Logger | ログ・観測 | 件数、処理時間、スコア分布等を記録する | 共通 | △ |
+| `MOD-RECO-025` | Metric記録 | Metric Logger | ログ・観測 | 件数、処理時間、スコア分布等を記録する | 共通 | ○ |
 | `MOD-RECO-026` | Item Semantic抽出 | Item Semantic Generator | 商品意味推定支援 | 商品情報からSemantic Conceptを抽出する | BT | ○ |
 | `MOD-RECO-027` | Item Feature生成 | Item Feature Generator | 商品意味推定支援 | item_semantic等からItem Featureを生成する | BT | ○ |
 
@@ -169,8 +168,7 @@ flowchart TD
     I --> J[User Context生成]
     J --> K[Query Embedding生成]
 
-    K --> L[Pre Hard Filter]
-    L --> M[候補商品抽出]
+    K --> M[候補商品抽出]
     M --> N[Post Hard Filter]
 
     N --> O[feature一致度計算]
@@ -190,7 +188,6 @@ flowchart TD
 
     B -. phase .-> Y[Phase Log記録]
     E -. phase .-> Y
-    L -. phase .-> Y
     M -. phase .-> Y
     N -. phase .-> Y
     O -. phase .-> Y
@@ -210,29 +207,31 @@ flowchart TD
 | 順序 | モジュールID | モジュール名 | 主な入力 | 主な出力 |
 | --- | --- | --- | --- | --- |
 | 1 | `MOD-RECO-001` | 推薦実行制御 | Recommendation Request | execution context |
-| 2 | `MOD-RECO-002` | Recommendation Run記録 | execution context | recommendation_run |
+| 2 | `MOD-RECO-002` | Recommendation Run記録 | execution context（`003` 解決後の version 3 列含む） | recommendation_run |
 | 3 | `MOD-RECO-003` | Config / Version解決 | request context | config_version / model_version |
 | 4 | `MOD-RECO-004` | Semantic抽出 | request text / relationship / occasion | semantic_extraction_result |
 | 5 | `MOD-RECO-005` | 外部条件特徴量推定 | relationship / occasion | external_feature_estimate |
 | 6 | `MOD-RECO-006` | 内部条件特徴量推定 | preferred / non_preferred / free text | internal_feature_estimate |
 | 7 | `MOD-RECO-007` | User Feature生成 | external_feature_estimate / internal_feature_estimate | user_feature |
-| 8 | `MOD-RECO-008` | User Meaning射影 | user_feature | user_social / user_symbolic / λ_ctx |
-| 9 | `MOD-RECO-009` | User Context生成 | semantic_extraction_result / user_feature | user_context |
-| 10 | `MOD-RECO-010` | Query Embedding生成 | user_context | query_embedding |
-| 11 | `MOD-RECO-011` | Pre Hard Filter | request / item / budget / ng条件 | pre_filtered_item_pool |
-| 12 | `MOD-RECO-012` | 候補商品抽出 | query_embedding / item_embedding / pre_filtered_item_pool | retrieval_candidate |
-| 13 | `MOD-RECO-013` | Post Hard Filter | retrieval_candidate / semantic NG / avoid条件 | validated_candidate |
-| 14 | `MOD-RECO-014` | feature一致度計算 | user_feature / item_feature | feature_match |
-| 15 | `MOD-RECO-015` | 意味マッチ集約 | feature_match | social_match / symbolic_match |
-| 16 | `MOD-RECO-016` | 文脈スコア算出 | social_match / symbolic_match / λ_ctx | context_score |
-| 17 | `MOD-RECO-017` | 人気補正算出 | item popularity signals | popularity_score |
-| 18 | `MOD-RECO-018` | リスク補正算出 | item risk signals / request context | risk_penalty |
-| 19 | `MOD-RECO-019` | 最終スコア算出 | context_score / popularity_score / risk_penalty | final_score |
-| 20 | `MOD-RECO-020` | 最終順位生成 | final_score / diversity情報 | ranked_items |
-| 21 | `MOD-RECO-021` | Recommendation Result生成 | ranked_items / score_breakdown | recommendation_result |
-| 22 | `MOD-RECO-022` | Result Snapshot生成 | ranked_items / item current values | result item snapshot |
-| 23 | `MOD-RECO-023` | Reason生成 | result_item snapshot / score_breakdown / context | recommendation_reason |
+| 8 | `MOD-RECO-008` | User Meaning射影 | user_feature | user_social / user_symbolic |
+| 9 | `MOD-RECO-009` | User Context生成 | user_social / user_symbolic / semantic_extraction_result / user_feature / preferred条件 / non_preferred条件 | user_context / λ_ctx / user_meaning（完成） |
+| 10 | `MOD-RECO-010` | Query Embedding生成 | user_context（`embedding_query_text`） | query_embedding（`preferred_embedding`） |
+| 11 | `MOD-RECO-012` | 候補商品抽出 | execution_context（request / semantic / query_embedding） | pre_filtered_item_pool / retrieval_candidate |
+| 12 | `MOD-RECO-013` | Post Hard Filter | retrieval_candidate / semantic NG / avoid条件 | validated_candidate |
+| 13 | `MOD-RECO-014` | feature一致度計算 | user_feature / item_feature | feature_match |
+| 14 | `MOD-RECO-015` | 意味マッチ集約 | feature_match | social_match / symbolic_match |
+| 15 | `MOD-RECO-016` | 文脈スコア算出 | social_match / symbolic_match / λ_ctx | context_score |
+| 16 | `MOD-RECO-017` | 人気補正算出 | item popularity signals | popularity_score |
+| 17 | `MOD-RECO-018` | リスク補正算出 | item risk signals / request context | risk_penalty |
+| 18 | `MOD-RECO-019` | 最終スコア算出 | context_score / popularity_score / risk_penalty | final_score |
+| 19 | `MOD-RECO-020` | 最終順位生成 | final_score / diversity情報 | ranked_items |
+| 20 | `MOD-RECO-021` | Recommendation Result生成 | ranked_items / score_breakdown | recommendation_result |
+| 21 | `MOD-RECO-022` | Result Snapshot生成 | ranked_items / item current values | result item snapshot |
+| 22 | `MOD-RECO-023` | Reason生成 | result_item snapshot / score_breakdown / context | recommendation_reason |
 
+**Orchestrator 物理呼び出し順（`MOD-RECO-002` / `003`）**: `recommendation_run` INSERT には version 3 列が必須のため、Orchestrator は **MOD-RECO-003 実行後**に MOD-RECO-002 の INSERT（`accepted`）を呼ぶ（`MOD-RECO-001` / `MOD-RECO-002` モジュール仕様書 §8.2.1）。上表の「順序」はモジュール ID に対応する論理整理であり、物理呼び出し順と矛盾する場合はモジュール仕様書の呼び出し順を正とする。
+
+**Orchestrator 配線（Wiring）**: 下位モジュール本体実装と `build_default_stub_ports` への本実装配線は **3 段階ハイブリッド**（`MOD-RECO-001` モジュール仕様書 §8.4）。起動フェーズ（`002` / `003`）は配線済み。`004`〜`023` はフェーズ単位 Wiring Task で順次差し替える。
 ---
 
 ## 6. モジュール詳細
@@ -286,7 +285,7 @@ flowchart TD
 
 ### 主責務
 
-- 推薦実行で利用する設定Versionを決定する
+- 推薦実行で利用する設定Versionを決定する（IF-DB-RECO-001: `semantic_config_version` 表中心。親 `semantic_config` の JOIN は api マスタ参照（IF-DB-API-005）に限定）
 - Semantic抽出で利用するルールVersionを決定する
 - Feature生成で利用するルールVersionを決定する
 - Embedding / LLM / Reason生成モデルのVersionを決定する
@@ -416,7 +415,7 @@ flowchart TD
 | 処理種別 | OL |
 | MVP対象 | ○ |
 | 主な入力 | user_feature |
-| 主な出力 | user_social / user_symbolic / λ_ctx |
+| 主な出力 | user_social / user_symbolic |
 | 関連定義 | Gift Meaning Space定義書 |
 
 ### 主責務
@@ -424,8 +423,9 @@ flowchart TD
 - User FeatureをGift Meaning Spaceへ射影する
 - Social方向の強さを算出する
 - Symbolic方向の強さを算出する
-- 贈答リスク許容度である `λ_ctx` を算出する
-- Rankingや多様性制御に利用する補正係数を後続へ渡す
+- 射影結果（`user_social` / `user_symbolic`）を `execution_context` へ返却し、後続 `MOD-RECO-009` へ引き渡す
+
+**注記**: `λ_ctx`（`lambda_ctx`）算出・`user_meaning` テーブル INSERT は **`MOD-RECO-009`** 責務（`user_meaning_テーブル定義書` §5.4 / `MOD-RECO-008` モジュール仕様書 §16.1 No.9）。
 
 ---
 
@@ -436,15 +436,17 @@ flowchart TD
 | モジュールID | `MOD-RECO-009` |
 | モジュール名 | User Context生成 |
 | 物理名 | User Context Builder |
-| 分類 | User Meaning / Retrieval |
+| 分類 | User Meaning |
 | 処理種別 | OL |
 | MVP対象 | ○ |
-| 主な入力 | semantic_extraction_result / user_feature / preferred条件 / non_preferred条件 |
-| 主な出力 | user_context |
-| 関連定義 | Retrieval定義書 / Semanticルール定義書 |
+| 主な入力 | user_social / user_symbolic（`MOD-RECO-008`）/ semantic_extraction_result / user_feature / preferred条件 / non_preferred条件 |
+| 主な出力 | user_context / λ_ctx / user_meaning（完成） |
+| 関連定義 | Retrieval定義書 / Semanticルール定義書 / `user_meaning_テーブル定義書` |
 
 ### 主責務
 
+- 贈答リスク許容度である `λ_ctx`（`lambda_ctx`）を算出する（Matching定義書 §4.5）
+- `008` 出力と合成し **`user_meaning` テーブルへ 1 行 INSERT** する（IF-DB-RECO-003）
 - Retrievalで利用する検索文脈を生成する
 - preferred contextを生成する
 - non_preferred contextを生成する
@@ -463,69 +465,70 @@ flowchart TD
 | 分類 | Retrieval |
 | 処理種別 | OL |
 | MVP対象 | ○ |
-| 主な入力 | user_context |
-| 主な出力 | query_embedding |
-| 関連定義 | Retrieval定義書 |
+| 主な入力 | user_context（`preferred_context.embedding_query_text`） |
+| 主な出力 | query_embedding（`preferred_embedding`） |
+| 関連定義 | Retrieval定義書 / `MOD-RECO-010` モジュール仕様書 |
 
 ### 主責務
 
-- user_contextから検索用Embeddingを生成する
-- preferred context用のEmbeddingを生成する
-- 必要に応じてnon_preferred context用のEmbeddingを生成する
-- Model Version管理で解決されたEmbeddingモデルを利用する
+- `user_context.preferred_context.embedding_query_text` から検索用 Embedding（`preferred_embedding`）を生成する
+- 生成結果を `query_embedding` として後続候補商品抽出へ渡す
+- Model Version 管理で解決された Embedding モデルを利用する（`item_embedding` と同一 `model_version_id`）
+
+### MVP方針
+
+- 外部 Embedding API は **Run あたり 1 回**に限定する
+- **`non_preferred_embedding` は生成しない**。`non_preferred_condition` の avoid は **Feature 系統**（`MOD-RECO-006`〜`007` → Matching `avoid_similarity` → Ranking `avoid_risk`）で扱う
+- 詳細は `docs/06_実装設計/reco/MOD-RECO-010_Query Embedding Generatorモジュール仕様書.md` を正とする
+- `non_preferred_embedding` の将来実装は MVP 機能拡張 Task で検討する
 
 ---
 
-## 6.10 Pre Hard Filter
+## 6.10 MOD-RECO-011（廃止）
 
 | 項目 | 内容 |
-|---|---|
+| ---- | ---- |
 | モジュールID | `MOD-RECO-011` |
-| モジュール名 | Pre Hard Filter |
-| 物理名 | Pre Hard Filter Executor |
-| 分類 | Retrieval |
-| 処理種別 | OL |
-| MVP対象 | ○ |
-| 主な入力 | Recommendation Request / item / budget条件 / ng条件 |
-| 主な出力 | pre_filtered_item_pool |
-| 関連定義 | Retrieval定義書 / Recommendation Request定義書 |
+| 状態 | **独立モジュールとして廃止**（Issue #862 / PR #863） |
+| 移行先 | `MOD-RECO-012` 内サブモジュール **`pre_hard_filter`** |
+| 正本 | `docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md`（廃止・移行記録） |
 
-### 主責務
-
-- Retrieval前に対象商品集合を絞り込む
-- 予算条件で絞り込む
-- 商品有効状態で絞り込む
-- 販売状態で絞り込む
-- 明確なNG条件で除外する
-- データ品質最低条件を満たさない商品を除外する
-
-### 注意点
-
-Pre Hard Filterは、検索性能を確保するためにRetrieval前に実行する。  
-全商品に対してEmbedding検索や類似度計算を行うことを避ける。
+パイプライン上の **Pre Hard Filter フェーズ**・`pre_filtered_item_pool`・`pre_hard_filter_completed` / `GRS-REC-008` / `pre_filter_candidate_count` は **`MOD-RECO-012` 内で維持**する（`MOD-RECO-012` モジュール仕様書 §2・§12）。
 
 ---
 
 ## 6.11 候補商品抽出
 
 | 項目 | 内容 |
-|---|---|
+| ---- | ---- |
 | モジュールID | `MOD-RECO-012` |
 | モジュール名 | 候補商品抽出 |
 | 物理名 | Candidate Retriever |
 | 分類 | Retrieval |
 | 処理種別 | OL |
 | MVP対象 | ○ |
-| 主な入力 | pre_filtered_item_pool / query_embedding / item_embedding |
-| 主な出力 | retrieval_candidate |
-| 関連定義 | Retrieval定義書 |
+| 主な入力 | `execution_context`（request / semantic_extraction_result / query_embedding） |
+| 主な出力 | `pre_filtered_item_pool` / `retrieval_candidate` |
+| 関連定義 | Retrieval定義書 / `MOD-RECO-012` モジュール仕様書 |
+
+### サブモジュール
+
+| サブモジュール | 責務 |
+| -------------- | ---- |
+| `pre_hard_filter` | 構造化 Hard Filter・`pre_filtered_item_pool` 生成・Pre フェーズ観測 |
+| `retrieval` | predicate 適用 Vector 検索・`retrieval_candidate` 生成 |
 
 ### 主責務
 
-- Pre Hard Filter後の商品集合を対象に候補商品を抽出する
-- Embedding類似度検索を行う
-- 必要に応じてキーワード検索・Hybrid検索を行う
-- 後続のPost Hard Filterへ候補商品を渡す
+- Orchestrator から **1 回**呼び出され、内部で `pre_hard_filter` → `retrieval` を **直列実行**する
+- Pre Hard Filter（予算・NG・有効状態等）で検索対象を絞り込み、`pre_filtered_item_pool` を生成する
+- Vector Retrieval で `retrieval_candidate` を生成し、`MOD-RECO-013` へ引き渡す
+- Pre 失敗時 `GRS-REC-008`、Retrieval 失敗時 `GRS-REC-009`（詳細はモジュール仕様書 §10）
+
+### MVP方針
+
+- 本番では `pre_filtered_item_pool` の **`predicate` 表現を第一候補**とし、全 item の `uuid[]` メモリ具体化を前提にしない
+- Keyword / Hybrid Retrieval は MVP 外（モジュール仕様書 §16）
 
 ---
 
@@ -900,7 +903,7 @@ Reason生成
 | 物理名 | Metric Logger |
 | 分類 | ログ・観測 |
 | 処理種別 | 共通 |
-| MVP対象 | △ |
+| MVP対象 | ○ |
 | 主な入力 | latency / count / score distribution |
 | 主な出力 | metric_log |
 
@@ -1015,7 +1018,9 @@ semantic_extraction_result
 ↓
 user_feature
 ↓
-user_social / user_symbolic / λ_ctx
+user_social / user_symbolic
+↓
+λ_ctx（MOD-RECO-009 算出）
 ↓
 user_context
 ↓

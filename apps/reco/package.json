@@ -1,0 +1,8 @@
+{
+  "name": "@gift-recommendation/reco",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "bash -c 'set -a; [ -f ../../.env ] && . ../../.env; set +a; uv run --directory . uvicorn reco.api.main:app --app-dir src --reload --host 0.0.0.0 --port 8000'"
+  }
+}

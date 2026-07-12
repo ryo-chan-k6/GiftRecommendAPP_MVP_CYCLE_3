@@ -1,0 +1,40 @@
+name: CI Reco Check
+
+# Epic D（app-ci）管轄 — reco Layer1 PR CI（CI・CD方針書 §13 / テスト環境設計書 §4.1）。
+# #707（local-dev-environment）で先行作成。Task ci-reco-workflow（#747）で path filter 配線・docs 正本を整理。
+#
+# 実行内容（scripts/dev と同じ経路）:
+#   setup-python.sh → pytest-python.sh（packages workspace）
+#   pytest-reco.sh（apps/reco unit — 骨格未整備時は exit 0 skip）
+#
+# path filter は呼び出し元 ci.yml の changes job が担当する。
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  python-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Sync Python workspace
+        run: ./scripts/dev/setup-python.sh
+
+      - name: Run packages Python unit tests
+        run: ./scripts/dev/pytest-python.sh
+
+      - name: Run reco unit tests (when scaffold present)
+        run: ./scripts/dev/pytest-reco.sh
