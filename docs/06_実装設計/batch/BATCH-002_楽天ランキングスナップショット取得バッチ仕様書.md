@@ -49,7 +49,7 @@ BATCH-002（楽天ランキングスナップショット取得Batch）は、楽
 | 想定実行時間   | 最大 30〜60 分（対象ジャンル数・ページ数に依存） |
 | 冪等キー       | `ranking_snapshot`: `source + external_genre_id + period + last_build_date`<br>`item_popularity_signal`: `ranking_snapshot_id + rank`<br>Raw: `object_key` / `content_hash` |
 | 先行Batch      | `BATCH-001`（ジャンル同期。target_genre 解決の前提） |
-| 後続Batch      | `BATCH-003`（未登録 itemCode 補完）/ `BATCH-017`（Import Summary）。`BATCH-005` は Raw 保存後の Staging 変換で本 Batch 出力を利用しうる |
+| 後続Batch      | `BATCH-003`（未登録 itemCode 補完）/ `BATCH-017`（Import Summary）。`BATCH-005` は Raw/Staging 再利用経路として本 Batch 出力を利用しうる（本 Batch の Staging→Snapshot 完結を必須委譲しない） |
 | MVP対象        | `○` |
 
 `Batch ID` は `BATCH-*` を使用する。処理構成上の分類IDである `BT-*` を Task / Issue / 成果物名の識別子として使用しない。
@@ -85,7 +85,7 @@ BATCH-002（楽天ランキングスナップショット取得Batch）は、楽
 | ---- | ---- | ------ | ---- | ---- | ---- |
 | `fetch_plan` | 設定 / 計画 | Batch config / Product Fetch Planner | `true` | 対象 genre / period / ページ上限を決定する | MVP対象ジャンルを限定 |
 | `target_genre_ids` | 設定 | fetch_plan / workflow_dispatch / `external_genre` | `true` | ランキング取得対象ジャンル | BATCH-001 同期済みを優先 |
-| `period` | 設定 | fetch_plan / workflow_dispatch | `true` | ランキング期間 | 楽天API `period` に対応。未指定時の既定値は実装 Task で設定 |
+| `period` | 設定 | fetch_plan / workflow_dispatch | `true` | ランキング期間 | 楽天API `period` に対応。MVP 既定は `daily`（§18.1） |
 | 楽天ランキングAPIレスポンス | 外部API | 楽天商品ランキングAPI | `true` | rank / itemCode / lastBuildDate 等 | formatVersion=`2` |
 
 ### 6.2 外部API
@@ -104,8 +104,8 @@ BATCH-002（楽天ランキングスナップショット取得Batch）は、楽
 | `format` | レスポンス形式 | `json` |
 | `formatVersion` | JSON構造 | `2` |
 | `genreId` | ジャンル別ランキング | MVPで利用 |
-| `period` | ランキング期間 | 必要に応じて利用（設定必須化は実装時判断） |
-| `page` | ページ番号 | 取得上限内で制御 |
+| `period` | ランキング期間 | MVP は `daily` 固定（Online 選定と整合。`realtime` / `weekly` / `monthly` は後続） |
+| `page` | ページ番号 | MVP 初期 `max_pages = 1`（必要に応じ `2` まで拡張） |
 | `elements` | 取得項目制御 | 必要項目に絞る |
 | `age` / `sex` | 年齢・性別 | MVP 対象外（後続検討） |
 | `carrier` | PC / mobile | 原則 PC |
@@ -132,18 +132,18 @@ BATCH-002（楽天ランキングスナップショット取得Batch）は、楽
 | ---- | ---- | ------ | ---- | ---- | ---- |
 | Raw JSON | Object | Object Storage | `true` | 監査・再変換 | `source_api=item_ranking` |
 | `raw_product_metadata` | DB | database | `true` | Raw 参照・import_status | |
-| `staging_ranking_signal` | DB | database | `true`（本 Batch 内完結案） | Staging 中間 | BATCH-005 経路と併記可。§18 |
+| `staging_ranking_signal` | DB | database | `true`（本 Batch 内完結） | Staging 中間 | Staging→Snapshot→signal まで本 Batch で完結（§18.1）。BATCH-005 は Raw/Staging 再利用経路として併記可 |
 | `ranking_snapshot` | DB | database | `true` | 観測ヘッダ | 冪等キー §11 |
 | `item_popularity_signal` | DB | database | `true` | 順位明細 | `ranking_snapshot_id + rank` |
-| 未登録 itemCode 補完候補 | DB / キュー / ログ集計 | database / fetch_cursor 等 | `true` | BATCH-003 入力 | Item は作らない |
+| 未登録 itemCode 補完候補 | DB | `fetch_cursor`（`cursor_type=ranking_supplement`） | `true` | BATCH-003 入力 | Ranking Unknown Item Collector が生産。Item は作らない（§18.1） |
 | `batch_run_log` / `phase_log` / `api_call_log` / `error_log` | DB | database | `true` | 運用・再実行 | |
 
 ### 7.2 後続への引き渡し
 
 | 後続 | 引き渡し内容 | 条件 |
 | ---- | ------------ | ---- |
-| BATCH-003 | 未登録 `itemCode` 補完候補 | ランキングに出現し Item 未解決 |
-| BATCH-005 | Raw / Metadata（および Staging 未完了分） | Raw 保存後の Staging 変換が分離される場合 |
+| BATCH-003 | 未登録 `itemCode` 補完候補（`fetch_cursor` / `ranking_supplement`） | ランキングに出現し Item 未解決 |
+| BATCH-005 | Raw / Metadata（Staging 再利用が必要な場合） | 本 Batch 内で Staging→Snapshot 完結済みが基本。分離経路が残る場合のみ |
 | BATCH-017 | Run 集計入力（件数・status） | Import Summary |
 | reco | 最新 Snapshot 経由の人気補助 | Online は全履歴を直接参照しない |
 
@@ -179,7 +179,7 @@ flowchart TD
 | 5 | `stage` | Staging 変換・検証 | Raw / Metadata | staging_ranking_signal | `GRS-VAL-*`。失敗 genre は skip または部分失敗 |
 | 6 | `snapshot` | ranking_snapshot を get-or-create | 観測キー | ranking_snapshot_id | `GRS-DB-*` |
 | 7 | `upsert` | item_popularity_signal を全件冪等反映 | staging / 正規化行 | item_popularity_signal | `GRS-DB-*`。ロールバックせず失敗記録 |
-| 8 | `unknown` | 未登録 itemCode を補完候補化 | itemCode × item 突合 | Fetch Candidate / 候補リスト | Item は作らない |
+| 8 | `unknown` | 未登録 itemCode を `fetch_cursor`（`ranking_supplement`）へ補完候補化 | itemCode × item 突合 | Fetch Candidate（fetch_cursor） | Item は作らない |
 | 9 | `finalize` | 集計・batch_run_log 更新 | 各 Phase 結果 | run_status / counts | 部分成功は `GRS-BAT-002` |
 
 ---
@@ -322,16 +322,23 @@ flowchart TD
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-13 | 初版作成 | #1193 |
+| 2026-07-13 | §18 未決事項を Human 決定に反映（period / ページ上限 / Batch 内完結 / fetch_cursor） | #1193 / #1194 |
 
 ---
 
-## 18. 未決事項
+## 18. 未決事項・決定事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | MVP初期の取得対象ジャンルID / period / ページ上限 | コストとカバレッジのバランス | Human | 実装 Task 着手前 | BATCH-001 のジャンル方針と整合 |
-| 2 | Staging→Snapshot を本 Batch 内完結するか、Staging のみ行い BATCH-005 に委譲するか | 処理一覧上は本 Batch 出力に staging / ranking_snapshot / signal を含む | Human | 実装 Task 設計時 | 本仕様は一覧どおり本 Batch 内完結を基本案とする（テーブル定義書の BATCH-002 / IF-DB-BATCH-008 経路と整合） |
-| 3 | 未登録 itemCode 補完候補の物理保存先（専用テーブル / fetch_cursor / ログ集計） | BATCH-003 との I/F | Human | 実装時 | Ranking Unknown Item Collector の永続化先 |
+### 18.1 決定事項
+
+|  No | 論点 | 決定内容 | 判断者 | 決定日 | 備考 |
+| --: | ---- | -------- | ------ | ------ | ---- |
+| 1 | MVP初期の取得対象ジャンルID / period / ページ上限 | **period = `daily` のみ**（既定）。**`max_pages = 1`**（不足時は `2` まで拡張可）。対象ジャンルは **BATCH-001 と同一の fetch_plan**（本 Batch 専用一覧は作らない） | Human | 2026-07-13 | Online 選定は `period='daily'`（`item_popularity_signal` §5.7）。具体ジャンルID一覧は BATCH-001 / 外部商品データ連携の対象ジャンル方針に従い fetch_plan で共有 |
+| 2 | Staging→Snapshot を本 Batch 内完結するか | **本 Batch 内完結**（`staging_ranking_signal` → `ranking_snapshot` → `item_popularity_signal`） | Human | 2026-07-13 | バッチ処理一覧・テーブル定義書の BATCH-002 / IF-DB-BATCH-008 経路と整合。BATCH-005 は必須委譲先としない |
+| 3 | 未登録 itemCode 補完候補の物理保存先 | **`fetch_cursor`（`cursor_type = ranking_supplement`）**。専用テーブル・ログ集計のみは採用しない | Human | 2026-07-13 | `fetch_cursor` テーブル定義書 §5.2 / §5.4。1 itemCode = 1 カーソル。BATCH-003 が消費 |
+
+### 18.2 残未決事項
+
+現時点で本仕様書固有の残未決はない。具体ジャンルIDの値そのものは BATCH-001 / fetch_plan 側の共有決定に従う（§18.1 No.1）。
 
 ---
 
@@ -345,6 +352,8 @@ flowchart TD
 | 外部連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | ランキングAPI・正本境界 |
 | テーブル | `docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md` | Snapshot 冪等・昇格 |
 | テーブル | `docs/06_実装設計/database/staging_ranking_signal_テーブル定義書.md` | Staging |
+| テーブル | `docs/06_実装設計/database/fetch_cursor_テーブル定義書.md` | `ranking_supplement` 補完候補 |
+| テーブル | `docs/06_実装設計/database/item_popularity_signal_テーブル定義書.md` | Online `period=daily` 選定 |
 | 先行仕様 | `docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md` | Fetch 起点 |
 | エラー | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-EXT/RAW/BAT/DB/VAL |
 
