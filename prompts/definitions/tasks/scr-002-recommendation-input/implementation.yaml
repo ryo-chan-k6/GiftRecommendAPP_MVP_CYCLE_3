@@ -144,7 +144,6 @@ project:
     due_date: "2026-07-16"
 
 issue:
-  number: 1214
   unit: "task"
   type: "feature"
   area: "web"

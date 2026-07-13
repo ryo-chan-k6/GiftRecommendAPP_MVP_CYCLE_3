@@ -46,7 +46,7 @@ agent:
     docs: null
     test: "test-ai"
     contract: null
-    security: "security-review"
+    security: null
   next:
     fixer: "fixer-ai"
     human: "human-reviewer"
