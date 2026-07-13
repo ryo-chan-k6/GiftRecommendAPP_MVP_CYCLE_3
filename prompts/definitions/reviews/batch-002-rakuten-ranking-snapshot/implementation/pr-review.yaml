@@ -1,0 +1,98 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-002-rakuten-ranking-snapshot-implementation-pr"
+  title: "BATCH-002 楽天ランキングスナップショット取得Batch実装 PRレビュー"
+  summary: "BATCH-002 実装 Task の PR を AI Review する。仕様書 Phase・冪等・Item正本境界・fixture/mock を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+  target: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/implementation.yaml"
+  source_branch: null
+  target_branch: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+  parent_epic_issue: "[Epic]BATCH-002:楽天ランキングスナップショット取得Batch"
+  parent_epic_branch: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/implementation.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      required: true
+      purpose: "実装正本との整合"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+    - "epic_scope.allowed_paths 内か"
+  tests:
+    - "最小 UT が fixture/mock で通るか"
+    - "実楽天API / 実DB 依存がないか"
+  security:
+    - "secret / .env 実値がないか"
+  source:
+    - "Item 正本をランキングAPIから作っていないか"
+    - "冪等キー（snapshot / signal）が実装されているか"
+
+notes:
+  - "Issue / PR 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
