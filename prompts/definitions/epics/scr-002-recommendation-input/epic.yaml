@@ -129,6 +129,7 @@ epic_scope:
   artifact_id: "SCR-002"
   allowed_paths:
     - "docs/06_実装設計/web/SCR-002_*"
+    - "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
     - "apps/web/src/app/recommendations/**"
     - "apps/web/src/features/recommendation-input/**"
     - "apps/web/src/generated/api/**"
