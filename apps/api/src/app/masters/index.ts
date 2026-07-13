@@ -7,6 +7,10 @@ export {
   OCCASION_MASTERS_ERROR_MESSAGES,
   OCCASION_MASTERS_METRICS,
   OCCASION_MASTERS_PATH,
+  SEMANTIC_CONFIG_MASTERS_ERROR_CODES,
+  SEMANTIC_CONFIG_MASTERS_ERROR_MESSAGES,
+  SEMANTIC_CONFIG_MASTERS_METRICS,
+  SEMANTIC_CONFIG_MASTERS_PATH,
 } from "./constants.js";
 export {
   createOccasionController,
@@ -23,10 +27,26 @@ export {
   UnresolvedRelationshipMasterReader,
 } from "./relationship-repository.js";
 export {
+  createSemanticConfigController,
+  type SemanticConfigControllerOptions,
+} from "./semantic-config-controller.js";
+export {
+  InMemorySemanticConfigReader,
+  SemanticConfigRepository,
+  UnresolvedSemanticConfigReader,
+  type SemanticConfigRepositoryOptions,
+} from "./semantic-config-repository.js";
+export {
+  SemanticConfigVersionResolver,
+  type CurrentSemanticConfigVersion,
+  type SemanticConfigVersionResolverOptions,
+} from "./semantic-config-version-resolver.js";
+export {
   createMastersRouter,
   type MastersRouterDeps,
 } from "./routes.js";
 export type {
+  FeatureDefinitionItem,
   OccasionMasterItem,
   OccasionMasterRow,
   OccasionMastersSuccessResponse,
@@ -36,4 +56,8 @@ export type {
   RelationshipsSuccessData,
   RelationshipsSuccessMeta,
   RelationshipsSuccessResponse,
+  SemanticConceptItem,
+  SemanticConfigMastersData,
+  SemanticConfigMastersSuccessResponse,
+  SemanticConfigReader,
 } from "./types.js";
