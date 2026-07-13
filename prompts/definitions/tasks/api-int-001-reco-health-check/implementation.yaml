@@ -1,0 +1,186 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-int-001-reco-health-check-implementation"
+  title: "API-INT-001:Recoヘルスチェックエンドポイント実装"
+  summary: "API-INT-001（GET /internal/reco/v1/health）の apps/reco エンドポイント層を実装仕様書・OpenAPI に沿って整備する。#1135 先行実装を追随し、reco_health_check_count と主要ケースの unit test を追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-INT-001:Recoヘルスチェック"
+  epic_issue_number: 391
+  epic_branch: "feature/epic-391-int-001-reco-health-check"
+  related_issues:
+    - number: 1153
+      purpose: "本 Task Issue"
+    - number: 1149
+      purpose: "前提（実装仕様書）"
+    - number: 414
+      purpose: "前提（OpenAPI 断片）"
+  related_prs:
+    - number: 1150
+      purpose: "実装仕様書 Epic Branch merge 済み"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 2/3。実装仕様書 #1149 / PR #1150 は Epic Branch merge 済み。
+  #1135 の最小 health を契約・OpenAPI・実装仕様書に揃える。
+
+objective: |
+  GET /internal/reco/v1/health を仕様準拠で提供し、401/200/503 と reco_health_check_count を満たす。
+
+scope:
+  - "apps/reco/src/reco/api/** の health 整備"
+  - "reco_health_check_count 記録境界"
+  - "unit test（health）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "OpenAPI / generated 変更"
+  - "apps/reco/src/reco/application/** 変更"
+  - "apps/api consumer 配線"
+  - "契約・実装仕様書の全面書き換え"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-001_RecoヘルスチェックAPI契約仕様書.md"
+      required: true
+  files:
+    - path: "packages/contracts/openapi/internal-reco-api.yaml"
+      required: true
+    - path: "apps/reco/src/reco/api/routes/health.py"
+      required: true
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/api/**"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/reco/tests/unit/api/test_health.py"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+acceptance_criteria:
+  - "有効 Key + DB OK で 200 / data.status=ok"
+  - "Key 欠落・不正で 401"
+  - "DB NG で 503 ErrorResponse（GRS-COM-003）"
+  - "reco_health_check_count が成功・失敗で記録される"
+  - "OpenAPI / application 層変更を含まない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1153-api-int-001-reco-health-check-implementation"
+  summary: "api-int-001-reco-health-check-implementation"
+  base: "feature/epic-391-int-001-reco-health-check"
+  target: "feature/epic-391-int-001-reco-health-check"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1153
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  issues:
+    - number: 1149
+      purpose: "実装仕様書"
+    - number: 414
+      purpose: "OpenAPI"
+  prs:
+    - number: 1150
+      purpose: "実装仕様書 merge"
+  blocking: false
+
+contract_gate:
+  required: true
+  gate_id: "api-int-001-openapi-fragment"
+  prerequisite_contract_tasks:
+    - issue: "#414"
+      definition: "prompts/definitions/contracts/api-int-001-reco-health-check/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue"
+  blocked_message: "OpenAPI 断片 #414 の反映を確認してください。"
+
+parallel_control:
+  exclusive_files:
+    - "apps/reco/src/reco/api/routes/health.py"
+    - "apps/reco/src/reco/api/metrics/**"
+    - "apps/reco/src/reco/api/exception_handlers/reco_errors.py"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+
+test_policy:
+  required:
+    - "reco unit test（health）"
+    - "compileall"
+    - "secret check"
+  commands:
+    - "cd apps/reco && python -m compileall src/reco/api"
+    - "cd apps/reco && python -m pytest tests/unit/api/test_health.py -q --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書・OpenAPI 整合"
+    - "epic_scope（application 非変更）"
+    - "503 ErrorResponse"
+    - "metric 境界"
+    - "secret 非露出"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+
+notes:
+  - "DATABASE_URL 未設定時 scaffold はローカル許容（§11 No.1 推奨案）"
+  - "apps/api consumer は本 Task 外（§11 No.3）"

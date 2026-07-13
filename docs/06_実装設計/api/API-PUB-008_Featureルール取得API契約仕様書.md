@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-05                                |
-| 更新日         | 2026-06-10（composite 参照・API-PUB-007 追随） |
+| 更新日         | 2026-07-13（`GRS-CFG-002` 追随） |
 
 ---
 
@@ -131,10 +131,17 @@ Accept: application/json
 | -----: | ---- | -------- |
 | 200 | 処理成功 | Feature Rule 一覧を返却できる場合 |
 | 400 | Request 不正 | 未知 Query 等（`GRS-REQ-001`） |
-| 500 | 内部エラー | 設定未整備（`GRS-CFG-001` / `GRS-CFG-005`）、DB 障害（`GRS-DB-*` / `GRS-CFG-999`） |
+| 500 | 内部エラー | current Version 未設定（`GRS-CFG-001`）、Version 解決失敗（`GRS-CFG-002`）、マスタ不足（`GRS-CFG-005`）、DB 障害（`GRS-DB-*` / `GRS-CFG-999`） |
 | 503 | 一時利用不可 | DB 一時不可（`GRS-DB-001`） |
 
-**空配列方針:** 各 Rule 配列が 0 件でも HTTP **200** とする（API一覧「マスタ未設定時は空配列等」）。current Version 未設定のみ `GRS-CFG-001`。
+**空配列・設定未整備方針:**
+
+| 条件 | HTTP Status | 扱い |
+| ---- | ----------- | ---- |
+| current Version 自体が存在しない | 500 | `GRS-CFG-001` |
+| Version 解決失敗（複数 current 等） | 500 | `GRS-CFG-002` |
+| Version あり・各 Rule 配列 0 件 | 200 | 空配列（API一覧「マスタ未設定時は空配列等」） |
+| Version あり・Rule 参照不能 | 500 | `GRS-CFG-005` |
 
 **active Rule のみ返却（MVP 確定）:** DB 上 `is_active = false` の Rule は応答に含めない。`isActive` フィールドは Public 応答に含めない（サーバ側で active のみ抽出）。
 
@@ -227,6 +234,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | -----: | ---------- | -------- | ---------------- |
 | 400 | `GRS-REQ-001` | 未知 Query 等 | 条件を確認してください。 |
 | 500 | `GRS-CFG-001` | current Version 未設定 | 選択項目の取得に失敗しました。 |
+| 500 | `GRS-CFG-002` | `semantic_config_version` 解決失敗（複数 current 等） | 選択項目の取得に失敗しました。 |
 | 500 | `GRS-CFG-005` | マスタ不足（Rule 参照不能） | 選択項目の取得に失敗しました。 |
 | 500 | `GRS-DB-001` | DB 接続失敗 | データ処理に失敗しました。 |
 | 500 | `GRS-DB-002` | DB 参照失敗 | データ取得に失敗しました。 |
@@ -284,8 +292,9 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | 4 | Version 整合 | `configName` + `versionLabel` が API-PUB-007 と一致 | contract |
 | 5 | 空配列 | 各配列 0 件でも 200 | contract |
 | 6 | 設定未整備 | current Version なしで 500 / `GRS-CFG-001` | contract |
-| 7 | active のみ | inactive Rule が応答に含まれない | contract |
-| 8 | 値域 | `featureBaseValue` / `featureDelta` が 0.0〜1.0 | contract |
+| 7 | Version 解決失敗 | 複数 current 等で 500 / `GRS-CFG-002` | contract |
+| 8 | active のみ | inactive Rule が応答に含まれない | contract |
+| 9 | 値域 | `featureBaseValue` / `featureDelta` が 0.0〜1.0 | contract |
 
 ---
 
@@ -296,6 +305,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | 2026-06-05 | 初版（Phase1 1a 契約面） | Issue #404 |
 | 2026-06-05 | Human Review 反映（2 グループ構成・値域・active のみ・Pair Reco 内部完結） | PR #408 |
 | 2026-06-11 | `concept_feature_rule` テーブル定義書 Human Review 決定を反映（polarity / feature_delta 値域 / semantic_concept_id FK） | Issue #476 |
+| 2026-07-13 | Version 解決失敗として `GRS-CFG-002` を追加（API-PUB-007 整合・Human 判断） | #1190 / PR #1191 |
 
 ---
 
@@ -308,6 +318,7 @@ API-PUB-007 と同一構造（`error` + `meta`）。
 | 3 | inactive Rule | MVP は active Rule のみ返却 | Human Review | `isActive` は Public 応答に含めない |
 | 4 | Pair Rule 公開方針 | Reco 内部完結。Public 化しない | Human Review | 現行非公開方針を維持 |
 | 5 | Public Version 参照キー | **`configName` + `versionLabel` composite**（両方必須） | Human | API-PUB-007 / `semantic_config_version_テーブル定義書` §17.1 |
+| 6 | Version 解決失敗 Error Code | **`GRS-CFG-002`**（複数 current 等）。API-PUB-007 と整合 | Human | #1190 / PR #1191 |
 
 ---
 

@@ -1,0 +1,99 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-008-feature-rule-masters-unit-test-pr"
+  title: "API-PUB-008 Featureルール取得単体テスト PRレビュー"
+  summary: "API-PUB-008 Featureルール取得 unit-test Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1211
+  issue: 1210
+  task_definition: "prompts/definitions/tasks/api-pub-008-feature-rule-masters/unit-test.yaml"
+  source_branch: "test/task-1210-api-pub-008-feature-rule-masters-unit-test"
+  target_branch: "feature/epic-390-pub-008-feature-rule-masters"
+  parent_epic_issue: "[Epic]API-PUB-008:Featureルール取得"
+  parent_epic_branch: "feature/epic-390-pub-008-feature-rule-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-008-feature-rule-masters/unit-test.yaml"
+    required: true
+  issue:
+    number: 1210
+    required: true
+  pr:
+    number: 1211
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-390-pub-008-feature-rule-masters"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md"
+      required: true
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria"
+    - "PR target が親 Epic Branch か"
+    - "PR 本文が Related to で Closes を使っていないか"
+  tests:
+    - "§9 fixture 観点がカバーまたはスキップ理由明示か"
+    - "既存スモークを壊していないか"
+  security:
+    - "secret / `.env` 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+notes:
+  - "Issue / PR 作成後に target.pr / input.pr.number を更新する"
+  - "PR 本文の Closes 禁止を重点確認"

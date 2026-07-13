@@ -1,0 +1,254 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-005-relationship-masters-unit-test"
+  title: "API-PUB-005:Relationshipマスタ取得単体テスト"
+  summary: "API-PUB-005（Relationshipマスタ取得 / Public API）エンドポイント層に対し、実装仕様書 §9 の unit 相当観点を満たす単体テストを `apps/api/tests/unit/app/masters/**` に拡充する（Phase4b 3/3）。実装 Task #1175 のスモーク UT を維持しつつ、冪等・Request-Id・成功 metric・想定外エラー等の残ギャップを埋める。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-005:Relationshipマスタ取得"
+  epic_issue_number: 387
+  epic_branch: "feature/epic-387-pub-005-relationship-masters"
+  related_issues:
+    - number: 1181
+      purpose: "本 Task Issue"
+    - number: 387
+      purpose: "親 Epic"
+    - number: 1175
+      purpose: "前提 Task（エンドポイント実装・スモーク UT）"
+    - number: 1166
+      purpose: "前提 Task（API実装仕様書）"
+  related_prs:
+    - number: 1177
+      purpose: "実装 Task PR（Epic Branch merge 済み）"
+    - number: 1168
+      purpose: "実装仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 縦串の 3/3。実装 Task（#1175 / PR #1177）により masters エンドポイントとスモーク UT が親 Epic Branch に merge 済み。
+  実装仕様書 §9 のうち、冪等・X-Request-Id・成功時 request_count・想定外エラー（GRS-COM-999）・Secret 非露出などが専用ケースとして不足しているため拡充する。
+  親 Epic `epic_scope.allowed_paths` に `apps/api/tests/unit/app/masters/**` が未記載のため、本 Task で追記する。
+
+objective: |
+  API-PUB-005 エンドポイント層の単体テストを実装仕様書 §9（unit 相当）および契約仕様書 §12 の unit で扱える範囲に沿って整備する。
+  既存スモークを維持しつつ不足観点を追加し、Epic PR → develop の前提を満たす。
+
+scope:
+  - "エンドポイント層単体テストの拡充（`apps/api/tests/unit/app/masters/**`）"
+  - "実装仕様書 §9 の unit 観点カバレッジ整理と不足ケース追加"
+  - "契約仕様書 §12 の unit 相当観点との対応表を PR 本文に記載"
+  - "親 Epic `epic_scope.allowed_paths` への `apps/api/tests/unit/app/masters/**` 追記"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "integration test（実 Postgres / 実 seed 障害シミュレーション）"
+  - "e2e test / contract test（OpenAPI generated client typecheck）"
+  - "OpenAPI / generated / packages/contracts 変更"
+  - "apps/web / apps/reco 変更"
+  - "エンドポイント層の機能追加（テスト成立のための最小バグ修正のみ可）"
+  - "本番 DB / 外部 API 依存テスト"
+  - "Epic PR の develop merge（Human 判断）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API実装仕様書.md"
+      required: true
+      purpose: "§9 実装テスト観点の正本"
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md"
+      required: true
+      purpose: "§12 契約面テスト観点"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+  templates: []
+  files:
+    - path: "apps/api/src/app/masters/**"
+      required: true
+      purpose: "テスト対象"
+    - path: "apps/api/tests/unit/app/masters/relationships.smoke.test.ts"
+      required: true
+      purpose: "既存スモーク（拡充起点）"
+  issues:
+    - number: 1175
+      purpose: "前提実装 Task"
+    - number: 1166
+      purpose: "前提実装仕様書 Task"
+  prs:
+    - number: 1177
+      purpose: "実装 PR"
+    - number: 1168
+      purpose: "実装仕様書 PR"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/api-pub-005-relationship-masters/epic.yaml"
+      action: "update"
+      required: true
+      purpose: "allowed_paths に tests を追記"
+  tests:
+    - path: "apps/api/tests/unit/app/masters/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "実装仕様書 §9 unit 相当観点に対応するテストスイート拡充"
+  - "テスト観点とテストケースの対応表（PR 本文）"
+  - "pnpm --filter @gift-recommendation/api test 成功ログ"
+  - "Epic epic_scope.allowed_paths への tests 追記"
+  - "Task Definition / Review Definition"
+
+acceptance_criteria:
+  - "実装仕様書 §9 の unit で扱える観点（正常・0件・非公開列・DB失敗・設定解決不能・meta・metric・冪等・想定外）がテストケースとしてカバーされている（対応表を PR に記載）"
+  - "既存 masters スモーク UT が引き続き成功する"
+  - "`pnpm --filter @gift-recommendation/api test` が成功する"
+  - "親 Epic `allowed_paths` に `apps/api/tests/unit/app/masters/**` が追記されている"
+  - "テストが本番 DB / 外部 API / secret に依存していない"
+  - "エンドポイント層の不要な機能変更を含まない"
+  - "OpenAPI / generated / apps/web / apps/reco の変更を含まない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "test/task-1181-api-pub-005-relationship-masters-unit-test"
+  summary: "api-pub-005-relationship-masters-unit-test"
+  base: "feature/epic-387-pub-005-relationship-masters"
+  target: "feature/epic-387-pub-005-relationship-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1181
+  unit: "task"
+  type: "test"
+  area: "api"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1175
+      purpose: "実装 Task 完了"
+    - number: 1166
+      purpose: "API実装仕様書 Task 完了"
+  prs:
+    - number: 1177
+      purpose: "実装 Epic Branch merge"
+    - number: 1168
+      purpose: "実装仕様書 Epic Branch merge"
+  tasks:
+    - "task-api-pub-005-relationship-masters-implementation（#1175 / PR #1177 merge 済み）"
+  blocking: true
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-005-relationship-masters/implementation.yaml"
+  blocks:
+    - "API-PUB-005 Epic PR → develop（Phase4b 完了後）"
+  exclusive_files:
+    - "apps/api/tests/unit/app/masters/**"
+    - "prompts/definitions/epics/api-pub-005-relationship-masters/epic.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "coverage mapping（§9 / §12 観点との対応）"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  manual_checks:
+    - "§9 観点ごとに対応テストケース名または PR 表でトレースできることを確認する"
+    - "テスト fixture に実データ・secret が含まれていないことを確認する"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+    - "generated client typecheck"
+  skip_reason:
+    "integration test": "実 DB 障害は別環境・別 Task"
+    "e2e test": "SCR-002 経路は別 Task"
+    "contract test": "OpenAPI 変更なし"
+    "generated client typecheck": "apps/web consumer は別 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書 §9・契約仕様書 §12 の unit 範囲カバレッジが過不足ないか"
+    - "既存実装の意図と矛盾するアサーションがないか"
+    - "integration 観点を unit で無理に検証していないか"
+    - "epic_scope 外の変更が混入していないか"
+    - "secret や .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の UT 作業は ai-logs に保存しない。"
+
+human_decision_points:
+  - "本 Task merge 後に Epic PR → develop へ進めてよいか（Phase4b 縦串完了判定）"
+
+stop_conditions:
+  - "必須 input.docs / 既存スモーク UT が存在しない場合"
+  - "実装変更なしではテストが成立しないが、機能追加が必要に見える場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "epic_scope.allowed_paths 外の変更が必要になった場合"
+
+notes:
+  - "本Taskは API-PUB-005 の Phase4b 3/3（単体テスト）。"
+  - "親 Epic Issue #387 / Branch feature/epic-387-pub-005-relationship-masters。Task PR は親 Epic Branch を target とする。"
+  - "Issue 起票後に branch.name / issue.number を実番号へ反映する。"

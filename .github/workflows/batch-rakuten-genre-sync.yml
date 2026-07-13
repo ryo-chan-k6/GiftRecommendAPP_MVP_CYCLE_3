@@ -1,0 +1,80 @@
+name: Batch Rakuten Genre Sync
+
+# BATCH-001 楽天ジャンル同期（子 workflow）
+# 正本: バッチ実行スケジュール設計書 — workflow_call / workflow_dispatch（schedule は親 orchestrator）
+
+on:
+  workflow_call:
+    inputs:
+      target_genre_ids:
+        description: "Comma-separated genre IDs (empty = default fetch_plan placeholder)"
+        required: false
+        type: string
+        default: ""
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      target_genre_ids:
+        description: "Comma-separated genre IDs (empty = default fetch_plan placeholder)"
+        required: false
+        type: string
+        default: ""
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: batch-rakuten-genre-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  genre-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-001 scaffold demo
+        # Real Rakuten HTTP client is not enabled in this Task.
+        # Secrets (RAKUTEN_*) must never be printed. Use --scaffold-demo for CI smoke.
+        working-directory: apps/batch
+        run: |
+          GENRE_ARGS=()
+          if [ -n "${{ inputs.target_genre_ids }}" ]; then
+            GENRE_ARGS+=(--genre-ids "${{ inputs.target_genre_ids }}")
+          fi
+          uv run python -m batch.application.genre_sync \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${GENRE_ARGS[@]}"

@@ -140,9 +140,9 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-PUB-001_*"
     - "apps/api/src/app/health/**"
+    - "apps/api/tests/unit/app/health/**"
     - "packages/contracts/openapi/**"
     - "packages/contracts/schemas/**"
-
     - "prompts/definitions/tasks/api-pub-001-api-health-check/**"
     - "prompts/definitions/reviews/api-pub-001-api-health-check/**"
   forbidden_paths:

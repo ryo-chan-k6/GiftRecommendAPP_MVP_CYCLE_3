@@ -1,0 +1,150 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-005-relationship-masters-epic-pr"
+  title: "API-PUB-005 Relationshipマスタ取得 Epic PRレビュー"
+  summary: "Epic #387（API-PUB-005 Relationshipマスタ取得）の develop 向け統合 PR を AI Review する。Phase4b 縦串（実装仕様書 / apps/api 実装 / 単体テスト）の成果を横断確認する。契約仕様書・OpenAPI 断片は Phase1 で develop 反映済み。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1186
+  issue:
+    number: 387
+  task_definition: "prompts/definitions/epics/api-pub-005-relationship-masters/epic.yaml"
+  source_branch: "feature/epic-387-pub-005-relationship-masters"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-PUB-005:Relationshipマスタ取得"
+  parent_epic_branch: "feature/epic-387-pub-005-relationship-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/api-pub-005-relationship-masters/epic.yaml"
+    required: true
+  issue:
+    number: 387
+    required: true
+  pr:
+    number: 1186
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API実装仕様書.md"
+      required: true
+
+review_points:
+  common:
+    - "Epic Issue #387 と差分が整合しているか"
+    - "PR target が develop であるか"
+    - "Phase4b 縦串（実装仕様書→実装→UT）が揃っているか"
+  docs:
+    - "実装仕様書が契約仕様書と矛盾していないか"
+  source:
+    - "apps/api/src/app/masters/** が実装仕様書に沿っているか"
+    - "apps/reco / apps/web 実装変更が混入していないか"
+  tests:
+    - "masters スモーク / unit が含まれるか"
+  api_contract:
+    - "OpenAPI の破壊的変更が本 Epic 差分に混入していないか（Phase1 済み想定）"
+  security:
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "差分が epic_scope.allowed_paths 内に収まっているか"
+
+acceptance_check:
+  use_task_acceptance_criteria: false
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Phase4b 成果が揃っている"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "縦串成果の不足または重大不整合がある"
+  needs_human_decision:
+    conditions:
+      - "merge 判断が必要（本 PR の最終判断は Human）"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新する"
+  - "merge 判断は Human（ryo-chan-k6）"
+  - "対応 Epic Issue: #387"
