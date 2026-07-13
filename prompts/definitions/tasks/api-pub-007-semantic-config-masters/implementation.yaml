@@ -1,0 +1,234 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-007-semantic-config-masters-implementation"
+  title: "API-PUB-007:Semantic設定取得エンドポイント実装"
+  summary: "API-PUB-007（Semantic設定取得 / Public API、`GET /api/v1/masters/semantic-configs`）を、契約仕様書・OpenAPI・実装仕様書（#1188 / PR #1189）に沿って apps/api masters に実装する（Phase4b 2/3）。Issue #1195。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-007:Semantic設定取得"
+  epic_issue_number: 389
+  epic_branch: "feature/epic-389-pub-007-semantic-config-masters"
+  related_issues:
+    - number: 389
+      purpose: "親 Epic"
+    - number: 1188
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 403
+      purpose: "前提 Task（API契約仕様書）"
+    - number: 426
+      purpose: "前提 Task（OpenAPI 断片）"
+  related_prs:
+    - number: 1189
+      purpose: "実装仕様書 Task PR（親 Epic Branch merge 済み）"
+    - number: 407
+      purpose: "契約仕様書 merge"
+    - number: 427
+      purpose: "OpenAPI 断片 develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase4b 縦串の 2/3（apps/api 実装）。前提: 実装仕様書 #1188 / PR #1189 が親 Epic Branch に merge 済み。
+  PUB-005/006 で `createMastersRouter` が存在する。本 Task は `GET /semantic-configs` を追加する。
+  current Version 解決 + Concept / Feature Definition スナップショット組立。網羅 UT は後続 Task。
+
+objective: |
+  `GET /api/v1/masters/semantic-configs` を契約・OpenAPI・実装仕様書に沿って提供する。
+  MOD-API-011/012、Version 解決、Concept/Feature 読取、エラー境界、metric を実装する。
+
+scope:
+  - "`apps/api/src/app/masters/**` に Semantic Config 用 Controller / Repository を追加"
+  - "`createMastersRouter` に `GET /semantic-configs` を追加"
+  - "current Version 解決（is_active → is_current → JOIN config_name）"
+  - "Concept 0 件 200 / current なし GRS-CFG-001 / Feature 0 件 GRS-CFG-006"
+  - "未知 Query で 400 GRS-REQ-001"
+  - "masters_semantic_configs_* metric"
+  - "最小スモーク単体テスト"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "OpenAPI / Orval / generated 変更"
+  - "apps/web / apps/reco 変更"
+  - "契約・実装仕様書 docs の変更"
+  - "DB schema / migration / seed 変更"
+  - "API-PUB-005 / 006 / 008 の機能追加（既存破壊は禁止）"
+  - "網羅 UT（Phase4b 3/3）"
+  - "PUB-008 との Repository 共通化（推奨のみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+  files:
+    - path: "apps/api/src/app/masters/**"
+      required: true
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+  issues:
+    - number: 1188
+      purpose: "前提実装仕様書"
+  prs:
+    - number: 1189
+      purpose: "実装仕様書 Epic merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/app/masters/**"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/api/tests/unit/app/masters/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+acceptance_criteria:
+  - "`GET /api/v1/masters/semantic-configs` が注入 Reader で 200 と契約外形を返す"
+  - "Concept 空配列は 200、Feature 0 件は GRS-CFG-006、current なしは GRS-CFG-001"
+  - "内部 UUID / Rule を Response に含めない"
+  - "未知 Query で 400 GRS-REQ-001"
+  - "masters_semantic_configs_request_count / error_count が記録される"
+  - "OpenAPI / web / reco 変更を含まない"
+  - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1195-api-pub-007-semantic-config-masters-implementation"
+  summary: "api-pub-007-semantic-config-masters-implementation"
+  base: "feature/epic-389-pub-007-semantic-config-masters"
+  target: "feature/epic-389-pub-007-semantic-config-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-13"
+    due_date: "2026-07-15"
+
+issue:
+  number: 1195
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+contract_gate:
+  required: true
+  gate_id: "api-pub-007-phase1"
+  prerequisite_contract_tasks:
+    - issue: 426
+      definition: "prompts/definitions/contracts/api-pub-007-semantic-config-masters/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue 開始前"
+  blocked_message: "OpenAPI #426 および実装仕様書 #1188 / PR #1189 の Epic merge を確認するまで開始しない"
+
+dependencies:
+  issues:
+    - number: 1188
+      purpose: "実装仕様書"
+    - number: 426
+      purpose: "OpenAPI"
+  prs:
+    - number: 1189
+      purpose: "実装仕様書 Epic merge"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/api/src/app/masters/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "build or typecheck"
+    - "masters semantic-configs smoke unit tests"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+  skip_reason:
+    "integration test": "網羅は後続 UT / 結合"
+    "e2e test": "対象外"
+    "contract test": "OpenAPI 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書 §3〜§9 と矛盾しないか"
+    - "Concept / Feature エラー境界が正しいか"
+    - "PUB-005/006 既存挙動を壊していないか"
+    - "secret が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常実装は ai-logs に保存しない。"
+
+human_decision_points:
+  - "PUB-008 との Version 解決共通化は後続"
+  - "DATABASE_URL 未設定は GRS-CFG-001（実装仕様書推奨）"
+
+stop_conditions:
+  - "PR #1189 が Epic に merge されていない場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "PUB-005/006 の破壊的変更が必要になった場合"
+  - "secret を扱う必要が出た場合"
+
+notes:
+  - "Phase4b 2/3。参考: api-pub-006-occasion-masters/implementation.yaml。"
+  - "Issue 起票後に branch.name / issue.number を反映する。"
