@@ -1,10 +1,25 @@
-"""Rakuten genre response adapter for BATCH-001."""
+"""Rakuten genre / ranking response adapters for BATCH-001 / BATCH-002."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
-from batch.infrastructure.rakuten.client import RakutenGenre, RakutenGenreApiError
+from batch.infrastructure.rakuten.client import (
+    RakutenGenre,
+    RakutenGenreApiError,
+    RakutenRankingApiError,
+    RakutenRankingEntry,
+)
+
+
+@dataclass(frozen=True)
+class AdaptedRankingRaw:
+    """Normalized ranking payload extracted from formatVersion=2 style Raw dict."""
+
+    last_build_date: str
+    entries: tuple[RakutenRankingEntry, ...]
+    genre_id: str
 
 
 def adapt_genre_raw_payload(payload: dict[str, object], *, requested_genre_id: str) -> RakutenGenre:
@@ -65,8 +80,84 @@ def adapt_genre_raw_payload(payload: dict[str, object], *, requested_genre_id: s
     )
 
 
+def adapt_ranking_raw_payload(
+    payload: dict[str, object],
+    *,
+    requested_genre_id: str,
+    period: str = "daily",
+    page: int = 1,
+) -> AdaptedRankingRaw:
+    """Map Rakuten item ranking JSON (formatVersion=2 shape) to AdaptedRankingRaw.
+
+    Extracts lastBuildDate and Items[{rank, itemCode}].
+    Secret fields are never expected in payloads persisted by this adapter.
+    """
+
+    _ = period  # reserved for future validation against payload.period
+    last_build_date = _as_str(payload.get("lastBuildDate"))
+    if not last_build_date:
+        raise RakutenRankingApiError(
+            genre_id=requested_genre_id,
+            page=page,
+            code="GRS-EXT-103",
+            message="invalid ranking payload: missing lastBuildDate",
+        )
+
+    genre_id = _as_str(payload.get("genreId")) or requested_genre_id
+
+    items_raw = payload.get("Items")
+    if not isinstance(items_raw, list):
+        raise RakutenRankingApiError(
+            genre_id=requested_genre_id,
+            page=page,
+            code="GRS-EXT-103",
+            message="invalid ranking payload: missing Items list",
+        )
+
+    entries: list[RakutenRankingEntry] = []
+    for item in items_raw:
+        if not isinstance(item, dict):
+            continue
+        # formatVersion=2 では flat、または {"Item": {...}} の両形を許容
+        item_obj = item.get("Item") if isinstance(item.get("Item"), dict) else item
+        if not isinstance(item_obj, dict):
+            continue
+        rank = _as_int(item_obj.get("rank"))
+        item_code = _as_str(item_obj.get("itemCode"))
+        if rank is None or not item_code:
+            raise RakutenRankingApiError(
+                genre_id=requested_genre_id,
+                page=page,
+                code="GRS-EXT-103",
+                message="invalid ranking payload: item missing rank/itemCode",
+            )
+        entries.append(RakutenRankingEntry(rank=rank, item_code=item_code))
+
+    if not entries:
+        raise RakutenRankingApiError(
+            genre_id=requested_genre_id,
+            page=page,
+            code="GRS-EXT-103",
+            message="invalid ranking payload: empty Items",
+        )
+
+    return AdaptedRankingRaw(
+        last_build_date=last_build_date,
+        entries=tuple(entries),
+        genre_id=genre_id,
+    )
+
+
 def _as_str(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _as_int(value: Any) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lstrip("-").isdigit():
+        return int(value.strip())
+    return None
