@@ -1,0 +1,96 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-004-rakuten-existing-item-recheck-batch-spec-pr"
+  title: "BATCH-004 楽天既存商品再確認バッチ仕様書 PRレビュー"
+  summary: "BATCH-004 バッチ仕様書 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  target: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/batch-spec.yaml"
+  source_branch: null
+  target_branch: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  parent_epic_issue: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+  parent_epic_branch: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/batch-spec.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "成果物本体"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-004 正本との整合"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+  docs:
+    - "バッチ処理一覧 BATCH-004 と矛盾していないか"
+    - "recheck 境界・Item 本更新非実施が明記されているか"
+  security:
+    - "secret / .env 実値がないか"
+
+notes:
+  - "Issue / PR / Branch 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
