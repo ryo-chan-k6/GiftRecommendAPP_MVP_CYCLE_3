@@ -141,6 +141,7 @@ epic_scope:
     - "docs/06_実装設計/api/API-PUB-008_*"
     - "apps/api/src/app/masters/**"
     - "apps/api/tests/unit/app/masters/**"
+    - "apps/api/tests/unit/app/app.mount.test.ts"
     - "packages/contracts/openapi/**"
     - "packages/contracts/schemas/**"
     - "apps/web/src/generated/api/**"
