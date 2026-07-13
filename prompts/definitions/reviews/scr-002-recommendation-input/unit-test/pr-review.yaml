@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1221
   issue: 1220
   task_definition: "prompts/definitions/tasks/scr-002-recommendation-input/unit-test.yaml"
   source_branch: "test/task-1220-scr-002-recommendation-input-unit-test"
@@ -70,7 +70,7 @@ input:
     number: 1220
     required: true
   pr:
-    number: null
+    number: 1221
     required: true
   diff:
     required: true
