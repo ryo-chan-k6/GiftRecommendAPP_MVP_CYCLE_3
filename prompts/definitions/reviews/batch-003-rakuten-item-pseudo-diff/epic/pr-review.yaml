@@ -6,7 +6,7 @@ review:
   title: "BATCH-003 楽天商品疑似差分取得Batch Epic PRレビュー"
   summary: "BATCH-003 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1219
   issue:
     number: 1207
   task_definition: "prompts/definitions/epics/batch-003-rakuten-item-pseudo-diff/epic.yaml"
@@ -56,4 +56,4 @@ review_points:
   - "Epic PR target が develop であるか"
 
 notes:
-  - "縦串完了後に PR 番号を反映し status を ready へ更新する"
+  - "Epic PR #1219 / develop 向け / Issue #1207"
