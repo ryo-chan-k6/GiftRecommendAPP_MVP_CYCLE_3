@@ -97,3 +97,52 @@ export type SemanticConfigMastersSuccessResponse = {
 export type SemanticConfigReader = {
   getCurrentSnapshot(): Promise<SemanticConfigMastersData>;
 };
+
+/** API-PUB-008 Relationship 基準値 Rule。 */
+export type RelationshipBaseValueRuleItem = {
+  ruleType: "relationship";
+  relationshipCode: string;
+  featureCode: string;
+  featureBaseValue: number;
+};
+
+/** API-PUB-008 Occasion 基準値 Rule。 */
+export type OccasionBaseValueRuleItem = {
+  ruleType: "occasion";
+  occasionCode: string;
+  featureCode: string;
+  featureBaseValue: number;
+};
+
+export type BaseValueRuleMasterItem =
+  | RelationshipBaseValueRuleItem
+  | OccasionBaseValueRuleItem;
+
+/** API-PUB-008 Concept Feature Rule。 */
+export type ConceptFeatureRuleMasterItem = {
+  conceptCode: string;
+  featureCode: string;
+  featureDelta: number;
+  polarity?: "positive" | "negative" | "mixed";
+};
+
+export type FeatureRuleMastersData = {
+  configName: string;
+  versionLabel: string;
+  baseValueRules: BaseValueRuleMasterItem[];
+  conceptFeatureRules: ConceptFeatureRuleMasterItem[];
+};
+
+export type FeatureRuleMastersSuccessResponse = {
+  data: FeatureRuleMastersData;
+  meta: {
+    traceId: string;
+    requestId: string;
+    generatedAt: string;
+  };
+};
+
+/** MOD-API-012 Feature Rule 読取 I/F（Router 注入・UT 用）。 */
+export type FeatureRuleReader = {
+  getCurrentRules(): Promise<FeatureRuleMastersData>;
+};
