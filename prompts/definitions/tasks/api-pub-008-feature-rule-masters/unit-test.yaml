@@ -22,6 +22,8 @@ parent:
     - number: 1190
       purpose: "前提 Task（API実装仕様書）"
   related_prs:
+    - number: 1211
+      purpose: "本 Task PR（単体テスト）"
     - number: 1205
       purpose: "実装 Task PR（親 Epic Branch merge 済み）"
     - number: 1191
