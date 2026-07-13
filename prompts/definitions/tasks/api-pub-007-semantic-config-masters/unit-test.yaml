@@ -1,0 +1,217 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-007-semantic-config-masters-unit-test"
+  title: "API-PUB-007:Semantic設定取得単体テスト"
+  summary: "API-PUB-007（Semantic設定取得）エンドポイント層に対し、実装仕様書 §9 の fixture ベース unit 観点カバレッジを整理・拡充する（Phase4b 3/3）。実装 Task #1195 のスモーク UT を維持しつつ、残ギャップを埋める。Issue #1197。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-007:Semantic設定取得"
+  epic_issue_number: 389
+  epic_branch: "feature/epic-389-pub-007-semantic-config-masters"
+  related_issues:
+    - number: 389
+      purpose: "親 Epic"
+    - number: 1195
+      purpose: "前提 Task（エンドポイント実装・スモーク UT）"
+    - number: 1188
+      purpose: "前提 Task（API実装仕様書）"
+  related_prs:
+    - number: 1196
+      purpose: "実装 Task PR（親 Epic Branch merge 済み）"
+    - number: 1189
+      purpose: "実装仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 縦串の 3/3。実装 Task（#1195 / PR #1196）で masters/semantic-configs とスモーク UT が追加済み。
+  本 Task は実装仕様書 §9 の観点を fixture ベース unit として PR に明示し、不足があれば
+  `apps/api/tests/unit/app/masters/**` を拡充する。
+  §9 No.8（generated）/ No.9（SCR-002 manual）は out_of_scope。
+  Epic `allowed_paths` に tests パスが欠落しているため追記する。
+
+objective: |
+  API-PUB-007 の unit テストを実装仕様書 §9（fixture 化可能な範囲）に沿って充足し、Epic PR → develop の前提を満たす。
+
+scope:
+  - "エンドポイント / Repository / Resolver 層単体テストの拡充またはカバレッジ確認"
+  - "実装仕様書 §9 の unit 観点対応表を PR 本文に記載"
+  - "不足ケース追加（冪等、GRS-CFG-002 HTTP、GRS-COM-999、非 GET、stack 非露出、requestId 等）"
+  - "親 Epic `epic_scope.allowed_paths` に `apps/api/tests/unit/app/masters/**` を追記"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "実 Postgres 結合テスト"
+  - "integration / e2e / contract test（OpenAPI 変更を伴うもの）"
+  - "OpenAPI / generated 変更"
+  - "apps/web / apps/reco 変更"
+  - "SCR-002 画面確認（§9 No.9）"
+  - "Epic PR の develop merge（Human 判断）"
+  - "PUB-005 / 006 / 008 のテスト追加"
+  - "本番アプリ実装の機能追加（テスト・Epic yaml 以外）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md"
+      required: true
+      purpose: "§9 実装テスト観点の正本"
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "契約外形"
+  files:
+    - path: "apps/api/src/app/masters/"
+      required: true
+    - path: "apps/api/tests/unit/app/masters/semantic-configs.smoke.test.ts"
+      required: true
+  issues:
+    - number: 1195
+      purpose: "前提実装"
+  prs:
+    - number: 1196
+      purpose: "実装 PR（blocking・Epic merge 済み）"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/api-pub-007-semantic-config-masters/epic.yaml"
+      action: "update"
+      required: true
+      purpose: "allowed_paths に tests を追記"
+  tests:
+    - path: "apps/api/tests/unit/app/masters/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "§9 unit 観点カバレッジ表（PR 本文）"
+  - "不足ケースのテスト追加"
+  - "Epic allowed_paths 追記"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "実装仕様書 §9 の fixture 化可能観点がテストまたは明示スキップ理由でカバーされている"
+  - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
+  - "OpenAPI / generated / apps/web / apps/reco 変更を含まない"
+  - "epic_scope.allowed_paths に tests パスが含まれる"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1197-api-pub-007-semantic-config-masters-unit-test"
+  summary: "api-pub-007-semantic-config-masters-unit-test"
+  base: "feature/epic-389-pub-007-semantic-config-masters"
+  target: "feature/epic-389-pub-007-semantic-config-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-13"
+    due_date: "2026-07-15"
+
+issue:
+  number: 1197
+  unit: "task"
+  type: "test"
+  area: "api"
+
+dependencies:
+  issues:
+    - number: 1195
+      purpose: "実装 Task"
+  prs:
+    - number: 1196
+      purpose: "実装 PR Epic merge（blocking）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/api/tests/unit/app/masters/**"
+    - "prompts/definitions/epics/api-pub-007-semantic-config-masters/epic.yaml"
+    - "prompts/definitions/tasks/api-pub-007-semantic-config-masters/unit-test.yaml"
+    - "prompts/definitions/reviews/api-pub-007-semantic-config-masters/unit-test/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "build or typecheck"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  not_required:
+    - "integration test"
+    - "e2e test"
+  skip_reason:
+    "integration test": "実 DB 結合は対象外。Scaffold fixture で代替"
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§9 カバレッジが十分か"
+    - "Concept 0 件と Feature 0 件の非対称がテストされているか"
+    - "secret 非露出"
+    - "Epic allowed_paths 追記が妥当か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 UT は ai-logs に保存しない"
+
+human_decision_points:
+  - "Epic allowed_paths への tests 追記を本 Task で行ってよいか（推奨: 実施）"
+
+stop_conditions:
+  - "PR #1196 が親 Epic Branch に merge されていない場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "実 Postgres 結合が必須と判明した場合"
+
+notes:
+  - "PUB-006 unit-test.yaml と同型。実装 PR merge 済みのため開始可。"
+  - "後続: Epic PR → develop（縦串完了後・Human merge 判断）。"

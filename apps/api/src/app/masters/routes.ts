@@ -20,10 +20,16 @@ import {
   RelationshipMasterRepository,
   UnresolvedRelationshipMasterReader,
 } from "./relationship-repository.js";
+import { createSemanticConfigController } from "./semantic-config-controller.js";
+import {
+  SemanticConfigRepository,
+  UnresolvedSemanticConfigReader,
+} from "./semantic-config-repository.js";
 import type {
   RelationshipMasterReader,
   RelationshipPublicItem,
   RelationshipsSuccessResponse,
+  SemanticConfigReader,
 } from "./types.js";
 
 export type MastersRouterDeps = {
@@ -36,6 +42,8 @@ export type MastersRouterDeps = {
   occasionRepository?: OccasionMasterRepository;
   /** API-PUB-006: false で GRS-CFG-005。既定 true。 */
   mastersConfigResolved?: boolean;
+  /** API-PUB-007: Semantic Config 読取（未指定時は DATABASE_URL 有無で既定実装）。 */
+  semanticConfigReader?: SemanticConfigReader;
 };
 
 function createDefaultRelationshipReader(): RelationshipMasterReader {
@@ -57,11 +65,21 @@ function toPublicItems(
   }));
 }
 
+function createDefaultSemanticConfigReader(
+  dbSession: DbSession,
+): SemanticConfigReader {
+  if (!isDatabaseUrlConfigured()) {
+    return new UnresolvedSemanticConfigReader();
+  }
+  return new SemanticConfigRepository({ session: dbSession });
+}
+
 /**
  * Public masters Router。
  * - API-PUB-005: GET /relationships
  * - API-PUB-006: GET /occasions
- * 後続 PUB-007 / 008 も同一 Router へ追加可。
+ * - API-PUB-007: GET /semantic-configs
+ * 後続 PUB-008 も同一 Router へ追加可。
  */
 export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
   const router = Router();
@@ -79,6 +97,14 @@ export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
     repository: occasionRepository,
     logger: deps.logger,
     mastersConfigResolved: deps.mastersConfigResolved,
+  });
+
+  const semanticConfigReader =
+    deps.semanticConfigReader ?? createDefaultSemanticConfigReader(dbSession);
+  const getSemanticConfigs = createSemanticConfigController({
+    reader: semanticConfigReader,
+    logger: deps.logger,
+    generatedAtFactory,
   });
 
   router.get(
@@ -163,6 +189,7 @@ export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
   );
 
   router.get("/occasions", getOccasions);
+  router.get("/semantic-configs", getSemanticConfigs);
 
   return router;
 }
