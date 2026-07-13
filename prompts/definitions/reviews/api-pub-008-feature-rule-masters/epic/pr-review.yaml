@@ -1,0 +1,79 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-008-feature-rule-masters-epic-pr"
+  title: "API-PUB-008 Featureルール取得 Epic PRレビュー"
+  summary: "Epic #390（API-PUB-008）の develop 向け統合 PR を AI Review する"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 390
+  task_definition: "prompts/definitions/epics/api-pub-008-feature-rule-masters/epic.yaml"
+  source_branch: "feature/epic-390-pub-008-feature-rule-masters"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-PUB-008:Featureルール取得"
+  parent_epic_branch: "feature/epic-390-pub-008-feature-rule-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/api-pub-008-feature-rule-masters/epic.yaml"
+    required: true
+  issue:
+    number: 390
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+
+notes:
+  - "Epic PR は Closes #390 を使用してよい（Task PR の Closes 禁止とは別）"
