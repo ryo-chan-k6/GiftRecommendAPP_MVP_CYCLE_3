@@ -58,7 +58,7 @@ apps/api/src/app/masters/
 ├── routes.ts                              # createMastersRouter(): + GET /feature-rules
 ├── semantic-config-version-resolver.ts    # PUB-007 / PUB-008 共通 current Version 解決（PUB-007 実装で新規。本 API は再利用）
 ├── feature-rules-controller.ts            # MOD-API-011（本 API 受付・Response 組立）※ファイル名は実装 Task で調整可
-├── feature-rule-repository.ts             # MOD-API-012（Rule 読取。Version は共通 Resolver を利用）
+├── feature-rule-repository.ts             # MOD-API-012（1 Repository 内で 3 Rule テーブル読取。Version は共通 Resolver を利用）
 ├── relationship-repository.ts             # 既存（PUB-005）
 ├── occasion-repository.ts                 # 既存（PUB-006）
 └── ...
@@ -68,7 +68,7 @@ apps/api/src/app/masters/
 | ---------- | -------------- |
 | MOD-API-011 Master Controller | `GET /feature-rules` 受付、未知 Query 検査、meta 解決、Repository 呼び出し、成功 / 失敗 Response 組立、metric 境界 |
 | current Version Resolver（共通） | 親 `is_active` → 子 `is_current` → JOIN `config_name`。PUB-007 と同一実装を呼ぶ（§11 判断確定） |
-| MOD-API-012 Master Repository | 共通 Resolver で Version 解決後、active な `relationship_rule` / `occasion_rule` / `concept_feature_rule` を読取り、内部 DTO を返却 |
+| MOD-API-012 Master Repository | 共通 Resolver で Version 解決後、**1 Repository** 内で active な `relationship_rule` / `occasion_rule` / `concept_feature_rule` を読取り、内部 DTO を返却（§11 判断確定） |
 
 **共通化方針（§11 判断確定）:** current Version 解決のみを MVP 時点から PUB-007 / PUB-008 共通モジュール化する。Rule 読取まで含む全体 Repository の共通化は行わない。本 API 実装 Task は `semantic-config-version-resolver.ts` を再利用する（API-PUB-007 実装仕様書 §3.2 / §11）。
 
@@ -127,6 +127,8 @@ WHERE sc.is_active = true
 | ---- | ---- |
 | inactive | Response に含めない（`isActive` フィールドも出さない） |
 | 各配列 0 件 | **HTTP 200** + 空配列（Version 解決成功が前提） |
+| `baseValueRules` 並び順 | **`ruleType` → code（`relationshipCode` / `occasionCode`）→ `featureCode`**（§11 判断確定） |
+| `conceptFeatureRules` 並び順 | **`conceptCode` → `featureCode`**（UI 安定性のため明示） |
 | Pair 等 | `pair_rule` / `input_type_rule` / `feature_integration_rule` は読まない |
 
 #### 3.5.3 エラー境界まとめ
@@ -178,7 +180,7 @@ flowchart TD
 2. **meta 解決:** `X-Trace-Id` / `X-Request-Id` は任意（現行 middleware の採番方針に従う）。
 3. **Controller:** 認証なし。Body / Path なし。
 4. **Version 解決:** 共通 Resolver を呼ぶ。current が無ければ `GRS-CFG-001`、複数 current 等は `GRS-CFG-002` で終了。
-5. **Rule 読取:** 3 テーブルから active 行のみ取得し、`baseValueRules` / `conceptFeatureRules` にマッピング。
+5. **Rule 読取:** 3 テーブルから active 行のみ取得し、`baseValueRules` / `conceptFeatureRules` にマッピング。並びは §3.5.2（`baseValueRules`: ruleType → code → featureCode）。
 6. **成功 Response:** `data.configName` / `versionLabel` / 2 配列 + `meta`。
 7. **metric:** `masters_feature_rules_request_count`（完了時）。エラー時は `masters_feature_rules_error_count` も。
 
@@ -307,14 +309,13 @@ flowchart TD
 | 2026-07-12 | 初版作成 | #1190 |
 | 2026-07-12 | AI Review 指摘反映（§3.5.1 Version 2 段階解決・configName JOIN、§5.2 DB snake 列名、§5.3 `GRS-DB-001` HTTP 整合） | #1190 / PR #1191 |
 | 2026-07-13 | API-PUB-007 実装方針取込（共通 Resolver / 都度 SELECT / Version 手順・`GRS-CFG-002`）。接続設定欠落は `GRS-CFG-005`。契約追随と Human 判断反映 | #1190 / PR #1191 |
+| 2026-07-13 | 残未決を推奨案で確定（1 Repository 内 3 読取、`baseValueRules` 並び順） | #1190 / PR #1191 |
 
 ---
 
 ## 11. Human Review 判断事項
 
-### 11.1 判断確定
-
-Human 判断により推奨案を採用し、以下を **実装面の判断確定** とする。
+Human 判断により推奨案を採用し、以下を **実装面の判断確定** とする。残未決事項はない。
 
 |  No | 論点 | Human 判断 | 実装への適用 |
 | --: | ---- | ---------- | ------------ |
@@ -322,13 +323,8 @@ Human 判断により推奨案を採用し、以下を **実装面の判断確�
 | 2 | プロセス内キャッシュ | **導入しない**（都度 SELECT）。更新鮮度を優先 | §3.1。キャッシュ層は実装しない |
 | 3 | DATABASE_URL 未設定 / 接続設定欠落時の Error Code | **`GRS-CFG-005`** にマップする（PUB-007 の `GRS-CFG-001` 寄せとは揃えない） | §3.3 / §3.5.3 |
 | 4 | `GRS-CFG-002` の契約追随 | **契約仕様書へ追加する**（複数 current 等の Version 解決失敗） | 契約 §7.2 / §8.2。本書 §3.5.1 |
-
-### 11.2 残未決事項
-
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Feature Rule Repository の分割粒度（1 class vs テーブル別） | DI・UT しやすさ | Human | 実装 Task 開始前 | 推奨: 1 Repository 内で 3 読取 |
-| 2 | `baseValueRules` 並び順 | UI 安定性 | Human | 任意 | 推奨: ruleType → code → featureCode |
+| 5 | Feature Rule Repository の分割粒度 | **1 Repository 内で 3 テーブル読取**（テーブル別 class 分割はしない） | §3.2。`feature-rule-repository.ts` |
+| 6 | `baseValueRules` 並び順 | **`ruleType` → code → `featureCode`**。`conceptFeatureRules` は `conceptCode` → `featureCode` | §3.5.2 |
 
 ---
 
@@ -357,7 +353,7 @@ Human 判断により推奨案を採用し、以下を **実装面の判断確�
 - Pair / isActive 非公開が明記されている
 - apps 実装変更を本 Task に含めていない
 - secret / `.env` 実値が含まれていない
-- §11 判断確定と残未決が分離されている
+- §11 判断確定がすべて埋まっており残未決がない
 
 ---
 
