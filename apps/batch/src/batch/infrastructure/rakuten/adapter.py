@@ -8,6 +8,7 @@ from typing import Any
 from batch.infrastructure.rakuten.client import (
     RakutenGenre,
     RakutenGenreApiError,
+    RakutenItemSearchApiError,
     RakutenRankingApiError,
     RakutenRankingEntry,
 )
@@ -146,6 +147,71 @@ def adapt_ranking_raw_payload(
         entries=tuple(entries),
         genre_id=genre_id,
     )
+
+
+@dataclass(frozen=True)
+class AdaptedItemSearchCandidate:
+    """Single product candidate from item search Raw."""
+
+    external_item_code: str
+    item_name: str | None = None
+    genre_id: str | None = None
+
+
+@dataclass(frozen=True)
+class AdaptedItemSearchRaw:
+    """Normalized item search payload extracted from formatVersion=2 style Raw dict."""
+
+    candidates: tuple[AdaptedItemSearchCandidate, ...]
+
+
+def adapt_item_search_raw_payload(
+    payload: dict[str, object],
+    *,
+    cursor_type: str,
+    page: int = 1,
+) -> AdaptedItemSearchRaw:
+    """Map Rakuten item search JSON (formatVersion=2 shape) to candidates.
+
+    Secret fields are never expected in payloads persisted by this adapter.
+    """
+
+    items_raw = payload.get("Items")
+    if not isinstance(items_raw, list):
+        raise RakutenItemSearchApiError(
+            cursor_type=cursor_type,
+            page=page,
+            code="GRS-EXT-103",
+            message="invalid item search payload: missing Items list",
+        )
+
+    candidates: list[AdaptedItemSearchCandidate] = []
+    for item in items_raw:
+        if not isinstance(item, dict):
+            continue
+        item_obj = item.get("Item") if isinstance(item.get("Item"), dict) else item
+        if not isinstance(item_obj, dict):
+            continue
+        item_code = _as_str(item_obj.get("itemCode"))
+        if not item_code:
+            continue
+        candidates.append(
+            AdaptedItemSearchCandidate(
+                external_item_code=item_code,
+                item_name=_as_str(item_obj.get("itemName")),
+                genre_id=_as_str(item_obj.get("genreId")),
+            )
+        )
+
+    if not candidates:
+        raise RakutenItemSearchApiError(
+            cursor_type=cursor_type,
+            page=page,
+            code="GRS-EXT-103",
+            message="invalid item search payload: empty Items",
+        )
+
+    return AdaptedItemSearchRaw(candidates=tuple(candidates))
 
 
 def _as_str(value: Any) -> str | None:
