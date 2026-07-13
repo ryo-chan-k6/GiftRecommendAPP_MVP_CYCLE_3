@@ -6,7 +6,7 @@ review:
   title: "BATCH-002 楽天ランキングスナップショット取得Batch実装 PRレビュー"
   summary: "BATCH-002 実装 Task の PR を AI Review する。仕様書 Phase・冪等・Item正本境界・fixture/mock を確認する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1201
   issue: 1200
   task_definition: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/implementation.yaml"
   source_branch: "feature/task-1200-batch-002-rakuten-ranking-snapshot-implementation"
@@ -70,7 +70,7 @@ input:
     number: 1200
     required: true
   pr:
-    number: null
+    number: 1201
     required: true
   diff:
     required: true
@@ -96,3 +96,4 @@ review_points:
 
 notes:
   - "Issue / PR 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
+  - "PR #1201 を反映済み"
