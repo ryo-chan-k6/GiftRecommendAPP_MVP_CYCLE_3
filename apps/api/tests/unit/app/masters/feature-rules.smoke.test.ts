@@ -7,8 +7,10 @@ import {
   createMastersRouter,
   FEATURE_RULE_MASTERS_ERROR_CODES,
   FEATURE_RULE_MASTERS_METRICS,
+  FEATURE_RULE_MASTERS_PATH,
   FeatureRuleRepository,
   InMemoryFeatureRuleReader,
+  UnresolvedFeatureRuleReader,
   type FeatureRuleMastersSuccessResponse,
 } from "../../../../src/app/masters/index.js";
 import { ApiError } from "../../../../src/middlewares/error/api-error.js";
@@ -134,18 +136,35 @@ test("empty rule arrays return 200 when version resolved", async () => {
 });
 
 test("unknown query returns 400 GRS-REQ-001", async () => {
+  const logger = new ScaffoldApiLogger();
   const reader = new InMemoryFeatureRuleReader(sampleRules);
 
-  await withMastersServer({ featureRuleReader: reader }, async (baseUrl) => {
-    const response = await fetch(
-      `${baseUrl}/api/v1/masters/feature-rules?foo=1`,
-    );
-    assert.equal(response.status, 400);
-    const body = (await response.json()) as {
-      error: { code: string };
-    };
-    assert.equal(body.error.code, FEATURE_RULE_MASTERS_ERROR_CODES.INVALID_REQUEST);
-  });
+  await withMastersServer(
+    { featureRuleReader: reader, logger },
+    async (baseUrl) => {
+      const response = await fetch(
+        `${baseUrl}/api/v1/masters/feature-rules?foo=1`,
+      );
+      assert.equal(response.status, 400);
+      const body = (await response.json()) as {
+        error: { code: string; message: string };
+      };
+      assert.equal(
+        body.error.code,
+        FEATURE_RULE_MASTERS_ERROR_CODES.INVALID_REQUEST,
+      );
+      assert.match(body.error.message, /条件を確認/);
+    },
+  );
+
+  assert.ok(
+    logger.records.some(
+      (r: StructuredLogRecord) =>
+        r.eventName === FEATURE_RULE_MASTERS_METRICS.ERROR_COUNT &&
+        r.attributes?.errorCode ===
+          FEATURE_RULE_MASTERS_ERROR_CODES.INVALID_REQUEST,
+    ),
+  );
 });
 
 test("mastersConfigResolved=false returns 500 GRS-CFG-005", async () => {
@@ -266,6 +285,49 @@ test("unexpected reader failure maps to GRS-COM-999 without leaking internals", 
     assert.equal(raw.includes("secret-internal-db-url-should-not-leak"), false);
     assert.equal(raw.includes("stack"), false);
   });
+});
+
+test("success records request_count without error_count", async () => {
+  const logger = new ScaffoldApiLogger();
+  const reader = new InMemoryFeatureRuleReader(sampleRules);
+
+  await withMastersServer(
+    { featureRuleReader: reader, logger },
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}${FEATURE_RULE_MASTERS_PATH}`);
+      assert.equal(response.status, 200);
+    },
+  );
+
+  const requestEvents = logger.records.filter(
+    (r: StructuredLogRecord) =>
+      r.eventName === FEATURE_RULE_MASTERS_METRICS.REQUEST_COUNT,
+  );
+  const errorEvents = logger.records.filter(
+    (r: StructuredLogRecord) =>
+      r.eventName === FEATURE_RULE_MASTERS_METRICS.ERROR_COUNT,
+  );
+  assert.equal(requestEvents.length, 1);
+  assert.equal(errorEvents.length, 0);
+  assert.equal(requestEvents[0]?.attributes?.httpStatus, 200);
+});
+
+test("UnresolvedFeatureRuleReader returns GRS-CFG-005 via HTTP", async () => {
+  await withMastersServer(
+    { featureRuleReader: new UnresolvedFeatureRuleReader() },
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}${FEATURE_RULE_MASTERS_PATH}`);
+      assert.equal(response.status, 500);
+      const body = (await response.json()) as {
+        error: { code: string; message: string };
+      };
+      assert.equal(
+        body.error.code,
+        FEATURE_RULE_MASTERS_ERROR_CODES.CONFIG_UNRESOLVED,
+      );
+      assert.match(body.error.message, /選択項目の取得に失敗/);
+    },
+  );
 });
 
 test("GET /api/v1/masters/feature-rules returns GRS-DB-002 when DB unavailable", async () => {
