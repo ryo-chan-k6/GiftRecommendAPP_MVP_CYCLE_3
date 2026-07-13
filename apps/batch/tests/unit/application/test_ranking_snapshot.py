@@ -232,3 +232,98 @@ def test_api_call_logs_do_not_contain_secret_fields() -> None:
     blob = json.dumps({"api": repos.api_call_logs, "err": repos.error_logs}, ensure_ascii=False)
     for token in forbidden:
         assert token not in blob
+
+
+# --- §16 No.5 Rate Limit ---
+
+
+def test_ranking_snapshot_rate_limit_records_ext_102() -> None:
+    client = _client_with_ranking()
+    client.rate_limited_ranking_keys.add(("101", "daily", 1))
+    # Ensure 100 succeeds
+    client.ranking_raw_responses[("101", "daily", 1)] = {
+        "lastBuildDate": "2026-07-13T12:00:00+0900",
+        "genreId": "101",
+        "Items": [{"rank": 1, "itemCode": "shop:x"}],
+    }
+    repos = _repos(known_item_codes={"shop:a", "shop:b", "shop:x"})
+    job = RankingSnapshotJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-rl",
+        target_genre_ids=("100", "101"),
+        period="daily",
+    )
+
+    assert result.status == "partially_succeeded"
+    assert result.succeeded_genre_ids == ["100"]
+    assert result.failed_genre_ids == ["101"]
+    assert "GRS-EXT-102" in result.error_codes
+    assert any(e["code"] == "GRS-EXT-102" for e in repos.error_logs)
+    failed_api = [log for log in repos.api_call_logs if log["genre_id"] == "101"]
+    assert failed_api and failed_api[0]["status"] == "failed"
+    assert failed_api[0]["error_code"] == "GRS-EXT-102"
+
+
+# --- §16 No.7 Raw失敗 ---
+
+
+def test_ranking_snapshot_raw_save_failure_records_raw_001() -> None:
+    repos = RankingSnapshotRepositories(
+        object_storage=ScaffoldObjectStorageClient(fail_on_put=True),
+        db_writer=ScaffoldDbWriter(),
+        bucket="test-raw",
+        known_item_codes={"shop:a", "shop:b"},
+    )
+    job = RankingSnapshotJob(rakuten_client=_client_with_ranking(), repositories=repos)
+
+    result = job.run(job_run_id="job-raw", target_genre_ids=("100",), period="daily")
+
+    assert result.status == "failed"
+    assert result.failed_genre_ids == ["100"]
+    assert "GRS-RAW-001" in result.error_codes
+    assert "GRS-BAT-001" in result.error_codes
+    assert len(repos.snapshots) == 0
+    assert any(e["code"] == "GRS-RAW-001" for e in repos.error_logs)
+
+
+def test_ranking_snapshot_all_failures_marks_failed() -> None:
+    client = ScaffoldRakutenApiClient(
+        fail_ranking_keys={("100", "daily", 1), ("101", "daily", 1)},
+    )
+    repos = _repos()
+    job = RankingSnapshotJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-all-fail",
+        target_genre_ids=("100", "101"),
+        period="daily",
+    )
+
+    assert result.status == "failed"
+    assert result.succeeded_genre_ids == []
+    assert set(result.failed_genre_ids) == {"100", "101"}
+    assert "GRS-EXT-100" in result.error_codes
+    assert "GRS-BAT-001" in result.error_codes
+
+
+def test_ranking_snapshot_persists_staging_rows() -> None:
+    """§16 No.1 補強: Staging も更新されること。"""
+
+    repos = _repos(known_item_codes={"shop:a", "shop:b"})
+    job = RankingSnapshotJob(rakuten_client=_client_with_ranking(), repositories=repos)
+
+    result = job.run(job_run_id="job-stg", target_genre_ids=("100",), period="daily")
+
+    assert result.status == "succeeded"
+    assert len(repos.staging_rankings) == 2
+    assert all(row.external_genre_id == "100" for row in repos.staging_rankings.values())
+
+
+def test_batch_settings_repr_masks_access_keys() -> None:
+    from batch.config._scaffold import scaffold_batch_settings
+
+    settings = scaffold_batch_settings()
+    text = repr(settings)
+    assert "scaffold-rakuten-access-key" not in text
+    assert "rakuten_access_key='***'" in text
