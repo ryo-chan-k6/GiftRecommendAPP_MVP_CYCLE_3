@@ -1,7 +1,7 @@
 """CLI entry for BATCH-002 ranking snapshot (scaffold / GHA invocation).
 
 Usage:
-  python -m batch.application.ranking_snapshot --job-run-id <id> [--genre-ids 100] [--period realtime]
+  python -m batch.application.ranking_snapshot --job-run-id <id> [--genre-ids 100] [--period daily]
   python -m batch.application.ranking_snapshot --scaffold-demo
 """
 
@@ -37,7 +37,7 @@ def build_scaffold_demo_job() -> RankingSnapshotJob:
             RakutenRankingEntry(rank=2, item_code="shop:unknown-2"),
         ),
         ranking_raw_responses={
-            ("100", "realtime", 1): {
+            ("100", "daily", 1): {
                 "lastBuildDate": "2026-07-13T12:00:00+0900",
                 "genreId": "100",
                 "Items": [

@@ -84,7 +84,7 @@ def adapt_ranking_raw_payload(
     payload: dict[str, object],
     *,
     requested_genre_id: str,
-    period: str = "realtime",
+    period: str = "daily",
     page: int = 1,
 ) -> AdaptedRankingRaw:
     """Map Rakuten item ranking JSON (formatVersion=2 shape) to AdaptedRankingRaw.

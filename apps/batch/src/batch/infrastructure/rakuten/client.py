@@ -65,7 +65,7 @@ class RakutenApiClient(Protocol):
         self,
         *,
         genre_id: str,
-        period: str = "realtime",
+        period: str = "daily",
         page: int = 1,
     ) -> dict[str, object]: ...
 
@@ -104,7 +104,7 @@ class ScaffoldRakutenApiClient:
         self,
         *,
         genre_id: str,
-        period: str = "realtime",
+        period: str = "daily",
         page: int = 1,
     ) -> dict[str, object]:
         """Return Raw JSON-compatible ranking payload for Object Storage persistence."""
