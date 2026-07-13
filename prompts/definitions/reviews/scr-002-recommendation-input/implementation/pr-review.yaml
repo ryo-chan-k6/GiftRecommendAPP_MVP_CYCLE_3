@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1218
   issue: 1214
   task_definition: "prompts/definitions/tasks/scr-002-recommendation-input/implementation.yaml"
   source_branch: "feature/task-1214-scr-002-recommendation-input-implementation"
@@ -70,7 +70,7 @@ input:
     number: 1214
     required: true
   pr:
-    number: null
+    number: 1218
     required: true
   diff:
     required: true

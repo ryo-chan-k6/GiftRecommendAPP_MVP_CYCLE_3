@@ -30,6 +30,8 @@ parent:
     - number: 390
       purpose: "依存 Epic（API-PUB-008 develop merge 済み）"
   related_prs:
+    - number: 1218
+      purpose: "本 Task PR（実装）"
     - number: 1154
       purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
 
