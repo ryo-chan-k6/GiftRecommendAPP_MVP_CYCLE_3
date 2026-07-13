@@ -239,8 +239,8 @@ def test_api_call_logs_do_not_contain_secret_fields() -> None:
 
 def test_ranking_snapshot_rate_limit_records_ext_102() -> None:
     client = _client_with_ranking()
+    # genre 101 is rate-limited; genre 100 uses default ranking_raw_responses and succeeds
     client.rate_limited_ranking_keys.add(("101", "daily", 1))
-    # Ensure 100 succeeds
     client.ranking_raw_responses[("101", "daily", 1)] = {
         "lastBuildDate": "2026-07-13T12:00:00+0900",
         "genreId": "101",
