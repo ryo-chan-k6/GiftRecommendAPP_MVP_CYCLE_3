@@ -1,0 +1,202 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-008-feature-rule-masters-unit-test"
+  title: "API-PUB-008:Featureルール取得単体テスト"
+  summary: "API-PUB-008（Featureルール取得）エンドポイント層に対し、実装仕様書 §9 の fixture ベース unit 観点カバレッジを整理・拡充する（Phase4b 3/3）。実装 Task #1203 のスモーク / Repository UT を維持しつつ、残ギャップを埋める。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-008:Featureルール取得"
+  epic_issue_number: 390
+  epic_branch: "feature/epic-390-pub-008-feature-rule-masters"
+  related_issues:
+    - number: 1210
+      purpose: "本 Task Issue"
+    - number: 390
+      purpose: "親 Epic"
+    - number: 1203
+      purpose: "前提 Task（エンドポイント実装・スモーク UT）"
+    - number: 1190
+      purpose: "前提 Task（API実装仕様書）"
+  related_prs:
+    - number: 1211
+      purpose: "本 Task PR（単体テスト）"
+    - number: 1205
+      purpose: "実装 Task PR（親 Epic Branch merge 済み）"
+    - number: 1191
+      purpose: "実装仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 縦串の 3/3。実装 Task（#1203 / PR #1205）で masters/feature-rules とスモーク / Repository UT が追加済み。
+  本 Task は実装仕様書 §9 の観点を fixture ベース unit として PR に明示し、不足があれば拡充する。
+  §9 No.10（generated）/ No.11（SCR-002 manual）は out_of_scope。
+
+objective: |
+  API-PUB-008 の unit テストを実装仕様書 §9（fixture 化可能な範囲）に沿って充足し、Epic PR → develop の前提を満たす。
+
+scope:
+  - "エンドポイント / Repository 層単体テストの拡充またはカバレッジ確認"
+  - "実装仕様書 §9 の unit 観点対応表を PR 本文に記載"
+  - "不足ケース追加（冪等、requestId、非 GET、polarity optional 等）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "実 Postgres 結合テスト"
+  - "integration / e2e / contract test"
+  - "OpenAPI / generated 変更"
+  - "apps/web / apps/reco 変更"
+  - "SCR-002 画面確認"
+  - "Epic PR の develop merge（Human 判断）"
+  - "PUB-005 / 006 / 007 のテスト追加"
+  - "本番アプリ実装の機能追加（テスト以外）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+  files:
+    - path: "apps/api/src/app/masters/"
+      required: true
+    - path: "apps/api/tests/unit/app/masters/feature-rules.smoke.test.ts"
+      required: true
+  issues:
+    - number: 1203
+      purpose: "前提実装"
+  prs:
+    - number: 1205
+      purpose: "実装 PR（blocking・Epic merge 済み）"
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/api/tests/unit/app/masters/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "§9 unit 観点カバレッジ表（PR 本文）"
+  - "不足ケースのテスト追加"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "実装仕様書 §9 の fixture 化可能観点がテストまたは明示スキップ理由でカバーされている"
+  - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
+  - "OpenAPI / generated / apps/web / apps/reco 変更を含まない"
+  - "PR 本文に `Related to #<issue>` を記載し、`Closes #<issue>` を使わない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1210-api-pub-008-feature-rule-masters-unit-test"
+  summary: "api-pub-008-feature-rule-masters-unit-test"
+  base: "feature/epic-390-pub-008-feature-rule-masters"
+  target: "feature/epic-390-pub-008-feature-rule-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-13"
+    due_date: "2026-07-15"
+
+issue:
+  number: 1210
+  unit: "task"
+  type: "test"
+  area: "api"
+
+dependencies:
+  issues:
+    - number: 1203
+      purpose: "実装 Task"
+  prs:
+    - number: 1205
+      purpose: "実装 PR Epic merge（blocking）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/api/tests/unit/app/masters/feature-rules*.ts"
+    - "prompts/definitions/tasks/api-pub-008-feature-rule-masters/unit-test.yaml"
+    - "prompts/definitions/reviews/api-pub-008-feature-rule-masters/unit-test/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "build or typecheck"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  not_required:
+    - "integration test"
+    - "e2e test"
+  skip_reason:
+    "integration test": "実 DB 結合は本 Task 対象外"
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§9 カバレッジ表が妥当か"
+    - "既存スモークを壊していないか"
+    - "PR 本文が Related to で Closes を使っていないか"
+    - "secret 非露出"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 UT は ai-logs に保存しない"
+
+notes:
+  - "本 Task は Phase4b 3/3。完了後に Epic PR → develop。"
+  - "PR 本文は必ず Related to（Closes 禁止）"

@@ -1,0 +1,269 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-008-feature-rule-masters-implementation"
+  title: "API-PUB-008:Featureルール取得エンドポイント実装"
+  summary: "API-PUB-008（Featureルール取得 / Public API、`GET /api/v1/masters/feature-rules`）を、契約仕様書・OpenAPI・実装仕様書（#1190 / PR #1191）に沿って apps/api masters に実装する（Phase4b 2/3）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-008:Featureルール取得"
+  epic_issue_number: 390
+  epic_branch: "feature/epic-390-pub-008-feature-rule-masters"
+  related_issues:
+    - number: 1203
+      purpose: "本 Task Issue"
+    - number: 390
+      purpose: "親 Epic"
+    - number: 1190
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 404
+      purpose: "前提 Task（API契約仕様書）"
+    - number: 428
+      purpose: "前提 Task（OpenAPI 断片）"
+  related_prs:
+    - number: 1205
+      purpose: "本 Task PR（実装）"
+    - number: 1191
+      purpose: "実装仕様書 Task PR（親 Epic Branch merge 済み）"
+    - number: 408
+      purpose: "契約仕様書 merge"
+    - number: 429
+      purpose: "OpenAPI 断片 develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Phase4b 縦串の 2/3（apps/api 実装）。前提: 実装仕様書 #1190 / PR #1191 が親 Epic Branch に merge 済み。
+  PUB-005/006/007 で `createMastersRouter` と `SemanticConfigVersionResolver` が存在する。
+  本 Task は `GET /feature-rules` を追加する。網羅 UT は後続 unit-test Task。
+
+objective: |
+  `GET /api/v1/masters/feature-rules` を契約・OpenAPI・実装仕様書に沿って提供する。
+  MOD-API-011/012、current Version 解決（共通 Resolver 再利用）、3 Rule テーブル読取、
+  baseValueRules / conceptFeatureRules 組立、エラー境界、metric を実装する。
+
+scope:
+  - "`apps/api/src/app/masters/**` に Feature Rule 用 Controller / Repository を追加"
+  - "`createMastersRouter` に `GET /feature-rules` を追加"
+  - "`SemanticConfigVersionResolver` を再利用（PUB-007 共通）"
+  - "relationship_rule / occasion_rule / concept_feature_rule の active のみ読取"
+  - "空配列 200 / current なし GRS-CFG-001 / 参照不能 GRS-CFG-005"
+  - "未知 Query で 400 GRS-REQ-001"
+  - "masters_feature_rules_* metric"
+  - "最小スモーク単体テスト"
+  - "epic_scope.allowed_paths に tests パスを追加（必要時）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "OpenAPI / Orval / generated 変更"
+  - "apps/web / apps/reco 変更"
+  - "契約・実装仕様書 docs の変更（許容: epic.yaml allowed_paths のみ）"
+  - "DB schema / migration / seed 変更"
+  - "API-PUB-005 / 006 / 007 の機能追加（既存破壊は禁止）"
+  - "網羅 UT（Phase4b 3/3）"
+  - "Pair Rule / isActive の Public 公開"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+  files:
+    - path: "apps/api/src/app/masters/**"
+      required: true
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+  issues:
+    - number: 1190
+      purpose: "前提実装仕様書"
+  prs:
+    - number: 1191
+      purpose: "実装仕様書 Epic merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/app/masters/**"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/api-pub-008-feature-rule-masters/epic.yaml"
+      action: "update"
+      required: false
+  tests:
+    - path: "apps/api/tests/unit/app/masters/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "契約準拠の GET /api/v1/masters/feature-rules"
+  - "MOD-API-011 / MOD-API-012 と Version Resolver 再利用"
+  - "最小スモーク単体テスト"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "`GET /api/v1/masters/feature-rules` が 200 で configName / versionLabel / 2 配列 + meta を返す"
+  - "`isActive` / Pair を Response に含めていない"
+  - "各配列 0 件で 200 空配列になる（Version 解決成功時）"
+  - "current Version 未設定で `GRS-CFG-001`、DB 失敗で `GRS-DB-002`、設定解決不能で `GRS-CFG-005` の経路がある"
+  - "未知 Query で `GRS-REQ-001`"
+  - "実装仕様書・契約・OpenAPI と矛盾しない"
+  - "OpenAPI / generated / apps/web / apps/reco の変更を含まない"
+  - "epic_scope.allowed_paths 内に差分が収まっている"
+  - "`pnpm --filter @gift-recommendation/api test` または同等が SUCCESS"
+  - "secret / `.env` 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1203-api-pub-008-feature-rule-masters-implementation"
+  summary: "api-pub-008-feature-rule-masters-implementation"
+  base: "feature/epic-390-pub-008-feature-rule-masters"
+  target: "feature/epic-390-pub-008-feature-rule-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-13"
+    due_date: "2026-07-15"
+
+issue:
+  number: 1203
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+contract_gate:
+  required: true
+  gate_id: "api-pub-008-phase1"
+  prerequisite_contract_tasks:
+    - issue: 428
+      definition: "prompts/definitions/contracts/api-pub-008-feature-rule-masters/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue 開始前"
+  blocked_message: "OpenAPI #428 / PR #429 および実装仕様書 #1190 / PR #1191 の親 Epic Branch merge を確認するまで /work-issue を開始しない"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1190
+      purpose: "実装仕様書 Task"
+    - number: 428
+      purpose: "OpenAPI 断片"
+  prs:
+    - number: 1191
+      purpose: "実装仕様書 Epic Branch merge（blocking）"
+    - number: 429
+      purpose: "OpenAPI develop merge"
+  tasks:
+    - "API-PUB-008_Featureルール取得API実装仕様書.md が親 Epic Branch に存在すること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-008-feature-rule-masters/api-implementation-spec.yaml"
+  blocks:
+    - "API-PUB-008 単体テスト Task"
+  exclusive_files:
+    - "apps/api/src/app/masters/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  conflict_notes: "PUB-005/006/007 と masters Router を共有。既存エンドポイント破壊禁止"
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "build or typecheck"
+    - "smoke unit test"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  not_required:
+    - "integration test"
+    - "e2e test"
+  skip_reason:
+    "integration test": "網羅は後続 unit-test / 結合 Task"
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書と矛盾しないか"
+    - "Version Resolver 再利用・2 グループ組立・非公開方針が契約と整合しているか"
+    - "既存 PUB-005/006/007 を壊していないか"
+    - "secret / `.env` 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常実装は ai-logs に保存しない。Gate 未充足で停止した場合は記録する。"
+
+risk_points:
+  - "PR #1191 未 merge のまま実装を開始する運用ミス"
+  - "concept_feature_rule の concept_code JOIN 漏れ"
+  - "既存 masters Router 破壊"
+
+human_decision_points:
+  - "本 Task では Version Resolver 再利用を既定とする（§11 共通化の一部採用）"
+
+stop_conditions:
+  - "PR #1191 が親 Epic Branch に merge されていない場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "secret / `.env` 実値を扱う必要が出た場合"
+  - "epic_scope.allowed_paths 外の変更が必要になった場合"
+
+notes:
+  - "本 Task は Phase4b 2/3。後続は unit-test Task。"
+  - "構造の参考: api-pub-007-semantic-config-masters/implementation.yaml"
+  - "次手順: /start-task @prompts/definitions/tasks/api-pub-008-feature-rule-masters/implementation.yaml"
