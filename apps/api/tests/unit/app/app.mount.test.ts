@@ -71,3 +71,13 @@ test("GET /api/v1/masters/occasions is mounted (200 empty on scaffold)", async (
     assert.equal(body.meta?.count, body.data?.occasions?.length);
   });
 });
+
+test("GET /api/v1/masters/feature-rules is mounted (not 404)", async () => {
+  await withAppServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/masters/feature-rules`, {
+      headers: { Accept: "application/json" },
+    });
+    // DATABASE_URL 未設定時は GRS-CFG-005 等で 500 になり得る。404 でないことのみ確認。
+    assert.notEqual(response.status, 404);
+  });
+});

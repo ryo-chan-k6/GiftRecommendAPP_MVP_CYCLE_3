@@ -1,0 +1,113 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-008-feature-rule-masters-implementation-pr"
+  title: "API-PUB-008 Featureルール取得エンドポイント実装 PRレビュー"
+  summary: "API-PUB-008 Featureルール取得実装 Task（implementation.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1203
+  task_definition: "prompts/definitions/tasks/api-pub-008-feature-rule-masters/implementation.yaml"
+  source_branch: "feature/task-1203-api-pub-008-feature-rule-masters-implementation"
+  target_branch: "feature/epic-390-pub-008-feature-rule-masters"
+  parent_epic_issue: "[Epic]API-PUB-008:Featureルール取得"
+  parent_epic_branch: "feature/epic-390-pub-008-feature-rule-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-008-feature-rule-masters/implementation.yaml"
+    required: true
+  issue:
+    number: 1203
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-390-pub-008-feature-rule-masters"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch か"
+  source:
+    - "Version Resolver 再利用と 3 Rule 読取が実装仕様書どおりか"
+    - "Pair / isActive 非公開か"
+    - "既存 PUB-005/006/007 を壊していないか"
+  tests:
+    - "スモークが成功系・主要エラーを最低限カバーしているか"
+  api_contract:
+    - "OpenAPI / generated 変更が混入していないか"
+  security:
+    - "secret / `.env` 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "Issue / PR 作成後に target.issue / target.pr / input.*.number / source_branch を更新する"

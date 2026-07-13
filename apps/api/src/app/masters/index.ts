@@ -1,4 +1,8 @@
 export {
+  FEATURE_RULE_MASTERS_ERROR_CODES,
+  FEATURE_RULE_MASTERS_ERROR_MESSAGES,
+  FEATURE_RULE_MASTERS_METRICS,
+  FEATURE_RULE_MASTERS_PATH,
   MASTERS_RELATIONSHIPS_ERROR_CODES,
   MASTERS_RELATIONSHIPS_ERROR_MESSAGES,
   MASTERS_RELATIONSHIPS_METRICS,
@@ -12,6 +16,16 @@ export {
   SEMANTIC_CONFIG_MASTERS_METRICS,
   SEMANTIC_CONFIG_MASTERS_PATH,
 } from "./constants.js";
+export {
+  createFeatureRuleController,
+  type FeatureRuleControllerOptions,
+} from "./feature-rule-controller.js";
+export {
+  FeatureRuleRepository,
+  InMemoryFeatureRuleReader,
+  UnresolvedFeatureRuleReader,
+  type FeatureRuleRepositoryOptions,
+} from "./feature-rule-repository.js";
 export {
   createOccasionController,
   type OccasionControllerOptions,
@@ -46,10 +60,17 @@ export {
   type MastersRouterDeps,
 } from "./routes.js";
 export type {
+  BaseValueRuleMasterItem,
+  ConceptFeatureRuleMasterItem,
   FeatureDefinitionItem,
+  FeatureRuleMastersData,
+  FeatureRuleMastersSuccessResponse,
+  FeatureRuleReader,
+  OccasionBaseValueRuleItem,
   OccasionMasterItem,
   OccasionMasterRow,
   OccasionMastersSuccessResponse,
+  RelationshipBaseValueRuleItem,
   RelationshipMasterReader,
   RelationshipMasterRow,
   RelationshipPublicItem,

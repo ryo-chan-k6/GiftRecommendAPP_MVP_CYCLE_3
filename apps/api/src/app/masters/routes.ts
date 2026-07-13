@@ -20,12 +20,18 @@ import {
   RelationshipMasterRepository,
   UnresolvedRelationshipMasterReader,
 } from "./relationship-repository.js";
+import { createFeatureRuleController } from "./feature-rule-controller.js";
+import {
+  FeatureRuleRepository,
+  UnresolvedFeatureRuleReader,
+} from "./feature-rule-repository.js";
 import { createSemanticConfigController } from "./semantic-config-controller.js";
 import {
   SemanticConfigRepository,
   UnresolvedSemanticConfigReader,
 } from "./semantic-config-repository.js";
 import type {
+  FeatureRuleReader,
   RelationshipMasterReader,
   RelationshipPublicItem,
   RelationshipsSuccessResponse,
@@ -40,10 +46,12 @@ export type MastersRouterDeps = {
   /** API-PUB-006: Occasion 用 DbSession（未指定時は createDbSession）。 */
   dbSession?: DbSession;
   occasionRepository?: OccasionMasterRepository;
-  /** API-PUB-006: false で GRS-CFG-005。既定 true。 */
+  /** API-PUB-006/008: false で GRS-CFG-005。既定 true。 */
   mastersConfigResolved?: boolean;
   /** API-PUB-007: Semantic Config 読取（未指定時は DATABASE_URL 有無で既定実装）。 */
   semanticConfigReader?: SemanticConfigReader;
+  /** API-PUB-008: Feature Rule 読取（未指定時は DATABASE_URL 有無で既定実装）。 */
+  featureRuleReader?: FeatureRuleReader;
 };
 
 function createDefaultRelationshipReader(): RelationshipMasterReader {
@@ -74,12 +82,19 @@ function createDefaultSemanticConfigReader(
   return new SemanticConfigRepository({ session: dbSession });
 }
 
+function createDefaultFeatureRuleReader(dbSession: DbSession): FeatureRuleReader {
+  if (!isDatabaseUrlConfigured()) {
+    return new UnresolvedFeatureRuleReader();
+  }
+  return new FeatureRuleRepository({ session: dbSession });
+}
+
 /**
  * Public masters Router。
  * - API-PUB-005: GET /relationships
  * - API-PUB-006: GET /occasions
  * - API-PUB-007: GET /semantic-configs
- * 後続 PUB-008 も同一 Router へ追加可。
+ * - API-PUB-008: GET /feature-rules
  */
 export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
   const router = Router();
@@ -105,6 +120,15 @@ export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
     reader: semanticConfigReader,
     logger: deps.logger,
     generatedAtFactory,
+  });
+
+  const featureRuleReader =
+    deps.featureRuleReader ?? createDefaultFeatureRuleReader(dbSession);
+  const getFeatureRules = createFeatureRuleController({
+    reader: featureRuleReader,
+    logger: deps.logger,
+    generatedAtFactory,
+    mastersConfigResolved: deps.mastersConfigResolved,
   });
 
   router.get(
@@ -190,6 +214,7 @@ export function createMastersRouter(deps: MastersRouterDeps = {}): Router {
 
   router.get("/occasions", getOccasions);
   router.get("/semantic-configs", getSemanticConfigs);
+  router.get("/feature-rules", getFeatureRules);
 
   return router;
 }
