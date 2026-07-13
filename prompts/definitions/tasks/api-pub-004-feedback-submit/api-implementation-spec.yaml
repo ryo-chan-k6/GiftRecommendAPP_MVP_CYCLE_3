@@ -74,7 +74,7 @@ scope:
   - "実装方針（feedback Router / MOD-API-007〜010 / request-meta / DI）を整理する"
   - "処理フロー（Mermaid）と処理詳細を整理する（Path/Body 検証 → Result 存在確認 → 冪等判定 → INSERT/UPDATE → Response）"
   - "Request / DB 列 → 内部 DTO → Public Response のマッピングを整理する"
-  - "匿名 Feedback（MVP）・sessionId 扱い・重複時 409 GRS-FDB-003 の実装面を整理する"
+  - "匿名 Feedback（MVP）・sessionId 扱い・冪等更新（200 / GRS-FDB-003 非返却）の実装面を整理する"
   - "GRS-FDB-* / GRS-REQ-* / GRS-DB-* エラー境界を整理する"
   - "feedback_count / feedback_error_count 等 metric を整理する"
   - "generated client 利用方針（記載のみ）"
