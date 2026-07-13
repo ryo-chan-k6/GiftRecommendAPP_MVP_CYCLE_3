@@ -13,9 +13,15 @@ parent:
   epic_issue_number: 1147
   epic_branch: "feature/epic-1147-scr-002-recommendation-input"
   related_issues:
+    - number: 1220
+      purpose: "本 Task Issue"
     - number: 1147
       purpose: "親 Epic"
-  related_prs: []
+    - number: 1214
+      purpose: "前提 Task（実装）"
+  related_prs:
+    - number: 1218
+      purpose: "実装 Task PR（親 Epic Branch merge 済み）"
 
 commands:
   primary: "/start-task"
@@ -102,7 +108,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-scr-002-recommendation-input-unit-test"
+  name: "test/task-1220-scr-002-recommendation-input-unit-test"
   base: "feature/epic-1147-scr-002-recommendation-input"
   target: "feature/epic-1147-scr-002-recommendation-input"
   worktree_required: true
@@ -111,10 +117,10 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "Backlog"
+    status: "Todo"
     priority: "medium"
-    planned_start: null
-    due_date: null
+    planned_start: "2026-07-13"
+    due_date: "2026-07-16"
 
 issue:
   unit: "task"
@@ -126,8 +132,12 @@ dependencies:
     - issue: 357
       title: "[Epic]API-PUB-002:レコメンド実行"
       purpose: "レコメンド実行 API"
-  issues: []
-  prs: []
+  issues:
+    - number: 1214
+      purpose: "実装 Task"
+  prs:
+    - number: 1218
+      purpose: "実装 PR"
   tasks:
     - "implementation Task が親 Epic Branch に merge 済みであること"
   blocking: true
@@ -136,7 +146,9 @@ parallel_control:
   depends_on:
     - "implementation"
   blocks: []
-  exclusive_files: []
+  exclusive_files:
+    - "apps/web/tests/component/recommendation-input/**"
+    - "prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
   conflict_risk: "low"
   generated_impact: false
   contract_impact: false
@@ -145,7 +157,8 @@ parallel_control:
 test_policy:
   required:
     - "unit test"
-  commands: []
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
   manual_checks:
     - "画面仕様書の主要状態がテストでカバーされていること"
   not_required:
@@ -159,6 +172,7 @@ review:
   review_points:
     - "画面仕様書の主要観点がテストされているか"
     - "不安定な network / 本番依存がないか"
+    - "Epic allowed_paths に apps/web/tests/** が追加されているか"
     - "secret 非含有か"
   specialist_reviews:
     docs: false
@@ -182,6 +196,8 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]SCR-002:レコメンド条件入力画面単体テスト"
+  - "本 Task Issue: #1220 / Branch: test/task-1220-scr-002-recommendation-input-unit-test"
   - "親Epic: #1147 / Branch: feature/epic-1147-scr-002-recommendation-input"
-  - "レーン1時点では Definition のみ作成。/start-task は実装完了後"
-  - "Review Definition は /start-task 時に prompts/definitions/reviews/scr-002-recommendation-input/unit-test/pr-review.yaml を追加する"
+  - "PR 本文は Related to #1220（Closes 禁止）"
+  - "Epic allowed_paths に apps/web/tests/** と epics Definition を追加する"
+  - "Review Definition: prompts/definitions/reviews/scr-002-recommendation-input/unit-test/pr-review.yaml"
