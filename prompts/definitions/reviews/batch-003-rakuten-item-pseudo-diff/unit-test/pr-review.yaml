@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1217
   issue: 1216
   task_definition: "prompts/definitions/tasks/batch-003-rakuten-item-pseudo-diff/unit-test.yaml"
   source_branch: "test/task-1216-batch-003-rakuten-item-pseudo-diff-unit-test"
@@ -70,7 +70,7 @@ input:
     number: 1216
     required: true
   pr:
-    number: null
+    number: 1217
     required: true
   diff:
     required: true
