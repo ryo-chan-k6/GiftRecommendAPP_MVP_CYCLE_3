@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1223
   issue:
     number: 1147
   task_definition: "prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1147
     required: true
   pr:
-    number: null
+    number: 1223
     required: false
   diff:
     required: true
