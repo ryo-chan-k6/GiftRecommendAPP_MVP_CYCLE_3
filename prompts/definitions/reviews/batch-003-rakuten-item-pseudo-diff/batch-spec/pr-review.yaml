@@ -67,10 +67,10 @@ input:
     path: "prompts/definitions/tasks/batch-003-rakuten-item-pseudo-diff/batch-spec.yaml"
     required: true
   issue:
-    number: null
+    number: 1208
     required: true
   pr:
-    number: null
+    number: 1209
     required: true
   diff:
     required: true
@@ -93,4 +93,4 @@ review_points:
     - "secret / .env 実値がないか"
 
 notes:
-  - "Issue / PR / Branch 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
+  - "Issue #1208 / PR #1209 / Branch docs/task-1208-batch-003-rakuten-item-pseudo-diff-batch-spec"
