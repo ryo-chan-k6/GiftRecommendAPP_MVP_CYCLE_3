@@ -365,6 +365,7 @@ Staging / Item へのマッピングは本仕様書の範囲外（BATCH-005 以�
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-13 | 初版作成 | #1208 |
+| 2026-07-13 | §18.2 推奨案（ルート優先度 / keyword 必須度 / ページ上限）を決定事項へ昇格 | #1208 |
 
 ---
 
@@ -378,14 +379,13 @@ Staging / Item へのマッピングは本仕様書の範囲外（BATCH-005 以�
 | 2 | ランキング補完入力 I/F | **`fetch_cursor`（`cursor_type=ranking_supplement`）**。`scope.external_item_code` 必須。1 itemCode = 1 カーソル | Human（BATCH-002 §18.1） | 2026-07-13 | BATCH-002 決定を継承 |
 | 3 | 本 Batch の終端 | **Raw 保存 + cursor 更新まで**。Staging / Item / 差分確定は後続 | バッチ処理一覧 | - | BATCH-005 / 006 |
 | 4 | `recheck` ルート | **BATCH-004 専任**。本 Batch は消費しない | バッチ処理一覧 / fetch_cursor 定義 | - | |
+| 5 | MVP 初期のルート優先度 | **(A) 補完最優先**。`ranking_supplement` の未消化 backlog がある場合は常に最優先で消化する | Human | 2026-07-13 | fetch_plan 比率配分は採用しない |
+| 6 | keyword ルートの MVP 必須度 | **(A) 任意**。`fetch_plan` で keyword が指定された場合のみ実行する | Human | 2026-07-13 | 必須キーワード集合は持たない |
+| 7 | ページ上限の既定値（genre / update_sort） | **仕様上は `fetch_plan` で指定**。数値既定は実装 Task で config 化する | Human | 2026-07-13 | Rate Limit と実装 Task で調整 |
 
 ### 18.2 残未決事項
 
-|  No | 論点 | 選択肢 | 推奨 | 影響 |
-| --: | ---- | ------ | ---- | ---- |
-| 1 | MVP 初期のルート優先度（ranking_supplement を常に最優先するか） | (A) 補完最優先 (B) fetch_plan 比率配分 | (A) 補完最優先（未消化 backlog がある場合） | コスト・母集団 |
-| 2 | keyword ルートの MVP 必須度 | (A) 任意（fetch_plan 指定時のみ） (B) 必須キーワード集合 | (A) | 実装範囲 |
-| 3 | ページ上限の既定値（genre / update_sort） | 例: max_pages=3〜10 | 実装 Task で config 化。仕様上は「fetch_plan で指定」 | Rate Limit |
+本仕様書時点で、Human 判断待ちの残未決事項はない。
 
 ---
 
