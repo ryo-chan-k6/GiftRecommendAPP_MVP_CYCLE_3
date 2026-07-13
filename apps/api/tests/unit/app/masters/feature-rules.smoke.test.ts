@@ -7,6 +7,7 @@ import {
   createMastersRouter,
   FEATURE_RULE_MASTERS_ERROR_CODES,
   FEATURE_RULE_MASTERS_METRICS,
+  FeatureRuleRepository,
   InMemoryFeatureRuleReader,
   type FeatureRuleMastersSuccessResponse,
 } from "../../../../src/app/masters/index.js";
@@ -19,6 +20,7 @@ import {
   registerErrorMiddleware,
   registerFoundationMiddlewares,
 } from "../../../../src/middlewares/index.js";
+import { ScaffoldDbSession } from "../../../../src/infrastructure/db/index.js";
 import type { FeatureRuleReader } from "../../../../src/app/masters/types.js";
 
 async function withMastersServer(
@@ -196,6 +198,61 @@ test("reader GRS-CFG-001 propagates as 500", async () => {
     assert.equal(
       body.error.code,
       FEATURE_RULE_MASTERS_ERROR_CODES.CURRENT_NOT_FOUND,
+    );
+  });
+});
+
+test("reader GRS-CFG-002 propagates as 500", async () => {
+  const logger = new ScaffoldApiLogger();
+  const reader: FeatureRuleReader = {
+    async getCurrentRules() {
+      throw new ApiError({
+        code: FEATURE_RULE_MASTERS_ERROR_CODES.RESOLVE_FAILED,
+        httpStatus: 500,
+        message: "選択項目の取得に失敗しました。",
+        retryable: true,
+      });
+    },
+  };
+
+  await withMastersServer(
+    { featureRuleReader: reader, logger },
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/v1/masters/feature-rules`);
+      assert.equal(response.status, 500);
+      const body = (await response.json()) as {
+        error: { code: string };
+      };
+      assert.equal(
+        body.error.code,
+        FEATURE_RULE_MASTERS_ERROR_CODES.RESOLVE_FAILED,
+      );
+    },
+  );
+
+  assert.ok(
+    logger.records.some(
+      (r: StructuredLogRecord) =>
+        r.eventName === FEATURE_RULE_MASTERS_METRICS.ERROR_COUNT &&
+        r.attributes?.errorCode ===
+          FEATURE_RULE_MASTERS_ERROR_CODES.RESOLVE_FAILED,
+    ),
+  );
+});
+
+test("GET /api/v1/masters/feature-rules returns GRS-DB-002 when DB unavailable", async () => {
+  const session = new ScaffoldDbSession({ isAvailable: false });
+  const reader = new FeatureRuleRepository({ session });
+
+  await withMastersServer({ featureRuleReader: reader }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/masters/feature-rules`);
+    assert.equal(response.status, 500);
+    const body = (await response.json()) as {
+      error?: { code?: string };
+    };
+    assert.equal(
+      body.error?.code,
+      FEATURE_RULE_MASTERS_ERROR_CODES.DB_READ_FAILED,
     );
   });
 });

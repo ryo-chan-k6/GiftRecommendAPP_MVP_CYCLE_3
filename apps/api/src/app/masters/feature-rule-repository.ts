@@ -72,6 +72,7 @@ export class FeatureRuleRepository implements FeatureRuleReader {
     return {
       configName: version.configName,
       versionLabel: version.versionLabel,
+      // baseValueRules は relationship → occasion の順（契約仕様書 §7.4 の例示順）。
       baseValueRules: [...relationshipRules, ...occasionRules],
       conceptFeatureRules,
     };
@@ -129,6 +130,7 @@ INNER JOIN semantic_concept sc
   ON sc.semantic_concept_id = cfr.semantic_concept_id
 WHERE cfr.semantic_config_version_id = $1
   AND cfr.is_active = true
+  AND sc.is_active = true
 ORDER BY sc.concept_code ASC, cfr.feature_code ASC
 `.trim();
 
