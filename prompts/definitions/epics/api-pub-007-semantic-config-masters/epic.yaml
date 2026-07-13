@@ -140,12 +140,14 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-PUB-007_*"
     - "apps/api/src/app/masters/**"
+    - "apps/api/tests/unit/app/masters/**"
     - "packages/contracts/openapi/**"
     - "packages/contracts/schemas/**"
     - "apps/web/src/generated/api/**"
     - "apps/web/src/lib/**"
     - "prompts/definitions/tasks/api-pub-007-semantic-config-masters/**"
     - "prompts/definitions/reviews/api-pub-007-semantic-config-masters/**"
+    - "prompts/definitions/epics/api-pub-007-semantic-config-masters/**"
   forbidden_paths:
     - "apps/reco/**"
     - "apps/batch/**"
