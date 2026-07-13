@@ -1,0 +1,116 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-002-recommendation-input-implementation-pr"
+  title: "SCR-002 レコメンド条件入力画面実装 PRレビュー"
+  summary: "SCR-002 レコメンド条件入力画面実装 Task（implementation.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1214
+  task_definition: "prompts/definitions/tasks/scr-002-recommendation-input/implementation.yaml"
+  source_branch: "feature/task-1214-scr-002-recommendation-input-implementation"
+  target_branch: "feature/epic-1147-scr-002-recommendation-input"
+  parent_epic_issue: "[Epic]SCR-002:レコメンド条件入力画面"
+  parent_epic_branch: "feature/epic-1147-scr-002-recommendation-input"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: "security-review"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/scr-002-recommendation-input/implementation.yaml"
+    required: true
+  issue:
+    number: 1214
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1147-scr-002-recommendation-input"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
+      required: true
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch か"
+    - "PR 本文が Related to（Closes 禁止）か"
+  source:
+    - "画面仕様書の必須入力・状態・遷移が実装されているか"
+    - "PUB-002 / PUB-005〜008 を generated api-client 経由で呼び出しているか"
+    - "PUB-007 / PUB-008 は取得のみで UI 非表示か"
+    - "epic_scope.allowed_paths 外へ変更していないか"
+  tests:
+    - "smoke / component 最小確認があるか、または未実施理由が明示されているか"
+  api_contract:
+    - "OpenAPI / Orval / generated の手編集が混入していないか"
+  security:
+    - "secret / `.env` 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新する"
+  - "Task PR は Related to #1214（Closes 禁止）"
