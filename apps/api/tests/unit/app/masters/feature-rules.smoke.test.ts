@@ -202,7 +202,7 @@ test("reader GRS-CFG-001 propagates as 500", async () => {
   });
 });
 
-test("reader GRS-CFG-002 propagates as 500", async () => {
+test("reader GRS-CFG-002 propagates as 500 without stack or internal UUID leak", async () => {
   const logger = new ScaffoldApiLogger();
   const reader: FeatureRuleReader = {
     async getCurrentRules() {
@@ -222,11 +222,16 @@ test("reader GRS-CFG-002 propagates as 500", async () => {
       assert.equal(response.status, 500);
       const body = (await response.json()) as {
         error: { code: string };
+        data?: unknown;
       };
       assert.equal(
         body.error.code,
         FEATURE_RULE_MASTERS_ERROR_CODES.RESOLVE_FAILED,
       );
+      assert.equal("data" in body, false);
+      const raw = JSON.stringify(body);
+      assert.equal(raw.includes("stack"), false);
+      assert.equal(raw.includes("semantic_config_version_id"), false);
     },
   );
 
@@ -238,6 +243,29 @@ test("reader GRS-CFG-002 propagates as 500", async () => {
           FEATURE_RULE_MASTERS_ERROR_CODES.RESOLVE_FAILED,
     ),
   );
+});
+
+test("unexpected reader failure maps to GRS-COM-999 without leaking internals", async () => {
+  const reader: FeatureRuleReader = {
+    async getCurrentRules() {
+      throw new Error("secret-internal-db-url-should-not-leak");
+    },
+  };
+
+  await withMastersServer({ featureRuleReader: reader }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/masters/feature-rules`);
+    assert.equal(response.status, 500);
+    const body = (await response.json()) as {
+      error: { code: string };
+    };
+    assert.equal(
+      body.error.code,
+      FEATURE_RULE_MASTERS_ERROR_CODES.UNEXPECTED,
+    );
+    const raw = JSON.stringify(body);
+    assert.equal(raw.includes("secret-internal-db-url-should-not-leak"), false);
+    assert.equal(raw.includes("stack"), false);
+  });
 });
 
 test("GET /api/v1/masters/feature-rules returns GRS-DB-002 when DB unavailable", async () => {

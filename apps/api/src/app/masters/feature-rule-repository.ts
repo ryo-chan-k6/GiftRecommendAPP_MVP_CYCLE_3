@@ -128,6 +128,7 @@ SELECT sc.concept_code, cfr.feature_code, cfr.feature_delta, cfr.polarity
 FROM concept_feature_rule cfr
 INNER JOIN semantic_concept sc
   ON sc.semantic_concept_id = cfr.semantic_concept_id
+  AND sc.semantic_config_version_id = cfr.semantic_config_version_id
 WHERE cfr.semantic_config_version_id = $1
   AND cfr.is_active = true
   AND sc.is_active = true
