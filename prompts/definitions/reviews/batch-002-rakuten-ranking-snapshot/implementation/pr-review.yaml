@@ -12,16 +12,16 @@ work_mode: "ai-agent"
 
 branch:
   no_branch: false
-  name: null
+  name: "feature/task-1200-batch-002-rakuten-ranking-snapshot-implementation"
   base: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
   target: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
   worktree_required: true
 
 target:
   pr: null
-  issue: null
+  issue: 1200
   task_definition: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-1200-batch-002-rakuten-ranking-snapshot-implementation"
   target_branch: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
   parent_epic_issue: "[Epic]BATCH-002:楽天ランキングスナップショット取得Batch"
   parent_epic_branch: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
@@ -67,7 +67,7 @@ input:
     path: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1200
     required: true
   pr:
     number: null
