@@ -341,7 +341,7 @@ paths:
               schema:
                 $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
         "500":
-          description: 内部エラー（GRS-CFG-001 / GRS-CFG-005 / GRS-DB-* 等）
+          description: 内部エラー（GRS-CFG-001 / GRS-CFG-002 / GRS-CFG-005 / GRS-DB-* 等）
           content:
             application/json:
               schema:

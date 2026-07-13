@@ -1,0 +1,316 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-008-feature-rule-masters-api-implementation-spec"
+  title: "API-PUB-008:Featureルール取得API実装仕様書作成"
+  summary: "API-PUB-008（Featureルール取得 / Public API、`GET /api/v1/masters/feature-rules`）のAPI実装仕様書を、確定済み契約仕様書（#404）・OpenAPI断片（#428）・relationship_rule / occasion_rule / concept_feature_rule / semantic_config_version テーブル定義に基づき作成する（実装面のみ。契約再掲・OpenAPI変更・apps/api実装は対象外）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-008:Featureルール取得"
+  epic_issue_number: 390
+  epic_branch: "feature/epic-390-pub-008-feature-rule-masters"
+  related_issues:
+    - number: 1190
+      purpose: "本 Task Issue"
+    - number: 390
+      purpose: "親 Epic"
+    - number: 404
+      purpose: "前提 Task（API契約仕様書・develop 反映済み）"
+    - number: 428
+      purpose: "前提 Task（OpenAPI 断片・develop 反映済み）"
+    - number: 473
+      purpose: "前提 Task（relationship_rule テーブル定義書）"
+    - number: 474
+      purpose: "前提 Task（occasion_rule テーブル定義書）"
+    - number: 476
+      purpose: "前提 Task（concept_feature_rule テーブル定義書）"
+    - number: 463
+      purpose: "前提 Task（semantic_config_version テーブル定義・関連）"
+  related_prs:
+    - number: 1191
+      purpose: "本 Task PR（実装仕様書）"
+    - number: 408
+      purpose: "契約仕様書 Task PR（develop 反映済み）"
+    - number: 429
+      purpose: "OpenAPI 断片 Task PR（develop merge 済み）"
+    - number: 486
+      purpose: "relationship_rule テーブル定義書 PR"
+    - number: 488
+      purpose: "occasion_rule テーブル定義書 PR"
+    - number: 490
+      purpose: "concept_feature_rule テーブル定義書 PR"
+    - number: 480
+      purpose: "semantic_config_version テーブル定義・Contract 参照 PR"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 縦串の 1/3（実装面仕様書）。契約面は `API-PUB-008_Featureルール取得API契約仕様書.md`（#404 / PR #408）を正とする。
+  OpenAPI 断片（#428 / PR #429）および Rule / Version テーブル定義は develop 反映済み。
+  本 Task は契約・OpenAPI・DB schema を変更せず、apps/api masters 実装 Task が参照可能な **実装面のみ** を整理する。
+  Response は `baseValueRules` + `conceptFeatureRules` の 2 グループ。Pair Rule は Public 非公開。
+  レーン4第2波（並列計画。PUB-007 と並列可）。Epic Branch は develop 同期済みを前提とする。
+  PUB-005/006 は同一 masters Router へ既に mount 済みのため、本仕様書では `/feature-rules` 追加方針を明示する。
+
+objective: |
+  API-PUB-008 について、実装 Task / 単体テスト Task が参照可能な粒度の API実装仕様書（実装面のみ）を新規作成する。
+  Express Router、MOD-API-011/012、current Semantic Config Version 解決、Rule テーブル読取（active のみ）、
+  2 グループ Response 組立、GRS-CFG-001 / GRS-CFG-005 / GRS-DB-* 境界、masters_feature_rules_* metric を明記する。
+
+scope:
+  - "API-PUB-008 の API実装仕様書を新規作成する（`API-PUB-008_Featureルール取得API実装仕様書.md`）"
+  - "前提契約・OpenAPI / Contract Gate / Rule・Version テーブル定義を整理する"
+  - "実装方針（Express Router / MOD-API-011 / MOD-API-012 / current Version 解決 / DI）を整理する"
+  - "処理フロー（Mermaid）と処理詳細を整理する"
+  - "DB 列 → Public Response（baseValueRules / conceptFeatureRules）の内部DTOマッピングを整理する（isActive / Pair 非公開）"
+  - "各配列 0 件は 200、current Version 未設定は GRS-CFG-001、参照不能は GRS-CFG-005 の境界を整理する"
+  - "generated client 利用方針（SCR-002）を記載のみ整理する"
+  - "provider（apps/api）/ consumer（apps/web SCR-002）の実装影響を整理する"
+  - "エラーマップ・trace 伝播・masters_feature_rules_* metric を整理する"
+  - "実装結合テスト観点・未決事項を明記する"
+
+out_of_scope:
+  - "API-PUB-005 / 006 / 007 の実装仕様書作成・変更"
+  - "契約面再掲（契約仕様書を正とする）"
+  - "OpenAPI / Orval / generated ファイル変更"
+  - "apps/api / apps/web / apps/reco の実装"
+  - "DB schema / migration / seed 変更"
+  - "Pair Rule / normalization の Public 公開"
+  - "画面仕様書の作成"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md"
+      required: true
+      purpose: "確定済み契約面の正本"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "baseValueRules(relationship) 読取正本"
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      required: true
+      purpose: "baseValueRules(occasion) 読取正本"
+    - path: "docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md"
+      required: true
+      purpose: "conceptFeatureRules 読取正本"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "current Version 解決の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API実装仕様書.md"
+      required: false
+      purpose: "同一 masters 群の実装仕様書スタイル参考"
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API実装仕様書.md"
+      required: false
+      purpose: "同一 masters 群の実装仕様書スタイル参考"
+  templates:
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      required: true
+      purpose: "API実装仕様書標準フォーマット"
+      applies_to:
+        - "docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md"
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: false
+      purpose: "getFeatureRuleMasters 参照（本Taskでは変更しない）"
+    - path: "apps/api/src/app/masters/"
+      required: false
+      purpose: "後続実装の配置先（PUB-005/006 既存 Router へ追加想定）"
+  issues:
+    - number: 404
+      purpose: "前提契約仕様書"
+    - number: 428
+      purpose: "前提 OpenAPI"
+  prs:
+    - number: 408
+      purpose: "契約仕様書 PR"
+    - number: 429
+      purpose: "OpenAPI 断片 PR"
+  openapi:
+    path: "packages/contracts/openapi/public-api.yaml"
+    required: false
+    purpose: "generated client 利用方針記載の参照"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-implementation-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-PUB-008 Featureルール取得 API実装仕様書"
+  - "current Version 解決と Rule 読取処理フロー"
+  - "DB → Response 内部DTOマッピング（isActive / Pair 非公開）"
+  - "空配列 / GRS-CFG-001 / GRS-CFG-005 境界"
+  - "エラーマップ・metric・結合テスト観点"
+  - "未決事項・人間判断事項"
+
+acceptance_criteria:
+  - "docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md が作成されている"
+  - "api-implementation-spec.md の実装面章に準拠し、契約面再掲を含まない"
+  - "MOD-API-011 / MOD-API-012・current Version・3 Rule テーブル読取方針が記載されている"
+  - "baseValueRules / conceptFeatureRules の組立と Pair 非公開が明記されている"
+  - "masters_feature_rules_request_count / error_count の書き込み境界が記載されている"
+  - "OpenAPI / apps 実装変更を本Taskに含めていない"
+  - "secret / .env 実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1190-api-pub-008-feature-rule-masters-api-implementation-spec"
+  summary: "api-pub-008-feature-rule-masters-api-implementation-spec"
+  base: "feature/epic-390-pub-008-feature-rule-masters"
+  target: "feature/epic-390-pub-008-feature-rule-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 404
+      purpose: "契約仕様書完了"
+    - number: 428
+      purpose: "OpenAPI 断片完了"
+  prs:
+    - number: 408
+      purpose: "契約仕様書 merge"
+    - number: 429
+      purpose: "OpenAPI develop merge"
+  tasks:
+    - "API-PUB-008_Featureルール取得API契約仕様書.md が存在すること"
+    - "public-api.yaml に feature-rules が存在すること（変更はしない）"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-008-feature-rule-masters/api-contract-spec.yaml"
+  blocks:
+    - "API-PUB-008 apps/api masters 実装 Task"
+    - "API-PUB-008 単体テスト Task"
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md"
+  conflict_risk: "medium"
+  conflict_notes: "後続実装は apps/api/src/app/masters/** を PUB-005/006/007 と共有"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "template conformity check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-PUB-008_Featureルール取得API実装仕様書.md"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs Task のため対象外"
+    "integration test": "docs Task のため対象外"
+    "e2e test": "docs Task のため対象外"
+    "typecheck": "source 変更なし"
+    "build": "source 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装面に限定され契約再掲が混入していないか"
+    - "current Version 解決と Rule 読取方針が契約と整合しているか"
+    - "空配列 / GRS-CFG-001 / GRS-CFG-005 境界が明確か"
+    - "後続実装 Task の入力として十分か"
+    - "secret 非露出"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常 docs は ai-logs に保存しない。契約とテーブル定義のギャップで停止した場合は記録する。"
+
+risk_points:
+  - "current Version 解決ロジックが API-PUB-007 と重複する可能性（共通化は推奨のみ）"
+  - "PUB-005/006 既存 masters Router への追加方針を閉じすぎる / 開きすぎる"
+  - "Rule テーブル列名と Public camelCase のマッピング漏れ"
+
+human_decision_points:
+  - "Feature Rule Repository を専用とするか、Version 解決を PUB-007 と共通モジュールにするか"
+  - "MVP でマスタキャッシュを導入するか（既定: 都度 SELECT）"
+  - "baseValueRules の並び順（ruleType / code / featureCode）の確定粒度"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "契約仕様書と実装前提が矛盾し AI だけで判断できない場合"
+  - "OpenAPI / apps 実装変更が必要になった場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+
+notes:
+  - "構造の参考: api-pub-006-occasion-masters/api-implementation-spec.yaml"
+  - "親 Epic #390 / Branch feature/epic-390-pub-008-feature-rule-masters"
+  - "次手順: /start-task @prompts/definitions/tasks/api-pub-008-feature-rule-masters/api-implementation-spec.yaml"
