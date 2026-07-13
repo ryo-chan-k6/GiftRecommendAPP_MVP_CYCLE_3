@@ -1,0 +1,99 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-003-rakuten-item-pseudo-diff-implementation-pr"
+  title: "BATCH-003 楽天商品疑似差分取得Batch実装 PRレビュー"
+  summary: "BATCH-003 実装 Task の PR を AI Review する。仕様書 Phase・Raw冪等・Item非作成・fixture/mock を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "feature/task-1213-batch-003-rakuten-item-pseudo-diff-implementation"
+  base: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  target: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 1213
+  task_definition: "prompts/definitions/tasks/batch-003-rakuten-item-pseudo-diff/implementation.yaml"
+  source_branch: "feature/task-1213-batch-003-rakuten-item-pseudo-diff-implementation"
+  target_branch: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  parent_epic_issue: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
+  parent_epic_branch: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-003-rakuten-item-pseudo-diff/implementation.yaml"
+    required: true
+  issue:
+    number: 1213
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      required: true
+      purpose: "実装正本との整合"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+    - "epic_scope.allowed_paths 内か"
+  tests:
+    - "最小 UT が fixture/mock で通るか"
+    - "実楽天API / 実DB 依存がないか"
+  security:
+    - "secret / .env 実値がないか"
+  source:
+    - "Item / Staging を本 Batch で作っていないか"
+    - "Raw 冪等・fetch_cursor 更新が実装されているか"
+    - "recheck を消費していないか"
+
+notes:
+  - "Issue / PR 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
