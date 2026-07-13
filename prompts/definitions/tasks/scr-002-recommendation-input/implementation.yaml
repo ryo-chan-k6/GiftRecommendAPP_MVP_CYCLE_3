@@ -13,11 +13,27 @@ parent:
   epic_issue_number: 1147
   epic_branch: "feature/epic-1147-scr-002-recommendation-input"
   related_issues:
+    - number: 1214
+      purpose: "本 Task Issue"
     - number: 1147
       purpose: "親 Epic"
+    - number: 1152
+      purpose: "前提 Task（画面仕様書）"
     - number: 357
       purpose: "依存 Epic（API-PUB-002 develop merge 済み）"
-  related_prs: []
+    - number: 387
+      purpose: "依存 Epic（API-PUB-005 develop merge 済み）"
+    - number: 388
+      purpose: "依存 Epic（API-PUB-006 develop merge 済み）"
+    - number: 389
+      purpose: "依存 Epic（API-PUB-007 develop merge 済み）"
+    - number: 390
+      purpose: "依存 Epic（API-PUB-008 develop merge 済み）"
+  related_prs:
+    - number: 1218
+      purpose: "本 Task PR（実装）"
+    - number: 1154
+      purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
 
 commands:
   primary: "/start-task"
@@ -115,7 +131,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/task-<issue-number>-scr-002-recommendation-input-implementation"
+  name: "feature/task-1214-scr-002-recommendation-input-implementation"
   base: "feature/epic-1147-scr-002-recommendation-input"
   target: "feature/epic-1147-scr-002-recommendation-input"
   worktree_required: true
@@ -124,10 +140,10 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "Backlog"
+    status: "Todo"
     priority: "high"
-    planned_start: null
-    due_date: null
+    planned_start: "2026-07-13"
+    due_date: "2026-07-16"
 
 issue:
   unit: "task"
@@ -139,8 +155,24 @@ dependencies:
     - issue: 357
       title: "[Epic]API-PUB-002:レコメンド実行"
       purpose: "レコメンド実行 API"
-  issues: []
-  prs: []
+    - issue: 387
+      title: "[Epic]API-PUB-005:Relationshipマスタ取得"
+      purpose: "Relationship マスタ API"
+    - issue: 388
+      title: "[Epic]API-PUB-006:Occasionマスタ取得"
+      purpose: "Occasion マスタ API"
+    - issue: 389
+      title: "[Epic]API-PUB-007:Semantic Configマスタ取得"
+      purpose: "Semantic Config マスタ API"
+    - issue: 390
+      title: "[Epic]API-PUB-008:Featureルール取得"
+      purpose: "Feature Rule マスタ API"
+  issues:
+    - number: 1152
+      purpose: "画面仕様書 Task"
+  prs:
+    - number: 1154
+      purpose: "画面仕様書 PR"
   tasks:
     - "画面仕様書 Task（screen-spec）が親 Epic Branch に merge 済みであること"
     - "API-PUB-005〜008 マスタ API 実装が完了していること（Human 判断・着手条件）"
@@ -201,6 +233,7 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]SCR-002:レコメンド条件入力画面実装"
+  - "本 Task Issue: #1214 / Branch: feature/task-1214-scr-002-recommendation-input-implementation"
   - "親Epic: #1147 / Branch: feature/epic-1147-scr-002-recommendation-input"
-  - "レーン1時点では Definition のみ作成。/start-task はマスタ API 完了後"
-  - "Review Definition は /start-task 時に prompts/definitions/reviews/scr-002-recommendation-input/implementation/pr-review.yaml を追加する"
+  - "PR 本文は Related to #1214（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/scr-002-recommendation-input/implementation/pr-review.yaml"
