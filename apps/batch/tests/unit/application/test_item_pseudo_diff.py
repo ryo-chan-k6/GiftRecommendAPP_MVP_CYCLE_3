@@ -231,3 +231,239 @@ def test_api_call_log_has_fetch_cursor_id() -> None:
     assert result.status == "succeeded"
     assert repos.api_call_logs
     assert all(log.get("fetch_cursor_id") for log in repos.api_call_logs)
+
+
+# --- §16 No.4 dedupe ---
+
+
+def test_dedupe_unique_candidate_count_across_routes() -> None:
+    """同一 Run で genre / update_sort が同じ itemCode を返しても候補はユニーク。"""
+
+    client = ScaffoldRakutenApiClient(
+        item_search_raw_responses={
+            ("genre", "100", 1): {
+                "Items": [
+                    {"Item": {"itemCode": "shop:a", "itemName": "A"}},
+                    {"Item": {"itemCode": "shop:b", "itemName": "B"}},
+                ]
+            },
+            ("update_sort", "*", 1): {
+                "Items": [
+                    {"Item": {"itemCode": "shop:a", "itemName": "A again"}},
+                    {"Item": {"itemCode": "shop:c", "itemName": "C"}},
+                ]
+            },
+        }
+    )
+    repos = _repos()
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-dedupe",
+        target_genre_ids=("100",),
+        include_update_sort=True,
+    )
+
+    assert result.status == "succeeded"
+    assert result.candidate_item_code_count == 3  # a, b, c
+    assert result.raw_save_success_count == 2  # API 応答単位の Raw は 2
+
+
+# --- §16 No.5 Rate Limit（error_log / api_call_log） ---
+
+
+def test_rate_limit_records_ext_102_in_logs() -> None:
+    repos = _repos()
+    client = ScaffoldRakutenApiClient(
+        item_search_raw_responses={
+            ("genre", "100", 1): {
+                "Items": [{"Item": {"itemCode": "shop:ok", "itemName": "OK"}}]
+            }
+        },
+        rate_limited_item_search_keys={("genre", "200", 1)},
+    )
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-rl-partial",
+        target_genre_ids=("100", "200"),
+        include_update_sort=False,
+    )
+
+    assert result.status == "partially_succeeded"
+    assert "GRS-EXT-102" in result.error_codes
+    assert any(e["code"] == "GRS-EXT-102" for e in repos.error_logs)
+    failed = [log for log in repos.api_call_logs if log.get("error_code") == "GRS-EXT-102"]
+    assert failed and failed[0]["status"] == "failed"
+
+
+# --- §16 No.7 cursor は API 成功後のみ ---
+
+
+def test_cursor_not_advanced_on_api_failure() -> None:
+    repos = _repos()
+    client = ScaffoldRakutenApiClient(fail_item_search_keys={("genre", "100", 1)})
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-no-cursor",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "failed"
+    genre_cursors = [c for c in repos.fetch_cursors.values() if c.cursor_type == "genre"]
+    assert genre_cursors
+    # plan で作成されたまま page=1 / active（失敗後に completed へ進めない）
+    assert all(c.page == 1 and c.cursor_status == "active" for c in genre_cursors)
+
+
+def test_cursor_advances_only_after_success() -> None:
+    repos = _repos()
+    job = ItemPseudoDiffJob(rakuten_client=_client_genre(), repositories=repos)
+
+    result = job.run(
+        job_run_id="job-cursor-ok",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "succeeded"
+    genre_cursors = [c for c in repos.fetch_cursors.values() if c.cursor_type == "genre"]
+    assert genre_cursors
+    assert all(c.page == 2 for c in genre_cursors)
+
+
+# --- GRS-RAW-001 ---
+
+
+def test_raw_save_failure_records_raw_001() -> None:
+    repos = ItemPseudoDiffRepositories(
+        object_storage=ScaffoldObjectStorageClient(fail_on_put=True),
+        db_writer=ScaffoldDbWriter(),
+        bucket="test-raw",
+    )
+    job = ItemPseudoDiffJob(rakuten_client=_client_genre(), repositories=repos)
+
+    result = job.run(
+        job_run_id="job-raw-fail",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "failed"
+    assert "GRS-RAW-001" in result.error_codes
+    assert any(e["code"] == "GRS-RAW-001" for e in repos.error_logs)
+    assert len(repos.raw_metadata) == 0
+
+
+# --- keyword route / priority ---
+
+
+def test_keyword_route_and_supplement_priority() -> None:
+    call_order: list[str] = []
+
+    class OrderTrackingClient(ScaffoldRakutenApiClient):
+        def fetch_item_search_raw(self, *, cursor_type: str, **kwargs):  # type: ignore[no-untyped-def]
+            call_order.append(cursor_type)
+            return super().fetch_item_search_raw(cursor_type=cursor_type, **kwargs)
+
+    client = OrderTrackingClient(
+        item_search_raw_responses={
+            ("ranking_supplement", "shop:u", 1): {
+                "Items": [{"Item": {"itemCode": "shop:u", "itemName": "U"}}]
+            },
+            ("genre", "100", 1): {
+                "Items": [{"Item": {"itemCode": "shop:g", "itemName": "G"}}]
+            },
+            ("keyword", "gift", 1): {
+                "Items": [{"Item": {"itemCode": "shop:k", "itemName": "K"}}]
+            },
+        }
+    )
+    repos = _repos(
+        seed=[
+            FetchCursorRow(
+                cursor_type="ranking_supplement",
+                scope={"external_item_code": "shop:u"},
+                page=1,
+            )
+        ]
+    )
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-prio",
+        target_genre_ids=("100",),
+        keywords=("gift",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "succeeded"
+    assert call_order[0] == "ranking_supplement"
+    assert "keyword" in call_order
+    assert result.ranking_supplement_consumed_count == 1
+
+
+# --- §16 No.8 secret ---
+
+
+def test_api_call_logs_do_not_contain_secret_fields() -> None:
+    client = _client_genre()
+    client.fail_item_search_keys.add(("genre", "101", 1))
+    repos = _repos()
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    job.run(
+        job_run_id="job-sec",
+        target_genre_ids=("100", "101"),
+        include_update_sort=False,
+    )
+
+    forbidden = (
+        "Authorization",
+        "accessKey",
+        "access_key",
+        "RAKUTEN_ACCESS_KEY",
+        "RAKUTEN_APPLICATION_ID",
+        "object_storage_secret_key",
+        "Bearer ",
+    )
+    blob = json.dumps({"api": repos.api_call_logs, "err": repos.error_logs}, ensure_ascii=False)
+    for token in forbidden:
+        assert token not in blob
+
+
+# --- §16 No.9 境界強化 ---
+
+
+def test_boundary_no_item_staging_or_ranking_writes() -> None:
+    repos = _repos()
+    job = ItemPseudoDiffJob(rakuten_client=_client_genre(), repositories=repos)
+
+    result = job.run(
+        job_run_id="job-boundary",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "succeeded"
+    assert repos.created_items == []
+    assert repos.created_staging == []
+    tables = {call["table"] for call in repos.db_writer.write_calls}
+    assert "item" not in tables
+    assert "staging_item" not in tables
+    assert "ranking_snapshot" not in tables
+    assert "raw_product_metadata" in tables
+    assert "fetch_cursor" in tables
+
+
+def test_invalid_payload_records_ext_103() -> None:
+    from batch.infrastructure.rakuten import RakutenItemSearchApiError, adapt_item_search_raw_payload
+
+    try:
+        adapt_item_search_raw_payload({"Items": "bad"}, cursor_type="genre")
+        raise AssertionError("expected GRS-EXT-103")
+    except RakutenItemSearchApiError as exc:
+        assert exc.code == "GRS-EXT-103"
+

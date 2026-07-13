@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-003-rakuten-item-pseudo-diff-unit-test"
+  title: "BATCH-003:楽天商品疑似差分取得Batch単体テスト"
+  summary: "BATCH-003 実装に対し、バッチ仕様書 §16 の unit 観点カバレッジを整理・拡充する。実装 Task の最小 UT を維持しつつ、不足ケースを fixture / mock で追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
+  epic_issue_number: 1207
+  epic_branch: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  related_issues:
+    - number: 1216
+      purpose: "本 Task Issue"
+    - number: 1213
+      purpose: "前提（実装 Task・CLOSED）"
+    - number: 1208
+      purpose: "前提（バッチ仕様書 Task・CLOSED）"
+  related_prs:
+    - number: 1215
+      purpose: "実装 Task PR（Epic Branch merge 済み）"
+    - number: 1209
+      purpose: "バッチ仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b レーン B1 縦串の UT。実装 Task #1213 / PR #1215 は Epic Branch merge 済み。
+  本 Task はバッチ仕様書 §16 の unit 観点対応表を PR に明示し、不足ケースを
+  `apps/batch/tests/unit/**` へ拡充する。実楽天API / 実 DB は禁止（fixture / mock 正）。
+
+objective: |
+  BATCH-003 の単体テストを仕様書 §16（No.1〜9）に沿って充足し、Epic 縦串（仕様書→実装→UT）を完了可能にする。
+
+scope:
+  - "バッチ仕様書 §16 unit 観点のカバレッジ表を PR 本文に記載する"
+  - "`apps/batch/tests/unit/**` へのテスト追加・拡充（item_pseudo_diff 中心）"
+  - "テスト成立に必要な最小の実装修正（例: GRS-RAW-001 注入経路確認）"
+  - "Task / Review Definition の実Issue・Branch反映"
+
+out_of_scope:
+  - "integration test（実楽天API / 実 DB / 実 Object Storage）"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema / migration 変更"
+  - "他 Batch のテスト"
+  - "機能追加を主目的とする実装変更（テスト成立に必要な最小修正以外）"
+  - "Epic PR の develop merge（Human 判断）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/item_pseudo_diff/**"
+      required: true
+      purpose: "テスト対象"
+    - path: "apps/batch/tests/unit/application/test_item_pseudo_diff.py"
+      required: true
+      purpose: "実装 Task で追加済みの最小 UT"
+  issues:
+    - number: 1213
+      purpose: "前提実装"
+  prs:
+    - number: 1215
+      purpose: "実装 PR（merge 済み）"
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/batch/tests/unit/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "§16 unit 観点カバレッジ表（PR 本文）"
+  - "不足ケースの pytest 追加"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "バッチ仕様書 §16 の unit 観点（No.1〜9）がテストまたは明示スキップ理由でカバーされている"
+  - "`cd apps/batch && uv run python -m pytest tests/unit -q` が SUCCESS"
+  - "実楽天API / 実 DB に依存しない"
+  - "OpenAPI / generated / migration 変更を含まない"
+  - "親 Epic の epic_scope.allowed_paths 内"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1216-batch-003-rakuten-item-pseudo-diff-unit-test"
+  summary: "batch-003-rakuten-item-pseudo-diff-unit-test"
+  base: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  target: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-13"
+    due_date: "2026-07-16"
+
+issue:
+  number: 1216
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1207
+      title: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1213
+      purpose: "実装 Task（CLOSED）"
+  prs:
+    - number: 1215
+      purpose: "実装 PR Epic merge 済み（blocking）"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-003-rakuten-item-pseudo-diff-implementation"
+  blocks: []
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_item_pseudo_diff.py"
+    - "apps/batch/tests/unit/application/test_item_pseudo_diff_*.py"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit -q --tb=short"
+  not_required:
+    - "integration test"
+    - "contract test"
+  skip_reason:
+    "integration test": "実楽天API / 実DBは課金・環境依存のため fixture/mock unit で代替"
+    "contract test": "Batch は HTTP API 化しないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "仕様書 §16 カバレッジが十分か（不足はスキップ理由明示）"
+    - "実外部依存がないか"
+    - "secret 非露出"
+    - "PR target が親 Epic Branch であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 UT は ai-logs に保存しない"
+
+stop_conditions:
+  - "実装 PR #1215 が親 Epic Branch に merge されていない場合"
+  - "実楽天API検証が必須に見える場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-003:楽天商品疑似差分取得Batch単体テスト"
+  - "縦串完了後は Epic PR → develop（Human merge 判断）"
+  - "Issue #1216 / Branch test/task-1216-batch-003-rakuten-item-pseudo-diff-unit-test"
