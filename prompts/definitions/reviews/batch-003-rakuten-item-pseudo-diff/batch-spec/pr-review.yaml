@@ -6,23 +6,23 @@ review:
   title: "BATCH-003 楽天商品疑似差分取得バッチ仕様書 PRレビュー"
   summary: "BATCH-003 バッチ仕様書 Task の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
 branch:
   no_branch: false
-  name: null
-  base: null
-  target: null
+  name: "docs/task-1208-batch-003-rakuten-item-pseudo-diff-batch-spec"
+  base: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  target: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
   worktree_required: true
 
 target:
   pr: null
-  issue: null
+  issue: 1208
   task_definition: "prompts/definitions/tasks/batch-003-rakuten-item-pseudo-diff/batch-spec.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "docs/task-1208-batch-003-rakuten-item-pseudo-diff-batch-spec"
+  target_branch: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
   parent_epic_issue: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
   parent_epic_branch: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
 
