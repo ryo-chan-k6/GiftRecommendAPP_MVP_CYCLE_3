@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-07-12                                |
-| 更新日         | 2026-07-12（AI Review 指摘反映）          |
+| 更新日         | 2026-07-13                                |
 
 ---
 
@@ -47,7 +47,7 @@
 | 認証 | **MVP は非認証**。`Authorization` 検証なし |
 | 冪等性 | 副作用なし（SELECT のみ） |
 | Pair / normalization | **Public Response に含めない** |
-| キャッシュ | **MVP 既定: 都度 SELECT**（§11 未決） |
+| キャッシュ | **都度 SELECT**（プロセス内キャッシュは導入しない。§11 判断確定） |
 
 ### 3.2 エンドポイント層の配置
 
@@ -55,20 +55,22 @@ PUB-005 / PUB-006 により `createMastersRouter()` は既に `/api/v1/masters` 
 
 ```text
 apps/api/src/app/masters/
-├── routes.ts                         # createMastersRouter(): + GET /feature-rules
-├── feature-rules-controller.ts       # MOD-API-011（本 API 受付・Response 組立）※ファイル名は実装 Task で調整可
-├── feature-rule-repository.ts        # MOD-API-012（Version + Rule 読取）
-├── relationship-repository.ts        # 既存（PUB-005）
-├── occasion-repository.ts            # 既存（PUB-006）
+├── routes.ts                              # createMastersRouter(): + GET /feature-rules
+├── semantic-config-version-resolver.ts    # PUB-007 / PUB-008 共通 current Version 解決（PUB-007 実装で新規。本 API は再利用）
+├── feature-rules-controller.ts            # MOD-API-011（本 API 受付・Response 組立）※ファイル名は実装 Task で調整可
+├── feature-rule-repository.ts             # MOD-API-012（Rule 読取。Version は共通 Resolver を利用）
+├── relationship-repository.ts             # 既存（PUB-005）
+├── occasion-repository.ts                 # 既存（PUB-006）
 └── ...
 ```
 
 | モジュール | 責務（本 API） |
 | ---------- | -------------- |
-| MOD-API-011 Master Controller | `GET /feature-rules` 受付、meta 解決、Repository 呼び出し、成功 / 失敗 Response 組立、metric 境界 |
-| MOD-API-012 Master Repository | current Semantic Config Version 解決後、active な `relationship_rule` / `occasion_rule` / `concept_feature_rule` を読取り、内部 DTO を返却 |
+| MOD-API-011 Master Controller | `GET /feature-rules` 受付、未知 Query 検査、meta 解決、Repository 呼び出し、成功 / 失敗 Response 組立、metric 境界 |
+| current Version Resolver（共通） | 親 `is_active` → 子 `is_current` → JOIN `config_name`。PUB-007 と同一実装を呼ぶ（§11 判断確定） |
+| MOD-API-012 Master Repository | 共通 Resolver で Version 解決後、active な `relationship_rule` / `occasion_rule` / `concept_feature_rule` を読取り、内部 DTO を返却 |
 
-**共通化メモ（推奨・未確定）:** Version 解決は API-PUB-007 と重複しうる。本仕様書は Feature Rule 読取に閉じ、共通モジュール化は §11。
+**共通化方針（§11 判断確定）:** current Version 解決のみを MVP 時点から PUB-007 / PUB-008 共通モジュール化する。Rule 読取まで含む全体 Repository の共通化は行わない。本 API 実装 Task は `semantic-config-version-resolver.ts` を再利用する（API-PUB-007 実装仕様書 §3.2 / §11）。
 
 ### 3.3 DI / 依存
 
@@ -78,6 +80,7 @@ apps/api/src/app/masters/
 | DB | Postgres。接続文字列実値をログ・Response に出さない |
 | Reco Client | **使用しない** |
 | pair_rule / normalization | **参照しない**（Public 非公開） |
+| DATABASE_URL 未設定 / 接続設定欠落 | 設定解決不能として **`GRS-CFG-005`**（§11 判断確定。PUB-007 の `GRS-CFG-001` 寄せとは揃えない） |
 
 ### 3.4 認証（実装面）
 
@@ -96,19 +99,21 @@ apps/api/src/app/masters/
 | `configName` | 本テーブルに保持しない。`semantic_config_version` と `semantic_config` を `semantic_config_id` で **アプリ層 JOIN** し、親 `semantic_config.config_name` を取得する |
 | `versionLabel` | `semantic_config_version.version_label` をそのまま Response へ |
 | 成功時 | `configName` / `versionLabel` を Response `data` に載せる（API-PUB-007 と一致する composite 参照） |
-| 未設定 | **HTTP 500 `GRS-CFG-001`**（空配列とは区別。契約確定） |
+| 未設定（0 件） | **HTTP 500 `GRS-CFG-001`**（空配列とは区別。契約確定） |
+| 解決失敗（複数 current 等） | **HTTP 500 `GRS-CFG-002`**（勝手に 1 件を選ばない。契約追随） |
 
-**参照クエリ例（api・概念）:**
+**参照クエリ例（api・概念。共通 Resolver と同一）:**
 
 ```sql
-SELECT scv.*, sc.config_name
+SELECT scv.semantic_config_version_id, sc.config_name, scv.version_label
 FROM semantic_config_version scv
-INNER JOIN semantic_config sc ON sc.semantic_config_id = scv.semantic_config_id
+INNER JOIN semantic_config sc
+  ON sc.semantic_config_id = scv.semantic_config_id
 WHERE sc.is_active = true
   AND scv.is_current = true;
 ```
 
-> 系列が `is_active = false` の場合、その系列に属する version は解決対象外とする。`semantic_config_version_id`（UUID）は内部参照専用で Public Response に含めない。
+> 系列が `is_active = false` の場合、その系列に属する version は解決対象外とする。`semantic_config_version_id`（UUID）は内部参照専用で Public Response に含めない。MVP では系列あたり current 1 件を想定（部分 UNIQUE）。複数行が返った場合は **`GRS-CFG-002`** として扱う。
 
 #### 3.5.2 Rule 読取
 
@@ -124,14 +129,19 @@ WHERE sc.is_active = true
 | 各配列 0 件 | **HTTP 200** + 空配列（Version 解決成功が前提） |
 | Pair 等 | `pair_rule` / `input_type_rule` / `feature_integration_rule` は読まない |
 
-**空配列 / `GRS-CFG-001` / `GRS-CFG-005` 境界:**
+#### 3.5.3 エラー境界まとめ
 
 | 状況 | HTTP / Code |
 | ---- | ----------- |
-| current Version 解決成功・各 Rule 0 件 | 200 / 空配列 |
+| 未知 Query | 400 `GRS-REQ-001` |
 | current Version 未設定 | 500 `GRS-CFG-001` |
-| DB 到達不可・クエリ失敗 | 500 `GRS-DB-002` 等 |
+| Version 解決失敗（複数 current 等） | 500 `GRS-CFG-002` |
+| current Version 解決成功・各 Rule 0 件 | 200 / 空配列 |
 | Version はあるが Rule 参照処理が設定不備で継続不能 | 500 `GRS-CFG-005` |
+| DATABASE_URL 未設定 / 接続設定欠落 | 500 `GRS-CFG-005`（§11 判断確定） |
+| DB 接続失敗 | 500 `GRS-DB-001` |
+| DB 読取失敗 | 500 `GRS-DB-002` |
+| DB 一時不可 | 503 `GRS-DB-001` |
 
 ---
 
@@ -141,30 +151,36 @@ WHERE sc.is_active = true
 
 ```mermaid
 flowchart TD
-    START([GET /api/v1/masters/feature-rules]) --> META[trace/request meta 解決]
+    START([GET /api/v1/masters/feature-rules]) --> Q{未知 Query?}
+    Q -->|あり| E400[400 GRS-REQ-001]
+    Q -->|なし| META[trace/request meta 解決]
     META --> CTRL[MOD-API-011 Master Controller]
-    CTRL --> VER[MOD-API-012: current Version 解決]
+    CTRL --> VER[共通 Resolver: current Version 解決<br/>is_active → is_current → JOIN config_name]
     VER -->|未設定| E001[500 GRS-CFG-001]
+    VER -->|解決失敗| E002cfg[500 GRS-CFG-002]
     VER -->|成功| RULES[relationship_rule / occasion_rule / concept_feature_rule<br/>is_active=true のみ]
     RULES -->|成功| MAP[2グループ Response 組立<br/>Pair/isActive 非公開]
     MAP --> OK200[200 data + meta]
-    RULES -->|DB失敗| E002[500 GRS-DB-002]
+    RULES -->|DB失敗| E002db[500 GRS-DB-002]
     RULES -->|設定解決不能| E005[500 GRS-CFG-005]
-    OK200 --> METRIC[masters_feature_rules_request_count<br/>失敗時は error_count も]
+    E400 --> METRIC[masters_feature_rules_request_count<br/>失敗時は error_count も]
     E001 --> METRIC
-    E002 --> METRIC
+    E002cfg --> METRIC
+    E002db --> METRIC
     E005 --> METRIC
+    OK200 --> METRIC
     METRIC --> END([完了])
 ```
 
 ### 4.2 処理詳細
 
-1. **meta 解決:** `X-Trace-Id` / `X-Request-Id` は任意（現行 middleware の採番方針に従う）。
-2. **Controller:** 認証なし。Body / Path / Query なし。未知 Query は契約どおり扱える範囲で無視または `GRS-REQ-001`（契約 §7.2）。
-3. **Version 解決:** current が無ければ `GRS-CFG-001` で終了。
-4. **Rule 読取:** 3 テーブルから active 行のみ取得し、`baseValueRules` / `conceptFeatureRules` にマッピング。
-5. **成功 Response:** `data.configName` / `versionLabel` / 2 配列 + `meta`。
-6. **metric:** `masters_feature_rules_request_count`（完了時）。エラー時は `masters_feature_rules_error_count` も。
+1. **Query 検査:** MVP では未定義 Query を受け付けない。存在すれば 400 `GRS-REQ-001`（契約 §9）。
+2. **meta 解決:** `X-Trace-Id` / `X-Request-Id` は任意（現行 middleware の採番方針に従う）。
+3. **Controller:** 認証なし。Body / Path なし。
+4. **Version 解決:** 共通 Resolver を呼ぶ。current が無ければ `GRS-CFG-001`、複数 current 等は `GRS-CFG-002` で終了。
+5. **Rule 読取:** 3 テーブルから active 行のみ取得し、`baseValueRules` / `conceptFeatureRules` にマッピング。
+6. **成功 Response:** `data.configName` / `versionLabel` / 2 配列 + `meta`。
+7. **metric:** `masters_feature_rules_request_count`（完了時）。エラー時は `masters_feature_rules_error_count` も。
 
 ---
 
@@ -175,9 +191,10 @@ flowchart TD
 | Request項目 | 内部項目 / DTO | 変換内容 | 備考 |
 | ----------- | -------------- | -------- | ---- |
 | （Body） | — | なし | GET |
+| Query | — | 未知は 400 | 契約 §9 |
 | `X-Trace-Id` | `meta.trace_id` | 任意 | Response と一致 |
 | `X-Request-Id` | `meta.request_id` | 任意 | 現行 middleware 方針に従う |
-| Path / Query | — | なし | — |
+| Path | — | なし | — |
 
 ### 5.2 Response Mapping（成功・200）
 
@@ -204,15 +221,17 @@ flowchart TD
 
 | 内部状況 | HTTP | Error Code | 備考 |
 | -------- | ---: | ---------- | ---- |
+| 未知 Query | 400 | `GRS-REQ-001` | 契約 §9 |
 | current Version 未設定 | 500 | `GRS-CFG-001` | 空配列と区別 |
-| マスタ設定解決不能 | 500 | `GRS-CFG-005` | Rule 参照処理が継続不能 |
+| Version 解決失敗（複数 current 等） | 500 | `GRS-CFG-002` | 契約追随 |
+| Rule 参照不能 / 接続設定欠落 | 500 | `GRS-CFG-005` | §11 判断確定。PUB-007 の接続欠落=`CFG-001` とは揃えない |
 | DB 接続失敗 | 500 | `GRS-DB-001` | エラーコード定義書 §19 正本。契約 Error 表 §8.2 と一致 |
 | DB 読取失敗 | 500 | `GRS-DB-002` | 接続成功後のクエリ失敗 |
 | DB 一時不可 | 503 | `GRS-DB-001` | 契約 Error 表 §8.2。同一 code で HTTP のみ 503 に分岐 |
 | 設定系想定外 | 500 | `GRS-CFG-999` | — |
 | 想定外 | 500 | `GRS-COM-999` | — |
 
-> **`GRS-DB-001` の HTTP 分岐:** エラーコード定義書は接続失敗を **500** とする。契約仕様書 §8.2 は接続失敗 **500** と一時不可 **503** の両方に `GRS-DB-001` を割り当てる。実装では障害種別（接続失敗 vs 一時不可）に応じて HTTP を切り分ける。本 Task では契約・エラーコード定義書を正とし、OpenAPI / Contract 変更は行わない。
+> **`GRS-DB-001` の HTTP 分岐:** エラーコード定義書は接続失敗を **500** とする。契約仕様書 §8.2 は接続失敗 **500** と一時不可 **503** の両方に `GRS-DB-001` を割り当てる。実装では障害種別（接続失敗 vs 一時不可）に応じて HTTP を切り分ける。
 
 詳細メッセージは契約仕様書・エラーコード定義書を正とする。
 
@@ -237,7 +256,7 @@ flowchart TD
 | ---- | ---- |
 | provider | `apps/api` |
 | 影響有無 | `あり`（後続実装 Task） |
-| 必要対応 | `createMastersRouter` へ `/feature-rules` 追加、Feature Rule Repository、Version 解決、metric / error 配線 |
+| 必要対応 | `createMastersRouter` へ `/feature-rules` 追加、共通 Version Resolver 再利用、Feature Rule Repository、metric / error 配線 |
 
 ### 7.2 consumer
 
@@ -269,11 +288,13 @@ flowchart TD
 | 2 | 空配列 | Version 成功・各配列 0 件で 200 | integration |
 | 3 | inactive / Pair 非公開 | Response に含まれない | integration |
 | 4 | Version 未設定 | 500 `GRS-CFG-001` | integration |
-| 5 | DB 失敗 | 500 `GRS-DB-002` | integration |
-| 6 | 設定解決不能 | 500 `GRS-CFG-005` | integration |
-| 7 | meta / metric | trace 伝播・request/error_count | unit / integration |
-| 8 | generated client | consumer Task | typecheck |
-| 9 | SCR-002 | 画面 Task | manual |
+| 5 | Version 解決失敗 | 複数 current 等で 500 `GRS-CFG-002` | integration |
+| 6 | 未知 Query | 400 `GRS-REQ-001` | integration |
+| 7 | DB 失敗 | 500 `GRS-DB-002` | integration |
+| 8 | 設定解決不能 / 接続設定欠落 | 500 `GRS-CFG-005` | integration |
+| 9 | meta / metric | trace 伝播・request/error_count | unit / integration |
+| 10 | generated client | consumer Task | typecheck |
+| 11 | SCR-002 | 画面 Task | manual |
 
 > 本 Task ではテストコードを追加しない。
 
@@ -285,17 +306,29 @@ flowchart TD
 | ---- | -------- | -------------- |
 | 2026-07-12 | 初版作成 | #1190 |
 | 2026-07-12 | AI Review 指摘反映（§3.5.1 Version 2 段階解決・configName JOIN、§5.2 DB snake 列名、§5.3 `GRS-DB-001` HTTP 整合） | #1190 / PR #1191 |
+| 2026-07-13 | API-PUB-007 実装方針取込（共通 Resolver / 都度 SELECT / Version 手順・`GRS-CFG-002`）。接続設定欠落は `GRS-CFG-005`。契約追随と Human 判断反映 | #1190 / PR #1191 |
 
 ---
 
-## 11. 未決事項
+## 11. Human Review 判断事項
+
+### 11.1 判断確定
+
+Human 判断により推奨案を採用し、以下を **実装面の判断確定** とする。
+
+|  No | 論点 | Human 判断 | 実装への適用 |
+| --: | ---- | ---------- | ------------ |
+| 1 | Version 解決を PUB-007 と共通化するか | **MVP 時点から共通化する**（current Version 解決のみ。全体 Repository 共通化はしない） | §3.2。`semantic-config-version-resolver.ts` を再利用 |
+| 2 | プロセス内キャッシュ | **導入しない**（都度 SELECT）。更新鮮度を優先 | §3.1。キャッシュ層は実装しない |
+| 3 | DATABASE_URL 未設定 / 接続設定欠落時の Error Code | **`GRS-CFG-005`** にマップする（PUB-007 の `GRS-CFG-001` 寄せとは揃えない） | §3.3 / §3.5.3 |
+| 4 | `GRS-CFG-002` の契約追随 | **契約仕様書へ追加する**（複数 current 等の Version 解決失敗） | 契約 §7.2 / §8.2。本書 §3.5.1 |
+
+### 11.2 残未決事項
 
 |  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Version 解決を PUB-007 と共通モジュールにするか | 重複実装・依存方向 | Human | 実装 Task 開始前 | 本仕様書は Feature Rule に閉じる |
-| 2 | Feature Rule Repository の分割粒度（1 class vs テーブル別） | DI・UT しやすさ | Human | 実装 Task 開始前 | 推奨: 1 Repository 内で 3 読取 |
-| 3 | プロセス内キャッシュ導入 | 性能・鮮度 | Human | 実装 Task 開始前 | 既定: 都度 SELECT |
-| 4 | `baseValueRules` 並び順 | UI 安定性 | Human | 任意 | 推奨: ruleType → code → featureCode |
+| 1 | Feature Rule Repository の分割粒度（1 class vs テーブル別） | DI・UT しやすさ | Human | 実装 Task 開始前 | 推奨: 1 Repository 内で 3 読取 |
+| 2 | `baseValueRules` 並び順 | UI 安定性 | Human | 任意 | 推奨: ruleType → code → featureCode |
 
 ---
 
@@ -304,6 +337,7 @@ flowchart TD
 | 種別 | パス / URL | 用途 |
 | ---- | ---------- | ---- |
 | 契約仕様書 | `docs/06_実装設計/api/API-PUB-008_Featureルール取得API契約仕様書.md` | 前提契約 |
+| 参考実装仕様書 | `docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md` | 共通 Version Resolver / 都度 SELECT |
 | テーブル定義 | `relationship_rule` / `occasion_rule` / `concept_feature_rule` / `semantic_config_version` | 読取条件 |
 | OpenAPI | `packages/contracts/openapi/public-api.yaml` | `getFeatureRuleMasters` |
 | API一覧 | `docs/05_アプリケーション設計/アプリ/api/API一覧.md` | metric / Pair 非公開 |
@@ -315,13 +349,15 @@ flowchart TD
 
 ## 13. レビュー観点
 
-- 確定済み契約 / OpenAPI と実装方針が整合している
+- 確定済み契約 / OpenAPI と実装方針が整合している（`GRS-CFG-002` 含む）
+- PUB-007 / PUB-008 共通 Version Resolver 方針が明確である（§11）
 - current Version 解決と Rule 読取・2 グループ組立が明確である
-- 空配列 / `GRS-CFG-001` / `GRS-CFG-005` 境界が契約と一致している
+- 空配列 / `GRS-CFG-001` / `GRS-CFG-002` / `GRS-CFG-005` 境界が契約と一致している
+- 接続設定欠落が `GRS-CFG-005` であること（PUB-007 の `GRS-CFG-001` と意図的に異なる）が明記されている
 - Pair / isActive 非公開が明記されている
-- OpenAPI / apps 実装変更を本 Task に含めていない
+- apps 実装変更を本 Task に含めていない
 - secret / `.env` 実値が含まれていない
-- §11 未決事項が明示されている
+- §11 判断確定と残未決が分離されている
 
 ---
 
@@ -329,4 +365,4 @@ flowchart TD
 
 - Phase4b 縦串 1/3。後続は apps/api 実装 → 単体テスト → Epic PR → develop。
 - Task PR target は親 Epic Branch `feature/epic-390-pub-008-feature-rule-masters`。
-- スタイル参考: API-PUB-005 / API-PUB-006 実装仕様書。既存 masters Router への追加を前提とする。
+- スタイル参考: API-PUB-005 / API-PUB-006 / API-PUB-007 実装仕様書。既存 masters Router への追加を前提とする。
