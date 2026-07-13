@@ -1,0 +1,306 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-007-semantic-config-masters-api-implementation-spec"
+  title: "API-PUB-007:Semantic設定取得API実装仕様書作成"
+  summary: "API-PUB-007（Semantic設定取得 / Public API、`GET /api/v1/masters/semantic-configs`）のAPI実装仕様書（API-PUB-007_Semantic設定取得API実装仕様書.md）を、確定済み契約仕様書（#403）・OpenAPI断片（#426）・semantic_config / semantic_config_version / semantic_concept / feature_definition テーブル定義書に基づき、prompts/templates/docs/api-implementation-spec.md に準拠して作成する（実装面のみ。契約面再掲・OpenAPIファイル変更・apps/api実装は対象外）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-007:Semantic設定取得"
+  epic_issue_number: 389
+  epic_branch: "feature/epic-389-pub-007-semantic-config-masters"
+  related_issues:
+    - number: 1188
+      purpose: "本 Task Issue"
+    - number: 389
+      purpose: "親 Epic"
+    - number: 403
+      purpose: "前提 Task（API契約仕様書・develop 反映済み）"
+    - number: 426
+      purpose: "前提 Task（OpenAPI 断片・develop 反映済み）"
+    - number: 462
+      purpose: "前提 Task（semantic_config テーブル定義書）"
+    - number: 463
+      purpose: "前提 Task（semantic_config_version テーブル定義書）"
+    - number: 471
+      purpose: "前提 Task（semantic_concept テーブル定義書）"
+    - number: 470
+      purpose: "前提 Task（feature_definition テーブル定義書）"
+  related_prs:
+    - number: 407
+      purpose: "契約仕様書 Task PR（develop 反映済み）"
+    - number: 427
+      purpose: "OpenAPI 断片 Task PR（develop merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 縦串の 1/3（実装面仕様書）。契約面は `API-PUB-007_Semantic設定取得API契約仕様書.md`（#403 / PR #407）を正とする。
+  OpenAPI 断片（#426 / PR #427）および Semantic / Feature 定義系テーブル定義書は develop 反映済み。
+  本 Task は契約・OpenAPI・DB schema を変更せず、apps/api の MOD-API-011 / MOD-API-012 実装 Task が参照可能な **実装面のみ** を整理する。
+  Provider は apps/api（既存 `apps/api/src/app/masters/**` を拡張）、Consumer は apps/web（SCR-002）。
+  PUB-005 / PUB-006 で masters Router が存在する。本 API は current Version 解決 + Concept / Feature Definition スナップショット組立であり、単純一覧マスタより処理が重い。
+  レーン4第2波（並列計画）。Epic Branch は develop 同期済みを前提とする。構造の参考は api-pub-006-occasion-masters/api-implementation-spec.yaml。
+
+objective: |
+  API-PUB-007（Semantic設定取得 / Public API）について、apps/api masters 実装 Task / 単体テスト Task が参照可能な粒度の **API実装仕様書（実装面のみ）** を新規作成する。
+  成果物は prompts/templates/docs/api-implementation-spec.md に準拠し、契約面の章は再掲しない。
+  Express Router 拡張、MOD-API-011/012 責務、current Version 解決（親 is_active → 子 is_current）、Concept / Feature Definition 読取、Response 組立、エラー境界、metric を明記する。
+
+scope:
+  - "API-PUB-007 の API実装仕様書を新規作成する（API-PUB-007_Semantic設定取得API実装仕様書.md）"
+  - "前提契約・OpenAPI / Contract Gate / 関連テーブル定義を整理する"
+  - "実装方針（masters Router 拡張 / MOD-API-011 / MOD-API-012 / request-meta / DI）を整理する"
+  - "処理フロー（Mermaid）と処理詳細を整理する（meta → current Version 解決 → Concept/Feature 読取 → Response）"
+  - "DB 列 → Public Response（configName / versionLabel / semanticConcepts / featureDefinitions）のマッピングを整理する"
+  - "内部 UUID（semantic_config_version_id 等）および semantic_rule / pair_rule を Public に含めない方針を明記する"
+  - "Concept 0 件は 200、current なしは GRS-CFG-001、Feature 0 件は GRS-CFG-006 の境界を整理する"
+  - "未知 Query は 400 GRS-REQ-001（契約）の実装面を整理する"
+  - "generated client 利用方針（記載のみ）"
+  - "provider / consumer 実装影響を整理する"
+  - "エラーマップ・trace・masters_semantic_configs_* metric を整理する"
+  - "実装結合テスト観点・未決事項を明記する"
+
+out_of_scope:
+  - "API-PUB-005 / 006 / 008 の実装仕様書作成・変更"
+  - "契約面章の再掲・契約仕様書の変更"
+  - "OpenAPI / Orval / generated 変更"
+  - "apps/api / apps/web / apps/reco の実装"
+  - "DB schema / migration / seed 変更"
+  - "認証・認可方式そのものの変更"
+  - "画面仕様書の作成"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API契約仕様書.md"
+      required: true
+      purpose: "確定済み契約面の正本"
+    - path: "docs/06_実装設計/database/semantic_config_テーブル定義書.md"
+      required: true
+      purpose: "系列 is_active / config_name"
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+      purpose: "is_current 解決・Public composite"
+    - path: "docs/06_実装設計/database/semantic_concept_テーブル定義書.md"
+      required: true
+      purpose: "semanticConcepts マッピング"
+    - path: "docs/06_実装設計/database/feature_definition_テーブル定義書.md"
+      required: true
+      purpose: "featureDefinitions マッピング"
+    - path: "docs/06_実装設計/api/API-PUB-006_Occasionマスタ取得API実装仕様書.md"
+      required: false
+      purpose: "同一 masters 群の実装仕様書スタイル参考"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+  templates:
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      required: true
+      applies_to:
+        - "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md"
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: false
+      purpose: "getSemanticConfigMasters 参照（変更しない）"
+    - path: "apps/api/src/app/masters/"
+      required: false
+      purpose: "PUB-005/006 既存 masters 配置（拡張方針の参照）"
+  issues:
+    - number: 403
+      purpose: "前提契約仕様書"
+    - number: 426
+      purpose: "前提 OpenAPI"
+  prs:
+    - number: 407
+      purpose: "契約仕様書 PR"
+    - number: 427
+      purpose: "OpenAPI 断片 PR"
+  openapi:
+    path: "packages/contracts/openapi/public-api.yaml"
+    required: false
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-implementation-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-PUB-007 Semantic設定取得 API実装仕様書"
+  - "current Version 解決フロー（Mermaid）"
+  - "Concept / Feature Definition マッピング"
+  - "GRS-CFG-001 / 002 / 006 / DB 境界"
+  - "provider / consumer 影響・結合テスト観点・未決事項"
+
+acceptance_criteria:
+  - "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md が作成されている"
+  - "api-implementation-spec.md の実装面章に準拠し、契約面再掲がない"
+  - "current Version 解決（親 is_active → 子 is_current → JOIN config_name）が記載されている"
+  - "Concept 0 件 200 / current なし GRS-CFG-001 / Feature 0 件 GRS-CFG-006 が明記されている"
+  - "内部 UUID・semantic_rule・pair_rule を Public に含めない方針が明記されている"
+  - "masters_semantic_configs_request_count / error_count が記載されている"
+  - "OpenAPI / apps 実装変更を本 Task に含めていない"
+  - "secret / .env 実値を含めていない"
+  - "Human Review 観点が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-1188-api-pub-007-semantic-config-masters-api-implementation-spec"
+  summary: "api-pub-007-semantic-config-masters-api-implementation-spec"
+  base: "feature/epic-389-pub-007-semantic-config-masters"
+  target: "feature/epic-389-pub-007-semantic-config-masters"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  number: 1188
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 403
+      purpose: "契約仕様書完了"
+    - number: 426
+      purpose: "OpenAPI 断片完了"
+  prs:
+    - number: 407
+      purpose: "契約仕様書 merge"
+    - number: 427
+      purpose: "OpenAPI develop merge"
+  tasks:
+    - "API-PUB-007_Semantic設定取得API契約仕様書.md が存在すること"
+    - "関連テーブル定義書が存在すること"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-007-semantic-config-masters/api-contract-spec.yaml"
+  blocks:
+    - "API-PUB-007 apps/api masters 実装 Task"
+    - "API-PUB-007 単体テスト Task"
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "template conformity check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-PUB-007_Semantic設定取得API実装仕様書.md"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs のみ"
+    "integration test": "docs のみ"
+    "e2e test": "docs のみ"
+    "typecheck": "source 変更なし"
+    "build": "source 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装面に限定されているか"
+    - "current Version 解決とエラー境界が契約と整合しているか"
+    - "既存 masters Router（PUB-005/006）拡張方針が明確か"
+    - "内部 UUID / Rule 非公開が明記されているか"
+    - "後続実装 Task の入力として十分か"
+    - "secret が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常の実装面 docs 作成は ai-logs に保存しない。"
+
+risk_points:
+  - "feature_definition テーブル定義書の古い Public 表記（semanticConfigVersionId）と契約（composite）の差"
+  - "PUB-008 との Version 解決ロジック共通化を本 Task で広げすぎるリスク"
+  - "未知 Query 400 の実装粒度（Express 既定との差）"
+
+human_decision_points:
+  - "Version 解決 Repository を PUB-008 と共通化するか（本仕様書は PUB-007 に閉じ、共通化は推奨のみ）"
+  - "プロセス内キャッシュを MVP で導入するか（既定: 都度 SELECT）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "契約とテーブル定義が矛盾し AI だけで判断できない場合"
+  - "OpenAPI / apps 実装変更が必要になった場合"
+  - "secret を扱う必要が出た場合"
+  - "epic_scope.allowed_paths 外の変更が必要になった場合"
+
+notes:
+  - "本Taskは API-PUB-007 の実装面専用（Phase4b 1/3）。参考: api-pub-006-occasion-masters/api-implementation-spec.yaml。"
+  - "親 Epic #389 / Branch feature/epic-389-pub-007-semantic-config-masters。"
+  - "後続: apps/api 実装 → UT → Epic PR → develop。"
+  - "Issue 起票後に branch.name / issue.number を実番号へ反映する。"
