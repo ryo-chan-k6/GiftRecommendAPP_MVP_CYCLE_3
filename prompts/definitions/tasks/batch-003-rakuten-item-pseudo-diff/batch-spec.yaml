@@ -130,7 +130,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-batch-003-rakuten-item-pseudo-diff-batch-spec"
+  name: "docs/task-1208-batch-003-rakuten-item-pseudo-diff-batch-spec"
   summary: "batch-003-rakuten-item-pseudo-diff-batch-spec"
   base: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
   target: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
@@ -221,4 +221,4 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]BATCH-003:楽天商品疑似差分取得バッチ仕様書作成"
-  - "parent / branch の issue 番号は /start-task 後に実値へ更新する"
+  - "Issue #1208 / Branch docs/task-1208-batch-003-rakuten-item-pseudo-diff-batch-spec"
