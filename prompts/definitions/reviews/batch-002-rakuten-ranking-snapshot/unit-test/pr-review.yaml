@@ -6,22 +6,22 @@ review:
   title: "BATCH-002 楽天ランキングスナップショット取得Batch単体テスト PRレビュー"
   summary: "BATCH-002 単体テスト Task の PR を AI Review する。仕様書 §16 カバレッジと fixture/mock 方針を確認する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
 branch:
   no_branch: false
-  name: null
+  name: "test/task-1202-batch-002-rakuten-ranking-snapshot-unit-test"
   base: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
   target: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
   worktree_required: true
 
 target:
-  pr: null
-  issue: null
+  pr: 1204
+  issue: 1202
   task_definition: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/unit-test.yaml"
-  source_branch: null
+  source_branch: "test/task-1202-batch-002-rakuten-ranking-snapshot-unit-test"
   target_branch: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
   parent_epic_issue: "[Epic]BATCH-002:楽天ランキングスナップショット取得Batch"
   parent_epic_branch: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
@@ -67,10 +67,10 @@ input:
     path: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/unit-test.yaml"
     required: true
   issue:
-    number: null
+    number: 1202
     required: true
   pr:
-    number: null
+    number: 1204
     required: true
   diff:
     required: true
@@ -92,3 +92,4 @@ review_points:
 
 notes:
   - "Issue / PR 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
+  - "PR #1204 を反映済み"
