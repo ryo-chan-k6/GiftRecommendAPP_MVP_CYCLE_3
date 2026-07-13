@@ -1,0 +1,284 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-003-rakuten-item-pseudo-diff-implementation"
+  title: "BATCH-003:楽天商品疑似差分取得Batch実装"
+  summary: "BATCH-003（楽天商品疑似差分取得Batch）をバッチ仕様書に基づき apps/batch へ実装する。楽天商品検索API連携（fixture/mock可）、Raw保存、fetch_cursor 進捗、および独立 workflow YAML を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
+  epic_issue_number: 1207
+  epic_branch: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  related_issues:
+    - number: 1213
+      purpose: "本 Task Issue"
+    - number: 1208
+      purpose: "前提（バッチ仕様書 Task・CLOSED）"
+  related_prs:
+    - number: 1209
+      purpose: "バッチ仕様書 Epic Branch merge 済み"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b レーン B1 Fetch 第3段。バッチ仕様書 #1208 / PR #1209 は Epic Branch merge 済み。
+  Phase4a batch-foundation（#734）および BATCH-001 / BATCH-002 develop merge 済みを前提に、
+  BATCH-003 の商品疑似差分取得ジョブを実装する。
+  Batch は HTTP API 化しないため Contract Gate は不要。
+  実楽天APIへの課金・大量呼出は禁止し、unit は fixture / mock を正とする。
+
+objective: |
+  BATCH-003 について、仕様書の処理ステップ（plan → priority → fetch → adapt → extract → dedupe → raw_save → cursor → finalize）を
+  apps/batch 上で実行可能な実装と、起動用独立 workflow（batch-rakuten-item-pseudo-diff.yml）を整備する。
+
+scope:
+  - "BATCH-003 ジョブの application 層実装（fetch_plan / fetch_cursor 解決・Phase 実行・部分失敗方針）"
+  - "Rakuten Item Search API Client / Adapter の実装または scaffold 拡張（実API呼出は設定時のみ。unitはmock）"
+  - "Raw Object Writer / Raw Metadata / fetch_cursor 進捗更新の配線（Item / Staging は作らない）"
+  - "batch_run_log / phase_log / api_call_log / error_log 連携（既存 logger / job_run 骨格の利用）"
+  - ".github/workflows/batch-rakuten-item-pseudo-diff.yml の新規作成（workflow_call / workflow_dispatch）"
+  - "実装に必要な最小 unit test（fixture / mock。主要正常系・冪等・API失敗・ranking_supplement・境界）"
+  - "Task / Review Definition の実Issue・Branch反映"
+
+out_of_scope:
+  - "バッチ仕様書の全面書き換え（軽微な実装追随注記以外）"
+  - "他 Batch（BATCH-001 / 002 / 004〜019）の実装（genre_sync / ranking_snapshot 破壊変更禁止）"
+  - "親 batch-rakuten-item-import.yml 全体改修"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema / migration 変更"
+  - "本番楽天APIへの大量・課金影響のある実呼出検証"
+  - "専用の包括的 UT Task（後続 unit-test Task で扱う網羅マトリクス）"
+  - "Staging / Item / ranking_snapshot への反映"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      required: true
+      purpose: "実装の正本（処理ステップ・入出力・冪等・エラー）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-003 行との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Raw・モジュール・object_key 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "楽天商品検索API・疑似差分ルート"
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: false
+      purpose: "cursor_type / ranking_supplement 参照"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/ranking_snapshot/**"
+      required: false
+      purpose: "同型実装の参照（破壊変更しない）"
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+      purpose: "Rakuten client scaffold"
+    - path: "apps/batch/src/batch/infrastructure/object_storage/**"
+      required: true
+      purpose: "Raw Object Writer 骨格"
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+      purpose: "DB writer 骨格"
+    - path: "apps/batch/src/batch/config/**"
+      required: true
+      purpose: "設定・環境変数名"
+  issues:
+    - number: 1208
+      purpose: "バッチ仕様書 Task"
+  prs:
+    - number: 1209
+      purpose: "バッチ仕様書 merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/item_pseudo_diff/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/application/__init__.py"
+      action: "update"
+      required: false
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-rakuten-item-pseudo-diff.yml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-003-rakuten-item-pseudo-diff/implementation.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/batch-003-rakuten-item-pseudo-diff/implementation/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-003 商品疑似差分取得ジョブ実装"
+  - "batch-rakuten-item-pseudo-diff.yml"
+  - "最小 unit test（fixture / mock）"
+
+acceptance_criteria:
+  - "バッチ仕様書の主要 Phase（plan/priority/fetch/adapt/extract/dedupe/raw_save/cursor/finalize）がコード上で追跡できる"
+  - "Rakuten Item Search 取得が Protocol / mock 経由で単体テスト可能である"
+  - "Raw 冪等（object_key / content_hash）と fetch_cursor 進捗更新が実装されている"
+  - "Item / Staging / ranking_snapshot を本 Batch で作らない"
+  - "ranking_supplement を消費でき、recheck を消費しない"
+  - ".github/workflows/batch-rakuten-item-pseudo-diff.yml が存在し、workflow_dispatch（および workflow_call）を持つ"
+  - "secret / .env 実値 / 楽天APIキー実値をコード・fixture・workflow・ログに含まない"
+  - "OpenAPI / generated / DB migration を変更していない"
+  - "親 Epic の epic_scope.allowed_paths 外を編集していない"
+  - "最小 unit test がローカルで実行可能である"
+
+branch:
+  no_branch: false
+  name: "feature/task-1213-batch-003-rakuten-item-pseudo-diff-implementation"
+  summary: "batch-003-rakuten-item-pseudo-diff-implementation"
+  base: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  target: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-13"
+    due_date: "2026-07-16"
+
+issue:
+  number: 1213
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 734
+      title: "[Epic]batch-foundation:Batch共通基盤"
+      purpose: "Phase4a Batch 共通基盤（CLOSED）"
+    - issue: 1161
+      title: "[Epic]BATCH-001:楽天ジャンル同期Batch"
+      purpose: "先行 Fetch（CLOSED）"
+    - issue: 1192
+      title: "[Epic]BATCH-002:楽天ランキングスナップショット取得Batch"
+      purpose: "先行 Fetch（CLOSED）"
+  issues:
+    - number: 1208
+      purpose: "バッチ仕様書（CLOSED）"
+  prs:
+    - number: 1209
+      purpose: "バッチ仕様書 Epic Branch merge 済み"
+  tasks:
+    - "バッチ仕様書が親 Epic Branch に取り込まれていること"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-003-rakuten-item-pseudo-diff-batch-spec"
+  blocks:
+    - "task-batch-003-rakuten-item-pseudo-diff-unit-test"
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_pseudo_diff/**"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - ".github/workflows/batch-rakuten-item-pseudo-diff.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-003 最小）"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit -q --tb=short"
+  not_required:
+    - "integration test（実楽天API）"
+    - "contract test"
+  skip_reason:
+    "integration test（実楽天API）": "課金・Rate Limit 影響のため fixture/mock を正とする"
+    "contract test": "Batch は HTTP API 化しないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "バッチ仕様書の処理ステップ・冪等・エラー方針と実装が整合しているか"
+    - "epic_scope.allowed_paths 内に閉じているか"
+    - "Item / Staging を本 Batch で作っていないか"
+    - "secret / .env 実値が含まれていないか"
+    - "PR target が親 Epic Branch であるか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch 実装の初期縦串"
+
+human_decision_points:
+  - "仕様書 §18.1: 独立 YAML 方針で実装する"
+  - "仕様書 §18.2: ルート優先度は ranking_supplement 最優先（補完 backlog がある場合）"
+  - "包括的 UT マトリクスは後続 unit-test Task に分離する"
+
+stop_conditions:
+  - "必須 input.docs（バッチ仕様書）が存在しない場合"
+  - "親 Epic Issue / Branch が未確定の場合"
+  - "OpenAPI / generated / migration 変更が必要になった場合"
+  - "epic_scope.allowed_paths 外の編集が必要になった場合"
+  - "実楽天APIへの大量・課金影響のある検証が必須に見える場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-003:楽天商品疑似差分取得Batch実装"
+  - "Contract Gate 不要"
+  - "後続: unit-test Task Definition を別途作成し縦串を完了する"
+  - "本 Task Issue: #1213 / Branch: feature/task-1213-batch-003-rakuten-item-pseudo-diff-implementation"

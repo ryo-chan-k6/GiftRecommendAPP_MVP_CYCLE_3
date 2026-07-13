@@ -6,12 +6,22 @@ task:
   title: "BATCH-003:楽天商品疑似差分取得バッチ仕様書作成"
   summary: "BATCH-003（楽天商品疑似差分取得Batch）のバッチ仕様書（BATCH-003_楽天商品疑似差分取得バッチ仕様書.md）を、バッチ処理一覧・バッチ設計方針書・外部商品データ連携設計書に基づいて作成する。"
 
+work_mode: "ai-agent"
+
 parent:
-  epic_issue: "[Epic]外部商品データ連携バッチ"
-  epic_issue_number: "#302" # 参照配置値。GitHub 実在は /start-task §5.1 で確認
-  epic_branch: "feature/epic-302-external-product-batch"
-  related_issues: []
-  related_prs: []
+  epic_issue: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
+  epic_issue_number: 1207
+  epic_branch: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  related_issues:
+    - number: 1161
+      purpose: "先行 BATCH-001（CLOSED / develop merge 済み）"
+    - number: 1192
+      purpose: "先行 BATCH-002（CLOSED / develop merge 済み）"
+  related_prs:
+    - number: 1185
+      purpose: "BATCH-001 Epic PR（develop merge 済み）"
+    - number: 1206
+      purpose: "BATCH-002 Epic PR（develop merge 済み）"
 
 commands:
   primary: "/start-task"
@@ -37,8 +47,10 @@ agent:
 
 background: |
   06_実装設計において、batch 実装・運用の前提となるバッチ仕様書を作成する。
-  本Taskでは、バッチ処理一覧の BATCH-003（楽天商品疑似差分取得Batch）を対象に、処理概要・入出力・依存・冪等性・ログを整理する。
-  Batch ID の正本はバッチ処理一覧の `BATCH-*` とする（`BT-*` は Task タイトルに使用しない）。
+  本Taskでは、バッチ処理一覧の BATCH-003（楽天商品疑似差分取得Batch）を対象に、
+  処理概要・入出力・依存・冪等性・ログを整理する。
+  Phase4b レーン B1 Fetch 第3段。先行 BATCH-001 / BATCH-002 を前提とする。
+  旧試作 Definition（親 #302）は本識別子 Epic 配下の本ファイルに置き換える。
 
 objective: |
   BATCH-003（楽天商品疑似差分取得Batch）について、実装・レビューが可能な粒度のバッチ仕様書を作成する。
@@ -47,12 +59,15 @@ scope:
   - "BATCH-003 のバッチ仕様書を新規作成する（成果物: BATCH-003_楽天商品疑似差分取得バッチ仕様書.md）"
   - "処理概要・実行トリガー・入出力リソースを整理する"
   - "先行・後続 Batch・冪等キー・ログ・エラーコード参照を整理する"
+  - "楽天商品検索API連携・fetch_cursor / ランキング補完候補・Raw保存方針を整理する"
 
 out_of_scope:
   - "他 Batch のバッチ仕様書作成"
   - "Python 実装・GitHub Actions workflow YAML の作成"
   - "DB schema 変更"
   - "楽天 API 契約変更"
+  - "OpenAPI / Orval / generated 変更"
+  - "BATCH-005 以降の Staging / Item 反映仕様の詳細実装設計"
 
 input:
   docs:
@@ -62,13 +77,27 @@ input:
     - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
       required: true
       purpose: "実行方式・Raw/Staging・ログ方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "item-import 系との関係を確認するため"
     - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
       required: true
-      purpose: "楽天 API 連携・取得方針を確認するため"
+      purpose: "楽天商品検索API・疑似差分取得方針を確認するため"
     - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
       required: false
-      purpose: "GRS-BAT-* 等のエラー参照を確認するため"
-  templates: []
+      purpose: "GRS-EXT-* / GRS-RAW-* / GRS-BAT-* 等のエラー参照"
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: false
+      purpose: "章構成・用語整合の参照"
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      required: false
+      purpose: "ランキング補完候補との境界参照"
+    - path: "prompts/templates/docs/batch-spec.md"
+      required: true
+      purpose: "バッチ仕様書テンプレートの章構成に従うため"
+  templates:
+    - path: "prompts/templates/docs/batch-spec.md"
+      purpose: "成果物章構成の正本"
   files: []
   issues: []
   prs: []
@@ -96,23 +125,25 @@ acceptance_criteria:
   - "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md が作成されている"
   - "バッチ処理一覧の BATCH-003 と矛盾する Batch ID・処理概要を定義していない"
   - "Task タイトル・ファイル名が §15.4（BATCH-* 正本）に従っている"
+  - "batch-spec.md テンプレートの主要章が充足している"
   - "secret、APIキー、.env実値を含んでいない"
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-batch-003-rakuten-item-pseudo-diff-batch-spec"
-  base: "feature/epic-302-external-product-batch"
-  target: "feature/epic-302-external-product-batch"
-  worktree_required: false
+  name: "docs/task-1208-batch-003-rakuten-item-pseudo-diff-batch-spec"
+  summary: "batch-003-rakuten-item-pseudo-diff-batch-spec"
+  base: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  target: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+  worktree_required: true
 
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "06_実装設計"
     status: "Todo"
-    priority: "medium"
-    planned_start: null
-    due_date: null
+    priority: "high"
+    planned_start: "2026-07-13"
+    due_date: "2026-07-16"
 
 issue:
   unit: "task"
@@ -120,15 +151,26 @@ issue:
   area: "batch"
 
 dependencies:
-  epics: []  # バッチは原則独立。依存Epicが必要になった場合のみ追加する（成果物化方針書 §3.5.3）。
+  epics:
+    - issue: 1161
+      title: "[Epic]BATCH-001:楽天ジャンル同期Batch"
+      purpose: "先行 Fetch（CLOSED）"
+    - issue: 1192
+      title: "[Epic]BATCH-002:楽天ランキングスナップショット取得Batch"
+      purpose: "先行 Fetch（CLOSED）"
+    - issue: 734
+      title: "[Epic]batch-foundation:Batch共通基盤"
+      purpose: "Phase4a 共通基盤（CLOSED）"
   issues: []
   prs: []
-  tasks:
-    - "バッチ処理一覧が作成済みであること"
   blocking: false
 
+contract_gate:
+  required: false
+
 parallel_control:
-  depends_on: []
+  depends_on:
+    - "epic-batch-003-rakuten-item-pseudo-diff"
   blocks: []
   exclusive_files:
     - "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
@@ -139,27 +181,29 @@ parallel_control:
 
 test_policy:
   required:
-    - "docs review"
     - "secret check"
   commands: []
-  manual_checks:
-    - "バッチ処理一覧の BATCH-003 と整合していること"
   not_required:
     - "unit test"
+    - "integration test"
   skip_reason:
-    "unit test": "docs作成Taskのため対象外"
+    "unit test": "仕様書 Task のため対象外"
+    "integration test": "仕様書 Task のため対象外"
 
 review:
   human_review_required: true
   ai_review_required: true
   review_points:
-    - "バッチ処理一覧の BATCH-003 と整合しているか"
-    - "命名が Task Definition設計書 §15.4 に従っているか（BATCH-*、BT-* 不使用）"
+    - "バッチ処理一覧 BATCH-003 との整合"
+    - "先行 BATCH-001 / BATCH-002 との境界（ジャンル / ランキング補完）"
+    - "Raw 保存・冪等キーの記載"
+    - "secret 非含有"
+    - "PR target が親 Epic Branch であるか"
   specialist_reviews:
     docs: true
     test: false
     contract: false
-    security: false
+    security: true
 
 operation_logging:
   level: "standard"
@@ -167,13 +211,14 @@ operation_logging:
     intake: false
     incidents: true
     cross_cutting: false
-    experiments: true
-  reason: "バッチ仕様書 Task 命名規則（§15.4）の試作検証用。"
+    experiments: false
+  reason: "通常の仕様書 Task は ai-logs に保存しない"
 
 stop_conditions:
-  - "必須 input.docs が存在しない場合"
-  - "バッチ処理一覧に BATCH-003 が存在しない場合"
+  - "親 Epic Issue / Epic Branch が未作成の場合"
+  - "バッチ処理一覧に BATCH-003 が無い、または MVP 対象外の場合"
+  - "secret / .env 実値を扱う必要が出た場合"
 
 notes:
-  - "本Taskはバッチ仕様書作成の試作Taskである。命名の正本は Task Definition設計書 §15.1（共通）・§15.4（バッチ）。Batch ID 正本はバッチ処理一覧の BATCH-*。"
   - "Issueタイトル: [Task]BATCH-003:楽天商品疑似差分取得バッチ仕様書作成"
+  - "Issue #1208 / Branch docs/task-1208-batch-003-rakuten-item-pseudo-diff-batch-spec"
