@@ -6,7 +6,7 @@ review:
   title: "item_active_status_candidate IF一覧 PRレビュー"
   summary: "T4b インターフェース一覧 IF 追加 PR の AI Review。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -16,7 +16,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1244
   issue:
     number: 1232
   task_definition: "prompts/definitions/tasks/item-active-status-candidate/iface.yaml"
@@ -52,7 +52,7 @@ input:
     number: 1232
     required: true
   pr:
-    number: null
+    number: 1244
     required: true
   docs:
     - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
@@ -69,4 +69,4 @@ review_points:
     - "secret 非含有"
 
 notes:
-  - "PR 番号は create-pr 後に反映"
+  - "PR #1244。AI Review 結論: Human Reviewへ進行可"
