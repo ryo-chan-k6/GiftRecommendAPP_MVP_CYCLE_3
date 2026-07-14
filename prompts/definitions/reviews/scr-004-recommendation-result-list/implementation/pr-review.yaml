@@ -1,0 +1,180 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-004-recommendation-result-list-implementation-pr"
+  title: "SCR-004 レコメンド結果一覧画面実装 PRレビュー"
+  summary: "SCR-004 レコメンド結果一覧画面実装 Task（implementation.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1242
+  issue: 1241
+  task_definition: "prompts/definitions/tasks/scr-004-recommendation-result-list/implementation.yaml"
+  source_branch: "feature/task-1241-scr-004-recommendation-result-list-implementation"
+  target_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+  parent_epic_issue: "[Epic]SCR-004:レコメンド結果一覧画面"
+  parent_epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/scr-004-recommendation-result-list/implementation.yaml"
+    required: true
+  issue:
+    number: 1241
+    required: true
+  pr:
+    number: 1242
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1236-scr-004-recommendation-result-list"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "github_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition（implementation.yaml）の scope / acceptance_criteria を満たしているか"
+    - "out_of_scope（OpenAPI / generated 手編集 / PUB-004 本実装 / 網羅 UT）の変更が混在していないか"
+    - "PR target が親 Epic Branch か"
+    - "PR 本文が Related to（Closes 禁止）か"
+    - "Human Review観点が明記されているか"
+  source:
+    - "画面仕様書の必須表示・状態・遷移が実装されているか"
+    - "sessionStorage 読取のみで API-PUB-002 再呼び出しがないか"
+    - "SCR-005 が Item 内アコーディオンか（独立 route / モーダルにしていないか）"
+    - "Feedback が disabled＋短い説明で、API-PUB-004 を呼んでいないか"
+    - "SCR-006 スタブ導線（`/items/{itemId}`）があり、未リンクになっていないか"
+    - "shopName / final_score 等の非表示項目を出していないか"
+    - "epic_scope.allowed_paths 外へ変更していないか"
+  tests:
+    - "smoke / component 最小確認があるか、または未実施理由が明示されているか"
+  api_contract:
+    - "OpenAPI / Orval / generated の手編集が混入していないか"
+  security:
+    - "secret / `.env` 実値がないか"
+    - "外部 URL が http(s) 以外で開かれないか"
+  branch:
+    - "Task Branch から develop へ直接 PR していないか"
+    - "PR target が親 Epic Branch（feature/epic-1236-scr-004-recommendation-result-list）であるか"
+  epic_scope:
+    - "PR差分が親Epic [Epic]SCR-004 の epic_scope.allowed_paths 内に収まっているか"
+    - "epic_scope.forbidden_paths への変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Reviewで確認してほしい事項が明記されている"
+    - "AI Review結果をPRコメントに記録できる形式になっている"
+    - "親Epic の epic_scope.allowed_paths から外れる差分がない"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "epic_scope.allowed_paths から外れる差分がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な実装不備がある"
+      - "PR 本文に必要情報が不足している"
+      - "検証結果または未実施理由が不足している"
+  needs_human_decision:
+    conditions:
+      - "SCR-006 スタブ範囲を超える判断が必要"
+      - "未実施テストを許容して Human Review へ進めてよいか判断が必要"
+  split_required:
+    conditions:
+      - "SCR-006 本実装や PUB-004 結合を同一 PR に含める必要が出た"
+  blocked:
+    conditions:
+      - "必須 input.docs または Task Definition が不足している"
+      - "Review Definition の target と PR / Issue が不一致である"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "画面仕様書用 Definition は prompts/definitions/reviews/scr-004-recommendation-result-list/pr-review.yaml（#1237 / #1239）"
+  - "本 Definition は実装 Task 専用（#1241 / #1242）"
+  - "Task PR は Related to #1241（Closes 禁止）"
+  - "/review-pr @prompts/definitions/reviews/scr-004-recommendation-result-list/implementation/pr-review.yaml"

@@ -1,0 +1,242 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-004-recommendation-result-list"
+  title: "SCR-004:レコメンド結果一覧画面"
+  summary: "SCR-004（レコメンド結果一覧画面）に関する画面仕様書・実装・単体テストを管理するEpic。API-PUB-002 成功レスポンス（結果あり）を表示し、推薦理由・商品詳細導線・再検索を担当する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計および 07_開発・単体テストにおいて、SCR-004（レコメンド結果一覧画面）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。Epic の Projects Phase は完了ゲート（07）、子 Task で成果物工程（06 / 07）を管理する。
+  本画面は API-PUB-002 の成功レスポンス（推薦結果あり）を順位付きで表示し、推薦理由・商品詳細導線・再検索を提供する MVP 中核の結果画面である。
+  SCR-002 側の sessionStorage 受け皿プレースホルダを、本 Epic で正式な結果一覧へ差し替える。
+  子 Task は画面仕様書・実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+
+objective: |
+  SCR-004 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "SCR-004 に関する子 Task の作業単位を整理する（画面仕様書 / 画面実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/scr-004-recommendation-result-list/**）を整理する"
+  - "依存 Epic（API-PUB-002 / SCR-002）の Status を子 Task 開始前に確認する運用を明示する"
+
+out_of_scope:
+  - "他画面本体の独立 Epic 成果物（SCR-001 / SCR-002 / SCR-006 本体 / SCR-007 Feedback 本実装 等）"
+  - "Public / Internal API 仕様書および OpenAPI / generated 変更"
+  - "Reco モジュールの設計・実装"
+  - "Batch 実装"
+  - "DB schema 変更"
+  - "本番リリース作業"
+  - "認証・認可方式そのものの変更"
+  - "API-PUB-004 Feedback API の実装・結合（別レーン担当）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "対象画面 SCR-004 の画面ID・画面名・MVP対象・概要を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "前後画面・表示項目・モーダル遷移を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "結果表示が API-PUB-002 Response 由来であること、導線 API（PUB-003 / PUB-004）の位置づけを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "SCR-004 と関連モジュールの対応を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）と epic_scope.allowed_paths の境界例を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）・命名規則を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]SCR-004:レコメンド結果一覧画面）"
+  - "Epic Branch（develop 起点 / feature/epic-1236-scr-004-recommendation-result-list）"
+  - "子 Task 候補一覧（画面仕様書 / 画面実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]SCR-004:レコメンド結果一覧画面 形式である（Task Definition設計書 §15.0）"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位（画面仕様書 / 画面実装 / 単体テスト）が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が画面一覧 SCR-004 の責務範囲（apps/web 配下、docs/06_実装設計/web 配下）と整合している"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1236-scr-004-recommendation-result-list"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-14"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "web"
+
+epic_scope:
+  artifact_id: "SCR-004"
+  allowed_paths:
+    - "docs/06_実装設計/web/SCR-004_*"
+    - "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+    - "apps/web/src/app/recommendations/[resultId]/**"
+    - "apps/web/src/app/items/[itemId]/**"
+    - "apps/web/src/features/recommendation-result/**"
+    - "apps/web/src/features/recommendation-input/**"
+    - "apps/web/src/components/**"
+    - "apps/web/src/generated/api/**"
+    - "apps/web/src/lib/**"
+    - "apps/web/tests/**"
+    - "prompts/definitions/tasks/scr-004-recommendation-result-list/**"
+    - "prompts/definitions/reviews/scr-004-recommendation-result-list/**"
+    - "prompts/definitions/epics/scr-004-recommendation-result-list/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "screen-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "レコメンド実行 Public API（develop merge 済み）。結果データの契約正本"
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "条件入力〜実行〜sessionStorage 受け渡し（develop merge 済み）"
+  issues:
+    - number: 1236
+      purpose: "本 Epic Issue"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope（画面 1 つ分）が広すぎないか確認する"
+    - "子 Task に分割可能な粒度か確認する"
+    - "依存 Epic [Epic]API-PUB-002 / [Epic]SCR-002 の有無を確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が SCR-004 に閉じているか"
+    - "epic_scope.allowed_paths が画面一覧 SCR-004 の責務範囲と整合しているか"
+    - "依存 Epic [Epic]API-PUB-002 / [Epic]SCR-002 が dependencies.epics に追記されているか"
+    - "Epic PR target が develop であるか"
+    - "Feedback（API-PUB-004）本実装を本 Epic に混入していないか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "レーン1e E2E 向け SCR-004 縦串の Epic Definition。"
+
+risk_points:
+  - "Task PR を誤って develop へ直接向けてしまう運用ミス"
+  - "epic_scope.allowed_paths を超えた変更（例: apps/api 配下）を配下 Task に混入させる運用ミス"
+  - "API-PUB-004 Feedback 実装を本 Epic に抱え込む運用ミス"
+
+human_decision_points:
+  - "子 Task の分割粒度（画面仕様書 / 画面実装 / 単体テストの切り方）"
+  - "SCR-005（推薦理由詳細）を本 Epic 内モーダルとして扱う方針"
+  - "SCR-006 / SCR-007 を導線レベルに留める範囲"
+  - "Feedback 実装を別レーン（PUB-004）に残す方針"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-004 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "Task PR の target が develop に向く設計が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、画面仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "命名の正本は Task Definition設計書 §15.0（Epic タイトル規約）・§15.3（画面 Task）"
+  - "本 Epic Issue: #1236 / Epic Branch: feature/epic-1236-scr-004-recommendation-result-list"
+  - "本 Epic 配下の最初の子 Task は prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
+  - "依存 Epic: #357 API-PUB-002 / #1147 SCR-002（いずれも develop merge 済み）"
