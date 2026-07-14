@@ -226,5 +226,7 @@ notes:
   - "Issueタイトル: [Task]SCR-004:レコメンド結果一覧画面実装"
   - "本 Task Issue: #1241 / Branch: feature/task-1241-scr-004-recommendation-result-list-implementation"
   - "親Epic: #1236 / Branch: feature/epic-1236-scr-004-recommendation-result-list"
+  - "本 Task PR: #1242"
   - "PR 本文は Related to #1241（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/scr-004-recommendation-result-list/implementation/pr-review.yaml"
   - "前提: #1237 / PR #1239 merge 済み"
