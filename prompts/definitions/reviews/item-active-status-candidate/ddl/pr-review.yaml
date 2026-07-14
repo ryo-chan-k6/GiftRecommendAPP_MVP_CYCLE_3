@@ -1,0 +1,71 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-item-active-status-candidate-ddl-pr"
+  title: "item_active_status_candidate DDL PRレビュー"
+  summary: "T3 DDL / migration PR の AI Review。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1230
+  task_definition: "prompts/definitions/tasks/item-active-status-candidate/ddl.yaml"
+  source_branch: "feature/task-1230-item-active-status-candidate-ddl"
+  target_branch: "feature/epic-1227-item-active-status-candidate"
+  parent_epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  parent_epic_branch: "feature/epic-1227-item-active-status-candidate"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/item-active-status-candidate/ddl.yaml"
+    required: true
+  issue:
+    number: 1230
+    required: true
+  pr:
+    number: null
+    required: true
+  docs:
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      required: true
+      purpose: "DDL 正本"
+
+review_points:
+  common:
+    - "PR target が親 Epic Branch か"
+  db:
+    - "UNIQUE / CHECK / Index がテーブル定義書と一致するか"
+    - "db/ddl と supabase/migrations が一致するか"
+    - "物理 FK を追加していないか"
+  security:
+    - "secret 非含有"
+
+notes:
+  - "PR 番号は create-pr 後に反映"
