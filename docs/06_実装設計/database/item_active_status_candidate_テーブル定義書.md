@@ -296,7 +296,8 @@ ON CONFLICT (batch_run_id, source, external_item_code) DO UPDATE SET
 | 観点 | 方針 |
 | ---- | ---- |
 | `detected` | **削除しない**（BATCH-008 再実行・部分リカバリ） |
-| `applied` / `superseded` / `discarded` | **`applied_at` または `updated_at` 基準で 14 日間保持**後に cleanup |
+| `applied` | **`applied_at` 基準で 14 日間保持**後に cleanup（`applied_at` 必須） |
+| `superseded` / `discarded` | **`updated_at` 基準で 14 日間保持**後に cleanup（当該 status へ遷移した時刻） |
 | 削除方式 | 物理 DELETE（T7）。008 成功直後の即時削除はしない |
 | 論理削除 | 列なし |
 | アーカイブ | MVP 対象外 |
