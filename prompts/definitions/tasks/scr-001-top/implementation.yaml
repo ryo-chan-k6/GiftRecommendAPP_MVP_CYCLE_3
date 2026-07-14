@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 1255
   epic_branch: "feature/epic-1255-scr-001-top"
   related_issues:
+    - number: 1256
+      purpose: "本 Task Issue"
     - number: 1255
       purpose: "親 Epic"
   related_prs: []
@@ -114,7 +116,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "feature/task-1256-scr-001-top-implementation"
   base: "feature/epic-1255-scr-001-top"
   target: "feature/epic-1255-scr-001-top"
   worktree_required: true
@@ -198,7 +200,8 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]SCR-001:トップ画面実装"
+  - "本 Task Issue: #1256 / Branch: feature/task-1256-scr-001-top-implementation"
   - "親Epic: #1255 / Branch: feature/epic-1255-scr-001-top"
-  - "PR 本文は Related to（Closes 禁止）"
+  - "PR 本文は Related to #1256（Closes 禁止）"
   - "Review Definition: prompts/definitions/reviews/scr-001-top/implementation/pr-review.yaml"
   - "CTA 文言は画面一覧『レコメンド開始』と SCR-002 遷移『ギフトを探す』を踏まえ、ユーザー向けは「ギフトを探す」を採用"
