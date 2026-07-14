@@ -73,7 +73,7 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 - 再確認対象となる `item` 行が DB に存在し、`external_item_code` が設定されていること
 - 楽天商品検索API用の認証情報（環境変数名のみ。実値は GitHub Secrets）が設定されていること
 - Object Storage（Raw JSON）および Database（Metadata / fetch_cursor / ログ）へ接続可能であること
-- 再確認対象選定方針（全 active / 優先度付き部分集合）が config / workflow input で解決できること（§18.2）
+- 再確認対象選定方針として**優先度付き部分集合**（最終確認日・popularity 等）を config / workflow input で解決できること（§18.2）
 
 ---
 
@@ -83,10 +83,10 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 
 | 入力 | 種別 | 取得元 | 必須 | 用途 | 備考 |
 | ---- | ---- | ------ | ---- | ---- | ---- |
-| `item` | DB | database | `true` | 再確認対象の選定・`external_item_code` 解決 | 本 Batch は Item を更新しない |
+| `item` | DB | database | `true` | 再確認対象の選定・`external_item_code` 解決 | 本 Batch は Item を更新しない。優先度付き部分集合で絞り込む |
 | `external_item_code` | 属性 | `item.external_item_code` | `true` | 楽天 `itemCode` 指定取得キー | 1 商品 = 1 カーソル |
 | `fetch_cursor` | DB | database | `true` | 走査条件・進捗 | `cursor_type=recheck` のみ。本 Batch が get-or-create / 消費 |
-| `recheck_plan` | 設定 / 計画 | Batch config / workflow input | `true` | 対象 scope・件数上限・優先度 | §18.2 の選定方針に従う |
+| `recheck_plan` | 設定 / 計画 | Batch config / workflow input | `true` | 対象 scope・件数上限・優先度 | 優先度付き部分集合（最終確認日・popularity 等）。件数上限を config 化（§18.2） |
 | 楽天商品検索APIレスポンス | 外部API | 楽天商品検索API | `true` | 商品現在値 Raw | formatVersion=`2`。`itemCode` 指定 |
 
 ### 6.2 外部API
@@ -198,7 +198,7 @@ flowchart TD
 
 |  No | Phase | 処理 | 入力 | 出力 | 失敗時の扱い |
 | --: | ----- | ---- | ---- | ---- | ------------ |
-| 1 | `plan` | `recheck_plan` と `item` から本 Run の再確認対象キューを作る | config / workflow input / item | 対象 `external_item_code` 一覧 | `GRS-BAT-*` で Run 失敗 |
+| 1 | `plan` | `recheck_plan` と `item` から本 Run の再確認対象キューを作る。優先度付き部分集合（最終確認日・popularity 等）で絞り込み、件数上限を適用 | config / workflow input / item | 対象 `external_item_code` 一覧 | `GRS-BAT-*` で Run 失敗 |
 | 2 | `cursor` | 各対象について `fetch_cursor`（`recheck`）を get-or-create | item / external_item_code | fetch_cursor 行 | DB 失敗は `GRS-DB-*` |
 | 3 | `fetch` | 楽天商品検索APIを itemCode 指定で呼ぶ | cursor / secrets | APIレスポンス / api_call_log | Rate Limit は待機・再試行。空ヒットは「取得不能」候補へ |
 | 4 | `adapt` | レスポンスを内部形式へ変換する | Rawレスポンス | 正規化候補 | 形式不正は `GRS-EXT-103` |
@@ -245,6 +245,20 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 - `scope.external_item_code` のみ必須
 - バッチ単位キューは MVP では持たない
 - `target_external_genre_id` は `NULL`
+
+### 9.2 `recheck_plan` 選定ロジック（§18.2 決定反映）
+
+本 Batch は**優先度付き部分集合**で再確認対象を選定する。
+
+| 項目 | 方針 |
+| ---- | ---- |
+| 基本条件 | `item.active_status = 'active'` かつ `item.external_item_code IS NOT NULL` |
+| 優先度条件 | 最終確認日（古いものを優先）、popularity（低いものを優先）等で順序付け |
+| 件数上限 | config で上限を設定し、週次 Rate Limit 枠を超過しないようにする（例: 1000 件/週） |
+| 除外条件 | 最近再確認済み（例: 直近7日以内に `fetch_cursor.last_fetched_at` が更新済み）の商品は除外してもよい |
+| 明示リスト | workflow input で特定の `external_item_code` 一覧を渡すことで、優先度を上書き可能 |
+
+具体的な SQL / ロジックは実装 Task で詳細化する。
 
 ---
 
@@ -390,14 +404,16 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 4 | 本 Batch の終端 | **Raw 保存 + cursor 更新 + active_status 候補記録まで**。Staging / Item / active_status 本更新は後続 | バッチ処理一覧 | - | BATCH-005 / 008 |
 | 5 | API | 楽天商品検索APIの **itemCode 指定**のみ | 外部商品データ連携設計書 | - | |
 
-### 18.2 残未決事項（Human 判断）
+### 18.2 決定済み事項（Human 判断）
 
-|  No | 論点 | 選択肢 | 推奨案（推論） | 判断しない場合のリスク |
-| --: | ---- | ------ | -------------- | ---------------------- |
-| 1 | active_status 候補の保存先 | (A) Raw metadata 補助カラム / JSON<br>(B) Run 単位の構造化ログ / 中間テーブル<br>(C) 専用候補テーブル | **(A) または (B)**。MVP は既存 `raw_product_metadata` 拡張または Run 集計に寄せ、専用テーブルは BATCH-008 直前に確定してもよい | 実装 Task が候補 I/F を固定できず、BATCH-008 との手戻り |
-| 2 | 再確認対象の選定 | (A) 全 `active` Item<br>(B) 優先度付き部分集合（最終確認日・popularity 等）<br>(C) workflow で明示リスト | **(B)** を既定とし、件数上限を config 化。週次 Rate Limit と所要時間を抑える | (A) は商品増加で週次枠を超過しうる |
+|  No | 論点 | 決定内容 | 判断者 | 決定日 | 備考 |
+| --: | ---- | -------- | ------ | ------ | ---- |
+| 1 | active_status 候補の保存先 | **保留（実装 Task 開始前に確定）**。推奨案 (A) または (B) を実装 Task で検証し、BATCH-008 との I/F を確認する | - | - | MVP は既存 `raw_product_metadata` 拡張または Run 集計に寄せ、専用テーブルは BATCH-008 直前に確定してもよい |
+| 2 | 再確認対象の選定 | **(B) 優先度付き部分集合**。最終確認日・popularity 等で絞り込み、件数上限を config 化する。週次 Rate Limit と所要時間を抑える | Human | 2026-07-14 | 商品増加で週次枠を超過するリスクを回避。全 `active` Item (A) は採用しない |
 
-未決事項は実装 Task 開始前または Human Review で確定する。本仕様書の他章は未決でも実装可能な粒度で書く。
+### 18.3 残未決事項
+
+本仕様書時点で、Human 判断待ちの残未決事項は No.1 のみ。No.2 は決定済み。
 
 ---
 
