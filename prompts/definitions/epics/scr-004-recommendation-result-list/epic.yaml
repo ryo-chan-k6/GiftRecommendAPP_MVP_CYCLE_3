@@ -133,6 +133,7 @@ epic_scope:
     - "docs/06_実装設計/web/SCR-004_*"
     - "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
     - "apps/web/src/app/recommendations/[resultId]/**"
+    - "apps/web/src/app/items/[itemId]/**"
     - "apps/web/src/features/recommendation-result/**"
     - "apps/web/src/features/recommendation-input/**"
     - "apps/web/src/components/**"

@@ -1,0 +1,227 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-004-recommendation-result-list-implementation"
+  title: "SCR-004:レコメンド結果一覧画面実装"
+  summary: "SCR-004（レコメンド結果一覧画面）を apps/web に実装する。画面仕様書に基づき、sessionStorage 由来の結果一覧表示・SCR-005 アコーディオン・再検索・外部EC・SCR-006 スタブ導線・Feedback disabled 導線を提供する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-004:レコメンド結果一覧画面"
+  epic_issue_number: 1236
+  epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+  related_issues:
+    - number: 1236
+      purpose: "親 Epic"
+    - number: 1237
+      purpose: "前提 Task（画面仕様書）"
+  related_prs:
+    - number: 1239
+      purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  SCR-004 Epic（#1236）の実装 Task。画面仕様書 Task（#1237 / PR #1239）が親 Epic Branch に merge 済みであることを前提に着手する。
+  レーン1e（条件入力〜結果確認 E2E）の最大ブロッカー本実装である。
+
+objective: |
+  SCR-004 の結果一覧画面を apps/web 上で実装し、画面仕様書どおりの表示・遷移・導線を提供する。
+  既存の [resultId] プレースホルダを本実装へ差し替える。
+
+scope:
+  - "apps/web/src/app/recommendations/[resultId]/** および apps/web/src/features/recommendation-result/** への画面実装"
+  - "sessionStorage からの RecommendationRunResponseData 読取・一覧表示"
+  - "SCR-005 アコーディオン（Item 内展開・複数同時可）"
+  - "再検索（SCR-002）・外部EC・SCR-006 スタブ URL・Feedback disabled 導線"
+  - "SCR-006 MVP スタブ（apps/web/src/app/items/[itemId]/**）の最小プレースホルダ"
+  - "Task / Review Definition 整備（必要時）"
+
+out_of_scope:
+  - "画面仕様書の新規作成・大幅改訂（screen-spec Task）"
+  - "OpenAPI / Orval / generated の手編集"
+  - "apps/api / apps/reco / apps/batch の変更"
+  - "API-PUB-004 Feedback 本実装・結合"
+  - "SCR-006 商品詳細の本実装（PUB-003 呼び出し含む）"
+  - "E2E 全面整備"
+  - "網羅的単体テスト（unit-test Task に委譲）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+      purpose: "実装正本（表示・状態・遷移・導線）"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-004 / SCR-006 行との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "遷移元・遷移先の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "結果一覧が API-PUB-002 Response 由来であることの確認"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "sessionStorage 受け渡し・再検索復元分担の確認"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/web/src/app/recommendations/[resultId]/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/web/src/features/recommendation-result/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/web/src/app/items/[itemId]/**"
+      action: "create_or_update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-004 画面実装"
+  - "SCR-006 MVP スタブ導線"
+  - "SCR-005 アコーディオン"
+
+acceptance_criteria:
+  - "画面仕様書の必須表示・状態・遷移が実装されている"
+  - "API-PUB-002 を本画面から再呼び出していない（sessionStorage 読取のみ）"
+  - "shopName / final_score 等の非表示項目を出していない"
+  - "Feedback 導線は disabled＋短い説明であり、API-PUB-004 を呼んでいない"
+  - "epic_scope.allowed_paths 外へ変更していない"
+  - "secret / .env 実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1236-scr-004-recommendation-result-list"
+  target: "feature/epic-1236-scr-004-recommendation-result-list"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "結果データの契約正本"
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "実行〜sessionStorage 受け渡し"
+    - issue: 1236
+      title: "[Epic]SCR-004:レコメンド結果一覧画面"
+      purpose: "親 Epic"
+  issues:
+    - number: 1237
+      purpose: "画面仕様書 Task"
+  prs:
+    - number: 1239
+      purpose: "画面仕様書 PR"
+  tasks:
+    - "画面仕様書 Task（screen-spec）が親 Epic Branch に merge 済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "screen-spec"
+  blocks:
+    - "unit-test"
+  exclusive_files:
+    - "apps/web/src/app/recommendations/[resultId]/**"
+    - "apps/web/src/features/recommendation-result/**"
+    - "apps/web/src/app/items/[itemId]/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "smoke / component 最小確認"
+  commands: []
+  manual_checks:
+    - "画面仕様書の主要状態が再現できること"
+  not_required:
+    - "unit test 網羅"
+  skip_reason:
+    "unit test 網羅": "unit-test Task に委譲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面仕様書との差分がないか"
+    - "epic_scope.allowed_paths 内か"
+    - "generated 手編集がないか"
+    - "API-PUB-004 を誤って呼び出していないか"
+    - "secret 非含有か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の実装 Task。作業計画は Issue、レビューは PR を正本とする。"
+
+stop_conditions:
+  - "画面仕様書が未作成の場合"
+  - "OpenAPI / generated 手編集が必要に見える場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-004:レコメンド結果一覧画面実装"
+  - "親Epic: #1236 / Branch: feature/epic-1236-scr-004-recommendation-result-list"
+  - "PR 本文は Related to #<本Issue>（Closes 禁止）"
+  - "前提: #1237 / PR #1239 merge 済み"
