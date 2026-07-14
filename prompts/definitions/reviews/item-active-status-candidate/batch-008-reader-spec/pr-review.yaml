@@ -6,7 +6,7 @@ review:
   title: "BATCH-008 候補Reader仕様 PRレビュー"
   summary: "T5 BATCH-008 仕様書（候補 Reader / Applier）PR の AI Review。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -16,7 +16,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1249
   issue:
     number: 1233
   task_definition: "prompts/definitions/tasks/item-active-status-candidate/batch-008-reader-spec.yaml"
@@ -52,7 +52,7 @@ input:
     number: 1233
     required: true
   pr:
-    number: null
+    number: 1249
     required: true
   docs:
     - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
@@ -73,4 +73,4 @@ review_points:
     - "secret 非含有"
 
 notes:
-  - "PR 番号は create-pr 後に反映"
+  - "PR #1249。AI Review 結論: Human Reviewへ進行可"

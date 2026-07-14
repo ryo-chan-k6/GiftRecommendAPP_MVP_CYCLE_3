@@ -299,7 +299,7 @@ WHERE item_active_status_candidate_id = :id
 ### 10.5 禁止事項
 
 - 候補を `raw_product_metadata` に書き戻さない
-- Online テーブル以外への候補露出をしない
+- Online（api / reco / web）へ候補テーブルを露出しない
 - `detected` 行を本 Batch 成功時に DELETE しない（即時削除禁止。§11）
 
 ---
