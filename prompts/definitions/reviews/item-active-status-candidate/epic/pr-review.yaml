@@ -1,0 +1,49 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-item-active-status-candidate-epic-pr"
+  title: "item_active_status_candidate Epic PRレビュー"
+  summary: "付随 Epic #1227 の BATCH-004 Epic Branch 向け PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+target:
+  pr: null
+  issue:
+    number: 1227
+  task_definition: "prompts/definitions/epics/item-active-status-candidate/epic.yaml"
+  target_branch: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  parent_epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  parent_epic_branch: "feature/epic-1227-item-active-status-candidate"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "PR target が feature/epic-1222-batch-004-rakuten-existing-item-recheck か"
+  - "§18.1 No.7 / §18.1.1 整合"
+  - "T4a が #1222 完了・develop 再取込前に混入していないか"
+  - "secret 非含有"
+
+notes:
+  - "縦串完了後に PR 番号を反映する"

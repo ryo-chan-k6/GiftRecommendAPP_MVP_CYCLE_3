@@ -1,0 +1,197 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-item-active-status-candidate"
+  title: "item_active_status_candidate:active_status候補テーブル整備"
+  summary: "BATCH-004 Writer / BATCH-008 Reader・Applier 向け専用候補テーブル item_active_status_candidate の横断整備 Epic。BATCH-004 縦串（#1222）にスタックする。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  BATCH-004 仕様 §18.1 No.7 / §18.1.1 により専用候補テーブルが Human 確定された。
+  本 Epic は BATCH-004 Epic（#1222）Branch を base / PR target とし、候補テーブル整備を BATCH-004 縦串に寄せる。
+  T4a（Writer 実装）は BATCH-004（#1222）縦串完了後、かつ本 Epic Branch へ develop 再取込後に開始する。
+
+objective: |
+  T1〜T7 を管理し、004 Writer → 008 Applier → cleanup まで接続する。
+
+scope:
+  - "item_active_status_candidate 関連の横断 docs / テーブル定義書 / DDL / Writer・Reader・Applier / Retention"
+  - "Epic Branch は feature/epic-1222-batch-004-rakuten-existing-item-recheck 起点"
+
+out_of_scope:
+  - "Online / Public API からの参照"
+  - "item.active_status 以外のドメイン変更"
+  - "BATCH-004 本体の Fetch / Raw 実装（#1222 配下）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "§18.1 No.7 / §18.1.1 制約正本"
+  templates: []
+  files: []
+  issues:
+    - 1222
+    - 1224
+  prs:
+    - 1225
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue #1227"
+  - "Epic Branch feature/epic-1227-item-active-status-candidate"
+  - "子 Task T1〜T7"
+
+acceptance_criteria:
+  - "Epic Branch が BATCH-004 Epic Branch から作成されている"
+  - "PR target が feature/epic-1222-batch-004-rakuten-existing-item-recheck である"
+  - "T4a 開始条件（#1222 完了 + develop 再取込）が Issue / Definition に明記されている"
+
+branch:
+  no_branch: false
+  summary: "item-active-status-candidate"
+  name: "feature/epic-1227-item-active-status-candidate"
+  base: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  target: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-14"
+    due_date: "2026-07-16"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "item_active_status_candidate"
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/**"
+    - "docs/06_実装設計/database/**"
+    - "docs/06_実装設計/batch/BATCH-004_*"
+    - "docs/06_実装設計/batch/BATCH-008_*"
+    - "supabase/migrations/**"
+    - "packages/code-definitions/**"
+    - "apps/batch/src/batch/application/item_recheck/**"
+    - "apps/batch/src/batch/application/**/active_status*"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/tests/**"
+    - "prompts/definitions/epics/item-active-status-candidate/**"
+    - "prompts/definitions/tasks/item-active-status-candidate/**"
+    - "prompts/definitions/reviews/item-active-status-candidate/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "docs-align"
+    - "table-spec"
+    - "ddl"
+    - "writer-impl"
+    - "if-list"
+    - "batch-008-reader-spec"
+    - "batch-008-applier-impl"
+    - "retention-cleanup"
+
+dependencies:
+  epics:
+    - issue: 1222
+      title: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+      purpose: "制約正本・縦串スタック先。T4a は本 Epic 完了後かつ develop 再取込後"
+  issues: []
+  prs:
+    - 1225
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-004-rakuten-existing-item-recheck"
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required: []
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "PR target が BATCH-004 Epic Branch か"
+    - "T4a 開始ゲートが守られているか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "横断テーブル整備 Epic"
+
+contract_gate:
+  required: false
+
+human_decision_points: []
+
+stop_conditions:
+  - "BATCH-004 §18.1 No.7 制約と矛盾する変更が必要になった場合"
+  - "T4a を #1222 完了・develop 再取込前に開始しようとする場合"
+
+notes:
+  - "Epic Issue #1227 / Branch feature/epic-1227-item-active-status-candidate"
+  - "T4a(#1231) 開始条件: #1222 縦串完了 + develop 再取込"
