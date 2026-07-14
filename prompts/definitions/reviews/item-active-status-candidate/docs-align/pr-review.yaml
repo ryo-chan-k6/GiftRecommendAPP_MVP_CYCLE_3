@@ -6,7 +6,7 @@ review:
   title: "item_active_status_candidate 横断docs整合 PRレビュー"
   summary: "T1 横断 docs 整合 PR の AI Review。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -17,7 +17,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 1238
   issue:
     number: 1228
   task_definition: "prompts/definitions/tasks/item-active-status-candidate/docs-align.yaml"
@@ -54,7 +55,7 @@ input:
     number: 1228
     required: true
   pr:
-    number: null
+    number: 1238
     required: true
   docs:
     - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
