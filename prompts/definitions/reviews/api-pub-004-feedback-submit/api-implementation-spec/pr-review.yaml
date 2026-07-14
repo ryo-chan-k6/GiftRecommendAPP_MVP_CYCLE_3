@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1245
   issue: 1226
   task_definition: "prompts/definitions/tasks/api-pub-004-feedback-submit/api-implementation-spec.yaml"
   source_branch: "docs/task-1226-api-pub-004-feedback-submit-api-implementation-spec"
@@ -70,7 +70,7 @@ input:
     number: 1226
     required: true
   pr:
-    number: null
+    number: 1245
     required: true
   diff:
     required: true
