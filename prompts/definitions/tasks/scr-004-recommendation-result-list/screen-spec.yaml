@@ -13,9 +13,13 @@ parent:
   epic_issue_number: 1236
   epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
   related_issues:
+    - number: 1237
+      purpose: "本 Task Issue"
     - number: 1236
       purpose: "親 Epic"
-  related_prs: []
+  related_prs:
+    - number: 1239
+      purpose: "本 Task PR"
 
 commands:
   primary: "/start-task"
@@ -130,7 +134,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "docs/task-1237-scr-004-recommendation-result-list-screen-spec"
   base: "feature/epic-1236-scr-004-recommendation-result-list"
   target: "feature/epic-1236-scr-004-recommendation-result-list"
   worktree_required: true
@@ -222,6 +226,7 @@ stop_conditions:
 notes:
   - "命名の正本は Task Definition設計書 §15.1（共通）・§15.3（画面）。"
   - "Issueタイトル: [Task]SCR-004:レコメンド結果一覧画面仕様書作成"
+  - "本 Task Issue: #1237 / Branch: docs/task-1237-scr-004-recommendation-result-list-screen-spec"
   - "親Epic: #1236 [Epic]SCR-004:レコメンド結果一覧画面 / Branch: feature/epic-1236-scr-004-recommendation-result-list"
   - "依存Epic: #357 API-PUB-002 / #1147 SCR-002"
   - "Epic Definition の正本は prompts/definitions/epics/scr-004-recommendation-result-list/epic.yaml"
