@@ -6,7 +6,7 @@ review:
   title: "item_active_status_candidate テーブル定義書 PRレビュー"
   summary: "T2 テーブル定義書 PR の AI Review。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -16,7 +16,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 1240
   issue:
     number: 1229
   task_definition: "prompts/definitions/tasks/item-active-status-candidate/table-spec.yaml"
@@ -52,7 +53,7 @@ input:
     number: 1229
     required: true
   pr:
-    number: null
+    number: 1240
     required: true
   docs:
     - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
