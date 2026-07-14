@@ -6,7 +6,7 @@ review:
   title: "BATCH-004 楽天既存商品再確認バッチ仕様書 PRレビュー"
   summary: "BATCH-004 バッチ仕様書 Task の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,10 +18,12 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
-  issue: null
+  pr:
+    number: 1225
+  issue:
+    number: 1224
   task_definition: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/batch-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-1224-batch-004-rakuten-existing-item-recheck-batch-spec"
   target_branch: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
   parent_epic_issue: "[Epic]BATCH-004:楽天既存商品再確認Batch"
   parent_epic_branch: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"

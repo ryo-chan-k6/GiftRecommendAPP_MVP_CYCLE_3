@@ -122,7 +122,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-batch-004-rakuten-existing-item-recheck-batch-spec"
+  name: "docs/task-1224-batch-004-rakuten-existing-item-recheck-batch-spec"
   summary: "batch-004-rakuten-existing-item-recheck-batch-spec"
   base: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
   target: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
@@ -213,4 +213,4 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]BATCH-004:楽天既存商品再確認バッチ仕様書作成"
-  - "parent / branch の issue 番号は /start-task 後に実値へ更新する"
+  - "Issue #1224 / Branch docs/task-1224-batch-004-rakuten-existing-item-recheck-batch-spec（/start-task 反映済み）"
