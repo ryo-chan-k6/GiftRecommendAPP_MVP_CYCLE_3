@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 1236
   epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
   related_issues:
+    - number: 1241
+      purpose: "本 Task Issue"
     - number: 1236
       purpose: "親 Epic"
     - number: 1237
@@ -126,7 +128,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "feature/task-1241-scr-004-recommendation-result-list-implementation"
   base: "feature/epic-1236-scr-004-recommendation-result-list"
   target: "feature/epic-1236-scr-004-recommendation-result-list"
   worktree_required: true
@@ -222,6 +224,9 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]SCR-004:レコメンド結果一覧画面実装"
+  - "本 Task Issue: #1241 / Branch: feature/task-1241-scr-004-recommendation-result-list-implementation"
   - "親Epic: #1236 / Branch: feature/epic-1236-scr-004-recommendation-result-list"
-  - "PR 本文は Related to #<本Issue>（Closes 禁止）"
+  - "本 Task PR: #1242"
+  - "PR 本文は Related to #1241（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/scr-004-recommendation-result-list/implementation/pr-review.yaml"
   - "前提: #1237 / PR #1239 merge 済み"
