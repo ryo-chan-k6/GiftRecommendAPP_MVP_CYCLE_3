@@ -1,0 +1,72 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-item-active-status-candidate-iface-pr"
+  title: "item_active_status_candidate IF一覧 PRレビュー"
+  summary: "T4b インターフェース一覧 IF 追加 PR の AI Review。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1232
+  task_definition: "prompts/definitions/tasks/item-active-status-candidate/iface.yaml"
+  source_branch: "docs/task-1232-item-active-status-candidate-iface"
+  target_branch: "feature/epic-1227-item-active-status-candidate"
+  parent_epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  parent_epic_branch: "feature/epic-1227-item-active-status-candidate"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/item-active-status-candidate/iface.yaml"
+    required: true
+  issue:
+    number: 1232
+    required: true
+  pr:
+    number: null
+    required: true
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "成果物"
+
+review_points:
+  common:
+    - "PR target が親 Epic Branch か"
+  docs:
+    - "IF-DB-BATCH-020/021 が Writer/Reader として妥当か"
+    - "冪等キー・Item本更新境界が明記されているか"
+  security:
+    - "secret 非含有"
+
+notes:
+  - "PR 番号は create-pr 後に反映"

@@ -380,6 +380,7 @@ ON CONFLICT (batch_run_id, source, external_item_code) DO UPDATE SET
 | candidate_status | `packages/code-definitions/state/item_active_status_candidate_status.yaml` | ライフサイクル |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-004 / BATCH-008 |
 | Epic | #1227 | 付随テーブル整備 |
+| インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-020（Writer）/ IF-DB-BATCH-021（Reader） |
 
 ---
 
