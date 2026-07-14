@@ -1,0 +1,316 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-004-recommendation-result-list-pr"
+  title: "SCR-004 レコメンド結果一覧画面仕様書 PRレビュー"
+  summary: "SCR-004（レコメンド結果一覧画面）画面仕様書作成 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1237
+  task_definition: "prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
+  source_branch: "docs/task-1237-scr-004-recommendation-result-list-screen-spec"
+  target_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+  parent_epic_issue: "[Epic]SCR-004:レコメンド結果一覧画面"
+  parent_epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: true
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
+    required: true
+  issue:
+    number: 1237
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1236-scr-004-recommendation-result-list"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+      purpose: "作成成果物の内容確認"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-004 行との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "前後画面遷移との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "結果一覧が API-PUB-002 Response 由来である方針との整合確認"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "sessionStorage 受け渡し・再検索分担との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "SCR-004 / SCR-005 / SCR-006 / SCR-007 対応の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: false
+      purpose: "結果欠落・導線エラーの表示方針との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+      purpose: "画面から見えるエラー追跡情報の扱いとの整合確認"
+  files: []
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables:
+      - path: "prompts/templates/docs/screen-spec.md"
+        required: true
+        purpose: "Task成果物が指定テンプレート（screen-spec.md）に沿って作成されているか確認するため"
+        applies_to:
+          - "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+
+review_points:
+  common:
+    - "Task Definition（screen-spec.yaml）の scope を満たしているか"
+    - "out_of_scope（他画面 / API仕様書 / OpenAPI / 実装）の変更が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に変更内容、検証結果、未実施事項が記載されているか"
+    - "Human Review観点が明記されているか"
+    - "Task Branch から develop へ直接 PR していないか（target は親 Epic Branch）"
+    - "Task PR で Closes #<Task Issue番号> を使っていないか（Related to を使用）"
+  docs:
+    - "指定された文書テンプレート（prompts/templates/docs/screen-spec.md）に沿って作成されているか"
+    - "画面仕様書が docs/06_実装設計/web/SCR-004_*.md に作成されているか"
+    - "表示項目、画面状態（Loading / Empty / Success）、画面遷移が記載されているか"
+    - "結果一覧が API-PUB-002 Response / sessionStorage 由来である方針が記載されているか"
+    - "表示しない項目（final_score 数値 / score_breakdown / shopName 等）が画面一覧・遷移図と矛盾していないか"
+    - "SCR-005 を同一画面内アコーディオンとして扱い、独立画面・モーダルにしていないか"
+    - "SCR-006 / SCR-007 / Feedback が導線レベルに留まっているか"
+    - "用語揺れがないか（Recommendation Result / Gift Meaning 等）"
+    - "Notion 転記を想定した Markdown 体裁になっているか"
+    - "画面一覧 SCR-004 行と矛盾する画面ID・画面名・MVP対象を定義していないか"
+  source: []
+  tests:
+    - "docs 作成 Task として必要な manual check（テンプレート準拠 / 用語整合）が記載されているか"
+    - "未実施テストの理由が PR 本文に記載されているか"
+  api_contract:
+    - "OpenAPI 変更が混在していないか"
+    - "Orval 再生成が混在していないか"
+    - "generated API client 変更が混在していないか"
+    - "API 仕様書（API-PUB-002 等）の本体変更が混在していないか"
+  db:
+    - "DB schema 変更が混在していないか"
+    - "migration 変更が混在していないか"
+  generated:
+    - "generated ファイルを手動編集していないか"
+  cicd: []
+  security:
+    - "secret や .env 実値が含まれていないか"
+  branch:
+    - "Task Branch から develop へ直接 PR していないか"
+    - "PR target が親 Epic Branch（feature/epic-1236-scr-004-recommendation-result-list）であるか"
+    - "Task PR で Related to #<Task Issue番号> が使われているか"
+    - "Task PR で Closes #<Task Issue番号> を使っていないか"
+  project:
+    - "レビュー結果に応じた Status 更新意図が明確か"
+  epic_scope:
+    - "PR差分が親Epic [Epic]SCR-004:レコメンド結果一覧画面 の epic_scope.allowed_paths 内に収まっているか"
+    - "epic_scope.forbidden_paths（apps/api / apps/reco / apps/batch / openapi/** / db）への変更が混入していないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Reviewで確認してほしい事項が明記されている"
+    - "AI Review結果をPRコメントに記録できる形式になっている"
+    - "Task Definition で文書テンプレート（screen-spec.md）が指定されているため、成果物がそのテンプレートに沿っている"
+    - "親Epic の epic_scope.allowed_paths から外れる差分がない"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+      - "epic_scope.allowed_paths から外れる差分がない"
+      - "Human Review で確認すべき事項が整理されている"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な docs 不備がある"
+      - "PR 本文に必要情報が不足している"
+      - "検証結果または未実施理由が不足している"
+      - "テンプレート（screen-spec.md）準拠が一部欠落している"
+  needs_human_decision:
+    conditions:
+      - "画面仕様の MVP 範囲判断が必要"
+      - "scope 外変更を同一 PR に含めるべきか判断が必要"
+      - "未実施テストを許容して Human Review へ進めてよいか判断が必要"
+      - "画面一覧・UIコンポーネント一覧の Modal 前提表記と本仕様のアコーディオン方針の追随範囲判断が必要"
+  split_required:
+    conditions:
+      - "OpenAPI 変更が混在している"
+      - "DB schema 変更が混在している"
+      - "API 仕様書の本体変更が混在している"
+      - "epic_scope.allowed_paths から外れる差分がある（他 Epic 配下 Task へ切り出す）"
+      - "別 Issue 化すべき設計変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "Task Definition が存在しない"
+      - "Issue と PR の対応が不明"
+      - "secret や .env 実値の混入が疑われる"
+      - "Task 成果物に指定された文書テンプレート（screen-spec.md）を確認できない"
+      - "親 Epic Issue / Branch が存在しない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks:
+    - "prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definitionのacceptance_criteriaを満たしているか確認する"
+    - "PR本文に検証結果・未実施理由・Human Review観点が記載されているか確認する"
+    - "Task成果物が screen-spec.md の章構成に沿っているか確認する"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Review Definitionはレビュー条件であり、実装テストを直接実行する作業定義ではないため"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常PRレビューのため、レビュー結果はPRコメントを正本とする"
+
+risk_points:
+  - "画面一覧・UIコンポーネント一覧が Modal 前提のまま残り、アコーディオン方針との追随が必要になる可能性"
+  - "OpenAPI / generated / 実装変更を docs 作成Taskに混在させる可能性"
+  - "Public Response に reason_detail が無い場合の表示方針が実装で揺れる可能性"
+
+human_decision_points:
+  - "SCR-005 アコーディオン方針（複数同時展開・高さ上限）が MVP として妥当か"
+  - "画面一覧 / UIコンポーネント一覧の Modal 表記追随を別 Task にするか"
+  - "未実施テストの理由を許容して Human Review へ進めてよいか"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "Task Definition が存在しない場合"
+  - "Issue と PR の対応が不明な場合"
+  - "diff を確認できない場合"
+  - "OpenAPI 変更が混在している場合"
+  - "DB schema 変更が混在している場合"
+  - "generated ファイルの手動編集が疑われる場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "Human Review を省略する前提になっている場合"
+  - "AI が merge 判断を行う必要がある場合"
+  - "指定された文書テンプレート（screen-spec.md）が存在しない場合"
+  - "Task Definition の output.docs[].template と Review Definition の input.templates.deliverables[].path が不一致の場合"
+  - "PR差分が親Epic の epic_scope.allowed_paths から外れている場合"
+
+notes:
+  - "本Taskは docs 作成 Task のため、source code 変更は原則 scope 外とする"
+  - "対応 Task Definition: prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
+  - "対応 Epic Definition: prompts/definitions/epics/scr-004-recommendation-result-list/epic.yaml"
+  - "review.target.pr / input.pr.number は実 PR 起票後に追記する"
