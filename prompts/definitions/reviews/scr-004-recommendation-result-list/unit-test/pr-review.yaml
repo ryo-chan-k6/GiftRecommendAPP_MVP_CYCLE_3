@@ -18,10 +18,10 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null
+  pr: 1247
+  issue: 1246
   task_definition: "prompts/definitions/tasks/scr-004-recommendation-result-list/unit-test.yaml"
-  source_branch: null
+  source_branch: "test/task-1246-scr-004-recommendation-result-list-unit-test"
   target_branch: "feature/epic-1236-scr-004-recommendation-result-list"
   parent_epic_issue: "[Epic]SCR-004:レコメンド結果一覧画面"
   parent_epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
@@ -67,10 +67,10 @@ input:
     path: "prompts/definitions/tasks/scr-004-recommendation-result-list/unit-test.yaml"
     required: true
   issue:
-    number: null
+    number: 1246
     required: true
   pr:
-    number: null
+    number: 1247
     required: true
   diff:
     required: true
