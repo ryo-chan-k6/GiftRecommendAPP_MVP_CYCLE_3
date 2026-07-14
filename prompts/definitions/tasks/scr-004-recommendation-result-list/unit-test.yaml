@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 1236
   epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
   related_issues:
+    - number: 1246
+      purpose: "本 Task Issue"
     - number: 1236
       purpose: "親 Epic"
     - number: 1241
@@ -106,7 +108,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "test/task-1246-scr-004-recommendation-result-list-unit-test"
   base: "feature/epic-1236-scr-004-recommendation-result-list"
   target: "feature/epic-1236-scr-004-recommendation-result-list"
   worktree_required: true
@@ -192,7 +194,8 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]SCR-004:レコメンド結果一覧画面単体テスト"
+  - "本 Task Issue: #1246 / Branch: test/task-1246-scr-004-recommendation-result-list-unit-test"
   - "親Epic: #1236 / Branch: feature/epic-1236-scr-004-recommendation-result-list"
-  - "PR 本文は Related to #<本Issue>（Closes 禁止）"
+  - "PR 本文は Related to #1246（Closes 禁止）"
   - "Review Definition: prompts/definitions/reviews/scr-004-recommendation-result-list/unit-test/pr-review.yaml"
   - "前提: #1241 / PR #1242 merge 済み"
