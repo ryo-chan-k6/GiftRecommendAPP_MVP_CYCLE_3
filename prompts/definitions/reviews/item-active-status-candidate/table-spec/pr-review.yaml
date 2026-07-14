@@ -1,0 +1,77 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-item-active-status-candidate-table-spec-pr"
+  title: "item_active_status_candidate テーブル定義書 PRレビュー"
+  summary: "T2 テーブル定義書 PR の AI Review。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1240
+  issue:
+    number: 1229
+  task_definition: "prompts/definitions/tasks/item-active-status-candidate/table-spec.yaml"
+  source_branch: "docs/task-1229-item-active-status-candidate-table-spec"
+  target_branch: "feature/epic-1227-item-active-status-candidate"
+  parent_epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  parent_epic_branch: "feature/epic-1227-item-active-status-candidate"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/item-active-status-candidate/table-spec.yaml"
+    required: true
+  issue:
+    number: 1229
+    required: true
+  pr:
+    number: 1240
+    required: true
+  docs:
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      required: true
+      purpose: "成果物本体"
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "制約正本"
+
+review_points:
+  common:
+    - "PR target が親 Epic Branch か"
+    - "scope 内か（migration 非含有）"
+  docs:
+    - "§18.1.1 / UNIQUE / Retention / Writer·Reader 整合"
+    - "DDL 可能な粒度か"
+  security:
+    - "secret 非含有"
+
+notes:
+  - "PR 番号は create-pr 後に反映"

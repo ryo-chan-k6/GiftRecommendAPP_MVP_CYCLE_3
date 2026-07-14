@@ -464,7 +464,7 @@ cleanup の自動化（T7）は後続。MVP 初期は運用手順 / 手動 SQL �
 | 先行仕様 | `docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md` | 境界・item_search 共有 |
 | エラー | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-EXT/RAW/BAT/DB |
 | インターフェース | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-004 / IF-EXT-001 |
-| 付随（未作成） | `docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md` | 専用候補テーブル定義（§18.1 No.7） |
+| 付随 | `docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md` | 専用候補テーブル定義（§18.1 No.7）。Epic #1227 / Task #1229 |
 
 ---
 
