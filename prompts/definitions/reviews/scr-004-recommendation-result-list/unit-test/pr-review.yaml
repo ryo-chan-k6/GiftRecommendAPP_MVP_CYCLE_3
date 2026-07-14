@@ -1,0 +1,114 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-004-recommendation-result-list-unit-test-pr"
+  title: "SCR-004 レコメンド結果一覧画面単体テスト PRレビュー"
+  summary: "SCR-004 unit-test Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/tasks/scr-004-recommendation-result-list/unit-test.yaml"
+  source_branch: null
+  target_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+  parent_epic_issue: "[Epic]SCR-004:レコメンド結果一覧画面"
+  parent_epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/scr-004-recommendation-result-list/unit-test.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1236-scr-004-recommendation-result-list"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch か"
+    - "PR 本文が Related to（Closes 禁止）か"
+  tests:
+    - "画面仕様書の主要状態（欠落 / 一覧 / アコーディオン / 外部URL）がカバーされているか"
+    - "本番 network / secret に依存していないか"
+    - "epic_scope.allowed_paths（apps/web/tests/**）内か"
+  security:
+    - "secret / `.env` 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR / Issue 作成後に target.pr / target.issue / input.*.number / source_branch を更新する"
+  - "Task PR は Related to（Closes 禁止）"
+  - "画面仕様書用は .../pr-review.yaml、実装用は .../implementation/pr-review.yaml。本ファイルは unit-test 専用"
