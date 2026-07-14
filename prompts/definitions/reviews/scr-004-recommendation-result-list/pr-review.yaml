@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1239
   issue: 1237
   task_definition: "prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
   source_branch: "docs/task-1237-scr-004-recommendation-result-list-screen-spec"
@@ -70,7 +70,7 @@ input:
     number: 1237
     required: true
   pr:
-    number: null
+    number: 1239
     required: true
   diff:
     required: true
@@ -313,4 +313,4 @@ notes:
   - "本Taskは docs 作成 Task のため、source code 変更は原則 scope 外とする"
   - "対応 Task Definition: prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
   - "対応 Epic Definition: prompts/definitions/epics/scr-004-recommendation-result-list/epic.yaml"
-  - "review.target.pr / input.pr.number は実 PR 起票後に追記する"
+  - "review.target.pr / input.pr.number = 1239（PR作成後反映済み）"

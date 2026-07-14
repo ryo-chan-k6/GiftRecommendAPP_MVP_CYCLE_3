@@ -17,7 +17,9 @@ parent:
       purpose: "本 Task Issue"
     - number: 1236
       purpose: "親 Epic"
-  related_prs: []
+  related_prs:
+    - number: 1239
+      purpose: "本 Task PR"
 
 commands:
   primary: "/start-task"
