@@ -1,0 +1,204 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-001-top-implementation"
+  title: "SCR-001:トップ画面実装"
+  summary: "SCR-001 トップ画面のレコメンド開始 CTA を /recommendations（SCR-002）へ結線し、画面一覧の最低限表示項目を満たす。CTA 導線の component テストを含める。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-001:トップ画面"
+  epic_issue_number: 1255
+  epic_branch: "feature/epic-1255-scr-001-top"
+  related_issues:
+    - number: 1255
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  レーン1e A4。トップ CTA 未結線を解消し、SCR-001 → SCR-002 の入口を完成させる。
+  画面仕様書独立 Task は行わず、画面一覧 §4.1・画面遷移図を正本とする。最小 UT を本 Task に含める。
+
+objective: |
+  `/` から `/recommendations` へ遷移できるトップ画面を実装し、CTA 導線をテストで固定する。
+
+scope:
+  - "apps/web/src/app/page.tsx および apps/web/src/features/home/** のトップ画面実装"
+  - "レコメンド開始 CTA の /recommendations 結線"
+  - "画面一覧 MVP 表示項目の最低限（サービス名 / キャッチ / 説明 / CTA。注意書きは任意）"
+  - "apps/web/tests/component/home/** の最小 component テスト"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "SCR-002 以降の画面変更"
+  - "マスタ API 事前取得の本実装"
+  - "OpenAPI / generated / apps/api / reco / batch"
+  - "認証・履歴導線"
+  - "大規模デザイン刷新"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-001 表示・操作の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-001 → SCR-002 遷移の確認"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: false
+      purpose: "遷移先 URL /recommendations との整合"
+  templates: []
+  files:
+    - path: "apps/web/src/app/page.tsx"
+      required: true
+      purpose: "現行プレースホルダ"
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/web/src/app/page.tsx"
+      action: "update"
+      required: true
+    - path: "apps/web/src/features/home/**"
+      action: "create_or_update"
+      required: true
+  tests:
+    - path: "apps/web/tests/component/home/**/*.{test,spec}.{ts,tsx}"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "トップ画面 CTA 結線"
+  - "CTA 導線の component テスト"
+
+acceptance_criteria:
+  - "主 CTA から /recommendations へ遷移できる"
+  - "画面一覧のサービス名 / キャッチ / CTA が確認できる"
+  - "pnpm --filter @gift-recommendation/web test:component が通る"
+  - "epic_scope.allowed_paths 外へ変更していない"
+  - "secret / .env 実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1255-scr-001-top"
+  target: "feature/epic-1255-scr-001-top"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-16"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "遷移先"
+    - issue: 1255
+      title: "[Epic]SCR-001:トップ画面"
+      purpose: "親 Epic"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/web/src/app/page.tsx"
+    - "apps/web/src/features/home/**"
+    - "apps/web/tests/component/home/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
+  manual_checks:
+    - "ブラウザで / から CTA → /recommendations を確認できること"
+  not_required:
+    - "e2e"
+  skip_reason:
+    "e2e": "手動 E2E（D1）で確認"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "CTA が /recommendations を指しているか"
+    - "epic_scope 外変更がないか"
+    - "secret 非含有か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "レーン1e A4 実装 Task"
+
+stop_conditions:
+  - "遷移先 /recommendations が存在しない場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-001:トップ画面実装"
+  - "親Epic: #1255 / Branch: feature/epic-1255-scr-001-top"
+  - "PR 本文は Related to（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/scr-001-top/implementation/pr-review.yaml"
+  - "CTA 文言は画面一覧『レコメンド開始』と SCR-002 遷移『ギフトを探す』を踏まえ、ユーザー向けは「ギフトを探す」を採用"

@@ -1,0 +1,200 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-001-top"
+  title: "SCR-001:トップ画面"
+  summary: "SCR-001（トップ画面）に関する実装・単体テストを管理するEpic。レーン1e向けにレコメンド開始 CTA を /recommendations（SCR-002）へ結線する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  レーン1e（条件入力〜結果確認 E2E）の入口として、SCR-001 トップ画面のレコメンド開始導線を SCR-002（/recommendations）へ接続する。
+  SCR-002 / SCR-004 は develop merge 済み。本 Epic は MVP 最小として CTA 結線とトップ表示の最低限を対象とし、画面仕様書独立 Task は必須としない（画面一覧・画面遷移図を正本とする）。
+
+objective: |
+  SCR-001 に関する Epic Issue と Epic Branch を作成し、配下 Task（実装 / 単体テスト）で / → /recommendations 導線を完成させ、develop へ統合する。
+
+scope:
+  - "SCR-001 に関する子 Task の作業単位を整理する（実装 / 単体テスト）"
+  - "Epic Issue / Epic Branch（develop 起点）を作成する"
+  - "レコメンド開始 CTA を /recommendations へ結線する"
+
+out_of_scope:
+  - "SCR-002 以降の画面本体の変更"
+  - "OpenAPI / generated / apps/api / apps/reco / apps/batch"
+  - "認証・履歴・お気に入り等の後続機能"
+  - "大規模なブランドデザイン刷新"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-001 の画面ID・URL・表示・操作を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-001 → SCR-002 遷移を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針の確認"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約の確認"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]SCR-001:トップ画面）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task（実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]SCR-001:トップ画面 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が SCR-001 責務と整合している"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1255-scr-001-top"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-16"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "web"
+
+epic_scope:
+  artifact_id: "SCR-001"
+  allowed_paths:
+    - "apps/web/src/app/page.tsx"
+    - "apps/web/src/features/home/**"
+    - "apps/web/tests/component/home/**"
+    - "prompts/definitions/tasks/scr-001-top/**"
+    - "prompts/definitions/reviews/scr-001-top/**"
+    - "prompts/definitions/epics/scr-001-top/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "遷移先 /recommendations（develop merge 済み）"
+  issues:
+    - number: 1255
+      purpose: "本 Epic Issue"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "トップから /recommendations へ遷移できること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が SCR-001（トップ / CTA）に閉じているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "レーン1e A4 向け SCR-001 Epic"
+
+risk_points:
+  - "Task PR を develop へ直接向けてしまう運用ミス"
+  - "SCR-002 以降の画面実装を混入させる運用ミス"
+
+human_decision_points:
+  - "画面仕様書独立 Task を後続で起こすか（本レーンでは画面一覧・遷移図を正本とし実装先行）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-001 が存在しない場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "本 Epic Issue: #1255 / Epic Branch: feature/epic-1255-scr-001-top"
+  - "本 Epic の最初の子 Task は implementation（CTA 結線 + 最小 UT）"
+  - "依存: #1147 SCR-002 develop merge 済み"
