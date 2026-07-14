@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-07-14                                |
-| 更新日         | 2026-07-14                                |
+| 更新日         | 2026-07-15                                |
 
 ---
 
@@ -132,8 +132,9 @@ Router mount の目安: `/api/v1/recommendation-results` 配下に Feedback Rout
 | 観点 | 方針 |
 | ---- | ---- |
 | `sessionId` NULL / 未指定 | 部分 UNIQUE 対象外。毎回 INSERT（201）。分析側で重複排除 |
+| `sessionId` 採番・保管（consumer） | **Web が UUID を採番**し **`sessionStorage` に保管**し、Request Body `sessionId` で送信。cookie / header は使わない。API は採番せず形式検証・保存のみ（§11.2） |
 | `GRS-FDB-003`（409） | エラーコード定義書には存在するが、**本 API MVP 契約では返却しない**（更新 200）。API一覧の「重複 409 候補」表記は契約・本書を優先 |
-| UNIQUE 競合（レース） | 部分 UNIQUE 違反時は再 SELECT → UPDATE、または 500 `GRS-FDB-005`。実装 Task でトランザクション方針を確定 |
+| UNIQUE 競合（レース） | 部分 UNIQUE 違反（Postgres `23505`）時は **再 SELECT → UPDATE → 200 `updated`**（リトライ 1 回）。再 SELECT 不可 / UPDATE 失敗時は 500 `GRS-FDB-005`。409 は返さない（§11.2） |
 
 ### 3.6 存在確認（実装面）
 
@@ -205,6 +206,7 @@ flowchart TD
    - Result から run / request ID を解決
    - `sessionId` がある場合、冪等キーで既存行を検索
    - 一致 → Repository UPDATE、不一致 / 未指定 → Repository INSERT
+   - INSERT が部分 UNIQUE 違反（レース）の場合は再 SELECT → UPDATE（§3.5）
 5. **Repository（MOD-API-010）:** テーブル定義書 §5.5 / §12 の列マッピングで永続化。Response 用に `recommendation_feedback_id` と受付時刻を返す。
 6. **成功 Response:** 契約どおり `data`（`recommendationFeedbackId` / `status` / optional `message`）+ `meta`（`traceId` / `requestId` / optional `acceptedAt`）。内部 UUID 以外の秘密情報・`anonymous_user_id`・`user_agent` 原文・テーブル名は **返却しない**。
 7. **失敗 Response:** 契約仕様書 §8 の Error 形式。stack trace・SQL・接続文字列を Response / ログ本文に出さない。
@@ -311,7 +313,8 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 影響有無 | `あり`（画面・client Task。本 Task では対象外） |
 | 必要対応 | generated client 経由で本 API を呼び、201 / 200 を完了表示に反映 |
 
-- MVP は匿名 Feedback。`sessionId` の採番・保管方式は §11 の未決事項
+- MVP は匿名 Feedback。`sessionId` は Web が UUID 採番・`sessionStorage` 保管・Body 送信（§11.2）。SCR-007 では原則付与する
+- 1 Request = 1 Feedback 行。Result / Item / Reason をまとめて送る場合は複数回 POST（一括 API は MVP 対象外）
 - Ranking 即時反映を期待しない
 
 ---
@@ -347,8 +350,10 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 11 | meta 伝播 | `X-Trace-Id` 指定時に `meta.traceId` 一致 | integration |
 | 12 | metric | `feedback_count` / `feedback_error_count` / 正負 count が境界どおり | unit / integration |
 | 13 | 409 非返却 | 重複時に `GRS-FDB-003` を返さない | integration |
-| 14 | generated client | `submitRecommendationFeedback` 型整合（consumer Task） | typecheck |
-| 15 | provider / consumer | SCR-007 から送信・完了表示できること（画面 Task） | manual |
+| 14 | UNIQUE レース | 並列同一キーで INSERT 競合時、再 SELECT→UPDATE→200 `updated`（500 に落ちない） | integration |
+| 15 | generated client | `submitRecommendationFeedback` 型整合（consumer Task） | typecheck |
+| 16 | provider / consumer | SCR-007 から送信・完了表示できること（画面 Task） | manual |
+| 17 | sessionId（web） | UUID 採番・`sessionStorage` 保管・Body 送信。再送で 200 更新できること | manual / 画面 Task |
 
 > 契約面の単体テスト観点（validation / auth / Request・Response schema）は契約仕様書を正とする。本 Task ではテストコードを追加しない。
 
@@ -359,16 +364,13 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-14 | 初版作成（実装面のみ） | #1226 |
+| 2026-07-15 | §11 未決事項を推奨案どおり確定（sessionId / 同時送信不可 / UNIQUE レース） | #1226 |
 
 ---
 
 ## 11. 未決事項
 
-|  No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `sessionId` の採番・保管方式（cookie / body / header / localStorage） | consumer（web）実装と冪等体験に影響 | Human | 実装 Task 前推奨 | 契約上 Body `sessionId` は optional。API 側は値を検証して保存するのみ |
-| 2 | Result 全体 Feedback と Item/Reason Feedback の同時送信を MVP で許容するか | 1 Request = 1 Feedback 行が現行契約。一括 API は別契約 | Human | 任意 | 現状はクライアントが複数回 POST |
-| 3 | UNIQUE 違反時のレースハンドリング | 並列同一キーで UNIQUE 競合し得る | 実装 Task / Human | 実装時 | 再 SELECT→UPDATE 推奨 |
+現時点で本書に残す未決事項は **なし**（旧 §11 No.1〜3 は §11.2 へ移行）。
 
 ### 11.1 契約で確定済み（本書は追従）
 
@@ -379,6 +381,14 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 3 | `comment` 最大文字数 | **500** | 契約 §14 |
 | 4 | `rating` | **必須**（1〜5） | 契約 §14 |
 | 5 | `anonymous_user_id` | MVP 未使用（NULL 固定） | テーブル定義書 §17.1 |
+
+### 11.2 実装面で確定済み（Human 承認・推奨案採用）
+
+| No | 論点 | 確定内容 | 担当 |
+| --: | ---- | -------- | ---- |
+| 1 | `sessionId` の採番・保管方式 | **Web が UUID を採番**し **`sessionStorage` に保管**し、**Body `sessionId` で送信**する。cookie / header は使わない。API は採番せず形式検証・保存のみ。契約上 optional だが、SCR-007 では原則付与する。再訪でも同一キーが必要な場合は `localStorage` への差し替えを別判断とする | consumer（web）/ SCR-007 |
+| 2 | Result 全体と Item/Reason の同時送信 | **MVP では許容しない**。1 Request = 1 Feedback 行。複数粒度はクライアントが複数回 POST。一括 API は別契約・別 Task | 契約維持 |
+| 3 | UNIQUE 違反時のレースハンドリング | INSERT が部分 UNIQUE 違反（Postgres `23505`）のときは **再 SELECT → UPDATE → 200 `updated`**（リトライ 1 回）。再 SELECT 不可または UPDATE 失敗時は 500 `GRS-FDB-005`。409 / `GRS-FDB-003` は返さない | apps/api 実装 Task |
 
 ---
 
@@ -414,7 +424,7 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 
 ### 13.1 Human Review で確認してほしいこと
 
-- §11 未決事項（特に `sessionId` 採番方式）の扱い
+- §11.2 確定方針（sessionId / 同時送信不可 / UNIQUE レース）が後続実装に足りるか
 - API一覧の「重複 409 候補」と契約・本書（更新 200）の差分を一覧側で後追い修正するか
 - 後続 apps/api 実装 Task の入力粒度として十分か
 
