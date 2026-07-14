@@ -73,7 +73,7 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 - 再確認対象となる `item` 行が DB に存在し、`external_item_code` が設定されていること
 - 楽天商品検索API用の認証情報（環境変数名のみ。実値は GitHub Secrets）が設定されていること
 - Object Storage（Raw JSON）および Database（Metadata / fetch_cursor / ログ）へ接続可能であること
-- 再確認対象選定方針として**優先度付き部分集合**（最終確認日・popularity 等）を config / workflow input で解決できること（§18.2）
+- 再確認対象選定方針（優先度付き部分集合 + 件数上限）が config / workflow input で解決できること（§18.1 No.6）
 
 ---
 
@@ -86,7 +86,7 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 | `item` | DB | database | `true` | 再確認対象の選定・`external_item_code` 解決 | 本 Batch は Item を更新しない。優先度付き部分集合で絞り込む |
 | `external_item_code` | 属性 | `item.external_item_code` | `true` | 楽天 `itemCode` 指定取得キー | 1 商品 = 1 カーソル |
 | `fetch_cursor` | DB | database | `true` | 走査条件・進捗 | `cursor_type=recheck` のみ。本 Batch が get-or-create / 消費 |
-| `recheck_plan` | 設定 / 計画 | Batch config / workflow input | `true` | 対象 scope・件数上限・優先度 | 優先度付き部分集合（最終確認日・popularity 等）。件数上限を config 化（§18.2） |
+| `recheck_plan` | 設定 / 計画 | Batch config / workflow input | `true` | 対象 scope・件数上限・優先度 | §18.1 No.6 / §9.2 の選定方針に従う |
 | 楽天商品検索APIレスポンス | 外部API | 楽天商品検索API | `true` | 商品現在値 Raw | formatVersion=`2`。`itemCode` 指定 |
 
 ### 6.2 外部API
@@ -149,7 +149,7 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 | ---- | ---- | ------ | ---- | ---- | ---- |
 | Raw JSON（`raw_product_json`） | Object | Object Storage | `true` | 監査・再変換 | `source_api=item_search` |
 | `raw_product_metadata` | DB | database | `true` | Raw 参照・import_status | |
-| `active_status` 候補 | 処理結果 | §18.2 の保存先 | `true` | BATCH-008 入力候補 | **Item 本更新はしない** |
+| `active_status` 候補 | 処理結果 | `item_active_status_candidate`（§18.1 No.7） | `true` | BATCH-008 入力候補 | **Item 本更新はしない** |
 | `fetch_cursor` | DB | database | `true` | `recheck` 進捗更新 | 1 `external_item_code` = 1 カーソル |
 | `batch_run_log` / `phase_log` / `api_call_log` / `error_log` | DB | database | `true` | 運用・再実行 | `api_call_log.fetch_cursor_id` は通常 NOT NULL |
 | `staging_item` / `item` / `item.active_status` | - | - | `false` | 本 Batch では出力・更新しない | BATCH-005 / 007 / 008 |
@@ -159,7 +159,7 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 | 後続 | 引き渡し内容 | 条件 |
 | ---- | ------------ | ---- |
 | BATCH-005 | `raw_product_metadata` / Raw JSON（object_key） | Raw 保存成功（後続処理可能な `import_status`） |
-| BATCH-008 | active_status 候補（§18.2） | 再確認で availability / 取得不能等が解決された場合 |
+| BATCH-008 | 専用候補テーブルの未適用行（§18.1 No.7） | 再確認で availability / 取得不能等が解決され候補が記録された場合 |
 | BATCH-017 | Run 集計入力（件数・status） | Import Summary（親チェーン経由時） |
 
 ### 7.3 更新リソース
@@ -169,7 +169,7 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 | Object Storage Raw | put | API 成功（または取得不能証跡方針に従う空レスポンス記録）ごと | `object_key` / `content_hash` | 同一 hash は skip 可 |
 | `raw_product_metadata` | insert / update | Raw 保存時 | `object_key` | |
 | `fetch_cursor` | get-or-create / update | plan / fetch 成功後 | UNIQUE スコープキー | `cursor_type=recheck` |
-| active_status 候補 | insert / update | Resolver 成功時 | `item_id` / `external_item_code` + run | §18.2 |
+| 専用候補テーブル | insert / upsert | Resolver 成功時 | `batch_run_id` + `source` + `external_item_code` | §18.1 No.7。Item 非更新 |
 | `api_call_log` | insert | API 呼出ごと | `api_call_log_id` | `fetch_cursor_id` 紐づけ |
 | `batch_run_log` / `phase_log` / `error_log` | insert / update | Run / Phase / 失敗時 | Run 単位 | |
 | `item` / `staging_*` | - | - | - | **更新しない** |
@@ -203,7 +203,7 @@ flowchart TD
 | 3 | `fetch` | 楽天商品検索APIを itemCode 指定で呼ぶ | cursor / secrets | APIレスポンス / api_call_log | Rate Limit は待機・再試行。空ヒットは「取得不能」候補へ |
 | 4 | `adapt` | レスポンスを内部形式へ変換する | Rawレスポンス | 正規化候補 | 形式不正は `GRS-EXT-103` |
 | 5 | `raw_save` | Object Storage へ Raw JSON を保存し Metadata を書く | レスポンス | object_key / raw_product_metadata | `GRS-RAW-001` / `GRS-RAW-002` |
-| 6 | `resolve` | availability / 空ヒット等から active_status 候補を解決する | 適応結果 / item | active_status 候補 | Resolver 失敗は当該件失敗として記録。Item は更新しない |
+| 6 | `resolve` | availability / 空ヒット等から active_status 候補を解決し専用候補テーブルへ記録する | 適応結果 / item | 候補行（§18.1 No.7） | Resolver 失敗は当該件失敗として記録。Item は更新しない |
 | 7 | `cursor_update` | `fetch_cursor` の last_fetched_at / status を更新する | api_call_log / 成功結果 | fetch_cursor | API 成功後に更新（テーブル定義書 §5.3）。完了時は `exhausted` 等 |
 | 8 | `finalize` | 集計・batch_run_log 更新 | 各 Phase 結果 | run_status / counts | 部分成功は `GRS-BAT-002` |
 
@@ -222,7 +222,7 @@ flowchart TD
 | -------- | -------- | -------- | -------- | ---- |
 | レスポンス全体 | Raw JSON | Object Storage object | そのまま保存（秘密情報は含めない） | path は §10.2 |
 | `itemCode` | `external_item_code` | cursor scope / metadata キー | 文字列正規化 | |
-| `availability` / 空ヒット | active_status 候補 | 候補記録 | Resolver ルール | 本更新は BATCH-008 |
+| `availability` / 空ヒット | active_status 候補 | 専用候補テーブル | Resolver ルールで候補化して upsert | 本更新は BATCH-008。Raw metadata には載せない |
 | API 呼出条件 | request summary | `api_call_log` | secret を除く | accessKey 非記録 |
 | `fetch_cursor_id` | - | `api_call_log.fetch_cursor_id` | 紐づけ必須（通常） | |
 | `scope.external_item_code` | `cursor_value.scope` | `fetch_cursor.cursor_value` | 必須 | fingerprint 対象 |
@@ -246,7 +246,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 - バッチ単位キューは MVP では持たない
 - `target_external_genre_id` は `NULL`
 
-### 9.2 `recheck_plan` 選定ロジック（§18.2 決定反映）
+### 9.2 `recheck_plan` 選定ロジック（§18.1 No.6）
 
 本 Batch は**優先度付き部分集合**で再確認対象を選定する。
 
@@ -256,7 +256,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 優先度条件 | 最終確認日（古いものを優先）、popularity（低いものを優先）等で順序付け |
 | 件数上限 | config で上限を設定し、週次 Rate Limit 枠を超過しないようにする（例: 1000 件/週） |
 | 除外条件 | 最近再確認済み（例: 直近7日以内に `fetch_cursor.last_fetched_at` が更新済み）の商品は除外してもよい |
-| 明示リスト | workflow input で特定の `external_item_code` 一覧を渡すことで、優先度を上書き可能 |
+| 明示リスト | workflow input で特定の `external_item_code` 一覧を渡すことで、優先度を上書き可能（§18.1 No.6 の補助手段） |
 
 具体的な SQL / ロジックは実装 Task で詳細化する。
 
@@ -270,7 +270,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | -------- | ---- | ----------------- | -------- | ------------ | ---- |
 | `fetch_cursor` | get-or-create / update | `source + source_api + cursor_type + target_external_genre_id + cursor_scope_fingerprint` | last_fetched_at / cursor_status / cursor_value | 同一スコープは既存行再利用 | `cursor_type=recheck` / `source_api=item_search` |
 | `raw_product_metadata` | insert / update | `raw_metadata_id` / `object_key` | hash / status / timestamps / source_api | 同一 object_key は status 更新 | IF-DB-BATCH-004 |
-| active_status 候補 | insert / update | §18.2 | 候補値 / 理由 / timestamps | 同一 item + run 方針 | Item 非更新 |
+| `item_active_status_candidate` | insert / upsert | `batch_run_id` + `source` + `external_item_code`（§18.1 No.7） | 候補値 / 理由 / 候補 status / timestamps / `raw_metadata_id`（任意） | 同一冪等キーは upsert | Item 非更新。`raw_product_metadata` には候補を書かない |
 | `api_call_log` | insert | `api_call_log_id` | status / latency / fetch_cursor_id | 追記 | 認証情報は保存しない |
 | `batch_run_log` | insert / update | `batch_run_id` | status / counts | Run 単位で一意 | |
 | `phase_log` | insert | `batch_run_id + phase` | status / duration | 追記 | |
@@ -289,9 +289,9 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 冪等キー | Raw: `object_key` / `content_hash`<br>Cursor: UNIQUE スコープキー（`recheck` + `external_item_code`）<br>一覧: `source + external_item_code + fetched_at` |
-| 重複実行時の扱い | 同一 `content_hash` の Raw は再 put を skip してよい。cursor は再 active 化後に再消費 |
-| 部分失敗時の再実行 | 失敗 `external_item_code` / cursor のみを workflow_dispatch で再実行 |
+| 冪等キー | Raw: `object_key` / `content_hash`<br>Cursor: UNIQUE スコープキー（`recheck` + `external_item_code`）<br>一覧: `source + external_item_code + fetched_at`<br>候補: `batch_run_id` + `source` + `external_item_code`（§18.1 No.7） |
+| 重複実行時の扱い | 同一 `content_hash` の Raw は再 put を skip してよい。cursor は再 active 化後に再消費。候補は同一冪等キーで upsert |
+| 部分失敗時の再実行 | 失敗 `external_item_code` / cursor のみを workflow_dispatch で再実行。未適用候補は専用テーブルから BATCH-008 が再消費可能 |
 | 成功済みデータの skip条件 | `content_hash` 一致かつ `import_status` が成功系の場合、同一レスポンスの Raw 再保存を skip 可（MVP 実装で選択） |
 | rollback方針 | 分散更新のため自動 rollback しない。失敗は `error_log` で追跡し、再実行で収束させる |
 
@@ -338,7 +338,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | error_log | エラーコード・概要 | 失敗時 | DB | 個人情報・secret 非含有 |
 | raw_product_metadata | object_key / hash / import_status | Raw保存時 | DB | |
 | fetch_cursor | status / last_fetched_at | 走査更新時 | DB | `recheck` のみ |
-| active_status 候補 | 候補値・理由 | Resolver 時 | §18.2 | |
+| 専用候補テーブル | 候補値・理由・候補 status | Resolver 時 | §18.1 No.7 | |
 
 ### 14.1 メトリクス
 
@@ -373,7 +373,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 1 | 正常系（recheck） | itemCode 指定で Raw / Metadata が保存され fetch_cursor（recheck）が進む | unit / integration（fixture） |
 | 2 | カーソル単位 | 1 `external_item_code` = 1 カーソルで get-or-create される | unit |
 | 3 | Raw 冪等 | 同一 content_hash 再実行で不要な多重 put が増えない | unit |
-| 4 | active_status 候補 | availability / 空ヒットで候補が記録され、`item.active_status` は変わらない | unit |
+| 4 | active_status 候補 | availability / 空ヒットで専用候補テーブルへ upsert され、`item.active_status` と `raw_product_metadata` 候補カラムは変わらない | unit |
 | 5 | Rate Limit | 429 時に待機・再試行し、ログに `GRS-EXT-102`、cursor が `paused` | unit（mock） |
 | 6 | API失敗 | 外部API失敗時に api_call_log / error_log が記録され、部分失敗方針に従う | unit（mock） |
 | 7 | cursor 更新 | API 成功後にのみ fetch_cursor が更新される | unit |
@@ -389,6 +389,9 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-14 | 初版作成 | #1224 |
+| 2026-07-14 | §18.1 No.6: 再確認対象の選定を **(B) 優先度付き部分集合** に決定。§18.2 No.2 を決定事項へ移管 | #1224 |
+| 2026-07-14 | §18.1 No.7: active_status 候補の保存先を **(C) 専用候補テーブル** に決定。§18.2 を解消 | #1224 |
+| 2026-07-14 | §18.1.1: 物理名 / UNIQUE、BATCH-008 入力競合（制限側優先）、Retention（未適用保持・適用後 14 日）を Human 確定 | #1224 |
 
 ---
 
@@ -403,17 +406,48 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 3 | カーソル粒度 | **1 商品（`external_item_code`）= 1 カーソル**。`scope.external_item_code` 必須 | Human（fetch_cursor #505） | - | §9.1 |
 | 4 | 本 Batch の終端 | **Raw 保存 + cursor 更新 + active_status 候補記録まで**。Staging / Item / active_status 本更新は後続 | バッチ処理一覧 | - | BATCH-005 / 008 |
 | 5 | API | 楽天商品検索APIの **itemCode 指定**のみ | 外部商品データ連携設計書 | - | |
+| 6 | 再確認対象の選定 | **(B) 優先度付き部分集合**を既定とする。最終確認日・popularity 等で優先し、件数上限を config / workflow input 化する。`(C) workflow 明示リスト` は手動再実行・失敗再確認の補助として併用可。`(A) 全 active Item` は週次既定としない | Human | 2026-07-14 | 週次 Rate Limit・所要時間の抑制。優先キー・上限値の具体値は実装 Task / config で定める |
+| 7 | active_status 候補の保存先 | **(C) 専用候補テーブル**を採用する。`(A) raw_product_metadata` 拡張と `(B) Run ログ寄せ`は採用しない。正本区分は `product_diff_result` と同型の **派生 / 判定結果（一時）**。物理名 **`item_active_status_candidate`**（Human 確定）。本 Batch は候補の **Writer**、BATCH-008 は **Reader / Applier**。冪等キーは **`batch_run_id` + `source` + `external_item_code`**（Human 確定）。BATCH-008 入力競合・Retention は §18.1.1 | Human | 2026-07-14 | 再実行・部分失敗リカバリを優先。DDL / IF / enum 詳細は付随 DB / BATCH-008 Task（§20） |
 
-### 18.2 決定済み事項（Human 判断）
+#### 18.1.1 専用候補テーブルの確定方針（No.7 の制約）
 
-|  No | 論点 | 決定内容 | 判断者 | 決定日 | 備考 |
-| --: | ---- | -------- | ------ | ------ | ---- |
-| 1 | active_status 候補の保存先 | **保留（実装 Task 開始前に確定）**。推奨案 (A) または (B) を実装 Task で検証し、BATCH-008 との I/F を確認する | - | - | MVP は既存 `raw_product_metadata` 拡張または Run 集計に寄せ、専用テーブルは BATCH-008 直前に確定してもよい |
-| 2 | 再確認対象の選定 | **(B) 優先度付き部分集合**。最終確認日・popularity 等で絞り込み、件数上限を config 化する。週次 Rate Limit と所要時間を抑える | Human | 2026-07-14 | 商品増加で週次枠を超過するリスクを回避。全 `active` Item (A) は採用しない |
+本仕様書では物理 DDL を確定しない。後続 Task は次を前提とする。
 
-### 18.3 残未決事項
+| 項目 | 方針 |
+| ---- | ---- |
+| 物理名 | **`item_active_status_candidate`**（Human 確定） |
+| 責務分離 | 候補は専用テーブルのみ。`raw_product_metadata` に候補カラム / JSON を追加しない |
+| 書き込み主体 | BATCH-004（Item Active Status Candidate Resolver） |
+| 読取・適用主体 | BATCH-008（Item Active Status Updater）。適用後は候補 status を更新し、Retention に従い削除 |
+| 冪等キー | **`batch_run_id` + `source` + `external_item_code`**（Human 確定。UNIQUE） |
+| 保持する最小情報 | 候補 `active_status`、理由コード、検知根拠（availability / empty_hit 等）、timestamps、任意で `raw_metadata_id` / `api_call_log_id` |
+| 候補 status（仮） | `detected` → `applied` / `superseded` / `discarded` |
+| Online 参照 | しない（batch 内部データ） |
 
-本仕様書時点で、Human 判断待ちの残未決事項は No.1 のみ。No.2 は決定済み。
+##### BATCH-008 入力競合（Human 確定・推奨案採用）
+
+BATCH-008 は `product_diff_result` 経路と本候補テーブル経路を **両方読む**。同一 Item で結果が食い違う場合の優先は次とする。
+
+| 状況 | 方針 |
+| ---- | ---- |
+| 制限度が異なる | **制限側を優先**する（推奨除外方向を優先）。概念上の強い順: `excluded` > `unavailable` > `inactive` > `active` |
+| 制限度が同じ | **新しい時刻を優先**する（候補の `detected_at` と `product_diff_result.judged_at` を比較） |
+| 復帰（`active` 化） | **専用候補で「取得成功かつ販売可能」が明示された場合のみ**。`product_diff_result.unavailable` 単独では復帰しない |
+
+根拠（推論）: 初期は検知ノイズ・部分失敗が多い。誤って販売不可を推薦し続けるリスクより、誤除外の方が運用で再確認・復帰しやすい。
+
+##### Retention（Human 確定・推奨案採用）
+
+| 候補 status | Retention |
+| ----------- | --------- |
+| `detected`（未適用） | **削除しない**（BATCH-008 再実行・部分リカバリのため） |
+| `applied` / `superseded` / `discarded` | **14 日間保持**した後に cleanup。008 成功直後の即時削除はしない（初期の障害調査性を優先） |
+
+cleanup の自動化（T7）は後続。MVP 初期は運用手順 / 手動 SQL でもよい。日数変更は運用実績を見て Human 再判断可。
+
+### 18.2 残未決事項（Human 判断）
+
+本仕様書時点で残未決事項はない。カラム定義・enum・IF-ID など詳細は、§18.1 No.7 / §18.1.1 を制約とする付随 Task（§20）で確定する。
 
 ---
 
@@ -426,9 +460,11 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | スケジュール | `docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md` | existing-item-recheck 系 |
 | 外部連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | 既存商品再確認・itemCode |
 | テーブル | `docs/06_実装設計/database/fetch_cursor_テーブル定義書.md` | `recheck` 形式 |
+| 参考テーブル | `docs/06_実装設計/database/product_diff_result_テーブル定義書.md` | 派生 / 判定結果（一時）の同型先例 |
 | 先行仕様 | `docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md` | 境界・item_search 共有 |
 | エラー | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-EXT/RAW/BAT/DB |
 | インターフェース | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-004 / IF-EXT-001 |
+| 付随（未作成） | `docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md` | 専用候補テーブル定義（§18.1 No.7） |
 
 ---
 
@@ -436,8 +472,9 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 
 - 本仕様書は実装・単体テスト Task の入力正本とする
 - 実装パス想定: `apps/batch/src/batch/application/item_recheck/**`
-- 主要モジュール（一覧）: Fetch Cursor Manager / Rakuten Item Search API Client / External API Rate Limiter / Rakuten Response Adapter / Raw Product Object Writer / Raw Product Metadata Writer / Item Active Status Candidate Resolver
+- 主要モジュール（一覧）: Fetch Cursor Manager / Rakuten Item Search API Client / External API Rate Limiter / Rakuten Response Adapter / Raw Product Object Writer / Raw Product Metadata Writer / Item Active Status Candidate Resolver（専用候補テーブル Writer）
 - 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親チェーン全体（005〜008）の改修は本 Epic 外
 - Contract Gate 不要（Batch は HTTP API 化しない）
 - 実楽天 API / 実 DB 検証は integration。unit は fixture / mock 正
 - `genre_sync/**` / `ranking_snapshot/**` / `item_pseudo_diff/**` は本 Epic の forbidden_paths（参照のみ）
+- **§18.1 No.7 付随**: 専用候補テーブルのテーブル定義書 / DDL / IF 追加、BATCH-008 読取仕様は本 Epic 外の付随 Task（Orchestrator / Human で Issue 化）
