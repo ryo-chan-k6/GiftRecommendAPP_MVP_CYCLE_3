@@ -6,7 +6,7 @@ review:
   title: "item_active_status_candidate DDL PRレビュー"
   summary: "T3 DDL / migration PR の AI Review。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -16,7 +16,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 1243
   issue:
     number: 1230
   task_definition: "prompts/definitions/tasks/item-active-status-candidate/ddl.yaml"
@@ -50,7 +51,7 @@ input:
     number: 1230
     required: true
   pr:
-    number: null
+    number: 1243
     required: true
   docs:
     - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
