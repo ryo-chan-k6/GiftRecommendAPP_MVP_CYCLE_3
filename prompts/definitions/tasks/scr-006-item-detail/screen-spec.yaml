@@ -1,0 +1,227 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-006-item-detail-screen-spec"
+  title: "SCR-006:商品詳細画面仕様書作成"
+  summary: "SCR-006（商品詳細画面）の画面仕様書（SCR-006_商品詳細画面画面仕様書.md）を、画面一覧・画面遷移図・API-PUB-003 契約に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-006:商品詳細画面"
+  epic_issue_number: 1303
+  epic_branch: "feature/epic-1303-scr-006-item-detail"
+  related_issues:
+    - number: 1304
+      purpose: "本 Task Issue"
+    - number: 1303
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、web 実装の前提となる画面仕様書を作成する。
+  develop の `/items/[itemId]` はプレースホルダのみ。API-PUB-003（develop 済み）を前提に、表示項目・画面状態・遷移・エラー UX を整理する。
+
+objective: |
+  SCR-006（商品詳細画面）について、実装・レビューが可能な粒度の画面仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-006 の画面仕様書を新規作成する（成果物: SCR-006_商品詳細画面画面仕様書.md）"
+  - "画面目的・対象ユーザー・表示項目を整理する"
+  - "画面状態（読込中 / 成功 / 404 / 422 inactive / DB・通信失敗）と遷移を整理する"
+  - "データ取得方針（API-PUB-003 GET /api/v1/items/{itemId}）を整理する"
+  - "SCR-004 への戻り導線・外部EC遷移・理由詳細/Feedback 導線の MVP 範囲を明記する"
+  - "既存プレースホルダ差し替え方針を明記する"
+
+out_of_scope:
+  - "他画面（SCR-006 以外）の画面仕様書作成"
+  - "OpenAPI / generated / ソースコード実装"
+  - "API-PUB-003 契約・実装の変更"
+  - "SCR-005 / SCR-007 の本実装仕様確定（導線レベルに留める）"
+  - "認証・認可方式そのものの変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-006 の画面ID・表示項目・操作を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "遷移元 SCR-004・外部EC・理由/Feedback を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-003 の位置づけを確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+      purpose: "Response / Error の正本確認"
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+      purpose: "結果一覧からの導線・fromResultId 等の分担確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: false
+      purpose: "GRS-ITM-* 等の画面表示方針確認"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/screen-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-006 画面仕様書"
+  - "表示項目定義"
+  - "画面状態・遷移・API-PUB-003 取得方針の整理"
+  - "SCR-004 / 外部EC / SCR-005・007 導線の MVP 範囲整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md が作成されている"
+  - "prompts/templates/docs/screen-spec.md の章構成に準拠している"
+  - "画面一覧の SCR-006 と矛盾する画面ID・画面名・MVP対象を定義していない"
+  - "データ取得が API-PUB-003 である方針と整合している"
+  - "表示しない項目（feature / embedding / shopName MVP 省略等）が契約・画面一覧と矛盾していない"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1304-scr-006-item-detail-screen-spec"
+  summary: "scr-006-item-detail-screen-spec"
+  base: "feature/epic-1303-scr-006-item-detail"
+  target: "feature/epic-1303-scr-006-item-detail"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 385
+      title: "[Epic]API-PUB-003:商品詳細取得"
+      purpose: "商品詳細 API（develop merge 済み）"
+    - issue: 1236
+      title: "[Epic]SCR-004:レコメンド結果一覧画面"
+      purpose: "導線元画面（develop merge 済み）"
+  issues: []
+  prs: []
+  tasks:
+    - "画面一覧が作成済みであること"
+    - "画面遷移図が作成済みであること"
+    - "API-PUB-003 契約仕様書が作成済みであること"
+    - "SCR-004 画面仕様書が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+  manual_checks:
+    - "画面一覧の SCR-006 と整合していること"
+    - "API-PUB-003 契約と表示項目が矛盾していないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs作成Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面一覧の SCR-006 と整合しているか"
+    - "API-PUB-003 契約（404/422/画像なし等）と画面状態が整合しているか"
+    - "SCR-005 / SCR-007 を導線レベルに留めているか"
+    - "命名が Task Definition設計書 §15.3 に従っているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "SCR-006 画面仕様書 Task。"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-006 が存在しない場合"
+  - "API-PUB-003 が develop 未反映の場合"
+  - "親 Epic Branch が未作成の場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-006:商品詳細画面仕様書作成"
+  - "親 Epic Definition: prompts/definitions/epics/scr-006-item-detail/epic.yaml"
+  - "起票後に parent.epic_issue_number / branch.name を更新する"
+  - "後続: 実装 Task / 単体テスト Task"
+  - "本 Task Issue: #1304 / Branch: docs/task-1304-scr-006-item-detail-screen-spec"
+  - "親Epic: #1303 [Epic]SCR-006:商品詳細画面 / Branch: feature/epic-1303-scr-006-item-detail"
