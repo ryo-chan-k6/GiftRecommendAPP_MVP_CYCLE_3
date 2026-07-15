@@ -18,8 +18,6 @@ export const REASON_DETAIL_DISABLED_HINT = "準備中";
 
 export const FEEDBACK_LABEL = "Feedback";
 
-export const FEEDBACK_DISABLED_HINT = "準備中";
-
 export const RETRY_LABEL = "再試行";
 
 export const FALLBACK_REASON_HINT = "一般的な推薦理由を表示しています";
