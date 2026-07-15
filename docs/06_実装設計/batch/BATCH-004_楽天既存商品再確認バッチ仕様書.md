@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service / batch    |
 | MVP対象        | `○`                                    |
 | 作成日         | 2026-07-14                             |
-| 更新日         | 2026-07-14                             |
+| 更新日         | 2026-07-15                             |
 
 ---
 
@@ -159,7 +159,7 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 | 後続 | 引き渡し内容 | 条件 |
 | ---- | ------------ | ---- |
 | BATCH-005 | `raw_product_metadata` / Raw JSON（object_key） | Raw 保存成功（後続処理可能な `import_status`） |
-| BATCH-008 | 専用候補テーブルの未適用行（§18.1 No.7） | 再確認で availability / 取得不能等が解決され候補が記録された場合 |
+| BATCH-008 | `item_active_status_candidate` の未適用行（§18.1 No.7） | 再確認で availability / 取得不能等が解決され候補が記録された場合 |
 | BATCH-017 | Run 集計入力（件数・status） | Import Summary（親チェーン経由時） |
 
 ### 7.3 更新リソース
@@ -169,7 +169,7 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 | Object Storage Raw | put | API 成功（または取得不能証跡方針に従う空レスポンス記録）ごと | `object_key` / `content_hash` | 同一 hash は skip 可 |
 | `raw_product_metadata` | insert / update | Raw 保存時 | `object_key` | |
 | `fetch_cursor` | get-or-create / update | plan / fetch 成功後 | UNIQUE スコープキー | `cursor_type=recheck` |
-| 専用候補テーブル | insert / upsert | Resolver 成功時 | `batch_run_id` + `source` + `external_item_code` | §18.1 No.7。Item 非更新 |
+| `item_active_status_candidate` | insert / upsert | Resolver 成功時 | `batch_run_id` + `source` + `external_item_code` | §18.1 No.7。Item 非更新。IF-DB-BATCH-020 |
 | `api_call_log` | insert | API 呼出ごと | `api_call_log_id` | `fetch_cursor_id` 紐づけ |
 | `batch_run_log` / `phase_log` / `error_log` | insert / update | Run / Phase / 失敗時 | Run 単位 | |
 | `item` / `staging_*` | - | - | - | **更新しない** |
@@ -203,7 +203,7 @@ flowchart TD
 | 3 | `fetch` | 楽天商品検索APIを itemCode 指定で呼ぶ | cursor / secrets | APIレスポンス / api_call_log | Rate Limit は待機・再試行。空ヒットは「取得不能」候補へ |
 | 4 | `adapt` | レスポンスを内部形式へ変換する | Rawレスポンス | 正規化候補 | 形式不正は `GRS-EXT-103` |
 | 5 | `raw_save` | Object Storage へ Raw JSON を保存し Metadata を書く | レスポンス | object_key / raw_product_metadata | `GRS-RAW-001` / `GRS-RAW-002` |
-| 6 | `resolve` | availability / 空ヒット等から active_status 候補を解決し専用候補テーブルへ記録する | 適応結果 / item | 候補行（§18.1 No.7） | Resolver 失敗は当該件失敗として記録。Item は更新しない |
+| 6 | `resolve` | availability / 空ヒット / 販売可能から active_status 候補を解決し `item_active_status_candidate` へ記録する（IF-DB-BATCH-020） | 適応結果 / item | 候補行（`candidate_status=detected`。§18.1 No.7） | Resolver 失敗は当該件失敗として記録。Item は更新しない |
 | 7 | `cursor_update` | `fetch_cursor` の last_fetched_at / status を更新する | api_call_log / 成功結果 | fetch_cursor | API 成功後に更新（テーブル定義書 §5.3）。完了時は `exhausted` 等 |
 | 8 | `finalize` | 集計・batch_run_log 更新 | 各 Phase 結果 | run_status / counts | 部分成功は `GRS-BAT-002` |
 
@@ -222,7 +222,7 @@ flowchart TD
 | -------- | -------- | -------- | -------- | ---- |
 | レスポンス全体 | Raw JSON | Object Storage object | そのまま保存（秘密情報は含めない） | path は §10.2 |
 | `itemCode` | `external_item_code` | cursor scope / metadata キー | 文字列正規化 | |
-| `availability` / 空ヒット | active_status 候補 | 専用候補テーブル | Resolver ルールで候補化して upsert | 本更新は BATCH-008。Raw metadata には載せない |
+| `availability` / 空ヒット / 販売可能 | active_status 候補 | `item_active_status_candidate` | Resolver ルールで候補化して upsert（IF-DB-BATCH-020）。写像は §9.3 | 本更新は BATCH-008。Raw metadata には載せない |
 | API 呼出条件 | request summary | `api_call_log` | secret を除く | accessKey 非記録 |
 | `fetch_cursor_id` | - | `api_call_log.fetch_cursor_id` | 紐づけ必須（通常） | |
 | `scope.external_item_code` | `cursor_value.scope` | `fetch_cursor.cursor_value` | 必須 | fingerprint 対象 |
@@ -260,6 +260,18 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 
 具体的な SQL / ロジックは実装 Task で詳細化する。
 
+### 9.3 active_status 候補の Resolver 写像（MVP）
+
+正本: `item_active_status_candidate` テーブル定義書 §6.1。本 Batch Writer は次を最小セットとする。
+
+| `detection_basis` | 典型 `reason_code` | 典型 `candidate_active_status` | 意味 |
+| ----------------- | ------------------ | ------------------------------ | ---- |
+| `availability` | `availability_zero` | `unavailable` | 楽天 `availability=0` |
+| `empty_hit` | `empty_hit` | `unavailable` | itemCode 指定で 0 件 |
+| `api_success` | `available` | `active` | 取得成功かつ販売可能（復帰候補。§18.1.1） |
+
+`reason_code` / `detection_basis` の拡張はテーブル定義書に従う。Item 本更新は行わない。
+
 ---
 
 ## 10. DB / Storage更新仕様
@@ -270,7 +282,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | -------- | ---- | ----------------- | -------- | ------------ | ---- |
 | `fetch_cursor` | get-or-create / update | `source + source_api + cursor_type + target_external_genre_id + cursor_scope_fingerprint` | last_fetched_at / cursor_status / cursor_value | 同一スコープは既存行再利用 | `cursor_type=recheck` / `source_api=item_search` |
 | `raw_product_metadata` | insert / update | `raw_metadata_id` / `object_key` | hash / status / timestamps / source_api | 同一 object_key は status 更新 | IF-DB-BATCH-004 |
-| `item_active_status_candidate` | insert / upsert | `batch_run_id` + `source` + `external_item_code`（§18.1 No.7） | 候補値 / 理由 / 候補 status / timestamps / `raw_metadata_id`（任意） | 同一冪等キーは upsert | Item 非更新。`raw_product_metadata` には候補を書かない |
+| `item_active_status_candidate` | insert / upsert | `batch_run_id` + `source` + `external_item_code`（§18.1 No.7） | `candidate_active_status` / `reason_code` / `detection_basis` / `candidate_status`（`detected`） / `detected_at` / 任意で `item_id`・`raw_metadata_id`・`api_call_log_id` | 同一冪等キーは upsert。ON CONFLICT 時は業務列を更新し `candidate_status='detected'`・`applied_at=NULL` 等で未適用を再確立（テーブル定義書 §12.2） | **IF-DB-BATCH-020**。Item 非更新。`raw_product_metadata` には候補を書かない |
 | `api_call_log` | insert | `api_call_log_id` | status / latency / fetch_cursor_id | 追記 | 認証情報は保存しない |
 | `batch_run_log` | insert / update | `batch_run_id` | status / counts | Run 単位で一意 | |
 | `phase_log` | insert | `batch_run_id + phase` | status / duration | 追記 | |
@@ -305,6 +317,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | API Call | `succeeded` / `failed` / `rate_limited` 等 | 呼出結果 | `api_call_log` | |
 | Raw Metadata | `raw_saved` →（後続）`staged` / `imported` / `skipped` / `failed` | Raw保存・後続処理 | `raw_product_metadata.import_status` | 本 Batch 終端は主に `raw_saved` |
 | Fetch Cursor | `active` / `paused` / `exhausted` / `failed` 等 | 走査進捗 | `fetch_cursor.cursor_status` | 正常完了後は `exhausted`（ranking_supplement と同型） |
+| Active Status Candidate | `detected`（本 Batch 終端）→（BATCH-008）`applied` / `superseded` / `discarded` | Resolver 成功時に `detected` で記録 | `item_active_status_candidate.candidate_status` | Writer は IF-DB-BATCH-020。終端 status 更新は BATCH-008（IF-DB-BATCH-021） |
 | Phase | phase ごとの成功/失敗 | Phase 境界 | `phase_log` | |
 
 ---
@@ -338,7 +351,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | error_log | エラーコード・概要 | 失敗時 | DB | 個人情報・secret 非含有 |
 | raw_product_metadata | object_key / hash / import_status | Raw保存時 | DB | |
 | fetch_cursor | status / last_fetched_at | 走査更新時 | DB | `recheck` のみ |
-| 専用候補テーブル | 候補値・理由・候補 status | Resolver 時 | §18.1 No.7 | |
+| `item_active_status_candidate` | `candidate_active_status` / `reason_code` / `detection_basis` / `candidate_status` | Resolver 時（IF-DB-BATCH-020） | §18.1 No.7 | |
 
 ### 14.1 メトリクス
 
@@ -373,7 +386,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 1 | 正常系（recheck） | itemCode 指定で Raw / Metadata が保存され fetch_cursor（recheck）が進む | unit / integration（fixture） |
 | 2 | カーソル単位 | 1 `external_item_code` = 1 カーソルで get-or-create される | unit |
 | 3 | Raw 冪等 | 同一 content_hash 再実行で不要な多重 put が増えない | unit |
-| 4 | active_status 候補 | availability / 空ヒットで専用候補テーブルへ upsert され、`item.active_status` と `raw_product_metadata` 候補カラムは変わらない | unit |
+| 4 | active_status 候補 | availability / 空ヒット / 販売可能で `item_active_status_candidate` へ upsert され、`item.active_status` と `raw_product_metadata` 候補カラムは変わらない | unit |
 | 5 | Rate Limit | 429 時に待機・再試行し、ログに `GRS-EXT-102`、cursor が `paused` | unit（mock） |
 | 6 | API失敗 | 外部API失敗時に api_call_log / error_log が記録され、部分失敗方針に従う | unit（mock） |
 | 7 | cursor 更新 | API 成功後にのみ fetch_cursor が更新される | unit |
@@ -392,6 +405,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 2026-07-14 | §18.1 No.6: 再確認対象の選定を **(B) 優先度付き部分集合** に決定。§18.2 No.2 を決定事項へ移管 | #1224 |
 | 2026-07-14 | §18.1 No.7: active_status 候補の保存先を **(C) 専用候補テーブル** に決定。§18.2 を解消 | #1224 |
 | 2026-07-14 | §18.1.1: 物理名 / UNIQUE、BATCH-008 入力競合（制限側優先）、Retention（未適用保持・適用後 14 日）を Human 確定 | #1224 |
+| 2026-07-15 | Epic #1227 完了後の追随: IF-DB-BATCH-020、Writer 列名、§9.3 Resolver 写像、§12 `candidate_status`、§18/§19/§20 陳腐化解消 | #1282 |
 
 ---
 
@@ -407,21 +421,21 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 4 | 本 Batch の終端 | **Raw 保存 + cursor 更新 + active_status 候補記録まで**。Staging / Item / active_status 本更新は後続 | バッチ処理一覧 | - | BATCH-005 / 008 |
 | 5 | API | 楽天商品検索APIの **itemCode 指定**のみ | 外部商品データ連携設計書 | - | |
 | 6 | 再確認対象の選定 | **(B) 優先度付き部分集合**を既定とする。最終確認日・popularity 等で優先し、件数上限を config / workflow input 化する。`(C) workflow 明示リスト` は手動再実行・失敗再確認の補助として併用可。`(A) 全 active Item` は週次既定としない | Human | 2026-07-14 | 週次 Rate Limit・所要時間の抑制。優先キー・上限値の具体値は実装 Task / config で定める |
-| 7 | active_status 候補の保存先 | **(C) 専用候補テーブル**を採用する。`(A) raw_product_metadata` 拡張と `(B) Run ログ寄せ`は採用しない。正本区分は `product_diff_result` と同型の **派生 / 判定結果（一時）**。物理名 **`item_active_status_candidate`**（Human 確定）。本 Batch は候補の **Writer**、BATCH-008 は **Reader / Applier**。冪等キーは **`batch_run_id` + `source` + `external_item_code`**（Human 確定）。BATCH-008 入力競合・Retention は §18.1.1 | Human | 2026-07-14 | 再実行・部分失敗リカバリを優先。DDL / IF / enum 詳細は付随 DB / BATCH-008 Task（§20） |
+| 7 | active_status 候補の保存先 | **(C) 専用候補テーブル**を採用する。`(A) raw_product_metadata` 拡張と `(B) Run ログ寄せ`は採用しない。正本区分は `product_diff_result` と同型の **派生 / 判定結果（一時）**。物理名 **`item_active_status_candidate`**（Human 確定）。本 Batch は候補の **Writer**、BATCH-008 は **Reader / Applier**。冪等キーは **`batch_run_id` + `source` + `external_item_code`**（Human 確定）。BATCH-008 入力競合・Retention は §18.1.1 | Human | 2026-07-14 | 再実行・部分失敗リカバリを優先。DDL / IF / enum / Writer・Reader 境界の詳細正本は `item_active_status_candidate` テーブル定義書・IF-DB-BATCH-020/021・BATCH-008 仕様書（Epic #1227 完了） |
 
 #### 18.1.1 専用候補テーブルの確定方針（No.7 の制約）
 
-本仕様書では物理 DDL を確定しない。後続 Task は次を前提とする。
+本仕様書では物理 DDL・全カラム定義を重複記載しない。詳細正本は `docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md`（Epic #1227 / Task #1229）および DDL / migration（Task #1230）とする。Writer / Reader は次を前提とする。
 
 | 項目 | 方針 |
 | ---- | ---- |
 | 物理名 | **`item_active_status_candidate`**（Human 確定） |
 | 責務分離 | 候補は専用テーブルのみ。`raw_product_metadata` に候補カラム / JSON を追加しない |
-| 書き込み主体 | BATCH-004（Item Active Status Candidate Resolver） |
-| 読取・適用主体 | BATCH-008（Item Active Status Updater）。適用後は候補 status を更新し、Retention に従い削除 |
+| 書き込み主体 | BATCH-004（Item Active Status Candidate Resolver）。**IF-DB-BATCH-020** |
+| 読取・適用主体 | BATCH-008（Item Active Status Updater）。**IF-DB-BATCH-021**。適用時は候補 `candidate_status` を更新する。行削除は Retention cleanup（T7）が担い、008 は即時削除しない |
 | 冪等キー | **`batch_run_id` + `source` + `external_item_code`**（Human 確定。UNIQUE） |
-| 保持する最小情報 | 候補 `active_status`、理由コード、検知根拠（availability / empty_hit 等）、timestamps、任意で `raw_metadata_id` / `api_call_log_id` |
-| 候補 status（仮） | `detected` → `applied` / `superseded` / `discarded` |
+| 保持する最小情報 | `candidate_active_status`、`reason_code`、`detection_basis`、`detected_at`、任意で `raw_metadata_id` / `api_call_log_id` / `item_id` |
+| 候補 status | `detected` → `applied` / `superseded` / `discarded`（enum定義書 §6.27。Writer 初期値は `detected`） |
 | Online 参照 | しない（batch 内部データ） |
 
 ##### BATCH-008 入力競合（Human 確定・推奨案採用）
@@ -443,11 +457,11 @@ BATCH-008 は `product_diff_result` 経路と本候補テーブル経路を **�
 | `detected`（未適用） | **削除しない**（BATCH-008 再実行・部分リカバリのため） |
 | `applied` / `superseded` / `discarded` | **14 日間保持**した後に cleanup。008 成功直後の即時削除はしない（初期の障害調査性を優先） |
 
-cleanup の自動化（T7）は後続。MVP 初期は運用手順 / 手動 SQL でもよい。日数変更は運用実績を見て Human 再判断可。
+cleanup 手順は `docs/06_実装設計/batch/item_active_status_candidate_Retention_cleanup運用手順.md`（Epic #1227 / Task #1235）を正とする。日数変更は運用実績を見て Human 再判断可。
 
 ### 18.2 残未決事項（Human 判断）
 
-本仕様書時点で残未決事項はない。カラム定義・enum・IF-ID など詳細は、§18.1 No.7 / §18.1.1 を制約とする付随 Task（§20）で確定する。
+本仕様書時点で残未決事項はない。カラム定義・enum・IF-ID・DDL・BATCH-008 Reader/Applier・Retention は Epic #1227 成果を正本とする（§19）。BATCH-004 側の残作業は **Writer 実装（#1231 / T4a）および本 Epic の実装・UT** である。
 
 ---
 
@@ -461,11 +475,13 @@ cleanup の自動化（T7）は後続。MVP 初期は運用手順 / 手動 SQL �
 | 外部連携 | `docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md` | 既存商品再確認・itemCode |
 | テーブル | `docs/06_実装設計/database/fetch_cursor_テーブル定義書.md` | `recheck` 形式 |
 | 参考テーブル | `docs/06_実装設計/database/product_diff_result_テーブル定義書.md` | 派生 / 判定結果（一時）の同型先例 |
+| 候補テーブル | `docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md` | 専用候補テーブル定義（§18.1 No.7）。Epic #1227 / Task #1229 |
 | 先行仕様 | `docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md` | 境界・item_search 共有 |
 | エラー | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-EXT/RAW/BAT/DB |
-| インターフェース | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-004 / IF-EXT-001 |
-| BATCH-008 仕様書 | `docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md` | 候補 Reader / Applier・競合（付随 #1233） |
-| 付随 | `docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md` | 専用候補テーブル定義（§18.1 No.7）。Epic #1227 / Task #1229 |
+| enum | `docs/06_実装設計/database/enum定義書.md` §6.27 | `candidate_status` |
+| インターフェース | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-004 / IF-EXT-001 / **IF-DB-BATCH-020**（Writer）/ **IF-DB-BATCH-021**（Reader・008） |
+| BATCH-008 仕様書 | `docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md` | 候補 Reader / Applier・競合（#1233） |
+| Retention | `docs/06_実装設計/batch/item_active_status_candidate_Retention_cleanup運用手順.md` | 終端 status の cleanup（#1235） |
 
 ---
 
@@ -473,9 +489,9 @@ cleanup の自動化（T7）は後続。MVP 初期は運用手順 / 手動 SQL �
 
 - 本仕様書は実装・単体テスト Task の入力正本とする
 - 実装パス想定: `apps/batch/src/batch/application/item_recheck/**`
-- 主要モジュール（一覧）: Fetch Cursor Manager / Rakuten Item Search API Client / External API Rate Limiter / Rakuten Response Adapter / Raw Product Object Writer / Raw Product Metadata Writer / Item Active Status Candidate Resolver（専用候補テーブル Writer）
+- 主要モジュール（一覧）: Fetch Cursor Manager / Rakuten Item Search API Client / External API Rate Limiter / Rakuten Response Adapter / Raw Product Object Writer / Raw Product Metadata Writer / Item Active Status Candidate Resolver（**IF-DB-BATCH-020** Writer）
 - 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親チェーン全体（005〜008）の改修は本 Epic 外
 - Contract Gate 不要（Batch は HTTP API 化しない）
 - 実楽天 API / 実 DB 検証は integration。unit は fixture / mock 正
 - `genre_sync/**` / `ranking_snapshot/**` / `item_pseudo_diff/**` は本 Epic の forbidden_paths（参照のみ）
-- **§18.1 No.7 付随**: 専用候補テーブルのテーブル定義書 / DDL / IF 追加、BATCH-008 読取仕様は本 Epic 外の付随 Task（Orchestrator / Human で Issue 化）
+- **§18.1 No.7 付随（Epic #1227）**: テーブル定義書 / DDL / IF-020·021 / BATCH-008 Reader·Applier / Retention は **完了・本 Epic Branch 取込済み**（PR #1276）。残る Writer 実装は **#1231（T4a）** と本 Epic 実装 Task で扱う
