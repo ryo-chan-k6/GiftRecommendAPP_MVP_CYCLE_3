@@ -1,0 +1,92 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-004-recheck-rate-limit-cursor-paused-pr"
+  title: "BATCH-004 Rate Limit cursor=paused PRレビュー"
+  summary: "BATCH-004 GRS-EXT-102 時 paused 遷移 follow-up（#1298）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1299
+  issue:
+    number: 1298
+  task_definition: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/rate-limit-cursor-paused.yaml"
+  source_branch: "fix/task-1298-batch-004-recheck-rate-limit-cursor-paused"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+  parent_epic_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/rate-limit-cursor-paused.yaml"
+    required: true
+  issue:
+    number: 1298
+    required: true
+  pr:
+    number: 1299
+    required: true
+  diff:
+    required: true
+
+review_points:
+  common:
+    - "develop 直 follow-up 理由が明示されているか"
+    - "Related to（Closes 非使用）か"
+  source:
+    - "GRS-EXT-102 時のみ paused か"
+    - "成功パス exhausted を壊していないか"
+  tests:
+    - "paused 断言があるか"
+  security:
+    - "secret 非含有"
+
+notes:
+  - "Issue #1298"

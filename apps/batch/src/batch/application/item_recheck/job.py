@@ -214,6 +214,13 @@ class ItemRecheckJob:
                 page=page,
                 error_code=exc.code,
             )
+            # fetch_cursor §5.3 / §17.1 No.3: rate_limited（GRS-EXT-102）→ 同一処理内で paused
+            if exc.code == "GRS-EXT-102" and cursor_id is not None:
+                self._repos.update_cursor_progress(
+                    cursor_id=cursor_id,
+                    page=page,
+                    cursor_status="paused",
+                )
             raise
 
         # adapt (allow empty for recheck)

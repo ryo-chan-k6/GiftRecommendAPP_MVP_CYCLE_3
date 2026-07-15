@@ -1,0 +1,222 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-004-recheck-rate-limit-cursor-paused"
+  title: "BATCH-004:Rate Limit時fetch_cursorをpausedへ遷移"
+  summary: "Epic #1222 develop merge 後 follow-up。BATCH-004 が GRS-EXT-102（Rate Limit）時に fetch_cursor.cursor_status=paused へ更新する（fetch_cursor 定義書 §5.3 / §17.1 No.3・BATCH-004 §16 No.5）。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+  epic_issue_number: 1222
+  epic_branch: "develop"
+  related_issues:
+    - number: 1222
+      purpose: "親 Epic（CLOSED。本 Task は develop 直 follow-up）"
+    - number: 1291
+      purpose: "UT で paused 未実装を注記した Task"
+  related_prs:
+    - number: 1296
+      purpose: "Epic develop merge"
+    - number: 1292
+      purpose: "UT で Should として記録"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #1222 / PR #1296 は develop merge 済み。UT（#1291）で Rate Limit 時 cursor=paused が
+  未実装であることを Should として明示した。fetch_cursor テーブル定義書 §5.3・§17.1 No.3 により
+  api_call_log rate_limited（GRS-EXT-102）後の同一処理内 paused 遷移は MVP 必須。
+  Epic Reopen せず develop ベース・develop 向け follow-up とする。
+
+objective: |
+  BATCH-004 item_recheck が GRS-EXT-102 発生時に当該 recheck カーソルを paused へ更新し、
+  unit test で検証する。待機・リトライループの本格実装は本 Task では行わない。
+
+scope:
+  - "item_recheck: GRS-EXT-102 時に fetch_cursor を paused 更新（page は進めない）"
+  - "関連 unit test の更新（paused 断言。未実装注記の削除）"
+  - "必要なら BATCH-004 仕様書 §16 No.5 の実装追随注記（最小）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "待機 sleep / 指数バックオフの本番 Rate Limiter 本実装"
+  - "他 Batch（BATCH-001〜003）の paused 対応"
+  - "Epic #1222 Reopen"
+  - "OpenAPI / migration / item_active_status/**"
+  - "実楽天API検証"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "§13 / §16 Rate Limit"
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+      purpose: "§5.3 rate_limited→paused MVP 必須"
+  files:
+    - path: "apps/batch/src/batch/application/item_recheck/job.py"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_recheck.py"
+      required: true
+  issues:
+    - number: 1222
+      purpose: "親 Epic（CLOSED）"
+  prs:
+    - number: 1296
+      purpose: "Epic merge"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "apps/batch/src/batch/application/item_recheck/job.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/rate-limit-cursor-paused.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-004-rakuten-existing-item-recheck/rate-limit-cursor-paused/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_item_recheck.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "GRS-EXT-102 → cursor=paused 実装"
+  - "unit test 更新"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "GRS-EXT-102 時に当該 recheck カーソルが paused になる"
+  - "成功パスの exhausted 遷移を壊さない"
+  - "api_call_log / error_log に GRS-EXT-102 が残る"
+  - "関連 pytest が通る"
+  - "PR target が develop"
+  - "Related to #本Issue（Closes 非使用）"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  name: "fix/task-1298-batch-004-recheck-rate-limit-cursor-paused"
+  summary: "batch-004-recheck-rate-limit-cursor-paused"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-16"
+
+issue:
+  number: 1298
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1222
+      purpose: "親（CLOSED）"
+  prs:
+    - number: 1296
+      purpose: "Epic develop merge"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-004-rakuten-existing-item-recheck"
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_recheck/job.py"
+    - "apps/batch/tests/unit/application/test_item_recheck.py"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（item_recheck）"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_item_recheck.py -q --tb=short"
+  not_required:
+    - "integration test"
+  skip_reason:
+    "integration test": "fixture/mock unit で paused 遷移を検証"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "paused 遷移が fetch_cursor §5.3 と整合するか"
+    - "成功パス / 他エラーを壊していないか"
+    - "develop 直 follow-up 理由が PR 本文にあるか"
+    - "secret 非含有"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 follow-up fix"
+
+stop_conditions:
+  - "Epic #1222 が develop 未 merge の場合"
+  - "待機リトライ本実装が必須と判断された場合（Human 確認）"
+  - "secret が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-004:Rate Limit時fetch_cursorをpausedへ遷移"
+  - "Parent #1222 follow-up / develop 直 PR"
+  - "待機・再試行ループは本 Task 外"
