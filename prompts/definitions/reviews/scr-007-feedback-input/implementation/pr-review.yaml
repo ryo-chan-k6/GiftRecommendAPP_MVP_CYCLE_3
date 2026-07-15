@@ -1,0 +1,116 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-007-feedback-input-implementation-pr"
+  title: "SCR-007 Feedback入力表示実装 PRレビュー"
+  summary: "SCR-007 Feedback入力表示実装 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1337
+  task_definition: "prompts/definitions/tasks/scr-007-feedback-input/implementation.yaml"
+  source_branch: "feature/task-1337-scr-007-feedback-input-implementation"
+  target_branch: "feature/epic-1325-scr-007-feedback-input"
+  parent_epic_issue: "[Epic]SCR-007:Feedback入力表示"
+  parent_epic_branch: "feature/epic-1325-scr-007-feedback-input"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/scr-007-feedback-input/implementation.yaml"
+    required: true
+  issue:
+    number: 1337
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1325-scr-007-feedback-input"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-007_Feedback入力表示画面仕様書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+    - "Related to（Closes 禁止）か"
+  source:
+    - "item 粒度 Feedback と rating 自動マッピングか"
+    - "API-PUB-004 呼び出しが妥当か"
+    - "004/006 変更が導線有効化に閉じているか"
+    - "reason UI を出していないか"
+  tests:
+    - "モーダル送信・エラーのテストがあるか"
+    - "本番 network 非依存か"
+  security:
+    - "secret / sessionId に PII がないか"
+    - "generated 手動編集がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR 作成後に target.pr を同期する"

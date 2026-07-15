@@ -76,6 +76,9 @@ describe("ItemDetailPage", () => {
     expect(screen.getByText("外部ECで見る")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "推薦理由詳細" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Feedback" })).toBeDisabled();
+    expect(
+      screen.getByText("結果一覧から開くと送信できます"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("非表示ショップ")).not.toBeInTheDocument();
   });
 

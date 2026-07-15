@@ -19,15 +19,15 @@ const baseItem: PublicRecommendationResultItem = {
 };
 
 describe("RecommendationResultItem (SCR-004 / SCR-005)", () => {
-  it("renders rank, name, price, badge and keeps feedback disabled", () => {
+  it("renders rank, name, price, badge and enables feedback", () => {
     render(<RecommendationResultItem item={baseItem} resultId="result-1" />);
 
     expect(screen.getByLabelText("順位 1")).toBeInTheDocument();
     expect(screen.getByText("サンプル商品")).toBeInTheDocument();
     expect(screen.getByText("¥4,200")).toBeInTheDocument();
     expect(screen.getByText("上品")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Feedback" })).toBeDisabled();
-    expect(screen.getByText("準備中")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Feedback" })).toBeEnabled();
+    expect(screen.queryByText("準備中")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "外部ECで見る" })).toHaveAttribute(
       "href",
       "https://example.com/item/1",
