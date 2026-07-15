@@ -1,0 +1,149 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-003-item-detail-api-implementation-spec-pr"
+  title: "API-PUB-003 商品詳細取得API実装仕様書 PRレビュー"
+  summary: "API-PUB-003（商品詳細取得 / Public API）API実装仕様書作成 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1265
+  issue: 1262
+  task_definition: "prompts/definitions/tasks/api-pub-003-item-detail/api-implementation-spec.yaml"
+  source_branch: "docs/task-1262-api-pub-003-item-detail-api-implementation-spec"
+  target_branch: "feature/epic-385-pub-003-item-detail"
+  parent_epic_issue: "[Epic]API-PUB-003:商品詳細取得"
+  parent_epic_branch: "feature/epic-385-pub-003-item-detail"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-003-item-detail/api-implementation-spec.yaml"
+    required: true
+  issue:
+    number: 1262
+    required: true
+  pr:
+    number: 1265
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-385-pub-003-item-detail"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md"
+      required: true
+      purpose: "本 Task 成果物"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+      purpose: "契約正本との整合"
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch か"
+  docs:
+    - "実装面に限定され契約面再掲がないか"
+    - "404 / 422 / 画像なし 200 / Feature 非公開が契約と整合しているか"
+  api_contract:
+    - "OpenAPI / apps 実装変更が混在していないか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "PR差分が親Epic epic_scope.allowed_paths 内か"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "実装仕様書の不備がある"
+  needs_human_decision:
+    conditions:
+      - "MOD-ID / popularityBadge 方針の確定が必要で Blocker 化する場合"
+  split_required:
+    conditions:
+      - "OpenAPI / apps 実装変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新する"
+  - "親 Epic: #385"
