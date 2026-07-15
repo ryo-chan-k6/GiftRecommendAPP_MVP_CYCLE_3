@@ -18,7 +18,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1319
   issue:
     number: 1317
   task_definition: "prompts/definitions/tasks/batch-005-raw-staging/batch-spec.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1317
     required: true
   pr:
-    number: null
+    number: 1319
     required: true
   diff:
     required: true
