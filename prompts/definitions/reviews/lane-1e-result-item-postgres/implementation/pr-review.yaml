@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1295
   issue: 1294
   task_definition: "prompts/definitions/tasks/lane-1e-result-item-postgres/implementation.yaml"
   source_branch: "feature/task-1294-lane-1e-result-item-postgres-implementation"
@@ -69,7 +69,7 @@ input:
     number: 1294
     required: true
   pr:
-    number: null
+    number: 1295
     required: true
   diff:
     required: true
