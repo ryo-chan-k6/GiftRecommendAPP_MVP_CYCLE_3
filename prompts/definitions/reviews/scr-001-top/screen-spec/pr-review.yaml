@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1259
   issue: 1258
   task_definition: "prompts/definitions/tasks/scr-001-top/screen-spec.yaml"
   source_branch: "docs/task-1258-scr-001-top-screen-spec"
