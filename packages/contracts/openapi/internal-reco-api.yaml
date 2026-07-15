@@ -299,6 +299,16 @@ components:
         ngText:
           type: string
           maxLength: 300
+        ngKeywords:
+          type: array
+          items:
+            type: string
+          description: "API側で正規化済みのNGキーワード（例: アルコール）"
+        ngCategories:
+          type: array
+          items:
+            type: string
+          description: "API側で正規化済みのNGカテゴリ（例: alcohol）"
 
     ExecutionMode:
       type: string
@@ -751,6 +761,10 @@ components:
             nonPreferredText: "カジュアルすぎるものは避けたい"
           ngCondition:
             ngText: "アルコールはNG"
+            ngKeywords:
+              - "アルコール"
+            ngCategories:
+              - "alcohol"
           freeText: "退職する上司に、お礼として失礼がなく、少し気の利いたものを贈りたい"
           execution:
             mode: "ui"
