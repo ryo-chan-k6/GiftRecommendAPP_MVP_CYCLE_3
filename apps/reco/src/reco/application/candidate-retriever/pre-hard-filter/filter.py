@@ -22,7 +22,7 @@ if TYPE_CHECKING:
         ExecutionContext,
     )
 
-# OpenAPI は現状 ngText のみ。api 正規化までの暫定として ngText から実効キーワードを抽出する。
+# request.ng_text の再正規化は api 正本（MOD-RECO-012）。attribute hard_filter のみ暫定抽出を残す。
 _NG_SUFFIX_PATTERN = re.compile(
     r"(?:は|が|を|の)?"
     r"(?:NG|ＮＧ|ng|禁止|不可|ダメ|だめ|避けたい|避けて(?:ほしい|下さい|ください)|不要)"
@@ -96,10 +96,9 @@ def _merge_filter_conditions(
     hard_filter_values: list[str] = []
 
     if ng_condition is not None:
+        # api 派生の ng_keywords / ng_categories を正とする（request.ng_text は再抽出しない）
         ng_keywords.extend(_normalize_tokens(ng_condition.ng_keywords))
         ng_categories.extend(_normalize_tokens(ng_condition.ng_categories))
-        if ng_condition.ng_text and ng_condition.ng_text.strip():
-            ng_keywords.extend(_effective_ng_keywords_from_text(ng_condition.ng_text))
 
     seen_values: set[str] = set()
     for candidate in hard_filter_candidates:
