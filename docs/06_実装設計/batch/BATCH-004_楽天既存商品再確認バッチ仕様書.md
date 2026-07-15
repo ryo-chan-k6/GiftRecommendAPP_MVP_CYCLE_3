@@ -387,7 +387,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 2 | カーソル単位 | 1 `external_item_code` = 1 カーソルで get-or-create される | unit |
 | 3 | Raw 冪等 | 同一 content_hash 再実行で不要な多重 put が増えない | unit |
 | 4 | active_status 候補 | availability / 空ヒット / 販売可能で `item_active_status_candidate` へ upsert され、`item.active_status` と `raw_product_metadata` 候補カラムは変わらない | unit |
-| 5 | Rate Limit | 429 時に待機・再試行し、ログに `GRS-EXT-102`、cursor が `paused` | unit（mock） |
+| 5 | Rate Limit | 429 時にログへ `GRS-EXT-102`、当該 `fetch_cursor` を `paused`（page 非進行）。待機・再試行ループは Rate Limiter 本実装へ委譲 | unit（mock） |
 | 6 | API失敗 | 外部API失敗時に api_call_log / error_log が記録され、部分失敗方針に従う | unit（mock） |
 | 7 | cursor 更新 | API 成功後にのみ fetch_cursor が更新される | unit |
 | 8 | secret非含有 | ログ・fixture・docs に APIキー実値が含まれない | review / unit |
@@ -406,6 +406,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 2026-07-14 | §18.1 No.7: active_status 候補の保存先を **(C) 専用候補テーブル** に決定。§18.2 を解消 | #1224 |
 | 2026-07-14 | §18.1.1: 物理名 / UNIQUE、BATCH-008 入力競合（制限側優先）、Retention（未適用保持・適用後 14 日）を Human 確定 | #1224 |
 | 2026-07-15 | Epic #1227 完了後の追随: IF-DB-BATCH-020、Writer 列名、§9.3 Resolver 写像、§12 `candidate_status`、§18/§19/§20 陳腐化解消 | #1282 |
+| 2026-07-15 | Rate Limit（`GRS-EXT-102`）時に `fetch_cursor` を `paused` へ遷移（Epic follow-up） | #1298 |
 
 ---
 

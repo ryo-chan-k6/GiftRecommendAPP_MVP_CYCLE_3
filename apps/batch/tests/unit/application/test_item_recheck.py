@@ -543,11 +543,7 @@ def test_candidate_upsert_resets_to_detected_on_conflict() -> None:
 
 
 def test_rate_limit_records_ext_102() -> None:
-    """§16 No.5: 429 相当で GRS-EXT-102 を記録する。
-
-    仕様は cursor=paused を求めるが、現行実装は API 失敗時に cursor_update せず
-    active のまま残す（paused 未実装）。エラーコードと未進行を検証する。
-    """
+    """§16 No.5: 429 相当で GRS-EXT-102 を記録し、cursor を paused へ遷移する。"""
 
     seeds = [
         ItemSeed(source="rakuten", external_item_code="shop:rl", active_status="active")
@@ -568,13 +564,11 @@ def test_rate_limit_records_ext_102() -> None:
     assert failed[0].get("fetch_cursor_id")
     cursors = list(repos.fetch_cursors.values())
     assert cursors
-    # paused 未実装: 成功時のみ exhausted。失敗時は active / page=1 のまま
-    assert all(c.cursor_status == "active" and c.page == 1 for c in cursors)
-    assert not any(c.cursor_status == "paused" for c in cursors)
+    assert all(c.cursor_status == "paused" and c.page == 1 for c in cursors)
 
 
 def test_rate_limit_partial_with_success() -> None:
-    """§16 No.5 / No.6: Rate Limit と成功が混在すると partially_succeeded。"""
+    """§16 No.5 / No.6: Rate Limit と成功が混在すると partially_succeeded。RL のみ paused。"""
 
     seeds = [
         ItemSeed(source="rakuten", external_item_code="shop:ok", active_status="active"),
@@ -594,9 +588,35 @@ def test_rate_limit_partial_with_success() -> None:
     assert "GRS-BAT-002" in result.error_codes
     assert "shop:ok" in result.succeeded_item_codes
     assert "shop:rl" in result.failed_item_codes
+    by_code = {
+        (c.scope.get("external_item_code") if isinstance(c.scope, dict) else None): c
+        for c in repos.fetch_cursors.values()
+    }
+    assert by_code["shop:ok"].cursor_status == "exhausted"
+    assert by_code["shop:rl"].cursor_status == "paused"
+    assert by_code["shop:rl"].page == 1
 
 
-# --- §16 No.6: API 失敗・部分失敗 ---
+def test_non_rate_limit_api_failure_does_not_pause_cursor() -> None:
+    """GRS-EXT-100 等では paused にせず、cursor は active のまま（再試行可能）。"""
+
+    seeds = [
+        ItemSeed(source="rakuten", external_item_code="shop:bad", active_status="active")
+    ]
+    client = ScaffoldRakutenApiClient(
+        fail_item_search_keys={("recheck", "shop:bad", 1)},
+    )
+    repos = _repos(seeds=seeds)
+    job = ItemRecheckJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(job_run_id="job-no-pause", max_items=10)
+
+    assert result.status == "failed"
+    assert "GRS-EXT-100" in result.error_codes
+    cursors = list(repos.fetch_cursors.values())
+    assert cursors
+    assert all(c.cursor_status == "active" and c.page == 1 for c in cursors)
+    assert not any(c.cursor_status == "paused" for c in cursors)
 
 
 def test_api_failure_partial_records_ext_100_and_bat_002() -> None:
