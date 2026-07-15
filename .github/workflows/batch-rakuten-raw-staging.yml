@@ -1,0 +1,126 @@
+name: Batch Rakuten Raw Staging
+
+# BATCH-005 Raw取込・Staging変換（独立子 workflow）
+# 正本: BATCH-005 バッチ仕様書 §18.1 No.1 — workflow_call / workflow_dispatch
+# 親 item-import / existing-item-recheck チェーン全体改修は本 Epic では行わない
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_raw:
+        description: "Max raw_product_metadata rows to stage (default 1000)"
+        required: false
+        type: string
+        default: "1000"
+      source_api:
+        description: "Comma-separated source_api filter (default item_search)"
+        required: false
+        type: string
+        default: "item_search"
+      raw_metadata_ids:
+        description: "Comma-separated raw_metadata_id list (subset / re-run)"
+        required: false
+        type: string
+        default: ""
+      force:
+        description: "Re-stage even when import_status is staged/imported (true/false)"
+        required: false
+        type: string
+        default: "false"
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_raw:
+        description: "Max raw_product_metadata rows to stage (default 1000)"
+        required: false
+        type: string
+        default: "1000"
+      source_api:
+        description: "Comma-separated source_api filter (default item_search)"
+        required: false
+        type: string
+        default: "item_search"
+      raw_metadata_ids:
+        description: "Comma-separated raw_metadata_id list (subset / re-run)"
+        required: false
+        type: string
+        default: ""
+      force:
+        description: "Re-stage even when import_status is staged/imported (true/false)"
+        required: false
+        type: string
+        default: "false"
+
+concurrency:
+  group: batch-rakuten-raw-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  raw-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-005 scaffold demo
+        # Real DB / Object Storage client is not enabled in this Task.
+        # Secrets must never be printed. Use --scaffold-demo for CI smoke.
+        working-directory: apps/batch
+        run: |
+          MAX_ARGS=()
+          if [ -n "${{ inputs.max_raw }}" ]; then
+            MAX_ARGS+=(--max-raw "${{ inputs.max_raw }}")
+          fi
+          API_ARGS=()
+          if [ -n "${{ inputs.source_api }}" ]; then
+            API_ARGS+=(--source-api "${{ inputs.source_api }}")
+          fi
+          ID_ARGS=()
+          if [ -n "${{ inputs.raw_metadata_ids }}" ]; then
+            ID_ARGS+=(--raw-metadata-ids "${{ inputs.raw_metadata_ids }}")
+          fi
+          FORCE_ARGS=()
+          if [ "${{ inputs.force }}" = "true" ]; then
+            FORCE_ARGS+=(--force)
+          fi
+          uv run python -m batch.application.raw_staging \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${MAX_ARGS[@]}" \
+            "${API_ARGS[@]}" \
+            "${ID_ARGS[@]}" \
+            "${FORCE_ARGS[@]}"

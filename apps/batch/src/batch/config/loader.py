@@ -54,6 +54,8 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_internal_token=_read_optional_str(source, "BATCH_INTERNAL_TOKEN"),
         batch_chunk_size=_read_positive_int(source, "BATCH_CHUNK_SIZE"),
         batch_max_retry=_read_positive_int(source, "BATCH_MAX_RETRY"),
+        batch_raw_staging_max_raw=_read_positive_int(source, "BATCH_RAW_STAGING_MAX_RAW"),
+        batch_raw_staging_source_api=_read_optional_str(source, "BATCH_RAW_STAGING_SOURCE_API"),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )
