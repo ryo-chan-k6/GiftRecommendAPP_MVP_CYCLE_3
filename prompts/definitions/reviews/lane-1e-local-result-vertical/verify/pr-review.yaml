@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1267
   issue: 1264
   task_definition: "prompts/definitions/tasks/lane-1e-local-result-vertical/verify.yaml"
   source_branch: "chore/task-1264-lane-1e-local-result-vertical-verify"
@@ -69,7 +69,7 @@ input:
     number: 1264
     required: true
   pr:
-    number: null
+    number: 1267
     required: true
   diff:
     required: true
