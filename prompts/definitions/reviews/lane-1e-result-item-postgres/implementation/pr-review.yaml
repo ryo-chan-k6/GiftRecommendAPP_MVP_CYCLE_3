@@ -1,0 +1,112 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-result-item-postgres-implementation-pr"
+  title: "レーン1e Result Item Postgres配線 PRレビュー"
+  summary: "Result Item Postgres 配線実装 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1295
+  issue: 1294
+  task_definition: "prompts/definitions/tasks/lane-1e-result-item-postgres/implementation.yaml"
+  source_branch: "feature/task-1294-lane-1e-result-item-postgres-implementation"
+  target_branch: "feature/epic-1293-lane-1e-result-item-postgres"
+  parent_epic_issue: "[Epic]レーン1e:Result Item Postgres配線"
+  parent_epic_branch: "feature/epic-1293-lane-1e-result-item-postgres"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/lane-1e-result-item-postgres/implementation.yaml"
+    required: true
+  issue:
+    number: 1294
+    required: true
+  pr:
+    number: 1295
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1293-lane-1e-result-item-postgres"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope / PR target / Related to"
+  source:
+    - "021/022 Postgres INSERT 配線"
+    - "DEFAULT InMemory 維持"
+    - "既存 matching_config_id 列への INSERT（新規 migration なし）"
+  tests:
+    - "UT 更新・通過"
+  docs:
+    - "再スモーク記録（DB 行）"
+  security:
+    - "secret なし"
+
+acceptance_criteria:
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "PR コメントを正とする"
+
+notes:
+  - "PR / Issue / Epic Branch 作成後に番号同期"

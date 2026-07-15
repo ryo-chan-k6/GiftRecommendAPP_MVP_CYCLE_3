@@ -1,0 +1,183 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-result-item-postgres-implementation"
+  title: "レーン1e:Result Item Postgres配線実装"
+  summary: "MOD-RECO-021 recommendation_result と MOD-RECO-022 recommendation_result_item の Postgres INSERT を実装し production composition に注入する。PUB-002 再スモークで DB 行を確認する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:Result Item Postgres配線"
+  epic_issue_number: 1293
+  epic_branch: "feature/epic-1293-lane-1e-result-item-postgres"
+  related_issues:
+    - number: 1294
+      purpose: "本 Task Issue"
+    - number: 1293
+      purpose: "親 Epic"
+  related_prs:
+    - number: 1288
+      purpose: "先行候補 Retrieval MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1278/#1279 後、Snapshot 読取は Postgres だが result header / item INSERT は InMemory。
+  FK のため親 recommendation_result も同時に永続化する必要がある。
+
+objective: |
+  PostgresRecommendationResultRepository（021）と
+  PostgresRecommendationResultItemRepository（022）を配線し、
+  PUB-002 後に DB 上の result / result_item 行を確認する。
+
+scope:
+  - "PostgresRecommendationResultRepository.insert_header（021）"
+  - "PostgresRecommendationResultItemRepository.insert_items（022）"
+  - "build_production_ports で result_builder / snapshot_builder へ注入"
+  - "DEFAULT InMemory 維持"
+  - "UT・手順書・再スモーク"
+
+out_of_scope:
+  - "Reason 永続"
+  - "OpenAPI / migration 新規追加"
+  - "itemPrice / NG 精査"
+  - "SCR / PUB-004"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/composition/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/infrastructure/**"
+      action: "update"
+      required: true
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "021/022 Postgres INSERT 配線"
+  - "再スモーク記録（DB 行確認）"
+
+acceptance_criteria:
+  - "production が Postgres 021/022 INSERT を使う"
+  - "DEFAULT InMemory 維持"
+  - "UT 通過・PUB-002 後に recommendation_result / recommendation_result_item 行が存在する"
+  - "secret なし"
+
+branch:
+  no_branch: false
+  name: "feature/task-1294-lane-1e-result-item-postgres-implementation"
+  base: "feature/epic-1293-lane-1e-result-item-postgres"
+  target: "feature/epic-1293-lane-1e-result-item-postgres"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - issue: 1277
+      purpose: "先行 Retrieval MERGED"
+  issues: []
+  prs:
+    - number: 1288
+      purpose: "先行 Epic MERGED"
+
+exclusive_files:
+  - "apps/reco/src/reco/composition/builder.py"
+
+test_policy:
+  required:
+    - "composition UT"
+    - "repository UT（Scripted session）"
+  optional:
+    - "ローカル PUB-002 スモーク"
+  not_required:
+    - "integration against production DB"
+
+contract_gate:
+  required: false
+  reason: "OpenAPI / generated 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "既存 matching_config_id 列への INSERT が含まれるか（新規 migration なし）"
+    - "DEFAULT InMemory 維持"
+    - "FK 順（header → item）"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "レーン1e result item"
+
+notes:
+  - "matching_config_id は 20260702120000 で追加済みのため INSERT 対象"
+  - "AI は PR merge しない"
