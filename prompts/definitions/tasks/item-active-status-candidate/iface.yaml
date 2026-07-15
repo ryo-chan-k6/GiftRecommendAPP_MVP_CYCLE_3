@@ -1,0 +1,175 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-item-active-status-candidate-iface"
+  title: "item_active_status_candidate:インターフェース一覧IF追加"
+  summary: "インターフェース一覧へ item_active_status_candidate の Writer / Reader IF（IF-DB-BATCH-020 / 021）を追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  epic_issue_number: 1227
+  epic_branch: "feature/epic-1227-item-active-status-candidate"
+  related_issues:
+    - number: 1229
+      purpose: "T2 テーブル定義書"
+    - number: 1230
+      purpose: "T3 DDL"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  T2/T3 完了後。候補テーブルの境界 I/F をインターフェース一覧に追記する。T4a と並行可能。
+
+objective: |
+  IF-DB-BATCH-020（Writer）/ IF-DB-BATCH-021（Reader）を一覧・操作表・補足に追加する。
+
+scope:
+  - "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md への IF 追記"
+  - "冪等キー・更新主体・Item本更新非実施・Raw非載荷の明記"
+  - "テーブル定義書関連資料への IF ID 追記"
+
+out_of_scope:
+  - "実装コード"
+  - "OpenAPI / generated"
+  - "BATCH-008 仕様書本体（T5）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      required: true
+      purpose: "IF 対象・操作の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "追記先"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      action: "update"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "IF-DB-BATCH-020 / 021"
+
+acceptance_criteria:
+  - "Writer / Reader IF がインターフェース一覧に存在する"
+  - "冪等キーと Item 本更新は IF-DB-BATCH-009 である旨が明記されている"
+  - "OpenAPI / 実装コードを含まない"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  name: "docs/task-1232-item-active-status-candidate-iface"
+  summary: "item-active-status-candidate-iface"
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  epics:
+    - issue: 1227
+  issues:
+    - 1229
+    - 1230
+  prs: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-item-active-status-candidate-table-spec"
+  blocks: []
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF ID 採番の妥当性（020/021）"
+    - "§18.1.1 との整合"
+    - "実装・OpenAPI 非混入"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 docs Task"
+
+stop_conditions:
+  - "IF 採番方針の矛盾が発覚した場合"
+
+notes:
+  - "Issue #1232"

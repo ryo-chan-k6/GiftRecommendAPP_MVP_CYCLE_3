@@ -1,0 +1,183 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-item-active-status-candidate-batch-008-applier"
+  title: "BATCH-008:候補テーブルApplier実装"
+  summary: "BATCH-008 Item Active Status Updater の候補経路・競合解決・UT を実装する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  epic_issue_number: 1227
+  epic_branch: "feature/epic-1227-item-active-status-candidate"
+  related_issues:
+    - number: 1230
+      purpose: "T3 DDL"
+    - number: 1233
+      purpose: "T5 BATCH-008 Reader 仕様"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  T3 + T5 完了後。BATCH-008 仕様書に従い候補 Applier と競合ルールを実装する。
+  Retention DELETE は T7。専用 BATCH-008 Epic は当面 #1227 配下。
+
+objective: |
+  item_active_status パッケージで Reader/Applier・競合・UT を提供する。
+
+scope:
+  - "apps/batch/src/batch/application/item_active_status/**"
+  - "apps/batch/tests/unit/application/test_item_active_status.py"
+  - "競合ルール（制限側優先・同時刻・復帰条件）"
+  - "UT"
+
+out_of_scope:
+  - "Retention cleanup（T7）"
+  - "実 DB / 本番 adapter 配線"
+  - "GHA workflow 確定（§18.2）"
+  - "BATCH-004 Writer（T4a）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "§18.1.1"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_active_status.py"
+      action: "create"
+      required: true
+  tests:
+    - "apps/batch/tests/unit/application/test_item_active_status.py"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-008 Applier scaffold + UT"
+
+acceptance_criteria:
+  - "制限側優先・復帰条件の UT が green"
+  - "候補 INSERT / Diff 更新 / Retention DELETE をしない"
+  - "is_active が active_status='active' と同期"
+  - "secret 非含有"
+  - "§18.1.1 と矛盾しない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1234-batch-008-candidate-applier"
+  summary: "batch-008-candidate-applier"
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1227
+  issues:
+    - 1230
+    - 1233
+  prs: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-item-active-status-candidate-ddl"
+    - "task-item-active-status-candidate-batch-008-reader-spec"
+  blocks:
+    - "task-item-active-status-candidate-retention-cleanup"
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_active_status/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "integration against production DB"
+  skip_reason:
+    "integration against production DB": "scaffold / in-memory 正。実 DB は後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§18.1.1 競合・復帰の実装整合"
+    - "UT カバレッジ（制限側・復帰・冪等・失敗再実行）"
+    - "Retention DELETE 非実施"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常実装 Task"
+
+stop_conditions:
+  - "§18.1.1 と矛盾する実装が必要になった場合"
+
+notes:
+  - "Issue #1234"

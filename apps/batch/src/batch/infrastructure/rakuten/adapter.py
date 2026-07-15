@@ -156,6 +156,7 @@ class AdaptedItemSearchCandidate:
     external_item_code: str
     item_name: str | None = None
     genre_id: str | None = None
+    availability: int | None = None
 
 
 @dataclass(frozen=True)
@@ -170,14 +171,21 @@ def adapt_item_search_raw_payload(
     *,
     cursor_type: str,
     page: int = 1,
+    allow_empty: bool = False,
 ) -> AdaptedItemSearchRaw:
     """Map Rakuten item search JSON (formatVersion=2 shape) to candidates.
+
+    When ``allow_empty`` is True (BATCH-004 recheck), empty Items / zero candidates
+    return an empty AdaptedItemSearchRaw instead of raising GRS-EXT-103.
+    Default remains False so BATCH-003 behavior is unchanged.
 
     Secret fields are never expected in payloads persisted by this adapter.
     """
 
     items_raw = payload.get("Items")
     if not isinstance(items_raw, list):
+        if allow_empty and items_raw is None:
+            return AdaptedItemSearchRaw(candidates=())
         raise RakutenItemSearchApiError(
             cursor_type=cursor_type,
             page=page,
@@ -200,10 +208,13 @@ def adapt_item_search_raw_payload(
                 external_item_code=item_code,
                 item_name=_as_str(item_obj.get("itemName")),
                 genre_id=_as_str(item_obj.get("genreId")),
+                availability=_as_int(item_obj.get("availability")),
             )
         )
 
     if not candidates:
+        if allow_empty:
+            return AdaptedItemSearchRaw(candidates=())
         raise RakutenItemSearchApiError(
             cursor_type=cursor_type,
             page=page,

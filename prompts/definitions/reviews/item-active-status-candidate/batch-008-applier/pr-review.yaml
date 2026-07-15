@@ -1,0 +1,74 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-item-active-status-candidate-batch-008-applier-pr"
+  title: "BATCH-008 候補Applier PRレビュー"
+  summary: "T6 BATCH-008 Applier 実装 PR の AI Review。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+target:
+  pr: 1266
+  issue:
+    number: 1234
+  task_definition: "prompts/definitions/tasks/item-active-status-candidate/batch-008-applier.yaml"
+  source_branch: "feature/task-1234-batch-008-candidate-applier"
+  target_branch: "feature/epic-1227-item-active-status-candidate"
+  parent_epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  parent_epic_branch: "feature/epic-1227-item-active-status-candidate"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/item-active-status-candidate/batch-008-applier.yaml"
+    required: true
+  issue:
+    number: 1234
+    required: true
+  pr:
+    number: 1266
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "実装正本"
+
+review_points:
+  common:
+    - "PR target が親 Epic Branch か"
+  source:
+    - "制限側優先・復帰条件が §18.1.1 / BATCH-008 仕様と一致するか"
+    - "候補 INSERT / Diff 更新 / DELETE をしないか"
+  tests:
+    - "制限側優先・復帰・冪等・失敗再実行の UT があるか"
+  security:
+    - "secret 非含有"
+
+notes:
+  - "PR #1266。AI Review 結論: Human Reviewへ進行可"

@@ -1,0 +1,183 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-item-active-status-candidate-retention-cleanup"
+  title: "item_active_status_candidate:Retention cleanup"
+  summary: "applied/superseded/discarded の 14 日 Retention cleanup（scaffold + 運用手順）。detected は削除しない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  epic_issue_number: 1227
+  epic_branch: "feature/epic-1227-item-active-status-candidate"
+  related_issues:
+    - number: 1234
+      purpose: "T6 Applier"
+    - number: 1229
+      purpose: "テーブル定義書 §13"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  T6 後。§18.1.1 / テーブル定義書 §13 の Retention を運用手順と scaffold Job で担保する。
+
+objective: |
+  detected 非削除を担保した Retention cleanup（docs + in-memory Job + UT）を提供する。
+
+scope:
+  - "Retention cleanup 運用手順 docs"
+  - "apps/batch item_active_status/retention scaffold + UT"
+  - "Epic allowed_paths に item_active_status/** 等を追加（T6 越境解消）"
+
+out_of_scope:
+  - "004/008 業務ロジック変更"
+  - "実 DB adapter / GHA 定期実行の確定"
+  - "T4a Writer"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      required: true
+      purpose: "§13 Retention"
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "§11 Retention（008 は DELETE しない）"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/item_active_status_candidate_Retention_cleanup運用手順.md"
+      action: "create"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_active_status/retention.py"
+      action: "create"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_active_status_retention.py"
+      action: "create"
+      required: true
+  tests:
+    - "apps/batch/tests/unit/application/test_item_active_status_retention.py"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Retention cleanup 運用手順"
+  - "RetentionCleanupJob scaffold + UT"
+
+acceptance_criteria:
+  - "detected が削除されないことが UT で担保される"
+  - "applied は applied_at、superseded/discarded は updated_at で 14 日判定"
+  - "運用手順 docs に dry-run / DELETE SQL がある"
+  - "Epic allowed_paths が item_active_status/** を含む"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  name: "chore/task-1235-item-active-status-candidate-retention"
+  summary: "item-active-status-candidate-retention"
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1227
+  issues:
+    - 1234
+  prs: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-item-active-status-candidate-batch-008-applier"
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_active_status/retention.py"
+    - "docs/06_実装設計/batch/item_active_status_candidate_Retention_cleanup運用手順.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "integration against production DB"
+  skip_reason:
+    "integration against production DB": "scaffold / 手動 SQL 手順。実 DB は後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "detected 非削除"
+    - "14 日基準時刻（applied_at / updated_at）"
+    - "allowed_paths 修正の妥当性"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 chore Task"
+
+stop_conditions:
+  - "§18.1.1 Retention 方針の変更が必要になった場合"
+
+notes:
+  - "Issue #1235"

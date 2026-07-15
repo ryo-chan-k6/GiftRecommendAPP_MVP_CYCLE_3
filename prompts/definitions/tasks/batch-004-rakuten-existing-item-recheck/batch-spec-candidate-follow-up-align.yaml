@@ -1,0 +1,240 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-004-batch-spec-candidate-follow-up-align"
+  title: "BATCH-004:item_active_status_candidate追随仕様書修正"
+  summary: "Epic #1227（item_active_status_candidate）完了後、BATCH-004 バッチ仕様書の陳腐化・IF 参照不足・Writer 列曖昧さを最小 diff で追随する docs-only Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+  epic_issue_number: 1222
+  epic_branch: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  related_issues:
+    - number: 1224
+      purpose: "BATCH-004 バッチ仕様書初版（CLOSED）"
+    - number: 1227
+      purpose: "item_active_status_candidate 付随 Epic（CLOSED / Epic Branch 取込済み）"
+    - number: 1231
+      purpose: "残 Writer 実装 T4a（本 Task では実装しない）"
+  related_prs:
+    - number: 1225
+      purpose: "BATCH-004 仕様書初版"
+    - number: 1276
+      purpose: "Epic #1227 → epic-1222 merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  BATCH-004 仕様書（#1224）は §18.1 No.7 / §18.1.1 で専用候補テーブル方針を確定したが、
+  カラム定義・enum・IF-ID・DDL 詳細は付随 Epic #1227 に委譲していた。
+  #1227（T1–T3 / T4b / T5–T7）は Epic Branch へ merge 済み（PR #1276）。
+  一方 BATCH-004 仕様書には「付随 Task で確定」「候補 status（仮）」「IF-DB-BATCH-020 未記載」等の陳腐化が残る。
+  制約本体（物理名・UNIQUE・Writer/008 境界・競合・Retention）は正本と一致しており再設計は不要。
+  本 Task は docs 正本追随に限定し、実装・DDL・BATCH-008・Writer 実装（#1231）は行わない。
+
+objective: |
+  BATCH-004 バッチ仕様書を #1227 確定成果（テーブル定義書 / IF-020·021 / enum / BATCH-008 / Retention）へ追随させ、
+  後続実装 Task（および T4a Writer）が IF・列・UPSERT・復帰写像を BATCH-004 から辿れる状態にする。
+
+scope:
+  - "BATCH-004 仕様書 §10.1 に IF-DB-BATCH-020 と Writer 列名（candidate_active_status / reason_code / detection_basis / candidate_status=detected 等）を追記"
+  - "§9（必要最小）に api_success / available / active の復帰写像を追記"
+  - "§12 に candidate_status（Writer 終端 detected）を追記"
+  - "§14 の候補テーブル表記を物理名へ寄せる（任意）"
+  - "§18.1 No.7 備考 / §18.1.1 / §18.2 の「付随で確定」陳腐化を解消し、テーブル定義書・IF・Retention へ誘導"
+  - "§19 に IF-020/021・enum・Retention 運用手順を追加"
+  - "§20 を付随完了・残は #1231 Writer 実装と明記"
+  - "§17.1 変更履歴・ドキュメント更新日を追記"
+  - "本 Task / Review Definition を prompts/definitions に配置"
+
+out_of_scope:
+  - "Python 実装・GitHub Actions workflow YAML"
+  - "DDL / supabase migration / enum YAML の再変更"
+  - "インターフェース一覧・テーブル定義書・BATCH-008 仕様書・Retention 手順の再編集"
+  - "T4a Writer 実装（#1231）"
+  - "FETCH / Raw / cursor 境界の再設計"
+  - "OpenAPI / Orval / generated"
+  - "他 Batch 仕様書の変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "更新対象"
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      required: true
+      purpose: "Writer 列・UPSERT・§6.1 写像の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-020 / 021"
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "Writer / Reader 境界・競合"
+    - path: "docs/06_実装設計/batch/item_active_status_candidate_Retention_cleanup運用手順.md"
+      required: true
+      purpose: "Retention 手順参照"
+  templates: []
+  files: []
+  issues:
+    - number: 1227
+      purpose: "付随 Epic 完了確認"
+    - number: 1224
+      purpose: "初版仕様書 Task"
+  prs:
+    - number: 1276
+      purpose: "付随 Epic merge"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/batch-spec-candidate-follow-up-align.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-004-rakuten-existing-item-recheck/batch-spec-candidate-follow-up-align/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-004 仕様書の #1227 追随修正"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "§10.1 候補行に IF-DB-BATCH-020 と主要列名が記載されている"
+  - "§18.2 / §20 が「付随未確定」ではなく #1227 成果へ誘導し、残作業が #1231 であることが分かる"
+  - "§18.1.1 の候補 status「仮」表記が解消されている"
+  - "制約本体（物理名・UNIQUE・境界・競合・Retention 方針）を再設計していない"
+  - "docs-only（BATCH-004 仕様書 + 本 Task/Review Definition）である"
+  - "secret、APIキー、.env 実値を含んでいない"
+  - "PR target が親 Epic Branch である"
+
+branch:
+  no_branch: false
+  name: "docs/task-1282-batch-004-batch-spec-candidate-follow-up-align"
+  summary: "batch-004-batch-spec-candidate-follow-up-align"
+  base: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  target: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-16"
+
+issue:
+  number: 1282
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1222
+      title: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+      purpose: "親 Epic"
+    - issue: 1227
+      title: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+      purpose: "付随完了（前提）"
+  issues:
+    - number: 1224
+      purpose: "初版仕様書"
+  prs:
+    - number: 1276
+      purpose: "付随取込"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "epic-item-active-status-candidate"
+  blocks:
+    - "BATCH-004 implementation"
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs-only Task のため対象外"
+    "integration test": "docs-only Task のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-020 と Writer 列が #1227 正本と一致するか"
+    - "「付随未確定」陳腐化が解消されているか"
+    - "制約本体の再設計混入がないか"
+    - "docs-only か"
+    - "PR target が親 Epic Branch か"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の仕様書追随 Task は ai-logs に保存しない"
+
+stop_conditions:
+  - "親 Epic Issue / Epic Branch が未作成の場合"
+  - "制約本体（物理名・競合・Retention）の再設計が必要と判断された場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-004:item_active_status_candidate追随仕様書修正"
+  - "Issue #1282 / Branch docs/task-1282-batch-004-batch-spec-candidate-follow-up-align"
