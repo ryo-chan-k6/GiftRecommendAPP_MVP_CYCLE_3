@@ -6,7 +6,7 @@ review:
   title: "BATCH-004 楽天既存商品再確認Batch単体テスト PRレビュー"
   summary: "BATCH-004 単体テスト Task（#1291）の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1292
   issue:
     number: 1291
   task_definition: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/unit-test.yaml"
@@ -72,7 +72,7 @@ input:
     number: 1291
     required: true
   pr:
-    number: null
+    number: 1292
     required: true
   diff:
     required: true
