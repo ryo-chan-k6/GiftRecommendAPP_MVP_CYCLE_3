@@ -19,9 +19,9 @@ branch:
 
 target:
   pr: null
-  issue: null
+  issue: 1264
   task_definition: "prompts/definitions/tasks/lane-1e-local-result-vertical/verify.yaml"
-  source_branch: null
+  source_branch: "chore/task-1264-lane-1e-local-result-vertical-verify"
   target_branch: "chore/epic-1263-lane-1e-local-result-vertical"
   parent_epic_issue: "[Epic]レーン1e:ローカル結果あり縦串"
   parent_epic_branch: "chore/epic-1263-lane-1e-local-result-vertical"
@@ -66,7 +66,7 @@ input:
     path: "prompts/definitions/tasks/lane-1e-local-result-vertical/verify.yaml"
     required: true
   issue:
-    number: null
+    number: 1264
     required: true
   pr:
     number: null
