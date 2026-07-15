@@ -1,0 +1,160 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-local-result-vertical"
+  title: "レーン1e:ローカル結果あり縦串"
+  summary: "レーン1e（条件入力〜結果確認）向けに、ローカルで推薦結果 items≥1 を再現可能にする。手順・ギャップを正本化し手動 E2E（D1）の前提を整える。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  SCR-002 / SCR-004 は develop merge 済み。SCR-001 は Epic PR #1261 Human Review 中。
+  #1137 以降 #1138〜#1141 で Router / DB / pair_reader / config は解消。残ギャップ（stub ports 等）を踏まえ、結果あり再現をレーン1e 前提として明示 Task 化する。
+
+objective: |
+  Epic Issue / Branch を作成し、子 Task（verify）でローカル結果あり縦串を確認・最小ギャップ埋めを行い、develop へ統合する。
+
+scope:
+  - "子 Task（verify）の作業単位整理"
+  - "Epic Issue / Epic Branch（develop 起点）"
+  - "ローカル結果あり再現と手順書更新"
+
+out_of_scope:
+  - "SCR 画面実装本体"
+  - "手動 E2E 証跡（D1）そのもの"
+  - "Batch 本番相当フルラン"
+  - "OpenAPI / migration の大規模変更"
+  - "PUB-004 本実装変更（触らない）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（[Epic]レーン1e:ローカル結果あり縦串）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task（verify）"
+  - "epic_scope.allowed_paths"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Epic Branch が develop から作成されている"
+  - "子 Task PR target が親 Epic Branch である"
+  - "allowed_paths が横断 chore として妥当である"
+
+branch:
+  no_branch: false
+  name: "chore/epic-1263-lane-1e-local-result-vertical"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "infra"
+
+epic_scope:
+  artifact_id: null
+  allowed_paths:
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "scripts/dev/**"
+    - "scripts/db/**"
+    - "supabase/seeds/test-data/**"
+    - "prompts/definitions/epics/lane-1e-local-result-vertical/**"
+    - "prompts/definitions/tasks/lane-1e-local-result-vertical/**"
+    - "prompts/definitions/reviews/lane-1e-local-result-vertical/**"
+    - "ai-logs/experiments/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/web/src/**"
+    - "apps/api/src/app/feedback/**"
+  child_task_areas:
+    - "verify"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic の作業範囲がレーン1e ローカル結果ありに閉じているか"
+    - "Epic PR target が develop か"
+    - "PUB-004 / SCR 実装を無関係に広げていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e A2/A3"
+
+risk_points:
+  - "stub ports により items≥1 が未達のままになり、データ拡充では解けない"
+  - "PUB-004 並列作業への誤混入"
+
+human_decision_points:
+  - "items≥1 未達時に stub ports 本実装を別 Epic 化するか、D1 を mock/session 代替で進めるか"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "本 Epic Issue: #1263 / Branch: chore/epic-1263-lane-1e-local-result-vertical"
+  - "A2（縦串再確認）+ A3（結果あり）を verify Task に統合"
+  - "D1 手動 E2E は本 Epic 外（後続 Task）"
+  - "PUB-004 は別チャット担当。forbidden に feedback を明示"

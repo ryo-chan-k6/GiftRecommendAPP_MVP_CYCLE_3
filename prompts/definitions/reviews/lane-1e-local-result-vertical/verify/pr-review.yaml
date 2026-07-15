@@ -1,0 +1,111 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-local-result-vertical-verify-pr"
+  title: "レーン1e ローカル結果あり縦串確認 PRレビュー"
+  summary: "A2+A3 verify Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/tasks/lane-1e-local-result-vertical/verify.yaml"
+  source_branch: null
+  target_branch: "chore/epic-1263-lane-1e-local-result-vertical"
+  parent_epic_issue: "[Epic]レーン1e:ローカル結果あり縦串"
+  parent_epic_branch: "chore/epic-1263-lane-1e-local-result-vertical"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/lane-1e-local-result-vertical/verify.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "chore/epic-1263-lane-1e-local-result-vertical"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+    - "Related to（Closes 禁止）か"
+  docs:
+    - "結果あり再現手順または Blocker が手順書に残っているか"
+  security:
+    - "secret / .env 実値がないか"
+  epic_scope:
+    - "apps/api feedback / SCR 画面 / OpenAPI を広げていないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR / Issue 作成後に target 番号を同期する"
