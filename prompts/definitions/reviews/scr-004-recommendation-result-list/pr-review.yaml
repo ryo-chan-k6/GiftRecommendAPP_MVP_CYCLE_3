@@ -2,9 +2,9 @@ schema_version: "1.0"
 definition_type: "review"
 
 review:
-  id: "review-scr-002-recommendation-input-pr"
-  title: "SCR-002 レコメンド条件入力画面仕様書 PRレビュー"
-  summary: "SCR-002（レコメンド条件入力画面）画面仕様書作成 Task の PR を AI Review する"
+  id: "review-scr-004-recommendation-result-list-pr"
+  title: "SCR-004 レコメンド結果一覧画面仕様書 PRレビュー"
+  summary: "SCR-004（レコメンド結果一覧画面）画面仕様書作成 Task の PR を AI Review する"
   type: "task_pr_review"
   status: "ready"
 
@@ -18,13 +18,13 @@ branch:
   worktree_required: false
 
 target:
-  pr: 1154
-  issue: 1152
-  task_definition: "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
-  source_branch: "docs/task-1152-scr-002-recommendation-input-screen-spec"
-  target_branch: "feature/epic-1147-scr-002-recommendation-input"
-  parent_epic_issue: "[Epic]SCR-002:レコメンド条件入力画面"
-  parent_epic_branch: "feature/epic-1147-scr-002-recommendation-input"
+  pr: 1239
+  issue: 1237
+  task_definition: "prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
+  source_branch: "docs/task-1237-scr-004-recommendation-result-list-screen-spec"
+  target_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+  parent_epic_issue: "[Epic]SCR-004:レコメンド結果一覧画面"
+  parent_epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
 
 commands:
   primary: "/review-pr"
@@ -64,42 +64,42 @@ review_scope:
 
 input:
   task_definition:
-    path: "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
+    path: "prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
     required: true
   issue:
-    number: 1152
+    number: 1237
     required: true
   pr:
-    number: 1154
+    number: 1239
     required: true
   diff:
     required: true
-    compare_with: "feature/epic-1147-scr-002-recommendation-input"
+    compare_with: "feature/epic-1236-scr-004-recommendation-result-list"
   docs:
-    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
       required: true
       purpose: "作成成果物の内容確認"
     - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
       required: true
-      purpose: "SCR-002 行との整合確認"
+      purpose: "SCR-004 行との整合確認"
     - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
       required: true
       purpose: "前後画面遷移との整合確認"
     - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
       required: true
-      purpose: "本画面から呼び出す API-PUB-002 / API-PUB-005〜008 との整合確認"
+      purpose: "結果一覧が API-PUB-002 Response 由来である方針との整合確認"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "sessionStorage 受け渡し・再検索分担との整合確認"
     - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
       required: false
-      purpose: "SCR-002 と API-PUB-002 / API-PUB-005〜008 / 関連画面状態の対応確認"
+      purpose: "SCR-004 / SCR-005 / SCR-006 / SCR-007 対応の確認"
     - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
       required: false
-      purpose: "入力エラー・APIエラーの表示方針との整合確認"
+      purpose: "結果欠落・導線エラーの表示方針との整合確認"
     - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
       required: false
-      purpose: "trace_id 表示候補やエラー追跡情報の扱いとの整合確認"
-    - path: "docs/04_ドメインモデル設計/RecommendationRequest定義書.md"
-      required: false
-      purpose: "入力項目の整合確認"
+      purpose: "画面から見えるエラー追跡情報の扱いとの整合確認"
   files: []
   test_results:
     required: true
@@ -116,7 +116,7 @@ input:
         required: true
         purpose: "Task成果物が指定テンプレート（screen-spec.md）に沿って作成されているか確認するため"
         applies_to:
-          - "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+          - "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
 
 review_points:
   common:
@@ -129,14 +129,15 @@ review_points:
     - "Task PR で Closes #<Task Issue番号> を使っていないか（Related to を使用）"
   docs:
     - "指定された文書テンプレート（prompts/templates/docs/screen-spec.md）に沿って作成されているか"
-    - "画面仕様書が docs/06_実装設計/web/SCR-002_*.md に作成されているか"
-    - "表示項目、入力項目、画面状態（ローディング / エラー / 0件）、画面遷移が記載されているか"
-    - "関連 API（API-PUB-002 レコメンド実行、API-PUB-005〜008 マスタ取得）との接続点が記載されているか"
-    - "機能×モジュール対応表の SCR-002 / API-PUB-002 / API-PUB-005〜008 の対応と矛盾していないか"
-    - "エラー表示・trace_id 表示候補がエラーコード定義書 / ログ・Observability設計書と矛盾していないか"
-    - "用語揺れがないか（Recommendation Request / Gift Meaning 等のドメイン用語表記）"
+    - "画面仕様書が docs/06_実装設計/web/SCR-004_*.md に作成されているか"
+    - "表示項目、画面状態（Loading / Empty / Success）、画面遷移が記載されているか"
+    - "結果一覧が API-PUB-002 Response / sessionStorage 由来である方針が記載されているか"
+    - "表示しない項目（final_score 数値 / score_breakdown / shopName 等）が画面一覧・遷移図と矛盾していないか"
+    - "SCR-005 を同一画面内アコーディオンとして扱い、独立画面・モーダルにしていないか"
+    - "SCR-006 / SCR-007 / Feedback が導線レベルに留まっているか"
+    - "用語揺れがないか（Recommendation Result / Gift Meaning 等）"
     - "Notion 転記を想定した Markdown 体裁になっているか"
-    - "画面一覧 SCR-002 行と矛盾する画面ID・画面名・MVP対象を定義していないか"
+    - "画面一覧 SCR-004 行と矛盾する画面ID・画面名・MVP対象を定義していないか"
   source: []
   tests:
     - "docs 作成 Task として必要な manual check（テンプレート準拠 / 用語整合）が記載されているか"
@@ -156,14 +157,13 @@ review_points:
     - "secret や .env 実値が含まれていないか"
   branch:
     - "Task Branch から develop へ直接 PR していないか"
-    - "PR target が親 Epic Branch（feature/epic-1147-scr-002-recommendation-input）であるか"
+    - "PR target が親 Epic Branch（feature/epic-1236-scr-004-recommendation-result-list）であるか"
     - "Task PR で Related to #<Task Issue番号> が使われているか"
     - "Task PR で Closes #<Task Issue番号> を使っていないか"
   project:
     - "レビュー結果に応じた Status 更新意図が明確か"
   epic_scope:
-    - "PR差分が親Epic [Epic]SCR-002:レコメンド条件入力画面 の epic_scope.allowed_paths 内に収まっているか"
-    - "epic_scope.allowed_paths の generated（apps/web/src/generated/api/**）と wrapper（apps/web/src/lib/**）の区別が epic_scope と一致しているか"
+    - "PR差分が親Epic [Epic]SCR-004:レコメンド結果一覧画面 の epic_scope.allowed_paths 内に収まっているか"
     - "epic_scope.forbidden_paths（apps/api / apps/reco / apps/batch / openapi/** / db）への変更が混入していないか"
 
 acceptance_check:
@@ -194,7 +194,7 @@ result_policy:
       - "画面仕様の MVP 範囲判断が必要"
       - "scope 外変更を同一 PR に含めるべきか判断が必要"
       - "未実施テストを許容して Human Review へ進めてよいか判断が必要"
-      - "API-PUB-002 仕様未確定の影響で SCR-002 仕様の判断が分かれる場合"
+      - "画面一覧・UIコンポーネント一覧の Modal 前提表記と本仕様のアコーディオン方針の追随範囲判断が必要"
   split_required:
     conditions:
       - "OpenAPI 変更が混在している"
@@ -247,7 +247,7 @@ dependencies:
   issues: []
   prs: []
   tasks:
-    - "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
+    - "prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
   blocking: false
 
 parallel_control:
@@ -285,13 +285,14 @@ operation_logging:
   reason: "通常PRレビューのため、レビュー結果はPRコメントを正本とする"
 
 risk_points:
-  - "SCR-002 の画面仕様に API-PUB-002 / API-PUB-005〜008 以外のAPI仕様変更が混在する可能性"
+  - "画面一覧・UIコンポーネント一覧が Modal 前提のまま残り、アコーディオン方針との追随が必要になる可能性"
   - "OpenAPI / generated / 実装変更を docs 作成Taskに混在させる可能性"
+  - "Public Response に reason_detail が無い場合の表示方針が実装で揺れる可能性"
 
 human_decision_points:
-  - "画面仕様が MVP 範囲として妥当か"
+  - "SCR-005 アコーディオン方針（複数同時展開・高さ上限）が MVP として妥当か"
+  - "画面一覧 / UIコンポーネント一覧の Modal 表記追随を別 Task にするか"
   - "未実施テストの理由を許容して Human Review へ進めてよいか"
-  - "依存 Epic [Epic]API-PUB-002 が未起票の状態で本 Task を進めた場合の影響評価"
 
 stop_conditions:
   - "PR が存在しない場合"
@@ -310,6 +311,6 @@ stop_conditions:
 
 notes:
   - "本Taskは docs 作成 Task のため、source code 変更は原則 scope 外とする"
-  - "対応 Task Definition: prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
-  - "対応 Epic Definition: prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
-  - "review.target / input.issue.number / input.pr.number は実 PR / Issue 起票後に追記する"
+  - "対応 Task Definition: prompts/definitions/tasks/scr-004-recommendation-result-list/screen-spec.yaml"
+  - "対応 Epic Definition: prompts/definitions/epics/scr-004-recommendation-result-list/epic.yaml"
+  - "review.target.pr / input.pr.number = 1239（PR作成後反映済み）"

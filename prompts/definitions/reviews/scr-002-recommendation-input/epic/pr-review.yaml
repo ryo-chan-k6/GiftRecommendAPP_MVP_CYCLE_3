@@ -1,0 +1,96 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-002-recommendation-input-epic-pr"
+  title: "SCR-002 レコメンド条件入力画面 Epic PRレビュー"
+  summary: "Epic #1147（SCR-002 レコメンド条件入力画面）の develop 向け統合 PR を AI Review する。画面仕様書・実装・単体テストの縦串成果を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1223
+  issue:
+    number: 1147
+  task_definition: "prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
+  source_branch: "feature/epic-1147-scr-002-recommendation-input"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]SCR-002:レコメンド条件入力画面"
+  parent_epic_branch: "feature/epic-1147-scr-002-recommendation-input"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/scr-002-recommendation-input/epic.yaml"
+    required: true
+  issue:
+    number: 1147
+    required: true
+  pr:
+    number: 1223
+    required: false
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: false
+      purpose: "画面仕様書成果の有無確認"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-002 行との整合確認"
+
+review_points:
+  - "Epic scope / epic_scope.allowed_paths 内に差分が収まっているか"
+  - "Task PR が親 Epic Branch 経由で統合されているか"
+  - "OpenAPI / apps/api / apps/reco / apps/batch への無断変更がないか"
+  - "画面実装着手がマスタ API 完了前提と矛盾していないか"
+  - "secret / .env 実値を含んでいないか"
+
+notes:
+  - "Epic PR 作成時（/create-pr）に target.pr を実番号へ更新する"
+  - "レーン1時点では画面仕様書先行。実装・UT は後続 Task"
