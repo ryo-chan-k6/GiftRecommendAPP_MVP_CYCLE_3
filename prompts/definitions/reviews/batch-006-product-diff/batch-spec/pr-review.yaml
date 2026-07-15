@@ -18,7 +18,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1343
   issue:
     number: 1342
   task_definition: "prompts/definitions/tasks/batch-006-product-diff/batch-spec.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1342
     required: true
   pr:
-    number: null
+    number: 1343
     required: true
   diff:
     required: true
