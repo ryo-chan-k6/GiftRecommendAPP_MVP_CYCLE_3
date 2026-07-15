@@ -29,7 +29,7 @@ MVP の主経路は、BATCH-003 / BATCH-004 が保存した `source_api=item_sea
 | -: | ---- |
 | 1 | `import_status=raw_saved` 等の処理対象となる Raw Metadata を選定し、Object Storage から Raw JSON を読む |
 | 2 | `source_api` に応じて Staging 行へ変換し、Staging Validator で検証する |
-| 3 | `normalized_hash` を **BATCH-005 内で算出・確定**し `staging_item` に保存する（BATCH-006 は比較のみ。`staging_item` テーブル定義書 Human Review #517 No.5 **確定**） |
+| 3 | `normalized_hash` を **BATCH-005 内で算出して保存**し `staging_item` に書く（BATCH-006 は比較のみ。`staging_item` テーブル定義書 Human Review #517 No.5 **確定**） |
 | 4 | 成功時に `raw_product_metadata.import_status` を `staged` に更新する |
 | 5 | Item / `product_diff_result` / `item.active_status` 本更新を行わない境界を明示する |
 
@@ -127,7 +127,7 @@ MVP の主経路は、BATCH-003 / BATCH-004 が保存した `source_api=item_sea
 | `staging_item` | DB | database | 中間 | BATCH-006 / BATCH-007 入力 | `diff_status` は **NULL**（Human Review #517 **確定**） |
 | `staging_item_image` | DB | database | 中間 | 画像 URL 集合 | `source_api=item_search` 時 |
 | `staging_ranking_signal` | DB | database | 中間 | ランキング中間 | `source_api=item_ranking` 時。Snapshot 本更新は本 Batch 外 |
-| `staging_genre` | DB | database | 中間 | ジャンル中間 | `source_api=genre_search` 時。`external_genre` Upsert は本 Batch 外（BATCH-001） |
+| `staging_genre` | DB | database | 中間 | ジャンル中間 | `source_api=genre_search` 時。`external_genre` Upsert は本 Batch の out of scope（BATCH-001。正本優先は §18.2 No.D） |
 | `raw_product_metadata`（状態） | DB | database | Raw 参照 | `import_status` / `staged_at` | 成功時 `staged` |
 | `batch_run_log` / `phase_log` / `error_log` | DB | database | 運用 | Run / Phase / 失敗記録 | |
 | `item` / `product_diff_result` / `item.active_status` | - | - | - | **出力・更新しない** | BATCH-006 / 007 / 008 |
@@ -144,7 +144,7 @@ MVP の主経路は、BATCH-003 / BATCH-004 が保存した `source_api=item_sea
 | リソース | 操作 | 更新条件 | 冪等性 | 備考 |
 | -------- | ---- | -------- | ------ | ---- |
 | `staging_item` | upsert | Validation 成功・item 系 | UNIQUE ON CONFLICT | Human Review #517 **確定** |
-| `staging_item_image` | upsert（＋同一 Raw 内の同期 DELETE） | 同上 | UNIQUE | Human Review #523 **確定**。消えた URL 除去は定義書 §5.7 |
+| `staging_item_image` | upsert（＋同一 Raw 内の同期 DELETE） | 同上 | UNIQUE | Human Review #523 **確定**。消えた URL 除去は定義書 §5.8 |
 | `staging_ranking_signal` | upsert | ranking 系 | UNIQUE | Human Review #524 **確定** |
 | `staging_genre` | upsert | genre 系 | UNIQUE | Human Review #525 **確定** |
 | `raw_product_metadata` | update | Raw 単位成功 / 失敗 | `raw_metadata_id` | `staged` / `failed` 等 |
@@ -231,7 +231,7 @@ flowchart TD
 | `mediumImageUrls[]` | `image_url` / `image_size_type=medium` / `display_order` | 同上 | |
 | 配列先頭等 | `is_primary_candidate` | 商品あたり true は 1 件 | partial unique（#523 **確定**） |
 
-同一 Raw・同一商品でレスポンスに含まれない既存 URL は、UPSERT 後に DELETE する（`staging_item_image` テーブル定義書 §5.7）。
+同一 Raw・同一商品でレスポンスに含まれない既存 URL は、UPSERT 後に DELETE する（`staging_item_image` テーブル定義書 §5.8）。
 
 ### 9.3 `item_ranking` → `staging_ranking_signal`
 
@@ -256,7 +256,7 @@ flowchart TD
 | level | `genre_level` | |
 | leaf | `is_leaf` | |
 
-`external_genre` への Upsert は本 Batch の out of scope（BATCH-001）。
+`external_genre` への Upsert は本 Batch の out of scope（BATCH-001。テーブル定義書との記述差分は §18.2 No.D。本 Task では Upsert を実装範囲に広げない）。
 
 ### 9.5 `normalized_hash` 算出
 
@@ -282,7 +282,7 @@ flowchart TD
 | `staging_genre` | upsert | `(raw_metadata_id, external_genre_id)` | 業務列 + `staged_at` | ON CONFLICT DO UPDATE | Human Review #525 **確定** |
 | `raw_product_metadata` | update | `raw_metadata_id` | `import_status`、`staged_at`、失敗時 error_* | 同一行更新 | 失敗再実行時は `raw_saved` リセット可（`raw_product_metadata` 定義書） |
 | `batch_run_log` / `phase_log` / `error_log` | insert / update | Run / Phase 単位 | status / counts / code | 追記 / 更新 | |
-| `item` / `product_diff_result` | - | - | - | - | **更新しない** |
+| `item` / `product_diff_result` / `item.active_status` | - | - | - | - | **更新しない**（§2 境界。BATCH-006 / 007 / 008） |
 
 ### 10.2 Object Storage
 
@@ -418,6 +418,7 @@ flowchart TD
 | A | §18.1 No.1〜2 の正式採否 | Epic 明示の Human decision points | 003/004 同型で独立 YAML + `item_search` 既定 | Human Review |
 | B | genre / ranking を本仕様の MVP 必須に含めるか | BATCH-001/002 が内完結済み | 必須は `item_search`。他は同一コードパスの再処理オプション | |
 | C | `attribute_search` | enum にあるが Staging 主線が薄い | MVP out of scope 明示 | |
+| D | `external_genre` Upsert の責務境界（テーブル定義書との差分） | `staging_genre_テーブル定義書` §5.3–5.4 は BATCH-005 に `external_genre` 反映フェーズを含む記述がある。一方、本仕様および `バッチ処理一覧` の BATCH-005 出力は Staging のみであり、`external_genre` Upsert は BATCH-001 責務とする | **正本優先（本 Task 作業仮定）**: `バッチ処理一覧` / 本 BATCH-005 仕様。テーブル定義書側の整合修正は **別 Task / Human 判断**。本 Task で BATCH-005 に `external_genre` Upsert を実装範囲として広げない | 本仕様 §7.1 / §9.4 / §21.1 も同境界 |
 
 ---
 
@@ -464,7 +465,7 @@ flowchart TD
 | `product_diff_result` / `diff_status` 確定 | BATCH-006 |
 | `item.active_status` 本更新 | BATCH-008 |
 | 楽天 API 呼び出し | BATCH-001〜004 |
-| `ranking_snapshot` / `item_popularity_signal` / `external_genre` Upsert | BATCH-002 / BATCH-001 |
+| `ranking_snapshot` / `item_popularity_signal` / `external_genre` Upsert | BATCH-002 / BATCH-001（`external_genre` の境界・正本優先は §18.2 No.D） |
 | 親 item-import / existing-item-recheck **全体**改修 | Epic risk・BATCH-003/004 方針 |
 | 新規 DB migration | Human 判断 |
 | OpenAPI / generated | Contract Gate 不要 |
