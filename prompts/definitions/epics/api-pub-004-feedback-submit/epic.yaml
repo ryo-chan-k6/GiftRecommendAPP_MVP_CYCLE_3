@@ -140,12 +140,16 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-PUB-004_*"
     - "apps/api/src/app/feedback/**"
+    - "apps/api/src/app.ts"
+    - "apps/api/tests/unit/app/feedback/**"
+    - "apps/api/tests/unit/app/app.mount.test.ts"
     - "packages/contracts/openapi/**"
     - "packages/contracts/schemas/**"
     - "apps/web/src/generated/api/**"
     - "apps/web/src/lib/**"
     - "prompts/definitions/tasks/api-pub-004-feedback-submit/**"
     - "prompts/definitions/reviews/api-pub-004-feedback-submit/**"
+    - "prompts/definitions/epics/api-pub-004-feedback-submit/**"
   forbidden_paths:
     - "apps/reco/**"
     - "apps/batch/**"

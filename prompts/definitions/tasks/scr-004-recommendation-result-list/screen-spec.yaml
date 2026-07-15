@@ -1,0 +1,233 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-004-recommendation-result-list-screen-spec"
+  title: "SCR-004:レコメンド結果一覧画面仕様書作成"
+  summary: "SCR-004（レコメンド結果一覧画面）の画面仕様書（SCR-004_レコメンド結果一覧画面画面仕様書.md）を、画面一覧・画面遷移図・API一覧および API-PUB-002 Response 契約に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-004:レコメンド結果一覧画面"
+  epic_issue_number: 1236
+  epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+  related_issues:
+    - number: 1237
+      purpose: "本 Task Issue"
+    - number: 1236
+      purpose: "親 Epic"
+  related_prs:
+    - number: 1239
+      purpose: "本 Task PR"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、web 実装・E2E（レーン1e）の前提となる画面仕様書を作成する。
+  本Taskでは、画面一覧の SCR-004（レコメンド結果一覧画面）を対象に、表示項目・画面状態・遷移・データ取得方針（API-PUB-002 Response / sessionStorage）を整理する。
+
+objective: |
+  SCR-004（レコメンド結果一覧画面）について、実装・レビューが可能な粒度の画面仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-004 の画面仕様書を新規作成する（成果物: SCR-004_レコメンド結果一覧画面画面仕様書.md）"
+  - "画面目的・対象ユーザー・表示項目を整理する"
+  - "画面状態（結果あり / 結果なし受け取り失敗 / ローディング等）と遷移を整理する"
+  - "データ取得方針（API-PUB-002 Response の sessionStorage 受け取り）と導線 API（PUB-003 / PUB-004）の扱いを整理する"
+  - "SCR-005（推薦理由詳細）をモーダル／展開として本画面内で扱う方針を明記する"
+  - "SCR-006 / SCR-007 / Feedback を導線レベルに留める範囲を明記する"
+
+out_of_scope:
+  - "他画面（SCR-004 以外）の画面仕様書作成"
+  - "個別API仕様書の作成・更新（API-PUB-002 / API-PUB-003 / API-PUB-004 等は別Task）"
+  - "OpenAPI / generated / ソースコード実装"
+  - "認証・認可方式そのものの変更"
+  - "API-PUB-004 Feedback 本実装の詳細仕様確定（別レーン）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-004 の画面ID・画面名・MVP対象・概要を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "遷移元・遷移先・表示項目・モーダルを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "結果一覧が API-PUB-002 Response 由来であること、導線 API を確認するため"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "SCR-002 からの結果受け渡し・再検索時の入力復元分担を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      required: false
+      purpose: "SCR-004 と関連モジュールの対応を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: false
+      purpose: "結果欠落・導線エラーの表示方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+      purpose: "trace_id 表示候補や画面から見えるエラー追跡情報の扱いを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/機能一覧.md"
+      required: false
+      purpose: "画面が対応する機能範囲を確認するため"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/screen-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-004 画面仕様書"
+  - "表示項目定義"
+  - "画面遷移・データ取得方針の整理"
+  - "SCR-005 / SCR-006 / SCR-007 導線の MVP 範囲整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md が作成されている"
+  - "prompts/templates/docs/screen-spec.md の章構成に準拠している"
+  - "画面一覧の SCR-004 と矛盾する画面ID・画面名・MVP対象を定義していない"
+  - "結果一覧が API-PUB-002 Response 由来である方針と整合している"
+  - "表示しない項目（final_score 数値 / score_breakdown / shopName 等）が画面一覧・画面遷移図と矛盾していない"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1237-scr-004-recommendation-result-list-screen-spec"
+  base: "feature/epic-1236-scr-004-recommendation-result-list"
+  target: "feature/epic-1236-scr-004-recommendation-result-list"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-14"
+    due_date: "2026-07-15"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "レコメンド実行 API（develop merge 済み）。結果データの契約正本"
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "条件入力〜実行〜sessionStorage（develop merge 済み）"
+    - issue: 1236
+      title: "[Epic]SCR-004:レコメンド結果一覧画面"
+      purpose: "親 Epic"
+  issues: []
+  prs: []
+  tasks:
+    - "画面一覧が作成済みであること"
+    - "画面遷移図が作成済みであること"
+    - "SCR-002 画面仕様書が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+  manual_checks:
+    - "画面一覧の SCR-004 と整合していること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs作成Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面一覧の SCR-004 と整合しているか"
+    - "API一覧の『結果一覧は実行APIのResponseで表示』方針と矛盾していないか"
+    - "SCR-005 / SCR-006 / SCR-007 / Feedback の MVP 範囲が明示されているか"
+    - "命名が Task Definition設計書 §15.3 に従っているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "レーン1e向け SCR-004 画面仕様書 Task。"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-004 が存在しない場合"
+
+notes:
+  - "命名の正本は Task Definition設計書 §15.1（共通）・§15.3（画面）。"
+  - "Issueタイトル: [Task]SCR-004:レコメンド結果一覧画面仕様書作成"
+  - "本 Task Issue: #1237 / Branch: docs/task-1237-scr-004-recommendation-result-list-screen-spec"
+  - "親Epic: #1236 [Epic]SCR-004:レコメンド結果一覧画面 / Branch: feature/epic-1236-scr-004-recommendation-result-list"
+  - "依存Epic: #357 API-PUB-002 / #1147 SCR-002"
+  - "Epic Definition の正本は prompts/definitions/epics/scr-004-recommendation-result-list/epic.yaml"
+  - "後続: /create-pr → AI Review → Human Review"

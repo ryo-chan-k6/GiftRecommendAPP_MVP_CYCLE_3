@@ -91,7 +91,7 @@ output:
 
 deliverables:
   - "Epic Issue（タイトル: [Epic]SCR-002:レコメンド条件入力画面）"
-  - "Epic Branch（develop 起点 / feature/epic-<issue-number>-scr-002-recommendation-input）"
+  - "Epic Branch（develop 起点 / feature/epic-1147-scr-002-recommendation-input）"
   - "子 Task 候補一覧（画面仕様書 / 画面実装 / 単体テスト）"
   - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
 
@@ -106,19 +106,19 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/epic-<issue-number>-scr-002-recommendation-input"
+  name: "feature/epic-1147-scr-002-recommendation-input"
   base: "develop"
   target: "develop"
-  worktree_required: false
+  worktree_required: true
 
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "Todo"
+    status: "In Progress"
     priority: "high"
-    planned_start: null
-    due_date: null
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
 
 issue:
   unit: "epic"
@@ -129,12 +129,15 @@ epic_scope:
   artifact_id: "SCR-002"
   allowed_paths:
     - "docs/06_実装設計/web/SCR-002_*"
+    - "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
     - "apps/web/src/app/recommendations/**"
     - "apps/web/src/features/recommendation-input/**"
     - "apps/web/src/generated/api/**"
     - "apps/web/src/lib/**"
+    - "apps/web/tests/**"
     - "prompts/definitions/tasks/scr-002-recommendation-input/**"
     - "prompts/definitions/reviews/scr-002-recommendation-input/**"
+    - "prompts/definitions/epics/scr-002-recommendation-input/**"
   forbidden_paths:
     - "apps/api/**"
     - "apps/reco/**"
@@ -147,8 +150,13 @@ epic_scope:
     - "unit-test"
 
 dependencies:
-  epics: []  # 依存Epic: [Epic]API-PUB-002:レコメンド実行（実Issue番号確定後に追加）。成果物化方針書 §3.5.3。
-  issues: []
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "レコメンド実行 Public API（develop merge 済み）。画面仕様書・実装の呼び出し先前提"
+  issues:
+    - number: 1147
+      purpose: "本 Epic Issue"
   prs: []
   tasks: []
   blocking: false
@@ -205,9 +213,10 @@ risk_points:
   - "epic_scope.allowed_paths を超えた変更（例: apps/api 配下）を配下 Task に混入させる運用ミス"
 
 human_decision_points:
-  - "依存 Epic [Epic]API-PUB-002 の Issue 番号確定タイミング"
+  - "依存 Epic [Epic]API-PUB-002 は #357（CLOSED）として確定済み"
   - "子 Task の分割粒度（画面仕様書 / 画面実装 / 単体テストの切り方）"
   - "Recommendation Request 入力項目が変動した場合の Recommendation Request 定義書との整合方針"
+  - "画面実装・単体テストの着手タイミング（PUB-005〜008 マスタ API 完了後・Human 判断済み）"
 
 stop_conditions:
   - "必須 input.docs が存在しない場合"
@@ -219,5 +228,7 @@ stop_conditions:
 notes:
   - "Epic は作業管理単位であり、画面仕様書本体・実装・テストの正本は子 Task で作成する"
   - "命名の正本は Task Definition設計書 §15.0（Epic タイトル規約）・§15.3（画面 Task）"
-  - "本 Epic 配下の最初の子 Task は prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
-  - "依存 Epic Issue 番号は実 Issue 起票後に dependencies.epics へ追記する（成果物化方針書 §3.5.3）"
+  - "本 Epic Issue: #1147 / Epic Branch: feature/epic-1147-scr-002-recommendation-input"
+  - "本 Epic 配下の最初の子 Task は prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml（レーン1先行）"
+  - "implementation / unit-test Definition は起票済みだが、/start-task は PUB-005〜008 完了後（Human 判断）"
+  - "依存 Epic: #357 [Epic]API-PUB-002:レコメンド実行（成果物化方針書 §3.5.3）"

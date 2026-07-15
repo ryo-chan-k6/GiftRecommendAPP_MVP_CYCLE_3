@@ -18,13 +18,13 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null  # 対応 Task Issue 番号を起票後に追記
+  pr: 1154
+  issue: 1152
   task_definition: "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
-  source_branch: "docs/task-<issue-number>-scr-002-recommendation-input-screen-spec"
-  target_branch: "feature/epic-<issue-number>-scr-002-recommendation-input"
+  source_branch: "docs/task-1152-scr-002-recommendation-input-screen-spec"
+  target_branch: "feature/epic-1147-scr-002-recommendation-input"
   parent_epic_issue: "[Epic]SCR-002:レコメンド条件入力画面"
-  parent_epic_branch: "feature/epic-<issue-number>-scr-002-recommendation-input"
+  parent_epic_branch: "feature/epic-1147-scr-002-recommendation-input"
 
 commands:
   primary: "/review-pr"
@@ -67,14 +67,14 @@ input:
     path: "prompts/definitions/tasks/scr-002-recommendation-input/screen-spec.yaml"
     required: true
   issue:
-    number: null
+    number: 1152
     required: true
   pr:
-    number: null
+    number: 1154
     required: true
   diff:
     required: true
-    compare_with: "feature/epic-<issue-number>-scr-002-recommendation-input"
+    compare_with: "feature/epic-1147-scr-002-recommendation-input"
   docs:
     - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
       required: true
@@ -156,7 +156,7 @@ review_points:
     - "secret や .env 実値が含まれていないか"
   branch:
     - "Task Branch から develop へ直接 PR していないか"
-    - "PR target が親 Epic Branch（feature/epic-<issue-number>-scr-002-recommendation-input）であるか"
+    - "PR target が親 Epic Branch（feature/epic-1147-scr-002-recommendation-input）であるか"
     - "Task PR で Related to #<Task Issue番号> が使われているか"
     - "Task PR で Closes #<Task Issue番号> を使っていないか"
   project:

@@ -1,0 +1,319 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-004-feedback-submit-implementation"
+  title: "API-PUB-004:Feedback送信エンドポイント実装"
+  summary: "API-PUB-004（Feedback送信 / Public API、`POST /api/v1/recommendation-results/{resultId}/feedback`）を、契約仕様書・OpenAPI・実装仕様書（#1226 / PR #1245）に沿って apps/api feedback（MOD-API-007〜010）へ実装する（Phase4b 2/3）。Issue #1248。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-004:Feedback送信"
+  epic_issue_number: 386
+  epic_branch: "feature/epic-386-pub-004-feedback-submit"
+  related_issues:
+    - number: 386
+      purpose: "親 Epic"
+    - number: 1226
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 400
+      purpose: "前提 Task（API契約仕様書）"
+    - number: 420
+      purpose: "前提 Task（OpenAPI 断片）"
+    - number: 547
+      purpose: "前提 Task（recommendation_feedback テーブル定義書）"
+  related_prs:
+    - number: 1245
+      purpose: "実装仕様書 Task PR（親 Epic Branch merge 済み）"
+    - number: 406
+      purpose: "契約仕様書 merge"
+    - number: 421
+      purpose: "OpenAPI 断片 develop merge"
+    - number: 552
+      purpose: "テーブル定義書 develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 縦串の 2/3（apps/api 実装）。前提: 実装仕様書 #1226 / PR #1245 が親 Epic Branch に merge 済み。
+  契約・OpenAPI・recommendation_feedback テーブル定義は develop 反映済み。
+  Provider は apps/api（`apps/api/src/app/feedback/**`）、Consumer は apps/web（SCR-007 等・本 Task 対象外）。
+  Reco 呼び出しは不要。MVP は非認証・冪等更新（200）/ 新規（201）。網羅 UT は後続 unit-test Task に委譲し、本 Task では最小スモークを含める。
+  レーン 5。
+
+objective: |
+  `POST /api/v1/recommendation-results/{resultId}/feedback` を契約・OpenAPI・実装仕様書に沿って apps/api 上で提供する。
+  MOD-API-007〜010、Validation、存在確認、冪等 INSERT/UPDATE、Response 組立、エラーマップ、metric 境界を実装する。
+
+scope:
+  - "`apps/api/src/app/feedback/**` の新規実装（Router / Controller / Validator / Service / Repository）"
+  - "`POST /api/v1/recommendation-results/{resultId}/feedback` の成功 Response（201 accepted / 200 updated）"
+  - "Path/Body Validation（GRS-FDB-001 / GRS-FDB-004 / GRS-REQ-001）"
+  - "Result / Item / Reason 存在確認（404 GRS-FDB-002）"
+  - "冪等（sessionId + 同一対象 + feedbackType → UPDATE 200。GRS-FDB-003 は返却しない）"
+  - "feedback_count / feedback_error_count / positive_feedback_count / negative_feedback_count"
+  - "`createApp` への Router mount"
+  - "最小スモーク単体テスト（DI 注入）"
+  - "Task / Review Definition 整備"
+  - "親 Epic epic_scope.allowed_paths に app.ts / tests を不足分として整合（必要な場合）"
+
+out_of_scope:
+  - "packages/contracts/openapi/** の変更"
+  - "Orval / generated の再生成・手動編集"
+  - "apps/web/** の変更"
+  - "apps/reco/** の変更"
+  - "API-PUB-004 契約仕様書・実装仕様書 docs の変更"
+  - "DB schema 変更・migration・seed 変更"
+  - "API-PUB-003 / 005〜008 の実装変更"
+  - "sessionId 採番方式の確定（web 側・Human 判断）"
+  - "網羅的単体テスト Task（Phase4b 3/3）"
+  - "結合テスト・E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API実装仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md"
+      required: true
+      purpose: "契約面参照"
+    - path: "docs/06_実装設計/database/recommendation_feedback_テーブル定義書.md"
+      required: true
+      purpose: "保存列・冪等 UNIQUE"
+    - path: "docs/06_実装設計/database/recommendation_result_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_result_item_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+  templates: []
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+      purpose: "OpenAPI 正本（変更しない）"
+    - path: "apps/api/src/app.ts"
+      required: true
+    - path: "apps/api/src/app/recommendations/**"
+      required: true
+      purpose: "POST / Validation / Service / Repository パターン参照"
+    - path: "apps/api/src/app/masters/**"
+      required: false
+      purpose: "Router DI / metric パターン参照"
+    - path: "apps/api/src/middlewares/request-meta.ts"
+      required: true
+    - path: "apps/api/src/infrastructure/db/**"
+      required: true
+  issues:
+    - number: 1226
+      purpose: "前提実装仕様書 Task"
+    - number: 420
+      purpose: "前提 OpenAPI"
+  prs:
+    - number: 1245
+      purpose: "実装仕様書 PR（Epic merge 必須）"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/app/feedback/**"
+      action: "create"
+      required: true
+    - path: "apps/api/src/app.ts"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/api-pub-004-feedback-submit/epic.yaml"
+      action: "update"
+      required: false
+      purpose: "allowed_paths に app.ts / tests を追加（不足時）"
+  tests:
+    - path: "apps/api/tests/unit/app/feedback/**"
+      action: "create"
+      required: true
+    - path: "apps/api/tests/unit/app/app.mount.test.ts"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "契約準拠の POST /api/v1/recommendation-results/{resultId}/feedback"
+  - "createApp への mount"
+  - "最小スモーク単体テスト"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "`POST .../feedback` が注入 Repository/Service で 201 accepted または 200 updated と契約外形を返す"
+  - "Validation 失敗は 400（GRS-FDB-001 / GRS-FDB-004 / GRS-REQ-001）、対象なしは 404 GRS-FDB-002"
+  - "冪等一致時は 200 updated。MVP で GRS-FDB-003（409）を返さない"
+  - "Response に sessionId / user_agent / anonymous_user_id / stack を含めない"
+  - "feedback_count / feedback_error_count（および正負 count）が記録境界どおり動く（logger 注入検証）"
+  - "実装仕様書・契約仕様書・OpenAPI と矛盾しない"
+  - "OpenAPI / generated / apps/web / apps/reco の変更を含まない"
+  - "epic_scope.allowed_paths 内に差分が収まっている"
+  - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1248-api-pub-004-feedback-submit-implementation"
+  summary: "api-pub-004-feedback-submit-implementation"
+  base: "feature/epic-386-pub-004-feedback-submit"
+  target: "feature/epic-386-pub-004-feedback-submit"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  number: 1248
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+contract_gate:
+  required: true
+  gate_id: "api-pub-004-phase1"
+  prerequisite_contract_tasks:
+    - issue: 420
+      definition: "prompts/definitions/contracts/api-pub-004-feedback-submit/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue 開始前"
+  blocked_message: "OpenAPI #420 / PR #421 および実装仕様書 #1226 / PR #1245 の親 Epic Branch merge を確認するまで /work-issue を開始しない"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1226
+      purpose: "実装仕様書 Task"
+    - number: 420
+      purpose: "OpenAPI 断片"
+  prs:
+    - number: 1245
+      purpose: "実装仕様書 Epic Branch merge（blocking）"
+  tasks:
+    - "API-PUB-004_Feedback送信API実装仕様書.md が親 Epic Branch に存在すること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/api-pub-004-feedback-submit/api-implementation-spec.yaml"
+  blocks:
+    - "API-PUB-004 単体テスト Task"
+  exclusive_files:
+    - "apps/api/src/app/feedback/**"
+    - "apps/api/src/app.ts"
+    - "apps/api/tests/unit/app/feedback/**"
+    - "apps/api/tests/unit/app/app.mount.test.ts"
+    - "prompts/definitions/tasks/api-pub-004-feedback-submit/implementation.yaml"
+    - "prompts/definitions/reviews/api-pub-004-feedback-submit/implementation/pr-review.yaml"
+    - "prompts/definitions/epics/api-pub-004-feedback-submit/epic.yaml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "build or typecheck"
+    - "feedback smoke unit tests"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  manual_checks:
+    - "POST /api/v1/recommendation-results/{resultId}/feedback が契約外形を満たすこと（注入 Repository または実 DB）"
+    - "OpenAPI / generated 変更が混入していないこと"
+  not_required:
+    - "integration test"
+    - "e2e test"
+    - "contract test"
+  skip_reason:
+    "integration test": "網羅は後続 unit-test / 結合 Task"
+    "e2e test": "本 Task 対象外"
+    "contract test": "OpenAPI 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書 §3〜§9 と矛盾しないか"
+    - "冪等 200 / 新規 201 / GRS-FDB-003 非返却が正しいか"
+    - "存在確認 404 と Validation 400 の境界が正しいか"
+    - "epic_scope.allowed_paths 内か"
+    - "secret / .env 実値が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常実装は ai-logs に保存しない。Gate 未充足・契約矛盾で停止した場合は記録する。"
+
+risk_points:
+  - "PR #1245 未 merge のまま実装を開始する運用ミス"
+  - "API一覧の 409 候補表記と契約（更新 200）の取り違え"
+  - "sessionId なし時の重複 INSERT を 409 にしてしまう誤り"
+
+human_decision_points:
+  - "sessionId の採番・保管方式（web 側）"
+  - "UNIQUE レース時の再 SELECT→UPDATE 詳細"
+
+stop_conditions:
+  - "PR #1245 が親 Epic Branch に merge されていない場合"
+  - "実装仕様書が親 Epic Branch に存在しない場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "DB schema / migration 変更が必要になった場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "epic_scope.allowed_paths 外の変更が必要になった場合"
+
+notes:
+  - "本 Task は Phase4b 2/3。後続は unit-test Task。"
+  - "実装仕様書 PR #1245 merge 済みを前提に /work-issue を開始する。"
+  - "Issue 起票後に branch.name / issue.number を実番号へ反映する。"
+  - "参考: api-pub-005-relationship-masters/implementation.yaml、recommendations/**（POST パターン）。"
