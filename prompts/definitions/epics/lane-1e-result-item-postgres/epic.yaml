@@ -46,10 +46,9 @@ scope:
 
 out_of_scope:
   - "Reason（MOD-RECO-023）永続"
-  - "OpenAPI / migration / SCR / PUB-004"
+  - "OpenAPI / migration 新規追加 / SCR / PUB-004"
   - "Ranking / Retrieval アルゴリズム変更"
   - "itemPrice / NG concept 精査（別 Task）"
-  - "matching_config_id 物理列追加（migration 差分）"
 
 input:
   docs:
@@ -129,7 +128,7 @@ review:
   review_points:
     - "DEFAULT composition の InMemory が維持されているか"
     - "production のみ 021/022 Postgres INSERT か"
-    - "migration 物理列に存在しない matching_config_id を無理に書いていないか"
+    - "migration を新規追加していないか（既存 matching_config_id 列への INSERT は可）"
   specialist_reviews:
     docs: true
     test: true

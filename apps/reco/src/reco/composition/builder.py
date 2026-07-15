@@ -31,6 +31,12 @@ from reco.infrastructure.db.repositories.postgres_normalization_rule_repository 
 from reco.infrastructure.db.repositories.postgres_post_filter_item_repository import (
     PostgresPostFilterItemRepository,
 )
+from reco.infrastructure.db.repositories.postgres_recommendation_result_item_repository import (
+    PostgresRecommendationResultItemRepository,
+)
+from reco.infrastructure.db.repositories.postgres_recommendation_result_repository import (
+    PostgresRecommendationResultRepository,
+)
 from reco.infrastructure.db.repositories.postgres_run_validation import (
     PostgresRunValidation,
 )
@@ -146,6 +152,27 @@ def _inject_item_catalog_ports(
     )
 
 
+def _inject_result_persistence_ports(
+    ports: OrchestratorPorts,
+    *,
+    result_repository: PostgresRecommendationResultRepository,
+    result_item_repository: PostgresRecommendationResultItemRepository,
+) -> OrchestratorPorts:
+    """Wire Postgres recommendation_result / recommendation_result_item INSERT."""
+
+    return replace(
+        ports,
+        result_builder=replace(
+            ports.result_builder,
+            result_repository=result_repository,
+        ),
+        snapshot_builder=replace(
+            ports.snapshot_builder,
+            item_repository=result_item_repository,
+        ),
+    )
+
+
 def build_production_ports(
     *,
     database_url: str | None = None,
@@ -174,20 +201,26 @@ def build_production_ports(
         session=session,
     )
     item_snapshot_reader = PostgresItemSnapshotReadRepository(session=session)
+    result_repository = PostgresRecommendationResultRepository(session=session)
+    result_item_repository = PostgresRecommendationResultItemRepository(session=session)
 
     ports = replace(
-        _inject_item_catalog_ports(
-            _inject_user_semantic_ports(
-                _inject_run_validation(base_ports, run_validation),
-                user_semantic_repository=user_semantic_repository,
-                user_feature_repository=user_feature_repository,
-                normalization_rules=normalization_rules,
+        _inject_result_persistence_ports(
+            _inject_item_catalog_ports(
+                _inject_user_semantic_ports(
+                    _inject_run_validation(base_ports, run_validation),
+                    user_semantic_repository=user_semantic_repository,
+                    user_feature_repository=user_feature_repository,
+                    normalization_rules=normalization_rules,
+                ),
+                item_repository=item_repository,
+                post_filter_item_repository=post_filter_item_repository,
+                item_feature_repository=item_feature_repository,
+                feature_normalization_repository=feature_normalization_repository,
+                item_snapshot_reader=item_snapshot_reader,
             ),
-            item_repository=item_repository,
-            post_filter_item_repository=post_filter_item_repository,
-            item_feature_repository=item_feature_repository,
-            feature_normalization_repository=feature_normalization_repository,
-            item_snapshot_reader=item_snapshot_reader,
+            result_repository=result_repository,
+            result_item_repository=result_item_repository,
         ),
         config_resolver=config_resolver,  # type: ignore[arg-type]
         run_recorder=observability["run_recorder"],  # type: ignore[arg-type]
@@ -208,6 +241,8 @@ def build_production_ports(
         "item_feature_repository": item_feature_repository,
         "feature_normalization_repository": feature_normalization_repository,
         "item_snapshot_reader": item_snapshot_reader,
+        "result_repository": result_repository,
+        "result_item_repository": result_item_repository,
     }
     return ports, helpers
 

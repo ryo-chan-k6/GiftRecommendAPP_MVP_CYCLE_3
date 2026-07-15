@@ -50,6 +50,12 @@ from reco.infrastructure.db.repositories.postgres_item_repository import (
 from reco.infrastructure.db.repositories.postgres_post_filter_item_repository import (
     PostgresPostFilterItemRepository,
 )
+from reco.infrastructure.db.repositories.postgres_recommendation_result_item_repository import (
+    PostgresRecommendationResultItemRepository,
+)
+from reco.infrastructure.db.repositories.postgres_recommendation_result_repository import (
+    PostgresRecommendationResultRepository,
+)
 from reco.infrastructure.db.repositories.postgres_aware_user_feature_repository import (
     PostgresAwareUserFeatureRepository,
 )
@@ -207,6 +213,16 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
         PostgresItemSnapshotReadRepository,
     )
     assert ports.snapshot_builder.item_reader is helpers["item_snapshot_reader"]
+    assert isinstance(
+        helpers["result_repository"],
+        PostgresRecommendationResultRepository,
+    )
+    assert ports.result_builder.result_repository is helpers["result_repository"]
+    assert isinstance(
+        helpers["result_item_repository"],
+        PostgresRecommendationResultItemRepository,
+    )
+    assert ports.snapshot_builder.item_repository is helpers["result_item_repository"]
 
 
 def test_build_production_observability_modules_wires_postgres_repositories() -> None:

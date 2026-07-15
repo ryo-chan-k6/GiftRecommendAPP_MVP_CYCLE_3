@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1295
   issue: 1294
   task_definition: "prompts/definitions/tasks/lane-1e-result-item-postgres/implementation.yaml"
   source_branch: "feature/task-1294-lane-1e-result-item-postgres-implementation"
@@ -69,7 +69,7 @@ input:
     number: 1294
     required: true
   pr:
-    number: null
+    number: 1295
     required: true
   diff:
     required: true
@@ -88,7 +88,7 @@ review_points:
   source:
     - "021/022 Postgres INSERT 配線"
     - "DEFAULT InMemory 維持"
-    - "migration 物理列整合（matching_config_id 非挿入）"
+    - "既存 matching_config_id 列への INSERT（新規 migration なし）"
   tests:
     - "UT 更新・通過"
   docs:
