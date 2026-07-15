@@ -129,6 +129,12 @@ def _attach_outputs(
             version_info[f"item:{item.item_id}:item_name_snapshot"] = (
                 item.snapshot.item_name_snapshot
             )
+            version_info[f"item:{item.item_id}:item_price_snapshot"] = str(
+                item.snapshot.item_price_snapshot
+            )
+            version_info[f"item:{item.item_id}:item_url_snapshot"] = (
+                item.snapshot.item_url_snapshot
+            )
 
     context.recommendation_result = replace(
         recommendation_result,
