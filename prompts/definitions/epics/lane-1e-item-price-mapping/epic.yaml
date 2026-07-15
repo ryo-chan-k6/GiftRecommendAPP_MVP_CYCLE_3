@@ -1,0 +1,144 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-item-price-mapping"
+  title: "レーン1e:itemPrice応答マッピング"
+  summary: "INT-002 応答の itemPrice（および同経路の itemUrl stub）を Snapshot version_info から正しく反映する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  #1293 / #1297 後、DB の item_price_snapshot は正しいが INT-002 応答の itemPrice が常に 0。
+  response_mapper が itemPrice=0 / itemUrl=example.com を固定している。
+
+objective: |
+  Snapshot version_info に price / url を載せ、INT-002 応答へ反映する。
+  ローカル PUB-002 で itemPrice > 0 を確認する。
+
+scope:
+  - "子 Task（implementation）"
+  - "Epic Issue / Branch"
+  - "snapshot executor の version_info 追記"
+  - "response_mapper の itemPrice / itemUrl 反映"
+  - "UT・手順書再スモーク"
+
+out_of_scope:
+  - "NG concept 除外"
+  - "Reason 永続"
+  - "OpenAPI / migration / api / web 変更"
+  - "Ranking / Retrieval 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（implementation）"
+  - "epic_scope.allowed_paths"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "子 Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1300-lane-1e-item-price-mapping"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "epic"
+  type: "fix"
+  area: "reco"
+
+epic_scope:
+  artifact_id: null
+  allowed_paths:
+    - "apps/reco/src/reco/api/**"
+    - "apps/reco/src/reco/application/result-snapshot-builder/**"
+    - "apps/reco/tests/unit/api/**"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/lane-1e-item-price-mapping/**"
+    - "prompts/definitions/tasks/lane-1e-item-price-mapping/**"
+    - "prompts/definitions/reviews/lane-1e-item-price-mapping/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/api/**"
+    - "apps/web/**"
+  child_task_areas:
+    - "implementation"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "itemPrice が version_info から読まれるか"
+    - "api / web / OpenAPI を広げていないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "レーン1e itemPrice"
+
+notes:
+  - "Epic Issue: #1300"
+  - "依存: Epic #1293 MERGED（#1297）"
+  - "AI は PR merge しない"
