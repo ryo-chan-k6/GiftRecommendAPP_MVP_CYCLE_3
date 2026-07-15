@@ -1,0 +1,251 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-006-item-detail"
+  title: "SCR-006:商品詳細画面"
+  summary: "SCR-006（商品詳細画面）に関する画面仕様書・実装・単体テストを管理するEpic。API-PUB-003（商品詳細取得）を利用し、SCR-004 からの導線と外部EC遷移を本実装する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計および 07_開発・単体テストにおいて、SCR-006（商品詳細画面）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  develop 上の `/items/[itemId]` は SCR-004 導線用のプレースホルダのみであり、API-PUB-003（Epic #385 / PR #1286 develop MERGED）を前提に本実装へ差し替える。
+  子 Task は画面仕様書・実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+  SCR-001 / SCR-002 / SCR-004 とは apps/web の exclusive path を分離し、並列作業する。
+
+objective: |
+  SCR-006 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "SCR-006 に関する子 Task の作業単位を整理する（画面仕様書 / 画面実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/scr-006-item-detail/**）を整理する"
+  - "依存 Epic（API-PUB-003 / SCR-004）の Status を子 Task 開始前に確認する運用を明示する"
+  - "既存プレースホルダ（apps/web/src/app/items/[itemId]/page.tsx）を本実装へ差し替える"
+
+out_of_scope:
+  - "SCR-001 / SCR-002 / SCR-004 本体の変更（導線確認に必要な最小差分を除く）"
+  - "SCR-005 / SCR-007 本実装（理由詳細・Feedback は別 Epic）"
+  - "Public / Internal API 仕様書および OpenAPI / generated の契約変更（API-PUB-003 は develop 済みを利用）"
+  - "apps/api / apps/reco / apps/batch の実装変更"
+  - "DB schema 変更"
+  - "認証・認可方式そのものの変更"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-006 の画面ID・画面名・MVP対象・表示項目を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-004 ↔ SCR-006・外部EC・理由/Feedback 導線を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-003 の役割を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+      purpose: "Response 表面・エラー境界の正本確認"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md"
+      required: false
+      purpose: "実装面の呼び出し・表示補助確認"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）を確認するため"
+  templates: []
+  files: []
+  issues:
+    - number: 1303
+      purpose: "本 Epic Issue"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]SCR-006:商品詳細画面）"
+  - "Epic Branch（develop 起点 / feature/epic-1303-scr-006-item-detail）"
+  - "子 Task 候補一覧（画面仕様書 / 画面実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]SCR-006:商品詳細画面 形式である（Task Definition設計書 §15.0）"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位（画面仕様書 / 画面実装 / 単体テスト）が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が SCR-006 責務（items / item-detail / 関連 docs・prompts）と整合している"
+  - "dependencies.epics に API-PUB-003 / SCR-004 が記載されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1303-scr-006-item-detail"
+  summary: "scr-006-item-detail"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "web"
+
+epic_scope:
+  artifact_id: "SCR-006"
+  allowed_paths:
+    - "docs/06_実装設計/web/SCR-006_*"
+    - "apps/web/src/app/items/**"
+    - "apps/web/src/features/item-detail/**"
+    - "apps/web/src/components/**"
+    - "apps/web/src/generated/api/**"
+    - "apps/web/src/lib/**"
+    - "apps/web/tests/**"
+    - "prompts/definitions/tasks/scr-006-item-detail/**"
+    - "prompts/definitions/reviews/scr-006-item-detail/**"
+    - "prompts/definitions/epics/scr-006-item-detail/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "apps/web/src/app/page.tsx"
+    - "apps/web/src/features/home/**"
+    - "apps/web/src/features/recommendation-input/**"
+    - "apps/web/src/app/recommendations/**"
+    - "apps/web/src/features/recommendation-result/**"
+    - "openapi/**"
+    - "db/**"
+  child_task_areas:
+    - "screen-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 385
+      title: "[Epic]API-PUB-003:商品詳細取得"
+      purpose: "商品詳細 Public API（develop merge 済み）。表示データの契約・実装正本"
+    - issue: 1236
+      title: "[Epic]SCR-004:レコメンド結果一覧画面"
+      purpose: "結果一覧からの導線元（develop merge 済み）。本 Epic では 004 本体を変更しない"
+  issues:
+    - number: 1303
+      purpose: "本 Epic Issue"
+  prs:
+    - number: 1286
+      purpose: "API-PUB-003 Epic PR（develop MERGED）"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が SCR-006（商品詳細）に閉じているか確認する"
+    - "SCR-001/002/004 exclusive path へ侵入していないか確認する"
+    - "依存 Epic API-PUB-003 / SCR-004 が develop 済みか確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が SCR-006 に閉じているか"
+    - "epic_scope.allowed_paths / forbidden_paths が 001/002/004 と衝突しないか"
+    - "依存 Epic API-PUB-003 / SCR-004 が dependencies.epics にあるか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "画面後段レーン。SCR-006 縦串の Epic Definition。"
+
+risk_points:
+  - "Task PR を誤って develop へ直接向ける運用ミス"
+  - "recommendation-result / recommendation-input へ誤って変更を混入する運用ミス"
+  - "OpenAPI / apps/api を本 Epic で再変更する運用ミス"
+
+human_decision_points:
+  - "SCR-005 / SCR-007 を本画面から導線のみにするか、部品まで本 Epic に含めるか（原則導線のみ）"
+  - "画像なし・非 active 商品の画面 UX（API 境界は PUB-003 済み）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-006 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "API-PUB-003 が develop 未反映の場合"
+  - "Task PR の target が develop に向く設計が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、画面仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "命名の正本は Task Definition設計書 §15.0（Epic）・§15.3（画面 Task）"
+  - "最初の子 Task: prompts/definitions/tasks/scr-006-item-detail/screen-spec.yaml"
+  - "依存 Epic: #385 API-PUB-003 / #1236 SCR-004（いずれも develop merge 済み）"
+  - "本 Epic Issue: #1303 / Epic Branch: feature/epic-1303-scr-006-item-detail"

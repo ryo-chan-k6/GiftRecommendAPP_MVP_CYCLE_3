@@ -13,6 +13,11 @@ import {
   type getSemanticConfigMastersResponse,
 } from "@/generated/api/masters/masters";
 import {
+  getGetItemDetailUrl,
+  getItemDetail,
+  type getItemDetailResponse,
+} from "@/generated/api/items/items";
+import {
   getRunRecommendationUrl,
   runRecommendation,
   type runRecommendationResponse,
@@ -99,4 +104,17 @@ export async function postRecommendationRun(
     },
     body: JSON.stringify(request),
   }) as Promise<runRecommendationResponse>;
+}
+
+export async function fetchItemDetail(
+  itemId: string,
+  options?: RequestInit,
+): Promise<getItemDetailResponse> {
+  if (!getPublicApiBaseUrl()) {
+    return getItemDetail(itemId, options);
+  }
+  return fetchJsonAtUrl(getGetItemDetailUrl(itemId), {
+    ...options,
+    method: "GET",
+  }) as Promise<getItemDetailResponse>;
 }

@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-006-item-detail-unit-test"
+  title: "SCR-006:商品詳細画面単体テスト"
+  summary: "SCR-006（商品詳細画面）実装に対し、エラー UX・推薦文脈・外部EC・戻り導線など画面仕様書の主要単体テスト観点を拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-006:商品詳細画面"
+  epic_issue_number: 1303
+  epic_branch: "feature/epic-1303-scr-006-item-detail"
+  related_issues:
+    - number: 1303
+      purpose: "親 Epic"
+    - number: 1313
+      purpose: "前提 Task（実装）"
+  related_prs:
+    - number: 1314
+      purpose: "実装 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  SCR-006 Epic（#1303）の単体テスト Task。implementation Task（#1313 / PR #1314）が親 Epic Branch に merge 済み。
+  実装時点で最小 component テストはあるが、画面仕様書 §20 の主要観点（422・文脈表示・非安全 URL・戻り導線分岐・画像プレースホルダ等）を拡充する。
+
+objective: |
+  SCR-006 画面実装の単体テストを拡充し、主要画面状態・導線・安全判定を再現可能に検証する。
+
+scope:
+  - "apps/web/tests/component/item-detail/** の component / feature 単体テスト追加・拡充"
+  - "422 / 推薦文脈表示・欠落 / 外部URL安全判定 / fromResultId 有無の戻り導線 / 画像プレースホルダ等"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "画面仕様書・実装本体の機能追加（軽微なテスト容易性修正は最小限可）"
+  - "E2E / Playwright"
+  - "OpenAPI / generated 変更"
+  - "apps/api / apps/reco / apps/batch"
+  - "SCR-005 / SCR-007 本実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+      required: true
+      purpose: "テスト観点の正本（§20）"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+      purpose: "エラー境界"
+  templates: []
+  files:
+    - path: "apps/web/src/features/item-detail/**"
+      required: true
+      purpose: "テスト対象"
+  issues:
+    - number: 1313
+      purpose: "実装 Task"
+  prs:
+    - number: 1314
+      purpose: "実装 PR Epic merge"
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/web/tests/component/item-detail/**/*.{test,spec}.{ts,tsx}"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "SCR-006 単体テスト拡充"
+  - "画面仕様書 §20 主要観点の再現可能な検証"
+
+acceptance_criteria:
+  - "422・推薦文脈・外部URL・戻り導線など主要観点のテストが追加されている"
+  - "pnpm --filter @gift-recommendation/web test:component が通る"
+  - "pnpm --filter @gift-recommendation/web typecheck が通る"
+  - "epic_scope.allowed_paths 外へ変更していない"
+  - "secret / .env 実値を含んでいない"
+  - "本番 network に依存していない"
+
+branch:
+  no_branch: false
+  name: "test/task-1316-scr-006-item-detail-unit-test"
+  summary: "scr-006-item-detail-unit-test"
+  base: "feature/epic-1303-scr-006-item-detail"
+  target: "feature/epic-1303-scr-006-item-detail"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1303
+      title: "[Epic]SCR-006:商品詳細画面"
+      purpose: "親 Epic"
+  issues:
+    - number: 1313
+      purpose: "実装 Task"
+  prs:
+    - number: 1314
+      purpose: "実装 PR"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/web/tests/component/item-detail/**"
+    - "prompts/definitions/tasks/scr-006-item-detail/unit-test.yaml"
+    - "prompts/definitions/reviews/scr-006-item-detail/unit-test/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "typecheck"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
+    - "pnpm --filter @gift-recommendation/web typecheck"
+  not_required:
+    - "e2e"
+  skip_reason:
+    "e2e": "本 Task は単体テスト範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面仕様書 §20 の主要観点がテストされているか"
+    - "不安定な network / 本番依存がないか"
+    - "secret 非含有か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常のテスト Task。詳細は PR を正本とする。"
+
+stop_conditions:
+  - "implementation が未完了の場合"
+  - "テストが本番 API / 本番 secret に依存する場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-006:商品詳細画面単体テスト"
+  - "後続: Epic PR → develop"
