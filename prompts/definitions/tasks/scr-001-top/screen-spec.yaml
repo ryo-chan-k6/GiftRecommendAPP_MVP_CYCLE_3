@@ -17,6 +17,8 @@ parent:
       purpose: "親 Epic"
     - number: 1256
       purpose: "先行実装 Task（突合対象）"
+    - number: 1258
+      purpose: "本 Task（画面仕様書）"
   related_prs:
     - number: 1257
       purpose: "先行実装 PR（Human Review 中・突合対象）"
