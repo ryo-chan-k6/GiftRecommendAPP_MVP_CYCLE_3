@@ -18,7 +18,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1336
   issue:
     number: 1335
   task_definition: "prompts/definitions/tasks/batch-005-raw-staging/unit-test.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1335
     required: true
   pr:
-    number: null
+    number: 1336
     required: true
   diff:
     required: true
