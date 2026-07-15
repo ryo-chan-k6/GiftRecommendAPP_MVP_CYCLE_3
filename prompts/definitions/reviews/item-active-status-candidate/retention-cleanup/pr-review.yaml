@@ -6,7 +6,7 @@ review:
   title: "item_active_status_candidate Retention cleanup PRレビュー"
   summary: "T7 Retention cleanup PR の AI Review。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -16,7 +16,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1271
   issue:
     number: 1235
   task_definition: "prompts/definitions/tasks/item-active-status-candidate/retention-cleanup.yaml"
@@ -53,7 +53,7 @@ input:
     number: 1235
     required: true
   pr:
-    number: null
+    number: 1271
     required: true
   docs:
     - path: "docs/06_実装設計/batch/item_active_status_candidate_Retention_cleanup運用手順.md"
@@ -74,4 +74,4 @@ review_points:
     - "secret 非含有"
 
 notes:
-  - "PR 番号は create-pr 後に反映"
+  - "PR #1271。AI Review 結論: approve_for_human_review"
