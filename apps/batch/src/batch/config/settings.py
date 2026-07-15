@@ -21,6 +21,8 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_INTERNAL_TOKEN",
     "BATCH_CHUNK_SIZE",
     "BATCH_MAX_RETRY",
+    "BATCH_RAW_STAGING_MAX_RAW",
+    "BATCH_RAW_STAGING_SOURCE_API",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -67,6 +69,8 @@ class BatchSettings:
     batch_internal_token: str | None
     batch_chunk_size: int | None
     batch_max_retry: int | None
+    batch_raw_staging_max_raw: int | None
+    batch_raw_staging_source_api: str | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -108,6 +112,8 @@ class BatchSettings:
             f"object_storage_endpoint={self.object_storage_endpoint!r}, "
             f"batch_chunk_size={self.batch_chunk_size!r}, "
             f"batch_max_retry={self.batch_max_retry!r}, "
+            f"batch_raw_staging_max_raw={self.batch_raw_staging_max_raw!r}, "
+            f"batch_raw_staging_source_api={self.batch_raw_staging_source_api!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "
