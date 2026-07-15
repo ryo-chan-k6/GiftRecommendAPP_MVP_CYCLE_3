@@ -42,7 +42,8 @@ agent:
 
 background: |
   レーン1e A4。トップ CTA 未結線を解消し、SCR-001 → SCR-002 の入口を完成させる。
-  画面仕様書独立 Task は行わず、画面一覧 §4.1・画面遷移図を正本とする。最小 UT を本 Task に含める。
+  初期は画面一覧・遷移図を正本として実装先行した。後から画面仕様書 Task（screen-spec）を追加し突合する（案B・Human 承認済み）。
+  最小 UT を本 Task に含める。
 
 objective: |
   `/` から `/recommendations` へ遷移できるトップ画面を実装し、CTA 導線をテストで固定する。
@@ -202,3 +203,4 @@ notes:
   - "PR 本文は Related to（Closes 禁止）"
   - "Review Definition: prompts/definitions/reviews/scr-001-top/implementation/pr-review.yaml"
   - "CTA 文言は画面一覧『レコメンド開始』と SCR-002 遷移『ギフトを探す』を踏まえ、ユーザー向けは「ギフトを探す」を採用"
+  - "画面仕様書: prompts/definitions/tasks/scr-001-top/screen-spec.yaml（後追い追加・案B）"

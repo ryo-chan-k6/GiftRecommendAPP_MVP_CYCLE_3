@@ -4,7 +4,7 @@ definition_type: "epic"
 epic:
   id: "epic-scr-001-top"
   title: "SCR-001:トップ画面"
-  summary: "SCR-001（トップ画面）に関する実装・単体テストを管理するEpic。レーン1e向けにレコメンド開始 CTA を /recommendations（SCR-002）へ結線する。"
+  summary: "SCR-001（トップ画面）に関する画面仕様書・実装・最小 UT を管理するEpic。レーン1e向けにレコメンド開始 CTA を /recommendations（SCR-002）へ結線する。"
 
 work_mode: "ai-agent"
 
@@ -28,15 +28,17 @@ agent:
 
 background: |
   レーン1e（条件入力〜結果確認 E2E）の入口として、SCR-001 トップ画面のレコメンド開始導線を SCR-002（/recommendations）へ接続する。
-  SCR-002 / SCR-004 は develop merge 済み。本 Epic は MVP 最小として CTA 結線とトップ表示の最低限を対象とし、画面仕様書独立 Task は必須としない（画面一覧・画面遷移図を正本とする）。
+  SCR-002 / SCR-004 は develop merge 済み。
+  初期に実装 Task を先行したが、正本整合のため画面仕様書 Task を追加し、実装との突合を行う（Human 承認: 案B）。
 
 objective: |
-  SCR-001 に関する Epic Issue と Epic Branch を作成し、配下 Task（実装 / 単体テスト）で / → /recommendations 導線を完成させ、develop へ統合する。
+  SCR-001 に関する Epic Issue と Epic Branch を作成し、配下 Task（画面仕様書 / 実装 / 最小 UT）で / → /recommendations 導線を完成させ、develop へ統合する。
 
 scope:
-  - "SCR-001 に関する子 Task の作業単位を整理する（実装 / 単体テスト）"
+  - "SCR-001 に関する子 Task の作業単位を整理する（画面仕様書 / 実装 / 最小 UT）"
   - "Epic Issue / Epic Branch（develop 起点）を作成する"
   - "レコメンド開始 CTA を /recommendations へ結線する"
+  - "画面仕様書を作成し、実装と突合する"
 
 out_of_scope:
   - "SCR-002 以降の画面本体の変更"
@@ -112,6 +114,7 @@ issue:
 epic_scope:
   artifact_id: "SCR-001"
   allowed_paths:
+    - "docs/06_実装設計/web/SCR-001_*"
     - "apps/web/src/app/page.tsx"
     - "apps/web/src/features/home/**"
     - "apps/web/tests/component/home/**"
@@ -125,6 +128,7 @@ epic_scope:
     - "openapi/**"
     - "db/**"
   child_task_areas:
+    - "screen-spec"
     - "implementation"
     - "unit-test"
 
@@ -187,7 +191,7 @@ risk_points:
   - "SCR-002 以降の画面実装を混入させる運用ミス"
 
 human_decision_points:
-  - "画面仕様書独立 Task を後続で起こすか（本レーンでは画面一覧・遷移図を正本とし実装先行）"
+  - "画面仕様書を後追い追加する方針（案B・Human 承認済み）。実装 PR #1257 は継続し、仕様書で突合する"
 
 stop_conditions:
   - "必須 input.docs が存在しない場合"
@@ -196,5 +200,5 @@ stop_conditions:
 
 notes:
   - "本 Epic Issue: #1255 / Epic Branch: feature/epic-1255-scr-001-top"
-  - "本 Epic の最初の子 Task は implementation（CTA 結線 + 最小 UT）"
+  - "実装先行: #1256 / PR #1257（Human Review）。画面仕様書は後追い追加（案B）"
   - "依存: #1147 SCR-002 develop merge 済み"

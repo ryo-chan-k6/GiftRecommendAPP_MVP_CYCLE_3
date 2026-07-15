@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-001-top-screen-spec"
+  title: "SCR-001:トップ画面仕様書作成"
+  summary: "SCR-001（トップ画面）の画面仕様書を作成し、画面一覧・画面遷移図・先行実装（#1256 / PR #1257）と突合する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-001:トップ画面"
+  epic_issue_number: 1255
+  epic_branch: "feature/epic-1255-scr-001-top"
+  related_issues:
+    - number: 1255
+      purpose: "親 Epic"
+    - number: 1256
+      purpose: "先行実装 Task（突合対象）"
+  related_prs:
+    - number: 1257
+      purpose: "先行実装 PR（Human Review 中・突合対象）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  レーン1e A4 において実装を先行したため、正本としての画面仕様書を後追いで追加する（Human 承認: 案B）。
+  画面一覧 §4.1・画面遷移図を土台に、先行実装（CTA → /recommendations）と矛盾しない仕様を定義する。
+
+objective: |
+  SCR-001 について実装・レビューが可能な粒度の画面仕様書を作成する。
+  prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-001 の画面仕様書を新規作成する（SCR-001_トップ画面画面仕様書.md）"
+  - "表示項目・操作・遷移（/ → /recommendations）を整理する"
+  - "先行実装（#1256 / #1257）との差分・整合を明記する"
+
+out_of_scope:
+  - "他画面の画面仕様書作成"
+  - "OpenAPI / generated / ソース実装の変更（実装差分が必要なら別対応）"
+  - "認証・履歴導線の詳細設計"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-001 の画面ID・表示・操作の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-001 → SCR-002 遷移の確認"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: false
+      purpose: "遷移先 URL・SCR-001 からの遷移記載との整合"
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書テンプレート"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "標準フォーマット"
+      applies_to:
+        - "docs/06_実装設計/web/SCR-001_トップ画面画面仕様書.md"
+  files:
+    - path: "apps/web/src/features/home/**"
+      required: false
+      purpose: "先行実装（Task Branch / PR #1257）との突合。Epic 未 merge の場合は PR 差分を参照"
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-001_トップ画面画面仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/screen-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-001 画面仕様書"
+  - "先行実装との突合記載"
+
+acceptance_criteria:
+  - "docs/06_実装設計/web/SCR-001_トップ画面画面仕様書.md が作成されている"
+  - "prompts/templates/docs/screen-spec.md の章構成に準拠している"
+  - "画面一覧の SCR-001 と矛盾する画面ID・URL・MVP対象を定義していない"
+  - "主 CTA の遷移先が /recommendations である方針が明示されている"
+  - "secret / .env 実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1255-scr-001-top"
+  target: "feature/epic-1255-scr-001-top"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-16"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1255
+      title: "[Epic]SCR-001:トップ画面"
+      purpose: "親 Epic"
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "遷移先"
+  issues:
+    - number: 1256
+      purpose: "先行実装 Task（突合）"
+  prs:
+    - number: 1257
+      purpose: "先行実装 PR（突合）"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/web/SCR-001_トップ画面画面仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "画面一覧 SCR-001・先行実装と矛盾がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs 作成 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面一覧 SCR-001 と整合しているか"
+    - "CTA → /recommendations が明示されているか"
+    - "先行実装 #1257 との差分が整理されているか"
+    - "命名が Task Definition設計書 §15.3 に従っているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "実装先行後の画面仕様書後追い（案B）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-001 が存在しない場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-001:トップ画面仕様書作成"
+  - "親Epic: #1255"
+  - "PR 本文は Related to（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/scr-001-top/screen-spec/pr-review.yaml"
