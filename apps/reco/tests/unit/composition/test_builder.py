@@ -37,7 +37,13 @@ from reco.infrastructure.db.repositories.postgres_reco_score_distribution_metric
 from reco.infrastructure.db.repositories.postgres_recommendation_run_repository import (
     PostgresRecommendationRunRepository,
 )
+from reco.infrastructure.db.repositories.postgres_run_validation import (
+    PostgresRunValidation,
+)
 from reco.infrastructure.db.session import ScaffoldDatabaseSession
+from reco.application.user_semantic_extractor.in_memory_repository import (
+    InMemoryRunValidation,
+)
 
 
 def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
@@ -48,6 +54,10 @@ def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
     assert isinstance(ports.run_recorder.pair_reader, InMemoryPairMasterReader)
     assert type(ports.metric_logger) is type(expected_ports.metric_logger)
     assert set(helpers) == set(expected_helpers)
+    assert isinstance(
+        ports.user_semantic_extractor.run_validation,
+        InMemoryRunValidation,
+    )
 
 
 def test_build_production_ports_replaces_observability_and_config_resolver() -> None:
@@ -78,6 +88,19 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
         PostgresScoreDistributionMetricRepository,
     )
     assert helpers["config_repository"] is ports.config_resolver.repository
+    assert isinstance(helpers["run_validation"], PostgresRunValidation)
+    assert isinstance(
+        ports.user_semantic_extractor.run_validation,
+        PostgresRunValidation,
+    )
+    assert ports.user_semantic_extractor.run_validation is helpers["run_validation"]
+    assert (
+        ports.external_feature_estimator.run_validation
+        is helpers["run_validation"]
+    )
+    assert (
+        ports.query_embedding_generator.run_validation is helpers["run_validation"]
+    )
 
 
 def test_build_production_observability_modules_wires_postgres_repositories() -> None:

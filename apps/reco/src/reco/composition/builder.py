@@ -12,10 +12,52 @@ from reco.application.recommendation_orchestrator import (
     OrchestratorPorts,
     build_default_stub_ports,
 )
+from reco.infrastructure.db.repositories.postgres_run_validation import (
+    PostgresRunValidation,
+)
 from reco.infrastructure.db.session import DatabaseSession, create_database_session
 
 from .config import CompositionMode, resolve_database_url
-from .observability import build_production_observability_modules
+from .observability import ObservabilityRepositories, build_production_observability_modules
+
+
+def _inject_run_validation(
+    ports: OrchestratorPorts,
+    run_validation: PostgresRunValidation,
+) -> OrchestratorPorts:
+    """Replace InMemory RunValidation on early pipeline modules."""
+
+    return replace(
+        ports,
+        user_semantic_extractor=replace(
+            ports.user_semantic_extractor,
+            run_validation=run_validation,
+        ),
+        external_feature_estimator=replace(
+            ports.external_feature_estimator,
+            run_validation=run_validation,
+        ),
+        internal_feature_estimator=replace(
+            ports.internal_feature_estimator,
+            run_validation=run_validation,
+        ),
+        user_feature_generator=replace(
+            ports.user_feature_generator,
+            run_validation=run_validation,
+        ),
+        user_meaning_projector=replace(
+            ports.user_meaning_projector,
+            run_validation=run_validation,
+        ),
+        user_context_builder=replace(
+            ports.user_context_builder,
+            run_validation=run_validation,
+        ),
+        query_embedding_generator=replace(
+            ports.query_embedding_generator,
+            run_validation=run_validation,
+        ),
+    )
 
 
 def build_production_ports(
@@ -33,9 +75,12 @@ def build_production_ports(
     config_resolver = ConfigVersionResolver(
         repository=build_production_config_repository(session),
     )
+    repositories = observability["observability_repositories"]
+    assert isinstance(repositories, ObservabilityRepositories)
+    run_validation = PostgresRunValidation(run_repository=repositories.run_repository)
 
     ports = replace(
-        base_ports,
+        _inject_run_validation(base_ports, run_validation),
         config_resolver=config_resolver,  # type: ignore[arg-type]
         run_recorder=observability["run_recorder"],  # type: ignore[arg-type]
         phase_log_writer=observability["phase_log_writer"],  # type: ignore[arg-type]
@@ -46,6 +91,7 @@ def build_production_ports(
         **base_helpers,
         **observability,
         "config_repository": config_resolver.repository,
+        "run_validation": run_validation,
     }
     return ports, helpers
 
