@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1279
   issue: 1278
   task_definition: "prompts/definitions/tasks/lane-1e-candidate-retrieval-postgres/implementation.yaml"
   source_branch: "feature/task-1278-lane-1e-candidate-retrieval-postgres-implementation"
@@ -66,10 +66,10 @@ input:
     path: "prompts/definitions/tasks/lane-1e-candidate-retrieval-postgres/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1278
     required: true
   pr:
-    number: null
+    number: 1279
     required: true
   diff:
     required: true
