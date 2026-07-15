@@ -35,6 +35,11 @@ def test_execute_fills_snapshots_and_persists_items() -> None:
     assert version_info["snapshot_builder_items_persisted"] == "true"
     assert version_info["snapshot_builder_item_count"] == "1"
     assert version_info[f"item:{DEFAULT_ITEM_ID}:item_name_snapshot"] == "実用的ギフト"
+    assert version_info[f"item:{DEFAULT_ITEM_ID}:item_price_snapshot"] == "5000"
+    assert (
+        version_info[f"item:{DEFAULT_ITEM_ID}:item_url_snapshot"]
+        == "https://example.com/items/item-001"
+    )
     assert DEFAULT_RESULT_ID in item_repository.rows_by_result_id
     row = item_repository.rows_by_result_id[DEFAULT_RESULT_ID][0]
     assert row.item_name_snapshot == "実用的ギフト"

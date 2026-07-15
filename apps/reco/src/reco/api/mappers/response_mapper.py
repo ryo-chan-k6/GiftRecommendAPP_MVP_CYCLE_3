@@ -63,6 +63,16 @@ def _parse_score_breakdown(version_info: dict[str, str] | None, item_id: str) ->
     return None
 
 
+def _parse_item_price(version_info: dict[str, str] | None, item_id: str) -> int:
+    raw = _version_info_get(version_info, _item_version_key(item_id, "item_price_snapshot"))
+    if raw is None:
+        return 0
+    try:
+        return int(raw)
+    except ValueError:
+        return 0
+
+
 def _map_result_status(status: ResultStatus, item_count: int) -> str:
     # 契約: 0 件も completed。domain EMPTY は API completed へ正規化。
     if item_count == 0 or status == ResultStatus.EMPTY:
@@ -162,6 +172,11 @@ def _map_result_item(
         _version_info_get(version_info, _item_version_key(item_id, "item_name_snapshot"))
         or f"Item {item_id}"
     )
+    item_price = _parse_item_price(version_info, item_id)
+    item_url = (
+        _version_info_get(version_info, _item_version_key(item_id, "item_url_snapshot"))
+        or f"https://example.com/items/{item_id}"
+    )
     final_score = item.final_score if item.final_score is not None else 0.0
     score_breakdown = _parse_score_breakdown(version_info, item_id) if include_debug else None
 
@@ -181,8 +196,8 @@ def _map_result_item(
         itemId=item_id,
         rank=item.rank,
         itemName=item_name,
-        itemPrice=0,
-        itemUrl=f"https://example.com/items/{item_id}",
+        itemPrice=item_price,
+        itemUrl=item_url,
         contextScore=final_score,
         finalScore=final_score,
         scoreBreakdown=score_breakdown,

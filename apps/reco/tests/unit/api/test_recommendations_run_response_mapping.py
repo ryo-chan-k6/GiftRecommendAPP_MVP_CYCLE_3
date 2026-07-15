@@ -28,6 +28,8 @@ def test_run_recommendation_success_maps_result_items_and_scores() -> None:
         "recommendation_result_id": "result_001",
         "item:item_001:recommendation_result_item_id": "result_item_001",
         "item:item_001:item_name_snapshot": "上品な焼き菓子ギフトセット",
+        "item:item_001:item_price_snapshot": "4320",
+        "item:item_001:item_url_snapshot": "https://example.com/items/item_001",
     }
     context = build_execution_context(
         request=build_domain_request(include_reason=True),
@@ -60,6 +62,8 @@ def test_run_recommendation_success_maps_result_items_and_scores() -> None:
     assert result_item["recommendationResultItemId"] == "result_item_001"
     assert result_item["itemId"] == "item_001"
     assert result_item["itemName"] == "上品な焼き菓子ギフトセット"
+    assert result_item["itemPrice"] == 4320
+    assert result_item["itemUrl"] == "https://example.com/items/item_001"
     assert result_item["contextScore"] == 0.82
     assert result_item["finalScore"] == 0.82
     assert result_item["reasonSummary"] == "上司へのお礼として候補にしています。"
