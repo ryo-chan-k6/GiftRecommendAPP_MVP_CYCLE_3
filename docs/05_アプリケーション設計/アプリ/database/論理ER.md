@@ -65,6 +65,7 @@
 | 3   | `raw_product_object` と `raw_product_metadata` を分離             | Raw JSON本体はObject Storage、メタデータはDBで管理するため       |
 | 4   | `fetch_cursor` を追加                                             | 楽天APIの疑似差分取得を制御するため                              |
 | 5   | `product_diff_result` を追加                                      | new / updated / unchanged / unavailable の判定結果を表現するため |
+| 5a  | `item_active_status_candidate` を追加                             | BATCH-004 再確認の active_status 候補を一時保持し BATCH-008 が適用するため |
 | 6   | `item_generation_queue` を追加                                    | Item Feature / Item Embedding生成の再実行制御に必要なため        |
 | 7   | `recommendation_run_phase_log` / `phase_log` / `error_log` を明示 | 状態遷移設計書のRun / Phase / Error管理を反映するため            |
 | 8   | `evaluation_run` を追加                                           | Evaluation Resultだけでなく評価実行単位を管理するため            |
@@ -133,7 +134,7 @@
 | Reason系                 | recommendation_reason                                                                                                                          | 派生 / Snapshot             |
 | Feedback系               | recommendation_feedback                                                                                                                        | 内部正本                    |
 | Item系                   | item / item_image / item_review_summary / item_popularity_signal / item_generation_queue                                                       | 内部正本 / 派生 / 状態      |
-| 外部商品データ系         | fetch_cursor / api_call_log / raw_product_metadata / raw_product_object / product_diff_result                                                  | Raw / Metadata / Log / 状態 |
+| 外部商品データ系         | fetch_cursor / api_call_log / raw_product_metadata / raw_product_object / product_diff_result / item_active_status_candidate                  | Raw / Metadata / Log / 状態 |
 | Staging系                | staging_item / staging_item_image / staging_ranking_signal / staging_genre                                                                     | 一時 / 中間                 |
 | Semantic / Feature系     | semantic_config / semantic_config_version / semantic_concept / feature_definition / semantic_rule / feature_rule / normalization_rule / item_semantic / item_feature / item_meaning / user_feature | 設定正本 / 派生             |
 | Embedding系              | item_embedding                                                                                                                                 | 派生                        |
@@ -432,6 +433,7 @@ erDiagram
 | staging_ranking_signal | staging_ranking_signal_id | raw_metadata_id, external_item_code, external_genre_id, rank, period, last_build_date, staged_at                                        | なし          | 一時 / 中間     | batch          |
 | staging_genre          | staging_genre_id          | raw_metadata_id, source, external_genre_id, genre_name, parent_external_genre_id, genre_level, is_leaf, staged_at                        | なし          | 一時 / 中間     | batch          |
 | product_diff_result    | product_diff_result_id    | batch_run_id, staging_item_id, external_item_code, old_hash, new_hash, judged_at                                                         | diff_status   | 派生 / 判定結果 | batch          |
+| item_active_status_candidate | item_active_status_candidate_id | batch_run_id, source, external_item_code, candidate_active_status, reason_code, detected_at, raw_metadata_id(任意) | candidate_status | 派生 / 判定結果 | batch |
 | item_import_summary    | item_import_summary_id    | batch_run_id, source, source_api, fetched_count, new_count, updated_count, unchanged_count, unavailable_count, skipped_count, failed_count, feature_generated_count, embedding_generated_count, summarized_at | なし          | Log / 集計      | batch          |
 
 ---
@@ -714,6 +716,7 @@ erDiagram
 | raw_product_metadata   | raw_product_object     | 1対1        | MetadataがObject Storage上のRaw本体を指す          |
 | raw_product_metadata   | staging_item           | 1対多       | Rawから商品中間データを生成                        |
 | staging_item           | product_diff_result    | 1対0または1 | 疑似差分判定結果                                   |
+| item / batch_run       | item_active_status_candidate | 1対多 | BATCH-004 再確認候補（冪等: batch_run_id+source+external_item_code） |
 | staging_item           | item                   | 多対1       | itemCode単位でItemへUpsert                         |
 | staging_item_image     | item_image             | 多対多相当  | itemCode + image_urlでItem Imageへ反映             |
 | staging_ranking_signal | item_popularity_signal | 多対多相当  | itemCode + genre + periodでPopularity Signalへ反映 |
@@ -753,6 +756,7 @@ erDiagram
 | raw_product_metadata         | import_status     | raw_saved / staged / imported / skipped / failed                       |
 | fetch_cursor                 | cursor_status     | active / paused / exhausted / failed                                   |
 | product_diff_result          | diff_status       | new / updated / unchanged / unavailable                                |
+| item_active_status_candidate | candidate_status  | detected / applied / superseded / discarded（仮。T2 で確定）              |
 | item                         | active_status     | active / inactive / unavailable / excluded                             |
 | item_generation_queue        | queue_status      | queued / processing / succeeded / failed / skipped                     |
 | evaluation_run               | evaluation_status | queued / running / succeeded / failed / canceled                       |
@@ -802,6 +806,7 @@ Online推薦では、これらを参照するだけにする。
 - staging_ranking_signal
 - staging_genre
 - product_diff_result
+- item_active_status_candidate
 - item
 - item_image
 - item_review_summary
@@ -923,6 +928,7 @@ Online推薦では、これらを参照するだけにする。
 | 中     | staging_ranking_signal     |
 | 中     | staging_genre              |
 | 中     | product_diff_result        |
+| 中     | item_active_status_candidate |
 | 中     | external_genre             |
 | 中     | item_import_summary        |
 | 中     | evaluation_dataset         |

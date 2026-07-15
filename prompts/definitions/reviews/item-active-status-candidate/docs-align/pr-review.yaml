@@ -1,0 +1,76 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-item-active-status-candidate-docs-align-pr"
+  title: "item_active_status_candidate 横断docs整合 PRレビュー"
+  summary: "T1 横断 docs 整合 PR の AI Review。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1238
+  issue:
+    number: 1228
+  task_definition: "prompts/definitions/tasks/item-active-status-candidate/docs-align.yaml"
+  source_branch: "docs/task-1228-item-active-status-candidate-docs-align"
+  target_branch: "feature/epic-1227-item-active-status-candidate"
+  parent_epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  parent_epic_branch: "feature/epic-1227-item-active-status-candidate"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: null
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/item-active-status-candidate/docs-align.yaml"
+    required: true
+  issue:
+    number: 1228
+    required: true
+  pr:
+    number: 1238
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "制約正本"
+
+review_points:
+  common:
+    - "Task Definition scope 内か"
+    - "PR target が親 Epic Branch か"
+  docs:
+    - "§18.1.1（物理名 / UNIQUE / 競合 / Retention）と矛盾しないか"
+    - "テーブル定義書本体や DDL を混入していないか"
+  security:
+    - "secret / .env 実値がないか"
+
+notes:
+  - "PR 番号は /create-pr 後に反映する"

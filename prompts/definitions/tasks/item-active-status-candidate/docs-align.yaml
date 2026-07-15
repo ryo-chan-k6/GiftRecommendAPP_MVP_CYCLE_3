@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-item-active-status-candidate-docs-align"
+  title: "item_active_status_candidate:横断docs整合"
+  summary: "バッチ処理一覧・論理ER/物理ER・リソース系に item_active_status_candidate を追記し、BATCH-004 §18.1 No.7 / §18.1.1 と横断整合させる。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  epic_issue_number: 1227
+  epic_branch: "feature/epic-1227-item-active-status-candidate"
+  related_issues:
+    - number: 1222
+      purpose: "BATCH-004 親 Epic（スタック先）"
+    - number: 1224
+      purpose: "BATCH-004 仕様書 Task"
+  related_prs:
+    - number: 1225
+      purpose: "BATCH-004 仕様書 PR（merged）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  BATCH-004 仕様で専用候補テーブルが確定したため、横断 docs へ物理名・責務・Retention・BATCH-008 入力を必要最小で追記する。
+  テーブル定義書本体・DDL・実装は out of scope。
+
+objective: |
+  item_active_status_candidate が横断 docs 上で一貫して参照できる状態にする。
+
+scope:
+  - "バッチ処理一覧 / 機能×モジュール対応表への追記"
+  - "論理ER・物理ER・テーブル一覧への追記"
+  - "リソース一覧・リソース責務定義表・正本定義表への追記"
+  - "仮称・旧推奨 (A)/(B) 残存の除去（該当時）"
+
+out_of_scope:
+  - "テーブル定義書本体（T2 #1229）"
+  - "DDL / migration（T3 #1230）"
+  - "Batch 実装・UT"
+  - "インターフェース一覧 IF 追加（T4b #1232）"
+  - "BATCH-008 仕様書本体（T5 #1233）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "§18.1 No.7 / §18.1.1 制約正本"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-004 / BATCH-008 入出力追記"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: false
+      purpose: "同型（派生/判定結果・一時）の参照"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/リソース責務定義表.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/正本定義表.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md"
+      action: "update"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "横断 docs への item_active_status_candidate 追記"
+
+acceptance_criteria:
+  - "物理名 item_active_status_candidate / Writer=BATCH-004 / Reader=BATCH-008 が横断 docs と矛盾しない"
+  - "冪等キー batch_run_id + source + external_item_code が記載されている"
+  - "raw_product_metadata への候補載荷を採用しない旨が維持されている"
+  - "テーブル定義書・DDL・実装を含まない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1228-item-active-status-candidate-docs-align"
+  summary: "item-active-status-candidate-docs-align"
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-14"
+    due_date: "2026-07-16"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  epics:
+    - issue: 1227
+      title: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+      purpose: "親 Epic"
+  issues: []
+  prs: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "epic-item-active-status-candidate"
+  blocks:
+    - "task-item-active-status-candidate-table-spec"
+  exclusive_files: []
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§18.1.1 との整合"
+    - "仮称・(A)/(B) 残存がないか"
+    - "T2 テーブル定義書本体を混入していないか"
+    - "PR target が親 Epic Branch か"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "横断 docs 影響"
+
+stop_conditions:
+  - "正本間矛盾・DDL 方針変更が必要になった場合"
+
+notes:
+  - "Issue #1228"

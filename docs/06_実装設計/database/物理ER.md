@@ -80,7 +80,7 @@ MVP では物理 schema は **`public` 単一** とする。以下は **論理�
 | 論理分類 | 配置テーブル群 | 備考 |
 | -------- | -------------- | ---- |
 | `app`    | Online推薦 / User意味 / Item / 外部連携（Staging除く正本）/ Item派生 / Semantic / Master / Evaluation | 業務データ・設定正本 |
-| `log`    | `batch_run_log`, `phase_log`, `error_log`, `api_call_log`, `item_import_summary`, Staging 系, `product_diff_result`, `fetch_cursor` | 追記・一時・実行追跡 |
+| `log`    | `batch_run_log`, `phase_log`, `error_log`, `api_call_log`, `item_import_summary`, Staging 系, `product_diff_result`, `item_active_status_candidate`, `fetch_cursor` | 追記・一時・実行追跡 |
 | `metric` | `feature_distribution_metric`, `meaning_distribution_metric`, `normalization_distribution_metric`, `reco_score_distribution_metric` | 分布監視 |
 
 本番前または運用負荷増加時に `app` / `log` / `metric` への物理 schema 分割 migration を検討する（§17 No.8）。
@@ -151,6 +151,8 @@ erDiagram
     raw_product_metadata ||--o{ staging_genre : "transforms_to"
 
     staging_item ||--o| product_diff_result : "judged_as"
+    item ||--o{ item_active_status_candidate : "may_have_candidate"
+    batch_run_log ||--o{ item_active_status_candidate : "produces_candidate"
     staging_item ||--o| item : "upserts"
     staging_item_image ||--o{ item_image : "upserts"
     staging_ranking_signal ||--o{ item_popularity_signal : "upserts"
@@ -178,7 +180,7 @@ erDiagram
 | Online推薦系 | `recommendation_request`, `recommendation_run`, `recommendation_result`, `recommendation_result_item`, `recommendation_reason`, `recommendation_feedback` | ユーザー入力・推薦実行・結果・理由・Feedback | `yes` |
 | User意味推定系 | `user_semantic`, `user_feature`, `user_meaning` | Online推薦時に reco が生成する派生データ | `yes` |
 | Item系 | `item`, `item_image`, `item_review_summary`, `external_genre`, `ranking_snapshot`, `item_popularity_signal` | Online推薦で参照する商品正本・補助情報 | `yes` |
-| 外部商品データ連携系 | `fetch_cursor`, `api_call_log`, `raw_product_metadata`, `staging_item`, `staging_item_image`, `staging_ranking_signal`, `staging_genre`, `product_diff_result`, `item_import_summary` | Batch による Raw 参照・Staging・Item 反映 | `yes` |
+| 外部商品データ連携系 | `fetch_cursor`, `api_call_log`, `raw_product_metadata`, `staging_item`, `staging_item_image`, `staging_ranking_signal`, `staging_genre`, `product_diff_result`, `item_active_status_candidate`, `item_import_summary` | Batch による Raw 参照・Staging・Item 反映 | `yes` |
 | Item派生データ系 | `item_generation_queue`, `item_semantic`, `item_feature`, `item_meaning`, `item_embedding` | Batch 事前生成の推薦用派生データ | `yes` |
 | Semantic / Feature定義系 | `semantic_config`, `semantic_config_version`, `semantic_concept`, `feature_definition`, `semantic_rule`, 各種 `*_rule` | 意味・Feature 定義と変換ルール（設定正本） | `yes` |
 | Master / Config系 | `relationship_master`, `occasion_master`, `pair_master`, `model_version`, `matching_config`, `ranking_config`, `reason_template`, `feature_normalization_version` | 入力マスタ・モデル・Matching・Ranking・理由・正規化 version | `yes` |
@@ -218,6 +220,7 @@ erDiagram
 | `staging_genre` | Staging Genre | 外部商品データ連携系 | 一時 / 中間 | batch | `yes` |
 | `staging_attribute` | Staging Attribute | 外部商品データ連携系 | 一時 / 中間 | batch | `no` |
 | `product_diff_result` | Product Diff Result | 外部商品データ連携系 | 派生 / 判定結果 | batch | `yes` |
+| `item_active_status_candidate` | Item Active Status Candidate | 外部商品データ連携系 | 派生 / 判定結果 | batch | `yes` |
 | `item_import_summary` | Item Import Summary | 外部商品データ連携系 | Log / 集計 | batch | `yes` |
 | `item_generation_queue` | Item Generation Queue | Item派生データ系 | 状態 / Queue | batch | `yes` |
 | `item_semantic` | Item Semantic | Item派生データ系 | 派生 | batch / reco | `yes` |
@@ -387,6 +390,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | `staging_genre` | `idx_staging_genre_raw_metadata` | `raw_metadata_id` | btree | Raw 単位一覧・Retention | |
 | `staging_genre` | `idx_staging_genre_source_id` | `source`, `external_genre_id` | btree | `external_genre` 反映突合 | Upsert キー |
 | `product_diff_result` | `uq_product_diff_batch_code` | `batch_run_id`, `external_item_code` | unique | BATCH-006 冪等 | `product_diff_result_テーブル定義書` §7 |
+| `item_active_status_candidate` | `uq_item_active_status_candidate_run_code` | `batch_run_id`, `source`, `external_item_code` | unique | BATCH-004 候補冪等（§18.1.1） | T2 テーブル定義書 |
 | `product_diff_result` | `idx_product_diff_staging_item` | `staging_item_id` | btree | judged_as 逆引き | Retention 連動 |
 | `product_diff_result` | `idx_product_diff_status` | `batch_run_id`, `diff_status` | btree | BATCH-007〜009 読取 | — |
 | `item_import_summary` | `uq_item_import_summary_run_api` | `batch_run_id`, `source_api` | unique | BATCH-017 冪等 INSERT | `item_import_summary_テーブル定義書` §17.1 No.1 |
@@ -527,6 +531,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | Fetch Cursor | `cursor_status` | 同上 | `fetch_cursor` | active / paused / exhausted / failed |
 | Product Diff | `diff_status` | 同上 | `product_diff_result`, `staging_item` | new / updated / unchanged / unavailable |
 | Item | `active_status` | 同上 | `item` | active / inactive / unavailable / excluded |
+| Active Status Candidate | `candidate_status` | 同上（T2 確定） | `item_active_status_candidate` | detected / applied / superseded / discarded（仮） |
 | Generation Queue | `queue_status` | 同上 | `item_generation_queue` | queued / processing / succeeded / failed / skipped |
 | Item Generation Type | `generation_type` | enum Task | `item_generation_queue` | semantic / feature / embedding（Human Review 確定） |
 | Batch Run Phase | `phase_name` | enum Task / Observability §10.4 | `phase_log` | owner_type=batch_run 時。15値 |
@@ -546,6 +551,7 @@ MVP で付与する Index の方針。具体定義はテーブル定義書で確
 | Item 正本・派生 | 商品有効期間中 | Upsert / 状態更新 | `active_status` 変更 | 物理削除は原則しない |
 | Staging 系 | 成功 Batch 完了後 **即削除** / 失敗・部分成功時 **7〜14 日** | DELETE | `batch_run_id` 単位 | §17 No.4 |
 | `product_diff_result` | 成功時短期 / 失敗時 7〜14 日 | DELETE | Batch 完了後 | Staging と同様 |
+| `item_active_status_candidate` | `detected` は削除しない / `applied`・`superseded`・`discarded` は 14 日 | DELETE | cleanup（T7） | BATCH-004 §18.1.1 |
 | `phase_log` | **90 日** | DELETE | `created_at` 基準 | `phase_log_テーブル定義書` §13（Issue #536 No.10 cross-cutting 統一） |
 | Batch 系 Log（`error_log` / `api_call_log` / `batch_run_log` / `item_import_summary`） | **90 日** | DELETE | 各テーブル定義書 §13 | BATCH-RET-001 アンカー一括パージ（`batch_run_log_テーブル定義書` §13.1）。MVP では partition なし（§17 No.5） |
 | `feature_distribution_metric` | **365 日以上** | DELETE | `calculated_at` 基準 | `batch_run_log`（90 日）と**非連動**。`feature_distribution_metric_テーブル定義書` §13・§17.1 No.4 |
