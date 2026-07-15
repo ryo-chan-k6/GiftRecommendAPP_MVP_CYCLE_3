@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1260
   issue: 386
   task_definition: "prompts/definitions/epics/api-pub-004-feedback-submit/epic.yaml"
   source_branch: "feature/epic-386-pub-004-feedback-submit"
@@ -70,7 +70,7 @@ input:
     number: 386
     required: true
   pr:
-    number: null
+    number: 1260
     required: true
   diff:
     required: true
