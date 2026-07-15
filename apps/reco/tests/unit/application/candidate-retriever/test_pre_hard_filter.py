@@ -133,6 +133,73 @@ def test_pre_hard_filter_merges_request_ng_primary_and_dedupes_candidates() -> N
     assert merged.hard_filter_values == ("カジュアル", "fashion", "スポーティ")
 
 
+def test_pre_hard_filter_extracts_effective_keywords_from_alcohol_ng_text() -> None:
+    context = _sample_context(
+        run_id="run-pre-alcohol-ng-text",
+        ng_keywords=(),
+        ng_text="アルコールはNG",
+        hard_filter_candidates=(),
+    )
+    repo = InMemoryItemRepository(
+        items=(
+            build_item_record(
+                item_id="item_001",
+                item_name="上品な焼き菓子ギフトセット",
+                item_caption="焼き菓子の詰め合わせ",
+                keywords=("焼き菓子",),
+            ),
+            build_item_record(
+                item_id="item_003",
+                item_name="プレミアムワインギフト",
+                item_caption="ワインとグラスのギフトセット。アルコールを含む（NG 回避テスト用）。",
+                keywords=("ワイン",),
+            ),
+        ),
+    )
+
+    pool = run_pre_hard_filter(context, item_repository=repo)
+    merged = pool.filter_predicate.merged_filter_conditions  # type: ignore[union-attr]
+
+    assert "アルコール" in merged.ng_keywords
+    assert "アルコールはNG" not in merged.ng_keywords
+    assert pool.total_after_filter == 1
+
+
+def test_pre_hard_filter_maps_attribute_hard_filter_ng_text_to_keywords() -> None:
+    context = _sample_context(
+        run_id="run-pre-alcohol-attribute",
+        ng_keywords=(),
+        hard_filter_candidates=(
+            HardFilterCandidate(
+                filter_type="attribute",
+                filter_value="アルコールはNG",
+                evidence_text="アルコールはNG",
+                confidence=0.9,
+                source_type="ng_condition",
+            ),
+        ),
+    )
+    repo = InMemoryItemRepository(
+        items=(
+            build_item_record(
+                item_id="sweets",
+                item_caption="お茶請けに最適",
+            ),
+            build_item_record(
+                item_id="wine",
+                item_name="プレミアムワインギフト",
+                item_caption="アルコールを含むセット",
+            ),
+        ),
+    )
+
+    pool = run_pre_hard_filter(context, item_repository=repo)
+    merged = pool.filter_predicate.merged_filter_conditions  # type: ignore[union-attr]
+
+    assert "アルコール" in merged.ng_keywords
+    assert pool.total_after_filter == 1
+
+
 # §14 No.3 0 件 Pre
 def test_pre_hard_filter_zero_items_succeeds_without_grs_rec_008() -> None:
     context = _sample_context(

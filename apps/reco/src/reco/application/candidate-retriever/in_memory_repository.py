@@ -21,6 +21,8 @@ class InMemoryItemRecord:
     active_status: str
     keywords: tuple[str, ...] = ()
     categories: tuple[str, ...] = ()
+    item_name: str | None = None
+    item_caption: str | None = None
     has_image: bool = True
     has_url: bool = True
     embedding: tuple[float, ...] | None = None
@@ -107,7 +109,12 @@ def _matches_predicate(item: InMemoryItemRecord, predicate: FilterPredicate) -> 
 
 def _item_contains_keyword(item: InMemoryItemRecord, keyword: str) -> bool:
     lowered = keyword.lower()
-    return any(lowered in existing.lower() for existing in item.keywords)
+    haystacks = (
+        *(existing for existing in item.keywords),
+        item.item_name or "",
+        item.item_caption or "",
+    )
+    return any(lowered in existing.lower() for existing in haystacks if existing)
 
 
 def _cosine_similarity(left: tuple[float, ...], right: tuple[float, ...]) -> float:
