@@ -1,0 +1,152 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-result-item-postgres"
+  title: "レーン1e:Result Item Postgres配線"
+  summary: "MOD-RECO-021 recommendation_result ヘッダと MOD-RECO-022 recommendation_result_item の Postgres INSERT を production に配線し、結果明細の DB 正本化を進める。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  #1277 / #1288 後、PUB-002 は items≥1 まで到達したが、
+  recommendation_result / recommendation_result_item は InMemory INSERT のまま。
+  SCR-004 / 結果再取得・E2E の DB 正本化のため永続が必要。
+  item FK があるため、親ヘッダ（021）も同一 Epic で最小配線する。
+
+objective: |
+  production composition に 021 header / 022 item の Postgres INSERT を配線し、
+  ローカル PUB-002 再スモークで DB 行存在を確認する。
+
+scope:
+  - "子 Task（implementation）"
+  - "Epic Issue / Branch（develop 起点）"
+  - "Postgres recommendation_result INSERT（021）"
+  - "Postgres recommendation_result_item INSERT（022）"
+  - "build_production_ports 注入"
+  - "UT・手順書再スモーク"
+
+out_of_scope:
+  - "Reason（MOD-RECO-023）永続"
+  - "OpenAPI / migration / SCR / PUB-004"
+  - "Ranking / Retrieval アルゴリズム変更"
+  - "itemPrice / NG concept 精査（別 Task）"
+  - "matching_config_id 物理列追加（migration 差分）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（implementation）"
+  - "epic_scope.allowed_paths"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "子 Task PR target が親 Epic Branch"
+  - "allowed_paths が reco composition / result repos に整合"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1293-lane-1e-result-item-postgres"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: null
+  allowed_paths:
+    - "apps/reco/src/reco/composition/**"
+    - "apps/reco/src/reco/infrastructure/db/repositories/**"
+    - "apps/reco/tests/unit/composition/**"
+    - "apps/reco/tests/unit/infrastructure/**"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/lane-1e-result-item-postgres/**"
+    - "prompts/definitions/tasks/lane-1e-result-item-postgres/**"
+    - "prompts/definitions/reviews/lane-1e-result-item-postgres/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/api/src/app/feedback/**"
+    - "apps/web/src/**"
+  child_task_areas:
+    - "implementation"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "DEFAULT composition の InMemory が維持されているか"
+    - "production のみ 021/022 Postgres INSERT か"
+    - "migration 物理列に存在しない matching_config_id を無理に書いていないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e result item 永続"
+
+notes:
+  - "Epic Issue: #1293"
+  - "依存: Epic #1277 MERGED（#1288）"
+  - "親 #1263 はレーン横断。本 Epic は独立 feature"
+  - "AI は PR merge しない"
