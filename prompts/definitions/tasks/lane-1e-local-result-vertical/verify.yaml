@@ -1,0 +1,212 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-local-result-vertical-verify"
+  title: "レーン1e:ローカル結果あり縦串確認"
+  summary: "A2+A3 統合。ローカルで PUB-002 縦串を再実行し、items≥1（結果あり）を再現可能にする。未達なら原因と後続 Issue を手順書に明示する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:ローカル結果あり縦串"
+  epic_issue_number: 1263
+  epic_branch: "chore/epic-1263-lane-1e-local-result-vertical"
+  related_issues:
+    - number: 1263
+      purpose: "親 Epic"
+    - number: 1137
+      purpose: "先行 PUB-002 スモーク"
+    - number: 1255
+      purpose: "SCR-001（導線・Human Review 中）"
+  related_prs:
+    - number: 1261
+      purpose: "SCR-001 Epic PR（並行）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  レーン1e A2（縦串再確認）+ A3（結果ありデータ）。#1138〜#1141 完了後の現状で PUB-002 が HTTP 200 かつ items≥1 になるかを確認する。
+  SCR 画面コード変更は行わない（sessionStorage への手動投入手順は文書可）。
+
+objective: |
+  ローカルで結果あり推薦を再現し、手順書 §10.4 系を更新する。未達の場合は Blocker と後続 Issue 候補を明示する（無理な本実装拡大はしない）。
+
+scope:
+  - "env / seed / api / reco 起動前提の再確認"
+  - "API-PUB-002（必要時 INT-002）実行と items 件数の記録"
+  - "結果あり未達時の原因切り分け（手順・seed・stub ports 等）"
+  - "最小ギャップ埋め（test-data / scripts / 手順書。広げすぎない）"
+  - "必要なら ai-logs/experiments に実行メモ（secret なし）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "SCR-001〜004 の画面実装変更"
+  - "PUB-004 Feedback 実装変更"
+  - "OpenAPI / generated / migration"
+  - "Batch 本番相当フルラン"
+  - "手動 E2E スクショ証跡（D1）"
+  - "stub ports 全面 production 化（未達時は別 Issue 化を提案）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+    - path: "supabase/seeds/test-data/README.md"
+      required: true
+  files:
+    - path: "scripts/db/seed-test-data.sh"
+      required: true
+    - path: "scripts/dev/start-api.sh"
+      required: true
+    - path: "scripts/dev/start-reco.sh"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: false
+    - path: "scripts/db/README.md"
+      action: "update"
+      required: false
+    - path: "supabase/seeds/test-data/**"
+      action: "update"
+      required: false
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "手順書更新（結果あり再現手順 or Blocker 明示）"
+  - "実行結果の記録（HTTP status / items 件数。secret なし）"
+
+acceptance_criteria:
+  - "PUB-002（または同等経路）の実行結果が手順書または experiments ログに記録されている"
+  - "items≥1 を再現できた、または未達理由と後続 Issue 候補が明示されている"
+  - "secret / .env 実値を含んでいない"
+  - "PUB-004 / SCR 画面実装を変更していない"
+
+branch:
+  no_branch: false
+  name: null
+  base: "chore/epic-1263-lane-1e-local-result-vertical"
+  target: "chore/epic-1263-lane-1e-local-result-vertical"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics:
+    - issue: 1263
+      title: "[Epic]レーン1e:ローカル結果あり縦串"
+      purpose: "親 Epic"
+  issues:
+    - number: 1137
+      purpose: "先行スモーク"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "manual local smoke"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "api/reco health 200"
+    - "PUB-002 実行と items 件数確認"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "ローカル縦串確認 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "結果あり再現 or Blocker 明示が十分か"
+    - "scope 逸脱（SCR / PUB-004 / OpenAPI）がないか"
+    - "secret がないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e A2+A3"
+
+stop_conditions:
+  - "DB / .env が用意できず確認不能で代替手段もない場合"
+  - "secret を docs に書かないと進められない場合"
+
+notes:
+  - "Issueタイトル: [Task]レーン1e:ローカル結果あり縦串確認"
+  - "親Epic: #1263"
+  - "PR 本文は Related to（Closes 禁止）"
+  - "Review: prompts/definitions/reviews/lane-1e-local-result-vertical/verify/pr-review.yaml"
