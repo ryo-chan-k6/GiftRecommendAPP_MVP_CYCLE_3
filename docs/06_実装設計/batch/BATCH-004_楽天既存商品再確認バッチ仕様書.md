@@ -389,7 +389,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 4 | active_status 候補 | availability / 空ヒット / 販売可能で `item_active_status_candidate` へ upsert され、`item.active_status` と `raw_product_metadata` 候補カラムは変わらない | unit |
 | 5 | Rate Limit | 429 時にログへ `GRS-EXT-102`、当該 `fetch_cursor` を `paused`（page 非進行）。待機・再試行ループは Rate Limiter 本実装へ委譲 | unit（mock） |
 | 6 | API失敗 | 外部API失敗時に api_call_log / error_log が記録され、部分失敗方針に従う | unit（mock） |
-| 7 | cursor 更新 | API 成功後にのみ fetch_cursor が更新される | unit |
+| 7 | cursor 更新 | 終端（`exhausted`）への更新は API 成功後のみ。Rate Limit（`GRS-EXT-102`）時は `paused`（page 非進行）へ更新可 | unit |
 | 8 | secret非含有 | ログ・fixture・docs に APIキー実値が含まれない | review / unit |
 | 9 | 境界 | genre/keyword/update_sort/ranking_supplement / Staging / Item 本更新をしない | unit |
 
