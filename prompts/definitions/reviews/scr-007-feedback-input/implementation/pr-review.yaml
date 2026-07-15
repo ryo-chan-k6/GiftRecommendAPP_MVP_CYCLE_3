@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1338
   issue: 1337
   task_definition: "prompts/definitions/tasks/scr-007-feedback-input/implementation.yaml"
   source_branch: "feature/task-1337-scr-007-feedback-input-implementation"
