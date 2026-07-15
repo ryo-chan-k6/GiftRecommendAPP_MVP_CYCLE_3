@@ -1,12 +1,13 @@
-/** SCR-001 トップ画面 */
+/** SCR-001 トップ画面
+ * ブランド文言は仮 LP（https://ryo-chan-k6.github.io/GiftRecommendAPP_LP/）と整合。
+ */
 
-export const PAGE_SERVICE_NAME = "Gift Recommendation Service";
+export const PAGE_SERVICE_NAME = "OKURI 贈";
 
-export const PAGE_CATCHCOPY =
-  "意味で選ぶ、贈る相手に届くギフト推薦";
+export const PAGE_CATCHCOPY = "「何を伝えたいか」で選ぶギフト体験";
 
 export const PAGE_DESCRIPTION =
-  "贈答相手・用途・好み・避けたい条件から、あなたに合うギフト候補を提案します。購入・決済は外部ECで行います。";
+  "OKURIは、あなたと相手の関係性・気持ちを読み解き、ギフトの「意味」からパーソナルな一品を提案します。無難な選択ではなく、伝わる選択を。";
 
 export const CTA_LABEL = "ギフトを探す";
 
