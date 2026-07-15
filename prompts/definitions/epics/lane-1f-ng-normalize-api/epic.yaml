@@ -147,3 +147,4 @@ notes:
   - "依存: Epic #1308 / #1263 MERGED"
   - "Contract Task と implementation を分離"
   - "AI は PR merge しない"
+  - "子 Task: Contract #1321/#1322, Implementation #1324/#1326 MERGED into Epic branch"
