@@ -6,7 +6,7 @@ review:
   title: "BATCH-004 楽天既存商品再確認Batch Epic PRレビュー"
   summary: "BATCH-004 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,7 +14,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 1296
   issue:
     number: 1222
   task_definition: "prompts/definitions/epics/batch-004-rakuten-existing-item-recheck/epic.yaml"
