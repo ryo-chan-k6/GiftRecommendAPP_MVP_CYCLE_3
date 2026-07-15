@@ -9,19 +9,35 @@
 
 ## 実施内容
 
-1. Epic / Task / Definition 起票
-2. チェックリスト正本を作成
-3. ローカル実行を試行
+1. Docker / Supabase / Redis / reco / api / web 起動
+2. seed（masters / test-data）
+3. UI + PUB-002 でシナリオ実行
 
 ## 結果（事実）
 
-| 項目 | 結果 |
+| ID | 結果 | 根拠 |
+| ---- | ---- | ---- |
+| S1 | **pass** | UI `resultId=4314c45c-…` 件数1・¥4,320。API `traceId=d1-manual-e2e-s1-001` count=1 |
+| S2 | **fail** | 0件狙いが HTTP 500 `GRS-REC-012`（SCR-009 未達） |
+| S3 | **pass** | api 停止 → 「エラー」UI → 「条件入力へ戻る」 |
+| S4 | **pass** | 「条件を変更して再検索」→ SCR-002 |
+| S5 | **pass** | 理由詳細展開 |
+| S6 | **pass** | alcohol NG で焼き菓子のみ |
+
+### Residual
+
+- SCR-001 `/`: HomePage client exception（自動化）
+- 画像プレースホルダ
+
+## 環境
+
+| 項目 | 値 |
 | ---- | ---- |
-| チェックリスト | 作成済み（`docs/.../レーン1e_手動E2Eチェックリスト.md`） |
-| S1〜S4 実行 | **blocked** — Docker daemon 未起動のため DB/Redis/api/web を起動できない |
-| reco :8000 | プロセス残留を確認したが health 503（利用不可） |
+| develop tip（実行） | `5bcdc6e0` |
+| Docker | OK |
+| DB / Redis / api / reco / web | 起動確認済み |
 
 ## 次（推論）
 
-- Docker Desktop（WSL integration）起動後に S1 を優先実施
-- merge 方針は Human 判断（チェックリストのみ先行 vs 証跡後）
+- D1 は S2 を residual Issue 化して Close 許容が妥当
+- SCR-001 `/` 例外は web 別 Issue

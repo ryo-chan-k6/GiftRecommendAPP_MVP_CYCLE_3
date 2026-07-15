@@ -60,16 +60,16 @@
 
 | 項目 | 記録 |
 | ---- | ---- |
-| 実施日時 | |
-| Branch / commit | |
-| HTTP または画面観測 | |
-| `resultId` | |
-| `resultItemCount` | |
-| `traceId` / `requestId`（どちらか） | |
-| 合否 | `pass` / `fail` / `blocked` |
-| メモ | |
+| 実施日時 | 2026-07-15（Docker 復旧後再開） |
+| Branch / commit | web/api: `develop` `5bcdc6e0` / docs Task: `34f64527`→本更新 |
+| HTTP または画面観測 | UI: SCR-002→003→004。SCR-001(`/`) は HomePage webpack 例外で自動化不可のため `/recommendations` から開始 |
+| `resultId` | `4314c45c-3663-41eb-a559-7033b8285187`（UI） / API 別実行 `0b14bc8d-3bde-4956-a1b2-e0e291c70667` |
+| `resultItemCount` | **1** |
+| `traceId` / `requestId`（どちらか） | API: `traceId=d1-manual-e2e-s1-001` / UI 実行はブラウザ Network 未採取 |
+| 合否 | `pass`（ただし SCR-001 起点は別途 residual） |
+| メモ | 商品「上品な焼き菓子ギフトセット」¥4,320。画像プレースホルダ。Feedback 準備中 |
 
-**API 代替確認（UI 不能時の技術観測）:** 手順書 §10.4.2 の `POST /api/v1/recommendations`。UI 必須シナリオの完全代替にはならないが、データ前提の健全性確認として併記可。
+**API 代替確認:** `POST /api/v1/recommendations` HTTP 200 / `resultItemCount=1` / alcohol NG で item_003 除外。
 
 ---
 
@@ -82,6 +82,7 @@
 | 狙い | 候補が残らない条件、または API empty |
 | 合格 | SCR-009 相当 UI + 条件入力へ戻れる |
 | 記録 | 条件概要（個人情報なし）・件数 0・合否 |
+| 本実行 | `budgetMax=1` および `budget 9000-10000` とも API **HTTP 500** `GRS-REC-012`。`resultStatus=empty` 未達 → SCR-009 UI に到達不能。**合否 `fail`（製品ギャップ）** |
 
 ### S3 エラー
 
@@ -89,7 +90,7 @@
 | ---- | ---- |
 | 狙い | api 停止・不正 base URL・強制 5xx 等 |
 | 合格 | SCR-008 相当 UI + 条件入力へ戻れる |
-| 記録 | 誘発方法（secret なし）・表示文言要約・合否 |
+| 記録 | 誘発: api プロセス停止後に実行。「エラー / レコメンド実行に失敗しました」表示。「条件入力へ戻る」で SCR-002 復帰。**合否 `pass`** |
 
 ### S4 再検索
 
@@ -97,7 +98,7 @@
 | ---- | ---- |
 | 狙い | 結果画面から条件入力へ戻る |
 | 合格 | SCR-002 再表示 → 再実行可能 |
-| 記録 | 導線（ボタン名等）・合否 |
+| 記録 | 「条件を変更して再検索」→ `/recommendations`。NG テキスト保持を確認。**合否 `pass`** |
 
 ---
 
@@ -105,30 +106,26 @@
 
 | ID | 結果 | 実施メモ |
 | ---- | ---- | -------- |
-| S1 | `blocked` | 2026-07-15: Docker daemon 未起動。DB(`54322`) / Redis / api / web 起動不可。reco :8000 は残留プロセスだが health 503 |
-| S2 | `blocked` | 同上（環境前提未達） |
-| S3 | `blocked` | 同上 |
-| S4 | `blocked` | 同上 |
-| S5 | `skipped` | 推奨。環境復旧後に任意実施 |
-| S6 | `blocked` | 推奨。API 代替も環境未達 |
+| S1 | `pass` | SCR-002→003→004。件数1・価格表示。SCR-001(`/`) は HomePage `Cannot read properties of undefined (reading 'call')` で自動化失敗（残） |
+| S2 | `fail` | 0件条件が `GRS-REC-012` 500 になり SCR-009 未達 |
+| S3 | `pass` | api 停止→エラー UI→条件入力へ戻る |
+| S4 | `pass` | 再検索リンクで SCR-002 復帰 |
+| S5 | `pass` | 「理由の詳細」展開で要約表示 |
+| S6 | `pass` | alcohol NG で焼き菓子1件（ワイン除外）。API/UI いずれも件数1 |
 | S7 | `out_of_scope` | SCR-006 は別レーン |
 
-### 環境ブロッカー（事実）
+### Residual / 後続 Issue 候補
 
-| 確認 | 結果 |
+| 内容 | 扱い |
 | ---- | ---- |
-| `docker info` / Docker sock | **失敗**（daemon 未接続） |
-| `127.0.0.1:54322` | **閉** |
-| Redis `:6379` | **閉** |
-| api `:3001` / web `:3000` | **閉** |
-| reco `:8000` | LISTEN あるが health **503** |
+| SCR-001 `/` の client exception（HomePage Link / webpack `call`） | 別 Issue 候補（本 Task は apps 改修 out of scope） |
+| 0件が `GRS-REC-012` になり SCR-009 未到達 | 別 Issue 候補（reco/api empty 経路） |
+| 結果カード画像プレースホルダ | 観測のみ |
 
 ### Human 判断依頼
 
-1. Docker 起動後に同一 Task で S1〜S4 を再実施してから merge するか  
-2. チェックリスト正本のみ develop へ入れ、実行証跡は follow-up Issue にするか  
-
-推奨: **1（Docker 起動後に証跡取得してから merge）**。
+1. S2 `fail` を残したまま D1 を受け入れ Close するか（推奨: Close 可＋0件経路を別 Issue）  
+2. SCR-001 `/` 例外を D1 Blocker にするか（推奨: 別 Issue。主導線は `/recommendations` から成立）  
 
 ---
 
@@ -139,8 +136,9 @@
 | チェックリスト（本ファイル） | `docs/06_実装設計/cross_cutting/` |
 | 実行メモ | `ai-logs/experiments/` |
 | 手順書サマリ | [ローカル開発手順書](./ローカル開発手順書.md) §10.4.15 |
+| スクショ | ローカル取得 `d1-s1-result.png`（バイナリは commit しない）。観測は本表に要約 |
 
-スクショは取得できれば Issue/PR コメントまたは ai-logs にパスのみ記載（バイナリ直 commit は避ける）。**secret / `.env` 実値は禁止**。
+**secret / `.env` 実値は禁止**。
 
 ---
 
@@ -149,3 +147,4 @@
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-15 | 初版（Issue #1331）。環境ブロックにより実行は未達 |
+| 2026-07-15 | Docker 復旧後に S1/S3/S4/S5/S6 実施。S2 fail・SCR-001 residual を記録 |
