@@ -120,7 +120,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue-number>-scr-007-feedback-input-screen-spec"
+  name: "docs/task-1327-scr-007-feedback-input-screen-spec"
   summary: "scr-007-feedback-input-screen-spec"
   base: "feature/epic-1325-scr-007-feedback-input"
   target: "feature/epic-1325-scr-007-feedback-input"
