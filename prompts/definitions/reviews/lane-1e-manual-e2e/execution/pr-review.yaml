@@ -15,9 +15,9 @@ branch:
   worktree_required: false
 target:
   pr: null
-  issue: null
+  issue: 1331
   task_definition: "prompts/definitions/tasks/lane-1e-manual-e2e/execution.yaml"
-  source_branch: null
+  source_branch: "test/task-1331-lane-1e-manual-e2e-execution"
   target_branch: "chore/epic-1330-lane-1e-manual-e2e"
   parent_epic_issue: "[Epic]レーン1e:手動E2E検証"
   parent_epic_branch: "chore/epic-1330-lane-1e-manual-e2e"
@@ -55,7 +55,7 @@ input:
     path: "prompts/definitions/tasks/lane-1e-manual-e2e/execution.yaml"
     required: true
   issue:
-    number: null
+    number: 1331
     required: true
   pr:
     number: null

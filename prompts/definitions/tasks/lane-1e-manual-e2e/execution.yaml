@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 1330
   epic_branch: "chore/epic-1330-lane-1e-manual-e2e"
   related_issues:
+    - number: 1331
+      purpose: "本 Task Issue"
     - number: 1330
       purpose: "親 Epic"
     - number: 1263
@@ -104,7 +106,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "test/task-1331-lane-1e-manual-e2e-execution"
   base: "chore/epic-1330-lane-1e-manual-e2e"
   target: "chore/epic-1330-lane-1e-manual-e2e"
   worktree_required: true
