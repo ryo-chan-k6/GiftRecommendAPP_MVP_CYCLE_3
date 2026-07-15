@@ -150,6 +150,7 @@ class ItemActiveStatusRepositories:
             reason_code=existing.reason_code,
             item_id=existing.item_id,
             applied_at=at,
+            updated_at=at,
         )
         self.candidates[candidate_id] = updated
         self.db_writer.write_rows(
@@ -159,20 +160,28 @@ class ItemActiveStatusRepositories:
                     "item_active_status_candidate_id": candidate_id,
                     "candidate_status": "applied",
                     "applied_at": at.isoformat(),
+                    "updated_at": at.isoformat(),
                 },
             ),
         )
 
-    def mark_candidate_superseded(self, candidate_id: str) -> None:
-        self._mark_terminal(candidate_id, status="superseded")
+    def mark_candidate_superseded(self, candidate_id: str, *, updated_at: datetime | None = None) -> None:
+        self._mark_terminal(candidate_id, status="superseded", updated_at=updated_at)
 
-    def mark_candidate_discarded(self, candidate_id: str) -> None:
-        self._mark_terminal(candidate_id, status="discarded")
+    def mark_candidate_discarded(self, candidate_id: str, *, updated_at: datetime | None = None) -> None:
+        self._mark_terminal(candidate_id, status="discarded", updated_at=updated_at)
 
-    def _mark_terminal(self, candidate_id: str, *, status: str) -> None:
+    def _mark_terminal(
+        self,
+        candidate_id: str,
+        *,
+        status: str,
+        updated_at: datetime | None = None,
+    ) -> None:
         existing = self.candidates.get(candidate_id)
         if existing is None or existing.candidate_status != "detected":
             return
+        at = updated_at or datetime.now(timezone.utc)
         updated = CandidateRow(
             candidate_id=existing.candidate_id,
             batch_run_id=existing.batch_run_id,
@@ -185,6 +194,7 @@ class ItemActiveStatusRepositories:
             reason_code=existing.reason_code,
             item_id=existing.item_id,
             applied_at=None,
+            updated_at=at,
         )
         self.candidates[candidate_id] = updated
         self.db_writer.write_rows(
@@ -193,9 +203,34 @@ class ItemActiveStatusRepositories:
                 {
                     "item_active_status_candidate_id": candidate_id,
                     "candidate_status": status,
+                    "updated_at": at.isoformat(),
                 },
             ),
         )
+
+    def delete_candidate(self, candidate_id: str) -> bool:
+        """Physical DELETE for Retention cleanup. Never call for detected."""
+
+        existing = self.candidates.get(candidate_id)
+        if existing is None:
+            return False
+        if existing.candidate_status == "detected":
+            return False
+        del self.candidates[candidate_id]
+        self.deleted_candidate_ids.append(candidate_id)
+        self.db_writer.write_rows(
+            "item_active_status_candidate",
+            (
+                {
+                    "item_active_status_candidate_id": candidate_id,
+                    "op": "delete",
+                },
+            ),
+        )
+        return True
+
+    def list_candidates_for_retention(self) -> list[CandidateRow]:
+        return list(self.candidates.values())
 
     def record_phase(self, *, phase: str, status: str) -> None:
         self.phase_logs.append({"phase": phase, "status": status})

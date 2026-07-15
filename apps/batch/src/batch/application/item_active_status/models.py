@@ -52,6 +52,23 @@ class CandidateRow:
     reason_code: str | None = None
     item_id: str | None = None
     applied_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class RetentionCleanupResult:
+    """T7 Retention cleanup summary."""
+
+    batch_id: str
+    job_run_id: str
+    status: ItemActiveStatusRunStatus
+    retention_days: int = 14
+    scanned_count: int = 0
+    deleted_count: int = 0
+    skipped_detected_count: int = 0
+    skipped_young_count: int = 0
+    deleted_candidate_ids: list[str] = field(default_factory=list)
+    error_codes: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

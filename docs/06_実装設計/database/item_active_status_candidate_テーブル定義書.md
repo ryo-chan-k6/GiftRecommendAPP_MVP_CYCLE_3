@@ -382,6 +382,7 @@ ON CONFLICT (batch_run_id, source, external_item_code) DO UPDATE SET
 | Epic | #1227 | 付随テーブル整備 |
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-020（Writer）/ IF-DB-BATCH-021（Reader） |
 | BATCH-008 仕様書 | `docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md` | Reader / Applier / 競合手順（#1233） |
+| Retention cleanup 運用手順 | `docs/06_実装設計/batch/item_active_status_candidate_Retention_cleanup運用手順.md` | T7（#1235） |
 
 ---
 
