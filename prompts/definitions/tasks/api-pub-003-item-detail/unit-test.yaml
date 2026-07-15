@@ -1,0 +1,203 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-003-item-detail-unit-test"
+  title: "API-PUB-003:商品詳細取得単体テスト"
+  summary: "API-PUB-003（商品詳細取得）エンドポイント層に対し、実装仕様書 §9 の fixture ベース unit 観点カバレッジを整理・拡充する（Phase4b 3/3）。Issue #1284。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-003:商品詳細取得"
+  epic_issue_number: 385
+  epic_branch: "feature/epic-385-pub-003-item-detail"
+  related_issues:
+    - number: 385
+      purpose: "親 Epic"
+    - number: 1280
+      purpose: "前提 Task（エンドポイント実装・スモーク UT）"
+    - number: 1262
+      purpose: "前提 Task（API実装仕様書）"
+  related_prs:
+    - number: 1281
+      purpose: "実装 Task PR（親 Epic Branch merge 済み）"
+    - number: 1265
+      purpose: "実装仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 縦串の 3/3。実装 Task（#1280 / PR #1281）で items Router とスモーク UT が追加済み。
+  本 Task は実装仕様書 §9 の fixture 化可能観点を InMemory / 失敗注入で充足し、PR 本文にカバレッジ表を記載する。
+  §9 No.12（generated）/ No.13（画面 manual）は out of scope。実 Postgres 結合は対象外（Scaffold 注入で代替可能な範囲のみ）。
+
+objective: |
+  API-PUB-003 の unit テストを §9（fixture 化可能範囲）に沿って充足し、Epic PR → develop の前提を満たす。
+
+scope:
+  - "エンドポイント / Controller / Repository 層単体テストの拡充またはカバレッジ確認"
+  - "実装仕様書 §9 の unit 観点対応表を PR 本文に記載"
+  - "不足ケース追加（popularityBadge、非公開列、DB 失敗 GRS-DB-*、meta requestId、非 GET、error metric 等）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "実 Postgres 結合テスト（必須の実 migration）"
+  - "OpenAPI / generated / apps/web / apps/reco 変更"
+  - "SCR-006 画面確認"
+  - "Epic PR の develop merge（Human 判断）"
+  - "本番機能追加（テスト・Definition 以外）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+  files:
+    - path: "apps/api/src/app/items/"
+      required: true
+    - path: "apps/api/tests/unit/app/items/items.smoke.test.ts"
+      required: true
+  issues:
+    - number: 1280
+      purpose: "前提実装"
+  prs:
+    - number: 1281
+      purpose: "実装 PR Epic merge"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/tasks/api-pub-003-item-detail/unit-test.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/api/tests/unit/app/items/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "§9 unit 観点カバレッジ表（PR 本文）"
+  - "不足ケースのテスト追加"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "実装仕様書 §9 の fixture 化可能観点がテストまたは明示スキップ理由でカバーされている"
+  - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
+  - "OpenAPI / generated / apps/web / apps/reco 変更を含まない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1284-api-pub-003-item-detail-unit-test"
+  summary: "api-pub-003-item-detail-unit-test"
+  base: "feature/epic-385-pub-003-item-detail"
+  target: "feature/epic-385-pub-003-item-detail"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  number: 1284
+  unit: "task"
+  type: "test"
+  area: "api"
+
+dependencies:
+  issues:
+    - number: 1280
+      purpose: "実装 Task"
+  prs:
+    - number: 1281
+      purpose: "実装 PR Epic merge"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/api/tests/unit/app/items/**"
+    - "prompts/definitions/tasks/api-pub-003-item-detail/unit-test.yaml"
+    - "prompts/definitions/reviews/api-pub-003-item-detail/unit-test/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "build or typecheck"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  not_required:
+    - "integration test"
+    - "e2e test"
+  skip_reason:
+    "integration test": "実 DB 結合は対象外。InMemory / 失敗注入で代替"
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§9 カバレッジが十分か"
+    - "404/422/画像なし/DB失敗/非公開列が検証されているか"
+    - "secret 非露出"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 UT は ai-logs に保存しない"
+
+human_decision_points: []
+
+stop_conditions:
+  - "PR #1281 が親 Epic Branch に merge されていない場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "実 Postgres 結合が必須と判明した場合"
+
+notes:
+  - "PUB-004 unit-test.yaml と同型。実装 PR #1281 merge 済みのため開始可。"
+  - "後続: Epic PR → develop。"
