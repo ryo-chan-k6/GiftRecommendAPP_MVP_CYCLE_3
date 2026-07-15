@@ -1,0 +1,273 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-006-product-diff"
+  title: "BATCH-006:商品差分判定Batch"
+  summary: "BATCH-006（商品差分判定Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。staging_item と既存 item の normalized_hash を比較し、product_diff_result に new/updated/unchanged/unavailable を記録する差分判定段。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b Batch レーンの差分判定段。実装フェーズ並列計画に従い、識別子単位 Epic（1 Batch ID = 1 Epic）として bootstrap する。
+  先行 BATCH-005（Raw取込・Staging変換）は develop merge 済み（#1307 / PR #1339）。
+  BATCH-005 が確定した staging_item.normalized_hash と既存 item.normalized_hash を比較し、product_diff_result に判定を記録する。
+  Batch は HTTP API 化しないため Contract Gate は不要。
+  前提: Phase4a batch-foundation（#734）CLOSED。後続は BATCH-007（Item反映）/ BATCH-008 / BATCH-009。
+
+objective: |
+  BATCH-006 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: バッチ仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-006 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-006-product-diff/**）を整理する"
+  - "Contract Gate 不要方針を明示する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001〜005 / 007〜019）の仕様書・実装・テスト（先行 Staging・後続 Item 反映は参照のみ）"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）・Reco・DB schema / migration（既存 product_diff_result / staging_item / item 定義の参照は可。新規 migration が必要なら別途 Human 判断）"
+  - "本番リリース作業"
+  - "楽天 API 契約変更そのもの"
+  - "BATCH-007 Item反映・BATCH-008 active_status 本更新・BATCH-009 キュー登録の詳細実装"
+  - "normalized_hash の再算出（BATCH-005 責務。本 Batch は比較のみ）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-006 の Batch ID・処理概要・入出力・依存・MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "実行方式・差分判定・ログ方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "item-import チェーン内の差分判定段との関係を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "BATCH-005 → 006 → 007 の必須依存を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "差分判定・hash 比較方針を確認するため"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "判定正本・UNIQUE・diff_status の参照"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "比較入力・normalized_hash / diff_status=NULL"
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      required: true
+      purpose: "先行 Batch 境界（hash 算出・Item 非更新）の参照"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b Batch 縦串・並列方針を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / バッチ Task 命名規約を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-006:商品差分判定Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（バッチ仕様書 / 実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-006:商品差分判定Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が BATCH-006 の責務範囲と整合している"
+  - "epic_scope.artifact_id が BATCH-006 である"
+
+branch:
+  no_branch: false
+  summary: "batch-006-product-diff"
+  name: "feature/epic-1341-batch-006-product-diff"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-19"
+
+issue:
+  number: 1341
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-006"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-006_*"
+    - "apps/batch/src/batch/application/product_diff/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-rakuten-product-diff*.yml"
+    - "prompts/definitions/epics/batch-006-product-diff/**"
+    - "prompts/definitions/tasks/batch-006-product-diff/**"
+    - "prompts/definitions/reviews/batch-006-product-diff/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/src/batch/application/genre_sync/**"
+    - "apps/batch/src/batch/application/ranking_snapshot/**"
+    - "apps/batch/src/batch/application/item_pseudo_diff/**"
+    - "apps/batch/src/batch/application/item_recheck/**"
+    - "apps/batch/src/batch/application/raw_staging/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 734
+      title: "[Epic]batch-foundation:Batch共通基盤"
+      purpose: "Phase4a Batch 共通基盤（CLOSED）"
+    - issue: 1307
+      title: "[Epic]BATCH-005:Raw取込・Staging変換Batch"
+      purpose: "先行 Staging / normalized_hash。develop merge 済み"
+  issues: []
+  prs:
+    - number: 1339
+      purpose: "BATCH-005 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-005-raw-staging"
+  blocks:
+    - "epic-batch-007-item-apply"
+  exclusive_files: []
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope（Batch 1 つ分）が広すぎないか確認する"
+    - "依存 Epic BATCH-005 が CLOSED であることを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic の作業範囲が BATCH-006 に閉じているか"
+    - "epic_scope.allowed_paths がバッチ処理一覧 BATCH-006 と整合しているか"
+    - "Contract Gate 不要方針が明示されているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch Epic の初期 bootstrap"
+
+contract_gate:
+  required: false
+
+risk_points:
+  - "Task PR を誤って develop へ直接向ける運用ミス"
+  - "親 item-import workflow 全体を本 Epic で改修し他 Batch と競合する"
+  - "Item 正本を本 Batch で更新してしまう境界逸脱（Item 更新は BATCH-007）"
+  - "normalized_hash を再算出してしまう（BATCH-005 責務）"
+  - "product_diff_result DDL 不足で migration が必要になった場合の scope 逸脱"
+
+human_decision_points:
+  - "子 workflow を独立 YAML（batch-rakuten-product-diff）とするか、親 item-import 内ステップのみとするか"
+  - "処理対象 staging_item の選定（import_status=staged / diff_status=NULL / 件数上限）の既定"
+  - "unavailable 判定条件の詳細（必須項目不足・取得不能等）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "バッチ処理一覧に BATCH-006 が無い、または MVP 対象外の場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "新規 DB migration が必須に見え、Human 判断なしに進められない場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic Issue #1341 / Branch feature/epic-1341-batch-006-product-diff（/start-epic 反映済み）"
+  - "Epic は作業管理単位。成果物正本は子 Task"
+  - "workstream_key: batch-006-product-diff"
+  - "実装パス想定: apps/batch/src/batch/application/product_diff/**"
+  - "正本区分: product_diff_result（Item 正本は更新しない）"
+  - "hash 算出は BATCH-005。本 Batch は比較のみ"

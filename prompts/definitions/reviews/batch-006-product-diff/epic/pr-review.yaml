@@ -1,0 +1,61 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-006-product-diff-epic-pr"
+  title: "BATCH-006 商品差分判定Batch Epic PRレビュー"
+  summary: "BATCH-006 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1341
+  task_definition: "prompts/definitions/epics/batch-006-product-diff/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]BATCH-006:商品差分判定Batch"
+  parent_epic_branch: "feature/epic-1341-batch-006-product-diff"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/batch-006-product-diff/epic.yaml"
+    required: true
+
+review_points:
+  - "scope / epic_scope.allowed_paths 整合"
+  - "BATCH-006 以外の Batch 実装が混入していないか"
+  - "Item 正本を本 Batch で更新していないか"
+  - "normalized_hash 再算出をしていないか（比較のみ）"
+  - "packages/contracts / generated 非手編集"
+  - "Contract Gate 不要方針との整合"
+  - "secret 非含有"
+  - "Epic PR target が develop であるか"
+
+notes:
+  - "縦串完了後に PR 番号を反映し status を ready へ更新する"
