@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-item-active-status-candidate-batch-008-reader-spec"
+  title: "BATCH-008:候補テーブルReader仕様"
+  summary: "BATCH-008 仕様書を新規作成し、item_active_status_candidate 読取・適用・product_diff 競合・Retention（008側）を手順化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  epic_issue_number: 1227
+  epic_branch: "feature/epic-1227-item-active-status-candidate"
+  related_issues:
+    - number: 1229
+      purpose: "T2 テーブル定義書"
+    - number: 1232
+      purpose: "T4b IF 一覧"
+    - number: 1224
+      purpose: "BATCH-004 仕様（§18.1.1 制約）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  T2/T4b 完了後。BATCH-008 専用 Epic 未作成のため、当面の親は #1227。
+  制約正本は BATCH-004 §18.1.1。
+
+objective: |
+  BATCH-008_商品有効状態更新バッチ仕様書を作成し、候補 Reader/Applier・競合・Retention 手順を明記する。
+
+scope:
+  - "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md の新規作成"
+  - "§18.1.1 競合・Retention の 008 側手順化"
+  - "関連資料への相互リンク（テーブル定義書 / BATCH-004）"
+
+out_of_scope:
+  - "BATCH-008 実装・UT（T6）"
+  - "Retention cleanup 実装（T7）"
+  - "Online 変更"
+  - "BATCH-004 Writer 実装（T4a）"
+  - "専用 BATCH-008 Epic の起票判断確定"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "§18.1.1 制約正本"
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      required: true
+      purpose: "Reader/Applier・Retention"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-006/009/020/021"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-008 行"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      action: "create"
+      required: true
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      action: "update"
+      required: false
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-008 バッチ仕様書"
+
+acceptance_criteria:
+  - "BATCH-008 仕様書が存在し、両経路読取・制限側優先・復帰条件・Retention（DELETEしない）が明記されている"
+  - "IF-DB-BATCH-009 / 021 の境界が明記されている"
+  - "実装コード・OpenAPI を含まない"
+  - "secret 非含有"
+  - "§18.1.1 と矛盾しない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1233-batch-008-candidate-reader-spec"
+  summary: "batch-008-candidate-reader-spec"
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1227
+  issues:
+    - 1229
+    - 1232
+  prs: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-item-active-status-candidate-table-spec"
+    - "task-item-active-status-candidate-iface"
+  blocks:
+    - "task-item-active-status-candidate-batch-008-applier"
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§18.1.1 競合・復帰・Retention との整合"
+    - "IF-DB-BATCH-009 / 021 境界"
+    - "専用 BATCH-008 Epic 未作成を §18.2 で明示しているか"
+    - "実装・OpenAPI 非混入"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 docs Task"
+
+stop_conditions:
+  - "§18.1.1 と矛盾する設計変更が必要になった場合"
+
+notes:
+  - "Issue #1233"
