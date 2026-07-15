@@ -1,0 +1,98 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-005-raw-staging-batch-spec-pr"
+  title: "BATCH-005 Raw取込・Staging変換バッチ仕様書 PRレビュー"
+  summary: "BATCH-005 バッチ仕様書 Task（#1317）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "feature/epic-1307-batch-005-raw-staging"
+  target: "feature/epic-1307-batch-005-raw-staging"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1319
+  issue:
+    number: 1317
+  task_definition: "prompts/definitions/tasks/batch-005-raw-staging/batch-spec.yaml"
+  source_branch: "docs/task-1317-batch-005-raw-staging-batch-spec"
+  target_branch: "feature/epic-1307-batch-005-raw-staging"
+  parent_epic_issue: "[Epic]BATCH-005:Raw取込・Staging変換Batch"
+  parent_epic_branch: "feature/epic-1307-batch-005-raw-staging"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-005-raw-staging/batch-spec.yaml"
+    required: true
+  issue:
+    number: 1317
+    required: true
+  pr:
+    number: 1319
+    required: true
+  diff:
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      required: true
+      purpose: "成果物本体"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-005 正本との整合"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+  docs:
+    - "バッチ処理一覧 BATCH-005 と矛盾していないか"
+    - "Item非更新・Staging境界が明記されているか"
+    - "Human提案とHuman確定が区別されているか"
+  security:
+    - "secret / .env 実値がないか"
+
+notes:
+  - "Issue #1317。PR 番号は create-pr 後に反映"
