@@ -1,4 +1,4 @@
-"""Batch application scaffold (Phase4a) + BATCH-001 / BATCH-002 / BATCH-003."""
+"""Batch application scaffold (Phase4a) + BATCH-001 / BATCH-002 / BATCH-003 / BATCH-008."""
 
 from batch.application.context import BatchJobContext
 from batch.application.genre_sync import (
@@ -7,6 +7,13 @@ from batch.application.genre_sync import (
     GenreSyncJob,
     GenreSyncRepositories,
     GenreSyncResult,
+)
+from batch.application.item_active_status import (
+    BATCH_ID as ITEM_ACTIVE_STATUS_BATCH_ID,
+    ITEM_ACTIVE_STATUS_PHASES,
+    ItemActiveStatusJob,
+    ItemActiveStatusRepositories,
+    ItemActiveStatusResult,
 )
 from batch.application.item_pseudo_diff import (
     BATCH_ID as ITEM_PSEUDO_DIFF_BATCH_ID,
@@ -31,6 +38,8 @@ __all__ = [
     "DEFAULT_BATCH_STEPS",
     "GENRE_SYNC_BATCH_ID",
     "GENRE_SYNC_PHASES",
+    "ITEM_ACTIVE_STATUS_BATCH_ID",
+    "ITEM_ACTIVE_STATUS_PHASES",
     "ITEM_PSEUDO_DIFF_BATCH_ID",
     "ITEM_PSEUDO_DIFF_PHASES",
     "RANKING_SNAPSHOT_BATCH_ID",
@@ -40,6 +49,9 @@ __all__ = [
     "GenreSyncJob",
     "GenreSyncRepositories",
     "GenreSyncResult",
+    "ItemActiveStatusJob",
+    "ItemActiveStatusRepositories",
+    "ItemActiveStatusResult",
     "ItemPseudoDiffJob",
     "ItemPseudoDiffRepositories",
     "JobRunRecord",
