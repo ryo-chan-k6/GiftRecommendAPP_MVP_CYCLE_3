@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1314
   issue: 1313
   task_definition: "prompts/definitions/tasks/scr-006-item-detail/implementation.yaml"
   source_branch: "feature/task-1313-scr-006-item-detail-implementation"
