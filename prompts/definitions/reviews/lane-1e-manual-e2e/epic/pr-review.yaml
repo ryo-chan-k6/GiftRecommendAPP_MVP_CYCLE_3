@@ -14,7 +14,7 @@ branch:
   target: null
   worktree_required: false
 target:
-  pr: null
+  pr: 1340
   issue: 1330
   task_definition: "prompts/definitions/epics/lane-1e-manual-e2e/epic.yaml"
   source_branch: "chore/epic-1330-lane-1e-manual-e2e"
@@ -58,8 +58,8 @@ input:
     number: 1330
     required: true
   pr:
-    number: null
-    required: false
+    number: 1340
+    required: true
   diff:
     required: true
     compare_with: "develop"
