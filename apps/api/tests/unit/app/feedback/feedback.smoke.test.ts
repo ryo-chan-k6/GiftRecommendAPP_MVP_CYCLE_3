@@ -21,6 +21,7 @@ import {
 
 const RESULT_ID = "result-001";
 const ITEM_ID = "result-item-001";
+const REASON_ID = "reason-001";
 
 function createSeedRepository() {
   return new InMemoryFeedbackRepository({
@@ -37,6 +38,13 @@ function createSeedRepository() {
         recommendationResultId: RESULT_ID,
         itemId: "product-001",
         rank: 1,
+      },
+    ],
+    reasons: [
+      {
+        recommendationReasonId: REASON_ID,
+        recommendationResultId: RESULT_ID,
+        recommendationResultItemId: ITEM_ID,
       },
     ],
   });
@@ -63,6 +71,61 @@ async function withFeedbackServer(
     });
   }
 }
+
+test("POST feedback returns 201 accepted for new reason feedback", async () => {
+  const repository = createSeedRepository();
+
+  await withFeedbackServer({ repository }, async (baseUrl) => {
+    const response = await fetch(
+      `${baseUrl}/api/v1/recommendation-results/${RESULT_ID}/feedback`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          feedbackTargetType: "reason",
+          reasonId: REASON_ID,
+          feedbackType: "reason_good",
+          rating: 5,
+        }),
+      },
+    );
+
+    assert.equal(response.status, 201);
+    const body = (await response.json()) as FeedbackSubmitSuccessResponse;
+    assert.equal(body.data.status, "accepted");
+    assert.equal(repository.feedbacks.length, 1);
+  });
+});
+
+test("POST feedback returns 201 accepted for new result feedback", async () => {
+  const repository = createSeedRepository();
+
+  await withFeedbackServer({ repository }, async (baseUrl) => {
+    const response = await fetch(
+      `${baseUrl}/api/v1/recommendation-results/${RESULT_ID}/feedback`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          feedbackTargetType: "result",
+          feedbackType: "result_good",
+          rating: 4,
+        }),
+      },
+    );
+
+    assert.equal(response.status, 201);
+    const body = (await response.json()) as FeedbackSubmitSuccessResponse;
+    assert.equal(body.data.status, "accepted");
+    assert.equal(repository.feedbacks.length, 1);
+  });
+});
 
 test("POST feedback returns 201 accepted for new item feedback", async () => {
   const repository = createSeedRepository();
@@ -228,4 +291,36 @@ test("createFeedbackRouter records feedback metrics via logger", async () => {
       record.eventName === FEEDBACK_METRICS.NEGATIVE_COUNT,
   );
   assert.ok(negativeMetric);
+});
+
+test("createFeedbackRouter records positive_feedback_count for item_good", async () => {
+  const logger = new ScaffoldApiLogger();
+  const repository = createSeedRepository();
+
+  await withFeedbackServer({ repository, logger }, async (baseUrl) => {
+    const response = await fetch(
+      `${baseUrl}/api/v1/recommendation-results/${RESULT_ID}/feedback`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          feedbackTargetType: "item",
+          resultItemId: ITEM_ID,
+          feedbackType: "item_good",
+          rating: 5,
+        }),
+      },
+    );
+    assert.equal(response.status, 201);
+  });
+
+  const positiveMetric = logger.records.find(
+    (record: StructuredLogRecord) =>
+      record.eventName === FEEDBACK_METRICS.POSITIVE_COUNT,
+  );
+  assert.ok(positiveMetric);
+  assert.equal(positiveMetric?.attributes?.httpStatus, 201);
 });
