@@ -1,9 +1,13 @@
-"""Unit tests for BATCH-005 Raw取込・Staging変換（最小: 正常系 / hash / 冪等 / Item非更新）."""
+"""Unit tests for BATCH-005 Raw取込・Staging変換（仕様書 §16 unit 観点）."""
 
 from __future__ import annotations
 
 import json
+import re
+from dataclasses import dataclass, field
+from typing import Any
 
+from batch.application.job_run import ScaffoldJobRunTracker
 from batch.application.raw_staging import (
     BATCH_ID,
     RAW_STAGING_PHASES,
@@ -15,7 +19,7 @@ from batch.application.raw_staging import (
     content_hash_for_bytes,
 )
 from batch.infrastructure.db import ScaffoldDbWriter
-from batch.infrastructure.object_storage import ObjectRef, ScaffoldObjectStorageClient
+from batch.infrastructure.object_storage import ObjectRef, ObjectStorageError, ScaffoldObjectStorageClient
 
 _FORBIDDEN_TABLES = frozenset(
     {
@@ -26,18 +30,71 @@ _FORBIDDEN_TABLES = frozenset(
     }
 )
 
+# §16 No.2: staging_item に置かない列（物理定義外 / affiliate 系）
+_FORBIDDEN_STAGING_ITEM_COLUMNS = frozenset(
+    {
+        "affiliate_url",
+        "affiliateUrl",
+        "shop_name",
+        "shopName",
+        "source_api",
+        "sourceApi",
+    }
+)
 
-def _item_search_payload(*, code: str = "shop:gift-1") -> dict[str, object]:
+# §16 No.13: fixture / logs に実token風が残らないこと
+_SECRET_PATTERN = re.compile(
+    r"(?i)(sk-[a-z0-9]{10,}|bearer\s+[a-z0-9\-._~+/]+=*|ghp_[a-z0-9]{20,}|"
+    r"xox[baprs]-[a-z0-9-]+|supabase\.co/.{20,})"
+)
+
+
+@dataclass
+class _FailingGetStorage:
+    """GET 失敗注入用 scaffold（§16 No.6 GRS-RAW-004）。"""
+
+    inner: ScaffoldObjectStorageClient
+    fail_on_get: bool = True
+    put_calls: list[dict[str, object]] = field(default_factory=list)
+    get_calls: list[ObjectRef] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.put_calls = self.inner.put_calls
+        self.get_calls = self.inner.get_calls
+
+    def put_object(
+        self,
+        ref: ObjectRef,
+        *,
+        body: bytes,
+        content_type: str,
+    ) -> Any:
+        return self.inner.put_object(ref, body=body, content_type=content_type)
+
+    def get_object(self, ref: ObjectRef) -> Any:
+        self.inner.get_calls.append(ref)
+        if self.fail_on_get:
+            raise ObjectStorageError(code="GRS-RAW-004", message="scaffold forced get failure")
+        return self.inner.get_object(ref)
+
+
+def _item_search_payload(
+    *,
+    code: str = "shop:gift-1",
+    item_name: str = "Gift A",
+    item_url: str | None = None,
+    item_price: int = 2500,
+) -> dict[str, object]:
     return {
         "Items": [
             {
                 "Item": {
                     "itemCode": code,
-                    "itemName": "Gift A",
+                    "itemName": item_name,
                     "itemCaption": "Caption",
                     "catchcopy": "Catch",
-                    "itemPrice": 2500,
-                    "itemUrl": f"https://item.example/{code}",
+                    "itemPrice": item_price,
+                    "itemUrl": item_url if item_url is not None else f"https://item.example/{code}",
                     "genreId": 101240,
                     "shopCode": "shop",
                     "availability": 1,
@@ -56,6 +113,8 @@ def _seed_repos(
     *,
     payloads: dict[str, dict[str, object]] | None = None,
     import_status: str = "raw_saved",
+    source_api: str = "item_search",
+    source_api_by_raw: dict[str, str] | None = None,
 ) -> tuple[RawStagingRepositories, ScaffoldObjectStorageClient, ScaffoldDbWriter]:
     storage = ScaffoldObjectStorageClient()
     db = ScaffoldDbWriter()
@@ -63,7 +122,8 @@ def _seed_repos(
     payload_map = payloads or {"rm_1": _item_search_payload()}
 
     for raw_id, payload in payload_map.items():
-        key = f"raw/rakuten/item_search/{raw_id}.json"
+        api = (source_api_by_raw or {}).get(raw_id, source_api)
+        key = f"raw/rakuten/{api}/{raw_id}.json"
         body = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
         storage.put_object(
             ObjectRef(bucket="test-raw", key=key),
@@ -76,7 +136,7 @@ def _seed_repos(
                 object_key=key,
                 content_hash=content_hash_for_bytes(body),
                 source="rakuten",
-                source_api="item_search",
+                source_api=api,
                 import_status=import_status,
             )
         )
@@ -254,3 +314,201 @@ def test_image_sync_delete_on_rerun() -> None:
     assert second.status == "succeeded"
     urls = {k[2] for k in repos.staging_item_images}
     assert urls == {"https://img.example/m1.jpg"}
+
+
+def test_physical_column_mapping_excludes_affiliate_shop_name_source_api() -> None:
+    """§16 No.2: price / external_genre_id あり。affiliate / shop_name / source_api 列なし。"""
+
+    repos, _, _ = _seed_repos()
+    job = RawStagingJob(repositories=repos)
+    result = job.run(job_run_id="job-cols", max_raw=1)
+
+    assert result.status == "succeeded"
+    item = repos.staging_items[("rm_1", "shop:gift-1")]
+    assert item["price"] == 2500
+    assert item["external_genre_id"] == 101240
+    assert "price" in item
+    assert "external_genre_id" in item
+    for col in _FORBIDDEN_STAGING_ITEM_COLUMNS:
+        assert col not in item
+
+
+def test_raw_object_missing_returns_grs_raw_003() -> None:
+    """§16 No.6: Raw Object 不在 → GRS-RAW-003、Staging 非書込、metadata failed。"""
+
+    repos, storage, db = _seed_repos()
+    storage.objects.clear()
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-raw-003", max_raw=1)
+
+    assert result.status == "failed"
+    assert "GRS-RAW-003" in result.error_codes
+    assert result.failed_raw_ids == ["rm_1"]
+    assert repos.staging_items == {}
+    assert repos.raw_metadata["rm_1"]["import_status"] == "failed"
+    assert "staging_item" not in {call["table"] for call in db.write_calls}
+
+
+def test_raw_get_failure_returns_grs_raw_004() -> None:
+    """§16 No.6: Storage GET 失敗 → GRS-RAW-004（mock storage unit 代替）。"""
+
+    repos, storage, db = _seed_repos()
+    repos.object_storage = _FailingGetStorage(inner=storage)
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-raw-004", max_raw=1)
+
+    assert result.status == "failed"
+    assert "GRS-RAW-004" in result.error_codes
+    assert result.failed_raw_ids == ["rm_1"]
+    assert repos.staging_items == {}
+    assert repos.raw_metadata["rm_1"]["import_status"] == "failed"
+    assert "staging_item" not in {call["table"] for call in db.write_calls}
+
+
+def test_validation_missing_required_rejects_without_staging_write() -> None:
+    """§16 No.7: 必須欠落で GRS-VAL-*、正本（staging_item）非更新。"""
+
+    payload = _item_search_payload(item_name="")
+    # empty itemUrl as well — transform keeps empty string → GRS-VAL-001
+    item = payload["Items"][0]["Item"]  # type: ignore[index]
+    assert isinstance(item, dict)
+    item["itemUrl"] = ""
+    repos, _, db = _seed_repos(payloads={"rm_val": payload})
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-val", max_raw=1)
+
+    assert result.status == "failed"
+    assert any(code.startswith("GRS-VAL-") for code in result.error_codes)
+    assert result.validation_reject_count >= 1 or "GRS-VAL-001" in result.error_codes
+    assert repos.staging_items == {}
+    assert repos.raw_metadata["rm_val"]["import_status"] == "failed"
+    assert "staging_item" not in {call["table"] for call in db.write_calls}
+
+
+def test_ranking_and_genre_stub_skip_without_polluting_staging_item() -> None:
+    """§16 No.8: ranking/genre は stub skip。staging_item 汚染なし・意図外表なし。"""
+
+    repos, _, db = _seed_repos(
+        payloads={
+            "rm_rank": {"Items": []},
+            "rm_genre": {"children": []},
+        },
+        source_api_by_raw={
+            "rm_rank": "item_ranking",
+            "rm_genre": "genre_search",
+        },
+    )
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(
+        job_run_id="job-rank-genre",
+        max_raw=10,
+        source_api=("item_ranking", "genre_search"),
+    )
+
+    # MVP stub: skip without failure; no staging_item writes
+    assert result.status == "succeeded"
+    assert set(result.skipped_raw_ids) == {"rm_rank", "rm_genre"}
+    assert result.succeeded_raw_ids == []
+    assert result.staging_item_upsert_count == 0
+    assert repos.staging_items == {}
+    assert repos.staging_ranking == []
+    assert repos.staging_genre == []
+    written = {call["table"] for call in db.write_calls}
+    assert "staging_item" not in written
+    assert "staging_item_image" not in written
+    assert written.isdisjoint(_FORBIDDEN_TABLES)
+    # ranking/genre 変換未実装のため staging_ranking / staging_genre も書かない（stub skip）
+
+
+def test_failed_reset_to_raw_saved_then_restage() -> None:
+    """§16 No.10: failed → raw_saved リセット後に再ステージ可（test-only metadata 更新）。"""
+
+    repos, _, _ = _seed_repos()
+    # Induce failure via content_hash mismatch
+    repos.raw_metadata["rm_1"]["content_hash"] = "0" * 64
+    job = RawStagingJob(repositories=repos)
+
+    failed = job.run(job_run_id="job-reset-1", max_raw=1)
+    assert failed.status == "failed"
+    assert repos.raw_metadata["rm_1"]["import_status"] == "failed"
+    assert repos.staging_items == {}
+
+    # Production reset helper is out of UT scope; exercise eligibility via metadata reset
+    key = str(repos.raw_metadata["rm_1"]["object_key"])
+    stored = repos.object_storage.get_object(ObjectRef(bucket="test-raw", key=key))
+    assert stored is not None
+    repos.raw_metadata["rm_1"]["content_hash"] = content_hash_for_bytes(stored.body)
+    repos.raw_metadata["rm_1"]["import_status"] = "raw_saved"
+    repos.raw_metadata["rm_1"].pop("error_code", None)
+
+    restaged = job.run(job_run_id="job-reset-2", max_raw=1)
+    assert restaged.status == "succeeded"
+    assert restaged.succeeded_raw_ids == ["rm_1"]
+    assert ("rm_1", "shop:gift-1") in repos.staging_items
+    assert repos.raw_metadata["rm_1"]["import_status"] == "staged"
+
+
+def test_partial_success_one_raw_fails_grs_bat_002() -> None:
+    """§16 No.11: 一部 Raw 失敗で partially_succeeded + GRS-BAT-002。"""
+
+    repos, _, _ = _seed_repos(
+        payloads={
+            "rm_ok": _item_search_payload(code="shop:ok"),
+            "rm_bad": _item_search_payload(code="shop:bad"),
+        }
+    )
+    repos.raw_metadata["rm_bad"]["content_hash"] = "f" * 64
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-partial", max_raw=10)
+
+    assert result.status == "partially_succeeded"
+    assert "GRS-BAT-002" in result.error_codes
+    assert "rm_ok" in result.succeeded_raw_ids
+    assert "rm_bad" in result.failed_raw_ids
+    assert ("rm_ok", "shop:ok") in repos.staging_items
+    assert ("rm_bad", "shop:bad") not in repos.staging_items
+    assert repos.raw_metadata["rm_ok"]["import_status"] == "staged"
+    assert repos.raw_metadata["rm_bad"]["import_status"] == "failed"
+
+
+def test_concurrent_start_rejected_with_grs_bat_003() -> None:
+    """§16 No.12: 同一 Batch 多重起動 → GRS-BAT-003。"""
+
+    repos, _, _ = _seed_repos()
+    tracker = ScaffoldJobRunTracker()
+    # Leave an unpaired running record for BATCH-005
+    tracker.start(batch_id=BATCH_ID, job_run_id="job-already-running")
+    job = RawStagingJob(repositories=repos, job_run_tracker=tracker)
+
+    result = job.run(job_run_id="job-double", max_raw=1)
+
+    assert result.status == "failed"
+    assert result.error_codes == ["GRS-BAT-003"]
+    assert repos.staging_items == {}
+    assert repos.raw_metadata["rm_1"]["import_status"] == "raw_saved"
+    assert any(e["code"] == "GRS-BAT-003" for e in repos.error_logs)
+
+
+def test_secret_non_containment_in_fixtures_and_error_logs() -> None:
+    """§16 No.13: fixture / error_logs に実 token 風文字列がない。"""
+
+    payload = _item_search_payload()
+    blob = json.dumps(payload, ensure_ascii=False)
+    assert _SECRET_PATTERN.search(blob) is None
+
+    repos, _, _ = _seed_repos(payloads={"rm_sec": payload})
+    repos.raw_metadata["rm_sec"]["content_hash"] = "0" * 64
+    job = RawStagingJob(repositories=repos)
+    result = job.run(job_run_id="job-secret-check", max_raw=1)
+    assert result.status == "failed"
+
+    for entry in repos.error_logs:
+        text = json.dumps(entry, ensure_ascii=False, default=str)
+        assert _SECRET_PATTERN.search(text) is None
+    for code in result.error_codes:
+        assert _SECRET_PATTERN.search(code) is None

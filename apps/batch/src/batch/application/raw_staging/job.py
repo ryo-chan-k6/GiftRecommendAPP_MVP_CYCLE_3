@@ -36,6 +36,25 @@ DEFAULT_MAX_RAW = 1000
 DEFAULT_SOURCE_API = "item_search"
 
 
+def _is_batch_already_running(tracker: JobRunTracker) -> bool:
+    """Scaffold tracker の unpaired running を検知（多重起動拒否用）。"""
+
+    records = getattr(tracker, "records", None)
+    if not isinstance(records, list):
+        return False
+    starts = 0
+    completes = 0
+    for record in records:
+        if getattr(record, "batch_id", None) != BATCH_ID:
+            continue
+        status = getattr(record, "status", None)
+        if status == "running":
+            starts += 1
+        elif status in {"succeeded", "partially_succeeded", "failed"}:
+            completes += 1
+    return starts > completes
+
+
 class RawStagingJob:
     """Orchestrates BATCH-005 Raw → Staging phases."""
 
@@ -61,9 +80,19 @@ class RawStagingJob:
         trace_id: str | None = None,
     ) -> RawStagingSyncResult:
         bound_logger = self._logger.bind(job_run_id=job_run_id, trace_id=trace_id or job_run_id)
-        self._tracker.start(batch_id=BATCH_ID, job_run_id=job_run_id)
-
         result = RawStagingSyncResult(batch_id=BATCH_ID, job_run_id=job_run_id, status="failed")
+
+        # §16 No.12 / 仕様 §5: 同一 Batch 多重起動は GRS-BAT-003
+        if _is_batch_already_running(self._tracker):
+            result.error_codes.append("GRS-BAT-003")
+            self._repos.record_error(
+                code="GRS-BAT-003",
+                summary="batch already running",
+            )
+            bound_logger.error("raw_staging.already_running", batch_id=BATCH_ID)
+            return result
+
+        self._tracker.start(batch_id=BATCH_ID, job_run_id=job_run_id)
 
         try:
             plan = self._phase_plan(
