@@ -6,7 +6,7 @@ review:
   title: "BATCH-005 Raw取込・Staging変換Batch Epic PRレビュー"
   summary: "BATCH-005 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,7 +14,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 1339
   issue:
     number: 1307
   task_definition: "prompts/definitions/epics/batch-005-raw-staging/epic.yaml"
@@ -57,4 +58,4 @@ review_points:
   - "Epic PR target が develop であるか"
 
 notes:
-  - "縦串完了後に PR 番号を反映し status を ready へ更新する"
+  - "Epic PR #1339。縦串完了。Human Review 待ち"
