@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1275
   issue: 1274
   task_definition: "prompts/definitions/tasks/lane-1e-user-feature-postgres/implementation.yaml"
   source_branch: "feature/task-1274-lane-1e-user-feature-postgres-implementation"
