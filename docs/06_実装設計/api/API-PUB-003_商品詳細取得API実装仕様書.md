@@ -51,7 +51,7 @@
 | Provider | `apps/api`（`apps/api/src/app/items/**`） |
 | Consumer | `apps/web`（SCR-006 商品詳細画面 / SCR-004 レコメンド結果一覧からの導線）。本 Task では実装しない |
 | Web フレームワーク | **Express**（`apps/api` 既存スタック） |
-| 担当モジュール（論理） | **Item Detail Controller** / **Item Detail Repository**（モジュール一覧に専用 MOD-ID 未記載。§11 参照） |
+| 担当モジュール | **MOD-API-014** Item Detail Controller / **MOD-API-015** Item Detail Repository（Human 承認・推奨案採用。モジュール一覧追記は後続） |
 | 責務分離 | HTTP I/F（meta 解決・Path / Query 検証・Item 系読取・Response / Error 組立）のみ。推薦パイプライン（MOD-API-001〜006）および **Reco Client は呼び出さない** |
 | 認証 | **MVP は非認証**（契約仕様書 §4）。`Authorization` 検証なし |
 | 冪等性 | 副作用なし。同一 `itemId` の GET は繰り返し可（SELECT のみ） |
@@ -65,8 +65,8 @@
 ```text
 apps/api/src/app/items/
 ├── routes.ts                      # createItemsRouter(): GET /:itemId
-├── controller.ts                  # Item Detail Controller（本 API 受付・Response 組立）
-├── repository.ts                  # Item Detail Repository（item 系 JOIN 読取）
+├── controller.ts                  # MOD-API-014 Item Detail Controller（本 API 受付・Response 組立）
+├── repository.ts                  # MOD-API-015 Item Detail Repository（item 系 JOIN 読取）
 ├── validator.ts                   # Path / Query 検証（任意。Controller 内包も可）
 ├── constants.ts                   # path / metric / error code 定数
 ├── types.ts                       # 内部 DTO（任意）
@@ -80,12 +80,12 @@ apps/api/src/
 
 Router mount の目安: **`/api/v1/items`** 配下に Items Router を登録する（`GET /:itemId`）。既存 `masters` / `feedback` / `recommendations` Router と同列。
 
-| 論理モジュール | 責務（本 API） |
-| -------------- | -------------- |
-| Item Detail Controller | `GET /:itemId` 受付、meta 解決、Path / Query 検証、Repository 呼び出し、active 判定後の Response / Error 組立、metric 境界 |
-| Item Detail Repository | `item` をキーに `item_image` / `item_review_summary` / `item_popularity_signal`（最新 Snapshot 経由）/ `external_genre` を読取。内部行 DTO を返却 |
+| モジュール | 責務（本 API） |
+| ---------- | -------------- |
+| MOD-API-014 Item Detail Controller | `GET /:itemId` 受付、meta 解決、Path / Query 検証、Repository 呼び出し、active 判定後の Response / Error 組立、metric 境界 |
+| MOD-API-015 Item Detail Repository | `item` をキーに `item_image` / `item_review_summary` / `item_popularity_signal`（最新 Snapshot 経由）/ `external_genre` を読取。内部行 DTO を返却 |
 
-**MOD-ID（未確定）:** モジュール一覧に Item Detail 専用 ID が未記載のため、後続で **MOD-API-014（Item Detail Controller）/ MOD-API-015（Item Detail Repository）** を候補として割当可能（§11.2）。本書では論理名を正とし、正式 ID は Human 判断とする。
+**MOD-ID（確定）:** **MOD-API-014**（Item Detail Controller）/ **MOD-API-015**（Item Detail Repository）。モジュール一覧への追記は本 Task の out of scope のため後続で実施する（§11.2）。
 
 `apps/reco/**` / `apps/batch/**` / `apps/web/src/app/**` / `apps/web/src/features/**` は **変更しない**（親 Epic `forbidden_paths` 想定）。
 
@@ -151,7 +151,7 @@ export type ItemsRouterDeps = {
 | 明細 JOIN | 上記 `ranking_snapshot_id` かつ `item_id` 一致の `item_popularity_signal` 行があれば `popularityBadge` を組立 |
 | 該当なし | `popularityBadge` オブジェクトごと **省略**（HTTP 200） |
 
-**`shopName`（MVP）:** `item` テーブルは `shop_code` のみ保持し `shopName` 列はない（`item_テーブル定義書` §13）。MVP 実装では **外部ショップマスタ未整備のため省略を許容** し、解決手段が整った後続 Task で optional 返却を検討する（§11.2）。
+**`shopName`（MVP・確定）:** `item` テーブルは `shop_code` のみ保持し `shopName` 列はない（`item_テーブル定義書` §13）。MVP 実装では **外部ショップマスタ未整備のため省略を許容** し、解決手段が整った後続 Task で optional 返却を検討する（§11.2）。
 
 ---
 
@@ -292,7 +292,7 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 影響有無 | `あり`（後続実装 Task） |
 | 必要対応 | `apps/api/src/app/items/**` 新規、Router mount、Item 系 DB 読取、metric / error 配線 |
 
-- Item Detail Controller / Item Detail Repository の実装
+- MOD-API-014 Item Detail Controller / MOD-API-015 Item Detail Repository の実装
 - `/api/v1/items` 配下への Router 登録
 - `item` + 子テーブル SELECT（§3.5）
 - Path / Query 検証、404 / 422 / 画像なし 200 境界
@@ -353,20 +353,15 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-15 | 初版作成 | #1262 |
+| 2026-07-15 | §11 未決事項を推奨案どおり確定（MOD-ID / popularityBadge.label / shopName） | #1262 |
 
 ---
 
 ## 11. 未決事項
 
-### 11.1 人間判断待ち
+現時点で本書に残す未決事項は **なし**（旧 §11.1 No.1〜3 は §11.2 へ移行）。
 
-| No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
-| --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | Item Detail の MOD-ID 正式割当 | モジュール一覧に専用 ID が未記載。PUB-005 以降の番号体系と整合が必要 | Human | 実装 Task 前 | **推奨案:** MOD-API-014（Controller）/ MOD-API-015（Repository）。本書では論理名のみ使用 |
-| 2 | `popularityBadge.label` の将来拡張 | MVP は固定文字列 `ランキング入り`（`item_popularity_signal_テーブル定義書` §13.1 / #504 確定）。period 別ラベル・閾値・多言語は未定 | Human | Post-MVP 検討可 | `rank` は DB 値をそのまま返す方針は確定 |
-| 3 | `shopName` の導出元 | `item` は `shop_code` のみ。外部ショップマスタ DDL 未整備 | Human / 後続 Task | MVP 実装時 | MVP は **省略許容**。解決手段確定後に optional 返却 |
-
-### 11.2 確定済み（本書へ反映済み・参考）
+### 11.1 契約・テーブルで確定済み（本書は追従）
 
 | No | 論点 | 確定内容 | 反映箇所 |
 | --: | ---- | -------- | -------- |
@@ -375,6 +370,14 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | 3 | 未知 Query | **400** + `GRS-REQ-001`（無視しない） | §3.5 / §4.2 |
 | 4 | Feature / Embedding 非公開 | Response / Repository から除外 | §3.1 / §5.2 |
 | 5 | Reco 非呼び出し | 読取専用。推薦パイプライン不使用 | §3.1 / §3.3 |
+
+### 11.2 実装面で確定済み（Human 承認・推奨案採用）
+
+| No | 論点 | 確定内容 | 反映箇所 |
+| --: | ---- | -------- | -------- |
+| 1 | Item Detail の MOD-ID 正式割当 | **MOD-API-014**（Item Detail Controller）/ **MOD-API-015**（Item Detail Repository）。モジュール一覧への追記は本 Task 外・後続で実施 | §3.1 / §3.2 |
+| 2 | `popularityBadge.label` の将来拡張 | MVP は固定文字列 **`ランキング入り`**（`item_popularity_signal_テーブル定義書` §13.1 / #504）。`rank` は DB 値をそのまま返す。period 別ラベル・閾値・多言語は **Post-MVP** | §3.5 / §5.2 |
+| 3 | `shopName` の導出元 | MVP は **省略許容**（`item` は `shop_code` のみ。外部ショップマスタ DDL 未整備）。解決手段確定後に optional 返却を後続 Task で検討 | §3.5 / §5.2 |
 
 ---
 
@@ -391,7 +394,7 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 | テーブル定義 | `docs/06_実装設計/database/ranking_snapshot_テーブル定義書.md` | 最新 Snapshot ヘッダ |
 | OpenAPI | `packages/contracts/openapi/public-api.yaml` | `getItemDetail` |
 | API一覧 | `docs/05_アプリケーション設計/アプリ/api/API一覧.md` | metric / 関連画面 |
-| モジュール一覧 | `docs/05_アプリケーション設計/アプリ/モジュール一覧.md` | MOD-ID 割当（未記載） |
+| モジュール一覧 | `docs/05_アプリケーション設計/アプリ/モジュール一覧.md` | MOD-API-014 / 015（一覧追記は後続） |
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-ITM-* / GRS-DB-* |
 | ログ設計書 | `docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md` | trace / metric |
 | スタイル参考 | `docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API実装仕様書.md` | GET 実装面 |
@@ -405,14 +408,14 @@ generated ファイルは手動編集しない。利用側は wrapper を介し�
 
 - 確定済み API 契約（契約仕様書 / OpenAPI）と実装方針が整合している
 - 実装面に限定され、Request / Response schema の契約再掲がない
-- 処理フロー・Item Detail Controller / Repository・内部 DTO マッピングが明確である
+- 処理フロー・MOD-API-014 / 015・内部 DTO マッピングが明確である
 - 404 `GRS-ITM-001` / 422 `GRS-ITM-002` / 画像なし 200 / 未知 Query 400 が契約と一致している
 - Feature / Embedding / 内部スコアの非公開が明記されている
 - `item_detail_request_count` / `item_not_found_count` が API一覧と一致している
 - generated client を手動編集せず、本 Task ではファイル変更していない
 - provider / consumer の実装影響が整理されている
 - ログ・監視・結合テスト観点（§9）が整理されている
-- MOD-ID 未確定が §11 に明示され、Human 判断事項が漏れていない
+- §11 判断確定がすべて埋まっており残未決がない（MOD-API-014 / 015・`popularityBadge.label`・`shopName`）
 - secret や `.env` 実値が含まれていない
 
 ---
