@@ -14,7 +14,7 @@ branch:
   target: null
   worktree_required: false
 target:
-  pr: null
+  pr: 1332
   issue: 1331
   task_definition: "prompts/definitions/tasks/lane-1e-manual-e2e/execution.yaml"
   source_branch: "test/task-1331-lane-1e-manual-e2e-execution"
@@ -58,8 +58,8 @@ input:
     number: 1331
     required: true
   pr:
-    number: null
-    required: false
+    number: 1332
+    required: true
   diff:
     required: true
     compare_with: "chore/epic-1330-lane-1e-manual-e2e"
