@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1305
   issue:
     number: 1300
   task_definition: "prompts/definitions/epics/lane-1e-item-price-mapping/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1300
     required: true
   pr:
-    number: null
+    number: 1305
     required: false
   diff:
     required: true
