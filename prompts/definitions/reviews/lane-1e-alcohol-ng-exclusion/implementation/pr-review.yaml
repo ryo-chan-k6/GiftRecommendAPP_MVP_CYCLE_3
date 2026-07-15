@@ -1,0 +1,136 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-alcohol-ng-exclusion-implementation-pr"
+  title: "レーン1e alcohol NG除外 PRレビュー"
+  summary: "alcohol NG 除外実装 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1309
+  task_definition: "prompts/definitions/tasks/lane-1e-alcohol-ng-exclusion/implementation.yaml"
+  source_branch: "feature/task-1309-lane-1e-alcohol-ng-exclusion-implementation"
+  target_branch: "feature/epic-1308-lane-1e-alcohol-ng-exclusion"
+  parent_epic_issue: "[Epic]レーン1e:alcohol NG除外"
+  parent_epic_branch: "feature/epic-1308-lane-1e-alcohol-ng-exclusion"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/lane-1e-alcohol-ng-exclusion/implementation.yaml"
+    required: true
+  issue:
+    number: 1309
+    required: true
+  pr:
+    number: null
+    required: false
+  diff:
+    required: true
+    compare_with: "feature/epic-1308-lane-1e-alcohol-ng-exclusion"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+      purpose: "§10.4.12 alcohol NG 除外の確認"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope 内か"
+    - "PR target が親 Epic Branch か"
+    - "Related to のみ（Closes なし）か"
+  docs:
+    - "手順書に alcohol NG 除外が記録されているか"
+  source:
+    - "ngText 実効キーワード化が最小か"
+    - "OpenAPI / api を変更していないか"
+  tests:
+    - "アルコール ngText の UT があるか"
+  security:
+    - "secret / .env 実値を含んでいないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "Human Review 観点に api 正本化の暫定であることが含まれる"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "PUB-002 で item_003 除外が確認できる、または UT で同等を固定している"
+      - "修正必須事項がない"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な不備がある"
+  needs_human_decision:
+    conditions:
+      - "過剰除外リスクの判断が必要"
+  blocked:
+    conditions:
+      - "必須 Definition 不足"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "Task PR AI Review は PR コメントを正とする"
+
+notes:
+  - "Task PR 作成後に target.pr / input.pr.number を更新する"
+  - "/review-pr @prompts/definitions/reviews/lane-1e-alcohol-ng-exclusion/implementation/pr-review.yaml"

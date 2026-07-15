@@ -1,0 +1,151 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-alcohol-ng-exclusion-implementation"
+  title: "レーン1e:alcohol NG除外実装"
+  summary: "Pre Hard Filter で ngText を実効キーワード化し、PUB-002 で item_003（ワイン）を除外する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:alcohol NG除外"
+  epic_issue_number: 1308
+  epic_branch: "feature/epic-1308-lane-1e-alcohol-ng-exclusion"
+  related_issues:
+    - number: 1309
+      purpose: "本 Task Issue"
+    - number: 1308
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+phase: "implementation"
+
+background: |
+  ngText「アルコールはNG」全文が ng_keywords になり ILIKE 不一致で item_003 が残る。
+  OpenAPI は ngText のみのため reco で実効キーワード化する。
+
+objective: |
+  - ngText / attribute hard_filter から実効キーワードを抽出
+  - InMemory も name/caption 照合で Postgres に寄せる
+  - UT・PUB-002 で item_003 除外を確認
+
+scope:
+  - "apps/reco/.../pre-hard-filter/filter.py"
+  - "apps/reco/.../in_memory_repository.py（name/caption 照合）"
+  - "candidate-retriever UT"
+  - "ローカル開発手順書 §10.4.12"
+  - "ai-logs/experiments"
+
+out_of_scope:
+  - "OpenAPI / api / web / migration"
+  - "PostFilter alcohol_ng 新設"
+  - "Reason / Ranking"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/application/candidate-retriever/pre-hard-filter/filter.py"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  files:
+    - path: "apps/reco/src/reco/application/candidate-retriever/pre-hard-filter/filter.py"
+    - path: "apps/reco/src/reco/application/candidate-retriever/in_memory_repository.py"
+  tests:
+    - path: "apps/reco/tests/unit/application/candidate-retriever/test_pre_hard_filter.py"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+exclusive_files:
+  - "apps/reco/src/reco/application/candidate-retriever/pre-hard-filter/filter.py"
+  - "apps/reco/src/reco/application/candidate-retriever/in_memory_repository.py"
+
+acceptance_criteria:
+  - "ngText『アルコールはNG』から実効キーワード『アルコール』が得られる"
+  - "UT で caption/name にアルコールを含む item が除外される"
+  - "PUB-002 スモークで item_003 が resultItems に含まれない"
+  - "OpenAPI / api / web / migration を変更していない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1309-lane-1e-alcohol-ng-exclusion-implementation"
+  base: "feature/epic-1308-lane-1e-alcohol-ng-exclusion"
+  target: "feature/epic-1308-lane-1e-alcohol-ng-exclusion"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "reco"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実効キーワード抽出が過剰除外にならないか"
+    - "api 正本化を後続と明示しているか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  unit_required: true
+  integration_required: false
+  notes: "fixture/mock UT + ローカル PUB-002 スモーク"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "レーン1e alcohol NG 除外"
+
+notes:
+  - "Related to 親 Epic"
+  - "MOD-RECO-012 §16.1 No.8 との差分は暫定 reco として Human Review で確認"

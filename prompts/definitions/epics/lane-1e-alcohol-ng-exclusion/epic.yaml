@@ -1,0 +1,151 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-alcohol-ng-exclusion"
+  title: "レーン1e:alcohol NG除外"
+  summary: "ngText（例: アルコールはNG）が Pre Hard Filter で実効キーワード化され、item_003（ワイン）が候補から除外されるようにする。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  レーン1e 縦串で ngText「アルコールはNG」でも item_003（ワイン）が返る。
+  PostFilter は配線済みだが、アルコールは Hard Filter 経路。
+  PreFilter が ngText 全文を ng_keywords に載せ、ILIKE `%アルコールはNG%` が caption「アルコールを含む」に不一致。
+  OpenAPI NgCondition は現状 ngText のみ（ngKeywords 未契約）。
+
+objective: |
+  Pre Hard Filter で ngText から実効キーワードを抽出し、PUB-002 で alcohol NG 時に item_003 を除外する。
+  OpenAPI / api / web / migration は変更しない（暫定は reco）。
+
+scope:
+  - "子 Task（implementation）"
+  - "Epic Issue / Branch"
+  - "pre-hard-filter の ngText 実効キーワード化"
+  - "必要なら InMemory の name/caption 照合を Postgres と揃える"
+  - "UT・手順書再スモーク"
+
+out_of_scope:
+  - "OpenAPI への ngKeywords 追加（api 正本化は後続）"
+  - "api / web 変更"
+  - "PostFilter への alcohol_ng / ng_candidate 新設"
+  - "Reason 永続 / Ranking 変更"
+  - "migration / master concept seed 追加"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（implementation）"
+  - "epic_scope.allowed_paths"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "子 Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1308-lane-1e-alcohol-ng-exclusion"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "epic"
+  type: "fix"
+  area: "reco"
+
+epic_scope:
+  artifact_id: null
+  allowed_paths:
+    - "apps/reco/src/reco/application/candidate-retriever/**"
+    - "apps/reco/tests/unit/application/candidate-retriever/**"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/lane-1e-alcohol-ng-exclusion/**"
+    - "prompts/definitions/tasks/lane-1e-alcohol-ng-exclusion/**"
+    - "prompts/definitions/reviews/lane-1e-alcohol-ng-exclusion/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/api/**"
+    - "apps/web/**"
+  child_task_areas:
+    - "implementation"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "ngText『アルコールはNG』から実効キーワードが得られるか"
+    - "PUB-002 で item_003 が除外されるか"
+    - "OpenAPI / api を広げていないか（暫定 reco であることの明示）"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "レーン1e alcohol NG"
+
+notes:
+  - "Epic Issue: #1308"
+  - "依存: Epic #1300 MERGED（#1305）"
+  - "Related to #1263"
+  - "MOD-RECO-012 は NG 正規化を api 正本とするが、現行 OpenAPI は ngText のみのため reco 暫定"
+  - "AI は PR merge しない"
