@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resolveRecommendationContext } from "@/features/item-detail/resolve-recommendation-context";
 import type { StoredRecommendationResult } from "@/features/recommendation-input/types";
+import { ResultStatus } from "@/generated/api/giftRecommendationServicePublicAPI.schemas";
 
 const readRecommendationResult = vi.fn();
 
@@ -17,7 +18,7 @@ function sampleResult(
     recommendationResultId: "result-1",
     recommendationRequestId: "req-1",
     recommendationRunId: "run-1",
-    resultStatus: "succeeded",
+    resultStatus: ResultStatus.completed,
     topK: 3,
     resultItemCount: 1,
     fallbackUsed: false,
