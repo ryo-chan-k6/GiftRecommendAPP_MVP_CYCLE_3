@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-004-feedback-submit-unit-test"
+  title: "API-PUB-004:Feedback送信単体テスト"
+  summary: "API-PUB-004（Feedback送信）エンドポイント層に対し、実装仕様書 §9 の fixture ベース unit 観点カバレッジを整理・拡充する（Phase4b 3/3）。実装 Task #1248 のスモーク UT を維持しつつ残ギャップを埋める。Issue #1253。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-004:Feedback送信"
+  epic_issue_number: 386
+  epic_branch: "feature/epic-386-pub-004-feedback-submit"
+  related_issues:
+    - number: 386
+      purpose: "親 Epic"
+    - number: 1248
+      purpose: "前提 Task（エンドポイント実装・スモーク UT）"
+    - number: 1226
+      purpose: "前提 Task（API実装仕様書）"
+  related_prs:
+    - number: 1250
+      purpose: "実装 Task PR（親 Epic Branch merge 済み）"
+    - number: 1245
+      purpose: "実装仕様書 PR（Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 縦串の 3/3。実装 Task（#1248 / PR #1250）で feedback Router とスモーク UT が追加済み。
+  本 Task は実装仕様書 §9 の観点を InMemory / Scaffold fixture ベース unit として充足し、
+  PR 本文にカバレッジ対応表を記載する。
+  §9 No.15（generated）/ No.16〜17（画面・sessionId 採番 manual）は out_of_scope。
+  実 Postgres 結合は対象外。
+
+objective: |
+  API-PUB-004 の unit テストを実装仕様書 §9（fixture 化可能な範囲）に沿って充足し、Epic PR → develop の前提を満たす。
+
+scope:
+  - "エンドポイント / Service / Validator / Repository 層単体テストの拡充またはカバレッジ確認"
+  - "実装仕様書 §9 の unit 観点対応表を PR 本文に記載"
+  - "不足ケース追加（reason/result 正常系、GRS-FDB-005 HTTP、Content-Type/Accept、非 POST、UNIQUE レース 200、所属外 Item/Reason、stack 非露出 等）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "実 Postgres 結合テスト"
+  - "integration / e2e / contract test（OpenAPI 変更を伴うもの）"
+  - "OpenAPI / generated 変更"
+  - "apps/web / apps/reco 変更"
+  - "SCR-007 画面確認・sessionId 採番方式（§9 No.16〜17）"
+  - "Epic PR の develop merge（Human 判断）"
+  - "本番アプリ実装の機能追加（テスト・Definition 以外）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API実装仕様書.md"
+      required: true
+      purpose: "§9 実装テスト観点の正本"
+    - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md"
+      required: true
+      purpose: "契約外形"
+  files:
+    - path: "apps/api/src/app/feedback/"
+      required: true
+    - path: "apps/api/tests/unit/app/feedback/feedback.smoke.test.ts"
+      required: true
+  issues:
+    - number: 1248
+      purpose: "前提実装"
+  prs:
+    - number: 1250
+      purpose: "実装 PR（blocking・Epic merge 済み）"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/tasks/api-pub-004-feedback-submit/unit-test.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/api/tests/unit/app/feedback/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "§9 unit 観点カバレッジ表（PR 本文）"
+  - "不足ケースのテスト追加"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "実装仕様書 §9 の fixture 化可能観点がテストまたは明示スキップ理由でカバーされている"
+  - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
+  - "OpenAPI / generated / apps/web / apps/reco 変更を含まない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1253-api-pub-004-feedback-submit-unit-test"
+  summary: "api-pub-004-feedback-submit-unit-test"
+  base: "feature/epic-386-pub-004-feedback-submit"
+  target: "feature/epic-386-pub-004-feedback-submit"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  number: 1253
+  unit: "task"
+  type: "test"
+  area: "api"
+
+dependencies:
+  issues:
+    - number: 1248
+      purpose: "実装 Task"
+  prs:
+    - number: 1250
+      purpose: "実装 PR Epic merge（blocking）"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/api/tests/unit/app/feedback/**"
+    - "prompts/definitions/tasks/api-pub-004-feedback-submit/unit-test.yaml"
+    - "prompts/definitions/reviews/api-pub-004-feedback-submit/unit-test/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "build or typecheck"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  not_required:
+    - "integration test"
+    - "e2e test"
+  skip_reason:
+    "integration test": "実 DB 結合は対象外。InMemory / Scaffold fixture で代替"
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§9 カバレッジが十分か"
+    - "冪等 200 / 409 非返却 / GRS-FDB-005 がテストされているか"
+    - "secret 非露出"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常 UT は ai-logs に保存しない"
+
+human_decision_points: []
+
+stop_conditions:
+  - "PR #1250 が親 Epic Branch に merge されていない場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+  - "実 Postgres 結合が必須と判明した場合"
+
+notes:
+  - "PUB-007 unit-test.yaml と同型。実装 PR #1250 merge 済みのため開始可。"
+  - "後続: Epic PR → develop（縦串完了後・Human merge 判断）。"
