@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 
 import { createFeedbackRouter } from "./app/feedback/index.js";
 import { createHealthRouter } from "./app/health/routes.js";
+import { createItemsRouter } from "./app/items/index.js";
 import { createMastersRouter } from "./app/masters/index.js";
 import { createRecommendationsRouter } from "./app/recommendations/index.js";
 import {
@@ -19,6 +20,8 @@ export function createApp(): Express {
   app.use("/api/v1/recommendations", createRecommendationsRouter());
   // API-PUB-004: POST /api/v1/recommendation-results/:resultId/feedback
   app.use("/api/v1/recommendation-results", createFeedbackRouter());
+  // API-PUB-003: GET /api/v1/items/:itemId
+  app.use("/api/v1/items", createItemsRouter());
   // API-PUB-005 / API-PUB-006: GET /api/v1/masters/{relationships,occasions}
   app.use("/api/v1/masters", createMastersRouter());
   registerErrorMiddleware(app);
