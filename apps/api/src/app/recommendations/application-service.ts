@@ -1,6 +1,7 @@
 import type { RecoClient } from "../../infrastructure/reco-client/client.js";
 import type { ApiLogger } from "../../infrastructure/logger/logger.js";
 import type { RecommendationRunRequest, RecommendationRunSuccessResponse } from "./types.js";
+import { enrichRecommendationRequestForReco } from "./ng-normalize.js";
 import { RecommendationRequestRepository } from "./request-repository.js";
 import { mapRecoErrorToApiError } from "./reco-error-mapper.js";
 import { mapRecoResultToPublicResponse } from "./response-mapper.js";
@@ -47,9 +48,12 @@ export class RecommendationApplicationService {
     });
 
     try {
+      // MOD-RECO-012: api 正本で ngText → ngKeywords を派生して INT-002 へ渡す
+      const recommendationRequest = enrichRecommendationRequestForReco(input.request);
+
       const recoResult = await this.recoClient.runRecommendation({
         recommendationRequestId,
-        recommendationRequest: input.request,
+        recommendationRequest: recommendationRequest as unknown as Record<string, unknown>,
         traceId: input.traceId,
         requestId: input.requestId,
       });

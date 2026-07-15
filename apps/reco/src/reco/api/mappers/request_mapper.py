@@ -158,7 +158,19 @@ def to_domain_recommendation_request(
             else None
         ),
         ng_condition=(
-            NgCondition(ng_text=req.ng_condition.ng_text)
+            NgCondition(
+                ng_text=req.ng_condition.ng_text,
+                ng_keywords=tuple(
+                    keyword.strip()
+                    for keyword in (req.ng_condition.ng_keywords or [])
+                    if keyword.strip()
+                ),
+                ng_categories=tuple(
+                    category.strip()
+                    for category in (req.ng_condition.ng_categories or [])
+                    if category.strip()
+                ),
+            )
             if req.ng_condition is not None
             else None
         ),
