@@ -105,3 +105,15 @@ test("POST /api/v1/recommendation-results/:resultId/feedback is mounted (not 404
     assert.equal(body.error?.code, "GRS-FDB-001");
   });
 });
+
+test("GET /api/v1/items/:itemId is mounted (GRS-ITM-001 not unmounted 404)", async () => {
+  await withAppServer(async (baseUrl) => {
+    const response = await fetch(
+      `${baseUrl}/api/v1/items/550e8400-e29b-41d4-a716-446655440001`,
+    );
+    // Scaffold DB では不存在 → 404 GRS-ITM-001。ルーティング未登録 404 とは error body で区別する。
+    assert.equal(response.status, 404);
+    const body = (await response.json()) as { error?: { code?: string } };
+    assert.equal(body.error?.code, "GRS-ITM-001");
+  });
+});

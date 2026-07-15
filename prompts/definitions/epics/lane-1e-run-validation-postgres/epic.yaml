@@ -147,6 +147,6 @@ operation_logging:
 notes:
   - "Epic Issue: #1268"
   - "先行記録: #1263 / #1264 / #1267"
-  - "完了 Task: #1269/#1270（RunValidation）、#1272/#1273（UserSemantic）"
-  - "継続: UserFeature / retrieval stub"
+  - "完了 Task: #1269/#1270（RunValidation）、#1272/#1273（UserSemantic）、#1274/#1275（UserFeature）"
+  - "後続: Epic #1277（候補 Retrieval Postgres）"
   - "AI は PR merge しない"
