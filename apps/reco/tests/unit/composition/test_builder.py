@@ -37,7 +37,27 @@ from reco.infrastructure.db.repositories.postgres_reco_score_distribution_metric
 from reco.infrastructure.db.repositories.postgres_recommendation_run_repository import (
     PostgresRecommendationRunRepository,
 )
+from reco.infrastructure.db.repositories.postgres_aware_user_feature_repository import (
+    PostgresAwareUserFeatureRepository,
+)
+from reco.infrastructure.db.repositories.postgres_normalization_rule_repository import (
+    PostgresNormalizationRuleRepository,
+)
+from reco.infrastructure.db.repositories.postgres_run_validation import (
+    PostgresRunValidation,
+)
+from reco.infrastructure.db.repositories.postgres_user_semantic_repository import (
+    PostgresUserSemanticRepository,
+)
 from reco.infrastructure.db.session import ScaffoldDatabaseSession
+from reco.application.user_semantic_extractor.in_memory_repository import (
+    InMemoryRunValidation,
+    InMemoryUserSemanticRepository,
+)
+from reco.application.user_feature_generator import (
+    InMemoryNormalizationRuleRepository,
+    InMemoryUserFeatureRepository,
+)
 
 
 def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
@@ -48,6 +68,22 @@ def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
     assert isinstance(ports.run_recorder.pair_reader, InMemoryPairMasterReader)
     assert type(ports.metric_logger) is type(expected_ports.metric_logger)
     assert set(helpers) == set(expected_helpers)
+    assert isinstance(
+        ports.user_semantic_extractor.run_validation,
+        InMemoryRunValidation,
+    )
+    assert isinstance(
+        ports.user_semantic_extractor.user_semantic_repository,
+        InMemoryUserSemanticRepository,
+    )
+    assert isinstance(
+        ports.user_feature_generator.user_features,
+        InMemoryUserFeatureRepository,
+    )
+    assert isinstance(
+        ports.user_feature_generator.normalization_rules,
+        InMemoryNormalizationRuleRepository,
+    )
 
 
 def test_build_production_ports_replaces_observability_and_config_resolver() -> None:
@@ -78,6 +114,55 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
         PostgresScoreDistributionMetricRepository,
     )
     assert helpers["config_repository"] is ports.config_resolver.repository
+    assert isinstance(helpers["run_validation"], PostgresRunValidation)
+    assert isinstance(
+        ports.user_semantic_extractor.run_validation,
+        PostgresRunValidation,
+    )
+    assert ports.user_semantic_extractor.run_validation is helpers["run_validation"]
+    assert (
+        ports.external_feature_estimator.run_validation
+        is helpers["run_validation"]
+    )
+    assert (
+        ports.query_embedding_generator.run_validation is helpers["run_validation"]
+    )
+    assert isinstance(
+        helpers["user_semantic_repository"],
+        PostgresUserSemanticRepository,
+    )
+    assert isinstance(
+        ports.user_semantic_extractor.user_semantic_repository,
+        PostgresUserSemanticRepository,
+    )
+    assert (
+        ports.user_semantic_extractor.user_semantic_repository
+        is helpers["user_semantic_repository"]
+    )
+    assert isinstance(
+        helpers["user_feature_repository"],
+        PostgresAwareUserFeatureRepository,
+    )
+    assert isinstance(
+        ports.user_feature_generator.user_features,
+        PostgresAwareUserFeatureRepository,
+    )
+    assert ports.user_feature_generator.user_features is helpers["user_feature_repository"]
+    assert (
+        ports.user_meaning_projector.user_features
+        is helpers["user_feature_repository"]
+    )
+    assert (
+        ports.user_context_builder.user_features is helpers["user_feature_repository"]
+    )
+    assert isinstance(
+        helpers["normalization_rule_repository"],
+        PostgresNormalizationRuleRepository,
+    )
+    assert (
+        ports.user_feature_generator.normalization_rules
+        is helpers["normalization_rule_repository"]
+    )
 
 
 def test_build_production_observability_modules_wires_postgres_repositories() -> None:

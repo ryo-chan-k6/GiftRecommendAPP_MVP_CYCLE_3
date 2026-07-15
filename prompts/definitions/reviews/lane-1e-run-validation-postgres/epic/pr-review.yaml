@@ -1,0 +1,148 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-run-validation-postgres-epic-pr"
+  title: "レーン1e RunValidation Postgres配線 Epic PRレビュー"
+  summary: "Epic #1268（RunValidation / UserSemantic / UserFeature Postgres 配線）の develop 向け統合 PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1287
+  issue:
+    number: 1268
+  task_definition: "prompts/definitions/epics/lane-1e-run-validation-postgres/epic.yaml"
+  source_branch: "feature/epic-1268-lane-1e-run-validation-postgres"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]レーン1e:Reco RunValidation Postgres配線"
+  parent_epic_branch: "feature/epic-1268-lane-1e-run-validation-postgres"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/lane-1e-run-validation-postgres/epic.yaml"
+    required: true
+  issue:
+    number: 1268
+    required: true
+  pr:
+    number: 1287
+    required: false
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+      purpose: "§10.4.6〜§10.4.8 再スモーク記録の確認"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Epic scope / epic_scope.allowed_paths 内に差分が収まっているか"
+    - "子 Task PR が親 Epic Branch 経由で統合されているか（#1270/#1273/#1275）"
+    - "PR target が develop であるか"
+    - "PR 本文が Closes #1268 と整合するか（Epic PR）"
+  docs:
+    - "手順書 §10.4.6〜§10.4.8 に再スモーク結果が残っているか"
+  source:
+    - "production のみ Postgres RunValidation / UserSemantic / UserFeature か"
+    - "DEFAULT composition の InMemory が維持されているか"
+  tests:
+    - "composition / repository UT が含まれているか"
+  security:
+    - "secret / .env 実値を含んでいないか"
+  epic_scope:
+    - "forbidden_paths（OpenAPI / migrations / web / api feedback）への変更がないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: false
+  additional_criteria:
+    - "子 Task（RunValidation / UserSemantic / UserFeature）が Epic Branch に揃っている"
+    - "Human Review 観点が PR 本文に整理されている"
+    - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "縦串成果が揃っている"
+      - "epic_scope 外差分がない"
+      - "修正必須事項がない"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な不備がある"
+      - "PR 本文の不足"
+  needs_human_decision:
+    conditions:
+      - "Epic 完了範囲（retrieval は #1277）の境界判断が必要"
+  blocked:
+    conditions:
+      - "必須 Review Definition / Epic Definition が不足している"
+      - "縦串のいずれかの Task が親 Epic に未 merge"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "Epic PR の AI Review は PR コメントを正とする"
+
+notes:
+  - "Epic PR 作成後に target.pr / input.pr.number を実番号へ更新する"
+  - "完了 Task: #1269/#1270, #1272/#1273, #1274/#1275"
+  - "retrieval 以降は Epic #1277"
+  - "/review-pr @prompts/definitions/reviews/lane-1e-run-validation-postgres/epic/pr-review.yaml"
