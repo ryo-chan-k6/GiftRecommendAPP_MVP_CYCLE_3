@@ -1,0 +1,199 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-candidate-retrieval-postgres-implementation"
+  title: "レーン1e:候補Retrieval Postgres配線実装"
+  summary: "MOD-RECO-012/013/014 の Item 系 Port を Postgres 実装し production composition に注入する。item_semantic seed を補完し、PUB-002 再スモーク結果を記録する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:候補Retrieval Postgres配線"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - number: 1268
+      purpose: "先行 Feature DI Epic（stack base）"
+    - number: 1274
+      purpose: "先行 UserFeature 配線"
+  related_prs:
+    - number: 1275
+      purpose: "UserFeature MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  GRS-REC-012 は Final Ranker まで到達できず ranked_items 未設定のため発生。
+  InMemory 候補（item-001）と seed UUID / embedding model_version が不一致。
+
+objective: |
+  Postgres Item / Embedding 検索、Post Hard Filter 用 item/semantic、
+  Feature Matcher 用 item_feature を配線し縦串を前進させる。
+
+scope:
+  - "PostgresItemRepository（012 search / count）"
+  - "PostgresPostFilterItemRepository（013 validation / semantic）"
+  - "PostgresItemFeatureRepository + FeatureNormalization（014）"
+  - "build_production_ports 注入"
+  - "test-data item_semantic seed 補完"
+  - "UT・手順書・再スモーク"
+
+out_of_scope:
+  - "Reason / Snapshot 本番永続"
+  - "OpenAPI / migration / SCR / PUB-004"
+  - "Ranking 式の変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/composition/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/infrastructure/**"
+      action: "update"
+      required: true
+    - path: "supabase/seeds/test-data/**"
+      action: "update"
+      required: true
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Postgres Item 系配線"
+  - "再スモーク記録"
+
+acceptance_criteria:
+  - "production が Postgres Item 系 Port を使う"
+  - "DEFAULT InMemory 維持"
+  - "UT 通過・再スモーク記録あり（items≥1 または次 Blocker 明示）"
+  - "secret なし"
+
+branch:
+  no_branch: false
+  name: null
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - issue: 1268
+      purpose: "stack base"
+  issues:
+    - number: 1274
+      purpose: "先行"
+  prs:
+    - number: 1275
+      purpose: "先行 MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/composition/builder.py"
+  conflict_risk: "high"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "manual local smoke"
+    - "secret check"
+  commands:
+    - "cd apps/reco && uv run --extra dev pytest tests/unit/composition tests/unit/infrastructure/test_postgres_item*.py -q"
+  manual_checks:
+    - "PUB-002 再実行"
+  not_required: []
+  skip_reason: {}
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Item / Embedding / Feature / Semantic 配線が整合するか"
+    - "DEFAULT InMemory 維持か"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e retrieval 配線"
+
+notes:
+  - "親 Epic Issue / Branch 作成後に番号同期"
+  - "Review: prompts/definitions/reviews/lane-1e-candidate-retrieval-postgres/implementation/pr-review.yaml"
