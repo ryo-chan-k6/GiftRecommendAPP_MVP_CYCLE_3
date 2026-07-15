@@ -1,0 +1,136 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-local-result-vertical-epic-pr"
+  title: "レーン1e ローカル結果あり縦串 Epic PRレビュー"
+  summary: "親 Epic #1263 wrap-up（受け入れ充足要約・Definition を develop へ統合）の AI Review。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1315
+  issue:
+    number: 1263
+  task_definition: "prompts/definitions/epics/lane-1e-local-result-vertical/epic.yaml"
+  source_branch: "chore/epic-1263-lane-1e-local-result-vertical-wrapup"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]レーン1e:ローカル結果あり縦串"
+  parent_epic_branch: "chore/epic-1263-lane-1e-local-result-vertical-wrapup"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/lane-1e-local-result-vertical/epic.yaml"
+    required: true
+  issue:
+    number: 1263
+    required: true
+  pr:
+    number: 1315
+    required: false
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+      purpose: "§10.4.13 親 Epic 受け入れ充足要約"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "PR target が develop / Closes #1263 か"
+    - "実装コード差分を含まず docs / prompts / ai-logs に閉じているか"
+    - "旧 epic Branch の未達 §10.4.5 を develop へ戻していないか"
+  docs:
+    - "§10.4.13 が §10.4.9〜12 の達成を要約しているか"
+    - "OOS（D1 / ngKeywords / Reason）が明示されているか"
+  security:
+    - "secret / .env 実値を含んでいないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: false
+  additional_criteria:
+    - "親 Epic の受け入れ根拠が PR 本文と §10.4.13 で追える"
+    - "Blocker / Must がない、または Human 判断待ちとして明示"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "docs/prompts のみで wrap-up になっている"
+      - "Closes #1263 がある"
+      - "修正必須事項がない"
+  request_changes:
+    conditions:
+      - "実装差分の混入"
+      - "PR 本文不足"
+  needs_human_decision:
+    conditions:
+      - "Human が develop tip 再スモークを必須とする場合"
+  blocked:
+    conditions:
+      - "必須 Definition 不足"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "Epic wrap-up PR の AI Review は PR コメントを正とする"
+
+notes:
+  - "Epic PR 作成後に target.pr / input.pr.number を更新する"
+  - "/review-pr @prompts/definitions/reviews/lane-1e-local-result-vertical/epic/pr-review.yaml"

@@ -79,6 +79,8 @@ def build_item_record(
     active_status: str = "active",
     keywords: tuple[str, ...] = ("実用的",),
     categories: tuple[str, ...] = ("gift",),
+    item_name: str | None = None,
+    item_caption: str | None = None,
     embedding: tuple[float, ...] | None = (1.0, 0.0, 0.0, 0.0),
     model_version_id: str = DEFAULT_EMBEDDING_MODEL_VERSION_ID,
     has_image: bool = True,
@@ -91,6 +93,8 @@ def build_item_record(
         active_status=active_status,
         keywords=keywords,
         categories=categories,
+        item_name=item_name,
+        item_caption=item_caption,
         embedding=embedding,
         model_version_id=model_version_id,
         has_image=has_image,
@@ -180,6 +184,7 @@ def _sample_context(
     budget_max: int | None = 10000,
     ng_keywords: tuple[str, ...] = ("カジュアル",),
     ng_categories: tuple[str, ...] = (),
+    ng_text: str | None = None,
     non_preferred_text: str | None = None,
     hard_filter_candidates: tuple[HardFilterCandidate, ...] | None = None,
     trace_id: str = "trace-candidate-retriever",
@@ -206,6 +211,7 @@ def _sample_context(
             else None
         ),
         ng_condition=NgCondition(
+            ng_text=ng_text,
             ng_keywords=ng_keywords,
             ng_categories=ng_categories,
         ),

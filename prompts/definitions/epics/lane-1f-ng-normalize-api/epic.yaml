@@ -1,0 +1,150 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1f-ng-normalize-api"
+  title: "レーン1f:NG正規化api正本化"
+  summary: "INT-002 NgCondition に ngKeywords/ngCategories を契約反映し、api で ngText から実効キーワードを派生して reco へ渡す（MOD-RECO-012 正本化）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed: ["/start-epic", "/start-task", "/create-contract-task", "/summarize-work"]
+  next:
+    success: "/create-contract-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support: ["support-ai", "contract-ai"]
+  review: ["reviewer-ai", "contract-ai"]
+
+background: |
+  レーン1e で reco PreFilter に ngText 実効キーワード暫定を入れた。
+  MOD-RECO-012 は NG 正規化を api 正本とする。INT-002 契約は ngKeywords/ngCategories があるが OpenAPI/実装未反映。
+  request_mapper も ng_text のみ map している。
+
+objective: |
+  Internal OpenAPI + Orval 反映後、api が ngText→ngKeywords を派生し、reco が受け取り PreFilter に使う。
+  reco 側の request.ng_text 再抽出は削除して正本整合させる。
+
+scope:
+  - "Contract Task（OpenAPI + Orval）"
+  - "api normalize + reco mapper / prefilter 正本化"
+  - "UT・手順書"
+
+out_of_scope:
+  - "public-api.yaml / web / SCR-002"
+  - "DB migration"
+  - "preferredKeywords / nonPreferredKeywords"
+  - "PostFilter alcohol_ng"
+  - "ngCategories SQL 除外の本実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: true
+    paths: ["apps/api/src/generated/reco-client/"]
+    handling: "orval"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "Contract Task + Implementation Task"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "Contract Task が親 Epic Branch を target にする"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1320-lane-1f-ng-normalize-api"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+epic_scope:
+  artifact_id: "API-INT-002"
+  allowed_paths:
+    - "packages/contracts/openapi/internal-reco-api.yaml"
+    - "apps/api/src/generated/reco-client/**"
+    - "apps/api/src/app/recommendations/**"
+    - "apps/api/tests/unit/app/recommendations/**"
+    - "apps/reco/src/reco/api/**"
+    - "apps/reco/src/reco/application/candidate-retriever/**"
+    - "apps/reco/tests/unit/api/**"
+    - "apps/reco/tests/unit/application/candidate-retriever/**"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/lane-1f-ng-normalize-api/**"
+    - "prompts/definitions/tasks/lane-1f-ng-normalize-api/**"
+    - "prompts/definitions/contracts/lane-1f-ng-normalize-api/**"
+    - "prompts/definitions/reviews/lane-1f-ng-normalize-api/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/public-api.yaml"
+    - "apps/web/**"
+    - "supabase/migrations/**"
+  child_task_areas:
+    - "openapi-sync"
+    - "implementation"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "OpenAPI 追記が additive か"
+    - "api 正規化が INT-002 へ渡るか"
+    - "reco が ng_text 再抽出をやめたか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1f NG api 正本化"
+
+notes:
+  - "Epic Issue: #1320"
+  - "依存: Epic #1308 / #1263 MERGED"
+  - "Contract Task と implementation を分離"
+  - "AI は PR merge しない"
+  - "子 Task: Contract #1321/#1322, Implementation #1324/#1326 MERGED into Epic branch"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from reco.domain.recommendation.inputs import NgCondition
@@ -20,6 +21,20 @@ if TYPE_CHECKING:
     from reco.application.recommendation_orchestrator.execution_context import (
         ExecutionContext,
     )
+
+# request.ng_text の再正規化は api 正本（MOD-RECO-012）。attribute hard_filter のみ暫定抽出を残す。
+_NG_SUFFIX_PATTERN = re.compile(
+    r"(?:は|が|を|の)?"
+    r"(?:NG|ＮＧ|ng|禁止|不可|ダメ|だめ|避けたい|避けて(?:ほしい|下さい|ください)|不要)"
+    r"(?:[。．.!！]?)*$",
+)
+_KNOWN_NG_HINT_TOKENS: tuple[str, ...] = (
+    "アルコール",
+    "ワイン",
+    "ビール",
+    "日本酒",
+    "お酒",
+)
 
 
 def run_pre_hard_filter(
@@ -81,10 +96,9 @@ def _merge_filter_conditions(
     hard_filter_values: list[str] = []
 
     if ng_condition is not None:
+        # api 派生の ng_keywords / ng_categories を正とする（request.ng_text は再抽出しない）
         ng_keywords.extend(_normalize_tokens(ng_condition.ng_keywords))
         ng_categories.extend(_normalize_tokens(ng_condition.ng_categories))
-        if ng_condition.ng_text and ng_condition.ng_text.strip():
-            ng_keywords.append(ng_condition.ng_text.strip())
 
     seen_values: set[str] = set()
     for candidate in hard_filter_candidates:
@@ -97,12 +111,36 @@ def _merge_filter_conditions(
             ng_keywords.append(value)
         elif candidate.filter_type in {"ng_category", "category"}:
             ng_categories.append(value)
+        elif candidate.filter_type == "attribute":
+            # MOD-RECO-004 は ngText を attribute にする。predicate は ng_keywords 経由で効かせる。
+            ng_keywords.extend(_effective_ng_keywords_from_text(value))
 
     return MergedFilterConditions(
         ng_keywords=tuple(_dedupe_preserve_order(ng_keywords)),
         ng_categories=tuple(_dedupe_preserve_order(ng_categories)),
         hard_filter_values=tuple(hard_filter_values),
     )
+
+
+def _effective_ng_keywords_from_text(text: str) -> list[str]:
+    """ngText / attribute 文から ILIKE に使える短いキーワードを抽出する。
+
+    例: 「アルコールはNG」→「アルコール」。抽出不能時のみ全文を残す（従来互換）。
+    """
+    raw = text.strip()
+    if not raw:
+        return []
+
+    keywords: list[str] = []
+    stripped = _NG_SUFFIX_PATTERN.sub("", raw).strip(" 　、。．，,・")
+    if stripped:
+        keywords.append(stripped)
+    for token in _KNOWN_NG_HINT_TOKENS:
+        if token in raw and token not in keywords:
+            keywords.append(token)
+    if not keywords:
+        keywords.append(raw)
+    return _dedupe_preserve_order(keywords)
 
 
 def _normalize_tokens(tokens: tuple[str, ...]) -> list[str]:

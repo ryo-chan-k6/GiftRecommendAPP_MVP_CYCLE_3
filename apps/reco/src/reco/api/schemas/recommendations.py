@@ -57,6 +57,8 @@ class NgConditionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ng_text: str | None = Field(default=None, alias="ngText", max_length=300)
+    ng_keywords: list[str] | None = Field(default=None, alias="ngKeywords")
+    ng_categories: list[str] | None = Field(default=None, alias="ngCategories")
 
 
 class ExecutionInput(BaseModel):

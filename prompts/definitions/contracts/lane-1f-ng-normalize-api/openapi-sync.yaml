@@ -1,0 +1,119 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-lane-1f-ng-normalize-api-openapi-sync"
+  title: "レーン1f:INT-002 NgCondition OpenAPI同期"
+  summary: "API-INT-002 契約の ngKeywords/ngCategories を internal-reco-api.yaml に反映し Orval 再生成する。"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "lane-1e-follow-up"
+  related_issue: "#1321"
+  related_pr: null
+  related_task_definition: null
+  reason: "レーン1e alcohol NG 暫定後、MOD-RECO-012 の api 正本化のため INT-002 OpenAPI ギャップを解消する"
+
+commands:
+  primary: "/create-contract-task"
+  allowed: ["/create-contract-task", "/work-issue", "/create-pr", "/review-pr", "/summarize-work"]
+  next:
+    success: "/work-issue"
+    pr: "/create-pr"
+    review: "/review-pr"
+    blocked: null
+
+agent:
+  primary: "contract-ai"
+  support: ["orchestrator-ai", "support-ai", "worker-ai"]
+  review: ["reviewer-ai", "contract-ai"]
+
+change:
+  api_name: "Reco推薦実行"
+  api_kind: "internal"
+  endpoint: "POST /internal/reco/v1/recommendations/run"
+  method: "POST"
+  change_type: "update_openapi_schema"
+  breaking_change: false
+  backward_compatibility: "compatible_additive"
+  reason: "NgConditionInput に optional ngKeywords/ngCategories を追加（契約表整合）"
+
+scope:
+  - "packages/contracts/openapi/internal-reco-api.yaml の NgConditionInput に ngKeywords/ngCategories を追加"
+  - "example を更新"
+  - "pnpm orval で apps/api/src/generated/reco-client/ を再生成"
+  - "contract-check / api typecheck 通過"
+
+out_of_scope:
+  - "public-api.yaml"
+  - "apps/api recommendations 正規化実装"
+  - "apps/reco PreFilter 実装変更"
+  - "web generated"
+  - "DB migration"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "ngKeywords/ngCategories 契約正本"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+  openapi:
+    path: "packages/contracts/openapi/internal-reco-api.yaml"
+    required: true
+  orval:
+    path: "orval.config.ts"
+    required: true
+  generated:
+    paths: ["apps/api/src/generated/reco-client/"]
+    required: true
+
+output:
+  docs: []
+  files: []
+  openapi:
+    - path: "packages/contracts/openapi/internal-reco-api.yaml"
+      action: "update"
+      required: true
+  orval: []
+  generated:
+    - path: "apps/api/src/generated/reco-client/"
+      action: "regenerate"
+      required: true
+  tests: []
+  logs:
+    ai_logs_required: false
+    path: null
+
+branch:
+  no_branch: false
+  name: "docs/task-1321-lane-1f-ng-normalize-api-openapi-sync"
+  base: "feature/epic-1320-lane-1f-ng-normalize-api"
+  target: "feature/epic-1320-lane-1f-ng-normalize-api"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+parent:
+  epic_issue: "[Epic]レーン1f:NG正規化api正本化"
+  epic_issue_number: 1320
+  epic_branch: "feature/epic-1320-lane-1f-ng-normalize-api"
+
+acceptance_criteria:
+  - "NgConditionInput に ngKeywords/ngCategories がある"
+  - "Orval 再生成差分が意図どおり"
+  - "public-api.yaml を変更していない"
+
+notes:
+  - "implementation Task の Contract Gate"
