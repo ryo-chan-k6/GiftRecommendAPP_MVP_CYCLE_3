@@ -6,7 +6,7 @@ review:
   title: "BATCH-008 候補Applier PRレビュー"
   summary: "T6 BATCH-008 Applier 実装 PR の AI Review。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -16,7 +16,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1266
   issue:
     number: 1234
   task_definition: "prompts/definitions/tasks/item-active-status-candidate/batch-008-applier.yaml"
@@ -52,7 +52,7 @@ input:
     number: 1234
     required: true
   pr:
-    number: null
+    number: 1266
     required: true
   docs:
     - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
@@ -71,4 +71,4 @@ review_points:
     - "secret 非含有"
 
 notes:
-  - "PR 番号は create-pr 後に反映"
+  - "PR #1266。AI Review 結論: Human Reviewへ進行可"
