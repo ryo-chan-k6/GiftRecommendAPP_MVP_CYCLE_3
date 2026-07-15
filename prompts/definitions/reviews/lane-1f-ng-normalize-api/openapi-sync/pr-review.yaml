@@ -14,7 +14,7 @@ branch:
   target: null
   worktree_required: false
 target:
-  pr: null
+  pr: 1322
   issue: 1321
   task_definition: "prompts/definitions/contracts/lane-1f-ng-normalize-api/openapi-sync.yaml"
   source_branch: "docs/task-1321-lane-1f-ng-normalize-api-openapi-sync"
@@ -58,7 +58,7 @@ input:
     number: 1321
     required: true
   pr:
-    number: null
+    number: 1322
     required: false
   diff:
     required: true

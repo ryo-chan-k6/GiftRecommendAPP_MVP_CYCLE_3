@@ -110,6 +110,10 @@ export interface NonPreferredConditionInput {
 export interface NgConditionInput {
   /** @maxLength 300 */
   ngText?: string;
+  /** API側で正規化済みのNGキーワード（例: アルコール） */
+  ngKeywords?: string[];
+  /** API側で正規化済みのNGカテゴリ（例: alcohol） */
+  ngCategories?: string[];
 }
 
 export type ExecutionMode = typeof ExecutionMode[keyof typeof ExecutionMode];
