@@ -19,12 +19,12 @@ branch:
 
 target:
   pr: null
-  issue: null
+  issue: 1278
   task_definition: "prompts/definitions/tasks/lane-1e-candidate-retrieval-postgres/implementation.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "feature/task-1278-lane-1e-candidate-retrieval-postgres-implementation"
+  target_branch: "feature/epic-1277-lane-1e-candidate-retrieval-postgres"
   parent_epic_issue: "[Epic]レーン1e:候補Retrieval Postgres配線"
-  parent_epic_branch: null
+  parent_epic_branch: "feature/epic-1277-lane-1e-candidate-retrieval-postgres"
 
 commands:
   primary: "/review-pr"
@@ -73,7 +73,7 @@ input:
     required: true
   diff:
     required: true
-    compare_with: null
+    compare_with: "feature/epic-1277-lane-1e-candidate-retrieval-postgres"
   docs:
     - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
       required: true

@@ -40,11 +40,13 @@ scope:
   - "子 Task（implementation）"
   - "Epic Issue / Branch"
   - "Postgres Item / Embedding / ItemFeature / ItemSemantic 参照と composition 配線"
+  - "必要なら Snapshot Item 正本読取（022 ItemSnapshotReadPort）の最小配線"
   - "必要なら test-data の item_semantic seed 補完"
   - "手順書再スモーク記録"
 
 out_of_scope:
-  - "Reason / Snapshot の全面本番永続"
+  - "recommendation_result_item の Postgres INSERT（本 Task では読取のみ）"
+  - "Reason 全面本番永続"
   - "OpenAPI / migration / SCR / PUB-004 / Batch フルラン"
   - "Ranking アルゴリズム変更"
 

@@ -4,15 +4,17 @@ definition_type: "task"
 task:
   id: "task-lane-1e-candidate-retrieval-postgres-implementation"
   title: "レーン1e:候補Retrieval Postgres配線実装"
-  summary: "MOD-RECO-012/013/014 の Item 系 Port を Postgres 実装し production composition に注入する。item_semantic seed を補完し、PUB-002 再スモーク結果を記録する。"
+  summary: "MOD-RECO-012/013/014 の Item 系 Port と MOD-RECO-022 ItemSnapshotReadPort を Postgres 実装し production composition に注入する。item_semantic seed を補完し、PUB-002 再スモーク結果を記録する。"
 
 work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]レーン1e:候補Retrieval Postgres配線"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 1277
+  epic_branch: "feature/epic-1277-lane-1e-candidate-retrieval-postgres"
   related_issues:
+    - number: 1278
+      purpose: "本 Task Issue"
     - number: 1268
       purpose: "先行 Feature DI Epic（stack base）"
     - number: 1274
@@ -49,18 +51,20 @@ background: |
 
 objective: |
   Postgres Item / Embedding 検索、Post Hard Filter 用 item/semantic、
-  Feature Matcher 用 item_feature を配線し縦串を前進させる。
+  Feature Matcher 用 item_feature、Snapshot 用 Item 正本読取を配線し縦串を前進させる。
 
 scope:
   - "PostgresItemRepository（012 search / count）"
   - "PostgresPostFilterItemRepository（013 validation / semantic）"
   - "PostgresItemFeatureRepository + FeatureNormalization（014）"
+  - "PostgresItemSnapshotReadRepository（022 ItemSnapshotReadPort）"
   - "build_production_ports 注入"
   - "test-data item_semantic seed 補完"
   - "UT・手順書・再スモーク"
 
 out_of_scope:
-  - "Reason / Snapshot 本番永続"
+  - "recommendation_result_item の Postgres INSERT（InMemory 維持）"
+  - "Reason 本番永続"
   - "OpenAPI / migration / SCR / PUB-004"
   - "Ranking 式の変更"
 
@@ -120,8 +124,8 @@ acceptance_criteria:
 branch:
   no_branch: false
   name: null
-  base: null
-  target: null
+  base: "feature/epic-1277-lane-1e-candidate-retrieval-postgres"
+  target: "feature/epic-1277-lane-1e-candidate-retrieval-postgres"
   worktree_required: true
 
 project:

@@ -121,6 +121,34 @@ BEGIN
   ON CONFLICT ON CONSTRAINT uq_item_embedding_idempotent DO UPDATE SET
     embedding_vector = EXCLUDED.embedding_vector,
     generated_at = EXCLUDED.generated_at;
+
+  -- item_semantic: Post Hard Filter 用（concepts 空で NG concept 欠損除外を回避）
+  -- item_003 のみ alcohol_ng を持ち、NG アルコール入力で除外される想定
+  INSERT INTO item_semantic (
+    item_id, semantic_config_version_id, semantic_json, generated_at
+  )
+  VALUES
+    (
+      'b1111111-1111-4111-8111-111111111001',
+      scv_id,
+      '{"concepts":[]}'::jsonb,
+      timestamptz '2026-06-17 12:00:00+00'
+    ),
+    (
+      'b1111111-1111-4111-8111-111111111002',
+      scv_id,
+      '{"concepts":[]}'::jsonb,
+      timestamptz '2026-06-17 12:00:00+00'
+    ),
+    (
+      'b1111111-1111-4111-8111-111111111003',
+      scv_id,
+      '{"concepts":[{"concept_code":"alcohol_ng","confidence":0.9}]}'::jsonb,
+      timestamptz '2026-06-17 12:00:00+00'
+    )
+  ON CONFLICT ON CONSTRAINT uq_item_semantic_item_version DO UPDATE SET
+    semantic_json = EXCLUDED.semantic_json,
+    generated_at = EXCLUDED.generated_at;
 END $$;
 
 COMMIT;
