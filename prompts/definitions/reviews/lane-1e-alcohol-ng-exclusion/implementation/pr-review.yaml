@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1310
   issue: 1309
   task_definition: "prompts/definitions/tasks/lane-1e-alcohol-ng-exclusion/implementation.yaml"
   source_branch: "feature/task-1309-lane-1e-alcohol-ng-exclusion-implementation"
@@ -70,7 +70,7 @@ input:
     number: 1309
     required: true
   pr:
-    number: null
+    number: 1310
     required: false
   diff:
     required: true
