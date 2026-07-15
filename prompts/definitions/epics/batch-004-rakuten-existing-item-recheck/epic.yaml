@@ -135,9 +135,19 @@ issue:
 
 epic_scope:
   artifact_id: "BATCH-004"
+  # Human: accompanying Epic #1227 を本 Epic Branch にスタック取込済み（PR #1276）。
+  # develop 統合 Epic PR では #1227 成果物を本 Epic 差分に含めるため allowed_paths を拡張する。
   allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/**"
     - "docs/06_実装設計/batch/BATCH-004_*"
+    - "docs/06_実装設計/batch/BATCH-008_*"
+    - "docs/06_実装設計/batch/item_active_status_candidate_*"
+    - "docs/06_実装設計/database/**"
+    - "db/ddl/**"
+    - "supabase/migrations/**"
+    - "packages/code-definitions/**"
     - "apps/batch/src/batch/application/item_recheck/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
     - "apps/batch/src/batch/application/__init__.py"
     - "apps/batch/src/batch/infrastructure/rakuten/**"
     - "apps/batch/src/batch/infrastructure/object_storage/**"
@@ -149,13 +159,15 @@ epic_scope:
     - "prompts/definitions/epics/batch-004-rakuten-existing-item-recheck/**"
     - "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/**"
     - "prompts/definitions/reviews/batch-004-rakuten-existing-item-recheck/**"
+    - "prompts/definitions/epics/item-active-status-candidate/**"
+    - "prompts/definitions/tasks/item-active-status-candidate/**"
+    - "prompts/definitions/reviews/item-active-status-candidate/**"
   forbidden_paths:
     - "apps/api/**"
     - "apps/reco/**"
     - "apps/web/**"
     - "packages/contracts/**"
     - "openapi/**"
-    - "supabase/migrations/**"
     - "apps/batch/src/batch/application/genre_sync/**"
     - "apps/batch/src/batch/application/ranking_snapshot/**"
     - "apps/batch/src/batch/application/item_pseudo_diff/**"
@@ -172,6 +184,9 @@ dependencies:
     - issue: 1207
       title: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
       purpose: "先行 Fetch（item_search scaffold 共有）。develop merge 済み"
+    - issue: 1227
+      title: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+      purpose: "候補テーブル / IF / BATCH-008 Reader·Applier / Retention。本 Epic Branch へ stack merge 済み（PR #1276）"
   issues: []
   prs: []
   tasks: []
@@ -180,13 +195,14 @@ dependencies:
 parallel_control:
   depends_on:
     - "epic-batch-003-rakuten-item-pseudo-diff"
+    - "epic-item-active-status-candidate"
   blocks:
     - "epic-batch-005-raw-staging"
   exclusive_files: []
   conflict_risk: "medium"
   contract_impact: false
   generated_impact: false
-  db_impact: false
+  db_impact: true
 
 test_policy:
   required: []
@@ -203,12 +219,13 @@ test_policy:
 
 review:
   human_review_required: true
-  ai_review_required: false
+  ai_review_required: true
   review_points:
-    - "Epic の作業範囲が BATCH-004 に閉じているか"
-    - "epic_scope.allowed_paths がバッチ処理一覧 BATCH-004 と整合しているか"
-    - "Contract Gate 不要方針が明示されているか"
+    - "Epic の作業範囲が BATCH-004 + 付随 #1227 スタックに閉じているか"
+    - "epic_scope.allowed_paths がバッチ処理一覧 BATCH-004 と付随候補テーブル成果と整合しているか"
+    - "Contract Gate 不要方針との整合"
     - "Epic PR target が develop であるか"
+    - "migration / DDL が意図した item_active_status_candidate のみか"
   specialist_reviews:
     docs: false
     test: false
