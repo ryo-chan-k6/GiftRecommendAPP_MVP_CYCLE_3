@@ -15,8 +15,21 @@ from reco.application.recommendation_orchestrator import (
 from reco.infrastructure.db.repositories.postgres_aware_user_feature_repository import (
     PostgresAwareUserFeatureRepository,
 )
+from reco.infrastructure.db.repositories.postgres_item_feature_repository import (
+    PostgresFeatureNormalizationRepository,
+    PostgresItemFeatureRepository,
+)
+from reco.infrastructure.db.repositories.postgres_item_repository import (
+    PostgresItemRepository,
+)
+from reco.infrastructure.db.repositories.postgres_item_snapshot_repository import (
+    PostgresItemSnapshotReadRepository,
+)
 from reco.infrastructure.db.repositories.postgres_normalization_rule_repository import (
     PostgresNormalizationRuleRepository,
+)
+from reco.infrastructure.db.repositories.postgres_post_filter_item_repository import (
+    PostgresPostFilterItemRepository,
 )
 from reco.infrastructure.db.repositories.postgres_run_validation import (
     PostgresRunValidation,
@@ -100,6 +113,39 @@ def _inject_user_semantic_ports(
     )
 
 
+def _inject_item_catalog_ports(
+    ports: OrchestratorPorts,
+    *,
+    item_repository: PostgresItemRepository,
+    post_filter_item_repository: PostgresPostFilterItemRepository,
+    item_feature_repository: PostgresItemFeatureRepository,
+    feature_normalization_repository: PostgresFeatureNormalizationRepository,
+    item_snapshot_reader: PostgresItemSnapshotReadRepository,
+) -> OrchestratorPorts:
+    """Wire Postgres item catalog ports for retrieval / matching / snapshot."""
+
+    return replace(
+        ports,
+        candidate_retriever=replace(
+            ports.candidate_retriever,
+            item_repository=item_repository,
+        ),
+        post_hard_filter=replace(
+            ports.post_hard_filter,
+            item_repository=post_filter_item_repository,
+        ),
+        feature_matcher=replace(
+            ports.feature_matcher,
+            item_feature_repository=item_feature_repository,
+            normalization=feature_normalization_repository,
+        ),
+        snapshot_builder=replace(
+            ports.snapshot_builder,
+            item_reader=item_snapshot_reader,
+        ),
+    )
+
+
 def build_production_ports(
     *,
     database_url: str | None = None,
@@ -121,13 +167,27 @@ def build_production_ports(
     user_semantic_repository = PostgresUserSemanticRepository(session=session)
     user_feature_repository = PostgresAwareUserFeatureRepository(session=session)
     normalization_rules = PostgresNormalizationRuleRepository(session=session)
+    item_repository = PostgresItemRepository(session=session)
+    post_filter_item_repository = PostgresPostFilterItemRepository(session=session)
+    item_feature_repository = PostgresItemFeatureRepository(session=session)
+    feature_normalization_repository = PostgresFeatureNormalizationRepository(
+        session=session,
+    )
+    item_snapshot_reader = PostgresItemSnapshotReadRepository(session=session)
 
     ports = replace(
-        _inject_user_semantic_ports(
-            _inject_run_validation(base_ports, run_validation),
-            user_semantic_repository=user_semantic_repository,
-            user_feature_repository=user_feature_repository,
-            normalization_rules=normalization_rules,
+        _inject_item_catalog_ports(
+            _inject_user_semantic_ports(
+                _inject_run_validation(base_ports, run_validation),
+                user_semantic_repository=user_semantic_repository,
+                user_feature_repository=user_feature_repository,
+                normalization_rules=normalization_rules,
+            ),
+            item_repository=item_repository,
+            post_filter_item_repository=post_filter_item_repository,
+            item_feature_repository=item_feature_repository,
+            feature_normalization_repository=feature_normalization_repository,
+            item_snapshot_reader=item_snapshot_reader,
         ),
         config_resolver=config_resolver,  # type: ignore[arg-type]
         run_recorder=observability["run_recorder"],  # type: ignore[arg-type]
@@ -143,6 +203,11 @@ def build_production_ports(
         "user_semantic_repository": user_semantic_repository,
         "user_feature_repository": user_feature_repository,
         "normalization_rule_repository": normalization_rules,
+        "item_repository": item_repository,
+        "post_filter_item_repository": post_filter_item_repository,
+        "item_feature_repository": item_feature_repository,
+        "feature_normalization_repository": feature_normalization_repository,
+        "item_snapshot_reader": item_snapshot_reader,
     }
     return ports, helpers
 
