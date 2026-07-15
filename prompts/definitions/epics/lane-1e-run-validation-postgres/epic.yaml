@@ -1,0 +1,144 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-run-validation-postgres"
+  title: "レーン1e:Reco RunValidation Postgres配線"
+  summary: "production composition の InMemory RunValidation を Postgres 参照へ置換し、レーン1e の PUB-002 結果あり縦串 Blocker（§10.4.5）を解消する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  #1264 / #1267 で PUB-002 が GRS-REC-004（run not found）になる原因を特定。
+  build_production_ports は observability/config を Postgres 化するが、user-meaning 系の RunValidation は InMemory のまま。
+  案A（Human 承認）により本 Epic で配線する。
+
+objective: |
+  PostgresRunValidation を実装し production composition に配線する。
+  ローカル再スモークで次の状態まで確認する（items≥1 または次 Blocker 明示）。
+
+scope:
+  - "子 Task（implementation / 必要なら docs）"
+  - "Epic Issue / Branch（develop 起点）"
+  - "RunValidation Postgres 配線と再スモーク記録"
+
+out_of_scope:
+  - "retrieval 以降 stub の全面本番化"
+  - "OpenAPI / migration / SCR / PUB-004 / Batch フルラン"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（implementation）"
+  - "epic_scope.allowed_paths"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "子 Task PR target が親 Epic Branch"
+  - "allowed_paths が reco composition 配線に整合"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1268-lane-1e-run-validation-postgres"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: null
+  allowed_paths:
+    - "apps/reco/src/reco/composition/**"
+    - "apps/reco/src/reco/infrastructure/db/repositories/**"
+    - "apps/reco/tests/unit/composition/**"
+    - "apps/reco/tests/unit/infrastructure/**"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/lane-1e-run-validation-postgres/**"
+    - "prompts/definitions/tasks/lane-1e-run-validation-postgres/**"
+    - "prompts/definitions/reviews/lane-1e-run-validation-postgres/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/api/src/app/feedback/**"
+    - "apps/web/src/**"
+  child_task_areas:
+    - "implementation"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "DEFAULT composition の InMemory が維持されているか"
+    - "production のみ Postgres RunValidation か"
+    - "PUB-004 / SCR を広げていないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e 案A"
+
+notes:
+  - "Epic Issue: #1268"
+  - "先行記録: #1263 / #1264 / #1267"
+  - "AI は PR merge しない。#1267 は Human merge 待ち可"

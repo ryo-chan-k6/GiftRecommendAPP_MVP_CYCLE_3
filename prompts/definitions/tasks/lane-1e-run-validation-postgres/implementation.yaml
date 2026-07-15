@@ -1,0 +1,204 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-run-validation-postgres-implementation"
+  title: "レーン1e:Reco RunValidation Postgres配線実装"
+  summary: "PostgresRunValidation を実装し build_production_ports で early pipeline（少なくとも MOD-RECO-004 ほか RunValidation 利用モジュール）へ注入する。ローカル PUB-002 再スモーク結果を手順書に記録する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:Reco RunValidation Postgres配線"
+  epic_issue_number: 1268
+  epic_branch: "feature/epic-1268-lane-1e-run-validation-postgres"
+  related_issues:
+    - number: 1268
+      purpose: "親 Epic"
+    - number: 1264
+      purpose: "Blocker 特定"
+    - number: 1267
+      purpose: "未達記録 PR"
+  related_prs:
+    - number: 1267
+      purpose: "結果あり未達の記録"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  production composition は Run Recorder を Postgres 化する一方、User Semantic Extractor 等の
+  RunValidation は InMemory（空）のまま。run が DB にあっても not found になる。
+
+objective: |
+  PostgresRunValidation を実装し、build_production_ports で共有注入する。
+  DEFAULT/scaffold の InMemory は維持。ローカル再スモークを記録する。
+
+scope:
+  - "PostgresRunValidation（recommendation_run.semantic_config_version_id 読取）"
+  - "build_production_ports で RunValidation 利用モジュールへ注入"
+  - "composition unit test 更新"
+  - "ローカル開発手順書 §10.4.5 追記（再スモーク）"
+  - "必要なら experiments メモ"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "UserSemantic / Feature 等の永続化リポジトリ全面 Postgres 化（本 Task で必須化しすぎない）"
+  - "candidate retrieval 以降 stub 全面化"
+  - "OpenAPI / migration / SCR / PUB-004"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/postgres_recommendation_run_repository.py"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/composition/**"
+      action: "update"
+      required: true
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "PostgresRunValidation + production 配線"
+  - "UT・手順書・再スモーク記録"
+
+acceptance_criteria:
+  - "production composition の early pipeline が Postgres RunValidation を使う"
+  - "DEFAULT composition の InMemory が維持される"
+  - "composition UT が更新・通過する"
+  - "ローカル再スモーク結果が手順書または experiments に記録されている"
+  - "secret を含んでいない"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1268-lane-1e-run-validation-postgres"
+  target: "feature/epic-1268-lane-1e-run-validation-postgres"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - issue: 1268
+      purpose: "親"
+  issues:
+    - number: 1264
+      purpose: "Blocker 記録"
+  prs:
+    - number: 1267
+      purpose: "未達記録"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/composition/builder.py"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "manual local smoke"
+    - "secret check"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/composition -q"
+  manual_checks:
+    - "PUB-002 再実行と HTTP / items 件数記録"
+  not_required: []
+  skip_reason: {}
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "production のみ Postgres 配線か"
+    - "InMemory DEFAULT 維持か"
+    - "再スモーク結果が記録されているか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "案A 配線実装"
+
+stop_conditions:
+  - "secret 記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]レーン1e:Reco RunValidation Postgres配線実装"
+  - "親Epic: #1268"
+  - "Related to（Closes 禁止）"
+  - "Review: prompts/definitions/reviews/lane-1e-run-validation-postgres/implementation/pr-review.yaml"
