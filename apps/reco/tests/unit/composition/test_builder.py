@@ -40,6 +40,9 @@ from reco.infrastructure.db.repositories.postgres_recommendation_run_repository 
 from reco.infrastructure.db.repositories.postgres_aware_user_feature_repository import (
     PostgresAwareUserFeatureRepository,
 )
+from reco.infrastructure.db.repositories.postgres_normalization_rule_repository import (
+    PostgresNormalizationRuleRepository,
+)
 from reco.infrastructure.db.repositories.postgres_run_validation import (
     PostgresRunValidation,
 )
@@ -51,7 +54,10 @@ from reco.application.user_semantic_extractor.in_memory_repository import (
     InMemoryRunValidation,
     InMemoryUserSemanticRepository,
 )
-from reco.application.user_feature_generator import InMemoryUserFeatureRepository
+from reco.application.user_feature_generator import (
+    InMemoryNormalizationRuleRepository,
+    InMemoryUserFeatureRepository,
+)
 
 
 def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
@@ -73,6 +79,10 @@ def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
     assert isinstance(
         ports.user_feature_generator.user_features,
         InMemoryUserFeatureRepository,
+    )
+    assert isinstance(
+        ports.user_feature_generator.normalization_rules,
+        InMemoryNormalizationRuleRepository,
     )
 
 
@@ -138,6 +148,21 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
         PostgresAwareUserFeatureRepository,
     )
     assert ports.user_feature_generator.user_features is helpers["user_feature_repository"]
+    assert (
+        ports.user_meaning_projector.user_features
+        is helpers["user_feature_repository"]
+    )
+    assert (
+        ports.user_context_builder.user_features is helpers["user_feature_repository"]
+    )
+    assert isinstance(
+        helpers["normalization_rule_repository"],
+        PostgresNormalizationRuleRepository,
+    )
+    assert (
+        ports.user_feature_generator.normalization_rules
+        is helpers["normalization_rule_repository"]
+    )
 
 
 def test_build_production_observability_modules_wires_postgres_repositories() -> None:

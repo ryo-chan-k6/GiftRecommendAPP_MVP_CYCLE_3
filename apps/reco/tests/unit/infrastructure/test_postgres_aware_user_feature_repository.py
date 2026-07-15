@@ -23,8 +23,38 @@ def test_has_user_semantic_false_when_missing() -> None:
     assert repo.has_user_semantic("run-missing") is False
 
 
-def test_insert_user_features_keeps_memory_rows() -> None:
-    session = ScriptedDatabaseSession()
+def test_get_user_features_for_run_maps_rows() -> None:
+    session = ScriptedDatabaseSession(
+        scripted_query_results=[
+            [
+                {
+                    "feature_code": "formality",
+                    "feature_value": "0.500000",
+                    "feature_normalization_version_id": "norm-1",
+                },
+                {
+                    "feature_code": "safety",
+                    "feature_value": 0.25,
+                    "feature_normalization_version_id": "norm-1",
+                },
+            ],
+        ],
+    )
+    repo = PostgresAwareUserFeatureRepository(session=session)
+    rows = repo.get_user_features_for_run("run-1")
+    assert len(rows) == 2
+    assert rows[0].feature_code == "formality"
+    assert rows[0].feature_value == 0.5
+    assert rows[1].feature_code == "safety"
+    assert rows[1].feature_value == 0.25
+
+
+def test_insert_user_features_executes_postgres_insert() -> None:
+    session = ScriptedDatabaseSession(
+        # duplicate check SELECT returns empty, then execute
+        scripted_query_results=[[]],
+        affected_rows=1,
+    )
     repo = PostgresAwareUserFeatureRepository(session=session)
     row = UserFeatureInsertRow(
         recommendation_run_id="run-1",
@@ -36,3 +66,6 @@ def test_insert_user_features_keeps_memory_rows() -> None:
     )
     repo.insert_user_features((row,))
     assert repo.inserted_rows == [row]
+    assert any(op[0] == "execute" for op in session.operations)
+    execute_ops = [op for op in session.operations if op[0] == "execute"]
+    assert "INSERT INTO user_feature" in execute_ops[0][1]
