@@ -42,7 +42,7 @@ MVP の主経路は、BATCH-003 / BATCH-004 が保存した `source_api=item_sea
 | Batch ID       | `BATCH-005` |
 | Batch名        | Raw取込・Staging変換Batch |
 | 処理種別       | Raw読取 / Staging変換・検証 / Metadata状態更新 |
-| 実行基盤       | GitHub Actions。**独立子 workflow `batch-rakuten-raw-staging.yml`**（§18.1 No.1。提案 / Human Review 待ち） |
+| 実行基盤       | GitHub Actions。**独立子 workflow `batch-rakuten-raw-staging.yml`**（§18.1 No.1 **確定**） |
 | 実装言語       | Python（`apps/batch`） |
 | 起動方式       | 先行 Batch 後続 / `workflow_dispatch`（独立 cron なし） |
 | 実行頻度       | Raw 保存後に連続実行 |
@@ -96,7 +96,7 @@ MVP の主経路は、BATCH-003 / BATCH-004 が保存した `source_api=item_sea
 | ---- | ---- | ------ | ---- | ---- | ---- |
 | `raw_product_metadata` | DB | database | `true` | 処理対象 Raw 選定・`object_key` / `content_hash` / `source_api` / `import_status` | |
 | `raw_product_json` | Object Storage | `object_key` | `true`（body 保存済み行） | 変換元 JSON | |
-| `staging_selection` / config | 設定 | Batch config / workflow input | `true` | import_status / source_api / 件数上限 | §18.1 No.2（提案 / Human Review 待ち） |
+| `staging_selection` / config | 設定 | Batch config / workflow input | `true` | import_status / source_api / 件数上限 | §18.1 No.2 **確定** |
 | 明示 `raw_metadata_id` リスト | 入力 | workflow_dispatch | `false` | 失敗再実行・部分集合 | |
 
 ### 6.2 外部API
@@ -127,7 +127,7 @@ MVP の主経路は、BATCH-003 / BATCH-004 が保存した `source_api=item_sea
 | `staging_item` | DB | database | 中間 | BATCH-006 / BATCH-007 入力 | `diff_status` は **NULL**（Human Review #517 **確定**） |
 | `staging_item_image` | DB | database | 中間 | 画像 URL 集合 | `source_api=item_search` 時 |
 | `staging_ranking_signal` | DB | database | 中間 | ランキング中間 | `source_api=item_ranking` 時。Snapshot 本更新は本 Batch 外 |
-| `staging_genre` | DB | database | 中間 | ジャンル中間 | `source_api=genre_search` 時。`external_genre` Upsert は本 Batch の out of scope（BATCH-001。正本優先は §18.2 No.D） |
+| `staging_genre` | DB | database | 中間 | ジャンル中間 | `source_api=genre_search` 時。`external_genre` Upsert は本 Batch の out of scope（BATCH-001。§18.1 No.6 **確定**） |
 | `raw_product_metadata`（状態） | DB | database | Raw 参照 | `import_status` / `staged_at` | 成功時 `staged` |
 | `batch_run_log` / `phase_log` / `error_log` | DB | database | 運用 | Run / Phase / 失敗記録 | |
 | `item` / `product_diff_result` / `item.active_status` | - | - | - | **出力・更新しない** | BATCH-006 / 007 / 008 |
@@ -178,7 +178,7 @@ flowchart TD
   Y --> L
 ```
 
-`attribute_search` の Staging 表は MVP 主線外（`staging_attribute` は別定義あり）。本仕様の MVP 主対象は `item_search`（必須）に加え、ranking / genre の再処理経路である（§18.2）。
+`attribute_search` は MVP out of scope（`staging_attribute` は別定義あり。§18.1 No.5 **確定**）。本仕様の MVP 必須は `item_search`。ranking / genre は同一コードパスの再処理オプションとする（§18.1 No.4 **確定**）。
 
 ### 8.2 処理ステップ
 
@@ -256,7 +256,7 @@ flowchart TD
 | level | `genre_level` | |
 | leaf | `is_leaf` | |
 
-`external_genre` への Upsert は本 Batch の out of scope（BATCH-001。テーブル定義書との記述差分は §18.2 No.D。本 Task では Upsert を実装範囲に広げない）。
+`external_genre` への Upsert は本 Batch の out of scope（BATCH-001。§18.1 No.6 **確定**。テーブル定義書側の整合修正は別 Task）。
 
 ### 9.5 `normalized_hash` 算出
 
@@ -398,27 +398,26 @@ flowchart TD
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-15 | 初版作成 | Epic #1307 / Task #1317 |
+| 2026-07-15 | §18.1 No.1〜2 / No.4〜6 を Human 確定（旧 §18.2 A〜D 推奨案採用）。§18.2 を解消 | Epic #1307 / Task #1317 |
 
 ---
 
 ## 18. 未決事項・決定事項
 
-### 18.1 採用方針（提案と Human 確定の区別）
+### 18.1 採用方針（Human 確定）
 
 |  No | 論点 | 内容 | 判断者 | 状態 | 備考 |
 | --: | ---- | ---- | ------ | ---- | ---- |
-| 1 | 子 workflow 配置 | **独立 YAML `batch-rakuten-raw-staging.yml`（`batch-rakuten-raw-staging*.yml`）を正**とする。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **提案 / Human Review 待ち** | BATCH-003/004 同型。Epic `human_decision_points` / allowed_paths と整合 |
-| 2 | 処理対象 Raw 選定の既定 | **既定フィルタ:** (1) `import_status IN ('raw_saved')`（再実行でリセットした行含む）(2) `source_api` 既定は **`item_search` 優先**（config で `item_ranking` / `genre_search` 追加可）(3) 件数上限 `BATCH_RAW_STAGING_MAX_RAW`（未設定時は実装 config 既定）(4) 任意で `batch_run_id` / 明示 ID リスト。**`staged` / `imported` は既定 skip**（force で再ステージ） | Human | **提案 / Human Review 待ち** | `raw_product_metadata` Index / 状態遷移と整合 |
+| 1 | 子 workflow 配置 | **独立 YAML `batch-rakuten-raw-staging.yml`（`batch-rakuten-raw-staging*.yml`）を正**とする。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **確定**（2026-07-15） | BATCH-003/004 同型。Epic `human_decision_points` / allowed_paths と整合。旧 §18.2 No.A |
+| 2 | 処理対象 Raw 選定の既定 | **既定フィルタ:** (1) `import_status IN ('raw_saved')`（再実行でリセットした行含む）(2) `source_api` 既定は **`item_search` 優先**（config で `item_ranking` / `genre_search` 追加可）(3) 件数上限 `BATCH_RAW_STAGING_MAX_RAW`（未設定時は実装 config 既定）(4) 任意で `batch_run_id` / 明示 ID リスト。**`staged` / `imported` は既定 skip**（force で再ステージ） | Human | **確定**（2026-07-15） | `raw_product_metadata` Index / 状態遷移と整合。旧 §18.2 No.A |
 | 3 | staging 既存行の冪等・上書き | **各表 UNIQUE で ON CONFLICT DO UPDATE**（各テーブル定義書疑似 SQL）。再ステージ時 `diff_status=NULL`。画像は URL キー upsert 後、同一 Raw 内で消えた URL を DELETE | Human（テーブル定義） | **確定**（#517 / #523 / #524 / #525） | Epic 第3点の答えはテーブル Human 確定を採用 |
+| 4 | genre / ranking の MVP 位置づけ | **MVP 必須は `item_search` のみ**。`genre_search` / `item_ranking` は同一コードパスの **再処理オプション**（BATCH-001/002 が内完結済みのため必須委譲しない） | Human | **確定**（2026-07-15） | 旧 §18.2 No.B。§2 / §8.1 / §21.2 と整合 |
+| 5 | `attribute_search` | **MVP out of scope**。Staging 主線（本 Batch）では扱わない | Human | **確定**（2026-07-15） | 旧 §18.2 No.C。§8.1 / §21.1 と整合 |
+| 6 | `external_genre` Upsert の責務境界 | **正本優先**: `バッチ処理一覧` / 本 BATCH-005 仕様。BATCH-005 出力は Staging のみ。`external_genre` Upsert は **BATCH-001 責務**。本 Epic で Upsert を実装範囲に広げない。`staging_genre_テーブル定義書` §5.3–5.4 との記述差分の整合修正は **別 Task** | Human | **確定**（2026-07-15） | 旧 §18.2 No.D。§7.1 / §9.4 / §21.1 と整合 |
 
 ### 18.2 残未決事項（Human 判断）
 
-|  No | 論点 | 判断が必要な理由 | 推奨 | 備考 |
-| --: | ---- | ---------------- | ---- | ---- |
-| A | §18.1 No.1〜2 の正式採否 | Epic 明示の Human decision points | 003/004 同型で独立 YAML + `item_search` 既定 | Human Review |
-| B | genre / ranking を本仕様の MVP 必須に含めるか | BATCH-001/002 が内完結済み | 必須は `item_search`。他は同一コードパスの再処理オプション | |
-| C | `attribute_search` | enum にあるが Staging 主線が薄い | MVP out of scope 明示 | |
-| D | `external_genre` Upsert の責務境界（テーブル定義書との差分） | `staging_genre_テーブル定義書` §5.3–5.4 は BATCH-005 に `external_genre` 反映フェーズを含む記述がある。一方、本仕様および `バッチ処理一覧` の BATCH-005 出力は Staging のみであり、`external_genre` Upsert は BATCH-001 責務とする | **正本優先（本 Task 作業仮定）**: `バッチ処理一覧` / 本 BATCH-005 仕様。テーブル定義書側の整合修正は **別 Task / Human 判断**。本 Task で BATCH-005 に `external_genre` Upsert を実装範囲として広げない | 本仕様 §7.1 / §9.4 / §21.1 も同境界 |
+本仕様書時点で、Human 判断待ちの残未決事項はない。`staging_genre_テーブル定義書` 側の `external_genre` 記述整合は別 Task とする（§18.1 No.6）。
 
 ---
 
@@ -449,7 +448,7 @@ flowchart TD
 - Item / `product_diff_result` / `item.active_status` 本更新が混入していない
 - `staging_item` 物理列と外部設計 §9.2 の表記差分（`price` 等）を混同していない
 - UNIQUE・`normalized_hash` タイミング・`diff_status=NULL` がテーブル定義書 Human 確定と一致している
-- §18.1 No.1〜2 が **提案 / Human Review 待ち** として明示され、断定されていない
+- §18.1 No.1〜2 / No.4〜6 が Human **確定**として本文・境界と矛盾していない
 - secret / `.env` 実値が含まれていない
 - PR target が親 Epic Branch（`feature/epic-1307-batch-005-raw-staging`）である
 
@@ -465,7 +464,8 @@ flowchart TD
 | `product_diff_result` / `diff_status` 確定 | BATCH-006 |
 | `item.active_status` 本更新 | BATCH-008 |
 | 楽天 API 呼び出し | BATCH-001〜004 |
-| `ranking_snapshot` / `item_popularity_signal` / `external_genre` Upsert | BATCH-002 / BATCH-001（`external_genre` の境界・正本優先は §18.2 No.D） |
+| `ranking_snapshot` / `item_popularity_signal` / `external_genre` Upsert | BATCH-002 / BATCH-001（`external_genre` 境界は §18.1 No.6 **確定**） |
+| `attribute_search` → Staging | MVP out of scope（§18.1 No.5 **確定**） |
 | 親 item-import / existing-item-recheck **全体**改修 | Epic risk・BATCH-003/004 方針 |
 | 新規 DB migration | Human 判断 |
 | OpenAPI / generated | Contract Gate 不要 |
@@ -474,7 +474,7 @@ flowchart TD
 
 - バッチ処理一覧は BATCH-005 の先行に 001〜004、出力に 4 Staging 表を列挙する
 - BATCH-001 / BATCH-002 仕様は Staging〜正本側を **本 Batch 内完結**し、005 を必須委譲しない
-- 本仕様の MVP 主線は `item_search` Raw の Staging。genre / ranking は再処理経路として同一コードパスで扱う
+- 本仕様の MVP 必須は `item_search` Raw の Staging。genre / ranking は再処理オプションとして同一コードパスで扱う（§18.1 No.4 **確定**）
 
 ### 21.3 実装・運用メモ
 
