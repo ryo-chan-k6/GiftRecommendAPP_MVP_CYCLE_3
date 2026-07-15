@@ -23,6 +23,8 @@ def scaffold_batch_settings(*, app_env: AppEnv = AppEnv.DEV) -> BatchSettings:
         batch_internal_token="scaffold-batch-internal-token",
         batch_chunk_size=100,
         batch_max_retry=3,
+        batch_raw_staging_max_raw=1000,
+        batch_raw_staging_source_api="item_search",
         supabase_url=None,
         supabase_service_role_key=None,
     )
