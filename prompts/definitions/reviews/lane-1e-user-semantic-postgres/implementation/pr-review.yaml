@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1273
   issue: 1272
   task_definition: "prompts/definitions/tasks/lane-1e-user-semantic-postgres/implementation.yaml"
   source_branch: "feature/task-1272-lane-1e-user-semantic-postgres-implementation"
