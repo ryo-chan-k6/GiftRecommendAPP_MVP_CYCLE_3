@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1265
   issue: 1262
   task_definition: "prompts/definitions/tasks/api-pub-003-item-detail/api-implementation-spec.yaml"
   source_branch: "docs/task-1262-api-pub-003-item-detail-api-implementation-spec"
@@ -70,7 +70,7 @@ input:
     number: 1262
     required: true
   pr:
-    number: null
+    number: 1265
     required: true
   diff:
     required: true
