@@ -52,6 +52,39 @@ function createService(recoClient: ScaffoldRecoClient | GeneratedRecoClient) {
   });
 }
 
+test("RecommendationApplicationService enriches ngKeywords before reco call", async () => {
+  const recoClient = new ScaffoldRecoClient({
+    runResult: {
+      recommendationRunId: "run-ng",
+      recommendationResultId: "result-ng",
+      recommendationRequestId: "ignored",
+      resultStatus: "completed",
+      resultItemCount: 0,
+      items: [],
+    },
+  });
+  const service = createService(recoClient);
+
+  await service.runRecommendation({
+    request: validateRecommendationRunRequest({
+      ...validRequestBody,
+      ngCondition: { ngText: "アルコールはNG" },
+    }),
+    traceId: "trace-ng",
+    requestId: "request-ng",
+  });
+
+  assert.equal(recoClient.runRecommendationCalls.length, 1);
+  const passed = recoClient.runRecommendationCalls[0]
+    .recommendationRequest as {
+    ngCondition?: { ngText?: string; ngKeywords?: string[] };
+  };
+  assert.deepEqual(passed.ngCondition, {
+    ngText: "アルコールはNG",
+    ngKeywords: ["アルコール"],
+  });
+});
+
 test("RecommendationApplicationService maps empty reco result to Public empty + GRS-REC-001", async () => {
   const recoClient = new ScaffoldRecoClient({
     runResult: {

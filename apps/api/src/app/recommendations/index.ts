@@ -41,3 +41,8 @@ export type {
   RelationshipInput,
 } from "./types.js";
 export { validateRecommendationRunRequest } from "./validator.js";
+export {
+  deriveNgKeywordsFromText,
+  enrichRecommendationRequestForReco,
+  type EnrichedNgCondition,
+} from "./ng-normalize.js";

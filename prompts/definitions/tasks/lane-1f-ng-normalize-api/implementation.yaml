@@ -1,0 +1,123 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1f-ng-normalize-api-implementation"
+  title: "レーン1f:NG正規化api/reco実装"
+  summary: "api で ngText→ngKeywords を派生し INT-002 へ渡し、reco request_mapper で受け取り、PreFilter の ng_text 再抽出を削除する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1f:NG正規化api正本化"
+  epic_issue_number: 1320
+  epic_branch: "feature/epic-1320-lane-1f-ng-normalize-api"
+  related_issues:
+    - number: 1324
+      purpose: "本 Task Issue"
+    - number: 1320
+      purpose: "親 Epic"
+    - number: 1321
+      purpose: "前提 Contract Task"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed: ["/start-task", "/work-issue", "/create-pr", "/summarize-work"]
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["support-ai", "contract-ai"]
+  review: ["reviewer-ai"]
+
+phase: "implementation"
+
+background: |
+  Contract Task 完了後、api 正本の正規化と reco 受信配線を行う。
+
+objective: |
+  - api: 最低「アルコールはNG」→「アルコール」
+  - reco: ng_keywords/ng_categories map
+  - PreFilter: request.ng_text 再抽出を削除（keywords がある前提）
+  - UT / スモーク
+
+scope:
+  - "apps/api recommendations normalize"
+  - "apps/reco schema/mapper/prefilter"
+  - "UT・手順書"
+
+out_of_scope:
+  - "OpenAPI/Orval（Contract Task）"
+  - "public-api/web"
+  - "migration"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      required: true
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+acceptance_criteria:
+  - "api が ngKeywords を INT-002 body に載せる"
+  - "reco request_mapper が ng_keywords を domain へ渡す"
+  - "PreFilter が request.ng_text 全文再抽出をしない"
+  - "alcohol NG 除外が UT で維持される"
+
+branch:
+  no_branch: false
+  name: "feature/task-1324-lane-1f-ng-normalize-api-implementation"
+  base: "feature/epic-1320-lane-1f-ng-normalize-api"
+  target: "feature/epic-1320-lane-1f-ng-normalize-api"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Contract Gate 済みか"
+    - "reco 再正規化削除が MOD-RECO-012 と整合するか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: true
+    security: true
+
+test_policy:
+  unit_required: true
+  integration_required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1f implementation"
+
+notes:
+  - "Contract Task merge 後に着手"

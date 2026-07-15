@@ -133,10 +133,11 @@ def test_pre_hard_filter_merges_request_ng_primary_and_dedupes_candidates() -> N
     assert merged.hard_filter_values == ("カジュアル", "fashion", "スポーティ")
 
 
-def test_pre_hard_filter_extracts_effective_keywords_from_alcohol_ng_text() -> None:
+def test_pre_hard_filter_uses_api_provided_ng_keywords_for_alcohol() -> None:
+    """api 正本の ngKeywords により alcohol を除外する（request.ng_text 再抽出なし）。"""
     context = _sample_context(
-        run_id="run-pre-alcohol-ng-text",
-        ng_keywords=(),
+        run_id="run-pre-alcohol-ng-keywords",
+        ng_keywords=("アルコール",),
         ng_text="アルコールはNG",
         hard_filter_candidates=(),
     )
@@ -160,9 +161,23 @@ def test_pre_hard_filter_extracts_effective_keywords_from_alcohol_ng_text() -> N
     pool = run_pre_hard_filter(context, item_repository=repo)
     merged = pool.filter_predicate.merged_filter_conditions  # type: ignore[union-attr]
 
-    assert "アルコール" in merged.ng_keywords
-    assert "アルコールはNG" not in merged.ng_keywords
+    assert merged.ng_keywords == ("アルコール",)
     assert pool.total_after_filter == 1
+
+
+def test_pre_hard_filter_does_not_reextract_keywords_from_request_ng_text() -> None:
+    """MOD-RECO-012: request.ng_text だけでは keywords を増やさない。"""
+    context = _sample_context(
+        run_id="run-pre-no-ng-text-reextract",
+        ng_keywords=(),
+        ng_text="アルコールはNG",
+        hard_filter_candidates=(),
+    )
+
+    pool = run_pre_hard_filter(context, item_repository=InMemoryItemRepository(items=()))
+    merged = pool.filter_predicate.merged_filter_conditions  # type: ignore[union-attr]
+
+    assert merged.ng_keywords == ()
 
 
 def test_pre_hard_filter_maps_attribute_hard_filter_ng_text_to_keywords() -> None:
