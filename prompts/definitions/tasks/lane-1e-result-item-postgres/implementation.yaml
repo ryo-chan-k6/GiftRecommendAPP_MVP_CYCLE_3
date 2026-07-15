@@ -61,7 +61,7 @@ scope:
 
 out_of_scope:
   - "Reason 永続"
-  - "OpenAPI / migration（matching_config_id 物理列追加含む）"
+  - "OpenAPI / migration 新規追加"
   - "itemPrice / NG 精査"
   - "SCR / PUB-004"
 
@@ -165,7 +165,7 @@ review:
   human_review_required: true
   ai_review_required: true
   review_points:
-    - "migration 物理列に合わせた INSERT か（matching_config_id 非挿入）"
+    - "既存 matching_config_id 列への INSERT が含まれるか（新規 migration なし）"
     - "DEFAULT InMemory 維持"
     - "FK 順（header → item）"
 
@@ -179,5 +179,5 @@ operation_logging:
   reason: "レーン1e result item"
 
 notes:
-  - "migration の recommendation_result に matching_config_id 列なし → INSERT 対象外（docs 論理列との差分は Human 確認）"
+  - "matching_config_id は 20260702120000 で追加済みのため INSERT 対象"
   - "AI は PR merge しない"
