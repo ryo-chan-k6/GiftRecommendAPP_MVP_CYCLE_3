@@ -1,0 +1,107 @@
+schema_version: "1.0"
+definition_type: "review"
+review:
+  id: "review-lane-1f-ng-normalize-api-implementation-pr"
+  title: "レーン1f NG正規化api/reco実装 PRレビュー"
+  summary: "api normalize + reco mapper/prefilter 正本化の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+work_mode: "ai-agent"
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+target:
+  pr: null
+  issue: 1324
+  task_definition: "prompts/definitions/tasks/lane-1f-ng-normalize-api/implementation.yaml"
+  source_branch: "feature/task-1324-lane-1f-ng-normalize-api-implementation"
+  target_branch: "feature/epic-1320-lane-1f-ng-normalize-api"
+  parent_epic_issue: "[Epic]レーン1f:NG正規化api正本化"
+  parent_epic_branch: "feature/epic-1320-lane-1f-ng-normalize-api"
+commands:
+  primary: "/review-pr"
+  allowed: ["/review-pr", "/fix-review-comments", "/summarize-work"]
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+agent:
+  primary: "reviewer-ai"
+  support: ["support-ai", "contract-ai"]
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/lane-1f-ng-normalize-api/implementation.yaml"
+    required: true
+  issue:
+    number: 1324
+    required: true
+  pr:
+    number: null
+    required: false
+  diff:
+    required: true
+    compare_with: "feature/epic-1320-lane-1f-ng-normalize-api"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+review_points:
+  common:
+    - "Contract Gate (#1322) merge 済みか"
+    - "Task → Epic target か"
+    - "Related to のみか"
+  source:
+    - "api が ngKeywords を渡すか"
+    - "reco が request.ng_text 再抽出しないか"
+  tests:
+    - "alcohol NG UT が維持されるか"
+  security:
+    - "secret 非含有"
+acceptance_check:
+  use_task_acceptance_criteria: true
+result_policy:
+  approve_for_human_review:
+    conditions: ["acceptance 充足", "Must なし"]
+  request_changes:
+    conditions: ["同一 Branch 修正可能"]
+  needs_human_decision:
+    conditions: ["attribute 経路暫定の扱い"]
+  blocked:
+    conditions: ["Contract 未 merge"]
+acceptance_criteria:
+  - "Blocker/Must 解消または明示"
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "implementation AI Review"
+notes:
+  - "PR 作成後に番号反映"

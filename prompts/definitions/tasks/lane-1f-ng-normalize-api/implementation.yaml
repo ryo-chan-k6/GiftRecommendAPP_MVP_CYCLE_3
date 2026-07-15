@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 1320
   epic_branch: "feature/epic-1320-lane-1f-ng-normalize-api"
   related_issues:
+    - number: 1324
+      purpose: "本 Task Issue"
     - number: 1320
       purpose: "親 Epic"
     - number: 1321
@@ -82,9 +84,9 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
-  base: null
-  target: null
+  name: "feature/task-1324-lane-1f-ng-normalize-api-implementation"
+  base: "feature/epic-1320-lane-1f-ng-normalize-api"
+  target: "feature/epic-1320-lane-1f-ng-normalize-api"
   worktree_required: true
 
 issue:
