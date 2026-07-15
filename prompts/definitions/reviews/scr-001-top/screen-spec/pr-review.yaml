@@ -18,10 +18,10 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null
+  pr: 1259
+  issue: 1258
   task_definition: "prompts/definitions/tasks/scr-001-top/screen-spec.yaml"
-  source_branch: null
+  source_branch: "docs/task-1258-scr-001-top-screen-spec"
   target_branch: "feature/epic-1255-scr-001-top"
   parent_epic_issue: "[Epic]SCR-001:トップ画面"
   parent_epic_branch: "feature/epic-1255-scr-001-top"
