@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1285
   issue: 1284
   task_definition: "prompts/definitions/tasks/api-pub-003-item-detail/unit-test.yaml"
   source_branch: "test/task-1284-api-pub-003-item-detail-unit-test"
@@ -70,7 +70,7 @@ input:
     number: 1284
     required: true
   pr:
-    number: null
+    number: 1285
     required: true
   diff:
     required: true
