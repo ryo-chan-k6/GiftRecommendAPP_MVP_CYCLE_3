@@ -18,10 +18,10 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null
+  pr: 1270
+  issue: 1269
   task_definition: "prompts/definitions/tasks/lane-1e-run-validation-postgres/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-1269-lane-1e-run-validation-postgres-implementation"
   target_branch: "feature/epic-1268-lane-1e-run-validation-postgres"
   parent_epic_issue: "[Epic]レーン1e:Reco RunValidation Postgres配線"
   parent_epic_branch: "feature/epic-1268-lane-1e-run-validation-postgres"
@@ -66,10 +66,10 @@ input:
     path: "prompts/definitions/tasks/lane-1e-run-validation-postgres/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1269
     required: true
   pr:
-    number: null
+    number: 1270
     required: true
   diff:
     required: true
