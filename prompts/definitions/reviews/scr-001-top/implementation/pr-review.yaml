@@ -18,10 +18,10 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null
+  pr: 1257
+  issue: 1256
   task_definition: "prompts/definitions/tasks/scr-001-top/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-1256-scr-001-top-implementation"
   target_branch: "feature/epic-1255-scr-001-top"
   parent_epic_issue: "[Epic]SCR-001:トップ画面"
   parent_epic_branch: "feature/epic-1255-scr-001-top"
@@ -66,10 +66,10 @@ input:
     path: "prompts/definitions/tasks/scr-001-top/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1256
     required: true
   pr:
-    number: null
+    number: 1257
     required: true
   diff:
     required: true
