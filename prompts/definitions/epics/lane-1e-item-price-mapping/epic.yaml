@@ -104,6 +104,7 @@ epic_scope:
     - "apps/reco/src/reco/api/**"
     - "apps/reco/src/reco/application/result-snapshot-builder/**"
     - "apps/reco/tests/unit/api/**"
+    - "apps/reco/tests/unit/application/result-snapshot-builder/**"
     - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
     - "ai-logs/experiments/**"
     - "prompts/definitions/epics/lane-1e-item-price-mapping/**"
