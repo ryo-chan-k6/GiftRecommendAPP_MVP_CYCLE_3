@@ -1,0 +1,231 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-005-raw-staging-unit-test"
+  title: "BATCH-005:Raw取込・Staging変換Batch単体テスト"
+  summary: "BATCH-005 実装に対し、バッチ仕様書 §16 の unit 観点カバレッジを整理・拡充する。実装 Task の最小 UT を維持しつつ、不足ケースを fixture / mock で追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-005:Raw取込・Staging変換Batch"
+  epic_issue_number: 1307
+  epic_branch: "feature/epic-1307-batch-005-raw-staging"
+  related_issues:
+    - number: 1333
+      purpose: "前提（実装 Task・CLOSED）"
+    - number: 1317
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1334
+      purpose: "実装 Task PR（Epic Branch merge 済み）"
+    - number: 1319
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b Raw/Staging 縦串の UT。実装 Task #1333 / PR #1334 は Epic Branch merge 済み。
+  本 Task はバッチ仕様書 §16 の unit 観点対応表を PR に明示し、不足ケースを
+  `apps/batch/tests/unit/**` へ拡充する。実 Object Storage / 実 DB は禁止（fixture / mock 正）。
+  §16 No.6/9/10 の integration 表記は mock での unit 代替または明示スキップ理由でよい。
+
+objective: |
+  BATCH-005 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串（仕様書→実装→UT）を完了可能にする。
+
+scope:
+  - "バッチ仕様書 §16 unit 観点のカバレッジ表を PR 本文に記載する"
+  - "`apps/batch/tests/unit/**` へのテスト追加・拡充（raw_staging 中心）"
+  - "テスト成立に必要な最小の実装修正（失敗注入・validation 経路など）"
+  - "Task / Review Definition の実Issue・Branch反映"
+
+out_of_scope:
+  - "integration test（実 Object Storage / 実 DB / 本番）"
+  - "OpenAPI / Orval / generated 変更"
+  - "DB schema / migration 変更"
+  - "他 Batch の機能追加・破壊変更"
+  - "機能追加を主目的とする実装変更（テスト成立に必要な最小修正以外）"
+  - "Epic PR の develop merge（Human 判断）"
+  - "親 item-import / existing-item-recheck チェーン配線"
+  - "external_genre Upsert 実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/**"
+      required: true
+      purpose: "テスト対象"
+    - path: "apps/batch/tests/unit/application/test_raw_staging.py"
+      required: true
+      purpose: "実装 Task で追加済みの最小 UT"
+  issues:
+    - number: 1333
+      purpose: "前提実装"
+  prs:
+    - number: 1334
+      purpose: "実装 PR（merge 済み）"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/tasks/batch-005-raw-staging/unit-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-005-raw-staging/unit-test/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "§16 unit 観点カバレッジ表（PR 本文）"
+  - "不足ケースの pytest 追加"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "バッチ仕様書 §16 の unit 観点がテストまたは明示スキップ理由でカバーされている"
+  - "`cd apps/batch && uv run python -m pytest tests/unit/application/test_raw_staging.py -q` が SUCCESS"
+  - "可能なら `cd apps/batch && uv run python -m pytest tests/unit -q` も SUCCESS"
+  - "実 Object Storage / 実 DB に依存しない"
+  - "OpenAPI / generated / migration 変更を含まない"
+  - "親 Epic の epic_scope.allowed_paths 内"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1335-batch-005-raw-staging-unit-test"
+  summary: "batch-005-raw-staging-unit-test"
+  base: "feature/epic-1307-batch-005-raw-staging"
+  target: "feature/epic-1307-batch-005-raw-staging"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  number: 1335
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1307
+      title: "[Epic]BATCH-005:Raw取込・Staging変換Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1333
+      purpose: "実装 Task（CLOSED）"
+  prs:
+    - number: 1334
+      purpose: "実装 PR Epic merge 済み"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-005-raw-staging-implementation"
+  blocks: []
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_raw_staging.py"
+    - "apps/batch/tests/unit/application/test_raw_staging_*.py"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_raw_staging.py -q --tb=short"
+    - "cd apps/batch && uv run python -m pytest tests/unit -q --tb=line"
+  not_required:
+    - "integration test（実 Object Storage / 実 DB）"
+    - "contract test"
+  skip_reason:
+    "integration test（実 Object Storage / 実 DB）": "fixture/mock を正とする。§16 の integration 表記は mock unit または明示スキップ"
+    "contract test": "Batch は HTTP API 化しないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§16 カバレッジ表が PR 本文にあり、不足が明示されているか"
+    - "fixture / mock のみで実外部依存がないか"
+    - "実装への変更がテスト成立に必要な最小か"
+    - "secret 非含有 / PR target が親 Epic Branch か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch UT 縦串"
+
+human_decision_points:
+  - "§16 integration 表記（No.6/9/10）を mock unit 代替で充足してよいか"
+
+stop_conditions:
+  - "必須 input.docs（バッチ仕様書）が存在しない場合"
+  - "親 Epic Issue / Branch が未確定の場合"
+  - "OpenAPI / generated / migration 変更が必要になった場合"
+  - "epic_scope.allowed_paths 外の編集が必要になった場合"
+  - "実 Object Storage / 実 DB 依存が必須に見える場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-005:Raw取込・Staging変換Batch単体テスト"
+  - "実装最小 UT は #1334 で No.1/3/4/5/9(一部)/画像同期 をカバー済み。不足は No.2/6/7/8/10/11/12/13 など"
+  - "後続: Epic PR を develop 向けに作成（Human merge）"
