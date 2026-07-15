@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1286
   issue: 385
   task_definition: "prompts/definitions/epics/api-pub-003-item-detail/epic.yaml"
   source_branch: "feature/epic-385-pub-003-item-detail"
@@ -70,7 +70,7 @@ input:
     number: 385
     required: true
   pr:
-    number: null
+    number: 1286
     required: true
   diff:
     required: true
