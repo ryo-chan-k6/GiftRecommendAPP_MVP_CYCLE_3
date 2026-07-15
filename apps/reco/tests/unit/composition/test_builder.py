@@ -37,13 +37,21 @@ from reco.infrastructure.db.repositories.postgres_reco_score_distribution_metric
 from reco.infrastructure.db.repositories.postgres_recommendation_run_repository import (
     PostgresRecommendationRunRepository,
 )
+from reco.infrastructure.db.repositories.postgres_aware_user_feature_repository import (
+    PostgresAwareUserFeatureRepository,
+)
 from reco.infrastructure.db.repositories.postgres_run_validation import (
     PostgresRunValidation,
+)
+from reco.infrastructure.db.repositories.postgres_user_semantic_repository import (
+    PostgresUserSemanticRepository,
 )
 from reco.infrastructure.db.session import ScaffoldDatabaseSession
 from reco.application.user_semantic_extractor.in_memory_repository import (
     InMemoryRunValidation,
+    InMemoryUserSemanticRepository,
 )
+from reco.application.user_feature_generator import InMemoryUserFeatureRepository
 
 
 def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
@@ -57,6 +65,14 @@ def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
     assert isinstance(
         ports.user_semantic_extractor.run_validation,
         InMemoryRunValidation,
+    )
+    assert isinstance(
+        ports.user_semantic_extractor.user_semantic_repository,
+        InMemoryUserSemanticRepository,
+    )
+    assert isinstance(
+        ports.user_feature_generator.user_features,
+        InMemoryUserFeatureRepository,
     )
 
 
@@ -101,6 +117,27 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
     assert (
         ports.query_embedding_generator.run_validation is helpers["run_validation"]
     )
+    assert isinstance(
+        helpers["user_semantic_repository"],
+        PostgresUserSemanticRepository,
+    )
+    assert isinstance(
+        ports.user_semantic_extractor.user_semantic_repository,
+        PostgresUserSemanticRepository,
+    )
+    assert (
+        ports.user_semantic_extractor.user_semantic_repository
+        is helpers["user_semantic_repository"]
+    )
+    assert isinstance(
+        helpers["user_feature_repository"],
+        PostgresAwareUserFeatureRepository,
+    )
+    assert isinstance(
+        ports.user_feature_generator.user_features,
+        PostgresAwareUserFeatureRepository,
+    )
+    assert ports.user_feature_generator.user_features is helpers["user_feature_repository"]
 
 
 def test_build_production_observability_modules_wires_postgres_repositories() -> None:
