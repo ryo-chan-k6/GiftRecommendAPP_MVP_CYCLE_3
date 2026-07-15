@@ -110,6 +110,7 @@ epic_scope:
     - "docs/06_実装設計/batch/BATCH-004_*"
     - "docs/06_実装設計/batch/BATCH-008_*"
     - "docs/06_実装設計/batch/item_active_status_candidate_*"
+    - "db/ddl/**"
     - "supabase/migrations/**"
     - "packages/code-definitions/**"
     - "apps/batch/src/batch/application/item_recheck/**"

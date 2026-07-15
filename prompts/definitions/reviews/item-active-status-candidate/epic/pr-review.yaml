@@ -6,12 +6,12 @@ review:
   title: "item_active_status_candidate Epic PRレビュー"
   summary: "付随 Epic #1227 の BATCH-004 Epic Branch 向け PR を AI Review する。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
 target:
-  pr: null
+  pr: 1276
   issue:
     number: 1227
   task_definition: "prompts/definitions/epics/item-active-status-candidate/epic.yaml"
@@ -46,4 +46,4 @@ review_points:
   - "secret 非含有"
 
 notes:
-  - "縦串完了後に PR 番号を反映する"
+  - "PR #1276。再AI Review 用に target.pr 反映"
