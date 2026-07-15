@@ -1,0 +1,145 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-manual-e2e-execution"
+  title: "レーン1e:手動E2Eチェックリストと証跡"
+  summary: "D1。チェックリストを正本化し、SCR-001→004 最小パスと 0件・失敗・再検索をローカル手動確認して証跡を残す。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:手動E2E検証"
+  epic_issue_number: 1330
+  epic_branch: "chore/epic-1330-lane-1e-manual-e2e"
+  related_issues:
+    - number: 1330
+      purpose: "親 Epic"
+    - number: 1263
+      purpose: "ローカル結果あり前提"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+phase: "verification"
+
+background: |
+  並列計画 D1。A1〜A4 および #1320 完了後に手動 E2E 証跡を残す。
+
+objective: |
+  - チェックリスト docs を作成する
+  - ローカルで最小パス（結果あり）を確認する
+  - 可能な範囲で 0件 / エラー / 再検索を確認する
+  - 手順書と ai-logs に証跡（traceId / 件数 / 合否）を残す
+
+scope:
+  - "docs/06_実装設計/cross_cutting/ の E2E チェックリスト"
+  - "ローカル開発手順書への D1 結果追記"
+  - "ai-logs/experiments の実行メモ"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Playwright / CI 自動 E2E"
+  - "apps/** の機能改修"
+  - "SCR-006 / SCR-007 / BATCH 実装"
+  - "OpenAPI / migration"
+  - "secret / .env 実値の掲載"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+  files:
+    - path: "scripts/dev/smoke-check.sh"
+      required: false
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      action: "create"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+acceptance_criteria:
+  - "チェックリストに必須シナリオ（結果あり / 0件 / エラー / 再検索）が定義されている"
+  - "結果あり最小パスの実行結果（合否・traceId または requestId・件数）が記録されている"
+  - "未実施シナリオは理由と残リスクが明示されている"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: null
+  base: "chore/epic-1330-lane-1e-manual-e2e"
+  target: "chore/epic-1330-lane-1e-manual-e2e"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "web"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "必須パスの証跡が事実として残っているか"
+    - "未実施が隠蔽されていないか"
+    - "アプリ改修にスコープが広がっていないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  unit_required: false
+  integration_required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e D1 手動 E2E"
+
+notes:
+  - "スクショは取得可能な場合のみ。必須は観測ログ（件数・URL・trace）"
+  - "失敗時は apps を直さず Issue 候補を記載"

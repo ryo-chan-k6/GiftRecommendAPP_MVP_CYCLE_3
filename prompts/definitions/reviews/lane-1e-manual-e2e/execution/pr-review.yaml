@@ -1,0 +1,103 @@
+schema_version: "1.0"
+definition_type: "review"
+review:
+  id: "review-lane-1e-manual-e2e-execution-pr"
+  title: "レーン1e 手動E2E 実行 Task PRレビュー"
+  summary: "D1 チェックリストと証跡の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+work_mode: "ai-agent"
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+target:
+  pr: null
+  issue: null
+  task_definition: "prompts/definitions/tasks/lane-1e-manual-e2e/execution.yaml"
+  source_branch: null
+  target_branch: "chore/epic-1330-lane-1e-manual-e2e"
+  parent_epic_issue: "[Epic]レーン1e:手動E2E検証"
+  parent_epic_branch: "chore/epic-1330-lane-1e-manual-e2e"
+commands:
+  primary: "/review-pr"
+  allowed: ["/review-pr", "/fix-review-comments", "/summarize-work"]
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+agent:
+  primary: "reviewer-ai"
+  support: ["support-ai", "test-ai"]
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/lane-1e-manual-e2e/execution.yaml"
+    required: true
+  issue:
+    number: null
+    required: true
+  pr:
+    number: null
+    required: false
+  diff:
+    required: true
+    compare_with: "chore/epic-1330-lane-1e-manual-e2e"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+review_points:
+  common:
+    - "Task → Epic target / Related to のみか"
+  docs:
+    - "必須シナリオと証跡が揃っているか"
+    - "未実施が明示されているか"
+  security:
+    - "secret 非含有"
+acceptance_check:
+  use_task_acceptance_criteria: true
+result_policy:
+  approve_for_human_review:
+    conditions: ["acceptance 充足", "Must なし"]
+  request_changes:
+    conditions: ["同一 Branch 修正可能"]
+  needs_human_decision:
+    conditions: ["必須パス未達の Close 可否"]
+  blocked:
+    conditions: ["env 不足で実行不能かつ代替なし"]
+acceptance_criteria:
+  - "Blocker/Must 解消または明示"
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "D1 Task AI Review"
+notes:
+  - "PR 作成後に番号反映"
