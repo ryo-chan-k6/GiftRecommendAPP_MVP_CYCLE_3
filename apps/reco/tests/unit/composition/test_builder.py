@@ -37,6 +37,19 @@ from reco.infrastructure.db.repositories.postgres_reco_score_distribution_metric
 from reco.infrastructure.db.repositories.postgres_recommendation_run_repository import (
     PostgresRecommendationRunRepository,
 )
+from reco.infrastructure.db.repositories.postgres_item_snapshot_repository import (
+    PostgresItemSnapshotReadRepository,
+)
+from reco.infrastructure.db.repositories.postgres_item_feature_repository import (
+    PostgresFeatureNormalizationRepository,
+    PostgresItemFeatureRepository,
+)
+from reco.infrastructure.db.repositories.postgres_item_repository import (
+    PostgresItemRepository,
+)
+from reco.infrastructure.db.repositories.postgres_post_filter_item_repository import (
+    PostgresPostFilterItemRepository,
+)
 from reco.infrastructure.db.repositories.postgres_aware_user_feature_repository import (
     PostgresAwareUserFeatureRepository,
 )
@@ -163,6 +176,37 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
         ports.user_feature_generator.normalization_rules
         is helpers["normalization_rule_repository"]
     )
+    assert isinstance(helpers["item_repository"], PostgresItemRepository)
+    assert ports.candidate_retriever.item_repository is helpers["item_repository"]
+    assert isinstance(
+        helpers["post_filter_item_repository"],
+        PostgresPostFilterItemRepository,
+    )
+    assert (
+        ports.post_hard_filter.item_repository
+        is helpers["post_filter_item_repository"]
+    )
+    assert isinstance(
+        helpers["item_feature_repository"],
+        PostgresItemFeatureRepository,
+    )
+    assert (
+        ports.feature_matcher.item_feature_repository
+        is helpers["item_feature_repository"]
+    )
+    assert isinstance(
+        helpers["feature_normalization_repository"],
+        PostgresFeatureNormalizationRepository,
+    )
+    assert (
+        ports.feature_matcher.normalization
+        is helpers["feature_normalization_repository"]
+    )
+    assert isinstance(
+        helpers["item_snapshot_reader"],
+        PostgresItemSnapshotReadRepository,
+    )
+    assert ports.snapshot_builder.item_reader is helpers["item_snapshot_reader"]
 
 
 def test_build_production_observability_modules_wires_postgres_repositories() -> None:
