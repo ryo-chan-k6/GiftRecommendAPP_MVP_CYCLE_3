@@ -1,0 +1,100 @@
+schema_version: "1.0"
+definition_type: "review"
+review:
+  id: "review-lane-1f-ng-normalize-api-openapi-sync-pr"
+  title: "レーン1f NG OpenAPI同期 PRレビュー"
+  summary: "INT-002 NgCondition OpenAPI/Orval Contract Task の AI Review"
+  type: "task_pr_review"
+  status: "ready"
+work_mode: "ai-agent"
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+target:
+  pr: null
+  issue: 1321
+  task_definition: "prompts/definitions/contracts/lane-1f-ng-normalize-api/openapi-sync.yaml"
+  source_branch: "docs/task-1321-lane-1f-ng-normalize-api-openapi-sync"
+  target_branch: "feature/epic-1320-lane-1f-ng-normalize-api"
+  parent_epic_issue: "[Epic]レーン1f:NG正規化api正本化"
+  parent_epic_branch: "feature/epic-1320-lane-1f-ng-normalize-api"
+commands:
+  primary: "/review-pr"
+  allowed: ["/review-pr", "/fix-review-comments", "/summarize-work"]
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+agent:
+  primary: "reviewer-ai"
+  support: ["support-ai", "contract-ai"]
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+review_scope:
+  docs: false
+  source: false
+  tests: false
+  api_contract: true
+  db: false
+  generated: true
+  cicd: true
+  security: true
+  project_operation: true
+input:
+  task_definition:
+    path: "prompts/definitions/contracts/lane-1f-ng-normalize-api/openapi-sync.yaml"
+    required: true
+  issue:
+    number: 1321
+    required: true
+  pr:
+    number: null
+    required: false
+  diff:
+    required: true
+    compare_with: "feature/epic-1320-lane-1f-ng-normalize-api"
+  docs: []
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+review_points:
+  common:
+    - "additive 変更か"
+    - "public-api 未変更か"
+    - "generated 手動編集がないか"
+  security:
+    - "secret 非含有"
+acceptance_check:
+  use_task_acceptance_criteria: true
+result_policy:
+  approve_for_human_review:
+    conditions: ["OpenAPI+Orval 意図どおり", "Must なし"]
+  request_changes:
+    conditions: ["同一 Branch で修正可能"]
+  needs_human_decision:
+    conditions: ["破壊的変更判断が必要"]
+  blocked:
+    conditions: ["定義不足"]
+acceptance_criteria:
+  - "Blocker/Must 解消または明示"
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "Contract Task AI Review"
+notes:
+  - "PR 作成後に番号反映"
