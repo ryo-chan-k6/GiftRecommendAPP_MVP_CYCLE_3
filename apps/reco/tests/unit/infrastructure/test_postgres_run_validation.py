@@ -52,8 +52,21 @@ def test_postgres_run_validation_returns_semantic_config_version_id() -> None:
     assert validation.get_semantic_config_version_id(run_id) == semantic
 
 
+def test_postgres_run_validation_returns_embedding_model_version_id() -> None:
+    run_id = "11111111-1111-4111-8111-111111111111"
+    semantic = "22222222-2222-4222-8222-222222222222"
+    record = _sample_record(run_id, semantic)
+    validation = PostgresRunValidation(
+        run_repository=_FakeRunRepository(  # type: ignore[arg-type]
+            {record.run_id: record},
+        ),
+    )
+    assert validation.get_embedding_model_version_id(run_id) == record.model_version_id
+
+
 def test_postgres_run_validation_returns_none_when_missing() -> None:
     validation = PostgresRunValidation(
         run_repository=_FakeRunRepository({}),  # type: ignore[arg-type]
     )
     assert validation.get_semantic_config_version_id("missing") is None
+    assert validation.get_embedding_model_version_id("missing") is None

@@ -15,6 +15,9 @@ from reco.application.recommendation_orchestrator import (
 from reco.infrastructure.db.repositories.postgres_aware_user_feature_repository import (
     PostgresAwareUserFeatureRepository,
 )
+from reco.infrastructure.db.repositories.postgres_normalization_rule_repository import (
+    PostgresNormalizationRuleRepository,
+)
 from reco.infrastructure.db.repositories.postgres_run_validation import (
     PostgresRunValidation,
 )
@@ -71,8 +74,9 @@ def _inject_user_semantic_ports(
     *,
     user_semantic_repository: PostgresUserSemanticRepository,
     user_feature_repository: PostgresAwareUserFeatureRepository,
+    normalization_rules: PostgresNormalizationRuleRepository,
 ) -> OrchestratorPorts:
-    """Wire Postgres user_semantic persistence and MOD-RECO-007 lookup."""
+    """Wire Postgres user_semantic / user_feature / normalization binding."""
 
     return replace(
         ports,
@@ -82,6 +86,15 @@ def _inject_user_semantic_ports(
         ),
         user_feature_generator=replace(
             ports.user_feature_generator,
+            user_features=user_feature_repository,
+            normalization_rules=normalization_rules,
+        ),
+        user_meaning_projector=replace(
+            ports.user_meaning_projector,
+            user_features=user_feature_repository,
+        ),
+        user_context_builder=replace(
+            ports.user_context_builder,
             user_features=user_feature_repository,
         ),
     )
@@ -107,12 +120,14 @@ def build_production_ports(
     run_validation = PostgresRunValidation(run_repository=repositories.run_repository)
     user_semantic_repository = PostgresUserSemanticRepository(session=session)
     user_feature_repository = PostgresAwareUserFeatureRepository(session=session)
+    normalization_rules = PostgresNormalizationRuleRepository(session=session)
 
     ports = replace(
         _inject_user_semantic_ports(
             _inject_run_validation(base_ports, run_validation),
             user_semantic_repository=user_semantic_repository,
             user_feature_repository=user_feature_repository,
+            normalization_rules=normalization_rules,
         ),
         config_resolver=config_resolver,  # type: ignore[arg-type]
         run_recorder=observability["run_recorder"],  # type: ignore[arg-type]
@@ -127,6 +142,7 @@ def build_production_ports(
         "run_validation": run_validation,
         "user_semantic_repository": user_semantic_repository,
         "user_feature_repository": user_feature_repository,
+        "normalization_rule_repository": normalization_rules,
     }
     return ports, helpers
 

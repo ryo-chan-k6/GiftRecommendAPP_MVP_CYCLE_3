@@ -1,0 +1,203 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-user-feature-postgres-implementation"
+  title: "レーン1e:UserFeature Postgres配線実装"
+  summary: "PostgresAwareUserFeatureRepository の insert/get を Postgres 化し、MOD-RECO-007/008/009 に共有注入する。ローカル PUB-002 再スモーク結果を記録する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:Reco RunValidation Postgres配線"
+  epic_issue_number: 1268
+  epic_branch: "feature/epic-1268-lane-1e-run-validation-postgres"
+  related_issues:
+    - number: 1268
+      purpose: "親 Epic"
+    - number: 1272
+      purpose: "先行 UserSemantic 配線"
+    - number: 1274
+      purpose: "本 Task Issue"
+  related_prs:
+    - number: 1273
+      purpose: "UserSemantic MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1272 / #1273 後の再スモークで GRS-REC-005 は解消。GRS-REC-006 は
+  user_feature が memory のみで、MOD-RECO-008 が DB 行数 0 を見るため。
+
+objective: |
+  user_feature を Postgres に INSERT し、MOD-RECO-008/009 の get_user_features_for_run が
+  同テーブルを参照する状態にする。
+
+scope:
+  - "PostgresAwareUserFeatureRepository の insert / get を Postgres 化"
+  - "PostgresNormalizationRuleRepository（binding + is_current fallback）"
+  - "build_production_ports で meaning projector / context builder / generator へ共有注入"
+  - "UT・手順書追記・再スモーク"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "user_meaning 全列の本番永続"
+  - "normalization_rule master seed 正本化（fallback は本 Task、seed 追加は後続候補）"
+  - "retrieval stub 全面化"
+  - "OpenAPI / migration / SCR / PUB-004"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/database/user_feature_テーブル定義書.md"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/composition/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/composition/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/infrastructure/**"
+      action: "update"
+      required: true
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Postgres UserFeature 配線"
+  - "再スモーク記録"
+
+acceptance_criteria:
+  - "production で user_feature が Postgres に INSERT される"
+  - "MOD-RECO-008/009 が DB の user_feature を参照する"
+  - "DEFAULT InMemory 維持"
+  - "UT 通過・再スモーク記録あり"
+  - "secret なし"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1268-lane-1e-run-validation-postgres"
+  target: "feature/epic-1268-lane-1e-run-validation-postgres"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - issue: 1268
+      purpose: "親"
+  issues:
+    - number: 1272
+      purpose: "先行"
+  prs:
+    - number: 1273
+      purpose: "先行 MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/composition/builder.py"
+    - "apps/reco/src/reco/infrastructure/db/repositories/postgres_aware_user_feature_repository.py"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "manual local smoke"
+    - "secret check"
+  commands:
+    - "cd apps/reco && uv run --extra dev pytest tests/unit/composition tests/unit/infrastructure/test_postgres_aware_user_feature_repository.py -q"
+  manual_checks:
+    - "PUB-002 再実行"
+  not_required: []
+  skip_reason: {}
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "user_feature INSERT と get_user_features_for_run DB 参照が整合するか"
+    - "DEFAULT InMemory 維持か"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e UserFeature 配線"
+
+notes:
+  - "Issueタイトル: [Task]レーン1e:UserFeature Postgres配線実装"
+  - "親Epic: #1268"
+  - "Review: prompts/definitions/reviews/lane-1e-user-feature-postgres/implementation/pr-review.yaml"
