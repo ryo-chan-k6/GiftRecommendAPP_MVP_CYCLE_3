@@ -15,8 +15,6 @@ export const BACK_TO_INPUT_LABEL = "条件入力へ戻る";
 
 export const FEEDBACK_LABEL = "Feedback";
 
-export const FEEDBACK_DISABLED_HINT = "準備中";
-
 export const DETAIL_TOGGLE_CLOSED = "▶ 理由の詳細";
 
 export const DETAIL_TOGGLE_OPEN = "▼ 理由の詳細";

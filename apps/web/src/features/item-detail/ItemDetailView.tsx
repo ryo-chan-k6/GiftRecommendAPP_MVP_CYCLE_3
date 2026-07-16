@@ -9,6 +9,8 @@ import { ReasonSummary } from "@/components/display/ReasonSummary";
 import { Text } from "@/components/display/Text";
 import { Alert } from "@/components/feedback/Alert";
 import { ExternalLink } from "@/components/nav/ExternalLink";
+import { FeedbackInputModal } from "@/features/feedback-input";
+import { FEEDBACK_UNAVAILABLE_HINT } from "@/features/feedback-input/constants";
 import { isSafeExternalUrl } from "@/features/recommendation-result/is-safe-external-url";
 import type {
   PublicItemDetail,
@@ -21,7 +23,6 @@ import {
   DESCRIPTION_TOGGLE_OPEN,
   EXTERNAL_EC_LABEL,
   FALLBACK_REASON_HINT,
-  FEEDBACK_DISABLED_HINT,
   FEEDBACK_LABEL,
   REASON_DETAIL_DISABLED_HINT,
   REASON_DETAIL_LABEL,
@@ -30,13 +31,23 @@ import {
 export type ItemDetailViewProps = {
   item: PublicItemDetail;
   context: PublicRecommendationResultItem | null;
+  /** fromResultId。文脈 Item があるときのみ Feedback 送信可 */
+  resultId?: string | null;
 };
 
-export function ItemDetailView({ item, context }: ItemDetailViewProps) {
+export function ItemDetailView({
+  item,
+  context,
+  resultId,
+}: ItemDetailViewProps) {
   const description = item.itemDescription?.trim() ?? "";
   const collapse =
     description.length > DESCRIPTION_COLLAPSE_THRESHOLD;
   const [descriptionOpen, setDescriptionOpen] = useState(!collapse);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const canOpenFeedback = Boolean(
+    resultId && context?.recommendationResultItemId,
+  );
   const descriptionId = useId();
   const safeExternal = isSafeExternalUrl(item.itemUrl);
   const badges = (context?.reasonBadges ?? [])
@@ -173,14 +184,37 @@ export function ItemDetailView({ item, context }: ItemDetailViewProps) {
           </span>
         </div>
         <div className="flex flex-col gap-0.5">
-          <Button type="button" variant="secondary" size="sm" disabled>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!canOpenFeedback}
+            onClick={() => {
+              if (canOpenFeedback) {
+                setFeedbackOpen(true);
+              }
+            }}
+          >
             {FEEDBACK_LABEL}
           </Button>
-          <span className="text-small text-text-muted">
-            {FEEDBACK_DISABLED_HINT}
-          </span>
+          {!canOpenFeedback ? (
+            <span className="text-small text-text-muted">
+              {FEEDBACK_UNAVAILABLE_HINT}
+            </span>
+          ) : null}
         </div>
       </section>
+
+      {canOpenFeedback && resultId && context ? (
+        <FeedbackInputModal
+          open={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          resultId={resultId}
+          resultItemId={context.recommendationResultItemId}
+          itemName={item.itemName}
+          sourcePage="SCR-006"
+        />
+      ) : null}
     </div>
   );
 }

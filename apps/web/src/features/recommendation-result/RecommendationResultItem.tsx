@@ -10,6 +10,7 @@ import { ReasonSummary } from "@/components/display/ReasonSummary";
 import { Text } from "@/components/display/Text";
 import { Alert } from "@/components/feedback/Alert";
 import { ExternalLink } from "@/components/nav/ExternalLink";
+import { FeedbackInputModal } from "@/features/feedback-input";
 import type { PublicRecommendationResultItem } from "@/generated/api/giftRecommendationServicePublicAPI.schemas";
 import { cn } from "@/lib/cn";
 
@@ -19,7 +20,6 @@ import {
   DETAIL_TOGGLE_OPEN,
   EXTERNAL_EC_LABEL,
   FALLBACK_REASON_HINT,
-  FEEDBACK_DISABLED_HINT,
   FEEDBACK_LABEL,
   ITEM_DETAIL_LABEL,
   REASON_DETAIL_MAX_HEIGHT_CLASS,
@@ -37,6 +37,7 @@ export function RecommendationResultItem({
   resultId,
 }: RecommendationResultItemProps) {
   const [open, setOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const panelId = useId();
   const badges = (item.reasonBadges ?? [])
     .map((badge) => badge.label?.trim())
@@ -58,7 +59,7 @@ export function RecommendationResultItem({
       </div>
 
       {item.itemImageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- 外部EC画像。next/image ドメイン設定は SCR-006 本実装で検討
+        // eslint-disable-next-line @next/next/no-img-element -- 外部EC画像。next/image ドメイン設定は後続で検討
         <img
           src={item.itemImageUrl}
           alt={item.itemName}
@@ -145,15 +146,24 @@ export function RecommendationResultItem({
         {safeExternal ? (
           <ExternalLink href={item.itemUrl}>{EXTERNAL_EC_LABEL}</ExternalLink>
         ) : null}
-        <div className="flex flex-col gap-0.5">
-          <Button type="button" variant="secondary" size="sm" disabled>
-            {FEEDBACK_LABEL}
-          </Button>
-          <span className="text-small text-text-muted">
-            {FEEDBACK_DISABLED_HINT}
-          </span>
-        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setFeedbackOpen(true)}
+        >
+          {FEEDBACK_LABEL}
+        </Button>
       </div>
+
+      <FeedbackInputModal
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        resultId={resultId}
+        resultItemId={item.recommendationResultItemId}
+        itemName={item.itemName}
+        sourcePage="SCR-004"
+      />
     </article>
   );
 }

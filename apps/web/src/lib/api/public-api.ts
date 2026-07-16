@@ -18,11 +18,19 @@ import {
   type getItemDetailResponse,
 } from "@/generated/api/items/items";
 import {
+  getSubmitRecommendationFeedbackUrl,
+  submitRecommendationFeedback,
+  type submitRecommendationFeedbackResponse,
+} from "@/generated/api/feedback/feedback";
+import {
   getRunRecommendationUrl,
   runRecommendation,
   type runRecommendationResponse,
 } from "@/generated/api/recommendations/recommendations";
-import type { RecommendationRunRequest } from "@/generated/api/giftRecommendationServicePublicAPI.schemas";
+import type {
+  RecommendationFeedbackSubmitRequest,
+  RecommendationRunRequest,
+} from "@/generated/api/giftRecommendationServicePublicAPI.schemas";
 
 import { getPublicApiBaseUrl, resolvePublicApiUrl } from "./base-url";
 
@@ -117,4 +125,23 @@ export async function fetchItemDetail(
     ...options,
     method: "GET",
   }) as Promise<getItemDetailResponse>;
+}
+
+export async function submitFeedback(
+  resultId: string,
+  request: RecommendationFeedbackSubmitRequest,
+  options?: RequestInit,
+): Promise<submitRecommendationFeedbackResponse> {
+  if (!getPublicApiBaseUrl()) {
+    return submitRecommendationFeedback(resultId, request, options);
+  }
+  return fetchJsonAtUrl(getSubmitRecommendationFeedbackUrl(resultId), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+    body: JSON.stringify(request),
+  }) as Promise<submitRecommendationFeedbackResponse>;
 }
