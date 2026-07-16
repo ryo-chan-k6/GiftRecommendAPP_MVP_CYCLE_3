@@ -1,0 +1,119 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-009-empty-result-implementation-pr"
+  title: "SCR-009 0件結果表示実装 PRレビュー"
+  summary: "SCR-009 0件結果表示実装 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1386
+  task_definition: "prompts/definitions/tasks/scr-009-empty-result/implementation.yaml"
+  source_branch: "feature/task-1386-scr-009-empty-result-implementation"
+  target_branch: "feature/epic-1382-scr-009-empty-result"
+  parent_epic_issue: "[Epic]SCR-009:0件結果表示"
+  parent_epic_branch: "feature/epic-1382-scr-009-empty-result"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/scr-009-empty-result/implementation.yaml"
+    required: true
+  issue:
+    number: 1386
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1382-scr-009-empty-result"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-009_0件結果表示画面仕様書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+    - "Related to（Closes 禁止）か"
+  source:
+    - "EmptyState title が「条件に合うギフトがありません」か"
+    - "description が EMPTY_RESULT_MESSAGE（クライアント定数）か"
+    - "「条件を変更する」で form 復帰できるか"
+    - "「トップへ戻る」TextLink が href=\"/\" か"
+    - "再検索専用 CTA がないか"
+    - "API displayMessage を画面に出していないか"
+    - "専用 /recommendations/{id} empty route を新設していないか"
+  tests:
+    - "empty 表示・文言・条件変更・トップ導線・再検索なしのテストがあるか"
+    - "本番 network 非依存か"
+  security:
+    - "secret / .env 実値がないか"
+    - "generated 手動編集がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を同期する"
