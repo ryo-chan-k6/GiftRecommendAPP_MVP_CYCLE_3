@@ -12,7 +12,7 @@
 | 関連Issue | `#1398`（Contract Task）/ `#1397`（親 Epic） |
 | 関連 Branch | `feature/task-1398-api-pub-002-public-reason-points-detail` |
 | 重要度 | `high` |
-| 状態 | `implemented`（PR 未作成。親 Agent が作成） |
+| 状態 | `implemented`（PR `#1399` 作成済み。AI Review request_changes 対応中） |
 
 入力正本: [2026-07-16-public-reason-points-detail-contract-epic-prep.md](./2026-07-16-public-reason-points-detail-contract-epic-prep.md)
 
