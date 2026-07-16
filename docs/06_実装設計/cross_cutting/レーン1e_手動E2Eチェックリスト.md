@@ -118,8 +118,8 @@
 
 | 内容 | Issue | 親 Epic |
 | ---- | ---- | ---- |
-| 0件が  になり SCR-009 未到達 | #1345 | #1344 |
-| SCR-001  の client exception（HomePage） | #1346 | #1344 |
+| 0件が `GRS-REC-012` になり SCR-009 未到達 | #1345 | #1344 |
+| SCR-001 `/` の client exception（HomePage） | #1346 | #1344 |
 | 結果カード画像プレースホルダ | （未起票・低優先） | — |
 
 D1 本体（#1330）は Close 済み。residual 解消は Epic #1344 で追跡する。
