@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 1361
   epic_branch: "feature/epic-1361-scr-003-recommendation-running"
   related_issues:
+    - number: 1362
+      purpose: "本 Task Issue"
     - number: 1361
       purpose: "親 Epic"
   related_prs: []
@@ -132,7 +134,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "docs/task-1362-scr-003-recommendation-running-screen-spec"
   summary: "scr-003-recommendation-running-screen-spec"
   base: "feature/epic-1361-scr-003-recommendation-running"
   target: "feature/epic-1361-scr-003-recommendation-running"
@@ -229,8 +231,8 @@ stop_conditions:
 notes:
   - "Issueタイトル: [Task]SCR-003:レコメンド実行中表示画面仕様書作成"
   - "親 Epic Definition: prompts/definitions/epics/scr-003-recommendation-running/epic.yaml"
+  - "本 Task Issue: #1362 / Branch: docs/task-1362-scr-003-recommendation-running-screen-spec"
   - "親Epic: #1361 [Epic]SCR-003:レコメンド実行中表示 / Branch: feature/epic-1361-scr-003-recommendation-running"
-  - "起票後に本 Task Issue 番号と branch.name を更新する"
-  - "後続: 実装 Task / 単体テスト Task（本 Task 完了後）"
-  - "AI Review 用 Review Definition は /create-pr 前に作成してよい"
+  - "依存Epic: #1147 SCR-002 / #357 API-PUB-002（いずれも develop merge 済み）"
+  - "後続: /work-issue → 画面仕様書作成 → /create-pr（Review Definition を PR head に含める）"
   - "キャンセル導線（画面一覧 △）の採否は Human Review 観点"
