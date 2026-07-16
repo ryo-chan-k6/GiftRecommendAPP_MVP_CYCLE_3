@@ -47,7 +47,8 @@ agent:
 background: |
   06_実装設計において、web 実装の前提となる画面仕様書を作成する。
   SCR-005 は独立 URL 画面ではなく、SCR-004 内 Item 単位アコーディオンとして扱う（SCR-004 §7.4）。
-  D1 S5（理由詳細）は pass 済み。本 Task で正本仕様を固定し、Public フィールド欠落時の MVP 方針を明示する。
+  D1 S5（理由詳細）は pass 済み。本 Task で正本仕様を固定する。
+  Human 判断（2026-07-16）: 案 B 採用。Public に reasonPoints / reasonDetail を任意追加する横断 Contract Epic を、並行作業の develop merge 後に実施。実装 Task は Contract 待ち。
 
 objective: |
   SCR-005（推薦理由詳細表示）について、実装・レビューが可能な粒度の画面仕様書を作成する。
