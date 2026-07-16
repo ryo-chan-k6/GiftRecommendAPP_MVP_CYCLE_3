@@ -73,6 +73,11 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_product_diff_sync_staging=_read_optional_bool(
             source, "BATCH_PRODUCT_DIFF_SYNC_STAGING"
         ),
+        batch_item_apply_max_items=_read_positive_int(source, "BATCH_ITEM_APPLY_MAX_ITEMS"),
+        batch_item_apply_source=_read_optional_str(source, "BATCH_ITEM_APPLY_SOURCE"),
+        batch_item_apply_diff_batch_run_id=_read_optional_str(
+            source, "BATCH_ITEM_APPLY_DIFF_BATCH_RUN_ID"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )

@@ -26,6 +26,9 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_PRODUCT_DIFF_MAX_ITEMS",
     "BATCH_PRODUCT_DIFF_SOURCE",
     "BATCH_PRODUCT_DIFF_SYNC_STAGING",
+    "BATCH_ITEM_APPLY_MAX_ITEMS",
+    "BATCH_ITEM_APPLY_SOURCE",
+    "BATCH_ITEM_APPLY_DIFF_BATCH_RUN_ID",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -77,6 +80,9 @@ class BatchSettings:
     batch_product_diff_max_items: int | None
     batch_product_diff_source: str | None
     batch_product_diff_sync_staging: bool | None
+    batch_item_apply_max_items: int | None
+    batch_item_apply_source: str | None
+    batch_item_apply_diff_batch_run_id: str | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -123,6 +129,9 @@ class BatchSettings:
             f"batch_product_diff_max_items={self.batch_product_diff_max_items!r}, "
             f"batch_product_diff_source={self.batch_product_diff_source!r}, "
             f"batch_product_diff_sync_staging={self.batch_product_diff_sync_staging!r}, "
+            f"batch_item_apply_max_items={self.batch_item_apply_max_items!r}, "
+            f"batch_item_apply_source={self.batch_item_apply_source!r}, "
+            f"batch_item_apply_diff_batch_run_id={self.batch_item_apply_diff_batch_run_id!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "
