@@ -260,3 +260,108 @@ def test_does_not_mutate_diff_rows() -> None:
     assert repos.diffs["d9"] == before
     # Diff 更新 write が無いこと
     assert all(call["table"] != "product_diff_result" for call in repos.db_writer.write_calls)
+
+
+def test_max_items_limits_item_keys() -> None:
+    repos = _repos()
+    repos.seed_item(_item("shop:a", "active"))
+    repos.seed_item(_item("shop:b", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-a",
+            code="shop:a",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    repos.seed_candidate(
+        _cand(
+            cid="c-b",
+            code="shop:b",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-max", max_items=1)
+    assert result.status == "succeeded"
+    assert result.item_status_updated_count == 1
+    updated = [
+        code
+        for (src, code), row in repos.items.items()
+        if src == "rakuten" and row.active_status == "unavailable"
+    ]
+    assert len(updated) == 1
+
+
+def test_cli_scaffold_demo_passes_filters(monkeypatch) -> None:
+    from batch.application.item_active_status import __main__ as cli
+
+    captured: dict[str, object] = {}
+
+    class _FakeJob:
+        def run(self, **kwargs):  # type: ignore[no-untyped-def]
+            captured.update(kwargs)
+
+            class _Result:
+                status = "succeeded"
+                item_status_updated_count = 0
+                candidate_applied_count = 0
+                candidate_superseded_count = 0
+                reactivation_count = 0
+                failed_item_codes: list[str] = []
+                completed_phases = ["plan", "finalize"]
+
+            return _Result()
+
+    monkeypatch.setattr(cli, "build_scaffold_demo_job", lambda: _FakeJob())
+    code = cli.main(
+        [
+            "--scaffold-demo",
+            "--job-run-id",
+            "job-cli",
+            "--max-items",
+            "42",
+            "--source",
+            "rakuten",
+            "--batch-run-id",
+            "run-x",
+            "--external-item-codes",
+            "shop:1, shop:2",
+        ]
+    )
+    assert code == 0
+    assert captured["job_run_id"] == "job-cli"
+    assert captured["max_items"] == 42
+    assert captured["source"] == "rakuten"
+    assert captured["batch_run_id"] == "run-x"
+    assert captured["external_item_codes"] == ("shop:1", "shop:2")
+
+
+def test_cli_without_scaffold_demo_exits_3(monkeypatch) -> None:
+    from batch.application.item_active_status import __main__ as cli
+    from batch.config import scaffold_batch_settings
+
+    monkeypatch.setattr(cli, "load_batch_settings", lambda: scaffold_batch_settings())
+    assert cli.main(["--job-run-id", "job-real"]) == 3
+
+
+def test_applier_does_not_call_retention_delete() -> None:
+    repos = _repos()
+    repos.seed_item(_item("shop:j", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c10",
+            code="shop:j",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    ItemActiveStatusJob(repositories=repos).run(job_run_id="job-10")
+    assert repos.deleted_candidate_ids == []
+    assert all(call.get("op") != "delete" for call in repos.db_writer.write_calls)

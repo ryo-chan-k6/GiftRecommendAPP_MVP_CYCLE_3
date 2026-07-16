@@ -1,0 +1,101 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-008-item-active-status-implementation-pr"
+  title: "BATCH-008 商品有効状態更新Batch実装 PRレビュー"
+  summary: "BATCH-008 実装ギャップ Task（#1388）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "feature/epic-1379-batch-008-item-active-status"
+  target: "feature/epic-1379-batch-008-item-active-status"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1388
+  task_definition: "prompts/definitions/tasks/batch-008-item-active-status/implementation.yaml"
+  source_branch: "feature/task-1388-batch-008-item-active-status-implementation"
+  target_branch: "feature/epic-1379-batch-008-item-active-status"
+  parent_epic_issue: "[Epic]BATCH-008:商品有効状態更新Batch"
+  parent_epic_branch: "feature/epic-1379-batch-008-item-active-status"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-008-item-active-status/implementation.yaml"
+    required: true
+  issue:
+    number: 1388
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "実装正本"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+  source:
+    - "既存 Phase / 競合解決を破壊していないか"
+    - "config / CLI / 独立 YAML ギャップが埋まっているか"
+    - "Retention T7 本番化・親チェーン改修をしていないか"
+    - "product_diff_result を読取専用にしているか"
+    - "他 Batch application（item_apply / product_diff 等）を編集していないか"
+  tests:
+    - "既存 UT + 最小追加が実行可能か"
+  security:
+    - "secret / .env 実値がないか"
+  cicd:
+    - "batch-rakuten-item-active-status.yml が独立子で親チェーン未改修か"
+
+notes:
+  - "Issue #1388"

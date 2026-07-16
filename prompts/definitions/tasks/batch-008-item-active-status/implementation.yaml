@@ -1,0 +1,274 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-008-item-active-status-implementation"
+  title: "BATCH-008:商品有効状態更新Batch実装"
+  summary: "BATCH-008（商品有効状態更新Batch）の実装ギャップを埋める。既存 item_active_status/** を拡張し、独立 workflow・config・CLI 配線を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-008:商品有効状態更新Batch"
+  epic_issue_number: 1379
+  epic_branch: "feature/epic-1379-batch-008-item-active-status"
+  related_issues:
+    - number: 1380
+      purpose: "バッチ仕様書整備（CLOSED / Epic Branch merge 済み）"
+  related_prs:
+    - number: 1381
+      purpose: "バッチ仕様書整備 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b active_status 本更新段。仕様書 #1380 / PR #1381 は Epic Branch merge 済み。
+  Epic #1227 由来の item_active_status/** 骨格・競合 UT・Retention scaffold は再利用し、同ロジックの二重実装をしない。
+  §20.2 ギャップ（独立 YAML / BATCH_ITEM_ACTIVE_STATUS_* config / CLI 運用引数）を本 Task で埋める。
+  Contract Gate 不要。unit は fixture / mock 正。包括的 UT は後続 unit-test Task。
+  §18.1 No.8（独立 YAML）・No.11（Retention T7 本 Epic 外）を作業仮定として採用する。
+  本番 Postgres 接続は BATCH-007 同型 scaffold-first（非 demo は exit 3）。
+
+objective: |
+  BATCH-008 について、仕様書 §20.2 の実装ギャップを埋め、
+  起動用独立 workflow（batch-rakuten-item-active-status.yml）と config / CLI 配線を整備する。
+  Retention T7 本番化・親チェーン改修・楽天 API 呼出は行わない。
+
+scope:
+  - "既存 item_active_status ジョブの必要最小拡張（二重実装禁止）"
+  - "config: BATCH_ITEM_ACTIVE_STATUS_MAX_ITEMS / SOURCE / BATCH_RUN_ID"
+  - "CLI: --max-items / --source / --batch-run-id / --external-item-codes（007 同型）"
+  - ".github/workflows/batch-rakuten-item-active-status.yml（workflow_call / workflow_dispatch）"
+  - "最小 unit test（config load / CLI 引数 / Applier が Retention DELETE を呼ばない）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "バッチ仕様書の全面書き換え（軽微な実装追随注記以外）"
+  - "他 Batch 実装の破壊変更（product_diff / item_apply / raw_staging / item_recheck 等）"
+  - "親 item-import / existing-item-recheck チェーン workflow 全体改修・配線"
+  - "OpenAPI / Orval / generated / DB migration"
+  - "楽天 API 呼出"
+  - "Retention T7 本番化・専用 schedule（#1235）"
+  - "BATCH-004 候補 INSERT Writer"
+  - "本番 Postgres SQL アダプタ本実装（scaffold-first）"
+  - "Staging Validator 本配線"
+  - "包括的 UT Task（後続 unit-test Task）"
+  - "BATCH-009"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "実装の正本（§8 / §9 / §18 / §20）"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "active_status / is_active"
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      required: true
+      purpose: "候補経路"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "Diff 経路読取"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-008 入出力境界"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      required: true
+      purpose: "既存骨格（拡張対象）"
+    - path: "apps/batch/src/batch/application/item_apply/**"
+      required: true
+      purpose: "同型 CLI / workflow 参照のみ（編集禁止）"
+    - path: ".github/workflows/batch-rakuten-item-apply.yml"
+      required: true
+      purpose: "独立 YAML 雛形（編集禁止）"
+  issues:
+    - number: 1380
+      purpose: "仕様書整備"
+  prs:
+    - number: 1381
+      purpose: "仕様書整備 MERGED"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-rakuten-item-active-status.yml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-008-item-active-status/implementation.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-008-item-active-status/implementation/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_item_active_status.py"
+      action: "update"
+      required: false
+    - path: "apps/batch/tests/unit/config/test_config_scaffold.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-008 config / CLI 配線"
+  - "batch-rakuten-item-active-status.yml"
+  - "最小 unit test（fixture / mock）"
+
+acceptance_criteria:
+  - "既存 Phase（plan/read_diff/read_candidate/resolve/apply_item/apply_candidate/finalize）が維持されている"
+  - "BATCH_ITEM_ACTIVE_STATUS_MAX_ITEMS / SOURCE / BATCH_RUN_ID が settings / loader / scaffold に定義されている"
+  - "CLI が --max-items / --source / --batch-run-id / --external-item-codes を受け、scaffold-demo で job.run に渡せる"
+  - "非 scaffold-demo は settings 読取後 exit 3（本番 DB 未接続）"
+  - ".github/workflows/batch-rakuten-item-active-status.yml が存在し workflow_dispatch / workflow_call を持つ"
+  - "Applier 本処理が Retention DELETE を呼ばない"
+  - "product_diff_result を書かない（読取のみ）"
+  - "楽天 API を呼ばない"
+  - "既存 test_item_active_status.py / retention UT が通る"
+  - "secret / .env 実値を含まない"
+  - "OpenAPI / generated / migration / 他 Batch application を変更していない"
+  - "親 Epic allowed_paths 外を編集していない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1388-batch-008-item-active-status-implementation"
+  summary: "batch-008-item-active-status-implementation"
+  base: "feature/epic-1379-batch-008-item-active-status"
+  target: "feature/epic-1379-batch-008-item-active-status"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-19"
+
+issue:
+  number: 1388
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1379
+      title: "[Epic]BATCH-008:商品有効状態更新Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1380
+      purpose: "仕様書整備（CLOSED）"
+  prs:
+    - number: 1381
+      purpose: "仕様書整備 MERGED"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-008-item-active-status-batch-spec-follow-up"
+  blocks:
+    - "task-batch-008-item-active-status-unit-test"
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_active_status/**"
+    - ".github/workflows/batch-rakuten-item-active-status.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-008 既存 + 最小追加）"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_item_active_status.py tests/unit/application/test_item_active_status_retention.py tests/unit/config/test_config_scaffold.py -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+    - "contract test"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock / scaffold を正とする"
+    "contract test": "Batch は HTTP API 化しないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "仕様書 Phase・競合方針と既存実装が維持されているか"
+    - "独立 YAML / config / CLI ギャップが埋まっているか"
+    - "Retention T7 本番化・親チェーン改修をしていないか"
+    - "他 Batch application を編集していないか"
+    - "secret 非含有 / PR target が親 Epic Branch か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch 実装ギャップの縦串"
+
+human_decision_points:
+  - "独立 YAML（batch-rakuten-item-active-status.yml）方針で実装する（仕様§18.1 No.8 確定）"
+  - "Retention T7 は本 Task / 本 Epic 外（§18.1 No.11 確定）"
+  - "§18.1.1 既定フィルタ（unavailable / detected / source=rakuten）で実装する"
+  - "包括的 UT は後続 unit-test Task に分離する"
+
+stop_conditions:
+  - "必須 input.docs（バッチ仕様書）が存在しない場合"
+  - "親 Epic Issue / Branch が未確定の場合"
+  - "OpenAPI / generated / migration 変更が必要になった場合"
+  - "epic_scope.allowed_paths 外の編集が必要になった場合"
+  - "他 Batch application / 親チェーン YAML 編集が必要に見える場合"
+  - "Retention T7 本番化が本 Task 必須に見える場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-008:商品有効状態更新Batch実装"
+  - "Contract Gate 不要"
+  - "後続: unit-test Task"

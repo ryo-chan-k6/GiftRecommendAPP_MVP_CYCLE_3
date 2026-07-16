@@ -31,6 +31,9 @@ def scaffold_batch_settings(*, app_env: AppEnv = AppEnv.DEV) -> BatchSettings:
         batch_item_apply_max_items=1000,
         batch_item_apply_source="rakuten",
         batch_item_apply_diff_batch_run_id=None,
+        batch_item_active_status_max_items=1000,
+        batch_item_active_status_source="rakuten",
+        batch_item_active_status_batch_run_id=None,
         supabase_url=None,
         supabase_service_role_key=None,
     )
