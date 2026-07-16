@@ -34,7 +34,7 @@ BATCH-007（Item反映Batch）は、BATCH-006 が確定した `product_diff_resu
 | `diff_status` | Item 業務列 | `item_image` | `item_review_summary` |
 | ------------- | ----------- | ------------ | --------------------- |
 | `new` / `updated` | Staging → Upsert（hash コピー含む） | 同期置換 | Upsert（欠損時スキップ） |
-| `unchanged` | 業務列 no-op。`last_checked_at`（と `updated_at`）のみ | 原則 no-op（§18.2） | 原則 no-op（§18.2） |
+| `unchanged` | 業務列 no-op。`last_checked_at`（と `updated_at`）のみ | 原則 no-op（§18.1 No.13） | 原則 no-op（§18.1 No.13） |
 | `unavailable` | 原則業務列 Upsert **しない** | 原則しない | 原則しない |
 
 ---
@@ -58,7 +58,7 @@ BATCH-007（Item反映Batch）は、BATCH-006 が確定した `product_diff_resu
 | Batch ID       | `BATCH-007` |
 | Batch名        | Item反映Batch |
 | 処理種別       | Staging → Item 正本 / 画像 / レビュー要約 Upsert |
-| 実行基盤       | GitHub Actions。**独立子 workflow `batch-rakuten-item-apply.yml`（`batch-rakuten-item-apply*.yml`）を提案**する（§18.2 No.1）。親 item-import 全体改修は本 Epic 外 |
+| 実行基盤       | GitHub Actions。**独立子 workflow `batch-rakuten-item-apply.yml`（`batch-rakuten-item-apply*.yml`）を正**とする（§18.1 No.11）。親 item-import 全体改修は本 Epic 外 |
 | 実装言語       | Python（`apps/batch`） |
 | 起動方式       | 先行 Batch（BATCH-006）後続 / `workflow_dispatch`（独立 cron なし） |
 | 実行頻度       | 差分判定後に連続実行 |
@@ -88,9 +88,9 @@ BATCH-007（Item反映Batch）は、BATCH-006 が確定した `product_diff_resu
 
 | トリガー | 利用有無 | 条件 | 備考 |
 | -------- | -------- | ---- | ---- |
-| schedule | `false` | — | 独立 cron は付けない（§18.2 No.1。BATCH-006 同型） |
+| schedule | `false` | — | 独立 cron は付けない（§18.1 No.11。BATCH-006 同型） |
 | workflow_dispatch | `true` | 手動・再実行（`batch_run_id` / 明示 `external_item_code` / `staging_item_id` / 件数上限） | 失敗再実行・部分集合処理に利用 |
-| 先行Batch完了 | `true`（運用上） | BATCH-006 後続、または独立 YAML を親から `workflow_call` | 親全体改修は本 Epic 外（§18.2 No.1） |
+| 先行Batch完了 | `true`（運用上） | BATCH-006 後続、または独立 YAML を親から `workflow_call` | 親全体改修は本 Epic 外（§18.1 No.11） |
 | retry-failed | `false` | MVP では workflow_dispatch で失敗キーを絞る | 再実行単位: `external_item_code`（+ 必要なら `batch_run_id`） |
 
 ### 5.2 実行前提
@@ -114,7 +114,7 @@ BATCH-007（Item反映Batch）は、BATCH-006 が確定した `product_diff_resu
 | `product_diff_result` | DB | database | `true` | 反映分岐（`diff_status`）・`staging_item_id` / `external_item_code` | 判定正本。Human Review #526 **確定** |
 | `staging_item` | DB | database | `true`（行単位） | Item Upsert 入力・hash コピー・レビュー列 | BATCH-005 完了済み |
 | `staging_item_image` | DB | database | `false`（行単位） | `item_image` 同期置換入力 | 0 件可。Human Review #523 **確定** |
-| `diff_selection` / config | 設定 | Batch config / workflow input | `true` | 選定フィルタ / 件数上限 | §18.2 No.2 |
+| `diff_selection` / config | 設定 | Batch config / workflow input | `true` | 選定フィルタ / 件数上限 | §18.1 No.12 |
 | 明示 `external_item_code` / `staging_item_id` リスト | 入力 | workflow_dispatch | `false` | 失敗再実行・部分集合 | |
 
 ### 6.2 外部API
@@ -130,7 +130,7 @@ BATCH-007（Item反映Batch）は、BATCH-006 が確定した `product_diff_resu
 | 環境変数名 | 必須 | 用途 | secret区分 | 設定先 |
 | ---------- | ---- | ---- | ---------- | ------ |
 | `DATABASE_URL` | `true` | Diff / Staging 読取・Item 系更新 | secret | GitHub Secrets / local `.env`（commit 禁止） |
-| `BATCH_ITEM_APPLY_MAX_ITEMS` 等 | `false` | 件数上限 | 非secret可 | config / workflow input（§18.2 No.2） |
+| `BATCH_ITEM_APPLY_MAX_ITEMS` 等 | `false` | 件数上限 | 非secret可 | config / workflow input（§18.1 No.12） |
 | `BATCH_ITEM_APPLY_SOURCE` 等 | `false` | `source` フィルタ（MVP 既定 `rakuten`） | 非secret可 | config / workflow input |
 | `BATCH_ITEM_APPLY_DIFF_BATCH_RUN_ID` 等 | `false` | 消費する判定 Run の絞り込み | 非secret可 | workflow input |
 
@@ -201,7 +201,7 @@ flowchart TD
 
 |  No | Phase | 処理 | 入力 | 出力 | 失敗時の扱い |
 | --: | ----- | ---- | ---- | ---- | ------------ |
-| 1 | `plan` | 対象 `product_diff_result` キューを作成する（§18.2 No.2 選定既定） | config / Diff 行 | `product_diff_result_id` 一覧 | `GRS-BAT-*` |
+| 1 | `plan` | 対象 `product_diff_result` キューを作成する（§18.1 No.12 選定既定） | config / Diff 行 | `product_diff_result_id` 一覧 | `GRS-BAT-*` |
 | 2 | `load_diff` | 判定行を読み、`diff_status` / `staging_item_id` / `external_item_code` を確定する | Diff ID | Diff 行 | `GRS-DB-*` |
 | 3 | `load_staging` | `staging_item` と兄弟 `staging_item_image` を読む | `staging_item_id` | Staging 行集合 | `GRS-DB-*`。Staging 欠落は当該行失敗 |
 | 4 | `apply_item` | §9.2 に従い Item Upsert または `last_checked_at` のみ、または skip | Diff + Staging | `item_id`（確定時） | `GRS-BAT-005` / `GRS-DB-*` |
@@ -225,8 +225,8 @@ flowchart TD
 | ------------- | ------ | ------------ | --------------------- | ---- |
 | `new` | INSERT（業務列 + `normalized_hash` + `first_fetched_at` + `last_checked_at`） | 同期置換 | Upsert（欠損スキップ） | `active_status`/`is_active` は DDL 既定のまま。本 Batch で明示更新しない |
 | `updated` | UPDATE（業務列 + `normalized_hash` + `last_checked_at` + `updated_at`） | 同期置換 | Upsert（欠損スキップ） | `active_status`/`is_active` **は更新しない** |
-| `unchanged` | `last_checked_at`, `updated_at` のみ | 原則 no-op（§18.2 No.3） | 原則 no-op（§18.2 No.3） | item §12 / 外部連携 §10.2（物理列名は `last_checked_at`） |
-| `unavailable` | 原則業務列 Upsert **しない** | 原則しない | 原則しない | `active_status` 本更新は **BATCH-008**（§18.2 No.4） |
+| `unchanged` | `last_checked_at`, `updated_at` のみ | 原則 no-op（§18.1 No.13） | 原則 no-op（§18.1 No.13） | item §12 / 外部連携 §10.2（物理列名は `last_checked_at`） |
+| `unavailable` | 原則業務列 Upsert **しない** | 原則しない | 原則しない | `active_status` 本更新は **BATCH-008**（§18.1 No.14） |
 
 ### 9.2 `staging_item` → `item` 列マッピング
 
@@ -494,14 +494,15 @@ WHERE source = :source
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-16 | 初版作成 | Epic #1356 / Task #1357 |
+| 2026-07-16 | §18.1 No.11〜16 を Human 確定（旧 §18.2 No.1〜6 推奨案を MVP 初期採用）。§18.2 を解消 | Epic #1356 / Task #1357 |
 
 ---
 
 ## 18. 未決事項・決定事項
 
-### 18.1 採用方針（テーブル定義 Human 確定）
+### 18.1 採用方針（Human 確定）
 
-以下は Human Review 済みテーブル定義を正とし、本仕様書では **確定** として扱う。
+以下は Human Review 済みテーブル定義および MVP 初期採用方針を正とし、本仕様書では **確定** として扱う。
 
 |  No | 論点 | 内容 | 判断者 | 状態 | 備考 |
 | --: | ---- | ---- | ------ | ---- | ---- |
@@ -515,23 +516,16 @@ WHERE source = :source
 | 8 | `diff_status` 正本 | **`product_diff_result`**。本 Batch は読取 | Human（#526） | **確定** | §2 / §6 |
 | 9 | `unchanged` の Item 業務列 | **no-op**。`last_checked_at`（と `updated_at`）のみ | Human（item §12 / #526 後続分岐） | **確定** | §9.1 |
 | 10 | `unavailable` の有効状態 | **BATCH-008** で `active_status` 本更新 | Human（バッチ処理一覧 / BATCH-008 仕様） | **確定** | §2 / §9.1 |
+| 11 | 子 workflow 配置 | **独立 YAML `batch-rakuten-item-apply.yml`（`batch-rakuten-item-apply*.yml`）を正**とする。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **確定**（2026-07-16・MVP 初期） | BATCH-005 / BATCH-006 同型。Epic `human_decision_points`。旧 §18.2 No.1 |
+| 12 | `product_diff_result` 選定既定 | **既定フィルタ:** (1) 対象 `batch_run_id`（先行 BATCH-006 Run または明示） (2) `diff_status IN ('new','updated','unchanged')` を主処理。`unavailable` は skip 集計のみ (3) 件数上限 `BATCH_ITEM_APPLY_MAX_ITEMS` (4) 任意で明示 `external_item_code` リスト。`source` は Staging 経由で既定 `rakuten` | Human | **確定**（2026-07-16・MVP 初期） | 旧 §18.2 No.2 |
+| 13 | `unchanged` 時の画像 / レビュー | **原則 no-op**（item 業務列と同趣旨。hash 一致なら子も変更なし想定）。再同期が必要な運用は force フラグまたは別 Run で `updated` 扱いを検討 | Human | **確定**（2026-07-16・MVP 初期） | 旧 §18.2 No.3 |
+| 14 | `unavailable` スキップ詳細 | **Item 業務列 / `item_image` / `item_review_summary` を一切更新しない**。`last_checked_at` も更新しない（存在確認・無効化は BATCH-008）。既存 Item が無い `unavailable` も Insert しない | Human | **確定**（2026-07-16・MVP 初期） | product_diff_result §12.3 と整合。旧 §18.2 No.4 |
+| 15 | 画像空集合の同期置換 | Staging 画像 0 件でも同期置換を実行し、既存 URL を DELETE しうる | Human | **確定**（2026-07-16・MVP 初期） | §9.3。旧 §18.2 No.5 |
+| 16 | `new` 時の初期 `active_status` | DDL 既定（`active` / `true`）を使用。`availability` から導出しない | Human | **確定**（2026-07-16・MVP 初期） | §9.2。BATCH-008 境界。旧 §18.2 No.6 |
 
-### 18.2 MVP 初期確定案（Human 判断候補・提案）
+### 18.2 残未決事項（Human 判断）
 
-以下は本仕様書時点の **MVP 初期確定案（提案）** である。テーブル定義 Human 確定（§18.1）とは区別する。Human Review で採否を確定する。
-
-|  No | 論点 | 提案内容（MVP 初期確定案） | 判断者 | 状態 | 備考 |
-| --: | ---- | -------------------------- | ------ | ---- | ---- |
-| 1 | 子 workflow 配置 | **独立 YAML `batch-rakuten-item-apply.yml`（`batch-rakuten-item-apply*.yml`）を正とする案**。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **提案** | BATCH-005 / BATCH-006 同型。Epic `human_decision_points` |
-| 2 | `product_diff_result` 選定既定 | **既定フィルタ:** (1) 対象 `batch_run_id`（先行 BATCH-006 Run または明示） (2) `diff_status IN ('new','updated','unchanged')` を主処理。`unavailable` は skip 集計のみ (3) 件数上限 `BATCH_ITEM_APPLY_MAX_ITEMS` (4) 任意で明示 `external_item_code` リスト。`source` は Staging 経由で既定 `rakuten` | Human | **提案** | |
-| 3 | `unchanged` 時の画像 / レビュー | **原則 no-op**（item 業務列と同趣旨。hash 一致なら子も変更なし想定）。再同期が必要な運用は force フラグまたは別 Run で `updated` 扱いを検討 | Human | **提案** | |
-| 4 | `unavailable` スキップ詳細 | **Item 業務列 / `item_image` / `item_review_summary` を一切更新しない**。`last_checked_at` も更新しない（存在確認・無効化は BATCH-008）。既存 Item が無い `unavailable` も Insert しない | Human | **提案** | product_diff_result §12.3 と整合 |
-| 5 | 画像空集合の同期置換 | Staging 画像 0 件でも同期置換を実行し、既存 URL を DELETE しうる | Human | **提案** | §9.3 |
-| 6 | `new` 時の初期 `active_status` | DDL 既定（`active` / `true`）を使用。`availability` から導出しない | Human | **提案** | §9.2。BATCH-008 境界 |
-
-### 18.3 残未決事項（Human 判断）
-
-§18.2 No.1〜6 の採否が Human Review 待ちである。テーブル定義由来の §18.1 は確定済み。
+本仕様書時点で、Human 判断待ちの残未決事項はない（MVP 初期は旧 §18.2 推奨案をすべて採用）。
 
 ---
 
@@ -564,7 +558,7 @@ WHERE source = :source
 - `normalized_hash` 再算出が混入していない（Staging コピーのみ）
 - `unavailable` 原則スキップと `unchanged` の `last_checked_at` のみ更新が明記されている
 - 冪等キーがテーブル定義書 UNIQUE と一致し、一覧要約との差分（`item_image` / `item_review_summary`）が説明されている
-- §18.1（Human **確定**）と §18.2（**提案**）が区別されている
+- §18.1 の Human **確定**（テーブル定義 No.1〜10 / MVP 初期 No.11〜16）が本文・境界と矛盾していない
 - `item_popularity_signal` / `item_generation_queue` 非更新が明記されている
 - secret / `.env` 実値が含まれていない
 - PR target が親 Epic Branch（`feature/epic-1356-batch-007-item-apply`）である
@@ -603,6 +597,6 @@ WHERE source = :source
 - 本仕様書は実装・単体テスト Task の入力正本とする
 - 実装パス想定: `apps/batch/src/batch/application/item_apply/**`
 - 主要モジュール（バッチ処理一覧）: Item Updater / Item Image Updater / Item Review Summary Updater / Product Diff Result Reader / Batch Logger / Error Handler
-- 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親チェーン全体の改修は本 Epic 外（§18.2 No.1 **提案**）
+- 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親チェーン全体の改修は本 Epic 外（§18.1 No.11 **確定**）
 - Contract Gate 不要（Batch は HTTP API 化しない）
 - Epic #1356 / Task #1357
