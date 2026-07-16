@@ -19,9 +19,9 @@ branch:
 
 target:
   pr: null
-  issue: null
+  issue: 1372
   task_definition: "prompts/definitions/tasks/scr-008-error-display/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-1372-scr-008-error-display-implementation"
   target_branch: "feature/epic-1367-scr-008-error-display"
   parent_epic_issue: "[Epic]SCR-008:エラー表示"
   parent_epic_branch: "feature/epic-1367-scr-008-error-display"
@@ -66,7 +66,7 @@ input:
     path: "prompts/definitions/tasks/scr-008-error-display/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1372
     required: true
   pr:
     number: null
