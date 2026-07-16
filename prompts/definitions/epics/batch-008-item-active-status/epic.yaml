@@ -137,7 +137,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "batch-008-item-active-status"
-  name: null
+  name: "feature/epic-1379-batch-008-item-active-status"
   base: "develop"
   target: "develop"
   worktree_required: true
@@ -152,7 +152,7 @@ project:
     due_date: "2026-07-19"
 
 issue:
-  number: null
+  number: 1379
   unit: "epic"
   type: "feature"
   area: "batch"
@@ -284,7 +284,7 @@ stop_conditions:
   - "secret / .env 実値の記載が必要"
 
 notes:
-  - "Epic Issue / Branch は /start-epic で確定後に反映"
+  - "Epic Issue #1379 / Branch feature/epic-1379-batch-008-item-active-status（/start-epic 反映済み）"
   - "workstream_key: batch-008-item-active-status"
   - "実装パス: apps/batch/src/batch/application/item_active_status/**"
   - "既存仕様: docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md（#1227）"
