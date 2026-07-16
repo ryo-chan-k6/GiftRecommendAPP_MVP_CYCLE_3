@@ -6,7 +6,7 @@ review:
   title: "BATCH-008 仕様書整備 PRレビュー"
   summary: "BATCH-008 仕様書整備 Task の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1381
   issue:
     number: 1380
   task_definition: "prompts/definitions/tasks/batch-008-item-active-status/batch-spec-follow-up.yaml"
