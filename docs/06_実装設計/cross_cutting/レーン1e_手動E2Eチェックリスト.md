@@ -114,18 +114,15 @@
 | S6 | `pass` | alcohol NG で焼き菓子1件（ワイン除外）。API/UI いずれも件数1 |
 | S7 | `out_of_scope` | SCR-006 は別レーン |
 
-### Residual / 後続 Issue 候補
+### Residual / 後続 Issue（起票済）
 
-| 内容 | 扱い |
-| ---- | ---- |
-| SCR-001 `/` の client exception（HomePage Link / webpack `call`） | 別 Issue 候補（本 Task は apps 改修 out of scope） |
-| 0件が `GRS-REC-012` になり SCR-009 未到達 | 別 Issue 候補（reco/api empty 経路） |
-| 結果カード画像プレースホルダ | 観測のみ |
+| 内容 | Issue | 親 Epic |
+| ---- | ---- | ---- |
+| 0件が  になり SCR-009 未到達 | #1345 | #1344 |
+| SCR-001  の client exception（HomePage） | #1346 | #1344 |
+| 結果カード画像プレースホルダ | （未起票・低優先） | — |
 
-### Human 判断依頼
-
-1. S2 `fail` を残したまま D1 を受け入れ Close するか（推奨: Close 可＋0件経路を別 Issue）  
-2. SCR-001 `/` 例外を D1 Blocker にするか（推奨: 別 Issue。主導線は `/recommendations` から成立）  
+D1 本体（#1330）は Close 済み。residual 解消は Epic #1344 で追跡する。
 
 ---
 
@@ -148,3 +145,4 @@
 | ---- | ---- |
 | 2026-07-15 | 初版（Issue #1331）。環境ブロックにより実行は未達 |
 | 2026-07-15 | Docker 復旧後に S1/S3/S4/S5/S6 実施。S2 fail・SCR-001 residual を記録 |
+| 2026-07-16 | residual を Epic #1344 / Task #1345・#1346 として起票 |

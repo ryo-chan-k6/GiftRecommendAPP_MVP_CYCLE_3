@@ -1,0 +1,156 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-d1-residuals"
+  title: "レーン1e:D1 residual解消"
+  summary: "D1（#1330）で残した S2 empty→GRS-REC-012 と SCR-001 `/` client exception を子 Task で解消する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  D1 #1330 / PR #1340 で S2 fail と SCR-001 `/` residual を明示した。本 Epic で Issue 化し修正縦串を行う。
+
+objective: |
+  子 Task 2 件を起票・完了させ、D1 チェックリストから辿れる状態で develop へ統合する。
+
+scope:
+  - "empty 経路（0件 → SCR-009 到達）修正 Task"
+  - "SCR-001 HomePage client exception 修正 Task"
+  - "D1 チェックリストへの Issue リンク"
+
+out_of_scope:
+  - "D2 Playwright"
+  - "SCR-003/005/008/009 の包括仕様 Epic"
+  - "Reason 永続"
+  - "SCR-007 / BATCH"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task 2 件"
+  - "各 Task の修正成果"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が存在する"
+  - "子 Task 2 件が作成されている"
+  - "D1 チェックリストから Issue 番号を辿れる"
+
+branch:
+  no_branch: false
+  name: "fix/epic-1344-lane-1e-d1-residuals"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-20"
+
+issue:
+  unit: "epic"
+  type: "fix"
+  area: "web"
+
+epic_scope:
+  artifact_id: null
+  allowed_paths:
+    - "apps/reco/**"
+    - "apps/api/**"
+    - "apps/web/src/features/home/**"
+    - "apps/web/src/app/**"
+    - "apps/web/tests/**"
+    - "docs/06_実装設計/cross_cutting/**"
+    - "prompts/definitions/epics/lane-1e-d1-residuals/**"
+    - "prompts/definitions/tasks/lane-1e-d1-residuals/**"
+    - "prompts/definitions/reviews/lane-1e-d1-residuals/**"
+    - "ai-logs/experiments/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/**"
+  child_task_areas:
+    - "empty-path"
+    - "scr-001-homepage"
+
+dependencies:
+  epics:
+    - number: 1330
+      purpose: "D1 手動 E2E（residual 根拠）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "residual 2 件が子 Task に分離されているか"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "D1 residual Epic"
+
+human_decision_points:
+  - "empty を api で empty 応答にするか reco で抑止するか"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "secret 記載が必要に見える場合"
+
+notes:
+  - "本 Epic Issue: #1344"
+  - "D1 正本: docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md §6"

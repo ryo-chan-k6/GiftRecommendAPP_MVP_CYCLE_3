@@ -1,0 +1,124 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-d1-residuals-scr-001-homepage"
+  title: "レーン1e:SCR-001トップ画面client例外を解消する"
+  summary: "D1 residual。`/` の HomePage client exception（webpack call）を解消し、SCR-001→SCR-002 CTA を安定させる。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:D1 residual解消"
+  epic_issue_number: 1344
+  epic_branch: "fix/epic-1344-lane-1e-d1-residuals"
+  related_issues:
+    - number: 1346
+      purpose: "本 Task Issue"
+    - number: 1344
+      purpose: "親 Epic"
+    - number: 1330
+      purpose: "D1 根拠"
+    - number: 1255
+      purpose: "SCR-001 Epic（完了済み）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed: ["/start-task", "/work-issue", "/create-pr", "/fix-review-comments", "/summarize-work"]
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["support-ai", "test-ai"]
+  review: ["reviewer-ai", "test-ai"]
+
+phase: "implementation"
+
+background: |
+  D1 自動化で `/` が Application error（HomePage.tsx Link 付近、Cannot read properties of undefined reading 'call'）となった。
+
+objective: |
+  SCR-001 `/` が例外なく表示され、CTA から `/recommendations` へ遷移できる状態にする。
+
+scope:
+  - "apps/web/src/features/home/**"
+  - "apps/web/src/app/**（トップ関連・必要最小）"
+  - "apps/web/tests/**（必要最小）"
+  - "D1 チェックリスト更新"
+
+out_of_scope:
+  - "SCR-001 仕様の大幅改訂"
+  - "empty 経路（別 Task）"
+  - "OpenAPI / api / reco"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: true
+  files:
+    - path: "apps/web/src/features/home/HomePage.tsx"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+acceptance_criteria:
+  - "`/` が client exception なく表示される"
+  - "CTA から `/recommendations` へ遷移できる"
+  - "必要最小のテストまたは手動確認手順が残る"
+  - "secret なし"
+
+branch:
+  no_branch: false
+  name: null
+  base: "fix/epic-1344-lane-1e-d1-residuals"
+  target: "fix/epic-1344-lane-1e-d1-residuals"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "web"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "SCR-001 仕様逸脱がないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  unit_required: true
+  integration_required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "D1 SCR-001 residual"
+
+notes:
+  - "再現環境: Cursor browser / Next dev。通常ブラウザでも要確認"
