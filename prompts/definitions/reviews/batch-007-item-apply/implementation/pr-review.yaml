@@ -6,7 +6,7 @@ review:
   title: "BATCH-007 Item反映Batch実装 PRレビュー"
   summary: "BATCH-007 実装 Task（#1359）の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1363
   issue:
     number: 1359
   task_definition: "prompts/definitions/tasks/batch-007-item-apply/implementation.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1359
     required: true
   pr:
-    number: null
+    number: 1363
     required: true
   diff:
     required: true
@@ -98,4 +98,4 @@ review_points:
     - "batch-rakuten-item-apply.yml が独立子で親チェーン未改修か"
 
 notes:
-  - "Issue #1359。PR 番号は create-pr 後に反映"
+  - "Issue #1359 / PR #1363"
