@@ -33,6 +33,15 @@ function mapResultItem(
   if (typeof item.reasonSummary === "string") {
     mapped.reasonSummary = item.reasonSummary;
   }
+  if (
+    Array.isArray(item.reasonPoints) &&
+    item.reasonPoints.every((point) => typeof point === "string")
+  ) {
+    mapped.reasonPoints = item.reasonPoints as string[];
+  }
+  if (typeof item.reasonDetail === "string") {
+    mapped.reasonDetail = item.reasonDetail;
+  }
   if (Array.isArray(item.reasonBadges)) {
     mapped.reasonBadges =
       item.reasonBadges as PublicRecommendationResultItem["reasonBadges"];

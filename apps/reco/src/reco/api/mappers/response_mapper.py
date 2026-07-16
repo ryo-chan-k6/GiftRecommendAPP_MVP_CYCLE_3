@@ -191,6 +191,8 @@ def _map_result_item(
         if not reason_summary:
             reason_summary = "推薦候補として選定しました。"
 
+    reason_points = list(item.reason_points) if item.reason_points else None
+
     return InternalRecommendationResultItemResponse(
         recommendationResultItemId=result_item_id,
         itemId=item_id,
@@ -202,6 +204,8 @@ def _map_result_item(
         finalScore=final_score,
         scoreBreakdown=score_breakdown,
         reasonSummary=reason_summary,
+        reasonPoints=reason_points,
+        reasonDetail=item.reason_detail,
         reasonStatus=reason_status,
         isFallback=item.is_fallback,
     )
@@ -233,6 +237,8 @@ def _build_reason_data(
             ),
             reasonSummary=item.reason_summary,
             isFallback=item.is_fallback,
+            reasonDetail=item.reason_detail,
+            reasonPoints=list(item.reason_points) if item.reason_points else None,
         )
         for item in items
     ]
