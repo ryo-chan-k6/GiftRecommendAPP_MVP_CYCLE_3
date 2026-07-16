@@ -1,0 +1,156 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-008-error-display-epic-pr"
+  title: "SCR-008 エラー表示 Epic PRレビュー"
+  summary: "Epic #1367（SCR-008 エラー表示）の develop 向け統合 PR を AI Review する。画面仕様書・実装・単体テストの縦串成果を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue:
+    number: 1367
+  task_definition: "prompts/definitions/epics/scr-008-error-display/epic.yaml"
+  source_branch: "feature/epic-1367-scr-008-error-display"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]SCR-008:エラー表示"
+  parent_epic_branch: "feature/epic-1367-scr-008-error-display"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/scr-008-error-display/epic.yaml"
+    required: true
+  issue:
+    number: 1367
+    required: true
+  pr:
+    number: null
+    required: false
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-008_エラー表示画面仕様書.md"
+      required: true
+      purpose: "画面仕様書成果の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-008 行との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "画面状態・遷移との整合確認"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Epic scope / epic_scope.allowed_paths 内に差分が収まっているか"
+    - "Task PR が親 Epic Branch 経由で統合されているか（画面仕様書 / 実装 / 単体テスト）"
+    - "PR target が develop であるか"
+    - "PR 本文が Closes #1367 と整合するか（Epic PR）"
+  docs:
+    - "SCR-008 が画面状態として仕様化され、独立 route 新設がないか"
+    - "SCR-002 入力エラー / マスタ失敗との分担が明記されているか"
+  source:
+    - "RecommendationRunErrorView への切り出しと RecommendationInputPage 配線が仕様どおりか"
+    - "empty 経路を error に誤配線していないか"
+    - "専用エラー route や apps/api / reco / batch 変更が混入していないか"
+  tests:
+    - "RecommendationRunErrorView と RecommendationInputPage error 経路のテストが含まれているか"
+  security:
+    - "secret / .env 実値を含んでいないか"
+  epic_scope:
+    - "forbidden_paths（apps/api / reco / batch / openapi / db / home）への変更がないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: false
+  additional_criteria:
+    - "縦串（仕様書 → 実装 → UT）が Epic Branch に揃っている"
+    - "Human Review 観点が PR 本文に整理されている"
+    - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "縦串成果が揃っている"
+      - "epic_scope 外差分がない"
+      - "修正必須事項がない"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な不備がある"
+      - "PR 本文の不足"
+  needs_human_decision:
+    conditions:
+      - "再実行ボタンの MVP 採否（画面仕様 §6.2 Human Review 待ち）"
+      - "未実施手動 E2E を許容して develop merge してよいか判断が必要"
+  blocked:
+    conditions:
+      - "必須 Review Definition / Epic Definition が不足している"
+      - "縦串のいずれかの Task が親 Epic に未 merge"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "Epic PR の AI Review は PR コメントを正とする"
+
+notes:
+  - "Epic PR 作成後に target.pr / input.pr.number を実番号へ更新する"
+  - "画面仕様書: .../screen-spec/ / 実装: .../implementation/ / UT: .../unit-test/ / 本ファイルは Epic 専用"
+  - "/review-pr @prompts/definitions/reviews/scr-008-error-display/epic/pr-review.yaml"
