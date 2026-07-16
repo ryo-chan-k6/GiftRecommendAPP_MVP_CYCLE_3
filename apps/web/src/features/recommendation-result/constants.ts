@@ -22,6 +22,12 @@ export const DETAIL_TOGGLE_OPEN = "▼ 理由の詳細";
 export const DETAIL_EMPTY_GUIDE =
   "詳細な説明文はありません。カード上の要約・バッジをご確認ください。";
 
+/** SCR-005: cautionNote Alert タイトル */
+export const CAUTION_ALERT_TITLE = "注意";
+
+/** SCR-005: reasonPoints リストの accessible name */
+export const REASON_POINTS_LIST_LABEL = "推薦理由ポイント";
+
 export const FALLBACK_REASON_HINT = "一般的な推薦理由を表示しています";
 
 export const ITEM_DETAIL_LABEL = "商品詳細";

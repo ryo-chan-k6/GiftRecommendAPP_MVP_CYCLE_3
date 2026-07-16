@@ -8,24 +8,21 @@ import { PriceDisplay } from "@/components/display/PriceDisplay";
 import { RankBadge } from "@/components/display/RankBadge";
 import { ReasonSummary } from "@/components/display/ReasonSummary";
 import { Text } from "@/components/display/Text";
-import { Alert } from "@/components/feedback/Alert";
 import { ExternalLink } from "@/components/nav/ExternalLink";
 import { FeedbackInputModal } from "@/features/feedback-input";
 import type { PublicRecommendationResultItem } from "@/generated/api/giftRecommendationServicePublicAPI.schemas";
-import { cn } from "@/lib/cn";
 
 import {
-  DETAIL_EMPTY_GUIDE,
   DETAIL_TOGGLE_CLOSED,
   DETAIL_TOGGLE_OPEN,
   EXTERNAL_EC_LABEL,
   FALLBACK_REASON_HINT,
   FEEDBACK_LABEL,
   ITEM_DETAIL_LABEL,
-  REASON_DETAIL_MAX_HEIGHT_CLASS,
   buildItemDetailHref,
 } from "./constants";
 import { isSafeExternalUrl } from "./is-safe-external-url";
+import { ReasonDetailPanel } from "./ReasonDetailPanel";
 
 export type RecommendationResultItemProps = {
   item: PublicRecommendationResultItem;
@@ -103,37 +100,7 @@ export function RecommendationResultItem({
         >
           {open ? DETAIL_TOGGLE_OPEN : DETAIL_TOGGLE_CLOSED}
         </button>
-        {open ? (
-          <div
-            id={panelId}
-            className={cn(
-              "mt-2 overflow-y-auto rounded-md border border-border bg-surface p-3",
-              REASON_DETAIL_MAX_HEIGHT_CLASS,
-            )}
-          >
-            {item.cautionNote ? (
-              <Alert variant="warning" title="注意" className="mb-3">
-                {item.cautionNote}
-              </Alert>
-            ) : null}
-            {item.reasonSummary ? (
-              <Text className="mb-2">{item.reasonSummary}</Text>
-            ) : null}
-            {badges.length > 0 ? (
-              <ul className="mb-2 flex flex-wrap gap-2">
-                {badges.map((label) => (
-                  <li
-                    key={`detail-${label}`}
-                    className="rounded-sm bg-surface-muted px-2 py-0.5 text-small text-text-secondary"
-                  >
-                    {label}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <Text className="text-small text-text-muted">{DETAIL_EMPTY_GUIDE}</Text>
-          </div>
-        ) : null}
+        {open ? <ReasonDetailPanel item={item} panelId={panelId} /> : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
