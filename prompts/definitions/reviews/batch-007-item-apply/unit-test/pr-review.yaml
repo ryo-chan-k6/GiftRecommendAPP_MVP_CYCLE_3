@@ -18,7 +18,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1366
   issue:
     number: 1365
   task_definition: "prompts/definitions/tasks/batch-007-item-apply/unit-test.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1365
     required: true
   pr:
-    number: null
+    number: 1366
     required: true
   diff:
     required: true
@@ -91,4 +91,4 @@ review_points:
     - "secret / .env 実値がないか"
 
 notes:
-  - "Issue #1365。PR 番号は create-pr 後に反映"
+  - "Issue #1365 / PR #1366。status ready"
