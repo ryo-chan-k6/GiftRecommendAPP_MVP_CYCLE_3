@@ -22,6 +22,8 @@ parent:
     - number: 1397
       purpose: "前提 Contract Epic（Public reasonPoints/reasonDetail）"
   related_prs:
+    - number: 1403
+      purpose: "本 Task PR（実装）"
     - number: 1392
       purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
     - number: 1400

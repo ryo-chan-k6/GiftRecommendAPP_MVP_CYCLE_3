@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1403
   issue: 1402
   task_definition: "prompts/definitions/tasks/scr-005-reason-detail/implementation.yaml"
   source_branch: "feature/task-1402-scr-005-reason-detail-implementation"
@@ -69,7 +69,7 @@ input:
     number: 1402
     required: true
   pr:
-    number: null
+    number: 1403
     required: true
   diff:
     required: true
