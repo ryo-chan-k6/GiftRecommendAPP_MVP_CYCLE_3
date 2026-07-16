@@ -1,0 +1,121 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-d1-residuals-empty-path"
+  title: "レーン1e:0件経路をSCR-009到達可能にする"
+  summary: "D1 S2。候補0件時に GRS-REC-012 500 ではなく empty / SCR-009 相当へ到達できるようにする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:D1 residual解消"
+  epic_issue_number: 1344
+  epic_branch: "fix/epic-1344-lane-1e-d1-residuals"
+  related_issues:
+    - number: 1345
+      purpose: "本 Task Issue"
+    - number: 1344
+      purpose: "親 Epic"
+    - number: 1330
+      purpose: "D1 根拠"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed: ["/start-task", "/work-issue", "/create-pr", "/fix-review-comments", "/summarize-work"]
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support: ["support-ai", "test-ai"]
+  review: ["reviewer-ai", "test-ai"]
+
+phase: "implementation"
+
+background: |
+  D1 で budget 極小/過大時に PUB-002 が HTTP 500 GRS-REC-012 となり SCR-009 に到達できなかった。
+
+objective: |
+  候補0件をエラーではなく empty 結果として返し、web が SCR-009 相当を表示できるようにする。
+
+scope:
+  - "apps/reco の 0件 / empty 経路（必要最小）"
+  - "apps/api の empty マッピング（必要時）"
+  - "apps/web の 0件表示確認（必要時・最小）"
+  - "UT"
+  - "D1 チェックリスト更新"
+
+out_of_scope:
+  - "SCR-009 新規画面仕様 Epic 全体"
+  - "OpenAPI 破壊的変更（必要なら Contract Task 分離）"
+  - "SCR-001 HomePage（別 Task）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: true
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+acceptance_criteria:
+  - "0件条件で PUB-002 が 500 GRS-REC-012 にならない（empty または同等の非エラー）"
+  - "web で 0件相当 UI に到達できる、または到達手順が正本に残る"
+  - "UT で回帰を抑える"
+  - "secret なし"
+
+branch:
+  no_branch: false
+  name: "fix/task-1345-lane-1e-d1-empty-path"
+  base: "fix/epic-1344-lane-1e-d1-residuals"
+  target: "fix/epic-1344-lane-1e-d1-residuals"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "reco"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "empty と真正エラーの区別が壊れていないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  unit_required: true
+  integration_required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "D1 S2 residual"
+
+notes:
+  - "再現: budgetMax=1 または budget 9000-10000 等"

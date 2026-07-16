@@ -79,7 +79,7 @@ def _sample_context(
     run_id: str = DEFAULT_RUN_ID,
     trace_id: str = "trace-snapshot-builder",
 ) -> ExecutionContext:
-    builder_items = items or (_sample_builder_item(),)
+    builder_items = (_sample_builder_item(),) if items is None else items
     version_info = {
         "recommendation_result_id": DEFAULT_RESULT_ID,
         "result_item_count": str(len(builder_items)),

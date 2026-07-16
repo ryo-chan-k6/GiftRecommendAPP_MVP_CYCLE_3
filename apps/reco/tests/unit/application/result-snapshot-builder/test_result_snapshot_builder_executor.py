@@ -36,6 +36,20 @@ _EXPECTED_LOG_ATTRIBUTE_KEYS = frozenset(
 )
 
 
+# 0 件 empty: Matching short-circuit 後も GRS-REC-012 にならない
+def test_execute_succeeds_with_zero_result_item_count() -> None:
+    item_repository = InMemoryRecommendationResultItemRepository()
+    context = _sample_context(items=())
+    builder = build_snapshot_builder(item_repository=item_repository)
+
+    result_context = builder.execute(context)
+
+    assert MODULE_ID in result_context.completed_modules
+    assert result_context.snapshot_builder_item_count == 0
+    assert result_context.snapshot_build_success is True
+    assert DEFAULT_RESULT_ID not in item_repository.rows_by_result_id
+
+
 # §14 No.1 正常系（execute 経路）
 def test_execute_persists_item_snapshots_and_attaches_context_outputs() -> None:
     item_repository = InMemoryRecommendationResultItemRepository()

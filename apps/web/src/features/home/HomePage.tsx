@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { Heading } from "@/components/display/Heading";
 import { Text } from "@/components/display/Text";
 import { Container } from "@/components/layout/Container";
@@ -17,6 +15,9 @@ import {
 /**
  * SCR-001 トップ画面。
  * 主 CTA は SCR-002（/recommendations）へ遷移する。
+ *
+ * CTA は native `<a>`（仕様の「Link 等」）。Server Component 上の
+ * `next/link` が webpack `reading 'call'` 例外を起こすため避ける。
  */
 export function HomePage() {
   return (
@@ -28,7 +29,7 @@ export function HomePage() {
           {PAGE_DESCRIPTION}
         </Text>
         <div className="mt-8">
-          <Link
+          <a
             href={RECOMMENDATIONS_HREF}
             className={cn(
               "inline-flex h-12 items-center justify-center gap-2 rounded-sm px-6 text-body font-medium transition-colors",
@@ -37,7 +38,7 @@ export function HomePage() {
             )}
           >
             {CTA_LABEL}
-          </Link>
+          </a>
         </div>
         <Text className="mt-6 text-small text-text-muted">
           {NOTICE_EXTERNAL_EC}
