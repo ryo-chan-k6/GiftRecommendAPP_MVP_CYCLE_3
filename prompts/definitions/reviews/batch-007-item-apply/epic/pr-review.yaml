@@ -14,7 +14,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 1370
   issue:
     number: 1356
   task_definition: "prompts/definitions/epics/batch-007-item-apply/epic.yaml"
@@ -58,4 +59,4 @@ review_points:
   - "Epic PR target が develop であるか"
 
 notes:
-  - "縦串完了後に Epic PR 番号を反映し status を ready にする"
+  - "Epic PR #1370。縦串完了。Human Review 待ち"
