@@ -29,6 +29,9 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_ITEM_APPLY_MAX_ITEMS",
     "BATCH_ITEM_APPLY_SOURCE",
     "BATCH_ITEM_APPLY_DIFF_BATCH_RUN_ID",
+    "BATCH_ITEM_ACTIVE_STATUS_MAX_ITEMS",
+    "BATCH_ITEM_ACTIVE_STATUS_SOURCE",
+    "BATCH_ITEM_ACTIVE_STATUS_BATCH_RUN_ID",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -83,6 +86,9 @@ class BatchSettings:
     batch_item_apply_max_items: int | None
     batch_item_apply_source: str | None
     batch_item_apply_diff_batch_run_id: str | None
+    batch_item_active_status_max_items: int | None
+    batch_item_active_status_source: str | None
+    batch_item_active_status_batch_run_id: str | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -132,6 +138,9 @@ class BatchSettings:
             f"batch_item_apply_max_items={self.batch_item_apply_max_items!r}, "
             f"batch_item_apply_source={self.batch_item_apply_source!r}, "
             f"batch_item_apply_diff_batch_run_id={self.batch_item_apply_diff_batch_run_id!r}, "
+            f"batch_item_active_status_max_items={self.batch_item_active_status_max_items!r}, "
+            f"batch_item_active_status_source={self.batch_item_active_status_source!r}, "
+            f"batch_item_active_status_batch_run_id={self.batch_item_active_status_batch_run_id!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "
