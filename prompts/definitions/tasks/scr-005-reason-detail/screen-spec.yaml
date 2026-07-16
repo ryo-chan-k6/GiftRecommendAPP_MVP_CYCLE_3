@@ -1,0 +1,223 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-005-reason-detail-screen-spec"
+  title: "SCR-005:推薦理由詳細表示画面仕様書作成"
+  summary: "SCR-005（推薦理由詳細表示）の画面仕様書を、画面一覧・画面遷移図・SCR-004画面仕様書・API-PUB-002契約・Reason生成定義書に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-005:推薦理由詳細表示"
+  epic_issue_number: 1389
+  epic_branch: "feature/epic-1389-scr-005-reason-detail"
+  related_issues:
+    - number: null
+      purpose: "本 Task Issue（起票後に同期）"
+    - number: 1389
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、web 実装の前提となる画面仕様書を作成する。
+  SCR-005 は独立 URL 画面ではなく、SCR-004 内 Item 単位アコーディオンとして扱う（SCR-004 §7.4）。
+  D1 S5（理由詳細）は pass 済み。本 Task で正本仕様を固定し、Public フィールド欠落時の MVP 方針を明示する。
+
+objective: |
+  SCR-005（推薦理由詳細表示）について、実装・レビューが可能な粒度の画面仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-005 の画面仕様書を新規作成する（成果物: SCR-005_推薦理由詳細表示画面仕様書.md）"
+  - "画面目的・対象ユーザー・表示項目を整理する"
+  - "アコーディオン部品であること（独立 URL / モーダル専用ページではないこと）を整理する"
+  - "SCR-004 ホスト画面との分担（カード上要約 vs 展開詳細）を整理する"
+  - "Public に存在する reasonSummary / reasonBadges / cautionNote / isFallback の表示方針を整理する"
+  - "Public に無い reason_points / reason_detail の MVP 扱いを明示する（Human Review 観点）"
+  - "既存実装ギャップ（詳細文なし案内のみ等）を実装 Task 向けに整理する"
+
+out_of_scope:
+  - "他画面（SCR-005 以外）の画面仕様書作成（SCR-004 は参照のみ。必要最小限の相互参照追記は可）"
+  - "専用 route / モーダル専用ページの新設・実装"
+  - "OpenAPI / generated / ソースコード実装"
+  - "Reason 永続（reco/DB）・API-PUB-002 契約変更"
+  - "SCR-006 / SCR-007 / SCR-009 の本仕様変更"
+  - "apps/web/src/features/recommendation-input/** の変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-005 の画面ID・表示項目・操作・MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "部品／モーダル扱いと遷移を確認するため"
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+      purpose: "アコーディオン方針 §7.4 とホスト分担を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "Public Item 理由フィールドを確認するため"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "理由項目の意味を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "展開・注意表示のデザイン方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "Alert / ReasonSummary 等の部品を確認するため"
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: false
+      purpose: "D1 S5 合格条件との整合を確認するため"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書の章構成テンプレート"
+  files:
+    - path: "apps/web/src/features/recommendation-result/**"
+      required: false
+      purpose: "既存アコーディオン実装とのギャップ把握"
+  issues:
+    - number: 1389
+      purpose: "親 Epic"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-005_推薦理由詳細表示画面仕様書.md"
+      action: "create"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-005 画面仕様書"
+  - "SCR-004 との分担・Public フィールド MVP 方針の明示"
+
+acceptance_criteria:
+  - "SCR-005_推薦理由詳細表示画面仕様書.md が作成されている"
+  - "アコーディオン方針が SCR-004 §7.4 と整合している"
+  - "独立 URL / モーダル専用ページ非採用が明示されている"
+  - "Public に無い reason_points / reason_detail の MVP 扱いが Human Review 観点として明示されている"
+  - "epic_scope.allowed_paths 外へ変更していない"
+  - "secret / .env 実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-<issue>-scr-005-reason-detail-screen-spec"
+  base: "feature/epic-1389-scr-005-reason-detail"
+  target: "feature/epic-1389-scr-005-reason-detail"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1389
+      title: "[Epic]SCR-005:推薦理由詳細表示"
+      purpose: "親 Epic"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "implementation"
+  exclusive_files:
+    - "docs/06_実装設計/web/SCR-005_*"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "画面仕様書の章構成がテンプレートに概ね準拠していること"
+    - "SCR-004 §7.4 と矛盾する記述がないこと"
+  not_required:
+    - "unit test"
+    - "e2e"
+  skip_reason:
+    "unit test": "本 Task は docs のみ"
+    "e2e": "本 Task は docs のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "アコーディオン方針と Public フィールド MVP 方針が明確か"
+    - "Human 判断事項が断定表現になっていないか"
+    - "SCR-009 / OpenAPI / Reason 永続を混入していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の画面仕様 Task。作業計画は Issue、レビューは PR を正本とする。"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "OpenAPI 破壊的変更が必須と判断された場合（Human 確認へ）"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-005:推薦理由詳細表示画面仕様書作成"
+  - "親Epic: #1389 / Branch: feature/epic-1389-scr-005-reason-detail"
+  - "PR 本文は Related to（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/scr-005-reason-detail/screen-spec/pr-review.yaml"

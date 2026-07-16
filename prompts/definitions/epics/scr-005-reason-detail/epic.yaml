@@ -1,0 +1,270 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-005-reason-detail"
+  title: "SCR-005:推薦理由詳細表示"
+  summary: "SCR-005（推薦理由詳細表示）に関する画面仕様書・実装・単体テストを管理するEpic。独立URL画面ではなく、SCR-004 内の Item 単位アコーディオン部品として仕様化し、Public 理由フィールド表示との整合を担当する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計および 07_開発・単体テストにおいて、SCR-005（推薦理由詳細表示）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  SCR-004 画面仕様書 §7.4 で、SCR-005 は Item 内アコーディオン（独立 route・モーダル非採用）と確定している。
+  既存実装は要約・バッジ・caution 再掲＋詳細文なし案内まで。本 Epic で専用画面仕様書を正本化し、ギャップを縦串で解消する。
+  依存 Epic（SCR-004 #1236 / API-PUB-002 #357）は develop merge 済み。
+  SCR-009 #1382 は別エージェント並列のため、本 Epic では recommendation-input を触らない。
+  子 Task は画面仕様書・実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+
+objective: |
+  SCR-005 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "SCR-005 に関する子 Task の作業単位を整理する（画面仕様書 / 画面実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/scr-005-reason-detail/**）を整理する"
+  - "SCR-005 を SCR-004 内アコーディオン部品として仕様化し、既存理由詳細 UI との整合を取る"
+  - "Public 応答に無い reason_points / reason_detail の MVP 扱いを screen-spec で整理する"
+
+out_of_scope:
+  - "専用の推薦理由詳細 URL route / モーダル専用ページの新設"
+  - "SCR-009 / SCR-003 / SCR-008 の包括仕様・実装変更"
+  - "apps/web/src/features/recommendation-input/** の変更（SCR-009 並列衝突回避）"
+  - "OpenAPI / packages/contracts / generated の破壊的変更（フィールド追加が必要なら別 Epic / Contract Gate）"
+  - "apps/api / apps/reco / apps/batch の本実装変更"
+  - "Reason 永続（recommendation_reason Postgres 配線）そのもの"
+  - "DB schema 変更"
+  - "SCR-006 / SCR-007 の本仕様変更（導線言及に留める）"
+  - "認証・認可方式そのものの変更"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "対象画面 SCR-005 の画面ID・画面名・画面種別・表示項目・MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-005 が部品／モーダル扱いであること、および結果一覧との遷移を確認するため"
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+      purpose: "SCR-005 アコーディオン方針（§7.4）とホスト画面分担を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "Public Item の理由フィールド（reasonSummary / reasonBadges / cautionNote）を確認するため"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "理由項目（summary / points / detail / badges / caution）の意味を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "展開・注意表示のデザイン方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "Alert / ReasonSummary 等の部品責務を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針と epic_scope.allowed_paths の境界例を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約・命名規則を確認するため"
+  templates: []
+  files: []
+  issues:
+    - number: 1389
+      purpose: "本 Epic Issue"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]SCR-005:推薦理由詳細表示）"
+  - "Epic Branch（develop 起点 / feature/epic-1389-scr-005-reason-detail）"
+  - "子 Task 候補一覧（画面仕様書 / 画面実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]SCR-005:推薦理由詳細表示 形式である（Task Definition設計書 §15.0）"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位（画面仕様書 / 画面実装 / 単体テスト）が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が SCR-005 責務と整合している"
+  - "dependencies.epics に SCR-004 / API-PUB-002 が記載されている"
+  - "専用 route / モーダルページ新設が out_of_scope として明示されている"
+  - "recommendation-input 変更が out_of_scope（SCR-009 並列）として明示されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1389-scr-005-reason-detail"
+  summary: "scr-005-reason-detail"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "web"
+
+epic_scope:
+  artifact_id: "SCR-005"
+  allowed_paths:
+    - "docs/06_実装設計/web/SCR-005_*"
+    - "docs/06_実装設計/web/SCR-004_*"
+    - "apps/web/src/features/recommendation-result/**"
+    - "apps/web/src/components/**"
+    - "apps/web/src/lib/**"
+    - "apps/web/tests/**"
+    - "prompts/definitions/epics/scr-005-reason-detail/**"
+    - "prompts/definitions/tasks/scr-005-reason-detail/**"
+    - "prompts/definitions/reviews/scr-005-reason-detail/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "packages/contracts/**"
+    - "db/**"
+    - "apps/web/src/features/home/**"
+    - "apps/web/src/features/recommendation-input/**"
+    - "apps/web/src/app/page.tsx"
+  child_task_areas:
+    - "screen-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1236
+      title: "[Epic]SCR-004:レコメンド結果一覧画面"
+      purpose: "SCR-005 のホスト画面（develop merge 済み）。アコーディオン方針 §7.4 の前提"
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "Public Item 理由フィールドの前提（develop merge 済み）"
+    - issue: 1382
+      title: "[Epic]SCR-009:0件結果表示"
+      purpose: "並列識別子。recommendation-input を本 Epic では変更しない"
+  issues:
+    - number: 1389
+      purpose: "本 Epic Issue"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/web/src/features/recommendation-result/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が SCR-005（推薦理由詳細＝部品）に閉じているか確認する"
+    - "専用 route / モーダルページを新設する設計になっていないか確認する"
+    - "依存 Epic SCR-004 / API-PUB-002 が develop 済みか確認する"
+    - "SCR-009 並列のため recommendation-input を混入していないか確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が SCR-005 に閉じているか"
+    - "アコーディオン方針が SCR-004 §7.4 と矛盾していないか"
+    - "専用 route 新設が out_of_scope か"
+    - "Public に無い reason_points / reason_detail の扱いが Human 判断可能に整理されているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "SCR-005 縦串の通常 Epic 管理。作業計画は Issue、統合は Epic PR を正本とする。"
+
+risk_points:
+  - "Task PR を誤って develop へ直接向ける運用ミス"
+  - "専用 route / モーダルページを本 Epic で新設してしまう運用ミス"
+  - "OpenAPI 破壊的変更を本 Epic に混入する運用ミス"
+  - "SCR-009 並列中に recommendation-input を変更する競合"
+  - "Reason 永続（reco/DB）を本 Epic に混入する運用ミス"
+
+human_decision_points:
+  - "SCR-005 は SCR-004 内アコーディオンとして仕様化する（独立 URL・モーダル専用ページではない）。画面一覧の「モーダル」表記との整合は screen-spec で整理し Human Review で確認"
+  - "Public Response に reason_points / reason_detail が無い現状での MVP 表示方針（要約再掲＋案内 vs Contract 拡張）は screen-spec で整理し Human Review で採否"
+  - "SCR-006 内からの理由詳細導線は本 Epic では深掘りしない（言及に留める）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-005 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "専用 route 新設または OpenAPI 破壊的変更が必須と判断された場合（Human 確認へ）"
+  - "Task PR の target が develop に向く設計が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、画面仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "命名の正本は Task Definition設計書 §15.0（Epic）・§15.3（画面 Task）"
+  - "最初の子 Task: prompts/definitions/tasks/scr-005-reason-detail/screen-spec.yaml"
+  - "依存 Epic: #1236 SCR-004 / #357 API-PUB-002（いずれも develop merge 済み）"
+  - "本 Epic Issue: #1389 / Epic Branch: feature/epic-1389-scr-005-reason-detail"
+  - "SCR-009 #1382 と並列のため recommendation-input は forbidden"
