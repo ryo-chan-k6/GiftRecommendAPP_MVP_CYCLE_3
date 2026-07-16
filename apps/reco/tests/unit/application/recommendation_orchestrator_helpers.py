@@ -209,63 +209,11 @@ def ports_with_output_stubs(ports: OrchestratorPorts) -> OrchestratorPorts:
 def _patch_output_stubs_for_matching_zero_short_circuit(
     ports: OrchestratorPorts,
 ) -> OrchestratorPorts:
-    """Matching 0 件 short-circuit 後も 021 / 022 が呼ばれる経路向け scaffold Output Stub。"""
-    from reco.application.final_ranker.models import RankedItems
-    from reco.domain import RecommendationResult, RecommendationResultItem, ResultStatus
+    """Matching 0 件 short-circuit 経路で本実装 021/022 を通す（空結果回帰用）。
 
-    snapshot_builder = ports.snapshot_builder
-
-    def snapshot_execute(context: ExecutionContext) -> ExecutionContext:
-        context.completed_modules.append(snapshot_builder.module_id)
-        return context
-
-    snapshot_builder.execute = snapshot_execute  # type: ignore[method-assign]
-
-    result_builder = ports.result_builder
-
-    def result_execute(context: ExecutionContext) -> ExecutionContext:
-        context.completed_modules.append(result_builder.module_id)
-        if context.recommendation_result is not None:
-            return context
-
-        run_id = context.run_id or "run-scaffold"
-        ranked_items = context.ranked_items
-        if isinstance(ranked_items, RankedItems) and ranked_items.entries:
-            items = tuple(
-                RecommendationResultItem(
-                    item_id=entry.item_id,
-                    rank=entry.rank,
-                    final_score=entry.final_score,
-                    reason_summary=None,
-                    reason_status=None,
-                    is_fallback=False,
-                )
-                for entry in ranked_items.entries
-            )
-            result_status = ResultStatus.COMPLETED
-        else:
-            items = (
-                RecommendationResultItem(
-                    item_id="item-scaffold-1",
-                    rank=1,
-                    final_score=0.75,
-                    reason_summary=None,
-                    reason_status=None,
-                    is_fallback=False,
-                ),
-            )
-            result_status = ResultStatus.COMPLETED
-
-        context.recommendation_result = RecommendationResult(
-            run_id=run_id,
-            request_id=context.recommendation_request.request_id,
-            items=items,
-            result_status=result_status,
-            version_info=dict(context.config_versions),
-        )
-        return context
-
-    result_builder.execute = result_execute  # type: ignore[method-assign]
+    以前は stub で ranked_items 欠落を隠していたが、本番は本実装が呼ばれるため
+    Orchestrator が空 RankedItems を供給し、021/022 が empty を正常完了する前提で検証する。
+    """
     return ports
 
 

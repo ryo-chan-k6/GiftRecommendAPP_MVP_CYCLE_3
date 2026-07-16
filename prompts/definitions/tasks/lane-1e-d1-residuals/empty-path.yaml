@@ -83,7 +83,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "fix/task-1345-lane-1e-d1-empty-path"
   base: "fix/epic-1344-lane-1e-d1-residuals"
   target: "fix/epic-1344-lane-1e-d1-residuals"
   worktree_required: true

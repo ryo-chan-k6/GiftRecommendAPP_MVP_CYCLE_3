@@ -399,6 +399,12 @@ def test_section19_zero_matching_skips_matching_ranking_and_returns_empty_result
     assert "MOD-RECO-016" not in completed
     assert "MOD-RECO-017" not in completed
     assert "MOD-RECO-020" not in completed
+    # 本番配線（本実装 021/022/023）でも GRS-REC-012 にならず empty 完了する
+    assert "MOD-RECO-021" in completed
+    assert "MOD-RECO-022" in completed
+    assert "MOD-RECO-023" in completed
+    assert outcome.execution_context.ranked_items is not None
+    assert outcome.execution_context.ranked_items.entries == ()
     assert outcome.execution_context.feature_matcher_candidate_count == 0
     assert outcome.recommendation_result is not None
     assert outcome.recommendation_result.item_count == 0

@@ -43,9 +43,16 @@ def parse_reason_generator_input(context: ExecutionContext) -> ReasonGeneratorIn
             "result_item_count must be an integer",
         ) from exc
 
-    if result_item_count < 1:
+    if result_item_count < 0:
         raise ReasonGeneratorError(
-            "result_item_count must be >= 1 for reason generator",
+            "result_item_count must be >= 0 for reason generator",
+        )
+
+    # 0 件 empty 結果では理由生成対象がない（Matching short-circuit 後など）。
+    if result_item_count == 0:
+        return ReasonGeneratorInput(
+            result_item_count=0,
+            items=(),
         )
 
     items = _parse_items(version_info, context)
