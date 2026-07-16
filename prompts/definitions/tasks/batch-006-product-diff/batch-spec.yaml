@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-006-product-diff-batch-spec"
+  title: "BATCH-006:商品差分判定バッチ仕様書作成"
+  summary: "BATCH-006（商品差分判定Batch）のバッチ仕様書を作成する。staging_item と item の hash 比較、product_diff_result 記録、Item 非更新境界を整理する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-006:商品差分判定Batch"
+  epic_issue_number: 1341
+  epic_branch: "feature/epic-1341-batch-006-product-diff"
+  related_issues: []
+  related_prs:
+    - number: 1339
+      purpose: "先行 BATCH-005 Epic MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase4b 差分判定段。Epic #1341 bootstrap 済み。BATCH-005（#1307）develop merge 済み。
+  product_diff_result テーブル定義書・BATCH-005 仕様書を正として、バッチ仕様書を作成する。
+
+objective: |
+  `docs/06_実装設計/batch/BATCH-006_商品差分判定バッチ仕様書.md` を作成し、後続実装 Task の正本とする。
+
+scope:
+  - "BATCH-006 バッチ仕様書の作成（概要・入出力・Phase・判定ロジック・冪等・エラー・§16・境界）"
+  - "hash 比較のみ（再算出なし）/ Item 非更新 / product_diff_result が判定正本であることの明記"
+  - "独立 workflow 提案（batch-rakuten-product-diff.yml）と staging 選定既定を §18 で提案/確定区別"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Python 実装・workflow YAML・UT"
+  - "DB schema / migration"
+  - "BATCH-007 / 008 / 009 詳細実装設計"
+  - "他 Batch 仕様書の全面書き換え"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-006 正本"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "UNIQUE・diff_status・後続分岐"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "比較入力"
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      required: true
+      purpose: "先行境界"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "差分判定方針"
+    - path: "prompts/templates/docs/batch-spec.md"
+      required: true
+      purpose: "章構成"
+  templates: []
+  files: []
+  issues: []
+  prs:
+    - number: 1339
+      purpose: "BATCH-005"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-006_商品差分判定バッチ仕様書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-006-product-diff/batch-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-006-product-diff/batch-spec/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-006 商品差分判定バッチ仕様書"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "BATCH-006_商品差分判定バッチ仕様書.md が作成されている"
+  - "バッチ処理一覧 BATCH-006 と矛盾しない"
+  - "hash 再算出なし・Item 非更新・product_diff_result 正本が明記されている"
+  - "§18 で Human 提案とテーブル定義 Human 確定が区別されている"
+  - "secret / .env 実値を含まない"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1342-batch-006-product-diff-batch-spec"
+  summary: "batch-006-product-diff-batch-spec"
+  base: "feature/epic-1341-batch-006-product-diff"
+  target: "feature/epic-1341-batch-006-product-diff"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-19"
+
+issue:
+  number: 1342
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1341
+      title: "[Epic]BATCH-006:商品差分判定Batch"
+      purpose: "親 Epic"
+    - issue: 1307
+      title: "[Epic]BATCH-005:Raw取込・Staging変換Batch"
+      purpose: "先行（CLOSED）"
+  issues: []
+  prs:
+    - number: 1339
+      purpose: "BATCH-005 MERGED"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-batch-006-product-diff-implementation"
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-006_*"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "バッチ処理一覧・product_diff_result 定義書と矛盾しないか"
+    - "Item 非更新・hash 比較のみが明記されているか"
+    - "Human 提案と確定の区別"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch 仕様書縦串"
+
+human_decision_points:
+  - "独立 YAML（batch-rakuten-product-diff.yml）方針"
+  - "staging 選定既定（staged / diff_status NULL 等）"
+  - "unavailable 判定条件の詳細"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "親 Epic Issue / Branch が未確定の場合"
+  - "正本docs間に解消不能な矛盾がある場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-006:商品差分判定バッチ仕様書作成"
+  - "後続: implementation → unit-test → Epic PR"
