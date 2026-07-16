@@ -6,4 +6,5 @@ export {
   fetchRelationshipMasters,
   fetchSemanticConfigMasters,
   postRecommendationRun,
+  submitFeedback,
 } from "./public-api";

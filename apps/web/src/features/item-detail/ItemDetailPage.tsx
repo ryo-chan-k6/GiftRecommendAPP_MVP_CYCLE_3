@@ -127,7 +127,11 @@ export function ItemDetailPage() {
       ) : null}
 
       {state.status === "ready" ? (
-        <ItemDetailView item={state.item} context={state.context} />
+        <ItemDetailView
+          item={state.item}
+          context={state.context}
+          resultId={fromResultId}
+        />
       ) : null}
     </PageLayout>
   );
