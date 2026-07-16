@@ -93,7 +93,9 @@ input:
   issues:
     - number: 1389
       purpose: "本 Epic Issue"
-  prs: []
+  prs:
+    - number: 1409
+      purpose: "本 Epic PR"
 
 output:
   docs: []
@@ -188,7 +190,15 @@ dependencies:
   issues:
     - number: 1389
       purpose: "本 Epic Issue"
-  prs: []
+  prs:
+    - number: 1409
+      purpose: "本 Epic PR（develop 統合）"
+    - number: 1392
+      purpose: "画面仕様書 Task PR"
+    - number: 1403
+      purpose: "実装 Task PR"
+    - number: 1405
+      purpose: "単体テスト Task PR"
   tasks: []
   blocking: false
 

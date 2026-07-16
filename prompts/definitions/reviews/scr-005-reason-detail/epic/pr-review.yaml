@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1409
   issue:
     number: 1389
   task_definition: "prompts/definitions/epics/scr-005-reason-detail/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1389
     required: true
   pr:
-    number: null
+    number: 1409
     required: false
   diff:
     required: true
