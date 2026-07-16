@@ -6,7 +6,7 @@ review:
   title: "BATCH-008 商品有効状態更新Batch Epic PRレビュー"
   summary: "BATCH-008 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様整備→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,7 +14,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 1396
   issue:
     number: 1379
   task_definition: "prompts/definitions/epics/batch-008-item-active-status/epic.yaml"
@@ -57,4 +58,4 @@ review_points:
   - "Epic PR target が develop"
 
 notes:
-  - "縦串完了後に Epic PR 番号を反映し status を ready にする"
+  - "Issue #1379 / PR #1396"
