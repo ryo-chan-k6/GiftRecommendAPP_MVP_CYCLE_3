@@ -435,6 +435,28 @@ class RecommendationOrchestrator:
         self,
         context: ExecutionContext,
     ) -> ExecutionContext:
+        """Matching 0 件 short-circuit 後も 021/022 が空結果を正常完了できるようにする。
+
+        015–020 をスキップすると ranked_items が欠けるため、空 RankedItems を先に置く。
+        これがないと MOD-RECO-021 が GRS-REC-012（ranked_items required）になる。
+        """
+        from reco.application.final_ranker.constants import DEFAULT_TOP_K_DEFAULT
+        from reco.application.final_ranker.models import RankedItems
+
+        execution = context.recommendation_request.execution
+        top_k = (
+            execution.top_k
+            if execution is not None and execution.top_k is not None
+            else DEFAULT_TOP_K_DEFAULT
+        )
+        context.ranked_items = RankedItems(
+            entries=(),
+            total_selected=0,
+            top_k_used=top_k,
+            mmr_candidate_pool_size=0,
+            mmr_applied=False,
+        )
+
         run_id = context.run_id or "run-empty"
         context.recommendation_result = RecommendationResult(
             run_id=run_id,

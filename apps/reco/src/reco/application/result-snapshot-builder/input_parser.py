@@ -43,9 +43,17 @@ def parse_snapshot_builder_input(context: ExecutionContext) -> SnapshotBuilderIn
             "result_item_count must be an integer",
         ) from exc
 
-    if result_item_count < 1:
+    if result_item_count < 0:
         raise ResultSnapshotBuilderError(
-            "result_item_count must be >= 1 for snapshot builder",
+            "result_item_count must be >= 0 for snapshot builder",
+        )
+
+    # Matching / Ranking short-circuit 後の 0 件は明細なしで成功終了する（021 empty と整合）。
+    if result_item_count == 0:
+        return SnapshotBuilderInput(
+            recommendation_result_id=recommendation_result_id,
+            result_item_count=0,
+            items=(),
         )
 
     items = _parse_items(version_info, recommendation_result_id, context)

@@ -116,8 +116,9 @@ def generate_reasons_for_run(
 def aggregate_outcome(
     generated: tuple[GeneratedReason, ...],
 ) -> ReasonGenerationOutcome:
+    # 0 件 empty は理由対象なしの正規完了（Matching short-circuit 後など）。
     if not generated:
-        return ReasonGenerationOutcome.UNRECOVERABLE
+        return ReasonGenerationOutcome.SUCCESS
     if any(reason.is_fallback for reason in generated):
         return ReasonGenerationOutcome.INTERNAL_FALLBACK
     return ReasonGenerationOutcome.SUCCESS

@@ -82,7 +82,8 @@
 | 狙い | 候補が残らない条件、または API empty |
 | 合格 | SCR-009 相当 UI + 条件入力へ戻れる |
 | 記録 | 条件概要（個人情報なし）・件数 0・合否 |
-| 本実行 | `budgetMax=1` および `budget 9000-10000` とも API **HTTP 500** `GRS-REC-012`。`resultStatus=empty` 未達 → SCR-009 UI に到達不能。**合否 `fail`（製品ギャップ）** |
+| 本実行（D1） | `budgetMax=1` および `budget 9000-10000` とも API **HTTP 500** `GRS-REC-012`。`resultStatus=empty` 未達 → SCR-009 UI に到達不能。**合否 `fail`（製品ギャップ）** |
+| 修正（#1345） | Matching 0 件 short-circuit 後に空 `ranked_items` を供給し、021/022/023 が empty を正常完了するよう修正。UT で本実装配線の empty 完了を回帰防止。**手動再検証は Human Review 前または後続で実施** |
 
 ### S3 エラー
 
@@ -107,7 +108,7 @@
 | ID | 結果 | 実施メモ |
 | ---- | ---- | -------- |
 | S1 | `pass` | SCR-002→003→004。件数1・価格表示。SCR-001(`/`) は HomePage `Cannot read properties of undefined (reading 'call')` で自動化失敗（残） |
-| S2 | `fail` | 0件条件が `GRS-REC-012` 500 になり SCR-009 未達 |
+| S2 | `fail`（D1）→ `#1345` で修正中 | D1 時点は `GRS-REC-012`。#1345 で empty 経路修正・UT 追加。手動再検証待ち |
 | S3 | `pass` | api 停止→エラー UI→条件入力へ戻る |
 | S4 | `pass` | 再検索リンクで SCR-002 復帰 |
 | S5 | `pass` | 「理由の詳細」展開で要約表示 |
@@ -146,3 +147,4 @@ D1 本体（#1330）は Close 済み。residual 解消は Epic #1344 で追跡�
 | 2026-07-15 | 初版（Issue #1331）。環境ブロックにより実行は未達 |
 | 2026-07-15 | Docker 復旧後に S1/S3/S4/S5/S6 実施。S2 fail・SCR-001 residual を記録 |
 | 2026-07-16 | residual を Epic #1344 / Task #1345・#1346 として起票 |
+| 2026-07-16 | #1345: Matching 0 件後の empty 経路修正内容を S2 に追記（手動再検証は未実施） |
