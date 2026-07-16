@@ -307,7 +307,7 @@ parent:
 
 branch:
   no_branch: false
-  name: "contract/task-1398-api-pub-002-public-reason-points-detail"
+  name: "feature/task-1398-api-pub-002-public-reason-points-detail"
   summary: "api-pub-002-public-reason-points-detail"
   base: "feature/epic-1397-api-pub-002-public-reason-detail-fields"
   target: "feature/epic-1397-api-pub-002-public-reason-detail-fields"
@@ -414,7 +414,7 @@ stop_conditions:
   - "secret / .env 実値の記載が必要に見える場合"
 
 notes:
-  - "本 Task Issue: #1398 / Branch: contract/task-1398-api-pub-002-public-reason-points-detail"
+  - "本 Task Issue: #1398 / Branch: feature/task-1398-api-pub-002-public-reason-points-detail"
   - "親 Epic: #1397 / Branch: feature/epic-1397-api-pub-002-public-reason-detail-fields"
   - "入力正本: ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md"
   - "次 Command: /work-issue @prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/contract-task.yaml"
