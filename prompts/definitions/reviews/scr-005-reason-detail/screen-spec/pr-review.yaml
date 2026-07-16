@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1392
   issue: 1390
   task_definition: "prompts/definitions/tasks/scr-005-reason-detail/screen-spec.yaml"
   source_branch: "docs/task-1390-scr-005-reason-detail-screen-spec"
@@ -69,7 +69,7 @@ input:
     number: 1390
     required: true
   pr:
-    number: null
+    number: 1392
     required: true
   diff:
     required: true
