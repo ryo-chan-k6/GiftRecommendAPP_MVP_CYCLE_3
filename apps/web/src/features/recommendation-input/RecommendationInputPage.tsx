@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Alert } from "@/components/feedback/Alert";
 import { Button } from "@/components/action/Button";
 import { EmptyState } from "@/components/feedback/EmptyState";
-import { LoadingPanel } from "@/components/feedback/LoadingPanel";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Text } from "@/components/display/Text";
 import { ResultStatus } from "@/generated/api/giftRecommendationServicePublicAPI.schemas";
@@ -18,7 +17,6 @@ import {
   MASTERS_EMPTY_MESSAGE,
   MASTERS_ERROR_MESSAGE,
   RUN_ERROR_FALLBACK_MESSAGE,
-  RUNNING_MESSAGE,
 } from "./constants";
 import {
   persistFormValues,
@@ -27,6 +25,7 @@ import {
 } from "./form-persistence";
 import { isErrorResponse, loadRecommendationMasters } from "./load-masters";
 import { RecommendationInputForm } from "./RecommendationInputForm";
+import { RecommendationRunningPanel } from "./RecommendationRunningPanel";
 import type {
   MastersLoadState,
   RecommendationInputFieldErrors,
@@ -37,9 +36,22 @@ import type {
 import { createEmptyFormValues } from "./types";
 import { hasFieldErrors, validateRecommendationInput } from "./validation";
 
+function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as { name?: string }).name === "AbortError"
+  );
+}
+
 export function RecommendationInputPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const runAbortRef = useRef<AbortController | null>(null);
 
   const [phase, setPhase] = useState<ScreenPhase>("form");
   const [masters, setMasters] = useState<MastersLoadState>({
@@ -51,6 +63,12 @@ export function RecommendationInputPage() {
   const [errors, setErrors] = useState<RecommendationInputFieldErrors>({});
   const [runError, setRunError] = useState<RunErrorState | null>(null);
   const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      runAbortRef.current?.abort();
+    };
+  }, []);
 
   const refreshMasters = useCallback(async () => {
     setMasters({ status: "loading" });
@@ -141,6 +159,10 @@ export function RecommendationInputPage() {
     setPhase("running");
     setRunError(null);
 
+    runAbortRef.current?.abort();
+    const controller = new AbortController();
+    runAbortRef.current = controller;
+
     const request = buildRecommendationRunRequest(
       values,
       relationships,
@@ -148,7 +170,12 @@ export function RecommendationInputPage() {
     );
 
     try {
-      const response = await postRecommendationRun(request);
+      const response = await postRecommendationRun(request, {
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) {
+        return;
+      }
       if (response.status !== 200) {
         const payload = response.data;
         setRunError({
@@ -177,9 +204,16 @@ export function RecommendationInputPage() {
       }
 
       router.push(`/recommendations/${result.recommendationResultId}`);
-    } catch {
+    } catch (error) {
+      if (controller.signal.aborted || isAbortError(error)) {
+        return;
+      }
       setRunError({ message: RUN_ERROR_FALLBACK_MESSAGE });
       setPhase("error");
+    } finally {
+      if (runAbortRef.current === controller) {
+        runAbortRef.current = null;
+      }
     }
   }, [
     masters.status,
@@ -191,15 +225,7 @@ export function RecommendationInputPage() {
   ]);
 
   if (phase === "running") {
-    return (
-      <PageLayout title="レコメンド実行中">
-        <LoadingPanel message={RUNNING_MESSAGE}>
-          <Text className="text-small text-text-muted">
-            しばらくお待ちください。
-          </Text>
-        </LoadingPanel>
-      </PageLayout>
-    );
+    return <RecommendationRunningPanel />;
   }
 
   if (phase === "empty") {
