@@ -416,5 +416,6 @@ stop_conditions:
 notes:
   - "本 Task Issue: #1398 / Branch: feature/task-1398-api-pub-002-public-reason-points-detail"
   - "親 Epic: #1397 / Branch: feature/epic-1397-api-pub-002-public-reason-detail-fields"
+  - "正本 Definition パス: prompts/definitions/contracts/api-pub-002-public-reason-points-detail/contract-task.yaml（Harness resolver 用）"
   - "入力正本: ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md"
-  - "次 Command: /work-issue @prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/contract-task.yaml"
+  - "次 Command: /work-issue @prompts/definitions/contracts/api-pub-002-public-reason-points-detail/contract-task.yaml"

@@ -4,11 +4,14 @@ definition_type: "review"
 review:
   id: "review-api-pub-002-public-reason-points-detail-contract"
   title: "API-PUB-002 Public reasonPoints/reasonDetail Contract PR Review"
-  target_pr: null
+  target_pr: 1399
   related_issues:
     - 1398
     - 1397
     - 1389
+
+target:
+  task_definition: "prompts/definitions/contracts/api-pub-002-public-reason-points-detail/contract-task.yaml"
 
 review_points:
   - "Public items[] に reasonPoints / reasonDetail が任意で追加されているか"
@@ -31,5 +34,5 @@ ai_review_required: true
 human_review_required: true
 
 notes:
-  - "対象 PR: Contract Task #1398"
-  - "入力: prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/contract-task.yaml"
+  - "対象 PR: #1399 / Contract Task #1398"
+  - "入力: prompts/definitions/contracts/api-pub-002-public-reason-points-detail/contract-task.yaml"

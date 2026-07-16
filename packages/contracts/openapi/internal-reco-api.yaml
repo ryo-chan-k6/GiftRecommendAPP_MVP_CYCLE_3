@@ -548,6 +548,16 @@ components:
           description: |
             推薦理由（短文）。includeReason=true かつ Item 存続時は必須（非空）。
             OpenAPI required では表現できないため description で条件付き必須とする（契約仕様書 §7.3.2.1）。
+        reasonPoints:
+          type: array
+          items:
+            type: string
+          description: |
+            箇条書き理由（任意）。Public へ透過可。ui 経路で届けるため resultItems に載せる（#1398）。
+        reasonDetail:
+          type: string
+          description: |
+            詳細表示用短文（任意）。Public へ透過可。ui 経路で届けるため resultItems に載せる（#1398）。
         recommendationReasonId:
           type: string
           description: 推薦理由 ID（reasonStatus=completed かつ Reason 永続化時は返却推奨）

@@ -31,6 +31,8 @@ class RecommendationResultItem:
     final_score: float | None = None
     reason_summary: str | None = None
     reason_status: ReasonStatus | None = None
+    reason_detail: str | None = None
+    reason_points: tuple[str, ...] | None = None
     is_fallback: bool = False
 
 

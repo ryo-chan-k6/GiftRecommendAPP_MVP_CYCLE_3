@@ -275,6 +275,10 @@ export interface InternalRecommendationResultItem {
      * OpenAPI required では表現できないため description で条件付き必須とする（契約仕様書 §7.3.2.1）。
      */
   reasonSummary?: string;
+  /** 箇条書き理由（任意）。Public へ透過可。ui 経路で届けるため resultItems に載せる（#1398）。 */
+  reasonPoints?: string[];
+  /** 詳細表示用短文（任意）。Public へ透過可。ui 経路で届けるため resultItems に載せる（#1398）。 */
+  reasonDetail?: string;
   /** 推薦理由 ID（reasonStatus=completed かつ Reason 永続化時は返却推奨） */
   recommendationReasonId?: string;
   reasonStatus?: ReasonStatus;

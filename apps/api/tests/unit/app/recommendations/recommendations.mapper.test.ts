@@ -88,6 +88,74 @@ test("mapRecoResultToPublicResponse excludes warnings and internal score fields"
   assert.equal(response.data.items[0].reasonSummary, "上司へのお礼に適しています");
 });
 
+test("mapRecoResultToPublicResponse passthrough reasonPoints and reasonDetail optionally", () => {
+  const response = mapRecoResultToPublicResponse({
+    recoResult: {
+      recommendationRunId: "run-1",
+      recommendationResultId: "result-1",
+      recommendationRequestId: "req-1",
+      resultItemCount: 1,
+      items: [
+        {
+          recommendationResultItemId: "item-result-1",
+          itemId: "item-1",
+          rank: 1,
+          itemName: "Gift",
+          itemPrice: 1000,
+          itemUrl: "https://example.com/item/1",
+          reasonSummary: "上司へのお礼に適しています",
+          reasonPoints: ["感謝が伝わる", "形式が適切"],
+          reasonDetail: "上司へのお礼シーンに合う上品さを重視しました。",
+          reasonBasis: { template: "hidden" },
+          isFallback: false,
+        },
+      ],
+    },
+    recommendationRequestId: "req-1",
+    traceId: "trace-1",
+    requestId: "request-1",
+    topK: 10,
+  });
+
+  const item = response.data.items[0];
+  assert.deepEqual(item.reasonPoints, ["感謝が伝わる", "形式が適切"]);
+  assert.equal(
+    item.reasonDetail,
+    "上司へのお礼シーンに合う上品さを重視しました。",
+  );
+  assert.equal("reasonBasis" in item, false);
+});
+
+test("mapRecoResultToPublicResponse omits reasonPoints and reasonDetail when absent", () => {
+  const response = mapRecoResultToPublicResponse({
+    recoResult: {
+      recommendationRunId: "run-1",
+      recommendationResultId: "result-1",
+      recommendationRequestId: "req-1",
+      resultItemCount: 1,
+      items: [
+        {
+          recommendationResultItemId: "item-result-1",
+          itemId: "item-1",
+          rank: 1,
+          itemName: "Gift",
+          itemPrice: 1000,
+          itemUrl: "https://example.com/item/1",
+          reasonSummary: "理由のみ",
+        },
+      ],
+    },
+    recommendationRequestId: "req-1",
+    traceId: "trace-1",
+    requestId: "request-1",
+    topK: 10,
+  });
+
+  const item = response.data.items[0];
+  assert.equal("reasonPoints" in item, false);
+  assert.equal("reasonDetail" in item, false);
+});
+
 test("mapRecoResultToPublicResponse maps partial status and fallbackUsed from items", () => {
   const response = mapRecoResultToPublicResponse({
     recoResult: {

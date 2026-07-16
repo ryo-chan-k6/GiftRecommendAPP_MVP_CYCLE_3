@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-02                                |
-| 更新日         | 2026-06-04                                |
+| 更新日         | 2026-07-16（#1398 reasonPoints / reasonDetail 任意追加） |
 
 ---
 
@@ -236,6 +236,8 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 | `itemCatchcopy` | `string` | `false` | キャッチコピー | - |
 | `shopName` | `string` | `false` | 店舗名 | - |
 | `reasonSummary` | `string` | 条件付き | 推薦理由（短文） | `includeReason=true` かつ Item 存続時 **必須**（非空）。Reason 失敗時は §17.2 汎用 Reason（MOD-RECO-001 §10.3 / API-INT-002 §7.3.2.1 参照） |
+| `reasonPoints` | `array` | `false` | 箇条書き理由（`string[]`） | **任意**。値が生成されていれば返却可。必須化しない（#1398） |
+| `reasonDetail` | `string` | `false` | 詳細表示用短文 | **任意**。値が生成されていれば返却可。必須化しない（#1398） |
 | `reasonBadges` | `array` | `false` | 理由バッジ | 画面仕様に合わせて任意 |
 | `cautionNote` | `string` | `false` | 注意表示 | 任意 |
 | `isFallback` | `boolean` | `false` | Reason 汎用文由来か | api が Internal の `isFallback` をマッピング。`true` 時は汎用 Reason 表示（§7.3.2.1） |
@@ -244,11 +246,13 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 
 正本: API-INT-002 §7.3.2.1、MOD-RECO-001 モジュール仕様書 §10.3。
 
-| 条件 | `reasonSummary` | `isFallback` | Item 存続 |
-| ---- | --------------- | ------------ | --------- |
-| `includeReason=false` | 省略 | 省略 | — |
-| `includeReason=true` かつ Reason 成功 | **必須**（非空） | `false`（通常） | 存続 |
-| `includeReason=true` かつ Reason のみ失敗 | **必須**（非空。§17.2 汎用 Reason） | `true` | **存続**（レコメンド結果はユーザーに表示） |
+| 条件 | `reasonSummary` | `reasonPoints` / `reasonDetail` | `isFallback` | Item 存続 |
+| ---- | --------------- | ------------------------------- | ------------ | --------- |
+| `includeReason=false` | 省略 | 省略 | 省略 | — |
+| `includeReason=true` かつ Reason 成功 | **必須**（非空） | 任意（生成値があれば返却可） | `false`（通常） | 存続 |
+| `includeReason=true` かつ Reason のみ失敗 | **必須**（非空。§17.2 汎用 Reason） | 省略可 | `true` | **存続**（レコメンド結果はユーザーに表示） |
+
+マッピング元: Internal `resultItems[]` の同名任意フィールドを api が Public へ透過する（`reasonData` 経由のみにしない。ui 経路で届けるため）。
 
 **返却しない項目（契約上明示）:** `finalScore`, `contextScore`, `popularityScore`, `riskPenalty`, `scoreBreakdown`, `modelVersionId`, `configName`, `versionLabel`, `reasonBasis`, `reasonStatus`, `debugPayload`, `embedding` 等。
 
@@ -448,6 +452,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 2026-06-02 | 初版（契約面のみ。Task #358 / 分離後モデル） | #358 |
 | 2026-06-04 | Human Review #359 反映（maxLength / 0件表現 / reasonSummary / resultStatus enum / 予算任意化） | #359 |
 | 2026-06-25 | MOD-RECO-001 §10.3 整合：Reason 失敗時も非空 `reasonSummary` + `isFallback`（§7.3.2.1、§14.1 No.3 更新） | #764 |
+| 2026-07-16 | Public `items[]` に `reasonPoints` / `reasonDetail` を任意追加（非破壊）。`reasonBasis` は引き続き非返却 | #1398 |
 
 ---
 

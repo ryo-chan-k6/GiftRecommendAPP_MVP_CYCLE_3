@@ -152,11 +152,15 @@ epic_scope:
     - "apps/api/src/app/recommendations/**"
     - "apps/api/tests/unit/app/recommendations/**"
     - "apps/reco/src/reco/api/**"
+    - "apps/reco/src/reco/application/reason-generator/**"
+    - "apps/reco/src/reco/domain/recommendation/**"
     - "apps/reco/tests/unit/api/**"
     - "prompts/definitions/epics/api-pub-002-public-reason-detail-fields/**"
+    - "prompts/definitions/contracts/api-pub-002-public-reason-points-detail/**"
     - "prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/**"
     - "prompts/definitions/reviews/api-pub-002-public-reason-points-detail/**"
     - "ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md"
+    - "ai-logs/cross-cutting/2026-07-16-api-pub-002-public-reason-points-detail-contract-impl.md"
     - "ai-logs/human-decisions/2026-07-16-scr-005-public-reason-points-detail-contract.md"
   forbidden_paths:
     - "apps/web/src/features/recommendation-result/**"
@@ -244,6 +248,8 @@ stop_conditions:
   - "secret / .env 実値の記載が必要に見える場合"
 
 notes:
+  - "最初の子: prompts/definitions/contracts/api-pub-002-public-reason-points-detail/contract-task.yaml"
+  - "配下 Contract Task: #1398 / Branch: feature/task-1398-api-pub-002-public-reason-points-detail"
   - "本 Epic Issue: #1397 / Epic Branch: feature/epic-1397-api-pub-002-public-reason-detail-fields"
-  - "配下 Contract Task: #1398 / Definition: prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/contract-task.yaml"
   - "要求元 Human 判断: 2026-07-16 案 B"
+  - "AI Review #1399 Must 対応: allowed_paths に reason-generator / domain / 実装ログ / contracts Definition を追加"

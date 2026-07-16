@@ -181,6 +181,8 @@ class InternalRecommendationResultItemResponse(BaseModel):
     final_score: float = Field(alias="finalScore")
     score_breakdown: dict[str, Any] | None = Field(default=None, alias="scoreBreakdown")
     reason_summary: str | None = Field(default=None, alias="reasonSummary")
+    reason_points: list[str] | None = Field(default=None, alias="reasonPoints")
+    reason_detail: str | None = Field(default=None, alias="reasonDetail")
     recommendation_reason_id: str | None = Field(
         default=None,
         alias="recommendationReasonId",
@@ -200,6 +202,8 @@ class ReasonDataItemResponse(BaseModel):
     reason_status: str = Field(alias="reasonStatus")
     reason_summary: str | None = Field(default=None, alias="reasonSummary")
     is_fallback: bool | None = Field(default=None, alias="isFallback")
+    reason_detail: str | None = Field(default=None, alias="reasonDetail")
+    reason_points: list[str] | None = Field(default=None, alias="reasonPoints")
 
 
 class ReasonDataResponse(BaseModel):
