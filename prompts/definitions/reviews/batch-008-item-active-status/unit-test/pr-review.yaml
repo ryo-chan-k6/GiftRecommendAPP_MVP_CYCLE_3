@@ -6,7 +6,7 @@ review:
   title: "BATCH-008 商品有効状態更新Batch単体テスト PRレビュー"
   summary: "BATCH-008 UT Task（#1394）の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1395
   issue:
     number: 1394
   task_definition: "prompts/definitions/tasks/batch-008-item-active-status/unit-test.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1394
     required: true
   pr:
-    number: null
+    number: 1395
     required: true
   diff:
     required: true
@@ -92,4 +92,4 @@ review_points:
     - "secret / .env 実値がないか"
 
 notes:
-  - "Issue #1394"
+  - "Issue #1394 / PR #1395"
