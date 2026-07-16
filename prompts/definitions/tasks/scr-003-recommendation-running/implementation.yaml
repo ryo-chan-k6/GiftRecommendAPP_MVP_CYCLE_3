@@ -1,0 +1,229 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-003-recommendation-running-implementation"
+  title: "SCR-003:レコメンド実行中表示実装"
+  summary: "SCR-003 レコメンド実行中表示を実装し、LoadingPanel のインジケータを幾何学的モーフィングへ差し替え、component テストで検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-003:レコメンド実行中表示"
+  epic_issue_number: 1361
+  epic_branch: "feature/epic-1361-scr-003-recommendation-running"
+  related_issues:
+    - number: 1361
+      purpose: "親 Epic"
+    - number: 1362
+      purpose: "前提 Task（画面仕様書）"
+    - number: 1371
+      purpose: "本 Task Issue"
+  related_prs:
+    - number: 1364
+      purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  画面仕様書（#1362 / PR #1364）が親 Epic Branch に merge 済み。
+  SCR-003 は独立 URL ではなく RecommendationInputPage の phase === "running" + LoadingPanel として実装する。
+  キャンセル導線は MVP 対象外（確定）。専用 /recommendations/loading route は新設しない。
+  必須差分は LoadingPanel 内の円形 Spinner（animate-spin）を仕様 §8.2 の幾何学的モーフィングへ差し替えること。
+
+objective: |
+  レコメンド実行中表示（SCR-003）を画面仕様どおり実装し、component テストで検証する。
+  RUNNING_MESSAGE / 補足文言 / a11y / prefers-reduced-motion フォールバックを満たす。
+
+scope:
+  - "LoadingPanel 用 morphing indicator（variant 追加 or SCR-003 専用コンポーネント）。UI-031 Spinner 既存用途は壊さない"
+  - "RecommendationInputPage の running 表示を仕様に合わせて整理（抽出可）"
+  - "AbortController 等は仕様 §6.3 の範囲で最小対応可"
+  - "apps/web/tests/component/** のテスト追加"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "専用 /recommendations/loading route 新設"
+  - "キャンセル UI 追加"
+  - "SCR-008 / SCR-009 本実装"
+  - "OpenAPI / Orval / generated 手編集"
+  - "apps/api / apps/reco / apps/batch"
+  - "features/home・recommendation-result の大規模改修"
+  - "E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-003_レコメンド実行中表示画面仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "ST-LOAD"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "UI-031 / UI-032 責務"
+  files:
+    - path: "apps/web/src/components/feedback/LoadingPanel/**"
+      required: true
+      purpose: "差し替え対象"
+    - path: "apps/web/src/features/recommendation-input/**"
+      required: true
+      purpose: "running 宿主"
+  issues:
+    - number: 1362
+      purpose: "画面仕様書"
+  prs:
+    - number: 1364
+      purpose: "仕様書 PR"
+
+output:
+  docs: []
+  files:
+    - path: "apps/web/src/components/feedback/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/web/src/features/recommendation-input/**"
+      action: "create_or_update"
+      required: true
+  tests:
+    - path: "apps/web/tests/component/**/*.{test,spec}.{ts,tsx}"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "幾何学的モーフィングインジケータ（LoadingPanel 内）"
+  - "SCR-003 running 表示の仕様整合"
+  - "component テスト"
+
+acceptance_criteria:
+  - "RUNNING_MESSAGE「条件に合うギフトを探しています」と補足「しばらくお待ちください。」が表示される"
+  - "幾何学的モーフィングインジケータが表示され、円形 animate-spin Spinner が主表示でない"
+  - "prefers-reduced-motion フォールバックがある"
+  - "role=status / aria-live=polite"
+  - "キャンセル UI がない"
+  - "pnpm --filter @gift-recommendation/web test:component が通る"
+  - "pnpm --filter @gift-recommendation/web typecheck が通る"
+  - "generated 手動編集なし / secret なし"
+
+branch:
+  no_branch: false
+  name: "feature/task-1371-scr-003-recommendation-running-implementation"
+  summary: "scr-003-recommendation-running-implementation"
+  base: "feature/epic-1361-scr-003-recommendation-running"
+  target: "feature/epic-1361-scr-003-recommendation-running"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1361
+      title: "[Epic]SCR-003:レコメンド実行中表示"
+      purpose: "親 Epic"
+  issues:
+    - number: 1362
+      purpose: "画面仕様書"
+  prs:
+    - number: 1364
+      purpose: "仕様書 PR"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/web/src/components/feedback/LoadingPanel/**"
+    - "apps/web/src/components/feedback/MorphingIndicator/**"
+    - "apps/web/src/features/recommendation-input/**"
+    - "apps/web/tests/component/recommendation-input/**"
+    - "apps/web/tests/component/feedback/**"
+    - "prompts/definitions/tasks/scr-003-recommendation-running/implementation.yaml"
+    - "prompts/definitions/reviews/scr-003-recommendation-running/implementation/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "component test"
+    - "typecheck"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
+    - "pnpm --filter @gift-recommendation/web typecheck"
+  not_required:
+    - "e2e test"
+  skip_reason:
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "仕様 §8.2 どおり幾何学的モーフィングか（円形 Spinner 主表示でないか）"
+    - "RUNNING_MESSAGE / 補足 / a11y / reduced-motion / キャンセル UI なし"
+    - "UI-031 Spinner 既存用途を壊していないか"
+    - "専用 loading route / SCR-008/009 / OpenAPI 変更が混入していないか"
+    - "secret / generated 手編集なし"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常実装。詳細は PR を正本とする"
+
+stop_conditions:
+  - "PR #1364 が親 Epic Branch に merge されていない場合"
+  - "generated を手動編集する必要が出た場合"
+  - "専用 loading route 新設が必須と判断された場合"
+  - "キャンセル UI 追加が必須と判断された場合（Human 確認へ）"
+
+notes:
+  - "Issueタイトル: [Task]SCR-003:レコメンド実行中表示実装"
+  - "本 Task Issue: #1371"
+  - "後続: 必要なら unit-test → Epic PR → develop"
