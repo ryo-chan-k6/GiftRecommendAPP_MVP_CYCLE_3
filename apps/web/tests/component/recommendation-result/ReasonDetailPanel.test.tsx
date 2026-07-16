@@ -104,4 +104,20 @@ describe("ReasonDetailPanel (SCR-005)", () => {
 
     expect(screen.getByText(DETAIL_EMPTY_GUIDE)).toBeInTheDocument();
   });
+
+  it("applies max-height scroll class for SCR-005 panel", () => {
+    const { container } = render(
+      <ReasonDetailPanel
+        item={{
+          ...baseItem,
+          reasonDetail: "長い詳細文".repeat(40),
+        }}
+        panelId="panel-height"
+      />,
+    );
+
+    const panel = container.querySelector("#panel-height");
+    expect(panel).toHaveClass("max-h-[12rem]");
+    expect(panel).toHaveClass("overflow-y-auto");
+  });
 });
