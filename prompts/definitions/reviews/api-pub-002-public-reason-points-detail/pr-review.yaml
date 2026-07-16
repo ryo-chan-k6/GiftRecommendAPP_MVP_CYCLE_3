@@ -1,0 +1,35 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-public-reason-points-detail-contract"
+  title: "API-PUB-002 Public reasonPoints/reasonDetail Contract PR Review"
+  target_pr: null
+  related_issues:
+    - 1398
+    - 1397
+    - 1389
+
+review_points:
+  - "Public items[] に reasonPoints / reasonDetail が任意で追加されているか"
+  - "破壊的変更（必須化）になっていないか"
+  - "OpenAPI と契約仕様書が一致しているか"
+  - "generated が Orval 再生成であり手動編集がないか"
+  - "api mapper が Internal → Public へ透過しているか"
+  - "reasonBasis が Public に露出していないか"
+  - "SCR-005 UI（recommendation-result）を変更していないか"
+  - "implementation_gate が SCR-005 実装を正しく解放するか"
+  - "マッピング元（resultItems vs reasonData）方針が PR 本文で説明されているか"
+
+specialist_reviews:
+  docs: true
+  test: true
+  contract: true
+  security: true
+
+ai_review_required: true
+human_review_required: true
+
+notes:
+  - "対象 PR: Contract Task #1398"
+  - "入力: prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/contract-task.yaml"

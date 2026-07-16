@@ -1,0 +1,420 @@
+schema_version: "1.0"
+definition_type: "contract"
+
+contract:
+  id: "contract-api-pub-002-public-reason-points-detail"
+  title: "API-PUB-002:Public reasonPoints/reasonDetail任意追加"
+  summary: "API-PUB-002 Public items[] に reasonPoints / reasonDetail を任意追加し、契約仕様・OpenAPI・Orval generated・api マッピング・関連 docs を整合する。SCR-005 実装の Contract Gate を解放する。"
+  type: "api_contract"
+  priority: "high"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+source:
+  discovered_from: "screen-spec"
+  related_issue: "#1390"
+  related_pr: "#1392"
+  related_task_definition: "prompts/definitions/tasks/scr-005-reason-detail/screen-spec.yaml"
+  related_review: null
+  reason: "SCR-005 Human 判断（案 B）により、Public に reasonPoints / reasonDetail を任意追加してから理由詳細 UI を完成させるため"
+
+commands:
+  primary: "/create-contract-task"
+  allowed:
+    - "/create-contract-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    pr: "/create-pr"
+    review: "/review-pr"
+    blocked: null
+
+agent:
+  primary: "contract-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "worker-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+    - "docs-reviewer-ai"
+
+change:
+  api_name: "API-PUB-002 レコメンド実行"
+  api_kind: "public"
+  endpoint: "POST /api/v1/recommendations"
+  method: "POST"
+  change_type: "add_response_field"
+  breaking_change: false
+  backward_compatibility: "compatible"
+  reason: "SCR-005 展開 UI で reasonPoints / reasonDetail を表示するため。API設計方針書 §18.3 の表示対象と現行 Public 契約のギャップを閉じる"
+
+scope:
+  - "API-PUB-002 契約仕様書 §7.3.2 に reasonPoints / reasonDetail（任意）を追加する"
+  - "packages/contracts/openapi/public-api.yaml の Item schema を更新する"
+  - "Orval で apps/web/src/generated/api を再生成する（手動編集禁止）"
+  - "apps/api response-mapper / types で Internal → Public へ透過する"
+  - "api unit tests を更新する"
+  - "API-INT-002 契約の Public 表面化注記を更新する"
+  - "recommendation_reason テーブル定義書 §5.5 の Public 返却方針を更新する"
+  - "SCR-006 の「Public に無い」前提注記を最低限更新する"
+  - "ui 経路で値を届けるため、Internal resultItems[] への任意追加（OpenAPI / reco 応答）が必要なら同一 Task で実施する（Human 確認済み方針: 推奨）"
+
+out_of_scope:
+  - "SCR-005 UI 実装・単体テスト（Epic #1389 配下。本 Contract merge 後）"
+  - "reasonBasis の Public 露出"
+  - "reasonPoints / reasonDetail の必須化"
+  - "DB schema / migration 変更"
+  - "Reason 永続配線の新規設計"
+  - "認証・認可変更"
+  - "Orval 設定方針そのものの変更（再生成のみ）"
+
+input:
+  docs:
+    - path: "ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md"
+      required: true
+      purpose: "影響範囲・着手ガード・契約案の正本入力"
+    - path: "ai-logs/human-decisions/2026-07-16-scr-005-public-reason-points-detail-contract.md"
+      required: true
+      purpose: "案 B・任意追加・横断 Epic の Human 判断"
+    - path: "docs/06_実装設計/web/SCR-005_推薦理由詳細表示画面仕様書.md"
+      required: true
+      purpose: "案 B 表示優先順位（§8.3）"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "Public 契約更新対象"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "Public 表面化注記・Internal フィールド所在確認"
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      required: true
+      purpose: "§5.5 Public 返却方針更新"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "§18.3 / §18.4 整合"
+    - path: "docs/00_共通/AIエージェント運用/Contract Gate運用設計書.md"
+      required: true
+      purpose: "implementation_gate 運用"
+  templates:
+    - path: "prompts/templates/docs/api-contract-spec.md"
+      required: false
+      purpose: "契約仕様書章構成の参照"
+  files:
+    - path: "apps/api/src/app/recommendations/response-mapper.ts"
+      required: true
+      purpose: "Public マッピング実装"
+    - path: "apps/api/src/app/recommendations/types.ts"
+      required: true
+      purpose: "Public item 型"
+  issues:
+    - "#1389"
+    - "#1390"
+  prs:
+    - "#1392"
+  openapi:
+    path: "packages/contracts/openapi/public-api.yaml"
+    required: true
+  orval:
+    path: "orval.config.ts"
+    required: true
+  generated:
+    paths:
+      - "apps/web/src/generated/api/"
+    required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "apps/api/src/app/recommendations/response-mapper.ts"
+      action: "update"
+      required: true
+    - path: "apps/api/src/app/recommendations/types.ts"
+      action: "update"
+      required: true
+  openapi:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      action: "update"
+      required: true
+    - path: "packages/contracts/openapi/internal-reco-api.yaml"
+      action: "update"
+      required: false
+  orval: []
+  generated:
+    - path: "apps/web/src/generated/api/"
+      action: "regenerate"
+      required: true
+    - path: "apps/api/src/generated/reco-client/"
+      action: "regenerate"
+      required: false
+  tests:
+    - path: "apps/api/tests/unit/app/recommendations/"
+      action: "update"
+      required: true
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/cross-cutting/"
+
+impact:
+  api_design:
+    affected: false
+    note: "API設計方針書 §18.3 は既に表示対象。方針変更ではなく契約追随"
+  api_list:
+    affected: false
+    note: "endpoint 追加なし"
+  api_spec:
+    affected: true
+    note: "API-PUB-002 / 必要時 API-INT-002 契約仕様書を更新"
+  openapi:
+    affected: true
+    note: "public-api.yaml Item schema に任意フィールド追加。必要時 internal-reco-api.yaml の resultItems も追加"
+  orval:
+    affected: true
+    note: "OpenAPI 変更後に pnpm orval 再生成"
+  generated:
+    affected: true
+    note: "apps/web generated に型差分。必要時 api reco-client も再生成"
+  provider:
+    affected: true
+    note: "apps/api mapper。必要時 apps/reco が resultItems に detail/points を載せる"
+  consumer:
+    affected: true
+    note: "web generated 型が広がる。SCR-005 UI 利用は別 Task"
+  tests:
+    affected: true
+    note: "api unit / 必要時 reco unit"
+  docs:
+    affected: true
+    note: "契約・DB 定義・SCR-006 注記"
+  db:
+    affected: false
+    note: "物理 schema 変更なし。定義書の Public 返却方針のみ"
+  cicd:
+    affected: false
+    note: "CI 定義変更なし"
+  security:
+    affected: false
+    note: "reasonBasis は引き続き非公開。XSS は表示側（SCR-005）で扱う"
+
+provider_consumer:
+  providers:
+    - name: "apps/api"
+      affected: true
+      responsibility: "Public API provider / Internal→Public マッピング"
+      required_changes:
+        - "items[] に reasonPoints / reasonDetail を任意で載せる"
+        - "unit test で透過を検証する"
+    - name: "apps/reco"
+      affected: true
+      responsibility: "Internal API provider（必要時）"
+      required_changes:
+        - "ui 経路で detail/points を届ける場合、resultItems[] へ任意追加する"
+  consumers:
+    - name: "apps/web"
+      affected: true
+      responsibility: "Public API consumer（型）"
+      required_changes:
+        - "Orval 再生成差分を取り込む"
+        - "SCR-005 UI 実装は本 Task では行わない"
+  compatibility_notes:
+    - "任意フィールド追加のため既存 consumer への破壊的影響は低い"
+    - "必須化しない（Human 確定）"
+  rollout_order:
+    - "契約仕様書更新"
+    - "OpenAPI 更新（Public、必要時 Internal）"
+    - "Orval 再生成"
+    - "reco（必要時）→ api mapper"
+    - "unit test"
+    - "Contract PR merge → SCR-005 実装解放"
+
+generation_policy:
+  generated_expected: true
+  manual_edit_allowed: false
+  source_files:
+    - "packages/contracts/openapi/public-api.yaml"
+    - "packages/contracts/openapi/internal-reco-api.yaml"
+  regenerate_commands:
+    - "pnpm orval"
+  output_paths:
+    - "apps/web/src/generated/api/"
+    - "apps/api/src/generated/reco-client/"
+  verification_commands:
+    - "pnpm orval"
+    - "pnpm --filter api test"
+    - "pnpm --filter web typecheck"
+
+implementation_gate:
+  enabled: true
+  gate_id: "contract-api-pub-002-public-reason-points-detail"
+  prerequisite_checks:
+    - "contract_pr_merged_to_develop_or_parent_epic_then_develop"
+    - "openapi_in_packages_contracts"
+    - "orval_regenerated_if_generated_impact"
+    - "generated_not_manually_edited"
+    - "human_review_if_breaking_change"
+  releases_implementation_for:
+    - "SCR-005 画面実装 Task（prompts/definitions/tasks/scr-005-reason-detail/ 配下・Epic #1389）"
+  notes:
+    - "gate_id は後続 Implementation Task の contract_gate.gate_id と一致させる"
+
+deliverables:
+  - "Contract Task Issue"
+  - "契約変更影響分析（Issue 本文）"
+  - "更新済み API-PUB-002 契約仕様書"
+  - "更新済み OpenAPI（public、必要時 internal）"
+  - "再生成済み generated"
+  - "更新済み api mapper / tests"
+
+acceptance_criteria:
+  - "契約変更の目的が Issue 本文に記載されている"
+  - "Public items[] に reasonPoints / reasonDetail が任意で定義されている"
+  - "OpenAPI と契約仕様書が一致している"
+  - "generated が再生成され、手動編集していない"
+  - "api mapper が Internal から Public へ透過する"
+  - "破壊的変更なし・後方互換が明記されている"
+  - "SCR-005 UI を変更していない"
+  - "Human Review 観点が整理されている"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:Public Reason詳細フィールド追加"
+  epic_issue_number: 1397
+  epic_branch: "feature/epic-1397-api-pub-002-public-reason-detail-fields"
+  related_issues:
+    - number: 1398
+      purpose: "本 Contract Task Issue"
+    - number: 1397
+      purpose: "親 Epic"
+    - number: 1389
+      purpose: "要求元 SCR-005（実装 blocked）"
+
+branch:
+  no_branch: false
+  name: "contract/task-1398-api-pub-002-public-reason-points-detail"
+  summary: "api-pub-002-public-reason-points-detail"
+  base: "feature/epic-1397-api-pub-002-public-reason-detail-fields"
+  target: "feature/epic-1397-api-pub-002-public-reason-detail-fields"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+dependencies:
+  epics:
+    - "#1397"
+    - "#1389"
+    - "#357"
+  issues:
+    - "#1398"
+    - "#1390"
+  prs:
+    - "#1392"
+  tasks:
+    - "scr-005-reason-detail implementation（blocked until this contract merges）"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "SCR-005 implementation"
+  exclusive_files:
+    - "packages/contracts/openapi/public-api.yaml"
+    - "apps/api/src/app/recommendations/**"
+    - "apps/web/src/generated/api/**"
+  conflict_risk: "medium"
+  generated_impact: true
+  contract_impact: true
+  db_impact: false
+
+test_policy:
+  required:
+    - "Orval generation"
+    - "api unit test"
+  commands:
+    - "pnpm orval"
+    - "pnpm --filter api test"
+  manual_checks:
+    - "generated 差分が OpenAPI 変更と対応していること"
+    - "reasonBasis が Public に出ていないこと"
+    - "任意追加であり必須化していないこと"
+  not_required:
+    - "e2e test"
+    - "SCR-005 UI test"
+  skip_reason:
+    "e2e test": "Contract Task では contract / unit を優先"
+    "SCR-005 UI test": "UI は別 Task（Gate 後）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "任意追加・非破壊が守られているか"
+    - "OpenAPI / Orval / generated の扱いが正しいか"
+    - "マッピング元（resultItems vs reasonData）方針が明記されているか"
+    - "SCR-005 UI を混入していないか"
+    - "implementation_gate が SCR-005 実装を正しく解放するか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "OpenAPI / generated / api / docs 横断のため cross-cutting を維持"
+
+risk_points:
+  - "現行 Internal OpenAPI では detail/points が ReasonDataItem のみで、ui 経路（reasonData 非推奨）では値が届かない"
+  - "generated 手動編集の誘惑"
+  - "SCR-005 UI 混入"
+
+human_decision_points:
+  - "マッピング元: 推奨は Internal resultItems[] へ任意追加して Public へ透過（reasonData は debug/evaluation 向けのため ui 単独では不足しうる）"
+  - "SCR-006 表示方針（注記のみ vs 表示）"
+  - "任意追加で足りるか（必須化しない・確定済み）"
+
+stop_conditions:
+  - "破壊的変更が必要になった場合"
+  - "generated 手動編集が必要に見える場合"
+  - "SCR-005 UI 実装が本 Task で必須と判断された場合"
+  - "DB migration が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "本 Task Issue: #1398 / Branch: contract/task-1398-api-pub-002-public-reason-points-detail"
+  - "親 Epic: #1397 / Branch: feature/epic-1397-api-pub-002-public-reason-detail-fields"
+  - "入力正本: ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md"
+  - "次 Command: /work-issue @prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/contract-task.yaml"
