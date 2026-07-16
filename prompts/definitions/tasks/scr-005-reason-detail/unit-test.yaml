@@ -20,8 +20,8 @@ parent:
     - number: 1402
       purpose: "前提 Task（実装）"
   related_prs:
-    - number: null
-      purpose: "本 Task PR（単体テスト・PR 作成後に同期）"
+    - number: 1405
+      purpose: "本 Task PR（単体テスト）"
     - number: 1403
       purpose: "実装 Task PR（親 Epic Branch merge 済み）"
 
@@ -197,6 +197,7 @@ stop_conditions:
 notes:
   - "Issueタイトル: [Task]SCR-005:推薦理由詳細表示単体テスト"
   - "本 Task Issue: #1404 / Branch: test/task-1404-scr-005-reason-detail-unit-test"
+  - "本 Task PR: #1405"
   - "親Epic: #1389 / Branch: feature/epic-1389-scr-005-reason-detail"
   - "PR 本文は Related to #1404（Closes 禁止）"
   - "Review Definition: prompts/definitions/reviews/scr-005-reason-detail/unit-test/pr-review.yaml"
