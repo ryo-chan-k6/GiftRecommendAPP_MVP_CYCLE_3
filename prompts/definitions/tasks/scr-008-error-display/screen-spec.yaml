@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 1367
   epic_branch: "feature/epic-1367-scr-008-error-display"
   related_issues:
+    - number: 1368
+      purpose: "本 Task Issue"
     - number: 1367
       purpose: "親 Epic"
   related_prs: []
