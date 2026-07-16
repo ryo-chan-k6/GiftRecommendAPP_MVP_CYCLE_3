@@ -1,0 +1,63 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-008-item-active-status-batch-spec-follow-up-pr"
+  title: "BATCH-008 仕様書整備 PRレビュー"
+  summary: "BATCH-008 仕様書整備 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1379-batch-008-item-active-status"
+  target: "feature/epic-1379-batch-008-item-active-status"
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1380
+  task_definition: "prompts/definitions/tasks/batch-008-item-active-status/batch-spec-follow-up.yaml"
+  source_branch: "docs/task-1380-batch-008-item-active-status-batch-spec-follow-up"
+  target_branch: "feature/epic-1379-batch-008-item-active-status"
+  parent_epic_issue: "[Epic]BATCH-008:商品有効状態更新Batch"
+  parent_epic_branch: "feature/epic-1379-batch-008-item-active-status"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-008-item-active-status/batch-spec-follow-up.yaml"
+    required: true
+
+review_points:
+  - "BATCH-006/007/004 境界整合"
+  - "§18.2 No.1 解消"
+  - "独立 workflow 提案と Human 確定/提案の区別"
+  - "既存 item_active_status ギャップ整理"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Related to #1380"
