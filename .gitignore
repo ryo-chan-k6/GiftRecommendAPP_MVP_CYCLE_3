@@ -101,6 +101,7 @@ tests/recommendation-quality/output/
 *.db
 supabase/.temp/
 supabase/.branches/
+supabase/snippets/
 
 # =========================
 # Test outputs (Layer2 / local E2E)

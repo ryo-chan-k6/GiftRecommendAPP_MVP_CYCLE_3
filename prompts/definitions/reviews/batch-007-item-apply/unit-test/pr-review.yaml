@@ -1,0 +1,94 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-007-item-apply-unit-test-pr"
+  title: "BATCH-007 Item反映Batch単体テスト PRレビュー"
+  summary: "BATCH-007 UT Task（#1365）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "feature/epic-1356-batch-007-item-apply"
+  target: "feature/epic-1356-batch-007-item-apply"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1366
+  issue:
+    number: 1365
+  task_definition: "prompts/definitions/tasks/batch-007-item-apply/unit-test.yaml"
+  source_branch: "test/task-1365-batch-007-item-apply-unit-test"
+  target_branch: "feature/epic-1356-batch-007-item-apply"
+  parent_epic_issue: "[Epic]BATCH-007:Item反映Batch"
+  parent_epic_branch: "feature/epic-1356-batch-007-item-apply"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-007-item-apply/unit-test.yaml"
+    required: true
+  issue:
+    number: 1365
+    required: true
+  pr:
+    number: 1366
+    required: true
+  diff:
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-007_Item反映バッチ仕様書.md"
+      required: true
+      purpose: "§16 正本"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+  tests:
+    - "§16 カバレッジが PR 本文とテストで追えるか"
+    - "実外部依存（実 DB）がないか"
+  security:
+    - "secret / .env 実値がないか"
+
+notes:
+  - "Issue #1365 / PR #1366。status ready"

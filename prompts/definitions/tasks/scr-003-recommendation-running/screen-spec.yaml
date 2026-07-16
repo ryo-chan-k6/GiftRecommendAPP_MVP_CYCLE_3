@@ -1,0 +1,238 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-003-recommendation-running-screen-spec"
+  title: "SCR-003:レコメンド実行中表示画面仕様書作成"
+  summary: "SCR-003（レコメンド実行中表示）の画面仕様書（SCR-003_レコメンド実行中表示画面仕様書.md）を、画面一覧・画面遷移図・SCR-002画面仕様書・API-PUB-002契約・デザインルール（ST-LOAD）・UIコンポーネント一覧に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-003:レコメンド実行中表示"
+  epic_issue_number: 1361
+  epic_branch: "feature/epic-1361-scr-003-recommendation-running"
+  related_issues:
+    - number: 1362
+      purpose: "本 Task Issue"
+    - number: 1361
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、web 実装の前提となる画面仕様書を作成する。
+  SCR-003 は独立 URL 画面ではなく、SCR-002 推薦実行中の UI 状態として扱う（画面遷移図正本）。
+  画面一覧の URL案 `/recommendations/loading` は参考であり、MVP 実装は既存どおり recommendation-input 内 LoadingPanel を正とする。
+  専用 route 新設は原則 out of scope として仕様書で明示する。
+
+objective: |
+  SCR-003（レコメンド実行中表示）について、実装・レビューが可能な粒度の画面仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-003 の画面仕様書を新規作成する（成果物: SCR-003_レコメンド実行中表示画面仕様書.md）"
+  - "画面目的・対象ユーザー・表示項目を整理する"
+  - "画面状態であること（独立 URL ではないこと）と遷移先（SCR-004 / SCR-008 / SCR-009）を整理する"
+  - "ST-LOAD / LoadingPanel（UI-032）との対応を整理する"
+  - "API-PUB-002 呼び出し中の待機 UX・操作不可方針を整理する"
+  - "専用 `/recommendations/loading` route 新設が MVP out of scope であることを明示する"
+  - "キャンセル導線（画面一覧 △）の扱いを明記する"
+
+out_of_scope:
+  - "他画面（SCR-003 以外）の画面仕様書作成"
+  - "専用 `/recommendations/loading` route の新設・実装"
+  - "SCR-008 / SCR-009 の包括仕様（遷移先としての言及に留める）"
+  - "SCR-005 / SCR-007 の変更"
+  - "OpenAPI / generated / ソースコード実装"
+  - "API-PUB-002 契約・実装の変更"
+  - "認証・認可方式そのものの変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-003 の画面ID・URL案・画面種別・表示項目・MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "画面状態としての位置づけと成功/失敗/0件への遷移を確認するため"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "SCR-002 内実行中状態・LoadingPanel 利用との分担を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "推薦実行 API 呼び出し中の待機 UX 前提を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "ST-LOAD パターンを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "LoadingPanel（UI-032）等の部品責務を確認するため"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/web/SCR-003_レコメンド実行中表示画面仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-003_レコメンド実行中表示画面仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/screen-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-003 画面仕様書"
+  - "表示項目定義（ローディング・処理中メッセージ等）"
+  - "画面状態・遷移・API-PUB-002 待機 UX の整理"
+  - "専用 loading route 非採用（MVP）の明示"
+
+acceptance_criteria:
+  - "docs/06_実装設計/web/SCR-003_レコメンド実行中表示画面仕様書.md が作成されている"
+  - "prompts/templates/docs/screen-spec.md の章構成に準拠している"
+  - "画面一覧の SCR-003 と矛盾する画面ID・画面名・MVP対象を定義していない"
+  - "画面遷移図どおり、独立 URL 画面ではなく画面状態として記載している"
+  - "専用 `/recommendations/loading` route 新設が MVP out of scope として明示されている"
+  - "ST-LOAD / LoadingPanel との対応がデザインルール・UIコンポーネント一覧と矛盾していない"
+  - "API-PUB-002 呼び出し中の待機 UX 方針が契約と矛盾していない"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1362-scr-003-recommendation-running-screen-spec"
+  summary: "scr-003-recommendation-running-screen-spec"
+  base: "feature/epic-1361-scr-003-recommendation-running"
+  target: "feature/epic-1361-scr-003-recommendation-running"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "推薦実行の起点画面（develop merge 済み）。画面状態の宿主"
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "レコメンド実行 API（develop merge 済み）"
+  issues: []
+  prs: []
+  tasks:
+    - "画面一覧が作成済みであること"
+    - "画面遷移図が作成済みであること"
+    - "SCR-002 画面仕様書が作成済みであること"
+    - "API-PUB-002 契約仕様書が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/web/SCR-003_レコメンド実行中表示画面仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/web/SCR-003_レコメンド実行中表示画面仕様書.md"
+  manual_checks:
+    - "画面一覧の SCR-003 と整合していること"
+    - "画面遷移図の画面状態方針と整合していること"
+    - "専用 loading route を新設する記述がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs作成Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面一覧の SCR-003 と整合しているか"
+    - "画面状態として記載し、独立 URL 画面と誤記していないか"
+    - "専用 `/recommendations/loading` route 新設が out of scope か"
+    - "ST-LOAD / LoadingPanel 対応がデザインルール・UIコンポーネント一覧と整合しているか"
+    - "キャンセル導線（△）の扱いが明示されているか"
+    - "命名が Task Definition設計書 §15.3 に従っているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "SCR-003 画面仕様書 Task。"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-003 が存在しない場合"
+  - "親 Epic Issue / Branch が未作成の場合"
+  - "専用 loading route 新設が必須と判断された場合（Human 確認へ）"
+
+notes:
+  - "Issueタイトル: [Task]SCR-003:レコメンド実行中表示画面仕様書作成"
+  - "親 Epic Definition: prompts/definitions/epics/scr-003-recommendation-running/epic.yaml"
+  - "本 Task Issue: #1362 / Branch: docs/task-1362-scr-003-recommendation-running-screen-spec"
+  - "親Epic: #1361 [Epic]SCR-003:レコメンド実行中表示 / Branch: feature/epic-1361-scr-003-recommendation-running"
+  - "依存Epic: #1147 SCR-002 / #357 API-PUB-002（いずれも develop merge 済み）"
+  - "後続: /work-issue → 画面仕様書作成 → /create-pr（Review Definition を PR head に含める）"
+  - "キャンセル導線（画面一覧 △）の採否は Human Review 観点"
