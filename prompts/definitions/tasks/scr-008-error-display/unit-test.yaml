@@ -1,0 +1,208 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-008-error-display-unit-test"
+  title: "SCR-008:エラー表示単体テスト"
+  summary: "SCR-008（エラー表示）実装に対し、推薦実行失敗経路の page 統合テストと component テストを拡充し、画面仕様書の主要導線を再現可能に検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-008:エラー表示"
+  epic_issue_number: 1367
+  epic_branch: "feature/epic-1367-scr-008-error-display"
+  related_issues:
+    - number: 1376
+      purpose: "本 Task Issue"
+    - number: 1367
+      purpose: "親 Epic"
+    - number: 1372
+      purpose: "前提 Task（実装）"
+  related_prs:
+    - number: 1377
+      purpose: "本 Task PR（単体テスト）"
+    - number: 1373
+      purpose: "実装 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  SCR-008 Epic（#1367）の単体テスト Task。implementation Task（#1372 / PR #1373）が親 Epic Branch に merge 済みであることを前提に着手する。
+  実装 Task で RecommendationRunErrorView の component test は追加済み。本 Task では RecommendationInputPage の error 経路統合テストを追加する。
+
+objective: |
+  SCR-008 画面状態の単体テストを拡充し、推薦実行失敗・復帰・再実行の主要導線を再現可能に検証する。
+
+scope:
+  - "apps/web/tests/component/recommendation-input/** の component / page 統合テスト追加"
+  - "API-PUB-002 失敗応答 / 通信例外 → SCR-008 表示 / 条件入力へ戻る / 再実行"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "画面仕様書・実装本体の機能追加（軽微なテスト容易性修正は最小限可）"
+  - "E2E / Playwright 全面整備"
+  - "OpenAPI / generated 変更"
+  - "apps/api / apps/reco / apps/batch の変更"
+  - "SCR-003 / SCR-009 包括変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-008_エラー表示画面仕様書.md"
+      required: true
+      purpose: "テスト観点の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-008 行との整合確認"
+  templates: []
+  files:
+    - path: "apps/web/src/features/recommendation-input/**"
+      required: true
+      purpose: "テスト対象実装"
+  issues:
+    - number: 1372
+      purpose: "実装 Task"
+  prs:
+    - number: 1373
+      purpose: "実装 PR Epic merge"
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/web/tests/component/recommendation-input/**/*.{test,spec}.{ts,tsx}"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-008 単体テスト拡充"
+  - "推薦実行失敗経路の再現可能な検証"
+
+acceptance_criteria:
+  - "API 失敗応答・通信例外・戻る・再実行の主要観点テストが追加されている"
+  - "pnpm --filter @gift-recommendation/web test:component が通る"
+  - "epic_scope.allowed_paths 外へ変更していない"
+  - "secret / .env 実値を含んでいない"
+  - "本番 network に依存していない"
+
+branch:
+  no_branch: false
+  name: "test/task-1376-scr-008-error-display-unit-test"
+  base: "feature/epic-1367-scr-008-error-display"
+  target: "feature/epic-1367-scr-008-error-display"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1367
+      title: "[Epic]SCR-008:エラー表示"
+      purpose: "親 Epic"
+  issues:
+    - number: 1372
+      purpose: "実装 Task"
+  prs:
+    - number: 1373
+      purpose: "実装 PR"
+  tasks:
+    - "implementation Task が親 Epic Branch に merge 済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "implementation"
+  blocks: []
+  exclusive_files:
+    - "apps/web/tests/component/recommendation-input/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
+  manual_checks:
+    - "画面仕様書 §6 の主要遷移がテストでカバーされていること"
+  not_required:
+    - "e2e"
+  skip_reason:
+    "e2e": "本 Task は単体テスト範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面仕様書の主要観点がテストされているか"
+    - "不安定な network / 本番依存がないか"
+    - "secret 非含有か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常のテスト Task。作業計画は Issue、レビューは PR を正本とする。"
+
+stop_conditions:
+  - "implementation が未完了の場合"
+  - "テストが本番 API / 本番 secret に依存する場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-008:エラー表示単体テスト"
+  - "本 Task Issue: #1376 / Branch: test/task-1376-scr-008-error-display-unit-test"
+  - "親Epic: #1367 / Branch: feature/epic-1367-scr-008-error-display"
+  - "PR 本文は Related to #1374（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/scr-008-error-display/unit-test/pr-review.yaml"
+  - "前提: #1372 / PR #1373 merge 済み"

@@ -25,6 +25,7 @@ import {
 } from "./form-persistence";
 import { isErrorResponse, loadRecommendationMasters } from "./load-masters";
 import { RecommendationInputForm } from "./RecommendationInputForm";
+import { RecommendationRunErrorView } from "./RecommendationRunErrorView";
 import { RecommendationRunningPanel } from "./RecommendationRunningPanel";
 import type {
   MastersLoadState,
@@ -251,40 +252,16 @@ export function RecommendationInputPage() {
 
   if (phase === "error" && runError) {
     return (
-      <PageLayout title="エラー">
-        <Alert variant="error" title="レコメンド実行に失敗しました">
-          <p>{runError.message}</p>
-          {runError.code ? (
-            <p className="mt-2 text-small text-text-muted">
-              code: {runError.code}
-            </p>
-          ) : null}
-          {runError.traceId ? (
-            <p className="mt-1 text-small text-text-muted">
-              traceId: {runError.traceId}
-            </p>
-          ) : null}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button
-              variant="primary"
-              onClick={() => {
-                setPhase("form");
-                setRunError(null);
-              }}
-            >
-              条件入力へ戻る
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                void onSubmit();
-              }}
-            >
-              再実行
-            </Button>
-          </div>
-        </Alert>
-      </PageLayout>
+      <RecommendationRunErrorView
+        error={runError}
+        onBackToForm={() => {
+          setPhase("form");
+          setRunError(null);
+        }}
+        onRetry={() => {
+          void onSubmit();
+        }}
+      />
     );
   }
 
