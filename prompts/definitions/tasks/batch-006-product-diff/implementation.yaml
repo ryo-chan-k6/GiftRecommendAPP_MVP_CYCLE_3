@@ -1,0 +1,269 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-006-product-diff-implementation"
+  title: "BATCH-006:商品差分判定Batch実装"
+  summary: "BATCH-006（商品差分判定Batch）を仕様書に基づき apps/batch へ実装する。staging_item と item の hash 比較、product_diff_result upsert、独立 workflow を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-006:商品差分判定Batch"
+  epic_issue_number: 1341
+  epic_branch: "feature/epic-1341-batch-006-product-diff"
+  related_issues:
+    - number: 1342
+      purpose: "バッチ仕様書（CLOSED / Epic Branch merge 済み）"
+  related_prs:
+    - number: 1343
+      purpose: "バッチ仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 差分判定段。仕様書 #1342 / PR #1343 は Epic Branch merge 済み。
+  BATCH-005 同型の単一 Job（product_diff）で plan→load_staging→resolve_item→compare→persist→status→finalize を実装する。
+  Contract Gate 不要。unit は fixture / mock 正。包括的 UT は後続 unit-test Task。
+  §18.1 Human 確定（独立 YAML / Staging 選定 / unavailable / Staging 同期 ON）を実装の作業仮定として採用する。
+
+objective: |
+  BATCH-006 について、仕様書の処理ステップを apps/batch 上で実行可能な実装と、
+  起動用独立 workflow（batch-rakuten-product-diff.yml）を整備する。
+  Item 本更新・hash 再算出は行わない。判定正本は product_diff_result。
+
+scope:
+  - "BATCH-006 ジョブ application 実装（product_diff: plan / load_staging / resolve_item / compare / persist / status / finalize）"
+  - "Product Diff Detector（new / updated / unchanged / unavailable）"
+  - "Product Diff Result Repository（UNIQUE upsert）"
+  - "staging_item.diff_status 同期 UPDATE（MVP 既定 ON、config で無効化可）"
+  - "batch_run_log / phase_log / error_log 連携"
+  - "config: BATCH_PRODUCT_DIFF_MAX_ITEMS 等"
+  - ".github/workflows/batch-rakuten-product-diff.yml（workflow_call / workflow_dispatch）"
+  - "最小 unit test（new/updated/unchanged/unavailable・冪等・Item非更新・hash再算出なし）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "バッチ仕様書の全面書き換え（軽微な実装追随注記以外）"
+  - "他 Batch 実装の破壊変更（raw_staging / genre_sync / ranking_snapshot / item_pseudo_diff / item_recheck / item_active_status）"
+  - "親 item-import / existing-item-recheck チェーン workflow 全体改修・配線"
+  - "OpenAPI / Orval / generated / DB migration"
+  - "楽天 API 呼出"
+  - "Item / item_image / item.active_status 本更新"
+  - "normalized_hash 再算出"
+  - "包括的 UT Task（後続 unit-test Task）"
+  - "BATCH-007 Item 反映 / BATCH-008 / BATCH-009"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-006_商品差分判定バッチ仕様書.md"
+      required: true
+      purpose: "実装の正本"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "UNIQUE / diff_status / old_hash / new_hash"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "比較入力・diff_status 同期"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-006 入出力境界"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: false
+      purpose: "差分判定方針"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/**"
+      required: true
+      purpose: "同型 Job 参照のみ（編集禁止）"
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: false
+      purpose: "DbWriter / upsert 補助"
+  issues:
+    - number: 1342
+      purpose: "仕様書"
+  prs:
+    - number: 1343
+      purpose: "仕様書 MERGED"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/product_diff/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      action: "update"
+      required: false
+    - path: ".github/workflows/batch-rakuten-product-diff.yml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-006-product-diff/implementation.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-006-product-diff/implementation/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_product_diff.py"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-006 商品差分判定ジョブ実装"
+  - "batch-rakuten-product-diff.yml"
+  - "最小 unit test（fixture / mock）"
+
+acceptance_criteria:
+  - "仕様書主要 Phase（plan/load_staging/resolve_item/compare/persist/status/finalize）がコード上で追跡できる"
+  - "new / updated / unchanged / unavailable の判定ができる"
+  - "product_diff_result へ UNIQUE upsert できる（scaffold 上で検証）"
+  - "normalized_hash を再算出しない（Staging / Item の hash を比較のみ）"
+  - "Item / item_image / item.active_status を本 Batch で更新しない"
+  - "persist 成功後に staging_item.diff_status を同期できる（既定 ON）"
+  - "楽天 API を呼ばない"
+  - ".github/workflows/batch-rakuten-product-diff.yml が存在し workflow_dispatch / workflow_call を持つ"
+  - "secret / .env 実値を含まない"
+  - "OpenAPI / generated / migration / 他 Batch application を変更していない"
+  - "親 Epic allowed_paths 外を編集していない"
+  - "最小 unit test がローカルで実行可能である"
+
+branch:
+  no_branch: false
+  name: "feature/task-1350-batch-006-product-diff-implementation"
+  summary: "batch-006-product-diff-implementation"
+  base: "feature/epic-1341-batch-006-product-diff"
+  target: "feature/epic-1341-batch-006-product-diff"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-19"
+
+issue:
+  number: 1350
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1341
+      title: "[Epic]BATCH-006:商品差分判定Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1342
+      purpose: "仕様書（CLOSED）"
+  prs:
+    - number: 1343
+      purpose: "仕様書 MERGED"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-006-product-diff-batch-spec"
+  blocks:
+    - "task-batch-006-product-diff-unit-test"
+  exclusive_files:
+    - "apps/batch/src/batch/application/product_diff/**"
+    - ".github/workflows/batch-rakuten-product-diff.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-006 最小）"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_product_diff.py -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+    - "contract test"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock / scaffold を正とする"
+    "contract test": "Batch は HTTP API 化しないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "仕様書 Phase・判定ロジックと実装が整合するか"
+    - "Item 本更新・hash 再算出をしていないか"
+    - "他 Batch application（raw_staging 等）を編集していないか"
+    - "親 workflow チェーンを改修していないか"
+    - "secret 非含有 / PR target が親 Epic Branch か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch 実装の縦串"
+
+human_decision_points:
+  - "独立 YAML（batch-rakuten-product-diff.yml）方針で実装する（仕様§18.1 No.7 確定）"
+  - "Staging 選定・unavailable・Staging 同期既定で実装する（§18.1 No.8〜10 確定）"
+  - "包括的 UT は後続 unit-test Task に分離する"
+
+stop_conditions:
+  - "必須 input.docs（バッチ仕様書）が存在しない場合"
+  - "親 Epic Issue / Branch が未確定の場合"
+  - "OpenAPI / generated / migration 変更が必要になった場合"
+  - "epic_scope.allowed_paths 外の編集が必要になった場合"
+  - "他 Batch application / 親チェーン YAML 編集が必要に見える場合"
+  - "Item 本更新や hash 再算出が必要に見える場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-006:商品差分判定Batch実装"
+  - "Contract Gate 不要"
+  - "後続: unit-test Task"

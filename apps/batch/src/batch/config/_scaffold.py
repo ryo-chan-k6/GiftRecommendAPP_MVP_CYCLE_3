@@ -25,6 +25,9 @@ def scaffold_batch_settings(*, app_env: AppEnv = AppEnv.DEV) -> BatchSettings:
         batch_max_retry=3,
         batch_raw_staging_max_raw=1000,
         batch_raw_staging_source_api="item_search",
+        batch_product_diff_max_items=1000,
+        batch_product_diff_source="rakuten",
+        batch_product_diff_sync_staging=True,
         supabase_url=None,
         supabase_service_role_key=None,
     )
