@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1374
   issue: 1371
   task_definition: "prompts/definitions/tasks/scr-003-recommendation-running/implementation.yaml"
   source_branch: "feature/task-1371-scr-003-recommendation-running-implementation"
@@ -69,7 +69,7 @@ input:
     number: 1371
     required: true
   pr:
-    number: null
+    number: 1374
     required: true
   diff:
     required: true
