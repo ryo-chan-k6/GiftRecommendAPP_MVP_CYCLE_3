@@ -5,7 +5,7 @@
 | Date | 2026-07-16 |
 | Issue | #1345 |
 | Epic | #1344 |
-| Related | D1 #1330 S2 fail |
+| Related | D1 #1330 S2 |
 
 ## 事実
 
@@ -20,6 +20,15 @@
 3. Reason `aggregate_outcome`: 生成 0 件は SUCCESS（empty 正規完了）。
 4. §19 UT を本実装 021/022/023 配線で回帰確認。
 
-## 未実施
+## 手動再検証（2026-07-16）
 
-- ローカル手動 E2E（budget 極値 → PUB-002 `resultStatus=empty` / SCR-009 UI）の再検証。
+| 確認 | 結果 |
+| ---- | ---- |
+| Branch | `develop`（#1345 / #1344 merge 後） |
+| API Case A | `budgetMax=1` → HTTP **200** / `resultStatus=empty` / `resultItemCount=0` / `traceId=s2-reverify-a-budgetmax1` |
+| API Case B | `budget 9000-10000` → HTTP **200** / `resultStatus=empty` / `resultItemCount=0` / `traceId=s2-reverify-b-9000-10000` |
+| UI | SCR-002 → SCR-003 → SCR-009 相当（「おすすめが見つかりませんでした」） |
+| 復帰 | 「条件を変更する」→ SCR-002 再表示（入力値保持） |
+| 合否 | **`pass`**（S2 合格条件充足） |
+
+secret / `.env` 実値は記載しない。
