@@ -1,0 +1,199 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-008-error-display-screen-spec"
+  title: "SCR-008:エラー表示画面仕様書作成"
+  summary: "SCR-008（エラー表示）の画面仕様書（SCR-008_エラー表示画面仕様書.md）を、画面一覧・画面遷移図・SCR-002画面仕様書・API-PUB-002契約・デザインルール・UIコンポーネント一覧に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-008:エラー表示"
+  epic_issue_number: 1367
+  epic_branch: "feature/epic-1367-scr-008-error-display"
+  related_issues:
+    - number: 1368
+      purpose: "本 Task Issue"
+    - number: 1367
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、web 実装の前提となる画面仕様書を作成する。
+  SCR-008 は独立 URL 画面ではなく、主に SCR-002 推薦実行失敗時の UI 状態として扱う（画面遷移図正本）。
+  D1 S3（api 停止→エラー UI→条件入力へ戻る）は pass 済み。本 Task で正本仕様を固定する。
+
+objective: |
+  SCR-008（エラー表示）について、実装・レビューが可能な粒度の画面仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-008 の画面仕様書を新規作成する（成果物: SCR-008_エラー表示画面仕様書.md）"
+  - "画面目的・対象ユーザー・表示パターンを整理する"
+  - "画面状態であること（独立 URL ではないこと）と復帰導線を整理する"
+  - "推薦実行失敗（API / 通信）とフィールド入力エラーの分担を整理する"
+  - "Alert / EmptyState 等 UI 部品との対応を整理する"
+  - "専用エラー route 新設が MVP out of scope であることを明示する"
+  - "画面一覧の「再実行」操作の MVP 扱いを明記する（Human Review 観点）"
+
+out_of_scope:
+  - "他画面（SCR-008 以外）の画面仕様書作成"
+  - "専用エラー用 URL route の新設・実装"
+  - "SCR-003 / SCR-009 の包括仕様（遷移・隣接状態としての言及に留める）"
+  - "SCR-005 / SCR-006 / SCR-007 の本仕様変更"
+  - "OpenAPI / generated / ソースコード実装"
+  - "API-PUB-002 契約・実装の変更"
+  - "認証・認可方式そのものの変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-008 の画面ID・表示パターン・操作・MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "画面状態としての位置づけと復帰遷移を確認するため"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "SCR-002 内エラー状態・フィールドバリデーションとの分担を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "実行失敗時のエラーコード・メッセージ前提を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "エラー表示のデザイン方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "Alert / EmptyState 等の部品を確認するため"
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: false
+      purpose: "D1 S3 合格条件との整合を確認するため"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書の章構成テンプレート"
+  files: []
+  issues:
+    - number: 1367
+      purpose: "親 Epic"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-008_エラー表示画面仕様書.md"
+      purpose: "SCR-008 画面仕様書正本"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "docs/06_実装設計/web/SCR-008_エラー表示画面仕様書.md"
+
+acceptance_criteria:
+  - "画面仕様書が output.docs のパスに作成されている"
+  - "画面状態であること（専用 route なし）が明記されている"
+  - "推薦実行失敗時の表示・復帰導線が整理されている"
+  - "フィールド入力エラーとの分担が明記されている"
+  - "SCR-003 / SCR-009 との境界が明記されている"
+  - "再実行操作の MVP 扱いが Human Review 観点として整理されている"
+  - "secret / .env 実値を含まない"
+
+exclusive_files:
+  - "docs/06_実装設計/web/SCR-008_エラー表示画面仕様書.md"
+  - "prompts/definitions/tasks/scr-008-error-display/screen-spec.yaml"
+  - "prompts/definitions/reviews/scr-008-error-display/screen-spec/pr-review.yaml"
+
+branch:
+  no_branch: false
+  name: null
+  summary: "scr-008-error-display-screen-spec"
+  base: "feature/epic-1367-scr-008-error-display"
+  target: "feature/epic-1367-scr-008-error-display"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面状態方針が画面遷移図・画面一覧と矛盾していないか"
+    - "SCR-002 との分担が明確か"
+    - "SCR-009 と混同していないか"
+    - "専用 route 新設を要求していないか"
+    - "再実行の MVP 扱いが Human 判断として切り出されているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常の画面仕様書 Task。成果物は docs、作業計画は Issue、レビューは PR を正とする。"
+
+risk_points:
+  - "SCR-009（0件）とエラー表示を混同する"
+  - "専用エラー route を必須にしてしまう"
+  - "SCR-003 実装と recommendation-input を同時編集する競合"
+
+human_decision_points:
+  - "画面一覧の「再実行」操作を MVP 必須にするか（現状実装は条件入力へ戻る中心）"
+  - "フィールド入力エラーを SCR-008 本文にどこまで含めるか（SCR-002 分担との境界）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "親 Epic Branch が存在しない場合"
+  - "専用エラー route 新設が必須と判断された場合（Human 確認へ）"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "PR target は親 Epic Branch（feature/epic-1367-scr-008-error-display）"
+  - "AI Review 用 Review Definition を同 Task の PR head に含める"

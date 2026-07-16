@@ -3,6 +3,7 @@ export { Alert } from "./feedback/Alert";
 export { EmptyState } from "./feedback/EmptyState";
 export { InlineError } from "./feedback/InlineError";
 export { LoadingPanel } from "./feedback/LoadingPanel";
+export { MorphingIndicator } from "./feedback/MorphingIndicator";
 export { Spinner } from "./feedback/Spinner";
 export { Card } from "./display/Card";
 export { Heading } from "./display/Heading";

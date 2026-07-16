@@ -1,0 +1,206 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-008-error-display-implementation"
+  title: "SCR-008:エラー表示実装"
+  summary: "SCR-008（エラー表示）を apps/web に実装する。画面仕様書に基づき、推薦実行失敗時の画面状態 UI（Alert・条件入力へ戻る・再実行）を recommendation-input 内で明確化し、回帰テストを追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-008:エラー表示"
+  epic_issue_number: 1367
+  epic_branch: "feature/epic-1367-scr-008-error-display"
+  related_issues:
+    - number: 1372
+      purpose: "本 Task Issue"
+    - number: 1367
+      purpose: "親 Epic"
+    - number: 1368
+      purpose: "前提 Task（画面仕様書）"
+  related_prs:
+    - number: 1369
+      purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  SCR-008 Epic（#1367）の実装 Task。画面仕様書（#1368 / PR #1369）が親 Epic Branch に merge 済みであることを前提に着手する。
+  既存の RecommendationInputPage `phase=error` が本状態に相当するため、専用 route は新設せずコンポーネント切り出し・定数整備・テストで仕様へ揃える。
+  SCR-003 実装 Task（#1371）と recommendation-input が競合し得るため、差分は SCR-008 責務に閉じる。
+
+objective: |
+  SCR-008 の実行失敗 UI を仕様書どおり apps/web 上で提供し、条件入力へ戻る / 再実行 / code・traceId 表示を回帰テスト可能な形で固定する。
+
+scope:
+  - "SCR-008 実行失敗 UI のコンポーネント化（recommendation-input 内）"
+  - "画面仕様書に沿った定数（タイトル・ボタンラベル・フォールバック文言）の整理"
+  - "RecommendationInputPage からの呼び出し配線"
+  - "component test の追加（表示・戻る・再実行）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "専用エラー用 URL route の新設"
+  - "SCR-003 / SCR-009 の包括実装変更"
+  - "フィールド入力エラー・マスタ取得失敗 UI の再設計（SCR-002 分担）"
+  - "OpenAPI / generated / apps/api / apps/reco / apps/batch の変更"
+  - "網羅的 E2E（D2）"
+  - "画面仕様書の大幅改訂"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-008_エラー表示画面仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "エラー分担（フィールド・マスタは SCR-002）の確認"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-008 行との整合"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "状態遷移の確認"
+  templates: []
+  files: []
+  issues:
+    - number: 1367
+      purpose: "親 Epic"
+    - number: 1368
+      purpose: "前提 Task（画面仕様書）"
+  prs:
+    - number: 1369
+      purpose: "画面仕様書 PR（merge 済み）"
+
+output:
+  docs: []
+  files:
+    - path: "apps/web/src/features/recommendation-input/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/web/tests/component/recommendation-input/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/scr-008-error-display/implementation.yaml"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/scr-008-error-display/implementation/pr-review.yaml"
+      action: "create_or_update"
+      required: true
+  tests:
+    - path: "apps/web/tests/component/recommendation-input/**"
+      purpose: "SCR-008 表示・操作の回帰"
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-008 実行失敗 UI コンポーネント"
+  - "RecommendationInputPage 配線"
+  - "component test"
+
+acceptance_criteria:
+  - "独立エラー route を新設していない"
+  - "実行失敗時に Alert タイトル・メッセージ・任意 code/traceId・条件入力へ戻る・再実行が表示される"
+  - "条件入力へ戻るで form 状態へ復帰できる"
+  - "再実行で onRetry（PUB-002 再呼出）が呼ばれる"
+  - "resultStatus=empty を本状態にしない既存分岐を壊していない"
+  - "component test が追加され pass する"
+  - "secret / .env 実値を含まない"
+
+exclusive_files:
+  - "apps/web/src/features/recommendation-input/RecommendationRunErrorView.tsx"
+  - "apps/web/src/features/recommendation-input/RecommendationInputPage.tsx"
+  - "apps/web/src/features/recommendation-input/constants.ts"
+  - "apps/web/tests/component/recommendation-input/RecommendationRunErrorView.test.tsx"
+  - "prompts/definitions/tasks/scr-008-error-display/implementation.yaml"
+  - "prompts/definitions/reviews/scr-008-error-display/implementation/pr-review.yaml"
+
+branch:
+  no_branch: false
+  name: null
+  summary: "scr-008-error-display-implementation"
+  base: "feature/epic-1367-scr-008-error-display"
+  target: "feature/epic-1367-scr-008-error-display"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "web"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "専用 route を新設していないか"
+    - "SCR-009（0件）と混同していないか"
+    - "SCR-003 実装との競合差分が最小か"
+    - "再実行が画面仕様（Human Review 採否待ちの提案含む）と矛盾していないか"
+    - "テストが仕様の主操作をカバーしているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常の画面実装 Task。成果は code / test、レビューは PR を正とする。"
+
+risk_points:
+  - "SCR-003 #1371 と recommendation-input 同時編集による conflict"
+  - "empty 経路を error に誤配線する"
+
+human_decision_points:
+  - "再実行ボタンを残すこと（画面仕様 §6.2 は提案表記だが merge 済み仕様・現状実装と整合）"
+
+stop_conditions:
+  - "親 Epic Branch に画面仕様書が無い場合"
+  - "専用エラー route 新設が必須と判断された場合"
+  - "SCR-003 実装との conflict 解消に設計判断が必要な場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "PR target は親 Epic Branch"
+  - "AI Review 用 Review Definition を PR head に含める"

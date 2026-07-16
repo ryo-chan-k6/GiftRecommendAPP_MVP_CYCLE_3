@@ -1,12 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Alert } from "@/components/feedback/Alert";
 import { Button } from "@/components/action/Button";
-import { EmptyState } from "@/components/feedback/EmptyState";
-import { LoadingPanel } from "@/components/feedback/LoadingPanel";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Text } from "@/components/display/Text";
 import { ResultStatus } from "@/generated/api/giftRecommendationServicePublicAPI.schemas";
@@ -14,11 +12,9 @@ import { postRecommendationRun } from "@/lib/api";
 
 import { buildRecommendationRunRequest } from "./build-request";
 import {
-  EMPTY_RESULT_MESSAGE,
   MASTERS_EMPTY_MESSAGE,
   MASTERS_ERROR_MESSAGE,
   RUN_ERROR_FALLBACK_MESSAGE,
-  RUNNING_MESSAGE,
 } from "./constants";
 import {
   persistFormValues,
@@ -26,7 +22,10 @@ import {
   storeRecommendationResult,
 } from "./form-persistence";
 import { isErrorResponse, loadRecommendationMasters } from "./load-masters";
+import { RecommendationEmptyPanel } from "./RecommendationEmptyPanel";
 import { RecommendationInputForm } from "./RecommendationInputForm";
+import { RecommendationRunErrorView } from "./RecommendationRunErrorView";
+import { RecommendationRunningPanel } from "./RecommendationRunningPanel";
 import type {
   MastersLoadState,
   RecommendationInputFieldErrors,
@@ -37,9 +36,22 @@ import type {
 import { createEmptyFormValues } from "./types";
 import { hasFieldErrors, validateRecommendationInput } from "./validation";
 
+function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as { name?: string }).name === "AbortError"
+  );
+}
+
 export function RecommendationInputPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const runAbortRef = useRef<AbortController | null>(null);
 
   const [phase, setPhase] = useState<ScreenPhase>("form");
   const [masters, setMasters] = useState<MastersLoadState>({
@@ -51,6 +63,12 @@ export function RecommendationInputPage() {
   const [errors, setErrors] = useState<RecommendationInputFieldErrors>({});
   const [runError, setRunError] = useState<RunErrorState | null>(null);
   const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      runAbortRef.current?.abort();
+    };
+  }, []);
 
   const refreshMasters = useCallback(async () => {
     setMasters({ status: "loading" });
@@ -141,6 +159,10 @@ export function RecommendationInputPage() {
     setPhase("running");
     setRunError(null);
 
+    runAbortRef.current?.abort();
+    const controller = new AbortController();
+    runAbortRef.current = controller;
+
     const request = buildRecommendationRunRequest(
       values,
       relationships,
@@ -148,7 +170,12 @@ export function RecommendationInputPage() {
     );
 
     try {
-      const response = await postRecommendationRun(request);
+      const response = await postRecommendationRun(request, {
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) {
+        return;
+      }
       if (response.status !== 200) {
         const payload = response.data;
         setRunError({
@@ -177,9 +204,16 @@ export function RecommendationInputPage() {
       }
 
       router.push(`/recommendations/${result.recommendationResultId}`);
-    } catch {
+    } catch (error) {
+      if (controller.signal.aborted || isAbortError(error)) {
+        return;
+      }
       setRunError({ message: RUN_ERROR_FALLBACK_MESSAGE });
       setPhase("error");
+    } finally {
+      if (runAbortRef.current === controller) {
+        runAbortRef.current = null;
+      }
     }
   }, [
     masters.status,
@@ -191,74 +225,31 @@ export function RecommendationInputPage() {
   ]);
 
   if (phase === "running") {
-    return (
-      <PageLayout title="レコメンド実行中">
-        <LoadingPanel message={RUNNING_MESSAGE}>
-          <Text className="text-small text-text-muted">
-            しばらくお待ちください。
-          </Text>
-        </LoadingPanel>
-      </PageLayout>
-    );
+    return <RecommendationRunningPanel />;
   }
 
   if (phase === "empty") {
     return (
-      <PageLayout title="おすすめが見つかりませんでした">
-        <EmptyState
-          title="条件に合うギフトがありません"
-          description={EMPTY_RESULT_MESSAGE}
-          action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setPhase("form");
-              }}
-            >
-              条件を変更する
-            </Button>
-          }
-        />
-      </PageLayout>
+      <RecommendationEmptyPanel
+        onChangeConditions={() => {
+          setPhase("form");
+        }}
+      />
     );
   }
 
   if (phase === "error" && runError) {
     return (
-      <PageLayout title="エラー">
-        <Alert variant="error" title="レコメンド実行に失敗しました">
-          <p>{runError.message}</p>
-          {runError.code ? (
-            <p className="mt-2 text-small text-text-muted">
-              code: {runError.code}
-            </p>
-          ) : null}
-          {runError.traceId ? (
-            <p className="mt-1 text-small text-text-muted">
-              traceId: {runError.traceId}
-            </p>
-          ) : null}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button
-              variant="primary"
-              onClick={() => {
-                setPhase("form");
-                setRunError(null);
-              }}
-            >
-              条件入力へ戻る
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                void onSubmit();
-              }}
-            >
-              再実行
-            </Button>
-          </div>
-        </Alert>
-      </PageLayout>
+      <RecommendationRunErrorView
+        error={runError}
+        onBackToForm={() => {
+          setPhase("form");
+          setRunError(null);
+        }}
+        onRetry={() => {
+          void onSubmit();
+        }}
+      />
     );
   }
 
