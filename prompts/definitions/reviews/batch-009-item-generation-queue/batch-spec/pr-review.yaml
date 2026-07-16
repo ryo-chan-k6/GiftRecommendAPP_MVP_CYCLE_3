@@ -6,7 +6,7 @@ review:
   title: "BATCH-009 商品意味生成キュー登録バッチ仕様書 PRレビュー"
   summary: "BATCH-009（商品意味生成キュー登録Batch）バッチ仕様書 Task の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1408
   issue:
     number: 1407
   task_definition: "prompts/definitions/tasks/batch-009-item-generation-queue/batch-spec.yaml"
@@ -67,3 +67,4 @@ review_points:
 notes:
   - "Related to #1407"
   - "status は PR 作成まで draft"
+  - "Issue #1407 / PR #1408"
