@@ -32,6 +32,18 @@ def _read_positive_int(source: Mapping[str, str], key: str) -> int | None:
     return parsed
 
 
+def _read_optional_bool(source: Mapping[str, str], key: str) -> bool | None:
+    raw = _read_optional_str(source, key)
+    if raw is None:
+        return None
+    lowered = raw.lower()
+    if lowered in {"1", "true", "yes", "on"}:
+        return True
+    if lowered in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{key} must be a boolean, got {raw!r}")
+
+
 def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSettings:
     """Load batch settings from environment variables.
 
@@ -56,6 +68,11 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_max_retry=_read_positive_int(source, "BATCH_MAX_RETRY"),
         batch_raw_staging_max_raw=_read_positive_int(source, "BATCH_RAW_STAGING_MAX_RAW"),
         batch_raw_staging_source_api=_read_optional_str(source, "BATCH_RAW_STAGING_SOURCE_API"),
+        batch_product_diff_max_items=_read_positive_int(source, "BATCH_PRODUCT_DIFF_MAX_ITEMS"),
+        batch_product_diff_source=_read_optional_str(source, "BATCH_PRODUCT_DIFF_SOURCE"),
+        batch_product_diff_sync_staging=_read_optional_bool(
+            source, "BATCH_PRODUCT_DIFF_SYNC_STAGING"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )

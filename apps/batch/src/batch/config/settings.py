@@ -23,6 +23,9 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_MAX_RETRY",
     "BATCH_RAW_STAGING_MAX_RAW",
     "BATCH_RAW_STAGING_SOURCE_API",
+    "BATCH_PRODUCT_DIFF_MAX_ITEMS",
+    "BATCH_PRODUCT_DIFF_SOURCE",
+    "BATCH_PRODUCT_DIFF_SYNC_STAGING",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -71,6 +74,9 @@ class BatchSettings:
     batch_max_retry: int | None
     batch_raw_staging_max_raw: int | None
     batch_raw_staging_source_api: str | None
+    batch_product_diff_max_items: int | None
+    batch_product_diff_source: str | None
+    batch_product_diff_sync_staging: bool | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -114,6 +120,9 @@ class BatchSettings:
             f"batch_max_retry={self.batch_max_retry!r}, "
             f"batch_raw_staging_max_raw={self.batch_raw_staging_max_raw!r}, "
             f"batch_raw_staging_source_api={self.batch_raw_staging_source_api!r}, "
+            f"batch_product_diff_max_items={self.batch_product_diff_max_items!r}, "
+            f"batch_product_diff_source={self.batch_product_diff_source!r}, "
+            f"batch_product_diff_sync_staging={self.batch_product_diff_sync_staging!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "
