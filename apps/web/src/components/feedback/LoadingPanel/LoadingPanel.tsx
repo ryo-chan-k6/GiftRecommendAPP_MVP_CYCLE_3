@@ -1,6 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
-import { Spinner } from "@/components/feedback/Spinner";
+import { MorphingIndicator } from "@/components/feedback/MorphingIndicator";
 import { Text } from "@/components/display/Text";
 import { cn } from "@/lib/cn";
 
@@ -25,7 +25,7 @@ export function LoadingPanel({
       aria-live="polite"
       {...props}
     >
-      <Spinner size="md" />
+      <MorphingIndicator />
       <Text className="text-text-secondary">{message}</Text>
       {children}
     </div>

@@ -37,6 +37,7 @@ export const MASTERS_ERROR_MESSAGE = "選択項目の取得に失敗しました
 export const MASTERS_EMPTY_MESSAGE =
   "選択肢がありません。しばらくしてから再度お試しください。";
 export const RUNNING_MESSAGE = "条件に合うギフトを探しています";
+export const RUNNING_WAITING_MESSAGE = "しばらくお待ちください。";
 export const EMPTY_RESULT_MESSAGE =
   "条件に合うギフトが見つかりませんでした。条件を変えて再度お試しください。";
 export const RUN_ERROR_FALLBACK_MESSAGE =

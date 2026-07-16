@@ -1,0 +1,259 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-003-recommendation-running"
+  title: "SCR-003:レコメンド実行中表示"
+  summary: "SCR-003（レコメンド実行中表示）に関する画面仕様書・実装・単体テストを管理するEpic。独立URL画面ではなく、SCR-002 推薦実行中の UI 状態（LoadingPanel / ST-LOAD）として仕様化し、API-PUB-002 呼び出し中の待機 UX を担当する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計および 07_開発・単体テストにおいて、SCR-003（レコメンド実行中表示）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  画面遷移図の正本どおり、SCR-003 は独立した業務画面ではなく推薦実行中の画面状態である。
+  画面一覧の URL案 `/recommendations/loading` は参考とし、MVP 実装は既存どおり `recommendation-input` 内 LoadingPanel を正とする（専用 route 新設は原則 out of scope）。
+  依存 Epic（SCR-002 #1147 / API-PUB-002 #357）はいずれも develop merge 済み。#1344（D1 residual）は CLOSED / MERGED のため競合なしとして扱う。
+  子 Task は画面仕様書・実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+
+objective: |
+  SCR-003 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "SCR-003 に関する子 Task の作業単位を整理する（画面仕様書 / 画面実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/scr-003-recommendation-running/**）を整理する"
+  - "依存 Epic（SCR-002 / API-PUB-002）の Status を子 Task 開始前に確認する運用を明示する"
+  - "SCR-003 を画面状態として仕様化し、既存 LoadingPanel 実装との整合を取る"
+
+out_of_scope:
+  - "専用 `/recommendations/loading` route の新設"
+  - "SCR-008 / SCR-009 の包括仕様（エラー表示・0件結果表示の本仕様は別 Epic）"
+  - "SCR-005 / SCR-007 の変更"
+  - "Public / Internal API 仕様書および OpenAPI / generated / packages/contracts の変更"
+  - "apps/api / apps/reco / apps/batch の実装変更"
+  - "DB schema 変更"
+  - "features/home の変更"
+  - "features/recommendation-result の大規模改修（結果一覧本体は out of scope）"
+  - "認証・認可方式そのものの変更"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "対象画面 SCR-003 の画面ID・画面名・画面種別・URL案・MVP対象・表示項目を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-003 が独立 URL ではなく画面状態であること、および成功/失敗/0件への遷移を確認するため"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "SCR-002 内の実行中状態・LoadingPanel 利用方針との分担を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "推薦実行 API 呼び出し中の待機 UX 前提を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "ST-LOAD（ローディング）パターンを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "LoadingPanel（UI-032）等の部品責務を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）と epic_scope.allowed_paths の境界例を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）・命名規則を確認するため"
+  templates: []
+  files: []
+  issues:
+    - number: 1361
+      purpose: "本 Epic Issue"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]SCR-003:レコメンド実行中表示）"
+  - "Epic Branch（develop 起点 / feature/epic-1361-scr-003-recommendation-running）"
+  - "子 Task 候補一覧（画面仕様書 / 画面実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]SCR-003:レコメンド実行中表示 形式である（Task Definition設計書 §15.0）"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位（画面仕様書 / 画面実装 / 単体テスト）が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が SCR-003 責務（画面状態仕様・LoadingPanel / recommendation-input・関連 docs・prompts）と整合している"
+  - "dependencies.epics に SCR-002 / API-PUB-002 が記載されている"
+  - "専用 loading route 新設が out_of_scope として明示されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1361-scr-003-recommendation-running"
+  summary: "scr-003-recommendation-running"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "web"
+
+epic_scope:
+  artifact_id: "SCR-003"
+  allowed_paths:
+    - "docs/06_実装設計/web/SCR-003_*"
+    - "apps/web/src/features/recommendation-input/**"
+    - "apps/web/src/components/**"
+    - "apps/web/src/lib/**"
+    - "apps/web/tests/**"
+    - "prompts/definitions/epics/scr-003-recommendation-running/**"
+    - "prompts/definitions/tasks/scr-003-recommendation-running/**"
+    - "prompts/definitions/reviews/scr-003-recommendation-running/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "packages/contracts/**"
+    - "db/**"
+    - "apps/web/src/features/home/**"
+    - "apps/web/src/features/recommendation-result/**"
+    - "apps/web/src/app/page.tsx"
+  child_task_areas:
+    - "screen-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "推薦実行の起点画面（develop merge 済み）。SCR-003 は本画面内の実行中 UI 状態として扱う"
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "レコメンド実行 Public API（develop merge 済み）。呼び出し中の待機 UX 前提"
+  issues:
+    - number: 1361
+      purpose: "本 Epic Issue"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が SCR-003（実行中表示＝画面状態）に閉じているか確認する"
+    - "専用 loading route を新設する設計になっていないか確認する"
+    - "依存 Epic SCR-002 / API-PUB-002 が develop 済みか確認する"
+    - "#1344 D1 residual が CLOSED / MERGED で競合なしと扱えるか確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が SCR-003 に閉じているか"
+    - "画面状態として仕様化する方針が画面遷移図と矛盾していないか"
+    - "専用 `/recommendations/loading` route 新設が out_of_scope か"
+    - "依存 Epic SCR-002 / API-PUB-002 が dependencies.epics にあるか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "SCR-003 縦串の通常 Epic 管理。作業計画は Issue、統合は Epic PR を正本とする。"
+
+risk_points:
+  - "Task PR を誤って develop へ直接向ける運用ミス"
+  - "専用 loading route を本 Epic で新設してしまう運用ミス"
+  - "SCR-008 / SCR-009 包括仕様や recommendation-result 大規模改修を混入する運用ミス"
+  - "OpenAPI / apps/api / packages/contracts を本 Epic で変更する運用ミス"
+
+human_decision_points:
+  - "SCR-003 は画面状態として仕様化する（独立 URL 画面ではない）— Human 確定済み"
+  - "URL案 `/recommendations/loading` は参考。MVP は recommendation-input 内 LoadingPanel を正とし、専用 route 新設は原則 out of scope — Human 確定済み"
+  - "#1344（D1 residual）は CLOSED / MERGED のため競合なし — Human 確定済み"
+  - "キャンセル導線（入力画面へ戻る）の MVP 対象（画面一覧では △）の採否は screen-spec で整理し Human Review で確認"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-003 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "専用 loading route 新設が必須と判断された場合（Human 確認へ）"
+  - "Task PR の target が develop に向く設計が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、画面仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "命名の正本は Task Definition設計書 §15.0（Epic）・§15.3（画面 Task）"
+  - "最初の子 Task: prompts/definitions/tasks/scr-003-recommendation-running/screen-spec.yaml"
+  - "依存 Epic: #1147 SCR-002 / #357 API-PUB-002（いずれも develop merge 済み）"
+  - "本 Epic Issue: #1361 / Epic Branch: feature/epic-1361-scr-003-recommendation-running"
