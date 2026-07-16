@@ -70,6 +70,30 @@ describe("RecommendationResultItem (SCR-004 / SCR-005)", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows reason points in accordion when provided", async () => {
+    const user = userEvent.setup();
+    render(
+      <RecommendationResultItem
+        item={{
+          ...baseItem,
+          reasonPoints: ["きちんと感がある"],
+          reasonDetail: "詳細な説明です。",
+        }}
+        resultId="result-1"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "▶ 理由の詳細" }));
+
+    expect(screen.getByText("きちんと感がある")).toBeInTheDocument();
+    expect(screen.getByText("詳細な説明です。")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "詳細な説明文はありません。カード上の要約・バッジをご確認ください。",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not show shopName", () => {
     render(
       <RecommendationResultItem
