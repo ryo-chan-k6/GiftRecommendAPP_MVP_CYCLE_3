@@ -44,7 +44,7 @@ BATCH-006（商品差分判定Batch）は、BATCH-005 完了済みの `staging_i
 | Batch ID       | `BATCH-006` |
 | Batch名        | 商品差分判定Batch |
 | 処理種別       | Staging ↔ Item hash 比較 / 差分判定結果永続化 |
-| 実行基盤       | GitHub Actions。**独立子 workflow `batch-rakuten-product-diff.yml`（`batch-rakuten-product-diff*.yml`）を提案**（§18.2 No.1）。親 item-import 全体改修は本 Epic 外 |
+| 実行基盤       | GitHub Actions。**独立子 workflow `batch-rakuten-product-diff.yml`（`batch-rakuten-product-diff*.yml`）を正**とする（§18.1 No.7）。親 item-import 全体改修は本 Epic 外 |
 | 実装言語       | Python（`apps/batch`） |
 | 起動方式       | 先行 Batch（BATCH-005）後続 / `workflow_dispatch`（独立 cron なし） |
 | 実行頻度       | Staging 変換後に連続実行 |
@@ -72,9 +72,9 @@ BATCH-006（商品差分判定Batch）は、BATCH-005 完了済みの `staging_i
 
 | トリガー | 利用有無 | 条件 | 備考 |
 | -------- | -------- | ---- | ---- |
-| schedule | `false` | — | 独立 cron は付けない（提案。BATCH-005 同型） |
+| schedule | `false` | — | 独立 cron は付けない（§18.1 No.7。BATCH-005 同型） |
 | workflow_dispatch | `true` | 手動・再実行（`batch_run_id` / 明示 `staging_item_id` / `external_item_code` / 件数上限） | 失敗再実行・部分集合処理に利用 |
-| 先行Batch完了 | `true`（運用上） | BATCH-005 後続、または独立 YAML を親から `workflow_call` | 親全体改修は本 Epic 外（§18.2 No.1） |
+| 先行Batch完了 | `true`（運用上） | BATCH-005 後続、または独立 YAML を親から `workflow_call` | 親全体改修は本 Epic 外（§18.1 No.7） |
 | retry-failed | `false` | MVP では workflow_dispatch で失敗キーを絞る | 依存関係図: `batch_run_id` + `external_item_code` 単位 |
 
 ### 5.2 実行前提
@@ -96,7 +96,7 @@ BATCH-006（商品差分判定Batch）は、BATCH-005 完了済みの `staging_i
 | ---- | ---- | ------ | ---- | ---- | ---- |
 | `staging_item` | DB | database | `true` | 判定対象行・`normalized_hash` / `source` / `external_item_code` / `availability` 等 | BATCH-005 完了済み |
 | `item` | DB | database | `false`（行単位） | 既存 hash 読取・突合 | 未存在 → `new` |
-| `staging_selection` / config | 設定 | Batch config / workflow input | `true` | 選定フィルタ / 件数上限 | §18.2 No.2 **提案** |
+| `staging_selection` / config | 設定 | Batch config / workflow input | `true` | 選定フィルタ / 件数上限 | §18.1 No.8 **確定** |
 | 明示 `staging_item_id` / `external_item_code` リスト | 入力 | workflow_dispatch | `false` | 失敗再実行・部分集合 | |
 
 ### 6.2 外部API
@@ -112,7 +112,7 @@ BATCH-006（商品差分判定Batch）は、BATCH-005 完了済みの `staging_i
 | 環境変数名 | 必須 | 用途 | secret区分 | 設定先 |
 | ---------- | ---- | ---- | ---------- | ------ |
 | `DATABASE_URL` | `true` | Staging / Item 読取・`product_diff_result` 更新 | secret | GitHub Secrets / local `.env`（commit 禁止） |
-| `BATCH_PRODUCT_DIFF_MAX_ITEMS` 等 | `false` | 件数上限 | 非secret可 | config / workflow input（§18.2 No.2） |
+| `BATCH_PRODUCT_DIFF_MAX_ITEMS` 等 | `false` | 件数上限 | 非secret可 | config / workflow input（§18.1 No.8） |
 | `BATCH_PRODUCT_DIFF_SOURCE` 等 | `false` | `source` フィルタ（MVP 既定 `rakuten`） | 非secret可 | config / workflow input |
 
 ---
@@ -174,10 +174,10 @@ flowchart TD
 
 |  No | Phase | 処理 | 入力 | 出力 | 失敗時の扱い |
 | --: | ----- | ---- | ---- | ---- | ------------ |
-| 1 | `plan` | 対象 `staging_item` キューを作成する（§18.2 No.2 選定既定） | config / `staging_item` | `staging_item_id` 一覧 | `GRS-BAT-*` |
+| 1 | `plan` | 対象 `staging_item` キューを作成する（§18.1 No.8 選定既定） | config / `staging_item` | `staging_item_id` 一覧 | `GRS-BAT-*` |
 | 2 | `load_staging` | Staging 行を読み、`normalized_hash` 必須を確認する | `staging_item_id` | Staging 行 | `GRS-DB-*`。hash NULL は当該行失敗（再 Staging 要） |
 | 3 | `resolve_item` | `source` + `external_item_code` で `item` を検索する | Staging 突合キー | 既存 Item または未存在 | `GRS-DB-*`（読取失敗）。未存在はエラーではない |
-| 4 | `compare` | hash 比較および `unavailable` 条件を適用し `diff_status` / `old_hash` / `new_hash` を決める | Staging + Item | 判定候補 | `GRS-BAT-007`。条件詳細は §9.2 / §18.2 No.3 |
+| 4 | `compare` | hash 比較および `unavailable` 条件を適用し `diff_status` / `old_hash` / `new_hash` を決める | Staging + Item | 判定候補 | `GRS-BAT-007`。条件詳細は §9.2 / §18.1 No.9 |
 | 5 | `persist` | Product Diff Result Repository で UPSERT | 判定候補 | `product_diff_result` 行 | `GRS-DB-*` |
 | 6 | `status` | 任意で `staging_item.diff_status` を同一値 UPDATE | `staging_item_id` + `diff_status` | Staging 同期 | DB 失敗は `GRS-DB-*`。正本は既に persist 済み |
 | 7 | `finalize` | 集計・`batch_run_log` 更新 | 各 Phase 結果 | run_status / counts | 部分成功は `GRS-BAT-002` |
@@ -212,9 +212,9 @@ Item 突合は **`staging_item.source` + `staging_item.external_item_code`** を
 | `new` | `item` が `source` + `external_item_code` で **未存在** | NULL | Staging hash | BATCH-007 Insert / BATCH-009 |
 | `updated` | Item 存在 & `old_hash <> new_hash` | Item hash（NOT NULL） | Staging hash | BATCH-007 Update / BATCH-009（意味影響時） |
 | `unchanged` | Item 存在 & `old_hash = new_hash` | Item hash（NOT NULL） | Staging hash | BATCH-007 は業務列 no-op（`last_checked_at` のみ） |
-| `unavailable` | 取得不能・必須欠落・販売不可等（§18.2 No.3） | 状況に応じ NULL 可 | Staging hash（NOT NULL） | BATCH-008 検討。原則 BATCH-007 Upsert しない |
+| `unavailable` | 取得不能・必須欠落・販売不可等（§18.1 No.9） | 状況に応じ NULL 可 | Staging hash（NOT NULL） | BATCH-008 検討。原則 BATCH-007 Upsert しない |
 
-判定順序の推奨（実装 Task への入力。最終細部は §18.2 No.3）:
+判定順序（実装 Task への入力。§18.1 No.9 **確定**）:
 
 ```text
 1. staging_item.normalized_hash が NULL / 不正長 → 当該行失敗（再 Staging）。判定行を書かない
@@ -242,7 +242,7 @@ Item 突合は **`staging_item.source` + `staging_item.external_item_code`** を
 | ---- | ---- |
 | 正本 | **`product_diff_result.diff_status`**（#526 No.2 **確定**） |
 | Staging | BATCH-005 直後は NULL。BATCH-006 で **任意 UPDATE**（#517 No.4 **確定**） |
-| 実装既定（提案） | persist 成功後に同一値で UPDATE する（§18.2 No.4） |
+| 実装既定（MVP） | persist 成功後に **常に** 同一値で UPDATE する（§18.1 No.10）。無効化は config 可 |
 
 ---
 
@@ -378,7 +378,7 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 | 1 | 正常系 `new` | Item 未存在で `diff_status=new`、`old_hash IS NULL`、`new_hash`=Staging | unit / integration |
 | 2 | 正常系 `updated` | hash 不一致で `updated`、両 hash NOT NULL | unit / integration |
 | 3 | 正常系 `unchanged` | hash 一致で `unchanged`。`item` 業務列が変わらない | unit / integration |
-| 4 | `unavailable` | §9.2 / §18.2 No.3 の条件で `unavailable` | unit |
+| 4 | `unavailable` | §9.2 / §18.1 No.9 の条件で `unavailable` | unit |
 | 5 | hash 再算出なし | Payload Builder / Hash Calculator が呼ばれない／Staging hash を改変しない | unit |
 | 6 | 冪等 UPSERT | 同一 `(batch_run_id, external_item_code)` 再実行が上書きのみ | unit / integration |
 | 7 | 判定正本 | 後続読取は `product_diff_result`。Staging のみ更新しても正本扱いにしない | unit |
@@ -398,14 +398,13 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-16 | 初版作成 | Epic #1341 / Task #1342 |
+| 2026-07-16 | §18.1 No.7〜10 を Human 確定（旧 §18.2 No.1〜4 推奨案を MVP 初期採用）。§18.2 を解消 | Epic #1341 / Task #1342 |
 
 ---
 
 ## 18. 未決事項・決定事項
 
-本節では、**テーブル定義書で Human 確定済みの事項**と、**本仕様書時点の提案（Human 判断待ち）**を区別する。
-
-### 18.1 採用方針（テーブル定義書 Human 確定）
+### 18.1 採用方針（Human 確定）
 
 |  No | 論点 | 内容 | 判断者 | 状態 | 備考 |
 | --: | ---- | ---- | ------ | ---- | ---- |
@@ -415,24 +414,14 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 | 4 | `old_hash` / `new_hash` | **`new_hash` = Staging hash**、**`old_hash` = 既存 Item hash**（`new` 時 NULL） | Human（#526） | **確定** | §9.1 / §9.2 |
 | 5 | `source` 列 | **不採用**。突合は `staging_item.source` + `external_item_code` | Human（#526） | **確定** | §9.1 |
 | 6 | hash 算出タイミング | **BATCH-005 内で確定。BATCH-006 は比較のみ** | Human（#517 No.5） | **確定** | §2 / §9.3 |
+| 7 | 子 workflow 配置 | **独立 YAML `batch-rakuten-product-diff.yml`（`batch-rakuten-product-diff*.yml`）を正**とする。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **確定**（2026-07-16・MVP 初期） | BATCH-005 同型。Epic `human_decision_points` / allowed_paths と整合。旧 §18.2 No.1 |
+| 8 | 処理対象 Staging 選定の既定 | **既定フィルタ:** (1) `normalized_hash IS NOT NULL` (2) `diff_status IS NULL`（未判定）を優先。再判定 force 時は NULL 以外も可 (3) 件数上限 `BATCH_PRODUCT_DIFF_MAX_ITEMS` (4) 任意で先行 Run / 明示 ID リスト。`source` 既定 `rakuten`。`import_status=staged` との Raw 経由結合は実装詳細でよい | Human | **確定**（2026-07-16・MVP 初期） | Epic / Task `human_decision_points`。旧 §18.2 No.2 |
+| 9 | `unavailable` 判定条件の詳細 | 少なくとも (a) Staging 必須項目欠落の再検知 (b) `availability=0`（販売不可） (c) 取得不能相当の Staging フラグ／Validator 不合格引き継ぎ、を `unavailable` 候補とする。厳密な優先順位・BATCH-004 経路との分担の細部は BATCH-008 側で整合確認してよい | Human | **確定**（2026-07-16・MVP 初期） | 外部連携 §6.3。旧 §18.2 No.3 |
+| 10 | Staging `diff_status` 同期の実装既定 | persist 成功後に **常に** Staging へ同一値 UPDATE（任意の「採用」を MVP 既定 ON）。無効化フラグは config で持てる | Human | **確定**（2026-07-16・MVP 初期） | #517/#526 の「任意」に対する実装既定。§9.4。旧 §18.2 No.4 |
 
-### 18.2 提案事項（Human 判断待ち）
+### 18.2 残未決事項（Human 判断）
 
-|  No | 論点 | 提案内容 | 判断が必要な理由 | 判断者 | 備考 |
-| --: | ---- | -------- | ---------------- | ------ | ---- |
-| 1 | 子 workflow 配置 | **独立 YAML `batch-rakuten-product-diff.yml`（`batch-rakuten-product-diff*.yml`）を正とする**。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Epic `human_decision_points` / `allowed_paths`。BATCH-005 同型を踏襲するか確認が必要 | Human | Epic #1341 |
-| 2 | 処理対象 Staging 選定の既定 | **既定フィルタ:** (1) `normalized_hash IS NOT NULL` (2) `diff_status IS NULL`（未判定）を優先。再判定 force 時は NULL 以外も可 (3) 件数上限 `BATCH_PRODUCT_DIFF_MAX_ITEMS` (4) 任意で先行 Run / 明示 ID リスト。`source` 既定 `rakuten` | 運用上の既定が未確定。`import_status=staged` との結合条件（Raw 経由）も実装で確定要 | Human | Epic / Task `human_decision_points` |
-| 3 | `unavailable` 判定条件の詳細 | **提案:** 少なくとも (a) Staging 必須項目欠落の再検知 (b) `availability=0`（販売不可） (c) 取得不能相当の Staging フラグ／Validator 不合格引き継ぎ、を `unavailable` 候補とする。厳密な優先順位・BATCH-004 経路との分担は BATCH-008 と整合を確認 | 外部連携 §6.3 と状態遷移の境界が複数あり、独断確定を避ける | Human | 実装前に確認 |
-| 4 | Staging `diff_status` 同期の実装既定 | **提案:** persist 成功後に **常に** Staging へ同一値 UPDATE（任意の「採用」）。無効化フラグは config で持てる | #517/#526 は「任意」まで。既定 ON/OFF は運用判断 | Human | §9.4 |
-
-#### 18.2.1 判断しない場合のリスク
-
-|  No | リスク |
-| --: | ------ |
-| 1 | 親 workflow 全体改修に踏み込むと他 Batch Epic と競合する |
-| 2 | Staging 選定が曖昧だと BATCH-005 直後の未判定行を取り逃す／再判定しすぎる |
-| 3 | `unavailable` 条件が曖昧だと BATCH-007 / 008 の分岐が実装依存になる |
-| 4 | Staging 同期有無がまちまちだと運用監視クエリが揺らぐ（読取正本は `product_diff_result` のため致命ではない） |
+本仕様書時点で、Human 判断待ちの残未決事項はない（MVP 初期は旧 §18.2 推奨案をすべて採用）。
 
 ---
 
@@ -462,7 +451,7 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 - `normalized_hash` 再算出が混入していない（比較のみ）
 - `product_diff_result` が判定正本であり、Staging 二重保持の扱いが #517 / #526 と一致している
 - UNIQUE `(batch_run_id, external_item_code)` が明記されている
-- §18.1（Human **確定**）と §18.2（**提案**）が区別されている
+- §18.1（Human **確定**）が充足し、§18.2 に残未決がない
 - secret / `.env` 実値が含まれていない
 - PR target が親 Epic Branch（`feature/epic-1341-batch-006-product-diff`）である
 
@@ -498,6 +487,6 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 - 本仕様書は実装・単体テスト Task の入力正本とする
 - 実装パス想定: `apps/batch/src/batch/application/product_diff/**`
 - 主要モジュール（一覧・責務整理）: Product Diff Detector / Product Diff Result Repository。Normalized Payload Builder / Normalized Hash Calculator は **本 Batch では再算出に使用しない**（読取比較のみ）
-- 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親チェーン全体の改修は本 Epic 外（§18.2 No.1 **提案**）
+- 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親チェーン全体の改修は本 Epic 外（§18.1 No.7 **確定**）
 - Contract Gate 不要（Batch は HTTP API 化しない）
 - Epic #1341 / Task #1342
