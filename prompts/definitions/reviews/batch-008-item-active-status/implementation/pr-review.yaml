@@ -6,7 +6,7 @@ review:
   title: "BATCH-008 商品有効状態更新Batch実装 PRレビュー"
   summary: "BATCH-008 実装ギャップ Task（#1388）の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1391
   issue:
     number: 1388
   task_definition: "prompts/definitions/tasks/batch-008-item-active-status/implementation.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1388
     required: true
   pr:
-    number: null
+    number: 1391
     required: true
   diff:
     required: true
