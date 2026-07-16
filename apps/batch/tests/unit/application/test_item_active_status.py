@@ -260,3 +260,398 @@ def test_does_not_mutate_diff_rows() -> None:
     assert repos.diffs["d9"] == before
     # Diff 更新 write が無いこと
     assert all(call["table"] != "product_diff_result" for call in repos.db_writer.write_calls)
+
+
+def test_max_items_limits_item_keys() -> None:
+    repos = _repos()
+    repos.seed_item(_item("shop:a", "active"))
+    repos.seed_item(_item("shop:b", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-a",
+            code="shop:a",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    repos.seed_candidate(
+        _cand(
+            cid="c-b",
+            code="shop:b",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-max", max_items=1)
+    assert result.status == "succeeded"
+    assert result.item_status_updated_count == 1
+    updated = [
+        code
+        for (src, code), row in repos.items.items()
+        if src == "rakuten" and row.active_status == "unavailable"
+    ]
+    assert len(updated) == 1
+
+
+def test_cli_scaffold_demo_passes_filters(monkeypatch) -> None:
+    from batch.application.item_active_status import __main__ as cli
+
+    captured: dict[str, object] = {}
+
+    class _FakeJob:
+        def run(self, **kwargs):  # type: ignore[no-untyped-def]
+            captured.update(kwargs)
+
+            class _Result:
+                status = "succeeded"
+                item_status_updated_count = 0
+                candidate_applied_count = 0
+                candidate_superseded_count = 0
+                reactivation_count = 0
+                failed_item_codes: list[str] = []
+                completed_phases = ["plan", "finalize"]
+
+            return _Result()
+
+    monkeypatch.setattr(cli, "build_scaffold_demo_job", lambda: _FakeJob())
+    code = cli.main(
+        [
+            "--scaffold-demo",
+            "--job-run-id",
+            "job-cli",
+            "--max-items",
+            "42",
+            "--source",
+            "rakuten",
+            "--batch-run-id",
+            "run-x",
+            "--external-item-codes",
+            "shop:1, shop:2",
+        ]
+    )
+    assert code == 0
+    assert captured["job_run_id"] == "job-cli"
+    assert captured["max_items"] == 42
+    assert captured["source"] == "rakuten"
+    assert captured["batch_run_id"] == "run-x"
+    assert captured["external_item_codes"] == ("shop:1", "shop:2")
+
+
+def test_cli_without_scaffold_demo_exits_3(monkeypatch) -> None:
+    from batch.application.item_active_status import __main__ as cli
+    from batch.config import scaffold_batch_settings
+
+    monkeypatch.setattr(cli, "load_batch_settings", lambda: scaffold_batch_settings())
+    assert cli.main(["--job-run-id", "job-real"]) == 3
+
+
+def test_applier_does_not_call_retention_delete() -> None:
+    repos = _repos()
+    repos.seed_item(_item("shop:j", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c10",
+            code="shop:j",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    ItemActiveStatusJob(repositories=repos).run(job_run_id="job-10")
+    assert repos.deleted_candidate_ids == []
+    assert all(call.get("op") != "delete" for call in repos.db_writer.write_calls)
+
+
+def test_excluded_beats_unavailable() -> None:
+    """§9.1 / §16: 制限側優先（excluded > unavailable）。"""
+
+    repos = _repos()
+    repos.seed_item(_item("shop:excl", "active"))
+    repos.seed_diff(
+        DiffSuggestion(
+            product_diff_result_id="d-excl",
+            batch_run_id="run-1",
+            source="rakuten",
+            external_item_code="shop:excl",
+            diff_status="unavailable",
+            proposed_active_status="unavailable",
+            judged_at=NOW,
+        )
+    )
+    repos.seed_candidate(
+        _cand(
+            cid="c-excl",
+            code="shop:excl",
+            status="excluded",
+            detected_at=NOW - timedelta(hours=1),
+            basis="policy",
+            reason="excluded",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-excl")
+    assert result.status == "succeeded"
+    assert repos.items[("rakuten", "shop:excl")].active_status == "excluded"
+    assert repos.items[("rakuten", "shop:excl")].is_active is False
+    assert repos.candidates["c-excl"].candidate_status == "applied"
+
+
+def test_non_unavailable_diff_does_not_propose_restriction() -> None:
+    """§9.2: new/updated/unchanged は制限提案なし（有効状態を上げない）。"""
+
+    repos = _repos()
+    repos.seed_item(_item("shop:new", "inactive"))
+    repos.seed_diff(
+        _diff(
+            did="d-new",
+            code="shop:new",
+            proposed=None,
+            judged_at=NOW,
+            diff_status="new",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-new")
+    assert result.status == "succeeded"
+    assert result.diff_input_count == 1
+    assert result.item_status_updated_count == 0
+    assert repos.items[("rakuten", "shop:new")].active_status == "inactive"
+
+
+def test_same_status_skips_item_update_but_marks_applied() -> None:
+    """§9.4: 採用提案=現行なら Item UPDATE スキップ、候補は applied。"""
+
+    repos = _repos()
+    repos.seed_item(_item("shop:same", "unavailable"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-same",
+            code="shop:same",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    before_writes = len(repos.db_writer.write_calls)
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-same")
+    assert result.status == "succeeded"
+    assert result.item_status_updated_count == 0
+    assert repos.candidates["c-same"].candidate_status == "applied"
+    assert repos.candidates["c-same"].applied_at is not None
+    # item テーブルへの write が無いこと（候補 status 更新のみ）
+    item_writes = [
+        c for c in repos.db_writer.write_calls[before_writes:] if c["table"] == "item"
+    ]
+    assert item_writes == []
+
+
+def test_is_active_syncs_with_active_status() -> None:
+    """§18.2 No.2: is_active = (active_status == 'active')。"""
+
+    repos = _repos()
+    repos.seed_item(_item("shop:sync", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-sync",
+            code="shop:sync",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    ItemActiveStatusJob(repositories=repos).run(job_run_id="job-sync")
+    row = repos.items[("rakuten", "shop:sync")]
+    assert row.active_status == "unavailable"
+    assert row.is_active is False
+
+    repos2 = _repos()
+    repos2.seed_item(_item("shop:sync2", "unavailable"))
+    repos2.seed_candidate(
+        _cand(
+            cid="c-sync2",
+            code="shop:sync2",
+            status="active",
+            detected_at=NOW,
+            basis="api_success",
+            reason="available",
+        )
+    )
+    ItemActiveStatusJob(repositories=repos2).run(job_run_id="job-sync2")
+    row2 = repos2.items[("rakuten", "shop:sync2")]
+    assert row2.active_status == "active"
+    assert row2.is_active is True
+
+
+def test_selection_by_batch_run_id_and_external_codes() -> None:
+    """§18.1.1: batch_run_id / external_item_codes で絞り込み。"""
+
+    repos = _repos()
+    repos.seed_item(_item("shop:sel1", "active"))
+    repos.seed_item(_item("shop:sel2", "active"))
+    repos.seed_candidate(
+        CandidateRow(
+            candidate_id="c-sel1",
+            batch_run_id="run-keep",
+            source="rakuten",
+            external_item_code="shop:sel1",
+            candidate_active_status="unavailable",
+            candidate_status="detected",
+            detected_at=NOW,
+            detection_basis="empty_hit",
+            reason_code="empty_hit",
+        )
+    )
+    repos.seed_candidate(
+        CandidateRow(
+            candidate_id="c-sel2",
+            batch_run_id="run-other",
+            source="rakuten",
+            external_item_code="shop:sel2",
+            candidate_active_status="unavailable",
+            candidate_status="detected",
+            detected_at=NOW,
+            detection_basis="empty_hit",
+            reason_code="empty_hit",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(
+        job_run_id="job-sel",
+        batch_run_id="run-keep",
+        external_item_codes=("shop:sel1",),
+    )
+    assert result.status == "succeeded"
+    assert result.candidate_input_count == 1
+    assert repos.items[("rakuten", "shop:sel1")].active_status == "unavailable"
+    assert repos.items[("rakuten", "shop:sel2")].active_status == "active"
+    assert repos.candidates["c-sel2"].candidate_status == "detected"
+
+
+def test_phases_completed_in_order() -> None:
+    repos = _repos()
+    repos.seed_item(_item("shop:ph", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-ph",
+            code="shop:ph",
+            status="inactive",
+            detected_at=NOW,
+            basis="availability",
+            reason="availability_zero",
+        )
+    )
+    from batch.application.item_active_status.job import ITEM_ACTIVE_STATUS_PHASES
+
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-ph")
+    assert result.status == "succeeded"
+    assert result.completed_phases == list(ITEM_ACTIVE_STATUS_PHASES)
+
+
+def test_item_not_found_discards_candidate() -> None:
+    repos = _repos()
+    repos.seed_candidate(
+        _cand(
+            cid="c-miss",
+            code="shop:missing",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-miss")
+    assert result.status == "failed"
+    assert "shop:missing" in result.failed_item_codes
+    assert repos.candidates["c-miss"].candidate_status == "discarded"
+    assert result.candidate_discarded_count == 1
+
+
+def test_partial_success_one_item_fails() -> None:
+    repos = _repos()
+    repos.seed_item(_item("shop:ok", "active"))
+    repos.seed_item(_item("shop:ng", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-ok",
+            code="shop:ok",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    repos.seed_candidate(
+        _cand(
+            cid="c-ng",
+            code="shop:ng",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    result = ItemActiveStatusJob(
+        repositories=repos,
+        fail_item_codes=("shop:ng",),
+    ).run(job_run_id="job-partial")
+    assert result.status == "partially_succeeded"
+    assert repos.items[("rakuten", "shop:ok")].active_status == "unavailable"
+    assert repos.items[("rakuten", "shop:ng")].active_status == "active"
+    assert repos.candidates["c-ok"].candidate_status == "applied"
+    assert repos.candidates["c-ng"].candidate_status == "detected"
+    assert "GRS-DB-002" in result.error_codes
+
+
+def test_if_boundary_no_candidate_insert_no_raw_no_online() -> None:
+    """§16 IF 境界: 候補 INSERT しない / Raw 非更新 / Online 非参照（unit 代替）。"""
+
+    repos = _repos()
+    repos.seed_item(_item("shop:if", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-if",
+            code="shop:if",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    repos.seed_diff(_diff(did="d-if", code="shop:if", proposed="unavailable", judged_at=NOW))
+    ItemActiveStatusJob(repositories=repos).run(job_run_id="job-if")
+
+    allowed_tables = {"item", "item_active_status_candidate"}
+    tables = {call["table"] for call in repos.db_writer.write_calls}
+    assert tables <= allowed_tables
+    assert "product_diff_result" not in tables
+    assert "raw_payload" not in tables
+    assert "item_raw" not in tables
+    # INSERT 相当の候補新規行書き込みが無い（status UPDATE のみ）
+    for call in repos.db_writer.write_calls:
+        if call["table"] == "item_active_status_candidate":
+            for row in call["rows"]:  # type: ignore[index]
+                assert "candidate_active_status" not in row
+                assert "candidate_status" in row
+
+
+def test_fixture_and_logs_have_no_secret_like_values() -> None:
+    repos = _repos()
+    repos.seed_item(_item("shop:sec", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-sec",
+            code="shop:sec",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-sec")
+    blob = repr(result) + repr(repos.db_writer.write_calls) + repr(repos.error_logs)
+    for needle in ("sk-", "password=", "Bearer ", "DATABASE_URL=", "OPENAI_API_KEY="):
+        assert needle not in blob

@@ -101,3 +101,23 @@ def test_scaffold_batch_settings_provides_placeholder_secrets() -> None:
     assert settings.batch_chunk_size == 100
     assert settings.has_required_settings() is True
     assert isinstance(settings, BatchSettings)
+    assert settings.batch_item_active_status_max_items == 1000
+    assert settings.batch_item_active_status_source == "rakuten"
+    assert settings.batch_item_active_status_batch_run_id is None
+
+
+def test_load_batch_settings_reads_item_active_status_fields() -> None:
+    settings = load_batch_settings(
+        environ={
+            "APP_ENV": "dev",
+            "OBJECT_STORAGE_BUCKET": "raw-dev",
+            "BATCH_ITEM_ACTIVE_STATUS_MAX_ITEMS": "250",
+            "BATCH_ITEM_ACTIVE_STATUS_SOURCE": "rakuten",
+            "BATCH_ITEM_ACTIVE_STATUS_BATCH_RUN_ID": "run-008",
+        }
+    )
+
+    assert settings.batch_item_active_status_max_items == 250
+    assert settings.batch_item_active_status_source == "rakuten"
+    assert settings.batch_item_active_status_batch_run_id == "run-008"
+    assert "run-008" in repr(settings)

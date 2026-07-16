@@ -179,6 +179,8 @@ def build_result_item(
     final_score: float = 0.82,
     reason_summary: str | None = "上司へのお礼として候補にしています。",
     reason_status: ReasonStatus | None = ReasonStatus.COMPLETED,
+    reason_detail: str | None = None,
+    reason_points: tuple[str, ...] | None = None,
     is_fallback: bool = False,
 ) -> RecommendationResultItem:
     return RecommendationResultItem(
@@ -187,6 +189,8 @@ def build_result_item(
         final_score=final_score,
         reason_summary=reason_summary,
         reason_status=reason_status,
+        reason_detail=reason_detail,
+        reason_points=reason_points,
         is_fallback=is_fallback,
     )
 

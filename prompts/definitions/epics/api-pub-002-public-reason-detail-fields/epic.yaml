@@ -1,0 +1,256 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-api-pub-002-public-reason-detail-fields"
+  title: "API-PUB-002:Public Reason詳細フィールド追加"
+  summary: "API-PUB-002 Public items[] に reasonPoints / reasonDetail を任意追加し、OpenAPI・generated・api マッピング・関連 docs を整合する横断 Contract Epic。SCR-005 実装の前提（案 B）を解放する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/create-contract-task"
+    - "/summarize-work"
+  next:
+    success: "/create-contract-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "contract-ai"
+
+background: |
+  SCR-005（#1389 / #1390）Human 判断（2026-07-16）で案 B を採用した。
+  Public に reasonPoints / reasonDetail が無いため、SCR-005 実装は Contract 完了まで blocked。
+  本 Epic は SCR-005 に混ぜず、develop 起点の横断 Contract Epic として実施する。
+  正本: ai-logs/human-decisions/2026-07-16-scr-005-public-reason-points-detail-contract.md
+  影響整理: ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md
+
+objective: |
+  Public API-PUB-002 に reasonPoints / reasonDetail（任意）を追加し、契約仕様・OpenAPI・Orval generated・api マッピングを整合する。
+  Contract 完了後に SCR-005 実装 Task を解放する。
+
+scope:
+  - "API-PUB-002 契約仕様書への reasonPoints / reasonDetail（任意）追加"
+  - "packages/contracts/openapi/public-api.yaml 更新と Orval 再生成"
+  - "api response-mapper による Internal → Public 透過"
+  - "関連 docs（API-INT-002 Public 表面化注記、recommendation_reason §5.5、SCR-006 注記等）追随"
+  - "必要なら Internal resultItems[] への任意フィールド追加（ui 経路で値を届けるため。Human 確認）"
+  - "api 単体テスト更新"
+
+out_of_scope:
+  - "SCR-005 UI 実装・単体テスト（#1389 配下。Contract 後）"
+  - "reasonBasis の Public 露出"
+  - "reasonPoints / reasonDetail の必須化"
+  - "Reason 永続（Postgres 配線）そのものの新規設計"
+  - "専用 route / モーダルページ新設"
+  - "認証・認可方式の変更"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md"
+      required: true
+      purpose: "横断 Contract Epic の影響整理・着手ガード"
+    - path: "ai-logs/human-decisions/2026-07-16-scr-005-public-reason-points-detail-contract.md"
+      required: true
+      purpose: "案 B・任意追加・横断 Epic の Human 判断正本"
+    - path: "docs/06_実装設計/web/SCR-005_推薦理由詳細表示画面仕様書.md"
+      required: true
+      purpose: "案 B 前提の画面仕様（§8.3）"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "Public 契約更新対象"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+      purpose: "§18.3 表示対象との整合確認"
+  templates: []
+  files: []
+  issues:
+    - number: 1397
+      purpose: "本 Epic Issue"
+    - number: 1398
+      purpose: "配下 Contract Task"
+    - number: 1389
+      purpose: "要求元 SCR-005 Epic（実装 blocked）"
+    - number: 1390
+      purpose: "SCR-005 画面仕様 Task"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: true
+    paths:
+      - "apps/web/src/generated/api/"
+    handling: "orval_regenerate"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/cross-cutting/"
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]API-PUB-002:Public Reason詳細フィールド追加）"
+  - "Epic Branch（develop 起点）"
+  - "配下 Contract Task（/create-contract-task）"
+  - "epic_scope.allowed_paths によるファイル境界"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]API-PUB-002:Public Reason詳細フィールド追加 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "PR target が develop である"
+  - "配下 Contract Task が起票されている"
+  - "SCR-005 UI 実装が out_of_scope である"
+  - "破壊的変更なし（任意追加）が明記されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1397-api-pub-002-public-reason-detail-fields"
+  summary: "api-pub-002-public-reason-detail-fields"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+epic_scope:
+  artifact_id: "API-PUB-002"
+  allowed_paths:
+    - "docs/06_実装設計/api/API-PUB-002_*"
+    - "docs/06_実装設計/api/API-INT-002_*"
+    - "docs/06_実装設計/database/recommendation_reason_*"
+    - "docs/06_実装設計/web/SCR-006_*"
+    - "packages/contracts/openapi/public-api.yaml"
+    - "packages/contracts/openapi/internal-reco-api.yaml"
+    - "orval.config.ts"
+    - "apps/web/src/generated/api/**"
+    - "apps/api/src/generated/reco-client/**"
+    - "apps/api/src/app/recommendations/**"
+    - "apps/api/tests/unit/app/recommendations/**"
+    - "apps/reco/src/reco/api/**"
+    - "apps/reco/src/reco/application/reason-generator/**"
+    - "apps/reco/src/reco/domain/recommendation/**"
+    - "apps/reco/tests/unit/api/**"
+    - "prompts/definitions/epics/api-pub-002-public-reason-detail-fields/**"
+    - "prompts/definitions/contracts/api-pub-002-public-reason-points-detail/**"
+    - "prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/**"
+    - "prompts/definitions/reviews/api-pub-002-public-reason-points-detail/**"
+    - "prompts/definitions/reviews/api-pub-002-public-reason-detail-fields/**"
+    - "ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md"
+    - "ai-logs/cross-cutting/2026-07-16-api-pub-002-public-reason-points-detail-contract-impl.md"
+    - "ai-logs/human-decisions/2026-07-16-scr-005-public-reason-points-detail-contract.md"
+  forbidden_paths:
+    - "apps/web/src/features/recommendation-result/**"
+    - "apps/web/src/features/recommendation-input/**"
+    - "db/**"
+    - "apps/batch/**"
+  child_task_areas:
+    - "contract"
+
+dependencies:
+  epics:
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "Public 契約の既存正本（develop merge 済み）"
+    - issue: 366
+      title: "[Epic]API-INT-002:Reco推薦実行"
+      purpose: "Internal Reason フィールドの既存正本"
+    - issue: 1389
+      title: "[Epic]SCR-005:推薦理由詳細表示"
+      purpose: "要求元。実装は本 Contract 完了後"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "SCR-005 implementation / unit-test"
+  exclusive_files:
+    - "packages/contracts/openapi/public-api.yaml"
+    - "apps/api/src/app/recommendations/**"
+  conflict_risk: "medium"
+  contract_impact: true
+  generated_impact: true
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が Public Reason 詳細フィールド追加に閉じているか"
+    - "SCR-005 UI を混入していないか"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "任意追加（非破壊）方針が守られているか"
+    - "SCR-005 UI が out_of_scope か"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: true
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "OpenAPI / generated / api / docs 横断。作業計画は Issue、統合は Epic PR。"
+
+risk_points:
+  - "Internal reasonData のみに detail/points があり ui 経路で届かない可能性"
+  - "SCR-005 UI を本 Epic に混入する運用ミス"
+  - "必須化して破壊的変更になるリスク"
+
+human_decision_points:
+  - "Internal → Public のマッピング元は resultItems[] 追加か reasonData 利用か（推奨: resultItems[] に任意追加して ui 経路で届ける）"
+  - "SCR-006 で同フィールドを表示するか（最低限注記更新）"
+  - "任意追加で足りるか（必須化しない）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "破壊的変更が必要になった場合"
+  - "SCR-005 UI 実装が本 Epic で必須と判断された場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "最初の子: prompts/definitions/contracts/api-pub-002-public-reason-points-detail/contract-task.yaml"
+  - "配下 Contract Task: #1398 / Branch: feature/task-1398-api-pub-002-public-reason-points-detail"
+  - "本 Epic Issue: #1397 / Epic Branch: feature/epic-1397-api-pub-002-public-reason-detail-fields"
+  - "要求元 Human 判断: 2026-07-16 案 B"
+  - "AI Review #1399 Must 対応: allowed_paths に reason-generator / domain / 実装ログ / contracts Definition を追加"

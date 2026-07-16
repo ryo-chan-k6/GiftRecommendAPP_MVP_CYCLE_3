@@ -10,11 +10,11 @@
 | 発生日時      | 2026-07-16 |
 | 記録日時      | 2026-07-16 |
 | 発生元        | SCR-005 #1390 Human 判断（案 B） |
-| 関連Issue     | `#1390` / `#1389`（要求元）。Contract Epic Issue は **未起票** |
-| 親 Epic       | Contract Epic は **新規**（SCR-005 #1389 には混ぜない） |
-| 関連PR        | なし（準備ログ） |
+| 関連Issue     | `#1397`（Contract Epic）/ `#1398`（Contract Task）/ 要求元 `#1390` `#1389` |
+| 親 Epic       | `#1397` `[Epic]API-PUB-002:Public Reason詳細フィールド追加` |
+| 関連PR        | なし（Contract 作業前） |
 | 重要度        | `high` |
-| 状態          | `pending`（並行作業の develop merge 完了待ち） |
+| 状態          | `in_progress`（Epic/Task 起票済み。実作業は `/work-issue`） |
 
 Human 判断正本: [2026-07-16-scr-005-public-reason-points-detail-contract.md](../human-decisions/2026-07-16-scr-005-public-reason-points-detail-contract.md)
 

@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP       |
 | MVP対象        | `yes`                                 |
 | 作成日         | 2026-06-15                            |
-| 更新日         | 2026-06-15（Human Review #546 反映・#545 / #457 双方向整合） |
+| 更新日         | 2026-07-16（#1398 Public 任意返却に reason_detail / reason_points_json を追加） |
 
 ---
 
@@ -17,7 +17,7 @@
 
 `recommendation_reason` は、Online 推薦結果の商品明細（`recommendation_result_item`）ごとに生成される **推薦理由文・バッジ・根拠** を保持する派生 Snapshot テーブルである。
 
-reco の Reason Generator（MOD-RECO-023）が Ranking / Result Item 保存後に生成し、IF-DB-RECO-008（Reason 保存）の DB 正本とする。Public API（API-PUB-002）では api が本テーブルを **JOIN** して `reasonSummary` / `reasonBadges` / `cautionNote` を組み立てる（`recommendation_result_item` 定義書 §5.5）。
+reco の Reason Generator（MOD-RECO-023）が Ranking / Result Item 保存後に生成し、IF-DB-RECO-008（Reason 保存）の DB 正本とする。Public API（API-PUB-002）では api が本テーブルを **JOIN** して `reasonSummary` / `reasonPoints` / `reasonDetail` / `reasonBadges` / `cautionNote` を組み立てる（`recommendation_result_item` 定義書 §5.5。`reasonPoints` / `reasonDetail` は任意、#1398）。
 
 使用した `reason_template` は `template_id` 列および `reason_basis_json` に記録する（reason_template 定義書 §5.3・§6.2）。
 
@@ -130,21 +130,21 @@ api は `recommendation_result_item` と **LEFT JOIN** し、Reason 行が存在
 | API 項目 | DB 列 / 導出 | 備考 |
 | -------- | ------------ | ---- |
 | `reasonSummary` | `reason_summary` | `includeReason=true` かつ行存在時は原則返却（契約上任意） |
+| `reasonPoints` | `reason_points_json` | **任意**。string 配列としてシリアライズ（#1398） |
+| `reasonDetail` | `reason_detail` | **任意**（#1398） |
 | `reasonBadges` | `reason_badges_json` | string 配列としてシリアライズ |
 | `cautionNote` | `caution_note` | nullable |
 
-**Public で返さない DB 列**: `reason_detail`, `reason_points_json`, `reason_basis_json`, `template_id`（API設計方針書 §21.3）
+**Public で返さない DB 列**: `reason_basis_json`, `template_id`（API設計方針書 §18.4 / §21.3。`reasonBasis` は引き続き非公開）
 
 #### Internal（API-INT-002 `data.resultItems[]`）
 
 | API 項目 | DB 列 / 導出 | 備考 |
 | -------- | ------------ | ---- |
-| 上記 Public 相当 | 同上 | — |
+| 上記 Public 相当 | 同上 | `reasonPoints` / `reasonDetail` は Internal `resultItems[]` にも任意で載せ、api が Public へ透過（#1398） |
 | `recommendationReasonId` | `recommendation_reason_id` | `reasonStatus=completed` 時推奨 |
 | `reasonStatus` | 行の有無 | 行あり = `completed`（fallback 含む）。Item 存続時は fallback でも行あり |
-| `reasonDetail` | `reason_detail` | Internal のみ |
-| `reasonPoints` | `reason_points_json` | string 配列 |
-| `reasonBasis` | `reason_basis_json` | debug / evaluation 時推奨 |
+| `reasonBasis` | `reason_basis_json` | debug / evaluation 時推奨。**Public 非返却** |
 
 Run レベル `reasonData`（API-INT-002 §7.3.9）は **本テーブル行の集合ビュー** として api / reco が組立。物理列は Item 単位の本テーブルを正本とする。
 

@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-04                                |
-| 更新日         | 2026-06-25（MOD-RECO-001 §10.3 Reason fallback 整合 #764） |
+| 更新日         | 2026-07-16（#1398 resultItems に reasonPoints / reasonDetail 任意追加） |
 
 ---
 
@@ -307,6 +307,8 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | `finalScore` | `number` | `true` | 最終スコア | Public では非返却 |
 | `scoreBreakdown` | `object` | `false` | スコア内訳 | debug返却条件（§7.3.8）を満たすとき**推奨**（契約上必須ではない） |
 | `reasonSummary` | `string` | 条件付き | 推薦理由（短文） | §7.3.2.1。`includeReason=true` かつ Item 存続時 **必須**（非空）。汎用 Reason（Reason生成定義書 §17.2）含む |
+| `reasonPoints` | `array` | `false` | 箇条書き理由（`string[]`） | **任意**。Public へ透過可（#1398）。ui 経路で届けるため `resultItems[]` に載せる |
+| `reasonDetail` | `string` | `false` | 詳細表示用短文 | **任意**。Public へ透過可（#1398）。ui 経路で届けるため `resultItems[]` に載せる |
 | `recommendationReasonId` | `string` | `false` | 推薦理由 ID | `reasonStatus=completed` かつ Reason 永続化時は返却（推奨） |
 | `reasonStatus` | `string` | 条件付き | Reason 生成状態 | §7.3.2.1。`includeReason=true` 時は返却。MVP 値域: `completed`（Item 存続時は Reason 失敗でも `completed`） |
 | `reasonBadges` | `array` | `false` | 理由バッジ | `reasonStatus=completed` 時のみ任意 |
@@ -325,7 +327,7 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 
 Ranking / Matching 等の先行フェーズ失敗で Item 自体が存在しない場合は、本節の Reason 失敗とは別扱いとする。
 
-**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` / `metadata.debugPayload` 等を Public Response から除外する。Public へ渡す Reason 関連は **`reasonSummary` / `reasonBadges` / `cautionNote`** のみ（API設計方針書 §21.3、`API-PUB-002_レコメンド実行API契約仕様書.md` §7.3.2.1 参照）。
+**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` / `metadata.debugPayload` / `reasonBasis` / `reasonStatus` 等を Public Response から除外する。Public へ渡す Reason 関連は **`reasonSummary` / `reasonPoints` / `reasonDetail` / `reasonBadges` / `cautionNote` / `isFallback`**（`reasonPoints` / `reasonDetail` は任意。API-PUB-002 §7.3.2、#1398）。マッピング元は `resultItems[]`（`reasonData` 単独では ui 経路に届かない）。
 
 #### 7.3.3 `meta`
 
@@ -448,8 +450,8 @@ Run レベルの内部 Reason 詳細。`resultItems[]` の表示用フィール�
 | `reasonStatus` | `string` | `true` | `completed`（Item 存続時。Reason fallback 時も `completed`） |
 | `reasonSummary` | `string` | 条件付き | Item 存続かつ `includeReason=true` 時 **必須**（非空。汎用 Reason 含む） |
 | `isFallback` | `boolean` | `false` | Reason 汎用文由来（§7.3.2.1） |
-| `reasonDetail` | `string` | `false` | 詳細表示用（Internal のみ） |
-| `reasonPoints` | `array` | `false` | 箇条書き理由（string 要素） |
+| `reasonDetail` | `string` | `false` | 詳細表示用。`resultItems[]` にも任意で載せ Public へ透過可（#1398） |
+| `reasonPoints` | `array` | `false` | 箇条書き理由（string 要素）。`resultItems[]` にも任意で載せ Public へ透過可（#1398） |
 | `reasonBadges` | `array` | `false` | 表示ラベル（Reason生成定義書 §5） |
 | `cautionNote` | `string` | `false` | 注意・補足 |
 | `reasonBasis` | `object` | `false` | 根拠 JSON（Reason生成定義書 §14.2 相当）。debug / evaluation 時は **推奨** |
@@ -798,6 +800,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 2026-06-05 | §14 No.4 確定：`reasonSummary` / `reasonData` 必須範囲（§7.3.2.1、§7.3.9、#376） | #376 |
 | 2026-06-10 | evaluation / batch 用 Semantic Config 指定を `execution.configName` + `execution.versionLabel` composite に変更。`debugPayload` 推奨キーも追随 | Task #463 |
 | 2026-06-25 | MOD-RECO-001 §10.3 整合：Reason 失敗時も非空 `reasonSummary` + `isFallback: true` + `reasonStatus: completed`（§7.3.2.1、§14.1 No.4 更新） | #764 |
+| 2026-07-16 | `resultItems[]` に `reasonPoints` / `reasonDetail` を任意追加。Public 表面化注記を更新（#1398） | #1398 |
 
 ---
 

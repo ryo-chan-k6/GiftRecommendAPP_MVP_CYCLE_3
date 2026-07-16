@@ -1,0 +1,210 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-008-item-active-status-batch-spec-follow-up"
+  title: "BATCH-008:商品有効状態更新バッチ仕様書整備"
+  summary: "既存 BATCH-008 仕様書（#1227 由来）を BATCH-006/007 統合後の識別子 Epic 正本として整備する。§18.2 解消・独立 workflow 提案・既存実装とのギャップ整理。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-008:商品有効状態更新Batch"
+  epic_issue_number: 1379
+  epic_branch: "feature/epic-1379-batch-008-item-active-status"
+  related_issues:
+    - number: 1227
+      purpose: "先行 Epic（仕様書初版・部分実装）"
+    - number: 1233
+      purpose: "Reader 仕様 Task（CLOSED）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  BATCH-008 仕様書は Epic #1227 / Task #1233 で初版作成済み。BATCH-006/007 develop merge 後、識別子 Epic #1356 相当の縦串を BATCH-008 でも開始する。
+  §18.2 No.1（専用 Epic 起票）は本 bootstrap で解消。workflow 方針・BATCH-007 境界・既存 item_active_status 実装ギャップを §18 で整理する。
+
+objective: |
+  `docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md` を更新し、後続実装 Task の正本とする。
+
+scope:
+  - "§18.2 解消（専用 Epic 起票済み・縦串方針）"
+  - "BATCH-006/007 境界（unavailable 消費・active_status 本更新責務）の明記"
+  - "独立 workflow 提案（batch-rakuten-item-active-status.yml）と選定既定"
+  - "既存 item_active_status/** 実装とのギャップ整理（後続 Task 入力）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Python 実装・workflow YAML・UT 拡充"
+  - "DB migration"
+  - "BATCH-004 Writer 実装"
+  - "他 Batch 仕様書全面書き換え"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "更新対象正本"
+    - path: "docs/06_実装設計/batch/BATCH-006_商品差分判定バッチ仕様書.md"
+      required: true
+      purpose: "Diff 経路"
+    - path: "docs/06_実装設計/batch/BATCH-007_Item反映バッチ仕様書.md"
+      required: true
+      purpose: "active_status 非更新境界"
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "候補 Writer・競合"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-008 行"
+    - path: "prompts/templates/docs/batch-spec.md"
+      required: true
+      purpose: "章構成参照"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      required: false
+      purpose: "既存実装ギャップ確認（編集禁止）"
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-008-item-active-status/batch-spec-follow-up.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-008-item-active-status/batch-spec-follow-up/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-008 仕様書整備（§18 更新・境界・ギャップ整理）"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "BATCH-008 仕様書が BATCH-006/007 境界と矛盾しない"
+  - "§18.2 No.1（専用 Epic）が解消されている"
+  - "独立 workflow 提案と Human 確定/提案の区別がある"
+  - "既存 item_active_status 実装ギャップが後続 Task 向けに整理されている"
+  - "secret / .env 実値を含まない"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1380-batch-008-item-active-status-batch-spec-follow-up"
+  summary: "batch-008-item-active-status-batch-spec-follow-up"
+  base: "feature/epic-1379-batch-008-item-active-status"
+  target: "feature/epic-1379-batch-008-item-active-status"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-19"
+
+issue:
+  number: 1380
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-batch-008-item-active-status-implementation"
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-008_*"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "BATCH-006/007/004 境界整合"
+    - "§18 Human 確定と提案の区別"
+    - "Epic #1227 由来記述の更新"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "識別子 Epic 仕様整備"
+
+human_decision_points:
+  - "独立 YAML 方針"
+  - "Retention T7 を本 Epic に含めるか"
+
+stop_conditions:
+  - "親 Epic Issue / Branch 未確定"
+  - "正本 docs 間の解消不能な矛盾"
+  - "secret 記載が必要"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-008:商品有効状態更新バッチ仕様書整備"
+  - "新規作成ではなく既存仕様書の整備"
