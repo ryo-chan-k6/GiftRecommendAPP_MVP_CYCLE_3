@@ -13,6 +13,8 @@ parent:
   epic_issue_number: 1382
   epic_branch: "feature/epic-1382-scr-009-empty-result"
   related_issues:
+    - number: 1384
+      purpose: "本 Task Issue"
     - number: 1382
       purpose: "親 Epic"
   related_prs: []
@@ -103,7 +105,11 @@ input:
       applies_to:
         - "docs/06_実装設計/web/SCR-009_0件結果表示画面仕様書.md"
   files: []
-  issues: []
+  issues:
+    - number: 1382
+      purpose: "親 Epic"
+    - number: 1384
+      purpose: "本 Task Issue"
   prs: []
 
 output:
@@ -143,7 +149,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "docs/task-1384-scr-009-empty-result-screen-spec"
   summary: "scr-009-empty-result-screen-spec"
   base: "feature/epic-1382-scr-009-empty-result"
   target: "feature/epic-1382-scr-009-empty-result"
@@ -249,7 +255,8 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]SCR-009:0件結果表示画面仕様書作成"
-  - "親 Epic Definition: prompts/definitions/epics/scr-009-empty-result/epic.yaml"
+  - "親Epic: #1382 [Epic]SCR-009:0件結果表示 / Branch: feature/epic-1382-scr-009-empty-result"
+  - "本 Task Issue: #1384 / Branch: docs/task-1384-scr-009-empty-result-screen-spec"
   - "依存Epic: #1147 SCR-002 / #1361 SCR-003 / #357 API-PUB-002（いずれも develop merge 済み）"
   - "後続: /work-issue → 画面仕様書作成 → /create-pr（Review Definition を PR head に含める）"
   - "再検索ボタン（画面一覧 △）・条件緩和提案の具体文言は Human Review 観点"
