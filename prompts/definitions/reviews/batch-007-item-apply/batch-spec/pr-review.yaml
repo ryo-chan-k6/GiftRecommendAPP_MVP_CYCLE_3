@@ -1,0 +1,65 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-007-item-apply-batch-spec-pr"
+  title: "BATCH-007 Item反映バッチ仕様書 PRレビュー"
+  summary: "BATCH-007（Item反映Batch）バッチ仕様書 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1356-batch-007-item-apply"
+  target: "feature/epic-1356-batch-007-item-apply"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1358
+  issue:
+    number: 1357
+  task_definition: "prompts/definitions/tasks/batch-007-item-apply/batch-spec.yaml"
+  source_branch: "docs/task-1357-batch-007-item-apply-batch-spec"
+  target_branch: "feature/epic-1356-batch-007-item-apply"
+  parent_epic_issue: "[Epic]BATCH-007:Item反映Batch"
+  parent_epic_branch: "feature/epic-1356-batch-007-item-apply"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-007-item-apply/batch-spec.yaml"
+    required: true
+
+review_points:
+  - "バッチ処理一覧 BATCH-007 と矛盾しないか"
+  - "item / item_image / item_review_summary 定義書と整合するか"
+  - "active_status 非更新・hash 再算出なしが明記されているか"
+  - "unavailable 原則スキップと BATCH-008 境界が明記されているか"
+  - "§18 で Human 提案と確定が区別されているか"
+  - "secret / .env 実値を含まないか"
+  - "PR target が親 Epic Branch か"
+
+notes:
+  - "Related to #1357"
