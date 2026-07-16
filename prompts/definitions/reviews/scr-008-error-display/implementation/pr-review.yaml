@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1373
   issue: 1372
   task_definition: "prompts/definitions/tasks/scr-008-error-display/implementation.yaml"
   source_branch: "feature/task-1372-scr-008-error-display-implementation"
@@ -69,7 +69,7 @@ input:
     number: 1372
     required: true
   pr:
-    number: null
+    number: 1373
     required: true
   diff:
     required: true

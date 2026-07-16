@@ -39,5 +39,18 @@ export const MASTERS_EMPTY_MESSAGE =
 export const RUNNING_MESSAGE = "条件に合うギフトを探しています";
 export const EMPTY_RESULT_MESSAGE =
   "条件に合うギフトが見つかりませんでした。条件を変えて再度お試しください。";
+/** SCR-008: 推薦実行失敗時の汎用メッセージ（ErrorResponse.message 欠落時） */
 export const RUN_ERROR_FALLBACK_MESSAGE =
   "レコメンド実行に失敗しました。条件を変えて再度お試しください。";
+
+/** SCR-008: PageLayout タイトル */
+export const RUN_ERROR_PAGE_TITLE = "エラー";
+
+/** SCR-008: Alert タイトル */
+export const RUN_ERROR_ALERT_TITLE = "レコメンド実行に失敗しました";
+
+/** SCR-008: 条件入力へ戻る */
+export const RUN_ERROR_BACK_LABEL = "条件入力へ戻る";
+
+/** SCR-008: 再実行（画面仕様 §6.2 は Human Review 採否待ちの提案。現状実装を維持） */
+export const RUN_ERROR_RETRY_LABEL = "再実行";
