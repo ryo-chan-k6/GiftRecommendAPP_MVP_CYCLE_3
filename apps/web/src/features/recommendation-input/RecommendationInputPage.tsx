@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Alert } from "@/components/feedback/Alert";
 import { Button } from "@/components/action/Button";
-import { EmptyState } from "@/components/feedback/EmptyState";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Text } from "@/components/display/Text";
 import { ResultStatus } from "@/generated/api/giftRecommendationServicePublicAPI.schemas";
@@ -13,7 +12,6 @@ import { postRecommendationRun } from "@/lib/api";
 
 import { buildRecommendationRunRequest } from "./build-request";
 import {
-  EMPTY_RESULT_MESSAGE,
   MASTERS_EMPTY_MESSAGE,
   MASTERS_ERROR_MESSAGE,
   RUN_ERROR_FALLBACK_MESSAGE,
@@ -24,6 +22,7 @@ import {
   storeRecommendationResult,
 } from "./form-persistence";
 import { isErrorResponse, loadRecommendationMasters } from "./load-masters";
+import { RecommendationEmptyPanel } from "./RecommendationEmptyPanel";
 import { RecommendationInputForm } from "./RecommendationInputForm";
 import { RecommendationRunErrorView } from "./RecommendationRunErrorView";
 import { RecommendationRunningPanel } from "./RecommendationRunningPanel";
@@ -231,22 +230,11 @@ export function RecommendationInputPage() {
 
   if (phase === "empty") {
     return (
-      <PageLayout title="おすすめが見つかりませんでした">
-        <EmptyState
-          title="条件に合うギフトがありません"
-          description={EMPTY_RESULT_MESSAGE}
-          action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setPhase("form");
-              }}
-            >
-              条件を変更する
-            </Button>
-          }
-        />
-      </PageLayout>
+      <RecommendationEmptyPanel
+        onChangeConditions={() => {
+          setPhase("form");
+        }}
+      />
     );
   }
 
