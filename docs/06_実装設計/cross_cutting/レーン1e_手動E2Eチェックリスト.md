@@ -107,8 +107,8 @@
 
 | ID | 結果 | 実施メモ |
 | ---- | ---- | -------- |
-| S1 | `pass` | SCR-002→003→004。件数1・価格表示。SCR-001(`/`) は HomePage `Cannot read properties of undefined (reading 'call')` で自動化失敗（残） |
-| S2 | `fail`（D1）→ `#1345` で修正中 | D1 時点は `GRS-REC-012`。#1345 で empty 経路修正・UT 追加。手動再検証待ち |
+| S1 | `pass` | SCR-002→003→004。件数1・価格表示。SCR-001(`/`) 例外は #1346 で修正（native `<a>` CTA）。再確認: 例外なく表示・CTA→`/recommendations` |
+| S2 | `fail`（D1）→ `#1345` 修正済 | D1 時点は `GRS-REC-012`。#1345 merge 済。手動再検証待ち |
 | S3 | `pass` | api 停止→エラー UI→条件入力へ戻る |
 | S4 | `pass` | 再検索リンクで SCR-002 復帰 |
 | S5 | `pass` | 「理由の詳細」展開で要約表示 |
@@ -148,3 +148,4 @@ D1 本体（#1330）は Close 済み。residual 解消は Epic #1344 で追跡�
 | 2026-07-15 | Docker 復旧後に S1/S3/S4/S5/S6 実施。S2 fail・SCR-001 residual を記録 |
 | 2026-07-16 | residual を Epic #1344 / Task #1345・#1346 として起票 |
 | 2026-07-16 | #1345: Matching 0 件後の empty 経路修正内容を S2 に追記（手動再検証は未実施） |
+| 2026-07-16 | #1346: SCR-001 HomePage の `next/link` 起因 client 例外を native `<a>` CTA で解消 |
