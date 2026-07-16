@@ -37,6 +37,8 @@ ITEM_ACTIVE_STATUS_PHASES: tuple[str, ...] = (
 )
 
 SOURCE_RAKUTEN = "rakuten"
+DEFAULT_SOURCE = SOURCE_RAKUTEN
+DEFAULT_MAX_ITEMS = 1000
 
 
 def diff_to_proposal(row: DiffSuggestion) -> StatusProposal | None:

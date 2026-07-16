@@ -1,6 +1,7 @@
 """CLI entry for BATCH-008 item active status apply / T7 Retention (scaffold).
 
 Usage:
+  python -m batch.application.item_active_status --job-run-id <id> [--max-items 100]
   python -m batch.application.item_active_status --scaffold-demo
   python -m batch.application.item_active_status --retention-cleanup --scaffold-demo
 """
@@ -8,13 +9,25 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import datetime, timedelta, timezone
 
-from batch.application.item_active_status.job import ItemActiveStatusJob
+from batch.application.item_active_status.job import (
+    DEFAULT_MAX_ITEMS,
+    DEFAULT_SOURCE,
+    ItemActiveStatusJob,
+)
 from batch.application.item_active_status.models import CandidateRow, DiffSuggestion, ItemRow
 from batch.application.item_active_status.repositories import ItemActiveStatusRepositories
 from batch.application.item_active_status.retention import RetentionCleanupJob
+from batch.config import load_batch_settings
 from batch.infrastructure.db import ScaffoldDbWriter
+
+
+def _parse_csv(raw: str | None) -> tuple[str, ...] | None:
+    if raw is None or raw.strip() == "":
+        return None
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
 def build_scaffold_demo_job() -> ItemActiveStatusJob:
@@ -128,6 +141,27 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="BATCH-008 Item Active Status / Retention")
     parser.add_argument("--job-run-id", default="local-run")
     parser.add_argument(
+        "--max-items",
+        type=int,
+        default=DEFAULT_MAX_ITEMS,
+        help="Max item keys to apply (default 1000).",
+    )
+    parser.add_argument(
+        "--source",
+        default=DEFAULT_SOURCE,
+        help="source filter (default rakuten).",
+    )
+    parser.add_argument(
+        "--batch-run-id",
+        default="",
+        help="Filter Diff / candidate by this batch_run_id.",
+    )
+    parser.add_argument(
+        "--external-item-codes",
+        default="",
+        help="Comma-separated external_item_code list (subset / re-run).",
+    )
+    parser.add_argument(
         "--scaffold-demo",
         action="store_true",
         help="Run in-memory scaffold demo (no real DB).",
@@ -135,7 +169,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--retention-cleanup",
         action="store_true",
-        help="Run T7 Retention cleanup instead of Applier.",
+        help="Run T7 Retention cleanup instead of Applier (scaffold only).",
     )
     parser.add_argument(
         "--dry-run",
@@ -145,13 +179,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if not args.scaffold_demo:
+        settings = load_batch_settings()
+        _ = settings  # real wiring is out of this Task (scaffold-first)
         print(
             "Real DB client is not enabled in this Task. "
             "Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
         )
         return 3
 
     if args.retention_cleanup:
+        # T7 is out of BATCH-008 Epic production scope (§18.1 No.11).
+        # Keep scaffold path for local smoke / existing UT harness.
         job = build_scaffold_retention_job()
         result = job.run(job_run_id=args.job_run_id, dry_run=args.dry_run)
         print(
@@ -164,14 +203,21 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
     job = build_scaffold_demo_job()
-    result = job.run(job_run_id=args.job_run_id)
+    result = job.run(
+        job_run_id=args.job_run_id,
+        max_items=args.max_items,
+        source=args.source,
+        batch_run_id=args.batch_run_id or None,
+        external_item_codes=_parse_csv(args.external_item_codes),
+    )
     print(
         f"BATCH-008 scaffold demo status={result.status} "
         f"updated={result.item_status_updated_count} "
         f"applied={result.candidate_applied_count} "
         f"superseded={result.candidate_superseded_count} "
         f"reactivations={result.reactivation_count} "
-        f"failed={len(result.failed_item_codes)}"
+        f"failed={len(result.failed_item_codes)} "
+        f"phases={','.join(result.completed_phases)}"
     )
     return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 

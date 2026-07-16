@@ -1,0 +1,95 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-008-item-active-status-unit-test-pr"
+  title: "BATCH-008 商品有効状態更新Batch単体テスト PRレビュー"
+  summary: "BATCH-008 UT Task（#1394）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "feature/epic-1379-batch-008-item-active-status"
+  target: "feature/epic-1379-batch-008-item-active-status"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1395
+  issue:
+    number: 1394
+  task_definition: "prompts/definitions/tasks/batch-008-item-active-status/unit-test.yaml"
+  source_branch: "test/task-1394-batch-008-item-active-status-unit-test"
+  target_branch: "feature/epic-1379-batch-008-item-active-status"
+  parent_epic_issue: "[Epic]BATCH-008:商品有効状態更新Batch"
+  parent_epic_branch: "feature/epic-1379-batch-008-item-active-status"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-008-item-active-status/unit-test.yaml"
+    required: true
+  issue:
+    number: 1394
+    required: true
+  pr:
+    number: 1395
+    required: true
+  diff:
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "§16 正本"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+  tests:
+    - "§16 対応表が PR 本文に明示されているか"
+    - "不足ケースが fixture/mock で追加されているか"
+    - "既存競合・Retention UT を壊していないか"
+  security:
+    - "secret / .env 実値がないか"
+
+notes:
+  - "Issue #1394 / PR #1395"
