@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1377
   issue: 1376
   task_definition: "prompts/definitions/tasks/scr-008-error-display/unit-test.yaml"
   source_branch: "test/task-1376-scr-008-error-display-unit-test"
@@ -69,7 +69,7 @@ input:
     number: 1376
     required: true
   pr:
-    number: null
+    number: 1377
     required: true
   diff:
     required: true

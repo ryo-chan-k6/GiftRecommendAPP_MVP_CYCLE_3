@@ -20,8 +20,8 @@ parent:
     - number: 1372
       purpose: "前提 Task（実装）"
   related_prs:
-    - number: null
-      purpose: "本 Task PR（単体テスト・PR 作成後に同期）"
+    - number: 1377
+      purpose: "本 Task PR（単体テスト）"
     - number: 1373
       purpose: "実装 Task PR（親 Epic Branch merge 済み）"
 
