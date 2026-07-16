@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1393
   issue:
     number: 1382
   task_definition: "prompts/definitions/epics/scr-009-empty-result/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1382
     required: true
   pr:
-    number: null
+    number: 1393
     required: false
   diff:
     required: true
