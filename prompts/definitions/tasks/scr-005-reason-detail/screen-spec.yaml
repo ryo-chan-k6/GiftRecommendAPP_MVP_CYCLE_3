@@ -13,11 +13,13 @@ parent:
   epic_issue_number: 1389
   epic_branch: "feature/epic-1389-scr-005-reason-detail"
   related_issues:
-    - number: null
-      purpose: "本 Task Issue（起票後に同期）"
+    - number: 1390
+      purpose: "本 Task Issue"
     - number: 1389
       purpose: "親 Epic"
-  related_prs: []
+  related_prs:
+    - number: 1392
+      purpose: "本 Task PR（画面仕様書）"
 
 commands:
   primary: "/start-task"
@@ -45,7 +47,8 @@ agent:
 background: |
   06_実装設計において、web 実装の前提となる画面仕様書を作成する。
   SCR-005 は独立 URL 画面ではなく、SCR-004 内 Item 単位アコーディオンとして扱う（SCR-004 §7.4）。
-  D1 S5（理由詳細）は pass 済み。本 Task で正本仕様を固定し、Public フィールド欠落時の MVP 方針を明示する。
+  D1 S5（理由詳細）は pass 済み。本 Task で正本仕様を固定する。
+  Human 判断（2026-07-16）: 案 B 採用。Public に reasonPoints / reasonDetail を任意追加する横断 Contract Epic を、並行作業の develop merge 後に実施。実装 Task は Contract 待ち。
 
 objective: |
   SCR-005（推薦理由詳細表示）について、実装・レビューが可能な粒度の画面仕様書を作成する。
@@ -136,7 +139,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue>-scr-005-reason-detail-screen-spec"
+  name: "docs/task-1390-scr-005-reason-detail-screen-spec"
   base: "feature/epic-1389-scr-005-reason-detail"
   target: "feature/epic-1389-scr-005-reason-detail"
   worktree_required: true
@@ -218,6 +221,7 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]SCR-005:推薦理由詳細表示画面仕様書作成"
+  - "本 Task Issue: #1390 / Branch: docs/task-1390-scr-005-reason-detail-screen-spec"
   - "親Epic: #1389 / Branch: feature/epic-1389-scr-005-reason-detail"
   - "PR 本文は Related to（Closes 禁止）"
   - "Review Definition: prompts/definitions/reviews/scr-005-reason-detail/screen-spec/pr-review.yaml"

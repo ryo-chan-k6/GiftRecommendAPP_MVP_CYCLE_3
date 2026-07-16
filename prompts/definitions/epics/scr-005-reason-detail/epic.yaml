@@ -250,7 +250,7 @@ risk_points:
 
 human_decision_points:
   - "SCR-005 は SCR-004 内アコーディオンとして仕様化する（独立 URL・モーダル専用ページではない）。画面一覧の「モーダル」表記との整合は screen-spec で整理し Human Review で確認"
-  - "Public Response に reason_points / reason_detail が無い現状での MVP 表示方針（要約再掲＋案内 vs Contract 拡張）は screen-spec で整理し Human Review で採否"
+  - "Public reasonPoints / reasonDetail: 案 B 採用（任意追加・横断 Contract Epic）。着手は並行作業の develop merge 完了後。SCR-005 実装は Contract 待ち（Human 判断 2026-07-16）"
   - "SCR-006 内からの理由詳細導線は本 Epic では深掘りしない（言及に留める）"
 
 stop_conditions:
