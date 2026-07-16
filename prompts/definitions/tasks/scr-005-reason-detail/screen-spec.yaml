@@ -13,8 +13,8 @@ parent:
   epic_issue_number: 1389
   epic_branch: "feature/epic-1389-scr-005-reason-detail"
   related_issues:
-    - number: null
-      purpose: "本 Task Issue（起票後に同期）"
+    - number: 1390
+      purpose: "本 Task Issue"
     - number: 1389
       purpose: "親 Epic"
   related_prs: []
@@ -136,7 +136,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task-<issue>-scr-005-reason-detail-screen-spec"
+  name: "docs/task-1390-scr-005-reason-detail-screen-spec"
   base: "feature/epic-1389-scr-005-reason-detail"
   target: "feature/epic-1389-scr-005-reason-detail"
   worktree_required: true
@@ -218,6 +218,7 @@ stop_conditions:
 
 notes:
   - "Issueタイトル: [Task]SCR-005:推薦理由詳細表示画面仕様書作成"
+  - "本 Task Issue: #1390 / Branch: docs/task-1390-scr-005-reason-detail-screen-spec"
   - "親Epic: #1389 / Branch: feature/epic-1389-scr-005-reason-detail"
   - "PR 本文は Related to（Closes 禁止）"
   - "Review Definition: prompts/definitions/reviews/scr-005-reason-detail/screen-spec/pr-review.yaml"
