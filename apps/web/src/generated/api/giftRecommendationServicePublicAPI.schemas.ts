@@ -663,6 +663,10 @@ export interface PublicRecommendationResultItem {
      * OpenAPI required では表現できないため description で条件付き必須とする（契約仕様書 §7.3.2.1）。
      */
   reasonSummary?: string;
+  /** 箇条書き理由（任意）。値が生成されていれば返却可。必須化しない（#1398 / 契約仕様書 §7.3.2）。 */
+  reasonPoints?: string[];
+  /** 詳細表示用短文（任意）。値が生成されていれば返却可。必須化しない（#1398 / 契約仕様書 §7.3.2）。 */
+  reasonDetail?: string;
   reasonBadges?: ReasonBadge[];
   cautionNote?: string;
   /** Reason 汎用文由来か。api が Internal の isFallback をマッピング。true 時は汎用 Reason 表示（§7.3.2.1） */

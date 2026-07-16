@@ -1322,6 +1322,16 @@ components:
             推薦理由（短文）。includeReason=true かつ Item 存続時は必須（非空）。
             Reason 失敗時は §17.2 汎用 Reason を返し isFallback: true とする（MOD-RECO-001 §10.3 / API-INT-002 §7.3.2.1）。
             OpenAPI required では表現できないため description で条件付き必須とする（契約仕様書 §7.3.2.1）。
+        reasonPoints:
+          type: array
+          items:
+            type: string
+          description: |
+            箇条書き理由（任意）。値が生成されていれば返却可。必須化しない（#1398 / 契約仕様書 §7.3.2）。
+        reasonDetail:
+          type: string
+          description: |
+            詳細表示用短文（任意）。値が生成されていれば返却可。必須化しない（#1398 / 契約仕様書 §7.3.2）。
         reasonBadges:
           type: array
           items:

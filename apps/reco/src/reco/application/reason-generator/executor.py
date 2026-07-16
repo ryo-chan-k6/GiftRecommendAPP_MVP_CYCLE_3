@@ -149,6 +149,8 @@ def _attach_outputs(
                 final_score=item.final_score,
                 reason_summary=generated_reason.reason_summary,
                 reason_status=ReasonStatus.COMPLETED,
+                reason_detail=generated_reason.reason_detail,
+                reason_points=generated_reason.reason_points or None,
                 is_fallback=generated_reason.is_fallback or item.is_fallback,
             ),
         )

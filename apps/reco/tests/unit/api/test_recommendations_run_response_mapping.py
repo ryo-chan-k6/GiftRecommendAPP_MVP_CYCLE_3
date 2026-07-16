@@ -23,6 +23,8 @@ def test_run_recommendation_success_maps_result_items_and_scores() -> None:
         rank=1,
         final_score=0.82,
         reason_summary="上司へのお礼として候補にしています。",
+        reason_detail="上司へのお礼シーンに合う上品さを重視しました。",
+        reason_points=("感謝が伝わる", "形式が適切"),
     )
     version_info = {
         "recommendation_result_id": "result_001",
@@ -67,6 +69,8 @@ def test_run_recommendation_success_maps_result_items_and_scores() -> None:
     assert result_item["contextScore"] == 0.82
     assert result_item["finalScore"] == 0.82
     assert result_item["reasonSummary"] == "上司へのお礼として候補にしています。"
+    assert result_item["reasonDetail"] == "上司へのお礼シーンに合う上品さを重視しました。"
+    assert result_item["reasonPoints"] == ["感謝が伝わる", "形式が適切"]
     assert result_item["reasonStatus"] == "completed"
     assert result_item["isFallback"] is False
 

@@ -59,6 +59,8 @@ export type PublicRecommendationResultItem = {
   itemCatchcopy?: string;
   shopName?: string;
   reasonSummary?: string;
+  reasonPoints?: string[];
+  reasonDetail?: string;
   reasonBadges?: Array<{ label?: string; code?: string }>;
   cautionNote?: string;
   isFallback?: boolean;
