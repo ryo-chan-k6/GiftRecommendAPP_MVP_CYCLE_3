@@ -58,13 +58,26 @@ Queue 登録 I/F は **IF-DB-BATCH-010** である。**IF-DB-BATCH-009 は `item
 | 起動方式       | BATCH-007 / BATCH-008 後続 / `workflow_dispatch` |
 | 実行頻度       | Item 反映・有効状態更新後に連続実行（item-import / existing-item-recheck チェーン内） |
 | 想定実行時間   | 親 meaning-generation チェーンの入口段。単独再実行は対象 Item 件数に依存 |
-| 冪等キー       | active 行: `(item_id, generation_type)` where `queue_status IN ('queued','processing')`（テーブル定義書 §7） |
+| 冪等キー       | **実装正本:** active 行 `(item_id, generation_type)` where `queue_status IN ('queued','processing')`（`item_generation_queue_テーブル定義書` §7 / #507）。一覧との差分は下表 |
 | 先行Batch      | `BATCH-007` / `BATCH-008`（一覧正本。直列は運用・workflow 設計による） |
 | 後続Batch      | `BATCH-010`（必須）/ BATCH-011〜015（パイプライン消化） |
 | MVP対象        | `○` |
 | Contract Gate  | **不要**（HTTP API 化しない） |
 
 `Batch ID` は `BATCH-*` を使用する。処理構成上の分類 ID（`BT-*`）を Issue / 成果物名の識別子として使わない。
+
+#### 冪等キーとバッチ処理一覧の差分（明示）
+
+| 出典 | 冪等キー表記 | 本仕様での扱い |
+| ---- | ------------ | -------------- |
+| `バッチ処理一覧.md` BATCH-009 行 / §3.1 | `item_id + semantic_config_version_id + generation_target_type` | **旧表記**。一覧側の更新は別 Task 候補（本 Task out_of_scope） |
+| 本仕様 §4 / §11・テーブル定義書 §7（#507） | active `(item_id, generation_type)` partial UNIQUE | **実装正本（確定）** |
+
+補足:
+
+- 一覧の `generation_target_type` は、現行物理列・enum の `generation_type`（`semantic` / `feature` / `embedding`）に相当する。
+- Config Version Resolver で解決する `semantic_config_version_id` は **Queue 行に永続しない**（#507 No.4 **確定** / §18.1 No.12）。登録時のヒントおよび下位 Batch への受け渡しにのみ用いる（一覧 §3.1 の「Queue 行には保存せず」と整合）。
+- 実装・UT・DDL はテーブル定義書の partial UNIQUE を正とする。一覧キー列の書き換えは本 PR では行わない。
 
 ### 4.1 IF 対応（Human 注意）
 
@@ -217,13 +230,13 @@ flowchart TD
 
 ### 8.3 モジュール対応（バッチ処理一覧）
 
-| モジュール | 責務 |
-| ---------- | ---- |
-| Item Generation Queue Registrar | 登録条件評価・`generation_type` 決定・IF-DB-BATCH-010 実行 |
-| Config Version Resolver | 登録時の現行 `semantic_config_version_id` / `model_version_id` 解決（MOD-RECO-003 同一ルール） |
-| Feature Input Candidate Resolver | `feature_input_hash` / embedding 関連 version・hash 変更の補助判定 |
-| Product Diff Result Reader | `product_diff_result` SELECT（BATCH-006 出力の読取） |
-| Batch Logger / Error Handler | 失敗記録・再実行情報 |
+| モジュール | 責務 | 区分 |
+| ---------- | ---- | ---- |
+| Item Generation Queue Registrar | 登録条件評価・`generation_type` 決定・IF-DB-BATCH-010 実行 | 一覧モジュール |
+| Config Version Resolver | 登録時の現行 `semantic_config_version_id` / `model_version_id` 解決（MOD-RECO-003 同一ルール） | 一覧モジュール |
+| Feature Input Candidate Resolver | `feature_input_hash` / embedding 関連 version・hash 変更の補助判定 | 一覧モジュール |
+| Product Diff Result Reader | `product_diff_result` SELECT（BATCH-006 出力の読取） | 一覧モジュール＋実装補助（BATCH-007/008 同型） |
+| Batch Logger / Error Handler | 失敗記録・再実行情報 | 一覧モジュール＋実装補助（BATCH-007 同型。一覧 BATCH-009 行は Error Handler のみ明示） |
 
 ---
 
@@ -246,6 +259,8 @@ flowchart TD
 
 `item_generation_queue_テーブル定義書` §5.4 を正とする。
 
+**優先順位（確定）:** 「非意味影響のみ」の除外は `normalized_hash` 変更より優先する。hash が変わっていても、変更が非意味影響列のみなら **登録しない**（詳細は §9.2.1）。
+
 | 条件 | 登録 | 既定 `generation_type` |
 | ---- | ---- | ---------------------- |
 | 新規 Item（`diff_status = new`） | ○ | `semantic` |
@@ -253,7 +268,7 @@ flowchart TD
 | `normalized_hash` 変更（意味影響を含む Upsert 後） | ○ | 通常 `semantic` |
 | `semantic_config_version_id` のみ変更（意味入力不変） | ○ | `feature`（§5.6 / #507 No.3 **確定**） |
 | 意味影響 + config version 同時変更 | ○ | `semantic`（最上流優先） |
-| `reviewAverage` / `reviewCount` / `price` / `rank` / `availability` / `itemUrl` **のみ**変更 | **×** | — |
+| `reviewAverage` / `reviewCount` / `price` / `rank` / `availability` / `itemUrl` **のみ**変更 | **×**（hash 変更有無を問わない） | — |
 | `feature_input_hash` のみ変更 | ○ | `feature`（§18.1 No.4 **提案** で MVP import は後回し可） |
 | Embedding 関連 version / hash のみ変更 | ○ | `embedding`（§18.1 No.4 **提案**） |
 | `diff_status = unchanged` | **×** | — |
@@ -345,7 +360,7 @@ WHERE item_id = :item_id
 
 | 観点 | 方針 |
 | ---- | ---- |
-| active 行冪等キー | `(item_id, generation_type)` where `queue_status IN ('queued','processing')`（partial UNIQUE） |
+| active 行冪等キー | `(item_id, generation_type)` where `queue_status IN ('queued','processing')`（partial UNIQUE）。一覧の旧表記との差分は §4 |
 | 重複実行時の扱い | active `queued` は `queued_at` のみ更新。`processing` は skip。終端のみなら INSERT |
 | 部分失敗時の再実行 | 失敗した `external_item_code`（または `item_id`）のみ workflow_dispatch で再実行 |
 | 成功済みデータの skip 条件 | 登録条件を満たさない / 非 active / `unchanged` / 非意味影響のみ |
@@ -462,6 +477,7 @@ WHERE item_id = :item_id
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-17 | 初版作成 | Epic #1406 / Task #1407 |
+| 2026-07-16 | AI Review 対応: 一覧との冪等キー差分明示（§4 / §18.1 No.13）、§9.2 優先順位、§8.3 区分 | PR #1408 / Task #1407 |
 
 ---
 
@@ -483,6 +499,7 @@ WHERE item_id = :item_id
 | 10 | BATCH-007 / BATCH-008 境界 | Item 反映・active_status 本更新は本 Batch では行わない | Human（BATCH-007/008 仕様） | **確定** | §2 / §21.2 |
 | 11 | Contract Gate | **不要** | Human（Epic #1406） | **確定** | HTTP API 化しない |
 | 12 | version snapshot 列 | Queue 行に version 列を **持たない** | Human（#507 No.4） | **確定** | Config Resolver は実行時解決 |
+| 13 | 冪等キー正本 | **実装正本は** `item_generation_queue_テーブル定義書` §7 / #507 の active `(item_id, generation_type)` partial UNIQUE。`バッチ処理一覧.md` BATCH-009 行・§3.1 の `item_id + semantic_config_version_id + generation_target_type` は **旧表記**（`generation_target_type` ≒ 現行 `generation_type`）。一覧キー列の更新は別 Task 候補 | Human（#507） / 本仕様 | **確定**（正本）／一覧更新は **提案**（別 Task） | §4 / §11。一覧本体の書き換えは本 Task out_of_scope |
 
 ### 18.2 残未決事項（Human 判断）
 
@@ -491,6 +508,7 @@ WHERE item_id = :item_id
 | 1 | `meaning_input_diff` の算出アルゴリズム詳細（列集合・正規化順序） | 実装 Task で外部商品データ連携設計書 §6.4 と整合させて確定 |
 | 2 | feature / embedding 部分再生成を MVP import 経路に含めるか | §18.1 No.4 **提案** の Human 確定待ち |
 | 3 | 独立 workflow ファイル名・親からの `workflow_call` タイミング | §18.1 No.1 **提案** の Human 確定待ち |
+| 4 | バッチ処理一覧 BATCH-009 冪等キー列・§3.1 の旧表記更新 | §18.1 No.13。別 Task で一覧をテーブル定義書 #507 に合わせて更新するか Human 判断 |
 
 ---
 
