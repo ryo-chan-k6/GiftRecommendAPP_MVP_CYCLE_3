@@ -1,0 +1,162 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-public-reason-detail-fields-epic-pr"
+  title: "API-PUB-002 Public Reason詳細フィールド Epic PRレビュー"
+  summary: "Epic #1397（API-PUB-002 Public reasonPoints/reasonDetail 任意追加）の develop 向け統合 PR を AI Review する。Contract Task #1398 の成果（契約・OpenAPI・generated・api/reco マッピング・関連 docs）を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1397
+  task_definition: "prompts/definitions/epics/api-pub-002-public-reason-detail-fields/epic.yaml"
+  source_branch: "feature/epic-1397-api-pub-002-public-reason-detail-fields"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]API-PUB-002:Public Reason詳細フィールド追加"
+  parent_epic_branch: "feature/epic-1397-api-pub-002-public-reason-detail-fields"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: "contract-ai"
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: true
+  db: false
+  generated: true
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/api-pub-002-public-reason-detail-fields/epic.yaml"
+    required: true
+  issue:
+    number: 1397
+    required: true
+  pr:
+    number: null
+    required: false
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "Public 契約更新正本"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "Internal resultItems 任意追加・Public 表面化注記"
+    - path: "ai-logs/human-decisions/2026-07-16-scr-005-public-reason-points-detail-contract.md"
+      required: true
+      purpose: "案 B・任意追加の Human 判断正本"
+
+review_points:
+  common:
+    - "Epic acceptance / Contract 完了条件を満たしているか"
+    - "PR target が develop か"
+    - "破壊的変更（必須化）になっていないか"
+  docs:
+    - "API-PUB-002 / API-INT-002 / recommendation_reason §5.5 / SCR-006 注記が整合しているか"
+  source:
+    - "api mapper が Internal resultItems → Public items へ reasonPoints / reasonDetail を透過しているか"
+    - "reasonBasis が Public に露出していないか"
+    - "SCR-005 UI（recommendation-result）を変更していないか"
+  tests:
+    - "api / reco の関連単体テストが更新されているか"
+  api_contract:
+    - "OpenAPI public-api / internal-reco-api に任意フィールドが追加されているか"
+    - "generated が Orval 再生成であり手動編集がないか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "PR差分が epic_scope.allowed_paths 内か"
+    - "forbidden_paths（SCR-005 UI 等）に触れていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: false
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Contract 成果が揃っている"
+      - "Blocker / Must がない"
+  request_changes:
+    conditions:
+      - "契約・マッピング・docs・generated の重大不備がある"
+  needs_human_decision:
+    conditions:
+      - "マッピング元方針や必須化判断が必要"
+  split_required:
+    conditions:
+      - "別 Epic 成果物（SCR-005 UI 等）が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "api"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新する"
+  - "子 Contract Task: #1398 / PR #1399（MERGED）"
+  - "implementation_gate: contract-api-pub-002-public-reason-points-detail（SCR-005 実装解放）"

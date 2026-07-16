@@ -159,6 +159,7 @@ epic_scope:
     - "prompts/definitions/contracts/api-pub-002-public-reason-points-detail/**"
     - "prompts/definitions/cross-cutting/api-pub-002-public-reason-points-detail/**"
     - "prompts/definitions/reviews/api-pub-002-public-reason-points-detail/**"
+    - "prompts/definitions/reviews/api-pub-002-public-reason-detail-fields/**"
     - "ai-logs/cross-cutting/2026-07-16-public-reason-points-detail-contract-epic-prep.md"
     - "ai-logs/cross-cutting/2026-07-16-api-pub-002-public-reason-points-detail-contract-impl.md"
     - "ai-logs/human-decisions/2026-07-16-scr-005-public-reason-points-detail-contract.md"
