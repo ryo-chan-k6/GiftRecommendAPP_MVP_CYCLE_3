@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service / batch  |
 | MVP対象        | `○`                                  |
 | 作成日         | 2026-07-15                           |
-| 更新日         | 2026-07-16                           |
+| 更新日         | 2026-07-16（§18.1 No.8 / No.11 Human 確定） |
 
 ---
 
@@ -53,7 +53,7 @@ Epic #1227 由来の `item_active_status/**` 部分実装・UT は本 Epic で *
 | Batch ID       | `BATCH-008` |
 | Batch名        | 商品有効状態更新Batch |
 | 処理種別       | Item 有効状態本更新 / 候補適用 |
-| 実行基盤       | GitHub Actions。**MVP 初期は独立子 workflow `batch-rakuten-item-active-status.yml` を提案**（§18.1 No.8）。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` 全体改修は本 Epic 外。BATCH-004 後続の単独起動も可 |
+| 実行基盤       | GitHub Actions。**独立子 workflow `batch-rakuten-item-active-status.yml` を正**とする（§18.1 No.8）。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` 全体改修は本 Epic 外。BATCH-004 後続の単独起動も可 |
 | 実装言語       | Python（`apps/batch`） |
 | 起動方式       | 先行 Batch 完了後続 / `workflow_dispatch` |
 | 実行頻度       | Item 反映後、または既存商品再確認（BATCH-004）後 |
@@ -126,7 +126,7 @@ Epic #1227 由来の `item_active_status/**` 部分実装・UT は本 Epic で *
 | ---- | -------- | ---- |
 | BATCH-017 | ログ・件数 | Run 集計 |
 | Online / reco | 更新済み `item.active_status` | 次 Retrieval から反映（Direct 参照なし） |
-| T7 Retention cleanup | `applied` / `superseded` / `discarded` 行 | 適用後 14 日。本 Batch では DELETE しない |
+| T7 Retention cleanup | `applied` / `superseded` / `discarded` 行 | 適用後 14 日。本 Batch では DELETE しない。MVP 初期は手動運用（§18.1 No.11） |
 
 ### 7.3 更新リソース
 
@@ -313,7 +313,7 @@ WHERE item_active_status_candidate_id = :id
 | Item 更新の冪等 | 同一提案値の再適用は no-op または同一値 UPDATE |
 | 候補の再消費 | `detected` のみを主対象。`applied` 済みは再適用しない |
 | 部分失敗 | 失敗 Item の候補は `detected` のまま残し、workflow_dispatch で再実行 |
-| Retention（Human 確定） | `detected`: **削除しない**<br>`applied` / `superseded` / `discarded`: **`applied_at` または `updated_at` + 14 日** 後に cleanup（T7）。本 Batch では DELETE しない |
+| Retention（Human 確定） | `detected`: **削除しない**<br>`applied` / `superseded` / `discarded`: **`applied_at` または `updated_at` + 14 日** 後に cleanup（T7・別 Task #1235）。本 Batch では DELETE しない。MVP 初期は手動運用（§18.1 No.11） |
 
 ---
 
@@ -390,6 +390,7 @@ WHERE item_active_status_candidate_id = :id
 | ---- | ---- | ---- |
 | 2026-07-15 | 初版。候補 Reader / Applier・競合・Retention（008 側手順）を定義 | #1233 / Epic #1227 / BATCH-004 §18.1.1 |
 | 2026-07-16 | §18.2 No.1 解消（識別子 Epic #1379 起票・縦串方針）。BATCH-006/007 境界・独立 workflow 提案・既存実装ギャップを整理 | Epic #1379 / Task #1380 |
+| 2026-07-16 | §18.1 No.8 確定（独立 workflow）。§18.1 No.11 確定（Retention T7 は本 Epic 外・MVP 初期手動運用）。§18.2 旧 No.3 / No.4 解消 | Human / Task #1380 |
 
 ---
 
@@ -406,9 +407,10 @@ WHERE item_active_status_candidate_id = :id
 | 5 | Raw | 候補を raw に載せない / 008 も raw 非更新 | Human | 2026-07-14 |
 | 6 | 識別子 Epic 起票 | **`[Epic]BATCH-008:商品有効状態更新Batch`（#1379）** を親 Epic とする。Branch `feature/epic-1379-batch-008-item-active-status` | Human / Orchestrator | **確定**（2026-07-16） | 旧 §18.2 No.1 解消 |
 | 7 | 縦串方針 | **仕様整備 → 実装ギャップ → UT → Epic PR**（develop 統合は Epic PR のみ） | Human | **確定**（2026-07-16） | BATCH-006 / BATCH-007 同型 |
-| 8 | 子 workflow 配置 | **独立 YAML `batch-rakuten-item-active-status.yml`（`batch-rakuten-item-active-status*.yml`）を MVP 初期の提案とする**。`workflow_call` / `workflow_dispatch` 対応。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **提案**（2026-07-16・MVP 初期） | BATCH-005 / BATCH-006 / BATCH-007 同型。Human 最終確定は Epic `human_decision_points` |
+| 8 | 子 workflow 配置 | **独立 YAML `batch-rakuten-item-active-status.yml`（`batch-rakuten-item-active-status*.yml`）を正**とする。`workflow_call` / `workflow_dispatch` 対応。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **確定**（2026-07-16・MVP 初期） | BATCH-005 / BATCH-006 / BATCH-007 同型。§18.2 旧 No.4 解消 |
 | 9 | BATCH-007 境界 | BATCH-007 は **`item.active_status` / `is_active` を本更新しない**。`unavailable` は Item 反映をスキップし、BATCH-008 が `product_diff_result` を消費して本更新する | Human（BATCH-007 §18.1 No.10 / 14） | **確定**（2026-07-16） | §21.2 |
 | 10 | BATCH-006 境界 | BATCH-006 は **`unavailable` を `product_diff_result` に記録**するのみ。`item` / `active_status` は更新しない | Human（BATCH-006 §2 / §18.1 No.9） | **確定**（2026-07-16） | §21.2 |
+| 11 | Retention T7 の Epic スコープ | **本 Epic（#1379）の実装範囲外**。T7（#1235）は **別 Task のまま**。MVP 初期は `item_active_status_candidate_Retention_cleanup運用手順.md` §4 の **手動 SQL / 運用** で cleanup。§20.1 の scaffold / UT は再利用可 | Human | **確定**（2026-07-16） | §18.2 旧 No.3 解消。Applier と責務分離（§20.3） |
 
 #### 18.1.1 入力選定の MVP 初期提案（workflow / config）
 
@@ -427,10 +429,8 @@ WHERE item_active_status_candidate_id = :id
 | -: | ---- | ---- |
 | 1 | Diff 以外の `excluded` 自動判定の完全表 | 必要になった時点で追記（Staging Validator） |
 | 2 | `is_active` と `active_status` の同期式の実装詳細 | item テーブル定義書に従い実装 Task で確定 |
-| 3 | Retention T7 を本 Epic 実装範囲に含めるか | Epic `human_decision_points`。現状は scaffold + UT のみ（§20.2） |
-| 4 | 独立 workflow の Human 最終確定 | §18.1 No.8 は **提案**。確定後は本表から削除し No.8 の状態を **確定** に更新 |
 
-本仕様書時点で、§18.2 No.1（専用 Epic 起票）および旧 No.4（workflow 配置の論点自体）は解消済み。
+本仕様書時点で、§18.2 旧 No.1（専用 Epic 起票）・旧 No.3（Retention T7 Epic スコープ）・旧 No.4（独立 workflow 確定）は解消済み。
 
 ---
 
@@ -440,6 +440,7 @@ WHERE item_active_status_candidate_id = :id
 | ---- | ----------- | ---- |
 | 制約正本（候補） | `docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md` §18.1 No.7 / §18.1.1 | Writer 側制約・競合・Retention |
 | テーブル定義書 | `docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md` | 物理・遷移・§12.3 Applier 概要 |
+| Retention 運用手順 | `docs/06_実装設計/batch/item_active_status_candidate_Retention_cleanup運用手順.md` | T7（#1235）。MVP 初期手動 cleanup 正本（§18.1 No.11） |
 | Product Diff | `docs/06_実装設計/database/product_diff_result_テーブル定義書.md` | 経路 A |
 | インターフェース一覧 | `docs/05_アプリケーション設計/アプリ/インターフェース一覧.md` | IF-DB-BATCH-006 / 009 / 020 / 021 |
 | バッチ処理一覧 | `docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md` | BATCH-008 行 |
@@ -470,7 +471,8 @@ WHERE item_active_status_candidate_id = :id
 
 | 領域 | 不足内容 | 後続 Task 想定 |
 | ---- | -------- | -------------- |
-| workflow YAML | `.github/workflows/batch-rakuten-item-active-status.yml` **未作成** | 実装 Task（§18.1 No.8 提案に沿う） |
+| workflow YAML | `.github/workflows/batch-rakuten-item-active-status.yml` **未作成** | 実装 Task（§18.1 No.8 **確定** に沿う） |
+| Retention T7 本番化 | 本 Epic 外（§18.1 No.11）。#1235 別 Task。MVP 初期は Retention 運用手順 §4 手動 | #1235 または後続 Task |
 | batch config | `BATCH_ITEM_ACTIVE_STATUS_MAX_ITEMS` 等が `settings.py` / `loader.py` に **未定義**（BATCH-006/007 には存在） | 実装 Task |
 | DB アダプタ | `repositories.py` は **in-memory / ScaffoldDbWriter** のみ。IF-DB-BATCH-006 / 009 / 021 の本番 SQL 未接続 | 実装 Task |
 | CLI 本番経路 | 実 DB 未接続時は exit 3（`--scaffold-demo` 必須） | 実装 Task |
@@ -484,7 +486,8 @@ WHERE item_active_status_candidate_id = :id
 - 想定モジュール配置: `apps/batch/src/batch/application/item_active_status/**`（既存パスを継続利用）
 - Contract Gate 不要（HTTP API 化しない）
 - unit は fixture / mock 正。production DB / 実 secret 禁止
-- Retention cleanup（T7）と本 Batch Applier の責務を混ぜない
+- Retention cleanup（T7）と本 Batch Applier の責務を混ぜない（T7 本番化は §18.1 No.11 のとおり本 Epic 外）
+- Retention cleanup（MVP 初期）は `item_active_status_candidate_Retention_cleanup運用手順.md` §4 の手動 SQL / 運用
 - BATCH-004 Writer（#1231）は BATCH-004 縦串で実装。008 では候補 **読取・適用のみ**
 
 ---
@@ -525,12 +528,13 @@ BATCH-008 → item.active_status 本更新（unavailable 消費 + 候補適用�
 | BATCH-009 意味生成キュー | 後続 Epic |
 | 親 item-import チェーン **全体**改修 | BATCH-006/007 方針と整合。独立子 workflow 追加のみ可 |
 | 新規 DB migration | 既存 `item` / `item_active_status_candidate` 定義を参照。変更は Human 判断 |
+| Retention T7 本番化（#1235） | §18.1 No.11。Applier Epic と分離。MVP 初期は手動 cleanup |
 
 ### 21.4 レビュー観点
 
 - バッチ処理一覧の BATCH-008 行と ID・入出力・先行後続が一致している
 - BATCH-006 / BATCH-007 仕様書の `active_status` 非更新境界と矛盾しない
-- §18.1 No.6〜7 が **確定**、No.8 が **提案** と区別されている
+- §18.1 No.6〜8 / No.11 が **確定** である（No.8: 独立 workflow、No.11: T7 は Epic 外・手動運用）
 - §20.2 ギャップが後続実装 Task の入力として十分である
 - Epic #1227 由来実装の再利用方針が明記され、Writer 重複がない
 - secret / `.env` 実値が含まれていない
