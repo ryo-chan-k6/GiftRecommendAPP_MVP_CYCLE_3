@@ -1,0 +1,36 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-011-feature-input-hash-batch-spec-pr"
+  title: "BATCH-011 Feature入力hash算出バッチ仕様書 PR Review"
+  status: "ready"
+  pr:
+    number: 1436
+    title: "[Task]BATCH-011:Feature入力hash算出バッチ仕様書作成"
+    base: "feature/epic-1434-batch-011-feature-input-hash"
+    head: "docs/task-1435-batch-011-feature-input-hash-batch-spec"
+
+task_definition: "prompts/definitions/tasks/batch-011-feature-input-hash/batch-spec.yaml"
+issue:
+  number: 1435
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "docs-reviewer-ai"
+
+review_points:
+  - "IF-DB-BATCH-012 と IF-DB-BATCH-011（BATCH-010）の混同がないか"
+  - "§13.3 / item_feature 定義との整合"
+  - "BATCH-012 / apps/reco が混入していないか"
+  - "§18 確定 / 提案の区別"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+acceptance_for_human_review:
+  - "Blocker / Must が残っていない"
+
+notes:
+  - "Issue #1435 / PR #（作成後に反映）"
+  - "Issue #1435 / PR #1436"
