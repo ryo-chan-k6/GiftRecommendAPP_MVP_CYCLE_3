@@ -67,8 +67,8 @@ jobs:
         with:
           version: ${{ steps.cli-pin.outputs.version }}
 
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client jq curl
+      - name: Install PostgreSQL client and redis-cli
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client redis-tools jq curl
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -215,6 +215,18 @@ jobs:
           path: |
             tests/e2e/results/system-test-report.json
             tests/e2e/results/system-test-report.md
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload api/reco runtime logs
+        if: always() && inputs.skip_api_e2e == false
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-system-runtime-logs
+          path: |
+            /tmp/test-system-logs/api.log
+            /tmp/test-system-logs/reco.log
+            /tmp/recommendation-run-response.json
           if-no-files-found: warn
           retention-days: 14
 

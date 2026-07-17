@@ -157,7 +157,7 @@ case_recommendation_run() {
     record_case "recommendation-run" "failed" "missing fixture ${fixture}"
     return
   fi
-  local body code
+  local body code snippet
   body="$(jq 'del(.description)' "${fixture}")"
   code="$(curl -sS -o /tmp/recommendation-run-response.json -w "%{http_code}" \
     --connect-timeout 5 --max-time 120 \
@@ -167,7 +167,8 @@ case_recommendation_run() {
   if [[ "${code}" == "200" || "${code}" == "201" ]]; then
     record_case "recommendation-run" "passed" "POST /api/v1/recommendations returned HTTP ${code}"
   else
-    record_case "recommendation-run" "failed" "POST /api/v1/recommendations returned HTTP ${code}"
+    snippet="$(tr '\n' ' ' </tmp/recommendation-run-response.json 2>/dev/null | head -c 400 || true)"
+    record_case "recommendation-run" "failed" "POST /api/v1/recommendations returned HTTP ${code}; body=${snippet}"
   fi
 }
 
