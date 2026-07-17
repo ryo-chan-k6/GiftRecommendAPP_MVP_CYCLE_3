@@ -110,7 +110,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: null
+  name: "test/task-1439-lane-1e-playwright-scaffold-s1"
   summary: "lane-1e-playwright-scaffold-s1"
   base: "test/epic-1438-lane-1e-playwright-d2"
   target: "test/epic-1438-lane-1e-playwright-d2"
@@ -139,5 +139,5 @@ operation_logging:
   reason: "Playwright 実行証跡"
 
 notes:
-  - "Related to #<task> / #1438（Closes なし）"
+  - "Related to #1439 / #1438（Closes なし）"
   - "SCR-001 起点は任意。/recommendations 起点を許容"

@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1439
   task_definition: "prompts/definitions/tasks/lane-1e-playwright-d2/scaffold-and-s1-smoke.yaml"
-  source_branch: null
+  source_branch: "test/task-1439-lane-1e-playwright-scaffold-s1"
   target_branch: "test/epic-1438-lane-1e-playwright-d2"
 
 commands:
