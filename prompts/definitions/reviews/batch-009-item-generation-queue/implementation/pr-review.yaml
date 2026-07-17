@@ -6,7 +6,7 @@ review:
   title: "BATCH-009 商品意味生成キュー登録Batch実装 PRレビュー"
   summary: "BATCH-009 実装 Task（#1410）の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -90,3 +90,4 @@ review_points:
 
 notes:
   - "Issue #1410。PR 番号は作成後に更新する"
+  - "Issue #1410 / PR #1411"
