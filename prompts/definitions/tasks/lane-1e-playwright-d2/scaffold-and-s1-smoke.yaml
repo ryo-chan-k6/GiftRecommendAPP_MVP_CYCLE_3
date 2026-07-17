@@ -1,0 +1,143 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-playwright-d2-scaffold-and-s1-smoke"
+  title: "レーン1e:Playwright基盤とS1 smoke"
+  summary: "apps/web に Playwright を導入し、D1 S1（結果あり最小パス）の smoke を追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:Playwright自動E2E（D2）"
+  epic_issue_number: 1438
+  epic_branch: "test/epic-1438-lane-1e-playwright-d2"
+  related_issues:
+    - number: 1438
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+phase: "verification"
+
+background: |
+  Playwright 未導入。D1 チェックリスト S1 を自動化する。
+
+objective: |
+  - Playwright 依存・config・npm script を追加する
+  - S1 smoke（SCR-002→結果一覧）を実装する
+  - 手順書 / チェックリストに D2 参照を追記する
+  - ローカル実行証跡を experiments に残す
+
+scope:
+  - "apps/web/**（Playwright / e2e）"
+  - "package.json / pnpm-lock.yaml（必要時）"
+  - "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+  - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  - "ai-logs/experiments/**"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "S2〜S8 全自動化"
+  - "GHA Playwright 必須ゲート"
+  - "BATCH"
+  - "apps/api / apps/reco 機能改修"
+  - "secret 実値"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  files:
+    - path: "apps/web/package.json"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/web/playwright.config.ts"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/web/e2e/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+acceptance_criteria:
+  - "pnpm --filter @gift-recommendation/web test:e2e 相当が定義されている"
+  - "S1 smoke の合否または未達理由が実験ログにある"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: null
+  summary: "lane-1e-playwright-scaffold-s1"
+  base: "test/epic-1438-lane-1e-playwright-d2"
+  target: "test/epic-1438-lane-1e-playwright-d2"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "web"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "S1 smoke 合否または未達理由"
+    - "BATCH / api / reco 非含有"
+    - "secret 非含有"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "Playwright 実行証跡"
+
+notes:
+  - "Related to #<task> / #1438（Closes なし）"
+  - "SCR-001 起点は任意。/recommendations 起点を許容"
