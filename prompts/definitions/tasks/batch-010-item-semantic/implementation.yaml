@@ -1,0 +1,222 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-010-item-semantic-implementation"
+  title: "BATCH-010:Item Semantic生成Batch実装"
+  summary: "BATCH-010（Item Semantic生成Batch）を仕様書に基づき apps/batch へ scaffold-first 実装する。Queue（semantic）消化、IF-SHARED-001、IF-DB-BATCH-011、独立 workflow を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-010:Item Semantic生成Batch"
+  epic_issue_number: 1422
+  epic_branch: "feature/epic-1422-batch-010-item-semantic"
+  related_issues:
+    - number: 1423
+      purpose: "バッチ仕様書（CLOSED / Epic Branch merge 済み）"
+  related_prs:
+    - number: 1424
+      purpose: "バッチ仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 意味生成パイプライン Semantic 段。仕様書 #1423 / PR #1424 は Epic Branch merge 済み。
+  BATCH-009 / MOD-RECO-026 develop merge 済み。BATCH-009 同型の scaffold-first 実装方針。
+  plan→claim_queue→resolve_config→load_item_context→generate_semantic→upsert_item_semantic→update_queue→finalize。
+  IF-SHARED-001 = in-process Scaffold アダプタ。IF-DB-BATCH-011 = item_semantic Upsert。
+  Contract Gate 不要。
+
+objective: |
+  BATCH-010 について、仕様書の処理ステップを apps/batch 上で実行可能な scaffold 実装と、
+  起動用独立 workflow（batch-item-semantic.yml）を整備する。
+  Queue INSERT（IF-DB-BATCH-010）・item 本更新・実 LLM 呼出は行わない。
+
+scope:
+  - "BATCH-010 ジョブ application 実装（item_semantic）"
+  - "Queue claim（generation_type=semantic のみ）"
+  - "IF-SHARED-001 Scaffold アダプタ"
+  - "IF-DB-BATCH-011 item_semantic Upsert"
+  - "Queue status 更新（成功時 processing 維持 / skip / failed）"
+  - "config: BATCH_ITEM_SEMANTIC_*"
+  - ".github/workflows/batch-item-semantic.yml"
+  - "最小 unit test"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "バッチ仕様書の全面書き換え"
+  - "他 Batch application 編集（item_generation_queue / item_apply 等）"
+  - "親 meaning-generation チェーン workflow 全体改修"
+  - "OpenAPI / Orval / generated / DB migration"
+  - "実 LLM API 呼出"
+  - "item 本更新 / Queue INSERT"
+  - "apps/reco 本体変更"
+  - "BATCH-011〜015"
+  - "包括的 UT Task（後続 unit-test Task）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-010_Item Semantic生成バッチ仕様書.md"
+      required: true
+      purpose: "実装の正本"
+    - path: "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+      required: true
+      purpose: "Upsert / skip"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "Queue 消化・status"
+    - path: "docs/06_実装設計/reco/MOD-RECO-026_Item Semantic Generatorモジュール仕様書.md"
+      required: true
+      purpose: "IF-SHARED-001"
+  files:
+    - path: "apps/batch/src/batch/application/item_generation_queue/**"
+      required: false
+      purpose: "同型 Job 参照のみ（編集禁止）"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/item_semantic/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-item-semantic.yml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-010-item-semantic/implementation.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-010-item-semantic/implementation/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_item_semantic.py"
+      action: "create"
+      required: true
+    - path: "apps/batch/tests/unit/config/test_config_scaffold.py"
+      action: "update"
+      required: true
+
+deliverables:
+  - "BATCH-010 Item Semantic 生成ジョブ実装"
+  - "batch-item-semantic.yml"
+  - "最小 unit test（fixture / mock）"
+
+acceptance_criteria:
+  - "仕様書主要 Phase がコード上で追跡できる"
+  - "semantic queued → claim → Upsert → processing 維持できる"
+  - "skip（hash 一致）/ failed / generation_type フィルタを UT で検証できる"
+  - "Queue INSERT / item 更新を行わない"
+  - "非 --scaffold-demo CLI は exit 3"
+  - "batch-item-semantic.yml が workflow_dispatch / workflow_call を持つ"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1428-batch-010-item-semantic-implementation"
+  summary: "batch-010-item-semantic-implementation"
+  base: "feature/epic-1422-batch-010-item-semantic"
+  target: "feature/epic-1422-batch-010-item-semantic"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1428
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1422
+      title: "[Epic]BATCH-010:Item Semantic生成Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1423
+      purpose: "仕様書（CLOSED）"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - ".github/workflows/batch-item-semantic.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-010 最小）"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_item_semantic.py tests/unit/config/test_config_scaffold.py -q --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "仕様書 Phase・claim/skip/failed と実装が整合するか"
+    - "IF-DB-BATCH-011 のみ item_semantic 書込・IF-DB-BATCH-010（Queue INSERT）不使用か"
+    - "apps/reco / 他 Batch application を編集していないか"
+    - "親 workflow チェーンを改修していないか"
+  specialist_reviews:
+    test: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+
+human_decision_points:
+  - "独立 YAML（batch-item-semantic.yml）方針で実装する（§18.1 No.1 確定）"
+  - "MVP LLM は Scaffold（§18.1 No.3 確定）"
+  - "IF-SHARED-001 = in-process Scaffold アダプタ（§18.1 No.4 確定。実 reco import は後続可）"
+  - "config BATCH_ITEM_SEMANTIC_*（§18.1 No.5 提案→本 Task で採用）"
+
+stop_conditions:
+  - "必須 input.docs（バッチ仕様書）が存在しない場合"
+  - "OpenAPI / generated / migration 変更が必要になった場合"
+  - "apps/reco 破壊変更が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-010:Item Semantic生成Batch実装"
+  - "Contract Gate 不要"
+  - "Issue #1428"
