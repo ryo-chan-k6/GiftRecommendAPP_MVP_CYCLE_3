@@ -104,6 +104,26 @@ def test_scaffold_batch_settings_provides_placeholder_secrets() -> None:
     assert settings.batch_item_active_status_max_items == 1000
     assert settings.batch_item_active_status_source == "rakuten"
     assert settings.batch_item_active_status_batch_run_id is None
+    assert settings.batch_item_generation_queue_max_items == 1000
+    assert settings.batch_item_generation_queue_source == "rakuten"
+    assert settings.batch_item_generation_queue_diff_batch_run_id is None
+
+
+def test_load_batch_settings_reads_item_generation_queue_fields() -> None:
+    settings = load_batch_settings(
+        environ={
+            "APP_ENV": "dev",
+            "OBJECT_STORAGE_BUCKET": "raw-dev",
+            "BATCH_ITEM_GENERATION_QUEUE_MAX_ITEMS": "500",
+            "BATCH_ITEM_GENERATION_QUEUE_SOURCE": "rakuten",
+            "BATCH_ITEM_GENERATION_QUEUE_DIFF_BATCH_RUN_ID": "run-009",
+        }
+    )
+
+    assert settings.batch_item_generation_queue_max_items == 500
+    assert settings.batch_item_generation_queue_source == "rakuten"
+    assert settings.batch_item_generation_queue_diff_batch_run_id == "run-009"
+    assert "run-009" in repr(settings)
 
 
 def test_load_batch_settings_reads_item_active_status_fields() -> None:

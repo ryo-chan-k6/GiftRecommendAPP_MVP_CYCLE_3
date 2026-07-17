@@ -87,6 +87,15 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_item_active_status_batch_run_id=_read_optional_str(
             source, "BATCH_ITEM_ACTIVE_STATUS_BATCH_RUN_ID"
         ),
+        batch_item_generation_queue_max_items=_read_positive_int(
+            source, "BATCH_ITEM_GENERATION_QUEUE_MAX_ITEMS"
+        ),
+        batch_item_generation_queue_source=_read_optional_str(
+            source, "BATCH_ITEM_GENERATION_QUEUE_SOURCE"
+        ),
+        batch_item_generation_queue_diff_batch_run_id=_read_optional_str(
+            source, "BATCH_ITEM_GENERATION_QUEUE_DIFF_BATCH_RUN_ID"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )
