@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1437
   issue:
     number: 1426
   task_definition: "prompts/definitions/epics/gha-layer2-api-e2e/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1426
     required: true
   pr:
-    number: null
+    number: 1437
     required: false
   diff:
     required: true
