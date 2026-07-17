@@ -26,7 +26,7 @@ BATCH-009（商品意味生成キュー登録Batch）は、BATCH-007（Item反�
 | `item.active_status` / `is_active` の本更新 | **IF-DB-BATCH-009**（BATCH-008） |
 | `product_diff_result` 行の作成・更新 | **BATCH-006**（読取のみ） |
 | LLM / Embedding API 呼び出し | **BATCH-010〜015** |
-| `meaning_input_diff` の永続化 | MVP では **計算結果（非永続）**（§18.1 No.2 **提案**） |
+| `meaning_input_diff` の永続化 | MVP では **計算結果（非永続）**（§18.1 No.2 **確定**） |
 
 Queue 登録 I/F は **IF-DB-BATCH-010** である。**IF-DB-BATCH-009 は `item.active_status` 本更新用**（BATCH-008）であり、本 Batch とは無関係である（Batch ID と IF 番号の対応に注意）。
 
@@ -53,7 +53,7 @@ Queue 登録 I/F は **IF-DB-BATCH-010** である。**IF-DB-BATCH-009 は `item
 | Batch ID       | `BATCH-009` |
 | Batch名        | 商品意味生成キュー登録Batch |
 | 処理種別       | 意味生成 Queue 登録（INSERT / active `queued` 行の `queued_at` UPDATE） |
-| 実行基盤       | GitHub Actions。**独立子 workflow `batch-item-generation-queue.yml`（`batch-item-generation-queue*.yml`）を正**とする（§18.1 No.1 **提案**）。親 `batch-item-meaning-generation.yml` 全体改修は本 Epic 外 |
+| 実行基盤       | GitHub Actions。**独立子 workflow `batch-item-generation-queue.yml`（`batch-item-generation-queue*.yml`）を正**とする（§18.1 No.1 **確定**）。親 `batch-item-meaning-generation.yml` 全体改修は本 Epic 外 |
 | 実装言語       | Python（`apps/batch`） |
 | 起動方式       | BATCH-007 / BATCH-008 後続 / `workflow_dispatch` |
 | 実行頻度       | Item 反映・有効状態更新後に連続実行（item-import / existing-item-recheck チェーン内） |
@@ -121,8 +121,8 @@ Queue 登録 I/F は **IF-DB-BATCH-010** である。**IF-DB-BATCH-009 は `item
 | ---- | ---- | ------ | ---- | ---- | ---- |
 | `item` | DB | database | `true`（行単位） | 突合・`item_id` 解決・`active_status` フィルタ・意味影響列参照 | BATCH-007 反映済み正本 |
 | `product_diff_result` | DB | database | `true`（行単位） | `diff_status` 分岐・`staging_item_id` / hash 変更判定 | 読取のみ。Human Review #526 **確定** |
-| `meaning_input_diff` | **計算** | Batch 内算出（非永続） | `false`（概念） | 意味影響項目のみの変更検知 | §18.1 No.2 **提案**。永続テーブルなし |
-| `item_semantic` / `item_feature` / `item_embedding`（参照） | DB | database | `false` | version / hash 変更検知（部分再生成） | MVP import 経路では §18.1 No.4 **提案** に従い semantic 中心 |
+| `meaning_input_diff` | **計算** | Batch 内算出（非永続） | `false`（概念） | 意味影響項目のみの変更検知 | §18.1 No.2 **確定**。永続テーブルなし |
+| `item_semantic` / `item_feature` / `item_embedding`（参照） | DB | database | `false` | version / hash 変更検知（部分再生成） | MVP import 経路では §18.1 No.4 **確定** に従い semantic 中心（部分再生成トリガーは後続） |
 | `registration_plan` / config | 設定 | Batch config / workflow input | `true` | 選定フィルタ / 件数上限 | §18.1 No.5 |
 | 明示 `external_item_code` リスト | 入力 | workflow_dispatch | `false` | 失敗再実行・部分集合 | |
 
@@ -269,8 +269,8 @@ flowchart TD
 | `semantic_config_version_id` のみ変更（意味入力不変） | ○ | `feature`（§5.6 / #507 No.3 **確定**） |
 | 意味影響 + config version 同時変更 | ○ | `semantic`（最上流優先） |
 | `reviewAverage` / `reviewCount` / `price` / `rank` / `availability` / `itemUrl` **のみ**変更 | **×**（hash 変更有無を問わない） | — |
-| `feature_input_hash` のみ変更 | ○ | `feature`（§18.1 No.4 **提案** で MVP import は後回し可） |
-| Embedding 関連 version / hash のみ変更 | ○ | `embedding`（§18.1 No.4 **提案**） |
+| `feature_input_hash` のみ変更 | ×（MVP import） / ○（後続拡張） | `feature`。§18.1 No.4 **確定**: MVP import では登録しない |
+| Embedding 関連 version / hash のみ変更 | ×（MVP import） / ○（後続拡張） | `embedding`。§18.1 No.4 **確定**: MVP import では登録しない |
 | `diff_status = unchanged` | **×** | — |
 | `diff_status = unavailable` | **×** | — |
 | 前回 `failed` 行の再キュー | 本 Batch では **新規登録しない** | `retry-failed-items` / BATCH-010〜015 側（§12.3） |
@@ -279,9 +279,10 @@ flowchart TD
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 永続化 | MVP では **テーブルに保存しない**（§18.1 No.2 **提案**） |
+| 永続化 | MVP では **テーブルに保存しない**（§18.1 No.2 **確定**） |
 | 算出タイミング | `diff_status = updated` 時、現行 `item` と BATCH-007 反映直前の意味影響列（または staging 由来の新旧比較）から **Batch 内で算出** |
-| 意味影響列（代表） | `item_name`, `item_caption`, `catchcopy`, `external_genre_id`, 属性・タグ相当（外部商品データ連携設計書 §6.4 の意味抽出対象と整合） |
+| 意味影響列（正本方針） | 外部商品データ連携設計書 §6.4 のうち **意味抽出・Semantic に影響する列**に限定。代表: `itemName` / `catchcopy` / `itemCaption` / `genreId` / `attributeIds`（属性・タグ相当）。§6.4 の hash 対象でも price / URL / review / availability / 画像は **意味影響に含めない**（§9.2） |
+| 正規化・比較順序 | **実装 Task** で §6.4・Item / Staging 物理列対応と整合させて確定（trim・空文字・配列順など）。本仕様書では列集合方針までを正とする |
 | 非意味影響列 | `price`, `item_url`, `review_average`, `review_count`, `availability` 相当 |
 | `normalized_hash` との関係 | hash 変更ありでも、非意味影響のみなら **登録しない**。hash 一致でも意味影響列が変われば登録しうる（稀。通常は hash 変更と連動） |
 
@@ -293,8 +294,8 @@ flowchart TD
 | -------- | ----------------- | ---- |
 | 新規 / 意味影響 / `normalized_hash`（意味含む）/ `meaning_input_diff` あり | `semantic` | BATCH-009 デフォルト |
 | `semantic_config_version_id` のみ（Item 本文・意味入力不変） | `feature` | Semantic 再利用 |
-| `feature_input_hash` のみ変更 | `feature` | MVP import 経路では §18.1 No.4 |
-| `embedding_model_version_id` / `embedding_source_version` / `embedding_input_hash` | `embedding` | Feature 済み前提 |
+| `feature_input_hash` のみ変更 | `feature` | §18.1 No.4 **確定**: MVP import では未使用（後続拡張） |
+| `embedding_model_version_id` / `embedding_source_version` / `embedding_input_hash` | `embedding` | §18.1 No.4 **確定**: MVP import では未使用（後続拡張）。Feature 済み前提 |
 | 複数要因同時 | **最上流優先**: hash / meaning_input あり → `semantic`、なければ `feature` | |
 | 前回 `failed` の再実行 | **変更しない**（同一行を `queued` へ） | 初回登録値を保持 |
 
@@ -478,6 +479,8 @@ WHERE item_id = :item_id
 | ---- | -------- | -------------- |
 | 2026-07-17 | 初版作成 | Epic #1406 / Task #1407 |
 | 2026-07-16 | AI Review 対応: 一覧との冪等キー差分明示（§4 / §18.1 No.13）、§9.2 優先順位、§8.3 区分 | PR #1408 / Task #1407 |
+| 2026-07-17 | §18.1 No.4 を Human 確定（MVP import は `semantic` 中心。feature / embedding 部分再生成トリガーは後続） | Task #1407 |
+| 2026-07-17 | §18.1 No.1 / No.2 を Human 確定（独立 YAML・`meaning_input_diff` 非永続＋§6.4 整合。算出詳細は実装 Task） | Task #1407 |
 
 ---
 
@@ -487,10 +490,10 @@ WHERE item_id = :item_id
 
 | No | 論点 | 内容 | 判断者 | 状態 | 備考 |
 | --: | ---- | ---- | ------ | ---- | ---- |
-| 1 | 子 workflow 配置 | **独立 YAML `batch-item-generation-queue.yml`（`batch-item-generation-queue*.yml`）** を正とする。`workflow_call` / `workflow_dispatch` 対応。親 `batch-item-meaning-generation.yml` **全体改修は本 Epic 外** | Human | **提案** | BATCH-007 / BATCH-008 同型。Epic `human_decision_points` |
-| 2 | `meaning_input_diff` | **Batch 内計算の非永続概念**とする。専用テーブル・migration は本 Epic 外 | Human | **提案** | テーブル定義書 §5.1 out_of_scope と整合 |
+| 1 | 子 workflow 配置 | **独立 YAML `batch-item-generation-queue.yml`（`batch-item-generation-queue*.yml`）** を正とする。`workflow_call` / `workflow_dispatch` 対応。独立 cron なし。親からの `workflow_call` は **BATCH-007 / BATCH-008 後続**（item-import / existing-item-recheck チェーン内）。親 `batch-item-meaning-generation.yml` **全体改修は本 Epic 外** | Human | **確定** | 2026-07-17 Human。BATCH-007 / BATCH-008 同型 |
+| 2 | `meaning_input_diff` | **Batch 内計算の非永続概念**。専用テーブル・migration は本 Epic 外。列集合は外部商品データ連携設計書 **§6.4 の意味影響列**に整合（§9.2.1）。正規化・比較順序の細部は **実装 Task** で確定 | Human | **確定** | 2026-07-17 Human。テーブル定義書 §5.1 out_of_scope と整合 |
 | 3 | active フィルタ | **`active_status = 'active'`（`is_active = true`）のみ登録**。非 active は skip | Human（依存関係図） | **確定** | `バッチ依存関係図.md` §5 No.322 / `item_テーブル定義書` §10 |
-| 4 | MVP import 経路の `generation_type` | item-import / existing-item-recheck 経路では **初回は `semantic` 中心**（feature / embedding 部分再生成トリガーは後続または別 Run で拡張可） | Human | **提案** | §5.4 の feature / embedding 行は将来拡張。Epic `human_decision_points` |
+| 4 | MVP import 経路の `generation_type` | item-import / existing-item-recheck 経路では **主に `semantic` を登録**。`feature_input_hash` のみ / Embedding 関連のみの **部分再生成トリガーは後続または別 Run**。`semantic` 行の消化は BATCH-010〜015 一連（フルパイプライン）。`semantic_config_version_id` のみ → `feature` は #507 **確定**のまま（import 経路外の運用で発火しうる） | Human | **確定** | 2026-07-17 Human。テーブル定義書 §5.4 の feature_input_hash / embedding 選定は後続拡張で有効化 |
 | 5 | 選定既定（config） | **(1)** 対象 `batch_run_id`（先行 BATCH-006 Run または明示） **(2)** `diff_status IN ('new','updated')` を主処理 **(3)** 件数上限 `BATCH_ITEM_GENERATION_QUEUE_MAX_ITEMS` **(4)** 任意で明示 `external_item_code` リスト。`source` 既定 `rakuten` | Human | **提案** | 実装 Task で確定可 |
 | 6 | Queue 登録 IF | **IF-DB-BATCH-010**（Batch ID BATCH-009 と IF 番号が異なる） | Human（#507 / 一覧） | **確定** | IF-DB-BATCH-009 は active_status（BATCH-008） |
 | 7 | 登録条件・active 行分岐 | `item_generation_queue_テーブル定義書` §5.4〜5.6 / §12.1 / §17.1（#507） | Human | **確定** | §9 / §10 |
@@ -503,12 +506,18 @@ WHERE item_id = :item_id
 
 ### 18.2 残未決事項（Human 判断）
 
+本仕様書スコープで今回確定した Human 残未決（workflow / meaning_input_diff / MVP semantic）は **解消済み**。残るのは一覧側の別 Task 候補のみ。
+
 | No | 事項 | 扱い |
 | -: | ---- | ---- |
-| 1 | `meaning_input_diff` の算出アルゴリズム詳細（列集合・正規化順序） | 実装 Task で外部商品データ連携設計書 §6.4 と整合させて確定 |
-| 2 | feature / embedding 部分再生成を MVP import 経路に含めるか | §18.1 No.4 **提案** の Human 確定待ち |
-| 3 | 独立 workflow ファイル名・親からの `workflow_call` タイミング | §18.1 No.1 **提案** の Human 確定待ち |
-| 4 | バッチ処理一覧 BATCH-009 冪等キー列・§3.1 の旧表記更新 | §18.1 No.13。別 Task で一覧をテーブル定義書 #507 に合わせて更新するか Human 判断 |
+| 1 | バッチ処理一覧 BATCH-009 冪等キー列・§3.1 の旧表記更新 | §18.1 No.13。別 Task で一覧をテーブル定義書 #507 に合わせて更新するか Human 判断 |
+
+> **解消済み（2026-07-17）**
+> - `feature_input_hash` / Embedding 関連のみの部分再生成を MVP import に含めるか → §18.1 No.4 **確定**
+> - 独立 workflow ファイル名・親からの `workflow_call` タイミング → §18.1 No.1 **確定**
+> - `meaning_input_diff` 算出詳細（列集合・正規化順序）→ §18.1 No.2 / §9.2.1 **確定**（列集合方針。正規化細部は実装 Task）
+>
+> **実装 Task で確定可（提案のまま）**: §18.1 No.5 選定既定（config）
 
 ---
 
@@ -542,7 +551,7 @@ WHERE item_id = :item_id
 - `item_generation_queue_テーブル定義書` §5.4〜5.6 / §12.1 / §17.1（#507）と登録ロジックが整合している
 - BATCH-007 / BATCH-008 境界（Item 反映・active_status 非更新）が明記されている
 - 非意味影響のみ変更の除外・非 active 除外が明記されている
-- §18.1 で Human **確定**（#507 / 依存関係図）と **提案**（workflow / meaning_input_diff / MVP semantic-first）が区別されている
+- §18.1 で Human **確定**（workflow / meaning_input_diff / MVP import `semantic` / #507 / 依存関係図）と **提案**（選定既定 config §18.1 No.5）が区別されている
 - BATCH-010〜015 の消化・LLM / Embedding 生成が混入していない
 - secret / `.env` 実値が含まれていない
 - PR target が親 Epic Branch（`feature/epic-1406-batch-009-item-generation-queue`）である
@@ -590,6 +599,6 @@ BATCH-010 → item_semantic（以降パイプライン）
 - 本仕様書は実装・単体テスト Task の入力正本とする
 - 実装パス想定: `apps/batch/src/batch/application/item_generation_queue/**`
 - 主要モジュール: Item Generation Queue Registrar / Config Version Resolver / Feature Input Candidate Resolver / Error Handler / Batch Logger
-- 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親 meaning-generation チェーン全体の改修は本 Epic 外（§18.1 No.1 **提案**）
+- 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親 meaning-generation チェーン全体の改修は本 Epic 外（§18.1 No.1 **確定**）
 - Contract Gate 不要（Batch は HTTP API 化しない）
 - Epic #1406 / Task #1407。先行テーブル定義 #507 / #603。先行 Batch Epic #1356（BATCH-007）/ #1379（BATCH-008）
