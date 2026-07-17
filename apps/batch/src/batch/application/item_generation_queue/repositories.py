@@ -86,10 +86,9 @@ class ItemGenerationQueueRepositories:
                 continue
             if code_set is not None and diff.external_item_code not in code_set:
                 continue
+            # Item 欠落は plan から落とさず、load_item で GRS-DB-001 失敗にする（仕様 §8.2）
             item = self.items.get((source, diff.external_item_code))
-            if item is None:
-                continue
-            if str(item.get("source") or DEFAULT_SOURCE) != source:
+            if item is not None and str(item.get("source") or DEFAULT_SOURCE) != source:
                 continue
 
             if diff.diff_status == "unavailable":

@@ -458,3 +458,164 @@ def test_embedding_only_skips_in_mvp() -> None:
     assert result.status == "succeeded"
     assert result.queue_inserted_count == 0
     assert db.write_calls == []
+
+
+def test_excluded_and_unavailable_active_status_skips() -> None:
+    """§16 No.3: unavailable / excluded も非 active として登録しない。"""
+
+    for status in ("unavailable", "excluded"):
+        repos, db = _repos(
+            items=[_item(active_status=status, is_active=False)],
+        )
+        result = ItemGenerationQueueJob(repositories=repos).run(job_run_id=f"run-{status}")
+        assert result.status == "succeeded"
+        assert result.queue_inactive_skip_count == 1
+        assert result.queue_inserted_count == 0
+        assert db.write_calls == []
+
+
+def test_idempotent_rerun_converges_to_queued_at_touch() -> None:
+    """§16 No.11: 同一条件の再実行で INSERT せず queued_at 更新に収束。"""
+
+    repos, _ = _repos()
+    job = ItemGenerationQueueJob(repositories=repos)
+    first = job.run(job_run_id="run-idem-1")
+    assert first.queue_inserted_count == 1
+    assert len(repos.queues) == 1
+    queue_id = repos.queues[0]["item_generation_queue_id"]
+    first_queued_at = repos.queues[0]["queued_at"]
+
+    second = job.run(job_run_id="run-idem-2")
+    assert second.status == "succeeded"
+    assert second.queue_inserted_count == 0
+    assert second.queue_queued_at_updated_count == 1
+    assert len(repos.queues) == 1
+    assert repos.queues[0]["item_generation_queue_id"] == queue_id
+    assert repos.queues[0]["queued_at"] != first_queued_at
+
+
+def test_partial_success_one_item_fails_grs_bat_002(monkeypatch) -> None:
+    """§16 No.12: 一部失敗で partially_succeeded + GRS-BAT-002。"""
+
+    from batch.application.item_generation_queue.job import ItemGenerationQueueError
+
+    repos, _ = _repos(
+        diffs=[
+            _diff(product_diff_result_id="pdr_ok", external_item_code="shop:ok"),
+            _diff(product_diff_result_id="pdr_ng", external_item_code="shop:ng"),
+        ],
+        items=[
+            _item(external_item_code="shop:ok", item_id="it_ok"),
+            _item(external_item_code="shop:ng", item_id="it_ng"),
+        ],
+    )
+    original = repos.insert_queue
+
+    def _insert(*, item_id: str, generation_type: str, queued_at):  # type: ignore[no-untyped-def]
+        if item_id == "it_ng":
+            raise ItemGenerationQueueError("GRS-DB-002", "queue insert failed")
+        return original(item_id=item_id, generation_type=generation_type, queued_at=queued_at)
+
+    monkeypatch.setattr(repos, "insert_queue", _insert)
+    result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-partial")
+
+    assert result.status == "partially_succeeded"
+    assert "GRS-BAT-002" in result.error_codes
+    assert "shop:ok" in result.succeeded_external_codes
+    assert "shop:ng" in result.failed_external_codes
+    assert result.queue_inserted_count == 1
+    assert result.queue_register_failed_count == 1
+
+
+def test_if_boundary_writes_only_item_generation_queue() -> None:
+    """§16 No.9/10 unit 代替: IF-DB-BATCH-010 のみ書込。item / Diff / 派生なし。"""
+
+    repos, db = _repos()
+    ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-if")
+    tables = {c["table"] for c in db.write_calls}
+    assert tables == {"item_generation_queue"}
+    assert repos.item_write_count == 0
+    assert repos.product_diff_write_count == 0
+    for call in db.write_calls:
+        assert "active_status" not in str(call["rows"])
+
+
+def test_scaffold_partial_unique_prevents_duplicate_active_insert() -> None:
+    """§16 No.8 unit 代替: active (item_id, generation_type) 二重 INSERT を避ける。"""
+
+    repos, _ = _repos()
+    job = ItemGenerationQueueJob(repositories=repos)
+    job.run(job_run_id="run-uq-1")
+    job.run(job_run_id="run-uq-2")
+    active = [
+        q
+        for q in repos.queues
+        if q["queue_status"] in {"queued", "processing"}
+        and q["generation_type"] == "semantic"
+        and q["item_id"] == "it_shop_gift-1"
+    ]
+    assert len(active) == 1
+
+
+def test_missing_item_fails_grs_db_001() -> None:
+    """§8.2: Item 欠落は当該行失敗（GRS-DB-001）。"""
+
+    db = ScaffoldDbWriter()
+    repos = ItemGenerationQueueRepositories(
+        db_writer=db,
+        seed_diffs=[_diff(external_item_code="shop:missing")],
+        seed_items=[],
+        seed_queues=[],
+    )
+    result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-miss")
+    assert result.status == "failed"
+    assert "shop:missing" in result.failed_external_codes
+    assert "GRS-DB-001" in result.error_codes
+    assert result.queue_inserted_count == 0
+
+
+def test_concurrent_start_rejected_grs_bat_003() -> None:
+    """多重起動拒否（実装の GRS-BAT-003）。"""
+
+    from batch.application.job_run import ScaffoldJobRunTracker
+
+    repos, _ = _repos()
+    tracker = ScaffoldJobRunTracker()
+    tracker.start(batch_id=BATCH_ID, job_run_id="run-a")
+    result = ItemGenerationQueueJob(repositories=repos, job_run_tracker=tracker).run(
+        job_run_id="run-b"
+    )
+    assert result.status == "failed"
+    assert "GRS-BAT-003" in result.error_codes
+    assert result.queue_inserted_count == 0
+
+
+def test_meaning_change_beats_config_version_only_flag() -> None:
+    """意味影響ありなら config_version_only フラグより semantic を優先。"""
+
+    repos, _ = _repos(
+        diffs=[
+            _diff(
+                diff_status="updated",
+                old_hash=_HASH_A,
+                new_hash=_HASH_B,
+                previous_meaning=MeaningSnapshot(item_name="Old"),
+                config_version_only=True,
+            )
+        ],
+        items=[_item(normalized_hash=_HASH_B, item_name="New")],
+    )
+    result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-priority")
+    assert result.status == "succeeded"
+    assert result.queue_semantic_count == 1
+    assert repos.queues[0]["generation_type"] == "semantic"
+
+
+def test_fixture_and_logs_have_no_secret_like_values() -> None:
+    """§16 No.13: fixture / 結果に secret らしき文字列がない。"""
+
+    repos, db = _repos()
+    result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-sec")
+    blob = repr(result) + repr(db.write_calls) + repr(repos.error_logs)
+    for needle in ("sk-", "password=", "Bearer ", "DATABASE_URL=", "OPENAI_API_KEY="):
+        assert needle not in blob
