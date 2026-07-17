@@ -138,31 +138,32 @@ GHA runner 上で ephemeral DB + Redis を起動し、fixture / DB 前提およ�
 
 | 入力 | 型 | 既定 | 説明 |
 | ---- | -- | ---- | ---- |
-| `skip_api_e2e` | boolean | `true` | API health / RecommendationRun E2E を skip |
+| `skip_api_e2e` | boolean | `false` | API health / RecommendationRun E2E を skip（infra 切り分け時のみ `true`） |
 | `api_base_url` | string | `""` | 空 = GHA localhost:3001（将来 cloud dev 用） |
 | `reco_base_url` | string | `""` | 空 = GHA localhost:8000（将来 cloud dev 用） |
 
-Phase4b 最小 API 整備前は `skip_api_e2e=true` を正とする。artifact の `phase4bPending: true` および skipped ケースを確認する。
+Phase4b 最小 API 整備後は `skip_api_e2e=false` を正とする。API 導線を含む全ケースの pass を確認する。`skip_api_e2e=true` 時のみ artifact の `phase4bPending: true` と skipped ケースを確認する。
 
 ### 6.3 dispatch 例
 
 ```bash
 REPO="ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3"
-REF="chore/epic-671-gha-test-environment"
+REF="test/task-1427-gha-layer2-system-e2e-activation"
 
+# 既定（API E2E 有効）
 gh workflow run "Test System (Layer2)" \
   --repo "${REPO}" \
   --ref "${REF}" \
-  -f skip_api_e2e=true
+  -f skip_api_e2e=false
 ```
 
-Phase4b 以降（API E2E 必須 pass）:
+infra 切り分け（API E2E skip）:
 
 ```bash
 gh workflow run "Test System (Layer2)" \
   --repo "${REPO}" \
   --ref "${REF}" \
-  -f skip_api_e2e=false
+  -f skip_api_e2e=true
 ```
 
 ### 6.4 結果の読取
@@ -191,7 +192,8 @@ JSON report の主要フィールド:
 | `cases[].id` | ケース ID |
 | `cases[].status` | `passed` / `failed` / `skipped` |
 | `summary.passed` / `failed` / `skipped` | 集計 |
-| `phase4bPending` | Phase4b 前の skip 許容フラグ |
+| `phase4bPending` | `skip_api_e2e` 有効時の互換フラグ（現行既定では `false`） |
+| `skipApiE2e` | 実行時の skip 入力 |
 
 ---
 
@@ -265,7 +267,7 @@ gh run view "${RUN_ID}" --repo "${REPO}" --json conclusion,status
 | ---- | -------- | ------------ |
 | DB / migration 失敗 | seed / migration 不整合 | fixture・migration Task を確認。Fix は scope 内のみ |
 | `openai_mode=secrets` で失敗 | `secrets.OPENAI_API_KEY` 未設定 | `mock` に戻すか Human に Secrets 設定を依頼 |
-| API E2E 失敗（Phase4b 前） | `skip_api_e2e=false` で placeholder API | `skip_api_e2e=true` が正。artifact の skipped を確認 |
+| API E2E 失敗 | api/reco 未起動・uv 未 setup・PUB-002 応答異常 | job log（`/tmp/test-system-logs`）と artifact を確認。infra 切り分け時のみ `skip_api_e2e=true` |
 | artifact なし | job 途中失敗 | `--log-failed` で infra 系ログを確認 |
 | concurrency cancel | 同一 ref で並列 dispatch | 先行 run 完了を待つか、意図的 cancel を確認 |
 

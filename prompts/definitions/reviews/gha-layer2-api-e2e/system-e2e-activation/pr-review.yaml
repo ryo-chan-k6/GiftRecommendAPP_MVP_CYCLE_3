@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-gha-layer2-api-e2e-system-activation"
+  title: "Layer2 system API E2E有効化 PRレビュー"
+  summary: "Task #1427 の skip_api_e2e=false 本格化差分を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1429
+  issue:
+    number: 1427
+  task_definition: "prompts/definitions/tasks/gha-layer2-api-e2e/system-e2e-activation.yaml"
+  source_branch: "test/task-1427-gha-layer2-system-e2e-activation"
+  target_branch: "test/epic-1426-gha-layer2-api-e2e"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+review_points:
+  - "skip_api_e2e=false の検証結果"
+  - "apps/batch 非含有"
+  - "secret 非含有"
+
+acceptance_criteria:
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "PR コメントを正とする"
+
+notes:
+  - "PR 作成後に target.pr を更新する"
