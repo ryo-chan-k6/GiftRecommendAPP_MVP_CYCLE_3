@@ -1,0 +1,141 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-post-mvp-regression-e2e-execution"
+  title: "レーン1e:SCR-005〜007回帰E2E実行"
+  summary: "D1 チェックリストを S5'/S7/S8 で拡張し、手動回帰と証跡を残す。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:SCR-005〜007回帰E2E"
+  epic_issue_number: 1418
+  epic_branch: "test/epic-1418-scr-post-mvp-regression-e2e"
+  related_issues:
+    - number: 1419
+      purpose: "本 Task Issue"
+    - number: 1418
+      purpose: "親 Epic"
+  related_prs:
+    - number: 1420
+      purpose: "本 Task PR"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+phase: "verification"
+
+background: |
+  SCR-005〜007 が develop 到達後の短い手動回帰。
+
+objective: |
+  - チェックリストに S5' / S7 / S8 を定義する
+  - ローカルで可能な範囲で実施し合否を記録する
+  - experiments と手順書に証跡を残す
+  - Docker 未起動等で未達の場合は理由と残リスクを明示する
+
+scope:
+  - "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+  - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  - "ai-logs/experiments/"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Playwright / CI"
+  - "apps/**"
+  - "BATCH / OpenAPI / migration"
+  - "secret / .env 実値"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/web/SCR-005_推薦理由詳細表示画面仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/web/SCR-007_Feedback入力表示画面仕様書.md"
+      required: true
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+acceptance_criteria:
+  - "S5' / S7 / S8 がチェックリストに定義されている"
+  - "実施結果または未実施理由が記録されている"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1419-scr-post-mvp-regression-e2e-execution"
+  summary: "scr-post-mvp-regression-e2e-execution"
+  base: "test/epic-1418-scr-post-mvp-regression-e2e"
+  target: "test/epic-1418-scr-post-mvp-regression-e2e"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "web"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "シナリオが SCR-005/006/007 仕様と整合するか"
+    - "apps 変更が混入していないか"
+    - "未実施時に理由が明示されているか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "手動回帰証跡"
+
+notes:
+  - "Related to #1419 / #1418（Closes なし）"

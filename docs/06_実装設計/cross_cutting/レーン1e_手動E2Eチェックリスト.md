@@ -43,7 +43,9 @@
 | S4 | 品質 | 再検索 → SCR-002 | **必須** | 結果画面から条件入力へ戻り再実行できる |
 | S5 | 推奨 | SCR-005 理由詳細 | 推奨 | 理由要約/詳細が開ける（未実装なら「未達・別 Issue」） |
 | S6 | 推奨 | alcohol NG（`ngText: アルコールはNG`） | 推奨 | ワイン系が除外され件数/内容が妥当（§10.4.12 / 1f） |
-| S7 | 任意 | SCR-006 商品詳細 | 任意 | 本 Epic out of scope（別レーン） |
+| S7 | 任意 | SCR-006 商品詳細 | 任意 | D1 時点は out of scope。**回帰では §9 を実施** |
+| S5' | 回帰 | SCR-005 points/detail | 回帰 | §9。`reasonPoints` / `reasonDetail`（案 B）表示を確認 |
+| S8 | 回帰 | SCR-007 Feedback | 回帰 | §9。SCR-004（または SCR-006）からモーダル → PUB-004 成功 |
 
 ---
 
@@ -114,7 +116,7 @@
 | S4 | `pass` | 再検索リンクで SCR-002 復帰 |
 | S5 | `pass` | 「理由の詳細」展開で要約表示 |
 | S6 | `pass` | alcohol NG で焼き菓子1件（ワイン除外）。API/UI いずれも件数1 |
-| S7 | `out_of_scope` | SCR-006 は別レーン |
+| S7 | `out_of_scope` | SCR-006 は別レーン（D1）。回帰は §9 |
 
 ### Residual / 後続 Issue（起票済）
 
@@ -134,7 +136,7 @@ D1 本体（#1330）は Close 済み。residual 解消は Epic #1344 で追跡�
 | ---- | ---- |
 | チェックリスト（本ファイル） | `docs/06_実装設計/cross_cutting/` |
 | 実行メモ | `ai-logs/experiments/` |
-| 手順書サマリ | [ローカル開発手順書](./ローカル開発手順書.md) §10.4.15 |
+| 手順書サマリ | [ローカル開発手順書](./ローカル開発手順書.md) §10.4.15 / §10.4.16 |
 | スクショ | ローカル取得 `d1-s1-result.png`（バイナリは commit しない）。観測は本表に要約 |
 
 **secret / `.env` 実値は禁止**。
@@ -151,3 +153,59 @@ D1 本体（#1330）は Close 済み。residual 解消は Epic #1344 で追跡�
 | 2026-07-16 | #1345: Matching 0 件後の empty 経路修正内容を S2 に追記（手動再検証は未実施） |
 | 2026-07-16 | #1346: SCR-001 HomePage の `next/link` 起因 client 例外を native `<a>` CTA で解消 |
 | 2026-07-16 | S2 手動再検証: empty 200 / SCR-009 UI / 条件変更復帰を確認し `pass` に更新 |
+| 2026-07-17 | §9 SCR-005〜007 回帰シナリオ（S5' / S7 / S8）を追加。当初 Docker 未起動で `blocked`（#1418 / #1419） |
+| 2026-07-17 | §9.3: Docker 復旧後に S5' / S7 / S8 を手動実施しすべて `pass` に更新 |
+
+---
+
+## 9. SCR-005〜007 回帰（Epic #1418 / Task #1419）
+
+D1（#1330）完了後に SCR-005 / SCR-006 / SCR-007 および Public `reasonPoints` / `reasonDetail`（#1397 / #1400）が develop へ到達したことを前提に、短い手動回帰を行う。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| Epic | #1418 `[Epic]レーン1e:SCR-005〜007回帰E2E` |
+| Task | #1419 |
+| 前提 | SCR-005 #1389 / SCR-006 #1303 / SCR-007 #1325 / Contract #1400 が develop merge 済み |
+| 自動 E2E | **対象外**（D2 / Playwright） |
+
+### 9.1 回帰シナリオ一覧
+
+| ID | シナリオ | 合格条件（要約） | 仕様正本 |
+| ---- | -------- | ---------------- | -------- |
+| S5' | SCR-005 理由詳細（points/detail） | 「理由の詳細」を展開し、優先順位どおり `reasonPoints`（あれば箇条書き）→ `reasonDetail`（あれば本文）→ `cautionNote` 等を確認。すべて空でも案内文のみで展開可能 | SCR-005 §8.3 |
+| S7 | SCR-006 商品詳細 | 結果カードから `/items/{itemId}` 相当へ遷移。商品名・価格等が表示。`fromResultId` 等で結果へ戻れる。外部 EC リンクが仕様どおり | SCR-006 §20 |
+| S8 | SCR-007 Feedback | SCR-004（または SCR-006）から Feedback モーダル起動 → 簡易評価送信 → Success。`resultId` /（item 時）`resultItemId` 欠落時は起動拒否または Error | SCR-007 §20 |
+
+### 9.2 実施手順（要約）
+
+1. §2 前提（Docker / DB / Redis / web / api / reco）を満たす  
+2. S1 相当で結果あり画面（SCR-004）まで到達する（全再実行は必須ではない）  
+3. S5' → S7 → S8 の順で確認する（順不同可）  
+4. 合否・`resultId` / `traceId`（取得できたもの）を §9.3 と experiments に記録する  
+
+### 9.3 実行結果（本 Task）
+
+| ID | 結果 | 実施メモ |
+| ---- | ---- | -------- |
+| S5' | `pass` | 結果カードで「理由の詳細」展開。`reasonPoints` 2件を箇条書き確認。本実行の PUB-002 応答に `reasonDetail` は無し（任意・空時は points 優先で問題なし） |
+| S7 | `pass` | `/items/{itemId}?fromResultId=…` で商品名・¥4,320・外部EC・「結果一覧へ戻る」を確認 |
+| S8 | `pass` | SCR-006 から Feedback モーダル →「良い」→ 送信。Success「フィードバックを受け付けました。」 |
+
+| 項目 | 記録 |
+| ---- | ---- |
+| 実施日時 | 2026-07-17 |
+| Branch / commit | develop tip `4e795065`（Reason Postgres #1417 含む）上でアプリ起動。証跡更新は Task Branch |
+| `recommendationResultId` | `8723c5d6-7514-4195-8ba4-8095a3fb55dc` |
+| `traceId` | `scr-reg-e2e-s5-001` |
+| `resultItemCount` | **1**（上品な焼き菓子ギフトセット / ¥4,320） |
+| Docker / DB / Redis / web / api / reco | 起動確認済み |
+| 補足 | Cursor ブラウザの `localhost:3000` が古い chunk を返す場合あり。本実行は WSL IP（`172.28.140.226`）経由で現行 develop を確認。API は一時的に同 IP + CORS 追加で疎通（`.env` は実行後に復元。commit なし） |
+
+### 9.4 Residual
+
+| 内容 | 扱い |
+| ---- | ---- |
+| S5' / S7 / S8 の手動再実施 | **完了**（2026-07-17 `pass`） |
+| S1〜S4 / S6 の全再実行 | 任意（本回帰の必須ではない） |
+| Playwright（D2） | 後続 |

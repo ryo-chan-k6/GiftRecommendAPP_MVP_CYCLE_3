@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-post-mvp-regression-e2e-execution"
+  title: "SCR-005〜007回帰E2E実行 PRレビュー"
+  summary: "Task #1419 のチェックリスト拡張・証跡を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1420
+  issue:
+    number: 1419
+  task_definition: "prompts/definitions/tasks/scr-post-mvp-regression-e2e/execution.yaml"
+  source_branch: "test/task-1419-scr-post-mvp-regression-e2e-execution"
+  target_branch: "test/epic-1418-scr-post-mvp-regression-e2e"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+review_points:
+  - "S5'/S7/S8 定義と合否または未実施理由"
+  - "apps/** 非含有"
+  - "secret 非含有"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "PR コメントを正とする"
+
+notes:
+  - "PR 作成後に target.pr を更新する"
