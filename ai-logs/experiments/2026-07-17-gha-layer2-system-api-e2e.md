@@ -22,13 +22,14 @@
 
 | 項目 | 値 |
 | ---- | ---- |
-| 検証 run（E2E pass 確認） | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29586379823 |
+| 検証状態 | **success** |
+| 最終 run | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29587042736 |
+| conclusion | `success` |
 | E2E cases | **passed=7 / failed=0 / skipped=0** |
 | `phase4bPending` | `false` |
 | `skipApiE2e` | `false` |
-| job conclusion（当該 run） | `failure`（原因は **Post Install uv** のみ。E2E step は success） |
 
-### Case results（run 29586379823）
+### Case results（run 29587042736）
 
 | id | status |
 | ---- | ---- |
@@ -47,7 +48,4 @@
 | 29585680448 | fail | redis-cli 未導入 + PUB-002 500 |
 | 29586026057 | fail | redis pass。PUB-002 500 `GRS-REC-002`（api に `DATABASE_URL` 未注入） |
 | 29586379823 | E2E pass / job fail | `.env` source 後に recommendation-run pass。Post Install uv で job failure |
-
-## 次
-
-- `enable-cache: false` 反映後に再 dispatch し、job conclusion=success を確認する
+| 29587042736 | **success** | uv cache 無効化後、job / E2E とも success |
