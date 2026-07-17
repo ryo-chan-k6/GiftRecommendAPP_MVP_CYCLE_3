@@ -1,0 +1,144 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-011-feature-input-hash-unit-test"
+  title: "BATCH-011:Feature入力hash算出Batch単体テスト"
+  summary: "BATCH-011 実装に対し、仕様書 §16 の unit 観点カバレッジを整理・拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-011:Feature入力hash算出Batch"
+  epic_issue_number: 1434
+  epic_branch: "feature/epic-1434-batch-011-feature-input-hash"
+  related_issues:
+    - number: 1440
+      purpose: "実装（CLOSED）"
+    - number: 1435
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1441
+      purpose: "実装 MERGED"
+    - number: 1436
+      purpose: "仕様書 MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  実装 Task #1440 / PR #1441 は Epic Branch merge 済み。§16 unit 観点を拡充する。
+
+objective: |
+  BATCH-011 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串を完了可能にする。
+
+scope:
+  - "§16 unit 観点カバレッジ表を PR 本文に記載"
+  - "test_feature_input_hash.py 拡充"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "integration test（実 DB）"
+  - "Epic PR develop merge（Human）"
+  - "機能追加を主目的とする実装変更"
+  - "apps/reco / BATCH-012"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: true
+  files:
+    - path: "apps/batch/tests/unit/application/test_feature_input_hash.py"
+      required: true
+
+output:
+  files:
+    - path: "prompts/definitions/tasks/batch-011-feature-input-hash/unit-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-011-feature-input-hash/unit-test/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_feature_input_hash.py"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "test/task-1443-batch-011-feature-input-hash-unit-test"
+  summary: "batch-011-feature-input-hash-unit-test"
+  base: "feature/epic-1434-batch-011-feature-input-hash"
+  target: "feature/epic-1434-batch-011-feature-input-hash"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1443
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_feature_input_hash.py"
+  conflict_risk: "low"
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-011 §16）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_feature_input_hash.py tests/unit/config/test_config_scaffold.py -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock を正とする"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§16 対応表"
+    - "実 DB / secret 非依存"
+    - "PR target"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Issue #1443"
+  - "後続: Epic PR → develop"
