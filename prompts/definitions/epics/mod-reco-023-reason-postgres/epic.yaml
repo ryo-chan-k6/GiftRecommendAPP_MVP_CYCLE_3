@@ -62,7 +62,9 @@ input:
   issues:
     - number: 1412
       purpose: "本 Epic Issue"
-  prs: []
+  prs:
+    - number: 1417
+      purpose: "本 Epic PR"
 
 output:
   docs: []

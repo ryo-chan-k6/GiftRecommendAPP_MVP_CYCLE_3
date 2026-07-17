@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1417
   issue:
     number: 1412
   task_definition: "prompts/definitions/epics/mod-reco-023-reason-postgres/epic.yaml"
@@ -71,7 +71,7 @@ input:
     number: 1412
     required: true
   pr:
-    number: null
+    number: 1417
     required: false
   diff:
     required: true
