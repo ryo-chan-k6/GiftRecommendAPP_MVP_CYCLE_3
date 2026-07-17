@@ -6,7 +6,7 @@ review:
   title: "BATCH-011 Feature入力hash算出Batch Epic PRレビュー"
   summary: "BATCH-011 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,7 +14,8 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr:
+    number: 1445
   issue:
     number: 1434
   task_definition: "prompts/definitions/epics/batch-011-feature-input-hash/epic.yaml"
@@ -59,3 +60,4 @@ review_points:
 notes:
   - "縦串完了後に Epic PR 番号を反映し status を ready にする"
   - "Issue #1434"
+  - "Issue #1434 / PR #1445"
