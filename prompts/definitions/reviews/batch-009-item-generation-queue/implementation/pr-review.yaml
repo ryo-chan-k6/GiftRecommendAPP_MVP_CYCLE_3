@@ -17,6 +17,8 @@ branch:
   worktree_required: true
 
 target:
+  pr:
+    number: 1411
   issue:
     number: 1410
   task_definition: "prompts/definitions/tasks/batch-009-item-generation-queue/implementation.yaml"
@@ -89,5 +91,4 @@ review_points:
     - "batch-item-generation-queue.yml が独立子で親チェーン未改修か"
 
 notes:
-  - "Issue #1410。PR 番号は作成後に更新する"
   - "Issue #1410 / PR #1411"
