@@ -6,7 +6,7 @@ review:
   title: "BATCH-009 商品意味生成キュー登録Batch単体テスト PRレビュー"
   summary: "BATCH-009 UT Task（#1415）の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -18,7 +18,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1416
   issue:
     number: 1415
   task_definition: "prompts/definitions/tasks/batch-009-item-generation-queue/unit-test.yaml"
@@ -93,3 +93,4 @@ review_points:
 
 notes:
   - "Issue #1415"
+  - "Issue #1415 / PR #1416"
