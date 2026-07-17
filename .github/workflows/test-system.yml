@@ -88,7 +88,8 @@ jobs:
         if: inputs.skip_api_e2e == false
         uses: astral-sh/setup-uv@v5
         with:
-          enable-cache: true
+          # Post cache prune が job failure になることがあるため Layer2 では無効化
+          enable-cache: false
 
       - name: Setup Python for reco
         if: inputs.skip_api_e2e == false
