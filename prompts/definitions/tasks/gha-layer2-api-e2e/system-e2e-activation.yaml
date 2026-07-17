@@ -1,0 +1,142 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-gha-layer2-api-e2e-system-activation"
+  title: "gha-test-environment:Layer2 system API E2E有効化"
+  summary: "test-system.yml の skip_api_e2e を Phase4b 後方針に合わせ、API E2E を検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]gha-test-environment:Layer2 API E2E本格化"
+  epic_issue_number: 1426
+  epic_branch: "test/epic-1426-gha-layer2-api-e2e"
+  related_issues:
+    - number: 1427
+      purpose: "本 Task"
+    - number: 1426
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+phase: "verification"
+
+background: |
+  Epic C 骨格完了後の API E2E 本格化。
+
+objective: |
+  - skip_api_e2e=false 既定または明示検証を可能にする
+  - health / PUB-002 系ケースが pass するよう最小修正する
+  - docs §9.5.3 / dispatch 手順を Phase4b 後に更新する
+
+scope:
+  - ".github/workflows/test-system.yml"
+  - "tests/e2e/**"
+  - "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+  - "docs/05_アプリケーション設計/テスト/Layer2 Agent dispatch手順書.md"
+  - "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+  - "ai-logs/experiments/**"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "BATCH"
+  - "Playwright"
+  - "test-reco-quality live 必須化"
+  - "secret 実値"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/Layer2 Agent dispatch手順書.md"
+      required: true
+  files:
+    - path: ".github/workflows/test-system.yml"
+      required: true
+    - path: "tests/e2e/run-system-tests.sh"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/Layer2 Agent dispatch手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: ".github/workflows/test-system.yml"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+acceptance_criteria:
+  - "skip_api_e2e=false での検証結果が記録されている"
+  - "docs が Phase4b 後方針と矛盾しない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/task-1427-gha-layer2-system-e2e-activation"
+  summary: "gha-layer2-system-e2e-activation"
+  base: "test/epic-1426-gha-layer2-api-e2e"
+  target: "test/epic-1426-gha-layer2-api-e2e"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "infra"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "API E2E 合否または未達理由"
+    - "BATCH 非含有"
+    - "secret 非含有"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "Layer2 実行証跡"
+
+notes:
+  - "Related to #1427 / #1426（Closes なし）"
