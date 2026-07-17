@@ -31,6 +31,9 @@ from reco.infrastructure.db.repositories.postgres_normalization_rule_repository 
 from reco.infrastructure.db.repositories.postgres_post_filter_item_repository import (
     PostgresPostFilterItemRepository,
 )
+from reco.infrastructure.db.repositories.postgres_recommendation_reason_repository import (
+    PostgresRecommendationReasonRepository,
+)
 from reco.infrastructure.db.repositories.postgres_recommendation_result_item_repository import (
     PostgresRecommendationResultItemRepository,
 )
@@ -173,6 +176,22 @@ def _inject_result_persistence_ports(
     )
 
 
+def _inject_reason_persistence_ports(
+    ports: OrchestratorPorts,
+    *,
+    reason_repository: PostgresRecommendationReasonRepository,
+) -> OrchestratorPorts:
+    """Wire Postgres recommendation_reason INSERT on MOD-RECO-023."""
+
+    return replace(
+        ports,
+        reason_generator=replace(
+            ports.reason_generator,
+            reason_repository=reason_repository,
+        ),
+    )
+
+
 def build_production_ports(
     *,
     database_url: str | None = None,
@@ -203,24 +222,28 @@ def build_production_ports(
     item_snapshot_reader = PostgresItemSnapshotReadRepository(session=session)
     result_repository = PostgresRecommendationResultRepository(session=session)
     result_item_repository = PostgresRecommendationResultItemRepository(session=session)
+    reason_repository = PostgresRecommendationReasonRepository(session=session)
 
     ports = replace(
-        _inject_result_persistence_ports(
-            _inject_item_catalog_ports(
-                _inject_user_semantic_ports(
-                    _inject_run_validation(base_ports, run_validation),
-                    user_semantic_repository=user_semantic_repository,
-                    user_feature_repository=user_feature_repository,
-                    normalization_rules=normalization_rules,
+        _inject_reason_persistence_ports(
+            _inject_result_persistence_ports(
+                _inject_item_catalog_ports(
+                    _inject_user_semantic_ports(
+                        _inject_run_validation(base_ports, run_validation),
+                        user_semantic_repository=user_semantic_repository,
+                        user_feature_repository=user_feature_repository,
+                        normalization_rules=normalization_rules,
+                    ),
+                    item_repository=item_repository,
+                    post_filter_item_repository=post_filter_item_repository,
+                    item_feature_repository=item_feature_repository,
+                    feature_normalization_repository=feature_normalization_repository,
+                    item_snapshot_reader=item_snapshot_reader,
                 ),
-                item_repository=item_repository,
-                post_filter_item_repository=post_filter_item_repository,
-                item_feature_repository=item_feature_repository,
-                feature_normalization_repository=feature_normalization_repository,
-                item_snapshot_reader=item_snapshot_reader,
+                result_repository=result_repository,
+                result_item_repository=result_item_repository,
             ),
-            result_repository=result_repository,
-            result_item_repository=result_item_repository,
+            reason_repository=reason_repository,
         ),
         config_resolver=config_resolver,  # type: ignore[arg-type]
         run_recorder=observability["run_recorder"],  # type: ignore[arg-type]
@@ -243,6 +266,7 @@ def build_production_ports(
         "item_snapshot_reader": item_snapshot_reader,
         "result_repository": result_repository,
         "result_item_repository": result_item_repository,
+        "reason_repository": reason_repository,
     }
     return ports, helpers
 

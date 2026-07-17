@@ -50,6 +50,9 @@ from reco.infrastructure.db.repositories.postgres_item_repository import (
 from reco.infrastructure.db.repositories.postgres_post_filter_item_repository import (
     PostgresPostFilterItemRepository,
 )
+from reco.infrastructure.db.repositories.postgres_recommendation_reason_repository import (
+    PostgresRecommendationReasonRepository,
+)
 from reco.infrastructure.db.repositories.postgres_recommendation_result_item_repository import (
     PostgresRecommendationResultItemRepository,
 )
@@ -121,6 +124,14 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
 
     assert type(default_ports.candidate_retriever) is type(ports.candidate_retriever)
     assert type(default_ports.reason_generator) is type(ports.reason_generator)
+    assert isinstance(
+        ports.reason_generator.reason_repository,
+        PostgresRecommendationReasonRepository,
+    )
+    assert not isinstance(
+        default_ports.reason_generator.reason_repository,
+        PostgresRecommendationReasonRepository,
+    )
 
     repositories = helpers["observability_repositories"]
     assert isinstance(repositories, ObservabilityRepositories)
@@ -223,6 +234,13 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
         PostgresRecommendationResultItemRepository,
     )
     assert ports.snapshot_builder.item_repository is helpers["result_item_repository"]
+    assert isinstance(
+        helpers["reason_repository"],
+        PostgresRecommendationReasonRepository,
+    )
+    assert (
+        ports.reason_generator.reason_repository is helpers["reason_repository"]
+    )
 
 
 def test_build_production_observability_modules_wires_postgres_repositories() -> None:

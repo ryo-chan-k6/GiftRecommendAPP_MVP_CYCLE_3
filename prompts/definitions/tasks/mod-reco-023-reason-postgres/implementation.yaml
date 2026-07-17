@@ -1,0 +1,205 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-023-reason-postgres-implementation"
+  title: "MOD-RECO-023:Reason Postgres永続実装"
+  summary: "PostgresRecommendationReasonRepository を実装し production composition に注入する。DEFAULT InMemory は維持する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-023:Reason Postgres永続"
+  epic_issue_number: 1412
+  epic_branch: "feature/epic-1412-mod-reco-023-reason-postgres"
+  related_issues:
+    - number: 1413
+      purpose: "本 Task Issue"
+    - number: 1412
+      purpose: "親 Epic"
+  related_prs:
+    - number: 1414
+      purpose: "本 Task PR"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  MOD-RECO-023 は InMemoryRecommendationReasonRepository で INSERT している。
+  recommendation_reason テーブル DDL と Port は存在する。本番配線のみ残っている。
+
+objective: |
+  IF-DB-RECO-008 相当の Postgres INSERT を production に配線する。
+
+scope:
+  - "PostgresRecommendationReasonRepository.insert"
+  - "build_production_ports で reason_generator.reason_repository 注入"
+  - "UT（repository / composition）"
+  - "ローカル開発手順書への確認追記"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "OpenAPI / migration"
+  - "reason_template / item_semantic の Postgres reader 本実装"
+  - "apps/api / apps/web / apps/batch"
+  - "SCR / BATCH"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-023_Reason Generatorモジュール仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/reason-generator/**"
+      required: true
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/postgres_recommendation_result_item_repository.py"
+      required: true
+      purpose: "INSERT パターン参照"
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/postgres_recommendation_reason_repository.py"
+      action: "create"
+      required: true
+    - path: "apps/reco/src/reco/composition/builder.py"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/reco/tests/unit/infrastructure/**/*reason*"
+      action: "create_or_update"
+      required: true
+    - path: "apps/reco/tests/unit/composition/test_builder.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "PostgresRecommendationReasonRepository"
+  - "production 注入"
+  - "UT・手順書"
+
+acceptance_criteria:
+  - "production の reason_generator.reason_repository が Postgres 実装である"
+  - "DEFAULT composition は InMemory のままである"
+  - "repository UT が通る"
+  - "composition UT が通る"
+  - "migration / OpenAPI 変更がない"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1413-mod-reco-023-reason-postgres-implementation"
+  base: "feature/epic-1412-mod-reco-023-reason-postgres"
+  target: "feature/epic-1412-mod-reco-023-reason-postgres"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-17"
+    due_date: "2026-07-20"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - issue: 1412
+      title: "[Epic]MOD-RECO-023:Reason Postgres永続"
+      purpose: "親 Epic"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/composition/builder.py"
+    - "apps/reco/src/reco/infrastructure/db/repositories/postgres_recommendation_reason_repository.py"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+  commands:
+    - "pnpm --filter @gift-recommendation/reco test"
+  manual_checks:
+    - "手順書に Reason Postgres INSERT 確認が追記されている"
+  not_required:
+    - "e2e"
+  skip_reason:
+    "e2e": "本 Task は repository / composition 配線"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "INSERT 列がテーブル定義書と一致するか"
+    - "DEFAULT InMemory 維持か"
+    - "migration 変更がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "再スモーク結果は experiments 可"
+
+notes:
+  - "PR 本文は Related to（Closes 禁止）"
+  - "親 Epic Issue / Branch 番号は起票後に同期"
