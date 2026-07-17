@@ -4,9 +4,9 @@ definition_type: "review"
 review:
   id: "review-batch-010-item-semantic-unit-test-pr"
   title: "BATCH-010 Item Semantic生成Batch単体テスト PR Review"
-  status: "draft"
+  status: "ready"
   pr:
-    number: null
+    number: 1432
     title: "[Task]BATCH-010:Item Semantic生成Batch単体テスト"
     base: "feature/epic-1422-batch-010-item-semantic"
     head: "test/task-1431-batch-010-item-semantic-unit-test"
@@ -32,3 +32,4 @@ acceptance_for_human_review:
 
 notes:
   - "Issue #1431 / PR #（作成後に反映）"
+  - "Issue #1431 / PR #1432"
