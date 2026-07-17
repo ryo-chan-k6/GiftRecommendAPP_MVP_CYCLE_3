@@ -4,9 +4,9 @@ definition_type: "review"
 review:
   id: "review-batch-011-feature-input-hash-batch-spec-pr"
   title: "BATCH-011 Feature入力hash算出バッチ仕様書 PR Review"
-  status: "draft"
+  status: "ready"
   pr:
-    number: null
+    number: 1436
     title: "[Task]BATCH-011:Feature入力hash算出バッチ仕様書作成"
     base: "feature/epic-1434-batch-011-feature-input-hash"
     head: "docs/task-1435-batch-011-feature-input-hash-batch-spec"
@@ -33,3 +33,4 @@ acceptance_for_human_review:
 
 notes:
   - "Issue #1435 / PR #（作成後に反映）"
+  - "Issue #1435 / PR #1436"
