@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1442
   issue:
     number: 1439
   task_definition: "prompts/definitions/tasks/lane-1e-playwright-d2/scaffold-and-s1-smoke.yaml"
