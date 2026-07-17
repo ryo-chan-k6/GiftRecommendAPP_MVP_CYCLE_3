@@ -1,0 +1,71 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-010-item-semantic-batch-spec-pr"
+  title: "BATCH-010 Item Semantic生成バッチ仕様書 PRレビュー"
+  summary: "BATCH-010（Item Semantic生成Batch）バッチ仕様書 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: null
+  base: "feature/epic-1422-batch-010-item-semantic"
+  target: "feature/epic-1422-batch-010-item-semantic"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1423
+  task_definition: "prompts/definitions/tasks/batch-010-item-semantic/batch-spec.yaml"
+  source_branch: "docs/task-1423-batch-010-item-semantic-batch-spec"
+  target_branch: "feature/epic-1422-batch-010-item-semantic"
+  parent_epic_issue: "[Epic]BATCH-010:Item Semantic生成Batch"
+  parent_epic_branch: "feature/epic-1422-batch-010-item-semantic"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-010-item-semantic/batch-spec.yaml"
+    required: true
+
+review_points:
+  - "バッチ処理一覧 BATCH-010 と矛盾しないか"
+  - "item_semantic / item_generation_queue 定義書と整合するか"
+  - "IF-DB-BATCH-011 が item_semantic Upsert I/F として明記されているか"
+  - "IF-SHARED-001 / MOD-RECO-026 呼び出し境界が明記されているか"
+  - "IF-DB-BATCH-010（BATCH-009 Queue 登録）と混同されていないか"
+  - "BATCH-009 境界・generation_type=semantic のみ claim が明記されているか"
+  - "skip（semantic_input_hash）・semantic 成功時 processing 維持が明記されているか"
+  - "§18 で Human 確定と提案が区別されているか"
+  - "BATCH-011〜015 詳細実装が混入していないか"
+  - "secret / .env 実値を含まないか"
+  - "PR target が親 Epic Branch か"
+
+notes:
+  - "Related to #1423"
+  - "status は PR 作成まで draft"
+  - "Issue #1423"
