@@ -6,7 +6,7 @@ review:
   title: "BATCH-010 Item Semantic生成バッチ仕様書 PRレビュー"
   summary: "BATCH-010（Item Semantic生成Batch）バッチ仕様書 Task の PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1424
   issue:
     number: 1423
   task_definition: "prompts/definitions/tasks/batch-010-item-semantic/batch-spec.yaml"
@@ -69,3 +69,4 @@ notes:
   - "Related to #1423"
   - "status は PR 作成まで draft"
   - "Issue #1423"
+  - "Issue #1423 / PR #1424"
