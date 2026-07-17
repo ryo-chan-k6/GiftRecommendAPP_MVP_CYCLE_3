@@ -133,7 +133,22 @@ class ItemGenerationQueueJob:
                 unchanged_skip=plan.unchanged_skip_count,
             )
 
-            if not plan.items and plan.unavailable_skip_count == 0 and plan.unchanged_skip_count == 0:
+            if not plan.items:
+                # 処理対象 0 件のときは未実行 Phase を completed_phases に機械追記しない。
+                if plan.unavailable_skip_count > 0 or plan.unchanged_skip_count > 0:
+                    result.status = "succeeded"
+                    self._tracker.complete(
+                        batch_id=BATCH_ID, job_run_id=job_run_id, status="succeeded"
+                    )
+                    self._repos.record_phase(phase="finalize", status="succeeded")
+                    result.completed_phases.append("finalize")
+                    bound_logger.info(
+                        "item_generation_queue.plan_empty_noop",
+                        reason="all_skipped_at_plan",
+                        unavailable_skip=plan.unavailable_skip_count,
+                        unchanged_skip=plan.unchanged_skip_count,
+                    )
+                    return result
                 if self._repos.product_diff_results:
                     result.status = "succeeded"
                     self._tracker.complete(
@@ -199,17 +214,7 @@ class ItemGenerationQueueJob:
                         external_item_code=seed.external_item_code,
                     )
 
-            for phase in (
-                "load_item",
-                "filter_active",
-                "load_diff",
-                "evaluate",
-                "resolve_config",
-                "resolve_feature",
-                "register",
-            ):
-                if phase not in result.completed_phases:
-                    result.completed_phases.append(phase)
+            # completed_phases は _process_one で実際に通過した Phase のみを記録する。
 
             result.written_queue_rows = list(self._repos.written_queue_rows)
             result.item_write_count = self._repos.item_write_count

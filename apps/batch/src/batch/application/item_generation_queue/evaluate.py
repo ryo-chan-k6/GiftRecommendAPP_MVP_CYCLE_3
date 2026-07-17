@@ -23,10 +23,11 @@ def meaning_input_diff(
 
 
 def non_meaning_only_change(*, item: ItemRow, diff: ProductDiffRow) -> bool:
-    """True when only price / url / review / availability changed (§9.2)."""
+    """True when only price / url / review / availability changed (§9.2).
 
-    if diff.previous_price is None and diff.previous_item_url is None:
-        return False
+    `rank` は仕様 §9.2 の非意味列だが、本 scaffold model には未搭載（後続 UT Task）。
+    price / itemUrl 以外（review / availability）のみの変更でも skip 判定できること。
+    """
 
     meaning_changed = meaning_input_diff(
         current=item.meaning_snapshot(),

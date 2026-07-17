@@ -175,6 +175,68 @@ def test_non_meaning_only_change_skips() -> None:
     assert db.write_calls == []
 
 
+def test_non_meaning_review_only_change_skips() -> None:
+    """§9.2: reviewAverage / reviewCount のみ変更は登録しない（price/url previous なし）。"""
+
+    repos, db = _repos(
+        diffs=[
+            _diff(
+                diff_status="updated",
+                old_hash=_HASH_A,
+                new_hash=_HASH_B,
+                previous_meaning=MeaningSnapshot(item_name="Gift A"),
+                previous_review_average=3.5,
+                previous_review_count=5,
+            )
+        ],
+        items=[
+            _item(
+                normalized_hash=_HASH_B,
+                item_name="Gift A",
+                review_average=4.8,
+                review_count=20,
+            )
+        ],
+    )
+    result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-review-only")
+
+    assert result.status == "succeeded"
+    assert result.queue_inserted_count == 0
+    assert result.queue_non_meaning_skip_count == 1
+    assert "shop:gift-1" in result.skipped_external_codes
+    assert db.write_calls == []
+
+
+def test_non_meaning_availability_only_change_skips() -> None:
+    """§9.2: availability のみ変更は登録しない（price/url previous なし）。"""
+
+    repos, db = _repos(
+        diffs=[
+            _diff(
+                diff_status="updated",
+                old_hash=_HASH_A,
+                new_hash=_HASH_B,
+                previous_meaning=MeaningSnapshot(item_name="Gift A"),
+                previous_availability=0,
+            )
+        ],
+        items=[
+            _item(
+                normalized_hash=_HASH_B,
+                item_name="Gift A",
+                availability=1,
+            )
+        ],
+    )
+    result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-availability-only")
+
+    assert result.status == "succeeded"
+    assert result.queue_inserted_count == 0
+    assert result.queue_non_meaning_skip_count == 1
+    assert "shop:gift-1" in result.skipped_external_codes
+    assert db.write_calls == []
+
+
 def test_non_active_item_skips() -> None:
     repos, db = _repos(
         items=[_item(active_status="inactive", is_active=False)],
@@ -214,6 +276,8 @@ def test_unchanged_and_unavailable_skip_at_plan() -> None:
     assert result.queue_unavailable_skip_count == 1
     assert result.queue_inserted_count == 0
     assert db.write_calls == []
+    # empty plan: 未実行 Phase を機械追記しない
+    assert result.completed_phases == ["plan", "finalize"]
 
 
 def test_active_queued_row_updates_queued_at_only() -> None:
@@ -378,6 +442,18 @@ def test_feature_input_hash_only_skips_in_mvp() -> None:
         items=[_item()],
     )
     result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-fih")
+
+    assert result.status == "succeeded"
+    assert result.queue_inserted_count == 0
+    assert db.write_calls == []
+
+
+def test_embedding_only_skips_in_mvp() -> None:
+    repos, db = _repos(
+        diffs=[_diff(diff_status="updated", embedding_only=True)],
+        items=[_item()],
+    )
+    result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-emb")
 
     assert result.status == "succeeded"
     assert result.queue_inserted_count == 0
