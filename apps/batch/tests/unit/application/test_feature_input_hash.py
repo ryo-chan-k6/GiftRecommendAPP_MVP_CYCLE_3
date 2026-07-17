@@ -239,3 +239,163 @@ def test_scaffold_demo_builder() -> None:
     result = build_scaffold_demo_job().run(job_run_id="builder")
     assert result.status == "succeeded"
     assert result.hashed_count == 1
+
+
+# --- §16 拡充（UT Task） ---
+
+
+def test_no_skip_when_raw_only_normalized_missing() -> None:
+    """§16 No.12: raw のみ（normalized なし）→ handoff + processing 維持。"""
+
+    item = _item()
+    sem = _semantic()
+    digest = compute_feature_input_hash(
+        build_feature_input_payload(item=item, semantic=sem, semantic_config_version_id=_VERSION)
+    )
+    axes = [
+        ExistingFeatureAxis(
+            feature_code=code,
+            feature_input_hash=digest,
+            feature_normalization_version_id=DEFAULT_NORMALIZATION_VERSION,
+            has_normalized_value=False,
+        )
+        for code in MVP_FEATURE_CODES
+    ]
+    repos, _ = _repos(features={("it_1", _VERSION): axes})
+    result = FeatureInputHashJob(repositories=repos).run(job_run_id="run-raw")
+    assert result.hashed_count == 1
+    assert result.skipped_count == 0
+    assert len(repos.handoff_records) == 1
+    assert repos.queues["igq_1"]["queue_status"] == "processing"
+
+
+def test_no_skip_when_normalization_version_mismatch() -> None:
+    """§16 No.12: norm version 不一致 → handoff + processing 維持。"""
+
+    item = _item()
+    sem = _semantic()
+    digest = compute_feature_input_hash(
+        build_feature_input_payload(item=item, semantic=sem, semantic_config_version_id=_VERSION)
+    )
+    axes = [
+        ExistingFeatureAxis(
+            feature_code=code,
+            feature_input_hash=digest,
+            feature_normalization_version_id="old-norm-v0",
+            has_normalized_value=True,
+        )
+        for code in MVP_FEATURE_CODES
+    ]
+    repos, _ = _repos(features={("it_1", _VERSION): axes})
+    result = FeatureInputHashJob(repositories=repos).run(job_run_id="run-norm")
+    assert result.hashed_count == 1
+    assert result.skipped_count == 0
+    assert repos.queues["igq_1"]["queue_status"] == "processing"
+
+
+def test_meaning_change_changes_hash() -> None:
+    """意味影響項目変更で hash が変わる。"""
+
+    base = build_feature_input_payload(
+        item=_item(item_name="A"),
+        semantic=_semantic(),
+        semantic_config_version_id=_VERSION,
+    )
+    changed = build_feature_input_payload(
+        item=_item(item_name="B"),
+        semantic=_semantic(),
+        semantic_config_version_id=_VERSION,
+    )
+    assert compute_feature_input_hash(base) != compute_feature_input_hash(changed)
+
+
+def test_if_boundary_no_forbidden_writes() -> None:
+    """§16 No.4 / No.10: Queue INSERT・item/semantic/feature 書込なし。"""
+
+    repos, db = _repos()
+    FeatureInputHashJob(repositories=repos).run(job_run_id="run-boundary")
+    assert repos.queue_insert_count == 0
+    assert repos.item_write_count == 0
+    assert repos.item_semantic_write_count == 0
+    assert repos.item_feature_write_count == 0
+    forbidden = {"item", "item_semantic", "item_feature"}
+    assert forbidden.isdisjoint({c["table"] for c in db.write_calls})
+    for call in db.write_calls:
+        if call["table"] == "item_generation_queue":
+            for row in call["rows"]:
+                assert row.get("op") in {
+                    "continue_processing",
+                    "claim",
+                    "update_status",
+                    "hash_success_keep_processing",
+                }
+
+
+def test_concurrent_start_rejected_grs_bat_003() -> None:
+    from batch.application.job_run import ScaffoldJobRunTracker
+
+    repos, _ = _repos()
+    tracker = ScaffoldJobRunTracker()
+    tracker.start(batch_id=BATCH_ID, job_run_id="run-a")
+    result = FeatureInputHashJob(repositories=repos, job_run_tracker=tracker).run(
+        job_run_id="run-b"
+    )
+    assert result.status == "failed"
+    assert "GRS-BAT-003" in result.error_codes
+    assert result.hashed_count == 0
+
+
+def test_claim_conflict_skips_when_claim_fails() -> None:
+    repos, _ = _repos()
+
+    def _fail_claim(*, item_generation_queue_id: str, started_at=None):  # noqa: ANN001
+        _ = item_generation_queue_id, started_at
+        return None
+
+    repos.claim_or_continue = _fail_claim  # type: ignore[method-assign]
+    result = FeatureInputHashJob(repositories=repos).run(job_run_id="run-conflict")
+    assert result.claim_conflict_skip_count == 1
+    assert result.hashed_count == 0
+
+
+def test_source_filter_and_max_items() -> None:
+    repos, _ = _repos(
+        queues=[
+            _queue(qid="igq_a", item_id="it_a"),
+            _queue(qid="igq_b", item_id="it_b"),
+        ],
+        items=[_item(item_id="it_a"), _item(item_id="it_b", source="amazon")],
+        semantics=[_semantic(item_id="it_a"), _semantic(item_id="it_b")],
+    )
+    # amazon は source=rakuten で除外 → 1 件のみ
+    result = FeatureInputHashJob(repositories=repos).run(
+        job_run_id="run-src", source="rakuten", max_items=10
+    )
+    assert result.planned_queue_count == 1
+    assert result.hashed_count == 1
+
+    repos2, _ = _repos(
+        queues=[
+            _queue(qid="igq_1", item_id="it_1"),
+            _queue(qid="igq_2", item_id="it_2"),
+        ],
+        items=[_item(item_id="it_1"), _item(item_id="it_2")],
+        semantics=[_semantic(item_id="it_1"), _semantic(item_id="it_2")],
+    )
+    result2 = FeatureInputHashJob(repositories=repos2).run(job_run_id="run-max", max_items=1)
+    assert result2.planned_queue_count == 1
+
+
+def test_fixture_and_logs_have_no_secret_like_values() -> None:
+    """§16 No.9: secret らしき文字列なし。"""
+
+    repos, db = _repos()
+    result = FeatureInputHashJob(repositories=repos).run(job_run_id="run-sec")
+    blob = (
+        repr(result)
+        + repr(db.write_calls)
+        + repr(repos.error_logs)
+        + repr(repos.handoff_records)
+    ).lower()
+    for token in ("password", "api_key", "secret", "bearer ", "sk-", "postgresql://"):
+        assert token not in blob
