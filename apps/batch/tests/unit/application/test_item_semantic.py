@@ -129,7 +129,7 @@ def test_skip_unchanged_no_upsert() -> None:
     assert result.semantic_generated_count == 0
     assert repos.queues["igq_1"]["queue_status"] == "skipped"
     assert repos.written_item_semantic_rows == []
-    assert "item_semantic" not in {c["table"] for c in db.write_calls if c.get("op") != "claim"}
+    assert not any(c["table"] == "item_semantic" for c in db.write_calls)
 
 
 def test_generation_type_filter_skips_feature() -> None:
@@ -250,3 +250,207 @@ def test_build_scaffold_adapter_hash_stable() -> None:
     r2 = adapter.generate_item_semantic(ctx)
     assert r1.status == "generated"
     assert r1.semantic_input_hash == r2.semantic_input_hash
+
+
+# --- §16 拡充（UT Task） ---
+
+
+def test_generation_type_filter_skips_embedding() -> None:
+    """§16 No.5: embedding 行は claim しない。"""
+
+    repos, _ = _repos(
+        queues=[
+            _queue(item_generation_queue_id="igq_e", item_id="it_e", generation_type="embedding"),
+            _queue(item_generation_queue_id="igq_s", item_id="it_s", generation_type="semantic"),
+        ],
+        items=[_item(item_id="it_e"), _item(item_id="it_s")],
+    )
+    result = ItemSemanticJob(repositories=repos).run(job_run_id="run-embed")
+
+    assert result.non_semantic_skip_count == 1
+    assert result.claimed_count == 1
+    assert repos.queues["igq_e"]["queue_status"] == "queued"
+    assert repos.queues["igq_s"]["queue_status"] == "processing"
+
+
+def test_idempotent_upsert_overwrites_same_key() -> None:
+    """§16 No.9: 同一 (item_id, version) 再実行で JSON 上書き収束。"""
+
+    repos, _ = _repos(
+        semantics=[
+            ItemSemanticRow(
+                item_semantic_id="is_old",
+                item_id="it_1",
+                semantic_config_version_id=_VERSION,
+                semantic_json={"concepts": [{"concept_code": "old"}]},
+                semantic_input_hash="deadbeef" * 8,
+            )
+        ]
+    )
+    result = ItemSemanticJob(repositories=repos).run(job_run_id="run-upsert-1")
+    assert result.semantic_generated_count == 1
+    first = repos.item_semantics[("it_1", _VERSION)]
+    assert first["item_semantic_id"] == "is_old"
+    assert first["semantic_json"] != {"concepts": [{"concept_code": "old"}]}
+
+    # 入力変更 + 再 queued で再生成（同一キー上書き）
+    repos.items["it_1"]["item_name"] = "Gift B Renamed"
+    repos.queues["igq_1"]["queue_status"] = "queued"
+    repos.queues["igq_1"]["started_at"] = None
+    result2 = ItemSemanticJob(repositories=repos).run(job_run_id="run-upsert-2")
+    assert result2.semantic_generated_count == 1
+    second = repos.item_semantics[("it_1", _VERSION)]
+    assert second["item_semantic_id"] == "is_old"
+    assert second["semantic_json"] != first["semantic_json"]
+    assert second["semantic_input_hash"] != first["semantic_input_hash"]
+
+
+def test_config_version_fixed_on_item_semantic_row() -> None:
+    """§16 No.8（unit 代替）: Upsert 行に semantic_config_version_id が固定される。"""
+
+    repos, _ = _repos()
+    ItemSemanticJob(repositories=repos).run(job_run_id="run-cfg")
+    row = repos.written_item_semantic_rows[0]
+    assert row["semantic_config_version_id"] == _VERSION
+    assert row["item_id"] == "it_1"
+
+
+def test_claim_conflict_skips_when_claim_fails() -> None:
+    """§9.1: plan 上は queued でも claim 失敗時は当該行 skip。"""
+
+    repos, _ = _repos()
+
+    def _fail_claim(*, item_generation_queue_id: str, started_at=None):  # noqa: ANN001
+        _ = item_generation_queue_id, started_at
+        return None
+
+    repos.claim_queue = _fail_claim  # type: ignore[method-assign]
+    result = ItemSemanticJob(repositories=repos).run(job_run_id="run-conflict")
+
+    assert result.status == "succeeded"
+    assert result.claim_conflict_skip_count == 1
+    assert result.claimed_count == 0
+    assert result.semantic_generated_count == 0
+    assert repos.written_item_semantic_rows == []
+
+
+def test_claim_queue_rejects_non_queued_status() -> None:
+    """repositories: processing 行への claim は None。"""
+
+    repos, _ = _repos(queues=[_queue(queue_status="processing")])
+    assert (
+        repos.claim_queue(item_generation_queue_id="igq_1", started_at=_NOW) is None
+    )
+
+
+def test_concurrent_start_rejected_grs_bat_003() -> None:
+    """多重起動拒否 GRS-BAT-003。"""
+
+    from batch.application.job_run import ScaffoldJobRunTracker
+
+    repos, _ = _repos()
+    tracker = ScaffoldJobRunTracker()
+    tracker.start(batch_id=BATCH_ID, job_run_id="run-a")
+    result = ItemSemanticJob(repositories=repos, job_run_tracker=tracker).run(job_run_id="run-b")
+    assert result.status == "failed"
+    assert "GRS-BAT-003" in result.error_codes
+    assert result.claimed_count == 0
+
+
+def test_source_filter_excludes_non_matching_item() -> None:
+    """plan: item.source がフィルタと不一致なら対象外。"""
+
+    repos, _ = _repos(items=[_item(source="amazon")])
+    result = ItemSemanticJob(repositories=repos).run(job_run_id="run-src", source="rakuten")
+    assert result.planned_queue_count == 0
+    assert result.status == "succeeded"
+    assert repos.queues["igq_1"]["queue_status"] == "queued"
+
+
+def test_max_items_limits_claim_plan() -> None:
+    repos, _ = _repos(
+        queues=[
+            _queue(item_generation_queue_id="igq_a", item_id="it_a"),
+            _queue(item_generation_queue_id="igq_b", item_id="it_b"),
+        ],
+        items=[_item(item_id="it_a"), _item(item_id="it_b")],
+    )
+    result = ItemSemanticJob(repositories=repos).run(job_run_id="run-max", max_items=1)
+    assert result.planned_queue_count == 1
+    assert result.claimed_count == 1
+
+
+def test_review_texts_excluded_from_semantic_input_hash() -> None:
+    """§9.2: item_review は hash 対象外。"""
+
+    base = dict(
+        trace_id="t",
+        batch_run_id="r",
+        item_generation_queue_id="q",
+        item_id="it",
+        semantic_config_version_id="v1",
+        item_name="A",
+    )
+    h1 = compute_semantic_input_hash(SemanticGenerationContext(**base, review_texts=()))
+    h2 = compute_semantic_input_hash(
+        SemanticGenerationContext(**base, review_texts=("長いレビュー文",))
+    )
+    assert h1 == h2
+
+
+def test_if_shared_001_adapter_called_queue_dml_on_batch() -> None:
+    """§16 No.4: IF-SHARED-001 経由。Queue DML は batch repos。"""
+
+    repos, db = _repos()
+    calls: list[str] = []
+
+    class CountingAdapter(ScaffoldItemSemanticAdapter):
+        def generate_item_semantic(self, context: SemanticGenerationContext):  # type: ignore[override]
+            calls.append(context.item_generation_queue_id)
+            return super().generate_item_semantic(context)
+
+    adapter = CountingAdapter(
+        find_existing=lambda item_id, version_id: repos.find_item_semantic(
+            item_id=item_id, semantic_config_version_id=version_id
+        )
+    )
+    result = ItemSemanticJob(repositories=repos, generator=adapter).run(job_run_id="run-if")
+    assert calls == ["igq_1"]
+    assert result.semantic_generated_count == 1
+    queue_ops = [
+        row.get("op")
+        for c in db.write_calls
+        if c["table"] == "item_generation_queue"
+        for row in c["rows"]
+    ]
+    assert "claim" in queue_ops
+    assert "semantic_success_keep_processing" in queue_ops
+
+
+def test_explicit_queue_ids_subset() -> None:
+    repos, _ = _repos(
+        queues=[
+            _queue(item_generation_queue_id="igq_keep", item_id="it_keep"),
+            _queue(item_generation_queue_id="igq_skip", item_id="it_skip"),
+        ],
+        items=[_item(item_id="it_keep"), _item(item_id="it_skip")],
+    )
+    result = ItemSemanticJob(repositories=repos).run(
+        job_run_id="run-subset",
+        queue_ids=["igq_keep"],
+    )
+    assert result.claimed_count == 1
+    assert repos.queues["igq_keep"]["queue_status"] == "processing"
+    assert repos.queues["igq_skip"]["queue_status"] == "queued"
+
+
+def test_fixture_and_logs_have_no_secret_like_values() -> None:
+    """§16 No.11: fixture / 結果に secret らしき文字列がない。"""
+
+    repos, db = _repos()
+    result = ItemSemanticJob(repositories=repos).run(job_run_id="run-sec")
+    blob = repr(result) + repr(db.write_calls) + repr(repos.error_logs) + repr(repos.phase_logs)
+    forbidden = ("password", "api_key", "secret", "Bearer ", "sk-", "postgresql://")
+    lowered = blob.lower()
+    for token in forbidden:
+        assert token.lower() not in lowered
