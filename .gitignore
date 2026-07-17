@@ -107,6 +107,10 @@ supabase/snippets/
 # Test outputs (Layer2 / local E2E)
 # =========================
 tests/e2e/results/
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/blob-report/
+apps/web/playwright/.cache/
 
 # =========================
 # Docker（必要に応じて）

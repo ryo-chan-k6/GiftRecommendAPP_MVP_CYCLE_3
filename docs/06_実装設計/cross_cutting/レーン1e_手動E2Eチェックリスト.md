@@ -208,4 +208,4 @@ D1（#1330）完了後に SCR-005 / SCR-006 / SCR-007 および Public `reasonPo
 | ---- | ---- |
 | S5' / S7 / S8 の手動再実施 | **完了**（2026-07-17 `pass`） |
 | S1〜S4 / S6 の全再実行 | 任意（本回帰の必須ではない） |
-| Playwright（D2） | 後続 |
+| Playwright（D2） | **着手**（Epic #1438 / Task #1439）。`apps/web` に Playwright scaffold + S1 smoke。手順はローカル開発手順書 §10.4.17 |
