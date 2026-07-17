@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1420
   issue:
     number: 1419
   task_definition: "prompts/definitions/tasks/scr-post-mvp-regression-e2e/execution.yaml"
