@@ -110,6 +110,9 @@ def test_scaffold_batch_settings_provides_placeholder_secrets() -> None:
     assert settings.batch_item_semantic_max_items == 1000
     assert settings.batch_item_semantic_source == "rakuten"
     assert settings.batch_item_semantic_queue_batch_size == 100
+    assert settings.batch_feature_input_hash_max_items == 1000
+    assert settings.batch_feature_input_hash_source == "rakuten"
+    assert settings.batch_feature_input_hash_queue_batch_size == 100
 
 
 def test_load_batch_settings_reads_item_generation_queue_fields() -> None:
@@ -144,6 +147,23 @@ def test_load_batch_settings_reads_item_semantic_fields() -> None:
     assert settings.batch_item_semantic_source == "rakuten"
     assert settings.batch_item_semantic_queue_batch_size == 50
     assert "300" in repr(settings)
+
+
+def test_load_batch_settings_reads_feature_input_hash_fields() -> None:
+    settings = load_batch_settings(
+        environ={
+            "APP_ENV": "dev",
+            "OBJECT_STORAGE_BUCKET": "raw-dev",
+            "BATCH_FEATURE_INPUT_HASH_MAX_ITEMS": "400",
+            "BATCH_FEATURE_INPUT_HASH_SOURCE": "rakuten",
+            "BATCH_FEATURE_INPUT_HASH_QUEUE_BATCH_SIZE": "80",
+        }
+    )
+
+    assert settings.batch_feature_input_hash_max_items == 400
+    assert settings.batch_feature_input_hash_source == "rakuten"
+    assert settings.batch_feature_input_hash_queue_batch_size == 80
+    assert "400" in repr(settings)
 
 
 def test_load_batch_settings_reads_item_active_status_fields() -> None:

@@ -1,0 +1,137 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-011-feature-input-hash-implementation"
+  title: "BATCH-011:Feature入力hash算出Batch実装"
+  summary: "BATCH-011 を scaffold-first 実装する。payload/hash、IF-DB-BATCH-012 handoff、独立 workflow を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-011:Feature入力hash算出Batch"
+  epic_issue_number: 1434
+  epic_branch: "feature/epic-1434-batch-011-feature-input-hash"
+  related_issues:
+    - number: 1435
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1436
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  仕様書 #1435 / PR #1436 Epic Branch merge 済み。§18 独立 YAML / config / skip 案A 確定。
+
+objective: |
+  scaffold-first 実装と batch-feature-input-hash.yml を整備する。
+
+scope:
+  - "feature_input_hash application"
+  - "payload / canonicalize / SHA-256"
+  - "§9.4 skip（8軸+現行norm）"
+  - "IF-DB-BATCH-012 handoff（item_feature 非書込）"
+  - "config BATCH_FEATURE_INPUT_HASH_*"
+  - "batch-feature-input-hash.yml"
+  - "最小 UT"
+
+out_of_scope:
+  - "item_feature Upsert（BATCH-012）"
+  - "apps/reco"
+  - "親 meaning-generation 全体改修"
+  - "実 DB 配線"
+  - "包括的 UT Task"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/batch/src/batch/application/feature_input_hash/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-feature-input-hash.yml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_feature_input_hash.py"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "主要 Phase が追跡できる"
+  - "hash 64 hex・除外項目・skip・IF 境界を UT 検証"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  name: "feature/task-1440-batch-011-feature-input-hash-implementation"
+  summary: "batch-011-feature-input-hash-implementation"
+  base: "feature/epic-1434-batch-011-feature-input-hash"
+  target: "feature/epic-1434-batch-011-feature-input-hash"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1440
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - ".github/workflows/batch-feature-input-hash.yml"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-011 最小）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_feature_input_hash.py tests/unit/config/test_config_scaffold.py -q --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-012 handoff / item_feature 非書込"
+    - "IF-DB-BATCH-011 非使用"
+    - "§9.4 skip 実装"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Issue #1440"

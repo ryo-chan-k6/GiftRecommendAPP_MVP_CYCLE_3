@@ -1,0 +1,34 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-011-feature-input-hash-implementation-pr"
+  title: "BATCH-011 Feature入力hash算出Batch実装 PR Review"
+  status: "draft"
+  pr:
+    number: null
+    title: "[Task]BATCH-011:Feature入力hash算出Batch実装"
+    base: "feature/epic-1434-batch-011-feature-input-hash"
+    head: "feature/task-1440-batch-011-feature-input-hash-implementation"
+
+task_definition: "prompts/definitions/tasks/batch-011-feature-input-hash/implementation.yaml"
+issue:
+  number: 1440
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "test-ai"
+
+review_points:
+  - "仕様 Phase・skip・hash と実装が整合するか"
+  - "IF-DB-BATCH-012 handoff / item_feature・item_semantic 非更新か"
+  - "apps/reco / BATCH-012 が混入していないか"
+  - "secret 非含有"
+
+acceptance_for_human_review:
+  - "Blocker / Must が残っていない"
+  - "pytest 成功"
+
+notes:
+  - "Issue #1440 / PR #（作成後に反映）"
