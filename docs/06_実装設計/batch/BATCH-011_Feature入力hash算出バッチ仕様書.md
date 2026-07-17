@@ -62,7 +62,7 @@ BATCH-011（Feature入力hash算出Batch）は、BATCH-010 が生成した `item
 | 2 | Config Version Resolver で `semantic_config_version_id` を解決する |
 | 3 | `feature_input_payload` を構築し canonicalize する（§9） |
 | 4 | SHA-256 で `feature_input_hash`（64 hex）を算出する（**IF-DB-BATCH-012**） |
-| 5 | 入力不変かつ後続 skip 可能な場合は Queue を `skipped` とし得る（§9.4） |
+| 5 | 入力不変かつ後続 skip 可能な場合は Queue を `skipped` とする（§9.4・案A） |
 | 6 | 失敗時は Queue を `failed` とし、`GRS-BAT-007` 等を記録する |
 
 ---
@@ -74,7 +74,7 @@ BATCH-011（Feature入力hash算出Batch）は、BATCH-010 が生成した `item
 | Batch ID       | `BATCH-011` |
 | Batch名        | Feature入力hash算出Batch |
 | 処理種別       | 入力正規化 + hash 算出 + Queue 状態更新 |
-| 実行基盤       | GitHub Actions。**独立子 workflow `batch-feature-input-hash.yml`（`batch-feature-input-hash*.yml`）を正**とする（§18.1 No.1 **提案**。BATCH-010 同型）。親 `batch-item-meaning-generation.yml` 全体改修は本 Epic 外 |
+| 実行基盤       | GitHub Actions。**独立子 workflow `batch-feature-input-hash.yml`（`batch-feature-input-hash*.yml`）を正**とする（§18.1 No.1 **確定**。BATCH-010 同型）。親 `batch-item-meaning-generation.yml` 全体改修は本 Epic 外 |
 | 実装言語       | Python（`apps/batch`） |
 | 起動方式       | BATCH-010 後続 / `workflow_dispatch` / `retry-failed` |
 | 実行頻度       | meaning-generation チェーン内 |
@@ -183,10 +183,10 @@ flowchart TD
   E --> F[build_payload: Feature Input Payload Builder]
   F --> G[canonicalize]
   G --> H[compute_hash: SHA-256]
-  H --> I{skip?}
-  I -->|yes| J[update_queue: skipped]
+  H --> I{evaluate_skip §9.4}
+  I -->|yes: 8軸+現行norm完了| J[update_queue: skipped]
   I -->|no| K[record_hash_handoff: IF-DB-BATCH-012]
-  K --> L[update_queue: processing 維持 or 終端]
+  K --> L[update_queue: processing 維持]
   J --> Z[finalize]
   L --> Z
 ```
@@ -197,13 +197,14 @@ flowchart TD
 | -: | ----- | ---- | ------ |
 | 1 | `plan` | 対象 Queue 一覧 | `GRS-BAT-*` |
 | 2 | `claim_or_continue` | queued→processing、または processing 継続 | 競合時 skip |
-| 3 | `resolve_config` | `semantic_config_version_id` | `GRS-CFG-*` → failed |
+| 3 | `resolve_config` | `semantic_config_version_id` / 現行 `feature_normalization_version_id` | `GRS-CFG-*` → failed |
 | 4 | `load_inputs` | item / semantic / 補助マスタ | `GRS-DB-*` / `GRS-VAL-*` → failed |
 | 5 | `build_payload` | payload 構築 | `GRS-VAL-*` / `GRS-BAT-007` |
 | 6 | `compute_hash` | canonicalize + SHA-256 | `GRS-BAT-007` |
-| 7 | `record_hash_handoff` | IF-DB-BATCH-012（handoff 確定） | `GRS-DB-*` |
-| 8 | `update_queue` | status 更新 | `GRS-DB-*` |
-| 9 | `finalize` | 集計。部分成功は `GRS-BAT-002` | |
+| 7 | `evaluate_skip` | 今回 hash + 現行 normalization version で §9.4 判定 | `GRS-DB-*` / `GRS-CFG-*` |
+| 8 | `record_hash_handoff` | IF-DB-BATCH-012（handoff 確定）。skip 時は省略可 | `GRS-DB-*` |
+| 9 | `update_queue` | status 更新（skipped / processing 維持 / failed） | `GRS-DB-*` |
+| 10 | `finalize` | 集計。部分成功は `GRS-BAT-002` | |
 
 処理単位は **`item_generation_queue_id`**。
 
@@ -259,14 +260,32 @@ payload 例（方針書 §13.3 準拠）:
 
 `semantic_concepts` は `item_semantic.semantic_json.concepts[]` から `concept_code` を安定ソートして載せる（実装 Task で確定可）。
 
-### 9.4 skip
+### 9.4 skip（確定：案A）
+
+hash 算出後に判定する。Queue を `skipped` にするのは **BATCH-011〜013 がすべて不要**な場合に限る（`item_feature_テーブル定義書` §12.5）。
 
 | 条件 | 動作 |
 | ---- | ---- |
-| 同一 `item_id` + `semantic_config_version_id` + 今回算出 hash で、8 軸 Feature が既に成功済み（方針書 §7.2 補足 / item_feature §） | Queue → **`skipped`**（BATCH-012〜013 も不要） |
-| 上記以外 | hash を handoff し、Queue は **`processing` 維持**（semantic パイプライン）または feature 行の後続へ |
+| 同一 `item_id` + `semantic_config_version_id` + **今回算出** `feature_input_hash` + **現行** `feature_normalization_version_id` で、MVP 8 軸（`feature_code` 8 値）がすべて存在し、各行の `normalized_feature_value` が有効 | Queue → **`skipped`**（`completed_at`）。BATCH-012〜013 も不要。handoff は省略可 |
+| 上記以外（raw のみ揃い・正規化未完了・normalization version 不一致・軸欠損を含む） | hash を handoff し、Queue は **`processing` 維持**（後続 BATCH-012 へ） |
 
-MVP scaffold では「既存成功 Feature」判定を stub し、常に handoff + processing 維持でもよい（§18.1 No.9）。
+#### 9.4.1 判定キー・参照
+
+| 項目 | 方針 |
+| ---- | ---- |
+| 判定タイミング | `compute_hash` の**後**（今回 hash が必要） |
+| 参照先 | `item_feature`（**SELECT のみ**。本 Batch は書込しない） |
+| `feature_normalization_version_id` | 現行正規化 version を Config / Resolver で解決（BATCH-013 と同一ルール。実装 Task で具体キー確定可） |
+| 成功定義 | `COUNT(DISTINCT feature_code) = 8` かつ対象行の `normalized_feature_value IS NOT NULL` |
+| stub | **しない**（§18.1 No.9 **確定：不採用**） |
+
+#### 9.4.2 BATCH 間の役割
+
+| Batch | skip の意味 |
+| ----- | ----------- |
+| **BATCH-011（本節）** | 現行入力でも Feature パイプライン（raw + 正規化）が完了済み → Queue 終端 |
+| **BATCH-012** | 同一 hash の raw 8 軸成功済み → Feature 生成のみ skip（方針書 §7.2 / §17.3） |
+| **BATCH-013** | 正規化済みなら正規化のみ skip（BATCH-013 仕様） |
 
 ---
 
@@ -274,9 +293,9 @@ MVP scaffold では「既存成功 Feature」判定を stub し、常に handoff
 
 | リソース | 操作 | IF | 備考 |
 | -------- | ---- | -- | ---- |
-| hash handoff | 算出確定 | **IF-DB-BATCH-012** | §2.2。専用テーブルなし |
+| hash handoff | 算出確定 | **IF-DB-BATCH-012** | §2.2。専用テーブルなし。§9.4 skip 時は省略可 |
 | `item_generation_queue` | UPDATE | — | claim / skip / failed / processing 維持 |
-| `item_feature` | — | — | **書込禁止**（BATCH-012） |
+| `item_feature` | SELECT | — | §9.4 skip 判定のみ。**書込禁止**（BATCH-012 / 013） |
 | `item_semantic` / `item` | SELECT | — | 更新しない |
 
 #### 禁止操作
@@ -304,7 +323,7 @@ MVP scaffold では「既存成功 Feature」判定を stub し、常に handoff
 | 結果 | `queue_status` | 備考 |
 | ---- | -------------- | ---- |
 | claim | `processing` | started_at |
-| skip | `skipped` | 8 軸成功済み等 |
+| skip | `skipped` | §9.4（8 軸 + 現行 normalization まで完了） |
 | 失敗 | `failed` | `GRS-BAT-007` 等 |
 | hash 成功（semantic パイプライン） | **`processing` 維持** | BATCH-012 以降へ |
 
@@ -359,6 +378,8 @@ MVP scaffold では「既存成功 Feature」判定を stub し、常に handoff
 | 8 | 部分成功 `GRS-BAT-002` | unit |
 | 9 | secret 非含有 | review / unit |
 | 10 | BATCH-010 / 012 境界 | review |
+| 11 | skip: 8 軸 + 現行 normalization 完了 → Queue `skipped` | unit |
+| 12 | skip 不成立（raw のみ / 軸欠損 / norm version 不一致）→ handoff + processing 維持 | unit |
 
 ---
 
@@ -367,6 +388,8 @@ MVP scaffold では「既存成功 Feature」判定を stub し、常に handoff
 | 日付 | 変更内容 | 関連 |
 | ---- | -------- | ---- |
 | 2026-07-17 | 初版作成 | Epic #1434 / Task #1435 |
+| 2026-07-17 | §9.4 skip を案Aで確定（normalization version 含む）。No.9 stub 不採用 | Human 確認 |
+| 2026-07-17 | §18.1 No.1（独立 YAML）・No.10（config キー）を確定 | Human 確認 |
 
 ---
 
@@ -376,7 +399,7 @@ MVP scaffold では「既存成功 Feature」判定を stub し、常に handoff
 
 | No | 論点 | 内容 | 状態 |
 | --: | ---- | ---- | ---- |
-| 1 | 子 workflow | 独立 YAML `batch-feature-input-hash.yml`。cron なし。親全体改修は外 | **提案** |
+| 1 | 子 workflow | 独立 YAML `batch-feature-input-hash.yml`。cron なし。親全体改修は外 | **確定** |
 | 2 | IF 番号 | **IF-DB-BATCH-012 = BATCH-011**。IF-DB-BATCH-011 = BATCH-010（混同禁止） | **確定** |
 | 3 | 入力項目 | 方針書 §13.3 の ○/× 表 | **確定** |
 | 4 | hash アルゴリズム | SHA-256、小文字 hex 64 | **確定**（item_feature CHECK 想定） |
@@ -384,15 +407,14 @@ MVP scaffold では「既存成功 Feature」判定を stub し、常に handoff
 | 6 | Contract Gate | 不要 | **確定** |
 | 7 | apps/reco / IF-SHARED-002 | 本 Epic 外（BATCH-012） | **確定** |
 | 8 | 主経路 Queue | semantic + processing（BATCH-010 後） | **確定候補**（実装で確定可） |
-| 9 | skip 判定 stub | MVP scaffold で「8 軸成功済み」を stub 可 | **提案** |
-| 10 | config キー | `BATCH_FEATURE_INPUT_HASH_*` | **提案** |
+| 9 | skip 判定 | **本番実装（stub 不採用）**。キーに現行 `feature_normalization_version_id` を含む（案A）。詳細は §9.4 | **確定** |
+| 10 | config キー | `BATCH_FEATURE_INPUT_HASH_*` | **確定** |
 
 ### 18.2 残未決（Human）
 
 | No | 事項 |
 | -: | ---- |
 | 1 | 親 meaning-generation からの `workflow_call` タイミング（Epic 外） |
-| 2 | §18.1 No.1 / No.9 / No.10 の最終採否 |
 
 ---
 
@@ -417,6 +439,7 @@ MVP scaffold では「既存成功 Feature」判定を stub し、常に handoff
 - `item_feature` 書込が BATCH-012 側である
 - BATCH-012 / apps/reco が混入していない
 - §18 で確定 / 提案が区別されている
+- §9.4 skip が案A（normalization version 含む）で、stub していない
 - secret 非含有
 - PR target が親 Epic Branch
 
