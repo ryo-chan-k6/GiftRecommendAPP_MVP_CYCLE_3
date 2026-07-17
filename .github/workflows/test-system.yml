@@ -139,13 +139,20 @@ jobs:
 
       - name: Start api and reco (when API E2E enabled)
         if: inputs.skip_api_e2e == false
+        env:
+          DATABASE_URL: ${{ steps.db-url.outputs.url }}
         run: |
+          set -euo pipefail
+          set -a
+          # shellcheck disable=SC1091
+          source .env
+          set +a
           mkdir -p /tmp/test-system-logs
           pnpm dev:reco > /tmp/test-system-logs/reco.log 2>&1 &
           echo "${!}" > /tmp/test-system-logs/reco.pid
           pnpm dev:api > /tmp/test-system-logs/api.log 2>&1 &
           echo "${!}" > /tmp/test-system-logs/api.pid
-          echo "info: api/reco start requested (Phase4b servers must stay running)"
+          echo "info: api/reco start requested (DATABASE_URL sourced from .env)"
 
       - name: Wait for api/reco health (when API E2E enabled)
         if: inputs.skip_api_e2e == false
