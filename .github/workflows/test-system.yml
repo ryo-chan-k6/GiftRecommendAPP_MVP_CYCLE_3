@@ -1,8 +1,8 @@
 name: Test System (Layer2)
 
 # Layer2 システムテスト（CI・CD方針書 / Epic C C3 / テスト定義書 §9.5）。
-# GHA runner 上で ephemeral DB + Redis を起動し、fixture / DB 前提を検証する。
-# Phase4b 最小 API 整備前は API E2E を skip 可能（既定 skip_api_e2e=true）。
+# GHA runner 上で ephemeral DB + Redis を起動し、fixture / DB 前提と API E2E を検証する。
+# Phase4b 最小 API 整備後は既定 skip_api_e2e=false（infra 切り分け時のみ true 可）。
 # 通常 PR 品質ゲート（ci.yml）とは分離し、workflow_dispatch のみで利用する。
 
 run-name: "test-system · ${{ github.event_name }} · skip_api=${{ inputs.skip_api_e2e }}"
@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       skip_api_e2e:
-        description: "API health / RecommendationRun E2E を skip（Phase4b 以前は true 推奨）"
+        description: "API health / RecommendationRun E2E を skip（既定 false。infra 切り分け時のみ true）"
         type: boolean
-        default: true
+        default: false
       api_base_url:
         description: "api Base URL（空=GHA localhost:3001。将来 cloud dev 用）"
         type: string
@@ -84,6 +84,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install uv
+        if: inputs.skip_api_e2e == false
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python for reco
+        if: inputs.skip_api_e2e == false
+        run: |
+          uv python install "$(tr -d '[:space:]' < .python-version)"
+          ./scripts/dev/setup-python-reco.sh
+
       - name: Verify seed setup
         run: bash scripts/db/verify-seed-setup.sh
 
@@ -141,7 +153,8 @@ jobs:
           set -euo pipefail
           api_ok=0
           reco_ok=0
-          for _ in $(seq 1 30); do
+          # api は tsc build 後に listen するため、cold runner 向けに最大約 3 分待つ
+          for _ in $(seq 1 90); do
             if curl -fsS "${API_BASE_URL}/api/v1/health" >/dev/null 2>&1; then
               api_ok=1
             fi
@@ -157,9 +170,9 @@ jobs:
           done
           echo "error: api/reco did not become healthy within timeout" >&2
           echo "--- api log ---" >&2
-          tail -n 50 /tmp/test-system-logs/api.log >&2 || true
+          tail -n 80 /tmp/test-system-logs/api.log >&2 || true
           echo "--- reco log ---" >&2
-          tail -n 50 /tmp/test-system-logs/reco.log >&2 || true
+          tail -n 80 /tmp/test-system-logs/reco.log >&2 || true
           exit 1
 
       - name: Run system E2E tests
