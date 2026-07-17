@@ -35,6 +35,9 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_ITEM_GENERATION_QUEUE_MAX_ITEMS",
     "BATCH_ITEM_GENERATION_QUEUE_SOURCE",
     "BATCH_ITEM_GENERATION_QUEUE_DIFF_BATCH_RUN_ID",
+    "BATCH_ITEM_SEMANTIC_MAX_ITEMS",
+    "BATCH_ITEM_SEMANTIC_SOURCE",
+    "BATCH_ITEM_SEMANTIC_QUEUE_BATCH_SIZE",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -95,6 +98,9 @@ class BatchSettings:
     batch_item_generation_queue_max_items: int | None
     batch_item_generation_queue_source: str | None
     batch_item_generation_queue_diff_batch_run_id: str | None
+    batch_item_semantic_max_items: int | None
+    batch_item_semantic_source: str | None
+    batch_item_semantic_queue_batch_size: int | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -150,6 +156,9 @@ class BatchSettings:
             f"batch_item_generation_queue_max_items={self.batch_item_generation_queue_max_items!r}, "
             f"batch_item_generation_queue_source={self.batch_item_generation_queue_source!r}, "
             f"batch_item_generation_queue_diff_batch_run_id={self.batch_item_generation_queue_diff_batch_run_id!r}, "
+            f"batch_item_semantic_max_items={self.batch_item_semantic_max_items!r}, "
+            f"batch_item_semantic_source={self.batch_item_semantic_source!r}, "
+            f"batch_item_semantic_queue_batch_size={self.batch_item_semantic_queue_batch_size!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "

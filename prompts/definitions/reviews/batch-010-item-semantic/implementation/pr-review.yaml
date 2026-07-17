@@ -1,0 +1,38 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-010-item-semantic-implementation-pr"
+  title: "BATCH-010 Item Semantic生成Batch実装 PR Review"
+  status: "draft"
+  pr:
+    number: null
+    title: "[Task]BATCH-010:Item Semantic生成Batch実装"
+    base: "feature/epic-1422-batch-010-item-semantic"
+    head: "feature/task-1428-batch-010-item-semantic-implementation"
+
+task_definition: "prompts/definitions/tasks/batch-010-item-semantic/implementation.yaml"
+issue:
+  number: 1428
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+review_points:
+  - "Issue #1428 / 仕様書 Phase と差分が整合するか"
+  - "IF-DB-BATCH-011 / IF-SHARED-001 境界が守られているか"
+  - "IF-DB-BATCH-010（Queue INSERT）を行っていないか"
+  - "apps/reco / item_generation_queue を編集していないか"
+  - "secret / .env 実値が含まれていないか"
+  - "最小 UT と非 scaffold exit 3 が確認できるか"
+
+acceptance_for_human_review:
+  - "Blocker / Must が残っていない"
+  - "PR target が親 Epic Branch"
+  - "author が machine account"
+
+notes:
+  - "Issue #1428 / PR #（作成後に反映）"
