@@ -1,0 +1,127 @@
+name: Batch Item Generation Queue
+
+# BATCH-009 商品意味生成キュー登録（独立子 workflow）
+# 正本: BATCH-009 バッチ仕様書 §18.1 No.1 — workflow_call / workflow_dispatch
+# 親 item-import / existing-item-recheck チェーン全体改修は本 Epic では行わない
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max diff rows to evaluate (default 1000)"
+        required: false
+        type: string
+        default: "1000"
+      source:
+        description: "source filter (default rakuten)"
+        required: false
+        type: string
+        default: "rakuten"
+      diff_batch_run_id:
+        description: "Consume product_diff_result for this BATCH-006 batch_run_id"
+        required: false
+        type: string
+        default: ""
+      external_item_codes:
+        description: "Comma-separated external_item_code list (subset / re-run)"
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max diff rows to evaluate (default 1000)"
+        required: false
+        type: string
+        default: "1000"
+      source:
+        description: "source filter (default rakuten)"
+        required: false
+        type: string
+        default: "rakuten"
+      diff_batch_run_id:
+        description: "Consume product_diff_result for this BATCH-006 batch_run_id"
+        required: false
+        type: string
+        default: ""
+      external_item_codes:
+        description: "Comma-separated external_item_code list (subset / re-run)"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: batch-item-generation-queue
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  item-generation-queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-009 scaffold demo
+        # Real DB client is not enabled in this Task.
+        # Secrets must never be printed. Use --scaffold-demo for CI smoke.
+        # Must NOT write item / product_diff_result / call LLM / Embedding API.
+        working-directory: apps/batch
+        run: |
+          MAX_ARGS=()
+          if [ -n "${{ inputs.max_items }}" ]; then
+            MAX_ARGS+=(--max-items "${{ inputs.max_items }}")
+          fi
+          SOURCE_ARGS=()
+          if [ -n "${{ inputs.source }}" ]; then
+            SOURCE_ARGS+=(--source "${{ inputs.source }}")
+          fi
+          DIFF_RUN_ARGS=()
+          if [ -n "${{ inputs.diff_batch_run_id }}" ]; then
+            DIFF_RUN_ARGS+=(--diff-batch-run-id "${{ inputs.diff_batch_run_id }}")
+          fi
+          CODE_ARGS=()
+          if [ -n "${{ inputs.external_item_codes }}" ]; then
+            CODE_ARGS+=(--external-item-codes "${{ inputs.external_item_codes }}")
+          fi
+          uv run python -m batch.application.item_generation_queue \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${MAX_ARGS[@]}" \
+            "${SOURCE_ARGS[@]}" \
+            "${DIFF_RUN_ARGS[@]}" \
+            "${CODE_ARGS[@]}"
