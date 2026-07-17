@@ -65,7 +65,7 @@ BATCH-010（Item Semantic生成Batch）は、BATCH-009 が登録した `item_gen
 | Batch ID       | `BATCH-010` |
 | Batch名        | Item Semantic生成Batch |
 | 処理種別       | Queue 消化 + Semantic Concept 抽出 + 派生データ Upsert |
-| 実行基盤       | GitHub Actions。**独立子 workflow `batch-item-semantic.yml`（`batch-item-semantic*.yml`）を正**とする（§18.1 No.1 **提案**。BATCH-009 同型）。親 `batch-item-meaning-generation.yml` 全体改修は本 Epic 外 |
+| 実行基盤       | GitHub Actions。**独立子 workflow `batch-item-semantic.yml`（`batch-item-semantic*.yml`）を正**とする（§18.1 No.1 **確定**。BATCH-009 同型）。親 `batch-item-meaning-generation.yml` 全体改修は本 Epic 外 |
 | 実装言語       | Python（`apps/batch` + `apps/reco` ライブラリ呼び出し） |
 | 起動方式       | BATCH-009 後続 / `workflow_dispatch` / `retry-failed` |
 | 実行頻度       | meaning-generation チェーン内（Queue 登録後連続） |
@@ -145,7 +145,7 @@ skip 判定用 **`semantic_input_hash`** は MOD-RECO-026 §16.1 No.2 **確定**
 
 | API | 利用有無 | 用途 | Rate Limit / 制約 | 備考 |
 | --- | -------- | ---- | ----------------- | ---- |
-| External AI API（LLM） | **条件付き** | Rule 不足時の on-demand 補助分類 | Client timeout・1 Item 最大 1 回 | MOD-RECO-026 §8.3.4。**MVP 初版は Scaffold 提案**（§18.1 No.3）。実呼出は Human 判断 |
+| External AI API（LLM） | **条件付き** | Rule 不足時の on-demand 補助分類 | Client timeout・1 Item 最大 1 回 | MOD-RECO-026 §8.3.4。**MVP 初版は Scaffold（Rule-first / LLM スタブ）確定**（§18.1 No.3）。実呼出は後続 Human 判断 |
 
 ### 6.3 環境変数
 
@@ -239,7 +239,7 @@ flowchart TD
 
 | 観点 | 方針 |
 | ---- | ---- |
-| I/F | **IF-SHARED-001**（Python package / function call。詳細は §18.1 No.7 **提案**） |
+| I/F | **IF-SHARED-001**（Python package / function call。**in-process import アダプタ確定**・§18.1 No.4） |
 | 入力型 | `item_semantic_generation_context`（MOD-RECO-026 §6） |
 | 出力型 | `item_semantic_generation_result`（`status`: `generated` / `skipped` / `failed`） |
 | DB DML | **MOD-RECO-026 は `item_semantic` を直接更新しない**。Upsert は batch（本 Phase `upsert_item_semantic`） |
@@ -286,7 +286,7 @@ WHERE item_generation_queue_id = :id
 | 観点 | 方針 |
 | ---- | ---- |
 | 抽出方式 | Rule-first + 条件付き LLM on-demand（MOD-RECO-026 §8.3.4 **確定**） |
-| MVP 初版 LLM | **Scaffold（Rule のみ / LLM スタブ）を提案**（§18.1 No.3）。実 LLM 呼出は Human 判断 |
+| MVP 初版 LLM | **Scaffold（Rule のみ / LLM スタブ）確定**（§18.1 No.3）。実 LLM 呼出は後続 Human 判断 |
 | LLM 上限 | 1 Item（1 Queue 行）あたり **最大 1 回** |
 | 失敗 | `GRS-BAT-008`（内部 `GRS-LLM-*` / `GRS-CFG-*`）。Queue → `failed` |
 | 成功 | `semantic_json` 組み立て → batch が Upsert |
@@ -470,6 +470,8 @@ DO UPDATE SET
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-17 | 初版作成 | Epic #1422 / Task #1423 |
+| 2026-07-17 | §18.1 No.1 / No.3 を Human 確定（独立 YAML・MVP Scaffold）。親 `workflow_call` は独立 YAML 確定後の別 Task（§18.2 No.1） | Task #1423 |
+| 2026-07-17 | §18.1 No.4 を Human 確定（IF-SHARED-001 = in-process。物理配置の Reco Hosting とは別） | Task #1423 / PR #1424 |
 
 ---
 
@@ -479,10 +481,10 @@ DO UPDATE SET
 
 | No | 論点 | 内容 | 判断者 | 状態 | 備考 |
 | --: | ---- | ---- | ------ | ---- | ---- |
-| 1 | 子 workflow 配置 | **独立 YAML `batch-item-semantic.yml`（`batch-item-semantic*.yml`）** を正とする。`workflow_call` / `workflow_dispatch` 対応。独立 cron なし。親 `batch-item-meaning-generation.yml` **全体改修は本 Epic 外** | Human | **提案** | BATCH-009 §18.1 No.1 **確定**パターンを踏襲。2026-07-17 本 Task では提案 |
+| 1 | 子 workflow 配置 | **独立 YAML `batch-item-semantic.yml`（`batch-item-semantic*.yml`）** を正とする。`workflow_call` / `workflow_dispatch` 対応。独立 cron なし。親 `batch-item-meaning-generation.yml` **全体改修は本 Epic 外** | Human | **確定** | 2026-07-17 Human。BATCH-009 §18.1 No.1 同型 |
 | 2 | Queue 登録 IF 混同防止 | **IF-DB-BATCH-010 = BATCH-009（Queue 登録）**。**IF-DB-BATCH-011 = BATCH-010（item_semantic Upsert）** | Human（一覧 / Epic #1422） | **確定** | §2.1 |
-| 3 | MVP 初版 LLM | **Scaffold（Rule-first のみ / LLM スタブ）を MVP 初版のデフォルト提案**。MOD-RECO-026 の Rule-first + on-demand LLM 契約は維持し、実 LLM 呼出は **Human 判断** | Human | **提案** | Epic #1422 human_decision_points。MOD-RECO-026 §8.3.4 は **確定**（契約） |
-| 4 | IF-SHARED-001 実装形態 | **in-process import アダプタ**（batch → reco Python package）を第一案 | Human | **提案** | 別プロセス / HTTP は Epic human_decision_points |
+| 3 | MVP 初版 LLM | **Scaffold（Rule-first のみ / LLM スタブ）を MVP 初版のデフォルトとする**。MOD-RECO-026 の Rule-first + on-demand LLM 契約は維持し、実 LLM 呼出は **後続 Human 判断** | Human | **確定** | 2026-07-17 Human。Epic #1422 human_decision_points。MOD-RECO-026 §8.3.4 は **確定**（契約） |
+| 4 | IF-SHARED-001 実装形態 | **in-process import アダプタ**（batch → reco/shared logic の Python package）。**Reco Hosting（Fly.io 等）への HTTP 呼び出しではない**。GHA 上の batch プロセスに `apps/reco` 共有ロジックを同梱して関数呼び出しする | Human | **確定** | 2026-07-17 Human。物理構成図 §6（batch→AI/DB）・IF 一覧（Python package / function call）と整合。別プロセス / HTTP は本 MVP 対象外 |
 | 5 | 選定既定（config） | **(1)** 件数上限 `BATCH_ITEM_SEMANTIC_MAX_ITEMS` **(2)** `BATCH_ITEM_SEMANTIC_SOURCE` 既定 `rakuten` **(3)** claim サイズ `BATCH_ITEM_SEMANTIC_QUEUE_BATCH_SIZE` **(4)** 任意で明示 `item_id` / `item_generation_queue_id` | Human | **提案** | 実装 Task で確定可 |
 | 6 | Upsert 冪等キー | `item_id` + `semantic_config_version_id`（#513 §7 **確定**） | Human（#513） | **確定** | §4 / §10 |
 | 7 | skip hash | **`semantic_input_hash`**（MOD-RECO-026 §16.1 No.2 **確定**）。`feature_input_hash` とは別 | Human（#1093） | **確定** | §9.2 |
@@ -497,18 +499,18 @@ DO UPDATE SET
 
 | No | 事項 | 扱い |
 | -: | ---- | ---- |
-| 1 | 独立 YAML `batch-item-semantic.yml` を MVP 初期の正とするか | §18.1 No.1 **提案**。Human 判断 |
-| 2 | MVP 初版で実 LLM を有効化するか（Scaffold のみ vs 実呼出） | §18.1 No.3 **提案**。Human 判断 |
-| 3 | IF-SHARED-001 を in-process のみとするか | §18.1 No.4 **提案**。Human 判断 |
-| 4 | 親 `batch-item-meaning-generation.yml` からの `workflow_call` タイミング | 本 Epic 外。独立 YAML 確定後に別 Task |
+| 1 | 親 `batch-item-meaning-generation.yml` からの `workflow_call` タイミング | 本 Epic 外。独立 YAML（§18.1 No.1）**確定**後に別 Task |
 
-> **解消済み（正本 docs より）**
+> **解消済み（正本 docs / 2026-07-17 Human）**
+> - 独立 YAML `batch-item-semantic.yml` → §18.1 No.1 **確定**
+> - MVP 初版 LLM は Scaffold（実呼出なし）→ §18.1 No.3 **確定**
+> - IF-SHARED-001 = in-process（Reco Hosting HTTP ではない）→ §18.1 No.4 **確定**
 > - IF-DB-BATCH-010 は BATCH-009（Queue 登録）→ §18.1 No.2 **確定**
 > - `generation_type = semantic` のみ消化 → §18.1 No.8 **確定**
 > - skip は `semantic_input_hash` → §18.1 No.7 **確定**
 > - semantic 成功時 Queue は `processing` 維持 → §18.1 No.9 **確定**
 >
-> **実装 Task で確定可（提案のまま）**: §18.1 No.5 選定既定（config）、§18.1 No.4 アダプタ詳細
+> **実装 Task で確定可（提案のまま）**: §18.1 No.5 選定既定（config）。アダプタ実装詳細（import パス等）は実装 Task |
 
 ---
 
@@ -544,7 +546,8 @@ DO UPDATE SET
 - BATCH-011〜015 の詳細実装が混入していない
 - `generation_type = semantic` のみ claim が明記されている
 - skip（`semantic_input_hash`）・semantic 成功時 `processing` 維持が明記されている
-- §18.1 で Human **確定**と **提案**（workflow / LLM Scaffold / config / IF 形態）が区別されている
+- §18.1 で Human **確定**と **提案**（config 選定既定）が区別されている
+- IF-SHARED-001 が in-process（Reco Hosting HTTP ではない）と明記されている
 - secret / `.env` 実値が含まれていない
 - PR target が親 Epic Branch（`feature/epic-1422-batch-010-item-semantic`）である
 
@@ -585,7 +588,8 @@ BATCH-011 → feature_input_hash（item_semantic 参照）
 
 - 本仕様書は実装・単体テスト Task の入力正本とする
 - 実装パス想定: `apps/batch/src/batch/application/item_semantic/**`
-- 主要モジュール: Item Semantic Generator（IF-SHARED-001）/ Semantic Rule Resolver / Config Version Resolver / Error Handler / Batch Logger
-- 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親 meaning-generation チェーン全体の改修は本 Epic 外（§18.1 No.1 **提案**）
+- 主要モジュール: Item Semantic Generator（IF-SHARED-001 / in-process）/ Semantic Rule Resolver / Config Version Resolver / Error Handler / Batch Logger
+- IF-SHARED-001 は GHA batch プロセス内の Python package 呼び出し。Reco Hosting（Fly.io 等）への HTTP は行わない（§18.1 No.4 **確定**）
+- 子 workflow は `workflow_call` / `workflow_dispatch` を基本とし、親 meaning-generation チェーン全体の改修は本 Epic 外（§18.1 No.1 **確定**）
 - Contract Gate 不要（Batch は HTTP API 化しない）
 - Epic #1422 / Task #1423。先行: BATCH-009 #1406 / PR #1421、MOD-RECO-026 #1092 / PR #1102、`item_semantic` #513
