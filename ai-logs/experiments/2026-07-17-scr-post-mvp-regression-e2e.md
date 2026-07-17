@@ -9,30 +9,40 @@
 
 ## 実施内容
 
-1. 既存 D1 チェックリストへ §9（S5' / S7 / S8）を追加
-2. ローカル開発手順書 §10.4.16 を追記
-3. ローカル環境前提を確認
+1. Docker / Supabase / Redis / reco / api / web を起動（develop tip `4e795065`）
+2. master / test-data seed
+3. PUB-002 で結果ありを取得し、UI で S5' / S7 / S8 を確認
+4. チェックリスト §9 / 手順書 §10.4.16 を更新
 
 ## 結果（事実）
 
 | ID | 結果 | 根拠 |
 | ---- | ---- | ---- |
-| S5' | **blocked** | Docker daemon 未起動。`scripts/db/status.sh` が `Cannot connect to the Docker daemon`。web/api/reco HTTP 疎通不可 |
-| S7 | **blocked** | 同上 |
-| S8 | **blocked** | 同上 |
+| S5' | **pass** | 「理由の詳細」展開で `reasonPoints` 2件表示。本実行の応答に `reasonDetail` は無し（任意） |
+| S7 | **pass** | 商品詳細で名称・¥4,320・外部EC・結果一覧へ戻るを確認 |
+| S8 | **pass** | Feedback モーダルで「良い」送信 →「フィードバックを受け付けました。」 |
 
-シナリオ定義自体はチェックリスト §9 に反映済み。
+| 項目 | 値 |
+| ---- | ---- |
+| `recommendationResultId` | `8723c5d6-7514-4195-8ba4-8095a3fb55dc` |
+| `traceId` | `scr-reg-e2e-s5-001` |
+| `resultItemCount` | 1 |
 
 ## 環境
 
 | 項目 | 値 |
 | ---- | ---- |
-| develop tip（Definition 起点） | `e138f977`（SCR-005 Epic #1409） |
-| Docker | **未起動** |
-| DB / Redis / api / reco / web | 未確認（Docker 依存） |
+| develop tip（アプリ） | `4e795065`（Reason Postgres #1417 含む） |
+| Docker | OK |
+| DB / Redis / api / reco / web | 起動確認済み |
+
+### 実行時メモ（事実）
+
+- Cursor ブラウザの `http://localhost:3000` が古い `page.js`（Feedback「準備中」時代）を返す事象あり
+- 本実行は WSL IP（`172.28.140.226:3000`）経由で現行 chunk を確認
+- API 疎通のため一時的に `NEXT_PUBLIC_API_BASE_URL` / `CORS_ALLOWED_ORIGINS` に同 IP を追加。実行後 `.env` は復元（commit なし）
 
 ## 次（推論）
 
-- Docker Desktop（WSL integration）起動後に §9.2 を実施し、合否を更新するのが妥当
-- 本 Task は「シナリオ正本化 + 未実施理由明示」までを先行し、実行証跡は追随 commit でもよい
-- Playwright（D2）は別後続のまま
+- 手動回帰証跡としては充足。Playwright（D2）は別後続のまま
+- localhost 経由のブラウザキャッシュ／WSL relay の挙動は、ローカル E2E 時の注意点として残す

@@ -153,7 +153,8 @@ D1 本体（#1330）は Close 済み。residual 解消は Epic #1344 で追跡�
 | 2026-07-16 | #1345: Matching 0 件後の empty 経路修正内容を S2 に追記（手動再検証は未実施） |
 | 2026-07-16 | #1346: SCR-001 HomePage の `next/link` 起因 client 例外を native `<a>` CTA で解消 |
 | 2026-07-16 | S2 手動再検証: empty 200 / SCR-009 UI / 条件変更復帰を確認し `pass` に更新 |
-| 2026-07-17 | §9 SCR-005〜007 回帰シナリオ（S5' / S7 / S8）を追加。実行は Docker 未起動で `blocked`（#1418 / #1419） |
+| 2026-07-17 | §9 SCR-005〜007 回帰シナリオ（S5' / S7 / S8）を追加。当初 Docker 未起動で `blocked`（#1418 / #1419） |
+| 2026-07-17 | §9.3: Docker 復旧後に S5' / S7 / S8 を手動実施しすべて `pass` に更新 |
 
 ---
 
@@ -187,21 +188,24 @@ D1（#1330）完了後に SCR-005 / SCR-006 / SCR-007 および Public `reasonPo
 
 | ID | 結果 | 実施メモ |
 | ---- | ---- | -------- |
-| S5' | `blocked` | 2026-07-17: Docker daemon 未起動（`Cannot connect to the Docker daemon`）。web/api/reco 疎通不可のため未実施 |
-| S7 | `blocked` | 同上 |
-| S8 | `blocked` | 同上 |
+| S5' | `pass` | 結果カードで「理由の詳細」展開。`reasonPoints` 2件を箇条書き確認。本実行の PUB-002 応答に `reasonDetail` は無し（任意・空時は points 優先で問題なし） |
+| S7 | `pass` | `/items/{itemId}?fromResultId=…` で商品名・¥4,320・外部EC・「結果一覧へ戻る」を確認 |
+| S8 | `pass` | SCR-006 から Feedback モーダル →「良い」→ 送信。Success「フィードバックを受け付けました。」 |
 
 | 項目 | 記録 |
 | ---- | ---- |
-| 実施日時 | 2026-07-17（シナリオ定義・環境確認まで） |
-| Branch / commit | Task Branch `test/task-1419-scr-post-mvp-regression-e2e-execution` |
-| Docker | **未起動**（WSL `docker.sock` 接続不可） |
-| 再実施条件 | Docker Desktop（WSL integration）起動後に §9.2 を実施し、本表の合否を更新する |
-| 残リスク | develop 上の SCR-005〜007 表示・Feedback 送信の手動回帰証跡が未取得 |
+| 実施日時 | 2026-07-17 |
+| Branch / commit | develop tip `4e795065`（Reason Postgres #1417 含む）上でアプリ起動。証跡更新は Task Branch |
+| `recommendationResultId` | `8723c5d6-7514-4195-8ba4-8095a3fb55dc` |
+| `traceId` | `scr-reg-e2e-s5-001` |
+| `resultItemCount` | **1**（上品な焼き菓子ギフトセット / ¥4,320） |
+| Docker / DB / Redis / web / api / reco | 起動確認済み |
+| 補足 | Cursor ブラウザの `localhost:3000` が古い chunk を返す場合あり。本実行は WSL IP（`172.28.140.226`）経由で現行 develop を確認。API は一時的に同 IP + CORS 追加で疎通（`.env` は実行後に復元。commit なし） |
 
 ### 9.4 Residual
 
 | 内容 | 扱い |
 | ---- | ---- |
-| S5' / S7 / S8 の手動再実施 | Docker 復旧後に本 Task または追随 commit で合否更新 |
+| S5' / S7 / S8 の手動再実施 | **完了**（2026-07-17 `pass`） |
 | S1〜S4 / S6 の全再実行 | 任意（本回帰の必須ではない） |
+| Playwright（D2） | 後続 |
