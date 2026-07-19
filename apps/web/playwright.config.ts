@@ -21,6 +21,13 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "off",
+    launchOptions: {
+      // WSL / 欠落 shared library 環境向け。必要時のみ executablePath を上書き。
+      args: ["--no-sandbox", "--disable-gpu"],
+      ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+        ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+        : {}),
+    },
   },
   projects: [
     {
