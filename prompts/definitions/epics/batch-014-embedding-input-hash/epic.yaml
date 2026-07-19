@@ -1,0 +1,262 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-014-embedding-input-hash"
+  title: "BATCH-014:Embedding入力hash算出Batch"
+  summary: "BATCH-014（Embedding入力hash算出Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。商品メタデータから item_text_context を構築し、決定論的に embedding_input_hash（SHA-256）を算出して handoff / Queue 更新する。物理書込 IF は IF-DB-BATCH-015（Embedding入力hash保存）だが、item_embedding への DML は後続 BATCH-015 が実施し、本 Batch 自身は DML しない。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 意味生成パイプラインの Embedding 入力 hash 算出段。識別子単位 Epic（1 Batch ID = 1 Epic）。
+  先行 BATCH-013（Feature正規化Batch）は develop merge 済み（#1455 / PR #1466）。
+  item_embedding / item_generation_queue / model_version テーブル定義は整備済み。
+  物理書込 IF は IF-DB-BATCH-015（Embedding入力hash保存: embedding_input_hash / item_text_context）。
+  IF-DB-BATCH-014 は Feature正規化結果保存（BATCH-013）であり混同禁止（Batch ID と IF 番号は +1 ズレ）。
+  embedding_input_hash の永続化列は item_embedding.embedding_input_hash であり、
+  物理 DML（INSERT/UPSERT）は後続 BATCH-015 が実施する。BATCH-014 自身は item_embedding へ DML せず、
+  hash 算出結果を handoff し item_generation_queue を更新する（BATCH-011 ↔ BATCH-012 と同型）。
+  hash 方式は canonicalize（キーソート・trim・配列ソート・null 正規化）+ SHA-256 UTF-8 小文字 64hex。
+  MVP は embedding_source_type = item_text_context 固定で Semantic Concept を文脈に含めない。
+  embedding_source_version は batch 層概念で物理列なし。config/version 解決は MOD-RECO-003。
+  Batch は HTTP API 化しないため Contract Gate は不要。後続は BATCH-015。
+
+objective: |
+  BATCH-014 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: 仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-014 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-014-embedding-input-hash/**）を整理する"
+  - "Contract Gate 不要方針を明示する"
+  - "IF-DB-BATCH-015 / IF-DB-BATCH-014（BATCH-013）境界と、BATCH-014 が item_embedding へ DML しない責務境界を整理する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001〜013 / 015〜019）の仕様書・実装・テスト（先行・後続は参照のみ）"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）・DB schema / migration（既存定義の参照は可）"
+  - "本番リリース作業"
+  - "apps/reco 本体の破壊変更（MOD-RECO-003 は呼び出しのみ。必要なら in-process アダプタを batch 側に置く）"
+  - "item_embedding への物理 DML（BATCH-015）"
+  - "Item Embedding 生成本体・OpenAI Embedding 呼び出し（BATCH-015）"
+  - "親 batch-item-meaning-generation.yml / retry-failed チェーン全体改修（独立子 workflow 追加は可）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-014 の Batch ID・処理概要・入出力・依存・MVP対象・§6.3 再生成/skip 条件"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "hash 算出・冪等・skip・Config解決方針"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "meaning-generation チェーン内の位置"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "013 → 014 → 015 の依存"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-015（物理書込）/ IF-DB-BATCH-014（BATCH-013 混同禁止）"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-035 Item Text Context Builder / MOD-RECO-003 Config Version Resolver"
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+      purpose: "embedding_input_hash 列・冪等キー・§5.8 DML 責務境界（BATCH-014 は DML なし）"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "generation_type=embedding・queue_status 更新・二重 processing 禁止"
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+      purpose: "embedding_model_version_id = model_version_id（model_type=embedding, is_current）"
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: true
+      purpose: "hash 算出枠組み・冪等・skip・queue 経路・handoff 方針（踏襲元）"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / Task 命名"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-014:Embedding入力hash算出Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（仕様書 / 実装 / UT）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-014:Embedding入力hash算出Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "IF-DB-BATCH-015 / IF-DB-BATCH-014（BATCH-013）の混同防止と item_embedding DML 非担当が明記されている"
+  - "epic_scope.artifact_id が BATCH-014 である"
+
+branch:
+  no_branch: false
+  summary: "batch-014-embedding-input-hash"
+  name: "feature/epic-1467-batch-014-embedding-input-hash"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-19"
+    due_date: "2026-07-22"
+
+issue:
+  number: 1467
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-014"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-014_*"
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-embedding-input-hash*.yml"
+    - "prompts/definitions/epics/batch-014-embedding-input-hash/**"
+    - "prompts/definitions/tasks/batch-014-embedding-input-hash/**"
+    - "prompts/definitions/reviews/batch-014-embedding-input-hash/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1455
+      title: "[Epic]BATCH-013:Feature正規化Batch"
+      purpose: "先行 Feature 正規化。develop merge 済み"
+    - issue: 516
+      title: "item_embedding テーブル定義"
+      purpose: "embedding_input_hash 列・冪等キー正本（CLOSED）"
+  issues: []
+  prs:
+    - number: 1466
+      purpose: "BATCH-013 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-013-feature-normalization"
+  blocks:
+    - "epic-batch-015-item-embedding"
+  exclusive_files:
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "依存 Epic BATCH-013 が CLOSED であること"
+    - "item_embedding / item_generation_queue / model_version DDL が develop に存在すること"
+    - "BATCH-011 hash 算出仕様書（踏襲元）が develop に存在すること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope が BATCH-014 に閉じているか"
+    - "IF-DB-BATCH-015 / IF-DB-BATCH-014（BATCH-013）の混同がないか"
+    - "BATCH-014 が item_embedding へ DML しない責務境界（物理書込は BATCH-015）が明示されているか"
+    - "BATCH-015 本体 / apps/reco 破壊変更を含めていないか"
+    - "Contract Gate 不要方針"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "冪等キーを物理 unique 3列（item_id + model_version_id + embedding_input_hash）とし、embedding_source_version は Queue トリガーとして扱うか"
+  - "MVP payload に Semantic Concept を含めない（embedding_source_type=item_text_context 固定）方針を確定するか"
+  - "Embedding Input Hash Calculator の MOD-ID を採番するか（未採番のまま §4.1 記述か）"
+  - "独立子 workflow（batch-embedding-input-hash.yml）を MVP 初期の正とするか（BATCH-011/013 前例）"
+
+notes:
+  - "後続 Task: batch-spec → implementation → unit-test → Epic PR"
+  - "Issue #1467"
