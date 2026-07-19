@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1475
   issue:
     number: 1474
   task_definition: "prompts/definitions/tasks/batch-014-embedding-input-hash/unit-test.yaml"
