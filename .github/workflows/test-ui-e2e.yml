@@ -79,7 +79,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          # Playwright 1.52.0 は Node 24 で worker 起動ハングが再現するため、
+          # UI E2E runner は LTS 22 に固定する（切り分け結果 / Epic #1464）。
+          node-version: "22"
           cache: pnpm
 
       - name: Install dependencies
