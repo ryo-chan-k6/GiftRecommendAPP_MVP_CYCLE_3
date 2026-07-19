@@ -1,0 +1,142 @@
+name: Batch Item Feature
+
+# BATCH-012 Item Feature生成（独立子 workflow）
+# 正本: BATCH-012 バッチ仕様書 §18.1 No.1 — workflow_call / workflow_dispatch
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max queue rows (default 1000)"
+        required: false
+        type: string
+        default: "1000"
+      source:
+        description: "source filter (default rakuten)"
+        required: false
+        type: string
+        default: "rakuten"
+      queue_batch_size:
+        description: "Claim/process batch size (default 100)"
+        required: false
+        type: string
+        default: "100"
+      item_ids:
+        description: "Comma-separated item_id list"
+        required: false
+        type: string
+        default: ""
+      queue_ids:
+        description: "Comma-separated item_generation_queue_id list"
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max queue rows (default 1000)"
+        required: false
+        type: string
+        default: "1000"
+      source:
+        description: "source filter (default rakuten)"
+        required: false
+        type: string
+        default: "rakuten"
+      queue_batch_size:
+        description: "Claim/process batch size (default 100)"
+        required: false
+        type: string
+        default: "100"
+      item_ids:
+        description: "Comma-separated item_id list"
+        required: false
+        type: string
+        default: ""
+      queue_ids:
+        description: "Comma-separated item_generation_queue_id list"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: batch-item-feature
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  item-feature:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-012 scaffold demo
+        # Real DB not enabled. Secrets must never be printed.
+        # IF-SHARED-002 は in-process import（Reco Hosting HTTP ではない）。
+        # item_semantic は READ ONLY。Queue INSERT / normalized 更新は禁止。
+        # feature_input_hash は BATCH-011 handoff を使用し再算出しない。
+        working-directory: apps/batch
+        run: |
+          MAX_ARGS=()
+          if [ -n "${{ inputs.max_items }}" ]; then
+            MAX_ARGS+=(--max-items "${{ inputs.max_items }}")
+          fi
+          SOURCE_ARGS=()
+          if [ -n "${{ inputs.source }}" ]; then
+            SOURCE_ARGS+=(--source "${{ inputs.source }}")
+          fi
+          BATCH_ARGS=()
+          if [ -n "${{ inputs.queue_batch_size }}" ]; then
+            BATCH_ARGS+=(--queue-batch-size "${{ inputs.queue_batch_size }}")
+          fi
+          ITEM_ARGS=()
+          if [ -n "${{ inputs.item_ids }}" ]; then
+            ITEM_ARGS+=(--item-ids "${{ inputs.item_ids }}")
+          fi
+          QUEUE_ARGS=()
+          if [ -n "${{ inputs.queue_ids }}" ]; then
+            QUEUE_ARGS+=(--queue-ids "${{ inputs.queue_ids }}")
+          fi
+          uv run python -m batch.application.item_feature \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${MAX_ARGS[@]}" \
+            "${SOURCE_ARGS[@]}" \
+            "${BATCH_ARGS[@]}" \
+            "${ITEM_ARGS[@]}" \
+            "${QUEUE_ARGS[@]}"
