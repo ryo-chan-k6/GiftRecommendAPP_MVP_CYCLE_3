@@ -1,7 +1,7 @@
 name: Batch Feature Normalization
 
 # BATCH-013 Feature正規化（独立子 workflow）
-# 正本: BATCH-013 バッチ仕様書 §18.2 No.1 — workflow_call / workflow_dispatch（親接続は本 Task 外）
+# 正本: BATCH-013 バッチ仕様書 §18.1 No.10（Human 承認済み）— workflow_call / workflow_dispatch（親接続は本 Epic 外）
 
 on:
   workflow_call:
