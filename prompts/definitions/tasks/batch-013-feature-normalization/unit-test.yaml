@@ -1,0 +1,153 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-013-feature-normalization-unit-test"
+  title: "BATCH-013:Feature正規化Batch単体テスト"
+  summary: "BATCH-013 実装に対し、仕様書 §16 の unit 観点カバレッジを整理・拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-013:Feature正規化Batch"
+  epic_issue_number: 1455
+  epic_branch: "feature/epic-1455-batch-013-feature-normalization"
+  related_issues:
+    - number: 1460
+      purpose: "実装（CLOSED）"
+    - number: 1456
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1461
+      purpose: "実装 MERGED"
+    - number: 1458
+      purpose: "仕様書 MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  実装 Task #1460 / PR #1461 は Epic Branch merge 済み。§16 unit 観点を拡充する。
+  既存 test_feature_normalization.py には実装タスクで作成された 23 件の最小 UT が存在する。
+
+objective: |
+  BATCH-013 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串を完了可能にする。
+
+scope:
+  - "§16 unit 観点カバレッジ表を PR 本文に記載"
+  - "test_feature_normalization.py 拡充"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "integration test（実 DB）"
+  - "Epic PR develop merge（Human）"
+  - "機能追加を主目的とする実装変更"
+  - "apps/reco / BATCH-014 以降"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-013_Feature正規化バッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+  files:
+    - path: "apps/batch/tests/unit/application/test_feature_normalization.py"
+      required: true
+      purpose: "既存最小 UT（23 件）"
+    - path: "apps/batch/src/batch/application/feature_normalization/**"
+      required: true
+      purpose: "テスト対象実装"
+
+output:
+  files:
+    - path: "prompts/definitions/tasks/batch-013-feature-normalization/unit-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-013-feature-normalization/unit-test/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_feature_normalization.py"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "test/task-1462-batch-013-feature-normalization-unit-test"
+  summary: "batch-013-feature-normalization-unit-test"
+  base: "feature/epic-1455-batch-013-feature-normalization"
+  target: "feature/epic-1455-batch-013-feature-normalization"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1462
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_feature_normalization.py"
+  conflict_risk: "low"
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-013 §16）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_feature_normalization.py -q --tb=short"
+    - "cd apps/batch && uv run python -m pytest tests/unit/ -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock を正とする"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§16 対応表"
+    - "実 DB / secret 非依存"
+    - "PR target"
+    - "IF-DB-BATCH-014 / IF-SHARED-003 の観点カバレッジ"
+    - "raw 不変・normalization_distribution_metric 非書込の確認"
+    - "sigmoid・item_meaning 射影・skip 条件の確認"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "後続: Epic PR → develop"

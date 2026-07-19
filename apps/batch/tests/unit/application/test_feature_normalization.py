@@ -385,3 +385,173 @@ def test_scaffold_settings_include_feature_normalization_defaults() -> None:
     assert settings.batch_feature_normalization_max_items == 1000
     assert settings.batch_feature_normalization_source == "rakuten"
     assert settings.batch_feature_normalization_queue_batch_size == 100
+
+
+# --- §16 カバレッジ拡充（単体テスト Task #1462） ---
+
+
+def test_phase_order_follows_spec_section_8_2() -> None:
+    """§8.2: Phase が仕様書順（plan→…→finalize）で完走する。"""
+    repos, _ = _repos()
+    result = _job(repos).run(job_run_id="run-phase-order")
+    # 期待順序の部分列として現れる
+    idx = [result.completed_phases.index(p) for p in FEATURE_NORMALIZATION_PHASES]
+    assert idx == sorted(idx)
+    assert result.completed_phases[0] == "plan"
+    assert result.completed_phases[-1] == "finalize"
+
+
+def test_skip_not_applied_on_normalized_hash_mismatch() -> None:
+    """§16 No.13: normalized の hash が現行 hash と不一致なら skip しない。"""
+    repos, _ = _repos(normalized={("it_1", _VERSION): _normalized_axes(digest="d" * 64)})
+    result = _job(repos).run(job_run_id="run-hash-noskip")
+    assert result.normalized_count == 1
+    assert result.skipped_count == 0
+
+
+def test_skip_not_applied_when_normalized_axes_incomplete() -> None:
+    """§16 No.13: normalized が 8 軸未満なら skip しない。"""
+    axes = _normalized_axes()[:-1]  # 7 軸のみ
+    repos, _ = _repos(normalized={("it_1", _VERSION): axes})
+    result = _job(repos).run(job_run_id="run-incomplete-noskip")
+    assert result.normalized_count == 1
+    assert result.skipped_count == 0
+
+
+def test_skip_not_applied_when_normalized_value_missing() -> None:
+    """§16 No.13: normalized 値が無効（has_normalized_value=False）なら skip しない。"""
+    axes = [
+        ExistingNormalizedAxis(
+            feature_code=code,
+            feature_input_hash=_HASH,
+            feature_normalization_version_id=DEFAULT_NORMALIZATION_VERSION,
+            has_normalized_value=(code != "safety"),
+        )
+        for code in MVP_FEATURE_CODES
+    ]
+    repos, _ = _repos(normalized={("it_1", _VERSION): axes})
+    result = _job(repos).run(job_run_id="run-nullnorm-noskip")
+    assert result.normalized_count == 1
+    assert result.skipped_count == 0
+
+
+def test_queue_marked_skipped_writes_status_not_keep_processing() -> None:
+    """§16 No.14: skip 時は queue_status=skipped（keep_processing でない）。"""
+    repos, db = _repos(normalized={("it_1", _VERSION): _normalized_axes()})
+    _job(repos).run(job_run_id="run-skip-queue")
+    ops = [
+        str(p.get("op"))
+        for c in db.write_calls
+        if c["table"] == "item_generation_queue"
+        for p in c["rows"]
+    ]
+    assert "update_status" in ops
+    assert "normalize_success_keep_processing" not in ops
+
+
+def test_queue_keep_processing_on_success() -> None:
+    """§16 No.14: 成功時は processing 維持（keep_processing op）。"""
+    repos, db = _repos()
+    _job(repos).run(job_run_id="run-keep")
+    ops = [
+        str(p.get("op"))
+        for c in db.write_calls
+        if c["table"] == "item_generation_queue"
+        for p in c["rows"]
+    ]
+    assert "normalize_success_keep_processing" in ops
+
+
+def test_batch_already_running_guard() -> None:
+    """§13: 多重起動は GRS-BAT-003 で拒否する。"""
+    from batch.application.job_run import ScaffoldJobRunTracker
+
+    tracker = ScaffoldJobRunTracker()
+    tracker.start(batch_id=BATCH_ID, job_run_id="prev-running")
+    repos, _ = _repos()
+    job = FeatureNormalizationJob(
+        repositories=repos,
+        normalizer=build_scaffold_adapter(),
+        job_run_tracker=tracker,
+    )
+    result = job.run(job_run_id="run-dup")
+    assert "GRS-BAT-003" in result.error_codes
+    assert result.normalized_count == 0
+
+
+def test_partial_success_across_multiple_items() -> None:
+    """§16 No.17 / §11: 1 件成功 + 1 件 raw 欠損で partially_succeeded。"""
+    queues = [
+        _queue(qid="igq_ok", item_id="it_ok"),
+        _queue(qid="igq_ng", item_id="it_ng"),
+    ]
+    items = [_item(item_id="it_ok"), _item(item_id="it_ng")]
+    raw = {
+        ("it_ok", _VERSION): _raw_axes(),
+        ("it_ng", _VERSION): _raw_axes(drop="emotion"),
+    }
+    repos, _ = _repos(
+        queues=queues,
+        items=items,
+        raw_features=raw,
+        config_versions={"it_ok": _VERSION, "it_ng": _VERSION},
+    )
+    result = _job(repos).run(job_run_id="run-partial")
+    assert result.status == "partially_succeeded"
+    assert result.normalized_count == 1
+    assert result.failed_count == 1
+    assert "GRS-BAT-002" in result.error_codes
+
+
+def test_item_ids_filter_selects_subset() -> None:
+    """§6.4 / §9.1: item_ids 指定で対象を絞り込める。"""
+    queues = [
+        _queue(qid="igq_a", item_id="it_a"),
+        _queue(qid="igq_b", item_id="it_b"),
+    ]
+    items = [_item(item_id="it_a"), _item(item_id="it_b")]
+    raw = {("it_a", _VERSION): _raw_axes(), ("it_b", _VERSION): _raw_axes()}
+    repos, _ = _repos(
+        queues=queues,
+        items=items,
+        raw_features=raw,
+        config_versions={"it_a": _VERSION, "it_b": _VERSION},
+    )
+    result = _job(repos).run(job_run_id="run-filter", item_ids=["it_a"])
+    assert result.planned_queue_count == 1
+    assert result.normalized_count == 1
+    assert repos.queues["igq_b"]["queue_status"] == "processing"  # 未処理（seed のまま）
+
+
+def test_fixed_sigmoid_does_not_saturate_within_raw_domain() -> None:
+    """§14: raw∈[0,1]・center=0.5・k=4.0 では出力は sigmoid(±2)=約0.12〜0.88 に収まり飽和しない。"""
+    values = {code: 1.0 for code in MVP_FEATURE_CODES}
+    repos, _ = _repos(raw_features={("it_1", _VERSION): _raw_axes(values=values)})
+    result = _job(repos).run(job_run_id="run-saturate")
+    # 固定 sigmoid（k=4）は raw=1.0 でも sigmoid(2)≈0.881 で飽和境界(0.99)に達しない
+    assert result.saturate_count == 0
+    for row in repos.normalized_update_rows:
+        assert 0.0 < row.normalized_feature_value < 1.0
+
+
+def test_normalized_update_preserves_idempotent_key() -> None:
+    """§10.1: normalized UPDATE は raw と同一の 5 列冪等キーを保持する。"""
+    repos, _ = _repos()
+    _job(repos).run(job_run_id="run-key")
+    for row in repos.normalized_update_rows:
+        assert row.feature_input_hash == _HASH
+        assert row.feature_normalization_version_id == DEFAULT_NORMALIZATION_VERSION
+        assert row.semantic_config_version_id == _VERSION
+
+
+def test_no_secret_like_values_in_db_writes() -> None:
+    """§15: DB 書込 payload に接続情報・認証情報を含めない。"""
+    repos, db = _repos()
+    _job(repos).run(job_run_id="run-secret")
+    forbidden = ("password", "secret", "token", "postgres://", "postgresql://", "@")
+    for call in db.write_calls:
+        for payload in call["rows"]:
+            for value in payload.values():
+                text = str(value).lower()
+                for needle in forbidden:
+                    assert needle not in text
