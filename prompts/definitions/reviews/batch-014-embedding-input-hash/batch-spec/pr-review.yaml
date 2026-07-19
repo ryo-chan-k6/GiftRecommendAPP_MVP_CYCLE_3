@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-014-embedding-input-hash-batch-spec-pr"
+  title: "BATCH-014 Embedding入力hash算出バッチ仕様書 PRレビュー"
+  summary: "BATCH-014 バッチ仕様書 Task の PR を AI Review する。IF 混同防止と BATCH-013/015 境界、hash 算出方式を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1468-batch-014-embedding-input-hash-batch-spec"
+  base: "feature/epic-1467-batch-014-embedding-input-hash"
+  target: "feature/epic-1467-batch-014-embedding-input-hash"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1468
+  task_definition: "prompts/definitions/tasks/batch-014-embedding-input-hash/batch-spec.yaml"
+  source_branch: "docs/task-1468-batch-014-embedding-input-hash-batch-spec"
+  target_branch: "feature/epic-1467-batch-014-embedding-input-hash"
+  parent_epic_issue: "[Epic]BATCH-014:Embedding入力hash算出Batch"
+  parent_epic_branch: "feature/epic-1467-batch-014-embedding-input-hash"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-DB-BATCH-015 と IF-DB-BATCH-014（BATCH-013）の混同がない"
+  - "item_embedding への物理 DML は BATCH-015 責務・本 Batch は SELECT のみと明記"
+  - "embedding_input_hash が canonicalize + SHA-256（64hex）で決定論的"
+  - "MVP は embedding_source_type=item_text_context 固定・Semantic Concept 非包含"
+  - "冪等キーが item_id + model_version_id + embedding_input_hash（3列）と整合"
+  - "§18 で確定 / 残確認（Human）が区別されている"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1467"
+  - "Issue #1468"
