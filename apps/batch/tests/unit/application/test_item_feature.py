@@ -292,18 +292,27 @@ def test_scaffold_settings_include_item_feature_defaults() -> None:
 def test_if_shared_002_uses_in_process_adapter_not_http() -> None:
     """§16 No.3: IF-SHARED-002 は in-process Python import で MOD-RECO-027 相当を呼び出す。
 
-    HTTP API 化していないことを確認する。Scaffold アダプタが正常に動作することで、
-    in-process 呼び出しが成立していることを検証する。
+    HTTP API 化していないことを確認する。Port 互換の in-process アダプタが
+    HTTP client 属性を持たず、直接 generate できることを検証する。
     """
+    from batch.application.item_feature.adapter import (
+        ItemFeatureGeneratorPort,
+        ScaffoldItemFeatureAdapter,
+    )
+    from batch.application.item_feature.models import FeatureGenerationContext
+
     repos, _ = _repos()
     adapter = build_scaffold_adapter(concept_feature_rules=_RULES)
-    
-    # Protocol 互換であることを確認
-    assert hasattr(adapter, "generate_item_feature")
-    assert callable(adapter.generate_item_feature)
-    
+
+    # Protocol 互換・Scaffold 実装であること（HTTP client ではない）
+    assert isinstance(adapter, ScaffoldItemFeatureAdapter)
+    port: ItemFeatureGeneratorPort = adapter
+    assert callable(port.generate_item_feature)
+    assert not hasattr(adapter, "base_url")
+    assert not hasattr(adapter, "session")
+    assert not hasattr(adapter, "http_client")
+
     # in-process で生成できることを確認（HTTP を使わない）
-    from batch.application.item_feature.models import FeatureGenerationContext
     ctx = FeatureGenerationContext(
         trace_id="test-trace",
         item_id="it_1",
@@ -318,10 +327,11 @@ def test_if_shared_002_uses_in_process_adapter_not_http() -> None:
 
 
 def test_rule_based_generation_without_llm() -> None:
-    """§16 No.5: MVP はルールベース。LLM / Scaffold を呼ばず Concept Rule のみで生成する。
+    """§16 No.5: MVP はルールベース。LLM を呼ばず Concept Rule のみで生成する。
 
-    ScaffoldItemFeatureAdapter が LLM を呼び出さず、ルールベースのみで
-    8 軸を生成することを確認する。
+    仕様書 §18.1 の「Scaffold 不要」は LLM Scaffold を指す。
+    本実装の ScaffoldItemFeatureAdapter は in-process のルールベース実装であり、
+    LLM を呼び出さず 8 軸を生成することを確認する。
     """
     repos, _ = _repos(
         semantics=[_semantic(concepts=[
@@ -330,19 +340,19 @@ def test_rule_based_generation_without_llm() -> None:
         ])]
     )
     _job(repos).run(job_run_id="run-rule-based")
-    
+
     # 8 軸が生成されていることを確認
     assert repos.item_feature_write_count == len(MVP_FEATURE_CODES)
-    
+
     # formality と emotion は baseline (0.5) から変化しているはず
     # （ルールベース計算: 0.5 + delta×weight×confidence）
     formality_row = next(r for r in repos.upsert_rows if r.feature_code == "formality")
     emotion_row = next(r for r in repos.upsert_rows if r.feature_code == "emotion")
-    
+
     # baseline から変化していることを確認（ルールが適用されている）
     assert formality_row.raw_feature_value != 0.5
     assert emotion_row.raw_feature_value != 0.5
-    
+
     # [0.0, 1.0] 範囲内であることを確認
     assert 0.0 <= formality_row.raw_feature_value <= 1.0
     assert 0.0 <= emotion_row.raw_feature_value <= 1.0
