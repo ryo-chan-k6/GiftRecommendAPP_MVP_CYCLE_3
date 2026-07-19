@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service / batch      |
 | MVP対象        | `○`                                      |
 | 作成日         | 2026-07-19                               |
-| 更新日         | 2026-07-19                               |
+| 更新日         | 2026-07-20                               |
 
 ---
 
@@ -234,7 +234,20 @@ MVP の `embedding_source_type` は **`item_text_context` 固定**であり、Se
 | semantic concept | **×**（MVP。将来 `item_text_with_semantic` で拡張） |
 | reviewAverage / reviewCount / price / rank / imageUrl / availability / itemUrl | ×（`バッチ処理一覧` §6.3 再生成除外） |
 
-> 含める項目の最終的な範囲・整形（区切り・正規化）は実装 Task で確定する（§18.2 No.2）。
+> 含める項目の最終的な範囲・整形（区切り・正規化）は実装 Task で確定する（§18.2 No.2）。以下 §9.2.1 は確定前の**実装 Task 向け推奨**であり、実装 Task で最終確定する。
+
+#### 9.2.1 整形ルール推奨（実装 Task 確定前提）
+
+hash 決定論性は §9.3 の構造化 JSON + canonicalize で担保済み。以下は「空文字 vs null」「Unicode 正規化形式」など環境差で hash が揺れうる細目の**推奨たたき台**であり、実装 Task の acceptance で確定する。
+
+| 観点 | 推奨 |
+| ---- | ---- |
+| 含有項目 | §9.2 の ○ 項目に固定（`item_id` / `item_name` / `catchcopy` / `item_caption` / `genre_id` / `genre_name` / `attributes[]` / `tags[]` / `embedding_source_type` / `embedding_source_version`） |
+| 文字列正規化 | `trim` + Unicode 正規化 `NFKC` + 連続空白の単一化 |
+| null / 空 | `null` と空文字（trim 後空）は同一扱いで `null` に正規化 |
+| 配列（attributes / tags） | 要素 trim → 重複除去 → 昇順ソート → 空配列は `[]` |
+| キー順序 | canonical JSON でキー昇順（§9.3 準拠） |
+| 除外項目 | price / review / rank / imageUrl 等は payload に載せない（§9.2 準拠） |
 
 ### 9.3 context / canonicalize / hash
 
@@ -393,6 +406,7 @@ hash 算出後に判定する。Queue を `skipped` にするのは **同一入�
 | 日付 | 変更内容 | 関連 |
 | ---- | -------- | ---- |
 | 2026-07-19 | 初版作成 | Epic #1467 / Task #1468 |
+| 2026-07-20 | §18.2 残未決の推奨案反映（No.1 独立 workflow 完結方針の明記 / No.2 整形ルール推奨 §9.2.1 追加） | Task #1468 |
 
 ---
 
@@ -419,8 +433,8 @@ hash 算出後に判定する。Queue を `skipped` にするのは **同一入�
 
 | No | 事項 |
 | -: | ---- |
-| 1 | 親 meaning-generation からの `workflow_call` タイミング（Epic 外） |
-| 2 | `item_text_context` に含める具体項目範囲・整形ルール（実装 Task で詳細化） |
+| 1 | 親 meaning-generation からの `workflow_call` タイミング（Epic 外）。本 Epic は独立子 workflow（`workflow_dispatch` / `retry-failed` / BATCH-013 後続）で完結させ、接続確定は meaning-generation チェーン統合 Task に委ねる（BATCH-011 / 013 と同方針） |
+| 2 | `item_text_context` に含める具体項目範囲・整形ルール（実装 Task で詳細化）。推奨たたき台は §9.2.1 参照 |
 
 ---
 
