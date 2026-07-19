@@ -60,6 +60,8 @@ output:
   files:
     - "ai-logs/experiments/2026-07-17-lane-1e-playwright-d2.md"
     - "apps/web/playwright.config.ts"
+    - "prompts/definitions/epics/lane-1e-playwright-d2-s1-evidence/epic.yaml"
+    - "prompts/definitions/reviews/lane-1e-playwright-d2-s1-evidence/epic/pr-review.yaml"
   tests: []
   generated:
     expected: false
@@ -106,6 +108,7 @@ epic_scope:
     - "apps/web/playwright.config.ts"
     - "ai-logs/experiments/**"
     - "prompts/definitions/epics/lane-1e-playwright-d2-s1-evidence/**"
+    - "prompts/definitions/reviews/lane-1e-playwright-d2-s1-evidence/**"
   forbidden_paths:
     - "apps/batch/**"
     - "apps/api/**"
