@@ -4,7 +4,7 @@ definition_type: "epic"
 epic:
   id: "epic-lane-1e-playwright-ui-e2e-gate"
   title: "レーン1e:Playwright UI E2E（S1）CIゲート化"
-  summary: "D2 で導入した Playwright S1 smoke を GHA 上で自動実行する workflow を新設し、apps/web/** 変更 PR と workflow_dispatch で可視化する。既存 test-system.yml のスタック起動を踏襲する。"
+  summary: "D2 で導入した Playwright S1 smoke を GHA 上で自動実行する workflow を新設する。段階導入（方針B）として、S1 主導線の path 変更 PR・ラベル ui-e2e 付与 PR・nightly・workflow_dispatch で実行する。既存 test-system.yml のスタック起動を踏襲する。"
 
 work_mode: "ai-agent"
 
@@ -34,11 +34,16 @@ background: |
 
 objective: |
   GHA runner 上で ephemeral Supabase + Redis + api + reco + web を起動し、Playwright S1 happy path を
-  自動実行する workflow を新設する。apps/web/** 変更 PR と workflow_dispatch で実行し、S1 が skip されず
-  実行されたことを検証する。
+  自動実行する workflow を新設する。段階導入（方針B）として heavy job の実行対象を S1 主導線に絞り、
+  S1 が skip されず実行されたことを検証する。
+  実行トリガは (a) S1 主導線 path 変更 PR、(b) ラベル ui-e2e 付与 PR（強制実行）、(c) nightly（schedule）、
+  (d) workflow_dispatch とする。
 
 scope:
   - ".github/workflows/test-ui-e2e.yml 新設（test-system.yml のスタック起動を踏襲）"
+  - "decide ジョブによる実行判定（dorny/paths-filter@v3, ci.yml と同方式）"
+  - "S1 主導線 path 絞り込み（recommendations 画面 / 入力・結果 feature / API client / generated / contracts / e2e / 本 workflow）"
+  - "ラベル ui-e2e 付与 PR の強制実行（opt-in）と nightly（schedule）実行"
   - "Playwright browser install（--with-deps chromium）"
   - "web build + start + readiness 待機、WEB_BASE_URL / API_BASE_URL / RECO_BASE_URL 連携"
   - "S1 が skip されず passed したことの検証ステップ"
@@ -47,6 +52,7 @@ scope:
 out_of_scope:
   - "S2〜S8 の自動化"
   - "branch protection での必須(required/blocking)化（Human 判断・repo設定）"
+  - "全 apps/web / packages 変更での無条件実行（段階導入のため主導線に限定）"
   - "apps/api / apps/reco / apps/batch / OpenAPI / migration のロジック変更"
   - "secret 実値の追加"
 
@@ -88,6 +94,8 @@ deliverables:
 acceptance_criteria:
   - "GHA 上で ephemeral stack + web を起動し S1 happy path が passed する"
   - "S1 が skip された場合は job が fail する（ゲートとして有効）"
+  - "S1 主導線 path 変更・ラベル ui-e2e・nightly・workflow_dispatch のいずれかで heavy job が起動する"
+  - "主導線外の PR かつ ラベルなしでは ui-e2e が skip される（decide.run=false / 無駄実行の抑制）"
   - "playwright-report / logs が artifact として保存される"
   - "secret 実値を含まない（mock のみ）"
   - "PR 必須化は Human 判断事項として PR / Issue に明示されている"
@@ -188,5 +196,8 @@ operation_logging:
 
 notes:
   - "Issueタイトル: [Epic]レーン1e:Playwright UI E2E（S1）CIゲート化"
+  - "段階導入（方針B）: 主導線 path 変更 PR / ラベル ui-e2e / nightly / workflow_dispatch で実行。全 web 変更での無条件実行はしない"
+  - "ラベル ui-e2e はリポジトリに用意しておくと opt-in 強制実行が使える（未作成でも path/nightly/dispatch は動作）"
   - "PR 必須(required/blocking)化は branch protection 設定であり Human 判断（本 Epic では workflow 実装と可視化まで）"
+  - "Node 24 化は Playwright 1.53+ 追随の別 Issue（本 Epic では runner を LTS 22 に固定）"
   - "Epic ブランチで直接作業し develop へ PR する軽量構成"

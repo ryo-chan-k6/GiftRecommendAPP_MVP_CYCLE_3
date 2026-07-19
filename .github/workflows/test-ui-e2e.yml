@@ -5,24 +5,31 @@ name: Test UI E2E (Layer3)
 # Playwright S1 happy path（apps/web/e2e/s1-recommendation-happy-path.spec.ts）を自動実行する。
 #
 # 既存 test-system.yml（Layer2 API E2E, dispatch 専用）のスタック起動を踏襲し、その上に web + Playwright を積む。
-# apps/web/** を変更する PR と workflow_dispatch で実行する（可視化）。
-# PR 必須(required/blocking)化は branch protection 設定であり Human 判断とする（Epic #1464 §6）。
+#
+# 実行方針（Epic #1464 / 段階導入 = 方針B）:
+# - PR: S1 主導線の回帰リスクが高い path（recommendations 画面 / 入力・結果 feature /
+#   API client / generated / contracts / e2e / 本 workflow）変更時のみ heavy job を実行する。
+# - ラベル `ui-e2e` を付けた PR は path に関わらず強制実行する（opt-in）。
+# - nightly（schedule）で develop の S1 回帰を定期監視する。
+# - workflow_dispatch で任意に手動実行できる。
+# - path 判定は decide ジョブ（dorny/paths-filter@v3, ci.yml と同方式）で行い、
+#   heavy job（ui-e2e）は decide.outputs.run == 'true' のときのみ起動する。
+# - PR 必須(required/blocking)化は branch protection 設定であり Human 判断とする（Epic #1464 §6）。
 
 run-name: "test-ui-e2e · ${{ github.event_name }} · ${{ github.ref_name }}"
 
 on:
   pull_request:
-    paths:
-      - "apps/web/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/test-ui-e2e.yml"
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
     inputs:
       web_base_url:
         description: "web Base URL（空=GHA localhost:3000）"
         type: string
         default: ""
+  schedule:
+    # nightly 03:00 JST（18:00 UTC）に develop の S1 回帰を実行する。
+    - cron: "0 18 * * *"
 
 permissions:
   contents: read
@@ -32,7 +39,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  decide:
+    name: Decide whether to run UI E2E
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Filter S1 main-flow paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            flow:
+              - 'apps/web/src/app/recommendations/**'
+              - 'apps/web/src/features/recommendation-input/**'
+              - 'apps/web/src/features/recommendation-result/**'
+              - 'apps/web/src/components/display/RecommendationCard/**'
+              - 'apps/web/src/lib/api/**'
+              - 'apps/web/src/generated/api/**'
+              - 'apps/web/e2e/**'
+              - 'apps/web/playwright.config.ts'
+              - 'packages/contracts/**'
+              - '.github/workflows/test-ui-e2e.yml'
+
+      - name: Decide run
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          FLOW: ${{ steps.filter.outputs.flow }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'ui-e2e') }}
+        run: |
+          set -euo pipefail
+          run=false
+          case "${EVENT}" in
+            schedule|workflow_dispatch)
+              run=true ;;
+            pull_request)
+              if [[ "${FLOW}" == "true" || "${HAS_LABEL}" == "true" ]]; then
+                run=true
+              fi ;;
+          esac
+          echo "run=${run}" >> "$GITHUB_OUTPUT"
+          echo "decision: run=${run} event=${EVENT} flow=${FLOW:-} label=${HAS_LABEL:-}"
+
   ui-e2e:
+    name: UI E2E (S1)
+    needs: decide
+    if: needs.decide.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
