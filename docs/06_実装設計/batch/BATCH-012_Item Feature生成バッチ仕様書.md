@@ -381,6 +381,7 @@ item_id
 | 日付 | 変更内容 | 関連 |
 | --- | --- | --- |
 | 2026-07-18 | 初版作成 | Epic #1446 |
+| 2026-07-19 | 残確認事項 2 件（子 workflow 呼び出しタイミング / `BATCH_ITEM_FEATURE_*` 既定値）を Human 承認により 18.1 確定事項へ反映 | Epic #1446 |
 
 ---
 
@@ -400,13 +401,12 @@ item_id
 | 8 | Queue | `semantic` + `processing` を主経路、`feature` + `queued` を副経路とし、成功時は `processing` を維持 | **確定** |
 | 9 | skip | 同一 Item・semantic version・hash・normalization version の raw 8 軸が揃えば Feature生成を skip | **確定** |
 | 10 | Contract Gate | 不要。OpenAPI / migration / generated は対象外 | **確定** |
+| 11 | 子 workflow 呼び出しタイミング | 独立子 workflow の呼び出しタイミングは本仕様では規定せず、本 Epic 外として親 `batch-item-meaning-generation.yml` 改修 Task で決定する | **確定** |
+| 12 | `BATCH_ITEM_FEATURE_*` 既定値 | 具体的な既定値は本仕様では規定せず、実装 / workflow Task で確定する | **確定** |
 
 ### 18.2 残確認事項（Human）
 
-| No | 事項 | 扱い |
-| --: | --- | --- |
-| 1 | 親 `batch-item-meaning-generation.yml` から独立子 workflow を呼び出すタイミング | 本 Epic 外。親 workflow 改修 Task で決定 |
-| 2 | `BATCH_ITEM_FEATURE_*` の具体的な既定値 | 実装 / workflow Task で確定 |
+残確認事項なし。No.1・No.2 は Human 承認済みで、18.1 の No.11・No.12 として確定事項へ反映した。
 
 ---
 
