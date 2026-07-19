@@ -119,6 +119,15 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_item_feature_queue_batch_size=_read_positive_int(
             source, "BATCH_ITEM_FEATURE_QUEUE_BATCH_SIZE"
         ),
+        batch_feature_normalization_max_items=_read_positive_int(
+            source, "BATCH_FEATURE_NORMALIZATION_MAX_ITEMS"
+        ),
+        batch_feature_normalization_source=_read_optional_str(
+            source, "BATCH_FEATURE_NORMALIZATION_SOURCE"
+        ),
+        batch_feature_normalization_queue_batch_size=_read_positive_int(
+            source, "BATCH_FEATURE_NORMALIZATION_QUEUE_BATCH_SIZE"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )
