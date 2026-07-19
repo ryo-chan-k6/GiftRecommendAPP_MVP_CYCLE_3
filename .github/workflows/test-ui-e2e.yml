@@ -34,6 +34,7 @@ concurrency:
 jobs:
   ui-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       redis:
         image: redis:7-alpine
@@ -83,6 +84,24 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser (chromium + OS deps)
+        run: pnpm --filter @gift-recommendation/web exec playwright install --with-deps chromium
+
+      - name: Diagnostic - smoke (stack 不要 / bounded / DEBUG)
+        # WSL / CI で観測された playwright CLI ハングの早期切り分け。
+        # 外部スタック不要の smoke を短時間で実行し、CLI 自体が起動するか確認する。
+        env:
+          DEBUG: pw:api,pw:test
+        run: |
+          set -uo pipefail
+          timeout 120 pnpm --filter @gift-recommendation/web exec \
+            playwright test e2e/00-playwright-smoke.spec.ts --reporter=list
+          code=$?
+          if [[ "${code}" -eq 124 ]]; then
+            echo "::error::playwright smoke が 120s でタイムアウト（CLI 起動ハングの疑い）"
+          fi
+          exit "${code}"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -175,9 +194,6 @@ jobs:
           tail -n 80 /tmp/ui-e2e-logs/reco.log >&2 || true
           exit 1
 
-      - name: Install Playwright browser (chromium + OS deps)
-        run: pnpm --filter @gift-recommendation/web exec playwright install --with-deps chromium
-
       - name: Build web
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ env.API_BASE_URL }}
@@ -207,9 +223,16 @@ jobs:
         id: e2e
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
+          DEBUG: pw:api
         run: |
-          pnpm --filter @gift-recommendation/web exec playwright test \
+          set -uo pipefail
+          timeout 600 pnpm --filter @gift-recommendation/web exec playwright test \
             --reporter=list,html,json
+          code=$?
+          if [[ "${code}" -eq 124 ]]; then
+            echo "::error::playwright S1 が 600s でタイムアウト（ハングの疑い）"
+          fi
+          exit "${code}"
 
       - name: Verify S1 executed (not skipped)
         if: always()
