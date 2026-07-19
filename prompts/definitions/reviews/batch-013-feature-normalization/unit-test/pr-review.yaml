@@ -6,7 +6,7 @@ review:
   title: "BATCH-013 Feature正規化Batch単体テスト PR Review"
   status: "ready"
   pr:
-    number: null
+    number: 1463
     title: "[Task]BATCH-013:Feature正規化Batch単体テスト"
     base: "feature/epic-1455-batch-013-feature-normalization"
     head: "test/task-1462-batch-013-feature-normalization-unit-test"
