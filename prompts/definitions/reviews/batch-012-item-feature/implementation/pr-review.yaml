@@ -1,0 +1,36 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-012-item-feature-implementation-pr"
+  title: "BATCH-012 Item Feature生成Batch実装 PR Review"
+  status: "ready"
+  pr:
+    number: 1450
+    title: "[Task]BATCH-012:Item Feature生成Batch実装"
+    base: "feature/epic-1446-batch-012-item-feature"
+    head: "feature/task-1449-batch-012-item-feature-implementation"
+
+task_definition: "prompts/definitions/tasks/batch-012-item-feature/implementation.yaml"
+issue:
+  number: 1449
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "test-ai"
+
+review_points:
+  - "仕様 Phase・§9.3 skip・handoff 検証と実装が整合するか"
+  - "IF-DB-BATCH-013 / IF-SHARED-002 と IF-DB-BATCH-012 を混同していないか"
+  - "item_feature の normalized_feature_value を書いていないか（BATCH-013 責務）"
+  - "feature_input_hash を再算出していないか（BATCH-011 handoff 使用）"
+  - "item_semantic 非 DML / Queue INSERT なし / apps/reco 本体・generated 非変更か"
+  - "secret 非含有"
+
+acceptance_for_human_review:
+  - "Blocker / Must が残っていない"
+  - "pytest 成功"
+
+notes:
+  - "Issue #1449 / PR #1450"
