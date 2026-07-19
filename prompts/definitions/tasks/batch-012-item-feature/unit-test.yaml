@@ -97,7 +97,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "test/task-<issue-number>-batch-012-item-feature-unit-test"
+  name: "test/task-1451-batch-012-item-feature-unit-test"
   summary: "batch-012-item-feature-unit-test"
   base: "feature/epic-1446-batch-012-item-feature"
   target: "feature/epic-1446-batch-012-item-feature"
@@ -111,6 +111,7 @@ project:
     priority: "high"
 
 issue:
+  number: 1451
   unit: "task"
   type: "test"
   area: "batch"

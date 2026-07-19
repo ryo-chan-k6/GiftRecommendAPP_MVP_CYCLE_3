@@ -9,11 +9,11 @@ review:
     number: null
     title: "[Task]BATCH-012:Item Feature生成Batch単体テスト"
     base: "feature/epic-1446-batch-012-item-feature"
-    head: "test/task-<issue-number>-batch-012-item-feature-unit-test"
+    head: "test/task-1451-batch-012-item-feature-unit-test"
 
 task_definition: "prompts/definitions/tasks/batch-012-item-feature/unit-test.yaml"
 issue:
-  number: null
+  number: 1451
 
 agent:
   primary: "reviewer-ai"
