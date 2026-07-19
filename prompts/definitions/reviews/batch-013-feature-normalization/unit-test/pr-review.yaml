@@ -1,0 +1,38 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-013-feature-normalization-unit-test-pr"
+  title: "BATCH-013 Feature正規化Batch単体テスト PR Review"
+  status: "ready"
+  pr:
+    number: 1463
+    title: "[Task]BATCH-013:Feature正規化Batch単体テスト"
+    base: "feature/epic-1455-batch-013-feature-normalization"
+    head: "test/task-1462-batch-013-feature-normalization-unit-test"
+
+task_definition: "prompts/definitions/tasks/batch-013-feature-normalization/unit-test.yaml"
+issue:
+  number: 1462
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "test-ai"
+
+review_points:
+  - "§16 unit 観点対応表が PR 本文にあるか"
+  - "fixture/mock のみで実 DB / secret に依存していないか"
+  - "PR target が親 Epic Branch か"
+  - "IF-DB-BATCH-014 / IF-SHARED-003 の観点カバレッジ"
+  - "raw 不変・normalization_distribution_metric 非書込の確認"
+  - "sigmoid（center=0.5/k=4.0）の確認"
+  - "item_meaning 射影・欠損時 UPSERT 抑止の確認"
+  - "skip 条件（normalized 8軸+hash+norm version）の確認"
+
+acceptance_for_human_review:
+  - "Blocker / Must が残っていない"
+  - "pytest 成功が記載されている"
+
+notes:
+  - "Issue / PR 番号は作成後に反映"

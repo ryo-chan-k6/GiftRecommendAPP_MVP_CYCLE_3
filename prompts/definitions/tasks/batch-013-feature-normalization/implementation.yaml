@@ -1,0 +1,150 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-013-feature-normalization-implementation"
+  title: "BATCH-013:Feature正規化Batch実装"
+  summary: "BATCH-013 を scaffold-first 実装する。IF-SHARED-003 in-process 呼出（sigmoid）、IF-DB-BATCH-014 の normalized UPDATE + item_meaning UPSERT、独立 workflow を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-013:Feature正規化Batch"
+  epic_issue_number: 1455
+  epic_branch: "feature/epic-1455-batch-013-feature-normalization"
+  related_issues:
+    - number: 1456
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1458
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  仕様書 #1456 / PR #1458 Epic Branch merge 済み。§18.1 で IF 区別 / 固定 sigmoid / skip / raw 不変を確定。
+
+objective: |
+  scaffold-first 実装と batch-feature-normalization.yml を整備する。
+
+scope:
+  - "IF-SHARED-003 in-process アダプタ（MOD-BATCH-034 相当・固定 sigmoid center=0.5/k=4.0）"
+  - "IF-DB-BATCH-014 item_feature.normalized_feature_value UPDATE（raw 非更新）"
+  - "item_meaning（Social/Symbolic）UPSERT（同一 persist フェーズ）"
+  - "§9.3 skip（normalized 8軸+hash+norm version）"
+  - "Queue processing 維持 / feature+queued claim"
+  - "config BATCH_FEATURE_NORMALIZATION_*"
+  - "batch-feature-normalization.yml"
+  - "最小 UT"
+
+out_of_scope:
+  - "raw_feature_value 生成・変更（BATCH-012）"
+  - "feature_input_hash 算出（BATCH-011）"
+  - "normalization_distribution_metric 書込（BATCH-016）"
+  - "apps/reco 本体変更"
+  - "親 meaning-generation 全体改修 / 接続タイミング確定"
+  - "OpenAPI / migration / generated 変更"
+  - "実 DB 配線"
+  - "包括的 UT Task"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-013_Feature正規化バッチ仕様書.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/batch/src/batch/application/feature_normalization/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-feature-normalization.yml"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "modify"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_feature_normalization.py"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "主要 Phase が追跡できる"
+  - "sigmoid 正規化・Meaning 射影・skip・IF 境界を UT 検証"
+  - "raw_feature_value を書かない"
+  - "normalization_distribution_metric を書かない"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  name: "feature/task-1460-batch-013-feature-normalization-implementation"
+  summary: "batch-013-feature-normalization-implementation"
+  base: "feature/epic-1455-batch-013-feature-normalization"
+  target: "feature/epic-1455-batch-013-feature-normalization"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1460
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - ".github/workflows/batch-feature-normalization.yml"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-013 最小）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_feature_normalization.py -q --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-014 / IF-SHARED-003 と IF-DB-BATCH-013 の区別"
+    - "raw_feature_value 非更新 / item_semantic 非 DML"
+    - "normalization_distribution_metric 非書込（BATCH-016）"
+    - "sigmoid（center=0.5/k=4.0）が Featureルール定義書 §14 と整合"
+    - "item_meaning 射影・欠損時 UPSERT 抑止"
+    - "apps/reco 本体・generated 非変更"
+    - "§9.3 skip 実装"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Issue #1460"
