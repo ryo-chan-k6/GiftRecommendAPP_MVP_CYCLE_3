@@ -365,13 +365,19 @@ jobs:
     steps:
       - name: Evaluate gate
         env:
+          DECIDE_RESULT: ${{ needs.decide.result }}
           DECIDE_RUN: ${{ needs.decide.outputs.run }}
           E2E_RESULT: ${{ needs.ui-e2e.result }}
         run: |
           set -euo pipefail
-          echo "decide.run=${DECIDE_RUN:-} ui-e2e.result=${E2E_RESULT:-}"
+          echo "decide.result=${DECIDE_RESULT:-} decide.run=${DECIDE_RUN:-} ui-e2e.result=${E2E_RESULT:-}"
+          # decide が success でない（失敗/中断）場合は判定不能。false green を避けるため fail する。
+          if [[ "${DECIDE_RESULT}" != "success" ]]; then
+            echo "::error::decide ジョブが success でない (result=${DECIDE_RESULT})。実行要否を判定できないため gate fail"
+            exit 1
+          fi
           if [[ "${DECIDE_RUN}" != "true" ]]; then
-            echo "info: UI E2E は不要（decide.run != true）→ gate pass"
+            echo "info: UI E2E は不要（decide.run=${DECIDE_RUN}）→ gate pass"
             exit 0
           fi
           if [[ "${E2E_RESULT}" == "success" ]]; then

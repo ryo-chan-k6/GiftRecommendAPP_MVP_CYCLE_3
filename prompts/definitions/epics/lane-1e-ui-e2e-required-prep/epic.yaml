@@ -85,7 +85,8 @@ deliverables:
   - "required 昇格方針の human-decision ログ"
 
 acceptance_criteria:
-  - "ui-e2e-gate が always() で必ず起動し、decide.run != true では pass する"
+  - "ui-e2e-gate が always() で必ず起動し、decide 成功かつ decide.run != true では pass する"
+  - "decide ジョブが success でない場合は gate が fail する（false green 防止）"
   - "S1 実行時は S1 success で pass、失敗で fail する"
   - "human-decision ログに 案2 / target develop / soak 2週間かつ10PR flake0 が正本化されている"
   - "required 設定変更を AI が行っていない（Human 判断として明示）"
