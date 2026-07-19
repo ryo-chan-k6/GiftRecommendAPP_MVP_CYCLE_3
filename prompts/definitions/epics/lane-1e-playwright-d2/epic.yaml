@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-playwright-d2"
+  title: "レーン1e:Playwright自動E2E（D2）"
+  summary: "並列計画 D2。Playwright 基盤と D1 S1（結果あり最小パス）の自動 E2E smoke を導入する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  D1 手動 E2E（#1330）と SCR-005〜007 回帰（#1418）、Layer2 API E2E（#1426）は develop 済み。
+  並列計画の次候補が Playwright 自動 E2E（D2）。現状 apps/web に Playwright は未導入。
+
+objective: |
+  Playwright scaffold と S1 smoke を導入し、ローカル実行手順と証跡を残す。
+
+scope:
+  - "子 Task（scaffold-and-s1-smoke）"
+  - "apps/web Playwright 設定・依存・スクリプト"
+  - "S1 smoke スペック"
+  - "手順書 / チェックリストへの D2 参照"
+  - "ai-logs/experiments 証跡"
+
+out_of_scope:
+  - "S2〜S8 全自動化"
+  - "GHA 必須品質ゲート化（後続可）"
+  - "BATCH-010〜"
+  - "OpenAPI / migration"
+  - "apps 本機能改修（不具合は別 Issue）"
+  - "secret 実値"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+  issues:
+    - number: 1438
+      purpose: "本 Epic"
+    - number: 1330
+      purpose: "D1 手動 E2E 前提"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（scaffold-and-s1-smoke）"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が存在する"
+  - "Playwright がローカル実行可能である"
+  - "S1 smoke が pass、または未達理由が明示されている"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/epic-1438-lane-1e-playwright-d2"
+  summary: "lane-1e-playwright-d2"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-17"
+    due_date: "2026-07-31"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "web"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "apps/web/**"
+    - "package.json"
+    - "pnpm-lock.yaml"
+    - "docs/06_実装設計/cross_cutting/**"
+    - "docs/05_アプリケーション設計/テスト/**"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/lane-1e-playwright-d2/**"
+    - "prompts/definitions/tasks/lane-1e-playwright-d2/**"
+    - "prompts/definitions/reviews/lane-1e-playwright-d2/**"
+  forbidden_paths:
+    - "apps/batch/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+  child_task_areas:
+    - "scaffold-and-s1-smoke"
+
+dependencies:
+  epics:
+    - issue: 1330
+      title: "[Epic]レーン1e:手動E2E検証"
+      purpose: "D1 手動シナリオ正本"
+    - issue: 1418
+      title: "[Epic]レーン1e:SCR-005〜007回帰E2E"
+      purpose: "画面後段回帰済み"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/web/package.json"
+    - "apps/web/playwright.config.*"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "playwright s1 smoke local"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:e2e"
+  manual_checks:
+    - "ローカルで web/api/reco/DB 起動済みであること"
+  not_required:
+    - "gha playwright gate"
+  skip_reason:
+    "gha playwright gate": "本 Epic はローカル smoke まで。GHA 必須化は後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "BATCH / api / reco / openapi / migration を触っていないか"
+    - "S1 smoke 合否または未達理由"
+    - "secret 非含有"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "Playwright 実行証跡"
+
+notes:
+  - "Issueタイトル: [Epic]レーン1e:Playwright自動E2E（D2）"
+  - "BATCH 別エージェントと編集領域分離"
+  - "SCR-001 起点は D1 でも不安定だったため、S1 は /recommendations 起点を許容する"

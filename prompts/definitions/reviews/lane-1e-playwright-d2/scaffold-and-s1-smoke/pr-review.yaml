@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-playwright-d2-scaffold-and-s1-smoke"
+  title: "Playwright基盤とS1 smoke PRレビュー"
+  summary: "Task の Playwright scaffold と S1 smoke 差分を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1442
+  issue:
+    number: 1439
+  task_definition: "prompts/definitions/tasks/lane-1e-playwright-d2/scaffold-and-s1-smoke.yaml"
+  source_branch: "test/task-1439-lane-1e-playwright-scaffold-s1"
+  target_branch: "test/epic-1438-lane-1e-playwright-d2"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+review_points:
+  - "S1 smoke 合否または未達理由"
+  - "BATCH / api / reco 非含有"
+  - "secret 非含有"
+
+acceptance_criteria:
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "PR コメントを正とする"
+
+notes:
+  - "PR 作成後に target.pr / issue.number を更新する"
