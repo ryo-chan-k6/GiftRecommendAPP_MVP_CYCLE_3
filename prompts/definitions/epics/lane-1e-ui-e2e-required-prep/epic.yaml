@@ -1,0 +1,192 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-ui-e2e-required-prep"
+  title: "レーン1e:UI E2E required昇格準備（gateジョブ・soak）"
+  summary: "#1464（PR #1465 merged）で段階導入した UI E2E S1 の required 昇格を準備する。required × 条件付き skip の曖昧さを回避する ui-e2e-gate（always()）ジョブを追加し、required 昇格方針（案2 / target develop / soak 2週間かつ10PR flake0）を human-decision ログとして正本化する。required 設定変更そのものは Human 判断とする。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/summarize-work"
+  next:
+    success: null
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1464（PR #1465 merged）で UI E2E S1 を段階導入した（方針B: 主導線 path 変更 PR / ラベル ui-e2e /
+  nightly / workflow_dispatch でのみ heavy job を実行）。required 昇格には GitHub の「required × 条件付き skip」
+  挙動の曖昧さ対策と、E2E flake に対する安定性観測（soak）が必要。本 Epic はその準備を行う。
+
+objective: |
+  branch protection の required check に指定できる集約ゲート ui-e2e-gate（needs: [decide, ui-e2e] / if: always()）を
+  追加し、「主導線外(decide=false)＝pass / S1 success＝pass / それ以外＝fail」を確実に返すようにする。
+  あわせて required 昇格方針（案2 / target develop / soak 2週間かつ10PR flake0）を human-decision ログに正本化し、
+  Human が required 昇格を判断できる状態にする。
+
+scope:
+  - ".github/workflows/test-ui-e2e.yml に ui-e2e-gate（needs: [decide, ui-e2e] / if: always()）ジョブを追加"
+  - "ai-logs/human-decisions/ に required 昇格方針の human-decision ログを追加"
+  - "Epic / Review 定義の作成"
+
+out_of_scope:
+  - "branch protection での required 設定変更（Human 判断・repo設定）"
+  - "soak 完了前の required 昇格"
+  - "S2〜S8 の自動化"
+  - "Node 24 化（Playwright 1.53+ 追随・別 Issue）"
+  - "apps/api / apps/reco / apps/batch / OpenAPI / migration のロジック変更"
+
+input:
+  docs:
+    - path: ".github/workflows/test-ui-e2e.yml"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-20-ui-e2e-required-promotion-plan.md"
+      required: false
+  issues:
+    - number: 1471
+      purpose: "本 Epic"
+    - number: 1464
+      purpose: "UI E2E CIゲート化（方針B 導入・完了）"
+  prs:
+    - number: 1465
+      purpose: "方針B 導入（merged）"
+
+output:
+  docs: []
+  files:
+    - ".github/workflows/test-ui-e2e.yml"
+    - "ai-logs/human-decisions/2026-07-20-ui-e2e-required-promotion-plan.md"
+    - "prompts/definitions/epics/lane-1e-ui-e2e-required-prep/epic.yaml"
+    - "prompts/definitions/reviews/lane-1e-ui-e2e-required-prep/epic/pr-review.yaml"
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/2026-07-20-ui-e2e-required-promotion-plan.md"
+
+deliverables:
+  - "ui-e2e-gate ジョブ（required 昇格用の集約ゲート）"
+  - "required 昇格方針の human-decision ログ"
+
+acceptance_criteria:
+  - "ui-e2e-gate が always() で必ず起動し、decide.run != true では pass する"
+  - "S1 実行時は S1 success で pass、失敗で fail する"
+  - "human-decision ログに 案2 / target develop / soak 2週間かつ10PR flake0 が正本化されている"
+  - "required 設定変更を AI が行っていない（Human 判断として明示）"
+  - "apps/api / reco / batch / OpenAPI / migration に変更がない"
+
+branch:
+  no_branch: false
+  name: "test/epic-1471-lane-1e-ui-e2e-required-prep"
+  summary: "lane-1e-ui-e2e-required-prep"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-20"
+    due_date: "2026-08-03"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "web"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - ".github/workflows/test-ui-e2e.yml"
+    - "ai-logs/human-decisions/**"
+    - "prompts/definitions/epics/lane-1e-ui-e2e-required-prep/**"
+    - "prompts/definitions/reviews/lane-1e-ui-e2e-required-prep/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+  child_task_areas: []
+
+dependencies:
+  epics:
+    - issue: 1464
+      title: "[Epic]レーン1e:Playwright UI E2E（S1）CIゲート化"
+      purpose: "方針B 導入本体（前提）"
+  issues: []
+  prs:
+    - number: 1465
+      title: "方針B 導入（merged）"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/test-ui-e2e.yml"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "gha ui e2e gate"
+  commands:
+    - "workflow_dispatch: Test UI E2E (Layer3)"
+  manual_checks:
+    - "workflow_dispatch 実行で ui-e2e-gate が pass すること（decide.run=true 経路）"
+    - "主導線外 PR で ui-e2e-gate が pass すること（decide.run=false 経路）"
+  not_required: []
+  skip_reason: {}
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "ui-e2e-gate が always() で必ず結果を返し skip 結論の曖昧さを回避しているか"
+    - "gate の判定ロジック（decide.run / ui-e2e.result）が正しいか（false green 防止）"
+    - "required 設定変更を AI が独断で行っていないか（Human 判断として明示）"
+    - "human-decision ログの結論・前提が検討内容と整合しているか"
+    - "apps/api / reco / batch / OpenAPI / migration に変更がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "CI/CD 横断影響（required 昇格準備・gate ジョブ追加）"
+
+notes:
+  - "Issueタイトル: [Epic]レーン1e:UI E2E required昇格準備（gateジョブ・soak）"
+  - "required 化（branch protection 設定）は Human 判断。本 Epic は gate ジョブ導入と方針正本化まで"
+  - "soak 基準: 2週間 かつ 10 PR で flake 0（human-decision ログ参照）"
+  - "Epic ブランチで直接作業し develop へ PR する軽量構成"
