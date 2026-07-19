@@ -1,0 +1,176 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-playwright-d2-s1-evidence"
+  title: "レーン1e:Playwright D2 S1証跡反映"
+  summary: "D2（#1438）マージ後に判明した follow-up。Docker 起動後の S1 実測 PASS 証跡を実験ログへ反映し、env ゲート付きの Playwright launchOptions を追加する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/summarize-work"
+  next:
+    success: null
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  D2（Epic #1438 / Task #1439）は develop 済み。Docker Desktop 起動後にローカルで S1 が実測 PASS したが、
+  その証跡が PR には含まれず develop の実験ログは「S1 未達」表記のまま残った。実測結果を反映して是正する。
+
+objective: |
+  S1 実測証跡（API completed / itemCount=1、UI S1 PASS、CLI ハング所見）を実験ログへ反映し、
+  WSL/CI 向けの Playwright launchOptions（env ゲート）を追加する。
+
+scope:
+  - "ai-logs/experiments/2026-07-17-lane-1e-playwright-d2.md の是正"
+  - "apps/web/playwright.config.ts の launchOptions 追加（env ゲート）"
+
+out_of_scope:
+  - "GHA Playwright 必須ゲート化"
+  - "S2〜S8 自動化"
+  - "BATCH / api / reco / OpenAPI / migration"
+  - "secret 実値"
+
+input:
+  docs:
+    - path: "ai-logs/experiments/2026-07-17-lane-1e-playwright-d2.md"
+      required: true
+  issues:
+    - number: 1457
+      purpose: "本 Epic"
+    - number: 1438
+      purpose: "D2 本体（マージ済み）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - "ai-logs/experiments/2026-07-17-lane-1e-playwright-d2.md"
+    - "apps/web/playwright.config.ts"
+    - "prompts/definitions/epics/lane-1e-playwright-d2-s1-evidence/epic.yaml"
+    - "prompts/definitions/reviews/lane-1e-playwright-d2-s1-evidence/epic/pr-review.yaml"
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+deliverables:
+  - "実験ログ是正"
+  - "playwright.config launchOptions 追加"
+
+acceptance_criteria:
+  - "実験ログに S1 実測 PASS が反映されている"
+  - "playwright.config の launchOptions が env ゲート付きで追加されている"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/epic-1457-lane-1e-playwright-d2-s1-evidence"
+  summary: "lane-1e-playwright-d2-s1-evidence"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "low"
+    planned_start: "2026-07-19"
+    due_date: "2026-07-26"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "web"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "apps/web/playwright.config.ts"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/lane-1e-playwright-d2-s1-evidence/**"
+    - "prompts/definitions/reviews/lane-1e-playwright-d2-s1-evidence/**"
+  forbidden_paths:
+    - "apps/batch/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+  child_task_areas: []
+
+dependencies:
+  epics:
+    - issue: 1438
+      title: "[Epic]レーン1e:Playwright自動E2E（D2）"
+      purpose: "D2 本体"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/web/playwright.config.ts"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands:
+    - "pnpm --filter @gift-recommendation/web lint"
+  manual_checks:
+    - "launchOptions は env 未設定時に既定 Chromium を使うこと（通常実行に影響しない）"
+  not_required:
+    - "playwright s1 smoke local"
+  skip_reason:
+    "playwright s1 smoke local": "本 Epic は証跡反映と config 追加のみ。S1 実測は #1438 で実施済み"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実験ログの実測反映が事実と一致するか"
+    - "launchOptions が env ゲートで通常実行に影響しないか"
+    - "BATCH / api / reco / openapi / migration 非含有"
+    - "secret 非含有"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "Playwright 実行証跡の是正"
+
+notes:
+  - "Issueタイトル: [Epic]レーン1e:Playwright D2 S1証跡反映"
+  - "D2（#1438）follow-up。Epic ブランチで直接作業し develop へ PR する軽量構成"
