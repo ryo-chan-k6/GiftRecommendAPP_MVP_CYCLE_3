@@ -1,0 +1,38 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-012-item-feature-unit-test-pr"
+  title: "BATCH-012 Item Feature生成Batch単体テスト PR Review"
+  status: "ready"
+  pr:
+    number: null
+    title: "[Task]BATCH-012:Item Feature生成Batch単体テスト"
+    base: "feature/epic-1446-batch-012-item-feature"
+    head: "test/task-<issue-number>-batch-012-item-feature-unit-test"
+
+task_definition: "prompts/definitions/tasks/batch-012-item-feature/unit-test.yaml"
+issue:
+  number: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "test-ai"
+
+review_points:
+  - "§16 unit 観点対応表が PR 本文にあるか"
+  - "fixture/mock のみで実 DB / secret に依存していないか"
+  - "PR target が親 Epic Branch か"
+  - "IF-DB-BATCH-013 / IF-SHARED-002 の観点カバレッジ"
+  - "hash handoff（再算出禁止）の確認"
+  - "raw / normalized 分離の確認"
+  - "8 軸完全性の確認"
+  - "skip 条件の確認"
+
+acceptance_for_human_review:
+  - "Blocker / Must が残っていない"
+  - "pytest 成功が記載されている"
+
+notes:
+  - "Issue / PR 番号は作成後に反映"

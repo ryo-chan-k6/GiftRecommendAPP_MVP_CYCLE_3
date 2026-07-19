@@ -1,0 +1,152 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-012-item-feature-unit-test"
+  title: "BATCH-012:Item Feature生成Batch単体テスト"
+  summary: "BATCH-012 実装に対し、仕様書 §16 の unit 観点カバレッジを整理・拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-012:Item Feature生成Batch"
+  epic_issue_number: 1446
+  epic_branch: "feature/epic-1446-batch-012-item-feature"
+  related_issues:
+    - number: 1449
+      purpose: "実装（CLOSED）"
+    - number: 1447
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1450
+      purpose: "実装 MERGED"
+    - number: 1448
+      purpose: "仕様書 MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  実装 Task #1449 / PR #1450 は Epic Branch merge 済み。§16 unit 観点を拡充する。
+  既存 test_item_feature.py には実装タスクで作成された 30 件の最小 UT が存在する。
+
+objective: |
+  BATCH-012 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串を完了可能にする。
+
+scope:
+  - "§16 unit 観点カバレッジ表を PR 本文に記載"
+  - "test_item_feature.py 拡充"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "integration test（実 DB）"
+  - "Epic PR develop merge（Human）"
+  - "機能追加を主目的とする実装変更"
+  - "apps/reco / BATCH-013"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-012_Item Feature生成バッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+  files:
+    - path: "apps/batch/tests/unit/application/test_item_feature.py"
+      required: true
+      purpose: "既存最小 UT（30 件）"
+    - path: "apps/batch/src/batch/application/item_feature/**"
+      required: true
+      purpose: "テスト対象実装"
+
+output:
+  files:
+    - path: "prompts/definitions/tasks/batch-012-item-feature/unit-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-012-item-feature/unit-test/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_item_feature.py"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "test/task-<issue-number>-batch-012-item-feature-unit-test"
+  summary: "batch-012-item-feature-unit-test"
+  base: "feature/epic-1446-batch-012-item-feature"
+  target: "feature/epic-1446-batch-012-item-feature"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_item_feature.py"
+  conflict_risk: "low"
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-012 §16）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_item_feature.py -q --tb=short"
+    - "cd apps/batch && uv run python -m pytest tests/unit/ -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock を正とする"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§16 対応表"
+    - "実 DB / secret 非依存"
+    - "PR target"
+    - "IF-DB-BATCH-013 / IF-SHARED-002 の観点カバレッジ"
+    - "hash handoff（再算出禁止）の確認"
+    - "raw / normalized 分離の確認"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "後続: Epic PR → develop"
