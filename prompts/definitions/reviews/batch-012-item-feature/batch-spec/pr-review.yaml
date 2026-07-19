@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-012-item-feature-batch-spec-pr"
+  title: "BATCH-012 Item Feature生成バッチ仕様書 PRレビュー"
+  summary: "BATCH-012 バッチ仕様書 Task の PR を AI Review する。IF 混同防止と BATCH-011/013 境界を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1447-batch-012-item-feature-batch-spec"
+  base: "feature/epic-1446-batch-012-item-feature"
+  target: "feature/epic-1446-batch-012-item-feature"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1448
+  issue:
+    number: 1447
+  task_definition: "prompts/definitions/tasks/batch-012-item-feature/batch-spec.yaml"
+  source_branch: "docs/task-1447-batch-012-item-feature-batch-spec"
+  target_branch: "feature/epic-1446-batch-012-item-feature"
+  parent_epic_issue: "[Epic]BATCH-012:Item Feature生成Batch"
+  parent_epic_branch: "feature/epic-1446-batch-012-item-feature"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-DB-BATCH-013 / IF-SHARED-002 と IF-DB-BATCH-012 の混同がない"
+  - "item_feature raw のみ・normalized は BATCH-013"
+  - "hash 再算出を本 Batch に含めていない"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1446"
+  - "Issue #1447"
+  - "Issue #1447 / PR #1448"
