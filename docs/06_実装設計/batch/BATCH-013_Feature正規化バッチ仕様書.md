@@ -433,14 +433,13 @@ item_id
 | 7 | raw 不変 | `raw_feature_value` / `feature_input_hash` は変更しない（BATCH-011 / 012 責務） | **確定** |
 | 8 | Queue | `feature`+`queued` を副経路 / `semantic`+`processing` を主経路とし、成功時は `processing` を維持 | **確定** |
 | 9 | Contract Gate | 不要。OpenAPI / migration / generated は対象外 | **確定** |
+| 10 | 独立子 workflow | MVP 初期は独立子 workflow **`batch-feature-normalization.yml`** を新設・正とする（BATCH-010〜012 の前例に倣う）。親 `batch-item-meaning-generation.yml` チェーンへの接続タイミングは本 Epic 外 | **確定（Human 承認済み）** |
+| 11 | 正規化統計版管理 | MVP は固定 sigmoid のため統計母集団（mean/std）不要。`normalization_stats_version_id` の新規列（DDL）は追加せず、正規化の再現性は `feature_normalization_version_id` で担保する。z-score+sigmoid 導入時に後続物理設計で改めて検討（方針書 §13.5） | **確定（Human 承認済み）** |
+| 12 | `BATCH_FEATURE_NORMALIZATION_*` 既定値 | 具体的な既定値は本仕様書では確定せず、実装 / workflow Task で確定する | **確定（後続 Task で詳細化）** |
 
 ### 18.2 残確認事項（Human）
 
-| No | 論点 | 現在の事実 | AI 推論・提案 |
-| --: | --- | --- | --- |
-| 1 | 独立子 workflow | 依存関係図では BATCH-013 は親 `batch-item-meaning-generation.yml` 所属。BATCH-010〜012 は独立子 workflow を新設・正とした前例あり | 前例に倣い独立子 workflow **`batch-feature-normalization.yml`** を MVP 初期の正とすることを提案。親チェーン接続タイミングは本 Epic 外。**Human 確認要** |
-| 2 | `normalization_stats_version_id` の版管理 | 方針書 §13.5 補足で「版管理する場合は保持。MVP では `semantic_config_version_id + feature_input_hash` を主要再生成判定キーとし、統計版管理は後続物理設計で詳細化」。item_feature に当該列は存在しない | MVP は固定 sigmoid のため統計母集団不要。`feature_normalization_version_id` で代替し、新規列（DDL）は追加しないことを提案。**Human 確認要** |
-| 3 | `BATCH_FEATURE_NORMALIZATION_*` 既定値 | 具体的な既定値は未定 | 実装 / workflow Task で確定することを提案 |
+現時点で Human 確認待ちの残事項はない。§18.1 No.10〜12 として Human 承認済み・確定へ反映した（PR #1458）。
 
 ---
 
