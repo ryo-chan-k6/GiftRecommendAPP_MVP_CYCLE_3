@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1473
   issue:
     number: 1470
   task_definition: "prompts/definitions/tasks/batch-014-embedding-input-hash/implementation.yaml"
