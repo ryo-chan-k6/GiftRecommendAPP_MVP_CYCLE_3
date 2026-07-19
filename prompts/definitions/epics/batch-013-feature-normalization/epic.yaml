@@ -1,0 +1,266 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-013-feature-normalization"
+  title: "BATCH-013:Feature正規化Batch"
+  summary: "BATCH-013（Feature正規化Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。IF-SHARED-003 経由で MOD-BATCH-034（Feature Normalizer）を呼び出し、item_feature.normalized_feature_value を更新し item_meaning を UPSERT する（IF-DB-BATCH-014）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 意味生成パイプラインの Feature 正規化段。識別子単位 Epic（1 Batch ID = 1 Epic）。
+  先行 BATCH-012（Item Feature生成）は develop merge 済み（#1446 / PR #1453）。
+  item_feature / item_meaning / normalization_rule / feature_normalization_version テーブル定義は整備済み。
+  IF は IF-DB-BATCH-014（Feature正規化結果保存: item_feature.normalized_value UPDATE + item_meaning UPSERT）
+  + IF-SHARED-003（Feature正規化ロジック呼出 / MOD-BATCH-034 Feature Normalizer）。
+  IF-DB-BATCH-013 は Item Feature保存（BATCH-012）であり混同禁止（Batch ID と IF 番号は +1 ズレ）。
+  normalization_distribution_metric 書込は BATCH-016 担当で本 Epic 対象外。
+  MVP 正規化は固定 sigmoid（center=0.5 / k=4.0）で LLM 不使用。z-score+sigmoid は将来拡張。
+  Batch は HTTP API 化しないため Contract Gate は不要。後続は BATCH-014 / BATCH-016 / BATCH-017。
+
+objective: |
+  BATCH-013 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: 仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-013 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-013-feature-normalization/**）を整理する"
+  - "Contract Gate 不要方針を明示する"
+  - "IF-DB-BATCH-014 / IF-SHARED-003 / IF-DB-BATCH-013（BATCH-012）境界を整理する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001〜012 / 014〜019）の仕様書・実装・テスト（先行・後続は参照のみ）"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）・DB schema / migration（既存定義の参照は可）"
+  - "本番リリース作業"
+  - "apps/reco 本体の破壊変更（MOD-BATCH-034 は呼び出しのみ。必要なら in-process アダプタを batch 側に置く）"
+  - "normalization_distribution_metric 書込（BATCH-016）"
+  - "BATCH-014〜016 の詳細実装（Embedding・分布集計等）"
+  - "親 batch-item-meaning-generation.yml / retry-failed チェーン全体改修（独立子 workflow 追加は可）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-013 の Batch ID・処理概要・入出力・依存・MVP対象"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "正規化・冪等・skip・統計版管理方針（§13.5）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "meaning-generation チェーン内の位置"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "012 → 013 → 014/016 の依存"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-014 / IF-SHARED-003"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-034 Feature Normalizer / MOD-BATCH-038"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "§14 正規化方式（sigmoid, center/k）正本"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "normalized_feature_value 更新・冪等キー"
+    - path: "docs/06_実装設計/database/item_meaning_テーブル定義書.md"
+      required: true
+      purpose: "Social / Symbolic 射影 UPSERT"
+    - path: "docs/06_実装設計/database/feature_normalization_version_テーブル定義書.md"
+      required: true
+      purpose: "正規化パラメータ正本・is_current"
+    - path: "docs/06_実装設計/database/normalization_rule_テーブル定義書.md"
+      required: true
+      purpose: "semantic_config_version → feature_normalization_version_id binding"
+    - path: "docs/06_実装設計/batch/BATCH-012_Item Feature生成バッチ仕様書.md"
+      required: true
+      purpose: "先行 raw Upsert / IF-DB-BATCH-013 境界"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / Task 命名"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-013:Feature正規化Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（仕様書 / 実装 / UT）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-013:Feature正規化Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "IF-DB-BATCH-014 / IF-SHARED-003 と IF-DB-BATCH-013（BATCH-012）の混同防止が明記されている"
+  - "epic_scope.artifact_id が BATCH-013 である"
+
+branch:
+  no_branch: false
+  summary: "batch-013-feature-normalization"
+  name: "feature/epic-1455-batch-013-feature-normalization"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-19"
+    due_date: "2026-07-22"
+
+issue:
+  number: 1455
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-013"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-013_*"
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-feature-normalization*.yml"
+    - "prompts/definitions/epics/batch-013-feature-normalization/**"
+    - "prompts/definitions/tasks/batch-013-feature-normalization/**"
+    - "prompts/definitions/reviews/batch-013-feature-normalization/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1446
+      title: "[Epic]BATCH-012:Item Feature生成Batch"
+      purpose: "先行 raw Feature 生成。develop merge 済み"
+    - issue: 514
+      title: "item_feature テーブル定義"
+      purpose: "normalized_feature_value 列正本（CLOSED）"
+    - issue: 515
+      title: "item_meaning テーブル定義"
+      purpose: "Social / Symbolic 射影正本（CLOSED）"
+  issues: []
+  prs:
+    - number: 1453
+      purpose: "BATCH-012 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-012-item-feature"
+  blocks:
+    - "epic-batch-014-embedding-input-hash"
+  exclusive_files:
+    - "apps/batch/src/batch/application/feature_normalization/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "依存 Epic BATCH-012 が CLOSED であること"
+    - "item_feature / item_meaning / normalization_rule / feature_normalization_version DDL が develop に存在すること"
+    - "Featureルール定義書 §14（正規化方式）が develop に存在すること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope が BATCH-013 に閉じているか"
+    - "IF-DB-BATCH-014 / IF-SHARED-003 と IF-DB-BATCH-013（BATCH-012）の混同がないか"
+    - "normalization_distribution_metric（BATCH-016）/ apps/reco 破壊変更を含めていないか"
+    - "Contract Gate 不要方針"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "MVP 正規化方式を固定 sigmoid（center=0.5 / k=4.0）に確定するか（z-score+sigmoid は将来拡張）"
+  - "normalization_stats_version_id 列を新設せず feature_normalization_version_id で代替するか（方針書 §13.5 補足）"
+  - "item_feature.normalized 更新と item_meaning UPSERT を同一トランザクションで実施するか"
+  - "独立子 workflow（batch-feature-normalization.yml）を MVP 初期の正とするか（BATCH-010〜012 前例）"
+
+notes:
+  - "後続 Task: batch-spec → implementation → unit-test → Epic PR"
+  - "Issue #1455"
