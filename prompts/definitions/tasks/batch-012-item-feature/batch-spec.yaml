@@ -1,0 +1,175 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-012-item-feature-batch-spec"
+  title: "BATCH-012:Item Feature生成バッチ仕様書作成"
+  summary: "BATCH-012（Item Feature生成Batch）のバッチ仕様書を作成し、IF-DB-BATCH-013・IF-SHARED-002・item_feature raw Upsert・Queue 境界を正本化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-012:Item Feature生成Batch"
+  epic_issue_number: 1446
+  epic_branch: "feature/epic-1446-batch-012-item-feature"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase4b Item Feature 生成段。Epic #1446 bootstrap 済み。BATCH-011 develop merge 済み（#1434 / PR #1445）。
+  MOD-RECO-027 CLOSED（#1104）。専用仕様書は未着手。Contract Gate 不要。
+
+objective: |
+  BATCH-012 バッチ仕様書を作成し、後続実装・UT の入力正本とする。
+
+scope:
+  - "BATCH-012_Item Feature生成バッチ仕様書.md 新規作成"
+  - "IF-DB-BATCH-013 / IF-SHARED-002 / IF-DB-BATCH-012 混同防止"
+  - "item_feature raw Upsert・8軸・skip・Queue"
+  - "独立 workflow 提案"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Python 実装・workflow YAML 本体・UT"
+  - "BATCH-013 / apps/reco 破壊変更 / migration"
+  - "親 meaning-generation 全体改修"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-027_Item Feature Generatorモジュール仕様書.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-012_Item Feature生成バッチ仕様書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-012-item-feature/batch-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-012-item-feature/batch-spec/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-012 バッチ仕様書"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "仕様書が作成されている"
+  - "IF-DB-BATCH-013 / IF-SHARED-002 と IF-DB-BATCH-012（BATCH-011）の区別が明記されている"
+  - "item_feature raw Upsert と normalized は BATCH-013 境界が明記されている"
+  - "§18 で確定 / 提案が区別されている"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1447-batch-012-item-feature-batch-spec"
+  summary: "batch-012-item-feature-batch-spec"
+  base: "feature/epic-1446-batch-012-item-feature"
+  target: "feature/epic-1446-batch-012-item-feature"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1447
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1446
+      title: "[Epic]BATCH-012:Item Feature生成Batch"
+      purpose: "親 Epic"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-012_*"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-013 / IF-SHARED-002 / IF-DB-BATCH-012 混同がないか"
+    - "hash 算出が BATCH-011 側と明記されているか"
+    - "normalized 更新が BATCH-013 側と明記されているか"
+  specialist_reviews:
+    docs: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+human_decision_points:
+  - "独立 YAML（batch-item-feature.yml）採否（本仕様では正とする）"
+  - "IF-SHARED-002 in-process 採否（本仕様では正とする）"
+
+stop_conditions:
+  - "正本 docs 間で矛盾があり独断解消できない場合"
+
+notes:
+  - "Epic #1446"
+  - "Issue #1447"
