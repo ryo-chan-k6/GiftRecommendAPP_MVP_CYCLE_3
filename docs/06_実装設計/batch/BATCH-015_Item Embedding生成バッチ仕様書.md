@@ -124,7 +124,7 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 - `item_embedding` / `item_generation_queue` / `model_version` の DDL が利用可能であること（#516 等整備済み）。本 Epic での新規 migration 追加は out of scope
 - Database へ接続可能であること
 - 同時多重起動は `GRS-BAT-003` で拒否する
-- MVP 初版 scaffold 時は `OPENAI_API_KEY` 実設定は不要（§18.1）。実 API 接続は Human 判断後
+- MVP 初版 scaffold 時は `OPENAI_API_KEY` 実設定は不要（§18.1）。実 API 接続タイミング・本番設定値はフィジビリティ検証後に本仕様を更新（§18.2 No.2）
 
 ---
 
@@ -154,7 +154,7 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 
 | API | 利用有無 | 用途 | 備考 |
 | --- | -------- | ---- | ---- |
-| Embedding API（OpenAI 等） | **条件付き** | `item_text_context` → embedding vector | **IF-EXT-005**。MVP 初版は **scaffold-first**（スタブベクトル）。実呼出は後続 Human 判断（§18.1 / §18.2） |
+| Embedding API（OpenAI 等） | **条件付き** | `item_text_context` → embedding vector | **IF-EXT-005**。MVP 初版は **scaffold-first**（スタブベクトル）。実呼出タイミング・本番設定値はフィジビリティ検証後に本仕様更新（§18.1 No.8 / §18.2 No.2） |
 
 MVP 現行モデル（`item_embedding_テーブル定義書` §17.1 No.3 **確定**）:
 
@@ -255,7 +255,7 @@ flowchart TD
 | 実装 | OpenAI Embedding Client（batch infrastructure）。Rate Limiter 経由 |
 | HTTP | Embedding Provider への HTTPS（実 API 時）。Reco Hosting HTTP ではない |
 | MVP 初版 | **scaffold-first**: 決定論的スタブベクトル（次元 1536）を返し、契約・ログ・Upsert 経路を検証する |
-| 実 API | Human 判断後の後続 Task。`OPENAI_API_KEY` は Secrets のみ |
+| 実 API | フィジビリティ検証後の切替 Task（§18.2 No.2）。`OPENAI_API_KEY` は Secrets のみ |
 | ログ | ベクトル全文・入力全文・API key を記録しない。`api_call_log` は status / latency / model 名等のメタのみ |
 
 ### 8.4 IF-VEC-BATCH-001 書込境界（確定）
@@ -430,7 +430,7 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | ---- | ---- |
 | secret | DB / Embedding API 認証情報は GitHub Secrets / local `.env` のみ。値を docs・ログ・fixture に書かない |
 | Scaffold | 初版は `OPENAI_API_KEY` **不要** |
-| 実 API | Human 承認後に Secrets 設定。client 側へ key を渡さない |
+| 実 API | フィジビリティ検証後に Secrets / 本番設定値を確定（§18.2 No.2）。client 側へ key を渡さない |
 | ベクトル | Public API 非公開。ログ全文禁止 |
 | 権限 | `apps/batch` のみが `item_embedding` を書き込む |
 | HTTP 公開 | Batch は HTTP API 化しない（Contract Gate 不要） |
@@ -463,6 +463,7 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | 日付 | 変更内容 | 関連 |
 | ---- | -------- | ---- |
 | 2026-07-20 | 初版作成 | Epic #1479 / Task #1480 |
+| 2026-07-20 | §18.2 推奨案を Human 採用。実 OpenAI 接続タイミング・本番設定値はフィジビリティ検証後に本仕様を更新 | Task #1480 |
 
 ---
 
@@ -479,23 +480,26 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | 5 | 冪等キー | 物理 UNIQUE 3 列: `item_id` + `model_version_id` + `embedding_input_hash` | **確定**（`item_embedding` §7 / HR #516） |
 | 6 | MVP モデル | `text-embedding-3-small` / `vector(1536)` / `embedding_source_type = item_text_context` | **確定**（`item_embedding` §17.1） |
 | 7 | `embedding_source_version` | **DB 物理列なし**。Queue トリガー / hash 内包 | **確定**（`item_embedding` §17.1 No.2） |
-| 8 | scaffold-first | MVP 初版は Embedding API **スタブ**をデフォルトとする。実 OpenAI 呼出は後続 Human 判断 | **確定**（Epic #1479 human_decision_points。BATCH-010 同型） |
+| 8 | scaffold-first | MVP 初版は Embedding API **スタブ**をデフォルトとする。実 OpenAI 呼出タイミング・本番設定値（Secrets / コスト / Rate Limit 等）は **別途フィジビリティ検証後に本仕様を更新** | **確定**（Epic #1479 human_decision_points。BATCH-010 同型。2026-07-20 Human） |
 | 9 | Queue 終端 | semantic 一連 / embedding 経路の **`succeeded` は本 Batch** | **確定**（Queue §5.5 / BATCH-010 §18.1 No.9） |
 | 10 | 子 workflow | 独立 YAML **`batch-item-embedding.yml`（`batch-item-embedding*.yml`）**。cron なし。親全体改修は外 | **確定**（BATCH-011/013/014 前例） |
 | 11 | Contract Gate | **不要** | **確定** |
 | 12 | モジュール | **MOD-BATCH-036** / **MOD-BATCH-037**。`MOD-BATCH-015`（Recheck）と混同禁止 | **確定** |
-| 13 | config キー | `BATCH_ITEM_EMBEDDING_*` | **確定**（既定値の数値は §18.2） |
+| 13 | config キー | `BATCH_ITEM_EMBEDDING_*` | **確定**（件数上限など数値既定は §18.2 No.3。本番 OpenAI 関連値は §18.2 No.2） |
 | 14 | config 解決 | MOD-RECO-003 で `model_type = embedding` / `is_current` | **確定** |
+| 15 | 親 workflow 接続 | 本 Epic は独立子 workflow で完結。親 `batch-item-meaning-generation.yml` からの `workflow_call` 接続は meaning-generation チェーン統合 Task（BATCH-011/013/014 と同方針） | **確定**（2026-07-20 Human。§18.2 推奨案採用） |
 
-### 18.2 残未決（Human）
+### 18.2 後続確定事項（推奨案採用済み）
 
-| No | 事項 | 扱い |
-| -: | ---- | ---- |
-| 1 | 親 `batch-item-meaning-generation.yml` からの `workflow_call` タイミング | 本 Epic 外。独立子 workflow で完結させ、接続確定は meaning-generation チェーン統合 Task に委ねる（BATCH-011/013/014 と同方針） |
-| 2 | 実 OpenAI Embedding API 接続タイミング | scaffold-first 確定後の切替 Task。Secrets 設定・コスト・Rate Limit 本番値は Human 判断 |
-| 3 | `BATCH_ITEM_EMBEDDING_MAX_ITEMS` 等の件数上限既定値 | 実装 / workflow Task で確定 |
-| 4 | scaffold スタブベクトルの具体アルゴリズム（固定ゼロ近似 / hash 由来決定論 等） | 実装 Task で確定（次元 1536・型契約は §18.1） |
-| 5 | `item_text_context` → Embedding API 入力文字列への最終シリアライズ詳細 | BATCH-014 §9.2.1 と整合する範囲で実装 Task が確定 |
+> 2026-07-20 Human: §18.2 記載の推奨案をすべて採用。詳細値・接続時期の確定タイミングのみ後続に残す。
+
+| No | 事項 | 扱い | 状態 |
+| -: | ---- | ---- | ---- |
+| 1 | 親 `batch-item-meaning-generation.yml` からの `workflow_call` タイミング | §18.1 No.15。接続確定は meaning-generation チェーン統合 Task | **方針確定**（接続時期は統合 Task） |
+| 2 | 実 OpenAI Embedding API 接続タイミング、および本番の具体設定値（環境変数 / Secrets / コスト / Rate Limit 等） | scaffold-first（§18.1 No.8）を維持。切替 Task 前提は変えない。**接続タイミングと本番設定値は別途進めるフィジビリティ検証の結果を踏まえ、本仕様を更新して確定する** | **方針確定**（数値・切替時期は検証後に本仕様更新） |
+| 3 | `BATCH_ITEM_EMBEDDING_MAX_ITEMS` 等の件数上限既定値 | 実装 / workflow Task で確定 | **方針確定**（数値は実装 Task） |
+| 4 | scaffold スタブベクトルの具体アルゴリズム（固定ゼロ近似 / hash 由来決定論 等） | 実装 Task で確定（次元 1536・型契約は §18.1） | **方針確定**（アルゴリズムは実装 Task） |
+| 5 | `item_text_context` → Embedding API 入力文字列への最終シリアライズ詳細 | BATCH-014 §9.2.1 と整合する範囲で実装 Task が確定 | **方針確定**（詳細は実装 Task） |
 
 ---
 
@@ -526,7 +530,8 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 - `embedding_source_version` 物理列なしが明記されている
 - `MOD-BATCH-015`（Recheck）と Batch ID `BATCH-015` を混同していない
 - 独立子 workflow `batch-item-embedding.yml` / Contract Gate 不要が明記されている
-- §18 で確定 / 残未決（Human）が区別されている
+- §18 で確定方針 / 後続確定事項（推奨案採用済み）が区別されている
+- 実 OpenAI 接続タイミング・本番設定値がフィジビリティ検証後更新である旨が明記されている
 - secret / ベクトル全文ログ禁止が明記されている
 - PR target が親 Epic Branch（`feature/epic-1479-batch-015-item-embedding`）である
 
@@ -542,7 +547,7 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | BATCH-016 分布メトリクス / IF-DB-BATCH-016 | 後続 Epic |
 | Python 実装・workflow YAML 本体・UT | 後続 Task |
 | 親 meaning-generation / retry-failed チェーン全体改修 | Epic out_of_scope（独立子追加は可） |
-| 本番 OpenAI 実呼出の強制 | scaffold-first。Human 判断後 |
+| 本番 OpenAI 実呼出の強制 | scaffold-first。接続タイミング・本番設定値はフィジビリティ検証後に本仕様更新 |
 | apps/reco 破壊変更 / migration / OpenAPI | Epic forbidden |
 
 ### 21.2 データフロー（MVP）
