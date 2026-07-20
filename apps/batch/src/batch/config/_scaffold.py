@@ -49,6 +49,9 @@ def scaffold_batch_settings(*, app_env: AppEnv = AppEnv.DEV) -> BatchSettings:
         batch_feature_normalization_max_items=1000,
         batch_feature_normalization_source="rakuten",
         batch_feature_normalization_queue_batch_size=100,
+        batch_embedding_input_hash_max_items=1000,
+        batch_embedding_input_hash_source="rakuten",
+        batch_embedding_input_hash_queue_batch_size=100,
         supabase_url=None,
         supabase_service_role_key=None,
     )
