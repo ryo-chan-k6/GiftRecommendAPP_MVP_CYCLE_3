@@ -137,6 +137,13 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_embedding_input_hash_queue_batch_size=_read_positive_int(
             source, "BATCH_EMBEDDING_INPUT_HASH_QUEUE_BATCH_SIZE"
         ),
+        batch_item_embedding_max_items=_read_positive_int(
+            source, "BATCH_ITEM_EMBEDDING_MAX_ITEMS"
+        ),
+        batch_item_embedding_source=_read_optional_str(source, "BATCH_ITEM_EMBEDDING_SOURCE"),
+        batch_item_embedding_queue_batch_size=_read_positive_int(
+            source, "BATCH_ITEM_EMBEDDING_QUEUE_BATCH_SIZE"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )

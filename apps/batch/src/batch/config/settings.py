@@ -50,6 +50,9 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_EMBEDDING_INPUT_HASH_MAX_ITEMS",
     "BATCH_EMBEDDING_INPUT_HASH_SOURCE",
     "BATCH_EMBEDDING_INPUT_HASH_QUEUE_BATCH_SIZE",
+    "BATCH_ITEM_EMBEDDING_MAX_ITEMS",
+    "BATCH_ITEM_EMBEDDING_SOURCE",
+    "BATCH_ITEM_EMBEDDING_QUEUE_BATCH_SIZE",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -125,6 +128,9 @@ class BatchSettings:
     batch_embedding_input_hash_max_items: int | None
     batch_embedding_input_hash_source: str | None
     batch_embedding_input_hash_queue_batch_size: int | None
+    batch_item_embedding_max_items: int | None
+    batch_item_embedding_source: str | None
+    batch_item_embedding_queue_batch_size: int | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -195,6 +201,9 @@ class BatchSettings:
             f"batch_embedding_input_hash_max_items={self.batch_embedding_input_hash_max_items!r}, "
             f"batch_embedding_input_hash_source={self.batch_embedding_input_hash_source!r}, "
             f"batch_embedding_input_hash_queue_batch_size={self.batch_embedding_input_hash_queue_batch_size!r}, "
+            f"batch_item_embedding_max_items={self.batch_item_embedding_max_items!r}, "
+            f"batch_item_embedding_source={self.batch_item_embedding_source!r}, "
+            f"batch_item_embedding_queue_batch_size={self.batch_item_embedding_queue_batch_size!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "
