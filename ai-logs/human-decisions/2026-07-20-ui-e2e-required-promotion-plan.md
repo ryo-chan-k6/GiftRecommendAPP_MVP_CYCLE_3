@@ -16,7 +16,7 @@
 | 関連PR        | #1465（方針B 導入・merged） / 本 Epic PR（作成後に確定） |
 | Definition    | `prompts/definitions/epics/lane-1e-ui-e2e-required-prep/epic.yaml` |
 | 重要度        | `medium`              |
-| 状態          | `open`（gate ジョブ導入まで確定 / required 設定変更は soak 後の Human 判断待ち） |
+| 状態          | `open`（gate 導入済み / soak 観測中。進捗は `ai-logs/experiments/2026-07-20-ui-e2e-required-soak.md` と `scripts/ops/summarize-ui-e2e-soak.sh`。required 設定変更は soak 後の Human 判断待ち） |
 
 ---
 
