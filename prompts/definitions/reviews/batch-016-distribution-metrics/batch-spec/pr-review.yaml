@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1491
   issue:
     number: 1490
   task_definition: "prompts/definitions/tasks/batch-016-distribution-metrics/batch-spec.yaml"
