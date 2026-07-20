@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-ui-e2e-required-prep-epic"
+  title: "UI E2E required昇格準備（gateジョブ）Epic PRレビュー"
+  summary: "ui-e2e-gate（always()）追加と required 昇格方針の human-decision ログ正本化を行う Epic PR を AI Review する"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1471
+  task_definition: "prompts/definitions/epics/lane-1e-ui-e2e-required-prep/epic.yaml"
+  source_branch: "test/epic-1471-lane-1e-ui-e2e-required-prep"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  project_operation: true
+  security: true
+  test: true
+
+review_points:
+  - "ui-e2e-gate が always() で必ず結果を返し skip 結論の曖昧さを回避しているか"
+  - "gate の判定ロジック（decide.run / ui-e2e.result）が正しいか（false green 防止）"
+  - "required 設定変更を AI が独断で行っていないか（Human 判断として明示）"
+  - "human-decision ログの結論・前提が検討内容と整合しているか"
+  - "apps/api / reco / batch / OpenAPI / migration に変更がないか"
+
+acceptance_criteria:
+  - "結論が approve_for_human_review / request_changes / needs_human_decision のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "CI/CD 横断影響（required 昇格準備・gate ジョブ追加）"
+
+notes:
+  - "Epic PR（#1471 → develop）を対象とする。PR 番号は作成後に確定"
