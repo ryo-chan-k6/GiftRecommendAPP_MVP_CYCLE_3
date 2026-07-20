@@ -16,7 +16,7 @@
 | 関連PR        | #1465（方針B 導入・merged） / 本 Epic PR（作成後に確定） |
 | Definition    | `prompts/definitions/epics/lane-1e-ui-e2e-required-prep/epic.yaml` |
 | 重要度        | `medium`              |
-| 状態          | `open`（gate 導入済み / soak 観測中。進捗は `ai-logs/experiments/2026-07-20-ui-e2e-required-soak.md` と `scripts/ops/summarize-ui-e2e-soak.sh`。required 設定変更は soak 後の Human 判断待ち） |
+| 状態          | `open`（gate ジョブ導入まで確定 / required 設定変更は soak 後の Human 判断待ち） |
 
 ---
 
@@ -97,3 +97,16 @@ merge ゲート方針の選択であり、branch protection・CI/CD・開発フ�
 - gate ジョブなしで required 化すると、skip 結論の扱いにより PR がロックされる・または false green を pass にする恐れがある。
 - soak なしで required 化すると、E2E flake で develop への merge が不安定にブロックされる。
 - 昇格を放置すると、UI 主導線 S1 のデグレ検知が best-effort（nightly / 主導線 PR 可視化）に留まる。
+
+---
+
+## 9. soak 観測手段（追記 / Epic #1483）
+
+本ログの結論（案2 / develop / soak 2週間かつ10PR flake0）は変更しない。進捗の観測手段のみ追記する。
+
+| 成果物 | 役割 |
+| ------ | ---- |
+| `ai-logs/experiments/2026-07-20-ui-e2e-required-soak.md` | soak 進捗・スナップショットの記録 |
+| `scripts/ops/summarize-ui-e2e-soak.sh` | `test-ui-e2e.yml` 実行の集計（判定ヒントのみ。自動昇格しない） |
+
+`状態` 欄の更新（例: soak 完了 / required 昇格済み）は、Human が required 判断した後に行う。

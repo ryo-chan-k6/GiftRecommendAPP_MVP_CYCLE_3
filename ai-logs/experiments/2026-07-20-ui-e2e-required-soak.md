@@ -53,7 +53,7 @@
 
 ## 3. 初回スナップショット（事実）
 
-## 自動集計スナップショット
+以下は `./scripts/ops/summarize-ui-e2e-soak.sh --markdown` の出力を転記したものである（2026-07-20T14:38:31Z）。
 
 | 項目 | 値 |
 | ---- | ---- |
@@ -71,22 +71,6 @@
 | PR 一覧 | `[1478]` |
 | flake（簡易） | false |
 | 判定ヒント | IN PROGRESS (need days>=14 and PRs>=10 and flake=0) |
-
-```bash
-./scripts/ops/summarize-ui-e2e-soak.sh --since 2026-07-19T16:37:25Z --markdown
-```
-
-### runs（新しい順）
-
-| createdAt | event | PR | S1 | gate | run | URL |
-| --------- | ----- | -- | -- | ---- | --- | --- |
-| 2026-07-20T14:32:29Z | pull_request | 1481 | skipped | success | success | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29751089234 |
-| 2026-07-20T14:13:33Z | pull_request | 1481 | skipped | success | success | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29749693676 |
-| 2026-07-20T14:13:20Z | pull_request | 1481 | skipped | success | cancelled | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29749678188 |
-| 2026-07-20T14:00:44Z | pull_request | 1478 | success | success | success | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29748744746 |
-| 2026-07-20T14:00:07Z | pull_request | 1477 | skipped | success | success | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29748693867 |
-| 2026-07-20T13:59:54Z | pull_request | 1477 | skipped | success | success | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29748676566 |
-| 2026-07-19T19:17:17Z | schedule | - | success | success | success | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29700304370 |
 
 ## 4. 進捗メモ
 
