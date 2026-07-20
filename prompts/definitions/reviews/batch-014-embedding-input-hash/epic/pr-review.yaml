@@ -6,7 +6,7 @@ review:
   title: "BATCH-014 Embedding入力hash算出Batch Epic PRレビュー"
   summary: "BATCH-014 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1477
   issue:
     number: 1467
   task_definition: "prompts/definitions/epics/batch-014-embedding-input-hash/epic.yaml"
