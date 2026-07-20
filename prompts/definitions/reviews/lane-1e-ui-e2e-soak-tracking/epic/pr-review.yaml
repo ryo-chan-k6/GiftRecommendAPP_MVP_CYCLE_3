@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-ui-e2e-soak-tracking-epic"
+  title: "UI E2E soak進捗トラッキング Epic PRレビュー"
+  summary: "soak 集計スクリプトと実験ログ整備の Epic PR を AI Review する"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1483
+  task_definition: "prompts/definitions/epics/lane-1e-ui-e2e-soak-tracking/epic.yaml"
+  source_branch: "test/epic-1483-lane-1e-ui-e2e-soak-tracking"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  project_operation: true
+  security: true
+  test: true
+
+review_points:
+  - "カウント定義が human-decision の soak 基準と整合しているか"
+  - "cancelled を flake に含めない判断が明示されているか"
+  - "required 自動昇格をしていないか"
+  - "test-ui-e2e.yml / apps に変更がないか"
+
+acceptance_criteria:
+  - "結論が approve_for_human_review / request_changes / needs_human_decision のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "soak 観測の運用検証"
+
+notes:
+  - "Epic PR（#1483 → develop）を対象とする。PR 番号は作成後に確定"
