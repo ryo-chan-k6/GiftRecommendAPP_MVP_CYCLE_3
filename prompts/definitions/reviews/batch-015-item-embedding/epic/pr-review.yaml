@@ -6,7 +6,7 @@ review:
   title: "BATCH-015 Item Embedding生成Batch Epic PRレビュー"
   summary: "BATCH-015 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1488
   issue:
     number: 1479
   task_definition: "prompts/definitions/epics/batch-015-item-embedding/epic.yaml"
