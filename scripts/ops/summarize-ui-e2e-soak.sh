@@ -158,11 +158,14 @@ for r in runs:
 s1_rows = [x for x in rows if x["s1_executed"]]
 unique_prs = sorted({int(x["pr"]) for x in s1_rows if x["pr"].isdigit()})
 s1_fail = [x for x in s1_rows if is_fail(x["s1"])]
-# concurrency cancel で gate が failure になるケースは flake に含めない
+# concurrency cancel、および decide 自体が失敗したときの gate failure は
+# E2E flake ではなくインフラ/判定不能として除外する
 gate_fail = [
     x
     for x in rows
-    if is_fail(x["gate"]) and not x["cancelled_context"]
+    if is_fail(x["gate"])
+    and not x["cancelled_context"]
+    and x["decide"] == "success"
 ]
 flake = bool(s1_fail or gate_fail)
 pr_count = len(unique_prs)

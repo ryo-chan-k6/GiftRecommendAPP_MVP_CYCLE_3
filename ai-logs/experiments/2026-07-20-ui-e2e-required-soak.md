@@ -29,8 +29,9 @@
 | 項目 | 定義 |
 | ---- | ---- |
 | カウント対象 PR | heavy job **`UI E2E (S1)` が success / failure / timed_out で終了した** PR（`skipped` / `cancelled` は除外） |
-| flake（簡易） | soak 期間内に、cancelled 文脈でない `UI E2E (S1)` または `UI E2E gate` が `failure` / `timed_out` |
+| flake（簡易） | soak 期間内に、cancelled 文脈でなく decide=success のうえでの `UI E2E (S1)` / `UI E2E gate` の `failure` / `timed_out` |
 | cancelled 文脈 | run conclusion / Decide / S1 のいずれかが `cancelled`（concurrency cancel-in-progress 等）。**flake に含めない** |
+| decide 失敗 | Decide ジョブ自体が failure（API rate limit 等）のときの gate failure は **flake に含めない**（判定不能・インフラ） |
 | nightly | `schedule` 実行は安定性監視として記録するが、**10 PR カウントには含めない** |
 | 自動昇格 | **しない**（判定ヒントのみ。required 設定は Human） |
 
@@ -38,7 +39,7 @@
 
 | 項目 | 内容 |
 | ---- | ---- |
-| API rate limit 等のインフラ失敗 | decide/gate が rate limit で failure になった場合を flake に含めるか。現状の簡易定義では **含める**（cancelled 文脈でない failure）。除外するなら Human 判断後に定義・実装を更新する |
+| decide 失敗の扱い | 現状実装では decide failure（rate limit 等）に伴う gate failure を flake から除外する。より厳しく「decide failure も flake」とする場合は Human 判断後に定義・実装を更新する |
 
 ## 2. 使い方
 
