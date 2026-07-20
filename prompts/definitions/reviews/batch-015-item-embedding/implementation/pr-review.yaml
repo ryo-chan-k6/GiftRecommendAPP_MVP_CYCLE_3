@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1485
   issue:
     number: 1482
   task_definition: "prompts/definitions/tasks/batch-015-item-embedding/implementation.yaml"
