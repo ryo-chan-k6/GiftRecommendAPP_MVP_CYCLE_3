@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-015-item-embedding-implementation-pr"
+  title: "BATCH-015 Item Embedding生成Batch実装 PRレビュー"
+  summary: "BATCH-015 実装 Task の PR を AI Review する。IF 境界・scaffold-first・Queue 終端・hash 非再算出・skip を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "feature/task-1482-batch-015-item-embedding-implementation"
+  base: "feature/epic-1479-batch-015-item-embedding"
+  target: "feature/epic-1479-batch-015-item-embedding"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1482
+  task_definition: "prompts/definitions/tasks/batch-015-item-embedding/implementation.yaml"
+  source_branch: "feature/task-1482-batch-015-item-embedding-implementation"
+  target_branch: "feature/epic-1479-batch-015-item-embedding"
+  parent_epic_issue: "[Epic]BATCH-015:Item Embedding生成Batch"
+  parent_epic_branch: "feature/epic-1479-batch-015-item-embedding"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-VEC-BATCH-001 が本 Batch の物理書込（item_embedding Upsert）"
+  - "IF-EXT-005 が Embedding API（scaffold-first・実 OpenAI 非呼出）"
+  - "IF-DB-BATCH-015 は BATCH-014 handoff 消費のみ・hash 再算出禁止"
+  - "IF-DB-BATCH-016 / BATCH-016 非書込"
+  - "§9.3 skip（item_id + model_version_id + embedding_input_hash）"
+  - "Queue 終端 succeeded（semantic 一連 / embedding 経路）"
+  - "embedding_source_type=item_text_context / 1536 次元"
+  - "MOD-BATCH-036/037。MOD-BATCH-015（Recheck）と混同しない"
+  - "独立子 workflow batch-item-embedding.yml / cron なし"
+  - "非 scaffold-demo は exit 3 / secret・ベクトル全文ログ非含有"
+  - "apps/reco 本体・generated・migration 非変更"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1479"
+  - "Issue #1482"

@@ -1,0 +1,152 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-015-item-embedding-implementation"
+  title: "BATCH-015:Item Embedding生成Batch実装"
+  summary: "BATCH-015 を scaffold-first 実装する。IF-EXT-005（スタブ）/ IF-VEC-BATCH-001 Upsert / IF-DB-BATCH-015 handoff 消費（再算出禁止）/ Queue 終端 succeeded / 独立 workflow を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-015:Item Embedding生成Batch"
+  epic_issue_number: 1479
+  epic_branch: "feature/epic-1479-batch-015-item-embedding"
+  related_issues:
+    - number: 1480
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1481
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  仕様書 #1480 / PR #1481 Epic Branch merge 済み。§18.1 で IF 区別 / scaffold-first / Queue 終端 / 独立子 workflow を確定。
+
+objective: |
+  scaffold-first 実装と batch-item-embedding.yml を整備する。
+
+scope:
+  - "IF-EXT-005 scaffold Embedding（1536 次元スタブ・実 OpenAI 非呼出）"
+  - "IF-VEC-BATCH-001 item_embedding Upsert（3 列冪等）"
+  - "IF-DB-BATCH-015 handoff 消費のみ（hash 再算出禁止）"
+  - "§9.3 skip（item_id + model_version_id + embedding_input_hash）"
+  - "Queue 終端 succeeded（semantic 一連 / embedding 経路）"
+  - "config BATCH_ITEM_EMBEDDING_*"
+  - "batch-item-embedding.yml"
+  - "最小 UT"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "embedding_input_hash モジュール本体の編集"
+  - "IF-DB-BATCH-016 / BATCH-016"
+  - "apps/reco 本体変更"
+  - "親 meaning-generation 全体改修 / 接続タイミング確定"
+  - "OpenAPI / migration / generated 変更"
+  - "実 DB 配線 / 実 OpenAI 呼出"
+  - "包括的 UT Task"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-015_Item Embedding生成バッチ仕様書.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/batch/src/batch/application/item_embedding/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-item-embedding.yml"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "modify"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/external_ai/**"
+      action: "modify"
+      required: false
+  tests:
+    - path: "apps/batch/tests/unit/application/test_item_embedding.py"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "主要 Phase が追跡できる"
+  - "handoff 消費・skip・Upsert・Queue succeeded を UT 検証"
+  - "hash 再算出しない / IF-DB-BATCH-016 非書込"
+  - "scaffold 1536 次元 / embedding_source_type=item_text_context"
+  - "非 scaffold-demo は exit 3"
+  - "secret / ベクトル全文ログ非含有"
+
+branch:
+  no_branch: false
+  name: "feature/task-1482-batch-015-item-embedding-implementation"
+  summary: "batch-015-item-embedding-implementation"
+  base: "feature/epic-1479-batch-015-item-embedding"
+  target: "feature/epic-1479-batch-015-item-embedding"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1482
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - ".github/workflows/batch-item-embedding.yml"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-015 最小）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_item_embedding.py -q --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-VEC-BATCH-001 が物理書込、IF-EXT-005 が Embedding API、IF-DB-BATCH-015 は消費のみ"
+    - "IF-DB-BATCH-016 非書込 / hash 再算出禁止"
+    - "Queue 終端 succeeded が本 Batch"
+    - "scaffold-first（実 OpenAI 非呼出）/ 1536 次元"
+    - "MOD-BATCH-015（Recheck）と混同しない（036/037）"
+    - "apps/reco 本体・generated 非変更"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Issue #1482"
