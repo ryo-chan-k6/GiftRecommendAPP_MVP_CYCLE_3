@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-015-item-embedding-unit-test-pr"
+  title: "BATCH-015 Item Embedding生成Batch単体テスト PRレビュー"
+  summary: "BATCH-015 単体テスト Task の PR を AI Review する。§16 観点カバレッジ・実 DB 非依存・IF 境界観点を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "test/task-1486-batch-015-item-embedding-unit-test"
+  base: "feature/epic-1479-batch-015-item-embedding"
+  target: "feature/epic-1479-batch-015-item-embedding"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1486
+  task_definition: "prompts/definitions/tasks/batch-015-item-embedding/unit-test.yaml"
+  source_branch: "test/task-1486-batch-015-item-embedding-unit-test"
+  target_branch: "feature/epic-1479-batch-015-item-embedding"
+  parent_epic_issue: "[Epic]BATCH-015:Item Embedding生成Batch"
+  parent_epic_branch: "feature/epic-1479-batch-015-item-embedding"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "§16 対応表が PR 本文にある"
+  - "実 DB / secret 非依存（fixture/mock）"
+  - "IF-VEC-BATCH-001 Upsert・1536 次元・同一 3 列再実行収束"
+  - "IF-DB-BATCH-015 handoff 消費・hash 再算出なし・IF-DB-BATCH-016 非使用"
+  - "scaffold-first（実 OpenAI 非呼出）・embedding_source_type 固定"
+  - "Queue 終端 succeeded / フィルタ網羅 / skip"
+  - "部分成功 GRS-BAT-002・concurrency GRS-BAT-003・失敗経路"
+  - "api_call_log / fixture の secret・ベクトル全文非含有"
+  - "PR target が親 Epic Branch"
+  - "機能追加を主目的とする実装変更が混入していない"
+
+notes:
+  - "Epic #1479"
+  - "Issue #1486"
