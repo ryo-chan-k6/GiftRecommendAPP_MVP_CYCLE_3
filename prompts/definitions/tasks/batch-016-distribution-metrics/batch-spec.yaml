@@ -1,0 +1,196 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-016-distribution-metrics-batch-spec"
+  title: "BATCH-016:分布メトリクス集計バッチ仕様書作成"
+  summary: "BATCH-016（分布メトリクス集計Batch）のバッチ仕様書を作成し、IF-DB-BATCH-016（3 Metric INSERT/UPSERT）・BATCH-013 非書込境界・冪等・phase_log・独立子 workflow を正本化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-016:分布メトリクス集計Batch"
+  epic_issue_number: 1489
+  epic_branch: "feature/epic-1489-batch-016-distribution-metrics"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase4b 分布監視段。Epic #1489 bootstrap 済み。BATCH-013 / BATCH-015 develop merge 済み。
+  物理書込 IF = IF-DB-BATCH-016（Batch ID と IF 番号が一致）。隣接 IF（014=013 / 015=014 / VEC-001=015）混同禁止。
+  BATCH-013 は normalization_distribution_metric 非書込。本 Batch が 3 Metric を書く。
+  必須入力 item_feature / item_meaning。item_embedding は任意。Contract Gate 不要。
+
+objective: |
+  BATCH-016 バッチ仕様書を作成し、後続実装・UT の入力正本とする。
+
+scope:
+  - "BATCH-016_分布メトリクス集計バッチ仕様書.md 新規作成"
+  - "IF-DB-BATCH-016 / IF-DB-BATCH-014 / IF-DB-BATCH-015 / IF-VEC-BATCH-001 境界の明記"
+  - "3 Metric テーブル INSERT/UPSERT・冪等・aggregation_scope・phase_log 代表フェーズ"
+  - "BATCH-013 非書込境界・独立子 workflow batch-distribution-metrics.yml・MOD-BATCH-038"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Python 実装・workflow YAML 本体・UT"
+  - "BATCH-013/015 再実装 / BATCH-017 以降"
+  - "apps/reco 破壊変更 / migration / 親チェーン全体改修"
+  - "バッチ処理一覧の古い表記一括修正（別 Task 候補）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/feature_distribution_metric_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/meaning_distribution_metric_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/normalization_distribution_metric_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-013_Feature正規化バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-015_Item Embedding生成バッチ仕様書.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-016_分布メトリクス集計バッチ仕様書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-016-distribution-metrics/batch-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-016-distribution-metrics/batch-spec/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-016 バッチ仕様書"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "仕様書が作成されている"
+  - "IF-DB-BATCH-016 = BATCH-016（3 テーブル）と隣接 IF の区別が明記されている"
+  - "BATCH-013 が normalization_distribution_metric を書かない境界が明記されている"
+  - "必須入力が item_feature / item_meaning、任意が item_embedding である"
+  - "冪等が各テーブル UNIQUE / aggregation_scope に基づく"
+  - "phase_log が feature_distribution_metric_recorded 1 フェーズ代表である"
+  - "独立子 workflow / Contract Gate 不要 / MOD-BATCH-038 / Public API 非公開 / secret 禁止が明記されている"
+  - "§18 で確定 / 残未決（Human）・一覧修正別 Task 候補が区別されている"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1490-batch-016-distribution-metrics-batch-spec"
+  summary: "batch-016-distribution-metrics-batch-spec"
+  base: "feature/epic-1489-batch-016-distribution-metrics"
+  target: "feature/epic-1489-batch-016-distribution-metrics"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1490
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1489
+      title: "[Epic]BATCH-016:分布メトリクス集計Batch"
+      purpose: "親 Epic"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-016_*"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-016 が本 Batch の物理書込（3 Metric）である"
+    - "IF-DB-BATCH-014 / 015 / VEC-001 混同がないか"
+    - "BATCH-013 非書込（normalization_distribution_metric）境界"
+    - "必須入力 item_feature / item_meaning・任意 item_embedding"
+    - "phase_log feature_distribution_metric_recorded 代表・専用 phase 追加なし"
+    - "独立子 workflow / Contract Gate 不要 / MOD-BATCH-038"
+    - "§18 確定 / Human / 一覧修正別 Task 候補の区別"
+    - "secret / Public API 非公開"
+  specialist_reviews:
+    docs: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+human_decision_points:
+  - "MVP で item_embedding / user_meaning 集計を必須にするか"
+  - "MOD-BATCH-038 内包 vs Aggregator 追加採番"
+  - "aggregation_scope 既定と BATCH_DISTRIBUTION_METRICS_* 既定値"
+  - "バッチ処理一覧の古い BATCH-013 表記修正を別 docs Task とするか"
+
+stop_conditions:
+  - "正本 docs 間で矛盾があり独断解消できない場合"
+
+notes:
+  - "Epic #1489"
+  - "Issue #1490"
