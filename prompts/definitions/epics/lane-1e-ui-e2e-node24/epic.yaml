@@ -1,0 +1,203 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-ui-e2e-node24"
+  title: "レーン1e:UI E2E Node24化（Playwright更新）"
+  summary: "#1464 で Node 22 に固定した UI E2E runner を、プロジェクト標準の Node 24 へ戻す。@playwright/test を 1.52.0 → 1.61.1（Node 24.16+ 対応の下限 1.60+）へ更新し、GHA 上で smoke + S1 がハングせず pass することを確認する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/summarize-work"
+  next:
+    success: null
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1464（PR #1465）で UI E2E を導入した際、Playwright 1.52.0 が Node 24 で worker 起動ハングするため
+  runner を Node 22 に固定した。プロジェクト標準は Node 24（engines / .nvmrc / ci-web）であり、
+  Playwright 1.60+ で Node 24.16+ 互換が解消されている。本 Epic で依存更新と runner 復帰を行う。
+
+objective: |
+  @playwright/test を 1.61.1 へ更新し、test-ui-e2e.yml の node-version を "24" に戻す。
+  GHA 自己実走で Diagnostic smoke と S1、および ui-e2e-gate が pass することを確認する。
+
+scope:
+  - "apps/web の @playwright/test を 1.52.0 → 1.61.1 へ更新（pnpm-lock.yaml 含む）"
+  - ".github/workflows/test-ui-e2e.yml の node-version を 22 → 24 へ戻す"
+  - "Epic / Review 定義の作成"
+
+out_of_scope:
+  - "branch protection での required 昇格（#1471 / soak 後の Human 判断）"
+  - "S2〜S8 の自動化"
+  - "apps/api / apps/reco / apps/batch / OpenAPI / migration のロジック変更"
+  - "Next.js / 他依存のメジャー更新"
+
+input:
+  docs:
+    - path: ".github/workflows/test-ui-e2e.yml"
+      required: true
+    - path: "apps/web/package.json"
+      required: true
+    - path: "apps/web/playwright.config.ts"
+      required: true
+  issues:
+    - number: 1476
+      purpose: "本 Epic"
+    - number: 1464
+      purpose: "UI E2E CIゲート化（Node 22 固定の起点）"
+    - number: 1471
+      purpose: "required 昇格準備（gate ジョブ・soak）"
+  prs:
+    - number: 1465
+      purpose: "方針B + Node 22 固定（merged）"
+    - number: 1472
+      purpose: "ui-e2e-gate 追加（merged）"
+
+output:
+  docs: []
+  files:
+    - "apps/web/package.json"
+    - "pnpm-lock.yaml"
+    - ".github/workflows/test-ui-e2e.yml"
+    - "prompts/definitions/epics/lane-1e-ui-e2e-node24/epic.yaml"
+    - "prompts/definitions/reviews/lane-1e-ui-e2e-node24/epic/pr-review.yaml"
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: ""
+
+deliverables:
+  - "Playwright 1.61.1 + Node 24 runner の UI E2E"
+
+acceptance_criteria:
+  - "apps/web の @playwright/test が 1.61.1 である"
+  - "test-ui-e2e.yml の node-version が 24 である"
+  - "GHA 自己実走で Diagnostic smoke / UI E2E (S1) / UI E2E gate が pass する"
+  - "S1 skip 時は Verify ステップで fail する（既存ゲート維持）"
+  - "apps/api / reco / batch / OpenAPI / migration に変更がない"
+
+branch:
+  no_branch: false
+  name: "test/epic-1476-lane-1e-ui-e2e-node24"
+  summary: "lane-1e-ui-e2e-node24"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-20"
+    due_date: "2026-08-03"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "web"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "apps/web/package.json"
+    - "pnpm-lock.yaml"
+    - ".github/workflows/test-ui-e2e.yml"
+    - "prompts/definitions/epics/lane-1e-ui-e2e-node24/**"
+    - "prompts/definitions/reviews/lane-1e-ui-e2e-node24/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+  child_task_areas: []
+
+dependencies:
+  epics:
+    - issue: 1464
+      title: "[Epic]レーン1e:Playwright UI E2E（S1）CIゲート化"
+      purpose: "Node 22 固定の起点"
+    - issue: 1471
+      title: "[Epic]レーン1e:UI E2E required昇格準備（gateジョブ・soak）"
+      purpose: "ui-e2e-gate 追加（本 PR でも gate pass を確認）"
+  issues: []
+  prs:
+    - number: 1465
+      title: "方針B + Node 22 固定（merged）"
+    - number: 1472
+      title: "ui-e2e-gate 追加（merged）"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/test-ui-e2e.yml"
+    - "apps/web/package.json"
+    - "pnpm-lock.yaml"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "gha ui e2e s1 on node24"
+  commands:
+    - "workflow_dispatch: Test UI E2E (Layer3)"
+  manual_checks:
+    - "GHA runner Node 24 で Diagnostic smoke が 120s 以内に完走すること"
+    - "GHA runner Node 24 で UI E2E (S1) と UI E2E gate が pass すること"
+  not_required: []
+  skip_reason: {}
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Playwright 更新幅（1.52→1.61.1）が Node 24 互換を満たす根拠があるか（1.60+）"
+    - "test-ui-e2e.yml の node-version が 24 に戻り、標準（ci-web / engines）と整合しているか"
+    - "GHA 自己実走で smoke / S1 / gate が pass しているか"
+    - "required 昇格や S2〜S8 など out of scope を勝手に広げていないか"
+    - "apps/api / reco / batch / OpenAPI / migration に変更がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "CI/CD 横断影響（runner Node 復帰・依存更新）"
+
+notes:
+  - "Issueタイトル: [Epic]レーン1e:UI E2E Node24化（Playwright更新）"
+  - "Playwright < 1.60 は Node 24.16+ で install/関連処理ハングの既知問題（#40998 / #41000）"
+  - "診断用 timeout（smoke 120s / S1 600s）は Node 24 回帰検知のため維持"
+  - "Epic ブランチで直接作業し develop へ PR する軽量構成"

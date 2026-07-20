@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-ui-e2e-node24-epic"
+  title: "UI E2E Node24化（Playwright更新）Epic PRレビュー"
+  summary: "Playwright 1.61.1 更新と UI E2E runner の Node 24 復帰を行う Epic PR を AI Review する"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1476
+  task_definition: "prompts/definitions/epics/lane-1e-ui-e2e-node24/epic.yaml"
+  source_branch: "test/epic-1476-lane-1e-ui-e2e-node24"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  project_operation: true
+  security: true
+  test: true
+
+review_points:
+  - "Playwright 更新幅（1.52→1.61.1）が Node 24 互換を満たす根拠があるか（1.60+）"
+  - "test-ui-e2e.yml の node-version が 24 に戻り、標準（ci-web / engines）と整合しているか"
+  - "GHA 自己実走で smoke / S1 / gate が pass しているか"
+  - "required 昇格や S2〜S8 など out of scope を勝手に広げていないか"
+  - "apps/api / reco / batch / OpenAPI / migration に変更がないか"
+
+acceptance_criteria:
+  - "結論が approve_for_human_review / request_changes / needs_human_decision のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "CI/CD 横断影響（runner Node 復帰・依存更新）"
+
+notes:
+  - "Epic PR（#1476 → develop）を対象とする。PR 番号は作成後に確定"
