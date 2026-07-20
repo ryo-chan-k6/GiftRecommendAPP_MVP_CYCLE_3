@@ -280,3 +280,173 @@ def test_cli_scaffold_demo_returns_zero() -> None:
 
 def test_cli_without_scaffold_returns_three() -> None:
     assert main([]) == 3
+
+
+# --- §16 拡充: Queue フィルタ網羅 -------------------------------------------
+
+
+def test_feature_continuation_is_processed() -> None:
+    repos, _db = _repos(
+        queues=[_queue(qid="igq_feat", generation_type="feature", queue_status="processing")],
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    assert result.hashed_count == 1
+    assert repos.queues["igq_feat"]["queue_status"] == "processing"
+
+
+def test_embedding_processing_continuation_is_processed() -> None:
+    repos, _db = _repos(
+        queues=[_queue(qid="igq_emb_p", generation_type="embedding", queue_status="processing")],
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    assert result.hashed_count == 1
+    assert repos.queues["igq_emb_p"]["queue_status"] == "processing"
+
+
+def test_semantic_queued_is_not_targeted() -> None:
+    # semantic は processing（継続）のみ対象。queued は BATCH-010 前段なので対象外
+    repos, _db = _repos(
+        queues=[_queue(qid="igq_sem_q", generation_type="semantic", queue_status="queued")],
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    assert result.planned_queue_count == 0
+    assert result.hashed_count == 0
+
+
+def test_failed_queue_is_not_targeted() -> None:
+    repos, _db = _repos(
+        queues=[_queue(qid="igq_failed", generation_type="embedding", queue_status="failed")],
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    assert result.planned_queue_count == 0
+
+
+def test_claim_sets_processing_for_queued_embedding() -> None:
+    repos, _db = _repos()
+    assert repos.queues["igq_1"]["queue_status"] == "queued"
+    EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    assert repos.queues["igq_1"]["queue_status"] == "processing"
+
+
+def test_item_id_filter_limits_targets() -> None:
+    repos, _db = _repos(
+        queues=[
+            _queue(qid="igq_a", item_id="it_a"),
+            _queue(qid="igq_b", item_id="it_b"),
+        ],
+        items=[_item(item_id="it_a"), _item(item_id="it_b")],
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1", item_ids=["it_a"])
+    assert result.planned_queue_count == 1
+    assert result.succeeded_queue_ids == ["igq_a"]
+
+
+def test_max_items_limit_is_applied() -> None:
+    repos, _db = _repos(
+        queues=[
+            _queue(qid="igq_a", item_id="it_a"),
+            _queue(qid="igq_b", item_id="it_b"),
+        ],
+        items=[_item(item_id="it_a"), _item(item_id="it_b")],
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1", max_items=1)
+    assert result.planned_queue_count == 1
+
+
+# --- §16 拡充: 部分成功・concurrency・空plan ---------------------------------
+
+
+def test_partial_success_marks_grs_bat_002() -> None:
+    repos, _db = _repos(
+        queues=[
+            _queue(qid="igq_ok", item_id="it_ok"),
+            _queue(qid="igq_ng", item_id="ghost"),
+        ],
+        items=[_item(item_id="it_ok")],  # it_ok のみ存在、ghost は欠損
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    assert result.status == "partially_succeeded"
+    assert "GRS-BAT-002" in result.error_codes
+    assert result.hashed_count == 1
+    assert result.failed_count == 1
+
+
+def test_concurrent_start_rejected_grs_bat_003() -> None:
+    from batch.application.job_run import ScaffoldJobRunTracker
+
+    repos, _db = _repos()
+    tracker = ScaffoldJobRunTracker()
+    tracker.start(batch_id=BATCH_ID, job_run_id="run-a")
+    result = EmbeddingInputHashJob(repositories=repos, job_run_tracker=tracker).run(
+        job_run_id="run-b"
+    )
+    assert result.status == "failed"
+    assert "GRS-BAT-003" in result.error_codes
+
+
+def test_empty_plan_with_existing_queue_succeeds() -> None:
+    # 対象外 queue のみ存在 → GRS-BAT-001 ではなく succeeded
+    repos, _db = _repos(
+        queues=[_queue(qid="igq_done", generation_type="embedding", queue_status="succeeded")],
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    assert result.status == "succeeded"
+    assert "GRS-BAT-001" not in result.error_codes
+
+
+# --- §16 拡充: IF 境界・冪等キー -------------------------------------------
+
+
+def test_handoff_op_is_if_db_batch_015_not_014() -> None:
+    repos, _db = _repos()
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    record = result.handoff_records[0]
+    assert record["op"] == "if_db_batch_015_handoff"
+    assert "if_db_batch_014" not in record["op"]
+
+
+def test_handoff_preserves_idempotent_key_fields() -> None:
+    repos, _db = _repos()
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    record = result.handoff_records[0]
+    # 冪等キー: item_id + model_version_id + embedding_input_hash
+    assert record["item_id"] == "it_1"
+    assert record["model_version_id"] == DEFAULT_EMBEDDING_MODEL_VERSION
+    assert len(record["embedding_input_hash"]) == 64
+    assert record["embedding_source_type"] == _SOURCE_TYPE
+
+
+def test_handoff_context_contains_item_text_fields() -> None:
+    repos, _db = _repos()
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    context = result.handoff_records[0]["item_text_context"]
+    for key in ("item_id", "item_name", "genre_id", "attributes", "embedding_source_version"):
+        assert key in context
+    assert "semantic_concepts" not in context
+
+
+def test_no_item_embedding_dml_across_all_paths() -> None:
+    # skip / hashed 双方で item_embedding へ書込しない
+    ctx = _context()
+    digest = compute_embedding_input_hash(ctx)
+    repos, _db = _repos(
+        queues=[
+            _queue(qid="igq_hash", item_id="it_1"),
+            _queue(qid="igq_skip", item_id="it_2"),
+        ],
+        items=[_item(item_id="it_1"), _item(item_id="it_2")],
+        embeddings={
+            "it_2": [
+                ExistingEmbedding(
+                    model_version_id=DEFAULT_EMBEDDING_MODEL_VERSION,
+                    embedding_input_hash=compute_embedding_input_hash(_context(_item(item_id="it_2"))),
+                )
+            ]
+        },
+    )
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
+    assert result.item_embedding_write_count == 0
+    assert repos.item_embedding_write_count == 0
+    assert result.hashed_count == 1
+    assert result.skipped_count == 1
+    _ = digest
