@@ -28,11 +28,17 @@
 
 | 項目 | 定義 |
 | ---- | ---- |
-| カウント対象 PR | heavy job **`UI E2E (S1)` が実際に実行された** PR（`skipped` は除外） |
-| flake（簡易） | soak 期間内に `UI E2E (S1)` または `UI E2E gate` が `failure` / `timed_out` |
-| cancelled | concurrency の cancel-in-progress は **flake に含めない** |
+| カウント対象 PR | heavy job **`UI E2E (S1)` が success / failure / timed_out で終了した** PR（`skipped` / `cancelled` は除外） |
+| flake（簡易） | soak 期間内に、cancelled 文脈でない `UI E2E (S1)` または `UI E2E gate` が `failure` / `timed_out` |
+| cancelled 文脈 | run conclusion / Decide / S1 のいずれかが `cancelled`（concurrency cancel-in-progress 等）。**flake に含めない** |
 | nightly | `schedule` 実行は安定性監視として記録するが、**10 PR カウントには含めない** |
 | 自動昇格 | **しない**（判定ヒントのみ。required 設定は Human） |
+
+### 1.3 Human 確認事項（観測定義）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| API rate limit 等のインフラ失敗 | decide/gate が rate limit で failure になった場合を flake に含めるか。現状の簡易定義では **含める**（cancelled 文脈でない failure）。除外するなら Human 判断後に定義・実装を更新する |
 
 ## 2. 使い方
 

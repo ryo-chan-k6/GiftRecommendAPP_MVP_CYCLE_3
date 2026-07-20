@@ -30,9 +30,10 @@ Usage: summarize-ui-e2e-soak.sh [--since ISO8601] [--limit N] [--markdown] [--re
 
 Aggregates GitHub Actions runs of test-ui-e2e.yml for required-promotion soak.
 
-Counts unique PRs where heavy job "UI E2E (S1)" actually executed (not skipped).
-Flake (simple): any failure/timed_out of "UI E2E (S1)" or "UI E2E gate"
-(cancelled by concurrency is excluded).
+Counts unique PRs where heavy job "UI E2E (S1)" finished with
+success/failure/timed_out (skipped/cancelled excluded).
+Flake (simple): failure/timed_out of "UI E2E (S1)" or "UI E2E gate",
+excluding cancelled context (run/Decide/S1 cancelled by concurrency).
 EOF
 }
 
@@ -97,6 +98,11 @@ def is_fail(conclusion: str | None) -> bool:
     return conclusion in {"failure", "timed_out"}
 
 
+def is_cancelled_context(conclusion: str, decide: str, s1: str) -> bool:
+    """concurrency cancel-in-progress 等。flake から除外する。"""
+    return conclusion == "cancelled" or decide == "cancelled" or s1 == "cancelled"
+
+
 since_dt = parse_iso(SINCE)
 now = datetime.now(timezone.utc)
 elapsed_days = round((now - since_dt).total_seconds() / 86400, 1)
@@ -124,32 +130,40 @@ for r in runs:
     except subprocess.CalledProcessError:
         detail = {"jobs": []}
     jobs = {j.get("name"): j.get("conclusion") for j in detail.get("jobs") or []}
-    s1 = jobs.get("UI E2E (S1)")
-    gate = jobs.get("UI E2E gate")
-    decide = jobs.get("Decide whether to run UI E2E")
-    s1_executed = bool(s1) and s1 != "skipped"
+    s1 = jobs.get("UI E2E (S1)") or ""
+    gate = jobs.get("UI E2E gate") or ""
+    decide = jobs.get("Decide whether to run UI E2E") or ""
+    run_conclusion = r.get("conclusion") or "in_progress"
+    # cancelled は「実行サンプル」にも「flake」にも含めない
+    s1_executed = s1 in {"success", "failure", "timed_out"}
     title = r.get("displayTitle") or ""
     rows.append(
         {
             "id": run_id,
             "createdAt": r.get("createdAt"),
             "event": r.get("event"),
-            "conclusion": r.get("conclusion") or "in_progress",
+            "conclusion": run_conclusion,
             "branch": r.get("headBranch") or "",
             "title": title,
             "url": r.get("url") or "",
             "pr": extract_pr(title),
-            "decide": decide or "",
-            "s1": s1 or "",
-            "gate": gate or "",
+            "decide": decide,
+            "s1": s1,
+            "gate": gate,
             "s1_executed": s1_executed,
+            "cancelled_context": is_cancelled_context(run_conclusion, decide, s1),
         }
     )
 
 s1_rows = [x for x in rows if x["s1_executed"]]
 unique_prs = sorted({int(x["pr"]) for x in s1_rows if x["pr"].isdigit()})
 s1_fail = [x for x in s1_rows if is_fail(x["s1"])]
-gate_fail = [x for x in rows if is_fail(x["gate"])]
+# concurrency cancel で gate が failure になるケースは flake に含めない
+gate_fail = [
+    x
+    for x in rows
+    if is_fail(x["gate"]) and not x["cancelled_context"]
+]
 flake = bool(s1_fail or gate_fail)
 pr_count = len(unique_prs)
 pr_remaining = max(TARGET_PR_COUNT - pr_count, 0)
