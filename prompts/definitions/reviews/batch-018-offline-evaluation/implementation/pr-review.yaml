@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-018-offline-evaluation-implementation-pr"
+  title: "BATCH-018 Offline Evaluation Batch実装 PRレビュー"
+  summary: "BATCH-018 実装 Task の PR を AI Review する。IF-DB-BATCH-018・IF-SHARED-004 mock・メトリクス4種・独立子 workflow・最小 UT を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "feature/task-1517-batch-018-offline-evaluation-implementation"
+  base: "feature/epic-1514-batch-018-offline-evaluation"
+  target: "feature/epic-1514-batch-018-offline-evaluation"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1518
+  issue:
+    number: 1517
+    task_definition: "prompts/definitions/tasks/batch-018-offline-evaluation/implementation.yaml"
+    source_branch: "feature/task-1517-batch-018-offline-evaluation-implementation"
+    target_branch: "feature/epic-1514-batch-018-offline-evaluation"
+    parent_epic_issue: "[Epic]BATCH-018:Offline Evaluation Batch"
+    parent_epic_branch: "feature/epic-1514-batch-018-offline-evaluation"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-DB-BATCH-018 が evaluation_run / result / metric INSERT の物理書込である"
+  - "IF-SHARED-004 が mock（実 HTTP / 実 reco なし）"
+  - "Result / Metric の UPDATE 埋め直し経路がない"
+  - "初版メトリクスが precision_at_10 / recall_at_10 / ndcg_at_10 / mrr_at_10"
+  - "独立子 batch-offline-evaluation.yml（親接続なし・cron なし）"
+  - "MOD-BATCH-042〜044 / evaluation_run_log 新設なし"
+  - "OpenAPI / apps/reco / migration 非変更"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1514"
+  - "Issue #1517"
