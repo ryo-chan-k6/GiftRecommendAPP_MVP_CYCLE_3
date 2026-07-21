@@ -162,6 +162,21 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_import_summary_batch_run_id=_read_optional_str(
             source, "BATCH_IMPORT_SUMMARY_BATCH_RUN_ID"
         ),
+        batch_offline_evaluation_dataset_id=_read_optional_str(
+            source, "BATCH_OFFLINE_EVALUATION_DATASET_ID"
+        ),
+        batch_offline_evaluation_dataset_name=_read_optional_str(
+            source, "BATCH_OFFLINE_EVALUATION_DATASET_NAME"
+        ),
+        batch_offline_evaluation_dataset_version=_read_optional_str(
+            source, "BATCH_OFFLINE_EVALUATION_DATASET_VERSION"
+        ),
+        batch_offline_evaluation_max_cases=_read_positive_int(
+            source, "BATCH_OFFLINE_EVALUATION_MAX_CASES"
+        ),
+        batch_offline_evaluation_dry_run=_read_optional_bool(
+            source, "BATCH_OFFLINE_EVALUATION_DRY_RUN"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )

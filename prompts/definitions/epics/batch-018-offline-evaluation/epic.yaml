@@ -1,0 +1,274 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-018-offline-evaluation"
+  title: "BATCH-018:Offline Evaluation Batch"
+  summary: "BATCH-018（Offline Evaluation Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。evaluation_dataset / evaluation_case を読み、IF-SHARED-004 で evaluation mode 推薦を実行し、メトリクスを算出して IF-DB-BATCH-018 で evaluation_run / evaluation_result / evaluation_metric へ保存する。MVP は △（評価データ整備後に本格化）だが、Human 承認により scaffold-first 縦串を進める。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b の評価・改善系 Batch。識別子単位 Epic（1 Batch ID = 1 Epic）。
+  MVP 一覧は △（評価データ整備後に本格化）。Human により本 Epic 縦串の着手を明示承認済み。
+  Evaluation 系テーブル定義・DDL は整備済み（partial）。BATCH-018 専用仕様書・workflow・apps/batch 実装は未着手。
+  物理書込 IF は IF-DB-BATCH-018（evaluation_run / evaluation_result / evaluation_metric INSERT）。
+  推薦実行 IF は IF-SHARED-004（Python package / internal execution / internal API）。
+  API-INT-002（mode=evaluation）を契約変更せず消費する場合、Contract Gate は不要。
+  主モジュールは MOD-BATCH-039 / 040 / 041。apps/reco 破壊変更は禁止（呼び出し・mock のみ）。
+  一覧の evaluation_run_log は物理テーブルなし。正本は evaluation_run + batch_run_log / phase_log。
+  Run は毎回新規 INSERT（非冪等）。Result/Metric は Run 内 UNIQUE。
+  workflow 想定は独立子 batch-offline-evaluation.yml（cron 本線必須ではない）。
+  Failure Analyzer / Improvement Backlog（MOD-BATCH-043/044）は本 Epic 外。
+
+objective: |
+  BATCH-018 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: 仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-018 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-018-offline-evaluation/**）を整理する"
+  - "Contract Gate 不要方針を明示する（API-INT-002 契約変更をしない前提）"
+  - "IF-DB-BATCH-018 / IF-SHARED-004 / MVP △ scaffold-first 境界を整理する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001〜017 / 019）の仕様書・実装・テスト（先行は参照のみ）"
+  - "Public / Admin API 仕様書および OpenAPI / Orval / generated 変更（契約変更時は別 Epic）"
+  - "画面（SCR-* / 評価画面）・DB schema / migration（既存定義の参照は可）"
+  - "本番リリース作業・production 負荷評価"
+  - "apps/reco 本体の破壊変更（evaluation mode 呼び出し・mock は可）"
+  - "MOD-BATCH-042〜044（Feedback / Failure / Backlog）本格実装"
+  - "evaluation_dataset / evaluation_case の本番 seed 整備（最小 fixture は UT 可）"
+  - "週次親 workflow 全体改修（独立子追加は可）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-018 の Batch ID・処理概要・入出力・依存・MVP △・workflow 想定"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "評価 Batch・冪等・Observability 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "batch-offline-evaluation.yml・任意実行"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "013/015/016 → 018 評価依存・本番本線非必須"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-018 / IF-SHARED-004 / IF-INT-002"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-039 / 040 / 041"
+    - path: "docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md"
+      required: true
+      purpose: "Dataset 正本"
+    - path: "docs/06_実装設計/database/evaluation_case_テーブル定義書.md"
+      required: true
+      purpose: "Case 入力・expected_result_json"
+    - path: "docs/06_実装設計/database/evaluation_run_テーブル定義書.md"
+      required: true
+      purpose: "Run 新規 INSERT・status"
+    - path: "docs/06_実装設計/database/evaluation_result_テーブル定義書.md"
+      required: true
+      purpose: "Result UNIQUE・Writer"
+    - path: "docs/06_実装設計/database/evaluation_metric_テーブル定義書.md"
+      required: true
+      purpose: "Metric カタログ・EAV"
+    - path: "docs/06_実装設計/batch/BATCH-017_Import Summary作成バッチ仕様書.md"
+      required: true
+      purpose: "章構成・scaffold-first 踏襲"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / Task 命名"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-018:Offline Evaluation Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（仕様書 / 実装 / UT）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-018:Offline Evaluation Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "IF-DB-BATCH-018 / IF-SHARED-004 / MVP △ scaffold-first が明記されている"
+  - "epic_scope.artifact_id が BATCH-018 である"
+
+branch:
+  no_branch: false
+  summary: "batch-018-offline-evaluation"
+  name: "feature/epic-1514-batch-018-offline-evaluation"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-21"
+    due_date: "2026-07-25"
+
+issue:
+  number: 1514
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-018"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-018_*"
+    - "apps/batch/src/batch/application/offline_evaluation/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/infrastructure/reco_client/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-offline-evaluation*.yml"
+    - "prompts/definitions/epics/batch-018-offline-evaluation/**"
+    - "prompts/definitions/tasks/batch-018-offline-evaluation/**"
+    - "prompts/definitions/reviews/batch-018-offline-evaluation/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/src/batch/application/import_summary/**"
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1499
+      title: "[Epic]BATCH-017:Import Summary作成Batch"
+      purpose: "直前 Batch 縦串完了（評価依存ではないがレーン連続）"
+    - issue: 1455
+      title: "[Epic]BATCH-013:Feature正規化Batch"
+      purpose: "評価依存（item_feature / meaning 前提）"
+    - issue: 1479
+      title: "[Epic]BATCH-015:Item Embedding生成Batch"
+      purpose: "評価依存（embedding 前提）"
+  issues: []
+  prs:
+    - number: 1507
+      purpose: "BATCH-017 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-013-feature-normalization"
+    - "epic-batch-015-item-embedding"
+  blocks:
+    - "epic-batch-019-feedback-analysis"
+  exclusive_files:
+    - "apps/batch/src/batch/application/offline_evaluation/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Evaluation 系テーブル定義 / DDL が develop に存在すること"
+    - "API-INT-002 契約変更を本 Epic に含めないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope が BATCH-018 に閉じているか"
+    - "IF-DB-BATCH-018 / IF-SHARED-004 / API-INT-002 消費のみの境界"
+    - "MVP △ scaffold-first・本番級メトリクス過大約束がないか"
+    - "apps/reco 破壊変更・OpenAPI 変更を含めていないか"
+    - "evaluation_run_log 物理テーブルを新設していないか"
+    - "Contract Gate 不要方針（契約非変更）"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: true
+    security: true
+
+human_decision_points:
+  - "IF-SHARED-004 の MVP 実装形態（mock / HTTP API-INT-002 消費 / in-process）。推奨: scaffold は mock、実 HTTP は後続"
+  - "MVP 初版メトリクス範囲（最小 @10 数種 vs カタログ全部）"
+  - "Dataset/Case 本番 seed を本 Epic に含めるか別 Task か（推奨: 別 Task、UT は fixture）"
+  - "週次親 workflow への任意接続を本 Epic に含めるか（推奨: 独立子のみ）"
+
+notes:
+  - "後続 Task: batch-spec → implementation → unit-test → Epic PR"
+  - "MVP △ だが Human 明示承認により縦串着手"
+  - "一覧の evaluation_run_log は evaluation_run + batch_run_log / phase_log に読み替える"
+  - "Issue #1514"

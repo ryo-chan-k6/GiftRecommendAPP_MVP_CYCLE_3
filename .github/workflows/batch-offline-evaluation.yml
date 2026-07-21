@@ -1,0 +1,146 @@
+name: Batch Offline Evaluation
+
+# BATCH-018 Offline Evaluation（独立子 workflow）
+# 正本: BATCH-018 バッチ仕様書 §18.1 — 独立子のみ（親接続は後続）
+# workflow_call / workflow_dispatch（独立 cron なし）
+# IF-SHARED-004 = mock（実 HTTP / 実 reco なし）
+# Contract Gate 不要（API-INT-002 契約変更なし）
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      evaluation_dataset_id:
+        description: "Target evaluation_dataset_id"
+        required: false
+        type: string
+        default: ""
+      dataset_name:
+        description: "Dataset name (when id unset)"
+        required: false
+        type: string
+        default: ""
+      dataset_version:
+        description: "Dataset version (when id unset)"
+        required: false
+        type: string
+        default: ""
+      max_cases:
+        description: "Optional max cases limit"
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: "Skip DB writes when true"
+        required: false
+        type: string
+        default: "false"
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      evaluation_dataset_id:
+        description: "Target evaluation_dataset_id"
+        required: false
+        type: string
+        default: ""
+      dataset_name:
+        description: "Dataset name (when id unset)"
+        required: false
+        type: string
+        default: ""
+      dataset_version:
+        description: "Dataset version (when id unset)"
+        required: false
+        type: string
+        default: ""
+      max_cases:
+        description: "Optional max cases limit"
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: "Skip DB writes when true"
+        required: false
+        type: string
+        default: "false"
+
+concurrency:
+  group: batch-offline-evaluation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  offline-evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-018 scaffold demo
+        # Real DB not enabled. Secrets must never be printed.
+        # IF-DB-BATCH-018: evaluation_run / result / metric INSERT only.
+        # IF-SHARED-004: mock (no real HTTP / reco).
+        # MOD-BATCH-039 / 040 / 041. MOD-BATCH-042〜044 out of scope.
+        # Independent child only — weekly parent wiring is out of this Epic.
+        working-directory: apps/batch
+        run: |
+          DS_ID_ARGS=()
+          if [ -n "${{ inputs.evaluation_dataset_id }}" ]; then
+            DS_ID_ARGS+=(--evaluation-dataset-id "${{ inputs.evaluation_dataset_id }}")
+          fi
+          DS_NAME_ARGS=()
+          if [ -n "${{ inputs.dataset_name }}" ]; then
+            DS_NAME_ARGS+=(--dataset-name "${{ inputs.dataset_name }}")
+          fi
+          DS_VER_ARGS=()
+          if [ -n "${{ inputs.dataset_version }}" ]; then
+            DS_VER_ARGS+=(--dataset-version "${{ inputs.dataset_version }}")
+          fi
+          MAX_ARGS=()
+          if [ -n "${{ inputs.max_cases }}" ]; then
+            MAX_ARGS+=(--max-cases "${{ inputs.max_cases }}")
+          fi
+          DRY_ARGS=()
+          if [ -n "${{ inputs.dry_run }}" ]; then
+            DRY_ARGS+=(--dry-run "${{ inputs.dry_run }}")
+          fi
+          uv run python -m batch.application.offline_evaluation \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${DS_ID_ARGS[@]}" \
+            "${DS_NAME_ARGS[@]}" \
+            "${DS_VER_ARGS[@]}" \
+            "${MAX_ARGS[@]}" \
+            "${DRY_ARGS[@]}"

@@ -1,0 +1,191 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-018-offline-evaluation-implementation"
+  title: "BATCH-018:Offline Evaluation Batch実装"
+  summary: "BATCH-018 を scaffold-first 実装する。IF-DB-BATCH-018 で run/result/metric INSERT、IF-SHARED-004 mock、独立子 workflow、最小 UT を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-018:Offline Evaluation Batch"
+  epic_issue_number: 1514
+  epic_branch: "feature/epic-1514-batch-018-offline-evaluation"
+  related_issues:
+    - number: 1515
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1516
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  仕様書 #1515 / PR #1516 Epic Branch merge 済み。§18.1 で IF-SHARED-004=mock、
+  初版メトリクス 4 種、独立子のみ、seed 別 Task、Contract Gate 不要を確定済み。
+
+objective: |
+  scaffold-first 実装と batch-offline-evaluation.yml を整備する。
+
+scope:
+  - "IF-DB-BATCH-018 で evaluation_run / result / metric INSERT（Result/Metric UPDATE なし）"
+  - "offline_evaluation パッケージ / MOD-BATCH-039 / 040 / 041"
+  - "infrastructure/reco_client IF-SHARED-004 mock（実 HTTP なし）"
+  - "config BATCH_OFFLINE_EVALUATION_*"
+  - "独立子 batch-offline-evaluation.yml（cron なし・親接続なし）"
+  - "最小 UT"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "実 DB 配線 / 実 HTTP reco"
+  - "Dataset/Case 本番 seed"
+  - "週次親 workflow 改修・接続"
+  - "apps/reco / apps/api / OpenAPI / migration / generated"
+  - "MOD-BATCH-042〜044"
+  - "evaluation_run_log テーブル新設"
+  - "包括的 UT Task"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-018_Offline Evaluationバッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_run_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_result_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_metric_テーブル定義書.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/batch/src/batch/application/offline_evaluation/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/reco_client/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-offline-evaluation.yml"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "modify"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_offline_evaluation.py"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "主要 Phase（open_run〜finalize）が追跡できる"
+  - "IF-DB-BATCH-018 で run / result / metric INSERT を UT 検証"
+  - "Result / Metric の UPDATE 埋め直し経路がない"
+  - "IF-SHARED-004 が mock（外部 HTTP なし）"
+  - "初版メトリクスが precision/recall/ndcg/mrr_at_10 の 4 種"
+  - "独立子 workflow（親接続なし・cron なし）"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/task-1517-batch-018-offline-evaluation-implementation"
+  summary: "batch-018-offline-evaluation-implementation"
+  base: "feature/epic-1514-batch-018-offline-evaluation"
+  target: "feature/epic-1514-batch-018-offline-evaluation"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+
+issue:
+  number: 1517
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1514
+      title: "[Epic]BATCH-018:Offline Evaluation Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1515
+      purpose: "仕様書 CLOSED"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/offline_evaluation/**"
+    - "apps/batch/src/batch/infrastructure/reco_client/**"
+    - ".github/workflows/batch-offline-evaluation.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-018 最小）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_offline_evaluation.py -q --tb=short"
+  not_required:
+    - "integration test"
+  skip_reason:
+    "integration test": "scaffold-first。実 DB 配線は後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-018 が物理書込（run/result/metric INSERT）"
+    - "IF-SHARED-004 が mock（実 HTTP なし）"
+    - "Result/Metric UPDATE 埋め直しなし"
+    - "初版メトリクス 4 種のみ"
+    - "独立子 batch-offline-evaluation.yml（親接続なし）"
+    - "MOD-BATCH-042〜044 / evaluation_run_log 新設なし"
+    - "OpenAPI / apps/reco 非変更"
+    - "secret 非含有"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+notes:
+  - "Epic #1514"
+  - "仕様書 #1515 / PR #1516 MERGED"
+  - "Issue #1517"
