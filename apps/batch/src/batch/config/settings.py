@@ -57,6 +57,8 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_DISTRIBUTION_METRICS_SEMANTIC_CONFIG_VERSION_ID",
     "BATCH_DISTRIBUTION_METRICS_INCLUDE_ITEM_EMBEDDING",
     "BATCH_DISTRIBUTION_METRICS_INCLUDE_USER_MEANING",
+    "BATCH_IMPORT_SUMMARY_SOURCE_API",
+    "BATCH_IMPORT_SUMMARY_BATCH_RUN_ID",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -139,6 +141,8 @@ class BatchSettings:
     batch_distribution_metrics_semantic_config_version_id: str | None
     batch_distribution_metrics_include_item_embedding: bool | None
     batch_distribution_metrics_include_user_meaning: bool | None
+    batch_import_summary_source_api: str | None
+    batch_import_summary_batch_run_id: str | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -216,6 +220,8 @@ class BatchSettings:
             f"batch_distribution_metrics_semantic_config_version_id={self.batch_distribution_metrics_semantic_config_version_id!r}, "
             f"batch_distribution_metrics_include_item_embedding={self.batch_distribution_metrics_include_item_embedding!r}, "
             f"batch_distribution_metrics_include_user_meaning={self.batch_distribution_metrics_include_user_meaning!r}, "
+            f"batch_import_summary_source_api={self.batch_import_summary_source_api!r}, "
+            f"batch_import_summary_batch_run_id={self.batch_import_summary_batch_run_id!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "

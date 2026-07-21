@@ -59,6 +59,8 @@ def scaffold_batch_settings(*, app_env: AppEnv = AppEnv.DEV) -> BatchSettings:
         batch_distribution_metrics_semantic_config_version_id=None,
         batch_distribution_metrics_include_item_embedding=False,
         batch_distribution_metrics_include_user_meaning=False,
+        batch_import_summary_source_api=None,
+        batch_import_summary_batch_run_id=None,
         supabase_url=None,
         supabase_service_role_key=None,
     )

@@ -127,3 +127,13 @@ jobs:
             "${VERSION_ARGS[@]}" \
             "${EMBED_ARGS[@]}" \
             "${USER_ARGS[@]}"
+
+      - name: Run BATCH-017 Import Summary scaffold demo
+        # §18.1 No.16 C 併用: distribution-metrics 末尾に 017 step を追加。
+        # IF-DB-BATCH-017 only（item_import_summary INSERT）。016 本体は再実装しない。
+        # Real DB not enabled. Secrets must never be printed.
+        working-directory: apps/batch
+        run: |
+          uv run python -m batch.application.import_summary \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}"
