@@ -460,12 +460,19 @@ def build_report(
     soft = THRESHOLDS_MS["pipeline_total_soft"]
     hard = THRESHOLDS_MS["pipeline_total_hard"]
     p95 = tv007_summary["p95_ms"]
-    if p95 <= soft:
+    # 全 iteration 失敗時は wall-clock だけで Go にしない（部分失敗の誤判定防止）
+    if success_count == 0:
+        verdict = "Block"
+        verdict_note = "all iterations failed; treat as Block regardless of wall-clock"
+    elif p95 <= soft:
         verdict = "Go"
+        verdict_note = None
     elif p95 <= hard:
         verdict = "Adjust"
+        verdict_note = None
     else:
         verdict = "Block"
+        verdict_note = None
 
     meta: dict[str, Any] = {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -481,7 +488,8 @@ def build_report(
             "tv007_p95_ms": p95,
             "soft_limit_ms": soft,
             "hard_limit_ms": hard,
-            "rule": "p95<=soft→Go; soft<p95<=hard→Adjust; p95>hard→Block",
+            "rule": "p95<=soft→Go; soft<p95<=hard→Adjust; p95>hard→Block; all-fail→Block",
+            "note": verdict_note,
         },
     }
     if extra_meta:

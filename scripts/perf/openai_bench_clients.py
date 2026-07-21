@@ -33,8 +33,16 @@ def _require_api_key() -> str:
 
 
 def _redacted_http_error(exc: httpx.HTTPError) -> str:
-    """Avoid echoing response bodies that might contain sensitive upstream data."""
-    return f"{type(exc).__name__} (status/details redacted for bench safety)"
+    """Avoid echoing response bodies that might contain sensitive upstream data.
+
+    HTTP status code は secret ではないため含めてよい（local 診断用）。
+    """
+    status = None
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+    if status is not None:
+        return f"{type(exc).__name__} status={status} (body redacted for bench safety)"
+    return f"{type(exc).__name__} (details redacted for bench safety)"
 
 
 @dataclass

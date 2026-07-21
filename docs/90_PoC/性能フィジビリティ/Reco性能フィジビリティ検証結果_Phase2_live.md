@@ -24,7 +24,7 @@
 | ハーネス | `scripts/perf/reco_pipeline_bench.py --mode live` |
 | 実行経路 | `RecommendationOrchestrator` + `CompositionMode.PRODUCTION`（HTTP 非経由） |
 | OpenAI | `scripts/perf/openai_bench_clients.py` 差込（`apps/reco/src/**` 変更なし） |
-| DB | GHA ephemeral Supabase + `seed-masters` / `seed-test-data` |
+| DB | GHA ephemeral Supabase + local Docker Supabase（同一 seed 手順） |
 | 代表入力 | `friend_casual` × `birthday`、`top_k=5`、`candidate_limit=100` |
 | hard timeout | 計測のため bypass（`--enforce-hard-timeout` 未使用）。壁時計は外側計測 |
 | apps/reco 変更 | なし |
@@ -39,13 +39,18 @@
 
 artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret 実値は成果物・ログに含まれていない。
 
-### 2.2 local 実行
+### 2.2 local 実行（2026-07-21 再実施）
 
 | 項目 | 状態 |
 | ---- | ---- |
-| local live | **未実施** |
-| 理由 | 本 worktree の WSL 環境で Docker Desktop 統合が無効であり、ephemeral Supabase を起動できなかった |
-| 代替 | GHA Layer2 を正の計測環境とした |
+| Docker / Supabase | 起動確認済み（`scripts/db/start-local.sh`） |
+| migrate / seed | 実施済み（`seed-masters` + `seed-test-data`、item=3） |
+| local live + mock | **実施**（iterations=20, warmup=2）→ TV-007 p95≈696ms、**Go**、success=20/20 |
+| local live + secrets | **実行試行したが実 API 未達** |
+| secrets 未達理由 | ローカル `.env` の `OPENAI_API_KEY` がプレースホルダ（`your_openai_api_key_here`）。OpenAI は HTTP 401 `invalid_api_key`。全 20 iteration が `GRS-REC-004` で失敗 |
+| secrets 正の計測 | GHA Secrets 注入の Run 29829674333 を正とする |
+
+**事実:** local secrets 試行では embedding_calls=0 / llm_calls=22（Chat 401 で User Meaning 失敗）。ベンチは全失敗時に誤って Go とならないよう判定ロジックを修正済み（`all-fail→Block`）。
 
 ---
 
@@ -57,9 +62,22 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | ---- | ----------- | ---------- | -------- | -------- | -------- | -------- |
 | GHA | secrets | 20 | 2,247.5 | **4,529.3** | 6,720.0 | **Block**（p95 > hard 4,000） |
 | GHA | mock | 20 | 411.5 | **451.3** | 475.0 | **Go**（p95 ≤ soft 2,000） |
+| local（WSL2） | mock | 20 | 562.0 | **696.2** | 775.0 | **Go**（p95 ≤ soft 2,000） |
+| local（WSL2） | secrets | 20 | — | — | — | **未成立**（API key プレースホルダ / 401。性能判定対象外） |
 | GHA | skeleton（参考） | 50 | 0.001 | 0.001 | 0.001 | （Phase1 下限。判定不可） |
 
-**事実:** secrets 経路は OpenAI Embedding / Chat 実疎通あり（embedding_calls=22, llm_calls=22。warmup 含む）。mock 経路は scaffold/in-memory（calls=0）。両経路とも success_count=20/20。
+**事実:** GHA secrets 経路は OpenAI Embedding / Chat 実疎通あり（embedding_calls=22, llm_calls=22。warmup 含む）。mock 経路（GHA/local）は scaffold/in-memory（calls=0）で success=20/20。
+
+### 3.1.1 GHA ↔ local 再現性（mock）
+
+| 指標 | GHA mock | local mock | 差分（local − GHA） |
+| ---- | -------- | ---------- | ------------------- |
+| TV-007 p95 (ms) | 451.3 | 696.2 | +244.9 |
+| user_meaning p95 (ms) | 226.6 | 360.5 | +133.9 |
+| retrieval p95 (ms) | 93.7 | 126.1 | +32.4 |
+| 判定 | Go | Go | 同一ラベル |
+
+**解釈（推論）:** 絶対値は local（WSL2）の方が大きめだが、soft 2,000ms に対しては両環境とも余裕。再現性比較としては **判定ラベル一致**を確認できた。
 
 ### 3.2 フェーズ別実測（GHA, p95）
 
@@ -71,6 +89,17 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | matching | matching / phase_matching | 10.2 | 11.1 | 500 | 上限内 |
 | ranking | ranking / phase_ranking | 9.4 | 10.1 | 1,000 | 上限内 |
 | reason（参考） | reason / phase_output | 4,886.5 | 882.4 | 500 | TV-007 主対象外。参考として超過 |
+
+### 3.2.1 フェーズ別実測（local mock, p95）
+
+| TV-007 step | p95 (ms) | §13.2 hard (ms) |
+| ----------- | -------- | --------------- |
+| input_parse | 215.1 | 300 |
+| user_feature | 360.5 | 1,000 |
+| retrieval | 126.1 | 1,000 |
+| matching | 19.1 | 500 |
+| ranking | 20.1 | 1,000 |
+| reason（参考） | 1,346.2 | 500 |
 
 ### 3.3 mock vs secrets 比較（User Meaning）
 
@@ -97,8 +126,9 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 | 計測系 | ラベル | 根拠 |
 | ------ | ------ | ---- |
-| live + secrets（Human 指定の主経路） | **Block** | TV-007 p95=4,529ms > hard 4,000ms。phase_user_meaning p95=4,342ms > 1,000ms |
-| live + mock | **Go** | TV-007 p95=451ms ≤ soft 2,000ms。主要フェーズ hard 内（reason 除く） |
+| live + secrets（GHA・主経路） | **Block** | TV-007 p95=4,529ms > hard 4,000ms。phase_user_meaning p95=4,342ms > 1,000ms |
+| live + mock（GHA） | **Go** | TV-007 p95=451ms ≤ soft 2,000ms。主要フェーズ hard 内（reason 除く） |
+| live + mock（local） | **Go** | TV-007 p95=696ms ≤ soft 2,000ms。GHA と判定一致 |
 
 ### 4.3 Human 向け整理（推論・未確定）
 
@@ -120,11 +150,11 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | pipeline_total p50/p95/max（live） | 消化 | §3.1 |
 | フェーズ別 p95 | 消化 | Orchestrator phase_log 合算 |
 | TV-007 E2E wall-clock | 消化 | |
-| GHA と local 再現性比較 | 部分 | GHA 実施。local は Docker 不可で未実施 |
+| GHA と local 再現性比較 | 消化 | mock: GHA/local とも Go（p95 451 vs 696）。secrets local は API key プレースホルダのため GHA を正 |
 | Retrieval 件数別（100/500/1,000） | 未実施 | test-data seed は item **3 件**。件数スケールは追加 seed が必要 |
 | Matching / Ranking top_k 別 | 部分 | top_k=5 / candidate_limit=100 の固定代表のみ |
-| User Meaning mock vs secrets | 消化 | §3.3 |
-| DB/pgvector index・件数スケール | 部分 | HNSW 付き seed 上で計測。件数スケールは未実施 |
+| User Meaning mock vs secrets | 消化 | GHA で比較。local は mock のみ（secrets は key 待ち） |
+| DB/pgvector index・件数スケール | 部分 | HNSW 付き seed 上で計測（GHA/local）。件数スケールは未実施 |
 | Go/Adjust/Block | 消化 | §4 |
 | Phase2 結果 doc | 消化 | 本文書 |
 | 正式 docs 更新入力整理 | 消化 | §6 |
@@ -150,7 +180,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 | 項目 | 内容 |
 | ---- | ---- |
-| local 再現 | Docker 未統合のため未実施 |
+| local secrets | `.env` の `OPENAI_API_KEY` がプレースホルダのため未達。実 key 設定後に再実行可能 |
 | 件数スケール | seed 3 件のため 100/500/1,000 未実施 |
 | hard timeout 有効時 | bypass 計測。本番 4s 中断時の部分完了挙動は別確認候補 |
 | production 負荷 | out of scope |
@@ -163,3 +193,4 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 日付 | 変更内容 |
 | ---- | -------- |
 | 2026-07-21 | Phase2 live 初版（GHA secrets / mock / skeleton） |
+| 2026-07-21 | local Docker 再計測（mock Go）。secrets は API key プレースホルダで未達を明記 |

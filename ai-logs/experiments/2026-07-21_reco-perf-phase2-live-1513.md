@@ -15,4 +15,11 @@
 | [29830051761](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29830051761) | live + mock | TV-007 p95≈451ms → Go |
 | [29829993205](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29829993205) | skeleton | p95≈0.001ms（参考） |
 
+## local（Docker 再実施）
+
+| モード | 結果 |
+| ------ | ---- |
+| live + mock | TV-007 p95≈696ms → Go（success 20/20） |
+| live + secrets | API key プレースホルダで 401。性能判定対象外（GHA secrets を正） |
+
 secret 実値は本ログに記載しない。
