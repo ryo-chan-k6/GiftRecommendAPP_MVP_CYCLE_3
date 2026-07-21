@@ -1,0 +1,255 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-017-import-summary"
+  title: "BATCH-017:Import Summary作成Batch"
+  summary: "BATCH-017（Import Summary作成Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。Batch Run × source_api 単位で取込・反映・Feature/Embedding 生成件数を集計し、IF-DB-BATCH-017 で item_import_summary へ保存する。運用集計であり、商品明細・分布メトリクス本体は担当しない。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b の運用集計段。識別子単位 Epic（1 Batch ID = 1 Epic）。
+  先行 BATCH-016 は develop merge 済み（#1489 / PR #1498）。
+  item_import_summary テーブル定義・DDL は整備済み。
+  物理書込 IF は IF-DB-BATCH-017（Import Summary保存）。Batch ID と IF 番号は一致。
+  IF-DB-BATCH-016（分布メトリクス）/ IF-OBS-006（Observability）と混同禁止。
+  主モジュールは MOD-BATCH-047（Item Import Summary Writer）。一覧の Import Summary Builder は同義論理名。
+  冪等キーは batch_run_id + source_api。MVP は INSERT + ON CONFLICT DO NOTHING（UPDATE しない）。
+  起動は各 Batch 後続 / workflow_dispatch。独立 cron なし。設計上は
+  batch-distribution-metrics.yml（016+017）および import / meaning-generation 末尾への配置想定。
+  現行 batch-distribution-metrics.yml は BATCH-016 のみのため、本 Epic で 017 step 追加を許容。
+  親 workflow 全体改修は out_of_scope（Human 判断で独立子 workflow を MVP 正としても可）。
+  Batch は HTTP API 化しないため Contract Gate は不要。後続 Batch なし。
+
+objective: |
+  BATCH-017 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: 仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-017 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-017-import-summary/**）を整理する"
+  - "Contract Gate 不要方針を明示する"
+  - "IF-DB-BATCH-017 / MOD-BATCH-047 / item_import_summary 冪等境界を整理する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001〜016 / 018〜019）の仕様書・実装・テスト（先行は参照のみ）"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）・DB schema / migration（既存定義の参照は可）"
+  - "本番リリース作業"
+  - "apps/reco / apps/web / apps/api 破壊変更"
+  - "BATCH-016 distribution_metrics 本体の再実装"
+  - "親 daily / meaning-generation / rakuten-item-import チェーン全体改修（末尾 017 step の限定追加は Human 判断）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-017 の Batch ID・処理概要・入出力・依存・MVP・workflow 想定"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "集計・冪等・Observability 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "各子 workflow 末尾の BATCH-017 配置・独立 cron なし"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "各 Batch → 017 の集計依存"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-017 / IF-OBS-006"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-047"
+    - path: "docs/06_実装設計/database/item_import_summary_テーブル定義書.md"
+      required: true
+      purpose: "列・冪等・集計元・ON CONFLICT DO NOTHING"
+    - path: "docs/06_実装設計/batch/BATCH-016_分布メトリクス集計バッチ仕様書.md"
+      required: true
+      purpose: "先行・workflow 同梱関係"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / Task 命名"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-017:Import Summary作成Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（仕様書 / 実装 / UT）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-017:Import Summary作成Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "IF-DB-BATCH-017 / item_import_summary 冪等が明記されている"
+  - "epic_scope.artifact_id が BATCH-017 である"
+
+branch:
+  no_branch: false
+  summary: "batch-017-import-summary"
+  name: "feature/epic-1499-batch-017-import-summary"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-21"
+    due_date: "2026-07-24"
+
+issue:
+  number: 1499
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-017"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-017_*"
+    - "apps/batch/src/batch/application/import_summary/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-import-summary*.yml"
+    - ".github/workflows/batch-distribution-metrics*.yml"
+    - "prompts/definitions/epics/batch-017-import-summary/**"
+    - "prompts/definitions/tasks/batch-017-import-summary/**"
+    - "prompts/definitions/reviews/batch-017-import-summary/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1489
+      title: "[Epic]BATCH-016:分布メトリクス集計Batch"
+      purpose: "先行（集計依存・workflow 同梱想定）。develop merge 済み"
+  issues: []
+  prs:
+    - number: 1498
+      purpose: "BATCH-016 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-016-distribution-metrics"
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/import_summary/**"
+    - ".github/workflows/batch-distribution-metrics*.yml"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "依存 Epic BATCH-016 が CLOSED であること"
+    - "item_import_summary テーブル定義 / DDL が develop に存在すること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope が BATCH-017 に閉じているか"
+    - "IF-DB-BATCH-017 / IF-OBS-006 / IF-DB-BATCH-016 の混同がないか"
+    - "冪等（batch_run_id + source_api）と ON CONFLICT DO NOTHING が明示されているか"
+    - "BATCH-016 再実装 / OpenAPI / migration を含めていないか"
+    - "Contract Gate 不要方針"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "MVP 初版を独立子 workflow（batch-import-summary.yml）中心とするか、batch-distribution-metrics.yml への 017 step 追加を正とするか"
+  - "親 import / meaning-generation 末尾への 017 追加を本 Epic に含めるか後続 Task か"
+  - "Feature/Embedding 件数の集計タイミング（同一 Run 未完了時 0 固定）"
+  - "パッケージ名 import_summary と MOD-BATCH-047 / Builder 表記の最終整理"
+
+notes:
+  - "後続 Task: batch-spec → implementation → unit-test → Epic PR"
+  - "一覧の Import Summary Builder と MOD-BATCH-047 Writer は同義として扱う"
+  - "Issue #1499"
