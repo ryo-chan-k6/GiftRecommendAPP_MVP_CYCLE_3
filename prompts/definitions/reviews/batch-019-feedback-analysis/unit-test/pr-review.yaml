@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1529
   issue:
     number: 1528
   task_definition: "prompts/definitions/tasks/batch-019-feedback-analysis/unit-test.yaml"
