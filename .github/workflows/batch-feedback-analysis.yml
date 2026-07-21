@@ -1,0 +1,162 @@
+name: Batch Feedback Analysis
+
+# BATCH-019 Feedback分析（独立子 workflow）
+# 正本: BATCH-019 バッチ仕様書 §18.1 — 独立子のみ（親接続は後続）
+# workflow_call / workflow_dispatch（独立 cron なし）
+# IF-DB-BATCH-019 = in-memory / stub（実 DB INSERT / migration なし）
+# feedback_metric = analysis_result_json 内包
+# Contract Gate 不要（OpenAPI 非変更）
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      period_start:
+        description: "Analysis window start (ISO8601)"
+        required: false
+        type: string
+        default: ""
+      period_end:
+        description: "Analysis window end (ISO8601)"
+        required: false
+        type: string
+        default: ""
+      aggregation_scope:
+        description: "Aggregation scope (e.g. weekly / manual)"
+        required: false
+        type: string
+        default: ""
+      feedback_types:
+        description: "Comma-separated feedback_type filter"
+        required: false
+        type: string
+        default: ""
+      max_feedback_rows:
+        description: "Optional max feedback rows"
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: "Skip stub persist when true"
+        required: false
+        type: string
+        default: "false"
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      period_start:
+        description: "Analysis window start (ISO8601)"
+        required: false
+        type: string
+        default: ""
+      period_end:
+        description: "Analysis window end (ISO8601)"
+        required: false
+        type: string
+        default: ""
+      aggregation_scope:
+        description: "Aggregation scope (e.g. weekly / manual)"
+        required: false
+        type: string
+        default: ""
+      feedback_types:
+        description: "Comma-separated feedback_type filter"
+        required: false
+        type: string
+        default: ""
+      max_feedback_rows:
+        description: "Optional max feedback rows"
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: "Skip stub persist when true"
+        required: false
+        type: string
+        default: "false"
+
+concurrency:
+  group: batch-feedback-analysis
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  feedback-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-019 scaffold demo
+        # Real DB not enabled. Secrets must never be printed.
+        # IF-DB-BATCH-019: in-memory / stub only (no real INSERT / migration).
+        # feedback_metric embedded in analysis_result_json.
+        # MOD-BATCH-042 only. MOD-BATCH-043/044 out of scope.
+        # Independent child only — weekly parent wiring is out of this Epic.
+        working-directory: apps/batch
+        run: |
+          PERIOD_START_ARGS=()
+          if [ -n "${{ inputs.period_start }}" ]; then
+            PERIOD_START_ARGS+=(--period-start "${{ inputs.period_start }}")
+          fi
+          PERIOD_END_ARGS=()
+          if [ -n "${{ inputs.period_end }}" ]; then
+            PERIOD_END_ARGS+=(--period-end "${{ inputs.period_end }}")
+          fi
+          SCOPE_ARGS=()
+          if [ -n "${{ inputs.aggregation_scope }}" ]; then
+            SCOPE_ARGS+=(--aggregation-scope "${{ inputs.aggregation_scope }}")
+          fi
+          TYPE_ARGS=()
+          if [ -n "${{ inputs.feedback_types }}" ]; then
+            TYPE_ARGS+=(--feedback-types "${{ inputs.feedback_types }}")
+          fi
+          MAX_ARGS=()
+          if [ -n "${{ inputs.max_feedback_rows }}" ]; then
+            MAX_ARGS+=(--max-feedback-rows "${{ inputs.max_feedback_rows }}")
+          fi
+          DRY_ARGS=()
+          if [ -n "${{ inputs.dry_run }}" ]; then
+            DRY_ARGS+=(--dry-run "${{ inputs.dry_run }}")
+          fi
+          uv run python -m batch.application.feedback_analysis \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${PERIOD_START_ARGS[@]}" \
+            "${PERIOD_END_ARGS[@]}" \
+            "${SCOPE_ARGS[@]}" \
+            "${TYPE_ARGS[@]}" \
+            "${MAX_ARGS[@]}" \
+            "${DRY_ARGS[@]}"

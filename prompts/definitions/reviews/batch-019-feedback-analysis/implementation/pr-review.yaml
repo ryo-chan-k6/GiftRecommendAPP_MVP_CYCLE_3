@@ -1,0 +1,65 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-019-feedback-analysis-implementation-pr"
+  title: "BATCH-019 Feedback分析Batch実装 PRレビュー"
+  summary: "BATCH-019 実装 Task の PR を AI Review する。IF-DB-BATCH-019 stub・JSON内包メトリクス・独立子 workflow・最小 UT を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "feature/task-1526-batch-019-feedback-analysis-implementation"
+  base: "feature/epic-1522-batch-019-feedback-analysis"
+  target: "feature/epic-1522-batch-019-feedback-analysis"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1526
+    task_definition: "prompts/definitions/tasks/batch-019-feedback-analysis/implementation.yaml"
+    source_branch: "feature/task-1526-batch-019-feedback-analysis-implementation"
+    target_branch: "feature/epic-1522-batch-019-feedback-analysis"
+    parent_epic_issue: "[Epic]BATCH-019:Feedback分析Batch"
+    parent_epic_branch: "feature/epic-1522-batch-019-feedback-analysis"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-DB-BATCH-019 が in-memory / stub（実 DB INSERT なし）"
+  - "feedback_metric が analysis_result_json 内包（独立テーブルなし）"
+  - "recommendation_feedback の UPDATE / 書戻し経路がない"
+  - "supabase/migrations/** 非変更"
+  - "独立子 batch-feedback-analysis.yml（親接続なし・cron なし）"
+  - "MOD-BATCH-042 のみ。MOD-BATCH-043 / 044 なし"
+  - "MOD-BATCH-019（Raw Reader）と混同する実装がない"
+  - "OpenAPI / apps/reco / apps/api 非変更"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1522"
+  - "Issue #1526"
