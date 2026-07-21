@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1520
   issue:
     number: 1519
   task_definition: "prompts/definitions/tasks/batch-018-offline-evaluation/unit-test.yaml"
