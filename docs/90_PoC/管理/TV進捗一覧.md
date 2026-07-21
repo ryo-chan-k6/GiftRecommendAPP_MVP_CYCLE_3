@@ -5,7 +5,7 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 配置 | `docs/90_PoC/管理/` |
-| 更新日 | 2026-07-22（TV-007 Phase3 Epic PR 準備） |
+| 更新日 | 2026-07-22（TV-007 Phase3 develop 着・正式 docs Epic #1532） |
 | 計画正本 | [技術検証全体計画](../計画/技術検証全体計画.md) |
 
 ステータス凡例:
@@ -37,7 +37,7 @@
 | TV-004 | `方針のみ` | なし（要起票） | 同上 |
 | TV-005 | `方針のみ` | なし（要起票） | Phase3 の外部 AI 依存候補（内包しない） |
 | TV-006 | `方針のみ` | なし（要起票） | Phase3 の pgvector 依存候補（内包しない） |
-| TV-007 | `Phase3取り込み中` | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) **CLOSED** / 正式反映 [#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) **CLOSED** / Phase3 [#1535](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1535) | #1536→#1537 Epic 着。Epic PR → develop 取り込み中。`phase_output` 正式反映は別 Task |
+| TV-007 | `完了` | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) **CLOSED** / Phase3 [#1535](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1535) **CLOSED** / 正式反映 [#1532](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1532)・[#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) | Phase1〜3 develop 着。#1533 確定値・`phase_output` 正式反映は Epic #1532 で develop 取込 |
 | TV-008 | `方針のみ` | なし（要起票） | BATCH レーンと exclusive 調整が必要 |
 | TV-009 | `方針のみ` | なし（要起票） | — |
 | TV-010 | `方針のみ` | なし（要起票） | BATCH-015 Embedding 実装進展と関連し得る |
@@ -55,3 +55,4 @@
 | 2026-07-22 | TV-007 を `Phase2完了（Phase3待ち）` に更新（#1535 Phase3 起票・#1533 方針反映） |
 | 2026-07-22 | TV-007 を `Phase3進行中` に更新（#1536 計測・結果 doc） |
 | 2026-07-22 | TV-007 を `Phase3取り込み中` に更新（#1535 Epic PR 準備） |
+| 2026-07-22 | TV-007 を `完了` に更新（#1538 Phase3 develop 着。正式 docs は #1532） |

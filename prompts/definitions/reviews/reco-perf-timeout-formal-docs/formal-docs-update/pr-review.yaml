@@ -1,0 +1,86 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-perf-timeout-formal-docs-update-pr"
+  title: "MOD-RECO-001§13.2・性能要件§5のTV-007正式反映 PRレビュー"
+  summary: "Task #1533 formal-docs-update の PR を AI Review する。Human 確定済み timeout 分離値と docs 整合を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1533
+  pr:
+    number: 1534
+  parent_epic_issue: 1532
+  parent_epic_branch: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  task_definition: "prompts/definitions/tasks/reco-perf-timeout-formal-docs/formal-docs-update.yaml"
+  source_branch: "docs/task-1533-perf-timeout-formal-docs"
+  target_branch: "docs/epic-1532-reco-perf-timeout-formal-docs"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-perf-timeout-formal-docs/formal-docs-update.yaml"
+    required: true
+  issue:
+    number: 1533
+    required: true
+  pr:
+    number: 1534
+    required: true
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+
+review_points:
+  common:
+    - "Task Definition scope 内か（apps/**・再計測・OpenAPI 非混入）"
+    - "PR target が親 Epic Branch（docs/epic-1532-reco-perf-timeout-formal-docs）か"
+    - "Related to #1533 のみで Closes #1533 を使っていないか"
+  docs:
+    - "§13.2 と性能要件 §5 が整合しているか（内部 / 同期外部 AI 分離）"
+    - "Human 確定値（内部 soft/hard 1.5s/2s、外部 AI 込み 6s/8s、phase_user_meaning 5s、Public 10s / Reco 8s）が反映されているか"
+    - "phase_output（Reason）が未確定・別 Task と明示されているか"
+    - "同期維持・cold path・キャッシュ補助の方針が矛盾なく記載されているか"
+    - "TV-007 が完了ステータスになっているか"
+    - "Phase2 結果 / 設計反映メモへの参照があるか"
+    - "未確定値を確定済みとして断定していないか（phase_output 以外）"
+  security:
+    - "secret / .env 実値がないか"
+
+notes:
+  - "Issue #1533 / Branch docs/task-1533-perf-timeout-formal-docs / PR #1534"
+  - "実装側 timeout 追従は別実装 Task（本 PR out of scope）"
