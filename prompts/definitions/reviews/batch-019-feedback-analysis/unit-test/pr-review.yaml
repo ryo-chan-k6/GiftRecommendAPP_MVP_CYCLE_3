@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-019-feedback-analysis-unit-test-pr"
+  title: "BATCH-019 Feedback分析Batch単体テスト PRレビュー"
+  summary: "BATCH-019 UT Task の PR を AI Review する。§16 カバレッジ・fixture/mock・secret 非依存を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "test/task-1528-batch-019-feedback-analysis-unit-test"
+  base: "feature/epic-1522-batch-019-feedback-analysis"
+  target: "feature/epic-1522-batch-019-feedback-analysis"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1528
+  task_definition: "prompts/definitions/tasks/batch-019-feedback-analysis/unit-test.yaml"
+  source_branch: "test/task-1528-batch-019-feedback-analysis-unit-test"
+  target_branch: "feature/epic-1522-batch-019-feedback-analysis"
+  parent_epic_issue: "[Epic]BATCH-019:Feedback分析Batch"
+  parent_epic_branch: "feature/epic-1522-batch-019-feedback-analysis"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功・実 DB / secret 非依存"
+  - "IF-DB-BATCH-019 stub（in-memory・実 INSERT なし）"
+  - "recommendation_feedback UPDATE 禁止・SELECT / fixture のみ"
+  - "feedback_metric が analysis_result_json 内包"
+  - "migration / 出力物理 DDL 非含有"
+  - "MOD-BATCH-043/044 非依存・MOD-BATCH-019 混同なし"
+  - "Negative / Positive 集計・空 Feedback・冪等（都度新規 stub）"
+  - "concurrency GRS-BAT-003。部分成功 GRS-BAT-002 は未実装なら明示"
+  - "apps/reco / OpenAPI 非変更"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1522 / Issue #1528"
+  - "PR 番号は作成後に更新"
