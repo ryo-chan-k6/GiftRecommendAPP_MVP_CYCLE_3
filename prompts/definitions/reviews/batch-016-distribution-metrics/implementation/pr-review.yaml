@@ -1,0 +1,63 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-016-distribution-metrics-implementation-pr"
+  title: "BATCH-016 分布メトリクス集計Batch実装 PRレビュー"
+  summary: "BATCH-016 実装 Task の PR を AI Review する。IF-DB-BATCH-016・隣接 IF 非書込・phase_log・038 内包・独立子 workflow を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "feature/task-1492-batch-016-distribution-metrics-implementation"
+  base: "feature/epic-1489-batch-016-distribution-metrics"
+  target: "feature/epic-1489-batch-016-distribution-metrics"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1492
+  task_definition: "prompts/definitions/tasks/batch-016-distribution-metrics/implementation.yaml"
+  source_branch: "feature/task-1492-batch-016-distribution-metrics-implementation"
+  target_branch: "feature/epic-1489-batch-016-distribution-metrics"
+  parent_epic_issue: "[Epic]BATCH-016:分布メトリクス集計Batch"
+  parent_epic_branch: "feature/epic-1489-batch-016-distribution-metrics"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-DB-BATCH-016 が 3 Metric UPSERT の物理書込である"
+  - "IF-DB-BATCH-014 / 015 / VEC-001 を書かない"
+  - "必須入力 item_feature / item_meaning。embedding / user_meaning は OFF 既定でスキップ"
+  - "phase_log が feature_distribution_metric_recorded 1 フェーズ代表"
+  - "MOD-BATCH-038 内包（Aggregator 追加採番なし）"
+  - "batch-distribution-metrics.yml / Contract Gate 不要"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1489"
+  - "Issue #1492"

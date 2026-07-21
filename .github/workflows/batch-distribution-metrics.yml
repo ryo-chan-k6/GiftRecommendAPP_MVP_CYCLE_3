@@ -1,0 +1,129 @@
+name: Batch Distribution Metrics
+
+# BATCH-016 分布メトリクス集計（独立子 workflow）
+# 正本: BATCH-016 バッチ仕様書 §18.1 — workflow_call / workflow_dispatch（cron なし）
+# 親 meaning-generation / daily 親 workflow 全体改修は本 Epic 外
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      trigger_mode:
+        description: "dispatch | chain | schedule (default dispatch → aggregation_scope=batch_run)"
+        required: false
+        type: string
+        default: "dispatch"
+      semantic_config_version_id:
+        description: "semantic_config_version_id override"
+        required: false
+        type: string
+        default: ""
+      include_item_embedding:
+        description: "Include item_embedding monitoring input (default false)"
+        required: false
+        type: string
+        default: "false"
+      include_user_meaning:
+        description: "Include user_meaning aggregation (default false)"
+        required: false
+        type: string
+        default: "false"
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      trigger_mode:
+        description: "dispatch | chain | schedule (default dispatch → aggregation_scope=batch_run)"
+        required: false
+        type: string
+        default: "dispatch"
+      semantic_config_version_id:
+        description: "semantic_config_version_id override"
+        required: false
+        type: string
+        default: ""
+      include_item_embedding:
+        description: "Include item_embedding monitoring input (default false)"
+        required: false
+        type: string
+        default: "false"
+      include_user_meaning:
+        description: "Include user_meaning aggregation (default false)"
+        required: false
+        type: string
+        default: "false"
+
+concurrency:
+  group: batch-distribution-metrics
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  distribution-metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-016 scaffold demo
+        # Real DB not enabled. Secrets must never be printed.
+        # IF-DB-BATCH-016: feature / meaning / normalization_distribution_metric UPSERT only.
+        # IF-DB-BATCH-014 / 015 / IF-VEC-BATCH-001 are not written.
+        # item_embedding / user_meaning are optional (flags OFF by default).
+        # MOD-BATCH-038 内包（Aggregator 追加採番なし）。
+        working-directory: apps/batch
+        run: |
+          TRIGGER_ARGS=()
+          if [ -n "${{ inputs.trigger_mode }}" ]; then
+            TRIGGER_ARGS+=(--trigger-mode "${{ inputs.trigger_mode }}")
+          fi
+          VERSION_ARGS=()
+          if [ -n "${{ inputs.semantic_config_version_id }}" ]; then
+            VERSION_ARGS+=(--semantic-config-version-id "${{ inputs.semantic_config_version_id }}")
+          fi
+          EMBED_ARGS=()
+          if [ -n "${{ inputs.include_item_embedding }}" ]; then
+            EMBED_ARGS+=(--include-item-embedding "${{ inputs.include_item_embedding }}")
+          fi
+          USER_ARGS=()
+          if [ -n "${{ inputs.include_user_meaning }}" ]; then
+            USER_ARGS+=(--include-user-meaning "${{ inputs.include_user_meaning }}")
+          fi
+          uv run python -m batch.application.distribution_metrics \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${TRIGGER_ARGS[@]}" \
+            "${VERSION_ARGS[@]}" \
+            "${EMBED_ARGS[@]}" \
+            "${USER_ARGS[@]}"

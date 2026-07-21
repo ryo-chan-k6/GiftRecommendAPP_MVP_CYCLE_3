@@ -144,6 +144,18 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_item_embedding_queue_batch_size=_read_positive_int(
             source, "BATCH_ITEM_EMBEDDING_QUEUE_BATCH_SIZE"
         ),
+        batch_distribution_metrics_aggregation_scope=_read_optional_str(
+            source, "BATCH_DISTRIBUTION_METRICS_AGGREGATION_SCOPE"
+        ),
+        batch_distribution_metrics_semantic_config_version_id=_read_optional_str(
+            source, "BATCH_DISTRIBUTION_METRICS_SEMANTIC_CONFIG_VERSION_ID"
+        ),
+        batch_distribution_metrics_include_item_embedding=_read_optional_bool(
+            source, "BATCH_DISTRIBUTION_METRICS_INCLUDE_ITEM_EMBEDDING"
+        ),
+        batch_distribution_metrics_include_user_meaning=_read_optional_bool(
+            source, "BATCH_DISTRIBUTION_METRICS_INCLUDE_USER_MEANING"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )
