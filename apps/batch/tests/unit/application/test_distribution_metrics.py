@@ -175,6 +175,7 @@ def test_happy_path_upserts_three_metric_tables_and_single_phase_log() -> None:
 
     phase_names = [p["phase"] for p in repos.phase_logs]
     assert phase_names == [PHASE_FEATURE_DISTRIBUTION_RECORDED]
+    assert repos.phase_logs[0]["status"] == "succeeded"
     assert "meaning_distribution_metric_recorded" not in phase_names
     assert "normalization_distribution_metric_recorded" not in phase_names
 
@@ -302,6 +303,43 @@ def test_cli_scaffold_demo_returns_zero(capsys) -> None:
 
 def test_cli_without_scaffold_returns_three() -> None:
     assert main(["--job-run-id", "cli"]) == 3
+
+
+def test_missing_item_feature_fails_without_phase_log() -> None:
+    repos, db = _repos(features=[], meanings=_meanings())
+    result = _run(repos)
+    assert result.status == "failed"
+    assert "GRS-VAL-001" in result.error_codes
+    assert repos.phase_logs == []
+    assert db.write_calls == []
+
+
+def test_partial_success_phase_log_matches_job_status() -> None:
+    # MVP 外 feature のみ → feature/normalization 集計 0 件、meaning のみ残る
+    non_mvp = [
+        ItemFeatureRow(
+            item_id="it_1",
+            semantic_config_version_id=_VERSION,
+            feature_code="not_an_mvp_feature",
+            raw_feature_value=0.5,
+            normalized_feature_value=0.5,
+            feature_normalization_version_id=_NORM_VERSION,
+        )
+    ]
+    repos, _ = _repos(features=non_mvp, meanings=_meanings())
+    result = _run(repos)
+
+    assert result.status == "partially_succeeded"
+    assert "GRS-BAT-002" in result.error_codes
+    assert result.feature_metric_upsert_count == 0
+    assert result.meaning_metric_upsert_count > 0
+    assert result.normalization_metric_upsert_count == 0
+    assert repos.phase_logs == [
+        {"phase": PHASE_FEATURE_DISTRIBUTION_RECORDED, "status": "partially_succeeded"}
+    ]
+    assert result.completed_phases.index("record_phase") < result.completed_phases.index(
+        "finalize"
+    )
 
 
 def test_already_running_grs_bat_003() -> None:

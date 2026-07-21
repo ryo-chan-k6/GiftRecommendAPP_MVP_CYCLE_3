@@ -247,13 +247,6 @@ class DistributionMetricsJob:
             )
             result.completed_phases.append("persist_metrics")
 
-            # 物理 phase_log は 1 フェーズ代表のみ
-            self._repos.record_phase(
-                phase=PHASE_FEATURE_DISTRIBUTION_RECORDED,
-                status="succeeded",
-            )
-            result.completed_phases.append("record_phase")
-
             result.feature_metric_upsert_count = self._repos.feature_metric_upsert_count
             result.meaning_metric_upsert_count = self._repos.meaning_metric_upsert_count
             result.normalization_metric_upsert_count = (
@@ -264,6 +257,7 @@ class DistributionMetricsJob:
             result.item_embedding_write_count = self._repos.item_embedding_write_count
             result.embedding_hash_write_count = self._repos.embedding_hash_write_count
 
+            # phase_log は finalize 後の最終 status と揃える（部分成功を succeeded と誤記しない）
             return self._phase_finalize(result, feature_rows, meaning_rows, normalization_rows)
         except DistributionMetricsError as exc:
             result.error_codes.append(exc.code)
@@ -296,6 +290,13 @@ class DistributionMetricsJob:
             if "GRS-BAT-001" not in result.error_codes:
                 result.error_codes.append("GRS-BAT-001")
             tracker_status = "failed"
+
+        # 物理 phase_log は 1 フェーズ代表のみ。status は job 最終結果に合わせる。
+        self._repos.record_phase(
+            phase=PHASE_FEATURE_DISTRIBUTION_RECORDED,
+            status=tracker_status,
+        )
+        result.completed_phases.append("record_phase")
 
         self._tracker.complete(
             batch_id=BATCH_ID,
