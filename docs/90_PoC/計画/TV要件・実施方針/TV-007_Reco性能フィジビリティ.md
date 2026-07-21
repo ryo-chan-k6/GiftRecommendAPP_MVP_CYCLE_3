@@ -8,9 +8,9 @@
 | 検証名 | Reco性能フィジビリティ |
 | 定義正本 | [全体テスト計画書](../../../05_アプリケーション設計/テスト/全体テスト計画書.md) §7.1.2 |
 | 全体計画 | [技術検証全体計画](../技術検証全体計画.md) |
-| 進捗 | [TV進捗一覧](../../管理/TV進捗一覧.md) |
+| 進捗 | [TV進捗一覧](../../管理/TV進捗一覧.md)（TV-007 = `完了`） |
 | 棚卸し | [759_Reco性能フィジビリティ棚卸し_2026-07-21](../../管理/759_Reco性能フィジビリティ棚卸し_2026-07-21.md) |
-| 関連 Epic | [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) |
+| 関連 Epic | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) / 正式反映 [#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) |
 | 結果の既定置き場 | `docs/90_PoC/性能フィジビリティ/` |
 
 ---
@@ -21,7 +21,7 @@
 | ---- | ---- |
 | 主な確認内容 | 入力解析〜Rankingまでの概算時間 |
 | 判断結果の反映先 | Reco設計、非機能設計（性能要件 §5 / MOD-RECO-001 §13.2） |
-| 暫定判定対象 | soft 2,000ms / hard 4,000ms（§13.2 暫定値） |
+| 暫定判定対象 | soft 2,000ms / hard 4,000ms（MOD-RECO-001 §13.2 現行値。最終採否は Human Review） |
 
 Reason 生成は参考計測とし、TV-007 主対象からは除外する（#759 計画書方針）。
 
@@ -31,11 +31,11 @@ Reason 生成は参考計測とし、TV-007 主対象からは除外する（#75
 
 全体計画の S0〜S4 に加え、本 TV は **Phase1 / Phase2** を用いる（#759 計画書）。
 
-| フェーズ | 対応段階 | 内容 | 現状（2026-07-21） |
+| フェーズ | 対応段階 | 内容 | 現状（2026-07-22） |
 | -------- | -------- | ---- | ------------------ |
 | Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算、設計反映メモ | 完了済み（#1502 develop 取り込み） |
-| Phase2 | S3（live） | 実装済みパイプラインの実測、Go/Adjust/Block | **Epic #1512 / Task #1513** で実施 |
-| 正式反映 | S4 後の別 Task | 性能要件 / Orchestrator 仕様の正式更新 | out of scope（Phase2 完了後の別 Task） |
+| Phase2 | S3（live） | 実装済みパイプラインの実測、Go/Adjust/Block | 完了済み（#1512 / #1530 develop 取り込み） |
+| 正式反映 | S4 後の別 Task | 性能要件 / Orchestrator 仕様の正式更新 | **#1533 で正本反映済み**（最終数値は Human Review 確定待ち） |
 
 ```mermaid
 flowchart LR
@@ -96,7 +96,7 @@ flowchart LR
 ## 6. 次アクション候補
 
 1. #1513 live 計測・結果 doc・設計反映メモ更新
-2. Human Review で §13.2 暫定値の最終採用可否を判断
+2. Human Review で §13.2 現行値の最終採用可否を判断（内部 Go / 外部 AI Adjust 分離を含む）
 3. 正式 docs 更新 Task の起票（性能要件 §5 / MOD-RECO-001 §13.2）
 
 ---
