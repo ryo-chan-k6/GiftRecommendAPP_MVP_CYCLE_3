@@ -20,6 +20,6 @@
 | モード | 結果 |
 | ------ | ---- |
 | live + mock | TV-007 p95≈696ms → Go（success 20/20） |
-| live + secrets | API key プレースホルダで 401。性能判定対象外（GHA secrets を正） |
+| live + secrets | TV-007 p95≈3,758ms → Adjust（success 20/20、embedding/llm calls=22） |
 
 secret 実値は本ログに記載しない。

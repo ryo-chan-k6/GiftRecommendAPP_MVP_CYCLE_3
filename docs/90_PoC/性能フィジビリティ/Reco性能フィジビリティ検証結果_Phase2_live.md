@@ -46,11 +46,8 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | Docker / Supabase | 起動確認済み（`scripts/db/start-local.sh`） |
 | migrate / seed | 実施済み（`seed-masters` + `seed-test-data`、item=3） |
 | local live + mock | **実施**（iterations=20, warmup=2）→ TV-007 p95≈696ms、**Go**、success=20/20 |
-| local live + secrets | **実行試行したが実 API 未達** |
-| secrets 未達理由 | ローカル `.env` の `OPENAI_API_KEY` がプレースホルダ（`your_openai_api_key_here`）。OpenAI は HTTP 401 `invalid_api_key`。全 20 iteration が `GRS-REC-004` で失敗 |
-| secrets 正の計測 | GHA Secrets 注入の Run 29829674333 を正とする |
-
-**事実:** local secrets 試行では embedding_calls=0 / llm_calls=22（Chat 401 で User Meaning 失敗）。ベンチは全失敗時に誤って Go とならないよう判定ロジックを修正済み（`all-fail→Block`）。
+| local live + secrets | **実施**（iterations=20, warmup=2, `--force-llm`）→ TV-007 p95≈3,758ms、**Adjust**、success=20/20、embedding_calls=22 / llm_calls=22 |
+| secrets 正の計測 | GHA Secrets（Run 29829674333, Block）と local 実キー（Adjust）の両方を記録。環境差あり |
 
 ---
 
@@ -61,54 +58,55 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 環境 | openai_mode | iterations | p50 (ms) | p95 (ms) | max (ms) | 暫定判定 |
 | ---- | ----------- | ---------- | -------- | -------- | -------- | -------- |
 | GHA | secrets | 20 | 2,247.5 | **4,529.3** | 6,720.0 | **Block**（p95 > hard 4,000） |
+| local（WSL2） | secrets | 20 | 3,287.5 | **3,758.5** | 3,995.0 | **Adjust**（soft < p95 ≤ hard） |
 | GHA | mock | 20 | 411.5 | **451.3** | 475.0 | **Go**（p95 ≤ soft 2,000） |
 | local（WSL2） | mock | 20 | 562.0 | **696.2** | 775.0 | **Go**（p95 ≤ soft 2,000） |
-| local（WSL2） | secrets | 20 | — | — | — | **未成立**（API key プレースホルダ / 401。性能判定対象外） |
 | GHA | skeleton（参考） | 50 | 0.001 | 0.001 | 0.001 | （Phase1 下限。判定不可） |
 
-**事実:** GHA secrets 経路は OpenAI Embedding / Chat 実疎通あり（embedding_calls=22, llm_calls=22。warmup 含む）。mock 経路（GHA/local）は scaffold/in-memory（calls=0）で success=20/20。
+**事実:** secrets 経路（GHA/local）は OpenAI Embedding / Chat 実疎通あり（いずれも embedding_calls=22, llm_calls=22。warmup 含む）。mock 経路は scaffold/in-memory（calls=0）。secrets/mock とも success_count=20/20。
 
-### 3.1.1 GHA ↔ local 再現性（mock）
+### 3.1.1 GHA ↔ local 再現性
 
-| 指標 | GHA mock | local mock | 差分（local − GHA） |
-| ---- | -------- | ---------- | ------------------- |
-| TV-007 p95 (ms) | 451.3 | 696.2 | +244.9 |
-| user_meaning p95 (ms) | 226.6 | 360.5 | +133.9 |
-| retrieval p95 (ms) | 93.7 | 126.1 | +32.4 |
-| 判定 | Go | Go | 同一ラベル |
+| 指標 | GHA | local | 判定 |
+| ---- | --- | ----- | ---- |
+| mock TV-007 p95 (ms) | 451.3 | 696.2 | ともに **Go** |
+| secrets TV-007 p95 (ms) | 4,529.3 | 3,758.5 | GHA **Block** / local **Adjust**（hard 境界付近の環境差） |
+| secrets user_meaning p95 (ms) | 4,341.7 | 3,537.2 | 両環境とも phase hard 1,000ms 超過 |
 
-**解釈（推論）:** 絶対値は local（WSL2）の方が大きめだが、soft 2,000ms に対しては両環境とも余裕。再現性比較としては **判定ラベル一致**を確認できた。
+**解釈（推論）:** mock は判定一致。secrets は OpenAI レイテンシ変動で hard 前後に振れ、GHA は Block・local は Adjust。いずれも User Meaning（外部 AI）が支配要因。
 
-### 3.2 フェーズ別実測（GHA, p95）
+### 3.2 フェーズ別実測（secrets, p95）
 
-| TV-007 step | measurement_point | secrets p95 (ms) | mock p95 (ms) | §13.2 hard (ms) | 所見 |
-| ----------- | ----------------- | ---------------- | ------------- | --------------- | ---- |
-| input_parse | input_parse / phase_config | 121.0 | 132.1 | 300 | 両経路とも上限内 |
-| user_feature | user_meaning / phase_user_meaning | **4,341.7** | 226.6 | 1,000 | secrets で大幅超過（OpenAI） |
-| retrieval | retrieval / phase_retrieval | 73.5 | 93.7 | 1,000 | 上限内（seed 3 件前提） |
-| matching | matching / phase_matching | 10.2 | 11.1 | 500 | 上限内 |
-| ranking | ranking / phase_ranking | 9.4 | 10.1 | 1,000 | 上限内 |
-| reason（参考） | reason / phase_output | 4,886.5 | 882.4 | 500 | TV-007 主対象外。参考として超過 |
+| TV-007 step | measurement_point | GHA p95 (ms) | local p95 (ms) | §13.2 hard (ms) | 所見 |
+| ----------- | ----------------- | ------------ | -------------- | --------------- | ---- |
+| input_parse | input_parse / phase_config | 121.0 | 214.2 | 300 | 両経路とも上限内 |
+| user_feature | user_meaning / phase_user_meaning | **4,341.7** | **3,537.2** | 1,000 | 両環境で大幅超過（OpenAI） |
+| retrieval | retrieval / phase_retrieval | 73.5 | 133.1 | 1,000 | 上限内（seed 3 件前提） |
+| matching | matching / phase_matching | 10.2 | 19.1 | 500 | 上限内 |
+| ranking | ranking / phase_ranking | 9.4 | 20.1 | 1,000 | 上限内 |
+| reason（参考） | reason / phase_output | 4,886.5 | 4,212.3 | 500 | TV-007 主対象外。参考として超過 |
 
-### 3.2.1 フェーズ別実測（local mock, p95）
+### 3.2.1 フェーズ別実測（mock, p95）
 
-| TV-007 step | p95 (ms) | §13.2 hard (ms) |
-| ----------- | -------- | --------------- |
-| input_parse | 215.1 | 300 |
-| user_feature | 360.5 | 1,000 |
-| retrieval | 126.1 | 1,000 |
-| matching | 19.1 | 500 |
-| ranking | 20.1 | 1,000 |
-| reason（参考） | 1,346.2 | 500 |
+| TV-007 step | GHA mock | local mock | §13.2 hard (ms) |
+| ----------- | -------- | ---------- | --------------- |
+| input_parse | 132.1 | 215.1 | 300 |
+| user_feature | 226.6 | 360.5 | 1,000 |
+| retrieval | 93.7 | 126.1 | 1,000 |
+| matching | 11.1 | 19.1 | 500 |
+| ranking | 10.1 | 20.1 | 1,000 |
+| reason（参考） | 882.4 | 1,346.2 | 500 |
 
 ### 3.3 mock vs secrets 比較（User Meaning）
 
-| openai_mode | user_meaning p95 (ms) | TV-007 p95 (ms) |
-| ----------- | --------------------- | --------------- |
-| mock | 226.6 | 451.3 |
-| secrets | 4,341.7 | 4,529.3 |
+| 環境 | openai_mode | user_meaning p95 (ms) | TV-007 p95 (ms) |
+| ---- | ----------- | --------------------- | --------------- |
+| GHA | mock | 226.6 | 451.3 |
+| local | mock | 360.5 | 696.2 |
+| GHA | secrets | 4,341.7 | 4,529.3 |
+| local | secrets | 3,537.2 | 3,758.5 |
 
-**解釈（事実）:** 差分の主因は User Meaning 内の OpenAI 実疎通遅延である。Retrieval / Matching / Ranking は両経路で同程度かつ soft/hard に対して余裕がある。
+**解釈（事実）:** 差分の主因は User Meaning 内の OpenAI 実疎通遅延である。Retrieval / Matching / Ranking は両経路・両環境で soft/hard に対して余裕がある。
 
 ---
 
@@ -126,9 +124,11 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 | 計測系 | ラベル | 根拠 |
 | ------ | ------ | ---- |
-| live + secrets（GHA・主経路） | **Block** | TV-007 p95=4,529ms > hard 4,000ms。phase_user_meaning p95=4,342ms > 1,000ms |
-| live + mock（GHA） | **Go** | TV-007 p95=451ms ≤ soft 2,000ms。主要フェーズ hard 内（reason 除く） |
-| live + mock（local） | **Go** | TV-007 p95=696ms ≤ soft 2,000ms。GHA と判定一致 |
+| live + secrets（GHA） | **Block** | TV-007 p95=4,529ms > hard 4,000ms |
+| live + secrets（local） | **Adjust** | TV-007 p95=3,758ms（soft 超過・hard 以内）。user_meaning p95=3,537ms > 1,000ms |
+| live + mock（GHA / local） | **Go** | TV-007 p95=451ms / 696ms ≤ soft 2,000ms |
+
+**PoC としての整理（推論）:** secrets 主経路は環境により Block〜Adjust。いずれも soft 未達かつ User Meaning がボトルネック。正式判定では「外部 AI 込みの全体」と「Reco 内部」を分けて扱うことを推奨。
 
 ### 4.3 Human 向け整理（推論・未確定）
 
@@ -150,10 +150,10 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | pipeline_total p50/p95/max（live） | 消化 | §3.1 |
 | フェーズ別 p95 | 消化 | Orchestrator phase_log 合算 |
 | TV-007 E2E wall-clock | 消化 | |
-| GHA と local 再現性比較 | 消化 | mock: GHA/local とも Go（p95 451 vs 696）。secrets local は API key プレースホルダのため GHA を正 |
+| GHA と local 再現性比較 | 消化 | mock: ともに Go。secrets: GHA Block / local Adjust（hard 境界の環境差）。いずれも User Meaning 支配 |
 | Retrieval 件数別（100/500/1,000） | 未実施 | test-data seed は item **3 件**。件数スケールは追加 seed が必要 |
 | Matching / Ranking top_k 別 | 部分 | top_k=5 / candidate_limit=100 の固定代表のみ |
-| User Meaning mock vs secrets | 消化 | GHA で比較。local は mock のみ（secrets は key 待ち） |
+| User Meaning mock vs secrets | 消化 | GHA/local とも mock・secrets を計測 |
 | DB/pgvector index・件数スケール | 部分 | HNSW 付き seed 上で計測（GHA/local）。件数スケールは未実施 |
 | Go/Adjust/Block | 消化 | §4 |
 | Phase2 結果 doc | 消化 | 本文書 |
@@ -180,7 +180,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 | 項目 | 内容 |
 | ---- | ---- |
-| local secrets | `.env` の `OPENAI_API_KEY` がプレースホルダのため未達。実 key 設定後に再実行可能 |
+| secrets 環境差 | GHA Block / local Adjust。最終ラベルは Human 判断 |
 | 件数スケール | seed 3 件のため 100/500/1,000 未実施 |
 | hard timeout 有効時 | bypass 計測。本番 4s 中断時の部分完了挙動は別確認候補 |
 | production 負荷 | out of scope |
@@ -194,3 +194,4 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | ---- | -------- |
 | 2026-07-21 | Phase2 live 初版（GHA secrets / mock / skeleton） |
 | 2026-07-21 | local Docker 再計測（mock Go）。secrets は API key プレースホルダで未達を明記 |
+| 2026-07-21 | local secrets 実キー再計測（Adjust）。GHA/local 再現性を更新 |
