@@ -1,0 +1,238 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-performance-feasibility-poc"
+  title: "PoC:Reco性能フィジビリティ検証"
+  summary: "TV-007 対応の Reco 性能フィジビリティ PoC。Phase1（skeleton 実測 + 試算）で MOD-RECO-001 §13.2 暫定タイムアウト値の早期成立性を評価し、Phase2（Epic #260 完了後 live 実測）で実性能を確定する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  MOD-RECO-001 Recommendation Orchestrator モジュール仕様書（Issue #758）では、推薦パイプラインのタイムアウトを soft / hard 二段制御とし、hard 値は性能要件（バックエンド）§5 を暫定引用している。
+  数値の実現可能性は PoC で検証後に正式更新する方針が Human Review で確定した。
+  本 Epic は `docs/90_PoC/性能フィジビリティ/` に検証計画・結果を記録し、TV-007 に対応する Reco 性能フィジビリティ検証を進める。
+  Phase1 では `apps/reco/src/**` を変更せず、計測ハーネス + scaffold 実測 + 設計値/見込み分析で早期フィジビリティを評価する。
+  Phase2 は Epic #260（MOD-RECO-001 実装）完了後に live 実性能計測を行う。
+
+objective: |
+  Phase1（Task 2〜4）で検証計画書・計測ハーネス・Phase1 結果 doc を整備し、§13.2 暫定値（soft 2,000ms / hard 4,000ms）の早期フィジビリティ評価材料を提供する。
+  Phase2（Task 5）は Epic #260 完了後に起票し、live 実測に基づく妥当性評価を行う。
+  develop への統合は Epic PR のみで行う。
+
+scope:
+  - "Epic Definition および子 Task Definition の整備（prompts/definitions/**）"
+  - "PoC 検証計画・手順・結果の docs 整備（docs/90_PoC/性能フィジビリティ/**）"
+  - "検証用スクリプト・workflow（scripts/perf/**、perf-feasibility-*.yml）"
+  - "TV-007 に対応する検証観点の整理"
+  - "Phase1 / Phase2 の2段構成と完了条件の切り分け"
+
+out_of_scope:
+  - "MOD-RECO-001 本体の実装（Epic #260 配下 Task）"
+  - "apps/reco/src/** の変更（Phase1）"
+  - "性能要件・Orchestrator 仕様書への正式反映（Phase2 完了後の別 Task）"
+  - "production デプロイ・本番負荷試験"
+  - "DB schema 変更"
+  - "packages/contracts/** 変更"
+  - "secret 実値の commit"
+
+input:
+  docs:
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+      purpose: "§3.1 / §4.1 / §5 暫定タイムアウト値の引用元"
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: true
+      purpose: "TV-007 Reco性能フィジビリティ"
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§9.1.4 性能フィジビリティ検証"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: false
+      purpose: "perf-feasibility workflow 分離方針（§12.2）"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§13.2 タイムアウト暫定値・PoC 連携（develop 未マージ時は Issue #758 Branch 参照）"
+  issues:
+    - number: 758
+      purpose: "Orchestrator モジュール仕様書 §13.2 暫定値"
+    - number: 260
+      purpose: "MOD-RECO-001 実装 Epic（Phase2 開始条件）"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/**"
+      action: "create_or_update"
+      required: true
+      template: null
+    - path: "docs/90_PoC/検証メモ/**"
+      action: "create_or_update"
+      required: false
+      template: null
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: false
+    - path: ".github/workflows/perf-feasibility-reco.yml"
+      action: "create"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]PoC:Reco性能フィジビリティ検証）— Issue #759"
+  - "Epic Branch（spike/epic-759-reco-performance-feasibility-poc）"
+  - "Phase1 検証計画・ハーネス・結果 doc"
+  - "Phase2 live 検証 Task Definition（起票は #260 完了後）"
+  - "Epic PR → develop（Human merge 待ち）"
+
+acceptance_criteria:
+  - "Epic Issue #759 が存在する"
+  - "Epic Branch が develop から作成されている"
+  - "Epic Definition と子 Task Definition（Phase1 3件 + Phase2 1件）が存在する"
+  - "Phase1 として TV-007 対応の検証計画・結果が docs/90_PoC/性能フィジビリティ/ に記録されている"
+  - "MOD-RECO-001 §13.2 更新に必要な数値根拠が Phase1 で整理されている（最終判定は Phase2 後）"
+  - "secret 実値が成果物に含まれていない"
+  - "Task PR target は親 Epic Branch、Epic PR target は develop"
+
+branch:
+  no_branch: false
+  name: "spike/epic-759-reco-performance-feasibility-poc"
+  summary: "reco-performance-feasibility-poc"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "90_PoC"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-06-25"
+    due_date: "2026-06-27"
+
+issue:
+  number: 759
+  unit: "epic"
+  type: "spike"
+  area: "reco"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/90_PoC/性能フィジビリティ/**"
+    - "docs/90_PoC/検証メモ/**"
+    - ".github/workflows/perf-feasibility-*.yml"
+    - "scripts/perf/**"
+    - "prompts/definitions/epics/reco-performance-feasibility-poc/**"
+    - "prompts/definitions/tasks/reco-performance-feasibility-poc/**"
+    - "prompts/definitions/reviews/reco-performance-feasibility-poc/**"
+  forbidden_paths:
+    - "apps/reco/src/**"
+    - "packages/contracts/**"
+    - "supabase/migrations/**"
+    - ".env"
+  child_task_areas:
+    - "epic-definition"
+    - "poc-plan"
+    - "poc-harness"
+    - "poc-report"
+    - "poc-live-verification"
+
+dependencies:
+  epics:
+    - id: "epic-mod-reco-001-recommendation-orchestrator"
+      issue: 260
+      purpose: "Phase2（poc-live-verification）開始条件。Phase1 完了のブロッカーにはしない"
+  issues:
+    - number: 758
+      purpose: "MOD-RECO-001 §13.2 暫定値参照（develop 未マージ時は Branch 参照）"
+    - number: 260
+      purpose: "Phase2 live 検証の前提 Epic"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "secret 実値が含まれていないこと"
+    - "通常 PR CI（ci.yml 群）に perf-feasibility workflow が混在していないこと"
+    - "apps/reco/src/** を Phase1 で変更していないこと"
+  not_required:
+    - "Phase2 live 計測（Epic #260 完了後）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "PoC 成果物が docs/90_PoC/ 配置ルールに従っているか"
+    - "Phase1 / Phase2 の区分が計画書・結果 doc で明確か"
+    - "検証結果が性能要件・Orchestrator 仕様更新の根拠として十分か"
+    - "通常 PR CI に perf workflow が混在していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "PoC 検証は experiments ログ対象となり得る"
+
+human_decision_points:
+  - "暫定タイムアウト値（2,000ms / 4,000ms）の採用可否（Phase1 は材料提供、最終判定は Phase2 後）"
+  - "フェーズ別 hard 上限の妥当性"
+  - "Epic #759 を Phase1 完了で Done とするか、Task 5 を同 Epic 配下 follow-up として管理するか"
+  - "PoC 結果を正式 docs へ反映するタイミングと Task 分割"
+
+stop_conditions:
+  - "検証環境が未整備で再現不能な場合"
+  - "secret 漏えいの疑いがある場合"
+  - "apps/reco/src/** の変更が Phase1 scope 内で必要になった場合（Epic #260 へ）"
+
+notes:
+  - "workstream_key: reco-performance-feasibility-poc"
+  - "worktree 運用（必須）: 1 Issue = 1 Branch = 1 worktree。1 worktree に複数 Issue の作業を混在させない（worktree.mdc / AGENTS.md §14 準拠）"
+  - "Epic worktree: spike-epic-759-reco-performance-feasibility-poc → Branch spike/epic-759-reco-performance-feasibility-poc"
+  - "子 Task worktree 命名例: spike-task-<番号>-reco-perf-<summary> → Branch spike/task-<番号>-reco-perf-<summary>"
+  - "Phase2 Task 5 worktree: #759 Epic Branch を base とした専用 worktree（#260 完了後に起票）"
+  - "Phase1 子 Task 実行順: poc-plan → poc-harness → poc-report（harness と report は harness 完了後に report 実行）"
+  - "Phase2 poc-live-verification: Definition のみ先行作成。Issue / Branch / worktree 作成は Epic #260 Done をトリガーとする"
+  - "MOD-RECO-001 仕様書は Issue #758 Branch（docs/task-758-mod-reco-001-recommendation-orchestrator-module-spec）参照。develop 未マージ時は計画書に明記する"
+  - "Issue #759 / Milestone PoC（未作成の場合は Human が作成）"

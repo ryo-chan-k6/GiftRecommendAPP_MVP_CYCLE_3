@@ -1,0 +1,161 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-performance-feasibility-poc-plan"
+  title: "Reco性能フィジビリティ検証計画書作成"
+  summary: "TV-007 対応の検証観点・手順・判定基準を Phase1 / Phase2 区分で正本化する PoC 検証計画書を作成する。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-performance-feasibility-poc"
+  epic_issue: "[Epic]PoC:Reco性能フィジビリティ検証"
+  epic_issue_number: 759
+  epic_branch: "spike/epic-759-reco-performance-feasibility-poc"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #759 Phase1 Task 2。MOD-RECO-001 §13.2 の暫定タイムアウト値（soft 2,000ms / hard 4,000ms）の早期フィジビリティ評価に先立ち、
+  TV-007 対応の検証計画を `docs/90_PoC/性能フィジビリティ/` に正本化する。
+  Phase1 = skeleton 実測 + analysis 試算、Phase2 = Epic #260 完了後の live 実測と明確に分離する。
+
+objective: |
+  `docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md` を作成し、
+  検証目的・Phase 区分・検証モード・計測ポイント・判定基準・環境・worktree 運用・成果物一覧を記載する。
+
+scope:
+  - "Reco性能フィジビリティ検証計画書の作成（Phase1 / Phase2 区分）"
+  - "TV-007 観点と MOD-RECO-001 フェーズ群・性能要件 §4.1 の対応表"
+  - "Phase2 開始条件（Epic #260 完了）の明記"
+  - "worktree 運用ルールの計画書への反映"
+
+out_of_scope:
+  - "計測ハーネス実装（poc-harness Task）"
+  - "Phase1 検証実行・結果記録（poc-report Task）"
+  - "apps/reco/src/** の変更"
+  - "性能要件・MOD-RECO-001 への正式反映"
+
+input:
+  docs:
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+      purpose: "§3.1 / §4.1 / §5"
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: true
+      purpose: "TV-007"
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+      purpose: "§9.1.4"
+    - path: "docs/05_アプリケーション設計/共通/CI・CD方針書.md"
+      required: false
+      purpose: "perf-feasibility workflow 分離"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§13.2 暫定値（develop 未マージ時は Issue #758 Branch 参照）"
+    - path: "prompts/definitions/epics/reco-performance-feasibility-poc/epic.yaml"
+      required: true
+      purpose: "Epic scope・Phase 区分・worktree ルール"
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "検証計画書が存在し、Phase1 / Phase2 の検証手順が分離記載されている"
+  - "TV-007 観点が計測ポイント・判定基準にマッピングされている"
+  - "soft 2,000ms / hard 4,000ms およびフェーズ別 hard 上限が計画書に記載されている"
+  - "Phase2 開始条件（Epic #260 完了）が明記されている"
+  - "worktree 運用（1 Issue = 1 worktree）が計画書に記載されている"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-761-reco-perf-plan"
+  summary: "reco-perf-plan"
+  base: "spike/epic-759-reco-performance-feasibility-poc"
+  target: "spike/epic-759-reco-performance-feasibility-poc"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-06-25"
+    due_date: "2026-06-26"
+
+issue:
+  number: 761
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  blocking: false
+  issues: []
+
+parallel_control:
+  exclusive_files:
+    - "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md"
+  conflict_risk: "low"
+
+test_policy:
+  manual_checks:
+    - "計画書の Phase1 / Phase2 区分が Epic Definition と一致すること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs のみの Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "TV-007 観点の網羅性"
+    - "Phase1 / Phase2 区分の明確さ"
+    - "§13.2 暫定値参照の正確さ（#758 Branch 参照明記）"
+  specialist_reviews:
+    docs: true
+    security: false
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "minimal"
+
+human_decision_points: []
+
+stop_conditions:
+  - "正本 docs 間で暫定タイムアウト値が矛盾し、計画書で解消できない場合"
+
+notes:
+  - "専用 worktree 例: spike-task-761-reco-perf-plan"
+  - "Issue #761 / Branch docs/task-761-reco-perf-plan"
+  - "作業開始前: pwd / git branch --show-current / git worktree list で Branch 確認"

@@ -1,0 +1,182 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-performance-feasibility-poc-live-verification"
+  title: "Reco性能フィジビリティPhase2 live実性能検証"
+  summary: "Epic #260 完了後、実装済み Reco パイプラインの live 実性能を計測し、§13.2 暫定値の実測に基づく妥当性評価を行う（Phase2 後続 Task）。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-performance-feasibility-poc"
+  epic_issue: "[Epic]PoC:Reco性能フィジビリティ検証"
+  epic_issue_number: 759
+  epic_branch: "spike/epic-759-reco-performance-feasibility-poc"
+  related_issues:
+    - number: 260
+      purpose: "MOD-RECO-001 実装 Epic（Phase2 開始条件）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #759 Phase2 Task 5（後続 Task）。Epic #260（MOD-RECO-001 実装）完了後に起票する。
+  Task 3 で整備した `scripts/perf/reco_pipeline_bench.py` の live モードを実装・有効化し、
+  ephemeral DB / pgvector / mock or secrets OpenAI 環境で入力解析〜Ranking の実性能を計測する。
+
+objective: |
+  live 実性能計測を実行し、Phase2 結果 doc を作成する。
+  §13.2 暫定値に対する Go / Adjust / Block 判定を実測根拠付きで整理する。
+  設計反映メモへ Phase2 追記し、正式 docs 更新 Task への入力とする。
+
+scope:
+  - "reco_pipeline_bench.py live モードの実装・有効化"
+  - "GHA perf-feasibility-reco.yml の live 入力対応（必要時）"
+  - "Reco性能フィジビリティ検証結果_Phase2_live.md の作成"
+  - "設計反映メモ.md への Phase2 追記"
+
+out_of_scope:
+  - "性能要件（バックエンド）§5 / MOD-RECO-001 への正式 docs 更新（別 Task）"
+  - "apps/reco/src/** の本格 Orchestrator 実装（Epic #260 scope）"
+  - "production 負荷試験"
+  - "secret 実値の commit・成果物への記載"
+
+input:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase1.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      required: true
+    - path: ".github/workflows/test-reco-quality.yml"
+      required: false
+      purpose: "ephemeral DB 環境参考"
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      action: "create"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      action: "update"
+      required: true
+    - path: ".github/workflows/perf-feasibility-reco.yml"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "入力解析〜Ranking のフェーズ別 p50/p95 が live 環境で計測されている"
+  - "§13.2 暫定値に対する Go / Adjust / Block 判定が実測根拠付きで整理されている"
+  - "secret 実値が成果物に含まれていない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "reco-perf-live"
+  base: "spike/epic-759-reco-performance-feasibility-poc"
+  target: "spike/epic-759-reco-performance-feasibility-poc"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Backlog"
+    priority: "medium"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+  creation_blocked: true
+  creation_blocked_reason: "Epic #260（MOD-RECO-001 実装）が Done になるまで Issue / Branch / worktree を作成しない"
+
+dependencies:
+  blocking: true
+  epics:
+    - id: "epic-mod-reco-001-recommendation-orchestrator"
+      issue: 260
+      purpose: "Orchestrator 実装完了（bench live モード実行可能）"
+  issues:
+    - number: 260
+      purpose: "Phase2 開始条件"
+
+parallel_control:
+  depends_on:
+    - "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-harness.yaml"
+    - "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-report.yaml"
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+    - "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "live モード計測の再現実行"
+    - "ephemeral DB 起動確認"
+  not_required:
+    - "Phase1 skeleton 再実行"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実測根拠付き Go / Adjust / Block 判定"
+    - "正式 docs 更新 Task への入力として十分か"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "§13.2 暫定値の最終採用可否（Phase2 完了後）"
+  - "正式 docs 更新 Task の起票タイミング"
+
+stop_conditions:
+  - "Epic #260 が Done でない場合（/start-task 実行禁止）"
+  - "live モードが bench で実行不能な場合"
+
+notes:
+  - "**Issue 起票保留**: Epic #260 Done 確認後に `/start-task @prompts/definitions/tasks/reco-performance-feasibility-poc/poc-live-verification.yaml` を実行する"
+  - "専用 worktree: #759 Epic Branch を base とした新規 worktree（例: spike-task-<番号>-reco-perf-live）"
+  - "Phase1 Epic 完了のブロッカーにはしない"

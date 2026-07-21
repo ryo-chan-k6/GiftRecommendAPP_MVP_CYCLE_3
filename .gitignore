@@ -78,6 +78,9 @@ coverage/
 htmlcov/
 tests/recommendation-quality/output/
 
+# PoC perf bench local output (Epic #759)
+scripts/perf/output/
+
 # =========================
 # Misc
 # =========================
