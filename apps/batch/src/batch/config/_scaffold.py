@@ -55,6 +55,10 @@ def scaffold_batch_settings(*, app_env: AppEnv = AppEnv.DEV) -> BatchSettings:
         batch_item_embedding_max_items=1000,
         batch_item_embedding_source="rakuten",
         batch_item_embedding_queue_batch_size=100,
+        batch_distribution_metrics_aggregation_scope=None,
+        batch_distribution_metrics_semantic_config_version_id=None,
+        batch_distribution_metrics_include_item_embedding=False,
+        batch_distribution_metrics_include_user_meaning=False,
         supabase_url=None,
         supabase_service_role_key=None,
     )
