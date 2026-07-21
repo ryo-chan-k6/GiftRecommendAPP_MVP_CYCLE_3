@@ -17,10 +17,11 @@
 | 性能要件（バックエンド） | §3.1 / §4.1 / §5 | SLO・ステップ目標時間・タイムアウト設計 |
 | 全体テスト計画書 | TV-007 | 検証ID・主な確認内容 |
 | テスト定義書 | §9.1.4 | 性能フィジビリティ検証観点 |
-| MOD-RECO-001 モジュール仕様書 | §13.2 | タイムアウト暫定値（**develop 未マージ時は Issue #758 Branch 参照**） |
+| MOD-RECO-001 モジュール仕様書 | §13.2 | タイムアウト暫定値 |
 | CI・CD方針書 | §12.2 | `perf-feasibility-*.yml` 分離方針 |
+| TV-007 方針（全体） | — | [TV-007_Reco性能フィジビリティ](../計画/TV要件・実施方針/TV-007_Reco性能フィジビリティ.md) |
 
-**MOD-RECO-001 仕様書の参照注意:** 本計画作成時点（2026-06-25）では `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` は Issue #758（Branch `docs/task-758-mod-reco-001-recommendation-orchestrator-module-spec`）上に存在し、develop 未マージである。§13.2 暫定値は当該 Branch を正として引用する。
+**参照メモ:** 計画作成時点（2026-06-25）では MOD-RECO-001 仕様書は Issue #758 Branch 上のみだった。**2026-07-21 時点では develop 上の** `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` を正とする。
 
 ---
 

@@ -33,7 +33,7 @@ Reason 生成は参考計測とし、TV-007 主対象からは除外する（#75
 
 | フェーズ | 対応段階 | 内容 | 現状（2026-07-21） |
 | -------- | -------- | ---- | ------------------ |
-| Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算、設計反映メモ | Epic Branch 上で完了。**develop 未着** |
+| Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算、設計反映メモ | 完了済み。**develop 取り込み中**（2026-07-21） |
 | Phase2 | S3（live） | 実装済みパイプラインの実測、Go/Adjust/Block | **未実施** |
 | 正式反映 | S4 後の別 Task | 性能要件 / Orchestrator 仕様の正式更新 | out of scope（#759） |
 
@@ -76,14 +76,14 @@ flowchart LR
 | ---- | ------------------ |
 | Epic | #759 OPEN |
 | 子 Task | #761 / #762 / #763 CLOSED（Phase1） |
-| develop 上の結果 | 未着（`.gitkeep` のみ） |
-| Epic Branch 上の結果 | 計画・Phase1結果・設計反映メモ・harness・workflow あり |
+| develop 上の結果 | 取り込み PR 実施中（マージ後に正本化） |
+| 結果ドキュメント | [検証計画書](../../性能フィジビリティ/Reco性能フィジビリティ検証計画書.md) / [Phase1結果](../../性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase1.md) / [設計反映メモ](../../性能フィジビリティ/設計反映メモ.md) |
 
 ---
 
-## 6. 次アクション候補（着手は Human 確認後）
+## 6. 次アクション候補（Phase1 マージ後・Human 確認）
 
-1. Phase1 成果の develop 取り込み（Epic Branch 再ベース → Epic PR）
+1. TV進捗を `Phase1完了（Phase2待ち）` に更新
 2. Phase2 の Issue 境界決定（#759 継続 or 新 Issue）
 3. Phase2 計画の更新（live 定義・合格基準）
 4. Phase2 実行 → 正式 docs 更新 Task
@@ -95,3 +95,4 @@ flowchart LR
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-21 | 初版方針。#759 棚卸しを反映（#1496） |
+| 2026-07-21 | Phase1 develop 取り込みに合わせて現状・次アクションを更新 |
