@@ -5,7 +5,7 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 配置 | `docs/90_PoC/管理/` |
-| 更新日 | 2026-07-21（Phase1 develop マージ後） |
+| 更新日 | 2026-07-21（Phase2 Epic PR 準備） |
 | 計画正本 | [技術検証全体計画](../計画/技術検証全体計画.md) |
 
 ステータス凡例:
@@ -18,6 +18,7 @@
 | `Phase1完了（未develop）` | 成果はあるが develop 未着 |
 | `Phase1取り込み中` | develop 向け PR で Phase1 成果を取り込み中 |
 | `Phase1完了（Phase2待ち）` | Phase1 成果は develop にあり、Phase2 未実施 |
+| `Phase2取り込み中` | develop 向け Epic PR で Phase2 成果を取り込み中 |
 | `完了` | 当該 TV の PoC 完了条件を満たし develop に成果あり |
 | `保留` | Human 判断待ち / 依存待ち |
 
@@ -33,7 +34,7 @@
 | TV-004 | `方針のみ` | なし（要起票） | 同上 |
 | TV-005 | `方針のみ` | なし（要起票） | TV-007 Phase2 の依存候補 |
 | TV-006 | `方針のみ` | なし（要起票） | TV-007 Phase2 の依存候補 |
-| TV-007 | `Phase1完了（Phase2待ち）` | [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** | Phase1 は #1502 で develop 着。Phase2 は新 Issue 要。引継ぎ: [759_Phase2以降_引継ぎメモ](./759_Phase2以降_引継ぎメモ_2026-07-21.md) |
+| TV-007 | `Phase2取り込み中` | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) | Phase2 live は #1513→#1525。Epic PR → develop 取り込み中。正式 docs 更新は別 Task |
 | TV-008 | `方針のみ` | なし（要起票） | BATCH レーンと exclusive 調整が必要 |
 | TV-009 | `方針のみ` | なし（要起票） | — |
 | TV-010 | `方針のみ` | なし（要起票） | BATCH-015 Embedding 実装進展と関連し得る |
@@ -47,3 +48,4 @@
 | 2026-07-21 | 初版（#1496）。#759 棚卸しを反映 |
 | 2026-07-21 | TV-007 を `Phase1取り込み中` に更新（#759 Phase1 develop 取り込み） |
 | 2026-07-21 | TV-007 を `Phase1完了（Phase2待ち）` に更新（#1502 マージ・#759 CLOSED） |
+| 2026-07-21 | TV-007 を `Phase2取り込み中` に更新（#1512 Epic PR 準備） |

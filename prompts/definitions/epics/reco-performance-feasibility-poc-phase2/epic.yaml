@@ -1,0 +1,258 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-performance-feasibility-poc-phase2"
+  title: "PoC:Reco性能フィジビリティPhase2"
+  summary: "TV-007 Phase2。Epic #759 Phase1（skeleton）完了後、live 実性能（ephemeral DB + OpenAI secrets 実疎通含む）を計測し、MOD-RECO-001 §13.2 暫定値（soft 2,000ms / hard 4,000ms）に対する Go / Adjust / Block を実測根拠付きで整理する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  TV-007 Phase1（Epic #759）は #1502 で develop に取り込み済み。#759 は CLOSED。
+  Phase1 は skeleton のみで最終判定不可。Retrieval / pgvector が重点リスク。
+  Phase2 は新 Epic（本 Definition）として切り出し、Epic #260（MOD-RECO-001）完了後の live 実測を行う。
+  Human 判断（2026-07-21）: B1（新 Epic）、live に OpenAI secrets 実疎通を含む、TV-005/006 は別 TV、
+  soft/hard で Go/Adjust/Block、旧 spike/epic-759 Branch・worktree は削除済み。
+
+objective: |
+  live 実性能計測（local + GHA）を完了し、Phase2 結果 doc と設計反映メモ更新で
+  soft 2,000ms / hard 4,000ms に対する Go / Adjust / Block を実測根拠付きで整理する。
+  正式 docs（性能要件 §5 / MOD-RECO-001 §13.2）更新は別 Task とする。
+
+scope:
+  - "Epic Definition および poc-live-verification Task Definition の整備"
+  - "live 計測境界の計画追記（docs/90_PoC/性能フィジビリティ・計画）"
+  - "reco_pipeline_bench.py --mode live の実装・有効化"
+  - "GHA perf-feasibility-reco.yml の live 対応（OpenAI secrets は secrets.* 参照のみ）"
+  - "Reco性能フィジビリティ検証結果_Phase2_live.md の作成"
+  - "設計反映メモ.md への Phase2 追記・判定"
+  - "TV進捗一覧など 90_PoC 管理 docs の関連更新"
+
+out_of_scope:
+  - "性能要件（バックエンド）§5 / MOD-RECO-001 §13.2 への正式 docs 更新（別 Task）"
+  - "apps/reco/src/** の本格改修（計測のための最小変更は Human 確認必須）"
+  - "TV-005 / TV-006 の実施（別 TV）"
+  - "TV-008〜010 / apps/batch/**（BATCH レーン）"
+  - "production 負荷試験"
+  - "packages/contracts/** / supabase/migrations/** 変更"
+  - "secret 実値の commit・成果物への記載"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/管理/759_Phase2以降_引継ぎメモ_2026-07-21.md"
+      required: true
+      purpose: "Phase2 引継ぎ・Human 判断前提"
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+      purpose: "Phase2 チェックリスト正本（§3）"
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase1.md"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-007_Reco性能フィジビリティ.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§13.2 暫定値"
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+      purpose: "§5 参照"
+  issues:
+    - number: 759
+      purpose: "Phase1 Epic（CLOSED・前提）"
+    - number: 260
+      purpose: "MOD-RECO-001 実装 Epic（CLOSED・live 前提）"
+    - number: 1502
+      purpose: "Phase1 develop 取り込み PR（MERGED）"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/90_PoC/管理/**"
+      action: "update"
+      required: false
+    - path: "docs/90_PoC/計画/**"
+      action: "update"
+      required: false
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: true
+    - path: ".github/workflows/perf-feasibility-reco.yml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/epics/reco-performance-feasibility-poc-phase2/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-live-verification.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/reco-performance-feasibility-poc-phase2/**"
+      action: "create_or_update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue（[Epic]PoC:Reco性能フィジビリティPhase2）— Issue #1512"
+  - "Epic Branch（spike/epic-1512-reco-performance-feasibility-poc-phase2）"
+  - "poc-live-verification Task Issue / Branch"
+  - "Reco性能フィジビリティ検証結果_Phase2_live.md"
+  - "設計反映メモ Phase2 追記（Go / Adjust / Block）"
+  - "Epic PR → develop（Human merge 待ち）"
+
+acceptance_criteria:
+  - "Epic Issue と Epic Branch（base/target=develop）が存在する"
+  - "poc-live-verification Task が親 Epic Branch を target とする"
+  - "live 計測（local および GHA workflow_dispatch）が実行され、結果 doc がある"
+  - "設計反映メモ §3 チェックリストに対する判定が実測根拠付きで整理されている"
+  - "secret 実値が成果物・commit に含まれていない（GHA は secrets.* 参照のみ）"
+  - "TV-005/006・BATCH・正式 docs 更新を本 Epic に混在させていない"
+
+branch:
+  no_branch: false
+  name: "spike/epic-1512-reco-performance-feasibility-poc-phase2"
+  summary: "reco-performance-feasibility-poc-phase2"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "90_PoC"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-21"
+    due_date: "2026-07-23"
+
+issue:
+  number: 1512
+  unit: "epic"
+  type: "spike"
+  area: "reco"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/90_PoC/性能フィジビリティ/**"
+    - "docs/90_PoC/管理/**"
+    - "docs/90_PoC/計画/**"
+    - "docs/90_PoC/検証メモ/**"
+    - ".github/workflows/perf-feasibility-*.yml"
+    - "scripts/perf/**"
+    - "prompts/definitions/epics/reco-performance-feasibility-poc-phase2/**"
+    - "prompts/definitions/tasks/reco-performance-feasibility-poc/**"
+    - "prompts/definitions/reviews/reco-performance-feasibility-poc-phase2/**"
+  forbidden_paths:
+    - "apps/reco/src/**"
+    - "apps/batch/**"
+    - "packages/contracts/**"
+    - "supabase/migrations/**"
+    - ".env"
+  child_task_areas:
+    - "poc-live-verification"
+
+dependencies:
+  epics:
+    - id: "epic-mod-reco-001-recommendation-orchestrator"
+      issue: 260
+      purpose: "Orchestrator 実装完了（live 計測前提・CLOSED）"
+    - id: "epic-reco-performance-feasibility-poc"
+      issue: 759
+      purpose: "Phase1 Epic（CLOSED・前提成果）"
+  issues:
+    - number: 759
+      purpose: "Phase1 CLOSED"
+    - number: 260
+      purpose: "MOD-RECO-001 CLOSED"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+    - "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "live モード計測の再現実行"
+    - "ephemeral DB 起動確認"
+    - "GHA secrets 参照のみで実値がログ・成果物に出ていないこと"
+  not_required:
+    - "Phase1 skeleton 再実行（任意回帰のみ）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実測根拠付き Go / Adjust / Block"
+    - "OpenAI secrets 実疎通が安全（実値非露出）か"
+    - "正式 docs 更新を別 Task に分離しているか"
+    - "BATCH / apps/reco 本格改修を混入していないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "PoC live 検証は experiments ログ対象となり得る"
+
+human_decision_points:
+  - "§13.2 暫定値の最終採用可否（Phase2 完了後・正式 docs 更新 Task 起票時）"
+  - "apps/reco/src/** の最小計測フックが必要になった場合の許可"
+  - "正式 docs 更新 Task の起票タイミング"
+
+stop_conditions:
+  - "secret 漏えいの疑いがある場合"
+  - "apps/reco/src/** の本格改修が必要になった場合（Human 確認）"
+  - "BATCH レーン exclusive path との衝突が解消できない場合"
+  - "live モードが bench で実行不能で代替方針が複数ある場合"
+
+notes:
+  - "workstream_key: reco-performance-feasibility-poc-phase2"
+  - "機能・領域単位 Epic（例外）。artifact_id 空。phase=90_PoC。Milestone は PoC 系と同様に未設定可"
+  - "Issue #1512 / Branch spike/epic-1512-reco-performance-feasibility-poc-phase2"
+  - "Epic worktree: spike-epic-1512-reco-performance-feasibility-poc-phase2"
+  - "子 Task: /start-task @prompts/definitions/tasks/reco-performance-feasibility-poc/poc-live-verification.yaml"
+  - "旧 spike/epic-759-* Branch / worktree は Human 承認のもと削除済み（2026-07-21）"
+  - "TV-005/006 は本 Epic に内包しない"
