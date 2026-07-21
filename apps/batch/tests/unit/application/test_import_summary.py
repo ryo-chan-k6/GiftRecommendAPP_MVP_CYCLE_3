@@ -397,3 +397,153 @@ def test_fixture_and_printed_output_have_no_secret_like_values(capsys) -> None:
     printed = capsys.readouterr().out.lower()
     for token in forbidden:
         assert token not in printed
+
+
+def test_item_search_diff_status_counts_match_product_diff_result() -> None:
+    """§16 No.5: item_search の diff_status 別件数が product_diff_result と整合する。"""
+    repos, _ = _repos(
+        source_api="item_search",
+        diffs=[
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="new"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="new"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="updated"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="updated"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="updated"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="unchanged"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="unavailable"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="unavailable"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="unavailable"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="item_search", diff_status="unavailable"
+            ),
+        ],
+    )
+    result = _run(repos, source_api="item_search")
+    assert result.status == "succeeded"
+    row = repos.summary_rows[0]
+    assert row.new_count == 2
+    assert row.updated_count == 3
+    assert row.unchanged_count == 1
+    assert row.unavailable_count == 4
+
+
+def test_api_call_log_item_count_sum_matches_fetched_count() -> None:
+    """§16 No.7: fetched_count が api_call_log.item_count 合計と整合する（正本）。"""
+    repos, _ = _repos(
+        source_api="item_search",
+        api_calls=[
+            ApiCallLogRow(batch_run_id=_RUN, source_api="item_search", item_count=10),
+            ApiCallLogRow(batch_run_id=_RUN, source_api="item_search", item_count=15),
+            ApiCallLogRow(batch_run_id=_RUN, source_api="item_search", item_count=8),
+        ],
+    )
+    result = _run(repos, source_api="item_search")
+    assert result.status == "succeeded"
+    row = repos.summary_rows[0]
+    assert row.fetched_count == 33
+
+
+def test_attribute_search_source_api_is_valid() -> None:
+    """attribute_search が valid source_api として扱える。"""
+    repos, _ = _repos(
+        source_api="attribute_search",
+        api_calls=[
+            ApiCallLogRow(
+                batch_run_id=_RUN, source_api="attribute_search", item_count=20
+            )
+        ],
+        diffs=[
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="attribute_search", diff_status="new"
+            ),
+            ProductDiffRow(
+                batch_run_id=_RUN, source_api="attribute_search", diff_status="updated"
+            ),
+        ],
+    )
+    result = _run(repos, source_api="attribute_search")
+    assert result.status == "succeeded"
+    row = repos.summary_rows[0]
+    assert row.source_api == "attribute_search"
+    assert row.fetched_count == 20
+    assert row.new_count == 1
+    assert row.updated_count == 1
+
+
+def test_source_defaults_to_rakuten() -> None:
+    """source が 'rakuten' 固定である。"""
+    repos, _ = _repos()
+    result = _run(repos)
+    assert result.status == "succeeded"
+    row = repos.summary_rows[0]
+    assert row.source == "rakuten"
+
+
+def test_multiple_runs_with_different_source_api_insert_separately() -> None:
+    """異なる source_api の Run は独立して INSERT できる。"""
+    repos1, _ = _repos(source_api="item_search", batch_run_id="run-01")
+    result1 = _run(repos1, job_run_id="run-01", source_api="item_search")
+    assert result1.status == "succeeded"
+
+    repos2, _ = _repos(source_api="item_ranking", batch_run_id="run-01")
+    result2 = _run(repos2, job_run_id="run-01", source_api="item_ranking")
+    assert result2.status == "succeeded"
+
+    assert len(repos1.summary_rows) == 1
+    assert len(repos2.summary_rows) == 1
+    assert repos1.summary_rows[0].source_api == "item_search"
+    assert repos2.summary_rows[0].source_api == "item_ranking"
+
+
+def test_different_batch_run_id_allows_new_insert() -> None:
+    """異なる batch_run_id では新規 INSERT できる。"""
+    repos, _ = _repos(batch_run_id="run-A")
+    result1 = _run(repos, job_run_id="run-A")
+    assert result1.status == "succeeded"
+    assert result1.insert_applied is True
+
+    repos2, _ = _repos(batch_run_id="run-B")
+    result2 = _run(repos2, job_run_id="run-B")
+    assert result2.status == "succeeded"
+    assert result2.insert_applied is True
+
+    assert len(repos.summary_rows) == 1
+    assert len(repos2.summary_rows) == 1
+
+
+def test_phase_log_only_has_summary_created() -> None:
+    """§16 No.9: phase_log が summary_created のみである。"""
+    repos, _ = _repos()
+    result = _run(repos)
+    assert result.status == "succeeded"
+    assert len(repos.phase_logs) == 1
+    assert repos.phase_logs[0]["phase"] == PHASE_SUMMARY_CREATED
+    assert repos.phase_logs[0]["status"] == "succeeded"
+
+
+def test_skip_fail_counts_are_recorded() -> None:
+    """skipped_count / failed_count が正しく記録される。"""
+    repos, _ = _repos(skip_fail=SkipFailCounts(skipped_count=5, failed_count=2))
+    result = _run(repos)
+    assert result.status == "succeeded"
+    row = repos.summary_rows[0]
+    assert row.skipped_count == 5
+    assert row.failed_count == 2
