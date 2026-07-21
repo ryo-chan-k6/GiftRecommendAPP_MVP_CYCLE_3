@@ -6,7 +6,7 @@ review:
   title: "BATCH-018 Offline Evaluation Batch Epic PRレビュー"
   summary: "BATCH-018 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
