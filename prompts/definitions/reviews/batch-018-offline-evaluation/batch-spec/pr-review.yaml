@@ -1,0 +1,67 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-018-offline-evaluation-batch-spec-pr"
+  title: "BATCH-018 Offline Evaluationバッチ仕様書 PRレビュー"
+  summary: "BATCH-018 バッチ仕様書 Task の PR を AI Review する。IF-DB-BATCH-018・IF-SHARED-004・evaluation_run_log 読み替え・Run 非冪等・Result/Metric UNIQUE・MOD-BATCH-039/040/041・独立子 workflow・§18 を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1515-batch-018-offline-evaluation-batch-spec"
+  base: "feature/epic-1514-batch-018-offline-evaluation"
+  target: "feature/epic-1514-batch-018-offline-evaluation"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1515
+  task_definition: "prompts/definitions/tasks/batch-018-offline-evaluation/batch-spec.yaml"
+  source_branch: "docs/task-1515-batch-018-offline-evaluation-batch-spec"
+  target_branch: "feature/epic-1514-batch-018-offline-evaluation"
+  parent_epic_issue: "[Epic]BATCH-018:Offline Evaluation Batch"
+  parent_epic_branch: "feature/epic-1514-batch-018-offline-evaluation"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-DB-BATCH-018 が本 Batch の物理書込（evaluation_run / evaluation_result / evaluation_metric INSERT）である"
+  - "IF-SHARED-004 が Offline Evaluation 推薦実行 I/F であり、MVP scaffold は mock 推奨である"
+  - "API-INT-002 は契約変更なし前提・Contract Gate 不要である"
+  - "一覧の evaluation_run_log が物理なしとして evaluation_run + batch_run_log / phase_log に読み替えられている"
+  - "Run は毎回新規 INSERT（非冪等）。Result UNIQUE (run, case)、Metric UNIQUE (result, metric_name)。INSERT のみ・UPDATE なし"
+  - "MOD-BATCH-039 / 040 / 041 が正。MOD-BATCH-042〜044 が out of scope"
+  - "独立子 batch-offline-evaluation.yml。週次親接続は後続（§18 Human）"
+  - "Dataset/Case 本番 seed は別 Task。UT fixture 可"
+  - "secret 禁止・Public / Admin 評価画面非対象"
+  - "§18.1 確定と §18.2 残未決が区別され、初版メトリクス確定候補（precision/recall/ndcg/mrr @10）がある"
+  - "PR target が親 Epic Branch"
+  - "OpenAPI / apps/reco 破壊変更 / 実装コード本格実装が混入していない"
+
+notes:
+  - "Epic #1514"
+  - "Issue #1515"
+  - "§18.2 Human 判断待ち（IF-SHARED-004 形態・初版メトリクス・親接続等）"

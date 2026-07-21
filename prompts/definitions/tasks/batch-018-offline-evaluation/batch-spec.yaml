@@ -1,0 +1,218 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-018-offline-evaluation-batch-spec"
+  title: "BATCH-018:Offline Evaluationバッチ仕様書作成"
+  summary: "BATCH-018（Offline Evaluation Batch）のバッチ仕様書を作成し、IF-DB-BATCH-018（evaluation_run / result / metric INSERT）・IF-SHARED-004（scaffold mock 推奨）・evaluation_run_log 読み替え・Run 非冪等・Result/Metric UNIQUE・MOD-BATCH-039/040/041・独立子 workflow・§18 を正本化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-018:Offline Evaluation Batch"
+  epic_issue_number: 1514
+  epic_branch: "feature/epic-1514-batch-018-offline-evaluation"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase4b 評価・改善系。Epic #1514 bootstrap 済み。MVP △ だが Human により scaffold-first 縦串着手承認済み。
+  物理書込 IF = IF-DB-BATCH-018（evaluation_run / evaluation_result / evaluation_metric INSERT）。
+  推薦実行 IF = IF-SHARED-004（MVP scaffold は mock 推奨。実 HTTP は後続）。
+  API-INT-002 は契約変更なしで消費可能な場合のみ。Contract Gate 不要。
+  一覧の evaluation_run_log は物理なし → evaluation_run + batch_run_log / phase_log に読み替え。
+  Run は毎回新規 INSERT（非冪等）。Result UNIQUE (run, case)、Metric UNIQUE (result, metric_name)。INSERT のみ・UPDATE なし。
+  モジュール: MOD-BATCH-039 / 040 / 041。042〜044 は out of scope。
+  workflow: 独立子 batch-offline-evaluation.yml。週次親接続は後続。
+  Dataset/Case 本番 seed は別 Task。UT fixture 可。
+
+objective: |
+  BATCH-018 バッチ仕様書を作成し、後続実装・UT の入力正本とする。
+
+scope:
+  - "BATCH-018_Offline Evaluationバッチ仕様書.md 新規作成"
+  - "IF-DB-BATCH-018 / IF-SHARED-004 / API-INT-002（契約非変更）境界の明記"
+  - "evaluation_run_log 読み替え・Run 非冪等・Result/Metric UNIQUE・INSERT のみ"
+  - "MOD-BATCH-039/040/041・042〜044 out of scope・独立子 workflow・§18 Human"
+  - "初版メトリクス確定候補（precision/recall/ndcg/mrr @10）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Python 実装・workflow YAML 本体・UT"
+  - "MOD-BATCH-042〜044 本格実装"
+  - "Dataset/Case 本番 seed"
+  - "週次親 workflow 全体改修"
+  - "apps/reco 破壊変更 / migration / OpenAPI 変更"
+  - "Public / Admin 評価画面"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_dataset_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_case_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_run_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_result_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/evaluation_metric_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-017_Import Summary作成バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: false
+    - path: "prompts/definitions/epics/batch-018-offline-evaluation/epic.yaml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-018_Offline Evaluationバッチ仕様書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-018-offline-evaluation/batch-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-018-offline-evaluation/batch-spec/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-018 バッチ仕様書"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "仕様書が作成されている"
+  - "IF-DB-BATCH-018 = evaluation_run / result / metric INSERT が明記されている"
+  - "IF-SHARED-004 = Offline Evaluation 推薦実行（scaffold mock 推奨）が明記されている"
+  - "API-INT-002 契約変更なし・Contract Gate 不要が明記されている"
+  - "evaluation_run_log が evaluation_run + batch_run_log / phase_log に読み替えられている"
+  - "Run 非冪等・Result/Metric UNIQUE・INSERT のみ・UPDATE なしが明記されている"
+  - "MOD-BATCH-039/040/041 正・042〜044 out of scope が明記されている"
+  - "独立子 batch-offline-evaluation.yml・週次親接続は後続が明記されている"
+  - "Dataset/Case 本番 seed は別 Task・UT fixture 可が明記されている"
+  - "secret 禁止・Public/Admin 評価画面非対象が明記されている"
+  - "§18.1 確定と §18.2 残未決が区別されている"
+  - "初版メトリクス確定候補（precision/recall/ndcg/mrr @10）が §18 にある"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1515-batch-018-offline-evaluation-batch-spec"
+  summary: "batch-018-offline-evaluation-batch-spec"
+  base: "feature/epic-1514-batch-018-offline-evaluation"
+  target: "feature/epic-1514-batch-018-offline-evaluation"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+
+issue:
+  number: 1515
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1514
+      title: "[Epic]BATCH-018:Offline Evaluation Batch"
+      purpose: "親 Epic"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-018_*"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-018 が本 Batch の物理書込（run / result / metric）である"
+    - "IF-SHARED-004 scaffold mock 推奨・API-INT-002 契約非変更・Contract Gate 不要"
+    - "evaluation_run_log 読み替え"
+    - "Run 非冪等・Result/Metric UNIQUE・INSERT のみ"
+    - "MOD-BATCH-039/040/041・042〜044 out of scope"
+    - "独立子 workflow・seed 別 Task・画面非対象・secret 禁止"
+    - "§18.1 確定と §18.2 残未決の区別・初版メトリクス候補"
+    - "secret / Public API 非公開"
+  specialist_reviews:
+    docs: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+human_decision_points:
+  - "IF-SHARED-004 の MVP 実装形態（推奨: scaffold mock）"
+  - "MVP 初版メトリクス範囲（推奨: precision/recall/ndcg/mrr @10）"
+  - "Dataset/Case 本番 seed の別 Task 起票タイミング"
+  - "週次親 workflow への任意接続を本 Epic に含めるか（推奨: 独立子のみ）"
+  - "version 4 列の scaffold 解決（固定 stub vs 実 Resolver）"
+
+stop_conditions:
+  - "正本 docs 間で矛盾があり独断解消できない場合"
+
+notes:
+  - "Epic #1514"
+  - "Issue #1515"
+  - "§18.2 は Human 判断待ち。推奨案は仕様書に記載"
