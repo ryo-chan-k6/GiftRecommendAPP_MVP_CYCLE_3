@@ -6,7 +6,7 @@
 | ---- | ---- |
 | 文書種別 | PoC 検証計画書 |
 | 検証ID | TV-007（全体テスト計画書） |
-| 関連 Epic | [#759 [Epic]PoC:Reco性能フィジビリティ検証](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) |
+| 関連 Epic | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) / 正式反映 [#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) / Phase3 [#1535](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1535) |
 | 配置 | `docs/90_PoC/性能フィジビリティ/` |
 | 工程 | `90_PoC` |
 
@@ -27,37 +27,39 @@
 
 ## 2. 検証目的
 
-本 PoC は、Reco 推薦パイプライン（**入力解析〜Ranking**）について、以下を早期に評価することを目的とする。
+本 PoC は、Reco 推薦パイプラインについて、以下を早期に評価することを目的とする。
 
-1. **アーキテクチャ・処理方式として**、性能要件および MOD-RECO-001 §13.2 の暫定タイムアウト値が成立し得るか（フィジビリティ）を確認する
+1. **アーキテクチャ・処理方式として**、性能要件および MOD-RECO-001 §13.2 のタイムアウト値が成立し得るか（フィジビリティ）を確認する
 2. TV-007 に対応する検証観点を計画・実行・記録し、`docs/90_PoC/性能フィジビリティ/` に成果を残す
-3. MOD-RECO-001 §13.2・性能要件（バックエンド）§5 **正式更新の判断材料**を提供する（正式反映は Phase2 完了後の別 Task）
+3. MOD-RECO-001 §13.2・性能要件（バックエンド）の **正式更新の判断材料**を提供する
 
-Reason 生成（`MOD-RECO-023`）は本検証の**参考計測**とし、TV-007 の主対象（入力解析〜Ranking）からは除外する。
+| フェーズ | 主対象 |
+| -------- | ------ |
+| Phase1 / Phase2 | 入力解析〜Ranking（Reason は参考） |
+| **Phase3** | **入力解析〜Reason（最終レスポンス）** — Reason を正式主対象（#1535 / 案A） |
 
 ---
 
-## 3. Phase1 / Phase2 区分
+## 3. Phase1 / Phase2 / Phase3 区分
 
-本 Epic は **2 フェーズ**で管理する。
-
-| フェーズ | タイミング | 目的 | 検証モード | 管理 Task |
-| ------ | ---------- | ---- | ---------- | --------- |
-| **Phase1** | Epic #759（Due 2026-06-27） | §13.2 暫定値の**成立性見込み**を早期確認 | `skeleton` 実測 + `analysis` 試算 | poc-plan / poc-harness / poc-report |
-| **Phase2** | **Epic #260 完了後** | 実装済みパイプラインの**実性能**を計測 | `live`（ephemeral DB / pgvector / mock or secrets OpenAI） | poc-live-verification（別 Issue、#260 Done 後に起票） |
+| フェーズ | タイミング | 目的 | 検証モード | 管理 |
+| ------ | ---------- | ---- | ---------- | ---- |
+| **Phase1** | Epic #759 | §13.2 暫定値の成立性見込み | `skeleton` + 試算 | poc-plan / harness / report |
+| **Phase2** | Epic #1512（#260 完了後） | Ranking までの live 実性能 | `live` | #1513 poc-live-verification |
+| 正式反映（一部） | #1533 | 内部 / 同期外部 AI 込み soft・hard 確定。`phase_output` 未確定 | docs | #1532 / #1533 |
+| **Phase3** | Epic #1535 | **Reason 込み E2E**、`phase_output` 上限案 | `live` | poc-reason-e2e-verification |
 
 ```mermaid
 flowchart LR
-  phase1["Phase1\nskeleton + 試算"]
-  epic260["Epic #260\nMOD-RECO-001 実装完了"]
-  phase2["Phase2\nlive 実性能計測"]
-  formalDocs["正式 docs 更新\n別 Task"]
-  phase1 --> epic260
-  epic260 --> phase2
-  phase2 --> formalDocs
+  phase1["Phase1 skeleton"]
+  phase2["Phase2 live Ranking"]
+  formal1533["#1533 正式docs"]
+  phase3["Phase3 Reason E2E"]
+  formalOut["phase_output 正式反映"]
+  phase1 --> phase2 --> formal1533 --> phase3 --> formalOut
 ```
 
-**Phase1 完了条件:** 検証計画・計測ハーネス・Phase1 結果 doc が揃い、§13.2 更新候補が Human 判断材料として整理されていること。live 実測による最終根拠は Phase2 の成果物とする。
+**Phase3 完了条件:** Reason 込み E2E と `phase_output` の実測・分離判定表が揃い、Human が `phase_output` hard を確定できる材料になっていること。
 
 ---
 
@@ -67,9 +69,9 @@ flowchart LR
 
 | 区分 | 内容 |
 | ---- | ---- |
-| パイプライン範囲 | 入力解析〜Ranking（Reason は参考） |
-| 性能指標 | フェーズ別・全体の wall-clock 時間（p50 / p95） |
-| 暫定判定対象 | MOD-RECO-001 §13.2 の soft / hard 暫定値 |
+| パイプライン範囲 | Phase1/2: 入力解析〜Ranking（Reason 参考）。**Phase3: 入力解析〜Reason（主対象）** |
+| 性能指標 | フェーズ別・全体の wall-clock 時間（p50 / p95）。Phase3 は `phase_output` 必須 |
+| 判定対象 | #1533 確定の内部 / 同期外部 AI 込み soft・hard。`phase_output` は Phase3 で案出し |
 | 環境 | local / GHA Layer2（`workflow_dispatch`） |
 
 ### 4.2 スコープ外
@@ -270,3 +272,4 @@ PR target: 子 Task PR は親 Epic Branch、Epic PR は `develop`。
 | ---- | -------- | ---- |
 | 2026-06-25 | 初版作成（Phase1 / Phase2 区分、TV-007 マッピング、worktree 運用） | Issue #761 / Task poc-plan |
 | 2026-07-21 | Phase2 live 計測境界・GHA openai_mode を反映（#1512/#1513） | Issue #1513 |
+| 2026-07-22 | Phase3（Reason 込み E2E）区分を追加（#1535 / #1533） | Issue #1535 |

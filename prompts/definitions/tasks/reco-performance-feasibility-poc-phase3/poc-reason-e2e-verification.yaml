@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-performance-feasibility-poc-phase3-reason-e2e"
+  title: "Reco性能フィジビリティPhase3 Reason込みE2E検証"
+  summary: "TV-007 Phase3。Reason（phase_output）込み最終レスポンスを正式主対象として live 計測し、#1533 未確定の phase_output 上限案と Go/Adjust/Block を整理する。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-performance-feasibility-poc-phase3"
+  epic_issue: "[Epic]PoC:Reco性能フィジビリティPhase3"
+  epic_issue_number: 1535
+  epic_branch: "spike/epic-1535-reco-performance-feasibility-poc-phase3"
+  related_issues:
+    - number: 1512
+      purpose: "Phase2"
+    - number: 1533
+      purpose: "正式 docs・phase_output 別 Task 宣言"
+    - number: 1532
+      purpose: "正式 docs Epic（§13.2 文面参照）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  #1533 で Reco 内部 soft/hard（1.5s/2s）と同期外部 AI 込み soft/hard（6s/8s）は確定。
+  phase_output（Reason）のみ未確定。Human により TV-007 Phase3（案A）で Reason 込み E2E を正式主対象化する。
+
+objective: |
+  Reason 込み live 計測を実行し Phase3 結果 doc を作成する。
+  Ranking までと Reason 込みを分離した判定表を作る。
+  phase_output 上限案を設計反映メモへ追記する。
+
+scope:
+  - "TV-007 方針・全体計画・検証計画・TV進捗の Phase3 記載"
+  - "bench live で Reason 込み E2E を主対象として計測（必要なら scripts/perf・workflow 最小更新）"
+  - "Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+  - "設計反映メモ Phase3 追記（phase_output 案）"
+  - "OpenAI secrets 実疎通を含む計測（実値非 commit）"
+
+out_of_scope:
+  - "apps/** 本格改修"
+  - "Phase2 Ranking 主判定の破棄・再定義"
+  - "正式 docs の phase_output 最終反映（Human 確定後の別 Task 可）"
+  - "TV-005/006 本体"
+  - "secret 実値記載"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-007_Reco性能フィジビリティ.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      required: true
+    - path: ".github/workflows/perf-feasibility-reco.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      action: "create"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-007_Reco性能フィジビリティ.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/計画/技術検証全体計画.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      action: "update"
+      required: false
+    - path: ".github/workflows/perf-feasibility-reco.yml"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "Reason 込み E2E（入力解析〜Reason）が主対象として計測されている"
+  - "phase_output の p50/p95 が記録されている"
+  - "#1533 の内部 / 同期外部 AI 込み soft・hard を参照した判定表がある"
+  - "Ranking までと Reason 込みが分離記載されている"
+  - "Task PR target が親 Epic Branch"
+  - "secret 実値が成果物にない"
+
+branch:
+  no_branch: false
+  summary: "reco-perf-phase3-reason-e2e"
+  base: "spike/epic-1535-reco-performance-feasibility-poc-phase3"
+  target: "spike/epic-1535-reco-performance-feasibility-poc-phase3"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-reco-performance-feasibility-poc-phase3"
+      issue: 1535
+  issues:
+    - number: 1533
+      purpose: "判定基準・phase_output 未確定の前提"
+
+parallel_control:
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+    - "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "Reason 込み live 再現"
+    - "mock / secrets 比較（可能範囲）"
+  not_required:
+    - "Phase1 skeleton 必須再実行"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Reason 主対象化の計測妥当性"
+    - "phase_output 案と #1533 整合"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "phase_output hard 最終値"
+  - "Reason 込み E2E を同期外部 AI 込み 6s/8s と同一枠にするか"
+
+stop_conditions:
+  - "親 Epic 未作成"
+  - "secret 漏えいの疑い"
+  - "#1533 方針と矛盾する判定を Human 確認なしに確定しそうな場合"
+
+notes:
+  - "親 Epic #1535 / Branch spike/epic-1535-reco-performance-feasibility-poc-phase3"
+  - "判定基準の正本入力: #1533 / MOD-RECO-001 §13.2（Epic #1532 Branch 上の確定文）"

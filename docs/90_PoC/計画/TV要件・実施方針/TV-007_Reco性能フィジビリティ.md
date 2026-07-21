@@ -10,7 +10,7 @@
 | 全体計画 | [技術検証全体計画](../技術検証全体計画.md) |
 | 進捗 | [TV進捗一覧](../../管理/TV進捗一覧.md) |
 | 棚卸し | [759_Reco性能フィジビリティ棚卸し_2026-07-21](../../管理/759_Reco性能フィジビリティ棚卸し_2026-07-21.md) |
-| 関連 Epic | [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) |
+| 関連 Epic | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) / 正式反映 [#1532](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1532)・[#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) / Phase3 [#1535](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1535) |
 | 結果の既定置き場 | `docs/90_PoC/性能フィジビリティ/` |
 
 ---
@@ -19,37 +19,41 @@
 
 | 観点 | 内容 |
 | ---- | ---- |
-| 主な確認内容 | 入力解析〜Rankingまでの概算時間 |
-| 判断結果の反映先 | Reco設計、非機能設計（性能要件 §5 / MOD-RECO-001 §13.2） |
-| 暫定判定対象 | soft 2,000ms / hard 4,000ms（§13.2 暫定値） |
+| Phase1/2 主対象 | 入力解析〜Ranking |
+| **Phase3 主対象** | **入力解析〜Reason（最終レスポンス）** — Reason（`phase_output` / `MOD-RECO-023`）を含む |
+| 判断結果の反映先 | Reco設計、非機能設計（性能要件 / MOD-RECO-001 §13.2） |
+| 判定基準（#1533 Human 確定） | Reco 内部 soft **1,500ms** / hard **2,000ms**。同期外部 AI 込み soft **6,000ms** / hard **8,000ms**。`phase_output` は Phase3 で確定 |
 
-Reason 生成は参考計測とし、TV-007 主対象からは除外する（#759 計画書方針）。
+**方針（2026-07-22 Human）:** 案A — Phase3 で Reason 込み E2E を正式主対象化する。Ranking までと Reason 込みの判定は**分離記載**する（#1533 の内部 / 外部 AI 分離と整合）。
 
 ---
 
 ## 3. 実施方針
 
-全体計画の S0〜S4 に加え、本 TV は **Phase1 / Phase2** を用いる（#759 計画書）。
+全体計画の S0〜S4 に加え、本 TV は **Phase1 / Phase2 / Phase3** を用いる。
 
-| フェーズ | 対応段階 | 内容 | 現状（2026-07-21） |
+| フェーズ | 対応段階 | 内容 | 現状（2026-07-22） |
 | -------- | -------- | ---- | ------------------ |
-| Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算、設計反映メモ | 完了済み（#1502 develop 取り込み） |
-| Phase2 | S3（live） | 実装済みパイプラインの実測、Go/Adjust/Block | **Epic #1512 / Task #1513** で実施 |
-| 正式反映 | S4 後の別 Task | 性能要件 / Orchestrator 仕様の正式更新 | out of scope（Phase2 完了後の別 Task） |
+| Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算 | 完了（#1502） |
+| Phase2 | S3（live・Ranking まで） | live 実測、暫定 Go/Adjust/Block | 完了（#1512 / #1530） |
+| 正式反映（Ranking・User Meaning） | S4 後 | #1533 で soft/hard・主要フェーズ確定。`phase_output` のみ未確定 | #1533 CLOSED（Epic #1532 は develop 取り込み待ちの場合あり） |
+| **Phase3** | S3（live・Reason 込み） | Reason 込み E2E、`phase_output` 上限案、分離判定 | **#1535 で実施** |
+| 正式反映（phase_output） | Phase3 後の別 Task または #1532 追従 | §13.2 `phase_output` / 性能要件の Reason 関連 | Phase3 完了後 |
 
 ```mermaid
 flowchart LR
-  P1[Phase1 skeleton] --> Land[develop反映]
-  Land --> P2[Phase2 live]
-  P2 --> Formal[正式docs 別Task]
+  P1[Phase1 skeleton] --> P2[Phase2 live Ranking]
+  P2 --> F1[正式docs #1533]
+  F1 --> P3[Phase3 Reason E2E]
+  P3 --> F2[phase_output 正式反映]
 ```
 
 ### 3.1 依存
 
 | 依存 | 扱い |
 | ---- | ---- |
-| TV-005 / TV-006 | Phase2 live の精度向上に有用。内包最小計測か別 TV 先行かは Human 判断 |
-| MOD-RECO 実装 | live 定義の前提。#260 CLOSED 後も実装が進んでいるため、Phase2 着手前に計測境界を再確認する |
+| #1533 Human 確定 | Phase3 の判定基準の正。内部 / 同期外部 AI 込み soft・hard を参照 |
+| TV-005 / TV-006 | Reason / Embedding の精度向上に有用。Phase3 に内包しない（別 TV） |
 | BATCH レーン | path 衝突は小さい。計測環境の取り合いに注意 |
 
 ---
@@ -59,25 +63,34 @@ flowchart LR
 | 項目 | 方針 |
 | ---- | ---- |
 | 環境 | local / GHA Layer2（`perf-feasibility-reco.yml`）。production 禁止 |
-| モード | Phase1: `skeleton`。Phase2: `live`（ephemeral DB / mock or secrets） |
-| 指標 | フェーズ別・全体 wall-clock（p50 / p95）。必要に応じ候補件数スケール |
-| 記録 | `性能フィジビリティ/` に計画・結果・設計反映メモ |
+| モード | Phase1: `skeleton`。Phase2/3: `live`（ephemeral DB / mock or secrets） |
+| 指標 | フェーズ別・全体 wall-clock（p50 / p95）。Phase3 は **Reason 込み E2E** と `phase_output` を必須 |
+| 記録 | `性能フィジビリティ/` |
 | CI | 通常 PR CI 必須ゲートにしない |
-| 判定 | soft/hard に対する Go / Adjust / Block（Phase2 実測根拠） |
-| 実装変更 | `apps/reco/src/**` は原則禁止（計測のための変更が必要なら別 Issue） |
+| 判定 | Go / Adjust / Block。**Ranking まで**と **Reason 込み**を分離記載 |
+| 実装変更 | `apps/reco/src/**` は原則禁止（必要なら Human 確認） |
 
-詳細手順の正本: [Reco性能フィジビリティ検証計画書](../../性能フィジビリティ/Reco性能フィジビリティ検証計画書.md) / [scripts/perf/README.md](../../../../scripts/perf/README.md)
+詳細: [Reco性能フィジビリティ検証計画書](../../性能フィジビリティ/Reco性能フィジビリティ検証計画書.md) / [scripts/perf/README.md](../../../../scripts/perf/README.md)
 
-### 4.1 Phase2 live 計測境界（#1513）
+### 4.1 Phase2 live 計測境界（完了・参照）
 
 | 境界 | 内容 |
 | ---- | ---- |
-| 実行 | `RecommendationOrchestrator` + `CompositionMode.PRODUCTION`（HTTP 非経由） |
-| TV-007 主対象 | 入力解析〜 Ranking。Reason は参考 |
-| DB | ephemeral Supabase + master / test-data seed（`test-reco-quality.yml` 同型） |
-| OpenAI | `mock`（scaffold）または `secrets`（`scripts/perf/openai_bench_clients.py` 差込。apps/reco 非改修） |
-| 判定 | soft 2,000ms / hard 4,000ms（p95）。最終採用は Human Review |
-| 件数スケール | test-data seed は item 3 件。100/500/1,000 件スケールは追加 seed が必要（未実施理由を結果 doc に明示可） |
+| TV-007 主対象（当時） | 入力解析〜 Ranking。Reason は参考 |
+| 判定（旧 soft/hard 2s/4s） | mock Go / secrets Adjust〜Block。#1533 で正式値へ更新 |
+
+### 4.2 Phase3 live 計測境界（#1535）
+
+| 境界 | 内容 |
+| ---- | ---- |
+| 実行 | `RecommendationOrchestrator` + PRODUCTION（HTTP 非経由）。Phase2 と同型 |
+| **主対象** | 入力解析〜 **Reason（最終レスポンス）** |
+| 必須指標 | Reason 込み E2E p50/p95、`phase_output` p50/p95、User Meaning（比較用） |
+| 参考 | Ranking までの区間（Phase2 との比較） |
+| DB | ephemeral Supabase + seed |
+| OpenAI | mock / secrets（`scripts/perf` 差込。apps/reco 非改修） |
+| 判定基準 | #1533: 内部 1.5s/2s、同期外部 AI 込み 6s/8s。`phase_output` は本 Phase で案出し → Human 確定 |
+| 件数スケール | Phase2 同様、追加 seed がなければ未実施理由を明示 |
 
 ---
 
@@ -85,19 +98,20 @@ flowchart LR
 
 | 種別 | 状態 |
 | ---- | ---- |
-| Phase1 Epic | #759 CLOSED（#1502 マージ時） |
-| Phase1 子 Task | #761 / #762 / #763 CLOSED |
-| Phase2 Epic | #1512 |
-| Phase2 Task | #1513（`poc-live-verification`） |
-| 結果ドキュメント | [検証計画書](../../性能フィジビリティ/Reco性能フィジビリティ検証計画書.md) / [Phase1結果](../../性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase1.md) / [設計反映メモ](../../性能フィジビリティ/設計反映メモ.md) / Phase2 live 結果（#1513） |
+| Phase1 Epic | #759 CLOSED |
+| Phase2 Epic / Task | #1512 / #1513 CLOSED |
+| 正式反映 Task | #1533 CLOSED（`phase_output` 未確定を宣言） |
+| Phase3 Epic | #1535 |
+| Phase3 Task | `poc-reason-e2e-verification` |
+| 結果 | Phase1/2 結果 doc、設計反映メモ、Phase3 結果 doc（予定） |
 
 ---
 
-## 6. 次アクション候補
+## 6. 次アクション
 
-1. #1513 live 計測・結果 doc・設計反映メモ更新
-2. Human Review で §13.2 暫定値の最終採用可否を判断
-3. 正式 docs 更新 Task の起票（性能要件 §5 / MOD-RECO-001 §13.2）
+1. #1535 配下 Task で Reason 込み live 計測・結果 doc
+2. Human Review で `phase_output` hard 最終値を確定
+3. §13.2 / 性能要件への `phase_output` 正式反映（#1532 追従または新 Task）
 
 ---
 
@@ -108,3 +122,4 @@ flowchart LR
 | 2026-07-21 | 初版方針。#759 棚卸しを反映（#1496） |
 | 2026-07-21 | Phase1 develop 取り込みに合わせて現状・次アクションを更新 |
 | 2026-07-21 | Phase2 live 計測境界（#1512/#1513）を追記 |
+| 2026-07-22 | Phase3（Reason 込み E2E）を正式主対象化。#1533 / #1535 を反映 |
