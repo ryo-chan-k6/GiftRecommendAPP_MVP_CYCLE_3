@@ -429,3 +429,219 @@ def test_env_keys_registered() -> None:
     assert "BATCH_DISTRIBUTION_METRICS_SEMANTIC_CONFIG_VERSION_ID" in BATCH_ENV_KEYS
     assert "BATCH_DISTRIBUTION_METRICS_INCLUDE_ITEM_EMBEDDING" in BATCH_ENV_KEYS
     assert "BATCH_DISTRIBUTION_METRICS_INCLUDE_USER_MEANING" in BATCH_ENV_KEYS
+
+
+def test_feature_metrics_emit_raw_and_normalized_for_all_mvp_eight_codes() -> None:
+    """§16 No.4: feature raw / normalized × MVP 8 軸。"""
+
+    repos, _ = _repos()
+    result = _run(repos)
+    assert result.status == "succeeded"
+
+    by_layer: dict[str, set[str]] = {"raw": set(), "normalized": set()}
+    for row in repos.feature_metric_rows:
+        assert row.table == "feature_distribution_metric"
+        assert row.feature_code is not None
+        by_layer[row.value_layer].add(row.feature_code)
+
+    assert by_layer["raw"] == set(MVP_FEATURE_CODES)
+    assert by_layer["normalized"] == set(MVP_FEATURE_CODES)
+    assert len(repos.feature_metric_rows) == len(MVP_FEATURE_CODES) * 2
+
+
+def test_meaning_metrics_item_social_and_symbolic_layers() -> None:
+    """§16 No.5（前半）: item meaning は social / symbolic。"""
+
+    repos, _ = _repos()
+    result = _run(repos)
+    assert result.status == "succeeded"
+
+    item_rows = [r for r in repos.meaning_metric_rows if r.entity_type == "item"]
+    layers = {r.value_layer for r in item_rows}
+    assert layers == {"social", "symbolic"}
+    assert all(r.feature_normalization_version_id == _NORM_VERSION for r in item_rows)
+
+
+def test_meaning_metrics_split_rows_when_feature_normalization_version_mixed() -> None:
+    """§16 No.5（後半）: feature_normalization_version_id 混在時は行分割。"""
+
+    meanings = [
+        ItemMeaningRow(
+            item_id="it_a",
+            semantic_config_version_id=_VERSION,
+            item_social=0.7,
+            item_symbolic=0.55,
+            feature_normalization_version_id="norm-v1",
+        ),
+        ItemMeaningRow(
+            item_id="it_b",
+            semantic_config_version_id=_VERSION,
+            item_social=0.65,
+            item_symbolic=0.5,
+            feature_normalization_version_id="norm-v2",
+        ),
+    ]
+    repos, _ = _repos(features=_features(items=("it_a", "it_b")), meanings=meanings)
+    result = _run(repos)
+    assert result.status == "succeeded"
+
+    item_rows = [r for r in repos.meaning_metric_rows if r.entity_type == "item"]
+    versions = {r.feature_normalization_version_id for r in item_rows}
+    assert versions == {"norm-v1", "norm-v2"}
+    # version × (social, symbolic) = 4 行
+    assert len(item_rows) == 4
+    for ver in ("norm-v1", "norm-v2"):
+        ver_layers = {r.value_layer for r in item_rows if r.feature_normalization_version_id == ver}
+        assert ver_layers == {"social", "symbolic"}
+        assert all(
+            r.sample_count == 1 for r in item_rows if r.feature_normalization_version_id == ver
+        )
+
+
+def test_normalization_metrics_emit_raw_and_sigmoid_layers() -> None:
+    """§16 No.6（前半）: normalization は raw / sigmoid。"""
+
+    repos, _ = _repos()
+    result = _run(repos)
+    assert result.status == "succeeded"
+
+    layers = {r.value_layer for r in repos.normalization_metric_rows}
+    assert layers == {"raw", "sigmoid"}
+    codes = {r.feature_code for r in repos.normalization_metric_rows}
+    assert codes == set(MVP_FEATURE_CODES)
+    for row in repos.normalization_metric_rows:
+        assert row.feature_normalization_version_id == _NORM_VERSION
+        if row.value_layer == "sigmoid":
+            assert row.sigma_zero_count is not None
+        else:
+            assert row.sigma_zero_count is None
+
+
+def test_normalization_sigma_zero_count_when_stddev_zero() -> None:
+    """§16 No.6（後半）: sigmoid 層で stddev==0.0 のとき sigma_zero_count = n。"""
+
+    # 全 item で同一 normalized → stddev 0、raw は分散あり
+    features = [
+        ItemFeatureRow(
+            item_id=item_id,
+            semantic_config_version_id=_VERSION,
+            feature_code=code,
+            raw_feature_value=0.5 + i * 0.1,
+            normalized_feature_value=0.42,
+            feature_normalization_version_id=_NORM_VERSION,
+        )
+        for i, item_id in enumerate(("it_1", "it_2", "it_3"))
+        for code in MVP_FEATURE_CODES
+    ]
+    meanings = _meanings(items=("it_1", "it_2", "it_3"))
+    repos, _ = _repos(features=features, meanings=meanings)
+    result = _run(repos)
+    assert result.status == "succeeded"
+
+    sigmoid_rows = [r for r in repos.normalization_metric_rows if r.value_layer == "sigmoid"]
+    assert sigmoid_rows
+    for row in sigmoid_rows:
+        assert row.sample_count == 3
+        assert row.stddev == 0.0
+        assert row.sigma_zero_count == 3
+
+    raw_rows = [r for r in repos.normalization_metric_rows if r.value_layer == "raw"]
+    assert raw_rows
+    for row in raw_rows:
+        assert row.sigma_zero_count is None
+        assert row.stddev is not None and row.stddev > 0.0
+
+
+def test_batch_run_rerun_upserts_same_unique_key_without_duplicate_rows() -> None:
+    """§16 No.7: aggregation_scope=batch_run の冪等 UPSERT。"""
+
+    repos, _ = _repos()
+    first = _run(repos, job_run_id="run-rerun")
+    assert first.status == "succeeded"
+    feature_n = len(repos.feature_metric_rows)
+    meaning_n = len(repos.meaning_metric_rows)
+    norm_n = len(repos.normalization_metric_rows)
+    assert feature_n > 0
+
+    second = _run(repos, job_run_id="run-rerun")
+    assert second.status == "succeeded"
+    assert len(repos.feature_metric_rows) == feature_n
+    assert len(repos.meaning_metric_rows) == meaning_n
+    assert len(repos.normalization_metric_rows) == norm_n
+    assert all(r.batch_run_id == "run-rerun" for r in repos.feature_metric_rows)
+
+
+def test_daily_scope_partial_unique_rerun_overwrites_by_aggregation_key() -> None:
+    """§16 No.8（daily）: 部分 UNIQUE により同一 aggregation_key は上書き。"""
+
+    repos, _ = _repos()
+    first = _run(repos, job_run_id="run-daily-1", trigger_mode="schedule")
+    assert first.status == "succeeded"
+    assert first.aggregation_scope == "daily"
+    assert first.aggregation_key == "2026-07-21"
+    feature_n = len(repos.feature_metric_rows)
+    first_means = {r.feature_code: r.mean for r in repos.feature_metric_rows if r.value_layer == "raw"}
+
+    # 入力を変えて再実行（別 batch_run_id、同一 daily key）
+    repos.item_features = [
+        ItemFeatureRow(
+            item_id=item_id,
+            semantic_config_version_id=_VERSION,
+            feature_code=code,
+            raw_feature_value=0.9,
+            normalized_feature_value=0.91,
+            feature_normalization_version_id=_NORM_VERSION,
+        )
+        for item_id in ("it_1", "it_2")
+        for code in MVP_FEATURE_CODES
+    ]
+    second = _run(repos, job_run_id="run-daily-2", trigger_mode="schedule")
+    assert second.status == "succeeded"
+    assert len(repos.feature_metric_rows) == feature_n
+    assert all(r.batch_run_id == "run-daily-2" for r in repos.feature_metric_rows)
+    assert all(r.aggregation_key == "2026-07-21" for r in repos.feature_metric_rows)
+    overwritten = {
+        r.feature_code: r.mean for r in repos.feature_metric_rows if r.value_layer == "raw"
+    }
+    assert overwritten != first_means
+    assert all(m == 0.9 for m in overwritten.values())
+
+
+def test_semantic_config_version_scope_resolve_and_partial_unique_upsert() -> None:
+    """§16 No.8（semantic_config_version）: resolve と部分 UNIQUE UPSERT。"""
+
+    scope = resolve_scope(
+        trigger_mode="dispatch",
+        job_run_id="run-scv-1",
+        semantic_config_version_id=_VERSION,
+        aggregation_scope_override="semantic_config_version",
+        now=_NOW,
+    )
+    assert scope.aggregation_scope == "semantic_config_version"
+    assert scope.aggregation_key is None
+    assert scope.semantic_config_version_id == _VERSION
+
+    repos, _ = _repos()
+    first = _run(
+        repos,
+        job_run_id="run-scv-1",
+        aggregation_scope="semantic_config_version",
+    )
+    assert first.status == "succeeded"
+    assert first.aggregation_scope == "semantic_config_version"
+    feature_n = len(repos.feature_metric_rows)
+    meaning_n = len(repos.meaning_metric_rows)
+    norm_n = len(repos.normalization_metric_rows)
+
+    second = _run(
+        repos,
+        job_run_id="run-scv-2",
+        aggregation_scope="semantic_config_version",
+    )
+    assert second.status == "succeeded"
+    assert len(repos.feature_metric_rows) == feature_n
+    assert len(repos.meaning_metric_rows) == meaning_n
+    assert len(repos.normalization_metric_rows) == norm_n
+    assert all(r.batch_run_id == "run-scv-2" for r in repos.feature_metric_rows)
+    assert all(r.aggregation_scope == "semantic_config_version" for r in repos.feature_metric_rows)
+    assert all(r.aggregation_key is None for r in repos.feature_metric_rows)

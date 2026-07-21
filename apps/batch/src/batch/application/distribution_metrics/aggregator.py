@@ -235,6 +235,13 @@ def aggregate_normalization_metrics(
         if not values:
             continue
         stats = compute_distribution_stats(values)
+        sigma_zero: int | None = None
+        if layer == "sigmoid":
+            # n>=2 かつ分散 0（全値同一）のとき寄与件数 = sample_count、それ以外は 0
+            if stats.sample_count >= 2 and stats.stddev == 0.0:
+                sigma_zero = stats.sample_count
+            else:
+                sigma_zero = 0
         rows.append(
             MetricUpsertRow(
                 table="normalization_distribution_metric",
@@ -250,6 +257,7 @@ def aggregate_normalization_metrics(
                 stddev=stats.stddev,
                 min_value=stats.min_value,
                 max_value=stats.max_value,
+                sigma_zero_count=sigma_zero,
             )
         )
     return rows

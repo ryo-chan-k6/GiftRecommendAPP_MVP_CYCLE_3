@@ -1,0 +1,59 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-016-distribution-metrics-unit-test-pr"
+  title: "BATCH-016 分布メトリクス集計Batch単体テスト PRレビュー"
+  summary: "BATCH-016 UT Task の PR を AI Review する。§16 カバレッジ・fixture/mock・secret 非依存を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "test/task-1494-batch-016-distribution-metrics-unit-test"
+  base: "feature/epic-1489-batch-016-distribution-metrics"
+  target: "feature/epic-1489-batch-016-distribution-metrics"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1494
+  task_definition: "prompts/definitions/tasks/batch-016-distribution-metrics/unit-test.yaml"
+  source_branch: "test/task-1494-batch-016-distribution-metrics-unit-test"
+  target_branch: "feature/epic-1489-batch-016-distribution-metrics"
+  parent_epic_issue: "[Epic]BATCH-016:分布メトリクス集計Batch"
+  parent_epic_branch: "feature/epic-1489-batch-016-distribution-metrics"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功・実 DB / secret 非依存"
+  - "IF-DB-BATCH-016 / 隣接 IF 非書込 / phase_log 代表フェーズ"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1489"
+  - "Issue #1494"
