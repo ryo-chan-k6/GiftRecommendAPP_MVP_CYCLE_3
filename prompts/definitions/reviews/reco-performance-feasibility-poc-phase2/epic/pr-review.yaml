@@ -6,7 +6,7 @@ review:
   title: "PoC:Reco性能フィジビリティPhase2 Epic PRレビュー"
   summary: "TV-007 Phase2（live 実測）Epic の develop 向け Epic PR を AI Review する。正式 docs 更新は別 Task。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1530
   issue:
     number: 1512
   task_definition: "prompts/definitions/epics/reco-performance-feasibility-poc-phase2/epic.yaml"
