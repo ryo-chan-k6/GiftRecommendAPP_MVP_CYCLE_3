@@ -176,5 +176,6 @@ stop_conditions:
   - "Human 未確定の数値を確定済みとして書く必要がある場合"
 
 notes:
+  - "Task Issue #1533 / Branch docs/task-1533-perf-timeout-formal-docs"
   - "親 Epic #1532 / Branch docs/epic-1532-reco-perf-timeout-formal-docs"
   - "作業時の推奨案提示は設計反映メモ §2.2・Phase2 §4.3 を正とする"
