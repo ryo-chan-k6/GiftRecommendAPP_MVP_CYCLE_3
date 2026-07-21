@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-018-offline-evaluation-unit-test"
+  title: "BATCH-018:Offline Evaluation Batch単体テスト"
+  summary: "BATCH-018 実装に対し、仕様書 §16 の unit 観点カバレッジを整理・拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-018:Offline Evaluation Batch"
+  epic_issue_number: 1514
+  epic_branch: "feature/epic-1514-batch-018-offline-evaluation"
+  related_issues:
+    - number: 1517
+      purpose: "実装（CLOSED）"
+    - number: 1515
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1518
+      purpose: "実装 MERGED"
+    - number: 1516
+      purpose: "仕様書 MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  実装 Task #1517 / PR #1518 は Epic Branch merge 済み。§16 unit 観点を拡充する。
+  既存 test_offline_evaluation.py には実装タスクで作成された最小 UT（約 11 件）が存在する。
+
+objective: |
+  BATCH-018 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串を完了可能にする。
+
+scope:
+  - "§16 unit 観点カバレッジ表を PR 本文に記載"
+  - "test_offline_evaluation.py 拡充（fixture/mock、実 DB / 実 reco HTTP 非依存）"
+  - "部分成功 / concurrency GRS-BAT-* の確認"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "integration test（実 DB）"
+  - "実 HTTP reco"
+  - "Epic PR develop merge（Human）"
+  - "機能追加を主目的とする実装変更"
+  - "apps/reco / OpenAPI / migration / generated"
+  - "Dataset/Case 本番 seed"
+  - "週次親 workflow 改修"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-018_Offline Evaluationバッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+  files:
+    - path: "apps/batch/tests/unit/application/test_offline_evaluation.py"
+      required: true
+      purpose: "既存最小 UT"
+    - path: "apps/batch/src/batch/application/offline_evaluation/**"
+      required: true
+      purpose: "テスト対象実装"
+    - path: "apps/batch/src/batch/infrastructure/reco_client/**"
+      required: true
+      purpose: "IF-SHARED-004 mock"
+
+output:
+  files:
+    - path: "prompts/definitions/tasks/batch-018-offline-evaluation/unit-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-018-offline-evaluation/unit-test/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_offline_evaluation.py"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功（対象ファイル + tests/unit）"
+  - "secret 非含有"
+  - "apps/reco / OpenAPI 非変更"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "test/task-1519-batch-018-offline-evaluation-unit-test"
+  summary: "batch-018-offline-evaluation-unit-test"
+  base: "feature/epic-1514-batch-018-offline-evaluation"
+  target: "feature/epic-1514-batch-018-offline-evaluation"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+
+issue:
+  number: 1519
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1514
+      title: "[Epic]BATCH-018:Offline Evaluation Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1517
+      purpose: "実装 CLOSED"
+    - number: 1515
+      purpose: "仕様書 CLOSED"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_offline_evaluation.py"
+    - "prompts/definitions/tasks/batch-018-offline-evaluation/unit-test.yaml"
+    - "prompts/definitions/reviews/batch-018-offline-evaluation/unit-test/pr-review.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-018 §16）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_offline_evaluation.py -q --tb=short"
+    - "cd apps/batch && uv run python -m pytest tests/unit -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock を正とする"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§16 対応表"
+    - "実 DB / 実 reco HTTP / secret 非依存"
+    - "PR target"
+    - "IF-DB-BATCH-018 INSERT（run / result / metric）"
+    - "IF-SHARED-004 mock 完走（http_call_count=0）"
+    - "メトリクス最小 4 種（precision/recall/ndcg/mrr_at_10）"
+    - "Run 毎回新規 INSERT"
+    - "Result UNIQUE / Metric UNIQUE・UPDATE 経路なし"
+    - "evaluation_run_log 非書込"
+    - "部分成功 GRS-BAT-002 / concurrency GRS-BAT-003"
+    - "apps/reco / OpenAPI 非変更"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+notes:
+  - "Epic #1514 / Issue #1519"
+  - "後続: Epic PR → develop"
