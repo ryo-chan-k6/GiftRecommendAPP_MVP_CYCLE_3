@@ -1,6 +1,6 @@
-"""Unit tests for BATCH-018 Offline Evaluation（仕様書 §16 最小 / scaffold-first）.
+"""Unit tests for BATCH-018 Offline Evaluation（仕様書 §16 unit 観点）.
 
-fixture/mock のみ。実 DB / secret / HTTP に依存しない。
+fixture/mock のみ。実 DB / secret / 実 reco HTTP に依存しない。
 """
 
 from __future__ import annotations
@@ -9,16 +9,19 @@ from datetime import UTC, datetime
 
 from batch.application.offline_evaluation import (
     BATCH_ID,
+    METRIC_K,
     MVP_METRIC_NAMES,
     OFFLINE_EVALUATION_PHASES,
     PHASE_EVALUATION_COMPLETED,
     DuplicateInsertError,
     EvaluationCaseRow,
     EvaluationDatasetRow,
+    EvaluationMetricRow,
     EvaluationResultRow,
     OfflineEvaluationJob,
     OfflineEvaluationRepositories,
     calculate_mvp_metrics,
+    extract_relevant_item_ids,
     mrr_at_k,
     ndcg_at_k,
     precision_at_k,
@@ -34,6 +37,19 @@ _NOW = datetime(2026, 7, 21, 12, 0, 0, tzinfo=UTC)
 _DS = "ds-018-1"
 _CASE_1 = "case-018-1"
 _CASE_2 = "case-018-2"
+
+_FORBIDDEN_SECRET_TOKENS = (
+    "sk-",
+    "openai_api_key",
+    "api_key",
+    "bearer ",
+    "password",
+    "secret_token",
+    "postgresql://",
+    "DATABASE_URL",
+    "supabase",
+    "service_role",
+)
 
 
 def _repos(
@@ -87,6 +103,9 @@ def _run(
     tracker: ScaffoldJobRunTracker | None = None,
     max_cases: int | None = None,
     dry_run: bool = False,
+    evaluation_dataset_id: str | None = _DS,
+    dataset_name: str | None = None,
+    dataset_version: str | None = None,
 ):
     job = OfflineEvaluationJob(
         repositories=repos,
@@ -95,11 +114,16 @@ def _run(
     )
     return job.run(
         job_run_id=job_run_id,
-        evaluation_dataset_id=_DS,
+        evaluation_dataset_id=evaluation_dataset_id,
+        dataset_name=dataset_name,
+        dataset_version=dataset_version,
         max_cases=max_cases,
         dry_run=dry_run,
         now=_NOW,
     )
+
+
+# --- §16 No.1 IF-DB-BATCH-018 INSERT / phases ---------------------------------
 
 
 def test_happy_path_inserts_run_result_metrics_and_phases() -> None:
@@ -114,9 +138,6 @@ def test_happy_path_inserts_run_result_metrics_and_phases() -> None:
     assert result.evaluation_status == "succeeded"
     assert "open_run" in result.completed_phases
     assert "finalize" in result.completed_phases
-    assert set(result.completed_phases) <= set(OFFLINE_EVALUATION_PHASES) | set(
-        result.completed_phases
-    )
     for phase in OFFLINE_EVALUATION_PHASES:
         assert phase in result.completed_phases
 
@@ -145,6 +166,55 @@ def test_happy_path_inserts_run_result_metrics_and_phases() -> None:
     assert "dataset_resolved" in phase_names
 
 
+def test_if_db_batch_018_write_payload_marks_insert_only() -> None:
+    """IF-DB-BATCH-018 の書込が run/result/metric INSERT に閉じる."""
+
+    repos, db = _repos()
+    _run(repos)
+
+    tables = {str(call["table"]) for call in db.write_calls}
+    assert tables == {
+        "evaluation_run",
+        "evaluation_result",
+        "evaluation_metric",
+    }
+    # result / metric は INSERT のみ（update_count 常時 0）
+    assert repos.result_update_count == 0
+    assert repos.metric_update_count == 0
+    assert not hasattr(repos, "update_result")
+    assert not hasattr(repos, "update_metric")
+
+    # Run は INSERT + status UPDATE のみ（payload op で区別）
+    run_ops = {
+        str(row.get("op"))
+        for call in db.write_calls
+        if call["table"] == "evaluation_run"
+        for row in call["rows"]  # type: ignore[union-attr]
+    }
+    assert "if_db_batch_018_insert" in run_ops
+    assert "if_db_batch_018_status_update" in run_ops
+
+
+# --- §16 No.2 IF-SHARED-004 mock 完走 ----------------------------------------
+
+
+def test_if_shared_004_mock_completes_case_loop_without_http() -> None:
+    repos, _ = _repos()
+    reco = MockRecoEvaluationClient()
+    result = _run(repos, reco=reco)
+
+    assert result.status == "succeeded"
+    assert reco.call_count == 2
+    assert result.http_call_count == 0
+    assert reco.last_request is not None
+    assert reco.last_request.mode == "evaluation"
+    assert result.results_inserted == 2
+    assert result.metrics_inserted == 8
+
+
+# --- §16 No.3 Run 毎回新規 INSERT --------------------------------------------
+
+
 def test_rerun_creates_new_evaluation_run() -> None:
     repos, _ = _repos()
     first = _run(repos, job_run_id="run-a")
@@ -154,6 +224,11 @@ def test_rerun_creates_new_evaluation_run() -> None:
     assert len(repos.runs) == 2
     assert repos.run_insert_count == 2
     assert repos.result_insert_count == 4
+    run_ids = {r.evaluation_run_id for r in repos.runs}
+    assert len(run_ids) == 2
+
+
+# --- §16 No.4 / No.5 UNIQUE・UPDATE なし ------------------------------------
 
 
 def test_result_unique_rejects_duplicate_insert() -> None:
@@ -172,6 +247,7 @@ def test_result_unique_rejects_duplicate_insert() -> None:
     except DuplicateInsertError:
         pass
     assert repos.result_update_count == 0
+    assert repos.result_insert_count == 2  # 二重 INSERT は加算されない想定
 
 
 def test_metric_unique_rejects_duplicate_name() -> None:
@@ -191,31 +267,89 @@ def test_metric_unique_rejects_duplicate_name() -> None:
     assert repos.metric_update_count == 0
 
 
-def test_inactive_dataset_fails_without_run() -> None:
-    repos, _ = _repos(active=False)
-    result = _run(repos)
-    assert result.status == "failed"
-    assert "GRS-CFG-001" in result.error_codes
-    assert repos.run_insert_count == 0
+def test_no_result_or_metric_update_path_on_rerun() -> None:
+    """再実行は別 run を新規 INSERT し、既存 result/metric を UPDATE しない."""
+
+    repos, _ = _repos()
+    _run(repos, job_run_id="run-1")
+    _run(repos, job_run_id="run-2")
+    assert repos.result_update_count == 0
+    assert repos.metric_update_count == 0
+    assert repos.evaluation_run_log_write_count == 0
 
 
-def test_missing_expected_skips_metrics_but_keeps_result() -> None:
-    repos, _ = _repos(
-        cases=[
-            EvaluationCaseRow(
-                evaluation_case_id=_CASE_1,
-                evaluation_dataset_id=_DS,
-                case_label="case_001",
-                expected_result_json=None,
-                is_active=True,
-            )
-        ]
+# --- §16 No.6 evaluation_run_log 非書込 --------------------------------------
+
+
+def test_evaluation_run_log_never_written() -> None:
+    repos, db = _repos()
+    _run(repos)
+    assert repos.evaluation_run_log_write_count == 0
+    assert all(call["table"] != "evaluation_run_log" for call in db.write_calls)
+
+
+# --- §16 No.7 初版メトリクス 4 種のみ ----------------------------------------
+
+
+def test_mvp_metric_set_is_exactly_four_at_10() -> None:
+    assert MVP_METRIC_NAMES == (
+        "precision_at_10",
+        "recall_at_10",
+        "ndcg_at_10",
+        "mrr_at_10",
     )
+    assert METRIC_K == 10
+
+    repos, _ = _repos(cases=[
+        EvaluationCaseRow(
+            evaluation_case_id=_CASE_1,
+            evaluation_dataset_id=_DS,
+            case_label="case_001",
+            expected_result_json={"golden_item_ids": ["a", "b"]},
+            is_active=True,
+        )
+    ])
     result = _run(repos)
-    assert result.status == "succeeded"
-    assert result.results_inserted == 1
-    assert result.metrics_inserted == 0
-    assert any(e["code"] == "GRS-EVAL-003" for e in repos.error_logs)
+    assert result.metrics_inserted == 4
+    names = [m.metric_name for m in repos.metrics]
+    assert names == list(MVP_METRIC_NAMES)
+
+
+# --- §16 No.10 UT fixture（本番 seed 非含有） --------------------------------
+
+
+def test_dataset_and_case_are_fixture_only_no_writes() -> None:
+    repos, db = _repos()
+    _run(repos)
+    assert repos.dataset_write_count == 0
+    assert repos.case_write_count == 0
+    assert "evaluation_dataset" not in {c["table"] for c in db.write_calls}
+    assert "evaluation_case" not in {c["table"] for c in db.write_calls}
+
+
+# --- 部分成功 / concurrency GRS-BAT-* ----------------------------------------
+
+
+def test_partial_success_grs_bat_002_on_reco_failure() -> None:
+    repos, _ = _repos()
+    reco = MockRecoEvaluationClient(fail_case_ids=frozenset({_CASE_2}))
+    result = _run(repos, reco=reco)
+
+    assert result.status == "partially_succeeded"
+    assert "GRS-BAT-002" in result.error_codes
+    assert result.results_inserted == 2
+    # 失敗 case は recommendation_result_id なし、成功 case はあり
+    by_case = {r.evaluation_case_id: r for r in repos.results}
+    assert by_case[_CASE_1].recommendation_result_id is not None
+    assert by_case[_CASE_2].recommendation_result_id is None
+    assert result.http_call_count == 0
+    assert reco.call_count == 2
+
+    completed = [
+        p for p in repos.phase_logs if p.get("phase") == PHASE_EVALUATION_COMPLETED
+    ]
+    assert completed
+    assert completed[-1]["status"] == "partially_succeeded"
 
 
 def test_mock_reco_failure_inserts_result_without_recommendation_id() -> None:
@@ -237,6 +371,126 @@ def test_mock_reco_failure_inserts_result_without_recommendation_id() -> None:
     assert repos.results[0].recommendation_result_id is None
     assert result.http_call_count == 0
     assert reco.call_count == 1
+    assert "GRS-BAT-002" in result.error_codes
+
+
+def test_already_running_grs_bat_003() -> None:
+    tracker = ScaffoldJobRunTracker()
+    tracker.start(batch_id=BATCH_ID, job_run_id="other")
+    repos, db = _repos()
+    result = _run(repos, tracker=tracker)
+
+    assert "GRS-BAT-003" in result.error_codes
+    assert result.status == "failed"
+    assert repos.run_insert_count == 0
+    assert result.results_inserted == 0
+    assert db.write_calls == []
+
+
+# --- 異常系 / dry_run / resolve ----------------------------------------------
+
+
+def test_inactive_dataset_fails_without_run() -> None:
+    repos, _ = _repos(active=False)
+    result = _run(repos)
+    assert result.status == "failed"
+    assert "GRS-CFG-001" in result.error_codes
+    assert repos.run_insert_count == 0
+
+
+def test_missing_dataset_fails_grs_cfg_001() -> None:
+    repos, db = _repos(include_dataset=False, cases=[])
+    result = _run(repos, evaluation_dataset_id="missing-ds")
+    assert result.status == "failed"
+    assert "GRS-CFG-001" in result.error_codes
+    assert db.write_calls == []
+
+
+def test_no_active_cases_fails_grs_val_001() -> None:
+    repos, db = _repos(cases=[])
+    result = _run(repos)
+    assert result.status == "failed"
+    assert "GRS-VAL-001" in result.error_codes
+    assert repos.run_insert_count == 0
+    assert db.write_calls == []
+
+
+def test_resolve_dataset_by_name_and_version() -> None:
+    repos, _ = _repos()
+    result = _run(
+        repos,
+        evaluation_dataset_id=None,
+        dataset_name="offline_eval_ut",
+        dataset_version="v1",
+    )
+    assert result.status == "succeeded"
+    assert result.evaluation_dataset_id == _DS
+
+
+def test_missing_expected_skips_metrics_but_keeps_result() -> None:
+    repos, _ = _repos(
+        cases=[
+            EvaluationCaseRow(
+                evaluation_case_id=_CASE_1,
+                evaluation_dataset_id=_DS,
+                case_label="case_001",
+                expected_result_json=None,
+                is_active=True,
+            )
+        ]
+    )
+    result = _run(repos)
+    assert result.status == "succeeded"
+    assert result.results_inserted == 1
+    assert result.metrics_inserted == 0
+    assert any(e["code"] == "GRS-EVAL-003" for e in repos.error_logs)
+
+
+def test_empty_golden_item_ids_skips_metrics() -> None:
+    repos, _ = _repos(
+        cases=[
+            EvaluationCaseRow(
+                evaluation_case_id=_CASE_1,
+                evaluation_dataset_id=_DS,
+                case_label="case_001",
+                expected_result_json={"golden_item_ids": []},
+                is_active=True,
+            )
+        ]
+    )
+    result = _run(repos)
+    assert result.status == "succeeded"
+    assert result.results_inserted == 1
+    assert result.metrics_inserted == 0
+
+
+def test_dry_run_evaluates_without_if_db_writes() -> None:
+    repos, db = _repos()
+    reco = MockRecoEvaluationClient()
+    result = _run(repos, reco=reco, dry_run=True)
+
+    assert result.status == "succeeded"
+    assert result.dry_run is True
+    assert result.cases_evaluated == 2
+    assert result.results_inserted == 0
+    assert result.metrics_inserted == 0
+    assert repos.run_insert_count == 0
+    assert repos.result_insert_count == 0
+    assert repos.metric_insert_count == 0
+    assert db.write_calls == []
+    assert reco.call_count == 2
+    assert result.http_call_count == 0
+
+
+def test_max_cases_limits_evaluation() -> None:
+    repos, _ = _repos()
+    result = _run(repos, max_cases=1)
+    assert result.cases_evaluated == 1
+    assert result.results_inserted == 1
+    assert result.metrics_inserted == 4
+
+
+# --- メトリクス計算器 --------------------------------------------------------
 
 
 def test_metric_calculators_basic() -> None:
@@ -252,6 +506,42 @@ def test_metric_calculators_basic() -> None:
         expected_result_json={"golden_item_ids": ["a", "b", "c"]},
     )
     assert tuple(s.metric_name for s in scores) == MVP_METRIC_NAMES
+
+
+def test_metric_calculators_edge_cases() -> None:
+    relevant = frozenset({"a", "b"})
+    assert precision_at_k((), relevant, k=10) == 0.0
+    assert recall_at_k(("x", "y"), frozenset(), k=10) == 0.0
+    assert mrr_at_k(("x", "y"), relevant, k=10) == 0.0
+    assert ndcg_at_k(("a", "b"), relevant, k=10) == 1.0
+    assert extract_relevant_item_ids(None) == frozenset()
+    assert extract_relevant_item_ids({"golden_item_ids": "not-a-list"}) == frozenset()
+    assert calculate_mvp_metrics(
+        predicted_item_ids=("a",),
+        expected_result_json=None,
+    ) == ()
+    assert calculate_mvp_metrics(
+        predicted_item_ids=("a",),
+        expected_result_json={"golden_item_ids": []},
+    ) == ()
+
+
+def test_metric_at_10_truncates_predictions() -> None:
+    relevant = frozenset({f"i{i}" for i in range(15)})
+    predicted = tuple(f"i{i}" for i in range(20))
+    # k=10 なので上位 10 件のみヒット
+    assert precision_at_k(predicted, relevant, k=METRIC_K) == 1.0
+    scores = calculate_mvp_metrics(
+        predicted_item_ids=predicted,
+        expected_result_json={"golden_item_ids": list(relevant)},
+    )
+    assert scores[0].metric_name == "precision_at_10"
+    assert scores[0].metric_value == 1.0
+    assert scores[0].metric_detail_json is not None
+    assert scores[0].metric_detail_json["k"] == 10
+
+
+# --- CLI / config / secret ---------------------------------------------------
 
 
 def test_scaffold_demo_cli_and_exit_codes() -> None:
@@ -290,9 +580,53 @@ def test_config_offline_evaluation_env_keys() -> None:
     assert loaded.batch_offline_evaluation_dry_run is True
 
 
-def test_max_cases_limits_evaluation() -> None:
-    repos, _ = _repos()
-    result = _run(repos, max_cases=1)
-    assert result.cases_evaluated == 1
-    assert result.results_inserted == 1
-    assert result.metrics_inserted == 4
+def test_fixture_and_printed_output_have_no_secret_like_values(capsys) -> None:
+    """§16 No.11: fixture / ログ / CLI 出力に secret らしい文字列を含めない."""
+
+    cases = [
+        EvaluationCaseRow(
+            evaluation_case_id=_CASE_1,
+            evaluation_dataset_id=_DS,
+            case_label="case_001",
+            expected_result_json={"golden_item_ids": ["item-a", "item-b"]},
+            input_condition_json={"relationship": "friend", "occasion": "birthday"},
+            is_active=True,
+        )
+    ]
+    blob = str(cases).lower()
+    for token in _FORBIDDEN_SECRET_TOKENS:
+        assert token not in blob
+
+    repos, _ = _repos(cases=cases)
+    _run(repos)
+    for log in repos.error_logs + repos.phase_logs:
+        text = str(log).lower()
+        for token in _FORBIDDEN_SECRET_TOKENS:
+            assert token not in text
+
+    for row in repos.runs + repos.results + repos.metrics:
+        text = str(row).lower()
+        for token in _FORBIDDEN_SECRET_TOKENS:
+            assert token not in text
+
+    assert main(["--scaffold-demo", "--job-run-id", "sec-check"]) == 0
+    printed = capsys.readouterr().out.lower()
+    for token in _FORBIDDEN_SECRET_TOKENS:
+        assert token not in printed
+
+
+def test_repository_metric_row_shape_matches_mvp_names() -> None:
+    repos, _ = _repos(
+        cases=[
+            EvaluationCaseRow(
+                evaluation_case_id=_CASE_1,
+                evaluation_dataset_id=_DS,
+                case_label="case_001",
+                expected_result_json={"golden_item_ids": ["z"]},
+                is_active=True,
+            )
+        ]
+    )
+    _run(repos)
+    assert all(isinstance(m, EvaluationMetricRow) for m in repos.metrics)
+    assert {m.metric_name for m in repos.metrics} == set(MVP_METRIC_NAMES)

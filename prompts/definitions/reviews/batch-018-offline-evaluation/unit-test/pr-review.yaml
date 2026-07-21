@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-018-offline-evaluation-unit-test-pr"
+  title: "BATCH-018 Offline Evaluation Batch単体テスト PRレビュー"
+  summary: "BATCH-018 UT Task の PR を AI Review する。§16 カバレッジ・fixture/mock・secret 非依存を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "test/task-1519-batch-018-offline-evaluation-unit-test"
+  base: "feature/epic-1514-batch-018-offline-evaluation"
+  target: "feature/epic-1514-batch-018-offline-evaluation"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1519
+  task_definition: "prompts/definitions/tasks/batch-018-offline-evaluation/unit-test.yaml"
+  source_branch: "test/task-1519-batch-018-offline-evaluation-unit-test"
+  target_branch: "feature/epic-1514-batch-018-offline-evaluation"
+  parent_epic_issue: "[Epic]BATCH-018:Offline Evaluation Batch"
+  parent_epic_branch: "feature/epic-1514-batch-018-offline-evaluation"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功・実 DB / 実 reco HTTP / secret 非依存"
+  - "IF-DB-BATCH-018 INSERT（run / result / metric）・UPDATE 経路なし"
+  - "IF-SHARED-004 mock 完走（http_call_count=0）"
+  - "メトリクス最小 4 種・Run 毎回新規 INSERT・UNIQUE 二重 INSERT 防止"
+  - "evaluation_run_log 非書込"
+  - "部分成功 GRS-BAT-002 / concurrency GRS-BAT-003"
+  - "apps/reco / OpenAPI 非変更"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1514 / Issue #1519"
+  - "PR 番号は作成後に更新"
