@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-017-import-summary-unit-test-pr"
+  title: "BATCH-017 Import Summary作成Batch単体テスト PRレビュー"
+  summary: "BATCH-017 UT Task の PR を AI Review する。§16 カバレッジ・fixture/mock・secret 非依存を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "test/task-XXXX-batch-017-import-summary-unit-test"
+  base: "feature/epic-1499-batch-017-import-summary"
+  target: "feature/epic-1499-batch-017-import-summary"
+  worktree_required: true
+
+target:
+  pr:
+    number: null  # PR作成後に更新
+  issue:
+    number: null  # Issue作成後に更新
+  task_definition: "prompts/definitions/tasks/batch-017-import-summary/unit-test.yaml"
+  source_branch: "test/task-XXXX-batch-017-import-summary-unit-test"
+  target_branch: "feature/epic-1499-batch-017-import-summary"
+  parent_epic_issue: "[Epic]BATCH-017:Import Summary作成Batch"
+  parent_epic_branch: "feature/epic-1499-batch-017-import-summary"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功・実 DB / secret 非依存"
+  - "IF-DB-BATCH-017 INSERT + ON CONFLICT DO NOTHING / 隣接 IF 非書込 / phase_log summary_created"
+  - "item_search diff_status 別件数 / item_ranking・genre_search diff 系 0 固定"
+  - "Feature / Embedding 同一 Run 未完了時 0・完了時非ゼロ"
+  - "UPDATE 経路が存在しない"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1499"
+  - "Issue / PR 番号は作成後に更新"
