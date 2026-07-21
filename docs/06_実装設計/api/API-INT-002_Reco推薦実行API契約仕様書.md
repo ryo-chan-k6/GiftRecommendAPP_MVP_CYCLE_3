@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Internal） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-04                                |
-| 更新日         | 2026-06-05（§14 No.1 確定 #373、No.2 Internal 認証 Public マップ確定 #374、No.3 `scoreBreakdown` / `debugPayload` 返却条件確定 #375、No.4 `reasonSummary` / `reasonData` 必須範囲確定 #376） |
+| 更新日         | 2026-07-16（#1398 resultItems に reasonPoints / reasonDetail 任意追加） |
 
 ---
 
@@ -29,7 +29,7 @@ api（`apps/api`）から reco（`apps/reco` エンドポイント層）へ、�
 
 - api→reco 間の Request / Response / Error / Validation を確定し、Contract Gate および後続 OpenAPI Contract Task の入力とする。
 - Recommendation Request / Result 定義書・API設計方針書・API一覧・エラーコード定義書と整合した Internal 契約面を提供する。
-- Public API（API-PUB-002）が内部呼び出しする先の I/F 境界を明確にする（Public 表面仕様は別契約仕様書を正とする）。
+- Public API（API-PUB-002）が内部呼び出しする先の I/F 境界を明確にする（Public 表面仕様は `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` を正とする）。
 
 ---
 
@@ -75,7 +75,7 @@ api が Public API（API-PUB-002）で Recommendation Request を受け付け・
 | Consumer モジュール | `MOD-API-005`（Reco Client）— 本 API の呼び出し責務 |
 | Provider 境界 | `apps/reco` エンドポイント層（HTTP I/F）。推薦ロジック本体は application 層 |
 | 推薦パイプライン | `MOD-RECO-001`（Recommendation Orchestrator）等 — 契約上は「reco 内で実行される処理」として参照のみ。詳細は Recoモジュール一覧・モジュール仕様書を正とする |
-| 上流 Public API | `API-PUB-002`（レコメンド実行）— web↔api 契約は別文書 |
+| 上流 Public API | `API-PUB-002`（レコメンド実行）— 契約正本は `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` |
 
 ### 5.5 Public API 連携（契約上の前提のみ）
 
@@ -83,8 +83,8 @@ api が Public API（API-PUB-002）で Recommendation Request を受け付け・
 | ---- | ---- |
 | 上流 API ID | `API-PUB-002`（レコメンド実行） |
 | Method / Endpoint | `POST` `/api/v1/recommendations` |
-| 契約正本（現時点） | `docs/05_アプリケーション設計/アプリ/api/API一覧.md`（API-PUB-002 行）、`docs/05_アプリケーション設計/アプリ/api/API設計方針書.md` §21（Public / Internal 境界） |
-| 契約仕様書（未作成） | `API-PUB-002_レコメンド実行API契約仕様書.md` は別 Task 成果物。本 Task では参照のみとし、未作成ファイルを正本として記載しない |
+| 契約正本 | `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` |
+| 補足参照 | `docs/05_アプリケーション設計/アプリ/api/API一覧.md`（API-PUB-002 行）、`docs/05_アプリケーション設計/アプリ/api/API設計方針書.md` §21（Public / Internal 境界） |
 | 本書との境界 | Request/Response の **Internal 向け I/F** のみ本書で定義。api による Public↔Internal 変換・エラー整形は実装仕様書 Task で定義 |
 
 ---
@@ -306,12 +306,14 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | `riskPenalty` | `number` | `false` | リスクペナルティ | - |
 | `finalScore` | `number` | `true` | 最終スコア | Public では非返却 |
 | `scoreBreakdown` | `object` | `false` | スコア内訳 | debug返却条件（§7.3.8）を満たすとき**推奨**（契約上必須ではない） |
-| `reasonSummary` | `string` | 条件付き | 推薦理由（短文） | §7.3.2.1。`includeReason=true` かつ `reasonStatus=completed` 時 **必須**（非空）。Reason 生成のみ失敗時は省略 |
+| `reasonSummary` | `string` | 条件付き | 推薦理由（短文） | §7.3.2.1。`includeReason=true` かつ Item 存続時 **必須**（非空）。汎用 Reason（Reason生成定義書 §17.2）含む |
+| `reasonPoints` | `array` | `false` | 箇条書き理由（`string[]`） | **任意**。Public へ透過可（#1398）。ui 経路で届けるため `resultItems[]` に載せる |
+| `reasonDetail` | `string` | `false` | 詳細表示用短文 | **任意**。Public へ透過可（#1398）。ui 経路で届けるため `resultItems[]` に載せる |
 | `recommendationReasonId` | `string` | `false` | 推薦理由 ID | `reasonStatus=completed` かつ Reason 永続化時は返却（推奨） |
-| `reasonStatus` | `string` | 条件付き | Reason 生成状態 | §7.3.2.1。`includeReason=true` 時は返却。MVP 値域: `completed` / `failed` |
+| `reasonStatus` | `string` | 条件付き | Reason 生成状態 | §7.3.2.1。`includeReason=true` 時は返却。MVP 値域: `completed`（Item 存続時は Reason 失敗でも `completed`） |
 | `reasonBadges` | `array` | `false` | 理由バッジ | `reasonStatus=completed` 時のみ任意 |
 | `cautionNote` | `string` | `false` | 注意表示 | `reasonStatus=completed` 時のみ任意 |
-| `isFallback` | `boolean` | `false` | Fallback 候補か | Recommendation Result 定義書 §6.2 |
+| `isFallback` | `boolean` | `false` | Fallback 由来か | Ranking Fallback 候補（Recommendation Result §6.2）または Reason 汎用文注入（`isFallback: true`、MOD-RECO-001 §10.3） |
 
 ##### 7.3.2.1 Reason フィールドの必須条件（Internal）
 
@@ -320,12 +322,12 @@ Internal API では API設計方針書 §21.3 に従い、Public より多くの
 | 条件 | `reasonSummary` | `reasonStatus` | Item 存続 | Run `resultStatus` への影響 |
 | ---- | --------------- | -------------- | --------- | --------------------------- |
 | `includeReason=false` | 省略 | 省略 | — | — |
-| `includeReason=true` かつ Reason 成功 | **必須**（非空。Reason生成定義書 §17.2 の汎用 Reason 含む） | `completed` | 存続 | — |
-| `includeReason=true` かつ Reason **生成フェーズのみ**失敗 | **省略または null** | `failed` | **存続**（Recommendation Result 定義書 §11.2） | 他 Item が正常なら `completed` のまま可。複数 Item で部分失敗時は `partial` 可 |
+| `includeReason=true` かつ Reason 成功 | **必須**（非空） | `completed` | 存続 | — |
+| `includeReason=true` かつ Reason **生成フェーズのみ**失敗 | **必須**（非空。Reason生成定義書 §17.2 汎用 Reason または MOD-RECO-001 Orchestrator 注入） | `completed` | **存続** | `isFallback: true`。他 Item が正常なら Run `completed` 可。複数 Item で一部 fallback のみなら `partial` 可 |
 
 Ranking / Matching 等の先行フェーズ失敗で Item 自体が存在しない場合は、本節の Reason 失敗とは別扱いとする。
 
-**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` / `metadata.debugPayload` 等を Public Response から除外する。Public へ渡す Reason 関連は **`reasonSummary` / `reasonBadges` / `cautionNote`** のみ（API設計方針書 §21.3、API-PUB-002 契約仕様書（未作成）参照）。
+**Public API へ渡す際の非表面化:** api は `finalScore` / `scoreBreakdown` / `contextScore` / `socialMatch` / `symbolicMatch` / `reasonData` / `metadata.debugPayload` / `reasonBasis` / `reasonStatus` 等を Public Response から除外する。Public へ渡す Reason 関連は **`reasonSummary` / `reasonPoints` / `reasonDetail` / `reasonBadges` / `cautionNote` / `isFallback`**（`reasonPoints` / `reasonDetail` は任意。API-PUB-002 §7.3.2、#1398）。マッピング元は `resultItems[]`（`reasonData` 単独では ui 経路に届かない）。
 
 #### 7.3.3 `meta`
 
@@ -445,10 +447,11 @@ Run レベルの内部 Reason 詳細。`resultItems[]` の表示用フィール�
 | ---------- | -- | ---- | ---- |
 | `recommendationResultItemId` | `string` | `true` | 対応する Result Item ID |
 | `itemId` | `string` | `true` | 商品 ID |
-| `reasonStatus` | `string` | `true` | `completed` / `failed`（§7.3.2.1 と一致） |
-| `reasonSummary` | `string` | 条件付き | `reasonStatus=completed` 時 **必須** |
-| `reasonDetail` | `string` | `false` | 詳細表示用（Internal のみ） |
-| `reasonPoints` | `array` | `false` | 箇条書き理由（string 要素） |
+| `reasonStatus` | `string` | `true` | `completed`（Item 存続時。Reason fallback 時も `completed`） |
+| `reasonSummary` | `string` | 条件付き | Item 存続かつ `includeReason=true` 時 **必須**（非空。汎用 Reason 含む） |
+| `isFallback` | `boolean` | `false` | Reason 汎用文由来（§7.3.2.1） |
+| `reasonDetail` | `string` | `false` | 詳細表示用。`resultItems[]` にも任意で載せ Public へ透過可（#1398） |
+| `reasonPoints` | `array` | `false` | 箇条書き理由（string 要素）。`resultItems[]` にも任意で載せ Public へ透過可（#1398） |
 | `reasonBadges` | `array` | `false` | 表示ラベル（Reason生成定義書 §5） |
 | `cautionNote` | `string` | `false` | 注意・補足 |
 | `reasonBasis` | `object` | `false` | 根拠 JSON（Reason生成定義書 §14.2 相当）。debug / evaluation 時は **推奨** |
@@ -606,7 +609,10 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
         "itemUrl": "https://example.com/item/002",
         "contextScore": 0.75,
         "finalScore": 0.71,
-        "reasonStatus": "failed"
+        "reasonSummary": "今回の条件に対して、候補商品の中でも比較的バランスの良い商品です。",
+        "reasonStatus": "completed",
+        "isFallback": true,
+        "recommendationReasonId": "reason_002"
       }
     ]
   },
@@ -617,7 +623,7 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
 }
 ```
 
-> 2 件目は `reasonSummary` を省略し `reasonStatus: "failed"` のみ返す。Item は Ranking 結果として存続する。
+> 2 件目は Reason 生成フェーズのみ失敗し、§17.2 汎用 Reason を注入して `reasonStatus: completed` / `isFallback: true` で返す。Item は Ranking 結果として存続する（MOD-RECO-001 §10.3）。
 
 ---
 
@@ -642,6 +648,8 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
 ```
 
 ### 8.2 Error一覧（本 API で想定する代表）
+
+Public 向け Error Response の契約正本は `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` §8 とする。
 
 | Status | Error Code | 発生条件 | Response概要 | Public 向けマップ（API-PUB-002） |
 | -----: | ---------- | -------- | ------------ | -------------------------------- |
@@ -684,7 +692,7 @@ api（`apps/api`）が reco（API-INT-002）呼び出しで受け取る `GRS-AUT
 
 実装詳細（MOD-API-013 Error Handler、reco-client 例外変換、単体テスト）は API-INT-002 実装仕様書 Task で定義する。判断記録は `ai-logs/human-decisions/2026-06-05-api-int-002-internal-401-public-map-policy.md` を参照。
 
-`GRS-REC-001` は **HTTP 200** の正常系（0 件）として扱い、§7.4.2 を参照。エラー Response 一覧には含めない。
+`GRS-REC-001` は **HTTP 200** の正常系（0 件）として扱い、§7.4.2 および `API-PUB-002_レコメンド実行API契約仕様書.md` §7.4.2 を参照。エラー Response 一覧には含めない。
 
 `GRS-REQ-003`（予算未指定）・`GRS-REQ-004` / `005`（関係性・用途未指定）は、api 側 Public Validation で解消済みのため、本 API では原則返却しない。
 
@@ -740,7 +748,7 @@ OpenAPI Contract Task で反映する差分（#375 確定分・本 Task では Y
 OpenAPI Contract Task で反映する差分（#376 確定分）:
 
 - `ReasonData` / `ReasonDataItem` schema（§7.3.9）
-- `resultItems[].reasonStatus` enum（`completed` / `failed`）
+- `resultItems[].reasonStatus` enum（MVP は Item 存続時 `completed` のみ。OpenAPI Contract Task で `failed` 削除または非推奨化を検討）
 - `reasonSummary` の条件付き required（OpenAPI `required` または description で表現）
 
 Contract Gate 通過後に Implementation Task（`api-implementation-spec`）および apps/reco・apps/api 実装 Task を開始する。
@@ -791,6 +799,8 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 2026-06-05 | §14 No.3 確定：`scoreBreakdown` / `debugPayload` 返却条件、§7.3.8、`metadata.debugPayload` マッピング | #375 |
 | 2026-06-05 | §14 No.4 確定：`reasonSummary` / `reasonData` 必須範囲（§7.3.2.1、§7.3.9、#376） | #376 |
 | 2026-06-10 | evaluation / batch 用 Semantic Config 指定を `execution.configName` + `execution.versionLabel` composite に変更。`debugPayload` 推奨キーも追随 | Task #463 |
+| 2026-06-25 | MOD-RECO-001 §10.3 整合：Reason 失敗時も非空 `reasonSummary` + `isFallback: true` + `reasonStatus: completed`（§7.3.2.1、§14.1 No.4 更新） | #764 |
+| 2026-07-16 | `resultItems[]` に `reasonPoints` / `reasonDetail` を任意追加。Public 表面化注記を更新（#1398） | #1398 |
 
 ---
 
@@ -805,7 +815,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | 1 | `warnings` / `metricSummary` のスキーマ詳細 | `warnings`: `WarningItem[]`（`code` 必須）。`metricSummary`: `recommendationLatencyMs` / `phaseDurationMs` / `featureDistribution`（`mean`, `p95` のみ）。Transient（DB 非永続）。0 件は `resultStatus: completed` | §7.3.4〜§7.3.7 | #373 |
 | 2 | Internal 401/403（`GRS-AUTH-*`）の Public マップ方針 | `GRS-AUTH-*` は Public 非露出。api→web は **500 + `GRS-REC-002`**。内部は error_log に原文保持 | §8.2.1 | #374 |
 | 3 | `scoreBreakdown` / `debug_payload` の返却条件 | debug返却条件 = `mode=evaluation` OR `includeDebugInfo=true`。両フィールドは**推奨**（必須ではない）。`debug_payload` → `data.metadata.debugPayload`。欠落時はログのみ・200 継続。`batch`+`includeDebugInfo=false` は省略 | §7.3.8 | #375 |
-| 4 | `reasonSummary` / `reasonData` の必須/任意（Internal） | Item: `includeReason=true` 成功時 `reasonSummary` 必須、Reason のみ失敗時省略＋Item 存続。Run: `reasonData` 任意、debug/evaluation 時推奨（§7.3.9） | §7.3.2.1、§7.3.9 | #376 |
+| 4 | `reasonSummary` / `reasonData` の必須/任意（Internal） | Item: `includeReason=true` かつ Item 存続時 `reasonSummary` 必須（非空）。Reason のみ失敗時は §17.2 汎用 Reason 注入＋`isFallback: true`＋`reasonStatus: completed`（#376 確定を #764 / MOD-RECO-001 §10.3 で更新）。Run: `reasonData` 任意、debug/evaluation 時推奨（§7.3.9） | §7.3.2.1、§7.3.9 | #376, #764 |
 
 OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract Task** とする。
 
@@ -832,7 +842,7 @@ OpenAPI（`internal-reco-api.yaml`）への機械可読反映は **別 Contract 
 | Reason生成 | `docs/04_ドメインモデル設計/Reason生成定義書.md` | reason 項目 |
 | Recoモジュール一覧 | `docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` | MOD-RECO-001 参照 |
 | 機能×モジュール対応表 | `docs/05_アプリケーション設計/アプリ/機能×モジュール対応表.md` | MOD-API-005 / MOD-RECO-001 |
-| 上流 Public API | `docs/05_アプリケーション設計/アプリ/api/API一覧.md`（API-PUB-002 行）、`docs/05_アプリケーション設計/アプリ/api/API設計方針書.md` §21 | web↔api 契約（契約仕様書は未作成） |
+| 上流 Public API（参照） | `docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md` | web↔api 間の Public 契約 |
 | Task Definition | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-contract-spec.yaml` | #368 scope |
 | 実装仕様（別Task） | `prompts/definitions/tasks/api-int-002-reco-recommendation-run/api-implementation-spec.yaml`（予定） | Phase4 |
 

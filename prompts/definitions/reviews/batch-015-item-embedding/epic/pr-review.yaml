@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-015-item-embedding-epic-pr"
+  title: "BATCH-015 Item Embedding生成Batch Epic PRレビュー"
+  summary: "BATCH-015 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1488
+  issue:
+    number: 1479
+  task_definition: "prompts/definitions/epics/batch-015-item-embedding/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]BATCH-015:Item Embedding生成Batch"
+  parent_epic_branch: "feature/epic-1479-batch-015-item-embedding"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/batch-015-item-embedding/epic.yaml"
+    required: true
+
+review_points:
+  - "scope / epic_scope.allowed_paths 整合"
+  - "IF-VEC-BATCH-001（物理書込）/ IF-EXT-005（Embedding API）と Batch ID の対応"
+  - "IF-DB-BATCH-015 = BATCH-014 handoff（混同禁止）/ IF-DB-BATCH-016 = BATCH-016（対象外）"
+  - "item_embedding Upsert・冪等キー 3 列・Queue 終端 succeeded"
+  - "MVP scaffold-first（実 OpenAI 強制なし）・secret 非含有"
+  - "BATCH-014 再実装 / BATCH-016 / apps/reco 破壊変更を含まないこと"
+  - "親 meaning-generation チェーン全体改修をしていないこと"
+  - "Contract Gate 不要"
+  - "Epic PR target が develop"
+
+notes:
+  - "縦串完了後に Epic PR 番号を反映し status を ready にする"
+  - "Issue #1479"

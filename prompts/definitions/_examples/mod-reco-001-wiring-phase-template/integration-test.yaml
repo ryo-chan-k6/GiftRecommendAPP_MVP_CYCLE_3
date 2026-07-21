@@ -1,0 +1,29 @@
+schema_version: "1.0"
+definition_type: "task"
+
+# テンプレート: フェーズ integration-test Task。
+
+task:
+  id: "task-mod-reco-001-wiring-<phase-slug>-integration-test"
+  title: "MOD-RECO-001:Orchestrator Wiring（<Phase Name>）統合テスト"
+  summary: "配線後の Orchestrator デフォルト経路テストを green 化する。ExecutionContext は暫定 getattr 可。"
+
+work_mode: "ai-agent"
+
+background: |
+  wiring Task 完了後、test_recommendation_orchestrator.py を本実装 Port に合わせて更新する。
+  ExecutionContext の新規フィールドは型付き化前のため getattr で存在確認してよい。
+  型付き直接参照への置換は playbook 順序 4（integration-retest Task）に委譲する。
+  正本: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml
+
+scope:
+  - "test_recommendation_orchestrator.py の期待値更新・ケース追加"
+  - "completed_modules / ExecutionContext キーのアサーション（getattr 暫定可）"
+
+out_of_scope:
+  - "stubs.py の Port 差し替え（wiring Task）"
+  - "execution_context.py の型付きフィールド追加（playbook 順序 3）"
+  - "getattr から型付き直接参照への置換（playbook 順序 4）"
+
+notes:
+  - "Issue 本文 §15 に playbook の integration_test_issue_body_appendix を含める"

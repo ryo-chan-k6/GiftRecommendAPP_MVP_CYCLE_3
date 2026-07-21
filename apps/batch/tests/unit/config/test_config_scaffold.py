@@ -101,3 +101,83 @@ def test_scaffold_batch_settings_provides_placeholder_secrets() -> None:
     assert settings.batch_chunk_size == 100
     assert settings.has_required_settings() is True
     assert isinstance(settings, BatchSettings)
+    assert settings.batch_item_active_status_max_items == 1000
+    assert settings.batch_item_active_status_source == "rakuten"
+    assert settings.batch_item_active_status_batch_run_id is None
+    assert settings.batch_item_generation_queue_max_items == 1000
+    assert settings.batch_item_generation_queue_source == "rakuten"
+    assert settings.batch_item_generation_queue_diff_batch_run_id is None
+    assert settings.batch_item_semantic_max_items == 1000
+    assert settings.batch_item_semantic_source == "rakuten"
+    assert settings.batch_item_semantic_queue_batch_size == 100
+    assert settings.batch_feature_input_hash_max_items == 1000
+    assert settings.batch_feature_input_hash_source == "rakuten"
+    assert settings.batch_feature_input_hash_queue_batch_size == 100
+
+
+def test_load_batch_settings_reads_item_generation_queue_fields() -> None:
+    settings = load_batch_settings(
+        environ={
+            "APP_ENV": "dev",
+            "OBJECT_STORAGE_BUCKET": "raw-dev",
+            "BATCH_ITEM_GENERATION_QUEUE_MAX_ITEMS": "500",
+            "BATCH_ITEM_GENERATION_QUEUE_SOURCE": "rakuten",
+            "BATCH_ITEM_GENERATION_QUEUE_DIFF_BATCH_RUN_ID": "run-009",
+        }
+    )
+
+    assert settings.batch_item_generation_queue_max_items == 500
+    assert settings.batch_item_generation_queue_source == "rakuten"
+    assert settings.batch_item_generation_queue_diff_batch_run_id == "run-009"
+    assert "run-009" in repr(settings)
+
+
+def test_load_batch_settings_reads_item_semantic_fields() -> None:
+    settings = load_batch_settings(
+        environ={
+            "APP_ENV": "dev",
+            "OBJECT_STORAGE_BUCKET": "raw-dev",
+            "BATCH_ITEM_SEMANTIC_MAX_ITEMS": "300",
+            "BATCH_ITEM_SEMANTIC_SOURCE": "rakuten",
+            "BATCH_ITEM_SEMANTIC_QUEUE_BATCH_SIZE": "50",
+        }
+    )
+
+    assert settings.batch_item_semantic_max_items == 300
+    assert settings.batch_item_semantic_source == "rakuten"
+    assert settings.batch_item_semantic_queue_batch_size == 50
+    assert "300" in repr(settings)
+
+
+def test_load_batch_settings_reads_feature_input_hash_fields() -> None:
+    settings = load_batch_settings(
+        environ={
+            "APP_ENV": "dev",
+            "OBJECT_STORAGE_BUCKET": "raw-dev",
+            "BATCH_FEATURE_INPUT_HASH_MAX_ITEMS": "400",
+            "BATCH_FEATURE_INPUT_HASH_SOURCE": "rakuten",
+            "BATCH_FEATURE_INPUT_HASH_QUEUE_BATCH_SIZE": "80",
+        }
+    )
+
+    assert settings.batch_feature_input_hash_max_items == 400
+    assert settings.batch_feature_input_hash_source == "rakuten"
+    assert settings.batch_feature_input_hash_queue_batch_size == 80
+    assert "400" in repr(settings)
+
+
+def test_load_batch_settings_reads_item_active_status_fields() -> None:
+    settings = load_batch_settings(
+        environ={
+            "APP_ENV": "dev",
+            "OBJECT_STORAGE_BUCKET": "raw-dev",
+            "BATCH_ITEM_ACTIVE_STATUS_MAX_ITEMS": "250",
+            "BATCH_ITEM_ACTIVE_STATUS_SOURCE": "rakuten",
+            "BATCH_ITEM_ACTIVE_STATUS_BATCH_RUN_ID": "run-008",
+        }
+    )
+
+    assert settings.batch_item_active_status_max_items == 250
+    assert settings.batch_item_active_status_source == "rakuten"
+    assert settings.batch_item_active_status_batch_run_id == "run-008"
+    assert "run-008" in repr(settings)

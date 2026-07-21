@@ -1,0 +1,185 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-gha-layer2-api-e2e"
+  title: "gha-test-environment:Layer2 API E2E本格化"
+  summary: "Epic C（#671）完了後の残件。Phase4b API 整備後に Layer2 test-system の skip_api_e2e を外し、API E2E を必須化する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic C #671 / PR #685 で Layer2 骨格は完了。当時は skip_api_e2e=true 既定。
+  PUB-002 / reco health が develop 到達したため、テスト定義書 §9.5.3 の Phase4b 後条件へ本格化する。
+
+objective: |
+  test-system.yml で API E2E を必須化し、docs を追随する。BATCH 直列作業とは分離する。
+
+scope:
+  - "子 Task（system-e2e-activation）"
+  - "test-system.yml / tests/e2e"
+  - "関連テスト docs 更新"
+
+out_of_scope:
+  - "BATCH-010〜"
+  - "Playwright D2"
+  - "Epic B cloud dev"
+  - "secret 実値"
+  - "OpenAI live 必須化"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/テスト定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/Layer2 Agent dispatch手順書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/テスト環境設計書.md"
+      required: true
+  issues:
+    - number: 1426
+      purpose: "本 Epic"
+    - number: 671
+      purpose: "Epic C 完了前提"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（system-e2e-activation）"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が存在する"
+  - "skip_api_e2e=false で system E2E が通る、または未達理由が明示されている"
+
+branch:
+  no_branch: false
+  name: "test/epic-1426-gha-layer2-api-e2e"
+  summary: "gha-layer2-api-e2e"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-17"
+    due_date: "2026-07-24"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "infra"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - ".github/workflows/test-system.yml"
+    - ".github/workflows/test-reco-quality.yml"
+    - "tests/e2e/**"
+    - "tests/recommendation-quality/**"
+    - "docs/05_アプリケーション設計/テスト/**"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/gha-layer2-api-e2e/**"
+    - "prompts/definitions/tasks/gha-layer2-api-e2e/**"
+    - "prompts/definitions/reviews/gha-layer2-api-e2e/**"
+  forbidden_paths:
+    - "apps/batch/**"
+    - "docs/06_実装設計/batch/**"
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+  child_task_areas:
+    - "system-e2e-activation"
+
+dependencies:
+  epics:
+    - issue: 671
+      title: "[Epic]gha-test-environment:Layer2 GHAテスト環境"
+      purpose: "Layer2 骨格完了"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/test-system.yml"
+    - "tests/e2e/run-system-tests.sh"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "layer2 workflow_dispatch"
+  commands:
+    - "gh workflow run test-system.yml -f skip_api_e2e=false"
+  manual_checks:
+    - "artifact system-test-report で API cases pass"
+  not_required:
+    - "e2e playwright"
+  skip_reason:
+    "e2e playwright": "D2 別候補"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "BATCH 領域に触れていないか"
+    - "skip_api_e2e=false の合否または未達理由"
+    - "secret 非含有"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "Layer2 dispatch 結果は experiments に残してよい"
+
+notes:
+  - "Issueタイトル: [Epic]gha-test-environment:Layer2 API E2E本格化"
+  - "Epic C #671 の再実施ではない。Phase4b 後の本格化 follow-up"
+  - "BATCH 別エージェントと編集領域分離"

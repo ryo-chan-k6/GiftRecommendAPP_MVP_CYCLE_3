@@ -1,0 +1,255 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-003-item-detail-implementation"
+  title: "API-PUB-003:商品詳細取得エンドポイント実装"
+  summary: "API-PUB-003（商品詳細取得 / Public API、`GET /api/v1/items/{itemId}`）を、契約・OpenAPI・実装仕様書（#1262 / PR #1265）に沿って apps/api items（MOD-API-014 / 015）へ実装する（Phase4b 2/3）。Issue #1280。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-003:商品詳細取得"
+  epic_issue_number: 385
+  epic_branch: "feature/epic-385-pub-003-item-detail"
+  related_issues:
+    - number: 385
+      purpose: "親 Epic"
+    - number: 1262
+      purpose: "前提 Task（API実装仕様書）"
+    - number: 399
+      purpose: "前提 Task（API契約仕様書）"
+    - number: 416
+      purpose: "前提 Task（OpenAPI 断片）"
+  related_prs:
+    - number: 1265
+      purpose: "実装仕様書 Task PR（親 Epic Branch merge 済み）"
+    - number: 405
+      purpose: "契約仕様書 merge"
+    - number: 417
+      purpose: "OpenAPI 断片 develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 縦串の 2/3（apps/api 実装）。前提: 実装仕様書 #1262 / PR #1265 が親 Epic Branch に merge 済み。
+  MOD-API-014 Controller / MOD-API-015 Repository（実装仕様書で確定）。
+  Provider は apps/api（`apps/api/src/app/items/**`）、Consumer は apps/web（本 Task 対象外）。
+  Reco 呼び出しなし。網羅 UT は後続 unit-test Task。本 Task は最小スモークを含める。
+  レーン 5。
+
+objective: |
+  `GET /api/v1/items/{itemId}` を契約・OpenAPI・実装仕様書に沿って提供する。
+  Path/Query 検証、Item 読取、404/422、画像なし 200、Response 組立、metric を実装する。
+
+scope:
+  - "`apps/api/src/app/items/**` 新規（Router / Controller / Repository / types / constants）"
+  - "`GET /api/v1/items/{itemId}` 成功 Response（data + meta）"
+  - "未知 Query で 400 GRS-REQ-001、空 Path で 400、不存在 404 GRS-ITM-001、非 active 422 GRS-ITM-002"
+  - "画像なしは 200（GRS-ITM-003 を HTTP エラーにしない）"
+  - "Feature / Embedding / 内部スコアを Response に含めない"
+  - "item_detail_request_count / item_not_found_count"
+  - "`createApp` への Router mount"
+  - "最小スモーク単体テスト（InMemory DI）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "OpenAPI / Orval / generated 変更"
+  - "apps/web / apps/reco 変更"
+  - "契約・実装仕様書 docs の変更"
+  - "DB schema / migration / seed"
+  - "モジュール一覧への MOD-ID 追記"
+  - "網羅 UT（Phase4b 3/3）"
+  - "結合テスト・E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+  files:
+    - path: "apps/api/src/app/masters/**"
+      required: true
+      purpose: "GET Router / DI / metric パターン参照"
+    - path: "apps/api/src/app.ts"
+      required: true
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: true
+  issues:
+    - number: 1262
+      purpose: "前提実装仕様書"
+  prs:
+    - number: 1265
+      purpose: "実装仕様書 Epic merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/api/src/app/items/**"
+      action: "create"
+      required: true
+    - path: "apps/api/src/app.ts"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/api/tests/unit/app/items/**"
+      action: "create"
+      required: true
+    - path: "apps/api/tests/unit/app/app.mount.test.ts"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "契約準拠の GET /api/v1/items/{itemId}"
+  - "createApp への mount"
+  - "最小スモーク単体テスト"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "`GET /api/v1/items/{itemId}` が注入 Repository で 200 と契約外形を返す"
+  - "不存在 404 GRS-ITM-001、非 active 422 GRS-ITM-002、未知 Query 400 GRS-REQ-001"
+  - "画像なし 200、Feature/Embedding 非公開"
+  - "item_detail_request_count / item_not_found_count が記録される（logger 注入）"
+  - "OpenAPI / web / reco 変更を含まない"
+  - "`pnpm --filter @gift-recommendation/api test` が SUCCESS"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1280-api-pub-003-item-detail-implementation"
+  summary: "api-pub-003-item-detail-implementation"
+  base: "feature/epic-385-pub-003-item-detail"
+  target: "feature/epic-385-pub-003-item-detail"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  number: 1280
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+contract_gate:
+  required: true
+  gate_id: "api-pub-003-phase1"
+  prerequisite_contract_tasks:
+    - issue: 416
+      definition: "prompts/definitions/contracts/api-pub-003-item-detail/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue 開始前"
+  blocked_message: "OpenAPI #416 および実装仕様書 #1262 / PR #1265 の Epic merge を確認するまで開始しない"
+
+dependencies:
+  issues:
+    - number: 1262
+      purpose: "実装仕様書"
+    - number: 416
+      purpose: "OpenAPI"
+  prs:
+    - number: 1265
+      purpose: "実装仕様書 Epic merge"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/api/src/app/items/**"
+    - "apps/api/src/app.ts"
+    - "apps/api/tests/unit/app/items/**"
+    - "apps/api/tests/unit/app/app.mount.test.ts"
+    - "prompts/definitions/tasks/api-pub-003-item-detail/implementation.yaml"
+    - "prompts/definitions/reviews/api-pub-003-item-detail/implementation/pr-review.yaml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "build or typecheck"
+    - "items smoke unit tests"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  not_required:
+    - "integration test"
+    - "e2e test"
+  skip_reason:
+    "integration test": "網羅は後続 UT / 結合"
+    "e2e test": "対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装仕様書と矛盾しないか"
+    - "404/422/画像なし200 境界が正しいか"
+    - "Feature 非公開か"
+    - "secret が含まれていないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常実装は ai-logs に保存しない。"
+
+human_decision_points:
+  - "モジュール一覧への MOD-API-014/015 追記は別 Task"
+
+stop_conditions:
+  - "PR #1265 が親 Epic Branch に merge されていない場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "DB schema 変更が必要になった場合"
+  - "secret を扱う必要が出た場合"
+
+notes:
+  - "Phase4b 2/3。参考: masters / feedback 実装。"
+  - "Issue 起票後に branch.name / issue.number を反映する。"

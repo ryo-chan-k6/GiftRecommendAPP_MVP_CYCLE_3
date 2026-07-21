@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service MVP       |
 | MVP対象        | `yes`                                 |
 | 作成日         | 2026-06-15                            |
-| 更新日         | 2026-06-15（Human Review #546 反映・#545 / #457 双方向整合） |
+| 更新日         | 2026-07-16（#1398 Public 任意返却に reason_detail / reason_points_json を追加） |
 
 ---
 
@@ -17,7 +17,7 @@
 
 `recommendation_reason` は、Online 推薦結果の商品明細（`recommendation_result_item`）ごとに生成される **推薦理由文・バッジ・根拠** を保持する派生 Snapshot テーブルである。
 
-reco の Reason Generator（MOD-RECO-023）が Ranking / Result Item 保存後に生成し、IF-DB-RECO-008（Reason 保存）の DB 正本とする。Public API（API-PUB-002）では api が本テーブルを **JOIN** して `reasonSummary` / `reasonBadges` / `cautionNote` を組み立てる（`recommendation_result_item` 定義書 §5.5）。
+reco の Reason Generator（MOD-RECO-023）が Ranking / Result Item 保存後に生成し、IF-DB-RECO-008（Reason 保存）の DB 正本とする。Public API（API-PUB-002）では api が本テーブルを **JOIN** して `reasonSummary` / `reasonPoints` / `reasonDetail` / `reasonBadges` / `cautionNote` を組み立てる（`recommendation_result_item` 定義書 §5.5。`reasonPoints` / `reasonDetail` は任意、#1398）。
 
 使用した `reason_template` は `template_id` 列および `reason_basis_json` に記録する（reason_template 定義書 §5.3・§6.2）。
 
@@ -54,7 +54,8 @@ reco の Reason Generator（MOD-RECO-023）が Ranking / Result Item 保存後�
 - `reason_template` を解決し、テンプレート生成（必要に応じ LLM 整形）で `reason_summary` 等を生成する（Reason生成定義書 §15.3）
 - **`reason_basis_json`** に根拠（使用 Feature・スコア・テンプレート版）を保持する（§6.2）
 - INSERT 後は **原則 UPDATE しない**（派生 Snapshot。状態遷移設計書：Reason Badge / Summary は個別状態不要）
-- Reason 生成 **のみ** 失敗した Item については **行を INSERT しない**。API 契約上の `reasonStatus = failed` は **行不存在** で表現する（API-INT-002 §7.3.2.1・§5.5）
+- Reason 生成 **のみ** 失敗した Item についても、**§17.2 汎用 Reason 注入時は行を INSERT** する。`reason_basis_json.generation_method` に `orchestrator_generic_fallback` または `reason_module_internal_fallback` を記録し、`reason_summary` に汎用文を保存する（MOD-RECO-001 §10.3、API-INT-002 §7.3.2.1）
+- `021`/`022` 以前の致命失敗で Item 自体が存在しない場合は INSERT しない
 - `recommendation_feedback` の **Reason 単位評価** の参照先となり得る（認証・認可方針書・RecommendationFeedback定義書）
 
 ### 5.1 対象外
@@ -99,7 +100,7 @@ flowchart LR
 | Reason生成 §15.1 | `model_version_id` | **MVP 物理列なし** | `recommendation_run.model_version_id` で再現性確保（§17.1 No.3 **決定済み**） |
 | Reason生成 §15.1 | `generated_at` | **`created_at`** | 物理名 `created_at`。論理 `generated_at` と同一意味 |
 | result_item §5.4 | `recommendation_reason_id` / `reason_status` on Item | **Item 側は保持しない** | 本テーブル側の責務（#545 決定済み） |
-| API-INT-002 | `reasonStatus` | **DB 列なし** | 行あり = `completed`、行なし = `failed`（includeReason 時） |
+| API-INT-002 | `reasonStatus` | **DB 列なし** | 行あり = `completed`（fallback 含む）。Item 不在時のみ行なし |
 | API-INT-002 | `recommendationReasonId` | `recommendation_reason_id` | Internal 返却時は推奨 |
 
 ### 5.4 `reason_basis_json` 必須項目（MVP）
@@ -129,21 +130,21 @@ api は `recommendation_result_item` と **LEFT JOIN** し、Reason 行が存在
 | API 項目 | DB 列 / 導出 | 備考 |
 | -------- | ------------ | ---- |
 | `reasonSummary` | `reason_summary` | `includeReason=true` かつ行存在時は原則返却（契約上任意） |
+| `reasonPoints` | `reason_points_json` | **任意**。string 配列としてシリアライズ（#1398） |
+| `reasonDetail` | `reason_detail` | **任意**（#1398） |
 | `reasonBadges` | `reason_badges_json` | string 配列としてシリアライズ |
 | `cautionNote` | `caution_note` | nullable |
 
-**Public で返さない DB 列**: `reason_detail`, `reason_points_json`, `reason_basis_json`, `template_id`（API設計方針書 §21.3）
+**Public で返さない DB 列**: `reason_basis_json`, `template_id`（API設計方針書 §18.4 / §21.3。`reasonBasis` は引き続き非公開）
 
 #### Internal（API-INT-002 `data.resultItems[]`）
 
 | API 項目 | DB 列 / 導出 | 備考 |
 | -------- | ------------ | ---- |
-| 上記 Public 相当 | 同上 | — |
+| 上記 Public 相当 | 同上 | `reasonPoints` / `reasonDetail` は Internal `resultItems[]` にも任意で載せ、api が Public へ透過（#1398） |
 | `recommendationReasonId` | `recommendation_reason_id` | `reasonStatus=completed` 時推奨 |
-| `reasonStatus` | 行の有無 | 行あり = `completed`、なし = `failed` |
-| `reasonDetail` | `reason_detail` | Internal のみ |
-| `reasonPoints` | `reason_points_json` | string 配列 |
-| `reasonBasis` | `reason_basis_json` | debug / evaluation 時推奨 |
+| `reasonStatus` | 行の有無 | 行あり = `completed`（fallback 含む）。Item 存続時は fallback でも行あり |
+| `reasonBasis` | `reason_basis_json` | debug / evaluation 時推奨。**Public 非返却** |
 
 Run レベル `reasonData`（API-INT-002 §7.3.9）は **本テーブル行の集合ビュー** として api / reco が組立。物理列は Item 単位の本テーブルを正本とする。
 
@@ -246,8 +247,9 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 
 | 概念 | MVP 表現 | 備考 |
 | ---- | -------- | ---- |
-| Reason 生成成功 | **行が存在** | API `reasonStatus = completed`（includeReason 時） |
-| Reason 生成失敗 | **行が存在しない** | API `reasonStatus = failed`。Result Item は存続 |
+| Reason 生成成功（通常） | **行が存在** | API `reasonStatus = completed`、`isFallback: false` |
+| Reason 汎用文 fallback | **行が存在** | `reason_summary` に §17.2 汎用文。`reason_basis_json.generation_method` で fallback 由来を識別。API `isFallback: true` |
+| Reason 致命失敗（Item 不在） | **行が存在しない** | `021`/`022` 以前の失敗で Item 自体が生成されない場合 |
 | `generation_method` | `reason_basis_json` 内 | 物理 enum 列なし（§17.1 No.2 **決定済み**） |
 
 ---
@@ -256,7 +258,7 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 
 | 操作 | 実行主体 | 条件 | 更新項目 | 冪等性 | 備考 |
 | ---- | -------- | ---- | -------- | ------ | ---- |
-| INSERT | reco | Result Item 保存後・Reason 生成成功時 | 全列（初回） | `recommendation_result_item_id` UNIQUE で重複拒否 | IF-DB-RECO-008 |
+| INSERT | reco | Result Item 保存後・Reason 生成成功または fallback 注入時 | 全列（初回） | `recommendation_result_item_id` UNIQUE で重複拒否 | IF-DB-RECO-008 |
 | SELECT | api / reco | 結果表示・Feedback 検証 | — | — | api は JOIN で Public 応答組立 |
 | UPDATE | — | **MVP では行わない** | — | — | 派生 Snapshot 不変 |
 | DELETE | — | **MVP では行わない** | — | — | §13 Retention |
@@ -266,8 +268,8 @@ OpenAPI / generated 変更は Task #469 へ委譲。
 1. `recommendation_result_item` 行が存在することを確認
 2. `reason_template` を解決（reason_template 定義書 §7.1）
 3. Feature / Score / Semantic evidence から Reason 文面・バッジを生成
-4. `reason_basis_json` を組立（§5.4 必須項目）
-5. 成功時のみ本テーブルへ INSERT（失敗時は行なし・Item は保持）
+4. `reason_basis_json` を組立（§5.4 必須項目。fallback 時は `generation_method` に由来を記録）
+5. 成功または fallback 注入時に本テーブルへ INSERT（Item は保持。fallback も非空 `reason_summary` 必須）
 6. api が Result 応答時に LEFT JOIN
 
 ---
@@ -345,7 +347,7 @@ CREATE TABLE recommendation_reason (
 | 4 | CHECK | 空 `reason_summary`・非 object `reason_basis_json` が拒否される | migration |
 | 5 | 不変性 | INSERT 後の Reason 文面 UPDATE がアプリ方針で行われない | manual |
 | 6 | API マッピング | API-PUB-002 / API-INT-002 の Reason 項目が DB 列と整合 | contract |
-| 7 | 生成失敗 | Reason 失敗 Item に行がなく Result Item が存続すること | integration |
+| 7 | fallback INSERT | Reason 失敗 Item にも汎用 Reason 行が INSERT され Result Item が存続すること | integration |
 | 8 | template 記録 | `template_id` と `reason_basis_json` の `template_name` / `template_version` が一致 | integration |
 | 9 | 親 Item 整合 | result_item 定義書 §8.2 has 関係・§5.5 JOIN 方針と一致 | manual |
 
@@ -407,6 +409,6 @@ CREATE TABLE recommendation_reason (
 - `reason_template` との `template_id` LOGICAL 参照・`reason_basis_json` 必須項目が reason_template §6.2 と一致している
 - Reason生成定義書 §14.2 / §15.1 との差分が §5.3 に明示されている
 - API-PUB-002 / API-INT-002 の Reason マッピングが §5.5 に整理されている
-- INSERT 後 UPDATE 禁止・Reason 失敗時は行なしの方針が §12 に明記されている
+- INSERT 後 UPDATE 禁止・Reason fallback 時も INSERT する方針が §12 に明記されている
 - Human Review #546 決定事項（§17.1 No.1〜4）が本文に反映されている
 - apps/** 変更がない

@@ -1,0 +1,279 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-004-rakuten-existing-item-recheck-implementation"
+  title: "BATCH-004:楽天既存商品再確認Batch実装"
+  summary: "BATCH-004（楽天既存商品再確認Batch）を仕様書に基づき apps/batch へ実装する。itemCode 指定再確認、Raw保存、fetch_cursor(recheck)、IF-DB-BATCH-020 Writer、独立 workflow を対象とする。#1231 Writer は本 Task に吸収する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+  epic_issue_number: 1222
+  epic_branch: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  related_issues:
+    - number: 1224
+      purpose: "バッチ仕様書初版（CLOSED）"
+    - number: 1282
+      purpose: "仕様書 #1227 追随（CLOSED）"
+    - number: 1231
+      purpose: "Writer 単独 Issue（本 Task に吸収・完了扱いへ）"
+    - number: 1227
+      purpose: "候補テーブル付随（CLOSED / tip 取込済み）"
+  related_prs:
+    - number: 1283
+      purpose: "仕様追随 Epic Branch merge 済み"
+    - number: 1276
+      purpose: "候補テーブル Epic merge 済み"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b レーン B1 Fetch 第4段。仕様書 #1224 / 追随 #1282 および #1227（候補テーブル）は Epic Branch 取込済み。
+  BATCH-003 同型で item_recheck を実装する。Contract Gate 不要。unit は fixture / mock 正。
+  #1231（Writer）は親が #1227 だったが、DDL 取込後は本実装に含める（単独 Task は吸収）。
+
+objective: |
+  BATCH-004 について、仕様書の処理ステップ（plan → cursor → fetch → adapt → raw_save → resolve → cursor_update → finalize）を
+  apps/batch 上で実行可能な実装と、起動用独立 workflow（batch-rakuten-existing-item-recheck.yml）を整備する。
+  IF-DB-BATCH-020 で item_active_status_candidate へ detected upsert する。Item / Staging は更新しない。
+
+scope:
+  - "BATCH-004 ジョブ application 実装（recheck_plan / fetch_cursor(recheck) / Phase 実行 / 部分失敗）"
+  - "itemCode 指定の Rakuten Item Search 利用（scaffold/mock。空ヒットは empty_hit 候補化）"
+  - "Raw Object / Metadata / fetch_cursor 進捗（exhausted 等）"
+  - "IF-DB-BATCH-020 Writer（§9.3 Resolver 写像・UPSERT detected）"
+  - "batch_run_log / phase_log / api_call_log / error_log 連携"
+  - ".github/workflows/batch-rakuten-existing-item-recheck.yml（workflow_call / workflow_dispatch）"
+  - "最小 unit test（正常系・Raw冪等・候補upsert・Item非更新・recheck専任・empty_hit / availability）"
+  - "infrastructure/rakuten の empty Items / availability 対応（BATCH-003 互換維持）"
+  - "Task / Review Definition、#1231 吸収注記"
+
+out_of_scope:
+  - "バッチ仕様書の全面書き換え（軽微な実装追随注記以外）"
+  - "他 Batch 実装（genre_sync / ranking_snapshot / item_pseudo_diff 破壊変更禁止）"
+  - "item_active_status/**（BATCH-008 Applier / Retention）の編集"
+  - "親 existing-item-recheck チェーン workflow 全体改修"
+  - "OpenAPI / Orval / generated / DB migration"
+  - "本番楽天APIへの大量・課金影響のある実呼出検証"
+  - "包括的 UT Task（後続 unit-test Task）"
+  - "Staging / Item 本更新 / active_status 本更新"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "実装の正本"
+    - path: "docs/06_実装設計/database/item_active_status_candidate_テーブル定義書.md"
+      required: true
+      purpose: "IF-020 Writer 列・UPSERT"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-020"
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      required: false
+      purpose: "同型実装参照"
+  templates: []
+  files:
+    - path: "apps/batch/src/batch/application/item_pseudo_diff/**"
+      required: true
+      purpose: "同型実装の参照"
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+      purpose: "Item Search client/adapter"
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      required: false
+      purpose: "Applier 参照のみ（編集禁止）"
+  issues:
+    - number: 1282
+      purpose: "仕様追随"
+    - number: 1231
+      purpose: "Writer 吸収"
+  prs:
+    - number: 1283
+      purpose: "仕様追随 merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/item_recheck/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-rakuten-existing-item-recheck.yml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/implementation.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-004-rakuten-existing-item-recheck/implementation/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_item_recheck.py"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-004 既存商品再確認ジョブ実装（Writer 含む）"
+  - "batch-rakuten-existing-item-recheck.yml"
+  - "最小 unit test（fixture / mock）"
+
+acceptance_criteria:
+  - "仕様書主要 Phase（plan/cursor/fetch/adapt/raw_save/resolve/cursor_update/finalize）がコード上で追跡できる"
+  - "recheck のみを消費し、genre/keyword/update_sort/ranking_supplement を消費しない"
+  - "IF-DB-BATCH-020 で candidate_status=detected の upsert ができる"
+  - "Item / Staging / item.active_status を本 Batch で更新しない"
+  - "Raw 冪等（object_key / content_hash）と fetch_cursor 進捗がある"
+  - "empty_hit / availability_zero / api_success→active の写像がある"
+  - ".github/workflows/batch-rakuten-existing-item-recheck.yml が存在し workflow_dispatch / workflow_call を持つ"
+  - "secret / .env 実値を含まない"
+  - "OpenAPI / generated / migration / item_active_status/** を変更していない"
+  - "親 Epic allowed_paths 外を編集していない"
+  - "最小 unit test がローカルで実行可能である"
+  - "#1231 を Related / 吸収として Issue コメントまたは本文で明示している"
+
+branch:
+  no_branch: false
+  name: "feature/task-1289-batch-004-rakuten-existing-item-recheck-implementation"
+  summary: "batch-004-rakuten-existing-item-recheck-implementation"
+  base: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  target: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  number: 1289
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1222
+      title: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+      purpose: "親 Epic"
+    - issue: 1227
+      title: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+      purpose: "DDL / IF / Applier 前提（CLOSED）"
+  issues:
+    - number: 1282
+      purpose: "仕様追随（CLOSED）"
+  prs:
+    - number: 1283
+      purpose: "仕様追随 merge"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-004-batch-spec-candidate-follow-up-align"
+  blocks:
+    - "task-batch-004-rakuten-existing-item-recheck-unit-test"
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_recheck/**"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - ".github/workflows/batch-rakuten-existing-item-recheck.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-004 最小）"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_item_recheck.py tests/unit/application/test_item_pseudo_diff.py -q --tb=short"
+  not_required:
+    - "integration test（実楽天API）"
+    - "contract test"
+  skip_reason:
+    "integration test（実楽天API）": "課金・Rate Limit 影響のため fixture/mock を正とする"
+    "contract test": "Batch は HTTP API 化しないため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "仕様書 Phase・IF-020・recheck 専任と実装が整合するか"
+    - "Item / Staging / active_status 本更新をしていないか"
+    - "item_active_status/** を編集していないか"
+    - "BATCH-003 互換（adapter empty 既定）を壊していないか"
+    - "secret 非含有 / PR target が親 Epic Branch か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch 実装の初期縦串"
+
+human_decision_points:
+  - "独立 YAML（batch-rakuten-existing-item-recheck.yml）方針で実装する"
+  - "#1231 Writer を本実装 Task に吸収する"
+  - "包括的 UT は後続 unit-test Task に分離する"
+
+stop_conditions:
+  - "必須 input.docs（バッチ仕様書）が存在しない場合"
+  - "親 Epic Issue / Branch が未確定の場合"
+  - "OpenAPI / generated / migration 変更が必要になった場合"
+  - "epic_scope.allowed_paths 外の編集が必要になった場合"
+  - "item_active_status/** 編集が必要に見える場合"
+  - "実楽天APIへの大量・課金影響のある検証が必須に見える場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-004:楽天既存商品再確認Batch実装"
+  - "Contract Gate 不要"
+  - "#1231 は本 Task に吸収（Writer は item_recheck 内）"
+  - "後続: unit-test Task"

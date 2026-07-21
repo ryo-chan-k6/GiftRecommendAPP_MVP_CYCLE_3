@@ -103,6 +103,8 @@ scripts/perf/output/
 *.sqlite
 *.db
 supabase/.temp/
+supabase/.branches/
+supabase/snippets/
 
 # =========================
 # Test outputs (Layer2 / local E2E)

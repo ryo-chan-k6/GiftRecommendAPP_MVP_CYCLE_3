@@ -1,0 +1,271 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-009-empty-result"
+  title: "SCR-009:0件結果表示"
+  summary: "SCR-009（0件結果表示）に関する画面仕様書・実装・単体テストを管理するEpic。独立URL画面ではなく、SCR-002 推薦実行成功・0件時の UI 状態（phase=empty / ST-EMPTY）として仕様化し、条件変更への復帰 UX を担当する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計および 07_開発・単体テストにおいて、SCR-009（0件結果表示）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  画面遷移図の正本どおり、SCR-009 は独立した業務画面ではなく画面状態である。
+  Human 確定方針: MVP の宿主は `recommendation-input` の `phase === "empty"`（既存 EmptyState + EMPTY_RESULT_MESSAGE + 「条件を変更する」ボタン）。画面一覧 URL案 `/recommendations/{result_id}` は参考であり、専用 route 新設は原則 out of scope。
+  依存 Epic（SCR-002 #1147 / SCR-003 #1361 / API-PUB-002 #357）は develop merge 済み。#1344 / #1345（D1 residual・0件 API 経路）は修正 merge 済み。
+  子 Task は画面仕様書・実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+
+objective: |
+  SCR-009 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "SCR-009 に関する子 Task の作業単位を整理する（画面仕様書 / 画面実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/scr-009-empty-result/**）を整理する"
+  - "依存 Epic（SCR-002 / SCR-003 / API-PUB-002）の Status を子 Task 開始前に確認する運用を明示する"
+  - "SCR-009 を画面状態として仕様化し、既存 EmptyState 実装との整合を取る"
+
+out_of_scope:
+  - "専用 `/recommendations/{result_id}` route の新設（0件専用 URL）"
+  - "SCR-008 の包括仕様（エラー表示は別 Epic。遷移先言及のみ）"
+  - "SCR-005 / SCR-007 の変更"
+  - "Public / Internal API 仕様書および OpenAPI / generated / packages/contracts の変更"
+  - "apps/api / apps/reco / apps/batch の実装変更"
+  - "DB schema 変更"
+  - "features/home の変更"
+  - "features/recommendation-result の大規模改修（004 への最小ガードは implementation Task で検討可だが Epic では原則 forbidden）"
+  - "認証・認可方式そのものの変更"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "対象画面 SCR-009 の画面ID・画面名・画面種別・URL案・MVP対象・表示項目を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-009 が画面状態であること、および条件入力への復帰遷移を確認するため"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "SCR-002 内 0件状態（phase=empty）・EmptyState 利用との分担を確認するため"
+    - path: "docs/06_実装設計/web/SCR-003_レコメンド実行中表示画面仕様書.md"
+      required: true
+      purpose: "SCR-003 から SCR-009 への 0件遷移・resultStatus=empty 分岐を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "0件正常系（resultStatus=empty / GRS-REC-001）の API 前提を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "ST-EMPTY（0件結果）パターンを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "EmptyState（UI-033）等の部品責務を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）と epic_scope.allowed_paths の境界例を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）・命名規則を確認するため"
+  templates: []
+  files: []
+  issues:
+    - number: 1382
+      purpose: "本 Epic Issue"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]SCR-009:0件結果表示）"
+  - "Epic Branch（develop 起点 / feature/epic-1382-scr-009-empty-result）"
+  - "子 Task 候補一覧（画面仕様書 / 画面実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]SCR-009:0件結果表示 形式である（Task Definition設計書 §15.0）"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位（画面仕様書 / 画面実装 / 単体テスト）が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が SCR-009 責務（画面状態仕様・EmptyState / recommendation-input・関連 docs・prompts）と整合している"
+  - "dependencies.epics に SCR-002 / SCR-003 / API-PUB-002 が記載されている"
+  - "専用 0件 route 新設が out_of_scope として明示されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1382-scr-009-empty-result"
+  summary: "scr-009-empty-result"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "web"
+
+epic_scope:
+  artifact_id: "SCR-009"
+  allowed_paths:
+    - "docs/06_実装設計/web/SCR-009_*"
+    - "apps/web/src/features/recommendation-input/**"
+    - "apps/web/src/components/**"
+    - "apps/web/src/lib/**"
+    - "apps/web/tests/**"
+    - "prompts/definitions/epics/scr-009-empty-result/**"
+    - "prompts/definitions/tasks/scr-009-empty-result/**"
+    - "prompts/definitions/reviews/scr-009-empty-result/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "openapi/**"
+    - "packages/contracts/**"
+    - "db/**"
+    - "apps/web/src/features/home/**"
+    - "apps/web/src/features/recommendation-result/**"
+    - "apps/web/src/app/page.tsx"
+  child_task_areas:
+    - "screen-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "推薦実行の起点画面（develop merge 済み）。SCR-009 の MVP 宿主（phase=empty）"
+    - issue: 1361
+      title: "[Epic]SCR-003:レコメンド実行中表示"
+      purpose: "実行中→0件遷移（develop merge 済み #1378）。SCR-003 経由で SCR-009 へ分岐"
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "0件正常系 API（resultStatus=empty / develop merge 済み）"
+  issues:
+    - number: 1344
+      purpose: "参考: D1 residual Epic（0件経路修正 merge 済み）"
+    - number: 1345
+      purpose: "参考: 0件 API 経路修正 Task（merge 済み）"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が SCR-009（0件結果表示＝画面状態）に閉じているか確認する"
+    - "専用 0件 route を新設する設計になっていないか確認する"
+    - "依存 Epic SCR-002 / SCR-003 / API-PUB-002 が develop 済みか確認する"
+    - "MVP 宿主が recommendation-input phase=empty である Human 方針が Definition に明記されているか"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が SCR-009 に閉じているか"
+    - "画面状態として仕様化する方針が画面遷移図と矛盾していないか"
+    - "MVP 宿主（recommendation-input phase=empty）が Human 方針として明記されているか"
+    - "専用 route 新設が out_of_scope か"
+    - "依存 Epic SCR-002 / SCR-003 / API-PUB-002 が dependencies.epics にあるか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "SCR-009 縦串の通常 Epic 管理。作業計画は Issue、統合は Epic PR を正本とする。"
+
+risk_points:
+  - "Task PR を誤って develop へ直接向ける運用ミス"
+  - "専用 0件 route を本 Epic で新設してしまう運用ミス"
+  - "SCR-008 本仕様や recommendation-result 大規模改修を混入する運用ミス"
+  - "OpenAPI / apps/api / packages/contracts を本 Epic で変更する運用ミス"
+  - "画面遷移図（結果一覧の状態）と MVP 宿主（recommendation-input）の解釈が screen-spec で未整理のまま実装へ進むリスク"
+
+human_decision_points:
+  - "SCR-009 は画面状態として仕様化する（独立 URL 画面ではない）— Human 確定済み"
+  - "MVP 宿主は recommendation-input の phase=empty（EmptyState）。専用 route 新設は原則 out of scope — Human 確定済み"
+  - "画面遷移図 §10 は URL なし。画面一覧 URL案は参考 — Human 確定済み"
+  - "再検索ボタン（画面一覧 △）の MVP 採否は screen-spec で整理し Human Review で確認"
+  - "条件緩和の提案（画面一覧 ○）の具体文言・表示粒度は screen-spec / Human Review で確認"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-009 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "専用 0件 route 新設が必須と判断された場合（Human 確認へ）"
+  - "Task PR の target が develop に向く設計が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、画面仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "命名の正本は Task Definition設計書 §15.0（Epic）・§15.3（画面 Task）"
+  - "最初の子 Task: prompts/definitions/tasks/scr-009-empty-result/screen-spec.yaml"
+  - "依存 Epic: #1147 SCR-002 / #1361 SCR-003 / #357 API-PUB-002（いずれも develop merge 済み）"
+  - "参考: #1344 / #1345（0件 API 経路修正 merge 済み）"
+  - "本 Epic Issue: #1382 / Epic Branch: feature/epic-1382-scr-009-empty-result"

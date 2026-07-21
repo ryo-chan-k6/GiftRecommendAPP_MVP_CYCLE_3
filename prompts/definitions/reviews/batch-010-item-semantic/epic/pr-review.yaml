@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-010-item-semantic-epic-pr"
+  title: "BATCH-010 Item Semantic生成Batch Epic PRレビュー"
+  summary: "BATCH-010 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1433
+  issue:
+    number: 1422
+  task_definition: "prompts/definitions/epics/batch-010-item-semantic/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]BATCH-010:Item Semantic生成Batch"
+  parent_epic_branch: "feature/epic-1422-batch-010-item-semantic"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/batch-010-item-semantic/epic.yaml"
+    required: true
+
+review_points:
+  - "scope / epic_scope.allowed_paths 整合"
+  - "IF-DB-BATCH-011 / IF-SHARED-001 と Batch ID の対応"
+  - "MOD-RECO-026 / apps/reco を破壊変更していないこと"
+  - "BATCH-011〜015 詳細実装を含まないこと"
+  - "親 meaning-generation チェーン全体改修をしていないこと"
+  - "Contract Gate 不要"
+  - "secret 非含有"
+  - "Epic PR target が develop"
+
+notes:
+  - "縦串完了後に Epic PR 番号を反映し status を ready にする"
+  - "Issue #1422"
+  - "Issue #1422 / Epic PR #1433"

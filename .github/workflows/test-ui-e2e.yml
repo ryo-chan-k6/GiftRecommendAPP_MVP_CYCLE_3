@@ -1,0 +1,388 @@
+name: Test UI E2E (Layer3)
+
+# Layer3 UI E2E（並列計画 D2 後続 / Epic #1464）。
+# GHA runner 上で ephemeral Supabase + Redis + api + reco + web を起動し、
+# Playwright S1 happy path（apps/web/e2e/s1-recommendation-happy-path.spec.ts）を自動実行する。
+#
+# 既存 test-system.yml（Layer2 API E2E, dispatch 専用）のスタック起動を踏襲し、その上に web + Playwright を積む。
+#
+# 実行方針（Epic #1464 / 段階導入 = 方針B）:
+# - PR: S1 主導線の回帰リスクが高い path（recommendations 画面 / 入力・結果 feature /
+#   API client / generated / contracts / e2e / 本 workflow）変更時のみ heavy job を実行する。
+# - ラベル `ui-e2e` を付けた PR は path に関わらず強制実行する（opt-in）。
+# - nightly（schedule）で develop の S1 回帰を定期監視する。
+# - workflow_dispatch で任意に手動実行できる。
+# - path 判定は decide ジョブ（dorny/paths-filter@v3, ci.yml と同方式）で行い、
+#   heavy job（ui-e2e）は decide.outputs.run == 'true' のときのみ起動する。
+# - PR 必須(required/blocking)化は branch protection 設定であり Human 判断とする（Epic #1464 §6）。
+
+run-name: "test-ui-e2e · ${{ github.event_name }} · ${{ github.ref_name }}"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+    inputs:
+      web_base_url:
+        description: "web Base URL（空=GHA localhost:3000）"
+        type: string
+        default: ""
+  schedule:
+    # nightly 03:00 JST（18:00 UTC）に develop の S1 回帰を実行する。
+    - cron: "0 18 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-ui-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  decide:
+    name: Decide whether to run UI E2E
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Filter S1 main-flow paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            flow:
+              - 'apps/web/src/app/recommendations/**'
+              - 'apps/web/src/features/recommendation-input/**'
+              - 'apps/web/src/features/recommendation-result/**'
+              - 'apps/web/src/components/display/RecommendationCard/**'
+              - 'apps/web/src/lib/api/**'
+              - 'apps/web/src/generated/api/**'
+              - 'apps/web/e2e/**'
+              - 'apps/web/playwright.config.ts'
+              - 'packages/contracts/**'
+              - '.github/workflows/test-ui-e2e.yml'
+
+      - name: Decide run
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          FLOW: ${{ steps.filter.outputs.flow }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'ui-e2e') }}
+        run: |
+          set -euo pipefail
+          run=false
+          case "${EVENT}" in
+            schedule|workflow_dispatch)
+              run=true ;;
+            pull_request)
+              if [[ "${FLOW}" == "true" || "${HAS_LABEL}" == "true" ]]; then
+                run=true
+              fi ;;
+          esac
+          echo "run=${run}" >> "$GITHUB_OUTPUT"
+          echo "decision: run=${run} event=${EVENT} flow=${FLOW:-} label=${HAS_LABEL:-}"
+
+  ui-e2e:
+    name: UI E2E (S1)
+    needs: decide
+    if: needs.decide.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      WEB_BASE_URL: ${{ inputs.web_base_url != '' && inputs.web_base_url || 'http://localhost:3000' }}
+      API_BASE_URL: http://localhost:3001
+      RECO_BASE_URL: http://localhost:8000
+      REDIS_URL: redis://localhost:6379/0
+      RECO_INTERNAL_API_KEY: ci-test-reco-internal-key
+      OPENAI_API_KEY: mock-openai-key-for-ui-e2e
+      RAKUTEN_APPLICATION_ID: mock-rakuten-app-id-for-ui-e2e
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Read Supabase CLI pin
+        id: cli-pin
+        run: echo "version=$(tr -d '[:space:]' < supabase/.cli-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ steps.cli-pin.outputs.version }}
+
+      - name: Install PostgreSQL client and redis-cli
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client redis-tools jq curl
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Playwright 1.61.1（1.60+）で Node 24 互換を確認済み。
+          # プロジェクト標準（engines.node>=24 / .nvmrc / ci-web）に揃える（Epic #1476）。
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser (chromium + OS deps)
+        run: pnpm --filter @gift-recommendation/web exec playwright install --with-deps chromium
+
+      - name: Diagnostic - smoke (stack 不要 / bounded / DEBUG)
+        # WSL / CI で観測された playwright CLI ハングの早期切り分け。
+        # 外部スタック不要の smoke を短時間で実行し、CLI 自体が起動するか確認する。
+        env:
+          DEBUG: pw:api,pw:test
+        run: |
+          set -uo pipefail
+          timeout 120 pnpm --filter @gift-recommendation/web exec \
+            playwright test e2e/00-playwright-smoke.spec.ts --reporter=list
+          code=$?
+          if [[ "${code}" -eq 124 ]]; then
+            echo "::error::playwright smoke が 120s でタイムアウト（CLI 起動ハングの疑い）"
+          fi
+          exit "${code}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: false
+
+      - name: Setup Python for reco
+        run: |
+          uv python install "$(tr -d '[:space:]' < .python-version)"
+          ./scripts/dev/setup-python-reco.sh
+
+      - name: Verify seed setup
+        run: bash scripts/db/verify-seed-setup.sh
+
+      - name: Verify Supabase CLI pin
+        run: bash scripts/db/check-cli-version.sh
+
+      - name: Start ephemeral Supabase stack
+        run: bash scripts/db/start-local.sh
+
+      - name: Apply migrations
+        run: bash scripts/db/migrate-up.sh
+
+      - name: Apply master seed
+        run: bash scripts/db/seed-masters.sh
+
+      - name: Apply test-data seed
+        run: bash scripts/db/seed-test-data.sh
+
+      - name: Export DATABASE_URL
+        id: db-url
+        run: |
+          # shellcheck source=scripts/db/_lib.sh
+          source scripts/db/_lib.sh
+          db_require_repo_root
+          echo "url=$(db_local_database_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare runtime .env
+        run: |
+          cp .env.example .env
+          {
+            echo "DATABASE_URL=${{ steps.db-url.outputs.url }}"
+            echo "REDIS_URL=${REDIS_URL}"
+            echo "RECO_INTERNAL_API_KEY=${RECO_INTERNAL_API_KEY}"
+            echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
+            echo "RAKUTEN_APPLICATION_ID=${RAKUTEN_APPLICATION_ID}"
+            echo "API_BASE_URL=${API_BASE_URL}"
+            echo "RECO_BASE_URL=${RECO_BASE_URL}"
+            echo "NEXT_PUBLIC_API_BASE_URL=${API_BASE_URL}"
+            echo "CORS_ALLOWED_ORIGINS=${WEB_BASE_URL}"
+          } >> .env
+
+      - name: Start api and reco
+        env:
+          DATABASE_URL: ${{ steps.db-url.outputs.url }}
+        run: |
+          set -euo pipefail
+          set -a
+          # shellcheck disable=SC1091
+          source .env
+          set +a
+          mkdir -p /tmp/ui-e2e-logs
+          pnpm dev:reco > /tmp/ui-e2e-logs/reco.log 2>&1 &
+          echo "${!}" > /tmp/ui-e2e-logs/reco.pid
+          pnpm dev:api > /tmp/ui-e2e-logs/api.log 2>&1 &
+          echo "${!}" > /tmp/ui-e2e-logs/api.pid
+          echo "info: api/reco start requested"
+
+      - name: Wait for api/reco health
+        run: |
+          set -euo pipefail
+          api_ok=0
+          reco_ok=0
+          for _ in $(seq 1 90); do
+            if curl -fsS "${API_BASE_URL}/api/v1/health" >/dev/null 2>&1; then
+              api_ok=1
+            fi
+            if curl -fsS -H "X-Internal-Api-Key: ${RECO_INTERNAL_API_KEY}" \
+              "${RECO_BASE_URL}/internal/reco/v1/health" >/dev/null 2>&1; then
+              reco_ok=1
+            fi
+            if [[ "${api_ok}" -eq 1 && "${reco_ok}" -eq 1 ]]; then
+              echo "info: api and reco health checks passed"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "error: api/reco did not become healthy within timeout" >&2
+          tail -n 80 /tmp/ui-e2e-logs/api.log >&2 || true
+          tail -n 80 /tmp/ui-e2e-logs/reco.log >&2 || true
+          exit 1
+
+      - name: Build web
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ env.API_BASE_URL }}
+        run: pnpm --filter @gift-recommendation/web build
+
+      - name: Start web and wait for readiness
+        run: |
+          set -euo pipefail
+          set -a
+          # shellcheck disable=SC1091
+          source .env
+          set +a
+          pnpm --filter @gift-recommendation/web start > /tmp/ui-e2e-logs/web.log 2>&1 &
+          echo "${!}" > /tmp/ui-e2e-logs/web.pid
+          for _ in $(seq 1 60); do
+            if curl -fsS "${WEB_BASE_URL}/recommendations" >/dev/null 2>&1; then
+              echo "info: web is serving /recommendations"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "error: web did not become ready within timeout" >&2
+          tail -n 80 /tmp/ui-e2e-logs/web.log >&2 || true
+          exit 1
+
+      - name: Run Playwright S1 E2E
+        id: e2e
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
+          DEBUG: pw:api
+        run: |
+          set -uo pipefail
+          timeout 600 pnpm --filter @gift-recommendation/web exec playwright test \
+            --reporter=list,html,json
+          code=$?
+          if [[ "${code}" -eq 124 ]]; then
+            echo "::error::playwright S1 が 600s でタイムアウト（ハングの疑い）"
+          fi
+          exit "${code}"
+
+      - name: Verify S1 executed (not skipped)
+        if: always()
+        run: |
+          set -euo pipefail
+          report="apps/web/playwright-results.json"
+          if [[ ! -f "${report}" ]]; then
+            echo "error: Playwright JSON report not found at ${report}" >&2
+            exit 1
+          fi
+          skipped=$(jq '[.. | objects | select(.status? == "skipped")] | length' "${report}")
+          has_s1=$(jq '[.. | objects | select(.title? // "" | test("S1:"))] | length' "${report}")
+          echo "skipped_results=${skipped} s1_present=${has_s1}"
+          if [[ "${has_s1}" -lt 1 ]]; then
+            echo "error: S1 happy path テストがレポートに存在しない。" >&2
+            exit 1
+          fi
+          if [[ "${skipped}" -gt 0 ]]; then
+            echo "error: 1件以上のテストが skip された。スタック未起動の疑いがあり、UI E2E ゲートとして無効。" >&2
+            exit 1
+          fi
+          echo "info: S1 happy path executed (skip なし)"
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-e2e-playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/playwright-results.json
+            apps/web/test-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload runtime logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-e2e-runtime-logs
+          path: |
+            /tmp/ui-e2e-logs/api.log
+            /tmp/ui-e2e-logs/reco.log
+            /tmp/ui-e2e-logs/web.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop background processes
+        if: always()
+        run: |
+          for name in web api reco; do
+            pid_file="/tmp/ui-e2e-logs/${name}.pid"
+            if [[ -f "${pid_file}" ]]; then
+              kill "$(cat "${pid_file}")" 2>/dev/null || true
+            fi
+          done
+
+      - name: Stop Supabase stack
+        if: always()
+        run: bash scripts/db/stop-local.sh
+
+  # required 昇格用の集約ゲート（Epic #1471）。
+  # branch protection の required check には、skip し得る ui-e2e ではなく本ジョブ（UI E2E gate）を指定する。
+  # always() で必ず起動し「主導線外(decide=false)＝pass / S1 success＝pass / それ以外＝fail」を確実に返すことで、
+  # 「required × 条件付き skip」の skip 結論の曖昧さ（Pending 固着 / skip 詰まり）を回避する。
+  ui-e2e-gate:
+    name: UI E2E gate
+    needs: [decide, ui-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate gate
+        env:
+          DECIDE_RESULT: ${{ needs.decide.result }}
+          DECIDE_RUN: ${{ needs.decide.outputs.run }}
+          E2E_RESULT: ${{ needs.ui-e2e.result }}
+        run: |
+          set -euo pipefail
+          echo "decide.result=${DECIDE_RESULT:-} decide.run=${DECIDE_RUN:-} ui-e2e.result=${E2E_RESULT:-}"
+          # decide が success でない（失敗/中断）場合は判定不能。false green を避けるため fail する。
+          if [[ "${DECIDE_RESULT}" != "success" ]]; then
+            echo "::error::decide ジョブが success でない (result=${DECIDE_RESULT})。実行要否を判定できないため gate fail"
+            exit 1
+          fi
+          if [[ "${DECIDE_RUN}" != "true" ]]; then
+            echo "info: UI E2E は不要（decide.run=${DECIDE_RUN}）→ gate pass"
+            exit 0
+          fi
+          if [[ "${E2E_RESULT}" == "success" ]]; then
+            echo "info: UI E2E (S1) success → gate pass"
+            exit 0
+          fi
+          echo "::error::UI E2E (S1) result=${E2E_RESULT}（success 以外）→ gate fail"
+          exit 1

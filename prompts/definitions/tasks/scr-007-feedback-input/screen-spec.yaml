@@ -1,0 +1,205 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-007-feedback-input-screen-spec"
+  title: "SCR-007:Feedback入力表示画面仕様書作成"
+  summary: "SCR-007（Feedback入力表示）の画面仕様書を、画面一覧・画面遷移図・API-PUB-004 契約・Recommendation Feedback定義書に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-007:Feedback入力表示"
+  epic_issue_number: 1325
+  epic_branch: "feature/epic-1325-scr-007-feedback-input"
+  related_issues:
+    - number: 1325
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、web 実装の前提となる画面仕様書を作成する。
+  SCR-004 / SCR-006 の Feedback は disabled。API-PUB-004 は develop 済み。
+
+objective: |
+  SCR-007（Feedback入力表示）について、実装・レビューが可能な粒度の画面仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-007 の画面仕様書を新規作成する（成果物: SCR-007_Feedback入力表示画面仕様書.md）"
+  - "画面目的・対象ユーザー・表示項目・操作を整理する"
+  - "画面状態（初期 / 入力中 / 送信中 / 成功 / エラー）と遷移を整理する"
+  - "データ送信方針（API-PUB-004 POST）と feedbackTargetType / feedbackType / rating 等の UI マッピングを整理する"
+  - "SCR-004 / SCR-006 からの導線有効化方針を明記する"
+  - "SCR-005 未実装時の reason 粒度の扱いを明記する"
+
+out_of_scope:
+  - "他画面の画面仕様書作成・大幅改訂（004/006 への追記は最小の参照メモ可）"
+  - "OpenAPI / generated / ソースコード実装"
+  - "API-PUB-004 契約・実装の変更"
+  - "SCR-005 本実装仕様の確定"
+  - "認証・認可方式そのものの変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-007 の画面ID・表示項目・操作"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-004 / SCR-006 からの遷移"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-004 の位置づけ"
+    - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md"
+      required: true
+      purpose: "Request / Response / Error 正本"
+    - path: "docs/04_ドメインモデル設計/RecommendationFeedback定義書.md"
+      required: true
+      purpose: "Feedback Type / Target ドメイン正本"
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+      purpose: "導線元の現状方針"
+    - path: "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+      required: true
+      purpose: "導線元の現状方針"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書標準フォーマット"
+      applies_to:
+        - "docs/06_実装設計/web/SCR-007_Feedback入力表示画面仕様書.md"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-007_Feedback入力表示画面仕様書.md"
+      action: "create"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "SCR-007 Feedback入力表示画面仕様書"
+
+acceptance_criteria:
+  - "SCR-007_Feedback入力表示画面仕様書.md が作成されている"
+  - "screen-spec テンプレート準拠（主要章が揃っている）"
+  - "画面一覧 SCR-007 / API-PUB-004 契約 / Feedback定義書と矛盾しない"
+  - "SCR-004 / SCR-006 導線有効化方針が明記されている"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1327-scr-007-feedback-input-screen-spec"
+  summary: "scr-007-feedback-input-screen-spec"
+  base: "feature/epic-1325-scr-007-feedback-input"
+  target: "feature/epic-1325-scr-007-feedback-input"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1325
+      title: "[Epic]SCR-007:Feedback入力表示"
+      purpose: "親 Epic"
+    - issue: 386
+      title: "[Epic]API-PUB-004:Feedback送信"
+      purpose: "API 前提"
+  issues: []
+  prs: []
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/web/SCR-007_Feedback入力表示画面仕様書.md"
+    - "prompts/definitions/tasks/scr-007-feedback-input/screen-spec.yaml"
+    - "prompts/definitions/reviews/scr-007-feedback-input/screen-spec/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+    - "e2e test"
+  skip_reason:
+    "unit test": "docs Task"
+    "e2e test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面一覧・遷移図・API-PUB-004・Feedback定義書と矛盾しないか"
+    - "MVP 範囲（type / comment / reason 未実装時）が明確か"
+    - "実装可能な粒度か"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の画面仕様 Task。詳細は PR を正本とする"
+
+stop_conditions:
+  - "API-PUB-004 契約が未整備の場合"
+  - "正本間で矛盾があり解消方針が必要な場合"
+  - "secret / .env 実値が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-007:Feedback入力表示画面仕様書作成"
+  - "後続: implementation → unit-test → Epic PR → develop"

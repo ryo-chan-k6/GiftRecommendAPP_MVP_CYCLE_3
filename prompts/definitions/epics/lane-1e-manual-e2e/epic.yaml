@@ -1,0 +1,177 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-manual-e2e"
+  title: "レーン1e:手動E2E検証"
+  summary: "並列計画 D1。SCR-001→002→003→004（結果あり）の最小パスと 0件・失敗分岐をローカル手動確認し、チェックリストと証跡を正本化する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  A1〜A4（SCR-004 / ローカル結果あり #1263 / SCR-001）およびレーン1f（#1320）は develop 済み。
+  手順書に残る D1 手動 E2E 証跡が未実施。Playwright（D2）は後続。
+
+objective: |
+  Epic Issue / Branch を作成し、子 Task でチェックリスト作成・手動実行・証跡記録を行い develop へ統合する。
+
+scope:
+  - "E2E チェックリスト（正常 / 0件 / エラー / 再検索）"
+  - "手動実行と証跡（traceId / 件数 / 観測。スクショは可能な範囲）"
+  - "ローカル開発手順書への結果追記"
+  - "prompts / ai-logs"
+
+out_of_scope:
+  - "Playwright 等の自動 E2E（D2）"
+  - "SCR-006 / SCR-007 本実装変更"
+  - "SCR-005 必須化（推奨のみ）"
+  - "apps 本機能改修（不具合は別 Issue）"
+  - "OpenAPI / migration / Batch 本番フルラン"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（manual-e2e）"
+  - "チェックリスト docs + 証跡"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "子 Task PR target が親 Epic Branch である"
+  - "手動 E2E チェックリストと実行結果が正本に残る"
+
+branch:
+  no_branch: false
+  name: "chore/epic-1330-lane-1e-manual-e2e"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "web"
+
+epic_scope:
+  artifact_id: null
+  allowed_paths:
+    - "docs/06_実装設計/cross_cutting/**"
+    - "prompts/definitions/epics/lane-1e-manual-e2e/**"
+    - "prompts/definitions/tasks/lane-1e-manual-e2e/**"
+    - "prompts/definitions/reviews/lane-1e-manual-e2e/**"
+    - "ai-logs/experiments/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/web/src/**"
+    - "apps/api/src/**"
+    - "apps/reco/src/**"
+    - "apps/batch/**"
+  child_task_areas:
+    - "manual-e2e"
+
+dependencies:
+  epics:
+    - number: 1255
+      purpose: "SCR-001 完了前提"
+    - number: 1147
+      purpose: "SCR-002 完了前提"
+    - number: 1236
+      purpose: "SCR-004 完了前提"
+    - number: 1263
+      purpose: "ローカル結果あり前提"
+    - number: 1320
+      purpose: "NG 正本化（alcohol シナリオ）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "D1 範囲が画面改修に広がっていないか"
+    - "証跡に secret / .env 実値が含まれていないか"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e D1 手動 E2E"
+
+risk_points:
+  - "ローカル env 未起動で証跡を取れない"
+  - "0件・失敗シナリオの再現手順が seed 依存で不安定"
+
+human_decision_points:
+  - "必須シナリオ未達時に Blocker で止めるか、観測ギャップとして Close 許容するか"
+  - "SCR-005 / SCR-006 を推奨から必須へ上げるか"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+  - "SCR-006/007 実装変更が必要に見える場合（別エージェント）"
+
+notes:
+  - "本 Epic Issue: #1330"
+  - "並列計画 D1。D2（Playwright）は別 Epic"
+  - "SCR-007 / BATCH-005 は別エージェント。本チャットでは触らない"

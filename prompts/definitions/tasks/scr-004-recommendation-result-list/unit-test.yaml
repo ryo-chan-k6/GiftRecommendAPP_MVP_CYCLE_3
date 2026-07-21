@@ -1,0 +1,203 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-004-recommendation-result-list-unit-test"
+  title: "SCR-004:レコメンド結果一覧画面単体テスト"
+  summary: "SCR-004（レコメンド結果一覧画面）実装に対し、sessionStorage 読取・結果欠落・一覧表示・外部URL安全判定・理由詳細アコーディオン等の単体テストを追加する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-004:レコメンド結果一覧画面"
+  epic_issue_number: 1236
+  epic_branch: "feature/epic-1236-scr-004-recommendation-result-list"
+  related_issues:
+    - number: 1246
+      purpose: "本 Task Issue"
+    - number: 1236
+      purpose: "親 Epic"
+    - number: 1241
+      purpose: "前提 Task（実装）"
+  related_prs:
+    - number: 1247
+      purpose: "本 Task PR（単体テスト）"
+    - number: 1242
+      purpose: "実装 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  SCR-004 Epic（#1236）の単体テスト Task。implementation Task（#1241 / PR #1242）が親 Epic Branch に merge 済みであることを前提に着手する。
+
+objective: |
+  SCR-004 画面実装の単体テストを整備し、主要画面状態・導線・安全判定を再現可能に検証する。
+
+scope:
+  - "SCR-004 関連の component / feature 単体テスト追加（apps/web/tests/component/recommendation-result/**）"
+  - "結果欠落 / 一覧表示 / 外部URL安全判定 / 理由詳細アコーディオン等の主要観点"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "画面仕様書・実装本体の機能追加（軽微なテスト容易性修正は最小限可）"
+  - "E2E / Playwright 全面整備"
+  - "OpenAPI / generated 変更"
+  - "apps/api / apps/reco / apps/batch の変更"
+  - "API-PUB-004 Feedback 本実装"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+      purpose: "テスト観点の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-004 行との整合確認"
+  templates: []
+  files:
+    - path: "apps/web/src/features/recommendation-result/**"
+      required: true
+      purpose: "テスト対象実装"
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/web/tests/component/recommendation-result/**/*.{test,spec}.{ts,tsx}"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-004 単体テスト"
+  - "主要画面状態の再現可能な検証"
+
+acceptance_criteria:
+  - "結果欠落・一覧表示・外部URL安全判定など主要観点のテストが追加されている"
+  - "pnpm --filter @gift-recommendation/web test:component が通る"
+  - "epic_scope.allowed_paths 外へ変更していない"
+  - "secret / .env 実値を含んでいない"
+  - "本番 network に依存していない"
+
+branch:
+  no_branch: false
+  name: "test/task-1246-scr-004-recommendation-result-list-unit-test"
+  base: "feature/epic-1236-scr-004-recommendation-result-list"
+  target: "feature/epic-1236-scr-004-recommendation-result-list"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1236
+      title: "[Epic]SCR-004:レコメンド結果一覧画面"
+      purpose: "親 Epic"
+  issues:
+    - number: 1241
+      purpose: "実装 Task"
+  prs:
+    - number: 1242
+      purpose: "実装 PR"
+  tasks:
+    - "implementation Task が親 Epic Branch に merge 済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "implementation"
+  blocks: []
+  exclusive_files:
+    - "apps/web/tests/component/recommendation-result/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
+  manual_checks:
+    - "画面仕様書の主要状態がテストでカバーされていること"
+  not_required:
+    - "e2e"
+  skip_reason:
+    "e2e": "本 Task は単体テスト範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面仕様書の主要観点がテストされているか"
+    - "不安定な network / 本番依存がないか"
+    - "secret 非含有か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常のテスト Task。作業計画は Issue、レビューは PR を正本とする。"
+
+stop_conditions:
+  - "implementation が未完了の場合"
+  - "テストが本番 API / 本番 secret に依存する場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-004:レコメンド結果一覧画面単体テスト"
+  - "本 Task Issue: #1246 / Branch: test/task-1246-scr-004-recommendation-result-list-unit-test"
+  - "親Epic: #1236 / Branch: feature/epic-1236-scr-004-recommendation-result-list"
+  - "PR 本文は Related to #1246（Closes 禁止）"
+  - "Review Definition: prompts/definitions/reviews/scr-004-recommendation-result-list/unit-test/pr-review.yaml"
+  - "前提: #1241 / PR #1242 merge 済み"

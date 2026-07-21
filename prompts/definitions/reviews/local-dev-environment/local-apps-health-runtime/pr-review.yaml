@@ -1,0 +1,71 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-dev-environment-local-apps-health-runtime-pr"
+  title: "local-dev-environment local-apps-health-runtime PRレビュー"
+  summary: "Epic #651 クローズ後 follow-up Task local-apps-health-runtime の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: 1136
+  issue:
+    number: 1135
+  task_definition: "prompts/definitions/tasks/local-dev-environment/local-apps-health-runtime.yaml"
+  source_branch: "chore/task-1135-local-apps-health-runtime"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  generated: false
+  cicd: false
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/local-dev-environment/local-apps-health-runtime.yaml"
+    required: true
+  issue:
+    number: 1135
+    required: true
+  pr:
+    number: 1136
+    required: true
+
+review_points:
+  - "Task Definition scope / out_of_scope との整合"
+  - "OpenAPI PUB-001 / INT-001 との response 整合"
+  - "reco health の X-Internal-Api-Key 必須"
+  - "smoke-check で api / reco health 200 を実測しているか"
+  - "secret / .env 実値の非含有"
+  - "OpenAPI / generated を変更していないか"
+  - "Epic #651 クローズ後 develop 直 PR 例外が PR 本文で説明されているか"
+
+human_review_points:
+  - "develop 直 PR 例外（Epic #651 クローズ後 follow-up）の承認"
+  - "PUB-001 / INT-001 最小 health を local-dev follow-up で先行する方針"
+
+notes:
+  - "Issue / PR 番号は /create-pr 後に target.* / input.* へ反映"
+  - "親 Epic Branch: develop（Human 判断）"

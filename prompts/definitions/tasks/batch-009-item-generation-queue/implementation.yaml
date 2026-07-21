@@ -1,0 +1,225 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-009-item-generation-queue-implementation"
+  title: "BATCH-009:商品意味生成キュー登録Batch実装"
+  summary: "BATCH-009（商品意味生成キュー登録Batch）を仕様書に基づき apps/batch へ scaffold-first 実装する。item / product_diff_result 読取、item_generation_queue 登録、独立 workflow を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-009:商品意味生成キュー登録Batch"
+  epic_issue_number: 1406
+  epic_branch: "feature/epic-1406-batch-009-item-generation-queue"
+  related_issues:
+    - number: 1407
+      purpose: "バッチ仕様書（CLOSED / Epic Branch merge 済み）"
+  related_prs:
+    - number: 1408
+      purpose: "バッチ仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 意味生成パイプライン入口。仕様書 #1407 / PR #1408 は Epic Branch merge 済み。
+  BATCH-007 / BATCH-008 develop merge 済み。BATCH-008 同型の scaffold-first 実装方針。
+  plan→load_item→filter_active→load_diff→evaluate→resolve_config→resolve_feature→register→finalize。
+  resolve_config / resolve_feature は MVP scaffold stub。Contract Gate 不要。
+
+objective: |
+  BATCH-009 について、仕様書の処理ステップを apps/batch 上で実行可能な scaffold 実装と、
+  起動用独立 workflow（batch-item-generation-queue.yml）を整備する。
+  item / product_diff_result 本更新・LLM / Embedding 呼出は行わない。
+
+scope:
+  - "BATCH-009 ジョブ application 実装（item_generation_queue）"
+  - "meaning_input_diff 評価 / generation_type 選定（evaluate.py）"
+  - "Config Version Resolver / Feature Input Candidate Resolver stub"
+  - "item_generation_queue INSERT / active queued queued_at UPDATE"
+  - "Product Diff Result Reader / Item Reader（読取のみ）"
+  - "batch_run_log / phase_log / error_log 連携"
+  - "config: BATCH_ITEM_GENERATION_QUEUE_*"
+  - ".github/workflows/batch-item-generation-queue.yml"
+  - "最小 unit test"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "バッチ仕様書の全面書き換え"
+  - "他 Batch application 編集（item_apply / item_active_status / product_diff 等）"
+  - "親 item-import / existing-item-recheck チェーン workflow 全体改修"
+  - "OpenAPI / Orval / generated / DB migration"
+  - "LLM / Embedding API 呼出"
+  - "item / product_diff_result 本更新"
+  - "meaning_input_diff テーブル DDL"
+  - "BATCH-010〜015 Queue 消化"
+  - "包括的 UT Task（後続 unit-test Task）"
+  - "バッチ処理一覧 BATCH-009 冪等キー旧表記更新"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-009_商品意味生成キュー登録バッチ仕様書.md"
+      required: true
+      purpose: "実装の正本"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "Queue 登録条件 / partial UNIQUE"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "判定入力読取"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "active_status フィルタ"
+  files:
+    - path: "apps/batch/src/batch/application/item_apply/**"
+      required: false
+      purpose: "同型 Job 参照のみ（編集禁止）"
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      required: false
+      purpose: "同型 Job 参照のみ（編集禁止）"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/item_generation_queue/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-item-generation-queue.yml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-009-item-generation-queue/implementation.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-009-item-generation-queue/implementation/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_item_generation_queue.py"
+      action: "create"
+      required: true
+    - path: "apps/batch/tests/unit/config/test_config_scaffold.py"
+      action: "update"
+      required: true
+
+deliverables:
+  - "BATCH-009 商品意味生成キュー登録ジョブ実装"
+  - "batch-item-generation-queue.yml"
+  - "最小 unit test（fixture / mock）"
+
+acceptance_criteria:
+  - "仕様書主要 Phase がコード上で追跡できる"
+  - "new / 意味影響 updated で semantic 登録できる"
+  - "非 active / unchanged / unavailable / 非意味影響のみを skip できる"
+  - "active queued は queued_at のみ UPDATE、processing は skip できる"
+  - "config version のみ → feature 選定ロジックを UT で検証できる"
+  - "item / product_diff_result を更新しない"
+  - "非 --scaffold-demo CLI は exit 3"
+  - "batch-item-generation-queue.yml が workflow_dispatch / workflow_call を持つ"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1410-batch-009-item-generation-queue-implementation"
+  summary: "batch-009-item-generation-queue-implementation"
+  base: "feature/epic-1406-batch-009-item-generation-queue"
+  target: "feature/epic-1406-batch-009-item-generation-queue"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 1410
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1406
+      title: "[Epic]BATCH-009:商品意味生成キュー登録Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1407
+      purpose: "仕様書（CLOSED）"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - ".github/workflows/batch-item-generation-queue.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-009 最小）"
+    - "secret check"
+  commands:
+    - "cd apps/batch && uv sync --extra dev"
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_item_generation_queue.py tests/unit/config/test_config_scaffold.py -q --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "仕様書 Phase・登録/skip 分岐と実装が整合するか"
+    - "IF-DB-BATCH-010 のみ書込・item / product_diff_result 非更新か"
+    - "他 Batch application を編集していないか"
+    - "親 workflow チェーンを改修していないか"
+  specialist_reviews:
+    test: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+
+human_decision_points:
+  - "独立 YAML（batch-item-generation-queue.yml）方針で実装する（§18.1 No.1 確定）"
+  - "resolve_config / resolve_feature は MVP scaffold stub とする"
+
+stop_conditions:
+  - "必須 input.docs（バッチ仕様書）が存在しない場合"
+  - "OpenAPI / generated / migration 変更が必要になった場合"
+  - "item / product_diff_result 本更新が必要に見える場合"
+
+notes:
+  - "Issueタイトル: [Task]BATCH-009:商品意味生成キュー登録Batch実装"
+  - "Contract Gate 不要"

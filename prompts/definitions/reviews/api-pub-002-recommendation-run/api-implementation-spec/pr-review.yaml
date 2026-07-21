@@ -1,0 +1,92 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-002-recommendation-run-api-implementation-spec-pr"
+  title: "API-PUB-002 レコメンド実行API実装仕様書 PRレビュー"
+  summary: "API-PUB-002 実装仕様書作成 Task（api-implementation-spec.yaml / #364）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1120
+  issue:
+    number: 364
+  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml"
+  source_branch: "docs/task-364-api-pub-002-recommendation-run-api-spec"
+  target_branch: "feature/epic-357-api-pub-002-recommendation-run"
+  parent_epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  parent_epic_branch: "feature/epic-357-api-pub-002-recommendation-run"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    contract: "contract-ai"
+
+review_scope:
+  docs: true
+  api_contract: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml"
+    required: true
+  issue:
+    number: 364
+    required: true
+  pr:
+    number: 1120
+    required: true
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+  templates:
+    deliverables:
+      - path: "prompts/templates/docs/api-implementation-spec.md"
+        required: true
+        applies_to:
+          - "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+
+review_points:
+  common:
+    - "実装面に限定されているか（契約面再掲なし）"
+    - "createRecoClient / API-INT-002 連携が記載されているか"
+    - "契約仕様書（#358）と矛盾しないか"
+    - "OpenAPI / apps 実装が混入していないか"
+    - "epic_scope 内か"
+  api_contract:
+    - "Internal resultItems → Public items のマッピングが明確か"
+    - "GRS-AUTH-* → Public 500 GRS-REC-002 が記載されているか"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "scope 外変更がない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+
+notes:
+  - "旧 PR #365 は close 済み。PR 作成後に target.pr を更新する"

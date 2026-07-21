@@ -13,7 +13,7 @@
 | 対象システム   | Gift Recommendation Service MVP（Public） |
 | MVP対象        | `○`                                       |
 | 作成日         | 2026-06-02                                |
-| 更新日         | 2026-06-04                                |
+| 更新日         | 2026-07-16（#1398 reasonPoints / reasonDetail 任意追加） |
 
 ---
 
@@ -73,7 +73,8 @@ web（`apps/web`）から api（`apps/api`）へ、贈答条件に基づくギ�
 | 内部 API ID | `API-INT-002`（Reco推薦実行） |
 | Method / Endpoint | `POST` `/internal/reco/v1/recommendations/run` |
 | 呼び出し元 | `apps/api`（本 Public API の Provider） |
-| 契約正本 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md`（未作成時は [API一覧](../../05_アプリケーション設計/アプリ/api/API一覧.md) §API-INT-002） |
+| 契約正本 | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` |
+| 実装正本（参照のみ） | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md` |
 | 本書との境界 | Request/Response の **Public 向け表面**のみ本書で定義。api→reco 間の Request/Response 変換・モジュール責務は実装仕様書 Task で定義 |
 
 ---
@@ -234,11 +235,26 @@ Public API では API設計方針書 §18.4 に従い、**内部スコア・ス�
 | `itemImageUrl` | `string` | `false` | 代表画像 URL | なしの場合は画面側でプレースホルダ |
 | `itemCatchcopy` | `string` | `false` | キャッチコピー | - |
 | `shopName` | `string` | `false` | 店舗名 | - |
-| `reasonSummary` | `string` | `false` | 推薦理由（短文） | 契約上は任意。`includeReason=true` 時は原則返却・画面表示するが、Reason 生成のみ失敗し Response 本体は完成した場合は省略可（§14.1 No.3） |
+| `reasonSummary` | `string` | 条件付き | 推薦理由（短文） | `includeReason=true` かつ Item 存続時 **必須**（非空）。Reason 失敗時は §17.2 汎用 Reason（MOD-RECO-001 §10.3 / API-INT-002 §7.3.2.1 参照） |
+| `reasonPoints` | `array` | `false` | 箇条書き理由（`string[]`） | **任意**。値が生成されていれば返却可。必須化しない（#1398） |
+| `reasonDetail` | `string` | `false` | 詳細表示用短文 | **任意**。値が生成されていれば返却可。必須化しない（#1398） |
 | `reasonBadges` | `array` | `false` | 理由バッジ | 画面仕様に合わせて任意 |
 | `cautionNote` | `string` | `false` | 注意表示 | 任意 |
+| `isFallback` | `boolean` | `false` | Reason 汎用文由来か | api が Internal の `isFallback` をマッピング。`true` 時は汎用 Reason 表示（§7.3.2.1） |
 
-**返却しない項目（契約上明示）:** `finalScore`, `contextScore`, `popularityScore`, `riskPenalty`, `scoreBreakdown`, `modelVersionId`, `configName`, `versionLabel`, `reasonBasis`, `debugPayload`, `embedding` 等。
+#### 7.3.2.1 Reason フィールド（Public）
+
+正本: API-INT-002 §7.3.2.1、MOD-RECO-001 モジュール仕様書 §10.3。
+
+| 条件 | `reasonSummary` | `reasonPoints` / `reasonDetail` | `isFallback` | Item 存続 |
+| ---- | --------------- | ------------------------------- | ------------ | --------- |
+| `includeReason=false` | 省略 | 省略 | 省略 | — |
+| `includeReason=true` かつ Reason 成功 | **必須**（非空） | 任意（生成値があれば返却可） | `false`（通常） | 存続 |
+| `includeReason=true` かつ Reason のみ失敗 | **必須**（非空。§17.2 汎用 Reason） | 省略可 | `true` | **存続**（レコメンド結果はユーザーに表示） |
+
+マッピング元: Internal `resultItems[]` の同名任意フィールドを api が Public へ透過する（`reasonData` 経由のみにしない。ui 経路で届けるため）。
+
+**返却しない項目（契約上明示）:** `finalScore`, `contextScore`, `popularityScore`, `riskPenalty`, `scoreBreakdown`, `modelVersionId`, `configName`, `versionLabel`, `reasonBasis`, `reasonStatus`, `debugPayload`, `embedding` 等。
 
 #### 7.3.3 `meta`
 
@@ -435,6 +451,8 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | ---- | -------- | -------------- |
 | 2026-06-02 | 初版（契約面のみ。Task #358 / 分離後モデル） | #358 |
 | 2026-06-04 | Human Review #359 反映（maxLength / 0件表現 / reasonSummary / resultStatus enum / 予算任意化） | #359 |
+| 2026-06-25 | MOD-RECO-001 §10.3 整合：Reason 失敗時も非空 `reasonSummary` + `isFallback`（§7.3.2.1、§14.1 No.3 更新） | #764 |
+| 2026-07-16 | Public `items[]` に `reasonPoints` / `reasonDetail` を任意追加（非破壊）。`reasonBasis` は引き続き非返却 | #1398 |
 
 ---
 
@@ -448,7 +466,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | --: | ---- | -------- | ---- |
 | 1 | 自由入力・好み/NG テキストの最大文字数 | `preferredText` / `nonPreferredText`: **500**、`ngText`: **300**、`freeText`: **800**、`relationshipLabel` / `occasionLabel`: **50** | §6.4・§9。OpenAPI `maxLength` に反映 |
 | 2 | 0 件時の `GRS-REC-001` の載せ方 | `meta.resultCode: "GRS-REC-001"` + `data.resultStatus: "empty"` + `data.displayMessage` | §7.4.2。HTTP Status は 200 |
-| 3 | `reasonSummary` の必須/任意 | 契約上は**任意**。原則は画面表示するが、Reason 生成のみ失敗し Response 本体は完成した場合は省略し、レコメンド結果はユーザーに表示する | §7.3.2 |
+| 3 | `reasonSummary` の必須/任意 | `includeReason=true` かつ Item 存続時は**必須**（非空）。Reason のみ失敗時は §17.2 汎用 Reason を返し `isFallback: true`。レコメンド結果はユーザーに表示する（#764 / MOD-RECO-001 §10.3 で #359 方針を更新） | §7.3.2.1 |
 | 4 | `resultStatus` enum 値 | `completed` / `empty` / `partial` | OpenAPI enum で固定 |
 | 5 | 予算の業務必須化 | **業務必須化しない**。`GRS-REQ-003` は本 API の Error 一覧から除外 | `budget` は Request 上 optional のまま |
 
@@ -463,7 +481,7 @@ Contract Gate 通過後に Implementation Task（`api-implementation-spec`）お
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | GRS-* |
 | Recommendation Request | `docs/04_ドメインモデル設計/RecommendationRequest定義書.md` | Request Body |
 | Recommendation Result | `docs/04_ドメインモデル設計/RecommendationResult定義書.md` | Response 項目のドメイン根拠 |
-| 内部 API（参照） | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API仕様書.md` | 未作成時は API一覧 §API-INT-002 |
+| 内部 API（参照） | `docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md` | api→reco 間の Internal 契約 |
 | Task Definition | `prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml` | #358 scope |
 | 実装仕様（別Task） | `prompts/definitions/tasks/api-pub-002-recommendation-run/api-implementation-spec.yaml` | Phase4 |
 

@@ -1,0 +1,143 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-012-item-feature-implementation"
+  title: "BATCH-012:Item Feature生成Batch実装"
+  summary: "BATCH-012 を scaffold-first 実装する。IF-SHARED-002 in-process 呼出、IF-DB-BATCH-013 raw 8軸 Upsert、独立 workflow を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-012:Item Feature生成Batch"
+  epic_issue_number: 1446
+  epic_branch: "feature/epic-1446-batch-012-item-feature"
+  related_issues:
+    - number: 1447
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1448
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  仕様書 #1447 / PR #1448 Epic Branch merge 済み。§18.1 で独立 YAML / IF 区別 / ルールベース / skip 確定。
+
+objective: |
+  scaffold-first 実装と batch-item-feature.yml を整備する。
+
+scope:
+  - "IF-SHARED-002 in-process アダプタ（MOD-RECO-027 相当・ルールベース raw 8軸）"
+  - "IF-DB-BATCH-013 item_feature raw 8軸 Upsert（normalized 非更新）"
+  - "BATCH-011 handoff feature_input_hash 検証（再算出しない）"
+  - "§9.3 skip（raw 8軸+hash+norm version）"
+  - "Queue processing 維持 / feature+queued claim"
+  - "config BATCH_ITEM_FEATURE_*"
+  - "batch-item-feature.yml"
+  - "最小 UT"
+
+out_of_scope:
+  - "normalized_feature_value 更新（BATCH-013）"
+  - "feature_input_hash 再算出（BATCH-011）"
+  - "apps/reco 本体変更"
+  - "親 meaning-generation 全体改修 / 接続タイミング確定"
+  - "OpenAPI / migration / generated 変更"
+  - "実 DB 配線"
+  - "包括的 UT Task"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-012_Item Feature生成バッチ仕様書.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/batch/src/batch/application/item_feature/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-item-feature.yml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_item_feature.py"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "主要 Phase が追跡できる"
+  - "8軸生成・skip・handoff 検証・IF 境界を UT 検証"
+  - "normalized_feature_value を書かない"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  name: "feature/task-1449-batch-012-item-feature-implementation"
+  summary: "batch-012-item-feature-implementation"
+  base: "feature/epic-1446-batch-012-item-feature"
+  target: "feature/epic-1446-batch-012-item-feature"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1449
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_feature/**"
+    - ".github/workflows/batch-item-feature.yml"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-012 最小）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_item_feature.py tests/unit/config/test_config_scaffold.py -q --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-013 / IF-SHARED-002 と IF-DB-BATCH-012 の区別"
+    - "normalized_feature_value 非更新 / item_semantic 非 DML"
+    - "feature_input_hash 再算出なし"
+    - "apps/reco 本体・generated 非変更"
+    - "§9.3 skip 実装"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Issue #1449 / PR #1450"

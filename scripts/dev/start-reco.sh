@@ -16,7 +16,8 @@ Prerequisites:
   - .env present (./scripts/dev/copy-env-example.sh)
   - PostgreSQL / Redis reachable (§7 in ローカル開発手順書)
 
-Note: apps/reco dev script is a placeholder until Phase4 implementation.
+Note: FastAPI + uvicorn（port 8000）。`apps/reco` の `pnpm dev` をルート `dev:reco` 経由で起動する。
+  Requires: uv、apps/reco 依存（./scripts/dev/setup-python-reco.sh）、.env（RECO_INTERNAL_API_KEY / DATABASE_URL）
 EOF
 }
 
@@ -37,7 +38,12 @@ if [[ ! -f "${ROOT}/package.json" ]]; then
   exit 1
 fi
 
-if [[ ! -f "${ROOT}/.env" ]]; then
+if [[ -f "${ROOT}/.env" ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "${ROOT}/.env"
+  set +a
+else
   echo "warn: .env not found. Run ./scripts/dev/copy-env-example.sh and edit values."
 fi
 

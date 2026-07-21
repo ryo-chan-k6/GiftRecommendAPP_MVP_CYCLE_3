@@ -1,0 +1,37 @@
+schema_version: "1.0"
+definition_type: "code_definition"
+
+code_definition:
+  id: "item_active_status_candidate_status"
+  physical_name: "candidate_status"
+  logical_name: "Item Active Status Candidate Status"
+  category: "state"
+  mvp_scope: true
+
+values:
+  - value: "detected"
+    label: "検知済"
+    meaning: "BATCH-004 が候補を検出済み。未適用"
+    terminal: false
+    enabled: true
+  - value: "applied"
+    label: "適用済"
+    meaning: "BATCH-008 が item.active_status に適用済み"
+    terminal: true
+    enabled: true
+  - value: "superseded"
+    label: "置換"
+    meaning: "より新しい候補または競合解決で不採用"
+    terminal: true
+    enabled: true
+  - value: "discarded"
+    label: "破棄"
+    meaning: "適用対象外として破棄"
+    terminal: true
+    enabled: true
+
+db_usages:
+  - table: "item_active_status_candidate"
+    column: "candidate_status"
+    constraint: "NOT NULL"
+    note: "detected は Retention 削除対象外"

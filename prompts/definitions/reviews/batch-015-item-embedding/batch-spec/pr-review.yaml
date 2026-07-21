@@ -1,0 +1,67 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-015-item-embedding-batch-spec-pr"
+  title: "BATCH-015 Item Embedding生成バッチ仕様書 PRレビュー"
+  summary: "BATCH-015 バッチ仕様書 Task の PR を AI Review する。IF 混同防止・handoff 消費・Queue 終端・scaffold-first・冪等キーを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1480-batch-015-item-embedding-batch-spec"
+  base: "feature/epic-1479-batch-015-item-embedding"
+  target: "feature/epic-1479-batch-015-item-embedding"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1481
+  issue:
+    number: 1480
+  task_definition: "prompts/definitions/tasks/batch-015-item-embedding/batch-spec.yaml"
+  source_branch: "docs/task-1480-batch-015-item-embedding-batch-spec"
+  target_branch: "feature/epic-1479-batch-015-item-embedding"
+  parent_epic_issue: "[Epic]BATCH-015:Item Embedding生成Batch"
+  parent_epic_branch: "feature/epic-1479-batch-015-item-embedding"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-VEC-BATCH-001 が本 Batch の物理書込（item_embedding Upsert）である"
+  - "IF-EXT-005 が Embedding API 呼出である"
+  - "IF-DB-BATCH-015 は BATCH-014 handoff。本 Batch は再算出せず消費する"
+  - "IF-DB-BATCH-016（BATCH-016）を対象外としている"
+  - "冪等キーが item_id + model_version_id + embedding_input_hash（3列）"
+  - "MVP が embedding_source_type=item_text_context / text-embedding-3-small / 1536 / scaffold-first"
+  - "Queue 終端 succeeded が本 Batch 責務である"
+  - "embedding_source_version 物理列なしが明記されている"
+  - "MOD-BATCH-015（Recheck）と Batch ID BATCH-015 を混同していない（モジュールは MOD-BATCH-036/037）"
+  - "独立子 workflow batch-item-embedding.yml / Contract Gate 不要"
+  - "§18 で確定 / 残未決（Human）が区別されている"
+  - "secret / API key 実値なし・ベクトル全文ログ禁止"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1479"
+  - "Issue #1480"

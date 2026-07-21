@@ -1,0 +1,233 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-009-empty-result-implementation"
+  title: "SCR-009:0件結果表示実装"
+  summary: "SCR-009 0件結果表示を実装し、RecommendationEmptyPanel 抽出・トップへ戻る導線・component テストで検証する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-009:0件結果表示"
+  epic_issue_number: 1382
+  epic_branch: "feature/epic-1382-scr-009-empty-result"
+  related_issues:
+    - number: 1382
+      purpose: "親 Epic"
+    - number: 1384
+      purpose: "前提 Task（画面仕様書）"
+    - number: 1386
+      purpose: "本 Task Issue"
+  related_prs:
+    - number: 1385
+      purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  画面仕様書（#1384 / PR #1385）が親 Epic Branch に merge 済み。
+  SCR-009 は独立 URL ではなく RecommendationInputPage の phase === "empty" + EmptyState として実装する。
+  Human 判断（すべて確定）:
+  1. 再検索ボタン: 非採用
+  2. API displayMessage: クライアント定数正本（画面に出さない）
+  3. 条件緩和: 1文総括のみ（個別 bullet なし）
+  4. トップへ戻る: 採用（TextLink → /）
+  必須差分は EmptyState 表示の抽出（RecommendationEmptyPanel）、トップへ戻る導線追加、component テスト。
+
+objective: |
+  0件結果表示（SCR-009）を画面仕様どおり実装し、component テストで検証する。
+  EMPTY_RESULT_MESSAGE / 条件変更 / トップへ戻る / 再検索 CTA なしを満たす。
+
+scope:
+  - "RecommendationEmptyPanel（または同等）に EmptyState 表示を抽出（SCR-003 RunningPanel パターン）"
+  - "RecommendationInputPage の phase === \"empty\" を仕様に合わせて整理"
+  - "EmptyState title / EMPTY_RESULT_MESSAGE / 条件を変更する Button / トップへ戻る TextLink"
+  - "apps/web/tests/component/** のテスト追加"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "専用 /recommendations/{id} empty route 新設"
+  - "再検索専用 CTA 追加"
+  - "API displayMessage の画面表示"
+  - "条件緩和の個別 bullet 追加"
+  - "OpenAPI / Orval / generated 手編集"
+  - "apps/api / apps/reco / apps/batch"
+  - "features/home・recommendation-result の大規模改修"
+  - "E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-009_0件結果表示画面仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "ST-EMPTY"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "UI-033 EmptyState / UI-010 TextLink"
+  files:
+    - path: "apps/web/src/features/recommendation-input/**"
+      required: true
+      purpose: "empty 宿主"
+    - path: "apps/web/src/components/feedback/EmptyState/**"
+      required: true
+      purpose: "EmptyState 部品"
+    - path: "apps/web/src/components/nav/TextLink/**"
+      required: true
+      purpose: "トップへ戻る導線"
+  issues:
+    - number: 1384
+      purpose: "画面仕様書"
+  prs:
+    - number: 1385
+      purpose: "仕様書 PR"
+
+output:
+  docs: []
+  files:
+    - path: "apps/web/src/features/recommendation-input/**"
+      action: "create_or_update"
+      required: true
+  tests:
+    - path: "apps/web/tests/component/**/*.{test,spec}.{ts,tsx}"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "RecommendationEmptyPanel（EmptyState + 条件変更 + トップへ戻る）"
+  - "SCR-009 empty 表示の仕様整合"
+  - "component テスト"
+
+acceptance_criteria:
+  - "EmptyState title が「条件に合うギフトがありません」である"
+  - "description が EMPTY_RESULT_MESSAGE（クライアント定数）である"
+  - "「条件を変更する」Button で setPhase(\"form\") 相当の復帰ができる"
+  - "「トップへ戻る」TextLink が href=\"/\" である"
+  - "再検索専用 CTA がない"
+  - "API displayMessage を画面に出していない"
+  - "専用 /recommendations/{id} empty route を新設していない"
+  - "pnpm --filter @gift-recommendation/web test:component が通る"
+  - "pnpm --filter @gift-recommendation/web typecheck が通る"
+  - "generated 手動編集なし / secret なし"
+
+branch:
+  no_branch: false
+  name: "feature/task-1386-scr-009-empty-result-implementation"
+  summary: "scr-009-empty-result-implementation"
+  base: "feature/epic-1382-scr-009-empty-result"
+  target: "feature/epic-1382-scr-009-empty-result"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1382
+      title: "[Epic]SCR-009:0件結果表示"
+      purpose: "親 Epic"
+  issues:
+    - number: 1384
+      purpose: "画面仕様書"
+  prs:
+    - number: 1385
+      purpose: "仕様書 PR"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/web/src/features/recommendation-input/**"
+    - "apps/web/tests/component/recommendation-input/**"
+    - "prompts/definitions/tasks/scr-009-empty-result/implementation.yaml"
+    - "prompts/definitions/reviews/scr-009-empty-result/implementation/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "component test"
+    - "typecheck"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
+    - "pnpm --filter @gift-recommendation/web typecheck"
+  not_required:
+    - "e2e test"
+  skip_reason:
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "EmptyState title / EMPTY_RESULT_MESSAGE / 条件変更 / トップへ戻るが仕様どおりか"
+    - "再検索 CTA がないか / API displayMessage を使っていないか"
+    - "専用 empty route / OpenAPI / api・reco・batch 変更が混入していないか"
+    - "secret / generated 手編集なし"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常実装。詳細は PR を正本とする"
+
+stop_conditions:
+  - "PR #1385 が親 Epic Branch に merge されていない場合"
+  - "generated を手動編集する必要が出た場合"
+  - "専用 empty route 新設が必須と判断された場合"
+  - "再検索 CTA 追加が必須と判断された場合（Human 確認へ）"
+
+notes:
+  - "Issueタイトル: [Task]SCR-009:0件結果表示実装"
+  - "本 Task Issue: #1386"
+  - "親Epic: #1382 / Branch: feature/epic-1382-scr-009-empty-result"
+  - "後続: 必要なら unit-test → Epic PR → develop"

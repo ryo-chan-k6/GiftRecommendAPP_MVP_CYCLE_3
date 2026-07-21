@@ -1,0 +1,253 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-007-feedback-input"
+  title: "SCR-007:Feedback入力表示"
+  summary: "SCR-007（Feedback入力表示）に関する画面仕様書・実装・単体テストを管理するEpic。API-PUB-004（Feedback送信）を利用し、SCR-004 / SCR-006 からの Feedback 導線を本実装する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  06_実装設計および 07_開発・単体テストにおいて、SCR-007（Feedback入力表示）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  SCR-004 / SCR-006 の Feedback ボタンは disabled＋「準備中」。API-PUB-004（Epic #386）は develop merge 済み。
+  子 Task は画面仕様書・実装・単体テスト単位に分割し、Task PR は親 Epic Branch に向ける。
+  Feedback 本体は `features/feedback-input/**` に集約し、004 / 006 側は導線有効化の最小差分に留める。
+
+objective: |
+  SCR-007 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "SCR-007 に関する子 Task の作業単位を整理する（画面仕様書 / 画面実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/scr-007-feedback-input/**）を整理する"
+  - "依存 Epic（API-PUB-004 / SCR-004 / SCR-006）の Status を確認する運用を明示する"
+  - "SCR-004 / SCR-006 の Feedback 導線有効化（最小差分）を Epic 内実装 Task に含める"
+
+out_of_scope:
+  - "API-PUB-004 契約・OpenAPI・apps/api 実装の変更"
+  - "SCR-005 推薦理由詳細の本実装"
+  - "Ranking / Feature ルールへの即時自動反映"
+  - "認証・認可方式そのものの変更"
+  - "apps/reco / apps/batch / DB schema 変更"
+  - "本番リリース作業"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-007 の画面ID・表示項目・操作を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "SCR-004 / SCR-006 からの Feedback 遷移を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+      purpose: "API-PUB-004 の位置づけを確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md"
+      required: true
+      purpose: "Request / Response / Error の契約正本"
+    - path: "docs/04_ドメインモデル設計/RecommendationFeedback定義書.md"
+      required: true
+      purpose: "Feedback Type / Target のドメイン正本"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）"
+  templates: []
+  files: []
+  issues:
+    - number: 1325
+      purpose: "本 Epic Issue"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]SCR-007:Feedback入力表示）"
+  - "Epic Branch（develop 起点 / feature/epic-1325-scr-007-feedback-input）"
+  - "子 Task 候補一覧（画面仕様書 / 画面実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]SCR-007:Feedback入力表示 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位（画面仕様書 / 画面実装 / 単体テスト）が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が SCR-007 責務と整合している"
+  - "dependencies.epics に API-PUB-004 / SCR-004 / SCR-006 が記載されている"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1325-scr-007-feedback-input"
+  summary: "scr-007-feedback-input"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-19"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "web"
+
+epic_scope:
+  artifact_id: "SCR-007"
+  allowed_paths:
+    - "docs/06_実装設計/web/SCR-007_*"
+    - "apps/web/src/features/feedback-input/**"
+    - "apps/web/src/features/recommendation-result/**"
+    - "apps/web/src/features/item-detail/**"
+    - "apps/web/src/components/**"
+    - "apps/web/src/generated/api/**"
+    - "apps/web/src/lib/**"
+    - "apps/web/tests/**"
+    - "prompts/definitions/tasks/scr-007-feedback-input/**"
+    - "prompts/definitions/reviews/scr-007-feedback-input/**"
+    - "prompts/definitions/epics/scr-007-feedback-input/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "apps/web/src/app/page.tsx"
+    - "apps/web/src/features/home/**"
+    - "apps/web/src/features/recommendation-input/**"
+    - "openapi/**"
+    - "packages/contracts/**"
+    - "db/**"
+  child_task_areas:
+    - "screen-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 386
+      title: "[Epic]API-PUB-004:Feedback送信"
+      purpose: "Feedback Public API（develop merge 済み）。送信契約・実装正本"
+    - issue: 1236
+      title: "[Epic]SCR-004:レコメンド結果一覧画面"
+      purpose: "結果一覧からの Feedback 導線元（develop merge 済み）"
+    - issue: 1303
+      title: "[Epic]SCR-006:商品詳細画面"
+      purpose: "商品詳細からの Feedback 導線元（develop merge 済み）"
+  issues:
+    - number: 1325
+      purpose: "本 Epic Issue"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope が SCR-007（Feedback入力）に閉じているか確認する"
+    - "API-PUB-004 契約変更を混入していないか確認する"
+    - "依存 Epic API-PUB-004 / SCR-004 / SCR-006 が develop 済みか確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が SCR-007 に閉じているか"
+    - "004 / 006 への変更が導線有効化の最小差分に留まっているか"
+    - "依存 Epic が dependencies.epics にあるか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "SCR 後段レーン。SCR-007 縦串の Epic Definition。"
+
+risk_points:
+  - "Task PR を誤って develop へ直接向ける運用ミス"
+  - "API-PUB-004 / OpenAPI を本 Epic で再変更する運用ミス"
+  - "recommendation-result / item-detail への大規模改修混入"
+  - "components/feedback（Alert等）とドメイン Feedback の命名混同"
+
+human_decision_points:
+  - "MVP で扱う feedbackType の初期セット（契約の全 MVP type を出すか、item 系のみ先行か）"
+  - "comment 入力を MVP 必須にするか任意にするか（画面一覧は △）"
+  - "SCR-005 未実装時に reason 粒度 Feedback をどう扱うか"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-007 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "API-PUB-004 が develop 未反映の場合"
+  - "Task PR の target が develop に向く設計が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、画面仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "最初の子 Task: prompts/definitions/tasks/scr-007-feedback-input/screen-spec.yaml"
+  - "依存 Epic: #386 API-PUB-004 / #1236 SCR-004 / #1303 SCR-006（いずれも develop merge 済み）"
+  - "本 Epic Issue: #1325 / Epic Branch: feature/epic-1325-scr-007-feedback-input"
+  - "conflict_risk medium: 004/006 の導線ファイルを触るため、他 SCR と同時編集する場合は合意する"

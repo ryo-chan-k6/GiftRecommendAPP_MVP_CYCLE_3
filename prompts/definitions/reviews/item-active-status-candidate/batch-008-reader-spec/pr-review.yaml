@@ -1,0 +1,76 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-item-active-status-candidate-batch-008-reader-spec-pr"
+  title: "BATCH-008 候補Reader仕様 PRレビュー"
+  summary: "T5 BATCH-008 仕様書（候補 Reader / Applier）PR の AI Review。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  base: "feature/epic-1227-item-active-status-candidate"
+  target: "feature/epic-1227-item-active-status-candidate"
+  worktree_required: true
+
+target:
+  pr: 1249
+  issue:
+    number: 1233
+  task_definition: "prompts/definitions/tasks/item-active-status-candidate/batch-008-reader-spec.yaml"
+  source_branch: "docs/task-1233-batch-008-candidate-reader-spec"
+  target_branch: "feature/epic-1227-item-active-status-candidate"
+  parent_epic_issue: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+  parent_epic_branch: "feature/epic-1227-item-active-status-candidate"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/item-active-status-candidate/batch-008-reader-spec.yaml"
+    required: true
+  issue:
+    number: 1233
+    required: true
+  pr:
+    number: 1249
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "成果物"
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "§18.1.1 制約"
+
+review_points:
+  common:
+    - "PR target が親 Epic Branch か"
+  docs:
+    - "両経路読取・制限側優先・復帰・Retention が §18.1.1 と一致するか"
+    - "IF-DB-BATCH-009 / 021 境界が明確か"
+    - "専用 BATCH-008 Epic 未作成が残未決として明示されているか"
+  security:
+    - "secret 非含有"
+
+notes:
+  - "PR #1249。AI Review 結論: Human Reviewへ進行可"

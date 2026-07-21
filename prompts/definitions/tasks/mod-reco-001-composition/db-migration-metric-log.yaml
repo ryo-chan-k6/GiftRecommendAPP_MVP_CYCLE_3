@@ -1,0 +1,220 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-composition-db-migration-metric-log"
+  title: "metric_log:Metric Log DDL・migration作成"
+  summary: "Composition Epic #1076 直列工程 ②。`metric_log` テーブル定義書に基づき参照用 DDL（`db/ddl/`）と適用正本 migration（`supabase/migrations/`）を作成する。Epic #1076 外（`db/**`）の前提 Task。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: "develop"
+  related_issues:
+    - number: 1076
+      purpose: "Composition Epic（Tier 1 Postgres 永続化 Human 判断）"
+    - number: 1078
+      purpose: "工程 ① metric_log テーブル定義書 Task 完了"
+    - number: 1053
+      purpose: "MOD-RECO-025 Metric Logger Epic 完了"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Composition Epic #1076 直列工程 ②。
+  工程 ①（Issue #1078 / PR #1079）で `metric_log_テーブル定義書.md` を作成済み（Epic Branch merge 済み。develop には未反映）。
+  Human 判断（2026-07-08）により Tier 1 Run 集約 Metric は `metric_log` へ Postgres 永続化する。
+  Tier 2 分布 Metric の `reco_score_distribution_metric` は D11（`db/ddl/d11_metric.sql`）に既存。本 Task は **metric_log のみ**。
+  Epic #1076 の `forbidden_paths` に `db/**` があるため、本 Task は **develop 向け増分** とする。
+
+objective: |
+  `metric_log_テーブル定義書.md` §6〜§10 に整合する PostgreSQL DDL を `db/ddl/d15_metric_log.sql` に作成する。
+  同一内容を `supabase/migrations/` の適用正本 migration として追加し、ローカル Supabase CLI で適用可能にする。
+  `DDLバッチ分割表.md` に D15 増分を追記する。
+
+scope:
+  - "`db/ddl/d15_metric_log.sql` 新規作成（CREATE TABLE / Index / CHECK / UNIQUE）"
+  - "`supabase/migrations/{timestamp}_metric_log.sql` 新規作成（適用正本）"
+  - "`docs/06_実装設計/database/DDLバッチ分割表.md` に D15 追記"
+  - "develop 上に `metric_log_テーブル定義書.md` が未存在の場合、Epic Branch（#1079）内容を同期"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "reco_score_distribution_metric DDL 変更（D11 既存正本）"
+  - "Postgres MetricLoggerRepository 実装（Composition 工程 ③）"
+  - "apps/** 実装"
+  - "テーブル一覧・物理ER・論理ER の追随（別 docs Task）"
+  - "retention Batch 実装"
+  - "OpenAPI / generated 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/metric_log_テーブル定義書.md"
+      required: true
+      purpose: "DDL 正本（Epic Branch #1079。develop 未反映時は origin/feature/epic-1076-mod-reco-001-composition を参照）"
+    - path: "docs/06_実装設計/database/phase_log_テーブル定義書.md"
+      required: true
+      purpose: "Log 系 DDL スタイル・LOGICAL FK 方針参考"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "増分 migration 命名・適用方針"
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      required: true
+      purpose: "D15 追記先"
+    - path: "db/ddl/d10_log_observability.sql"
+      required: true
+      purpose: "Log 系 DDL スタイル参考"
+    - path: "db/ddl/d07_online_recommendation.sql"
+      required: true
+      purpose: "recommendation_run LOGICAL 参照前提"
+  templates: []
+  files:
+    - path: "supabase/migrations/20260702120000_matching_config.sql"
+      required: true
+      purpose: "直近増分 migration フォーマット参考"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/metric_log_テーブル定義書.md"
+      action: "create"
+      required: false
+      purpose: "develop 未反映時のみ Epic Branch から同期"
+    - path: "docs/06_実装設計/database/DDLバッチ分割表.md"
+      action: "update"
+      required: true
+  files:
+    - path: "db/ddl/d15_metric_log.sql"
+      action: "create"
+      required: true
+    - path: "supabase/migrations/20260708120000_metric_log.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mod-reco-001-composition/db-migration-metric-log.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/mod-reco-001-composition/db-migration-metric-log/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "`db/ddl/d15_metric_log.sql` が存在し、テーブル定義書 §6〜§10 と矛盾しない"
+  - "`supabase/migrations/*_metric_log.sql` が存在し、DDL 参照用 SQL と同等である"
+  - "`recommendation_run_id` UNIQUE（1 Run 1 行）および CHECK 制約が定義書どおりである"
+  - "recommendation_run への物理 FK を付与していない（LOGICAL 参照）"
+  - "reco_score_distribution_metric への変更がない"
+  - "`apps/**` 変更がない"
+  - "Task PR target が `develop`"
+
+branch:
+  no_branch: false
+  summary: "metric-log-ddl"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-10"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "db"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 435
+      purpose: "親 DB 物理設計 Epic（Done）"
+    - number: 1078
+      purpose: "工程 ① テーブル定義書完了"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - task_id: "task-mod-reco-001-composition-metric-log-table-spec"
+      issue: 1078
+      purpose: "metric_log テーブル定義書正本"
+  blocks:
+    - "task-mod-reco-001-composition-postgres-observability-repositories"
+  exclusive_files:
+    - "db/ddl/d15_metric_log.sql"
+    - "supabase/migrations/20260708120000_metric_log.sql"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  manual_checks:
+    - "DDL 列・制約・Index がテーブル定義書 §6〜§10 と一致"
+    - "D07 recommendation_run 適用後に SQL が実行可能"
+    - "apps/** 変更なし"
+  commands:
+    - "scripts/db/migrate-up.sh（ローカル Supabase 起動時）"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "DDL Task のため"
+    "integration test": "Repository 実装は工程 ③"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "テーブル定義書との列・制約・Index 整合"
+    - "Log 系 LOGICAL FK 方針（物理 FK なし）"
+    - "supabase migration と db/ddl の内容一致"
+    - "reco_score_distribution_metric 非変更"
+    - "Epic #1076 forbidden_paths（db/**）を Task PR で develop へ反映する妥当性"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+  reason: "metric_log 新規 DDL は Composition / MOD-RECO-025 横断前提"
+
+human_decision_points:
+  - "【確定 2026-07-08】本 Task は Epic #1076 外。PR target は develop"
+  - "【確定 2026-07-08】Tier 2 reco_score_distribution_metric は D11 既存のため本 Task 対象外"
+
+stop_conditions:
+  - "テーブル定義書と DDL の列写像が確定できない"
+  - "develop と Epic Branch で定義書内容が矛盾する"
+
+notes:
+  - "Composition 直列工程: ② db migration → ③ postgres-observability-repositories"
+  - "change_id: d15_metric_log"
+  - "workstream: mod-reco-001-composition"

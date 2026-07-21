@@ -1,0 +1,154 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-023-reason-postgres-epic-pr"
+  title: "MOD-RECO-023 Reason Postgres永続 Epic PRレビュー"
+  summary: "Epic #1412（MOD-RECO-023 Reason Postgres永続）の develop 向け統合 PR を AI Review する。PostgresRecommendationReasonRepository と production composition 配線を横断確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1417
+  issue:
+    number: 1412
+  task_definition: "prompts/definitions/epics/mod-reco-023-reason-postgres/epic.yaml"
+  source_branch: "feature/epic-1412-mod-reco-023-reason-postgres"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]MOD-RECO-023:Reason Postgres永続"
+  parent_epic_branch: "feature/epic-1412-mod-reco-023-reason-postgres"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/mod-reco-023-reason-postgres/epic.yaml"
+    required: true
+  issue:
+    number: 1412
+    required: true
+  pr:
+    number: 1417
+    required: false
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      required: true
+      purpose: "INSERT 列との整合確認"
+    - path: "docs/06_実装設計/reco/MOD-RECO-023_Reason Generatorモジュール仕様書.md"
+      required: true
+      purpose: "Reason 永続方針との整合確認"
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+      purpose: "production INSERT 確認手順の追記確認"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Epic scope / epic_scope.allowed_paths 内に差分が収まっているか"
+    - "子 Task #1413 / PR #1414 が親 Epic Branch 経由で統合されているか"
+    - "PR target が develop であるか"
+    - "PR 本文が Closes #1412 と整合するか（Epic PR）"
+  docs:
+    - "ローカル開発手順書に recommendation_reason INSERT 確認が追記されているか"
+  source:
+    - "PostgresRecommendationReasonRepository が定義列どおり INSERT しているか"
+    - "build_production_ports のみ Postgres 注入し、DEFAULT InMemory が維持されているか"
+  tests:
+    - "repository / composition の UT が追加され、pytest-reco が通っているか"
+  security:
+    - "secret / .env 実値を含んでいないか"
+  epic_scope:
+    - "forbidden_paths（openapi / migrations / apps/api / web / batch）への変更がないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: false
+  additional_criteria:
+    - "実装 Task が Epic Branch に merge 済みである"
+    - "Human Review 観点が PR 本文に整理されている"
+    - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "実装成果が揃っている"
+      - "epic_scope 外差分がない"
+      - "修正必須事項がない"
+  request_changes:
+    conditions:
+      - "同一 Branch で修正可能な不備がある"
+      - "PR 本文の不足"
+  needs_human_decision:
+    conditions:
+      - "DEFAULT InMemory 維持方針を変更する必要があるか判断が必要"
+  blocked:
+    conditions:
+      - "必須 Review Definition / Epic Definition が不足している"
+      - "実装 Task が親 Epic に未 merge"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "Epic PR の AI Review は PR コメントを正とする"
+
+notes:
+  - "Epic PR 作成後に target.pr / input.pr.number を実番号へ更新する"
+  - "実装 Review: .../implementation/pr-review.yaml / 本ファイルは Epic 専用"
+  - "/review-pr @prompts/definitions/reviews/mod-reco-023-reason-postgres/epic/pr-review.yaml"
+  - "前提: MOD-RECO-023 Reason Generator（#992）/ レーン1e Result Item Postgres（#1293）は develop merge 済み"

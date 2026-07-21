@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-002-recommendation-run-router-mount"
+  title: "API-PUB-002:レコメンド実行Routerマウント"
+  summary: "Epic #357 クローズ後 follow-up。createApp() に createRecommendationsRouter をマウントし、POST /api/v1/recommendations が 404 にならない状態にする（#1137 縦串スモークで確認したギャップ No.1）。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-002:レコメンド実行"
+  epic_issue_number: 357
+  epic_branch: "develop"
+  related_issues:
+    - number: 357
+      purpose: "履歴参照（Epic クローズ済み）"
+    - number: 1137
+      purpose: "ローカル縦串スモークで Router 未マウント（404）を確認"
+    - number: 1128
+      purpose: "recommendations モジュール実装（マウントは epic_scope 外）"
+    - number: 1135
+      purpose: "app.ts 導入（health のみ配線）"
+  related_prs:
+    - number: 1129
+      purpose: "実装 PR（マウント未実施の経緯）"
+    - number: 1136
+      purpose: "app.ts / health 導入"
+    - number: 1142
+      purpose: "縦串スモーク（既知ギャップ記録）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  API-PUB-002 実装（#1128 / PR #1129）で `apps/api/src/app/recommendations/**` は追加済みだが、Router マウントは epic_scope 外として意図的に未実施だった。
+  #1135 / PR #1136 で `apps/api/src/app.ts` が導入され `GET /api/v1/health` のみ配線された結果、ローカルで `POST /api/v1/recommendations` は HTTP 404 となる（#1137 / PR #1142 で確認）。
+  Epic #357 Reopen は行わず、develop ベース・develop 向け PR の横断 follow-up とする。
+
+objective: |
+  `createApp()` に `createRecommendationsRouter` をマウントし、ローカル起動した api で `POST /api/v1/recommendations` が 404 にならない状態にする。
+  health 既存挙動を壊さない。ローカル開発手順書の「Router 未マウント」記述を更新する。
+
+scope:
+  - "`apps/api/src/app.ts`（または同等のアプリ組立）へ `POST /api/v1/recommendations` を配線"
+  - "health 既存挙動を壊さないこと"
+  - "マウント後の最小確認（curl で 404 以外。Validation 422 / scaffold 経路の応答でも可）"
+  - "必要なら単体テストで Router が app に載っていることを確認"
+  - "ローカル開発手順書 §9.4 / §10.4 の「未マウント」記述を現状に合わせて更新"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "OpenAPI / Orval / generated 変更"
+  - "`ScaffoldDbSession` → 実 DB 置換（別 Issue: recommendation_request 実DB永続化）"
+  - "reco composition / pair_master / config version 修正"
+  - "SCR-002 / web 画面"
+  - "DB migration"
+  - "Epic #357 Reopen"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  files:
+    - path: "apps/api/src/app.ts"
+      required: true
+    - path: "apps/api/src/app/recommendations/routes.ts"
+      required: true
+    - path: "apps/api/src/app/health/routes.ts"
+      required: true
+    - path: "apps/api/src/app/recommendations/index.ts"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/api/src/app.ts"
+      action: "update"
+      required: true
+    - path: "apps/api/tests/unit/app/app.mount.test.ts"
+      action: "create"
+      required: false
+
+acceptance_criteria:
+  - "Task Definition / Review Definition が作成され、Issue に path が反映されている"
+  - "`createApp()` 経由で `POST /api/v1/recommendations` が到達する（404 でない）"
+  - "`GET /api/v1/health` が従来どおり 200"
+  - "ローカル開発手順書の「Router 未マウント」記述が更新されている"
+  - "OpenAPI / generated / migration 変更がない"
+  - "PR target が develop（Epic #357 クローズ後 follow-up 例外を PR 本文で説明）"
+
+branch:
+  no_branch: false
+  name: "feature/task-1138-api-pub-002-router-mount"
+  summary: "api-pub-002-router-mount"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-11"
+    due_date: "2026-07-13"
+
+issue:
+  number: 1138
+  unit: "task"
+  type: "feature"
+  area: "api"
+
+dependencies:
+  epics:
+    - number: 357
+      purpose: "API-PUB-002 develop merge 済み（CLOSED・履歴）"
+  issues:
+    - number: 1137
+      purpose: "縦串スモークで 404 確認済み"
+    - number: 1128
+      purpose: "recommendations モジュール実装済み"
+  prs:
+    - number: 1142
+      purpose: "縦串スモーク merge"
+    - number: 1129
+      purpose: "実装 merge"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "apps/api/src/app.ts"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+  conflict_risk: "low"
+
+test_policy:
+  required:
+    - "apps/api unit tests（壊していないこと）"
+  commands:
+    - "pnpm --filter @gift-recommendation/api test"
+  manual_checks:
+    - "./scripts/dev/start-api.sh 後に PUB-002 curl が 404 以外"
+    - "GET /api/v1/health が 200"
+  not_required:
+    - "実 reco 縦串成功（HTTP 200 商品返却）"
+    - "e2e / SCR-002"
+  skip_reason:
+    "実 reco 縦串成功": "後続 Issue（実DB・pair_reader・config version）依存"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "マウント path が `/api/v1/recommendations` と一致するか"
+    - "health との共存・middleware 順序"
+    - "scope 外（DB / reco / OpenAPI）に触れていないか"
+    - "Epic #357 クローズ後 develop 直 PR 例外の説明"
+  specialist_reviews:
+    docs: true
+    test: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Epic #357 クローズ後 follow-up。Router マウントの横断影響を記録可"
+
+human_decision_points:
+  - "Epic #357 クローズ後の develop 直 PR 例外の承認"
+  - "マウントのみで止め、実 DB 置換を別 Issue のままにする判断"
+
+stop_conditions:
+  - "OpenAPI / generated 変更が必要になった"
+  - "DB schema / migration 変更が必要になった"
+  - "reco 側修正が本 Task に必須になった"
+
+notes:
+  - "縦串チェーン順序: 本 Issue → 実DB永続化 → pair_master reader → config version 整合"
+  - "Related: #1137 / #1128 / #1135 / #357"
+  - "workstream: api-pub-002-recommendation-run"
+  - "Review Definition: prompts/definitions/reviews/api-pub-002-recommendation-run/router-mount/pr-review.yaml"

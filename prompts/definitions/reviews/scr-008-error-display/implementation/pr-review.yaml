@@ -1,0 +1,113 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-scr-008-error-display-implementation-pr"
+  title: "SCR-008 エラー表示実装 PRレビュー"
+  summary: "SCR-008 実装 Task の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1373
+  issue: 1372
+  task_definition: "prompts/definitions/tasks/scr-008-error-display/implementation.yaml"
+  source_branch: "feature/task-1372-scr-008-error-display-implementation"
+  target_branch: "feature/epic-1367-scr-008-error-display"
+  parent_epic_issue: "[Epic]SCR-008:エラー表示"
+  parent_epic_branch: "feature/epic-1367-scr-008-error-display"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/scr-008-error-display/implementation.yaml"
+    required: true
+  issue:
+    number: 1372
+    required: true
+  pr:
+    number: 1373
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1367-scr-008-error-display"
+  docs:
+    - path: "docs/06_実装設計/web/SCR-008_エラー表示画面仕様書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+    - "Related to（Closes 禁止）か"
+  source:
+    - "専用エラー route を新設していないか"
+    - "SCR-008 UI が仕様（Alert・戻る・再実行・code/traceId）と整合しているか"
+    - "empty 経路を error に誤配線していないか"
+  tests:
+    - "表示・戻る・再実行の component test があるか"
+  security:
+    - "secret / .env 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number / target.issue / input.issue.number を同期する"

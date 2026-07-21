@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-lane-1e-playwright-d2-s1-evidence-epic"
+  title: "Playwright D2 S1証跡反映 Epic PRレビュー"
+  summary: "D2 follow-up（S1 実測証跡反映 + playwright.config launchOptions）の Epic PR を AI Review する"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1459
+  issue:
+    number: 1457
+  task_definition: "prompts/definitions/epics/lane-1e-playwright-d2-s1-evidence/epic.yaml"
+  source_branch: "test/epic-1457-lane-1e-playwright-d2-s1-evidence"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+review_points:
+  - "実験ログの実測反映が事実と一致するか"
+  - "playwright.config の launchOptions が env 未設定時に既定挙動を保つか"
+  - "BATCH / api / reco / openapi / migration 非含有"
+  - "secret 非含有"
+
+acceptance_criteria:
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "PR コメントを正とする"
+
+notes:
+  - "D2（#1438）follow-up の Epic PR（#1459 → develop）を対象とする"

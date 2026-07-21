@@ -1,0 +1,224 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-wiring-output-integration-retest"
+  title: "MOD-RECO-001:ExecutionContext型付き化後 統合テスト再検証（出力）"
+  summary: "出力 ExecutionContext 型付きフィールド追加後、`test_recommendation_orchestrator.py` の Output 向け assert を型付き直接参照へ整理し、デフォルト composition 経路の検証を型安全化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Orchestrator Wiring（出力）"
+  epic_issue_number: 792
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "履歴参照（Epic クローズ済み）。PR 本文は Related to #260"
+    - number: 792
+      purpose: "出力 Wiring Epic（履歴参照）"
+    - number: 1002
+      purpose: "初回出力 integration-test Task（配線後 green 化）"
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Issue #1002（出力 integration-test）では配線後のデフォルト composition を green 化した。
+  出力 execution-context-typed-fields Task merge 後、本 Task で
+  `assert_output_execution_context_populated` 等を ExecutionContext 型付き観測フィールドの直接参照へ整理する。
+  正本: `prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/wiring-phase-follow-up-playbook.yaml`
+
+objective: |
+  `test_recommendation_orchestrator.py` / helper の Output 向けアサーションを
+  ExecutionContext 型付き観測フィールドの直接参照へ整理し、pytest green を維持する。
+
+scope:
+  - "`apps/reco/tests/unit/application/test_recommendation_orchestrator.py` の Output 向け assert 整理"
+  - "`recommendation_orchestrator_helpers.py` の `assert_output_execution_context_populated` を型付き直接参照へ整理"
+  - "Review Definition（`prompts/definitions/reviews/mod-reco-001-wiring-output/integration-retest/pr-review.yaml`）"
+
+out_of_scope:
+  - "`execution_context.py` のフィールド追加（execution-context-typed-fields Task）"
+  - "Ranking / Matching 等他フェーズ向け assert 置換"
+  - "stubs.py / モジュール本体の変更（テスト成立に必要な最小修正のみ可。要 PR 説明）"
+  - "integration test（E2E）/ contract test"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "execution_context 受け渡し・§8.4 配線方針"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "出力フェーズ処理順序"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/execution_context.py"
+      required: true
+      purpose: "型付きフィールド定義（execution-context-typed-fields 成果物）"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "更新対象テスト"
+    - path: "apps/reco/tests/unit/application/recommendation_orchestrator_helpers.py"
+      required: false
+      purpose: "helper 最小整理"
+  issues:
+    - number: 260
+      purpose: "履歴参照"
+    - number: 792
+      purpose: "出力 Wiring Epic"
+    - number: 1002
+      purpose: "初回 integration-test"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Output ExecutionContext 型付き直接参照の green pytest"
+  - "更新したテスト観点とケースの対応（PR 本文）"
+  - "pytest 実行結果（成功ログ）"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "出力 execution-context-typed-fields Task が develop に merge 済みである（作業開始前提）"
+  - "Output 向け assert が ExecutionContext 型付き観測フィールドを直接参照している"
+  - "`cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q` が成功する"
+  - "`execution_context.py` / `stubs.py` に変更がない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "test/task-1007-mod-reco-001-wiring-output-integration-retest"
+  summary: "mod-reco-001-wiring-output-integration-retest"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-06"
+    due_date: "2026-07-08"
+
+issue:
+  number: 1007
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 792
+      purpose: "出力 Wiring Epic develop merge 完了"
+  issues:
+    - number: 792
+      purpose: "Epic develop merge 確認"
+    - number: 1002
+      purpose: "初回 integration-test"
+    - number: 1005
+      purpose: "出力 execution-context-typed-fields Task"
+  prs:
+    - number: 1006
+      purpose: "出力 execution-context-typed-fields develop merge PR"
+  tasks:
+    - "task-mod-reco-001-wiring-output-execution-context-typed-fields が develop に merge 済みであること"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-output-execution-context-typed-fields"
+  blocks: []
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+    - "cd apps/reco && uv run pytest tests/unit/ -q"
+  manual_checks:
+    - "出力 execution-context-typed-fields Task merge 済みであること"
+  not_required:
+    - "integration test（E2E）"
+  skip_reason:
+    "integration test（E2E）": "段階3 Composition 完成 Task の範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Output ExecutionContext アサーションが型定義と整合しているか"
+    - "デフォルト composition Output テストが型付き参照後も green であるか"
+    - "execution_context.py / stubs.py への不要な変更がないか"
+    - "develop 直 PR 例外が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "統合テスト再検証は Issue / PR で管理"
+
+risk_points:
+  - "execution-context-typed-fields Task 未 merge では型付きフィールドが未定義のため着手不可"
+
+human_decision_points:
+  - "観測系 int フィールド assert の粒度（存在のみ vs 値検証）"
+
+stop_conditions:
+  - "出力 execution-context-typed-fields Task が develop に未 merge"
+  - "execution_context.py の追加変更が必要になった（typed-fields Task へ戻す）"
+
+notes:
+  - "playbook 順序 4（出力）。正本: wiring-phase-follow-up-playbook.yaml"
+  - "Related to #260 / #792 / #1002"
+  - "workstream: mod-reco-001-wiring-output"

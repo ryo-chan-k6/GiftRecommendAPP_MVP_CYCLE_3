@@ -1,0 +1,76 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-output-epic-pr"
+  title: "MOD-RECO-001 Orchestrator Wiring（出力）Epic PRレビュー"
+  summary: "Epic #792（MOD-RECO-001 Orchestrator Wiring 出力）の develop 向け統合 PR を AI Review する。子 Task（wiring / integration-test）の成果を横断確認する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1004
+  issue:
+    number: 792
+  task_definition: "prompts/definitions/epics/mod-reco-001-wiring-output/epic.yaml"
+  source_branch: "feature/epic-792-mod-reco-001-wiring-output"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  project_operation: true
+  security: true
+  tests: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/mod-reco-001-wiring-output/epic.yaml"
+    required: true
+  issue:
+    number: 792
+    required: true
+
+review_points:
+  common:
+    - "epic_scope.allowed_paths / forbidden_paths 整合"
+    - "子 Task（wiring / integration-test）完了と Epic Branch 反映"
+    - "apps/reco/src/reco/application/**/（recommendation-orchestrator 以外）へのモジュール本体変更非含有"
+    - "execution_context.py への変更非含有"
+    - "secret 非含有"
+  test:
+    - "test_recommendation_orchestrator.py が green"
+    - "出力フェーズ（021〜023）の本実装 Port が stubs.py で参照されている"
+
+notes:
+  - "Epic PR 作成時に target.pr を更新する"
+  - "前提 Epic: #976（021）/ #984（022）/ #992（023）"

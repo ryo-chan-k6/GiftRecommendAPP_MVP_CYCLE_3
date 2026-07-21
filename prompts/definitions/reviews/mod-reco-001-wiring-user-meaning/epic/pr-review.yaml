@@ -1,0 +1,184 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-wiring-user-meaning-epic-pr"
+  title: "MOD-RECO-001 Orchestrator Wiring（User Meaning）Epic PRレビュー"
+  summary: "Epic #788（MOD-RECO-001 Orchestrator Wiring User Meaning）の develop 向け統合 PR を AI Review する。子 Task（wiring / integration-test）の成果を横断確認する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 860
+  issue:
+    number: 788
+  task_definition: "prompts/definitions/epics/mod-reco-001-wiring-user-meaning/epic.yaml"
+  source_branch: "feature/epic-788-mod-reco-001-wiring-user-meaning"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/mod-reco-001-wiring-user-meaning/epic.yaml"
+    required: true
+  issue:
+    number: 788
+    required: true
+  pr:
+    number: 860
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "配線方針・フェーズ単位（§8.4）"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "User Meaning フェーズ処理順序"
+  child_tasks:
+    - issue: 856
+      pr: 857
+      task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-user-meaning/wiring.yaml"
+    - issue: 858
+      pr: 859
+      task_definition: "prompts/definitions/tasks/mod-reco-001-wiring-user-meaning/integration-test.yaml"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "pr_checks"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Epic Definition（epic.yaml）の scope / out_of_scope / acceptance_criteria を満たしているか"
+    - "Epic PR の source が feature/epic-788-mod-reco-001-wiring-user-meaning、target が develop であるか"
+    - "PR 本文に Closes #788 があるか"
+    - "子 Task Issue（#856 / #858）が Done または Epic 統合完了として整理されているか"
+    - "子 Task PR（#857 / #859）の成果が Epic diff に含まれているか"
+    - "secret / .env 実値が含まれていないか"
+  epic_scope:
+    - "epic_scope.allowed_paths 内に差分が収まっているか"
+    - "epic_scope.forbidden_paths（MOD-RECO-004〜010 本体、apps/api|web|batch、openapi、db）への変更がないか"
+    - "stubs.py の変更が User Meaning フェーズ Port（004〜010）に限定されているか"
+    - "StubXxx クラスが削除されていないか"
+    - "起動フェーズ（002 / 003）の配線が維持されているか"
+  source:
+    - "build_default_stub_ports() が User Meaning 7 Port で本実装 factory を参照しているか"
+    - "モジュール本体（MOD-RECO-004〜010）への変更が混入していないか"
+  tests:
+    - "test_recommendation_orchestrator.py が green であるか"
+    - "pytest 実行結果が Epic PR 本文に記載されているか"
+    - "integration test（E2E）が未実施として明記されているか"
+  security:
+    - "テスト fixture / ログに secret や個人情報が含まれていないか"
+  project_operation:
+    - "Task PR を develop に直接向けていないか（子 PR は Epic Branch 向けであったか）"
+    - "exclusive_files（stubs.py）の直列化方針に沿っているか"
+
+acceptance_check:
+  use_epic_acceptance_criteria: true
+  additional_criteria:
+    - "child_task_areas（wiring / integration-test）の成果が Epic diff に含まれる"
+    - "OpenAPI / generated / DB migration の変更が含まれない"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "Epic acceptance_criteria を満たしている"
+      - "epic_scope 外の変更がない"
+      - "子 Task 成果の横断整合に Blocker がない"
+      - "テスト・検証結果の記載が十分である"
+  request_changes:
+    conditions:
+      - "epic_scope.forbidden_paths への変更が混入している"
+      - "配線とテストの矛盾がある"
+      - "子 Task 未完了の成果が含まれている"
+  needs_human_decision:
+    conditions:
+      - "test_orchestrator_integration.py の充足状況（§8.4.3）について判断が必要"
+  blocked:
+    conditions:
+      - "Epic diff を確認できない"
+      - "secret 漏えいの疑いがある"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "medium"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  tasks:
+    - "prompts/definitions/tasks/mod-reco-001-wiring-user-meaning/wiring.yaml"
+    - "prompts/definitions/tasks/mod-reco-001-wiring-user-meaning/integration-test.yaml"
+
+notes:
+  - "Epic Issue #788"
+  - "review.target.pr / input.pr.number は /create-pr 成功後に実 PR 番号へ反映する"
+  - "Epic PR 本文には Closes #788 を記載する"

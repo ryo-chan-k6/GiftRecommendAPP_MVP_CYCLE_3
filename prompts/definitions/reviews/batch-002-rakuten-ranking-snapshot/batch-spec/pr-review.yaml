@@ -1,0 +1,97 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-002-rakuten-ranking-snapshot-batch-spec-pr"
+  title: "BATCH-002 楽天ランキングスナップショット取得バッチ仕様書 PRレビュー"
+  summary: "BATCH-002 バッチ仕様書 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1193-batch-002-rakuten-ranking-snapshot-batch-spec"
+  base: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+  target: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+  worktree_required: true
+
+target:
+  pr: 1194
+  issue: null
+  task_definition: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/batch-spec.yaml"
+  source_branch: "docs/task-1193-batch-002-rakuten-ranking-snapshot-batch-spec"
+  target_branch: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+  parent_epic_issue: "[Epic]BATCH-002:楽天ランキングスナップショット取得Batch"
+  parent_epic_branch: "feature/epic-1192-batch-002-rakuten-ranking-snapshot"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-002-rakuten-ranking-snapshot/batch-spec.yaml"
+    required: true
+  issue:
+    number: 1193
+    required: true
+  pr:
+    number: 1194
+    required: true
+  diff:
+    required: true
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      required: true
+      purpose: "成果物本体"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-002 正本との整合"
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "PR target が親 Epic Branch か"
+  docs:
+    - "バッチ処理一覧 BATCH-002 と矛盾していないか"
+    - "冪等キー・入出力・後続 BATCH-003 境界が明記されているか"
+  security:
+    - "secret / .env 実値がないか"
+
+notes:
+  - "Issue / PR / Branch 番号は /start-task・/create-pr 後に反映し status を ready へ更新する"
+  - "PR #1194 を反映済み"

@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-015-meaning-match-aggregator-implementation"
+  title: "MOD-RECO-015:Meaning Match Aggregator実装"
+  summary: "MOD-RECO-015（Meaning Match Aggregator）のモジュール仕様書に基づき、`apps/reco/src/reco/application/meaning-match-aggregator/**` にモジュール本体を実装する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-015:Meaning Match Aggregator"
+  epic_issue_number: 904
+  epic_branch: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  related_issues:
+    - number: 905
+      purpose: "MOD-RECO-015 モジュール仕様書 Task（PR #909 Epic merge 済み）"
+    - number: 908
+      purpose: "matching_config_id 整合（blocking 解消・PR #912 develop merge 済み）"
+  related_prs:
+    - number: 909
+      purpose: "#905 Epic merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  Epic 配下で MOD-RECO-015 モジュール仕様書 Task（#905）完了後、モジュール本体を `apps/reco/src/reco/application/meaning-match-aggregator/**` に実装する。
+  親 Epic Branch は develop（#906/#907/#908）を取り込み済み。仕様書は `matching_config_id` 版が正本。
+  上流 MOD-RECO-014 は `feature_match_result.entries[].matching_config_id` を出力し、MOD-RECO-003 は `config_versions` へ Matching 重みを解決済み。
+  Orchestrator（MOD-RECO-001）のポート契約に適合する実装とし、スタブ差し替えは別 Task または Orchestrator 側 wiring Task で扱う。
+
+objective: |
+  MOD-RECO-015 モジュール本体を実装し、モジュール仕様書の責務・入出力・例外方針を満たす。
+  単体テストの網羅的追加は後続 unit-test Task に委譲する。
+
+scope:
+  - "`apps/reco/src/reco/application/meaning-match-aggregator/**` へのモジュール本体実装"
+  - "Orchestrator ポート（PipelineModulePort 等）に適合する公開 I/F"
+  - "必要最小限の domain / infrastructure 利用（epic_scope 内）"
+  - "実装スモークテスト（最小限）"
+
+out_of_scope:
+  - "Orchestrator 本体のスタブ差し替え（別 Task）"
+  - "API-INT-002 エンドポイント層"
+  - "他 Recoモジュール本体"
+  - "OpenAPI / DB schema 変更"
+  - "網羅的単体テスト（unit-test Task）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-015_Meaning Match Aggregatorモジュール仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "ポート契約・呼び出し関係"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "モジュール責務境界"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/ports.py"
+      required: true
+      purpose: "下位モジュールポート契約"
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/application/meaning-match-aggregator/**"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-015 モジュール本体実装"
+  - "最小スモークテスト（任意・実装 PR 内）"
+
+acceptance_criteria:
+  - "`apps/reco/src/reco/application/meaning-match-aggregator/**` に実装がある"
+  - "モジュール仕様書と矛盾しない"
+  - "apps/reco/src/reco/api/** を変更していない"
+  - "他 MOD 本体ディレクトリを変更していない"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  summary: "mod-reco-015-meaning-match-aggregator-implementation"
+  name: "feature/task-913-mod-reco-015-meaning-match-aggregator-implementation"
+  base: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  target: "feature/epic-904-mod-reco-015-meaning-match-aggregator"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+
+issue:
+  number: 913
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 905
+      purpose: "モジュール仕様書 Task 完了（blocking）"
+    - number: 908
+      purpose: "matching_config_id 整合完了（blocking 解消）"
+    - number: 904
+      purpose: "親 Epic"
+  prs:
+    - number: 909
+      purpose: "#905 Epic merge"
+    - number: 912
+      purpose: "#908 develop merge"
+  tasks:
+    - "task-mod-reco-015-meaning-match-aggregator-module-spec"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-015-meaning-match-aggregator-module-spec"
+  exclusive_files:
+    - "apps/reco/src/reco/application/meaning-match-aggregator/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "typecheck"
+    - "unit test（最小スモーク）"
+    - "secret check"
+  commands:
+    - "cd apps/reco && python -m compileall src/reco/application/meaning-match-aggregator"
+  not_required:
+    - "integration test"
+  skip_reason:
+    "integration test": "下位モジュール単体のため後続または API-INT 接続後"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "モジュール仕様書との整合"
+    - "Orchestrator ポート契約との整合"
+    - "epic_scope 内に差分が収まっているか"
+    - "matching_config_id / config_versions 重み参照の整合（#908 後）"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+
+notes:
+  - "Issue #913 本文を起票正本とする"
+  - "workstream: mod-reco-015-meaning-match-aggregator"
+  - "親 Epic Branch develop 取り込み済み（merge 9c9428c）"

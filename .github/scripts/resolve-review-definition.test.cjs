@@ -240,6 +240,58 @@ test("resolveReviewDefinitionFromTaskPath: workstream review 慣例パスを解�
   assert.equal(result.source, "workstream_review_convention");
 });
 
+test("taskNamedReviewConventionPath: tasks/<ws>/<name>.yaml から reviews/<ws>/<name>/pr-review.yaml を返す", () => {
+  assert.equal(
+    resolver.taskNamedReviewConventionPath(
+      "prompts/definitions/tasks/api-pub-002-recommendation-run/router-mount.yaml",
+    ),
+    "prompts/definitions/reviews/api-pub-002-recommendation-run/router-mount/pr-review.yaml",
+  );
+});
+
+test("resolveReviewDefinitionFromTaskPath: task-named review を workstream 直下より優先する", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-review-named-"));
+  const taskPath = "prompts/definitions/tasks/api-pub-002-recommendation-run/router-mount.yaml";
+  const namedReview =
+    "prompts/definitions/reviews/api-pub-002-recommendation-run/router-mount/pr-review.yaml";
+  const workstreamReview =
+    "prompts/definitions/reviews/api-pub-002-recommendation-run/pr-review.yaml";
+  write(path.join(root, taskPath), 'definition_type: "task"\n');
+  write(
+    path.join(root, namedReview),
+    `definition_type: "review"\ntarget:\n  task_definition: "${taskPath}"\n`,
+  );
+  write(
+    path.join(root, workstreamReview),
+    'definition_type: "review"\ntarget:\n  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/api-contract-spec.yaml"\n',
+  );
+
+  const result = resolver.resolveReviewDefinitionFromTaskPath(taskPath, root);
+  assert.equal(result.ok, true);
+  assert.equal(result.path, namedReview);
+  assert.equal(result.source, "task_named_review_convention");
+});
+
+test("extractTargetIssueNumber / extractTargetPrNumber: branch.target があってもトップレベル target を読む", () => {
+  const content = [
+    'definition_type: "review"',
+    "branch:",
+    '  target: "develop"',
+    "target:",
+    "  pr: 1143",
+    "  issue:",
+    "    number: 1138",
+    '  task_definition: "prompts/definitions/tasks/api-pub-002-recommendation-run/router-mount.yaml"',
+  ].join("\n");
+
+  assert.equal(resolver.extractTargetIssueNumber(content), 1138);
+  assert.equal(resolver.extractTargetPrNumber(content), 1143);
+  assert.equal(
+    resolver.extractTaskDefinitionPath(content),
+    "prompts/definitions/tasks/api-pub-002-recommendation-run/router-mount.yaml",
+  );
+});
+
 test("resolveReviewDefinition: Task Branch は target.issue / target.pr で一意解決する", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "resolve-review-task-"));
   write(

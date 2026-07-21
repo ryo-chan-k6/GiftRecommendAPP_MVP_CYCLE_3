@@ -1,0 +1,147 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-014-embedding-input-hash-implementation"
+  title: "BATCH-014:Embedding入力hash算出Batch実装"
+  summary: "BATCH-014 を scaffold-first 実装する。item_text_context 構築 + SHA-256 hash 算出、IF-DB-BATCH-015 handoff、item_embedding 非 DML（BATCH-015 責務）、独立 workflow を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-014:Embedding入力hash算出Batch"
+  epic_issue_number: 1467
+  epic_branch: "feature/epic-1467-batch-014-embedding-input-hash"
+  related_issues:
+    - number: 1468
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1469
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  仕様書 #1468 / PR #1469 Epic Branch merge 済み。§18.1 で IF 区別 / hash 方式 / skip / item_embedding 非 DML を確定。
+
+objective: |
+  scaffold-first 実装と batch-embedding-input-hash.yml を整備する。
+
+scope:
+  - "item_text_context 構築（MVP は item_text_context 固定・Semantic Concept 非包含）"
+  - "canonicalize + SHA-256（64hex）で embedding_input_hash 算出"
+  - "IF-DB-BATCH-015 handoff（in-memory）。item_embedding へ DML しない"
+  - "§9.4 skip（item_id + model_version_id + embedding_input_hash の Embedding 生成済み）"
+  - "Queue（embedding claim / semantic·feature 継続 processing 維持）"
+  - "config BATCH_EMBEDDING_INPUT_HASH_*"
+  - "batch-embedding-input-hash.yml"
+  - "最小 UT"
+
+out_of_scope:
+  - "item_embedding への物理 DML / Item Embedding 生成本体（BATCH-015）"
+  - "feature 正規化（BATCH-013）/ feature_input_hash（BATCH-011）"
+  - "apps/reco 本体変更"
+  - "親 meaning-generation 全体改修 / 接続タイミング確定"
+  - "OpenAPI / migration / generated 変更"
+  - "実 DB 配線"
+  - "包括的 UT Task"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-014_Embedding入力hash算出バッチ仕様書.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/batch/src/batch/application/embedding_input_hash/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-embedding-input-hash.yml"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "modify"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_embedding_input_hash.py"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "主要 Phase が追跡できる"
+  - "context→hash・skip・IF 境界を UT 検証"
+  - "item_embedding へ書込しない"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+
+branch:
+  no_branch: false
+  name: "feature/task-1470-batch-014-embedding-input-hash-implementation"
+  summary: "batch-014-embedding-input-hash-implementation"
+  base: "feature/epic-1467-batch-014-embedding-input-hash"
+  target: "feature/epic-1467-batch-014-embedding-input-hash"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1470
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+    - ".github/workflows/batch-embedding-input-hash.yml"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-014 最小）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_embedding_input_hash.py -q --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-015 と IF-DB-BATCH-014（BATCH-013）の区別"
+    - "item_embedding 非 DML（BATCH-015 責務）"
+    - "embedding_input_hash が canonicalize + SHA-256 で決定論的"
+    - "MVP は item_text_context 固定・Semantic Concept 非包含"
+    - "skip（item_id + model_version_id + embedding_input_hash）実装"
+    - "apps/reco 本体・generated 非変更"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Issue #1470"

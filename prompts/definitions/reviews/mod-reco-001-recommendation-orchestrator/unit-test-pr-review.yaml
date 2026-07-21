@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-001-recommendation-orchestrator-unit-test-pr"
+  title: "MOD-RECO-001 Recommendation Orchestrator単体テスト PRレビュー"
+  summary: "Issue #771 Task（Recommendation Orchestrator 単体テスト）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: "#772"
+  issue: "#771"
+  task_definition: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/unit-test.yaml"
+  source_branch: "test/task-771-mod-reco-001-recommendation-orchestrator-unit-test"
+  target_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  parent_epic_issue: "#260"
+  parent_epic_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/unit-test.yaml"
+    required: true
+  issue:
+    number: 771
+    required: true
+  pr:
+    number: 772
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§14 テスト観点（unit / integration 境界）とのカバレッジ整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md"
+      required: true
+      purpose: "§5.2 処理順序テストとの整合確認"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: false
+      purpose: "§17.2 汎用 Reason 文（fallback 期待値）との整合確認"
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: false
+      purpose: "GRS-REC-* 期待値との整合確認"
+  files:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "主テストスイート"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition（unit-test.yaml）の scope を満たしているか"
+    - "out_of_scope（integration test / API-INT-002 層 / 他 MOD 本体 / OpenAPI / DB）の変更が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR本文に §14 unit 観点とテストケースの対応表が記載されているか"
+    - "PR本文に変更内容、検証結果、未実施事項（integration 観点）が記載されているか"
+    - "Task PR で Related to #771 を使用し Closes を使っていないか"
+    - "PR target が親 Epic Branch であるか"
+  tests:
+    - "モジュール仕様書 §14 の unit 観点（No.1〜9, 12, 13）がテストケースとしてカバーされているか"
+    - "既存 4 スモークテストが維持・成功しているか"
+    - "スタブ前提で安定して再現可能か（本番 DB / 外部 API 非依存）"
+    - "integration 観点（No.10, 11, 14）を unit で無理に検証していないか"
+    - "失敗注入テストが実装詳細に過度に結合していないか"
+    - "pytest 実行結果が PR に記載されているか"
+  security:
+    - "secret や .env 実値がテスト fixture に含まれていないか"
+  epic_scope:
+    - "差分が Orchestrator 単体テスト・関連 definition に限定されているか"
+    - "apps/reco/src/reco/api/** への変更が含まれていないか"
+    - "Orchestrator 本体の変更がテスト成立に必要な最小限か"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR本文に §14 unit 観点カバレッジ対応表がある"
+    - "integration 観点の未実施理由が明記されている"
+    - "Human Reviewで確認してほしい事項が明記されている"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "§14 unit 観点のカバレッジが過不足ない"
+      - "修正必須事項がない"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "§14 unit 観点のカバレッジ不足がある"
+      - "テストが不安定または本番依存になっている"
+      - "検証結果・対応表の記載不足がある"
+  needs_human_decision:
+    conditions:
+      - "§14 unit / integration 境界の解釈判断が必要"
+      - "テスト成立のための Orchestrator 本体変更の妥当性判断が必要"
+      - "epic_scope.allowed_paths と tests パスの整合判断が必要"
+  split_required:
+    conditions:
+      - "Orchestrator 本体の機能追加・大規模リファクタが混在している"
+      - "API-INT-002 エンドポイント層の変更が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "secret や .env 実値の混入が疑われる"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "reco"
+
+dependencies:
+  tasks:
+    - "prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/unit-test.yaml"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/mod-reco-001-recommendation-orchestrator/unit-test.yaml"
+  - "review.target.pr / input.pr.number は /create-pr 後に反映"

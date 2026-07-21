@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-ui-e2e-soak-tracking"
+  title: "レーン1e:UI E2E soak進捗トラッキング整備"
+  summary: "#1471 で採用した required 昇格前 soak（2週間かつ10PR・flake0）を追いやすくするため、test-ui-e2e.yml の集計スクリプトと実験ログを整備する。required 設定変更は行わない。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/summarize-work"
+  next:
+    success: null
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1471 / #1472 で ui-e2e-gate を追加し、required 昇格は soak（2週間かつ10PR flake0）後の Human 判断とした。
+  soak 期間中の進捗を手動で追うと漏れやすいため、gh 集計スクリプトと実験ログを整備する。
+
+objective: |
+  scripts/ops/summarize-ui-e2e-soak.sh で test-ui-e2e.yml の実行を集計できるようにし、
+  ai-logs/experiments に soak 進捗ログを正本化する。自動昇格はしない。
+
+scope:
+  - "scripts/ops/summarize-ui-e2e-soak.sh を追加"
+  - "scripts/ops/README.md に用法を追記"
+  - "ai-logs/experiments/2026-07-20-ui-e2e-required-soak.md を追加（初回スナップショット含む）"
+  - "ai-logs/human-decisions/2026-07-20-ui-e2e-required-promotion-plan.md の状態欄に soak 観測手段を追記"
+  - "Epic / Review 定義"
+
+out_of_scope:
+  - "branch protection での required 設定変更"
+  - "soak 完了の自動確定・自動昇格"
+  - "Slack 自動通知の新設"
+  - "S2〜S8 の自動化"
+  - "apps/web / api / reco / batch のロジック変更"
+  - ".github/workflows/test-ui-e2e.yml の挙動変更"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-07-20-ui-e2e-required-promotion-plan.md"
+      required: true
+    - path: ".github/workflows/test-ui-e2e.yml"
+      required: true
+  issues:
+    - number: 1483
+      purpose: "本 Epic"
+    - number: 1471
+      purpose: "required 昇格準備（gate / 方針）"
+  prs:
+    - number: 1472
+      purpose: "ui-e2e-gate 導入（soak 開始）"
+    - number: 1478
+      purpose: "Node 24 復帰（環境変化）"
+
+output:
+  docs: []
+  files:
+    - "scripts/ops/summarize-ui-e2e-soak.sh"
+    - "scripts/ops/README.md"
+    - "ai-logs/experiments/2026-07-20-ui-e2e-required-soak.md"
+    - "ai-logs/human-decisions/2026-07-20-ui-e2e-required-promotion-plan.md"
+    - "prompts/definitions/epics/lane-1e-ui-e2e-soak-tracking/epic.yaml"
+    - "prompts/definitions/reviews/lane-1e-ui-e2e-soak-tracking/epic/pr-review.yaml"
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/2026-07-20-ui-e2e-required-soak.md"
+
+deliverables:
+  - "soak 集計スクリプト"
+  - "soak 進捗実験ログ（初回スナップショット付き）"
+
+acceptance_criteria:
+  - "summarize-ui-e2e-soak.sh が gh + python3 で実行でき、S1 実行 PR 数 / flake / 経過日を表示する"
+  - "実験ログに基準・since・カウント定義・初回スナップショットが記載されている"
+  - "required 設定変更を AI が行っていない"
+  - "test-ui-e2e.yml / apps ロジックに変更がない"
+
+branch:
+  no_branch: false
+  name: "test/epic-1483-lane-1e-ui-e2e-soak-tracking"
+  summary: "lane-1e-ui-e2e-soak-tracking"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-20"
+    due_date: "2026-08-03"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "web"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "scripts/ops/**"
+    - "ai-logs/experiments/2026-07-20-ui-e2e-required-soak.md"
+    - "ai-logs/human-decisions/2026-07-20-ui-e2e-required-promotion-plan.md"
+    - "prompts/definitions/epics/lane-1e-ui-e2e-soak-tracking/**"
+    - "prompts/definitions/reviews/lane-1e-ui-e2e-soak-tracking/**"
+  forbidden_paths:
+    - ".github/workflows/test-ui-e2e.yml"
+    - "apps/**"
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+  child_task_areas: []
+
+dependencies:
+  epics:
+    - issue: 1471
+      title: "[Epic]レーン1e:UI E2E required昇格準備（gateジョブ・soak）"
+      purpose: "soak 基準の前提"
+  issues: []
+  prs:
+    - number: 1472
+      title: "ui-e2e-gate 導入"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "scripts/ops/summarize-ui-e2e-soak.sh"
+    - "ai-logs/experiments/2026-07-20-ui-e2e-required-soak.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "script smoke"
+  commands:
+    - "./scripts/ops/summarize-ui-e2e-soak.sh --limit 20"
+  manual_checks:
+    - "スクリプトが error なく要約を出力すること"
+    - "S1 skipped の PR を 10 PR カウントに含めないこと"
+  not_required: []
+  skip_reason: {}
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "カウント定義が human-decision の soak 基準と整合しているか"
+    - "cancelled を flake に含めない判断が明示されているか"
+    - "required 自動昇格をしていないか"
+    - "test-ui-e2e.yml / apps に変更がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "soak 観測の運用検証ログ"
+
+notes:
+  - "Issueタイトル: [Epic]レーン1e:UI E2E soak進捗トラッキング整備"
+  - "判定ヒントは自動決定ではない。required 昇格は Human 判断"
+  - "Epic ブランチで直接作業し develop へ PR する軽量構成"

@@ -1,0 +1,269 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-004-rakuten-existing-item-recheck"
+  title: "BATCH-004:楽天既存商品再確認Batch"
+  summary: "BATCH-004（楽天既存商品再確認Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。登録済み商品を楽天商品検索APIで再確認し Raw JSON と active_status 候補を残す Fetch チェーン第4段。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b Batch 並列レーン B1（Fetch）の第4段。実装フェーズ並列計画に従い、識別子単位 Epic（1 Batch ID = 1 Epic）として bootstrap する。
+  先行 BATCH-001〜003 は develop merge 済み（#1161 / #1192 / #1207）。
+  登録済み Item の external_item_code を fetch_cursor（cursor_type=recheck）で走査し、商品検索APIで現在値を Raw 保存する。
+  Batch は HTTP API 化しないため Contract Gate は不要。
+  前提: Phase4a batch-foundation（#734）CLOSED。
+
+objective: |
+  BATCH-004 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: バッチ仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-004 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/**）を整理する"
+  - "Contract Gate 不要方針を明示する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001 / 002 / 003 / 005〜019）の仕様書・実装・テスト（先行・共有 client は参照のみ）"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）・Reco・DB schema / migration"
+  - "本番リリース作業"
+  - "楽天 API 契約変更そのもの"
+  - "BATCH-005 以降の Staging / Item 反映・active_status 本更新（BATCH-008）の詳細実装"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-004 の Batch ID・処理概要・入出力・依存・MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "実行方式・Raw/Staging・ログ方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "existing-item-recheck 系 workflow との関係を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "既存商品再確認方針・itemCode 指定取得を確認するため"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b Batch 縦串・並列方針を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / バッチ Task 命名規約を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-004:楽天既存商品再確認Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（バッチ仕様書 / 実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-004:楽天既存商品再確認Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が BATCH-004 の責務範囲と整合している"
+  - "epic_scope.artifact_id が BATCH-004 である"
+
+branch:
+  no_branch: false
+  summary: "batch-004-rakuten-existing-item-recheck"
+  name: "feature/epic-1222-batch-004-rakuten-existing-item-recheck"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-14"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-004"
+  # Human: accompanying Epic #1227 を本 Epic Branch にスタック取込済み（PR #1276）。
+  # develop 統合 Epic PR では #1227 成果物を本 Epic 差分に含めるため allowed_paths を拡張する。
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/**"
+    - "docs/06_実装設計/batch/BATCH-004_*"
+    - "docs/06_実装設計/batch/BATCH-008_*"
+    - "docs/06_実装設計/batch/item_active_status_candidate_*"
+    - "docs/06_実装設計/database/**"
+    - "db/ddl/**"
+    - "supabase/migrations/**"
+    - "packages/code-definitions/**"
+    - "apps/batch/src/batch/application/item_recheck/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - "apps/batch/src/batch/infrastructure/object_storage/**"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-rakuten-existing-item-recheck*.yml"
+    - "prompts/definitions/epics/batch-004-rakuten-existing-item-recheck/**"
+    - "prompts/definitions/tasks/batch-004-rakuten-existing-item-recheck/**"
+    - "prompts/definitions/reviews/batch-004-rakuten-existing-item-recheck/**"
+    - "prompts/definitions/epics/item-active-status-candidate/**"
+    - "prompts/definitions/tasks/item-active-status-candidate/**"
+    - "prompts/definitions/reviews/item-active-status-candidate/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "apps/batch/src/batch/application/genre_sync/**"
+    - "apps/batch/src/batch/application/ranking_snapshot/**"
+    - "apps/batch/src/batch/application/item_pseudo_diff/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 734
+      title: "[Epic]batch-foundation:Batch共通基盤"
+      purpose: "Phase4a Batch 共通基盤（CLOSED）"
+    - issue: 1207
+      title: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
+      purpose: "先行 Fetch（item_search scaffold 共有）。develop merge 済み"
+    - issue: 1227
+      title: "[Epic]item_active_status_candidate:active_status候補テーブル整備"
+      purpose: "候補テーブル / IF / BATCH-008 Reader·Applier / Retention。本 Epic Branch へ stack merge 済み（PR #1276）"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-003-rakuten-item-pseudo-diff"
+    - "epic-item-active-status-candidate"
+  blocks:
+    - "epic-batch-005-raw-staging"
+  exclusive_files: []
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope（Batch 1 つ分）が広すぎないか確認する"
+    - "依存 Epic BATCH-003 が CLOSED であることを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic の作業範囲が BATCH-004 + 付随 #1227 スタックに閉じているか"
+    - "epic_scope.allowed_paths がバッチ処理一覧 BATCH-004 と付随候補テーブル成果と整合しているか"
+    - "Contract Gate 不要方針との整合"
+    - "Epic PR target が develop であるか"
+    - "migration / DDL が意図した item_active_status_candidate のみか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch Epic の初期 bootstrap"
+
+contract_gate:
+  required: false
+
+risk_points:
+  - "Task PR を誤って develop へ直接向ける運用ミス"
+  - "existing-item-recheck 親 workflow 全体を本 Epic で改修し BATCH-005 以降と競合する"
+  - "rakuten client を他 Batch Epic と同時編集する競合"
+  - "Item 正本や active_status 本更新を本 Batch で実施してしまう境界逸脱"
+
+human_decision_points:
+  - "子 workflow を独立 YAML（batch-rakuten-existing-item-recheck）とするか、親 workflow 内ステップのみとするか"
+  - "active_status 候補の保存先（ログ / Raw metadata 補助 / 専用中間）の具体形式"
+  - "再確認対象の選定（全 active Item / 優先度付き部分集合）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "バッチ処理一覧に BATCH-004 が無い、または MVP 対象外の場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "OpenAPI / generated 変更が必要になった場合"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位。成果物正本は子 Task"
+  - "workstream_key: batch-004-rakuten-existing-item-recheck"
+  - "fetch_cursor cursor_type=recheck は本 Batch 専任（BATCH-003 は消費しない）"
+  - "Epic Issue #1222 / Branch feature/epic-1222-batch-004-rakuten-existing-item-recheck（/start-epic 反映済み）"

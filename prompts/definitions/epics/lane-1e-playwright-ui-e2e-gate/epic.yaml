@@ -1,0 +1,203 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-playwright-ui-e2e-gate"
+  title: "レーン1e:Playwright UI E2E（S1）CIゲート化"
+  summary: "D2 で導入した Playwright S1 smoke を GHA 上で自動実行する workflow を新設する。段階導入（方針B）として、S1 主導線の path 変更 PR・ラベル ui-e2e 付与 PR・nightly・workflow_dispatch で実行する。既存 test-system.yml のスタック起動を踏襲する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/summarize-work"
+  next:
+    success: null
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  D2（Epic #1438）で Playwright S1 happy path を導入し、follow-up（#1457）で実測 PASS 証跡を反映した。
+  ただし CI での自動実行は未整備。既存 test-system.yml（Layer2 API E2E）は ephemeral Supabase + Redis + api + reco を
+  GHA runner で起動する完成した雛形だが workflow_dispatch 専用。本 Epic はその上に web + Playwright を積み、
+  UI 主導線 S1 のデグレを CI で検知できるようにする。
+
+objective: |
+  GHA runner 上で ephemeral Supabase + Redis + api + reco + web を起動し、Playwright S1 happy path を
+  自動実行する workflow を新設する。段階導入（方針B）として heavy job の実行対象を S1 主導線に絞り、
+  S1 が skip されず実行されたことを検証する。
+  実行トリガは (a) S1 主導線 path 変更 PR、(b) ラベル ui-e2e 付与 PR（強制実行）、(c) nightly（schedule）、
+  (d) workflow_dispatch とする。
+
+scope:
+  - ".github/workflows/test-ui-e2e.yml 新設（test-system.yml のスタック起動を踏襲）"
+  - "decide ジョブによる実行判定（dorny/paths-filter@v3, ci.yml と同方式）"
+  - "S1 主導線 path 絞り込み（recommendations 画面 / 入力・結果 feature / API client / generated / contracts / e2e / 本 workflow）"
+  - "ラベル ui-e2e 付与 PR の強制実行（opt-in）と nightly（schedule）実行"
+  - "Playwright browser install（--with-deps chromium）"
+  - "web build + start + readiness 待機、WEB_BASE_URL / API_BASE_URL / RECO_BASE_URL 連携"
+  - "S1 が skip されず passed したことの検証ステップ"
+  - "playwright-report / results / runtime logs の artifact 化"
+
+out_of_scope:
+  - "S2〜S8 の自動化"
+  - "branch protection での必須(required/blocking)化（Human 判断・repo設定）"
+  - "全 apps/web / packages 変更での無条件実行（段階導入のため主導線に限定）"
+  - "apps/api / apps/reco / apps/batch / OpenAPI / migration のロジック変更"
+  - "secret 実値の追加"
+
+input:
+  docs:
+    - path: ".github/workflows/test-system.yml"
+      required: true
+    - path: "apps/web/playwright.config.ts"
+      required: true
+    - path: "apps/web/e2e/s1-recommendation-happy-path.spec.ts"
+      required: true
+  issues:
+    - number: 1464
+      purpose: "本 Epic"
+    - number: 1438
+      purpose: "D2 本体（Playwright 導入・マージ済み）"
+    - number: 1426
+      purpose: "Layer2 API E2E（test-system.yml, マージ済み）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - ".github/workflows/test-ui-e2e.yml"
+    - "prompts/definitions/epics/lane-1e-playwright-ui-e2e-gate/epic.yaml"
+    - "prompts/definitions/reviews/lane-1e-playwright-ui-e2e-gate/epic/pr-review.yaml"
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: ""
+
+deliverables:
+  - "test-ui-e2e.yml（UI E2E S1 自動実行）"
+
+acceptance_criteria:
+  - "GHA 上で ephemeral stack + web を起動し S1 happy path が passed する"
+  - "S1 が skip された場合は job が fail する（ゲートとして有効）"
+  - "S1 主導線 path 変更・ラベル ui-e2e・nightly・workflow_dispatch のいずれかで heavy job が起動する"
+  - "主導線外の PR かつ ラベルなしでは ui-e2e が skip される（decide.run=false / 無駄実行の抑制）"
+  - "playwright-report / logs が artifact として保存される"
+  - "secret 実値を含まない（mock のみ）"
+  - "PR 必須化は Human 判断事項として PR / Issue に明示されている"
+
+branch:
+  no_branch: false
+  name: "test/epic-1464-lane-1e-playwright-ui-e2e-gate"
+  summary: "lane-1e-playwright-ui-e2e-gate"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-19"
+    due_date: "2026-08-02"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "web"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - ".github/workflows/test-ui-e2e.yml"
+    - "prompts/definitions/epics/lane-1e-playwright-ui-e2e-gate/**"
+    - "prompts/definitions/reviews/lane-1e-playwright-ui-e2e-gate/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+  child_task_areas: []
+
+dependencies:
+  epics:
+    - issue: 1438
+      title: "[Epic]レーン1e:Playwright自動E2E（D2）"
+      purpose: "Playwright 導入本体"
+    - issue: 1426
+      title: "[Epic]gha-test-environment:Layer2 API E2E本格化"
+      purpose: "CI スタック起動雛形（test-system.yml）"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/test-ui-e2e.yml"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "gha ui e2e s1"
+  commands:
+    - "workflow_dispatch: Test UI E2E (Layer3)"
+  manual_checks:
+    - "ubuntu runner + --with-deps で playwright CLI がハングせず S1 が passed すること"
+    - "S1 skip 時に Verify ステップで fail すること"
+  not_required: []
+  skip_reason: {}
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "workflow が既存 test-system.yml のスタック起動と整合しているか"
+    - "S1 skip を fail にする検証が有効か（false green 防止）"
+    - "secret 実値を含まないか（mock のみ / permissions: contents: read）"
+    - "必須(required)化を AI が独断で行っていないか（Human 判断として明示）"
+    - "apps/api / reco / batch / OpenAPI / migration に変更がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "CI/CD 横断影響（workflow 追加）"
+
+notes:
+  - "Issueタイトル: [Epic]レーン1e:Playwright UI E2E（S1）CIゲート化"
+  - "段階導入（方針B）: 主導線 path 変更 PR / ラベル ui-e2e / nightly / workflow_dispatch で実行。全 web 変更での無条件実行はしない"
+  - "ラベル ui-e2e はリポジトリに用意しておくと opt-in 強制実行が使える（未作成でも path/nightly/dispatch は動作）"
+  - "PR 必須(required/blocking)化は branch protection 設定であり Human 判断（本 Epic では workflow 実装と可視化まで）"
+  - "Node 24 化は Playwright 1.53+ 追随の別 Issue（本 Epic では runner を LTS 22 に固定）"
+  - "Epic ブランチで直接作業し develop へ PR する軽量構成"

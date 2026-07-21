@@ -70,6 +70,7 @@ DDL Task では CHECK 制約または PostgreSQL ENUM 型名に **論理 ID** �
 | Source API | `source_api` | batch | raw_product_metadata / api_call_log 等 | `yes` | id: `source_api`。Issue #506 |
 | Product Diff Status | `diff_status` | state | Staging / Diff | `yes` | |
 | Item Active Status | `active_status` | state | Item | `yes` | |
+| Item Active Status Candidate Status | `candidate_status` | state | item_active_status_candidate | `yes` | id: `item_active_status_candidate_status`。Issue #1229 |
 | Item Generation Queue Status | `queue_status` | state | Batch | `yes` | |
 | Evaluation Run Status | `evaluation_status` | state | Evaluation | `yes` | |
 | Recommendation Request Mode | `request_mode` | application | Request | `yes` | ドメイン docs では `mode` |
@@ -395,6 +396,17 @@ Recommendation Feedback定義書 §5.2・API-PUB-004 §6.4.1・`recommendation_f
 | `result_bad` | 推薦全体が微妙 | 推薦結果全体が不適切 | `result` | `yes` | |
 | `comment` | 自由コメント | 定性コメント中心 | `result` / `item` / `reason` | `yes` | |
 
+### 6.27 Item Active Status Candidate Status (`item_active_status_candidate_status`)
+
+BATCH-004 §18.1.1 / `item_active_status_candidate_テーブル定義書` §11 を正とする。
+
+| 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
+| -- | ------ | ---- | -------- | ----------- | ---- |
+| `detected` | 検知済 | BATCH-004 が候補を検出済み（未適用） | Writer upsert | `yes` | Retention 削除対象外 |
+| `applied` | 適用済 | BATCH-008 が `item.active_status` に適用済み | Applier 成功 | `yes` | 終端。14 日 Retention |
+| `superseded` | 置換 | 競合解決または後続候補で不採用 | Applier | `yes` | 終端。14 日 Retention |
+| `discarded` | 破棄 | 適用対象外として破棄 | Applier / 運用 | `yes` | 終端。14 日 Retention |
+
 ---
 
 ## 7. DB利用箇所
@@ -424,6 +436,8 @@ Recommendation Feedback定義書 §5.2・API-PUB-004 §6.4.1・`recommendation_f
 | `fetch_cursor` | `source_api` | `source_api` | NOT NULL | fetch_cursor 定義書 §10。MVP CHECK は `item_search` のみ |
 | `product_diff_result` | `diff_status` | `product_diff_status` | NOT NULL | `product_diff_result_テーブル定義書` §11 |
 | `staging_item` | `diff_status` | `product_diff_status` | NULL可 | `staging_item_テーブル定義書` §17.1 No.4。正本は `product_diff_result`（`product_diff_result_テーブル定義書` §11.2） |
+| `item_active_status_candidate` | `candidate_status` | `item_active_status_candidate_status` | NOT NULL | `item_active_status_candidate_テーブル定義書` §11。Issue #1229 |
+| `item_active_status_candidate` | `candidate_active_status` | `item_active_status` | NOT NULL | 同上。適用候補値 |
 | `item` | `active_status` | `item_active_status` | NOT NULL | |
 | `item_generation_queue` | `queue_status` | `item_generation_queue_status` | NOT NULL | |
 | `item_generation_queue` | `generation_type` | `item_generation_type` | NOT NULL | Human Review 確定 |

@@ -611,6 +611,17 @@ out_of_scope:
 | 必須 | yes                                     |
 | 注意 | scope外作業の混入を防ぐため必ず記載する |
 
+### 14.1 `MOD-RECO-*` implementation Task の Orchestrator 配線（Reco 共通）
+
+正本は `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` §8.4。
+
+| 項目 | 記載方針 |
+| ---- | -------- |
+| モジュール本体 | `scope` にモジュールディレクトリ実装を記載 |
+| Orchestrator 統合テスト | `scope` に明示 DI による 1 本以上を推奨 |
+| `stubs.py` 差し替え | 原則 `out_of_scope`（**起動フェーズ `002`/`003` は例外**） |
+| フェーズ Wiring | 別 Task（`MOD-RECO-001` Epic またはフェーズ代表 Epic） |
+
 ---
 
 ## 15. `input`

@@ -1,0 +1,59 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-003-rakuten-item-pseudo-diff-epic-pr"
+  title: "BATCH-003 楽天商品疑似差分取得Batch Epic PRレビュー"
+  summary: "BATCH-003 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1219
+  issue:
+    number: 1207
+  task_definition: "prompts/definitions/epics/batch-003-rakuten-item-pseudo-diff/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]BATCH-003:楽天商品疑似差分取得Batch"
+  parent_epic_branch: "feature/epic-1207-batch-003-rakuten-item-pseudo-diff"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/batch-003-rakuten-item-pseudo-diff/epic.yaml"
+    required: true
+
+review_points:
+  - "scope / epic_scope.allowed_paths 整合"
+  - "BATCH-003 以外の Batch 実装が混入していないか"
+  - "packages/contracts / generated 非手編集"
+  - "Contract Gate 不要方針との整合"
+  - "secret 非含有"
+  - "Epic PR target が develop であるか"
+
+notes:
+  - "Epic PR #1219 / develop 向け / Issue #1207"

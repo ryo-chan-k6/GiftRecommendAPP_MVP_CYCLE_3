@@ -1,0 +1,183 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-014-embedding-input-hash-batch-spec"
+  title: "BATCH-014:Embedding入力hash算出バッチ仕様書作成"
+  summary: "BATCH-014（Embedding入力hash算出Batch）のバッチ仕様書を作成し、IF-DB-BATCH-015・item_text_context 構築・embedding_input_hash 算出・handoff / Queue 境界を正本化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-014:Embedding入力hash算出Batch"
+  epic_issue_number: 1467
+  epic_branch: "feature/epic-1467-batch-014-embedding-input-hash"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase4b Embedding 入力 hash 算出段。Epic #1467 bootstrap 済み。BATCH-013 develop merge 済み（#1455 / PR #1466）。
+  hash 算出枠組みは BATCH-011（Feature入力hash）を踏襲。専用仕様書は未着手。Contract Gate 不要。
+
+objective: |
+  BATCH-014 バッチ仕様書を作成し、後続実装・UT の入力正本とする。
+
+scope:
+  - "BATCH-014_Embedding入力hash算出バッチ仕様書.md 新規作成"
+  - "IF-DB-BATCH-015 / IF-DB-BATCH-014（BATCH-013）混同防止と item_embedding DML 非担当"
+  - "item_text_context 構築（MVP は item_text_context 固定・Semantic Concept 非包含）"
+  - "embedding_input_hash 算出（canonicalize + SHA-256 64hex）"
+  - "skip・冪等・Queue・独立 workflow 提案"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Python 実装・workflow YAML 本体・UT"
+  - "item_embedding への物理 DML / Item Embedding 生成本体（BATCH-015）"
+  - "BATCH-015 以降 / apps/reco 破壊変更 / migration"
+  - "親 meaning-generation 全体改修"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/model_version_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-014_Embedding入力hash算出バッチ仕様書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-014-embedding-input-hash/batch-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-014-embedding-input-hash/batch-spec/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-014 バッチ仕様書"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "仕様書が作成されている"
+  - "IF-DB-BATCH-015 / IF-DB-BATCH-014（BATCH-013）の区別が明記されている"
+  - "item_embedding への物理 DML を行わず（BATCH-015 責務）SELECT のみである境界が明記されている"
+  - "embedding_input_hash が canonicalize + SHA-256（64hex）で算出される"
+  - "§18 で確定 / 残確認（Human）が区別されている"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1468-batch-014-embedding-input-hash-batch-spec"
+  summary: "batch-014-embedding-input-hash-batch-spec"
+  base: "feature/epic-1467-batch-014-embedding-input-hash"
+  target: "feature/epic-1467-batch-014-embedding-input-hash"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1468
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1467
+      title: "[Epic]BATCH-014:Embedding入力hash算出Batch"
+      purpose: "親 Epic"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-014_*"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-015 / IF-DB-BATCH-014（BATCH-013）混同がないか"
+    - "item_embedding への物理 DML を本 Batch に含めていないか（BATCH-015 責務）"
+    - "embedding_input_hash が canonicalize + SHA-256 で決定論的か"
+    - "MVP は item_text_context 固定・Semantic Concept 非包含か"
+  specialist_reviews:
+    docs: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+human_decision_points:
+  - "独立子 workflow（batch-embedding-input-hash.yml）採否（本仕様では提案・Human 確認要）"
+  - "item_text_context に含める具体項目範囲・整形ルール（本仕様では実装 Task で詳細化提案）"
+
+stop_conditions:
+  - "正本 docs 間で矛盾があり独断解消できない場合"
+
+notes:
+  - "Epic #1467"
+  - "Issue #1468"

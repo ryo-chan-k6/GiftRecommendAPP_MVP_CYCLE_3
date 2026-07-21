@@ -140,12 +140,16 @@ epic_scope:
   allowed_paths:
     - "docs/06_実装設計/api/API-PUB-003_*"
     - "apps/api/src/app/items/**"
+    - "apps/api/src/app.ts"
+    - "apps/api/tests/unit/app/items/**"
+    - "apps/api/tests/unit/app/app.mount.test.ts"
     - "packages/contracts/openapi/**"
     - "packages/contracts/schemas/**"
     - "apps/web/src/generated/api/**"
     - "apps/web/src/lib/**"
     - "prompts/definitions/tasks/api-pub-003-item-detail/**"
     - "prompts/definitions/reviews/api-pub-003-item-detail/**"
+    - "prompts/definitions/epics/api-pub-003-item-detail/**"
   forbidden_paths:
     - "apps/reco/**"
     - "apps/batch/**"

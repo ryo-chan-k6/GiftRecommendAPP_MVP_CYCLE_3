@@ -89,7 +89,7 @@ def test_recommendation_run_status_transition() -> None:
 
     updated = run.with_status(RunStatus.RUNNING)
 
-    assert run.status is RunStatus.PENDING
+    assert run.status is RunStatus.ACCEPTED
     assert updated.status is RunStatus.RUNNING
     assert updated.run_id == "run-1"
 

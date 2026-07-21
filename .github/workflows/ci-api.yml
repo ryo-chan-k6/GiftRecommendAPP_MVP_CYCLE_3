@@ -5,6 +5,7 @@ name: CI API Check
 #
 # 実行内容:
 #   pnpm --filter @gift-recommendation/api build（TypeScript build / typecheck）
+#     - apps/api/tsconfig.json は src/generated/reco-client を含む（NodeNext .js import 検証）
 #   pnpm --filter @gift-recommendation/api test（unit — node --test）
 #
 # apps/api に eslint 未整備のため lint は本 workflow 対象外（build で strict typecheck）。

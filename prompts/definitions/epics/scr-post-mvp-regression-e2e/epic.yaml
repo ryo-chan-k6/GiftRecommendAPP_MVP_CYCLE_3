@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-scr-post-mvp-regression-e2e"
+  title: "レーン1e:SCR-005〜007回帰E2E"
+  summary: "D1 完了後、SCR-005（points/detail）・SCR-006・SCR-007 の短い手動回帰をチェックリスト拡張と証跡で完了する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  D1（#1330）時点の S5 は要約展開まで、S7 は out of scope、Feedback は未カバー。
+  SCR-005〜007 と Public reasonPoints/reasonDetail が develop 到達後の短い回帰。
+
+objective: |
+  既存 D1 チェックリストを拡張し、S5' / S7 / S8（Feedback）を手動確認して証跡を残す。
+
+scope:
+  - "子 Task（execution）"
+  - "チェックリスト拡張"
+  - "experiments 証跡"
+  - "手順書追記"
+
+out_of_scope:
+  - "Playwright / CI 自動 E2E（D2）"
+  - "apps/** 機能改修（不具合時は別 Issue）"
+  - "BATCH-009〜"
+  - "OpenAPI / migration"
+  - "S1〜S4 全再実行の必須化"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/web/SCR-005_推薦理由詳細表示画面仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/web/SCR-007_Feedback入力表示画面仕様書.md"
+      required: true
+  templates: []
+  files: []
+  issues:
+    - number: 1418
+      purpose: "本 Epic Issue"
+  prs:
+    - number: 1425
+      purpose: "本 Epic PR"
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/experiments/"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（execution）"
+  - "チェックリスト回帰シナリオと合否"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "子 Task PR target が親 Epic Branch"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  name: "test/epic-1418-scr-post-mvp-regression-e2e"
+  summary: "scr-post-mvp-regression-e2e"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-17"
+    due_date: "2026-07-20"
+
+issue:
+  unit: "epic"
+  type: "test"
+  area: "web"
+
+epic_scope:
+  artifact_id: "E2E-SCR-POST"
+  allowed_paths:
+    - "docs/06_実装設計/cross_cutting/**"
+    - "ai-logs/experiments/**"
+    - "prompts/definitions/epics/scr-post-mvp-regression-e2e/**"
+    - "prompts/definitions/tasks/scr-post-mvp-regression-e2e/**"
+    - "prompts/definitions/reviews/scr-post-mvp-regression-e2e/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/**"
+  child_task_areas:
+    - "execution"
+
+dependencies:
+  epics:
+    - issue: 1330
+      title: "[Epic]レーン1e:手動E2E検証"
+      purpose: "D1 正本チェックリスト"
+    - issue: 1389
+      title: "[Epic]SCR-005:推薦理由詳細表示"
+      purpose: "SCR-005 develop 済み"
+    - issue: 1303
+      title: "[Epic]SCR-006:商品詳細"
+      purpose: "SCR-006 develop 済み"
+    - issue: 1325
+      title: "[Epic]SCR-007:Feedback入力表示"
+      purpose: "SCR-007 develop 済み"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/cross_cutting/レーン1e_手動E2Eチェックリスト.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "manual e2e"
+  commands: []
+  manual_checks:
+    - "S5': reasonPoints / reasonDetail 表示"
+    - "S7: SCR-006 商品詳細"
+    - "S8: SCR-007 Feedback 送信成功"
+  not_required:
+    - "unit test"
+    - "e2e playwright"
+  skip_reason:
+    "e2e playwright": "D2 後続。本 Epic は手動回帰のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "チェックリスト拡張が仕様正本と整合するか"
+    - "apps 改修が混入していないか"
+    - "secret 非含有"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "手動回帰の証跡は experiments に残す"
+
+notes:
+  - "Issueタイトル: [Epic]レーン1e:SCR-005〜007回帰E2E"
+  - "BATCH-009 別エージェントと編集領域は分離"
+  - "ローカル Docker 未起動時は実行を blocked とし未実施理由を明示してよい"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Layer2 システムテスト実行（test-system.yml から呼び出し）。
-# infra / fixture は必須 pass。API 導線は SKIP_API_E2E=1 または Phase4b 未整備時 skip。
+# infra / fixture は必須 pass。API 導線は既定で実行（SKIP_API_E2E=true で skip 可）。
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -9,7 +9,7 @@ cd "${ROOT}"
 RESULTS_DIR="${RESULTS_DIR:-tests/e2e/results}"
 REPORT_JSON="${RESULTS_DIR}/system-test-report.json"
 REPORT_MD="${RESULTS_DIR}/system-test-report.md"
-SKIP_API_E2E="${SKIP_API_E2E:-true}"
+SKIP_API_E2E="${SKIP_API_E2E:-false}"
 API_BASE_URL="${API_BASE_URL:-http://localhost:3001}"
 RECO_BASE_URL="${RECO_BASE_URL:-http://localhost:8000}"
 RECO_INTERNAL_API_KEY="${RECO_INTERNAL_API_KEY:-}"
@@ -116,7 +116,7 @@ should_skip_api_cases() {
 
 case_api_health() {
   if should_skip_api_cases; then
-    record_case "api-health" "skipped" "SKIP_API_E2E enabled (Phase4b 以前の既定)"
+    record_case "api-health" "skipped" "SKIP_API_E2E enabled（infra 切り分け用）"
     phase4b_pending=1
     return
   fi
@@ -131,7 +131,7 @@ case_api_health() {
 
 case_reco_health() {
   if should_skip_api_cases; then
-    record_case "reco-health" "skipped" "SKIP_API_E2E enabled (Phase4b 以前の既定)"
+    record_case "reco-health" "skipped" "SKIP_API_E2E enabled（infra 切り分け用）"
     return
   fi
   local headers=()
@@ -149,7 +149,7 @@ case_reco_health() {
 
 case_recommendation_run() {
   if should_skip_api_cases; then
-    record_case "recommendation-run" "skipped" "SKIP_API_E2E enabled (Phase4b 以前の既定)"
+    record_case "recommendation-run" "skipped" "SKIP_API_E2E enabled（infra 切り分け用）"
     return
   fi
   local fixture="${ROOT}/tests/fixtures/api-input/recommendation-run-boss-thanks.json"
@@ -157,7 +157,7 @@ case_recommendation_run() {
     record_case "recommendation-run" "failed" "missing fixture ${fixture}"
     return
   fi
-  local body code
+  local body code snippet
   body="$(jq 'del(.description)' "${fixture}")"
   code="$(curl -sS -o /tmp/recommendation-run-response.json -w "%{http_code}" \
     --connect-timeout 5 --max-time 120 \
@@ -167,7 +167,8 @@ case_recommendation_run() {
   if [[ "${code}" == "200" || "${code}" == "201" ]]; then
     record_case "recommendation-run" "passed" "POST /api/v1/recommendations returned HTTP ${code}"
   else
-    record_case "recommendation-run" "failed" "POST /api/v1/recommendations returned HTTP ${code}"
+    snippet="$(tr '\n' ' ' </tmp/recommendation-run-response.json 2>/dev/null | head -c 400 || true)"
+    record_case "recommendation-run" "failed" "POST /api/v1/recommendations returned HTTP ${code}; body=${snippet}"
   fi
 }
 

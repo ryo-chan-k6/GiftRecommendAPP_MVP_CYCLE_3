@@ -1,0 +1,164 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-section14-reason-partial-integration"
+  title: "MOD-RECO-001:§14 No.14 Reason partial integration"
+  summary: "MOD-RECO-001 §14 No.14（複数 Item で一部のみ Reason fallback 時に resultStatus partial）を integration テストで検証し、必要最小限の Orchestrator / 023 連携を整える。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（CLOSED 参考）"
+    - number: 1071
+      purpose: "§14 No.10 観測横断 Task"
+    - number: 1070
+      purpose: "§14 No.11 タイムアウト merge PR"
+  related_prs:
+    - number: 1070
+      purpose: "§14 No.11 merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  §14 No.11（#1070）および No.10（#1071 / #1072）完了後、段階3着手前残課題の §14 integration 最終項目 No.14 が残る。
+  `reason_fallback.py` は一部 Item fallback 時に `ResultStatus.PARTIAL` を設定するが、
+  Orchestrator デフォルト composition で複数 Item の部分 fallback を integration 検証するテストが未整備。
+
+objective: |
+  複数 result item のうち一部のみ Reason fallback となるシナリオで、
+  HTTP 200 / success outcome かつ `recommendation_result.result_status == partial` を integration テストで green にする。
+
+scope:
+  - "`test_recommendation_orchestrator.py` §14 No.14 integration ケース追加"
+  - "複数 Item 向け Reason generator stub / helper"
+  - "Orchestrator / reason_generator 連携の最小修正（テスト成立に必要な範囲）"
+  - "Task / Review Definition 配置"
+
+out_of_scope:
+  - "Run recorder の run_status partial 永続化（002 仕様変更）— 本 Task では result_status を正とする"
+  - "§14 No.10 docs 追随 / §268 更新"
+  - "段階3 Composition / API-INT-002"
+  - "OpenAPI / DB schema 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§10.3 / §14 No.14"
+    - path: "docs/04_ドメインモデル設計/RecommendationResult定義書.md"
+      required: false
+      purpose: "resultStatus partial"
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/reason_fallback.py"
+      required: true
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      required: true
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+
+output:
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+      action: "update"
+      required: false
+      purpose: "必要時のみ最小修正"
+
+deliverables:
+  - "§14 No.14 integration pytest"
+  - "PR 本文: 観点↔テスト対応表"
+
+acceptance_criteria:
+  - "複数 Item で一部のみ fallback のとき outcome.success かつ result_status == partial"
+  - "全 Item fallback（No.13）と区別されている"
+  - "pytest green"
+  - "scope 外（002 run_status partial 永続化）に着手していない"
+
+branch:
+  no_branch: false
+  name: "feature/task-1073-mod-reco-001-section14-reason-partial-integration"
+  summary: "mod-reco-001-section14-reason-partial-integration"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-08"
+    due_date: "2026-07-11"
+
+issue:
+  number: 1073
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  issues:
+    - number: 1071
+      purpose: "§14 No.10（並行可）"
+    - number: 1070
+      purpose: "§14 No.11 merge"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-section14-observability-integration"
+  blocks:
+    - "MOD-RECO-001 §14 integration 完了後 docs 追随"
+    - "MOD-RECO-001 段階3 Composition Epic 起票判断"
+  exclusive_files:
+    - "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/orchestrator.py"
+    - "apps/reco/src/reco/application/recommendation-orchestrator/reason_fallback.py"
+  conflict_risk: "medium"
+
+test_policy:
+  required:
+    - "pytest"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -v --tb=short"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§14 No.14 と No.13（全 Item fallback）の区別"
+    - "result_status partial と run_status の境界"
+    - "最小 diff であるか"
+
+notes:
+  - "workstream: mod-reco-001-section14-integration"
+  - "Related #1070 / #1071 / #1073"

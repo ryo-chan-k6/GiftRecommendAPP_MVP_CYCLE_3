@@ -1,0 +1,246 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-001-rakuten-genre-sync"
+  title: "BATCH-001:楽天ジャンル同期Batch"
+  summary: "BATCH-001（楽天ジャンル同期Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。楽天ジャンル検索APIからジャンル階層・参照情報を取得し、外部ジャンルマスタとして保存する Fetch チェーン起点。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b Batch 並列レーン B1（Fetch）の起点。実装フェーズ並列計画に従い、識別子単位 Epic（1 Batch ID = 1 Epic）として bootstrap する。
+  06_実装設計および 07_開発・単体テストにおいて、BATCH-001（楽天ジャンル同期Batch）に関する設計・実装・テストを、Epic Issue と Epic Branch で一元管理する。
+  Epic の Projects Phase は完了ゲート（07）、子 Task で成果物工程（06 / 07）を管理する。
+  Batch は HTTP API 化しないため Contract Gate は不要。fixture ベースの単体テストで API/画面縦串と相対的に並列可。
+  前提: Phase4a batch-foundation（#734）CLOSED 済み。
+
+objective: |
+  BATCH-001 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: バッチ仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-001 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-001-rakuten-genre-sync/**）を整理する"
+  - "Contract Gate 不要（Batch は HTTP API 化しない）方針を明示する"
+
+out_of_scope:
+  - "他 Batch（BATCH-002〜019）の仕様書・実装・テスト"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）の設計・実装"
+  - "Reco モジュールの設計・実装"
+  - "DB schema 変更・migration"
+  - "本番リリース作業"
+  - "楽天 API 契約変更そのもの"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-001 の Batch ID・処理概要・入出力・依存・MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "実行方式・Raw/Staging・ログ方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "楽天 API 連携・ジャンル取得方針を確認するため"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b Batch 縦串・並列方針を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic 方針（§3.5）と BATCH Epic の allowed_paths 例を確認するため"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic タイトル規約（§15.0）・バッチ Task 命名（§15.4）を確認するため"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-001:楽天ジャンル同期Batch）"
+  - "Epic Branch（develop 起点 / feature/epic-1161-batch-001-rakuten-genre-sync）"
+  - "子 Task 候補一覧（バッチ仕様書 / 実装 / 単体テスト）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-001:楽天ジャンル同期Batch 形式である（Task Definition設計書 §15.0）"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位（バッチ仕様書 / 実装 / 単体テスト）が整理されている"
+  - "子 Task の PR target が親 Epic Branch である方針が明記されている"
+  - "epic_scope.allowed_paths が BATCH-001 の責務範囲と整合している"
+  - "epic_scope.artifact_id が BATCH-001 である"
+
+branch:
+  no_branch: false
+  summary: "batch-001-rakuten-genre-sync"
+  name: "feature/epic-1161-batch-001-rakuten-genre-sync"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-12"
+    due_date: "2026-07-14"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-001"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-001_*"
+    - "apps/batch/src/batch/application/**"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - "apps/batch/src/batch/infrastructure/object_storage/**"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-rakuten-genre-sync*.yml"
+    - "prompts/definitions/epics/batch-001-rakuten-genre-sync/**"
+    - "prompts/definitions/tasks/batch-001-rakuten-genre-sync/**"
+    - "prompts/definitions/reviews/batch-001-rakuten-genre-sync/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 734
+      title: "[Epic]batch-foundation:Batch共通基盤"
+      purpose: "Phase4a Batch 共通基盤（CLOSED）。infrastructure / application / config 骨格の前提"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Epic scope（Batch 1 つ分）が広すぎないか確認する"
+    - "子 Task に分割可能な粒度か確認する"
+    - "依存 Epic [Epic]batch-foundation（#734）が CLOSED であることを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位のため対象外"
+    "integration test": "Epic は作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  review_points:
+    - "Epic の作業範囲が BATCH-001 に閉じているか"
+    - "epic_scope.allowed_paths がバッチ処理一覧 BATCH-001 の責務範囲と整合しているか"
+    - "Contract Gate 不要方針が明示されているか"
+    - "Epic PR target が develop であるか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "識別子単位 Batch Epic の初期 bootstrap のため experiments を有効化。通常の作業計画は Issue、統合は Epic PR を正本とする。"
+
+contract_gate:
+  required: false
+
+risk_points:
+  - "Task PR を誤って develop へ直接向けてしまう運用ミス"
+  - "epic_scope.allowed_paths を超えた変更（例: apps/api / OpenAPI）を配下 Task に混入させる運用ミス"
+  - "他 Batch（BATCH-002 等）の実装を本 Epic に混在させる運用ミス"
+  - "apps/batch/src/batch/infrastructure/** の同一 submodule を他 Batch Epic と同時編集する競合"
+
+human_decision_points:
+  - "子 Task の分割粒度（バッチ仕様書 / 実装 / 単体テストの切り方）"
+  - "workflow YAML（batch-rakuten-genre-sync）を本 Epic に含めるタイミング"
+  - "BATCH-002 以降の仕様書 Task を本 Epic 完了前に並列着手するか"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "バッチ処理一覧に BATCH-001 が存在しない場合、または MVP対象が ○ ではない場合"
+  - "epic_scope.allowed_paths が空または未記載の場合"
+  - "Task PR の target が develop に向く設計が必要になった場合"
+  - "OpenAPI / generated 変更が必要になった場合（別 Contract Task 化を検討）"
+  - "secret / .env 実値の記載が必要に見える場合"
+
+notes:
+  - "Epic は作業管理単位であり、バッチ仕様書本体・実装・テストの正本は子 Task で作成する"
+  - "命名の正本は Task Definition設計書 §15.0（Epic タイトル規約）・§15.4（バッチ Task）"
+  - "Batch ID 正本はバッチ処理一覧の BATCH-*。BT-* は Task / Issue タイトルに使用しない"
+  - "本 Epic Issue: #1161 / Epic Branch: feature/epic-1161-batch-001-rakuten-genre-sync"
+  - "本 Epic 配下の最初の子 Task は prompts/definitions/tasks/batch-001-rakuten-genre-sync/batch-spec.yaml"
+  - "workstream_key: batch-001-rakuten-genre-sync"
+  - "レーン B1 Fetch 起点。後続 BATCH-002 / BATCH-003 が本 Batch に依存する"

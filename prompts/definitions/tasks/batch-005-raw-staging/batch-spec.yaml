@@ -1,0 +1,226 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-005-raw-staging-batch-spec"
+  title: "BATCH-005:Raw取込・Staging変換バッチ仕様書作成"
+  summary: "BATCH-005（Raw取込・Staging変換Batch）のバッチ仕様書（BATCH-005_Raw取込・Staging変換バッチ仕様書.md）を、バッチ処理一覧・設計方針・Stagingテーブル定義に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-005:Raw取込・Staging変換Batch"
+  epic_issue_number: 1307
+  epic_branch: "feature/epic-1307-batch-005-raw-staging"
+  related_issues:
+    - number: 1222
+      purpose: "先行 BATCH-004（CLOSED / develop merge 済み）"
+    - number: 1207
+      purpose: "先行 BATCH-003（CLOSED）"
+  related_prs:
+    - number: 1296
+      purpose: "BATCH-004 Epic develop merge"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、batch 実装・運用の前提となるバッチ仕様書を作成する。
+  本Taskでは、バッチ処理一覧の BATCH-005（Raw取込・Staging変換Batch）を対象に、
+  処理概要・入出力・依存・冪等性・ログを整理する。
+  Phase4b Raw/Staging 段。先行 BATCH-001〜004 の Raw を Staging へ変換する。
+
+objective: |
+  BATCH-005（Raw取込・Staging変換Batch）について、実装・レビューが可能な粒度のバッチ仕様書を作成する。
+
+scope:
+  - "BATCH-005 のバッチ仕様書を新規作成する（成果物: BATCH-005_Raw取込・Staging変換バッチ仕様書.md）"
+  - "処理概要・実行トリガー・入出力リソースを整理する"
+  - "先行・後続 Batch・冪等キー・ログ・エラーコード参照を整理する"
+  - "Raw読取・Staging変換・検証・import_status 更新方針を整理する"
+
+out_of_scope:
+  - "他 Batch のバッチ仕様書作成"
+  - "Python 実装・GitHub Actions workflow YAML の作成"
+  - "DB schema / migration 変更"
+  - "OpenAPI / Orval / generated 変更"
+  - "BATCH-006 差分判定・BATCH-007 Item反映・BATCH-008 active_status 本更新の詳細実装設計"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-005 の Batch ID・処理概要・入出力・依存を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "実行方式・Raw/Staging・ログ方針を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "item-import / existing-item-recheck 後続との関係を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "必須依存関係を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+      purpose: "Raw/Staging 変換方針を確認するため"
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+      purpose: "Staging 出力の正本参照"
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: false
+      purpose: "章構成・境界の参照"
+    - path: "prompts/templates/docs/batch-spec.md"
+      required: true
+      purpose: "バッチ仕様書テンプレートの章構成に従うため"
+  templates:
+    - path: "prompts/templates/docs/batch-spec.md"
+      purpose: "成果物章構成の正本"
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-005-raw-staging/batch-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-005-raw-staging/batch-spec/pr-review.yaml"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "BATCH-005 バッチ仕様書"
+  - "入出力・依存 Batch 整理"
+
+acceptance_criteria:
+  - "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md が作成されている"
+  - "バッチ処理一覧の BATCH-005 と矛盾する Batch ID・処理概要を定義していない"
+  - "Task タイトル・ファイル名が §15.4（BATCH-* 正本）に従っている"
+  - "batch-spec.md テンプレートの主要章が充足している"
+  - "Item 正本更新を本 Batch 責務として書いていない"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1317-batch-005-raw-staging-batch-spec"
+  summary: "batch-005-raw-staging-batch-spec"
+  base: "feature/epic-1307-batch-005-raw-staging"
+  target: "feature/epic-1307-batch-005-raw-staging"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  number: 1317
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1307
+      title: "[Epic]BATCH-005:Raw取込・Staging変換Batch"
+      purpose: "親 Epic"
+    - issue: 1222
+      title: "[Epic]BATCH-004:楽天既存商品再確認Batch"
+      purpose: "先行 Raw（CLOSED）"
+  issues: []
+  prs: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-005-raw-staging"
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "仕様書 Task のため対象外"
+    "integration test": "仕様書 Task のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "バッチ処理一覧 BATCH-005 との整合"
+    - "Staging 出力・Item非更新の境界"
+    - "先行 BATCH-001〜004 / 後続 BATCH-006 との依存記載"
+    - "secret 非含有"
+    - "PR target が親 Epic Branch であるか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の仕様書 Task は ai-logs に保存しない"
+
+stop_conditions:
+  - "親 Epic Issue / Epic Branch が未作成の場合"
+  - "バッチ処理一覧に BATCH-005 が無い、または MVP 対象外の場合"
+  - "secret / .env 実値を扱う必要が出た場合"
+
+notes:
+  - "Issue #1317: [Task]BATCH-005:Raw取込・Staging変換バッチ仕様書作成"
+  - "Branch: docs/task-1317-batch-005-raw-staging-batch-spec"
+  - "Parent Epic: #1307 / feature/epic-1307-batch-005-raw-staging"

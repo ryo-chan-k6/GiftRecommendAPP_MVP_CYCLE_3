@@ -1,0 +1,145 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-api-pub-005-relationship-masters-unit-test-pr"
+  title: "API-PUB-005 Relationshipマスタ取得単体テスト PRレビュー"
+  summary: "API-PUB-005（Relationshipマスタ取得）単体テスト Task（unit-test.yaml）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1183
+  issue: 1181
+  task_definition: "prompts/definitions/tasks/api-pub-005-relationship-masters/unit-test.yaml"
+  source_branch: "test/task-1181-api-pub-005-relationship-masters-unit-test"
+  target_branch: "feature/epic-387-pub-005-relationship-masters"
+  parent_epic_issue: "[Epic]API-PUB-005:Relationshipマスタ取得"
+  parent_epic_branch: "feature/epic-387-pub-005-relationship-masters"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/api-pub-005-relationship-masters/unit-test.yaml"
+    required: true
+  issue:
+    number: 1181
+    required: true
+  pr:
+    number: 1183
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-387-pub-005-relationship-masters"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API契約仕様書.md"
+      required: true
+
+review_points:
+  common:
+    - "Task Definition（unit-test.yaml）の scope を満たしているか"
+    - "Task Branch から develop へ直接 PR していないか"
+  tests:
+    - "実装仕様書 §9 の unit 相当観点がカバーされているか"
+    - "既存スモークが壊れていないか"
+    - "本番 DB / secret に依存していないか"
+  security:
+    - "secret や .env 実値が含まれていないか"
+  epic_scope:
+    - "PR差分が親Epic epic_scope.allowed_paths 内に収まっているか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+  request_changes:
+    conditions:
+      - "テスト不足または失敗がある"
+  needs_human_decision:
+    conditions:
+      - "Epic PR 進行判断が必要"
+  split_required:
+    conditions:
+      - "実装機能追加が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "api"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を更新する"
+  - "対応 Issue: #1181"

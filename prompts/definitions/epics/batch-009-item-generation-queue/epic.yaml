@@ -1,0 +1,254 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-009-item-generation-queue"
+  title: "BATCH-009:商品意味生成キュー登録Batch"
+  summary: "BATCH-009（商品意味生成キュー登録Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。意味影響のある Item 変更を item_generation_queue へ登録する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 意味生成パイプラインの入口。識別子単位 Epic（1 Batch ID = 1 Epic）として bootstrap する。
+  先行 BATCH-007 / BATCH-008 は develop merge 済み（#1356 / PR #1370、#1379 / PR #1396）。
+  `item_generation_queue` テーブル定義・DDL・enum は整備済み（#507 / #603）。専用バッチ仕様書・apps/batch 実装・workflow は未着手。
+  IF は IF-DB-BATCH-010（Batch ID BATCH-009 と IF 番号が異なる点に注意。IF-DB-BATCH-009 は active_status）。
+  Batch は HTTP API 化しないため Contract Gate は不要。後続は BATCH-010。
+
+objective: |
+  BATCH-009 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: 仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-009 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-009-item-generation-queue/**）を整理する"
+  - "Contract Gate 不要方針を明示する"
+  - "item_generation_queue 定義・IF-DB-BATCH-010 との境界を整理する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001〜008 / 010〜019）の仕様書・実装・テスト（先行・後続は参照のみ）"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）・Reco・DB schema / migration（既存 item / item_generation_queue / product_diff_result 定義の参照は可。新規 migration が必要なら別途 Human 判断）"
+  - "本番リリース作業"
+  - "BATCH-010〜015 の Queue 消化・Semantic / Feature / Embedding 生成本実装"
+  - "親 batch-item-meaning-generation.yml / item-import チェーン全体改修（独立子 workflow 追加は可）"
+  - "meaning_input_diff テーブル本体の新規 DDL（概念整理・計算方針の仕様化は可）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-009 の Batch ID・処理概要・入出力・依存・MVP対象"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "意味影響項目・Queue 登録方針・Config Version Resolver"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "meaning-generation チェーン内の位置"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "007/008 → 009 → 010 の依存"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "登録条件・generation_type・IF-DB-BATCH-010・冪等"
+    - path: "docs/06_実装設計/database/product_diff_result_テーブル定義書.md"
+      required: true
+      purpose: "new/updated 判定入力"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "active_status / 意味影響列"
+    - path: "docs/06_実装設計/batch/BATCH-007_Item反映バッチ仕様書.md"
+      required: true
+      purpose: "先行 Item 反映境界"
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+      purpose: "active_status 本更新・対象外境界"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / Task 命名"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-009:商品意味生成キュー登録Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（仕様書 / 実装 / UT）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-009:商品意味生成キュー登録Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "item_generation_queue / IF-DB-BATCH-010 との関係が明記されている"
+  - "epic_scope.artifact_id が BATCH-009 である"
+
+branch:
+  no_branch: false
+  summary: "batch-009-item-generation-queue"
+  name: "feature/epic-1406-batch-009-item-generation-queue"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-17"
+    due_date: "2026-07-20"
+
+issue:
+  number: 1406
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-009"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-009_*"
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-item-generation-queue*.yml"
+    - "prompts/definitions/epics/batch-009-item-generation-queue/**"
+    - "prompts/definitions/tasks/batch-009-item-generation-queue/**"
+    - "prompts/definitions/reviews/batch-009-item-generation-queue/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/src/batch/application/product_diff/**"
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+    - "apps/batch/src/batch/application/raw_staging/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 734
+      title: "[Epic]batch-foundation:Batch共通基盤"
+      purpose: "Phase4a（CLOSED）"
+    - issue: 1356
+      title: "[Epic]BATCH-007:Item反映Batch"
+      purpose: "Item 正本反映。develop merge 済み"
+    - issue: 1379
+      title: "[Epic]BATCH-008:商品有効状態更新Batch"
+      purpose: "active_status 本更新。develop merge 済み"
+    - issue: 507
+      title: "item_generation_queue テーブル定義"
+      purpose: "Queue 定義正本（CLOSED）"
+  issues: []
+  prs:
+    - number: 1370
+      purpose: "BATCH-007 Epic MERGED"
+    - number: 1396
+      purpose: "BATCH-008 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-008-item-active-status"
+  blocks:
+    - "epic-batch-010-item-semantic"
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "依存 Epic BATCH-007 / BATCH-008 が CLOSED であること"
+    - "item_generation_queue DDL が develop に存在すること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope が BATCH-009 に閉じているか"
+    - "IF-DB-BATCH-010 と Batch ID の対応が混同されていないか"
+    - "BATCH-010〜015 消化を侵していないか"
+    - "Contract Gate 不要方針"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "独立 YAML（batch-item-generation-queue.yml）を MVP 初期の正とするか（親 meaning-generation 全体改修は本 Epic 外）"
+  - "meaning_input_diff を計算結果（非永続）として扱うか"
+  - "active_status=active（または is_active）のみ登録するか"
+  - "MVP で feature/embedding 部分再生成トリガーを同 Batch に含めるか（初回は semantic 中心でも可）"
+
+notes:
+  - "Issue #1406"
+  - "後続 Task: batch-spec → implementation → unit-test → Epic PR"

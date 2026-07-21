@@ -1,0 +1,262 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-009-empty-result-screen-spec"
+  title: "SCR-009:0件結果表示画面仕様書作成"
+  summary: "SCR-009（0件結果表示）の画面仕様書（SCR-009_0件結果表示画面仕様書.md）を、画面一覧・画面遷移図・SCR-002/003画面仕様書・API-PUB-002契約・デザインルール（ST-EMPTY）・UIコンポーネント一覧に基づいて作成する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-009:0件結果表示"
+  epic_issue_number: 1382
+  epic_branch: "feature/epic-1382-scr-009-empty-result"
+  related_issues:
+    - number: 1384
+      purpose: "本 Task Issue"
+    - number: 1382
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  06_実装設計において、web 実装の前提となる画面仕様書を作成する。
+  SCR-009 は独立 URL 画面ではなく、SCR-002 推薦実行成功・0件時の UI 状態として扱う（Human 確定: MVP 宿主は recommendation-input の phase=empty）。
+  既存実装: RecommendationInputPage + EmptyState + EMPTY_RESULT_MESSAGE + 「条件を変更する」ボタン。
+  #1344 / #1345 で resultStatus=empty の API 経路は修正 merge 済み。本 Task で正本仕様を固定する。
+
+objective: |
+  SCR-009（0件結果表示）について、実装・レビューが可能な粒度の画面仕様書を作成する。
+  作成する仕様書は prompts/templates/docs/screen-spec.md に準拠する。
+
+scope:
+  - "SCR-009 の画面仕様書を新規作成する（成果物: SCR-009_0件結果表示画面仕様書.md）"
+  - "画面目的・対象ユーザー・表示項目（0件メッセージ・条件緩和提案・復帰ボタン）を整理する"
+  - "画面状態であること（独立 URL ではないこと）と遷移元（SCR-003）・遷移先（SCR-002）を整理する"
+  - "MVP 宿主（recommendation-input phase=empty）と ST-EMPTY / EmptyState（UI-033）との対応を整理する"
+  - "API-PUB-002 0件正常系（resultStatus=empty / GRS-REC-001）との対応を整理する"
+  - "専用 `/recommendations/{result_id}` route 新設が MVP out of scope であることを明示する"
+  - "再検索ボタン（画面一覧 △）の MVP 扱いを明記する（Human Review 観点）"
+  - "画面遷移図（結果一覧の状態）と MVP 宿主（recommendation-input）の解釈差を整理する"
+
+out_of_scope:
+  - "他画面（SCR-009 以外）の画面仕様書作成"
+  - "専用 0件用 URL route の新設・実装"
+  - "SCR-008 の包括仕様（遷移先言及のみ）"
+  - "SCR-004 の本仕様変更（0件時に SCR-004 へ来ないことの言及に留める）"
+  - "SCR-005 / SCR-007 の変更"
+  - "OpenAPI / generated / ソースコード実装"
+  - "API-PUB-002 契約・実装の変更"
+  - "認証・認可方式そのものの変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-009 の画面ID・URL案・画面種別・表示項目・MVP対象を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面遷移図.md"
+      required: true
+      purpose: "画面状態としての位置づけと条件入力への復帰遷移を確認するため"
+    - path: "docs/06_実装設計/web/SCR-002_レコメンド条件入力画面画面仕様書.md"
+      required: true
+      purpose: "SCR-002 内 0件状態・EmptyState 利用・入力復元との分担を確認するため"
+    - path: "docs/06_実装設計/web/SCR-003_レコメンド実行中表示画面仕様書.md"
+      required: true
+      purpose: "SCR-003 から SCR-009 への 0件遷移分岐を確認するため"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "0件正常系（resultStatus=empty / displayMessage / GRS-REC-001）を確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/デザインルール.md"
+      required: true
+      purpose: "ST-EMPTY パターンを確認するため"
+    - path: "docs/05_アプリケーション設計/アプリ/web/UIコンポーネント一覧.md"
+      required: true
+      purpose: "EmptyState（UI-033）等の部品責務を確認するため"
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: false
+      purpose: "0件時に SCR-004 へ来ない設計逸脱検知方針を確認するため"
+  templates:
+    - path: "prompts/templates/docs/screen-spec.md"
+      required: true
+      purpose: "画面仕様書を標準フォーマットで作成するため"
+      applies_to:
+        - "docs/06_実装設計/web/SCR-009_0件結果表示画面仕様書.md"
+  files: []
+  issues:
+    - number: 1382
+      purpose: "親 Epic"
+    - number: 1384
+      purpose: "本 Task Issue"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-009_0件結果表示画面仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/screen-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "SCR-009 画面仕様書"
+  - "表示項目定義（0件メッセージ・条件緩和提案・復帰ボタン等）"
+  - "画面状態・遷移・API-PUB-002 0件正常系の整理"
+  - "MVP 宿主（recommendation-input phase=empty）の明示"
+  - "専用 0件 route 非採用（MVP）の明示"
+
+acceptance_criteria:
+  - "docs/06_実装設計/web/SCR-009_0件結果表示画面仕様書.md が作成されている"
+  - "prompts/templates/docs/screen-spec.md の章構成に準拠している"
+  - "画面一覧の SCR-009 と矛盾する画面ID・画面名・MVP対象を定義していない"
+  - "画面遷移図どおり、独立 URL 画面ではなく画面状態として記載している"
+  - "MVP 宿主（recommendation-input phase=empty）が明示されている"
+  - "専用 `/recommendations/{result_id}` route 新設が MVP out of scope として明示されている"
+  - "ST-EMPTY / EmptyState との対応がデザインルール・UIコンポーネント一覧と矛盾していない"
+  - "API-PUB-002 0件正常系（resultStatus=empty）が契約と矛盾していない"
+  - "再検索ボタン（△）の MVP 扱いが Human Review 観点として整理されている"
+  - "secret、APIキー、.env実値を含んでいない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1384-scr-009-empty-result-screen-spec"
+  summary: "scr-009-empty-result-screen-spec"
+  base: "feature/epic-1382-scr-009-empty-result"
+  target: "feature/epic-1382-scr-009-empty-result"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-16"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1147
+      title: "[Epic]SCR-002:レコメンド条件入力画面"
+      purpose: "推薦実行の起点画面（develop merge 済み）。MVP 宿主"
+    - issue: 1361
+      title: "[Epic]SCR-003:レコメンド実行中表示"
+      purpose: "実行中→0件遷移（develop merge 済み）"
+    - issue: 357
+      title: "[Epic]API-PUB-002:レコメンド実行"
+      purpose: "0件正常系 API（develop merge 済み）"
+  issues:
+    - number: 1344
+      purpose: "参考: D1 residual（0件経路修正 merge 済み）"
+    - number: 1345
+      purpose: "参考: 0件 API 経路修正 Task（merge 済み）"
+  prs: []
+  tasks:
+    - "画面一覧が作成済みであること"
+    - "画面遷移図が作成済みであること"
+    - "SCR-002 / SCR-003 画面仕様書が作成済みであること"
+    - "API-PUB-002 契約仕様書が作成済みであること"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/web/SCR-009_0件結果表示画面仕様書.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/web/SCR-009_0件結果表示画面仕様書.md"
+  manual_checks:
+    - "画面一覧の SCR-009 と整合していること"
+    - "画面遷移図の画面状態方針と整合していること"
+    - "MVP 宿主が recommendation-input phase=empty として明記されていること"
+    - "専用 0件 route を新設する記述がないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs作成Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面一覧の SCR-009 と整合しているか"
+    - "画面状態として記載し、独立 URL 画面と誤記していないか"
+    - "MVP 宿主（recommendation-input phase=empty）が明示されているか"
+    - "専用 route 新設が out of scope か"
+    - "ST-EMPTY / EmptyState 対応がデザインルール・UIコンポーネント一覧と整合しているか"
+    - "SCR-003 からの 0件遷移・SCR-002 への復帰が整理されているか"
+    - "再検索ボタン（△）の MVP 扱いが Human 判断として切り出されているか"
+    - "命名が Task Definition設計書 §15.3 に従っているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "SCR-009 画面仕様書 Task。"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "画面一覧に SCR-009 が存在しない場合"
+  - "親 Epic Issue / Branch が未作成の場合"
+  - "専用 0件 route 新設が必須と判断された場合（Human 確認へ）"
+
+notes:
+  - "Issueタイトル: [Task]SCR-009:0件結果表示画面仕様書作成"
+  - "親Epic: #1382 [Epic]SCR-009:0件結果表示 / Branch: feature/epic-1382-scr-009-empty-result"
+  - "本 Task Issue: #1384 / Branch: docs/task-1384-scr-009-empty-result-screen-spec"
+  - "依存Epic: #1147 SCR-002 / #1361 SCR-003 / #357 API-PUB-002（いずれも develop merge 済み）"
+  - "後続: /work-issue → 画面仕様書作成 → /create-pr（Review Definition を PR head に含める）"
+  - "再検索ボタン（画面一覧 △）・条件緩和提案の具体文言は Human Review 観点"

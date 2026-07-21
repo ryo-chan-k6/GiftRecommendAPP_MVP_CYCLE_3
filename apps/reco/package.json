@@ -3,6 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "node -e \"console.log('[placeholder] FastAPI dev server (port 8000) — Phase4 implementation pending'); process.exit(0)\""
+    "dev": "bash -c 'set -a; [ -f ../../.env ] && . ../../.env; set +a; uv run --directory . uvicorn reco.api.main:app --app-dir src --reload --host 0.0.0.0 --port 8000'"
   }
 }

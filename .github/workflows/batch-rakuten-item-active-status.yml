@@ -1,0 +1,128 @@
+name: Batch Rakuten Item Active Status
+
+# BATCH-008 商品有効状態更新（独立子 workflow）
+# 正本: BATCH-008 バッチ仕様書 §18.1 No.8 — workflow_call / workflow_dispatch
+# 親 item-import / existing-item-recheck チェーン全体改修は本 Epic では行わない
+# Retention T7（§18.1 No.11）は本 workflow 対象外
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max item keys to apply (default 1000)"
+        required: false
+        type: string
+        default: "1000"
+      source:
+        description: "source filter (default rakuten)"
+        required: false
+        type: string
+        default: "rakuten"
+      batch_run_id:
+        description: "Filter Diff / candidate by this batch_run_id"
+        required: false
+        type: string
+        default: ""
+      external_item_codes:
+        description: "Comma-separated external_item_code list (subset / re-run)"
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max item keys to apply (default 1000)"
+        required: false
+        type: string
+        default: "1000"
+      source:
+        description: "source filter (default rakuten)"
+        required: false
+        type: string
+        default: "rakuten"
+      batch_run_id:
+        description: "Filter Diff / candidate by this batch_run_id"
+        required: false
+        type: string
+        default: ""
+      external_item_codes:
+        description: "Comma-separated external_item_code list (subset / re-run)"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: batch-rakuten-item-active-status
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  item-active-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-008 scaffold demo
+        # Real DB client is not enabled in this Task.
+        # Secrets must never be printed. Use --scaffold-demo for CI smoke.
+        # Must NOT call Rakuten API / Retention DELETE / write product_diff_result.
+        working-directory: apps/batch
+        run: |
+          MAX_ARGS=()
+          if [ -n "${{ inputs.max_items }}" ]; then
+            MAX_ARGS+=(--max-items "${{ inputs.max_items }}")
+          fi
+          SOURCE_ARGS=()
+          if [ -n "${{ inputs.source }}" ]; then
+            SOURCE_ARGS+=(--source "${{ inputs.source }}")
+          fi
+          BATCH_RUN_ARGS=()
+          if [ -n "${{ inputs.batch_run_id }}" ]; then
+            BATCH_RUN_ARGS+=(--batch-run-id "${{ inputs.batch_run_id }}")
+          fi
+          CODE_ARGS=()
+          if [ -n "${{ inputs.external_item_codes }}" ]; then
+            CODE_ARGS+=(--external-item-codes "${{ inputs.external_item_codes }}")
+          fi
+          uv run python -m batch.application.item_active_status \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${MAX_ARGS[@]}" \
+            "${SOURCE_ARGS[@]}" \
+            "${BATCH_RUN_ARGS[@]}" \
+            "${CODE_ARGS[@]}"

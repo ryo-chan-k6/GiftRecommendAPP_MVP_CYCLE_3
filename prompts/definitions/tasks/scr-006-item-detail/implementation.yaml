@@ -1,0 +1,234 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-006-item-detail-implementation"
+  title: "SCR-006:商品詳細画面実装"
+  summary: "SCR-006（商品詳細画面）を apps/web に実装する。画面仕様書に基づき、既存プレースホルダを API-PUB-003 呼び出し本実装へ差し替え、fromResultId 戻り導線・外部EC・エラー状態を提供する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-006:商品詳細画面"
+  epic_issue_number: 1303
+  epic_branch: "feature/epic-1303-scr-006-item-detail"
+  related_issues:
+    - number: 1303
+      purpose: "親 Epic"
+    - number: 1304
+      purpose: "前提 Task（画面仕様書）"
+  related_prs:
+    - number: 1306
+      purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  SCR-006 Epic（#1303）の実装 Task。画面仕様書 Task（#1304 / PR #1306）が親 Epic Branch に merge 済み。
+  develop の `/items/[itemId]` はプレースホルダ。API-PUB-003 generated client（getItemDetail）を利用して本実装する。
+
+objective: |
+  SCR-006 商品詳細画面を apps/web 上で実装し、画面仕様書どおりの表示・遷移・エラー状態を提供する。
+  既存スタブを本実装へ差し替える。
+
+scope:
+  - "apps/web/src/app/items/[itemId]/** および apps/web/src/features/item-detail/** への画面実装"
+  - "API-PUB-003 GET /api/v1/items/{itemId} 呼び出し（generated client + public-api ラップ）"
+  - "fromResultId による SCR-004 戻り導線・sessionStorage 推薦文脈（rank/reason）の任意表示"
+  - "外部EC安全遷移（isSafeExternalUrl）"
+  - "Loading / Success / 404 / 422 / 5xx 等の状態表示"
+  - "SCR-005 / SCR-007 は導線（disabled 等）のみ"
+  - "apps/web/tests/component/item-detail/** の最小 component テスト"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "画面仕様書の大幅改訂"
+  - "OpenAPI / Orval / generated の手編集"
+  - "apps/api / apps/reco / apps/batch 変更"
+  - "SCR-004 / SCR-001 / SCR-002 本体変更（必要なら最小の導線コメントのみ。004 仕様本文書き換えは別追従）"
+  - "SCR-005 / SCR-007 本実装"
+  - "網羅的単体テスト（必要なら後続 unit-test Task）"
+  - "E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-006_商品詳細画面画面仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+      purpose: "Response / Error 境界"
+    - path: "docs/05_アプリケーション設計/アプリ/web/画面一覧.md"
+      required: true
+      purpose: "SCR-006 行"
+    - path: "docs/06_実装設計/web/SCR-004_レコメンド結果一覧画面画面仕様書.md"
+      required: true
+      purpose: "導線・sessionStorage 分担"
+  templates: []
+  files:
+    - path: "apps/web/src/app/items/[itemId]/page.tsx"
+      required: true
+      purpose: "現行スタブ"
+    - path: "apps/web/src/generated/api/items/items.ts"
+      required: true
+      purpose: "getItemDetail"
+  issues:
+    - number: 1304
+      purpose: "画面仕様書"
+  prs:
+    - number: 1306
+      purpose: "画面仕様書 PR Epic merge"
+
+output:
+  docs: []
+  files:
+    - path: "apps/web/src/app/items/[itemId]/**"
+      action: "update"
+      required: true
+    - path: "apps/web/src/features/item-detail/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/web/src/lib/api/**"
+      action: "create_or_update"
+      required: false
+  tests:
+    - path: "apps/web/tests/component/item-detail/**/*.{test,spec}.{ts,tsx}"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "商品詳細本実装（PUB-003）"
+  - "戻り導線 / 外部EC / エラー状態"
+  - "最小 component テスト"
+
+acceptance_criteria:
+  - "プレースホルダが本実装に差し替えられている"
+  - "成功時に API-PUB-003 の主要表示項目（商品名・価格等）が表示される"
+  - "404 / 422 / 通信失敗が画面仕様どおりに扱われる"
+  - "fromResultId がある場合 SCR-004 へ戻れる"
+  - "pnpm --filter @gift-recommendation/web test:component が SUCCESS（または同等の web test）"
+  - "epic_scope.allowed_paths 外へ変更していない"
+  - "secret / .env 実値を含まない"
+  - "generated 手動編集なし"
+
+branch:
+  no_branch: false
+  name: "feature/task-1313-scr-006-item-detail-implementation"
+  summary: "scr-006-item-detail-implementation"
+  base: "feature/epic-1303-scr-006-item-detail"
+  target: "feature/epic-1303-scr-006-item-detail"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1303
+      title: "[Epic]SCR-006:商品詳細画面"
+      purpose: "親 Epic"
+    - issue: 385
+      title: "[Epic]API-PUB-003:商品詳細取得"
+      purpose: "API 前提（develop 済み）"
+  issues:
+    - number: 1304
+      purpose: "画面仕様書"
+  prs:
+    - number: 1306
+      purpose: "仕様書 PR Epic merge"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/web/src/app/items/**"
+    - "apps/web/src/features/item-detail/**"
+    - "apps/web/tests/component/item-detail/**"
+    - "prompts/definitions/tasks/scr-006-item-detail/implementation.yaml"
+    - "prompts/definitions/reviews/scr-006-item-detail/implementation/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "component test"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
+  not_required:
+    - "e2e test"
+    - "integration test"
+  skip_reason:
+    "e2e test": "本 Task 対象外"
+    "integration test": "実 API 結合はローカル手動または後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面仕様書どおりの状態・表示・導線か"
+    - "PUB-003 呼び出しとエラーマッピングが妥当か"
+    - "SCR-001/002/004 exclusive path に侵入していないか"
+    - "secret 非露出 / generated 手動編集なし"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常実装。詳細ログは PR を正本とする"
+
+stop_conditions:
+  - "PR #1306 が親 Epic Branch に merge されていない場合"
+  - "generated を手動編集する必要が出た場合"
+  - "secret / .env 実値が必要に見える場合"
+  - "SCR-004 / recommendation-result 大幅改修が必要になった場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-006:商品詳細画面実装"
+  - "後続: unit-test Task（必要時）→ Epic PR → develop"

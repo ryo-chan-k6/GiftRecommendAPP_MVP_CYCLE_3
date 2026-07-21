@@ -341,7 +341,7 @@ paths:
               schema:
                 $ref: "../schemas/common.yaml#/components/schemas/ErrorResponse"
         "500":
-          description: 内部エラー（GRS-CFG-001 / GRS-CFG-005 / GRS-DB-* 等）
+          description: 内部エラー（GRS-CFG-001 / GRS-CFG-002 / GRS-CFG-005 / GRS-DB-* 等）
           content:
             application/json:
               schema:
@@ -1318,13 +1318,29 @@ components:
           example: "Example Shop"
         reasonSummary:
           type: string
-          description: 推薦理由（短文）。includeReason=true 時は原則返却、生成のみ失敗時は省略可
+          description: |
+            推薦理由（短文）。includeReason=true かつ Item 存続時は必須（非空）。
+            Reason 失敗時は §17.2 汎用 Reason を返し isFallback: true とする（MOD-RECO-001 §10.3 / API-INT-002 §7.3.2.1）。
+            OpenAPI required では表現できないため description で条件付き必須とする（契約仕様書 §7.3.2.1）。
+        reasonPoints:
+          type: array
+          items:
+            type: string
+          description: |
+            箇条書き理由（任意）。値が生成されていれば返却可。必須化しない（#1398 / 契約仕様書 §7.3.2）。
+        reasonDetail:
+          type: string
+          description: |
+            詳細表示用短文（任意）。値が生成されていれば返却可。必須化しない（#1398 / 契約仕様書 §7.3.2）。
         reasonBadges:
           type: array
           items:
             $ref: "#/components/schemas/ReasonBadge"
         cautionNote:
           type: string
+        isFallback:
+          type: boolean
+          description: Reason 汎用文由来か。api が Internal の isFallback をマッピング。true 時は汎用 Reason 表示（§7.3.2.1）
 
     RecommendationRunResponseData:
       type: object
@@ -1666,6 +1682,7 @@ components:
               itemImageUrl: "https://example.com/item/001.jpg"
               shopName: "Example Shop"
               reasonSummary: "上司へのお礼として失礼がなく、上品さと感謝の伝わりやすさのバランスが良いため候補にしています。"
+              isFallback: false
         meta:
           traceId: "550e8400-e29b-41d4-a716-446655440000"
           requestId: "req_01HZYX"

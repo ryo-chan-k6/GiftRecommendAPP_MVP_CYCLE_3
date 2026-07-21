@@ -1,0 +1,161 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-reason-fallback-docs-alignment"
+  title: "MOD-RECO-001:Reason fallback後続docs整合"
+  summary: "MOD-RECO-001 モジュール仕様書 §17.1 に基づき、Reason fallback 方針（§10.3）を API 契約・DB 定義・状態遷移設計書へ反映する横断 docs 整合 Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  related_issues:
+    - 758
+    - 760
+  related_prs:
+    - 760
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Issue #758 / PR #760 で MOD-RECO-001 に Reason fallback 方針を確定した。
+  関連正本（API-INT-002 / API-PUB-002 / recommendation_reason / 状態遷移設計書 §11.1）が旧方針のままのため整合する。
+  性能要件（バックエンド）§5 は PoC #759 完了後に別 Task とする。
+
+objective: |
+  MOD-RECO-001 §10.3 の Reason fallback 方針を、§17.1 対象 docs に反映し、docs 間の矛盾を解消する。
+
+scope:
+  - "API-INT-002 契約仕様書 §7.3.2.1 の Reason 失敗時扱い更新"
+  - "API-PUB-002 契約仕様書 §7.3.2.1 新設および §14.1 No.3 更新"
+  - "recommendation_reason テーブル定義書の fallback INSERT 方針更新"
+  - "状態遷移設計書 §11.1 の部分成功方針更新"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "OpenAPI / generated 変更"
+  - "apps 実装変更"
+  - "DB migration / DDL 変更"
+  - "性能要件（バックエンド）§5 更新（PoC #759 後）"
+  - "Reason生成定義書 §17.2 本文変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§10.3 / §17.1 確定方針の正本"
+    - path: "docs/04_ドメインモデル設計/Reason生成定義書.md"
+      required: true
+      purpose: "§17.2 汎用 Reason 文の引用"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      required: true
+      purpose: "更新対象"
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      required: true
+      purpose: "更新対象"
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      required: true
+      purpose: "更新対象"
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      required: true
+      purpose: "§11.1 更新対象"
+  issues:
+    - number: 758
+      purpose: "前提 Task（モジュール仕様書）"
+    - number: 764
+      purpose: "本 Task Issue"
+  prs:
+    - number: 760
+      purpose: "前提 PR（モジュール仕様書）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API契約仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API契約仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_reason_テーブル定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/状態遷移設計書.md"
+      action: "update"
+      required: true
+  files: []
+
+deliverables:
+  - "Reason fallback 方針に整合した API-INT-002 / API-PUB-002 契約仕様書"
+  - "fallback INSERT 方針に整合した recommendation_reason テーブル定義書"
+  - "部分成功方針に整合した状態遷移設計書 §11.1"
+
+acceptance_criteria:
+  - "§17.1 対象 4 docs（PoC 依存を除く）が MOD-RECO-001 §10.3 と矛盾しない"
+  - "Reason 失敗時も非空 reasonSummary + isFallback: true + reasonStatus: completed が API 契約に記載されている"
+  - "recommendation_reason が fallback 時も INSERT する方針になっている"
+  - "状態遷移設計書 §11.1 が Result 全体失敗ではなく部分成功を記載している"
+  - "OpenAPI / generated / apps 実装変更が含まれていない"
+  - "secret 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-764-mod-reco-001-reason-fallback-docs-alignment"
+  base: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  target: "feature/epic-260-mod-reco-001-recommendation-orchestrator"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    contract: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+  reason: "API / DB / 状態遷移への横断 docs 整合"
+
+human_decision_points:
+  - "epic_scope 横断（MOD-RECO-001 起点で API / DB / 05 docs を同一 PR で更新）の許容"
+  - "Public API への isFallback 露出の妥当性"
+
+notes:
+  - "Issue #764"
+  - "性能要件 §5 は PoC #759 後に別 Task"

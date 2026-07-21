@@ -1,0 +1,282 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-api-pub-003-item-detail-api-implementation-spec"
+  title: "API-PUB-003:商品詳細取得API実装仕様書作成"
+  summary: "API-PUB-003（商品詳細取得 / Public API、`GET /api/v1/items/{itemId}`）のAPI実装仕様書を、確定済み契約仕様書（#399）・OpenAPI断片（#416）・item 系テーブル定義に基づき作成する（実装面のみ）。Issue #1262。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]API-PUB-003:商品詳細取得"
+  epic_issue_number: 385
+  epic_branch: "feature/epic-385-pub-003-item-detail"
+  related_issues:
+    - number: 385
+      purpose: "親 Epic"
+    - number: 399
+      purpose: "前提 Task（API契約仕様書・develop 反映済み）"
+    - number: 416
+      purpose: "前提 Task（OpenAPI 断片・develop 反映済み）"
+  related_prs:
+    - number: 405
+      purpose: "契約仕様書 Task PR"
+    - number: 417
+      purpose: "OpenAPI 断片 Task PR（develop merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "contract-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "contract-ai"
+
+background: |
+  Phase4b 縦串の 1/3（実装面仕様書）。PUB-004 は develop merge 済み（#1260）。
+  契約面は `API-PUB-003_商品詳細取得API契約仕様書.md`（#399 / PR #405）を正とする。
+  OpenAPI（#416 / PR #417）および item / item_image / item_review_summary / item_popularity_signal 等のテーブル定義は develop 反映済み。
+  本 Task は契約・OpenAPI・DB schema を変更せず、apps/api の `apps/api/src/app/items/**` 実装 Task が参照可能な **実装面のみ** を整理する。
+  Provider は apps/api、Consumer は apps/web（SCR-006 / 結果一覧）。
+  モジュール一覧に Item Detail 専用 MOD-ID が未記載のため、実装仕様書では論理モジュール名を定義し、MOD-ID 正式割当は Human 判断（§未決）とする。
+  レーン 5。Epic Branch は develop 同期済みを前提とする。
+
+objective: |
+  API-PUB-003 の API実装仕様書（実装面のみ）を新規作成し、後続 apps/api 実装 / UT Task の入力とする。
+  Express Router、Item Detail Controller / Repository、item 系 JOIN 読取、active 判定（422）、エラー境界、metric を明記する。
+
+scope:
+  - "API-PUB-003_商品詳細取得API実装仕様書.md を新規作成する"
+  - "前提契約・OpenAPI / Contract Gate / item 系テーブル定義を整理する"
+  - "実装方針（items Router / Controller / Repository / request-meta / DI）を整理する"
+  - "処理フロー（Mermaid）と処理詳細（Path 検証 → Item 読取 → active 判定 → 画像/レビュー/人気バッジ組立 → Response）"
+  - "DB 列 → Public Response マッピング（Feature/Embedding 非公開）を整理する"
+  - "404 GRS-ITM-001 / 422 GRS-ITM-002 / 画像なし 200 / 未知 Query 400 GRS-REQ-001 を整理する"
+  - "item_detail_request_count / item_not_found_count 等 metric を整理する"
+  - "generated client 利用方針（記載のみ）"
+  - "provider / consumer 実装影響・結合テスト観点・未決事項を明記する"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "契約面再掲・契約仕様書変更"
+  - "OpenAPI / Orval / generated 変更"
+  - "apps/api / apps/web / apps/reco の実装"
+  - "DB schema / migration / seed 変更"
+  - "モジュール一覧への MOD-ID 追加の確定（Human 判断。案を未決に記載可）"
+  - "画面仕様書（SCR-006）の作成"
+  - "API-PUB-004 等の変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API契約仕様書.md"
+      required: true
+      purpose: "確定済み契約面の正本"
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_image_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_review_summary_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_popularity_signal_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-PUB-005_Relationshipマスタ取得API実装仕様書.md"
+      required: false
+      purpose: "実装仕様書スタイル参考（GET）"
+    - path: "docs/05_アプリケーション設計/アプリ/api/API設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/api/API一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/エラーコード定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+  templates:
+    - path: "prompts/templates/docs/api-implementation-spec.md"
+      required: true
+      applies_to:
+        - "docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md"
+  files:
+    - path: "packages/contracts/openapi/public-api.yaml"
+      required: false
+      purpose: "getItemDetail 参照（変更しない）"
+    - path: "apps/api/src/app/"
+      required: false
+      purpose: "既存 Express / masters / feedback 配置の参考"
+  issues:
+    - number: 399
+      purpose: "前提契約仕様書"
+    - number: 416
+      purpose: "前提 OpenAPI"
+  prs:
+    - number: 405
+      purpose: "契約仕様書 PR"
+    - number: 417
+      purpose: "OpenAPI 断片 PR"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md"
+      action: "create"
+      required: true
+      template: "prompts/templates/docs/api-implementation-spec.md"
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "API-PUB-003 商品詳細取得 API実装仕様書"
+  - "Controller / Repository 責務と処理フロー（Mermaid）"
+  - "Request/DB/Response マッピング"
+  - "404 / 422 / 画像なし 200 / metric 境界"
+  - "provider / consumer 影響・結合テスト観点・未決事項"
+
+acceptance_criteria:
+  - "docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md が作成されている"
+  - "api-implementation-spec.md の実装面章に準拠し、契約面再掲がない"
+  - "Item / Item Image / Review / Popularity の読取方針と Feature/Embedding 非公開が記載されている"
+  - "GRS-ITM-001 / GRS-ITM-002 / GRS-REQ-001 / GRS-DB-* と item_detail_* metric が記載されている"
+  - "OpenAPI / apps 実装変更を本 Task に含めていない"
+  - "secret / .env 実値を含めていない"
+  - "Human Review 観点が明記されている"
+
+branch:
+  no_branch: false
+  name: "docs/task-1262-api-pub-003-item-detail-api-implementation-spec"
+  summary: "api-pub-003-item-detail-api-implementation-spec"
+  base: "feature/epic-385-pub-003-item-detail"
+  target: "feature/epic-385-pub-003-item-detail"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  number: 1262
+  unit: "task"
+  type: "docs"
+  area: "api"
+
+contract_gate:
+  required: true
+  gate_id: "api-pub-003-phase1"
+  prerequisite_contract_tasks:
+    - issue: 416
+      definition: "prompts/definitions/contracts/api-pub-003-item-detail/openapi-fragment.yaml"
+  verify_at:
+    - "/work-issue 開始前"
+  blocked_message: "OpenAPI #416 / 契約 #399 の develop 反映を確認するまで開始しない"
+
+dependencies:
+  issues:
+    - number: 399
+      purpose: "契約仕様書"
+    - number: 416
+      purpose: "OpenAPI 断片"
+  prs:
+    - number: 405
+      purpose: "契約仕様書 merge"
+    - number: 417
+      purpose: "OpenAPI develop merge"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md"
+    - "prompts/definitions/tasks/api-pub-003-item-detail/api-implementation-spec.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "template conformity check"
+    - "secret check"
+  commands:
+    - "markdownlint docs/06_実装設計/api/API-PUB-003_商品詳細取得API実装仕様書.md"
+  not_required:
+    - "unit test"
+    - "integration test"
+    - "e2e test"
+    - "typecheck"
+    - "build"
+  skip_reason:
+    "unit test": "docs のみ"
+    "integration test": "docs のみ"
+    "e2e test": "docs のみ"
+    "typecheck": "source 変更なし"
+    "build": "source 変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "実装面に限定されているか"
+    - "404 / 422 / 画像なし 200 が契約と整合しているか"
+    - "Feature / Embedding 非公開が明記されているか"
+    - "後続実装 Task の入力として十分か"
+    - "secret が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常の実装面 docs 作成は ai-logs に保存しない。"
+
+human_decision_points:
+  - "Item Detail の MOD-ID（モジュール一覧未記載）の正式割当"
+  - "popularityBadge の算出ルール詳細（表示ラベル生成）"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "契約とテーブル定義が矛盾し AI だけで判断できない場合"
+  - "OpenAPI / apps 実装変更が必要になった場合"
+  - "secret を扱う必要が出た場合"
+
+notes:
+  - "Phase4b 1/3。レーン 5（PUB-004 develop 完了後）。"
+  - "親 Epic #385 / Branch feature/epic-385-pub-003-item-detail。"
+  - "後続: apps/api 実装 → UT → Epic PR → develop。"
+  - "Issue 起票後に branch.name / issue.number を実番号へ反映する。"
+  - "参考: api-pub-005 api-implementation-spec / masters GET 実装。"

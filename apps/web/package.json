@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:component": "vitest run",
     "test:styles": "tsc -p tsconfig.styles.json && node --test dist/src/styles/**/*.test.js",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
     "preview:style-guide": "node src/styles/preview/serve.mjs"
   },
   "dependencies": {
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

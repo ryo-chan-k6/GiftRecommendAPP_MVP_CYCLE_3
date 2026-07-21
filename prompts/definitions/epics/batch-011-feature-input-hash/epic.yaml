@@ -1,0 +1,243 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-011-feature-input-hash"
+  title: "BATCH-011:Feature入力hash算出Batch"
+  summary: "BATCH-011（Feature入力hash算出Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。item_semantic 等から feature_input_payload を正規化し feature_input_hash を算出する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b 意味生成パイプラインの Feature 入力 hash 段。識別子単位 Epic（1 Batch ID = 1 Epic）。
+  先行 BATCH-010 は develop merge 済み（#1422 / PR #1433）。
+  item_feature テーブル定義（#514）・item_semantic / item_generation_queue は整備済み。専用バッチ仕様書・apps/batch 実装・workflow は未着手。
+  IF は IF-DB-BATCH-012（Feature入力hash）。IF-DB-BATCH-011 は Item Semantic（BATCH-010）であり混同禁止。
+  IF-SHARED-002 / MOD-RECO-027 は BATCH-012 側（本 Epic 外）。
+  Batch は HTTP API 化しないため Contract Gate は不要。後続は BATCH-012。
+
+objective: |
+  BATCH-011 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: 仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-011 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-011-feature-input-hash/**）を整理する"
+  - "Contract Gate 不要方針を明示する"
+  - "IF-DB-BATCH-012 / feature_input_hash / BATCH-010・012 境界を整理する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001〜010 / 012〜019）の仕様書・実装・テスト（先行・後続は参照のみ）"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）・DB schema / migration（既存定義の参照は可）"
+  - "本番リリース作業"
+  - "apps/reco / MOD-RECO-027 / IF-SHARED-002（BATCH-012）"
+  - "BATCH-012〜015 の詳細実装"
+  - "親 batch-item-meaning-generation.yml / retry-failed チェーン全体改修（独立子 workflow 追加は可）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-011 の Batch ID・処理概要・入出力・依存・MVP対象"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "§13.3 feature_input_hash 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "meaning-generation チェーン内の位置"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "010 → 011 → 012 の依存"
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+      purpose: "feature_input_hash 列・冪等キー・IF-DB-BATCH-012"
+    - path: "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+      required: true
+      purpose: "SELECT 入力（DML 禁止）"
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+      purpose: "Queue 消化・status"
+    - path: "docs/06_実装設計/batch/BATCH-010_Item Semantic生成バッチ仕様書.md"
+      required: true
+      purpose: "先行 Semantic 境界"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / Task 命名"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-011:Feature入力hash算出Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（仕様書 / 実装 / UT）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-011:Feature入力hash算出Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "IF-DB-BATCH-012 と IF-DB-BATCH-011（BATCH-010）の混同防止が明記されている"
+  - "epic_scope.artifact_id が BATCH-011 である"
+
+branch:
+  no_branch: false
+  summary: "batch-011-feature-input-hash"
+  name: "feature/epic-1434-batch-011-feature-input-hash"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-17"
+    due_date: "2026-07-21"
+
+issue:
+  number: 1434
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-011"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-011_*"
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-feature-input-hash*.yml"
+    - "prompts/definitions/epics/batch-011-feature-input-hash/**"
+    - "prompts/definitions/tasks/batch-011-feature-input-hash/**"
+    - "prompts/definitions/reviews/batch-011-feature-input-hash/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1422
+      title: "[Epic]BATCH-010:Item Semantic生成Batch"
+      purpose: "先行 Semantic。develop merge 済み"
+    - issue: 514
+      title: "item_feature テーブル定義"
+      purpose: "feature_input_hash 列正本（CLOSED）"
+  issues: []
+  prs:
+    - number: 1433
+      purpose: "BATCH-010 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-010-item-semantic"
+  blocks:
+    - "epic-batch-012-item-feature"
+  exclusive_files:
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "依存 Epic BATCH-010 が CLOSED であること"
+    - "item_feature / item_semantic / item_generation_queue DDL が develop に存在すること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope が BATCH-011 に閉じているか"
+    - "IF-DB-BATCH-012 と IF-DB-BATCH-011（BATCH-010）の混同がないか"
+    - "BATCH-012 / apps/reco を含めていないか"
+    - "Contract Gate 不要方針"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "独立 YAML（batch-feature-input-hash.yml）を MVP 初期の正とするか"
+  - "IF-DB-BATCH-012 の物理書込タイミング（算出は 011・item_feature 列書込は 012）を仕様で確定するか"
+  - "消化対象 Queue（semantic processing 継続 / feature queued）の範囲"
+
+notes:
+  - "Issue #1434"
+  - "後続 Task: batch-spec → implementation → unit-test → Epic PR"

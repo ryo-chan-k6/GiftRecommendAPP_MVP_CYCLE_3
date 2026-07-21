@@ -1,0 +1,167 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-lane-1e-item-price-mapping-implementation"
+  title: "レーン1e:itemPrice応答マッピング実装"
+  summary: "Snapshot version_info に price/url を追記し、INT-002 response_mapper の itemPrice/itemUrl stub を解消する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]レーン1e:itemPrice応答マッピング"
+  epic_issue_number: 1300
+  epic_branch: "feature/epic-1300-lane-1e-item-price-mapping"
+  related_issues:
+    - number: 1301
+      purpose: "本 Task Issue"
+    - number: 1300
+      purpose: "親 Epic"
+  related_prs:
+    - number: 1297
+      purpose: "先行 Result Item MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  DB item_price_snapshot は正しいが INT-002 が itemPrice=0 固定。
+
+objective: |
+  version_info 経由で itemPrice / itemUrl を応答へ反映し、PUB-002 で itemPrice>0 を確認する。
+
+scope:
+  - "result-snapshot-builder executor の version_info 追記（price/url）"
+  - "response_mapper itemPrice / itemUrl 反映"
+  - "UT・手順書・再スモーク"
+
+out_of_scope:
+  - "NG 除外 / Reason / OpenAPI / api / web / migration"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/api/mappers/response_mapper.py"
+      required: true
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/reco/src/reco/api/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/application/result-snapshot-builder/**"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/api/**"
+      action: "update"
+      required: true
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "itemPrice 応答修正"
+  - "再スモーク記録"
+
+acceptance_criteria:
+  - "INT-002 / PUB-002 応答の itemPrice が Snapshot 価格と一致"
+  - "UT 通過"
+  - "secret なし"
+
+branch:
+  no_branch: false
+  name: "feature/task-1301-lane-1e-item-price-mapping-implementation"
+  base: "feature/epic-1300-lane-1e-item-price-mapping"
+  target: "feature/epic-1300-lane-1e-item-price-mapping"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-17"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "reco"
+
+dependencies:
+  epics:
+    - issue: 1293
+      purpose: "先行 Result Item MERGED"
+  issues: []
+  prs:
+    - number: 1297
+      purpose: "先行 Epic MERGED"
+
+exclusive_files:
+  - "apps/reco/src/reco/api/mappers/response_mapper.py"
+
+test_policy:
+  required:
+    - "api response mapping UT"
+  optional:
+    - "ローカル PUB-002 スモーク"
+  not_required: []
+
+contract_gate:
+  required: false
+  reason: "契約フィールドは既存。値埋めのみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "itemPrice stub 解消"
+    - "api/web 非変更"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "レーン1e itemPrice"
+
+notes:
+  - "AI は PR merge しない"

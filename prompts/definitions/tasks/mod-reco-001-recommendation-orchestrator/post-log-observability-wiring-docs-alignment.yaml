@@ -1,0 +1,276 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-001-post-log-observability-wiring-docs-alignment"
+  title: "MOD-RECO-001:ログ・観測Wiring完了後 docs正本追随"
+  summary: "Epic #1029（ログ・エラー Wiring）および Epic #1043（フェーズログ Wiring）develop merge 後、MOD-RECO-001 §8.4.2 と MOD-RECO-024/028/029 の移行期記述を develop 上の配線状態（024+029 DI / 028 本実装）へ追随させる docs-only Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]MOD-RECO-001:Recommendation Orchestrator"
+  epic_issue_number: 260
+  epic_branch: "develop"
+  related_issues:
+    - number: 260
+      purpose: "親 Epic（Recommendation Orchestrator・CLOSED 参考）"
+    - number: 1029
+      purpose: "ログ・エラー Wiring Epic（develop merge 済み）"
+    - number: 1043
+      purpose: "フェーズログ Wiring Epic（develop merge 済み）"
+    - number: 1009
+      purpose: "前回整合チェック Task（§8.4.2 が Stub 記載のまま）"
+  related_prs:
+    - number: 1034
+      purpose: "Epic #1029 develop merge"
+    - number: 1048
+      purpose: "Epic #1043 develop merge"
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #1029 / #1043 により `build_default_stub_ports()` の `error_handler`（`_build_default_orchestrator_error_handler()` → RecoErrorHandler + 029 DI）
+  および `phase_log_writer`（`_build_default_orchestrator_phase_log_writer()` → 028 本実装）が develop に統合された。
+  一方、MOD-RECO-001 §8.4.2 および 024/028/029 モジュール仕様書の「移行期」記述は #1009 時点（Stub 配線）のまま残存している。
+  本 Task は docs 正本追随に限定し、ソースコード変更は行わない。
+
+objective: |
+  develop 上の stubs.py 配線状態と docs 正本（MOD-RECO-001 §8.4.2 / 段階3着手前残課題、024/028/029 §2 移行期記述、§16 後続順序表の該当行）を整合させる。
+  PR 本文に更新前後の配線状態サマリを記載する。
+
+scope:
+  - "MOD-RECO-001 §8.4.2 フェーズ Wiring 状態表の更新（024/028/029 を配線済みへ）"
+  - "MOD-RECO-001 §268 段階3着手前残課題の更新（024/028/029 本実装配線完了を反映）"
+  - "MOD-RECO-001 §15 変更履歴の追記"
+  - "MOD-RECO-024 §2 移行期記述・Stub 参照表の Wiring 完了反映（最小 diff）"
+  - "MOD-RECO-028 §2 移行期記述・§16.3 順序表該当行の更新"
+  - "MOD-RECO-029 §2 移行期記述・Orchestrator 関係節の更新"
+  - "Task / Review Definition 配置"
+
+out_of_scope:
+  - "`stubs.py` および apps/reco ソースコード変更"
+  - "phase_name enum 整合（028 §16.3 順序5）— 別 Task"
+  - "段階3 Composition 完成（本番 DI / DB Repository 配線）"
+  - "MOD-RECO-025 Metric Logger 配線・docs"
+  - "§14 integration 新規実装・テスト追加"
+  - "OpenAPI / Orval / generated / DB schema 変更"
+  - "後続 Epic / Task の自動起票"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§8.4.2 / §268 更新対象"
+    - path: "docs/06_実装設計/reco/MOD-RECO-024_Reco Error Handlerモジュール仕様書.md"
+      required: true
+      purpose: "§2 移行期・§16 後続順序"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "§2 移行期・§16.3 順序表"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      required: true
+      purpose: "§2 移行期・Orchestrator 関係節"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/stubs.py"
+      required: true
+      purpose: "配線状態の参照正本（読み取りのみ）"
+  issues:
+    - number: 1029
+      purpose: "ログ・エラー Wiring Epic"
+    - number: 1043
+      purpose: "フェーズログ Wiring Epic"
+    - number: 1049
+      purpose: "本 Task Issue"
+  prs:
+    - number: 1034
+      purpose: "Epic #1029 merge"
+    - number: 1048
+      purpose: "Epic #1043 merge"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "§8.4.2 / §268 / §15"
+    - path: "docs/06_実装設計/reco/MOD-RECO-024_Reco Error Handlerモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "移行期・Wiring 完了反映"
+    - path: "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "移行期・§16.3 反映"
+    - path: "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+      action: "update"
+      required: true
+      purpose: "移行期・024 経由 DI 反映"
+  files: []
+  tests:
+    expected: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "MOD-RECO-001 §8.4.2 が develop 配線状態と一致"
+  - "024/028/029 の移行期記述が Wiring 完了後の状態を反映"
+  - "PR 本文の配線状態サマリ（024+029 DI / 028 本実装 / 025 Stub 維持）"
+  - "Review Definition"
+
+acceptance_criteria:
+  - "Epic #1029 / #1043 が develop merge 済みである（作業開始前提）"
+  - "§8.4.2 の 024/028/029 が Stub ではなく配線済み（本実装 / DI）として記載されている"
+  - "025 は Stub のまま、026/027 は BT 間接参照のままである"
+  - "024/028/029 の §2 移行期記述が Orchestrator 本実装配線完了を反映している"
+  - "apps/reco ソース変更が含まれていない（docs-only diff）"
+  - "secret、APIキー、.env 実値が含まれていない"
+
+branch:
+  no_branch: false
+  name: "docs/task-1049-mod-reco-001-post-log-observability-wiring-docs-alignment"
+  summary: "mod-reco-001-post-log-observability-wiring-docs-alignment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-07"
+    due_date: "2026-07-11"
+
+issue:
+  number: 1049
+  unit: "task"
+  type: "docs"
+  area: "reco"
+
+dependencies:
+  epics:
+    - number: 1029
+      purpose: "ログ・エラー Wiring develop merge"
+    - number: 1043
+      purpose: "フェーズログ Wiring develop merge"
+  issues:
+    - number: 1034
+      purpose: "Epic #1029 PR merge 確認"
+    - number: 1048
+      purpose: "Epic #1043 PR merge 確認"
+  prs:
+    - number: 1034
+      purpose: "ログ・エラー Wiring Epic merge"
+    - number: 1048
+      purpose: "フェーズログ Wiring Epic merge"
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-mod-reco-001-wiring-phase-log-integration-test"
+  blocks:
+    - "MOD-RECO-001 段階3 Composition Epic 起票判断（docs 前提）"
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-024_Reco Error Handlerモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-028_Phase Log Writerモジュール仕様書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-029_Error Log Writerモジュール仕様書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "stubs.py の error_handler / phase_log_writer が本実装 builder を参照していること"
+    - "§8.4.2 更新が 024/028/029 各仕様書と矛盾しないこと"
+    - "docs diff のみであること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "docs-only Task。ソース変更なし"
+    "integration test": "段階3 Composition / 別 Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§8.4.2 が stubs.py / develop 実装と一致しているか"
+    - "024/028/029 移行期記述の更新が過不足ないか"
+    - "025 Stub / 026-027 BT 間接の記載が維持されているか"
+    - "docs-only diff であるか（ソース変更なし）"
+    - "develop 直 PR 理由が PR 本文で説明されているか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Wiring 完了後の docs 正本追随。横断影響は PR 本文で記載"
+
+risk_points:
+  - "移行期記述の削除範囲と cause/error_code 後方互換説明の境界"
+  - "§16 後続順序表の『完了』表記が別 Task（phase_name 整合）と混同されやすい"
+
+human_decision_points:
+  - "024 §8 cause 優先移行の docs 記載深度（本 Task で確定するか後続に委譲するか）"
+  - "028 phase_name enum 整合は別 Task 起票（本 Task では起票しない）"
+
+stop_conditions:
+  - "stubs.py の配線状態が Issue 前提と異なる（Human 確認）"
+  - "docs 更新にソース変更が必要と判断された場合"
+  - "正本 docs 間で Wiring 完了状態の解釈が矛盾する場合"
+
+notes:
+  - "workstream: mod-reco-001-post-log-observability-wiring-docs"
+  - "Related to #1029 / #1043 / #1009"
+  - "PR 本文: 配線状態サマリ・docs 差分概要・後続 Task（phase_name / Composition / 025）"
+
+audit_checklist:
+  wiring_status_expected:
+    - module: "024"
+      expected: "RecoErrorHandler（_build_default_orchestrator_error_handler）+ 029 DI"
+    - module: "025"
+      expected: "StubMetricLogger（未配線）"
+    - module: "028"
+      expected: "build_default_phase_log_writer（本実装）"
+    - module: "029"
+      expected: "024 経由 DI（build_default_error_log_writer）"

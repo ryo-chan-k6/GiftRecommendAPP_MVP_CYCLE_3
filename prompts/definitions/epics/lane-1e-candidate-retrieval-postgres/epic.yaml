@@ -1,0 +1,151 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-lane-1e-candidate-retrieval-postgres"
+  title: "レーン1e:候補Retrieval Postgres配線"
+  summary: "production の Candidate Retriever / Post Hard Filter / Feature Matcher の Item 系 Port を Postgres へ配線し、GRS-REC-012（ranked_items）を解消して items≥1 または次 Blocker を明示する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  #1274 / #1275 後の再スモークで UserFeature 永続までは到達。
+  現 Blocker は GRS-REC-012（ranked_items is required）。
+  production の retrieval / post-filter / feature matching が InMemory scaffold
+  （item-001 等）のままで、seed の UUID item / embedding が参照されない。
+
+objective: |
+  MOD-RECO-012/013/014 の Item 系 Port を Postgres 配線し、
+  ローカル PUB-002 で items≥1 または次 Blocker を明示する。
+
+scope:
+  - "子 Task（implementation）"
+  - "Epic Issue / Branch"
+  - "Postgres Item / Embedding / ItemFeature / ItemSemantic 参照と composition 配線"
+  - "必要なら Snapshot Item 正本読取（022 ItemSnapshotReadPort）の最小配線"
+  - "必要なら test-data の item_semantic seed 補完"
+  - "手順書再スモーク記録"
+
+out_of_scope:
+  - "recommendation_result_item の Postgres INSERT（本 Task では読取のみ）"
+  - "Reason 全面本番永続"
+  - "OpenAPI / migration / SCR / PUB-004 / Batch フルラン"
+  - "Ranking アルゴリズム変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（implementation）"
+  - "epic_scope.allowed_paths"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "子 Task PR target が親 Epic Branch"
+  - "allowed_paths が reco composition / item repos / seed に整合"
+
+branch:
+  no_branch: false
+  name: "feature/epic-1277-lane-1e-candidate-retrieval-postgres"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: null
+  allowed_paths:
+    - "apps/reco/src/reco/composition/**"
+    - "apps/reco/src/reco/infrastructure/db/repositories/**"
+    - "apps/reco/tests/unit/composition/**"
+    - "apps/reco/tests/unit/infrastructure/**"
+    - "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+    - "ai-logs/experiments/**"
+    - "supabase/seeds/test-data/**"
+    - "prompts/definitions/epics/lane-1e-candidate-retrieval-postgres/**"
+    - "prompts/definitions/tasks/lane-1e-candidate-retrieval-postgres/**"
+    - "prompts/definitions/reviews/lane-1e-candidate-retrieval-postgres/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "apps/api/src/app/feedback/**"
+    - "apps/web/src/**"
+  child_task_areas:
+    - "implementation"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "DEFAULT composition の InMemory が維持されているか"
+    - "production のみ Postgres Item 系か"
+    - "seed 変更が最小か"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "レーン1e retrieval"
+
+notes:
+  - "Epic Issue: #1277"
+  - "依存: Epic #1268（stack base）"
+  - "AI は PR merge しない"

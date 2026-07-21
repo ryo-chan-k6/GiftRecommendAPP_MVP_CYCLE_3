@@ -1,0 +1,218 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-scr-007-feedback-input-implementation"
+  title: "SCR-007:Feedback入力表示実装"
+  summary: "SCR-007 Feedback入力モーダルを実装し、API-PUB-004 呼び出しと SCR-004 / SCR-006 の Feedback 導線有効化を行う。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]SCR-007:Feedback入力表示"
+  epic_issue_number: 1325
+  epic_branch: "feature/epic-1325-scr-007-feedback-input"
+  related_issues:
+    - number: 1325
+      purpose: "親 Epic"
+    - number: 1327
+      purpose: "前提 Task（画面仕様書）"
+  related_prs:
+    - number: 1328
+      purpose: "画面仕様書 Task PR（親 Epic Branch merge 済み）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  画面仕様書（#1327 / PR #1328）が親 Epic Branch に merge 済み。
+  SCR-004 / SCR-006 の Feedback は disabled。API-PUB-004 generated client は利用可能。
+
+objective: |
+  Feedback入力モーダルを実装し、API-PUB-004 で送信できるようにする。
+  SCR-004 / SCR-006 からモーダルを開けるようにする。
+
+scope:
+  - "apps/web/src/features/feedback-input/** の新規実装"
+  - "apps/web/src/lib/api/** への submitFeedback ラップ"
+  - "SCR-004 / SCR-006 の Feedback 導線有効化（最小差分）"
+  - "apps/web/tests/component/feedback-input/** および導線テスト更新"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "画面仕様書の大幅改訂"
+  - "OpenAPI / Orval / generated 手編集"
+  - "apps/api / apps/reco / apps/batch"
+  - "SCR-005 / reason 粒度 Feedback UI"
+  - "E2E"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/web/SCR-007_Feedback入力表示画面仕様書.md"
+      required: true
+      purpose: "実装正本"
+    - path: "docs/06_実装設計/api/API-PUB-004_Feedback送信API契約仕様書.md"
+      required: true
+      purpose: "Request / Error"
+  files:
+    - path: "apps/web/src/generated/api/feedback/feedback.ts"
+      required: true
+      purpose: "submitRecommendationFeedback"
+  issues:
+    - number: 1327
+      purpose: "画面仕様書"
+  prs:
+    - number: 1328
+      purpose: "仕様書 PR"
+
+output:
+  docs: []
+  files:
+    - path: "apps/web/src/features/feedback-input/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/web/src/lib/api/**"
+      action: "create_or_update"
+      required: false
+    - path: "apps/web/src/features/recommendation-result/**"
+      action: "update"
+      required: true
+    - path: "apps/web/src/features/item-detail/**"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/web/tests/component/feedback-input/**/*.{test,spec}.{ts,tsx}"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Feedback モーダル本実装（PUB-004）"
+  - "SCR-004 / SCR-006 導線有効化"
+  - "最小 component テスト"
+
+acceptance_criteria:
+  - "item 粒度 Feedback をモーダルから送信できる"
+  - "SCR-004 から Feedback モーダルが開く"
+  - "SCR-006 は result 文脈があるとき Feedback が開く"
+  - "400 / 404 / 通信失敗の UX がある"
+  - "pnpm --filter @gift-recommendation/web test:component が通る"
+  - "pnpm --filter @gift-recommendation/web typecheck が通る"
+  - "generated 手動編集なし / secret なし"
+
+branch:
+  no_branch: false
+  name: "feature/task-1337-scr-007-feedback-input-implementation"
+  summary: "scr-007-feedback-input-implementation"
+  base: "feature/epic-1325-scr-007-feedback-input"
+  target: "feature/epic-1325-scr-007-feedback-input"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-15"
+    due_date: "2026-07-18"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "web"
+
+dependencies:
+  epics:
+    - issue: 1325
+      title: "[Epic]SCR-007:Feedback入力表示"
+      purpose: "親 Epic"
+    - issue: 386
+      title: "[Epic]API-PUB-004:Feedback送信"
+      purpose: "API 前提"
+  issues:
+    - number: 1327
+      purpose: "画面仕様書"
+  prs:
+    - number: 1328
+      purpose: "仕様書 PR"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/web/src/features/feedback-input/**"
+    - "apps/web/tests/component/feedback-input/**"
+    - "prompts/definitions/tasks/scr-007-feedback-input/implementation.yaml"
+    - "prompts/definitions/reviews/scr-007-feedback-input/implementation/**"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "component test"
+    - "typecheck"
+    - "secret check"
+  commands:
+    - "pnpm --filter @gift-recommendation/web test:component"
+    - "pnpm --filter @gift-recommendation/web typecheck"
+  not_required:
+    - "e2e test"
+  skip_reason:
+    "e2e test": "本 Task 対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "画面仕様どおりの item 粒度・rating 自動・エラー UX か"
+    - "004/006 への変更が導線有効化に閉じているか"
+    - "secret / generated 手編集なし"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常実装。詳細は PR を正本とする"
+
+stop_conditions:
+  - "PR #1328 が親 Epic Branch に merge されていない場合"
+  - "generated を手動編集する必要が出た場合"
+  - "API 契約変更が必要になった場合"
+
+notes:
+  - "Issueタイトル: [Task]SCR-007:Feedback入力表示実装"
+  - "後続: unit-test（必要時）→ Epic PR → develop"
