@@ -17,7 +17,7 @@ Reco 性能フィジビリティ PoC（TV-007）向けの計測ハーネス。
 | モード | Phase | 説明 |
 | ------ | ----- | ---- |
 | `skeleton` | Phase1 | Phase4a scaffold パイプライン（`apps/reco` **変更なし**）の wall-clock 実測 |
-| `live` | Phase2 | `RecommendationOrchestrator` + `CompositionMode.PRODUCTION`。ephemeral DB + seed 前提 |
+| `live` | Phase2/3 | `RecommendationOrchestrator` + `CompositionMode.PRODUCTION`。ephemeral DB + seed 前提 |
 
 ### live モード
 
@@ -27,8 +27,9 @@ Reco 性能フィジビリティ PoC（TV-007）向けの計測ハーネス。
 | DB | `DATABASE_URL` 必須。手順は [scripts/db/README.md](../db/README.md)（`test-reco-quality.yml` 同型） |
 | OpenAI | `--openai-mode mock`（scaffold Embedding/LLM）/ `secrets`（`OPENAI_API_KEY` 実疎通） |
 | 計測 | Orchestrator `phase_log_events` の duration を TV-007 step に合算 + 外側 wall-clock |
-| hard timeout | 既定は計測のため bypass（`--enforce-hard-timeout` で本番相当 4,000ms を有効化） |
+| hard timeout | 既定は計測のため bypass（`--enforce-hard-timeout` で本番相当 hard を有効化） |
 | 代表入力 | `friend_casual` × `birthday`（`--relationship-code` / `--occasion-code` で変更可） |
+| Phase3 主対象 | **Reason 込み E2E**（input_parse → reason）。Ranking までは比較指標 |
 
 ## 前提
 
@@ -75,22 +76,27 @@ uv run python ../../scripts/perf/reco_pipeline_bench.py \
 
 出力:
 
-- `report.json` — フェーズ別 p50/p95、Go/Adjust/Block 暫定判定、openai_mode メタ
+- `report.json` — Ranking まで / Reason 込み / phase_output の p50/p95、分離 Go/Adjust/Block、openai_mode メタ
 - `summary.md` — 人間 / Agent 可読サマリ
 
 ## GHA Layer2 実行
 
 通常 PR CI（`ci.yml`）とは分離。`workflow_dispatch`。
 
-```bash
-# skeleton
-gh workflow run perf-feasibility-reco.yml \
-  -f pipeline_mode=skeleton \
-  -f iterations=50
+**注意:** 同一 Branch の concurrency により、mock と secrets を同時 dispatch すると後勝ちで cancel される。逐次実行すること。
 
-# live + OpenAI secrets
+```bash
+# live + mock
 gh workflow run perf-feasibility-reco.yml \
-  --ref spike/task-1513-reco-perf-live \
+  --ref spike/task-1536-reco-perf-phase3-reason-e2e \
+  -f pipeline_mode=live \
+  -f openai_mode=mock \
+  -f iterations=20 \
+  -f warmup=2
+
+# live + OpenAI secrets（上記完了後）
+gh workflow run perf-feasibility-reco.yml \
+  --ref spike/task-1536-reco-perf-phase3-reason-e2e \
   -f pipeline_mode=live \
   -f openai_mode=secrets \
   -f iterations=20 \
@@ -102,7 +108,12 @@ gh workflow run perf-feasibility-reco.yml \
 
 ## 計測ポイント
 
-検証計画書 §6 に準拠。主対象は **入力解析〜 Ranking**（`reason` は参考）。
+検証計画書 §6 に準拠。
+
+| Phase | 主対象 |
+| ----- | ------ |
+| Phase1/2 | 入力解析〜 Ranking（`reason` は参考） |
+| **Phase3** | **入力解析〜 Reason**（Ranking までは比較） |
 
 | TV-007 step | measurement_point | live Orchestrator 集約 phase（合算） |
 | ----------- | ----------------- | ------------------------------------ |
@@ -111,15 +122,15 @@ gh workflow run perf-feasibility-reco.yml \
 | `retrieval` | `retrieval` | `pre_hard_filter` / `retrieval` / `post_hard_filter` |
 | `matching` | `matching` | `matching_completed` |
 | `ranking` | `ranking` | `ranking_completed` |
-| `reason` | `reason` | `result_generated` + `reason_generated`（参考） |
+| `reason` | `reason` / `phase_output` | `result_generated` + `reason_generated` + `response_built` |
 
-暫定上限（MOD-RECO-001 §13.2）: 全体 soft 2,000ms / hard 4,000ms。詳細は計画書 §7。
+判定枠（#1533）: Reco 内部 soft/hard **1.5s/2s**、同期外部 AI 込み **6s/8s**。`phase_output` は Human 未確定（Phase3 で案出し）。詳細は計画書 §7。
 
 ## 関連 Issue / Branch
 
 | 項目 | 値 |
 | ---- | --- |
-| Phase2 Epic | #1512 |
-| Phase2 Task | #1513 |
-| Branch | `spike/task-1513-reco-perf-live` |
-| PR target | `spike/epic-1512-reco-performance-feasibility-poc-phase2` |
+| Phase2 Epic / Task | #1512 / #1513 |
+| Phase3 Epic / Task | #1535 / #1536 |
+| Branch（本 Task） | `spike/task-1536-reco-perf-phase3-reason-e2e` |
+| PR target | `spike/epic-1535-reco-performance-feasibility-poc-phase3` |

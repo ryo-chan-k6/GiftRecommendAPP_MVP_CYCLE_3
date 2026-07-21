@@ -5,7 +5,7 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 配置 | `docs/90_PoC/管理/` |
-| 更新日 | 2026-07-22（TV-007 Phase3 起票） |
+| 更新日 | 2026-07-22（TV-007 Phase3 計測） |
 | 計画正本 | [技術検証全体計画](../計画/技術検証全体計画.md) |
 
 ステータス凡例:
@@ -20,6 +20,7 @@
 | `Phase1完了（Phase2待ち）` | Phase1 成果は develop にあり、Phase2 未実施 |
 | `Phase2取り込み中` | develop 向け Epic PR で Phase2 成果を取り込み中 |
 | `Phase2完了（Phase3待ち）` | Phase2 まで develop 着。Phase3（Reason 込み）未実施 |
+| `Phase3進行中` | Phase3 計測・結果 doc 作成中（Human 判定または Epic 取込待ち） |
 | `完了` | 当該 TV の PoC 完了条件を満たし develop に成果あり |
 | `保留` | Human 判断待ち / 依存待ち |
 
@@ -35,7 +36,7 @@
 | TV-004 | `方針のみ` | なし（要起票） | 同上 |
 | TV-005 | `方針のみ` | なし（要起票） | Phase3 の外部 AI 依存候補（内包しない） |
 | TV-006 | `方針のみ` | なし（要起票） | Phase3 の pgvector 依存候補（内包しない） |
-| TV-007 | `Phase2完了（Phase3待ち）` | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) **CLOSED** / 正式反映 [#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) **CLOSED** / Phase3 [#1535](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1535) | Phase2 develop 着（#1530）。#1533 で soft/hard 確定・`phase_output` 未確定。Phase3 で Reason 込み E2E |
+| TV-007 | `Phase3進行中` | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) **CLOSED** / 正式反映 [#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) **CLOSED** / Phase3 [#1535](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1535) / [#1536](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1536) | #1536 で Reason 込み計測・結果 doc。`phase_output` Human 確定待ち |
 | TV-008 | `方針のみ` | なし（要起票） | BATCH レーンと exclusive 調整が必要 |
 | TV-009 | `方針のみ` | なし（要起票） | — |
 | TV-010 | `方針のみ` | なし（要起票） | BATCH-015 Embedding 実装進展と関連し得る |
@@ -51,3 +52,4 @@
 | 2026-07-21 | TV-007 を `Phase1完了（Phase2待ち）` に更新（#1502 マージ・#759 CLOSED） |
 | 2026-07-21 | TV-007 を `Phase2取り込み中` に更新（#1512 Epic PR 準備） |
 | 2026-07-22 | TV-007 を `Phase2完了（Phase3待ち）` に更新（#1535 Phase3 起票・#1533 方針反映） |
+| 2026-07-22 | TV-007 を `Phase3進行中` に更新（#1536 計測・結果 doc） |
