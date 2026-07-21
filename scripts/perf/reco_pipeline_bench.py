@@ -296,13 +296,16 @@ def _build_live_orchestrator(
     database_url: str | None,
     bypass_hard_timeout: bool,
 ) -> tuple[Any, Any, dict[str, Any]]:
-    from reco.application.recommendation_orchestrator import RecommendationOrchestrator
-    from reco.composition import CompositionMode, build_composition_ports
+    # hyphenated application packages を先に登録してから Orchestrator を import する
     from reco.composition.bootstrap import ensure_composition_application_packages
-    from reco.infrastructure.db.session import create_database_session
-    from reco.composition.config import resolve_database_url
 
     ensure_composition_application_packages()
+
+    from reco.application.recommendation_orchestrator import RecommendationOrchestrator
+    from reco.composition import CompositionMode, build_composition_ports
+    from reco.composition.config import resolve_database_url
+    from reco.infrastructure.db.session import create_database_session
+
     resolved_url = resolve_database_url(database_url)
     session = create_database_session(resolved_url)
     ports, helpers = build_composition_ports(
