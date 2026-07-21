@@ -16,6 +16,7 @@ branch:
 target:
   issue:
     number: 1513
+  pr: 1525
   parent_epic_issue: 1512
   parent_epic_branch: "spike/epic-1512-reco-performance-feasibility-poc-phase2"
   task_definition: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-live-verification.yaml"
@@ -45,7 +46,7 @@ input:
   issue:
     number: 1513
   pr:
-    number: null
+    number: 1525
 
 review_points:
   - "入力解析〜Ranking のフェーズ別 p50/p95 が live 環境（GHA および/または local）で計測されているか"
@@ -60,5 +61,4 @@ review_points:
   - "件数スケール未実施など残課題が follow-up として整理されているか"
 
 notes:
-  - "Issue #1513 / Branch spike/task-1513-reco-perf-live"
-  - "PR 番号は create-pr 成功後に target.pr / input.pr.number へ反映する"
+  - "Issue #1513 / Branch spike/task-1513-reco-perf-live / PR #1525"
