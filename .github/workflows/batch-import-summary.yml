@@ -1,0 +1,99 @@
+name: Batch Import Summary
+
+# BATCH-017 Import Summary 作成（独立子 workflow）
+# 正本: BATCH-017 バッチ仕様書 §18.1 No.16 — C 併用
+# workflow_call / workflow_dispatch（独立 cron なし）
+# 親 import / meaning-generation 末尾追加は Epic 外（§18.1 No.17）
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      source_api:
+        description: "source_api override (item_search / item_ranking / genre_search / attribute_search)"
+        required: false
+        type: string
+        default: ""
+      batch_run_id:
+        description: "Aggregation target batch_run_id override"
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      source_api:
+        description: "source_api override (item_search / item_ranking / genre_search / attribute_search)"
+        required: false
+        type: string
+        default: ""
+      batch_run_id:
+        description: "Aggregation target batch_run_id override"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: batch-import-summary
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  import-summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Setup Python
+        run: uv python install "$(tr -d '[:space:]' < .python-version)"
+
+      - name: Setup batch Python env
+        run: bash ./scripts/dev/setup-python-batch.sh
+
+      - name: Resolve job_run_id
+        id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run BATCH-017 scaffold demo
+        # Real DB not enabled. Secrets must never be printed.
+        # IF-DB-BATCH-017: item_import_summary INSERT + ON CONFLICT DO NOTHING.
+        # IF-DB-BATCH-016 / IF-OBS-006 are not physical write IFs for this Batch.
+        # MOD-BATCH-047（Import Summary Builder 同義・追加採番なし）。
+        working-directory: apps/batch
+        run: |
+          SOURCE_ARGS=()
+          if [ -n "${{ inputs.source_api }}" ]; then
+            SOURCE_ARGS+=(--source-api "${{ inputs.source_api }}")
+          fi
+          BATCH_RUN_ARGS=()
+          if [ -n "${{ inputs.batch_run_id }}" ]; then
+            BATCH_RUN_ARGS+=(--batch-run-id "${{ inputs.batch_run_id }}")
+          fi
+          uv run python -m batch.application.import_summary \
+            --scaffold-demo \
+            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            "${SOURCE_ARGS[@]}" \
+            "${BATCH_RUN_ARGS[@]}"
