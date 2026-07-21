@@ -44,7 +44,7 @@ background: |
   モジュール: MOD-BATCH-042。Aggregator / Classifier は内部責務。043/044 は out of scope。
   MOD-BATCH-019（Raw Product Reader）≠ Batch ID BATCH-019。
   workflow: 独立子 batch-feedback-analysis.yml。親接続は後続。
-  Contract Gate 不要。§18.1 確定と §18.2 Human 判断（feedback_metric 物理化・冪等・status 等）を区別。
+  Contract Gate 不要。§18.2 Human 判断（feedback_metric 物理化・冪等・status 等）は推奨案どおり Human 確定済み（§18.1 No.17〜23）。
 
 objective: |
   BATCH-019 バッチ仕様書を作成し、後続実装・UT の入力正本とする。
@@ -55,7 +55,7 @@ scope:
   - "入力 recommendation_feedback・任意 SELECT 参照の明記"
   - "MOD-BATCH-042・043/044 out of scope・MOD-BATCH-019 混同禁止"
   - "独立子 batch-feedback-analysis.yml・Contract Gate 不要・secret 禁止"
-  - "冪等キー候補・feedback_analysis_status 読み替え・feedback_metric 推奨案を §18 に提示"
+  - "冪等キー候補・feedback_analysis_status 読み替え・feedback_metric 方針を §18 に確定反映"
   - "Task / Review Definition"
 
 out_of_scope:
@@ -116,14 +116,14 @@ acceptance_criteria:
   - "IF-DB-BATCH-019 = 分析結果保存（論理契約）・scaffold in-memory/stub が明記されている"
   - "出力物理未整備・migration 禁止・別 DB Task が明記されている"
   - "入力 recommendation_feedback（DDL あり）・任意 SELECT 参照が明記されている"
-  - "feedback_metric 推奨案が §18 に提示されている"
+  - "feedback_metric が scaffold・当面 JSON 内包（案 B）で §18.1 に確定されている"
   - "MOD-BATCH-042 正・Aggregator/Classifier 内部責務・043/044 out of scope が明記されている"
   - "MOD-BATCH-019 ≠ BATCH-019 が明記されている"
-  - "冪等キー候補と scaffold 方針が §18 に提示されている"
-  - "feedback_analysis_status 読み替え候補が明記されている"
+  - "冪等キー候補と scaffold 都度新規 stub / 本格化 UPSERT 第一候補が §18.1 に確定されている"
+  - "feedback_analysis_status 読み替え（専用なし）が §18.1 に確定されている"
   - "独立子 batch-feedback-analysis.yml・親接続は後続が明記されている"
   - "Contract Gate 不要・secret 禁止が明記されている"
-  - "§18.1 確定と §18.2 Human 判断（残未決）が区別されている"
+  - "§18.2 残未決なし（旧 Human 推奨案は §18.1 No.17〜23 へ移管済み）"
   - "PR target が親 Epic Branch"
 
 branch:
@@ -180,10 +180,10 @@ review:
   review_points:
     - "IF-DB-BATCH-019 が論理契約・scaffold in-memory/stub・migration 禁止である"
     - "出力物理未整備・別 DB Task・入力 recommendation_feedback"
-    - "feedback_metric 推奨案・冪等キー候補・feedback_analysis_status 読み替えが §18 にある"
+    - "feedback_metric 案 B・冪等・feedback_analysis_status 読み替えが §18.1 で Human 確定"
     - "MOD-BATCH-042・043/044 out of scope・MOD-BATCH-019 混同禁止"
     - "独立子 workflow・Contract Gate 不要・secret 禁止"
-    - "§18.1 確定と §18.2 残未決の区別"
+    - "§18.2 残未決なし（旧 No.1〜7 は §18.1 No.17〜23）"
     - "PR target が親 Epic Branch"
   specialist_reviews:
     docs: true
@@ -197,12 +197,7 @@ operation_logging:
     cross_cutting: false
     experiments: false
 
-human_decision_points:
-  - "feedback_metric を独立テーブルとするか analysis_result_json 内包とするか"
-  - "出力テーブル物理 DDL を別 DB Task とするか（推奨: 別 Task）"
-  - "MOD-BATCH-043 を本 Epic に含めるか（推奨: out of scope）"
-  - "冪等: 一覧キー UPSERT か実行都度新規か"
-  - "feedback_analysis_status の正本（専用 vs batch_run_log / phase_log 読み替え）"
+human_decision_points: []
 
 stop_conditions:
   - "正本 docs 間で矛盾があり独断解消できない場合"
@@ -210,4 +205,4 @@ stop_conditions:
 notes:
   - "Epic #1522"
   - "Issue #1523"
-  - "§18.2 Human 判断事項あり（仕様書で推奨案提示）"
+  - "§18.2 残未決なし（旧 Human 推奨案は 2026-07-21 に Human 確定・§18.1 No.17〜23）"

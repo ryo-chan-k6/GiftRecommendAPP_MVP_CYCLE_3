@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service / batch |
 | MVP対象        | `△`（scaffold-first。出力テーブル物理未整備） |
 | 作成日         | 2026-07-21                          |
-| 更新日         | 2026-07-21                          |
+| 更新日         | 2026-07-21（§18.2 Human 確定反映）  |
 
 ---
 
@@ -20,7 +20,7 @@ BATCH-019（Feedback分析Batch）は、Online 推薦フローで蓄積された
 | 出力（論理） | 単位（論理） | 主目的 |
 | ------------ | ------------ | ------ |
 | `feedback_analysis_result` | Feedback 単位または分析単位（論理ER） | 分析結果 JSON・`analysis_type`・`analyzed_at` |
-| `feedback_metric` | 集計メトリクス単位（一覧・IF 上） | 傾向指標（件数・比率等）。**論理ER エンティティ未掲載** → §18 で物理化方針を提示 |
+| `feedback_metric` | 集計メトリクス単位（一覧・IF 上） | 傾向指標（件数・比率等）。**論理ER エンティティ未掲載** → scaffold・当面は `analysis_result_json` 内包（§18.1 No.17） |
 
 正本区分は **分析派生 / 観測（派生 Log）** である。Online 推薦本線の必須前提ではない（分析系）。Public / Admin 分析画面は本仕様の対象外。Public API では Feedback 分析系主キーを直接公開しない。
 
@@ -32,7 +32,7 @@ BATCH-019（Feedback分析Batch）は、Online 推薦フローで蓄積された
 | 物理 ER | **MVP 62 テーブル対象外**（物理ER §2 No.7。`feedback_analysis_result` 優先度「低」） |
 | テーブル定義書 / DDL | **未整備** |
 | 本 Epic / 本仕様 | **scaffold-first**。**migration 禁止**（`supabase/migrations/**` 非変更） |
-| 物理 DDL | **別 DB Task**（Human 推奨。§18.2） |
+| 物理 DDL | **別 DB Task**（Human 確定。§18.1 No.18） |
 | IF-DB-BATCH-019 | **論理契約**として確定。MVP scaffold の永続化は **in-memory / stub**（実 INSERT は物理整備後） |
 
 ### 2.2 IF 対応
@@ -50,15 +50,13 @@ BATCH-019（Feedback分析Batch）は、Online 推薦フローで蓄積された
 >
 > **確定**: Contract Gate **不要**（OpenAPI / packages/contracts 非変更）。
 
-### 2.3 `feedback_analysis_status` 読み替え（推奨・§18.2）
+### 2.3 `feedback_analysis_status` 読み替え（確定・§18.1 No.21）
 
-バッチ処理一覧の状態候補に `feedback_analysis_status` とあるが、**専用物理テーブル / 専用 status 列は未整備**である。
+バッチ処理一覧の状態候補に `feedback_analysis_status` とあるが、**専用物理テーブル / 専用 status 列は作らない**（Human 確定）。
 
-| 一覧表記 | 読み替え候補（推奨） |
-| -------- | -------------------- |
+| 一覧表記 | 読み替え（確定） |
+| -------- | ---------------- |
 | `feedback_analysis_status` | **`batch_run_log`**（Batch 起動単位の成否）+ **`phase_log`**（分析フェーズ。`owner_type` は実装 Task で確定。例: `batch_run`） |
-
-専用 status 列を出力テーブルへ持たせる案は、物理 DDL 別 Task と合わせて Human 判断（§18.2）。
 
 ### 2.4 識別子混同禁止（確定）
 
@@ -186,7 +184,7 @@ BATCH-019（Feedback分析Batch）は、Online 推薦フローで蓄積された
 | ------ | ---- |
 | 期間 | `submitted_at`（または `created_at` 相当）が分析窓内 |
 | 種別 | `feedback_type` は `packages/code-definitions/application/feedback_type.yaml` の enabled 値を正とする |
-| Negative 判定（初版） | 例: `item_bad` / `item_not_match` / `item_ng_violation` / `item_avoid_match` / `reason_bad` / `result_bad`、および低 `feedback_rating`（閾値は実装 Task。§18.2） |
+| Negative 判定（初版） | 例: `item_bad` / `item_not_match` / `item_ng_violation` / `item_avoid_match` / `reason_bad` / `result_bad`、および低 `feedback_rating`（閾値は実装 Task で仮置き可。本格化前に Human 確認。§18.1 No.22） |
 | 個人情報 | `session_id` は分析キーに使ってよいが、ログ・stub 出力に過剰な原文コメントを載せない |
 | 任意 JOIN | result / item / reason / feature は **SELECT 参照のみ**。欠落時は当該次元をスキップして集計継続を許容 |
 
@@ -316,7 +314,7 @@ recommendation_feedback（SELECT・api 書込正本）
 | A | **独立テーブル** `feedback_metric`（evaluation_metric 類似の EAV） | IF・一覧と一致。クエリしやすい | 論理ER追記・DDL が増える |
 | B | **`analysis_result_json` 内包**のみ（独立テーブルなし） | 物理対象を最小化 | IF 表記の `feedback_metric` と差分。一覧更新が必要になり得る |
 
-**推奨案（AI）**: scaffold では **B（JSON 内包）** で論理契約を満たし、本格化時に Human が A 採用なら別 DB Task で独立テーブル化する（§18.2）。
+**確定（Human: 推奨案採用）**: scaffold・当面は **B（JSON 内包）** で論理契約を満たす。本格化で A を採るなら別 DB Task で独立テーブル化する（§18.1 No.17）。
 
 ---
 
@@ -353,16 +351,16 @@ aggregation_scope + period + feedback_type + semantic_config_version_id
 | `feedback_type` | メトリクス行の種別キー（集計次元） |
 | `semantic_config_version_id` | 設定 version。JOIN しない初版では stub / NULL 方針可 |
 
-### 11.2 scaffold 方針（推奨・§18.2）
+### 11.2 scaffold 方針（確定・§18.1 No.20 / No.23）
 
-| 観点 | 推奨 |
-| ---- | ---- |
+| 観点 | 方針（Human 確定） |
+| ---- | ------------------ |
 | 物理 UNIQUE | **未整備**のため DB 制約に依存しない |
-| stub 永続化 | 実行都度 **新規分析結果オブジェクト**を生成（評価 Run に近い非冪等）でも可 |
-| 本格化時 | 一覧キーでの **UPSERT** か、実行都度新規かは Human 判断（§18.2） |
+| stub 永続化 | 実行都度 **新規分析結果オブジェクト**を生成（都度新規 stub） |
+| 本格化時 | 一覧キーでの **UPSERT** を第一候補 |
 | 再実行 | workflow 再 dispatch。stub は上書きまたは履歴追加（実装 Task） |
 
-> **注意**: 論理ERの Feedback 単位行（`recommendation_feedback_id`）と一覧の集計キーは粒度が異なる。本格 DDL 時にどちらを主キーにするか Human 判断が必要。
+> **確定（§18.1 No.23）**: 論理ERの Feedback 単位行（`recommendation_feedback_id`）と一覧の集計キーは粒度が異なる。本格 DDL 時は **結果行は Feedback 単位**、**メトリクスは集計キー**（案 B なら JSON 内包）とする。
 
 ### 11.3 Retention（参照）
 
@@ -381,7 +379,7 @@ aggregation_scope + period + feedback_type + semantic_config_version_id
 | `batch_run_log` | BATCH-019 起動単位の開始・終了・成否 |
 | `phase_log` | 分析フェーズ（`feedback_analysis_status` 読み替え先候補） |
 | `error_log` | 例外・Validation 失敗 |
-| 専用 `feedback_analysis_status` | **物理なし**。新設要否は §18.2 |
+| 専用 `feedback_analysis_status` | **物理なし**（新設しない。§18.1 No.21） |
 
 想定 phase 例（アプリ validation。DB enum 未定義）:
 
@@ -447,9 +445,9 @@ aggregation_scope + period + feedback_type + semantic_config_version_id
 | 7 | 独立子 `batch-feedback-analysis.yml`。親接続は後続 | review |
 | 8 | Contract Gate 不要・OpenAPI 非変更 | review |
 | 9 | secret 非含有・Public / Admin 画面非対象 | review |
-| 10 | §18.1 確定と §18.2 Human 判断が区別されている | review |
-| 11 | 冪等キー候補（一覧）と scaffold 方針が明記されている | review |
-| 12 | `feedback_analysis_status` 読み替え候補が明記されている | review |
+| 10 | §18.2 残未決なし（旧 Human 推奨案は §18.1 No.17〜23 で確定） | review |
+| 11 | 冪等キー候補（一覧）と scaffold 方針（都度新規 stub / 本格化 UPSERT 第一候補）が明記されている | review |
+| 12 | `feedback_analysis_status` 読み替え（`batch_run_log` / `phase_log`。専用なし）が明記されている | review |
 
 ---
 
@@ -458,6 +456,7 @@ aggregation_scope + period + feedback_type + semantic_config_version_id
 | 日付 | 変更内容 | 関連 |
 | ---- | -------- | ---- |
 | 2026-07-21 | 初版作成 | Epic #1522 / Task #1523 |
+| 2026-07-21 | §18.2 No.1〜7 を Human 確定（推奨案採用）。§18.1 No.17〜23 へ移管し §18.2 を解消 | Epic #1522 / Task #1523 |
 
 ---
 
@@ -483,18 +482,17 @@ aggregation_scope + period + feedback_type + semantic_config_version_id
 | 14 | secret | 実値禁止 | **確定** |
 | 15 | Feedback 行への書戻し | **禁止**（分析は派生 / stub） | **確定** |
 | 16 | IF-SHARED | **本 Batch では不使用**（DB 完結） | **確定** |
+| 17 | `feedback_metric` の物理化 | scaffold・当面は **B（`analysis_result_json` 内包のみ）**。本格化で A を採るなら別 DB Task | **確定**（Human: 推奨案採用） |
+| 18 | 出力物理 DDL | **別 DB Task**（本 Epic 内 migration 禁止。Epic 方針どおり） | **確定**（Human: 推奨案採用） |
+| 19 | MOD-BATCH-043 を本 Epic に含めるか | **外す**（out of scope。§18.1 No.8 と一致） | **確定**（Human: 推奨案採用） |
+| 20 | 冪等 | scaffold は **都度新規 stub**。本格化は一覧キー **UPSERT** を第一候補 | **確定**（Human: 推奨案採用） |
+| 21 | `feedback_analysis_status` 正本 | **`batch_run_log` + `phase_log` 読み替え**（専用列・テーブルは作らない） | **確定**（Human: 推奨案採用） |
+| 22 | Negative 判定の rating 閾値 | 実装 Task で仮置き可。本格化前に Human 確認 | **確定**（Human: 推奨案採用） |
+| 23 | 論理ER Feedback 単位 vs 一覧集計キー | 結果行は Feedback 単位、メトリクスは集計キー（案 B なら JSON） | **確定**（Human: 推奨案採用） |
 
 ### 18.2 Human 判断事項（残未決）
 
-| No | 論点 | 選択肢 | 推奨案（AI） | 状態 |
-| -: | ---- | ------ | ------------ | ---- |
-| 1 | `feedback_metric` の物理化 | A: 独立テーブル / B: `analysis_result_json` 内包のみ | **scaffold・当面は B**。本格化で A を採るなら別 DB Task | **未決** |
-| 2 | 出力物理 DDL | 本 Epic 内 / 別 DB Task | **別 DB Task**（Epic 方針どおり） | **未決**（推奨は別 Task。Epic 宣言済みだが Human 最終確認） |
-| 3 | MOD-BATCH-043 を本 Epic に含めるか | 含める / 外す | **外す**（out of scope） | **未決**（推奨: 外） |
-| 4 | 冪等 | 一覧キー UPSERT / 実行都度新規 | scaffold は **都度新規 stub**。本格化は一覧キー UPSERT を第一候補 | **未決** |
-| 5 | `feedback_analysis_status` 正本 | 専用列・テーブル / `batch_run_log`+`phase_log` 読み替え | **読み替え**（専用は作らない） | **未決** |
-| 6 | Negative 判定の rating 閾値 | 例: `feedback_rating <= 2` 等 | 実装 Task で仮置き可。本格化前に Human 確認 | **未決** |
-| 7 | 論理ER Feedback 単位 vs 一覧集計キー | DDL 時に主粒度をどちらにするか | 結果行は Feedback 単位、メトリクスは集計キー（案 B なら JSON） | **未決** |
+**残未決なし。** 旧 §18.2 No.1〜7 は Human により推奨案どおり確定し、§18.1 No.17〜23 へ移した（2026-07-21）。
 
 ---
 
@@ -521,14 +519,14 @@ aggregation_scope + period + feedback_type + semantic_config_version_id
 
 - **IF-DB-BATCH-019** が分析結果保存の**論理契約**であり、物理未整備時は **in-memory / stub** と明記されている
 - 入力は **`recommendation_feedback`（DDL あり）**。出力物理未整備・**migration 禁止**・**別 DB Task** が明記されている
-- **`feedback_metric`** について独立テーブル vs JSON 内包の推奨が §18 にある
+- **`feedback_metric`** は scaffold・当面 **JSON 内包（案 B）** で確定している（§18.1 No.17）
 - **MOD-BATCH-042** が正。Aggregator / Classifier は内部責務。**043 / 044 は out of scope**
 - **MOD-BATCH-019 ≠ BATCH-019** が明記されている
-- 冪等キー候補（一覧）と scaffold 方針が §11 / §18 にある
-- **`feedback_analysis_status`** の読み替え候補（`batch_run_log` / `phase_log`）がある
+- 冪等キー候補（一覧）と scaffold **都度新規 stub** / 本格化 **UPSERT 第一候補**が §11 / §18.1 No.20 にある
+- **`feedback_analysis_status`** は専用なし・**`batch_run_log` / `phase_log` 読み替え**で確定（§18.1 No.21）
 - 独立子 **`batch-feedback-analysis.yml`**。親接続は後続
 - Contract Gate 不要・secret 禁止
-- §18.1 確定と §18.2 Human 判断（残未決）が区別されている
+- §18.2 残未決なし（旧 No.1〜7 は §18.1 No.17〜23 へ移管済み）
 - PR target が親 Epic Branch（`feature/epic-1522-batch-019-feedback-analysis`）である
 
 ---
