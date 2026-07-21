@@ -1,0 +1,186 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-017-import-summary-unit-test"
+  title: "BATCH-017:Import Summary作成Batch単体テスト"
+  summary: "BATCH-017 実装に対し、仕様書 §16 の unit 観点カバレッジを整理・拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-017:Import Summary作成Batch"
+  epic_issue_number: 1499
+  epic_branch: "feature/epic-1499-batch-017-import-summary"
+  related_issues:
+    - number: 1503
+      purpose: "実装（CLOSED）"
+    - number: 1500
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1505
+      purpose: "実装 MERGED"
+    - number: 1501
+      purpose: "仕様書 MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  実装 Task #1503 / PR #1505 は Epic Branch merge 済み。§16 unit 観点を拡充する。
+  既存 test_import_summary.py には実装タスクで作成された最小 UT が存在する。
+
+objective: |
+  BATCH-017 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串を完了可能にする。
+
+scope:
+  - "§16 unit 観点カバレッジ表を PR 本文に記載"
+  - "test_import_summary.py 拡充"
+  - "テスト充足に必要な最小 scaffold 補正（冪等 ON CONFLICT DO NOTHING / diff_status 別件数）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "integration test（実 DB）"
+  - "Epic PR develop merge（Human）"
+  - "機能追加を主目的とする実装変更"
+  - "apps/reco / BATCH-018 以降"
+  - "distribution_metrics / 他 Batch モジュール本体の編集"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-017_Import Summary作成バッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+  files:
+    - path: "apps/batch/tests/unit/application/test_import_summary.py"
+      required: true
+      purpose: "既存最小 UT"
+    - path: "apps/batch/src/batch/application/import_summary/**"
+      required: true
+      purpose: "テスト対象実装"
+
+output:
+  files:
+    - path: "prompts/definitions/tasks/batch-017-import-summary/unit-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-017-import-summary/unit-test/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_import_summary.py"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功（対象ファイル）"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "test/batch-017-import-summary-unit-test"
+  summary: "batch-017-import-summary-unit-test"
+  base: "feature/epic-1499-batch-017-import-summary"
+  target: "feature/epic-1499-batch-017-import-summary"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: null
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1499
+      title: "[Epic]BATCH-017:Import Summary作成Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1503
+      purpose: "実装 CLOSED"
+    - number: 1500
+      purpose: "仕様書 CLOSED"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_import_summary.py"
+    - "apps/batch/src/batch/application/import_summary/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-017 §16）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_import_summary.py -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock を正とする"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§16 対応表"
+    - "実 DB / secret 非依存"
+    - "PR target"
+    - "IF-DB-BATCH-017 INSERT + ON CONFLICT DO NOTHING・冪等"
+    - "隣接 IF 非書込"
+    - "item_search diff_status 別件数整合"
+    - "item_ranking / genre_search diff 系 0 固定・fetched_count のみ"
+    - "api_call_log.item_count 合計と fetched_count 整合"
+    - "Feature / Embedding 同一 Run 未完了時 0・完了時非ゼロ"
+    - "phase_log summary_created のみ"
+    - "UPDATE 経路が存在しない"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+notes:
+  - "Epic #1499"
+  - "Issue / PR 番号は作成後に更新"
+  - "後続: Epic PR → develop"

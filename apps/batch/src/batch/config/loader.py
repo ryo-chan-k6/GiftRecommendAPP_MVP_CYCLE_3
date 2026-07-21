@@ -156,6 +156,12 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_distribution_metrics_include_user_meaning=_read_optional_bool(
             source, "BATCH_DISTRIBUTION_METRICS_INCLUDE_USER_MEANING"
         ),
+        batch_import_summary_source_api=_read_optional_str(
+            source, "BATCH_IMPORT_SUMMARY_SOURCE_API"
+        ),
+        batch_import_summary_batch_run_id=_read_optional_str(
+            source, "BATCH_IMPORT_SUMMARY_BATCH_RUN_ID"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )

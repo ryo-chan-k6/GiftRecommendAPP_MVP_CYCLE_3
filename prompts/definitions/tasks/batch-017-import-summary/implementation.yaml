@@ -1,0 +1,186 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-017-import-summary-implementation"
+  title: "BATCH-017:Import Summary作成Batch実装"
+  summary: "BATCH-017 を scaffold-first 実装する。IF-DB-BATCH-017 で item_import_summary INSERT（ON CONFLICT DO NOTHING）、独立子 workflow + distribution-metrics 末尾 017 step、MOD-BATCH-047、最小 UT を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-017:Import Summary作成Batch"
+  epic_issue_number: 1499
+  epic_branch: "feature/epic-1499-batch-017-import-summary"
+  related_issues:
+    - number: 1500
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1501
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  仕様書 #1500 / PR #1501 Epic Branch merge 済み。§18.1 で IF 区別・冪等・source_api 0 固定・
+  Feature/Embedding 同一 Run 完了時のみ・workflow C 併用・親末尾は後続を確定済み。
+
+objective: |
+  scaffold-first 実装と batch-import-summary.yml / distribution-metrics 末尾 017 step を整備する。
+
+scope:
+  - "IF-DB-BATCH-017 で item_import_summary INSERT + ON CONFLICT DO NOTHING（UPDATE しない）"
+  - "import_summary パッケージ / MOD-BATCH-047"
+  - "config BATCH_IMPORT_SUMMARY_*"
+  - "独立子 batch-import-summary.yml（cron なし）"
+  - "batch-distribution-metrics.yml 末尾 017 step 追加のみ（016 本体再実装禁止）"
+  - "最小 UT"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "実 DB 配線"
+  - "distribution_metrics / 他 Batch モジュール本体の編集"
+  - "親 import / meaning-generation / daily 親 workflow 全体改修"
+  - "apps/reco / OpenAPI / migration / generated"
+  - "BATCH-016 再実装 / BATCH-018 以降"
+  - "包括的 UT Task"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-017_Import Summary作成バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_import_summary_テーブル定義書.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/batch/src/batch/application/import_summary/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-import-summary.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-distribution-metrics.yml"
+      action: "modify"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "modify"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_import_summary.py"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "主要 Phase（open_run〜finalize）が追跡できる"
+  - "IF-DB-BATCH-017 で item_import_summary INSERT + DO NOTHING を UT 検証"
+  - "UPDATE 経路が存在しない"
+  - "item_ranking / genre_search の diff 系 0 固定"
+  - "Feature / Embedding: 同一 Run 未完了時 0"
+  - "phase_log が summary_created"
+  - "独立子 workflow + distribution-metrics 末尾 017 step"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/task-1503-batch-017-import-summary-implementation"
+  summary: "batch-017-import-summary-implementation"
+  base: "feature/epic-1499-batch-017-import-summary"
+  target: "feature/epic-1499-batch-017-import-summary"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1503
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1499
+      title: "[Epic]BATCH-017:Import Summary作成Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1500
+      purpose: "仕様書 CLOSED"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/import_summary/**"
+    - ".github/workflows/batch-import-summary.yml"
+    - ".github/workflows/batch-distribution-metrics.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-017 最小）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_import_summary.py -q --tb=short"
+  not_required:
+    - "integration test"
+  skip_reason:
+    "integration test": "scaffold-first。実 DB 配線は後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-017 が物理書込（item_import_summary INSERT）。016 / OBS-006 と混同しない"
+    - "ON CONFLICT DO NOTHING。UPDATE しない"
+    - "source_api 0 固定・Feature/Embedding 未完了 0"
+    - "phase_log summary_created"
+    - "workflow C 併用（独立子 + distribution-metrics 末尾 017 step）"
+    - "016 本体 / 親 workflow 全体は非変更"
+    - "secret 非含有"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+notes:
+  - "Epic #1499"
+  - "仕様書 #1500 / PR #1501 MERGED"
+  - "Issue #1503"

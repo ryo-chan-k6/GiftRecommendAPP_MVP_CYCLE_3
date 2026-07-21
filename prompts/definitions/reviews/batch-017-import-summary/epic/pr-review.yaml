@@ -1,0 +1,63 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-017-import-summary-epic-pr"
+  title: "BATCH-017 Import Summary作成Batch Epic PRレビュー"
+  summary: "BATCH-017 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1499
+  task_definition: "prompts/definitions/epics/batch-017-import-summary/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]BATCH-017:Import Summary作成Batch"
+  parent_epic_branch: "feature/epic-1499-batch-017-import-summary"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/batch-017-import-summary/epic.yaml"
+    required: true
+
+review_points:
+  - "scope / epic_scope.allowed_paths 整合"
+  - "IF-DB-BATCH-017 = BATCH-017 物理書込（016 / OBS-006 混同禁止）"
+  - "item_import_summary 冪等（batch_run_id + source_api）・ON CONFLICT DO NOTHING"
+  - "BATCH-016 再実装 / OpenAPI / migration を含まないこと"
+  - "親 workflow 全体改修をしていないこと（許容範囲内の step 追加は可）"
+  - "Contract Gate 不要"
+  - "secret 非含有"
+  - "Epic PR target が develop"
+
+notes:
+  - "縦串完了後に Epic PR 番号を反映し status を ready にする"
+  - "Issue #1499"

@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-017-import-summary-batch-spec-pr"
+  title: "BATCH-017 Import Summary作成バッチ仕様書 PRレビュー"
+  summary: "BATCH-017 バッチ仕様書 Task の PR を AI Review する。IF-DB-BATCH-017・IF-DB-BATCH-016 / IF-OBS-006 境界・冪等・集計・workflow・MOD-BATCH-047 を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1500-batch-017-import-summary-batch-spec"
+  base: "feature/epic-1499-batch-017-import-summary"
+  target: "feature/epic-1499-batch-017-import-summary"
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1500
+  task_definition: "prompts/definitions/tasks/batch-017-import-summary/batch-spec.yaml"
+  source_branch: "docs/task-1500-batch-017-import-summary-batch-spec"
+  target_branch: "feature/epic-1499-batch-017-import-summary"
+  parent_epic_issue: "[Epic]BATCH-017:Import Summary作成Batch"
+  parent_epic_branch: "feature/epic-1499-batch-017-import-summary"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-DB-BATCH-017 が本 Batch の物理書込（item_import_summary INSERT）である"
+  - "IF-DB-BATCH-016（分布メトリクス）/ IF-OBS-006（Observability）との混同がない"
+  - "冪等が batch_run_id + source_api、MVP は INSERT + ON CONFLICT DO NOTHING（UPDATE しない）"
+  - "集計元と件数列の対応がテーブル定義に従っている"
+  - "item_ranking / genre_search の 0 固定ルールがある"
+  - "Feature / Embedding 件数が同一 Run 完了時のみ集計（未完了は 0）である"
+  - "独立 cron なし。workflow は独立子 batch-import-summary.yml および/または batch-distribution-metrics.yml への 017 step（§18 Human）"
+  - "MOD-BATCH-047 正、Import Summary Builder は同義"
+  - "Contract Gate 不要・Public API 非公開・secret 禁止・Retention 90 日"
+  - "§18.1 確定と §18.2 残未決が区別されている"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1499"
+  - "Issue #1500"
+  - "§18.2 Human 判断待ち（workflow 配置・親末尾追加等）"
