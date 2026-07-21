@@ -33,9 +33,9 @@ Reason 生成は参考計測とし、TV-007 主対象からは除外する（#75
 
 | フェーズ | 対応段階 | 内容 | 現状（2026-07-21） |
 | -------- | -------- | ---- | ------------------ |
-| Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算、設計反映メモ | 完了済み。**develop 取り込み中**（2026-07-21） |
-| Phase2 | S3（live） | 実装済みパイプラインの実測、Go/Adjust/Block | **未実施** |
-| 正式反映 | S4 後の別 Task | 性能要件 / Orchestrator 仕様の正式更新 | out of scope（#759） |
+| Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算、設計反映メモ | 完了済み（#1502 develop 取り込み） |
+| Phase2 | S3（live） | 実装済みパイプラインの実測、Go/Adjust/Block | **Epic #1512 / Task #1513** で実施 |
+| 正式反映 | S4 後の別 Task | 性能要件 / Orchestrator 仕様の正式更新 | out of scope（Phase2 完了後の別 Task） |
 
 ```mermaid
 flowchart LR
@@ -66,27 +66,38 @@ flowchart LR
 | 判定 | soft/hard に対する Go / Adjust / Block（Phase2 実測根拠） |
 | 実装変更 | `apps/reco/src/**` は原則禁止（計測のための変更が必要なら別 Issue） |
 
-詳細手順の正本候補: Epic Branch 上の `Reco性能フィジビリティ検証計画書.md`（develop 反映後に本方針からリンクを更新する）。
+詳細手順の正本: [Reco性能フィジビリティ検証計画書](../../性能フィジビリティ/Reco性能フィジビリティ検証計画書.md) / [scripts/perf/README.md](../../../../scripts/perf/README.md)
+
+### 4.1 Phase2 live 計測境界（#1513）
+
+| 境界 | 内容 |
+| ---- | ---- |
+| 実行 | `RecommendationOrchestrator` + `CompositionMode.PRODUCTION`（HTTP 非経由） |
+| TV-007 主対象 | 入力解析〜 Ranking。Reason は参考 |
+| DB | ephemeral Supabase + master / test-data seed（`test-reco-quality.yml` 同型） |
+| OpenAI | `mock`（scaffold）または `secrets`（`scripts/perf/openai_bench_clients.py` 差込。apps/reco 非改修） |
+| 判定 | soft 2,000ms / hard 4,000ms（p95）。最終採用は Human Review |
+| 件数スケール | test-data seed は item 3 件。100/500/1,000 件スケールは追加 seed が必要（未実施理由を結果 doc に明示可） |
 
 ---
 
 ## 5. 関連Issue / 成果物
 
-| 種別 | 状態（2026-07-21） |
-| ---- | ------------------ |
-| Epic | #759 OPEN |
-| 子 Task | #761 / #762 / #763 CLOSED（Phase1） |
-| develop 上の結果 | 取り込み PR 実施中（マージ後に正本化） |
-| 結果ドキュメント | [検証計画書](../../性能フィジビリティ/Reco性能フィジビリティ検証計画書.md) / [Phase1結果](../../性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase1.md) / [設計反映メモ](../../性能フィジビリティ/設計反映メモ.md) |
+| 種別 | 状態 |
+| ---- | ---- |
+| Phase1 Epic | #759 CLOSED（#1502 マージ時） |
+| Phase1 子 Task | #761 / #762 / #763 CLOSED |
+| Phase2 Epic | #1512 |
+| Phase2 Task | #1513（`poc-live-verification`） |
+| 結果ドキュメント | [検証計画書](../../性能フィジビリティ/Reco性能フィジビリティ検証計画書.md) / [Phase1結果](../../性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase1.md) / [設計反映メモ](../../性能フィジビリティ/設計反映メモ.md) / Phase2 live 結果（#1513） |
 
 ---
 
-## 6. 次アクション候補（Phase1 マージ後・Human 確認）
+## 6. 次アクション候補
 
-1. TV進捗を `Phase1完了（Phase2待ち）` に更新
-2. Phase2 の Issue 境界決定（#759 継続 or 新 Issue）
-3. Phase2 計画の更新（live 定義・合格基準）
-4. Phase2 実行 → 正式 docs 更新 Task
+1. #1513 live 計測・結果 doc・設計反映メモ更新
+2. Human Review で §13.2 暫定値の最終採用可否を判断
+3. 正式 docs 更新 Task の起票（性能要件 §5 / MOD-RECO-001 §13.2）
 
 ---
 
@@ -96,3 +107,4 @@ flowchart LR
 | ---- | ---- |
 | 2026-07-21 | 初版方針。#759 棚卸しを反映（#1496） |
 | 2026-07-21 | Phase1 develop 取り込みに合わせて現状・次アクションを更新 |
+| 2026-07-21 | Phase2 live 計測境界（#1512/#1513）を追記 |
