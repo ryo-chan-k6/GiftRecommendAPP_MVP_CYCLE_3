@@ -1,0 +1,257 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-019-feedback-analysis"
+  title: "BATCH-019:Feedback分析Batch"
+  summary: "BATCH-019（Feedback分析Batch）に関するバッチ仕様書・実装・単体テストを管理するEpic。recommendation_feedback 等を集計・分析し、IF-DB-BATCH-019 で feedback_analysis_result / feedback_metric 相当を保存する。MVP は △。出力テーブルは物理 ER 対象外のため、本 Epic は scaffold-first（実 migration なし・in-memory / stub 永続化）とし、物理 DDL は別 DB Task に委ねる。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Phase4b の評価・改善系 Batch（Feedback 分析）。識別子単位 Epic（1 Batch ID = 1 Epic）。
+  先行 BATCH-018 は develop merge 済み（#1514 / PR #1521）。018 Epic は本 Epic を blocks として宣言済み。
+  MVP 一覧は △。Human により BATCH レーン継続（018 に続く次作業）として着手。
+  入力 recommendation_feedback はテーブル定義・DDL 整備済み（api 書込正本）。
+  出力 feedback_analysis_result / feedback_metric は論理ER上あるが物理 ER MVP 対象外・定義書/DDL 未整備。
+  物理書込 IF は IF-DB-BATCH-019（△）。IF-SHARED なし（DB 完結）。
+  主モジュールは MOD-BATCH-042。Feedback Metric Aggregator / Negative Feedback Classifier は 042 内部責務候補。
+  MOD-BATCH-043 / 044（Failure / Backlog）は本 Epic 外（018 と同方針）。
+  MOD-BATCH-019（Raw Product Reader）と Batch ID BATCH-019 を混同しないこと。
+  workflow 想定は独立子 batch-feedback-analysis.yml（子に独立 cron なし・親は後続）。
+  Contract Gate 不要（OpenAPI 非変更）。本 Epic は migration を含めない。
+
+objective: |
+  BATCH-019 に関する Epic Issue と Epic Branch を作成し、配下 Task の作業単位を整理する。
+  配下 Task の差分が epic_scope.allowed_paths から外れないことをガードする。
+  develop への統合は本 Epic PR のみで行う（縦串: 仕様書 → 実装 → UT 完了後）。
+
+scope:
+  - "BATCH-019 に関する子 Task の作業単位を整理する（バッチ仕様書 / 実装 / 単体テスト）"
+  - "Epic Issue を作成する"
+  - "Epic Branch を develop から作成する"
+  - "子 Task Definition の配置方針（prompts/definitions/tasks/batch-019-feedback-analysis/**）を整理する"
+  - "Contract Gate 不要方針を明示する"
+  - "IF-DB-BATCH-019 / MOD-BATCH-042 / 出力テーブル物理未整備時の scaffold-first 境界を整理する"
+
+out_of_scope:
+  - "他 Batch（BATCH-001〜018）の仕様書・実装・テスト（先行は参照のみ）"
+  - "Public / Internal API 仕様書および OpenAPI / Orval / generated 変更"
+  - "画面（SCR-*）"
+  - "supabase/migrations/** および feedback_analysis_result / feedback_metric の物理 DDL 本整備（別 DB Task）"
+  - "本番リリース作業・production Feedback 分析"
+  - "apps/reco / apps/api / apps/web 破壊変更"
+  - "MOD-BATCH-043 / 044 本格実装・自動 Issue 起票"
+  - "週次親 workflow 全体改修（独立子追加は可）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-019 の Batch ID・処理概要・入出力・依存・MVP △・冪等キー"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "分析 Batch・冪等・Observability 方針"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "batch-feedback-analysis.yml・任意実行"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "Feedback蓄積 → 019 →（任意）018"
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+      purpose: "IF-DB-BATCH-019 / IF-DB-API-002（入力）"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-042 / 043 / 044。MOD-BATCH-019 混同禁止"
+    - path: "docs/06_実装設計/database/recommendation_feedback_テーブル定義書.md"
+      required: true
+      purpose: "入力正本"
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+      purpose: "feedback_analysis_result 論理定義"
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+      purpose: "出力テーブルが MVP 物理対象外であることの正本"
+    - path: "docs/06_実装設計/batch/BATCH-018_Offline Evaluationバッチ仕様書.md"
+      required: true
+      purpose: "章構成・scaffold-first・043/044 out of scope 踏襲"
+    - path: "docs/00_共通/プロジェクト管理/実装フェーズ実行プロセス設計書.md"
+      required: true
+      purpose: "Phase4b 縦串方針"
+    - path: "docs/00_共通/AIエージェント運用/成果物一覧×Task Definition化方針書.md"
+      required: true
+      purpose: "識別子単位 Epic"
+    - path: "docs/00_共通/AIエージェント運用/Task Definition設計書.md"
+      required: true
+      purpose: "Epic / Task 命名"
+  templates: []
+  files: []
+  issues: []
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]BATCH-019:Feedback分析Batch）"
+  - "Epic Branch（develop 起点）"
+  - "子 Task 候補一覧（仕様書 / 実装 / UT）"
+  - "epic_scope.allowed_paths による配下 Task のファイル境界宣言"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]BATCH-019:Feedback分析Batch 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "配下 Task の作業単位が整理されている"
+  - "IF-DB-BATCH-019 / 出力テーブル物理未整備時の scaffold-first / migration 非含有が明記されている"
+  - "epic_scope.artifact_id が BATCH-019 である"
+
+branch:
+  no_branch: false
+  summary: "batch-019-feedback-analysis"
+  name: "feature/epic-1522-batch-019-feedback-analysis"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-21"
+    due_date: "2026-07-25"
+
+issue:
+  number: 1522
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: "BATCH-019"
+  allowed_paths:
+    - "docs/06_実装設計/batch/BATCH-019_*"
+    - "apps/batch/src/batch/application/feedback_analysis/**"
+    - "apps/batch/src/batch/application/__init__.py"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/logger/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/tests/**"
+    - ".github/workflows/batch-feedback-analysis*.yml"
+    - "prompts/definitions/epics/batch-019-feedback-analysis/**"
+    - "prompts/definitions/tasks/batch-019-feedback-analysis/**"
+    - "prompts/definitions/reviews/batch-019-feedback-analysis/**"
+  forbidden_paths:
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/web/**"
+    - "packages/contracts/**"
+    - "openapi/**"
+    - "supabase/migrations/**"
+    - "apps/batch/src/batch/application/offline_evaluation/**"
+    - "apps/batch/src/batch/application/import_summary/**"
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/src/batch/application/item_embedding/**"
+  child_task_areas:
+    - "batch-spec"
+    - "implementation"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1514
+      title: "[Epic]BATCH-018:Offline Evaluation Batch"
+      purpose: "先行 Epic（blocks 宣言元）。develop merge 済み。任意評価依存の受け側でもある"
+  issues: []
+  prs:
+    - number: 1521
+      purpose: "BATCH-018 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-018-offline-evaluation"
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/feedback_analysis/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "recommendation_feedback テーブル定義 / DDL が develop に存在すること"
+    - "本 Epic が supabase/migrations を変更していないこと"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic scope が BATCH-019 に閉じているか"
+    - "IF-DB-BATCH-019 と出力テーブル物理未整備時の scaffold-first が明示されているか"
+    - "migration / OpenAPI / apps/reco 破壊変更を含めていないか"
+    - "MOD-BATCH-043/044 本格実装を含めていないか"
+    - "MOD-BATCH-019（Raw Reader）と Batch ID 混同がないか"
+    - "Contract Gate 不要方針"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "feedback_metric を独立テーブルとするか analysis_result_json 内包とするか（物理未整備のため仕様で推奨案を提示）"
+  - "出力テーブル物理 DDL を別 DB Task とするか（推奨: 別 Task。本 Epic は scaffold）"
+  - "MOD-BATCH-043 を本 Epic に含めるか（推奨: out of scope）"
+  - "冪等: 一覧キーでの upsert か実行都度新規か"
+  - "feedback_analysis_status の正本（専用 vs batch_run_log / phase_log 読み替え）"
+
+notes:
+  - "後続 Task: batch-spec → implementation → unit-test → Epic PR"
+  - "MVP △ / 出力物理未整備のため scaffold-first。migration は禁止"
+  - "MOD-BATCH-019（Raw Product Reader）≠ BATCH-019"
+  - "Issue #1522"
