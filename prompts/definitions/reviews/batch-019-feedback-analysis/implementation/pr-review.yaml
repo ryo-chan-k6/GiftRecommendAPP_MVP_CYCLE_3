@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1527
   issue:
     number: 1526
     task_definition: "prompts/definitions/tasks/batch-019-feedback-analysis/implementation.yaml"
@@ -63,3 +63,4 @@ review_points:
 notes:
   - "Epic #1522"
   - "Issue #1526"
+  - "PR #1527"
