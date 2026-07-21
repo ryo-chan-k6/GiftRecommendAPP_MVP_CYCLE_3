@@ -64,6 +64,14 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_OFFLINE_EVALUATION_DATASET_VERSION",
     "BATCH_OFFLINE_EVALUATION_MAX_CASES",
     "BATCH_OFFLINE_EVALUATION_DRY_RUN",
+    "BATCH_FEEDBACK_ANALYSIS_PERIOD_START",
+    "BATCH_FEEDBACK_ANALYSIS_PERIOD_END",
+    "BATCH_FEEDBACK_ANALYSIS_AGGREGATION_SCOPE",
+    "BATCH_FEEDBACK_ANALYSIS_FEEDBACK_TYPES",
+    "BATCH_FEEDBACK_ANALYSIS_SEMANTIC_CONFIG_VERSION_ID",
+    "BATCH_FEEDBACK_ANALYSIS_MAX_FEEDBACK_ROWS",
+    "BATCH_FEEDBACK_ANALYSIS_DRY_RUN",
+    "BATCH_FEEDBACK_ANALYSIS_NEGATIVE_RATING_THRESHOLD",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -153,6 +161,14 @@ class BatchSettings:
     batch_offline_evaluation_dataset_version: str | None
     batch_offline_evaluation_max_cases: int | None
     batch_offline_evaluation_dry_run: bool | None
+    batch_feedback_analysis_period_start: str | None
+    batch_feedback_analysis_period_end: str | None
+    batch_feedback_analysis_aggregation_scope: str | None
+    batch_feedback_analysis_feedback_types: str | None
+    batch_feedback_analysis_semantic_config_version_id: str | None
+    batch_feedback_analysis_max_feedback_rows: int | None
+    batch_feedback_analysis_dry_run: bool | None
+    batch_feedback_analysis_negative_rating_threshold: int | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -237,6 +253,14 @@ class BatchSettings:
             f"batch_offline_evaluation_dataset_version={self.batch_offline_evaluation_dataset_version!r}, "
             f"batch_offline_evaluation_max_cases={self.batch_offline_evaluation_max_cases!r}, "
             f"batch_offline_evaluation_dry_run={self.batch_offline_evaluation_dry_run!r}, "
+            f"batch_feedback_analysis_period_start={self.batch_feedback_analysis_period_start!r}, "
+            f"batch_feedback_analysis_period_end={self.batch_feedback_analysis_period_end!r}, "
+            f"batch_feedback_analysis_aggregation_scope={self.batch_feedback_analysis_aggregation_scope!r}, "
+            f"batch_feedback_analysis_feedback_types={self.batch_feedback_analysis_feedback_types!r}, "
+            f"batch_feedback_analysis_semantic_config_version_id={self.batch_feedback_analysis_semantic_config_version_id!r}, "
+            f"batch_feedback_analysis_max_feedback_rows={self.batch_feedback_analysis_max_feedback_rows!r}, "
+            f"batch_feedback_analysis_dry_run={self.batch_feedback_analysis_dry_run!r}, "
+            f"batch_feedback_analysis_negative_rating_threshold={self.batch_feedback_analysis_negative_rating_threshold!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "

@@ -177,6 +177,30 @@ def load_batch_settings(*, environ: Mapping[str, str] | None = None) -> BatchSet
         batch_offline_evaluation_dry_run=_read_optional_bool(
             source, "BATCH_OFFLINE_EVALUATION_DRY_RUN"
         ),
+        batch_feedback_analysis_period_start=_read_optional_str(
+            source, "BATCH_FEEDBACK_ANALYSIS_PERIOD_START"
+        ),
+        batch_feedback_analysis_period_end=_read_optional_str(
+            source, "BATCH_FEEDBACK_ANALYSIS_PERIOD_END"
+        ),
+        batch_feedback_analysis_aggregation_scope=_read_optional_str(
+            source, "BATCH_FEEDBACK_ANALYSIS_AGGREGATION_SCOPE"
+        ),
+        batch_feedback_analysis_feedback_types=_read_optional_str(
+            source, "BATCH_FEEDBACK_ANALYSIS_FEEDBACK_TYPES"
+        ),
+        batch_feedback_analysis_semantic_config_version_id=_read_optional_str(
+            source, "BATCH_FEEDBACK_ANALYSIS_SEMANTIC_CONFIG_VERSION_ID"
+        ),
+        batch_feedback_analysis_max_feedback_rows=_read_positive_int(
+            source, "BATCH_FEEDBACK_ANALYSIS_MAX_FEEDBACK_ROWS"
+        ),
+        batch_feedback_analysis_dry_run=_read_optional_bool(
+            source, "BATCH_FEEDBACK_ANALYSIS_DRY_RUN"
+        ),
+        batch_feedback_analysis_negative_rating_threshold=_read_positive_int(
+            source, "BATCH_FEEDBACK_ANALYSIS_NEGATIVE_RATING_THRESHOLD"
+        ),
         supabase_url=_read_optional_str(source, "SUPABASE_URL"),
         supabase_service_role_key=_read_optional_str(source, "SUPABASE_SERVICE_ROLE_KEY"),
     )
