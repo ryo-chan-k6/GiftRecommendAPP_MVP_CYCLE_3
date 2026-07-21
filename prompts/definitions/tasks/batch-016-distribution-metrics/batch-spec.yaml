@@ -107,7 +107,7 @@ acceptance_criteria:
   - "冪等が各テーブル UNIQUE / aggregation_scope に基づく"
   - "phase_log が feature_distribution_metric_recorded 1 フェーズ代表である"
   - "独立子 workflow / Contract Gate 不要 / MOD-BATCH-038 / Public API 非公開 / secret 禁止が明記されている"
-  - "§18 で確定 / 残未決（Human）・一覧修正別 Task 候補が区別されている"
+  - "§18.2 推奨案が Human 承認済みとして §18.1 に反映され、一覧修正は別 docs Task と明記されている"
   - "PR target が親 Epic Branch"
 
 branch:
@@ -168,7 +168,7 @@ review:
     - "必須入力 item_feature / item_meaning・任意 item_embedding"
     - "phase_log feature_distribution_metric_recorded 代表・専用 phase 追加なし"
     - "独立子 workflow / Contract Gate 不要 / MOD-BATCH-038"
-    - "§18 確定 / Human / 一覧修正別 Task 候補の区別"
+    - "§18.2 推奨案が Human 承認済みとして §18.1 に反映されているか"
     - "secret / Public API 非公開"
   specialist_reviews:
     docs: true
@@ -182,11 +182,7 @@ operation_logging:
     cross_cutting: false
     experiments: false
 
-human_decision_points:
-  - "MVP で item_embedding / user_meaning 集計を必須にするか"
-  - "MOD-BATCH-038 内包 vs Aggregator 追加採番"
-  - "aggregation_scope 既定と BATCH_DISTRIBUTION_METRICS_* 既定値"
-  - "バッチ処理一覧の古い BATCH-013 表記修正を別 docs Task とするか"
+human_decision_points: []
 
 stop_conditions:
   - "正本 docs 間で矛盾があり独断解消できない場合"
@@ -194,3 +190,4 @@ stop_conditions:
 notes:
   - "Epic #1489"
   - "Issue #1490"
+  - "§18.2 Human 承認（推奨案採用）済み: embedding/user_meaning 任意OFF・038内包・scope既定・独立子workflow正・一覧修正は別docs Task"

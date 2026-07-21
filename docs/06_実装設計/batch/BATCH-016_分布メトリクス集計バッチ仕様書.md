@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service / batch      |
 | MVP対象        | `○`                                      |
 | 作成日         | 2026-07-21                               |
-| 更新日         | 2026-07-21                               |
+| 更新日         | 2026-07-21（§18.2 Human 承認反映）       |
 
 ---
 
@@ -20,7 +20,7 @@ BATCH-016（分布メトリクス集計Batch）は、先行 Batch が確定し�
 | 出力テーブル | 集計対象（正本） | 主目的 |
 | ------------ | ---------------- | ------ |
 | `feature_distribution_metric` | `item_feature`（raw / normalized） | Feature 軸分布の Observability |
-| `meaning_distribution_metric` | `item_meaning`（必須経路）。`user_meaning` は §18.2 | Gift Meaning 座標分布の Observability |
+| `meaning_distribution_metric` | `item_meaning`（必須経路）。`user_meaning` は任意（§18.1 No.14 / §18.2 No.2） | Gift Meaning 座標分布の Observability |
 | `normalization_distribution_metric` | `item_feature`（raw / sigmoid） | 正規化パイプライン正常性監視 |
 
 正本区分は **派生集計 / 品質監視メトリクス** である。Public API では返却しない。Online 推薦（reco）は各 Metric テーブルを **SELECT のみ**、更新は batch（本 Batch）のみが行う。
@@ -102,13 +102,13 @@ BATCH-016（分布メトリクス集計Batch）は、先行 Batch が確定し�
 | モジュール（論理名） | 責務 | 区分 |
 | -------------------- | ---- | ---- |
 | Normalization Statistics Manager | 正規化統計・分布集計オーケストレーションの主参照 | **MOD-BATCH-038** |
-| Distribution Metric Collector | Run 単位の集計オーケストレーション（Collector） | 論理名（一覧）。採番は §18.2 |
-| Feature Distribution Aggregator | `feature_distribution_metric` 集計 | 論理名（一覧）。採番は §18.2 |
-| Meaning Distribution Aggregator | `meaning_distribution_metric` 集計 | 論理名（一覧）。採番は §18.2 |
-| Normalization Distribution Aggregator | `normalization_distribution_metric` 集計 | 論理名（一覧）。採番は §18.2 |
+| Distribution Metric Collector | Run 単位の集計オーケストレーション（Collector） | 論理名（一覧）。初版は **MOD-BATCH-038 内包**（§18.2 No.3） |
+| Feature Distribution Aggregator | `feature_distribution_metric` 集計 | 論理名（一覧）。初版は **MOD-BATCH-038 内包**（§18.2 No.3） |
+| Meaning Distribution Aggregator | `meaning_distribution_metric` 集計 | 論理名（一覧）。初版は **MOD-BATCH-038 内包**（§18.2 No.3） |
+| Normalization Distribution Aggregator | `normalization_distribution_metric` 集計 | 論理名（一覧）。初版は **MOD-BATCH-038 内包**（§18.2 No.3） |
 | Batch Logger / Error Handler | Run / Phase / エラー | 共通 |
 
-> MVP 初版の実装参照は **MOD-BATCH-038** を主とする。一覧の Aggregator 論理名を追加採番するか、038 に内包するかは **Human 判断**（§18.2）。実装 Task は本仕様の論理責務境界を守ればよい。
+> MVP 初版の実装参照は **MOD-BATCH-038** を主とする。Aggregator 論理名は docs 上維持し、**追加採番せず 038 に内包**する（§18.1 No.11 / §18.2 No.3）。実装 Task は本仕様の論理責務境界を守ればよい。
 
 ---
 
@@ -118,7 +118,7 @@ BATCH-016（分布メトリクス集計Batch）は、先行 Batch が確定し�
 
 | トリガー | 利用有無 | 条件 | 備考 |
 | -------- | -------- | ---- | ---- |
-| schedule | `true` | 日次 / 週次 | `aggregation_scope=daily` 候補（§18.2） |
+| schedule | `true` | 日次 / 週次 | 既定 `aggregation_scope=daily`（§18.2 No.4） |
 | workflow_dispatch | `true` | 手動・再集計 | `distribution_rebuild` 含む |
 | 先行Batch完了 | `true`（運用上） | BATCH-013 後続必須。BATCH-015 後続は任意 | 親チェーン全体改修は外 |
 | workflow_call | `true`（運用上） | 独立子として親から呼び出し可 | 接続タイミングは Epic 外可 |
@@ -143,8 +143,8 @@ BATCH-016（分布メトリクス集計Batch）は、先行 Batch が確定し�
 | `item_meaning` | DB | `true` | Meaning 分布（`entity_type=item`）の集計入力 |
 | `semantic_config_version_id` | Resolver / 引数 | `true` | 集計 version スコープ |
 | `feature_normalization_version_id` | DB（行から） | 条件付き | Meaning / Normalization 行分割・再現性。混在時は version ごとに分割 |
-| `item_embedding` | DB | `false` | 任意。Embedding 件数監視等に含める場合のみ（§18.2）。**3 Metric テーブルへの直接書込列はない** |
-| `user_meaning` | DB | `false`（§18.2） | Meaning 分布（`entity_type=user`）。テーブル定義は MVP 対応だが初版必須化は Human |
+| `item_embedding` | DB | `false` | 任意（フラグ OFF 既定・§18.2 No.1）。Embedding 件数監視等に含める場合のみ。**3 Metric テーブルへの直接書込列はない** |
+| `user_meaning` | DB | `false` | 任意（フラグ OFF 既定・§18.2 No.2）。Meaning 分布（`entity_type=user`）。テーブル定義は item+user MVP 対応済み |
 | `batch_run_log` | DB | `true` | Run trace / `batch_run_id` |
 
 ### 6.2 集計入力ルール（正本テーブル定義準拠）
@@ -164,7 +164,7 @@ BATCH-016（分布メトリクス集計Batch）は、先行 Batch が確定し�
 | `entity_type` | `value_layer` | 入力列 |
 | ------------- | ------------- | ------ |
 | `item`（必須経路） | `social` / `symbolic` | `item_meaning.item_social` / `item_symbolic` |
-| `user`（§18.2） | `social` / `symbolic` / `lambda_ctx` | `user_meaning` 各列。完了 Run フィルタは定義書 §5.3.2 |
+| `user`（任意・フラグ OFF 既定） | `social` / `symbolic` / `lambda_ctx` | `user_meaning` 各列。完了 Run フィルタは定義書 §5.3.2 |
 
 - `feature_normalization_version_id` 混在時は **version ごとに行分割**（混在集約禁止）。
 - `lambda_ctx` は `entity_type=user` のみ。
@@ -191,10 +191,10 @@ BATCH-016（分布メトリクス集計Batch）は、先行 Batch が確定し�
 | 環境変数名 | 必須 | 用途 | secret区分 |
 | ---------- | ---- | ---- | ---------- |
 | `DATABASE_URL` | `true` | DB 読取・Metric UPSERT・ログ | secret |
-| `BATCH_DISTRIBUTION_METRICS_AGGREGATION_SCOPE` | `false` | 既定 `aggregation_scope`（§18.2） | 非secret |
+| `BATCH_DISTRIBUTION_METRICS_AGGREGATION_SCOPE` | `false` | 既定 `aggregation_scope`（未指定時は起動種別に従う・§18.2 No.4） | 非secret |
 | `BATCH_DISTRIBUTION_METRICS_SEMANTIC_CONFIG_VERSION_ID` | `false` | 明示 version 指定 | 非secret |
-| `BATCH_DISTRIBUTION_METRICS_INCLUDE_ITEM_EMBEDDING` | `false` | Embedding 監視入力の有効化（§18.2） | 非secret |
-| `BATCH_DISTRIBUTION_METRICS_INCLUDE_USER_MEANING` | `false` | user Meaning 集計の有効化（§18.2） | 非secret |
+| `BATCH_DISTRIBUTION_METRICS_INCLUDE_ITEM_EMBEDDING` | `false` | Embedding 監視入力の有効化（既定 OFF・§18.2 No.1） | 非secret |
+| `BATCH_DISTRIBUTION_METRICS_INCLUDE_USER_MEANING` | `false` | user Meaning 集計の有効化（既定 OFF・§18.2 No.2） | 非secret |
 
 secret 実値・接続文字列を docs / ログ / fixture に記載してはならない。
 
@@ -243,7 +243,7 @@ flowchart TD
 | 1 | `open_run` | `batch_run_log` 確保 | `GRS-BAT-*` / `GRS-DB-*` |
 | 2 | `resolve_scope` | `aggregation_scope` / `aggregation_key` / `semantic_config_version_id` 解決 | `GRS-CFG-*` / `GRS-VAL-*` |
 | 3 | `aggregate_feature` | Feature 分布算出 | `GRS-VAL-*` / `GRS-DB-*` |
-| 4 | `aggregate_meaning` | Meaning 分布算出（必須: item。user は §18.2） | 同上 |
+| 4 | `aggregate_meaning` | Meaning 分布算出（必須: item。user はフラグ ON 時のみ） | 同上 |
 | 5 | `aggregate_normalization` | 正規化前後分布算出 | 同上 |
 | 6 | `persist_metrics` | **IF-DB-BATCH-016** UPSERT | `GRS-DB-*` |
 | 7 | `record_phase` | `feature_distribution_metric_recorded` | `GRS-DB-*` |
@@ -329,7 +329,7 @@ Observability の `skewness` / `kurtosis` / `inf_count` 等は MVP 物理列に�
 | `daily` | 日次スナップショット | 実行 Run ID 設定可 | `YYYY-MM-DD`（UTC） |
 | `semantic_config_version` | version 単位再集計 | 任意 | `NULL` または version ラベル |
 
-既定値（schedule vs dispatch）は §18.2 Human。テーブル Default は `'batch_run'`。
+既定値: **dispatch / チェーン後続は `batch_run`、独立 schedule は `daily`**（§18.2 No.4）。テーブル Default は `'batch_run'`。数値系 env 既定は実装 Task。
 
 ### 11.5 Retention
 
@@ -418,6 +418,7 @@ Client / 外部 API リトライは不要（外部呼出なし）。
 | 日付 | 変更内容 | 関連 |
 | ---- | -------- | ---- |
 | 2026-07-21 | 初版作成 | Epic #1489 / Task #1490 |
+| 2026-07-21 | §18.2 残確認事項を Human 承認（推奨案採用）として確定反映 | PR #1491 / Issue #1490 |
 
 ---
 
@@ -431,26 +432,30 @@ Client / 外部 API リトライは不要（外部呼出なし）。
 | 2 | 隣接 IF | **IF-DB-BATCH-014 = BATCH-013**、**IF-DB-BATCH-015 = BATCH-014**、**IF-VEC-BATCH-001 = BATCH-015**。本 Batch は書込に使わない | **確定** |
 | 3 | BATCH-013 境界 | `normalization_distribution_metric` は **本 Batch のみ書込**。013 は非書込 | **確定**（013 §18.1 No.6 / NDM §17.1 No.6） |
 | 4 | 必須入力 | **`item_feature` / `item_meaning`** | **確定**（依存関係図: 013→016 必須） |
-| 5 | 任意入力 | **`item_embedding`** は任意依存（015→016）。3 Metric への直接列はない | **確定**（必須化は §18.2） |
+| 5 | 任意入力（embedding） | **`item_embedding`** は任意依存（015→016）。フラグ OFF 既定。3 Metric への直接列はない | **確定**（§18.2 No.1 Human 承認） |
 | 6 | 出力 | `feature_distribution_metric` / `meaning_distribution_metric` / `normalization_distribution_metric` | **確定** |
 | 7 | 冪等 | 各テーブル UNIQUE / 部分 UNIQUE + `aggregation_scope` ∈ {batch_run, daily, semantic_config_version} | **確定**（#556/#557/#563） |
 | 8 | phase_log | **`feature_distribution_metric_recorded` 1 フェーズ代表**。専用 phase enum 追加なし | **確定**（#557/#563） |
 | 9 | Contract Gate | **不要** | **確定** |
-| 10 | 子 workflow | 独立 YAML **`batch-distribution-metrics.yml`（`batch-distribution-metrics*.yml`）**。親全体改修は外 | **確定**（一覧・スケジュール・Epic） |
-| 11 | モジュール主参照 | **MOD-BATCH-038**。Aggregator 論理名は一覧準拠 | **確定**（追加採番は §18.2） |
+| 10 | 子 workflow | 独立 YAML **`batch-distribution-metrics.yml`（`batch-distribution-metrics*.yml`）** を MVP 初期の正とする。親全体改修は外。親接続タイミングは Epic 外 | **確定**（§18.2 No.5） |
+| 11 | モジュール主参照 | **MOD-BATCH-038**。Aggregator 論理名は docs 上維持し、**初版は追加採番せず 038 内包** | **確定**（§18.2 No.3 Human 承認） |
 | 12 | Public API / secret | Metric 非公開。secret 実値禁止 | **確定** |
-| 13 | 一覧の古い表記 | バッチ処理一覧の「BATCH-013 が `normalization_distribution_metric` 更新」は **本仕様では BATCH-016 を正**とする。一覧本文の一括修正は本 Task 対象外 | **確定**（Epic out_of_scope。修正は §18.2 別 Task 候補） |
+| 13 | 一覧の古い表記 | バッチ処理一覧の「BATCH-013 が `normalization_distribution_metric` 更新」は **本仕様では BATCH-016 を正**とする。一覧本文の一括修正は本 Task 対象外（別 docs Task） | **確定**（§18.2 No.6） |
+| 14 | 任意入力（user meaning） | **`user_meaning`** 集計は任意。フラグ OFF 既定。必須経路は item のみ | **確定**（§18.2 No.2 Human 承認） |
+| 15 | aggregation_scope 既定 | **dispatch / チェーン後続 = `batch_run`**、**独立 schedule = `daily`**。`BATCH_DISTRIBUTION_METRICS_*` の数値既定は実装 Task | **確定**（§18.2 No.4 Human 承認） |
 
-### 18.2 残確認事項（Human） / 別 Task 候補
+### 18.2 Human 承認済み（推奨案採用） / 別 Task
 
-| No | 事項 | 扱い | 状態 |
-| -: | ---- | ---- | ---- |
-| 1 | MVP 初版で `item_embedding` 監視入力を必須にするか | 推奨: **任意（フラグ OFF 既定）**。必須経路は feature / meaning | **Human 判断待ち** |
-| 2 | MVP 初版で `user_meaning` 集計を必須にするか | 推奨: **任意（フラグ OFF 既定）**。テーブル定義は item+user MVP 対応済み。必須化は運用判断 | **Human 判断待ち** |
-| 3 | Aggregator を MOD-BATCH-038 に内包するか、追加採番するか | 推奨: **初版は 038 内包**（論理名は docs 上維持）。追加採番はモジュール一覧更新 Task | **Human 判断待ち** |
-| 4 | `aggregation_scope` 既定（schedule=`daily` vs dispatch=`batch_run`）と `BATCH_DISTRIBUTION_METRICS_*` 数値既定 | 推奨: dispatch/チェーン後続は `batch_run`、独立 schedule は `daily`。数値は実装 Task | **Human 判断待ち** |
-| 5 | 独立子 workflow を MVP 初期の正とするか | 本仕様 §18.1 No.10 で **正とする**旨を確定済み。親接続タイミングのみ Epic 外 | **方針確定**（接続時期は統合 Task） |
-| 6 | バッチ処理一覧の古い「BATCH-013 更新リソースに `normalization_distribution_metric`」表記の修正 | **別 docs Task 候補**（Epic out_of_scope）。本仕様・テーブル定義・BATCH-013 仕様を正とする | **別 Task 候補** |
+Human Review にて §18.2 の推奨案をすべて採用した（2026-07-21）。残る作業は No.6 の別 docs Task 起票のみ。
+
+| No | 事項 | 採用内容 | 状態 |
+| -: | ---- | -------- | ---- |
+| 1 | MVP 初版で `item_embedding` 監視入力を必須にするか | **任意（フラグ OFF 既定）**。必須経路は feature / meaning | **確定**（Human 承認・推奨採用） |
+| 2 | MVP 初版で `user_meaning` 集計を必須にするか | **任意（フラグ OFF 既定）**。テーブル定義は item+user MVP 対応済み | **確定**（Human 承認・推奨採用） |
+| 3 | Aggregator を MOD-BATCH-038 に内包するか、追加採番するか | **初版は 038 内包**（論理名は docs 上維持）。追加採番が必要ならモジュール一覧更新の別 Task | **確定**（Human 承認・推奨採用） |
+| 4 | `aggregation_scope` 既定と `BATCH_DISTRIBUTION_METRICS_*` 数値既定 | **dispatch/チェーン後続 = `batch_run`、独立 schedule = `daily`**。数値既定は実装 Task | **確定**（Human 承認・推奨採用） |
+| 5 | 独立子 workflow を MVP 初期の正とするか | **正とする**（§18.1 No.10）。親接続タイミングのみ Epic 外 | **確定** |
+| 6 | バッチ処理一覧の古い「BATCH-013 更新リソースに `normalization_distribution_metric`」表記の修正 | **別 docs Task で対応**（Epic out_of_scope）。本仕様・テーブル定義・BATCH-013 仕様を正とする | **確定（別 Task）** |
 
 ---
 
@@ -480,10 +485,10 @@ Client / 外部 API リトライは不要（外部呼出なし）。
 - 冪等が各テーブル UNIQUE / `aggregation_scope` に基づく
 - phase_log が `feature_distribution_metric_recorded` 1 フェーズ代表である
 - 独立子 workflow `batch-distribution-metrics.yml` / Contract Gate 不要が明記されている
-- MOD-BATCH-038 主参照・Aggregator 採番が §18 で区別されている
+- MOD-BATCH-038 主参照・Aggregator は初版 038 内包（追加採番なし）が明記されている
 - Public API 非公開・secret 禁止が明記されている
-- §18.1 確定 / §18.2 Human・別 Task 候補が区別されている
-- 一覧の古い BATCH-013 表記は本仕様では BATCH-016 正とし、一覧修正は別 Task 候補である
+- §18.2 推奨案が Human 承認済みとして §18.1 に反映されている
+- 一覧の古い BATCH-013 表記は本仕様では BATCH-016 正とし、一覧修正は別 docs Task である
 - PR target が親 Epic Branch（`feature/epic-1489-batch-016-distribution-metrics`）である
 
 ---

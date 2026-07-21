@@ -55,11 +55,13 @@ review_points:
   - "冪等が各テーブル UNIQUE / aggregation_scope（batch_run / daily / semantic_config_version）に基づく"
   - "phase_log が feature_distribution_metric_recorded 1 フェーズ代表（専用 phase 追加なし）"
   - "独立子 workflow batch-distribution-metrics.yml / Contract Gate 不要"
-  - "MOD-BATCH-038 主参照。Aggregator 追加採番は Human（§18）"
+  - "MOD-BATCH-038 主参照。Aggregator は初版 038 内包（追加採番なし）"
   - "Public API 非公開・secret 禁止"
-  - "§18 で確定 / 残未決（Human）・一覧古い表記の別 Task 候補が区別されている"
+  - "§18.2 推奨案が Human 承認済みとして §18.1 に反映されている"
+  - "一覧古い表記修正は別 docs Task（§18.2 No.6）"
   - "PR target が親 Epic Branch"
 
 notes:
   - "Epic #1489"
   - "Issue #1490"
+  - "§18.2 Human 承認（推奨案採用）済み"
