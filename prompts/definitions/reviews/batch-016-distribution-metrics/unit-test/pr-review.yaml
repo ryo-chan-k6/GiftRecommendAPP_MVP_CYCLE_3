@@ -19,7 +19,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1495
   issue:
     number: 1494
   task_definition: "prompts/definitions/tasks/batch-016-distribution-metrics/unit-test.yaml"
