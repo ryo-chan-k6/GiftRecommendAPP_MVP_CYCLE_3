@@ -4,7 +4,7 @@ definition_type: "task"
 task:
   id: "task-batch-018-offline-evaluation-batch-spec"
   title: "BATCH-018:Offline Evaluationバッチ仕様書作成"
-  summary: "BATCH-018（Offline Evaluation Batch）のバッチ仕様書を作成し、IF-DB-BATCH-018（evaluation_run / result / metric INSERT）・IF-SHARED-004（scaffold mock 推奨）・evaluation_run_log 読み替え・Run 非冪等・Result/Metric UNIQUE・MOD-BATCH-039/040/041・独立子 workflow・§18 を正本化する。"
+  summary: "BATCH-018（Offline Evaluation Batch）のバッチ仕様書を作成し、IF-DB-BATCH-018（evaluation_run / result / metric INSERT）・IF-SHARED-004（scaffold mock）・evaluation_run_log 読み替え・Run 非冪等・Result/Metric UNIQUE・MOD-BATCH-039/040/041・独立子 workflow・§18 を正本化する。"
 
 work_mode: "ai-agent"
 
@@ -40,14 +40,14 @@ agent:
 background: |
   Phase4b 評価・改善系。Epic #1514 bootstrap 済み。MVP △ だが Human により scaffold-first 縦串着手承認済み。
   物理書込 IF = IF-DB-BATCH-018（evaluation_run / evaluation_result / evaluation_metric INSERT）。
-  推薦実行 IF = IF-SHARED-004（MVP scaffold は mock 推奨。実 HTTP は後続）。
+  推薦実行 IF = IF-SHARED-004（MVP scaffold は mock。実 HTTP は後続）。
   API-INT-002 は契約変更なしで消費可能な場合のみ。Contract Gate 不要。
   一覧の evaluation_run_log は物理なし → evaluation_run + batch_run_log / phase_log に読み替え。
   Run は毎回新規 INSERT（非冪等）。Result UNIQUE (run, case)、Metric UNIQUE (result, metric_name)。INSERT のみ・UPDATE なし。
   モジュール: MOD-BATCH-039 / 040 / 041。042〜044 は out of scope。
   workflow: 独立子 batch-offline-evaluation.yml。週次親接続は後続。
   Dataset/Case 本番 seed は別 Task。UT fixture 可。
-
+  §18.2 残未決なし（Human: 推奨案採用 → §18.1 No.16〜20）。
 objective: |
   BATCH-018 バッチ仕様書を作成し、後続実装・UT の入力正本とする。
 
@@ -55,8 +55,8 @@ scope:
   - "BATCH-018_Offline Evaluationバッチ仕様書.md 新規作成"
   - "IF-DB-BATCH-018 / IF-SHARED-004 / API-INT-002（契約非変更）境界の明記"
   - "evaluation_run_log 読み替え・Run 非冪等・Result/Metric UNIQUE・INSERT のみ"
-  - "MOD-BATCH-039/040/041・042〜044 out of scope・独立子 workflow・§18 Human"
-  - "初版メトリクス確定候補（precision/recall/ndcg/mrr @10）"
+  - "MOD-BATCH-039/040/041・042〜044 out of scope・独立子 workflow・§18"
+  - "初版メトリクス最小 4 種（precision/recall/ndcg/mrr @10）確定"
   - "Task / Review Definition"
 
 out_of_scope:
@@ -118,7 +118,7 @@ deliverables:
 acceptance_criteria:
   - "仕様書が作成されている"
   - "IF-DB-BATCH-018 = evaluation_run / result / metric INSERT が明記されている"
-  - "IF-SHARED-004 = Offline Evaluation 推薦実行（scaffold mock 推奨）が明記されている"
+  - "IF-SHARED-004 = Offline Evaluation 推薦実行（scaffold mock）が明記されている"
   - "API-INT-002 契約変更なし・Contract Gate 不要が明記されている"
   - "evaluation_run_log が evaluation_run + batch_run_log / phase_log に読み替えられている"
   - "Run 非冪等・Result/Metric UNIQUE・INSERT のみ・UPDATE なしが明記されている"
@@ -126,8 +126,8 @@ acceptance_criteria:
   - "独立子 batch-offline-evaluation.yml・週次親接続は後続が明記されている"
   - "Dataset/Case 本番 seed は別 Task・UT fixture 可が明記されている"
   - "secret 禁止・Public/Admin 評価画面非対象が明記されている"
-  - "§18.1 確定と §18.2 残未決が区別されている"
-  - "初版メトリクス確定候補（precision/recall/ndcg/mrr @10）が §18 にある"
+  - "§18.2 残未決なし（旧 No.1〜5 は §18.1 No.16〜20 へ移管）が明記されている"
+  - "初版メトリクス最小 4 種（precision/recall/ndcg/mrr @10）が §18.1 で確定されている"
   - "PR target が親 Epic Branch"
 
 branch:
@@ -183,12 +183,12 @@ review:
   ai_review_required: true
   review_points:
     - "IF-DB-BATCH-018 が本 Batch の物理書込（run / result / metric）である"
-    - "IF-SHARED-004 scaffold mock 推奨・API-INT-002 契約非変更・Contract Gate 不要"
+    - "IF-SHARED-004 scaffold mock（Human 確定）・API-INT-002 契約非変更・Contract Gate 不要"
     - "evaluation_run_log 読み替え"
     - "Run 非冪等・Result/Metric UNIQUE・INSERT のみ"
     - "MOD-BATCH-039/040/041・042〜044 out of scope"
     - "独立子 workflow・seed 別 Task・画面非対象・secret 禁止"
-    - "§18.1 確定と §18.2 残未決の区別・初版メトリクス候補"
+    - "§18.2 残未決なし・§18.1 No.16〜20（初版メトリクス最小4種等）確定"
     - "secret / Public API 非公開"
   specialist_reviews:
     docs: true
@@ -202,12 +202,13 @@ operation_logging:
     cross_cutting: false
     experiments: false
 
-human_decision_points:
-  - "IF-SHARED-004 の MVP 実装形態（推奨: scaffold mock）"
-  - "MVP 初版メトリクス範囲（推奨: precision/recall/ndcg/mrr @10）"
-  - "Dataset/Case 本番 seed の別 Task 起票タイミング"
-  - "週次親 workflow への任意接続を本 Epic に含めるか（推奨: 独立子のみ）"
-  - "version 4 列の scaffold 解決（固定 stub vs 実 Resolver）"
+human_decision_points: []
+# 旧 human_decision_points（すべて推奨案どおり確定済み・§18.1 No.16〜20）:
+# - IF-SHARED-004 MVP = scaffold mock
+# - 初版メトリクス = precision/recall/ndcg/mrr @10
+# - Dataset/Case 本番 seed = 別 Task
+# - 週次親接続 = 独立子のみ・後続
+# - version 4 列 scaffold = 固定 stub UUID
 
 stop_conditions:
   - "正本 docs 間で矛盾があり独断解消できない場合"
@@ -215,4 +216,4 @@ stop_conditions:
 notes:
   - "Epic #1514"
   - "Issue #1515"
-  - "§18.2 は Human 判断待ち。推奨案は仕様書に記載"
+  - "§18.2 残未決なし（Human: 推奨案採用・§18.1 No.16〜20）"

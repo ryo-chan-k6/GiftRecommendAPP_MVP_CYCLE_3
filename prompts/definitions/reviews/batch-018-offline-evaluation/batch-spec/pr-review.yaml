@@ -49,19 +49,19 @@ review_scope:
 
 review_points:
   - "IF-DB-BATCH-018 が本 Batch の物理書込（evaluation_run / evaluation_result / evaluation_metric INSERT）である"
-  - "IF-SHARED-004 が Offline Evaluation 推薦実行 I/F であり、MVP scaffold は mock 推奨である"
+  - "IF-SHARED-004 が Offline Evaluation 推薦実行 I/F であり、MVP scaffold は mock（Human 確定）である"
   - "API-INT-002 は契約変更なし前提・Contract Gate 不要である"
   - "一覧の evaluation_run_log が物理なしとして evaluation_run + batch_run_log / phase_log に読み替えられている"
   - "Run は毎回新規 INSERT（非冪等）。Result UNIQUE (run, case)、Metric UNIQUE (result, metric_name)。INSERT のみ・UPDATE なし"
   - "MOD-BATCH-039 / 040 / 041 が正。MOD-BATCH-042〜044 が out of scope"
-  - "独立子 batch-offline-evaluation.yml。週次親接続は後続（§18 Human）"
+  - "独立子 batch-offline-evaluation.yml。週次親接続は後続（§18.1 No.19）"
   - "Dataset/Case 本番 seed は別 Task。UT fixture 可"
   - "secret 禁止・Public / Admin 評価画面非対象"
-  - "§18.1 確定と §18.2 残未決が区別され、初版メトリクス確定候補（precision/recall/ndcg/mrr @10）がある"
+  - "§18.2 残未決なし。旧 No.1〜5 は §18.1 No.16〜20（初版メトリクス最小4種・mock・独立子のみ等）へ移管済み"
   - "PR target が親 Epic Branch"
   - "OpenAPI / apps/reco 破壊変更 / 実装コード本格実装が混入していない"
 
 notes:
   - "Epic #1514"
   - "Issue #1515"
-  - "§18.2 Human 判断待ち（IF-SHARED-004 形態・初版メトリクス・親接続等）"
+  - "§18.2 残未決なし（Human: 推奨案採用・§18.1 No.16〜20）"

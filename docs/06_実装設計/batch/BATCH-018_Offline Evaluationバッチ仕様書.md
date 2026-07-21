@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service / batch |
 | MVP対象        | `△`（scaffold-first / Human 縦串着手承認済み） |
 | 作成日         | 2026-07-21                          |
-| 更新日         | 2026-07-21                          |
+| 更新日         | 2026-07-21（§18.2 Human 承認反映） |
 
 ---
 
@@ -41,7 +41,7 @@ BATCH-018（Offline Evaluation Batch）は、評価データセット（`evaluat
 | IF ID | 名称 | 担当 / 役割 | 本 Batch での利用 |
 | ----- | ---- | ----------- | ----------------- |
 | **IF-DB-BATCH-018** | Evaluation保存 | **BATCH-018** | **本 Batch の物理書込 I/F**（`evaluation_run` / `evaluation_result` / `evaluation_metric` INSERT） |
-| **IF-SHARED-004** | Offline Evaluation推薦実行 | batch → reco pipeline | **推薦実行 I/F**。MVP scaffold は **mock 推奨**。実 HTTP / in-process は後続（§18.2） |
+| **IF-SHARED-004** | Offline Evaluation推薦実行 | batch → reco pipeline | **推薦実行 I/F**。MVP scaffold は **mock**（Human 確定）。実 HTTP / in-process は後続 |
 | **IF-INT-002** / **API-INT-002** | Reco推薦実行 | Internal API | **契約変更なしで消費可能な場合のみ**。本 Epic では OpenAPI / 契約変更を行わない。Contract Gate **不要** |
 | IF-OBS-001 / 002 / 003 | Phase / Error / Batch Run Log | Observability | `phase_log` / `error_log` / `batch_run_log` 記録（`owner_type=evaluation_run` 等） |
 
@@ -56,7 +56,7 @@ BATCH-018（Offline Evaluation Batch）は、評価データセット（`evaluat
 | 種別 | 共通ロジック IF（Python package / internal execution / internal API） | Internal HTTP API |
 | 用途 | Offline Evaluation の推薦実行抽象 | reco への HTTP POST（`mode=evaluation`） |
 | 本 Batch | **必須の論理 I/F** | HTTP 経路を採る場合のみ。**契約変更なし前提**で消費 |
-| MVP scaffold | **mock 推奨**（実 reco / 実 HTTP なし） | 後続実装 Task で任意接続 |
+| MVP scaffold | **mock**（実 reco / 実 HTTP なし。Human 確定） | 後続実装 Task で任意接続 |
 | Contract Gate | — | **不要**（本 Epic で契約非変更） |
 
 ### 2.3 `evaluation_run_log` 読み替え（確定）
@@ -92,7 +92,7 @@ BATCH-018（Offline Evaluation Batch）は、評価データセット（`evaluat
 | Batch ID       | `BATCH-018` |
 | Batch名        | Offline Evaluation Batch |
 | 処理種別       | 評価・改善 / Offline Evaluation |
-| 実行基盤       | GitHub Actions。**独立子** `batch-offline-evaluation.yml`（`batch-offline-evaluation*.yml`）。週次親への接続は後続（§18.2） |
+| 実行基盤       | GitHub Actions。**独立子** `batch-offline-evaluation.yml`（`batch-offline-evaluation*.yml`）。週次親への接続は後続（§18.1 No.19） |
 | 実装言語       | Python（`apps/batch`） |
 | 起動方式       | `workflow_dispatch` / `workflow_call`（親から任意呼び出し）。独立 cron 本線必須ではない |
 | 実行頻度       | 手動中心。リリース前 / 週次任意（スケジュール設計書）。MVP scaffold は手動 |
@@ -132,7 +132,7 @@ reco 呼び出し抽象: `apps/batch/src/batch/infrastructure/reco_client/**`（
 | -------- | -------- | ---- | ---- |
 | schedule（独立 cron） | **本線必須ではない** | — | 任意。MVP scaffold は手動中心 |
 | workflow_dispatch | `true` | 手動・リリース前評価 | 独立子 `batch-offline-evaluation.yml` |
-| workflow_call | `true`（設計上） | 週次親等からの任意呼び出し | **親接続は後続**（§18.2） |
+| workflow_call | `true`（設計上） | 週次親等からの任意呼び出し | **親接続は後続**（§18.1 No.19） |
 | 先行Batch完了必須 | `false` | 評価依存のみ | 本番推薦の必須前提にしない |
 
 ### 5.2 実行前提
@@ -140,7 +140,7 @@ reco 呼び出し抽象: `apps/batch/src/batch/infrastructure/reco_client/**`（
 - `evaluation_dataset` / `evaluation_case` / `evaluation_run` / `evaluation_result` / `evaluation_metric` の DDL が適用済みであること。
 - 対象 Dataset が存在し `is_active = true` であること（本番 seed は別 Task。UT は fixture 可）。
 - 対象 Dataset に `is_active = true` の Case が 1 件以上あること（scaffold では fixture 最小件数で可）。
-- version 4 列（`semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id`）を解決できること（scaffold は固定 UUID / stub 可。§18.2）。
+- version 4 列（`semantic_config_version_id` / `model_version_id` / `matching_config_id` / `ranking_config_id`）を解決できること（scaffold は固定 UUID / stub。§18.1 No.20）。
 - IF-SHARED-004 実装（少なくとも mock）が利用可能であること。
 
 ### 5.3 起動パラメータ（想定）
@@ -179,7 +179,7 @@ reco 呼び出し抽象: `apps/batch/src/batch/infrastructure/reco_client/**`（
 
 | 種別 | MVP scaffold | 本格化時 |
 | ---- | ------------ | -------- |
-| IF-SHARED-004 | **mock 推奨**（外部 HTTP なし） | HTTP API-INT-002 消費、または in-process |
+| IF-SHARED-004 | **mock**（外部 HTTP なし。Human 確定） | HTTP API-INT-002 消費、または in-process |
 | Embedding / LLM 直接呼出 | **本 Batch からは行わない** | reco 側責務。batch は IF-SHARED-004 経由のみ |
 | 楽天 API | 呼び出さない | — |
 
@@ -265,22 +265,22 @@ evaluation_case (is_active=true)
 
 ## 9. メトリクス算出ルール
 
-### 9.1 MVP 初版メトリクス範囲（確定候補）
+### 9.1 MVP 初版メトリクス範囲（確定）
 
-`evaluation_metric` テーブル定義書 §5.5 カタログを正とする。本仕様の **MVP scaffold 推奨最小セット** は以下（§18.1 / §18.2）。
+`evaluation_metric` テーブル定義書 §5.5 カタログを正とする。本仕様の **MVP scaffold 初版最小セット** は以下（§18.1 No.16）。
 
 | `metric_name` | 採用 | 備考 |
 | ------------- | ---- | ---- |
-| `precision_at_10` | **推奨（初版）** | K=10 |
-| `recall_at_10` | **推奨（初版）** | K=10 |
-| `ndcg_at_10` | **推奨（初版）** | K=10 |
-| `mrr_at_10` | **推奨（初版）** | K=10。一覧の「MMR」表記とは別概念（§9.3） |
-| `hit_rate_at_10` | カタログあり・初版任意 | §18.2 |
-| `diversity_at_10` | カタログあり・初版任意 | §18.2 |
-| `risk_rate_at_10` | カタログあり・初版任意 | §18.2 |
-| `mmr_at_10` | カタログあり・初版任意 | 一覧 BATCH-018 の MMR 関連。初版最小セット外（§18.2） |
+| `precision_at_10` | **初版採用** | K=10 |
+| `recall_at_10` | **初版採用** | K=10 |
+| `ndcg_at_10` | **初版採用** | K=10 |
+| `mrr_at_10` | **初版採用** | K=10。一覧の「MMR」表記とは別概念（§9.3） |
+| `hit_rate_at_10` | カタログあり・初版対象外 | 後続拡張 |
+| `diversity_at_10` | カタログあり・初版対象外 | 後続拡張 |
+| `risk_rate_at_10` | カタログあり・初版対象外 | 後続拡張 |
+| `mmr_at_10` | カタログあり・初版対象外 | 一覧 BATCH-018 の MMR 関連。初版最小セット外 |
 
-> **推奨（Human 判断待ち）**: 初版は **`precision_at_10` / `recall_at_10` / `ndcg_at_10` / `mrr_at_10`** の最小 4 種。カタログ全部は過大約束を避け、後続で拡張する。
+> **確定**（Human: 推奨案採用）: 初版は **`precision_at_10` / `recall_at_10` / `ndcg_at_10` / `mrr_at_10`** の最小 4 種。カタログ全部は過大約束を避け、後続で拡張する。
 
 ### 9.2 算出入力
 
@@ -296,8 +296,8 @@ evaluation_case (is_active=true)
 
 | 表記 | 意味 | 本仕様 |
 | ---- | ---- | ------ |
-| `mrr_at_10` | Mean Reciprocal Rank | **初版推奨セットに含む** |
-| `mmr_at_10` | Maximal Marginal Relevance 系（カタログ） | 初版最小セット外（§18.2） |
+| `mrr_at_10` | Mean Reciprocal Rank | **初版最小セットに含む** |
+| `mmr_at_10` | Maximal Marginal Relevance 系（カタログ） | 初版最小セット外 |
 | 一覧の「MMR」 | 表記揺れの可能性 | 実装・Metric 名はカタログの `metric_name` を正とする |
 
 ### 9.4 INSERT 方針（Metric）
@@ -469,17 +469,15 @@ evaluation_case (is_active=true)
 | 13 | secret | 実値禁止 | **確定** |
 | 14 | Retention | Evaluation 系 **365 日**。Batch Log **90 日** | **確定**（テーブル定義） |
 | 15 | 後続 Batch | 本線の必須後続なし。019 本格接続は別 | **確定** |
-| 16 | 初版メトリクス確定候補 | 推奨最小セット = `precision_at_10` / `recall_at_10` / `ndcg_at_10` / `mrr_at_10` | **確定候補**（最終採否は §18.2） |
+| 16 | 初版メトリクス | **最小 4 種** = `precision_at_10` / `recall_at_10` / `ndcg_at_10` / `mrr_at_10`。カタログ全部は後続 | **確定**（Human: 推奨案採用） |
+| 17 | IF-SHARED-004 の MVP 実装形態 | scaffold は **mock**。実 HTTP API-INT-002 消費 / in-process は後続実装 Task | **確定**（Human: 推奨案採用） |
+| 18 | Dataset/Case 本番 seed | **別 Task**（本 Epic / 本仕様どおり）。seed Task 起票タイミングは運用側 | **確定**（Human: 推奨案採用） |
+| 19 | 週次親 workflow への任意接続 | **独立子のみ**。親 YAML 改修・接続は後続 | **確定**（Human: 推奨案採用） |
+| 20 | version 4 列の scaffold 解決 | scaffold は **固定 stub UUID**。本格化で実 Resolver | **確定**（Human: 推奨案採用） |
 
 ### 18.2 Human 判断事項（残未決）
 
-| No | 論点 | 選択肢 | 推奨案 | 状態 |
-| -: | ---- | ------ | ------ | ---- |
-| 1 | IF-SHARED-004 の MVP 実装形態 | A: scaffold **mock** / B: 実 HTTP API-INT-002 消費 / C: in-process | **A（mock）**。実 HTTP は後続実装 Task | **Human 判断待ち** |
-| 2 | 初版メトリクス範囲 | A: §18.1 No.16 の最小 4 種 / B: カタログ全部（hit/diversity/risk/mmr 含む） / C: 別セット | **A（最小 4 種）** | **Human 判断待ち** |
-| 3 | Dataset/Case 本番 seed | A: 本 Epic に含める / B: **別 Task** | **B**（Epic / 本仕様どおり） | **推奨確定寄りだが seed Task 起票タイミングは Human** |
-| 4 | 週次親 workflow への任意接続 | A: 本 Epic で親 YAML 改修 / B: **独立子のみ・親接続は後続** | **B** | **Human 判断待ち** |
-| 5 | version 4 列の scaffold 解決 | A: 実 Resolver / B: 固定 stub UUID | scaffold は **B** 可。本格化で A | **Human 判断待ち**（実装 Task 引き継ぎ可） |
+**残未決なし。** 旧 §18.2 No.1〜5 は Human により推奨案どおり確定し、§18.1 No.16〜20 へ移した（2026-07-21）。
 
 ---
 
@@ -503,16 +501,16 @@ evaluation_case (is_active=true)
 ## 20. レビュー観点
 
 - **IF-DB-BATCH-018** が本 Batch の物理書込 I/F（run / result / metric INSERT）として明記されている
-- **IF-SHARED-004** が推薦実行 I/F であり、MVP scaffold は **mock 推奨**と明記されている
+- **IF-SHARED-004** が推薦実行 I/F であり、MVP scaffold は **mock**（Human 確定）と明記されている
 - API-INT-002 は契約変更なし前提・**Contract Gate 不要**が明記されている
 - 一覧の `evaluation_run_log` が物理なしとして **`evaluation_run` + `batch_run_log` / `phase_log`** に読み替えられている
 - Run は毎回新規 INSERT（非冪等）。Result / Metric は UNIQUE + INSERT のみ・UPDATE なし
 - **MOD-BATCH-039 / 040 / 041** が正。042〜044 が out of scope
-- MVP △ / scaffold-first。初版メトリクスが §18 で確定候補と Human 残未決に分離されている
-- 独立子 `batch-offline-evaluation.yml`。週次親接続は後続（§18.2）
+- MVP △ / scaffold-first。初版メトリクス最小 4 種が §18.1 で確定されている
+- 独立子 `batch-offline-evaluation.yml`。週次親接続は後続（§18.1 No.19）
 - Dataset/Case 本番 seed は別 Task。UT fixture 可
 - secret 禁止・Public / Admin 評価画面非対象
-- §18.1 確定と §18.2 残未決が区別されている
+- §18.2 残未決なし（旧 No.1〜5 は §18.1 No.16〜20 へ移管済み）
 - PR target が親 Epic Branch（`feature/epic-1514-batch-018-offline-evaluation`）である
 
 ---
@@ -526,7 +524,7 @@ evaluation_case (is_active=true)
 | Python 実装・workflow YAML 本体・UT | 後続 Task |
 | MOD-BATCH-042〜044 本格実装 | 将来 |
 | Dataset/Case 本番 seed | 別 Task |
-| 週次親 workflow 全体改修 | 後続（§18.2 No.4） |
+| 週次親 workflow 全体改修 | 後続（§18.1 No.19） |
 | apps/reco / OpenAPI / migration | Epic forbidden |
 | Public / Admin 評価画面 | 画面非対象 |
 | BATCH-019 本格接続 | 別 Epic |
@@ -550,5 +548,5 @@ Observability（batch_run_log / phase_log / error_log）
 | workflow | BATCH-018 の位置づけ | 備考 |
 | -------- | -------------------- | ---- |
 | `batch-offline-evaluation.yml`（新設想定） | **独立子**・dispatch / call | 本 Epic 実装の正 |
-| 週次親 / 手動親 | 任意で `uses: batch-offline-evaluation.yml` | **接続は後続**（§18.2 No.4） |
+| 週次親 / 手動親 | 任意で `uses: batch-offline-evaluation.yml` | **接続は後続**（§18.1 No.19） |
 | 日次本線 | 必須ステップにしない | 評価依存・本番非必須 |
