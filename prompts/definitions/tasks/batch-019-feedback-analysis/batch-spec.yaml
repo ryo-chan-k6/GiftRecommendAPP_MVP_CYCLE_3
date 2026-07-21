@@ -1,0 +1,208 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-019-feedback-analysis-batch-spec"
+  title: "BATCH-019:Feedback分析バッチ仕様書作成"
+  summary: "BATCH-019（Feedback分析Batch）のバッチ仕様書を作成し、IF-DB-BATCH-019（論理契約・scaffold in-memory/stub）・出力物理未整備・migration禁止・MOD-BATCH-042・043/044 out of scope・独立子 workflow・冪等キー候補・feedback_analysis_status 読み替え・§18 を正本化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-019:Feedback分析Batch"
+  epic_issue_number: 1522
+  epic_branch: "feature/epic-1522-batch-019-feedback-analysis"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase4b 評価・改善系。Epic #1522 bootstrap 済み。MVP △。出力 feedback_analysis_result / feedback_metric は物理未整備。
+  物理書込 IF = IF-DB-BATCH-019（論理契約）。scaffold は in-memory / stub。migration 禁止・物理 DDL は別 DB Task。
+  入力 recommendation_feedback は DDL 整備済み（api / IF-DB-API-002）。本 Batch は SELECT のみ。
+  モジュール: MOD-BATCH-042。Aggregator / Classifier は内部責務。043/044 は out of scope。
+  MOD-BATCH-019（Raw Product Reader）≠ Batch ID BATCH-019。
+  workflow: 独立子 batch-feedback-analysis.yml。親接続は後続。
+  Contract Gate 不要。§18.2 Human 判断（feedback_metric 物理化・冪等・status 等）は推奨案どおり Human 確定済み（§18.1 No.17〜23）。
+
+objective: |
+  BATCH-019 バッチ仕様書を作成し、後続実装・UT の入力正本とする。
+
+scope:
+  - "BATCH-019_Feedback分析バッチ仕様書.md 新規作成"
+  - "IF-DB-BATCH-019 論理契約・scaffold in-memory/stub・migration 禁止・別 DB Task の明記"
+  - "入力 recommendation_feedback・任意 SELECT 参照の明記"
+  - "MOD-BATCH-042・043/044 out of scope・MOD-BATCH-019 混同禁止"
+  - "独立子 batch-feedback-analysis.yml・Contract Gate 不要・secret 禁止"
+  - "冪等キー候補・feedback_analysis_status 読み替え・feedback_metric 方針を §18 に確定反映"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Python 実装・workflow YAML 本体・UT"
+  - "supabase/migrations/** および出力テーブル物理 DDL 本整備"
+  - "MOD-BATCH-043 / 044 本格実装・自動 Issue 起票"
+  - "週次親 workflow 全体改修"
+  - "apps/reco / apps/api / apps/web 破壊変更 / OpenAPI 変更"
+  - "Public / Admin 分析画面"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_feedback_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/論理ER.md"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-018_Offline Evaluationバッチ仕様書.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-019-feedback-analysis/epic.yaml"
+      required: true
+  files:
+    - path: "packages/code-definitions/application/feedback_type.yaml"
+      required: false
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-019_Feedback分析バッチ仕様書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-019-feedback-analysis/batch-spec.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-019-feedback-analysis/batch-spec/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-019 バッチ仕様書"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "仕様書が作成されている"
+  - "IF-DB-BATCH-019 = 分析結果保存（論理契約）・scaffold in-memory/stub が明記されている"
+  - "出力物理未整備・migration 禁止・別 DB Task が明記されている"
+  - "入力 recommendation_feedback（DDL あり）・任意 SELECT 参照が明記されている"
+  - "feedback_metric が scaffold・当面 JSON 内包（案 B）で §18.1 に確定されている"
+  - "MOD-BATCH-042 正・Aggregator/Classifier 内部責務・043/044 out of scope が明記されている"
+  - "MOD-BATCH-019 ≠ BATCH-019 が明記されている"
+  - "冪等キー候補と scaffold 都度新規 stub / 本格化 UPSERT 第一候補が §18.1 に確定されている"
+  - "feedback_analysis_status 読み替え（専用なし）が §18.1 に確定されている"
+  - "独立子 batch-feedback-analysis.yml・親接続は後続が明記されている"
+  - "Contract Gate 不要・secret 禁止が明記されている"
+  - "§18.2 残未決なし（旧 Human 推奨案は §18.1 No.17〜23 へ移管済み）"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1523-batch-019-feedback-analysis-batch-spec"
+  summary: "batch-019-feedback-analysis-batch-spec"
+  base: "feature/epic-1522-batch-019-feedback-analysis"
+  target: "feature/epic-1522-batch-019-feedback-analysis"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+
+issue:
+  number: 1523
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1522
+      title: "[Epic]BATCH-019:Feedback分析Batch"
+      purpose: "親 Epic"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/batch/BATCH-019_*"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-019 が論理契約・scaffold in-memory/stub・migration 禁止である"
+    - "出力物理未整備・別 DB Task・入力 recommendation_feedback"
+    - "feedback_metric 案 B・冪等・feedback_analysis_status 読み替えが §18.1 で Human 確定"
+    - "MOD-BATCH-042・043/044 out of scope・MOD-BATCH-019 混同禁止"
+    - "独立子 workflow・Contract Gate 不要・secret 禁止"
+    - "§18.2 残未決なし（旧 No.1〜7 は §18.1 No.17〜23）"
+    - "PR target が親 Epic Branch"
+  specialist_reviews:
+    docs: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+human_decision_points: []
+
+stop_conditions:
+  - "正本 docs 間で矛盾があり独断解消できない場合"
+
+notes:
+  - "Epic #1522"
+  - "Issue #1523"
+  - "§18.2 残未決なし（旧 Human 推奨案は 2026-07-21 に Human 確定・§18.1 No.17〜23）"
