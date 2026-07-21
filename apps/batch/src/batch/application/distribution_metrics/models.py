@@ -106,6 +106,8 @@ class MetricUpsertRow:
     feature_code: str | None = None
     entity_type: MeaningEntityType | None = None
     feature_normalization_version_id: str | None = None
+    # normalization / sigmoid 層のみ。stddev==0.0 かつ n>=2 のとき寄与件数、それ以外は 0 または None
+    sigma_zero_count: int | None = None
 
 
 @dataclass
