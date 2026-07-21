@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-performance-feasibility-poc-live-verification-pr"
+  title: "reco-performance-feasibility-poc poc-live-verification PRレビュー"
+  summary: "Epic #1512 Task poc-live-verification（Phase2 live 実性能検証）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1513
+  pr: 1525
+  parent_epic_issue: 1512
+  parent_epic_branch: "spike/epic-1512-reco-performance-feasibility-poc-phase2"
+  task_definition: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-live-verification.yaml"
+  source_branch: "spike/task-1513-reco-perf-live"
+  target_branch: "spike/epic-1512-reco-performance-feasibility-poc-phase2"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  testing: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-performance-feasibility-poc/poc-live-verification.yaml"
+    required: true
+  issue:
+    number: 1513
+  pr:
+    number: 1525
+
+review_points:
+  - "入力解析〜Ranking のフェーズ別 p50/p95 が live 環境（GHA および/または local）で計測されているか"
+  - "OpenAI secrets 実疎通経路が実行され、かつ secret 実値が成果物・ログ・差分に含まれていないか"
+  - "§13.2 soft 2,000ms / hard 4,000ms に対する Go / Adjust / Block が実測根拠付きで整理されているか"
+  - "GHA と local の判定差（secrets: Block vs Adjust）が事実として明示され、最終採用が Human 判断待ちになっているか"
+  - "設計反映メモ §3 チェックリストが消化または未実施理由付きで明示されているか"
+  - "正式 docs（性能要件 §5 / MOD-RECO-001 §13.2）を本 PR で更新していないか（out of scope）"
+  - "apps/reco/src/** の本格改修が含まれていないか"
+  - "TV-005 / TV-006 / batch 領域への無断変更がないか"
+  - "PR target が親 Epic Branch（spike/epic-1512-reco-performance-feasibility-poc-phase2）であるか"
+  - "件数スケール未実施など残課題が follow-up として整理されているか"
+
+notes:
+  - "Issue #1513 / Branch spike/task-1513-reco-perf-live / PR #1525"

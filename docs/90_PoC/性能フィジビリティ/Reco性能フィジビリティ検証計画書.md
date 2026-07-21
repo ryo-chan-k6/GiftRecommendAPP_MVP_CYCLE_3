@@ -170,10 +170,10 @@ flowchart LR
 
 | 項目 | Phase1 | Phase2 |
 | ---- | ------ | ------ |
-| local | `scripts/perf/reco_pipeline_bench.py --mode skeleton` | `--mode live`（#260 後） |
-| GHA Layer2 | `.github/workflows/perf-feasibility-reco.yml`（`workflow_dispatch` のみ） | 同上 + live 入力 |
+| local | `scripts/perf/reco_pipeline_bench.py --mode skeleton` | `--mode live`（#1513。`DATABASE_URL` + seed 前提） |
+| GHA Layer2 | `.github/workflows/perf-feasibility-reco.yml`（`workflow_dispatch`） | 同上 + `pipeline_mode=live` / `openai_mode` |
 | DB | 不要（skeleton） | ephemeral DB + migration + seed（`test-reco-quality.yml` 同型） |
-| OpenAI | 不要 | mock または GHA Secrets 注入 |
+| OpenAI | 不要 | `mock`（scaffold）または `secrets`（GHA Secrets / env。bench 側 HTTP クライアント差込） |
 | 通常 PR CI | **含めない**（CI・CD方針書 §12.2） | 同左 |
 
 ---
@@ -269,3 +269,4 @@ PR target: 子 Task PR は親 Epic Branch、Epic PR は `develop`。
 | 日付 | 変更内容 | 関連 |
 | ---- | -------- | ---- |
 | 2026-06-25 | 初版作成（Phase1 / Phase2 区分、TV-007 マッピング、worktree 運用） | Issue #761 / Task poc-plan |
+| 2026-07-21 | Phase2 live 計測境界・GHA openai_mode を反映（#1512/#1513） | Issue #1513 |

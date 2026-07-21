@@ -197,6 +197,7 @@ stop_conditions:
   - "secret 漏えいの疑いがある場合"
 
 notes:
+  - "Task Issue #1513 / Branch spike/task-1513-reco-perf-live"
   - "親 Epic #1512 / Branch spike/epic-1512-reco-performance-feasibility-poc-phase2"
-  - "専用 worktree: 親 Epic Branch を base とした新規 worktree（例: spike-task-<番号>-reco-perf-live）"
+  - "専用 worktree: spike-task-1513-reco-perf-live"
   - "旧 spike/epic-759 は削除済み。再利用しない"

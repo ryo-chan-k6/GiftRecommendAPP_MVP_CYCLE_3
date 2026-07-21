@@ -1,21 +1,30 @@
 name: Perf Feasibility Reco
 
-# Layer2 Reco 性能フィジビリティ（CI・CD方針書 §12.2 / Epic #759 poc-harness）。
-# 通常 PR CI（ci.yml）とは分離。本番運用は workflow_dispatch。Epic Branch 検証用に push も許可。
+# Layer2 Reco 性能フィジビリティ（CI・CD方針書 §12.2 / TV-007）。
+# 通常 PR CI（ci.yml）とは分離。本番運用は workflow_dispatch。
+# Phase1: skeleton / Phase2: live（ephemeral DB + OpenAI mock|secrets）
 
-run-name: "perf-feasibility-reco · ${{ github.event_name }} · ${{ inputs.pipeline_mode || 'skeleton' }}"
+run-name: "perf-feasibility-reco · ${{ github.event_name }} · ${{ inputs.pipeline_mode || 'skeleton' }} · ${{ inputs.openai_mode || 'mock' }}"
 
 on:
   workflow_dispatch:
     inputs:
       pipeline_mode:
-        description: "計測モード（Phase1: skeleton / Phase2: live は #260 後）"
+        description: "計測モード（skeleton / live）"
         required: true
         default: skeleton
         type: choice
         options:
           - skeleton
           - live
+      openai_mode:
+        description: "OpenAI 利用方針（live 時のみ有効。mock=scaffold / secrets=実疎通）"
+        required: true
+        default: mock
+        type: choice
+        options:
+          - mock
+          - secrets
       iterations:
         description: "計測繰り返し回数"
         required: true
@@ -26,9 +35,28 @@ on:
         required: true
         default: "3"
         type: string
+      candidate_limit:
+        description: "live Retrieval candidate_limit"
+        required: true
+        default: "100"
+        type: string
+      top_k:
+        description: "live Ranking top_k"
+        required: true
+        default: "5"
+        type: string
+      force_llm:
+        description: "live+secrets 時に代表 free_text を付与して LLM 経路を誘発"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
   push:
     branches:
-      - spike/epic-759-reco-performance-feasibility-poc
+      - spike/epic-1512-reco-performance-feasibility-poc-phase2
+      - spike/task-1513-reco-perf-live
     paths:
       - .github/workflows/perf-feasibility-reco.yml
       - scripts/perf/**
@@ -45,8 +73,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PIPELINE_MODE: ${{ inputs.pipeline_mode || 'skeleton' }}
+      OPENAI_MODE: ${{ inputs.openai_mode || 'mock' }}
       ITERATIONS: ${{ inputs.iterations || '50' }}
       WARMUP: ${{ inputs.warmup || '3' }}
+      CANDIDATE_LIMIT: ${{ inputs.candidate_limit || '100' }}
+      TOP_K: ${{ inputs.top_k || '5' }}
+      FORCE_LLM: ${{ inputs.force_llm || 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -62,14 +94,80 @@ jobs:
       - name: Prepare reco Python environment
         run: ./scripts/dev/setup-python-reco.sh
 
+      - name: Read Supabase CLI pin
+        if: env.PIPELINE_MODE == 'live'
+        id: cli-pin
+        run: echo "version=$(tr -d '[:space:]' < supabase/.cli-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Supabase CLI
+        if: env.PIPELINE_MODE == 'live'
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ steps.cli-pin.outputs.version }}
+
+      - name: Install PostgreSQL client
+        if: env.PIPELINE_MODE == 'live'
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Start ephemeral DB and apply seeds
+        if: env.PIPELINE_MODE == 'live'
+        run: |
+          bash scripts/db/verify-seed-setup.sh
+          bash scripts/db/check-cli-version.sh
+          bash scripts/db/start-local.sh
+          bash scripts/db/migrate-up.sh
+          bash scripts/db/seed-masters.sh
+          bash scripts/db/seed-test-data.sh
+          # Export DATABASE_URL via scripts/db/_lib.sh（実値はログへ出さない）
+          # shellcheck source=scripts/db/_lib.sh
+          source scripts/db/_lib.sh
+          DB_URL="$(db_local_database_url)"
+          if [[ -z "${DB_URL}" ]]; then
+            echo "error: failed to resolve local DATABASE_URL" >&2
+            exit 1
+          fi
+          echo "DATABASE_URL=${DB_URL}" >> "$GITHUB_ENV"
+          echo "info: ephemeral DATABASE_URL configured (value not echoed)"
+
+      - name: Configure OpenAI mode
+        if: env.PIPELINE_MODE == 'live'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [[ "${OPENAI_MODE}" == "mock" ]]; then
+            echo "info: OpenAI scaffold/mock mode（Embedding/LLM は in-memory）"
+          elif [[ "${OPENAI_MODE}" == "secrets" ]]; then
+            if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+              echo "error: openai_mode=secrets ですが secrets.OPENAI_API_KEY が未設定です" >&2
+              exit 1
+            fi
+            echo "info: OpenAI secrets 注入モード（実 API。実値はログへ出さない）"
+            echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> "$GITHUB_ENV"
+          else
+            echo "error: unsupported openai_mode=${OPENAI_MODE}" >&2
+            exit 1
+          fi
+
       - name: Run reco pipeline bench
         working-directory: apps/reco
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          EXTRA_ARGS=()
+          if [[ "${PIPELINE_MODE}" == "live" ]]; then
+            EXTRA_ARGS+=(--openai-mode "${OPENAI_MODE}")
+            EXTRA_ARGS+=(--candidate-limit "${CANDIDATE_LIMIT}")
+            EXTRA_ARGS+=(--top-k "${TOP_K}")
+            if [[ "${FORCE_LLM}" == "true" ]]; then
+              EXTRA_ARGS+=(--force-llm)
+            fi
+          fi
           uv run python ../../scripts/perf/reco_pipeline_bench.py \
             --mode "${PIPELINE_MODE}" \
             --iterations "${ITERATIONS}" \
             --warmup "${WARMUP}" \
-            --output-dir ../../scripts/perf/output
+            --output-dir ../../scripts/perf/output \
+            "${EXTRA_ARGS[@]}"
 
       - name: Write job summary
         if: always() && hashFiles('scripts/perf/output/summary.md') != ''
@@ -82,3 +180,7 @@ jobs:
           name: reco-perf-bench-${{ github.run_id }}
           path: scripts/perf/output/
           if-no-files-found: error
+
+      - name: Stop Supabase stack
+        if: always() && env.PIPELINE_MODE == 'live'
+        run: bash scripts/db/stop-local.sh
