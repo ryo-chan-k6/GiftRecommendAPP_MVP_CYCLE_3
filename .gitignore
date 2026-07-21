@@ -80,6 +80,7 @@ tests/recommendation-quality/output/
 
 # PoC perf bench local output (Epic #759)
 scripts/perf/output/
+scripts/perf/output-*/
 
 # =========================
 # Misc
