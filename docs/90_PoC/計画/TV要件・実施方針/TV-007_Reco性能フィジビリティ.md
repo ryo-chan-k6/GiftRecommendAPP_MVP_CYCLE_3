@@ -21,7 +21,7 @@
 | ---- | ---- |
 | 主な確認内容 | 入力解析〜Rankingまでの概算時間 |
 | 判断結果の反映先 | Reco設計、非機能設計（性能要件 §5 / MOD-RECO-001 §13.2） |
-| 暫定判定対象 | soft 2,000ms / hard 4,000ms（MOD-RECO-001 §13.2 現行値。最終採否は Human Review） |
+| 暫定判定対象 | 旧 soft 2,000ms / hard 4,000ms（Phase2 判定基準）。Human 確定後の正本は MOD-RECO-001 §13.2（内部 1.5s/2s・外部 AI 込み 6s/8s） |
 
 Reason 生成は参考計測とし、TV-007 主対象からは除外する（#759 計画書方針）。
 
@@ -35,7 +35,7 @@ Reason 生成は参考計測とし、TV-007 主対象からは除外する（#75
 | -------- | -------- | ---- | ------------------ |
 | Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算、設計反映メモ | 完了済み（#1502 develop 取り込み） |
 | Phase2 | S3（live） | 実装済みパイプラインの実測、Go/Adjust/Block | 完了済み（#1512 / #1530 develop 取り込み） |
-| 正式反映 | S4 後の別 Task | 性能要件 / Orchestrator 仕様の正式更新 | **#1533 で正本反映済み**（最終数値は Human Review 確定待ち） |
+| 正式反映 | S4 後の別 Task | 性能要件 / Orchestrator 仕様の正式更新 | **#1533 Human 確定反映済み**（`phase_output` は別 Task） |
 
 ```mermaid
 flowchart LR

@@ -34,7 +34,7 @@
 | TV-004 | `方針のみ` | なし（要起票） | 同上 |
 | TV-005 | `方針のみ` | なし（要起票） | TV-007 Phase2 の依存候補 |
 | TV-006 | `方針のみ` | なし（要起票） | TV-007 Phase2 の依存候補 |
-| TV-007 | `完了` | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) **CLOSED** / 正式反映 [#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) | Phase2 develop 取り込み済み（#1530）。正式 docs は #1533（最終数値は Human Review） |
+| TV-007 | `完了` | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) **CLOSED** / 正式反映 [#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) | Phase2 develop 取り込み済み（#1530）。正式 docs・Human 確定値反映済み（`phase_output` は別 Task） |
 | TV-008 | `方針のみ` | なし（要起票） | BATCH レーンと exclusive 調整が必要 |
 | TV-009 | `方針のみ` | なし（要起票） | — |
 | TV-010 | `方針のみ` | なし（要起票） | BATCH-015 Embedding 実装進展と関連し得る |
