@@ -5,7 +5,7 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 配置 | `docs/90_PoC/管理/` |
-| 更新日 | 2026-07-21（Phase1 develop 取り込み更新） |
+| 更新日 | 2026-07-21（Phase1 develop マージ後） |
 | 計画正本 | [技術検証全体計画](../計画/技術検証全体計画.md) |
 
 ステータス凡例:
@@ -33,7 +33,7 @@
 | TV-004 | `方針のみ` | なし（要起票） | 同上 |
 | TV-005 | `方針のみ` | なし（要起票） | TV-007 Phase2 の依存候補 |
 | TV-006 | `方針のみ` | なし（要起票） | TV-007 Phase2 の依存候補 |
-| TV-007 | `Phase1取り込み中` | [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) OPEN | Phase1 develop 取り込み PR 実施中。詳細は [棚卸し](./759_Reco性能フィジビリティ棚卸し_2026-07-21.md) |
+| TV-007 | `Phase1完了（Phase2待ち）` | [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** | Phase1 は #1502 で develop 着。Phase2 は新 Issue 要。引継ぎ: [759_Phase2以降_引継ぎメモ](./759_Phase2以降_引継ぎメモ_2026-07-21.md) |
 | TV-008 | `方針のみ` | なし（要起票） | BATCH レーンと exclusive 調整が必要 |
 | TV-009 | `方針のみ` | なし（要起票） | — |
 | TV-010 | `方針のみ` | なし（要起票） | BATCH-015 Embedding 実装進展と関連し得る |
@@ -46,3 +46,4 @@
 | ---- | ---- |
 | 2026-07-21 | 初版（#1496）。#759 棚卸しを反映 |
 | 2026-07-21 | TV-007 を `Phase1取り込み中` に更新（#759 Phase1 develop 取り込み） |
+| 2026-07-21 | TV-007 を `Phase1完了（Phase2待ち）` に更新（#1502 マージ・#759 CLOSED） |
