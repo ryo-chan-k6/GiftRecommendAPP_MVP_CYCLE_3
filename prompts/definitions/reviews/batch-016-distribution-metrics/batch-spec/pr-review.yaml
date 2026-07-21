@@ -1,0 +1,67 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-016-distribution-metrics-batch-spec-pr"
+  title: "BATCH-016 分布メトリクス集計バッチ仕様書 PRレビュー"
+  summary: "BATCH-016 バッチ仕様書 Task の PR を AI Review する。IF-DB-BATCH-016・BATCH-013 非書込・3 Metric・phase_log・独立子 workflow を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1490-batch-016-distribution-metrics-batch-spec"
+  base: "feature/epic-1489-batch-016-distribution-metrics"
+  target: "feature/epic-1489-batch-016-distribution-metrics"
+  worktree_required: true
+
+target:
+  pr:
+    number: 1491
+  issue:
+    number: 1490
+  task_definition: "prompts/definitions/tasks/batch-016-distribution-metrics/batch-spec.yaml"
+  source_branch: "docs/task-1490-batch-016-distribution-metrics-batch-spec"
+  target_branch: "feature/epic-1489-batch-016-distribution-metrics"
+  parent_epic_issue: "[Epic]BATCH-016:分布メトリクス集計Batch"
+  parent_epic_branch: "feature/epic-1489-batch-016-distribution-metrics"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "IF-DB-BATCH-016 が本 Batch の物理書込（feature / meaning / normalization_distribution_metric INSERT/UPSERT）である"
+  - "IF-DB-BATCH-014 = BATCH-013、IF-DB-BATCH-015 = BATCH-014、IF-VEC-BATCH-001 = BATCH-015 との混同がない"
+  - "BATCH-013 は normalization_distribution_metric 非書込。本 Batch が書く"
+  - "必須入力が item_feature / item_meaning、任意が item_embedding である"
+  - "冪等が各テーブル UNIQUE / aggregation_scope（batch_run / daily / semantic_config_version）に基づく"
+  - "phase_log が feature_distribution_metric_recorded 1 フェーズ代表（専用 phase 追加なし）"
+  - "独立子 workflow batch-distribution-metrics.yml / Contract Gate 不要"
+  - "MOD-BATCH-038 主参照。Aggregator は初版 038 内包（追加採番なし）"
+  - "Public API 非公開・secret 禁止"
+  - "§18.2 推奨案が Human 承認済みとして §18.1 に反映されている"
+  - "一覧古い表記修正は別 docs Task（§18.2 No.6）"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Epic #1489"
+  - "Issue #1490"
+  - "§18.2 Human 承認（推奨案採用）済み"
