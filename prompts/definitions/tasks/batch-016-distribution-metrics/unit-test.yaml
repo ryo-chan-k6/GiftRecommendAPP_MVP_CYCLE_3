@@ -1,0 +1,183 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-016-distribution-metrics-unit-test"
+  title: "BATCH-016:分布メトリクス集計Batch単体テスト"
+  summary: "BATCH-016 実装に対し、仕様書 §16 の unit 観点カバレッジを整理・拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-016:分布メトリクス集計Batch"
+  epic_issue_number: 1489
+  epic_branch: "feature/epic-1489-batch-016-distribution-metrics"
+  related_issues:
+    - number: 1492
+      purpose: "実装（CLOSED）"
+    - number: 1490
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1493
+      purpose: "実装 MERGED"
+    - number: 1491
+      purpose: "仕様書 MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  実装 Task #1492 / PR #1493 は Epic Branch merge 済み。§16 unit 観点を拡充する。
+  既存 test_distribution_metrics.py には実装タスクで作成された最小 UT が存在する。
+
+objective: |
+  BATCH-016 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串を完了可能にする。
+
+scope:
+  - "§16 unit 観点カバレッジ表を PR 本文に記載"
+  - "test_distribution_metrics.py 拡充"
+  - "テスト充足に必要な最小 scaffold 補正（冪等 UPSERT / sigma_zero_count）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "integration test（実 DB）"
+  - "Epic PR develop merge（Human）"
+  - "機能追加を主目的とする実装変更"
+  - "apps/reco / BATCH-017 以降"
+  - "一覧古い表記修正（別 docs Task）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-016_分布メトリクス集計バッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+  files:
+    - path: "apps/batch/tests/unit/application/test_distribution_metrics.py"
+      required: true
+      purpose: "既存最小 UT"
+    - path: "apps/batch/src/batch/application/distribution_metrics/**"
+      required: true
+      purpose: "テスト対象実装"
+
+output:
+  files:
+    - path: "prompts/definitions/tasks/batch-016-distribution-metrics/unit-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-016-distribution-metrics/unit-test/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_distribution_metrics.py"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功（対象ファイル）"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "test/task-1494-batch-016-distribution-metrics-unit-test"
+  summary: "batch-016-distribution-metrics-unit-test"
+  base: "feature/epic-1489-batch-016-distribution-metrics"
+  target: "feature/epic-1489-batch-016-distribution-metrics"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  number: 1494
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1489
+      title: "[Epic]BATCH-016:分布メトリクス集計Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1492
+      purpose: "実装 CLOSED"
+    - number: 1490
+      purpose: "仕様書 CLOSED"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_distribution_metrics.py"
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-016 §16）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_distribution_metrics.py -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock を正とする"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§16 対応表"
+    - "実 DB / secret 非依存"
+    - "PR target"
+    - "IF-DB-BATCH-016 3 Metric UPSERT・冪等"
+    - "隣接 IF 非書込"
+    - "feature raw/normalized 8軸・meaning version 分割・normalization sigma_zero_count"
+    - "phase_log feature_distribution_metric_recorded のみ"
+    - "embedding / user_meaning フラグ OFF スキップ"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+notes:
+  - "Epic #1489"
+  - "Issue #1494"
+  - "後続: Epic PR → develop"

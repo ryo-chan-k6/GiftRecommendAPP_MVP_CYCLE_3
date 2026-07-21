@@ -53,6 +53,10 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_ITEM_EMBEDDING_MAX_ITEMS",
     "BATCH_ITEM_EMBEDDING_SOURCE",
     "BATCH_ITEM_EMBEDDING_QUEUE_BATCH_SIZE",
+    "BATCH_DISTRIBUTION_METRICS_AGGREGATION_SCOPE",
+    "BATCH_DISTRIBUTION_METRICS_SEMANTIC_CONFIG_VERSION_ID",
+    "BATCH_DISTRIBUTION_METRICS_INCLUDE_ITEM_EMBEDDING",
+    "BATCH_DISTRIBUTION_METRICS_INCLUDE_USER_MEANING",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -131,6 +135,10 @@ class BatchSettings:
     batch_item_embedding_max_items: int | None
     batch_item_embedding_source: str | None
     batch_item_embedding_queue_batch_size: int | None
+    batch_distribution_metrics_aggregation_scope: str | None
+    batch_distribution_metrics_semantic_config_version_id: str | None
+    batch_distribution_metrics_include_item_embedding: bool | None
+    batch_distribution_metrics_include_user_meaning: bool | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -204,6 +212,10 @@ class BatchSettings:
             f"batch_item_embedding_max_items={self.batch_item_embedding_max_items!r}, "
             f"batch_item_embedding_source={self.batch_item_embedding_source!r}, "
             f"batch_item_embedding_queue_batch_size={self.batch_item_embedding_queue_batch_size!r}, "
+            f"batch_distribution_metrics_aggregation_scope={self.batch_distribution_metrics_aggregation_scope!r}, "
+            f"batch_distribution_metrics_semantic_config_version_id={self.batch_distribution_metrics_semantic_config_version_id!r}, "
+            f"batch_distribution_metrics_include_item_embedding={self.batch_distribution_metrics_include_item_embedding!r}, "
+            f"batch_distribution_metrics_include_user_meaning={self.batch_distribution_metrics_include_user_meaning!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "

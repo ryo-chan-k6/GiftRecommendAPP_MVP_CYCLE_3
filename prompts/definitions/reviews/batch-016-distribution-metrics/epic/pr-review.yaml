@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-016-distribution-metrics-epic-pr"
+  title: "BATCH-016 分布メトリクス集計Batch Epic PRレビュー"
+  summary: "BATCH-016 識別子 Epic の develop 向け Epic PR を AI Review する。縦串（仕様書→実装→UT）完了後に実施。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1489
+  task_definition: "prompts/definitions/epics/batch-016-distribution-metrics/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]BATCH-016:分布メトリクス集計Batch"
+  parent_epic_branch: "feature/epic-1489-batch-016-distribution-metrics"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/batch-016-distribution-metrics/epic.yaml"
+    required: true
+
+review_points:
+  - "scope / epic_scope.allowed_paths 整合"
+  - "IF-DB-BATCH-016 = BATCH-016 物理書込（隣接 IF 混同禁止）"
+  - "3 Metric テーブルへの集計・Upsert・冪等キー"
+  - "BATCH-013 の normalization_distribution_metric 非書込との整合"
+  - "BATCH-013/015 再実装 / apps/reco / OpenAPI / migration を含まないこと"
+  - "親 workflow 全体改修をしていないこと"
+  - "Contract Gate 不要"
+  - "secret 非含有"
+  - "Epic PR target が develop"
+
+notes:
+  - "縦串完了後に Epic PR 番号を反映し status を ready にする"
+  - "Issue #1489"
