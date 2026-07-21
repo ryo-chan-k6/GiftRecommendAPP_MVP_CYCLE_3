@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service / batch |
 | MVP対象        | `○`                                 |
 | 作成日         | 2026-07-21                          |
-| 更新日         | 2026-07-21（初版）                  |
+| 更新日         | 2026-07-21（§18.2 Human 確定反映）  |
 
 ---
 
@@ -76,7 +76,7 @@ BATCH-017（Import Summary作成Batch）は、同一 `batch_run_id` 内の取込
 | Batch ID       | `BATCH-017` |
 | Batch名        | Import Summary作成Batch |
 | 処理種別       | 運用集計 / 実行結果サマリ保存 |
-| 実行基盤       | GitHub Actions。**独立 cron なし**。独立子 `batch-import-summary.yml`（`batch-import-summary*.yml`）および/または `batch-distribution-metrics.yml` への 017 step（§18.2 Human） |
+| 実行基盤       | GitHub Actions。**独立 cron なし**。独立子 `batch-import-summary.yml`（`batch-import-summary*.yml`）＋ `batch-distribution-metrics.yml` 末尾 017 step（§18.1 No.16 **C 併用**） |
 | 実装言語       | Python（`apps/batch`） |
 | 起動方式       | 各 Batch 後続 / `workflow_dispatch` / `workflow_call`（親子からの呼び出し） |
 | 実行頻度       | 各子 workflow 末尾または集計対象 Batch 完了後に連続実行（独立 schedule なし） |
@@ -110,8 +110,8 @@ BATCH-017（Import Summary作成Batch）は、同一 `batch_run_id` 内の取込
 | -------- | -------- | ---- | ---- |
 | schedule（独立 cron） | **`false`** | — | **独立 cron なし**（スケジュール設計書 BATCH-017） |
 | workflow_dispatch | `true` | 手動・再集計 | 独立子または distribution-metrics 経由 |
-| 先行Batch完了 / 子 workflow 末尾 | `true`（運用上） | 各子 workflow 末尾で Summary 作成 | 親チェーン全体改修は Epic 外（§18.2） |
-| workflow_call | `true`（運用上） | 独立子または親からの呼び出し | §18.2 |
+| 先行Batch完了 / 子 workflow 末尾 | `true`（運用上） | 各子 workflow 末尾で Summary 作成 | 親チェーン全体改修は Epic 外（§18.1 No.17） |
+| workflow_call | `true`（運用上） | 独立子または親からの呼び出し | §18.1 No.16 |
 
 ### 5.2 実行前提
 
@@ -425,6 +425,7 @@ Client / 外部 API リトライは不要（外部呼出なし）。
 | 日付 | 変更内容 | 関連 |
 | ---- | -------- | ---- |
 | 2026-07-21 | 初版作成 | Epic #1499 / Task #1500 |
+| 2026-07-21 | §18.2 Human 推奨案をすべて確定（workflow C 併用・親末尾は後続・Feature/Embedding・パッケージ） | PR #1501 / Human |
 
 ---
 
@@ -449,19 +450,14 @@ Client / 外部 API リトライは不要（外部呼出なし）。
 | 13 | Retention | **90 日**（`summarized_at`） | **確定**（テーブル定義書 §13 / #536） |
 | 14 | phase_log | **`summary_created`** | **確定**（phase_log 定義） |
 | 15 | 後続 Batch | **なし** | **確定** |
+| 16 | MVP 初版の workflow 正 | **C（併用）**: 独立子 `batch-import-summary.yml` を dispatch / 再実行の正とし、`batch-distribution-metrics.yml` 末尾に 017 step 追加を許容（Epic `allowed_paths` に両 YAML）。017 step 追加は本 Epic 実装 Task で可 | **確定**（Human: 推奨案採用） |
+| 17 | 親 import / meaning-generation 末尾への 017 追加 | **B（後続 Task）**: 親チェーン全体改修は Epic out_of_scope。本 Epic 実装には含めない | **確定**（Human: 推奨案採用） |
+| 18 | Feature / Embedding 件数タイミング | テーブル定義どおり「同一 Run 完了時のみ / 未完了 0」。別 Run 後追い UPDATE は採用しない（§9.3 / No.8 と同旨） | **確定**（Human: 推奨案採用） |
+| 19 | パッケージ名とモジュール表記 | 実装ディレクトリ `import_summary` + **MOD-BATCH-047**。一覧の Import Summary Builder は同義（追加採番なし） | **確定**（Human: 推奨案採用） |
 
-### 18.2 Human 判断事項（残未決） / 推奨案
+### 18.2 Human 判断事項（残未決）
 
-本 Task では以下を **Human Review で確定**する。実装 Task 着手前に方針を確定すること。
-
-| No | 事項 | 選択肢（要約） | 推奨案 | 状態 |
-| -: | ---- | -------------- | ------ | ---- |
-| 1 | MVP 初版の workflow 正 | **A**: 独立子 `batch-import-summary.yml` 中心 / **B**: 現行 `batch-distribution-metrics.yml` へ 017 step 追加を正 / **C**: A+B 併用（独立子 + 016 workflow 末尾） | **C（併用）**: 独立子を dispatch / 再実行の正とし、distribution-metrics 末尾に 017 step 追加を許容（Epic `allowed_paths` に両 YAML）。現行 YAML は 016 のみのため 017 step 追加は本 Epic 実装 Task で可 | **未決（Human）** |
-| 2 | 親 import / meaning-generation 末尾への 017 追加 | **A**: 本 Epic 実装に含める / **B**: 後続 Task | **B**: 親チェーン全体改修は Epic out_of_scope。末尾 1 step の限定追加は Human が A を選ぶ場合のみ | **未決（Human）** |
-| 3 | Feature / Embedding 件数タイミングの運用解釈 | テーブル定義どおり「同一 Run 完了時のみ / 未完了 0」を batch-spec 正とするか | **テーブル定義どおりを正とする**（§18.1 No.8）。別 Run 後追い UPDATE は採用しない | **推奨確定（Human 確認）** |
-| 4 | パッケージ名 `import_summary` と Builder / Writer 表記 | 実装ディレクトリ `import_summary` + モジュール ID **MOD-BATCH-047**。一覧 Builder は同義のまま | **このまま採用**（追加採番なし） | **推奨確定（Human 確認）** |
-
-> §18.2 No.3 / No.4 は正本 docs と整合する推奨案である。Human が否認する場合のみ方針変更し、§18.1 を更新する。
+**残未決なし。** 旧 §18.2 No.1〜4 は Human により推奨案どおり確定し、§18.1 No.16〜19 へ移した（2026-07-21）。
 
 ---
 
@@ -490,10 +486,10 @@ Client / 外部 API リトライは不要（外部呼出なし）。
 - 集計元と件数列の対応がテーブル定義に従っている
 - `item_ranking` / `genre_search` の 0 固定ルールがある
 - Feature / Embedding が同一 Run 完了時のみ / 未完了 0 である
-- 独立 cron なし。workflow は独立子および/または distribution-metrics 017 step（§18 Human）
+- 独立 cron なし。workflow は **C 併用**（独立子 + distribution-metrics 017 step。§18.1 No.16）
 - MOD-BATCH-047 正・Builder 同義が明記されている
 - Contract Gate 不要・Public API 非公開・secret 禁止・Retention 90 日が明記されている
-- §18.1 確定と §18.2 残未決が区別されている
+- §18.2 残未決なし（旧 Human 推奨案は §18.1 No.16〜19 で確定）
 - PR target が親 Epic Branch（`feature/epic-1499-batch-017-import-summary`）である
 
 ---
@@ -509,7 +505,7 @@ Client / 外部 API リトライは不要（外部呼出なし）。
 | BATCH-018 以降 | 後続 Epic |
 | apps/reco / apps/web / apps/api 破壊変更 | Epic forbidden |
 | migration / OpenAPI / generated | Epic forbidden |
-| 親 daily / meaning-generation / rakuten-item-import チェーン全体改修 | Epic out_of_scope（末尾 017 step の限定追加は §18.2） |
+| 親 daily / meaning-generation / rakuten-item-import チェーン全体改修 | Epic out_of_scope（§18.1 No.17。後続 Task） |
 
 ### 21.2 データフロー（要約）
 
@@ -528,7 +524,7 @@ IF-OBS-006 / Admin（参照）
 
 | workflow | BATCH-017 の位置づけ | 備考 |
 | -------- | -------------------- | ---- |
-| `batch-import-summary.yml`（新設想定） | 独立子・dispatch / call | §18.2 No.1 |
-| `batch-distribution-metrics.yml` | 016 後の 017 step（追加許容） | 現行は 016 のみ |
-| `batch-rakuten-item-import.yml` | 末尾 017（一覧想定） | 親改修は §18.2 No.2 |
+| `batch-import-summary.yml`（新設想定） | 独立子・dispatch / call | §18.1 No.16（C 併用の正） |
+| `batch-distribution-metrics.yml` | 016 後の 017 step（追加許容） | §18.1 No.16。現行は 016 のみ |
+| `batch-rakuten-item-import.yml` | 末尾 017（一覧想定） | 親改修は後続 Task（§18.1 No.17） |
 | `batch-item-meaning-generation.yml` | 末尾 017（一覧想定） | 同上 |
