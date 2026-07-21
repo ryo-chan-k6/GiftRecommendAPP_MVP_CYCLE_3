@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-019-feedback-analysis-unit-test"
+  title: "BATCH-019:Feedback分析Batch単体テスト"
+  summary: "BATCH-019 実装に対し、仕様書 §16 の unit 観点カバレッジを整理・拡充する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-019:Feedback分析Batch"
+  epic_issue_number: 1522
+  epic_branch: "feature/epic-1522-batch-019-feedback-analysis"
+  related_issues:
+    - number: 1526
+      purpose: "実装（CLOSED）"
+    - number: 1523
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1527
+      purpose: "実装 MERGED"
+    - number: 1524
+      purpose: "仕様書 MERGED"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "test-ai"
+  support:
+    - "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  実装 Task #1526 / PR #1527 は Epic Branch merge 済み。§16 unit 観点を拡充する。
+  既存 test_feedback_analysis.py には実装タスクで作成された最小 UT（約 15 件）が存在する。
+
+objective: |
+  BATCH-019 の単体テストを仕様書 §16 に沿って充足し、Epic 縦串を完了可能にする。
+
+scope:
+  - "§16 unit 観点カバレッジ表を PR 本文に記載"
+  - "test_feedback_analysis.py 拡充（fixture/mock、実 DB 非依存）"
+  - "IF-DB-BATCH-019 stub / feedback UPDATE 禁止 / JSON 内包 metrics"
+  - "migration・出力物理 DDL 非含有・MOD-BATCH-043/044 非依存"
+  - "Negative / Positive 集計・空 Feedback・冪等・concurrency GRS-BAT-*"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "integration test（実 DB）"
+  - "Epic PR develop merge（Human）"
+  - "機能追加を主目的とする実装変更"
+  - "apps/reco / OpenAPI / migration / generated"
+  - "supabase/migrations / 出力テーブル物理 DDL 本整備"
+  - "MOD-BATCH-043 / 044 本格実装"
+  - "週次親 workflow 改修"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-019_Feedback分析バッチ仕様書.md"
+      required: true
+      purpose: "§16 テスト観点の正本"
+  files:
+    - path: "apps/batch/tests/unit/application/test_feedback_analysis.py"
+      required: true
+      purpose: "既存最小 UT"
+    - path: "apps/batch/src/batch/application/feedback_analysis/**"
+      required: true
+      purpose: "テスト対象実装"
+
+output:
+  files:
+    - path: "prompts/definitions/tasks/batch-019-feedback-analysis/unit-test.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-019-feedback-analysis/unit-test/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_feedback_analysis.py"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§16 対応表が PR 本文にある"
+  - "不足 unit 観点が fixture/mock で追加されている"
+  - "pytest 成功（対象ファイル + tests/unit）"
+  - "secret 非含有"
+  - "apps/reco / OpenAPI 非変更"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "test/task-1528-batch-019-feedback-analysis-unit-test"
+  summary: "batch-019-feedback-analysis-unit-test"
+  base: "feature/epic-1522-batch-019-feedback-analysis"
+  target: "feature/epic-1522-batch-019-feedback-analysis"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+
+issue:
+  number: 1528
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1522
+      title: "[Epic]BATCH-019:Feedback分析Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1526
+      purpose: "実装 CLOSED"
+    - number: 1523
+      purpose: "仕様書 CLOSED"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/tests/unit/application/test_feedback_analysis.py"
+    - "prompts/definitions/tasks/batch-019-feedback-analysis/unit-test.yaml"
+    - "prompts/definitions/reviews/batch-019-feedback-analysis/unit-test/pr-review.yaml"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-019 §16）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_feedback_analysis.py -q --tb=short"
+    - "cd apps/batch && uv run python -m pytest tests/unit -q --tb=short"
+  not_required:
+    - "integration test（実 DB）"
+  skip_reason:
+    "integration test（実 DB）": "fixture/mock を正とする"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§16 対応表"
+    - "実 DB / secret 非依存"
+    - "PR target"
+    - "IF-DB-BATCH-019 stub（in-memory・実 INSERT なし）"
+    - "recommendation_feedback UPDATE 禁止"
+    - "feedback_metric が analysis_result_json 内包"
+    - "migration / 出力物理 DDL 非含有"
+    - "MOD-BATCH-043/044 非依存"
+    - "Negative / Positive 集計・空 Feedback"
+    - "冪等: scaffold 都度新規 stub"
+    - "concurrency GRS-BAT-003（部分成功 GRS-BAT-002 は未実装明示）"
+    - "apps/reco / OpenAPI 非変更"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+notes:
+  - "Epic #1522 / Issue #1528"
+  - "後続: Epic PR → develop"

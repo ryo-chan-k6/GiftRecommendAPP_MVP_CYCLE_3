@@ -1,0 +1,183 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-019-feedback-analysis-implementation"
+  title: "BATCH-019:Feedback分析Batch実装"
+  summary: "BATCH-019 を scaffold-first 実装する。IF-DB-BATCH-019 は in-memory / stub、feedback_metric は JSON 内包、独立子 workflow、最小 UT を対象とする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]BATCH-019:Feedback分析Batch"
+  epic_issue_number: 1522
+  epic_branch: "feature/epic-1522-batch-019-feedback-analysis"
+  related_issues:
+    - number: 1523
+      purpose: "仕様書（CLOSED）"
+  related_prs:
+    - number: 1524
+      purpose: "仕様書 PR（MERGED）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  仕様書 #1523 / PR #1524 Epic Branch merge 済み。§18.1 で IF-DB-BATCH-019=stub、
+  feedback_metric=JSON内包、独立子のみ、migration禁止、043/044 out of scope、
+  Contract Gate 不要を確定済み。
+
+objective: |
+  scaffold-first 実装と batch-feedback-analysis.yml を整備する。
+
+scope:
+  - "IF-DB-BATCH-019 論理契約（in-memory / stub。実 DB INSERT なし）"
+  - "feedback_analysis パッケージ / MOD-BATCH-042（Aggregator / Classifier 内部責務）"
+  - "feedback_metric は analysis_result_json 内包"
+  - "config BATCH_FEEDBACK_ANALYSIS_*"
+  - "独立子 batch-feedback-analysis.yml（cron なし・親接続なし）"
+  - "最小 UT"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "supabase/migrations/** / 出力物理 DDL"
+  - "recommendation_feedback 書戻し"
+  - "週次親 workflow 改修・接続"
+  - "apps/reco / apps/api / OpenAPI / generated"
+  - "MOD-BATCH-043 / 044"
+  - "包括的 UT Task"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-019_Feedback分析バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_feedback_テーブル定義書.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/batch/src/batch/application/feedback_analysis/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-feedback-analysis.yml"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/config/**"
+      action: "modify"
+      required: true
+  tests:
+    - path: "apps/batch/tests/unit/application/test_feedback_analysis.py"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "主要 Phase（open_run〜finalize）が追跡できる"
+  - "IF-DB-BATCH-019 が in-memory / stub（実 DB INSERT なし）を UT 検証"
+  - "feedback_metric が analysis_result_json 内包"
+  - "recommendation_feedback を UPDATE しない"
+  - "migration 非含有"
+  - "独立子 workflow（親接続なし・cron なし）"
+  - "非 scaffold-demo は exit 3"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/task-1526-batch-019-feedback-analysis-implementation"
+  summary: "batch-019-feedback-analysis-implementation"
+  base: "feature/epic-1522-batch-019-feedback-analysis"
+  target: "feature/epic-1522-batch-019-feedback-analysis"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+
+issue:
+  number: 1526
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1522
+      title: "[Epic]BATCH-019:Feedback分析Batch"
+      purpose: "親 Epic"
+  issues:
+    - number: 1523
+      purpose: "仕様書 CLOSED"
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/feedback_analysis/**"
+    - ".github/workflows/batch-feedback-analysis.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "batch unit test（BATCH-019 最小）"
+  commands:
+    - "cd apps/batch && uv run python -m pytest tests/unit/application/test_feedback_analysis.py -q --tb=short"
+  not_required:
+    - "integration test"
+  skip_reason:
+    "integration test": "scaffold-first。実 DB 配線は後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-DB-BATCH-019 が in-memory / stub（実 INSERT なし）"
+    - "feedback_metric が analysis_result_json 内包"
+    - "recommendation_feedback UPDATE なし"
+    - "migration / supabase 非変更"
+    - "独立子 batch-feedback-analysis.yml（親接続なし）"
+    - "MOD-BATCH-043 / 044 なし"
+    - "OpenAPI / apps/reco 非変更"
+    - "secret 非含有"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+
+notes:
+  - "Epic #1522"
+  - "仕様書 #1523 / PR #1524 MERGED"
+  - "Issue #1526"
