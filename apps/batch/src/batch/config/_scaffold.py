@@ -61,6 +61,11 @@ def scaffold_batch_settings(*, app_env: AppEnv = AppEnv.DEV) -> BatchSettings:
         batch_distribution_metrics_include_user_meaning=False,
         batch_import_summary_source_api=None,
         batch_import_summary_batch_run_id=None,
+        batch_offline_evaluation_dataset_id=None,
+        batch_offline_evaluation_dataset_name=None,
+        batch_offline_evaluation_dataset_version=None,
+        batch_offline_evaluation_max_cases=None,
+        batch_offline_evaluation_dry_run=False,
         supabase_url=None,
         supabase_service_role_key=None,
     )

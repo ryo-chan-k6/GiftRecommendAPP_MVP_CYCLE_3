@@ -59,6 +59,11 @@ BATCH_ENV_KEYS: Final[tuple[str, ...]] = (
     "BATCH_DISTRIBUTION_METRICS_INCLUDE_USER_MEANING",
     "BATCH_IMPORT_SUMMARY_SOURCE_API",
     "BATCH_IMPORT_SUMMARY_BATCH_RUN_ID",
+    "BATCH_OFFLINE_EVALUATION_DATASET_ID",
+    "BATCH_OFFLINE_EVALUATION_DATASET_NAME",
+    "BATCH_OFFLINE_EVALUATION_DATASET_VERSION",
+    "BATCH_OFFLINE_EVALUATION_MAX_CASES",
+    "BATCH_OFFLINE_EVALUATION_DRY_RUN",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
@@ -143,6 +148,11 @@ class BatchSettings:
     batch_distribution_metrics_include_user_meaning: bool | None
     batch_import_summary_source_api: str | None
     batch_import_summary_batch_run_id: str | None
+    batch_offline_evaluation_dataset_id: str | None
+    batch_offline_evaluation_dataset_name: str | None
+    batch_offline_evaluation_dataset_version: str | None
+    batch_offline_evaluation_max_cases: int | None
+    batch_offline_evaluation_dry_run: bool | None
     supabase_url: str | None
     supabase_service_role_key: str | None
 
@@ -222,6 +232,11 @@ class BatchSettings:
             f"batch_distribution_metrics_include_user_meaning={self.batch_distribution_metrics_include_user_meaning!r}, "
             f"batch_import_summary_source_api={self.batch_import_summary_source_api!r}, "
             f"batch_import_summary_batch_run_id={self.batch_import_summary_batch_run_id!r}, "
+            f"batch_offline_evaluation_dataset_id={self.batch_offline_evaluation_dataset_id!r}, "
+            f"batch_offline_evaluation_dataset_name={self.batch_offline_evaluation_dataset_name!r}, "
+            f"batch_offline_evaluation_dataset_version={self.batch_offline_evaluation_dataset_version!r}, "
+            f"batch_offline_evaluation_max_cases={self.batch_offline_evaluation_max_cases!r}, "
+            f"batch_offline_evaluation_dry_run={self.batch_offline_evaluation_dry_run!r}, "
             f"supabase_url={self.supabase_url!r}, "
             "database_url='***', "
             "openai_api_key='***', "
