@@ -1,0 +1,69 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-perf-timeout-phase-output-formal-pr"
+  title: "phase_output上限の正式docs反映 PRレビュー"
+  summary: "Task #1539 phase_output 正式 docs 反映の PR を AI Review する。Phase3 案 A・計測定義注意・性能要件整合を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1539
+  pr:
+    number: null
+  parent_epic_issue: 1532
+  parent_epic_branch: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  task_definition: "prompts/definitions/tasks/reco-perf-timeout-formal-docs/phase-output-formal.yaml"
+  source_branch: "docs/task-1539-phase-output-formal-docs"
+  target_branch: "docs/epic-1532-reco-perf-timeout-formal-docs"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-perf-timeout-formal-docs/phase-output-formal.yaml"
+  docs:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+    - "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+    - "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+
+review_points:
+  - "案 A（soft 3,000 / hard 7,000）が未確定のまま断定されていないか（Human Review 明示）"
+  - "計測定義注意（response_built 合算）が正本に残っているか"
+  - "性能要件 §5 と §13.2 の整合"
+  - "apps/** 実装差分の非混入"
+  - "PR target が親 Epic Branch"
+
+acceptance:
+  human_review_required: true
+  merge_by_ai: false
+
+notes:
+  - "最終採否は Human。AI は案 A 転記の妥当性と注意記載を確認する"
