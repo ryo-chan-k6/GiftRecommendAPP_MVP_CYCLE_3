@@ -38,8 +38,8 @@
 
 ## 所見
 
-- 新定義では mock / secrets とも `phase_output` p95 ≈ **105–109ms**。
-- 暫定据置 3s/7s は監視枠として余裕が大きい（最終引き下げは後続 Human・断定しない）。
+- 新定義では mock / secrets とも `phase_output` p95 ≈ **105–109ms**（local）。
+- 暫定据置 3s/7s は監視枠として余裕が大きい → **後続で GHA secrets 後に最終引き下げ**（`2026-07-22-reco-perf-phase-output-slo-final.md`）。
 - secret 実値は成果物に含めない。`.env` は Git 管理外。
 
 ## 正本反映
