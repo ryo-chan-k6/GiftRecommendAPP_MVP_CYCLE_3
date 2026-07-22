@@ -1,0 +1,74 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-perf-phase-output-metric-fix-epic-pr"
+  title: "PoC:phase_output計測定義修正 Epic PRレビュー"
+  summary: "Epic #1544 の develop 向け Epic PR を AI Review する。bench の phase_output から response_built 除外・docs 整合・正本数値の独断変更有無を確認する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1544
+  task_definition: "prompts/definitions/epics/reco-perf-phase-output-metric-fix/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]PoC:phase_output計測定義修正"
+  parent_epic_branch: "spike/epic-1544-reco-perf-phase-output-metric-fix"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/reco-perf-phase-output-metric-fix/epic.yaml"
+  docs:
+    - "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+    - "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "scripts/perf/README.md"
+    - "ai-logs/experiments/2026-07-22-reco-perf-phase-output-metric-fix.md"
+  files:
+    - "scripts/perf/reco_pipeline_bench.py"
+
+review_points:
+  - "Epic PR target が develop か"
+  - "response_built が phase_output / reason 合算から除外されているか"
+  - "Reason 込み E2E（pipeline 全体）定義を誤って変えていないか"
+  - "正本 soft/hard（3s/7s）を独断で確定変更していないか（見直し提案のみか）"
+  - "apps/** 実装差分の非混入"
+  - "secret 非混入"
+  - "Closes #1544 の扱い"
+
+acceptance:
+  human_review_required: true
+  merge_by_ai: false
+
+notes:
+  - "merge 判断は Human"
+  - "phase_output soft/hard 見直しは Human Review"
