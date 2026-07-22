@@ -18,8 +18,9 @@ target:
   pr:
     number: null
   issue:
-    number: null
+    number: 1547
   task_definition: "prompts/definitions/tasks/batch-cross-cut-inventory/inventory-docs.yaml"
+  source_branch: "docs/task-1547-batch-cross-cut-inventory-docs"
   target_branch: "docs/epic-1546-batch-cross-cut-inventory"
   parent_epic_issue: "[Epic]batch-cross-cut-inventory:横串棚卸し・整合性"
   parent_epic_branch: "docs/epic-1546-batch-cross-cut-inventory"
@@ -55,4 +56,5 @@ review_points:
   - "PR target が親 Epic Branch"
 
 notes:
-  - "親 Epic / Task Issue 番号確定後に target.issue.number / parent_epic_branch を更新する"
+  - "親 Epic #1546 / Task #1547"
+  - "Branch docs/task-1547-batch-cross-cut-inventory-docs → docs/epic-1546-batch-cross-cut-inventory"

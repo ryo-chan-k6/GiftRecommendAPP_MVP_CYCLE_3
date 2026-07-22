@@ -122,6 +122,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
+  name: "docs/task-1547-batch-cross-cut-inventory-docs"
   summary: "batch-cross-cut-inventory-docs"
   base: "docs/epic-1546-batch-cross-cut-inventory"
   target: "docs/epic-1546-batch-cross-cut-inventory"
@@ -137,6 +138,7 @@ project:
     due_date: "2026-07-24"
 
 issue:
+  number: 1547
   unit: "task"
   type: "docs"
   area: "batch"
