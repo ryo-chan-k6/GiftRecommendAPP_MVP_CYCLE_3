@@ -16,6 +16,7 @@ branch:
 target:
   issue:
     number: 1545
+  pr: 1548
   parent_epic_issue: 1544
   parent_epic_branch: "spike/epic-1544-reco-perf-phase-output-metric-fix"
   task_definition: "prompts/definitions/tasks/reco-perf-phase-output-metric-fix/bench-metric-fix.yaml"
@@ -44,6 +45,8 @@ input:
     required: true
   issue:
     number: 1545
+  pr:
+    number: 1548
 
 review_points:
   - "response_built が phase_output / reason step 合算に含まれないこと"
@@ -55,5 +58,5 @@ review_points:
   - "PR target が親 Epic Branch（spike/epic-1544-reco-perf-phase-output-metric-fix）であること"
 
 notes:
-  - "Issue #1545 / Branch spike/task-1545-phase-output-metric-fix"
+  - "Issue #1545 / Branch spike/task-1545-phase-output-metric-fix / PR #1548"
   - "Human 確定（本 PR）: 案 A 見直しは後続、secrets は本 Issue 非必須、response_built は診断専用で残置"
