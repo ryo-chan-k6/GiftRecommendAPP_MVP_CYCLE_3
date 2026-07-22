@@ -109,7 +109,7 @@ BATCH-012（Item Feature生成Batch）は、BATCH-011 から引き渡された `
 | 入力 | 種別 | 必須 | 用途 |
 | --- | --- | --- | --- |
 | `item_generation_queue` | DB | `true` | 対象選定・状態管理・trace |
-| BATCH-011 handoff | in-process / 実行コンテキスト | `true` | `feature_input_hash` の受渡し |
+| BATCH-011 handoff / `item_feature_input` | scaffold: in-process / 実行コンテキスト。本実装: DB（`item_feature_input`） | `true` | `feature_input_hash` の受渡し（§6.2） |
 | `item_semantic` | DB | `true` | `semantic_json.concepts[]` |
 | `item` / genre / attribute / tag | DB | 条件付き | 生成コンテキストの補助情報 |
 | `concept_feature_rule` / `feature_definition` | DB | `true` | Rule 適用・8 軸検証 |

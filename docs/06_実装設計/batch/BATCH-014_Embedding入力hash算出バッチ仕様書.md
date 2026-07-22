@@ -205,7 +205,7 @@ flowchart TD
 | 5 | `build_context` | `item_text_context` 構築 | `GRS-VAL-*` / `GRS-BAT-*` |
 | 6 | `compute_hash` | canonicalize + SHA-256 | `GRS-BAT-*` |
 | 7 | `evaluate_skip` | 今回 hash + Embedding model version で §9.4 判定 | `GRS-DB-*` / `GRS-CFG-*` |
-| 8 | `record_hash_handoff` | IF-DB-BATCH-015（handoff 確定）。skip 時は省略可 | `GRS-DB-*` |
+| 8 | `record_hash_handoff` | IF-DB-BATCH-015（`item_embedding_input` Upsert）。skip 時は省略可 | `GRS-DB-*` |
 | 9 | `update_queue` | status 更新（skipped / processing 維持 / failed） | `GRS-DB-*` |
 | 10 | `finalize` | 集計。部分成功は `GRS-BAT-002` | |
 

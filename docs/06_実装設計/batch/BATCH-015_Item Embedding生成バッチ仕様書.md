@@ -138,7 +138,7 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 | 入力 | 種別 | 必須 | 用途 |
 | ---- | ---- | ---- | ---- |
 | `item_generation_queue` | DB | `true` | 消化対象・trace・終端更新 |
-| BATCH-014 handoff | in-process / 実行コンテキスト | `true` | `item_text_context` / `embedding_input_hash` |
+| BATCH-014 handoff / `item_embedding_input` | scaffold: in-process / 実行コンテキスト。本実装: DB（`item_embedding_input`） | `true` | `item_text_context` / `embedding_input_hash`（§6.2） |
 | `item_embedding`（参照） | DB | `false` | skip 判定（同一 3 列キー） |
 | `model_version`（Embedding） | 解決 | `true` | `model_version_id` / 次元・モデル名 |
 | `embedding_source_type` | 固定 | `true` | MVP は `item_text_context` |

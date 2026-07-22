@@ -2,8 +2,11 @@
 -- change_id: d17_item_feature_embedding_input
 -- Issue: #1568
 -- Epic: #1561
--- 正本: docs/06_実装設計/database/item_feature_input_テーブル定義書.md
---       docs/06_実装設計/database/item_embedding_input_テーブル定義書.md
+-- 適用正本: supabase/migrations/20260722120000_item_feature_embedding_input.sql
+-- 設計正本:
+--   docs/06_実装設計/database/item_feature_input_テーブル定義書.md
+--   docs/06_実装設計/database/item_embedding_input_テーブル定義書.md
+-- 分割参照: 本ファイル（db/ddl）
 -- 制約: E2 Human 確定（IF-DB-BATCH-012 / 015 永続化）。加算 CREATE のみ。DROP なし。019 不含。
 
 -- =============================================================================
