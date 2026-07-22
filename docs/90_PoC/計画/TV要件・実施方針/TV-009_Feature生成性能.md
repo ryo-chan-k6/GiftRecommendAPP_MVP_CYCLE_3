@@ -10,6 +10,7 @@
 | 全体計画 | [技術検証全体計画](../技術検証全体計画.md) |
 | 進捗 | [TV進捗一覧](../../管理/TV進捗一覧.md) |
 | 結果の既定置き場 | `docs/90_PoC/性能フィジビリティ/` |
+| 結果 | [Feature生成性能検証結果_TV-009](../../性能フィジビリティ/Feature生成性能検証結果_TV-009.md) |
 
 ---
 
@@ -28,15 +29,16 @@
 
 段階は全体計画 §5（S0〜S4）に従う。
 
-| 段階 | 本TVでの実施内容（初版方針） |
-| ---- | ---------------------------- |
-| S0 | 既存 Issue / スクリプト / 結果の有無を棚卸し |
-| S1 | 本方針書の充足・合格/不合格の判断基準を具体化 |
-| S2 | 最小疎通または計測スクリプトを用意（secret は環境変数のみ） |
-| S3 | local（必要時は分離 workflow）で実行し結果を記録 |
-| S4 | 設計反映メモを作成。正式 docs 更新は別 Task |
+| 段階 | 本TVでの実施内容 | 状態（2026-07-23） |
+| ---- | ---------------- | ------------------ |
+| S0 | 既存 Issue / スクリプト / 結果の有無を棚卸し | 完了 |
+| S1 | 判断基準具体化（Feature 単体 vs TV-007 合算） | 完了 |
+| S2 | `feature_generation_bench.py`（in-memory） | 完了 |
+| S3 | local 実行・結果記録 | 完了（暫定 **Go**） |
+| S4 | 設計反映メモ。正式 docs は別 Task | 完了（メモ作成） |
 
-- Online 経路と Batch 経路を分けて計測する。
+- Online: `UserFeatureGenerator`。Item: `ItemFeatureGenerator`（Batch ジョブ全体は非必須）。
+- `apps/batch/**` は改修しない。
 
 ---
 
@@ -44,20 +46,22 @@
 
 | 項目 | 方針 |
 | ---- | ---- |
-| 環境 | local / dev。production 禁止 |
-| データ | 検証用の最小・実相当件数（必要時）。個人情報・本番データを使わない |
-| 記録 | リクエスト要約、応答 schema / 欠損、所要時間、エラー形式。secret 実値は記録しない |
-| CI | 通常 PR CI の必須ゲートにしない。必要時のみ `tech-verify-*` / `perf-feasibility-*` を分離実行 |
-| 判定 | Go（致命懸念なし）/ Adjust（設計調整要）/ Block（成立困難）を明記 |
+| 環境 | local。production 禁止 |
+| データ | in-memory fixture。個人情報・本番データを使わない |
+| 記録 | p50/p95、経路区分。secret 実値は記録しない |
+| CI | 通常 PR CI の必須ゲートにしない |
+| 判定 | Go / Adjust / Block を明記 |
 
 ---
 
 ## 5. 関連Issue / 成果物
 
-| 種別 | 状態（2026-07-21） |
+| 種別 | 状態（2026-07-23） |
 | ---- | ------------------ |
-| 専用 Issue | 未起票（必要時に起票） |
-| 結果レポート | develop 上に未配置 |
+| Epic | [#1578](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1578) |
+| Task | [#1580](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1580) |
+| 結果レポート | [Feature生成性能検証結果_TV-009](../../性能フィジビリティ/Feature生成性能検証結果_TV-009.md) |
+| ハーネス | `scripts/perf/feature_generation_bench.py` |
 
 ---
 
@@ -66,3 +70,4 @@
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-21 | 初版方針（#1496） |
+| 2026-07-23 | S0〜S4 実施・結果 doc 反映（#1580） |

@@ -1,0 +1,63 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-009-poc-feature-generation-benchmark-pr"
+  title: "TV-009 poc-feature-generation-benchmark PRレビュー"
+  summary: "Epic #1578 Task Feature生成計測・結果doc の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1580
+  parent_epic_issue: 1578
+  parent_epic_branch: "spike/epic-1578-tv-009-feature-generation-performance"
+  task_definition: "prompts/definitions/tasks/tv-009-feature-generation-performance/poc-feature-generation-benchmark.yaml"
+  source_branch: "spike/task-1580-tv-009-feature-generation-benchmark"
+  target_branch: "spike/epic-1578-tv-009-feature-generation-performance"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  testing: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/tv-009-feature-generation-performance/poc-feature-generation-benchmark.yaml"
+    required: true
+  issue:
+    number: 1580
+  pr:
+    number: null
+
+review_points:
+  - "User Feature 生成時間（p50/p95）が結果 doc にあるか"
+  - "Item Feature 時間または未実施理由があるか"
+  - "TV-007 user_feature（外部 AI 込み）との切り分けが明確か"
+  - "TV進捗で TV-006=完了が反映されているか"
+  - "apps/** / apps/batch 改修がないか"
+  - "Go / Adjust / Block の根拠"
+  - "PR target が親 Epic Branch か"
+  - "Related to #1580（Closes 禁止）"
+
+notes:
+  - "Issue #1580 / Branch spike/task-1580-tv-009-feature-generation-benchmark"
+  - "PR 番号は create-pr 後に埋める"
