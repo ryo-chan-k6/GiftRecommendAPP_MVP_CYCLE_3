@@ -14,6 +14,7 @@ branch:
   worktree_required: true
 
 target:
+  pr: 1567
   issue:
     number: 1566
   parent_epic_issue: 1565
@@ -44,6 +45,8 @@ input:
     required: true
   issue:
     number: 1566
+  pr:
+    number: 1567
 
 review_points:
   - "TV-007 との切り分け（Reco E2E vs API 単体）が結果 doc / 方針に明確か"
@@ -56,5 +59,4 @@ review_points:
   - "PR target が親 Epic Branch（spike/epic-1565-tv-005-external-ai-api-connectivity）であるか"
 
 notes:
-  - "Issue #1566 / Branch spike/task-1566-tv-005-connectivity-verification"
-  - "PR 番号は create-pr 後に target.pr へ追記してよい"
+  - "Issue #1566 / Branch spike/task-1566-tv-005-connectivity-verification / PR #1567"
