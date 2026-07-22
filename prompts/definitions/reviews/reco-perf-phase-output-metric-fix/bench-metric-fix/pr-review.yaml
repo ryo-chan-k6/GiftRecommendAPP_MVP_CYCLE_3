@@ -1,0 +1,59 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-perf-phase-output-metric-fix-bench-metric-fix-pr"
+  title: "reco-perf-phase-output-metric-fix bench-metric-fix PRレビュー"
+  summary: "Epic #1544 Task bench-metric-fix（phase_output から response_built 除外）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1545
+  parent_epic_issue: 1544
+  parent_epic_branch: "spike/epic-1544-reco-perf-phase-output-metric-fix"
+  task_definition: "prompts/definitions/tasks/reco-perf-phase-output-metric-fix/bench-metric-fix.yaml"
+  source_branch: "spike/task-1545-phase-output-metric-fix"
+  target_branch: "spike/epic-1544-reco-perf-phase-output-metric-fix"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  testing: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-perf-phase-output-metric-fix/bench-metric-fix.yaml"
+    required: true
+  issue:
+    number: 1545
+
+review_points:
+  - "response_built が phase_output / reason step 合算に含まれないこと"
+  - "response_built が診断メトリクスとして別集計され、Reason 込み E2E（wall-clock）定義を誤って変えていないこと"
+  - "計測定義の新旧が docs（Phase3 結果 / 設計反映メモ / README / §13.2.5）に明示されていること"
+  - "mock 再計測結果が記録され、phase_output が旧合算より小さいこと"
+  - "正本 soft 3s / hard 7s を独断変更していないこと（見直しは提案のみ）"
+  - "apps/** 変更・secret 実値が含まれていないこと"
+  - "PR target が親 Epic Branch（spike/epic-1544-reco-perf-phase-output-metric-fix）であること"
+
+notes:
+  - "Issue #1545 / Branch spike/task-1545-phase-output-metric-fix"
+  - "Human 確定（本 PR）: 案 A 見直しは後続、secrets は本 Issue 非必須、response_built は診断専用で残置"
