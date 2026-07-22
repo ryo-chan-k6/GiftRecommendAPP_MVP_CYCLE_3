@@ -1,0 +1,192 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-tv-006-pgvector-search-performance"
+  title: "PoC:TV-006pgvector検索性能"
+  summary: "TV-006。pgvector 類似検索の件数別応答時間・index（HNSW）効果を ephemeral DB 上で計測し、DB / Retrieval 設計への入力を残す。TV-007 で未実施だった件数スケールを本 TV で消化する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  TV進捗は TV-006 = 方針のみ・Issue 未起票。方針書は #1496 由来で存在する。
+  TV-007 Phase2 で Retrieval は seed 3 件のみ計測し、件数別（100/500/1,000）と index 件数スケールは未実施。
+  物理索引は item_embedding に HNSW（vector_cosine_ops）が定義済み。
+  Human（2026-07-22）: TV-005 完了後に TV-006 へ進む。
+
+objective: |
+  件数別・index 有無（または HNSW 効果）の検索時間を計測し、結果 doc と Go/Adjust/Block を残す。
+  正式 DB/Retrieval docs 更新は別 Task（S4 後）。
+
+scope:
+  - "TV-006 方針・TV進捗・全体計画フォーカスの更新"
+  - "検証計画 / 結果 doc（docs/90_PoC/技術検証結果/）"
+  - "計測スクリプト（scripts/perf または同等。ephemeral DB）"
+  - "件数スケール（推奨: 100 / 500 / 1,000）と index 効果の比較"
+  - "Epic / Task / Review Definition"
+
+out_of_scope:
+  - "TV-005 再実施"
+  - "TV-007 Reco E2E 全体の再実施"
+  - "User Meaning 性能改善（後続 D）"
+  - "apps/** 本格改修"
+  - "BATCH レーン奪取"
+  - "production DB"
+  - "正式 DB/Retrieval 設計の独断更新（設計反映メモまで）"
+  - "secret 実値の commit"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md"
+      required: true
+    - path: "docs/90_PoC/計画/技術検証全体計画.md"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      required: true
+      purpose: "件数スケール未実施の根拠"
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      required: false
+      purpose: "ephemeral DB / seed パターン参照"
+
+output:
+  docs:
+    - path: "docs/90_PoC/技術検証結果/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/epics/tv-006-pgvector-search-performance/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/tv-006-pgvector-search-performance/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/tv-006-pgvector-search-performance/**"
+      action: "create_or_update"
+      required: false
+    - path: "ai-logs/experiments/**"
+      action: "create_or_update"
+      required: false
+
+deliverables:
+  - "Epic Issue / Branch（base・target=develop）"
+  - "TV-006 結果 doc（件数別・index 効果・Go/Adjust/Block）"
+  - "計測スクリプトと README 手順"
+  - "TV進捗 / 方針の現状更新"
+
+acceptance_criteria:
+  - "件数別（少なくとも 2 水準以上）の検索時間が記録されている"
+  - "index 効果（HNSW 有無または相当比較）が記録されている、または未実施理由が明示されている"
+  - "Go / Adjust / Block が明記されている"
+  - "production DB・apps/** 本格改修・secret 実値を含まない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "spike/epic-1571-tv-006-pgvector-search-performance"
+  summary: "tv-006-pgvector-search-performance"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-27"
+
+issue:
+  number: 1571
+  unit: "epic"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/90_PoC/**"
+    - "scripts/perf/**"
+    - ".github/workflows/perf-feasibility-*.yml"
+    - ".github/workflows/tech-verify-*.yml"
+    - "prompts/definitions/epics/tv-006-pgvector-search-performance/**"
+    - "prompts/definitions/tasks/tv-006-pgvector-search-performance/**"
+    - "prompts/definitions/reviews/tv-006-pgvector-search-performance/**"
+    - "ai-logs/experiments/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/contracts/**"
+    - "supabase/migrations/**"
+    - ".env"
+  child_task_areas:
+    - "poc-pgvector-benchmark"
+
+dependencies:
+  epics:
+    - id: "epic-tv-005-external-ai-api-connectivity"
+      issue: 1565
+      purpose: "先行 TV-005（CLOSED）"
+    - id: "epic-reco-performance-feasibility-poc-phase2"
+      issue: 1512
+      purpose: "件数スケール未実施の参照"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+  conflict_risk: "medium"
+  contract_impact: false
+
+human_decision_points:
+  - "件数スケール（推奨: 100 / 500 / 1,000）"
+  - "index 比較範囲（推奨: HNSW あり vs なし、または EXPLAIN 比較）"
+  - "次元（推奨: 1536 = MVP embedding）"
+  - "top_k（推奨: 5 および 20）"
+
+stop_conditions:
+  - "production DB が必要に見える"
+  - "apps/** 改修が必須に見える"
+  - "大量 seed 生成で運用・コストが過大"
+  - "BATCH exclusive と衝突する"
+
+notes:
+  - "Epic Issue #1571 / Branch spike/epic-1571-tv-006-pgvector-search-performance"
+  - "S0: 専用 Issue なし。技術検証結果/ は空に近い。HNSW は DDL 定義済み。TV-007 は seed 3 件のみ"
+  - "TV-005 完了後の後続 3（TV-006）"

@@ -1,0 +1,179 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-tv-006-poc-pgvector-benchmark"
+  title: "TV-006pgvector件数・index計測と結果doc"
+  summary: "ephemeral DB 上で pgvector 類似検索の件数別・index 効果を計測し、結果 doc と Go/Adjust/Block を残す。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-tv-006-pgvector-search-performance"
+  epic_issue: "[Epic]PoC:TV-006pgvector検索性能"
+  epic_issue_number: 1571
+  epic_branch: "spike/epic-1571-tv-006-pgvector-search-performance"
+  related_issues:
+    - number: 1512
+      purpose: "TV-007 Phase2（件数スケール未実施）"
+    - number: 1565
+      purpose: "TV-005（先行完了）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  TV-007 Phase2 は Retrieval を seed 3 件のみ計測し、100/500/1,000 と index 件数スケールは未実施。
+  TV-006 で pgvector 単体の件数・index 効果を埋める。
+
+objective: |
+  件数別・index 効果の計測と結果 doc を完成させる。
+  TV進捗を更新する（Epic develop 着後に完了）。
+
+scope:
+  - "検証計画（最小）と結果 doc（技術検証結果/）"
+  - "計測スクリプト + seed 生成 + README 手順（ephemeral DB）"
+  - "件数スケールと HNSW 効果の比較"
+  - "TV-006 方針・TV進捗の現状更新"
+  - "設計反映メモ（最小。正式 docs は別 Task）"
+  - "本 Task / Review Definition"
+
+out_of_scope:
+  - "TV-005 / TV-007 E2E 再実施"
+  - "User Meaning 性能改善"
+  - "apps/**"
+  - "production DB"
+  - "正式 DB/Retrieval docs の独断更新"
+  - "secret 実値"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+  files:
+    - path: "scripts/perf/README.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/技術検証結果/**"
+      action: "create"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: true
+
+acceptance_criteria:
+  - "件数別（2 水準以上）の検索時間が結果 doc にある"
+  - "index 効果または未実施理由がある"
+  - "Go / Adjust / Block がある"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "tv-006-pgvector-benchmark"
+  base: "spike/epic-1571-tv-006-pgvector-search-performance"
+  target: "spike/epic-1571-tv-006-pgvector-search-performance"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-27"
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-tv-006-pgvector-search-performance"
+      purpose: "親 Epic"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "ephemeral DB 上で bench が完走すること"
+  not_required:
+    - "apps unit tests"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "件数・index 比較が要件を満たすか"
+    - "production DB 非使用"
+    - "判定ラベルの根拠"
+    - "TV-007 との切り分け"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "件数スケール最終水準"
+  - "index 比較の深さ"
+  - "top_k"
+
+stop_conditions:
+  - "親 Epic 未作成"
+  - "production DB が必要"
+  - "seed 生成が過大"
+
+notes:
+  - "Task Issue #1572 / Branch spike/task-1572-tv-006-pgvector-benchmark"
+  - "親 Epic #1571 / Branch spike/epic-1571-tv-006-pgvector-search-performance"
+  - "推奨: 件数 100/500/1000、次元 1536、top_k 5 と 20、HNSW あり/なし"
