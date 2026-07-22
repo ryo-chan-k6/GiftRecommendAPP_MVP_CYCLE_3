@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1570
   issue:
     number: 1568
   task_definition: "prompts/definitions/tasks/batch-db-ddl-hardening/ddl-gap.yaml"
