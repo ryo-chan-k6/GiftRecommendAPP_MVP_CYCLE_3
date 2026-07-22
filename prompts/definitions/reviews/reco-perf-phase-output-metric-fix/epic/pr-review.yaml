@@ -6,7 +6,7 @@ review:
   title: "PoC:phase_output計測定義修正 Epic PRレビュー"
   summary: "Epic #1544 の develop 向け Epic PR を AI Review する。bench の phase_output から response_built 除外・docs 整合・正本数値の独断変更有無を確認する。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1550
   issue:
     number: 1544
   task_definition: "prompts/definitions/epics/reco-perf-phase-output-metric-fix/epic.yaml"
