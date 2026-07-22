@@ -1,0 +1,179 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-tv-005-poc-connectivity-verification"
+  title: "TV-005外部AI_API疎通の計測・結果doc"
+  summary: "OpenAI Embedding / LLM の専用疎通計測（応答時間・失敗形式・トークン/コスト概算）を実施し、結果 doc と Go/Adjust/Block を残す。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-tv-005-external-ai-api-connectivity"
+  epic_issue: "[Epic]PoC:TV-005外部AI_API疎通"
+  epic_issue_number: 1565
+  epic_branch: "spike/epic-1565-tv-005-external-ai-api-connectivity"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  TV-005 は方針のみ。TV-007 で OpenAI はパイプライン内で計測済みだが、専用の疎通・制約・コスト検証は未実施。
+  openai_bench_clients.py を再利用し、Reco E2E とは分離した計測スクリプトを用意する。
+
+objective: |
+  Embedding / LLM の疎通計測と結果 doc を完成させる。
+  TV進捗を進行中〜完了相当へ更新する（Epic develop 着後に完了）。
+
+scope:
+  - "検証計画（最小）と結果 doc（外部API疎通検証/）"
+  - "計測スクリプト + README 手順"
+  - "mock / secrets 計測（Human が secrets 必須とした場合）"
+  - "TV-005 方針・TV進捗の現状更新"
+  - "設計反映メモ（最小、正式 docs は別 Task）"
+  - "本 Task / Review Definition"
+
+out_of_scope:
+  - "TV-006"
+  - "TV-007 E2E 再実施"
+  - "User Meaning 性能改善"
+  - "apps/**"
+  - "正式 Error/Reco/Batch docs の独断更新"
+  - "大量課金試験"
+  - "secret 実値"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-005_外部AI_API疎通.md"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+  files:
+    - path: "scripts/perf/openai_bench_clients.py"
+      required: true
+    - path: "scripts/perf/README.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/外部API疎通検証/**"
+      action: "create"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-005_外部AI_API疎通.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: true
+
+acceptance_criteria:
+  - "Embedding / LLM の応答時間指標が結果 doc にある"
+  - "mock と secrets の区別がある（secrets 未実施なら理由明示）"
+  - "失敗形式または未実施理由がある"
+  - "トークン/コスト概算または未実施理由がある"
+  - "Go / Adjust / Block がある"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "tv-005-connectivity-verification"
+  base: "spike/epic-1565-tv-005-external-ai-api-connectivity"
+  target: "spike/epic-1565-tv-005-external-ai-api-connectivity"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-26"
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-tv-005-external-ai-api-connectivity"
+      purpose: "親 Epic"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "scripts/perf/openai_bench_clients.py"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "local mock 計測が通ること"
+    - "secrets 時は OPENAI_API_KEY を env のみから読むこと"
+  not_required:
+    - "apps unit tests"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "TV-007 との切り分けが明確か"
+    - "secret 非混入"
+    - "コスト概算の妥当性（大量実行していないか）"
+    - "判定ラベルの根拠"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "secrets 必須か"
+  - "呼び出し件数"
+  - "rate limit 誘発の範囲"
+
+stop_conditions:
+  - "親 Epic 未作成"
+  - "大量課金が必要"
+  - "secret 露出リスク"
+
+notes:
+  - "Task Issue #1566 / Branch spike/task-1566-tv-005-connectivity-verification"
+  - "親 Epic #1565 / Branch spike/epic-1565-tv-005-external-ai-api-connectivity"
+  - "推奨モデル: text-embedding-3-small / gpt-4o-mini"
