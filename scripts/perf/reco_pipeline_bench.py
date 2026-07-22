@@ -60,6 +60,8 @@ PHASE_GROUP_STEPS: dict[str, tuple[str, ...]] = {
 }
 
 # Orchestrator 集約 phase_name → TV-007 step（duration 合算）
+# #1545: response_built は累積壁時計のため reason / phase_output 合算から除外し、
+# 診断用メトリクス `response_built` として別集計する。
 LIVE_PHASE_TO_STEP: dict[str, str] = {
     "request_received": "input_parse",
     "config_resolved": "input_parse",
@@ -74,8 +76,11 @@ LIVE_PHASE_TO_STEP: dict[str, str] = {
     "ranking_completed": "ranking",
     "result_generated": "reason",
     "reason_generated": "reason",
-    "response_built": "reason",
+    "response_built": "response_built",
 }
+
+# phase_output（reason step）に含める Orchestrator phase（response_built 除外後）
+PHASE_OUTPUT_LIVE_PHASES: tuple[str, ...] = ("result_generated", "reason_generated")
 
 # #1533 Human 確定: Reco 内部 / 同期外部 AI 込み。phase_output は Phase3 で案出し（暫定 500 を参考維持）
 THRESHOLDS_MS: dict[str, float] = {
@@ -207,8 +212,14 @@ def _ensure_openai_clients_importable() -> None:
 
 
 def _phase_events_to_step_timings(phase_log_events: list[dict[str, object]]) -> dict[str, float]:
-    """Sum SUCCEEDED duration_ms per TV-007 step from Orchestrator phase_log_events."""
-    step_timings: dict[str, float] = {phase: 0.0 for phase in (*TV007_STEP_PHASES, *REFERENCE_STEP_PHASES)}
+    """Sum SUCCEEDED duration_ms per TV-007 step from Orchestrator phase_log_events.
+
+    ``response_built`` is tracked as its own key and is **not** folded into ``reason`` /
+    ``phase_output`` (Issue #1545). Reason E2E wall-clock remains ``pipeline_total_ms``.
+    """
+    step_timings: dict[str, float] = {
+        phase: 0.0 for phase in (*TV007_STEP_PHASES, *REFERENCE_STEP_PHASES, "response_built")
+    }
     for event in phase_log_events:
         status = str(event.get("phase_status", ""))
         if status not in {"succeeded", "PhaseStatus.SUCCEEDED", "SUCCEEDED"}:
@@ -525,6 +536,7 @@ def build_report(
     reason_e2e_summary = summarize_ms(reason_e2e_totals)
     pipeline_summary = summarize_ms(pipeline_totals)
     phase_output_stats = step_stats.get("reason", summarize_ms([]))
+    response_built_stats = step_stats.get("response_built", summarize_ms([]))
 
     internal_soft = THRESHOLDS_MS["internal_soft"]
     internal_hard = THRESHOLDS_MS["internal_hard"]
@@ -553,6 +565,8 @@ def build_report(
         "reason_e2e_scope": list(REASON_E2E_PHASES),
         "tv007_scope": list(RANKING_SCOPE_PHASES),
         "reference_steps": list(REFERENCE_STEP_PHASES),
+        "phase_output_live_phases": list(PHASE_OUTPUT_LIVE_PHASES),
+        "phase_output_excludes": ["response_built"],
         "success_count": success_count,
         "failure_count": iterations - success_count,
         "error_codes": error_codes,
@@ -601,6 +615,12 @@ def build_report(
             "phase_output": {
                 **phase_output_stats,
                 "provisional_hard_limit_ms": THRESHOLDS_MS["phase_output"],
+                "includes_phases": list(PHASE_OUTPUT_LIVE_PHASES),
+                "excludes_phases": ["response_built"],
+            },
+            "response_built": {
+                **response_built_stats,
+                "note": "diagnostic_only; cumulative wall-clock; excluded from phase_output",
             },
         },
         "pipeline_total": {
@@ -685,7 +705,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "## phase_output (reason step)",
+            "## phase_output (reason step; excludes response_built)",
             "",
             "| metric | ms |",
             "| ------ | --: |",
@@ -696,6 +716,26 @@ def render_markdown(report: dict[str, Any]) -> str:
             lines.append(f"| {key} | {phase_output[key]:.3f} |")
     if "provisional_hard_limit_ms" in phase_output:
         lines.append(f"| provisional hard | {phase_output['provisional_hard_limit_ms']:.0f} |")
+    includes = phase_output.get("includes_phases") or list(PHASE_OUTPUT_LIVE_PHASES)
+    excludes = phase_output.get("excludes_phases") or ["response_built"]
+    lines.append(f"| includes | {', '.join(includes)} |")
+    lines.append(f"| excludes | {', '.join(excludes)} |")
+
+    response_built = scopes.get("response_built") or report["steps"].get("response_built", {})
+    lines.extend(
+        [
+            "",
+            "## response_built (diagnostic; excluded from phase_output)",
+            "",
+            "| metric | ms |",
+            "| ------ | --: |",
+        ]
+    )
+    for key in ("p50_ms", "p95_ms", "mean_ms", "max_ms"):
+        if key in response_built:
+            lines.append(f"| {key} | {response_built[key]:.3f} |")
+    if response_built.get("note"):
+        lines.append(f"| note | {response_built['note']} |")
 
     lines.extend(
         [

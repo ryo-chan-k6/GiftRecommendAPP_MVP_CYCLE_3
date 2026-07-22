@@ -122,9 +122,18 @@ gh workflow run perf-feasibility-reco.yml \
 | `retrieval` | `retrieval` | `pre_hard_filter` / `retrieval` / `post_hard_filter` |
 | `matching` | `matching` | `matching_completed` |
 | `ranking` | `ranking` | `ranking_completed` |
-| `reason` | `reason` / `phase_output` | `result_generated` + `reason_generated` + `response_built` |
+| `reason` | `reason` / `phase_output` | `result_generated` + `reason_generated`（**`response_built` 除外**・#1545） |
+| `response_built` | （診断専用） | `response_built` のみ。累積壁時計のため `phase_output` に含めない |
 
-判定枠（#1533）: Reco 内部 soft/hard **1.5s/2s**、同期外部 AI 込み **6s/8s**。`phase_output` は Human 未確定（Phase3 で案出し）。詳細は計画書 §7。
+### phase_output 計測定義（#1545）
+
+| 定義 | 含む phase | 用途 |
+| ---- | ---------- | ---- |
+| **現行（#1545 以降）** | `result_generated` + `reason_generated` | Reason / Output 寄与の監視 |
+| 旧（Phase3 初版〜#1545 前） | 上記 + `response_built`（累積壁時計） | 合算値が Reason 単体と乖離するため廃止 |
+| Reason 込み E2E | 外側 wall-clock（`pipeline_total_ms`） | soft 6s / hard 8s の主判定。計測定義変更の対象外 |
+
+判定枠（#1533）: Reco 内部 soft/hard **1.5s/2s**、同期外部 AI 込み **6s/8s**。`phase_output` 案 A（soft 3s / hard 7s）は Human Review（#1539）。詳細は計画書 §7・設計反映メモ。
 
 ## 関連 Issue / Branch
 
@@ -132,5 +141,6 @@ gh workflow run perf-feasibility-reco.yml \
 | ---- | --- |
 | Phase2 Epic / Task | #1512 / #1513 |
 | Phase3 Epic / Task | #1535 / #1536 |
-| Branch（本 Task） | `spike/task-1536-reco-perf-phase3-reason-e2e` |
-| PR target | `spike/epic-1535-reco-performance-feasibility-poc-phase3` |
+| phase_output 計測定義修正 | #1544 / #1545 |
+| Branch（本 Task） | `spike/task-1545-phase-output-metric-fix` |
+| PR target | `spike/epic-1544-reco-perf-phase-output-metric-fix` |

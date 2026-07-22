@@ -101,7 +101,9 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 #### 3.3.1 計測上の注意（`phase_output` の読み方）
 
-**事実:** bench の `reason` / `phase_output` は Orchestrator phase_log の次を合算している。
+##### 旧定義（Phase3 初版〜#1545 前）— §3.3 表の根拠
+
+**事実:** 当時の bench の `reason` / `phase_output` は Orchestrator phase_log の次を合算していた。
 
 | phase_name | 内容 |
 | ---------- | ---- |
@@ -109,13 +111,47 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | `reason_generated` | MOD-RECO-023 Reason Generator |
 | `response_built` | **パイプライン開始からの累積壁時計**（`recommendation_latency_ms`） |
 
-そのため表の数秒級 `phase_output` は **Reason 単体の OpenAI レイテンシではない**。追加デバッグ（local secrets・1 run）では `reason_generated` ≈ **50ms**、`response_built` が累積数秒を占めた。
+そのため §3.3 表の数秒級 `phase_output` は **Reason 単体の OpenAI レイテンシではない**。追加デバッグ（local secrets・1 run）では `reason_generated` ≈ **50ms**、`response_built` が累積数秒を占めた。
 
 **事実:** 本計測条件では `RECO_REASON_LLM_REFINEMENT_ENABLED` 未設定（既定 `false`）のため、Reason の LLM refinement は **OFF**。`--force-llm` が誘発するのは主に **User Meaning（Semantic LLM）** である。
 
-**推論:** `phase_output` hard 案（§5）は、上記合算値をそのまま「Reason OpenAI 予算」と読まないこと。正式反映前に計測定義の見直し（`response_built` 除外）を別 Task 候補とする。
+##### 新定義（#1545 以降）
 
-**本 Task の扱い:** 性能改善（User Meaning の短縮・キャッシュ・非同期・モデル選定、ボリューム/複雑条件、OKURI UX 横断）は **別 Task**。本結果は現状計測の記録と Human 判断材料に留める。
+**事実:** `LIVE_PHASE_TO_STEP` / `phase_output` 合算から `response_built` を除外した。
+
+| 定義 | 含む phase | report 上の扱い |
+| ---- | ---------- | --------------- |
+| **新** `phase_output` / `reason` | `result_generated` + `reason_generated` | `scopes.phase_output` |
+| `response_built`（診断） | `response_built` のみ | `scopes.response_built`（合算対象外） |
+| Reason 込み E2E | 外側 wall-clock | 変更なし（soft 6s / hard 8s） |
+
+**推論:** §5 の案 A（soft 3s / hard 7s）は **旧合算値**を根拠としている。新定義では `phase_output` が大幅に小さくなるため、案 A の見直し要否は Human 判断（断定しない）。
+
+**本 Task の扱い:** 性能改善（User Meaning の短縮・キャッシュ・非同期・モデル選定、ボリューム/複雑条件、OKURI UX 横断）は **別 Task**。本結果の §3 表は旧定義の記録として残し、新定義の再計測は §3.3.2 に記録する。
+
+#### 3.3.2 #1545 再計測（新定義・local mock）
+
+| 項目 | 値 |
+| ---- | -- |
+| 日時 | 2026-07-22 |
+| 環境 | local（WSL2） |
+| openai_mode | mock |
+| iterations / warmup | 20 / 2 |
+| success | 20 / 20 |
+| 定義 | `phase_output` = `result_generated` + `reason_generated`（`response_built` 除外） |
+| 出力 | `scripts/perf/output-metric-fix-mock/`（Git 管理外） |
+
+| 指標 | 旧定義（§3.3 local mock） | 新定義（本節） | 差分の読み方 |
+| ---- | ------------------------- | -------------- | ------------ |
+| phase_output p50 (ms) | 1,151.5 | **86.5** | 旧は累積合算込み |
+| phase_output p95 (ms) | **1,355.0** | **105.1** | 新は Reason/Output 寄与寄り（約 **1/13**） |
+| response_built p95 (ms) | （旧は合算内） | **1,233.2** | 診断専用。累積壁時計 |
+| Reason E2E p95 (ms) | 2,089.2 | **1,234.0** | E2E 定義は変更なし（wall-clock）。実行差あり |
+| Ranking まで p95 (ms) | 709.4 | **685.1** | 比較枠。定義変更の対象外 |
+
+**事実:** 新定義では `phase_output` p95 が旧合算（1,355ms）から **105ms** へ低下し、`response_built`（≈E2E 累積）と分離できた。
+
+**推論（案 A 見直し）:** 案 A（soft 3s / hard 7s）は旧合算根拠であり、新定義の Reason/Output 寄与（mock ≈100ms 帯）に対しては過大になり得る。採用値の見直しは Human 判断（断定しない）。secrets 再計測の要否も Human 判断。
 
 ### 3.4 フェーズ別 p95（secrets）
 
@@ -126,7 +162,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | retrieval | phase_retrieval | 77.7 | 125.6 | 1,000 | 上限内 |
 | matching | phase_matching | 10.2 | 16.2 | 500 | 上限内 |
 | ranking | phase_ranking | 10.1 | 17.2 | 1,000 | 上限内 |
-| reason | phase_output | **6,424.0** | **3,555.1** | 未確定（当面 500） | **合算値**（§3.3.1）。真の `reason_generated` は短時間。支配要因の OpenAI は User Meaning |
+| reason | phase_output | **6,424.0** | **3,555.1** | 未確定（当面 500） | **旧合算値**（§3.3.1）。真の `reason_generated` は短時間。支配要因の OpenAI は User Meaning。新定義は §3.3.2 |
 
 ### 3.5 mock vs secrets（Reason 込み）
 
@@ -137,7 +173,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | GHA | secrets | 12,483.9 | 6,424.0 | 5,872.9 |
 | local | secrets | 6,504.4 | 3,555.1 | 2,640.1 |
 
-**解釈（事実）:** secrets の Reason 込み E2E 遅延の主因は **User Meaning（Semantic LLM + Embedding）**。Retrieval / Matching / Ranking は余裕。表の `phase_output` 合算は §3.3.1 のとおり `response_built`（累積）を含むため、Reason LLM 支配とは読めない（本条件では Reason LLM OFF）。
+**解釈（事実）:** secrets の Reason 込み E2E 遅延の主因は **User Meaning（Semantic LLM + Embedding）**。Retrieval / Matching / Ranking は余裕。§3.3 表の `phase_output` は旧定義（`response_built` 累積合算）であり、Reason LLM 支配とは読めない（本条件では Reason LLM OFF）。新定義の mock 再計測は §3.3.2。
 
 ---
 
@@ -167,16 +203,19 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 | 案 | soft（監視） | hard（中断/上限） | 根拠・意図 |
 | -- | ------------- | ----------------- | ---------- |
-| A（推奨・推論） | **3,000ms** | **7,000ms** | secrets p50≈2.7–2.8s / p95≈3.6–6.4s（local/GHA）。E2E hard 8s 内に Reason 予算を確保 |
+| A（旧合算根拠・#1539 転記） | **3,000ms** | **7,000ms** | 旧定義 secrets p50≈2.7–2.8s / p95≈3.6–6.4s（local/GHA）。E2E hard 8s 内に Reason 予算を確保 |
 | B | 2,500ms | 5,000ms | より厳しい。現行 secrets p95 では未達 → 実装最適化前提 |
 | C | 監視のみ（soft 3,000） | hard なし（§10.3 fallback 継続） | Reason 失敗は fallback 可能なら hard 中断しない |
 
 **推論:** 当面記載の 500ms は mock でも超過しており非現実的。正式反映 Task では案 A を起点に Human が採否する。
 
+**#1545 後の見直し提案（推論・未確定）:** 新定義（`response_built` 除外）では mock で `phase_output` が旧合算より大幅に小さくなる見込み（§3.3.2）。案 A をそのまま維持するか、新実測に合わせて soft/hard を引き下げるかは **Human 判断**。本 Task では数値を確定断定しない。
+
 **Human 判断依頼:**
 
-1. `phase_output` hard 最終値（案 A/B/C または別値）
+1. `phase_output` hard 最終値（案 A/B/C、または新定義向けの別値）
 2. Reason 込み E2E を同期外部 AI 込み **6s/8s と同一枠**にするか（本結果は同一枠で判定済み。枠を分ける場合は別 soft/hard が必要）
+3. 新定義の secrets 再計測を案 A 見直し前に必須とするか
 
 ---
 
@@ -196,12 +235,13 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 項目 | 内容 |
 | ---- | ---- |
 | secrets 環境差 | GHA Block / local Adjust。最終ラベルは Human 判断 |
-| phase_output 計測定義 | `response_built`（累積）合算により Reason 単体と乖離。計測修正は別 Task 候補 |
+| phase_output 計測定義 | #1545 で `response_built` を除外（新定義）。§3 表は旧定義の記録。案 A 見直しは Human |
 | 性能改善 | User Meaning 短縮/キャッシュ/非同期/モデル、ボリューム・複雑条件、UX 横断は別 Task |
 | 件数スケール | seed 3 件。100/500/1,000 未実施（Phase2 同） |
 | hard timeout 有効時 | bypass 計測。本番 8s 中断時の挙動は別確認候補 |
 | concurrency | 同一 Branch で mock/secrets 同時 dispatch すると後勝ちで cancel。逐次実行が必要 |
 | secret | 実値は成果物に含めない |
+| secrets 再計測（新定義） | mock は §3.3.2。secrets は Human 判断（コスト・要否） |
 
 ---
 
@@ -212,3 +252,4 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 2026-07-22 | Phase3 Reason 込み E2E 初版（GHA secrets/mock + local mock） |
 | 2026-07-22 | local secrets 再計測を追記（Reason E2E Adjust）。GHA/local 再現性を更新 |
 | 2026-07-22 | `phase_output` 計測定義の注意（`response_built` 累積合算・Reason LLM OFF）を追記 |
+| 2026-07-22 | #1545: `phase_output` から `response_built` 除外。新旧定義と mock 再計測（§3.3.2）を追記 |
