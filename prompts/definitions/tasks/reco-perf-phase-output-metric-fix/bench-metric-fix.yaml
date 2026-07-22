@@ -1,0 +1,190 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-perf-phase-output-metric-fix"
+  title: "benchのphase_outputからresponse_built除外"
+  summary: "reco_pipeline_bench の LIVE_PHASE_TO_STEP / phase_output 集計から response_built を除外し、Reason 寄与を正しく測る。README・PoC docs を更新し、mock 再計測で差分を示す。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-perf-phase-output-metric-fix"
+  epic_issue: "[Epic]PoC:phase_output計測定義修正"
+  epic_issue_number: 1544
+  epic_branch: "spike/epic-1544-reco-perf-phase-output-metric-fix"
+  related_issues:
+    - number: 1535
+      purpose: "Phase3"
+    - number: 1539
+      purpose: "phase_output 正式 docs"
+    - number: 1541
+      purpose: "正式 docs develop MERGED"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3 結果 doc §3.3.1: bench の phase_output / reason は response_built 累積合算を含み、
+  reason_generated（≈50ms 帯のデバッグ例）と乖離する。
+  正本 §13.2 の soft 3s / hard 7s は合算値根拠のため、計測修正後に見直し要否を整理する。
+
+objective: |
+  phase_output が Reason 寄与（主に reason_generated / result_generated 等）を表すよう bench を修正する。
+  response_built は別メトリクスまたは除外として明示する。
+  再計測で修正効果を示し、正本数値見直しは提案のみとする。
+
+scope:
+  - "scripts/perf/reco_pipeline_bench.py（LIVE_PHASE_TO_STEP / phase_output 集計・報告）"
+  - "scripts/perf/README.md"
+  - "Phase3 結果 doc の計測定義注意更新（または追記結果 doc）"
+  - "設計反映メモ / MOD-RECO-001 §13.2.5 の注意文更新（最小）"
+  - "mock 再計測（必要なら secrets。実値非 commit）"
+  - "本 Task / Review Definition"
+
+out_of_scope:
+  - "apps/**"
+  - "正本 soft/hard の独断変更"
+  - "User Meaning 性能改善"
+  - "TV-005 / TV-006"
+  - "BATCH レーン"
+  - "secret 実値記載"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      required: true
+    - path: "scripts/perf/README.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      action: "update"
+      required: true
+    - path: "scripts/perf/README.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "response_built が phase_output / reason step 合算に含まれない"
+  - "計測定義の新旧が docs に明示されている"
+  - "mock 再計測結果が記録されている"
+  - "正本 3s/7s 見直しは提案に留まり確定断定していない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "phase-output-metric-fix"
+  base: "spike/epic-1544-reco-perf-phase-output-metric-fix"
+  target: "spike/epic-1544-reco-perf-phase-output-metric-fix"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-reco-perf-phase-output-metric-fix"
+      purpose: "親 Epic"
+  issues:
+    - number: 1541
+      purpose: "正式 docs develop 着前提"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "bench mock 再計測で phase_output が合算値より小さくなること"
+  not_required:
+    - "apps/reco unit tests"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "response_built 除外が意図どおりか"
+    - "Reason 込み E2E 全体定義を誤って変えていないか"
+    - "正本数値の独断変更がないか"
+    - "secret 非混入"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "修正後数値に基づく phase_output soft/hard 見直し"
+  - "secrets 再計測の要否"
+  - "response_built を別指標として残すか"
+
+stop_conditions:
+  - "親 Epic Issue / Branch 未作成"
+  - "apps/reco 変更が必須に見える"
+
+notes:
+  - "Task Issue #1545 / Branch spike/task-1545-phase-output-metric-fix"
+  - "親 Epic #1544 / Branch spike/epic-1544-reco-perf-phase-output-metric-fix"
