@@ -205,10 +205,11 @@ MVP 現行モデル（`item_embedding_テーブル定義書` §17.1 No.3 **確�
 
 | リソース | 操作 | IF | 備考 |
 | -------- | ---- | -- | ---- |
-| `item_embedding` | UPSERT | **IF-VEC-BATCH-001** | §10 |
-| `item_generation_queue` | UPDATE | — | §10 / §12 |
+| `item_embedding` | UPSERT | **IF-VEC-BATCH-001** | §10。最終派生。`embedding_input_hash` 列を載せる |
+| `item_embedding_input` | SELECT（読取のみ） | **IF-DB-BATCH-015 消費** | BATCH-014 が永続化した中間結果を検証・消費。本 Batch は書込しない（§2.2） |
+| `item_generation_queue` | UPDATE | — | §10 / §12。hash 列は持たない |
 | `api_call_log` | INSERT | — | IF-EXT-005 呼出監査（scaffold 時も成否・latency 記録可） |
-| `item` / hash 専用テーブル | — | — | 更新しない / 専用テーブルなし |
+| `item` | — | — | 更新しない |
 
 ---
 
@@ -356,7 +357,7 @@ flowchart TD
 
 ### 10.3 禁止操作
 
-- IF-DB-BATCH-015 相当の hash **再算出**・専用テーブルへの書込
+- IF-DB-BATCH-015 相当の hash **再算出**、および `item_embedding_input` への **書込**（読取・消費のみ。書込主体は BATCH-014）
 - IF-DB-BATCH-016 相当の分布メトリクス DML
 - IF-DB-BATCH-010 相当の Queue INSERT
 - `item_semantic` / `item_feature` / `item_meaning` の DML
