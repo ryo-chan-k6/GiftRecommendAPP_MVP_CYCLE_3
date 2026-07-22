@@ -14,9 +14,9 @@
 | 経路 | 結果 |
 | ---- | ---- |
 | mock（iterations=20, warmup=2） | Reason E2E p95≈2,089ms **Go** / Ranking まで p95≈709ms **Go** / phase_output p95≈1,355ms |
-| secrets | 未実施（local API key がプレースホルダ） |
+| secrets（iterations=20, warmup=2, `--force-llm`） | Reason E2E p95≈6,504ms **Adjust** / Ranking まで p95≈2,949ms **Block**（参考）/ phase_output p95≈3,555ms。embedding_calls=22 / llm_calls=22 |
 
-出力ディレクトリ（git 未追跡）: `scripts/perf/output-phase3-local-mock/`
+出力ディレクトリ（git 未追跡）: `scripts/perf/output-phase3-local-mock/` / `scripts/perf/output-phase3-local-secrets/`
 
 ## GHA 実行
 
