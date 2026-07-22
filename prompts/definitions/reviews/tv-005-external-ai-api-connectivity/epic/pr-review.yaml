@@ -1,0 +1,75 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-005-external-ai-api-connectivity-epic-pr"
+  title: "PoC:TV-005外部AI_API疎通 Epic PRレビュー"
+  summary: "Epic #1565 の develop 向け Epic PR を AI Review する。専用計測・結果 doc・secret 非混入・TV-007 切り分けを確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1569
+  issue:
+    number: 1565
+  task_definition: "prompts/definitions/epics/tv-005-external-ai-api-connectivity/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]PoC:TV-005外部AI_API疎通"
+  parent_epic_branch: "spike/epic-1565-tv-005-external-ai-api-connectivity"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/tv-005-external-ai-api-connectivity/epic.yaml"
+  docs:
+    - "docs/90_PoC/外部API疎通検証/外部AI_API疎通検証結果.md"
+    - "docs/90_PoC/外部API疎通検証/外部AI_API疎通検証計画.md"
+    - "docs/90_PoC/外部API疎通検証/設計反映メモ.md"
+    - "docs/90_PoC/計画/TV要件・実施方針/TV-005_外部AI_API疎通.md"
+    - "docs/90_PoC/管理/TV進捗一覧.md"
+  files:
+    - "scripts/perf/openai_connectivity_bench.py"
+    - "scripts/perf/README.md"
+
+review_points:
+  - "Epic PR target が develop か"
+  - "Embedding / LLM の応答時間・判定が結果 doc にあるか"
+  - "TV-007 Reco E2E と切り分けられているか"
+  - "secret 実値が成果物に含まれていないか"
+  - "大量課金試験を含んでいないか"
+  - "apps/** 本格改修の非混入"
+  - "Closes #1565 の扱い"
+
+acceptance:
+  human_review_required: true
+  merge_by_ai: false
+
+notes:
+  - "merge 判断は Human"
+  - "正式 Error/Reco/Batch docs 更新は別 Task（S4 後）"

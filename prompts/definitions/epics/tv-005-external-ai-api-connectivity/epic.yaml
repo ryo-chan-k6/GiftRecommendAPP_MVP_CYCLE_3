@@ -1,0 +1,192 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-tv-005-external-ai-api-connectivity"
+  title: "PoC:TV-005外部AI_API疎通"
+  summary: "TV-005。OpenAI Embedding / LLM の応答時間・失敗形式・トークン/コスト概算を専用検証として実施する。TV-007 の Reco E2E とは分離し、API 疎通・制約・コスト感を正とする。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  TV進捗は TV-005 = 方針のみ・Issue 未起票。方針書は #1496 由来で存在する。
+  TV-007 Phase2/3 で OpenAI secrets 実疎通は Reco パイプライン文脈で実施済みだが、
+  TV-005 本体（専用メトリクス・rate limit / 失敗形式 / コスト感）は未実施。
+  既存資産: scripts/perf/openai_bench_clients.py（embedding / chat）、docs/90_PoC/外部API疎通検証/ は空。
+  Human（2026-07-22）: TV-007 後続は 1（完了）→ 3（TV-005/006）。本 Epic は TV-005。
+
+objective: |
+  Embedding / LLM の専用疎通計測を完了し、結果 doc と設計反映メモ（最小）を残す。
+  Go / Adjust / Block を明記する。正式 docs 更新は別 Task（S4 後）。
+
+scope:
+  - "TV-005 方針・TV進捗・全体計画フォーカスの更新"
+  - "検証計画 / 結果 doc（docs/90_PoC/外部API疎通検証/）"
+  - "専用計測スクリプト（scripts/perf または同等。openai_bench_clients 再利用可）"
+  - "mock と secrets の区別記録（secret 実値禁止）"
+  - "トークン集計・料金概算（公開単価×トークン。大量実行は Human 承認）"
+  - "Epic / Task / Review Definition"
+
+out_of_scope:
+  - "TV-006（pgvector）"
+  - "TV-007 Reco E2E 再実施・User Meaning 性能改善（後続 D）"
+  - "apps/** 本格改修"
+  - "BATCH レーン奪取"
+  - "production 実行"
+  - "大量・課金インパクト大の負荷試験（Human 承認なし）"
+  - "正式 Error/Reco/Batch 設計の独断更新（設計反映メモまで）"
+  - "secret 実値の commit"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-005_外部AI_API疎通.md"
+      required: true
+    - path: "docs/90_PoC/計画/技術検証全体計画.md"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      required: false
+      purpose: "TV-007 での OpenAI 実測参照（重複回避）"
+  files:
+    - path: "scripts/perf/openai_bench_clients.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/外部API疎通検証/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-005_外部AI_API疎通.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/epics/tv-005-external-ai-api-connectivity/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/tv-005-external-ai-api-connectivity/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/tv-005-external-ai-api-connectivity/**"
+      action: "create_or_update"
+      required: false
+    - path: "ai-logs/experiments/**"
+      action: "create_or_update"
+      required: false
+
+deliverables:
+  - "Epic Issue / Branch（base・target=develop）"
+  - "TV-005 結果 doc（応答時間・失敗形式・トークン/コスト概算・Go/Adjust/Block）"
+  - "計測スクリプトと README 手順"
+  - "TV進捗 / 方針の現状更新"
+
+acceptance_criteria:
+  - "Embedding と LLM の応答時間（少なくとも p50/p95）が記録されている"
+  - "mock と secrets が区別して記録されている（secrets 実施時）"
+  - "失敗形式の観測または未実施理由が明示されている"
+  - "トークン/コスト概算がある（または未実施理由）"
+  - "Go / Adjust / Block が明記されている"
+  - "secret 実値・apps/** 本格改修・TV-006 を含まない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "spike/epic-1565-tv-005-external-ai-api-connectivity"
+  summary: "tv-005-external-ai-api-connectivity"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-26"
+
+issue:
+  number: 1565
+  unit: "epic"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/90_PoC/**"
+    - "scripts/perf/**"
+    - ".github/workflows/perf-feasibility-*.yml"
+    - ".github/workflows/tech-verify-*.yml"
+    - "prompts/definitions/epics/tv-005-external-ai-api-connectivity/**"
+    - "prompts/definitions/tasks/tv-005-external-ai-api-connectivity/**"
+    - "prompts/definitions/reviews/tv-005-external-ai-api-connectivity/**"
+    - "ai-logs/experiments/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/contracts/**"
+    - "supabase/migrations/**"
+    - ".env"
+  child_task_areas:
+    - "poc-connectivity-verification"
+
+dependencies:
+  epics:
+    - id: "epic-reco-performance-feasibility-poc-phase3"
+      issue: 1535
+      purpose: "TV-007 で OpenAI 実測あり（参照のみ）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "scripts/perf/openai_bench_clients.py"
+  conflict_risk: "medium"
+  contract_impact: false
+
+human_decision_points:
+  - "対象モデル（推奨: text-embedding-3-small / gpt-4o-mini = MVP）"
+  - "secrets 実疎通を必須とするか（推奨: 必須。コスト小規模）"
+  - "呼び出し件数上限（推奨: 各 API 20〜50 回程度。大量は承認後）"
+  - "rate limit 意図的誘発を行うか（推奨: 本 Phase では軽量観測のみ）"
+
+stop_conditions:
+  - "大量課金が見込まれる実行が必要"
+  - "apps/** 改修が必須に見える"
+  - "TV-006 や User Meaning 改善が本 Epic に混ざる"
+  - "secret 実値が成果物に含まれそう"
+
+notes:
+  - "Epic Issue #1565 / Branch spike/epic-1565-tv-005-external-ai-api-connectivity"
+  - "S0 要約: 専用 Issue なし。結果 dir 空。openai_bench_clients 再利用可。TV-007 はパイプライン文脈の参考"
+  - "後続 3 の TV-005。TV-006 は別 Epic"
