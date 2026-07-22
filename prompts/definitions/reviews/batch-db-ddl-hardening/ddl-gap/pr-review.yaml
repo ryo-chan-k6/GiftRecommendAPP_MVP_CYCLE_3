@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-ddl-hardening-ddl-gap-pr"
+  title: "batch-db-ddl-hardening DDL不足 PRレビュー"
+  summary: "E2 T2（列差分棚卸し・012/015 永続 DDL）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1568
+  task_definition: "prompts/definitions/tasks/batch-db-ddl-hardening/ddl-gap.yaml"
+  parent_epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  parent_epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "DROP/TRUNCATE 等の破壊的 DDL がないか"
+  - "012/015 永続テーブルと定義書・仕様追記が整合するか"
+  - "019 を含まないか"
+  - "列差分棚卸しが記載されているか"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "Issue #1568"

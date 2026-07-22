@@ -48,10 +48,13 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 | 観点 | 方針 |
 | ---- | ---- |
 | hash / context 算出主体 | **BATCH-014**（`BATCH-014_Embedding入力hash算出バッチ仕様書` §2.2） |
-| 本 Batch の扱い | handoff を **検証して消費**し、`item_embedding.embedding_input_hash` 列へ同一値を載せる |
+| 中間永続テーブル | **`item_embedding_input`**（BATCH-014 書込）。本 Batch が読取・検証 |
+| 本 Batch の扱い | 永続行（または scaffold handoff）を **検証して消費**し、`item_embedding.embedding_input_hash` 列へ同一値を載せる |
 | 再算出 | **禁止**。再算出が必要なら BATCH-014 を再実行する |
-| 専用テーブル | なし（`item_text_context` は物理化しない中間表現） |
-| Queue 行への hash 列 | 持たない（`item_generation_queue_テーブル定義書` §5.1） |
+| Queue 行への hash 列 | 持たない（`item_generation_queue_テーブル定義書` §5.1。継承） |
+| 最終派生書込 | `item_embedding` は **IF-VEC-BATCH-001**（本 Batch） |
+
+> **履歴:** 縦串確定時は「専用テーブルなし」。E2 Human 確定（Epic #1561 / Task #1568）により中間永続化へ更新。
 
 識別子 Epic は **`[Epic]BATCH-015:Item Embedding生成Batch`（#1479）** を親とする。先行 BATCH-014（#1467 / PR #1477 develop merge 済み）および `item_embedding` テーブル定義（#516）を前提とする。縦串は **仕様整備 → 実装 → UT → Epic PR（develop）**。
 
@@ -142,9 +145,9 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 | `embedding_source_version` | 解決（batch 層） | `false` | **DB 物理列なし**。再生成トリガーは Queue / hash 側（§18.1） |
 | 実行 plan / config | 設定 | `true` | 件数上限・source（§6.4） |
 
-### 6.2 hash handoff（IF-DB-BATCH-015 消費）
+### 6.2 hash handoff（IF-DB-BATCH-015 消費・中間永続）
 
-`embedding_input_hash` / `item_text_context` は BATCH-014 の算出結果を読み取り、検証して Embedding 入力および `item_embedding.embedding_input_hash` にそのまま載せる。
+`embedding_input_hash` / `item_text_context` は BATCH-014 が永続化した **`item_embedding_input`** から読み取り、検証して Embedding 入力および `item_embedding.embedding_input_hash` にそのまま載せる。scaffold 段階の in-process handoff も許容するが、本実装では DB 参照を正とする（BATCH-014 §2.2 / Epic #1561）。
 
 - 本 Batch および MOD-BATCH-036 は hash を **再算出しない**
 - handoff 欠落・64 hex 形式不正・対象 `model_version_id` との不整合は `GRS-BAT-008`（または `GRS-VAL-*`）として当該 Queue を `failed` にする

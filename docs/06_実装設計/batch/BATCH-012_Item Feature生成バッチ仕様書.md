@@ -116,9 +116,9 @@ BATCH-012（Item Feature生成Batch）は、BATCH-011 から引き渡された `
 | `normalization_rule` | DB | `true` | `feature_normalization_version_id` 解決 |
 | `semantic_config_version_id` | Resolver | `true` | Rule スコープ・冪等キー |
 
-### 6.2 hash handoff
+### 6.2 hash handoff（中間永続テーブル消費）
 
-`feature_input_hash` は BATCH-011 の算出結果を読み取り、検証して `MOD-RECO-027` の context および `item_feature.feature_input_hash` にそのまま載せる。
+`feature_input_hash` は BATCH-011 が永続化した **`item_feature_input`**（IF-DB-BATCH-012）から読み取り、検証して `MOD-RECO-027` の context および `item_feature.feature_input_hash` にそのまま載せる。scaffold 段階の in-process handoff も許容するが、本実装では DB 参照を正とする（BATCH-011 §2.2 / Epic #1561）。
 
 - 本 Batch および MOD-RECO-027 は hash を再算出しない。
 - handoff 欠落・64 hex 形式不正・対象 Version との不整合は `GRS-BAT-008` として当該 Queue を `failed` にする。

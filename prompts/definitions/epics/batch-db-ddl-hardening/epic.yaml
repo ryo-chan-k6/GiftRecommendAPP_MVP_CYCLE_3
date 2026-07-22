@@ -118,6 +118,11 @@ epic_scope:
   allowed_paths:
     - "docs/05_アプリケーション設計/アプリ/batch/**"
     - "docs/06_実装設計/database/**"
+    - "docs/06_実装設計/batch/BATCH-011_*"
+    - "docs/06_実装設計/batch/BATCH-012_*"
+    - "docs/06_実装設計/batch/BATCH-014_*"
+    - "docs/06_実装設計/batch/BATCH-015_*"
+    - "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
     - "supabase/migrations/**"
     - "db/ddl/**"
     - "apps/batch/src/batch/infrastructure/db/**"

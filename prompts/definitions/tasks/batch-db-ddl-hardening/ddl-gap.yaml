@@ -1,0 +1,179 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-ddl-hardening-ddl-gap"
+  title: "batch-db-ddl-hardening:DDL不足・012015永続化"
+  summary: "001〜017 の列差分棚卸しを実施し、IF-DB-BATCH-012/015 の永続テーブル（migration + テーブル定義書）を追加する。019 除外。破壊的 DROP は行わない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  epic_issue_number: 1561
+  epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
+  related_issues:
+    - 109
+    - 136
+  related_prs:
+    - 1564
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  T1（#1562）完了。Human 確定: 012/015 は永続化、T2 は列差分棚卸し必須、Wave A→B、019 除外。
+  既存 BATCH-011/014 §2.2 は handoff・専用テーブルなし。本 Task で永続テーブルを新設し、
+  テーブル定義書・migration・ギャップ一覧を更新。BATCH 仕様 §2.2 は追記で整合させる。
+
+objective: |
+  列差分棚卸し結果を docs に残し、012/015 永続用 DDL（加算のみ）を追加する。
+
+scope:
+  - "001〜017(+020/021,+VEC) の列差分棚卸し表（定義書 vs migration）"
+  - "IF-DB-BATCH-012 / 015 永続テーブル新設（migration + テーブル定義書）"
+  - "バッチIF-DB・DDL本実装ギャップ一覧の T2 反映"
+  - "BATCH-011 / 014 仕様 §2.2 への永続化方針追記（handoff から永続へ）"
+  - "db/ddl 参照更新が必要なら最小追記"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "DROP / TRUNCATE / 破壊的変更"
+  - "019 出力物理 DDL"
+  - "DbWriter 実接続・stub 解除コード（T3/T4）"
+  - "親 workflow / 外部 API"
+  - "production DB 適用"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-014_Embedding入力hash算出バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+  files:
+    - path: "supabase/migrations/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/item_feature_input_テーブル定義書.md"
+      action: "create"
+      required: true
+    - path: "docs/06_実装設計/database/item_embedding_input_テーブル定義書.md"
+      action: "create"
+      required: true
+  files:
+    - path: "supabase/migrations/*_item_feature_embedding_input.sql"
+      action: "create"
+      required: true
+
+deliverables:
+  - "列差分棚卸し（ギャップ一覧追記）"
+  - "012/015 永続 migration"
+  - "テーブル定義書 2 本"
+  - "BATCH-011/014 §2.2 追記"
+
+acceptance_criteria:
+  - "列差分棚卸しが docs にある"
+  - "012/015 永続テーブルの migration（加算のみ）がある"
+  - "テーブル定義書がある"
+  - "019 / DROP を含まない"
+  - "secret 実値なし"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-db-ddl-hardening-ddl-gap"
+  base: "feature/epic-1561-batch-db-ddl-hardening"
+  target: "feature/epic-1561-batch-db-ddl-hardening"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-25"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "db"
+
+dependencies:
+  epics:
+    - issue: 1561
+      purpose: "親 Epic"
+  issues:
+    - number: 1562
+      purpose: "T1 棚卸し完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "supabase/migrations/**"
+    - "docs/06_実装設計/database/item_feature_input_*"
+    - "docs/06_実装設計/database/item_embedding_input_*"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "DDL/docs Task。実 DB apply は Human/local"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "加算 DDL のみか（DROP なし）"
+    - "012/015 永続方針と BATCH 仕様追記の整合"
+    - "019 非含有"
+    - "列差分棚卸しの充足"
+    - "PR target が親 Epic Branch"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "永続テーブル名（推奨: item_feature_input / item_embedding_input）でよいか"
+  - "item_text_context 全文保存 vs digest のみ"
+
+notes:
+  - "既存「専用テーブルなし」確定を、E2 Human 確定（永続化）で上書きし仕様追記する"
