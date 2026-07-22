@@ -76,7 +76,9 @@ echo "== 5. Workflow file exists =="
 test -f .github/workflows/pr-ready-for-ai-review.yml
 grep -q "fix_ready_for_ai_review" .github/workflows/pr-ready-for-ai-review.yml
 grep -q "expectedCurrentStatusForFixComplete" .github/workflows/pr-ready-for-ai-review.yml
-echo "OK: workflow triggers and status guard present"
+grep -q "Checkout PR head for Review Definition resolution" .github/workflows/pr-ready-for-ai-review.yml
+grep -q 'pr_head_sha' .github/workflows/pr-ready-for-ai-review.yml
+echo "OK: workflow triggers, status guard, and PR head checkout present"
 
 echo ""
 echo "== 6. Remote workflow registration (optional) =="
