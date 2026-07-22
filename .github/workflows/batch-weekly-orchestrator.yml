@@ -1,0 +1,79 @@
+name: Batch Weekly Orchestrator
+
+# 親 workflow（週次）— 案A: 複合子を jobs.needs で連鎖（日次相当を内包）
+# 正本: バッチ実行スケジュール設計書 §6.2 / §8
+# MVP Phase1: schedule 無効（§16.1）。Phase3 で cron を有効化する。
+# existing-item 連鎖は batch-rakuten-existing-item-pipeline.yml（004 独立子は維持）。
+# BATCH-018 は default false（本線に載せない）。
+
+on:
+  # Phase1 disabled — enable in Phase3:
+  # schedule:
+  #   # Sunday 01:10 JST = Saturday 16:10 UTC
+  #   - cron: "10 16 * * 6"
+  workflow_dispatch:
+    inputs:
+      max_items:
+        description: "Max items for meaning / embedding generation"
+        required: false
+        default: "1000"
+      run_offline_evaluation:
+        description: "Run offline evaluation after weekly mainline (BATCH-018 / △)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+concurrency:
+  group: batch-mainline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  genre_sync:
+    uses: ./.github/workflows/batch-rakuten-genre-sync.yml
+    secrets: inherit
+
+  ranking_snapshot:
+    needs: genre_sync
+    uses: ./.github/workflows/batch-rakuten-ranking-snapshot.yml
+    secrets: inherit
+
+  item_import:
+    needs: ranking_snapshot
+    uses: ./.github/workflows/batch-rakuten-item-import.yml
+    with:
+      max_items: ${{ inputs.max_items || '1000' }}
+    secrets: inherit
+
+  existing_item_pipeline:
+    needs: item_import
+    uses: ./.github/workflows/batch-rakuten-existing-item-pipeline.yml
+    with:
+      max_items: ${{ inputs.max_items || '1000' }}
+    secrets: inherit
+
+  item_meaning_generation:
+    needs: existing_item_pipeline
+    uses: ./.github/workflows/batch-item-meaning-generation.yml
+    with:
+      max_items: ${{ inputs.max_items || '1000' }}
+    secrets: inherit
+
+  distribution_metrics:
+    needs: item_meaning_generation
+    uses: ./.github/workflows/batch-distribution-metrics.yml
+    with:
+      trigger_mode: chain
+    secrets: inherit
+
+  offline_evaluation:
+    if: ${{ inputs.run_offline_evaluation == 'true' }}
+    needs: distribution_metrics
+    uses: ./.github/workflows/batch-offline-evaluation.yml
+    secrets: inherit
