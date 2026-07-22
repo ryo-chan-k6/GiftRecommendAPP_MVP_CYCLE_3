@@ -1,0 +1,189 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-perf-phase-output-metric-fix"
+  title: "PoC:phase_output計測定義修正"
+  summary: "TV-007 Phase3 後続。reco_pipeline_bench の phase_output / reason 集計から response_built 累積合算を除外し、Reason 寄与を正しく測れるようにする。必要なら再計測サマリと §13.2 見直し要否を整理する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase3（#1535 / #1538）および正式 docs（#1532 / #1541）で phase_output 案 A（soft 3s / hard 7s）を正本へ転記した。
+  一方、bench の phase_output / reason は Orchestrator phase_log の response_built 累積合算を含み、
+  Reason LLM 単体（reason_generated）と乖離する（Phase3 結果 doc §3.3.1）。
+  Human 判断（2026-07-22）: 後続 C として計測定義修正を本線とする。
+
+objective: |
+  scripts/perf の集計定義を修正し、phase_output が Reason 寄与を表すようにする。
+  再計測（少なくとも mock）で修正前後の差を示し、正本 3s/7s の見直し要否を Human に返す。
+  正本数値の独断変更はしない（Human Review）。
+
+scope:
+  - "scripts/perf/reco_pipeline_bench.py の phase_output / reason 集計（response_built 除外）"
+  - "scripts/perf/README.md の計測定義更新"
+  - "Phase3 結果 doc / 設計反映メモ / MOD-RECO-001 §13.2.5 の計測定義注意の更新（最小）"
+  - "mock（必要なら secrets）再計測サマリ"
+  - "Epic / Task / Review Definition"
+
+out_of_scope:
+  - "apps/reco/src/** 本格改修"
+  - "apps/batch/** / BATCH レーン"
+  - "正本 soft/hard 数値の独断変更（見直し提案のみ可）"
+  - "User Meaning 性能改善（後続 D）"
+  - "TV-005 / TV-006"
+  - "secret 実値の commit"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      required: true
+      purpose: "§3.3.1 計測定義注意・案 A 根拠"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "§13.2.5 phase_output・計測定義注意"
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+  files:
+    - path: "scripts/perf/reco_pipeline_bench.py"
+      required: true
+    - path: "scripts/perf/README.md"
+      required: true
+  issues:
+    - number: 1535
+      purpose: "Phase3 Epic（CLOSED）"
+    - number: 1539
+      purpose: "phase_output 正式 docs（CLOSED）"
+    - number: 1541
+      purpose: "正式 docs develop 取り込み（MERGED）"
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/**"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "scripts/perf/**"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/reco-perf-phase-output-metric-fix/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/reco-perf-phase-output-metric-fix/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/reco-perf-phase-output-metric-fix/**"
+      action: "create_or_update"
+      required: false
+
+deliverables:
+  - "Epic Issue / Branch（base・target=develop）"
+  - "bench 集計修正（response_built を phase_output から除外）"
+  - "再計測サマリ（少なくとも mock）"
+  - "正本 3s/7s 見直し要否の整理（Human 判断用）"
+
+acceptance_criteria:
+  - "phase_output / reason 集計に response_built 累積が含まれない（定義・実装が一致）"
+  - "README または結果 doc に新旧計測定義が明示されている"
+  - "再計測結果（mock 以上）が記録されている"
+  - "正本数値変更が必要な場合は提案に留め、確定済みとして書いていない"
+  - "apps/** 本格改修・secret 実値を含まない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "spike/epic-1544-reco-perf-phase-output-metric-fix"
+  summary: "reco-perf-phase-output-metric-fix"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  number: 1544
+  unit: "epic"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/90_PoC/**"
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "scripts/perf/**"
+    - ".github/workflows/perf-feasibility-*.yml"
+    - "prompts/definitions/epics/reco-perf-phase-output-metric-fix/**"
+    - "prompts/definitions/tasks/reco-perf-phase-output-metric-fix/**"
+    - "prompts/definitions/reviews/reco-perf-phase-output-metric-fix/**"
+    - "ai-logs/experiments/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/contracts/**"
+    - "supabase/migrations/**"
+    - ".env"
+  child_task_areas:
+    - "bench-metric-fix"
+
+dependencies:
+  epics:
+    - id: "epic-reco-performance-feasibility-poc-phase3"
+      issue: 1535
+      purpose: "Phase3 計測・結果 doc（CLOSED）"
+    - id: "epic-reco-perf-timeout-formal-docs"
+      issue: 1532
+      purpose: "正式 docs・phase_output 案 A 転記（CLOSED / #1541）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+  conflict_risk: "medium"
+  contract_impact: false
+
+human_decision_points:
+  - "修正後の再計測値を見て phase_output soft/hard（現行 3s/7s）を見直すか"
+  - "secrets 再計測を必須とするか（mock のみでよいか）"
+  - "response_built を別メトリクスとして残すか"
+
+stop_conditions:
+  - "apps/reco 本格改修が必要に見える"
+  - "正本数値を Human 確認なしに確定済みとして書く必要がある"
+  - "BATCH exclusive と衝突する"
+
+notes:
+  - "Epic Issue #1544 / Branch spike/epic-1544-reco-perf-phase-output-metric-fix"
+  - "後続提案 C（Phase3 後続）。A/B（#1532/#1539/#1541）完了後"
+  - "Reason 込み E2E（pipeline 全体）の定義は本 Epic で変えない。対象は phase_output / reason step 集計"
