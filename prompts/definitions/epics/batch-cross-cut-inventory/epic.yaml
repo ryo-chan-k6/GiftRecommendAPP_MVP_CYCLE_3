@@ -1,0 +1,258 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-cross-cut-inventory"
+  title: "batch-cross-cut-inventory:横串棚卸し・整合性"
+  summary: "BATCH-001〜019 縦串完了後の横串棚卸し。設計書・一覧・依存・スケジュール・独立子 workflow・§18 後続・OPEN Issue を突合し、docs 正本（ギャップ一覧）を残す。親 workflow 実装・DDL・mock 解除・018/019 本格化は行わない。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  BATCH-001〜019 の識別子単位縦串（仕様→実装→UT→Epic PR→develop）が一通り完了した。
+  次フェーズは横串・本実装向け改修だが、Human 確定により Epic はテーマ分割（E0〜E4）。
+  本 Epic は E0（横串棚卸し・整合性）。成果物は docs 正本とし、ai-logs のみで終わらせない。
+  引継ぎ: ai-logs/cross-cutting/2026-07-22-batch-cross-cut-production-hardening-handover.md（Issue #1542 / PR #1543）。
+  機能・領域単位 Epic（例外）。識別子単位ではないため epic_scope.artifact_id は空。
+  E1（親 workflow）は本 Epic 完了後に別 Epic で着手する（本 Epic では実装しない）。
+
+objective: |
+  Epic Issue と Epic Branch を作成し、横串ギャップ・整合表を docs 正本として残す。
+  OPEN Issue 突合案と E2 以降への取込案を docs に書き、Human が確定できるようにする。
+  develop への統合は本 Epic PR のみで行う。
+
+scope:
+  - "BATCH-001〜019 と application/*・batch-*.yml・仕様書パスの 1:1 確認"
+  - "依存関係図 vs スケジュール設計書 vs 実装（独立子のみ）の差分表"
+  - "各 §18 Human 確定の「後続」「Epic 外」「stub」一覧化（018/019 は後回しと明記）"
+  - "env / secrets 名の一覧（実値は出さない）"
+  - "UT カバレッジの Batch 別サマリ"
+  - "OPEN #102/#109/#133/#136/#149〜#154 と E2 以降の関係案を docs に記載"
+  - "docs 正本（推奨: バッチ横串整合・本実装ギャップ一覧.md）の作成"
+  - "必要なら一覧／スケジュール／依存関係図への最小追記（重複しすぎない）"
+  - "Epic Issue / Epic Branch / 子 Task Definition 整備"
+
+out_of_scope:
+  - "親 workflow（daily/weekly/manual orchestrator）の実装"
+  - "中間複合子 workflow（item-import / meaning-generation / retry-failed）の実装"
+  - "DDL / migration / IF-DB stub 解除"
+  - "外部 API mock 解除・本接続"
+  - "BATCH-018 / 019 本格化・本線組込"
+  - "MOD-BATCH-043 / 044 本格実装"
+  - "業務ロジックの大規模リファクタ"
+  - "OpenAPI / Orval / generated 変更"
+  - "apps/web / apps/api / apps/reco の本線変更"
+  - "PoC 系 Issue（#1532 / #1535 / #1536 等）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+      purpose: "Batch 全体方針"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-001〜019・MVP ○/△・複合子表記"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+      purpose: "依存関係の正本"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "親/子 workflow 正本。複合子想定と独立子実装の差分起点"
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+      purpose: "MOD-BATCH-*（特に 042〜044 △）"
+    - path: "ai-logs/cross-cutting/2026-07-22-batch-cross-cut-production-hardening-handover.md"
+      required: false
+      purpose: "E0〜E4 方針・着手順の引継ぎ（PR #1543。develop 未 merge 時は参照用）"
+  templates: []
+  files:
+    - path: ".github/workflows/batch-*.yml"
+      required: true
+      purpose: "独立子 19 本の実体確認"
+    - path: "apps/batch/src/batch/application/**"
+      required: true
+      purpose: "実装パッケージ配置の突合"
+  issues:
+    - number: 1542
+      purpose: "引継ぎメモ Task"
+  prs:
+    - number: 1543
+      purpose: "引継ぎメモ PR"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      action: "create"
+      required: true
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（タイトル: [Epic]batch-cross-cut-inventory:横串棚卸し・整合性）"
+  - "Epic Branch（develop 起点）"
+  - "docs 正本: バッチ横串整合・本実装ギャップ一覧.md"
+  - "子 Task 候補（inventory-docs）"
+  - "OPEN Issue 突合案（Human 判断材料）"
+
+acceptance_criteria:
+  - "Epic Issue が作成されている"
+  - "Issue タイトルが [Epic]batch-cross-cut-inventory:横串棚卸し・整合性 形式である"
+  - "Epic Branch が develop から作成されている"
+  - "Branch base / PR target が develop である"
+  - "機能・領域単位 Epic（例外）である旨が Issue 本文に明記されている"
+  - "ギャップ一覧 docs が作成され、1:1 突合・差分表・§18 後続・env 名・UT サマリ・OPEN Issue 案を含む"
+  - "018/019 本格化・親 workflow 実装を out of scope として明記している"
+  - "secret / .env 実値を含まない"
+
+branch:
+  no_branch: false
+  summary: "batch-cross-cut-inventory"
+  name: "docs/epic-1546-batch-cross-cut-inventory"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "05_アプリケーション設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  number: 1546
+  unit: "epic"
+  type: "docs"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "prompts/definitions/epics/batch-cross-cut-inventory/**"
+    - "prompts/definitions/tasks/batch-cross-cut-inventory/**"
+    - "prompts/definitions/reviews/batch-cross-cut-inventory/**"
+    - "ai-logs/cross-cutting/2026-07-22-batch-cross-cut-production-hardening-handover.md"
+  forbidden_paths:
+    - "apps/batch/src/**"
+    - ".github/workflows/batch-*-orchestrator.yml"
+    - ".github/workflows/batch-rakuten-item-import.yml"
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - ".github/workflows/batch-retry-failed-items.yml"
+    - "supabase/migrations/**"
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+  child_task_areas:
+    - "inventory-docs"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1542
+      purpose: "引継ぎメモ（横断ログ）"
+  prs:
+    - number: 1543
+      purpose: "引継ぎメモ PR"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "epic-batch-parent-orchestrators"
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "ギャップ一覧に secret 実値が含まれていないこと"
+    - "親 workflow / DDL / mock 解除を成果物に含めず、案・差分として記載していること"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は docs 棚卸しの作業管理単位"
+    "integration test": "Epic は docs 棚卸しの作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Epic が機能・領域単位例外として妥当か"
+    - "scope が調査・docs に閉じ、親 workflow 実装等を含まないか"
+    - "OPEN Issue 突合が案として書かれ、Human 未確定を断定していないか"
+    - "018/019 後回しが明記されているか"
+    - "Epic PR target が develop か"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: true
+    experiments: false
+  reason: "横串影響の棚卸し。完成後の正本は docs。ai-logs は引継ぎ参照に留める"
+
+risk_points:
+  - "スケジュール設計書の複合子と独立 19 本の差分を独断で解消してしまう"
+  - "E1 実装を本 Epic に混入させる"
+  - "OPEN Issue のクローズを AI が確定してしまう"
+
+human_decision_points:
+  - "新規 docs 正式ファイル名（推奨: バッチ横串整合・本実装ギャップ一覧.md）でよいか"
+  - "OPEN #102/#109/#133/#136/#149〜#154 を E2 に取り込むか／別扱い／クローズするか"
+  - "E1 の複合子（案A）vs 親が独立子直接呼び出し（案B）をギャップ一覧の推奨として採用するか"
+
+stop_conditions:
+  - "必須 input.docs が存在しない場合"
+  - "親 workflow 実装や DDL 変更が必要に見えた場合（別 Epic へ）"
+  - "正本 docs 間の矛盾解消方針を AI が独断確定しそうな場合"
+  - "secret / .env 実値を記録する必要が出た場合"
+
+notes:
+  - "機能・領域単位 Epic（例外）。artifact_id 空。Issue 本文に例外理由を明記する"
+  - "E1 親 workflow は本 Epic 完了後の別 Epic。本 Epic では実装しない"
+  - "workstream_key: batch-cross-cut-inventory"
+  - "Milestone: アプリケーション設計工程完了（phase=05_アプリケーション設計）"
+  - "Issue #1546 / Branch docs/epic-1546-batch-cross-cut-inventory"

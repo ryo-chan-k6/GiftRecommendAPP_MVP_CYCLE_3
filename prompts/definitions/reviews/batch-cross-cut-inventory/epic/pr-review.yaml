@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-cross-cut-inventory-epic-pr"
+  title: "batch-cross-cut-inventory Epic PRレビュー"
+  summary: "E0 横串棚卸し Epic の develop 向け Epic PR を AI Review する。docs 正本の充足と out of scope（親 workflow 実装等）の非混入を確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1551
+  issue:
+    number: 1546
+  task_definition: "prompts/definitions/epics/batch-cross-cut-inventory/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-cross-cut-inventory:横串棚卸し・整合性"
+  parent_epic_branch: "docs/epic-1546-batch-cross-cut-inventory"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/batch-cross-cut-inventory/epic.yaml"
+    required: true
+
+review_points:
+  - "機能・領域単位 Epic（例外）として妥当か"
+  - "ギャップ一覧 docs が acceptance_criteria を満たすか"
+  - "親 workflow / DDL / mock 解除実装が混入していないか"
+  - "018/019 本格化を含まないか"
+  - "Human 未確定を断定していないか"
+  - "secret 非含有"
+  - "Epic PR target が develop"
+
+notes:
+  - "Issue 番号・Epic Branch 確定後に target を更新する"
