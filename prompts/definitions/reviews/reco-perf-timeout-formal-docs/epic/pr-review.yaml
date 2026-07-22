@@ -6,7 +6,7 @@ review:
   title: "docs:Reco性能タイムアウト正式反映 Epic PRレビュー"
   summary: "Epic #1532 の develop 向け Epic PR を AI Review する。#1533 確定値と #1539 phase_output 案 A 転記・PoC 進捗整合を確認する。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1541
   issue:
     number: 1532
   task_definition: "prompts/definitions/epics/reco-perf-timeout-formal-docs/epic.yaml"
