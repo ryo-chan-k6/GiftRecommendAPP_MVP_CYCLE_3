@@ -175,5 +175,6 @@ stop_conditions:
   - "shared_logic が未実装で計測不能"
 
 notes:
+  - "Task Issue #1580 / Branch spike/task-1580-tv-009-feature-generation-benchmark"
   - "親 Epic #1578 / Branch spike/epic-1578-tv-009-feature-generation-performance"
   - "推奨: in-memory UserFeatureGenerator + ItemFeatureGenerator"
