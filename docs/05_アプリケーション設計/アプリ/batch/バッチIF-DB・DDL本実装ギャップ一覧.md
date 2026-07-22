@@ -162,7 +162,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 2026-07-22 | AI Review 対応: §4 stub 列の明示化、§2 要約根拠・§4 列差分注記を追加 |
 | 2026-07-22 | Human 確定反映（012/015 永続化、Wave A→B、#102/#133 not planned、T2 列差分棚卸し必須） |
 | 2026-07-22 | T2（#1568）: 列差分棚卸し結果・D17 migration・定義書・仕様追記を反映 |
-| 2026-07-23 | T3（#1576）: `PostgresDbWriter` / `create_db_writer` 接続基盤を反映 |
+| 2026-07-22 | T3（#1576）: `PostgresDbWriter` / `create_db_writer` 接続基盤を反映 |
 
 ---
 

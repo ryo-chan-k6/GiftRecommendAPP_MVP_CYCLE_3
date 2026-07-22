@@ -95,3 +95,25 @@ def test_postgres_write_rows_executes_parameterized_insert() -> None:
     assert params == ["a", "n1", "b", "n2"]
     mock_conn.commit.assert_called_once()
     assert result == DbWriteResult(rows_affected=2, table="staging_item")
+
+
+def test_postgres_write_rows_masks_credentials_in_database_error() -> None:
+    writer = PostgresDbWriter(
+        database_url="postgresql://user:secret@localhost:5432/gift"
+    )
+
+    with (
+        patch(
+            "psycopg.connect",
+            side_effect=RuntimeError(
+                "connection failed: postgresql://user:secret@localhost:5432/gift"
+            ),
+        ),
+        pytest.raises(DatabaseError) as exc_info,
+    ):
+        writer.write_rows("staging_item", ({"item_code": "a"},))
+
+    message = str(exc_info.value)
+    assert "secret" not in message
+    assert "***REDACTED***" in message
+    assert "localhost:5432/gift" in message

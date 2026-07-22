@@ -118,8 +118,8 @@ class PostgresDbWriter:
         except DatabaseError:
             raise
         except Exception as exc:  # noqa: BLE001 — surface as DatabaseError
-            # 例外メッセージに接続文字列が混ざる場合があるため、呼び出し側は mask して扱うこと
-            raise DatabaseError(str(exc)) from exc
+            # 例外メッセージに接続文字列が混ざる場合があるため、生成時点で redact する
+            raise DatabaseError(mask_database_url(str(exc))) from exc
 
 
 def create_db_writer(
