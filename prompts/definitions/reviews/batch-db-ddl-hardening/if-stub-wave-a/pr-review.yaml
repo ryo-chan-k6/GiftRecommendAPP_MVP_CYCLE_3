@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1581
   issue:
     number: 1579
   task_definition: "prompts/definitions/tasks/batch-db-ddl-hardening/if-stub-wave-a.yaml"
