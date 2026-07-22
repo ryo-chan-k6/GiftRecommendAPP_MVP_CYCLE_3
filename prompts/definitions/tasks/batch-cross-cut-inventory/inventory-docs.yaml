@@ -122,6 +122,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
+  name: "docs/task-1547-batch-cross-cut-inventory-docs"
   summary: "batch-cross-cut-inventory-docs"
   base: "docs/epic-1546-batch-cross-cut-inventory"
   target: "docs/epic-1546-batch-cross-cut-inventory"
@@ -137,6 +138,7 @@ project:
     due_date: "2026-07-24"
 
 issue:
+  number: 1547
   unit: "task"
   type: "docs"
   area: "batch"
@@ -176,10 +178,10 @@ review:
   human_review_required: true
   ai_review_required: true
   review_points:
-    - "事実と推論・Human 判断案が分離されているか"
+    - "事実と推論・Human 判断が分離されているか"
     - "複合子 vs 独立子の差分が正確か"
-    - "E1 方針案が断定になっていないか"
-    - "OPEN Issue 案がクローズ実行になっていないか"
+    - "E1 方針が案 A で Human 確定として正しく記載されているか"
+    - "OPEN Issue 方針が Human 確定として反映され、クローズ実行していないか"
     - "secret 非含有"
     - "PR target が親 Epic Branch"
   specialist_reviews:
@@ -198,9 +200,9 @@ operation_logging:
   reason: "横串棚卸し。完成後の正本は docs"
 
 human_decision_points:
-  - "新規 docs 正式ファイル名でよいか"
-  - "OPEN Issue の取込／別扱い／クローズ"
-  - "E1 を案A（複合子）か案B（直接呼び出し）か"
+  - "新規 docs 正式ファイル名でよいか → Human 確定 OK（2026-07-22）"
+  - "OPEN Issue の取込／別扱い／クローズ → Human 確定（§9。クローズ実行はしない）"
+  - "E1 を案A（複合子）か案B（直接呼び出し）か → Human 確定 案A（2026-07-22）"
 
 stop_conditions:
   - "親 Epic Issue / Branch が未確定のまま実装に進もうとした場合"
