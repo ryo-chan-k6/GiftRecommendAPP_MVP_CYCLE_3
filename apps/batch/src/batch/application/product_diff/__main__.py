@@ -18,7 +18,7 @@ from batch.application.product_diff.job import (
 from batch.application.product_diff.models import ItemSeed, StagingItemSeed
 from batch.application.product_diff.repositories import ProductDiffRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter
+from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 
 # Fixed SHA-256 hex fixtures（再算出せず比較のみ）
 _HASH_A = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -148,13 +148,29 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
     settings = load_batch_settings()
-    _ = settings  # real wiring is out of this Task (scaffold-first)
-    print(
-        "Real DB client is not enabled in this Task. "
-        "Use --scaffold-demo for local/CI.",
-        file=sys.stderr,
+    # Wave A T4a: DbWriter 切替。読取 SELECT は未実装のため seed 空で実行（0 件でも配線確認可）。
+    db_writer = create_db_writer(settings.database_url)
+    repos = ProductDiffRepositories(db_writer=db_writer)
+    job = ProductDiffJob(repositories=repos)
+    result = job.run(
+        job_run_id=args.job_run_id,
+        max_items=args.max_items,
+        source=args.source,
+        staging_item_ids=_parse_csv(args.staging_item_ids),
+        external_item_codes=_parse_csv(args.external_item_codes),
+        force=args.force,
+        sync_staging_diff_status=_parse_bool(
+            args.sync_staging_diff_status, default=True
+        ),
     )
-    return 3
+    print(
+        f"BATCH-006 status={result.status} "
+        f"db_backend={db_writer.backend} "
+        f"succeeded={len(result.succeeded_external_codes)} "
+        f"failed={len(result.failed_external_codes)} "
+        f"upserts={result.product_diff_upsert_count}"
+    )
+    return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 
 if __name__ == "__main__":

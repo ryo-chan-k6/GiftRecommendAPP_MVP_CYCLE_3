@@ -8,6 +8,7 @@ from batch.infrastructure.db.writer import (
     ScaffoldDbWriter,
     create_db_writer,
     mask_database_url,
+    resolve_job_db_writer,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "ScaffoldDbWriter",
     "create_db_writer",
     "mask_database_url",
+    "resolve_job_db_writer",
 ]

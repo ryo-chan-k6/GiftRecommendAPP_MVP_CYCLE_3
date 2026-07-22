@@ -16,7 +16,7 @@ from batch.application.raw_staging.job import RawStagingJob
 from batch.application.raw_staging.models import RawMetadataSeed
 from batch.application.raw_staging.repositories import RawStagingRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter
+from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 from batch.infrastructure.object_storage import ObjectRef, ScaffoldObjectStorageClient
 
 DEMO_OBJECT_KEY = "raw/rakuten/item_search/dt=2026-07-15/batch_run_id=demo/demo-item.json"
@@ -145,9 +145,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
     settings = load_batch_settings()
-    _ = settings  # real wiring is out of this Task (scaffold-first)
+    db_writer = create_db_writer(settings.database_url)
     print(
-        "Real DB / Object Storage client is not enabled in this Task. "
+        f"DbWriter backend={db_writer.backend} is resolved, "
+        "but real DB read / Object Storage client is not enabled yet. "
         "Use --scaffold-demo for local/CI.",
         file=sys.stderr,
     )

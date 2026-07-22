@@ -141,7 +141,9 @@ def test_diff_status_new_when_item_missing() -> None:
     assert "source" not in row
     assert "item_id" not in row
     assert set(PRODUCT_DIFF_PHASES).issubset(set(result.completed_phases))
-    assert {c["table"] for c in db.write_calls}.isdisjoint(_FORBIDDEN_TABLES)
+    written = {c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}
+    assert written.isdisjoint(_FORBIDDEN_TABLES)
+    assert "product_diff_result" in {c["table"] for c in db.upsert_calls}
 
 
 def test_diff_status_updated_when_hash_differs() -> None:
@@ -185,7 +187,7 @@ def test_diff_status_unchanged_when_hash_matches() -> None:
     assert repos.items[item_key]["item_name"] == "Keep Name"
     assert repos.items[item_key]["active_status"] == "active"
     assert repos.items[item_key]["normalized_hash"] == _HASH_A
-    assert {c["table"] for c in db.write_calls}.isdisjoint(_FORBIDDEN_TABLES)
+    assert ({c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}).isdisjoint(_FORBIDDEN_TABLES)
 
 
 def test_diff_status_unavailable_availability_zero() -> None:
@@ -255,9 +257,9 @@ def test_item_tables_not_written() -> None:
     assert result.written_item_image_rows == []
     assert result.written_active_status_rows == []
     assert repos.items == before_items
-    written = {c["table"] for c in db.write_calls}
+    written = {c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}
     assert written.isdisjoint(_FORBIDDEN_TABLES)
-    assert "product_diff_result" in written
+    assert "product_diff_result" in {c["table"] for c in db.upsert_calls}
 
 
 def test_hash_not_recalculated() -> None:
