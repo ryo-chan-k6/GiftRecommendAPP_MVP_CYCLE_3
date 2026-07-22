@@ -14,7 +14,7 @@
 | Phase2 結果 | [Reco性能フィジビリティ検証結果_Phase2_live](./Reco性能フィジビリティ検証結果_Phase2_live.md) |
 | 計測日 | 2026-07-22（JST） |
 
-**注意:** 本結果の Go / Adjust / Block は **実測根拠付きの暫定判定**である。`phase_output` hard 最終値と、Reason 込み E2E を同期外部 AI 込み 6s/8s と同一枠にするかは Human Review で確定する。正式 docs への `phase_output` 反映は out of scope（別 Task 可）。
+**注意:** 本結果の Go / Adjust / Block は **実測根拠付きの暫定判定**である。`phase_output` soft/hard は #1553 で案 A（3s/7s）を**暫定据置**確定（最終引き下げは後続）。Reason 込み E2E は同期外部 AI 込み 6s/8s 同一枠を維持。
 
 ---
 
@@ -36,7 +36,7 @@
 | -------- | ---- | --------------- |
 | **主対象** | 入力解析〜 Reason（最終レスポンス） | 同期外部 AI 込み soft **6,000ms** / hard **8,000ms** |
 | 比較 | 入力解析〜 Ranking | Reco 内部 soft **1,500ms** / hard **2,000ms**（mock 主。secrets は User Meaning 支配のため参考） |
-| 必須指標 | `phase_output`（reason step） | 上限は本結果で案出し（Human 未確定） |
+| 必須指標 | `phase_output`（reason step） | #1553 暫定据置 soft **3,000ms** / hard **7,000ms**（新定義は §3.3.2 / §3.3.3） |
 
 ### 2.2 GHA 実行記録
 
@@ -151,7 +151,32 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 **事実:** 新定義では `phase_output` p95 が旧合算（1,355ms）から **105ms** へ低下し、`response_built`（≈E2E 累積）と分離できた。
 
-**推論（案 A 見直し）:** 案 A（soft 3s / hard 7s）は旧合算根拠であり、新定義の Reason/Output 寄与（mock ≈100ms 帯）に対しては過大になり得る。採用値の見直しは Human 判断（断定しない）。secrets 再計測の要否も Human 判断。
+**転帰（#1553）:** Human は案 A（soft 3s / hard 7s）を**暫定据置**。secrets 再計測は必須として §3.3.3 で実施。最終引き下げは後続 Human。
+
+#### 3.3.3 #1553 再計測（新定義・local secrets）
+
+| 項目 | 値 |
+| ---- | -- |
+| 日時 | 2026-07-22 |
+| 環境 | local（WSL2） |
+| openai_mode | secrets |
+| iterations / warmup | 20 / 2 |
+| success | 20 / 20 |
+| 定義 | `phase_output` = `result_generated` + `reason_generated`（`response_built` 除外） |
+| 出力 | `scripts/perf/output-metric-fix-secrets/`（Git 管理外） |
+
+| 指標 | 新定義 local mock（§3.3.2） | 新定義 local secrets（本節） |
+| ---- | --------------------------- | ---------------------------- |
+| phase_output p50 (ms) | 86.5 | **86.0** |
+| phase_output p95 (ms) | **105.1** | **109.1** |
+| response_built p95 (ms) | 1,233.2 | **3,467.5** |
+| Reason E2E p95 (ms) | 1,234.0 | **3,468.2**（Go vs 6s/8s） |
+| Ranking まで p95 (ms) | 685.1 | **3,083.0**（Block vs 内部 1.5s/2s・User Meaning 支配） |
+| user_meaning p95 (ms) | （mock） | **2,835.0** |
+
+**事実:** secrets でも新定義 `phase_output` p95 は **109ms** 帯で mock と同規模。E2E / Ranking までの遅延は User Meaning（および累積 `response_built`）側。
+
+**推論:** 暫定据置の 3s/7s は新定義監視枠としては余裕が大きい。最終引き下げ候補は後続 Human（断定しない）。secret 実値は成果物に含めない。
 
 ### 3.4 フェーズ別 p95（secrets）
 
@@ -162,7 +187,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | retrieval | phase_retrieval | 77.7 | 125.6 | 1,000 | 上限内 |
 | matching | phase_matching | 10.2 | 16.2 | 500 | 上限内 |
 | ranking | phase_ranking | 10.1 | 17.2 | 1,000 | 上限内 |
-| reason | phase_output | **6,424.0** | **3,555.1** | 未確定（当面 500） | **旧合算値**（§3.3.1）。真の `reason_generated` は短時間。支配要因の OpenAI は User Meaning。新定義は §3.3.2 |
+| reason | phase_output | **6,424.0** | **3,555.1** | 当面 500（旧）→ **#1553 暫定 3s/7s** | **旧合算値**（§3.3.1）。新定義は §3.3.2 / §3.3.3（p95≈105–109ms） |
 
 ### 3.5 mock vs secrets（Reason 込み）
 
@@ -199,23 +224,18 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 ---
 
-## 5. phase_output 上限案（Human 未確定）
+## 5. phase_output 上限（#1553 Human 暫定据置）
 
 | 案 | soft（監視） | hard（中断/上限） | 根拠・意図 |
 | -- | ------------- | ----------------- | ---------- |
-| A（旧合算根拠・#1539 転記） | **3,000ms** | **7,000ms** | 旧定義 secrets p50≈2.7–2.8s / p95≈3.6–6.4s（local/GHA）。E2E hard 8s 内に Reason 予算を確保 |
-| B | 2,500ms | 5,000ms | より厳しい。現行 secrets p95 では未達 → 実装最適化前提 |
-| C | 監視のみ（soft 3,000） | hard なし（§10.3 fallback 継続） | Reason 失敗は fallback 可能なら hard 中断しない |
+| **A（#1553 暫定据置）** | **3,000ms** | **7,000ms** | 旧合算根拠の案 A を暫定維持。新定義整合・secrets 再計測済み |
+| B（候補） | 2,500ms | 5,000ms | より厳しい。最終引き下げ候補 |
+| C（候補） | 監視のみ（soft 3,000） | hard なし（§10.3 fallback 継続） | Reason 失敗は fallback 可能なら hard 中断しない |
+| 新定義向け（候補・推論） | 例: soft 500 / hard 2,000 | — | mock/secrets p95≈105–109ms 帯を踏まえた監視枠。**未確定** |
 
-**推論:** 当面記載の 500ms は mock でも超過しており非現実的。正式反映 Task では案 A を起点に Human が採否する。
+**#1553 確定:** 案 A を**暫定据置**。Reason 込み E2E は 6s/8s 同一枠を維持。secrets 再計測は必須として実施（§3.3.3）。
 
-**#1545 後の見直し提案（推論・未確定）:** 新定義（`response_built` 除外）では mock で `phase_output` が旧合算より大幅に小さくなる見込み（§3.3.2）。案 A をそのまま維持するか、新実測に合わせて soft/hard を引き下げるかは **Human 判断**。本 Task では数値を確定断定しない。
-
-**Human 判断依頼:**
-
-1. `phase_output` hard 最終値（案 A/B/C、または新定義向けの別値）
-2. Reason 込み E2E を同期外部 AI 込み **6s/8s と同一枠**にするか（本結果は同一枠で判定済み。枠を分ける場合は別 soft/hard が必要）
-3. 新定義の secrets 再計測を案 A 見直し前に必須とするか
+**後続 Human:** 新定義実測を踏まえた最終引き下げ（B / 新定義向け案等）。
 
 ---
 
@@ -223,10 +243,10 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 | 対象 | Phase3 からの入力案 |
 | ---- | ------------------- |
-| Reason 込み E2E | secrets: Block（12.5s p95）。mock: Go。6s/8s 同一枠で判定した場合の根拠 |
-| phase_output | 案 A: soft 3,000 / hard 7,000（未確定） |
+| Reason 込み E2E | secrets: Block（12.5s p95・旧 GHA）。新定義 local secrets: Go（p95≈3.5s）。6s/8s 同一枠維持（#1553） |
+| phase_output | **#1553 暫定据置:** soft 3,000 / hard 7,000。新定義 mock/secrets p95≈105–109ms |
 | Ranking まで | mock は内部 1.5s/2s で Go。Phase2 結論を維持 |
-| 正式 docs | `phase_output` のみ別 Task（#1533 宣言どおり） |
+| 正式 docs | #1553 で暫定据置反映済み。最終引き下げは後続 |
 
 ---
 
@@ -235,13 +255,14 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 項目 | 内容 |
 | ---- | ---- |
 | secrets 環境差 | GHA Block / local Adjust。最終ラベルは Human 判断 |
-| phase_output 計測定義 | #1545 で `response_built` を除外（新定義）。§3 表は旧定義の記録。案 A 見直しは Human |
+| phase_output 計測定義 | #1545 で `response_built` を除外（新定義）。§3 表は旧定義の記録 |
+| phase_output 上限 | #1553 で案 A **暫定据置**。最終引き下げは後続 Human |
 | 性能改善 | User Meaning 短縮/キャッシュ/非同期/モデル、ボリューム・複雑条件、UX 横断は別 Task |
 | 件数スケール | seed 3 件。100/500/1,000 未実施（Phase2 同） |
 | hard timeout 有効時 | bypass 計測。本番 8s 中断時の挙動は別確認候補 |
 | concurrency | 同一 Branch で mock/secrets 同時 dispatch すると後勝ちで cancel。逐次実行が必要 |
 | secret | 実値は成果物に含めない |
-| secrets 再計測（新定義） | mock は §3.3.2。secrets は Human 判断（コスト・要否） |
+| secrets 再計測（新定義） | mock §3.3.2 / secrets §3.3.3（#1553 実施済） |
 
 ---
 
@@ -253,3 +274,4 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 2026-07-22 | local secrets 再計測を追記（Reason E2E Adjust）。GHA/local 再現性を更新 |
 | 2026-07-22 | `phase_output` 計測定義の注意（`response_built` 累積合算・Reason LLM OFF）を追記 |
 | 2026-07-22 | #1545: `phase_output` から `response_built` 除外。新旧定義と mock 再計測（§3.3.2）を追記 |
+| 2026-07-22 | #1553: 案 A 暫定据置。local secrets 再計測（§3.3.3・p95≈109ms）と §5 転帰を追記 |

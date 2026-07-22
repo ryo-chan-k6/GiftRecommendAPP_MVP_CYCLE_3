@@ -417,7 +417,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 正本引用: 性能要件（バックエンド）§3.1・§5。PoC 根拠: [Reco性能フィジビリティ検証結果_Phase2_live](../../90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md) §4、[Reco性能フィジビリティ検証結果_Phase3_reason_e2e](../../90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md) §5、[設計反映メモ](../../90_PoC/性能フィジビリティ/設計反映メモ.md) §2。
 
-**ステータス（事実）:** TV-007 Phase2 live 実測完了（#1512 / #1530）。#1533 Human 確認により soft / hard / 主要フェーズ上限を確定。Phase3（#1535 / #1538）で `phase_output` 案出し完了。**本節の `phase_output` は Phase3 案 A を正本へ転記（#1539・Human Review で採否確定）。**
+**ステータス（事実）:** TV-007 Phase2 live 実測完了（#1512 / #1530）。#1533 Human 確認により soft / hard / 主要フェーズ上限を確定。Phase3（#1535 / #1538）で `phase_output` 案出し完了。#1539 で案 A を正本転記。**#1553 Human 確定:** `phase_output` は案 A（soft **3,000ms** / hard **7,000ms**）を**暫定据置**。新計測定義（#1545）との整合・secrets 再計測結果は §13.2.5。最終数値の引き下げ再確定は後続 Human 判断。
 
 #### 13.2.1 Human 確定方針
 
@@ -428,7 +428,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | User Meaning | **cold path 前提**（検索条件の組み合わせが毎回新しくなり得る）。キャッシュは SLO の主前提にしない |
 | soft/hard | 内部・外部 AI 込みそれぞれ見直し（下表） |
 | `phase_user_meaning` | **5,000ms** |
-| `phase_output` | **案 A（#1539 Human Review）:** soft **3,000ms** / hard **7,000ms**（Phase3 §5）。計測定義注意は §13.2.5 |
+| `phase_output` | **#1553 Human 暫定据置（案 A）:** soft **3,000ms** / hard **7,000ms**。計測定義は §13.2.5（#1545） |
 
 #### 13.2.2 soft / hard（確定値）
 
@@ -448,7 +448,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | hard | Retrieval 一括（`012`〜`013`） | **1,000ms** | 中断 → `GRS-REC-008`〜`010` | 維持（seed 3 件。件数スケール後に再確認） |
 | hard | Matching 一括（`014`〜`016`） | **500ms** | 中断 → `GRS-REC-011` | 維持 |
 | hard | Ranking 一括（`017`〜`020`） | **1,000ms** | 中断 → `GRS-REC-012` | 維持 |
-| hard | Output 一括（`021`〜`023`） | soft **3,000ms** / hard **7,000ms**（案 A・#1539） | `021`/`022` 失敗 → `GRS-REC-012`；`023` 失敗 → §10.3 fallback | Phase3 案 A。旧 500ms は非現実的。**Human Review で採否**（§13.2.5） |
+| hard | Output 一括（`021`〜`023`） | soft **3,000ms** / hard **7,000ms**（#1553 暫定据置） | `021`/`022` 失敗 → `GRS-REC-012`；`023` 失敗 → §10.3 fallback | 案 A 暫定据置。新定義実測は §13.2.5。最終引き下げは後続 Human |
 
 #### 13.2.4 Phase2 実測サマリ（事実・根拠）
 
@@ -460,14 +460,14 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 詳細数値・未実施（件数スケール等）は Phase2 結果 doc を正とする。
 
-#### 13.2.5 phase_output（Reason / Output）— Phase3 案 A
+#### 13.2.5 phase_output（Reason / Output）— #1553 Human 暫定据置
 
 | 項目 | 値 | 備考 |
 | ---- | -- | ---- |
-| soft（監視） | **3,000ms** | Phase3 旧定義 secrets p50≈2.7–2.8s（合算値）を根拠。#1545 後は見直し候補 |
-| hard | **7,000ms** | Phase3 旧定義 secrets p95≈3.6–6.4s。同期外部 AI 込み E2E hard 8s 内に Reason/Output 予算を確保 |
-| Reason 込み E2E 枠 | 同期外部 AI 込み **6s/8s と同一**（Phase3 判定で採用） | 別枠にするかは Human Review |
-| 代替案 | B: soft 2.5s / hard 5s。C: soft 3s・hard なし（§10.3 fallback 継続） | Phase3 結果 doc §5 |
+| soft（監視） | **3,000ms** | #1553 Human **暫定据置**（案 A）。旧合算根拠を維持しつつ新定義整合を注記 |
+| hard | **7,000ms** | 同上。同期外部 AI 込み E2E hard 8s 内に Reason/Output 予算を確保 |
+| Reason 込み E2E 枠 | 同期外部 AI 込み **6s/8s と同一**（維持） | Phase3 判定どおり。#1553 で枠変更なし |
+| 最終引き下げ | **後続 Human** | 新定義実測（下表）に対し 3s/7s は過大になり得る。本 Task では据置を確定扱い |
 
 **計測定義（事実・#1545）:**
 
@@ -477,7 +477,14 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | **新（#1545 以降）** | `result_generated` + `reason_generated`。`response_built` は診断メトリクスとして別集計（`scopes.response_built`） |
 | Reason 込み E2E | 外側 wall-clock（変更なし） |
 
-本上限（案 A）を「Reason OpenAI 専用予算」と読まないこと。案 A は旧合算根拠のため、新定義再計測後の採否・数値見直しは **Human 判断**（本節では断定しない）。
+**新定義再計測（事実・#1545 / #1553）:**
+
+| 計測系 | phase_output p95 (ms) | response_built p95 (ms) | Reason E2E p95 (ms) | 出所 |
+| ------ | --------------------- | ----------------------- | ------------------- | ---- |
+| local mock | **105.1** | 1,233.2 | 1,234.0 | #1545 experiment |
+| local secrets | **109.1** | 3,467.5 | 3,468.2 | #1553（2026-07-22） |
+
+本上限（暫定据置の案 A）を「Reason OpenAI 専用予算」と読まないこと。新定義では mock / secrets とも `phase_output` p95 ≈ **105–109ms** 帯であり、3s/7s は監視枠として余裕が大きい（**推論:** 最終引き下げ候補。断定しない）。
 
 詳細・環境差（GHA Block / local Adjust）は Phase3 結果 doc を正とする。
 
@@ -525,6 +532,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-07-22 | §13.2 Human 確定反映（内部 soft/hard 1.5s/2s、外部 AI 込み 6s/8s、`phase_user_meaning` 5s。`phase_output` は別 Task） | Issue #1533 |
 | 2026-07-22 | §13.2 `phase_output` を Phase3 案 A（soft 3s / hard 7s）で転記。計測定義注意を §13.2.5 に追記（Human Review 採否） | Issue #1539 |
 | 2026-07-22 | §13.2.5: `phase_output` から `response_built` 除外（#1545）。新旧定義と案 A 見直し提案を追記 | Issue #1545 |
+| 2026-07-22 | §13.2 `phase_output` を #1553 Human 暫定据置（soft 3s / hard 7s）として確定。新定義 mock/secrets 再計測を §13.2.5 に反映 | Issue #1553 |
 
 ---
 
@@ -532,9 +540,8 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `phase_output` 案 A の最終採否 | Phase3 推奨値。旧定義（`response_built` 合算）根拠。#1545 新定義後の見直し含む | Human | #1539 / #1545 | §13.2.5。代替 B/C あり |
-| 2 | Reason 込み E2E 枠 | 6s/8s 同一枠か別枠か | Human | #1539 Review | Phase3 は同一枠で判定 |
-| 3 | `phase_output` 計測定義修正 | Reason 単体との乖離 | Human | **#1545 で bench 修正済み** | 案 A 数値の追従は No.1 |
+| 1 | `phase_output` 最終引き下げ | 暫定据置 3s/7s に対し新定義 p95≈105–109ms。監視枠の適正化 | Human | 後続 | #1553 で暫定据置済み。§13.2.5 |
+| 2 | Reason 込み E2E 枠の再分離 | 現状は 6s/8s 同一枠を維持 | Human | 必要時 | #1553 で枠変更なし |
 
 ### 16.1 確定済み論点（Issue #758 Human Review）
 
@@ -560,16 +567,25 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 5 | 同期外部 AI 込み soft/hard | soft **6,000ms** / hard **8,000ms**（api→reco 8s・Public 10s と整合） |
 | 6 | `phase_user_meaning` | hard **5,000ms** |
 | 7 | 内部フェーズ hard | config **300** / retrieval **1,000** / matching **500** / ranking **1,000**（ms）維持 |
-| 8 | `phase_output` | **別 Task で確定**（本 Issue では未確定） → #1539 で案 A 転記・Human Review |
+| 8 | `phase_output` | **別 Task で確定**（本 Issue では未確定） → #1539 で案 A 転記 → **#1553 で暫定据置確定** |
 
-### 16.3 Human Review 中（Issue #1539）
+### 16.3 確定済み論点（Issue #1553 Human 確認）
 
-| No | 論点 | 推奨内容（確定前） |
-| --: | ---- | ------------------ |
-| 1 | `phase_output` soft/hard | soft **3,000ms** / hard **7,000ms**（Phase3 案 A） |
-| 2 | Reason 込み E2E | 同期外部 AI 込み 6s/8s と同一枠（Phase3 判定どおり） |
-| 3 | 計測定義 | 合算値注意を正本に記載。計測修正は別 Task 候補 |
----
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | `phase_output` soft/hard | soft **3,000ms** / hard **7,000ms**（案 A **暫定据置**） |
+| 2 | 新計測定義整合 | #1545（`response_built` 除外）を正。旧合算根拠であることは注記 |
+| 3 | secrets 再計測 | **必須として実施済み**（local secrets・`phase_output` p95≈109ms） |
+| 4 | Reason 込み E2E 枠 | 同期外部 AI 込み **6s/8s と同一**を維持（枠変更なし） |
+| 5 | 最終引き下げ | 新定義実測を踏まえた数値見直しは **後続 Human**（本 Issue では据置を確定扱い） |
+
+### 16.4（廃止）Human Review 中だった Issue #1539 論点
+
+| No | 論点 | 転帰 |
+| --: | ---- | ---- |
+| 1 | `phase_output` soft/hard | #1553 で暫定据置として §16.3 へ |
+| 2 | Reason 込み E2E | #1553 で同一枠維持として §16.3 へ |
+| 3 | 計測定義 | #1545 で bench 修正済み |
 
 ## 17. 関連資料
 
@@ -603,7 +619,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | recommendation_reason テーブル定義書 | fallback 時も INSERT、`reason_basis` に fallback 由来を記録 |
 | 状態遷移設計書 §11.1 | Reason 失敗時の「Result 全体失敗」記述を部分成功方針へ更新 |
 | 性能要件（バックエンド）§5 / 本 §13.2 | #1533 で整合済み。実装・API クライアント timeout の追従は別実装 Task |
-| `phase_output`（Reason）上限 | #1539 で案 A 転記。Human Review 採否。計測定義は #1545 で修正済み（数値見直しは残） |
+| `phase_output`（Reason）上限 | #1553 で案 A を**暫定据置**確定。計測定義は #1545。最終引き下げは後続 |
 ---
 
 ## 18. レビュー観点
@@ -626,5 +642,5 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 - `API-INT-002` エンドポイント層は `[Epic]API-INT-002` 配下で設計・実装する
 - Batch モジュール `MOD-RECO-026` / `027` はオンライン推薦パイプラインからは直接呼び出さない（事前生成データを参照）
 - 配置パスは `apps/reco/src/reco/application/recommendation-orchestrator/**` に確定（旧想定 `apps/reco/src/modules/**` は採用しない）
-- §13.2 の soft/hard・`phase_user_meaning` は #1533 Human 確定済み。`phase_output` は #1539 で案 A 転記（Human Review）
+- §13.2 の soft/hard・`phase_user_meaning` は #1533 Human 確定済み。`phase_output` は #1553 で案 A **暫定据置**確定（最終引き下げは後続）
 - 実装側の hard watchdog / client timeout が旧 4,000ms のまま残っている場合は、本節に追従する実装 Task が必要
