@@ -1,0 +1,91 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-perf-phase-output-slo-docs-update-pr"
+  title: "phase_output soft/hardの正本見直し PRレビュー"
+  summary: "Task #1553 slo-docs-update の PR を AI Review する。新計測定義整合と Human 最終確定値（soft 500ms / hard 2,000ms）の正本反映を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1553
+  pr:
+    number: 0
+  parent_epic_issue: 1552
+  parent_epic_branch: "docs/epic-1552-reco-perf-phase-output-slo-revision"
+  task_definition: "prompts/definitions/tasks/reco-perf-phase-output-slo-revision/slo-docs-update.yaml"
+  source_branch: "docs/task-1553-phase-output-slo-docs"
+  target_branch: "docs/epic-1552-reco-perf-phase-output-slo-revision"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-perf-phase-output-slo-revision/slo-docs-update.yaml"
+    required: true
+  issue:
+    number: 1553
+    required: true
+  pr:
+    number: 0
+    required: true
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      required: true
+
+review_points:
+  common:
+    - "Task Definition scope 内か（apps/**・User Meaning 改善・TV-005/006・bench 計測定義再変更の非混入）"
+    - "PR target が親 Epic Branch（docs/epic-1552-reco-perf-phase-output-slo-revision）か"
+    - "Related to #1553 のみで Closes #1553 を使っていないか"
+  docs:
+    - "phase_output soft/hard が Human 最終確定として明示されているか（soft 500ms / hard 2,000ms）"
+    - "新計測定義（#1545・response_built 除外）との整合が書かれているか"
+    - "性能要件 §4.1 / §5 と MOD-RECO-001 §13.2 が整合しているか"
+    - "旧案 A（3s/7s）が廃止・履歴として扱い、現行値と混同していないか"
+    - "local mock / local secrets / GHA secrets 再計測根拠が記載されているか"
+    - "AI 推奨のみを確定済みと誤記していないか（Human 確定の明示があるか）"
+    - "Reason LLM refinement OFF 前提と再計測注意が残っているか"
+  security:
+    - "secret / .env 実値が含まれていないか"
+
+acceptance:
+  human_review_required: true
+  merge_by_ai: false
+
+notes:
+  - "Issue #1553 / Branch docs/task-1553-phase-output-slo-docs"
+  - "GHA secrets run: https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29898487164"
+  - "実装側 timeout 追従は別実装 Task（本 PR out of scope）"
