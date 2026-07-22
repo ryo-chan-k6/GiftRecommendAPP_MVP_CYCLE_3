@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-005-poc-connectivity-verification-pr"
+  title: "TV-005 poc-connectivity-verification PRレビュー"
+  summary: "Epic #1565 Task poc-connectivity-verification（外部AI API疎通計測・結果doc）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1566
+  parent_epic_issue: 1565
+  parent_epic_branch: "spike/epic-1565-tv-005-external-ai-api-connectivity"
+  task_definition: "prompts/definitions/tasks/tv-005-external-ai-api-connectivity/poc-connectivity-verification.yaml"
+  source_branch: "spike/task-1566-tv-005-connectivity-verification"
+  target_branch: "spike/epic-1565-tv-005-external-ai-api-connectivity"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  testing: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/tv-005-external-ai-api-connectivity/poc-connectivity-verification.yaml"
+    required: true
+  issue:
+    number: 1566
+
+review_points:
+  - "TV-007 との切り分け（Reco E2E vs API 単体）が結果 doc / 方針に明確か"
+  - "Embedding / LLM の応答時間（少なくとも p50/p95）が結果 doc にあるか"
+  - "mock と secrets が区別され、secrets 未実施なら理由が明示されているか"
+  - "失敗形式または未実施理由、トークン/コスト概算または未実施理由があるか"
+  - "Go / Adjust / Block があり、根拠が過剰断定していないか"
+  - "secret 実値・`.env` 実値・apps/** 本格改修・大量課金試験が含まれていないか"
+  - "正式 Error/Reco/Batch docs を独断更新していないか（設計反映メモまでか）"
+  - "PR target が親 Epic Branch（spike/epic-1565-tv-005-external-ai-api-connectivity）であるか"
+
+notes:
+  - "Issue #1566 / Branch spike/task-1566-tv-005-connectivity-verification"
+  - "PR 番号は create-pr 後に target.pr へ追記してよい"

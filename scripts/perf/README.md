@@ -1,16 +1,20 @@
 # scripts/perf/
 
-Reco 性能フィジビリティ PoC（TV-007）向けの計測ハーネス。
+Reco 性能フィジビリティ PoC（TV-007）および外部 AI API 疎通 PoC（TV-005）向けの計測ハーネス。
 
-正本: [Reco性能フィジビリティ検証計画書](../../docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md)
+正本:
+
+- TV-007: [Reco性能フィジビリティ検証計画書](../../docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md)
+- TV-005: [外部AI_API疎通検証計画](../../docs/90_PoC/外部API疎通検証/外部AI_API疎通検証計画.md)
 
 ## ファイル
 
 | ファイル | 役割 |
 | -------- | ---- |
-| `reco_pipeline_bench.py` | パイプライン計測 CLI（skeleton / live） |
+| `reco_pipeline_bench.py` | パイプライン計測 CLI（skeleton / live）※ TV-007 |
 | `openai_bench_clients.py` | live + secrets 用 OpenAI HTTP クライアント（bench 専用・apps/reco 非改修） |
-| `output/` | ローカル実行時の JSON / Markdown 出力（Git 管理外） |
+| `openai_connectivity_bench.py` | Embedding / LLM **専用**疎通計測 CLI（TV-005。Reco E2E 非依存） |
+| `output/` / `output-*/` | ローカル実行時の JSON / Markdown 出力（Git 管理外） |
 
 ## モード
 
@@ -135,6 +139,30 @@ gh workflow run perf-feasibility-reco.yml \
 
 判定枠（#1533）: Reco 内部 soft/hard **1.5s/2s**、同期外部 AI 込み **6s/8s**。`phase_output` 案 A（soft 3s / hard 7s）は Human Review（#1539）。詳細は計画書 §7・設計反映メモ。
 
+## TV-005（外部 AI API 疎通）
+
+Reco パイプラインとは分離し、Embedding / Chat Completions の応答時間・失敗形式・トークン/コスト概算を計測する。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| スクリプト | `openai_connectivity_bench.py` |
+| モード | `mock`（HTTP 非実行） / `secrets`（`OPENAI_API_KEY`） |
+| 推奨モデル | `text-embedding-3-small` / `gpt-4o-mini` |
+| 結果 doc | [外部AI_API疎通検証結果](../../docs/90_PoC/外部API疎通検証/外部AI_API疎通検証結果.md) |
+
+```bash
+cd apps/reco
+uv run python ../../scripts/perf/openai_connectivity_bench.py \
+  --mode mock --iterations 20 --probe-failures \
+  --output-dir ../../scripts/perf/output-tv005-mock
+
+# secrets（値は echo しない）
+set -a && source ../../.env && set +a
+uv run python ../../scripts/perf/openai_connectivity_bench.py \
+  --mode secrets --iterations 10 --warmup 1 --probe-failures \
+  --output-dir ../../scripts/perf/output-tv005-secrets
+```
+
 ## 関連 Issue / Branch
 
 | 項目 | 値 |
@@ -142,5 +170,6 @@ gh workflow run perf-feasibility-reco.yml \
 | Phase2 Epic / Task | #1512 / #1513 |
 | Phase3 Epic / Task | #1535 / #1536 |
 | phase_output 計測定義修正 | #1544 / #1545 |
-| Branch（本 Task） | `spike/task-1545-phase-output-metric-fix` |
-| PR target | `spike/epic-1544-reco-perf-phase-output-metric-fix` |
+| TV-005 Epic / Task | #1565 / #1566 |
+| Branch（TV-005 Task） | `spike/task-1566-tv-005-connectivity-verification` |
+| PR target（TV-005） | `spike/epic-1565-tv-005-external-ai-api-connectivity` |
