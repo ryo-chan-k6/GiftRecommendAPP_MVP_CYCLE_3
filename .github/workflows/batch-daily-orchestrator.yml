@@ -1,0 +1,68 @@
+name: Batch Daily Orchestrator
+
+# 親 workflow（日次）— 案A: 複合子を jobs.needs で連鎖
+# 正本: バッチ実行スケジュール設計書 §6.1 / §7
+# MVP Phase1: schedule 無効（§16.1）。Phase2 で cron を有効化する。
+# 018/019 は本線に載せない。
+
+on:
+  # Phase1 disabled — enable in Phase2:
+  # schedule:
+  #   # Monday-Saturday 01:10 JST = Sunday-Friday 16:10 UTC
+  #   - cron: "10 16 * * 0-5"
+  workflow_dispatch:
+    inputs:
+      max_items:
+        description: "Max items for meaning / embedding generation"
+        required: false
+        default: "500"
+      run_retry_after:
+        description: "Run retry workflow after daily mainline"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+concurrency:
+  group: batch-mainline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  ranking_snapshot:
+    uses: ./.github/workflows/batch-rakuten-ranking-snapshot.yml
+    secrets: inherit
+
+  item_import:
+    needs: ranking_snapshot
+    uses: ./.github/workflows/batch-rakuten-item-import.yml
+    with:
+      max_items: ${{ inputs.max_items || '1000' }}
+    secrets: inherit
+
+  item_meaning_generation:
+    needs: item_import
+    uses: ./.github/workflows/batch-item-meaning-generation.yml
+    with:
+      max_items: ${{ inputs.max_items || '500' }}
+    secrets: inherit
+
+  distribution_metrics:
+    needs: item_meaning_generation
+    uses: ./.github/workflows/batch-distribution-metrics.yml
+    with:
+      trigger_mode: chain
+    secrets: inherit
+
+  retry_failed_items:
+    if: ${{ inputs.run_retry_after == 'true' }}
+    needs: distribution_metrics
+    uses: ./.github/workflows/batch-retry-failed-items.yml
+    with:
+      max_items: "100"
+    secrets: inherit

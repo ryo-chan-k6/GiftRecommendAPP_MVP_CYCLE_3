@@ -1,0 +1,224 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-parent-orchestrators"
+  title: "batch-parent-orchestrators:親workflow実装"
+  summary: "E1。案A（複合子）で親 daily/weekly/manual orchestrator と中間複合子（item-import / meaning-generation / retry-failed）を実装する。独立子 19 本の業務ロジックは触らない。018/019 は本線に載せない。スケジュール設計書へ実装差分を追記する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  E0（#1546 / PR #1551）完了。Human 確定で E1 は案 A（中間複合子＋親3本）。
+  正本: バッチ実行スケジュール設計書。ギャップ一覧 §5 案 A。
+  独立子 batch-*.yml 19 本は develop に存在。親/複合は未作成。
+  existing-item-recheck.yml は BATCH-004 単独として既に存在するため、週次の 004→005〜008 連鎖は別複合子名で実装し、設計書に実装差分を明記する。
+  機能・領域単位 Epic（例外）。artifact_id 空。
+
+objective: |
+  親3本と複合子を実装し、cron は親のみ（MVP Phase1 は schedule 無効化）、jobs.needs / concurrency / 失敗時停止を設計どおりにする。
+  develop への統合は本 Epic PR のみ。
+
+scope:
+  - "複合子: batch-rakuten-item-import.yml / batch-item-meaning-generation.yml / batch-retry-failed-items.yml"
+  - "週次用: BATCH-004 連鎖の複合子（existing-item-recheck.yml は 004 単独のまま。別名パイプラインを新設）"
+  - "親: batch-daily/weekly/manual-orchestrator.yml"
+  - "cron は親のみ。MVP Phase1 は schedule コメントアウトまたは無効"
+  - "concurrency / jobs.needs / 失敗時後続停止"
+  - "018/019 は本線に載せない（週次 offline は default false。手動シナリオは設計どおり optional）"
+  - "バッチ実行スケジュール設計書への実装差分追記"
+  - "必要ならギャップ一覧・処理一覧への最小追記"
+
+out_of_scope:
+  - "独立子 19 本の業務ロジック・CLI 改修"
+  - "DDL / migration / IF-DB stub 解除"
+  - "外部 API mock 解除"
+  - "BATCH-018 / 019 本格化・本線組込"
+  - "apps/batch Python 大規模改修"
+  - "OpenAPI / web / api / reco 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-*.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      action: "update"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-manual-orchestrator.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-rakuten-item-import.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-retry-failed-items.yml"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Epic Branch"
+  - "複合子 + 親 workflow YAML"
+  - "スケジュール設計書の実装差分追記"
+
+acceptance_criteria:
+  - "親3本と複合子（item-import / meaning-generation / retry-failed）が存在する"
+  - "週次の既存商品再確認連鎖が BATCH-004 単独 YAML を壊さず実現されている"
+  - "独立子に schedule を追加していない"
+  - "親の cron は Phase1 無効、設計の UTC cron をコメントで保持"
+  - "018/019 が日次本線に載っていない"
+  - "スケジュール設計書に実装差分が追記されている"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-parent-orchestrators"
+  name: "feature/epic-1554-batch-parent-orchestrators"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  number: 1554
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - ".github/workflows/batch-*-orchestrator.yml"
+    - ".github/workflows/batch-rakuten-item-import.yml"
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - ".github/workflows/batch-retry-failed-items.yml"
+    - ".github/workflows/batch-rakuten-existing-item-pipeline.yml"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "prompts/definitions/epics/batch-parent-orchestrators/**"
+    - "prompts/definitions/tasks/batch-parent-orchestrators/**"
+    - "prompts/definitions/reviews/batch-parent-orchestrators/**"
+  forbidden_paths:
+    - "apps/batch/src/**"
+    - "supabase/migrations/**"
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+  child_task_areas:
+    - "orchestrator-implementation"
+    - "schedule-docs"
+
+dependencies:
+  epics:
+    - issue: 1546
+      title: "[Epic]batch-cross-cut-inventory:横串棚卸し・整合性"
+      purpose: "E0 完了・案 A 確定"
+  issues: []
+  prs:
+    - number: 1551
+      purpose: "E0 Epic MERGED"
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-cross-cut-inventory"
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/batch-*-orchestrator.yml"
+    - ".github/workflows/batch-rakuten-item-import.yml"
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - ".github/workflows/batch-retry-failed-items.yml"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "YAML 構文・uses パスが実在する独立子を指すこと"
+    - "schedule が Phase1 無効であること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "GHA YAML / docs Epic。workflow dry-run は別途"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "案 A（複合子）になっているか"
+    - "BATCH-004 独立子 YAML を破壊していないか"
+    - "018/019 本線非搭載"
+    - "cron は親のみ・Phase1 無効"
+    - "Epic PR target が develop"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "週次の existing-item 連鎖複合子のファイル名（推奨: batch-rakuten-existing-item-pipeline.yml）"
+
+stop_conditions:
+  - "独立子の業務ロジック改修が必要になった場合"
+  - "BATCH-004 YAML のリネームが必須に見える場合（Human 確認）"
+
+notes:
+  - "機能・領域単位 Epic。workstream_key: batch-parent-orchestrators"
+  - "E0 Human 確定: 案 A"
+  - "Milestone: 開発・単体テスト工程完了（phase=07）"

@@ -1,0 +1,195 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-parent-orchestrators-implementation"
+  title: "batch-parent-orchestrators:親・複合子workflow実装"
+  summary: "案Aで複合子（item-import / meaning-generation / retry-failed / existing-item-pipeline）と親 daily/weekly/manual orchestrator を実装し、スケジュール設計書に実装差分を追記する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-parent-orchestrators:親workflow実装"
+  epic_issue_number: 1554
+  epic_branch: "feature/epic-1554-batch-parent-orchestrators"
+  related_issues:
+    - 1546
+  related_prs:
+    - 1551
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  E1 案 A。独立子は触らず workflow_call で連鎖。existing-item-recheck.yml は BATCH-004 のまま。
+  MVP Phase1 は親 schedule 無効。018/019 は本線に載せない。
+
+objective: |
+  複合子・親 YAML を追加し、スケジュール設計書へ実装差分を追記する。
+
+scope:
+  - "複合子4本（item-import / meaning-generation / retry-failed / existing-item-pipeline）"
+  - "親3本（daily / weekly / manual）"
+  - "バッチ実行スケジュール設計書の実装差分追記"
+  - "必要なら処理一覧・ギャップ一覧への最小追記"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "独立子業務ロジック改修・リネーム"
+  - "DDL / mock 解除 / 018・019 本格化"
+  - "Python UT 追加（必須としない）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-parent-orchestrators/epic.yaml"
+      required: true
+  files:
+    - path: ".github/workflows/batch-*.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      action: "update"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-manual-orchestrator.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-rakuten-item-import.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-retry-failed-items.yml"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-rakuten-existing-item-pipeline.yml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "複合子・親 workflow"
+  - "スケジュール設計書実装差分"
+
+acceptance_criteria:
+  - "親3本・複合子が存在する"
+  - "BATCH-004 独立子を破壊していない"
+  - "Phase1 で親 schedule 無効"
+  - "日次本線に 018/019 なし"
+  - "設計書に実装差分あり"
+  - "PR target が親 Epic Branch"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  name: "feature/task-1555-batch-parent-orchestrators-implementation"
+  summary: "batch-parent-orchestrators-implementation"
+  base: "feature/epic-1554-batch-parent-orchestrators"
+  target: "feature/epic-1554-batch-parent-orchestrators"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  number: 1555
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1554
+      title: "[Epic]batch-parent-orchestrators:親workflow実装"
+      purpose: "親 Epic"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/batch-*-orchestrator.yml"
+    - ".github/workflows/batch-rakuten-item-import.yml"
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - ".github/workflows/batch-retry-failed-items.yml"
+    - ".github/workflows/batch-rakuten-existing-item-pipeline.yml"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+    - "docs review"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "GHA YAML Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "案 A・複合子構造"
+    - "004 独立子非破壊"
+    - "Phase1 schedule 無効"
+    - "018/019 本線非搭載"
+    - "設計書実装差分"
+    - "PR target が親 Epic Branch"
+  specialist_reviews:
+    docs: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+
+human_decision_points:
+  - "existing-item-pipeline ファイル名でよいか"
+
+notes:
+  - "親 Epic 起票後に parent / branch を実値更新"

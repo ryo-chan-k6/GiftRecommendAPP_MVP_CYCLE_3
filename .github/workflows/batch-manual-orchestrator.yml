@@ -1,0 +1,95 @@
+name: Batch Manual Orchestrator
+
+# 親 workflow（手動シナリオ）— 案A
+# 正本: バッチ実行スケジュール設計書 §6.3 / §9
+# 018/019 シナリオは手動のみ（本線ではない）。MVP △ scaffold を呼び出す。
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Manual batch scenario"
+        required: true
+        type: choice
+        options:
+          - failed_item_retry
+          - semantic_config_regeneration
+          - embedding_regeneration
+          - distribution_rebuild
+          - offline_evaluation
+          - feedback_analysis
+      max_items:
+        description: "Max items to process"
+        required: false
+        default: "500"
+      run_offline_evaluation:
+        description: "Run offline evaluation after regeneration scenarios"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+concurrency:
+  group: batch-manual-${{ inputs.scenario }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  retry_failed_items:
+    if: ${{ inputs.scenario == 'failed_item_retry' }}
+    uses: ./.github/workflows/batch-retry-failed-items.yml
+    with:
+      max_items: ${{ inputs.max_items }}
+    secrets: inherit
+
+  regenerate_meaning:
+    if: ${{ inputs.scenario == 'semantic_config_regeneration' || inputs.scenario == 'embedding_regeneration' }}
+    uses: ./.github/workflows/batch-item-meaning-generation.yml
+    with:
+      max_items: ${{ inputs.max_items }}
+    secrets: inherit
+
+  distribution_metrics_after_retry:
+    if: ${{ inputs.scenario == 'failed_item_retry' }}
+    needs: retry_failed_items
+    uses: ./.github/workflows/batch-distribution-metrics.yml
+    with:
+      trigger_mode: chain
+    secrets: inherit
+
+  distribution_metrics_after_regeneration:
+    if: ${{ inputs.scenario == 'semantic_config_regeneration' || inputs.scenario == 'embedding_regeneration' }}
+    needs: regenerate_meaning
+    uses: ./.github/workflows/batch-distribution-metrics.yml
+    with:
+      trigger_mode: chain
+    secrets: inherit
+
+  # distribution_rebuild は regenerate を needs しない（skip 連鎖回避）
+  distribution_metrics_rebuild:
+    if: ${{ inputs.scenario == 'distribution_rebuild' }}
+    uses: ./.github/workflows/batch-distribution-metrics.yml
+    with:
+      trigger_mode: dispatch
+    secrets: inherit
+
+  feedback_analysis:
+    if: ${{ inputs.scenario == 'feedback_analysis' }}
+    uses: ./.github/workflows/batch-feedback-analysis.yml
+    secrets: inherit
+
+  offline_evaluation_direct:
+    if: ${{ inputs.scenario == 'offline_evaluation' }}
+    uses: ./.github/workflows/batch-offline-evaluation.yml
+    secrets: inherit
+
+  offline_evaluation_after_regeneration:
+    if: ${{ inputs.run_offline_evaluation == 'true' && (inputs.scenario == 'semantic_config_regeneration' || inputs.scenario == 'embedding_regeneration') }}
+    needs: distribution_metrics_after_regeneration
+    uses: ./.github/workflows/batch-offline-evaluation.yml
+    secrets: inherit
