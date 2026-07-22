@@ -40,15 +40,17 @@ BATCH-011（Feature入力hash算出Batch）は、BATCH-010 が生成した `item
 
 > **警告**: `IF-DB-BATCH-011` は **Item Semantic**（BATCH-010）用である。本 Batch（BATCH-011）の IF は **`IF-DB-BATCH-012`** である。Batch ID と IF 番号は一致しない。
 
-### 2.2 IF-DB-BATCH-012 の物理書込解釈（確定）
+### 2.2 IF-DB-BATCH-012 の物理書込解釈（確定・E2 更新）
 
 | 観点 | 方針 |
 | ---- | ---- |
 | hash 算出主体 | **BATCH-011**（本仕様） |
+| 中間永続テーブル | **`item_feature_input`**（`item_feature_input_テーブル定義書` / migration D17）。本 Batch が Upsert する |
 | `item_feature.feature_input_hash` 列への書込 | **BATCH-012** が `item_feature` Upsert するときに同一値を載せる（`item_feature_テーブル定義書` §5.2 / §12） |
-| 専用 `feature_input_hash` テーブル | **作らない**（テーブル定義書なし） |
-| Queue 行への hash 列 | **持たない**（#507 / Queue 定義書） |
-| 本 Batch の「保存」 | 算出した `feature_input_hash` / `feature_input_payload` を Run 単位で確定し、後続 BATCH-012 が参照可能な **handoff（実行結果・ログ・in-process 引き渡し）** として扱う。scaffold では in-memory 記録 |
+| Queue 行への hash 列 | **持たない**（#507 / Queue 定義書。継承） |
+| 本 Batch の「保存」 | 算出した `feature_input_hash` / `feature_input_payload` を **`item_feature_input` へ永続化**し、後続 BATCH-012 が DB 参照する。scaffold 段階は in-memory でもよいが、本実装では永続テーブルを正とする |
+
+> **履歴:** 縦串確定時は「専用テーブルなし・handoff」だった。E2 Human 確定（Epic #1561 / Task #1568）により **中間永続化へ更新**した。最終派生列の書込主体（BATCH-012）と Queue 非保持は変更しない。
 
 識別子 Epic は **`[Epic]BATCH-011:Feature入力hash算出Batch`（#1434）** を親とする。先行 BATCH-010（#1422 / PR #1433）を前提とする。縦串は **仕様整備 → 実装 → UT → Epic PR（develop）**。
 
@@ -155,7 +157,7 @@ BATCH-011（Feature入力hash算出Batch）は、BATCH-010 が生成した `item
 | 出力 | 正本区分 | 備考 |
 | ---- | -------- | ---- |
 | `feature_input_hash` | 生成入力管理 | SHA-256 64 hex。物理列書込は BATCH-012（§2.2） |
-| `feature_input_payload` | 中間表現 | 専用テーブルなし。canonicalize 入力 |
+| `feature_input_payload` | 中間表現 | `item_feature_input.feature_input_payload` に永続化。canonicalize 入力 |
 | `item_generation_queue` | 処理制御 | status / タイムスタンプ更新 |
 | `batch_run_log` / `phase_log` / `error_log` | 運用 | |
 | `item` / `item_semantic` | — | **書込しない** |
@@ -202,7 +204,7 @@ flowchart TD
 | 5 | `build_payload` | payload 構築 | `GRS-VAL-*` / `GRS-BAT-007` |
 | 6 | `compute_hash` | canonicalize + SHA-256 | `GRS-BAT-007` |
 | 7 | `evaluate_skip` | 今回 hash + 現行 normalization version で §9.4 判定 | `GRS-DB-*` / `GRS-CFG-*` |
-| 8 | `record_hash_handoff` | IF-DB-BATCH-012（handoff 確定）。skip 時は省略可 | `GRS-DB-*` |
+| 8 | `record_hash_handoff` | IF-DB-BATCH-012（`item_feature_input` Upsert）。skip 時は省略可 | `GRS-DB-*` |
 | 9 | `update_queue` | status 更新（skipped / processing 維持 / failed） | `GRS-DB-*` |
 | 10 | `finalize` | 集計。部分成功は `GRS-BAT-002` | |
 
@@ -293,7 +295,7 @@ hash 算出後に判定する。Queue を `skipped` にするのは **BATCH-011�
 
 | リソース | 操作 | IF | 備考 |
 | -------- | ---- | -- | ---- |
-| hash handoff | 算出確定 | **IF-DB-BATCH-012** | §2.2。専用テーブルなし。§9.4 skip 時は省略可 |
+| hash handoff | 算出確定 | **IF-DB-BATCH-012** | §2.2。`item_feature_input` 永続化。§9.4 skip 時は省略可 |
 | `item_generation_queue` | UPDATE | — | claim / skip / failed / processing 維持 |
 | `item_feature` | SELECT | — | §9.4 skip 判定のみ。**書込禁止**（BATCH-012 / 013） |
 | `item_semantic` / `item` | SELECT | — | 更新しない |
@@ -403,7 +405,7 @@ hash 算出後に判定する。Queue を `skipped` にするのは **BATCH-011�
 | 2 | IF 番号 | **IF-DB-BATCH-012 = BATCH-011**。IF-DB-BATCH-011 = BATCH-010（混同禁止） | **確定** |
 | 3 | 入力項目 | 方針書 §13.3 の ○/× 表 | **確定** |
 | 4 | hash アルゴリズム | SHA-256、小文字 hex 64 | **確定**（item_feature CHECK 想定） |
-| 5 | 物理書込 | 算出=011、`item_feature` 列書込=012。専用テーブルなし。Queue に hash 列なし | **確定**（§2.2） |
+| 5 | 物理書込 | 算出=011、`item_feature_input` 中間永続=011、`item_feature` 列書込=012。Queue に hash 列なし | **確定**（§2.2 / E2 #1568） |
 | 6 | Contract Gate | 不要 | **確定** |
 | 7 | apps/reco / IF-SHARED-002 | 本 Epic 外（BATCH-012） | **確定** |
 | 8 | 主経路 Queue | semantic + processing（BATCH-010 後） | **確定候補**（実装で確定可） |
@@ -460,7 +462,7 @@ hash 算出後に判定する。Queue を `skipped` にするのは **BATCH-011�
 
 ```text
 BATCH-010 → item_semantic + Queue processing（semantic）
-BATCH-011 → feature_input_payload / feature_input_hash（handoff）
+BATCH-011 → feature_input_payload / feature_input_hash（item_feature_input 永続）
           → Queue processing 維持
 BATCH-012 → item_feature Upsert（feature_input_hash 列に載せる）
 ```

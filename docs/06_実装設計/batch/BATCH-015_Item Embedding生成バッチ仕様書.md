@@ -48,10 +48,13 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 | 観点 | 方針 |
 | ---- | ---- |
 | hash / context 算出主体 | **BATCH-014**（`BATCH-014_Embedding入力hash算出バッチ仕様書` §2.2） |
-| 本 Batch の扱い | handoff を **検証して消費**し、`item_embedding.embedding_input_hash` 列へ同一値を載せる |
+| 中間永続テーブル | **`item_embedding_input`**（BATCH-014 書込）。本 Batch が読取・検証 |
+| 本 Batch の扱い | 永続行（または scaffold handoff）を **検証して消費**し、`item_embedding.embedding_input_hash` 列へ同一値を載せる |
 | 再算出 | **禁止**。再算出が必要なら BATCH-014 を再実行する |
-| 専用テーブル | なし（`item_text_context` は物理化しない中間表現） |
-| Queue 行への hash 列 | 持たない（`item_generation_queue_テーブル定義書` §5.1） |
+| Queue 行への hash 列 | 持たない（`item_generation_queue_テーブル定義書` §5.1。継承） |
+| 最終派生書込 | `item_embedding` は **IF-VEC-BATCH-001**（本 Batch） |
+
+> **履歴:** 縦串確定時は「専用テーブルなし」。E2 Human 確定（Epic #1561 / Task #1568）により中間永続化へ更新。
 
 識別子 Epic は **`[Epic]BATCH-015:Item Embedding生成Batch`（#1479）** を親とする。先行 BATCH-014（#1467 / PR #1477 develop merge 済み）および `item_embedding` テーブル定義（#516）を前提とする。縦串は **仕様整備 → 実装 → UT → Epic PR（develop）**。
 
@@ -135,16 +138,16 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 | 入力 | 種別 | 必須 | 用途 |
 | ---- | ---- | ---- | ---- |
 | `item_generation_queue` | DB | `true` | 消化対象・trace・終端更新 |
-| BATCH-014 handoff | in-process / 実行コンテキスト | `true` | `item_text_context` / `embedding_input_hash` |
+| BATCH-014 handoff / `item_embedding_input` | scaffold: in-process / 実行コンテキスト。本実装: DB（`item_embedding_input`） | `true` | `item_text_context` / `embedding_input_hash`（§6.2） |
 | `item_embedding`（参照） | DB | `false` | skip 判定（同一 3 列キー） |
 | `model_version`（Embedding） | 解決 | `true` | `model_version_id` / 次元・モデル名 |
 | `embedding_source_type` | 固定 | `true` | MVP は `item_text_context` |
 | `embedding_source_version` | 解決（batch 層） | `false` | **DB 物理列なし**。再生成トリガーは Queue / hash 側（§18.1） |
 | 実行 plan / config | 設定 | `true` | 件数上限・source（§6.4） |
 
-### 6.2 hash handoff（IF-DB-BATCH-015 消費）
+### 6.2 hash handoff（IF-DB-BATCH-015 消費・中間永続）
 
-`embedding_input_hash` / `item_text_context` は BATCH-014 の算出結果を読み取り、検証して Embedding 入力および `item_embedding.embedding_input_hash` にそのまま載せる。
+`embedding_input_hash` / `item_text_context` は BATCH-014 が永続化した **`item_embedding_input`** から読み取り、検証して Embedding 入力および `item_embedding.embedding_input_hash` にそのまま載せる。scaffold 段階の in-process handoff も許容するが、本実装では DB 参照を正とする（BATCH-014 §2.2 / Epic #1561）。
 
 - 本 Batch および MOD-BATCH-036 は hash を **再算出しない**
 - handoff 欠落・64 hex 形式不正・対象 `model_version_id` との不整合は `GRS-BAT-008`（または `GRS-VAL-*`）として当該 Queue を `failed` にする
@@ -202,10 +205,11 @@ MVP 現行モデル（`item_embedding_テーブル定義書` §17.1 No.3 **確�
 
 | リソース | 操作 | IF | 備考 |
 | -------- | ---- | -- | ---- |
-| `item_embedding` | UPSERT | **IF-VEC-BATCH-001** | §10 |
-| `item_generation_queue` | UPDATE | — | §10 / §12 |
+| `item_embedding` | UPSERT | **IF-VEC-BATCH-001** | §10。最終派生。`embedding_input_hash` 列を載せる |
+| `item_embedding_input` | SELECT（読取のみ） | **IF-DB-BATCH-015 消費** | BATCH-014 が永続化した中間結果を検証・消費。本 Batch は書込しない（§2.2） |
+| `item_generation_queue` | UPDATE | — | §10 / §12。hash 列は持たない |
 | `api_call_log` | INSERT | — | IF-EXT-005 呼出監査（scaffold 時も成否・latency 記録可） |
-| `item` / hash 専用テーブル | — | — | 更新しない / 専用テーブルなし |
+| `item` | — | — | 更新しない |
 
 ---
 
@@ -353,7 +357,7 @@ flowchart TD
 
 ### 10.3 禁止操作
 
-- IF-DB-BATCH-015 相当の hash **再算出**・専用テーブルへの書込
+- IF-DB-BATCH-015 相当の hash **再算出**、および `item_embedding_input` への **書込**（読取・消費のみ。書込主体は BATCH-014）
 - IF-DB-BATCH-016 相当の分布メトリクス DML
 - IF-DB-BATCH-010 相当の Queue INSERT
 - `item_semantic` / `item_feature` / `item_meaning` の DML
