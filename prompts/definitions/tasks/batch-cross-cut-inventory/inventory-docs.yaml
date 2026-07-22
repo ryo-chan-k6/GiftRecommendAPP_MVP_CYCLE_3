@@ -1,0 +1,212 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-cross-cut-inventory-docs"
+  title: "batch-cross-cut-inventory:横串整合・本実装ギャップ一覧作成"
+  summary: "BATCH-001〜019 の横串棚卸し結果を docs 正本（バッチ横串整合・本実装ギャップ一覧.md）として作成する。複合子 vs 独立子の差分、§18 後続、stub 深度、env 名、UT サマリ、OPEN Issue 突合案を含める。実装・親 workflow・DDL は行わない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-cross-cut-inventory:横串棚卸し・整合性"
+  epic_issue_number: 1546
+  epic_branch: "docs/epic-1546-batch-cross-cut-inventory"
+  related_issues:
+    - 1542
+  related_prs:
+    - 1543
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "orchestrator-ai"
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  E0（横串棚卸し）。親 Epic 起票後に本 Task を実行する。
+  スケジュール設計書・バッチ処理一覧は複合子（item-import / meaning-generation / retry-failed 等）を想定しているが、
+  develop 上の実体は独立子 workflow 19 本のみ。この差分を含むギャップを docs 正本に残す。
+  018/019 は △ 後回し。親 workflow 実装は E1。本 Task は調査と docs のみ。
+
+objective: |
+  バッチ横串整合・本実装ギャップ一覧.md を新規作成し、E1 以降の Human 判断材料を正本化する。
+
+scope:
+  - "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md の新規作成"
+  - "BATCH-001〜019 × application × workflow × 仕様書パスの 1:1 表"
+  - "依存関係図 vs スケジュール設計書 vs 実装の差分表（複合子未作成を明示）"
+  - "各 BATCH §18 の後続 / Epic 外 / stub 一覧（018/019 は後回し明記）"
+  - "env / secrets 名一覧（実値禁止）"
+  - "UT カバレッジ Batch 別サマリ"
+  - "OPEN #102/#109/#133/#136/#149〜#154 と E2 以降の関係案"
+  - "E1 実装方針の選択肢（複合子案A / 直接呼び出し案B）を推奨付きで記載"
+  - "必要なら一覧・スケジュール・依存関係図への最小「実装状況」追記（重複抑制）"
+  - "Task / Review Definition の整備"
+
+out_of_scope:
+  - "親 / 中間複合子 workflow YAML の新規・改修"
+  - "apps/batch 業務ロジック改修"
+  - "DDL / migration / IF-DB stub 解除"
+  - "外部 API mock 解除"
+  - "BATCH-018 / 019 本格化"
+  - "OPEN Issue のクローズ実行（案の提示のみ）"
+  - "OpenAPI / generated / web / api / reco 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ依存関係図.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-cross-cut-inventory/epic.yaml"
+      required: true
+    - path: "ai-logs/cross-cutting/2026-07-22-batch-cross-cut-production-hardening-handover.md"
+      required: false
+  files:
+    - path: ".github/workflows/batch-*.yml"
+      required: true
+    - path: "apps/batch/src/batch/application/**"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-*.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-cross-cut-inventory/inventory-docs.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/batch-cross-cut-inventory/inventory-docs/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "バッチ横串整合・本実装ギャップ一覧.md"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "ギャップ一覧 docs が作成されている"
+  - "1:1 突合表・差分表・§18 後続・env 名・UT サマリ・OPEN Issue 案が含まれる"
+  - "複合子未作成と独立 19 本の事実が明記されている"
+  - "018/019 後回し・親 workflow 実装 out of scope が明記されている"
+  - "Human 未確定を断定していない"
+  - "secret / .env 実値を含まない"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-cross-cut-inventory-docs"
+  base: "docs/epic-1546-batch-cross-cut-inventory"
+  target: "docs/epic-1546-batch-cross-cut-inventory"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "05_アプリケーション設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1546
+      title: "[Epic]batch-cross-cut-inventory:横串棚卸し・整合性"
+      purpose: "親 Epic"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "事実と推論・Human 判断案が分離されているか"
+    - "複合子 vs 独立子の差分が正確か"
+    - "E1 方針案が断定になっていないか"
+    - "OPEN Issue 案がクローズ実行になっていないか"
+    - "secret 非含有"
+    - "PR target が親 Epic Branch"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "横串棚卸し。完成後の正本は docs"
+
+human_decision_points:
+  - "新規 docs 正式ファイル名でよいか"
+  - "OPEN Issue の取込／別扱い／クローズ"
+  - "E1 を案A（複合子）か案B（直接呼び出し）か"
+
+stop_conditions:
+  - "親 Epic Issue / Branch が未確定のまま実装に進もうとした場合"
+  - "workflow / Python 実装変更が必要に見えた場合"
+  - "正本矛盾を独断解消しそうな場合"
+
+notes:
+  - "親 Epic 起票後に parent.epic_issue_number / epic_branch / branch.base/target を実値へ更新する"
+  - "引継ぎメモ PR #1543 が未 merge でも、調査は develop 上の正本 docs・実ファイルを優先する"
