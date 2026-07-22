@@ -92,7 +92,7 @@
 | リスク | 扱い |
 | ------ | ---- |
 | JOIN + Hard Filter 込みの Retrieval | 本 TV 対象外。TV-007 / 本番経路で別途 |
-| 1,000 件超（例: 1万〜） | 未計測。必要時は別 Task |
+| 1,000 件超（例: 1万〜） | 未計測。後続 [#1574](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1574) |
 | planner が小件数で Seq Scan を選ぶこと | 本番でも起こり得る。コスト差が小さい領域では許容されやすい（推論） |
 
 ---
@@ -102,3 +102,4 @@
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-22 | 初版（#1572）。local 計測・暫定 Go |
+| 2026-07-23 | 残リスク「1,000 件超」に後続 [#1574](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1574) を紐付け |
