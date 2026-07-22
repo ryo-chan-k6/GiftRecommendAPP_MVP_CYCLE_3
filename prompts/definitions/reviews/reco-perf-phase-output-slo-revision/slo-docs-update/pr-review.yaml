@@ -17,7 +17,7 @@ target:
   issue:
     number: 1553
   pr:
-    number: 0
+    number: 1559
   parent_epic_issue: 1552
   parent_epic_branch: "docs/epic-1552-reco-perf-phase-output-slo-revision"
   task_definition: "prompts/definitions/tasks/reco-perf-phase-output-slo-revision/slo-docs-update.yaml"
@@ -53,7 +53,7 @@ input:
     number: 1553
     required: true
   pr:
-    number: 0
+    number: 1559
     required: true
   docs:
     - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
@@ -86,6 +86,6 @@ acceptance:
   merge_by_ai: false
 
 notes:
-  - "Issue #1553 / Branch docs/task-1553-phase-output-slo-docs"
+  - "Issue #1553 / Branch docs/task-1553-phase-output-slo-docs / PR #1559"
   - "GHA secrets run: https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/29898487164"
   - "実装側 timeout 追従は別実装 Task（本 PR out of scope）"
