@@ -99,6 +99,24 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | local（WSL2） | mock | 1,151.5 | **1,355.0** | 1,431.0 | 超過 |
 | GHA | mock | 759.0 | **816.4** | 824.0 | 超過 |
 
+#### 3.3.1 計測上の注意（`phase_output` の読み方）
+
+**事実:** bench の `reason` / `phase_output` は Orchestrator phase_log の次を合算している。
+
+| phase_name | 内容 |
+| ---------- | ---- |
+| `result_generated` | MOD-RECO-021（短い） |
+| `reason_generated` | MOD-RECO-023 Reason Generator |
+| `response_built` | **パイプライン開始からの累積壁時計**（`recommendation_latency_ms`） |
+
+そのため表の数秒級 `phase_output` は **Reason 単体の OpenAI レイテンシではない**。追加デバッグ（local secrets・1 run）では `reason_generated` ≈ **50ms**、`response_built` が累積数秒を占めた。
+
+**事実:** 本計測条件では `RECO_REASON_LLM_REFINEMENT_ENABLED` 未設定（既定 `false`）のため、Reason の LLM refinement は **OFF**。`--force-llm` が誘発するのは主に **User Meaning（Semantic LLM）** である。
+
+**推論:** `phase_output` hard 案（§5）は、上記合算値をそのまま「Reason OpenAI 予算」と読まないこと。正式反映前に計測定義の見直し（`response_built` 除外）を別 Task 候補とする。
+
+**本 Task の扱い:** 性能改善（User Meaning の短縮・キャッシュ・非同期・モデル選定、ボリューム/複雑条件、OKURI UX 横断）は **別 Task**。本結果は現状計測の記録と Human 判断材料に留める。
+
 ### 3.4 フェーズ別 p95（secrets）
 
 | TV-007 step | measurement_point | GHA p95 (ms) | local p95 (ms) | §13.2 hard（#1533） | 所見 |
@@ -108,7 +126,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | retrieval | phase_retrieval | 77.7 | 125.6 | 1,000 | 上限内 |
 | matching | phase_matching | 10.2 | 16.2 | 500 | 上限内 |
 | ranking | phase_ranking | 10.1 | 17.2 | 1,000 | 上限内 |
-| reason | phase_output | **6,424.0** | **3,555.1** | 未確定（当面 500） | 両環境で主ボトルネックの一つ |
+| reason | phase_output | **6,424.0** | **3,555.1** | 未確定（当面 500） | **合算値**（§3.3.1）。真の `reason_generated` は短時間。支配要因の OpenAI は User Meaning |
 
 ### 3.5 mock vs secrets（Reason 込み）
 
@@ -119,7 +137,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | GHA | secrets | 12,483.9 | 6,424.0 | 5,872.9 |
 | local | secrets | 6,504.4 | 3,555.1 | 2,640.1 |
 
-**解釈（事実）:** secrets では User Meaning と Reason（いずれも同期 LLM）が支配要因。Retrieval / Matching / Ranking は余裕。
+**解釈（事実）:** secrets の Reason 込み E2E 遅延の主因は **User Meaning（Semantic LLM + Embedding）**。Retrieval / Matching / Ranking は余裕。表の `phase_output` 合算は §3.3.1 のとおり `response_built`（累積）を含むため、Reason LLM 支配とは読めない（本条件では Reason LLM OFF）。
 
 ---
 
@@ -141,7 +159,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | live + mock（GHA） | **Go** | **Go** | Ranking 431ms / Reason E2E 1,247ms |
 | live + mock（local） | **Go** | **Go** | Ranking 709ms / Reason E2E 2,089ms |
 
-**PoC としての整理（推論）:** mock は両枠とも成立。secrets 主経路の Reason 込みは環境により **Block〜Adjust**（GHA / local）。ボトルネックは User Meaning + Reason の同期外部 AI。Reco 内部（Retrieval〜Ranking）は Phase2 同様 Go 寄り。
+**PoC としての整理（推論）:** mock は両枠とも成立。secrets 主経路の Reason 込みは環境により **Block〜Adjust**（GHA / local）。ボトルネックは **User Meaning の同期外部 AI**（Semantic LLM + Embedding）。Reco 内部（Retrieval〜Ranking）は Phase2 同様 Go 寄り。性能改善の具体策はデータパターン検証・UX 考慮のうえ **別 Task**。
 
 ---
 
@@ -178,6 +196,8 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 項目 | 内容 |
 | ---- | ---- |
 | secrets 環境差 | GHA Block / local Adjust。最終ラベルは Human 判断 |
+| phase_output 計測定義 | `response_built`（累積）合算により Reason 単体と乖離。計測修正は別 Task 候補 |
+| 性能改善 | User Meaning 短縮/キャッシュ/非同期/モデル、ボリューム・複雑条件、UX 横断は別 Task |
 | 件数スケール | seed 3 件。100/500/1,000 未実施（Phase2 同） |
 | hard timeout 有効時 | bypass 計測。本番 8s 中断時の挙動は別確認候補 |
 | concurrency | 同一 Branch で mock/secrets 同時 dispatch すると後勝ちで cancel。逐次実行が必要 |
@@ -191,3 +211,4 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | ---- | -------- |
 | 2026-07-22 | Phase3 Reason 込み E2E 初版（GHA secrets/mock + local mock） |
 | 2026-07-22 | local secrets 再計測を追記（Reason E2E Adjust）。GHA/local 再現性を更新 |
+| 2026-07-22 | `phase_output` 計測定義の注意（`response_built` 累積合算・Reason LLM OFF）を追記 |

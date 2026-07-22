@@ -1,0 +1,63 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-performance-feasibility-poc-phase3-reason-e2e-pr"
+  title: "reco-performance-feasibility-poc-phase3 poc-reason-e2e-verification PRレビュー"
+  summary: "Epic #1535 Task poc-reason-e2e-verification（Phase3 Reason込みE2E検証）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  issue:
+    number: 1536
+  pr: null
+  parent_epic_issue: 1535
+  parent_epic_branch: "spike/epic-1535-reco-performance-feasibility-poc-phase3"
+  task_definition: "prompts/definitions/tasks/reco-performance-feasibility-poc-phase3/poc-reason-e2e-verification.yaml"
+  source_branch: "spike/task-1536-reco-perf-phase3-reason-e2e"
+  target_branch: "spike/epic-1535-reco-performance-feasibility-poc-phase3"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  testing: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-performance-feasibility-poc-phase3/poc-reason-e2e-verification.yaml"
+    required: true
+  issue:
+    number: 1536
+  pr:
+    number: null
+
+review_points:
+  - "Reason 込み E2E（入力解析〜Reason）が主対象として live 計測されているか"
+  - "Ranking までと Reason 込みが分離記載され、#1533 の内部 1.5s/2s・同期外部 AI 込み 6s/8s を参照した判定表があるか"
+  - "phase_output の p50/p95 が記録され、計測定義の注意（response_built 累積合算・Reason LLM 既定 OFF）が明記されているか"
+  - "phase_output 上限案が案・未確定として整理され、Human 確定を求めていないか断定していないか"
+  - "性能改善（User Meaning 短縮/キャッシュ/非同期/モデル、ボリューム・UX）を本 PR で実装・確定していないか（別 Task）"
+  - "正式 docs への phase_output 最終反映を本 PR で行っていないか（out of scope）"
+  - "apps/** 本格改修・secret 実値が成果物に含まれていないか"
+  - "PR target が親 Epic Branch（spike/epic-1535-reco-performance-feasibility-poc-phase3）であるか"
+
+notes:
+  - "Issue #1536 / Branch spike/task-1536-reco-perf-phase3-reason-e2e"
+  - "PR 番号は create-pr 後に target.pr / input.pr.number へ反映する"
