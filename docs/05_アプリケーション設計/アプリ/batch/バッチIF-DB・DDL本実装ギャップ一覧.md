@@ -47,6 +47,8 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 019 出力物理 | migration に CREATE なし（**E2 除外**） |
 | OPEN #102/#109/#133/#136 | いずれも OPEN（2026-07-22 確認）。E0 で **E2取込** 確定 |
 
+**§4 との対応（要約根拠）:** マトリクス上、専用テーブル欠落は **012 / 015 / 019** のみ。それ以外の主対象テーブルは migration 上に存在感あり。
+
 ---
 
 ## 3. migration 概観（事実）
@@ -64,27 +66,29 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 
 ## 4. IF × テーブル × migration × stub マトリクス（事実）
 
+本節は **テーブル有無（migration 上の存在感）中心**である。列差分の追加棚卸し要否は §8 の Human 確認事項に委ねる。
+
 | IF ID | 主対象（一覧） | migration 上の存在感 | apps/batch stub | 備考 |
 | ----- | -------------- | -------------------- | --------------- | ---- |
 | IF-DB-BATCH-001 | `batch_run_log` | initial にあり | ScaffoldDbWriter / in-memory | Obs 共通 |
-| IF-DB-BATCH-002 | `api_call_log` | initial にあり | 同上 | |
-| IF-DB-BATCH-003 | `fetch_cursor` | initial にあり | 同上 | |
-| IF-DB-BATCH-004 | `raw_product_metadata` | initial にあり | 同上 | |
-| IF-DB-BATCH-005 | staging_* | initial にあり | 同上 | |
-| IF-DB-BATCH-006 | `product_diff_result` | initial にあり | 同上 | |
-| IF-DB-BATCH-007 | `item` / image / review | initial にあり | 同上 | |
-| IF-DB-BATCH-008 | `ranking_snapshot` / popularity | initial にあり | 同上 | |
-| IF-DB-BATCH-009 | `item.active_status` | initial（列） | 同上 | |
-| IF-DB-BATCH-010 | `item_generation_queue` | initial にあり | 同上 | |
-| IF-DB-BATCH-011 | `item_semantic` | initial にあり | 同上 | |
+| IF-DB-BATCH-002 | `api_call_log` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-003 | `fetch_cursor` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-004 | `raw_product_metadata` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-005 | staging_* | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-006 | `product_diff_result` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-007 | `item` / image / review | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-008 | `ranking_snapshot` / popularity | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-009 | `item.active_status` | initial（列） | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-010 | `item_generation_queue` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-011 | `item_semantic` | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-012 | feature_input_hash / queue | **専用テーブルなし**（handoff / 列解釈） | in-memory handoff | Human 判断待ち |
-| IF-DB-BATCH-013 | `item_feature` | initial にあり | 同上 | |
-| IF-DB-BATCH-014 | normalized / `item_meaning` | initial（列・テーブル） | 同上 | |
+| IF-DB-BATCH-013 | `item_feature` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-014 | normalized / `item_meaning` | initial（列・テーブル） | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-015 | embedding_input_hash / context | **専用テーブルなし**（handoff / 列解釈） | in-memory handoff | Human 判断待ち |
-| IF-VEC-BATCH-001 | `item_embedding` | initial にあり | 同上 | Embedding API は E3 |
-| IF-DB-BATCH-016 | distribution metric 3 種 | initial にあり | 同上 | |
-| IF-DB-BATCH-017 | `item_import_summary` | initial にあり | 同上 | |
-| IF-DB-BATCH-020/021 | `item_active_status_candidate` | 増分 migration あり | 同上 | |
+| IF-VEC-BATCH-001 | `item_embedding` | initial にあり | ScaffoldDbWriter / in-memory | Embedding API は E3 |
+| IF-DB-BATCH-016 | distribution metric 3 種 | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-017 | `item_import_summary` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-020/021 | `item_active_status_candidate` | 増分 migration あり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-018 | evaluation_* | initial にあり | scaffold（参考） | **E2 本格化除外** |
 | IF-DB-BATCH-019 | feedback_analysis_* | **CREATE なし** | 明示 stub | **E2 除外** |
 
@@ -148,3 +152,4 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-22 | 初版（E2 inventory / #1562） |
+| 2026-07-22 | AI Review 対応: §4 stub 列の明示化、§2 要約根拠・§4 列差分注記を追加 |
