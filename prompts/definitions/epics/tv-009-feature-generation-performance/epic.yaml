@@ -1,0 +1,145 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-tv-009-feature-generation-performance"
+  title: "PoC:TV-009Feature生成性能"
+  summary: "TV-009。User / Item Feature 生成時間を Online（Reco）と Item Feature 生成ロジック側で計測し、shared_logic・Online/Batch 責務設計への入力を残す。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  TV進捗は TV-009 = 方針のみ・Issue 未起票。方針書は #1496 由来。
+  TV-007 の user_feature 計測は User Meaning（外部 AI 含む）合算が支配的で、Feature merge/normalize 単体は分離されていない。
+  UserFeatureGenerator / ItemFeatureGenerator は apps/reco に実装済み。Batch Item Feature は BATCH-012（apps/batch）だが exclusive 奪取禁止。
+  Human（2026-07-23）: TV-006 develop 着後、進捗完了更新と TV-009 着手。
+
+objective: |
+  Feature 生成（User / Item）の応答時間を計測し、結果 doc と Go/Adjust/Block を残す。
+  TV進捗で TV-006 を完了、TV-009 を進行中→完了へ更新する。
+  正式 shared_logic / Online・Batch 責務 docs 更新は別 Task（S4 後）。
+
+scope:
+  - "TV-006 完了・TV-009 進行の TV進捗更新"
+  - "TV-009 方針・結果 doc（性能フィジビリティ/）"
+  - "計測スクリプト（scripts/perf。in-memory / アプリ非改修）"
+  - "Online: UserFeatureGenerator。Item: ItemFeatureGenerator（Reco 実装。Batch ジョブ全体は非必須）"
+  - "Epic / Task / Review Definition"
+
+out_of_scope:
+  - "TV-007 Reco E2E 再実施"
+  - "User Meaning 性能改善（後続 D）"
+  - "TV-008 Batch 全体フィジビリティ"
+  - "apps/** 本格改修"
+  - "apps/batch/** exclusive 奪取・改修"
+  - "production"
+  - "正式設計独断更新（設計反映メモまで）"
+  - "secret 実値の commit"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-009_Feature生成性能.md"
+      required: true
+    - path: "docs/90_PoC/計画/技術検証全体計画.md"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      required: true
+      purpose: "TV-007 user_feature と切り分け"
+  files:
+    - path: "scripts/perf/README.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-009_Feature生成性能.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/epics/tv-009-feature-generation-performance/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/tv-009-feature-generation-performance/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/tv-009-feature-generation-performance/**"
+      action: "create_or_update"
+      required: false
+
+acceptance_criteria:
+  - "User Feature および/または Item Feature の生成時間が結果 doc にある（未実施は理由）"
+  - "TV-007 との切り分けが明示されている"
+  - "Go / Adjust / Block がある"
+  - "TV進捗で TV-006=完了、本 Epic develop 着後に TV-009=完了"
+
+issue:
+  number: 1578
+  unit: "epic"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+branch:
+  no_branch: false
+  name: "spike/epic-1578-tv-009-feature-generation-performance"
+  summary: "tv-009-feature-generation-performance"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-23"
+    due_date: "2026-07-28"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+  conflict_risk: "medium"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Epic Issue #1578 / Branch spike/epic-1578-tv-009-feature-generation-performance"
+  - "推奨: Online=UserFeatureGenerator、Item=ItemFeatureGenerator（in-memory）。BATCH-012 全体は非必須"
+  - "BATCH レーン（#1561 等）の apps/batch を改修しない"
