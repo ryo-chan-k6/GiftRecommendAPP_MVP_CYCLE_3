@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-perf-phase-output-slo-revision"
+  title: "docs:phase_output soft/hard見直し"
+  summary: "計測定義修正（#1544 / #1550）後の再計測根拠に基づき、MOD-RECO-001 §13.2 および性能要件 §5 の phase_output soft/hard を見直す。最終数値は Human Review で確定する。User Meaning 性能改善・ボリュームテストは out of scope。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  #1539 / #1541 で phase_output 案 A（soft 3s / hard 7s）を正本へ転記した。
+  #1544 / #1550 で bench から response_built 累積を除外した結果、mock の phase_output p95 は約 105ms となり、
+  案 A は旧合算根拠のまま残っている。Human 判断（2026-07-22）: User Meaning 性能改善（後続 D）は
+  ボリュームテスト等の後の統合タスクとし未着手。本 Epic は正本数値見直し（後続 1）を先に行う。
+
+objective: |
+  新計測定義に整合する phase_output soft/hard を正本へ反映する（Human 確定値）。
+  必要なら secrets 再計測を行い根拠を補強する。
+  設計反映メモ・未決事項を閉じる。
+
+scope:
+  - "MOD-RECO-001 §13.2（phase_output / §13.2.5 / 関連 §16）"
+  - "性能要件（バックエンド）§4.1 / §5 の phase_output 関連"
+  - "設計反映メモ・Phase3 結果 doc のステータス／数値整合（最小）"
+  - "必要なら scripts/perf による再計測（mock 必須、secrets は Human 判断）"
+  - "Epic / Task / Review Definition"
+
+out_of_scope:
+  - "User Meaning 性能改善（後続 D・統合タスク）"
+  - "ボリュームテスト / 件数スケール本実施"
+  - "TV-005 / TV-006（後続 3）"
+  - "apps/** 実装変更（timeout 定数追従は別実装 Task）"
+  - "apps/batch/** / BATCH レーン"
+  - "計測定義の再変更（#1545 完了済み）"
+  - "secret 実値の commit"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      required: true
+    - path: "ai-logs/experiments/2026-07-22-reco-perf-phase-output-metric-fix.md"
+      required: true
+  issues:
+    - number: 1544
+      purpose: "計測定義修正 Epic（CLOSED / #1550）"
+    - number: 1539
+      purpose: "案 A 正本転記（CLOSED）"
+    - number: 1541
+      purpose: "正式 docs develop MERGED"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/epics/reco-perf-phase-output-slo-revision/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/reco-perf-phase-output-slo-revision/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/reco-perf-phase-output-slo-revision/**"
+      action: "create_or_update"
+      required: false
+    - path: "ai-logs/experiments/**"
+      action: "create_or_update"
+      required: false
+
+deliverables:
+  - "Epic Issue / Branch（base・target=develop）"
+  - "phase_output soft/hard の Human 確定反映（正本2文書）"
+  - "設計反映メモの未決クローズ"
+  - "再計測根拠（mock 必須。secrets は判断次第）"
+
+acceptance_criteria:
+  - "§13.2 / 性能要件の phase_output が旧合算根拠の 3s/7s のまま『確定待ち』で放置されていない（据置 or 見直しが Human 確定として明示）"
+  - "新計測定義（#1545）との整合が正本に書かれている"
+  - "数値最終採用は Human Review で確定している（AI 独断確定なし）"
+  - "User Meaning 改善・ボリュームテスト・TV-005/006 を含まない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/epic-1552-reco-perf-phase-output-slo-revision"
+  summary: "reco-perf-phase-output-slo-revision"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-25"
+
+issue:
+  number: 1552
+  unit: "epic"
+  type: "docs"
+  area: "reco"
+  creation_blocked: false
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+    - "docs/90_PoC/**"
+    - "scripts/perf/**"
+    - ".github/workflows/perf-feasibility-*.yml"
+    - "prompts/definitions/epics/reco-perf-phase-output-slo-revision/**"
+    - "prompts/definitions/tasks/reco-perf-phase-output-slo-revision/**"
+    - "prompts/definitions/reviews/reco-perf-phase-output-slo-revision/**"
+    - "ai-logs/experiments/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/contracts/**"
+    - "supabase/migrations/**"
+    - ".env"
+  child_task_areas:
+    - "slo-docs-update"
+
+dependencies:
+  epics:
+    - id: "epic-reco-perf-phase-output-metric-fix"
+      issue: 1544
+      purpose: "新計測定義（CLOSED）"
+    - id: "epic-reco-perf-timeout-formal-docs"
+      issue: 1532
+      purpose: "案 A 転記前提（CLOSED）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+  conflict_risk: "medium"
+  contract_impact: false
+
+human_decision_points:
+  - "案 A（3s/7s）据置か、新定義根拠で見直すか"
+  - "見直し場合の soft/hard 最終値"
+  - "secrets 再計測を必須とするか（mock のみでよいか）"
+  - "Reason 込み E2E を 6s/8s 同一枠のままにするか"
+
+stop_conditions:
+  - "User Meaning 改善やボリュームテストが本 Epic に必要に見える"
+  - "正本数値を Human 確認なしに確定済みとして書く必要がある"
+  - "apps/** 変更が必須に見える"
+
+notes:
+  - "Epic Issue #1552 / Branch docs/epic-1552-reco-perf-phase-output-slo-revision"
+  - "後続提案 1。順序は 1 → 3（TV-005/006）。D は未着手"
+  - "AI 推奨案は experiment log（mock p95≈105ms）を起点に提示し、最終採否は Human"
