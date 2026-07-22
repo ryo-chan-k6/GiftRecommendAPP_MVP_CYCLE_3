@@ -14,7 +14,7 @@
 | Phase2 結果 | [Reco性能フィジビリティ検証結果_Phase2_live](./Reco性能フィジビリティ検証結果_Phase2_live.md) |
 | 計測日 | 2026-07-22（JST） |
 
-**注意:** 本結果の Go / Adjust / Block は **実測根拠付きの暫定判定**である。`phase_output` soft/hard は #1553 で soft **500ms** / hard **2,000ms** を**最終確定**。Reason 込み E2E は同期外部 AI 込み 6s/8s 同一枠を維持。
+**注意:** 本結果の Go / Adjust / Block は **実測根拠付きの暫定判定**である。`phase_output` soft/hard は #1553 で soft **500ms** / hard **2,000ms** を**AI 推奨案**として記載（本 PR の Human Review で採否確定）。Reason 込み E2E は同期外部 AI 込み 6s/8s 同一枠維持を推奨。
 
 ---
 
@@ -36,7 +36,7 @@
 | -------- | ---- | --------------- |
 | **主対象** | 入力解析〜 Reason（最終レスポンス） | 同期外部 AI 込み soft **6,000ms** / hard **8,000ms** |
 | 比較 | 入力解析〜 Ranking | Reco 内部 soft **1,500ms** / hard **2,000ms**（mock 主。secrets は User Meaning 支配のため参考） |
-| 必須指標 | `phase_output`（reason step） | #1553 最終 soft **500ms** / hard **2,000ms**（新定義は §3.3.2〜§3.3.4） |
+| 必須指標 | `phase_output`（reason step） | #1553 AI 推奨 soft **500ms** / hard **2,000ms**（Human Review 待ち。新定義は §3.3.2〜§3.3.4） |
 
 ### 2.2 GHA 実行記録
 
@@ -92,7 +92,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 ### 3.3 phase_output（reason step）
 
-| 環境 | openai_mode | p50 (ms) | p95 (ms) | max (ms) | 当面記載 hard 500ms |
+| 環境 | openai_mode | p50 (ms) | p95 (ms) | max (ms) | 旧定義時点の当面記載 hard 500ms |
 | ---- | ----------- | -------- | -------- | -------- | ------------------- |
 | GHA | secrets | 2,678.5 | **6,424.0** | 8,457.0 | 大幅超過 |
 | local（WSL2） | secrets | 2,843.0 | **3,555.1** | 4,335.0 | 大幅超過 |
@@ -151,7 +151,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 **事実:** 新定義では `phase_output` p95 が旧合算（1,355ms）から **105ms** へ低下し、`response_built`（≈E2E 累積）と分離できた。
 
-**転帰（#1553）:** Human は当初案 A（3s/7s）を暫定据置したのち、local/GHA secrets 再計測を経て soft **500ms** / hard **2,000ms** へ**最終確定**（§5）。
+**転帰（#1553）:** 当初案 A（3s/7s）を暫定据置したのち、local/GHA secrets 再計測を経て soft **500ms** / hard **2,000ms** を**AI 推奨案**として記載（§5・Human Review で採否確定）。
 
 #### 3.3.3 #1553 再計測（新定義・local secrets）
 
@@ -200,7 +200,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 **事実:** GHA でも新定義 `phase_output` は数百 ms 未満（p95 **241ms**）。旧合算の数秒級とは乖離。E2E は User Meaning 支配のまま Go（6s/8s）。
 
-**確定転帰:** 観測最悪 p95=241ms を根拠に soft **500ms** / hard **2,000ms** を最終確定（§5）。secret 実値は成果物に含めない。
+**推奨転帰（AI）:** 観測最悪 p95=241ms を根拠に soft **500ms** / hard **2,000ms** を AI 推奨（§5・Human Review で採否確定）。secret 実値は成果物に含めない。
 
 ### 3.4 フェーズ別 p95（secrets）
 
@@ -211,7 +211,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | retrieval | phase_retrieval | 77.7 | 125.6 | 1,000 | 上限内 |
 | matching | phase_matching | 10.2 | 16.2 | 500 | 上限内 |
 | ranking | phase_ranking | 10.1 | 17.2 | 1,000 | 上限内 |
-| reason | phase_output | **6,424.0** | **3,555.1** | 当面 500（旧）→ **#1553 最終 0.5s/2s** | **旧合算値**（§3.3.1）。新定義は §3.3.2〜§3.3.4（p95≈105–241ms） |
+| reason | phase_output | **6,424.0** | **3,555.1** | 当面 500（旧）→ **#1553 AI 推奨 500ms/2,000ms** | **旧合算値**（§3.3.1）。新定義は §3.3.2〜§3.3.4（p95≈105–241ms） |
 
 ### 3.5 mock vs secrets（Reason 込み）
 
@@ -248,16 +248,16 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 
 ---
 
-## 5. phase_output 上限（#1553 Human 最終確定）
+## 5. phase_output 上限（#1553 AI 推奨案・Human Review で採否確定）
 
 | 案 | soft（監視） | hard（中断/上限） | 根拠・意図 |
 | -- | ------------- | ----------------- | ---------- |
-| ~~A（旧合算・暫定据置）~~ | ~~3,000ms~~ | ~~7,000ms~~ | 旧合算根拠。#1553 で暫定後に **廃止** |
-| **最終（#1553）** | **500ms** | **2,000ms** | 新定義最悪 p95（GHA **241ms**）の約 2 倍 / 約 8 倍。E2E 8s 内 |
+| ~~A（旧合算・暫定据置）~~ | ~~3,000ms~~ | ~~7,000ms~~ | 旧合算根拠。#1553 で暫定後に **廃止を推奨** |
+| **AI 推奨（#1553）** | **500ms** | **2,000ms** | 新定義最悪 p95（GHA **241ms**）の約 2 倍 / 約 8 倍。E2E 8s 内 |
 | B（不採用） | 2,500ms | 5,000ms | 新定義には過大 |
 | C（不採用） | soft のみ | hard なし | 本 Task では hard を維持 |
 
-**#1553 確定:** soft **500ms** / hard **2,000ms**。Reason 込み E2E は 6s/8s 同一枠を維持。local + GHA secrets 再計測済み（§3.3.3 / §3.3.4）。
+**#1553 AI 推奨:** soft **500ms** / hard **2,000ms**（Human Review で採否確定）。Reason 込み E2E は 6s/8s 同一枠維持を推奨。local + GHA secrets 再計測済み（§3.3.3 / §3.3.4）。
 
 **前提:** Reason LLM refinement は計測時 OFF。有効化時は再計測（別 Task）。
 
@@ -268,9 +268,9 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 対象 | Phase3 からの入力案 |
 | ---- | ------------------- |
 | Reason 込み E2E | 新定義 local/GHA secrets: Go（p95≈3.5–3.6s）。6s/8s 同一枠維持（#1553） |
-| phase_output | **#1553 最終:** soft 500 / hard 2,000。新定義 p95≈105–241ms |
+| phase_output | **#1553 AI 推奨:** soft 500 / hard 2,000（Human Review 待ち）。新定義 p95≈105–241ms |
 | Ranking まで | mock は内部 1.5s/2s で Go。Phase2 結論を維持 |
-| 正式 docs | #1553 で最終値反映済み |
+| 正式 docs | #1553 で AI 推奨案を正本へ記載（Human Review で採否確定） |
 
 ---
 
@@ -280,7 +280,7 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | ---- | ---- |
 | secrets 環境差 | GHA Block / local Adjust。最終ラベルは Human 判断 |
 | phase_output 計測定義 | #1545 で `response_built` を除外（新定義）。§3 表は旧定義の記録 |
-| phase_output 上限 | #1553 で soft **500ms** / hard **2,000ms** **最終確定** |
+| phase_output 上限 | #1553 で soft **500ms** / hard **2,000ms** を **AI 推奨**（Human Review で採否確定） |
 | 性能改善 | User Meaning 短縮/キャッシュ/非同期/モデル、ボリューム・複雑条件、UX 横断は別 Task |
 | 件数スケール | seed 3 件。100/500/1,000 未実施（Phase2 同） |
 | hard timeout 有効時 | bypass 計測。本番 8s 中断時の挙動は別確認候補 |
@@ -300,4 +300,4 @@ artifact: `reco-perf-bench-<run_id>`（`report.json`, `summary.md`）。secret �
 | 2026-07-22 | `phase_output` 計測定義の注意（`response_built` 累積合算・Reason LLM OFF）を追記 |
 | 2026-07-22 | #1545: `phase_output` から `response_built` 除外。新旧定義と mock 再計測（§3.3.2）を追記 |
 | 2026-07-22 | #1553: 案 A 暫定据置。local secrets 再計測（§3.3.3・p95≈109ms）と §5 転帰を追記 |
-| 2026-07-22 | #1553: GHA secrets 再計測（§3.3.4・p95≈241ms）。soft 500ms / hard 2,000ms 最終確定 |
+| 2026-07-22 | #1553: GHA secrets 再計測（§3.3.4・p95≈241ms）。soft 500ms / hard 2,000ms を AI 推奨案として記載 |
