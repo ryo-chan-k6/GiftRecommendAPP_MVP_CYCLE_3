@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1575
   issue:
     number: 1571
   task_definition: "prompts/definitions/epics/tv-006-pgvector-search-performance/epic.yaml"
@@ -73,4 +73,4 @@ acceptance:
 notes:
   - "merge 判断は Human"
   - "正式 DB/Retrieval docs 更新は別 Task（S4 後）"
-  - "PR 番号は create-pr 後に埋める"
+  - "Epic Issue #1571 / Branch spike/epic-1571-tv-006-pgvector-search-performance / PR #1575"
