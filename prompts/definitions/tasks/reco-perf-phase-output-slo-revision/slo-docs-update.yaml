@@ -1,0 +1,181 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-perf-phase-output-slo-docs-update"
+  title: "phase_output soft/hardの正本見直し"
+  summary: "新計測定義（#1545）と再計測根拠を入力に、MOD-RECO-001 §13.2・性能要件 §5 の phase_output soft/hard を見直す。最終数値は Human Review で確定する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-perf-phase-output-slo-revision"
+  epic_issue: "[Epic]docs:phase_output soft/hard見直し"
+  epic_issue_number: 1552
+  epic_branch: "docs/epic-1552-reco-perf-phase-output-slo-revision"
+  related_issues:
+    - number: 1544
+      purpose: "計測定義修正（CLOSED）"
+    - number: 1539
+      purpose: "案 A 転記（CLOSED）"
+    - number: 1550
+      purpose: "計測定義 develop MERGED"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  案 A（soft 3s / hard 7s）は旧合算（response_built 込み）根拠。
+  #1545 後の mock 再計測では phase_output p95 ≈ 105ms。
+  secrets 再計測は未実施。Human が据置 / 見直し / secrets 追加計測を判断する。
+
+objective: |
+  正本の phase_output soft/hard を新計測定義に整合した確定状態にする。
+  未決事項（案 A 採否）を閉じ、設計反映メモを更新する。
+
+scope:
+  - "MOD-RECO-001 §13.2 / §13.2.5 / 関連 §16"
+  - "性能要件（バックエンド）§4.1 / §5"
+  - "設計反映メモ（ステータス・確定値）"
+  - "必要なら Phase3 結果 doc への追記"
+  - "mock 再計測（既存結果の再利用可）。secrets は Human 判断時のみ"
+  - "本 Task / Review Definition"
+
+out_of_scope:
+  - "User Meaning 性能改善"
+  - "ボリュームテスト"
+  - "TV-005 / TV-006"
+  - "apps/**"
+  - "bench 計測定義の再変更"
+  - "secret 実値記載"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+    - path: "ai-logs/experiments/2026-07-22-reco-perf-phase-output-metric-fix.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "phase_output soft/hard が Human 確定として正本に明示されている（据置含む）"
+  - "新計測定義（#1545）との整合が書かれている"
+  - "性能要件と §13.2 が整合している"
+  - "User Meaning / ボリューム / TV-005/006 を含まない"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "phase-output-slo-docs"
+  base: "docs/epic-1552-reco-perf-phase-output-slo-revision"
+  target: "docs/epic-1552-reco-perf-phase-output-slo-revision"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-25"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-reco-perf-phase-output-slo-revision"
+      purpose: "親 Epic"
+  issues:
+    - number: 1550
+      purpose: "計測定義 develop 着前提"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "正本2文書の phase_output 整合"
+  not_required:
+    - "apps unit tests"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "据置 / 見直しの根拠が明示されているか"
+    - "新計測定義との整合"
+    - "AI 推奨を確定済みと誤記していないか"
+    - "実装差分の非混入"
+  specialist_reviews:
+    docs: true
+    test: false
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "3s/7s 据置 vs 見直し"
+  - "見直し時の最終 soft/hard"
+  - "secrets 再計測要否"
+
+stop_conditions:
+  - "親 Epic Issue / Branch 未作成"
+  - "Human 未確定の数値を確定済みとして書く必要がある場合（推奨案提示は可）"
+
+notes:
+  - "Task Issue #1553 / Branch docs/task-1553-phase-output-slo-docs"
+  - "親 Epic #1552 / Branch docs/epic-1552-reco-perf-phase-output-slo-revision"
+  - "AI 推奨の起点: mock phase_output p95≈105ms（#1545 experiment）。secrets 未実施"
