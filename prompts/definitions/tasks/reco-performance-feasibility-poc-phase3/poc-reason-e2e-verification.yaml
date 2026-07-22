@@ -194,5 +194,6 @@ stop_conditions:
   - "#1533 方針と矛盾する判定を Human 確認なしに確定しそうな場合"
 
 notes:
+  - "Task Issue #1536 / Branch spike/task-1536-reco-perf-phase3-reason-e2e"
   - "親 Epic #1535 / Branch spike/epic-1535-reco-performance-feasibility-poc-phase3"
   - "判定基準の正本入力: #1533 / MOD-RECO-001 §13.2（Epic #1532 Branch 上の確定文）"

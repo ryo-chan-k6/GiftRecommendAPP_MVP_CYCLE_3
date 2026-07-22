@@ -2,7 +2,8 @@ name: Perf Feasibility Reco
 
 # Layer2 Reco 性能フィジビリティ（CI・CD方針書 §12.2 / TV-007）。
 # 通常 PR CI（ci.yml）とは分離。本番運用は workflow_dispatch。
-# Phase1: skeleton / Phase2: live（ephemeral DB + OpenAI mock|secrets）
+# Phase1: skeleton / Phase2–3: live（ephemeral DB + OpenAI mock|secrets）
+# Phase3: Reason 込み E2E を主対象（bench 側で Ranking までと分離判定）
 
 run-name: "perf-feasibility-reco · ${{ github.event_name }} · ${{ inputs.pipeline_mode || 'skeleton' }} · ${{ inputs.openai_mode || 'mock' }}"
 
@@ -57,6 +58,8 @@ on:
     branches:
       - spike/epic-1512-reco-performance-feasibility-poc-phase2
       - spike/task-1513-reco-perf-live
+      - spike/epic-1535-reco-performance-feasibility-poc-phase3
+      - spike/task-1536-reco-perf-phase3-reason-e2e
     paths:
       - .github/workflows/perf-feasibility-reco.yml
       - scripts/perf/**

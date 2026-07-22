@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Reco pipeline performance bench harness (TV-007 / Phase1 skeleton + Phase2 live).
+"""Reco pipeline performance bench harness (TV-007 / Phase1–3).
 
 Phase1: ``skeleton`` mode measures Phase4a scaffold pipeline without changing apps/reco.
 Phase2: ``live`` mode runs RecommendationOrchestrator (PRODUCTION) with ephemeral DB
         and optional OpenAI secrets clients injected from scripts/perf (apps/reco 非改修).
+Phase3: Reason（phase_output）込み E2E を正式主対象。Ranking までと Reason 込みを分離判定。
 """
 
 from __future__ import annotations
@@ -20,8 +21,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-# TV-007 主対象: 入力解析〜 Ranking（Reason は参考計測）
-TV007_STEP_PHASES: tuple[str, ...] = (
+# Phase2 / 比較用: 入力解析〜 Ranking
+RANKING_SCOPE_PHASES: tuple[str, ...] = (
     "input_parse",
     "user_feature",
     "retrieval",
@@ -29,6 +30,14 @@ TV007_STEP_PHASES: tuple[str, ...] = (
     "ranking",
 )
 
+# Phase3 主対象: 入力解析〜 Reason（最終レスポンス）
+REASON_E2E_PHASES: tuple[str, ...] = (
+    *RANKING_SCOPE_PHASES,
+    "reason",
+)
+
+# 後方互換エイリアス（Phase2 スクリプト・docs 参照）
+TV007_STEP_PHASES: tuple[str, ...] = RANKING_SCOPE_PHASES
 REFERENCE_STEP_PHASES: tuple[str, ...] = ("reason",)
 
 # 検証計画書 §6 計測ポイント ID へのマッピング
@@ -68,11 +77,17 @@ LIVE_PHASE_TO_STEP: dict[str, str] = {
     "response_built": "reason",
 }
 
+# #1533 Human 確定: Reco 内部 / 同期外部 AI 込み。phase_output は Phase3 で案出し（暫定 500 を参考維持）
 THRESHOLDS_MS: dict[str, float] = {
-    "pipeline_total_soft": 2_000.0,
-    "pipeline_total_hard": 4_000.0,
+    "internal_soft": 1_500.0,
+    "internal_hard": 2_000.0,
+    "sync_external_ai_soft": 6_000.0,
+    "sync_external_ai_hard": 8_000.0,
+    # 後方互換（Phase2 旧 soft/hard。report では internal / sync_external_ai を優先）
+    "pipeline_total_soft": 1_500.0,
+    "pipeline_total_hard": 2_000.0,
     "phase_config": 300.0,
-    "phase_user_meaning": 1_000.0,
+    "phase_user_meaning": 5_000.0,
     "phase_retrieval": 1_000.0,
     "phase_matching": 500.0,
     "phase_ranking": 1_000.0,
@@ -87,9 +102,15 @@ DEFAULT_OCCASION_CODE = "birthday"
 class IterationSample:
     step_timings_ms: dict[str, float]
     pipeline_total_ms: float
-    tv007_total_ms: float
+    ranking_until_ms: float
+    reason_e2e_ms: float
     success: bool = True
     error_code: str | None = None
+
+    @property
+    def tv007_total_ms(self) -> float:
+        """後方互換: Phase2 相当（Ranking まで）。"""
+        return self.ranking_until_ms
 
 
 def percentile(sorted_values: list[float], p: float) -> float:
@@ -161,12 +182,16 @@ def run_skeleton_iteration() -> IterationSample:
         step_timings_ms[phase] = (time.perf_counter() - step_start) * 1_000.0
 
     pipeline_total_ms = (time.perf_counter() - pipeline_start) * 1_000.0
-    tv007_total_ms = sum(step_timings_ms.get(phase, 0.0) for phase in TV007_STEP_PHASES)
+    ranking_until_ms = sum(step_timings_ms.get(phase, 0.0) for phase in RANKING_SCOPE_PHASES)
+    reason_e2e_ms = sum(step_timings_ms.get(phase, 0.0) for phase in REASON_E2E_PHASES)
+    if reason_e2e_ms <= 0:
+        reason_e2e_ms = pipeline_total_ms
 
     return IterationSample(
         step_timings_ms=step_timings_ms,
         pipeline_total_ms=pipeline_total_ms,
-        tv007_total_ms=tv007_total_ms,
+        ranking_until_ms=ranking_until_ms,
+        reason_e2e_ms=reason_e2e_ms,
     )
 
 
@@ -386,22 +411,30 @@ def run_live_iteration(
         phase_events = list(context.phase_log_events)
 
     step_timings_ms = _phase_events_to_step_timings(phase_events)
-    tv007_total_ms = sum(step_timings_ms.get(phase, 0.0) for phase in TV007_STEP_PHASES)
+    ranking_until_ms = sum(step_timings_ms.get(phase, 0.0) for phase in RANKING_SCOPE_PHASES)
+    reason_phase_sum_ms = sum(step_timings_ms.get(phase, 0.0) for phase in REASON_E2E_PHASES)
 
     error_code = None
     if outcome.reco_error is not None:
         error_code = getattr(outcome.reco_error, "error_code", None) or str(outcome.reco_error)
 
-    # Prefer outer wall-clock for TV-007 E2E when phase sum is incomplete (timeout mid-run).
-    if not outcome.success and pipeline_total_ms > tv007_total_ms:
-        tv007_wall = pipeline_total_ms
+    # Ranking まで: phase 合算。失敗時は wall-clock を下限として採用。
+    if not outcome.success and pipeline_total_ms > ranking_until_ms:
+        ranking_wall = pipeline_total_ms
     else:
-        tv007_wall = tv007_total_ms if tv007_total_ms > 0 else pipeline_total_ms
+        ranking_wall = ranking_until_ms if ranking_until_ms > 0 else pipeline_total_ms
+
+    # Reason 込み E2E: 最終レスポンス相当は外側 wall-clock を主、phase 合算は補助。
+    if reason_phase_sum_ms > 0 and outcome.success:
+        reason_e2e_ms = max(pipeline_total_ms, reason_phase_sum_ms)
+    else:
+        reason_e2e_ms = pipeline_total_ms
 
     return IterationSample(
         step_timings_ms=step_timings_ms,
         pipeline_total_ms=pipeline_total_ms,
-        tv007_total_ms=tv007_wall,
+        ranking_until_ms=ranking_wall,
+        reason_e2e_ms=reason_e2e_ms,
         success=bool(outcome.success),
         error_code=error_code,
     )
@@ -424,6 +457,38 @@ def aggregate_phase_groups(step_stats: dict[str, dict[str, float]]) -> dict[str,
     return grouped
 
 
+def _verdict_label(
+    *,
+    p95_ms: float,
+    soft_ms: float,
+    hard_ms: float,
+    success_count: int,
+) -> dict[str, Any]:
+    if success_count == 0:
+        return {
+            "label": "Block",
+            "p95_ms": p95_ms,
+            "soft_limit_ms": soft_ms,
+            "hard_limit_ms": hard_ms,
+            "rule": "p95<=soft→Go; soft<p95<=hard→Adjust; p95>hard→Block; all-fail→Block",
+            "note": "all iterations failed; treat as Block regardless of wall-clock",
+        }
+    if p95_ms <= soft_ms:
+        label = "Go"
+    elif p95_ms <= hard_ms:
+        label = "Adjust"
+    else:
+        label = "Block"
+    return {
+        "label": label,
+        "p95_ms": p95_ms,
+        "soft_limit_ms": soft_ms,
+        "hard_limit_ms": hard_ms,
+        "rule": "p95<=soft→Go; soft<p95<=hard→Adjust; p95>hard→Block; all-fail→Block",
+        "note": None,
+    }
+
+
 def build_report(
     *,
     mode: str,
@@ -433,13 +498,15 @@ def build_report(
 ) -> dict[str, Any]:
     step_series: dict[str, list[float]] = {}
     pipeline_totals: list[float] = []
-    tv007_totals: list[float] = []
+    ranking_totals: list[float] = []
+    reason_e2e_totals: list[float] = []
     success_count = 0
     error_codes: dict[str, int] = {}
 
     for sample in samples:
         pipeline_totals.append(sample.pipeline_total_ms)
-        tv007_totals.append(sample.tv007_total_ms)
+        ranking_totals.append(sample.ranking_until_ms)
+        reason_e2e_totals.append(sample.reason_e2e_ms)
         if sample.success:
             success_count += 1
         if sample.error_code:
@@ -454,46 +521,58 @@ def build_report(
         if phase in STEP_TO_MEASUREMENT_POINT
     }
 
-    tv007_summary = summarize_ms(tv007_totals)
+    ranking_summary = summarize_ms(ranking_totals)
+    reason_e2e_summary = summarize_ms(reason_e2e_totals)
     pipeline_summary = summarize_ms(pipeline_totals)
+    phase_output_stats = step_stats.get("reason", summarize_ms([]))
 
-    soft = THRESHOLDS_MS["pipeline_total_soft"]
-    hard = THRESHOLDS_MS["pipeline_total_hard"]
-    p95 = tv007_summary["p95_ms"]
-    # 全 iteration 失敗時は wall-clock だけで Go にしない（部分失敗の誤判定防止）
-    if success_count == 0:
-        verdict = "Block"
-        verdict_note = "all iterations failed; treat as Block regardless of wall-clock"
-    elif p95 <= soft:
-        verdict = "Go"
-        verdict_note = None
-    elif p95 <= hard:
-        verdict = "Adjust"
-        verdict_note = None
-    else:
-        verdict = "Block"
-        verdict_note = None
+    internal_soft = THRESHOLDS_MS["internal_soft"]
+    internal_hard = THRESHOLDS_MS["internal_hard"]
+    sync_soft = THRESHOLDS_MS["sync_external_ai_soft"]
+    sync_hard = THRESHOLDS_MS["sync_external_ai_hard"]
+
+    ranking_verdict = _verdict_label(
+        p95_ms=ranking_summary["p95_ms"],
+        soft_ms=internal_soft,
+        hard_ms=internal_hard,
+        success_count=success_count,
+    )
+    reason_verdict = _verdict_label(
+        p95_ms=reason_e2e_summary["p95_ms"],
+        soft_ms=sync_soft,
+        hard_ms=sync_hard,
+        success_count=success_count,
+    )
 
     meta: dict[str, Any] = {
         "generated_at": datetime.now(UTC).isoformat(),
         "mode": mode,
         "iterations": iterations,
-        "tv007_scope": list(TV007_STEP_PHASES),
+        "primary_scope": "reason_e2e",
+        "ranking_scope": list(RANKING_SCOPE_PHASES),
+        "reason_e2e_scope": list(REASON_E2E_PHASES),
+        "tv007_scope": list(RANKING_SCOPE_PHASES),
         "reference_steps": list(REFERENCE_STEP_PHASES),
         "success_count": success_count,
         "failure_count": iterations - success_count,
         "error_codes": error_codes,
+        "verdict_ranking_until_vs_internal": ranking_verdict,
+        "verdict_reason_e2e_vs_sync_external_ai": reason_verdict,
+        # Phase2 互換: Ranking まで vs Reco 内部 soft/hard
         "verdict_vs_soft_hard": {
-            "label": verdict,
-            "tv007_p95_ms": p95,
-            "soft_limit_ms": soft,
-            "hard_limit_ms": hard,
-            "rule": "p95<=soft→Go; soft<p95<=hard→Adjust; p95>hard→Block; all-fail→Block",
-            "note": verdict_note,
+            **ranking_verdict,
+            "tv007_p95_ms": ranking_verdict["p95_ms"],
+            "scope": "ranking_until_vs_internal",
+        },
+        "thresholds_ms": {
+            "internal_soft": internal_soft,
+            "internal_hard": internal_hard,
+            "sync_external_ai_soft": sync_soft,
+            "sync_external_ai_hard": sync_hard,
+            "phase_output_provisional": THRESHOLDS_MS["phase_output"],
         },
     }
     if extra_meta:
-        # Drop non-serializable client refs
         safe_meta = {
             key: value
             for key, value in extra_meta.items()
@@ -506,11 +585,32 @@ def build_report(
         "steps": step_stats,
         "measurement_points": measurement_points,
         "phase_groups": aggregate_phase_groups(step_stats),
+        "scopes": {
+            "ranking_until": {
+                **ranking_summary,
+                "soft_limit_ms": internal_soft,
+                "hard_limit_ms": internal_hard,
+                "verdict": ranking_verdict,
+            },
+            "reason_e2e": {
+                **reason_e2e_summary,
+                "soft_limit_ms": sync_soft,
+                "hard_limit_ms": sync_hard,
+                "verdict": reason_verdict,
+            },
+            "phase_output": {
+                **phase_output_stats,
+                "provisional_hard_limit_ms": THRESHOLDS_MS["phase_output"],
+            },
+        },
         "pipeline_total": {
             **pipeline_summary,
-            "tv007_wall_clock": tv007_summary,
-            "soft_limit_ms": soft,
-            "hard_limit_ms": hard,
+            "tv007_wall_clock": ranking_summary,
+            "reason_e2e_wall_clock": reason_e2e_summary,
+            "soft_limit_ms": internal_soft,
+            "hard_limit_ms": internal_hard,
+            "sync_external_ai_soft_ms": sync_soft,
+            "sync_external_ai_hard_ms": sync_hard,
         },
     }
 
@@ -523,34 +623,82 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- mode: `{meta['mode']}`",
         f"- iterations: {meta['iterations']}",
         f"- generated_at: {meta['generated_at']}",
+        f"- primary_scope: `{meta.get('primary_scope', 'reason_e2e')}`",
     ]
     if "openai_mode" in meta:
         lines.append(f"- openai_mode: `{meta['openai_mode']}`")
-    if "verdict_vs_soft_hard" in meta:
-        verdict = meta["verdict_vs_soft_hard"]
+
+    ranking_v = meta.get("verdict_ranking_until_vs_internal") or meta.get("verdict_vs_soft_hard", {})
+    reason_v = meta.get("verdict_reason_e2e_vs_sync_external_ai", {})
+    if ranking_v:
         lines.append(
-            f"- provisional verdict: **{verdict['label']}** "
-            f"(tv007 p95={verdict['tv007_p95_ms']:.3f}ms)"
+            f"- Ranking まで vs Reco内部: **{ranking_v.get('label', 'n/a')}** "
+            f"(p95={ranking_v.get('p95_ms', ranking_v.get('tv007_p95_ms', 0)):.3f}ms / "
+            f"soft={ranking_v.get('soft_limit_ms', 0):.0f} / hard={ranking_v.get('hard_limit_ms', 0):.0f})"
         )
+    if reason_v:
+        lines.append(
+            f"- Reason込み vs 同期外部AI込み: **{reason_v.get('label', 'n/a')}** "
+            f"(p95={reason_v.get('p95_ms', 0):.3f}ms / "
+            f"soft={reason_v.get('soft_limit_ms', 0):.0f} / hard={reason_v.get('hard_limit_ms', 0):.0f})"
+        )
+
+    scopes = report.get("scopes", {})
+    reason_scope = scopes.get("reason_e2e") or report["pipeline_total"].get("reason_e2e_wall_clock")
+    ranking_scope = scopes.get("ranking_until") or report["pipeline_total"].get("tv007_wall_clock")
+    phase_output = scopes.get("phase_output") or report["steps"].get("reason", {})
+
     lines.extend(
         [
             "",
-            "## TV-007 pipeline total (input_parse → ranking)",
+            "## Phase3 primary: Reason E2E (input_parse → reason)",
             "",
             "| metric | ms |",
             "| ------ | --: |",
         ]
     )
-
-    total = report["pipeline_total"]["tv007_wall_clock"]
-    for key in ("p50_ms", "p95_ms", "mean_ms", "max_ms"):
-        lines.append(f"| {key} | {total[key]:.3f} |")
+    if reason_scope:
+        for key in ("p50_ms", "p95_ms", "mean_ms", "max_ms"):
+            lines.append(f"| {key} | {reason_scope[key]:.3f} |")
+        lines.append(
+            f"| soft (sync external AI) | {report['pipeline_total'].get('sync_external_ai_soft_ms', 6000):.0f} |"
+        )
+        lines.append(
+            f"| hard (sync external AI) | {report['pipeline_total'].get('sync_external_ai_hard_ms', 8000):.0f} |"
+        )
 
     lines.extend(
         [
             "",
-            f"- soft limit: {report['pipeline_total']['soft_limit_ms']:.0f} ms",
-            f"- hard limit: {report['pipeline_total']['hard_limit_ms']:.0f} ms",
+            "## Comparison: Ranking until (input_parse → ranking)",
+            "",
+            "| metric | ms |",
+            "| ------ | --: |",
+        ]
+    )
+    if ranking_scope:
+        for key in ("p50_ms", "p95_ms", "mean_ms", "max_ms"):
+            lines.append(f"| {key} | {ranking_scope[key]:.3f} |")
+        lines.append(f"| soft (Reco internal) | {report['pipeline_total']['soft_limit_ms']:.0f} |")
+        lines.append(f"| hard (Reco internal) | {report['pipeline_total']['hard_limit_ms']:.0f} |")
+
+    lines.extend(
+        [
+            "",
+            "## phase_output (reason step)",
+            "",
+            "| metric | ms |",
+            "| ------ | --: |",
+        ]
+    )
+    for key in ("p50_ms", "p95_ms", "mean_ms", "max_ms"):
+        if key in phase_output:
+            lines.append(f"| {key} | {phase_output[key]:.3f} |")
+    if "provisional_hard_limit_ms" in phase_output:
+        lines.append(f"| provisional hard | {phase_output['provisional_hard_limit_ms']:.0f} |")
+
+    lines.extend(
+        [
             "",
             "## Step timings (p50 / p95 ms)",
             "",
@@ -578,11 +726,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         lines.append(
             "> live mode: RecommendationOrchestrator (PRODUCTION) + ephemeral DB。"
             " OpenAI secrets は scripts/perf クライアント差込（apps/reco 非改修）。"
+            " Phase3 主対象は Reason 込み E2E。判定は Ranking まで（Reco内部）と Reason 込み（同期外部AI込み）を分離。"
         )
     else:
         lines.append("")
         lines.append(
-            "> skeleton mode: scaffold 実測。絶対値は Phase1 下限参考。最終判定は Phase2 live 実測後。"
+            "> skeleton mode: scaffold 実測。絶対値は Phase1 下限参考。最終判定は live 実測後。"
         )
 
     return "\n".join(lines) + "\n"
@@ -712,7 +861,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--enforce-hard-timeout",
         action="store_true",
-        help="live で Orchestrator 4,000ms hard timeout を有効化（既定は計測のため bypass）",
+        help="live で Orchestrator hard timeout を有効化（既定は計測のため bypass。#1533 本番主経路 hard は 8,000ms）",
     )
     return parser.parse_args(argv)
 
@@ -757,10 +906,14 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"wrote {json_path}")
     print(f"wrote {md_path}")
+    reason_p95 = report["pipeline_total"]["reason_e2e_wall_clock"]["p95_ms"]
+    ranking_p95 = report["pipeline_total"]["tv007_wall_clock"]["p95_ms"]
+    reason_label = report["meta"].get("verdict_reason_e2e_vs_sync_external_ai", {}).get("label", "n/a")
+    ranking_label = report["meta"].get("verdict_ranking_until_vs_internal", {}).get("label", "n/a")
     print(
-        f"tv007_total p95={report['pipeline_total']['tv007_wall_clock']['p95_ms']:.3f}ms "
-        f"(iterations={args.iterations}, mode={args.mode}, "
-        f"verdict={report['meta'].get('verdict_vs_soft_hard', {}).get('label', 'n/a')})"
+        f"reason_e2e p95={reason_p95:.3f}ms ({reason_label}) / "
+        f"ranking_until p95={ranking_p95:.3f}ms ({ranking_label}) "
+        f"(iterations={args.iterations}, mode={args.mode})"
     )
     return 0
 

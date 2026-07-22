@@ -37,8 +37,8 @@
 | Phase1 | S1〜S3（skeleton） | ハーネス整備、skeleton 実測、設計試算 | 完了（#1502） |
 | Phase2 | S3（live・Ranking まで） | live 実測、暫定 Go/Adjust/Block | 完了（#1512 / #1530） |
 | 正式反映（Ranking・User Meaning） | S4 後 | #1533 で soft/hard・主要フェーズ確定。`phase_output` のみ未確定 | #1533 CLOSED（Epic #1532 は develop 取り込み待ちの場合あり） |
-| **Phase3** | S3（live・Reason 込み） | Reason 込み E2E、`phase_output` 上限案、分離判定 | **#1535 で実施** |
-| 正式反映（phase_output） | Phase3 後の別 Task または #1532 追従 | §13.2 `phase_output` / 性能要件の Reason 関連 | Phase3 完了後 |
+| **Phase3** | S3（live・Reason 込み） | Reason 込み E2E、`phase_output` 上限案、分離判定 | **#1536 計測完了（Human 判定待ち）** |
+| 正式反映（phase_output） | Phase3 後の別 Task または #1532 追従 | §13.2 `phase_output` / 性能要件の Reason 関連 | Phase3 結果・Human 確定後 |
 
 ```mermaid
 flowchart LR
@@ -102,15 +102,15 @@ flowchart LR
 | Phase2 Epic / Task | #1512 / #1513 CLOSED |
 | 正式反映 Task | #1533 CLOSED（`phase_output` 未確定を宣言） |
 | Phase3 Epic | #1535 |
-| Phase3 Task | `poc-reason-e2e-verification` |
-| 結果 | Phase1/2 結果 doc、設計反映メモ、Phase3 結果 doc（予定） |
+| Phase3 Task | #1536 `poc-reason-e2e-verification` |
+| 結果 | Phase1/2/3 結果 doc、設計反映メモ |
 
 ---
 
 ## 6. 次アクション
 
-1. #1535 配下 Task で Reason 込み live 計測・結果 doc
-2. Human Review で `phase_output` hard 最終値を確定
+1. Human Review で `phase_output` hard 最終値を確定（Phase3 案: soft 3s / hard 7s）
+2. Reason 込み E2E を同期外部 AI 込み 6s/8s と同一枠にするか確定
 3. §13.2 / 性能要件への `phase_output` 正式反映（#1532 追従または新 Task）
 
 ---
@@ -123,3 +123,4 @@ flowchart LR
 | 2026-07-21 | Phase1 develop 取り込みに合わせて現状・次アクションを更新 |
 | 2026-07-21 | Phase2 live 計測境界（#1512/#1513）を追記 |
 | 2026-07-22 | Phase3（Reason 込み E2E）を正式主対象化。#1533 / #1535 を反映 |
+| 2026-07-22 | #1536 計測完了・結果 doc 参照。次アクションを Human 確定へ更新 |
