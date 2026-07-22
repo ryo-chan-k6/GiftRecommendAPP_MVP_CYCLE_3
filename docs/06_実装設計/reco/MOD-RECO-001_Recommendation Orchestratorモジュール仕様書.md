@@ -464,12 +464,20 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 | 項目 | 値 | 備考 |
 | ---- | -- | ---- |
-| soft（監視） | **3,000ms** | Phase3 secrets p50≈2.7–2.8s（合算値）を根拠 |
-| hard | **7,000ms** | Phase3 secrets p95≈3.6–6.4s。同期外部 AI 込み E2E hard 8s 内に Reason/Output 予算を確保 |
+| soft（監視） | **3,000ms** | Phase3 旧定義 secrets p50≈2.7–2.8s（合算値）を根拠。#1545 後は見直し候補 |
+| hard | **7,000ms** | Phase3 旧定義 secrets p95≈3.6–6.4s。同期外部 AI 込み E2E hard 8s 内に Reason/Output 予算を確保 |
 | Reason 込み E2E 枠 | 同期外部 AI 込み **6s/8s と同一**（Phase3 判定で採用） | 別枠にするかは Human Review |
 | 代替案 | B: soft 2.5s / hard 5s。C: soft 3s・hard なし（§10.3 fallback 継続） | Phase3 結果 doc §5 |
 
-**計測定義注意（事実）:** Phase3 bench の `phase_output` / `reason` は Orchestrator phase_log の `response_built` **累積合算**を含む。表の数秒級は **Reason LLM 単体レイテンシではない**（追加デバッグでは `reason_generated` ≈50ms 帯、支配は累積側）。本上限を「Reason OpenAI 専用予算」と読まないこと。計測定義の見直し（`response_built` 除外）は別 Task 候補。
+**計測定義（事実・#1545）:**
+
+| 定義 | 内容 |
+| ---- | ---- |
+| 旧（Phase3〜#1545 前） | bench `phase_output` / `reason` = `result_generated` + `reason_generated` + `response_built`（累積壁時計）。数秒級は Reason LLM 単体ではない |
+| **新（#1545 以降）** | `result_generated` + `reason_generated`。`response_built` は診断メトリクスとして別集計（`scopes.response_built`） |
+| Reason 込み E2E | 外側 wall-clock（変更なし） |
+
+本上限（案 A）を「Reason OpenAI 専用予算」と読まないこと。案 A は旧合算根拠のため、新定義再計測後の採否・数値見直しは **Human 判断**（本節では断定しない）。
 
 詳細・環境差（GHA Block / local Adjust）は Phase3 結果 doc を正とする。
 
@@ -516,6 +524,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-07-22 | §13.2 を Phase2 根拠付きで正式反映（内部 / 外部 AI 分離の AI 推奨。最終数値は Human 確定待ち） | Issue #1533 |
 | 2026-07-22 | §13.2 Human 確定反映（内部 soft/hard 1.5s/2s、外部 AI 込み 6s/8s、`phase_user_meaning` 5s。`phase_output` は別 Task） | Issue #1533 |
 | 2026-07-22 | §13.2 `phase_output` を Phase3 案 A（soft 3s / hard 7s）で転記。計測定義注意を §13.2.5 に追記（Human Review 採否） | Issue #1539 |
+| 2026-07-22 | §13.2.5: `phase_output` から `response_built` 除外（#1545）。新旧定義と案 A 見直し提案を追記 | Issue #1545 |
 
 ---
 
@@ -523,9 +532,9 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `phase_output` 案 A の最終採否 | Phase3 推奨値。計測定義（`response_built` 合算）の解釈付き | Human | #1539 Review | §13.2.5。代替 B/C あり |
+| 1 | `phase_output` 案 A の最終採否 | Phase3 推奨値。旧定義（`response_built` 合算）根拠。#1545 新定義後の見直し含む | Human | #1539 / #1545 | §13.2.5。代替 B/C あり |
 | 2 | Reason 込み E2E 枠 | 6s/8s 同一枠か別枠か | Human | #1539 Review | Phase3 は同一枠で判定 |
-| 3 | `phase_output` 計測定義修正 | Reason 単体との乖離 | Human | 別 Task 候補 | §13.2.5 |
+| 3 | `phase_output` 計測定義修正 | Reason 単体との乖離 | Human | **#1545 で bench 修正済み** | 案 A 数値の追従は No.1 |
 
 ### 16.1 確定済み論点（Issue #758 Human Review）
 
@@ -594,7 +603,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | recommendation_reason テーブル定義書 | fallback 時も INSERT、`reason_basis` に fallback 由来を記録 |
 | 状態遷移設計書 §11.1 | Reason 失敗時の「Result 全体失敗」記述を部分成功方針へ更新 |
 | 性能要件（バックエンド）§5 / 本 §13.2 | #1533 で整合済み。実装・API クライアント timeout の追従は別実装 Task |
-| `phase_output`（Reason）上限 | #1539 で案 A 転記。Human Review 採否・計測定義修正は残 |
+| `phase_output`（Reason）上限 | #1539 で案 A 転記。Human Review 採否。計測定義は #1545 で修正済み（数値見直しは残） |
 ---
 
 ## 18. レビュー観点
