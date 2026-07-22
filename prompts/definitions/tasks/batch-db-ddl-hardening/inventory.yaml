@@ -1,0 +1,171 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-ddl-hardening-inventory"
+  title: "batch-db-ddl-hardening:IF-DB・DDLギャップ棚卸し"
+  summary: "IF-DB-BATCH-001〜017(+020/021,+VEC-001) × テーブル定義 × migrations × apps/batch stub のマトリクスを docs 正本化する。DDL 適用・stub 解除実装は行わない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  epic_issue_number: 1561
+  epic_branch: "feature/epic--batch-db-ddl-hardening"
+  related_issues:
+    - 102
+    - 109
+    - 133
+    - 136
+  related_prs:
+    - 1560
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  E2 第1 Task。実装は ScaffoldDbWriter / in-memory。migrations は主要テーブルあり。
+  棚卸しで不足 DDL・handoff(012/015)・Wave 分割を Human 判断可能にする。
+
+objective: |
+  `バッチIF-DB・DDL本実装ギャップ一覧.md` を新規作成する。
+
+scope:
+  - "ギャップ一覧 docs 新規作成"
+  - "IF × テーブル × migration × stub マトリクス"
+  - "012/015 handoff・019 除外の明記"
+  - "後続 Task 分割案（接続基盤・DDL・stub 解除・UT）"
+  - "#102/#109/#133/#136 との関係整理（案）"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "DDL / migration ファイルの新規適用・破壊的変更"
+  - "ScaffoldDbWriter の実接続実装"
+  - "repositories の stub 解除コード"
+  - "親 workflow / 外部 API / 018・019 本格化"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-db-ddl-hardening/epic.yaml"
+      required: true
+  files:
+    - path: "supabase/migrations/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "create"
+      required: true
+
+deliverables:
+  - "IF-DB・DDL ギャップ一覧 docs"
+
+acceptance_criteria:
+  - "ギャップ一覧が作成されている"
+  - "IF マトリクス・migration 概観・stub 種別・後続 Task 案がある"
+  - "019 除外・DDL未適用が明記されている"
+  - "Human 未確定を断定していない"
+  - "secret 実値なし"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task--batch-db-ddl-hardening-inventory"
+  summary: "batch-db-ddl-hardening-inventory"
+  base: "feature/epic--batch-db-ddl-hardening"
+  target: "feature/epic--batch-db-ddl-hardening"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  number: 1562
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 
+      title: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+      purpose: "親 Epic"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs review"
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "事実と推論の分離"
+    - "019/外部API/親workflow 非混入"
+    - "DDL 未適用である"
+    - "後続 Task 案が十分か"
+  specialist_reviews:
+    docs: true
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+    incidents: true
+
+human_decision_points:
+  - "012/015 handoff 永続方針"
+  - "Wave A/B 優先度"
+  - "#102/#133 整理"
+
+notes:
+  - "親 Epic 起票後に番号反映"

@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-ddl-hardening-epic-pr"
+  title: "batch-db-ddl-hardening Epic PRレビュー"
+  summary: "E2 IF・DB・DDL 本実装 Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1561
+  task_definition: "prompts/definitions/epics/batch-db-ddl-hardening/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  parent_epic_branch: "feature/epic--batch-db-ddl-hardening"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "019/外部API/親workflow 非混入"
+  - "破壊的 DDL が Human 未承認で含まれていないか"
+  - "Epic PR target が develop"
+  - "secret 非含有"
+
+notes:
+  - "番号確定後に更新"

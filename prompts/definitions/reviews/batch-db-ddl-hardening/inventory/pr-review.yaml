@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-ddl-hardening-inventory-pr"
+  title: "batch-db-ddl-hardening 棚卸し PRレビュー"
+  summary: "E2 第1 Task（IF-DB・DDL ギャップ棚卸し）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1562
+  task_definition: "prompts/definitions/tasks/batch-db-ddl-hardening/inventory.yaml"
+  parent_epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  parent_epic_branch: "feature/epic--batch-db-ddl-hardening"
+  source_branch: "docs/task--batch-db-ddl-hardening-inventory"
+  target_branch: "feature/epic--batch-db-ddl-hardening"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "DDL/migration/コード実装が混入していないか"
+  - "019 除外・親workflow/外部API 非混入"
+  - "事実と推論・Human 判断の分離"
+  - "secret 非含有"
+  - "PR target が親 Epic Branch"
+
+notes:
+  - "番号確定後に更新"
