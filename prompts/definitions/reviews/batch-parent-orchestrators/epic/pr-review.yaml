@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-parent-orchestrators-epic-pr"
+  title: "batch-parent-orchestrators Epic PRレビュー"
+  summary: "E1 親 workflow Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1554
+  task_definition: "prompts/definitions/epics/batch-parent-orchestrators/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-parent-orchestrators:親workflow実装"
+  parent_epic_branch: "feature/epic-1554-batch-parent-orchestrators"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "案 A が守られているか"
+  - "004 独立子非破壊"
+  - "018/019 本線非搭載"
+  - "Phase1 schedule 無効"
+  - "設計書実装差分"
+  - "Epic PR target が develop"
+  - "secret 非含有"
+
+notes:
+  - "Issue 確定後に更新"
