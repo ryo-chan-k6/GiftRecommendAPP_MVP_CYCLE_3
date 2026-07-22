@@ -1,0 +1,124 @@
+name: Batch Rakuten Item Import
+
+# 複合子（案A）: BATCH-003 → 005 → 006 → 007 → 008 → 017
+# 正本: バッチ実行スケジュール設計書 §3.2 / ギャップ一覧 §5 案A
+# 独立子の業務ロジックは変更しない
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional shared batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      target_genre_ids:
+        description: "Comma-separated genre IDs for BATCH-003"
+        required: false
+        type: string
+        default: ""
+      keywords:
+        description: "Comma-separated keywords for BATCH-003"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max items for staging/diff/apply/active-status steps"
+        required: false
+        type: string
+        default: "1000"
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional shared batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      target_genre_ids:
+        description: "Comma-separated genre IDs for BATCH-003"
+        required: false
+        type: string
+        default: ""
+      keywords:
+        description: "Comma-separated keywords for BATCH-003"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max items for staging/diff/apply/active-status steps"
+        required: false
+        type: string
+        default: "1000"
+
+concurrency:
+  group: batch-rakuten-item-import
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-run-id:
+    runs-on: ubuntu-latest
+    outputs:
+      job_run_id: ${{ steps.run_id.outputs.value }}
+    steps:
+      - id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-import-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  item_pseudo_diff:
+    needs: resolve-run-id
+    uses: ./.github/workflows/batch-rakuten-item-pseudo-diff.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      target_genre_ids: ${{ inputs.target_genre_ids }}
+      keywords: ${{ inputs.keywords }}
+    secrets: inherit
+
+  raw_staging:
+    needs: [resolve-run-id, item_pseudo_diff]
+    uses: ./.github/workflows/batch-rakuten-raw-staging.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_raw: ${{ inputs.max_items }}
+    secrets: inherit
+
+  product_diff:
+    needs: [resolve-run-id, raw_staging]
+    uses: ./.github/workflows/batch-rakuten-product-diff.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+    secrets: inherit
+
+  item_apply:
+    needs: [resolve-run-id, product_diff]
+    uses: ./.github/workflows/batch-rakuten-item-apply.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+      diff_batch_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+    secrets: inherit
+
+  item_active_status:
+    needs: [resolve-run-id, item_apply]
+    uses: ./.github/workflows/batch-rakuten-item-active-status.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+      batch_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+    secrets: inherit
+
+  import_summary:
+    needs: [resolve-run-id, item_active_status]
+    uses: ./.github/workflows/batch-import-summary.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      batch_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+    secrets: inherit

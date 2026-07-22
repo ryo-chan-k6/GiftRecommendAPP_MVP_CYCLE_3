@@ -1,0 +1,117 @@
+name: Batch Retry Failed Items
+
+# 複合子（案A）: BATCH-010 → 011 → 012 → 013 → 014 → 015（失敗Item再実行想定）
+# 正本: バッチ実行スケジュール設計書 §3.2 / ギャップ一覧 §5 案A
+# 各独立子の queue/failed 選定は子側実装に委譲（本複合子は連鎖のみ）
+
+on:
+  workflow_call:
+    inputs:
+      job_run_id:
+        description: "Optional shared batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max items per stage"
+        required: false
+        type: string
+        default: "100"
+      source:
+        description: "source filter (default rakuten)"
+        required: false
+        type: string
+        default: "rakuten"
+  workflow_dispatch:
+    inputs:
+      job_run_id:
+        description: "Optional shared batch_run_id override"
+        required: false
+        type: string
+        default: ""
+      max_items:
+        description: "Max items per stage"
+        required: false
+        type: string
+        default: "100"
+      source:
+        description: "source filter (default rakuten)"
+        required: false
+        type: string
+        default: "rakuten"
+
+concurrency:
+  group: batch-retry-failed-items
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-run-id:
+    runs-on: ubuntu-latest
+    outputs:
+      job_run_id: ${{ steps.run_id.outputs.value }}
+    steps:
+      - id: run_id
+        run: |
+          INPUT_ID="${{ inputs.job_run_id }}"
+          if [ -n "$INPUT_ID" ]; then
+            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=gha-retry-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  item_semantic:
+    needs: resolve-run-id
+    uses: ./.github/workflows/batch-item-semantic.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+      source: ${{ inputs.source }}
+    secrets: inherit
+
+  feature_input_hash:
+    needs: [resolve-run-id, item_semantic]
+    uses: ./.github/workflows/batch-feature-input-hash.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+      source: ${{ inputs.source }}
+    secrets: inherit
+
+  item_feature:
+    needs: [resolve-run-id, feature_input_hash]
+    uses: ./.github/workflows/batch-item-feature.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+      source: ${{ inputs.source }}
+    secrets: inherit
+
+  feature_normalization:
+    needs: [resolve-run-id, item_feature]
+    uses: ./.github/workflows/batch-feature-normalization.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+      source: ${{ inputs.source }}
+    secrets: inherit
+
+  embedding_input_hash:
+    needs: [resolve-run-id, feature_normalization]
+    uses: ./.github/workflows/batch-embedding-input-hash.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+      source: ${{ inputs.source }}
+    secrets: inherit
+
+  item_embedding:
+    needs: [resolve-run-id, embedding_input_hash]
+    uses: ./.github/workflows/batch-item-embedding.yml
+    with:
+      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      max_items: ${{ inputs.max_items }}
+      source: ${{ inputs.source }}
+    secrets: inherit
