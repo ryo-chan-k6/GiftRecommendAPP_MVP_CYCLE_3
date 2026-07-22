@@ -11,7 +11,7 @@ work_mode: "ai-agent"
 parent:
   epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
   epic_issue_number: 1561
-  epic_branch: "feature/epic--batch-db-ddl-hardening"
+  epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
   related_issues:
     - 102
     - 109
@@ -98,10 +98,10 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "docs/task--batch-db-ddl-hardening-inventory"
+  name: "docs/task-1562-batch-db-ddl-hardening-inventory"
   summary: "batch-db-ddl-hardening-inventory"
-  base: "feature/epic--batch-db-ddl-hardening"
-  target: "feature/epic--batch-db-ddl-hardening"
+  base: "feature/epic-1561-batch-db-ddl-hardening"
+  target: "feature/epic-1561-batch-db-ddl-hardening"
   worktree_required: true
 
 project:
