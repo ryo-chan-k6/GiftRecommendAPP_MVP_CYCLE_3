@@ -6,7 +6,7 @@ review:
   title: "phase_output上限の正式docs反映 PRレビュー"
   summary: "Task #1539 phase_output 正式 docs 反映の PR を AI Review する。Phase3 案 A・計測定義注意・性能要件整合を確認する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -17,7 +17,7 @@ target:
   issue:
     number: 1539
   pr:
-    number: null
+    number: 1540
   parent_epic_issue: 1532
   parent_epic_branch: "docs/epic-1532-reco-perf-timeout-formal-docs"
   task_definition: "prompts/definitions/tasks/reco-perf-timeout-formal-docs/phase-output-formal.yaml"
