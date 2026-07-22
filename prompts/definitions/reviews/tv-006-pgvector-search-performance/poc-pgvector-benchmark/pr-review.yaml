@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-006-poc-pgvector-benchmark-pr"
+  title: "TV-006 poc-pgvector-benchmark PRレビュー"
+  summary: "Epic #1571 Task poc-pgvector-benchmark（pgvector件数・index計測・結果doc）の PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1573
+  issue:
+    number: 1572
+  parent_epic_issue: 1571
+  parent_epic_branch: "spike/epic-1571-tv-006-pgvector-search-performance"
+  task_definition: "prompts/definitions/tasks/tv-006-pgvector-search-performance/poc-pgvector-benchmark.yaml"
+  source_branch: "spike/task-1572-tv-006-pgvector-benchmark"
+  target_branch: "spike/epic-1571-tv-006-pgvector-search-performance"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  testing: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/tv-006-pgvector-search-performance/poc-pgvector-benchmark.yaml"
+    required: true
+  issue:
+    number: 1572
+  pr:
+    number: 1573
+
+review_points:
+  - "件数別（2 水準以上）の検索時間が結果 doc にあるか"
+  - "HNSW あり/なし比較、または未実施理由があるか"
+  - "Go / Adjust / Block があり、根拠が過剰断定していないか"
+  - "TV-007 との切り分け（E2E vs pgvector 単体）が明確か"
+  - "production DB 非使用・DATABASE_URL 実値非記載・apps/** 本格改修なし"
+  - "正式 DB/Retrieval docs を独断更新していないか（設計反映メモまでか）"
+  - "PR target が親 Epic Branch（spike/epic-1571-tv-006-pgvector-search-performance）であるか"
+  - "exclusive 対象（reco_pipeline_bench.py）を無断改修していないか"
+
+notes:
+  - "Issue #1572 / Branch spike/task-1572-tv-006-pgvector-benchmark / PR #1573"
