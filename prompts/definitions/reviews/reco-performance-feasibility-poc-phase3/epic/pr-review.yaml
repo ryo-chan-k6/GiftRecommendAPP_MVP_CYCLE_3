@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-performance-feasibility-poc-phase3-epic-pr"
+  title: "PoC:Reco性能フィジビリティPhase3 Epic PRレビュー"
+  summary: "TV-007 Phase3（Reason 込み E2E）Epic の develop 向け Epic PR を AI Review する。phase_output 正式 docs 反映は別 Task。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1535
+  task_definition: "prompts/definitions/epics/reco-performance-feasibility-poc-phase3/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]PoC:Reco性能フィジビリティPhase3"
+  parent_epic_branch: "spike/epic-1535-reco-performance-feasibility-poc-phase3"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/epics/reco-performance-feasibility-poc-phase3/epic.yaml"
+    required: true
+
+review_points:
+  - "Epic PR target が develop"
+  - "scope / epic_scope.allowed_paths 整合（apps/** 本格改修・正式 docs phase_output 最終反映を混入していないか）"
+  - "Phase3 結果 doc で Reason 込み E2E が主対象として計測・分離判定されているか"
+  - "#1533 soft/hard（内部 1.5s/2s・同期外部 AI 込み 6s/8s）を参照しているか"
+  - "phase_output 計測定義の注意（response_built 累積）が明示されているか"
+  - "secret 実値が成果物・workflow 直書きに含まれていないこと"
+  - "子 Task #1536 / PR #1537 が Epic Branch に統合されていること"
+
+notes:
+  - "Epic PR 番号反映後に status を ready にする"
+  - "Issue #1535"
+  - "phase_output 最終採用・正式 docs 反映は別 Task / Human Review"
