@@ -405,31 +405,73 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 | 観点 | 方針 |
 | ---- | ---- |
-| レイテンシ | soft / hard の二段制御。Orchestrator は `recommendation_latency_ms` を計測する |
+| レイテンシ | soft / hard の二段制御。**Reco 内部**と**同期外部 AI 込み**を分離して定義する（§13.2）。Orchestrator は `recommendation_latency_ms` を計測する |
 | 計算量 | パイプラインは MVP では **直列実行** |
-| タイムアウト | 全体 **hard 4,000ms** 超過で `GRS-REC-101`。フェーズ別は §13.2 |
+| タイムアウト | 同期外部 AI 込みの全体 **hard 8,000ms** 超過で `GRS-REC-101`。フェーズ別は §13.2 |
 | リトライ | Orchestrator 内の自動リトライは MVP では **行わない** |
-| キャッシュ | Orchestrator 本体ではキャッシュを持たない |
+| キャッシュ | Orchestrator 本体ではキャッシュを持たない。User Meaning は **cold path（初回外部 API）前提**。キャッシュは再実行等の補助に限る |
 | 並列実行 | MVP ではパイプライン内のモジュール並列実行は行わない |
+| UX | User Meaning は **同期**で同一リクエスト内に完了させる（非同期化は主方針としない） |
 
-### 13.2 タイムアウト（暫定値）
+### 13.2 タイムアウト（Phase2/3 反映・Human 確定）
 
-正本引用: 性能要件（バックエンド）§3.1・§5.1・§5.2。数値の実現可能性は **PoC（全体テスト計画書 TV-007）** で検証し、検証後に本節および性能要件を更新する。
+正本引用: 性能要件（バックエンド）§3.1・§5。PoC 根拠: [Reco性能フィジビリティ検証結果_Phase2_live](../../90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md) §4、[Reco性能フィジビリティ検証結果_Phase3_reason_e2e](../../90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md) §5、[設計反映メモ](../../90_PoC/性能フィジビリティ/設計反映メモ.md) §2。
 
-| 種別 | 対象 | 暫定値 | 超過時の扱い |
-| ---- | ---- | ------ | ------------ |
-| soft（SLO 監視） | 推薦パイプライン全体 | **2,000ms**（p95 目標） | Metric / warn のみ。処理継続 |
-| hard（中断） | 推薦パイプライン全体 | **4,000ms** | パイプライン中断 → `GRS-REC-101` |
-| hard | Config 解決（`003`） | **300ms** | 中断 → `GRS-REC-003` |
-| hard | User Meaning 一括（`004`〜`010`） | **1,000ms** | 中断 → 該当 `GRS-REC-004`〜`007` |
-| hard | Retrieval 一括（`012`〜`013`） | **1,000ms** | 中断 → `GRS-REC-008`〜`010` |
-| hard | Matching 一括（`014`〜`016`） | **500ms** | 中断 → `GRS-REC-011` |
-| hard | Ranking 一括（`017`〜`020`） | **1,000ms** | 中断 → `GRS-REC-012` |
-| hard | Output 一括（`021`〜`023`） | **500ms** | `021`/`022` 失敗 → `GRS-REC-012`；`023` 失敗 → §10.3 fallback |
+**ステータス（事実）:** TV-007 Phase2 live 実測完了（#1512 / #1530）。#1533 Human 確認により soft / hard / 主要フェーズ上限を確定。Phase3（#1535 / #1538）で `phase_output` 案出し完了。**本節の `phase_output` は Phase3 案 A を正本へ転記（#1539・Human Review で採否確定）。**
 
-**全体ウォッチドッグ**: フェーズ別上限の合計より **パイプライン全体 4,000ms** を優先する。api → reco 呼び出し timeout（性能要件 §5.1 内部 Reco API 4 秒）と整合させる。
+#### 13.2.1 Human 確定方針
 
-**PoC 連携**: `[Epic]PoC:Reco性能フィジビリティ検証` の成果を `docs/90_PoC/性能フィジビリティ/` に記録し、検証後に本節を更新する。
+| 論点 | 確定内容 |
+| ---- | -------- |
+| 分離 | **Reco 内部**と**同期外部 AI**を分けて評価・記載する |
+| UX | 同期維持。非同期は主方針にしない（待機 UI 等で体験が乖離するため） |
+| User Meaning | **cold path 前提**（検索条件の組み合わせが毎回新しくなり得る）。キャッシュは SLO の主前提にしない |
+| soft/hard | 内部・外部 AI 込みそれぞれ見直し（下表） |
+| `phase_user_meaning` | **5,000ms** |
+| `phase_output` | **案 A（#1539 Human Review）:** soft **3,000ms** / hard **7,000ms**（Phase3 §5）。計測定義注意は §13.2.5 |
+
+#### 13.2.2 soft / hard（確定値）
+
+| 区分 | soft（p95・SLO 監視） | hard（中断 → `GRS-REC-101`） | 適用 |
+| ---- | --------------------- | ----------------------------- | ---- |
+| Reco 内部 | **1,500ms** | **2,000ms** | Config〜Ranking のうち外部 AI 非支配の監視・評価用（Phase2 mock 帯を根拠） |
+| 同期外部 AI 込み（本番主経路） | **6,000ms** | **8,000ms** | オンライン同期パイプライン全体。api → reco timeout（性能要件 §5.1 **8 秒**）と整合 |
+
+**全体ウォッチドッグ:** フェーズ別上限の合計より、本番主経路の **パイプライン全体 hard 8,000ms** を優先する。
+
+#### 13.2.3 フェーズ別 hard（確定値）
+
+| 種別 | 対象 | 確定値 | 超過時の扱い | 備考 |
+| ---- | ---- | ------ | ------------ | ---- |
+| hard | Config 解決（`003`） | **300ms** | 中断 → `GRS-REC-003` | Phase2 余裕。維持 |
+| hard | User Meaning 一括（`004`〜`010`） | **5,000ms** | 中断 → 該当 `GRS-REC-004`〜`007` | 同期・cold path。secrets 実測約 3.5–4.3s を根拠 |
+| hard | Retrieval 一括（`012`〜`013`） | **1,000ms** | 中断 → `GRS-REC-008`〜`010` | 維持（seed 3 件。件数スケール後に再確認） |
+| hard | Matching 一括（`014`〜`016`） | **500ms** | 中断 → `GRS-REC-011` | 維持 |
+| hard | Ranking 一括（`017`〜`020`） | **1,000ms** | 中断 → `GRS-REC-012` | 維持 |
+| hard | Output 一括（`021`〜`023`） | soft **3,000ms** / hard **7,000ms**（案 A・#1539） | `021`/`022` 失敗 → `GRS-REC-012`；`023` 失敗 → §10.3 fallback | Phase3 案 A。旧 500ms は非現実的。**Human Review で採否**（§13.2.5） |
+
+#### 13.2.4 Phase2 実測サマリ（事実・根拠）
+
+| 計測系 | TV-007 p95（概算） | 旧 soft/hard（2s/4s）に対するラベル | 支配要因 |
+| ------ | ------------------ | ----------------------------------- | -------- |
+| live + mock（GHA / local） | 約 451–696ms | **Go** | Reco 内部中心 → 内部 soft 1.5s の根拠 |
+| live + secrets（local） | 約 3,759ms | **Adjust**（旧 soft 超過・旧 hard 以内） | User Meaning |
+| live + secrets（GHA） | 約 4,529ms | **Block**（旧 hard 超過） | User Meaning |
+
+詳細数値・未実施（件数スケール等）は Phase2 結果 doc を正とする。
+
+#### 13.2.5 phase_output（Reason / Output）— Phase3 案 A
+
+| 項目 | 値 | 備考 |
+| ---- | -- | ---- |
+| soft（監視） | **3,000ms** | Phase3 secrets p50≈2.7–2.8s（合算値）を根拠 |
+| hard | **7,000ms** | Phase3 secrets p95≈3.6–6.4s。同期外部 AI 込み E2E hard 8s 内に Reason/Output 予算を確保 |
+| Reason 込み E2E 枠 | 同期外部 AI 込み **6s/8s と同一**（Phase3 判定で採用） | 別枠にするかは Human Review |
+| 代替案 | B: soft 2.5s / hard 5s。C: soft 3s・hard なし（§10.3 fallback 継続） | Phase3 結果 doc §5 |
+
+**計測定義注意（事実）:** Phase3 bench の `phase_output` / `reason` は Orchestrator phase_log の `response_built` **累積合算**を含む。表の数秒級は **Reason LLM 単体レイテンシではない**（追加デバッグでは `reason_generated` ≈50ms 帯、支配は累積側）。本上限を「Reason OpenAI 専用予算」と読まないこと。計測定義の見直し（`response_built` 除外）は別 Task 候補。
+
+詳細・環境差（GHA Block / local Adjust）は Phase3 結果 doc を正とする。
 
 ---
 
@@ -447,7 +489,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 8 | Phase Log 契機 | 主要フェーズの開始・終了で `MOD-RECO-028` が呼ばれること | unit / integration |
 | 9 | Error Log 接続 | 失敗時に `MOD-RECO-024`→`MOD-RECO-029` が呼ばれること | unit / integration |
 | 10 | DB / ログ | Run / Phase / Error が下位モジュール経由で記録されること（Orchestrator 直書き込みなし） | integration |
-| 11 | タイムアウト | 全体 hard 4,000ms 超過時に `GRS-REC-101` になること | integration |
+| 11 | タイムアウト | 全体 hard 8,000ms（同期外部 AI 込み）超過時に `GRS-REC-101` になること | integration |
 | 12 | trace 伝播 | `trace_id` が Phase Log / 構造化ログに引き継がれること | unit |
 | 13 | Reason fallback | `023` 回復不能時に §17.2 汎用 Reason が注入され HTTP 200 で Result が返ること | unit / integration |
 | 14 | Reason 部分失敗 | 複数 Item で一部のみ fallback のとき Run が `partial` になり得ること | integration |
@@ -471,6 +513,9 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 2026-07-08 | §8.4.2 / §131 / 段階3着手前残課題を Metric Wiring 完了後へ更新（`025` 本実装配線済み、MVP `○`） | Issue #1067 |
 | 2026-07-08 | §268 / 段階3着手前残課題を §14 integration 完了後へ更新（No.10/11/14 develop merge 済み、残課題を本番 DI / composition root / E2E に限定） | Issue #1075 |
 | 2026-07-09 | §268 / §8.4.1 / §8.4.4 を段階3 Composition 完了後へ更新（#1076 merge、MVP default 維持、残課題を API-INT-002 接続等に限定） | Issue #1089 |
+| 2026-07-22 | §13.2 を Phase2 根拠付きで正式反映（内部 / 外部 AI 分離の AI 推奨。最終数値は Human 確定待ち） | Issue #1533 |
+| 2026-07-22 | §13.2 Human 確定反映（内部 soft/hard 1.5s/2s、外部 AI 込み 6s/8s、`phase_user_meaning` 5s。`phase_output` は別 Task） | Issue #1533 |
+| 2026-07-22 | §13.2 `phase_output` を Phase3 案 A（soft 3s / hard 7s）で転記。計測定義注意を §13.2.5 に追記（Human Review 採否） | Issue #1539 |
 
 ---
 
@@ -478,7 +523,9 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| - | なし | - | - | - | §16.1 の論点は確定済み |
+| 1 | `phase_output` 案 A の最終採否 | Phase3 推奨値。計測定義（`response_built` 合算）の解釈付き | Human | #1539 Review | §13.2.5。代替 B/C あり |
+| 2 | Reason 込み E2E 枠 | 6s/8s 同一枠か別枠か | Human | #1539 Review | Phase3 は同一枠で判定 |
+| 3 | `phase_output` 計測定義修正 | Reason 単体との乖離 | Human | 別 Task 候補 | §13.2.5 |
 
 ### 16.1 確定済み論点（Issue #758 Human Review）
 
@@ -489,10 +536,30 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | 3 | `002`/`003` 記述粒度 | 依存関係表・処理ステップの **概要のみ**（各モジュール仕様書 Task に委譲） |
 | 4 | Reason 失敗時の部分成功 | `021`/`022` 成功後は **Result 返却優先**。回復不能時は §17.2 汎用 Reason 注入 + `isFallback: true` |
 | 5 | 処理順序の正本 | **Recoモジュール一覧 §5.2**（モジュール ID 順）。**物理呼び出し順**は `003`→`002` INSERT（§8.2.1、`MOD-RECO-002` §8.2.1 と整合） |
-| 6 | タイムアウト | soft **2,000ms** / hard **4,000ms**（性能要件 §5 暫定引用）。**PoC 検証後に更新** |
+| 6 | タイムアウト（#758 時点） | soft **2,000ms** / hard **4,000ms** を暫定採用（履歴）。**最終値は §16.2** |
 | 7 | `002`/`003` 物理呼び出し順 | **`MOD-RECO-003` 解決 → `MOD-RECO-002` INSERT**。allocate / commit 分割は不採用 | Human | §8.2.1、`MOD-RECO-003` §8.3.7・§16.1 No.1 |
 | 8 | 下位モジュール配線（Wiring） | **3 段階ハイブリッド**（§8.4）。実装 Task + フェーズ Wiring + Composition 完成 | Human | §8.4 |
 
+### 16.2 確定済み論点（Issue #1533 Human 確認）
+
+| No | 論点 | 確定内容 |
+| --: | ---- | -------- |
+| 1 | 内部 / 外部 AI 分離 | **採用**。Reco 内部と同期外部 AI を分けて soft/hard を定義 |
+| 2 | UX・同期 | User Meaning は **同期**維持。非同期は主方針にしない |
+| 3 | cold path | User Meaning は毎回新しい条件組み合わせを想定し、**初回外部 API 前提**。キャッシュは補助 |
+| 4 | Reco 内部 soft/hard | soft **1,500ms** / hard **2,000ms** |
+| 5 | 同期外部 AI 込み soft/hard | soft **6,000ms** / hard **8,000ms**（api→reco 8s・Public 10s と整合） |
+| 6 | `phase_user_meaning` | hard **5,000ms** |
+| 7 | 内部フェーズ hard | config **300** / retrieval **1,000** / matching **500** / ranking **1,000**（ms）維持 |
+| 8 | `phase_output` | **別 Task で確定**（本 Issue では未確定） → #1539 で案 A 転記・Human Review |
+
+### 16.3 Human Review 中（Issue #1539）
+
+| No | 論点 | 推奨内容（確定前） |
+| --: | ---- | ------------------ |
+| 1 | `phase_output` soft/hard | soft **3,000ms** / hard **7,000ms**（Phase3 案 A） |
+| 2 | Reason 込み E2E | 同期外部 AI 込み 6s/8s と同一枠（Phase3 判定どおり） |
+| 3 | 計測定義 | 合算値注意を正本に記載。計測修正は別 Task 候補 |
 ---
 
 ## 17. 関連資料
@@ -513,9 +580,11 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | MOD-RECO-003 仕様書 | `docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md` | Config 解決・`002`/`003` 物理呼び出し順（§8.3.7） |
 | module-spec テンプレート | `prompts/templates/docs/module-spec.md` | 章構成 |
 | Epic Definition | `prompts/definitions/epics/mod-reco-001-recommendation-orchestrator/epic.yaml` | allowed_paths |
-| 性能要件（バックエンド） | `docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md` | タイムアウト暫定値の引用元 |
+| 性能要件（バックエンド） | `docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md` | タイムアウト・SLO の正本（§5 と本 §13.2 を整合） |
 | 全体テスト計画書 | `docs/05_アプリケーション設計/テスト/全体テスト計画書.md` | TV-007 Reco 性能フィジビリティ |
-| PoC 成果物 | `docs/90_PoC/性能フィジビリティ/` | タイムアウト検証結果（別 Epic） |
+| Phase2 検証結果 | `docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md` | soft/hard 判定・フェーズ実測 |
+| 設計反映メモ | `docs/90_PoC/性能フィジビリティ/設計反映メモ.md` | §13.2 更新候補・正式反映ステータス |
+| PoC 成果物 | `docs/90_PoC/性能フィジビリティ/` | TV-007 検証成果一式 |
 
 ### 17.1 後続整合 Task（本仕様書の確定方針を反映する別 Task）
 
@@ -524,8 +593,8 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 | API-INT-002 / API-PUB-002 契約仕様書 | Reason 失敗時も非空 `reasonSummary` + `isFallback: true`（§10.3） |
 | recommendation_reason テーブル定義書 | fallback 時も INSERT、`reason_basis` に fallback 由来を記録 |
 | 状態遷移設計書 §11.1 | Reason 失敗時の「Result 全体失敗」記述を部分成功方針へ更新 |
-| 性能要件（バックエンド）§5 | PoC 検証結果に基づく hard / soft 値の見直し |
-
+| 性能要件（バックエンド）§5 / 本 §13.2 | #1533 で整合済み。実装・API クライアント timeout の追従は別実装 Task |
+| `phase_output`（Reason）上限 | #1539 で案 A 転記。Human Review 採否・計測定義修正は残 |
 ---
 
 ## 18. レビュー観点
@@ -537,7 +606,7 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 - 依存モジュール（`MOD-RECO-002`〜`029`）の呼び出し方向・用途・失敗時の扱いが明確である
 - `MOD-RECO-019`（Final Score Calculator）と `MOD-RECO-020`（Final Ranker）の責務分離が明確である
 - Phase Log / Error Log の出力タイミングが整理されている
-- Reason fallback（§10.3）とタイムアウト暫定値（§13.2）が明記されている
+- Reason fallback（§10.3）とタイムアウト（§13.2。内部 / 外部 AI 分離・Human 確定値）が明記されている
 - secret や `.env` 実値が含まれていない
 
 ---
@@ -548,4 +617,5 @@ Phase 名の一覧はログ・Observability設計書 §10.3（`request_received`
 - `API-INT-002` エンドポイント層は `[Epic]API-INT-002` 配下で設計・実装する
 - Batch モジュール `MOD-RECO-026` / `027` はオンライン推薦パイプラインからは直接呼び出さない（事前生成データを参照）
 - 配置パスは `apps/reco/src/reco/application/recommendation-orchestrator/**` に確定（旧想定 `apps/reco/src/modules/**` は採用しない）
-- タイムアウト hard 値は PoC（`docs/90_PoC/性能フィジビリティ/`）完了後に §13.2 を更新する
+- §13.2 の soft/hard・`phase_user_meaning` は #1533 Human 確定済み。`phase_output` は #1539 で案 A 転記（Human Review）
+- 実装側の hard watchdog / client timeout が旧 4,000ms のまま残っている場合は、本節に追従する実装 Task が必要

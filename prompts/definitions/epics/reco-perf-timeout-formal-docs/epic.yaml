@@ -1,0 +1,230 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-perf-timeout-formal-docs"
+  title: "docs:Reco性能タイムアウト正式反映"
+  summary: "TV-007 Phase2（#1512）の実測・設計反映メモを入力に、MOD-RECO-001 §13.2 および性能要件（バックエンド）§5（必要に応じ §3.1 / §4.1）を正式更新する。数値・方針の最終採用は Human Review で確定する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  TV-007 Phase2（Epic #1512 / PR #1530）で live 実測と暫定 Go / Adjust / Block が develop に着地した。
+  MOD-RECO-001 §13.2 は「PoC 検証後に更新」前提の暫定値のままである。
+  設計反映メモの AI 推奨は「内部 Go / 外部 AI Adjust」の分離記載。
+  最終数値・方針は Human が本 Epic の Human Review で確定する（AI は案と根拠を整理する）。
+
+objective: |
+  正本 docs（MOD-RECO-001 §13.2・性能要件 §5 ほか必要箇所）を Phase2 根拠付きで更新する。
+  TV進捗一覧の TV-007 を Phase2 develop 着後の完了状態に更新する。
+  設計反映メモに正式反映状況を追記する。
+
+scope:
+  - "MOD-RECO-001 §13.2（および関連する §13.1 / §16 / §17 の必要最小追記）"
+  - "性能要件（バックエンド）§5（必要に応じ §3.1 / §4.1）"
+  - "docs/90_PoC/管理/TV進捗一覧.md の TV-007 完了反映"
+  - "docs/90_PoC/性能フィジビリティ/設計反映メモ.md の正式反映ステータス追記"
+  - "本 Epic / 子 Task / Review Definition の整備"
+
+out_of_scope:
+  - "apps/reco / apps/api / apps/web / apps/batch の実装変更"
+  - "scripts/perf の再計測・ハーネス改修（入力は既存 Phase2 成果）"
+  - "production 負荷試験"
+  - "TV-005 / TV-006 の実施"
+  - "OpenAPI / packages/contracts / supabase/migrations"
+  - "secret 実値の記載"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+      purpose: "正式更新の入力メモ・推奨案"
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      required: true
+      purpose: "実測根拠"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+  issues:
+    - number: 1512
+      purpose: "Phase2 Epic（CLOSED・入力前提）"
+    - number: 1530
+      purpose: "Phase2 develop 取り込み PR（MERGED）"
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/epics/reco-perf-timeout-formal-docs/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/reco-perf-timeout-formal-docs/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/reco-perf-timeout-formal-docs/**"
+      action: "create_or_update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Epic Branch（base・target=develop）"
+  - "正式反映済みの MOD-RECO-001 §13.2・性能要件 §5"
+  - "TV-007 完了反映（TV進捗一覧）"
+  - "設計反映メモの正式反映ステータス"
+
+acceptance_criteria:
+  - "MOD-RECO-001 §13.2 が暫定のまま放置されず、Phase2 根拠または Human 確定方針が本文に反映されている"
+  - "性能要件（バックエンド）§5 が §13.2 と矛盾なく更新されている（または差分理由が明記されている）"
+  - "soft/hard・フェーズ上限の最終採用が Human Review で確認可能な形で記載されている"
+  - "TV進捗一覧の TV-007 が develop 着後の完了状態である"
+  - "apps/** や secret 実値を含まない"
+  - "Task PR target が親 Epic Branch、Epic PR target が develop"
+
+branch:
+  no_branch: false
+  name: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  summary: "reco-perf-timeout-formal-docs"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  number: 1532
+  unit: "epic"
+  type: "docs"
+  area: "reco"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+    - "docs/90_PoC/管理/TV進捗一覧.md"
+    - "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+    - "docs/90_PoC/計画/TV要件・実施方針/TV-007_Reco性能フィジビリティ.md"
+    - "prompts/definitions/epics/reco-perf-timeout-formal-docs/**"
+    - "prompts/definitions/tasks/reco-perf-timeout-formal-docs/**"
+    - "prompts/definitions/reviews/reco-perf-timeout-formal-docs/**"
+  forbidden_paths:
+    - "apps/**"
+    - "scripts/perf/**"
+    - "packages/contracts/**"
+    - "supabase/migrations/**"
+    - ".env"
+  child_task_areas:
+    - "formal-docs-update"
+
+dependencies:
+  epics:
+    - id: "epic-reco-performance-feasibility-poc-phase2"
+      issue: 1512
+      purpose: "Phase2 live 実測・暫定判定（CLOSED）"
+  issues:
+    - number: 1512
+      purpose: "Phase2 CLOSED"
+    - number: 1530
+      purpose: "Phase2 MERGED to develop"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  manual_checks:
+    - "§13.2 と性能要件 §5 の数値・用語整合"
+    - "Phase2 結果 doc / 設計反映メモへの参照が残っている"
+  not_required:
+    - "live 再計測"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "最終採用値が Phase2 根拠と矛盾していないか"
+    - "内部 / 外部 AI の扱いが本文で明確か"
+    - "暫定表記の消し忘れがないか"
+    - "実装コード変更が混入していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+
+human_decision_points:
+  - "「内部 Go / 外部 AI Adjust」分離を正本方針として採用するか"
+  - "soft 2,000ms / hard 4,000ms の維持 or 見直し"
+  - "phase_user_meaning / phase_output 上限の見直し要否"
+  - "件数スケール未実施を残課題として正本に明記するか"
+
+stop_conditions:
+  - "Human が最終数値を確定できないまま AI が断定更新しようとする場合"
+  - "実装変更が必要になった場合（別 Issue 化）"
+  - "正本 docs 間で矛盾解消方針が複数あり選択が必要な場合"
+
+notes:
+  - "workstream_key: reco-perf-timeout-formal-docs"
+  - "機能・領域単位 Epic（例外）。artifact_id 空。phase=06_実装設計"
+  - "子 Task: /start-task @prompts/definitions/tasks/reco-perf-timeout-formal-docs/formal-docs-update.yaml"
+  - "Issue #1532 / Branch docs/epic-1532-reco-perf-timeout-formal-docs"
+  - "AI 推奨案の正本入力: 設計反映メモ §2.2 / Phase2 結果 §4.3"

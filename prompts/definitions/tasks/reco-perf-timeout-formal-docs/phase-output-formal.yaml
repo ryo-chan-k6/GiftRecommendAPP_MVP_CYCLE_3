@@ -1,0 +1,182 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-perf-timeout-phase-output-formal"
+  title: "phase_output上限の正式docs反映"
+  summary: "TV-007 Phase3（#1535）の案 A（soft 3,000ms / hard 7,000ms）を起点に、MOD-RECO-001 §13.2・性能要件 §5 の phase_output を正式更新する。最終採否は Human Review。計測定義注意を併記する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-perf-timeout-formal-docs"
+  epic_issue: "[Epic]docs:Reco性能タイムアウト正式反映"
+  epic_issue_number: 1532
+  epic_branch: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  related_issues:
+    - number: 1533
+      purpose: "soft/hard・主要フェーズ正式反映（CLOSED）"
+    - number: 1535
+      purpose: "Phase3 Epic（CLOSED）"
+    - number: 1538
+      purpose: "Phase3 develop 取り込み（MERGED）"
+    - number: 1532
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  #1533 で phase_output のみ未確定・別 Task と宣言した。
+  Phase3（#1535 / #1538）で Reason 込み E2E を計測し、案 A（soft 3,000 / hard 7,000）を推奨した。
+  bench の phase_output は response_built 累積合算を含むため、Reason LLM 単体予算ではない点を正本に明記する。
+
+objective: |
+  正本 docs の phase_output 未確定状態を解消し、Phase3 案 A を Human Review 用の正式記載へ進める。
+  計測定義注意と代替案（B/C）への参照を残す。
+
+scope:
+  - "MOD-RECO-001 §13.2（phase_output / Output 一括・関連 §16）"
+  - "性能要件（バックエンド）§4.1 / §5（phase_output 関連）"
+  - "設計反映メモの phase_output ステータス更新（最小）"
+  - "本 Task / Review Definition"
+
+out_of_scope:
+  - "apps/** 実装変更"
+  - "scripts/perf 計測定義修正（別 Task 候補）"
+  - "scripts/perf 再計測"
+  - "TV-005 / TV-006"
+  - "OpenAPI / contracts / migrations"
+  - "secret 実値記載"
+  - "PR merge"
+  - "#1533 で確定済みの内部/外部 soft・hard の再変更"
+
+input:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§13.2 の phase_output / Output 一括が未確定のまま残っていない（Human Review 採否の明示を含む）"
+  - "性能要件 §5 と §13.2 の phase_output が整合している"
+  - "Phase3 結果 doc / 計測定義注意への参照がある"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "phase-output-formal-docs"
+  base: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  target: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-reco-perf-timeout-formal-docs"
+      issue: 1532
+      purpose: "親 Epic"
+  issues:
+    - number: 1533
+      purpose: "#1533 完了前提"
+    - number: 1538
+      purpose: "Phase3 develop 着前提"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "正本2文書の phase_output 整合"
+  not_required:
+    - "live 再計測"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "案 A（soft 3,000 / hard 7,000）の採否"
+    - "計測定義注意（response_built 合算）の記載十分性"
+    - "Reason 込み E2E を 6s/8s 同一枠とするかの整合"
+    - "実装差分の非混入"
+  specialist_reviews:
+    docs: true
+    test: false
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: false
+
+human_decision_points:
+  - "phase_output soft/hard 案 A の採否（代替 B/C 含む）"
+  - "Reason 込み E2E を同期外部 AI 込み 6s/8s と同一枠にするか"
+  - "計測定義修正を別 Task 化するか"
+
+stop_conditions:
+  - "親 Epic Issue / Branch 未作成"
+  - "Human 未確定の数値を確定済みとして書く必要がある場合（推奨案・Human Review 明示は可）"
+
+notes:
+  - "Task Issue #1539 / Branch docs/task-1539-phase-output-formal-docs"
+  - "親 Epic #1532 / Branch docs/epic-1532-reco-perf-timeout-formal-docs"
+  - "入力の推奨案は Phase3 結果 doc §5 案 A"

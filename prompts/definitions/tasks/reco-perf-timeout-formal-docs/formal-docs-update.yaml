@@ -1,0 +1,181 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-perf-timeout-formal-docs-update"
+  title: "MOD-RECO-001§13.2・性能要件§5のTV-007正式反映"
+  summary: "Phase2 実測と設計反映メモを入力に、MOD-RECO-001 §13.2・性能要件 §5 を正式更新し、TV進捗と設計反映メモのステータスを揃える。最終数値は Human Review で確定する。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-perf-timeout-formal-docs"
+  epic_issue: "[Epic]docs:Reco性能タイムアウト正式反映"
+  epic_issue_number: 1532
+  epic_branch: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  related_issues:
+    - number: 1512
+      purpose: "Phase2 Epic（CLOSED）"
+    - number: 1530
+      purpose: "Phase2 develop 取り込み（MERGED）"
+    - number: 1532
+      purpose: "親 Epic"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Phase2（#1512 / #1530）完了後の正式 docs 反映 Task。
+  AI 推奨案は「内部 Go / 外部 AI Adjust」分離。最終採用は Human Review。
+
+objective: |
+  正本 docs を更新し、暫定値のまま残っている §13.2 / 性能要件 §5 を Phase2 根拠付きの正式記載へ進める。
+  TV-007 進捗を完了へ更新する。
+
+scope:
+  - "MOD-RECO-001 §13.2（関連 §13.1 / §16 / §17 の必要最小）"
+  - "性能要件（バックエンド）§5（必要に応じ §3.1 / §4.1）"
+  - "TV進捗一覧の TV-007 完了反映"
+  - "設計反映メモへの正式反映ステータス追記"
+  - "必要なら TV-007 方針の参照更新（最小）"
+
+out_of_scope:
+  - "apps/** 実装変更"
+  - "scripts/perf 再計測"
+  - "TV-005 / TV-006"
+  - "OpenAPI / contracts / migrations"
+  - "secret 実値記載"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "§13.2 から『暫定のまま未更新』状態が解消されている（Human 確定方針または確定待ちの明示を含む）"
+  - "性能要件 §5 と §13.2 が整合している"
+  - "Phase2 結果 / 設計反映メモへの参照がある"
+  - "TV-007 が完了ステータスになっている"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "perf-timeout-formal-docs"
+  base: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  target: "docs/epic-1532-reco-perf-timeout-formal-docs"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-24"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-reco-perf-timeout-formal-docs"
+      issue: 1532
+      purpose: "親 Epic"
+  issues:
+    - number: 1512
+      purpose: "Phase2 完了前提"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "正本2文書の相互整合"
+  not_required:
+    - "live 再計測"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "最終採用値の Human 確認ポイントが明確か"
+    - "内部 / 外部 AI の扱い"
+    - "実装差分の非混入"
+  specialist_reviews:
+    docs: true
+    test: false
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: false
+
+human_decision_points:
+  - "「内部 Go / 外部 AI Adjust」分離の採否"
+  - "soft / hard 数値の維持 or 見直し"
+  - "phase_user_meaning / phase_output 上限"
+
+stop_conditions:
+  - "親 Epic Issue / Branch 未作成"
+  - "Human 未確定の数値を確定済みとして書く必要がある場合"
+
+notes:
+  - "Task Issue #1533 / Branch docs/task-1533-perf-timeout-formal-docs"
+  - "親 Epic #1532 / Branch docs/epic-1532-reco-perf-timeout-formal-docs"
+  - "作業時の推奨案提示は設計反映メモ §2.2・Phase2 §4.3 を正とする"
