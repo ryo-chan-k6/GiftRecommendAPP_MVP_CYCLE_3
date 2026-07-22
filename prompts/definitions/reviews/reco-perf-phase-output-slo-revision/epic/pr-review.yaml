@@ -1,0 +1,73 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-perf-phase-output-slo-revision-epic-pr"
+  title: "docs:phase_output soft/hard見直し Epic PRレビュー"
+  summary: "Epic #1552 の develop 向け Epic PR を AI Review する。phase_output soft 500ms / hard 2,000ms の正本反映・新計測定義整合・apps 非混入を確認する。"
+  type: "epic_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1552
+  task_definition: "prompts/definitions/epics/reco-perf-phase-output-slo-revision/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]docs:phase_output soft/hard見直し"
+  parent_epic_branch: "docs/epic-1552-reco-perf-phase-output-slo-revision"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/reco-perf-phase-output-slo-revision/epic.yaml"
+  docs:
+    - "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+    - "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+    - "docs/90_PoC/性能フィジビリティ/設計反映メモ.md"
+    - "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase3_reason_e2e.md"
+    - "ai-logs/experiments/2026-07-22-reco-perf-phase-output-slo-final.md"
+    - "ai-logs/experiments/2026-07-22-reco-perf-phase-output-slo-secrets.md"
+
+review_points:
+  - "Epic PR target が develop か"
+  - "phase_output soft 500ms / hard 2,000ms が正本に反映されているか"
+  - "新計測定義（#1545）との整合"
+  - "旧案 A（3s/7s）からの変更根拠が明示されているか"
+  - "apps/** 実装差分の非混入（develop 追従の BATCH 差分は本 Epic 成果ではないことを確認）"
+  - "secret 非混入"
+  - "Closes #1552 の扱い"
+
+acceptance:
+  human_review_required: true
+  merge_by_ai: false
+
+notes:
+  - "merge 判断は Human"
+  - "Task #1553 / #1559 で Human が最終値を採択済みの前提で Epic 取込を確認する"
