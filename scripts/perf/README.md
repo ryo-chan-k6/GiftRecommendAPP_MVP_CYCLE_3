@@ -1,11 +1,12 @@
 # scripts/perf/
 
-Reco 性能フィジビリティ PoC（TV-007）および外部 AI API 疎通 PoC（TV-005）向けの計測ハーネス。
+Reco 性能フィジビリティ PoC（TV-007）、外部 AI API 疎通 PoC（TV-005）、pgvector 検索性能 PoC（TV-006）向けの計測ハーネス。
 
 正本:
 
 - TV-007: [Reco性能フィジビリティ検証計画書](../../docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md)
 - TV-005: [外部AI_API疎通検証計画](../../docs/90_PoC/外部API疎通検証/外部AI_API疎通検証計画.md)
+- TV-006: [TV-006_pgvector検索性能](../../docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md)
 
 ## ファイル
 
@@ -14,6 +15,7 @@ Reco 性能フィジビリティ PoC（TV-007）および外部 AI API 疎通 Po
 | `reco_pipeline_bench.py` | パイプライン計測 CLI（skeleton / live）※ TV-007 |
 | `openai_bench_clients.py` | live + secrets 用 OpenAI HTTP クライアント（bench 専用・apps/reco 非改修） |
 | `openai_connectivity_bench.py` | Embedding / LLM **専用**疎通計測 CLI（TV-005。Reco E2E 非依存） |
+| `pgvector_search_bench.py` | pgvector 件数・HNSW 効果計測 CLI（TV-006。一時 UNLOGGED テーブル） |
 | `output/` / `output-*/` | ローカル実行時の JSON / Markdown 出力（Git 管理外） |
 
 ## モード
@@ -163,6 +165,26 @@ uv run python ../../scripts/perf/openai_connectivity_bench.py \
   --output-dir ../../scripts/perf/output-tv005-secrets
 ```
 
+## TV-006（pgvector 検索性能）
+
+ephemeral DB 上で `vector(1536)` + HNSW の件数別検索時間を計測する。Reco E2E 非依存。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| スクリプト | `pgvector_search_bench.py` |
+| 前提 | `DATABASE_URL`（local / ephemeral）。production 禁止 |
+| 推奨 | scales `100,500,1000` / top_k `5,20` / HNSW あり（経路強制）となし |
+| 結果 doc | [TV-006_pgvector検索性能検証結果](../../docs/90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md) |
+
+```bash
+# リポジトリ root。DATABASE_URL は echo しない
+set -a && source .env && set +a
+cd apps/reco
+uv run python ../../scripts/perf/pgvector_search_bench.py \
+  --scales 100,500,1000 --top-k 5,20 --iterations 30 --warmup 3 \
+  --output-dir ../../scripts/perf/output-tv006
+```
+
 ## 関連 Issue / Branch
 
 | 項目 | 値 |
@@ -171,5 +193,6 @@ uv run python ../../scripts/perf/openai_connectivity_bench.py \
 | Phase3 Epic / Task | #1535 / #1536 |
 | phase_output 計測定義修正 | #1544 / #1545 |
 | TV-005 Epic / Task | #1565 / #1566 |
-| Branch（TV-005 Task） | `spike/task-1566-tv-005-connectivity-verification` |
-| PR target（TV-005） | `spike/epic-1565-tv-005-external-ai-api-connectivity` |
+| TV-006 Epic / Task | #1571 / #1572 |
+| Branch（TV-006 Task） | `spike/task-1572-tv-006-pgvector-benchmark` |
+| PR target（TV-006） | `spike/epic-1571-tv-006-pgvector-search-performance` |
