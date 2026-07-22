@@ -31,10 +31,11 @@
 
 ## 所見
 
-- Phase3 主対象（Reason 込み）を 6s/8s 枠で判定すると GHA secrets は **Block**（p95≈12.5s）。支配要因は User Meaning + Reason。
+- Phase3 主対象（Reason 込み）を 6s/8s 枠で判定すると、secrets は環境差で **Block（GHA）〜 Adjust（local）**。支配要因は User Meaning + Reason。
 - mock は Ranking まで・Reason 込みとも **Go**。
 - `phase_output` 当面 500ms は非現実的。案: soft 3s / hard 7s（Human 未確定）。
 - 同一 Branch 同時 dispatch は concurrency で cancel されるため逐次実行が必要。
+- local `.env` の実キーは gitignore 対象。成果物へ実値は記載しない。
 
 ## 成果物
 
