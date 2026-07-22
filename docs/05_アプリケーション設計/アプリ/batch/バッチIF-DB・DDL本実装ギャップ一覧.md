@@ -9,7 +9,7 @@
 | 作成日 | 2026-07-22 |
 | 更新日 | 2026-07-22（T2 列差分棚卸し・012/015 永続 DDL 反映） |
 | 関連 Epic | [#1561](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1561) |
-| 関連 Task | [#1562](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1562)（T1） / [#1568](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1568)（T2） |
+| 関連 Task | [#1562](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1562)（T1） / [#1568](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1568)（T2） / [#1576](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1576)（T3） |
 | 先行 | E0 ギャップ一覧 / E1 親 workflow（#1560 MERGED） |
 
 ### 1.1 目的
@@ -44,7 +44,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | ---- | ---- |
 | IF-DB（001〜017,+020/021,+VEC） | インターフェース一覧に定義あり |
 | 物理テーブル / migrations | initial + 増分 **5 本**（D17: `item_feature_input` / `item_embedding_input` 追加）。主要テーブルは概ね存在 |
-| `apps/batch` DB 書込 | **ScaffoldDbWriter / in-memory repositories のみ**（実クライアント未配線） |
+| `apps/batch` DB 書込 | **T3: `PostgresDbWriter` + `create_db_writer` 追加**。未設定 / `scaffold://` は `ScaffoldDbWriter`。repositories は引き続き in-memory（T4） |
 | CLI | 多くが `--scaffold-demo` 以外で未完了経路 |
 | 019 出力物理 | migration に CREATE なし（**E2 除外**） |
 | 旧 OPEN #102/#133 | **本 Epic（#1561）へ寄せ、not planned でクローズ**（Human 確定・2026-07-22） |
@@ -102,13 +102,14 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 
 | 種別 | 代表 | 意味 |
 | ---- | ---- | ---- |
-| A. ScaffoldDbWriter | `infrastructure/db/writer.py` | 書込をメモリ記録のみ |
-| B. In-memory repositories | 各 `application/*/repositories.py` | テーブル相当を dict/list |
+| A. ScaffoldDbWriter | `infrastructure/db/writer.py` | 書込をメモリ記録のみ。`create_db_writer` の fallback |
+| B. In-memory repositories | 各 `application/*/repositories.py` | テーブル相当を dict/list（**T4 で解除**） |
 | C. Handoff-only IF（旧） | 012 / 015 | **T2 で中間永続テーブル化済み**。アプリ stub 解除は T4b |
 | D. 論理契約 stub | 019 | 物理未整備（E2 外） |
 | E. 外部/生成 Scaffold | Rakuten / Embedding / LLM adapter | E3 領域 |
+| F. PostgresDbWriter（T3） | `infrastructure/db/writer.py` | `DATABASE_URL` 実 URL 時。汎用 INSERT。詳細 Upsert は T4 |
 
-**横断事実:** `psycopg` / SQLAlchemy / asyncpg 等の本番書込クライアントは `apps/batch` に未配線（調査時点）。
+**横断事実:** `create_db_writer(database_url)` で Scaffold / Postgres を切替可能（reco `create_database_session` と同型）。repositories の本番 SQL は未配線（T4）。
 
 ---
 
@@ -133,12 +134,12 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | -- | --------- | ---- | ---------- |
 | T1 | **本 Task（棚卸し）** | 本 docs | Review |
 | T2 | DDL 不足分（001〜017） | **完了（#1568）**: 列差分棚卸し + 012/015 永続 DDL | Review |
-| T3 | DB 接続基盤 | `DbWriter` 実実装 + Scaffold 切替 | secret は env 名のみ |
+| T3 | DB 接続基盤 | **完了（#1576）**: `PostgresDbWriter` + `create_db_writer`（Scaffold 切替）。repositories stub は T4 | Review |
 | T4a | IF stub 解除 Wave A | 001〜008 + 020/021（取込・Item） | 範囲確認 |
 | T4b | IF stub 解除 Wave B | 009〜017 + VEC | 012/015 は T2 永続化後に解除 |
 | T5 | UT / 境界 | Protocol 互換・scaffold 回帰。実 DB は local/CI 限定 | — |
 
-**推奨着手順（Human 確定）:** T1（完了）→ **T2（完了・本 PR）** → T3 → T4a → T4b → T5。
+**推奨着手順（Human 確定）:** T1（完了）→ T2（完了）→ **T3（完了・本 PR）** → T4a → T4b → T5。
 
 ---
 
@@ -161,6 +162,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 2026-07-22 | AI Review 対応: §4 stub 列の明示化、§2 要約根拠・§4 列差分注記を追加 |
 | 2026-07-22 | Human 確定反映（012/015 永続化、Wave A→B、#102/#133 not planned、T2 列差分棚卸し必須） |
 | 2026-07-22 | T2（#1568）: 列差分棚卸し結果・D17 migration・定義書・仕様追記を反映 |
+| 2026-07-23 | T3（#1576）: `PostgresDbWriter` / `create_db_writer` 接続基盤を反映 |
 
 ---
 
