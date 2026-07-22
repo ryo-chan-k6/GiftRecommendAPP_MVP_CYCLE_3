@@ -1,0 +1,173 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-ddl-hardening-db-writer-foundation"
+  title: "batch-db-ddl-hardening:DbWriter接続基盤"
+  summary: "apps/batch に PostgresDbWriter と create_db_writer（DATABASE_URL / scaffold:// 切替）を追加する。repositories の in-memory stub 解除は T4 に残す。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  epic_issue_number: 1561
+  epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
+  related_issues:
+    - 1568
+  related_prs:
+    - 1570
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  T1/T2 完了（#1562/#1568）。Human 確定の次は T3: DbWriter 実接続基盤。
+  現状 ScaffoldDbWriter のみ。reco の create_database_session と同型で Scaffold 切替を残す。
+  repositories の stub 解除は T4a/T4b。production DB 適用・外部 API は除外。
+
+objective: |
+  batch に実 DB 書込境界（PostgresDbWriter）と factory 切替を導入し、UT で Protocol / 切替を担保する。
+
+scope:
+  - "PostgresDbWriter（psycopg）+ create_db_writer factory"
+  - "DATABASE_URL 未設定 / scaffold:// → ScaffoldDbWriter"
+  - "mask_database_url（ログ用・実値非露出）"
+  - "apps/batch pyproject に psycopg 依存追加"
+  - "UT（factory 切替・scaffold 回帰・Postgres は mock または skip）"
+  - "ギャップ一覧の T3 進捗反映"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "各 repositories.py の in-memory 置換（T4a/T4b）"
+  - "IF 単位 stub 解除・本番 Upsert SQL 詳細"
+  - "DDL / migration 変更"
+  - "親 workflow / 外部 API"
+  - "production DB 適用・接続実値の commit"
+  - "apps/reco / apps/api 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/pyproject.toml"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/infrastructure/**"
+      action: "update"
+      required: true
+
+deliverables:
+  - "PostgresDbWriter / create_db_writer"
+  - "psycopg 依存"
+  - "UT"
+  - "ギャップ一覧 T3 反映"
+
+acceptance_criteria:
+  - "create_db_writer が scaffold / postgres を切り替える"
+  - "secret / DATABASE_URL 実値をログ・コード・docs に出さない"
+  - "既存 ScaffoldDbWriter 挙動を壊さない"
+  - "repositories stub 解除を含まない"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-ddl-hardening-db-writer-foundation"
+  base: "feature/epic-1561-batch-db-ddl-hardening"
+  target: "feature/epic-1561-batch-db-ddl-hardening"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-23"
+    due_date: "2026-07-25"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1561
+      purpose: "親 Epic"
+  issues:
+    - number: 1568
+      purpose: "T2 DDL 完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/pyproject.toml"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "integration test against production DB"
+  skip_reason:
+    "integration test against production DB": "local/CI 限定。本 Task は factory/UT 中心"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Scaffold 切替が DATABASE_URL / scaffold:// で正しいか"
+    - "secret 非露出（mask_database_url）"
+    - "repositories stub 解除を混入していないか"
+    - "PR target が親 Epic Branch"
+    - "Related to（Closes 禁止）"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points:
+  - "write_rows の汎用 INSERT で T3 十分か（推奨: 十分。詳細 Upsert は T4）"
+
+notes:
+  - "reco create_database_session と同型の切替方針"
+  - "Epic child_task_areas: db-writer-foundation"
