@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1589
   issue:
     number: 1588
   task_definition: "prompts/definitions/tasks/batch-db-ddl-hardening/unit-boundary.yaml"
