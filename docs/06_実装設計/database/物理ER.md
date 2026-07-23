@@ -629,7 +629,7 @@ Human Review にて以下を確定した（2026-06-07）。
 | 3 | Batch / Staging への物理 FK | **Online コア + Item 派生のみ物理 FK**。Staging / Log / Metric は **論理 FK + Index** | §5 物理設計方針 |
 | 4 | Staging 保持期間 | **成功 Batch 完了後に当該分を削除**。**失敗 / 部分成功のみ 7〜14 日保持** | §13 データ保持 |
 | 5 | Log partition 要否 | **MVP では partition なし**（`created_at` Index + retention DELETE） | 本番前に再評価 |
-| 6 | pgvector Index 方式 | **HNSW** を第一候補とする | 商品数が極少の初期は Index 後追いも可 |
+| 6 | pgvector Index 方式 | **HNSW** を第一候補とする。MVP パラメータは **`m = 16` / `ef_construction = 64`**（`item_embedding` 定義書 §9.1・migration 正本。TV-006 で現状維持） | 商品数が極少の初期は Index 後追いも可。JOIN/filter 込み・本番分布は未計測 |
 | 7 | `external_attribute` / `staging_attribute` | **MVP ではテーブル作成しない** | 後続 Task で追加検討 |
 | 8 | schema 分割（app / log / metric） | **MVP は `public` 単一 schema**。§5.1 の分類は論理分類のみ | 本番前に物理分割 migration を検討 |
 

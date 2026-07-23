@@ -392,6 +392,7 @@ LIMIT :candidate_limit
 | 観点 | 方針 |
 | ---- | ---- |
 | レイテンシ | モジュール単体 hard timeout は設けない。Retrieval 一括（`012`+`013`）**hard 1,000ms** 上位ガード（MOD-RECO-001 §13.2） |
+| Vector（pgvector） | HNSW（`m=16` / `ef_construction=64`）。TV-006 で類似検索単体は 1万件でも p95 が数 ms オーダー（Go）。**JOIN + Hard Filter 込みは未計測**（Retrieval定義書 §11.6） |
 | 計算量 | Filter / Retrieval とも DB 内評価。`uuid[]` 全件メモリ保持は本番前提にしない |
 | リトライ | なし |
 | キャッシュ | Run 横断 item キャッシュなし（MVP） |
@@ -478,7 +479,8 @@ LIMIT :candidate_limit
 | ---- | ---- | ---- |
 | 011 廃止記録 | `docs/06_実装設計/reco/MOD-RECO-011_Pre Hard Filter Executorモジュール仕様書.md` | 設計経緯・移管元 |
 | Recoモジュール一覧 | `docs/05_アプリケーション設計/アプリ/reco/Recoモジュール一覧.md` | §6.11 |
-| Retrieval定義書 | `docs/04_ドメインモデル設計/Retrieval定義書.md` | Hard Filter・Vector |
+| Retrieval定義書 | `docs/04_ドメインモデル設計/Retrieval定義書.md` | Hard Filter・Vector・§11.6 性能注記 |
+| TV-006 PoC | `docs/90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md` | pgvector 件数スケール根拠 |
 | MOD-RECO-001 | `docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md` | 呼び出し |
 | MOD-RECO-004 / 010 / 013 | `docs/06_実装設計/reco/` 配下 | 境界 |
 | エラーコード定義書 | `docs/05_アプリケーション設計/アプリ/エラーコード定義書.md` | `008` / `009` |

@@ -629,6 +629,18 @@ vector_similarity = cosine_similarity(query_embedding, item_embedding)
 | ng_textは含めない                 | 除外条件であり検索語ではない   |
 | Hard Filter後に検索する           | NG・予算外商品を先に除外する   |
 
+### 11.6 Vector 検索性能（pgvector / HNSW）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| Index | `item_embedding.embedding_vector` の HNSW（`m = 16` / `ef_construction = 64` / cosine）。正本は `item_embedding` テーブル定義書 §9.1 |
+| PoC 根拠 | TV-006（類似検索単体・テストデータ）。1,000 件 HNSW p95 ≈ 2〜3 ms。10,000 件 HNSW p95 ≈ 5.6〜6.6 ms。暫定 Go |
+| 設計上の読み | カタログが 1 万件規模でも、pgvector 単体が Reco soft/hard（秒オーダー）の支配要因になる兆候は小さい（推論）。ボトルネックは主に User Meaning（外部 AI）側（TV-005 / TV-007 と整合） |
+| 未計測の明示 | **JOIN + Hard Filter 込みの本番 Retrieval 経路**、および **本番カタログ分布** は未計測。本節の数値を E2E Retrieval 遅延と同一視しない |
+| DDL | 現行 migration の現状維持。変更不要（#1590） |
+
+参照: [TV-006 結果](../90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md) / [1万件超](../90_PoC/技術検証結果/TV-006_後続_1万件超_pgvector検索性能検証結果.md) / [設計反映メモ](../90_PoC/技術検証結果/設計反映メモ_TV-006.md)
+
 ---
 
 ## 12. Context Category Retrieval
