@@ -14,7 +14,7 @@ from batch.application.item_recheck.job import ItemRecheckJob
 from batch.application.item_recheck.models import ItemSeed
 from batch.application.item_recheck.repositories import ItemRecheckRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter
+from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 from batch.infrastructure.object_storage import ScaffoldObjectStorageClient
 from batch.infrastructure.rakuten import ScaffoldRakutenApiClient
 
@@ -123,6 +123,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
     settings = load_batch_settings()
+    db_writer = create_db_writer(settings.database_url)
     if not settings.rakuten_application_id:
         print(
             "RAKUTEN_APPLICATION_ID is required for non-scaffold runs. "
@@ -132,7 +133,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     print(
-        "Real Rakuten HTTP client is not enabled in this Task. "
+        f"DbWriter backend={db_writer.backend} is resolved, "
+        "but real Rakuten HTTP client is not enabled yet. "
         "Use --scaffold-demo, or extend infrastructure after Human Review.",
         file=sys.stderr,
     )

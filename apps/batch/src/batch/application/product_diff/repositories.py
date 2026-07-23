@@ -172,7 +172,30 @@ class ProductDiffRepositories:
         }
         # source / item_id は持たない（#526）
         self.product_diff_results[key] = record
-        self.db_writer.write_rows("product_diff_result", (dict(record),))
+        # PK は DB default（gen_random_uuid）に任せ、冪等キーで UPSERT する
+        persist_row = {
+            "batch_run_id": batch_run_id,
+            "staging_item_id": judgment.staging_item_id,
+            "external_item_code": judgment.external_item_code,
+            "old_hash": judgment.old_hash,
+            "new_hash": judgment.new_hash,
+            "diff_status": judgment.diff_status,
+            "judged_at": judgment.judged_at,
+            "updated_at": now,
+        }
+        self.db_writer.upsert_rows(
+            "product_diff_result",
+            (persist_row,),
+            conflict_columns=("batch_run_id", "external_item_code"),
+            update_columns=(
+                "staging_item_id",
+                "old_hash",
+                "new_hash",
+                "diff_status",
+                "judged_at",
+                "updated_at",
+            ),
+        )
         return record
 
     def sync_staging_diff_status(
@@ -187,16 +210,18 @@ class ProductDiffRepositories:
         now = datetime.now(UTC)
         row["diff_status"] = diff_status
         row["updated_at"] = now
-        self.db_writer.write_rows(
-            "staging_item",
-            (
-                {
-                    "staging_item_id": staging_item_id,
-                    "diff_status": diff_status,
-                    "updated_at": now,
-                },
-            ),
-        )
+        # staging_item 部分更新の本番 SQL は後続スライス。Scaffold では書込プローブのみ。
+        if self.db_writer.backend == "scaffold":
+            self.db_writer.write_rows(
+                "staging_item",
+                (
+                    {
+                        "staging_item_id": staging_item_id,
+                        "diff_status": diff_status,
+                        "updated_at": now,
+                    },
+                ),
+            )
 
     def record_error(
         self,

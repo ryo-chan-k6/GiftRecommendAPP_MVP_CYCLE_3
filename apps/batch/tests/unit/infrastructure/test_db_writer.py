@@ -13,6 +13,7 @@ from batch.infrastructure.db import (
     ScaffoldDbWriter,
     create_db_writer,
     mask_database_url,
+    resolve_job_db_writer,
 )
 
 
@@ -24,6 +25,44 @@ def test_scaffold_db_writer_records_writes() -> None:
 
     assert result == DbWriteResult(rows_affected=2, table="items")
     assert writer.write_calls == [{"table": "items", "rows": rows}]
+
+
+def test_scaffold_db_writer_records_upserts() -> None:
+    writer = ScaffoldDbWriter()
+    rows = ({"batch_run_id": "r1", "external_item_code": "shop:a", "diff_status": "new"},)
+
+    result = writer.upsert_rows(
+        "product_diff_result",
+        rows,
+        conflict_columns=("batch_run_id", "external_item_code"),
+        update_columns=("diff_status",),
+    )
+
+    assert result == DbWriteResult(rows_affected=1, table="product_diff_result")
+    assert writer.upsert_calls == [
+        {
+            "table": "product_diff_result",
+            "rows": rows,
+            "conflict_columns": ("batch_run_id", "external_item_code"),
+            "update_columns": ("diff_status",),
+        }
+    ]
+
+
+def test_resolve_job_db_writer_scaffold_demo_ignores_url() -> None:
+    writer = resolve_job_db_writer(
+        scaffold_demo=True,
+        database_url="postgresql://localhost:5432/gift",
+    )
+    assert isinstance(writer, ScaffoldDbWriter)
+
+
+def test_resolve_job_db_writer_uses_create_db_writer() -> None:
+    writer = resolve_job_db_writer(
+        scaffold_demo=False,
+        database_url="postgresql://localhost:5432/gift",
+    )
+    assert isinstance(writer, PostgresDbWriter)
 
 
 def test_create_db_writer_uses_scaffold_for_missing_url() -> None:
@@ -117,3 +156,49 @@ def test_postgres_write_rows_masks_credentials_in_database_error() -> None:
     assert "secret" not in message
     assert "***REDACTED***" in message
     assert "localhost:5432/gift" in message
+
+
+def test_postgres_upsert_rows_rejects_empty_conflict() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+    with pytest.raises(DatabaseError, match="conflict_columns"):
+        writer.upsert_rows(
+            "product_diff_result",
+            ({"batch_run_id": "r1", "external_item_code": "a"},),
+            conflict_columns=(),
+        )
+
+
+def test_postgres_upsert_rows_executes_on_conflict() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+    rows = (
+        {
+            "batch_run_id": "r1",
+            "external_item_code": "shop:a",
+            "diff_status": "new",
+        },
+    )
+
+    mock_cursor = MagicMock()
+    mock_cursor.rowcount = 1
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = False
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = False
+
+    with patch("psycopg.connect", return_value=mock_conn) as connect:
+        result = writer.upsert_rows(
+            "product_diff_result",
+            rows,
+            conflict_columns=("batch_run_id", "external_item_code"),
+            update_columns=("diff_status",),
+        )
+
+    connect.assert_called_once_with("postgresql://localhost:5432/gift")
+    mock_cursor.execute.assert_called_once()
+    _statement, params = mock_cursor.execute.call_args.args
+    assert params == ["r1", "shop:a", "new"]
+    mock_conn.commit.assert_called_once()
+    assert result == DbWriteResult(rows_affected=1, table="product_diff_result")

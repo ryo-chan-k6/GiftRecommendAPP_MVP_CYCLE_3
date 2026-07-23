@@ -28,7 +28,19 @@ class DatabaseError(RuntimeError):
 class DbWriter(Protocol):
     """Database write boundary for batch loaders."""
 
+    @property
+    def backend(self) -> str: ...
+
     def write_rows(self, table: str, rows: tuple[dict[str, object], ...]) -> DbWriteResult: ...
+
+    def upsert_rows(
+        self,
+        table: str,
+        rows: tuple[dict[str, object], ...],
+        *,
+        conflict_columns: tuple[str, ...],
+        update_columns: tuple[str, ...] | None = None,
+    ) -> DbWriteResult: ...
 
 
 def mask_database_url(url: str) -> str:
@@ -54,23 +66,57 @@ def _assert_sql_ident(name: str, *, kind: str) -> str:
     return name
 
 
+def _normalize_row_columns(rows: tuple[dict[str, object], ...]) -> tuple[str, ...]:
+    if not rows:
+        return ()
+    columns = tuple(rows[0].keys())
+    if not columns:
+        raise DatabaseError("rows require at least one column")
+    for column in columns:
+        _assert_sql_ident(str(column), kind="column")
+    for row in rows:
+        if tuple(row.keys()) != columns:
+            raise DatabaseError("all rows must share the same column set and order")
+    return tuple(str(column) for column in columns)
+
+
 @dataclass
 class ScaffoldDbWriter:
     """Placeholder writer without a real database connection."""
 
     write_calls: list[dict[str, object]] = field(default_factory=list)
+    upsert_calls: list[dict[str, object]] = field(default_factory=list)
+    backend: str = "scaffold"
 
     def write_rows(self, table: str, rows: tuple[dict[str, object], ...]) -> DbWriteResult:
         self.write_calls.append({"table": table, "rows": rows})
         return DbWriteResult(rows_affected=len(rows), table=table)
 
+    def upsert_rows(
+        self,
+        table: str,
+        rows: tuple[dict[str, object], ...],
+        *,
+        conflict_columns: tuple[str, ...],
+        update_columns: tuple[str, ...] | None = None,
+    ) -> DbWriteResult:
+        self.upsert_calls.append(
+            {
+                "table": table,
+                "rows": rows,
+                "conflict_columns": conflict_columns,
+                "update_columns": update_columns,
+            }
+        )
+        return DbWriteResult(rows_affected=len(rows), table=table)
+
 
 @dataclass
 class PostgresDbWriter:
-    """PostgreSQL writer backed by psycopg (parameterized INSERT).
+    """PostgreSQL writer backed by psycopg.
 
-    T3 foundation: generic multi-row INSERT for ``write_rows``.
-    Table-specific UPSERT / conflict 方針は T4（IF stub 解除）で repositories 側に実装する。
+    - ``write_rows``: multi-row INSERT
+    - ``upsert_rows``: INSERT ... ON CONFLICT DO UPDATE（T4a）
     """
 
     database_url: str
@@ -81,20 +127,83 @@ class PostgresDbWriter:
             return DbWriteResult(rows_affected=0, table=table)
 
         safe_table = _assert_sql_ident(table, kind="table")
-        columns = tuple(rows[0].keys())
-        if not columns:
-            raise DatabaseError("write_rows requires at least one column")
-        for column in columns:
-            _assert_sql_ident(str(column), kind="column")
+        columns = _normalize_row_columns(rows)
+        return self._execute_insert(safe_table, columns, rows)
 
-        for row in rows:
-            if tuple(row.keys()) != columns:
-                raise DatabaseError("all rows must share the same column set and order")
+    def upsert_rows(
+        self,
+        table: str,
+        rows: tuple[dict[str, object], ...],
+        *,
+        conflict_columns: tuple[str, ...],
+        update_columns: tuple[str, ...] | None = None,
+    ) -> DbWriteResult:
+        if not rows:
+            return DbWriteResult(rows_affected=0, table=table)
+        if not conflict_columns:
+            raise DatabaseError("conflict_columns must not be empty")
+
+        safe_table = _assert_sql_ident(table, kind="table")
+        columns = _normalize_row_columns(rows)
+        conflict = tuple(_assert_sql_ident(column, kind="column") for column in conflict_columns)
+        for column in conflict:
+            if column not in columns:
+                raise DatabaseError(f"conflict column {column!r} missing from row payload")
+
+        if update_columns is None:
+            updates = tuple(column for column in columns if column not in conflict)
+        else:
+            updates = tuple(_assert_sql_ident(column, kind="column") for column in update_columns)
+            for column in updates:
+                if column not in columns:
+                    raise DatabaseError(f"update column {column!r} missing from row payload")
 
         import psycopg
         from psycopg import sql
 
-        column_idents = [sql.Identifier(str(column)) for column in columns]
+        column_idents = [sql.Identifier(column) for column in columns]
+        placeholders = sql.SQL(", ").join(sql.Placeholder() * len(columns))
+        values_list = sql.SQL(", ").join(
+            sql.SQL("({})").format(placeholders) for _ in rows
+        )
+        conflict_idents = sql.SQL(", ").join(sql.Identifier(column) for column in conflict)
+
+        if updates:
+            set_clause = sql.SQL(", ").join(
+                sql.SQL("{col} = EXCLUDED.{col}").format(col=sql.Identifier(column))
+                for column in updates
+            )
+            on_conflict = sql.SQL(
+                "ON CONFLICT ({conflict}) DO UPDATE SET {updates}"
+            ).format(conflict=conflict_idents, updates=set_clause)
+        else:
+            on_conflict = sql.SQL("ON CONFLICT ({conflict}) DO NOTHING").format(
+                conflict=conflict_idents
+            )
+
+        statement = sql.SQL(
+            "INSERT INTO {table} ({columns}) VALUES {values} {on_conflict}"
+        ).format(
+            table=sql.Identifier(safe_table),
+            columns=sql.SQL(", ").join(column_idents),
+            values=values_list,
+            on_conflict=on_conflict,
+        )
+        params: list[object] = []
+        for row in rows:
+            params.extend(row[column] for column in columns)
+
+        return self._execute(statement, params, table=table, fallback_affected=len(rows))
+
+    def _execute_insert(
+        self,
+        safe_table: str,
+        columns: tuple[str, ...],
+        rows: tuple[dict[str, object], ...],
+    ) -> DbWriteResult:
+        from psycopg import sql
+
+        column_idents = [sql.Identifier(column) for column in columns]
         placeholders = sql.SQL(", ").join(sql.Placeholder() * len(columns))
         values_list = sql.SQL(", ").join(
             sql.SQL("({})").format(placeholders) for _ in rows
@@ -107,18 +216,32 @@ class PostgresDbWriter:
         params: list[object] = []
         for row in rows:
             params.extend(row[column] for column in columns)
+        return self._execute(statement, params, table=safe_table, fallback_affected=len(rows))
+
+    def _execute(
+        self,
+        statement: object,
+        params: list[object],
+        *,
+        table: str,
+        fallback_affected: int,
+    ) -> DbWriteResult:
+        import psycopg
 
         try:
             with psycopg.connect(self.database_url) as conn:
                 with conn.cursor() as cur:
                     cur.execute(statement, params)
                     conn.commit()
-                    affected = cur.rowcount if cur.rowcount and cur.rowcount > 0 else len(rows)
+                    affected = (
+                        cur.rowcount
+                        if cur.rowcount is not None and cur.rowcount >= 0
+                        else fallback_affected
+                    )
                     return DbWriteResult(rows_affected=affected, table=table)
         except DatabaseError:
             raise
         except Exception as exc:  # noqa: BLE001 — surface as DatabaseError
-            # 例外メッセージに接続文字列が混ざる場合があるため、生成時点で redact する
             raise DatabaseError(mask_database_url(str(exc))) from exc
 
 
@@ -136,3 +259,14 @@ def create_db_writer(
     if database_url and not database_url.startswith("scaffold://"):
         return PostgresDbWriter(database_url=database_url)
     return fallback or ScaffoldDbWriter()
+
+
+def resolve_job_db_writer(*, scaffold_demo: bool, database_url: str | None) -> DbWriter:
+    """Resolve DbWriter for CLI jobs.
+
+    ``--scaffold-demo`` は常に Scaffold。それ以外は ``DATABASE_URL`` で切替。
+    """
+
+    if scaffold_demo:
+        return ScaffoldDbWriter()
+    return create_db_writer(database_url)

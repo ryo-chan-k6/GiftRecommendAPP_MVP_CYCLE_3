@@ -7,9 +7,9 @@
 | 文書種別 | E2 棚卸し正本（docs） |
 | 対象 | IF-DB-BATCH-001〜017 / 020 / 021 / IF-VEC-BATCH-001（001〜017 中心） |
 | 作成日 | 2026-07-22 |
-| 更新日 | 2026-07-22（T2 列差分棚卸し・012/015 永続 DDL 反映） |
+| 更新日 | 2026-07-23（T4a Wave A stub 解除進捗反映） |
 | 関連 Epic | [#1561](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1561) |
-| 関連 Task | [#1562](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1562)（T1） / [#1568](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1568)（T2） / [#1576](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1576)（T3） |
+| 関連 Task | [#1562](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1562)（T1） / [#1568](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1568)（T2） / [#1576](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1576)（T3） / [#1579](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1579)（T4a） |
 | 先行 | E0 ギャップ一覧 / E1 親 workflow（#1560 MERGED） |
 
 ### 1.1 目的
@@ -79,8 +79,8 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-DB-BATCH-003 | `fetch_cursor` | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-004 | `raw_product_metadata` | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-005 | staging_* | initial にあり | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-006 | `product_diff_result` | initial にあり | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-007 | `item` / image / review | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-006 | `product_diff_result` | initial にあり | **T4a**: `upsert_rows`（ON CONFLICT） | Wave A CLI 配線済み。読取 SELECT は未 |
+| IF-DB-BATCH-007 | `item` / image / review | initial にあり | ScaffoldDbWriter / in-memory | Wave A CLI 配線のみ（フル UPSERT は後続） |
 | IF-DB-BATCH-008 | `ranking_snapshot` / popularity | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-009 | `item.active_status` | initial（列） | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-010 | `item_generation_queue` | initial にあり | ScaffoldDbWriter / in-memory | |
@@ -92,7 +92,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-VEC-BATCH-001 | `item_embedding` | initial にあり | ScaffoldDbWriter / in-memory | Embedding API は E3 |
 | IF-DB-BATCH-016 | distribution metric 3 種 | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-017 | `item_import_summary` | initial にあり | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-020/021 | `item_active_status_candidate` | 増分 migration あり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-020/021 | `item_active_status_candidate` | 増分 migration あり | **T4a**: candidate UPSERT（IF-020） | Wave A CLI 配線済み |
 | IF-DB-BATCH-018 | evaluation_* | initial にあり | scaffold（参考） | **E2 本格化除外** |
 | IF-DB-BATCH-019 | feedback_analysis_* | **CREATE なし** | 明示 stub | **E2 除外** |
 
@@ -135,11 +135,11 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | T1 | **本 Task（棚卸し）** | 本 docs | Review |
 | T2 | DDL 不足分（001〜017） | **完了（#1568）**: 列差分棚卸し + 012/015 永続 DDL | Review |
 | T3 | DB 接続基盤 | **完了（#1576）**: `PostgresDbWriter` + `create_db_writer`（Scaffold 切替）。repositories stub は T4 | Review |
-| T4a | IF stub 解除 Wave A | 001〜008 + 020/021（取込・Item） | 範囲確認 |
+| T4a | IF stub 解除 Wave A | **進行中（#1579）**: `upsert_rows` + Wave A CLI 配線 + IF-006/020 UPSERT。003〜005/007/008 フル UPSERT・SELECT は後続 | 範囲確認 |
 | T4b | IF stub 解除 Wave B | 009〜017 + VEC | 012/015 は T2 永続化後に解除 |
 | T5 | UT / 境界 | Protocol 互換・scaffold 回帰。実 DB は local/CI 限定 | — |
 
-**推奨着手順（Human 確定）:** T1（完了）→ T2（完了）→ **T3（完了・本 PR）** → T4a → T4b → T5。
+**推奨着手順（Human 確定）:** T1（完了）→ T2（完了）→ T3（完了）→ **T4a（本 Task）** → T4b → T5。
 
 ---
 
@@ -163,6 +163,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 2026-07-22 | Human 確定反映（012/015 永続化、Wave A→B、#102/#133 not planned、T2 列差分棚卸し必須） |
 | 2026-07-22 | T2（#1568）: 列差分棚卸し結果・D17 migration・定義書・仕様追記を反映 |
 | 2026-07-22 | T3（#1576）: `PostgresDbWriter` / `create_db_writer` 接続基盤を反映 |
+| 2026-07-23 | T4a（#1579）: `upsert_rows`・Wave A CLI 配線・IF-006/020 UPSERT を反映 |
 
 ---
 
@@ -223,3 +224,18 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 3 | retention / パージ | **未確定**（別 Task） |
 | 4 | `staging_attribute` CREATE | **しない**（既存 MVP 除外を維持） |
 | 5 | DROP | **なし**（本 Task は加算のみ） |
+
+
+---
+
+## 11. T4a Wave A stub 解除進捗（事実・2026-07-23 / #1579）
+
+| 項目 | 状態 |
+| ---- | ---- |
+| `DbWriter.upsert_rows` | Scaffold 記録 + Postgres `ON CONFLICT DO UPDATE` |
+| `resolve_job_db_writer` | `--scaffold-demo` → Scaffold / それ以外 → `create_db_writer` |
+| Wave A CLI 配線 | genre_sync / ranking_snapshot / item_pseudo_diff / raw_staging / product_diff / item_apply / item_active_status / item_recheck で `create_db_writer` |
+| IF-006 | `product_diff_result` UPSERT（`(batch_run_id, external_item_code)`） |
+| IF-020 | `item_active_status_candidate` UPSERT（`(batch_run_id, source, external_item_code)`） |
+| 未実施（後続） | Wave A 読取 SELECT、003〜005/007/008 フル UPSERT、T4b（009+） |
+

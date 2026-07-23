@@ -8,6 +8,7 @@ from batch.infrastructure.db import (
     ScaffoldDbWriter,
     create_db_writer,
     mask_database_url,
+    resolve_job_db_writer,
 )
 from batch.infrastructure.external_ai import (
     ExternalAiClient,
@@ -53,4 +54,5 @@ __all__ = [
     "StoredObject",
     "create_db_writer",
     "mask_database_url",
+    "resolve_job_db_writer",
 ]
