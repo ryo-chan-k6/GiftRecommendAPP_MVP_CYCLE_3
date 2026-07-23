@@ -5,7 +5,7 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 配置 | `docs/90_PoC/管理/` |
-| 更新日 | 2026-07-23（TV-006 完了・TV-009 着手） |
+| 更新日 | 2026-07-23（TV-009 完了・Epic develop 着前提） |
 | 計画正本 | [技術検証全体計画](../計画/技術検証全体計画.md) |
 
 ステータス凡例:
@@ -39,7 +39,7 @@
 | TV-006 | `完了` | Epic [#1571](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1571) **CLOSED** / Task [#1572](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1572) **CLOSED** | Epic PR #1575 develop 着。暫定 **Go**。後続 1万件超は [#1574](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1574) |
 | TV-007 | `完了` | Phase1 [#759](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/759) **CLOSED** / Phase2 [#1512](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1512) **CLOSED** / Phase3 [#1535](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1535) **CLOSED** / 正式反映 [#1532](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1532)・[#1533](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1533) | Phase1〜3 develop 着。#1533 確定値・`phase_output` 正式反映は Epic #1532 で develop 取込 |
 | TV-008 | `方針のみ` | なし（要起票） | BATCH レーンと exclusive 調整が必要 |
-| TV-009 | `進行中` | Epic [#1578](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1578) | Feature 生成専用計測着手。Epic develop 着後に完了 |
+| TV-009 | `完了` | Epic [#1578](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1578) / Task [#1580](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1580) **CLOSED** | Feature 生成 in-memory 計測・暫定 **Go**。Epic develop 着をもって完了。BATCH-012 全体は未計測 |
 | TV-010 | `方針のみ` | なし（要起票） | BATCH-015 Embedding 実装進展と関連し得る |
 
 ---
@@ -60,3 +60,4 @@
 | 2026-07-22 | TV-005 を `完了`、TV-006 を `進行中` に更新（#1569 merge / #1572 計測） |
 | 2026-07-23 | TV-006 Task #1573 Epic 着・Epic PR 準備 |
 | 2026-07-23 | TV-006 を `完了`（#1575 develop 着）、TV-009 を `進行中`（#1578）に更新 |
+| 2026-07-23 | TV-009 を `完了` に更新（#1582 Epic 着・Epic PR develop 着前提） |

@@ -1,0 +1,77 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-009-feature-generation-performance-epic-pr"
+  title: "PoC:TV-009Feature生成性能 Epic PRレビュー"
+  summary: "Epic #1578 の develop 向け Epic PR を AI Review する。Feature 生成 in-memory 計測・結果 doc・TV-007 切り分け・secret 非混入を確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1578
+  task_definition: "prompts/definitions/epics/tv-009-feature-generation-performance/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]PoC:TV-009Feature生成性能"
+  parent_epic_branch: "spike/epic-1578-tv-009-feature-generation-performance"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/tv-009-feature-generation-performance/epic.yaml"
+  docs:
+    - "docs/90_PoC/性能フィジビリティ/Feature生成性能検証結果_TV-009.md"
+    - "docs/90_PoC/性能フィジビリティ/設計反映メモ_TV-009.md"
+    - "docs/90_PoC/計画/TV要件・実施方針/TV-009_Feature生成性能.md"
+    - "docs/90_PoC/管理/TV進捗一覧.md"
+  files:
+    - "scripts/perf/feature_generation_bench.py"
+    - "scripts/perf/README.md"
+
+review_points:
+  - "Epic PR target が develop か"
+  - "User / Item Feature 生成時間（p50/p95）が結果 doc にあるか"
+  - "TV-007 user_feature（外部 AI 合算）と切り分けられているか"
+  - "総合判定 Go / Adjust / Block があるか"
+  - "TV進捗で TV-006=完了・TV-009=完了（本 Epic develop 着前提）が反映されているか"
+  - "secret 実値が成果物に含まれていないか"
+  - "apps/** / apps/batch 本格改修の非混入"
+  - "BATCH-012 ジョブ全体未計測が残リスクとして明示されているか"
+  - "Closes #1578 の扱い"
+
+acceptance:
+  human_review_required: true
+  merge_by_ai: false
+
+notes:
+  - "merge 判断は Human"
+  - "正式 shared_logic / Online・Batch 責務 docs 更新は別 Task（S4 後）"
+  - "子 Task #1580 / Task PR #1582 は Epic 着済"
