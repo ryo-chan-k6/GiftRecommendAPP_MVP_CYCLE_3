@@ -112,8 +112,9 @@ def test_hash_success_handoff_keeps_processing() -> None:
     assert len(repos.handoff_records) == 1
     h = str(repos.handoff_records[0]["feature_input_hash"])
     assert len(h) == 64 and h == h.lower()
-    tables = {c["table"] for c in db.write_calls}
-    assert "feature_input_hash_handoff" in tables
+    tables = {c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}
+    assert "item_feature_input" in {c["table"] for c in db.upsert_calls}
+    assert "feature_input_hash_handoff" not in tables
     assert "item_feature" not in tables
     assert "item_semantic" not in tables
     assert repos.item_feature_write_count == 0

@@ -17,7 +17,7 @@ from batch.application.embedding_input_hash.repositories import (
     EmbeddingInputHashRepositories,
 )
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter
+from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 
 _NOW = datetime(2026, 7, 19, 12, 0, 0, tzinfo=UTC)
 
@@ -101,9 +101,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
     settings = load_batch_settings()
-    _ = settings
+    db_writer = create_db_writer(settings.database_url)
     print(
-        "Real DB client is not enabled in this Task. "
+        f"DbWriter backend={db_writer.backend} is resolved, "
+        "but real DB read path is not enabled yet. "
         "Use --scaffold-demo for local/CI.",
         file=sys.stderr,
     )

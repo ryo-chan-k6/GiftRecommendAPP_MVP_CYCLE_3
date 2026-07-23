@@ -28,7 +28,7 @@ from batch.application.item_embedding.repositories import (
     ItemEmbeddingRepositories,
 )
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter
+from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 
 _NOW = datetime(2026, 7, 20, 12, 0, 0, tzinfo=UTC)
 # 64 hex（BATCH-014 handoff 相当のダミー hash。secret ではない）
@@ -151,9 +151,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
     settings = load_batch_settings()
-    _ = settings  # real wiring is out of this Task (scaffold-first)
+    db_writer = create_db_writer(settings.database_url)
     print(
-        "Real DB client is not enabled in this Task. "
+        f"DbWriter backend={db_writer.backend} is resolved, "
+        "but real DB read path is not enabled yet. "
         "Use --scaffold-demo for local/CI.",
         file=sys.stderr,
     )
