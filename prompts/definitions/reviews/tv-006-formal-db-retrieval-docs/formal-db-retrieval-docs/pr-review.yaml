@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-006-formal-db-retrieval-docs-pr"
+  title: "TV-006正式DB・Retrieval docs Task PRレビュー"
+  summary: "Epic #1591 Task #1590 の正式 DB / Retrieval docs 反映 PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1590
+  parent_epic_issue: 1591
+  parent_epic_branch: "docs/epic-1591-tv-006-formal-db-retrieval-docs"
+  task_definition: "prompts/definitions/tasks/tv-006-formal-db-retrieval-docs/formal-db-retrieval-docs.yaml"
+  source_branch: "docs/task-1590-tv-006-formal-db-retrieval-docs"
+  target_branch: "docs/epic-1591-tv-006-formal-db-retrieval-docs"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: true
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/tv-006-formal-db-retrieval-docs/formal-db-retrieval-docs.yaml"
+    required: true
+  issue:
+    number: 1590
+
+review_points:
+  - "HNSW m / ef_construction が正式確定されているか"
+  - "DDL 変更不要が明示されているか"
+  - "TV-006 根拠参照があるか"
+  - "JOIN / Hard Filter / 本番分布の未計測注記があるか"
+  - "追記が過剰でないか（MOD-RECO-012 含む）"
+  - "apps/** / migration 変更がないか"
+  - "PR target が親 Epic Branch か"
+  - "Related to #1590（Closes 禁止）"
+
+notes:
+  - "Issue #1590 / Branch docs/task-1590-tv-006-formal-db-retrieval-docs"

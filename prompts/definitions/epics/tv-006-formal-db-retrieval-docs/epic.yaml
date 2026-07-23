@@ -1,0 +1,139 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-tv-006-formal-db-retrieval-docs"
+  title: "docs:TV-006正式DB・Retrieval反映"
+  summary: "TV-006 PoC 結果を入力に、正式 DB / Retrieval 系 docs へ必要最小の反映を行う。DDL 変更は原則不要。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  設計反映メモ: 正式 DB / Retrieval docs は 1万件計測完了後にまとめて反映。
+  Human（2026-07-23）: #1590 起票・着手指示。親 Epic として本 Issue #1591 を起票。
+
+objective: |
+  HNSW パラメータを正式 docs で確定（現状維持）し、TV-006 根拠を辿れるようにする。
+
+scope:
+  - "子 Task #1590"
+  - "item_embedding / 物理ER / Retrieval定義書 / MOD-RECO-012（必要最小）"
+  - "設計反映メモの正式反映ステータス"
+  - "Epic / Task / Review Definition"
+
+out_of_scope:
+  - "apps/** / migration 独断変更"
+  - "再計測 / TV-007 E2E"
+  - "JOIN + Hard Filter 新規計測"
+  - "secret / PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/技術検証結果/設計反映メモ_TV-006.md"
+      required: true
+    - path: "docs/90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+    - path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/**"
+      action: "update"
+      required: true
+    - path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      action: "update"
+      required: false
+    - path: "docs/90_PoC/技術検証結果/設計反映メモ_TV-006.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/epics/tv-006-formal-db-retrieval-docs/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/tv-006-formal-db-retrieval-docs/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/tv-006-formal-db-retrieval-docs/**"
+      action: "create_or_update"
+      required: false
+
+acceptance_criteria:
+  - "正式 docs に TV-006 参照または性能判断が反映されている"
+  - "HNSW m / ef_construction が未確定のままではない"
+  - "DDL 変更不要である旨が明示されている"
+  - "JOIN / Hard Filter / 本番分布の未計測注記がある"
+
+issue:
+  number: 1591
+  unit: "epic"
+  type: "docs"
+  area: "db"
+  creation_blocked: false
+
+branch:
+  no_branch: false
+  name: "docs/epic-1591-tv-006-formal-db-retrieval-docs"
+  summary: "tv-006-formal-db-retrieval-docs"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-23"
+    due_date: "2026-07-30"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/06_実装設計/database/**"
+    - "docs/04_ドメインモデル設計/Retrieval定義書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+    - "docs/90_PoC/技術検証結果/**"
+    - "docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md"
+    - "prompts/definitions/epics/tv-006-formal-db-retrieval-docs/**"
+    - "prompts/definitions/tasks/tv-006-formal-db-retrieval-docs/**"
+    - "prompts/definitions/reviews/tv-006-formal-db-retrieval-docs/**"
+  forbidden_paths:
+    - "apps/**"
+    - "supabase/migrations/**"
+    - "packages/contracts/**"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Epic #1591 / Task #1590"
+  - "1万件超数値は PoC 計測済み。Task PR #1587 が未着でも正式 docs に要約引用してよい"

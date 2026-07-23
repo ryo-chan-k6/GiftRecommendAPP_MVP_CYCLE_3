@@ -1,0 +1,150 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-tv-006-formal-db-retrieval-docs"
+  title: "TV-006:正式DB・Retrieval docs反映"
+  summary: "TV-006 PoC を根拠に item_embedding / Retrieval 系正式 docs へ必要最小の反映を行う。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-tv-006-formal-db-retrieval-docs"
+  epic_issue: "[Epic]docs:TV-006正式DB・Retrieval反映"
+  epic_issue_number: 1591
+  epic_branch: "docs/epic-1591-tv-006-formal-db-retrieval-docs"
+  related_issues:
+    - number: 1574
+      purpose: "1万件超計測"
+    - number: 1586
+      purpose: "1万件超 Epic"
+    - number: 1571
+      purpose: "TV-006 本体"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Human（2026-07-23）: #1590 起票・着手。親 Epic #1591。
+  PoC: HNSW m=16 / ef_construction=64 は現状維持で足りる（〜1,000 および 10,000 件 Go）。
+
+objective: |
+  正式 docs で HNSW パラメータを確定し、TV-006 根拠を辿れるようにする。DDL / migration は変更しない。
+
+scope:
+  - "item_embedding_テーブル定義書（§9.1・§17.1 No.4・関連資料）"
+  - "物理ER（Index 方針との整合・必要最小）"
+  - "Retrieval定義書（性能・件数スケール注記・必要最小）"
+  - "MOD-RECO-012（必要最小の参照追記）"
+  - "設計反映メモの正式反映ステータス"
+  - "本 Task / Review Definition"
+
+out_of_scope:
+  - "apps/**"
+  - "supabase/migrations 変更"
+  - "再計測"
+  - "JOIN + Hard Filter 新規計測"
+  - "secret / PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/技術検証結果/設計反映メモ_TV-006.md"
+      required: true
+    - path: "docs/90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+    - path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      action: "update"
+      required: true
+    - path: "docs/04_ドメインモデル設計/Retrieval定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+      action: "update"
+      required: false
+    - path: "docs/90_PoC/技術検証結果/設計反映メモ_TV-006.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "正式 DB / Retrieval 系 docs に TV-006 参照または性能判断がある"
+  - "HNSW m / ef_construction が未確定のままではない"
+  - "DDL 変更不要が明示されている"
+  - "JOIN / Hard Filter / 本番分布の未計測注記がある"
+  - "設計反映メモに正式反映ステータスがある"
+  - "Related to #1590（Closes 禁止）"
+
+branch:
+  no_branch: false
+  name: "docs/task-1590-tv-006-formal-db-retrieval-docs"
+  summary: "tv-006-formal-db-retrieval-docs"
+  base: "docs/epic-1591-tv-006-formal-db-retrieval-docs"
+  target: "docs/epic-1591-tv-006-formal-db-retrieval-docs"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-23"
+    due_date: "2026-07-30"
+
+issue:
+  number: 1590
+  unit: "task"
+  type: "docs"
+  area: "db"
+  creation_blocked: false
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "HNSW 現状維持の根拠が妥当か"
+    - "追記粒度が過剰でないか"
+    - "未計測範囲の注記があるか"
+    - "migration / apps 非変更"
+    - "Related to #1590（Closes 禁止）"
+  specialist_reviews:
+    docs: true
+    security: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Issue #1590 / Epic #1591"
+  - "10k 結果ファイルが develop 未着でも、計測済み数値を要約引用してよい"
