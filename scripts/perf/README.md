@@ -1,12 +1,13 @@
 # scripts/perf/
 
-Reco 性能フィジビリティ PoC（TV-007）、外部 AI API 疎通 PoC（TV-005）、pgvector 検索性能 PoC（TV-006）向けの計測ハーネス。
+Reco 性能フィジビリティ PoC（TV-007）、外部 AI API 疎通 PoC（TV-005）、pgvector 検索性能 PoC（TV-006）、Feature 生成性能 PoC（TV-009）向けの計測ハーネス。
 
 正本:
 
 - TV-007: [Reco性能フィジビリティ検証計画書](../../docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証計画書.md)
 - TV-005: [外部AI_API疎通検証計画](../../docs/90_PoC/外部API疎通検証/外部AI_API疎通検証計画.md)
 - TV-006: [TV-006_pgvector検索性能](../../docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md)
+- TV-009: [TV-009_Feature生成性能](../../docs/90_PoC/計画/TV要件・実施方針/TV-009_Feature生成性能.md)
 
 ## ファイル
 
@@ -16,6 +17,7 @@ Reco 性能フィジビリティ PoC（TV-007）、外部 AI API 疎通 PoC（TV
 | `openai_bench_clients.py` | live + secrets 用 OpenAI HTTP クライアント（bench 専用・apps/reco 非改修） |
 | `openai_connectivity_bench.py` | Embedding / LLM **専用**疎通計測 CLI（TV-005。Reco E2E 非依存） |
 | `pgvector_search_bench.py` | pgvector 件数・HNSW 効果計測 CLI（TV-006。一時 UNLOGGED テーブル） |
+| `feature_generation_bench.py` | User / Item Feature 生成計測 CLI（TV-009。in-memory） |
 | `output/` / `output-*/` | ローカル実行時の JSON / Markdown 出力（Git 管理外） |
 
 ## モード
@@ -185,6 +187,23 @@ uv run python ../../scripts/perf/pgvector_search_bench.py \
   --output-dir ../../scripts/perf/output-tv006
 ```
 
+## TV-009（Feature 生成性能）
+
+User / Item Feature 生成を in-memory で計測する。外部 AI・Reco E2E・BATCH-012 ジョブ全体は対象外。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| スクリプト | `feature_generation_bench.py` |
+| 前提 | apps/reco `uv` 環境 |
+| 結果 doc | [Feature生成性能検証結果_TV-009](../../docs/90_PoC/性能フィジビリティ/Feature生成性能検証結果_TV-009.md) |
+
+```bash
+cd apps/reco
+uv run python ../../scripts/perf/feature_generation_bench.py \
+  --iterations 50 --warmup 5 --concept-count 5 \
+  --output-dir ../../scripts/perf/output-tv009
+```
+
 ## 関連 Issue / Branch
 
 | 項目 | 値 |
@@ -194,5 +213,7 @@ uv run python ../../scripts/perf/pgvector_search_bench.py \
 | phase_output 計測定義修正 | #1544 / #1545 |
 | TV-005 Epic / Task | #1565 / #1566 |
 | TV-006 Epic / Task | #1571 / #1572 |
-| Branch（TV-006 Task） | `spike/task-1572-tv-006-pgvector-benchmark` |
-| PR target（TV-006） | `spike/epic-1571-tv-006-pgvector-search-performance` |
+| TV-009 Epic / Task | #1578 / #1580 |
+| Branch（TV-009 Task） | `spike/task-1580-tv-009-feature-generation-benchmark` |
+| PR target（TV-009） | `spike/epic-1578-tv-009-feature-generation-performance` |
+
