@@ -63,7 +63,7 @@ class ConfigResolveHint:
 
 @dataclass(frozen=True)
 class EmbeddingHashHandoffRecord:
-    """IF-DB-BATCH-015 handoff（専用テーブルなし・in-memory）。
+    """IF-DB-BATCH-015 中間永続（item_embedding_input）向け handoff レコード。
 
     物理列 item_embedding.embedding_input_hash への書込は BATCH-015 が行う。
     """

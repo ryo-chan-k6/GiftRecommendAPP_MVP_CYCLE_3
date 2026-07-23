@@ -58,7 +58,7 @@ class ConfigResolveHint:
 
 @dataclass(frozen=True)
 class HashHandoffRecord:
-    """IF-DB-BATCH-012 handoff（専用テーブルなし・in-memory）。"""
+    """IF-DB-BATCH-012 中間永続（item_feature_input）向け handoff レコード。"""
 
     item_id: str
     item_generation_queue_id: str

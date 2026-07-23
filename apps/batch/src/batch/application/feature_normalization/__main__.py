@@ -25,7 +25,7 @@ from batch.application.feature_normalization.repositories import (
     FeatureNormalizationRepositories,
 )
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter
+from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 
 # 64 hex（BATCH-012 が付与した feature_input_hash 相当のダミー。secret ではない）
 _DEMO_HASH = "b" * 64
@@ -125,9 +125,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
     settings = load_batch_settings()
-    _ = settings
+    db_writer = create_db_writer(settings.database_url)
     print(
-        "Real DB client is not enabled in this Task. Use --scaffold-demo for local/CI.",
+        f"DbWriter backend={db_writer.backend} is resolved, "
+        "but real DB read path is not enabled yet. "
+        "Use --scaffold-demo for local/CI.",
         file=sys.stderr,
     )
     return 3

@@ -3,11 +3,12 @@
 - item READ ONLY
 - item_embedding READ ONLY（skip 判定）。書込禁止（BATCH-015 / IF-VEC-BATCH-001）
 - Queue UPDATE only（INSERT 禁止）
-- IF-DB-BATCH-015 handoff は in-memory 記録
+- IF-DB-BATCH-015: item_embedding_input へ UPSERT（T4b）
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -224,8 +225,10 @@ class EmbeddingInputHashRepositories:
         return False
 
     def record_hash_handoff(self, record: EmbeddingHashHandoffRecord) -> None:
-        """IF-DB-BATCH-015: in-memory handoff（item_embedding 非書込）."""
+        """IF-DB-BATCH-015: item_embedding 非書込。中間表 item_embedding_input へ UPSERT."""
 
+        now = datetime.now(UTC)
+        context = dict(record.item_text_context)
         payload = {
             "item_id": record.item_id,
             "item_generation_queue_id": record.item_generation_queue_id,
@@ -233,11 +236,34 @@ class EmbeddingInputHashRepositories:
             "embedding_source_type": record.embedding_source_type,
             "embedding_source_version": record.embedding_source_version,
             "embedding_input_hash": record.embedding_input_hash,
-            "item_text_context": dict(record.item_text_context),
+            "item_text_context": context,
             "op": "if_db_batch_015_handoff",
         }
         self.handoff_records.append(payload)
-        self.db_writer.write_rows("embedding_input_hash_handoff", (payload,))
+        # DDL の item_text_context は text。canonical JSON 全文を保存（T2 Human 推奨）。
+        context_text = json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        persist_row = {
+            "item_id": record.item_id,
+            "model_version_id": record.model_version_id,
+            "embedding_source_type": record.embedding_source_type,
+            "embedding_input_hash": record.embedding_input_hash,
+            "item_text_context": context_text,
+            "item_generation_queue_id": record.item_generation_queue_id,
+            "computed_at": now,
+            "updated_at": now,
+        }
+        self.db_writer.upsert_rows(
+            "item_embedding_input",
+            (persist_row,),
+            conflict_columns=("item_id", "model_version_id", "embedding_input_hash"),
+            update_columns=(
+                "embedding_source_type",
+                "item_text_context",
+                "item_generation_queue_id",
+                "computed_at",
+                "updated_at",
+            ),
+        )
 
     def update_queue_status(
         self,
