@@ -1,0 +1,180 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-tv-009-poc-feature-generation-benchmark"
+  title: "TV-009Feature生成計測と結果doc"
+  summary: "User / Item Feature 生成時間を in-memory 計測し、結果 doc と Go/Adjust/Block を残す。TV進捗で TV-006 完了を反映する。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-tv-009-feature-generation-performance"
+  epic_issue: "[Epic]PoC:TV-009Feature生成性能"
+  epic_issue_number: 1578
+  epic_branch: "spike/epic-1578-tv-009-feature-generation-performance"
+  related_issues:
+    - number: 1571
+      purpose: "TV-006 完了（進捗更新）"
+    - number: 1535
+      purpose: "TV-007 Phase3（user_feature 切り分け）"
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  TV-007 の user_feature は外部 AI 込みで支配的。Feature merge/normalize 単体は未分離。
+  TV-009 で UserFeatureGenerator / ItemFeatureGenerator を専用計測する。
+
+objective: |
+  Feature 生成時間の計測と結果 doc を完成させる。
+  TV進捗で TV-006 を完了、TV-009 を進行中にする（Epic develop 着後に TV-009 完了）。
+
+scope:
+  - "TV進捗: TV-006=完了、TV-009=進行中"
+  - "検証計画（最小）と結果 doc（性能フィジビリティ/）"
+  - "計測スクリプト + README（apps 非改修・in-memory）"
+  - "TV-009 方針・設計反映メモ（最小）"
+  - "本 Task / Review Definition"
+
+out_of_scope:
+  - "TV-007 E2E 再実施"
+  - "User Meaning 性能改善"
+  - "apps/** 改修"
+  - "apps/batch/** 改修・BATCH exclusive 奪取"
+  - "BATCH-012 本番ジョブ全体の必須計測（未実施理由可）"
+  - "production"
+  - "正式設計独断更新"
+  - "secret 実値"
+  - "PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-009_Feature生成性能.md"
+      required: true
+    - path: "docs/90_PoC/性能フィジビリティ/Reco性能フィジビリティ検証結果_Phase2_live.md"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+  files:
+    - path: "scripts/perf/README.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/性能フィジビリティ/**"
+      action: "create"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-009_Feature生成性能.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: true
+
+acceptance_criteria:
+  - "User Feature 生成時間（p50/p95）が結果 doc にある"
+  - "Item Feature 生成時間または未実施理由がある"
+  - "Go / Adjust / Block がある"
+  - "TV進捗で TV-006=完了"
+  - "Task PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "tv-009-feature-generation-benchmark"
+  base: "spike/epic-1578-tv-009-feature-generation-performance"
+  target: "spike/epic-1578-tv-009-feature-generation-performance"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-23"
+    due_date: "2026-07-28"
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-tv-009-feature-generation-performance"
+      purpose: "親 Epic"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "scripts/perf/reco_pipeline_bench.py"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "apps/reco uv 環境で bench が完走すること"
+  not_required:
+    - "apps unit tests"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "TV-007 user_feature（外部 AI 込み）との切り分け"
+    - "apps/batch 非改修"
+    - "判定ラベルの根拠"
+    - "TV-006 進捗完了反映"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    experiments: true
+
+human_decision_points:
+  - "BATCH-012 全体計測を後続にするか"
+  - "概念数スケールの深さ"
+
+stop_conditions:
+  - "親 Epic 未作成"
+  - "apps/batch 改修が必須になった"
+  - "shared_logic が未実装で計測不能"
+
+notes:
+  - "Task Issue #1580 / Branch spike/task-1580-tv-009-feature-generation-benchmark"
+  - "親 Epic #1578 / Branch spike/epic-1578-tv-009-feature-generation-performance"
+  - "推奨: in-memory UserFeatureGenerator + ItemFeatureGenerator"
