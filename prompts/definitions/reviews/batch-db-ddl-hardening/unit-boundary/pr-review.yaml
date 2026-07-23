@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-ddl-hardening-unit-boundary-pr"
+  title: "batch-db-ddl-hardening UT境界 PRレビュー"
+  summary: "E2 T5（UT / 境界・scaffold 回帰）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1588
+  task_definition: "prompts/definitions/tasks/batch-db-ddl-hardening/unit-boundary.yaml"
+  parent_epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  parent_epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "production DB 結合非含有"
+  - "Protocol / CLI / 代表 IF 境界 UT"
+  - "scaffold 回帰"
+  - "secret 非露出"
+  - "Related to / PR target"
+
+notes:
+  - "PR 番号確定後に更新"
