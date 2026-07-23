@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1585
   issue:
     number: 1578
   task_definition: "prompts/definitions/epics/tv-009-feature-generation-performance/epic.yaml"
