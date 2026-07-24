@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1619
   issue:
     number: 1615
   task_definition: "prompts/definitions/tasks/supabase-storage-alignment/docs-alignment.yaml"
@@ -49,4 +49,4 @@ review_points:
   - "secret 非露出"
 
 notes:
-  - "PR 番号確定後に更新"
+  - "bucket 実体・live 疎通は out of scope"
