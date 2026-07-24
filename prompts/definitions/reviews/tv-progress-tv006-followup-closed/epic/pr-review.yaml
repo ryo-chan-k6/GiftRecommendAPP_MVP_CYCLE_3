@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1597
   issue:
     number: 1596
   task_definition: "prompts/definitions/epics/tv-progress-tv006-followup-closed/epic.yaml"
