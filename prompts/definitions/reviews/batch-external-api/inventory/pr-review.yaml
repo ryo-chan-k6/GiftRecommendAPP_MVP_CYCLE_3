@@ -1,0 +1,51 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-external-api-inventory-pr"
+  title: "batch-external-api 棚卸し PRレビュー"
+  summary: "E3 第1 Task（外部 API ギャップ棚卸し）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1599
+  task_definition: "prompts/definitions/tasks/batch-external-api/inventory.yaml"
+  parent_epic_issue: "[Epic]batch-external-api:外部API本接続"
+  parent_epic_branch: "feature/epic-1598-batch-external-api"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "事実と推論の分離"
+  - "018 / 親 workflow / production live を out of scope 明記"
+  - "secret 非含有"
+  - "Related to / PR target"
+
+notes:
+  - "PR 番号確定後に更新"

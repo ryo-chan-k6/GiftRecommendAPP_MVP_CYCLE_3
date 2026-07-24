@@ -1,0 +1,172 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-external-api-inventory"
+  title: "batch-external-api:外部APIギャップ棚卸し"
+  summary: "楽天 / Embedding / Object Storage / Semantic stub × Batch CLI のマトリクスを docs 正本化する。HTTP 実クライアント実装は行わない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-external-api:外部API本接続"
+  epic_issue_number: 1598
+  epic_branch: "feature/epic-1598-batch-external-api"
+  related_issues:
+    - 1561
+  related_prs:
+    - 1595
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  E3 第1 Task。現状は Scaffold のみで CLI 非 demo は Real HTTP 未配線（exit 3）。
+  棚卸しで後続（Rakuten client / Embedding / Storage / CLI）の分割を Human 判断可能にする。
+
+objective: |
+  `バッチ外部API本実装ギャップ一覧.md` を新規作成する。
+
+scope:
+  - "外部 API × Batch × stub/client マトリクス"
+  - "env / secret 名一覧（値なし）"
+  - "後続 Task 分割案"
+  - "Human 確認事項"
+  - "E0 ギャップ一覧 §10 の E2 完了・E3 着手追記"
+  - "Task / Review / Epic Definition"
+
+out_of_scope:
+  - "HTTP 実クライアント実装"
+  - "CLI 本接続配線の実装"
+  - "production live 呼出"
+  - "018 Reco IF / 親 workflow"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/external_ai/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/object_storage/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "create"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/epics/batch-external-api/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-external-api/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-external-api/**"
+      action: "create"
+      required: true
+
+deliverables:
+  - "外部 API ギャップ一覧 docs"
+  - "後続 Task 分割案"
+  - "Definitions"
+
+acceptance_criteria:
+  - "ギャップ一覧 docs が存在する"
+  - "実装コードの本接続を行っていない"
+  - "secret 実値なし"
+  - "Related to（Closes 禁止）"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-external-api-inventory"
+  base: "feature/epic-1598-batch-external-api"
+  target: "feature/epic-1598-batch-external-api"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-24"
+    due_date: "2026-07-28"
+
+issue:
+  number: 1599
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1598
+      purpose: "親 Epic"
+  issues:
+    - number: 1561
+      purpose: "E2 完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+  conflict_risk: "low"
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs 棚卸し Task。実装なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "事実と推論の分離"
+    - "018 / 親 workflow / production live を out of scope 明記"
+    - "secret 非含有"
+    - "Related to / PR target"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "着手順: Rakuten → Embedding → Object Storage でよいか（推奨）"
+  - "Semantic LLM 本接続を E3 に含めるか（推奨: Rule-first 維持・LLM は後続）"
+  - "CI live 呼出は既定 off でよいか（推奨: yes）"
+
+notes:
+  - "本 Task は docs のみ"
