@@ -21,11 +21,11 @@ Batch 手動実行・dry-run・再実行補助を配置するディレクトリ�
 | スクリプト | `rakuten_live_verify.py` |
 | 用途 | TV-001〜003 向けの最小 live 疎通（明示 `--live-rakuten` のみ） |
 | 実行場所 | 登録済み外部 IP を持つ **WSL（local）のみ**。CI live 禁止 |
-| QPS | 目標 **8**（ハードキャップ 10）。`RAKUTEN_MAX_QPS` / `RAKUTEN_MIN_INTERVAL_MS` |
+| QPS | **常用 2**（ハードキャップ 10）。`RAKUTEN_MAX_QPS` / `RAKUTEN_MIN_INTERVAL_MS` |
 | IP 照合 | `RAKUTEN_EXPECTED_EGRESS_IP` **必須**。不一致時は楽天 HTTP しない |
 | 出力 | `scripts/batch/output-rakuten-live/`（gitignored） |
 | secret | env の `RAKUTEN_APPLICATION_ID` / `RAKUTEN_ACCESS_KEY`。値をログに出さない |
-| Human 判断 | `ai-logs/human-decisions/2026-07-24-rakuten-api-qps-ip-verify-policy.md` |
+| Human 判断 | `ai-logs/human-decisions/2026-07-25-rakuten-operational-qps-revise-to-2.md`（常用 QPS=2） |
 
 ```bash
 set -a && source .env && set +a

@@ -11,7 +11,7 @@ Usage (from repo root or apps/batch):
 Safety:
   - Refuses to call the network without --live-rakuten
   - Requires RAKUTEN_EXPECTED_EGRESS_IP and aborts if observed egress mismatches
-  - Enforces min interval from RAKUTEN_MAX_QPS (default 8; hard cap 10)
+  - Enforces min interval from RAKUTEN_MAX_QPS (default 2; hard cap 10)
   - Never prints secret values
   - Limits to a few requests (genre / ranking / item_search + optional error probe)
 """
@@ -30,8 +30,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-# Human decision 2026-07-24: target QPS=8, hard cap=10 (registration ceiling).
-_DEFAULT_MAX_QPS = 8.0
+# Human decision 2026-07-25: operational QPS=2 (revised from 8); hard cap=10.
+_DEFAULT_MAX_QPS = 2.0
 _HARD_CAP_QPS = 10.0
 _EGRESS_IP_LOOKUP_URL = "https://api.ipify.org"
 

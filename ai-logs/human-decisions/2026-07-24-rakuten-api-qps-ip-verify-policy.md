@@ -13,7 +13,7 @@
 | 発生元Agent | `support-ai` / 作業 Agent |
 | 関連Issue | #1603（T2b live 疎通） / #1598（親 Epic） |
 | 重要度 | `high` |
-| 状態 | `decided`（本番 egress 設計は Backlog・未検討） |
+| 状態 | `superseded_in_part`（QPS 常用値は 2026-07-25 改訂。IP / Limiter / Backlog は継続有効） |
 
 ---
 
@@ -23,7 +23,7 @@
 
 | No | 論点 | 決定 |
 | -- | ---- | ---- |
-| 1 | クライアント目標 QPS | **8**（登録上限 10 の下。運用目標） |
+| 1 | クライアント目標 QPS | **8**（登録上限 10 の下。運用目標）→ **2026-07-25 改訂: 常用 QPS=2**（[改訂ログ](./2026-07-25-rakuten-operational-qps-revise-to-2.md)） |
 | 2 | live 検証時の egress IP 照合 | **必須**。不一致または未設定時は楽天 HTTP を行わず中止 |
 | 3 | Rate Limiter 実装タイミング | **#1603 は検証ハーネスの最小間隔のみ**。`MOD-BATCH-008` External API Rate Limiter 本実装は **直後の別 Task** |
 | 4 | 本番 / 検証環境の固定 egress IP 設計 | **Backlog 登録のみ**。現時点では検討しない |
@@ -48,8 +48,8 @@
 
 | 対象 | 内容 | 状態 |
 | ---- | ---- | ---- |
-| #1603 / PoC | 検証計画・ハーネスに QPS=8・IP 必須を反映 | 本決定後に実施 |
-| 別 Task | `MOD-BATCH-008` Rate Limiter 本実装（目標 QPS=8、ハードキャップ 10） | 未起票 |
+| #1603 / PoC | 検証計画・ハーネスに QPS=8・IP 必須を反映 | 実施済 → QPS 常用は 2026-07-25 に 2 へ改訂 |
+| 別 Task | `MOD-BATCH-008` Rate Limiter 本実装（目標 QPS=**2**、ハードキャップ 10） | 未起票 |
 | Backlog | 本番（および将来の固定 egress 実行基盤）の IP 登録・NAT / self-hosted 等の設計 | **未検討・Backlog のみ** |
 
 ---

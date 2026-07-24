@@ -92,7 +92,7 @@
 | `RAKUTEN_ACCESS_KEY` | 楽天 API 認証 | `--live-rakuten` 時必須 |
 | `BATCH_RAKUTEN_LIVE` | live 切替（`1`/`true`/`yes`/`on`） | CLI `--live-rakuten` と同等 |
 | `RAKUTEN_EXPECTED_EGRESS_IP` | live 検証時の接続元 IP 照合 | ハーネス必須（不一致時は HTTP しない） |
-| `RAKUTEN_MAX_QPS` | クライアント目標 QPS | 既定 **8**（ハードキャップ 10） |
+| `RAKUTEN_MAX_QPS` | クライアント常用 QPS | 既定 **2**（ハードキャップ 10。旧目標 8 は常用外） |
 | `RAKUTEN_MIN_INTERVAL_MS` | 呼出最小間隔（ms） | 任意。未設定時は QPS から算出 |
 | `OPENAI_API_KEY` | Embedding / LLM | Embedding 本接続時。ログ禁止 |
 | `DATABASE_URL` | DB（E2） | 本 Epic 主対象外（併用可） |
@@ -119,8 +119,8 @@
 | -- | --------- | ---- | ---------- |
 | T1 | **本 Task（棚卸し）** | 本 docs | Review |
 | T2 | Rakuten HTTP client（**完了 / #1601 / #1602**） | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
-| T2b | Rakuten live 疎通（**進捗: #1603 / Adjust**） | openapi endpoint 移行後、genre / ranking / item_search 成功。QPS=8・IP 必須。adapter / 正式仕様反映は残 | Review / secret |
-| T2c | External API Rate Limiter（`MOD-BATCH-008`） | 目標 QPS=8（ハードキャップ 10）。001〜004 / `HttpRakutenApiClient` 配線。#1603 直後の別 Task | Review |
+| T2b | Rakuten live 疎通（**進捗: #1603 / Adjust**） | openapi endpoint 移行後、genre / ranking / item_search 成功。**常用 QPS=2**・IP 必須。adapter / 正式仕様反映は残 | Review / secret |
+| T2c | External API Rate Limiter（`MOD-BATCH-008`） | **常用 QPS=2**（ハードキャップ 10）。001〜004 / `HttpRakutenApiClient` 配線。#1603 直後の別 Task | Review |
 | T3 | Embedding client | OpenAI Embeddings 本接続 + Scaffold 切替。015 adapter 配線 | Review / secret |
 | T4 | Object Storage client | 実 Storage client（範囲は棚卸し結果で確定）+ 001〜005 配線 | Review |
 | T5 | UT / 境界 | Protocol 互換・scaffold 回帰・secret マスク。live は明示フラグのみ | — |
@@ -149,7 +149,7 @@
 | 2 | Semantic LLM 本接続を E3 に含めるか | **含めない**（Rule-first 維持） |
 | 3 | CI / 既定実行での live 呼出 | **既定 off**。明示フラグ + secret がある時のみ（動的 IP のため） |
 | 4 | Object Storage 実装先 | 既存 Scaffold 契約を保ち S3 互換等を後続で選定 |
-| 5 | 楽天目標 QPS / IP 照合 / Rate Limiter Task 切り | **決定済**（QPS=8 / IP 必須 / T2c 別 Task） |
+| 5 | 楽天常用 QPS / IP 照合 / Rate Limiter Task 切り | **決定済**（常用 QPS=**2** / IP 必須 / T2c 別 Task） |
 | 6 | 本番 egress IP 設計 | **Backlog**（§7.1）。未検討 |
 
 ---
@@ -172,3 +172,4 @@
 | 2026-07-24 | T2b: Rakuten live 疎通検証（#1603）。認証失敗により Block |
 | 2026-07-24 | Human 決定: 目標 QPS=8、egress IP 照合必須、T2c Rate Limiter 別 Task、本番 egress を Backlog（BL-RAKUTEN-EGRESS-PROD） |
 | 2026-07-24 | T2b: openapi endpoint 移行・live 3 API 成功（Adjust）。Genre `genre` キー / Ranking period 扱い / 429 を記録 |
+| 2026-07-25 | 常用 QPS を実験結果に基づき **2** へ改訂（旧 8 は常用外）。T2c 設計入力も 2 |

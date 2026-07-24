@@ -1,0 +1,274 @@
+{
+  "experiment_id": "2026-07-24-rakuten-qps-pattern",
+  "issue": 1603,
+  "started_at_utc": "2026-07-24T12:16:29.152383+00:00",
+  "finished_at_utc": "2026-07-24T12:17:53.695493+00:00",
+  "constraints": {
+    "hard_cap_qps": 10.0,
+    "previous_target_qps": 8,
+    "calls_per_trial": 4,
+    "call_sequence": [
+      "genre",
+      "ranking",
+      "item_search_p1",
+      "item_search_p2"
+    ],
+    "cooldown_sec": 12.0,
+    "trials_per_qps": 3
+  },
+  "credentials": {
+    "RAKUTEN_APPLICATION_ID_masked": "be***REDACTED***f4",
+    "RAKUTEN_ACCESS_KEY_present": true
+  },
+  "trials": [
+    {
+      "target_qps": 2.0,
+      "min_interval_ms": 500,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 143.10738700442016,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 208.34388499497436,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": false,
+          "elapsed_ms": 80.10842699877685,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 205.9452380053699,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 2141.7858880013227
+    },
+    {
+      "target_qps": 2.0,
+      "min_interval_ms": 500,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 82.37145300518023,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 188.6979720002273,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 176.44727900187718,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 216.10700900055235,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 2164.059130998794
+    },
+    {
+      "target_qps": 2.0,
+      "min_interval_ms": 500,
+      "trial_index": 3,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 98.56398500414798,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 421.6999999989639,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 353.99181400134694,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 336.61067099455977,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 2714.412741996057
+    },
+    {
+      "target_qps": 3.0,
+      "min_interval_ms": 334,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 84.98082599544432,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 245.31814500369364,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": false,
+          "elapsed_ms": 71.7767059977632,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p2",
+          "ok": false,
+          "elapsed_ms": 76.50791899504839,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        }
+      ],
+      "wall_ms": 1481.1133180046454
+    },
+    {
+      "target_qps": 3.0,
+      "min_interval_ms": 334,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 78.72973500343505,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 217.34720100357663,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": false,
+          "elapsed_ms": 70.96467000519624,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 215.57690600457136,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 1585.153193998849
+    },
+    {
+      "target_qps": 3.0,
+      "min_interval_ms": 334,
+      "trial_index": 3,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 75.78491400636267,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 180.5668559973128,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 185.61261899594683,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 1010.0424360061879,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 2454.4596189953154
+    }
+  ],
+  "aggregate_by_qps": {
+    "2": {
+      "target_qps": 2.0,
+      "min_interval_ms": 500,
+      "trials": 3,
+      "calls": 12,
+      "success": 11,
+      "failure": 1,
+      "rate_limited": 1,
+      "all_success_trials": 2,
+      "success_rate": 0.9166666666666666,
+      "rate_limited_rate": 0.08333333333333333,
+      "stable": false
+    },
+    "3": {
+      "target_qps": 3.0,
+      "min_interval_ms": 334,
+      "trials": 3,
+      "calls": 12,
+      "success": 9,
+      "failure": 3,
+      "rate_limited": 3,
+      "all_success_trials": 1,
+      "success_rate": 0.75,
+      "rate_limited_rate": 0.25,
+      "stable": false
+    }
+  },
+  "recommendation": {
+    "recommended_operational_qps": null,
+    "note": "no fully stable pattern; prefer lowest tested QPS and backoff",
+    "inference": "Treat recommended value as operational target ceiling for sustained sequential batch calls on this egress IP. Keep hard cap at 10. MOD-BATCH-008 should still implement backoff on 429."
+  }
+}

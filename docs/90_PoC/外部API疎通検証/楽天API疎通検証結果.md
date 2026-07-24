@@ -26,7 +26,7 @@
 | 環境 | local（WSL2・登録 egress IP） |
 | live フラグ | `--live-rakuten` 明示 |
 | credentials | `RAKUTEN_APPLICATION_ID`（UUID）+ `RAKUTEN_ACCESS_KEY`（`pk_`）両方設定 |
-| 制約 | 目標 QPS=8・egress IP 照合必須（不一致時は HTTP しない） |
+| 制約 | **常用 QPS=2**・egress IP 照合必須（不一致時は HTTP しない）。旧目標 8 は実験により常用外 |
 | 最終成功計測 | genre / ranking / item_search×2 成功。invalid genre は期待どおり 400 |
 
 ### 2.1 TV 対応
@@ -115,3 +115,4 @@
 | ---- | ---- |
 | 2026-07-24 | 初版。旧 endpoint により認証エラー → Block |
 | 2026-07-24 | openapi endpoint 移行後に 3 API 成功。判定 Adjust |
+| 2026-07-25 | 常用 QPS を 2 へ改訂（実験ログ参照）。本結果の成功計測は改訂前の検証を含む |
