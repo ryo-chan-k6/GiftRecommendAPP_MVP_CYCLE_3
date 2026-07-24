@@ -7,9 +7,9 @@
 | 文書種別 | E3 棚卸し正本（docs） |
 | 対象 | 楽天 / Embedding / Object Storage / Semantic（LLM）× BATCH-001〜017 |
 | 作成日 | 2026-07-24 |
-| 更新日 | 2026-07-24（初版） |
+| 更新日 | 2026-07-25（T3 Embedding HTTP） |
 | 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) |
-| 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） |
+| 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） |
 | 先行 | E0 横串ギャップ / E1 親 workflow / E2 IF-DB・DDL（#1595 MERGED） |
 
 ### 1.1 目的
@@ -43,11 +43,11 @@
 | ---- | ---- |
 | Rakuten client | `HttpRakutenApiClient` + `create_rakuten_client`（**live 既定 off** → Scaffold） |
 | Rate Limiter（MOD-BATCH-008） | `ExternalApiRateLimiter`（プロセス内・常用 QPS=**2** / ハードキャップ 10）。live HTTP に配線 |
-| Embedding client | `ScaffoldEmbeddingClient`（決定論的疑似ベクトル）。実 OpenAI 呼出なし |
+| Embedding client | `HttpEmbeddingClient` + `create_embedding_client`（**live 既定 off** → Scaffold） |
 | Object Storage | `ScaffoldObjectStorageClient` のみ（T2 配線でも暫定 Scaffold） |
 | Semantic 生成 | `ScaffoldItemSemanticAdapter`（Rule-first / LLM 非呼出） |
-| CLI 非 `--scaffold-demo` | 001〜004: live 未指定は **exit 3**。`--live-rakuten` / `BATCH_RAKUTEN_LIVE` で HTTP。他 Batch は未接続 |
-| E2 との関係 | DbWriter / 代表 UPSERT は利用可能。外部 I/O は楽天のみ T2 で接続可 |
+| CLI 非 `--scaffold-demo` | 001〜004: live 未指定は **exit 3**。`--live-rakuten` / `BATCH_RAKUTEN_LIVE` で HTTP。015: DB 読取未配線 → exit 3（`--scaffold-demo --live-embedding` で Embedding 煙可） |
+| E2 との関係 | DbWriter / 代表 UPSERT は利用可能。外部 I/O は楽天 + Embedding（明示 live） |
 
 ---
 
@@ -57,13 +57,13 @@
 | ---- | --------------- | ------------- | --------- | ------------ |
 | 楽天 API | `RakutenApiClient` | `ScaffoldRakutenApiClient` | `HttpRakutenApiClient` | `create_rakuten_client`（live 既定 off + Rate Limiter） |
 | External API Rate Limiter | `ExternalApiRateLimiter` | （制御なし = Scaffold 相当） | `ExternalApiRateLimiter` | `create_external_api_rate_limiter` / live factory 既定 on |
-| Embedding（IF-EXT-005） | `EmbeddingClient` | `ScaffoldEmbeddingClient` | **なし** | **なし** |
+| Embedding（IF-EXT-005） | `EmbeddingClient` | `ScaffoldEmbeddingClient` | `HttpEmbeddingClient` | `create_embedding_client`（live 既定 off） |
 | External AI（汎用） | `ExternalAiClient` | `ScaffoldExternalAiClient` | **なし** | **なし** |
 | Object Storage | `ObjectStorageClient` | `ScaffoldObjectStorageClient` | **なし** | **なし** |
 | Item Semantic 生成 | adapter（batch 内） | `ScaffoldItemSemanticAdapter` | **なし**（LLM） | **なし** |
-| Item Embedding 生成 | adapter（batch 内） | `ScaffoldItemEmbeddingAdapter` | ScaffoldEmbedding 経由 | **なし** |
+| Item Embedding 生成 | adapter（batch 内） | `ScaffoldItemEmbeddingAdapter` | `EmbeddingClient` 注入（Http 可） | `--live-embedding` / `BATCH_EMBEDDING_LIVE` |
 
-**補足（事実）:** 楽天は `create_rakuten_client` + MOD-BATCH-008 Rate Limiter 導入済み。Embedding / Object Storage の factory は未導入。
+**補足（事実）:** 楽天は `create_rakuten_client` + MOD-BATCH-008 Rate Limiter 導入済み。Embedding は `create_embedding_client` 導入済み（015 は `--scaffold-demo --live-embedding` で煙）。Object Storage factory は未導入。
 
 ---
 
@@ -78,7 +78,7 @@
 | 005 raw_staging | Object Storage + DB 読取 | Storage/DB 読取未配線 → exit 3 | |
 | 006〜008 / 009〜017（DB 中心） | 主に DB（E2） | DbWriter 配線済み。読取 SELECT / 外部 API は別 | 本 Epic の主対象は外部 I/O 側 |
 | 010 item_semantic | Semantic adapter（LLM stub） | DB 読取未配線メッセージ | LLM 本接続は Human 確認 |
-| 015 item_embedding | Embedding adapter | DB 読取未配線メッセージ | IF-EXT-005 本接続が中心候補 |
+| 015 item_embedding | Embedding adapter | DB 読取未配線 → exit 3。`--scaffold-demo --live-embedding` で HTTP 煙 | IF-EXT-005 client は T3 完了 |
 | 018 offline_evaluation | Reco IF 等 | **E3 除外** | E0 §10 |
 | 019 feedback_analysis | （物理未整備含む） | **E3 除外** | |
 
@@ -96,7 +96,8 @@
 | `RAKUTEN_EXPECTED_EGRESS_IP` | live 検証時の接続元 IP 照合 | ハーネス必須（不一致時は HTTP しない） |
 | `RAKUTEN_MAX_QPS` | クライアント常用 QPS | 既定 **2**（ハードキャップ 10。旧目標 8 は常用外）。別名 `BATCH_EXTERNAL_API_MAX_QPS` |
 | `RAKUTEN_MIN_INTERVAL_MS` | 呼出最小間隔（ms） | 任意。未設定時は QPS から算出。ハードキャップ未満（過短）は拒否 |
-| `OPENAI_API_KEY` | Embedding / LLM | Embedding 本接続時。ログ禁止 |
+| `OPENAI_API_KEY` | Embedding / LLM | `--live-embedding` 時必須。ログ禁止 |
+| `BATCH_EMBEDDING_LIVE` | Embedding live 切替（`1`/`true`/`yes`/`on`） | CLI `--live-embedding` と同等 |
 | `DATABASE_URL` | DB（E2） | 本 Epic 主対象外（併用可） |
 | Object Storage 系 | bucket / endpoint 等 | 実装・docs 突合が後続 Task |
 
@@ -123,8 +124,8 @@
 | T2 | Rakuten HTTP client（**完了 / #1601 / #1602**） | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
 | T2b | Rakuten live 疎通（**完了 / #1603 / Adjust**） | openapi endpoint 移行後、genre / ranking / item_search 成功。**常用 QPS=2**・IP 必須 | Review / secret |
 | T2c | External API Rate Limiter（**完了 / #1605 / #1608** / `MOD-BATCH-008`） | 常用 QPS=**2**（ハードキャップ 10）。`HttpRakutenApiClient` 送信前 + 429 backoff | Review |
-| T2d | Genre/Ranking/endpoint 正式反映（**進捗: PR / #1606**） | Genre `genre` キー / Ranking period 分離 / 現行 endpoint を正式 Batch・外部連携・adapter へ | Review |
-| T3 | Embedding client | OpenAI Embeddings 本接続 + Scaffold 切替。015 adapter 配線 | Review / secret |
+| T2d | Genre/Ranking/endpoint 正式反映（**完了 / #1606 / #1609**） | Genre `genre` キー / Ranking period 分離 / 現行 endpoint を正式 Batch・外部連携・adapter へ | Review |
+| T3 | Embedding client（**完了 / #1610**） | `HttpEmbeddingClient` + `create_embedding_client`。015 `--live-embedding` 配線 | Review / secret |
 | T4 | Object Storage client | 実 Storage client（範囲は棚卸し結果で確定）+ 001〜005 配線 | Review |
 | T5 | UT / 境界 | Protocol 互換・scaffold 回帰・secret マスク。live は明示フラグのみ | — |
 
@@ -179,3 +180,4 @@
 | 2026-07-25 | 後続 Issue 起票: T2c #1605 / T2d #1606 / BL-RAKUTEN-EGRESS-PROD #1607 |
 | 2026-07-25 | T2c: `ExternalApiRateLimiter` 実装・Http client 配線・UT（#1605） |
 | 2026-07-25 | T2d: Genre/Ranking/endpoint 正式 Batch・外部連携・adapter 反映（#1606） |
+| 2026-07-25 | T3: `HttpEmbeddingClient` / factory / 015 `--live-embedding` / UT（#1610） |

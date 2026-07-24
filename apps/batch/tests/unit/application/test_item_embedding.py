@@ -305,6 +305,13 @@ def test_non_scaffold_demo_exits_3() -> None:
     assert main(["--job-run-id", "x"]) == 3
 
 
+def test_live_embedding_without_key_exits_2(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    # ensure load_batch_settings sees empty key
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert main(["--scaffold-demo", "--live-embedding"]) == 2
+
+
 def test_config_keys_present() -> None:
     settings = scaffold_batch_settings()
     assert settings.batch_item_embedding_max_items == 1000

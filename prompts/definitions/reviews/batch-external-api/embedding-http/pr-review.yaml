@@ -1,0 +1,25 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-external-api-embedding-http"
+  title: "PR Review: Embedding HTTP client（IF-EXT-005）"
+  related_task: "prompts/definitions/tasks/batch-external-api/embedding-http.yaml"
+  related_issue: 1610
+  related_epic: 1598
+
+focus:
+  - "live 既定 off"
+  - "secret マスク"
+  - "EmbeddingClient Protocol"
+  - "BATCH-015 配線"
+  - "Related to / PR target"
+
+blocker_examples:
+  - "live 既定 on"
+  - "secret 露出"
+  - "Closes #1610 または PR target が develop"
+
+must_examples:
+  - "UT 不足"
+  - "次元・model 既定の欠落"
