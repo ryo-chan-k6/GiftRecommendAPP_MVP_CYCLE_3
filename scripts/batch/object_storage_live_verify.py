@@ -32,11 +32,10 @@ from urllib.parse import urlparse
 
 
 def _mask(value: str | None) -> str:
+    """Fully redact secrets (no prefix/suffix leak)."""
     if value is None or value.strip() == "":
         return "(empty)"
-    if len(value) <= 8:
-        return "***REDACTED***"
-    return f"{value[:2]}***REDACTED***{value[-2:]}"
+    return "***REDACTED***"
 
 
 def _mask_endpoint(endpoint: str | None) -> str:
