@@ -117,6 +117,7 @@ epic_scope:
   allowed_paths:
     - "docs/05_アプリケーション設計/アプリ/batch/**"
     - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - "apps/batch/src/batch/infrastructure/rate_limiter/**"
     - "apps/batch/src/batch/infrastructure/external_ai/**"
     - "apps/batch/src/batch/infrastructure/object_storage/**"
     - "apps/batch/src/batch/infrastructure/__init__.py"
@@ -138,6 +139,7 @@ epic_scope:
     - "external-api-inventory"
     - "rakuten-http-client"
     - "rakuten-live-verify"
+    - "rakuten-rate-limiter"
     - "embedding-http-client"
     - "cli-wiring"
     - "unit-test"

@@ -94,8 +94,8 @@
 | `RAKUTEN_ACCESS_KEY` | 楽天 API 認証 | `--live-rakuten` 時必須 |
 | `BATCH_RAKUTEN_LIVE` | live 切替（`1`/`true`/`yes`/`on`） | CLI `--live-rakuten` と同等 |
 | `RAKUTEN_EXPECTED_EGRESS_IP` | live 検証時の接続元 IP 照合 | ハーネス必須（不一致時は HTTP しない） |
-| `RAKUTEN_MAX_QPS` | クライアント常用 QPS | 既定 **2**（ハードキャップ 10。旧目標 8 は常用外） |
-| `RAKUTEN_MIN_INTERVAL_MS` | 呼出最小間隔（ms） | 任意。未設定時は QPS から算出 |
+| `RAKUTEN_MAX_QPS` | クライアント常用 QPS | 既定 **2**（ハードキャップ 10。旧目標 8 は常用外）。別名 `BATCH_EXTERNAL_API_MAX_QPS` |
+| `RAKUTEN_MIN_INTERVAL_MS` | 呼出最小間隔（ms） | 任意。未設定時は QPS から算出。ハードキャップ未満（過短）は拒否 |
 | `OPENAI_API_KEY` | Embedding / LLM | Embedding 本接続時。ログ禁止 |
 | `DATABASE_URL` | DB（E2） | 本 Epic 主対象外（併用可） |
 | Object Storage 系 | bucket / endpoint 等 | 実装・docs 突合が後続 Task |
