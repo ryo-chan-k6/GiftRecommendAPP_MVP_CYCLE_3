@@ -1,0 +1,183 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-supabase-storage-bucket"
+  title: "supabase-storage:raw-products bucket定義"
+  summary: "Raw JSON 用 private bucket（raw-products）を migration / 手順として正本化し、接続方針 A と整合させる。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]supabase-storage-alignment:Supabase Storage確定反映（接続方針A）"
+  epic_issue_number: 1614
+  epic_branch: "feature/epic-1614-supabase-storage-alignment"
+  related_issues:
+    - 1615
+    - 1612
+  related_prs:
+    - 1619
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  docs Task #1615 で接続方針 A を正本化済み。supabase/ には [storage] enabled のみで bucket 実体がない。
+
+objective: |
+  Raw JSON 用 private bucket `raw-products` をリポジトリ正本（migration + 手順）として定義する。
+
+scope:
+  - "bucket 名 `raw-products` の正本化"
+  - "private（公開禁止）方針"
+  - "アクセス方針（案 A: S3 互換キー。service_role 直結は主経路にしない）"
+  - "supabase/migrations への bucket 定義"
+  - "マイグレーション方針書 §9.2 / ローカル手順 / supabase README の最小追記"
+  - "Hosted 初回作成・S3 キー発行は Human 手順として分離"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "docs 全体の未確定クローズ（#1615 完了）"
+  - "Object Storage client 差し替え"
+  - "live 疎通実施（#1617）"
+  - "lifecycle / delete ポリシー本実装"
+  - "web からの Storage 直結"
+  - "production プロジェクトへの実操作（Human）"
+  - "secret 実値"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+  files:
+    - path: "supabase/config.toml"
+      required: true
+    - path: "supabase/migrations/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "supabase/migrations/**"
+      action: "create"
+      required: true
+    - path: "supabase/README.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/supabase-storage-alignment/bucket.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/supabase-storage-alignment/bucket/**"
+      action: "create"
+      required: true
+
+deliverables:
+  - "raw-products private bucket migration"
+  - "作成・権限手順の docs 追記"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "bucket 名・公開範囲・作成方法がリポジトリ正本から辿れる"
+  - "private / 非公開方針が明記"
+  - "案 A と矛盾しない"
+  - "secret 実値なし"
+  - "Related to（Closes 禁止）/ PR target が親 Epic"
+  - "production 実操作は Human 手順として分離"
+
+branch:
+  no_branch: false
+  name: "chore/task-1616-supabase-storage-bucket"
+  summary: "supabase-storage-bucket"
+  base: "feature/epic-1614-supabase-storage-alignment"
+  target: "feature/epic-1614-supabase-storage-alignment"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-27"
+    due_date: "2026-07-31"
+
+issue:
+  number: 1616
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics:
+    - issue: 1614
+      purpose: "親 Epic"
+  issues:
+    - number: 1615
+      purpose: "接続方針 A docs 正本"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "supabase/migrations/**"
+    - "docs/06_実装設計/database/マイグレーション方針書.md"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+    - "CI live Object Storage"
+  optional:
+    - "local supabase migration up（環境がある場合）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "public bucket にしていないか"
+    - "service_role / S3 キーの権限説明が過大でないか"
+    - "OBJECT_STORAGE_BUCKET=raw-products と整合するか"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "Hosted 初回 bucket は migration 適用を正とし、Dashboard 手動はフォールバックとする案"
+  - "bucket 名を全環境共通で raw-products とする案（環境は Supabase プロジェクト分離）"
+
+notes:
+  - "S3 互換キー発行は常に Human（Dashboard / Secrets）。リポジトリに実値を書かない"
