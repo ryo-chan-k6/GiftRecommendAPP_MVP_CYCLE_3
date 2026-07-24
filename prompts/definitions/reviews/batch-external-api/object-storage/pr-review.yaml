@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1613
   issue:
     number: 1612
   task_definition: "prompts/definitions/tasks/batch-external-api/object-storage.yaml"
@@ -49,5 +49,4 @@ review_points:
   - "Related to（Closes 禁止）/ PR target が親 Epic"
 
 notes:
-  - "PR 番号確定後に更新"
   - "DB SELECT・boto3・delete/list は out of scope"
