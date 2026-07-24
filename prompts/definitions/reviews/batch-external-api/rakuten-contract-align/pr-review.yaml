@@ -8,6 +8,9 @@ review:
   related_issue: 1606
   related_epic: 1598
 
+target:
+  pr: 1609
+
 focus:
   - "Genre `genre` キー正本化"
   - "Ranking ドメイン period とクエリ period の分離"
