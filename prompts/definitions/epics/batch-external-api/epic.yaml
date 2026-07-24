@@ -1,0 +1,187 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-external-api"
+  title: "batch-external-api:外部API本接続"
+  summary: "E3。BATCH-001〜017 中心に楽天・Embedding・Object Storage 等の外部 API Scaffold/stub を棚卸しし、本接続 client（Scaffold 切替）と CLI 配線を進める。018 Reco IF・親 workflow・production 無承認 live は除外。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  E0〜E2 完了。E0 ギャップ一覧 §10 の次は E3（外部接続）。
+  現状 apps/batch は ScaffoldRakutenApiClient / ScaffoldEmbeddingClient / ScaffoldObjectStorageClient /
+  ScaffoldItemSemanticAdapter が中心。CLI 非 demo は exit 3 で Real HTTP 未配線。
+  機能・領域単位 Epic（例外）。
+
+objective: |
+  外部 API stub ギャップを docs 正し、実 HTTP/API client と Scaffold 切替・CLI 配線・UT を段階 Task で進める。
+  develop 統合は本 Epic PR のみ。
+
+scope:
+  - "外部 API stub 棚卸しマトリクス（docs 正本）"
+  - "Rakuten HTTP client + create_rakuten_client（Scaffold 切替）"
+  - "Embedding client 本接続 + Scaffold 切替（IF-EXT-005）"
+  - "Object Storage 実 client 方針（必要範囲）"
+  - "関連 CLI 配線・UT"
+  - "env / secret 名のみ（実値禁止）"
+
+out_of_scope:
+  - "BATCH-018 Reco IF 本接続"
+  - "BATCH-019 本格化"
+  - "親 / 複合 workflow 改修"
+  - "production への無承認 live 呼出"
+  - "OpenAPI / web / api / reco 破壊変更"
+  - "DDL / IF-DB stub（E2 完了・本 Epic 外）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/external_ai/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/object_storage/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "外部 API ギャップ正本 docs"
+  - "後続 Task（Rakuten / Embedding / Storage / CLI）の分割"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "ギャップ一覧 docs が存在する（第1 Task）"
+  - "018 Reco / 親 workflow / production 無承認 live を out of scope と明記"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-external-api"
+  name: "feature/epic-1598-batch-external-api"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-24"
+    due_date: "2026-07-31"
+
+issue:
+  number: 1598
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - "apps/batch/src/batch/infrastructure/external_ai/**"
+    - "apps/batch/src/batch/infrastructure/object_storage/**"
+    - "apps/batch/src/batch/infrastructure/__init__.py"
+    - "apps/batch/src/batch/application/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/pyproject.toml"
+    - "apps/batch/uv.lock"
+    - "apps/batch/tests/**"
+    - "prompts/definitions/epics/batch-external-api/**"
+    - "prompts/definitions/tasks/batch-external-api/**"
+    - "prompts/definitions/reviews/batch-external-api/**"
+  forbidden_paths:
+    - ".github/workflows/batch-*-orchestrator.yml"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "external-api-inventory"
+    - "rakuten-http-client"
+    - "embedding-http-client"
+    - "cli-wiring"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1561
+      title: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+      purpose: "E2 完了"
+  issues: []
+  prs:
+    - number: 1595
+      purpose: "E2 Epic MERGED"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-db-ddl-hardening"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Epic は作業管理。実装 Task で UT"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "018 Reco / 親 workflow / production 無承認 live を混入していないか"
+    - "secret 実値なし"
+    - "Epic PR target が develop"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+human_decision_points:
+  - "楽天 / Embedding / Object Storage / Semantic LLM の着手順"
+  - "CI での live 呼出可否（推奨: 既定 off・明示フラグのみ）"
+
+notes:
+  - "第1 Task は棚卸し。実装は後続"
