@@ -65,7 +65,7 @@ def test_mask_rakuten_secret_redacts() -> None:
 
 
 def test_fetch_genre_raw_success() -> None:
-    payload = {"current": {"genreId": "100", "genreName": "Gifts"}}
+    payload = {"genre": {"genreId": "100", "genreName": "Gifts"}}
     response = MagicMock()
     response.status_code = 200
     response.json.return_value = payload

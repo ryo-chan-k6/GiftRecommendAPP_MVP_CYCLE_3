@@ -133,7 +133,7 @@ def test_http_client_acquires_before_http_get() -> None:
 
     ok = MagicMock()
     ok.status_code = 200
-    ok.json.return_value = {"current": {"genreId": "0"}}
+    ok.json.return_value = {"genre": {"genreId": "0"}}
     mock_http = MagicMock()
 
     def _get(*_args: object, **_kwargs: object) -> MagicMock:
@@ -168,7 +168,7 @@ def test_http_client_retries_429_then_succeeds() -> None:
     rate_limited.status_code = 429
     ok = MagicMock()
     ok.status_code = 200
-    ok.json.return_value = {"current": {"genreId": "0"}}
+    ok.json.return_value = {"genre": {"genreId": "0"}}
 
     mock_http = MagicMock()
     mock_http.get.side_effect = [rate_limited, ok]
@@ -178,7 +178,7 @@ def test_http_client_retries_429_then_succeeds() -> None:
     with patch("httpx.Client", return_value=mock_http):
         payload = client.fetch_genre_raw(genre_id="0")
 
-    assert payload["current"]["genreId"] == "0"
+    assert payload["genre"]["genreId"] == "0"
     assert mock_http.get.call_count == 2
     assert limiter.rate_limit_wait_count == 1
 

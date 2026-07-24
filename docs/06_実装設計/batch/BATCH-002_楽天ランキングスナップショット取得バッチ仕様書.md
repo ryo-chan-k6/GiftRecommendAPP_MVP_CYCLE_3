@@ -85,14 +85,14 @@ BATCH-002（楽天ランキングスナップショット取得Batch）は、楽
 | ---- | ---- | ------ | ---- | ---- | ---- |
 | `fetch_plan` | 設定 / 計画 | Batch config / Product Fetch Planner | `true` | 対象 genre / period / ページ上限を決定する | MVP対象ジャンルを限定 |
 | `target_genre_ids` | 設定 | fetch_plan / workflow_dispatch / `external_genre` | `true` | ランキング取得対象ジャンル | BATCH-001 同期済みを優先 |
-| `period` | 設定 | fetch_plan / workflow_dispatch | `true` | ランキング期間 | 楽天API `period` に対応。MVP 既定は `daily`（§18.1） |
+| `period` | 設定 | fetch_plan / workflow_dispatch | `true` | ランキング期間（**ドメイン**） | MVP 既定は `daily`（§18.1）。楽天クエリへは送らない（§6.2.1） |
 | 楽天ランキングAPIレスポンス | 外部API | 楽天商品ランキングAPI | `true` | rank / itemCode / lastBuildDate 等 | formatVersion=`2` |
 
 ### 6.2 外部API
 
 | API | 利用有無 | 用途 | Rate Limit / 制約 | 備考 |
 | --- | -------- | ---- | ----------------- | ---- |
-| 楽天商品ランキングAPI | `true` | ジャンル別ランキング取得 | External API Rate Limiter で制御。`GRS-EXT-102` 時は pause / 再実行 | `genreId` / `period` / `page` / `format=json` / `formatVersion=2` |
+| 楽天商品ランキングAPI | `true` | ジャンル別ランキング取得 | External API Rate Limiter で制御。`GRS-EXT-102` 時は pause / 再実行 | `genreId` / `page` / `format=json` / `formatVersion=2`。クエリ `period` は §6.2.1。endpoint は §6.2.3 |
 | 楽天商品検索API | `false`（本 Batch） | Item 正本取得 | - | 未登録 itemCode は BATCH-003 側で itemCode 指定取得 |
 
 #### 6.2.1 楽天商品ランキングAPI 主なパラメータ
@@ -104,11 +104,18 @@ BATCH-002（楽天ランキングスナップショット取得Batch）は、楽
 | `format` | レスポンス形式 | `json` |
 | `formatVersion` | JSON構造 | `2` |
 | `genreId` | ジャンル別ランキング | MVPで利用 |
-| `period` | ランキング期間 | MVP は `daily` 固定（Online 選定と整合。`realtime` / `weekly` / `monthly` は後続） |
+| `period`（**楽天クエリ**） | API 側の期間指定 | **MVP では送らない**（ドメイン `daily` とは別物）。`realtime` のみ送出可。`daily` を送ると 400 になり得る |
 | `page` | ページ番号 | MVP 初期 `max_pages = 1`（必要に応じ `2` まで拡張） |
 | `elements` | 取得項目制御 | 必要項目に絞る |
 | `age` / `sex` | 年齢・性別 | MVP 対象外（後続検討） |
 | `carrier` | PC / mobile | 原則 PC |
+
+**ドメイン `period` との分離（事実・#1603）:**
+
+| 層 | 値 | 用途 |
+| -- | -- | ---- |
+| ドメイン / DB（`ranking_snapshot.period` 等） | MVP 既定 `daily` | Online 選定・冪等キー（§18.1）。**変更しない** |
+| 楽天 HTTP クエリ `period` | 未送出（または `realtime` のみ） | 現行 Ranking API 契約。`HttpRakutenApiClient.fetch_ranking_raw` が実装 |
 
 #### 6.2.2 本サービスで利用する主な出力項目
 
@@ -118,7 +125,15 @@ BATCH-002（楽天ランキングスナップショット取得Batch）は、楽
 | `lastBuildDate` | Snapshot 観測キー・鮮度 |
 | `itemCode` | 外部商品コード。Item 突合キー / 未登録時は補完候補 |
 
-#### 6.2.3 ランキングAPIでは正本反映しない項目
+#### 6.2.3 endpoint（現行）
+
+| 項目 | 値 |
+| ---- | -- |
+| 現行 base | `https://openapi.rakuten.co.jp/ichibaranking/api/IchibaItem/Ranking/20220601` |
+| 旧 endpoint | `https://app.rakuten.co.jp/services/api/IchibaItem/Ranking/...`（**非推奨**） |
+| 実装 | `HttpRakutenApiClient` / `adapt_ranking_raw_payload` |
+
+#### 6.2.4 ランキングAPIでは正本反映しない項目
 
 `itemName` / `catchcopy` / `itemCaption` / `itemPrice` / `itemUrl` / 画像URL / `availability` / `reviewAverage` / `reviewCount` 等は **Item / Item Image 正本に反映しない**。商品検索API（BATCH-003 以降）由来を正とする（外部商品データ連携設計書 §4.3.4）。
 
@@ -173,7 +188,7 @@ flowchart TD
 |  No | Phase | 処理 | 入力 | 出力 | 失敗時の扱い |
 | --: | ----- | ---- | ---- | ---- | ------------ |
 | 1 | `plan` | fetch_plan / target genre / period / page 上限を解決する | config / workflow input / external_genre | 取得計画 | `GRS-BAT-*` で Run 失敗 |
-| 2 | `fetch` | 楽天ランキングAPIを呼び出す（genre × page） | genreId / period / secrets | APIレスポンス / api_call_log | Rate Limit は待機・再試行。タイムアウトはリトライ後に部分失敗または停止 |
+| 2 | `fetch` | 楽天ランキングAPIを呼び出す（genre × page） | genreId / period（ドメイン。クエリへは送らない / §6.2.1） / secrets | APIレスポンス / api_call_log | Rate Limit は待機・再試行。タイムアウトはリトライ後に部分失敗または停止 |
 | 3 | `adapt` | レスポンスを内部形式へ変換する | Rawレスポンス | 正規化 ranking rows | 形式不正は `GRS-EXT-103` |
 | 4 | `raw_save` | Object Storage へ Raw JSON を保存し Metadata を書く | レスポンス | object_key / raw_product_metadata | `GRS-RAW-001` / `GRS-RAW-002` |
 | 5 | `stage` | Staging 変換・検証 | Raw / Metadata | staging_ranking_signal | `GRS-VAL-*`。失敗 genre は skip または部分失敗 |
@@ -323,6 +338,8 @@ flowchart TD
 | ---- | -------- | -------------- |
 | 2026-07-13 | 初版作成 | #1193 |
 | 2026-07-13 | §18 未決事項を Human 決定に反映（period / ページ上限 / Batch 内完結 / fetch_cursor） | #1193 / #1194 |
+| 2026-07-25 | ドメイン period と楽天クエリ period の分離・現行 openapi endpoint を明記 | #1606 |
+| 2026-07-24 | §8.2 fetch 入力の period をドメイン明示、§6.2.4 へ見出し採番修正 | #1606 / #1609 |
 
 ---
 
@@ -332,7 +349,7 @@ flowchart TD
 
 |  No | 論点 | 決定内容 | 判断者 | 決定日 | 備考 |
 | --: | ---- | -------- | ------ | ------ | ---- |
-| 1 | MVP初期の取得対象ジャンルID / period / ページ上限 | **period = `daily` のみ**（既定）。**`max_pages = 1`**（不足時は `2` まで拡張可）。対象ジャンルは **BATCH-001 と同一の fetch_plan**（本 Batch 専用一覧は作らない） | Human | 2026-07-13 | Online 選定は `period='daily'`（`item_popularity_signal` §5.7）。具体ジャンルID一覧は BATCH-001 / 外部商品データ連携の対象ジャンル方針に従い fetch_plan で共有 |
+| 1 | MVP初期の取得対象ジャンルID / period / ページ上限 | **ドメイン period = `daily` のみ**（既定）。楽天 HTTP クエリの `period` は **送出しない**（`realtime` のみ可。§6.2.1）。**`max_pages = 1`**（不足時は `2` まで拡張可）。対象ジャンルは **BATCH-001 と同一の fetch_plan**（本 Batch 専用一覧は作らない） | Human | 2026-07-13 | Online 選定は `period='daily'`（`item_popularity_signal` §5.7）。クエリ契約は #1603 / #1606 で明文化 |
 | 2 | Staging→Snapshot を本 Batch 内完結するか | **本 Batch 内完結**（`staging_ranking_signal` → `ranking_snapshot` → `item_popularity_signal`） | Human | 2026-07-13 | バッチ処理一覧・テーブル定義書の BATCH-002 / IF-DB-BATCH-008 経路と整合。BATCH-005 は必須委譲先としない |
 | 3 | 未登録 itemCode 補完候補の物理保存先 | **`fetch_cursor`（`cursor_type = ranking_supplement`）**。専用テーブル・ログ集計のみは採用しない | Human | 2026-07-13 | `fetch_cursor` テーブル定義書 §5.2 / §5.4。1 itemCode = 1 カーソル。BATCH-003 が消費 |
 

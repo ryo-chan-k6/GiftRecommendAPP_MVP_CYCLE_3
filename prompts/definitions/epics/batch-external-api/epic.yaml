@@ -116,6 +116,9 @@ epic_scope:
   artifact_id: ""
   allowed_paths:
     - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+    - "docs/06_実装設計/batch/**"
+    - "docs/90_PoC/外部API疎通検証/**"
     - "apps/batch/src/batch/infrastructure/rakuten/**"
     - "apps/batch/src/batch/infrastructure/rate_limiter/**"
     - "apps/batch/src/batch/infrastructure/external_ai/**"

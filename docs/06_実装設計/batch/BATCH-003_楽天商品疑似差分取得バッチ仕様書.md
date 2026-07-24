@@ -132,6 +132,14 @@ BATCH-003（楽天商品疑似差分取得Batch）は、楽天商品検索APIか
 
 本 Batch は上記を **Item / Staging に反映しない**。反映は BATCH-005 以降。
 
+#### 6.2.3 endpoint（現行）
+
+| 項目 | 値 |
+| ---- | -- |
+| 現行 base | `https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701` |
+| 旧 endpoint | `https://app.rakuten.co.jp/services/api/IchibaItem/Search/...`（**非推奨**） |
+| 実装 | `HttpRakutenApiClient.fetch_item_search_raw` |
+
 ### 6.3 環境変数
 
 環境変数は名称のみ記載し、値は記載しない。
@@ -366,6 +374,7 @@ Staging / Item へのマッピングは本仕様書の範囲外（BATCH-005 以�
 | ---- | -------- | -------------- |
 | 2026-07-13 | 初版作成 | #1208 |
 | 2026-07-13 | §18.2 推奨案（ルート優先度 / keyword 必須度 / ページ上限）を決定事項へ昇格 | #1208 |
+| 2026-07-25 | 現行 openapi Item Search endpoint を明記 | #1606 |
 
 ---
 

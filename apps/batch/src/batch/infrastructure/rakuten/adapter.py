@@ -24,7 +24,10 @@ class AdaptedRankingRaw:
 
 
 def adapt_genre_raw_payload(payload: dict[str, object], *, requested_genre_id: str) -> RakutenGenre:
-    """Map Rakuten genre search JSON (formatVersion=2 shape) to RakutenGenre.
+    """Map Rakuten genre search JSON (formatVersion=2 / openapi) to RakutenGenre.
+
+    Canonical top-level key is ``genre`` (BATCH-001 / 外部商品データ連携設計書 §12.2).
+    Legacy ``current`` is **not** accepted.
 
     Secret fields are never expected in payloads persisted by this adapter.
     """
@@ -88,7 +91,11 @@ def adapt_ranking_raw_payload(
     period: str = "daily",
     page: int = 1,
 ) -> AdaptedRankingRaw:
-    """Map Rakuten item ranking JSON (formatVersion=2 shape) to AdaptedRankingRaw.
+    """Map Rakuten item ranking JSON (formatVersion=2 / openapi) to AdaptedRankingRaw.
+
+    ``period`` here is the **domain** period (MVP: ``daily`` for DB / Online).
+    It is not the Rakuten HTTP query ``period`` (which is omitted or ``realtime`` only;
+    see BATCH-002 §6.2.1 and ``HttpRakutenApiClient.fetch_ranking_raw``).
 
     Extracts lastBuildDate and Items[{rank, itemCode}].
     Secret fields are never expected in payloads persisted by this adapter.
