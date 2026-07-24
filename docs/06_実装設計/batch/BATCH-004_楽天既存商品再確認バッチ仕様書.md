@@ -127,6 +127,14 @@ BATCH-004（楽天既存商品再確認Batch）は、登録済み Item の `exte
 
 本 Batch は上記を **Item / Staging に反映しない**。反映は BATCH-005 以降。`active_status` 本更新は BATCH-008。
 
+#### 6.2.3 endpoint（現行）
+
+| 項目 | 値 |
+| ---- | -- |
+| 現行 base | `https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701`（BATCH-003 と同一） |
+| 旧 endpoint | `https://app.rakuten.co.jp/services/api/IchibaItem/Search/...`（**非推奨**） |
+| 実装 | `HttpRakutenApiClient.fetch_item_search_raw`（itemCode 指定） |
+
 ### 6.3 環境変数
 
 環境変数は名称のみ記載し、値は記載しない。
@@ -407,6 +415,7 @@ fetch_cursor テーブル定義書 §17.1 No.4 に従う。
 | 2026-07-14 | §18.1.1: 物理名 / UNIQUE、BATCH-008 入力競合（制限側優先）、Retention（未適用保持・適用後 14 日）を Human 確定 | #1224 |
 | 2026-07-15 | Epic #1227 完了後の追随: IF-DB-BATCH-020、Writer 列名、§9.3 Resolver 写像、§12 `candidate_status`、§18/§19/§20 陳腐化解消 | #1282 |
 | 2026-07-15 | Rate Limit（`GRS-EXT-102`）時に `fetch_cursor` を `paused` へ遷移（Epic follow-up） | #1298 |
+| 2026-07-25 | 現行 openapi Item Search endpoint を明記 | #1606 |
 
 ---
 

@@ -121,9 +121,9 @@
 | -- | --------- | ---- | ---------- |
 | T1 | **本 Task（棚卸し）** | 本 docs | Review |
 | T2 | Rakuten HTTP client（**完了 / #1601 / #1602**） | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
-| T2b | Rakuten live 疎通（**進捗: #1603 / Adjust**） | openapi endpoint 移行後、genre / ranking / item_search 成功。**常用 QPS=2**・IP 必須。adapter / 正式仕様反映は残 | Review / secret |
-| T2c | External API Rate Limiter（**進捗: PR / #1605** / `MOD-BATCH-008`） | 常用 QPS=**2**（ハードキャップ 10）。`HttpRakutenApiClient` 送信前 + 429 backoff。001〜004 は factory 経由 | Review |
-| T2d | Genre/Ranking/endpoint 正式反映（**#1606**） | Genre `genre` キー / Ranking period / 現行 endpoint を正式 Batch・adapter へ。no-branch | Review |
+| T2b | Rakuten live 疎通（**完了 / #1603 / Adjust**） | openapi endpoint 移行後、genre / ranking / item_search 成功。**常用 QPS=2**・IP 必須 | Review / secret |
+| T2c | External API Rate Limiter（**完了 / #1605 / #1608** / `MOD-BATCH-008`） | 常用 QPS=**2**（ハードキャップ 10）。`HttpRakutenApiClient` 送信前 + 429 backoff | Review |
+| T2d | Genre/Ranking/endpoint 正式反映（**進捗: PR / #1606**） | Genre `genre` キー / Ranking period 分離 / 現行 endpoint を正式 Batch・外部連携・adapter へ | Review |
 | T3 | Embedding client | OpenAI Embeddings 本接続 + Scaffold 切替。015 adapter 配線 | Review / secret |
 | T4 | Object Storage client | 実 Storage client（範囲は棚卸し結果で確定）+ 001〜005 配線 | Review |
 | T5 | UT / 境界 | Protocol 互換・scaffold 回帰・secret マスク。live は明示フラグのみ | — |
@@ -178,3 +178,4 @@
 | 2026-07-25 | 常用 QPS を実験結果に基づき **2** へ改訂（旧 8 は常用外）。T2c 設計入力も 2 |
 | 2026-07-25 | 後続 Issue 起票: T2c #1605 / T2d #1606 / BL-RAKUTEN-EGRESS-PROD #1607 |
 | 2026-07-25 | T2c: `ExternalApiRateLimiter` 実装・Http client 配線・UT（#1605） |
+| 2026-07-25 | T2d: Genre/Ranking/endpoint 正式 Batch・外部連携・adapter 反映（#1606） |

@@ -114,6 +114,19 @@ def test_adapt_genre_raw_payload_maps_ja_name_and_children() -> None:
     assert genre.children == ("201", "202")
 
 
+def test_adapt_genre_raw_payload_rejects_legacy_current_key() -> None:
+    payload = {
+        "current": {"genreId": "200", "jaName": "Flowers", "level": 1},
+        "children": [],
+    }
+
+    with pytest.raises(RakutenGenreApiError) as exc_info:
+        adapt_genre_raw_payload(payload, requested_genre_id="200")
+
+    assert exc_info.value.code == "GRS-EXT-103"
+    assert "missing genre object" in exc_info.value.message
+
+
 def test_adapt_prefers_explicit_parent_genre_id_over_ancestors() -> None:
     payload = {
         "genre": {

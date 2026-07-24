@@ -1,0 +1,194 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-external-api-rakuten-contract-align"
+  title: "batch-external-api:楽天Genre/Ranking/endpoint正式Batch・adapter反映"
+  summary: "#1603 で確認した現行楽天 API 契約（genre キー / Ranking period 非送出 / openapi endpoint）を正式 Batch 仕様・adapter・関連 docs に反映する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-external-api:外部API本接続"
+  epic_issue_number: 1598
+  epic_branch: "feature/epic-1598-batch-external-api"
+  related_issues:
+    - 1603
+    - 1601
+    - 1605
+  related_prs:
+    - 1604
+    - 1608
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1603 live で現行 openapi endpoint・Genre `genre` キー・Ranking period ルールを確認。
+  client は最小修正済み。正式 Batch / 外部連携設計・adapter 正本への全面反映が残。
+
+objective: |
+  実装と正本 docs の契約ずれを解消する。
+
+scope:
+  - "Genre: Raw `genre` キーを正本化（旧 `current` は非サポート/非推奨明記）"
+  - "Ranking: ドメイン period=daily と楽天クエリ period（realtime のみ送出）の明文化"
+  - "endpoint（openapi.rakuten.co.jp 系）を BATCH-001〜004 / 関連設計へ記載"
+  - "adapter docstring / UT fixture の追随"
+  - "ギャップ一覧 T2d・PoC 設計反映メモの状態更新"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Rate Limiter（#1605 完了）"
+  - "本番 egress（#1607）"
+  - "CI / production live"
+  - "TV-004 属性 API"
+  - "packages/contracts OpenAPI 破壊変更"
+  - "ドメイン period=daily の Online 選定方針変更"
+
+input:
+  docs:
+    - path: "docs/90_PoC/外部API疎通検証/楽天API_設計反映メモ.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/外部API疎通検証/楽天API_設計反映メモ.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/adapter.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/**"
+      action: "update"
+      required: true
+
+deliverables:
+  - "正式 Batch / 外部連携設計への契約反映"
+  - "adapter / UT 整合"
+  - "ギャップ一覧 T2d 進捗"
+
+acceptance_criteria:
+  - "Genre `genre` キーが正本仕様・adapter で一致"
+  - "Ranking period ルールが正本仕様・client 契約で一致"
+  - "現行 endpoint が正本 docs に記載され、旧 URL は非推奨明記"
+  - "secret 非含有"
+  - "Related to（Closes 禁止）/ PR target が親 Epic"
+
+branch:
+  no_branch: false
+  summary: "batch-external-api-rakuten-contract-align"
+  base: "feature/epic-1598-batch-external-api"
+  target: "feature/epic-1598-batch-external-api"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: "2026-07-29"
+
+issue:
+  number: 1606
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1598
+      purpose: "親 Epic"
+  issues:
+    - number: 1603
+      purpose: "live 差分発見"
+    - number: 1605
+      purpose: "Rate Limiter（並行可・完了済）"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - "docs/06_実装設計/batch/BATCH-001*"
+    - "docs/06_実装設計/batch/BATCH-002*"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test更新"
+    - "docs整合"
+    - "secret check"
+  not_required:
+    - "CI live Rakuten"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "反映範囲（BATCH-001〜004 / 外部連携設計）"
+    - "旧 current / 旧 endpoint の非推奨扱い"
+    - "ドメイン period=daily は維持（Online）"
+    - "Related to / PR target"
+  specialist_reviews:
+    docs: true
+    test: true
+
+human_decision_points:
+  - "旧 current を後方互換として残すか（本 Task 推奨: adapter は genre のみ）"
+
+notes:
+  - "client endpoint / period 送出は #1603 で実装済み。本 Task は正本化が主"
