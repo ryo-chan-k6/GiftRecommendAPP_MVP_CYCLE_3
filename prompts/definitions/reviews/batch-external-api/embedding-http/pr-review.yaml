@@ -2,24 +2,51 @@ schema_version: "1.0"
 definition_type: "review"
 
 review:
-  id: "review-batch-external-api-embedding-http"
-  title: "PR Review: Embedding HTTP client（IF-EXT-005）"
-  related_task: "prompts/definitions/tasks/batch-external-api/embedding-http.yaml"
-  related_issue: 1610
-  related_epic: 1598
+  id: "review-batch-external-api-embedding-http-pr"
+  title: "batch-external-api Embedding HTTP PRレビュー"
+  summary: "E3 T3（IF-EXT-005 HttpEmbeddingClient）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
 
-focus:
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1611
+  issue:
+    number: 1610
+  task_definition: "prompts/definitions/tasks/batch-external-api/embedding-http.yaml"
+  parent_epic_issue: "[Epic]batch-external-api:外部API本接続"
+  parent_epic_branch: "feature/epic-1598-batch-external-api"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
   - "live 既定 off"
-  - "secret マスク"
-  - "EmbeddingClient Protocol"
-  - "BATCH-015 配線"
-  - "Related to / PR target"
+  - "secret マスク / ベクトル全文非ログ"
+  - "EmbeddingClient Protocol / 1536 / text-embedding-3-small"
+  - "BATCH-015 --live-embedding / scaffold-demo 併用"
+  - "Related to（Closes 禁止）/ PR target が親 Epic"
 
-blocker_examples:
-  - "live 既定 on"
-  - "secret 露出"
-  - "Closes #1610 または PR target が develop"
-
-must_examples:
-  - "UT 不足"
-  - "次元・model 既定の欠落"
+notes:
+  - "DB SELECT 本配線・Object Storage・Semantic LLM は out of scope"
