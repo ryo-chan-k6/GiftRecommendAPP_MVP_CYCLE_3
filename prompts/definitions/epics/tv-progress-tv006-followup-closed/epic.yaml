@@ -1,0 +1,83 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-tv-progress-tv006-followup-closed"
+  title: "docs:TV進捗TV-006後続・正式反映完了"
+  summary: "TV進捗一覧を TV-006 後続・正式 docs 反映の develop 着に合わせて更新する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/summarize-work"
+  next:
+    success: null
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  #1593 / #1594 develop 着後、TV進捗の後続・正式反映表記が古い。Human 指示で進捗のみ更新。
+
+objective: |
+  TV進捗一覧の TV-006 / TV-009 関連表記を CLOSED・PR 番号込みで最新化する。
+
+scope:
+  - "docs/90_PoC/管理/TV進捗一覧.md"
+
+out_of_scope:
+  - "他 TV の着手"
+  - "apps/**"
+
+input:
+  docs:
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "TV-006 後続・正式 docs 関連 Issue が CLOSED 表記"
+  - "Epic PR #1593 / #1594 が備考に反映"
+
+issue:
+  number: 1596
+  unit: "epic"
+  type: "docs"
+  area: "reco"
+  creation_blocked: false
+
+branch:
+  no_branch: false
+  name: "docs/epic-1596-tv-progress-tv006-followup-closed"
+  summary: "tv-progress-tv006-followup-closed"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "low"
+    planned_start: "2026-07-24"
+    due_date: "2026-07-24"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+
+contract_gate:
+  required: false
