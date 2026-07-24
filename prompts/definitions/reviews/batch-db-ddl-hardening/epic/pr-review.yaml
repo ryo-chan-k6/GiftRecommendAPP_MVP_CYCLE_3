@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1595
   issue:
     number: 1561
   task_definition: "prompts/definitions/epics/batch-db-ddl-hardening/epic.yaml"
