@@ -239,10 +239,13 @@ skip 条件（バッチ設計方針書 §13.7）: 同一 `item_id` + `model_vers
 
 | 観点 | 方針 |
 | ---- | ---- |
-| 方式 | **HNSW** を第一候補（物理ER §17 No.6 決定済み） |
-| 距離関数 | **cosine** または **inner product**（Embedding API 出力と reco 側の正規化方針に合わせ DDL Task で確定） |
-| パラメータ | `m` / `ef_construction` の具体値は **DDL Task / 性能検証で確定**（§17.1 No.4 決定済み。MVP は Index 作成方針のみ本 Task で確定） |
+| 方式 | **HNSW**（物理ER §17 No.6 決定済み。migration 正本と同型） |
+| 距離関数 | **cosine**（`vector_cosine_ops`）。migration 正本と一致 |
+| パラメータ | **`m = 16` / `ef_construction = 64`** を MVP 正式値とする（migration 正本と同値） |
+| 性能根拠 | TV-006 PoC（類似検索単体・テストデータ）。1,000 件 HNSW p95 ≈ 2〜3 ms。10,000 件 HNSW p95 ≈ 5.6〜6.6 ms。暫定 **Go**。詳細は [TV-006 結果](../../90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md) / [1万件超](../../90_PoC/技術検証結果/TV-006_後続_1万件超_pgvector検索性能検証結果.md)（後者は #1574 取込後に develop 着） |
+| DDL 変更 | **不要**（現行 migration を維持。本反映でパラメータを覆さない） |
 | 後追い | 商品数が極少の初期は vector Index を後追い作成してもよい（物理ER §17 No.6 備考） |
+| 未計測 | JOIN + Hard Filter 込みの本番 Retrieval 経路、および本番カタログ分布は未計測。件数スケール判断は pgvector 単体の範囲に限定する |
 
 ---
 
@@ -437,7 +440,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 | 1 | `source_text_hash` vs `embedding_input_hash` | 物理列名は **`embedding_input_hash`**。論理ER §10.2 も同名に更新 | Human | §6・§8.4・enum定義書 §12.1 |
 | 2 | `embedding_source_version` 列の物理化 | **MVP は物理列なし**。`embedding_source_type` + `embedding_input_hash` + `model_version_id` で永続化。source version 変更は Queue トリガー（batch 層） | Human | §5.4・§8.4・`item_generation_queue_テーブル定義書` §5.6 |
 | 3 | `embedding_vector` 次元数 | **`vector(1536)`**。MVP 現行モデル `text-embedding-3-small` | Human | §6・§10 `chk_item_embedding_vector_dims` |
-| 4 | HNSW パラメータ（`m` / `ef_construction`） | **MVP は HNSW 採用方針のみ確定**。具体値は DDL Task / 性能検証 | Human | §9.1 |
+| 4 | HNSW パラメータ（`m` / `ef_construction`） | **MVP 正式値: `m = 16` / `ef_construction = 64`**（migration 正本と同値）。TV-006 PoC で現状維持 **Go**（#1590 で正式 docs 反映） | Human（#516）→ 性能検証後に具体値確定（#1590） | §9.1 |
 | 5 | 非現行世代行の DELETE ポリシー | **`item_feature` と同型**。現行世代保持・メンテナンス時のみ非現行行 DELETE | Human | §13 |
 | 6 | Online 参照時の「現行世代」解決 | 同一 **`model_version_id` で最新 `generated_at` 1 行** | Human | §12.3 |
 
@@ -447,6 +450,9 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 | 種別 | パス / URL | 用途 |
 | ---- | ---------- | ---- |
+| TV-006 PoC（〜1,000） | `docs/90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md` | HNSW 件数スケール根拠 |
+| TV-006 PoC（1万件超） | `docs/90_PoC/技術検証結果/TV-006_後続_1万件超_pgvector検索性能検証結果.md` | 1万件超根拠（#1574） |
+| TV-006 設計反映メモ | `docs/90_PoC/技術検証結果/設計反映メモ_TV-006.md` | 正式反映ステータス |
 | 物理ER | `docs/06_実装設計/database/物理ER.md` | FK・Index・制約・pgvector 方針 |
 | 論理ER | `docs/05_アプリケーション設計/アプリ/database/論理ER.md` | §10.2 属性・§16 責務境界 |
 | テーブル一覧 | `docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md` | §7 No.31・冪等キー |
@@ -473,7 +479,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 - 冪等キー 3 列・`embedding_input_hash` / `model_version_id` / `embedding_source_type` 方針が明記されている
 - `model_version_id` への物理 FK ON が `model_version_テーブル定義書` §8.1 と一致している
 - `item_meaning` との関係（Matching vs Retrieval・パイプライン順序）が明記されている
-- pgvector / HNSW Index 方針が DDL Task へ展開できる粒度である
+- pgvector / HNSW Index 方針（`m` / `ef_construction` 含む）が migration 正本と一致し、TV-006 根拠を辿れる
 - BATCH-014 / BATCH-015・`item_generation_queue` との整合が取れている
 - 論理ER §16.1 / §16.2（Batch 更新・Online 参照のみ）が反映されている
 - §17.1 決定事項（No.1〜6）が本文（§6 / §8.4 / §9.1 / §10 / §12.3 / §13）に反映されている

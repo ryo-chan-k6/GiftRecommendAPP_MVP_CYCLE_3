@@ -1,0 +1,72 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-006-formal-db-retrieval-docs-epic-pr"
+  title: "docs:TV-006正式DB・Retrieval反映 Epic PRレビュー"
+  summary: "Epic #1591 の develop 向け Epic PR を AI Review する。HNSW 正式確定・DDL 非変更・未計測注記を確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1594
+  issue:
+    number: 1591
+  task_definition: "prompts/definitions/epics/tv-006-formal-db-retrieval-docs/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]docs:TV-006正式DB・Retrieval反映"
+  parent_epic_branch: "docs/epic-1591-tv-006-formal-db-retrieval-docs"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/tv-006-formal-db-retrieval-docs/epic.yaml"
+  docs:
+    - "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+    - "docs/06_実装設計/database/物理ER.md"
+    - "docs/04_ドメインモデル設計/Retrieval定義書.md"
+    - "docs/06_実装設計/reco/MOD-RECO-012_Candidate Retrieverモジュール仕様書.md"
+    - "docs/90_PoC/技術検証結果/設計反映メモ_TV-006.md"
+
+review_points:
+  - "Epic PR target が develop か"
+  - "HNSW m / ef_construction が正式確定されているか"
+  - "DDL / migration 変更がないか（変更不要の明示）"
+  - "TV-006 根拠参照があるか"
+  - "JOIN / Hard Filter / 本番分布の未計測注記があるか"
+  - "追記が過剰でないか"
+  - "apps/** 変更がないか"
+  - "Closes #1591 の扱い"
+
+acceptance:
+  human_review_required: true
+  merge_by_ai: false
+
+notes:
+  - "merge 判断は Human"
+  - "子 Task #1590 / Task PR #1592 は Epic 着済"
