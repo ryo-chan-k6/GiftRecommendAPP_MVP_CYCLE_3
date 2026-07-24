@@ -1,0 +1,191 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-supabase-storage-alignment"
+  title: "supabase-storage-alignment:Supabase Storage確定反映（接続方針A）"
+  summary: "Object Storage の製品を Supabase Storage、接続を案 A（S3 互換 + OBJECT_STORAGE_*）に確定反映する。docs 正本収束・bucket 実体・任意 live 疎通まで。#1612 client は維持。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  DB ホストは Supabase 契約予定。Object Storage の具体サービスを Supabase Storage に Human 確定。
+  接続方針は案 A（S3 互換 API / path-style + SigV4 / OBJECT_STORAGE_* / live 既定 off）。
+  #1612 S3CompatibleObjectStorageClient は維持（SDK 差し替えなし）。
+  関連 Epic #1598（E3）。機能・領域単位 Epic（例外）。
+
+objective: |
+  接続方針 A を正本 docs・bucket・任意 live 疎通まで一貫反映し、E3 Object Storage 本接続と矛盾しない状態にする。
+
+scope:
+  - "docs 正本収束（未確定クローズ、製品/接続方式の明示）"
+  - "Supabase Storage bucket（例: raw-products）定義・権限方針"
+  - ".env.example / ローカル手順 / CLI help の整合（secret 実値禁止）"
+  - "任意: S3 互換 live 疎通（明示フラグ・件数限定。CI 既定 live 禁止）"
+  - "Epic Issue / Epic Branch / 子 Task Definition 整備"
+
+out_of_scope:
+  - "案 B（公式 SDK / service_role 直結）への差し替え"
+  - "案 C（backend 二重切替）の本採用"
+  - "delete / list / multipart / lifecycle 本実装"
+  - "CI 既定 live / production 無承認 live"
+  - "BATCH-005 DB SELECT 本配線"
+  - "Semantic LLM"
+  - "#1607 楽天 egress"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/基盤/システム物理構成図.md"
+      required: false
+  files: []
+  issues:
+    - number: 1598
+      purpose: "関連 E3 Epic"
+    - number: 1612
+      purpose: "S3CompatibleObjectStorageClient 実装"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/**"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/**"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/epics/supabase-storage-alignment/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/supabase-storage-alignment/**"
+      action: "create"
+      required: true
+    - path: "supabase/**"
+      action: "update"
+      required: false
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue #1614"
+  - "Epic Branch feature/epic-1614-supabase-storage-alignment"
+  - "子 Task #1615 / #1616 / #1617"
+  - "docs 正本収束・bucket・live 疎通（各 Task）"
+
+acceptance_criteria:
+  - "子 Task #1615 / #1616 / #1617 が完了（または #1617 を明示スキップ）"
+  - "未確定表記がクローズ方針どおり更新されている"
+  - "bucket 実体または作成手順がリポジトリ正本に残る"
+  - "secret 実値を docs / Issue / commit に含めない"
+  - "案 B/C を無断で混入しない"
+  - "Epic PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "supabase-storage-alignment"
+  name: "feature/epic-1614-supabase-storage-alignment"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-26"
+    due_date: "2026-08-01"
+
+issue:
+  number: 1614
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/**"
+    - "prompts/definitions/epics/supabase-storage-alignment/**"
+    - "prompts/definitions/tasks/supabase-storage-alignment/**"
+    - "prompts/definitions/reviews/supabase-storage-alignment/**"
+    - ".env.example"
+    - "supabase/**"
+    - "apps/batch/src/batch/application/**/__main__.py"
+    - "apps/batch/src/batch/infrastructure/object_storage/**"
+    - "ai-logs/human-decisions/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+  child_task_areas:
+    - "docs-alignment"
+    - "bucket"
+    - "live-verify"
+
+dependencies:
+  epics:
+    - issue: 1598
+      purpose: "E3 Object Storage client 関連"
+  blocking: false
+
+parallel_control:
+  exclusive_files: []
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required: []
+  not_required:
+    - "CI live Object Storage"
+  optional:
+    - "local 明示 live（#1617）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "接続方針 A の一貫性"
+    - "案 B/C 非混入"
+    - "secret 非露出"
+    - "Epic PR target が develop"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points: []
+
+notes:
+  - "機能・領域単位 Epic（例外）。epic_scope.artifact_id は空"
+  - "製品=Supabase Storage / 接続=案 A は Human 確定済み"
+  - "子 Task 推奨順: #1615 → #1616 → #1617"
