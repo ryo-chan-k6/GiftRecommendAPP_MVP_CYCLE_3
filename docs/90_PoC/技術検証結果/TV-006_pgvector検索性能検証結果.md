@@ -92,7 +92,7 @@
 | リスク | 扱い |
 | ------ | ---- |
 | JOIN + Hard Filter 込みの Retrieval | 本 TV 対象外。TV-007 / 本番経路で別途 |
-| 1,000 件超（例: 1万〜） | 未計測。後続 [#1574](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1574) |
+| 1,000 件超（例: 1万〜） | **計測済み**（後続 [#1574](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1574) / [結果](./TV-006_後続_1万件超_pgvector検索性能検証結果.md)） |
 | planner が小件数で Seq Scan を選ぶこと | 本番でも起こり得る。コスト差が小さい領域では許容されやすい（推論） |
 
 ---

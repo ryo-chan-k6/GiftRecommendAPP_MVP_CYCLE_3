@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-006-poc-pgvector-10k-scale-pr"
+  title: "TV-006後続 1万件超 pgvector Task PRレビュー"
+  summary: "Epic #1586 Task #1574 の 1万件超 pgvector 計測・結果 doc PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1587
+  issue:
+    number: 1574
+  parent_epic_issue: 1586
+  parent_epic_branch: "spike/epic-1586-tv-006-pgvector-10k-scale"
+  task_definition: "prompts/definitions/tasks/tv-006-pgvector-10k-scale/poc-pgvector-10k-scale.yaml"
+  source_branch: "spike/task-1574-tv-006-pgvector-10k-scale"
+  target_branch: "spike/epic-1586-tv-006-pgvector-10k-scale"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  project_operation: true
+  security: true
+  testing: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/tv-006-pgvector-10k-scale/poc-pgvector-10k-scale.yaml"
+    required: true
+  issue:
+    number: 1574
+
+review_points:
+  - "1万件超を含む件数別検索時間（p50/p95）が結果 doc にあるか"
+  - "HNSW 効果または未実施理由があるか"
+  - "テストデータ / ephemeral DB・production 非使用が明示されているか"
+  - "Go / Adjust / Block の根拠"
+  - "TV-007 との切り分け"
+  - "apps/** 改修がないか"
+  - "PR target が親 Epic Branch か"
+  - "Related to #1574（Closes 禁止）"
+
+notes:
+  - "Issue #1574 / Branch spike/task-1574-tv-006-pgvector-10k-scale"
