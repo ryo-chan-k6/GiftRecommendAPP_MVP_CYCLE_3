@@ -1,0 +1,76 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-tv-006-pgvector-10k-scale-epic-pr"
+  title: "PoC:TV-006後続1万件超pgvector Epic PRレビュー"
+  summary: "Epic #1586 の develop 向け Epic PR を AI Review する。1万件超テストデータ計測・結果 doc・Go 判定・secret 非混入を確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1586
+  task_definition: "prompts/definitions/epics/tv-006-pgvector-10k-scale/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]PoC:TV-006後続1万件超pgvector"
+  parent_epic_branch: "spike/epic-1586-tv-006-pgvector-10k-scale"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/tv-006-pgvector-10k-scale/epic.yaml"
+  docs:
+    - "docs/90_PoC/技術検証結果/TV-006_後続_1万件超_pgvector検索性能検証結果.md"
+    - "docs/90_PoC/技術検証結果/設計反映メモ_TV-006.md"
+    - "docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md"
+    - "docs/90_PoC/管理/TV進捗一覧.md"
+  files:
+    - "scripts/perf/pgvector_search_bench.py"
+    - "scripts/perf/README.md"
+
+review_points:
+  - "Epic PR target が develop か"
+  - "1万件超を含む件数別検索時間（p50/p95）が結果 doc にあるか"
+  - "テストデータ / ephemeral DB・production 非使用が明示されているか"
+  - "Go / Adjust / Block があるか"
+  - "JOIN / Hard Filter 未計測が残リスクとして明示されているか"
+  - "apps/** 本格改修の非混入"
+  - "secret 実値が成果物に含まれていないか"
+  - "Closes #1586 の扱い"
+
+acceptance:
+  human_review_required: true
+  merge_by_ai: false
+
+notes:
+  - "merge 判断は Human"
+  - "子 Task #1574 / Task PR #1587 は Epic 着済"
+  - "正式 DB / Retrieval docs 反映は別 Epic #1591"
