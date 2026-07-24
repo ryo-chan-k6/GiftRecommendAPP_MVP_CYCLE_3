@@ -71,7 +71,7 @@
 | 算出主体 | batch（BATCH-014。`item_text_context` の canonicalize 後 hash） |
 | 再生成判定 | hash 変更時は `item_generation_queue` に `generation_type = embedding` で登録（`item_generation_queue_テーブル定義書` §5.4・§5.6） |
 | 冪等キー | テーブル一覧 §7・物理ER §11 `uq_item_embedding_idempotent` の構成要素 |
-| IF 連携 | IF-DB-BATCH-015（Embedding 入力 hash 保存）は本テーブル行への記録と整合する |
+| IF 連携 | IF-DB-BATCH-015 の中間永続は `item_embedding_input`。本テーブル行の `embedding_input_hash` は BATCH-015 が載せる |
 
 > `item_generation_queue` 行には `embedding_input_hash` を持たない（Human Review #507 §17.1 No.4）。hash の正本は派生テーブル側（本テーブル）である。
 

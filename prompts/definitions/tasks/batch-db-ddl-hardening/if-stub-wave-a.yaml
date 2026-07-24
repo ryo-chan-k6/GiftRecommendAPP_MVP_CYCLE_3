@@ -1,0 +1,178 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-ddl-hardening-if-stub-wave-a"
+  title: "batch-db-ddl-hardening:IF stub解除WaveA"
+  summary: "Wave A（IF-DB-BATCH-001〜008+020/021）の CLI に create_db_writer を配線し、代表 IF-006 / IF-020 に upsert_rows（ON CONFLICT）を実装する。009〜017 は T4b。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  epic_issue_number: 1561
+  epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
+  related_issues:
+    - 1576
+  related_prs:
+    - 1577
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  T3（#1576）で PostgresDbWriter / create_db_writer 完了。Human 確定の次は T4a Wave A。
+  全 Wave A は in-memory + Scaffold 直結。write_rows は INSERT のみのため冪等 UPSERT が必要。
+  沸騰回避: CLI 配線一式 + 代表 IF-006 / IF-020 の upsert。003〜005/007/008 フル SQL と読取 SELECT は後続。
+
+objective: |
+  Wave A job が DATABASE_URL で実 Writer に切替でき、006/020 が ON CONFLICT UPSERT で永続化できる状態にする。
+
+scope:
+  - "DbWriter.upsert_rows（Scaffold / Postgres ON CONFLICT DO UPDATE）"
+  - "Wave A __main__ への create_db_writer 配線（--scaffold-demo は Scaffold 固定）"
+  - "IF-006 product_diff_result UPSERT"
+  - "IF-020 item_active_status_candidate UPSERT"
+  - "UT（upsert / wiring / scaffold 回帰）"
+  - "ギャップ一覧 T4a 進捗反映"
+  - "Task / Review Definition"
+  - "epic allowed_paths に必要 path 追記"
+
+out_of_scope:
+  - "IF-009〜017 / VEC（T4b）"
+  - "Wave A 読取 SELECT 本実装（staging/item の実 DB 読取）"
+  - "IF-003/004/005/007/008 のフル UPSERT SQL（別スライス）"
+  - "IF-001/002 Observability 本配線の完遂（任意・本 Task で必須にしない）"
+  - "DDL / migration 変更"
+  - "production DB 適用・外部 API 本接続"
+  - "親 workflow"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+    - path: "apps/batch/src/batch/application/product_diff/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_recheck/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/**/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/**"
+      action: "update"
+      required: true
+
+deliverables:
+  - "upsert_rows"
+  - "Wave A CLI wiring"
+  - "IF-006 / IF-020 UPSERT"
+  - "UT / ギャップ一覧"
+
+acceptance_criteria:
+  - "create_db_writer が Wave A CLI（非 scaffold-demo）で使われる"
+  - "upsert_rows が ON CONFLICT を実装する"
+  - "006 / 020 が upsert_rows を呼ぶ"
+  - "009〜017 を変更しない"
+  - "secret 実値なし"
+  - "Related to（Closes 禁止）"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-db-ddl-hardening-if-stub-wave-a"
+  base: "feature/epic-1561-batch-db-ddl-hardening"
+  target: "feature/epic-1561-batch-db-ddl-hardening"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-23"
+    due_date: "2026-07-26"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1561
+      purpose: "親 Epic"
+  issues:
+    - number: 1576
+      purpose: "T3 DbWriter 完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/application/product_diff/**"
+    - "apps/batch/src/batch/application/item_recheck/**"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "production DB integration"
+  skip_reason:
+    "production DB integration": "local/CI 限定。実 DB UPSERT は mock / scaffold 中心"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Wave A 範囲（009+ 非含有）"
+    - "upsert_rows ON CONFLICT の妥当性"
+    - "scaffold-demo が Scaffold 固定のままか"
+    - "secret 非露出"
+    - "Related to / PR target"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points:
+  - "003〜005/007/008 フル UPSERT を別 Task に分離してよいか（推奨: 分離）"
+
+notes:
+  - "代表 006/020 + CLI 配線で T4a を閉じ、残り Wave A SQL は T4a-2 候補"

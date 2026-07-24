@@ -253,7 +253,39 @@ class ItemRecheckRepositories:
             "api_call_log_id": candidate.api_call_log_id,
         }
         self.candidates[key] = row
-        self.db_writer.write_rows("item_active_status_candidate", (dict(row),))
+        # PK は DB default。冪等キー (batch_run_id, source, external_item_code) で UPSERT。
+        persist_row = {
+            "batch_run_id": candidate.batch_run_id,
+            "source": candidate.source,
+            "external_item_code": candidate.external_item_code,
+            "item_id": candidate.item_id,
+            "candidate_active_status": candidate.candidate_active_status,
+            "reason_code": candidate.reason_code,
+            "detection_basis": candidate.detection_basis,
+            "candidate_status": "detected",
+            "detected_at": now,
+            "applied_at": None,
+            "raw_metadata_id": candidate.raw_metadata_id,
+            "api_call_log_id": candidate.api_call_log_id,
+            "updated_at": now,
+        }
+        self.db_writer.upsert_rows(
+            "item_active_status_candidate",
+            (persist_row,),
+            conflict_columns=("batch_run_id", "source", "external_item_code"),
+            update_columns=(
+                "item_id",
+                "candidate_active_status",
+                "reason_code",
+                "detection_basis",
+                "candidate_status",
+                "detected_at",
+                "applied_at",
+                "raw_metadata_id",
+                "api_call_log_id",
+                "updated_at",
+            ),
+        )
         return row
 
     def record_api_call(

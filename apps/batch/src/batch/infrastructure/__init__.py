@@ -1,6 +1,15 @@
 """Batch infrastructure scaffold (Phase4a)."""
 
-from batch.infrastructure.db import DbWriteResult, DbWriter, ScaffoldDbWriter
+from batch.infrastructure.db import (
+    DatabaseError,
+    DbWriteResult,
+    DbWriter,
+    PostgresDbWriter,
+    ScaffoldDbWriter,
+    create_db_writer,
+    mask_database_url,
+    resolve_job_db_writer,
+)
 from batch.infrastructure.external_ai import (
     ExternalAiClient,
     ExternalAiResponse,
@@ -23,6 +32,7 @@ from batch.infrastructure.rakuten import (
 
 __all__ = [
     "BatchLogger",
+    "DatabaseError",
     "DbWriteResult",
     "DbWriter",
     "ExternalAiClient",
@@ -31,6 +41,7 @@ __all__ = [
     "LogRecord",
     "ObjectRef",
     "ObjectStorageClient",
+    "PostgresDbWriter",
     "RakutenApiClient",
     "RakutenGenre",
     "RakutenItem",
@@ -41,4 +52,7 @@ __all__ = [
     "ScaffoldObjectStorageClient",
     "ScaffoldRakutenApiClient",
     "StoredObject",
+    "create_db_writer",
+    "mask_database_url",
+    "resolve_job_db_writer",
 ]

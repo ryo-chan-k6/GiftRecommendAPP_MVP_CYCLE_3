@@ -39,15 +39,18 @@ BATCH-014（Embedding入力hash算出Batch）は、商品メタデータ（`item
 
 > **警告**: `IF-DB-BATCH-014` は **Feature 正規化結果保存**（BATCH-013）用である。本 Batch（BATCH-014）の IF は **`IF-DB-BATCH-015`** である。Batch ID と IF 番号は一致しない（+1 ズレ）。
 
-### 2.2 IF-DB-BATCH-015 の物理書込解釈（確定）
+### 2.2 IF-DB-BATCH-015 の物理書込解釈（確定・E2 更新）
 
 | 観点 | 方針 |
 | ---- | ---- |
 | hash 算出主体 | **BATCH-014**（本仕様） |
+| 中間永続テーブル | **`item_embedding_input`**（`item_embedding_input_テーブル定義書` / migration D17）。本 Batch が Upsert する |
 | `item_embedding.embedding_input_hash` 列への書込 | **BATCH-015** が `item_embedding` Upsert するときに同一値を載せる（`item_embedding_テーブル定義書` §5.2 / §5.8 / §12.2） |
-| 専用 `embedding_input_hash` / `item_text_context` テーブル | **作らない**（`item_text_context` は物理化しない中間表現。テーブル定義書なし） |
-| Queue 行への hash 列 | **持たない**（`item_generation_queue_テーブル定義書` §5.1） |
-| 本 Batch の「保存」 | 算出した `embedding_input_hash` / `item_text_context` を Run 単位で確定し、後続 BATCH-015 が参照可能な **handoff（実行結果・ログ・in-process 引き渡し）** として扱う。scaffold では in-memory 記録 |
+| Queue 行への hash 列 | **持たない**（`item_generation_queue_テーブル定義書` §5.1。継承） |
+| `item_text_context` | **canonicalize 済みテキストを `item_embedding_input.item_text_context` に永続化**（Embedding 入力に必須） |
+| 本 Batch の「保存」 | 算出した `embedding_input_hash` / `item_text_context` を **`item_embedding_input` へ永続化**し、後続 BATCH-015 が DB 参照する。scaffold 段階は in-memory でもよいが、本実装では永続テーブルを正とする |
+
+> **履歴:** 縦串確定時は「専用テーブルなし・handoff」だった。E2 Human 確定（Epic #1561 / Task #1568）により **中間永続化へ更新**した。最終派生列の書込主体（BATCH-015）と Queue 非保持は変更しない。
 
 識別子 Epic は **`[Epic]BATCH-014:Embedding入力hash算出Batch`（#1467）** を親とする。先行 BATCH-013（#1455 / PR #1466）を前提とする。縦串は **仕様整備 → 実装 → UT → Epic PR（develop）**。
 
@@ -155,7 +158,7 @@ BATCH-014（Embedding入力hash算出Batch）は、商品メタデータ（`item
 | 出力 | 正本区分 | 備考 |
 | ---- | -------- | ---- |
 | `embedding_input_hash` | 生成入力管理 | SHA-256 64 hex。物理列書込は BATCH-015（§2.2） |
-| `item_text_context` | 中間表現 | 専用テーブルなし。canonicalize 入力 |
+| `item_text_context` | 中間表現 | `item_embedding_input.item_text_context` に永続化。canonicalize 入力 |
 | `item_generation_queue` | 処理制御 | status / タイムスタンプ更新 |
 | `batch_run_log` / `phase_log` / `error_log` | 運用 | |
 | `item` / genre / attribute / tag | — | **書込しない** |
@@ -202,7 +205,7 @@ flowchart TD
 | 5 | `build_context` | `item_text_context` 構築 | `GRS-VAL-*` / `GRS-BAT-*` |
 | 6 | `compute_hash` | canonicalize + SHA-256 | `GRS-BAT-*` |
 | 7 | `evaluate_skip` | 今回 hash + Embedding model version で §9.4 判定 | `GRS-DB-*` / `GRS-CFG-*` |
-| 8 | `record_hash_handoff` | IF-DB-BATCH-015（handoff 確定）。skip 時は省略可 | `GRS-DB-*` |
+| 8 | `record_hash_handoff` | IF-DB-BATCH-015（`item_embedding_input` Upsert）。skip 時は省略可 | `GRS-DB-*` |
 | 9 | `update_queue` | status 更新（skipped / processing 維持 / failed） | `GRS-DB-*` |
 | 10 | `finalize` | 集計。部分成功は `GRS-BAT-002` | |
 
@@ -309,7 +312,7 @@ hash 算出後に判定する。Queue を `skipped` にするのは **同一入�
 
 | リソース | 操作 | IF | 備考 |
 | -------- | ---- | -- | ---- |
-| hash / context handoff | 算出確定 | **IF-DB-BATCH-015** | §2.2。専用テーブルなし。§9.4 skip 時は省略可 |
+| hash / context handoff | 算出確定 | **IF-DB-BATCH-015** | §2.2。`item_embedding_input` 永続化。§9.4 skip 時は省略可 |
 | `item_generation_queue` | UPDATE | — | claim / skip / failed / processing 維持 |
 | `item_embedding` | SELECT | — | §9.4 skip 判定のみ。**書込禁止**（BATCH-015） |
 | `item` / genre / attribute / tag | SELECT | — | 更新しない |
@@ -417,7 +420,7 @@ hash 算出後に判定する。Queue を `skipped` にするのは **同一入�
 | No | 論点 | 内容 | 状態 |
 | --: | ---- | ---- | ---- |
 | 1 | IF 番号 | **IF-DB-BATCH-015 = BATCH-014**。IF-DB-BATCH-014 = BATCH-013（混同禁止） | **確定** |
-| 2 | 物理書込 | 算出=014、`item_embedding.embedding_input_hash` 列書込=015。専用テーブルなし。Queue に hash 列なし。BATCH-014 は `item_embedding` へ DML しない | **確定**（`item_embedding` §5.8 / §2.2） |
+| 2 | 物理書込 | 算出=014、`item_embedding_input` 中間永続=014、`item_embedding.embedding_input_hash` 列書込=015。Queue に hash 列なし。BATCH-014 は `item_embedding` へ DML しない | **確定**（§2.2 / E2 #1568） |
 | 3 | hash アルゴリズム | SHA-256、小文字 hex 64 | **確定**（`item_embedding` §10 CHECK） |
 | 4 | 冪等キー | 物理 UNIQUE は `item_id` + `model_version_id` + `embedding_input_hash`（3 列）。`embedding_source_version` は Queue トリガー扱い（DB 物理列なし） | **確定**（`item_embedding` §8.4 / HR #516） |
 | 5 | MVP 入力 | `embedding_source_type = item_text_context` 固定。Semantic Concept 非包含 | **確定**（`item_embedding` §5.5 / §11.1） |
@@ -481,7 +484,7 @@ hash 算出後に判定する。Queue を `skipped` にするのは **同一入�
 
 ```text
 BATCH-013 → item_feature.normalized + item_meaning + Queue processing（継続）
-BATCH-014 → item_text_context / embedding_input_hash（handoff）
+BATCH-014 → item_text_context / embedding_input_hash（item_embedding_input 永続）
           → Queue processing 維持
 BATCH-015 → item_embedding Upsert（embedding_input_hash 列に載せる）
 ```

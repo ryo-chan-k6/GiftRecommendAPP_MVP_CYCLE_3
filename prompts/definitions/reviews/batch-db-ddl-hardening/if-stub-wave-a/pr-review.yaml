@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-ddl-hardening-if-stub-wave-a-pr"
+  title: "batch-db-ddl-hardening IF stub WaveA PRレビュー"
+  summary: "E2 T4a（Wave A stub 解除）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1581
+  issue:
+    number: 1579
+  task_definition: "prompts/definitions/tasks/batch-db-ddl-hardening/if-stub-wave-a.yaml"
+  parent_epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  parent_epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Wave A のみ（009+ 非含有）"
+  - "upsert_rows / 006 / 020"
+  - "CLI create_db_writer 配線"
+  - "secret 非露出"
+  - "Related to / PR target"
+
+notes:
+  - "Issue / PR 番号確定後に更新"

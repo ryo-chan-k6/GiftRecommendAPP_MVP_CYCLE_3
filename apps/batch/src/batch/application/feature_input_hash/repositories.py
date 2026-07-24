@@ -3,7 +3,7 @@
 - item / item_semantic READ ONLY
 - item_feature READ ONLY（skip 判定）。書込禁止（BATCH-012）
 - Queue UPDATE only（INSERT 禁止）
-- IF-DB-BATCH-012 handoff は in-memory 記録
+- IF-DB-BATCH-012: item_feature_input へ UPSERT（T4b）
 """
 
 from __future__ import annotations
@@ -262,8 +262,9 @@ class FeatureInputHashRepositories:
         return True
 
     def record_hash_handoff(self, record: HashHandoffRecord) -> None:
-        """IF-DB-BATCH-012: in-memory handoff（item_feature 非書込）."""
+        """IF-DB-BATCH-012: item_feature 非書込。中間表 item_feature_input へ UPSERT."""
 
+        now = datetime.now(UTC)
         payload = {
             "item_id": record.item_id,
             "item_generation_queue_id": record.item_generation_queue_id,
@@ -273,7 +274,31 @@ class FeatureInputHashRepositories:
             "op": "if_db_batch_012_handoff",
         }
         self.handoff_records.append(payload)
-        self.db_writer.write_rows("feature_input_hash_handoff", (payload,))
+        # PK は DB default。冪等キー (item_id, semantic_config_version_id, feature_input_hash)
+        persist_row = {
+            "item_id": record.item_id,
+            "semantic_config_version_id": record.semantic_config_version_id,
+            "feature_input_hash": record.feature_input_hash,
+            "feature_input_payload": dict(record.feature_input_payload),
+            "item_generation_queue_id": record.item_generation_queue_id,
+            "computed_at": now,
+            "updated_at": now,
+        }
+        self.db_writer.upsert_rows(
+            "item_feature_input",
+            (persist_row,),
+            conflict_columns=(
+                "item_id",
+                "semantic_config_version_id",
+                "feature_input_hash",
+            ),
+            update_columns=(
+                "feature_input_payload",
+                "item_generation_queue_id",
+                "computed_at",
+                "updated_at",
+            ),
+        )
 
     def update_queue_status(
         self,

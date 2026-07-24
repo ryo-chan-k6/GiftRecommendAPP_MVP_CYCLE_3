@@ -7,7 +7,7 @@
 | ドキュメントID | `DB-DDL-BATCH-MVP-001` |
 | 親 Epic | #435 `docs/epic-435-db-physical-design` |
 | 正本関係 | 運用規約は [マイグレーション方針書.md](./マイグレーション方針書.md)。本書は **④ DDL Task 起票・進捗管理の正本** |
-| 更新日 | 2026-07-15（D16 item_active_status_candidate 追記） |
+| 更新日 | 2026-07-22（D17 item_feature_input / item_embedding_input 追記） |
 
 ---
 
@@ -65,6 +65,7 @@ D01（extension / enum）
 | D14 | `d14_matching_config` | 1 + 列追加 3 | ✅ Issue #906 | matching_config 新設 + Run 再現性列 |
 | D15 | `d15_metric_log` | 1 | ✅ Issue #1080 | metric_log 新設（Composition 工程 ② / develop 増分） |
 | D16 | `d16_item_active_status_candidate` | 1 | ✅ Issue #1230 | item_active_status_candidate 新設（BATCH-004 §18.1.1 / Epic #1227） |
+| D17 | `d17_item_feature_embedding_input` | 2 | ✅ Issue #1568 | item_feature_input / item_embedding_input（IF-DB-BATCH-012/015 中間永続 / Epic #1561） |
 
 ---
 
@@ -311,6 +312,23 @@ retention 詳細は ⑥ データ保持・削除方針書 Task で確定。DDL �
 | # | テーブル / 変更 | MVP |
 | - | --------------- | --- |
 | 1 | `item_active_status_candidate` CREATE | ○ |
+
+---
+
+## 19.2 D17 — item_feature_input / item_embedding_input 増分（Issue #1568）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 出力 | `db/ddl/d17_item_feature_embedding_input.sql` |
+| migration | `supabase/migrations/20260722120000_item_feature_embedding_input.sql` |
+| 対象 | `item_feature_input` / `item_embedding_input` CREATE（BATCH-011/014 書込・012/015 読取） |
+| 前提 | D01〜D16（特に `item` / `semantic_config_version` / `model_version`）適用済み |
+| 備考 | 加算 CREATE のみ。DROP なし。019 不含。Queue への hash 列追加なし。Epic #1561 |
+
+| # | テーブル / 変更 | MVP |
+| - | --------------- | --- |
+| 1 | `item_feature_input` CREATE | ○ |
+| 2 | `item_embedding_input` CREATE | ○ |
 
 ---
 

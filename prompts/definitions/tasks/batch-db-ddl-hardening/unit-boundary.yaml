@@ -1,0 +1,162 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-ddl-hardening-unit-boundary"
+  title: "batch-db-ddl-hardening:UT境界・scaffold回帰"
+  summary: "E2 T5。DbWriter Protocol / factory / upsert 境界、Wave A/B CLI 配線、代表 IF UPSERT、scaffold-demo 回帰を UT で固定する。production DB 結合は除外。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
+  epic_issue_number: 1561
+  epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
+  related_issues:
+    - 1583
+  related_prs:
+    - 1584
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  T1〜T4b 完了。ギャップ一覧 §7 の最終 Task は T5（UT / 境界）。
+  既存 UT はあるが、Protocol 互換・CLI 配線横断・代表 IF 冪等キー・scaffold 回帰を E2 品質ゲートとして明示固定する。
+
+objective: |
+  E2 の DbWriter / CLI / 代表 UPSERT 境界を UT で回帰可能にし、Epic PR 前の品質ゲートを満たす。
+
+scope:
+  - "DbWriter Protocol / factory / upsert / mask 境界 UT の拡充"
+  - "Wave A/B __main__ の create_db_writer 配線回帰 UT"
+  - "代表 IF（006/020/012/015）UPSERT 冪等キー回帰 UT"
+  - "主要ジョブ --scaffold-demo 回帰 UT"
+  - "ギャップ一覧 T5 進捗反映"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "production DB / 実 Postgres 結合テスト"
+  - "残 IF フル UPSERT / SELECT 本実装"
+  - "DDL / migration 変更"
+  - "親 workflow / 外部 API"
+  - "Epic PR → develop（別作業。本 Task 完了後）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+    - path: "apps/batch/tests/unit/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/tests/unit/**"
+      action: "update"
+      required: true
+
+deliverables:
+  - "境界 / scaffold 回帰 UT"
+  - "ギャップ一覧 T5 反映"
+
+acceptance_criteria:
+  - "Protocol / factory / upsert 境界 UT が存在する"
+  - "Wave A/B CLI 配線回帰 UT が存在する"
+  - "代表 IF UPSERT 回帰 UT が存在する"
+  - "scaffold-demo 回帰が主要ジョブで通る"
+  - "production DB 結合を追加していない"
+  - "Related to（Closes 禁止）"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-db-ddl-hardening-unit-boundary"
+  base: "feature/epic-1561-batch-db-ddl-hardening"
+  target: "feature/epic-1561-batch-db-ddl-hardening"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-23"
+    due_date: "2026-07-27"
+
+issue:
+  number: 1588
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1561
+      purpose: "親 Epic"
+  issues:
+    - number: 1583
+      purpose: "T4b 完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/tests/unit/infrastructure/**"
+    - "apps/batch/tests/unit/application/test_e2_db_boundary*.py"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "production DB integration"
+  skip_reason:
+    "production DB integration": "T5 方針どおり local/CI mock・scaffold 限定"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "production DB 結合を混入していないか"
+    - "Protocol / CLI / 代表 IF 境界が UT で固定されているか"
+    - "secret 非露出"
+    - "Related to / PR target"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points:
+  - "本 Task 完了後に Epic PR → develop を作成してよいか（推奨: 作成）"
+
+notes:
+  - "E2 最終 Task。完了後は Epic PR が次"

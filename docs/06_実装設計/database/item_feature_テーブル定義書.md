@@ -71,7 +71,7 @@ BATCH-011（`feature_input_hash` 算出）→ BATCH-012（raw Feature 生成）�
 | 算出主体 | batch（BATCH-011。算出対象フィールドの詳細はバッチ仕様 Task の責務） |
 | 再生成判定 | `feature_input_hash` 変更時は `item_generation_queue` に `generation_type = feature` で登録（`item_generation_queue_テーブル定義書` §5.4・§5.6） |
 | 冪等キー | テーブル一覧 §7・物理ER §11 `uq_item_feature_idempotent` の構成要素 |
-| IF 連携 | IF-DB-BATCH-012（Feature 入力 hash 保存）は本テーブル行への記録と整合する |
+| IF 連携 | IF-DB-BATCH-012 の中間永続は `item_feature_input`。本テーブル行の `feature_input_hash` は BATCH-012 が載せる |
 
 > `item_generation_queue` 行には `feature_input_hash` を持たない（Human Review #507 §17.1 No.4）。hash の正本は派生テーブル側（本テーブル）である。
 

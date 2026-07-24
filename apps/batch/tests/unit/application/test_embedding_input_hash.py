@@ -138,7 +138,7 @@ def test_primary_path_hashes_and_keeps_processing() -> None:
 
 
 def test_handoff_recorded_without_item_embedding_write() -> None:
-    repos, _db = _repos()
+    repos, db = _repos()
     result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
 
     assert len(result.handoff_records) == 1
@@ -149,6 +149,11 @@ def test_handoff_recorded_without_item_embedding_write() -> None:
     # BATCH-014 は item_embedding へ DML しない（BATCH-015 責務）
     assert repos.item_embedding_write_count == 0
     assert result.item_embedding_write_count == 0
+    upsert_tables = {c["table"] for c in db.upsert_calls}
+    assert "item_embedding_input" in upsert_tables
+    assert "embedding_input_hash_handoff" not in upsert_tables
+    assert "item_embedding" not in upsert_tables
+    assert "item_embedding" not in {c["table"] for c in db.write_calls}
 
 
 def test_semantic_continuation_is_processed() -> None:

@@ -1,0 +1,211 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-db-ddl-hardening"
+  title: "batch-db-ddl-hardening:IF・DB・DDL本実装"
+  summary: "E2。BATCH-001〜017 中心に IF-DB stub 解除計画・不足 DDL/migration・実 DB 接続を進める。019 出力物理 DDL・外部 API 本接続・親 workflow は out of scope。OPEN #102/#109/#133/#136 を取込整理する。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  E0/E1 完了。次は E2（DB/DDL/IF-DB）。ギャップ一覧 §9 で #102/#109/#133/#136 は E2 取込確定。
+  現状 apps/batch は ScaffoldDbWriter / in-memory repositories のみ。migrations は 4 本で主要テーブルは概ね存在。
+  019 出力物理・018 本格・外部 API 本接続は除外。破壊的 DDL は Human 承認必須。
+  機能・領域単位 Epic（例外）。
+
+objective: |
+  IF-DB × テーブル × migration × stub の正本ギャップを docs 化し、不足 DDL・接続基盤・stub 解除を段階 Task で進める。
+  develop 統合は本 Epic PR のみ。
+
+scope:
+  - "IF-DB-BATCH-001〜017(+020/021,+VEC-001) の棚卸しマトリクス（docs 正本）"
+  - "不足 DDL/migration（001〜017 範囲。列差分含む）。019 出力物理は除外"
+  - "DbWriter 実接続基盤（Scaffold 切替残す）"
+  - "IF stub 解除（Wave A 取込系 → Wave B 意味生成系）。012/015 handoff 方針は Human 確認後"
+  - "関連 UT / 境界テスト"
+  - "#102/#109/#133/#136 の関係整理（クローズ実行は Human）"
+
+out_of_scope:
+  - "親 / 複合 workflow 新規・改修"
+  - "外部 API（楽天・OpenAI）本接続（E3）"
+  - "BATCH-018 / 019 出力物理 DDL 本格整備・本格化"
+  - "MOD-BATCH-043 / 044"
+  - "production DB への直接適用"
+  - "OpenAPI / web / api / reco 破壊変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+  files:
+    - path: "supabase/migrations/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "IF-DB/DDL ギャップ正本 docs"
+  - "後続 Task（接続基盤・stub 解除・DDL）の分割"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "ギャップ一覧 docs が存在する（第1 Task）"
+  - "019 出力物理・外部 API・親 workflow を out of scope と明記"
+  - "破壊的 DDL を AI 独断で適用していない"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-db-ddl-hardening"
+  name: "feature/epic-1561-batch-db-ddl-hardening"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-22"
+    due_date: "2026-07-26"
+
+issue:
+  number: 1561
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/database/**"
+    - "docs/06_実装設計/batch/BATCH-011_*"
+    - "docs/06_実装設計/batch/BATCH-012_*"
+    - "docs/06_実装設計/batch/BATCH-014_*"
+    - "docs/06_実装設計/batch/BATCH-015_*"
+    - "docs/05_アプリケーション設計/アプリ/インターフェース一覧.md"
+    - "supabase/migrations/**"
+    - "db/ddl/**"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/__init__.py"
+    - "apps/batch/src/batch/application/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/pyproject.toml"
+    - "apps/batch/uv.lock"
+    - "apps/batch/tests/**"
+    - "prompts/definitions/epics/batch-db-ddl-hardening/**"
+    - "prompts/definitions/tasks/batch-db-ddl-hardening/**"
+    - "prompts/definitions/reviews/batch-db-ddl-hardening/**"
+  forbidden_paths:
+    - ".github/workflows/batch-*-orchestrator.yml"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "if-db-ddl-inventory"
+    - "ddl-gap-fill"
+    - "db-writer-foundation"
+    - "if-stub-removal"
+    - "unit-test"
+
+dependencies:
+  epics:
+    - issue: 1554
+      title: "[Epic]batch-parent-orchestrators:親workflow実装"
+      purpose: "E1 完了"
+  issues:
+    - number: 102
+      purpose: "E2取込・重複整理"
+    - number: 109
+      purpose: "E2取込 DDL"
+    - number: 133
+      purpose: "E2取込 DB構築"
+    - number: 136
+      purpose: "E2取込 migration"
+  prs:
+    - number: 1560
+      purpose: "E1 Epic MERGED"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-parent-orchestrators"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Epic は作業管理。実装 Task で UT"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "019/外部API/親workflow を混入していないか"
+    - "破壊的 DDL が Human 未承認で入っていないか"
+    - "Epic PR target が develop"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+human_decision_points:
+  - "IF-DB-BATCH-012/015 の handoff 永続方針"
+  - "Wave A/B の stub 解除範囲と優先度"
+  - "#102/#133 の重複整理・クローズ"
+  - "不足 DDL の適用可否（破壊的変更）"
+
+stop_conditions:
+  - "production DB 操作が必要に見える"
+  - "破壊的 DDL / drop / truncate が必要"
+  - "019 物理 DDL を本 Epic に含めないと進められない"
+
+notes:
+  - "機能・領域単位。workstream: batch-db-ddl-hardening"
+  - "第1 Task は棚卸し docs。DDL 実行・stub 解除は後続"
+  - "Milestone: 開発・単体テスト工程完了"

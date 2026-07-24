@@ -830,9 +830,11 @@ def test_boundary_db_writes_exclude_item_and_staging() -> None:
     result = job.run(job_run_id="job-boundary", max_items=5)
 
     assert result.status == "succeeded"
-    tables = {call["table"] for call in repos.db_writer.write_calls}
+    write_tables = {call["table"] for call in repos.db_writer.write_calls}
+    upsert_tables = {call["table"] for call in repos.db_writer.upsert_calls}
+    tables = write_tables | upsert_tables
     assert "item" not in tables
     assert "staging_item" not in tables
-    assert "raw_product_metadata" in tables
-    assert "fetch_cursor" in tables
-    assert "item_active_status_candidate" in tables
+    assert "raw_product_metadata" in write_tables
+    assert "fetch_cursor" in write_tables
+    assert "item_active_status_candidate" in upsert_tables
