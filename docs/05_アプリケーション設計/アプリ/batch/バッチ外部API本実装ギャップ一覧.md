@@ -7,9 +7,9 @@
 | 文書種別 | E3 棚卸し正本（docs） |
 | 対象 | 楽天 / Embedding / Object Storage / Semantic（LLM）× BATCH-001〜017 |
 | 作成日 | 2026-07-24 |
-| 更新日 | 2026-07-25（T3 Embedding HTTP） |
+| 更新日 | 2026-07-25（T4 Object Storage） |
 | 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) |
-| 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） |
+| 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） / [#1612](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1612)（T4） |
 | 先行 | E0 横串ギャップ / E1 親 workflow / E2 IF-DB・DDL（#1595 MERGED） |
 
 ### 1.1 目的
@@ -44,10 +44,10 @@
 | Rakuten client | `HttpRakutenApiClient` + `create_rakuten_client`（**live 既定 off** → Scaffold） |
 | Rate Limiter（MOD-BATCH-008） | `ExternalApiRateLimiter`（プロセス内・常用 QPS=**2** / ハードキャップ 10）。live HTTP に配線 |
 | Embedding client | `HttpEmbeddingClient` + `create_embedding_client`（**live 既定 off** → Scaffold） |
-| Object Storage | `ScaffoldObjectStorageClient` のみ（T2 配線でも暫定 Scaffold） |
+| Object Storage | `S3CompatibleObjectStorageClient` + `create_object_storage_client`（**live 既定 off** → Scaffold） |
 | Semantic 生成 | `ScaffoldItemSemanticAdapter`（Rule-first / LLM 非呼出） |
-| CLI 非 `--scaffold-demo` | 001〜004: live 未指定は **exit 3**。`--live-rakuten` / `BATCH_RAKUTEN_LIVE` で HTTP。015: DB 読取未配線 → exit 3（`--scaffold-demo --live-embedding` で Embedding 煙可） |
-| E2 との関係 | DbWriter / 代表 UPSERT は利用可能。外部 I/O は楽天 + Embedding（明示 live） |
+| CLI 非 `--scaffold-demo` | 001〜004: `--live-rakuten` 必須。`--live-object-storage` で Storage HTTP（未指定時 Scaffold）。015 Embedding / 005 Storage live 可だが DB 読取は未配線 → exit 3 |
+| E2 との関係 | DbWriter / 代表 UPSERT は利用可能。外部 I/O は楽天 + Embedding + Object Storage（各明示 live） |
 
 ---
 
@@ -59,11 +59,11 @@
 | External API Rate Limiter | `ExternalApiRateLimiter` | （制御なし = Scaffold 相当） | `ExternalApiRateLimiter` | `create_external_api_rate_limiter` / live factory 既定 on |
 | Embedding（IF-EXT-005） | `EmbeddingClient` | `ScaffoldEmbeddingClient` | `HttpEmbeddingClient` | `create_embedding_client`（live 既定 off） |
 | External AI（汎用） | `ExternalAiClient` | `ScaffoldExternalAiClient` | **なし** | **なし** |
-| Object Storage | `ObjectStorageClient` | `ScaffoldObjectStorageClient` | **なし** | **なし** |
+| Object Storage | `ObjectStorageClient` | `ScaffoldObjectStorageClient` | `S3CompatibleObjectStorageClient` | `create_object_storage_client`（live 既定 off） |
 | Item Semantic 生成 | adapter（batch 内） | `ScaffoldItemSemanticAdapter` | **なし**（LLM） | **なし** |
 | Item Embedding 生成 | adapter（batch 内） | `ScaffoldItemEmbeddingAdapter` | `EmbeddingClient` 注入（Http 可） | `--live-embedding` / `BATCH_EMBEDDING_LIVE` |
 
-**補足（事実）:** 楽天は `create_rakuten_client` + MOD-BATCH-008 Rate Limiter 導入済み。Embedding は `create_embedding_client` 導入済み（015 は `--scaffold-demo --live-embedding` で煙）。Object Storage factory は未導入。
+**補足（事実）:** 楽天 / Embedding / Object Storage いずれも factory（live 既定 off）導入済み。005 の DB SELECT 本配線は別。
 
 ---
 
@@ -71,11 +71,11 @@
 
 | Batch | 主な外部依存 | CLI 非 demo の現状 | 備考 |
 | ----- | ------------ | ------------------ | ---- |
-| 001 genre_sync | 楽天 + Object Storage | live off → exit 3。`--live-rakuten` で HTTP（Storage は Scaffold） | `RAKUTEN_*` + live 必須 |
+| 001 genre_sync | 楽天 + Object Storage | `--live-rakuten` 必須。Storage は `--live-object-storage` で HTTP（未指定 Scaffold） | `RAKUTEN_*` + 任意 `OBJECT_STORAGE_*` |
 | 002 ranking_snapshot | 楽天 + Object Storage | 同上 | |
 | 003 item_pseudo_diff | 楽天 + Object Storage | 同上 | |
 | 004 item_recheck | 楽天 + Object Storage | 同上（seed 空時は 0 件成功可） | DB SELECT seed は未実装 |
-| 005 raw_staging | Object Storage + DB 読取 | Storage/DB 読取未配線 → exit 3 | |
+| 005 raw_staging | Object Storage + DB 読取 | Storage live 可。DB 読取未配線 → exit 3 | |
 | 006〜008 / 009〜017（DB 中心） | 主に DB（E2） | DbWriter 配線済み。読取 SELECT / 外部 API は別 | 本 Epic の主対象は外部 I/O 側 |
 | 010 item_semantic | Semantic adapter（LLM stub） | DB 読取未配線メッセージ | LLM 本接続は Human 確認 |
 | 015 item_embedding | Embedding adapter | DB 読取未配線 → exit 3。`--scaffold-demo --live-embedding` で HTTP 煙 | IF-EXT-005 client は T3 完了 |
@@ -99,7 +99,10 @@
 | `OPENAI_API_KEY` | Embedding / LLM | `--live-embedding` 時必須。ログ禁止 |
 | `BATCH_EMBEDDING_LIVE` | Embedding live 切替（`1`/`true`/`yes`/`on`） | CLI `--live-embedding` と同等 |
 | `DATABASE_URL` | DB（E2） | 本 Epic 主対象外（併用可） |
-| Object Storage 系 | bucket / endpoint 等 | 実装・docs 突合が後続 Task |
+| `OBJECT_STORAGE_BUCKET` | Raw 保存先 bucket | live 時の repos bucket |
+| `OBJECT_STORAGE_ENDPOINT` | S3 互換 endpoint | `--live-object-storage` 時必須 |
+| `OBJECT_STORAGE_ACCESS_KEY` / `OBJECT_STORAGE_SECRET_KEY` | Storage 認証 | live 時必須。ログ禁止 |
+| `BATCH_OBJECT_STORAGE_LIVE` | Storage live 切替 | CLI `--live-object-storage` と同等 |
 
 **禁止（事実・方針）:** 実 API キー・token・`.env` 実値を docs / Issue / PR / ログ / commit に書かない。
 
@@ -126,7 +129,7 @@
 | T2c | External API Rate Limiter（**完了 / #1605 / #1608** / `MOD-BATCH-008`） | 常用 QPS=**2**（ハードキャップ 10）。`HttpRakutenApiClient` 送信前 + 429 backoff | Review |
 | T2d | Genre/Ranking/endpoint 正式反映（**完了 / #1606 / #1609**） | Genre `genre` キー / Ranking period 分離 / 現行 endpoint を正式 Batch・外部連携・adapter へ | Review |
 | T3 | Embedding client（**完了 / #1610**） | `HttpEmbeddingClient` + `create_embedding_client`。015 `--live-embedding` 配線 | Review / secret |
-| T4 | Object Storage client | 実 Storage client（範囲は棚卸し結果で確定）+ 001〜005 配線 | Review |
+| T4 | Object Storage client（**完了 / #1612**） | `S3CompatibleObjectStorageClient` + factory。001〜005 `--live-object-storage` | Review / secret |
 | T5 | UT / 境界 | Protocol 互換・scaffold 回帰・secret マスク。live は明示フラグのみ | — |
 
 **推奨着手順（推論）:** T1 → T2（楽天）→ **T2b（live 疎通）** → **T2c（Rate Limiter）** / **T2d（正式契約反映）** → T3（Embedding）→ T4（Storage）→ T5。
@@ -181,3 +184,4 @@
 | 2026-07-25 | T2c: `ExternalApiRateLimiter` 実装・Http client 配線・UT（#1605） |
 | 2026-07-25 | T2d: Genre/Ranking/endpoint 正式 Batch・外部連携・adapter 反映（#1606） |
 | 2026-07-25 | T3: `HttpEmbeddingClient` / factory / 015 `--live-embedding` / UT（#1610） |
+| 2026-07-25 | T4: `S3CompatibleObjectStorageClient` / factory / 001〜005 live 配線 / UT（#1612） |

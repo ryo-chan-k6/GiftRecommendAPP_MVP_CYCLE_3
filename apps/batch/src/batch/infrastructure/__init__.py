@@ -27,8 +27,12 @@ from batch.infrastructure.logger import BatchLogger, LogContext, LogRecord, Scaf
 from batch.infrastructure.object_storage import (
     ObjectRef,
     ObjectStorageClient,
+    S3CompatibleObjectStorageClient,
     ScaffoldObjectStorageClient,
     StoredObject,
+    create_object_storage_client,
+    mask_object_storage_secret,
+    resolve_live_object_storage_flag,
 )
 from batch.infrastructure.rakuten import (
     HttpRakutenApiClient,
@@ -67,6 +71,7 @@ __all__ = [
     "RakutenGenre",
     "RakutenItem",
     "RakutenRankingEntry",
+    "S3CompatibleObjectStorageClient",
     "ScaffoldBatchLogger",
     "ScaffoldDbWriter",
     "ScaffoldEmbeddingClient",
@@ -77,10 +82,13 @@ __all__ = [
     "create_db_writer",
     "create_embedding_client",
     "create_external_api_rate_limiter",
+    "create_object_storage_client",
     "create_rakuten_client",
     "mask_database_url",
+    "mask_object_storage_secret",
     "mask_openai_secret",
     "resolve_job_db_writer",
     "resolve_live_embedding_flag",
+    "resolve_live_object_storage_flag",
     "resolve_live_rakuten_flag",
 ]
