@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1600
   issue:
     number: 1599
   task_definition: "prompts/definitions/tasks/batch-external-api/inventory.yaml"
