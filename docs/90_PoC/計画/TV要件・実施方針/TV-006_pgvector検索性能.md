@@ -56,11 +56,14 @@
 
 ## 5. 関連Issue / 成果物
 
-| 種別 | 状態（2026-07-22） |
+| 種別 | 状態（2026-07-23） |
 | ---- | ------------------ |
-| Epic | [#1571](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1571) |
-| Task | [#1572](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1572) |
-| 結果レポート | [技術検証結果](../../技術検証結果/TV-006_pgvector検索性能検証結果.md)（Epic develop 着後に完了扱い） |
+| Epic（本体） | [#1571](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1571) **CLOSED** |
+| Task（本体） | [#1572](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1572) **CLOSED** |
+| Epic（後続 1万件超） | [#1586](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1586) |
+| Task（後続 1万件超） | [#1574](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1574) |
+| 結果レポート（〜1,000） | [技術検証結果](../../技術検証結果/TV-006_pgvector検索性能検証結果.md) |
+| 結果レポート（1万件超） | [後続 1万件超](../../技術検証結果/TV-006_後続_1万件超_pgvector検索性能検証結果.md) |
 | ハーネス | `scripts/perf/pgvector_search_bench.py` |
 
 ---
@@ -71,3 +74,4 @@
 | ---- | ---- |
 | 2026-07-21 | 初版方針（#1496） |
 | 2026-07-22 | S0〜S4 実施・結果 doc 反映（#1572） |
+| 2026-07-23 | 後続 1万件超（#1586 / #1574）・テストデータ計測結果を追記 |

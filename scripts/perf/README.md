@@ -175,8 +175,9 @@ ephemeral DB 上で `vector(1536)` + HNSW の件数別検索時間を計測す�
 | ---- | ---- |
 | スクリプト | `pgvector_search_bench.py` |
 | 前提 | `DATABASE_URL`（local / ephemeral）。production 禁止 |
-| 推奨 | scales `100,500,1000` / top_k `5,20` / HNSW あり（経路強制）となし |
-| 結果 doc | [TV-006_pgvector検索性能検証結果](../../docs/90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md) |
+| 推奨（本体） | scales `100,500,1000` / top_k `5,20` / HNSW あり（経路強制）となし |
+| 推奨（後続 1万件超） | scales `1000,5000,10000`（**テストデータ**。production 禁止） |
+| 結果 doc | [TV-006_pgvector検索性能検証結果](../../docs/90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md) / [後続 1万件超](../../docs/90_PoC/技術検証結果/TV-006_後続_1万件超_pgvector検索性能検証結果.md) |
 
 ```bash
 # リポジトリ root。DATABASE_URL は echo しない
@@ -185,6 +186,11 @@ cd apps/reco
 uv run python ../../scripts/perf/pgvector_search_bench.py \
   --scales 100,500,1000 --top-k 5,20 --iterations 30 --warmup 3 \
   --output-dir ../../scripts/perf/output-tv006
+
+# 後続 1万件超（#1574）
+uv run python ../../scripts/perf/pgvector_search_bench.py \
+  --scales 1000,5000,10000 --top-k 5,20 --iterations 30 --warmup 3 \
+  --output-dir ../../scripts/perf/output-tv006-10k
 ```
 
 ## TV-009（Feature 生成性能）
@@ -213,6 +219,7 @@ uv run python ../../scripts/perf/feature_generation_bench.py \
 | phase_output 計測定義修正 | #1544 / #1545 |
 | TV-005 Epic / Task | #1565 / #1566 |
 | TV-006 Epic / Task | #1571 / #1572 |
+| TV-006 後続 1万件超 | #1586 / #1574 |
 | TV-009 Epic / Task | #1578 / #1580 |
 | Branch（TV-009 Task） | `spike/task-1580-tv-009-feature-generation-benchmark` |
 | PR target（TV-009） | `spike/epic-1578-tv-009-feature-generation-performance` |

@@ -1,0 +1,166 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-tv-006-poc-pgvector-10k-scale"
+  title: "TV-006後続:1万件超pgvector件数スケール計測"
+  summary: "ephemeral / テストデータで 1,000/5,000/10,000 件の pgvector 類似検索を計測し、結果 doc と Go/Adjust/Block を残す。"
+  phase: "90_PoC"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-tv-006-pgvector-10k-scale"
+  epic_issue: "[Epic]PoC:TV-006後続1万件超pgvector"
+  epic_issue_number: 1586
+  epic_branch: "spike/epic-1586-tv-006-pgvector-10k-scale"
+  related_issues:
+    - number: 1571
+      purpose: "TV-006 本体（完了）"
+    - number: 1572
+      purpose: "TV-006 〜1,000 件計測（完了）"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  TV-006 は 1,000 件まで暫定 Go。1万件超は #1574 として独立継続。
+  Human（2026-07-23）: 本番データ不可のためテストデータで実施。着手指示。
+  親は新 Epic #1586（旧 #1571 は CLOSED）。
+
+objective: |
+  1,000 / 5,000 / 10,000 件・HNSW あり/なし・top_k 5/20 の計測と結果 doc を完成させる。
+
+scope:
+  - "scripts/perf/pgvector_search_bench.py 再利用（必要時のみ軽微拡張）"
+  - "件数 1,000 / 5,000 / 10,000・テストデータ・ephemeral local DB"
+  - "結果 doc（技術検証結果/）・設計反映メモ更新"
+  - "TV-006 方針・TV進捗の現状更新"
+  - "本 Task / Review Definition"
+
+out_of_scope:
+  - "TV-005 / TV-007 E2E 再実施"
+  - "JOIN + Hard Filter 込み本番 Retrieval"
+  - "apps/**"
+  - "production DB / 本番データ"
+  - "正式 DB/Retrieval docs 独断更新"
+  - "secret 実値 / PR merge"
+
+input:
+  docs:
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md"
+      required: true
+    - path: "docs/90_PoC/技術検証結果/TV-006_pgvector検索性能検証結果.md"
+      required: true
+    - path: "docs/90_PoC/技術検証結果/設計反映メモ_TV-006.md"
+      required: true
+  files:
+    - path: "scripts/perf/pgvector_search_bench.py"
+      required: true
+    - path: "scripts/perf/README.md"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/技術検証結果/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-006_pgvector検索性能.md"
+      action: "update"
+      required: true
+    - path: "docs/90_PoC/管理/TV進捗一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/perf/**"
+      action: "create_or_update"
+      required: true
+
+acceptance_criteria:
+  - "1万件超を含む件数別の検索時間（p50/p95）が結果 doc にある"
+  - "index 効果または未実施理由がある"
+  - "Go / Adjust / Block がある"
+  - "Task PR target が親 Epic Branch"
+  - "Related to #1574（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "tv-006-pgvector-10k-scale"
+  name: "spike/task-1574-tv-006-pgvector-10k-scale"
+  base: "spike/epic-1586-tv-006-pgvector-10k-scale"
+  target: "spike/epic-1586-tv-006-pgvector-10k-scale"
+  worktree_required: true
+
+project:
+  fields:
+    phase: "90_PoC"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-23"
+    due_date: "2026-07-30"
+
+issue:
+  number: 1574
+  unit: "task"
+  type: "spike"
+  area: "reco"
+  creation_blocked: false
+
+dependencies:
+  blocking: false
+  epics:
+    - id: "epic-tv-006-pgvector-10k-scale"
+      purpose: "親 Epic"
+
+parallel_control:
+  depends_on: []
+  exclusive_files:
+    - "scripts/perf/pgvector_search_bench.py"
+  conflict_risk: "medium"
+
+test_policy:
+  manual_checks:
+    - "ephemeral DB 上で bench が 10,000 件まで完走すること"
+  not_required:
+    - "apps unit tests"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "1万件超を含む件数・index 比較があるか"
+    - "テストデータ / production 非使用"
+    - "判定ラベルの根拠"
+    - "TV-007 との切り分け"
+    - "Related to #1574（Closes 禁止）"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+contract_gate:
+  required: false
+
+notes:
+  - "Issue #1574 / Epic #1586"
+  - "件数: 1,000 / 5,000 / 10,000（Human 着手指示時の Issue 例示を採用）"
