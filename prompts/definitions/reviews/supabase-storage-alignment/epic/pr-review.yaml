@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1618
   issue:
     number: 1614
   task_definition: "prompts/definitions/epics/supabase-storage-alignment/epic.yaml"
