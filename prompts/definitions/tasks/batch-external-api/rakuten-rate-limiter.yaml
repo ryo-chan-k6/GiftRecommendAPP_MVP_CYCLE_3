@@ -1,0 +1,182 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-external-api-rakuten-rate-limiter"
+  title: "batch-external-api:MOD-BATCH-008 External API Rate Limiter（常用QPS=2）"
+  summary: "MOD-BATCH-008 External API Rate Limiter を実装し、HttpRakutenApiClient の送信前を常用 QPS=2（ハードキャップ 10）で制御する。429 時は backoff 後に限定再試行し、なお失敗なら GRS-EXT-102 を上げる。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-external-api:外部API本接続"
+  epic_issue_number: 1598
+  epic_branch: "feature/epic-1598-batch-external-api"
+  related_issues:
+    - 1601
+    - 1603
+  related_prs:
+    - 1602
+    - 1604
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1603 live / QPS 実験で常用 QPS=2（ハードキャップ 10）を Human 決定。
+  HttpRakutenApiClient は 429→GRS-EXT-102 マップのみ。送信前スロットル未実装。
+
+objective: |
+  MOD-BATCH-008 をプロセス内 Rate Limiter として実装し、楽天 HTTP を QPS=2 で制御する。
+
+scope:
+  - "ExternalApiRateLimiter（最小間隔 / トークンバケット相当、プロセス内）"
+  - "既定常用 QPS=2、ハードキャップ 10（RAKUTEN_MAX_QPS / RAKUTEN_MIN_INTERVAL_MS）"
+  - "HttpRakutenApiClient / create_rakuten_client への配線（001〜004 は factory 経由）"
+  - "429 時の backoff + 限定再試行後 GRS-EXT-102"
+  - "UT（mock / 時間制御）"
+  - "ギャップ一覧 T2c 進捗"
+  - "Task / Review Definition"
+  - ".env.example の既定コメント整合（必要最小）"
+
+out_of_scope:
+  - "本番 egress IP / NAT（#1607）"
+  - "Genre/Ranking/endpoint 正式契約全面改訂（#1606）"
+  - "CI 必須 live / production 無承認 live"
+  - "Embedding / Object Storage 向け Limiter 本実装"
+  - "複数プロセス横断の共有 Limiter（MVP はプロセス内）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/モジュール一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-25-rakuten-operational-qps-revise-to-2.md"
+      required: true
+    - path: "ai-logs/experiments/2026-07-24-rakuten-qps-pattern.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/**"
+      action: "update"
+      required: true
+    - path: ".env.example"
+      action: "update"
+      required: false
+
+deliverables:
+  - "MOD-BATCH-008 ExternalApiRateLimiter"
+  - "HttpRakutenApiClient 配線（送信前 + 429 backoff）"
+  - "UT / ギャップ一覧進捗"
+
+acceptance_criteria:
+  - "常用 QPS=2（ハードキャップ 10）で送信前制御される"
+  - "create_rakuten_client(live=True) 経由の HTTP が Limiter 付き"
+  - "429 時は backoff 再試行後も失敗なら GRS-EXT-102（job の pause 方針と矛盾しない）"
+  - "UT あり、secret 非露出"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-external-api-rakuten-rate-limiter"
+  base: "feature/epic-1598-batch-external-api"
+  target: "feature/epic-1598-batch-external-api"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: "2026-07-29"
+
+issue:
+  number: 1605
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1598
+      purpose: "親 Epic"
+  issues:
+    - number: 1601
+      purpose: "HttpRakutenApiClient"
+    - number: 1603
+      purpose: "live / 常用 QPS=2 決定"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - "apps/batch/src/batch/infrastructure/rate_limiter/**"
+  conflict_risk: "high"
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "CI live Rakuten"
+  optional:
+    - "local 明示 live（件数限定・QPS=2）"
+  skip_reason:
+    "CI live Rakuten": "Epic 方針どおり CI 既定 off"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "常用 QPS=2 と env 名"
+    - "ハードキャップ 10"
+    - "429 backoff / GRS-EXT-102"
+    - "プロセス内 Limiter（複数 Batch 共有は MVP 外）"
+    - "Related to / PR target"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points:
+  - "同時実行（複数 Batch）時の共有 Limiter 要否（MVP はプロセス内でよいか）"
+
+notes:
+  - "live verify スクリプトの QPS 解決ロジックと env 名を揃える"

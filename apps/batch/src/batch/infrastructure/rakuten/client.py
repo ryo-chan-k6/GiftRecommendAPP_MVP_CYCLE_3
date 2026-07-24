@@ -368,12 +368,14 @@ class HttpRakutenApiClient:
     """Rakuten Ichiba HTTP client (genre / ranking / item_search).
 
     Secrets are never logged. Errors map to GRS-EXT-* used by job layers.
+    Rate limiting uses MOD-BATCH-008 ``ExternalApiRateLimiter`` when provided.
     """
 
     application_id: str
     access_key: str
     timeout_seconds: float = 30.0
     backend: str = "http"
+    rate_limiter: object | None = None
 
     def search_items(self, *, keyword: str, page: int = 1) -> tuple[RakutenItem, ...]:
         raw = self.fetch_item_search_raw(
@@ -521,39 +523,59 @@ class HttpRakutenApiClient:
     ) -> dict[str, object]:
         import httpx
 
+        from batch.infrastructure.rate_limiter import ExternalApiRateLimiter
+
         secrets = (self.application_id, self.access_key)
-        try:
-            with httpx.Client(timeout=self.timeout_seconds) as client:
-                response = client.get(url, params=params)
-        except httpx.TimeoutException as exc:
-            message = _mask_text(str(exc), secrets=secrets)
-            raise error_factory("GRS-EXT-101", f"rakuten timeout: {message}") from exc  # type: ignore[operator]
-        except httpx.HTTPError as exc:
-            message = _mask_text(str(exc), secrets=secrets)
-            raise error_factory("GRS-EXT-100", f"rakuten transport error: {message}") from exc  # type: ignore[operator]
+        limiter = self.rate_limiter if isinstance(self.rate_limiter, ExternalApiRateLimiter) else None
+        max_attempts = 1 + (limiter.max_retries_on_429 if limiter is not None else 0)
 
-        if response.status_code == 429:
-            raise error_factory("GRS-EXT-102", "rakuten rate limited (HTTP 429)")  # type: ignore[operator]
-        if response.status_code == 400:
-            detail = _rakuten_error_detail(response, secrets=secrets)
-            raise error_factory(  # type: ignore[operator]
-                "GRS-EXT-105",
-                f"rakuten invalid request (HTTP 400){detail}",
-            )
-        if response.status_code >= 400:
-            detail = _rakuten_error_detail(response, secrets=secrets)
-            raise error_factory(  # type: ignore[operator]
-                "GRS-EXT-100",
-                f"rakuten HTTP {response.status_code}{detail}",
-            )
+        last_error: Exception | None = None
+        for attempt in range(max_attempts):
+            if limiter is not None:
+                limiter.acquire()
+            try:
+                with httpx.Client(timeout=self.timeout_seconds) as client:
+                    response = client.get(url, params=params)
+            except httpx.TimeoutException as exc:
+                message = _mask_text(str(exc), secrets=secrets)
+                raise error_factory("GRS-EXT-101", f"rakuten timeout: {message}") from exc  # type: ignore[operator]
+            except httpx.HTTPError as exc:
+                message = _mask_text(str(exc), secrets=secrets)
+                raise error_factory("GRS-EXT-100", f"rakuten transport error: {message}") from exc  # type: ignore[operator]
 
-        try:
-            payload = response.json()
-        except ValueError as exc:
-            raise error_factory("GRS-EXT-103", "rakuten invalid JSON response") from exc  # type: ignore[operator]
-        if not isinstance(payload, dict):
-            raise error_factory("GRS-EXT-103", "rakuten response is not an object")  # type: ignore[operator]
-        return payload
+            if response.status_code == 429:
+                last_error = error_factory(  # type: ignore[operator]
+                    "GRS-EXT-102",
+                    "rakuten rate limited (HTTP 429)",
+                )
+                if limiter is not None and attempt + 1 < max_attempts:
+                    limiter.wait_after_rate_limit()
+                    continue
+                raise last_error
+
+            if response.status_code == 400:
+                detail = _rakuten_error_detail(response, secrets=secrets)
+                raise error_factory(  # type: ignore[operator]
+                    "GRS-EXT-105",
+                    f"rakuten invalid request (HTTP 400){detail}",
+                )
+            if response.status_code >= 400:
+                detail = _rakuten_error_detail(response, secrets=secrets)
+                raise error_factory(  # type: ignore[operator]
+                    "GRS-EXT-100",
+                    f"rakuten HTTP {response.status_code}{detail}",
+                )
+
+            try:
+                payload = response.json()
+            except ValueError as exc:
+                raise error_factory("GRS-EXT-103", "rakuten invalid JSON response") from exc  # type: ignore[operator]
+            if not isinstance(payload, dict):
+                raise error_factory("GRS-EXT-103", "rakuten response is not an object")  # type: ignore[operator]
+            return payload
+
+        assert last_error is not None
+        raise last_error
 
 
 def create_rakuten_client(
@@ -562,18 +584,26 @@ def create_rakuten_client(
     *,
     live: bool = False,
     fallback: RakutenApiClient | None = None,
+    rate_limiter: object | None = None,
+    enable_rate_limiter: bool = True,
 ) -> RakutenApiClient:
     """Build a RakutenApiClient.
 
     - ``live=False``（既定）→ Scaffold（CI / 通常 local）
-    - ``live=True`` かつ credentials あり → HttpRakutenApiClient
+    - ``live=True`` かつ credentials あり → HttpRakutenApiClient（MOD-BATCH-008 付き）
     - ``live=True`` だが credentials 不足 → Scaffold（呼び出し側で exit 2 を推奨）
     """
 
     if live and application_id and access_key:
+        from batch.infrastructure.rate_limiter import create_external_api_rate_limiter
+
+        limiter = rate_limiter
+        if limiter is None and enable_rate_limiter:
+            limiter = create_external_api_rate_limiter()
         return HttpRakutenApiClient(
             application_id=application_id,
             access_key=access_key,
+            rate_limiter=limiter,
         )
     return fallback or ScaffoldRakutenApiClient()
 

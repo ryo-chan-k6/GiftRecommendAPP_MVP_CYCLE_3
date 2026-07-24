@@ -1,0 +1,30 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-external-api-rakuten-rate-limiter"
+  title: "PR Review: MOD-BATCH-008 External API Rate Limiter"
+  related_task: "prompts/definitions/tasks/batch-external-api/rakuten-rate-limiter.yaml"
+  related_issue: 1605
+  related_epic: 1598
+
+focus:
+  - "常用 QPS=2 / ハードキャップ 10"
+  - "HttpRakutenApiClient 送信前 acquire"
+  - "429 backoff 後の GRS-EXT-102"
+  - "secret 非露出"
+  - "Related to（Closes 禁止）/ PR target=親 Epic"
+
+blocker_examples:
+  - "Limiter 未配線で live HTTP が無制限"
+  - "ハードキャップ超過を許容"
+  - "secret 露出"
+  - "Closes #1605 または PR target が develop"
+
+must_examples:
+  - "UT 不足"
+  - "429 時に GRS-EXT-102 以外へ独断マップ"
+  - "複数プロセス共有を実装したと誤記"
+
+nice_to_have:
+  - "live verify スクリプトが同一 env を利用"

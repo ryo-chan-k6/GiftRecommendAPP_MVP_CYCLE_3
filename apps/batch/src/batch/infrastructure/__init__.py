@@ -32,6 +32,10 @@ from batch.infrastructure.rakuten import (
     create_rakuten_client,
     resolve_live_rakuten_flag,
 )
+from batch.infrastructure.rate_limiter import (
+    ExternalApiRateLimiter,
+    create_external_api_rate_limiter,
+)
 
 __all__ = [
     "BatchLogger",
@@ -40,6 +44,7 @@ __all__ = [
     "DbWriter",
     "ExternalAiClient",
     "ExternalAiResponse",
+    "ExternalApiRateLimiter",
     "HttpRakutenApiClient",
     "LogContext",
     "LogRecord",
@@ -57,6 +62,7 @@ __all__ = [
     "ScaffoldRakutenApiClient",
     "StoredObject",
     "create_db_writer",
+    "create_external_api_rate_limiter",
     "create_rakuten_client",
     "mask_database_url",
     "resolve_job_db_writer",

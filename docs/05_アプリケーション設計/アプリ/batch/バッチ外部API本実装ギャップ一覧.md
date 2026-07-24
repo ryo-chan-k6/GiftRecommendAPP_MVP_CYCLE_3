@@ -42,6 +42,7 @@
 | 項目 | 状態 |
 | ---- | ---- |
 | Rakuten client | `HttpRakutenApiClient` + `create_rakuten_client`（**live 既定 off** → Scaffold） |
+| Rate Limiter（MOD-BATCH-008） | `ExternalApiRateLimiter`（プロセス内・常用 QPS=**2** / ハードキャップ 10）。live HTTP に配線 |
 | Embedding client | `ScaffoldEmbeddingClient`（決定論的疑似ベクトル）。実 OpenAI 呼出なし |
 | Object Storage | `ScaffoldObjectStorageClient` のみ（T2 配線でも暫定 Scaffold） |
 | Semantic 生成 | `ScaffoldItemSemanticAdapter`（Rule-first / LLM 非呼出） |
@@ -54,14 +55,15 @@
 
 | 境界 | Protocol / 入口 | Scaffold 実装 | 実 client | factory 切替 |
 | ---- | --------------- | ------------- | --------- | ------------ |
-| 楽天 API | `RakutenApiClient` | `ScaffoldRakutenApiClient` | `HttpRakutenApiClient` | `create_rakuten_client`（live 既定 off） |
+| 楽天 API | `RakutenApiClient` | `ScaffoldRakutenApiClient` | `HttpRakutenApiClient` | `create_rakuten_client`（live 既定 off + Rate Limiter） |
+| External API Rate Limiter | `ExternalApiRateLimiter` | （制御なし = Scaffold 相当） | `ExternalApiRateLimiter` | `create_external_api_rate_limiter` / live factory 既定 on |
 | Embedding（IF-EXT-005） | `EmbeddingClient` | `ScaffoldEmbeddingClient` | **なし** | **なし** |
 | External AI（汎用） | `ExternalAiClient` | `ScaffoldExternalAiClient` | **なし** | **なし** |
 | Object Storage | `ObjectStorageClient` | `ScaffoldObjectStorageClient` | **なし** | **なし** |
 | Item Semantic 生成 | adapter（batch 内） | `ScaffoldItemSemanticAdapter` | **なし**（LLM） | **なし** |
 | Item Embedding 生成 | adapter（batch 内） | `ScaffoldItemEmbeddingAdapter` | ScaffoldEmbedding 経由 | **なし** |
 
-**補足（事実）:** 楽天は `create_rakuten_client` 導入済み。Embedding / Object Storage の factory は未導入。
+**補足（事実）:** 楽天は `create_rakuten_client` + MOD-BATCH-008 Rate Limiter 導入済み。Embedding / Object Storage の factory は未導入。
 
 ---
 
@@ -92,8 +94,8 @@
 | `RAKUTEN_ACCESS_KEY` | 楽天 API 認証 | `--live-rakuten` 時必須 |
 | `BATCH_RAKUTEN_LIVE` | live 切替（`1`/`true`/`yes`/`on`） | CLI `--live-rakuten` と同等 |
 | `RAKUTEN_EXPECTED_EGRESS_IP` | live 検証時の接続元 IP 照合 | ハーネス必須（不一致時は HTTP しない） |
-| `RAKUTEN_MAX_QPS` | クライアント常用 QPS | 既定 **2**（ハードキャップ 10。旧目標 8 は常用外） |
-| `RAKUTEN_MIN_INTERVAL_MS` | 呼出最小間隔（ms） | 任意。未設定時は QPS から算出 |
+| `RAKUTEN_MAX_QPS` | クライアント常用 QPS | 既定 **2**（ハードキャップ 10。旧目標 8 は常用外）。別名 `BATCH_EXTERNAL_API_MAX_QPS` |
+| `RAKUTEN_MIN_INTERVAL_MS` | 呼出最小間隔（ms） | 任意。未設定時は QPS から算出。ハードキャップ未満（過短）は拒否 |
 | `OPENAI_API_KEY` | Embedding / LLM | Embedding 本接続時。ログ禁止 |
 | `DATABASE_URL` | DB（E2） | 本 Epic 主対象外（併用可） |
 | Object Storage 系 | bucket / endpoint 等 | 実装・docs 突合が後続 Task |
@@ -120,7 +122,7 @@
 | T1 | **本 Task（棚卸し）** | 本 docs | Review |
 | T2 | Rakuten HTTP client（**完了 / #1601 / #1602**） | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
 | T2b | Rakuten live 疎通（**進捗: #1603 / Adjust**） | openapi endpoint 移行後、genre / ranking / item_search 成功。**常用 QPS=2**・IP 必須。adapter / 正式仕様反映は残 | Review / secret |
-| T2c | External API Rate Limiter（**#1605** / `MOD-BATCH-008`） | **常用 QPS=2**（ハードキャップ 10）。001〜004 / `HttpRakutenApiClient` 配線。no-branch | Review |
+| T2c | External API Rate Limiter（**進捗: PR / #1605** / `MOD-BATCH-008`） | 常用 QPS=**2**（ハードキャップ 10）。`HttpRakutenApiClient` 送信前 + 429 backoff。001〜004 は factory 経由 | Review |
 | T2d | Genre/Ranking/endpoint 正式反映（**#1606**） | Genre `genre` キー / Ranking period / 現行 endpoint を正式 Batch・adapter へ。no-branch | Review |
 | T3 | Embedding client | OpenAI Embeddings 本接続 + Scaffold 切替。015 adapter 配線 | Review / secret |
 | T4 | Object Storage client | 実 Storage client（範囲は棚卸し結果で確定）+ 001〜005 配線 | Review |
@@ -175,3 +177,4 @@
 | 2026-07-24 | T2b: openapi endpoint 移行・live 3 API 成功（Adjust）。Genre `genre` キー / Ranking period 扱い / 429 を記録 |
 | 2026-07-25 | 常用 QPS を実験結果に基づき **2** へ改訂（旧 8 は常用外）。T2c 設計入力も 2 |
 | 2026-07-25 | 後続 Issue 起票: T2c #1605 / T2d #1606 / BL-RAKUTEN-EGRESS-PROD #1607 |
+| 2026-07-25 | T2c: `ExternalApiRateLimiter` 実装・Http client 配線・UT（#1605） |
