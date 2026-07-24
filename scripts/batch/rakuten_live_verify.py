@@ -10,6 +10,8 @@ Usage (from repo root or apps/batch):
 
 Safety:
   - Refuses to call the network without --live-rakuten
+  - Requires RAKUTEN_EXPECTED_EGRESS_IP and aborts if observed egress mismatches
+  - Enforces min interval from RAKUTEN_MAX_QPS (default 8; hard cap 10)
   - Never prints secret values
   - Limits to a few requests (genre / ranking / item_search + optional error probe)
 """
@@ -18,12 +20,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+
+# Human decision 2026-07-24: target QPS=8, hard cap=10 (registration ceiling).
+_DEFAULT_MAX_QPS = 8.0
+_HARD_CAP_QPS = 10.0
+_EGRESS_IP_LOOKUP_URL = "https://api.ipify.org"
 
 
 def _mask(value: str | None) -> str:
@@ -53,6 +63,72 @@ def _nested_keys(payload: dict[str, Any], path: str) -> list[str]:
             return sorted(first["Item"].keys())
         return sorted(first.keys())
     return []
+
+
+def _resolve_min_interval_ms() -> tuple[int, float]:
+    """Return (min_interval_ms, effective_max_qps). Hard-cap at 10 QPS."""
+
+    raw_interval = os.environ.get("RAKUTEN_MIN_INTERVAL_MS")
+    if raw_interval is not None and raw_interval.strip() != "":
+        try:
+            interval_ms = int(raw_interval)
+        except ValueError as exc:
+            raise ValueError("RAKUTEN_MIN_INTERVAL_MS must be an integer") from exc
+        floor_ms = int(math.ceil(1000.0 / _HARD_CAP_QPS))
+        if interval_ms < floor_ms:
+            raise ValueError(
+                f"RAKUTEN_MIN_INTERVAL_MS={interval_ms} would exceed hard-cap "
+                f"{_HARD_CAP_QPS:g} QPS (minimum interval {floor_ms} ms)"
+            )
+        effective_qps = 1000.0 / interval_ms
+        return interval_ms, effective_qps
+
+    raw_qps = os.environ.get("RAKUTEN_MAX_QPS", str(_DEFAULT_MAX_QPS))
+    try:
+        max_qps = float(raw_qps)
+    except ValueError as exc:
+        raise ValueError("RAKUTEN_MAX_QPS must be a number") from exc
+    if max_qps <= 0:
+        raise ValueError("RAKUTEN_MAX_QPS must be > 0")
+    if max_qps > _HARD_CAP_QPS:
+        raise ValueError(
+            f"RAKUTEN_MAX_QPS={max_qps:g} exceeds hard-cap {_HARD_CAP_QPS:g}"
+        )
+    interval_ms = int(math.ceil(1000.0 / max_qps))
+    return interval_ms, max_qps
+
+
+def _fetch_egress_ip(*, timeout_seconds: float = 5.0) -> str:
+    request = urllib.request.Request(
+        _EGRESS_IP_LOOKUP_URL,
+        headers={"User-Agent": "gift-reco-rakuten-live-verify/1.0"},
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+        body = response.read().decode("utf-8").strip()
+    if not body:
+        raise RuntimeError("egress IP lookup returned empty body")
+    return body
+
+
+def _require_egress_ip_match() -> dict[str, Any]:
+    expected = (os.environ.get("RAKUTEN_EXPECTED_EGRESS_IP") or "").strip()
+    if not expected:
+        raise RuntimeError(
+            "RAKUTEN_EXPECTED_EGRESS_IP is required for --live-rakuten. "
+            "No Rakuten HTTP request was made."
+        )
+    observed = _fetch_egress_ip()
+    matched = observed == expected
+    return {
+        "expected_configured": True,
+        "matched": matched,
+        "observed_masked": _mask(observed),
+        "expected_masked": _mask(expected),
+        # Local report only (gitignored). Do not copy real IPs into docs/.
+        "observed": observed,
+        "expected": expected,
+    }
 
 
 @dataclass
@@ -164,6 +240,33 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 3
 
+    try:
+        min_interval_ms, effective_max_qps = _resolve_min_interval_ms()
+    except ValueError as exc:
+        print(f"{exc}. No Rakuten HTTP request was made.", file=sys.stderr)
+        return 2
+
+    try:
+        egress = _require_egress_ip_match()
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        print(
+            f"Failed to observe egress IP ({exc}). No Rakuten HTTP request was made.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if not egress["matched"]:
+        print(
+            "Egress IP does not match RAKUTEN_EXPECTED_EGRESS_IP. "
+            "No Rakuten HTTP request was made. "
+            f"expected={egress['expected_masked']} observed={egress['observed_masked']}",
+            file=sys.stderr,
+        )
+        return 2
+
     application_id = os.environ.get("RAKUTEN_APPLICATION_ID")
     access_key = os.environ.get("RAKUTEN_ACCESS_KEY")
     if not application_id:
@@ -186,6 +289,10 @@ def main(argv: list[str] | None = None) -> int:
 
     hits = max(1, min(args.hits, 30))
     calls: list[CallResult] = []
+    interval_seconds = min_interval_ms / 1000.0
+
+    def _pace() -> None:
+        time.sleep(interval_seconds)
 
     calls.append(
         _run_call(
@@ -194,8 +301,7 @@ def main(argv: list[str] | None = None) -> int:
             nested_path="current",
         )
     )
-    # small pause to reduce rate-limit risk
-    time.sleep(0.4)
+    _pace()
     calls.append(
         _run_call(
             "ranking.fetch_ranking_raw",
@@ -203,7 +309,7 @@ def main(argv: list[str] | None = None) -> int:
             nested_path="Items",
         )
     )
-    time.sleep(0.4)
+    _pace()
     calls.append(
         _run_call(
             "item_search.fetch_item_search_raw",
@@ -216,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
             nested_path="Items",
         )
     )
-    time.sleep(0.4)
+    _pace()
     calls.append(
         _run_call(
             "item_search.page2",
@@ -231,7 +337,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.probe_invalid:
-        time.sleep(0.4)
+        _pace()
         calls.append(
             _run_call(
                 "genre.invalid_genre_id",
@@ -252,6 +358,19 @@ def main(argv: list[str] | None = None) -> int:
             "genre": "TV-003",
             "ranking": "TV-002",
             "item_search": "TV-001",
+        },
+        "rate_limit_policy": {
+            "target_max_qps": effective_max_qps,
+            "hard_cap_qps": _HARD_CAP_QPS,
+            "min_interval_ms": min_interval_ms,
+        },
+        "egress_ip_check": {
+            "matched": egress["matched"],
+            "expected_masked": egress["expected_masked"],
+            "observed_masked": egress["observed_masked"],
+            # gitignored local report only
+            "expected": egress["expected"],
+            "observed": egress["observed"],
         },
         "credentials": {
             "RAKUTEN_APPLICATION_ID_present": True,
@@ -286,6 +405,8 @@ def main(argv: list[str] | None = None) -> int:
         f"- issue: #1603",
         f"- application_id: {_mask(application_id)}",
         f"- access_key_present: {bool(access_key)}",
+        f"- egress_ip_matched: {egress['matched']}",
+        f"- max_qps: {effective_max_qps:g} (interval {min_interval_ms} ms)",
         f"- success: {report['summary']['success_count']} / {len(calls)}",
         "",
         "| name | ok | ms | error_code | notes |",
@@ -305,7 +426,9 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"success={report['summary']['success_count']} "
         f"failure={report['summary']['failure_count']} "
-        f"access_key_present={bool(access_key)}"
+        f"access_key_present={bool(access_key)} "
+        f"egress_matched={egress['matched']} "
+        f"max_qps={effective_max_qps:g}"
     )
     # exit 0 if at least one success; 1 if all failed (still wrote report)
     return 0 if report["summary"]["success_count"] > 0 else 1
