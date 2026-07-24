@@ -1,0 +1,166 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-external-api-embedding-http"
+  title: "batch-external-api:Embedding HTTP client（IF-EXT-005）"
+  summary: "HttpEmbeddingClient と create_embedding_client（Scaffold 切替・live 既定 off）を追加し、BATCH-015 adapter / CLI に配線する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-external-api:外部API本接続"
+  epic_issue_number: 1598
+  epic_branch: "feature/epic-1598-batch-external-api"
+  related_issues:
+    - 1599
+    - 1609
+  related_prs:
+    - 1609
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  楽天 T2〜T2d 完了。Embedding は Scaffold のみ。BATCH-015 は実 OpenAI 非呼出。
+
+objective: |
+  IF-EXT-005 HTTP client を Scaffold 切替付きで導入し、015 が明示 live 時に本接続できる。
+
+scope:
+  - "HttpEmbeddingClient（OpenAI /embeddings・httpx）"
+  - "create_embedding_client（live 既定 off）"
+  - "secret マスク"
+  - "BATCH-015 adapter / CLI（--live-embedding、scaffold-demo 併用可）"
+  - "UT（httpx mock）"
+  - "ギャップ一覧 T3 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Semantic LLM"
+  - "Object Storage（T4）"
+  - "CI 既定 live / production 無承認 live"
+  - "DB SELECT 本配線"
+  - "018 Reco"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/external_ai/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_embedding/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/external_ai/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_embedding/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/**"
+      action: "update"
+      required: true
+
+deliverables:
+  - "HttpEmbeddingClient / create_embedding_client"
+  - "015 adapter / CLI 配線"
+  - "UT / ギャップ一覧"
+
+acceptance_criteria:
+  - "live 既定 off で Scaffold"
+  - "Http client が Protocol を満たす"
+  - "secret 非露出"
+  - "Related to（Closes 禁止）/ PR target が親 Epic"
+
+branch:
+  no_branch: false
+  summary: "batch-external-api-embedding-http"
+  base: "feature/epic-1598-batch-external-api"
+  target: "feature/epic-1598-batch-external-api"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: "2026-07-29"
+
+issue:
+  number: 1610
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1598
+      purpose: "親 Epic"
+  issues:
+    - number: 1606
+      purpose: "T2d 完了後の次 Task"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/external_ai/**"
+    - "apps/batch/src/batch/application/item_embedding/**"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "CI live OpenAI"
+  optional:
+    - "local 明示 live（scaffold-demo 併用・件数限定）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "live 既定 off"
+    - "secret 非露出"
+    - "1536 / text-embedding-3-small"
+    - "Related to / PR target"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+notes:
+  - "DB 読取未配線は維持。live 煙は --scaffold-demo --live-embedding"

@@ -1,12 +1,12 @@
-"""IF-EXT-005 Item Embedding 生成アダプタ（MVP Scaffold）.
+"""IF-EXT-005 Item Embedding 生成アダプタ.
 
 仕様書 §8.3 / §18.1 No.8:
-- MVP 初版は scaffold-first（実 OpenAI 呼出なし）
-- 決定論的スタブベクトル（次元 1536）
+- 既定は scaffold-first（実 OpenAI 非呼出）
+- 明示 live 時は ``EmbeddingClient``（Http）を注入可能
 - hash 再算出禁止（IF-DB-BATCH-015 消費のみ）
 - ベクトル全文・secret をログしない
 
-apps/reco を変更せず、batch 内に Protocol 互換の Scaffold 実装を置く。
+apps/reco を変更せず、batch 内に Protocol 互換の実装を置く。
 """
 
 from __future__ import annotations
@@ -25,6 +25,8 @@ from batch.application.item_embedding.models import (
     EmbeddingGenerationResult,
 )
 from batch.infrastructure.external_ai.client import (
+    EmbeddingApiError,
+    EmbeddingClient,
     EmbeddingResponse,
     ScaffoldEmbeddingClient,
 )
@@ -83,9 +85,12 @@ class ItemEmbeddingGeneratorPort(Protocol):
 
 @dataclass
 class ScaffoldItemEmbeddingAdapter:
-    """MVP Scaffold: IF-EXT-005 スタブ / Upsert 非実施 / 実 API 非呼出."""
+    """Item Embedding adapter: IF-EXT-005 / Upsert 非実施.
 
-    client: ScaffoldEmbeddingClient = field(default_factory=ScaffoldEmbeddingClient)
+    既定 ``client`` は Scaffold。live 時は HttpEmbeddingClient を注入する。
+    """
+
+    client: EmbeddingClient = field(default_factory=ScaffoldEmbeddingClient)
     force_fail: bool = False
 
     def generate_item_embedding(
@@ -108,16 +113,19 @@ class ScaffoldItemEmbeddingAdapter:
             return self._failed("scaffold forced failure", code="GRS-EXT-001")
 
         started = time.perf_counter()
-        response: EmbeddingResponse = self.client.embed(
-            context.embedding_input_text,
-            model=context.model_name,
-            dimension=context.dimension,
-            purpose="item_embedding",
-        )
+        try:
+            response: EmbeddingResponse = self.client.embed(
+                context.embedding_input_text,
+                model=context.model_name,
+                dimension=context.dimension,
+                purpose="item_embedding",
+            )
+        except EmbeddingApiError as exc:
+            return self._failed(exc.message, code=exc.code)
         latency_ms = int((time.perf_counter() - started) * 1000)
 
         if len(response.embedding_vector) != context.dimension:
-            return self._failed("scaffold embedding dimension mismatch", code="GRS-EXT-001")
+            return self._failed("embedding dimension mismatch", code="GRS-LLM-103")
 
         return EmbeddingGenerationResult(
             status="generated",
@@ -143,5 +151,9 @@ class ScaffoldItemEmbeddingAdapter:
 def build_scaffold_adapter(
     *,
     force_fail: bool = False,
+    client: EmbeddingClient | None = None,
 ) -> ScaffoldItemEmbeddingAdapter:
-    return ScaffoldItemEmbeddingAdapter(force_fail=force_fail)
+    return ScaffoldItemEmbeddingAdapter(
+        client=client or ScaffoldEmbeddingClient(),
+        force_fail=force_fail,
+    )
