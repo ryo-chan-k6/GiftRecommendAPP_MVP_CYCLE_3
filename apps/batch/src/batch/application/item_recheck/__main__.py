@@ -15,7 +15,12 @@ from batch.application.item_recheck.models import ItemSeed
 from batch.application.item_recheck.repositories import ItemRecheckRepositories
 from batch.config import load_batch_settings
 from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
-from batch.infrastructure.object_storage import ScaffoldObjectStorageClient
+from batch.infrastructure.object_storage import (
+    ScaffoldObjectStorageClient,
+    create_object_storage_client,
+    missing_live_object_storage_credentials,
+    resolve_live_object_storage_flag,
+)
 from batch.infrastructure.rakuten import (
     ScaffoldRakutenApiClient,
     create_rakuten_client,
@@ -111,6 +116,14 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Enable real Rakuten HTTP (requires secrets). Default off; also BATCH_RAKUTEN_LIVE.",
     )
+    parser.add_argument(
+        "--live-object-storage",
+        action="store_true",
+        help=(
+            "Enable real S3-compatible Object Storage (requires OBJECT_STORAGE_*). "
+            "Default off; also BATCH_OBJECT_STORAGE_LIVE."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.scaffold_demo:
@@ -155,6 +168,26 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    storage_live = resolve_live_object_storage_flag(
+        cli_live=args.live_object_storage,
+        env_value=os.environ.get("BATCH_OBJECT_STORAGE_LIVE"),
+    )
+    if storage_live:
+        missing = missing_live_object_storage_credentials(
+            access_key=settings.object_storage_access_key,
+            secret_key=settings.object_storage_secret_key,
+            endpoint=settings.object_storage_endpoint,
+        )
+        if missing:
+            print(missing, file=sys.stderr)
+            return 2
+    object_storage = create_object_storage_client(
+        settings.object_storage_access_key,
+        settings.object_storage_secret_key,
+        endpoint=settings.object_storage_endpoint,
+        live=storage_live,
+    )
+
     rakuten = create_rakuten_client(
         settings.rakuten_application_id,
         settings.rakuten_access_key,
@@ -162,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     # seed 空: 実 DB SELECT は未実装。配線確認は 0 件成功で可。
     repos = ItemRecheckRepositories(
-        object_storage=ScaffoldObjectStorageClient(),
+        object_storage=object_storage,
         db_writer=db_writer,
         bucket=settings.object_storage_bucket or "scaffold-raw",
     )
@@ -177,6 +210,7 @@ def main(argv: list[str] | None = None) -> int:
         f"BATCH-004 status={result.status} "
         f"db_backend={db_writer.backend} "
         f"rakuten_backend={getattr(rakuten, 'backend', 'http')} "
+        f"storage_backend={getattr(object_storage, 'backend', 'scaffold')} "
         f"succeeded={len(result.succeeded_item_codes)} "
         f"failed={len(result.failed_item_codes)}"
     )
