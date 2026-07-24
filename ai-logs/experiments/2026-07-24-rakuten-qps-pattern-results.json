@@ -1,0 +1,627 @@
+{
+  "experiment_id": "2026-07-24-rakuten-qps-pattern",
+  "issue": 1603,
+  "started_at_utc": "2026-07-24T12:13:46.455845+00:00",
+  "finished_at_utc": "2026-07-24T12:16:02.066152+00:00",
+  "constraints": {
+    "hard_cap_qps": 10.0,
+    "previous_target_qps": 8,
+    "calls_per_trial": 4,
+    "call_sequence": [
+      "genre",
+      "ranking",
+      "item_search_p1",
+      "item_search_p2"
+    ],
+    "cooldown_sec": 8.0,
+    "trials_per_qps": 2
+  },
+  "credentials": {
+    "RAKUTEN_APPLICATION_ID_masked": "be***REDACTED***f4",
+    "RAKUTEN_ACCESS_KEY_present": true
+  },
+  "trials": [
+    {
+      "target_qps": 1.0,
+      "min_interval_ms": 1000,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 294.1675580004812,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 232.11257299408317,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 155.7101119979052,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 223.27493200282333,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 3907.559447005042
+    },
+    {
+      "target_qps": 1.0,
+      "min_interval_ms": 1000,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 94.01195799728157,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 397.80592500028433,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 191.1566769995261,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 343.60446199571015,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 4027.5916070022504
+    },
+    {
+      "target_qps": 2.0,
+      "min_interval_ms": 500,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 76.72999899659771,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 134.17228999605868,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 131.3838490023045,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 293.64095700293547,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 2136.4532340012374
+    },
+    {
+      "target_qps": 2.0,
+      "min_interval_ms": 500,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 82.86151500215055,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 140.36141600081464,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 163.90505600429606,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 217.92823400028283,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 2108.0051750032
+    },
+    {
+      "target_qps": 3.0,
+      "min_interval_ms": 334,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 107.42873699928168,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 234.2058639987954,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": false,
+          "elapsed_ms": 76.0571959981462,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p2",
+          "ok": false,
+          "elapsed_ms": 90.14848099468509,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        }
+      ],
+      "wall_ms": 1510.8213519997662
+    },
+    {
+      "target_qps": 3.0,
+      "min_interval_ms": 334,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 79.29434499965282,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 211.402871995233,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 176.90946599759627,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": false,
+          "elapsed_ms": 73.81741599965608,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        }
+      ],
+      "wall_ms": 1544.1915699993842
+    },
+    {
+      "target_qps": 4.0,
+      "min_interval_ms": 250,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 71.22894399799407,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 183.87411900039297,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": false,
+          "elapsed_ms": 49.696914000378456,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 153.53580299415626,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 1211.706043999584
+    },
+    {
+      "target_qps": 4.0,
+      "min_interval_ms": 250,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 89.19961099309148,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 127.69863500579959,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": false,
+          "elapsed_ms": 74.14279500517296,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p2",
+          "ok": false,
+          "elapsed_ms": 49.78024399315473,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        }
+      ],
+      "wall_ms": 1091.1476330002188
+    },
+    {
+      "target_qps": 5.0,
+      "min_interval_ms": 200,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 114.18185399816139,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 125.66308600071352,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 162.0367779978551,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 194.1328649991192,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 1196.4063859995804
+    },
+    {
+      "target_qps": 5.0,
+      "min_interval_ms": 200,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 77.47537800605642,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": false,
+          "elapsed_ms": 60.61395999859087,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 194.74864099902334,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": false,
+          "elapsed_ms": 57.522473005519714,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        }
+      ],
+      "wall_ms": 990.8992429991486
+    },
+    {
+      "target_qps": 6.0,
+      "min_interval_ms": 167,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 73.07736600341741,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 136.27371299662627,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 217.36383299867157,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": false,
+          "elapsed_ms": 90.74533300008625,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        }
+      ],
+      "wall_ms": 1020.3373920012382
+    },
+    {
+      "target_qps": 6.0,
+      "min_interval_ms": 167,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 56.72157700610114,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 120.97921300301095,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 229.05708700272953,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": false,
+          "elapsed_ms": 62.090305000310764,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        }
+      ],
+      "wall_ms": 970.3535509979702
+    },
+    {
+      "target_qps": 8.0,
+      "min_interval_ms": 125,
+      "trial_index": 1,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 91.51162299531279,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": true,
+          "elapsed_ms": 208.62965100241126,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p1",
+          "ok": false,
+          "elapsed_ms": 93.97903699573362,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 208.63307900435757,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 978.2285670007695
+    },
+    {
+      "target_qps": 8.0,
+      "min_interval_ms": 125,
+      "trial_index": 2,
+      "outcomes": [
+        {
+          "name": "genre",
+          "ok": true,
+          "elapsed_ms": 78.87840799958212,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "ranking",
+          "ok": false,
+          "elapsed_ms": 61.295339997741394,
+          "error_code": "GRS-EXT-102",
+          "is_rate_limited": true
+        },
+        {
+          "name": "item_search_p1",
+          "ok": true,
+          "elapsed_ms": 160.82769900094718,
+          "error_code": null,
+          "is_rate_limited": false
+        },
+        {
+          "name": "item_search_p2",
+          "ok": true,
+          "elapsed_ms": 228.51557400281308,
+          "error_code": null,
+          "is_rate_limited": false
+        }
+      ],
+      "wall_ms": 907.3199669946916
+    }
+  ],
+  "aggregate_by_qps": {
+    "1": {
+      "target_qps": 1.0,
+      "min_interval_ms": 1000,
+      "trials": 2,
+      "calls": 8,
+      "success": 8,
+      "failure": 0,
+      "rate_limited": 0,
+      "all_success_trials": 2,
+      "success_rate": 1.0,
+      "rate_limited_rate": 0.0,
+      "stable": true
+    },
+    "2": {
+      "target_qps": 2.0,
+      "min_interval_ms": 500,
+      "trials": 2,
+      "calls": 8,
+      "success": 8,
+      "failure": 0,
+      "rate_limited": 0,
+      "all_success_trials": 2,
+      "success_rate": 1.0,
+      "rate_limited_rate": 0.0,
+      "stable": true
+    },
+    "3": {
+      "target_qps": 3.0,
+      "min_interval_ms": 334,
+      "trials": 2,
+      "calls": 8,
+      "success": 5,
+      "failure": 3,
+      "rate_limited": 3,
+      "all_success_trials": 0,
+      "success_rate": 0.625,
+      "rate_limited_rate": 0.375,
+      "stable": false
+    },
+    "4": {
+      "target_qps": 4.0,
+      "min_interval_ms": 250,
+      "trials": 2,
+      "calls": 8,
+      "success": 5,
+      "failure": 3,
+      "rate_limited": 3,
+      "all_success_trials": 0,
+      "success_rate": 0.625,
+      "rate_limited_rate": 0.375,
+      "stable": false
+    },
+    "5": {
+      "target_qps": 5.0,
+      "min_interval_ms": 200,
+      "trials": 2,
+      "calls": 8,
+      "success": 6,
+      "failure": 2,
+      "rate_limited": 2,
+      "all_success_trials": 1,
+      "success_rate": 0.75,
+      "rate_limited_rate": 0.25,
+      "stable": false
+    },
+    "6": {
+      "target_qps": 6.0,
+      "min_interval_ms": 167,
+      "trials": 2,
+      "calls": 8,
+      "success": 6,
+      "failure": 2,
+      "rate_limited": 2,
+      "all_success_trials": 0,
+      "success_rate": 0.75,
+      "rate_limited_rate": 0.25,
+      "stable": false
+    },
+    "8": {
+      "target_qps": 8.0,
+      "min_interval_ms": 125,
+      "trials": 2,
+      "calls": 8,
+      "success": 6,
+      "failure": 2,
+      "rate_limited": 2,
+      "all_success_trials": 0,
+      "success_rate": 0.75,
+      "rate_limited_rate": 0.25,
+      "stable": false
+    }
+  },
+  "recommendation": {
+    "recommended_operational_qps": 2.0,
+    "note": "highest QPS with 0 rate-limits and all trials fully successful",
+    "inference": "Treat recommended value as operational target ceiling for sustained sequential batch calls on this egress IP. Keep hard cap at 10. MOD-BATCH-008 should still implement backoff on 429."
+  }
+}

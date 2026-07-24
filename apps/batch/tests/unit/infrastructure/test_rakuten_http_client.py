@@ -81,10 +81,53 @@ def test_fetch_genre_raw_success() -> None:
 
     assert result == payload
     mock_client.get.assert_called_once()
+    url = mock_client.get.call_args.args[0]
+    assert "openapi.rakuten.co.jp/ichibagt/api/IchibaGenre/Search/20260701" in url
     params = mock_client.get.call_args.kwargs["params"]
     assert params["applicationId"] == APP_ID
     assert params["accessKey"] == ACCESS_KEY
     assert params["genreId"] == "100"
+
+
+def test_fetch_ranking_raw_omits_domain_daily_period() -> None:
+    """ドメイン period=daily は楽天クエリへ送らない（現行 Ranking API）。"""
+
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"Items": []}
+
+    mock_client = MagicMock()
+    mock_client.get.return_value = response
+    mock_client.__enter__.return_value = mock_client
+    mock_client.__exit__.return_value = None
+
+    client = HttpRakutenApiClient(application_id=APP_ID, access_key=ACCESS_KEY)
+    with patch("httpx.Client", return_value=mock_client):
+        client.fetch_ranking_raw(genre_id="100", period="daily", page=1)
+
+    url = mock_client.get.call_args.args[0]
+    assert "openapi.rakuten.co.jp/ichibaranking/api/IchibaItem/Ranking/20220601" in url
+    params = mock_client.get.call_args.kwargs["params"]
+    assert "period" not in params
+    assert params["genreId"] == "100"
+
+
+def test_fetch_ranking_raw_sends_realtime_period() -> None:
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {"Items": []}
+
+    mock_client = MagicMock()
+    mock_client.get.return_value = response
+    mock_client.__enter__.return_value = mock_client
+    mock_client.__exit__.return_value = None
+
+    client = HttpRakutenApiClient(application_id=APP_ID, access_key=ACCESS_KEY)
+    with patch("httpx.Client", return_value=mock_client):
+        client.fetch_ranking_raw(genre_id="100", period="realtime", page=1)
+
+    params = mock_client.get.call_args.kwargs["params"]
+    assert params["period"] == "realtime"
 
 
 def test_fetch_ranking_raw_maps_429() -> None:
@@ -127,6 +170,10 @@ def test_fetch_item_search_raw_maps_timeout() -> None:
 def test_fetch_genre_raw_maps_400() -> None:
     response = MagicMock()
     response.status_code = 400
+    response.json.return_value = {
+        "error": "wrong_parameter",
+        "error_description": "specify valid applicationId",
+    }
 
     mock_client = MagicMock()
     mock_client.get.return_value = response
@@ -139,3 +186,6 @@ def test_fetch_genre_raw_maps_400() -> None:
             client.fetch_genre_raw(genre_id="bad")
 
     assert exc_info.value.code == "GRS-EXT-105"
+    assert "wrong_parameter" in str(exc_info.value)
+    assert "specify valid applicationId" in str(exc_info.value)
+    assert APP_ID not in str(exc_info.value)

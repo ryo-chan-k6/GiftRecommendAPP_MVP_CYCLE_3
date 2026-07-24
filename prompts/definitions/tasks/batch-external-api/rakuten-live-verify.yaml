@@ -1,0 +1,184 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-external-api-rakuten-live-verify"
+  title: "batch-external-api:Rakuten live疎通・レスポンス検証"
+  summary: "HttpRakutenApiClient 経由で楽天市場 API（genre / ranking / item_search）へ限定 live 疎通し、レスポンスパターンを記録する。CI 必須化・大量呼出は禁止。PoC TV-001〜003 と紐付ける。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-external-api:外部API本接続"
+  epic_issue_number: 1598
+  epic_branch: "feature/epic-1598-batch-external-api"
+  related_issues:
+    - 1601
+    - 1599
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  T2（#1601）で HttpRakutenApiClient / create_rakuten_client / 001〜004 CLI 配線と httpx mock UT まで完了予定。
+  実楽天市場 API への疎通・レスポンスパターン検証は T2 の必須ゲート外（CI 既定 off）。
+  テスト方針書は Mock だけでは足りないとして技術検証を推奨。PoC TV-001〜003 は方針のみ・未実施。
+  Human 方針: 本 Epic 配下の子 Task で local / 明示 live のみ実施し、結果は PoC 置き場へ記録する。
+
+objective: |
+  `--live-rakuten` / BATCH_RAKUTEN_LIVE 明示時のみ、HttpRakutenApiClient 経由で
+  genre / ranking / item_search の最小疎通と主要レスポンスパターンを確認し、結果を docs に残す。
+
+scope:
+  - "local / 明示 live のみ（--live-rakuten または BATCH_RAKUTEN_LIVE）"
+  - "genre / ranking / item_search 各 API の最小疎通（件数・ジャンルを限定）"
+  - "認証成功、主要フィールド有無、欠損、ページングの一端、代表エラー形式の観察"
+  - "結果記録（secret マスク）を docs/90_PoC/外部API疎通検証/ へ"
+  - "TV-001〜003 との対応関係を結果・設計反映メモに明示"
+  - "ギャップ一覧へ本 Task 進捗を追記"
+  - "必要なら最小 live 確認用スクリプト（secret は env のみ）"
+
+out_of_scope:
+  - "CI / PR 必須ゲートでの live 呼出"
+  - "production 環境での live 呼出"
+  - "大量・課金影響の大きい連続呼出・rate limit 意図的誘発（Human 承認なし）"
+  - "Object Storage / Embedding / Semantic LLM 本接続"
+  - "BATCH-018 Reco / 親 workflow"
+  - "正式 Batch 仕様書・テーブル設計の独断更新（設計反映はメモまで。正式反映は別 Task）"
+  - "HttpRakutenApiClient の大規模改修（致命不具合のみ報告または最小修正）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/テスト/テスト方針書.md"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-001_楽天商品検索API実疎通.md"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-002_楽天ランキングAPI実疎通.md"
+      required: true
+    - path: "docs/90_PoC/計画/TV要件・実施方針/TV-003_楽天ジャンルAPI実疎通.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/外部API疎通検証/"
+      action: "create"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "live 疎通結果（genre / ranking / item_search、secret マスク済み）"
+  - "レスポンスパターン観察メモ（欠損・エラー形式含む）"
+  - "TV-001〜003 対応関係の明示"
+  - "ギャップ一覧進捗更新"
+
+acceptance_criteria:
+  - "明示 live フラグなしでは live 呼出していない"
+  - "genre / ranking / item_search それぞれ最小1回以上の成功疎通、または失敗時は原因と再現条件を記録"
+  - "結果 docs に secret / .env 実値が含まれない"
+  - "CI 必須ゲート化・production live を含まない"
+  - "Related to（Closes 禁止）"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-external-api-rakuten-live-verify"
+  base: "feature/epic-1598-batch-external-api"
+  target: "feature/epic-1598-batch-external-api"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-24"
+    due_date: "2026-07-28"
+
+issue:
+  number: 1603
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1598
+      purpose: "親 Epic"
+  issues:
+    - number: 1601
+      purpose: "T2 HttpRakutenApiClient / CLI 配線（前提）"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "manual live verify（local・明示フラグ・件数限定）"
+    - "secret check（結果 docs / ログ）"
+  not_required:
+    - "CI live Rakuten"
+    - "unit test追加（必須ではない。必要時のみ）"
+  skip_reason:
+    "CI live Rakuten": "Epic / テスト方針どおり CI 既定 off。本 Task は local 技術検証"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "live は明示フラグのみ"
+    - "secret 非露出"
+    - "呼出件数が限定されている"
+    - "結果が PoC 置き場にあり TV-001〜003 と対応している"
+    - "正式仕様の独断更新がない"
+    - "Related to / PR target"
+  specialist_reviews:
+    test: true
+    security: true
+    docs: true
+
+human_decision_points:
+  - "rate limit 意図的誘発を追加で行うか（推奨: 現状不要）"
+  - "観察結果を正式 Batch 仕様へ反映する別 Task を起票するか"
+
+notes:
+  - "T2（#1601）未 merge の場合は当該 Branch / worktree 上の client を前提に実施してよい"
+  - "TV-004（属性 API）は MVP 任意のため本 Task 必須外"

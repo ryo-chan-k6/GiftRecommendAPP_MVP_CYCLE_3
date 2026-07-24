@@ -137,6 +137,7 @@ epic_scope:
   child_task_areas:
     - "external-api-inventory"
     - "rakuten-http-client"
+    - "rakuten-live-verify"
     - "embedding-http-client"
     - "cli-wiring"
     - "unit-test"

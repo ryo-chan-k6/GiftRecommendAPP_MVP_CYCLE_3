@@ -313,9 +313,17 @@ class ScaffoldRakutenApiClient:
 
 
 # 楽天公開 API（Ichiba）。プロジェクト docs に URL 正本がないため公式エンドポイントを使用。
-_GENRE_SEARCH_URL = "https://app.rakuten.co.jp/services/api/IchibaGenre/Search/20140222"
-_ITEM_RANKING_URL = "https://app.rakuten.co.jp/services/api/IchibaItem/Ranking/20170628"
-_ITEM_SEARCH_URL = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706"
+# 2026- 現行 endpoint（openapi.rakuten.co.jp）。旧 app.rakuten.co.jp は
+# 新形式 applicationId(UUID)+accessKey を受け付けず specify valid applicationId になる。
+_GENRE_SEARCH_URL = (
+    "https://openapi.rakuten.co.jp/ichibagt/api/IchibaGenre/Search/20260701"
+)
+_ITEM_RANKING_URL = (
+    "https://openapi.rakuten.co.jp/ichibaranking/api/IchibaItem/Ranking/20220601"
+)
+_ITEM_SEARCH_URL = (
+    "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701"
+)
 
 
 def mask_rakuten_secret(value: str) -> str:
@@ -334,6 +342,25 @@ def _mask_text(text: str, *, secrets: tuple[str, ...]) -> str:
         if secret and secret in masked:
             masked = masked.replace(secret, mask_rakuten_secret(secret))
     return masked
+
+
+def _rakuten_error_detail(response: object, *, secrets: tuple[str, ...]) -> str:
+    """Extract short Rakuten error/error_description without leaking secrets."""
+
+    try:
+        payload = response.json()  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    parts: list[str] = []
+    for key in ("error", "error_description"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            parts.append(f"{key}={_mask_text(value, secrets=secrets)}")
+    if not parts:
+        return ""
+    return ": " + "; ".join(parts)
 
 
 @dataclass
@@ -392,14 +419,18 @@ class HttpRakutenApiClient:
         period: str = "daily",
         page: int = 1,
     ) -> dict[str, object]:
+        # ドメイン上の period（daily 等）と楽天クエリ period は別物。
+        # 現行 Ranking API の period は realtime 等の限定値で、genreId 併用時は
+        # 送ると 400 になり得るため、API が認識する値のときだけ付与する。
         params = {
             **self._auth_params(),
             "genreId": genre_id,
-            "period": period,
             "page": str(page),
             "format": "json",
             "formatVersion": "2",
         }
+        if period == "realtime":
+            params["period"] = period
         return self._get_json(
             _ITEM_RANKING_URL,
             params,
@@ -504,11 +535,16 @@ class HttpRakutenApiClient:
         if response.status_code == 429:
             raise error_factory("GRS-EXT-102", "rakuten rate limited (HTTP 429)")  # type: ignore[operator]
         if response.status_code == 400:
-            raise error_factory("GRS-EXT-105", "rakuten invalid request (HTTP 400)")  # type: ignore[operator]
+            detail = _rakuten_error_detail(response, secrets=secrets)
+            raise error_factory(  # type: ignore[operator]
+                "GRS-EXT-105",
+                f"rakuten invalid request (HTTP 400){detail}",
+            )
         if response.status_code >= 400:
+            detail = _rakuten_error_detail(response, secrets=secrets)
             raise error_factory(  # type: ignore[operator]
                 "GRS-EXT-100",
-                f"rakuten HTTP {response.status_code}",
+                f"rakuten HTTP {response.status_code}{detail}",
             )
 
         try:
