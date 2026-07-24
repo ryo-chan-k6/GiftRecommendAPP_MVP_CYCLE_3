@@ -26,6 +26,7 @@ port = 54323
 [storage]
 enabled = true
 file_size_limit = "50MiB"
+# named bucket 定義は migrations 正本（raw-products: 20260725120000_raw_products_storage_bucket.sql）
 
 [auth]
 enabled = true
