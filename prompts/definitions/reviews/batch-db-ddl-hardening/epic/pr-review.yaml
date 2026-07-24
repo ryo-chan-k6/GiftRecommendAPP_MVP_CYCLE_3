@@ -6,7 +6,7 @@ review:
   title: "batch-db-ddl-hardening Epic PRレビュー"
   summary: "E2 IF・DB・DDL 本実装 Epic の develop 向け Epic PR を AI Review する。"
   type: "epic_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -21,7 +21,7 @@ target:
   task_definition: "prompts/definitions/epics/batch-db-ddl-hardening/epic.yaml"
   target_branch: "develop"
   parent_epic_issue: "[Epic]batch-db-ddl-hardening:IF・DB・DDL本実装"
-  parent_epic_branch: "feature/epic--batch-db-ddl-hardening"
+  parent_epic_branch: "feature/epic-1561-batch-db-ddl-hardening"
 
 commands:
   primary: "/review-pr"
@@ -50,4 +50,4 @@ review_points:
   - "secret 非含有"
 
 notes:
-  - "番号確定後に更新"
+  - "Epic PR 作成時に PR 番号を更新"
