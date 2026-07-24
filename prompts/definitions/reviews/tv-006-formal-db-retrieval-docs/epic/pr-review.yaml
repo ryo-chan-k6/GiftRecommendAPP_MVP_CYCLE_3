@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1594
   issue:
     number: 1591
   task_definition: "prompts/definitions/epics/tv-006-formal-db-retrieval-docs/epic.yaml"
