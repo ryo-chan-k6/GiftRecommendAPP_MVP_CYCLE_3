@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1593
   issue:
     number: 1586
   task_definition: "prompts/definitions/epics/tv-006-pgvector-10k-scale/epic.yaml"
