@@ -23,11 +23,14 @@ from batch.infrastructure.object_storage import (
     StoredObject,
 )
 from batch.infrastructure.rakuten import (
+    HttpRakutenApiClient,
     RakutenApiClient,
     RakutenGenre,
     RakutenItem,
     RakutenRankingEntry,
     ScaffoldRakutenApiClient,
+    create_rakuten_client,
+    resolve_live_rakuten_flag,
 )
 
 __all__ = [
@@ -37,6 +40,7 @@ __all__ = [
     "DbWriter",
     "ExternalAiClient",
     "ExternalAiResponse",
+    "HttpRakutenApiClient",
     "LogContext",
     "LogRecord",
     "ObjectRef",
@@ -53,6 +57,8 @@ __all__ = [
     "ScaffoldRakutenApiClient",
     "StoredObject",
     "create_db_writer",
+    "create_rakuten_client",
     "mask_database_url",
     "resolve_job_db_writer",
+    "resolve_live_rakuten_flag",
 ]

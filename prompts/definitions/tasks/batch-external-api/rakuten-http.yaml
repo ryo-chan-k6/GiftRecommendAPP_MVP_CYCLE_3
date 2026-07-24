@@ -1,0 +1,177 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-external-api-rakuten-http"
+  title: "batch-external-api:Rakuten HTTP client"
+  summary: "HttpRakutenApiClient と create_rakuten_client（Scaffold 切替・live 既定 off）を追加し、BATCH-001〜004 CLI に配線する。Object Storage / Embedding は後続。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-external-api:外部API本接続"
+  epic_issue_number: 1598
+  epic_branch: "feature/epic-1598-batch-external-api"
+  related_issues:
+    - 1599
+  related_prs:
+    - 1600
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  T1 完了。楽天は Scaffold のみ。CLI 非 demo は exit 3。
+  Human 推奨どおり live は既定 off（--live-rakuten / BATCH_RAKUTEN_LIVE）。
+
+objective: |
+  楽天 HTTP client を Scaffold 切替付きで導入し、001〜004 が明示 live 時に本接続できる。
+
+scope:
+  - "HttpRakutenApiClient（genre / ranking / item_search raw）"
+  - "create_rakuten_client（Scaffold 切替・live 既定 off）"
+  - "secret マスク（エラーメッセージ）"
+  - "BATCH-001〜004 CLI 配線（Object Storage は Scaffold 暫定）"
+  - "UT（httpx mock）"
+  - "ギャップ一覧 T2 進捗"
+  - "Task / Review Definition"
+  - "httpx 依存追加"
+
+out_of_scope:
+  - "Object Storage 本接続（T4）"
+  - "Embedding 本接続（T3）"
+  - "Semantic LLM"
+  - "018 Reco / 親 workflow"
+  - "CI 既定での live 呼出"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/ranking_snapshot/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_pseudo_diff/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_recheck/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/pyproject.toml"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/**"
+      action: "update"
+      required: true
+
+deliverables:
+  - "HttpRakutenApiClient / create_rakuten_client"
+  - "001〜004 CLI 配線"
+  - "UT / ギャップ一覧"
+
+acceptance_criteria:
+  - "live 既定 off で Scaffold に落ちる"
+  - "Http client が Protocol を満たす"
+  - "secret がエラーに露出しない"
+  - "Related to（Closes 禁止）"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-external-api-rakuten-http"
+  base: "feature/epic-1598-batch-external-api"
+  target: "feature/epic-1598-batch-external-api"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-24"
+    due_date: "2026-07-28"
+
+issue:
+  number: 1601
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1598
+      purpose: "親 Epic"
+  issues:
+    - number: 1599
+      purpose: "T1 棚卸し完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+  conflict_risk: "high"
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "live Rakuten integration"
+  skip_reason:
+    "live Rakuten integration": "CI 既定 off。UT は httpx mock"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "live 既定 off"
+    - "secret 非露出"
+    - "001〜004 のみ（Storage/Embedding 非混入）"
+    - "Related to / PR target"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points: []
+
+notes:
+  - "Object Storage は T2 では Scaffold 暫定"
