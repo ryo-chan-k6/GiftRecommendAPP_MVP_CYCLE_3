@@ -41,12 +41,12 @@
 
 | 項目 | 状態 |
 | ---- | ---- |
-| Rakuten client | `ScaffoldRakutenApiClient` のみ。HTTP 実装なし |
+| Rakuten client | `HttpRakutenApiClient` + `create_rakuten_client`（**live 既定 off** → Scaffold） |
 | Embedding client | `ScaffoldEmbeddingClient`（決定論的疑似ベクトル）。実 OpenAI 呼出なし |
-| Object Storage | `ScaffoldObjectStorageClient` のみ |
+| Object Storage | `ScaffoldObjectStorageClient` のみ（T2 配線でも暫定 Scaffold） |
 | Semantic 生成 | `ScaffoldItemSemanticAdapter`（Rule-first / LLM 非呼出） |
-| CLI 非 `--scaffold-demo` | 設定検証後、多くは「Real … not enabled」で **exit 3** |
-| E2 との関係 | DbWriter / 代表 UPSERT は利用可能。外部 I/O は未接続 |
+| CLI 非 `--scaffold-demo` | 001〜004: live 未指定は **exit 3**。`--live-rakuten` / `BATCH_RAKUTEN_LIVE` で HTTP。他 Batch は未接続 |
+| E2 との関係 | DbWriter / 代表 UPSERT は利用可能。外部 I/O は楽天のみ T2 で接続可 |
 
 ---
 
@@ -54,14 +54,14 @@
 
 | 境界 | Protocol / 入口 | Scaffold 実装 | 実 client | factory 切替 |
 | ---- | --------------- | ------------- | --------- | ------------ |
-| 楽天 API | `RakutenApiClient` | `ScaffoldRakutenApiClient` | **なし** | **なし** |
+| 楽天 API | `RakutenApiClient` | `ScaffoldRakutenApiClient` | `HttpRakutenApiClient` | `create_rakuten_client`（live 既定 off） |
 | Embedding（IF-EXT-005） | `EmbeddingClient` | `ScaffoldEmbeddingClient` | **なし** | **なし** |
 | External AI（汎用） | `ExternalAiClient` | `ScaffoldExternalAiClient` | **なし** | **なし** |
 | Object Storage | `ObjectStorageClient` | `ScaffoldObjectStorageClient` | **なし** | **なし** |
 | Item Semantic 生成 | adapter（batch 内） | `ScaffoldItemSemanticAdapter` | **なし**（LLM） | **なし** |
 | Item Embedding 生成 | adapter（batch 内） | `ScaffoldItemEmbeddingAdapter` | ScaffoldEmbedding 経由 | **なし** |
 
-**補足（事実）:** E2 の `create_db_writer` と同型の factory は、外部 API 側には未導入。
+**補足（事実）:** 楽天は `create_rakuten_client` 導入済み。Embedding / Object Storage の factory は未導入。
 
 ---
 
@@ -69,10 +69,10 @@
 
 | Batch | 主な外部依存 | CLI 非 demo の現状 | 備考 |
 | ----- | ------------ | ------------------ | ---- |
-| 001 genre_sync | 楽天 + Object Storage | Rakuten HTTP 未配線 → exit 3 | `RAKUTEN_APPLICATION_ID` 必須チェックあり |
+| 001 genre_sync | 楽天 + Object Storage | live off → exit 3。`--live-rakuten` で HTTP（Storage は Scaffold） | `RAKUTEN_*` + live 必須 |
 | 002 ranking_snapshot | 楽天 + Object Storage | 同上 | |
 | 003 item_pseudo_diff | 楽天 + Object Storage | 同上 | |
-| 004 item_recheck | 楽天 + Object Storage | 同上 | |
+| 004 item_recheck | 楽天 + Object Storage | 同上（seed 空時は 0 件成功可） | DB SELECT seed は未実装 |
 | 005 raw_staging | Object Storage + DB 読取 | Storage/DB 読取未配線 → exit 3 | |
 | 006〜008 / 009〜017（DB 中心） | 主に DB（E2） | DbWriter 配線済み。読取 SELECT / 外部 API は別 | 本 Epic の主対象は外部 I/O 側 |
 | 010 item_semantic | Semantic adapter（LLM stub） | DB 読取未配線メッセージ | LLM 本接続は Human 確認 |
@@ -88,8 +88,9 @@
 
 | 環境変数名 | 用途（推論含む） | E3 での扱い（案） |
 | ---------- | ---------------- | ----------------- |
-| `RAKUTEN_APPLICATION_ID` | 楽天 API 認証 | 本接続時必須 |
-| `RAKUTEN_ACCESS_KEY` | 楽天 API 認証（設定に存在） | 要仕様突合 |
+| `RAKUTEN_APPLICATION_ID` | 楽天 API 認証 | `--live-rakuten` 時必須 |
+| `RAKUTEN_ACCESS_KEY` | 楽天 API 認証 | `--live-rakuten` 時必須 |
+| `BATCH_RAKUTEN_LIVE` | live 切替（`1`/`true`/`yes`/`on`） | CLI `--live-rakuten` と同等 |
 | `OPENAI_API_KEY` | Embedding / LLM | Embedding 本接続時。ログ禁止 |
 | `DATABASE_URL` | DB（E2） | 本 Epic 主対象外（併用可） |
 | Object Storage 系 | bucket / endpoint 等 | 実装・docs 突合が後続 Task |
@@ -114,7 +115,7 @@
 | 順 | 推奨 Task | 内容 | Human 関与 |
 | -- | --------- | ---- | ---------- |
 | T1 | **本 Task（棚卸し）** | 本 docs | Review |
-| T2 | Rakuten HTTP client | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
+| T2 | Rakuten HTTP client（**進捗: PR / #1601**） | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
 | T3 | Embedding client | OpenAI Embeddings 本接続 + Scaffold 切替。015 adapter 配線 | Review / secret |
 | T4 | Object Storage client | 実 Storage client（範囲は棚卸し結果で確定）+ 001〜005 配線 | Review |
 | T5 | UT / 境界 | Protocol 互換・scaffold 回帰・secret マスク。live は明示フラグのみ | — |
@@ -150,3 +151,4 @@
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-24 | 初版（E3 inventory / #1599） |
+| 2026-07-24 | T2: `HttpRakutenApiClient` / factory / 001〜004 CLI / UT（#1601） |

@@ -310,3 +310,243 @@ class ScaffoldRakutenApiClient:
                 code="GRS-EXT-100",
                 message="scaffold forced item search fetch failure",
             )
+
+
+# 楽天公開 API（Ichiba）。プロジェクト docs に URL 正本がないため公式エンドポイントを使用。
+_GENRE_SEARCH_URL = "https://app.rakuten.co.jp/services/api/IchibaGenre/Search/20140222"
+_ITEM_RANKING_URL = "https://app.rakuten.co.jp/services/api/IchibaItem/Ranking/20170628"
+_ITEM_SEARCH_URL = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706"
+
+
+def mask_rakuten_secret(value: str) -> str:
+    """Redact Rakuten credentials that may appear in error strings."""
+
+    if value.strip() == "":
+        return ""
+    if len(value) <= 8:
+        return "***REDACTED***"
+    return f"{value[:2]}***REDACTED***{value[-2:]}"
+
+
+def _mask_text(text: str, *, secrets: tuple[str, ...]) -> str:
+    masked = text
+    for secret in secrets:
+        if secret and secret in masked:
+            masked = masked.replace(secret, mask_rakuten_secret(secret))
+    return masked
+
+
+@dataclass
+class HttpRakutenApiClient:
+    """Rakuten Ichiba HTTP client (genre / ranking / item_search).
+
+    Secrets are never logged. Errors map to GRS-EXT-* used by job layers.
+    """
+
+    application_id: str
+    access_key: str
+    timeout_seconds: float = 30.0
+    backend: str = "http"
+
+    def search_items(self, *, keyword: str, page: int = 1) -> tuple[RakutenItem, ...]:
+        raw = self.fetch_item_search_raw(
+            cursor_type="keyword",
+            keyword=keyword,
+            page=page,
+        )
+        items_raw = raw.get("Items")
+        if not isinstance(items_raw, list):
+            return ()
+        result: list[RakutenItem] = []
+        for entry in items_raw:
+            if not isinstance(entry, dict):
+                continue
+            item_obj = entry.get("Item") if isinstance(entry.get("Item"), dict) else entry
+            if not isinstance(item_obj, dict):
+                continue
+            code = str(item_obj.get("itemCode") or "")
+            name = str(item_obj.get("itemName") or "")
+            if code:
+                result.append(RakutenItem(item_code=code, item_name=name))
+        return tuple(result)
+
+    def fetch_ranking(self, *, genre_id: str, page: int = 1) -> tuple[RakutenRankingEntry, ...]:
+        raw = self.fetch_ranking_raw(genre_id=genre_id, page=page)
+        items_raw = raw.get("Items")
+        if not isinstance(items_raw, list):
+            return ()
+        entries: list[RakutenRankingEntry] = []
+        for item in items_raw:
+            if not isinstance(item, dict):
+                continue
+            rank = item.get("rank")
+            code = item.get("itemCode")
+            if isinstance(rank, int) and isinstance(code, str) and code:
+                entries.append(RakutenRankingEntry(rank=rank, item_code=code))
+        return tuple(entries)
+
+    def fetch_ranking_raw(
+        self,
+        *,
+        genre_id: str,
+        period: str = "daily",
+        page: int = 1,
+    ) -> dict[str, object]:
+        params = {
+            **self._auth_params(),
+            "genreId": genre_id,
+            "period": period,
+            "page": str(page),
+            "format": "json",
+            "formatVersion": "2",
+        }
+        return self._get_json(
+            _ITEM_RANKING_URL,
+            params,
+            error_factory=lambda code, message: RakutenRankingApiError(
+                genre_id=genre_id,
+                page=page,
+                code=code,
+                message=message,
+            ),
+        )
+
+    def fetch_item_search_raw(
+        self,
+        *,
+        cursor_type: str,
+        genre_id: str | None = None,
+        keyword: str | None = None,
+        item_code: str | None = None,
+        sort: str | None = None,
+        page: int = 1,
+        hits: int = 30,
+    ) -> dict[str, object]:
+        params: dict[str, str] = {
+            **self._auth_params(),
+            "format": "json",
+            "formatVersion": "2",
+            "page": str(page),
+            "hits": str(min(hits, 30)),
+        }
+        if genre_id:
+            params["genreId"] = genre_id
+        if keyword:
+            params["keyword"] = keyword
+        if item_code:
+            params["itemCode"] = item_code
+        resolved_sort = sort
+        if resolved_sort is None and cursor_type in {"genre", "update_sort"}:
+            resolved_sort = "-updateTimestamp"
+        if resolved_sort:
+            params["sort"] = resolved_sort
+
+        return self._get_json(
+            _ITEM_SEARCH_URL,
+            params,
+            error_factory=lambda code, message: RakutenItemSearchApiError(
+                cursor_type=cursor_type,
+                page=page,
+                code=code,
+                message=message,
+            ),
+        )
+
+    def fetch_genre(self, *, genre_id: str) -> RakutenGenre | None:
+        from batch.infrastructure.rakuten.adapter import adapt_genre_raw_payload
+
+        raw = self.fetch_genre_raw(genre_id=genre_id)
+        return adapt_genre_raw_payload(raw, requested_genre_id=genre_id)
+
+    def fetch_genre_raw(self, *, genre_id: str) -> dict[str, object]:
+        params = {
+            **self._auth_params(),
+            "genreId": genre_id,
+            "format": "json",
+            "formatVersion": "2",
+        }
+        return self._get_json(
+            _GENRE_SEARCH_URL,
+            params,
+            error_factory=lambda code, message: RakutenGenreApiError(
+                genre_id=genre_id,
+                code=code,
+                message=message,
+            ),
+        )
+
+    def _auth_params(self) -> dict[str, str]:
+        return {
+            "applicationId": self.application_id,
+            "accessKey": self.access_key,
+        }
+
+    def _get_json(
+        self,
+        url: str,
+        params: dict[str, str],
+        *,
+        error_factory: object,
+    ) -> dict[str, object]:
+        import httpx
+
+        secrets = (self.application_id, self.access_key)
+        try:
+            with httpx.Client(timeout=self.timeout_seconds) as client:
+                response = client.get(url, params=params)
+        except httpx.TimeoutException as exc:
+            message = _mask_text(str(exc), secrets=secrets)
+            raise error_factory("GRS-EXT-101", f"rakuten timeout: {message}") from exc  # type: ignore[operator]
+        except httpx.HTTPError as exc:
+            message = _mask_text(str(exc), secrets=secrets)
+            raise error_factory("GRS-EXT-100", f"rakuten transport error: {message}") from exc  # type: ignore[operator]
+
+        if response.status_code == 429:
+            raise error_factory("GRS-EXT-102", "rakuten rate limited (HTTP 429)")  # type: ignore[operator]
+        if response.status_code == 400:
+            raise error_factory("GRS-EXT-105", "rakuten invalid request (HTTP 400)")  # type: ignore[operator]
+        if response.status_code >= 400:
+            raise error_factory(  # type: ignore[operator]
+                "GRS-EXT-100",
+                f"rakuten HTTP {response.status_code}",
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise error_factory("GRS-EXT-103", "rakuten invalid JSON response") from exc  # type: ignore[operator]
+        if not isinstance(payload, dict):
+            raise error_factory("GRS-EXT-103", "rakuten response is not an object")  # type: ignore[operator]
+        return payload
+
+
+def create_rakuten_client(
+    application_id: str | None,
+    access_key: str | None,
+    *,
+    live: bool = False,
+    fallback: RakutenApiClient | None = None,
+) -> RakutenApiClient:
+    """Build a RakutenApiClient.
+
+    - ``live=False``（既定）→ Scaffold（CI / 通常 local）
+    - ``live=True`` かつ credentials あり → HttpRakutenApiClient
+    - ``live=True`` だが credentials 不足 → Scaffold（呼び出し側で exit 2 を推奨）
+    """
+
+    if live and application_id and access_key:
+        return HttpRakutenApiClient(
+            application_id=application_id,
+            access_key=access_key,
+        )
+    return fallback or ScaffoldRakutenApiClient()
+
+
+def resolve_live_rakuten_flag(*, cli_live: bool, env_value: str | None) -> bool:
+    """Resolve live flag from CLI and ``BATCH_RAKUTEN_LIVE`` env."""
+
+    if cli_live:
+        return True
+    if env_value is None:
+        return False
+    return env_value.strip().lower() in {"1", "true", "yes", "on"}
