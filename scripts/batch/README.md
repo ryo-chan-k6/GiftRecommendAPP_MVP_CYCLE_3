@@ -14,6 +14,22 @@ Batch 手動実行・dry-run・再実行補助を配置するディレクトリ�
 - README のみ
 - 物理名正本: `RAKUTEN_APPLICATION_ID`, `OBJECT_STORAGE_*`（§19.7.1）
 
+## live 疎通（#1603）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| スクリプト | `rakuten_live_verify.py` |
+| 用途 | TV-001〜003 向けの最小 live 疎通（明示 `--live-rakuten` のみ） |
+| 出力 | `scripts/batch/output-rakuten-live/`（gitignored） |
+| secret | env の `RAKUTEN_APPLICATION_ID` / `RAKUTEN_ACCESS_KEY`。値をログに出さない |
+
+```bash
+set -a && source .env && set +a
+cd apps/batch
+uv run python ../../scripts/batch/rakuten_live_verify.py --live-rakuten \
+  --output-dir ../../scripts/batch/output-rakuten-live
+```
+
 ## 配置予定（後続）
 
 - ローカル dry-run 起動補助

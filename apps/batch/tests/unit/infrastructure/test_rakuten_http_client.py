@@ -127,6 +127,10 @@ def test_fetch_item_search_raw_maps_timeout() -> None:
 def test_fetch_genre_raw_maps_400() -> None:
     response = MagicMock()
     response.status_code = 400
+    response.json.return_value = {
+        "error": "wrong_parameter",
+        "error_description": "specify valid applicationId",
+    }
 
     mock_client = MagicMock()
     mock_client.get.return_value = response
@@ -139,3 +143,6 @@ def test_fetch_genre_raw_maps_400() -> None:
             client.fetch_genre_raw(genre_id="bad")
 
     assert exc_info.value.code == "GRS-EXT-105"
+    assert "wrong_parameter" in str(exc_info.value)
+    assert "specify valid applicationId" in str(exc_info.value)
+    assert APP_ID not in str(exc_info.value)

@@ -115,14 +115,17 @@
 | 順 | 推奨 Task | 内容 | Human 関与 |
 | -- | --------- | ---- | ---------- |
 | T1 | **本 Task（棚卸し）** | 本 docs | Review |
-| T2 | Rakuten HTTP client（**進捗: PR / #1601**） | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
+| T2 | Rakuten HTTP client（**完了 / #1601 / #1602**） | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
+| T2b | Rakuten live 疎通（**進捗: #1603**） | genre / ranking / item_search の local 明示 live。PoC TV-001〜003。初回は認証失敗で Block | Review / secret |
 | T3 | Embedding client | OpenAI Embeddings 本接続 + Scaffold 切替。015 adapter 配線 | Review / secret |
 | T4 | Object Storage client | 実 Storage client（範囲は棚卸し結果で確定）+ 001〜005 配線 | Review |
 | T5 | UT / 境界 | Protocol 互換・scaffold 回帰・secret マスク。live は明示フラグのみ | — |
 
-**推奨着手順（推論）:** T1 → **T2（楽天）** → T3（Embedding）→ T4（Storage）→ T5。
+**推奨着手順（推論）:** T1 → T2（楽天）→ **T2b（live 疎通）** → T3（Embedding）→ T4（Storage）→ T5。
 
 **Semantic LLM:** MVP は Rule-first。本接続を E3 に含めるかは Human 確認（推奨: **含めない / 後続**）。
+
+**T2b 補足（事実）:** 2026-07-24 local 実行では HTTP 400 / `specify valid applicationId`。有効 credential 再投入後の再実行が必要。
 
 ---
 
@@ -152,3 +155,4 @@
 | ---- | ---- |
 | 2026-07-24 | 初版（E3 inventory / #1599） |
 | 2026-07-24 | T2: `HttpRakutenApiClient` / factory / 001〜004 CLI / UT（#1601） |
+| 2026-07-24 | T2b: Rakuten live 疎通検証（#1603）。認証失敗により Block |

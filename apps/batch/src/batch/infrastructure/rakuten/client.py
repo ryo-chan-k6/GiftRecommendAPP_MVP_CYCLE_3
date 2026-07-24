@@ -336,6 +336,25 @@ def _mask_text(text: str, *, secrets: tuple[str, ...]) -> str:
     return masked
 
 
+def _rakuten_error_detail(response: object, *, secrets: tuple[str, ...]) -> str:
+    """Extract short Rakuten error/error_description without leaking secrets."""
+
+    try:
+        payload = response.json()  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    parts: list[str] = []
+    for key in ("error", "error_description"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            parts.append(f"{key}={_mask_text(value, secrets=secrets)}")
+    if not parts:
+        return ""
+    return ": " + "; ".join(parts)
+
+
 @dataclass
 class HttpRakutenApiClient:
     """Rakuten Ichiba HTTP client (genre / ranking / item_search).
@@ -504,11 +523,16 @@ class HttpRakutenApiClient:
         if response.status_code == 429:
             raise error_factory("GRS-EXT-102", "rakuten rate limited (HTTP 429)")  # type: ignore[operator]
         if response.status_code == 400:
-            raise error_factory("GRS-EXT-105", "rakuten invalid request (HTTP 400)")  # type: ignore[operator]
+            detail = _rakuten_error_detail(response, secrets=secrets)
+            raise error_factory(  # type: ignore[operator]
+                "GRS-EXT-105",
+                f"rakuten invalid request (HTTP 400){detail}",
+            )
         if response.status_code >= 400:
+            detail = _rakuten_error_detail(response, secrets=secrets)
             raise error_factory(  # type: ignore[operator]
                 "GRS-EXT-100",
-                f"rakuten HTTP {response.status_code}",
+                f"rakuten HTTP {response.status_code}{detail}",
             )
 
         try:
