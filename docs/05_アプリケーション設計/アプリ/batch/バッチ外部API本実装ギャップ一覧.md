@@ -119,7 +119,7 @@
 | -- | --------- | ---- | ---------- |
 | T1 | **本 Task（棚卸し）** | 本 docs | Review |
 | T2 | Rakuten HTTP client（**完了 / #1601 / #1602**） | `HttpRakutenApiClient` + `create_rakuten_client`（Scaffold 切替）。001〜004 CLI 配線 | Review / secret |
-| T2b | Rakuten live 疎通（**進捗: #1603**） | genre / ranking / item_search の **WSL local** 明示 live。PoC TV-001〜003。目標 QPS=8・egress IP 照合必須 | Review / secret |
+| T2b | Rakuten live 疎通（**進捗: #1603 / Adjust**） | openapi endpoint 移行後、genre / ranking / item_search 成功。QPS=8・IP 必須。adapter / 正式仕様反映は残 | Review / secret |
 | T2c | External API Rate Limiter（`MOD-BATCH-008`） | 目標 QPS=8（ハードキャップ 10）。001〜004 / `HttpRakutenApiClient` 配線。#1603 直後の別 Task | Review |
 | T3 | Embedding client | OpenAI Embeddings 本接続 + Scaffold 切替。015 adapter 配線 | Review / secret |
 | T4 | Object Storage client | 実 Storage client（範囲は棚卸し結果で確定）+ 001〜005 配線 | Review |
@@ -129,7 +129,7 @@
 
 **Semantic LLM:** MVP は Rule-first。本接続を E3 に含めるかは Human 確認（推奨: **含めない / 後続**）。
 
-**T2b 補足（事実）:** 2026-07-24 local 実行では HTTP 400 / `specify valid applicationId`。有効 credential 再投入後の再実行が必要。Human 決定（同日）: 目標 QPS=8、egress IP 照合必須、本番 egress は Backlog。
+**T2b 補足（事実）:** 旧 `app.rakuten.co.jp` endpoint では新 credential（UUID + `pk_`）が `specify valid applicationId`。`openapi.rakuten.co.jp` 系へ移行後に 3 API 成功疎通。短時間連続実行で ranking 429 を観測。判定 **Adjust**。
 
 ### 7.1 Backlog（未検討・Human 決定）
 
@@ -171,3 +171,4 @@
 | 2026-07-24 | T2: `HttpRakutenApiClient` / factory / 001〜004 CLI / UT（#1601） |
 | 2026-07-24 | T2b: Rakuten live 疎通検証（#1603）。認証失敗により Block |
 | 2026-07-24 | Human 決定: 目標 QPS=8、egress IP 照合必須、T2c Rate Limiter 別 Task、本番 egress を Backlog（BL-RAKUTEN-EGRESS-PROD） |
+| 2026-07-24 | T2b: openapi endpoint 移行・live 3 API 成功（Adjust）。Genre `genre` キー / Ranking period 扱い / 429 を記録 |

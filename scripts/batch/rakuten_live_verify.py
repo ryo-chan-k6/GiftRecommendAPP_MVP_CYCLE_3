@@ -298,7 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         _run_call(
             "genre.fetch_genre_raw",
             lambda: client.fetch_genre_raw(genre_id=args.genre_id),
-            nested_path="current",
+            nested_path="genre",
         )
     )
     _pace()
@@ -347,9 +347,11 @@ def main(argv: list[str] | None = None) -> int:
 
     for call in calls:
         if call.ok and not call.nested_field_keys and call.name.startswith("genre"):
-            call.observations.append("current/children keys may be absent depending on genreId")
+            call.observations.append("genre/children keys may be absent depending on genreId")
         if call.ok and call.counts.get("Items", 0) == 0 and "item_search" in call.name:
             call.observations.append("Items empty — keyword/genre may yield zero hits")
+        if call.ok and "genre" in call.top_level_keys and "current" not in call.top_level_keys:
+            call.observations.append("format uses 'genre' (not legacy 'current')")
 
     report = {
         "task": "batch-external-api-rakuten-live-verify",

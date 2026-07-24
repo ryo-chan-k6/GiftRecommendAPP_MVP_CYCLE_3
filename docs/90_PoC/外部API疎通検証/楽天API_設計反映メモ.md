@@ -13,17 +13,18 @@
 
 ---
 
-## 2. 反映候補（未確定）
+## 2. 反映候補
 
 | 反映先候補 | 示唆 | 優先 | 状態 |
 | ---------- | ---- | ---- | ---- |
-| Error / GRS-EXT | HTTP 400 body の `error` / `error_description` をログ短文に残す方針は有用。`HttpRakutenApiClient` へ最小実装済み | 高 | 正式 Error docs 反映は別 Task |
-| Batch 認証設定 | `RAKUTEN_APPLICATION_ID` + `RAKUTEN_ACCESS_KEY` の両方が運用必須。`.env.example` に ACCESS_KEY 名を追記済み | 高 | 有効 credential は Human が local `.env` に設定 |
-| QPS / Rate Limiter | 目標 QPS=**8**、ハードキャップ 10。`MOD-BATCH-008` 本実装は別 Task。#1603 はハーネス最小間隔のみ | 高 | Human 決定済（2026-07-24） |
-| egress IP | live は登録 IP のみ。検証ハーネスで照合必須。**本番 egress 設計は Backlog（未検討）** | 高 | Human 決定済 |
-| live 運用 | CI 既定 off・明示フラグのみ、は本検証でも妥当（動的 IP のため） | 中 | E3 方針維持 |
-| 成功時 schema | 未観測。再計測後に Raw / adapter 突合 Task を検討 | 中 | credential 再投入後 |
-| Retry / 429 | 本 Phase 未実施。意図的誘発は推奨しない | 低 | Human 承認後の候補 |
+| HttpRakutenApiClient endpoint | 現行は `openapi.rakuten.co.jp`（genre=`ichibagt` / ranking=`ichibaranking` / item=`ichibams`）。旧 `app.rakuten.co.jp` は新 credential で `specify valid applicationId` | 高 | **#1603 で最小修正済み** |
+| Ranking `period` | ドメイン `daily` と楽天クエリ `period` は別物。現行 API へは `realtime` のみ送る。`daily` は送らない | 高 | client 最小修正済み。正式仕様へ明記は別 Task |
+| Genre adapter | 現行 Raw は `genre`（`current` ではない）。`ancestors` / `siblings` / `children` | 高 | adapter 突合は別 Task |
+| Item Search / Ranking adapter | formatVersion=2 相当の Item キーを live で確認。突合・欠損方針は別 Task | 中 | 観測済み |
+| QPS / Rate Limiter | 目標 QPS=8。短時間連続 live で ranking 429（`GRS-EXT-102`）を観測。`MOD-BATCH-008` 本実装は T2c | 高 | Human 決定済 |
+| egress IP | live は登録 IP のみ・ハーネス照合必須。**本番 egress は Backlog** | 高 | Human 決定済 |
+| Error / GRS-EXT | 400 body の `error` / `error_description` 短文付与は有用。invalid genre は `genreId is a 6 digit integer, or 0` | 中 | client 実装済み。正式 Error docs は別 Task |
+| 認証 | UUID `applicationId` + `pk_` `accessKey` 必須。`.env.example` に名を追記済み | 高 | 完了 |
 
 ---
 
@@ -31,8 +32,8 @@
 
 | TV | 本 Task | 残作業 |
 | -- | ------- | ------ |
-| TV-001〜003 方針 | ハーネス・失敗形式・再現条件を記録 | 成功疎通の再実行（IP / QPS 制約込み） |
-| S4 正式反映 | メモのみ | 別 Task で Batch 仕様へ |
+| TV-001〜003 | live 成功疎通・形状・429・endpoint 移行を記録 | 正式 Batch / adapter 反映（別 Task） |
+| S4 正式反映 | メモのみ | 別 Task |
 
 ---
 
@@ -40,11 +41,11 @@
 
 | No | 事項 | 状態 |
 | -- | ---- | ---- |
-| 1 | 目標 QPS / IP 必須 / Rate Limiter Task 切り / 本番 egress Backlog | **決定済**（上記 human-decision） |
-| 2 | 有効 credential を local env に設定し、ハーネスを再実行するか | 未実施（Human） |
-| 3 | rate limit 意図的誘発を追加で行うか | 推奨: 現状不要 |
-| 4 | 成功疎通後に正式 Batch 仕様へ反映する別 Task を起票するか | 未判断 |
-| 5 | `MOD-BATCH-008` Rate Limiter 本実装 Task の起票タイミング | 推奨: #1603 完了後すぐ |
+| 1 | QPS=8 / IP 必須 / Limiter 別 Task / 本番 egress Backlog | **決定済** |
+| 2 | live 再実行（credential + 新 endpoint） | **実施済**（Adjust） |
+| 3 | rate limit 意図的誘発 | 推奨: 現状不要（偶発 429 は記録済み） |
+| 4 | 正式 Batch / adapter 反映 Task を起票するか | **推奨: 起票** |
+| 5 | T2c `MOD-BATCH-008` 起票タイミング | 推奨: #1603 完了後すぐ |
 
 ---
 
@@ -52,7 +53,7 @@
 
 | ID | 内容 | 備考 |
 | -- | ---- | ---- |
-| BL-RAKUTEN-EGRESS-PROD | 本番（および将来の固定 egress 実行基盤）の接続元 IP 登録・NAT / self-hosted 等の設計 | 2026-07-24 Human: 検討しない。ギャップ一覧にも Backlog として掲載 |
+| BL-RAKUTEN-EGRESS-PROD | 本番（および将来の固定 egress 実行基盤）の接続元 IP 登録・NAT / self-hosted 等の設計 | 2026-07-24 Human: 検討しない |
 
 ---
 
@@ -60,5 +61,6 @@
 
 | 日付 | 内容 |
 | ---- | ---- |
-| 2026-07-24 | 初版（#1603） |
-| 2026-07-24 | Human 決定反映（QPS=8 / IP 必須 / Limiter 別 Task / 本番 egress Backlog） |
+| 2026-07-24 | 初版（認証失敗時点） |
+| 2026-07-24 | Human 決定反映（QPS / IP / Limiter / Backlog） |
+| 2026-07-24 | endpoint 移行・成功疎通・Genre キー・Ranking period・429 を追記 |

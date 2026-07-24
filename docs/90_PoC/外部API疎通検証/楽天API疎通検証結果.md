@@ -10,9 +10,10 @@
 | 関連 Epic / Task | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) / [#1603](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1603) |
 | 計測日 | 2026-07-24（JST） |
 | 設計反映メモ | [楽天API_設計反映メモ](./楽天API_設計反映メモ.md) |
-| 暫定判定 | **Block**（認証パラメータ不正により成功疎通なし） |
+| Human 判断 | [ai-logs/.../2026-07-24-rakuten-api-qps-ip-verify-policy.md](../../../ai-logs/human-decisions/2026-07-24-rakuten-api-qps-ip-verify-policy.md) |
+| 判定 | **Adjust**（3 API 成功疎通。endpoint 移行・レスポンス形状・429 観察あり。正式仕様反映は別 Task） |
 
-**注意:** secret / `.env` 実値は本結果に含めていない。
+**注意:** secret / `.env` 実値 / 実 IP は本結果に含めていない。
 
 ---
 
@@ -21,81 +22,79 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | ハーネス | `scripts/batch/rakuten_live_verify.py` |
-| client | `HttpRakutenApiClient` |
-| 環境 | local（WSL2） |
-| live フラグ | `--live-rakuten` 明示。未指定時は exit 3（HTTP 非実行）を確認済み |
-| credentials | `RAKUTEN_APPLICATION_ID` は env に存在。`RAKUTEN_ACCESS_KEY` は **未設定** |
-| 呼出数 | 5（genre / ranking / item_search×2 / invalid genre） |
-| apps 変更 | エラー本文の短文付与（secret マスク）を client に最小追加 |
+| client | `HttpRakutenApiClient`（endpoint を現行 `openapi.rakuten.co.jp` 系へ更新済み） |
+| 環境 | local（WSL2・登録 egress IP） |
+| live フラグ | `--live-rakuten` 明示 |
+| credentials | `RAKUTEN_APPLICATION_ID`（UUID）+ `RAKUTEN_ACCESS_KEY`（`pk_`）両方設定 |
+| 制約 | 目標 QPS=8・egress IP 照合必須（不一致時は HTTP しない） |
+| 最終成功計測 | genre / ranking / item_search×2 成功。invalid genre は期待どおり 400 |
 
 ### 2.1 TV 対応
 
-| TV | API | 本結果での呼出 |
-| -- | --- | -------------- |
-| TV-003 | IchibaGenre/Search | `fetch_genre_raw` |
-| TV-002 | IchibaItem/Ranking | `fetch_ranking_raw` |
-| TV-001 | IchibaItem/Search | `fetch_item_search_raw`（page 1 / 2） |
+| TV | API | endpoint（現行） | 本結果 |
+| -- | --- | ---------------- | ------ |
+| TV-003 | IchibaGenre/Search | `.../ichibagt/api/IchibaGenre/Search/20260701` | 成功 |
+| TV-002 | IchibaItem/Ranking | `.../ichibaranking/api/IchibaItem/Ranking/20220601` | 成功（間隔不足時は 429） |
+| TV-001 | IchibaItem/Search | `.../ichibams/api/IchibaItem/Search/20260701` | 成功（page 1 / 2） |
 
 ---
 
 ## 3. 結果サマリ（事実）
 
-| name | ok | elapsed_ms | error_code | 観察 |
-| ---- | -- | ---------- | ---------- | ---- |
-| genre.fetch_genre_raw | false | ≈373 | GRS-EXT-105 | HTTP 400 |
-| ranking.fetch_ranking_raw | false | ≈110 | GRS-EXT-105 | HTTP 400 |
-| item_search.fetch_item_search_raw | false | ≈105 | GRS-EXT-105 | HTTP 400 |
-| item_search.page2 | false | ≈102 | GRS-EXT-105 | HTTP 400 |
-| genre.invalid_genre_id | false | ≈104 | GRS-EXT-105 | HTTP 400（認証エラーが先） |
+最終成功ラン（間隔 1500ms・クールダウン後）:
 
-**成功疎通:** 0 / 5
+| name | ok | error_code | 観察（値なし） |
+| ---- | -- | ---------- | -------------- |
+| genre.fetch_genre_raw | true | — | top-level: `ancestors` / `genre` / `siblings` / `children` / `attributes`。`children`=39 |
+| ranking.fetch_ranking_raw | true | — | `Items`=30。`lastBuildDate` / `title`。Item に `itemCode` 等 |
+| item_search.fetch_item_search_raw | true | — | `Items`=3、`pageCount`=100、`hits`=3 |
+| item_search.page2 | true | — | 同上（ページング継続） |
+| genre.invalid_genre_id | false | GRS-EXT-105 | `genreId is a 6 digit integer, or 0`（認証エラーではない） |
 
-### 3.1 エラー形式（事実）
+**成功疎通:** genre / ranking / item_search 各 1 回以上。
 
-楽天 API の HTTP 400 body（全 API 共通の観測）:
+### 3.1 初回失敗の原因（事実）
 
-| フィールド | 値 |
-| ---------- | -- |
-| `error` | `wrong_parameter` |
-| `error_description` | `specify valid applicationId` |
+旧 endpoint（`app.rakuten.co.jp/services/api/...`）へ新形式 credential（UUID + `pk_`）を送ると、全 API が HTTP 400 / `specify valid applicationId`。
 
-`HttpRakutenApiClient` はこれを `GRS-EXT-105` にマップし、メッセージへ短文付与する（secret マスク済み）。
+→ client の URL を現行 openapi 系へ差し替え後に解消。
 
-### 3.2 認証まわり（事実）
+### 3.2 429 観察（事実）
 
-| 項目 | 状態 |
+| 条件 | 結果 |
 | ---- | ---- |
-| `RAKUTEN_APPLICATION_ID` | env に設定あり（値は記録しない）。API は **valid ではない** と応答 |
-| `RAKUTEN_ACCESS_KEY` | local `.env` に **未設定**。Batch 仕様上は必須 |
-| accessKey 空送信 | 実施。応答は依然 `specify valid applicationId`（accessKey 不足の明示ではない） |
+| 連続再実行 + 短い間隔（125〜500ms） | ranking が `GRS-EXT-102`（HTTP 429） |
+| クールダウン後 + 呼出間隔 1500ms | ranking 成功 |
+| ranking 単独（先行 sleep 2s） | genreId `0` / `100283` / `100371` いずれも成功 |
 
-### 3.3 未実施（本計測）
+意図的な rate limit 誘発はしていない。短時間の連続 live 実行で 429 が出うる。
 
-| 項目 | 理由 |
-| ---- | ---- |
-| 成功時の主要フィールド・欠損観察 | 認証失敗のためレスポンス本体未取得 |
-| ページング成功時の pageCount 等 | 同上 |
-| rate limit（429）実誘発 | Human 承認なし・本 Task out of scope |
+### 3.3 レスポンス形状メモ（事実）
+
+| API | 主な観察 |
+| --- | -------- |
+| Genre | 現行は `genre`（旧メモの `current` ではない）。`ancestors` / `siblings` / `children` |
+| Ranking | `Items` 配列。ドメイン `period=daily` は楽天クエリへ送らない（`realtime` のみ送る） |
+| Item Search | `Items` / `pageCount` / `hits` / `count`。formatVersion=2 想定の flat Item キーを確認 |
 
 ---
 
-## 4. 再現条件（事実）
+## 4. 再現条件（成功）
 
-1. local で `RAKUTEN_APPLICATION_ID` のみ設定（`RAKUTEN_ACCESS_KEY` なし）
-2. `uv run python scripts/batch/rakuten_live_verify.py --live-rakuten --probe-invalid`
-3. genre / ranking / item_search いずれも HTTP 400 / `wrong_parameter` / `specify valid applicationId`
-
-**推論:** 現 local の applicationId は楽天側で無効（誤値・失効・別環境用）。ACCESS_KEY 未設定も仕様上の欠落だが、今回のエラーメッセージは applicationId 側を指している。
+1. WSL で登録 egress IP を `RAKUTEN_EXPECTED_EGRESS_IP` に設定
+2. 有効な UUID `RAKUTEN_APPLICATION_ID` + `pk_` `RAKUTEN_ACCESS_KEY`
+3. `HttpRakutenApiClient` が現行 openapi endpoint を使用
+4. 直前の大量 live 呼出がない状態で、`--live-rakuten --probe-invalid` を実行
 
 ---
 
 ## 5. 判定
 
-| ラベル | 採用 |
-| ------ | ---- |
-| **Block** | 成功疎通なし。有効な `RAKUTEN_APPLICATION_ID` / `RAKUTEN_ACCESS_KEY` の用意が必要 |
-
-Go 判定には、Human が有効 credential を local env に設定したうえで本ハーネスを再実行する必要がある。
+| ラベル | 採用 | 理由 |
+| ------ | ---- | ---- |
+| **Adjust** | ○ | 3 API 成功疎通。endpoint 移行・Genre キー名・Ranking period 扱い・429 耐性を正式 Batch / adapter へ反映する別 Task が必要 |
+| Go | — | 正式仕様・adapter まで無修正で完了とは言えない |
+| Block | — | 認証・IP による疎通不能は解消 |
 
 ---
 
@@ -104,8 +103,9 @@ Go 判定には、Human が有効 credential を local env に設定したうえ
 | 確認 | 結果 |
 | ---- | ---- |
 | 結果 docs に実値なし | 遵守 |
-| report/summary に実値なし（マスク） | 遵守 |
+| report/summary は gitignored。docs に実 IP なし | 遵守 |
 | `--live-rakuten` なしで HTTP 非実行 | 遵守 |
+| egress IP 不一致時に楽天 HTTP しない | 遵守 |
 
 ---
 
@@ -113,4 +113,5 @@ Go 判定には、Human が有効 credential を local env に設定したうえ
 
 | 日付 | 内容 |
 | ---- | ---- |
-| 2026-07-24 | 初版（#1603）。認証失敗により Block |
+| 2026-07-24 | 初版。旧 endpoint により認証エラー → Block |
+| 2026-07-24 | openapi endpoint 移行後に 3 API 成功。判定 Adjust |
