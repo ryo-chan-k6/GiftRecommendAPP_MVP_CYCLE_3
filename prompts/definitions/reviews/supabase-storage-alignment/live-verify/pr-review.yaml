@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1621
   issue:
     number: 1617
   task_definition: "prompts/definitions/tasks/supabase-storage-alignment/live-verify.yaml"
