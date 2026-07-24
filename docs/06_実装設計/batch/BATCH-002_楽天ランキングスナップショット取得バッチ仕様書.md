@@ -133,7 +133,7 @@ BATCH-002（楽天ランキングスナップショット取得Batch）は、楽
 | 旧 endpoint | `https://app.rakuten.co.jp/services/api/IchibaItem/Ranking/...`（**非推奨**） |
 | 実装 | `HttpRakutenApiClient` / `adapt_ranking_raw_payload` |
 
-#### 6.2.3 ランキングAPIでは正本反映しない項目
+#### 6.2.4 ランキングAPIでは正本反映しない項目
 
 `itemName` / `catchcopy` / `itemCaption` / `itemPrice` / `itemUrl` / 画像URL / `availability` / `reviewAverage` / `reviewCount` 等は **Item / Item Image 正本に反映しない**。商品検索API（BATCH-003 以降）由来を正とする（外部商品データ連携設計書 §4.3.4）。
 
@@ -188,7 +188,7 @@ flowchart TD
 |  No | Phase | 処理 | 入力 | 出力 | 失敗時の扱い |
 | --: | ----- | ---- | ---- | ---- | ------------ |
 | 1 | `plan` | fetch_plan / target genre / period / page 上限を解決する | config / workflow input / external_genre | 取得計画 | `GRS-BAT-*` で Run 失敗 |
-| 2 | `fetch` | 楽天ランキングAPIを呼び出す（genre × page） | genreId / period / secrets | APIレスポンス / api_call_log | Rate Limit は待機・再試行。タイムアウトはリトライ後に部分失敗または停止 |
+| 2 | `fetch` | 楽天ランキングAPIを呼び出す（genre × page） | genreId / period（ドメイン。クエリへは送らない / §6.2.1） / secrets | APIレスポンス / api_call_log | Rate Limit は待機・再試行。タイムアウトはリトライ後に部分失敗または停止 |
 | 3 | `adapt` | レスポンスを内部形式へ変換する | Rawレスポンス | 正規化 ranking rows | 形式不正は `GRS-EXT-103` |
 | 4 | `raw_save` | Object Storage へ Raw JSON を保存し Metadata を書く | レスポンス | object_key / raw_product_metadata | `GRS-RAW-001` / `GRS-RAW-002` |
 | 5 | `stage` | Staging 変換・検証 | Raw / Metadata | staging_ranking_signal | `GRS-VAL-*`。失敗 genre は skip または部分失敗 |
@@ -339,6 +339,7 @@ flowchart TD
 | 2026-07-13 | 初版作成 | #1193 |
 | 2026-07-13 | §18 未決事項を Human 決定に反映（period / ページ上限 / Batch 内完結 / fetch_cursor） | #1193 / #1194 |
 | 2026-07-25 | ドメイン period と楽天クエリ period の分離・現行 openapi endpoint を明記 | #1606 |
+| 2026-07-24 | §8.2 fetch 入力の period をドメイン明示、§6.2.4 へ見出し採番修正 | #1606 / #1609 |
 
 ---
 
