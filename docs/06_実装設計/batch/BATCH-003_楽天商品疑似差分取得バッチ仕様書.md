@@ -149,7 +149,7 @@ BATCH-003（楽天商品疑似差分取得Batch）は、楽天商品検索APIか
 | `RAKUTEN_APPLICATION_ID` | `true` | 楽天API applicationId | secret | GitHub Secrets / local `.env`（commit禁止） |
 | `RAKUTEN_ACCESS_KEY` | `true` | 楽天API accessKey | secret | GitHub Secrets / local `.env`（commit禁止） |
 | `DATABASE_URL` | `true` | DB 接続 | secret | GitHub Secrets / local `.env`（commit禁止） |
-| `RAW_OBJECT_STORAGE_*`（実装命名に従う） | `true` | Raw Object Storage 接続 | secret | GitHub Secrets / local `.env`（commit禁止） |
+| `OBJECT_STORAGE_*` | `true` | Raw Object Storage 接続（Supabase Storage / S3 互換・接続方針 A） | secret | GitHub Secrets / local `.env`（commit禁止） |
 | `BATCH_FETCH_MAX_PAGES` 等 | `false` | ページ上限・ルート別上限 | 非secret可 | config / workflow input |
 
 ---

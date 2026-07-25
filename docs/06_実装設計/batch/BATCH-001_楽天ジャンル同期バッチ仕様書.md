@@ -132,7 +132,7 @@ BATCH-001（楽天ジャンル同期Batch）は、楽天ジャンル検索APIか
 | `RAKUTEN_APPLICATION_ID` | `true` | 楽天API applicationId | secret | GitHub Secrets / local `.env`（commit禁止） |
 | `RAKUTEN_ACCESS_KEY` | `true` | 楽天API accessKey | secret | GitHub Secrets / local `.env`（commit禁止） |
 | `DATABASE_URL` | `true` | DB接続 | secret | GitHub Secrets / local `.env`（commit禁止） |
-| `BATCH_OBJECT_STORAGE_*` | `true` | Raw JSON 保存先 | secret（接続情報） | GitHub Secrets / local `.env`（commit禁止） |
+| `OBJECT_STORAGE_*` | `true` | Raw JSON 保存先（Supabase Storage / S3 互換・接続方針 A） | secret（接続情報） | GitHub Secrets / local `.env`（commit禁止） |
 | `BATCH_FETCH_PLAN_PATH` 等 | `false` | fetch_plan 設定パス | 非secret | config / workflow input |
 
 ※ 実環境の変数名は `apps/batch` config 実装に合わせて確定する。本仕様では用途と secret 区分のみを固定する。

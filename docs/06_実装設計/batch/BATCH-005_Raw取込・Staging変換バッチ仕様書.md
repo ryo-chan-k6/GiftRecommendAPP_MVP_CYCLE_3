@@ -112,7 +112,7 @@ MVP の主経路は、BATCH-003 / BATCH-004 が保存した `source_api=item_sea
 | 環境変数名 | 必須 | 用途 | secret区分 | 設定先 |
 | ---------- | ---- | ---- | ---------- | ------ |
 | `DATABASE_URL` | `true` | Staging / Metadata 更新 | secret | GitHub Secrets / local `.env`（commit 禁止） |
-| `RAW_OBJECT_STORAGE_*`（実装命名に従う） | `true` | Raw 読取 | secret | GitHub Secrets / local `.env`（commit 禁止） |
+| `OBJECT_STORAGE_*` | `true` | Raw 読取（Supabase Storage / S3 互換・接続方針 A） | secret | GitHub Secrets / local `.env`（commit 禁止） |
 | `BATCH_RAW_STAGING_MAX_RAW` 等 | `false` | 件数上限 | 非secret可 | config / workflow input（§18.1 No.2） |
 | `BATCH_RAW_STAGING_SOURCE_API` 等 | `false` | source_api フィルタ | 非secret可 | config / workflow input（§18.1 No.2） |
 

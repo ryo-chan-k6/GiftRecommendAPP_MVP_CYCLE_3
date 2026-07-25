@@ -141,7 +141,7 @@ class ScaffoldObjectStorageClient:
 class S3CompatibleObjectStorageClient:
     """IF-STG S3-compatible Object Storage client (path-style + SigV4).
 
-    Secrets are never logged. Uses existing ``httpx`` dependency (no boto3).
+    Secrets are never logged. Uses ``httpx`` for HTTP (no boto3).
     """
 
     access_key: str

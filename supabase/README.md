@@ -5,10 +5,22 @@ Supabase CLI プロジェクト配置。DB migration の **適用正本** は `m
 | パス | 役割 |
 | ---- | ---- |
 | `.cli-version` | Supabase CLI バージョン pin（正本） |
-| `config.toml` | Supabase CLI 設定（ローカルポート、DB バージョン、`[db.seed]` 等） |
-| `migrations/` | 環境へ適用する SQL（Supabase CLI 管理） |
+| `config.toml` | Supabase CLI 設定（ローカルポート、DB バージョン、`[db.seed]`、`[storage]` 有効化等） |
+| `migrations/` | 環境へ適用する SQL（Supabase CLI 管理）。**Storage bucket `raw-products` 定義含む** |
 | `seeds/masters/` | master seed SQL 正本（`db reset` 時に自動投入） |
 | `seeds/test-data/` | ローカル / テスト用（自動 seed 外） |
+
+## Object Storage（Raw JSON）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 製品 / 接続 | Supabase Storage / **案 A（S3 互換 + `OBJECT_STORAGE_*`）** |
+| bucket 名 | **`raw-products`**（private） |
+| 定義 | `migrations/20260725120000_raw_products_storage_bucket.sql` |
+| 方針 | [マイグレーション方針書 §9.2](../docs/06_実装設計/database/マイグレーション方針書.md) |
+| 手順 | [ローカル開発手順書 §7.4](../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) |
+
+S3 互換キー・endpoint の**実値**は Git 管理しない。Hosted でのキー発行は Human。
 
 `supabase/seed.sql` 単体正本は **採用しない**。modular seeds + `config.toml` [db.seed] を正とする。
 

@@ -14,12 +14,19 @@ Batch 手動実行・dry-run・再実行補助を配置するディレクトリ�
 - README のみ
 - 物理名正本: `RAKUTEN_APPLICATION_ID`, `OBJECT_STORAGE_*`（§19.7.1）
 
-## live 疎通（#1603）
+## ハーネス（明示 live のみ）
+
+| スクリプト | 用途 |
+| ---------- | ---- |
+| `rakuten_live_verify.py` | 楽天 API 疎通（#1603 / TV-001〜003）。`--live-rakuten` 必須 |
+| `object_storage_live_verify.py` | Supabase Storage（S3 互換）put/get（#1617・リリース準備）。`--live-object-storage` 必須 |
+
+出力ディレクトリ `scripts/batch/output-*/` は Git 管理外。CI 既定 live は禁止。
+
+### 楽天 live（#1603）
 
 | 項目 | 内容 |
 | ---- | ---- |
-| スクリプト | `rakuten_live_verify.py` |
-| 用途 | TV-001〜003 向けの最小 live 疎通（明示 `--live-rakuten` のみ） |
 | 実行場所 | 登録済み外部 IP を持つ **WSL（local）のみ**。CI live 禁止 |
 | QPS | **常用 2**（ハードキャップ 10）。`RAKUTEN_MAX_QPS` / `RAKUTEN_MIN_INTERVAL_MS` |
 | IP 照合 | `RAKUTEN_EXPECTED_EGRESS_IP` **必須**。不一致時は楽天 HTTP しない |
@@ -34,9 +41,20 @@ uv run python ../../scripts/batch/rakuten_live_verify.py --live-rakuten \
   --output-dir ../../scripts/batch/output-rakuten-live
 ```
 
+### Object Storage live（#1617・リリース準備）
+
+手順正本: [ローカル開発手順書 §7.4](../../docs/06_実装設計/cross_cutting/ローカル開発手順書.md) / [PoC 計画](../../docs/90_PoC/外部API疎通検証/Supabase_Storage_S3互換疎通検証計画.md)
+
+```bash
+set -a && source .env && set +a
+cd apps/batch
+uv run python ../../scripts/batch/object_storage_live_verify.py \
+  --live-object-storage --probe-missing \
+  --output-dir ../../scripts/batch/output-object-storage-live
+```
+
 ## 配置予定（後続）
 
-- `MOD-BATCH-008` External API Rate Limiter 本実装（別 Task / T2c）
 - ローカル dry-run 起動補助
-- GitHub Actions workflow 連携メモ（Task ⑤）
-- 本番 egress IP 設計（**Backlog: BL-RAKUTEN-EGRESS-PROD**・未検討）
+- GitHub Actions workflow 連携メモ
+- 本番 egress IP 設計（**Backlog: #1607 BL-RAKUTEN-EGRESS-PROD**・未検討）

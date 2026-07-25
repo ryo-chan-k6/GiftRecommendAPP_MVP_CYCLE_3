@@ -7,9 +7,9 @@
 | 文書種別 | E3 棚卸し正本（docs） |
 | 対象 | 楽天 / Embedding / Object Storage / Semantic（LLM）× BATCH-001〜017 |
 | 作成日 | 2026-07-24 |
-| 更新日 | 2026-07-25（T4 Object Storage） |
-| 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) |
-| 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） / [#1612](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1612)（T4） |
+| 更新日 | 2026-07-25（T4 + #1614 接続方針 A / #1617 live 再検証 Go） |
+| 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) / [#1614](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1614) |
+| 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） / [#1612](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1612)（T4） / [#1617](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1617)（Storage live・リリース準備） |
 | 先行 | E0 横串ギャップ / E1 親 workflow / E2 IF-DB・DDL（#1595 MERGED） |
 
 ### 1.1 目的
@@ -155,7 +155,7 @@
 | 1 | 着手順 | **楽天 → Embedding → Object Storage** |
 | 2 | Semantic LLM 本接続を E3 に含めるか | **含めない**（Rule-first 維持） |
 | 3 | CI / 既定実行での live 呼出 | **既定 off**。明示フラグ + secret がある時のみ（動的 IP のため） |
-| 4 | Object Storage 実装先 | 既存 Scaffold 契約を保ち S3 互換等を後続で選定 |
+| 4 | Object Storage 実装先 | **確定**（#1614）: 製品=**Supabase Storage** / 接続=**案 A（S3 互換 + `OBJECT_STORAGE_*`）**。#1612 `S3CompatibleObjectStorageClient` 維持。live 疎通は [#1617](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1617)（リリース準備）local で **Go**（[PoC結果](../../../90_PoC/外部API疎通検証/Supabase_Storage_S3互換疎通検証結果.md)） |
 | 5 | 楽天常用 QPS / IP 照合 / Rate Limiter Task 切り | **決定済**（常用 QPS=**2** / IP 必須 / T2c 別 Task） |
 | 6 | 本番 egress IP 設計 | **Backlog / #1607**（§7.1）。未検討 |
 
@@ -185,3 +185,6 @@
 | 2026-07-25 | T2d: Genre/Ranking/endpoint 正式 Batch・外部連携・adapter 反映（#1606） |
 | 2026-07-25 | T3: `HttpEmbeddingClient` / factory / 015 `--live-embedding` / UT（#1610） |
 | 2026-07-25 | T4: `S3CompatibleObjectStorageClient` / factory / 001〜005 live 配線 / UT（#1612） |
+| 2026-07-25 | Object Storage 接続方針 A 確定反映（製品=Supabase Storage / S3 互換）。Epic #1614 / Task #1615 |
+| 2026-07-25 | Object Storage S3 互換 live 疎通ハーネス・結果記録（#1617・リリース準備） |
+| 2026-07-25 | #1617 再検証: local Supabase で put/get/missing **Go**（案 B 不要） |
