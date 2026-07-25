@@ -7,8 +7,8 @@
 | 文書種別 | E2 棚卸し正本（docs） |
 | 対象 | IF-DB-BATCH-001〜017 / 020 / 021 / IF-VEC-BATCH-001（001〜017 中心） |
 | 作成日 | 2026-07-22 |
-| 更新日 | 2026-07-24（T5 完了・Epic PR 準備） |
-| 関連 Epic | [#1561](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1561) |
+| 更新日 | 2026-07-25（読取 SELECT 後続を #1623 へ分離） |
+| 関連 Epic | [#1561](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1561) / 読取後続 [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) |
 | 関連 Task | [#1562](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1562)（T1） / [#1568](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1568)（T2） / [#1576](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1576)（T3） / [#1579](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1579)（T4a） / [#1583](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1583)（T4b） / [#1588](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1588)（T5） |
 | 先行 | E0 ギャップ一覧 / E1 親 workflow（#1560 MERGED） |
 
@@ -24,7 +24,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 親 / 複合 workflow 改修 | E1 完了・本 Epic 外 |
 | 外部 API 本接続 | E3 |
 | BATCH-018/019 出力物理 DDL 本格整備 | Human 確定どおり後回し |
-| 代表以外の IF フル UPSERT・読取 SELECT | T4a-2 / T4b-2 / T5 候補 |
+| 代表以外の IF フル UPSERT・読取 SELECT | 読取 SELECT は [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) / [バッチDB読取・SELECT本実装ギャップ一覧](./バッチDB読取・SELECT本実装ギャップ一覧.md) |
 
 ### 1.3 区分
 

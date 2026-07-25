@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-select-inventory-pr"
+  title: "batch-db-select inventory PRレビュー"
+  summary: "DB読取ギャップ棚卸し Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1625
+  issue:
+    number: 1624
+  task_definition: "prompts/definitions/tasks/batch-db-select/inventory.yaml"
+  parent_epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  parent_epic_branch: "feature/epic-1623-batch-db-select"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "005/004/010/015 を含む読取ギャップが表で整理されているか"
+  - "E4 / LLM を実装 scope に混ぜていないか"
+  - "事実と推論が分離されているか"
+  - "secret 非露出"
+  - "Related to / PR target が親 Epic"
+
+notes:
+  - "実装 Task ではない（docs 棚卸しのみ）"
