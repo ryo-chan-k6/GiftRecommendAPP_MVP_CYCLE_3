@@ -1,7 +1,7 @@
-"""In-memory repositories for BATCH-005 unit tests / scaffold wiring.
+"""Repositories for BATCH-005 Raw selection / GET / Staging upsert.
 
-Production will replace these with real DB / Object Storage adapters while
-keeping Raw GET-only / Staging upsert / import_status=staged semantics.
+``list_eligible_raws`` uses ``DbReader`` when injected (Wave A SELECT wiring).
+Without a reader, in-memory ``seed_raws`` remains for scaffold / UT.
 
 Forbidden writes (must remain empty in result checks):
 item / product_diff_result / item.active_status / external_genre
@@ -20,11 +20,20 @@ from batch.application.raw_staging.models import (
     StagingItemImageRow,
     StagingItemRow,
 )
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient, ObjectStorageError
 
 DEFAULT_SOURCE_API = "item_search"
 SKIP_STATUSES = frozenset({"staged", "imported"})
+FORCE_STATUSES = ("raw_saved", "failed", "staged", "imported")
+_READ_COLUMNS = (
+    "raw_metadata_id",
+    "object_key",
+    "content_hash",
+    "source",
+    "source_api",
+    "import_status",
+)
 
 
 @dataclass
@@ -34,6 +43,7 @@ class RawStagingRepositories:
     object_storage: ObjectStorageClient
     db_writer: DbWriter
     bucket: str
+    db_reader: DbReader | None = None
     seed_raws: list[RawMetadataSeed] = field(default_factory=list)
     # mutable metadata store keyed by raw_metadata_id
     raw_metadata: dict[str, dict[str, object]] = field(default_factory=dict)
@@ -78,6 +88,14 @@ class RawStagingRepositories:
     ) -> list[RawMetadataSeed]:
         """§18.1 No.2: default import_status=raw_saved, item_search preferred."""
 
+        if self.db_reader is not None:
+            return self._list_eligible_raws_from_db(
+                max_raw=max_raw,
+                source_apis=source_apis,
+                raw_metadata_ids=raw_metadata_ids,
+                force=force,
+            )
+
         preferred = source_apis or (DEFAULT_SOURCE_API,)
         preferred_set = set(preferred)
 
@@ -101,20 +119,106 @@ class RawStagingRepositories:
             if seed.source_api not in preferred_set:
                 continue
             if force:
-                if seed.import_status not in {"raw_saved", "failed", "staged", "imported"}:
+                if seed.import_status not in set(FORCE_STATUSES):
                     continue
             else:
                 if seed.import_status != "raw_saved":
                     continue
             eligible.append(seed)
 
-        # Prefer item_search first when multiple APIs configured
-        def _sort_key(seed: RawMetadataSeed) -> tuple[int, str]:
-            prefer_rank = 0 if seed.source_api == DEFAULT_SOURCE_API else 1
-            return (prefer_rank, seed.raw_metadata_id)
-
-        eligible.sort(key=_sort_key)
+        eligible.sort(key=self._prefer_sort_key)
         return eligible[: max(0, max_raw)]
+
+    def _list_eligible_raws_from_db(
+        self,
+        *,
+        max_raw: int,
+        source_apis: tuple[str, ...] | None,
+        raw_metadata_ids: tuple[str, ...] | None,
+        force: bool,
+    ) -> list[RawMetadataSeed]:
+        """SELECT via DbReader (equals-only; no arbitrary SQL)."""
+
+        reader = self.db_reader
+        if reader is None:
+            return []
+
+        if raw_metadata_ids:
+            selected: list[RawMetadataSeed] = []
+            for raw_id in raw_metadata_ids:
+                result = reader.fetch_rows(
+                    "raw_product_metadata",
+                    columns=_READ_COLUMNS,
+                    equals=(("raw_metadata_id", raw_id),),
+                    limit=1,
+                )
+                if not result.rows:
+                    continue
+                seed = self._row_to_seed(result.rows[0])
+                if not force and seed.import_status in SKIP_STATUSES:
+                    continue
+                self._cache_seed(seed)
+                selected.append(seed)
+                if len(selected) >= max_raw:
+                    break
+            return selected
+
+        preferred = source_apis or (DEFAULT_SOURCE_API,)
+        statuses = FORCE_STATUSES if force else ("raw_saved",)
+        collected: dict[str, RawMetadataSeed] = {}
+        fetch_limit = max(0, max_raw)
+        if fetch_limit == 0:
+            return []
+
+        for status in statuses:
+            for api in preferred:
+                result = reader.fetch_rows(
+                    "raw_product_metadata",
+                    columns=_READ_COLUMNS,
+                    equals=(("import_status", status), ("source_api", api)),
+                    order_by=("raw_metadata_id",),
+                    limit=fetch_limit,
+                )
+                for row in result.rows:
+                    seed = self._row_to_seed(row)
+                    if seed.raw_metadata_id in collected:
+                        continue
+                    self._cache_seed(seed)
+                    collected[seed.raw_metadata_id] = seed
+
+        eligible = list(collected.values())
+        eligible.sort(key=self._prefer_sort_key)
+        return eligible[:fetch_limit]
+
+    @staticmethod
+    def _prefer_sort_key(seed: RawMetadataSeed) -> tuple[int, str]:
+        prefer_rank = 0 if seed.source_api == DEFAULT_SOURCE_API else 1
+        return (prefer_rank, seed.raw_metadata_id)
+
+    def _row_to_seed(self, row: dict[str, object]) -> RawMetadataSeed:
+        return RawMetadataSeed(
+            raw_metadata_id=str(row["raw_metadata_id"]),
+            object_key=str(row["object_key"]),
+            content_hash=str(row["content_hash"]),
+            source=str(row.get("source") or "rakuten"),
+            source_api=str(row.get("source_api") or DEFAULT_SOURCE_API),
+            import_status=str(row.get("import_status") or "raw_saved"),
+            batch_run_id=None,
+            bucket=self.bucket,
+        )
+
+    def _cache_seed(self, seed: RawMetadataSeed) -> None:
+        self.raw_metadata[seed.raw_metadata_id] = {
+            "raw_metadata_id": seed.raw_metadata_id,
+            "object_key": seed.object_key,
+            "content_hash": seed.content_hash,
+            "source": seed.source,
+            "source_api": seed.source_api,
+            "import_status": seed.import_status,
+            "batch_run_id": seed.batch_run_id,
+            "bucket": seed.bucket or self.bucket,
+            "staged_at": None,
+        }
 
     def _meta_to_seed(self, meta: dict[str, object]) -> RawMetadataSeed:
         return RawMetadataSeed(

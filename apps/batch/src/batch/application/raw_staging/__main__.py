@@ -3,12 +3,14 @@
 Usage:
   python -m batch.application.raw_staging --job-run-id <id> [--max-raw 100]
   python -m batch.application.raw_staging --scaffold-demo
+  python -m batch.application.raw_staging --live-object-storage  # + DATABASE_URL / OBJECT_STORAGE_*
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 from batch.application.raw_staging.hashing import content_hash_for_bytes
@@ -16,7 +18,12 @@ from batch.application.raw_staging.job import RawStagingJob
 from batch.application.raw_staging.models import RawMetadataSeed
 from batch.application.raw_staging.repositories import RawStagingRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import (
+    ScaffoldDbWriter,
+    create_db_writer,
+    is_live_db_reader,
+    resolve_job_db_reader,
+)
 from batch.infrastructure.object_storage import (
     ObjectRef,
     ScaffoldObjectStorageClient,
@@ -98,6 +105,18 @@ def build_scaffold_demo_job() -> RawStagingJob:
     return RawStagingJob(repositories=repos)
 
 
+def _print_run_summary(result: object) -> None:
+    print(
+        f"BATCH-005 status={getattr(result, 'status', '?')} "
+        f"succeeded={len(getattr(result, 'succeeded_raw_ids', ()))} "
+        f"failed={len(getattr(result, 'failed_raw_ids', ()))} "
+        f"skipped={len(getattr(result, 'skipped_raw_ids', ()))} "
+        f"staging_items={getattr(result, 'staging_item_upsert_count', 0)} "
+        f"staging_images={getattr(result, 'staging_item_image_upsert_count', 0)} "
+        f"phases={','.join(getattr(result, 'completed_phases', ()))}"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="BATCH-005 Raw ingest / Staging transform")
     parser.add_argument("--job-run-id", default="local-run")
@@ -158,10 +177,20 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
-    import os
-
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    db_reader = resolve_job_db_reader(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+    )
+    if not is_live_db_reader(db_reader):
+        print(
+            "DATABASE_URL is required for non --scaffold-demo BATCH-005 "
+            "(DbReader postgres backend). Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
+        )
+        return 2
+
     storage_live = resolve_live_object_storage_flag(
         cli_live=args.live_object_storage,
         env_value=os.environ.get("BATCH_OBJECT_STORAGE_LIVE"),
@@ -175,21 +204,42 @@ def main(argv: list[str] | None = None) -> int:
         if missing:
             print(missing, file=sys.stderr)
             return 2
+        if not settings.object_storage_bucket:
+            print(
+                "OBJECT_STORAGE_BUCKET is required when --live-object-storage "
+                "/ BATCH_OBJECT_STORAGE_LIVE is enabled.",
+                file=sys.stderr,
+            )
+            return 2
+
     object_storage = create_object_storage_client(
         settings.object_storage_access_key,
         settings.object_storage_secret_key,
         endpoint=settings.object_storage_endpoint,
         live=storage_live,
     )
-    print(
-        f"DbWriter backend={db_writer.backend} is resolved, "
-        f"storage_backend={getattr(object_storage, 'backend', 'scaffold')}, "
-        "but real DB read path is not enabled yet. "
-        "Use --scaffold-demo for local/CI"
-        + (" (Object Storage live credentials are ready)." if storage_live else "."),
-        file=sys.stderr,
+    bucket = settings.object_storage_bucket or "scaffold-raw"
+    repos = RawStagingRepositories(
+        object_storage=object_storage,
+        db_writer=db_writer,
+        db_reader=db_reader,
+        bucket=bucket,
     )
-    return 3
+    job = RawStagingJob(repositories=repos)
+    ids = _parse_csv(args.raw_metadata_ids)
+    result = job.run(
+        job_run_id=args.job_run_id,
+        max_raw=args.max_raw,
+        source_api=args.source_api,
+        raw_metadata_ids=ids,
+        force=args.force,
+    )
+    _print_run_summary(result)
+    print(
+        f"db_reader={db_reader.backend} db_writer={db_writer.backend} "
+        f"storage_backend={getattr(object_storage, 'backend', 'unknown')}"
+    )
+    return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 
 if __name__ == "__main__":
