@@ -512,3 +512,136 @@ def test_secret_non_containment_in_fixtures_and_error_logs() -> None:
         assert _SECRET_PATTERN.search(text) is None
     for code in result.error_codes:
         assert _SECRET_PATTERN.search(code) is None
+
+
+def test_list_eligible_raws_uses_db_reader_when_injected() -> None:
+    """Wave A: DbReader 注入時は seed ではなく SELECT 経路を使う。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    storage = ScaffoldObjectStorageClient()
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "raw_product_metadata",
+        (
+            {
+                "raw_metadata_id": "rm_db_1",
+                "object_key": "raw/rakuten/item_search/rm_db_1.json",
+                "content_hash": "a" * 64,
+                "source": "rakuten",
+                "source_api": "item_search",
+                "import_status": "raw_saved",
+            },
+            {
+                "raw_metadata_id": "rm_db_skip",
+                "object_key": "raw/rakuten/item_search/rm_db_skip.json",
+                "content_hash": "b" * 64,
+                "source": "rakuten",
+                "source_api": "item_search",
+                "import_status": "staged",
+            },
+        ),
+    )
+    repos = RawStagingRepositories(
+        object_storage=storage,
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        bucket="test-raw",
+        seed_raws=[],
+    )
+
+    selected = repos.list_eligible_raws(max_raw=10)
+    assert [s.raw_metadata_id for s in selected] == ["rm_db_1"]
+    assert reader.fetch_calls
+    assert reader.fetch_calls[0]["table"] == "raw_product_metadata"
+    assert ("import_status", "raw_saved") in reader.fetch_calls[0]["equals"]
+
+
+def test_list_eligible_raws_db_reader_force_and_explicit_ids() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "raw_product_metadata",
+        (
+            {
+                "raw_metadata_id": "rm_f1",
+                "object_key": "k1",
+                "content_hash": "c" * 64,
+                "source": "rakuten",
+                "source_api": "item_search",
+                "import_status": "staged",
+            },
+        ),
+    )
+    repos = RawStagingRepositories(
+        object_storage=ScaffoldObjectStorageClient(),
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        bucket="test-raw",
+    )
+
+    forced = repos.list_eligible_raws(max_raw=5, force=True)
+    assert [s.raw_metadata_id for s in forced] == ["rm_f1"]
+
+    by_id = repos.list_eligible_raws(
+        max_raw=5,
+        raw_metadata_ids=("rm_f1",),
+        force=True,
+    )
+    assert [s.raw_metadata_id for s in by_id] == ["rm_f1"]
+
+
+def test_cli_non_demo_requires_database_url(monkeypatch: Any) -> None:
+    from dataclasses import replace
+
+    from batch.application.raw_staging import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    code = cli.main(["--job-run-id", "no-db"])
+    assert code == 2
+
+
+def test_cli_non_demo_runs_job_with_live_reader(monkeypatch: Any) -> None:
+    """DATABASE_URL ありなら exit 3 固定せず Job を起動する。"""
+
+    from dataclasses import replace
+
+    from batch.application.raw_staging import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+    from batch.infrastructure.object_storage import ScaffoldObjectStorageClient
+
+    reader = ScaffoldDbReader()
+    reader.backend = "postgres"  # pretend live for is_live_db_reader
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(
+            scaffold_batch_settings(),
+            database_url="postgresql://localhost:5432/gift",
+            object_storage_bucket="test-raw",
+        ),
+    )
+    monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
+    monkeypatch.setattr(
+        cli,
+        "resolve_job_db_reader",
+        lambda **_kwargs: reader,
+    )
+    monkeypatch.setattr(
+        cli,
+        "create_object_storage_client",
+        lambda *_args, **_kwargs: ScaffoldObjectStorageClient(),
+    )
+
+    code = cli.main(["--job-run-id", "wave-a", "--max-raw", "1"])
+    # empty SELECT → plan failed (exit 1). Important: Job started (not config/exit-2/old exit-3).
+    assert code == 1
+    assert reader.fetch_calls

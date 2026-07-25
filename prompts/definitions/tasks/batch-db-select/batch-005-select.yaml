@@ -1,0 +1,181 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-select-005-select"
+  title: "batch-db-select:BATCH-005 SELECT本配線"
+  summary: "BATCH-005 の raw_product_metadata SELECT を DbReader 経由で本配線し、非 demo の exit 3 固定を解除する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  epic_issue_number: 1623
+  epic_branch: "feature/epic-1623-batch-db-select"
+  related_issues:
+    - 1627
+  related_prs:
+    - 1628
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  T1（#1627）で DbReader 導入済み。005 は Storage live まで到達できるが metadata SELECT 未配線で exit 3 だった。
+  Wave A として先頭 Batch の読取本線を開放する。
+
+objective: |
+  非 --scaffold-demo で raw_product_metadata を DbReader 経由で読み、既存 Storage GET / transform 経路へつなぐ。
+
+scope:
+  - "RawStagingRepositories.list_eligible_raws の DbReader 本読取"
+  - "CLI 非 demo で resolve_job_db_reader + Job 実行（旧 exit 3 固定解除）"
+  - "既定フィルタ import_status=raw_saved + source_api + max_raw（equals）"
+  - "明示 raw_metadata_ids / --force（equals 複数回）"
+  - "--scaffold-demo 回帰"
+  - "UT"
+  - "SELECT ギャップ一覧 Wave A 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "staging_* 本番 UPSERT SQL 本格化"
+  - "batch_run_id JOIN（api_call_log）"
+  - "DbReader への IN / 任意 SQL 拡張"
+  - "BATCH-004/006 以降の SELECT"
+  - "E4 / LLM / #1607 / DDL"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/reader.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/raw_staging/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_raw_staging.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-select/batch-005-select.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/batch-005-select/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "005 SELECT 本配線"
+  - "CLI Job 起動（旧 exit 3 解除）"
+  - "UT"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "非 demo で DATABASE_URL ありなら Job が起動する（旧 real DB read path 固定メッセージなし）"
+  - "list_eligible_raws が DbReader を使う"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "secret 非露出"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-select-005-select"
+  base: "feature/epic-1623-batch-db-select"
+  target: "feature/epic-1623-batch-db-select"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: "2026-07-27"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "親 Epic"
+  issues:
+    - number: 1627
+      purpose: "T1 DbReader 完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/raw_staging/**"
+    - "apps/batch/tests/unit/application/test_raw_staging.py"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "integration test against production DB"
+  skip_reason:
+    "integration test against production DB": "local/CI 限定。本 Task は UT + CLI wiring 中心"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "DbReader SELECT が equals 制約内で仕様の既定フィルタを満たすか"
+    - "旧 exit 3 固定が消えているか"
+    - "scaffold-demo 回帰"
+    - "secret 非露出"
+    - "staging UPSERT 本格化を混入していないか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points:
+  - "force 時の多ステータス equals 複数回で十分か（IN 拡張は別判断）"
+
+notes:
+  - "Epic Wave A"
+  - "bucket は OBJECT_STORAGE_BUCKET（DB 列なし）"
