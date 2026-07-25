@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1639
   issue:
     number: 1638
   task_definition: "prompts/definitions/tasks/batch-db-select/batch-004-seed-select.yaml"
