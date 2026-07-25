@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-db-physical-design-table-spec-lambda-ctx-rule"
+  title: "lambda_ctx_rule:Lambda Context Rule物理正本設計"
+  summary: "案A（専用テーブル lambda_ctx_rule）で Rule Lookup 物理正本を定義し、物理ER・テーブル一覧・初期データ・MOD-RECO-009 §16 No.1 を整合させる。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]db-physical-design:DB物理設計・構築"
+  epic_issue_number: 435
+  epic_branch: null
+  related_issues:
+    - 843
+    - 837
+    - 842
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  MOD-RECO-009 §16 No.1 により lambda_ctx_rule の物理正本が未設計だった。
+  Human 判断（Issue #843）で案A（専用テーブル）を採用する。
+  Epic #435 は merge 済みのため、本 Task の Branch base / PR target は develop。
+
+objective: |
+  lambda_ctx_rule テーブル定義書を作成し、横断 docs と MOD-RECO-009 を整合させ、
+  後続 DDL / seed / Reco DB Repository Task の前提を整える。
+
+scope:
+  - "docs/06_実装設計/database/lambda_ctx_rule_テーブル定義書.md 作成"
+  - "物理ER.md / テーブル一覧.md / 初期データ定義書.md / semantic_config_version 被参照の更新"
+  - "MOD-RECO-009 モジュール仕様書 §8.3.1 物理 Lookup・§16 No.1 解消"
+  - "後続 Task 分割案の整理"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "DDL / migration 作成"
+  - "supabase/seeds / db/seeds 実体作成"
+  - "apps/reco/** の DB Repository 実装"
+  - "pair_rule.lambda_ctx_delta 列追加"
+  - "OpenAPI / Orval / generated 変更"
+  - "横断 Epic（AI Review 等）の新規作成"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-009_User Context Builderモジュール仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/user_meaning_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: true
+    - path: "docs/04_ドメインモデル設計/Matching定義書.md"
+      required: true
+  templates:
+    - path: "prompts/templates/docs/table-spec.md"
+      required: true
+  issues:
+    - 843
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/lambda_ctx_rule_テーブル定義書.md"
+      action: "create"
+      required: true
+    - path: "docs/06_実装設計/database/物理ER.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/database/テーブル一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/semantic_config_version_テーブル定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-009_User Context Builderモジュール仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/db-physical-design/table-spec-lambda-ctx-rule.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/db-physical-design/table-spec-lambda-ctx-rule/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "lambda_ctx_rule テーブル定義書"
+  - "横断 docs 整合"
+  - "MOD-RECO-009 §16 No.1 解消"
+  - "後続 Task 分割案"
+
+acceptance_criteria:
+  - "lambda_ctx_rule_テーブル定義書.md が存在する"
+  - "物理形態が案A（専用テーブル）として明記されている"
+  - "物理ER / テーブル一覧 / 初期データ定義書 / semantic_config_version §8.1 と整合している"
+  - "MOD-RECO-009 §16 No.1 が解消または解消見込みが明記されている"
+  - "後続 Task（DDL / seed / Reco Repository）分割案が記載されている"
+  - "apps/** 変更がない"
+  - "Task PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "lambda-ctx-rule-physical-schema"
+  name: "docs/task-843-lambda-ctx-rule-physical-schema"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+issue:
+  number: 843
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: null
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "案A 専用テーブルと Port I/F（codes Lookup）の整合"
+    - "user_meaning.lambda_ctx との責務分離"
+    - "MVP seed 0 行 + 0.5 フォールバック方針"
+    - "pair_rule.lambda_ctx_delta を本 Task で追加していないこと"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+test_policy:
+  required:
+    - "docs review"
+    - "markdown format check"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "物理ER Mermaid に lambda_ctx_rule が含まれること"
+    - "テーブル一覧件数と整合すること"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs 設計 Task のため対象外"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+
+notes:
+  - "Epic #435 merge 済みのため develop 直 Task"
+  - "Human 判断: 案A 専用テーブル（2026-07-25）"

@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-db-physical-design-table-spec-lambda-ctx-rule-pr"
+  title: "lambda_ctx_rule 物理正本設計 PRレビュー"
+  summary: "案A 専用テーブル lambda_ctx_rule のテーブル定義書と横断 docs / MOD-RECO-009 整合を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  summary: "lambda-ctx-rule-physical-schema"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: 1631
+  issue: 843
+  task_definition: "prompts/definitions/tasks/db-physical-design/table-spec-lambda-ctx-rule.yaml"
+  source_branch: "docs/task-843-lambda-ctx-rule-physical-schema"
+  target_branch: "develop"
+  parent_epic_issue: 435
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/db-physical-design/table-spec-lambda-ctx-rule.yaml"
+    required: true
+  issue:
+    number: 843
+    required: true
+  pr:
+    number: 1631
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/database/lambda_ctx_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-009_User Context Builderモジュール仕様書.md"
+      required: true
+  test_results:
+    required: false
+    source: "not_required"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "out_of_scope（DDL / seed 実体 / apps）が混在していないか"
+    - "PR target が develop であるか"
+    - "PR author が okuri-ai-bot であるか"
+  docs:
+    - "案A 専用テーブルが明記されているか"
+    - "user_meaning.lambda_ctx との責務分離が明確か"
+    - "Port I/F（codes Lookup）と UNIQUE / Index が整合しているか"
+    - "物理ER / テーブル一覧 / 初期データ / semantic_config_version 被参照が更新されているか"
+    - "MOD-RECO-009 §16 No.1 が解消されているか"
+    - "MVP seed 0 行方針と pair_rule.lambda_ctx_delta 非採用が明記されているか"
+  security:
+    - "secret 実値が含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria: []
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "Blocker が未修正のまま残っていない"
+  request_changes:
+    conditions:
+      - "案A 以外の形態が混在"
+      - "横断 docs 更新漏れ"
+      - "DDL / apps 変更混在"
+  needs_human_decision:
+    conditions:
+      - "seed 範囲・値列型・優先2 方針の再判断が必要"
+  split_required:
+    conditions:
+      - "DDL / seed 実体が混在"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "db"
+
+dependencies:
+  issues:
+    - 843
+  tasks:
+    - "prompts/definitions/tasks/db-physical-design/table-spec-lambda-ctx-rule.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/06_実装設計/database/lambda_ctx_rule_テーブル定義書.md"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: true
+
+contract_gate:
+  required: false
+
+test_policy:
+  required: []
+  not_required:
+    - "unit test"
+
+human_decision_points:
+  - "MVP seed 0 行方針の採否"
+  - "Lookup キー codes 直持ち（pair_id 不採用）の採否"
+  - "pair_rule.lambda_ctx_delta（優先2）を別 Task に残すことの採否"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/db-physical-design/table-spec-lambda-ctx-rule.yaml"
+  - "develop 直 Task（Epic #435 merge 済み）"
+  - "PR 作成後に target.pr / input.pr.number を更新する"
