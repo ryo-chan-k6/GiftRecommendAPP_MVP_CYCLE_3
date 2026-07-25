@@ -1,8 +1,8 @@
-"""In-memory repositories for BATCH-004 unit tests / scaffold wiring.
+"""Repositories for BATCH-004 item recheck.
 
-Production will replace these with real DB / Object Storage adapters while
-keeping the same Raw / fetch_cursor / IF-DB-BATCH-020 semantics.
-Item / Staging / item.active_status は更新しない。
+``list_seedable_items`` uses ``DbReader`` when injected (Wave A' seed SELECT).
+Without a reader, in-memory ``seed_items`` remains for scaffold / UT.
+Item / Staging / item.active_status は更新しない（004 境界）。
 """
 
 from __future__ import annotations
@@ -22,8 +22,16 @@ from batch.application.item_recheck.models import (
     RawItemSearchArtifact,
     ResolvedCandidate,
 )
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient
+
+_SEED_COLUMNS = (
+    "item_id",
+    "source",
+    "external_item_code",
+    "active_status",
+    "last_checked_at",
+)
 
 
 @dataclass
@@ -33,6 +41,7 @@ class ItemRecheckRepositories:
     object_storage: ObjectStorageClient
     db_writer: DbWriter
     bucket: str
+    db_reader: DbReader | None = None
     # 再確認対象の item seed（active + external_item_code）
     seed_items: list[ItemSeed] = field(default_factory=list)
     fetch_cursors: dict[str, FetchCursorRow] = field(default_factory=dict)
@@ -56,6 +65,12 @@ class ItemRecheckRepositories:
 
         Explicit ``external_item_codes`` overrides priority (still capped by max_items).
         """
+
+        if self.db_reader is not None:
+            return self._list_seedable_items_from_db(
+                max_items=max_items,
+                external_item_codes=external_item_codes,
+            )
 
         if external_item_codes:
             wanted = {code for code in external_item_codes if code}
@@ -88,15 +103,96 @@ class ItemRecheckRepositories:
             for item in self.seed_items
             if item.active_status == "active" and bool(item.external_item_code)
         ]
-
-        def _sort_key(item: ItemSeed) -> tuple[object, object, str]:
-            # older last_checked first (None → oldest), lower popularity first (None last)
-            checked = item.last_checked_at or datetime.min.replace(tzinfo=UTC)
-            pop = item.popularity if item.popularity is not None else float("inf")
-            return (checked, pop, item.external_item_code)
-
-        eligible.sort(key=_sort_key)
+        eligible.sort(key=self._seed_sort_key)
         return eligible[: max(0, max_items)]
+
+    def _list_seedable_items_from_db(
+        self,
+        *,
+        max_items: int,
+        external_item_codes: tuple[str, ...] | None,
+    ) -> list[ItemSeed]:
+        """SELECT via DbReader (equals-only; no popularity JOIN)."""
+
+        reader = self.db_reader
+        if reader is None:
+            return []
+
+        if external_item_codes:
+            selected: list[ItemSeed] = []
+            for code in external_item_codes:
+                if not code:
+                    continue
+                result = reader.fetch_rows(
+                    "item",
+                    columns=_SEED_COLUMNS,
+                    equals=(
+                        ("source", SOURCE_RAKUTEN),
+                        ("external_item_code", code),
+                    ),
+                    limit=1,
+                )
+                if result.rows:
+                    selected.append(self._row_to_seed(result.rows[0]))
+                else:
+                    selected.append(
+                        ItemSeed(
+                            source=SOURCE_RAKUTEN,
+                            external_item_code=code,
+                            active_status="active",
+                        )
+                    )
+                if len(selected) >= max_items:
+                    break
+            return selected
+
+        fetch_limit = max(0, max_items)
+        if fetch_limit == 0:
+            return []
+
+        # Fetch a bounded window then apply §9.2 sort in-process.
+        # popularity lives on item_popularity_signal (JOIN out of DbReader scope).
+        result = reader.fetch_rows(
+            "item",
+            columns=_SEED_COLUMNS,
+            equals=(
+                ("active_status", "active"),
+                ("source", SOURCE_RAKUTEN),
+            ),
+            order_by=("last_checked_at",),
+            limit=fetch_limit,
+        )
+        eligible = [
+            seed
+            for seed in (self._row_to_seed(row) for row in result.rows)
+            if seed.active_status == "active" and bool(seed.external_item_code)
+        ]
+        eligible.sort(key=self._seed_sort_key)
+        return eligible[:fetch_limit]
+
+    @staticmethod
+    def _seed_sort_key(item: ItemSeed) -> tuple[object, object, str]:
+        # older last_checked first (None → oldest), lower popularity first (None last)
+        checked = item.last_checked_at or datetime.min.replace(tzinfo=UTC)
+        pop = item.popularity if item.popularity is not None else float("inf")
+        return (checked, pop, item.external_item_code)
+
+    def _row_to_seed(self, row: dict[str, object]) -> ItemSeed:
+        last_checked = row.get("last_checked_at")
+        checked_at: datetime | None
+        if isinstance(last_checked, datetime):
+            checked_at = last_checked if last_checked.tzinfo else last_checked.replace(tzinfo=UTC)
+        else:
+            checked_at = None
+        item_id = row.get("item_id")
+        return ItemSeed(
+            source=str(row.get("source") or SOURCE_RAKUTEN),
+            external_item_code=str(row.get("external_item_code") or ""),
+            item_id=str(item_id) if item_id is not None else None,
+            active_status=str(row.get("active_status") or "active"),
+            last_checked_at=checked_at,
+            popularity=None,
+        )
 
     def get_or_create_recheck_cursor(self, *, external_item_code: str) -> FetchCursorRow:
         """get-or-create cursor_type=recheck, source_api=item_search, genre_id=NULL."""

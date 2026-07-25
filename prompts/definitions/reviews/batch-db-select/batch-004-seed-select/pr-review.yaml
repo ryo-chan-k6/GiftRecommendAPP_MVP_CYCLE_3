@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-select-004-seed-select-pr"
+  title: "batch-db-select BATCH-004 seed SELECT PRレビュー"
+  summary: "BATCH-004 item seed SELECT 本配線 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1638
+  task_definition: "prompts/definitions/tasks/batch-db-select/batch-004-seed-select.yaml"
+  parent_epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  parent_epic_branch: "feature/epic-1623-batch-db-select"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: null
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "list_seedable_items が DbReader を使うか"
+  - "楽天 live ゲート維持"
+  - "実 DB 疎通結果が PR に記録されているか（secret なし）"
+  - "scaffold-demo / UT 回帰"
+  - "Related to / PR target が親 Epic"
+
+notes:
+  - "Wave A'。popularity JOIN / 書込本格化は out of scope"

@@ -9,7 +9,7 @@
 | 作成日 | 2026-07-25 |
 | 更新日 | 2026-07-25 |
 | 関連 Epic | [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)（batch-db-select） |
-| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A: 005 SELECT） |
+| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A） / [#1638](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1638)（Wave A'） |
 | 先行 | E2 [#1595](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1595) / E3 [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) MERGED |
 | tip 根拠 | Epic tip（実 DB 疎通必須方針反映時点） |
 
@@ -34,10 +34,10 @@
 | 項目 | 状態 |
 | ---- | ---- |
 | DB 書込 | `DbWriter` + 代表 UPSERT（E2）。`apps/batch/.../infrastructure/db/writer.py` |
-| DB 読取 | **T1: `DbReader` 境界あり**。**Wave A: BATCH-005 は `list_eligible_raws` 本配線済み**。004/006 以降は未（in-memory + `seed_*`） |
+| DB 読取 | **T1: `DbReader` あり**。**Wave A: 005 SELECT 本配線**。**Wave A': 004 `item` seed SELECT 本配線**。006 以降は未 |
 | 外部 I/O | E3 完了（楽天 / Embedding / Object Storage。明示 live のみ） |
 | 主ブロッカー | 005 以外のビジネスデータ SELECT 未配線 → 非 demo で多数が **exit 3** |
-| Soft gap | 004（live 時）/ 006 は seed 空で **exit 0 可**（本線未開放） |
+| Soft gap | 006 は seed 空で Job 到達可（本線未開放）。004 seed SELECT は Wave A' で本配線 |
 
 ---
 
@@ -46,7 +46,7 @@
 | Batch ID | 現状の事実 | 非 demo 挙動 | E3 で揃ったもの | 足りない読取 |
 | -------- | ---------- | ------------ | --------------- | ------------ |
 | **005** raw_staging | **Wave A: DbReader SELECT + Job 起動**（`DATABASE_URL` 必須。Storage は明示 live） | `DATABASE_URL` 無し → **exit 2**。有り → Job 実行 | Object Storage client | （本配線済み。staging 本番 UPSERT 詳細は別） |
-| **004** item_recheck | 楽天 + Storage live 可。`seed_items` 未注入 | live 無し → exit 3（楽天フラグ）。live 有り → **0 件成功可** | 楽天 / Storage | `item` seed SELECT |
+| **004** item_recheck | **Wave A': DbReader seed SELECT**（`DATABASE_URL` 必須。楽天 live は別ゲート） | `DATABASE_URL` 無し → **exit 2**。楽天 live 無し → **exit 3** | 楽天 / Storage | （seed SELECT 本配線済み） |
 | **010** item_semantic | Rule-first adapter（LLM 非呼出） | **exit 3** | （外部 API 対象外） | queue / item SELECT |
 | **015** item_embedding | `--scaffold-demo --live-embedding` で HTTP 煙可 | **exit 3** | Embedding client | queue / handoff SELECT |
 
@@ -55,7 +55,7 @@
 | Batch | CLI | 根拠メッセージ / コメント |
 | ----- | --- | ------------------------- |
 | 005 | `apps/batch/src/batch/application/raw_staging/__main__.py` | `resolve_job_db_reader` + Job。`DATABASE_URL` 無しは exit 2 |
-| 004 | `.../item_recheck/__main__.py` | `seed 空: 実 DB SELECT は未実装` |
+| 004 | `.../item_recheck/__main__.py` | `resolve_job_db_reader` + seed SELECT。`DATABASE_URL` 無しは exit 2 |
 | 010 | `.../item_semantic/__main__.py` | `real DB read path is not enabled yet` |
 | 015 | `.../item_embedding/__main__.py` | 同上 |
 | 006 | `.../product_diff/__main__.py` | `読取 SELECT は未実装のため seed 空で実行` |
@@ -106,7 +106,7 @@
 | Batch | E3 で揃ったもの（事実） | 足りない後続 |
 | ----- | ----------------------- | ------------ |
 | 001〜003 | 楽天 + Storage live | （推論）主ブロッカーは SELECT ではない |
-| **004** | 楽天 + Storage | **item seed SELECT** |
+| **004** | 楽天 + Storage | **item seed SELECT 本配線済み**（#1638） |
 | **005** | Storage live | **metadata SELECT 本配線済み**（#1629）。staging UPSERT 本格化は別 |
 | **015** | Embedding HTTP（demo 煙） | **queue/handoff SELECT** + 本番 CLI live |
 | **010** | （外部対象外）Rule-first | **DB SELECT**（LLM 不要） |
@@ -124,7 +124,7 @@ Epic #1623 の子 Task 分割案。
 | high | T0 | inventory（**#1624** MERGED） | 本正本 | **不要**（docs のみ） | — |
 | high | T1 | reader-foundation（**#1627**） | `DbReader` Protocol / Scaffold / Postgres factory | **必須** | T0 |
 | high | A | BATCH-005 SELECT（**#1629**） | `raw_product_metadata` + Storage GET 本実行 | **必須** | T1 |
-| high | A' | BATCH-004 seed SELECT | `item` seed | **必須** | T1（A と並列可） |
+| high | A' | BATCH-004 seed SELECT（**#1638**） | `item` seed | **必須** | T1（A と並列可） |
 | high | B | BATCH-006 SELECT | staging/item | **必須** | A |
 | medium | C | 007 / 008 / 009 SELECT | 必要時は書込充実を分離 | **必須** | B |
 | high | D | BATCH-010 SELECT | queue/item（Rule-first） | **必須** | C（009 後） |
