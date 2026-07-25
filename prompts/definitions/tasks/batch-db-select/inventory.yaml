@@ -144,6 +144,10 @@ test_policy:
     - "secret check"
   not_required:
     - "unit test"
+    - "real DB connectivity verify"
+  skip_reason:
+    "unit test": "docs 棚卸しのみ"
+    "real DB connectivity verify": "T0 inventory は docs のみ。実装 Wave（T1 以降）で必須"
 
 review:
   human_review_required: true
@@ -156,3 +160,4 @@ review:
 
 notes:
   - "Issue #1624 / Branch docs/task-1624-batch-db-select-inventory"
+  - "T0 は実 DB 疎通不要（Epic 方針の例外）"

@@ -45,6 +45,7 @@ review_scope:
 review_points:
   - "list_eligible_raws が DbReader を使うか"
   - "旧 exit 3 固定メッセージが消えているか"
+  - "実 DB 疎通確認の結果が PR に記録されているか（secret なし）"
   - "scaffold-demo / UT 回帰"
   - "secret 非露出"
   - "staging UPSERT 本格化・004 以降を混入していないか"
@@ -52,3 +53,4 @@ review_points:
 
 notes:
   - "Wave A。staging 本番 UPSERT は out of scope"
+  - "Epic #1623 Human 確定: 実装 Wave は実 DB 疎通必須（local/dev/staging。CI 既定 live / production 無承認は禁止）"

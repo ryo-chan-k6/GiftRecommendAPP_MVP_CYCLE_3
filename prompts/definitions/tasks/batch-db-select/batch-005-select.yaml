@@ -52,6 +52,7 @@ scope:
   - "明示 raw_metadata_ids / --force（equals 複数回）"
   - "--scaffold-demo 回帰"
   - "UT"
+  - "実 DB 疎通確認（local/dev/staging。SELECT 経路が接続・クエリ成功。0 件可）"
   - "SELECT ギャップ一覧 Wave A 進捗"
   - "Task / Review Definition"
 
@@ -61,6 +62,7 @@ out_of_scope:
   - "DbReader への IN / 任意 SQL 拡張"
   - "BATCH-004/006 以降の SELECT"
   - "E4 / LLM / #1607 / DDL"
+  - "production 無承認 live / CI 既定 live"
 
 input:
   docs:
@@ -100,11 +102,13 @@ deliverables:
   - "005 SELECT 本配線"
   - "CLI Job 起動（旧 exit 3 解除）"
   - "UT"
+  - "実 DB 疎通確認結果（PR 本文または experiments。secret なし）"
   - "ギャップ一覧更新"
 
 acceptance_criteria:
   - "非 demo で DATABASE_URL ありなら Job が起動する（旧 real DB read path 固定メッセージなし）"
   - "list_eligible_raws が DbReader を使う"
+  - "実 DB 疎通確認が完了し、PR 本文（または experiments ログ）に結果要約がある（secret なし）"
   - "scaffold-demo / 既存 UT 回帰"
   - "secret 非露出"
   - "PR target が親 Epic Branch"
@@ -154,10 +158,13 @@ test_policy:
   required:
     - "unit test"
     - "secret check"
+    - "real DB connectivity verify"
   not_required:
-    - "integration test against production DB"
+    - "CI default live"
+    - "production unapproved live"
   skip_reason:
-    "integration test against production DB": "local/CI 限定。本 Task は UT + CLI wiring 中心"
+    "CI default live": "明示 / 手動の実 DB 疎通のみ。CI 既定 live は禁止"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
 
 review:
   human_review_required: true
@@ -165,6 +172,7 @@ review:
   review_points:
     - "DbReader SELECT が equals 制約内で仕様の既定フィルタを満たすか"
     - "旧 exit 3 固定が消えているか"
+    - "実 DB 疎通確認の結果が PR に記録されているか（secret なし）"
     - "scaffold-demo 回帰"
     - "secret 非露出"
     - "staging UPSERT 本格化を混入していないか"
