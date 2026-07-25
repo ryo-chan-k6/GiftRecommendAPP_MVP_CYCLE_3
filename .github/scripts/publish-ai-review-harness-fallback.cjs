@@ -5,7 +5,6 @@ const slack = require("./slack-notify.cjs");
 const publish = require("./publish-ai-review-and-dispatch.cjs");
 
 const LOG_LINE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}T[^\s]+\s+/;
-const TRANSCRIPT_STOP_RE = /^---$|^### \d+\./;
 const REVIEW_SECTION_HEADING = slack.AI_REVIEW_HEADING_1;
 
 function nonEmpty(value) {
@@ -27,16 +26,29 @@ function ensureAiReviewResultHeading(body) {
   return `# AI Review Result\n\n${text}`;
 }
 
+/**
+ * AI Review コメントブロックの終端判定。
+ * テンプレート内の水平線（`---`）や `### 7.1` 等の小見出し、本文中のファイル名言及では切らない。
+ * 次の AI Review コメント開始、または node による publish スクリプト実行ログで終端する。
+ */
+function shouldStopAiReviewCommentBlock(line, { isAfterStart }) {
+  if (!isAfterStart) return false;
+  const trimmed = String(line || "").trim();
+  if (trimmed === "# AI Review Result") return true;
+  if (
+    /\bnode\b\S*\s+\S*publish-ai-review-(?:and-dispatch|harness-fallback)\.cjs\b/.test(trimmed) ||
+    /\bnode\b.+\bpublish-ai-review-(?:and-dispatch|harness-fallback)\.cjs\b/.test(trimmed)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function extractBlockFromStart(stripped, startIdx) {
   const block = [];
   for (let i = startIdx; i < stripped.length; i += 1) {
     const line = stripped[i];
-    if (
-      i > startIdx &&
-      (TRANSCRIPT_STOP_RE.test(line.trim()) ||
-        line.includes("publish-ai-review-and-dispatch.cjs") ||
-        line.includes("publish-ai-review-harness-fallback.cjs"))
-    ) {
+    if (shouldStopAiReviewCommentBlock(line, { isAfterStart: i > startIdx })) {
       break;
     }
     block.push(line);
@@ -213,21 +225,35 @@ ${ngBody}
   return isValidAiReviewCommentBody(body) ? body : "";
 }
 
+function trySynthesizeFromTranscript(transcript, { prNumber } = {}) {
+  const unique = collectUniqueReviewResults(transcript);
+  if (unique.length !== 1) return "";
+  return synthesizeAiReviewComment({
+    reviewResult: unique[0],
+    prNumber,
+    transcript,
+  });
+}
+
 function extractLatestAiReviewCommentFromTranscript(transcript, { prNumber } = {}) {
   const blocks = extractAiReviewCommentBlocks(transcript);
   // 切り詰め（本文退避・省略）ブロックは投稿せず、合成フォールバックへ回す。
   const usableBlocks = blocks.filter((block) => !publish.isTruncatedAiReviewComment(block));
-  if (usableBlocks.length) return usableBlocks[usableBlocks.length - 1];
+  // NG理由サマリが揃っているブロックを優先（水平線打ち切りの不完全抽出を避ける）
+  const completeBlocks = usableBlocks.filter((block) => !publish.isMissingNgReasonSummary(block));
+  if (completeBlocks.length) return completeBlocks[completeBlocks.length - 1];
 
-  const unique = collectUniqueReviewResults(transcript);
-  if (unique.length === 1) {
-    return synthesizeAiReviewComment({
-      reviewResult: unique[0],
-      prNumber,
-      transcript,
-    });
+  // 抽出結果が欠落している（または切り詰めのみ）場合は transcript 全体から synthesize を試行
+  const synthesized = trySynthesizeFromTranscript(transcript, { prNumber });
+  if (synthesized && !publish.isMissingNgReasonSummary(synthesized)) {
+    return synthesized;
   }
-  return "";
+  if (synthesized && !usableBlocks.length) {
+    return synthesized;
+  }
+
+  if (usableBlocks.length) return usableBlocks[usableBlocks.length - 1];
+  return synthesized || "";
 }
 
 function readResultTextFromJson(resultJsonPath) {
@@ -312,7 +338,7 @@ async function publishAiReviewHarnessFallback({
     };
   }
 
-  const commentBody = extractLatestAiReviewCommentFromSources({
+  let commentBody = extractLatestAiReviewCommentFromSources({
     transcriptText: transcript,
     transcriptPath: "",
     resultJsonPath,
@@ -325,6 +351,15 @@ async function publishAiReviewHarnessFallback({
       message: "No valid AI Review comment block found in harness transcript.",
       prior_verify: verify,
     };
+  }
+  // 抽出欠落時の最終フォールバック: transcript 全体から synthesize を再試行
+  if (publish.isMissingNgReasonSummary(commentBody)) {
+    const resultText = readResultTextFromJson(resultJsonPath);
+    const combined = [transcript, resultText].filter(Boolean).join("\n");
+    const synthesized = trySynthesizeFromTranscript(combined, { prNumber });
+    if (synthesized && !publish.isMissingNgReasonSummary(synthesized)) {
+      commentBody = synthesized;
+    }
   }
   if (publish.isMissingNgReasonSummary(commentBody)) {
     return {
@@ -452,10 +487,12 @@ if (require.main === module) {
 module.exports = {
   LOG_LINE_PREFIX_RE,
   REVIEW_SECTION_HEADING,
+  shouldStopAiReviewCommentBlock,
   collectUniqueReviewResults,
   formatNgReasonSummarySection,
   extractMustFixSummariesFromTranscript,
   synthesizeAiReviewComment,
+  trySynthesizeFromTranscript,
   extractAiReviewCommentBlocks,
   extractLatestAiReviewCommentFromTranscript,
   extractLatestAiReviewCommentFromSources,

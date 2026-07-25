@@ -383,7 +383,7 @@ Harness live-run では Cloud Agent から GitHub へ書き込めないため、
 | ------ | ---- |
 | プロンプト（`definition-run-prompt-builder.cjs`） | review-pr live-run で「コメント本文を ai-review-comment.md の全セクション分、省略せず逐語出力」「`/tmp` 退避・参照・省略での代替禁止」を指示。加えて `request_changes` / `blocked` / `split_required` / `needs_human_decision` 時は `## NG理由サマリ`（must・最大10件）必須を指示 |
 | 投稿（`publish-ai-review-and-dispatch.cjs`） | `isTruncatedAiReviewComment` で切り詰め本文を検出し、投稿前に拒否（`TRUNCATION_PATTERNS`: ローカル一時ファイル参照 / 「全文は … を参照」/ 単独の三点リーダ行）。`isMissingNgReasonSummary` で NG理由サマリ欠落を検出し投稿拒否 |
-| fallback 抽出（`publish-ai-review-harness-fallback.cjs`） | transcript から抽出したブロックのうち切り詰めブロックを除外。残らない場合は synthetic comment へフォールバック。synthetic 時は transcript の §7 / NG理由サマリから must 指摘を抽出して `## NG理由サマリ` に埋め込む。欠落時は `ng_reason_summary_missing` で失敗 |
+| fallback 抽出（`publish-ai-review-harness-fallback.cjs`） | transcript から抽出したブロックのうち切り詰めブロックを除外。コメント内の水平線（`---`）や `### 7.1` 等では終端しない（次の `# AI Review Result` / `node … publish-ai-review-*.cjs` 実行ログで終端）。残らない場合、または抽出結果が NGサマリ欠落の場合は transcript 全体から synthetic comment へフォールバック。synthetic 時は transcript の §7 / NG理由サマリから must 指摘を抽出して `## NG理由サマリ` に埋め込む。欠落時は `ng_reason_summary_missing` で失敗 |
 | post-verify（`definition-run-post-verify.cjs`） | dispatch 成立後も投稿済みコメントが切り詰めなら `review_comment_truncated`、NG理由サマリ欠落なら `review_comment_missing_ng_summary` 違反として job を失敗させる |
 
 #### NG理由サマリ（Issue #466）
