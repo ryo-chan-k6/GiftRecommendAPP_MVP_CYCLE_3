@@ -1,0 +1,181 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-select-reader-foundation"
+  title: "batch-db-select:DbReader読取基盤"
+  summary: "apps/batch に DbReader Protocol / Scaffold / Postgres factory を追加する。各 Batch の SELECT 本配線は後続 Wave に残す。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  epic_issue_number: 1623
+  epic_branch: "feature/epic-1623-batch-db-select"
+  related_issues:
+    - 1624
+  related_prs:
+    - 1625
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  inventory（#1624）完了後、最大ブロッカーは SELECT 未配線。
+  DbWriter はあるが DbReader がないため、後続 005/004 等の前提として読取境界を先に入れる。
+
+objective: |
+  batch に実 DB 読取境界（PostgresDbReader）と factory 切替を導入し、UT で Protocol / 切替を担保する。
+
+scope:
+  - "DbReader Protocol + ScaffoldDbReader / PostgresDbReader"
+  - "create_db_reader / resolve_job_db_reader（Writer と同型の DATABASE_URL / scaffold:// / --scaffold-demo）"
+  - "識別子検証付き SELECT（table/columns/equals/order_by/limit。任意 SQL 文字列は不可）"
+  - "is_live_db_reader ヘルパー"
+  - "UT（factory・Scaffold・Postgres mock・secret mask）"
+  - "SELECT ギャップ一覧への T1 進捗反映"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "各 Batch（005/004/010/015 等）への SELECT 本配線・exit 3 解除"
+  - "repositories の in-memory 一括置換"
+  - "DDL / migration 変更"
+  - "E4 観測 / Semantic LLM / #1607"
+  - "production DB 適用・接続実値の commit"
+  - "apps/reco / apps/api / apps/web 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+    - path: "apps/batch/tests/unit/infrastructure/test_db_writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/reader.py"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/__init__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/__init__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/infrastructure/test_db_reader.py"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-select/reader-foundation.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/reader-foundation/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "DbReader / ScaffoldDbReader / PostgresDbReader / factory"
+  - "UT"
+  - "ギャップ一覧 T1 反映"
+
+acceptance_criteria:
+  - "create_db_reader / resolve_job_db_reader が scaffold / postgres を切り替える"
+  - "任意 SQL 文字列実行 API を公開していない"
+  - "secret / DATABASE_URL 実値をログ・コード・docs に出さない"
+  - "各 Batch SELECT 本配線・exit 3 解除を含まない"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-select-reader-foundation"
+  base: "feature/epic-1623-batch-db-select"
+  target: "feature/epic-1623-batch-db-select"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: "2026-07-27"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "親 Epic"
+  issues:
+    - number: 1624
+      purpose: "T0 inventory 完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/tests/unit/infrastructure/test_db_reader.py"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "integration test against production DB"
+  skip_reason:
+    "integration test against production DB": "local/CI 限定。本 Task は factory/UT 中心"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Scaffold 切替が DATABASE_URL / scaffold:// / --scaffold-demo で正しいか"
+    - "識別子検証・パラメータ化 SELECT（任意 SQL 不可）"
+    - "secret 非露出（mask_database_url）"
+    - "各 Batch SELECT 本配線を混入していないか"
+    - "PR target が親 Epic Branch"
+    - "Related to（Closes 禁止）"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points:
+  - "equals 限定の fetch_rows で T1 十分か（推奨: 十分。複雑な JOIN は Batch 側 Task）"
+
+notes:
+  - "DbWriter と同型の切替方針"
+  - "Epic child_task_areas: reader-foundation"

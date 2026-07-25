@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-select-reader-foundation-pr"
+  title: "batch-db-select reader-foundation PRレビュー"
+  summary: "DbReader 読取基盤 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1627
+  task_definition: "prompts/definitions/tasks/batch-db-select/reader-foundation.yaml"
+  parent_epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  parent_epic_branch: "feature/epic-1623-batch-db-select"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: null
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "DbReader / factory / UT が揃っているか"
+  - "任意 SQL 文字列実行を公開していないか"
+  - "secret / DATABASE_URL 実値が非露出か"
+  - "各 Batch SELECT 本配線・exit 3 解除を混入していないか"
+  - "Related to / PR target が親 Epic"
+
+notes:
+  - "Wave T1。Batch 本配線は後続"

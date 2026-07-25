@@ -9,9 +9,9 @@
 | 作成日 | 2026-07-25 |
 | 更新日 | 2026-07-25 |
 | 関連 Epic | [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)（batch-db-select） |
-| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（本棚卸し） |
+| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0 棚卸し） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1 DbReader 基盤） |
 | 先行 | E2 [#1595](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1595) / E3 [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) MERGED |
-| tip 根拠 | `develop` 取込後の Epic tip（実装確認時点） |
+| tip 根拠 | Epic tip（T1 実装時点） |
 
 ### 1.1 目的
 
@@ -21,7 +21,7 @@
 
 | out of scope | 理由 |
 | ------------ | ---- |
-| `DbReader` / SELECT 実装 | 後続 Task |
+| 各 Batch の SELECT 本配線・exit 3 解除 | Wave A 以降（T1 は読取境界のみ） |
 | E4 観測横断実装 | 別 Epic |
 | Semantic LLM 本接続 | Human 確定どおり Rule-first 維持 |
 | #1607 本番 egress | Backlog |
@@ -34,7 +34,7 @@
 | 項目 | 状態 |
 | ---- | ---- |
 | DB 書込 | `DbWriter` + 代表 UPSERT（E2）。`apps/batch/.../infrastructure/db/writer.py` |
-| DB 読取 | **`DbReader` なし**。repositories は in-memory + `seed_*` |
+| DB 読取 | **T1: `DbReader` 境界あり**（`reader.py` / factory）。各 Batch repositories の SELECT 本配線は未（in-memory + `seed_*`） |
 | 外部 I/O | E3 完了（楽天 / Embedding / Object Storage。明示 live のみ） |
 | 主ブロッカー | ビジネスデータ SELECT 未配線 → 非 demo で多数が **exit 3** |
 | Soft gap | 004（live 時）/ 006 は seed 空で **exit 0 可**（本線未開放） |
@@ -121,8 +121,8 @@ Epic #1623 の子 Task 分割案。
 
 | 優先 | Wave | 候補 Task | 内容 | 依存 |
 | ---- | ---- | --------- | ---- | ---- |
-| high | T0 | inventory（**本 Task #1624**） | 本正本 | — |
-| high | T1 | reader-foundation | `DbReader` または repos 本番読取の共通方針 | T0 |
+| high | T0 | inventory（**#1624** MERGED） | 本正本 | — |
+| high | T1 | reader-foundation（**#1627**） | `DbReader` Protocol / Scaffold / Postgres factory | T0 |
 | high | A | BATCH-005 SELECT | `raw_product_metadata` + Storage GET 本実行 | T1 |
 | high | A' | BATCH-004 seed SELECT | `item` seed | T1（A と並列可） |
 | high | B | BATCH-006 SELECT | staging/item | A |
