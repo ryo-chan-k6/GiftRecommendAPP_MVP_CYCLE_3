@@ -777,6 +777,10 @@ approve_for_human_review / request_changes / needs_human_decision / split_requir
 ### 良い点
 -
 
+### NG理由サマリ
+-
+（`request_changes` / `blocked` / `split_required` / `needs_human_decision` のとき must 最大10件。`approve_for_human_review` は `なし`）
+
 ### 指摘事項
 -
 
@@ -880,7 +884,9 @@ Harness 入力:
 
 Harness live-run では Cloud Agent から GitHub へ書き込めず、Harness が **Agent の最終出力テキストから AI Review コメントを再構成して投稿**する。そのため AI Review コメント本文（[ai-review-comment.md](../../prompts/templates/review/ai-review-comment.md) の全セクション）を **省略せず逐語で出力**する。`...` 等の省略・`/tmp` 等ローカルファイルへの退避・「全文は … を参照」のような参照で本文を代替しない（本文退避は投稿スクリプトが拒否する）。
 
-live-run 完了後、Harness post-run 検証が dispatch 忘れと **コメント本文の切り詰め**を検知する。違反時は Guard Violations に `review_dispatch` / `review_comment_truncated` が列挙され、ジョブは失敗する。
+`request_changes` / `blocked` / `split_required` / `needs_human_decision` のときは、コメント §1 直後の **`## NG理由サマリ`** に `must` 指摘の1行サマリ（タイトル・対象・理由）を最大10件記載する（超過は「他N件は §7 参照」）。`approve_for_human_review` のときは `なし` と記載する。欠落コメントは投稿拒否または post-verify で失敗する。
+
+live-run 完了後、Harness post-run 検証が dispatch 忘れ・**コメント本文の切り詰め**・**NG理由サマリ欠落**を検知する。違反時は Guard Violations に `review_dispatch` / `review_comment_truncated` / `review_comment_missing_ng_summary` が列挙され、ジョブは失敗する。
 
 ---
 

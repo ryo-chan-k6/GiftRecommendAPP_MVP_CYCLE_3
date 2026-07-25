@@ -1,0 +1,218 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-definition-run-ai-review-ng-reason-summary-pr"
+  title: "AI Review NG理由サマリ出力 PRレビュー"
+  summary: "request_changes 等の NG理由サマリ必須化（テンプレート・Harness fallback・post-verify・docs）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  summary: "ai-review-ng-reason-summary"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+target:
+  pr: null
+  issue: 466
+  task_definition: "prompts/definitions/tasks/definition-run-harness/ai-review-ng-reason-summary.yaml"
+  source_branch: "chore/task-466-ai-review-ng-reason-summary"
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+    - "docs-reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/definition-run-harness/ai-review-ng-reason-summary.yaml"
+    required: true
+  issue:
+    number: 466
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+  files:
+    - path: "prompts/templates/review/ai-review-comment.md"
+      required: true
+    - path: ".github/scripts/publish-ai-review-harness-fallback.cjs"
+      required: true
+    - path: ".github/scripts/publish-ai-review-and-dispatch.cjs"
+      required: true
+    - path: ".github/scripts/definition-run-post-verify.cjs"
+      required: true
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition scope を満たしているか"
+    - "out_of_scope（Slack全面展開 / Fixer変更 / Epic新規）が混在していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が develop であるか"
+    - "PR author が okuri-ai-bot であるか"
+    - "PR 本文にテスト結果が記載されているか"
+  source:
+    - "must のみ・最大10件の粒度がテンプレートと検証ロジックで一致しているか"
+    - "approve 経路の後方互換"
+    - "synthetic 抽出が既存切り詰めフォールバックを壊していないか"
+    - "post-verify の review_comment_missing_ng_summary が既存 truncated / dispatch と併存するか"
+  docs:
+    - "Harness 仕様書 §15.2.1 に NG理由サマリが追記されているか"
+    - "AIレビュー運用設計書 §10.1 が追記されているか"
+  security:
+    - "secret 実値が成果物に含まれていないか"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "node --test .github/scripts/publish-ai-review-harness-fallback.test.cjs pass"
+    - "node --test .github/scripts/publish-ai-review-and-dispatch.test.cjs pass"
+    - "node --test .github/scripts/definition-run-post-verify.test.cjs pass"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "Blocker が未修正のまま残っていない"
+      - "scope 外変更がない"
+  request_changes:
+    conditions:
+      - "NGサマリ必須の検知漏れ"
+      - "approve 後方互換破壊"
+      - "テスト未追加または fail"
+      - "docs と実装の不一致"
+  needs_human_decision:
+    conditions:
+      - "サマリ粒度方針の再判断が必要"
+  split_required:
+    conditions:
+      - "apps / Fixer 変更が混在"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  fields:
+    phase: "06_実装設計"
+    status: "AI Review"
+    priority: "medium"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "project"
+
+dependencies:
+  issues:
+    - 466
+  tasks:
+    - "prompts/definitions/tasks/definition-run-harness/ai-review-ng-reason-summary.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "prompts/templates/review/ai-review-comment.md"
+    - ".github/scripts/publish-ai-review-harness-fallback.cjs"
+    - ".github/scripts/publish-ai-review-and-dispatch.cjs"
+    - ".github/scripts/definition-run-post-verify.cjs"
+  conflict_risk: "medium"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "node --test .github/scripts/publish-ai-review-harness-fallback.test.cjs"
+    - "node --test .github/scripts/publish-ai-review-and-dispatch.test.cjs"
+    - "node --test .github/scripts/definition-run-post-verify.test.cjs"
+  not_required:
+    - "apps integration test"
+
+human_decision_points: []
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/definition-run-harness/ai-review-ng-reason-summary.yaml"
+  - "develop 直 Task（親 Epic なし）"
+  - "PR 作成後に target.pr / input.pr.number を更新する"

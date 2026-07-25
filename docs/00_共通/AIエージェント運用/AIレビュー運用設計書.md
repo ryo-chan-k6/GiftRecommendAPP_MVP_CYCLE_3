@@ -324,6 +324,22 @@ AIレビュー結果の正本はPRとする。
 
 Slackは通知・サマリ用途であり、レビュー正本にはしない。
 
+### 10.1 NG理由サマリ（必須出力）
+
+PRコメントの正本テンプレートは [ai-review-comment.md](../../../prompts/templates/review/ai-review-comment.md) とする。
+
+`request_changes` / `blocked` / `split_required` / `needs_human_decision` のとき、§1 直後の **`## NG理由サマリ`** に、指摘レベル `must` の要点を記載する。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 目的 | PRコメントだけを見て修正すべき NG 理由の要点を把握できるようにする |
+| 粒度 | 1行サマリ（タイトル・対象・理由） |
+| 件数 | 最大10件。超過は「他N件は §7 参照」 |
+| `approve_for_human_review` | `なし` と記載する |
+| Harness | synthetic 投稿でも transcript から抽出し埋め込む。欠落は投稿拒否または post-verify（`review_comment_missing_ng_summary`）で失敗させる |
+
+詳細な検知レイヤは [Definition Run Harnessワークフロー仕様書](../../06_実装設計/github_actions/Definition%20Run%20Harnessワークフロー仕様書.md) §15.2.1 を正とする。
+
 ---
 
 ## 11. AIレビュー結果分類

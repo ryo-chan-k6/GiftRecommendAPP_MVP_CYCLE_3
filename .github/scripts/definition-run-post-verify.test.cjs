@@ -300,6 +300,31 @@ test("runPostVerify: review-pr live-run で投稿済みコメントが切り詰�
   assert.equal(result.violations[0].type, "review_comment_truncated");
 });
 
+test("runPostVerify: review-pr live-run で NG理由サマリ欠落なら violation", async () => {
+  const result = await post.runPostVerify({
+    owner: "o",
+    repo: "r",
+    startedAt: "2026-01-01T00:00:00.000Z",
+    runMode: "live-run",
+    runActor: "agent",
+    command: "review-pr",
+    targetPr: "466",
+    token: "t",
+    listIssues: async () => [],
+    listPulls: async () => [],
+    listBranches: async () => [],
+    verifyImpl: async () => ({
+      ok: true,
+      dispatch_run_id: 1,
+      latest_ai_review_comment_truncated: false,
+      latest_ai_review_comment_missing_ng_summary: true,
+      latest_ai_review_comment_url: "https://example.com/c/2",
+    }),
+  });
+  assert.equal(result.counts.violations, 1);
+  assert.equal(result.violations[0].type, "review_comment_missing_ng_summary");
+});
+
 test("runPostVerify: review-pr live-run は対象 PR head branch の commit 更新を違反にしない", async () => {
   const result = await post.runPostVerify({
     octokit: {},

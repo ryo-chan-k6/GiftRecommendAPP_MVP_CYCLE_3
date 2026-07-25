@@ -22,6 +22,17 @@ const TRUNCATION_PATTERNS = Object.freeze([
   /^\s*(?:\.{3}|…|\.{3}\s*\(.*\)|…\s*\(.*\))\s*$/m,
 ]);
 
+// NG理由サマリが必須となる Review Result（Human 判断 / Issue #466）
+const RESULTS_REQUIRING_NG_REASON_SUMMARY = Object.freeze([
+  "request_changes",
+  "blocked",
+  "split_required",
+  "needs_human_decision",
+]);
+
+const NG_REASON_SUMMARY_HEADING_RE = /^##\s*NG理由サマリ\s*$/m;
+const MAX_NG_REASON_SUMMARY_ITEMS = 10;
+
 function nonEmpty(value) {
   return String(value || "").trim();
 }
@@ -31,6 +42,59 @@ function isTruncatedAiReviewComment(body) {
   const text = String(body || "");
   if (!text) return false;
   return TRUNCATION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function requiresNgReasonSummary(reviewResult) {
+  const token = slack.normalizeReviewResult(reviewResult);
+  return Boolean(token && RESULTS_REQUIRING_NG_REASON_SUMMARY.includes(token));
+}
+
+function extractNgReasonSummarySection(body) {
+  const text = String(body || "");
+  const match = NG_REASON_SUMMARY_HEADING_RE.exec(text);
+  if (!match) return "";
+  const start = match.index + match[0].length;
+  const rest = text.slice(start);
+  const nextHeading = /^##\s+/m.exec(rest);
+  const section = nextHeading ? rest.slice(0, nextHeading.index) : rest;
+  return section.trim();
+}
+
+function hasUsableNgReasonSummary(body) {
+  const section = extractNgReasonSummarySection(body);
+  if (!section) return false;
+  const lines = section
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  // 説明文のみ・「なし」のみは未記載扱い
+  const bullets = lines.filter((line) => /^[-*]\s+/.test(line));
+  const usableBullets = bullets.filter((line) => !/^[-*]\s*なし\s*$/.test(line));
+  if (usableBullets.length > 0) return true;
+  if (/他\d+件は/.test(section)) return true;
+  // 箇条書き以外の実質テキスト（「なし」やテンプレ説明を除く）
+  const prose = lines.filter(
+    (line) =>
+      !/^[-*]\s+/.test(line) &&
+      line !== "なし" &&
+      !line.includes("のとき **必須**") &&
+      !line.includes("のとき必須") &&
+      !line.includes("指摘レベル") &&
+      !line.includes("最大") &&
+      !line.includes("approve_for_human_review") &&
+      !line.includes("該当がない場合"),
+  );
+  return prose.some((line) => line.length > 0 && line !== "なし");
+}
+
+function isMissingNgReasonSummary(body, reviewResult) {
+  let token = slack.normalizeReviewResult(reviewResult);
+  if (!token) {
+    const extracted = slack.extractReviewResultFromAiComment(body);
+    token = extracted.ok ? extracted.value : "";
+  }
+  if (!requiresNgReasonSummary(token)) return false;
+  return !hasUsableNgReasonSummary(body);
 }
 
 function resolveRepository({ owner, repo, repository }) {
@@ -164,6 +228,12 @@ async function publishAiReviewAndDispatch({
       throw new Error(
         "Comment appears truncated (local file reference / omission marker). " +
           "Post the full AI Review comment body verbatim, not a /tmp reference or summary.",
+      );
+    }
+    if (isMissingNgReasonSummary(body, normalizedResult)) {
+      throw new Error(
+        "Comment is missing required ## NG理由サマリ for " +
+          `${normalizedResult}. Include must-level fix summaries (max ${MAX_NG_REASON_SUMMARY_ITEMS}).`,
       );
     }
     commentResult = await postPullRequestComment({
@@ -404,16 +474,19 @@ async function verifyAiReviewDispatch({
     };
   }
 
+  const commentBody = latestAiComment.body || "";
+  const reviewResult = extracted.ok ? extracted.value : "";
   return {
     ok: true,
     pr_number: String(prNumber),
     latest_ai_review_comment_url: latestAiComment.html_url || "",
     latest_ai_review_comment_at: latestAiComment.created_at || "",
-    latest_ai_review_comment_truncated: isTruncatedAiReviewComment(latestAiComment.body || ""),
+    latest_ai_review_comment_truncated: isTruncatedAiReviewComment(commentBody),
+    latest_ai_review_comment_missing_ng_summary: isMissingNgReasonSummary(commentBody, reviewResult),
     dispatch_run_id: matchedRun.id,
     dispatch_run_url: matchedRun.html_url || "",
     dispatch_run_title: matchedRun.display_title || matchedRun.name || "",
-    review_result: extracted.ok ? extracted.value : "",
+    review_result: reviewResult,
   };
 }
 
@@ -539,7 +612,13 @@ module.exports = {
   STATUS_SYNC_WORKFLOW_FILE,
   DISPATCH_RUN_TITLE_RE,
   TRUNCATION_PATTERNS,
+  RESULTS_REQUIRING_NG_REASON_SUMMARY,
+  MAX_NG_REASON_SUMMARY_ITEMS,
   isTruncatedAiReviewComment,
+  requiresNgReasonSummary,
+  extractNgReasonSummarySection,
+  hasUsableNgReasonSummary,
+  isMissingNgReasonSummary,
   resolveReviewResult,
   postPullRequestComment,
   publishAiReviewAndDispatch,

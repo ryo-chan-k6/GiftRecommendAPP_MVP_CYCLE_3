@@ -24,6 +24,22 @@
 
 ---
 
+## NG理由サマリ
+
+`request_changes` / `blocked` / `split_required` / `needs_human_decision` のとき **必須**。  
+指摘レベル `must` のみを対象に、最大 **10件** を1行サマリ（タイトル・対象・理由）で記載する。  
+超過分は `他N件は §7 参照` と記載する。  
+`approve_for_human_review` のときは `なし` と記載する。
+
+{{#each review.ng_reason_summary}}
+
+- **{{this.title}}** / 対象: `{{this.target}}` / 理由: {{this.reason}}
+  {{/each}}
+
+該当がない場合（または `approve_for_human_review`）は `なし` と記載する。
+
+---
+
 ## 2. 結論
 
 {{review.summary}}
@@ -488,6 +504,7 @@ Human Reviewへ進める
 - [ ] security観点を確認した
 - [ ] Human Review観点を整理した
 - [ ] 修正要否を判定した
+- [ ] `request_changes` / `blocked` / `split_required` / `needs_human_decision` のとき NG理由サマリ（must・最大10件）を記載した
 - [ ] Status更新意図を整理した
 - [ ] 次Actionを明記した
 

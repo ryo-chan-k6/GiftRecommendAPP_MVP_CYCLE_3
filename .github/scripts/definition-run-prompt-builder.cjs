@@ -275,6 +275,9 @@ function buildPrompt({ command, definition, run_mode, output_section, target_pr 
       "そのため AI Review コメント本文（ai-review-comment.md の全セクション）を",
       "最終出力に省略せず逐語で出力する。`...` 等の省略、`/tmp` 等ローカルファイルへの退避、",
       "「全文は … を参照」のような参照で本文を代替してはならない。",
+      "Review Result が request_changes / blocked / split_required / needs_human_decision のときは、",
+      "§1 直後の ## NG理由サマリ に must 指摘の1行サマリ（タイトル・対象・理由）を最大10件必須で記載する。",
+      "approve_for_human_review のときは NG理由サマリに なし と記載する。",
       "Harness bot fallback は prose のみでは抽出できない場合がある。",
       "",
     );

@@ -264,3 +264,71 @@ test("publishAiReviewHarnessFallback: prose transcript から publish する", a
   assert.equal(result.synthesized, true);
   assert.equal(calls.filter((c) => c.method === "POST").length, 2);
 });
+
+test("synthesizeAiReviewComment: request_changes で §7 から NG理由サマリを埋め込む", () => {
+  const transcript = `
+結論は request_changes です。
+
+## 7. 修正必須事項
+
+### 7.1 テスト不足
+
+| 項目     | 内容                          |
+| -------- | ----------------------------- |
+| 重要度   | \`must\`           |
+| 対象     | \`apps/api/foo.ts\`             |
+| 分類     | \`test\`           |
+| 対応方針 | 境界値テストを追加 |
+
+#### 指摘内容
+
+境界値がない。
+
+#### 理由
+
+acceptance_criteria を満たさない。
+`;
+  const body = fallback.synthesizeAiReviewComment({
+    reviewResult: "request_changes",
+    prNumber: 466,
+    transcript,
+  });
+  assert.match(body, /## NG理由サマリ/);
+  assert.match(body, /テスト不足/);
+  assert.match(body, /apps\/api\/foo\.ts/);
+  assert.match(body, /harness-fallback: synthesized/);
+});
+
+test("extractLatestAiReviewCommentFromTranscript: request_changes で指摘なし合成は NGサマリなし", () => {
+  const body = fallback.extractLatestAiReviewCommentFromTranscript(
+    "結論: request_changes。詳細は省略。",
+    { prNumber: 466 },
+  );
+  assert.match(body, /request_changes/);
+  assert.match(body, /## NG理由サマリ/);
+  assert.match(body, /なし/);
+});
+
+test("publishAiReviewHarnessFallback: NG理由サマリ欠落は投稿しない", async () => {
+  const result = await fallback.publishAiReviewHarnessFallback({
+    repository: "o/r",
+    prNumber: 466,
+    sinceIso: "2026-05-31T15:27:52Z",
+    token: "bot-token",
+    transcriptText: "結論: request_changes。詳細なし。",
+    fetchImpl: async (url, options) => {
+      if (url.includes("/issues/466/comments") && (!options || !options.method || options.method === "GET")) {
+        return { ok: true, json: async () => [] };
+      }
+      if (url.includes("/actions/workflows/pr-review-status-sync.yml/runs")) {
+        return { ok: true, json: async () => ({ workflow_runs: [] }) };
+      }
+      if (options && options.method === "POST") {
+        throw new Error("must not publish without NG summary");
+      }
+      throw new Error(url);
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "ng_reason_summary_missing");
+});
