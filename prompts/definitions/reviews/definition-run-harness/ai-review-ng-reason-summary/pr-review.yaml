@@ -18,7 +18,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1626
   issue: 466
   task_definition: "prompts/definitions/tasks/definition-run-harness/ai-review-ng-reason-summary.yaml"
   source_branch: "chore/task-466-ai-review-ng-reason-summary"
@@ -72,7 +72,7 @@ input:
     number: 466
     required: true
   pr:
-    number: null
+    number: 1626
     required: true
   diff:
     required: true
