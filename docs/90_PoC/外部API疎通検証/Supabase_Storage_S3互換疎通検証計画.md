@@ -53,10 +53,12 @@
 set -a && source .env && set +a
 # 必須: OBJECT_STORAGE_ENDPOINT / ACCESS_KEY / SECRET_KEY / BUCKET=raw-products
 # 任意: OBJECT_STORAGE_REGION（未設定時 us-east-1）, BATCH_OBJECT_STORAGE_LIVE
+# local Supabase: --region local を推奨（supabase status の Storage Region と一致）
 
 cd apps/batch
 uv run python ../../scripts/batch/object_storage_live_verify.py \
   --live-object-storage --probe-missing \
+  --region local \
   --output-dir ../../scripts/batch/output-object-storage-live
 ```
 
@@ -64,7 +66,7 @@ uv run python ../../scripts/batch/object_storage_live_verify.py \
 
 1. `./scripts/db/start-local.sh`
 2. `./scripts/db/migrate-up.sh`（`raw-products` 作成）
-3. ローカル向け S3 互換 endpoint / キーを `.env` に設定（実値 commit 禁止）
+3. ローカル向け S3 互換 endpoint / キーを `.env` に設定（実値 commit 禁止。`supabase status` の Storage (S3) を参照）
 4. 上記ハーネス実行
 
 手順正本: [ローカル開発手順書 §7.4](../../06_実装設計/cross_cutting/ローカル開発手順書.md)
@@ -88,3 +90,4 @@ Block の場合も、**失敗原因と次アクション**を結果 docs に残�
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-25 | 初版（#1617） |
+| 2026-07-25 | local 向け `--region local` をコマンド例に追記（再検証 Go） |
