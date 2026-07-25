@@ -32,22 +32,24 @@ agent:
 
 review_scope:
   docs: true
-  source: false
-  tests: false
+  source: true
+  tests: true
   api_contract: false
-  db: false
+  db: true
   generated: false
-  cicd: false
+  cicd: true
   security: true
   project_operation: true
 
 review_points:
-  - "接続方針 A の一貫性"
+  - "接続方針 A の一貫性（docs / env / bucket / client）"
   - "案 B/C 非混入"
   - "secret 非露出"
   - "Epic PR target が develop"
-  - "子 Task 完了状況"
+  - "子 Task #1615 / #1616 / #1617 完了状況"
+  - "live は明示フラグのみ / CI 既定 live なし"
+  - "live 再検証 Go の結果 docs が secret なしで記録されているか"
 
 notes:
-  - "PR 番号確定後に更新"
-  - "Epic PR は子 Task 完了後に Human Review / merge"
+  - "子 Task #1615/#1616/#1617 すべて MERGED 後の Epic Review"
+  - "Epic PR の merge 判断は Human のみ"
