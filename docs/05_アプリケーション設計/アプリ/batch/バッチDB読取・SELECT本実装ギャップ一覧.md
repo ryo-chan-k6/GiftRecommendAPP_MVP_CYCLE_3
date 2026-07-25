@@ -9,7 +9,7 @@
 | 作成日 | 2026-07-25 |
 | 更新日 | 2026-07-25 |
 | 関連 Epic | [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)（batch-db-select） |
-| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A） |
+| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A: 005 SELECT） |
 | 先行 | E2 [#1595](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1595) / E3 [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) MERGED |
 | tip 根拠 | Epic tip（実 DB 疎通必須方針反映時点） |
 
@@ -34,9 +34,9 @@
 | 項目 | 状態 |
 | ---- | ---- |
 | DB 書込 | `DbWriter` + 代表 UPSERT（E2）。`apps/batch/.../infrastructure/db/writer.py` |
-| DB 読取 | **T1: `DbReader` 境界あり**（`reader.py` / factory）。各 Batch repositories の SELECT 本配線は未（in-memory + `seed_*`） |
+| DB 読取 | **T1: `DbReader` 境界あり**。**Wave A: BATCH-005 は `list_eligible_raws` 本配線済み**。004/006 以降は未（in-memory + `seed_*`） |
 | 外部 I/O | E3 完了（楽天 / Embedding / Object Storage。明示 live のみ） |
-| 主ブロッカー | ビジネスデータ SELECT 未配線 → 非 demo で多数が **exit 3** |
+| 主ブロッカー | 005 以外のビジネスデータ SELECT 未配線 → 非 demo で多数が **exit 3** |
 | Soft gap | 004（live 時）/ 006 は seed 空で **exit 0 可**（本線未開放） |
 
 ---
@@ -45,7 +45,7 @@
 
 | Batch ID | 現状の事実 | 非 demo 挙動 | E3 で揃ったもの | 足りない読取 |
 | -------- | ---------- | ------------ | --------------- | ------------ |
-| **005** raw_staging | Storage live まで到達可。直後に読取未配線 | **exit 3** | Object Storage client | `raw_product_metadata` SELECT → Storage GET |
+| **005** raw_staging | **Wave A: DbReader SELECT + Job 起動**（`DATABASE_URL` 必須。Storage は明示 live） | `DATABASE_URL` 無し → **exit 2**。有り → Job 実行 | Object Storage client | （本配線済み。staging 本番 UPSERT 詳細は別） |
 | **004** item_recheck | 楽天 + Storage live 可。`seed_items` 未注入 | live 無し → exit 3（楽天フラグ）。live 有り → **0 件成功可** | 楽天 / Storage | `item` seed SELECT |
 | **010** item_semantic | Rule-first adapter（LLM 非呼出） | **exit 3** | （外部 API 対象外） | queue / item SELECT |
 | **015** item_embedding | `--scaffold-demo --live-embedding` で HTTP 煙可 | **exit 3** | Embedding client | queue / handoff SELECT |
@@ -54,12 +54,12 @@
 
 | Batch | CLI | 根拠メッセージ / コメント |
 | ----- | --- | ------------------------- |
-| 005 | `apps/batch/src/batch/application/raw_staging/__main__.py` | `real DB read path is not enabled yet` |
+| 005 | `apps/batch/src/batch/application/raw_staging/__main__.py` | `resolve_job_db_reader` + Job。`DATABASE_URL` 無しは exit 2 |
 | 004 | `.../item_recheck/__main__.py` | `seed 空: 実 DB SELECT は未実装` |
 | 010 | `.../item_semantic/__main__.py` | `real DB read path is not enabled yet` |
 | 015 | `.../item_embedding/__main__.py` | 同上 |
 | 006 | `.../product_diff/__main__.py` | `読取 SELECT は未実装のため seed 空で実行` |
-| DB | `apps/batch/src/batch/infrastructure/db/writer.py` | `DbWriter` のみ（Reader なし） |
+| DB | `apps/batch/src/batch/infrastructure/db/reader.py` / `writer.py` | `DbReader` + `DbWriter` |
 
 ---
 
@@ -107,7 +107,7 @@
 | ----- | ----------------------- | ------------ |
 | 001〜003 | 楽天 + Storage live | （推論）主ブロッカーは SELECT ではない |
 | **004** | 楽天 + Storage | **item seed SELECT** |
-| **005** | Storage live | **metadata SELECT**（exit 3） |
+| **005** | Storage live | **metadata SELECT 本配線済み**（#1629）。staging UPSERT 本格化は別 |
 | **015** | Embedding HTTP（demo 煙） | **queue/handoff SELECT** + 本番 CLI live |
 | **010** | （外部対象外）Rule-first | **DB SELECT**（LLM 不要） |
 
