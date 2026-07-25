@@ -306,3 +306,89 @@ test("findLatestAiReviewComment: sinceIso 以降の最新を返す", () => {
   });
   assert.equal(latest.created_at, "2026-05-30T13:00:00Z");
 });
+
+const REQUEST_CHANGES_WITH_NG = `# AI Review Result
+
+## 1. レビュー結果
+
+| 項目          | 内容                       |
+| ------------- | -------------------------- |
+| Review Result | \`request_changes\` |
+| 対象PR        | \`#10\`                    |
+
+## NG理由サマリ
+
+- **テスト不足** / 対象: \`apps/api/foo.ts\` / 理由: 境界値テストがない
+
+## 22. Status更新意図
+
+| 次Status   | \`In Progress\` |
+`;
+
+const REQUEST_CHANGES_WITHOUT_NG = `# AI Review Result
+
+## 1. レビュー結果
+
+| 項目          | 内容                       |
+| ------------- | -------------------------- |
+| Review Result | \`request_changes\` |
+| 対象PR        | \`#10\`                    |
+
+## 22. Status更新意図
+
+| 次Status   | \`In Progress\` |
+`;
+
+test("isMissingNgReasonSummary: request_changes でサマリ欠落を検出する", () => {
+  assert.equal(publish.isMissingNgReasonSummary(REQUEST_CHANGES_WITHOUT_NG), true);
+  assert.equal(publish.isMissingNgReasonSummary(REQUEST_CHANGES_WITH_NG), false);
+  assert.equal(publish.isMissingNgReasonSummary(SAMPLE_COMMENT), false);
+});
+
+test("publishAiReviewAndDispatch: NG理由サマリ欠落は投稿を拒否する", async () => {
+  await assert.rejects(
+    () =>
+      publish.publishAiReviewAndDispatch({
+        repository: "o/r",
+        prNumber: 10,
+        commentBody: REQUEST_CHANGES_WITHOUT_NG,
+        token: "t",
+        fetchImpl: async () => {
+          throw new Error("must not be called");
+        },
+      }),
+    (error) => {
+      assert.match(error.message, /NG理由サマリ/);
+      return true;
+    },
+  );
+});
+
+test("verifyAiReviewDispatch: NG理由サマリ欠落フラグを返す", async () => {
+  const result = await publish.verifyAiReviewDispatch({
+    repository: "o/r",
+    prNumber: 10,
+    token: "t",
+    pollMaxWaitMs: 0,
+    fetchImpl: mockStatusSyncFetchImpl(),
+    listComments: async () => [
+      {
+        body: REQUEST_CHANGES_WITHOUT_NG,
+        created_at: "2026-05-30T00:00:00Z",
+        html_url: "https://example.com/c/1",
+      },
+    ],
+    listRuns: async () => [
+      {
+        id: 99,
+        display_title: "status-sync · dispatch · PR #10 · request_changes",
+        created_at: "2026-05-30T00:00:05Z",
+        status: "completed",
+        conclusion: "success",
+        html_url: "https://example.com/run/99",
+      },
+    ],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.latest_ai_review_comment_missing_ng_summary, true);
+});

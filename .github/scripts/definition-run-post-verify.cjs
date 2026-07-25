@@ -213,6 +213,18 @@ function describeReviewCommentTruncatedViolation({ prNumber, verifyResult }) {
   };
 }
 
+function describeReviewCommentMissingNgSummaryViolation({ prNumber, verifyResult }) {
+  return {
+    type: "review_comment_missing_ng_summary",
+    number: Number(prNumber),
+    title: "ai_review_comment_missing_ng_summary",
+    url: verifyResult.latest_ai_review_comment_url || "",
+    created_at: verifyResult.latest_ai_review_comment_at || "",
+    actor_login: "-",
+    actor_type: "review_comment_missing_ng_summary",
+  };
+}
+
 async function runReviewPrDispatchVerify({
   owner,
   repo,
@@ -354,6 +366,14 @@ async function runPostVerify({
       violations.push(
         describeReviewCommentTruncatedViolation({ prNumber: targetPr, verifyResult: dispatchVerify }),
       );
+    } else if (dispatchVerify.ok && dispatchVerify.latest_ai_review_comment_missing_ng_summary) {
+      // request_changes 等なのに NG理由サマリが欠落している。
+      violations.push(
+        describeReviewCommentMissingNgSummaryViolation({
+          prNumber: targetPr,
+          verifyResult: dispatchVerify,
+        }),
+      );
     }
   }
 
@@ -401,7 +421,9 @@ function formatViolationsMarkdown(result) {
     const identifier =
       violation.type === "branch"
         ? `\`${violation.name}\` (${(violation.sha || "").slice(0, 7)})`
-        : violation.type === "review_dispatch" || violation.type === "review_comment_truncated"
+        : violation.type === "review_dispatch" ||
+            violation.type === "review_comment_truncated" ||
+            violation.type === "review_comment_missing_ng_summary"
           ? `PR #${violation.number} ${violation.title || ""}`.trim()
           : `#${violation.number} ${violation.title || ""}`.trim();
     const actor = `${violation.actor_login || "-"} (${violation.actor_type})`;
@@ -423,6 +445,7 @@ module.exports = {
   describePullViolation,
   describeReviewDispatchViolation,
   describeReviewCommentTruncatedViolation,
+  describeReviewCommentMissingNgSummaryViolation,
   formatViolationsMarkdown,
   listBranchesCreatedSince,
   listIssuesCreatedSince,

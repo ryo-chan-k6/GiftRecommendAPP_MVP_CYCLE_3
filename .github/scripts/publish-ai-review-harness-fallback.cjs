@@ -5,7 +5,6 @@ const slack = require("./slack-notify.cjs");
 const publish = require("./publish-ai-review-and-dispatch.cjs");
 
 const LOG_LINE_PREFIX_RE = /^\d{4}-\d{2}-\d{2}T[^\s]+\s+/;
-const TRANSCRIPT_STOP_RE = /^---$|^### \d+\./;
 const REVIEW_SECTION_HEADING = slack.AI_REVIEW_HEADING_1;
 
 function nonEmpty(value) {
@@ -27,16 +26,29 @@ function ensureAiReviewResultHeading(body) {
   return `# AI Review Result\n\n${text}`;
 }
 
+/**
+ * AI Review コメントブロックの終端判定。
+ * テンプレート内の水平線（`---`）や `### 7.1` 等の小見出し、本文中のファイル名言及では切らない。
+ * 次の AI Review コメント開始、または node による publish スクリプト実行ログで終端する。
+ */
+function shouldStopAiReviewCommentBlock(line, { isAfterStart }) {
+  if (!isAfterStart) return false;
+  const trimmed = String(line || "").trim();
+  if (trimmed === "# AI Review Result") return true;
+  if (
+    /\bnode\b\S*\s+\S*publish-ai-review-(?:and-dispatch|harness-fallback)\.cjs\b/.test(trimmed) ||
+    /\bnode\b.+\bpublish-ai-review-(?:and-dispatch|harness-fallback)\.cjs\b/.test(trimmed)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function extractBlockFromStart(stripped, startIdx) {
   const block = [];
   for (let i = startIdx; i < stripped.length; i += 1) {
     const line = stripped[i];
-    if (
-      i > startIdx &&
-      (TRANSCRIPT_STOP_RE.test(line.trim()) ||
-        line.includes("publish-ai-review-and-dispatch.cjs") ||
-        line.includes("publish-ai-review-harness-fallback.cjs"))
-    ) {
+    if (shouldStopAiReviewCommentBlock(line, { isAfterStart: i > startIdx })) {
       break;
     }
     block.push(line);
@@ -90,11 +102,107 @@ function collectUniqueReviewResults(text) {
   return [...found];
 }
 
-function synthesizeAiReviewComment({ reviewResult, prNumber }) {
+function formatNgReasonSummarySection(items, { maxItems = publish.MAX_NG_REASON_SUMMARY_ITEMS } = {}) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return "なし";
+  const limit = Number.isFinite(maxItems) ? Math.max(1, maxItems) : 10;
+  const lines = list.slice(0, limit).map((item) => {
+    if (typeof item === "string") return `- ${item}`;
+    const title = nonEmpty(item.title) || "指摘";
+    const target = nonEmpty(item.target) || "-";
+    const reason = nonEmpty(item.reason) || nonEmpty(item.description) || "-";
+    return `- **${title}** / 対象: \`${target}\` / 理由: ${reason}`;
+  });
+  if (list.length > limit) {
+    lines.push(`- 他${list.length - limit}件は §7 参照`);
+  }
+  return lines.join("\n");
+}
+
+function extractMustFixSummariesFromTranscript(transcript, { maxItems = publish.MAX_NG_REASON_SUMMARY_ITEMS } = {}) {
+  const text = String(transcript || "");
+  if (!text.trim()) return [];
+  const items = [];
+  const seen = new Set();
+
+  // §7 修正必須ブロック: ### 7.N title + 対象 / 理由 テーブル
+  const sectionMatch = /##\s*7\.\s*修正必須事項([\s\S]*?)(?=\n##\s*\d+\.|\n#\s|$)/i.exec(text);
+  const section = sectionMatch ? sectionMatch[1] : text;
+  const blockRe = /###\s*7\.\d+\s+([^\n]+)([\s\S]*?)(?=\n###\s*7\.|\n##\s*\d+\.|\n#\s|$)/gi;
+  let block;
+  while ((block = blockRe.exec(section)) !== null) {
+    const title = nonEmpty(block[1]);
+    const body = block[2] || "";
+    const target =
+      nonEmpty((/\|\s*対象\s*\|\s*`?([^|\n`]+)`?\s*\|/i.exec(body) || [])[1]) ||
+      nonEmpty((/\|\s*対象\s*\|\s*([^|\n]+)\|/i.exec(body) || [])[1]) ||
+      "-";
+    const reason =
+      nonEmpty((/####\s*理由\s*\n+([\s\S]*?)(?=\n####|\n###|\n##|$)/i.exec(body) || [])[1]) ||
+      nonEmpty((/\|\s*対応方針\s*\|\s*`?([^|\n`]+)`?\s*\|/i.exec(body) || [])[1]) ||
+      nonEmpty((/####\s*指摘内容\s*\n+([\s\S]*?)(?=\n####|\n###|\n##|$)/i.exec(body) || [])[1]) ||
+      "-";
+    const severity = nonEmpty((/\|\s*重要度\s*\|\s*`?([^|\n`]+)`?\s*\|/i.exec(body) || [])[1]);
+    if (severity && !/must/i.test(severity)) continue;
+    const key = `${title}|${target}|${reason}`;
+    if (!title || seen.has(key)) continue;
+    seen.add(key);
+    items.push({
+      title,
+      target: target.replace(/\s+/g, " ").trim(),
+      reason: reason.replace(/\s+/g, " ").trim().slice(0, 200),
+    });
+    if (items.length >= maxItems * 2) break;
+  }
+
+  // 既存の NG理由サマリ箇条書きがあれば流用
+  if (!items.length) {
+    const ngSection = publish.extractNgReasonSummarySection(text);
+    for (const line of ngSection.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!/^[-*]\s+/.test(trimmed) || /^[-*]\s*なし\s*$/.test(trimmed)) continue;
+      const bullet = trimmed.replace(/^[-*]\s+/, "").trim();
+      if (!bullet || seen.has(bullet)) continue;
+      seen.add(bullet);
+      items.push(bullet);
+      if (items.length >= maxItems * 2) break;
+    }
+  }
+
+  // 「修正必須」近傍の箇条書き（must 明示または見出し近傍）
+  if (!items.length) {
+    const bulletRe = /^[-*]\s+(?:\*\*)?(.+?)(?:\*\*)?\s*(?:\/\s*対象[:：]\s*`?([^`/\n]+)`?)?\s*(?:\/\s*理由[:：]\s*(.+))?$/gm;
+    let m;
+    while ((m = bulletRe.exec(text)) !== null) {
+      const title = nonEmpty(m[1]);
+      if (!title || /任意改善|良い点|確認した事実/.test(title)) continue;
+      const nearby = text.slice(Math.max(0, m.index - 80), m.index);
+      if (!/修正必須|must|NG理由/i.test(nearby) && !/must/i.test(title)) continue;
+      const key = title;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({
+        title,
+        target: nonEmpty(m[2]) || "-",
+        reason: nonEmpty(m[3]) || "-",
+      });
+      if (items.length >= maxItems * 2) break;
+    }
+  }
+
+  return items.slice(0, maxItems * 2);
+}
+
+function synthesizeAiReviewComment({ reviewResult, prNumber, transcript }) {
   const token = slack.normalizeReviewResult(reviewResult);
   if (!token) return "";
   const nextStatus = slack.statusFromReviewResult(token, "") || "Human Review";
   const prLabel = prNumber ? `#${Number(prNumber)}` : "-";
+  const needsNg = publish.requiresNgReasonSummary(token);
+  const summaries = needsNg ? extractMustFixSummariesFromTranscript(transcript || "") : [];
+  const ngBody = needsNg
+    ? formatNgReasonSummarySection(summaries)
+    : "なし";
   const body = `# AI Review Result
 
 ## 1. レビュー結果
@@ -103,6 +211,10 @@ function synthesizeAiReviewComment({ reviewResult, prNumber }) {
 | ------------- | ------------------------ |
 | Review Result | \`${token}\` |
 | 対象PR        | \`${prLabel}\` |
+
+## NG理由サマリ
+
+${ngBody}
 
 ## 22. Status更新意図
 
@@ -113,17 +225,35 @@ function synthesizeAiReviewComment({ reviewResult, prNumber }) {
   return isValidAiReviewCommentBody(body) ? body : "";
 }
 
+function trySynthesizeFromTranscript(transcript, { prNumber } = {}) {
+  const unique = collectUniqueReviewResults(transcript);
+  if (unique.length !== 1) return "";
+  return synthesizeAiReviewComment({
+    reviewResult: unique[0],
+    prNumber,
+    transcript,
+  });
+}
+
 function extractLatestAiReviewCommentFromTranscript(transcript, { prNumber } = {}) {
   const blocks = extractAiReviewCommentBlocks(transcript);
   // 切り詰め（本文退避・省略）ブロックは投稿せず、合成フォールバックへ回す。
   const usableBlocks = blocks.filter((block) => !publish.isTruncatedAiReviewComment(block));
-  if (usableBlocks.length) return usableBlocks[usableBlocks.length - 1];
+  // NG理由サマリが揃っているブロックを優先（水平線打ち切りの不完全抽出を避ける）
+  const completeBlocks = usableBlocks.filter((block) => !publish.isMissingNgReasonSummary(block));
+  if (completeBlocks.length) return completeBlocks[completeBlocks.length - 1];
 
-  const unique = collectUniqueReviewResults(transcript);
-  if (unique.length === 1) {
-    return synthesizeAiReviewComment({ reviewResult: unique[0], prNumber });
+  // 抽出結果が欠落している（または切り詰めのみ）場合は transcript 全体から synthesize を試行
+  const synthesized = trySynthesizeFromTranscript(transcript, { prNumber });
+  if (synthesized && !publish.isMissingNgReasonSummary(synthesized)) {
+    return synthesized;
   }
-  return "";
+  if (synthesized && !usableBlocks.length) {
+    return synthesized;
+  }
+
+  if (usableBlocks.length) return usableBlocks[usableBlocks.length - 1];
+  return synthesized || "";
 }
 
 function readResultTextFromJson(resultJsonPath) {
@@ -208,7 +338,7 @@ async function publishAiReviewHarnessFallback({
     };
   }
 
-  const commentBody = extractLatestAiReviewCommentFromSources({
+  let commentBody = extractLatestAiReviewCommentFromSources({
     transcriptText: transcript,
     transcriptPath: "",
     resultJsonPath,
@@ -220,6 +350,26 @@ async function publishAiReviewHarnessFallback({
       reason: "no_comment_in_transcript",
       message: "No valid AI Review comment block found in harness transcript.",
       prior_verify: verify,
+    };
+  }
+  // 抽出欠落時の最終フォールバック: transcript 全体から synthesize を再試行
+  if (publish.isMissingNgReasonSummary(commentBody)) {
+    const resultText = readResultTextFromJson(resultJsonPath);
+    const combined = [transcript, resultText].filter(Boolean).join("\n");
+    const synthesized = trySynthesizeFromTranscript(combined, { prNumber });
+    if (synthesized && !publish.isMissingNgReasonSummary(synthesized)) {
+      commentBody = synthesized;
+    }
+  }
+  if (publish.isMissingNgReasonSummary(commentBody)) {
+    return {
+      ok: false,
+      reason: "ng_reason_summary_missing",
+      message:
+        "AI Review comment is missing required ## NG理由サマリ for non-approve result. " +
+        "Ensure must-level fix summaries are present in the agent transcript or comment body.",
+      prior_verify: verify,
+      synthesized: commentBody.includes("harness-fallback: synthesized"),
     };
   }
 
@@ -337,8 +487,12 @@ if (require.main === module) {
 module.exports = {
   LOG_LINE_PREFIX_RE,
   REVIEW_SECTION_HEADING,
+  shouldStopAiReviewCommentBlock,
   collectUniqueReviewResults,
+  formatNgReasonSummarySection,
+  extractMustFixSummariesFromTranscript,
   synthesizeAiReviewComment,
+  trySynthesizeFromTranscript,
   extractAiReviewCommentBlocks,
   extractLatestAiReviewCommentFromTranscript,
   extractLatestAiReviewCommentFromSources,

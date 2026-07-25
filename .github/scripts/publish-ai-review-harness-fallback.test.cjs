@@ -264,3 +264,239 @@ test("publishAiReviewHarnessFallback: prose transcript から publish する", a
   assert.equal(result.synthesized, true);
   assert.equal(calls.filter((c) => c.method === "POST").length, 2);
 });
+
+test("synthesizeAiReviewComment: request_changes で §7 から NG理由サマリを埋め込む", () => {
+  const transcript = `
+結論は request_changes です。
+
+## 7. 修正必須事項
+
+### 7.1 テスト不足
+
+| 項目     | 内容                          |
+| -------- | ----------------------------- |
+| 重要度   | \`must\`           |
+| 対象     | \`apps/api/foo.ts\`             |
+| 分類     | \`test\`           |
+| 対応方針 | 境界値テストを追加 |
+
+#### 指摘内容
+
+境界値がない。
+
+#### 理由
+
+acceptance_criteria を満たさない。
+`;
+  const body = fallback.synthesizeAiReviewComment({
+    reviewResult: "request_changes",
+    prNumber: 466,
+    transcript,
+  });
+  assert.match(body, /## NG理由サマリ/);
+  assert.match(body, /テスト不足/);
+  assert.match(body, /apps\/api\/foo\.ts/);
+  assert.match(body, /harness-fallback: synthesized/);
+});
+
+test("extractLatestAiReviewCommentFromTranscript: request_changes で指摘なし合成は NGサマリなし", () => {
+  const body = fallback.extractLatestAiReviewCommentFromTranscript(
+    "結論: request_changes。詳細は省略。",
+    { prNumber: 466 },
+  );
+  assert.match(body, /request_changes/);
+  assert.match(body, /## NG理由サマリ/);
+  assert.match(body, /なし/);
+});
+
+test("publishAiReviewHarnessFallback: NG理由サマリ欠落は投稿しない", async () => {
+  const result = await fallback.publishAiReviewHarnessFallback({
+    repository: "o/r",
+    prNumber: 466,
+    sinceIso: "2026-05-31T15:27:52Z",
+    token: "bot-token",
+    transcriptText: "結論: request_changes。詳細なし。",
+    fetchImpl: async (url, options) => {
+      if (url.includes("/issues/466/comments") && (!options || !options.method || options.method === "GET")) {
+        return { ok: true, json: async () => [] };
+      }
+      if (url.includes("/actions/workflows/pr-review-status-sync.yml/runs")) {
+        return { ok: true, json: async () => ({ workflow_runs: [] }) };
+      }
+      if (options && options.method === "POST") {
+        throw new Error("must not publish without NG summary");
+      }
+      throw new Error(url);
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "ng_reason_summary_missing");
+});
+
+test("extractLatestAiReviewCommentFromTranscript: テンプレート水平線を含んでも全文抽出する", () => {
+  const transcript = `# AI Review Result
+
+## 1. レビュー結果
+
+| 項目          | 内容                     |
+| ------------- | ------------------------ |
+| Review Result | \`request_changes\` |
+| 対象PR        | \`#1626\`                  |
+
+### Review Result の分類
+
+| 分類                       | 意味 |
+| -------------------------- | ---- |
+| \`request_changes\`          | 修正 |
+
+---
+
+## NG理由サマリ
+
+- **抽出打ち切り** / 対象: \`TRANSCRIPT_STOP\` / 理由: 水平線で途切れていた
+
+---
+
+## 2. 結論
+
+テンプレート準拠全文が投稿できること。
+
+## 7. 修正必須事項
+
+### 7.1 抽出打ち切り
+
+| 項目     | 内容                          |
+| -------- | ----------------------------- |
+| 重要度   | \`must\`           |
+| 対象     | \`publish-ai-review-harness-fallback.cjs\` |
+| 分類     | \`source\`           |
+| 対応方針 | 水平線で終端しない |
+
+#### 指摘内容
+
+水平線で途切れる。
+
+#### 理由
+
+acceptance_criteria を満たさない。
+
+## 22. Status更新意図
+
+| 次Status   | \`In Progress\` |
+`;
+  const body = fallback.extractLatestAiReviewCommentFromTranscript(transcript, { prNumber: 1626 });
+  assert.doesNotMatch(body, /harness-fallback: synthesized/);
+  assert.match(body, /## NG理由サマリ/);
+  assert.match(body, /抽出打ち切り/);
+  assert.match(body, /## 7\. 修正必須事項/);
+  assert.match(body, /### 7\.1 抽出打ち切り/);
+  assert.match(body, /## 22\. Status更新意図/);
+});
+
+test("extractLatestAiReviewCommentFromTranscript: 不完全抽出時は §7 から synthesize する", () => {
+  // 意図的に §1 のみの不完全ブロック + transcript 後方に §7 があるケースを模擬する。
+  // （旧実装は usable な不完全ブロックを優先し synthesize に到達しなかった）
+  const incomplete = `# AI Review Result
+
+## 1. レビュー結果
+
+| Review Result | \`request_changes\` |
+| 対象PR        | \`#1626\` |
+`;
+  const rest = `
+（中略・ログ）
+
+## 7. 修正必須事項
+
+### 7.1 フォールバック未到達
+
+| 項目     | 内容                          |
+| -------- | ----------------------------- |
+| 重要度   | \`must\`           |
+| 対象     | \`fallback synthesize\` |
+| 分類     | \`source\`           |
+| 対応方針 | 欠落時に synthesize |
+
+#### 理由
+
+不完全抽出だけでは NGサマリが埋まらない。
+`;
+  const body = fallback.extractLatestAiReviewCommentFromTranscript(`${incomplete}\n${rest}`, {
+    prNumber: 1626,
+  });
+  assert.match(body, /harness-fallback: synthesized/);
+  assert.match(body, /## NG理由サマリ/);
+  assert.match(body, /フォールバック未到達/);
+  assert.match(body, /fallback synthesize/);
+});
+
+test("publishAiReviewHarnessFallback: 水平線付き全文は投稿する", async () => {
+  const transcript = `# AI Review Result
+
+## 1. レビュー結果
+
+| Review Result | \`request_changes\` |
+| 対象PR        | \`#466\` |
+
+---
+
+## NG理由サマリ
+
+- **水平線耐性** / 対象: \`extract\` / 理由: 全文が残る
+
+---
+
+## 2. 結論
+
+ok
+
+## 7. 修正必須事項
+
+### 7.1 水平線耐性
+
+| 重要度 | \`must\` |
+| 対象 | \`extract\` |
+
+#### 理由
+
+回帰防止
+
+## 22. Status更新意図
+
+| 次Status | \`In Progress\` |
+`;
+  const posted = [];
+  const result = await fallback.publishAiReviewHarnessFallback({
+    repository: "o/r",
+    prNumber: 466,
+    sinceIso: "2026-05-31T15:27:52Z",
+    token: "bot-token",
+    transcriptText: transcript,
+    fetchImpl: async (url, options) => {
+      if (url.includes("/issues/466/comments") && (!options || !options.method || options.method === "GET")) {
+        return { ok: true, json: async () => [] };
+      }
+      if (url.includes("/issues/466/comments") && options.method === "POST") {
+        posted.push(JSON.parse(options.body).body);
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({ html_url: "https://example.com/c/5", id: 5 }),
+        };
+      }
+      if (url.includes("/dispatches")) {
+        return { ok: true, status: 204, text: async () => "" };
+      }
+      if (url.includes("/actions/workflows/pr-review-status-sync.yml/runs")) {
+        return { ok: true, json: async () => ({ workflow_runs: [] }) };
+      }
+      throw new Error(url);
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.reason, "published");
+  assert.equal(result.synthesized, false);
+  assert.match(posted[0], /## NG理由サマリ/);
+  assert.match(posted[0], /水平線耐性/);
+  assert.match(posted[0], /### 7\.1/);
+});

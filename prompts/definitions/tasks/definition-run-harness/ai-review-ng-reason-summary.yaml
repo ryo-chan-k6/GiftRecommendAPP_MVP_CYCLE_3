@@ -1,0 +1,223 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-definition-run-ai-review-ng-reason-summary"
+  title: "AI Review request_changes時のNG理由サマリ出力"
+  summary: "request_changes / blocked / split_required / needs_human_decision 時に PR コメントへ must 指摘の NG理由サマリを必須化し、Harness synthetic・post-verify でも欠落を防ぐ。"
+  phase: "06_実装設計"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - 466
+    - 341
+    - 308
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  AI Review の request_changes 等で、Harness synthetic 投稿経路や Agent 部分出力により
+  PR コメント上で具体的な NG 理由が読めないケースが発生しうる。
+  Human 判断（Issue #466）により、本 Issue を実装 Issue として単独 Task で対応する。
+
+objective: |
+  request_changes / blocked / split_required / needs_human_decision のとき、
+  PR コメントだけで修正すべき NG 理由の要点（must・最大10件）が把握できる状態にする。
+  Harness synthetic 経路でも transcript に指摘があればサマリを埋め込み、
+  欠落時は投稿拒否または post-verify Guard Violation とする。
+
+scope:
+  - "prompts/templates/review/ai-review-comment.md に ## NG理由サマリ を追加"
+  - ".github/scripts/publish-ai-review-harness-fallback.cjs（synthesizeAiReviewComment 拡張）"
+  - ".github/scripts/publish-ai-review-and-dispatch.cjs（NGサマリ欠落検知・投稿拒否）"
+  - ".github/scripts/definition-run-post-verify.cjs（missing NGサマリ Guard Violation）"
+  - ".github/scripts/definition-run-prompt-builder.cjs（live-run 指示追記）"
+  - ".cursor/commands/review-pr.md（NGサマリ必須出力）"
+  - "関連単体テスト更新・追加"
+  - "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md §15.2.1"
+  - "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md §10"
+  - "prompts/definitions/tasks/definition-run-harness/ai-review-ng-reason-summary.yaml（本 Task）"
+  - "prompts/definitions/reviews/definition-run-harness/ai-review-ng-reason-summary/pr-review.yaml"
+
+out_of_scope:
+  - "Slack 通知本文への NG 詳細の全面展開"
+  - "AI Review 観点・result_policy そのものの変更"
+  - "Fixer ロジックの変更（#308 系）"
+  - "apps/** / packages/**"
+  - "横断 Epic（AI Review出力品質改善）の新規作成"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      required: true
+      purpose: "Harness fallback / post-verify 正本"
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      required: true
+      purpose: "AI Review 出力要件正本"
+  files:
+    - path: "prompts/templates/review/ai-review-comment.md"
+      required: true
+    - path: ".github/scripts/publish-ai-review-harness-fallback.cjs"
+      required: true
+    - path: ".github/scripts/publish-ai-review-and-dispatch.cjs"
+      required: true
+    - path: ".github/scripts/definition-run-post-verify.cjs"
+      required: true
+    - path: ".github/scripts/definition-run-prompt-builder.cjs"
+      required: true
+    - path: ".cursor/commands/review-pr.md"
+      required: true
+  issues:
+    - 466
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/github_actions/Definition Run Harnessワークフロー仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/00_共通/AIエージェント運用/AIレビュー運用設計書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/templates/review/ai-review-comment.md"
+      action: "update"
+      required: true
+    - path: ".github/scripts/publish-ai-review-harness-fallback.cjs"
+      action: "update"
+      required: true
+    - path: ".github/scripts/publish-ai-review-and-dispatch.cjs"
+      action: "update"
+      required: true
+    - path: ".github/scripts/definition-run-post-verify.cjs"
+      action: "update"
+      required: true
+    - path: ".github/scripts/definition-run-prompt-builder.cjs"
+      action: "update"
+      required: true
+    - path: ".cursor/commands/review-pr.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/definition-run-harness/ai-review-ng-reason-summary.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/definition-run-harness/ai-review-ng-reason-summary/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: ".github/scripts/publish-ai-review-harness-fallback.test.cjs"
+      action: "update"
+      required: true
+    - path: ".github/scripts/publish-ai-review-and-dispatch.test.cjs"
+      action: "update"
+      required: true
+    - path: ".github/scripts/definition-run-post-verify.test.cjs"
+      action: "update"
+      required: true
+
+deliverables:
+  - "NG理由サマリ必須の AI Review コメントテンプレート"
+  - "Harness synthetic へのサマリ埋め込み"
+  - "投稿拒否 / post-verify Guard Violation"
+  - "単体テスト"
+  - "正本 docs 更新"
+
+acceptance_criteria:
+  - "request_changes / blocked / split_required / needs_human_decision の PR コメントに must の NG理由サマリ（最大10件）が記載される"
+  - "approve_for_human_review では NG理由サマリに なし を許容する"
+  - "Harness synthetic 経路で transcript に修正必須指摘があればサマリが埋め込まれる"
+  - "NGサマリ欠落の上記 Review Result 投稿は publish 拒否または post-verify で検知される"
+  - "node --test で fallback / publish / post-verify 関連テストが pass"
+  - "Harness 仕様書 §15.2.1 と AIレビュー運用設計書 §10 が更新されている"
+  - "Task PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "ai-review-ng-reason-summary"
+  name: "chore/task-466-ai-review-ng-reason-summary"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+issue:
+  number: 466
+  unit: "task"
+  type: "chore"
+  area: "project"
+
+project:
+  fields:
+    status: "In Progress"
+    phase: "06_実装設計"
+    priority: "medium"
+    planned_start: "2026-07-25"
+    due_date: null
+
+milestone:
+  name: null
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "must のみ・最大10件の粒度がテンプレートと検証ロジックで一致しているか"
+    - "approve 経路の後方互換（NGサマリなし/なし記載）"
+    - "synthetic 抽出が既存切り詰めフォールバックを壊していないか"
+    - "post-verify の新 violation が既存 truncated / dispatch と併存するか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+test_policy:
+  required:
+    - "node --test .github/scripts/publish-ai-review-harness-fallback.test.cjs"
+    - "node --test .github/scripts/publish-ai-review-and-dispatch.test.cjs"
+    - "node --test .github/scripts/definition-run-post-verify.test.cjs"
+  commands:
+    - "node --test .github/scripts/publish-ai-review-harness-fallback.test.cjs"
+    - "node --test .github/scripts/publish-ai-review-and-dispatch.test.cjs"
+    - "node --test .github/scripts/definition-run-post-verify.test.cjs"
+  manual_checks:
+    - "develop merge 後、request_changes の Harness live-run で NG理由サマリ付きコメントが投稿されること（任意・別検証）"
+  not_required:
+    - "apps integration test"
+  skip_reason:
+    "apps integration test": "Harness スクリプト・テンプレート・docs のみ"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+
+notes:
+  - "親 Epic なし・develop 直 Task（横断運用改善）"
+  - "Human 判断確定: mustのみ / 最大10件 / blocked・split_required・needs_human_decision も必須 / 方針C post-verify / 単独Task"
+  - "正本: Issue #466 / ai-review-comment.md / Harness 仕様書 §15.2.1"
