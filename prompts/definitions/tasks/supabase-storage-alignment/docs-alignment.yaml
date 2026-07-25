@@ -1,0 +1,175 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-supabase-storage-docs-alignment"
+  title: "supabase-storage:接続方針A docs正本収束"
+  summary: "製品=Supabase Storage / 接続=案 A（S3 互換 + OBJECT_STORAGE_*）を正本 docs・env 例に一貫反映し、未確定をクローズする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]supabase-storage-alignment:Supabase Storage確定反映（接続方針A）"
+  epic_issue_number: 1614
+  epic_branch: "feature/epic-1614-supabase-storage-alignment"
+  related_issues:
+    - 1598
+    - 1612
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Human により Object Storage 製品を Supabase Storage、接続を案 A に確定。#1612 client 維持。
+  docs に未確定・SDK 前提・service_role 直結表現が残る。
+
+objective: |
+  「製品 = Supabase Storage / 接続 = S3 互換 API（案 A）」を正本 docs に一貫反映し、未確定項目をクローズする。
+
+scope:
+  - "外部商品データ連携設計書 §20 No.4 確定反映"
+  - "バッチ外部API本実装ギャップ一覧 §8 No.4 クローズ（E3 tip 由来ファイルがある場合）"
+  - "機能一覧の S3 / S3互換 表記整理"
+  - "環境設計書 §19.7 に Supabase Storage + S3 互換接続を明示"
+  - "認証・認可方針書 §10.1 の OBJECT_STORAGE_* と service_role 役割分担"
+  - "インターフェース一覧 §10 IF-STG 物理サービス + 方式注記"
+  - "マイグレーション方針書 §9.2 を案 A と矛盾しない表現へ"
+  - "基盤構成設計書の S3 互換経由注記"
+  - "利用技術スタック整理表（Client 採用、STORAGE_BUCKET_RAW 衝突解消）"
+  - "バッチ設計方針書 §19.3（STORAGE_* → OBJECT_STORAGE_*）"
+  - "BATCH-001〜005 仕様書 env プレフィックス統一（存在する場合）"
+  - ".env.example に Supabase S3 互換 endpoint のダミー例"
+  - "CLI help 文言整理（develop 上に該当文言がある場合）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "supabase bucket 実体化（#1616）"
+  - "live 疎通（#1617）"
+  - "SDK / boto3 追加、案 B/C 実装"
+  - "delete / list / multipart"
+  - "secret 実値の記載"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+  files:
+    - path: ".env.example"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/**"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/**"
+      action: "update"
+      required: true
+  files:
+    - path: ".env.example"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/supabase-storage-alignment/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/supabase-storage-alignment/**"
+      action: "create"
+      required: true
+
+deliverables:
+  - "Must docs の接続方針 A 反映"
+  - ".env.example ダミー例"
+  - "ギャップ一覧 §8 No.4 クローズ（可能な場合）"
+
+acceptance_criteria:
+  - "Must docs が製品=Supabase Storage / 接続=案 A で矛盾なく更新"
+  - "未確定 No.4 類がクローズまたは確定済み"
+  - "secret 実値なし"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1615-supabase-storage-docs-alignment"
+  summary: "supabase-storage-docs-alignment"
+  base: "feature/epic-1614-supabase-storage-alignment"
+  target: "feature/epic-1614-supabase-storage-alignment"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "06_実装設計"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-26"
+    due_date: "2026-07-30"
+
+issue:
+  number: 1615
+  unit: "task"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  epics:
+    - issue: 1614
+      purpose: "親 Epic"
+  issues:
+    - number: 1612
+      purpose: "client 方針維持の前提"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/外部商品データ連携設計書.md"
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+    - "docs/06_実装設計/cross_cutting/環境設計書.md"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  optional: []
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "案 A と矛盾する SDK 前提・未確定表記が残っていないか"
+    - "OBJECT_STORAGE_* 正本と旧名の扱い"
+    - "#1612 実装方針を否定していないか"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points: []
+
+notes:
+  - "E3 ギャップ一覧が develop 未マージの場合は E3 tip から当該 docs を取り込み §8 No.4 をクローズする"

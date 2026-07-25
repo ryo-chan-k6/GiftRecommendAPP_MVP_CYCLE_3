@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-supabase-storage-bucket-pr"
+  title: "supabase-storage raw-products bucket PRレビュー"
+  summary: "Raw JSON 用 private bucket 定義 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1620
+  issue:
+    number: 1616
+  task_definition: "prompts/definitions/tasks/supabase-storage-alignment/bucket.yaml"
+  parent_epic_issue: "[Epic]supabase-storage-alignment:Supabase Storage確定反映（接続方針A）"
+  parent_epic_branch: "feature/epic-1614-supabase-storage-alignment"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "public=false"
+  - "raw-products 命名と OBJECT_STORAGE_BUCKET 整合"
+  - "案 A（S3 互換）との矛盾なし"
+  - "secret 非露出 / production 実操作の分離"
+  - "Related to / PR target が親 Epic"
+
+notes:
+  - "production 実操作・S3 キー発行は Human 手順"

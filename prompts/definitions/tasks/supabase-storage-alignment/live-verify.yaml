@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-supabase-storage-live-verify"
+  title: "supabase-storage:S3互換 live疎通検証"
+  summary: "接続方針 A の S3CompatibleObjectStorageClient で Supabase Storage へ明示 live put/get を検証し、手順・結果・残課題を正本化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]supabase-storage-alignment:Supabase Storage確定反映（接続方針A）"
+  epic_issue_number: 1614
+  epic_branch: "feature/epic-1614-supabase-storage-alignment"
+  related_issues:
+    - 1612
+    - 1615
+    - 1616
+  related_prs:
+    - 1619
+    - 1620
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  docs (#1615) と bucket (#1616) が完了。接続方針 A では #1612 S3CompatibleObjectStorageClient を維持する。
+  path-style / SigV4 / region の実機差を、明示 live・件数限定で確認する必要がある。CI 既定 live は禁止。
+  develop / Epic tip に #1612 client が未着の場合は、検証可能にするため #1612 相当の client を本 Task Branch へ同期してよい（SDK 差し替えはしない）。
+
+objective: |
+  Supabase Storage（S3 互換）に対し、`--live-object-storage` / `BATCH_OBJECT_STORAGE_LIVE` 経路で put/get が成立することを検証し、手順・制約・結果（または失敗原因と次アクション）を正本に残す。
+
+scope:
+  - "明示 live（CLI / BATCH_OBJECT_STORAGE_LIVE）での put/get 疎通（件数限定）"
+  - "ハーネス scripts/batch/object_storage_live_verify.py"
+  - "endpoint / region / bucket の接続メモ（secret 実値なし）"
+  - "失敗時のエラーコード・マスク挙動の確認"
+  - "PoC 計画・結果 docs、ローカル手順 / ギャップ一覧への最小反映"
+  - "必要なら #1612 client / UT を本 Branch へ同期（E3 tip と同一内容）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "CI 既定 live / production 無承認 live"
+  - "SDK 差し替え（案 B）/ 案 C"
+  - "delete / list / multipart"
+  - "大量 put、課金影響の大きい実行"
+  - "DB SELECT 本配線（BATCH-005）"
+  - "job CLI 001〜005 の live 配線一式の再実装（E3 #1612 側）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: false
+  files:
+    - path: "apps/batch/src/batch/infrastructure/object_storage/**"
+      required: true
+    - path: ".env.example"
+      required: true
+
+output:
+  docs:
+    - path: "docs/90_PoC/外部API疎通検証/**"
+      action: "create"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/ローカル開発手順書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
+      required: false
+  files:
+    - path: "scripts/batch/object_storage_live_verify.py"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/object_storage/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/tests/unit/infrastructure/test_object_storage_http_client.py"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/tasks/supabase-storage-alignment/live-verify.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/supabase-storage-alignment/live-verify/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "live ハーネス"
+  - "PoC 計画・結果（secret なし）"
+  - "ローカル手順への実行コマンド追記"
+  - "成功、または失敗原因と次アクションの記録"
+
+acceptance_criteria:
+  - "明示 live で put/get 成功、または失敗原因と次アクションが記録されている"
+  - "secret / .env 実値が Issue・PR・docs・ログ抜粋に含まれていない"
+  - "CI を live 必須にしていない"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "spike/task-1617-supabase-storage-live-verify"
+  summary: "supabase-storage-live-verify"
+  base: "feature/epic-1614-supabase-storage-alignment"
+  target: "feature/epic-1614-supabase-storage-alignment"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-01"
+
+issue:
+  number: 1617
+  unit: "task"
+  type: "spike"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1614
+      purpose: "親 Epic"
+  issues:
+    - number: 1612
+      purpose: "S3CompatibleObjectStorageClient"
+    - number: 1615
+      purpose: "docs 正本"
+    - number: 1616
+      purpose: "raw-products bucket"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "scripts/batch/object_storage_live_verify.py"
+    - "docs/90_PoC/外部API疎通検証/Supabase_Storage_S3互換疎通検証計画.md"
+    - "docs/90_PoC/外部API疎通検証/Supabase_Storage_S3互換疎通検証結果.md"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+    - "object storage unit tests when client synced"
+  not_required:
+    - "CI live HTTP"
+  optional:
+    - "local/Hosted live put/get when credentials available"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "live が明示フラグのみか"
+    - "secret 非露出か"
+    - "検証結果が再現可能な粒度で残っているか（実値なし）"
+    - "案 B/C を混入していないか"
+  specialist_reviews:
+    docs: true
+    security: true
+    test: true
+
+human_decision_points:
+  - "疎通に使う環境（local supabase start / Hosted dev）"
+  - "失敗時に案 B 再検討へエスカレーションするか（本 Task では案 B 実装しない）"
+
+notes:
+  - "Docker 未起動や ENDPOINT 未設定の場合は Block として次アクションを結果 docs に残して完了可"
