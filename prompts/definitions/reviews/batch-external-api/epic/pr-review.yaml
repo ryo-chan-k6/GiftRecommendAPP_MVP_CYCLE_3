@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1622
   issue:
     number: 1598
   task_definition: "prompts/definitions/epics/batch-external-api/epic.yaml"
