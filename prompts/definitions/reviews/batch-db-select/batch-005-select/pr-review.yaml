@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1630
   issue:
     number: 1629
   task_definition: "prompts/definitions/tasks/batch-db-select/batch-005-select.yaml"
