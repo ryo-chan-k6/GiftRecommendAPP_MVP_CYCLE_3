@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-select-epic-pr"
+  title: "batch-db-select Epic PRレビュー"
+  summary: "DB読取本配線 Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1623
+  task_definition: "prompts/definitions/epics/batch-db-select/epic.yaml"
+  parent_epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  parent_epic_branch: "feature/epic-1623-batch-db-select"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "E4 / LLM / #1607 / 018・019 非混入"
+  - "secret 非露出"
+  - "Epic PR target が develop"
+  - "子 Task 完了状況"
+  - "allowed_paths と差分の整合"
+
+notes:
+  - "Epic PR は子 Task 完了後に Human Review / merge"
+  - "PR 番号確定後に target.pr.number を更新"

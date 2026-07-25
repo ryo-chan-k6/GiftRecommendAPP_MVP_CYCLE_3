@@ -1,0 +1,153 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-select-inventory"
+  title: "batch-db-select:DB読取ギャップ棚卸し"
+  summary: "BATCH-004/005/010/015 を中心に DB SELECT 未配線・exit 3・seed 空の現状を docs 正本化し、後続 Wave の Issue 分割材料にする。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  epic_issue_number: 1623
+  epic_branch: "feature/epic-1623-batch-db-select"
+  related_issues:
+    - 1595
+    - 1598
+  related_prs:
+    - 1595
+    - 1622
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  E3（#1598）完了後、最大ブロッカーは実 DB SELECT 未配線。
+  本 Task は実装せず、正本 docs への棚卸しに限定する。
+
+objective: |
+  DB SELECT / 読取未配線ギャップを docs 正本として残し、後続 Task（reader / 005 / 004 等）の scope 材料にする。
+
+scope:
+  - "SELECT / exit 3 / seed 空のマトリクス正本化"
+  - "E4・外部API・LLM との切り分け明記"
+  - "推奨 Wave と Issue 化候補の整理"
+  - "Task / Review Definition（本 inventory）"
+
+out_of_scope:
+  - "DbReader 実装"
+  - "各 Batch の SELECT 実装"
+  - "E4 観測実装"
+  - "Semantic LLM"
+  - "#1607"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/**/__main__.py"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-db-select/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/**"
+      action: "create"
+      required: false
+
+deliverables:
+  - "DB SELECT ギャップ正本 docs"
+  - "後続 Wave の分割案"
+
+acceptance_criteria:
+  - "005/004/010/015 を含む読取ギャップが表で整理されている"
+  - "E4 と混同しない切り分けがある"
+  - "secret 実値なし"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: true
+  name: "docs/task-XXXX-batch-db-select-inventory"
+  summary: "batch-db-select-inventory"
+  base: "feature/epic-1623-batch-db-select"
+  target: "feature/epic-1623-batch-db-select"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Backlog"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: "2026-07-27"
+
+issue:
+  number: null
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "親 Epic"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "事実と推論が分離されているか"
+    - "E4 / LLM を実装 scope に混ぜていないか"
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "Issue 未起票。/start-task で起票する"
+  - "branch.no_branch: true（起票時は no-branch。着手時に解除）"
