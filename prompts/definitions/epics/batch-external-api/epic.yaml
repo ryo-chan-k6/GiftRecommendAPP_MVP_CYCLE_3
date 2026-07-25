@@ -132,6 +132,10 @@ epic_scope:
     - "prompts/definitions/epics/batch-external-api/**"
     - "prompts/definitions/tasks/batch-external-api/**"
     - "prompts/definitions/reviews/batch-external-api/**"
+    - ".env.example"
+    - "scripts/batch/**"
+    - "ai-logs/experiments/**"
+    - "ai-logs/human-decisions/**"
   forbidden_paths:
     - ".github/workflows/batch-*-orchestrator.yml"
     - "apps/web/**"
