@@ -38,13 +38,16 @@ background: |
 
 objective: |
   読取ギャップを docs 正し、DbReader（または同等）と優先 Batch の SELECT 本配線により、
-  CLI 非 demo で DB から読んで後続工程へ進める状態にする。develop 統合は本 Epic PR のみ。
+  CLI 非 demo で DB から読んで後続工程へ進める状態にする。
+  実装 Wave（T0 inventory 除く）は UT に加え、実 DB 疎通確認を完了条件とする。
+  develop 統合は本 Epic PR のみ。
 
 scope:
   - "DB SELECT / 読取ギャップ棚卸し（docs 正本）"
   - "読取共通方針（DbReader または repos 本番読取）"
   - "Wave: 005 → 006 → 007/009 → 010〜015（004 seed は Wave A 並行可）"
   - "関連 CLI の読取経路有効化と UT"
+  - "実装 Wave（T0 inventory を除く）ごとの実 DB 疎通確認（必須）"
   - "secret / .env 実値禁止"
 
 out_of_scope:
@@ -53,7 +56,7 @@ out_of_scope:
   - "Semantic LLM 本接続（010 は Rule-first 維持）"
   - "BATCH-018 Reco IF / 019 本格化"
   - "親 / 複合 workflow・schedule 有効化"
-  - "production 無承認 live / CI 既定 live"
+  - "production 無承認 live / CI 既定 live（実 DB 疎通は local/dev/staging の明示実行のみ）"
   - "OpenAPI / web / api / reco 破壊変更"
   - "DDL 新規（必要時は Human 判断・別扱い）"
 
@@ -105,6 +108,7 @@ deliverables:
 acceptance_criteria:
   - "Epic Issue / Branch が作成されている"
   - "ギャップ一覧 docs が存在する（第1 Task）"
+  - "実装 Wave 子 Task の完了条件に実 DB 疎通確認が含まれる（T0 inventory 除く）"
   - "E4 / LLM / #1607 / 018・019 を out of scope と明記"
   - "secret 実値なし"
   - "Epic PR target が develop"
@@ -193,8 +197,10 @@ test_policy:
   required: []
   not_required:
     - "unit test"
+    - "real DB connectivity verify"
   skip_reason:
     "unit test": "Epic は作業管理。実装 Task で UT"
+    "real DB connectivity verify": "Epic 自体は実行しない。実装 Wave 子 Task で必須（T0 除く）"
 
 review:
   human_review_required: true
@@ -204,6 +210,7 @@ review:
     - "secret 実値なし"
     - "Epic PR target が develop"
     - "読取本配線と書込/外部API範囲が分離されているか"
+    - "実装 Wave 子 Task に実 DB 疎通確認が必須化されているか"
   specialist_reviews:
     docs: true
     test: true
@@ -212,8 +219,10 @@ review:
 human_decision_points:
   - "Wave 着手順（推奨: 005 先行、004 seed 並行）"
   - "DbReader 共通化の粒度"
-  - "E4 を本 Epic に含めないことの確認"
+  - "E4 を本 Epic に混ぜないことの確認"
+  - "実 DB 疎通の対象環境（local / dev / staging。production は禁止）"
 
 notes:
   - "第1 Task は inventory（棚卸し docs）。実装は後続 /start-task"
   - "機能・領域単位 Epic（例外）。artifact_id 空"
+  - "Human 確定（2026-07-25）: 実装 Wave ごとに実 DB 疎通確認を必須とする（T0 除く。CI 既定 live / production 無承認は禁止）"

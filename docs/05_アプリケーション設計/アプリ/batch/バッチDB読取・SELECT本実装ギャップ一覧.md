@@ -9,9 +9,9 @@
 | 作成日 | 2026-07-25 |
 | 更新日 | 2026-07-25 |
 | 関連 Epic | [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)（batch-db-select） |
-| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0 棚卸し） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1 DbReader 基盤） |
+| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A） |
 | 先行 | E2 [#1595](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1595) / E3 [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) MERGED |
-| tip 根拠 | Epic tip（T1 実装時点） |
+| tip 根拠 | Epic tip（実 DB 疎通必須方針反映時点） |
 
 ### 1.1 目的
 
@@ -119,18 +119,33 @@
 
 Epic #1623 の子 Task 分割案。
 
-| 優先 | Wave | 候補 Task | 内容 | 依存 |
-| ---- | ---- | --------- | ---- | ---- |
-| high | T0 | inventory（**#1624** MERGED） | 本正本 | — |
-| high | T1 | reader-foundation（**#1627**） | `DbReader` Protocol / Scaffold / Postgres factory | T0 |
-| high | A | BATCH-005 SELECT | `raw_product_metadata` + Storage GET 本実行 | T1 |
-| high | A' | BATCH-004 seed SELECT | `item` seed | T1（A と並列可） |
-| high | B | BATCH-006 SELECT | staging/item | A |
-| medium | C | 007 / 008 / 009 SELECT | 必要時は書込充実を分離 | B |
-| high | D | BATCH-010 SELECT | queue/item（Rule-first） | C（009 後） |
-| medium | E | 011〜014 SELECT | 連鎖 | D |
-| high | F | BATCH-015 SELECT | + 本番 CLI `--live-embedding` | E |
-| low | G | 016 / 017 SELECT | 監視・集計 | F 後で可 |
+| 優先 | Wave | 候補 Task | 内容 | 実 DB 疎通 | 依存 |
+| ---- | ---- | --------- | ---- | ---------- | ---- |
+| high | T0 | inventory（**#1624** MERGED） | 本正本 | **不要**（docs のみ） | — |
+| high | T1 | reader-foundation（**#1627**） | `DbReader` Protocol / Scaffold / Postgres factory | **必須** | T0 |
+| high | A | BATCH-005 SELECT（**#1629**） | `raw_product_metadata` + Storage GET 本実行 | **必須** | T1 |
+| high | A' | BATCH-004 seed SELECT | `item` seed | **必須** | T1（A と並列可） |
+| high | B | BATCH-006 SELECT | staging/item | **必須** | A |
+| medium | C | 007 / 008 / 009 SELECT | 必要時は書込充実を分離 | **必須** | B |
+| high | D | BATCH-010 SELECT | queue/item（Rule-first） | **必須** | C（009 後） |
+| medium | E | 011〜014 SELECT | 連鎖 | **必須** | D |
+| high | F | BATCH-015 SELECT | + 本番 CLI `--live-embedding` | **必須** | E |
+| low | G | 016 / 017 SELECT | 監視・集計 | **必須** | F 後で可 |
+
+### 7.1 実 DB 疎通確認ポリシー（Human 確定・事実）
+
+Epic #1623（2026-07-25 Human 確定）: **実装 Wave（T0 以外）の子 Task は実 DB 疎通確認を完了条件に含む。**
+
+| 項目 | 方針 |
+| ---- | ---- |
+| 対象 Wave | T1 および A 以降の実装 Task（T0 inventory は除外） |
+| 環境 | **local / dev / staging** の Postgres（`DATABASE_URL` が `scaffold://` 以外） |
+| 合格条件 | 対象 Wave の読取（`DbReader.fetch_rows` または Batch SELECT 経路）が **接続・クエリ実行に成功**すること。対象 0 件でも接続成功なら可 |
+| 記録 | PR 本文（または `ai-logs/experiments/`）に手順・結果要約。**secret / URL 実値は書かない** |
+| CI | **既定 off**（明示フラグ / 手動実行のみ） |
+| 禁止 | production 無承認 live、CI 既定 live、接続実値の commit |
+
+**追記（事実）:** T1（#1627）は方針確定前に UT 中心で MERGED。方針確定後は **follow-up 疎通**または Epic 完了前の補完を要する。Wave A（#1629）以降は Task Definition に必須として記載する。
 
 ---
 
@@ -142,7 +157,8 @@ Epic #1623 の子 Task 分割案。
 | Semantic LLM | E3 Human 確定「含めない」 |
 | BATCH-018 / 019 | E3 除外・後回し |
 | E4 観測横断 | 別 Epic |
-| CI 既定 live | E3 方針: 既定 off |
+| CI 既定 live | E3 / 本 Epic 方針: 既定 off（手動の実 DB 疎通とは別） |
+| production 無承認 live | 本 Epic 禁止。疎通は local/dev/staging のみ |
 
 ---
 
@@ -150,9 +166,9 @@ Epic #1623 の子 Task 分割案。
 
 | 区分 | 内容 |
 | ---- | ---- |
-| **事実** | E2/E3 MERGED。`DbWriter` のみ。005/010/015 等は非 demo で読取メッセージ + exit 3。004/006 は空 seed で実行可。010 は Rule-first |
-| **推論** | 次の最大ブロッカーは SELECT Epic（特に 005→パイプライン、004 seed、010/015）。E4 や LLM を先にやっても本線は開かない |
-| **未確認** | production 実データ有無、各 IF の列単位 SELECT 詳細、親 workflow dry-run |
+| **事実** | E2/E3 MERGED。T1 で `DbReader` 導入。実装 Wave の実 DB 疎通は Human 確定で必須（T0 除く） |
+| **推論** | 次の最大ブロッカーは SELECT 本配線 + 疎通証拠（特に 005→パイプライン、004 seed、010/015） |
+| **未確認** | 各環境のシードデータ有無、各 IF の列単位 SELECT 詳細、親 workflow dry-run |
 
 ---
 
@@ -161,3 +177,4 @@ Epic #1623 の子 Task 分割案。
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-25 | 初版（#1624 / Epic #1623） |
+| 2026-07-25 | Human 確定: 実装 Wave の実 DB 疎通確認を必須化（§7.1） |
