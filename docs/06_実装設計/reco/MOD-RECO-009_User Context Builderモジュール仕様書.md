@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service（`apps/reco`）        |
 | MVP対象        | `○`                                               |
 | 作成日         | 2026-06-29                                        |
-| 更新日         | 2026-06-29（Human 判断反映）                      |
+| 更新日         | 2026-07-25（`lambda_ctx_rule` 物理正本・Issue #843） |
 
 ---
 
@@ -267,9 +267,11 @@ Matching定義書 §4.5 / §9.3 および `user_meaning_テーブル定義書` �
 
 | 優先 | 方式 | 内容 |
 | --: | ---- | ---- |
-| 1 | Rule Lookup | `LambdaContextRuleRepository.get_lambda_ctx(semantic_config_version_id, relationship_code, occasion_code)` が返す基準値 |
-| 2 | Pair 補正 | `pair_rule` に `lambda_ctx_delta` が定義されている場合は加算（Featureルール定義書 §9 と同型の拡張。未設定時は 0） |
+| 1 | Rule Lookup | `LambdaContextRuleRepository.get_lambda_ctx(semantic_config_version_id, relationship_code, occasion_code)` が返す基準値（物理正本: **`lambda_ctx_rule`**） |
+| 2 | （MVP 非採用）Pair 補正 | `pair_rule.lambda_ctx_delta` は **現行物理定義に列なし**。Issue #843 では採用しない。復活は別 Task |
 | 3 | フォールバック | Rule 未設定・算出不能時 → **`0.5` 固定**（Social / Symbolic バランス型）+ warning |
+
+> MVP 実運用の算出経路は **優先1 → 優先3**。優先2 は仕様上の将来拡張枠として残し、実装・DDL では扱わない。
 
 **guard_clip（MVP）**
 
@@ -294,9 +296,10 @@ result = round_to_scale(clipped, 4)   # numeric(6,4) 列整合
 | ---- | ---- |
 | インターフェース | `LambdaContextRuleRepository.get_lambda_ctx(semantic_config_version_id, relationship_code, occasion_code)` |
 | 返却型 | `number \| null`（`null` = Rule 未設定） |
-| 物理 Lookup | `semantic_config_version` 配下設定（**未整備**。別 Task で JSON 列・JOIN 経路・seed を確定） |
+| 物理 Lookup | **`lambda_ctx_rule`**（Issue #843 案A）。`semantic_config_version_id` × `relationship_code` × `occasion_code` × `is_active=true`。正本: `lambda_ctx_rule_テーブル定義書` |
 | Rule 未設定 | **`0.5` 固定** + warning（優先 3 フォールバック） |
-| MVP 実装 | `InMemoryLambdaContextRuleRepository`（常に `null` 返却）で優先 3 へ到達可能。DB 接続は別 Task |
+| MVP 実装 | `InMemoryLambdaContextRuleRepository`（既定は `null`）で優先 3 へ到達可能。Postgres Repository 接続は後続 Task |
+| MVP seed | 初期 **0 行**（全件フォールバック）。代表組み合わせ投入は後続 seed Task |
 
 #### 8.3.2 preferred context 組み立て（MVP）
 
@@ -547,6 +550,7 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 | 2026-06-29 | 初版作成 | Issue #838 |
 | 2026-06-29 | Human 判断反映（`lambda_ctx` フォールバック確定・未決整理） | Issue #838 |
 | 2026-06-29 | Recoモジュール一覧 `λ_ctx` 責務境界整合（§16 未決 No.2 解消） | Issue #839 |
+| 2026-07-25 | `lambda_ctx_rule` 物理正本（案A）確定・§8.3.1 / §16 No.1 解消 | Issue #843 |
 
 ---
 
@@ -554,7 +558,7 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 
 | No | 論点 | 判断が必要な理由 | 判断者 | 期限 | 備考 |
 | --: | ---- | ---------------- | ------ | ---- | ---- |
-| 1 | `lambda_ctx_rule` の物理スキーマ（JSON 列名・seed 初期値） | `user_meaning.lambda_ctx` 列は整備済みだが、Rule Lookup 用の物理正本（テーブル or JSON + seed）が未設計。別 Task 化が必要 | Human + Worker | Rule DB 接続 Task 前 | 論理 I/F は §8.3.1。MVP は `InMemory` + **`0.5` フォールバック**で実装可 |
+| — | （現行なし） | — | — | — | §16.1 No.6 で物理形態を確定。残課題は後続 Task |
 
 ### 16.1 確定済み論点（`user_meaning_テーブル定義書` Human Review #555 / `MOD-RECO-008` §16.1 と整合）
 
@@ -565,6 +569,9 @@ Observability §12.12 の `lambda_ctx_mean` / `lambda_ctx_std` 等は **`user_co
 | 3 | `user_meaning` INSERT 主体 | **本モジュール**（IF-DB-RECO-003 1 行） |
 | 4 | Phase Log | **`user_meaning_projected`** は INSERT 成功後に本モジュールが依頼 |
 | 5 | preferred / non_preferred 分離 | **UM-04 / UM-06**。non_preferred を主 query に含めない |
+| 6 | `lambda_ctx_rule` 物理形態 | **専用テーブル `lambda_ctx_rule`（案A）**。正本: `lambda_ctx_rule_テーブル定義書`（Issue #843）。JSON 列・既存 Rule 拡張は不採用 |
+| 7 | MVP 算出優先2（`pair_rule.lambda_ctx_delta`） | **MVP 非採用**。優先1（`lambda_ctx_rule` Lookup）+ 優先3（0.5）のみ |
+| 8 | MVP 初期 seed | **0 行**（全件 0.5 フォールバック）。代表組み合わせは後続 seed Task |
 | 6 | NG 条件 | **Hard Filter 責務**。本モジュールの主 query に混在しない |
 | 7 | 値域 | **`lambda_ctx` は 0.0〜1.0**（`numeric(6,4)`） |
 | 8 | 8 行 version 不一致 | **INSERT 拒否**（`GRS-REC-005`）。多数決不採用 |
