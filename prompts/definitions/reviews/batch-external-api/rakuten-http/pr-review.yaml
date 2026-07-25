@@ -1,0 +1,51 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-external-api-rakuten-http-pr"
+  title: "batch-external-api Rakuten HTTP PRレビュー"
+  summary: "E3 T2（Rakuten HTTP client）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1601
+  task_definition: "prompts/definitions/tasks/batch-external-api/rakuten-http.yaml"
+  parent_epic_issue: "[Epic]batch-external-api:外部API本接続"
+  parent_epic_branch: "feature/epic-1598-batch-external-api"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "live 既定 off"
+  - "secret 非露出"
+  - "001〜004 CLI 配線"
+  - "Related to / PR target"
+
+notes:
+  - "PR 番号確定後に更新"

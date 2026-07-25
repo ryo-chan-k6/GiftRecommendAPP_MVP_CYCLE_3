@@ -17,7 +17,13 @@ from batch.application.raw_staging.models import RawMetadataSeed
 from batch.application.raw_staging.repositories import RawStagingRepositories
 from batch.config import load_batch_settings
 from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
-from batch.infrastructure.object_storage import ObjectRef, ScaffoldObjectStorageClient
+from batch.infrastructure.object_storage import (
+    ObjectRef,
+    ScaffoldObjectStorageClient,
+    create_object_storage_client,
+    missing_live_object_storage_credentials,
+    resolve_live_object_storage_flag,
+)
 
 DEMO_OBJECT_KEY = "raw/rakuten/item_search/dt=2026-07-15/batch_run_id=demo/demo-item.json"
 DEMO_RAW_ID = "rm_demo_item_search_1"
@@ -121,6 +127,14 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Run in-memory scaffold demo (no real DB/Object Storage/Rakuten).",
     )
+    parser.add_argument(
+        "--live-object-storage",
+        action="store_true",
+        help=(
+            "Enable real S3-compatible Object Storage (requires OBJECT_STORAGE_*). "
+            "Default off; also BATCH_OBJECT_STORAGE_LIVE."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.scaffold_demo:
@@ -144,12 +158,35 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
+    import os
+
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    storage_live = resolve_live_object_storage_flag(
+        cli_live=args.live_object_storage,
+        env_value=os.environ.get("BATCH_OBJECT_STORAGE_LIVE"),
+    )
+    if storage_live:
+        missing = missing_live_object_storage_credentials(
+            access_key=settings.object_storage_access_key,
+            secret_key=settings.object_storage_secret_key,
+            endpoint=settings.object_storage_endpoint,
+        )
+        if missing:
+            print(missing, file=sys.stderr)
+            return 2
+    object_storage = create_object_storage_client(
+        settings.object_storage_access_key,
+        settings.object_storage_secret_key,
+        endpoint=settings.object_storage_endpoint,
+        live=storage_live,
+    )
     print(
         f"DbWriter backend={db_writer.backend} is resolved, "
-        "but real DB read / Object Storage client is not enabled yet. "
-        "Use --scaffold-demo for local/CI.",
+        f"storage_backend={getattr(object_storage, 'backend', 'scaffold')}, "
+        "but real DB read path is not enabled yet. "
+        "Use --scaffold-demo for local/CI"
+        + (" (Object Storage live credentials are ready)." if storage_live else "."),
         file=sys.stderr,
     )
     return 3

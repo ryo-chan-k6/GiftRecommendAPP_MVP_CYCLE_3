@@ -89,7 +89,7 @@ BATCH-001（楽天ジャンル同期Batch）は、楽天ジャンル検索APIか
 
 | API | 利用有無 | 用途 | Rate Limit / 制約 | 備考 |
 | --- | -------- | ---- | ----------------- | ---- |
-| 楽天ジャンル検索API | `true` | ジャンル階層・参照情報取得 | External API Rate Limiter で制御。`GRS-EXT-102` 時は pause / 再実行 | `genreId` / `format=json` / `formatVersion=2` |
+| 楽天ジャンル検索API | `true` | ジャンル階層・参照情報取得 | External API Rate Limiter で制御。`GRS-EXT-102` 時は pause / 再実行 | `genreId` / `format=json` / `formatVersion=2`。endpoint は §6.2.3 |
 | 楽天属性検索API | `false`（MVP） | ジャンル属性の詳細取得 | - | MVP 必須ではない。商品検索側の attribute を優先 |
 
 #### 6.2.1 楽天ジャンル検索API 主なパラメータ
@@ -107,13 +107,21 @@ BATCH-001（楽天ジャンル同期Batch）は、楽天ジャンル検索APIか
 | 出力項目 | 内容 | 本サービスでの扱い |
 | -------- | ---- | ------------------ |
 | `ancestors` | 親ジャンル群 | ジャンル階層管理 |
-| `genre` | 現在ジャンル | ジャンル正本参照（`external_genre`） |
+| `genre` | 現在ジャンル（**正本キー**） | ジャンル正本参照（`external_genre`）。旧キー `current` は非サポート |
 | `siblings` | 兄弟ジャンル | ジャンル探索補助 |
 | `children` | 子ジャンル群 | バッチ対象ジャンル展開 |
 | `attributes` | 属性情報 | 商品属性管理・Semantic 補助（必要範囲のみ） |
 | `genreId` | ジャンルID | `external_genre_id` |
 | `jaName` | 日本語ジャンル名 | 表示・管理・取得計画 |
 | `level` | ジャンル階層 | 取得対象範囲の制御 |
+
+#### 6.2.3 endpoint（現行）
+
+| 項目 | 値 |
+| ---- | -- |
+| 現行 base | `https://openapi.rakuten.co.jp/ichibagt/api/IchibaGenre/Search/20260701` |
+| 旧 endpoint | `https://app.rakuten.co.jp/services/api/IchibaGenre/Search/...`（**非推奨**。新 credential では `specify valid applicationId`） |
+| 実装 | `HttpRakutenApiClient` / `adapt_genre_raw_payload`（`genre` キー必須） |
 
 ### 6.3 環境変数
 
@@ -328,6 +336,7 @@ flowchart TD
 | 日付 | 変更内容 | 関連Issue / PR |
 | ---- | -------- | -------------- |
 | 2026-07-12 | 初版作成 | #1162 |
+| 2026-07-25 | 現行 openapi endpoint・Raw `genre` キー正本化（旧 `current` 非サポート） | #1606 |
 
 ---
 

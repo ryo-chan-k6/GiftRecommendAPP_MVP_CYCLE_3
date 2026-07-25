@@ -3,14 +3,17 @@
 Usage:
   python -m batch.application.item_embedding --job-run-id <id> [--max-items 1000]
   python -m batch.application.item_embedding --scaffold-demo
+  python -m batch.application.item_embedding --scaffold-demo --live-embedding
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import UTC, datetime
 
+from batch.application.item_embedding.adapter import build_scaffold_adapter
 from batch.application.item_embedding.job import (
     DEFAULT_MAX_ITEMS,
     DEFAULT_QUEUE_BATCH_SIZE,
@@ -29,6 +32,11 @@ from batch.application.item_embedding.repositories import (
 )
 from batch.config import load_batch_settings
 from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.external_ai import (
+    EmbeddingClient,
+    create_embedding_client,
+    resolve_live_embedding_flag,
+)
 
 _NOW = datetime(2026, 7, 20, 12, 0, 0, tzinfo=UTC)
 # 64 hex（BATCH-014 handoff 相当のダミー hash。secret ではない）
@@ -41,8 +49,14 @@ def _parse_csv(raw: str | None) -> tuple[str, ...] | None:
     return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
-def build_scaffold_demo_job() -> ItemEmbeddingJob:
-    """Build an in-memory job for local / CI smoke without real secrets / DB / OpenAI."""
+def build_scaffold_demo_job(
+    *,
+    embedding_client: EmbeddingClient | None = None,
+) -> ItemEmbeddingJob:
+    """Build an in-memory job for local / CI smoke without real DB.
+
+    Embedding は既定 Scaffold。``embedding_client`` 注入で live HTTP 煙が可能。
+    """
 
     context = {
         "item_id": "it_demo_1",
@@ -111,7 +125,12 @@ def build_scaffold_demo_job() -> ItemEmbeddingJob:
             ),
         ],
     )
-    return build_default_scaffold_job(repos)
+    if embedding_client is None:
+        return build_default_scaffold_job(repos)
+    return ItemEmbeddingJob(
+        repositories=repos,
+        generator=build_scaffold_adapter(client=embedding_client),
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -125,12 +144,39 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--scaffold-demo",
         action="store_true",
-        help="Run in-memory scaffold demo (no real DB / OpenAI).",
+        help="Run in-memory scaffold demo (no real DB). Embedding live is separate.",
+    )
+    parser.add_argument(
+        "--live-embedding",
+        action="store_true",
+        help=(
+            "Enable real OpenAI Embeddings HTTP (requires OPENAI_API_KEY). "
+            "Default off; also BATCH_EMBEDDING_LIVE. Use with --scaffold-demo for smoke."
+        ),
     )
     args = parser.parse_args(argv)
 
+    live = resolve_live_embedding_flag(
+        cli_live=args.live_embedding,
+        env_value=os.environ.get("BATCH_EMBEDDING_LIVE"),
+    )
+
     if args.scaffold_demo:
-        job = build_scaffold_demo_job()
+        embedding_client: EmbeddingClient | None = None
+        if live:
+            settings = load_batch_settings()
+            if not settings.openai_api_key:
+                print(
+                    "OPENAI_API_KEY is required for --live-embedding. "
+                    "Use --scaffold-demo without --live-embedding for local/CI.",
+                    file=sys.stderr,
+                )
+                return 2
+            embedding_client = create_embedding_client(
+                settings.openai_api_key,
+                live=True,
+            )
+        job = build_scaffold_demo_job(embedding_client=embedding_client)
         result = job.run(
             job_run_id=args.job_run_id,
             max_items=args.max_items,
@@ -139,8 +185,10 @@ def main(argv: list[str] | None = None) -> int:
             item_ids=_parse_csv(args.item_ids),
             queue_ids=_parse_csv(args.queue_ids),
         )
+        backend = "http" if live else "scaffold"
         print(
             f"BATCH-015 scaffold demo status={result.status} "
+            f"embedding_backend={backend} "
             f"claimed={result.claimed_count} "
             f"generated={result.generated_count} "
             f"skipped={result.skipped_count} "
@@ -155,7 +203,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"DbWriter backend={db_writer.backend} is resolved, "
         "but real DB read path is not enabled yet. "
-        "Use --scaffold-demo for local/CI.",
+        "Use --scaffold-demo for local/CI"
+        + (" (optionally with --live-embedding)." if live else "."),
         file=sys.stderr,
     )
     return 3

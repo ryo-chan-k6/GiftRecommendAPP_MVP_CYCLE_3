@@ -11,23 +11,42 @@ from batch.infrastructure.db import (
     resolve_job_db_writer,
 )
 from batch.infrastructure.external_ai import (
+    EmbeddingApiError,
+    EmbeddingClient,
+    EmbeddingResponse,
     ExternalAiClient,
     ExternalAiResponse,
+    HttpEmbeddingClient,
+    ScaffoldEmbeddingClient,
     ScaffoldExternalAiClient,
+    create_embedding_client,
+    mask_openai_secret,
+    resolve_live_embedding_flag,
 )
 from batch.infrastructure.logger import BatchLogger, LogContext, LogRecord, ScaffoldBatchLogger
 from batch.infrastructure.object_storage import (
     ObjectRef,
     ObjectStorageClient,
+    S3CompatibleObjectStorageClient,
     ScaffoldObjectStorageClient,
     StoredObject,
+    create_object_storage_client,
+    mask_object_storage_secret,
+    resolve_live_object_storage_flag,
 )
 from batch.infrastructure.rakuten import (
+    HttpRakutenApiClient,
     RakutenApiClient,
     RakutenGenre,
     RakutenItem,
     RakutenRankingEntry,
     ScaffoldRakutenApiClient,
+    create_rakuten_client,
+    resolve_live_rakuten_flag,
+)
+from batch.infrastructure.rate_limiter import (
+    ExternalApiRateLimiter,
+    create_external_api_rate_limiter,
 )
 
 __all__ = [
@@ -35,8 +54,14 @@ __all__ = [
     "DatabaseError",
     "DbWriteResult",
     "DbWriter",
+    "EmbeddingApiError",
+    "EmbeddingClient",
+    "EmbeddingResponse",
     "ExternalAiClient",
     "ExternalAiResponse",
+    "ExternalApiRateLimiter",
+    "HttpEmbeddingClient",
+    "HttpRakutenApiClient",
     "LogContext",
     "LogRecord",
     "ObjectRef",
@@ -46,13 +71,24 @@ __all__ = [
     "RakutenGenre",
     "RakutenItem",
     "RakutenRankingEntry",
+    "S3CompatibleObjectStorageClient",
     "ScaffoldBatchLogger",
     "ScaffoldDbWriter",
+    "ScaffoldEmbeddingClient",
     "ScaffoldExternalAiClient",
     "ScaffoldObjectStorageClient",
     "ScaffoldRakutenApiClient",
     "StoredObject",
     "create_db_writer",
+    "create_embedding_client",
+    "create_external_api_rate_limiter",
+    "create_object_storage_client",
+    "create_rakuten_client",
     "mask_database_url",
+    "mask_object_storage_secret",
+    "mask_openai_secret",
     "resolve_job_db_writer",
+    "resolve_live_embedding_flag",
+    "resolve_live_object_storage_flag",
+    "resolve_live_rakuten_flag",
 ]

@@ -1,0 +1,29 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-external-api-rakuten-contract-align"
+  title: "PR Review: 楽天 Genre/Ranking/endpoint 正式反映"
+  related_task: "prompts/definitions/tasks/batch-external-api/rakuten-contract-align.yaml"
+  related_issue: 1606
+  related_epic: 1598
+
+target:
+  pr: 1609
+
+focus:
+  - "Genre `genre` キー正本化"
+  - "Ranking ドメイン period とクエリ period の分離"
+  - "openapi endpoint 記載・旧 URL 非推奨"
+  - "adapter / UT 整合"
+  - "Related to / PR target"
+
+blocker_examples:
+  - "旧 current を正として残している"
+  - "ドメイン daily を Online から削除している"
+  - "secret 露出"
+  - "Closes #1606 または PR target が develop"
+
+must_examples:
+  - "BATCH-002 でクエリへ daily を送ると読める曖昧さ"
+  - "endpoint 未記載"
