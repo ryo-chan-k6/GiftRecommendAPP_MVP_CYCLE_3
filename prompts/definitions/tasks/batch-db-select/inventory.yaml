@@ -74,16 +74,22 @@ input:
 
 output:
   docs:
-    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
-      action: "create_or_update"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      action: "create"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
       required: true
   files:
-    - path: "prompts/definitions/tasks/batch-db-select/**"
+    - path: "prompts/definitions/tasks/batch-db-select/inventory.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/inventory/pr-review.yaml"
       action: "create"
       required: true
-    - path: "prompts/definitions/reviews/batch-db-select/**"
-      action: "create"
-      required: false
 
 deliverables:
   - "DB SELECT ギャップ正本 docs"
@@ -96,8 +102,8 @@ acceptance_criteria:
   - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
 
 branch:
-  no_branch: true
-  name: "docs/task-XXXX-batch-db-select-inventory"
+  no_branch: false
+  name: "docs/task-1624-batch-db-select-inventory"
   summary: "batch-db-select-inventory"
   base: "feature/epic-1623-batch-db-select"
   target: "feature/epic-1623-batch-db-select"
@@ -107,13 +113,13 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "Backlog"
+    status: "In Progress"
     priority: "high"
     planned_start: "2026-07-25"
     due_date: "2026-07-27"
 
 issue:
-  number: null
+  number: 1624
   unit: "task"
   type: "docs"
   area: "batch"
@@ -149,5 +155,4 @@ review:
     docs: true
 
 notes:
-  - "Issue 未起票。/start-task で起票する"
-  - "branch.no_branch: true（起票時は no-branch。着手時に解除）"
+  - "Issue #1624 / Branch docs/task-1624-batch-db-select-inventory"

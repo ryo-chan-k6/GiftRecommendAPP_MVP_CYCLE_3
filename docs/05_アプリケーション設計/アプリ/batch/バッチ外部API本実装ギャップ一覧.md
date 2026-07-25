@@ -7,8 +7,8 @@
 | 文書種別 | E3 棚卸し正本（docs） |
 | 対象 | 楽天 / Embedding / Object Storage / Semantic（LLM）× BATCH-001〜017 |
 | 作成日 | 2026-07-24 |
-| 更新日 | 2026-07-25（T4 + #1614 接続方針 A / #1617 live 再検証 Go） |
-| 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) / [#1614](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1614) |
+| 更新日 | 2026-07-25（T4 + #1614 / #1617。DB SELECT 後続は #1623） |
+| 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) / [#1614](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1614) / 読取後続 [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) |
 | 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） / [#1612](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1612)（T4） / [#1617](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1617)（Storage live・リリース準備） |
 | 先行 | E0 横串ギャップ / E1 親 workflow / E2 IF-DB・DDL（#1595 MERGED） |
 
@@ -63,7 +63,7 @@
 | Item Semantic 生成 | adapter（batch 内） | `ScaffoldItemSemanticAdapter` | **なし**（LLM） | **なし** |
 | Item Embedding 生成 | adapter（batch 内） | `ScaffoldItemEmbeddingAdapter` | `EmbeddingClient` 注入（Http 可） | `--live-embedding` / `BATCH_EMBEDDING_LIVE` |
 
-**補足（事実）:** 楽天 / Embedding / Object Storage いずれも factory（live 既定 off）導入済み。005 の DB SELECT 本配線は別。
+**補足（事実）:** 楽天 / Embedding / Object Storage いずれも factory（live 既定 off）導入済み。005 等の DB SELECT 本配線は [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) / [バッチDB読取・SELECT本実装ギャップ一覧](./バッチDB読取・SELECT本実装ギャップ一覧.md)。
 
 ---
 
@@ -188,3 +188,4 @@
 | 2026-07-25 | Object Storage 接続方針 A 確定反映（製品=Supabase Storage / S3 互換）。Epic #1614 / Task #1615 |
 | 2026-07-25 | Object Storage S3 互換 live 疎通ハーネス・結果記録（#1617・リリース準備） |
 | 2026-07-25 | #1617 再検証: local Supabase で put/get/missing **Go**（案 B 不要） |
+| 2026-07-25 | DB SELECT 後続を Epic #1623 / [SELECTギャップ一覧](./バッチDB読取・SELECT本実装ギャップ一覧.md) へ分離（#1624） |
