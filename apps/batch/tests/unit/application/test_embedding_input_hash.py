@@ -283,11 +283,85 @@ def test_cli_scaffold_demo_returns_zero() -> None:
     assert main(["--scaffold-demo", "--job-run-id", "demo"]) == 0
 
 
-def test_cli_without_scaffold_returns_three() -> None:
-    assert main([]) == 3
+def test_cli_without_scaffold_demo_exits_2_without_database_url(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.embedding_input_hash import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    assert cli.main([]) == 2
 
 
-# --- §16 拡充: Queue フィルタ網羅 -------------------------------------------
+def test_list_target_queues_and_load_item_via_db_reader() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_emb",
+                "item_id": "it_1",
+                "generation_type": "embedding",
+                "queue_status": "queued",
+                "retry_count": 0,
+            },
+            {
+                "item_generation_queue_id": "igq_sem",
+                "item_id": "it_2",
+                "generation_type": "semantic",
+                "queue_status": "processing",
+                "retry_count": 0,
+            },
+            {
+                "item_generation_queue_id": "igq_feat_q",
+                "item_id": "it_3",
+                "generation_type": "feature",
+                "queue_status": "queued",
+                "retry_count": 0,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:1",
+                "item_name": "Emb",
+                "item_caption": None,
+                "catchcopy": None,
+                "active_status": "active",
+                "is_active": True,
+                "price": 100,
+            },
+            {
+                "item_id": "it_2",
+                "source": "rakuten",
+                "external_item_code": "shop:2",
+                "item_name": "Sem",
+                "item_caption": None,
+                "catchcopy": None,
+                "active_status": "active",
+                "is_active": True,
+                "price": 200,
+            },
+        ),
+    )
+    repos = EmbeddingInputHashRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    targets, _ = repos.list_target_queues(max_items=10)
+    assert [q.item_generation_queue_id for q in targets] == ["igq_emb", "igq_sem"]
+    assert sum(1 for c in reader.fetch_calls if c["table"] == "item_generation_queue") >= 4
+    item = repos.load_item(item_id="it_1")
+    assert item.item_name == "Emb"
+    assert item.genre_name is None
+    assert item.attributes == ()
 
 
 def test_feature_continuation_is_processed() -> None:

@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-select-011-014-select-pr"
+  title: "batch-db-select BATCH-011-014 SELECT PRレビュー"
+  summary: "Wave E として BATCH-011 / 012 / 013 / 014 の SELECT 本配線 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1647
+  task_definition: "prompts/definitions/tasks/batch-db-select/batch-011-014-select.yaml"
+  parent_epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  parent_epic_branch: "feature/epic-1623-batch-db-select"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: null
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "011〜014 主読取が DbReader を使うか"
+  - "書込本格化 / LLM を混入していないか"
+  - "queue OR を equals 二重（または多重）fetch + in-process で扱っているか"
+  - "非 demo で DATABASE_URL 無しは exit 2 か（exit 3 解除）"
+  - "実 DB 疎通結果が PR に記録されているか（secret なし）"
+  - "scaffold-demo / UT 回帰"
+  - "Related to / PR target が親 Epic"
+
+notes:
+  - "Wave E。書込 UPSERT 本格化 / Semantic LLM / DbReader IN・OR・JOIN 拡張は out of scope"

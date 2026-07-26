@@ -1,9 +1,11 @@
-"""In-memory repositories for BATCH-014 scaffold / UT.
+"""Repositories for BATCH-014 Embedding入力hash算出.
 
-- item READ ONLY
-- item_embedding READ ONLY（skip 判定）。書込禁止（BATCH-015 / IF-VEC-BATCH-001）
-- Queue UPDATE only（INSERT 禁止）
-- IF-DB-BATCH-015: item_embedding_input へ UPSERT（T4b）
+``list_target_queues`` / ``load_item`` / skip 用 ``item_embedding`` SELECT は
+``DbReader`` 経由（Wave E）。
+
+queue フィルタ（embedding∈{queued,processing} OR semantic|feature+processing）は
+equals 複数 fetch + in-process。genre/attrs/tags は DDL に無い → 空既定。
+書込本格化は out of scope。
 """
 
 from __future__ import annotations
@@ -17,13 +19,42 @@ from batch.application.embedding_input_hash.models import (
     ItemRow,
     QueueRow,
 )
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
 
 DEFAULT_SOURCE = "rakuten"
 # MVP scaffold 既定の現行 Embedding model version（skip 判定キー）
 DEFAULT_EMBEDDING_MODEL_VERSION = "scaffold-embedding-model-v1"
 # 入力構築ルール version（DB 物理列なし・batch 層概念。item_embedding §8.4）
 DEFAULT_EMBEDDING_SOURCE_VERSION = "scaffold-embedding-source-v1"
+
+_QUEUE_COLUMNS = (
+    "item_generation_queue_id",
+    "item_id",
+    "generation_type",
+    "queue_status",
+    "retry_count",
+    "queued_at",
+    "started_at",
+    "completed_at",
+    "error_message",
+)
+_ITEM_COLUMNS = (
+    "item_id",
+    "source",
+    "external_item_code",
+    "item_name",
+    "item_caption",
+    "catchcopy",
+    "active_status",
+    "is_active",
+    "price",
+)
+_EMBEDDING_COLUMNS = (
+    "item_id",
+    "model_version_id",
+    "embedding_input_hash",
+    "embedding_vector",
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +72,7 @@ class ExistingEmbedding:
 @dataclass
 class EmbeddingInputHashRepositories:
     db_writer: DbWriter
+    db_reader: DbReader | None = None
     seed_queues: list[QueueRow] = field(default_factory=list)
     seed_items: list[ItemRow] = field(default_factory=list)
     # item_id -> 既存 Embedding 行（skip 判定）
@@ -102,6 +134,15 @@ class EmbeddingInputHashRepositories:
     ) -> tuple[list[QueueRow], int]:
         """§9.1: embedding+queued/processing 対象 / semantic·feature+processing 継続。"""
 
+        if self.db_reader is not None:
+            return self._list_target_queues_from_db(
+                max_items=max_items,
+                source=source,
+                queue_batch_size=queue_batch_size,
+                item_ids=item_ids,
+                queue_ids=queue_ids,
+            )
+
         item_set = set(item_ids) if item_ids else None
         queue_set = set(queue_ids) if queue_ids else None
         limit = max_items if queue_batch_size is None else min(max_items, queue_batch_size)
@@ -136,13 +177,106 @@ class EmbeddingInputHashRepositories:
 
         return targets, non_target
 
+    def _list_target_queues_from_db(
+        self,
+        *,
+        max_items: int,
+        source: str,
+        queue_batch_size: int | None,
+        item_ids: tuple[str, ...] | None,
+        queue_ids: tuple[str, ...] | None,
+    ) -> tuple[list[QueueRow], int]:
+        reader = self.db_reader
+        if reader is None:
+            return [], 0
+
+        limit = max_items if queue_batch_size is None else min(max_items, queue_batch_size)
+        candidate_rows: list[dict[str, object]] = []
+
+        if queue_ids:
+            for queue_id in queue_ids:
+                if not queue_id:
+                    continue
+                result = reader.fetch_rows(
+                    "item_generation_queue",
+                    columns=_QUEUE_COLUMNS,
+                    equals=(("item_generation_queue_id", queue_id),),
+                    limit=1,
+                )
+                candidate_rows.extend(result.rows)
+        elif item_ids:
+            for item_id in item_ids:
+                if not item_id:
+                    continue
+                result = reader.fetch_rows(
+                    "item_generation_queue",
+                    columns=_QUEUE_COLUMNS,
+                    equals=(("item_id", item_id),),
+                    order_by=("item_generation_queue_id",),
+                    limit=100,
+                )
+                candidate_rows.extend(result.rows)
+        else:
+            fetch_cap = max(0, limit)
+            if fetch_cap == 0:
+                return [], 0
+            fetch_limit = min(max(fetch_cap * 5, fetch_cap), 5000)
+            # OR 条件は equals 複数 fetch + in-process（DbReader OR 拡張なし）
+            filter_specs: tuple[tuple[tuple[str, object], ...], ...] = (
+                (("generation_type", "embedding"), ("queue_status", "queued")),
+                (("generation_type", "embedding"), ("queue_status", "processing")),
+                (("generation_type", "semantic"), ("queue_status", "processing")),
+                (("generation_type", "feature"), ("queue_status", "processing")),
+            )
+            for equals in filter_specs:
+                result = reader.fetch_rows(
+                    "item_generation_queue",
+                    columns=_QUEUE_COLUMNS,
+                    equals=equals,
+                    order_by=("item_generation_queue_id",),
+                    limit=fetch_limit,
+                )
+                candidate_rows.extend(result.rows)
+
+        targets: list[QueueRow] = []
+        non_target = 0
+        seen_ids: set[str] = set()
+
+        for row in sorted(candidate_rows, key=lambda r: str(r["item_generation_queue_id"])):
+            q = self._cache_queue_row(row)
+            if q.item_generation_queue_id in seen_ids:
+                continue
+            seen_ids.add(q.item_generation_queue_id)
+
+            is_embedding = q.generation_type == "embedding" and q.queue_status in {
+                "queued",
+                "processing",
+            }
+            is_continuation = (
+                q.generation_type in {"semantic", "feature"} and q.queue_status == "processing"
+            )
+            if not (is_embedding or is_continuation):
+                continue
+
+            item_row = self.items.get(q.item_id)
+            if item_row is None:
+                item_row = self._fetch_and_cache_item(q.item_id)
+            if item_row is not None and str(item_row.get("source") or DEFAULT_SOURCE) != source:
+                continue
+
+            targets.append(q)
+            if len(targets) >= max(0, limit):
+                break
+
+        return targets, non_target
+
     def claim_or_continue(
         self,
         *,
         item_generation_queue_id: str,
         started_at: datetime | None = None,
     ) -> QueueRow | None:
-        row = self.queues.get(item_generation_queue_id)
+        row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             return None
         status = row.get("queue_status")
@@ -182,6 +316,8 @@ class EmbeddingInputHashRepositories:
 
     def load_item(self, *, item_id: str) -> ItemRow:
         row = self.items.get(item_id)
+        if row is None and self.db_reader is not None:
+            row = self._fetch_and_cache_item(item_id)
         if row is None:
             raise KeyError(f"item not found: {item_id}")
         return ItemRow(
@@ -213,7 +349,11 @@ class EmbeddingInputHashRepositories:
     ) -> bool:
         """§9.4: 同一 item_id + model_version_id + embedding_input_hash の Embedding が生成済み."""
 
-        rows = self.embeddings.get(item_id, [])
+        rows = self.embeddings.get(item_id)
+        if rows is None and self.db_reader is not None:
+            rows = self._fetch_and_cache_embeddings(item_id)
+        if not rows:
+            return False
         for row in rows:
             if row.model_version_id != model_version_id:
                 continue
@@ -274,7 +414,7 @@ class EmbeddingInputHashRepositories:
         error_message: str | None = None,
         keep_processing: bool = False,
     ) -> None:
-        row = self.queues.get(item_generation_queue_id)
+        row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             raise KeyError(f"queue not found: {item_generation_queue_id}")
         if keep_processing:
@@ -326,6 +466,87 @@ class EmbeddingInputHashRepositories:
                 "item_id": item_id,
             }
         )
+
+    def _ensure_queue_hydrated(self, item_generation_queue_id: str) -> dict[str, object] | None:
+        row = self.queues.get(item_generation_queue_id)
+        if row is not None:
+            return row
+        if self.db_reader is None:
+            return None
+        result = self.db_reader.fetch_rows(
+            "item_generation_queue",
+            columns=_QUEUE_COLUMNS,
+            equals=(("item_generation_queue_id", item_generation_queue_id),),
+            limit=1,
+        )
+        if not result.rows:
+            return None
+        self._cache_queue_row(result.rows[0])
+        return self.queues.get(item_generation_queue_id)
+
+    def _fetch_and_cache_item(self, item_id: str) -> dict[str, object] | None:
+        reader = self.db_reader
+        if reader is None:
+            return None
+        result = reader.fetch_rows(
+            "item",
+            columns=_ITEM_COLUMNS,
+            equals=(("item_id", item_id),),
+            limit=1,
+        )
+        if not result.rows:
+            return None
+        return self._cache_item_row(result.rows[0])
+
+    def _fetch_and_cache_embeddings(self, item_id: str) -> list[ExistingEmbedding]:
+        reader = self.db_reader
+        if reader is None:
+            return []
+        result = reader.fetch_rows(
+            "item_embedding",
+            columns=_EMBEDDING_COLUMNS,
+            equals=(("item_id", item_id),),
+            order_by=("model_version_id",),
+            limit=50,
+        )
+        rows = [
+            ExistingEmbedding(
+                model_version_id=str(row.get("model_version_id") or ""),
+                embedding_input_hash=str(row.get("embedding_input_hash") or ""),
+                has_vector=row.get("embedding_vector") is not None,
+            )
+            for row in result.rows
+        ]
+        self.embeddings[item_id] = rows
+        return rows
+
+    def _cache_queue_row(self, row: dict[str, object]) -> QueueRow:
+        payload = dict(row)
+        qid = str(payload["item_generation_queue_id"])
+        self.queues[qid] = payload
+        return self._row_to_queue(payload)
+
+    def _cache_item_row(self, row: dict[str, object]) -> dict[str, object]:
+        payload = {
+            "item_id": str(row["item_id"]),
+            "source": str(row.get("source") or DEFAULT_SOURCE),
+            "external_item_code": str(row.get("external_item_code") or ""),
+            "active_status": str(row.get("active_status") or "active"),
+            "is_active": bool(row.get("is_active", True)),
+            "item_name": row.get("item_name"),
+            "catchcopy": row.get("catchcopy"),
+            "item_caption": row.get("item_caption"),
+            "price": row.get("price"),
+            # DDL に無い列は既定（JOIN 解決は out of scope）
+            "genre_id": None,
+            "genre_name": None,
+            "attributes": [],
+            "tags": [],
+            "review_average": None,
+            "review_count": None,
+        }
+        self.items[str(payload["item_id"])] = payload
+        return payload
 
     @staticmethod
     def _row_to_queue(row: dict[str, object]) -> QueueRow:
