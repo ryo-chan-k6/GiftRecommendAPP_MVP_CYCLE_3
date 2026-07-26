@@ -1,0 +1,277 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mvp-test-release-prep-acceptance-environment-policy-pr"
+  title: "mvp-test-release-prep 受入環境方針確定 PRレビュー"
+  summary: "受入環境方針.md の正本化と Review Definition 整備の Task PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: false
+  name: "docs/task-1648-acceptance-environment-policy"
+  base: "docs/epic-1646-mvp-test-release-prep"
+  target: "docs/epic-1646-mvp-test-release-prep"
+  worktree_required: true
+
+target:
+  pr: 1649
+  issue:
+    number: 1648
+  task_definition: "prompts/definitions/tasks/mvp-test-release-prep/acceptance-environment-policy.yaml"
+  source_branch: "docs/task-1648-acceptance-environment-policy"
+  target_branch: "docs/epic-1646-mvp-test-release-prep"
+  parent_epic_issue: "[Epic]mvp-test-release-prep:テスト・リリース移行準備"
+  parent_epic_branch: "docs/epic-1646-mvp-test-release-prep"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    split_required: "/start-task"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mvp-test-release-prep/acceptance-environment-policy.yaml"
+    required: true
+  issue:
+    number: 1648
+    required: true
+  pr:
+    number: 1649
+    required: true
+  diff:
+    required: true
+    compare_with: "docs/epic-1646-mvp-test-release-prep"
+  docs:
+    - path: "docs/13_受入テスト/テスト計画/受入環境方針.md"
+      required: true
+      purpose: "受入環境方針の正本確認"
+    - path: "docs/13_受入テスト/README.md"
+      required: true
+      purpose: "配置・正本リンク確認"
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: true
+      purpose: "受入フェーズ開始条件・staging 記述との整合"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "stg 区分・簡易構成との整合"
+  files:
+    - path: "prompts/definitions/reviews/mvp-test-release-prep/acceptance-environment-policy/pr-review.yaml"
+      required: true
+      purpose: "Review Definition 作成確認"
+  test_results:
+    required: true
+    source: "pr_body"
+  ci_results:
+    required: false
+    source: "not_required"
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+    deliverables: []
+
+review_points:
+  common:
+    - "Task Definition（acceptance-environment-policy.yaml）の scope を満たしているか"
+    - "out_of_scope（stg 実構築 / 受入ケース全量 / production 構築 / apps/**）の変更が混在していないか"
+    - "兄弟 Task Definition YAML が本 PR に混入していないか"
+    - "acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch（docs/epic-1646-mvp-test-release-prep）であるか"
+    - "Task PR で Related to #1648 を使用し Closes を使っていないか"
+    - "PR author が okuri-ai-bot であるか"
+    - "Review Definition が PR head に含まれているか"
+  docs:
+    - "採用方針が1行で明示され、Human 確定（2026-07-26）を AI が断定していないか"
+    - "簡易 stg / stg / staging の用語同定が1行で書かれているか"
+    - "stg / local+Layer2 のトレードオフが表であるか"
+    - "案Cの正本整合表現が、システム環境の既存二重を踏まえて過大でないか"
+    - "証跡置き場が docs/13 / docs/14 方針と整合しているか（旧 docs/09 不使用）"
+    - "後続 Must Task への依存・影響が明記されているか"
+  source: []
+  tests:
+    - "docs Task として secret check が実施され、unit test 未実施理由が明記されているか"
+  api_contract: []
+  db:
+    - "DB schema / migration 変更が混入していないか（方針記述のみであること）"
+  generated: []
+  cicd: []
+  security:
+    - "secret 実値や .env 実値が含まれていないか"
+  branch:
+    - "Task Branch から develop へ直接 PR していないか"
+    - "PR target が docs/epic-1646-mvp-test-release-prep であるか"
+  project:
+    - "レビュー結果に応じた Status 更新意図が明確か"
+
+acceptance_check:
+  use_task_acceptance_criteria: true
+  additional_criteria:
+    - "PR 本文に実施済み検証と未実施テストの理由が記載されている"
+    - "Human Review で確認してほしい事項が明記されている"
+    - "Review Definition が prompts/definitions/reviews/mvp-test-release-prep/acceptance-environment-policy/ に存在する"
+    - "兄弟 Task Definition 5件が本 PR 差分に含まれていない"
+
+result_policy:
+  approve_for_human_review:
+    conditions:
+      - "acceptance_criteria を満たしている"
+      - "secret 非露出"
+      - "scope 外変更がない"
+      - "Review Definition が存在する"
+      - "Human Review 観点が整理されている"
+  request_changes:
+    conditions:
+      - "採用方針・用語同定・比較表の不足がある"
+      - "兄弟 Task Definition が混入している"
+      - "Review Definition が欠落している"
+      - "PR 本文に必要情報が不足している"
+  needs_human_decision:
+    conditions:
+      - "簡易 stg 必須方針自体の再判断が必要"
+      - "DB 1インスタンス方針の採否判断が必要"
+  split_required:
+    conditions:
+      - "stg 実構築や apps/** 実装が混在している"
+      - "別 Must Task の成果物が混在している"
+  blocked:
+    conditions:
+      - "PR diff を確認できない"
+      - "secret や .env 実値の混入が疑われる"
+      - "親 Epic Issue / Branch が存在しない"
+
+status_policy:
+  current_status: "AI Review"
+  on_approve: "Human Review"
+  on_request_changes: "In Progress"
+  on_needs_human_decision: "Human Review"
+  on_split_required: "In Progress"
+  on_blocked: "In Progress"
+
+outputs:
+  pr_comment_template: "prompts/templates/review/ai-review-comment.md"
+  slack_template: "prompts/templates/slack/ai-review-result.md"
+  update_pr_body: false
+  create_follow_up_issue: false
+  ai_logs:
+    required: false
+    path: null
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "13_受入テスト"
+    status: "AI Review"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "project"
+
+dependencies:
+  epics:
+    - "prompts/definitions/epics/mvp-test-release-prep/epic.yaml"
+  issues:
+    - number: 1646
+      purpose: "親 Epic"
+  prs:
+    - number: 1649
+      purpose: "対象 Task PR"
+  tasks:
+    - "prompts/definitions/tasks/mvp-test-release-prep/acceptance-environment-policy.yaml"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/13_受入テスト/テスト計画/受入環境方針.md"
+  conflict_risk: "low"
+  generated_impact: false
+  contract_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "AI Review"
+    - "PR diff check"
+    - "docs review"
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "Task Definition の acceptance_criteria を満たしているか確認する"
+    - "簡易 stg / stg / staging の同定が本文にあるか確認する"
+    - "兄弟 Task Definition と apps/** 変更がないことを確認する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "方針 docs のみのため"
+    "integration test": "方針 docs のみのため"
+
+operation_logging:
+  level: "minimal"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常 PR レビューのため、レビュー結果は PR コメントを正本とする"
+
+risk_points:
+  - "全体計画 §7.5 / §7.7 と Layer2 / 簡易 stg の並走整理が後続 Task に残る"
+  - "兄弟 Task Definition の正式配置（Epic Branch 直 / 各 Task 開始時）が未確定"
+
+human_decision_points:
+  - "受入証跡を簡易 stg に限定する方針でよいか（採用済み想定の再確認）"
+  - "DB「1インスタンス＋データセット設計」で多様パターン検証の意図が足りるか"
+  - "システム最小計画を Layer2 中心とする解釈を、全体計画 §7.5 更新前に固定してよいか"
+
+stop_conditions:
+  - "PR が存在しない場合"
+  - "secret や .env 実値の混入が疑われる場合"
+  - "apps/** 変更が混入している場合"
+  - "Human Review を省略する前提になっている場合"
+
+notes:
+  - "対応 Task Definition: prompts/definitions/tasks/mvp-test-release-prep/acceptance-environment-policy.yaml"
+  - "対応 Epic Definition: prompts/definitions/epics/mvp-test-release-prep/epic.yaml"
+  - "Issue #1648 / PR #1649 / Branch docs/task-1648-acceptance-environment-policy"
