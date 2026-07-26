@@ -18,7 +18,12 @@ from batch.application.product_diff.job import (
 from batch.application.product_diff.models import ItemSeed, StagingItemSeed
 from batch.application.product_diff.repositories import ProductDiffRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import (
+    ScaffoldDbWriter,
+    create_db_writer,
+    is_live_db_reader,
+    resolve_job_db_reader,
+)
 
 # Fixed SHA-256 hex fixtures（再算出せず比較のみ）
 _HASH_A = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -148,9 +153,20 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
     settings = load_batch_settings()
-    # Wave A T4a: DbWriter 切替。読取 SELECT は未実装のため seed 空で実行（0 件でも配線確認可）。
     db_writer = create_db_writer(settings.database_url)
-    repos = ProductDiffRepositories(db_writer=db_writer)
+    db_reader = resolve_job_db_reader(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+    )
+    if not is_live_db_reader(db_reader):
+        print(
+            "DATABASE_URL is required for non --scaffold-demo BATCH-006 "
+            "(DbReader postgres backend). Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
+        )
+        return 2
+
+    repos = ProductDiffRepositories(db_writer=db_writer, db_reader=db_reader)
     job = ProductDiffJob(repositories=repos)
     result = job.run(
         job_run_id=args.job_run_id,
@@ -165,7 +181,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"BATCH-006 status={result.status} "
-        f"db_backend={db_writer.backend} "
+        f"db_reader={db_reader.backend} "
+        f"db_writer={db_writer.backend} "
         f"succeeded={len(result.succeeded_external_codes)} "
         f"failed={len(result.failed_external_codes)} "
         f"upserts={result.product_diff_upsert_count}"

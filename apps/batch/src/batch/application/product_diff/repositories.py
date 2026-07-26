@@ -1,8 +1,11 @@
-"""In-memory repositories for BATCH-006 unit tests / scaffold wiring.
+"""Repositories for BATCH-006 product diff.
 
-Production will replace these with real DB adapters while keeping:
+``list_eligible_staging`` / ``resolve_item`` use ``DbReader`` when injected (Wave B).
+Without a reader, in-memory ``seed_*`` remains for scaffold / UT.
+
+Production write path keeps:
 - product_diff_result UNIQUE upsert on (batch_run_id, external_item_code)
-- optional staging_item.diff_status sync
+- optional staging_item.diff_status sync (scaffold probe; full SQL later)
 - NO writes to item / item_image / item.active_status
 - NO normalized_hash recalculation
 """
@@ -14,9 +17,28 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from batch.application.product_diff.models import DiffJudgment, ItemSeed, StagingItemSeed
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
 
 DEFAULT_SOURCE = "rakuten"
+_STAGING_COLUMNS = (
+    "staging_item_id",
+    "source",
+    "external_item_code",
+    "normalized_hash",
+    "item_name",
+    "item_url",
+    "price",
+    "availability",
+    "diff_status",
+)
+_ITEM_COLUMNS = (
+    "item_id",
+    "source",
+    "external_item_code",
+    "normalized_hash",
+    "item_name",
+    "active_status",
+)
 
 
 @dataclass
@@ -24,6 +46,7 @@ class ProductDiffRepositories:
     """Facade: Staging selection / Item resolve / Diff upsert / Staging sync / logs."""
 
     db_writer: DbWriter
+    db_reader: DbReader | None = None
     seed_staging: list[StagingItemSeed] = field(default_factory=list)
     seed_items: list[ItemSeed] = field(default_factory=list)
     staging_items: dict[str, dict[str, object]] = field(default_factory=dict)
@@ -76,6 +99,15 @@ class ProductDiffRepositories:
     ) -> list[StagingItemSeed]:
         """§18.1 No.8: normalized_hash NOT NULL, diff_status IS NULL (unless force)."""
 
+        if self.db_reader is not None:
+            return self._list_eligible_staging_from_db(
+                max_items=max_items,
+                source=source,
+                staging_item_ids=staging_item_ids,
+                external_item_codes=external_item_codes,
+                force=force,
+            )
+
         if staging_item_ids:
             selected: list[StagingItemSeed] = []
             for sid in staging_item_ids:
@@ -83,9 +115,7 @@ class ProductDiffRepositories:
                 if row is None:
                     continue
                 seed = self._row_to_staging(row)
-                if not force and seed.diff_status is not None:
-                    continue
-                if seed.normalized_hash is None:
+                if not self._staging_passes_filters(seed, force=force):
                     continue
                 selected.append(seed)
                 if len(selected) >= max_items:
@@ -101,9 +131,7 @@ class ProductDiffRepositories:
                     continue
                 if seed.source != source:
                     continue
-                if not force and seed.diff_status is not None:
-                    continue
-                if seed.normalized_hash is None:
+                if not self._staging_passes_filters(seed, force=force):
                     continue
                 selected.append(seed)
                 if len(selected) >= max_items:
@@ -115,22 +143,141 @@ class ProductDiffRepositories:
             seed = self._row_to_staging(row)
             if seed.source != source:
                 continue
-            if seed.normalized_hash is None:
-                continue
-            if not force and seed.diff_status is not None:
+            if not self._staging_passes_filters(seed, force=force):
                 continue
             eligible.append(seed)
 
         eligible.sort(key=lambda s: s.staging_item_id)
         return eligible[: max(0, max_items)]
 
+    def _list_eligible_staging_from_db(
+        self,
+        *,
+        max_items: int,
+        source: str,
+        staging_item_ids: tuple[str, ...] | None,
+        external_item_codes: tuple[str, ...] | None,
+        force: bool,
+    ) -> list[StagingItemSeed]:
+        """SELECT via DbReader (equals-only; NULL filters applied in-process)."""
+
+        reader = self.db_reader
+        if reader is None:
+            return []
+
+        if staging_item_ids:
+            selected: list[StagingItemSeed] = []
+            for sid in staging_item_ids:
+                result = reader.fetch_rows(
+                    "staging_item",
+                    columns=_STAGING_COLUMNS,
+                    equals=(("staging_item_id", sid),),
+                    limit=1,
+                )
+                if not result.rows:
+                    continue
+                seed = self._cache_staging_row(result.rows[0])
+                if not self._staging_passes_filters(seed, force=force):
+                    continue
+                selected.append(seed)
+                if len(selected) >= max_items:
+                    break
+            return selected
+
+        if external_item_codes:
+            selected = []
+            for code in external_item_codes:
+                if not code:
+                    continue
+                result = reader.fetch_rows(
+                    "staging_item",
+                    columns=_STAGING_COLUMNS,
+                    equals=(("source", source), ("external_item_code", code)),
+                    limit=1,
+                )
+                if not result.rows:
+                    continue
+                seed = self._cache_staging_row(result.rows[0])
+                if not self._staging_passes_filters(seed, force=force):
+                    continue
+                selected.append(seed)
+                if len(selected) >= max_items:
+                    break
+            return selected
+
+        fetch_cap = max(0, max_items)
+        if fetch_cap == 0:
+            return []
+        # Over-fetch then filter NULL semantics in-process (DbReader has no IS NULL).
+        fetch_limit = min(max(fetch_cap * 5, fetch_cap), 5000)
+        result = reader.fetch_rows(
+            "staging_item",
+            columns=_STAGING_COLUMNS,
+            equals=(("source", source),),
+            order_by=("staging_item_id",),
+            limit=fetch_limit,
+        )
+        eligible: list[StagingItemSeed] = []
+        for row in result.rows:
+            seed = self._cache_staging_row(row)
+            if not self._staging_passes_filters(seed, force=force):
+                continue
+            eligible.append(seed)
+        eligible.sort(key=lambda s: s.staging_item_id)
+        return eligible[:fetch_cap]
+
+    @staticmethod
+    def _staging_passes_filters(seed: StagingItemSeed, *, force: bool) -> bool:
+        if seed.normalized_hash is None:
+            return False
+        if not force and seed.diff_status is not None:
+            return False
+        return True
+
+    def _cache_staging_row(self, row: dict[str, object]) -> StagingItemSeed:
+        seed = self._row_to_staging(row)
+        self.staging_items[seed.staging_item_id] = {
+            "staging_item_id": seed.staging_item_id,
+            "source": seed.source,
+            "external_item_code": seed.external_item_code,
+            "normalized_hash": seed.normalized_hash,
+            "item_name": seed.item_name,
+            "item_url": seed.item_url,
+            "price": seed.price,
+            "availability": seed.availability,
+            "diff_status": seed.diff_status,
+            "validation_failed": seed.validation_failed,
+            "fetch_unavailable": seed.fetch_unavailable,
+        }
+        return seed
+
     def load_staging(self, *, staging_item_id: str) -> StagingItemSeed:
         row = self.staging_items.get(staging_item_id)
+        if row is None and self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "staging_item",
+                columns=_STAGING_COLUMNS,
+                equals=(("staging_item_id", staging_item_id),),
+                limit=1,
+            )
+            if result.rows:
+                return self._cache_staging_row(result.rows[0])
         if row is None:
             raise KeyError(f"staging_item not found: {staging_item_id}")
         return self._row_to_staging(row)
 
     def resolve_item(self, *, source: str, external_item_code: str) -> ItemSeed | None:
+        if self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "item",
+                columns=_ITEM_COLUMNS,
+                equals=(("source", source), ("external_item_code", external_item_code)),
+                limit=1,
+            )
+            if not result.rows:
+                return None
+            return self._cache_item_row(result.rows[0])
+
         row = self.items.get((source, external_item_code))
         if row is None:
             return None
@@ -142,6 +289,25 @@ class ProductDiffRepositories:
             item_name=str(row["item_name"]) if row.get("item_name") else None,
             active_status=str(row["active_status"]) if row.get("active_status") else None,
         )
+
+    def _cache_item_row(self, row: dict[str, object]) -> ItemSeed:
+        seed = ItemSeed(
+            source=str(row.get("source") or DEFAULT_SOURCE),
+            external_item_code=str(row["external_item_code"]),
+            normalized_hash=str(row["normalized_hash"]) if row.get("normalized_hash") else None,
+            item_id=str(row["item_id"]) if row.get("item_id") is not None else None,
+            item_name=str(row["item_name"]) if row.get("item_name") is not None else None,
+            active_status=str(row["active_status"]) if row.get("active_status") is not None else None,
+        )
+        self.items[(seed.source, seed.external_item_code)] = {
+            "item_id": seed.item_id or f"it_{uuid.uuid4().hex[:12]}",
+            "source": seed.source,
+            "external_item_code": seed.external_item_code,
+            "normalized_hash": seed.normalized_hash,
+            "item_name": seed.item_name,
+            "active_status": seed.active_status,
+        }
+        return seed
 
     def upsert_product_diff(
         self,

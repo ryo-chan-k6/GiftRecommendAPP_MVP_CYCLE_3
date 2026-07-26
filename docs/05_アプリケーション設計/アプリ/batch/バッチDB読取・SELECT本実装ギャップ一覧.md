@@ -9,7 +9,7 @@
 | 作成日 | 2026-07-25 |
 | 更新日 | 2026-07-25 |
 | 関連 Epic | [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)（batch-db-select） |
-| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A） / [#1638](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1638)（Wave A'） |
+| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A） / [#1638](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1638)（Wave A'） / [#1640](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1640)（Wave B） |
 | 先行 | E2 [#1595](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1595) / E3 [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) MERGED |
 | tip 根拠 | Epic tip（実 DB 疎通必須方針反映時点） |
 
@@ -34,10 +34,10 @@
 | 項目 | 状態 |
 | ---- | ---- |
 | DB 書込 | `DbWriter` + 代表 UPSERT（E2）。`apps/batch/.../infrastructure/db/writer.py` |
-| DB 読取 | **T1: `DbReader` あり**。**Wave A: 005 SELECT 本配線**。**Wave A': 004 `item` seed SELECT 本配線**。006 以降は未 |
+| DB 読取 | **T1〜Wave B: DbReader + 005/004/006 SELECT 本配線**。007 以降は未 |
 | 外部 I/O | E3 完了（楽天 / Embedding / Object Storage。明示 live のみ） |
-| 主ブロッカー | 005 以外のビジネスデータ SELECT 未配線 → 非 demo で多数が **exit 3** |
-| Soft gap | 006 は seed 空で Job 到達可（本線未開放）。004 seed SELECT は Wave A' で本配線 |
+| 主ブロッカー | 007 以降のビジネスデータ SELECT 未配線 → 非 demo で多数が **exit 3** |
+| Soft gap | （004/006 SELECT 本配線済み）。007 以降は exit 3 多数 |
 
 ---
 
@@ -58,7 +58,7 @@
 | 004 | `.../item_recheck/__main__.py` | `resolve_job_db_reader` + seed SELECT。`DATABASE_URL` 無しは exit 2 |
 | 010 | `.../item_semantic/__main__.py` | `real DB read path is not enabled yet` |
 | 015 | `.../item_embedding/__main__.py` | 同上 |
-| 006 | `.../product_diff/__main__.py` | `読取 SELECT は未実装のため seed 空で実行` |
+| 006 | `.../product_diff/__main__.py` | `resolve_job_db_reader` + staging/item SELECT。`DATABASE_URL` 無しは exit 2 |
 | DB | `apps/batch/src/batch/infrastructure/db/reader.py` / `writer.py` | `DbReader` + `DbWriter` |
 
 ---
@@ -125,7 +125,7 @@ Epic #1623 の子 Task 分割案。
 | high | T1 | reader-foundation（**#1627**） | `DbReader` Protocol / Scaffold / Postgres factory | **必須** | T0 |
 | high | A | BATCH-005 SELECT（**#1629**） | `raw_product_metadata` + Storage GET 本実行 | **必須** | T1 |
 | high | A' | BATCH-004 seed SELECT（**#1638**） | `item` seed | **必須** | T1（A と並列可） |
-| high | B | BATCH-006 SELECT | staging/item | **必須** | A |
+| high | B | BATCH-006 SELECT（**#1640**） | staging/item | **必須** | A |
 | medium | C | 007 / 008 / 009 SELECT | 必要時は書込充実を分離 | **必須** | B |
 | high | D | BATCH-010 SELECT | queue/item（Rule-first） | **必須** | C（009 後） |
 | medium | E | 011〜014 SELECT | 連鎖 | **必須** | D |

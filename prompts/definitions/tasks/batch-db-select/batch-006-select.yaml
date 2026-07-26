@@ -1,0 +1,180 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-select-006-select"
+  title: "batch-db-select:BATCH-006 SELECT本配線"
+  summary: "BATCH-006 の staging_item / item SELECT を DbReader 経由で本配線する。product_diff UPSERT は E2 済みのため触れない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  epic_issue_number: 1623
+  epic_branch: "feature/epic-1623-batch-db-select"
+  related_issues:
+    - 1629
+    - 1638
+  related_prs:
+    - 1630
+    - 1639
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave A/A' 完了後、Wave B として 006 の staging/item SELECT を本配線する。
+  product_diff_result UPSERT は E2 済み。
+
+objective: |
+  list_eligible_staging / resolve_item を DbReader 経由で本配線し、非 demo で実 DB から差分判定対象を読む。
+
+scope:
+  - "list_eligible_staging / resolve_item / load_staging キャッシュ整合の DbReader 本読取"
+  - "CLI 非 demo で resolve_job_db_reader（DATABASE_URL 必須）"
+  - "source equals + in-process NULL フィルタ（diff_status / normalized_hash）"
+  - "--scaffold-demo 回帰"
+  - "UT"
+  - "実 DB 疎通確認（必須。0 件可）"
+  - "SELECT ギャップ一覧 Wave B 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "product_diff_result UPSERT 再実装"
+  - "staging_item.diff_status 本番 UPDATE SQL 本格化"
+  - "DbReader IN / IS NULL / 任意 SQL 拡張"
+  - "007 以降 SELECT"
+  - "E4 / LLM / DDL / CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/product_diff/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/reader.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/product_diff/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/product_diff/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_product_diff.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-select/batch-006-select.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/batch-006-select/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "006 SELECT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "list_eligible_staging / resolve_item が DbReader を使う"
+  - "非 demo で DATABASE_URL ありなら SELECT 経由で Job 起動可能"
+  - "実 DB 疎通確認が完了し PR に結果要約がある（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-select-006-select"
+  base: "feature/epic-1623-batch-db-select"
+  target: "feature/epic-1623-batch-db-select"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-26"
+    due_date: "2026-07-28"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "親 Epic"
+  issues:
+    - number: 1629
+      purpose: "Wave A"
+    - number: 1638
+      purpose: "Wave A'"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/product_diff/**"
+    - "apps/batch/tests/unit/application/test_product_diff.py"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "list_eligible_staging / resolve_item が DbReader を使うか"
+    - "UPSERT 本格化を混入していないか"
+    - "実 DB 疎通結果が PR に記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic Wave B"

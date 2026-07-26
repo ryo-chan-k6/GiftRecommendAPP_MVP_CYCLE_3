@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import re
 
+import pytest
+
 from batch.application.job_run import ScaffoldJobRunTracker
 from batch.application.product_diff import (
     BATCH_ID,
@@ -608,3 +610,94 @@ def test_secret_non_containment_in_fixtures_and_error_logs() -> None:
         assert _SECRET_PATTERN.search(payload) is None
         for name in _FORBIDDEN_SECRET_FIELD_NAMES:
             assert name not in payload.lower()
+
+
+def test_list_eligible_staging_uses_db_reader_when_injected() -> None:
+    """Wave B: DbReader 注入時は seed ではなく SELECT 経路を使う。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "staging_item",
+        (
+            {
+                "staging_item_id": "si_a",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "normalized_hash": _HASH_A,
+                "item_name": "A",
+                "item_url": "https://item.example/a",
+                "price": 1000,
+                "availability": 1,
+                "diff_status": None,
+            },
+            {
+                "staging_item_id": "si_done",
+                "source": "rakuten",
+                "external_item_code": "shop:done",
+                "normalized_hash": _HASH_B,
+                "item_name": "Done",
+                "item_url": "https://item.example/done",
+                "price": 2000,
+                "availability": 1,
+                "diff_status": "new",
+            },
+            {
+                "staging_item_id": "si_nohash",
+                "source": "rakuten",
+                "external_item_code": "shop:nohash",
+                "normalized_hash": None,
+                "item_name": "NoHash",
+                "item_url": None,
+                "price": None,
+                "availability": None,
+                "diff_status": None,
+            },
+        ),
+    )
+    repos = ProductDiffRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+
+    selected = repos.list_eligible_staging(max_items=10)
+    assert [s.staging_item_id for s in selected] == ["si_a"]
+    assert reader.fetch_calls
+    assert reader.fetch_calls[0]["table"] == "staging_item"
+
+
+def test_resolve_item_uses_db_reader_when_injected() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "normalized_hash": _HASH_A,
+                "item_name": "A",
+                "active_status": "active",
+            },
+        ),
+    )
+    repos = ProductDiffRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    found = repos.resolve_item(source="rakuten", external_item_code="shop:a")
+    assert found is not None
+    assert found.item_id == "it_1"
+    assert repos.resolve_item(source="rakuten", external_item_code="missing") is None
+
+
+def test_cli_non_demo_requires_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.product_diff import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "no-db"]) == 2
+
