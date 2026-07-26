@@ -23,7 +23,12 @@ from batch.application.item_apply.models import (
 )
 from batch.application.item_apply.repositories import ItemApplyRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import (
+    ScaffoldDbWriter,
+    create_db_writer,
+    is_live_db_reader,
+    resolve_job_db_reader,
+)
 
 _HASH_A = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 _HASH_B = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -165,13 +170,39 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
-    print(
-        f"DbWriter backend={db_writer.backend} is resolved, "
-        "but real DB read path is not enabled yet. "
-        "Use --scaffold-demo for local/CI.",
-        file=sys.stderr,
+    db_reader = resolve_job_db_reader(
+        scaffold_demo=False,
+        database_url=settings.database_url,
     )
-    return 3
+    if not is_live_db_reader(db_reader):
+        print(
+            "DATABASE_URL is required for non --scaffold-demo BATCH-007 "
+            "(DbReader postgres backend). Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
+        )
+        return 2
+
+    repos = ItemApplyRepositories(db_writer=db_writer, db_reader=db_reader)
+    job = ItemApplyJob(repositories=repos)
+    result = job.run(
+        job_run_id=args.job_run_id,
+        max_items=args.max_items,
+        source=args.source,
+        diff_batch_run_id=args.diff_batch_run_id or None,
+        external_item_codes=_parse_csv(args.external_item_codes),
+        staging_item_ids=_parse_csv(args.staging_item_ids),
+    )
+    print(
+        f"BATCH-007 status={result.status} "
+        f"db_reader={db_reader.backend} "
+        f"db_writer={db_writer.backend} "
+        f"succeeded={len(result.succeeded_external_codes)} "
+        f"failed={len(result.failed_external_codes)} "
+        f"upserts={result.item_upsert_count} "
+        f"unchanged_touch={result.item_unchanged_touch_count} "
+        f"unavailable_skip={result.item_unavailable_skip_count}"
+    )
+    return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 
 if __name__ == "__main__":

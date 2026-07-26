@@ -1,11 +1,9 @@
-"""In-memory repositories for BATCH-007 unit tests / scaffold wiring.
+"""Repositories for BATCH-007 Item apply.
 
-Production will replace these with real DB adapters while keeping:
-- product_diff_result READ ONLY
-- item Upsert WITHOUT active_status / is_active updates
-- item_image sync-replace (empty set may DELETE all)
-- item_review_summary conditional Upsert (missing → skip, no DELETE)
-- NO normalized_hash recalculation
+``list_eligible_diffs`` / ``load_*`` / ``resolve_item`` use ``DbReader`` when injected
+(Wave C). Without a reader, in-memory ``seed_*`` remains for scaffold / UT.
+
+Write path keeps existing ``write_rows`` probes — UPSERT formalization is out of scope.
 """
 
 from __future__ import annotations
@@ -22,11 +20,64 @@ from batch.application.item_apply.models import (
     StagingImageSeed,
     StagingItemSeed,
 )
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
 
 DEFAULT_SOURCE = "rakuten"
 DEFAULT_ACTIVE_STATUS = "active"
 DEFAULT_IS_ACTIVE = True
+
+_DIFF_COLUMNS = (
+    "product_diff_result_id",
+    "batch_run_id",
+    "staging_item_id",
+    "external_item_code",
+    "old_hash",
+    "new_hash",
+    "diff_status",
+    "judged_at",
+)
+_STAGING_COLUMNS = (
+    "staging_item_id",
+    "raw_metadata_id",
+    "source",
+    "external_item_code",
+    "normalized_hash",
+    "item_name",
+    "item_caption",
+    "catchcopy",
+    "price",
+    "item_url",
+    "external_genre_id",
+    "shop_code",
+    "availability",
+    "review_average",
+    "review_count",
+)
+_STAGING_IMAGE_COLUMNS = (
+    "raw_metadata_id",
+    "external_item_code",
+    "image_url",
+    "image_size_type",
+    "display_order",
+    "is_primary_candidate",
+)
+_ITEM_COLUMNS = (
+    "item_id",
+    "source",
+    "external_item_code",
+    "normalized_hash",
+    "item_name",
+    "item_caption",
+    "catchcopy",
+    "price",
+    "item_url",
+    "external_genre_id",
+    "shop_code",
+    "active_status",
+    "is_active",
+    "first_fetched_at",
+    "last_checked_at",
+)
 
 
 @dataclass
@@ -34,6 +85,7 @@ class ItemApplyRepositories:
     """Facade: Diff read / Staging read / Item Upsert / Image sync / Review Upsert / logs."""
 
     db_writer: DbWriter
+    db_reader: DbReader | None = None
     seed_diffs: list[ProductDiffResultSeed] = field(default_factory=list)
     seed_staging: list[StagingItemSeed] = field(default_factory=list)
     seed_images: list[StagingImageSeed] = field(default_factory=list)
@@ -70,6 +122,7 @@ class ItemApplyRepositories:
             if seed.staging_item_id not in self.staging_items:
                 self.staging_items[seed.staging_item_id] = {
                     "staging_item_id": seed.staging_item_id,
+                    "raw_metadata_id": None,
                     "source": seed.source,
                     "external_item_code": seed.external_item_code,
                     "normalized_hash": seed.normalized_hash,
@@ -131,6 +184,15 @@ class ItemApplyRepositories:
     ) -> tuple[list[ProductDiffResultSeed], int]:
         """§18.1 No.12: processable = new/updated/unchanged; unavailable counted separately."""
 
+        if self.db_reader is not None:
+            return self._list_eligible_diffs_from_db(
+                max_items=max_items,
+                source=source,
+                diff_batch_run_id=diff_batch_run_id,
+                external_item_codes=external_item_codes,
+                staging_item_ids=staging_item_ids,
+            )
+
         code_set = set(external_item_codes) if external_item_codes else None
         staging_id_set = set(staging_item_ids) if staging_item_ids else None
         processable: list[ProductDiffResultSeed] = []
@@ -163,19 +225,165 @@ class ItemApplyRepositories:
 
         return processable[: max(0, max_items)], unavailable_count
 
+    def _list_eligible_diffs_from_db(
+        self,
+        *,
+        max_items: int,
+        source: str,
+        diff_batch_run_id: str | None,
+        external_item_codes: tuple[str, ...] | None,
+        staging_item_ids: tuple[str, ...] | None,
+    ) -> tuple[list[ProductDiffResultSeed], int]:
+        """SELECT via DbReader (equals-only; source / status filtered in-process)."""
+
+        reader = self.db_reader
+        if reader is None:
+            return [], 0
+
+        candidate_rows: list[dict[str, object]] = []
+
+        if staging_item_ids:
+            for sid in staging_item_ids:
+                if not sid:
+                    continue
+                equals: list[tuple[str, object]] = [("staging_item_id", sid)]
+                if diff_batch_run_id:
+                    equals.append(("batch_run_id", diff_batch_run_id))
+                result = reader.fetch_rows(
+                    "product_diff_result",
+                    columns=_DIFF_COLUMNS,
+                    equals=tuple(equals),
+                    order_by=("product_diff_result_id",),
+                    limit=100,
+                )
+                candidate_rows.extend(result.rows)
+        elif external_item_codes:
+            for code in external_item_codes:
+                if not code:
+                    continue
+                equals = [("external_item_code", code)]
+                if diff_batch_run_id:
+                    equals.append(("batch_run_id", diff_batch_run_id))
+                result = reader.fetch_rows(
+                    "product_diff_result",
+                    columns=_DIFF_COLUMNS,
+                    equals=tuple(equals),
+                    order_by=("product_diff_result_id",),
+                    limit=100,
+                )
+                candidate_rows.extend(result.rows)
+        else:
+            fetch_cap = max(0, max_items)
+            if fetch_cap == 0 and not diff_batch_run_id:
+                return [], 0
+            # Over-fetch then filter status/source in-process (no IN / JOIN).
+            scan_target = max(fetch_cap, 1)
+            fetch_limit = min(max(scan_target * 5, scan_target), 5000)
+            equals_scan: tuple[tuple[str, object], ...] = ()
+            if diff_batch_run_id:
+                equals_scan = (("batch_run_id", diff_batch_run_id),)
+            result = reader.fetch_rows(
+                "product_diff_result",
+                columns=_DIFF_COLUMNS,
+                equals=equals_scan,
+                order_by=("product_diff_result_id",),
+                limit=fetch_limit,
+            )
+            candidate_rows.extend(result.rows)
+
+        processable: list[ProductDiffResultSeed] = []
+        unavailable_count = 0
+        seen_ids: set[str] = set()
+
+        for row in sorted(candidate_rows, key=lambda r: str(r["product_diff_result_id"])):
+            seed = self._cache_diff_row(row)
+            if seed.product_diff_result_id in seen_ids:
+                continue
+            seen_ids.add(seed.product_diff_result_id)
+
+            staging = self._load_staging_row(seed.staging_item_id)
+            if staging is None:
+                continue
+            if str(staging.get("source") or DEFAULT_SOURCE) != source:
+                continue
+
+            if seed.diff_status == "unavailable":
+                unavailable_count += 1
+                continue
+            if seed.diff_status not in PROCESSABLE_DIFF_STATUSES:
+                continue
+            processable.append(seed)
+
+        return processable[: max(0, max_items)], unavailable_count
+
     def load_diff(self, *, product_diff_result_id: str) -> ProductDiffResultSeed:
         row = self.product_diff_results.get(product_diff_result_id)
+        if row is None and self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "product_diff_result",
+                columns=_DIFF_COLUMNS,
+                equals=(("product_diff_result_id", product_diff_result_id),),
+                limit=1,
+            )
+            if result.rows:
+                return self._cache_diff_row(result.rows[0])
         if row is None:
             raise KeyError(f"product_diff_result not found: {product_diff_result_id}")
         return self._row_to_diff(row)
 
     def load_staging(self, *, staging_item_id: str) -> StagingItemSeed:
         row = self.staging_items.get(staging_item_id)
+        if row is None and self.db_reader is not None:
+            row = self._load_staging_row(staging_item_id)
         if row is None:
             raise KeyError(f"staging_item not found: {staging_item_id}")
         return self._row_to_staging(row)
 
     def load_staging_images(self, *, staging_item_id: str) -> list[StagingImageSeed]:
+        if self.db_reader is not None:
+            staging = self.staging_items.get(staging_item_id) or self._load_staging_row(
+                staging_item_id
+            )
+            if staging is None:
+                return []
+            raw_metadata_id = staging.get("raw_metadata_id")
+            external_item_code = staging.get("external_item_code")
+            if raw_metadata_id is None or external_item_code is None:
+                return []
+            result = self.db_reader.fetch_rows(
+                "staging_item_image",
+                columns=_STAGING_IMAGE_COLUMNS,
+                equals=(
+                    ("raw_metadata_id", raw_metadata_id),
+                    ("external_item_code", str(external_item_code)),
+                ),
+                order_by=("display_order",),
+                limit=500,
+            )
+            images = [
+                StagingImageSeed(
+                    staging_item_id=staging_item_id,
+                    image_url=str(r["image_url"]),
+                    image_size_type=(
+                        str(r["image_size_type"]) if r.get("image_size_type") is not None else None
+                    ),
+                    display_order=int(r.get("display_order") or 0),
+                    is_primary_candidate=bool(r.get("is_primary_candidate") or False),
+                )
+                for r in result.rows
+            ]
+            self.staging_images[staging_item_id] = [
+                {
+                    "staging_item_id": staging_item_id,
+                    "image_url": img.image_url,
+                    "image_size_type": img.image_size_type,
+                    "display_order": img.display_order,
+                    "is_primary_candidate": img.is_primary_candidate,
+                }
+                for img in images
+            ]
+            return images
+
         rows = self.staging_images.get(staging_item_id, [])
         return [
             StagingImageSeed(
@@ -191,10 +399,29 @@ class ItemApplyRepositories:
         ]
 
     def resolve_item(self, *, source: str, external_item_code: str) -> ItemSeed | None:
+        if self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "item",
+                columns=_ITEM_COLUMNS,
+                equals=(("source", source), ("external_item_code", external_item_code)),
+                limit=1,
+            )
+            if not result.rows:
+                return None
+            return self._cache_item_row(result.rows[0])
+
         row = self.items.get((source, external_item_code))
         if row is None:
             return None
         return self._row_to_item(row)
+
+    def _ensure_item_hydrated(self, *, source: str, external_item_code: str) -> None:
+        key = (source, external_item_code)
+        if key in self.items:
+            return
+        if self.db_reader is None:
+            return
+        self.resolve_item(source=source, external_item_code=external_item_code)
 
     def upsert_item_from_staging(
         self,
@@ -209,6 +436,9 @@ class ItemApplyRepositories:
             raise ValueError("normalized_hash is required for new/updated upsert")
 
         key = (staging.source, staging.external_item_code)
+        self._ensure_item_hydrated(
+            source=staging.source, external_item_code=staging.external_item_code
+        )
         existing = self.items.get(key)
         now = checked_at if checked_at.tzinfo else checked_at.replace(tzinfo=UTC)
 
@@ -281,6 +511,7 @@ class ItemApplyRepositories:
         """unchanged: last_checked_at (+ updated_at) only."""
 
         key = (source, external_item_code)
+        self._ensure_item_hydrated(source=source, external_item_code=external_item_code)
         row = self.items.get(key)
         if row is None:
             raise KeyError(f"item not found for unchanged touch: {source}/{external_item_code}")
@@ -397,6 +628,83 @@ class ItemApplyRepositories:
 
     def record_phase(self, *, phase: str, status: str) -> None:
         self.phase_logs.append({"phase": phase, "status": status})
+
+    def _cache_diff_row(self, row: dict[str, object]) -> ProductDiffResultSeed:
+        seed = self._row_to_diff(row)
+        self.product_diff_results[seed.product_diff_result_id] = {
+            "product_diff_result_id": seed.product_diff_result_id,
+            "batch_run_id": seed.batch_run_id,
+            "staging_item_id": seed.staging_item_id,
+            "external_item_code": seed.external_item_code,
+            "diff_status": seed.diff_status,
+            "old_hash": seed.old_hash,
+            "new_hash": seed.new_hash,
+            "judged_at": row.get("judged_at"),
+        }
+        return seed
+
+    def _load_staging_row(self, staging_item_id: str) -> dict[str, object] | None:
+        cached = self.staging_items.get(staging_item_id)
+        if cached is not None:
+            return cached
+        if self.db_reader is None:
+            return None
+        result = self.db_reader.fetch_rows(
+            "staging_item",
+            columns=_STAGING_COLUMNS,
+            equals=(("staging_item_id", staging_item_id),),
+            limit=1,
+        )
+        if not result.rows:
+            return None
+        return self._cache_staging_row(result.rows[0])
+
+    def _cache_staging_row(self, row: dict[str, object]) -> dict[str, object]:
+        seed = self._row_to_staging(row)
+        cached: dict[str, object] = {
+            "staging_item_id": seed.staging_item_id,
+            "raw_metadata_id": row.get("raw_metadata_id"),
+            "source": seed.source,
+            "external_item_code": seed.external_item_code,
+            "normalized_hash": seed.normalized_hash,
+            "item_name": seed.item_name,
+            "item_caption": seed.item_caption,
+            "catchcopy": seed.catchcopy,
+            "price": seed.price,
+            "item_url": seed.item_url,
+            "external_genre_id": seed.external_genre_id,
+            "shop_code": seed.shop_code,
+            "availability": seed.availability,
+            "review_average": seed.review_average,
+            "review_count": seed.review_count,
+        }
+        self.staging_items[seed.staging_item_id] = cached
+        return cached
+
+    def _cache_item_row(self, row: dict[str, object]) -> ItemSeed:
+        seed = self._row_to_item(row)
+        key = (seed.source, seed.external_item_code)
+        self.items[key] = {
+            "item_id": seed.item_id or f"it_{uuid.uuid4().hex[:12]}",
+            "source": seed.source,
+            "external_item_code": seed.external_item_code,
+            "normalized_hash": seed.normalized_hash,
+            "item_name": seed.item_name,
+            "item_caption": seed.item_caption,
+            "catchcopy": seed.catchcopy,
+            "price": seed.price,
+            "item_url": seed.item_url,
+            "external_genre_id": seed.external_genre_id,
+            "shop_code": seed.shop_code,
+            "active_status": seed.active_status
+            if seed.active_status is not None
+            else DEFAULT_ACTIVE_STATUS,
+            "is_active": DEFAULT_IS_ACTIVE if seed.is_active is None else seed.is_active,
+            "first_fetched_at": seed.first_fetched_at,
+            "last_checked_at": seed.last_checked_at,
+            "updated_at": None,
+        }
+        return seed
 
     def _row_to_diff(self, row: dict[str, object]) -> ProductDiffResultSeed:
         status = str(row["diff_status"])

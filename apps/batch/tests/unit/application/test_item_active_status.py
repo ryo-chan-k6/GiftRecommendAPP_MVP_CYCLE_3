@@ -341,12 +341,138 @@ def test_cli_scaffold_demo_passes_filters(monkeypatch) -> None:
     assert captured["external_item_codes"] == ("shop:1", "shop:2")
 
 
-def test_cli_without_scaffold_demo_exits_3(monkeypatch) -> None:
-    from batch.application.item_active_status import __main__ as cli
-    from batch.config import scaffold_batch_settings
+def test_cli_without_scaffold_demo_exits_2_without_database_url(monkeypatch) -> None:
+    from dataclasses import replace
 
-    monkeypatch.setattr(cli, "load_batch_settings", lambda: scaffold_batch_settings())
-    assert cli.main(["--job-run-id", "job-real"]) == 3
+    from batch.application.item_active_status import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "job-real"]) == 2
+
+
+def test_list_detected_candidates_uses_db_reader_when_injected() -> None:
+    from datetime import UTC, datetime
+
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+
+    now = datetime.now(UTC)
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_active_status_candidate",
+        (
+            {
+                "item_active_status_candidate_id": "cand-1",
+                "batch_run_id": "run-1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "candidate_active_status": "unavailable",
+                "candidate_status": "detected",
+                "detected_at": now,
+                "detection_basis": "availability",
+                "reason_code": "availability_zero",
+                "item_id": "it_1",
+                "applied_at": None,
+                "updated_at": None,
+            },
+            {
+                "item_active_status_candidate_id": "cand-applied",
+                "batch_run_id": "run-1",
+                "source": "rakuten",
+                "external_item_code": "shop:b",
+                "candidate_active_status": "inactive",
+                "candidate_status": "applied",
+                "detected_at": now,
+                "detection_basis": None,
+                "reason_code": None,
+                "item_id": None,
+                "applied_at": now,
+                "updated_at": now,
+            },
+        ),
+    )
+    repos = ItemActiveStatusRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    rows = repos.list_detected_candidates(source="rakuten")
+    assert [r.candidate_id for r in rows] == ["cand-1"]
+    assert reader.fetch_calls[0]["table"] == "item_active_status_candidate"
+
+
+def test_list_diff_suggestions_resolves_source_via_staging() -> None:
+    from datetime import UTC, datetime
+
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+
+    now = datetime.now(UTC)
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "product_diff_result",
+        (
+            {
+                "product_diff_result_id": "pdr_1",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_1",
+                "external_item_code": "shop:a",
+                "diff_status": "unavailable",
+                "judged_at": now,
+            },
+            {
+                "product_diff_result_id": "pdr_2",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_2",
+                "external_item_code": "shop:b",
+                "diff_status": "updated",
+                "judged_at": now,
+            },
+        ),
+    )
+    reader.seed(
+        "staging_item",
+        (
+            {
+                "staging_item_id": "si_1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+            },
+            {
+                "staging_item_id": "si_2",
+                "source": "rakuten",
+                "external_item_code": "shop:b",
+            },
+        ),
+    )
+    repos = ItemActiveStatusRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    rows = repos.list_diff_suggestions(source="rakuten")
+    assert len(rows) == 2
+    by_id = {r.product_diff_result_id: r for r in rows}
+    assert by_id["pdr_1"].proposed_active_status == "unavailable"
+    assert by_id["pdr_2"].proposed_active_status is None
+
+
+def test_get_item_uses_db_reader_when_injected() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    repos = ItemActiveStatusRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    found = repos.get_item(source="rakuten", external_item_code="shop:a")
+    assert found is not None
+    assert found.item_id == "it_1"
+    assert repos.get_item(source="rakuten", external_item_code="missing") is None
 
 
 def test_applier_does_not_call_retention_delete() -> None:

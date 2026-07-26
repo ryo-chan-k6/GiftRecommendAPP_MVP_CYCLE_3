@@ -428,12 +428,135 @@ def test_cli_scaffold_demo_passes_filters(monkeypatch) -> None:
     assert captured["external_item_codes"] == ("shop:1", "shop:2")
 
 
-def test_cli_without_scaffold_demo_exits_3(monkeypatch) -> None:
-    from batch.application.item_generation_queue import __main__ as cli
-    from batch.config import scaffold_batch_settings
+def test_cli_without_scaffold_demo_exits_2_without_database_url(monkeypatch) -> None:
+    from dataclasses import replace
 
-    monkeypatch.setattr(cli, "load_batch_settings", lambda: scaffold_batch_settings())
-    assert cli.main(["--job-run-id", "job-real"]) == 3
+    from batch.application.item_generation_queue import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "job-real"]) == 2
+
+
+def test_list_eligible_diffs_uses_db_reader_when_injected() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "product_diff_result",
+        (
+            {
+                "product_diff_result_id": "pdr_new",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_a",
+                "external_item_code": "shop:a",
+                "old_hash": None,
+                "new_hash": _HASH_A,
+                "diff_status": "new",
+                "judged_at": None,
+            },
+            {
+                "product_diff_result_id": "pdr_unchanged",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_b",
+                "external_item_code": "shop:b",
+                "old_hash": _HASH_A,
+                "new_hash": _HASH_A,
+                "diff_status": "unchanged",
+                "judged_at": None,
+            },
+            {
+                "product_diff_result_id": "pdr_unavail",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_c",
+                "external_item_code": "shop:c",
+                "old_hash": _HASH_A,
+                "new_hash": _HASH_B,
+                "diff_status": "unavailable",
+                "judged_at": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_a",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "active_status": "active",
+                "is_active": True,
+                "normalized_hash": _HASH_A,
+                "item_name": "A",
+                "item_caption": None,
+                "catchcopy": None,
+                "external_genre_id": None,
+                "price": 1000,
+                "item_url": "https://item.example/a",
+            },
+        ),
+    )
+    repos = ItemGenerationQueueRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    eligible, unavailable, unchanged = repos.list_eligible_diffs(max_items=10)
+    assert [d.product_diff_result_id for d in eligible] == ["pdr_new"]
+    assert unavailable == 1
+    assert unchanged == 1
+    # DDL に無い previous_* は既定
+    assert eligible[0].previous_meaning is None
+    assert eligible[0].config_version_only is False
+
+
+def test_load_item_and_find_active_queue_via_db_reader() -> None:
+    from datetime import UTC, datetime
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "active_status": "active",
+                "is_active": True,
+                "normalized_hash": _HASH_A,
+                "item_name": "A",
+                "item_caption": None,
+                "catchcopy": None,
+                "external_genre_id": None,
+                "price": 1000,
+                "item_url": "https://item.example/a",
+            },
+        ),
+    )
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_1",
+                "item_id": "it_1",
+                "generation_type": "semantic",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": datetime.now(UTC),
+            },
+        ),
+    )
+    repos = ItemGenerationQueueRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    item = repos.load_item(source="rakuten", external_item_code="shop:a")
+    assert item.item_id == "it_1"
+    assert item.review_average is None
+    assert item.availability is None
+    active = repos.find_active_queue(item_id="it_1", generation_type="semantic")
+    assert active is not None
+    assert active["item_generation_queue_id"] == "igq_1"
+    assert repos.find_active_queue(item_id="it_1", generation_type="feature") is None
 
 
 def test_feature_input_hash_only_skips_in_mvp() -> None:

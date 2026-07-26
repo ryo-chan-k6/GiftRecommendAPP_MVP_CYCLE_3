@@ -18,7 +18,12 @@ from batch.application.item_generation_queue.job import (
 from batch.application.item_generation_queue.models import ItemRow, MeaningSnapshot, ProductDiffRow
 from batch.application.item_generation_queue.repositories import ItemGenerationQueueRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import (
+    ScaffoldDbWriter,
+    create_db_writer,
+    is_live_db_reader,
+    resolve_job_db_reader,
+)
 
 _HASH_A = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 _HASH_B = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -133,13 +138,39 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
-    print(
-        f"DbWriter backend={db_writer.backend} is resolved, "
-        "but real DB read path is not enabled yet. "
-        "Use --scaffold-demo for local/CI.",
-        file=sys.stderr,
+    db_reader = resolve_job_db_reader(
+        scaffold_demo=False,
+        database_url=settings.database_url,
     )
-    return 3
+    if not is_live_db_reader(db_reader):
+        print(
+            "DATABASE_URL is required for non --scaffold-demo BATCH-009 "
+            "(DbReader postgres backend). Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
+        )
+        return 2
+
+    repos = ItemGenerationQueueRepositories(db_writer=db_writer, db_reader=db_reader)
+    job = ItemGenerationQueueJob(repositories=repos)
+    result = job.run(
+        job_run_id=args.job_run_id,
+        max_items=args.max_items,
+        source=args.source,
+        diff_batch_run_id=args.diff_batch_run_id or None,
+        external_item_codes=_parse_csv(args.external_item_codes),
+    )
+    print(
+        f"BATCH-009 status={result.status} "
+        f"db_reader={db_reader.backend} "
+        f"db_writer={db_writer.backend} "
+        f"succeeded={len(result.succeeded_external_codes)} "
+        f"failed={len(result.failed_external_codes)} "
+        f"skipped={len(result.skipped_external_codes)} "
+        f"inserted={result.queue_inserted_count} "
+        f"queued_at_touch={result.queue_queued_at_updated_count} "
+        f"semantic={result.queue_semantic_count}"
+    )
+    return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 
 if __name__ == "__main__":
