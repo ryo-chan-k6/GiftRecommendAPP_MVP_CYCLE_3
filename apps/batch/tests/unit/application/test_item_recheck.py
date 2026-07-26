@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from batch.application.item_recheck import (
     BATCH_ID,
     ITEM_RECHECK_PHASES,
@@ -838,3 +840,117 @@ def test_boundary_db_writes_exclude_item_and_staging() -> None:
     assert "raw_product_metadata" in write_tables
     assert "fetch_cursor" in write_tables
     assert "item_active_status_candidate" in upsert_tables
+
+
+def test_list_seedable_items_uses_db_reader_when_injected() -> None:
+    """Wave A': DbReader 注入時は seed_items ではなく SELECT 経路を使う。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    older = datetime.now(UTC) - timedelta(days=30)
+    newer = datetime.now(UTC) - timedelta(days=1)
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "i1",
+                "source": "rakuten",
+                "external_item_code": "shop:new",
+                "active_status": "active",
+                "last_checked_at": newer,
+            },
+            {
+                "item_id": "i2",
+                "source": "rakuten",
+                "external_item_code": "shop:old",
+                "active_status": "active",
+                "last_checked_at": older,
+            },
+            {
+                "item_id": "i3",
+                "source": "rakuten",
+                "external_item_code": "shop:inactive",
+                "active_status": "inactive",
+                "last_checked_at": older,
+            },
+        ),
+    )
+    repos = ItemRecheckRepositories(
+        object_storage=ScaffoldObjectStorageClient(),
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        bucket="test-raw",
+        seed_items=[],
+    )
+
+    selected = repos.list_seedable_items(max_items=10)
+    assert [s.external_item_code for s in selected] == ["shop:old", "shop:new"]
+    assert reader.fetch_calls
+    assert reader.fetch_calls[0]["table"] == "item"
+    assert ("active_status", "active") in reader.fetch_calls[0]["equals"]
+
+
+def test_list_seedable_items_db_reader_explicit_codes() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "i1",
+                "source": "rakuten",
+                "external_item_code": "shop:known",
+                "active_status": "active",
+                "last_checked_at": None,
+            },
+        ),
+    )
+    repos = ItemRecheckRepositories(
+        object_storage=ScaffoldObjectStorageClient(),
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        bucket="test-raw",
+    )
+
+    selected = repos.list_seedable_items(
+        max_items=5,
+        external_item_codes=("shop:known", "shop:synthetic"),
+    )
+    assert [s.external_item_code for s in selected] == ["shop:known", "shop:synthetic"]
+    assert selected[1].item_id is None
+
+
+def test_cli_non_demo_requires_database_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.item_recheck import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    code = cli.main(["--job-run-id", "no-db", "--live-rakuten"])
+    assert code == 2
+
+
+def test_cli_non_demo_uses_db_reader_before_rakuten_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DATABASE_URL 無しは楽天ゲートより先に exit 2（seed SELECT 前提）。"""
+
+    from dataclasses import replace
+
+    from batch.application.item_recheck import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=""),
+    )
+    code = cli.main(["--job-run-id", "no-db"])
+    assert code == 2
