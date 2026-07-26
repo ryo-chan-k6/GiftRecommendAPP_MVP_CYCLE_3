@@ -1,0 +1,205 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-select-007-009-select"
+  title: "batch-db-select:BATCH-007-009 SELECT本配線"
+  summary: "Wave C として BATCH-007 / 008 / 009 の SELECT を DbReader 経由で本配線する。書込本格化は out of scope。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  epic_issue_number: 1623
+  epic_branch: "feature/epic-1623-batch-db-select"
+  related_issues:
+    - 1640
+  related_prs:
+    - 1641
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave B（#1640 / #1641）完了後、Wave C として 007 / 008 / 009 の読取を本配線する。
+  書込充実は #1633 / #1634 等の別 Epic。
+
+objective: |
+  三 Batch の list/load/get/find 読取を DbReader 経由で本配線し、非 demo で exit 3 を解除する。
+  実 DB 疎通（0 件可）を完了条件に含む。
+
+scope:
+  - "BATCH-007: list_eligible_diffs / load_diff / load_staging / load_staging_images / resolve_item（および touch/upsert 前の item hydrate）"
+  - "BATCH-008: list_diff_suggestions / list_detected_candidates / get_item（source は staging/item 経由 in-process）"
+  - "BATCH-009: list_eligible_diffs / load_diff / load_item / find_active_queue"
+  - "各 CLI: resolve_job_db_reader（DATABASE_URL 必須、無しは exit 2）"
+  - "--scaffold-demo 回帰"
+  - "UT"
+  - "実 DB 疎通確認（必須。0 件可）"
+  - "SELECT ギャップ一覧 Wave C 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "item / item_image / item_review_summary / candidate / queue の書込本格化（#1633 / #1634）"
+  - "T7 Retention 本番 DELETE"
+  - "DbReader IN / IS NULL / JOIN / 任意 SQL 拡張"
+  - "product_diff_result.previous_* 永続化・意味差分厳密化"
+  - "010 以降 SELECT / E4 / LLM / DDL / CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_apply/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_generation_queue/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/reader.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_apply/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_apply/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_active_status/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_active_status/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_generation_queue/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_generation_queue/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_apply.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_active_status.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_generation_queue.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-select/batch-007-009-select.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/batch-007-009-select/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "007 / 008 / 009 SELECT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "三 Batch の主読取が DbReader を使う"
+  - "非 demo で DATABASE_URL ありなら SELECT 経由で Job 起動可能（exit 3 解除）"
+  - "実 DB 疎通確認が完了し PR に結果要約がある（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-select-007-009-select"
+  base: "feature/epic-1623-batch-db-select"
+  target: "feature/epic-1623-batch-db-select"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-26"
+    due_date: "2026-07-29"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "親 Epic"
+  issues:
+    - number: 1640
+      purpose: "Wave B"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/tests/unit/application/test_item_apply.py"
+    - "apps/batch/tests/unit/application/test_item_active_status.py"
+    - "apps/batch/tests/unit/application/test_item_generation_queue.py"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "007/008/009 主読取が DbReader を使うか"
+    - "書込本格化を混入していないか"
+    - "008 の source 解決が JOIN なしで妥当か"
+    - "実 DB 疎通結果が PR に記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic Wave C"

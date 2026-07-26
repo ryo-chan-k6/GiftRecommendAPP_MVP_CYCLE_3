@@ -1,9 +1,11 @@
-"""In-memory repositories for BATCH-009 unit tests / scaffold wiring.
+"""Repositories for BATCH-009 item generation queue registration.
 
-Production will replace these with real DB adapters while keeping:
-- product_diff_result READ ONLY
-- item READ ONLY (no active_status / business column updates)
-- item_generation_queue INSERT / active queued queued_at UPDATE only
+``list_eligible_diffs`` / ``load_diff`` / ``load_item`` / ``find_active_queue`` use
+``DbReader`` when injected (Wave C). Without a reader, in-memory seed remains for
+scaffold / UT.
+
+previous_* / config_version_only etc. are not in DDL → defaults (None/False) when
+mapping DB rows. Write path keeps existing ``write_rows`` probes.
 """
 
 from __future__ import annotations
@@ -18,10 +20,43 @@ from batch.application.item_generation_queue.models import (
     ProductDiffRow,
     QueueRow,
 )
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
 
 DEFAULT_SOURCE = "rakuten"
 ACTIVE_QUEUE_STATUSES = frozenset({"queued", "processing"})
+
+_DIFF_COLUMNS = (
+    "product_diff_result_id",
+    "batch_run_id",
+    "staging_item_id",
+    "external_item_code",
+    "old_hash",
+    "new_hash",
+    "diff_status",
+    "judged_at",
+)
+_ITEM_COLUMNS = (
+    "item_id",
+    "source",
+    "external_item_code",
+    "active_status",
+    "is_active",
+    "normalized_hash",
+    "item_name",
+    "item_caption",
+    "catchcopy",
+    "external_genre_id",
+    "price",
+    "item_url",
+)
+_QUEUE_COLUMNS = (
+    "item_generation_queue_id",
+    "item_id",
+    "generation_type",
+    "queue_status",
+    "retry_count",
+    "queued_at",
+)
 
 
 @dataclass
@@ -29,6 +64,7 @@ class ItemGenerationQueueRepositories:
     """Facade: Diff read / Item read / Queue register / logs."""
 
     db_writer: DbWriter
+    db_reader: DbReader | None = None
     seed_diffs: list[ProductDiffRow] = field(default_factory=list)
     seed_items: list[ItemRow] = field(default_factory=list)
     seed_queues: list[QueueRow] = field(default_factory=list)
@@ -71,6 +107,14 @@ class ItemGenerationQueueRepositories:
     ) -> tuple[list[ProductDiffRow], int, int]:
         """§18.1 No.5: new/updated 主処理。unavailable / unchanged は skip 集計."""
 
+        if self.db_reader is not None:
+            return self._list_eligible_diffs_from_db(
+                max_items=max_items,
+                source=source,
+                diff_batch_run_id=diff_batch_run_id,
+                external_item_codes=external_item_codes,
+            )
+
         code_set = set(external_item_codes) if external_item_codes else None
         eligible: list[ProductDiffRow] = []
         unavailable_count = 0
@@ -103,14 +147,119 @@ class ItemGenerationQueueRepositories:
 
         return eligible[: max(0, max_items)], unavailable_count, unchanged_count
 
+    def _list_eligible_diffs_from_db(
+        self,
+        *,
+        max_items: int,
+        source: str,
+        diff_batch_run_id: str | None,
+        external_item_codes: tuple[str, ...] | None,
+    ) -> tuple[list[ProductDiffRow], int, int]:
+        reader = self.db_reader
+        if reader is None:
+            return [], 0, 0
+
+        candidate_rows: list[dict[str, object]] = []
+        if external_item_codes:
+            for code in external_item_codes:
+                if not code:
+                    continue
+                equals: list[tuple[str, object]] = [("external_item_code", code)]
+                if diff_batch_run_id:
+                    equals.append(("batch_run_id", diff_batch_run_id))
+                result = reader.fetch_rows(
+                    "product_diff_result",
+                    columns=_DIFF_COLUMNS,
+                    equals=tuple(equals),
+                    order_by=("product_diff_result_id",),
+                    limit=100,
+                )
+                candidate_rows.extend(result.rows)
+        else:
+            fetch_cap = max(0, max_items)
+            if fetch_cap == 0 and not diff_batch_run_id:
+                return [], 0, 0
+            scan_target = max(fetch_cap, 1)
+            fetch_limit = min(max(scan_target * 5, scan_target), 5000)
+            equals_scan: tuple[tuple[str, object], ...] = ()
+            if diff_batch_run_id:
+                equals_scan = (("batch_run_id", diff_batch_run_id),)
+            result = reader.fetch_rows(
+                "product_diff_result",
+                columns=_DIFF_COLUMNS,
+                equals=equals_scan,
+                order_by=("product_diff_result_id",),
+                limit=fetch_limit,
+            )
+            candidate_rows.extend(result.rows)
+
+        eligible: list[ProductDiffRow] = []
+        unavailable_count = 0
+        unchanged_count = 0
+        seen_ids: set[str] = set()
+
+        for row in sorted(candidate_rows, key=lambda r: str(r["product_diff_result_id"])):
+            diff = self._cache_diff_row(row)
+            if diff.product_diff_result_id in seen_ids:
+                continue
+            seen_ids.add(diff.product_diff_result_id)
+
+            # Item 欠落は plan から落とさない。source 不一致のみ除外。
+            item_row = self.items.get((source, diff.external_item_code))
+            if item_row is None and self.db_reader is not None:
+                fetched = self.db_reader.fetch_rows(
+                    "item",
+                    columns=_ITEM_COLUMNS,
+                    equals=(
+                        ("source", source),
+                        ("external_item_code", diff.external_item_code),
+                    ),
+                    limit=1,
+                )
+                if fetched.rows:
+                    self._cache_item_row(fetched.rows[0])
+                    item_row = self.items.get((source, diff.external_item_code))
+            if item_row is not None and str(item_row.get("source") or DEFAULT_SOURCE) != source:
+                continue
+
+            if diff.diff_status == "unavailable":
+                unavailable_count += 1
+                continue
+            if diff.diff_status == "unchanged":
+                unchanged_count += 1
+                continue
+            if diff.diff_status not in ELIGIBLE_DIFF_STATUSES:
+                continue
+            eligible.append(diff)
+
+        return eligible[: max(0, max_items)], unavailable_count, unchanged_count
+
     def load_item(self, *, source: str, external_item_code: str) -> ItemRow:
         row = self.items.get((source, external_item_code))
+        if row is None and self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "item",
+                columns=_ITEM_COLUMNS,
+                equals=(("source", source), ("external_item_code", external_item_code)),
+                limit=1,
+            )
+            if result.rows:
+                return self._cache_item_row(result.rows[0])
         if row is None:
             raise KeyError(f"item not found: {source}/{external_item_code}")
         return self._row_to_item(row)
 
     def load_diff(self, *, product_diff_result_id: str) -> ProductDiffRow:
         row = self.product_diff_results.get(product_diff_result_id)
+        if row is None and self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "product_diff_result",
+                columns=_DIFF_COLUMNS,
+                equals=(("product_diff_result_id", product_diff_result_id),),
+                limit=1,
+            )
+            if result.rows:
+                return self._cache_diff_row(result.rows[0])
         if row is None:
             raise KeyError(f"product_diff_result not found: {product_diff_result_id}")
         return self._row_to_diff(row)
@@ -121,12 +270,45 @@ class ItemGenerationQueueRepositories:
         item_id: str,
         generation_type: str,
     ) -> dict[str, object] | None:
+        if self.db_reader is not None:
+            return self._find_active_queue_from_db(
+                item_id=item_id, generation_type=generation_type
+            )
+
         for row in self.queues:
             if row["item_id"] != item_id:
                 continue
             if row["generation_type"] != generation_type:
                 continue
             if row["queue_status"] in ACTIVE_QUEUE_STATUSES:
+                return row
+        return None
+
+    def _find_active_queue_from_db(
+        self,
+        *,
+        item_id: str,
+        generation_type: str,
+    ) -> dict[str, object] | None:
+        reader = self.db_reader
+        if reader is None:
+            return None
+
+        for status in ("queued", "processing"):
+            result = reader.fetch_rows(
+                "item_generation_queue",
+                columns=_QUEUE_COLUMNS,
+                equals=(
+                    ("item_id", item_id),
+                    ("generation_type", generation_type),
+                    ("queue_status", status),
+                ),
+                order_by=("queued_at",),
+                limit=1,
+            )
+            if result.rows:
+                row = dict(result.rows[0])
+                self.queues.append(row)
                 return row
         return None
 
@@ -194,6 +376,16 @@ class ItemGenerationQueueRepositories:
     def record_phase(self, *, phase: str, status: str) -> None:
         self.phase_logs.append({"phase": phase, "status": status})
 
+    def _cache_diff_row(self, row: dict[str, object]) -> ProductDiffRow:
+        diff = self._row_to_diff(row)
+        self.product_diff_results[diff.product_diff_result_id] = self._diff_to_dict(diff)
+        return diff
+
+    def _cache_item_row(self, row: dict[str, object]) -> ItemRow:
+        item = self._row_to_item(row)
+        self.items[(item.source, item.external_item_code)] = self._item_to_dict(item)
+        return item
+
     def _diff_to_dict(self, seed: ProductDiffRow) -> dict[str, object]:
         return {
             "product_diff_result_id": seed.product_diff_result_id,
@@ -250,6 +442,7 @@ class ItemGenerationQueueRepositories:
             diff_status=status,  # type: ignore[arg-type]
             old_hash=str(row["old_hash"]) if row.get("old_hash") is not None else None,
             new_hash=str(row["new_hash"]) if row.get("new_hash") is not None else None,
+            # DDL に previous_* / config_version_only 等はない → 既定値
             previous_meaning=parsed_previous,
             previous_price=int(row["previous_price"]) if row.get("previous_price") is not None else None,
             previous_item_url=str(row["previous_item_url"]) if row.get("previous_item_url") is not None else None,
@@ -289,6 +482,7 @@ class ItemGenerationQueueRepositories:
             tag_ids=tuple(str(x) for x in tags) if isinstance(tags, (list, tuple)) else (),
             price=int(row["price"]) if row.get("price") is not None else None,
             item_url=str(row["item_url"]) if row.get("item_url") is not None else None,
+            # item テーブルに review_average / availability はない → None
             review_average=float(row["review_average"]) if row.get("review_average") is not None else None,
             review_count=int(row["review_count"]) if row.get("review_count") is not None else None,
             availability=int(row["availability"]) if row.get("availability") is not None else None,

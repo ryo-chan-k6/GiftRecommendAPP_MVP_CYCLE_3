@@ -671,3 +671,194 @@ def test_image_unique_key_is_item_id_and_image_url() -> None:
     assert list(synced.keys()) == ["https://img.example/dup.jpg"]
     assert synced["https://img.example/dup.jpg"]["item_id"] == item_id
     assert synced["https://img.example/dup.jpg"]["image_url"] == "https://img.example/dup.jpg"
+
+
+def test_list_eligible_diffs_uses_db_reader_when_injected() -> None:
+    """Wave C: DbReader 注入時は seed ではなく SELECT 経路を使う。"""
+
+    from datetime import UTC, datetime
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "product_diff_result",
+        (
+            {
+                "product_diff_result_id": "pdr_new",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_a",
+                "external_item_code": "shop:a",
+                "old_hash": None,
+                "new_hash": _HASH_A,
+                "diff_status": "new",
+                "judged_at": datetime.now(UTC),
+            },
+            {
+                "product_diff_result_id": "pdr_unavail",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_b",
+                "external_item_code": "shop:b",
+                "old_hash": _HASH_A,
+                "new_hash": _HASH_B,
+                "diff_status": "unavailable",
+                "judged_at": datetime.now(UTC),
+            },
+            {
+                "product_diff_result_id": "pdr_other_src",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_other",
+                "external_item_code": "shop:other",
+                "old_hash": None,
+                "new_hash": _HASH_A,
+                "diff_status": "new",
+                "judged_at": datetime.now(UTC),
+            },
+        ),
+    )
+    reader.seed(
+        "staging_item",
+        (
+            {
+                "staging_item_id": "si_a",
+                "raw_metadata_id": "raw_a",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "normalized_hash": _HASH_A,
+                "item_name": "A",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 1000,
+                "item_url": "https://item.example/a",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "availability": 1,
+                "review_average": None,
+                "review_count": None,
+            },
+            {
+                "staging_item_id": "si_b",
+                "raw_metadata_id": "raw_b",
+                "source": "rakuten",
+                "external_item_code": "shop:b",
+                "normalized_hash": _HASH_B,
+                "item_name": "B",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 2000,
+                "item_url": "https://item.example/b",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "availability": 0,
+                "review_average": None,
+                "review_count": None,
+            },
+            {
+                "staging_item_id": "si_other",
+                "raw_metadata_id": "raw_o",
+                "source": "amazon",
+                "external_item_code": "shop:other",
+                "normalized_hash": _HASH_A,
+                "item_name": "Other",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 1,
+                "item_url": None,
+                "external_genre_id": None,
+                "shop_code": None,
+                "availability": 1,
+                "review_average": None,
+                "review_count": None,
+            },
+        ),
+    )
+    repos = ItemApplyRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    processable, unavailable = repos.list_eligible_diffs(max_items=10)
+    assert [d.product_diff_result_id for d in processable] == ["pdr_new"]
+    assert unavailable == 1
+    assert any(c["table"] == "product_diff_result" for c in reader.fetch_calls)
+
+
+def test_resolve_item_and_load_staging_images_via_db_reader() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "normalized_hash": _HASH_A,
+                "item_name": "A",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 1000,
+                "item_url": "https://item.example/a",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "active_status": "active",
+                "is_active": True,
+                "first_fetched_at": None,
+                "last_checked_at": None,
+            },
+        ),
+    )
+    reader.seed(
+        "staging_item",
+        (
+            {
+                "staging_item_id": "si_a",
+                "raw_metadata_id": "raw_a",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "normalized_hash": _HASH_A,
+                "item_name": "A",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 1000,
+                "item_url": "https://item.example/a",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "availability": 1,
+                "review_average": 4.0,
+                "review_count": 3,
+            },
+        ),
+    )
+    reader.seed(
+        "staging_item_image",
+        (
+            {
+                "raw_metadata_id": "raw_a",
+                "external_item_code": "shop:a",
+                "image_url": "https://img.example/a.jpg",
+                "image_size_type": "medium",
+                "display_order": 0,
+                "is_primary_candidate": True,
+            },
+        ),
+    )
+    repos = ItemApplyRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    found = repos.resolve_item(source="rakuten", external_item_code="shop:a")
+    assert found is not None
+    assert found.item_id == "it_1"
+    images = repos.load_staging_images(staging_item_id="si_a")
+    assert len(images) == 1
+    assert images[0].staging_item_id == "si_a"
+    assert images[0].image_url == "https://img.example/a.jpg"
+
+
+def test_cli_non_demo_requires_database_url(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.item_apply import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "no-db"]) == 2
