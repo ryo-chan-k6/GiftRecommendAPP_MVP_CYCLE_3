@@ -4,8 +4,13 @@
 when injected (Wave D). Without a reader, in-memory seed remains for scaffold / UT.
 
 genre / attributes / tags / reviews are not on ``item`` DDL → defaults when mapping
-DB rows. ``semantic_input_hash`` is not on ``item_semantic`` DDL → None from DB.
-Write path keeps existing ``write_rows`` probes (claim / UPSERT SQL not formalized).
+DB rows. ``semantic_input_hash`` is not on ``item_semantic`` DDL → None from DB /
+in-memory only.
+
+Write path (IF-DB-BATCH-011 / #1634 Wave 2):
+- ``claim_queue`` → ``update_rows``（queued + semantic → processing）
+- ``update_queue_status`` → ``update_rows``（終端）。成功時 keep_processing は DB no-op
+- ``upsert_item_semantic`` → ``upsert_rows`` conflict ``(item_id, semantic_config_version_id)``
 """
 
 from __future__ import annotations
@@ -25,6 +30,16 @@ from batch.application.item_semantic.models import (
 from batch.infrastructure.db import DbReader, DbWriter
 
 DEFAULT_SOURCE = "rakuten"
+
+
+def _as_jsonb(value: dict[str, Any]) -> object:
+    """Adapt dict for PostgreSQL jsonb placeholders (Scaffold では dict のまま可)."""
+
+    try:
+        from psycopg.types.json import Json
+    except ImportError:  # pragma: no cover — CI/scaffold without psycopg
+        return value
+    return Json(value)
 
 _QUEUE_COLUMNS = (
     "item_generation_queue_id",
@@ -247,19 +262,21 @@ class ItemSemanticRepositories:
             return None
 
         ts = started_at or datetime.now(UTC)
-        row["queue_status"] = "processing"
-        row["started_at"] = ts
-        self.db_writer.write_rows(
+        result = self.db_writer.update_rows(
             "item_generation_queue",
-            (
-                {
-                    "item_generation_queue_id": item_generation_queue_id,
-                    "queue_status": "processing",
-                    "started_at": ts,
-                    "op": "claim",
-                },
+            set_values={"queue_status": "processing", "started_at": ts},
+            equals=(
+                ("item_generation_queue_id", item_generation_queue_id),
+                ("queue_status", "queued"),
+                ("generation_type", "semantic"),
             ),
         )
+        if result.rows_affected == 0:
+            # 競合（他 worker 先行 claim）
+            return None
+
+        row["queue_status"] = "processing"
+        row["started_at"] = ts
         return self._row_to_queue(row)
 
     def load_item(self, *, item_id: str) -> ItemContext:
@@ -312,8 +329,9 @@ class ItemSemanticRepositories:
         item_semantic_id = (
             str(existing["item_semantic_id"])
             if existing is not None
-            else f"is_{uuid.uuid4().hex[:12]}"
+            else str(uuid.uuid4())
         )
+        # In-memory keeps semantic_input_hash for skip判定。DDL 列ではない。
         payload: dict[str, object] = {
             "item_semantic_id": item_semantic_id,
             "item_id": item_id,
@@ -322,9 +340,21 @@ class ItemSemanticRepositories:
             "semantic_input_hash": semantic_input_hash,
             "generated_at": ts,
         }
+        persist_row: dict[str, object] = {
+            "item_semantic_id": item_semantic_id,
+            "item_id": item_id,
+            "semantic_config_version_id": semantic_config_version_id,
+            "semantic_json": _as_jsonb(dict(semantic_json)),
+            "generated_at": ts,
+        }
         self.item_semantics[key] = payload
         self.written_item_semantic_rows.append(dict(payload))
-        self.db_writer.write_rows("item_semantic", (dict(payload),))
+        self.db_writer.upsert_rows(
+            "item_semantic",
+            (dict(persist_row),),
+            conflict_columns=("item_id", "semantic_config_version_id"),
+            update_columns=("semantic_json", "generated_at"),
+        )
         return self._row_to_semantic(payload)
 
     def update_queue_status(
@@ -336,7 +366,7 @@ class ItemSemanticRepositories:
         error_message: str | None = None,
         keep_processing: bool = False,
     ) -> None:
-        """Queue status 更新。semantic 成功時は processing 維持可。"""
+        """Queue status 更新。semantic 成功時は processing 維持（DB no-op）。"""
 
         row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
@@ -344,34 +374,21 @@ class ItemSemanticRepositories:
 
         if keep_processing:
             # 成功時: status は processing のまま。完了時刻は付けない（BATCH-015 まで）
-            self.db_writer.write_rows(
-                "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "op": "semantic_success_keep_processing",
-                    },
-                ),
-            )
+            # claim 済みのため追加 UPDATE は不要（偽 op マーカー廃止）。
             return
 
-        row["queue_status"] = queue_status
+        set_values: dict[str, object] = {"queue_status": queue_status}
         if completed_at is not None:
+            set_values["completed_at"] = completed_at
             row["completed_at"] = completed_at
         if error_message is not None:
+            set_values["error_message"] = error_message
             row["error_message"] = error_message
-        self.db_writer.write_rows(
+        row["queue_status"] = queue_status
+        self.db_writer.update_rows(
             "item_generation_queue",
-            (
-                {
-                    "item_generation_queue_id": item_generation_queue_id,
-                    "queue_status": queue_status,
-                    "completed_at": completed_at,
-                    "error_message": error_message,
-                    "op": "update_status",
-                },
-            ),
+            set_values=set_values,
+            equals=(("item_generation_queue_id", item_generation_queue_id),),
         )
 
     def record_phase(self, *, phase: str, status: str) -> None:
