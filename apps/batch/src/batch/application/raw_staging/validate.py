@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from batch.application.raw_staging.models import ItemTransformBundle, RawTransformResult
+from batch.application.raw_staging.models import (
+    ItemTransformBundle,
+    RawTransformResult,
+    StagingGenreRow,
+    StagingRankingSignalRow,
+)
 
 
 class StagingValidationError(Exception):
@@ -49,22 +54,85 @@ def validate_item_bundle(bundle: ItemTransformBundle) -> None:
             raise StagingValidationError(code="GRS-VAL-002", message="display_order must be >= 0")
 
 
-def validate_transform_result(result: RawTransformResult) -> tuple[ItemTransformBundle, ...]:
-    """Validate all items in a Raw; reject duplicate itemCodes within the same Raw."""
+def validate_ranking_row(row: StagingRankingSignalRow) -> None:
+    """Validate one staging_ranking_signal candidate."""
+
+    if not row.external_item_code:
+        raise StagingValidationError(code="GRS-VAL-001", message="external_item_code required")
+    if row.rank < 1:
+        raise StagingValidationError(code="GRS-VAL-002", message="rank must be >= 1")
+    if row.external_genre_id < 0:
+        raise StagingValidationError(code="GRS-VAL-002", message="external_genre_id must be >= 0")
+    if not row.period or len(row.period) > 32:
+        raise StagingValidationError(code="GRS-VAL-002", message="period invalid")
+    if row.last_build_date is None:
+        raise StagingValidationError(code="GRS-VAL-001", message="last_build_date required")
+
+
+def validate_genre_row(row: StagingGenreRow) -> None:
+    """Validate one staging_genre candidate."""
+
+    if not row.source:
+        raise StagingValidationError(code="GRS-VAL-001", message="source required")
+    if row.external_genre_id < 0:
+        raise StagingValidationError(code="GRS-VAL-002", message="external_genre_id must be >= 0")
+    if not row.genre_name:
+        raise StagingValidationError(code="GRS-VAL-001", message="genre_name required")
+    if row.genre_level < 0 or row.genre_level > 5:
+        raise StagingValidationError(code="GRS-VAL-002", message="genre_level out of range")
+    if (
+        row.parent_external_genre_id is not None
+        and row.parent_external_genre_id == row.external_genre_id
+    ):
+        raise StagingValidationError(
+            code="GRS-VAL-002",
+            message="parent_external_genre_id must not equal external_genre_id",
+        )
+
+
+def validate_transform_result(result: RawTransformResult) -> RawTransformResult:
+    """Validate all staging candidates in a Raw.
+
+    items が空でも ranking_rows / genre_rows があれば受理する。
+    """
 
     if result.skipped:
-        return ()
+        return result
 
-    seen: set[str] = set()
-    accepted: list[ItemTransformBundle] = []
+    seen_item_codes: set[str] = set()
     for bundle in result.items:
         code = bundle.item.external_item_code
-        if code in seen:
+        if code in seen_item_codes:
             raise StagingValidationError(
                 code="GRS-VAL-006",
                 message=f"duplicate itemCode in raw: {code}",
             )
-        seen.add(code)
+        seen_item_codes.add(code)
         validate_item_bundle(bundle)
-        accepted.append(bundle)
-    return tuple(accepted)
+
+    seen_ranks: set[int] = set()
+    for row in result.ranking_rows:
+        if row.rank in seen_ranks:
+            raise StagingValidationError(
+                code="GRS-VAL-006",
+                message=f"duplicate rank in raw: {row.rank}",
+            )
+        seen_ranks.add(row.rank)
+        validate_ranking_row(row)
+
+    seen_genre_ids: set[int] = set()
+    for row in result.genre_rows:
+        if row.external_genre_id in seen_genre_ids:
+            raise StagingValidationError(
+                code="GRS-VAL-006",
+                message=f"duplicate external_genre_id in raw: {row.external_genre_id}",
+            )
+        seen_genre_ids.add(row.external_genre_id)
+        validate_genre_row(row)
+
+    if not result.items and not result.ranking_rows and not result.genre_rows:
+        raise StagingValidationError(
+            code="GRS-VAL-001",
+            message="no valid staging rows in raw",
+        )
+    return result

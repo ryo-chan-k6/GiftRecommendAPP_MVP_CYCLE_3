@@ -42,6 +42,21 @@ class DbWriter(Protocol):
         update_columns: tuple[str, ...] | None = None,
     ) -> DbWriteResult: ...
 
+    def update_rows(
+        self,
+        table: str,
+        *,
+        set_values: dict[str, object],
+        equals: tuple[tuple[str, object], ...],
+    ) -> DbWriteResult: ...
+
+    def delete_rows(
+        self,
+        table: str,
+        *,
+        equals: tuple[tuple[str, object], ...],
+    ) -> DbWriteResult: ...
+
 
 def mask_database_url(url: str) -> str:
     """Redact credentials from a database URL before logging."""
@@ -86,6 +101,8 @@ class ScaffoldDbWriter:
 
     write_calls: list[dict[str, object]] = field(default_factory=list)
     upsert_calls: list[dict[str, object]] = field(default_factory=list)
+    update_calls: list[dict[str, object]] = field(default_factory=list)
+    delete_calls: list[dict[str, object]] = field(default_factory=list)
     backend: str = "scaffold"
 
     def write_rows(self, table: str, rows: tuple[dict[str, object], ...]) -> DbWriteResult:
@@ -110,6 +127,27 @@ class ScaffoldDbWriter:
         )
         return DbWriteResult(rows_affected=len(rows), table=table)
 
+    def update_rows(
+        self,
+        table: str,
+        *,
+        set_values: dict[str, object],
+        equals: tuple[tuple[str, object], ...],
+    ) -> DbWriteResult:
+        self.update_calls.append(
+            {"table": table, "set_values": set_values, "equals": equals}
+        )
+        return DbWriteResult(rows_affected=1 if equals else 0, table=table)
+
+    def delete_rows(
+        self,
+        table: str,
+        *,
+        equals: tuple[tuple[str, object], ...],
+    ) -> DbWriteResult:
+        self.delete_calls.append({"table": table, "equals": equals})
+        return DbWriteResult(rows_affected=1 if equals else 0, table=table)
+
 
 @dataclass
 class PostgresDbWriter:
@@ -117,6 +155,8 @@ class PostgresDbWriter:
 
     - ``write_rows``: multi-row INSERT
     - ``upsert_rows``: INSERT ... ON CONFLICT DO UPDATE（T4a）
+    - ``update_rows``: UPDATE ... SET ... WHERE equals
+    - ``delete_rows``: DELETE FROM ... WHERE equals
     """
 
     database_url: str
@@ -158,7 +198,6 @@ class PostgresDbWriter:
                 if column not in columns:
                     raise DatabaseError(f"update column {column!r} missing from row payload")
 
-        import psycopg
         from psycopg import sql
 
         column_idents = [sql.Identifier(column) for column in columns]
@@ -194,6 +233,81 @@ class PostgresDbWriter:
             params.extend(row[column] for column in columns)
 
         return self._execute(statement, params, table=table, fallback_affected=len(rows))
+
+    def update_rows(
+        self,
+        table: str,
+        *,
+        set_values: dict[str, object],
+        equals: tuple[tuple[str, object], ...],
+    ) -> DbWriteResult:
+        if not set_values:
+            raise DatabaseError("set_values must not be empty")
+        if not equals:
+            raise DatabaseError("equals must not be empty")
+
+        safe_table = _assert_sql_ident(table, kind="table")
+        set_columns = tuple(
+            _assert_sql_ident(str(column), kind="column") for column in set_values
+        )
+        equal_columns = tuple(
+            _assert_sql_ident(column, kind="column") for column, _ in equals
+        )
+
+        from psycopg import sql
+
+        set_clause = sql.SQL(", ").join(
+            sql.SQL("{column} = {placeholder}").format(
+                column=sql.Identifier(column),
+                placeholder=sql.Placeholder(),
+            )
+            for column in set_columns
+        )
+        where_clause = sql.SQL(" AND ").join(
+            sql.SQL("{column} = {placeholder}").format(
+                column=sql.Identifier(column),
+                placeholder=sql.Placeholder(),
+            )
+            for column in equal_columns
+        )
+        statement = sql.SQL("UPDATE {table} SET {sets} WHERE {where}").format(
+            table=sql.Identifier(safe_table),
+            sets=set_clause,
+            where=where_clause,
+        )
+        params: list[object] = [set_values[column] for column in set_columns]
+        params.extend(value for _, value in equals)
+        return self._execute(statement, params, table=table, fallback_affected=0)
+
+    def delete_rows(
+        self,
+        table: str,
+        *,
+        equals: tuple[tuple[str, object], ...],
+    ) -> DbWriteResult:
+        if not equals:
+            raise DatabaseError("equals must not be empty")
+
+        safe_table = _assert_sql_ident(table, kind="table")
+        equal_columns = tuple(
+            _assert_sql_ident(column, kind="column") for column, _ in equals
+        )
+
+        from psycopg import sql
+
+        where_clause = sql.SQL(" AND ").join(
+            sql.SQL("{column} = {placeholder}").format(
+                column=sql.Identifier(column),
+                placeholder=sql.Placeholder(),
+            )
+            for column in equal_columns
+        )
+        statement = sql.SQL("DELETE FROM {table} WHERE {where}").format(
+            table=sql.Identifier(safe_table),
+            where=where_clause,
+        )
+        params: list[object] = [value for _, value in equals]
+        return self._execute(statement, params, table=table, fallback_affected=0)
 
     def _execute_insert(
         self,

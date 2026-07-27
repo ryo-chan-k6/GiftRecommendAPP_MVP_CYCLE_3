@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-write-005-epic-pr"
+  title: "batch-db-write-005 Epic PRレビュー"
+  summary: "BATCH-005 staging 書込本格化 Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1668
+  issue:
+    number: 1632
+  task_definition: "prompts/definitions/epics/batch-db-write-005/epic.yaml"
+  parent_epic_issue: "[Epic]batch-db-write-005:BATCH-005 staging書込本格化"
+  parent_epic_branch: "feature/epic-1632-batch-db-write-005"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Wave 1+2（#1660 / #1666）が MERGED 済みで Epic 完了条件を満たすか"
+  - "staging_* UPSERT / import_status が本番 SQL か"
+  - "SELECT スコープ（#1623）混入がないか"
+  - "external_genre / item 正本非書込が維持されているか"
+  - "実 DB 疎通が子 PR に記録されているか（secret なし）"
+  - "Epic PR target が develop / Closes #1632"
+  - "007 以降書込（#1633〜）を混入していないか"
+
+notes:
+  - "Epic PR は子 Task 完了後に Human Review / merge"
+  - "PR 番号確定後に target.pr.number を更新"
+  - "実 DB 疎通は local/dev/staging の明示実行。CI 既定 live / production 無承認は禁止"

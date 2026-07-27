@@ -17,8 +17,10 @@ from batch.application.raw_staging.hashing import content_hash_for_bytes
 from batch.application.raw_staging.models import (
     ItemTransformBundle,
     RawMetadataSeed,
+    StagingGenreRow,
     StagingItemImageRow,
     StagingItemRow,
+    StagingRankingSignalRow,
 )
 from batch.infrastructure.db import DbReader, DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient, ObjectStorageError
@@ -51,8 +53,8 @@ class RawStagingRepositories:
     staging_item_images: dict[tuple[str, str, str], dict[str, object]] = field(
         default_factory=dict
     )
-    staging_ranking: list[dict[str, object]] = field(default_factory=list)
-    staging_genre: list[dict[str, object]] = field(default_factory=list)
+    staging_ranking: dict[tuple[str, int], dict[str, object]] = field(default_factory=dict)
+    staging_genre: dict[tuple[str, int], dict[str, object]] = field(default_factory=dict)
     # boundary probes — must stay empty under correct job behavior
     written_item_rows: list[dict[str, object]] = field(default_factory=list)
     written_product_diff_rows: list[dict[str, object]] = field(default_factory=list)
@@ -261,6 +263,7 @@ class RawStagingRepositories:
     def upsert_staging_item(self, row: StagingItemRow) -> dict[str, object]:
         key = (row.raw_metadata_id, row.external_item_code)
         existing = self.staging_items.get(key)
+        # scaffold / UT: keep stable in-memory id. Postgres PK uses gen_random_uuid().
         staging_id = (
             str(existing["staging_item_id"])
             if existing and existing.get("staging_item_id")
@@ -283,11 +286,50 @@ class RawStagingRepositories:
             "review_average": row.review_average,
             "review_count": row.review_count,
             "normalized_hash": row.normalized_hash,
-            "diff_status": None,  # BATCH-005: always NULL
+            "diff_status": None,  # BATCH-005: always NULL on insert/update
             "staged_at": staged_at,
         }
         self.staging_items[key] = record
-        self.db_writer.write_rows("staging_item", (dict(record),))
+        # Omit staging_item_id from upsert payload: DB default on insert; never overwrite PK.
+        persist_row = {
+            "raw_metadata_id": row.raw_metadata_id,
+            "source": row.source,
+            "external_item_code": row.external_item_code,
+            "item_name": row.item_name,
+            "item_caption": row.item_caption,
+            "catchcopy": row.catchcopy,
+            "price": row.price,
+            "item_url": row.item_url,
+            "external_genre_id": row.external_genre_id,
+            "shop_code": row.shop_code,
+            "availability": row.availability,
+            "review_average": row.review_average,
+            "review_count": row.review_count,
+            "normalized_hash": row.normalized_hash,
+            "diff_status": None,
+            "staged_at": staged_at,
+        }
+        self.db_writer.upsert_rows(
+            "staging_item",
+            (persist_row,),
+            conflict_columns=("raw_metadata_id", "external_item_code"),
+            update_columns=(
+                "source",
+                "item_name",
+                "item_caption",
+                "catchcopy",
+                "price",
+                "item_url",
+                "external_genre_id",
+                "shop_code",
+                "availability",
+                "review_average",
+                "review_count",
+                "normalized_hash",
+                "diff_status",
+                "staged_at",
+            ),
+        )
         return record
 
     def upsert_staging_item_images(
@@ -297,10 +339,15 @@ class RawStagingRepositories:
         external_item_code: str,
         images: tuple[StagingItemImageRow, ...],
     ) -> tuple[int, int]:
-        """Upsert images then sync-delete URLs not in the current set (§5.8)."""
+        """Upsert images then sync-delete URLs not in the current set (§5.8).
+
+        Sync-delete strategy:
+        - ``db_reader`` あり: equals で既存 URL を取得し、集合外を ``delete_rows``
+        - なし（scaffold/UT）: in-memory 集合と照合し、実テーブル名で ``delete_rows``
+        """
 
         url_set = {img.image_url for img in images}
-        upserted = 0
+        persist_rows: list[dict[str, object]] = []
         for img in images:
             key = (img.raw_metadata_id, img.external_item_code, img.image_url)
             existing = self.staging_item_images.get(key)
@@ -321,31 +368,86 @@ class RawStagingRepositories:
                 "staged_at": staged_at,
             }
             self.staging_item_images[key] = record
-            self.db_writer.write_rows("staging_item_image", (dict(record),))
-            upserted += 1
+            persist_rows.append(
+                {
+                    "raw_metadata_id": img.raw_metadata_id,
+                    "external_item_code": img.external_item_code,
+                    "image_url": img.image_url,
+                    "image_size_type": img.image_size_type,
+                    "display_order": img.display_order,
+                    "is_primary_candidate": img.is_primary_candidate,
+                    "staged_at": staged_at,
+                }
+            )
 
-        deleted = 0
-        to_delete = [
-            key
-            for key in list(self.staging_item_images)
-            if key[0] == raw_metadata_id
-            and key[1] == external_item_code
-            and key[2] not in url_set
-        ]
-        for key in to_delete:
-            del self.staging_item_images[key]
-            deleted += 1
-            self.db_writer.write_rows(
-                "staging_item_image_delete",
-                (
-                    {
-                        "raw_metadata_id": raw_metadata_id,
-                        "external_item_code": external_item_code,
-                        "image_url": key[2],
-                    },
+        upserted = len(persist_rows)
+        if persist_rows:
+            self.db_writer.upsert_rows(
+                "staging_item_image",
+                tuple(persist_rows),
+                conflict_columns=("raw_metadata_id", "external_item_code", "image_url"),
+                update_columns=(
+                    "image_size_type",
+                    "display_order",
+                    "is_primary_candidate",
+                    "staged_at",
                 ),
             )
+
+        deleted = self._sync_delete_staging_item_images(
+            raw_metadata_id=raw_metadata_id,
+            external_item_code=external_item_code,
+            url_set=url_set,
+        )
         return upserted, deleted
+
+    def _sync_delete_staging_item_images(
+        self,
+        *,
+        raw_metadata_id: str,
+        external_item_code: str,
+        url_set: set[str],
+    ) -> int:
+        """Delete staging_item_image rows outside the current URL set."""
+
+        if self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "staging_item_image",
+                columns=("image_url",),
+                equals=(
+                    ("raw_metadata_id", raw_metadata_id),
+                    ("external_item_code", external_item_code),
+                ),
+            )
+            existing_urls = {str(row["image_url"]) for row in result.rows}
+        else:
+            existing_urls = {
+                key[2]
+                for key in self.staging_item_images
+                if key[0] == raw_metadata_id and key[1] == external_item_code
+            }
+
+        deleted = 0
+        for image_url in sorted(existing_urls - url_set):
+            self.db_writer.delete_rows(
+                "staging_item_image",
+                equals=(
+                    ("raw_metadata_id", raw_metadata_id),
+                    ("external_item_code", external_item_code),
+                    ("image_url", image_url),
+                ),
+            )
+            deleted += 1
+
+        # Keep scaffold/UT in-memory cache aligned with the current URL set.
+        for key in list(self.staging_item_images):
+            if (
+                key[0] == raw_metadata_id
+                and key[1] == external_item_code
+                and key[2] not in url_set
+            ):
+                del self.staging_item_images[key]
+        return deleted
 
     def persist_item_bundles(self, bundles: tuple[ItemTransformBundle, ...]) -> tuple[int, int]:
         item_count = 0
@@ -361,6 +463,111 @@ class RawStagingRepositories:
             image_count += up
         return item_count, image_count
 
+    def upsert_staging_ranking_signal(self, row: StagingRankingSignalRow) -> dict[str, object]:
+        key = (row.raw_metadata_id, row.rank)
+        existing = self.staging_ranking.get(key)
+        # scaffold / UT: keep stable in-memory id. Postgres PK uses gen_random_uuid().
+        staging_id = (
+            str(existing["staging_ranking_signal_id"])
+            if existing and existing.get("staging_ranking_signal_id")
+            else f"srs_{uuid.uuid4().hex[:12]}"
+        )
+        staged_at = row.staged_at or datetime.now(UTC)
+        record: dict[str, object] = {
+            "staging_ranking_signal_id": staging_id,
+            "raw_metadata_id": row.raw_metadata_id,
+            "external_item_code": row.external_item_code,
+            "external_genre_id": row.external_genre_id,
+            "rank": row.rank,
+            "period": row.period,
+            "last_build_date": row.last_build_date,
+            "staged_at": staged_at,
+        }
+        self.staging_ranking[key] = record
+        # Omit PK from upsert payload: DB default on insert; never overwrite PK.
+        persist_row = {
+            "raw_metadata_id": row.raw_metadata_id,
+            "external_item_code": row.external_item_code,
+            "external_genre_id": row.external_genre_id,
+            "rank": row.rank,
+            "period": row.period,
+            "last_build_date": row.last_build_date,
+            "staged_at": staged_at,
+        }
+        self.db_writer.upsert_rows(
+            "staging_ranking_signal",
+            (persist_row,),
+            conflict_columns=("raw_metadata_id", "rank"),
+            update_columns=(
+                "external_item_code",
+                "external_genre_id",
+                "period",
+                "last_build_date",
+                "staged_at",
+            ),
+        )
+        return record
+
+    def upsert_staging_genre(self, row: StagingGenreRow) -> dict[str, object]:
+        key = (row.raw_metadata_id, row.external_genre_id)
+        existing = self.staging_genre.get(key)
+        staging_id = (
+            str(existing["staging_genre_id"])
+            if existing and existing.get("staging_genre_id")
+            else f"sg_{uuid.uuid4().hex[:12]}"
+        )
+        staged_at = row.staged_at or datetime.now(UTC)
+        record: dict[str, object] = {
+            "staging_genre_id": staging_id,
+            "raw_metadata_id": row.raw_metadata_id,
+            "source": row.source,
+            "external_genre_id": row.external_genre_id,
+            "genre_name": row.genre_name,
+            "parent_external_genre_id": row.parent_external_genre_id,
+            "genre_level": row.genre_level,
+            "is_leaf": row.is_leaf,
+            "staged_at": staged_at,
+        }
+        self.staging_genre[key] = record
+        persist_row = {
+            "raw_metadata_id": row.raw_metadata_id,
+            "source": row.source,
+            "external_genre_id": row.external_genre_id,
+            "genre_name": row.genre_name,
+            "parent_external_genre_id": row.parent_external_genre_id,
+            "genre_level": row.genre_level,
+            "is_leaf": row.is_leaf,
+            "staged_at": staged_at,
+        }
+        self.db_writer.upsert_rows(
+            "staging_genre",
+            (persist_row,),
+            conflict_columns=("raw_metadata_id", "external_genre_id"),
+            update_columns=(
+                "source",
+                "genre_name",
+                "parent_external_genre_id",
+                "genre_level",
+                "is_leaf",
+                "staged_at",
+            ),
+        )
+        return record
+
+    def persist_ranking_rows(self, rows: tuple[StagingRankingSignalRow, ...]) -> int:
+        count = 0
+        for row in rows:
+            self.upsert_staging_ranking_signal(row)
+            count += 1
+        return count
+
+    def persist_genre_rows(self, rows: tuple[StagingGenreRow, ...]) -> int:
+        count = 0
+        for row in rows:
+            self.upsert_staging_genre(row)
+            count += 1
+        return count
+
     def mark_staged(self, *, raw_metadata_id: str, staged_at: datetime | None = None) -> None:
         meta = self.raw_metadata.get(raw_metadata_id)
         if meta is None:
@@ -368,32 +575,29 @@ class RawStagingRepositories:
         now = staged_at or datetime.now(UTC)
         meta["import_status"] = "staged"
         meta["staged_at"] = now
-        self.db_writer.write_rows(
+        self.db_writer.update_rows(
             "raw_product_metadata",
-            (
-                {
-                    "raw_metadata_id": raw_metadata_id,
-                    "import_status": "staged",
-                    "staged_at": now,
-                },
-            ),
+            set_values={"import_status": "staged", "staged_at": now},
+            equals=(("raw_metadata_id", raw_metadata_id),),
         )
 
     def mark_failed(self, *, raw_metadata_id: str, error_code: str) -> None:
         meta = self.raw_metadata.get(raw_metadata_id)
         if meta is None:
             return
+        # CHECK: import_status=failed requires error_message IS NOT NULL（secret なし短文）
+        error_message = f"staging failed: {error_code}"
         meta["import_status"] = "failed"
         meta["error_code"] = error_code
-        self.db_writer.write_rows(
+        meta["error_message"] = error_message
+        self.db_writer.update_rows(
             "raw_product_metadata",
-            (
-                {
-                    "raw_metadata_id": raw_metadata_id,
-                    "import_status": "failed",
-                    "error_code": error_code,
-                },
-            ),
+            set_values={
+                "import_status": "failed",
+                "error_code": error_code,
+                "error_message": error_message,
+            },
+            equals=(("raw_metadata_id", raw_metadata_id),),
         )
 
     def record_error(

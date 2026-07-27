@@ -30,6 +30,23 @@ _FORBIDDEN_TABLES = frozenset(
     }
 )
 
+_FAKE_DELETE_TABLE = "staging_item_image_delete"
+
+
+def _writer_tables(db: ScaffoldDbWriter) -> set[str]:
+    tables: set[str] = set()
+    for calls in (db.write_calls, db.upsert_calls, db.update_calls, db.delete_calls):
+        tables.update(str(call["table"]) for call in calls)
+    return tables
+
+
+def _upsert_tables(db: ScaffoldDbWriter) -> set[str]:
+    return {str(call["table"]) for call in db.upsert_calls}
+
+
+def _update_tables(db: ScaffoldDbWriter) -> set[str]:
+    return {str(call["table"]) for call in db.update_calls}
+
 # §16 No.2: staging_item に置かない列（物理定義外 / affiliate 系）
 _FORBIDDEN_STAGING_ITEM_COLUMNS = frozenset(
     {
@@ -184,11 +201,23 @@ def test_happy_path_item_search_staging_upsert_and_staged_status() -> None:
     assert len(storage.put_calls) == 0
     assert len(storage.get_calls) == 1
 
-    written_tables = {call["table"] for call in db.write_calls}
+    written_tables = _writer_tables(db)
     assert written_tables.isdisjoint(_FORBIDDEN_TABLES)
-    assert "staging_item" in written_tables
-    assert "staging_item_image" in written_tables
-    assert "raw_product_metadata" in written_tables
+    assert "staging_item" in _upsert_tables(db)
+    assert "staging_item_image" in _upsert_tables(db)
+    assert "raw_product_metadata" in _update_tables(db)
+    assert _FAKE_DELETE_TABLE not in written_tables
+
+    staging_upsert = next(c for c in db.upsert_calls if c["table"] == "staging_item")
+    assert staging_upsert["conflict_columns"] == ("raw_metadata_id", "external_item_code")
+    assert "staging_item_id" not in staging_upsert["rows"][0]
+    assert "staging_item_id" not in (staging_upsert["update_columns"] or ())
+    assert staging_upsert["rows"][0]["diff_status"] is None
+
+    staged_update = next(c for c in db.update_calls if c["table"] == "raw_product_metadata")
+    assert staged_update["set_values"]["import_status"] == "staged"
+    assert "staged_at" in staged_update["set_values"]
+    assert staged_update["equals"] == (("raw_metadata_id", "rm_1"),)
 
 
 def test_normalized_hash_is_stable() -> None:
@@ -238,8 +267,9 @@ def test_item_tables_not_written() -> None:
     assert result.written_product_diff_rows == []
     assert result.written_active_status_rows == []
     assert result.written_external_genre_rows == []
-    for call in db.write_calls:
-        assert call["table"] not in _FORBIDDEN_TABLES
+    for table in _writer_tables(db):
+        assert table not in _FORBIDDEN_TABLES
+    assert _FAKE_DELETE_TABLE not in _writer_tables(db)
 
 
 def test_idempotent_rerun_skips_staged_then_force_upserts() -> None:
@@ -281,13 +311,18 @@ def test_content_hash_mismatch_does_not_write_staging() -> None:
     assert "GRS-RAW-005" in result.error_codes
     assert repos.staging_items == {}
     assert repos.raw_metadata["rm_1"]["import_status"] == "failed"
-    tables = {call["table"] for call in db.write_calls}
+    assert repos.raw_metadata["rm_1"]["error_message"] == "staging failed: GRS-RAW-005"
+    tables = _writer_tables(db)
     assert "staging_item" not in tables
+    failed_update = next(c for c in db.update_calls if c["table"] == "raw_product_metadata")
+    assert failed_update["set_values"]["import_status"] == "failed"
+    assert failed_update["set_values"]["error_code"] == "GRS-RAW-005"
+    assert failed_update["set_values"]["error_message"] == "staging failed: GRS-RAW-005"
 
 
 def test_image_sync_delete_on_rerun() -> None:
     payload_with_two = _item_search_payload()
-    repos, storage, _ = _seed_repos(payloads={"rm_img": payload_with_two})
+    repos, storage, db = _seed_repos(payloads={"rm_img": payload_with_two})
     job = RawStagingJob(repositories=repos)
     first = job.run(job_run_id="job-img-1", max_raw=1)
     assert first.status == "succeeded"
@@ -314,6 +349,18 @@ def test_image_sync_delete_on_rerun() -> None:
     assert second.status == "succeeded"
     urls = {k[2] for k in repos.staging_item_images}
     assert urls == {"https://img.example/m1.jpg"}
+    assert _FAKE_DELETE_TABLE not in _writer_tables(db)
+    assert any(
+        call["table"] == "staging_item_image"
+        and call["equals"][-1] == ("image_url", "https://img.example/s1.jpg")
+        for call in db.delete_calls
+    )
+    image_upsert = next(c for c in db.upsert_calls if c["table"] == "staging_item_image")
+    assert image_upsert["conflict_columns"] == (
+        "raw_metadata_id",
+        "external_item_code",
+        "image_url",
+    )
 
 
 def test_physical_column_mapping_excludes_affiliate_shop_name_source_api() -> None:
@@ -347,7 +394,12 @@ def test_raw_object_missing_returns_grs_raw_003() -> None:
     assert result.failed_raw_ids == ["rm_1"]
     assert repos.staging_items == {}
     assert repos.raw_metadata["rm_1"]["import_status"] == "failed"
-    assert "staging_item" not in {call["table"] for call in db.write_calls}
+    assert "staging_item" not in _writer_tables(db)
+    assert any(
+        c["set_values"].get("error_message") == "staging failed: GRS-RAW-003"
+        for c in db.update_calls
+        if c["table"] == "raw_product_metadata"
+    )
 
 
 def test_raw_get_failure_returns_grs_raw_004() -> None:
@@ -364,7 +416,7 @@ def test_raw_get_failure_returns_grs_raw_004() -> None:
     assert result.failed_raw_ids == ["rm_1"]
     assert repos.staging_items == {}
     assert repos.raw_metadata["rm_1"]["import_status"] == "failed"
-    assert "staging_item" not in {call["table"] for call in db.write_calls}
+    assert "staging_item" not in _writer_tables(db)
 
 
 def test_validation_missing_required_rejects_without_staging_write() -> None:
@@ -385,16 +437,43 @@ def test_validation_missing_required_rejects_without_staging_write() -> None:
     assert result.validation_reject_count >= 1 or "GRS-VAL-001" in result.error_codes
     assert repos.staging_items == {}
     assert repos.raw_metadata["rm_val"]["import_status"] == "failed"
-    assert "staging_item" not in {call["table"] for call in db.write_calls}
+    assert "staging_item" not in _writer_tables(db)
 
 
-def test_ranking_and_genre_stub_skip_without_polluting_staging_item() -> None:
-    """§16 No.8: ranking/genre は stub skip。staging_item 汚染なし・意図外表なし。"""
+def test_ranking_and_genre_upsert_without_polluting_staging_item() -> None:
+    """§16 No.8: ranking/genre は Staging 書込成功。staging_item / external_genre 非書込。"""
 
+    ranking_payload = {
+        "lastBuildDate": "2026-07-13T12:00:00+0900",
+        "genreId": 100371,
+        "period": "daily",
+        "Items": [
+            {"rank": 1, "itemCode": "shop:rank-1"},
+            {"Item": {"rank": 2, "itemCode": "shop:rank-2"}},
+        ],
+    }
+    genre_payload = {
+        "genre": {
+            "genreId": 0,
+            "genreName": "root",
+            "level": 0,
+            "parentGenreId": None,
+        },
+        "children": [
+            {
+                "genreId": 100371,
+                "jaName": "レディースファッション",
+                "level": 1,
+                "parentGenreId": 0,
+            }
+        ],
+        "ancestors": [],
+        "siblings": [],
+    }
     repos, _, db = _seed_repos(
         payloads={
-            "rm_rank": {"Items": []},
-            "rm_genre": {"children": []},
+            "rm_rank": ranking_payload,
+            "rm_genre": genre_payload,
         },
         source_api_by_raw={
             "rm_rank": "item_ranking",
@@ -409,20 +488,57 @@ def test_ranking_and_genre_stub_skip_without_polluting_staging_item() -> None:
         source_api=("item_ranking", "genre_search"),
     )
 
-    # MVP stub: skip without failure; no staging_item writes
     assert result.status == "succeeded"
-    assert set(result.skipped_raw_ids) == {"rm_rank", "rm_genre"}
-    assert result.succeeded_raw_ids == []
+    assert set(result.succeeded_raw_ids) == {"rm_rank", "rm_genre"}
+    assert result.skipped_raw_ids == []
     assert result.staging_item_upsert_count == 0
+    assert result.staging_ranking_signal_upsert_count == 2
+    assert result.staging_genre_upsert_count == 2
     assert repos.staging_items == {}
-    assert repos.staging_ranking == []
-    assert repos.staging_genre == []
-    written = {call["table"] for call in db.write_calls}
+    assert ("rm_rank", 1) in repos.staging_ranking
+    assert ("rm_rank", 2) in repos.staging_ranking
+    assert repos.staging_ranking[("rm_rank", 1)]["external_item_code"] == "shop:rank-1"
+    assert repos.staging_ranking[("rm_rank", 1)]["external_genre_id"] == 100371
+    assert ("rm_genre", 0) in repos.staging_genre
+    assert ("rm_genre", 100371) in repos.staging_genre
+    assert repos.staging_genre[("rm_genre", 0)]["is_leaf"] is False
+    assert repos.staging_genre[("rm_genre", 100371)]["is_leaf"] is True
+    assert repos.raw_metadata["rm_rank"]["import_status"] == "staged"
+    assert repos.raw_metadata["rm_genre"]["import_status"] == "staged"
+    assert result.written_external_genre_rows == []
+    assert result.written_item_rows == []
+    assert result.written_product_diff_rows == []
+
+    written = _writer_tables(db)
     assert "staging_item" not in written
     assert "staging_item_image" not in written
+    assert "staging_ranking_signal" in _upsert_tables(db)
+    assert "staging_genre" in _upsert_tables(db)
+    assert "raw_product_metadata" in _update_tables(db)
     assert written.isdisjoint(_FORBIDDEN_TABLES)
-    # ranking/genre 変換未実装のため staging_ranking / staging_genre も書かない（stub skip）
 
+    ranking_upsert = next(c for c in db.upsert_calls if c["table"] == "staging_ranking_signal")
+    assert ranking_upsert["conflict_columns"] == ("raw_metadata_id", "rank")
+    assert "staging_ranking_signal_id" not in ranking_upsert["rows"][0]
+    assert ranking_upsert["update_columns"] == (
+        "external_item_code",
+        "external_genre_id",
+        "period",
+        "last_build_date",
+        "staged_at",
+    )
+
+    genre_upsert = next(c for c in db.upsert_calls if c["table"] == "staging_genre")
+    assert genre_upsert["conflict_columns"] == ("raw_metadata_id", "external_genre_id")
+    assert "staging_genre_id" not in genre_upsert["rows"][0]
+    assert genre_upsert["update_columns"] == (
+        "source",
+        "genre_name",
+        "parent_external_genre_id",
+        "genre_level",
+        "is_leaf",
+        "staged_at",
+    )
 
 def test_failed_reset_to_raw_saved_then_restage() -> None:
     """§16 No.10: failed → raw_saved リセット後に再ステージ可（test-only metadata 更新）。"""

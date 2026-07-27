@@ -16,9 +16,11 @@ from batch.application.raw_staging.models import (
     ItemTransformBundle,
     RawMetadataSeed,
     RawStagingSyncResult,
+    StagingGenreRow,
     StagingItemImageRow,
     StagingItemRow,
     StagingPlan,
+    StagingRankingSignalRow,
 )
 from batch.application.raw_staging.repositories import RawStagingRepositories
 from batch.application.raw_staging.transform import StagingTransformError, transform_raw
@@ -34,9 +36,11 @@ __all__ = [
     "RawStagingJob",
     "RawStagingRepositories",
     "RawStagingSyncResult",
+    "StagingGenreRow",
     "StagingItemImageRow",
     "StagingItemRow",
     "StagingPlan",
+    "StagingRankingSignalRow",
     "StagingTransformError",
     "StagingValidationError",
     "build_normalized_payload",

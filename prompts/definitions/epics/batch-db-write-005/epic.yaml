@@ -1,0 +1,206 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-db-write-005"
+  title: "batch-db-write-005:BATCH-005 staging書込本格化"
+  summary: "IF-DB-BATCH-005 の staging_* UPSERT と raw_product_metadata.import_status 更新を本番 SQL で本配線する。SELECT は #1623 済み。ranking/genre は Wave 2。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  E2 は代表 IF の UPSERT のみ。IF-DB-BATCH-005 は in-memory + write_rows のまま。
+  #1623 で SELECT/GET が開放された結果、実環境では Staging 書込・mark_failed で本線が止まる。
+  機能・領域単位 Epic（例外）。#1623 は読取専用のため本 Epic で書込を扱う。
+
+objective: |
+  BATCH-005 の Staging 永続化と import_status 更新を upsert_rows / update / delete で本配線し、
+  SELECT → GET → persist → status まで実 DB で通す。develop 統合は本 Epic PR のみ。
+
+scope:
+  - "staging_item / staging_item_image の本番 UPSERT（conflict キーは DDL UNIQUE）"
+  - "staging_item_image 集合外 URL の同期 DELETE"
+  - "raw_product_metadata.import_status（staged / failed）UPDATE 本配線"
+  - "必要なら DbWriter に update_rows / delete_rows 最小追加"
+  - "Wave 2: staging_ranking_signal / staging_genre（同一 Epic 内・後続 Task）"
+  - "UT + 実装 Task ごとの実 DB 疎通（local/dev/staging）"
+  - "IF-DB ギャップ一覧の進捗反映"
+  - "secret / .env 実値禁止"
+
+out_of_scope:
+  - "DB SELECT 本配線（#1623）"
+  - "007 以降の item / queue 等フル UPSERT（#1633〜）"
+  - "E4 観測横断 / 親 workflow schedule"
+  - "DDL 破壊的変更（必要時は Human 判断）"
+  - "CI 既定 live / production 無承認"
+  - "OpenAPI / web / api / reco 破壊変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/staging_item_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/staging_item_image_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/raw_product_metadata_テーブル定義書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/tests/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/epics/batch-db-write-005/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-005/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-db-write-005/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "Wave 1: staging_item / image UPSERT + import_status"
+  - "Wave 2: ranking / genre（後続 Task）"
+  - "Epic PR → develop"
+
+acceptance_criteria:
+  - "Epic Branch が作成されている（no-branch 解除）"
+  - "005 が実 DB で Staging 書込・status 更新まで成功する（疎通結果を PR に記録。secret なし）"
+  - "Epic PR target が develop"
+  - "#1623 スコープ（SELECT）を混入して完了扱いしない"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-005"
+  name: "feature/epic-1632-batch-db-write-005"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-27"
+    due_date: "2026-08-03"
+
+issue:
+  number: 1632
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/**"
+    - "docs/06_実装設計/database/**"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/__init__.py"
+    - "apps/batch/src/batch/application/raw_staging/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/pyproject.toml"
+    - "apps/batch/uv.lock"
+    - "apps/batch/tests/**"
+    - "prompts/definitions/epics/batch-db-write-005/**"
+    - "prompts/definitions/tasks/batch-db-write-005/**"
+    - "prompts/definitions/reviews/batch-db-write-005/**"
+    - ".env.example"
+  forbidden_paths:
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "staging-upsert"
+    - "ranking-genre-upsert"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "SELECT 本配線 MERGED"
+    - issue: 1561
+      purpose: "DbWriter / upsert_rows"
+  issues:
+    - number: 1629
+      purpose: "BATCH-005 SELECT"
+  blocking: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "staging UPSERT / import_status が本番 SQL か"
+    - "SELECT スコープ混入がないか"
+    - "実 DB 疎通が記録されているか"
+    - "Epic PR target が develop"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Human: ranking/genre は同一 Epic Wave 2 に分離（起票時の確認事項への推奨案）"
+  - "mark_failed は error_message NOT NULL CHECK に合わせる"
