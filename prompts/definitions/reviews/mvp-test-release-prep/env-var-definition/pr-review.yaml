@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1655
   issue:
     number: 1654
   task_definition: "prompts/definitions/tasks/mvp-test-release-prep/env-var-definition.yaml"
