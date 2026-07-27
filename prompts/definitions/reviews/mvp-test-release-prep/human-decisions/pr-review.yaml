@@ -12,7 +12,7 @@ work_mode: "ai-agent"
 
 target:
   pr:
-    number: null
+    number: 1681
   issue:
     number: 1646
   task_definition: null
