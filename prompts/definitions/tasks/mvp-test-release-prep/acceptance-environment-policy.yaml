@@ -1,0 +1,156 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mvp-test-release-prep-acceptance-environment-policy"
+  title: "mvp-test-release-prep:受入環境方針確定"
+  summary: "受入テストの実行環境を「stg 新設」か「local+Layer2 代替」かで1方針に落とし、docs/13 に正本化する。Human 確定ゲート。"
+  phase: "13_受入テスト"
+
+work_mode: "human-led"
+
+parent:
+  epic_id: "epic-mvp-test-release-prep"
+  epic_issue: "[Epic]mvp-test-release-prep:テスト・リリース移行準備"
+  epic_issue_number: 1646
+  epic_branch: "docs/epic-1646-mvp-test-release-prep"
+  related_issues:
+    - 1648
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  全体テスト計画書の受入は staging 前提の記述がある一方、MVP では stg 任意・Layer3 defer の記載もある。
+  未確定のまま受入開始すると環境・証跡・合否がぶれる。
+
+objective: |
+  受入環境方針を1文書に固定し、後続の受入計画・リリース判定の前提にする。
+  2026-07-26 Human 確定（簡易 stg 必須）を docs 正本へ反映する。
+
+scope:
+  - "選択肢（stg 新設 / local+Layer2 代替 / ハイブリッド）の比較表"
+  - "採用方針の1行定義（Human 記入欄付き草案）"
+  - "証跡の置き場（docs/13）との対応"
+  - "リリース判定CL・システムテスト開始条件への影響メモ"
+
+out_of_scope:
+  - "stg インフラ実構築"
+  - "受入テストケースの全量作成・実施"
+  - "production 環境構築"
+  - "apps/** 実装"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: true
+      purpose: "受入フェーズ開始条件・環境方針"
+    - path: "docs/13_受入テスト/README.md"
+      required: true
+      purpose: "配置ルール"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "環境区分の正本"
+
+output:
+  docs:
+    - path: "docs/13_受入テスト/テスト計画/受入環境方針.md"
+      action: "create"
+      required: true
+  files: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "受入環境方針.md（Human 確定欄付き）"
+
+acceptance_criteria:
+  - "採用案が1行で書ける状態（または Human 未確定であることが明示）"
+  - "stg / local+Layer2 のトレードオフが表である"
+  - "secret 実値なし"
+  - "PR target が親 Epic Branch"
+  - "Related to（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "acceptance-environment-policy"
+  base: "docs/epic-1646-mvp-test-release-prep"
+  target: "docs/epic-1646-mvp-test-release-prep"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "13_受入テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  number: 1648
+  unit: "task"
+  type: "docs"
+  area: "project"
+
+dependencies:
+  epics:
+    - id: "epic-mvp-test-release-prep"
+      purpose: "親 Epic"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/13_受入テスト/テスト計画/受入環境方針.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "方針 docs のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Human 確定を AI が断定していないか"
+    - "現行ディレクトリ構成（docs/13）に合っているか"
+    - "後続 Must Task への依存が明記されているか"
+  specialist_reviews:
+    docs: true
+    test: true
+
+human_decision_points:
+  - "受入環境方針は 2026-07-26 Human 確定済み（簡易 stg 必須）。残るのは stg 実構築・カタログ件数目安など後続 Task"
+
+notes:
+  - "Must #2。Human 確定済みを docs/13 に正本化"
+  - "Epic #1646 / Task #1648 / Branch docs/task-1648-acceptance-environment-policy"

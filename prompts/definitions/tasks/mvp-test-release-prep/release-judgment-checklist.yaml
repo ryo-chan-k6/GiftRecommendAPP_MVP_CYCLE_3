@@ -1,0 +1,178 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mvp-test-release-prep-release-judgment-checklist"
+  title: "mvp-test-release-prep:MVPリリース判定チェックリスト作成"
+  summary: "全体テスト計画書 §12.2 を docs/14_リリース/リリース判定/ の運用可能なチェックリストへ落とす。旧 #147 を現行パスで再定義。"
+  phase: "14_リリース"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-mvp-test-release-prep"
+  epic_issue: "[Epic]mvp-test-release-prep:テスト・リリース移行準備"
+  epic_issue_number: 1646
+  epic_branch: "docs/epic-1646-mvp-test-release-prep"
+  related_issues:
+    - 1673
+    - 147
+    - 144
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  §12.2 に判定基準はあるが、docs/14_リリース/リリース判定/ に運用用チェックリストが無い。
+  旧 Issue #147 は docs/09_リリース パスで、現行ディレクトリ構成と不整合。
+  受入環境方針・システム／品質計画・トリアージ運用・環境変数定義書が揃った後に本 CL を置く。
+
+objective: |
+  MVP リリース判定チェックリストを正本化し、証跡リンク欄・必須/任意（草案）・Human 承認欄を備える。
+
+scope:
+  - "§12.2 全区分（機能〜不具合）をチェック項目化"
+  - "必須 / 任意 / Human 確認の区分列（最終削り込みは Human）"
+  - "証跡リンク欄（docs/10・12・13・15・CI・環境変数）"
+  - "受入（簡易 stg）接続行"
+  - "旧 #147 との対応メモ（パス移行）"
+
+out_of_scope:
+  - "リリース手順書（#145）"
+  - "デプロイ設定書（#146）"
+  - "実際のリリース承認の実施"
+  - "性能 SLO 数値の新規確定（未確定なら『要 Human』と明示）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: true
+      purpose: "§12.2 MVPリリース判定基準"
+    - path: "docs/14_リリース/README.md"
+      required: true
+      purpose: "リリース判定の配置"
+    - path: "docs/13_受入テスト/テスト計画/受入環境方針.md"
+      required: true
+      purpose: "受入＝簡易 stg"
+    - path: "docs/15_運用・改善/不具合トリアージ運用.md"
+      required: true
+      purpose: "Critical/High=0 手順"
+    - path: "docs/10_システムテスト/テスト計画/システムテスト計画書.md"
+      required: false
+      purpose: "証跡参照"
+    - path: "docs/12_レコメンド品質評価テスト/テスト計画/レコメンド品質評価テスト計画書.md"
+      required: false
+      purpose: "証跡参照"
+
+output:
+  docs:
+    - path: "docs/14_リリース/リリース判定/MVPリリース判定チェックリスト.md"
+      action: "create"
+      required: true
+    - path: "docs/14_リリース/README.md"
+      action: "update"
+      required: true
+  files: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "MVPリリース判定チェックリスト.md"
+  - "docs/14 README への正本リンク"
+
+acceptance_criteria:
+  - "§12.2 の区分がチェック項目として網羅されている"
+  - "Critical/High=0 が明示項目になっている"
+  - "パスが docs/14_リリース/リリース判定/ である（docs/09 不使用）"
+  - "必須／任意の最終削り込みを AI が確定していない"
+  - "secret 実値なし"
+  - "Related to #147（および親 Epic / #1673）。Closes 禁止"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "release-judgment-checklist"
+  base: "docs/epic-1646-mvp-test-release-prep"
+  target: "docs/epic-1646-mvp-test-release-prep"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "14_リリース"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  number: 1673
+  unit: "task"
+  type: "docs"
+  area: "project"
+
+dependencies:
+  epics:
+    - id: "epic-mvp-test-release-prep"
+      purpose: "親 Epic"
+  issues:
+    - number: 147
+      purpose: "旧 Task。パス更新の対応元"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/14_リリース/リリース判定/MVPリリース判定チェックリスト.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "チェックリスト docs のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "§12.2 との対応が追跡できるか"
+    - "必須項目の削り込みを AI が確定していないか"
+    - "証跡欄と簡易 stg / トリアージ参照があるか"
+  specialist_reviews:
+    docs: true
+    test: true
+
+human_decision_points:
+  - "§12.2 各項目の必須／任意の最終削り込み"
+  - "性能ゲートの扱い"
+  - "旧 #147/#144 の close"
+
+notes:
+  - "Must #1（最後）。Issue #1673 / Branch docs/task-1673-release-judgment-checklist"
