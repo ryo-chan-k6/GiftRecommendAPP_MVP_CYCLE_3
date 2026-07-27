@@ -1,10 +1,11 @@
-"""In-memory repositories for BATCH-013 scaffold / UT.
+"""Repositories for BATCH-013 Feature正規化.
 
-- item / item_feature raw READ ONLY（raw は BATCH-012 責務。変更しない）
-- item_feature.normalized_feature_value UPDATE（IF-DB-BATCH-014）。raw 非更新
-- item_meaning UPSERT（IF-DB-BATCH-014）。normalized 更新と同一トランザクション扱い
-- Queue UPDATE only（INSERT 禁止 / item_semantic DML 禁止）
-- normalization_distribution_metric 非書込（BATCH-016 責務）
+``list_target_queues`` / ``load_item`` / ``load_raw_features`` /
+``resolve_semantic_config_version``（seed 空時）は ``DbReader`` 経由（Wave E）。
+
+queue OR は equals 二重 fetch + in-process。config version は JOIN せず
+item_semantic → item_feature の順で equals 導出（コードコメント参照）。
+書込本格化は out of scope。
 """
 
 from __future__ import annotations
@@ -23,9 +24,42 @@ from batch.application.feature_normalization.models import (
     QueueRow,
     RawFeatureAxis,
 )
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
 
 DEFAULT_SOURCE = "rakuten"
+
+_QUEUE_COLUMNS = (
+    "item_generation_queue_id",
+    "item_id",
+    "generation_type",
+    "queue_status",
+    "retry_count",
+    "queued_at",
+    "started_at",
+    "completed_at",
+    "error_message",
+)
+_ITEM_COLUMNS = (
+    "item_id",
+    "source",
+    "external_item_code",
+    "active_status",
+    "is_active",
+)
+_SEMANTIC_COLUMNS = (
+    "item_semantic_id",
+    "item_id",
+    "semantic_config_version_id",
+)
+_FEATURE_COLUMNS = (
+    "item_id",
+    "semantic_config_version_id",
+    "feature_code",
+    "feature_input_hash",
+    "feature_normalization_version_id",
+    "raw_feature_value",
+    "normalized_feature_value",
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +75,7 @@ class ExistingNormalizedAxis:
 @dataclass
 class FeatureNormalizationRepositories:
     db_writer: DbWriter
+    db_reader: DbReader | None = None
     seed_queues: list[QueueRow] = field(default_factory=list)
     seed_items: list[ItemRow] = field(default_factory=list)
     # (item_id, semantic_config_version_id) -> raw 8 axes（BATCH-012 生成物）
@@ -114,6 +149,15 @@ class FeatureNormalizationRepositories:
     ) -> tuple[list[QueueRow], int]:
         """§9.1: semantic+processing 主経路 / feature+queued 副経路。embedding 除外."""
 
+        if self.db_reader is not None:
+            return self._list_target_queues_from_db(
+                max_items=max_items,
+                source=source,
+                queue_batch_size=queue_batch_size,
+                item_ids=item_ids,
+                queue_ids=queue_ids,
+            )
+
         item_set = set(item_ids) if item_ids else None
         queue_set = set(queue_ids) if queue_ids else None
         limit = max_items if queue_batch_size is None else min(max_items, queue_batch_size)
@@ -148,13 +192,115 @@ class FeatureNormalizationRepositories:
 
         return targets, non_target
 
+    def _list_target_queues_from_db(
+        self,
+        *,
+        max_items: int,
+        source: str,
+        queue_batch_size: int | None,
+        item_ids: tuple[str, ...] | None,
+        queue_ids: tuple[str, ...] | None,
+    ) -> tuple[list[QueueRow], int]:
+        reader = self.db_reader
+        if reader is None:
+            return [], 0
+
+        limit = max_items if queue_batch_size is None else min(max_items, queue_batch_size)
+        candidate_rows: list[dict[str, object]] = []
+        count_non_target = False
+
+        if queue_ids:
+            count_non_target = True
+            for queue_id in queue_ids:
+                if not queue_id:
+                    continue
+                result = reader.fetch_rows(
+                    "item_generation_queue",
+                    columns=_QUEUE_COLUMNS,
+                    equals=(("item_generation_queue_id", queue_id),),
+                    limit=1,
+                )
+                candidate_rows.extend(result.rows)
+        elif item_ids:
+            count_non_target = True
+            for item_id in item_ids:
+                if not item_id:
+                    continue
+                result = reader.fetch_rows(
+                    "item_generation_queue",
+                    columns=_QUEUE_COLUMNS,
+                    equals=(("item_id", item_id),),
+                    order_by=("item_generation_queue_id",),
+                    limit=100,
+                )
+                candidate_rows.extend(result.rows)
+        else:
+            fetch_cap = max(0, limit)
+            if fetch_cap == 0:
+                return [], 0
+            fetch_limit = min(max(fetch_cap * 5, fetch_cap), 5000)
+            primary = reader.fetch_rows(
+                "item_generation_queue",
+                columns=_QUEUE_COLUMNS,
+                equals=(
+                    ("generation_type", "semantic"),
+                    ("queue_status", "processing"),
+                ),
+                order_by=("item_generation_queue_id",),
+                limit=fetch_limit,
+            )
+            secondary = reader.fetch_rows(
+                "item_generation_queue",
+                columns=_QUEUE_COLUMNS,
+                equals=(
+                    ("generation_type", "feature"),
+                    ("queue_status", "queued"),
+                ),
+                order_by=("item_generation_queue_id",),
+                limit=fetch_limit,
+            )
+            candidate_rows.extend(primary.rows)
+            candidate_rows.extend(secondary.rows)
+
+        targets: list[QueueRow] = []
+        non_target = 0
+        seen_ids: set[str] = set()
+
+        for row in sorted(candidate_rows, key=lambda r: str(r["item_generation_queue_id"])):
+            q = self._cache_queue_row(row)
+            if q.item_generation_queue_id in seen_ids:
+                continue
+            seen_ids.add(q.item_generation_queue_id)
+
+            if count_non_target and q.generation_type == "embedding":
+                if q.queue_status in {"queued", "processing"}:
+                    non_target += 1
+                continue
+
+            is_primary = q.generation_type == "semantic" and q.queue_status == "processing"
+            is_secondary = q.generation_type == "feature" and q.queue_status == "queued"
+            if not (is_primary or is_secondary):
+                continue
+
+            item_row = self.items.get(q.item_id)
+            if item_row is None:
+                item_row = self._fetch_and_cache_item(q.item_id)
+            if item_row is not None and str(item_row.get("source") or DEFAULT_SOURCE) != source:
+                continue
+
+            targets.append(q)
+            if len(targets) >= max(0, limit):
+                break
+
+        return targets, non_target
+
     def claim_or_continue(
         self,
         *,
         item_generation_queue_id: str,
         started_at: datetime | None = None,
     ) -> QueueRow | None:
-        row = self.queues.get(item_generation_queue_id)
+        row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             return None
         status = row.get("queue_status")
@@ -194,6 +340,8 @@ class FeatureNormalizationRepositories:
 
     def load_item(self, *, item_id: str) -> ItemRow:
         row = self.items.get(item_id)
+        if row is None and self.db_reader is not None:
+            row = self._fetch_and_cache_item(item_id)
         if row is None:
             raise KeyError(f"item not found: {item_id}")
         return ItemRow(
@@ -205,9 +353,43 @@ class FeatureNormalizationRepositories:
         )
 
     def resolve_semantic_config_version(self, *, item_id: str) -> str | None:
-        """Config Resolver scaffold: item_id -> semantic_config_version_id。"""
+        """Config Resolver: item_id -> semantic_config_version_id.
 
-        return self.config_versions.get(item_id)
+        Seed map を優先。空で reader がある場合は JOIN せず:
+        1) ``item_semantic`` の equals(item_id) から version を取る（意味連鎖の正本）
+        2) 無ければ ``item_feature`` の equals(item_id) から導出
+        """
+
+        if item_id in self.config_versions:
+            return self.config_versions.get(item_id)
+
+        if self.db_reader is None:
+            return None
+
+        semantic = self.db_reader.fetch_rows(
+            "item_semantic",
+            columns=_SEMANTIC_COLUMNS,
+            equals=(("item_id", item_id),),
+            order_by=("item_semantic_id",),
+            limit=1,
+        )
+        if semantic.rows:
+            version = str(semantic.rows[0]["semantic_config_version_id"])
+            self.config_versions[item_id] = version
+            return version
+
+        feature = self.db_reader.fetch_rows(
+            "item_feature",
+            columns=("item_id", "semantic_config_version_id"),
+            equals=(("item_id", item_id),),
+            order_by=("semantic_config_version_id",),
+            limit=1,
+        )
+        if feature.rows:
+            version = str(feature.rows[0]["semantic_config_version_id"])
+            self.config_versions[item_id] = version
+            return version
+        return None
 
     def load_raw_features(
         self,
@@ -217,7 +399,40 @@ class FeatureNormalizationRepositories:
     ) -> tuple[RawFeatureAxis, ...]:
         """BATCH-012（IF-DB-BATCH-013）が生成した raw 8 軸を読取（変更しない）。"""
 
-        return tuple(self.raw_features.get((item_id, semantic_config_version_id), ()))
+        key = (item_id, semantic_config_version_id)
+        cached = self.raw_features.get(key)
+        if cached is not None:
+            return tuple(cached)
+        if self.db_reader is None:
+            return ()
+        result = self.db_reader.fetch_rows(
+            "item_feature",
+            columns=_FEATURE_COLUMNS,
+            equals=(
+                ("item_id", item_id),
+                ("semantic_config_version_id", semantic_config_version_id),
+            ),
+            order_by=("feature_code",),
+            limit=50,
+        )
+        axes = [
+            RawFeatureAxis(
+                feature_code=str(row["feature_code"]),
+                feature_input_hash=str(row.get("feature_input_hash") or ""),
+                feature_normalization_version_id=str(
+                    row.get("feature_normalization_version_id") or ""
+                ),
+                raw_feature_value=(
+                    float(row["raw_feature_value"])
+                    if row.get("raw_feature_value") is not None
+                    else 0.0
+                ),
+            )
+            for row in result.rows
+            if row.get("raw_feature_value") is not None
+        ]
+        self.raw_features[key] = axes
+        return tuple(axes)
 
     def should_skip_normalization(
         self,
@@ -229,7 +444,10 @@ class FeatureNormalizationRepositories:
     ) -> bool:
         """§9.3: normalized 8 軸すべてが同一 hash + 現行 version で存在すれば skip."""
 
-        axes = self.normalized.get((item_id, semantic_config_version_id), [])
+        key = (item_id, semantic_config_version_id)
+        axes = self.normalized.get(key, [])
+        if not axes and self.db_reader is not None:
+            axes = self._fetch_and_cache_normalized(item_id, semantic_config_version_id)
         by_code = {a.feature_code: a for a in axes}
         if len(by_code) < len(MVP_FEATURE_CODES):
             return False
@@ -301,7 +519,7 @@ class FeatureNormalizationRepositories:
         error_message: str | None = None,
         keep_processing: bool = False,
     ) -> None:
-        row = self.queues.get(item_generation_queue_id)
+        row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             raise KeyError(f"queue not found: {item_generation_queue_id}")
         if keep_processing:
@@ -353,6 +571,86 @@ class FeatureNormalizationRepositories:
                 "item_id": item_id,
             }
         )
+
+    def _ensure_queue_hydrated(self, item_generation_queue_id: str) -> dict[str, object] | None:
+        row = self.queues.get(item_generation_queue_id)
+        if row is not None:
+            return row
+        if self.db_reader is None:
+            return None
+        result = self.db_reader.fetch_rows(
+            "item_generation_queue",
+            columns=_QUEUE_COLUMNS,
+            equals=(("item_generation_queue_id", item_generation_queue_id),),
+            limit=1,
+        )
+        if not result.rows:
+            return None
+        self._cache_queue_row(result.rows[0])
+        return self.queues.get(item_generation_queue_id)
+
+    def _fetch_and_cache_item(self, item_id: str) -> dict[str, object] | None:
+        reader = self.db_reader
+        if reader is None:
+            return None
+        result = reader.fetch_rows(
+            "item",
+            columns=_ITEM_COLUMNS,
+            equals=(("item_id", item_id),),
+            limit=1,
+        )
+        if not result.rows:
+            return None
+        return self._cache_item_row(result.rows[0])
+
+    def _fetch_and_cache_normalized(
+        self,
+        item_id: str,
+        semantic_config_version_id: str,
+    ) -> list[ExistingNormalizedAxis]:
+        reader = self.db_reader
+        if reader is None:
+            return []
+        result = reader.fetch_rows(
+            "item_feature",
+            columns=_FEATURE_COLUMNS,
+            equals=(
+                ("item_id", item_id),
+                ("semantic_config_version_id", semantic_config_version_id),
+            ),
+            order_by=("feature_code",),
+            limit=50,
+        )
+        axes = [
+            ExistingNormalizedAxis(
+                feature_code=str(row["feature_code"]),
+                feature_input_hash=str(row.get("feature_input_hash") or ""),
+                feature_normalization_version_id=str(
+                    row.get("feature_normalization_version_id") or ""
+                ),
+                has_normalized_value=row.get("normalized_feature_value") is not None,
+            )
+            for row in result.rows
+        ]
+        self.normalized[(item_id, semantic_config_version_id)] = axes
+        return axes
+
+    def _cache_queue_row(self, row: dict[str, object]) -> QueueRow:
+        payload = dict(row)
+        qid = str(payload["item_generation_queue_id"])
+        self.queues[qid] = payload
+        return self._row_to_queue(payload)
+
+    def _cache_item_row(self, row: dict[str, object]) -> dict[str, object]:
+        payload = {
+            "item_id": str(row["item_id"]),
+            "source": str(row.get("source") or DEFAULT_SOURCE),
+            "external_item_code": str(row.get("external_item_code") or ""),
+            "active_status": str(row.get("active_status") or "active"),
+            "is_active": bool(row.get("is_active", True)),
+        }
+        self.items[str(payload["item_id"])] = payload
+        return payload
 
     @staticmethod
     def _row_to_queue(row: dict[str, object]) -> QueueRow:

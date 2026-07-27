@@ -25,7 +25,12 @@ from batch.application.feature_normalization.repositories import (
     FeatureNormalizationRepositories,
 )
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import (
+    ScaffoldDbWriter,
+    create_db_writer,
+    is_live_db_reader,
+    resolve_job_db_reader,
+)
 
 # 64 hex（BATCH-012 が付与した feature_input_hash 相当のダミー。secret ではない）
 _DEMO_HASH = "b" * 64
@@ -126,13 +131,43 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
-    print(
-        f"DbWriter backend={db_writer.backend} is resolved, "
-        "but real DB read path is not enabled yet. "
-        "Use --scaffold-demo for local/CI.",
-        file=sys.stderr,
+    db_reader = resolve_job_db_reader(
+        scaffold_demo=False,
+        database_url=settings.database_url,
     )
-    return 3
+    if not is_live_db_reader(db_reader):
+        print(
+            "DATABASE_URL is required for non --scaffold-demo BATCH-013 "
+            "(DbReader postgres backend). Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
+        )
+        return 2
+
+    repos = FeatureNormalizationRepositories(db_writer=db_writer, db_reader=db_reader)
+    job = FeatureNormalizationJob(
+        repositories=repos,
+        normalizer=build_scaffold_adapter(),
+    )
+    result = job.run(
+        job_run_id=args.job_run_id,
+        max_items=args.max_items,
+        source=args.source,
+        queue_batch_size=args.queue_batch_size,
+        item_ids=_parse_csv(args.item_ids),
+        queue_ids=_parse_csv(args.queue_ids),
+    )
+    print(
+        f"BATCH-013 status={result.status} "
+        f"db_reader={db_reader.backend} "
+        f"db_writer={db_writer.backend} "
+        f"normalized={result.normalized_count} "
+        f"skipped={result.skipped_count} "
+        f"failed={result.failed_count} "
+        f"normalized_updates={result.item_feature_normalized_update_count} "
+        f"item_meaning_upserts={result.item_meaning_upsert_count} "
+        f"phases={','.join(result.completed_phases)}"
+    )
+    return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 
 if __name__ == "__main__":

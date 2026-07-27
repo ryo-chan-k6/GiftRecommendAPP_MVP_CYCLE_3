@@ -327,8 +327,80 @@ def test_cli_scaffold_demo_returns_zero() -> None:
     assert main(["--scaffold-demo", "--job-run-id", "cli"]) == 0
 
 
-def test_cli_without_scaffold_returns_three() -> None:
-    assert main(["--job-run-id", "cli"]) == 3
+def test_cli_without_scaffold_demo_exits_2_without_database_url(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.feature_normalization import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "cli"]) == 2
+
+
+def test_list_load_raw_and_resolve_config_via_db_reader() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_sem",
+                "item_id": "it_1",
+                "generation_type": "semantic",
+                "queue_status": "processing",
+                "retry_count": 0,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_semantic",
+        (
+            {
+                "item_semantic_id": "is_1",
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+            },
+        ),
+    )
+    reader.seed(
+        "item_feature",
+        tuple(
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+                "feature_code": code,
+                "feature_input_hash": _HASH,
+                "feature_normalization_version_id": DEFAULT_NORMALIZATION_VERSION,
+                "raw_feature_value": 0.5,
+                "normalized_feature_value": None,
+            }
+            for code in MVP_FEATURE_CODES
+        ),
+    )
+    repos = FeatureNormalizationRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    targets, _ = repos.list_target_queues(max_items=10)
+    assert [q.item_generation_queue_id for q in targets] == ["igq_sem"]
+    assert repos.resolve_semantic_config_version(item_id="it_1") == _VERSION
+    raw = repos.load_raw_features(item_id="it_1", semantic_config_version_id=_VERSION)
+    assert len(raw) == len(MVP_FEATURE_CODES)
+    assert raw[0].feature_input_hash == _HASH
 
 
 def test_if_shared_003_uses_in_process_adapter_not_http() -> None:
