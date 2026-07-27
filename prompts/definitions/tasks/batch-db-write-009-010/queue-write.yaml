@@ -1,0 +1,181 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-write-009-010-queue-write"
+  title: "batch-db-write-009-010:queue書込本配線"
+  summary: "Wave 1 として BATCH-009 item_generation_queue の INSERT と active queued の queued_at UPDATE を本番 SQL で本配線する。BATCH-010 は Wave 2。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-write-009-010:BATCH-009/010 queue・semantic書込本格化"
+  epic_issue_number: 1634
+  epic_branch: "feature/epic-1634-batch-db-write-009-010"
+  related_issues:
+    - 1633
+    - 1623
+  related_prs:
+    - 1675
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1633 MERGED 後、BATCH-009 書込は write_rows probe（touch は偽 op=touch_queued_at）のまま。
+  SELECT 済みのため実環境では queue 登録で本線が止まる。
+
+objective: |
+  insert_queue / touch_queue_queued_at を DbWriter の本番 SQL（INSERT / update_rows）で本配線する。
+  BATCH-010 semantic / claim は Wave 2。
+
+scope:
+  - "item_generation_queue INSERT（PK は UUID。DB DEFAULT 相当を client 生成可）"
+  - "active queued の queued_at のみ update_rows"
+  - "偽 op=touch_queued_at マーカー廃止"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "実 DB 疎通（secret なし。CI 既定 live 禁止）"
+  - "IF-DB ギャップ一覧 IF-010 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "BATCH-010 claim / status / item_semantic（Wave 2）"
+  - "Semantic LLM 本接続"
+  - "SELECT 再実装 / 005/007/008 再実装 / 011+"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-009_商品意味生成キュー登録バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_generation_queue/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_generation_queue/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_generation_queue.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-009-010/queue-write.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-write-009-010/queue-write/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "009 queue INSERT / queued_at UPDATE 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "insert_queue が write_rows（実 INSERT）で UUID PK を使う"
+  - "touch_queue_queued_at が update_rows のみで queued_at を更新する"
+  - "偽 op マーカーが残っていない"
+  - "実 DB 疎通結果が PR に記録（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-009-010-queue-write"
+  base: "feature/epic-1634-batch-db-write-009-010"
+  target: "feature/epic-1634-batch-db-write-009-010"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-27"
+    due_date: "2026-08-02"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1634
+      purpose: "親 Epic"
+  issues:
+    - number: 1633
+      purpose: "007/008 書込先行"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/tests/unit/application/test_item_generation_queue.py"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "INSERT / update_rows が本番 SQL か"
+    - "queued_at 以外を UPDATE していないか"
+    - "偽 op マーカーが残っていないか"
+    - "UUID PK が DDL と整合するか"
+    - "実 DB 疎通が記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic Wave 1。BATCH-010 は Wave 2"
+  - "ギャップ一覧 IF-DB-BATCH-010 = queue（BATCH-009）"

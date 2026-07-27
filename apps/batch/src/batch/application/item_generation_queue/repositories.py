@@ -5,7 +5,11 @@
 scaffold / UT.
 
 previous_* / config_version_only etc. are not in DDL → defaults (None/False) when
-mapping DB rows. Write path keeps existing ``write_rows`` probes.
+mapping DB rows.
+
+Write path (IF-DB-BATCH-010 / #1634 Wave 1):
+- ``insert_queue`` → ``write_rows``（実 INSERT。PK は UUID）
+- ``touch_queue_queued_at`` → ``update_rows``（``queued_at`` のみ）
 """
 
 from __future__ import annotations
@@ -320,8 +324,9 @@ class ItemGenerationQueueRepositories:
         queued_at: datetime,
     ) -> dict[str, object]:
         now = queued_at if queued_at.tzinfo else queued_at.replace(tzinfo=UTC)
+        # DDL: item_generation_queue_id uuid PK DEFAULT gen_random_uuid()
         record = {
-            "item_generation_queue_id": f"igq_{uuid.uuid4().hex[:12]}",
+            "item_generation_queue_id": str(uuid.uuid4()),
             "item_id": item_id,
             "generation_type": generation_type,
             "queue_status": "queued",
@@ -349,10 +354,13 @@ class ItemGenerationQueueRepositories:
             write_row = {
                 "item_generation_queue_id": item_generation_queue_id,
                 "queued_at": now,
-                "op": "touch_queued_at",
             }
             self.written_queue_rows.append(dict(write_row))
-            self.db_writer.write_rows("item_generation_queue", (dict(write_row),))
+            self.db_writer.update_rows(
+                "item_generation_queue",
+                set_values={"queued_at": now},
+                equals=(("item_generation_queue_id", item_generation_queue_id),),
+            )
             return dict(row)
         raise KeyError(f"queue row not found: {item_generation_queue_id}")
 

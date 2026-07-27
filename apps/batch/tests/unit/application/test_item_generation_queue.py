@@ -304,7 +304,16 @@ def test_active_queued_row_updates_queued_at_only() -> None:
     assert len(repos.queues) == before_count
     assert repos.queues[0]["item_generation_queue_id"] == "igq_existing"
     assert repos.queues[0]["queued_at"] != datetime(2026, 1, 1, tzinfo=UTC)
-    assert all(c["table"] == "item_generation_queue" for c in db.write_calls)
+    assert db.write_calls == []
+    assert len(db.update_calls) == 1
+    assert db.update_calls[0]["table"] == "item_generation_queue"
+    assert db.update_calls[0]["set_values"] == {
+        "queued_at": repos.queues[0]["queued_at"],
+    }
+    assert db.update_calls[0]["equals"] == (
+        ("item_generation_queue_id", "igq_existing"),
+    )
+    assert all("op" not in str(c) for c in db.update_calls)
 
 
 def test_processing_active_row_skips_register() -> None:
@@ -657,10 +666,16 @@ def test_if_boundary_writes_only_item_generation_queue() -> None:
     ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-if")
     tables = {c["table"] for c in db.write_calls}
     assert tables == {"item_generation_queue"}
+    assert db.update_calls == []
     assert repos.item_write_count == 0
     assert repos.product_diff_write_count == 0
     for call in db.write_calls:
         assert "active_status" not in str(call["rows"])
+        for row in call["rows"]:
+            assert "op" not in row
+            # DDL uuid PK（client 生成）
+            qid = row["item_generation_queue_id"]
+            assert isinstance(qid, str) and len(qid) == 36
 
 
 def test_scaffold_partial_unique_prevents_duplicate_active_insert() -> None:
@@ -739,6 +754,6 @@ def test_fixture_and_logs_have_no_secret_like_values() -> None:
 
     repos, db = _repos()
     result = ItemGenerationQueueJob(repositories=repos).run(job_run_id="run-sec")
-    blob = repr(result) + repr(db.write_calls) + repr(repos.error_logs)
+    blob = repr(result) + repr(db.write_calls) + repr(db.update_calls) + repr(repos.error_logs)
     for needle in ("sk-", "password=", "Bearer ", "DATABASE_URL=", "OPENAI_API_KEY="):
         assert needle not in blob
