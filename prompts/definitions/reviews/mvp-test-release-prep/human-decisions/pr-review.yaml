@@ -1,0 +1,50 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mvp-test-release-prep-human-decisions-pr"
+  title: "mvp-test-release-prep Human 未確定一括確定 PRレビュー"
+  summary: "Human Decision Log resolved 化と最小正本 docs への確定反映を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1646
+  task_definition: null
+  source_branch: "docs/chore-mvp-release-prep-human-decisions"
+  target_branch: "develop"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Human 確定が Decision Log と docs に一致しているか"
+  - "旧 Issue #144/#147/#127 を close する変更が無いこと"
+  - "AI が追加の仕様変更を独断していないか"
+  - "secret 実値なし"
+  - "PR target が develop"
+
+notes:
+  - "Epic #1646 CLOSED 後の follow-up。Related to #1646。Closes 禁止（Epic 再オープン防止）"
+  - "PR 番号確定後に更新"
