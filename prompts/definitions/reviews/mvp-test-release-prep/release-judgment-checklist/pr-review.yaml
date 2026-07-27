@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mvp-test-release-prep-release-judgment-checklist-pr"
+  title: "MVPリリース判定チェックリスト PRレビュー"
+  summary: "docs/14 MVPリリース判定チェックリストの PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+target:
+  pr:
+    number: 1674
+  issue:
+    number: 1673
+  task_definition: "prompts/definitions/tasks/mvp-test-release-prep/release-judgment-checklist.yaml"
+  source_branch: "docs/task-1673-release-judgment-checklist"
+  target_branch: "docs/epic-1646-mvp-test-release-prep"
+  parent_epic_branch: "docs/epic-1646-mvp-test-release-prep"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "§12.2 区分が網羅されているか"
+  - "Critical/High=0 と受入簡易 stg・トリアージ参照があるか"
+  - "必須／任意を AI が独断確定していないか"
+  - "docs/09 を使っていないか"
+  - "Related to #147 / #1673・PR target・Review Definition"
+  - "secret 実値なし"
+
+notes:
+  - "PR 番号確定後に更新"
