@@ -5,7 +5,16 @@
 
 queue OR は equals 二重 fetch + in-process。config version は JOIN せず
 item_semantic → item_feature の順で equals 導出（コードコメント参照）。
-書込本格化は out of scope。
+
+書込（#1635 Wave 2 / #1688 / IF-DB-BATCH-014）:
+- ``claim_or_continue``: semantic+processing は DB no-op。feature+queued は ``update_rows``
+- ``update_queue_status``: keep_processing は DB no-op。終端は ``update_rows``
+- ``persist_normalized_and_meaning``: ``item_feature`` normalized ``update_rows`` +
+  ``item_meaning`` ``upsert_rows``（偽 ``op`` 廃止）
+
+同一トランザクション: DbWriter に明示 multi-statement tx API が無いため、
+順次 ``update_rows`` + ``upsert_rows`` を呼ぶ（Writer 単発コミット）。
+アプリ層厳密同一 tx は未実装（後続強化候補）。
 """
 
 from __future__ import annotations
@@ -300,6 +309,8 @@ class FeatureNormalizationRepositories:
         item_generation_queue_id: str,
         started_at: datetime | None = None,
     ) -> QueueRow | None:
+        """主経路 continue（DB no-op）/ 副経路 claim（条件付き UPDATE）。"""
+
         row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             return None
@@ -308,32 +319,23 @@ class FeatureNormalizationRepositories:
         ts = started_at or datetime.now(UTC)
 
         if gen == "semantic" and status == "processing":
-            self.db_writer.write_rows(
-                "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "op": "continue_processing",
-                    },
-                ),
-            )
+            # 既に processing。追加 UPDATE 不要（偽 op=continue_processing 廃止）。
             return self._row_to_queue(row)
 
         if gen == "feature" and status == "queued":
-            row["queue_status"] = "processing"
-            row["started_at"] = ts
-            self.db_writer.write_rows(
+            result = self.db_writer.update_rows(
                 "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "started_at": ts,
-                        "op": "claim",
-                    },
+                set_values={"queue_status": "processing", "started_at": ts},
+                equals=(
+                    ("item_generation_queue_id", item_generation_queue_id),
+                    ("queue_status", "queued"),
+                    ("generation_type", "feature"),
                 ),
             )
+            if result.rows_affected == 0:
+                return None
+            row["queue_status"] = "processing"
+            row["started_at"] = ts
             return self._row_to_queue(row)
 
         return None
@@ -469,44 +471,57 @@ class FeatureNormalizationRepositories:
         normalized_rows: tuple[ItemFeatureNormalizedUpdateRow, ...],
         item_meaning_row: ItemMeaningUpsertRow | None,
     ) -> None:
-        """IF-DB-BATCH-014: normalized UPDATE + item_meaning UPSERT を同一トランザクションで実施。
+        """IF-DB-BATCH-014: normalized UPDATE + item_meaning UPSERT 本配線。
 
-        raw_feature_value は含めない（BATCH-012 責務）。
-        item_meaning_row が None の場合は normalized 更新のみ（8 軸欠損等）。
+        各軸は ``update_rows``（``normalized_feature_value`` のみ）。
+        ``raw_feature_value`` / 偽 ``op`` は payload に含めない（BATCH-012 責務）。
+        ``item_meaning_row`` が None の場合は normalized 更新のみ（8 軸欠損等）。
+
+        Writer は単発コミットのため、アプリ層の厳密同一トランザクションは未実装。
+        順次呼び出しで近似する（後続強化候補）。
         """
 
         if not normalized_rows:
             return
-        payload = tuple(
-            {
-                "item_id": r.item_id,
-                "semantic_config_version_id": r.semantic_config_version_id,
-                "feature_code": r.feature_code,
-                "feature_input_hash": r.feature_input_hash,
-                "feature_normalization_version_id": r.feature_normalization_version_id,
-                "normalized_feature_value": r.normalized_feature_value,
-                "op": "if_db_batch_014_update_normalized",
-            }
-            for r in normalized_rows
-        )
+
         self.normalized_update_rows.extend(normalized_rows)
         self.item_feature_normalized_update_count += len(normalized_rows)
-        self.db_writer.write_rows("item_feature", payload)
+        for r in normalized_rows:
+            self.db_writer.update_rows(
+                "item_feature",
+                set_values={"normalized_feature_value": r.normalized_feature_value},
+                equals=(
+                    ("item_id", r.item_id),
+                    ("semantic_config_version_id", r.semantic_config_version_id),
+                    ("feature_code", r.feature_code),
+                    ("feature_input_hash", r.feature_input_hash),
+                    ("feature_normalization_version_id", r.feature_normalization_version_id),
+                ),
+            )
 
         if item_meaning_row is not None:
             self.item_meaning_rows.append(item_meaning_row)
             self.item_meaning_upsert_count += 1
-            self.db_writer.write_rows(
+            self.db_writer.upsert_rows(
                 "item_meaning",
                 (
                     {
                         "item_id": item_meaning_row.item_id,
                         "semantic_config_version_id": item_meaning_row.semantic_config_version_id,
+                        "feature_normalization_version_id": (
+                            item_meaning_row.feature_normalization_version_id
+                        ),
                         "item_social": item_meaning_row.item_social,
                         "item_symbolic": item_meaning_row.item_symbolic,
                         "generated_at": item_meaning_row.generated_at,
-                        "op": "if_db_batch_014_upsert_meaning",
                     },
+                ),
+                conflict_columns=("item_id", "semantic_config_version_id"),
+                update_columns=(
+                    "feature_normalization_version_id",
+                    "item_social",
+                    "item_symbolic",
+                    "generated_at",
                 ),
             )
 
@@ -519,37 +534,28 @@ class FeatureNormalizationRepositories:
         error_message: str | None = None,
         keep_processing: bool = False,
     ) -> None:
+        """Queue status 更新。正規化成功時は processing 維持（DB no-op）。"""
+
         row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             raise KeyError(f"queue not found: {item_generation_queue_id}")
         if keep_processing:
-            self.db_writer.write_rows(
-                "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "op": "normalize_success_keep_processing",
-                    },
-                ),
-            )
+            # 成功時: status は processing のまま。完了時刻は付けない（後続 Batch 継続）。
+            # 偽 op=normalize_success_keep_processing 廃止。
             return
-        row["queue_status"] = queue_status
+
+        set_values: dict[str, object] = {"queue_status": queue_status}
         if completed_at is not None:
+            set_values["completed_at"] = completed_at
             row["completed_at"] = completed_at
         if error_message is not None:
+            set_values["error_message"] = error_message
             row["error_message"] = error_message
-        self.db_writer.write_rows(
+        row["queue_status"] = queue_status
+        self.db_writer.update_rows(
             "item_generation_queue",
-            (
-                {
-                    "item_generation_queue_id": item_generation_queue_id,
-                    "queue_status": queue_status,
-                    "completed_at": completed_at,
-                    "error_message": error_message,
-                    "op": "update_status",
-                },
-            ),
+            set_values=set_values,
+            equals=(("item_generation_queue_id", item_generation_queue_id),),
         )
 
     def record_phase(self, *, phase: str, status: str) -> None:

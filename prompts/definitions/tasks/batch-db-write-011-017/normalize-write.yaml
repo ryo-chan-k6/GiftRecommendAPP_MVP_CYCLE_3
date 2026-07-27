@@ -1,0 +1,201 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-write-011-017-normalize-write"
+  title: "batch-db-write-011-017:normalize書込本配線"
+  summary: "Wave 2 として BATCH-013 claim/status と IF-DB-BATCH-014（normalized UPDATE + item_meaning UPSERT）を本番 SQL で本配線する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-write-011-017:BATCH-011〜017書込本格化残"
+  epic_issue_number: 1635
+  epic_branch: "feature/epic-1635-batch-db-write-011-017"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave 1（#1684 / #1685）で BATCH-011/012 claim/status と IF-013 item_feature UPSERT は本配線済み。
+  BATCH-013 は write_rows 偽 op のまま。#1635 Wave 2 で IF-014 を本番 SQL 本配線する。
+
+objective: |
+  claim_or_continue / update_queue_status（BATCH-013）と
+  persist_normalized_and_meaning（IF-014: item_feature normalized UPDATE + item_meaning UPSERT）を
+  DbWriter 本番 SQL で本配線する。Wave 1・embedding / metrics / summary・LLM 本接続は禁止。
+
+scope:
+  - "BATCH-013 claim: semantic+processing は DB no-op。feature+queued は update_rows（条件付き）"
+  - "BATCH-013 status: keep_processing は DB no-op。終端は update_rows"
+  - "IF-014 item_feature: update_rows（normalized_feature_value のみ、5列 equals）"
+  - "IF-014 item_meaning: upsert_rows conflict (item_id, semantic_config_version_id) / update (feature_normalization_version_id, item_social, item_symbolic, generated_at)"
+  - "ItemMeaningUpsertRow に feature_normalization_version_id を含める（DDL §12.2）"
+  - "偽 op マーカー廃止。raw_feature_value 非更新"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "実 DB 疎通（secret なし。CI 既定 live 禁止）"
+  - "IF-DB ギャップ一覧 IF-014 / BATCH-013 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Wave 1（BATCH-011/012 / IF-013）再実装"
+  - "embedding / metrics / summary"
+  - "DbWriter への新 API 追加（必須でなければ）"
+  - "LLM / Embedding API 本接続"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-013_Feature正規化バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_meaning_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/feature_normalization/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/feature_normalization/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_normalization/models.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_normalization/job.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_feature_normalization.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-011-017/normalize-write.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-write-011-017/normalize-write/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-013 claim/status + IF-014 normalized UPDATE + item_meaning UPSERT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "claim continue が DB no-op、feature claim が update_rows"
+  - "終端 status が update_rows、keep_processing が DB no-op"
+  - "item_feature が update_rows（normalized のみ・5列 equals）"
+  - "item_meaning が upsert_rows（conflict 2列・DDL 必須列）"
+  - "偽 op マーカーが残っていない"
+  - "raw_feature_value を更新していない"
+  - "Wave 1 / embedding / metrics / summary を再実装していない"
+  - "LLM 本接続を混入していない"
+  - "実 DB 疎通結果が PR に記録（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-011-017-normalize-write"
+  base: "feature/epic-1635-batch-db-write-011-017"
+  target: "feature/epic-1635-batch-db-write-011-017"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-27"
+    due_date: "2026-08-08"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1635
+      purpose: "親 Epic"
+  issues:
+    - issue: 1684
+      purpose: "Wave 1（011/012）完了前提"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/tests/unit/application/test_feature_normalization.py"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "update_rows / upsert_rows が本番 SQL か"
+    - "claim continue no-op / feature claim 条件が正しいか"
+    - "成功時 processing 維持（DB no-op）か"
+    - "item_feature equals 5列 / set が normalized_feature_value のみか"
+    - "item_meaning conflict 2列 / update 列と feature_normalization_version_id 必須か"
+    - "op / raw_feature_value を payload に含めていないか"
+    - "アプリ層厳密同一 tx 未実装が残リスクとして明記されているか"
+    - "Wave 1 / embedding / metrics を触っていないか"
+    - "実 DB 疎通が記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic #1635 Wave 2。Issue #1688"
+  - "Writer 単発コミットのためアプリ層厳密同一 tx は未実装（後続強化候補）"
+  - "ギャップ一覧 IF-DB-BATCH-014 = BATCH-013"
