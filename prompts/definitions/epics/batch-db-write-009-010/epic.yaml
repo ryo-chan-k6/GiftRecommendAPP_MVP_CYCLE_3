@@ -1,0 +1,204 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-db-write-009-010"
+  title: "batch-db-write-009-010:BATCH-009/010 queue・semantic書込本格化"
+  summary: "BATCH-009 item_generation_queue と BATCH-010 item_semantic の本番書込を本配線する。SELECT は #1623、007/008 は #1633 済み。010 は Rule-first 維持（LLM 非混入）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  E2 T4b で 009/010 フル UPSERT は後続。SELECT #1623 は読取のみ。
+  #1633 で item 側書込完了後、queue 投入と semantic 永続が次ブロッカー。
+  機能・領域単位 Epic（例外）。009 と 010 は同一 Epic（Issue §11 継続）。
+
+objective: |
+  BATCH-009 / 010 の本番 DB 書込を write/upsert/update で本配線し、
+  generation queue → semantic（Rule-first）本線を実 DB で通す。develop 統合は本 Epic PR のみ。
+
+scope:
+  - "Wave 1: BATCH-009 item_generation_queue INSERT + active queued の queued_at UPDATE"
+  - "Wave 2: BATCH-010 claim/status UPDATE + item_semantic UPSERT（conflict item_id + semantic_config_version_id）"
+  - "010 Rule-first adapter 維持（LLM 本接続禁止）"
+  - "偽 write マーカー（op=touch / claim 等）の廃止"
+  - "UT + 実装 Task ごとの実 DB 疎通（local/dev/staging）"
+  - "IF-DB ギャップ一覧の進捗反映"
+  - "secret / .env 実値禁止"
+
+out_of_scope:
+  - "Semantic LLM 本接続"
+  - "DB SELECT 本配線（#1623）"
+  - "005/007/008 書込（#1632/#1633）"
+  - "011 以降 feature/embedding 書込（#1635）"
+  - "E4 / 親 workflow schedule"
+  - "DDL 破壊的変更（必要時は Human 判断）"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-009_商品意味生成キュー登録バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-010_Item Semantic生成バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_generation_queue_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_semantic_テーブル定義書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_generation_queue/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_semantic/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_generation_queue/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/src/batch/application/item_semantic/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/tests/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/epics/batch-db-write-009-010/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-009-010/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-db-write-009-010/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "Wave 1: BATCH-009 queue 書込"
+  - "Wave 2: BATCH-010 semantic 書込"
+  - "Epic PR → develop"
+
+acceptance_criteria:
+  - "Epic Branch が作成されている（no-branch 解除）"
+  - "009/010 書込が実 DB 疎通で成功し PR に記録（secret なし）"
+  - "LLM 本接続を混入していない"
+  - "Epic PR target が develop"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-009-010"
+  name: "feature/epic-1634-batch-db-write-009-010"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-27"
+    due_date: "2026-08-06"
+
+issue:
+  number: 1634
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/**"
+    - "docs/06_実装設計/database/**"
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/tests/**"
+    - "prompts/definitions/epics/batch-db-write-009-010/**"
+    - "prompts/definitions/tasks/batch-db-write-009-010/**"
+    - "prompts/definitions/reviews/batch-db-write-009-010/**"
+  forbidden_paths:
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "queue-write"
+    - "semantic-write"
+
+dependencies:
+  epics:
+    - issue: 1633
+      purpose: "007/008 item 書込 MERGED"
+    - issue: 1623
+      purpose: "SELECT 本配線 MERGED"
+    - issue: 1561
+      purpose: "DbWriter 基盤"
+  issues: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "009/010 書込が本番 SQL か"
+    - "LLM 本接続が混入していないか"
+    - "実 DB 疎通が記録されているか"
+    - "Epic PR target が develop"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Wave 1=009、Wave 2=010。同一 Epic。"
+  - "ギャップ一覧の IF-010=queue / IF-011=semantic と BATCH-009/010 の対応に注意。"
