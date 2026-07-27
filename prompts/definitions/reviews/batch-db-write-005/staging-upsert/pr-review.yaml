@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1663
   issue:
     number: 1660
   task_definition: "prompts/definitions/tasks/batch-db-write-005/staging-upsert.yaml"
