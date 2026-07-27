@@ -17,8 +17,10 @@ from batch.application.raw_staging.hashing import content_hash_for_bytes
 from batch.application.raw_staging.models import (
     ItemTransformBundle,
     RawMetadataSeed,
+    StagingGenreRow,
     StagingItemImageRow,
     StagingItemRow,
+    StagingRankingSignalRow,
 )
 from batch.infrastructure.db import DbReader, DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient, ObjectStorageError
@@ -51,8 +53,8 @@ class RawStagingRepositories:
     staging_item_images: dict[tuple[str, str, str], dict[str, object]] = field(
         default_factory=dict
     )
-    staging_ranking: list[dict[str, object]] = field(default_factory=list)
-    staging_genre: list[dict[str, object]] = field(default_factory=list)
+    staging_ranking: dict[tuple[str, int], dict[str, object]] = field(default_factory=dict)
+    staging_genre: dict[tuple[str, int], dict[str, object]] = field(default_factory=dict)
     # boundary probes — must stay empty under correct job behavior
     written_item_rows: list[dict[str, object]] = field(default_factory=list)
     written_product_diff_rows: list[dict[str, object]] = field(default_factory=list)
@@ -460,6 +462,111 @@ class RawStagingRepositories:
             )
             image_count += up
         return item_count, image_count
+
+    def upsert_staging_ranking_signal(self, row: StagingRankingSignalRow) -> dict[str, object]:
+        key = (row.raw_metadata_id, row.rank)
+        existing = self.staging_ranking.get(key)
+        # scaffold / UT: keep stable in-memory id. Postgres PK uses gen_random_uuid().
+        staging_id = (
+            str(existing["staging_ranking_signal_id"])
+            if existing and existing.get("staging_ranking_signal_id")
+            else f"srs_{uuid.uuid4().hex[:12]}"
+        )
+        staged_at = row.staged_at or datetime.now(UTC)
+        record: dict[str, object] = {
+            "staging_ranking_signal_id": staging_id,
+            "raw_metadata_id": row.raw_metadata_id,
+            "external_item_code": row.external_item_code,
+            "external_genre_id": row.external_genre_id,
+            "rank": row.rank,
+            "period": row.period,
+            "last_build_date": row.last_build_date,
+            "staged_at": staged_at,
+        }
+        self.staging_ranking[key] = record
+        # Omit PK from upsert payload: DB default on insert; never overwrite PK.
+        persist_row = {
+            "raw_metadata_id": row.raw_metadata_id,
+            "external_item_code": row.external_item_code,
+            "external_genre_id": row.external_genre_id,
+            "rank": row.rank,
+            "period": row.period,
+            "last_build_date": row.last_build_date,
+            "staged_at": staged_at,
+        }
+        self.db_writer.upsert_rows(
+            "staging_ranking_signal",
+            (persist_row,),
+            conflict_columns=("raw_metadata_id", "rank"),
+            update_columns=(
+                "external_item_code",
+                "external_genre_id",
+                "period",
+                "last_build_date",
+                "staged_at",
+            ),
+        )
+        return record
+
+    def upsert_staging_genre(self, row: StagingGenreRow) -> dict[str, object]:
+        key = (row.raw_metadata_id, row.external_genre_id)
+        existing = self.staging_genre.get(key)
+        staging_id = (
+            str(existing["staging_genre_id"])
+            if existing and existing.get("staging_genre_id")
+            else f"sg_{uuid.uuid4().hex[:12]}"
+        )
+        staged_at = row.staged_at or datetime.now(UTC)
+        record: dict[str, object] = {
+            "staging_genre_id": staging_id,
+            "raw_metadata_id": row.raw_metadata_id,
+            "source": row.source,
+            "external_genre_id": row.external_genre_id,
+            "genre_name": row.genre_name,
+            "parent_external_genre_id": row.parent_external_genre_id,
+            "genre_level": row.genre_level,
+            "is_leaf": row.is_leaf,
+            "staged_at": staged_at,
+        }
+        self.staging_genre[key] = record
+        persist_row = {
+            "raw_metadata_id": row.raw_metadata_id,
+            "source": row.source,
+            "external_genre_id": row.external_genre_id,
+            "genre_name": row.genre_name,
+            "parent_external_genre_id": row.parent_external_genre_id,
+            "genre_level": row.genre_level,
+            "is_leaf": row.is_leaf,
+            "staged_at": staged_at,
+        }
+        self.db_writer.upsert_rows(
+            "staging_genre",
+            (persist_row,),
+            conflict_columns=("raw_metadata_id", "external_genre_id"),
+            update_columns=(
+                "source",
+                "genre_name",
+                "parent_external_genre_id",
+                "genre_level",
+                "is_leaf",
+                "staged_at",
+            ),
+        )
+        return record
+
+    def persist_ranking_rows(self, rows: tuple[StagingRankingSignalRow, ...]) -> int:
+        count = 0
+        for row in rows:
+            self.upsert_staging_ranking_signal(row)
+            count += 1
+        return count
+
+    def persist_genre_rows(self, rows: tuple[StagingGenreRow, ...]) -> int:
+        count = 0
+        for row in rows:
+            self.upsert_staging_genre(row)
+            count += 1
+        return count
 
     def mark_staged(self, *, raw_metadata_id: str, staged_at: datetime | None = None) -> None:
         meta = self.raw_metadata.get(raw_metadata_id)

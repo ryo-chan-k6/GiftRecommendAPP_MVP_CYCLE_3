@@ -277,27 +277,39 @@ class RawStagingJob:
             self._repos.record_phase(phase="transform", status="succeeded")
 
         if transformed.skipped:
-            # stub path: count as skip (not failure); do not mark staged
+            # stub path (attribute_search 等): count as skip (not failure); do not mark staged
             result.skipped_raw_ids.append(meta.raw_metadata_id)
             return "skipped"
 
         # validate
-        accepted = validate_transform_result(transformed)
+        validated = validate_transform_result(transformed)
         phases_seen.add("validate")
         if "validate" not in result.completed_phases:
             result.completed_phases.append("validate")
             self._repos.record_phase(phase="validate", status="succeeded")
 
-        if not accepted:
+        # persist: items / ranking / genre のいずれか（または複数）
+        persisted = False
+        if validated.items:
+            item_count, image_count = self._repos.persist_item_bundles(validated.items)
+            result.staging_item_upsert_count += item_count
+            result.staging_item_image_upsert_count += image_count
+            persisted = True
+        if validated.ranking_rows:
+            ranking_count = self._repos.persist_ranking_rows(validated.ranking_rows)
+            result.staging_ranking_signal_upsert_count += ranking_count
+            persisted = True
+        if validated.genre_rows:
+            genre_count = self._repos.persist_genre_rows(validated.genre_rows)
+            result.staging_genre_upsert_count += genre_count
+            persisted = True
+
+        if not persisted:
             raise StagingValidationError(
                 code="GRS-VAL-001",
-                message="no valid staging items in raw",
+                message="no valid staging rows in raw",
             )
 
-        # persist
-        item_count, image_count = self._repos.persist_item_bundles(accepted)
-        result.staging_item_upsert_count += item_count
-        result.staging_item_image_upsert_count += image_count
         phases_seen.add("persist")
         if "persist" not in result.completed_phases:
             result.completed_phases.append("persist")

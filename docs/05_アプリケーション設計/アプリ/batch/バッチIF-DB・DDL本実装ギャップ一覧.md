@@ -7,7 +7,7 @@
 | 文書種別 | E2 棚卸し正本（docs） |
 | 対象 | IF-DB-BATCH-001〜017 / 020 / 021 / IF-VEC-BATCH-001（001〜017 中心） |
 | 作成日 | 2026-07-22 |
-| 更新日 | 2026-07-27（#1632 Wave 1: IF-005 staging UPSERT 本配線進行） |
+| 更新日 | 2026-07-27（#1632 Wave 2: IF-005 ranking/genre UPSERT 本配線進行 / #1666） |
 | 関連 Epic | [#1561](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1561) / 読取後続 [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) / 書込後続 [#1632](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1632) |
 | 関連 Task | [#1562](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1562)（T1） / [#1568](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1568)（T2） / [#1576](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1576)（T3） / [#1579](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1579)（T4a） / [#1583](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1583)（T4b） / [#1588](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1588)（T5） |
 | 先行 | E0 ギャップ一覧 / E1 親 workflow（#1560 MERGED） |
@@ -44,7 +44,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-DB（001〜017,+020/021,+VEC） | インターフェース一覧に定義あり |
 | 物理テーブル / migrations | initial + 増分 **5 本**（D17: `item_feature_input` / `item_embedding_input` 追加）。主要テーブルは概ね存在 |
 | `apps/batch` DB 書込 | **T3: `PostgresDbWriter` + `create_db_writer`**。未設定 / `scaffold://` は `ScaffoldDbWriter`。**代表 IF は UPSERT 済**（T4a: 006/020、T4b: 012/015）。他 IF の repositories は in-memory のまま |
-| CLI | **Wave A / Wave B は非 `--scaffold-demo` で `create_db_writer` 配線済**。読取 SELECT 本実装は [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)。他 IF フル UPSERT は後続（IF-005 は [#1632](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1632) Wave 1 進行中） |
+| CLI | **Wave A / Wave B は非 `--scaffold-demo` で `create_db_writer` 配線済**。読取 SELECT 本実装は [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)。他 IF フル UPSERT は後続（IF-005 は [#1632](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1632) Wave 1+2 進行中） |
 | 019 出力物理 | migration に CREATE なし（**E2 除外**） |
 | 旧 OPEN #102/#133 | **本 Epic（#1561）へ寄せ、not planned でクローズ**（Human 確定・2026-07-22） |
 | #109 / #136 | E0 で **E2取込**。T2（列差分棚卸し必須）と突合 |
@@ -77,7 +77,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-DB-BATCH-002 | `api_call_log` | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-003 | `fetch_cursor` | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-004 | `raw_product_metadata` | initial にあり | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-005 | staging_* | initial にあり | **#1632 Wave 1 進行中**: `staging_item` / `staging_item_image` UPSERT + `raw_product_metadata` UPDATE（#1660）。`staging_ranking_signal` / `staging_genre` は Wave 2 | |
+| IF-DB-BATCH-005 | staging_* | initial にあり | **#1632 Wave 1+2 進行中**: Wave 1（#1660）`staging_item` / `staging_item_image` UPSERT + `raw_product_metadata` UPDATE。Wave 2（#1666）`staging_ranking_signal` / `staging_genre` UPSERT + transform stub 解除。`external_genre` 非書込維持 | |
 | IF-DB-BATCH-006 | `product_diff_result` | initial にあり | **T4a**: `upsert_rows`（ON CONFLICT） | Wave A CLI 配線済み。読取 SELECT は未 |
 | IF-DB-BATCH-007 | `item` / image / review | initial にあり | ScaffoldDbWriter / in-memory | Wave A CLI 配線のみ（フル UPSERT は後続） |
 | IF-DB-BATCH-008 | `ranking_snapshot` / popularity | initial にあり | ScaffoldDbWriter / in-memory | |
@@ -106,9 +106,9 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | C. Handoff-only IF（旧） | 012 / 015 | **T2 で中間永続テーブル化**。**T4b で UPSERT 解除済**（読取 SELECT は後続） |
 | D. 論理契約 stub | 019 | 物理未整備（E2 外） |
 | E. 外部/生成 Scaffold | Rakuten / Embedding / LLM adapter | E3 領域 |
-| F. PostgresDbWriter（T3） | `infrastructure/db/writer.py` | `DATABASE_URL` 実 URL 時。汎用 INSERT + **`upsert_rows`（T4a）** + **`update_rows` / `delete_rows`（#1632 Wave 1）**。代表 IF 配線は T4a/T4b。IF-005 staging は Wave 1 本配線中 |
+| F. PostgresDbWriter（T3） | `infrastructure/db/writer.py` | `DATABASE_URL` 実 URL 時。汎用 INSERT + **`upsert_rows`（T4a）** + **`update_rows` / `delete_rows`（#1632 Wave 1）**。代表 IF 配線は T4a/T4b。IF-005 staging は Wave 1+2 本配線中 |
 
-**横断事実:** `create_db_writer(database_url)` で Scaffold / Postgres を切替可能（reco `create_database_session` と同型）。Wave A/B CLI 配線済。**本番 SQL は代表 IF（006/020/012/015）配線済**。**IF-005 staging（item/image + import_status）は #1632 Wave 1（#1660）進行中**。他 IF・読取 SELECT は後続（読取は #1623）。
+**横断事実:** `create_db_writer(database_url)` で Scaffold / Postgres を切替可能（reco `create_database_session` と同型）。Wave A/B CLI 配線済。**本番 SQL は代表 IF（006/020/012/015）配線済**。**IF-005 staging は #1632 Wave 1（#1660: item/image/import_status）+ Wave 2（#1666: ranking/genre）進行中**。他 IF・読取 SELECT は後続（読取は #1623）。
 
 ---
 
@@ -167,6 +167,8 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 2026-07-23 | T4b（#1583）: §1.2 / §2 / §5 要約を T4a/T4b 後の実態に追随（Wave A/DDL 本体変更なし） |
 | 2026-07-23 | T5（#1588）: UT 境界・CLI 配線・代表 IF・scaffold 回帰を反映 |
 | 2026-07-24 | T5 完了反映。Epic PR → develop 準備 |
+| 2026-07-27 | #1632 Wave 1（#1660）: IF-005 staging_item / image / import_status UPSERT 本配線 |
+| 2026-07-27 | #1632 Wave 2（#1666）: IF-005 staging_ranking_signal / staging_genre UPSERT + transform stub 解除 |
 
 ---
 
@@ -240,7 +242,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | Wave A CLI 配線 | genre_sync / ranking_snapshot / item_pseudo_diff / raw_staging / product_diff / item_apply / item_active_status / item_recheck で `create_db_writer` |
 | IF-006 | `product_diff_result` UPSERT（`(batch_run_id, external_item_code)`） |
 | IF-020 | `item_active_status_candidate` UPSERT（`(batch_run_id, source, external_item_code)`） |
-| 未実施（後続） | Wave A 読取 SELECT（#1623）、003/007/008 フル UPSERT。**005 staging（item/image + import_status）は #1632 Wave 1（#1660）進行中**。ranking/genre は Wave 2 |
+| 未実施（後続） | Wave A 読取 SELECT（#1623）、003/007/008 フル UPSERT。**005 staging は #1632 Wave 1+2 進行中**（#1660 item/image、#1666 ranking/genre） |
 
 ---
 
@@ -265,4 +267,18 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | scaffold-demo | product_diff / feature_input_hash / embedding_input_hash |
 | production DB 結合 | **未実施**（方針どおり除外） |
 | 次 | **Epic PR → develop**（#1561） |
+
+---
+
+## 14. #1632 Wave 2 IF-005 ranking/genre UPSERT 進捗（事実・2026-07-27 / #1666）
+
+| 項目 | 状態 |
+| ---- | ---- |
+| `staging_ranking_signal` UPSERT | `upsert_rows` / conflict `(raw_metadata_id, rank)` |
+| `staging_genre` UPSERT | `upsert_rows` / conflict `(raw_metadata_id, external_genre_id)` |
+| transform stub 解除 | `item_ranking` / `genre_search` → Staging 候補生成 |
+| validate | items 空でも ranking/genre があれば受理 |
+| `external_genre` | **非書込維持**（BATCH-001 責務） |
+| UT | `test_raw_staging.py` ranking/genre 成功書込 |
+| 残 | Wave 1 回帰確認・実 DB 疎通結果の PR 記録・Human Review |
 

@@ -440,13 +440,40 @@ def test_validation_missing_required_rejects_without_staging_write() -> None:
     assert "staging_item" not in _writer_tables(db)
 
 
-def test_ranking_and_genre_stub_skip_without_polluting_staging_item() -> None:
-    """§16 No.8: ranking/genre は stub skip。staging_item 汚染なし・意図外表なし。"""
+def test_ranking_and_genre_upsert_without_polluting_staging_item() -> None:
+    """§16 No.8: ranking/genre は Staging 書込成功。staging_item / external_genre 非書込。"""
 
+    ranking_payload = {
+        "lastBuildDate": "2026-07-13T12:00:00+0900",
+        "genreId": 100371,
+        "period": "daily",
+        "Items": [
+            {"rank": 1, "itemCode": "shop:rank-1"},
+            {"Item": {"rank": 2, "itemCode": "shop:rank-2"}},
+        ],
+    }
+    genre_payload = {
+        "genre": {
+            "genreId": 0,
+            "genreName": "root",
+            "level": 0,
+            "parentGenreId": None,
+        },
+        "children": [
+            {
+                "genreId": 100371,
+                "jaName": "レディースファッション",
+                "level": 1,
+                "parentGenreId": 0,
+            }
+        ],
+        "ancestors": [],
+        "siblings": [],
+    }
     repos, _, db = _seed_repos(
         payloads={
-            "rm_rank": {"Items": []},
-            "rm_genre": {"children": []},
+            "rm_rank": ranking_payload,
+            "rm_genre": genre_payload,
         },
         source_api_by_raw={
             "rm_rank": "item_ranking",
@@ -461,20 +488,57 @@ def test_ranking_and_genre_stub_skip_without_polluting_staging_item() -> None:
         source_api=("item_ranking", "genre_search"),
     )
 
-    # MVP stub: skip without failure; no staging_item writes
     assert result.status == "succeeded"
-    assert set(result.skipped_raw_ids) == {"rm_rank", "rm_genre"}
-    assert result.succeeded_raw_ids == []
+    assert set(result.succeeded_raw_ids) == {"rm_rank", "rm_genre"}
+    assert result.skipped_raw_ids == []
     assert result.staging_item_upsert_count == 0
+    assert result.staging_ranking_signal_upsert_count == 2
+    assert result.staging_genre_upsert_count == 2
     assert repos.staging_items == {}
-    assert repos.staging_ranking == []
-    assert repos.staging_genre == []
+    assert ("rm_rank", 1) in repos.staging_ranking
+    assert ("rm_rank", 2) in repos.staging_ranking
+    assert repos.staging_ranking[("rm_rank", 1)]["external_item_code"] == "shop:rank-1"
+    assert repos.staging_ranking[("rm_rank", 1)]["external_genre_id"] == 100371
+    assert ("rm_genre", 0) in repos.staging_genre
+    assert ("rm_genre", 100371) in repos.staging_genre
+    assert repos.staging_genre[("rm_genre", 0)]["is_leaf"] is False
+    assert repos.staging_genre[("rm_genre", 100371)]["is_leaf"] is True
+    assert repos.raw_metadata["rm_rank"]["import_status"] == "staged"
+    assert repos.raw_metadata["rm_genre"]["import_status"] == "staged"
+    assert result.written_external_genre_rows == []
+    assert result.written_item_rows == []
+    assert result.written_product_diff_rows == []
+
     written = _writer_tables(db)
     assert "staging_item" not in written
     assert "staging_item_image" not in written
+    assert "staging_ranking_signal" in _upsert_tables(db)
+    assert "staging_genre" in _upsert_tables(db)
+    assert "raw_product_metadata" in _update_tables(db)
     assert written.isdisjoint(_FORBIDDEN_TABLES)
-    # ranking/genre 変換未実装のため staging_ranking / staging_genre も書かない（stub skip）
 
+    ranking_upsert = next(c for c in db.upsert_calls if c["table"] == "staging_ranking_signal")
+    assert ranking_upsert["conflict_columns"] == ("raw_metadata_id", "rank")
+    assert "staging_ranking_signal_id" not in ranking_upsert["rows"][0]
+    assert ranking_upsert["update_columns"] == (
+        "external_item_code",
+        "external_genre_id",
+        "period",
+        "last_build_date",
+        "staged_at",
+    )
+
+    genre_upsert = next(c for c in db.upsert_calls if c["table"] == "staging_genre")
+    assert genre_upsert["conflict_columns"] == ("raw_metadata_id", "external_genre_id")
+    assert "staging_genre_id" not in genre_upsert["rows"][0]
+    assert genre_upsert["update_columns"] == (
+        "source",
+        "genre_name",
+        "parent_external_genre_id",
+        "genre_level",
+        "is_leaf",
+        "staged_at",
+    )
 
 def test_failed_reset_to_raw_saved_then_restage() -> None:
     """§16 No.10: failed → raw_saved リセット後に再ステージ可（test-only metadata 更新）。"""
