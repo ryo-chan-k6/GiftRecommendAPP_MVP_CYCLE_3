@@ -329,8 +329,140 @@ def test_cli_scaffold_demo_returns_zero(capsys) -> None:
     assert "status=succeeded" in out
 
 
-def test_cli_without_scaffold_returns_three() -> None:
-    assert main(["--job-run-id", "cli"]) == 3
+def test_cli_without_scaffold_requires_database_url(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.import_summary import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings as scaffold_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "cli"]) == 2
+
+
+def test_require_and_loads_via_db_reader() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "batch_run_log",
+        (
+            {
+                "batch_run_id": _RUN,
+                "run_status": "succeeded",
+            },
+        ),
+    )
+    reader.seed(
+        "api_call_log",
+        (
+            {
+                "api_call_log_id": "acl_1",
+                "batch_run_id": _RUN,
+                "source_api": "item_search",
+                "item_count": 4,
+            },
+            {
+                "api_call_log_id": "acl_other",
+                "batch_run_id": "other-run",
+                "source_api": "item_search",
+                "item_count": 99,
+            },
+        ),
+    )
+    reader.seed(
+        "product_diff_result",
+        (
+            {
+                "product_diff_result_id": "pdr_1",
+                "batch_run_id": _RUN,
+                "staging_item_id": "si_1",
+                "diff_status": "new",
+            },
+            {
+                "product_diff_result_id": "pdr_2",
+                "batch_run_id": _RUN,
+                "staging_item_id": "si_2",
+                "diff_status": "updated",
+            },
+        ),
+    )
+    reader.seed(
+        "raw_product_metadata",
+        (
+            {
+                "raw_metadata_id": "raw_1",
+                "api_call_log_id": "acl_1",
+                "source_api": "item_search",
+            },
+        ),
+    )
+    reader.seed(
+        "staging_item",
+        (
+            {
+                "staging_item_id": "si_1",
+                "raw_metadata_id": "raw_1",
+            },
+            {
+                "staging_item_id": "si_orphan",
+                "raw_metadata_id": "raw_orphan",
+            },
+        ),
+    )
+    repos = ImportSummaryRepositories(
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        seed_default_source_api="item_search",
+    )
+    run = repos.require_batch_run(_RUN)
+    assert run.status == "succeeded"
+    api_calls = repos.load_api_calls(batch_run_id=_RUN)
+    assert len(api_calls) == 1
+    assert api_calls[0].item_count == 4
+    diffs = repos.load_diffs(batch_run_id=_RUN)
+    assert len(diffs) == 2
+    assert {d.diff_status for d in diffs} == {"new", "updated"}
+    assert all(d.source_api == "item_search" for d in diffs)
+    staging = repos.load_staging_items(batch_run_id=_RUN)
+    assert len(staging) == 1
+    assert staging[0].source_api == "item_search"
+    assert any(c["table"] == "batch_run_log" for c in reader.fetch_calls)
+    assert any(c["table"] == "api_call_log" for c in reader.fetch_calls)
+    assert any(c["table"] == "product_diff_result" for c in reader.fetch_calls)
+    assert any(c["table"] == "staging_item" for c in reader.fetch_calls)
+
+
+def test_cli_non_demo_runs_job_with_live_reader(monkeypatch) -> None:
+    """DATABASE_URL ありなら exit 3 固定せず Job を起動する。"""
+
+    from dataclasses import replace
+
+    from batch.application.import_summary import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings as scaffold_settings
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+
+    reader = ScaffoldDbReader()
+    reader.backend = "postgres"
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(
+            scaffold_settings(),
+            database_url="postgresql://localhost:5432/gift",
+        ),
+    )
+    monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
+    monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
+
+    code = cli.main(["--job-run-id", "wave-g-run", "--batch-run-id", "missing-run"])
+    # missing batch_run_log → failed (exit 1). Important: Job started (not exit-2/old exit-3).
+    assert code == 1
+    assert reader.fetch_calls
 
 
 def test_scaffold_demo_job_succeeds() -> None:
