@@ -12,7 +12,7 @@ work_mode: "ai-agent"
 
 target:
   pr:
-    number: null
+    number: 1665
   issue:
     number: 1664
   task_definition: "prompts/definitions/tasks/mvp-test-release-prep/defect-triage-ops.yaml"
