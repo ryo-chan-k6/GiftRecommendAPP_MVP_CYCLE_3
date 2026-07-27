@@ -90,10 +90,13 @@ def test_claim_generate_upsert_keeps_processing() -> None:
     assert set(ITEM_SEMANTIC_PHASES).issubset(set(result.completed_phases))
     assert repos.queues["igq_1"]["queue_status"] == "processing"
     assert len(repos.written_item_semantic_rows) == 1
-    tables = {c["table"] for c in db.write_calls}
-    assert "item_semantic" in tables
-    assert "item_generation_queue" in tables
-    assert tables.isdisjoint(_FORBIDDEN_WRITE_TABLES)
+    assert db.write_calls == []
+    assert any(c["table"] == "item_semantic" for c in db.upsert_calls)
+    assert any(c["table"] == "item_generation_queue" for c in db.update_calls)
+    upsert_tables = {c["table"] for c in db.upsert_calls}
+    update_tables = {c["table"] for c in db.update_calls}
+    assert upsert_tables.isdisjoint(_FORBIDDEN_WRITE_TABLES)
+    assert update_tables.isdisjoint(_FORBIDDEN_WRITE_TABLES)
     assert repos.queue_insert_count == 0
     assert repos.item_write_count == 0
 
@@ -129,6 +132,7 @@ def test_skip_unchanged_no_upsert() -> None:
     assert result.semantic_generated_count == 0
     assert repos.queues["igq_1"]["queue_status"] == "skipped"
     assert repos.written_item_semantic_rows == []
+    assert not any(c["table"] == "item_semantic" for c in db.upsert_calls)
     assert not any(c["table"] == "item_semantic" for c in db.write_calls)
 
 
@@ -215,10 +219,26 @@ def test_if_boundary_no_queue_insert() -> None:
     ItemSemanticJob(repositories=repos).run(job_run_id="run-boundary")
 
     assert repos.queue_insert_count == 0
-    for call in db.write_calls:
-        if call["table"] == "item_generation_queue":
-            for row in call["rows"]:
-                assert row.get("op") in {"claim", "update_status", "semantic_success_keep_processing"}
+    assert db.write_calls == []
+    # claim + terminal は update_rows。成功 keep_processing は DB no-op。
+    claim_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "processing"
+    ]
+    assert len(claim_updates) == 1
+    assert claim_updates[0]["equals"] == (
+        ("item_generation_queue_id", "igq_1"),
+        ("queue_status", "queued"),
+        ("generation_type", "semantic"),
+    )
+    semantic_upserts = [c for c in db.upsert_calls if c["table"] == "item_semantic"]
+    assert len(semantic_upserts) == 1
+    assert semantic_upserts[0]["conflict_columns"] == ("item_id", "semantic_config_version_id")
+    for row in semantic_upserts[0]["rows"]:
+        assert "semantic_input_hash" not in row
+        assert "op" not in row
 
 
 def test_cli_scaffold_demo_exit_0() -> None:
@@ -634,14 +654,17 @@ def test_if_shared_001_adapter_called_queue_dml_on_batch() -> None:
     result = ItemSemanticJob(repositories=repos, generator=adapter).run(job_run_id="run-if")
     assert calls == ["igq_1"]
     assert result.semantic_generated_count == 1
-    queue_ops = [
-        row.get("op")
-        for c in db.write_calls
+    # claim は update_rows。成功 keep_processing は no-op（write なし）
+    claim_updates = [
+        c
+        for c in db.update_calls
         if c["table"] == "item_generation_queue"
-        for row in c["rows"]
+        and c["set_values"].get("queue_status") == "processing"
+        and ("queue_status", "queued") in c["equals"]
     ]
-    assert "claim" in queue_ops
-    assert "semantic_success_keep_processing" in queue_ops
+    assert len(claim_updates) == 1
+    assert db.write_calls == []
+    assert any(c["table"] == "item_semantic" for c in db.upsert_calls)
 
 
 def test_explicit_queue_ids_subset() -> None:
@@ -666,7 +689,7 @@ def test_fixture_and_logs_have_no_secret_like_values() -> None:
 
     repos, db = _repos()
     result = ItemSemanticJob(repositories=repos).run(job_run_id="run-sec")
-    blob = repr(result) + repr(db.write_calls) + repr(repos.error_logs) + repr(repos.phase_logs)
+    blob = repr(result) + repr(db.write_calls) + repr(db.update_calls) + repr(db.upsert_calls) + repr(repos.error_logs) + repr(repos.phase_logs)
     forbidden = ("password", "api_key", "secret", "Bearer ", "sk-", "postgresql://")
     lowered = blob.lower()
     for token in forbidden:

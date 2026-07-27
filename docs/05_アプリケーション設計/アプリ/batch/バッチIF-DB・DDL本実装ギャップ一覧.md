@@ -83,7 +83,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-DB-BATCH-008 | `ranking_snapshot` / popularity | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-009 | `item.active_status` | initial（列） | **#1633 Wave 2（#1671）**: BATCH-008 `update_rows`（`active_status` / `is_active`、equals `(source, external_item_code)`）。`write_rows` 禁止 | Wave 1 の item UPSERT とは分離 |
 | IF-DB-BATCH-010 | `item_generation_queue` | initial にあり | **#1634 Wave 1（#1677）**: BATCH-009 `write_rows` INSERT（UUID PK）+ active `queued` の `queued_at` のみ `update_rows`。偽 `op=touch_queued_at` 廃止。claim / status / `item_semantic` は Wave 2（IF-011） | |
-| IF-DB-BATCH-011 | `item_semantic` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-011 | `item_semantic` | initial にあり | **#1634 Wave 2（#1679）**: BATCH-010 claim `update_rows`（queued+semantic→processing）+ 終端 status `update_rows` + `item_semantic` UPSERT conflict `(item_id, semantic_config_version_id)`。成功時 processing 維持は DB no-op。偽 `op` 廃止。Rule-first 維持 | |
 | IF-DB-BATCH-012 | `item_feature_input`（中間） | D17 migration あり | **T4b**: `upsert_rows` | T2 CREATE + Wave B UPSERT。読取 SELECT は未 |
 | IF-DB-BATCH-013 | `item_feature` | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-014 | normalized / `item_meaning` | initial（列・テーブル） | ScaffoldDbWriter / in-memory | |
@@ -106,9 +106,9 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | C. Handoff-only IF（旧） | 012 / 015 | **T2 で中間永続テーブル化**。**T4b で UPSERT 解除済**（読取 SELECT は後続） |
 | D. 論理契約 stub | 019 | 物理未整備（E2 外） |
 | E. 外部/生成 Scaffold | Rakuten / Embedding / LLM adapter | E3 領域 |
-| F. PostgresDbWriter（T3） | `infrastructure/db/writer.py` | `DATABASE_URL` 実 URL 時。汎用 INSERT + **`upsert_rows`（T4a）** + **`update_rows` / `delete_rows`（#1632 Wave 1）**。代表 IF 配線は T4a/T4b。IF-005 staging は #1632 Wave 1+2 本配線済（Epic Branch）。**IF-007 item 系は #1633 Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 2 Epic Branch MERGED**。**IF-010 queue（BATCH-009）は #1634 Wave 1（#1677）本配線（Epic Branch）** |
+| F. PostgresDbWriter（T3） | `infrastructure/db/writer.py` | `DATABASE_URL` 実 URL 時。汎用 INSERT + **`upsert_rows`（T4a）** + **`update_rows` / `delete_rows`（#1632 Wave 1）**。代表 IF 配線は T4a/T4b。IF-005 staging は #1632 Wave 1+2 本配線済（Epic Branch）。**IF-007 item 系は #1633 Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 2 Epic Branch MERGED**。**IF-010 queue（BATCH-009）は #1634 Wave 1（#1677）本配線**。**IF-011 semantic（BATCH-010）は #1634 Wave 2（#1679）本配線（Epic Branch）** |
 
-**横断事実:** `create_db_writer(database_url)` で Scaffold / Postgres を切替可能（reco `create_database_session` と同型）。Wave A/B CLI 配線済。**本番 SQL は代表 IF（006/020/012/015）配線済**。**IF-005 staging は #1632 Wave 1+2 Epic Branch MERGED**（item/image/import_status + ranking/genre）。**IF-007 item / item_image / item_review_summary は #1633 Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 1+2 Epic Branch MERGED**（develop は Epic PR）。**IF-010 queue（BATCH-009）は #1634 Wave 1（#1677）本配線（Epic Branch）**。他 IF フル UPSERT は [#1634](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1634) / [#1635](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1635) 以降。読取 SELECT は #1623。
+**横断事実:** `create_db_writer(database_url)` で Scaffold / Postgres を切替可能（reco `create_database_session` と同型）。Wave A/B CLI 配線済。**本番 SQL は代表 IF（006/020/012/015）配線済**。**IF-005 staging は #1632 Wave 1+2 Epic Branch MERGED**（item/image/import_status + ranking/genre）。**IF-007 item / item_image / item_review_summary は #1633 Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 1+2 Epic Branch MERGED**（develop は Epic PR）。**IF-010 queue（BATCH-009）は #1634 Wave 1（#1677）本配線**。**IF-011 semantic（BATCH-010）は #1634 Wave 2（#1679）本配線（Epic Branch）**。他 IF フル UPSERT は [#1635](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1635) 以降。読取 SELECT は #1623。
 
 ---
 
