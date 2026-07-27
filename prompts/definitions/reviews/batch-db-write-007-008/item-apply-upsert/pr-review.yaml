@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1670
   issue:
     number: 1669
   task_definition: "prompts/definitions/tasks/batch-db-write-007-008/item-apply-upsert.yaml"
