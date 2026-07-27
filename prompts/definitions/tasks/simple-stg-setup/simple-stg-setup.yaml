@@ -1,0 +1,189 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-simple-stg-setup"
+  title: "simple-stg-setup:簡易stg構築手順作成"
+  summary: "受入可能な簡易 stg の構築手順・Human 実施チェック・疎通確認を正本化する。secret 実値・実ホスティング操作自体は out of scope。"
+  phase: "15_運用・改善"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: "[Epic]: リリース準備"
+  epic_issue_number: 144
+  epic_branch: null
+  related_issues:
+    - 1686
+    - 144
+    - 127
+    - 1648
+    - 146
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  受入環境方針により MVP 受入は簡易 stg 必須。
+  環境変数定義書・運用手順は #127 で揃ったが、構築手順正本が無い。
+  親 #144 は no-branch のため PR target は develop。
+  #146（デプロイ設定書）とは役割分担し、本 Task は受入入場の最小構築手順に特化する。
+
+objective: |
+  docs/15_運用・改善/運用手順/簡易stg構築手順.md を正本として作成し、
+  Human が分離確認つきで簡易 stg を構築・疎通できる手順とチェックリストを提供する。
+  secret 実値は一切書かない。実ホスティング操作は Human 実施欄に分離する。
+
+scope:
+  - "簡易 stg 構築手順書の作成（構成・手順・Human チェック・疎通）"
+  - "docs/15 README への正本リンク"
+  - "受入環境方針 / 環境変数運用手順への相互リンク（最小）"
+
+out_of_scope:
+  - "secret 実値の登録・記載"
+  - "ホスティング実作成・課金操作そのもの"
+  - "縮小カタログ件数の最終確定"
+  - "#145 / #146 / #147 の本作業"
+  - "apps/** / OpenAPI / workflow 実変更"
+  - "システム／品質本実施"
+
+input:
+  docs:
+    - path: "docs/13_受入テスト/テスト計画/受入環境方針.md"
+      required: true
+      purpose: "簡易 stg 必須・DB 1本・分離前提"
+    - path: "docs/15_運用・改善/運用手順/環境変数運用手順.md"
+      required: true
+      purpose: "env 登録・分離・受入前確認"
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+      purpose: "変数名・GHA 名"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "stg 役割・分離方針"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: false
+      purpose: "コンポーネント配置"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      action: "create"
+      required: true
+    - path: "docs/15_運用・改善/README.md"
+      action: "update"
+      required: true
+    - path: "docs/13_受入テスト/テスト計画/受入環境方針.md"
+      action: "update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/環境変数運用手順.md"
+      action: "update"
+      required: true
+  files: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "簡易stg構築手順.md"
+  - "関連 README / 方針・運用手順の相互リンク"
+
+acceptance_criteria:
+  - "docs/15_運用・改善/運用手順/簡易stg構築手順.md が存在する"
+  - "Human 実施チェックと docs 範囲の分離が明示されている"
+  - "secret 実値が含まれていない"
+  - "Related to #1686（実構築完了と混同して Close しないこと。完了判定は Human）"
+  - "PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "simple-stg-setup"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "15_運用・改善"
+    status: "In Progress"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 1686
+      purpose: "本作業 Issue"
+    - number: 144
+      purpose: "親 Epic（no-branch）"
+    - number: 127
+      purpose: "環境変数運用手順（入力）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+    - "docs/15_運用・改善/README.md"
+    - "docs/13_受入テスト/テスト計画/受入環境方針.md"
+    - "docs/15_運用・改善/運用手順/環境変数運用手順.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "構築手順 docs のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "secret / token / key 実値がないか"
+    - "#146 との責務重複が過大でないか（簡易 stg 受入入場に特化）"
+    - "受入環境方針・環境変数運用手順と矛盾していないか"
+    - "Related to #1686、PR target が develop か"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "手順として足りるか（実構築に入れる粒度）"
+  - "縮小カタログ件数の目安"
+  - "本手順充足後に #1686 を Close するか（実構築完了とは別）"
+
+notes:
+  - "実ホスティング作成は Human。本 Task 完了 ≠ stg 稼働完了"
+  - "デプロイ設定の詳細正本化は #146"
