@@ -125,6 +125,19 @@ def test_primary_path_generates_eight_axes_and_keeps_processing() -> None:
     assert {r.feature_code for r in repos.upsert_rows} == set(MVP_FEATURE_CODES)
     # Queue は processing 維持（BATCH-013 継続）
     assert repos.queues["igq_1"]["queue_status"] == "processing"
+    # continue / keep_processing は DB no-op。item_feature は upsert_rows。
+    assert db.write_calls == []
+    assert "item_generation_queue" not in {c["table"] for c in db.update_calls}
+    feature_upserts = [c for c in db.upsert_calls if c["table"] == "item_feature"]
+    assert len(feature_upserts) == 1
+    assert feature_upserts[0]["conflict_columns"] == (
+        "item_id",
+        "semantic_config_version_id",
+        "feature_code",
+        "feature_input_hash",
+        "feature_normalization_version_id",
+    )
+    assert feature_upserts[0]["update_columns"] == ("raw_feature_value", "generated_at")
 
 
 def test_upsert_records_raw_hash_and_norm_but_not_normalized() -> None:
@@ -135,21 +148,36 @@ def test_upsert_records_raw_hash_and_norm_but_not_normalized() -> None:
     assert row.feature_input_hash == _HASH
     assert row.feature_normalization_version_id == DEFAULT_NORMALIZATION_VERSION
     assert 0.0 <= row.raw_feature_value <= 1.0
-    # normalized_feature_value は Upsert payload に含めない（BATCH-013 責務）
-    for call in db.write_calls:
+    # normalized_feature_value / op / item_feature_id は Upsert payload に含めない
+    for call in db.upsert_calls:
         if call["table"] == "item_feature":
             for payload in call["rows"]:
                 assert "normalized_feature_value" not in payload
+                assert "op" not in payload
+                assert "item_feature_id" not in payload
 
 
 def test_secondary_path_claims_feature_queued() -> None:
-    repos, _ = _repos(
+    repos, db = _repos(
         queues=[_queue(qid="igq_feat", generation_type="feature", queue_status="queued")],
     )
     result = _job(repos).run(job_run_id="run-secondary")
 
     assert result.generated_count == 1
     assert repos.queues["igq_feat"]["queue_status"] == "processing"
+    claim_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "processing"
+    ]
+    assert len(claim_updates) == 1
+    assert claim_updates[0]["equals"] == (
+        ("item_generation_queue_id", "igq_feat"),
+        ("queue_status", "queued"),
+        ("generation_type", "feature"),
+    )
+    assert db.write_calls == []
 
 
 def test_concept_zero_yields_baseline_half() -> None:
@@ -169,7 +197,15 @@ def test_skip_when_eight_axes_present_same_key() -> None:
     assert result.generated_count == 0
     assert repos.item_feature_write_count == 0
     assert repos.queues["igq_1"]["queue_status"] == "skipped"
+    assert "item_feature" not in {c["table"] for c in db.upsert_calls}
     assert "item_feature" not in {c["table"] for c in db.write_calls}
+    skip_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "skipped"
+    ]
+    assert len(skip_updates) == 1
 
 
 def test_skip_not_applied_on_hash_mismatch() -> None:
@@ -231,18 +267,19 @@ def test_does_not_touch_item_semantic_or_insert_queue() -> None:
     repos, db = _repos()
     _job(repos).run(job_run_id="run-boundary")
 
-    tables = {c["table"] for c in db.write_calls}
-    assert "item_semantic" not in tables
+    assert "item_semantic" not in {c["table"] for c in db.write_calls}
+    assert "item_semantic" not in {c["table"] for c in db.upsert_calls}
     assert repos.item_semantic_write_count == 0
     assert repos.queue_insert_count == 0
-    # Queue 書込は status update のみ
-    ops = {
-        str(payload.get("op"))
-        for c in db.write_calls
-        if c["table"] == "item_generation_queue"
-        for payload in c["rows"]
-    }
-    assert "insert" not in ops
+    # 主経路 continue / keep_processing は no-op。偽 op キー / INSERT なし。
+    assert db.write_calls == []
+    for call in db.update_calls:
+        assert "op" not in call.get("set_values", {})
+    for call in db.upsert_calls:
+        for row in call["rows"]:
+            assert "op" not in row
+    feature_upserts = [c for c in db.upsert_calls if c["table"] == "item_feature"]
+    assert len(feature_upserts) == 1
 
 
 def test_no_hash_recomputation_uses_handoff_value() -> None:
