@@ -301,8 +301,111 @@ def test_cli_scaffold_demo_returns_zero(capsys) -> None:
     assert "status=succeeded" in out
 
 
-def test_cli_without_scaffold_returns_three() -> None:
-    assert main(["--job-run-id", "cli"]) == 3
+def test_cli_without_scaffold_requires_database_url(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.distribution_metrics import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings as scaffold_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "cli"]) == 2
+
+
+def test_load_item_features_and_meanings_via_db_reader() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_feature",
+        (
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+                "feature_code": "formality",
+                "raw_feature_value": 0.8,
+                "normalized_feature_value": 0.82,
+                "feature_normalization_version_id": _NORM_VERSION,
+            },
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": "other-version",
+                "feature_code": "formality",
+                "raw_feature_value": 0.1,
+                "normalized_feature_value": 0.11,
+                "feature_normalization_version_id": _NORM_VERSION,
+            },
+        ),
+    )
+    reader.seed(
+        "item_meaning",
+        (
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+                "item_social": 0.7,
+                "item_symbolic": 0.55,
+                "feature_normalization_version_id": _NORM_VERSION,
+            },
+        ),
+    )
+    reader.seed(
+        "item_embedding",
+        (
+            {
+                "item_id": "it_1",
+                "model_version_id": "scaffold-embedding-model-v1",
+                "embedding_input_hash": _HASH,
+            },
+        ),
+    )
+    repos = DistributionMetricsRepositories(
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+    )
+    features = repos.load_item_features(semantic_config_version_id=_VERSION)
+    assert len(features) == 1
+    assert features[0].feature_code == "formality"
+    meanings = repos.load_item_meanings(semantic_config_version_id=_VERSION)
+    assert len(meanings) == 1
+    assert meanings[0].item_social == 0.7
+    embeddings = repos.load_item_embeddings()
+    assert len(embeddings) == 1
+    assert any(c["table"] == "item_feature" for c in reader.fetch_calls)
+    assert any(c["table"] == "item_meaning" for c in reader.fetch_calls)
+    assert any(c["table"] == "item_embedding" for c in reader.fetch_calls)
+
+
+def test_cli_non_demo_runs_job_with_live_reader(monkeypatch) -> None:
+    """DATABASE_URL ありなら exit 3 固定せず Job を起動する。"""
+
+    from dataclasses import replace
+
+    from batch.application.distribution_metrics import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings as scaffold_settings
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+
+    reader = ScaffoldDbReader()
+    reader.backend = "postgres"
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(
+            scaffold_settings(),
+            database_url="postgresql://localhost:5432/gift",
+        ),
+    )
+    monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
+    monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
+
+    code = cli.main(["--job-run-id", "wave-g", "--semantic-config-version-id", _VERSION])
+    # empty SELECT → validation failed (exit 1). Important: Job started (not exit-2/old exit-3).
+    assert code == 1
+    assert reader.fetch_calls
 
 
 def test_missing_item_feature_fails_without_phase_log() -> None:

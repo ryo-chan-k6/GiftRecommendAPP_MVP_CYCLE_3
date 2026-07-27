@@ -1,0 +1,187 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-select-004-seed-select"
+  title: "batch-db-select:BATCH-004 seed SELECT本配線"
+  summary: "BATCH-004 の item seed SELECT を DbReader 経由で本配線する。楽天 live ゲートは維持。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  epic_issue_number: 1623
+  epic_branch: "feature/epic-1623-batch-db-select"
+  related_issues:
+    - 1627
+    - 1629
+  related_prs:
+    - 1628
+    - 1630
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave A（#1629）完了後、Wave A' として 004 の item seed SELECT を本配線する。
+  楽天 / Storage live は E3 済み。seed 未配線が残っていた。
+
+objective: |
+  list_seedable_items を DbReader 経由の item SELECT に接続し、非 demo で実 DB から再確認対象を読む。
+
+scope:
+  - "ItemRecheckRepositories.list_seedable_items の DbReader 本読取"
+  - "CLI 非 demo で resolve_job_db_reader（DATABASE_URL 必須、楽天 live ゲートは維持）"
+  - "既定: active_status=active + source=rakuten + max_items（equals。popularity JOIN なし）"
+  - "明示 external_item_codes"
+  - "--scaffold-demo 回帰"
+  - "UT"
+  - "実 DB 疎通確認（必須。0 件可）"
+  - "SELECT ギャップ一覧 Wave A' 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "004 書込本格化の拡大"
+  - "DbReader IN / JOIN / 任意 SQL（item_popularity_signal JOIN 含む）"
+  - "BATCH-006 以降 SELECT"
+  - "E4 / LLM / #1607 / DDL"
+  - "production 無承認 live / CI 既定 live"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_recheck/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/reader.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_recheck/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_recheck/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_recheck.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-select/batch-004-seed-select.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/batch-004-seed-select/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "004 item seed SELECT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "list_seedable_items が DbReader を使う"
+  - "非 demo で DATABASE_URL ありなら seed SELECT 経由で Job 起動可能"
+  - "実 DB 疎通確認が完了し PR に結果要約がある（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-select-004-seed-select"
+  base: "feature/epic-1623-batch-db-select"
+  target: "feature/epic-1623-batch-db-select"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: "2026-07-28"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "親 Epic"
+  issues:
+    - number: 1627
+      purpose: "T1 DbReader"
+    - number: 1629
+      purpose: "Wave A 完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_recheck/**"
+    - "apps/batch/tests/unit/application/test_item_recheck.py"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "list_seedable_items が DbReader を使うか"
+    - "楽天 live ゲートを壊していないか"
+    - "実 DB 疎通結果が PR に記録されているか"
+    - "popularity JOIN を混入していないか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+human_decision_points:
+  - "popularity ソートを JOIN なし（常に None）で十分か"
+
+notes:
+  - "Epic Wave A'"

@@ -1,9 +1,11 @@
-"""In-memory repositories for BATCH-010 unit tests / scaffold wiring.
+"""Repositories for BATCH-010 Item Semantic generation.
 
-Production will replace these with real DB adapters while keeping:
-- item / genre / attribute / tag READ ONLY
-- item_semantic UPSERT only (IF-DB-BATCH-011)
-- item_generation_queue UPDATE only (no INSERT — IF-DB-BATCH-010 is BATCH-009)
+``list_claimable_queues`` / ``load_item`` / ``find_item_semantic`` use ``DbReader``
+when injected (Wave D). Without a reader, in-memory seed remains for scaffold / UT.
+
+genre / attributes / tags / reviews are not on ``item`` DDL → defaults when mapping
+DB rows. ``semantic_input_hash`` is not on ``item_semantic`` DDL → None from DB.
+Write path keeps existing ``write_rows`` probes (claim / UPSERT SQL not formalized).
 """
 
 from __future__ import annotations
@@ -20,9 +22,37 @@ from batch.application.item_semantic.models import (
     ItemSemanticRow,
     QueueRow,
 )
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
 
 DEFAULT_SOURCE = "rakuten"
+
+_QUEUE_COLUMNS = (
+    "item_generation_queue_id",
+    "item_id",
+    "generation_type",
+    "queue_status",
+    "retry_count",
+    "queued_at",
+    "started_at",
+    "completed_at",
+    "error_message",
+)
+_ITEM_COLUMNS = (
+    "item_id",
+    "source",
+    "external_item_code",
+    "item_name",
+    "item_caption",
+    "active_status",
+    "is_active",
+)
+_SEMANTIC_COLUMNS = (
+    "item_semantic_id",
+    "item_id",
+    "semantic_config_version_id",
+    "semantic_json",
+    "generated_at",
+)
 
 
 @dataclass
@@ -30,6 +60,7 @@ class ItemSemanticRepositories:
     """Facade: Queue claim/update / Item read / item_semantic Upsert / logs."""
 
     db_writer: DbWriter
+    db_reader: DbReader | None = None
     seed_queues: list[QueueRow] = field(default_factory=list)
     seed_items: list[ItemContext] = field(default_factory=list)
     seed_semantics: list[ItemSemanticRow] = field(default_factory=list)
@@ -65,6 +96,15 @@ class ItemSemanticRepositories:
     ) -> tuple[list[QueueRow], int]:
         """§9.1: generation_type=semantic かつ queued のみ。feature/embedding は skip 集計."""
 
+        if self.db_reader is not None:
+            return self._list_claimable_queues_from_db(
+                max_items=max_items,
+                source=source,
+                queue_batch_size=queue_batch_size,
+                item_ids=item_ids,
+                queue_ids=queue_ids,
+            )
+
         item_set = set(item_ids) if item_ids else None
         queue_set = set(queue_ids) if queue_ids else None
         limit = max_items if queue_batch_size is None else min(max_items, queue_batch_size)
@@ -95,6 +135,101 @@ class ItemSemanticRepositories:
 
         return claimable, non_semantic_skip
 
+    def _list_claimable_queues_from_db(
+        self,
+        *,
+        max_items: int,
+        source: str,
+        queue_batch_size: int | None,
+        item_ids: tuple[str, ...] | None,
+        queue_ids: tuple[str, ...] | None,
+    ) -> tuple[list[QueueRow], int]:
+        reader = self.db_reader
+        if reader is None:
+            return [], 0
+
+        limit = max_items if queue_batch_size is None else min(max_items, queue_batch_size)
+        candidate_rows: list[dict[str, object]] = []
+        count_non_semantic = False
+
+        if queue_ids:
+            count_non_semantic = True
+            for queue_id in queue_ids:
+                if not queue_id:
+                    continue
+                result = reader.fetch_rows(
+                    "item_generation_queue",
+                    columns=_QUEUE_COLUMNS,
+                    equals=(("item_generation_queue_id", queue_id),),
+                    limit=1,
+                )
+                candidate_rows.extend(result.rows)
+        elif item_ids:
+            # per-item queued rows (all generation_type) so non-semantic skip is countable
+            count_non_semantic = True
+            for item_id in item_ids:
+                if not item_id:
+                    continue
+                result = reader.fetch_rows(
+                    "item_generation_queue",
+                    columns=_QUEUE_COLUMNS,
+                    equals=(
+                        ("item_id", item_id),
+                        ("queue_status", CLAIMABLE_QUEUE_STATUS),
+                    ),
+                    order_by=("item_generation_queue_id",),
+                    limit=100,
+                )
+                candidate_rows.extend(result.rows)
+        else:
+            fetch_cap = max(0, limit)
+            if fetch_cap == 0:
+                return [], 0
+            scan_target = max(fetch_cap, 1)
+            fetch_limit = min(max(scan_target * 5, scan_target), 5000)
+            result = reader.fetch_rows(
+                "item_generation_queue",
+                columns=_QUEUE_COLUMNS,
+                equals=(
+                    ("generation_type", CLAIMABLE_GENERATION_TYPE),
+                    ("queue_status", CLAIMABLE_QUEUE_STATUS),
+                ),
+                order_by=("item_generation_queue_id",),
+                limit=fetch_limit,
+            )
+            candidate_rows.extend(result.rows)
+
+        claimable: list[QueueRow] = []
+        non_semantic_skip = 0
+        seen_ids: set[str] = set()
+
+        for row in sorted(candidate_rows, key=lambda r: str(r["item_generation_queue_id"])):
+            q = self._cache_queue_row(row)
+            if q.item_generation_queue_id in seen_ids:
+                continue
+            seen_ids.add(q.item_generation_queue_id)
+
+            if count_non_semantic and q.generation_type != CLAIMABLE_GENERATION_TYPE:
+                if q.queue_status == CLAIMABLE_QUEUE_STATUS:
+                    non_semantic_skip += 1
+                continue
+            if q.generation_type != CLAIMABLE_GENERATION_TYPE:
+                continue
+            if q.queue_status != CLAIMABLE_QUEUE_STATUS:
+                continue
+
+            item_row = self.items.get(q.item_id)
+            if item_row is None:
+                item_row = self._fetch_and_cache_item(q.item_id)
+            if item_row is not None and str(item_row.get("source") or DEFAULT_SOURCE) != source:
+                continue
+
+            claimable.append(q)
+            if len(claimable) >= max(0, limit):
+                break
+
+        return claimable, non_semantic_skip
+
     def claim_queue(
         self,
         *,
@@ -103,7 +238,7 @@ class ItemSemanticRepositories:
     ) -> QueueRow | None:
         """条件付き UPDATE: queued + semantic → processing."""
 
-        row = self.queues.get(item_generation_queue_id)
+        row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             return None
         if row.get("queue_status") != "queued":
@@ -129,6 +264,8 @@ class ItemSemanticRepositories:
 
     def load_item(self, *, item_id: str) -> ItemContext:
         row = self.items.get(item_id)
+        if row is None and self.db_reader is not None:
+            row = self._fetch_and_cache_item(item_id)
         if row is None:
             raise KeyError(f"item not found: {item_id}")
         return self._row_to_item(row)
@@ -139,7 +276,21 @@ class ItemSemanticRepositories:
         item_id: str,
         semantic_config_version_id: str,
     ) -> ItemSemanticRow | None:
-        row = self.item_semantics.get((item_id, semantic_config_version_id))
+        key = (item_id, semantic_config_version_id)
+        row = self.item_semantics.get(key)
+        if row is None and self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "item_semantic",
+                columns=_SEMANTIC_COLUMNS,
+                equals=(
+                    ("item_id", item_id),
+                    ("semantic_config_version_id", semantic_config_version_id),
+                ),
+                limit=1,
+            )
+            if result.rows:
+                return self._cache_semantic_row(result.rows[0])
+            return None
         if row is None:
             return None
         return self._row_to_semantic(row)
@@ -187,7 +338,7 @@ class ItemSemanticRepositories:
     ) -> None:
         """Queue status 更新。semantic 成功時は processing 維持可。"""
 
-        row = self.queues.get(item_generation_queue_id)
+        row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             raise KeyError(f"queue not found: {item_generation_queue_id}")
 
@@ -242,6 +393,79 @@ class ItemSemanticRepositories:
                 "item_id": item_id,
             }
         )
+
+    def _ensure_queue_hydrated(self, item_generation_queue_id: str) -> dict[str, object] | None:
+        row = self.queues.get(item_generation_queue_id)
+        if row is not None:
+            return row
+        if self.db_reader is None:
+            return None
+        result = self.db_reader.fetch_rows(
+            "item_generation_queue",
+            columns=_QUEUE_COLUMNS,
+            equals=(("item_generation_queue_id", item_generation_queue_id),),
+            limit=1,
+        )
+        if not result.rows:
+            return None
+        self._cache_queue_row(result.rows[0])
+        return self.queues.get(item_generation_queue_id)
+
+    def _fetch_and_cache_item(self, item_id: str) -> dict[str, object] | None:
+        reader = self.db_reader
+        if reader is None:
+            return None
+        result = reader.fetch_rows(
+            "item",
+            columns=_ITEM_COLUMNS,
+            equals=(("item_id", item_id),),
+            limit=1,
+        )
+        if not result.rows:
+            return None
+        return self._cache_item_row(result.rows[0])
+
+    def _cache_queue_row(self, row: dict[str, object]) -> QueueRow:
+        payload = dict(row)
+        qid = str(payload["item_generation_queue_id"])
+        self.queues[qid] = payload
+        return self._row_to_queue(payload)
+
+    def _cache_item_row(self, row: dict[str, object]) -> dict[str, object]:
+        payload = {
+            "item_id": str(row["item_id"]),
+            "source": str(row.get("source") or DEFAULT_SOURCE),
+            "external_item_code": str(row.get("external_item_code") or ""),
+            "active_status": str(row.get("active_status") or "active"),
+            "is_active": bool(row.get("is_active", True)),
+            "item_name": row.get("item_name"),
+            "item_caption": row.get("item_caption"),
+            # DDL に無い列は既定（JOIN 解決は out of scope）
+            "item_description": None,
+            "genre_name": None,
+            "attributes": [],
+            "tags": [],
+            "brand_name": None,
+            "review_texts": [],
+        }
+        self.items[str(payload["item_id"])] = payload
+        return payload
+
+    def _cache_semantic_row(self, row: dict[str, object]) -> ItemSemanticRow:
+        raw_json = row.get("semantic_json") or {}
+        if not isinstance(raw_json, dict):
+            raw_json = {}
+        payload: dict[str, object] = {
+            "item_semantic_id": str(row["item_semantic_id"]),
+            "item_id": str(row["item_id"]),
+            "semantic_config_version_id": str(row["semantic_config_version_id"]),
+            "semantic_json": dict(raw_json),
+            # DDL に semantic_input_hash は無い
+            "semantic_input_hash": None,
+        }
+        key = (str(payload["item_id"]), str(payload["semantic_config_version_id"]))
+        self.item_semantics[key] = payload
+        return self._row_to_semantic(payload)
 
     @staticmethod
     def _queue_to_dict(seed: QueueRow) -> dict[str, object]:

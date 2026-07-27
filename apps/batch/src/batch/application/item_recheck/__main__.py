@@ -14,7 +14,12 @@ from batch.application.item_recheck.job import ItemRecheckJob
 from batch.application.item_recheck.models import ItemSeed
 from batch.application.item_recheck.repositories import ItemRecheckRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import (
+    ScaffoldDbWriter,
+    create_db_writer,
+    is_live_db_reader,
+    resolve_job_db_reader,
+)
 from batch.infrastructure.object_storage import (
     ScaffoldObjectStorageClient,
     create_object_storage_client,
@@ -148,6 +153,18 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    db_reader = resolve_job_db_reader(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+    )
+    if not is_live_db_reader(db_reader):
+        print(
+            "DATABASE_URL is required for non --scaffold-demo BATCH-004 "
+            "(DbReader postgres backend). Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
+        )
+        return 2
+
     live = resolve_live_rakuten_flag(
         cli_live=args.live_rakuten,
         env_value=os.environ.get("BATCH_RAKUTEN_LIVE"),
@@ -193,10 +210,10 @@ def main(argv: list[str] | None = None) -> int:
         settings.rakuten_access_key,
         live=True,
     )
-    # seed 空: 実 DB SELECT は未実装。配線確認は 0 件成功で可。
     repos = ItemRecheckRepositories(
         object_storage=object_storage,
         db_writer=db_writer,
+        db_reader=db_reader,
         bucket=settings.object_storage_bucket or "scaffold-raw",
     )
     job = ItemRecheckJob(rakuten_client=rakuten, repositories=repos)
@@ -208,7 +225,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"BATCH-004 status={result.status} "
-        f"db_backend={db_writer.backend} "
+        f"db_reader={db_reader.backend} "
+        f"db_writer={db_writer.backend} "
         f"rakuten_backend={getattr(rakuten, 'backend', 'http')} "
         f"storage_backend={getattr(object_storage, 'backend', 'scaffold')} "
         f"succeeded={len(result.succeeded_item_codes)} "

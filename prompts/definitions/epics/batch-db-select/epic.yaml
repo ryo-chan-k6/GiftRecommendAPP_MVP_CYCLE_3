@@ -1,0 +1,228 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-db-select"
+  title: "batch-db-select:DB読取本配線"
+  summary: "E2 読取残 / E3 後続。DbWriter はあるが実 DB SELECT 未配線のため、優先 Batch（005/004/010/015 等）の読取本配線と CLI exit 3 解除を行う。E4 観測・LLM・#1607 は除外。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  E0〜E3 完了。DbWriter / 代表 UPSERT（E2）と楽天・Embedding・Object Storage client（E3）は揃った。
+  一方、ビジネスデータの実 DB SELECT は未配線。多くの Batch は非 scaffold-demo で
+  「real DB read path is not enabled yet」→ exit 3。
+  005 は Storage live まで到達できるが metadata SELECT がなく本実行できない。
+  004 は live 時でも seed 空で 0 件成功になり得る。
+  機能・領域単位 Epic（例外）。E4（観測横断）とは分離する。
+
+objective: |
+  読取ギャップを docs 正し、DbReader（または同等）と優先 Batch の SELECT 本配線により、
+  CLI 非 demo で DB から読んで後続工程へ進める状態にする。
+  実装 Wave（T0 inventory 除く）は UT に加え、実 DB 疎通確認を完了条件とする。
+  develop 統合は本 Epic PR のみ。
+
+scope:
+  - "DB SELECT / 読取ギャップ棚卸し（docs 正本）"
+  - "読取共通方針（DbReader または repos 本番読取）"
+  - "Wave: 005 → 006 → 007/009 → 010〜015（004 seed は Wave A 並行可）"
+  - "関連 CLI の読取経路有効化と UT"
+  - "実装 Wave（T0 inventory を除く）ごとの実 DB 疎通確認（必須）"
+  - "secret / .env 実値禁止"
+
+out_of_scope:
+  - "E4 観測横断の本実装"
+  - "#1607 本番 egress IP 設計"
+  - "Semantic LLM 本接続（010 は Rule-first 維持）"
+  - "BATCH-018 Reco IF / 019 本格化"
+  - "親 / 複合 workflow・schedule 有効化"
+  - "production 無承認 live / CI 既定 live（実 DB 疎通は local/dev/staging の明示実行のみ）"
+  - "OpenAPI / web / api / reco 破壊変更"
+  - "DDL 新規（必要時は Human 判断・別扱い）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+    - path: "apps/batch/src/batch/application/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/src/batch/application/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/epics/batch-db-select/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-select/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-db-select/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "SELECT ギャップ正本 docs（第1 Task）"
+  - "後続 Task（reader / 005 / 004 / 010 / 015 等）の分割"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "ギャップ一覧 docs が存在する（第1 Task）"
+  - "実装 Wave 子 Task の完了条件に実 DB 疎通確認が含まれる（T0 inventory 除く）"
+  - "E4 / LLM / #1607 / 018・019 を out of scope と明記"
+  - "secret 実値なし"
+  - "Epic PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "batch-db-select"
+  name: "feature/epic-1623-batch-db-select"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-25"
+    due_date: "2026-08-01"
+
+issue:
+  number: 1623
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/**"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/src/batch/infrastructure/__init__.py"
+    - "apps/batch/src/batch/application/**"
+    - "apps/batch/src/batch/config/**"
+    - "apps/batch/pyproject.toml"
+    - "apps/batch/uv.lock"
+    - "apps/batch/tests/**"
+    - "prompts/definitions/epics/batch-db-select/**"
+    - "prompts/definitions/tasks/batch-db-select/**"
+    - "prompts/definitions/reviews/batch-db-select/**"
+    - ".env.example"
+  forbidden_paths:
+    - ".github/workflows/batch-*-orchestrator.yml"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "inventory"
+    - "reader-foundation"
+    - "batch-005-select"
+    - "batch-004-seed-select"
+    - "batch-006-select"
+    - "batch-007-009-select"
+    - "batch-010-select"
+    - "batch-011-014-select"
+    - "batch-015-select"
+    - "batch-016-017-select"
+
+dependencies:
+  epics:
+    - issue: 1595
+      purpose: "E2 IF・DB・DDL（DbWriter）"
+    - issue: 1598
+      purpose: "E3 外部 API 本接続 MERGED"
+  issues: []
+  prs:
+    - number: 1595
+      purpose: "E2 Epic MERGED"
+    - number: 1622
+      purpose: "E3 Epic MERGED"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "epic-batch-db-ddl-hardening"
+    - "epic-batch-external-api"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required: []
+  not_required:
+    - "unit test"
+    - "real DB connectivity verify"
+  skip_reason:
+    "unit test": "Epic は作業管理。実装 Task で UT"
+    "real DB connectivity verify": "Epic 自体は実行しない。実装 Wave 子 Task で必須（T0 除く）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "E4 / LLM / #1607 を混入していないか"
+    - "secret 実値なし"
+    - "Epic PR target が develop"
+    - "読取本配線と書込/外部API範囲が分離されているか"
+    - "実装 Wave 子 Task に実 DB 疎通確認が必須化されているか"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+human_decision_points:
+  - "Wave 着手順（推奨: 005 先行、004 seed 並行）"
+  - "DbReader 共通化の粒度"
+  - "E4 を本 Epic に混ぜないことの確認"
+  - "実 DB 疎通の対象環境（local / dev / staging。production は禁止）"
+
+notes:
+  - "第1 Task は inventory（棚卸し docs）。実装は後続 /start-task"
+  - "機能・領域単位 Epic（例外）。artifact_id 空"
+  - "Human 確定（2026-07-25）: 実装 Wave ごとに実 DB 疎通確認を必須とする（T0 除く。CI 既定 live / production 無承認は禁止）"

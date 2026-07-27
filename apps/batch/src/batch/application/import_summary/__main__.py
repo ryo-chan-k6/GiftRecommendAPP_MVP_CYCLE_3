@@ -2,7 +2,7 @@
 
 Usage:
   python -m batch.application.import_summary --scaffold-demo
-  python -m batch.application.import_summary --job-run-id <id>  # exit 3 (real DB off)
+  python -m batch.application.import_summary --job-run-id <id>  # requires DATABASE_URL
 """
 
 from __future__ import annotations
@@ -22,7 +22,12 @@ from batch.application.import_summary.models import (
 )
 from batch.application.import_summary.repositories import ImportSummaryRepositories
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import (
+    ScaffoldDbWriter,
+    create_db_writer,
+    is_live_db_reader,
+    resolve_job_db_reader,
+)
 
 _DEMO_RUN_ID = "scaffold-import-summary-run"
 
@@ -122,13 +127,50 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
-    print(
-        f"DbWriter backend={db_writer.backend} is resolved, "
-        "but real DB read path is not enabled yet. "
-        "Use --scaffold-demo for local/CI.",
-        file=sys.stderr,
+    db_reader = resolve_job_db_reader(
+        scaffold_demo=False,
+        database_url=settings.database_url,
     )
-    return 3
+    if not is_live_db_reader(db_reader):
+        print(
+            "DATABASE_URL is required for non --scaffold-demo BATCH-017 "
+            "(DbReader postgres backend). Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
+        )
+        return 2
+
+    source_api = (
+        args.source_api.strip()
+        or settings.batch_import_summary_source_api
+        or "item_search"
+    )
+    batch_run_id = (
+        args.batch_run_id.strip()
+        or settings.batch_import_summary_batch_run_id
+        or args.job_run_id
+    )
+    repos = ImportSummaryRepositories(
+        db_writer=db_writer,
+        db_reader=db_reader,
+        seed_default_source_api=source_api,  # type: ignore[arg-type]
+    )
+    job = ImportSummaryJob(repositories=repos)
+    result = job.run(
+        job_run_id=args.job_run_id,
+        source_api=source_api,
+        batch_run_id=batch_run_id,
+        now=datetime.now(UTC),
+    )
+    print(
+        f"BATCH-017 status={result.status} "
+        f"db_reader={db_reader.backend} "
+        f"db_writer={db_writer.backend} "
+        f"source_api={result.source_api} "
+        f"insert_applied={result.insert_applied} "
+        f"conflict_skipped={result.conflict_skipped} "
+        f"phases={','.join(result.completed_phases)}"
+    )
+    return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 
 if __name__ == "__main__":

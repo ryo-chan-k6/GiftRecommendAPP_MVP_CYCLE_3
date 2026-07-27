@@ -262,8 +262,79 @@ def test_cli_scaffold_demo_returns_zero() -> None:
     assert main(["--scaffold-demo", "--job-run-id", "cli"]) == 0
 
 
-def test_cli_without_scaffold_returns_three() -> None:
-    assert main(["--job-run-id", "cli"]) == 3
+def test_cli_without_scaffold_demo_exits_2_without_database_url(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.item_feature import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "cli"]) == 2
+
+
+def test_list_and_load_via_db_reader() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_sem",
+                "item_id": "it_1",
+                "generation_type": "semantic",
+                "queue_status": "processing",
+                "retry_count": 0,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "item_name": "Gift",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_semantic",
+        (
+            {
+                "item_semantic_id": "is_1",
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+                "semantic_json": {"concepts": [{"concept_code": "formal_refined"}]},
+                "generated_at": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item_feature_input",
+        (
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+                "feature_input_hash": _HASH,
+            },
+        ),
+    )
+    repos = ItemFeatureRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    targets, _ = repos.list_target_queues(max_items=10)
+    assert [q.item_generation_queue_id for q in targets] == ["igq_sem"]
+    assert repos.load_item(item_id="it_1").item_name == "Gift"
+    assert repos.load_item(item_id="it_1").genre_id is None
+    handoff = repos.load_hash_handoff(item_id="it_1", semantic_config_version_id=_VERSION)
+    assert handoff is not None
+    assert handoff.feature_input_hash == _HASH
 
 
 def test_config_reads_item_feature_fields() -> None:

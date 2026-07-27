@@ -265,7 +265,10 @@ class ItemFeatureJob:
         concepts = self._repos.extract_concepts(semantic.semantic_json)
         self._mark_phase(result, "load_context")
 
-        handoff = self._repos.load_hash_handoff(item_id=seed.item_id)
+        handoff = self._repos.load_hash_handoff(
+            item_id=seed.item_id,
+            semantic_config_version_id=config.semantic_config_version_id,
+        )
         if handoff is None or not is_valid_feature_input_hash(handoff.feature_input_hash):
             raise ItemFeatureError("GRS-BAT-008", "feature_input_hash handoff missing/invalid")
         if handoff.semantic_config_version_id != config.semantic_config_version_id:

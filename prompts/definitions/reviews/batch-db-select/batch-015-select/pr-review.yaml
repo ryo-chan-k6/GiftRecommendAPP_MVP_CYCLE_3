@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-select-015-select-pr"
+  title: "batch-db-select BATCH-015 SELECT PRレビュー"
+  summary: "Wave F として BATCH-015 の SELECT 本配線と本番 CLI --live-embedding 配線 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1652
+  issue:
+    number: 1651
+  task_definition: "prompts/definitions/tasks/batch-db-select/batch-015-select.yaml"
+  parent_epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  parent_epic_branch: "feature/epic-1623-batch-db-select"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: null
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "list_target_queues / load_item / load_hash_handoff が DbReader を使うか"
+  - "書込本格化を混入していないか"
+  - "非 demo で --live-embedding が Job に配線されているか（既定 off）"
+  - "非 demo で DATABASE_URL 無しは exit 2 か（exit 3 解除）"
+  - "実 DB 疎通結果が PR に記録されているか（secret なし）"
+  - "scaffold-demo / UT 回帰"
+  - "Related to / PR target が親 Epic"
+
+notes:
+  - "Wave F。書込 UPSERT 本格化 / Semantic LLM / DbReader IN・OR・JOIN 拡張 / 016・017 は out of scope"
+  - "OpenAI live call は任意（鍵なし exit 2 / scaffold で十分）"

@@ -225,8 +225,225 @@ def test_cli_scaffold_demo_exit_0() -> None:
     assert main(["--scaffold-demo", "--job-run-id", "cli-demo"]) == 0
 
 
-def test_cli_non_scaffold_exit_3() -> None:
-    assert main(["--job-run-id", "no-db"]) == 3
+def test_cli_without_scaffold_demo_exits_2_without_database_url(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.item_semantic import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_batch_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "job-real"]) == 2
+
+
+def test_list_claimable_queues_uses_db_reader_when_injected() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_s",
+                "item_id": "it_s",
+                "generation_type": "semantic",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": _NOW,
+                "started_at": None,
+                "completed_at": None,
+                "error_message": None,
+            },
+            {
+                "item_generation_queue_id": "igq_f",
+                "item_id": "it_f",
+                "generation_type": "feature",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": _NOW,
+                "started_at": None,
+                "completed_at": None,
+                "error_message": None,
+            },
+            {
+                "item_generation_queue_id": "igq_other_src",
+                "item_id": "it_amz",
+                "generation_type": "semantic",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": _NOW,
+                "started_at": None,
+                "completed_at": None,
+                "error_message": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_s",
+                "source": "rakuten",
+                "external_item_code": "shop:s",
+                "item_name": "Semantic Gift",
+                "item_caption": None,
+                "active_status": "active",
+                "is_active": True,
+            },
+            {
+                "item_id": "it_amz",
+                "source": "amazon",
+                "external_item_code": "shop:amz",
+                "item_name": "Other Source",
+                "item_caption": None,
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    repos = ItemSemanticRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    claimable, non_semantic = repos.list_claimable_queues(max_items=10, source="rakuten")
+    assert [q.item_generation_queue_id for q in claimable] == ["igq_s"]
+    # broad scan equals generation_type=semantic → non-semantic not visible
+    assert non_semantic == 0
+    assert any(c["table"] == "item_generation_queue" for c in reader.fetch_calls)
+    assert any(c["table"] == "item" for c in reader.fetch_calls)
+
+
+def test_list_claimable_queues_counts_non_semantic_when_queue_ids_set() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_s",
+                "item_id": "it_s",
+                "generation_type": "semantic",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": _NOW,
+            },
+            {
+                "item_generation_queue_id": "igq_f",
+                "item_id": "it_f",
+                "generation_type": "feature",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": _NOW,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_s",
+                "source": "rakuten",
+                "external_item_code": "shop:s",
+                "item_name": "S",
+                "item_caption": None,
+                "active_status": "active",
+                "is_active": True,
+            },
+            {
+                "item_id": "it_f",
+                "source": "rakuten",
+                "external_item_code": "shop:f",
+                "item_name": "F",
+                "item_caption": None,
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    repos = ItemSemanticRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    claimable, non_semantic = repos.list_claimable_queues(
+        max_items=10,
+        queue_ids=("igq_s", "igq_f"),
+    )
+    assert [q.item_generation_queue_id for q in claimable] == ["igq_s"]
+    assert non_semantic == 1
+
+
+def test_load_item_and_find_item_semantic_via_db_reader() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:a",
+                "item_name": "Gift A",
+                "item_caption": "caption",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_semantic",
+        (
+            {
+                "item_semantic_id": "is_1",
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+                "semantic_json": {"concepts": [{"concept_code": "formal_refined"}]},
+                "generated_at": _NOW,
+            },
+        ),
+    )
+    repos = ItemSemanticRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    item = repos.load_item(item_id="it_1")
+    assert item.item_id == "it_1"
+    assert item.item_name == "Gift A"
+    assert item.genre_name is None
+    assert item.attributes == ()
+    assert item.tags == ()
+    assert item.review_texts == ()
+
+    found = repos.find_item_semantic(
+        item_id="it_1", semantic_config_version_id=_VERSION
+    )
+    assert found is not None
+    assert found.item_semantic_id == "is_1"
+    assert found.semantic_json == {"concepts": [{"concept_code": "formal_refined"}]}
+    assert found.semantic_input_hash is None
+    assert (
+        repos.find_item_semantic(item_id="it_1", semantic_config_version_id="missing")
+        is None
+    )
+
+
+def test_claim_queue_hydrates_from_db_reader() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_db",
+                "item_id": "it_1",
+                "generation_type": "semantic",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": _NOW,
+            },
+        ),
+    )
+    repos = ItemSemanticRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    claimed = repos.claim_queue(item_generation_queue_id="igq_db", started_at=_NOW)
+    assert claimed is not None
+    assert claimed.queue_status == "processing"
+    assert "igq_db" in repos.queues
 
 
 def test_scaffold_demo_builder() -> None:

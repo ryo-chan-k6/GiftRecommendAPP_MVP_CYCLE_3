@@ -1,0 +1,217 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-select-011-014-select"
+  title: "batch-db-select:BATCH-011-014 SELECT本配線"
+  summary: "Wave E として BATCH-011 / 012 / 013 / 014 の SELECT を DbReader 経由で本配線する。書込本格化・LLM は out of scope。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  epic_issue_number: 1623
+  epic_branch: "feature/epic-1623-batch-db-select"
+  related_issues:
+    - 1644
+  related_prs:
+    - 1645
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave D（#1644 / #1645）完了後、Wave E として feature/embedding 連鎖 Batch の読取を本配線する。
+
+objective: |
+  011〜014 の主 list/load を DbReader 経由で本配線し、非 demo で exit 3 を解除する。
+
+scope:
+  - "BATCH-011: list_target_queues / load_item / load_item_semantic（+ skip 用 feature SELECT 可）"
+  - "BATCH-012: list_target_queues / load_item / load_item_semantic / load_hash_handoff"
+  - "BATCH-013: list_target_queues / load_item / load_raw_features（config は equals 導出または seed 維持を明示）"
+  - "BATCH-014: list_target_queues / load_item（+ skip 用 embedding SELECT 可）"
+  - "各 CLI: resolve_job_db_reader（DATABASE_URL 必須、無しは exit 2）"
+  - "queue OR 条件は equals 二重 fetch + in-process（DbReader 拡張なし）"
+  - "--scaffold-demo 回帰"
+  - "UT"
+  - "実 DB 疎通確認（必須。0 件可）"
+  - "SELECT ギャップ一覧 Wave E 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "書込 UPSERT 本格化（#1635 等）"
+  - "Semantic LLM"
+  - "DbReader IN / IS NULL / JOIN / 任意 SQL / OR 拡張"
+  - "015 以降 SELECT / E4 / DDL / CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/feature_input_hash/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_feature/**"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_normalization/**"
+      required: true
+    - path: "apps/batch/src/batch/application/embedding_input_hash/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/reader.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/feature_input_hash/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_input_hash/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_feature/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_feature/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_normalization/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_normalization/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/embedding_input_hash/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/embedding_input_hash/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_feature_input_hash.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_feature.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_feature_normalization.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_embedding_input_hash.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-select/batch-011-014-select.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/batch-011-014-select/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "011〜014 SELECT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "四 Batch の主読取が DbReader を使う"
+  - "非 demo で DATABASE_URL ありなら SELECT 経由で Job 起動可能（exit 3 解除）"
+  - "実 DB 疎通確認が完了し PR に結果要約がある（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-select-011-014-select"
+  base: "feature/epic-1623-batch-db-select"
+  target: "feature/epic-1623-batch-db-select"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-26"
+    due_date: "2026-07-30"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "親 Epic"
+  issues:
+    - number: 1644
+      purpose: "Wave D"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+    - "apps/batch/tests/unit/application/test_feature_input_hash.py"
+    - "apps/batch/tests/unit/application/test_item_feature.py"
+    - "apps/batch/tests/unit/application/test_feature_normalization.py"
+    - "apps/batch/tests/unit/application/test_embedding_input_hash.py"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "011〜014 主読取が DbReader を使うか"
+    - "書込本格化 / LLM を混入していないか"
+    - "queue OR を equals 二重 fetch + in-process で扱っているか"
+    - "実 DB 疎通結果が PR に記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic Wave E"
