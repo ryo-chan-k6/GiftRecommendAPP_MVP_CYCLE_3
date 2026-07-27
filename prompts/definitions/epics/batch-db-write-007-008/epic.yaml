@@ -1,0 +1,206 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-db-write-007-008"
+  title: "batch-db-write-007-008:BATCH-007/008 item系書込本格化"
+  summary: "BATCH-007 item_apply と BATCH-008 item_active_status の本番書込（UPSERT/UPDATE/DELETE）を本配線する。SELECT は #1623、005 書込は #1632 済み。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  E2 は代表 IF の UPSERT のみ。007/008 の item 系フル UPSERT は後続と明記。
+  #1623 で SELECT 開放、#1632 で 005 staging 書込完了後、diff → item 反映 → active_status 本線の書込が次ブロッカー。
+  機能・領域単位 Epic（例外）。007 と 008 は同一 Epic（Issue §11 継続）。
+
+objective: |
+  BATCH-007 / 008 の本番 DB 書込を upsert_rows / update_rows / delete_rows で本配線し、
+  実 DB で item 反映と active_status 適用を通す。develop 統合は本 Epic PR のみ。
+
+scope:
+  - "Wave 1: BATCH-007 item / item_image / item_review_summary 本番 UPSERT（conflict は DDL UNIQUE）"
+  - "Wave 1: item_image 集合外 URL の同期 DELETE（delete_rows）"
+  - "Wave 1: unchanged の last_checked_at は update_rows"
+  - "Wave 2: BATCH-008 item.active_status / is_active UPDATE"
+  - "Wave 2: item_active_status_candidate 状態更新（applied/superseded/discarded）と Retention DELETE"
+  - "IF-020（BATCH-004 candidate INSERT UPSERT）済み範囲は重複実装しない"
+  - "UT + 実装 Task ごとの実 DB 疎通（local/dev/staging）"
+  - "IF-DB ギャップ一覧の進捗反映"
+  - "secret / .env 実値禁止"
+
+out_of_scope:
+  - "DB SELECT 本配線（#1623）"
+  - "005 staging 書込（#1632）"
+  - "009 以降 queue / semantic 書込（#1634〜）"
+  - "IF-020 candidate INSERT UPSERT の再実装（T4a 済み）"
+  - "E4 観測横断 / 親 workflow schedule"
+  - "DDL 破壊的変更（必要時は Human 判断）"
+  - "CI 既定 live / production 無承認"
+  - "OpenAPI / web / api / reco 破壊変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-007_Item反映バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_apply/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_apply/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/src/batch/application/item_active_status/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/tests/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/epics/batch-db-write-007-008/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-007-008/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-db-write-007-008/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "Wave 1: BATCH-007 item 系 UPSERT"
+  - "Wave 2: BATCH-008 active_status 書込"
+  - "Epic PR → develop"
+
+acceptance_criteria:
+  - "Epic Branch が作成されている（no-branch 解除）"
+  - "007/008 対象書込が実 DB 疎通で成功し PR に記録（secret なし）"
+  - "Epic PR target が develop"
+  - "SELECT / 005 / IF-020 INSERT を混入して完了扱いしない"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-007-008"
+  name: "feature/epic-1633-batch-db-write-007-008"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-27"
+    due_date: "2026-08-05"
+
+issue:
+  number: 1633
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/**"
+    - "docs/06_実装設計/database/**"
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/tests/**"
+    - "prompts/definitions/epics/batch-db-write-007-008/**"
+    - "prompts/definitions/tasks/batch-db-write-007-008/**"
+    - "prompts/definitions/reviews/batch-db-write-007-008/**"
+  forbidden_paths:
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "item-apply-upsert"
+    - "item-active-status-write"
+
+dependencies:
+  epics:
+    - issue: 1632
+      purpose: "005 staging 書込 MERGED"
+    - issue: 1623
+      purpose: "SELECT 本配線 MERGED"
+    - issue: 1561
+      purpose: "DbWriter / upsert_rows"
+  issues: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "007/008 書込が本番 SQL か"
+    - "IF-020 INSERT UPSERT を重複実装していないか"
+    - "active_status を 007 で更新していないか"
+    - "実 DB 疎通が記録されているか"
+    - "Epic PR target が develop"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Wave 1=007、Wave 2=008。同一 Epic。"
+  - "IF-DB ギャップ一覧の IF-008 行（ranking 表記）と BATCH-008（active_status）の対応は Human 確認候補。本 Epic は BATCH-007/008 実装正本に従う。"

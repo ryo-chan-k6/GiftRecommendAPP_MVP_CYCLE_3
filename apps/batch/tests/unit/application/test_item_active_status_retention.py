@@ -20,6 +20,12 @@ def _repos() -> ItemActiveStatusRepositories:
     return ItemActiveStatusRepositories(db_writer=ScaffoldDbWriter())
 
 
+def _writer(repos: ItemActiveStatusRepositories) -> ScaffoldDbWriter:
+    writer = repos.db_writer
+    assert isinstance(writer, ScaffoldDbWriter)
+    return writer
+
+
 def _cand(
     *,
     cid: str,
@@ -55,6 +61,15 @@ def test_applied_older_than_14_days_is_deleted() -> None:
     assert result.deleted_count == 1
     assert "a1" not in repos.candidates
     assert "a1" in repos.deleted_candidate_ids
+    db = _writer(repos)
+    assert db.write_calls == []
+    assert db.update_calls == []
+    assert db.delete_calls == [
+        {
+            "table": "item_active_status_candidate",
+            "equals": (("item_active_status_candidate_id", "a1"),),
+        }
+    ]
 
 
 def test_applied_within_14_days_is_kept() -> None:
@@ -96,6 +111,25 @@ def test_detected_skipped_even_when_old() -> None:
     assert result.skipped_detected_count == 1
     assert result.deleted_count == 0
     assert "d2" in repos.candidates
+    db = _writer(repos)
+    assert db.delete_calls == []
+    assert db.write_calls == []
+
+
+def test_delete_candidate_uses_delete_rows_not_write_rows() -> None:
+    repos = _repos()
+    old = NOW - timedelta(days=20)
+    repos.seed_candidate(_cand(cid="del1", status="discarded", updated_at=old))
+    assert repos.delete_candidate("del1") is True
+    db = _writer(repos)
+    assert db.write_calls == []
+    assert db.update_calls == []
+    assert db.delete_calls == [
+        {
+            "table": "item_active_status_candidate",
+            "equals": (("item_active_status_candidate_id", "del1"),),
+        }
+    ]
 
 
 def test_mixed_run_metrics() -> None:
@@ -124,3 +158,6 @@ def test_dry_run_does_not_delete() -> None:
     assert result.deleted_count == 1
     assert "a4" in repos.candidates
     assert repos.deleted_candidate_ids == []
+    db = _writer(repos)
+    assert db.delete_calls == []
+    assert db.write_calls == []
