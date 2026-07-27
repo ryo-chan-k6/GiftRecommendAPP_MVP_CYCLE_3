@@ -12,7 +12,7 @@ work_mode: "ai-agent"
 
 target:
   pr:
-    number: null
+    number: 1676
   issue:
     number: 1646
   task_definition: "prompts/definitions/epics/mvp-test-release-prep/epic.yaml"
