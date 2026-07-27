@@ -158,6 +158,145 @@ def test_postgres_write_rows_masks_credentials_in_database_error() -> None:
     assert "localhost:5432/gift" in message
 
 
+def test_scaffold_db_writer_records_updates() -> None:
+    writer = ScaffoldDbWriter()
+    result = writer.update_rows(
+        "raw_product_metadata",
+        set_values={"import_status": "staged", "staged_at": "2026-07-27T00:00:00Z"},
+        equals=(("raw_metadata_id", "rm-1"),),
+    )
+
+    assert result == DbWriteResult(rows_affected=1, table="raw_product_metadata")
+    assert writer.update_calls == [
+        {
+            "table": "raw_product_metadata",
+            "set_values": {
+                "import_status": "staged",
+                "staged_at": "2026-07-27T00:00:00Z",
+            },
+            "equals": (("raw_metadata_id", "rm-1"),),
+        }
+    ]
+
+
+def test_scaffold_db_writer_records_deletes() -> None:
+    writer = ScaffoldDbWriter()
+    result = writer.delete_rows(
+        "staging_item_image",
+        equals=(
+            ("raw_metadata_id", "rm-1"),
+            ("external_item_code", "shop:a"),
+            ("image_url", "https://img.example/x.jpg"),
+        ),
+    )
+
+    assert result == DbWriteResult(rows_affected=1, table="staging_item_image")
+    assert writer.delete_calls == [
+        {
+            "table": "staging_item_image",
+            "equals": (
+                ("raw_metadata_id", "rm-1"),
+                ("external_item_code", "shop:a"),
+                ("image_url", "https://img.example/x.jpg"),
+            ),
+        }
+    ]
+
+
+def test_postgres_update_rows_rejects_empty_equals() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+    with pytest.raises(DatabaseError, match="equals"):
+        writer.update_rows(
+            "raw_product_metadata",
+            set_values={"import_status": "failed"},
+            equals=(),
+        )
+
+
+def test_postgres_delete_rows_rejects_empty_equals() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+    with pytest.raises(DatabaseError, match="equals"):
+        writer.delete_rows("staging_item_image", equals=())
+
+
+def test_postgres_update_rows_executes_parameterized_update() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+
+    mock_cursor = MagicMock()
+    mock_cursor.rowcount = 1
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = False
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = False
+
+    with patch("psycopg.connect", return_value=mock_conn) as connect:
+        result = writer.update_rows(
+            "raw_product_metadata",
+            set_values={
+                "import_status": "failed",
+                "error_code": "GRS-RAW-005",
+                "error_message": "staging failed: GRS-RAW-005",
+            },
+            equals=(("raw_metadata_id", "rm-1"),),
+        )
+
+    connect.assert_called_once_with("postgresql://localhost:5432/gift")
+    mock_cursor.execute.assert_called_once()
+    _statement, params = mock_cursor.execute.call_args.args
+    assert params == [
+        "failed",
+        "GRS-RAW-005",
+        "staging failed: GRS-RAW-005",
+        "rm-1",
+    ]
+    mock_conn.commit.assert_called_once()
+    assert result == DbWriteResult(rows_affected=1, table="raw_product_metadata")
+
+
+def test_postgres_delete_rows_executes_parameterized_delete() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+
+    mock_cursor = MagicMock()
+    mock_cursor.rowcount = 1
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = False
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = False
+
+    with patch("psycopg.connect", return_value=mock_conn) as connect:
+        result = writer.delete_rows(
+            "staging_item_image",
+            equals=(
+                ("raw_metadata_id", "rm-1"),
+                ("external_item_code", "shop:a"),
+                ("image_url", "https://img.example/x.jpg"),
+            ),
+        )
+
+    connect.assert_called_once_with("postgresql://localhost:5432/gift")
+    mock_cursor.execute.assert_called_once()
+    _statement, params = mock_cursor.execute.call_args.args
+    assert params == ["rm-1", "shop:a", "https://img.example/x.jpg"]
+    mock_conn.commit.assert_called_once()
+    assert result == DbWriteResult(rows_affected=1, table="staging_item_image")
+
+
+def test_postgres_update_rows_rejects_invalid_table() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+    with pytest.raises(DatabaseError, match="invalid SQL table"):
+        writer.update_rows(
+            "raw;drop",
+            set_values={"import_status": "staged"},
+            equals=(("raw_metadata_id", "rm-1"),),
+        )
+
+
 def test_postgres_upsert_rows_rejects_empty_conflict() -> None:
     writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
     with pytest.raises(DatabaseError, match="conflict_columns"):
