@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1657
   issue:
     number: 1623
   task_definition: "prompts/definitions/epics/batch-db-select/epic.yaml"
