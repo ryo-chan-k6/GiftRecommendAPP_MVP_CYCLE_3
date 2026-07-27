@@ -3,7 +3,10 @@
 ``list_detected_candidates`` / ``list_diff_suggestions`` / ``get_item`` use ``DbReader``
 when injected (Wave C). Without a reader, in-memory seed remains for scaffold / UT.
 
-Retention DELETE は本 Batch の対象外（T7）。書込本格化は out of scope。
+Write path (#1633 Wave 2):
+- ``item`` active_status / is_active → ``DbWriter.update_rows``
+- candidate applied / superseded / discarded → ``DbWriter.update_rows``
+- Retention physical DELETE → ``DbWriter.delete_rows`` (detected は削除禁止)
 """
 
 from __future__ import annotations
@@ -300,16 +303,13 @@ class ItemActiveStatusRepositories:
             is_active=_is_active_for(active_status),
         )
         self.items[key] = updated
-        self.db_writer.write_rows(
+        self.db_writer.update_rows(
             "item",
-            (
-                {
-                    "source": source,
-                    "external_item_code": external_item_code,
-                    "active_status": active_status,
-                    "is_active": updated.is_active,
-                },
-            ),
+            set_values={
+                "active_status": active_status,
+                "is_active": updated.is_active,
+            },
+            equals=(("source", source), ("external_item_code", external_item_code)),
         )
         return True
 
@@ -333,16 +333,14 @@ class ItemActiveStatusRepositories:
             updated_at=at,
         )
         self.candidates[candidate_id] = updated
-        self.db_writer.write_rows(
+        self.db_writer.update_rows(
             "item_active_status_candidate",
-            (
-                {
-                    "item_active_status_candidate_id": candidate_id,
-                    "candidate_status": "applied",
-                    "applied_at": at.isoformat(),
-                    "updated_at": at.isoformat(),
-                },
-            ),
+            set_values={
+                "candidate_status": "applied",
+                "applied_at": at,
+                "updated_at": at,
+            },
+            equals=(("item_active_status_candidate_id", candidate_id),),
         )
 
     def mark_candidate_superseded(self, candidate_id: str, *, updated_at: datetime | None = None) -> None:
@@ -377,15 +375,13 @@ class ItemActiveStatusRepositories:
             updated_at=at,
         )
         self.candidates[candidate_id] = updated
-        self.db_writer.write_rows(
+        self.db_writer.update_rows(
             "item_active_status_candidate",
-            (
-                {
-                    "item_active_status_candidate_id": candidate_id,
-                    "candidate_status": status,
-                    "updated_at": at.isoformat(),
-                },
-            ),
+            set_values={
+                "candidate_status": status,
+                "updated_at": at,
+            },
+            equals=(("item_active_status_candidate_id", candidate_id),),
         )
 
     def delete_candidate(self, candidate_id: str) -> bool:
@@ -398,14 +394,9 @@ class ItemActiveStatusRepositories:
             return False
         del self.candidates[candidate_id]
         self.deleted_candidate_ids.append(candidate_id)
-        self.db_writer.write_rows(
+        self.db_writer.delete_rows(
             "item_active_status_candidate",
-            (
-                {
-                    "item_active_status_candidate_id": candidate_id,
-                    "op": "delete",
-                },
-            ),
+            equals=(("item_active_status_candidate_id", candidate_id),),
         )
         return True
 

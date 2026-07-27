@@ -16,6 +16,12 @@ def _repos() -> ItemActiveStatusRepositories:
     return ItemActiveStatusRepositories(db_writer=ScaffoldDbWriter())
 
 
+def _writer(repos: ItemActiveStatusRepositories) -> ScaffoldDbWriter:
+    writer = repos.db_writer
+    assert isinstance(writer, ScaffoldDbWriter)
+    return writer
+
+
 def _item(code: str, status: str, *, item_id: str | None = None) -> ItemRow:
     return ItemRow(
         source="rakuten",
@@ -258,8 +264,11 @@ def test_does_not_mutate_diff_rows() -> None:
     before = repos.diffs["d9"]
     ItemActiveStatusJob(repositories=repos).run(job_run_id="job-9")
     assert repos.diffs["d9"] == before
-    # Diff 更新 write が無いこと
-    assert all(call["table"] != "product_diff_result" for call in repos.db_writer.write_calls)
+    # Diff 更新 write / update / delete が無いこと
+    db = _writer(repos)
+    assert all(call["table"] != "product_diff_result" for call in db.write_calls)
+    assert all(call["table"] != "product_diff_result" for call in db.update_calls)
+    assert all(call["table"] != "product_diff_result" for call in db.delete_calls)
 
 
 def test_max_items_limits_item_keys() -> None:
@@ -490,7 +499,10 @@ def test_applier_does_not_call_retention_delete() -> None:
     )
     ItemActiveStatusJob(repositories=repos).run(job_run_id="job-10")
     assert repos.deleted_candidate_ids == []
-    assert all(call.get("op") != "delete" for call in repos.db_writer.write_calls)
+    db = _writer(repos)
+    # Applier 経路では Retention DELETE しない（偽 op=delete write も廃止）
+    assert db.delete_calls == []
+    assert all(call.get("op") != "delete" for call in db.write_calls)
 
 
 def test_excluded_beats_unavailable() -> None:
@@ -562,17 +574,17 @@ def test_same_status_skips_item_update_but_marks_applied() -> None:
             reason="empty_hit",
         )
     )
-    before_writes = len(repos.db_writer.write_calls)
+    db = _writer(repos)
+    before_updates = len(db.update_calls)
     result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-same")
     assert result.status == "succeeded"
     assert result.item_status_updated_count == 0
     assert repos.candidates["c-same"].candidate_status == "applied"
     assert repos.candidates["c-same"].applied_at is not None
-    # item テーブルへの write が無いこと（候補 status 更新のみ）
-    item_writes = [
-        c for c in repos.db_writer.write_calls[before_writes:] if c["table"] == "item"
-    ]
-    assert item_writes == []
+    # item テーブルへの update が無いこと（候補 status 更新のみ）
+    item_updates = [c for c in db.update_calls[before_updates:] if c["table"] == "item"]
+    assert item_updates == []
+    assert db.write_calls == []
 
 
 def test_is_active_syncs_with_active_status() -> None:
@@ -750,18 +762,88 @@ def test_if_boundary_no_candidate_insert_no_raw_no_online() -> None:
     repos.seed_diff(_diff(did="d-if", code="shop:if", proposed="unavailable", judged_at=NOW))
     ItemActiveStatusJob(repositories=repos).run(job_run_id="job-if")
 
+    db = _writer(repos)
     allowed_tables = {"item", "item_active_status_candidate"}
-    tables = {call["table"] for call in repos.db_writer.write_calls}
+    assert db.write_calls == []
+    assert db.delete_calls == []
+    tables = {call["table"] for call in db.update_calls}
     assert tables <= allowed_tables
     assert "product_diff_result" not in tables
     assert "raw_payload" not in tables
     assert "item_raw" not in tables
     # INSERT 相当の候補新規行書き込みが無い（status UPDATE のみ）
-    for call in repos.db_writer.write_calls:
+    for call in db.update_calls:
         if call["table"] == "item_active_status_candidate":
-            for row in call["rows"]:  # type: ignore[index]
-                assert "candidate_active_status" not in row
-                assert "candidate_status" in row
+            set_values = call["set_values"]
+            assert isinstance(set_values, dict)
+            assert "candidate_active_status" not in set_values
+            assert "candidate_status" in set_values
+
+
+def test_writer_uses_update_rows_not_write_rows_for_item_and_candidate() -> None:
+    """Wave 2: item / candidate 更新は update_rows。write_rows 禁止。"""
+
+    repos = _repos()
+    repos.seed_item(_item("shop:w", "active"))
+    repos.seed_candidate(
+        _cand(
+            cid="c-w",
+            code="shop:w",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-writer-ops")
+    assert result.status == "succeeded"
+
+    db = _writer(repos)
+    assert db.write_calls == []
+    assert db.delete_calls == []
+
+    item_updates = [c for c in db.update_calls if c["table"] == "item"]
+    assert len(item_updates) == 1
+    assert item_updates[0]["set_values"] == {
+        "active_status": "unavailable",
+        "is_active": False,
+    }
+    assert item_updates[0]["equals"] == (
+        ("source", "rakuten"),
+        ("external_item_code", "shop:w"),
+    )
+
+    cand_updates = [c for c in db.update_calls if c["table"] == "item_active_status_candidate"]
+    assert len(cand_updates) == 1
+    set_values = cand_updates[0]["set_values"]
+    assert isinstance(set_values, dict)
+    assert set_values["candidate_status"] == "applied"
+    assert isinstance(set_values["applied_at"], datetime)
+    assert isinstance(set_values["updated_at"], datetime)
+    assert cand_updates[0]["equals"] == (("item_active_status_candidate_id", "c-w"),)
+
+
+def test_mark_terminal_uses_update_rows_with_datetime() -> None:
+    repos = _repos()
+    repos.seed_candidate(
+        _cand(
+            cid="c-term",
+            code="shop:term",
+            status="unavailable",
+            detected_at=NOW,
+            basis="empty_hit",
+            reason="empty_hit",
+        )
+    )
+    at = NOW + timedelta(minutes=1)
+    repos.mark_candidate_superseded("c-term", updated_at=at)
+    db = _writer(repos)
+    assert db.write_calls == []
+    assert len(db.update_calls) == 1
+    call = db.update_calls[0]
+    assert call["table"] == "item_active_status_candidate"
+    assert call["set_values"] == {"candidate_status": "superseded", "updated_at": at}
+    assert call["equals"] == (("item_active_status_candidate_id", "c-term"),)
 
 
 def test_fixture_and_logs_have_no_secret_like_values() -> None:
@@ -778,6 +860,13 @@ def test_fixture_and_logs_have_no_secret_like_values() -> None:
         )
     )
     result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-sec")
-    blob = repr(result) + repr(repos.db_writer.write_calls) + repr(repos.error_logs)
+    db = _writer(repos)
+    blob = (
+        repr(result)
+        + repr(db.write_calls)
+        + repr(db.update_calls)
+        + repr(db.delete_calls)
+        + repr(repos.error_logs)
+    )
     for needle in ("sk-", "password=", "Bearer ", "DATABASE_URL=", "OPENAI_API_KEY="):
         assert needle not in blob
