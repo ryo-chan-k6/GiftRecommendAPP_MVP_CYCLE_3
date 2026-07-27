@@ -112,11 +112,14 @@ def test_hash_success_handoff_keeps_processing() -> None:
     assert len(repos.handoff_records) == 1
     h = str(repos.handoff_records[0]["feature_input_hash"])
     assert len(h) == 64 and h == h.lower()
-    tables = {c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}
+    # semantic+processing continue / keep_processing は DB no-op（queue write なし）
+    assert db.write_calls == []
     assert "item_feature_input" in {c["table"] for c in db.upsert_calls}
-    assert "feature_input_hash_handoff" not in tables
-    assert "item_feature" not in tables
-    assert "item_semantic" not in tables
+    assert "item_generation_queue" not in {c["table"] for c in db.update_calls}
+    upsert_tables = {c["table"] for c in db.upsert_calls}
+    assert "feature_input_hash_handoff" not in upsert_tables
+    assert "item_feature" not in upsert_tables
+    assert "item_semantic" not in upsert_tables
     assert repos.item_feature_write_count == 0
     assert repos.item_semantic_write_count == 0
     assert repos.queue_insert_count == 0
@@ -440,15 +443,15 @@ def test_if_boundary_no_forbidden_writes() -> None:
     assert repos.item_feature_write_count == 0
     forbidden = {"item", "item_semantic", "item_feature"}
     assert forbidden.isdisjoint({c["table"] for c in db.write_calls})
-    for call in db.write_calls:
-        if call["table"] == "item_generation_queue":
-            for row in call["rows"]:
-                assert row.get("op") in {
-                    "continue_processing",
-                    "claim",
-                    "update_status",
-                    "hash_success_keep_processing",
-                }
+    assert forbidden.isdisjoint({c["table"] for c in db.upsert_calls})
+    assert forbidden.isdisjoint({c["table"] for c in db.update_calls})
+    # 主経路 continue / keep_processing は no-op。偽 op キーなし。
+    assert db.write_calls == []
+    for call in db.update_calls:
+        assert "op" not in call.get("set_values", {})
+    for call in db.upsert_calls:
+        for row in call["rows"]:
+            assert "op" not in row
 
 
 def test_concurrent_start_rejected_grs_bat_003() -> None:
@@ -514,8 +517,37 @@ def test_fixture_and_logs_have_no_secret_like_values() -> None:
     blob = (
         repr(result)
         + repr(db.write_calls)
+        + repr(db.upsert_calls)
+        + repr(db.update_calls)
         + repr(repos.error_logs)
         + repr(repos.handoff_records)
     ).lower()
     for token in ("password", "api_key", "secret", "bearer ", "sk-", "postgresql://"):
         assert token not in blob
+
+
+def test_feature_queued_claim_uses_update_rows() -> None:
+    """副経路 feature+queued は条件付き update_rows。偽 op なし。"""
+
+    repos, db = _repos(
+        queues=[_queue(qid="igq_f", generation_type="feature", queue_status="queued")],
+        items=[_item()],
+        semantics=[_semantic()],
+    )
+    result = FeatureInputHashJob(repositories=repos).run(job_run_id="run-claim")
+    assert result.hashed_count == 1
+    assert repos.queues["igq_f"]["queue_status"] == "processing"
+    claim_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "processing"
+    ]
+    assert len(claim_updates) == 1
+    assert claim_updates[0]["equals"] == (
+        ("item_generation_queue_id", "igq_f"),
+        ("queue_status", "queued"),
+        ("generation_type", "feature"),
+    )
+    assert db.write_calls == []
+    assert all("op" not in str(c.get("set_values", {})) for c in db.update_calls)
