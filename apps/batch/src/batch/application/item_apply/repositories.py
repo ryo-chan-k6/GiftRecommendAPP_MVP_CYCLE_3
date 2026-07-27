@@ -3,7 +3,8 @@
 ``list_eligible_diffs`` / ``load_*`` / ``resolve_item`` use ``DbReader`` when injected
 (Wave C). Without a reader, in-memory ``seed_*`` remains for scaffold / UT.
 
-Write path keeps existing ``write_rows`` probes — UPSERT formalization is out of scope.
+Write path uses ``DbWriter.upsert_rows`` / ``update_rows`` / ``delete_rows``
+(IF-DB-BATCH-007 Wave 1). ``active_status`` / ``is_active`` are never written here.
 """
 
 from __future__ import annotations
@@ -77,6 +78,31 @@ _ITEM_COLUMNS = (
     "is_active",
     "first_fetched_at",
     "last_checked_at",
+)
+_ITEM_IMAGE_COLUMNS = ("image_url",)
+_ITEM_UPSERT_UPDATE_COLUMNS = (
+    "item_name",
+    "item_caption",
+    "catchcopy",
+    "price",
+    "item_url",
+    "external_genre_id",
+    "shop_code",
+    "normalized_hash",
+    "last_checked_at",
+    "updated_at",
+    # first_fetched_at / active_status / is_active / item_id は DO UPDATE 対象外（仕様 §10.1.1）
+)
+_ITEM_IMAGE_UPSERT_UPDATE_COLUMNS = (
+    "image_size_type",
+    "display_order",
+    "is_primary",
+    "fetched_at",
+)
+_ITEM_REVIEW_UPSERT_UPDATE_COLUMNS = (
+    "review_average",
+    "review_count",
+    "fetched_at",
 )
 
 
@@ -443,7 +469,8 @@ class ItemApplyRepositories:
         now = checked_at if checked_at.tzinfo else checked_at.replace(tzinfo=UTC)
 
         if existing is None:
-            item_id = f"it_{uuid.uuid4().hex[:12]}"
+            # Client UUID for INSERT; ON CONFLICT must not overwrite item_id.
+            item_id = str(uuid.uuid4())
             record: dict[str, object] = {
                 "item_id": item_id,
                 "source": staging.source,
@@ -459,7 +486,7 @@ class ItemApplyRepositories:
                 "first_fetched_at": now,
                 "last_checked_at": now,
                 "updated_at": now,
-                # DDL defaults only on INSERT — never derived from availability
+                # DDL defaults only on INSERT — never derived from availability; not in writer payload
                 "active_status": DEFAULT_ACTIVE_STATUS,
                 "is_active": DEFAULT_IS_ACTIVE,
             }
@@ -480,7 +507,9 @@ class ItemApplyRepositories:
                 existing["first_fetched_at"] = now
             record = existing
 
-        write_row = {
+        # active_status / is_active omitted: INSERT relies on DB DEFAULT; UPDATE never SETs them.
+        # first_fetched_at is in INSERT payload only (not in update_columns).
+        persist_row = {
             "item_id": record["item_id"],
             "source": record["source"],
             "external_item_code": record["external_item_code"],
@@ -495,10 +524,14 @@ class ItemApplyRepositories:
             "first_fetched_at": record["first_fetched_at"],
             "last_checked_at": record["last_checked_at"],
             "updated_at": record["updated_at"],
-            # intentional: active_status / is_active omitted from write payload for Upsert SET
         }
-        self.written_item_rows.append(dict(write_row))
-        self.db_writer.write_rows("item", (dict(write_row),))
+        self.written_item_rows.append(dict(persist_row))
+        self.db_writer.upsert_rows(
+            "item",
+            (dict(persist_row),),
+            conflict_columns=("source", "external_item_code"),
+            update_columns=_ITEM_UPSERT_UPDATE_COLUMNS,
+        )
         return dict(record)
 
     def touch_item_last_checked(
@@ -508,7 +541,7 @@ class ItemApplyRepositories:
         external_item_code: str,
         checked_at: datetime,
     ) -> dict[str, object]:
-        """unchanged: last_checked_at (+ updated_at) only."""
+        """unchanged: last_checked_at (+ updated_at) only via update_rows (no partial upsert)."""
 
         key = (source, external_item_code)
         self._ensure_item_hydrated(source=source, external_item_code=external_item_code)
@@ -518,15 +551,22 @@ class ItemApplyRepositories:
         now = checked_at if checked_at.tzinfo else checked_at.replace(tzinfo=UTC)
         row["last_checked_at"] = now
         row["updated_at"] = now
-        write_row = {
-            "item_id": row["item_id"],
-            "source": source,
-            "external_item_code": external_item_code,
+        set_values = {
             "last_checked_at": now,
             "updated_at": now,
         }
-        self.written_item_rows.append(dict(write_row))
-        self.db_writer.write_rows("item", (dict(write_row),))
+        probe_row = {
+            "item_id": row["item_id"],
+            "source": source,
+            "external_item_code": external_item_code,
+            **set_values,
+        }
+        self.written_item_rows.append(dict(probe_row))
+        self.db_writer.update_rows(
+            "item",
+            set_values=dict(set_values),
+            equals=(("source", source), ("external_item_code", external_item_code)),
+        )
         return dict(row)
 
     def sync_item_images(
@@ -542,11 +582,6 @@ class ItemApplyRepositories:
         desired_urls = {img.image_url for img in images}
         current = self.item_images.setdefault(item_id, {})
 
-        # DELETE urls not in S
-        for url in list(current.keys()):
-            if url not in desired_urls:
-                del current[url]
-
         # Determine single is_primary (first primary candidate, else first by display_order)
         primary_url: str | None = None
         ordered = sorted(images, key=lambda i: (i.display_order, i.image_url))
@@ -557,9 +592,9 @@ class ItemApplyRepositories:
         if primary_url is None and ordered:
             primary_url = ordered[0].image_url
 
-        written: list[dict[str, object]] = []
+        by_url: dict[str, dict[str, object]] = {}
         for img in ordered:
-            record = {
+            record: dict[str, object] = {
                 "item_id": item_id,
                 "image_url": img.image_url,
                 "image_size_type": img.image_size_type,
@@ -567,23 +602,48 @@ class ItemApplyRepositories:
                 "is_primary": img.image_url == primary_url,
                 "fetched_at": now,
             }
+            by_url[img.image_url] = record
             current[img.image_url] = dict(record)
-            written.append(dict(record))
             self.written_item_image_rows.append(dict(record))
 
-        # empty set: still record a sync marker via delete-only write
-        if not written:
-            delete_marker = {
-                "item_id": item_id,
-                "sync_replace": True,
-                "image_count": 0,
-                "fetched_at": now,
-            }
-            self.written_item_image_rows.append(dict(delete_marker))
-            self.db_writer.write_rows("item_image", (dict(delete_marker),))
-        else:
-            self.db_writer.write_rows("item_image", tuple(dict(r) for r in written))
+        written = list(by_url.values())
+        if written:
+            self.db_writer.upsert_rows(
+                "item_image",
+                tuple(dict(r) for r in written),
+                conflict_columns=("item_id", "image_url"),
+                update_columns=_ITEM_IMAGE_UPSERT_UPDATE_COLUMNS,
+            )
+
+        self._sync_delete_item_images(item_id=item_id, url_set=desired_urls)
         return written
+
+    def _sync_delete_item_images(self, *, item_id: str, url_set: set[str]) -> int:
+        """Delete item_image rows outside the current URL set (005 staging と同型)."""
+
+        if self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "item_image",
+                columns=_ITEM_IMAGE_COLUMNS,
+                equals=(("item_id", item_id),),
+            )
+            existing_urls = {str(row["image_url"]) for row in result.rows}
+        else:
+            existing_urls = set(self.item_images.get(item_id, {}).keys())
+
+        deleted = 0
+        for image_url in sorted(existing_urls - url_set):
+            self.db_writer.delete_rows(
+                "item_image",
+                equals=(("item_id", item_id), ("image_url", image_url)),
+            )
+            deleted += 1
+
+        current = self.item_images.setdefault(item_id, {})
+        for url in list(current.keys()):
+            if url not in url_set:
+                del current[url]
+        return deleted
 
     def upsert_item_review(
         self,
@@ -606,7 +666,12 @@ class ItemApplyRepositories:
         }
         self.item_reviews[item_id] = dict(record)
         self.written_item_review_rows.append(dict(record))
-        self.db_writer.write_rows("item_review_summary", (dict(record),))
+        self.db_writer.upsert_rows(
+            "item_review_summary",
+            (dict(record),),
+            conflict_columns=("item_id",),
+            update_columns=_ITEM_REVIEW_UPSERT_UPDATE_COLUMNS,
+        )
         return dict(record)
 
     def record_error(
