@@ -1,0 +1,189 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-select-016-017-select"
+  title: "batch-db-select:BATCH-016-017 SELECT本配線"
+  summary: "Wave G（最終）として BATCH-016 / 017 の監視・集計 SELECT を DbReader 経由で本配線する。Metric / import_summary 書込本格化・E4 は out of scope。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-select:DB読取本配線"
+  epic_issue_number: 1623
+  epic_branch: "feature/epic-1623-batch-db-select"
+  related_issues:
+    - 1651
+  related_prs:
+    - 1652
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave F（#1651 / #1652）完了後、Epic #1623 最終 Wave G として 016/017 の SELECT を本配線する。
+
+objective: |
+  016/017 の主 load を DbReader 経由で本配線し、非 demo で exit 3 を解除する。
+
+scope:
+  - "BATCH-016: load_item_features / load_item_meanings（任意 load_user_meanings / load_item_embeddings）"
+  - "BATCH-017: require_batch_run / load_api_calls / load_diffs / load_staging_items（補助 skip/fail/progress は最小 SELECT または 0 埋めを明示）"
+  - "各 CLI: resolve_job_db_reader（DATABASE_URL 必須、無しは exit 2）"
+  - "--scaffold-demo 回帰"
+  - "UT"
+  - "実 DB 疎通確認（必須。0 件可）"
+  - "SELECT ギャップ一覧 Wave G 進捗（主ブロッカー解消）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Metric / item_import_summary 書込本格化"
+  - "E4 観測横断 / Semantic LLM / #1607"
+  - "DbReader IN / IS NULL / JOIN / 任意 SQL / OR 拡張"
+  - "Epic PR → develop（本 Task 後の別作業）"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/distribution_metrics/**"
+      required: true
+    - path: "apps/batch/src/batch/application/import_summary/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/reader.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/distribution_metrics/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/distribution_metrics/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/import_summary/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/import_summary/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_distribution_metrics.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_import_summary.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-select/batch-016-017-select.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-select/batch-016-017-select/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "016 / 017 SELECT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "両 Batch の主読取が DbReader を使う"
+  - "非 demo で DATABASE_URL ありなら SELECT 経由で Job 起動可能（exit 3 解除）"
+  - "実 DB 疎通確認が完了し PR に結果要約がある（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-select-016-017-select"
+  base: "feature/epic-1623-batch-db-select"
+  target: "feature/epic-1623-batch-db-select"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "low"
+    planned_start: "2026-07-27"
+    due_date: "2026-07-30"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "親 Epic"
+  issues:
+    - number: 1651
+      purpose: "Wave F"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/src/batch/application/import_summary/**"
+    - "apps/batch/tests/unit/application/test_distribution_metrics.py"
+    - "apps/batch/tests/unit/application/test_import_summary.py"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "016/017 主読取が DbReader を使うか"
+    - "書込本格化 / E4 を混入していないか"
+    - "実 DB 疎通結果が PR に記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic Wave G（最終 SELECT Wave）"
+  - "本 Task merge 後に Epic PR → develop が別作業"

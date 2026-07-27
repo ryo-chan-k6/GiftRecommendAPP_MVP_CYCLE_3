@@ -1,4 +1,9 @@
-"""In-memory repositories for BATCH-016 scaffold / UT.
+"""Repositories for BATCH-016 分布メトリクス集計.
+
+``load_item_features`` / ``load_item_meanings``（および任意の
+``load_user_meanings`` / ``load_item_embeddings``）は ``DbReader`` 経由（Wave G）。
+
+Metric UPSERT SQL 本格化は out of scope（scaffold / stub 書込のみ）。
 
 - item_feature / item_meaning READ ONLY（必須入力）
 - item_embedding / user_meaning READ ONLY（任意・フラグ OFF 既定）
@@ -18,7 +23,28 @@ from batch.application.distribution_metrics.models import (
     MetricUpsertRow,
     UserMeaningRow,
 )
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DbReader, DbWriter
+
+_ITEM_FEATURE_COLUMNS = (
+    "item_id",
+    "semantic_config_version_id",
+    "feature_code",
+    "raw_feature_value",
+    "normalized_feature_value",
+    "feature_normalization_version_id",
+)
+_ITEM_MEANING_COLUMNS = (
+    "item_id",
+    "semantic_config_version_id",
+    "item_social",
+    "item_symbolic",
+    "feature_normalization_version_id",
+)
+_ITEM_EMBEDDING_COLUMNS = (
+    "item_id",
+    "model_version_id",
+    "embedding_input_hash",
+)
 
 
 def _feature_upsert_key(row: MetricUpsertRow) -> tuple[object, ...]:
@@ -93,11 +119,25 @@ def _upsert_rows(
     return len(incoming)
 
 
+def _optional_str(value: object | None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_float(value: object | None) -> float | None:
+    if value is None:
+        return None
+    return float(value)
+
+
 @dataclass
 class DistributionMetricsRepositories:
     """Facade: 入力読取 / IF-DB-BATCH-016 UPSERT / phase・error logs."""
 
     db_writer: DbWriter
+    db_reader: DbReader | None = None
     seed_item_features: list[ItemFeatureRow] = field(default_factory=list)
     seed_item_meanings: list[ItemMeaningRow] = field(default_factory=list)
     seed_user_meanings: list[UserMeaningRow] = field(default_factory=list)
@@ -133,6 +173,14 @@ class DistributionMetricsRepositories:
         self.item_embeddings = list(self.seed_item_embeddings)
 
     def load_item_features(self, *, semantic_config_version_id: str) -> tuple[ItemFeatureRow, ...]:
+        if self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "item_feature",
+                columns=_ITEM_FEATURE_COLUMNS,
+                equals=(("semantic_config_version_id", semantic_config_version_id),),
+                order_by=("item_id", "feature_code"),
+            )
+            return tuple(self._row_to_item_feature(row) for row in result.rows)
         return tuple(
             row
             for row in self.item_features
@@ -140,6 +188,14 @@ class DistributionMetricsRepositories:
         )
 
     def load_item_meanings(self, *, semantic_config_version_id: str) -> tuple[ItemMeaningRow, ...]:
+        if self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "item_meaning",
+                columns=_ITEM_MEANING_COLUMNS,
+                equals=(("semantic_config_version_id", semantic_config_version_id),),
+                order_by=("item_id",),
+            )
+            return tuple(self._row_to_item_meaning(row) for row in result.rows)
         return tuple(
             row
             for row in self.item_meanings
@@ -147,6 +203,8 @@ class DistributionMetricsRepositories:
         )
 
     def load_user_meanings(self, *, semantic_config_version_id: str) -> tuple[UserMeaningRow, ...]:
+        # user_meaning に semantic_config_version_id 列は無い（recommendation_run JOIN が必要）。
+        # DbReader JOIN 拡張 / E4 は out of scope。任意フラグ時も seed 経路のみ。
         return tuple(
             row
             for row in self.user_meanings
@@ -155,6 +213,16 @@ class DistributionMetricsRepositories:
 
     def load_item_embeddings(self) -> tuple[ItemEmbeddingRow, ...]:
         """任意監視入力の読取のみ。IF-VEC-BATCH-001 Upsert は行わない。"""
+
+        if self.db_reader is not None:
+            result = self.db_reader.fetch_rows(
+                "item_embedding",
+                columns=_ITEM_EMBEDDING_COLUMNS,
+                order_by=("item_id", "model_version_id"),
+            )
+            rows = tuple(self._row_to_item_embedding(row) for row in result.rows)
+            self.item_embedding_read_count = len(rows)
+            return rows
 
         rows = tuple(self.item_embeddings)
         self.item_embedding_read_count = len(rows)
@@ -200,6 +268,39 @@ class DistributionMetricsRepositories:
 
     def record_error(self, *, code: str, summary: str) -> None:
         self.error_logs.append({"code": code, "summary": summary})
+
+    @staticmethod
+    def _row_to_item_feature(row: dict[str, object]) -> ItemFeatureRow:
+        return ItemFeatureRow(
+            item_id=str(row["item_id"]),
+            semantic_config_version_id=str(row["semantic_config_version_id"]),
+            feature_code=str(row["feature_code"]),
+            raw_feature_value=_optional_float(row.get("raw_feature_value")),
+            normalized_feature_value=_optional_float(row.get("normalized_feature_value")),
+            feature_normalization_version_id=_optional_str(
+                row.get("feature_normalization_version_id")
+            ),
+        )
+
+    @staticmethod
+    def _row_to_item_meaning(row: dict[str, object]) -> ItemMeaningRow:
+        return ItemMeaningRow(
+            item_id=str(row["item_id"]),
+            semantic_config_version_id=str(row["semantic_config_version_id"]),
+            item_social=float(row["item_social"]),
+            item_symbolic=float(row["item_symbolic"]),
+            feature_normalization_version_id=_optional_str(
+                row.get("feature_normalization_version_id")
+            ),
+        )
+
+    @staticmethod
+    def _row_to_item_embedding(row: dict[str, object]) -> ItemEmbeddingRow:
+        return ItemEmbeddingRow(
+            item_id=str(row["item_id"]),
+            model_version_id=str(row["model_version_id"]),
+            embedding_input_hash=str(row["embedding_input_hash"]),
+        )
 
     @staticmethod
     def _row_payload(row: MetricUpsertRow) -> dict[str, object]:
