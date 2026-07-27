@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1687
   issue:
     number: 1686
   task_definition: "prompts/definitions/tasks/simple-stg-setup/simple-stg-setup.yaml"
