@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1678
   issue:
     number: 1677
   task_definition: "prompts/definitions/tasks/batch-db-write-009-010/queue-write.yaml"
