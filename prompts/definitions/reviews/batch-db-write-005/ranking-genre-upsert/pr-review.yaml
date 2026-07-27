@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1667
   issue:
     number: 1666
   task_definition: "prompts/definitions/tasks/batch-db-write-005/ranking-genre-upsert.yaml"
