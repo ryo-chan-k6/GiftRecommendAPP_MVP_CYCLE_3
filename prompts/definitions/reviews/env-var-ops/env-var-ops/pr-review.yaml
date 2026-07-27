@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-env-var-ops-pr"
+  title: "環境変数運用手順 PRレビュー"
+  summary: "env-var-ops 環境変数運用手順作成 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr:
+    number: 1683
+  issue:
+    number: 127
+  task_definition: "prompts/definitions/tasks/env-var-ops/env-var-ops.yaml"
+  source_branch: "docs/task-127-env-var-ops"
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "環境変数運用手順.md が正本として存在するか"
+  - "secret 実値・.env 実値がないか"
+  - "定義書（一覧）と運用手順（手順）の責務分離が保たれているか"
+  - "登録チェックリスト・分離確認・簡易 stg 受入前確認があるか"
+  - "Related to #127、Closes 禁止、PR target が develop か"
+  - "out of scope（実値登録・infra 実構築・apps 変更）に踏み込んでいないか"
+
+notes:
+  - "PR 番号確定後に target.pr を更新してよい"
+  - "#127 完了判定は Human。AI Review は手順の充足性を確認する"
