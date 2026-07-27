@@ -1,0 +1,178 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-env-var-ops"
+  title: "env-var-ops:環境変数運用手順作成"
+  summary: "環境変数定義書（一覧正本）を入力に、local/stg/prod/CI の設定手順・登録チェック・分離確認を運用手順正本化する。#127 本作業。secret 実値禁止。"
+  phase: "15_運用・改善"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - 127
+    - 124
+    - 1654
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  環境変数一覧の最小正本は #1654（環境変数定義書）で作成済み。
+  #127 は一覧作成ではなく、配置・環境別・Secrets／手順への落とし込み本作業。
+  親 #124 は CLOSED のため PR target は develop。
+  Decision Log H-ISS-01 により #127 は OPEN 維持（Closes 禁止）。
+
+objective: |
+  docs/15_運用・改善/運用手順/環境変数運用手順.md を正本として作成し、
+  定義書・受入環境方針から辿れる登録手順・分離確認を提供する。
+  secret 実値は一切書かない。
+
+scope:
+  - "環境変数運用手順書の作成（local / stg / prod / CI）"
+  - "登録チェックリスト（名前のみ。定義書 §10 対応）"
+  - "分離確認（stg≠prod、local に stg/prod secret 禁止、live 既定 off）"
+  - "簡易 stg 受入前の必須確認（受入環境方針接続）"
+  - "docs/15 README への正本リンク"
+  - "環境変数定義書への相互リンク（最小）"
+
+out_of_scope:
+  - "GitHub / ホスティングへの secret 実値登録"
+  - "簡易 stg / prod インフラ実構築"
+  - "apps/** / OpenAPI / workflow 実変更"
+  - "#145 / #146、システム／品質本実施"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+      purpose: "一覧正本・GHA 名対応・設定先マトリクス"
+    - path: "docs/13_受入テスト/テスト計画/受入環境方針.md"
+      required: true
+      purpose: "簡易 stg / local ルール・分離前提"
+    - path: "docs/05_アプリケーション設計/基盤/認証・認可方針書.md"
+      required: true
+      purpose: "Secret 管理ルール §10"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: false
+      purpose: "環境分離方針参照"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/環境変数運用手順.md"
+      action: "create"
+      required: true
+    - path: "docs/15_運用・改善/README.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      action: "update"
+      required: true
+  files: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "環境変数運用手順.md"
+  - "README / 定義書の相互リンク"
+
+acceptance_criteria:
+  - "docs/15_運用・改善/運用手順/環境変数運用手順.md が存在する"
+  - "環境別設定先・登録チェックリスト・分離確認がある"
+  - "secret 実値が含まれていない"
+  - "Related to #127（Closes 禁止。完了判定は Human）"
+  - "PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "env-var-ops"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "15_運用・改善"
+    status: "In Progress"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 127
+      purpose: "本作業 Issue（OPEN 維持）"
+    - number: 1654
+      purpose: "一覧最小正本（入力）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/環境変数運用手順.md"
+    - "docs/15_運用・改善/README.md"
+    - "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "運用手順 docs のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "secret / token / key 実値がないか"
+    - "定義書との責務分離（一覧 vs 手順）が保たれているか"
+    - "受入環境方針・認証・認可方針書 §10 と矛盾していないか"
+    - "Related to #127、Closes 禁止、PR target が develop か"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "手順として足りるか（#127 完了判定）"
+  - "stg/prod Secret の物理名分離（STG_* 採用有無）"
+
+notes:
+  - "定義書 §14 は実値登録を out of scope としている。運用手順を同ファイルに混ぜない"
+  - "Issue #127 は CLOSE しない（H-ISS-01）"
