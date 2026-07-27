@@ -12,7 +12,7 @@ work_mode: "ai-agent"
 
 target:
   pr:
-    number: null
+    number: 1662
   issue:
     number: 1661
   task_definition: "prompts/definitions/tasks/mvp-test-release-prep/reco-quality-test-plan-min.yaml"
