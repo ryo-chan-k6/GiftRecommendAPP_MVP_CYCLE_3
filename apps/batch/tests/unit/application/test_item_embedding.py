@@ -301,8 +301,18 @@ def test_scaffold_demo_cli_succeeds() -> None:
     assert result.generated_count == 2
 
 
-def test_non_scaffold_demo_exits_3() -> None:
-    assert main(["--job-run-id", "x"]) == 3
+def test_non_scaffold_demo_exits_2_without_database_url(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.item_embedding import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings as scaffold_settings
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(scaffold_settings(), database_url=None),
+    )
+    assert cli.main(["--job-run-id", "x"]) == 2
 
 
 def test_live_embedding_without_key_exits_2(monkeypatch) -> None:
@@ -310,6 +320,205 @@ def test_live_embedding_without_key_exits_2(monkeypatch) -> None:
     # ensure load_batch_settings sees empty key
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert main(["--scaffold-demo", "--live-embedding"]) == 2
+
+
+def test_list_load_handoff_via_db_reader() -> None:
+    import json
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_emb",
+                "item_id": "it_1",
+                "generation_type": "embedding",
+                "queue_status": "queued",
+                "retry_count": 0,
+            },
+            {
+                "item_generation_queue_id": "igq_sem",
+                "item_id": "it_2",
+                "generation_type": "semantic",
+                "queue_status": "processing",
+                "retry_count": 0,
+            },
+            {
+                "item_generation_queue_id": "igq_feat_q",
+                "item_id": "it_3",
+                "generation_type": "feature",
+                "queue_status": "queued",
+                "retry_count": 0,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:1",
+                "active_status": "active",
+                "is_active": True,
+            },
+            {
+                "item_id": "it_2",
+                "source": "rakuten",
+                "external_item_code": "shop:2",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    context = {
+        "item_id": "it_1",
+        "item_name": "Gift",
+        "embedding_source_type": "item_text_context",
+        "embedding_source_version": "scaffold-embedding-source-v1",
+    }
+    reader.seed(
+        "item_embedding_input",
+        (
+            {
+                "item_id": "it_1",
+                "model_version_id": DEFAULT_EMBEDDING_MODEL_VERSION,
+                "embedding_source_type": "item_text_context",
+                "embedding_input_hash": _HASH,
+                "item_text_context": json.dumps(context, ensure_ascii=False, sort_keys=True),
+                "item_generation_queue_id": "igq_emb",
+                "computed_at": _NOW,
+            },
+        ),
+    )
+    repos = ItemEmbeddingRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    targets, _ = repos.list_target_queues(max_items=10)
+    assert [q.item_generation_queue_id for q in targets] == ["igq_emb", "igq_sem"]
+    assert sum(1 for c in reader.fetch_calls if c["table"] == "item_generation_queue") >= 4
+    item = repos.load_item(item_id="it_1")
+    assert item.external_item_code == "shop:1"
+    handoff = repos.load_hash_handoff(item_id="it_1")
+    assert handoff is not None
+    assert handoff.embedding_input_hash == _HASH
+    assert handoff.item_text_context["item_name"] == "Gift"
+    assert handoff.embedding_source_version == "scaffold-embedding-source-v1"
+
+
+def test_skip_via_db_reader_item_embedding() -> None:
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_embedding",
+        (
+            {
+                "item_id": "it_1",
+                "model_version_id": DEFAULT_EMBEDDING_MODEL_VERSION,
+                "embedding_input_hash": _HASH,
+                "embedding_vector": (0.1,) * 8,
+                "embedding_source_type": "item_text_context",
+            },
+        ),
+    )
+    repos = ItemEmbeddingRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    assert repos.should_skip_embedding_generation(
+        item_id="it_1",
+        model_version_id=DEFAULT_EMBEDDING_MODEL_VERSION,
+        embedding_input_hash=_HASH,
+    )
+    assert any(c["table"] == "item_embedding" for c in reader.fetch_calls)
+
+
+def test_cli_non_demo_runs_job_with_live_reader(monkeypatch) -> None:
+    """DATABASE_URL ありなら exit 3 固定せず Job を起動する。"""
+
+    from dataclasses import replace
+
+    from batch.application.item_embedding import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings as scaffold_settings
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+
+    reader = ScaffoldDbReader()
+    reader.backend = "postgres"
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(
+            scaffold_settings(),
+            database_url="postgresql://localhost:5432/gift",
+        ),
+    )
+    monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
+    monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
+
+    code = cli.main(["--job-run-id", "wave-f", "--max-items", "1"])
+    # empty SELECT → plan failed (exit 1). Important: Job started (not config/exit-2/old exit-3).
+    assert code == 1
+    assert reader.fetch_calls
+
+
+def test_cli_non_demo_live_embedding_wires_client(monkeypatch) -> None:
+    """非 demo で --live-embedding が create_embedding_client(live=True) に配線される."""
+
+    from dataclasses import replace
+
+    from batch.application.item_embedding import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings as scaffold_settings
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+    from batch.infrastructure.external_ai import ScaffoldEmbeddingClient
+
+    reader = ScaffoldDbReader()
+    reader.backend = "postgres"
+    calls: list[dict[str, object]] = []
+
+    def _fake_create(api_key: str | None, *, live: bool = False, fallback=None):
+        calls.append({"api_key_present": bool(api_key), "live": live})
+        return ScaffoldEmbeddingClient()
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(
+            scaffold_settings(),
+            database_url="postgresql://localhost:5432/gift",
+            openai_api_key="sk-test-not-real",
+        ),
+    )
+    monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
+    monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
+    monkeypatch.setattr(cli, "create_embedding_client", _fake_create)
+
+    code = cli.main(["--job-run-id", "wave-f-live", "--live-embedding", "--max-items", "1"])
+    assert code == 1
+    assert calls == [{"api_key_present": True, "live": True}]
+
+
+def test_cli_non_demo_live_embedding_without_key_exits_2(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from batch.application.item_embedding import __main__ as cli
+    from batch.config._scaffold import scaffold_batch_settings as scaffold_settings
+    from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
+
+    reader = ScaffoldDbReader()
+    reader.backend = "postgres"
+
+    monkeypatch.setattr(
+        cli,
+        "load_batch_settings",
+        lambda: replace(
+            scaffold_settings(),
+            database_url="postgresql://localhost:5432/gift",
+            openai_api_key=None,
+        ),
+    )
+    monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
+    monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
+
+    assert cli.main(["--job-run-id", "no-key", "--live-embedding"]) == 2
 
 
 def test_config_keys_present() -> None:
