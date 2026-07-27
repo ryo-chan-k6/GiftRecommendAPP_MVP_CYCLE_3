@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1683
   issue:
     number: 127
   task_definition: "prompts/definitions/tasks/env-var-ops/env-var-ops.yaml"
