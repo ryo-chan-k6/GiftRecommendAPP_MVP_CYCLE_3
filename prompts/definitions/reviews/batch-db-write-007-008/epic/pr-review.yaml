@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1675
   issue:
     number: 1633
   task_definition: "prompts/definitions/epics/batch-db-write-007-008/epic.yaml"
