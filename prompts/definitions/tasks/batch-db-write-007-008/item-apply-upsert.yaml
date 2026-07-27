@@ -1,0 +1,181 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-write-007-008-item-apply-upsert"
+  title: "batch-db-write-007-008:item UPSERT本配線"
+  summary: "Wave 1 として BATCH-007 item / item_image / item_review_summary の本番 UPSERT・UPDATE・DELETE を本配線する。BATCH-008 は Wave 2。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-write-007-008:BATCH-007/008 item系書込本格化"
+  epic_issue_number: 1633
+  epic_branch: "feature/epic-1633-batch-db-write-007-008"
+  related_issues:
+    - 1632
+    - 1623
+  related_prs:
+    - 1668
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1632 MERGED 後、BATCH-007 書込は write_rows probe のまま。
+  SELECT 済みのため実環境では item 反映で本線が止まる。
+
+objective: |
+  upsert_item_from_staging / touch_item_last_checked / sync_item_images / upsert_item_review を
+  DbWriter の本番 SQL で本配線する。active_status は更新しない。
+
+scope:
+  - "item: upsert_rows conflict (source, external_item_code)。active_status/is_active は SET しない"
+  - "unchanged: update_rows で last_checked_at / updated_at のみ"
+  - "item_image: upsert_rows conflict (item_id, image_url) + 集合外 delete_rows"
+  - "item_review_summary: upsert_rows conflict (item_id)"
+  - "偽テーブル / sync_replace マーカー write の廃止"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "実 DB 疎通（secret なし。CI 既定 live 禁止）"
+  - "IF-DB ギャップ一覧 IF-007 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "BATCH-008 active_status（Wave 2）"
+  - "IF-020 candidate INSERT UPSERT 再実装"
+  - "SELECT 再実装 / 005 / 009+"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-007_Item反映バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_apply/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_apply/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_apply.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-007-008/item-apply-upsert.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-write-007-008/item-apply-upsert/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "007 item 系 UPSERT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "item / image / review が upsert_rows または update_rows / delete_rows を使う"
+  - "active_status / is_active を 007 で更新しない"
+  - "画像集合外 DELETE が実テーブルに対して行われる"
+  - "実 DB 疎通結果が PR に記録（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-007-008-item-apply-upsert"
+  base: "feature/epic-1633-batch-db-write-007-008"
+  target: "feature/epic-1633-batch-db-write-007-008"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-27"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1633
+      purpose: "親 Epic"
+  issues:
+    - number: 1632
+      purpose: "005 書込先行"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/tests/unit/application/test_item_apply.py"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "本番 SQL（upsert/update/delete）か"
+    - "active_status 非更新か"
+    - "偽テーブル / sync_replace マーカーが残っていないか"
+    - "実 DB 疎通が記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic Wave 1。BATCH-008 は Wave 2"

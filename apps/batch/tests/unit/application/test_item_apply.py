@@ -18,6 +18,21 @@ from batch.application.item_apply import (
 from batch.application.job_run import ScaffoldJobRunTracker
 from batch.infrastructure.db import ScaffoldDbWriter
 
+
+def _writer_tables(db: ScaffoldDbWriter) -> set[str]:
+    tables: set[str] = set()
+    for calls in (db.write_calls, db.upsert_calls, db.update_calls, db.delete_calls):
+        tables.update(str(call["table"]) for call in calls)
+    return tables
+
+
+def _upsert_tables(db: ScaffoldDbWriter) -> set[str]:
+    return {str(call["table"]) for call in db.upsert_calls}
+
+
+def _update_tables(db: ScaffoldDbWriter) -> set[str]:
+    return {str(call["table"]) for call in db.update_calls}
+
 # §16 No.12: unit 代替で非更新を確認する境界テーブル
 _FORBIDDEN_BOUNDARY_TABLES = frozenset(
     {
@@ -166,10 +181,21 @@ def test_new_inserts_item_images_and_review_with_ddl_default_active_status() -> 
     assert review["review_average"] == 4.2
     assert review["review_count"] == 12
 
-    assert {c["table"] for c in db.write_calls} >= {"item", "item_image", "item_review_summary"}
-    assert "product_diff_result" not in {c["table"] for c in db.write_calls}
+    assert _upsert_tables(db) >= {"item", "item_image", "item_review_summary"}
+    assert db.write_calls == []
+    assert "product_diff_result" not in _writer_tables(db)
     assert result.product_diff_write_count == 0
     assert result.hash_recalculate_calls == []
+
+    item_upsert = next(c for c in db.upsert_calls if c["table"] == "item")
+    assert item_upsert["conflict_columns"] == ("source", "external_item_code")
+    assert "active_status" not in item_upsert["update_columns"]
+    assert "is_active" not in item_upsert["update_columns"]
+    assert "first_fetched_at" not in item_upsert["update_columns"]
+    assert "item_id" not in item_upsert["update_columns"]
+    for row in item_upsert["rows"]:
+        assert "active_status" not in row
+        assert "is_active" not in row
 
 
 def test_updated_copies_hash_without_touching_active_status() -> None:
@@ -243,8 +269,13 @@ def test_unchanged_touches_last_checked_only_no_images_or_review() -> None:
     assert repos.items[key]["last_checked_at"] != old_checked
     assert repos.item_images == {}
     assert repos.item_reviews == {}
-    assert "item_image" not in {c["table"] for c in db.write_calls}
-    assert "item_review_summary" not in {c["table"] for c in db.write_calls}
+    assert "item" in _update_tables(db)
+    assert "item_image" not in _writer_tables(db)
+    assert "item_review_summary" not in _writer_tables(db)
+    assert db.write_calls == []
+    touch = next(c for c in db.update_calls if c["table"] == "item")
+    assert set(touch["set_values"]) == {"last_checked_at", "updated_at"}
+    assert touch["equals"] == (("source", "rakuten"), ("external_item_code", "shop:gift-1"))
 
 
 def test_unavailable_is_fully_skipped() -> None:
@@ -266,10 +297,13 @@ def test_unavailable_is_fully_skipped() -> None:
     assert result.item_unchanged_touch_count == 0
     assert repos.items[key] == snapshot
     assert db.write_calls == []
+    assert db.upsert_calls == []
+    assert db.update_calls == []
+    assert db.delete_calls == []
 
 
 def test_empty_image_set_sync_deletes_existing() -> None:
-    repos, _ = _repos(
+    repos, db = _repos(
         diffs=[_diff(diff_status="updated", old_hash=_HASH_A, new_hash=_HASH_B)],
         staging=[_staging(normalized_hash=_HASH_B)],
         images=[],
@@ -290,6 +324,17 @@ def test_empty_image_set_sync_deletes_existing() -> None:
     assert result.status == "succeeded"
     assert result.item_image_sync_count == 1
     assert repos.item_images[item_id] == {}
+    assert "item_image" not in _upsert_tables(db)
+    assert any(
+        c["table"] == "item_image"
+        and c["equals"] == (("item_id", item_id), ("image_url", "https://img.example/old.jpg"))
+        for c in db.delete_calls
+    )
+    assert not any(
+        isinstance(row, dict) and row.get("sync_replace") is True
+        for call in db.write_calls + db.upsert_calls
+        for row in (call.get("rows") or ())
+    )
 
 
 def test_review_missing_skips_without_delete() -> None:
@@ -588,7 +633,7 @@ def test_boundary_tables_not_written() -> None:
     result = ItemApplyJob(repositories=repos).run(job_run_id="run-boundary")
 
     assert result.status == "succeeded"
-    written_tables = {c["table"] for c in db.write_calls}
+    written_tables = _writer_tables(db)
     assert written_tables.isdisjoint(_FORBIDDEN_BOUNDARY_TABLES)
     assert "product_diff_result" not in written_tables
     assert "item_popularity_signal" not in written_tables
@@ -600,7 +645,7 @@ def test_boundary_tables_not_written() -> None:
 def test_image_sync_replaces_removed_urls() -> None:
     """任意強化: 画像同期で消えた URL を DELETE（空集合以外の置換）。"""
 
-    repos, _ = _repos(
+    repos, db = _repos(
         diffs=[_diff(diff_status="updated", old_hash=_HASH_A, new_hash=_HASH_B)],
         staging=[_staging(normalized_hash=_HASH_B)],
         images=[
@@ -642,6 +687,19 @@ def test_image_sync_replaces_removed_urls() -> None:
         "https://img.example/new.jpg",
     }
     assert "https://img.example/old.jpg" not in synced
+    image_upsert = next(c for c in db.upsert_calls if c["table"] == "item_image")
+    assert image_upsert["conflict_columns"] == ("item_id", "image_url")
+    assert image_upsert["update_columns"] == (
+        "image_size_type",
+        "display_order",
+        "is_primary",
+        "fetched_at",
+    )
+    assert any(
+        c["table"] == "item_image"
+        and c["equals"] == (("item_id", item_id), ("image_url", "https://img.example/old.jpg"))
+        for c in db.delete_calls
+    )
 
 
 def test_image_unique_key_is_item_id_and_image_url() -> None:
@@ -848,6 +906,107 @@ def test_resolve_item_and_load_staging_images_via_db_reader() -> None:
     assert len(images) == 1
     assert images[0].staging_item_id == "si_a"
     assert images[0].image_url == "https://img.example/a.jpg"
+
+
+def test_writer_uses_upsert_update_delete_not_write_rows() -> None:
+    """Wave 1: item / image / review は upsert/update/delete。active_status は乗らない。"""
+
+    images = [
+        StagingImageSeed(
+            staging_item_id="si_1",
+            image_url="https://img.example/a.jpg",
+            display_order=0,
+            is_primary_candidate=True,
+        )
+    ]
+    repos, db = _repos(images=images)
+    result = ItemApplyJob(repositories=repos).run(job_run_id="run-writer-ops")
+
+    assert result.status == "succeeded"
+    assert db.write_calls == []
+    assert _upsert_tables(db) == {"item", "item_image", "item_review_summary"}
+
+    item_call = next(c for c in db.upsert_calls if c["table"] == "item")
+    assert item_call["conflict_columns"] == ("source", "external_item_code")
+    for row in item_call["rows"]:
+        assert "active_status" not in row
+        assert "is_active" not in row
+    for col in ("active_status", "is_active", "first_fetched_at", "item_id"):
+        assert col not in item_call["update_columns"]
+
+    review_call = next(c for c in db.upsert_calls if c["table"] == "item_review_summary")
+    assert review_call["conflict_columns"] == ("item_id",)
+    assert review_call["update_columns"] == (
+        "review_average",
+        "review_count",
+        "fetched_at",
+    )
+
+
+def test_unchanged_uses_update_rows_not_upsert() -> None:
+    repos, db = _repos(
+        diffs=[_diff(diff_status="unchanged", old_hash=_HASH_A, new_hash=_HASH_A)],
+        staging=[_staging()],
+        items=[_item()],
+    )
+    result = ItemApplyJob(repositories=repos).run(job_run_id="run-touch-writer")
+
+    assert result.status == "succeeded"
+    assert result.item_unchanged_touch_count == 1
+    assert "item" not in _upsert_tables(db)
+    assert "item" in _update_tables(db)
+    assert db.write_calls == []
+
+
+def test_sync_item_images_deletes_via_db_reader_existing_urls() -> None:
+    """db_reader あり時は SELECT した集合外 URL を delete_rows する。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    item_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    reader.seed(
+        "item_image",
+        (
+            {
+                "item_id": item_id,
+                "image_url": "https://img.example/stale.jpg",
+            },
+            {
+                "item_id": item_id,
+                "image_url": "https://img.example/keep.jpg",
+            },
+        ),
+    )
+    db = ScaffoldDbWriter()
+    repos = ItemApplyRepositories(db_writer=db, db_reader=reader)
+    written = repos.sync_item_images(
+        item_id=item_id,
+        images=[
+            StagingImageSeed(
+                staging_item_id="si_1",
+                image_url="https://img.example/keep.jpg",
+                display_order=0,
+                is_primary_candidate=True,
+            )
+        ],
+        fetched_at=datetime(2026, 7, 27, tzinfo=UTC),
+    )
+
+    assert len(written) == 1
+    assert any(
+        c["table"] == "item_image"
+        and c["equals"]
+        == (("item_id", item_id), ("image_url", "https://img.example/stale.jpg"))
+        for c in db.delete_calls
+    )
+    assert not any(
+        c["table"] == "item_image"
+        and c["equals"]
+        == (("item_id", item_id), ("image_url", "https://img.example/keep.jpg"))
+        for c in db.delete_calls
+    )
+    assert any(c["table"] == "item_image" for c in reader.fetch_calls)
 
 
 def test_cli_non_demo_requires_database_url(monkeypatch) -> None:
