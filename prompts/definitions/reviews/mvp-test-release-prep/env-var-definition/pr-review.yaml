@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mvp-test-release-prep-env-var-definition-pr"
+  title: "環境変数定義書 PRレビュー"
+  summary: "mvp-test-release-prep 環境変数定義書作成 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1654
+  task_definition: "prompts/definitions/tasks/mvp-test-release-prep/env-var-definition.yaml"
+  source_branch: "docs/task-1654-env-var-definition"
+  target_branch: "docs/epic-1646-mvp-test-release-prep"
+  parent_epic_issue: "[Epic]mvp-test-release-prep:テスト・リリース移行準備"
+  parent_epic_branch: "docs/epic-1646-mvp-test-release-prep"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "環境変数定義書.md が正本として存在するか"
+  - "secret 実値・.env 実値がないか"
+  - "環境設計書 §19 が正本参照に更新されているか"
+  - "プレースホルダ（未作成）が削除されているか"
+  - "Related to #1654 / #127、PR target が親 Epic Branch か"
+  - "兄弟 Task Definition の混入がないか"
+
+notes:
+  - "PR 番号確定後に target.pr を更新してよい"
