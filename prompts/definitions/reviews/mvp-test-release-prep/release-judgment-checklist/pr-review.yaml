@@ -12,7 +12,7 @@ work_mode: "ai-agent"
 
 target:
   pr:
-    number: null
+    number: 1674
   issue:
     number: 1673
   task_definition: "prompts/definitions/tasks/mvp-test-release-prep/release-judgment-checklist.yaml"
