@@ -79,12 +79,41 @@ class ItemTransformBundle:
 
 
 @dataclass(frozen=True)
+class StagingRankingSignalRow:
+    """staging_ranking_signal へ upsert する候補行."""
+
+    raw_metadata_id: str
+    external_item_code: str
+    external_genre_id: int
+    rank: int
+    period: str
+    last_build_date: datetime
+    staged_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class StagingGenreRow:
+    """staging_genre へ upsert する候補行."""
+
+    raw_metadata_id: str
+    source: str
+    external_genre_id: int
+    genre_name: str
+    parent_external_genre_id: int | None
+    genre_level: int
+    is_leaf: bool
+    staged_at: datetime | None = None
+
+
+@dataclass(frozen=True)
 class RawTransformResult:
     """1 Raw 分の transform 結果."""
 
     raw_metadata_id: str
     source_api: str
-    items: tuple[ItemTransformBundle, ...]
+    items: tuple[ItemTransformBundle, ...] = ()
+    ranking_rows: tuple[StagingRankingSignalRow, ...] = ()
+    genre_rows: tuple[StagingGenreRow, ...] = ()
     skipped: bool = False
     skip_reason: str | None = None
 
@@ -102,6 +131,8 @@ class RawStagingSyncResult:
     skipped_raw_ids: list[str] = field(default_factory=list)
     staging_item_upsert_count: int = 0
     staging_item_image_upsert_count: int = 0
+    staging_ranking_signal_upsert_count: int = 0
+    staging_genre_upsert_count: int = 0
     validation_reject_count: int = 0
     completed_phases: list[str] = field(default_factory=list)
     error_codes: list[str] = field(default_factory=list)

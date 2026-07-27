@@ -1,0 +1,183 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-write-005-ranking-genre-upsert"
+  title: "batch-db-write-005:ranking/genre UPSERT本配線"
+  summary: "Wave 2 として staging_ranking_signal / staging_genre UPSERT と transform stub 解除を本番 SQL で本配線する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-write-005:BATCH-005 staging書込本格化"
+  epic_issue_number: 1632
+  epic_branch: "feature/epic-1632-batch-db-write-005"
+  related_issues:
+    - 1660
+  related_prs:
+    - 1663
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave 1（#1660 / #1663）で staging_item / image / import_status を本配線済み。
+  ranking/genre は transform stub skip のまま。Epic #1632 Wave 2 で閉じる。
+
+objective: |
+  upsert_staging_ranking_signal / upsert_staging_genre を DbWriter.upsert_rows で本配線し、
+  item_ranking / genre_search の transform → validate → persist を通す。
+
+scope:
+  - "staging_ranking_signal: upsert_rows conflict (raw_metadata_id, rank)"
+  - "staging_genre: upsert_rows conflict (raw_metadata_id, external_genre_id)"
+  - "item_ranking / genre_search transform stub 解除（最小変換）"
+  - "validate / persist / job 配線（external_genre 非書込を維持）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "実 DB 疎通（書込検証。secret なし。CI 既定 live 禁止）"
+  - "IF-DB ギャップ一覧 IF-005 Wave 2 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "external_genre Upsert（BATCH-001）"
+  - "staging_item / image / import_status 再実装（Wave 1）"
+  - "SELECT 再実装 / DbReader 拡張"
+  - "007 以降書込 / E4 / DDL 破壊的変更"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/staging_ranking_signal_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/staging_genre_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_raw_staging.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-005/ranking-genre-upsert.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-write-005/ranking-genre-upsert/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "ranking/genre UPSERT 本配線"
+  - "transform stub 解除（最小）"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "upsert_staging_ranking_signal / upsert_staging_genre が upsert_rows を使う"
+  - "item_ranking / genre_search が stub skip せず Staging 書込できる"
+  - "external_genre を書かない"
+  - "実 DB 疎通結果が PR に記録（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-005-ranking-genre-upsert"
+  base: "feature/epic-1632-batch-db-write-005"
+  target: "feature/epic-1632-batch-db-write-005"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-27"
+    due_date: "2026-07-31"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1632
+      purpose: "親 Epic"
+  issues:
+    - number: 1660
+      purpose: "Wave 1 staging UPSERT"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/raw_staging/**"
+    - "apps/batch/tests/unit/application/test_raw_staging.py"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "upsert_rows が本番 SQL か"
+    - "conflict キーが DDL UNIQUE と一致するか"
+    - "external_genre 非書込が維持されているか"
+    - "実 DB 疎通結果が PR に記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic Wave 2。Wave 1 の item/image/status は触らない（回帰のみ）"
