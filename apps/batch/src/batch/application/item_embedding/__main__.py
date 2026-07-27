@@ -4,6 +4,7 @@ Usage:
   python -m batch.application.item_embedding --job-run-id <id> [--max-items 1000]
   python -m batch.application.item_embedding --scaffold-demo
   python -m batch.application.item_embedding --scaffold-demo --live-embedding
+  python -m batch.application.item_embedding --live-embedding  # requires DATABASE_URL + OPENAI_API_KEY
 """
 
 from __future__ import annotations
@@ -31,7 +32,12 @@ from batch.application.item_embedding.repositories import (
     ItemEmbeddingRepositories,
 )
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import (
+    ScaffoldDbWriter,
+    create_db_writer,
+    is_live_db_reader,
+    resolve_job_db_reader,
+)
 from batch.infrastructure.external_ai import (
     EmbeddingClient,
     create_embedding_client,
@@ -151,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Enable real OpenAI Embeddings HTTP (requires OPENAI_API_KEY). "
-            "Default off; also BATCH_EMBEDDING_LIVE. Use with --scaffold-demo for smoke."
+            "Default off; also BATCH_EMBEDDING_LIVE. Works with --scaffold-demo or live DB Job."
         ),
     )
     args = parser.parse_args(argv)
@@ -200,14 +206,57 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
-    print(
-        f"DbWriter backend={db_writer.backend} is resolved, "
-        "but real DB read path is not enabled yet. "
-        "Use --scaffold-demo for local/CI"
-        + (" (optionally with --live-embedding)." if live else "."),
-        file=sys.stderr,
+    db_reader = resolve_job_db_reader(
+        scaffold_demo=False,
+        database_url=settings.database_url,
     )
-    return 3
+    if not is_live_db_reader(db_reader):
+        print(
+            "DATABASE_URL is required for non --scaffold-demo BATCH-015 "
+            "(DbReader postgres backend). Use --scaffold-demo for local/CI.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if live and not settings.openai_api_key:
+        print(
+            "OPENAI_API_KEY is required for --live-embedding. "
+            "Omit --live-embedding (default) to use scaffold Embedding client.",
+            file=sys.stderr,
+        )
+        return 2
+
+    embedding_client = create_embedding_client(
+        settings.openai_api_key if live else None,
+        live=live,
+    )
+    repos = ItemEmbeddingRepositories(db_writer=db_writer, db_reader=db_reader)
+    job = ItemEmbeddingJob(
+        repositories=repos,
+        generator=build_scaffold_adapter(client=embedding_client),
+    )
+    result = job.run(
+        job_run_id=args.job_run_id,
+        max_items=args.max_items,
+        source=args.source,
+        queue_batch_size=args.queue_batch_size,
+        item_ids=_parse_csv(args.item_ids),
+        queue_ids=_parse_csv(args.queue_ids),
+    )
+    embedding_backend = "http" if live else "scaffold"
+    print(
+        f"BATCH-015 status={result.status} "
+        f"db_reader={db_reader.backend} "
+        f"db_writer={db_writer.backend} "
+        f"embedding_backend={embedding_backend} "
+        f"claimed={result.claimed_count} "
+        f"generated={result.generated_count} "
+        f"skipped={result.skipped_count} "
+        f"failed={result.failed_count} "
+        f"item_embedding_writes={result.item_embedding_write_count} "
+        f"phases={','.join(result.completed_phases)}"
+    )
+    return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 
 if __name__ == "__main__":

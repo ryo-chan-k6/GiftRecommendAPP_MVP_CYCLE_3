@@ -7,9 +7,9 @@
 | 文書種別 | DB SELECT / 読取棚卸し正本（docs） |
 | 対象 | BATCH-001〜017 中心のビジネスデータ SELECT・seed・claim（018/019 除外） |
 | 作成日 | 2026-07-25 |
-| 更新日 | 2026-07-26 |
+| 更新日 | 2026-07-27 |
 | 関連 Epic | [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)（batch-db-select） |
-| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A） / [#1638](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1638)（Wave A'） / [#1640](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1640)（Wave B） / [#1642](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1642)（Wave C） / [#1644](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1644)（Wave D） / [#1647](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1647)（Wave E） |
+| 関連 Task | [#1624](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1624)（T0） / [#1627](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1627)（T1） / [#1629](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1629)（Wave A） / [#1638](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1638)（Wave A'） / [#1640](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1640)（Wave B） / [#1642](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1642)（Wave C） / [#1644](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1644)（Wave D） / [#1647](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1647)（Wave E） / [#1651](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1651)（Wave F） |
 | 先行 | E2 [#1595](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1595) / E3 [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) MERGED |
 | tip 根拠 | Epic tip（実 DB 疎通必須方針反映時点） |
 
@@ -34,10 +34,10 @@
 | 項目 | 状態 |
 | ---- | ---- |
 | DB 書込 | `DbWriter` + 代表 UPSERT（E2）。`apps/batch/.../infrastructure/db/writer.py` |
-| DB 読取 | **T1〜Wave E: DbReader + 005/004/006/007/008/009/010/011/012/013/014 SELECT 本配線**。015 以降は未 |
+| DB 読取 | **T1〜Wave F: DbReader + 005/004/006/007/008/009/010/011/012/013/014/015 SELECT 本配線**。016/017 は未 |
 | 外部 I/O | E3 完了（楽天 / Embedding / Object Storage。明示 live のみ） |
-| 主ブロッカー | 015 以降のビジネスデータ SELECT 未配線 → 非 demo で多数が **exit 3** |
-| Soft gap | （004/006/007/008/009/010/011〜014 SELECT 本配線済み）。015 以降は exit 3 多数 |
+| 主ブロッカー | 016/017 のビジネスデータ SELECT 未配線 |
+| Soft gap | （004/006/007/008/009/010/011〜015 SELECT 本配線済み）。016/017 は未 |
 
 ---
 
@@ -49,7 +49,7 @@
 | **004** item_recheck | **Wave A': DbReader seed SELECT**（`DATABASE_URL` 必須。楽天 live は別ゲート） | `DATABASE_URL` 無し → **exit 2**。楽天 live 無し → **exit 3** | 楽天 / Storage | （seed SELECT 本配線済み） |
 | **010** item_semantic | **Wave D: DbReader SELECT + Job 起動**（`DATABASE_URL` 必須。Rule-first 維持） | `DATABASE_URL` 無し → **exit 2**。有り → Job 実行 | （外部 API 対象外） | （本配線済み。LLM / 書込本格化は別） |
 | **011〜014** feature 連鎖 | **Wave E: DbReader SELECT + Job 起動**（`DATABASE_URL` 必須） | `DATABASE_URL` 無し → **exit 2**。有り → Job 実行 | （外部 API 対象外） | （本配線済み。書込本格化 / LLM は別） |
-| **015** item_embedding | `--scaffold-demo --live-embedding` で HTTP 煙可 | **exit 3** | Embedding client | queue / handoff SELECT |
+| **015** item_embedding | **Wave F: DbReader SELECT + Job 起動**（`DATABASE_URL` 必須。`--live-embedding` は本番 CLI にも配線・既定 off） | `DATABASE_URL` 無し → **exit 2**。有り → Job 実行 | Embedding client | （本配線済み。書込 UPSERT 本格化は別） |
 
 ### 3.1 根拠パス（事実）
 
@@ -62,7 +62,7 @@
 | 012 | `.../item_feature/__main__.py` | `resolve_job_db_reader` + queue/semantic/handoff SELECT。`DATABASE_URL` 無しは exit 2 |
 | 013 | `.../feature_normalization/__main__.py` | `resolve_job_db_reader` + queue/raw features SELECT。`DATABASE_URL` 無しは exit 2 |
 | 014 | `.../embedding_input_hash/__main__.py` | `resolve_job_db_reader` + queue/item SELECT。`DATABASE_URL` 無しは exit 2 |
-| 015 | `.../item_embedding/__main__.py` | 同上 |
+| 015 | `.../item_embedding/__main__.py` | `resolve_job_db_reader` + queue/item/handoff SELECT。`--live-embedding` 本番 CLI 配線。`DATABASE_URL` 無しは exit 2 |
 | 006 | `.../product_diff/__main__.py` | `resolve_job_db_reader` + staging/item SELECT。`DATABASE_URL` 無しは exit 2 |
 | 007 | `.../item_apply/__main__.py` | `resolve_job_db_reader` + diff/staging/item SELECT。`DATABASE_URL` 無しは exit 2 |
 | 008 | `.../item_active_status/__main__.py` | `resolve_job_db_reader` + candidate/diff/item SELECT。`DATABASE_URL` 無しは exit 2 |
@@ -73,7 +73,7 @@
 
 ## 4. 同パターン一覧（事実）
 
-メッセージ共通: `DbWriter backend=... is resolved, but real DB read path is not enabled yet.`
+旧メッセージ（解除済み多数）: `DbWriter backend=... is resolved, but real DB read path is not enabled yet.`
 
 | Batch | 主な未配線読取（推論: repositories の load/list が in-memory） |
 | ----- | -------------------------------------------------------------- |
@@ -84,6 +84,7 @@
 | 012 item_feature | （**Wave E #1647: SELECT 本配線済み**。書込本格化は別） |
 | 013 feature_normalization | （**Wave E #1647: SELECT 本配線済み**。書込本格化は別） |
 | 014 embedding_input_hash | （**Wave E #1647: SELECT 本配線済み**。書込本格化は別） |
+| 015 item_embedding | （**Wave F #1651: SELECT 本配線済み**。書込 UPSERT 本格化は別） |
 | 016 distribution_metrics | feature / meaning / embedding |
 | 017 import_summary | 集計入力 |
 
@@ -116,11 +117,11 @@
 | 001〜003 | 楽天 + Storage live | （推論）主ブロッカーは SELECT ではない |
 | **004** | 楽天 + Storage | **item seed SELECT 本配線済み**（#1638） |
 | **005** | Storage live | **metadata SELECT 本配線済み**（#1629）。staging UPSERT 本格化は別 |
-| **015** | Embedding HTTP（demo 煙） | **queue/handoff SELECT** + 本番 CLI live |
+| **015** | Embedding HTTP | **DB SELECT + 本番 CLI `--live-embedding` 本配線済み**（#1651）。書込 UPSERT 本格化は別 |
 | **010** | （外部対象外）Rule-first | **DB SELECT 本配線済み**（#1644）。LLM / 書込本格化は別 |
 | **011〜014** | （外部対象外） | **DB SELECT 本配線済み**（#1647）。書込本格化は別 |
 
-**推論:** 「取って Storage に置く」側は進んだが、「DB から読んで次工程へ進める」側が未開放。
+**推論:** 001〜015 の主 SELECT は本配線済み。残り主ブロッカーは 016/017（監視・集計）と各 Batch の書込本格化。
 
 ---
 
@@ -138,7 +139,7 @@ Epic #1623 の子 Task 分割案。
 | medium | C | 007 / 008 / 009 SELECT（**#1642**） | 必要時は書込充実を分離 | **必須** | B |
 | high | D | BATCH-010 SELECT（**#1644**） | queue/item（Rule-first） | **必須** | C（009 後） |
 | medium | E | 011〜014 SELECT（**#1647**） | 連鎖 | **必須** | D |
-| high | F | BATCH-015 SELECT | + 本番 CLI `--live-embedding` | **必須** | E |
+| high | F | BATCH-015 SELECT（**#1651**） | + 本番 CLI `--live-embedding` | **必須** | E |
 | low | G | 016 / 017 SELECT | 監視・集計 | **必須** | F 後で可 |
 
 ### 7.1 実 DB 疎通確認ポリシー（Human 確定・事実）
@@ -176,7 +177,7 @@ Epic #1623（2026-07-25 Human 確定）: **実装 Wave（T0 以外）の子 Task
 | 区分 | 内容 |
 | ---- | ---- |
 | **事実** | E2/E3 MERGED。T1 で `DbReader` 導入。実装 Wave の実 DB 疎通は Human 確定で必須（T0 除く） |
-| **推論** | 次の最大ブロッカーは SELECT 本配線 + 疎通証拠（特に 015 embedding、016/017） |
+| **推論** | 次の最大ブロッカーは 016/017 SELECT 本配線 + 疎通証拠 |
 | **未確認** | 各環境のシードデータ有無、各 IF の列単位 SELECT 詳細、親 workflow dry-run |
 
 ---
@@ -190,3 +191,4 @@ Epic #1623（2026-07-25 Human 確定）: **実装 Wave（T0 以外）の子 Task
 | 2026-07-26 | Wave C（#1642）: BATCH-007/008/009 SELECT 本配線。非 demo は `DATABASE_URL` 必須（無しは exit 2）。書込 UPSERT / T7 Retention 本番は out of scope |
 | 2026-07-26 | Wave D（#1644）: BATCH-010 SELECT 本配線（queue/item/`item_semantic`）。非 demo は `DATABASE_URL` 必須（無しは exit 2）。Rule-first 維持。LLM / 書込本格化は out of scope |
 | 2026-07-26 | Wave E（#1647）: BATCH-011/012/013/014 SELECT 本配線（queue OR=equals 多重 fetch + in-process）。非 demo は `DATABASE_URL` 必須（無しは exit 2）。書込本格化 / LLM / DbReader OR-JOIN 拡張は out of scope |
+| 2026-07-27 | Wave F（#1651）: BATCH-015 SELECT 本配線（queue/item/`item_embedding_input`/skip 用 `item_embedding`）。非 demo は `DATABASE_URL` 必須（無しは exit 2）。本番 CLI `--live-embedding` 配線（既定 off）。書込 UPSERT 本格化 / DbReader OR-JOIN 拡張は out of scope。主ブロッカーは 016/017 |
