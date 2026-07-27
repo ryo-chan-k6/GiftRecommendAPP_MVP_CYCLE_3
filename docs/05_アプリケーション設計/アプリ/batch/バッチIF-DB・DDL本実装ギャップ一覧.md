@@ -81,7 +81,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-DB-BATCH-006 | `product_diff_result` | initial にあり | **T4a**: `upsert_rows`（ON CONFLICT） | Wave A CLI 配線済み。読取 SELECT は未 |
 | IF-DB-BATCH-007 | `item` / image / review | initial にあり | **#1633 Wave 1（#1669）**: `item` UPSERT `(source, external_item_code)`（`active_status`/`is_active`/`first_fetched_at`/`item_id` は DO UPDATE 対象外）+ `unchanged` は `update_rows`。`item_image` UPSERT `(item_id, image_url)` + 集合外 `delete_rows`。`item_review_summary` UPSERT `(item_id)`。偽 `sync_replace` write 廃止。`active_status` 本更新は Wave 2（IF-009） | 読取 SELECT は #1623 Wave C 済 |
 | IF-DB-BATCH-008 | `ranking_snapshot` / popularity | initial にあり | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-009 | `item.active_status` | initial（列） | **#1633 Wave 2（WIP）**: BATCH-008 `update_rows`（`active_status` / `is_active`、equals `(source, external_item_code)`）。`write_rows` 禁止 | Wave 1 の item UPSERT とは分離 |
+| IF-DB-BATCH-009 | `item.active_status` | initial（列） | **#1633 Wave 2（#1671）**: BATCH-008 `update_rows`（`active_status` / `is_active`、equals `(source, external_item_code)`）。`write_rows` 禁止 | Wave 1 の item UPSERT とは分離 |
 | IF-DB-BATCH-010 | `item_generation_queue` | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-011 | `item_semantic` | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-012 | `item_feature_input`（中間） | D17 migration あり | **T4b**: `upsert_rows` | T2 CREATE + Wave B UPSERT。読取 SELECT は未 |
@@ -91,7 +91,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-VEC-BATCH-001 | `item_embedding` | initial にあり | ScaffoldDbWriter / in-memory | Embedding API は E3 |
 | IF-DB-BATCH-016 | distribution metric 3 種 | initial にあり | ScaffoldDbWriter / in-memory | |
 | IF-DB-BATCH-017 | `item_import_summary` | initial にあり | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-020/021 | `item_active_status_candidate` | 増分 migration あり | **T4a**: candidate UPSERT（IF-020 / BATCH-004）。**#1633 Wave 2（WIP）**: IF-021 相当 — applied/superseded/discarded は `update_rows`、Retention は `delete_rows`（detected 削除禁止、偽 `op=delete` write 廃止） | Wave A CLI 配線済み。IF-020 INSERT は本 Wave 非対象 |
+| IF-DB-BATCH-020/021 | `item_active_status_candidate` | 増分 migration あり | **T4a**: candidate UPSERT（IF-020 / BATCH-004）。**#1633 Wave 2（#1671）**: IF-021 相当 — applied/superseded/discarded は `update_rows`、Retention は `delete_rows`（detected 削除禁止、偽 `op=delete` write 廃止） | Wave A CLI 配線済み。IF-020 INSERT は本 Wave 非対象 |
 | IF-DB-BATCH-018 | evaluation_* | initial にあり | scaffold（参考） | **E2 本格化除外** |
 | IF-DB-BATCH-019 | feedback_analysis_* | **CREATE なし** | 明示 stub | **E2 除外** |
 
@@ -169,7 +169,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 2026-07-24 | T5 完了反映。Epic PR → develop 準備 |
 | 2026-07-27 | #1632 Wave 1（#1660）: IF-005 staging_item / image / import_status UPSERT 本配線 |
 | 2026-07-27 | #1632 Wave 2（#1666）: IF-005 staging_ranking_signal / staging_genre UPSERT + transform stub 解除 |
-| 2026-07-27 | #1633 Wave 2（WIP）: IF-009 / IF-021（BATCH-008）active_status `update_rows` + candidate `update_rows` / Retention `delete_rows` |
+| 2026-07-27 | #1633 Wave 2（#1671）: IF-009 / IF-021（BATCH-008）active_status `update_rows` + candidate `update_rows` / Retention `delete_rows` |
 
 ---
 

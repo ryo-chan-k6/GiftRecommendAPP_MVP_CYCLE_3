@@ -17,7 +17,7 @@ target:
   pr:
     number: null
   issue:
-    number: null
+    number: 1671
   task_definition: "prompts/definitions/tasks/batch-db-write-007-008/item-active-status-write.yaml"
   parent_epic_issue: "[Epic]batch-db-write-007-008:BATCH-007/008 item系書込本格化"
   parent_epic_branch: "feature/epic-1633-batch-db-write-007-008"
