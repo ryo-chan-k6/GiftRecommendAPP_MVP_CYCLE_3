@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mvp-test-release-prep-reco-quality-test-plan-min-pr"
+  title: "レコメンド品質評価最小計画 PRレビュー"
+  summary: "docs/12 レコメンド品質評価テスト計画書（最小）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1661
+  task_definition: "prompts/definitions/tasks/mvp-test-release-prep/reco-quality-test-plan-min.yaml"
+  source_branch: "docs/task-1661-reco-quality-test-plan-min"
+  target_branch: "docs/epic-1646-mvp-test-release-prep"
+  parent_epic_branch: "docs/epic-1646-mvp-test-release-prep"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "固定ケース方針と重大破綻定義草案があるか"
+  - "Human 未確定が明示され、AI 独断確定がないか"
+  - "Layer2／簡易 stg 分担が受入環境方針と整合するか"
+  - "開始条件がシステムテスト計画を参照しているか"
+  - "本実施を完了扱いにしていないか"
+  - "secret 実値なし"
+  - "Related to / PR target / Review Definition"
+
+notes:
+  - "PR 番号確定後に更新"
