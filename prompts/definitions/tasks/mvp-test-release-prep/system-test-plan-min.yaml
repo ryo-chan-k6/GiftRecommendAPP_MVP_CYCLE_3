@@ -1,0 +1,152 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mvp-test-release-prep-system-test-plan-min"
+  title: "mvp-test-release-prep:システムテスト最小計画"
+  summary: "docs/10_システムテスト/テスト計画 に開始条件・対象・範囲・証跡方針を持つ最小計画を置く。本実施は out of scope。"
+  phase: "10_システムテスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-mvp-test-release-prep"
+  epic_issue: "[Epic]mvp-test-release-prep:テスト・リリース移行準備"
+  epic_issue_number: 1646
+  epic_branch: "docs/epic-1646-mvp-test-release-prep"
+  related_issues:
+    - 1658
+    - 1598
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  docs/10 は README のみで計画が空。G5 相当のシステムテスト開始状態を作れない。
+
+objective: |
+  システムテストを開始できる最小計画（開始条件・対象境界・証跡パス）を正本化する。
+
+scope:
+  - "対象範囲（MVP 主要導線）"
+  - "開始条件（E3 ゲート参照・単体/結合前提）"
+  - "終了条件・ブロッカー定義"
+  - "証跡の置き場（テスト結果/レポート）"
+  - "Layer2 との役割分担"
+
+out_of_scope:
+  - "テストケース全量作成"
+  - "テスト実施と結果記入"
+  - "非機能テスト詳細（docs/11。必要なら参照のみ）"
+  - "apps/** 実装"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: true
+      purpose: "システムテスト節・開始/終了条件"
+    - path: "docs/10_システムテスト/README.md"
+      required: true
+      purpose: "配置ルール"
+
+output:
+  docs:
+    - path: "docs/10_システムテスト/テスト計画/システムテスト計画書.md"
+      action: "create"
+      required: true
+  files: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "システムテスト計画書.md（最小）"
+
+acceptance_criteria:
+  - "開始条件・終了条件が表である"
+  - "Batch E3 完了ゲートへの参照がある（実装はしない）"
+  - "証跡パスが docs/10 配下で定義されている"
+  - "secret 実値なし"
+  - "PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "system-test-plan-min"
+  base: "docs/epic-1646-mvp-test-release-prep"
+  target: "docs/epic-1646-mvp-test-release-prep"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "10_システムテスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  number: 1658
+  unit: "task"
+  type: "docs"
+  area: "project"
+
+dependencies:
+  epics:
+    - id: "epic-mvp-test-release-prep"
+      purpose: "親 Epic"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/10_システムテスト/テスト計画/システムテスト計画書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "計画 docs のみ。実施は後続"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "全体テスト計画書と矛盾していないか"
+    - "本実施を完了扱いにしていないか"
+  specialist_reviews:
+    docs: true
+    test: true
+
+human_decision_points:
+  - "システムテスト対象の必須導線カットライン"
+
+notes:
+  - "Must #5（前半）。品質評価計画と並列可"

@@ -1,0 +1,219 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-mvp-test-release-prep"
+  title: "mvp-test-release-prep:テスト・リリース移行準備"
+  summary: "MVP のシステム／品質／受入／リリースへ進む前に、Must 準備（判定CL・受入環境・環境変数・テスト開始計画・不具合トリアージ）を docs 正本化する。機能・領域単位 Epic（例外）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  BATCH 実装が完成に近づき、Layer1/2 の器はある一方、docs/10・12・14 が空、受入環境未確定、
+  環境変数正本（#127）未完、リリース判定CL未運用、Critical/High=0 の窓口未定義という Must ギャップがある。
+  既存の古い Epic #144（docs/09_リリース パス）・Task #147 / #127 と突合し、現行ディレクトリ（docs/14 等）へ再定義する。
+  Batch E3 本体実装は本 Epic 外（親は #1598）。本 Epic は E3 完了ゲートの参照依存のみ持つ。
+
+objective: |
+  テスト／リリース移行の Must 準備を子 Task に分割し、Epic Issue / Branch で管理する。
+  リリース可否の最終判断・merge・production 反映は Human。AI は docs 正本化と Issue 整備まで。
+
+scope:
+  - "MVP リリース判定チェックリストの正本化（全体テスト計画書 §12.2 起点）"
+  - "受入環境方針（stg vs local+Layer2）の1行確定ドキュメント化"
+  - "環境変数定義書の正本化（#127 突合、secret 実値禁止）"
+  - "システムテスト／レコメンド品質評価の最小計画（開始条件付き）"
+  - "Critical / High = 0 のトリアージ運用窓口の定義"
+  - "既存 Issue #144 / #147 / #127 との対応付け整理（Human による close/retitle 判断材料）"
+
+out_of_scope:
+  - "Batch E3（外部 API 本接続）の実装本体（Epic #1598）"
+  - "リリース手順書・デプロイ設定書の本作成（#145 / #146。Should）"
+  - "システム／品質／受入テストの本実施と結果記入"
+  - "本番デプロイ・production Secrets 実値投入"
+  - "性能 SLO 数値の最終確定（Human。本 Epic では判定CL上の『未確定』明示まで）"
+  - "apps/** / packages/contracts/** / db/** の機能実装"
+  - "OpenAPI / Orval / generated 変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/テスト/全体テスト計画書.md"
+      required: true
+      purpose: "§12.2 MVPリリース判定基準・各フェーズ開始/終了条件"
+    - path: "docs/14_リリース/README.md"
+      required: true
+      purpose: "リリース判定の配置ルール"
+    - path: "docs/10_システムテスト/README.md"
+      required: true
+      purpose: "システムテスト成果物配置"
+    - path: "docs/12_レコメンド品質評価テスト/README.md"
+      required: true
+      purpose: "品質評価成果物配置"
+    - path: "docs/13_受入テスト/README.md"
+      required: true
+      purpose: "受入テスト成果物配置"
+    - path: "docs/06_実装設計/cross_cutting/環境設計書.md"
+      required: true
+      purpose: "環境変数定義の入力"
+  issues:
+    - number: 144
+      purpose: "旧 Epic リリース準備（パス docs/09 は現行と不整合）"
+    - number: 147
+      purpose: "旧 Task リリース判定CL"
+    - number: 127
+      purpose: "旧 Task 環境変数定義書"
+    - number: 1598
+      purpose: "Batch E3 親 Epic（依存参照）"
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/mvp-test-release-prep/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/mvp-test-release-prep/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task Definition（Must 対応）"
+  - "既存 Issue #144/#147/#127 との対応表（Epic Issue 本文）"
+
+acceptance_criteria:
+  - "Epic Issue タイトルが [Epic]mvp-test-release-prep:テスト・リリース移行準備 形式"
+  - "Epic Branch が develop 起点"
+  - "子 Task の PR target が親 Epic Branch 方針が明記"
+  - "Batch E3 実装・本番デプロイを out of scope と明記"
+  - "secret 実値を成果物に含めない方針が明記"
+  - "旧パス docs/09_リリース を新規正本に使わない"
+
+branch:
+  no_branch: false
+  name: "docs/epic-1646-mvp-test-release-prep"
+  summary: "mvp-test-release-prep"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "10_システムテスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  number: 1646
+  unit: "epic"
+  type: "docs"
+  area: "project"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/10_システムテスト/**"
+    - "docs/12_レコメンド品質評価テスト/**"
+    - "docs/13_受入テスト/**"
+    - "docs/14_リリース/**"
+    - "docs/15_運用・改善/**"
+    - "docs/06_実装設計/cross_cutting/**"
+    - "docs/05_アプリケーション設計/テスト/**"
+    - "prompts/definitions/epics/mvp-test-release-prep/**"
+    - "prompts/definitions/tasks/mvp-test-release-prep/**"
+    - "prompts/definitions/reviews/mvp-test-release-prep/**"
+    - "ai-logs/human-decisions/**"
+    - ".env.example"
+  forbidden_paths:
+    - "apps/**"
+    - "db/**"
+    - "packages/contracts/**"
+    - ".env"
+    - ".github/workflows/**"
+  child_task_areas:
+    - "acceptance-environment-policy"
+    - "release-judgment-checklist"
+    - "env-var-definition"
+    - "system-test-plan-min"
+    - "reco-quality-test-plan-min"
+    - "defect-triage-ops"
+
+dependencies:
+  epics:
+    - issue: 1598
+      title: "[Epic]batch-external-api:外部API本接続"
+      purpose: "E3 完了ゲート Task の実装親。本 Epic は参照依存のみ"
+  issues:
+    - number: 144
+      purpose: "旧リリース準備 Epic との整理"
+    - number: 127
+      purpose: "環境変数定義書"
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Epic は docs / 運用定義。実装なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "allowed_paths 越境がないか（#1631 教訓）"
+    - "旧 docs/09 パスを新規正本にしていないか"
+    - "secret 実値なし"
+    - "Human 判断事項が確定済み扱いされていないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    security: true
+
+human_decision_points:
+  - "受入環境: 簡易 stg 必須（2026-07-26 Human 確定。正本: docs/13_受入テスト/テスト計画/受入環境方針.md）"
+  - "§12.2 判定項目の必須／任意の削り込み"
+  - "旧 Issue #144/#147/#127 を close・親付け替え・タイトル正規化するか"
+  - "性能 SLO の数値確定タイミング（本 Epic 内か後続か）"
+
+notes:
+  - "機能・領域単位 Epic（例外）。識別子未整備のテスト／リリース横断準備"
+  - "E3 完了条件の明文化 Task は batch-external-api 配下（本 Epic の子ではない）"
+  - "Epic Issue #1646 / Branch docs/epic-1646-mvp-test-release-prep"
