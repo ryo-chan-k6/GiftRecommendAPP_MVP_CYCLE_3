@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-deploy-config-fly-reco-deploy-pr"
+  title: "Reco Flyデプロイ定義 PRレビュー"
+  summary: "infra/fly Dockerfile / fly.toml / README 正本化 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr:
+    number: 1721
+  issue:
+    number: 1720
+  task_definition: "prompts/definitions/tasks/deploy-config/fly-reco-deploy.yaml"
+  source_branch: "chore/task-1720-fly-reco-deploy"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]deploy-config:デプロイ設定書"
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "Dockerfile / fly.toml が Reco（port 8000）と整合しているか"
+  - "Health 手順が Key 付きか、fly.toml に secret 実値がないか"
+  - "Related to #1720、PR target develop か"
+  - "out_of_scope（実デプロイ・apps 変更）に踏み込んでいないか"
+
+notes:
+  - "PR 番号確定後に target.pr を更新してよい"

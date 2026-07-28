@@ -50,5 +50,5 @@ issue:
   area: "infra"
 
 notes:
-  - "子: #1708 Upstash。他ホスト詳細は未起票"
+  - "子: #1708 Upstash、#1718 pnpm allowBuilds、#1720 Fly Reco デプロイ定義"
   - "上位親: #144 リリース準備"
