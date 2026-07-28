@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1704
   issue:
     number: 1703
   task_definition: "prompts/definitions/tasks/batch-observability-e4/api-call-log-write.yaml"
