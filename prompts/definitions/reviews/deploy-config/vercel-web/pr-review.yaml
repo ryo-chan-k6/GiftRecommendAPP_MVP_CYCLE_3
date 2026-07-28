@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-deploy-config-vercel-web-pr"
+  title: "Vercel Webデプロイ設定 PRレビュー"
+  summary: "apps/web vercel.json / infra/vercel README 正本化 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1724
+  task_definition: "prompts/definitions/tasks/deploy-config/vercel-web.yaml"
+  source_branch: "chore/task-1724-vercel-web-deploy"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]deploy-config:デプロイ設定書"
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "framework が nextjs か、outputDirectory を public 固定していないか"
+  - "Root Directory=apps/web 前提と整合しているか"
+  - "旧 Preview URL / DEPLOYMENT_NOT_FOUND の注意があるか"
+  - "Related to #1724、PR target develop か"
+
+notes:
+  - "PR 番号確定後に target.pr を更新してよい"

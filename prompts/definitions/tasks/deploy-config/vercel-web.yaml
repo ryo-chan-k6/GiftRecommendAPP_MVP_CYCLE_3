@@ -1,0 +1,165 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-deploy-config-vercel-web"
+  title: "deploy-config-vercel-web:Vercel Webデプロイ設定正本化"
+  summary: "apps/web 向け Vercel 設定（vercel.json / public / README）を正本化し、簡易 stg の Web デプロイ手順を固定する。"
+  phase: "14_リリース"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-deploy-config"
+  epic_issue: "[Epic]deploy-config:デプロイ設定書"
+  epic_issue_number: 146
+  epic_branch: null
+  related_issues:
+    - 1724
+    - 146
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  簡易 stg Web（Vercel）で next build 成功後も Visit が 404 になる事例あり。
+  Preview URL はデプロイごとに変わり、旧 URL は DEPLOYMENT_NOT_FOUND。
+  Dashboard 手設定の取り違えを防ぐため infra/vercel と apps/web/vercel.json を正本化する。
+
+objective: |
+  Vercel Web の推奨 Build 設定と確認手順をリポジトリ正本に残す。
+
+scope:
+  - "apps/web/vercel.json"
+  - "apps/web/public/.gitkeep"
+  - "infra/vercel/README.md"
+  - "デプロイ設定書への最小参照"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Vercel Dashboard 実操作"
+  - "secret 実値"
+  - "apps/web 画面・API 挙動変更"
+  - "packageManager の pin（別 Task 可）"
+  - "Deployment Protection のアカウント操作（README に手順のみ）"
+
+input:
+  docs:
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      required: true
+      purpose: "Web=Vercel 正本"
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+      purpose: "W1〜W4 / S1"
+    - path: "infra/vercel/README.md"
+      required: true
+      purpose: "更新対象"
+    - path: "apps/web/package.json"
+      required: true
+      purpose: "Next.js / scripts"
+
+output:
+  docs:
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/web/vercel.json"
+      action: "create"
+      required: true
+    - path: "apps/web/public/.gitkeep"
+      action: "create"
+      required: true
+    - path: "infra/vercel/README.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/deploy-config/vercel-web.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/deploy-config/vercel-web/pr-review.yaml"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+acceptance_criteria:
+  - "apps/web/vercel.json がある"
+  - "infra/vercel/README に Root Directory / Output / Visit 手順がある"
+  - "secret 実値なし"
+  - "Related to #1724、PR target develop"
+
+branch:
+  no_branch: false
+  summary: "vercel-web-deploy"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "14_リリース"
+    status: "In Progress"
+    priority: "high"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+parallel_control:
+  exclusive_files:
+    - "apps/web/vercel.json"
+    - "apps/web/public/.gitkeep"
+    - "infra/vercel/README.md"
+    - "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+    - "静的確認"
+  not_required:
+    - "unit test"
+    - "Vercel 実デプロイ"
+  skip_reason:
+    "unit test": "設定のみ"
+    "Vercel 実デプロイ": "Human"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Root Directory=apps/web 前提と整合しているか"
+    - "outputDirectory を public 固定していないか"
+    - "Visit は最新 Deployment URL であることの注意があるか"
+  specialist_reviews:
+    docs: true
+    security: true
+
+notes:
+  - "親 #146 no-branch のため PR target は develop"
