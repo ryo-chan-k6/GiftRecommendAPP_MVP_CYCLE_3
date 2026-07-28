@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1691
   issue:
     number: 1690
   task_definition: "prompts/definitions/tasks/batch-db-write-011-017/embedding-write.yaml"
