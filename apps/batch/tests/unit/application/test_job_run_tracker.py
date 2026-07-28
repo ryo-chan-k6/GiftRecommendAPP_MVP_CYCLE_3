@@ -120,6 +120,19 @@ def test_postgres_start_rejects_non_uuid_job_run_id() -> None:
     assert writer.write_calls == []
 
 
+def test_postgres_complete_rejects_non_uuid_job_run_id() -> None:
+    writer = ScaffoldDbWriter()
+    tracker = PostgresJobRunTracker(db_writer=writer)
+
+    with pytest.raises(ValueError, match="UUID"):
+        tracker.complete(
+            batch_id="BATCH-001",
+            job_run_id="not-a-uuid",
+            status="succeeded",
+        )
+    assert writer.update_calls == []
+
+
 def test_postgres_complete_duration_null_when_started_at_unknown() -> None:
     writer = ScaffoldDbWriter()
     tracker = PostgresJobRunTracker(db_writer=writer)
