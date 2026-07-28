@@ -85,8 +85,10 @@ def emit_api_call(
     source_api: str,
     call_status: str,
     memory_entry: dict[str, object],
+    source: str = "rakuten",
     request_params_json: dict[str, Any] | None = None,
     error_code: str | None = None,
+    duration_ms: int | None = None,
 ) -> None:
     """Append in-memory api call log and optionally write ``api_call_log`` to DB."""
 
@@ -97,9 +99,11 @@ def emit_api_call(
     writer.record_call(
         api_call_log_id=api_call_log_id,
         batch_run_id=batch_run_id,
+        source=source,
         source_api=source_api,
         call_status=call_status,
         request_params_json=request_params_json,
         error_code=error_code,
+        duration_ms=duration_ms,
         trace_id=trace_id,
     )

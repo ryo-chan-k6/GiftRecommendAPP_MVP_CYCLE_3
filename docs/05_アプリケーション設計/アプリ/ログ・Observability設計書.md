@@ -909,8 +909,8 @@ Batchでは、以下を追跡する。
 | trace_id | 横断追跡ID |
 | batch_run_id | Batch Run ID |
 | fetch_cursor_id | Fetch Cursor ID |
-| source | rakuten |
-| source_api | item_search / item_ranking / genre_search / attribute_search |
+| source | rakuten（楽天商品系）/ openai（Embedding API 提供者。`item.source` とは別概念） |
+| source_api | item_search / item_ranking / genre_search / attribute_search / item_embedding（api_call_log。raw/summary/fetch_cursor の CHECK は楽天系のまま） |
 | request_params_hash | リクエスト条件のHash |
 | request_params_json | マスキング済みリクエスト条件 |
 | response_status | HTTPステータスまたは外部APIステータス |

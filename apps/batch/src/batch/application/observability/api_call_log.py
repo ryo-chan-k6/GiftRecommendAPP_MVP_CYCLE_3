@@ -13,14 +13,19 @@ from batch.infrastructure.db import DbWriter
 
 _API_CALL_LOG_TABLE = "api_call_log"
 _SOURCE_RAKUTEN = "rakuten"
+_SOURCE_OPENAI = "openai"
 
-# DDL chk_api_call_log_source_api
+# DDL chk_api_call_log_source_mvp（Wave 5: rakuten | openai）
+ALLOWED_SOURCES: frozenset[str] = frozenset({_SOURCE_RAKUTEN, _SOURCE_OPENAI})
+
+# DDL chk_api_call_log_source_api（Wave 5: + item_embedding）
 ALLOWED_SOURCE_APIS: frozenset[str] = frozenset(
     {
         "item_search",
         "item_ranking",
         "genre_search",
         "attribute_search",
+        "item_embedding",
     }
 )
 
@@ -115,6 +120,7 @@ class ApiCallLogWriter(Protocol):
         batch_run_id: str,
         source_api: str,
         call_status: str,
+        source: str = _SOURCE_RAKUTEN,
         request_params_json: dict[str, Any] | None = None,
         request_params_hash: str | None = None,
         error_code: str | None = None,
@@ -140,6 +146,7 @@ class ScaffoldApiCallLogWriter:
         batch_run_id: str,
         source_api: str,
         call_status: str,
+        source: str = _SOURCE_RAKUTEN,
         request_params_json: dict[str, Any] | None = None,
         request_params_hash: str | None = None,
         error_code: str | None = None,
@@ -155,7 +162,7 @@ class ScaffoldApiCallLogWriter:
         record: dict[str, object] = {
             "api_call_log_id": api_call_log_id,
             "batch_run_id": batch_run_id,
-            "source": _SOURCE_RAKUTEN,
+            "source": source,
             "source_api": source_api,
             "call_status": call_status,
             "request_params_json": cleaned,
@@ -174,7 +181,11 @@ class ScaffoldApiCallLogWriter:
 
 @dataclass
 class PostgresApiCallLogWriter:
-    """MOD-BATCH-046 path: write ``api_call_log`` via DbWriter (``source=rakuten``)."""
+    """MOD-BATCH-046 path: write ``api_call_log`` via DbWriter.
+
+    既定 ``source=rakuten``（001〜004）。BATCH-015 Embedding は ``source=openai``。
+    ``source`` は API 提供者識別であり、``item.source``（マーケット）とは別概念。
+    """
 
     db_writer: DbWriter
     records: list[dict[str, object]] = field(default_factory=list)
@@ -186,6 +197,7 @@ class PostgresApiCallLogWriter:
         batch_run_id: str,
         source_api: str,
         call_status: str,
+        source: str = _SOURCE_RAKUTEN,
         request_params_json: dict[str, Any] | None = None,
         request_params_hash: str | None = None,
         error_code: str | None = None,
@@ -198,6 +210,10 @@ class PostgresApiCallLogWriter:
     ) -> dict[str, object]:
         call_id = _require_uuid(api_call_log_id, field_name="api_call_log_id")
         run_id = _require_uuid(batch_run_id, field_name="batch_run_id")
+        if source not in ALLOWED_SOURCES:
+            raise ValueError(
+                f"source must be one of {sorted(ALLOWED_SOURCES)}, got {source!r}"
+            )
         if source_api not in ALLOWED_SOURCE_APIS:
             raise ValueError(
                 f"source_api must be one of {sorted(ALLOWED_SOURCE_APIS)}, got {source_api!r}"
@@ -223,7 +239,7 @@ class PostgresApiCallLogWriter:
             "batch_run_id": run_id,
             "fetch_cursor_id": fetch_cursor_id,
             "trace_id": trace_id,
-            "source": _SOURCE_RAKUTEN,
+            "source": source,
             "source_api": source_api,
             "request_params_hash": params_hash,
             "request_params_json": _as_jsonb(cleaned),
@@ -241,7 +257,7 @@ class PostgresApiCallLogWriter:
         record: dict[str, object] = {
             "api_call_log_id": call_id,
             "batch_run_id": run_id,
-            "source": _SOURCE_RAKUTEN,
+            "source": source,
             "source_api": source_api,
             "call_status": call_status,
             "request_params_json": cleaned,
