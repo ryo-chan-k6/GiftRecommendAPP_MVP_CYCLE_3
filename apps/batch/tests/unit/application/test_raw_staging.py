@@ -673,6 +673,53 @@ def test_list_eligible_raws_uses_db_reader_when_injected() -> None:
     assert ("import_status", "raw_saved") in reader.fetch_calls[0]["equals"]
 
 
+def test_list_eligible_raws_filters_by_bound_pipeline_batch_run_id() -> None:
+    """他 Run の raw_saved 残骸を拾わず、object_key の batch_run_id で絞る。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    pipeline = "870575bf-d720-455a-a256-c74951400a50"
+    other = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "raw_product_metadata",
+        (
+            {
+                "raw_metadata_id": "rm_old_bad",
+                "object_key": (
+                    f"raw/rakuten/item_search/dt=2026-07-28/"
+                    f"batch_run_id={other}/old.json"
+                ),
+                "content_hash": "a" * 64,
+                "source": "rakuten",
+                "source_api": "item_search",
+                "import_status": "raw_saved",
+            },
+            {
+                "raw_metadata_id": "rm_new_good",
+                "object_key": (
+                    f"raw/rakuten/item_search/dt=2026-07-28/"
+                    f"batch_run_id={pipeline}/new.json"
+                ),
+                "content_hash": "b" * 64,
+                "source": "rakuten",
+                "source_api": "item_search",
+                "import_status": "raw_saved",
+            },
+        ),
+    )
+    repos = RawStagingRepositories(
+        object_storage=ScaffoldObjectStorageClient(),
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        bucket="test-raw",
+    )
+    repos.bind_run(batch_run_id=pipeline)
+
+    selected = repos.list_eligible_raws(max_raw=1)
+    assert [s.raw_metadata_id for s in selected] == ["rm_new_good"]
+
+
 def test_list_eligible_raws_db_reader_force_and_explicit_ids() -> None:
     from batch.infrastructure.db import ScaffoldDbReader
 
