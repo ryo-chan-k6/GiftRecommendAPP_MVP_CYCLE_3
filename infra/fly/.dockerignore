@@ -1,8 +1,9 @@
-# Fly ignorefile for monorepo root build context (see fly.toml [build].ignorefile).
+# Build context = repository root (cwd when running fly deploy).
 # Keep only apps/reco runtime inputs.
 
 *
 !apps/
+apps/*
 !apps/reco/
 !apps/reco/pyproject.toml
 !apps/reco/uv.lock

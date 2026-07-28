@@ -77,7 +77,9 @@ fly secrets set DATABASE_URL=... REDIS_URL=... RECO_INTERNAL_API_KEY=... OPENAI_
 fly deploy --config infra/fly/fly.toml
 ```
 
-イメージは `infra/fly/Dockerfile` を使い、context はリポジトリルート（`ignorefile` で `apps/reco` 以外を除外）。
+- build context は **コマンド実行時の cwd（リポジトリルート）**
+- `fly.toml` の `dockerfile` / `ignorefile` は **fly.toml と同じディレクトリ**（`infra/fly/`）基準。`infra/fly/Dockerfile` と書かない（二重パスになり not found になる）
+- `.dockerignore` で `apps/reco` 以外を除外する
 
 ### 起動コマンド（イメージ CMD）
 
