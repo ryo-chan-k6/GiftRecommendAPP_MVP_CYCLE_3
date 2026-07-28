@@ -54,16 +54,10 @@ def _resolve_business_run_id(*, job_run_id: str, batch_run_id: str) -> str:
     return batch_run_id.strip() or job_run_id
 
 
-def build_scaffold_demo_job(
-    *,
-    job_run_tracker: JobRunTracker | None = None,
-    phase_log_writer: PhaseLogWriter | None = None,
-    error_log_writer: ErrorLogWriter | None = None,
-    api_call_log_writer: ApiCallLogWriter | None = None,
-) -> ItemPseudoDiffJob:
-    """Build an in-memory job for local / CI smoke without real secrets."""
+def _build_scaffold_rakuten_client() -> ScaffoldRakutenApiClient:
+    """In-memory Rakuten responses for CI / GHA（登録 egress IP 外での live 禁止に合わせる）。"""
 
-    client = ScaffoldRakutenApiClient(
+    return ScaffoldRakutenApiClient(
         items=(
             RakutenItem(item_code="shop:demo-1", item_name="Demo Item 1"),
             RakutenItem(item_code="shop:demo-2", item_name="Demo Item 2"),
@@ -92,6 +86,18 @@ def build_scaffold_demo_job(
             },
         },
     )
+
+
+def build_scaffold_demo_job(
+    *,
+    job_run_tracker: JobRunTracker | None = None,
+    phase_log_writer: PhaseLogWriter | None = None,
+    error_log_writer: ErrorLogWriter | None = None,
+    api_call_log_writer: ApiCallLogWriter | None = None,
+) -> ItemPseudoDiffJob:
+    """Build an in-memory job for local / CI smoke without real secrets."""
+
+    client = _build_scaffold_rakuten_client()
     repos = ItemPseudoDiffRepositories(
         object_storage=ScaffoldObjectStorageClient(),
         db_writer=ScaffoldDbWriter(),
@@ -213,21 +219,23 @@ def main(argv: list[str] | None = None) -> int:
         cli_live=args.live_rakuten,
         env_value=os.environ.get("BATCH_RAKUTEN_LIVE"),
     )
-    if not live:
-        print(
-            "Rakuten live is disabled (default). "
-            "Pass --live-rakuten or set BATCH_RAKUTEN_LIVE=1. "
-            "Use --scaffold-demo for local/CI without secrets.",
-            file=sys.stderr,
+    # 案 A: GHA 等では楽天 HTTP せず Scaffold。DB / Object Storage は live 可。
+    # 楽天 live は登録 egress IP の local のみ（PoC / Human 決定）。
+    if live:
+        if not settings.rakuten_application_id or not settings.rakuten_access_key:
+            print(
+                "RAKUTEN_APPLICATION_ID and RAKUTEN_ACCESS_KEY are required for --live-rakuten. "
+                "Omit --live-rakuten to use scaffold Rakuten with live DB/Storage.",
+                file=sys.stderr,
+            )
+            return 2
+        rakuten = create_rakuten_client(
+            settings.rakuten_application_id,
+            settings.rakuten_access_key,
+            live=True,
         )
-        return 3
-    if not settings.rakuten_application_id or not settings.rakuten_access_key:
-        print(
-            "RAKUTEN_APPLICATION_ID and RAKUTEN_ACCESS_KEY are required for --live-rakuten. "
-            "Use --scaffold-demo for local/CI.",
-            file=sys.stderr,
-        )
-        return 2
+    else:
+        rakuten = _build_scaffold_rakuten_client()
 
     storage_live = resolve_live_object_storage_flag(
         cli_live=args.live_object_storage,
@@ -249,11 +257,6 @@ def main(argv: list[str] | None = None) -> int:
         live=storage_live,
     )
 
-    rakuten = create_rakuten_client(
-        settings.rakuten_application_id,
-        settings.rakuten_access_key,
-        live=True,
-    )
     repos = ItemPseudoDiffRepositories(
         object_storage=object_storage,
         db_writer=db_writer,
@@ -263,8 +266,10 @@ def main(argv: list[str] | None = None) -> int:
         error_log_writer=obs.error_log_writer,
         api_call_log_writer=obs.api_call_log_writer,
     )
-    job = ItemPseudoDiffJob(rakuten_client=rakuten, repositories=repos,
-job_run_tracker=tracker,
+    job = ItemPseudoDiffJob(
+        rakuten_client=rakuten,
+        repositories=repos,
+        job_run_tracker=tracker,
     )
     job.repositories.bind_run(batch_run_id=business_run_id)
     genre_ids = _parse_csv(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS

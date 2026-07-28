@@ -44,7 +44,7 @@ review_scope:
 
 review_points:
   - "親 resolve-run-id が gha-import-… ではなく UUID の pipeline_batch_run_id か"
-  - "葉が environment: stg と STG_DATABASE_URL（003 は RAKUTEN_*）を使い --scaffold-demo を外しているか"
+  - "葉が environment: stg と STG_DATABASE_URL を使い --scaffold-demo を外しているか（003 楽天は GHA Scaffold＝案 A）"
   - "--live-object-storage を付けていないか（Object Storage Secrets 未登録）"
   - "003/005/006 の --job-run-id（葉 UUID）と --batch-run-id（共有 pipeline）分離が正しいか"
   - "017 live で job_run_id ≠ batch_run_id となるか"

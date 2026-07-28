@@ -118,7 +118,7 @@ output:
 acceptance_criteria:
   - "親 resolve-run-id が UUID の pipeline_batch_run_id を出力する"
   - "葉が environment: stg と STG_DATABASE_URL を用い --scaffold-demo を外している"
-  - "003 は RAKUTEN_* + BATCH_RAKUTEN_LIVE（または --live-rakuten）。--live-object-storage なし"
+  - "003 の GHA は楽天 Scaffold（--live-rakuten なし）。DB / Object Storage は live（案 A）"
   - "003/005/006 CLI が --job-run-id（葉）と --batch-run-id（共有）を分離する"
   - "017 live 時に job_run_id ≠ batch_run_id となる"
   - "secret 実値が docs/コード/ログに含まれない"

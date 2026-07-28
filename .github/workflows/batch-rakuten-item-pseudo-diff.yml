@@ -2,7 +2,8 @@ name: Batch Rakuten Item Pseudo Diff
 
 # BATCH-003 楽天商品疑似差分取得（独立子 workflow）
 # 正本: BATCH-003 バッチ仕様書 §18.1 — workflow_call / workflow_dispatch
-# C3: environment stg + live Rakuten / live DB / live Object Storage
+# C3 案 A: environment stg + live DB / live Object Storage。
+# 楽天 HTTP は GHA では Scaffold（登録 egress IP 外の live 禁止）。
 
 on:
   workflow_call:
@@ -64,9 +65,6 @@ jobs:
     environment: stg
     env:
       DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
-      RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
-      RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
-      BATCH_RAKUTEN_LIVE: "1"
       OBJECT_STORAGE_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY }}
       OBJECT_STORAGE_SECRET_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_KEY }}
       OBJECT_STORAGE_BUCKET: ${{ vars.OBJECT_STORAGE_BUCKET }}
@@ -111,8 +109,9 @@ jobs:
             echo "job_run_id=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-003 live
+      - name: Run BATCH-003 (scaffold Rakuten + live DB/Storage)
         # Secrets must never be printed.
+        # 楽天 live（--live-rakuten）は GHA 禁止。登録 IP の local のみ。
         working-directory: apps/batch
         run: |
           GENRE_ARGS=()
@@ -124,7 +123,6 @@ jobs:
             KEYWORD_ARGS+=(--keywords "${{ inputs.keywords }}")
           fi
           uv run python -m batch.application.item_pseudo_diff \
-            --live-rakuten \
             --live-object-storage \
             --job-run-id "${{ steps.run_ids.outputs.job_run_id }}" \
             --batch-run-id "${{ steps.run_ids.outputs.batch_run_id }}" \
