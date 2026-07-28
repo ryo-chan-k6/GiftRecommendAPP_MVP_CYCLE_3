@@ -5,9 +5,11 @@
 app = 'okuri-reco-stg'
 primary_region = 'nrt'
 
+# dockerfile / ignorefile は fly.toml と同じディレクトリ基準で解決される。
+# リポジトリルートから `fly deploy --config infra/fly/fly.toml` する（build context = cwd）。
 [build]
-  dockerfile = 'infra/fly/Dockerfile'
-  ignorefile = 'infra/fly/.dockerignore'
+  dockerfile = 'Dockerfile'
+  ignorefile = '.dockerignore'
 
 [env]
   APP_ENV = 'stg'
