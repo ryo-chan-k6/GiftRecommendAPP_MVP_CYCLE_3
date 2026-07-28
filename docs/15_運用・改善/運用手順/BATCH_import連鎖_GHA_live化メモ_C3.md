@@ -16,27 +16,36 @@ Epic `#1637` / Task `#1717` で確定した案 C3 に従い、BATCH import 連�
 
 017 live では **`job_run_id` ≠ `batch_run_id` が必須**（PK 衝突回避）。
 
-## 3. Environment / Secrets（stg）
+## 3. Environment / Secrets / Variables（stg）
 
-| 用途 | Secret 名 |
-| --- | --- |
-| DB | `STG_DATABASE_URL` → job env `DATABASE_URL` |
-| Rakuten（003 のみ） | `RAKUTEN_APPLICATION_ID` / `RAKUTEN_ACCESS_KEY` |
-| live フラグ（003） | `BATCH_RAKUTEN_LIVE=1`（または `--live-rakuten`） |
+| 用途 | 名前 | 種別 |
+| --- | --- | --- |
+| DB | `STG_DATABASE_URL` → job env `DATABASE_URL` | Secret |
+| Rakuten（003） | `RAKUTEN_APPLICATION_ID` / `RAKUTEN_ACCESS_KEY` | Secret |
+| Object Storage | `OBJECT_STORAGE_ACCESS_KEY` / `OBJECT_STORAGE_SECRET_KEY` | Secret |
+| Object Storage | `OBJECT_STORAGE_BUCKET` / `OBJECT_STORAGE_ENDPOINT` | Variable |
+| live フラグ | `BATCH_RAKUTEN_LIVE=1`（003）、`BATCH_OBJECT_STORAGE_LIVE=1`（003/005） | Variable / CLI |
 
 - GitHub Environment: `stg`
 - **prod 禁止**
-- Object Storage 用 Secrets は未登録 → **`--live-object-storage` は付けない**（scaffold storage）
+- 003/005 は `--live-object-storage` 付き
 
 ## 4. 疎通手順（Human）
 
-1. Environment `stg` の Secrets / 承認設定を確認する
+1. Environment `stg` の Secrets / Variables / 承認設定を確認する
 2. `Batch Rakuten Item Import` を `workflow_dispatch`（`max_items` は低め推奨）
 3. 各葉 job の conclusion と `pipeline_batch_run_id` を記録する（secret なし）
-4. Object Storage 未登録により 003→005 の raw 実体参照が失敗し得る点を確認し、必要なら別 Task で live 有効化
+4. Storage SigV4 失敗時は Dashboard の Region と実装既定（`us-east-1`）の不一致を疑う
 
 ## 5. 残リスク
 
-- Object Storage 未登録のため、003 の raw 実体は runner 内 scaffold に留まり、005 以降の raw 読取が失敗し得る
 - schedule は無効のまま（別 Wave）
 - ranking_snapshot / meaning-generation / existing-item-pipeline は本 Task 対象外
+- Environment `stg` の required reviewers により、各葉 job 実行前に Human 承認が必要
+
+## 6. 変更履歴
+
+| 日付 | 内容 |
+| ---- | ---- |
+| 2026-07-28 | 初版（Object Storage 未配線） |
+| 2026-07-29 | Object Storage Secrets/Variables 登録後、003/005 に live 配線 |

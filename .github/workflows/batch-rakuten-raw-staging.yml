@@ -2,7 +2,7 @@ name: Batch Rakuten Raw Staging
 
 # BATCH-005 Raw取込・Staging変換（独立子 workflow）
 # 正本: BATCH-005 バッチ仕様書 §18.1 No.1 — workflow_call / workflow_dispatch
-# C3: environment stg + live DB。Object Storage は scaffold（Secrets 未登録）
+# C3: environment stg + live DB / live Object Storage
 
 on:
   workflow_call:
@@ -84,6 +84,11 @@ jobs:
     environment: stg
     env:
       DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
+      OBJECT_STORAGE_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY }}
+      OBJECT_STORAGE_SECRET_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_KEY }}
+      OBJECT_STORAGE_BUCKET: ${{ vars.OBJECT_STORAGE_BUCKET }}
+      OBJECT_STORAGE_ENDPOINT: ${{ vars.OBJECT_STORAGE_ENDPOINT }}
+      BATCH_OBJECT_STORAGE_LIVE: ${{ vars.BATCH_OBJECT_STORAGE_LIVE }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -124,7 +129,7 @@ jobs:
           fi
 
       - name: Run BATCH-005 live
-        # Secrets must never be printed. Object Storage live is not enabled (Secrets 未登録).
+        # Secrets must never be printed.
         working-directory: apps/batch
         run: |
           MAX_ARGS=()
@@ -144,6 +149,7 @@ jobs:
             FORCE_ARGS+=(--force)
           fi
           uv run python -m batch.application.raw_staging \
+            --live-object-storage \
             --job-run-id "${{ steps.run_ids.outputs.job_run_id }}" \
             --batch-run-id "${{ steps.run_ids.outputs.batch_run_id }}" \
             "${MAX_ARGS[@]}" \
