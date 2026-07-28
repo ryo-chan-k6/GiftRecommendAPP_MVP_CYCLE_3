@@ -70,6 +70,13 @@ class RankingSnapshotJob:
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
 
+
+    @property
+    def repositories(self):
+        """Expose repositories for CLI bind_run / observability wiring."""
+
+        return self._repos
+
     def run(
         self,
         *,
@@ -211,7 +218,7 @@ class RankingSnapshotJob:
         job_run_id: str,
         result: RankingSyncResult,
     ) -> None:
-        api_call_log_id = f"api_{uuid.uuid4().hex[:12]}"
+        api_call_log_id = str(uuid.uuid4())
 
         # fetch
         try:

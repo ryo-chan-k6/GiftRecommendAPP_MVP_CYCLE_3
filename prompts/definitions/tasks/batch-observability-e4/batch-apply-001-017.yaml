@@ -1,0 +1,200 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-observability-e4-batch-apply-001-017"
+  title: "batch-observability-e4:BATCH-001〜017観測配線全適用"
+  summary: "Wave 4（§8.1 案 C）。Wave 1〜3 writers を BATCH-001〜017 に適用。015 api_call DB は source CHECK 外で未配線。017 は tracker/集計 run_id 分離。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  epic_issue_number: 1636
+  epic_branch: "feature/epic-1636-batch-observability-e4"
+  related_issues:
+    - 1697
+    - 1699
+    - 1701
+    - 1703
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Wave 1〜3 で batch_run_log / phase_log / error_log / api_call_log writers と代表 genre_sync 配線済み。
+  §8.1 Human 確定は案 C（BATCH-001〜017 全適用）。018/019・043/044 は禁止。
+  015 Embedding の api_call DB は DDL source=rakuten CHECK 外。017 は既存 Run 集計と自 Run tracker の PK 衝突回避が必要。
+
+objective: |
+  genre_sync 同型で BATCH-001〜017 に tracker + phase/error（必要時 api_call）を配線する。
+  共通 mapping を DEFAULT に統合。017 は tracker=job_run_id / 集計=batch_run_id 分離。
+  UT（mapping / 002・005・017 wiring）と既存回帰。DDL 変更・018/019 適用は禁止。
+
+scope:
+  - "observability/mapping.py 共通 map 拡張 + binding helpers"
+  - "BATCH-001〜017 repositories / __main__ / job（必要最小）配線"
+  - "002/003/004 api_call UUID + source_api DB 書込"
+  - "015 Run/Phase/Error のみ（api_call DB しない）"
+  - "017 tracker/集計 run_id 分離 + UT"
+  - "UT（mapping / wiring samples / 既存回帰）"
+  - "ギャップ一覧 Wave 4 進捗・適用マトリクス"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "DDL / migration 変更"
+  - "Embedding source CHECK 拡張"
+  - "BATCH-018 / 019 への適用"
+  - "MOD-BATCH-043 / 044"
+  - "親 schedule（#1637）"
+  - "Epic→develop PR"
+  - "CI 既定 live / production 無承認"
+  - "commit / push / PR（親 Orchestrator が行う）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/observability/**"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/observability/mapping.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/observability/binding.py"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/application/{genre_sync,ranking_snapshot,item_pseudo_diff,item_recheck,raw_staging,product_diff,item_apply,item_active_status,item_generation_queue,item_semantic,feature_input_hash,item_feature,feature_normalization,embedding_input_hash,item_embedding,distribution_metrics,import_summary}/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_batch_observability_apply_001_017.py"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-observability-e4/batch-apply-001-017.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-observability-e4/batch-apply-001-017/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "共通 mapping / binding"
+  - "BATCH-001〜017 観測配線"
+  - "017 run_id 分離"
+  - "UT"
+  - "ギャップ一覧 Wave 4"
+
+acceptance_criteria:
+  - "001〜017 に Run+Phase+Error が配線されている（genre_sync 同型）"
+  - "002/003/004 の api_call DB 書込と UUID id がある"
+  - "015 は api_call DB を書かない"
+  - "017 tracker が job_run_id、集計が batch_run_id である（UT 検証）"
+  - "未マップ phase は DB skip + warn"
+  - "018/019 / DDL 変更が混入していない"
+  - "UT（mapping / wiring / 既存回帰）が緑"
+  - "ギャップ一覧に Wave 4 / 適用マトリクス / 015・017 事実が記載されている"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/task-1705-batch-observability-e4-batch-apply-001-017"
+  summary: "batch-observability-e4-batch-apply-001-017"
+  base: "feature/epic-1636-batch-observability-e4"
+  target: "feature/epic-1636-batch-observability-e4"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-11"
+
+issue:
+  number: 1705
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1636
+      purpose: "親 Epic"
+  issues:
+    - issue: 1703
+      purpose: "Wave 3 api-call-log-write"
+    - issue: 1701
+      purpose: "Wave 2 phase-error-write"
+    - issue: 1699
+      purpose: "Wave 1 run-log-write"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/observability/**"
+    - "apps/batch/src/batch/application/genre_sync/**"
+    - "apps/batch/src/batch/application/ranking_snapshot/**"
+    - "apps/batch/src/batch/application/item_pseudo_diff/**"
+    - "apps/batch/src/batch/application/item_recheck/**"
+    - "apps/batch/src/batch/application/raw_staging/**"
+    - "apps/batch/src/batch/application/product_diff/**"
+    - "apps/batch/src/batch/application/item_apply/**"
+    - "apps/batch/src/batch/application/item_active_status/**"
+    - "apps/batch/src/batch/application/item_generation_queue/**"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/src/batch/application/import_summary/**"
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  not_required:
+    - "CI default live"
+    - "full E2E all 17 batches"
+
+operation_logging:
+  enabled: true
+  notes: "secret / DATABASE_URL 実値は記録しない"

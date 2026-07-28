@@ -487,6 +487,20 @@ def test_cli_non_demo_runs_job_with_live_reader(monkeypatch) -> None:
     )
     monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
     monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
+    monkeypatch.setattr(
+        cli,
+        "create_job_run_tracker",
+        lambda **_kwargs: __import__(
+            "batch.application.job_run", fromlist=["ScaffoldJobRunTracker"]
+        ).ScaffoldJobRunTracker(),
+    )
+    monkeypatch.setattr(
+        cli,
+        "create_batch_observability_writers",
+        lambda **_kwargs: __import__(
+            "batch.application.observability", fromlist=["create_batch_observability_writers"]
+        ).create_batch_observability_writers(scaffold_demo=True, database_url=None),
+    )
 
     code = cli.main(["--job-run-id", "wave-f", "--max-items", "1"])
     # empty SELECT → plan failed (exit 1). Important: Job started (not config/exit-2/old exit-3).
@@ -524,6 +538,20 @@ def test_cli_non_demo_live_embedding_wires_client(monkeypatch) -> None:
     monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
     monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
     monkeypatch.setattr(cli, "create_embedding_client", _fake_create)
+    monkeypatch.setattr(
+        cli,
+        "create_job_run_tracker",
+        lambda **_kwargs: __import__(
+            "batch.application.job_run", fromlist=["ScaffoldJobRunTracker"]
+        ).ScaffoldJobRunTracker(),
+    )
+    monkeypatch.setattr(
+        cli,
+        "create_batch_observability_writers",
+        lambda **_kwargs: __import__(
+            "batch.application.observability", fromlist=["create_batch_observability_writers"]
+        ).create_batch_observability_writers(scaffold_demo=True, database_url=None),
+    )
 
     code = cli.main(["--job-run-id", "wave-f-live", "--live-embedding", "--max-items", "1"])
     assert code == 1

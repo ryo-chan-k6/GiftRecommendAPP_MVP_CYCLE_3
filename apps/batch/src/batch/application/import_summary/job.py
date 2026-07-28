@@ -11,6 +11,10 @@ record_phase → finalize
 物理書込 IF = IF-DB-BATCH-017 のみ。
 phase_log 物理名は `summary_created`。
 冪等: INSERT + ON CONFLICT DO NOTHING（UPDATE しない）。
+
+Wave 4: tracker は常に ``job_run_id``（BATCH-017 自身の新規 UUID）。
+集計 / require_batch_run / insert_summary の ``batch_run_id`` は引数の既存 Run。
+未指定時のみ ``job_run_id`` フォールバック（scaffold 用）。
 """
 
 from __future__ import annotations
@@ -80,6 +84,12 @@ class ImportSummaryJob:
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
 
+    @property
+    def repositories(self) -> ImportSummaryRepositories:
+        """Expose repositories for CLI bind_run / observability wiring."""
+
+        return self._repos
+
     def run(
         self,
         *,
@@ -91,10 +101,11 @@ class ImportSummaryJob:
     ) -> ImportSummaryJobResult:
         bound_logger = self._logger.bind(job_run_id=job_run_id, trace_id=trace_id or job_run_id)
         _ = bound_logger
-        target_run_id = (batch_run_id or "").strip() or job_run_id
+        # 集計対象は既存 Run。tracker は BATCH-017 自身の job_run_id（PK 衝突回避）。
+        aggregate_run_id = (batch_run_id or "").strip() or job_run_id
         result = ImportSummaryJobResult(
             batch_id=BATCH_ID,
-            job_run_id=target_run_id,
+            job_run_id=job_run_id,
             status="failed",
         )
 
@@ -103,12 +114,12 @@ class ImportSummaryJob:
             self._repos.record_error(code="GRS-BAT-003", summary="batch already running")
             return result
 
-        self._tracker.start(batch_id=BATCH_ID, job_run_id=target_run_id)
+        self._tracker.start(batch_id=BATCH_ID, job_run_id=job_run_id)
         result.completed_phases.append("open_run")
 
         try:
             try:
-                self._repos.require_batch_run(target_run_id)
+                self._repos.require_batch_run(aggregate_run_id)
             except LookupError as exc:
                 raise ImportSummaryError("GRS-VAL-001", str(exc)) from exc
 
@@ -122,11 +133,11 @@ class ImportSummaryJob:
             result.source_api = resolved
             result.completed_phases.append("resolve_source_api")
 
-            api_calls = self._repos.load_api_calls(batch_run_id=target_run_id)
-            staging_items = self._repos.load_staging_items(batch_run_id=target_run_id)
+            api_calls = self._repos.load_api_calls(batch_run_id=aggregate_run_id)
+            staging_items = self._repos.load_staging_items(batch_run_id=aggregate_run_id)
             result.completed_phases.append("aggregate_fetched")
 
-            diffs = self._repos.load_diffs(batch_run_id=target_run_id)
+            diffs = self._repos.load_diffs(batch_run_id=aggregate_run_id)
             result.completed_phases.append("aggregate_diff")
 
             skip_fail = self._repos.load_skip_fail()
@@ -142,12 +153,12 @@ class ImportSummaryJob:
                 staging_items=staging_items,
                 skip_fail=skip_fail,
                 progress=progress,
-                batch_run_id=target_run_id,
+                batch_run_id=aggregate_run_id,
                 source_api=resolved,
             )
             insert_row = build_insert_row(
                 counts=counts,
-                batch_run_id=target_run_id,
+                batch_run_id=aggregate_run_id,
                 source_api=resolved,
                 summarized_at=ts,
             )
@@ -172,14 +183,14 @@ class ImportSummaryJob:
             result.error_codes.append(exc.code)
             self._repos.record_error(code=exc.code, summary=exc.message)
             self._tracker.complete(
-                batch_id=BATCH_ID, job_run_id=target_run_id, status="failed"
+                batch_id=BATCH_ID, job_run_id=job_run_id, status="failed"
             )
             result.completed_phases.append("finalize")
             result.status = "failed"
             return result
         except Exception:
             self._tracker.complete(
-                batch_id=BATCH_ID, job_run_id=target_run_id, status="failed"
+                batch_id=BATCH_ID, job_run_id=job_run_id, status="failed"
             )
             raise
 

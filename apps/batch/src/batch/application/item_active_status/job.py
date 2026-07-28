@@ -79,6 +79,13 @@ class ItemActiveStatusJob:
         self._logger = logger or ScaffoldBatchLogger()
         self._fail_item_codes = set(fail_item_codes or ())
 
+
+    @property
+    def repositories(self):
+        """Expose repositories for CLI bind_run / observability wiring."""
+
+        return self._repos
+
     def run(
         self,
         *,

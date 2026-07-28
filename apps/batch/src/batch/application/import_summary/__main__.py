@@ -2,7 +2,11 @@
 
 Usage:
   python -m batch.application.import_summary --scaffold-demo
-  python -m batch.application.import_summary --job-run-id <id>  # requires DATABASE_URL
+  python -m batch.application.import_summary \\
+    --job-run-id <new-uuid> --batch-run-id <existing-run-uuid>  # requires DATABASE_URL
+
+非 demo では ``--job-run-id`` は BATCH-017 自身の新規 UUID（tracker / batch_run_log PK）、
+``--batch-run-id`` は集計対象の既存 Run UUID。混同すると PK 衝突する。
 """
 
 from __future__ import annotations
@@ -21,6 +25,12 @@ from batch.application.import_summary.models import (
     StagingItemRow,
 )
 from batch.application.import_summary.repositories import ImportSummaryRepositories
+from batch.application.job_run import JobRunTracker, create_job_run_tracker
+from batch.application.observability import (
+    ErrorLogWriter,
+    PhaseLogWriter,
+    create_batch_observability_writers,
+)
 from batch.config import load_batch_settings
 from batch.infrastructure.db import (
     ScaffoldDbWriter,
@@ -32,7 +42,12 @@ from batch.infrastructure.db import (
 _DEMO_RUN_ID = "scaffold-import-summary-run"
 
 
-def build_scaffold_demo_job() -> ImportSummaryJob:
+def build_scaffold_demo_job(
+    *,
+    job_run_tracker: JobRunTracker | None = None,
+    phase_log_writer: PhaseLogWriter | None = None,
+    error_log_writer: ErrorLogWriter | None = None,
+) -> ImportSummaryJob:
     """Build an in-memory job for local / CI smoke without real secrets / DB."""
 
     repos = ImportSummaryRepositories(
@@ -80,15 +95,31 @@ def build_scaffold_demo_job() -> ImportSummaryJob:
             embedding_generated_count=3,
         ),
         seed_default_source_api="item_search",
+        phase_log_writer=phase_log_writer,
+        error_log_writer=error_log_writer,
     )
-    return ImportSummaryJob(repositories=repos)
+    return ImportSummaryJob(repositories=repos, job_run_tracker=job_run_tracker)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="BATCH-017 Import Summary creation")
-    parser.add_argument("--job-run-id", default="local-run")
+    parser.add_argument(
+        "--job-run-id",
+        default="local-run",
+        help=(
+            "BATCH-017 自身の job_run_id（tracker / batch_run_log）。"
+            "Non --scaffold-demo Postgres tracker requires a UUID。"
+        ),
+    )
     parser.add_argument("--source-api", default="")
-    parser.add_argument("--batch-run-id", default="")
+    parser.add_argument(
+        "--batch-run-id",
+        default="",
+        help=(
+            "集計対象の既存 batch_run_id（require_batch_run / summary INSERT）。"
+            "Postgres 経路では --job-run-id（新規）と分離して渡す。"
+        ),
+    )
     parser.add_argument(
         "--scaffold-demo",
         action="store_true",
@@ -108,12 +139,26 @@ def main(argv: list[str] | None = None) -> int:
             or settings.batch_import_summary_batch_run_id
             or _DEMO_RUN_ID
         )
-        job = build_scaffold_demo_job()
-        # demo seed の run id に合わせる
+        tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
+        obs = create_batch_observability_writers(
+            scaffold_demo=True, database_url=None
+        )
+        job = build_scaffold_demo_job(
+            job_run_tracker=tracker,
+            phase_log_writer=obs.phase_log_writer,
+            error_log_writer=obs.error_log_writer,
+        )
+        # demo: tracker 用 job_run_id と集計用 batch_run_id を分離可能
+        demo_job_run_id = (
+            args.job_run_id
+            if args.job_run_id not in {"local-run", _DEMO_RUN_ID}
+            else f"demo-017-{_DEMO_RUN_ID}"
+        )
+        job.repositories.bind_run(batch_run_id=demo_job_run_id)
         result = job.run(
-            job_run_id=batch_run_id if batch_run_id == _DEMO_RUN_ID else _DEMO_RUN_ID,
+            job_run_id=demo_job_run_id,
             source_api=source_api,
-            batch_run_id=_DEMO_RUN_ID,
+            batch_run_id=_DEMO_RUN_ID if batch_run_id == _DEMO_RUN_ID else batch_run_id,
             now=datetime.now(UTC),
         )
         print(
@@ -127,6 +172,16 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    tracker = create_job_run_tracker(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
+    obs = create_batch_observability_writers(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
     db_reader = resolve_job_db_reader(
         scaffold_demo=False,
         database_url=settings.database_url,
@@ -147,14 +202,25 @@ def main(argv: list[str] | None = None) -> int:
     batch_run_id = (
         args.batch_run_id.strip()
         or settings.batch_import_summary_batch_run_id
-        or args.job_run_id
+        or ""
     )
+    if not batch_run_id:
+        print(
+            "BATCH-017 Postgres 経路では --batch-run-id（既存 Run）が必須です。"
+            " --job-run-id は BATCH-017 自身の新規 UUID です。",
+            file=sys.stderr,
+        )
+        return 2
+
     repos = ImportSummaryRepositories(
         db_writer=db_writer,
         db_reader=db_reader,
         seed_default_source_api=source_api,  # type: ignore[arg-type]
+        phase_log_writer=obs.phase_log_writer,
+        error_log_writer=obs.error_log_writer,
     )
-    job = ImportSummaryJob(repositories=repos)
+    job = ImportSummaryJob(repositories=repos, job_run_tracker=tracker)
+    job.repositories.bind_run(batch_run_id=args.job_run_id)
     result = job.run(
         job_run_id=args.job_run_id,
         source_api=source_api,

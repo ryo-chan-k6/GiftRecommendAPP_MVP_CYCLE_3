@@ -756,6 +756,20 @@ def test_cli_non_demo_runs_job_with_live_reader(monkeypatch: Any) -> None:
         "create_object_storage_client",
         lambda *_args, **_kwargs: ScaffoldObjectStorageClient(),
     )
+    monkeypatch.setattr(
+        cli,
+        "create_job_run_tracker",
+        lambda **_kwargs: __import__(
+            "batch.application.job_run", fromlist=["ScaffoldJobRunTracker"]
+        ).ScaffoldJobRunTracker(),
+    )
+    monkeypatch.setattr(
+        cli,
+        "create_batch_observability_writers",
+        lambda **_kwargs: __import__(
+            "batch.application.observability", fromlist=["create_batch_observability_writers"]
+        ).create_batch_observability_writers(scaffold_demo=True, database_url=None),
+    )
 
     code = cli.main(["--job-run-id", "wave-a", "--max-raw", "1"])
     # empty SELECT → plan failed (exit 1). Important: Job started (not config/exit-2/old exit-3).

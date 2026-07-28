@@ -19,7 +19,9 @@ from batch.application.observability.factory import (
     create_error_log_writer,
     create_phase_log_writer,
 )
+from batch.application.observability.binding import emit_api_call, emit_error, emit_phase
 from batch.application.observability.mapping import (
+    DEFAULT_APP_PHASE_TO_DDL,
     GENRE_SYNC_APP_PHASE_TO_DDL,
     map_app_phase_status,
     map_app_phase_to_ddl,
@@ -37,6 +39,7 @@ __all__ = [
     "ALLOWED_SOURCE_APIS",
     "ApiCallLogWriter",
     "BatchObservabilityWriters",
+    "DEFAULT_APP_PHASE_TO_DDL",
     "ErrorLogWriter",
     "GENRE_SYNC_APP_PHASE_TO_DDL",
     "PhaseLogWriter",
@@ -50,6 +53,9 @@ __all__ = [
     "create_batch_observability_writers",
     "create_error_log_writer",
     "create_phase_log_writer",
+    "emit_api_call",
+    "emit_error",
+    "emit_phase",
     "map_app_phase_status",
     "map_app_phase_to_ddl",
 ]
