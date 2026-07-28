@@ -3,6 +3,7 @@
 from batch.application.observability.api_call_log import (
     ALLOWED_CALL_STATUSES,
     ALLOWED_SOURCE_APIS,
+    ALLOWED_SOURCES,
     ApiCallLogWriter,
     PostgresApiCallLogWriter,
     ScaffoldApiCallLogWriter,
@@ -37,6 +38,7 @@ __all__ = [
     "ALLOWED_BATCH_PHASE_NAMES",
     "ALLOWED_CALL_STATUSES",
     "ALLOWED_SOURCE_APIS",
+    "ALLOWED_SOURCES",
     "ApiCallLogWriter",
     "BatchObservabilityWriters",
     "DEFAULT_APP_PHASE_TO_DDL",

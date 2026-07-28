@@ -33,6 +33,7 @@ from batch.application.item_embedding.repositories import (
 )
 from batch.application.job_run import JobRunTracker, create_job_run_tracker
 from batch.application.observability import (
+    ApiCallLogWriter,
     ErrorLogWriter,
     PhaseLogWriter,
     create_batch_observability_writers,
@@ -67,6 +68,7 @@ def build_scaffold_demo_job(
     job_run_tracker: JobRunTracker | None = None,
     phase_log_writer: PhaseLogWriter | None = None,
     error_log_writer: ErrorLogWriter | None = None,
+    api_call_log_writer: ApiCallLogWriter | None = None,
 ) -> ItemEmbeddingJob:
     """Build an in-memory job for local / CI smoke without real DB.
 
@@ -141,6 +143,7 @@ def build_scaffold_demo_job(
         ],
         phase_log_writer=phase_log_writer,
         error_log_writer=error_log_writer,
+        api_call_log_writer=api_call_log_writer,
     )
     if embedding_client is None:
         return build_default_scaffold_job(repos, job_run_tracker=job_run_tracker)
@@ -207,6 +210,7 @@ def main(argv: list[str] | None = None) -> int:
             job_run_tracker=tracker,
             phase_log_writer=obs.phase_log_writer,
             error_log_writer=obs.error_log_writer,
+            api_call_log_writer=obs.api_call_log_writer,
         )
         job.repositories.bind_run(batch_run_id=args.job_run_id)
         result = job.run(
@@ -271,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
         db_reader=db_reader,
         phase_log_writer=obs.phase_log_writer,
         error_log_writer=obs.error_log_writer,
+        api_call_log_writer=obs.api_call_log_writer,
     )
     job = ItemEmbeddingJob(
         repositories=repos,

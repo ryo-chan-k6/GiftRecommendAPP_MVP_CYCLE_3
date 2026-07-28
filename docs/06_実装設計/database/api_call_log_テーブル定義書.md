@@ -138,7 +138,7 @@ Batch アプリ（Rakuten API Client）は INSERT 前に Adapter 層でマスキ
 | 2 | `batch_run_id` | Batch Run ID | `uuid` | `yes` | — | LOGICAL | — | — | 所属 Batch 実行。`batch_run_log.batch_run_id` 参照 |
 | 3 | `fetch_cursor_id` | Fetch Cursor ID | `uuid` | `no` | — | LOGICAL | — | `NULL` | 走査条件起点の API 呼び出し時に設定。非経由は `NULL` |
 | 4 | `trace_id` | Trace ID | `text` | `no` | — | — | — | `NULL` | 横断追跡 ID（Observability §14.2。batch 実行 trace と連携） |
-| 5 | `source` | Data Source | `text` | `yes` | — | — | — | `'rakuten'` | 外部商品データ元。`item.source` と同一コード体系 |
+| 5 | `source` | Data Source | `text` | `yes` | — | — | — | `'rakuten'` | 外部 API 提供者識別。MVP: `rakuten`（楽天商品系）/ `openai`（Embedding）。**`item.source`（マーケット）とは別概念** |
 | 6 | `source_api` | Source API | `varchar(32)` | `yes` | — | — | — | — | 呼び出し API 識別子（§11） |
 | 7 | `request_params_hash` | Request Params Hash | `text` | `yes` | — | — | — | — | マスキング済み条件の hash。Object Storage Key・再実行識別 |
 | 8 | `request_params_json` | Request Params JSON | `jsonb` | `yes` | — | — | — | `'{}'` | マスキング済みリクエスト条件（§5.5） |
@@ -204,7 +204,7 @@ Batch アプリ（Rakuten API Client）は INSERT 前に Adapter 層でマスキ
 | 制約名 | 種別 | 対象 | 内容 | 備考 |
 | ------ | ---- | ---- | ---- | ---- |
 | `api_call_log_pkey` | PRIMARY KEY | `api_call_log_id` | 主キー | — |
-| `chk_api_call_log_source_mvp` | CHECK | `source` | `source = 'rakuten'` | MVP 固定 |
+| `chk_api_call_log_source_mvp` | CHECK | `source` | `source IN ('rakuten', 'openai')` | Wave 5（#1710）。`openai` は Embedding API 提供者。`item.source` とは別 |
 | `chk_api_call_log_source_api` | CHECK | `source_api` | `source_api` 許容値 | enum定義書 §6.24 |
 | `chk_api_call_log_status` | CHECK | `call_status` | `api_call_status` 許容値 | enum定義書 §6.6 |
 | `chk_api_call_log_item_count_nonneg` | CHECK | `item_count` | `item_count >= 0` | |
@@ -218,8 +218,8 @@ Batch アプリ（Rakuten API Client）は INSERT 前に Adapter 層でマスキ
 | カラム | enum / code | 定義元 | 許容値 | 備考 |
 | ------ | ----------- | ------ | ------ | ---- |
 | `call_status` | `api_call_status` | `enum定義書.md` §6.6 / `packages/code-definitions/state/api_call_status.yaml` | `requested`, `succeeded`, `failed`, `rate_limited`, `skipped` | NOT NULL |
-| `source_api` | `source_api` | `enum定義書.md` §6.24 / `packages/code-definitions/batch/source_api.yaml` | `item_search`, `item_ranking`, `genre_search`, `attribute_search` | NOT NULL |
-| `source` | （code 未定義） | `item.source` 慣行 | MVP: `rakuten` | CHECK で固定 |
+| `source_api` | `source_api` | `enum定義書.md` §6.24 / `packages/code-definitions/batch/source_api.yaml` | `item_search`, `item_ranking`, `genre_search`, `attribute_search`, `item_embedding` | NOT NULL。`item_embedding` は api_call_log のみ（raw / summary / fetch_cursor の CHECK は楽天系のまま） |
+| `source` | （code 未定義） | api_call_log CHECK | MVP: `rakuten` / `openai` | **`item.source`（マーケット）とは別概念**。Embedding 呼出は `openai` |
 
 ### 11.1 `call_status` 状態遷移
 

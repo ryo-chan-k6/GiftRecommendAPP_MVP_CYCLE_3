@@ -58,6 +58,48 @@ def test_postgres_api_call_rejects_invalid_source_api() -> None:
         )
 
 
+def test_postgres_api_call_accepts_item_embedding_with_openai_source() -> None:
+    writer = ScaffoldDbWriter()
+    api_writer = PostgresApiCallLogWriter(db_writer=writer)
+    call_id = str(uuid4())
+    run_id = str(uuid4())
+
+    api_writer.record_call(
+        api_call_log_id=call_id,
+        batch_run_id=run_id,
+        source="openai",
+        source_api="item_embedding",
+        call_status="succeeded",
+        request_params_json={"model": "text-embedding-3-small", "purpose": "item_embedding"},
+        duration_ms=12,
+    )
+
+    row = writer.write_calls[0]["rows"][0]
+    assert row["source"] == "openai"
+    assert row["source_api"] == "item_embedding"
+    assert row["duration_ms"] == 12
+    params = row["request_params_json"]
+    if hasattr(params, "obj"):
+        params = params.obj
+    assert params == {"model": "text-embedding-3-small", "purpose": "item_embedding"}
+    assert "api_key" not in params
+
+
+def test_postgres_api_call_rejects_invalid_source() -> None:
+    writer = ScaffoldDbWriter()
+    api_writer = PostgresApiCallLogWriter(db_writer=writer)
+
+    with pytest.raises(ValueError, match="source must be one of"):
+        api_writer.record_call(
+            api_call_log_id=str(uuid4()),
+            batch_run_id=str(uuid4()),
+            source="amazon",
+            source_api="item_embedding",
+            call_status="succeeded",
+            request_params_json={},
+        )
+
+
 def test_postgres_api_call_rejects_invalid_call_status() -> None:
     writer = ScaffoldDbWriter()
     api_writer = PostgresApiCallLogWriter(db_writer=writer)
@@ -251,3 +293,82 @@ def test_genre_sync_repos_without_bind_keeps_api_call_memory_only() -> None:
     )
     assert len(repos.api_call_logs) == 1
     assert db.write_calls == []
+
+
+def test_item_embedding_repos_writes_api_call_log_with_openai_source() -> None:
+    from batch.application.item_embedding.repositories import ItemEmbeddingRepositories
+
+    db = ScaffoldDbWriter()
+    api_writer = PostgresApiCallLogWriter(db_writer=db)
+    repos = ItemEmbeddingRepositories(
+        db_writer=db,
+        api_call_log_writer=api_writer,
+    )
+    run_id = str(uuid4())
+    call_id = str(uuid4())
+    repos.bind_run(batch_run_id=run_id, trace_id="t-emb")
+
+    repos.record_api_call(
+        api_call_log_id=call_id,
+        status="generated",
+        model="text-embedding-3-small",
+        latency_ms=42,
+    )
+
+    assert len(repos.api_call_logs) == 1
+    mem = repos.api_call_logs[0]
+    assert mem["api_call_log_id"] == call_id
+    assert mem["status"] == "generated"
+    assert mem["call_status"] == "succeeded"
+    assert mem["model"] == "text-embedding-3-small"
+    assert "embedding_vector" not in mem
+    assert "api_key" not in str(mem).lower()
+
+    api_calls = [c for c in db.write_calls if c["table"] == "api_call_log"]
+    assert len(api_calls) == 1
+    row = api_calls[0]["rows"][0]
+    assert row["api_call_log_id"] == call_id
+    assert row["batch_run_id"] == run_id
+    assert row["source"] == "openai"
+    assert row["source_api"] == "item_embedding"
+    assert row["call_status"] == "succeeded"
+    assert row["duration_ms"] == 42
+    assert row["trace_id"] == "t-emb"
+    params = row["request_params_json"]
+    if hasattr(params, "obj"):
+        params = params.obj
+    assert params == {"model": "text-embedding-3-small", "purpose": "item_embedding"}
+    assert "api_key" not in params
+
+
+def test_item_embedding_repos_without_bind_keeps_api_call_memory_only() -> None:
+    from batch.application.item_embedding.repositories import ItemEmbeddingRepositories
+
+    db = ScaffoldDbWriter()
+    repos = ItemEmbeddingRepositories(
+        db_writer=db,
+        api_call_log_writer=PostgresApiCallLogWriter(db_writer=db),
+    )
+    repos.record_api_call(
+        api_call_log_id=str(uuid4()),
+        status="generated",
+        model="scaffold-model",
+        latency_ms=1,
+    )
+    assert len(repos.api_call_logs) == 1
+    assert db.write_calls == []
+
+
+def test_rakuten_path_default_source_unchanged() -> None:
+    """001〜004 経路の既定 source=rakuten が回帰しないこと。"""
+
+    writer = ScaffoldDbWriter()
+    api_writer = PostgresApiCallLogWriter(db_writer=writer)
+    api_writer.record_call(
+        api_call_log_id=str(uuid4()),
+        batch_run_id=str(uuid4()),
+        source_api="genre_search",
+        call_status="succeeded",
+        request_params_json={"genre_id": "0"},
+    )
+    assert writer.write_calls[0]["rows"][0]["source"] == "rakuten"

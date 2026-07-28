@@ -29,20 +29,25 @@ values:
     meaning: "楽天属性検索API（将来拡張。MVP では Raw 保存対象外の場合あり）"
     terminal: true
     enabled: true
+  - value: "item_embedding"
+    label: "Item Embedding"
+    meaning: "Item Embedding 生成 API（BATCH-015 / IF-EXT-005。api_call_log のみ。raw_product_metadata 等の楽天系 CHECK には含めない）"
+    terminal: true
+    enabled: true
 
 db_usages:
   - table: "raw_product_metadata"
     column: "source_api"
     constraint: "NOT NULL"
-    note: "Issue #506 Human Review 確定。raw_product_metadata_テーブル定義書 §11"
+    note: "Issue #506 Human Review 確定。raw_product_metadata_テーブル定義書 §11。楽天系 4 値のみ（item_embedding 非対象）"
   - table: "api_call_log"
     column: "source_api"
     constraint: "NOT NULL"
-    note: "論理ER §9.2。api_call_log テーブル定義書（別 Task）で転記"
+    note: "論理ER §9.2。Wave 5（#1710）で item_embedding を追加。api_call_log テーブル定義書"
   - table: "item_import_summary"
     column: "source_api"
     constraint: "NOT NULL"
-    note: "論理ER §9.2。集計単位の API 種別"
+    note: "論理ER §9.2。集計単位の API 種別。楽天系 4 値のみ（item_embedding 非対象）"
   - table: "fetch_cursor"
     column: "source_api"
     constraint: "NOT NULL"

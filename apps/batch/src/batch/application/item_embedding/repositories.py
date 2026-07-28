@@ -86,10 +86,21 @@ def _vector_literal(values: tuple[float, ...] | list[float]) -> str:
 
 
 from batch.application.observability import (
+    ApiCallLogWriter,
     ErrorLogWriter,
     PhaseLogWriter,
 )
-from batch.application.observability.binding import emit_error, emit_phase
+from batch.application.observability.binding import emit_api_call, emit_error, emit_phase
+
+# api_call_log: Embedding 呼出監査（Wave 5 / #1710）
+_DDL_SOURCE_OPENAI = "openai"
+_DDL_SOURCE_API_ITEM_EMBEDDING = "item_embedding"
+# EmbeddingGenStatus → api_call_status
+_GEN_STATUS_TO_CALL_STATUS: dict[str, str] = {
+    "generated": "succeeded",
+    "skipped": "skipped",
+    "failed": "failed",
+}
 
 @dataclass(frozen=True)
 class ExistingEmbedding:
@@ -132,6 +143,7 @@ class ItemEmbeddingRepositories:
     phase_logs: list[dict[str, object]] = field(default_factory=list)
     phase_log_writer: PhaseLogWriter | None = None
     error_log_writer: ErrorLogWriter | None = None
+    api_call_log_writer: ApiCallLogWriter | None = None
     _batch_run_id: str | None = field(default=None, repr=False)
     _trace_id: str | None = field(default=None, repr=False)
 
@@ -536,20 +548,41 @@ class ItemEmbeddingRepositories:
     def record_api_call(
         self,
         *,
+        api_call_log_id: str,
         status: str,
         model: str,
         latency_ms: int | None,
         purpose: str = "item_embedding",
+        error_code: str | None = None,
     ) -> None:
-        """api_call_log メタのみ（secret / ベクトル全文禁止）."""
+        """api_call_log メタのみ（secret / ベクトル全文 / 入力全文 / API key 禁止）.
 
-        self.api_call_logs.append(
-            {
+        DB 書込時: ``source=openai`` / ``source_api=item_embedding``。
+        ``source`` は API 提供者識別であり ``item.source``（マーケット）とは別概念。
+        """
+
+        call_status = _GEN_STATUS_TO_CALL_STATUS.get(status, status)
+        emit_api_call(
+            api_call_logs=self.api_call_logs,
+            api_call_log_writer=self.api_call_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            api_call_log_id=api_call_log_id,
+            source=_DDL_SOURCE_OPENAI,
+            source_api=_DDL_SOURCE_API_ITEM_EMBEDDING,
+            call_status=call_status,
+            memory_entry={
+                "api_call_log_id": api_call_log_id,
                 "purpose": purpose,
                 "status": status,
+                "call_status": call_status,
                 "model": model,
                 "latency_ms": latency_ms,
-            }
+                "error_code": error_code,
+            },
+            request_params_json={"model": model, "purpose": purpose},
+            error_code=error_code,
+            duration_ms=latency_ms,
         )
 
     def record_phase(self, *, phase: str, status: str) -> None:

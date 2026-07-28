@@ -158,8 +158,8 @@ acceptance_criteria:
   - "Wave 4（#1705）が親 Epic Branch に merge 済みであること（着手条件）"
 
 branch:
-  no_branch: true
-  name: null
+  no_branch: false
+  name: "feature/task-1710-batch-observability-e4-embedding-api-call-log"
   summary: "batch-observability-e4-embedding-api-call-log"
   base: "feature/epic-1636-batch-observability-e4"
   target: "feature/epic-1636-batch-observability-e4"
@@ -169,7 +169,7 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "Todo"
+    status: "In Progress"
     priority: "medium"
     planned_start: "2026-07-28"
     due_date: "2026-08-18"
@@ -245,6 +245,6 @@ stop_conditions:
   - "production 無承認 live が必要に見える"
 
 notes:
-  - "Issue #1710 / §8.4 Human 確定: Wave 5 Must。起票時点では no-branch（Wave 4 #1705 完了後に Branch 作成）"
-  - "推奨値 source=openai / source_api=item_embedding は Human Review で最終確認"
+  - "Issue #1710 / §8.4 Human 確定: Wave 5 Must。Branch: feature/task-1710-batch-observability-e4-embedding-api-call-log"
+  - "確定値 source=openai / source_api=item_embedding（item.source とは別概念。Human Review で最終確認）"
   - "commit / push / PR は親 Orchestrator 指示に従う"
