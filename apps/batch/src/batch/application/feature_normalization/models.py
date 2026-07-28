@@ -115,10 +115,11 @@ class MeaningProjection:
 
 @dataclass(frozen=True)
 class ItemMeaningUpsertRow:
-    """IF-DB-BATCH-014: item_meaning の UPSERT 対象。"""
+    """IF-DB-BATCH-014: item_meaning の UPSERT 対象（DDL §12.2 必須列）。"""
 
     item_id: str
     semantic_config_version_id: str
+    feature_normalization_version_id: str
     item_social: float
     item_symbolic: float
     generated_at: datetime
