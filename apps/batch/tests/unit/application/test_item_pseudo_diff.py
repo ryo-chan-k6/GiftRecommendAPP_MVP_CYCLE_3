@@ -458,6 +458,52 @@ def test_boundary_no_item_staging_or_ranking_writes() -> None:
     assert "fetch_cursor" in tables
 
 
+def test_fetch_cursor_and_raw_metadata_db_rows_match_ddl_columns() -> None:
+    """live DDL: page/scope 列は無く cursor_value jsonb。raw は fetched_at 必須。"""
+
+    repos = _repos()
+    job = ItemPseudoDiffJob(rakuten_client=_client_genre(), repositories=repos)
+    result = job.run(
+        job_run_id="job-ddl-map",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+    assert result.status == "succeeded"
+
+    inserts = [c for c in repos.db_writer.write_calls if c["table"] == "fetch_cursor"]
+    assert inserts
+    row = inserts[0]["rows"][0]
+    assert "page" not in row
+    assert "scope" not in row
+    assert "scope_fingerprint" not in row
+    assert "cursor_scope_fingerprint" not in row
+    assert isinstance(row["cursor_value"], dict)
+    assert "scope" in row["cursor_value"]
+    assert row["cursor_value"]["position"]["page"] == 1
+    assert row["target_external_genre_id"] == 100
+    # UUID 文字列であること（api_call_log.fetch_cursor_id と整合）
+    assert len(str(row["fetch_cursor_id"]).replace("-", "")) == 32
+
+    updates = [c for c in repos.db_writer.update_calls if c["table"] == "fetch_cursor"]
+    assert updates
+    set_values = updates[0]["set_values"]
+    assert set_values["cursor_value"]["position"]["page"] == 2
+    assert set_values["cursor_status"] == "active"
+    assert "last_fetched_at" in set_values
+
+    raw_inserts = [
+        c for c in repos.db_writer.write_calls if c["table"] == "raw_product_metadata"
+    ]
+    assert raw_inserts
+    raw_row = raw_inserts[0]["rows"][0]
+    assert "cursor_id" not in raw_row
+    assert "cursor_type" not in raw_row
+    assert "page" not in raw_row
+    assert "fetched_at" in raw_row
+    assert raw_row["import_status"] == "raw_saved"
+    assert raw_row["item_count"] == 2
+
+
 def test_invalid_payload_records_ext_103() -> None:
     from batch.infrastructure.rakuten import RakutenItemSearchApiError, adapt_item_search_raw_payload
 
