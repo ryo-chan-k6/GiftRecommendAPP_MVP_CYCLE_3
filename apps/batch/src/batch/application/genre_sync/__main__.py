@@ -13,6 +13,11 @@ import sys
 from batch.application.genre_sync.job import DEFAULT_TARGET_GENRE_IDS, GenreSyncJob
 from batch.application.genre_sync.repositories import GenreSyncRepositories
 from batch.application.job_run import JobRunTracker, create_job_run_tracker
+from batch.application.observability import (
+    ErrorLogWriter,
+    PhaseLogWriter,
+    create_batch_observability_writers,
+)
 from batch.config import load_batch_settings
 from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 from batch.infrastructure.object_storage import (
@@ -38,6 +43,8 @@ def _parse_genre_ids(raw: str | None) -> tuple[str, ...] | None:
 def build_scaffold_demo_job(
     *,
     job_run_tracker: JobRunTracker | None = None,
+    phase_log_writer: PhaseLogWriter | None = None,
+    error_log_writer: ErrorLogWriter | None = None,
 ) -> GenreSyncJob:
     """Build an in-memory job for local / CI smoke without real secrets."""
 
@@ -63,6 +70,8 @@ def build_scaffold_demo_job(
         object_storage=ScaffoldObjectStorageClient(),
         db_writer=ScaffoldDbWriter(),
         bucket="scaffold-raw",
+        phase_log_writer=phase_log_writer,
+        error_log_writer=error_log_writer,
     )
     return GenreSyncJob(
         rakuten_client=client,
@@ -105,7 +114,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.scaffold_demo:
         tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
-        job = build_scaffold_demo_job(job_run_tracker=tracker)
+        obs = create_batch_observability_writers(
+            scaffold_demo=True, database_url=None
+        )
+        job = build_scaffold_demo_job(
+            job_run_tracker=tracker,
+            phase_log_writer=obs.phase_log_writer,
+            error_log_writer=obs.error_log_writer,
+        )
+        job.repositories.bind_run(batch_run_id=args.job_run_id)
         genre_ids = _parse_genre_ids(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
         result = job.run(job_run_id=args.job_run_id, target_genre_ids=genre_ids)
         print(
@@ -120,6 +137,11 @@ def main(argv: list[str] | None = None) -> int:
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
     tracker = create_job_run_tracker(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
+    obs = create_batch_observability_writers(
         scaffold_demo=False,
         database_url=settings.database_url,
         db_writer=db_writer,
@@ -173,7 +195,10 @@ def main(argv: list[str] | None = None) -> int:
         object_storage=object_storage,
         db_writer=db_writer,
         bucket=settings.object_storage_bucket or "scaffold-raw",
+        phase_log_writer=obs.phase_log_writer,
+        error_log_writer=obs.error_log_writer,
     )
+    repos.bind_run(batch_run_id=args.job_run_id)
     job = GenreSyncJob(
         rakuten_client=rakuten,
         repositories=repos,

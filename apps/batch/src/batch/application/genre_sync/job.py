@@ -59,6 +59,12 @@ class GenreSyncJob:
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
 
+    @property
+    def repositories(self) -> GenreSyncRepositories:
+        """Expose repositories for CLI bind_run / observability wiring."""
+
+        return self._repos
+
     def run(
         self,
         *,
