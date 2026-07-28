@@ -1,0 +1,16 @@
+# Fly ignorefile for monorepo root build context (see fly.toml [build].ignorefile).
+# Keep only apps/reco runtime inputs.
+
+*
+!apps/
+!apps/reco/
+!apps/reco/pyproject.toml
+!apps/reco/uv.lock
+!apps/reco/README.md
+!apps/reco/src/
+!apps/reco/src/**
+apps/reco/tests/
+apps/reco/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/

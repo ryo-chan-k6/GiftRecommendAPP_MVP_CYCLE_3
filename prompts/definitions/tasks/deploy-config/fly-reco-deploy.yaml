@@ -1,0 +1,207 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-deploy-config-fly-reco-deploy"
+  title: "deploy-config-fly-reco:Reco Flyデプロイ定義"
+  summary: "apps/reco 向け Fly.io の Dockerfile / fly.toml / README 正本を infra/fly に配置し、簡易 stg の Reco デプロイを可能にする。"
+  phase: "14_リリース"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-deploy-config"
+  epic_issue: "[Epic]deploy-config:デプロイ設定書"
+  epic_issue_number: 146
+  epic_branch: null
+  related_issues:
+    - 1720
+    - 146
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  簡易 stg で API（Render）は疎通済み。次は Reco（Fly.io）。
+  infra/fly は README のみで fly.toml / Dockerfile が未配置のため、
+  Human が C1〜C4 を実施できない。親 #146 は no-branch、PR target は develop。
+
+objective: |
+  Reco の Fly デプロイ定義（Dockerfile / fly.toml / README）を正本化し、
+  デプロイ設定書から参照できるようにする。
+
+scope:
+  - "infra/fly/Dockerfile"
+  - "infra/fly/fly.toml"
+  - "infra/fly/.dockerignore"
+  - "infra/fly/README.md（Build / Deploy / Health / Secrets）"
+  - "デプロイ設定書への最小参照更新"
+  - "epic.yaml の子 Task メモ更新（任意）"
+
+out_of_scope:
+  - "Fly Dashboard / flyctl による実アプリ作成・デプロイ（Human）"
+  - "secret 実値の登録・出力"
+  - "apps/reco のアプリケーション挙動変更"
+  - "prod 専用 app の実作成"
+  - "Render / Vercel の変更"
+  - "private networking / Flycast の本格閉鎖（MVP は Key 付き HTTPS で可。方針は README に明記）"
+
+input:
+  docs:
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      required: true
+      purpose: "Reco=Fly 正本"
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+      purpose: "C1〜C4 / S3"
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+      purpose: "Reco 変数"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "Reco 外部公開しない"
+    - path: "infra/fly/README.md"
+      required: true
+      purpose: "更新対象"
+    - path: "apps/reco/pyproject.toml"
+      required: true
+      purpose: "Python / 依存"
+    - path: "apps/reco/package.json"
+      required: true
+      purpose: "local uvicorn 起動形"
+
+output:
+  docs:
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "infra/fly/Dockerfile"
+      action: "create"
+      required: true
+    - path: "infra/fly/fly.toml"
+      action: "create"
+      required: true
+    - path: "infra/fly/.dockerignore"
+      action: "create"
+      required: true
+    - path: "infra/fly/README.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/deploy-config/fly-reco-deploy.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/deploy-config/fly-reco-deploy/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/deploy-config/epic.yaml"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "infra/fly Dockerfile / fly.toml / .dockerignore"
+  - "infra/fly README（デプロイ・Health・Secrets）"
+  - "デプロイ設定書の参照更新"
+
+acceptance_criteria:
+  - "Dockerfile が apps/reco をビルドし uvicorn で 8000 待受する"
+  - "fly.toml に internal_port=8000 と stg 推奨 app 名がある"
+  - "README に deploy コマンド・Secrets 名・Health 手順（Key 付き）がある"
+  - "secret 実値なし"
+  - "Related to 本 Issue、親 #146、PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "fly-reco-deploy"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "14_リリース"
+    status: "In Progress"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics:
+    - id: "epic-deploy-config"
+      purpose: "親 Epic #146"
+  issues:
+    - number: 146
+      purpose: "親 Epic"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "infra/fly/Dockerfile"
+    - "infra/fly/fly.toml"
+    - "infra/fly/.dockerignore"
+    - "infra/fly/README.md"
+    - "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+    - "ファイル存在・設定値の静的確認"
+  not_required:
+    - "unit test"
+    - "Fly 実デプロイ"
+  skip_reason:
+    "unit test": "infra 設定のみ"
+    "Fly 実デプロイ": "Human（簡易stg構築手順 C1〜C4）"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Dockerfile / fly.toml が Reco（FastAPI / port 8000）と整合しているか"
+    - "Health が Key 付きであること、Fly platform check に secret を書いていないか"
+    - "secret 実値がないか"
+    - "Related to 本 Issue、PR target が develop か"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "stg app 名 okuri-reco-stg / region nrt でよいか"
+  - "MVP で Reco を Key 付き HTTPS 公開とし、private 閉鎖は後続でよいか"
+
+notes:
+  - "親 #146 no-branch のため PR target は develop"
+  - "実デプロイ・Secret 登録は Human"
