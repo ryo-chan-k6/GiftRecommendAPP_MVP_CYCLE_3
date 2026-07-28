@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-observability-e4-inventory-pr"
+  title: "batch-observability-e4 inventory PRレビュー"
+  summary: "E4 観測横断ギャップ棚卸し Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1698
+  issue:
+    number: 1697
+  task_definition: "prompts/definitions/tasks/batch-observability-e4/inventory.yaml"
+  parent_epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  parent_epic_branch: "feature/epic-1636-batch-observability-e4"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "観測対象テーブルと IF/MOD 突合が表で整理されているか"
+  - "Scaffold JobRunTracker / in-memory phase・error / IF-017 本配線が事実として記載されているか"
+  - "推奨 Wave・代表経路が推論として明示され、Human 未確定を確定扱いにしていないか"
+  - "Human 判断点（必須最小 Batch / api_call 必須可否 / 着手順）に選択肢・推奨・判断しないリスクがあるか"
+  - "043/044 除外が明記されているか"
+  - "観測 DB 書込実装が混入していないか"
+  - "横串ギャップ §10 E4 行の参照更新が必要最小か"
+  - "secret 非露出"
+  - "Related to / PR target が親 Epic Branch"
+
+notes:
+  - "実装 Task ではない（docs 棚卸しのみ）"
+  - "pr.number は PR 作成後に埋める"
