@@ -542,6 +542,11 @@ def test_batch_run_id_separates_object_key_from_job_run_id() -> None:
     assert all(pipeline in key for key in repos.raw_metadata)
     assert all(leaf not in key for key in repos.raw_metadata)
     assert any(
+        getattr(r, "job_run_id", None) == pipeline
+        and getattr(r, "batch_id", None) == "item_import_pipeline"
+        for r in tracker.records
+    )
+    assert any(
         getattr(r, "job_run_id", None) == leaf and getattr(r, "status", None) == "running"
         for r in tracker.records
     )

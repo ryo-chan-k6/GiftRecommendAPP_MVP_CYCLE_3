@@ -24,7 +24,11 @@ from batch.application.item_pseudo_diff.models import (
     RawItemSearchArtifact,
 )
 from batch.application.item_pseudo_diff.repositories import ItemPseudoDiffRepositories
-from batch.application.job_run import JobRunTracker, ScaffoldJobRunTracker
+from batch.application.job_run import (
+    PIPELINE_ITEM_IMPORT_BATCH_NAME,
+    JobRunTracker,
+    ScaffoldJobRunTracker,
+)
 from batch.infrastructure.logger import BatchLogger, ScaffoldBatchLogger
 from batch.infrastructure.object_storage import ObjectStorageError
 from batch.infrastructure.rakuten import (
@@ -99,6 +103,17 @@ class ItemPseudoDiffJob:
         # tracker は葉 job_run_id。業務 data / raw object key は共有 batch_run_id。
         business_run_id = (batch_run_id or "").strip() or job_run_id
         bound_logger = self._logger.bind(job_run_id=job_run_id, trace_id=trace_id or job_run_id)
+        # 案 A: pipeline UUID を batch_run_log 親ヘッダとして ensure（017 / LOGICAL FK）
+        if business_run_id != job_run_id:
+            self._tracker.ensure_batch_run(
+                batch_id=PIPELINE_ITEM_IMPORT_BATCH_NAME,
+                batch_run_id=business_run_id,
+            )
+            print(
+                "pipeline batch_run_log ensure: "
+                f"batch_run_id={business_run_id} batch_name={PIPELINE_ITEM_IMPORT_BATCH_NAME}",
+                file=sys.stderr,
+            )
         self._tracker.start(batch_id=BATCH_ID, job_run_id=job_run_id)
 
         result = PseudoDiffSyncResult(batch_id=BATCH_ID, job_run_id=job_run_id, status="failed")

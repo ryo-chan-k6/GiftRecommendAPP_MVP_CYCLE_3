@@ -56,6 +56,41 @@ def test_postgres_start_writes_batch_run_log_running() -> None:
     assert len(tracker.records) == 1
 
 
+def test_postgres_ensure_batch_run_upserts_do_nothing() -> None:
+    from batch.application.job_run import PIPELINE_ITEM_IMPORT_BATCH_NAME
+
+    writer = ScaffoldDbWriter()
+    tracker = PostgresJobRunTracker(db_writer=writer)
+    pipeline_id = str(uuid4())
+
+    ensured = tracker.ensure_batch_run(
+        batch_id=PIPELINE_ITEM_IMPORT_BATCH_NAME,
+        batch_run_id=pipeline_id,
+    )
+
+    assert ensured.status == "running"
+    assert ensured.job_run_id == pipeline_id
+    assert writer.write_calls == []
+    assert len(writer.upsert_calls) == 1
+    call = writer.upsert_calls[0]
+    assert call["table"] == "batch_run_log"
+    assert call["conflict_columns"] == ("batch_run_id",)
+    assert call["update_columns"] == ()
+    row = call["rows"][0]
+    assert row["batch_run_id"] == pipeline_id
+    assert row["batch_name"] == PIPELINE_ITEM_IMPORT_BATCH_NAME
+    assert row["run_status"] == "running"
+
+
+def test_scaffold_ensure_batch_run_is_idempotent() -> None:
+    tracker = ScaffoldJobRunTracker()
+    first = tracker.ensure_batch_run(batch_id="pipeline", batch_run_id="pipe-1")
+    second = tracker.ensure_batch_run(batch_id="pipeline", batch_run_id="pipe-1")
+    assert first.job_run_id == "pipe-1"
+    assert second.job_run_id == "pipe-1"
+    assert len(tracker.records) == 1
+
+
 def test_postgres_complete_updates_terminal_status() -> None:
     writer = ScaffoldDbWriter()
     tracker = PostgresJobRunTracker(db_writer=writer)

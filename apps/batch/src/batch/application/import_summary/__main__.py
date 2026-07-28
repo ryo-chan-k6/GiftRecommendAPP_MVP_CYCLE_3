@@ -234,8 +234,16 @@ def main(argv: list[str] | None = None) -> int:
         f"source_api={result.source_api} "
         f"insert_applied={result.insert_applied} "
         f"conflict_skipped={result.conflict_skipped} "
+        f"error_codes={','.join(result.error_codes) if result.error_codes else '-'} "
         f"phases={','.join(result.completed_phases)}"
     )
+    if result.error_codes:
+        for entry in repos.error_logs:
+            print(
+                f"import_summary.error code={entry.get('code')} "
+                f"summary={entry.get('summary')}",
+                file=sys.stderr,
+            )
     return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 

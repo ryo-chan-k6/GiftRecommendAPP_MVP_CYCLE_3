@@ -1,6 +1,7 @@
 """Job run tracking (scaffold / Postgres batch_run_log)."""
 
 from batch.application.job_run.tracker import (
+    PIPELINE_ITEM_IMPORT_BATCH_NAME,
     JobRunRecord,
     JobRunStatus,
     JobRunTracker,
@@ -10,6 +11,7 @@ from batch.application.job_run.tracker import (
 )
 
 __all__ = [
+    "PIPELINE_ITEM_IMPORT_BATCH_NAME",
     "JobRunRecord",
     "JobRunStatus",
     "JobRunTracker",

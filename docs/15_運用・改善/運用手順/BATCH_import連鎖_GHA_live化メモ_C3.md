@@ -16,6 +16,8 @@ Epic `#1637` / Task `#1717` で確定した案 C3 に従い、BATCH import 連�
 
 017 live では **`job_run_id` ≠ `batch_run_id` が必須**（PK 衝突回避）。
 
+**案 A（恒久）:** BATCH-003 開始時に `pipeline_batch_run_id` を `batch_run_log` へ **ensure INSERT**（`ON CONFLICT DO NOTHING`、`batch_name=item_import_pipeline`）。葉の tracker 行とは別ヘッダとして 017 の `require_batch_run` / LOGICAL FK を満たす。
+
 ## 3. Environment / Secrets / Variables（stg）
 
 | 用途 | 名前 | 種別 |
@@ -52,3 +54,4 @@ Epic `#1637` / Task `#1717` で確定した案 C3 に従い、BATCH import 連�
 | 2026-07-29 | Object Storage Secrets/Variables 登録後、003/005 に live 配線 |
 | 2026-07-29 | 案 A: GHA の 003 楽天を Scaffold に戻す（HTTP 403 / CI live 禁止方針） |
 | 2026-07-29 | 案 A scaffold Raw に itemUrl/itemPrice 等を付与（005 GRS-VAL-001 回避） |
+| 2026-07-29 | 案 A: BATCH-003 で pipeline `batch_run_log` ensure（017 `require_batch_run` 不足解消） |
