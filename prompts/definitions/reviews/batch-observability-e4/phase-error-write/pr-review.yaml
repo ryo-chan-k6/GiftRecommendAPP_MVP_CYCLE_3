@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1702
   issue:
     number: 1701
   task_definition: "prompts/definitions/tasks/batch-observability-e4/phase-error-write.yaml"
