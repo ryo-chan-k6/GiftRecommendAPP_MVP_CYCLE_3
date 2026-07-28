@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1721
   issue:
     number: 1720
   task_definition: "prompts/definitions/tasks/deploy-config/fly-reco-deploy.yaml"
