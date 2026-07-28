@@ -1,0 +1,61 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-observability-e4-epic-pr"
+  title: "batch-observability-e4 Epic PRレビュー"
+  summary: "E4 観測横断本実装 Epic の develop 向け Epic PR を AI Review する。Wave 0〜5（inventory / run / phase-error / api_call / 001-017 apply / 015 embedding api_call）を含む。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1636
+  task_definition: "prompts/definitions/epics/batch-observability-e4/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  parent_epic_branch: "feature/epic-1636-batch-observability-e4"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Wave 0〜5 が Epic scope 内で完了しているか（ギャップ一覧 §12 と一致）"
+  - "batch_run_log / phase_log / error_log / api_call_log 本配線が docs・実装で一致するか"
+  - "BATCH-001〜017 Run/Phase/Error 適用、api_call は 001〜004 + 015（openai/item_embedding）か"
+  - "017 の job_run_id / batch_run_id 分離が維持されているか"
+  - "043/044 / 018/019 / SELECT 再実装 / 親 schedule が混入していないか"
+  - "raw_product_metadata / item_import_summary / fetch_cursor の source_api CHECK を壊していないか"
+  - "migration（api_call_log source/source_api）が含まれるか・secret 非含有か"
+  - "Epic PR target が develop / Closes #1636 があるか"
+  - "OpenAPI / web / api / reco 破壊変更が無いこと"
+  - "CI 既定 live / production 無承認 live が無いこと"
+
+notes:
+  - "子 Task: #1697 / #1699 / #1701 / #1703 / #1705 / #1710（いずれも CLOSED）"
+  - "Human 確定: §8.1 案 C / §8.2 Must / §8.3 解除済 / §8.4 案 B（Wave 5）"
+  - "pr.number は Epic PR 作成後に埋める"
