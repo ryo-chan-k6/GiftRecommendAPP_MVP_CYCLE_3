@@ -1,0 +1,106 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-parent-schedule-inventory"
+  title: "batch-parent-schedule:schedule有効化ギャップ棚卸し"
+  summary: "Wave 0。親 workflow schedule 有効化の現状ギャップを docs 正本化し、Human 判断材料（案 A/B/C）を残す。YAML 有効化は行わない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-parent-schedule:親workflow schedule・dry-run有効化"
+  epic_issue_number: 1637
+  epic_branch: "feature/epic-1637-batch-parent-schedule"
+  related_issues:
+    - 1554
+    - 1636
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  E1（#1554）で親 YAML は揃ったが Phase1 schedule 無効・手動検証未実施が残る。
+  #1637 の第1 Task として棚卸し正本を作る。
+
+objective: |
+  schedule 有効化ギャップ一覧を docs に追加し、Human が案 A/B/C を判断できる状態にする。
+
+scope:
+  - "バッチ親workflow_schedule有効化ギャップ一覧.md 新規"
+  - "横串ギャップ一覧 §10 の E1 残 / E4 完了 / #1637 参照更新"
+  - "Task / Review Definition"
+  - "Human 判断点を未確定のまま明示"
+
+out_of_scope:
+  - "schedule コメント解除"
+  - "workflow_dispatch 実ランタイム実行"
+  - "dry_run input 実装"
+  - "production 定期開始"
+  - "commit / push / PR（親 Orchestrator が行う場合あり）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      action: "create"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-parent-schedule/inventory.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-parent-schedule/inventory/pr-review.yaml"
+      action: "create"
+      required: true
+
+acceptance_criteria:
+  - "ギャップ一覧が親/複合 YAML 現状と §16 Phase を突合している"
+  - "Human 判断点（案 A/B/C・dry-run 定義）が未確定として明示されている"
+  - "schedule 有効化・実ランタイム実行を含まない"
+  - "Related to Issue / PR target = 親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-parent-schedule-inventory"
+  base: "feature/epic-1637-batch-parent-schedule"
+  target: "feature/epic-1637-batch-parent-schedule"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+  number: 1713
