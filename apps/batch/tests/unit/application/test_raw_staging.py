@@ -440,6 +440,30 @@ def test_validation_missing_required_rejects_without_staging_write() -> None:
     assert "staging_item" not in _writer_tables(db)
 
 
+def test_validation_failure_stderr_includes_object_key_and_payload_keys(
+    capsys,
+) -> None:
+    """失敗時 stderr に object_key と payload keys（secret なし）を出す。"""
+
+    payload = _item_search_payload()
+    item = payload["Items"][0]["Item"]  # type: ignore[index]
+    assert isinstance(item, dict)
+    item["itemUrl"] = ""
+    repos, _, _ = _seed_repos(payloads={"rm_diag": payload})
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-diag", max_raw=1)
+
+    assert result.status == "failed"
+    assert "GRS-VAL-001" in result.error_codes
+    err = capsys.readouterr().err
+    assert "raw_staging.raw_failed" in err
+    assert "object_key=" in err
+    assert "rm_diag" in err or "raw_metadata_id=rm_diag" in err
+    assert "first_item_keys=" in err
+    assert "itemUrl" in err
+
+
 def test_ranking_and_genre_upsert_without_polluting_staging_item() -> None:
     """§16 No.8: ranking/genre は Staging 書込成功。staging_item / external_genre 非書込。"""
 
