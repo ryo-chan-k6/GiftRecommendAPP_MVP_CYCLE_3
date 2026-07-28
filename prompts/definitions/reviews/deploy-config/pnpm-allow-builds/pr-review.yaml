@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1719
   issue:
     number: 1718
   task_definition: "prompts/definitions/tasks/deploy-config/pnpm-allow-builds.yaml"
