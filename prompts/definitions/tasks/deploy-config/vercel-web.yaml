@@ -4,7 +4,7 @@ definition_type: "task"
 task:
   id: "task-deploy-config-vercel-web"
   title: "deploy-config-vercel-web:Vercel Webデプロイ設定正本化"
-  summary: "apps/web 向け Vercel 設定（vercel.json / public / README）を正本化し、簡易 stg の Web デプロイ手順を固定する。"
+  summary: "apps/web 向け Vercel 設定（vercel.json / README）を正本化し、簡易 stg の Web デプロイ手順を固定する。"
   phase: "14_リリース"
 
 work_mode: "ai-agent"
@@ -50,7 +50,6 @@ objective: |
 
 scope:
   - "apps/web/vercel.json"
-  - "apps/web/public/.gitkeep"
   - "infra/vercel/README.md"
   - "デプロイ設定書への最小参照"
   - "Task / Review Definition"
@@ -84,9 +83,6 @@ output:
       required: true
   files:
     - path: "apps/web/vercel.json"
-      action: "create"
-      required: true
-    - path: "apps/web/public/.gitkeep"
       action: "create"
       required: true
     - path: "infra/vercel/README.md"
@@ -131,7 +127,6 @@ issue:
 parallel_control:
   exclusive_files:
     - "apps/web/vercel.json"
-    - "apps/web/public/.gitkeep"
     - "infra/vercel/README.md"
     - "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
   conflict_risk: "low"

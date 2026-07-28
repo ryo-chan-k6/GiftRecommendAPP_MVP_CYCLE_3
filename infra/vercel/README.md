@@ -35,7 +35,14 @@ Web アプリ（`apps/web`）の Vercel 向け設定を配置するディレク�
 | Node.js Version | **24.x**（ルート `.node-version` / `engines.node`） |
 | Include source files outside Root Directory | **ON** |
 
-`vercel.json` がある場合も、Dashboard の **Output Directory Override が On のまま `public`** だと Next.js 配信が壊れ、ビルド成功後に 404 や `No Output Directory named "public"` になり得る。
+`vercel.json` がある場合も、Dashboard の **Output Directory Override が On** だと Next.js ではなく静的配信になる。
+
+特に Override On + `public` のとき:
+
+- `public/` が無い → ビルド失敗（`No Output Directory named "public"`）
+- 空の `public/` だけある → ビルドは **Ready 成功に見える**が、全 URL が `404 NOT_FOUND`（`x-vercel-error: NOT_FOUND`）
+
+**必ず Output Directory の Override トグルを Off にする**（値を空にするだけでは不十分なことがある）。Deployment の Output / Resources に **Serverless Functions**（Next.js）が見えることを確認する。
 
 ## Environment Variables（名前のみ）
 
