@@ -3,7 +3,9 @@
 ``load_item_features`` / ``load_item_meanings``（および任意の
 ``load_user_meanings`` / ``load_item_embeddings``）は ``DbReader`` 経由（Wave G）。
 
-Metric UPSERT SQL 本格化は out of scope（scaffold / stub 書込のみ）。
+Metric UPSERT は IF-DB-BATCH-016 として ``DbWriter.upsert_rows``（本番 SQL）で本配線する。
+conflict は DDL ``uq_*_snapshot_key``（UNIQUE NULLS NOT DISTINCT）に合わせる。
+非 batch_run の部分 UNIQUE（``uq_*_non_batch_snapshot``）は DbWriter 未対応のため本 Task 外。
 
 - item_feature / item_meaning READ ONLY（必須入力）
 - item_embedding / user_meaning READ ONLY（任意・フラグ OFF 既定）
@@ -15,6 +17,7 @@ Metric UPSERT SQL 本格化は out of scope（scaffold / stub 書込のみ）。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from batch.application.distribution_metrics.models import (
     ItemEmbeddingRow,
@@ -44,6 +47,54 @@ _ITEM_EMBEDDING_COLUMNS = (
     "item_id",
     "model_version_id",
     "embedding_input_hash",
+)
+
+_FEATURE_CONFLICT_COLUMNS = (
+    "batch_run_id",
+    "semantic_config_version_id",
+    "feature_code",
+    "value_layer",
+    "aggregation_scope",
+    "aggregation_key",
+)
+_MEANING_CONFLICT_COLUMNS = (
+    "batch_run_id",
+    "semantic_config_version_id",
+    "entity_type",
+    "value_layer",
+    "feature_normalization_version_id",
+    "aggregation_scope",
+    "aggregation_key",
+)
+_NORMALIZATION_CONFLICT_COLUMNS = (
+    "batch_run_id",
+    "semantic_config_version_id",
+    "feature_code",
+    "value_layer",
+    "feature_normalization_version_id",
+    "aggregation_scope",
+    "aggregation_key",
+)
+
+_FEATURE_UPDATE_COLUMNS = (
+    "sample_count",
+    "mean",
+    "stddev",
+    "min_value",
+    "max_value",
+    "calculated_at",
+    "updated_at",
+)
+_MEANING_UPDATE_COLUMNS = _FEATURE_UPDATE_COLUMNS
+_NORMALIZATION_UPDATE_COLUMNS = (
+    "sample_count",
+    "mean",
+    "stddev",
+    "min_value",
+    "max_value",
+    "sigma_zero_count",
+    "calculated_at",
+    "updated_at",
 )
 
 
@@ -130,6 +181,72 @@ def _optional_float(value: object | None) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+def _feature_payload(row: MetricUpsertRow, *, calculated_at: datetime) -> dict[str, object]:
+    """feature_distribution_metric DDL 列のみ（entity_type / sigma_zero / table / op なし）。"""
+
+    return {
+        "batch_run_id": row.batch_run_id,
+        "semantic_config_version_id": row.semantic_config_version_id,
+        "feature_normalization_version_id": row.feature_normalization_version_id,
+        "feature_code": row.feature_code,
+        "aggregation_scope": row.aggregation_scope,
+        "aggregation_key": row.aggregation_key,
+        "value_layer": row.value_layer,
+        "sample_count": row.sample_count,
+        "mean": row.mean,
+        "stddev": row.stddev,
+        "min_value": row.min_value,
+        "max_value": row.max_value,
+        "calculated_at": calculated_at,
+        "updated_at": calculated_at,
+    }
+
+
+def _meaning_payload(row: MetricUpsertRow, *, calculated_at: datetime) -> dict[str, object]:
+    """meaning_distribution_metric DDL 列のみ（feature_code / sigma_zero / table / op なし）。"""
+
+    return {
+        "batch_run_id": row.batch_run_id,
+        "semantic_config_version_id": row.semantic_config_version_id,
+        "feature_normalization_version_id": row.feature_normalization_version_id,
+        "entity_type": row.entity_type,
+        "value_layer": row.value_layer,
+        "aggregation_scope": row.aggregation_scope,
+        "aggregation_key": row.aggregation_key,
+        "sample_count": row.sample_count,
+        "mean": row.mean,
+        "stddev": row.stddev,
+        "min_value": row.min_value,
+        "max_value": row.max_value,
+        "calculated_at": calculated_at,
+        "updated_at": calculated_at,
+    }
+
+
+def _normalization_payload(
+    row: MetricUpsertRow, *, calculated_at: datetime
+) -> dict[str, object]:
+    """normalization_distribution_metric DDL 列のみ（entity_type / table / op なし）。"""
+
+    return {
+        "batch_run_id": row.batch_run_id,
+        "semantic_config_version_id": row.semantic_config_version_id,
+        "feature_normalization_version_id": row.feature_normalization_version_id,
+        "feature_code": row.feature_code,
+        "value_layer": row.value_layer,
+        "aggregation_scope": row.aggregation_scope,
+        "aggregation_key": row.aggregation_key,
+        "sample_count": row.sample_count,
+        "mean": row.mean,
+        "stddev": row.stddev,
+        "min_value": row.min_value,
+        "max_value": row.max_value,
+        "sigma_zero_count": 0 if row.sigma_zero_count is None else row.sigma_zero_count,
+        "calculated_at": calculated_at,
+        "updated_at": calculated_at,
+    }
 
 
 @dataclass
@@ -235,30 +352,44 @@ class DistributionMetricsRepositories:
         meaning_rows: tuple[MetricUpsertRow, ...],
         normalization_rows: tuple[MetricUpsertRow, ...],
     ) -> None:
-        """IF-DB-BATCH-016: 3 Metric テーブルへ UPSERT（同一 UNIQUE キーは上書き）。"""
+        """IF-DB-BATCH-016: 3 Metric テーブルへ UPSERT（同一 UNIQUE キーは上書き）。
+
+        ``calculated_at`` / ``updated_at`` は DDL NOT NULL のため、persist 時点の UTC now を付与する。
+        """
+
+        calculated_at = datetime.now(UTC)
 
         if feature_rows:
             ops = _upsert_rows(self.feature_metric_rows, feature_rows, _feature_upsert_key)
             self.feature_metric_upsert_count += ops
-            self.db_writer.write_rows(
+            self.db_writer.upsert_rows(
                 "feature_distribution_metric",
-                tuple(self._row_payload(r) for r in feature_rows),
+                tuple(_feature_payload(r, calculated_at=calculated_at) for r in feature_rows),
+                conflict_columns=_FEATURE_CONFLICT_COLUMNS,
+                update_columns=_FEATURE_UPDATE_COLUMNS,
             )
         if meaning_rows:
             ops = _upsert_rows(self.meaning_metric_rows, meaning_rows, _meaning_upsert_key)
             self.meaning_metric_upsert_count += ops
-            self.db_writer.write_rows(
+            self.db_writer.upsert_rows(
                 "meaning_distribution_metric",
-                tuple(self._row_payload(r) for r in meaning_rows),
+                tuple(_meaning_payload(r, calculated_at=calculated_at) for r in meaning_rows),
+                conflict_columns=_MEANING_CONFLICT_COLUMNS,
+                update_columns=_MEANING_UPDATE_COLUMNS,
             )
         if normalization_rows:
             ops = _upsert_rows(
                 self.normalization_metric_rows, normalization_rows, _normalization_upsert_key
             )
             self.normalization_metric_upsert_count += ops
-            self.db_writer.write_rows(
+            self.db_writer.upsert_rows(
                 "normalization_distribution_metric",
-                tuple(self._row_payload(r) for r in normalization_rows),
+                tuple(
+                    _normalization_payload(r, calculated_at=calculated_at)
+                    for r in normalization_rows
+                ),
+                conflict_columns=_NORMALIZATION_CONFLICT_COLUMNS,
+                update_columns=_NORMALIZATION_UPDATE_COLUMNS,
             )
 
     def record_phase(self, *, phase: str, status: str) -> None:
@@ -301,24 +432,3 @@ class DistributionMetricsRepositories:
             model_version_id=str(row["model_version_id"]),
             embedding_input_hash=str(row["embedding_input_hash"]),
         )
-
-    @staticmethod
-    def _row_payload(row: MetricUpsertRow) -> dict[str, object]:
-        return {
-            "table": row.table,
-            "batch_run_id": row.batch_run_id,
-            "semantic_config_version_id": row.semantic_config_version_id,
-            "aggregation_scope": row.aggregation_scope,
-            "aggregation_key": row.aggregation_key,
-            "value_layer": row.value_layer,
-            "feature_code": row.feature_code,
-            "entity_type": row.entity_type,
-            "feature_normalization_version_id": row.feature_normalization_version_id,
-            "sample_count": row.sample_count,
-            "mean": row.mean,
-            "stddev": row.stddev,
-            "min_value": row.min_value,
-            "max_value": row.max_value,
-            "sigma_zero_count": row.sigma_zero_count,
-            "op": "if_db_batch_016_upsert",
-        }
