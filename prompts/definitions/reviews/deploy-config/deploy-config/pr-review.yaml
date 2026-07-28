@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1707
   issue:
     number: 146
   task_definition: "prompts/definitions/tasks/deploy-config/deploy-config.yaml"
