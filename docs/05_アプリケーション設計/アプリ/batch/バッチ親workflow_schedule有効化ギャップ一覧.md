@@ -87,7 +87,7 @@ E1 残（schedule 無効・親／複合の手動検証未実施）を docs 正�
 | 残ギャップ | #1637 での扱い |
 | ---------- | -------------- |
 | Phase1 schedule 無効のまま | **案 A 確定**。Wave 0 で現状固定。有効化は手動検証後の別判断 |
-| 親／複合 workflow_dispatch dry-run 未実施 | **D1 確定**。Wave 1 で低 `max_items` の手動検証 |
+| 親／複合 workflow_dispatch dry-run 未実施 | **D1 確定・Wave 1 実施**。daily 親 dispatch は起動・needs 連鎖を確認。結果は **PARTIAL**（`import_summary` failure）。詳細は運用手順の結果 docs |
 
 ---
 
@@ -97,9 +97,9 @@ E1 残（schedule 無効・親／複合の手動検証未実施）を docs 正�
 | ---- | ---- | ---- | ---------- |
 | high | **0** | 本正本（inventory） | 不要（docs のみ） |
 | high | **gate** | §8 確定（案 A / D1 / cron 00:30 / Slack 失敗通知） | **完了（2026-07-28）** |
-| high | **1** | 手動検証（D1: 低 `max_items` の `workflow_dispatch`）+ 結果記録 | 実行環境・コスト承認 |
+| high | **1** | 手動検証（D1: 低 `max_items` の `workflow_dispatch`）+ 結果記録 | **実施済み（2026-07-28）**。判定 **PARTIAL**（017 scaffold demo 失敗）。手順・結果: [親workflow手動検証手順_D1](../../../15_運用・改善/運用手順/親workflow手動検証手順_D1.md) / [結果](../../../15_運用・改善/運用手順/親workflow手動検証結果_D1.md) |
 | medium | **notify / cron-docs** | Slack 失敗通知の配線。cron を JST 00:30 相当へ設計書・YAML コメント同期（schedule は無効のまま可） | 実装 PR レビュー |
-| medium | **2** | 案 B 以降を採用する場合: daily schedule コメント解除 | 有効化承認（現状は未採用） |
+| medium | **2** | 案 B 以降を採用する場合: daily schedule コメント解除 | 有効化承認（現状は未採用・PARTIAL 後の再判断） |
 | medium | **3** | 案 C 時: weekly schedule 有効化 | 有効化承認（現状は未採用） |
 | low | **docs** | 横串ギャップ / §19.4 を Phase 進行に合わせて更新 | レビュー |
 
@@ -166,3 +166,4 @@ Epic out_of_scope: **無承認の production 定期開始は禁止**。
 | ---- | ---- |
 | 2026-07-28 | 初版（#1637 Wave 0 inventory） |
 | 2026-07-28 | §8 Human 確定: 案 A / D1 / cron JST 00:30 / Slack 失敗通知（GitHub 通知不要）/ §8.4 記載どおり |
+| 2026-07-28 | Wave 1（#1715）: daily D1 手動検証実施。判定 PARTIAL。手順・結果 docs 追加 |

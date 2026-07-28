@@ -1,0 +1,97 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-parent-schedule-manual-verify-d1"
+  title: "batch-parent-schedule:親workflow手動検証（D1）"
+  summary: "Wave 1。案 A / D1 に従い親 daily を低 max_items で workflow_dispatch し、結果を secret なしで記録する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-parent-schedule:親workflow schedule・dry-run有効化"
+  epic_issue_number: 1637
+  epic_branch: "feature/epic-1637-batch-parent-schedule"
+  related_issues:
+    - 1713
+  related_prs:
+    - 1714
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Wave 0 で Human 確定: 案 A / D1 / cron JST 00:30（後続）/ Slack 失敗通知（後続）。
+  E1 残の「親 dispatch 未実施」を Wave 1 で解消する。
+
+objective: |
+  daily 親の手動検証手順と結果を正本化し、needs 連鎖の動作を確認する。
+  schedule は無効のまま。
+
+scope:
+  - "手動検証手順 docs（D1）"
+  - "検証結果記録（secret なし）"
+  - "可能なら daily workflow_dispatch（max_items 低）"
+  - "ギャップ一覧 Wave 1 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "schedule コメント解除"
+  - "dry_run input（D2）"
+  - "Slack 通知配線 / cron 設計同期（notify/cron-docs Wave）"
+  - "017 葉ジョブの本修正（別 Task 可）"
+  - "production 定期開始"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証手順_D1.md"
+      action: "create"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      action: "create"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "手順と結果 docs がある"
+  - "結果に run URL・conclusion・job 表があり secret がない"
+  - "schedule 有効化を含まない"
+  - "Related to / PR target = 親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-parent-schedule-manual-verify-d1"
+  base: "feature/epic-1637-batch-parent-schedule"
+  target: "feature/epic-1637-batch-parent-schedule"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+  number: 1715
