@@ -27,7 +27,7 @@ from batch.application.observability import (
 )
 
 from batch.config import load_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
+from batch.infrastructure.db import ScaffoldDbWriter, create_db_reader, create_db_writer
 from batch.infrastructure.object_storage import (
     ScaffoldObjectStorageClient,
     create_object_storage_client,
@@ -198,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    db_reader = create_db_reader(settings.database_url)
     tracker = create_job_run_tracker(
         scaffold_demo=False,
         database_url=settings.database_url,
@@ -256,6 +257,7 @@ def main(argv: list[str] | None = None) -> int:
     repos = ItemPseudoDiffRepositories(
         object_storage=object_storage,
         db_writer=db_writer,
+        db_reader=db_reader,
         bucket=settings.object_storage_bucket or "scaffold-raw",
         phase_log_writer=obs.phase_log_writer,
         error_log_writer=obs.error_log_writer,
@@ -273,14 +275,20 @@ job_run_tracker=tracker,
         target_genre_ids=genre_ids,
         keywords=keywords,
     )
+    error_codes = ",".join(result.error_codes) if result.error_codes else "-"
     print(
         f"BATCH-003 status={result.status} "
         f"db_backend={db_writer.backend} "
         f"rakuten_backend={getattr(rakuten, 'backend', 'http')} "
         f"storage_backend={getattr(object_storage, 'backend', 'scaffold')} "
         f"succeeded={len(result.succeeded_cursor_ids)} "
-        f"failed={len(result.failed_cursor_ids)}"
+        f"failed={len(result.failed_cursor_ids)} "
+        f"error_codes={error_codes}"
     )
+    for entry in repos.error_logs:
+        code = entry.get("code", "")
+        summary = entry.get("summary", "")
+        print(f"BATCH-003 error code={code} summary={summary}", file=sys.stderr)
     return 0 if result.status in {"succeeded", "partially_succeeded"} else 1
 
 

@@ -18,7 +18,7 @@ from batch.application.item_pseudo_diff.idempotency import (
     cursor_scope_fingerprint,
 )
 from batch.application.item_pseudo_diff.models import FetchCursorRow, RawItemSearchArtifact
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DatabaseError, DbReader, DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient
 
 
@@ -73,6 +73,41 @@ def _item_count_from_raw_body(body: bytes) -> int:
         return len(items)
     return 0
 
+
+def _is_unique_violation(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "uq_fetch_cursor_scope" in text or "duplicate key" in text or "unique constraint" in text
+
+
+def _scope_from_cursor_value(cursor_value: object) -> dict[str, Any]:
+    if isinstance(cursor_value, str):
+        try:
+            cursor_value = json.loads(cursor_value)
+        except json.JSONDecodeError:
+            return {}
+    if not isinstance(cursor_value, dict):
+        return {}
+    scope = cursor_value.get("scope")
+    return dict(scope) if isinstance(scope, dict) else {}
+
+
+def _page_from_cursor_value(cursor_value: object) -> int:
+    if isinstance(cursor_value, str):
+        try:
+            cursor_value = json.loads(cursor_value)
+        except json.JSONDecodeError:
+            return 1
+    if not isinstance(cursor_value, dict):
+        return 1
+    position = cursor_value.get("position")
+    if not isinstance(position, dict):
+        return 1
+    try:
+        return max(1, int(position.get("page") or 1))
+    except (TypeError, ValueError):
+        return 1
+
+
 @dataclass
 class ItemPseudoDiffRepositories:
     """Facade that persists Raw / fetch_cursor / logs via infrastructure."""
@@ -80,6 +115,7 @@ class ItemPseudoDiffRepositories:
     object_storage: ObjectStorageClient
     db_writer: DbWriter
     bucket: str
+    db_reader: DbReader | None = None
     # 事前投入された active カーソル（BATCH-002 ranking_supplement 等）
     seed_cursors: list[FetchCursorRow] = field(default_factory=list)
     fetch_cursors: dict[str, FetchCursorRow] = field(default_factory=dict)
@@ -126,6 +162,11 @@ class ItemPseudoDiffRepositories:
             if existing.scope_fingerprint == fingerprint and existing.cursor_type == row.cursor_type:
                 return existing
 
+        loaded = self._load_existing_cursor(row)
+        if loaded is not None:
+            self.fetch_cursors[str(loaded.cursor_id)] = loaded
+            return loaded
+
         # live DDL: fetch_cursor_id / api_call_log.fetch_cursor_id は uuid
         cursor_id = row.cursor_id or str(uuid.uuid4())
         created = FetchCursorRow(
@@ -137,28 +178,85 @@ class ItemPseudoDiffRepositories:
             cursor_status=row.cursor_status,
             scope_fingerprint=fingerprint,
         )
-        self.fetch_cursors[cursor_id] = created
         # DDL 列のみ INSERT。cursor_scope_fingerprint は GENERATED のため書かない。
-        self.db_writer.write_rows(
-            "fetch_cursor",
-            (
-                {
-                    "fetch_cursor_id": cursor_id,
-                    "source": SOURCE_RAKUTEN,
-                    "source_api": SOURCE_API_ITEM_SEARCH,
-                    "cursor_type": created.cursor_type,
-                    "target_external_genre_id": _genre_id_for_db(
-                        created.target_external_genre_id
-                    ),
-                    "cursor_status": _db_cursor_status(created.cursor_status),
-                    "cursor_value": _cursor_value_json(
-                        scope=created.scope,
-                        page=created.page,
-                    ),
-                },
-            ),
-        )
+        insert_row = {
+            "fetch_cursor_id": cursor_id,
+            "source": SOURCE_RAKUTEN,
+            "source_api": SOURCE_API_ITEM_SEARCH,
+            "cursor_type": created.cursor_type,
+            "target_external_genre_id": _genre_id_for_db(created.target_external_genre_id),
+            "cursor_status": _db_cursor_status(created.cursor_status),
+            "cursor_value": _cursor_value_json(scope=created.scope, page=created.page),
+        }
+        try:
+            self.db_writer.write_rows("fetch_cursor", (insert_row,))
+        except DatabaseError as exc:
+            if not _is_unique_violation(exc):
+                raise
+            loaded = self._load_existing_cursor(row)
+            if loaded is None:
+                raise
+            self.fetch_cursors[str(loaded.cursor_id)] = loaded
+            return loaded
+
+        self.fetch_cursors[cursor_id] = created
         return created
+
+    def _load_existing_cursor(self, row: FetchCursorRow) -> FetchCursorRow | None:
+        """Load matching fetch_cursor from live DB when reader is available."""
+
+        if self.db_reader is None:
+            return None
+
+        genre_id = _genre_id_for_db(row.target_external_genre_id)
+        equals: list[tuple[str, object]] = [
+            ("source", SOURCE_RAKUTEN),
+            ("source_api", SOURCE_API_ITEM_SEARCH),
+            ("cursor_type", row.cursor_type),
+        ]
+        if genre_id is not None:
+            equals.append(("target_external_genre_id", genre_id))
+
+        try:
+            result = self.db_reader.fetch_rows(
+                "fetch_cursor",
+                columns=(
+                    "fetch_cursor_id",
+                    "cursor_type",
+                    "target_external_genre_id",
+                    "cursor_value",
+                    "cursor_status",
+                ),
+                equals=tuple(equals),
+                limit=50,
+            )
+        except DatabaseError:
+            return None
+
+        wanted_scope = dict(row.scope)
+        for db_row in result.rows:
+            if genre_id is None and db_row.get("target_external_genre_id") is not None:
+                continue
+            cursor_value = db_row.get("cursor_value")
+            if _scope_from_cursor_value(cursor_value) != wanted_scope:
+                continue
+            cursor_id = str(db_row["fetch_cursor_id"])
+            target = db_row.get("target_external_genre_id")
+            return FetchCursorRow(
+                cursor_type=row.cursor_type,  # type: ignore[arg-type]
+                cursor_id=cursor_id,
+                target_external_genre_id=None if target is None else str(target),
+                scope=wanted_scope,
+                page=_page_from_cursor_value(cursor_value),
+                cursor_status=str(db_row.get("cursor_status") or "active"),
+                scope_fingerprint=row.scope_fingerprint
+                or cursor_scope_fingerprint(
+                    cursor_type=row.cursor_type,
+                    target_external_genre_id=None if target is None else str(target),
+                    scope=wanted_scope,
+                ),
+            )
+        return None
 
     def update_cursor_progress(
         self,

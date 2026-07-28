@@ -7,6 +7,7 @@ plan → priority → fetch → adapt → extract → dedupe → raw_save → cu
 from __future__ import annotations
 
 import json
+import sys
 import uuid
 from collections.abc import Sequence
 
@@ -153,6 +154,11 @@ class ItemPseudoDiffJob:
                         summary=exc.message,
                         cursor_id=cursor.cursor_id,
                     )
+                    print(
+                        f"item_pseudo_diff.cursor_failed cursor_type={cursor.cursor_type} "
+                        f"error_code={exc.code} summary={exc.message}",
+                        file=sys.stderr,
+                    )
                     bound_logger.error(
                         "item_pseudo_diff.cursor_failed",
                         cursor_type=cursor.cursor_type,
@@ -166,6 +172,11 @@ class ItemPseudoDiffJob:
                         summary=exc.message,
                         cursor_id=cursor.cursor_id,
                     )
+                    print(
+                        f"item_pseudo_diff.cursor_failed cursor_type={cursor.cursor_type} "
+                        f"error_code={exc.code} summary={exc.message}",
+                        file=sys.stderr,
+                    )
                 except Exception as exc:  # noqa: BLE001 — finalize partial failure
                     result.failed_cursor_ids.append(cursor_key)
                     result.error_codes.append("GRS-BAT-001")
@@ -173,6 +184,11 @@ class ItemPseudoDiffJob:
                         code="GRS-BAT-001",
                         summary=str(exc),
                         cursor_id=cursor.cursor_id,
+                    )
+                    print(
+                        f"item_pseudo_diff.unexpected_failure cursor_type={cursor.cursor_type} "
+                        f"error_type={type(exc).__name__} summary={exc}",
+                        file=sys.stderr,
                     )
                     bound_logger.error(
                         "item_pseudo_diff.unexpected_failure",
