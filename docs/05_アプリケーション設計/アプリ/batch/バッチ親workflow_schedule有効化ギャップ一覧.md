@@ -33,7 +33,7 @@ E1 残（schedule 無効・親／複合の手動検証未実施）を docs 正�
 | ---- | ---- |
 | 事実 | 正本 docs・YAML・Issue から確認できる内容 |
 | 推論 | 事実から導いた影響・推奨（断定しない） |
-| Human 判断待ち | 本ドキュメントでは確定扱いにしない |
+| Human 確定 | §8 で Human が確定した方針（後続 Wave の前提） |
 
 ---
 
@@ -86,67 +86,67 @@ E1 残（schedule 無効・親／複合の手動検証未実施）を docs 正�
 
 | 残ギャップ | #1637 での扱い |
 | ---------- | -------------- |
-| Phase1 schedule 無効のまま | Wave 0 で現状固定。有効化は Human 確定後 Wave |
-| 親／複合 workflow_dispatch dry-run 未実施 | 手動検証 Wave。定義は §8 Human 判断 |
+| Phase1 schedule 無効のまま | **案 A 確定**。Wave 0 で現状固定。有効化は手動検証後の別判断 |
+| 親／複合 workflow_dispatch dry-run 未実施 | **D1 確定**。Wave 1 で低 `max_items` の手動検証 |
 
 ---
 
-## 6. 推奨 Wave 分割（推論）
+## 6. 推奨 Wave 分割（推論 → gate 確定反映）
 
 | 優先 | Wave | 内容 | Human 必須 |
 | ---- | ---- | ---- | ---------- |
 | high | **0** | 本正本（inventory） | 不要（docs のみ） |
-| high | **gate** | §8 案 A/B/C・dry-run 定義・失敗通知の確定 | **必須** |
-| high | **1** | 手動検証（低 `max_items` の `workflow_dispatch`）+ 結果記録 | 実行環境・コスト承認 |
-| medium | **2** | 案 B 以降: daily schedule コメント解除 | 有効化承認 |
-| medium | **3** | 案 C 時: weekly schedule 有効化 | 有効化承認 |
+| high | **gate** | §8 確定（案 A / D1 / cron 00:30 / Slack 失敗通知） | **完了（2026-07-28）** |
+| high | **1** | 手動検証（D1: 低 `max_items` の `workflow_dispatch`）+ 結果記録 | 実行環境・コスト承認 |
+| medium | **notify / cron-docs** | Slack 失敗通知の配線。cron を JST 00:30 相当へ設計書・YAML コメント同期（schedule は無効のまま可） | 実装 PR レビュー |
+| medium | **2** | 案 B 以降を採用する場合: daily schedule コメント解除 | 有効化承認（現状は未採用） |
+| medium | **3** | 案 C 時: weekly schedule 有効化 | 有効化承認（現状は未採用） |
 | low | **docs** | 横串ギャップ / §19.4 を Phase 進行に合わせて更新 | レビュー |
 
 ---
 
-## 7. dry-run 定義の整理（事実 + Human 判断待ち）
+## 7. dry-run 定義の整理（事実 + Human 確定）
 
 | 方式 | 事実 | 含意 |
 | ---- | ---- | ---- |
-| **D1** | 親 YAML に `dry_run` input **なし**。低 `max_items` で `workflow_dispatch` し本線ジョブを短く回す | コスト・外部 API は発生しうるが追加実装が少ない |
-| **D2** | 親／複合に `dry_run` を新規追加し、子へ伝播して DB/API を抑止 | 実装・契約変更が必要。真の dry-run に近い |
+| **D1**（**採用**） | 親 YAML に `dry_run` input **なし**。低 `max_items` で `workflow_dispatch` し本線ジョブを短く回す | コスト・外部 API は発生しうるが追加実装が少ない |
+| **D2**（不採用） | 親／複合に `dry_run` を新規追加し、子へ伝播して DB/API を抑止 | 実装・契約変更が必要。必要になったら別 Task |
 
-**推論:** Wave 1 の第一候補は D1（E1 残の「未実施」解消が主目的）。D2 は別 Task 化を推奨。
+**Human 確定:** Wave 1 は **D1**。D2 は本 Epic では採用しない。
 
 ---
 
-## 8. Human 判断点 — **未確定**
+## 8. Human 判断点 — **確定（2026-07-28）**
 
-### 8.1 schedule 有効化方針
+### 8.1 schedule 有効化方針 — **案 A 採用**
 
-| 案 | 内容 | メリット | デメリット |
-| -- | ---- | -------- | ---------- |
-| **A** | Phase1 維持。schedule は触らず、dispatch 手動検証＋docs 記録のみ | 定期実行なしで安全。検証ギャップを先に解消 | 定期運用は先送り |
-| **B** | §16 どおり Phase2 のみ（**daily** cron 有効化。weekly は無効のまま） | 設計正本と一致。同日 daily+weekly 競合を避けやすい | 本線 API/DB コスト。失敗通知方針が要る |
-| **C** | Phase2+3 同時、または週次優先 | 鮮度メンテを早く回せる | 段階的有効化と乖離。`batch-mainline` 共有下の運用リスク |
+| 案 | 内容 | 採否 |
+| -- | ---- | ---- |
+| **A** | Phase1 維持。schedule は触らず、dispatch 手動検証＋docs 記録のみ | **採用** |
+| **B** | §16 どおり Phase2 のみ（**daily** cron 有効化。weekly は無効のまま） | 不採用（本ゲート時点） |
+| **C** | Phase2+3 同時、または週次優先 | 不採用（本ゲート時点） |
 
-**推奨（推論・未確定）:** まず **案 A** で手動検証を完了し、安定確認後に **案 B**。案 C は観測・コスト確認後。
+**確定内容:** 当面は schedule コメント解除を行わない。Wave 1 で手動検証を優先する。案 B/C は検証結果を見て再判断する。
 
-### 8.2 dry-run 定義
+### 8.2 dry-run 定義 — **D1 採用**
 
-| 案 | 内容 |
-| -- | ---- |
-| **D1** | 低 `max_items` の親 `workflow_dispatch` を「手動検証」として記録する（input 追加なし） |
-| **D2** | 親／複合に `dry_run` input を追加する |
+| 案 | 内容 | 採否 |
+| -- | ---- | ---- |
+| **D1** | 低 `max_items` の親 `workflow_dispatch` を「手動検証」として記録する（input 追加なし） | **採用** |
+| **D2** | 親／複合に `dry_run` input を追加する | 不採用 |
 
-**推奨（推論・未確定）:** **D1**
+### 8.3 失敗時通知 / タイムゾーン — **確定**
 
-### 8.3 失敗時通知 / タイムゾーン
-
-| 項目 | 現状（事実） | Human 判断 |
+| 項目 | 現状（事実） | Human 確定 |
 | ---- | ------------ | ---------- |
-| cron TZ | UTC cron で JST 01:10 相当（設計 §6 / YAML コメント） | 変更要否 |
-| 失敗通知 | YAML 上の専用 notify job は未確認（Actions 標準 UI / 別運用） | Slack / GitHub 通知の要否と担当 |
+| cron TZ | UTC cron で JST **01:10** 相当（設計 §6 / YAML コメント `10 16 …`） | **JST 00:30 相当へ変更**。UTC cron は `30 15 * * 0-5`（daily）/ `30 15 * * 6`（weekly）。設計書 §6・YAML コメントは後続 Wave（`notify / cron-docs`）で同期。案 A のため schedule 有効化は行わない |
+| 失敗通知 | YAML 上の専用 notify job は未確認（Actions 標準 UI / 別運用） | **Slack へ失敗通知する**。**GitHub 通知は不要**。実装は後続 Wave（`notify / cron-docs`） |
 
-### 8.4 production 定期開始
+### 8.4 production 定期開始 — **記載どおり確定**
 
 Epic out_of_scope: **無承認の production 定期開始は禁止**。  
-案 B/C で schedule を有効化する PR でも、**対象環境・Secret・リポジトリ設定**が本番定期を意味する場合は別途 Human 明示承認が必要。
+案 B/C で schedule を有効化する PR でも、**対象環境・Secret・リポジトリ設定**が本番定期を意味する場合は別途 Human 明示承認が必要。  
+**Human 確認:** 本節の方針で問題なし（変更なし）。
 
 ---
 
@@ -156,7 +156,7 @@ Epic out_of_scope: **無承認の production 定期開始は禁止**。
 - [x] §16 Phase 対応と E1 残ギャップの突合
 - [x] Human 判断点（§8）の整理
 - [x] 後続 Wave 分割案
-- [ ] Human による §8 確定（後続 Wave の前提）
+- [x] Human による §8 確定（後続 Wave の前提）
 
 ---
 
@@ -165,3 +165,4 @@ Epic out_of_scope: **無承認の production 定期開始は禁止**。
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-28 | 初版（#1637 Wave 0 inventory） |
+| 2026-07-28 | §8 Human 確定: 案 A / D1 / cron JST 00:30 / Slack 失敗通知（GitHub 通知不要）/ §8.4 記載どおり |
