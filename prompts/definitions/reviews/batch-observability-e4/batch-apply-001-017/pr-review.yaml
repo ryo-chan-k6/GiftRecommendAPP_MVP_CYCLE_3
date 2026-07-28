@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1706
   issue:
     number: 1705
   task_definition: "prompts/definitions/tasks/batch-observability-e4/batch-apply-001-017.yaml"
