@@ -1,7 +1,7 @@
 """CLI entry for BATCH-001 genre sync (scaffold / GHA invocation).
 
 Usage:
-  python -m batch.application.genre_sync --job-run-id <id> [--genre-ids 0,100]
+  python -m batch.application.genre_sync --job-run-id <uuid> [--genre-ids 0,100]
   python -m batch.application.genre_sync --scaffold-demo
 """
 
@@ -12,6 +12,7 @@ import sys
 
 from batch.application.genre_sync.job import DEFAULT_TARGET_GENRE_IDS, GenreSyncJob
 from batch.application.genre_sync.repositories import GenreSyncRepositories
+from batch.application.job_run import JobRunTracker, create_job_run_tracker
 from batch.config import load_batch_settings
 from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 from batch.infrastructure.object_storage import (
@@ -34,7 +35,10 @@ def _parse_genre_ids(raw: str | None) -> tuple[str, ...] | None:
     return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
-def build_scaffold_demo_job() -> GenreSyncJob:
+def build_scaffold_demo_job(
+    *,
+    job_run_tracker: JobRunTracker | None = None,
+) -> GenreSyncJob:
     """Build an in-memory job for local / CI smoke without real secrets."""
 
     client = ScaffoldRakutenApiClient(
@@ -60,12 +64,20 @@ def build_scaffold_demo_job() -> GenreSyncJob:
         db_writer=ScaffoldDbWriter(),
         bucket="scaffold-raw",
     )
-    return GenreSyncJob(rakuten_client=client, repositories=repos)
+    return GenreSyncJob(
+        rakuten_client=client,
+        repositories=repos,
+        job_run_tracker=job_run_tracker,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="BATCH-001 Rakuten genre sync")
-    parser.add_argument("--job-run-id", default="local-run")
+    parser.add_argument(
+        "--job-run-id",
+        default="local-run",
+        help="Job run id. Non --scaffold-demo Postgres tracker requires a UUID.",
+    )
     parser.add_argument(
         "--genre-ids",
         default="",
@@ -92,7 +104,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.scaffold_demo:
-        job = build_scaffold_demo_job()
+        tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
+        job = build_scaffold_demo_job(job_run_tracker=tracker)
         genre_ids = _parse_genre_ids(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
         result = job.run(job_run_id=args.job_run_id, target_genre_ids=genre_ids)
         print(
@@ -106,6 +119,11 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    tracker = create_job_run_tracker(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
     live = resolve_live_rakuten_flag(
         cli_live=args.live_rakuten,
         env_value=os.environ.get("BATCH_RAKUTEN_LIVE"),
@@ -156,7 +174,11 @@ def main(argv: list[str] | None = None) -> int:
         db_writer=db_writer,
         bucket=settings.object_storage_bucket or "scaffold-raw",
     )
-    job = GenreSyncJob(rakuten_client=rakuten, repositories=repos)
+    job = GenreSyncJob(
+        rakuten_client=rakuten,
+        repositories=repos,
+        job_run_tracker=tracker,
+    )
     genre_ids = _parse_genre_ids(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
     result = job.run(job_run_id=args.job_run_id, target_genre_ids=genre_ids)
     print(

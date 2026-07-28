@@ -22,7 +22,14 @@ from batch.application.item_pseudo_diff import (
     ItemPseudoDiffRepositories,
     PseudoDiffSyncResult,
 )
-from batch.application.job_run import JobRunRecord, JobRunStatus, JobRunTracker, ScaffoldJobRunTracker
+from batch.application.job_run import (
+    JobRunRecord,
+    JobRunStatus,
+    JobRunTracker,
+    PostgresJobRunTracker,
+    ScaffoldJobRunTracker,
+    create_job_run_tracker,
+)
 from batch.application.ranking_snapshot import (
     BATCH_ID as RANKING_SNAPSHOT_BATCH_ID,
     RANKING_SNAPSHOT_PHASES,
@@ -57,9 +64,11 @@ __all__ = [
     "JobRunRecord",
     "JobRunStatus",
     "JobRunTracker",
+    "PostgresJobRunTracker",
     "PseudoDiffSyncResult",
     "RankingSnapshotJob",
     "RankingSnapshotRepositories",
     "RankingSyncResult",
     "ScaffoldJobRunTracker",
+    "create_job_run_tracker",
 ]
