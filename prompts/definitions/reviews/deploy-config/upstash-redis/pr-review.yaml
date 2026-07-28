@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1709
   issue:
     number: 1708
   task_definition: "prompts/definitions/tasks/deploy-config/upstash-redis.yaml"
