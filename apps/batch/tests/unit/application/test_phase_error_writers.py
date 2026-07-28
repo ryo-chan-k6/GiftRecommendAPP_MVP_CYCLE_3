@@ -241,6 +241,7 @@ def test_create_batch_observability_writers_postgres_injected() -> None:
 def test_map_app_phase_genre_sync() -> None:
     assert map_app_phase_to_ddl("plan") == "batch_started"
     assert map_app_phase_to_ddl("finalize") == "batch_completed"
+    assert map_app_phase_to_ddl("summary_created") == "summary_created"
     assert map_app_phase_to_ddl("fetch") is None
     assert map_app_phase_status("succeeded") == "succeeded"
     assert map_app_phase_status("failed") == "failed"

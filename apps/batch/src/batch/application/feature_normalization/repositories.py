@@ -67,6 +67,12 @@ _FEATURE_COLUMNS = (
 )
 
 
+from batch.application.observability import (
+    ErrorLogWriter,
+    PhaseLogWriter,
+)
+from batch.application.observability.binding import emit_error, emit_phase
+
 @dataclass(frozen=True)
 class ExistingNormalizedAxis:
     """skip 判定用の既存 normalized 軸（読取のみ）。"""
@@ -109,6 +115,17 @@ class FeatureNormalizationRepositories:
     item_meaning_rows: list[ItemMeaningUpsertRow] = field(default_factory=list)
     error_logs: list[dict[str, object]] = field(default_factory=list)
     phase_logs: list[dict[str, object]] = field(default_factory=list)
+    phase_log_writer: PhaseLogWriter | None = None
+    error_log_writer: ErrorLogWriter | None = None
+    _batch_run_id: str | None = field(default=None, repr=False)
+    _trace_id: str | None = field(default=None, repr=False)
+
+
+    def bind_run(self, *, batch_run_id: str, trace_id: str | None = None) -> None:
+        """Bind ``batch_run_id`` (= job_run_id UUID) for observability DB writes."""
+
+        self._batch_run_id = batch_run_id
+        self._trace_id = trace_id
 
     def __post_init__(self) -> None:
         for seed in self.seed_queues:
@@ -562,7 +579,14 @@ class FeatureNormalizationRepositories:
         )
 
     def record_phase(self, *, phase: str, status: str) -> None:
-        self.phase_logs.append({"phase": phase, "status": status})
+        emit_phase(
+            phase_logs=self.phase_logs,
+            phase_log_writer=self.phase_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            phase=phase,
+            status=status,
+        )
 
     def record_error(
         self,
@@ -572,13 +596,20 @@ class FeatureNormalizationRepositories:
         item_generation_queue_id: str | None = None,
         item_id: str | None = None,
     ) -> None:
-        self.error_logs.append(
-            {
-                "code": code,
-                "summary": summary,
-                "item_generation_queue_id": item_generation_queue_id,
-                "item_id": item_id,
-            }
+        detail: dict[str, object] = {}
+        if item_generation_queue_id is not None:
+            detail["item_generation_queue_id"] = item_generation_queue_id
+        if item_id is not None:
+            detail["item_id"] = item_id
+        emit_error(
+            error_logs=self.error_logs,
+            error_log_writer=self.error_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            code=code,
+            summary=summary,
+            memory_extra={"item_generation_queue_id": item_generation_queue_id, "item_id": item_id},
+            detail=detail or None,
         )
 
     def _ensure_queue_hydrated(self, item_generation_queue_id: str) -> dict[str, object] | None:

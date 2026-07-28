@@ -479,6 +479,20 @@ def test_cli_non_demo_runs_job_with_live_reader(monkeypatch) -> None:
     )
     monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
     monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
+    monkeypatch.setattr(
+        cli,
+        "create_job_run_tracker",
+        lambda **_kwargs: __import__(
+            "batch.application.job_run", fromlist=["ScaffoldJobRunTracker"]
+        ).ScaffoldJobRunTracker(),
+    )
+    monkeypatch.setattr(
+        cli,
+        "create_batch_observability_writers",
+        lambda **_kwargs: __import__(
+            "batch.application.observability", fromlist=["create_batch_observability_writers"]
+        ).create_batch_observability_writers(scaffold_demo=True, database_url=None),
+    )
 
     code = cli.main(["--job-run-id", "wave-g-run", "--batch-run-id", "missing-run"])
     # missing batch_run_log → failed (exit 1). Important: Job started (not exit-2/old exit-3).

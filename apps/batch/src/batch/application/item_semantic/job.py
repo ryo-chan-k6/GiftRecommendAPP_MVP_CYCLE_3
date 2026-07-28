@@ -97,6 +97,13 @@ class ItemSemanticJob:
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
 
+
+    @property
+    def repositories(self):
+        """Expose repositories for CLI bind_run / observability wiring."""
+
+        return self._repos
+
     def run(
         self,
         *,
@@ -431,6 +438,8 @@ class ItemSemanticJob:
 
 def build_default_scaffold_job(
     repositories: ItemSemanticRepositories,
+    *,
+    job_run_tracker: JobRunTracker | None = None,
 ) -> ItemSemanticJob:
     adapter: ScaffoldItemSemanticAdapter = build_scaffold_adapter(
         find_existing=lambda item_id, version_id: repositories.find_item_semantic(
@@ -438,4 +447,8 @@ def build_default_scaffold_job(
             semantic_config_version_id=version_id,
         )
     )
-    return ItemSemanticJob(repositories=repositories, generator=adapter)
+    return ItemSemanticJob(
+        repositories=repositories,
+        generator=adapter,
+        job_run_tracker=job_run_tracker,
+    )

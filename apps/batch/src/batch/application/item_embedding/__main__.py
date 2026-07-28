@@ -31,6 +31,12 @@ from batch.application.item_embedding.repositories import (
     DEFAULT_EMBEDDING_MODEL_VERSION,
     ItemEmbeddingRepositories,
 )
+from batch.application.job_run import JobRunTracker, create_job_run_tracker
+from batch.application.observability import (
+    ErrorLogWriter,
+    PhaseLogWriter,
+    create_batch_observability_writers,
+)
 from batch.config import load_batch_settings
 from batch.infrastructure.db import (
     ScaffoldDbWriter,
@@ -58,6 +64,9 @@ def _parse_csv(raw: str | None) -> tuple[str, ...] | None:
 def build_scaffold_demo_job(
     *,
     embedding_client: EmbeddingClient | None = None,
+    job_run_tracker: JobRunTracker | None = None,
+    phase_log_writer: PhaseLogWriter | None = None,
+    error_log_writer: ErrorLogWriter | None = None,
 ) -> ItemEmbeddingJob:
     """Build an in-memory job for local / CI smoke without real DB.
 
@@ -130,18 +139,25 @@ def build_scaffold_demo_job(
                 },
             ),
         ],
+        phase_log_writer=phase_log_writer,
+        error_log_writer=error_log_writer,
     )
     if embedding_client is None:
-        return build_default_scaffold_job(repos)
+        return build_default_scaffold_job(repos, job_run_tracker=job_run_tracker)
     return ItemEmbeddingJob(
         repositories=repos,
         generator=build_scaffold_adapter(client=embedding_client),
+        job_run_tracker=job_run_tracker,
     )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="BATCH-015 Item Embedding generation")
-    parser.add_argument("--job-run-id", default="local-run")
+    parser.add_argument(
+        "--job-run-id",
+        default="local-run",
+        help="Job run id. Non --scaffold-demo Postgres tracker requires a UUID.",
+    )
     parser.add_argument("--max-items", type=int, default=DEFAULT_MAX_ITEMS)
     parser.add_argument("--source", default=DEFAULT_SOURCE)
     parser.add_argument("--queue-batch-size", type=int, default=DEFAULT_QUEUE_BATCH_SIZE)
@@ -182,7 +198,17 @@ def main(argv: list[str] | None = None) -> int:
                 settings.openai_api_key,
                 live=True,
             )
-        job = build_scaffold_demo_job(embedding_client=embedding_client)
+        tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
+        obs = create_batch_observability_writers(
+            scaffold_demo=True, database_url=None
+        )
+        job = build_scaffold_demo_job(
+            embedding_client=embedding_client,
+            job_run_tracker=tracker,
+            phase_log_writer=obs.phase_log_writer,
+            error_log_writer=obs.error_log_writer,
+        )
+        job.repositories.bind_run(batch_run_id=args.job_run_id)
         result = job.run(
             job_run_id=args.job_run_id,
             max_items=args.max_items,
@@ -206,6 +232,16 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    tracker = create_job_run_tracker(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
+    obs = create_batch_observability_writers(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
     db_reader = resolve_job_db_reader(
         scaffold_demo=False,
         database_url=settings.database_url,
@@ -230,11 +266,18 @@ def main(argv: list[str] | None = None) -> int:
         settings.openai_api_key if live else None,
         live=live,
     )
-    repos = ItemEmbeddingRepositories(db_writer=db_writer, db_reader=db_reader)
+    repos = ItemEmbeddingRepositories(
+        db_writer=db_writer,
+        db_reader=db_reader,
+        phase_log_writer=obs.phase_log_writer,
+        error_log_writer=obs.error_log_writer,
+    )
     job = ItemEmbeddingJob(
         repositories=repos,
         generator=build_scaffold_adapter(client=embedding_client),
+        job_run_tracker=tracker,
     )
+    job.repositories.bind_run(batch_run_id=args.job_run_id)
     result = job.run(
         job_run_id=args.job_run_id,
         max_items=args.max_items,

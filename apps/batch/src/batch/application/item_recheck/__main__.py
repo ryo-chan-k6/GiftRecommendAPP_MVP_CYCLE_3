@@ -13,6 +13,14 @@ import sys
 from batch.application.item_recheck.job import ItemRecheckJob
 from batch.application.item_recheck.models import ItemSeed
 from batch.application.item_recheck.repositories import ItemRecheckRepositories
+from batch.application.job_run import JobRunTracker, create_job_run_tracker
+from batch.application.observability import (
+    ApiCallLogWriter,
+    ErrorLogWriter,
+    PhaseLogWriter,
+    create_batch_observability_writers,
+)
+
 from batch.config import load_batch_settings
 from batch.infrastructure.db import (
     ScaffoldDbWriter,
@@ -39,7 +47,13 @@ def _parse_csv(raw: str | None) -> tuple[str, ...] | None:
     return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
-def build_scaffold_demo_job() -> ItemRecheckJob:
+def build_scaffold_demo_job(
+    *,
+    job_run_tracker: JobRunTracker | None = None,
+    phase_log_writer: PhaseLogWriter | None = None,
+    error_log_writer: ErrorLogWriter | None = None,
+    api_call_log_writer: ApiCallLogWriter | None = None,
+) -> ItemRecheckJob:
     """Build an in-memory job for local / CI smoke without real secrets."""
 
     client = ScaffoldRakutenApiClient(
@@ -93,13 +107,22 @@ def build_scaffold_demo_job() -> ItemRecheckJob:
                 active_status="active",
             ),
         ],
+        phase_log_writer=phase_log_writer,
+        error_log_writer=error_log_writer,
+        api_call_log_writer=api_call_log_writer,
     )
-    return ItemRecheckJob(rakuten_client=client, repositories=repos)
+    return ItemRecheckJob(rakuten_client=client, repositories=repos,
+job_run_tracker=job_run_tracker,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="BATCH-004 Rakuten existing-item recheck")
-    parser.add_argument("--job-run-id", default="local-run")
+    parser.add_argument(
+        "--job-run-id",
+        default="local-run",
+        help="Job run id. Non --scaffold-demo Postgres tracker requires a UUID.",
+    )
     parser.add_argument(
         "--max-items",
         type=int,
@@ -132,7 +155,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.scaffold_demo:
-        job = build_scaffold_demo_job()
+        tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
+        obs = create_batch_observability_writers(
+            scaffold_demo=True, database_url=None
+        )
+        job = build_scaffold_demo_job(
+            job_run_tracker=tracker,
+            phase_log_writer=obs.phase_log_writer,
+            error_log_writer=obs.error_log_writer,
+            api_call_log_writer=obs.api_call_log_writer,
+        )
+        job.repositories.bind_run(batch_run_id=args.job_run_id)
         codes = _parse_csv(args.external_item_codes)
         result = job.run(
             job_run_id=args.job_run_id,
@@ -153,6 +186,16 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    tracker = create_job_run_tracker(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
+    obs = create_batch_observability_writers(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
     db_reader = resolve_job_db_reader(
         scaffold_demo=False,
         database_url=settings.database_url,
@@ -215,8 +258,14 @@ def main(argv: list[str] | None = None) -> int:
         db_writer=db_writer,
         db_reader=db_reader,
         bucket=settings.object_storage_bucket or "scaffold-raw",
+        phase_log_writer=obs.phase_log_writer,
+        error_log_writer=obs.error_log_writer,
+        api_call_log_writer=obs.api_call_log_writer,
     )
-    job = ItemRecheckJob(rakuten_client=rakuten, repositories=repos)
+    job = ItemRecheckJob(rakuten_client=rakuten, repositories=repos,
+job_run_tracker=tracker,
+    )
+    job.repositories.bind_run(batch_run_id=args.job_run_id)
     codes = _parse_csv(args.external_item_codes)
     result = job.run(
         job_run_id=args.job_run_id,

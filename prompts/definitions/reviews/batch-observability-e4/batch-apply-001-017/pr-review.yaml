@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-observability-e4-batch-apply-001-017-pr"
+  title: "batch-observability-e4 batch-apply-001-017 PRレビュー"
+  summary: "E4 Wave 4（BATCH-001〜017 観測配線全適用・§8.1 案 C）Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1705
+  task_definition: "prompts/definitions/tasks/batch-observability-e4/batch-apply-001-017.yaml"
+  parent_epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  parent_epic_branch: "feature/epic-1636-batch-observability-e4"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "001〜017 に create_job_run_tracker + create_batch_observability_writers + bind_run があるか"
+  - "genre_sync 同型（repos writers / record_phase|error|api_call）か"
+  - "共通 mapping が plan/finalize + DDL identity を含むか"
+  - "未マップ phase が DB skip + warn か"
+  - "002/003/004 の api_call DB と UUID api_call_log_id / secret なし params か"
+  - "015 が api_call DB を書かないか（source CHECK 残ギャップ）"
+  - "017 が tracker=job_run_id / 集計=batch_run_id 分離か（UT 含む）"
+  - "018/019 / feedback_analysis / offline_evaluation への適用が無いこと"
+  - "DDL / migration / Embedding source 拡張が混入していないか"
+  - "UT（mapping / wiring / 既存回帰）結果が記載されているか"
+  - "ギャップ一覧に Wave 4 進捗・適用マトリクス・015・017 事実があるか"
+  - "Related to / PR target が親 Epic Branch"
+
+notes:
+  - "pr.number は PR 作成後に埋める（現状 null）"
+  - "§8.1 案 C。018/019・043/044 は禁止"
+  - "commit / push / PR は親 Orchestrator"
