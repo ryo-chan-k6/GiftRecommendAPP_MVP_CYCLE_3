@@ -148,7 +148,8 @@ class GenreSyncJob:
         return GenreFetchPlan(source=SOURCE_RAKUTEN, target_genre_ids=resolved)
 
     def _sync_one_genre(self, *, genre_id: str, job_run_id: str, result: GenreSyncResult) -> None:
-        api_call_log_id = f"api_{uuid.uuid4().hex[:12]}"
+        # DDL api_call_log PK は uuid。Object key にも同一 UUID を使う。
+        api_call_log_id = str(uuid.uuid4())
 
         # fetch
         try:

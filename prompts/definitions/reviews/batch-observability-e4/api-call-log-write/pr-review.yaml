@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-observability-e4-api-call-log-write-pr"
+  title: "batch-observability-e4 api-call-log-write PRレビュー"
+  summary: "E4 Wave 3（api_call_log 本配線）Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1703
+  task_definition: "prompts/definitions/tasks/batch-observability-e4/api-call-log-write.yaml"
+  parent_epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  parent_epic_branch: "feature/epic-1636-batch-observability-e4"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "PostgresApiCallLogWriter が write_rows で api_call_log を扱うか"
+  - "source=rakuten 固定 / source_api / call_status が DDL CHECK 許可値のみか"
+  - "api_call_log_id / batch_run_id が UUID 必須か"
+  - "terminal status で completed_at が入り、requested では null か"
+  - "request_params から Authorization / api_key 等が除去されるか"
+  - "request_params_hash 未指定時に安定 JSON の sha256 を算出するか"
+  - "create_api_call_log_writer が scaffold_demo / empty / scaffold:// → Scaffold、それ以外 → Postgres か"
+  - "genre_sync が UUID id + source_api=genre_search で DB 書込するか"
+  - "writers 無 or bind 前は in-memory のみか"
+  - "代表 CLI が genre_sync 1 本のみで、001〜017 全配線が混入していないか"
+  - "Embedding source 拡張が混入していないか"
+  - "DDL / migration 変更が混入していないか"
+  - "UT が UUID / CHECK / secret strip / factory / genre_sync をカバーするか"
+  - "実 DB 疎通結果または skip 理由が secret なしで記載されているか"
+  - "ギャップ一覧に Wave 3（#1703）進捗と Embedding/source CHECK 残ギャップが事実として記載されているか"
+  - "Related to / PR target が親 Epic Branch"
+
+notes:
+  - "pr.number は PR 作成後に埋める（現状 null）"
+  - "Wave 4 全 Batch 配線は禁止（本 Task は代表 1 本）"
+  - "DDL source=rakuten のみ。Embedding は残ギャップ"

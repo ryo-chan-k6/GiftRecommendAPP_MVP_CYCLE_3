@@ -5,6 +5,8 @@ keeping the same upsert semantics (source + external_genre_id).
 
 Wave 2: optional ``phase_log_writer`` / ``error_log_writer`` bind to Postgres
 via ``bind_run`` (app phase → DDL phase_name mapping for plan/finalize only).
+
+Wave 3: optional ``api_call_log_writer`` writes ``api_call_log`` (source_api=genre_search).
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from dataclasses import dataclass, field
 from batch.application.genre_sync.idempotency import SOURCE_API_GENRE, SOURCE_RAKUTEN
 from batch.application.genre_sync.models import GenreRow, RawGenreArtifact
 from batch.application.observability import (
+    ApiCallLogWriter,
     ErrorLogWriter,
     PhaseLogWriter,
     map_app_phase_status,
@@ -22,6 +25,9 @@ from batch.application.observability import (
 from batch.application.observability.mapping import warn_unmapped_app_phase
 from batch.infrastructure.db import DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient
+
+# DDL api_call_log.source_api（object_key 用 SOURCE_API_GENRE="genre" とは別）
+_DDL_SOURCE_API_GENRE_SEARCH = "genre_search"
 
 
 @dataclass
@@ -39,6 +45,7 @@ class GenreSyncRepositories:
     phase_logs: list[dict[str, object]] = field(default_factory=list)
     phase_log_writer: PhaseLogWriter | None = None
     error_log_writer: ErrorLogWriter | None = None
+    api_call_log_writer: ApiCallLogWriter | None = None
     _batch_run_id: str | None = field(default=None, repr=False)
     _trace_id: str | None = field(default=None, repr=False)
 
@@ -135,6 +142,19 @@ class GenreSyncRepositories:
                 "error_code": error_code,
                 # Never log Authorization / access keys
             }
+        )
+        writer = self.api_call_log_writer
+        batch_run_id = self._batch_run_id
+        if writer is None or batch_run_id is None:
+            return
+        writer.record_call(
+            api_call_log_id=api_call_log_id,
+            batch_run_id=batch_run_id,
+            source_api=_DDL_SOURCE_API_GENRE_SEARCH,
+            call_status=status,
+            request_params_json={"genre_id": genre_id},
+            error_code=error_code,
+            trace_id=self._trace_id,
         )
 
     def record_error(self, *, code: str, summary: str, genre_id: str | None = None) -> None:

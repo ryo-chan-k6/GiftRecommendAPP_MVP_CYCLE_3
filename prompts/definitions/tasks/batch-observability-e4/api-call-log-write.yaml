@@ -1,0 +1,225 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-observability-e4-api-call-log-write"
+  title: "batch-observability-e4:api_call_log本配線"
+  summary: "Wave 3。IF-DB-BATCH-002 / MOD-BATCH-046 として api_call_log を DbWriter 経由で Postgres 本配線し、代表 CLI genre_sync に配線する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  epic_issue_number: 1636
+  epic_branch: "feature/epic-1636-batch-observability-e4"
+  related_issues:
+    - 1697
+    - 1699
+    - 1701
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Wave 1（#1699）で batch_run_log、Wave 2（#1701）で phase_log / error_log 本配線済み。
+  api_call_log は genre_sync の in-memory のみ。PK は uuid だが現行 id は api_{hex} 形式で
+  Postgres 非互換。DDL source CHECK は rakuten のみ（Embedding は対象外）。
+  §8.2 Human 確定: Must。
+
+objective: |
+  PostgresApiCallLogWriter + factory により api_call_log を本配線し、代表 Batch CLI
+  （genre_sync）1 本で genre_search 呼び出しを DB 書込する。api_call_log_id は常時 UUID。
+  001〜017 全配線は Wave 4。Embedding（015）は source=rakuten CHECK 外のため触らない。
+  DDL 変更は禁止。
+
+scope:
+  - "PostgresApiCallLogWriter / ScaffoldApiCallLogWriter（DbWriter.write_rows）"
+  - "create_api_call_log_writer / create_batch_observability_writers 拡張"
+  - "genre_sync: UUID api_call_log_id / record_api_call → writer / __main__ 注入"
+  - "UT（UUID / source_api / call_status / secret strip / factory / genre_sync）"
+  - "実 DB 疎通（INSERT→SELECT→DELETE cleanup。secret 非出力）"
+  - "バッチ観測横断・本実装ギャップ一覧.md に Wave 3 進捗（#1703）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "DDL / migration 変更"
+  - "BATCH-001〜017 全 CLI 一括配線（Wave 4）"
+  - "Embedding source 拡張（DDL source=rakuten CHECK）"
+  - "MOD-BATCH-043 / 044"
+  - "親 schedule（#1637）"
+  - "CI 既定 live / production 無承認"
+  - "commit / push / PR（親 Orchestrator が行う）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+  files:
+    - path: "apps/batch/src/batch/application/observability/**"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/observability/api_call_log.py"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/application/observability/factory.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/observability/__init__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/job.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_api_call_log_writer.py"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-observability-e4/api-call-log-write.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-observability-e4/api-call-log-write/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "PostgresApiCallLogWriter / ScaffoldApiCallLogWriter + factory"
+  - "genre_sync 代表配線（UUID + genre_search）"
+  - "UT"
+  - "実 DB 疎通結果（または skip 理由）"
+  - "ギャップ一覧 Wave 3 進捗"
+
+acceptance_criteria:
+  - "api_call_log へ source=rakuten / source_api=genre_search で INSERT できる"
+  - "非 UUID api_call_log_id / batch_run_id を明確な例外で拒否する"
+  - "不正 source_api / call_status を拒否する"
+  - "request_params から Authorization / api_key 等を除去する"
+  - "create_api_call_log_writer が scaffold / postgres を切り替える"
+  - "genre_sync の api_call_log_id が UUID である"
+  - "writers 無 or bind 前は in-memory のみ"
+  - "001〜017 全配線を含まない"
+  - "Embedding / source CHECK 拡張を含まない"
+  - "DDL 変更を含まない"
+  - "実 DB 疎通結果が報告される（secret なし）または skip 理由明示"
+  - "ギャップ一覧に Wave 3 / §8.2 Must 実施中が記載されている"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/task-1703-batch-observability-e4-api-call-log-write"
+  summary: "batch-observability-e4-api-call-log-write"
+  base: "feature/epic-1636-batch-observability-e4"
+  target: "feature/epic-1636-batch-observability-e4"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-08"
+
+issue:
+  number: 1703
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1636
+      purpose: "親 Epic"
+  issues:
+    - issue: 1701
+      purpose: "Wave 2 phase-error-write"
+    - issue: 1699
+      purpose: "Wave 1 run-log-write"
+    - issue: 1697
+      purpose: "Wave 0 inventory"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/observability/**"
+    - "apps/batch/src/batch/application/genre_sync/job.py"
+    - "apps/batch/src/batch/application/genre_sync/repositories.py"
+    - "apps/batch/src/batch/application/genre_sync/__main__.py"
+    - "apps/batch/tests/unit/application/test_api_call_log_writer.py"
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "security 方針により禁止"
+    "production unapproved live": "禁止"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "UUID 必須・source=rakuten・source_api / call_status CHECK"
+    - "secret strip（Observability §14.3）"
+    - "factory 切替が create_job_run_tracker 同型か"
+    - "代表 CLI 1 本のみで Wave 4 全配線が混入していないか"
+    - "Embedding source 拡張が混入していないか"
+    - "DDL 変更が混入していないか"
+    - "secret / URL 実値がログ・UT・docs に出ないか"
+    - "ギャップ一覧の Wave 3 進捗が事実か"
+    - "Embedding / source CHECK が残ギャップとして明記されているか"
+  specialist_reviews:
+    docs: true
+    test: true
+
+notes:
+  - "Issue #1703 / Branch feature/task-1703-batch-observability-e4-api-call-log-write"
+  - "DDL source CHECK = rakuten のみ。Embedding（015）は残ギャップ"
+  - "commit / push / PR は親指示に従う"
