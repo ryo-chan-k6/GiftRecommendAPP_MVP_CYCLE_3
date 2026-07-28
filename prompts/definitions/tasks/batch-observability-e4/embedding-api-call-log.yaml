@@ -1,0 +1,250 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-observability-e4-embedding-api-call-log"
+  title: "batch-observability-e4:BATCH-015_api_call_log本配線"
+  summary: "Wave 5（§8.4 案 B）。DDL source/source_api 拡張後、BATCH-015 Embedding の api_call_log DB 本配線を必須化する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  epic_issue_number: 1636
+  epic_branch: "feature/epic-1636-batch-observability-e4"
+  related_issues:
+    - 1697
+    - 1699
+    - 1701
+    - 1703
+    - 1705
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Wave 4（#1705）で BATCH-001〜017 に Run/Phase/Error を適用。api_call DB は 001〜004 のみ。
+  BATCH-015 は in-memory api_call のみ（現行 DDL: source=rakuten CHECK / source_api 楽天系 4 値）。
+  Human 確定 §8.4 案 B（2026-07-28）: DDL 拡張 + 015 api_call DB を Wave 5 必須とする。
+  判断ログ: ai-logs/human-decisions/2026-07-28-batch-015-api-call-log-ddl-extension-must.md
+
+objective: |
+  api_call_log の source / source_api を Embedding 呼出に対応させ、BATCH-015 の
+  record_api_call を PostgresApiCallLogWriter へ本配線する。
+  secret・ベクトル全文・入力全文は禁止。UT + local Postgres 疎通（secret 非出力）。
+  raw_product_metadata / item_import_summary / fetch_cursor の CHECK は楽天系のまま維持。
+
+scope:
+  - "DDL migration: chk_api_call_log_source_mvp を rakuten|openai へ拡張"
+  - "DDL migration: chk_api_call_log_source_api に item_embedding を追加"
+  - "Postgres ENUM source_api に item_embedding を ADD VALUE（整合）"
+  - "packages/code-definitions/batch/source_api.yaml / enum定義書 / api_call_log 定義書更新"
+  - "Observability 設計書 §14・ギャップ一覧（Wave 5 完了）更新"
+  - "ALLOWED_SOURCE_APIS / writer が source=openai を受けられること（既定は楽天呼び出しで rakuten）"
+  - "BATCH-015 record_api_call → PostgresApiCallLogWriter（UUID・status/latency/model メタのみ）"
+  - "UT（CHECK 許可値 / 015 wiring / secret strip）+ 実 DB 疎通"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "BATCH-018 / 019"
+  - "MOD-BATCH-043 / 044"
+  - "raw_product_metadata / item_import_summary / fetch_cursor の source_api CHECK 拡張"
+  - "本番 OpenAI 実呼出の強制（scaffold-first 維持。live は既存フラグ任意）"
+  - "親 schedule（#1637）"
+  - "Epic→develop PR"
+  - "CI 既定 live / production 無承認"
+  - "Wave 4（#1705）未完了のままの実装着手"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-015_Item Embedding生成バッチ仕様書.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-28-batch-015-api-call-log-ddl-extension-must.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/observability/api_call_log.py"
+      required: true
+    - path: "apps/batch/src/batch/application/item_embedding/**"
+      required: true
+    - path: "supabase/migrations/20260617120000_initial_schema.sql"
+      required: true
+    - path: "packages/code-definitions/batch/source_api.yaml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/database/enum定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/batch/BATCH-015_Item Embedding生成バッチ仕様書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "supabase/migrations/*_api_call_log_embedding_source.sql"
+      action: "create"
+      required: true
+    - path: "packages/code-definitions/batch/source_api.yaml"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/observability/api_call_log.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_embedding/**"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_api_call_log_writer.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_embedding*.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-observability-e4/embedding-api-call-log.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-observability-e4/embedding-api-call-log/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "DDL migration（source / source_api）"
+  - "code-definition / 定義書更新"
+  - "BATCH-015 api_call_log DB 本配線"
+  - "UT + 実 DB 疎通"
+  - "ギャップ一覧 Wave 5 完了反映"
+
+acceptance_criteria:
+  - "api_call_log に source=openai / source_api=item_embedding で INSERT できる"
+  - "source=rakuten の既存 001〜004 経路が回帰しない"
+  - "raw_product_metadata / item_import_summary / fetch_cursor の CHECK を変えていない"
+  - "015 の record_api_call が Postgres 時に DB 書込する（UUID・secret/ベクトル非含有）"
+  - "ALLOWED_SOURCE_APIS に item_embedding が含まれる"
+  - "UT が緑"
+  - "実 DB 疎通結果が secret なしで報告される（または skip 理由明示）"
+  - "ギャップ一覧に Wave 5 完了・015 api_call DB 本配線が事実として記載されている"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+  - "Wave 4（#1705）が親 Epic Branch に merge 済みであること（着手条件）"
+
+branch:
+  no_branch: true
+  name: null
+  summary: "batch-observability-e4-embedding-api-call-log"
+  base: "feature/epic-1636-batch-observability-e4"
+  target: "feature/epic-1636-batch-observability-e4"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-18"
+
+issue:
+  number: 1710
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1636
+      purpose: "親 Epic"
+  issues:
+    - issue: 1705
+      purpose: "Wave 4 batch-apply-001-017（着手前に親 Epic Branch へ merge 必須）"
+    - issue: 1703
+      purpose: "Wave 3 api-call-log-write"
+  blocking: true
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "supabase/migrations/**"
+    - "packages/code-definitions/batch/source_api.yaml"
+    - "apps/batch/src/batch/application/observability/api_call_log.py"
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - "docs/06_実装設計/database/api_call_log_テーブル定義書.md"
+    - "docs/06_実装設計/database/enum定義書.md"
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+    - "強制 OpenAI live HTTP"
+  skip_reason:
+    "CI default live": "security 方針により禁止"
+    "production unapproved live": "禁止"
+    "強制 OpenAI live HTTP": "scaffold-first。DB 疎通は writer INSERT で足りる"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "source=openai / source_api=item_embedding の採否と定義書整合"
+    - "楽天系 CHECK（raw / summary / fetch_cursor）を壊していないか"
+    - "015 配線が secret・ベクトル全文を出さないか"
+    - "既存 001〜004 api_call 回帰"
+    - "migration が可逆・安全か（DROP CONSTRAINT → ADD）"
+    - "Wave 4 merge 後に着手しているか"
+    - "ギャップ一覧 Wave 5 完了が事実か"
+  specialist_reviews:
+    docs: true
+    test: true
+
+human_decision_points:
+  - "source 追加値名を openai でよいか（Marketplace の item.source と別概念であることの定義書明示）"
+  - "source_api 追加値名を item_embedding でよいか（embedding との表記差）"
+
+stop_conditions:
+  - "Wave 4（#1705）が未 merge のまま実装が必要に見える"
+  - "raw / summary / fetch_cursor の CHECK 拡張が必要に見える"
+  - "production 無承認 live が必要に見える"
+
+notes:
+  - "Issue #1710 / §8.4 Human 確定: Wave 5 Must。起票時点では no-branch（Wave 4 #1705 完了後に Branch 作成）"
+  - "推奨値 source=openai / source_api=item_embedding は Human Review で最終確認"
+  - "commit / push / PR は親 Orchestrator 指示に従う"

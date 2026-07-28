@@ -137,13 +137,17 @@ epic_scope:
     - "docs/05_アプリケーション設計/アプリ/batch/**"
     - "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
     - "docs/06_実装設計/database/**"
+    - "docs/06_実装設計/batch/BATCH-015_Item Embedding生成バッチ仕様書.md"
     - "apps/batch/src/batch/**"
     - "apps/batch/tests/**"
     - "apps/batch/pyproject.toml"
     - "apps/batch/uv.lock"
+    - "supabase/migrations/**"
+    - "packages/code-definitions/batch/**"
     - "prompts/definitions/epics/batch-observability-e4/**"
     - "prompts/definitions/tasks/batch-observability-e4/**"
     - "prompts/definitions/reviews/batch-observability-e4/**"
+    - "ai-logs/human-decisions/**"
     - ".env.example"
   forbidden_paths:
     - ".github/workflows/batch-*-orchestrator.yml"
@@ -156,7 +160,8 @@ epic_scope:
     - "run-log-write"
     - "phase-error-write"
     - "api-call-log-write"
-    - "representative-batch-apply"
+    - "batch-apply-001-017"
+    - "embedding-api-call-log"
 
 dependencies:
   epics:
@@ -171,9 +176,10 @@ parallel_control:
   notes: "第1 Task は inventory。実装 Wave は棚卸し後に分割。"
 
 human_decision_points:
-  - "E4 必須最小セット（どの Batch まで揃えるか）"
-  - "api_call_log を E4 必須に含めるか"
-  - "#1623 / 書込 Epic との着手順（現状は SELECT・書込完了済み）"
+  - "E4 必須最小セット（どの Batch まで揃えるか）→ §8.1 案 C 確定"
+  - "api_call_log を E4 必須に含めるか → §8.2 Must 確定"
+  - "#1623 / 書込 Epic との着手順 → §8.3 案 B 確定・解除済み"
+  - "BATCH-015 api_call DB → §8.4 案 B（Wave 5 Must）確定。source/source_api 追加値名は Wave 5 HR"
 
 stop_conditions:
   - "正本 docs 間で観測 IF / モジュール境界が矛盾する"
