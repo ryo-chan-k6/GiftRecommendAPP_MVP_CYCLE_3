@@ -1,0 +1,180 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-deploy-config"
+  title: "deploy-config:デプロイ設定書作成"
+  summary: "MVP のホスティング／Redis（Upstash）／Secret 配置先をデプロイ設定書として正本化する。Human 確定: Upstash Redis。"
+  phase: "14_リリース"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue: "[Epic]: リリース準備"
+  epic_issue_number: 144
+  epic_branch: null
+  related_issues:
+    - 146
+    - 144
+    - 1686
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  旧パス docs/09_リリース/デプロイ設定書.md。現行は docs/14_リリース。
+  Human が MVP 簡易 stg / prod の Redis を Upstash と確定（2026-07-28）。
+  親 #144 は no-branch のため PR target は develop。
+
+objective: |
+  デプロイ設定書を正本として作成し、Upstash を stg/prod Redis の採用として固定する。
+  secret 実値は書かない。実インスタンス作成は Human。
+
+scope:
+  - "デプロイ設定書の作成（Web/API/Reco/Batch/DB/Storage/Redis）"
+  - "Redis = Upstash（stg/prod 分離）の正本化"
+  - "docs/14 README リンク"
+  - "簡易stg構築手順の Redis 行更新（最小）"
+  - "Human decision log（Upstash）"
+
+out_of_scope:
+  - "secret 実値の登録・記載"
+  - "ホスティング / Upstash 実インスタンス作成そのもの"
+  - "infra/*/ への本番 yaml 本配置"
+  - "#145 / #147 本作業"
+  - "apps/** / OpenAPI / workflow 実変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/システム物理構成図.md"
+      required: true
+      purpose: "ホスティング割当"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "Redis 役割"
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+      purpose: "REDIS_URL 等"
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+      purpose: "構築手順との接続"
+
+output:
+  docs:
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      action: "create"
+      required: true
+    - path: "docs/14_リリース/README.md"
+      action: "update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/2026-07-28-upstash-redis-adoption.md"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "デプロイ設定書.md"
+  - "Upstash Human decision log"
+  - "簡易stg構築手順の Redis 行更新"
+
+acceptance_criteria:
+  - "docs/14_リリース/デプロイ設定/デプロイ設定書.md が存在する"
+  - "Upstash が stg/prod Redis の採用として明記されている"
+  - "secret 実値が含まれていない"
+  - "Related to #146"
+  - "PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "deploy-config"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "14_リリース"
+    status: "In Progress"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 146
+      purpose: "本作業 Issue"
+    - number: 144
+      purpose: "親 Epic（no-branch）"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+    - "docs/14_リリース/README.md"
+    - "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+    - "ai-logs/human-decisions/2026-07-28-upstash-redis-adoption.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "デプロイ設定 docs のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Upstash が stg/prod Redis 採用として明記されているか"
+    - "secret 実値がないか"
+    - "物理構成・環境変数定義と矛盾していないか"
+    - "Related to #146、PR target が develop か"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "デプロイ設定書の粒度が十分か（yaml 本配置は後続でよいか）"
+
+notes:
+  - "Redis プロバイダ比較の Human 確定は Upstash（2026-07-28）"
+  - "実構築は簡易stg構築手順の Human 実施欄"
