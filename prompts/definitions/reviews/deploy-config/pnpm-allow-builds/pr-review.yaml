@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-deploy-config-pnpm-allow-builds-pr"
+  title: "pnpm allowBuilds PRレビュー"
+  summary: "pnpm 11 allowBuilds / Render Build 正本化 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1718
+  task_definition: "prompts/definitions/tasks/deploy-config/pnpm-allow-builds.yaml"
+  source_branch: "chore/task-1718-pnpm-allow-builds"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]deploy-config:デプロイ設定書"
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: false
+  project_operation: true
+
+review_points:
+  - "allowBuilds があるか"
+  - "Render Build に暫定フラグが残っていないか"
+  - "Related to #1718、PR target develop か"
+
+notes:
+  - "PR 番号確定後に target.pr を更新してよい"

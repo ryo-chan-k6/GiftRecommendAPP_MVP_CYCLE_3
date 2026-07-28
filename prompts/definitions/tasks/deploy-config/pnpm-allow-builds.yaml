@@ -1,0 +1,156 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-deploy-config-pnpm-allow-builds"
+  title: "deploy-config-pnpm-allow-builds:pnpm11 allowBuilds対応"
+  summary: "pnpm 11 の ERR_PNPM_IGNORED_BUILDS を allowBuilds で恒久対応し、Render API の Build/Start 正本を記載する。"
+  phase: "14_リリース"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-deploy-config"
+  epic_issue: "[Epic]deploy-config:デプロイ設定書"
+  epic_issue_number: 146
+  epic_branch: null
+  related_issues:
+    - 1718
+    - 146
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Render API stg デプロイで pnpm 11 が esbuild/sharp/unrs-resolver の
+  build scripts 未承認により ERR_PNPM_IGNORED_BUILDS で失敗。
+  暫定 strict-dep-builds=false ではなく allowBuilds 恒久対応。
+
+objective: |
+  pnpm-workspace.yaml に allowBuilds を追加し、infra/render に推奨 Build/Start を正本化する。
+
+scope:
+  - "pnpm-workspace.yaml の allowBuilds"
+  - "infra/render/README.md の Build/Start・Health Check 記載"
+  - "デプロイ設定書への最小参照更新"
+
+out_of_scope:
+  - "Render Dashboard 実操作"
+  - "apps/** の挙動変更"
+  - "render.yaml IaC 本配置"
+
+input:
+  docs:
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      required: true
+      purpose: "API=Render 正本"
+    - path: "infra/render/README.md"
+      required: true
+      purpose: "更新対象"
+
+output:
+  docs:
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "pnpm-workspace.yaml"
+      action: "update"
+      required: true
+    - path: "infra/render/README.md"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+acceptance_criteria:
+  - "allowBuilds に esbuild / sharp / unrs-resolver がある"
+  - "infra/render に暫定フラグなしの Build Command がある"
+  - "Related to #1718"
+  - "PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "pnpm-allow-builds"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "14_リリース"
+    status: "In Progress"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "infra"
+
+dependencies:
+  epics:
+    - id: "epic-deploy-config"
+      purpose: "親 #146"
+  issues:
+    - number: 1718
+      purpose: "本作業"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "pnpm-workspace.yaml"
+    - "infra/render/README.md"
+    - "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "pnpm install smoke（可能なら）"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "設定・docs のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "allowBuilds が恒久対応として十分か"
+    - "Render Build Command から暫定フラグが除かれているか"
+    - "Related to #1718、親 #146"
+  specialist_reviews:
+    docs: true
+    security: false
+
+human_decision_points:
+  - "merge 後に Human が Render Dashboard の Build Command を正本へ戻すこと"
+
+notes:
+  - "Human は merge 後に Render の Build Command を infra/render README どおりへ更新する"
