@@ -373,6 +373,7 @@ class FeatureNormalizationJob:
             ItemMeaningUpsertRow(
                 item_id=seed.item_id,
                 semantic_config_version_id=config.semantic_config_version_id,
+                feature_normalization_version_id=config.feature_normalization_version_id,
                 item_social=meaning.item_social,
                 item_symbolic=meaning.item_symbolic,
                 generated_at=run_at,

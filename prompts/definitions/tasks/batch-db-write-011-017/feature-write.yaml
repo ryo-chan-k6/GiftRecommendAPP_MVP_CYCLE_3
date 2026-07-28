@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-write-011-017-feature-write"
+  title: "batch-db-write-011-017:feature書込本配線"
+  summary: "Wave 1 として BATCH-011 claim/status と BATCH-012 item_feature UPSERT（IF-013）を本番 SQL で本配線する。IF-012 input UPSERT は触らない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-write-011-017:BATCH-011〜017書込本格化残"
+  epic_issue_number: 1635
+  epic_branch: "feature/epic-1635-batch-db-write-011-017"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  E2 T4b で IF-012 item_feature_input UPSERT は完了済み。
+  BATCH-011 claim/status と BATCH-012 item_feature（IF-013）は write_rows 偽 op のまま。
+  #1635 Wave 1 で本番 SQL 本配線する。
+
+objective: |
+  claim_or_continue / update_queue_status（BATCH-011/012）と upsert_item_feature（IF-013）を
+  DbWriter 本番 SQL で本配線する。IF-012 input UPSERT と LLM 本接続は禁止。
+
+scope:
+  - "BATCH-011 claim: semantic+processing は DB no-op。feature+queued は update_rows（条件付き）"
+  - "BATCH-011 status: keep_processing は DB no-op。終端は update_rows"
+  - "BATCH-012 claim/status: 同上パターン"
+  - "IF-013 item_feature: upsert_rows conflict 5列 / update raw_feature_value+generated_at"
+  - "偽 op マーカー（continue_processing / claim / update_status / keep_processing / if_db_batch_013_upsert）廃止"
+  - "IF-012 item_feature_input UPSERT は触らない（E2 済み）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "実 DB 疎通（secret なし。CI 既定 live 禁止）"
+  - "IF-DB ギャップ一覧 IF-013 + claim/status 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "IF-012 item_feature_input UPSERT 再実装"
+  - "BATCH-013+ / embedding / metrics / summary"
+  - "LLM / Embedding API 本接続"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-012_Item Feature生成バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/feature_input_hash/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_feature/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/feature_input_hash/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_feature/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_feature_input_hash.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_feature.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-011-017/feature-write.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-write-011-017/feature-write/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "011/012 claim/status + IF-013 item_feature UPSERT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "claim continue が DB no-op、feature claim が update_rows"
+  - "終端 status が update_rows、keep_processing が DB no-op"
+  - "item_feature が upsert_rows（conflict 5列）"
+  - "偽 op マーカーが残っていない"
+  - "IF-012 input UPSERT を再実装していない"
+  - "LLM 本接続を混入していない"
+  - "実 DB 疎通結果が PR に記録（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-011-017-feature-write"
+  base: "feature/epic-1635-batch-db-write-011-017"
+  target: "feature/epic-1635-batch-db-write-011-017"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-27"
+    due_date: "2026-08-06"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1635
+      purpose: "親 Epic"
+  issues: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/tests/unit/application/test_feature_input_hash.py"
+    - "apps/batch/tests/unit/application/test_item_feature.py"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "update_rows / upsert_rows が本番 SQL か"
+    - "claim continue no-op / feature claim 条件が正しいか"
+    - "成功時 processing 維持（DB no-op）か"
+    - "item_feature conflict 5列 / update 列が正しいか"
+    - "op / normalized_feature_value / item_feature_id を payload に含めていないか"
+    - "IF-012 input UPSERT を再実装していないか"
+    - "LLM 本接続が混入していないか"
+    - "実 DB 疎通が記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic #1635 Wave 1。IF-012 は触らない"
+  - "ギャップ一覧 IF-DB-BATCH-013 = item_feature（BATCH-012）"

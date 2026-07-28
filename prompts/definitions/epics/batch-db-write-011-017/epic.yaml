@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-db-write-011-017"
+  title: "batch-db-write-011-017:BATCH-011〜017書込本格化残"
+  summary: "BATCH-011〜017 のうち未本格化の書込を本配線する。012/015 input UPSERT（E2）と 009/010（#1634）は除外。VEC（item_embedding）は本 Epic に含める（推奨案）。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  E2 T4b で IF-012 / IF-015 の中間 input UPSERT は完了。
+  #1634 で queue / semantic 書込完了後、feature → embedding → metrics → summary の書込残がブロッカー。
+  機能・領域単位 Epic（例外）。Issue §11 の粒度・VEC は推奨案で起動し、Human Review で最終確認。
+
+objective: |
+  BATCH-011〜017 の未配線書込を本番 SQL（upsert/update）で本配線し、
+  feature / embedding / 集計系の本線書込を実 DB で通す。develop 統合は本 Epic PR のみ。
+
+scope:
+  - "Wave 1: BATCH-011 claim/status + BATCH-012 item_feature UPSERT（IF-013）"
+  - "Wave 2: BATCH-013 normalize + item_meaning（IF-014）"
+  - "Wave 3: BATCH-014 claim/status + BATCH-015 item_embedding（IF-VEC-001）"
+  - "Wave 4: BATCH-016 distribution metrics + BATCH-017 import_summary"
+  - "偽 write マーカー（op=claim 等）の廃止"
+  - "UT + 実装 Task ごとの実 DB 疎通（local/dev/staging）"
+  - "IF-DB ギャップ一覧の進捗反映"
+  - "secret / .env 実値禁止"
+
+out_of_scope:
+  - "012/015 input UPSERT の再実装（E2 済み）"
+  - "DB SELECT 本配線（#1623）"
+  - "005/007/008/009/010 書込再実装"
+  - "Semantic LLM / Embedding API 本接続（E3）"
+  - "E4 / 親 workflow schedule（#1636 / #1637）"
+  - "018 / 019 本格化"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: false
+    - path: "docs/06_実装設計/batch/BATCH-012_Item Feature生成バッチ仕様書.md"
+      required: false
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/feature_input_hash/**"
+      required: false
+    - path: "apps/batch/src/batch/application/item_feature/**"
+      required: false
+    - path: "apps/batch/src/batch/application/feature_normalization/**"
+      required: false
+    - path: "apps/batch/src/batch/application/embedding_input_hash/**"
+      required: false
+    - path: "apps/batch/src/batch/application/item_embedding/**"
+      required: false
+    - path: "apps/batch/src/batch/application/distribution_metrics/**"
+      required: false
+    - path: "apps/batch/src/batch/application/import_summary/**"
+      required: false
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/**"
+      action: "update"
+      required: false
+    - path: "apps/batch/tests/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/epics/batch-db-write-011-017/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-011-017/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-db-write-011-017/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "Wave 1〜4 Task"
+  - "Epic PR → develop"
+
+acceptance_criteria:
+  - "Epic Branch が作成されている（no-branch 解除）"
+  - "対象書込が実 DB 疎通で成功し PR に記録（secret なし）または Backlog 分離が明示"
+  - "012/015 input / LLM・Embedding API 本接続を混入していない"
+  - "Epic PR target が develop"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-011-017"
+  name: "feature/epic-1635-batch-db-write-011-017"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-27"
+    due_date: "2026-08-15"
+
+issue:
+  number: 1635
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/**"
+    - "docs/06_実装設計/database/**"
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/src/batch/application/import_summary/**"
+    - "apps/batch/src/batch/infrastructure/db/**"
+    - "apps/batch/tests/**"
+    - "prompts/definitions/epics/batch-db-write-011-017/**"
+    - "prompts/definitions/tasks/batch-db-write-011-017/**"
+    - "prompts/definitions/reviews/batch-db-write-011-017/**"
+  forbidden_paths:
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "feature-write"
+    - "normalize-write"
+    - "embedding-write"
+    - "metrics-summary-write"
+
+dependencies:
+  epics:
+    - issue: 1634
+      purpose: "009/010 書込 MERGED"
+    - issue: 1623
+      purpose: "SELECT 本配線 MERGED"
+    - issue: 1561
+      purpose: "DbWriter / 012/015 input UPSERT"
+  issues: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "011〜017 書込が本番 SQL か"
+    - "012/015 input 再実装・LLM/Embedding API 本接続が混入していないか"
+    - "実 DB 疎通が記録されているか"
+    - "Epic PR target が develop"
+    - "Issue §11: 1 Epic 粒度・VEC 含めが妥当か（推奨案で起動）"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "IF 番号と BATCH 番号は一致しない（例: BATCH-012 書込 = IF-013 item_feature）。"
+  - "VEC 含めは Issue §11 への推奨回答。Human が分離を求めたら Wave 3 を別 Epic 化。"
+  - "Wave 1=011/012、Wave 2=013、Wave 3=014/015、Wave 4=016/017。"

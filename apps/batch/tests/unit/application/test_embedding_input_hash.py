@@ -126,7 +126,7 @@ def test_context_excludes_semantic_concept() -> None:
 
 
 def test_primary_path_hashes_and_keeps_processing() -> None:
-    repos, _db = _repos()
+    repos, db = _repos()
     result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
 
     assert result.batch_id == BATCH_ID
@@ -135,6 +135,28 @@ def test_primary_path_hashes_and_keeps_processing() -> None:
     assert result.skipped_count == 0
     assert repos.queues["igq_1"]["queue_status"] == "processing"
     assert set(EMBEDDING_INPUT_HASH_PHASES).issubset(set(result.completed_phases))
+    # claim は update_rows。keep_processing は DB no-op（終端 update なし）。
+    claim_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "processing"
+    ]
+    assert len(claim_updates) == 1
+    assert claim_updates[0]["equals"] == (
+        ("item_generation_queue_id", "igq_1"),
+        ("queue_status", "queued"),
+        ("generation_type", "embedding"),
+    )
+    terminal_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") != "processing"
+    ]
+    assert terminal_updates == []
+    assert db.write_calls == []
+    assert all("op" not in str(c.get("set_values", {})) for c in db.update_calls)
 
 
 def test_handoff_recorded_without_item_embedding_write() -> None:
@@ -157,13 +179,16 @@ def test_handoff_recorded_without_item_embedding_write() -> None:
 
 
 def test_semantic_continuation_is_processed() -> None:
-    repos, _db = _repos(
+    repos, db = _repos(
         queues=[_queue(qid="igq_sem", generation_type="semantic", queue_status="processing")],
     )
     result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
 
     assert result.hashed_count == 1
     assert repos.queues["igq_sem"]["queue_status"] == "processing"
+    # processing 継続は DB no-op（偽 op=continue_processing 廃止）
+    assert "item_generation_queue" not in {c["table"] for c in db.update_calls}
+    assert db.write_calls == []
 
 
 def test_succeeded_queue_is_not_targeted() -> None:
@@ -188,7 +213,7 @@ def test_queue_insert_is_never_performed() -> None:
 def test_skip_when_embedding_already_generated() -> None:
     ctx = _context()
     digest = compute_embedding_input_hash(ctx)
-    repos, _db = _repos(
+    repos, db = _repos(
         embeddings={
             "it_1": [
                 ExistingEmbedding(
@@ -204,6 +229,14 @@ def test_skip_when_embedding_already_generated() -> None:
     assert result.hashed_count == 0
     assert repos.queues["igq_1"]["queue_status"] == "skipped"
     assert len(result.handoff_records) == 0
+    skip_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "skipped"
+    ]
+    assert len(skip_updates) == 1
+    assert skip_updates[0]["equals"] == (("item_generation_queue_id", "igq_1"),)
 
 
 def test_no_skip_when_hash_differs() -> None:
@@ -246,12 +279,19 @@ def test_no_skip_when_model_version_differs() -> None:
 
 
 def test_forced_hash_failure_marks_failed() -> None:
-    repos, _db = _repos()
+    repos, db = _repos()
     result = EmbeddingInputHashJob(repositories=repos, force_hash_fail=True).run(job_run_id="r1")
 
     assert result.failed_count == 1
     assert "GRS-BAT-007" in result.error_codes
     assert repos.queues["igq_1"]["queue_status"] == "failed"
+    fail_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "failed"
+    ]
+    assert len(fail_updates) == 1
 
 
 def test_missing_item_marks_failed() -> None:
@@ -365,21 +405,40 @@ def test_list_target_queues_and_load_item_via_db_reader() -> None:
 
 
 def test_feature_continuation_is_processed() -> None:
-    repos, _db = _repos(
+    repos, db = _repos(
         queues=[_queue(qid="igq_feat", generation_type="feature", queue_status="processing")],
     )
     result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
     assert result.hashed_count == 1
     assert repos.queues["igq_feat"]["queue_status"] == "processing"
+    assert "item_generation_queue" not in {c["table"] for c in db.update_calls}
 
 
 def test_embedding_processing_continuation_is_processed() -> None:
-    repos, _db = _repos(
+    repos, db = _repos(
         queues=[_queue(qid="igq_emb_p", generation_type="embedding", queue_status="processing")],
     )
     result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="r1")
     assert result.hashed_count == 1
     assert repos.queues["igq_emb_p"]["queue_status"] == "processing"
+    # embedding+processing 継続も DB no-op
+    assert "item_generation_queue" not in {c["table"] for c in db.update_calls}
+
+
+def test_claim_conflict_returns_none_when_rows_affected_zero() -> None:
+    """embedding claim で rows_affected==0 なら None（競合 skip）。"""
+
+    from batch.infrastructure.db import DbWriteResult
+
+    repos, _ = _repos()
+
+    def _zero_update(table: str, *, set_values, equals):  # noqa: ANN001
+        return DbWriteResult(rows_affected=0, table=table)
+
+    repos.db_writer.update_rows = _zero_update  # type: ignore[method-assign]
+    claimed = repos.claim_or_continue(item_generation_queue_id="igq_1")
+    assert claimed is None
+    assert repos.queues["igq_1"]["queue_status"] == "queued"
 
 
 def test_semantic_queued_is_not_targeted() -> None:

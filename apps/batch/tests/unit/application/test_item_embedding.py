@@ -153,7 +153,7 @@ def test_serialize_embedding_input_is_stable() -> None:
 
 
 def test_generate_upsert_and_queue_succeeded() -> None:
-    repos, _db = _repos()
+    repos, db = _repos()
     result = _run(repos)
     assert result.status == "succeeded"
     assert result.generated_count == 1
@@ -173,6 +173,27 @@ def test_generate_upsert_and_queue_succeeded() -> None:
     assert "finalize" in result.completed_phases
     assert set(ITEM_EMBEDDING_PHASES).issubset(set(result.completed_phases))
     assert BATCH_ID == "BATCH-015"
+    # processing 継続は DB no-op。終端は update_rows。item_embedding は upsert_rows。
+    assert db.write_calls == []
+    emb_upserts = [c for c in db.upsert_calls if c["table"] == "item_embedding"]
+    assert len(emb_upserts) == 1
+    assert emb_upserts[0]["conflict_columns"] == (
+        "item_id",
+        "model_version_id",
+        "embedding_input_hash",
+    )
+    assert emb_upserts[0]["update_columns"] == (
+        "embedding_source_type",
+        "embedding_vector",
+        "generated_at",
+    )
+    terminal_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "succeeded"
+    ]
+    assert len(terminal_updates) == 1
     # api_call_log にベクトル全文・secret なし
     for log in repos.api_call_logs:
         assert "embedding_vector" not in log
@@ -244,12 +265,25 @@ def test_semantic_continuation_reaches_succeeded() -> None:
 
 
 def test_embedding_queued_claim_then_succeeded() -> None:
-    repos, _ = _repos(
+    repos, db = _repos(
         queues=[_queue(queue_status="queued")],
     )
     result = _run(repos)
     assert result.claimed_count == 1
     assert repos.queues["igq_1"]["queue_status"] == "succeeded"
+    claim_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "processing"
+    ]
+    assert len(claim_updates) == 1
+    assert claim_updates[0]["equals"] == (
+        ("item_generation_queue_id", "igq_1"),
+        ("queue_status", "queued"),
+        ("generation_type", "embedding"),
+    )
+    assert all("op" not in str(c.get("set_values", {})) for c in db.update_calls)
 
 
 # --- partial / concurrent ---------------------------------------------------
@@ -531,16 +565,34 @@ def test_config_keys_present() -> None:
 # --- §16 拡充: IF-VEC-BATCH-001 冪等・再実行収束 ---------------------------
 
 
-def test_upsert_op_is_if_vec_batch_001() -> None:
+def test_upsert_passes_vector_literal_to_writer() -> None:
+    """IF-VEC-BATCH-001: upsert_rows に embedding_vector（pgvector literal）を含める。"""
+
     repos, db = _repos()
     _run(repos)
-    emb_writes = [c for c in db.write_calls if c["table"] == "item_embedding"]
-    assert emb_writes
-    payload = emb_writes[0]["rows"][0]
-    assert payload["op"] == "if_vec_batch_001_upsert"
-    assert payload["embedding_dimension"] == EMBEDDING_DIMENSION
-    assert "_embedding_vector" not in payload
-    assert "embedding_vector" not in payload
+    emb_upserts = [c for c in db.upsert_calls if c["table"] == "item_embedding"]
+    assert emb_upserts
+    payload = emb_upserts[0]["rows"][0]
+    assert "op" not in payload
+    assert "has_vector" not in payload
+    assert "embedding_dimension" not in payload
+    assert "item_embedding_id" not in payload
+    assert "embedding_vector" in payload
+    vector = payload["embedding_vector"]
+    assert isinstance(vector, str)
+    assert vector.startswith("[") and vector.endswith("]")
+    assert vector.count(",") == EMBEDDING_DIMENSION - 1
+    assert emb_upserts[0]["conflict_columns"] == (
+        "item_id",
+        "model_version_id",
+        "embedding_input_hash",
+    )
+    assert emb_upserts[0]["update_columns"] == (
+        "embedding_source_type",
+        "embedding_vector",
+        "generated_at",
+    )
+    assert db.write_calls == []
 
 
 def test_same_three_key_rerun_converges_to_skip() -> None:
@@ -827,7 +879,7 @@ def test_if_db_batch_016_not_used() -> None:
     result = _run(repos)
     assert result.distribution_metric_write_count == 0
     assert repos.distribution_metric_write_count == 0
-    tables = {c["table"] for c in db.write_calls}
+    tables = {c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}
     assert "item_embedding_distribution_metric" not in tables
     assert "embedding_distribution_metric" not in tables
 
@@ -908,13 +960,42 @@ def test_fixture_and_logs_have_no_secret_like_values() -> None:
         assert "embedding_vector" not in text
         for token in forbidden:
             assert token not in text
-    for call in db.write_calls:
+    for log in repos.phase_logs + repos.error_logs:
+        text = str(log)
+        assert "embedding_vector" not in text
+        # ログ経路に 1536 次元の vector 全文を出さない
+        assert text.count(",") < 100
+    for call in db.upsert_calls:
+        if call["table"] != "item_embedding":
+            continue
         for row in call["rows"]:
+            assert "op" not in row
             assert "_embedding_vector" not in row
-            assert "embedding_vector" not in row
-            row_text = str(row).lower()
+            assert "has_vector" not in row
+            assert "embedding_dimension" not in row
+            # Writer には vector（literal）を渡す（本番 SQL 必須）
+            assert "embedding_vector" in row
+            assert isinstance(row["embedding_vector"], str)
+            row_text = str({k: v for k, v in row.items() if k != "embedding_vector"}).lower()
             for token in forbidden:
                 assert token not in row_text
+    assert db.write_calls == []
+
+
+def test_claim_conflict_returns_none_when_rows_affected_zero() -> None:
+    """embedding claim で rows_affected==0 なら None（競合 skip）。"""
+
+    from batch.infrastructure.db import DbWriteResult
+
+    repos, _ = _repos(queues=[_queue(queue_status="queued")])
+
+    def _zero_update(table: str, *, set_values, equals):  # noqa: ANN001
+        return DbWriteResult(rows_affected=0, table=table)
+
+    repos.db_writer.update_rows = _zero_update  # type: ignore[method-assign]
+    claimed = repos.claim_or_continue(item_generation_queue_id="igq_1")
+    assert claimed is None
+    assert repos.queues["igq_1"]["queue_status"] == "queued"
 
 
 def test_module_constants_not_mod_batch_015_recheck() -> None:

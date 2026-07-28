@@ -5,7 +5,13 @@
 
 queue フィルタ（embedding∈{queued,processing} OR semantic|feature+processing）は
 equals 複数 fetch + in-process。genre/attrs/tags は DDL に無い → 空既定。
-書込本格化は out of scope。
+
+書込本配線（#1635 Wave 3 / #1690）:
+
+- ``claim_or_continue``: embedding+queued → ``update_rows``（条件付き）。
+  processing 継続（embedding/semantic/feature）は DB no-op
+- ``update_queue_status``: keep_processing は DB no-op。終端は ``update_rows``
+- ``record_hash_handoff``（IF-015）: 既存 ``upsert_rows`` 維持（E2 済・再実装しない）
 """
 
 from __future__ import annotations
@@ -276,6 +282,8 @@ class EmbeddingInputHashRepositories:
         item_generation_queue_id: str,
         started_at: datetime | None = None,
     ) -> QueueRow | None:
+        """embedding claim（条件付き UPDATE）/ processing 継続（DB no-op）。"""
+
         row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             return None
@@ -284,32 +292,23 @@ class EmbeddingInputHashRepositories:
         ts = started_at or datetime.now(UTC)
 
         if gen == "embedding" and status == "queued":
-            row["queue_status"] = "processing"
-            row["started_at"] = ts
-            self.db_writer.write_rows(
+            result = self.db_writer.update_rows(
                 "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "started_at": ts,
-                        "op": "claim",
-                    },
+                set_values={"queue_status": "processing", "started_at": ts},
+                equals=(
+                    ("item_generation_queue_id", item_generation_queue_id),
+                    ("queue_status", "queued"),
+                    ("generation_type", "embedding"),
                 ),
             )
+            if result.rows_affected == 0:
+                return None
+            row["queue_status"] = "processing"
+            row["started_at"] = ts
             return self._row_to_queue(row)
 
         if status == "processing" and gen in {"embedding", "semantic", "feature"}:
-            self.db_writer.write_rows(
-                "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "op": "continue_processing",
-                    },
-                ),
-            )
+            # 既に processing。追加 UPDATE 不要（偽 op=continue_processing 廃止）。
             return self._row_to_queue(row)
 
         return None
@@ -414,37 +413,28 @@ class EmbeddingInputHashRepositories:
         error_message: str | None = None,
         keep_processing: bool = False,
     ) -> None:
+        """Queue status 更新。hash 成功時は processing 維持（DB no-op）。"""
+
         row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             raise KeyError(f"queue not found: {item_generation_queue_id}")
         if keep_processing:
-            self.db_writer.write_rows(
-                "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "op": "hash_success_keep_processing",
-                    },
-                ),
-            )
+            # 成功時: status は processing のまま。完了時刻は付けない（BATCH-015 継続）。
+            # 偽 op=hash_success_keep_processing 廃止。
             return
-        row["queue_status"] = queue_status
+
+        set_values: dict[str, object] = {"queue_status": queue_status}
         if completed_at is not None:
+            set_values["completed_at"] = completed_at
             row["completed_at"] = completed_at
         if error_message is not None:
+            set_values["error_message"] = error_message
             row["error_message"] = error_message
-        self.db_writer.write_rows(
+        row["queue_status"] = queue_status
+        self.db_writer.update_rows(
             "item_generation_queue",
-            (
-                {
-                    "item_generation_queue_id": item_generation_queue_id,
-                    "queue_status": queue_status,
-                    "completed_at": completed_at,
-                    "error_message": error_message,
-                    "op": "update_status",
-                },
-            ),
+            set_values=set_values,
+            equals=(("item_generation_queue_id", item_generation_queue_id),),
         )
 
     def record_phase(self, *, phase: str, status: str) -> None:

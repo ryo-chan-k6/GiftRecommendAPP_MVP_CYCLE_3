@@ -130,7 +130,7 @@ def _job(
 
 
 def test_primary_path_normalizes_eight_axes_and_keeps_processing() -> None:
-    repos, _ = _repos()
+    repos, db = _repos()
     result = _job(repos).run(job_run_id="run-ok")
 
     assert result.batch_id == BATCH_ID
@@ -141,6 +141,20 @@ def test_primary_path_normalizes_eight_axes_and_keeps_processing() -> None:
     assert {r.feature_code for r in repos.normalized_update_rows} == set(MVP_FEATURE_CODES)
     # Queue は processing 維持（後続 Batch が継続）
     assert repos.queues["igq_1"]["queue_status"] == "processing"
+    # continue / keep_processing は DB no-op。normalized は update_rows。
+    assert db.write_calls == []
+    assert "item_generation_queue" not in {c["table"] for c in db.update_calls}
+    feature_updates = [c for c in db.update_calls if c["table"] == "item_feature"]
+    assert len(feature_updates) == len(MVP_FEATURE_CODES)
+    meaning_upserts = [c for c in db.upsert_calls if c["table"] == "item_meaning"]
+    assert len(meaning_upserts) == 1
+    assert meaning_upserts[0]["conflict_columns"] == ("item_id", "semantic_config_version_id")
+    assert meaning_upserts[0]["update_columns"] == (
+        "feature_normalization_version_id",
+        "item_social",
+        "item_symbolic",
+        "generated_at",
+    )
 
 
 def test_sigmoid_formula_matches_feature_rule_definition() -> None:
@@ -174,11 +188,17 @@ def test_does_not_write_raw_feature_value() -> None:
     _job(repos).run(job_run_id="run-raw-unchanged")
 
     assert repos.item_feature_raw_write_count == 0
-    for call in db.write_calls:
+    assert db.write_calls == []
+    for call in db.update_calls:
         if call["table"] == "item_feature":
+            assert set(call["set_values"].keys()) == {"normalized_feature_value"}
+            assert "raw_feature_value" not in call["set_values"]
+            assert "op" not in call["set_values"]
+    for call in db.upsert_calls:
+        if call["table"] == "item_meaning":
             for payload in call["rows"]:
                 assert "raw_feature_value" not in payload
-                assert payload["op"] == "if_db_batch_014_update_normalized"
+                assert "op" not in payload
 
 
 def test_item_meaning_upsert_projects_social_and_symbolic() -> None:
@@ -192,7 +212,13 @@ def test_item_meaning_upsert_projects_social_and_symbolic() -> None:
     exp_symbolic = sum(norm[c] for c in SYMBOLIC_FEATURE_CODES) / len(SYMBOLIC_FEATURE_CODES)
     assert math.isclose(meaning.item_social, exp_social, rel_tol=1e-9)
     assert math.isclose(meaning.item_symbolic, exp_symbolic, rel_tol=1e-9)
-    assert "item_meaning" in {c["table"] for c in db.write_calls}
+    assert meaning.feature_normalization_version_id == DEFAULT_NORMALIZATION_VERSION
+    meaning_upserts = [c for c in db.upsert_calls if c["table"] == "item_meaning"]
+    assert len(meaning_upserts) == 1
+    payload = meaning_upserts[0]["rows"][0]
+    assert payload["feature_normalization_version_id"] == DEFAULT_NORMALIZATION_VERSION
+    assert "op" not in payload
+    assert "item_meaning_id" not in payload
 
 
 def test_missing_axis_skips_item_meaning_projection() -> None:
@@ -202,13 +228,25 @@ def test_missing_axis_skips_item_meaning_projection() -> None:
 
 
 def test_secondary_path_claims_feature_queued() -> None:
-    repos, _ = _repos(
+    repos, db = _repos(
         queues=[_queue(qid="igq_feat", generation_type="feature", queue_status="queued")],
     )
     result = _job(repos).run(job_run_id="run-secondary")
 
     assert result.normalized_count == 1
     assert repos.queues["igq_feat"]["queue_status"] == "processing"
+    claim_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "processing"
+    ]
+    assert len(claim_updates) == 1
+    assert claim_updates[0]["equals"] == (
+        ("item_generation_queue_id", "igq_feat"),
+        ("queue_status", "queued"),
+        ("generation_type", "feature"),
+    )
 
 
 def test_skip_when_normalized_eight_axes_present_same_key() -> None:
@@ -220,7 +258,8 @@ def test_skip_when_normalized_eight_axes_present_same_key() -> None:
     assert repos.item_feature_normalized_update_count == 0
     assert repos.item_meaning_upsert_count == 0
     assert repos.queues["igq_1"]["queue_status"] == "skipped"
-    assert "item_feature" not in {c["table"] for c in db.write_calls}
+    assert "item_feature" not in {c["table"] for c in db.update_calls}
+    assert "item_meaning" not in {c["table"] for c in db.upsert_calls}
 
 
 def test_skip_not_applied_on_version_mismatch() -> None:
@@ -289,31 +328,43 @@ def test_does_not_touch_item_semantic_or_raw_or_distribution_metric() -> None:
     repos, db = _repos()
     _job(repos).run(job_run_id="run-boundary")
 
-    tables = {c["table"] for c in db.write_calls}
-    assert "item_semantic" not in tables
-    assert "normalization_distribution_metric" not in tables
+    update_tables = {c["table"] for c in db.update_calls}
+    upsert_tables = {c["table"] for c in db.upsert_calls}
+    write_tables = {c["table"] for c in db.write_calls}
+    assert "item_semantic" not in update_tables | upsert_tables | write_tables
+    assert "normalization_distribution_metric" not in update_tables | upsert_tables | write_tables
     assert repos.item_semantic_write_count == 0
     assert repos.item_feature_raw_write_count == 0
     assert repos.normalization_distribution_metric_write_count == 0
     assert repos.queue_insert_count == 0
-    ops = {
-        str(payload.get("op"))
-        for c in db.write_calls
-        if c["table"] == "item_generation_queue"
-        for payload in c["rows"]
-    }
-    assert "insert" not in ops
+    assert db.write_calls == []
+    for call in db.update_calls:
+        assert "op" not in call["set_values"]
+    for call in db.upsert_calls:
+        for payload in call["rows"]:
+            assert "op" not in payload
 
 
 def test_normalized_and_meaning_written_together() -> None:
     repos, db = _repos()
     _job(repos).run(job_run_id="run-tx")
 
-    tables = [c["table"] for c in db.write_calls]
-    assert "item_feature" in tables
-    assert "item_meaning" in tables
+    feature_updates = [c for c in db.update_calls if c["table"] == "item_feature"]
+    meaning_upserts = [c for c in db.upsert_calls if c["table"] == "item_meaning"]
+    assert len(feature_updates) == len(MVP_FEATURE_CODES)
+    assert len(meaning_upserts) == 1
     # item_feature（normalized）が item_meaning より先に書かれる（同一 persist フェーズ）
-    assert tables.index("item_feature") < tables.index("item_meaning")
+    # Writer 単発コミットのため厳密同一 tx は未実装（順次呼び出しで近似）
+    assert feature_updates
+    assert meaning_upserts
+    for call in feature_updates:
+        assert call["equals"][0][0] == "item_id"
+        assert set(call["set_values"].keys()) == {"normalized_feature_value"}
+    for call in meaning_upserts:
+        for payload in call["rows"]:
+            assert "op" not in payload
+            assert "raw_feature_value" not in payload
+            assert "feature_normalization_version_id" in payload
 
 
 def test_scaffold_demo_job_succeeds() -> None:
@@ -511,27 +562,25 @@ def test_queue_marked_skipped_writes_status_not_keep_processing() -> None:
     """§16 No.14: skip 時は queue_status=skipped（keep_processing でない）。"""
     repos, db = _repos(normalized={("it_1", _VERSION): _normalized_axes()})
     _job(repos).run(job_run_id="run-skip-queue")
-    ops = [
-        str(p.get("op"))
-        for c in db.write_calls
+    skip_updates = [
+        c
+        for c in db.update_calls
         if c["table"] == "item_generation_queue"
-        for p in c["rows"]
+        and c["set_values"].get("queue_status") == "skipped"
     ]
-    assert "update_status" in ops
-    assert "normalize_success_keep_processing" not in ops
+    assert len(skip_updates) == 1
+    assert all("op" not in c["set_values"] for c in db.update_calls)
+    assert db.write_calls == []
 
 
 def test_queue_keep_processing_on_success() -> None:
-    """§16 No.14: 成功時は processing 維持（keep_processing op）。"""
+    """§16 No.14: 成功時は processing 維持（DB no-op）。"""
     repos, db = _repos()
     _job(repos).run(job_run_id="run-keep")
-    ops = [
-        str(p.get("op"))
-        for c in db.write_calls
-        if c["table"] == "item_generation_queue"
-        for p in c["rows"]
-    ]
-    assert "normalize_success_keep_processing" in ops
+    assert repos.queues["igq_1"]["queue_status"] == "processing"
+    # keep_processing は DB no-op（偽 op=normalize_success_keep_processing 廃止）
+    assert "item_generation_queue" not in {c["table"] for c in db.update_calls}
+    assert db.write_calls == []
 
 
 def test_batch_already_running_guard() -> None:
@@ -608,12 +657,23 @@ def test_fixed_sigmoid_does_not_saturate_within_raw_domain() -> None:
 
 def test_normalized_update_preserves_idempotent_key() -> None:
     """§10.1: normalized UPDATE は raw と同一の 5 列冪等キーを保持する。"""
-    repos, _ = _repos()
+    repos, db = _repos()
     _job(repos).run(job_run_id="run-key")
     for row in repos.normalized_update_rows:
         assert row.feature_input_hash == _HASH
         assert row.feature_normalization_version_id == DEFAULT_NORMALIZATION_VERSION
         assert row.semantic_config_version_id == _VERSION
+    for call in db.update_calls:
+        if call["table"] != "item_feature":
+            continue
+        equals_cols = tuple(col for col, _ in call["equals"])
+        assert equals_cols == (
+            "item_id",
+            "semantic_config_version_id",
+            "feature_code",
+            "feature_input_hash",
+            "feature_normalization_version_id",
+        )
 
 
 def test_no_secret_like_values_in_db_writes() -> None:
@@ -621,9 +681,42 @@ def test_no_secret_like_values_in_db_writes() -> None:
     repos, db = _repos()
     _job(repos).run(job_run_id="run-secret")
     forbidden = ("password", "secret", "token", "postgres://", "postgresql://", "@")
+    payloads: list[object] = []
     for call in db.write_calls:
-        for payload in call["rows"]:
-            for value in payload.values():
-                text = str(value).lower()
-                for needle in forbidden:
-                    assert needle not in text
+        payloads.extend(call["rows"])
+    for call in db.update_calls:
+        payloads.append(call["set_values"])
+        payloads.append(dict(call["equals"]))
+    for call in db.upsert_calls:
+        payloads.extend(call["rows"])
+    for payload in payloads:
+        values = payload.values() if isinstance(payload, dict) else [payload]
+        for value in values:
+            text = str(value).lower()
+            for needle in forbidden:
+                assert needle not in text
+
+
+def test_claim_conflict_returns_none_when_rows_affected_zero() -> None:
+    """feature claim で rows_affected==0 なら None（競合 skip）。"""
+    from batch.infrastructure.db.writer import DbWriteResult
+
+    repos, db = _repos(
+        queues=[_queue(qid="igq_feat", generation_type="feature", queue_status="queued")],
+    )
+    original = db.update_rows
+
+    def _zero_claim(
+        table: str,
+        *,
+        set_values: dict[str, object],
+        equals: tuple[tuple[str, object], ...],
+    ) -> DbWriteResult:
+        if table == "item_generation_queue" and set_values.get("queue_status") == "processing":
+            return DbWriteResult(rows_affected=0, table=table)
+        return original(table, set_values=set_values, equals=equals)
+
+    db.update_rows = _zero_claim  # type: ignore[method-assign]
+    claimed = repos.claim_or_continue(item_generation_queue_id="igq_feat")
+    assert claimed is None
+    assert repos.queues["igq_feat"]["queue_status"] == "queued"

@@ -6,7 +6,8 @@
 ``load_skip_fail`` / ``load_feature_embedding_progress`` は E4 観測横断が必要のため
 seed / 0 埋めを維持（フル配線は out of scope）。
 
-``item_import_summary`` INSERT SQL 本格化は out of scope（scaffold / stub 書込のみ）。
+``item_import_summary`` は IF-DB-BATCH-017 として ``DbWriter.upsert_rows``
+（``update_columns=()`` → ON CONFLICT DO NOTHING）で本配線する。
 
 - batch_run_log / api_call_log / product_diff_result / staging_item READ ONLY
 - item_import_summary INSERT + ON CONFLICT DO NOTHING（IF-DB-BATCH-017）のみ書込
@@ -56,6 +57,8 @@ _STAGING_COLUMNS = (
     "staging_item_id",
     "raw_metadata_id",
 )
+
+_SUMMARY_CONFLICT_COLUMNS = ("batch_run_id", "source_api")
 
 
 def _summary_key(row: ImportSummaryInsertRow) -> tuple[str, str]:
@@ -212,26 +215,36 @@ class ImportSummaryRepositories:
 
         Returns:
             True if a new row was inserted, False if conflict skipped (DO NOTHING).
+
+        scaffold / in-memory は既存キー判定を正とする（ScaffoldDbWriter は常に
+        ``rows_affected=len(rows)`` を返すため）。postgres は ``rows_affected``
+        （1=insert / 0=skip）を使う。
         """
 
         self.insert_attempt_count += 1
         key = _summary_key(row)
         existing_keys = {_summary_key(existing) for existing in self.summary_rows}
-        if key in existing_keys:
-            self.conflict_skip_count += 1
-            self.db_writer.write_rows(
-                "item_import_summary",
-                (self._row_payload(row, conflict_skipped=True),),
-            )
-            return False
 
-        self.summary_rows.append(row)
-        self.insert_applied_count += 1
-        self.db_writer.write_rows(
+        result = self.db_writer.upsert_rows(
             "item_import_summary",
-            (self._row_payload(row, conflict_skipped=False),),
+            (self._row_payload(row),),
+            conflict_columns=_SUMMARY_CONFLICT_COLUMNS,
+            update_columns=(),
         )
-        return True
+
+        if getattr(self.db_writer, "backend", None) == "postgres":
+            inserted = result.rows_affected >= 1
+        else:
+            inserted = key not in existing_keys
+
+        if inserted:
+            if key not in existing_keys:
+                self.summary_rows.append(row)
+            self.insert_applied_count += 1
+            return True
+
+        self.conflict_skip_count += 1
+        return False
 
     def record_phase(self, *, phase: str, status: str) -> None:
         """物理 phase_log。Import Summary 完了は summary_created。"""
@@ -286,9 +299,9 @@ class ImportSummaryRepositories:
         return tuple(rows)
 
     @staticmethod
-    def _row_payload(
-        row: ImportSummaryInsertRow, *, conflict_skipped: bool
-    ) -> dict[str, object]:
+    def _row_payload(row: ImportSummaryInsertRow) -> dict[str, object]:
+        """item_import_summary DDL 列のみ（PK omit 可。偽 op / conflict_skipped なし）。"""
+
         return {
             "batch_run_id": row.batch_run_id,
             "source": row.source,
@@ -302,7 +315,5 @@ class ImportSummaryRepositories:
             "failed_count": row.failed_count,
             "feature_generated_count": row.feature_generated_count,
             "embedding_generated_count": row.embedding_generated_count,
-            "summarized_at": row.summarized_at.isoformat(),
-            "op": "if_db_batch_017_insert",
-            "conflict_skipped": conflict_skipped,
+            "summarized_at": row.summarized_at,
         }

@@ -7,8 +7,8 @@
 | 文書種別 | E2 棚卸し正本（docs） |
 | 対象 | IF-DB-BATCH-001〜017 / 020 / 021 / IF-VEC-BATCH-001（001〜017 中心） |
 | 作成日 | 2026-07-22 |
-| 更新日 | 2026-07-27（#1633 Wave 1+2 MERGED・Epic PR 準備） |
-| 関連 Epic | [#1561](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1561) / 読取後続 [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) / 書込後続 [#1632](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1632) / [#1633](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1633) |
+| 更新日 | 2026-07-28（#1635 Wave 4 / #1692: IF-016/017 metrics・summary） |
+| 関連 Epic | [#1561](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1561) / 読取後続 [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) / 書込後続 [#1632](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1632) / [#1633](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1633) / [#1635](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1635) |
 | 関連 Task | [#1562](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1562)（T1） / [#1568](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1568)（T2） / [#1576](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1576)（T3） / [#1579](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1579)（T4a） / [#1583](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1583)（T4b） / [#1588](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1588)（T5） |
 | 先行 | E0 ギャップ一覧 / E1 親 workflow（#1560 MERGED） |
 
@@ -44,7 +44,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-DB（001〜017,+020/021,+VEC） | インターフェース一覧に定義あり |
 | 物理テーブル / migrations | initial + 増分 **5 本**（D17: `item_feature_input` / `item_embedding_input` 追加）。主要テーブルは概ね存在 |
 | `apps/batch` DB 書込 | **T3: `PostgresDbWriter` + `create_db_writer`**。未設定 / `scaffold://` は `ScaffoldDbWriter`。**代表 IF は UPSERT 済**（T4a: 006/020、T4b: 012/015）。他 IF の repositories は in-memory のまま |
-| CLI | **Wave A / Wave B は非 `--scaffold-demo` で `create_db_writer` 配線済**。読取 SELECT 本実装は [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)。IF-005 は [#1632](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1632) Wave 1+2 Epic Branch MERGED。**IF-007 item 系は [#1633](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1633) Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 2（#1671/#1672）Epic Branch MERGED**。他 IF フル UPSERT は後続 |
+| CLI | **Wave A / Wave B は非 `--scaffold-demo` で `create_db_writer` 配線済**。読取 SELECT 本実装は [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623)。IF-005 は [#1632](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1632) Wave 1+2 Epic Branch MERGED。**IF-007 item 系は [#1633](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1633) Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 2（#1671/#1672）Epic Branch MERGED**。**IF-013 + 011/012 claim/status は [#1635](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1635) Wave 1（#1684）本配線**。**IF-014 + BATCH-013 は #1635 Wave 2（#1688）本配線**。**IF-VEC + BATCH-014/015 claim/status は #1635 Wave 3（#1690）本配線**。**IF-016/017 metrics・summary は #1635 Wave 4（#1692）本配線**。他 IF フル UPSERT は後続 |
 | 019 出力物理 | migration に CREATE なし（**E2 除外**） |
 | 旧 OPEN #102/#133 | **本 Epic（#1561）へ寄せ、not planned でクローズ**（Human 確定・2026-07-22） |
 | #109 / #136 | E0 で **E2取込**。T2（列差分棚卸し必須）と突合 |
@@ -84,13 +84,13 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | IF-DB-BATCH-009 | `item.active_status` | initial（列） | **#1633 Wave 2（#1671）**: BATCH-008 `update_rows`（`active_status` / `is_active`、equals `(source, external_item_code)`）。`write_rows` 禁止 | Wave 1 の item UPSERT とは分離 |
 | IF-DB-BATCH-010 | `item_generation_queue` | initial にあり | **#1634 Wave 1（#1677）**: BATCH-009 `write_rows` INSERT（UUID PK）+ active `queued` の `queued_at` のみ `update_rows`。偽 `op=touch_queued_at` 廃止。claim / status / `item_semantic` は Wave 2（IF-011） | |
 | IF-DB-BATCH-011 | `item_semantic` | initial にあり | **#1634 Wave 2（#1679）**: BATCH-010 claim `update_rows`（queued+semantic→processing）+ 終端 status `update_rows` + `item_semantic` UPSERT conflict `(item_id, semantic_config_version_id)`。成功時 processing 維持は DB no-op。偽 `op` 廃止。Rule-first 維持 | |
-| IF-DB-BATCH-012 | `item_feature_input`（中間） | D17 migration あり | **T4b**: `upsert_rows` | T2 CREATE + Wave B UPSERT。読取 SELECT は未 |
-| IF-DB-BATCH-013 | `item_feature` | initial にあり | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-014 | normalized / `item_meaning` | initial（列・テーブル） | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-015 | `item_embedding_input`（中間） | D17 migration あり | **T4b**: `upsert_rows` | T2 CREATE + Wave B UPSERT。読取 SELECT は未 |
-| IF-VEC-BATCH-001 | `item_embedding` | initial にあり | ScaffoldDbWriter / in-memory | Embedding API は E3 |
-| IF-DB-BATCH-016 | distribution metric 3 種 | initial にあり | ScaffoldDbWriter / in-memory | |
-| IF-DB-BATCH-017 | `item_import_summary` | initial にあり | ScaffoldDbWriter / in-memory | |
+| IF-DB-BATCH-012 | `item_feature_input`（中間） | D17 migration あり | **T4b**: `upsert_rows`（E2 済。#1684 非対象） | T2 CREATE + Wave B UPSERT。読取 SELECT は後続 |
+| IF-DB-BATCH-013 | `item_feature` | initial にあり | **#1635 Wave 1（#1684）**: BATCH-012 `upsert_rows` conflict `(item_id, semantic_config_version_id, feature_code, feature_input_hash, feature_normalization_version_id)` / update `(raw_feature_value, generated_at)`。claim/status は BATCH-011/012 共通（continue / keep_processing は DB no-op、feature claim・終端は `update_rows`）。偽 `op` 廃止 | IF-012 input は非変更 |
+| IF-DB-BATCH-014 | normalized / `item_meaning` | initial（列・テーブル） | **#1635 Wave 2（#1688）**: BATCH-013 claim/status（continue / keep_processing は DB no-op、feature claim・終端は `update_rows`）。`item_feature.normalized_feature_value` は `update_rows`（equals 5列）。`item_meaning` は `upsert_rows` conflict `(item_id, semantic_config_version_id)` / update `(feature_normalization_version_id, item_social, item_symbolic, generated_at)`。偽 `op` 廃止。アプリ層厳密同一 tx は未実装（Writer 単発コミット・後続強化候補） | |
+| IF-DB-BATCH-015 | `item_embedding_input`（中間） | D17 migration あり | **T4b / E2 済**: `upsert_rows`（#1690 Wave 3 で再実装しない） | T2 CREATE + Wave B UPSERT。読取 SELECT は #1623 Wave F 済 |
+| IF-VEC-BATCH-001 | `item_embedding` | initial にあり | **#1635 Wave 3（#1690）**: BATCH-014/015 claim/status（continue / keep_processing は DB no-op、embedding claim・終端は `update_rows`）。`item_embedding` は `upsert_rows` conflict `(item_id, model_version_id, embedding_input_hash)` / update `(embedding_source_type, embedding_vector, generated_at)`。`embedding_vector` は pgvector テキスト形式で Writer へ渡す。偽 `op` / `has_vector` / `embedding_dimension` 廃止。IF-015 は非変更 | Embedding API 本接続は E3（stub 維持可） |
+| IF-DB-BATCH-016 | distribution metric 3 種 | initial にあり | **#1635 Wave 4（#1692）**: 3 Metric `upsert_rows` conflict=`uq_*_snapshot_key` / update=統計列+`calculated_at`+`updated_at`。偽 `op` 廃止。非 batch_run 部分 UNIQUE は未対応 | 既定 `batch_run` スコープで疎通 |
+| IF-DB-BATCH-017 | `item_import_summary` | initial にあり | **#1635 Wave 4（#1692）**: `upsert_rows` conflict `(batch_run_id, source_api)` / `update_columns=()`（DO NOTHING）。偽 `op` / `conflict_skipped` 廃止 | |
 | IF-DB-BATCH-020/021 | `item_active_status_candidate` | 増分 migration あり | **T4a**: candidate UPSERT（IF-020 / BATCH-004）。**#1633 Wave 2（#1671）**: IF-021 相当 — applied/superseded/discarded は `update_rows`、Retention は `delete_rows`（detected 削除禁止、偽 `op=delete` write 廃止） | Wave A CLI 配線済み。IF-020 INSERT は本 Wave 非対象 |
 | IF-DB-BATCH-018 | evaluation_* | initial にあり | scaffold（参考） | **E2 本格化除外** |
 | IF-DB-BATCH-019 | feedback_analysis_* | **CREATE なし** | 明示 stub | **E2 除外** |
@@ -106,9 +106,9 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | C. Handoff-only IF（旧） | 012 / 015 | **T2 で中間永続テーブル化**。**T4b で UPSERT 解除済**（読取 SELECT は後続） |
 | D. 論理契約 stub | 019 | 物理未整備（E2 外） |
 | E. 外部/生成 Scaffold | Rakuten / Embedding / LLM adapter | E3 領域 |
-| F. PostgresDbWriter（T3） | `infrastructure/db/writer.py` | `DATABASE_URL` 実 URL 時。汎用 INSERT + **`upsert_rows`（T4a）** + **`update_rows` / `delete_rows`（#1632 Wave 1）**。代表 IF 配線は T4a/T4b。IF-005 staging は #1632 Wave 1+2 本配線済（Epic Branch）。**IF-007 item 系は #1633 Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 2 Epic Branch MERGED**。**IF-010 queue（BATCH-009）は #1634 Wave 1（#1677）本配線**。**IF-011 semantic（BATCH-010）は #1634 Wave 2（#1679）本配線（Epic Branch）** |
+| F. PostgresDbWriter（T3） | `infrastructure/db/writer.py` | `DATABASE_URL` 実 URL 時。汎用 INSERT + **`upsert_rows`（T4a）** + **`update_rows` / `delete_rows`（#1632 Wave 1）**。代表 IF 配線は T4a/T4b。IF-005 staging は #1632 Wave 1+2 本配線済（Epic Branch）。**IF-007 item 系は #1633 Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 2 Epic Branch MERGED**。**IF-010 queue（BATCH-009）は #1634 Wave 1（#1677）本配線**。**IF-011 semantic（BATCH-010）は #1634 Wave 2（#1679）本配線（Epic Branch）**。**IF-013 item_feature + BATCH-011/012 claim/status は #1635 Wave 1（#1684）本配線（Epic Branch）**。**IF-014 normalized / item_meaning + BATCH-013 claim/status は #1635 Wave 2（#1688）本配線（Epic Branch）**。**IF-VEC-BATCH-001 item_embedding + BATCH-014/015 claim/status は #1635 Wave 3（#1690）本配線（Epic Branch）**。**IF-016/017 metrics・summary は #1635 Wave 4（#1692）本配線（Epic Branch）** |
 
-**横断事実:** `create_db_writer(database_url)` で Scaffold / Postgres を切替可能（reco `create_database_session` と同型）。Wave A/B CLI 配線済。**本番 SQL は代表 IF（006/020/012/015）配線済**。**IF-005 staging は #1632 Wave 1+2 Epic Branch MERGED**（item/image/import_status + ranking/genre）。**IF-007 item / item_image / item_review_summary は #1633 Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 1+2 Epic Branch MERGED**（develop は Epic PR）。**IF-010 queue（BATCH-009）は #1634 Wave 1（#1677）本配線**。**IF-011 semantic（BATCH-010）は #1634 Wave 2（#1679）本配線（Epic Branch）**。他 IF フル UPSERT は [#1635](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1635) 以降。読取 SELECT は #1623。
+**横断事実:** `create_db_writer(database_url)` で Scaffold / Postgres を切替可能（reco `create_database_session` と同型）。Wave A/B CLI 配線済。**本番 SQL は代表 IF（006/020/012/015）配線済**。**IF-005 staging は #1632 Wave 1+2 Epic Branch MERGED**（item/image/import_status + ranking/genre）。**IF-007 item / item_image / item_review_summary は #1633 Wave 1（#1669）本配線**。**IF-009 / IF-021（BATCH-008）は #1633 Wave 1+2 Epic Branch MERGED**（develop は Epic PR）。**IF-010 queue（BATCH-009）は #1634 Wave 1（#1677）本配線**。**IF-011 semantic（BATCH-010）は #1634 Wave 2（#1679）本配線（Epic Branch）**。**IF-013 item_feature + BATCH-011/012 claim/status は #1635 Wave 1（#1684）本配線（Epic Branch）**。**IF-014 normalized / item_meaning + BATCH-013 claim/status は #1635 Wave 2（#1688）本配線（Epic Branch）**。**IF-VEC-BATCH-001 item_embedding + BATCH-014/015 claim/status は #1635 Wave 3（#1690）本配線（Epic Branch）**。**IF-016/017 metrics・summary は #1635 Wave 4（#1692）本配線（Epic Branch）**。残は Epic PR 統合のみ。読取 SELECT は #1623。
 
 ---
 
@@ -170,6 +170,9 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 2026-07-27 | #1632 Wave 1（#1660）: IF-005 staging_item / image / import_status UPSERT 本配線 |
 | 2026-07-27 | #1632 Wave 2（#1666）: IF-005 staging_ranking_signal / staging_genre UPSERT + transform stub 解除 |
 | 2026-07-27 | #1633 Wave 2（#1671）: IF-009 / IF-021（BATCH-008）active_status `update_rows` + candidate `update_rows` / Retention `delete_rows` |
+| 2026-07-27 | #1635 Wave 1（#1684）: IF-013 item_feature UPSERT + BATCH-011/012 claim/status `update_rows`（IF-012 非変更） |
+| 2026-07-28 | #1635 Wave 3（#1690）: IF-VEC-BATCH-001 item_embedding UPSERT + BATCH-014/015 claim/status `update_rows`（IF-015 非変更） |
+| 2026-07-28 | #1635 Wave 4（#1692）: IF-016 Metric 3 種 UPSERT + IF-017 item_import_summary DO NOTHING |
 
 ---
 
@@ -254,7 +257,7 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | Wave B CLI 配線 | item_generation_queue / item_semantic / item_feature / feature_normalization / feature_input_hash / item_embedding / embedding_input_hash / distribution_metrics / import_summary |
 | IF-012 | `item_feature_input` UPSERT（`(item_id, semantic_config_version_id, feature_input_hash)`） |
 | IF-015 | `item_embedding_input` UPSERT（`(item_id, model_version_id, embedding_input_hash)`）。`item_text_context` は canonical JSON 全文 |
-| 未実施（後続） | **009 は #1633 Wave 2 Epic Branch MERGED（update_rows）**。010/011/013/014/016/017/VEC フル UPSERT、読取 SELECT |
+| 未実施（後続） | **009 は #1633 Wave 2 Epic Branch MERGED（update_rows）**。**013 + 011/012 claim/status は #1635 Wave 1（#1684）本配線**。**014 + BATCH-013 claim/status は #1635 Wave 2（#1688）本配線**。**VEC + BATCH-014/015 claim/status は #1635 Wave 3（#1690）本配線**。**016/017 は #1635 Wave 4（#1692）本配線**。残は Epic PR 統合 |
 
 ---
 
@@ -299,4 +302,76 @@ IF-DB × テーブル定義 × migrations × `apps/batch` stub の現状を突�
 | 実 DB 疎通 | local postgres（127.0.0.1）で disposable item/candidate の update → select → delete cleanup 成功（secret 非出力）。Task Issue / PR 記録は後続 |
 | Issue / PR | Wave 1 #1669/#1670 MERGED。Wave 2 #1671/#1672 MERGED。develop 反映は Epic PR（#1633） |
 | 残 | develop 反映は Epic PR（#1633）の Human Review / merge |
+
+---
+
+## 16. #1635 Wave 1 IF-013 + BATCH-011/012 claim/status 進捗（事実・2026-07-27 / #1684）
+
+| 項目 | 状態 |
+| ---- | ---- |
+| BATCH-011 claim continue | semantic+processing → **DB no-op**（偽 `op=continue_processing` 廃止） |
+| BATCH-011 / 012 feature claim | `update_rows`（set: `queue_status=processing` / `started_at`、equals: id + `queued` + `generation_type=feature`）。`rows_affected==0` → None |
+| BATCH-011 / 012 keep_processing | **DB no-op**（偽 `op=*_keep_processing` 廃止） |
+| BATCH-011 / 012 終端 status | `update_rows`（偽 `op=update_status` 廃止） |
+| IF-013 `item_feature` UPSERT | `upsert_rows` / conflict 5列 / update `(raw_feature_value, generated_at)`。payload に `op` / `normalized_feature_value` / `item_feature_id` なし |
+| IF-012 `item_feature_input` | **非変更**（E2 T4b 維持。再実装しない） |
+| UT | `test_feature_input_hash.py` / `test_item_feature.py`（upsert_calls / update_calls） |
+| 実 DB 疎通 | Task 実装時に local/dev で disposable queue claim →（FK 充足時）item_feature upsert → cleanup（secret 非出力） |
+| Issue / PR | Wave 1 #1684。develop 反映は Epic PR（#1635） |
+| 残 | Wave 2（#1688）へ。Epic Branch 統合 |
+
+---
+
+## 17. #1635 Wave 2 IF-014 + BATCH-013 claim/status 進捗（事実・2026-07-27 / #1688）
+
+| 項目 | 状態 |
+| ---- | ---- |
+| BATCH-013 claim continue | semantic+processing → **DB no-op**（偽 `op=continue_processing` 廃止） |
+| BATCH-013 feature claim | `update_rows`（set: `queue_status=processing` / `started_at`、equals: id + `queued` + `generation_type=feature`）。`rows_affected==0` → None |
+| BATCH-013 keep_processing | **DB no-op**（偽 `op=normalize_success_keep_processing` 廃止） |
+| BATCH-013 終端 status | `update_rows`（偽 `op=update_status` 廃止） |
+| IF-014 `item_feature` normalized | `update_rows` / set `normalized_feature_value` のみ / equals 5列。`raw_feature_value` 非更新。偽 `op` なし |
+| IF-014 `item_meaning` UPSERT | `upsert_rows` / conflict `(item_id, semantic_config_version_id)` / update `(feature_normalization_version_id, item_social, item_symbolic, generated_at)`。payload に `op` / `item_meaning_id` なし |
+| 同一トランザクション | Writer 単発コミットのためアプリ層厳密同一 tx は**未実装**（順次 update + upsert。後続強化候補） |
+| UT | `test_feature_normalization.py`（update_calls / upsert_calls） |
+| 実 DB 疎通 | **実施済み（local 127.0.0.1）**: 既存 `item_feature` 行で normalized `update_rows` → select 確認 → restore。同一キーで `item_meaning` upsert → select → restore。secret 非出力 |
+| Issue / PR | Wave 2 #1688。develop 反映は Epic PR（#1635） |
+| 残 | Wave 3（VEC / BATCH-014/015 claim）→ Wave 4（metrics / summary）。Epic Branch 統合 |
+
+---
+
+## 18. #1635 Wave 3 IF-VEC-BATCH-001 + BATCH-014/015 claim/status 進捗（事実・2026-07-28 / #1690）
+
+| 項目 | 状態 |
+| ---- | ---- |
+| BATCH-014 claim continue | embedding/semantic/feature + processing → **DB no-op**（偽 `op=continue_processing` 廃止） |
+| BATCH-014 embedding claim | `update_rows`（set: `queue_status=processing` / `started_at`、equals: id + `queued` + `generation_type=embedding`）。`rows_affected==0` → None |
+| BATCH-014 keep_processing | **DB no-op**（偽 `op=hash_success_keep_processing` 廃止） |
+| BATCH-014 終端 status | `update_rows`（偽 `op=update_status` 廃止） |
+| IF-015 `item_embedding_input` | **E2 済のまま**（`upsert_rows`）。Wave 3 で再実装しない |
+| BATCH-015 claim/status | embedding claim は `update_rows`（上記同型）。processing 継続は DB no-op。終端は `update_rows`（keep_processing なし） |
+| IF-VEC-BATCH-001 `item_embedding` UPSERT | `upsert_rows` / conflict `(item_id, model_version_id, embedding_input_hash)` / update `(embedding_source_type, embedding_vector, generated_at)`。payload に `op` / `has_vector` / `embedding_dimension` / `item_embedding_id` なし。`embedding_vector` は pgvector テキスト形式 |
+| ログ制約 | phase / error / api_call_log に vector 全文を出さない（次元のみ可） |
+| UT | `test_embedding_input_hash.py` / `test_item_embedding.py`（update_calls / upsert_calls） |
+| 実 DB 疎通 | **実施済み（local 127.0.0.1）**: 既存 FK 充足の `item` / `model_version` で `item_embedding` upsert（1536 次元 stub literal）→ `vector_dims=1536` 確認 → DELETE cleanup。secret / vector 全文非出力 |
+| Issue / PR | Wave 3 #1690。develop 反映は Epic PR（#1635） |
+| 残 | Wave 4（016 metrics / 017 summary）→ Epic Branch 統合 |
+
+---
+
+## 19. #1635 Wave 4 IF-016/017 metrics・summary 進捗（事実・2026-07-28 / #1692）
+
+| 項目 | 状態 |
+| ---- | ---- |
+| IF-016 `feature_distribution_metric` | `upsert_rows` / conflict `(batch_run_id, semantic_config_version_id, feature_code, value_layer, aggregation_scope, aggregation_key)` / update 統計列+`calculated_at`+`updated_at`。payload に `table` / `op` / `entity_type` / `sigma_zero_count` なし |
+| IF-016 `meaning_distribution_metric` | `upsert_rows` / conflict `(batch_run_id, semantic_config_version_id, entity_type, value_layer, feature_normalization_version_id, aggregation_scope, aggregation_key)` / update 統計列+`calculated_at`+`updated_at`。payload に `feature_code` / `sigma_zero_count` / `op` なし |
+| IF-016 `normalization_distribution_metric` | `upsert_rows` / conflict `(batch_run_id, semantic_config_version_id, feature_code, value_layer, feature_normalization_version_id, aggregation_scope, aggregation_key)` / update 統計列+`sigma_zero_count`+`calculated_at`+`updated_at`。payload に `entity_type` / `op` なし |
+| `calculated_at` | persist 内で `datetime.now(UTC)` 付与（DDL NOT NULL） |
+| 非 batch_run 部分 UNIQUE | **未対応**（`uq_*_non_batch_snapshot` の `ON CONFLICT ... WHERE` は DbWriter 拡張が必要。本 Task out of scope。既定 `batch_run` スコープで疎通） |
+| IF-017 `item_import_summary` | `upsert_rows` / conflict `(batch_run_id, source_api)` / `update_columns=()`（DO NOTHING）。payload DDL 列のみ。`summarized_at` は datetime。偽 `op` / `conflict_skipped` 廃止 |
+| True/False | scaffold / in-memory は既存キー判定。postgres は `rows_affected`（1=insert / 0=skip） |
+| UT | `test_distribution_metrics.py` / `test_import_summary.py`（upsert_calls） |
+| 実 DB 疎通 | **実施済み（local 127.0.0.1）**: `batch_run` スコープで feature/meaning/normalization 各 1 行 upsert → DELETE cleanup。`item_import_summary` insert → 再 insert DO NOTHING（fetched_count 維持）→ DELETE cleanup。secret 非出力 |
+| Issue / PR | Wave 4 #1692。develop 反映は Epic PR（#1635） |
+| 残 | **Epic PR 統合のみ**（Wave 1〜4 Task 書込本配線は完了） |
 

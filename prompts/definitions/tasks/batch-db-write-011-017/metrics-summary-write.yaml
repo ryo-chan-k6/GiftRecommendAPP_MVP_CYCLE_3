@@ -1,0 +1,207 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-write-011-017-metrics-summary-write"
+  title: "batch-db-write-011-017:metrics・summary書込本配線"
+  summary: "Wave 4 として BATCH-016 分布メトリクス 3 テーブル UPSERT（IF-016）と BATCH-017 item_import_summary INSERT+DO NOTHING（IF-017）を本番 SQL で本配線する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-write-011-017:BATCH-011〜017書込本格化残"
+  epic_issue_number: 1635
+  epic_branch: "feature/epic-1635-batch-db-write-011-017"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave 1（#1684）で BATCH-011/012 claim/status と IF-013、
+  Wave 2（#1688）で BATCH-013 claim/status と IF-014、
+  Wave 3（#1690）で BATCH-014/015 claim/status と IF-VEC は本配線済み。
+  BATCH-016 / BATCH-017 は write_rows 偽 op のまま。#1635 Wave 4 で本配線する。
+
+objective: |
+  persist_metrics（IF-DB-BATCH-016）と insert_summary（IF-DB-BATCH-017）を
+  DbWriter.upsert_rows 本番 SQL で本配線する。
+  Wave 1〜3 再実装・Embedding API / LLM・DbWriter partial UNIQUE 拡張は禁止。
+
+scope:
+  - "IF-016: feature / meaning / normalization_distribution_metric を upsert_rows"
+  - "conflict は uq_*_snapshot_key（UNIQUE NULLS NOT DISTINCT）列に合わせる"
+  - "update_columns は統計列 + calculated_at（+ updated_at）。PK / conflict 列は非更新"
+  - "payload は DDL 列のみ（table / op 禁止。テーブル不要列を落とす）"
+  - "calculated_at は persist 内で UTC now 付与"
+  - "sigma_zero_count は normalization のみ"
+  - "IF-017: item_import_summary upsert_rows + update_columns=()（DO NOTHING）"
+  - "IF-017 payload は DDL 列のみ。summarized_at は datetime のまま"
+  - "戻り値 True/False: scaffold は in-memory、postgres は rows_affected"
+  - "in-memory _upsert_rows 収束維持"
+  - "UT（upsert_calls 前提）"
+  - "実 DB 疎通（secret なし。CI 既定 live 禁止）"
+  - "IF-DB ギャップ一覧 IF-016/017 進捗・§19 Wave 4"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "Wave 1〜3 再実装"
+  - "DbWriter への partial UNIQUE ON CONFLICT ... WHERE 拡張"
+  - "non-batch_run の uq_*_non_batch_snapshot 本対応"
+  - "Embedding API / LLM"
+  - "Epic PR → develop"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-016_分布メトリクス集計バッチ仕様書.md"
+      required: false
+    - path: "docs/06_実装設計/batch/BATCH-017_Import_Summary作成バッチ仕様書.md"
+      required: false
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/distribution_metrics/**"
+      required: true
+    - path: "apps/batch/src/batch/application/import_summary/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/distribution_metrics/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/import_summary/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_distribution_metrics.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_import_summary.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-011-017/metrics-summary-write.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-write-011-017/metrics-summary-write/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "IF-016 3 Metric UPSERT + IF-017 item_import_summary DO NOTHING 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新（§19 Wave 4）"
+
+acceptance_criteria:
+  - "persist_metrics が upsert_rows（偽 write_rows / op 廃止）"
+  - "conflict 列が uq_*_snapshot_key と一致"
+  - "payload に table / op が無い"
+  - "insert_summary が upsert_rows + update_columns=()（DO NOTHING）"
+  - "scaffold は in-memory、postgres は rows_affected で True/False"
+  - "partial UNIQUE 拡張を入れていない"
+  - "実 DB 疎通結果が PR に記録（secret なし）または skip 理由明示"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-011-017-metrics-summary-write"
+  base: "feature/epic-1635-batch-db-write-011-017"
+  target: "feature/epic-1635-batch-db-write-011-017"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-07"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1635
+      purpose: "親 Epic"
+  issues: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/src/batch/application/import_summary/**"
+    - "apps/batch/tests/unit/application/test_distribution_metrics.py"
+    - "apps/batch/tests/unit/application/test_import_summary.py"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "upsert_rows が本番 SQL か（偽 write_rows / op 廃止）"
+    - "IF-016 conflict 列が uq_*_snapshot_key と一致するか"
+    - "update_columns が統計列 + calculated_at（+ updated_at）か"
+    - "payload に table / op / 不要列が無いか"
+    - "sigma_zero_count が normalization のみか"
+    - "IF-017 が update_columns=()（DO NOTHING）か"
+    - "True/False 判定が scaffold / postgres で正しいか"
+    - "partial UNIQUE 拡張を入れていないか"
+    - "残リスク（uq_*_non_batch_snapshot）が明記されているか"
+    - "実 DB 疎通が記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic #1635 Wave 4。Issue #1692"
+  - "残は Epic PR 統合のみ（Wave 1〜4 Task 完了後）"
+  - "非 batch_run 部分 UNIQUE は本 Task 未対応（既定 batch_run スコープで疎通）"
