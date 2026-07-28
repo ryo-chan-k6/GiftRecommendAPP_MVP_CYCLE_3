@@ -1,0 +1,207 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-write-011-017-embedding-write"
+  title: "batch-db-write-011-017:embedding書込本配線"
+  summary: "Wave 3 として BATCH-014 claim/status と BATCH-015 item_embedding UPSERT（IF-VEC-BATCH-001）を本番 SQL で本配線する。IF-015 input UPSERT は触らない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-db-write-011-017:BATCH-011〜017書込本格化残"
+  epic_issue_number: 1635
+  epic_branch: "feature/epic-1635-batch-db-write-011-017"
+  related_issues: []
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  Wave 1（#1684）で BATCH-011/012 claim/status と IF-013、
+  Wave 2（#1688）で BATCH-013 claim/status と IF-014 は本配線済み。
+  BATCH-014 claim/status と BATCH-015 item_embedding（IF-VEC）は write_rows 偽 op のまま。
+  IF-015 item_embedding_input UPSERT は E2 済み。#1635 Wave 3 で VEC を本番 SQL 本配線する。
+
+objective: |
+  claim_or_continue / update_queue_status（BATCH-014/015）と
+  upsert_item_embedding（IF-VEC-BATCH-001）を DbWriter 本番 SQL で本配線する。
+  IF-015 input UPSERT・Embedding API 本接続・metrics/summary は禁止。
+
+scope:
+  - "BATCH-014 claim: embedding+queued は update_rows（条件付き）。processing 継続は DB no-op"
+  - "BATCH-014 status: keep_processing は DB no-op。終端は update_rows"
+  - "BATCH-015 claim/status: 同上パターン（keep_processing なし・終端 update_rows）"
+  - "IF-VEC-BATCH-001 item_embedding: upsert_rows conflict 3列 / update embedding_source_type+embedding_vector+generated_at"
+  - "embedding_vector を Writer に渡す（pgvector テキスト形式推奨）"
+  - "偽 op / has_vector / embedding_dimension を DB payload に含めない"
+  - "ログ・例外に vector 全文を出さない（次元のみ可）"
+  - "IF-015 item_embedding_input UPSERT は触らない（E2 済み）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "実 DB 疎通（secret なし。CI 既定 live 禁止）"
+  - "IF-DB ギャップ一覧 IF-VEC / BATCH-014 claim 進捗"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "IF-015 item_embedding_input UPSERT 再実装"
+  - "Wave 1/2 再実装"
+  - "metrics / summary（Wave 4）"
+  - "DbWriter への必須でない新 API"
+  - "Embedding API 本接続必須化（stub 維持可）"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-014_Embedding入力hash算出バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-015_Item Embedding生成バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_embedding_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/embedding_input_hash/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_embedding/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/embedding_input_hash/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_embedding/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_embedding_input_hash.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_embedding.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-write-011-017/embedding-write.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-write-011-017/embedding-write/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "014/015 claim/status + IF-VEC-BATCH-001 item_embedding UPSERT 本配線"
+  - "UT"
+  - "実 DB 疎通結果"
+  - "ギャップ一覧更新"
+
+acceptance_criteria:
+  - "claim continue が DB no-op、embedding claim が update_rows"
+  - "終端 status が update_rows、keep_processing が DB no-op"
+  - "item_embedding が upsert_rows（conflict 3列・vector 含む）"
+  - "偽 op / has_vector / embedding_dimension が DB payload に残っていない"
+  - "IF-015 input UPSERT を再実装していない"
+  - "ログ経路に vector 全文が出ない"
+  - "Embedding API 本接続を必須化していない"
+  - "実 DB 疎通結果が PR に記録（secret なし）"
+  - "scaffold-demo / 既存 UT 回帰"
+  - "PR target が親 Epic Branch"
+  - "Related to #<Task Issue>（Closes 禁止）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-write-011-017-embedding-write"
+  base: "feature/epic-1635-batch-db-write-011-017"
+  target: "feature/epic-1635-batch-db-write-011-017"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-07"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1635
+      purpose: "親 Epic"
+  issues: []
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - "apps/batch/tests/unit/application/test_embedding_input_hash.py"
+    - "apps/batch/tests/unit/application/test_item_embedding.py"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "update_rows / upsert_rows が本番 SQL か"
+    - "claim continue no-op / embedding claim 条件が正しいか"
+    - "成功時 processing 維持（DB no-op）か"
+    - "item_embedding conflict 3列 / update 列が正しいか"
+    - "embedding_vector が Writer に渡されているか"
+    - "op / has_vector / embedding_dimension を DB payload に含めていないか"
+    - "ログに vector 全文が出ていないか"
+    - "IF-015 input UPSERT を再実装していないか"
+    - "Embedding API 本接続が必須化されていないか"
+    - "実 DB 疎通が記録されているか"
+    - "Related to / PR target が親 Epic"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Epic #1635 Wave 3。IF-015 は触らない"
+  - "ギャップ一覧 IF-VEC-BATCH-001 = item_embedding（BATCH-015）"

@@ -4,19 +4,27 @@
 ``item_embedding`` SELECT は ``DbReader`` 経由（Wave F）。
 
 queue OR（embedding∈{queued,processing} OR semantic|feature+processing）は
-equals 複数 fetch + in-process。書込 UPSERT SQL 本格化は out of scope。
+equals 複数 fetch + in-process。
+
+書込本配線（#1635 Wave 3 / #1690）:
+
+- ``claim_or_continue``: embedding+queued → ``update_rows``（条件付き）。
+  processing 継続は DB no-op
+- ``update_queue_status``: 終端 → ``update_rows``（偽 ``op`` 廃止）
+- ``upsert_item_embedding``（IF-VEC-BATCH-001）: ``upsert_rows`` + pgvector literal
+
+制約:
 
 - item READ ONLY
 - BATCH-014 handoff READ ONLY（IF-DB-BATCH-015 消費・再算出禁止）
-- item_embedding UPSERT（IF-VEC-BATCH-001・scaffold / stub 書込のみ）
 - Queue UPDATE only（INSERT 禁止）
 - IF-DB-BATCH-016 分布メトリクス非書込
+- ログ・例外に embedding_vector 全文を出さない（次元のみ可）
 """
 
 from __future__ import annotations
 
 import json
-import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -69,6 +77,12 @@ _EMBEDDING_COLUMNS = (
     "embedding_vector",
     "embedding_source_type",
 )
+
+
+def _vector_literal(values: tuple[float, ...] | list[float]) -> str:
+    """pgvector テキスト入力形式 ``[v1,v2,...]``（``scripts/perf/pgvector_search_bench.py`` と同型）。"""
+
+    return "[" + ",".join(f"{float(v):.8f}" for v in values) + "]"
 
 
 @dataclass(frozen=True)
@@ -308,6 +322,8 @@ class ItemEmbeddingRepositories:
         item_generation_queue_id: str,
         started_at: datetime | None = None,
     ) -> QueueRow | None:
+        """embedding claim（条件付き UPDATE）/ processing 継続（DB no-op）。"""
+
         row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             return None
@@ -316,32 +332,23 @@ class ItemEmbeddingRepositories:
         ts = started_at or datetime.now(UTC)
 
         if gen == "embedding" and status == "queued":
-            row["queue_status"] = "processing"
-            row["started_at"] = ts
-            self.db_writer.write_rows(
+            result = self.db_writer.update_rows(
                 "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "started_at": ts,
-                        "op": "claim",
-                    },
+                set_values={"queue_status": "processing", "started_at": ts},
+                equals=(
+                    ("item_generation_queue_id", item_generation_queue_id),
+                    ("queue_status", "queued"),
+                    ("generation_type", "embedding"),
                 ),
             )
+            if result.rows_affected == 0:
+                return None
+            row["queue_status"] = "processing"
+            row["started_at"] = ts
             return self._row_to_queue(row)
 
         if status == "processing" and gen in {"embedding", "semantic", "feature"}:
-            self.db_writer.write_rows(
-                "item_generation_queue",
-                (
-                    {
-                        "item_generation_queue_id": item_generation_queue_id,
-                        "queue_status": "processing",
-                        "op": "continue_processing",
-                    },
-                ),
-            )
+            # 既に processing。追加 UPDATE 不要（偽 op=continue_processing 廃止）。
             return self._row_to_queue(row)
 
         return None
@@ -425,30 +432,26 @@ class ItemEmbeddingRepositories:
         return False
 
     def upsert_item_embedding(self, row: ItemEmbeddingUpsertRow) -> dict[str, object]:
-        """IF-VEC-BATCH-001 Upsert（item_id + model_version_id + embedding_input_hash）."""
+        """IF-VEC-BATCH-001 Upsert（item_id + model_version_id + embedding_input_hash）。
+
+        ``embedding_vector`` は Writer に pgvector テキスト形式で渡す。
+        ``item_embedding_id`` は省略（DDL DEFAULT ``gen_random_uuid()``）。
+        偽 ``op`` / ``has_vector`` / ``embedding_dimension`` は DB payload に含めない。
+        """
 
         key = (row.item_id, row.model_version_id, row.embedding_input_hash)
-        existing = self.embedding_rows.get(key)
-        item_embedding_id = (
-            str(existing["item_embedding_id"])
-            if existing is not None and existing.get("item_embedding_id")
-            else f"ie_{uuid.uuid4().hex[:12]}"
-        )
-        # ベクトル全文は db_writer メタにも載せない（次元のみ）
-        payload: dict[str, object] = {
-            "item_embedding_id": item_embedding_id,
+        dimension = len(row.embedding_vector)
+        # in-memory skip index（ログ経路には vector 全文を載せない）
+        memory_payload: dict[str, object] = {
             "item_id": row.item_id,
             "model_version_id": row.model_version_id,
             "embedding_source_type": row.embedding_source_type,
             "embedding_input_hash": row.embedding_input_hash,
-            "embedding_dimension": len(row.embedding_vector),
+            "embedding_dimension": dimension,
             "has_vector": True,
             "generated_at": row.generated_at,
-            "op": "if_vec_batch_001_upsert",
         }
-        # in-memory 保持用にベクトルは別キーで保持（ログ経路には出さない）
-        payload["_embedding_vector"] = row.embedding_vector
-        self.embedding_rows[key] = payload
+        self.embedding_rows[key] = memory_payload
         self.embeddings.setdefault(row.item_id, [])
         # refresh skip index
         self.embeddings[row.item_id] = [
@@ -469,10 +472,22 @@ class ItemEmbeddingRepositories:
         )
         self.upsert_rows.append(row)
         self.item_embedding_write_count += 1
-        # db_writer にはベクトル全文を渡さない
-        log_payload = {k: v for k, v in payload.items() if k != "_embedding_vector"}
-        self.db_writer.write_rows("item_embedding", (log_payload,))
-        return payload
+
+        persist_row: dict[str, object] = {
+            "item_id": row.item_id,
+            "model_version_id": row.model_version_id,
+            "embedding_source_type": row.embedding_source_type,
+            "embedding_input_hash": row.embedding_input_hash,
+            "embedding_vector": _vector_literal(row.embedding_vector),
+            "generated_at": row.generated_at,
+        }
+        self.db_writer.upsert_rows(
+            "item_embedding",
+            (persist_row,),
+            conflict_columns=("item_id", "model_version_id", "embedding_input_hash"),
+            update_columns=("embedding_source_type", "embedding_vector", "generated_at"),
+        )
+        return memory_payload
 
     def update_queue_status(
         self,
@@ -487,22 +502,18 @@ class ItemEmbeddingRepositories:
         row = self._ensure_queue_hydrated(item_generation_queue_id)
         if row is None:
             raise KeyError(f"queue not found: {item_generation_queue_id}")
-        row["queue_status"] = queue_status
+        set_values: dict[str, object] = {"queue_status": queue_status}
         if completed_at is not None:
+            set_values["completed_at"] = completed_at
             row["completed_at"] = completed_at
         if error_message is not None:
+            set_values["error_message"] = error_message
             row["error_message"] = error_message
-        self.db_writer.write_rows(
+        row["queue_status"] = queue_status
+        self.db_writer.update_rows(
             "item_generation_queue",
-            (
-                {
-                    "item_generation_queue_id": item_generation_queue_id,
-                    "queue_status": queue_status,
-                    "completed_at": completed_at,
-                    "error_message": error_message,
-                    "op": "update_status",
-                },
-            ),
+            set_values=set_values,
+            equals=(("item_generation_queue_id", item_generation_queue_id),),
         )
 
     def record_api_call(

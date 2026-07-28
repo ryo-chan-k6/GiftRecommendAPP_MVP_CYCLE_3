@@ -1,0 +1,61 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-write-011-017-embedding-write-pr"
+  title: "batch-db-write-011-017 embedding書込 PRレビュー"
+  summary: "BATCH-014/015 Wave 3 claim/status + IF-VEC-BATCH-001 item_embedding UPSERT 本配線 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1690
+  task_definition: "prompts/definitions/tasks/batch-db-write-011-017/embedding-write.yaml"
+  parent_epic_issue: "[Epic]batch-db-write-011-017:BATCH-011〜017書込本格化残"
+  parent_epic_branch: "feature/epic-1635-batch-db-write-011-017"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: "security-review"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "update_rows / upsert_rows が本番 SQL か"
+  - "claim continue no-op / embedding claim 条件（queued + embedding）が正しいか"
+  - "BATCH-014 成功時 processing 維持（DB no-op）か"
+  - "item_embedding conflict 3列 / update 列が正しいか"
+  - "embedding_vector が Writer に渡されているか（偽 op / dimension-only 廃止）"
+  - "op / has_vector / embedding_dimension を DB payload に含めていないか"
+  - "ログ・例外に vector 全文が出ていないか"
+  - "IF-015 input UPSERT を再実装していないか"
+  - "Wave 1/2 / metrics / summary を触っていないか"
+  - "実 DB 疎通結果が PR に記録されているか（secret なし）"
+  - "Related to / PR target が親 Epic"
+
+notes:
+  - "Epic #1635 Wave 3 / Issue #1690"
+  - "CI 既定 live / production 無承認は禁止"
+  - "Embedding API 本接続必須化は out of scope（stub 維持可）"
