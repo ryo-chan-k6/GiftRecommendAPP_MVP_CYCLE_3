@@ -10,6 +10,7 @@ import pytest
 from batch.application.genre_sync.repositories import GenreSyncRepositories
 from batch.application.observability import (
     ALLOWED_BATCH_PHASE_NAMES,
+    PostgresApiCallLogWriter,
     PostgresErrorLogWriter,
     PostgresPhaseLogWriter,
     ScaffoldErrorLogWriter,
@@ -234,6 +235,7 @@ def test_create_batch_observability_writers_postgres_injected() -> None:
     )
     assert isinstance(obs.phase_log_writer, PostgresPhaseLogWriter)
     assert isinstance(obs.error_log_writer, PostgresErrorLogWriter)
+    assert isinstance(obs.api_call_log_writer, PostgresApiCallLogWriter)
 
 
 def test_map_app_phase_genre_sync() -> None:

@@ -79,6 +79,10 @@ def test_genre_sync_happy_path_upserts_external_genre() -> None:
     succeeded_api = [log for log in repos.api_call_logs if log["status"] == "succeeded"]
     assert len(succeeded_api) == 2
     assert {log["genre_id"] for log in succeeded_api} == {"100", "101"}
+    from uuid import UUID
+
+    for log in succeeded_api:
+        UUID(str(log["api_call_log_id"]))  # job は常時 UUID（DDL PK / Object key）
 
 
 def test_genre_sync_default_plan_uses_root_genre() -> None:
