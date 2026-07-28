@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1712
   issue:
     number: 1636
   task_definition: "prompts/definitions/epics/batch-observability-e4/epic.yaml"
