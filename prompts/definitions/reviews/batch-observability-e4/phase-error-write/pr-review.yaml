@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-observability-e4-phase-error-write-pr"
+  title: "batch-observability-e4 phase-error-write PRレビュー"
+  summary: "E4 Wave 2（phase_log / error_log 本配線）Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1701
+  task_definition: "prompts/definitions/tasks/batch-observability-e4/phase-error-write.yaml"
+  parent_epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  parent_epic_branch: "feature/epic-1636-batch-observability-e4"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "PostgresPhaseLogWriter / PostgresErrorLogWriter が write_rows で phase_log / error_log を扱うか"
+  - "owner_type=batch_run / service=batch / UUID 必須が正しいか"
+  - "phase_name が DDL CHECK 許可値のみか（plan/finalize を直接 INSERT していないか）"
+  - "error_code が DDL regex ^GRS-[A-Z]{3}-[0-9]{3}$ に合うか"
+  - "detail から Authorization / URL / secret キーが除去されるか"
+  - "create_*_writer が scaffold_demo / empty / scaffold:// → Scaffold、それ以外 → Postgres か"
+  - "genre_sync マッピング plan→batch_started / finalize→batch_completed（Human Review 観点）"
+  - "未知 app phase は DB skip + in-memory 維持か"
+  - "代表 CLI が genre_sync 1 本のみで、001〜017 全配線が混入していないか"
+  - "MOD-RECO-028/029 を使っていないか"
+  - "DDL / migration 変更が混入していないか"
+  - "UT が UUID / CHECK / error_code / factory / genre_sync マッピングをカバーするか"
+  - "実 DB 疎通結果または skip 理由が secret なしで記載されているか"
+  - "ギャップ一覧に Wave 2（#1701）進捗とマッピング方針が事実として記載されているか"
+  - "api_call_log が混入していないか"
+  - "Related to / PR target が親 Epic Branch"
+
+notes:
+  - "pr.number は PR 作成後に埋める"
+  - "Wave 4 全 Batch 配線は禁止（本 Task は代表 1 本）"
+  - "phase_name マッピングは Human Review 必須観点"

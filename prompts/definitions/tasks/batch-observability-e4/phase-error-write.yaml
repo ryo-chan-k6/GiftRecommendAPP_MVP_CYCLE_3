@@ -1,0 +1,214 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-observability-e4-phase-error-write"
+  title: "batch-observability-e4:phase_log/error_log本配線"
+  summary: "Wave 2。Batch phase_log / error_log を DbWriter 経由で Postgres 本配線し、代表 CLI genre_sync にマッピング配線する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  epic_issue_number: 1636
+  epic_branch: "feature/epic-1636-batch-observability-e4"
+  related_issues:
+    - 1697
+    - 1699
+    - 1700
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Wave 1（#1699 / PR #1700）で PostgresJobRunTracker + create_job_run_tracker と
+  genre_sync 代表配線が完了。phase_log / error_log は repositories の in-memory のみ。
+  DDL phase_name（owner_type=batch_run）は固定 CHECK のため、アプリ plan/finalize 等は
+  そのまま INSERT 不可。MOD-RECO-028/029 は使わない（Batch Logger 経路）。
+
+objective: |
+  PostgresPhaseLogWriter / PostgresErrorLogWriter + factory により phase_log / error_log を
+  本配線し、代表 Batch CLI（genre_sync）1 本で plan→batch_started / finalize→batch_completed
+  マッピングを適用する。001〜017 全配線は Wave 4。DDL 変更は禁止。
+
+scope:
+  - "PostgresPhaseLogWriter / PostgresErrorLogWriter（DbWriter.write_rows）"
+  - "ScaffoldPhaseLogWriter / ScaffoldErrorLogWriter"
+  - "create_phase_log_writer / create_error_log_writer / create_batch_observability_writers"
+  - "genre_sync repositories: bind_run + writers + app phase マッピング"
+  - "genre_sync __main__: 非 scaffold-demo で writers 作成・bind"
+  - "UT（UUID / CHECK / error_code / factory / genre_sync マッピング）"
+  - "実 DB 疎通（INSERT→SELECT→DELETE cleanup。secret 非出力）"
+  - "バッチ観測横断・本実装ギャップ一覧.md に Wave 2 進捗（#1701）とマッピング方針"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "api_call_log（Wave 3）"
+  - "DDL / migration 変更"
+  - "BATCH-001〜017 全 CLI 一括配線（Wave 4）"
+  - "MOD-RECO-028 / 029 流用"
+  - "MOD-BATCH-043 / 044"
+  - "親 schedule（#1637）"
+  - "CI 既定 live / production 無承認"
+  - "commit / push / PR（親 Orchestrator が行う）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+  files:
+    - path: "apps/batch/src/batch/application/job_run/**"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/observability/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_phase_error_writers.py"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-observability-e4/phase-error-write.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-observability-e4/phase-error-write/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "PostgresPhaseLogWriter / PostgresErrorLogWriter + factory"
+  - "genre_sync 代表配線（plan/finalize マッピング）"
+  - "UT"
+  - "実 DB 疎通結果（または skip 理由）"
+  - "ギャップ一覧 Wave 2 進捗"
+
+acceptance_criteria:
+  - "phase_log へ owner_type=batch_run で INSERT できる"
+  - "error_log へ service=batch / error_code 形式で INSERT できる"
+  - "非 UUID batch_run_id / 不正 phase_name / 不正 error_code を明確な例外で拒否する"
+  - "detail から Authorization / URL / secret キーを除去する"
+  - "create_*_writer が scaffold / postgres を切り替える"
+  - "genre_sync plan→batch_started / finalize→batch_completed が DB 書込される"
+  - "未知 app phase は DB 書込せず in-memory のみ"
+  - "001〜017 全配線を含まない"
+  - "DDL 変更を含まない"
+  - "実 DB 疎通結果が報告される（secret なし）または skip 理由明示"
+  - "ギャップ一覧に Wave 2 / マッピング方針が記載されている"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/task-1701-batch-observability-e4-phase-error-write"
+  summary: "batch-observability-e4-phase-error-write"
+  base: "feature/epic-1636-batch-observability-e4"
+  target: "feature/epic-1636-batch-observability-e4"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-08"
+
+issue:
+  number: 1701
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1636
+      purpose: "親 Epic"
+  issues:
+    - issue: 1699
+      purpose: "Wave 1 run-log-write"
+    - issue: 1697
+      purpose: "Wave 0 inventory"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/observability/**"
+    - "apps/batch/src/batch/application/genre_sync/repositories.py"
+    - "apps/batch/src/batch/application/genre_sync/__main__.py"
+    - "apps/batch/tests/unit/application/test_phase_error_writers.py"
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "security 方針により禁止"
+    "production unapproved live": "禁止"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "DDL phase_name CHECK と app phase マッピングが正しいか（Human Review 対象）"
+    - "UUID 必須・error_code 形式・secret strip"
+    - "factory 切替が create_job_run_tracker 同型か"
+    - "代表 CLI 1 本のみで Wave 4 全配線が混入していないか"
+    - "MOD-RECO-028/029 を使っていないか"
+    - "DDL 変更が混入していないか"
+    - "secret / URL 実値がログ・UT・docs に出ないか"
+    - "ギャップ一覧の Wave 2 進捗が事実か"
+  specialist_reviews:
+    docs: true
+    test: true
+
+notes:
+  - "Issue #1701 / Branch feature/task-1701-batch-observability-e4-phase-error-write"
+  - "MVP マッピング: plan→batch_started / finalize→batch_completed（Human Review 観点）"
+  - "DDL error_code regex は ^GRS-[A-Z]{3}-[0-9]{3}$（{2,4} ではない）"
+  - "commit / push / PR は親指示に従う"
