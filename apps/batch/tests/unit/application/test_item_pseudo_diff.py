@@ -467,3 +467,45 @@ def test_invalid_payload_records_ext_103() -> None:
     except RakutenItemSearchApiError as exc:
         assert exc.code == "GRS-EXT-103"
 
+
+def test_batch_run_id_separates_object_key_from_job_run_id() -> None:
+    """共有 pipeline batch_run_id が raw object key に使われ、job_run_id とは分離できる。"""
+
+    from batch.application.job_run import ScaffoldJobRunTracker
+
+    repos = _repos()
+    tracker = ScaffoldJobRunTracker()
+    job = ItemPseudoDiffJob(
+        rakuten_client=_client_genre(),
+        repositories=repos,
+        job_run_tracker=tracker,
+    )
+    pipeline = "pipeline-shared-uuid"
+    leaf = "leaf-003-uuid"
+    repos.bind_run(batch_run_id=pipeline)
+
+    result = job.run(
+        job_run_id=leaf,
+        batch_run_id=pipeline,
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "succeeded"
+    assert result.job_run_id == leaf
+    assert all(pipeline in key for key in repos.raw_metadata)
+    assert all(leaf not in key for key in repos.raw_metadata)
+    assert any(
+        getattr(r, "job_run_id", None) == leaf and getattr(r, "status", None) == "running"
+        for r in tracker.records
+    )
+
+
+def test_cli_batch_run_id_fallback_to_job_run_id() -> None:
+    from batch.application.item_pseudo_diff.__main__ import _resolve_business_run_id
+
+    assert _resolve_business_run_id(job_run_id="leaf", batch_run_id="") == "leaf"
+    assert (
+        _resolve_business_run_id(job_run_id="leaf", batch_run_id="pipeline") == "pipeline"
+    )
+

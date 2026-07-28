@@ -3,6 +3,8 @@
 Usage:
   python -m batch.application.raw_staging --job-run-id <id> [--max-raw 100]
   python -m batch.application.raw_staging --scaffold-demo
+  python -m batch.application.raw_staging \\
+    --job-run-id <leaf-uuid> --batch-run-id <pipeline-uuid>
   python -m batch.application.raw_staging --live-object-storage  # + DATABASE_URL / OBJECT_STORAGE_*
 """
 
@@ -77,6 +79,12 @@ def _parse_csv(raw: str | None) -> tuple[str, ...] | None:
     return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
+def _resolve_business_run_id(*, job_run_id: str, batch_run_id: str) -> str:
+    """Shared pipeline UUID for obs bind. Falls back to job_run_id."""
+
+    return batch_run_id.strip() or job_run_id
+
+
 def build_scaffold_demo_job(
     *,
     job_run_tracker: JobRunTracker | None = None,
@@ -138,7 +146,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--job-run-id",
         default="local-run",
-        help="Job run id. Non --scaffold-demo Postgres tracker requires a UUID.",
+        help=(
+            "Leaf job_run_id（tracker / batch_run_log PK）。"
+            "Non --scaffold-demo Postgres tracker requires a UUID。"
+        ),
+    )
+    parser.add_argument(
+        "--batch-run-id",
+        default="",
+        help=(
+            "共有 pipeline batch_run_id（obs bind）。"
+            "未指定時は --job-run-id にフォールバック。"
+        ),
     )
     parser.add_argument(
         "--max-raw",
@@ -175,6 +194,9 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
+    business_run_id = _resolve_business_run_id(
+        job_run_id=args.job_run_id, batch_run_id=args.batch_run_id
+    )
 
     if args.scaffold_demo:
         tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
@@ -186,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
             phase_log_writer=obs.phase_log_writer,
             error_log_writer=obs.error_log_writer,
         )
-        job.repositories.bind_run(batch_run_id=args.job_run_id)
+        job.repositories.bind_run(batch_run_id=business_run_id)
         ids = _parse_csv(args.raw_metadata_ids)
         result = job.run(
             job_run_id=args.job_run_id,
@@ -269,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
     job = RawStagingJob(repositories=repos,
 job_run_tracker=tracker,
     )
-    job.repositories.bind_run(batch_run_id=args.job_run_id)
+    job.repositories.bind_run(batch_run_id=business_run_id)
     ids = _parse_csv(args.raw_metadata_ids)
     result = job.run(
         job_run_id=args.job_run_id,

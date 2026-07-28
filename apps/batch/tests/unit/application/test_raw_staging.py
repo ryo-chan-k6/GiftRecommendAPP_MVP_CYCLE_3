@@ -775,3 +775,12 @@ def test_cli_non_demo_runs_job_with_live_reader(monkeypatch: Any) -> None:
     # empty SELECT → plan failed (exit 1). Important: Job started (not config/exit-2/old exit-3).
     assert code == 1
     assert reader.fetch_calls
+
+
+def test_cli_batch_run_id_fallback_to_job_run_id() -> None:
+    from batch.application.raw_staging.__main__ import _resolve_business_run_id
+
+    assert _resolve_business_run_id(job_run_id="leaf", batch_run_id="") == "leaf"
+    assert (
+        _resolve_business_run_id(job_run_id="leaf", batch_run_id="pipeline") == "pipeline"
+    )

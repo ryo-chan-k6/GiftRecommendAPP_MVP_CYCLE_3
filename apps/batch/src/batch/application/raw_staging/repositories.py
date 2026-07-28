@@ -77,7 +77,7 @@ class RawStagingRepositories:
 
 
     def bind_run(self, *, batch_run_id: str, trace_id: str | None = None) -> None:
-        """Bind ``batch_run_id`` (= job_run_id UUID) for observability DB writes."""
+        """Bind shared pipeline ``batch_run_id`` for observability DB writes."""
 
         self._batch_run_id = batch_run_id
         self._trace_id = trace_id

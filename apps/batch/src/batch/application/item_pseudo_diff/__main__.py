@@ -3,6 +3,8 @@
 Usage:
   python -m batch.application.item_pseudo_diff --job-run-id <id> [--genre-ids 100]
   python -m batch.application.item_pseudo_diff --scaffold-demo
+  python -m batch.application.item_pseudo_diff \\
+    --job-run-id <leaf-uuid> --batch-run-id <pipeline-uuid> --live-rakuten
 """
 
 from __future__ import annotations
@@ -44,6 +46,12 @@ def _parse_csv(raw: str | None) -> tuple[str, ...] | None:
     if raw is None or raw.strip() == "":
         return None
     return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
+def _resolve_business_run_id(*, job_run_id: str, batch_run_id: str) -> str:
+    """Shared pipeline UUID for obs / raw object key. Falls back to job_run_id."""
+
+    return batch_run_id.strip() or job_run_id
 
 
 def build_scaffold_demo_job(
@@ -110,7 +118,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--job-run-id",
         default="local-run",
-        help="Job run id. Non --scaffold-demo Postgres tracker requires a UUID.",
+        help=(
+            "Leaf job_run_id（tracker / batch_run_log PK）。"
+            "Non --scaffold-demo Postgres tracker requires a UUID。"
+        ),
+    )
+    parser.add_argument(
+        "--batch-run-id",
+        default="",
+        help=(
+            "共有 pipeline batch_run_id（obs bind / raw object key）。"
+            "未指定時は --job-run-id にフォールバック。"
+        ),
     )
     parser.add_argument(
         "--genre-ids",
@@ -141,6 +160,9 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
+    business_run_id = _resolve_business_run_id(
+        job_run_id=args.job_run_id, batch_run_id=args.batch_run_id
+    )
 
     if args.scaffold_demo:
         tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
@@ -153,11 +175,12 @@ def main(argv: list[str] | None = None) -> int:
             error_log_writer=obs.error_log_writer,
             api_call_log_writer=obs.api_call_log_writer,
         )
-        job.repositories.bind_run(batch_run_id=args.job_run_id)
+        job.repositories.bind_run(batch_run_id=business_run_id)
         genre_ids = _parse_csv(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
         keywords = _parse_csv(args.keywords)
         result = job.run(
             job_run_id=args.job_run_id,
+            batch_run_id=business_run_id,
             target_genre_ids=genre_ids,
             keywords=keywords,
         )
@@ -241,11 +264,12 @@ def main(argv: list[str] | None = None) -> int:
     job = ItemPseudoDiffJob(rakuten_client=rakuten, repositories=repos,
 job_run_tracker=tracker,
     )
-    job.repositories.bind_run(batch_run_id=args.job_run_id)
+    job.repositories.bind_run(batch_run_id=business_run_id)
     genre_ids = _parse_csv(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
     keywords = _parse_csv(args.keywords)
     result = job.run(
         job_run_id=args.job_run_id,
+        batch_run_id=business_run_id,
         target_genre_ids=genre_ids,
         keywords=keywords,
     )

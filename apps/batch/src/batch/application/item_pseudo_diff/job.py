@@ -87,6 +87,7 @@ class ItemPseudoDiffJob:
         self,
         *,
         job_run_id: str,
+        batch_run_id: str | None = None,
         target_genre_ids: Sequence[str] | None = None,
         keywords: Sequence[str] | None = None,
         max_pages: int | None = None,
@@ -94,6 +95,8 @@ class ItemPseudoDiffJob:
         include_update_sort: bool = True,
         trace_id: str | None = None,
     ) -> PseudoDiffSyncResult:
+        # tracker は葉 job_run_id。業務 data / raw object key は共有 batch_run_id。
+        business_run_id = (batch_run_id or "").strip() or job_run_id
         bound_logger = self._logger.bind(job_run_id=job_run_id, trace_id=trace_id or job_run_id)
         self._tracker.start(batch_id=BATCH_ID, job_run_id=job_run_id)
 
@@ -135,7 +138,7 @@ class ItemPseudoDiffJob:
                         cursor=cursor,
                         max_pages=plan.max_pages,
                         hits=plan.hits,
-                        job_run_id=job_run_id,
+                        batch_run_id=business_run_id,
                         result=result,
                         seen_item_codes=seen_item_codes,
                     )
@@ -281,7 +284,7 @@ class ItemPseudoDiffJob:
         cursor: FetchCursorRow,
         max_pages: int,
         hits: int,
-        job_run_id: str,
+        batch_run_id: str,
         result: PseudoDiffSyncResult,
         seen_item_codes: set[str],
     ) -> None:
@@ -293,7 +296,7 @@ class ItemPseudoDiffJob:
                 cursor=cursor,
                 page=page,
                 hits=hits,
-                job_run_id=job_run_id,
+                batch_run_id=batch_run_id,
                 result=result,
                 seen_item_codes=seen_item_codes,
             )
@@ -304,7 +307,7 @@ class ItemPseudoDiffJob:
         cursor: FetchCursorRow,
         page: int,
         hits: int,
-        job_run_id: str,
+        batch_run_id: str,
         result: PseudoDiffSyncResult,
         seen_item_codes: set[str],
     ) -> None:
@@ -375,10 +378,10 @@ class ItemPseudoDiffJob:
             )
         _ = unique_candidates  # 抽出結果は Raw 保存が正。後続 BATCH-005 が利用
 
-        # raw_save
+        # raw_save（object key の batch_run_id は共有 pipeline UUID）
         body = json.dumps(raw_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
         object_key = build_item_search_raw_object_key(
-            batch_run_id=job_run_id,
+            batch_run_id=batch_run_id,
             api_call_log_id=api_call_log_id,
         )
         artifact = RawItemSearchArtifact(
