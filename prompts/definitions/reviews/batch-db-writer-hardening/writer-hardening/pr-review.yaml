@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-db-writer-hardening-writer-hardening-pr"
+  title: "batch-db-writer-hardening 同一tx・partial UNIQUE PRレビュー"
+  summary: "DbWriter transaction / conflict_where と BATCH-013・016 配線 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1696
+  issue:
+    number: 1695
+  task_definition: "prompts/definitions/tasks/batch-db-writer-hardening/writer-hardening.yaml"
+  parent_epic_issue: null
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: "security-review"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "transaction が同一 connection / 終了時 commit / 例外 rollback か"
+  - "tx 内 DML が都度 commit しないか（UT mock）"
+  - "conflict_where が = / <> のみ・識別子検証付きか（生 SQL 禁止）"
+  - "IF-014 persist が transaction で囲まれているか"
+  - "IF-016 batch_run は snapshot_key、非 batch_run は partial UNIQUE + conflict_where か"
+  - "partial conflict 列が DDL と一致するか"
+  - "ギャップ一覧 IF-014/016・§17/§19/§20 が #1695 解消と更新されているか"
+  - "他 Batch への強制 tx 適用が混入していないか"
+  - "実 DB 疎通結果が PR に記録されているか（secret なし）"
+  - "Related to / PR target = develop"
+
+notes:
+  - "Issue #1695。親 Epic なし（#1635 完了後フォロー）"
+  - "CI 既定 live / production 無承認は禁止"
+  - "pr.number は PR 作成後に親 Agent が更新"

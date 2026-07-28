@@ -4,8 +4,9 @@
 ``load_user_meanings`` / ``load_item_embeddings``）は ``DbReader`` 経由（Wave G）。
 
 Metric UPSERT は IF-DB-BATCH-016 として ``DbWriter.upsert_rows``（本番 SQL）で本配線する。
-conflict は DDL ``uq_*_snapshot_key``（UNIQUE NULLS NOT DISTINCT）に合わせる。
-非 batch_run の部分 UNIQUE（``uq_*_non_batch_snapshot``）は DbWriter 未対応のため本 Task 外。
+- ``aggregation_scope == batch_run``: conflict = ``uq_*_snapshot_key``（WHERE なし）
+- それ以外: conflict = ``uq_*_non_batch_snapshot`` 列 +
+  ``conflict_where=(("aggregation_scope", "<>", "batch_run"),)``（#1695）
 
 - item_feature / item_meaning READ ONLY（必須入力）
 - item_embedding / user_meaning READ ONLY（任意・フラグ OFF 既定）
@@ -26,7 +27,7 @@ from batch.application.distribution_metrics.models import (
     MetricUpsertRow,
     UserMeaningRow,
 )
-from batch.infrastructure.db import DbReader, DbWriter
+from batch.infrastructure.db import ConflictWhere, DbReader, DbWriter
 
 _ITEM_FEATURE_COLUMNS = (
     "item_id",
@@ -57,6 +58,13 @@ _FEATURE_CONFLICT_COLUMNS = (
     "aggregation_scope",
     "aggregation_key",
 )
+_FEATURE_PARTIAL_CONFLICT_COLUMNS = (
+    "aggregation_scope",
+    "aggregation_key",
+    "semantic_config_version_id",
+    "feature_code",
+    "value_layer",
+)
 _MEANING_CONFLICT_COLUMNS = (
     "batch_run_id",
     "semantic_config_version_id",
@@ -66,6 +74,14 @@ _MEANING_CONFLICT_COLUMNS = (
     "aggregation_scope",
     "aggregation_key",
 )
+_MEANING_PARTIAL_CONFLICT_COLUMNS = (
+    "aggregation_scope",
+    "aggregation_key",
+    "semantic_config_version_id",
+    "entity_type",
+    "value_layer",
+    "feature_normalization_version_id",
+)
 _NORMALIZATION_CONFLICT_COLUMNS = (
     "batch_run_id",
     "semantic_config_version_id",
@@ -74,6 +90,18 @@ _NORMALIZATION_CONFLICT_COLUMNS = (
     "feature_normalization_version_id",
     "aggregation_scope",
     "aggregation_key",
+)
+_NORMALIZATION_PARTIAL_CONFLICT_COLUMNS = (
+    "aggregation_scope",
+    "aggregation_key",
+    "semantic_config_version_id",
+    "feature_code",
+    "value_layer",
+    "feature_normalization_version_id",
+)
+
+_NON_BATCH_CONFLICT_WHERE: tuple[tuple[str, str, object], ...] = (
+    ("aggregation_scope", "<>", "batch_run"),
 )
 
 _FEATURE_UPDATE_COLUMNS = (
@@ -96,6 +124,22 @@ _NORMALIZATION_UPDATE_COLUMNS = (
     "calculated_at",
     "updated_at",
 )
+
+
+_NON_BATCH_CONFLICT_WHERE: ConflictWhere = (("aggregation_scope", "<>", "batch_run"),)
+
+
+def _metric_conflict_target(
+    *,
+    aggregation_scope: str,
+    batch_run_columns: tuple[str, ...],
+    partial_columns: tuple[str, ...],
+) -> tuple[tuple[str, ...], ConflictWhere | None]:
+    """batch_run → snapshot_key UNIQUE / それ以外 → partial UNIQUE + WHERE."""
+
+    if aggregation_scope == "batch_run":
+        return batch_run_columns, None
+    return partial_columns, _NON_BATCH_CONFLICT_WHERE
 
 
 def _feature_upsert_key(row: MetricUpsertRow) -> tuple[object, ...]:
@@ -355,6 +399,8 @@ class DistributionMetricsRepositories:
         """IF-DB-BATCH-016: 3 Metric テーブルへ UPSERT（同一 UNIQUE キーは上書き）。
 
         ``calculated_at`` / ``updated_at`` は DDL NOT NULL のため、persist 時点の UTC now を付与する。
+        ``aggregation_scope == batch_run`` は ``uq_*_snapshot_key``、
+        それ以外は ``uq_*_non_batch_snapshot``（``conflict_where``）を使う（#1695）。
         """
 
         calculated_at = datetime.now(UTC)
@@ -362,34 +408,52 @@ class DistributionMetricsRepositories:
         if feature_rows:
             ops = _upsert_rows(self.feature_metric_rows, feature_rows, _feature_upsert_key)
             self.feature_metric_upsert_count += ops
+            conflict_columns, conflict_where = _metric_conflict_target(
+                aggregation_scope=feature_rows[0].aggregation_scope,
+                batch_run_columns=_FEATURE_CONFLICT_COLUMNS,
+                partial_columns=_FEATURE_PARTIAL_CONFLICT_COLUMNS,
+            )
             self.db_writer.upsert_rows(
                 "feature_distribution_metric",
                 tuple(_feature_payload(r, calculated_at=calculated_at) for r in feature_rows),
-                conflict_columns=_FEATURE_CONFLICT_COLUMNS,
+                conflict_columns=conflict_columns,
                 update_columns=_FEATURE_UPDATE_COLUMNS,
+                conflict_where=conflict_where,
             )
         if meaning_rows:
             ops = _upsert_rows(self.meaning_metric_rows, meaning_rows, _meaning_upsert_key)
             self.meaning_metric_upsert_count += ops
+            conflict_columns, conflict_where = _metric_conflict_target(
+                aggregation_scope=meaning_rows[0].aggregation_scope,
+                batch_run_columns=_MEANING_CONFLICT_COLUMNS,
+                partial_columns=_MEANING_PARTIAL_CONFLICT_COLUMNS,
+            )
             self.db_writer.upsert_rows(
                 "meaning_distribution_metric",
                 tuple(_meaning_payload(r, calculated_at=calculated_at) for r in meaning_rows),
-                conflict_columns=_MEANING_CONFLICT_COLUMNS,
+                conflict_columns=conflict_columns,
                 update_columns=_MEANING_UPDATE_COLUMNS,
+                conflict_where=conflict_where,
             )
         if normalization_rows:
             ops = _upsert_rows(
                 self.normalization_metric_rows, normalization_rows, _normalization_upsert_key
             )
             self.normalization_metric_upsert_count += ops
+            conflict_columns, conflict_where = _metric_conflict_target(
+                aggregation_scope=normalization_rows[0].aggregation_scope,
+                batch_run_columns=_NORMALIZATION_CONFLICT_COLUMNS,
+                partial_columns=_NORMALIZATION_PARTIAL_CONFLICT_COLUMNS,
+            )
             self.db_writer.upsert_rows(
                 "normalization_distribution_metric",
                 tuple(
                     _normalization_payload(r, calculated_at=calculated_at)
                     for r in normalization_rows
                 ),
-                conflict_columns=_NORMALIZATION_CONFLICT_COLUMNS,
+                conflict_columns=conflict_columns,
                 update_columns=_NORMALIZATION_UPDATE_COLUMNS,
+                conflict_where=conflict_where,
             )
 
     def record_phase(self, *, phase: str, status: str) -> None:

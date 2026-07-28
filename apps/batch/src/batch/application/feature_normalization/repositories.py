@@ -6,15 +6,11 @@
 queue OR は equals 二重 fetch + in-process。config version は JOIN せず
 item_semantic → item_feature の順で equals 導出（コードコメント参照）。
 
-書込（#1635 Wave 2 / #1688 / IF-DB-BATCH-014）:
+書込（#1635 Wave 2 / #1688 / IF-DB-BATCH-014、#1695 hardening）:
 - ``claim_or_continue``: semantic+processing は DB no-op。feature+queued は ``update_rows``
 - ``update_queue_status``: keep_processing は DB no-op。終端は ``update_rows``
 - ``persist_normalized_and_meaning``: ``item_feature`` normalized ``update_rows`` +
-  ``item_meaning`` ``upsert_rows``（偽 ``op`` 廃止）
-
-同一トランザクション: DbWriter に明示 multi-statement tx API が無いため、
-順次 ``update_rows`` + ``upsert_rows`` を呼ぶ（Writer 単発コミット）。
-アプリ層厳密同一 tx は未実装（後続強化候補）。
+  ``item_meaning`` ``upsert_rows`` を ``DbWriter.transaction()`` で同一 tx 実行
 """
 
 from __future__ import annotations
@@ -477,8 +473,7 @@ class FeatureNormalizationRepositories:
         ``raw_feature_value`` / 偽 ``op`` は payload に含めない（BATCH-012 責務）。
         ``item_meaning_row`` が None の場合は normalized 更新のみ（8 軸欠損等）。
 
-        Writer は単発コミットのため、アプリ層の厳密同一トランザクションは未実装。
-        順次呼び出しで近似する（後続強化候補）。
+        複数 DML は ``DbWriter.transaction()`` で同一 connection / 同一 tx にまとめる（#1695）。
         """
 
         if not normalized_rows:
@@ -486,44 +481,52 @@ class FeatureNormalizationRepositories:
 
         self.normalized_update_rows.extend(normalized_rows)
         self.item_feature_normalized_update_count += len(normalized_rows)
-        for r in normalized_rows:
-            self.db_writer.update_rows(
-                "item_feature",
-                set_values={"normalized_feature_value": r.normalized_feature_value},
-                equals=(
-                    ("item_id", r.item_id),
-                    ("semantic_config_version_id", r.semantic_config_version_id),
-                    ("feature_code", r.feature_code),
-                    ("feature_input_hash", r.feature_input_hash),
-                    ("feature_normalization_version_id", r.feature_normalization_version_id),
-                ),
-            )
-
         if item_meaning_row is not None:
             self.item_meaning_rows.append(item_meaning_row)
             self.item_meaning_upsert_count += 1
-            self.db_writer.upsert_rows(
-                "item_meaning",
-                (
-                    {
-                        "item_id": item_meaning_row.item_id,
-                        "semantic_config_version_id": item_meaning_row.semantic_config_version_id,
-                        "feature_normalization_version_id": (
-                            item_meaning_row.feature_normalization_version_id
+
+        with self.db_writer.transaction():
+            for r in normalized_rows:
+                self.db_writer.update_rows(
+                    "item_feature",
+                    set_values={"normalized_feature_value": r.normalized_feature_value},
+                    equals=(
+                        ("item_id", r.item_id),
+                        ("semantic_config_version_id", r.semantic_config_version_id),
+                        ("feature_code", r.feature_code),
+                        ("feature_input_hash", r.feature_input_hash),
+                        (
+                            "feature_normalization_version_id",
+                            r.feature_normalization_version_id,
                         ),
-                        "item_social": item_meaning_row.item_social,
-                        "item_symbolic": item_meaning_row.item_symbolic,
-                        "generated_at": item_meaning_row.generated_at,
-                    },
-                ),
-                conflict_columns=("item_id", "semantic_config_version_id"),
-                update_columns=(
-                    "feature_normalization_version_id",
-                    "item_social",
-                    "item_symbolic",
-                    "generated_at",
-                ),
-            )
+                    ),
+                )
+
+            if item_meaning_row is not None:
+                self.db_writer.upsert_rows(
+                    "item_meaning",
+                    (
+                        {
+                            "item_id": item_meaning_row.item_id,
+                            "semantic_config_version_id": (
+                                item_meaning_row.semantic_config_version_id
+                            ),
+                            "feature_normalization_version_id": (
+                                item_meaning_row.feature_normalization_version_id
+                            ),
+                            "item_social": item_meaning_row.item_social,
+                            "item_symbolic": item_meaning_row.item_symbolic,
+                            "generated_at": item_meaning_row.generated_at,
+                        },
+                    ),
+                    conflict_columns=("item_id", "semantic_config_version_id"),
+                    update_columns=(
+                        "feature_normalization_version_id",
+                        "item_social",
+                        "item_symbolic",
+                        "generated_at",
+                    ),
+                )
 
     def update_queue_status(
         self,

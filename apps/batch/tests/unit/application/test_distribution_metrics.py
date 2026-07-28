@@ -183,6 +183,7 @@ def test_happy_path_upserts_three_metric_tables_and_single_phase_log() -> None:
         "aggregation_scope",
         "aggregation_key",
     )
+    assert feature_call["conflict_where"] is None
     meaning_call = next(c for c in db.upsert_calls if c["table"] == "meaning_distribution_metric")
     assert meaning_call["conflict_columns"] == (
         "batch_run_id",
@@ -193,6 +194,7 @@ def test_happy_path_upserts_three_metric_tables_and_single_phase_log() -> None:
         "aggregation_scope",
         "aggregation_key",
     )
+    assert meaning_call["conflict_where"] is None
     norm_call = next(
         c for c in db.upsert_calls if c["table"] == "normalization_distribution_metric"
     )
@@ -205,6 +207,7 @@ def test_happy_path_upserts_three_metric_tables_and_single_phase_log() -> None:
         "aggregation_scope",
         "aggregation_key",
     )
+    assert norm_call["conflict_where"] is None
     assert "sigma_zero_count" in norm_call["update_columns"]
     assert "sigma_zero_count" not in feature_call["update_columns"]
     assert "sigma_zero_count" not in meaning_call["update_columns"]
@@ -727,13 +730,45 @@ def test_batch_run_rerun_upserts_same_unique_key_without_duplicate_rows() -> Non
 def test_daily_scope_partial_unique_rerun_overwrites_by_aggregation_key() -> None:
     """§16 No.8（daily）: 部分 UNIQUE により同一 aggregation_key は上書き。"""
 
-    repos, _ = _repos()
+    repos, db = _repos()
     first = _run(repos, job_run_id="run-daily-1", trigger_mode="schedule")
     assert first.status == "succeeded"
     assert first.aggregation_scope == "daily"
     assert first.aggregation_key == "2026-07-21"
     feature_n = len(repos.feature_metric_rows)
     first_means = {r.feature_code: r.mean for r in repos.feature_metric_rows if r.value_layer == "raw"}
+
+    feature_call = next(c for c in db.upsert_calls if c["table"] == "feature_distribution_metric")
+    assert feature_call["conflict_columns"] == (
+        "aggregation_scope",
+        "aggregation_key",
+        "semantic_config_version_id",
+        "feature_code",
+        "value_layer",
+    )
+    assert feature_call["conflict_where"] == (("aggregation_scope", "<>", "batch_run"),)
+    meaning_call = next(c for c in db.upsert_calls if c["table"] == "meaning_distribution_metric")
+    assert meaning_call["conflict_columns"] == (
+        "aggregation_scope",
+        "aggregation_key",
+        "semantic_config_version_id",
+        "entity_type",
+        "value_layer",
+        "feature_normalization_version_id",
+    )
+    assert meaning_call["conflict_where"] == (("aggregation_scope", "<>", "batch_run"),)
+    norm_call = next(
+        c for c in db.upsert_calls if c["table"] == "normalization_distribution_metric"
+    )
+    assert norm_call["conflict_columns"] == (
+        "aggregation_scope",
+        "aggregation_key",
+        "semantic_config_version_id",
+        "feature_code",
+        "value_layer",
+        "feature_normalization_version_id",
+    )
+    assert norm_call["conflict_where"] == (("aggregation_scope", "<>", "batch_run"),)
 
     # 入力を変えて再実行（別 batch_run_id、同一 daily key）
     repos.item_features = [

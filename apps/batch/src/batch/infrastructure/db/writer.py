@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import re
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Iterator, Literal, Protocol
 
 _SENSITIVE_URL_PATTERN = re.compile(
     r"(postgres(?:ql)?://)([^:@/]+)(?::([^@/]*))?@",
     re.IGNORECASE,
 )
 _IDENT_PATTERN = re.compile(r"^[a-z_][a-z0-9_]*$")
+
+ConflictOp = Literal["=", "<>"]
+ConflictWhere = tuple[tuple[str, ConflictOp, object], ...]
 
 
 @dataclass(frozen=True)
@@ -31,6 +35,8 @@ class DbWriter(Protocol):
     @property
     def backend(self) -> str: ...
 
+    def transaction(self) -> AbstractContextManager[None]: ...
+
     def write_rows(self, table: str, rows: tuple[dict[str, object], ...]) -> DbWriteResult: ...
 
     def upsert_rows(
@@ -40,6 +46,7 @@ class DbWriter(Protocol):
         *,
         conflict_columns: tuple[str, ...],
         update_columns: tuple[str, ...] | None = None,
+        conflict_where: ConflictWhere | None = None,
     ) -> DbWriteResult: ...
 
     def update_rows(
@@ -81,6 +88,25 @@ def _assert_sql_ident(name: str, *, kind: str) -> str:
     return name
 
 
+def _normalize_conflict_where(
+    conflict_where: ConflictWhere | None,
+) -> ConflictWhere | None:
+    if conflict_where is None:
+        return None
+    if not conflict_where:
+        raise DatabaseError("conflict_where must not be empty when provided")
+
+    normalized: list[tuple[str, ConflictOp, object]] = []
+    for column, operator, value in conflict_where:
+        safe_column = _assert_sql_ident(column, kind="column")
+        if operator not in ("=", "<>"):
+            raise DatabaseError(
+                f"unsupported conflict_where operator: {operator!r} (allowed: '=', '<>')"
+            )
+        normalized.append((safe_column, operator, value))
+    return tuple(normalized)
+
+
 def _normalize_row_columns(rows: tuple[dict[str, object], ...]) -> tuple[str, ...]:
     if not rows:
         return ()
@@ -103,7 +129,13 @@ class ScaffoldDbWriter:
     upsert_calls: list[dict[str, object]] = field(default_factory=list)
     update_calls: list[dict[str, object]] = field(default_factory=list)
     delete_calls: list[dict[str, object]] = field(default_factory=list)
+    transaction_calls: list[dict[str, object]] = field(default_factory=list)
     backend: str = "scaffold"
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        self.transaction_calls.append({})
+        yield
 
     def write_rows(self, table: str, rows: tuple[dict[str, object], ...]) -> DbWriteResult:
         self.write_calls.append({"table": table, "rows": rows})
@@ -116,13 +148,16 @@ class ScaffoldDbWriter:
         *,
         conflict_columns: tuple[str, ...],
         update_columns: tuple[str, ...] | None = None,
+        conflict_where: ConflictWhere | None = None,
     ) -> DbWriteResult:
+        normalized_where = _normalize_conflict_where(conflict_where)
         self.upsert_calls.append(
             {
                 "table": table,
                 "rows": rows,
                 "conflict_columns": conflict_columns,
                 "update_columns": update_columns,
+                "conflict_where": normalized_where,
             }
         )
         return DbWriteResult(rows_affected=len(rows), table=table)
@@ -155,12 +190,38 @@ class PostgresDbWriter:
 
     - ``write_rows``: multi-row INSERT
     - ``upsert_rows``: INSERT ... ON CONFLICT DO UPDATE（T4a）
+      - optional ``conflict_where`` → ``ON CONFLICT (cols) WHERE ...``
     - ``update_rows``: UPDATE ... SET ... WHERE equals
     - ``delete_rows``: DELETE FROM ... WHERE equals
+    - ``transaction()``: 同一 connection で複数 DML を 1 commit
     """
 
     database_url: str
     backend: str = "postgres"
+    _active_conn: object | None = field(default=None, init=False, repr=False)
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        if self._active_conn is not None:
+            raise DatabaseError("nested transactions are not supported")
+
+        import psycopg
+
+        try:
+            conn = psycopg.connect(self.database_url)
+        except Exception as exc:  # noqa: BLE001 — surface as DatabaseError
+            raise DatabaseError(mask_database_url(str(exc))) from exc
+
+        self._active_conn = conn
+        try:
+            yield
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            self._active_conn = None
+            conn.close()
 
     def write_rows(self, table: str, rows: tuple[dict[str, object], ...]) -> DbWriteResult:
         if not rows:
@@ -177,6 +238,7 @@ class PostgresDbWriter:
         *,
         conflict_columns: tuple[str, ...],
         update_columns: tuple[str, ...] | None = None,
+        conflict_where: ConflictWhere | None = None,
     ) -> DbWriteResult:
         if not rows:
             return DbWriteResult(rows_affected=0, table=table)
@@ -189,6 +251,7 @@ class PostgresDbWriter:
         for column in conflict:
             if column not in columns:
                 raise DatabaseError(f"conflict column {column!r} missing from row payload")
+        normalized_where = _normalize_conflict_where(conflict_where)
 
         if update_columns is None:
             updates = tuple(column for column in columns if column not in conflict)
@@ -207,17 +270,35 @@ class PostgresDbWriter:
         )
         conflict_idents = sql.SQL(", ").join(sql.Identifier(column) for column in conflict)
 
+        where_clause = sql.SQL("")
+        where_params: list[object] = []
+        if normalized_where is not None:
+            predicates = []
+            for column, operator, value in normalized_where:
+                op_sql = sql.SQL(" = ") if operator == "=" else sql.SQL(" <> ")
+                predicates.append(
+                    sql.SQL("{column}{op}{placeholder}").format(
+                        column=sql.Identifier(column),
+                        op=op_sql,
+                        placeholder=sql.Placeholder(),
+                    )
+                )
+                where_params.append(value)
+            where_clause = sql.SQL(" WHERE {conds}").format(
+                conds=sql.SQL(" AND ").join(predicates)
+            )
+
         if updates:
             set_clause = sql.SQL(", ").join(
                 sql.SQL("{col} = EXCLUDED.{col}").format(col=sql.Identifier(column))
                 for column in updates
             )
             on_conflict = sql.SQL(
-                "ON CONFLICT ({conflict}) DO UPDATE SET {updates}"
-            ).format(conflict=conflict_idents, updates=set_clause)
+                "ON CONFLICT ({conflict}){where} DO UPDATE SET {updates}"
+            ).format(conflict=conflict_idents, where=where_clause, updates=set_clause)
         else:
-            on_conflict = sql.SQL("ON CONFLICT ({conflict}) DO NOTHING").format(
-                conflict=conflict_idents
+            on_conflict = sql.SQL("ON CONFLICT ({conflict}){where} DO NOTHING").format(
+                conflict=conflict_idents, where=where_clause
             )
 
         statement = sql.SQL(
@@ -231,6 +312,7 @@ class PostgresDbWriter:
         params: list[object] = []
         for row in rows:
             params.extend(row[column] for column in columns)
+        params.extend(where_params)
 
         return self._execute(statement, params, table=table, fallback_affected=len(rows))
 
@@ -343,20 +425,50 @@ class PostgresDbWriter:
         import psycopg
 
         try:
+            if self._active_conn is not None:
+                return self._execute_on_conn(
+                    self._active_conn,
+                    statement,
+                    params,
+                    table=table,
+                    fallback_affected=fallback_affected,
+                    commit=False,
+                )
+
             with psycopg.connect(self.database_url) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(statement, params)
-                    conn.commit()
-                    affected = (
-                        cur.rowcount
-                        if cur.rowcount is not None and cur.rowcount >= 0
-                        else fallback_affected
-                    )
-                    return DbWriteResult(rows_affected=affected, table=table)
+                return self._execute_on_conn(
+                    conn,
+                    statement,
+                    params,
+                    table=table,
+                    fallback_affected=fallback_affected,
+                    commit=True,
+                )
         except DatabaseError:
             raise
         except Exception as exc:  # noqa: BLE001 — surface as DatabaseError
             raise DatabaseError(mask_database_url(str(exc))) from exc
+
+    def _execute_on_conn(
+        self,
+        conn: object,
+        statement: object,
+        params: list[object],
+        *,
+        table: str,
+        fallback_affected: int,
+        commit: bool,
+    ) -> DbWriteResult:
+        with conn.cursor() as cur:  # type: ignore[union-attr]
+            cur.execute(statement, params)
+            if commit:
+                conn.commit()  # type: ignore[union-attr]
+            affected = (
+                cur.rowcount
+                if cur.rowcount is not None and cur.rowcount >= 0
+                else fallback_affected
+            )
+            return DbWriteResult(rows_affected=affected, table=table)
 
 
 def create_db_writer(
