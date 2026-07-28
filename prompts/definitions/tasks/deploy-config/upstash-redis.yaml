@@ -1,0 +1,180 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-deploy-config-upstash"
+  title: "deploy-config-upstash:Upstash Redis採用正本化"
+  summary: "デプロイ設定書初版と Upstash Redis（stg/prod）採用を正本化する。親 Epic #146。"
+  phase: "14_リリース"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-deploy-config"
+  epic_issue: "[Epic]deploy-config:デプロイ設定書"
+  epic_issue_number: 146
+  epic_branch: null
+  related_issues:
+    - 1708
+    - 146
+    - 1686
+    - 144
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Human が MVP 簡易 stg / prod の Redis を Upstash と確定（2026-07-28）。
+  デプロイ設定書全体は親 Epic #146 で管理し、本 Task は Upstash 正本化と設定書初版を担当する。
+  親 #146 / 上位 #144 は no-branch のため PR target は develop。
+
+objective: |
+  デプロイ設定書に Upstash（H-DEP-01〜03）を正本記載し、Decision log と簡易stg手順の Redis 行を整合させる。
+
+scope:
+  - "デプロイ設定書の作成（MVP プロバイダ一覧＋Upstash 節）"
+  - "docs/14 README のデプロイ設定リンク"
+  - "簡易stg構築手順の Redis / R1・R2 更新"
+  - "Human decision log（Upstash）"
+
+out_of_scope:
+  - "secret 実値・Upstash 実インスタンス作成"
+  - "Vercel/Render/Fly 等の詳細化（#146 配下の別子 Task）"
+  - "infra yaml 本配置"
+  - "#145 / #147"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/基盤/システム物理構成図.md"
+      required: true
+      purpose: "ホスティング割当"
+    - path: "docs/06_実装設計/cross_cutting/基盤構成設計書.md"
+      required: true
+      purpose: "Redis 役割"
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+      purpose: "REDIS_URL"
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+      purpose: "構築手順との接続"
+
+output:
+  docs:
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      action: "create"
+      required: true
+    - path: "docs/14_リリース/README.md"
+      action: "update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/2026-07-28-upstash-redis-adoption.md"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "デプロイ設定書.md（初版・Upstash 含む）"
+  - "Upstash Human decision log"
+  - "簡易stg構築手順の Redis 更新"
+
+acceptance_criteria:
+  - "デプロイ設定書に Upstash が stg/prod Redis 採用として明記されている"
+  - "Decision log がある"
+  - "Related to #1708（親 #146 を明記）"
+  - "PR target が develop"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "deploy-config-upstash"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "14_リリース"
+    status: "In Progress"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "infra"
+
+dependencies:
+  epics:
+    - id: "epic-deploy-config"
+      purpose: "親 Epic #146"
+  issues:
+    - number: 1708
+      purpose: "本作業 Issue"
+    - number: 146
+      purpose: "親 Epic"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+    - "docs/14_リリース/README.md"
+    - "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+    - "ai-logs/human-decisions/2026-07-28-upstash-redis-adoption.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "docs のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Upstash が stg/prod Redis 採用として明記されているか"
+    - "親が #146、本 Task が #1708 として整理されているか"
+    - "secret 実値がないか"
+    - "Related to #1708、PR target が develop か"
+  specialist_reviews:
+    docs: true
+    security: true
+
+human_decision_points:
+  - "デプロイ設定書初版の粒度で #1708 完了としてよいか"
+  - "残りのホスト詳細は #146 配下の別子 Task でよいか"
+
+notes:
+  - "旧 #146 直作業を #1708 子 Task へ切り分け（Human 依頼 2026-07-28）"

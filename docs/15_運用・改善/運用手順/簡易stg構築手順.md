@@ -52,7 +52,7 @@
 | Reco | あり | Fly.io 等（Environment: stg） |
 | Batch | あり（手動＋必要なら一部定期） | GitHub Actions |
 | PostgreSQL | **stg 専用 1 本**。prod/local/Layer2 と共有しない | Supabase なら **stg 用プロジェクト 1** |
-| Redis | 環境ごと分離 | マネージド Redis（stg 専用） |
+| Redis | 環境ごと分離 | **Upstash Redis**（stg 専用 DB。[デプロイ設定書](../../14_リリース/デプロイ設定/デプロイ設定書.md) H-DEP-01） |
 | Object Storage | 環境ごと分離。`raw-products` 等は private | Supabase Storage（stg プロジェクト内） |
 | 監視 | 最小〜中 | プラットフォーム標準ログで可 |
 
@@ -93,8 +93,8 @@
 
 | # | 手順 | 確認 |
 | --- | --- | --- |
-| R1 | stg 専用 Redis を用意する（prod/local と共有しない） | [ ] |
-| R2 | API / Reco の stg Environment から参照できるネットワーク方針にする | [ ] |
+| R1 | **Upstash** に stg 専用 Database を作成する（prod/local と共有しない。[デプロイ設定書](../../14_リリース/デプロイ設定/デプロイ設定書.md) §6） | [ ] |
+| R2 | API / Reco の stg から同一 `REDIS_URL`（TLS 推奨）で参照できることを確認する | [ ] |
 
 ### 6.3 Object Storage（stg）
 
@@ -111,7 +111,7 @@
 | A1 | API ホスティングに **stg Environment**（または stg サービス）を作成する | [ ] |
 | A2 | `APP_ENV=stg` を設定する | [ ] |
 | A3 | stg `DATABASE_URL` / Redis / Reco 接続・Internal Key 等を Environment Secret に登録する（[環境変数定義書](../../06_実装設計/cross_cutting/環境変数定義書.md) §7・§10） | [ ] |
-| A4 | stg 向けにデプロイする（設定ファイル詳細は #146 と連携可） | [ ] |
+| A4 | stg 向けにデプロイする（プロバイダ正本は [デプロイ設定書](../../14_リリース/デプロイ設定/デプロイ設定書.md)） | [ ] |
 
 ### 6.5 Reco（stg）
 
@@ -234,6 +234,7 @@
 | [基盤構成設計書](../../06_実装設計/cross_cutting/基盤構成設計書.md) | コンポーネント |
 | [マイグレーション方針書](../../06_実装設計/database/マイグレーション方針書.md) | schema 適用 |
 | `infra/*/README` | 設定配置の置き場（プレースホルダ） |
+| [デプロイ設定書](../../14_リリース/デプロイ設定/デプロイ設定書.md) | プロバイダ確定（Upstash 等） |
 
 ---
 
@@ -242,3 +243,4 @@
 | 日付 | 内容 |
 | --- | --- |
 | 2026-07-27 | 初版。#1686 として簡易 stg 構築手順を正本化。Related to #1686 |
+| 2026-07-28 | Redis を Upstash に更新（#1708 / H-DEP-01、親 #146） |
