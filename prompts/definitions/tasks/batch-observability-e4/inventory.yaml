@@ -1,0 +1,184 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-observability-e4-inventory"
+  title: "batch-observability-e4:観測横断ギャップ棚卸し"
+  summary: "E4 観測横断の現状ギャップを docs 正本化し、後続 Wave 分割と Human 判断材料を残す。実装コードの本配線はしない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  epic_issue_number: 1636
+  epic_branch: "feature/epic-1636-batch-observability-e4"
+  related_issues:
+    - 1546
+    - 1623
+    - 1635
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "docs-reviewer-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  E0〜E3・SELECT（#1623）・書込 Epic 群完了後、観測横断が未本配線。
+  JobRunTracker / phase_logs / error_logs は in-memory、batch_run_log / api_call_log 書込は未配線。
+  item_import_summary のみ IF-017 で本配線済み。本 Task は docs 棚卸しに限定する。
+
+objective: |
+  E4 観測ギャップを docs 正本として残し、後続 Wave（run / phase-error / api_call / 代表適用）と
+  Human 判断点（必須最小 Batch・api_call 必須可否・着手順）の材料にする。
+
+scope:
+  - "バッチ観測横断・本実装ギャップ一覧.md の新規作成"
+  - "batch_run_log / phase_log / error_log / item_import_summary / api_call_log の現状突合"
+  - "MOD-BATCH-045/046/047・Phase/Error 経路と実装突合表"
+  - "推奨 Wave 分割案と代表経路案（推論明示）"
+  - "Human 判断点（選択肢・推奨・判断しないリスク）"
+  - "043/044 除外の明記"
+  - "横串ギャップ一覧 §10 E4 行への参照更新（必要最小）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "観測テーブルへの本配線実装"
+  - "IF-017 再実装"
+  - "MOD-BATCH-043 / 044 本格"
+  - "親 schedule（#1637）"
+  - "SELECT / 書込 Epic の再実装"
+  - "BATCH-018 / 019 本格化"
+  - "commit / push / PR（親 Orchestrator が行う場合あり）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチDB読取・SELECT本実装ギャップ一覧.md"
+      required: false
+  files:
+    - path: "apps/batch/src/batch/application/job_run/**"
+      required: true
+    - path: "apps/batch/src/batch/application/**/repositories.py"
+      required: true
+    - path: "apps/batch/src/batch/application/import_summary/**"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      action: "create"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-observability-e4/inventory.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-observability-e4/inventory/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "観測横断ギャップ正本 docs"
+  - "後続 Wave の分割案と Human 判断材料"
+
+acceptance_criteria:
+  - "ギャップ一覧 docs が存在する"
+  - "観測対象 5 テーブルと IF/MOD 突合が表で整理されている"
+  - "現状（Scaffold JobRunTracker / in-memory phase・error / IF-017 本配線）が事実として記載されている"
+  - "推奨 Wave 分割と代表経路案が推論として明示されている"
+  - "Human 判断点が選択肢・推奨・判断しないリスク付きで明示されている"
+  - "043/044 除外が明記されている"
+  - "secret 実値なし"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "docs/task-1697-batch-observability-e4-inventory"
+  summary: "batch-observability-e4-inventory"
+  base: "feature/epic-1636-batch-observability-e4"
+  target: "feature/epic-1636-batch-observability-e4"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-04"
+
+issue:
+  number: 1697
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1636
+      purpose: "親 Epic"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+  conflict_risk: "medium"
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+  not_required:
+    - "unit test"
+    - "real DB connectivity verify"
+  skip_reason:
+    "unit test": "docs 棚卸しのみ"
+    "real DB connectivity verify": "Wave 0 inventory は docs のみ。実装 Wave で必須化を検討"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "事実と推論が分離されているか"
+    - "観測 DB 書込実装を scope に混ぜていないか"
+    - "043/044 を E4 本線に混ぜていないか"
+    - "Human 判断点に選択肢と推奨があるか"
+    - "secret 非露出"
+  specialist_reviews:
+    docs: true
+
+notes:
+  - "Issue #1697 / Branch docs/task-1697-batch-observability-e4-inventory"
+  - "Wave 0 は実環境観測疎通不要（Epic 方針の例外）"
+  - "commit / push / PR は親指示に従う（本 Task 作業指示では親が行う）"
