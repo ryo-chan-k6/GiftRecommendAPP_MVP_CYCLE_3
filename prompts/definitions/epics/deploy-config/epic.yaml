@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-deploy-config"
+  title: "deploy-config:デプロイ設定書"
+  summary: "MVP ホスティング／プロバイダ／設定配置をデプロイ設定書として正本化し、子 Task で領域別に落とし込む。"
+  phase: "14_リリース"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  related_issues:
+    - 146
+    - 144
+  related_prs: []
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+objective: |
+  docs/14_リリース/デプロイ設定/デプロイ設定書.md を正本とし、
+  Redis / Web / API / Reco / Batch / Supabase 等を子 Task で充足する。
+
+scope:
+  - "デプロイ設定書の正本管理"
+  - "子 Task の起票・完了追跡"
+
+out_of_scope:
+  - "secret 実値登録"
+  - "ホスティング実操作（簡易stg構築手順）"
+  - "#145 / #147"
+
+branch:
+  no_branch: true
+  summary: "deploy-config"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+issue:
+  unit: "epic"
+  type: "docs"
+  area: "infra"
+
+notes:
+  - "子: #1708 Upstash。他ホスト詳細は未起票"
+  - "上位親: #144 リリース準備"

@@ -2,9 +2,9 @@ schema_version: "1.0"
 definition_type: "review"
 
 review:
-  id: "review-deploy-config-pr"
-  title: "デプロイ設定書 PRレビュー"
-  summary: "deploy-config デプロイ設定書作成 Task の PR を AI Review する。"
+  id: "review-deploy-config-upstash-pr"
+  title: "Upstash Redis正本化 PRレビュー"
+  summary: "deploy-config-upstash Task の PR を AI Review する。"
   type: "task_pr_review"
   status: "ready"
 
@@ -16,13 +16,13 @@ branch:
 
 target:
   pr:
-    number: 1707
+    number: null
   issue:
-    number: 146
-  task_definition: "prompts/definitions/tasks/deploy-config/deploy-config.yaml"
-  source_branch: "docs/task-146-deploy-config"
+    number: 1708
+  task_definition: "prompts/definitions/tasks/deploy-config/upstash-redis.yaml"
+  source_branch: "docs/task-1708-deploy-config-upstash"
   target_branch: "develop"
-  parent_epic_issue: "[Epic]: リリース準備"
+  parent_epic_issue: "[Epic]deploy-config:デプロイ設定書"
   parent_epic_branch: null
 
 commands:
@@ -46,11 +46,11 @@ review_scope:
   project_operation: true
 
 review_points:
-  - "デプロイ設定書.md が存在し Upstash が Redis 採用として明記されているか"
+  - "Upstash が Redis 採用として明記されているか"
+  - "Related to #1708、親 #146 が整理されているか"
   - "secret 実値がないか"
-  - "簡易stg構築手順との整合"
-  - "Human decision log があるか"
-  - "Related to #146、PR target が develop か"
+  - "PR target が develop か"
 
 notes:
   - "PR 番号確定後に target.pr を更新してよい"
+  - "旧 PR #1707 は #146 直紐付けだったものを本構成へ修正"
