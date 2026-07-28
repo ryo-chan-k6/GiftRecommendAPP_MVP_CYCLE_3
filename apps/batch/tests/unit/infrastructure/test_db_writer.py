@@ -45,6 +45,7 @@ def test_scaffold_db_writer_records_upserts() -> None:
             "rows": rows,
             "conflict_columns": ("batch_run_id", "external_item_code"),
             "update_columns": ("diff_status",),
+            "conflict_where": None,
         }
     ]
 
@@ -341,3 +342,226 @@ def test_postgres_upsert_rows_executes_on_conflict() -> None:
     assert params == ["r1", "shop:a", "new"]
     mock_conn.commit.assert_called_once()
     assert result == DbWriteResult(rows_affected=1, table="product_diff_result")
+
+
+def _flatten_sql(fragment: object) -> str:
+    """Render psycopg.sql fragments for statement shape assertions."""
+
+    from psycopg import sql
+
+    if isinstance(fragment, sql.Composed):
+        return "".join(_flatten_sql(part) for part in fragment)
+    if isinstance(fragment, sql.SQL):
+        return str(fragment._obj)  # noqa: SLF001 — test-only render
+    if isinstance(fragment, sql.Identifier):
+        return ".".join(str(part) for part in fragment._obj)  # noqa: SLF001
+    if isinstance(fragment, sql.Placeholder):
+        return "%s"
+    return str(fragment)
+
+
+def test_scaffold_upsert_records_conflict_where() -> None:
+    writer = ScaffoldDbWriter()
+    rows = (
+        {
+            "aggregation_scope": "daily",
+            "aggregation_key": "2026-07-21",
+            "semantic_config_version_id": "v1",
+            "feature_code": "formality",
+            "value_layer": "raw",
+            "sample_count": 2,
+        },
+    )
+
+    result = writer.upsert_rows(
+        "feature_distribution_metric",
+        rows,
+        conflict_columns=(
+            "aggregation_scope",
+            "aggregation_key",
+            "semantic_config_version_id",
+            "feature_code",
+            "value_layer",
+        ),
+        update_columns=("sample_count",),
+        conflict_where=(("aggregation_scope", "<>", "batch_run"),),
+    )
+
+    assert result.rows_affected == 1
+    assert writer.upsert_calls[0]["conflict_where"] == (
+        ("aggregation_scope", "<>", "batch_run"),
+    )
+
+
+def test_scaffold_transaction_records_calls() -> None:
+    writer = ScaffoldDbWriter()
+    with writer.transaction():
+        writer.update_rows(
+            "item_feature",
+            set_values={"normalized_feature_value": 0.5},
+            equals=(("item_id", "it_1"),),
+        )
+        writer.upsert_rows(
+            "item_meaning",
+            ({"item_id": "it_1", "semantic_config_version_id": "v1"},),
+            conflict_columns=("item_id", "semantic_config_version_id"),
+        )
+
+    assert len(writer.transaction_calls) == 1
+    assert len(writer.update_calls) == 1
+    assert len(writer.upsert_calls) == 1
+
+
+def test_postgres_upsert_rows_includes_conflict_where_in_sql() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+    rows = (
+        {
+            "aggregation_scope": "daily",
+            "aggregation_key": "2026-07-21",
+            "semantic_config_version_id": "v1",
+            "feature_code": "formality",
+            "value_layer": "raw",
+            "sample_count": 2,
+        },
+    )
+
+    mock_cursor = MagicMock()
+    mock_cursor.rowcount = 1
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = False
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = False
+
+    with patch("psycopg.connect", return_value=mock_conn):
+        writer.upsert_rows(
+            "feature_distribution_metric",
+            rows,
+            conflict_columns=(
+                "aggregation_scope",
+                "aggregation_key",
+                "semantic_config_version_id",
+                "feature_code",
+                "value_layer",
+            ),
+            update_columns=("sample_count",),
+            conflict_where=(("aggregation_scope", "<>", "batch_run"),),
+        )
+
+    statement, params = mock_cursor.execute.call_args.args
+    rendered = _flatten_sql(statement)
+    assert "ON CONFLICT" in rendered
+    assert "WHERE" in rendered
+    assert "<>" in rendered
+    assert params[-1] == "batch_run"
+    assert params[:6] == ["daily", "2026-07-21", "v1", "formality", "raw", 2]
+
+
+def test_postgres_upsert_rejects_invalid_conflict_where_operator() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+    with pytest.raises(DatabaseError, match="unsupported conflict_where operator"):
+        writer.upsert_rows(
+            "feature_distribution_metric",
+            (
+                {
+                    "aggregation_scope": "daily",
+                    "aggregation_key": "2026-07-21",
+                    "semantic_config_version_id": "v1",
+                    "feature_code": "formality",
+                    "value_layer": "raw",
+                },
+            ),
+            conflict_columns=(
+                "aggregation_scope",
+                "aggregation_key",
+                "semantic_config_version_id",
+                "feature_code",
+                "value_layer",
+            ),
+            conflict_where=(("aggregation_scope", "!=", "batch_run"),),  # type: ignore[arg-type]
+        )
+
+
+def test_postgres_transaction_commits_once_for_multiple_dml() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+
+    mock_cursor = MagicMock()
+    mock_cursor.rowcount = 1
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = False
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    with patch("psycopg.connect", return_value=mock_conn) as connect:
+        with writer.transaction():
+            writer.update_rows(
+                "item_feature",
+                set_values={"normalized_feature_value": 0.5},
+                equals=(
+                    ("item_id", "it_1"),
+                    ("semantic_config_version_id", "v1"),
+                    ("feature_code", "formality"),
+                    ("feature_input_hash", "h1"),
+                    ("feature_normalization_version_id", "n1"),
+                ),
+            )
+            writer.upsert_rows(
+                "item_meaning",
+                (
+                    {
+                        "item_id": "it_1",
+                        "semantic_config_version_id": "v1",
+                        "feature_normalization_version_id": "n1",
+                        "item_social": 0.4,
+                        "item_symbolic": 0.6,
+                        "generated_at": "2026-07-28T00:00:00Z",
+                    },
+                ),
+                conflict_columns=("item_id", "semantic_config_version_id"),
+                update_columns=(
+                    "feature_normalization_version_id",
+                    "item_social",
+                    "item_symbolic",
+                    "generated_at",
+                ),
+            )
+
+    connect.assert_called_once_with("postgresql://localhost:5432/gift")
+    assert mock_cursor.execute.call_count == 2
+    mock_conn.commit.assert_called_once()
+    mock_conn.rollback.assert_not_called()
+    mock_conn.close.assert_called_once()
+
+
+def test_postgres_transaction_rolls_back_on_error() -> None:
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+
+    mock_cursor = MagicMock()
+    mock_cursor.rowcount = 1
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = False
+    mock_cursor.execute.side_effect = [None, RuntimeError("boom")]
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+
+    with patch("psycopg.connect", return_value=mock_conn):
+        with pytest.raises(DatabaseError, match="boom"):
+            with writer.transaction():
+                writer.update_rows(
+                    "item_feature",
+                    set_values={"normalized_feature_value": 0.5},
+                    equals=(("item_id", "it_1"),),
+                )
+                writer.update_rows(
+                    "item_feature",
+                    set_values={"normalized_feature_value": 0.6},
+                    equals=(("item_id", "it_2"),),
+                )
+
+    mock_conn.commit.assert_not_called()
+    mock_conn.rollback.assert_called_once()
+    mock_conn.close.assert_called_once()

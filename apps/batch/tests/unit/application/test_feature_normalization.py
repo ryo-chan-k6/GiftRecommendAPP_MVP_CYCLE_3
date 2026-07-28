@@ -353,8 +353,8 @@ def test_normalized_and_meaning_written_together() -> None:
     meaning_upserts = [c for c in db.upsert_calls if c["table"] == "item_meaning"]
     assert len(feature_updates) == len(MVP_FEATURE_CODES)
     assert len(meaning_upserts) == 1
-    # item_feature（normalized）が item_meaning より先に書かれる（同一 persist フェーズ）
-    # Writer 単発コミットのため厳密同一 tx は未実装（順次呼び出しで近似）
+    # item_feature（normalized）が item_meaning より先に書かれる（同一 persist / 同一 tx）
+    assert len(db.transaction_calls) == 1
     assert feature_updates
     assert meaning_upserts
     for call in feature_updates:
@@ -365,6 +365,17 @@ def test_normalized_and_meaning_written_together() -> None:
             assert "op" not in payload
             assert "raw_feature_value" not in payload
             assert "feature_normalization_version_id" in payload
+
+
+def test_primary_path_uses_transaction_for_persist() -> None:
+    repos, db = _repos()
+    _job(repos).run(job_run_id="run-tx-wrap")
+
+    assert len(db.transaction_calls) == 1
+    feature_updates = [c for c in db.update_calls if c["table"] == "item_feature"]
+    meaning_upserts = [c for c in db.upsert_calls if c["table"] == "item_meaning"]
+    assert len(feature_updates) == len(MVP_FEATURE_CODES)
+    assert len(meaning_upserts) == 1
 
 
 def test_scaffold_demo_job_succeeds() -> None:

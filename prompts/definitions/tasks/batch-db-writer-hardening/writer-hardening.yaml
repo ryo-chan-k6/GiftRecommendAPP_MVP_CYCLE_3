@@ -1,0 +1,208 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-db-writer-hardening"
+  title: "batch-db-writer-hardening:同一tx・partial UNIQUE対応"
+  summary: "#1635 Wave 残の技術負債として、DbWriter に同一 tx API と upsert conflict_where（partial UNIQUE）を追加し、BATCH-013 / BATCH-016 の残リスクを解消する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - 1635
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1635 Wave 2（IF-014）は Writer 単発コミットのためアプリ層厳密同一 tx が未実装だった。
+  #1635 Wave 4（IF-016）は非 batch_run の部分 UNIQUE（uq_*_non_batch_snapshot）が未対応だった。
+  Epic #1635 CLOSED（#1694 MERGED）後の技術負債フォローとして本 Task で解消する。
+
+objective: |
+  PostgresDbWriter に transaction() と upsert_rows(conflict_where) を追加し、
+  BATCH-013 persist_normalized_and_meaning を同一 tx、BATCH-016 非 batch_run を
+  partial UNIQUE で UPSERT 可能にする。他 Batch への tx 強制適用はしない。
+
+scope:
+  - "DbWriter Protocol / Scaffold / Postgres に transaction()"
+  - "upsert_rows に optional conflict_where（= / <> のみ・識別子検証）"
+  - "BATCH-013 persist_normalized_and_meaning を transaction で囲む"
+  - "BATCH-016: batch_run は snapshot_key、非 batch_run は partial UNIQUE + conflict_where"
+  - "UT（writer / feature_normalization / distribution_metrics）"
+  - "IF-DB ギャップ一覧 IF-014 / IF-016 / §17 / §19 残リスク更新"
+  - "Task / Review Definition"
+  - "実 DB 疎通（secret なし。CI 既定 live 禁止）"
+
+out_of_scope:
+  - "E4 観測 / 親 schedule"
+  - "Embedding API / LLM 本接続"
+  - "他 Batch への tx 強制適用"
+  - "CI 既定 live / production 無承認"
+  - "commit / push / PR（親 Agent が実施）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-013_Feature正規化バッチ仕様書.md"
+      required: false
+    - path: "docs/06_実装設計/batch/BATCH-016_分布メトリクス集計バッチ仕様書.md"
+      required: false
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_normalization/repositories.py"
+      required: true
+    - path: "apps/batch/src/batch/application/distribution_metrics/repositories.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/__init__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_normalization/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/distribution_metrics/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/infrastructure/test_db_writer.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_feature_normalization.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_distribution_metrics.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-db-writer-hardening/writer-hardening.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-db-writer-hardening/writer-hardening/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "DbWriter transaction + conflict_where"
+  - "BATCH-013 同一 tx / BATCH-016 partial UNIQUE 配線"
+  - "UT"
+  - "ギャップ一覧更新（#1695 解消）"
+  - "実 DB 疎通結果（または skip 理由）"
+
+acceptance_criteria:
+  - "IF-014 が transaction 内で書込可能"
+  - "IF-016 non-batch_run が conflict_where 付き UPSERT"
+  - "生 SQL 自由入力の conflict predicate が無い"
+  - "tx 内で都度 commit しない（UT mock）"
+  - "既存 UT 緑 + writer hardening UT"
+  - "ギャップ一覧 §17/§19 残リスクが #1695 解消と明記"
+  - "PR target = develop"
+  - "Related to #1695（Closes 禁止は運用に従う）"
+
+branch:
+  no_branch: false
+  summary: "batch-db-writer-hardening"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-05"
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - issue: 1635
+      purpose: "前提: Wave 1〜4 書込本配線完了"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/db/writer.py"
+    - "apps/batch/src/batch/application/feature_normalization/repositories.py"
+    - "apps/batch/src/batch/application/distribution_metrics/repositories.py"
+    - "apps/batch/tests/unit/infrastructure/test_db_writer.py"
+    - "apps/batch/tests/unit/application/test_feature_normalization.py"
+    - "apps/batch/tests/unit/application/test_distribution_metrics.py"
+  conflict_risk: "high"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "明示 / 手動の実 DB 疎通のみ"
+    "production unapproved live": "疎通対象は local/dev/staging のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "transaction が同一 connection / 終了時 commit / 例外 rollback か"
+    - "tx 内 DML が都度 commit しないか"
+    - "conflict_where が = / <> のみ・識別子検証付きか"
+    - "IF-014 が transaction で囲まれているか"
+    - "IF-016 batch_run / 非 batch_run の conflict 切替が正しいか"
+    - "partial conflict 列が DDL uq_*_non_batch_snapshot と一致するか"
+    - "ギャップ一覧残リスクが #1695 解消と更新されているか"
+    - "secret 非出力"
+    - "PR target = develop"
+  specialist_reviews:
+    test: true
+    security: true
+
+notes:
+  - "Issue #1695。親 Epic なし（#1635 完了後フォロー）"
+  - "他 Batch への tx 強制はしない"
+  - "commit / push / PR は親 Agent"

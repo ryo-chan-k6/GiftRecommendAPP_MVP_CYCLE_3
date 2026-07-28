@@ -10,6 +10,7 @@ from batch.infrastructure.db.reader import (
     resolve_job_db_reader,
 )
 from batch.infrastructure.db.writer import (
+    ConflictWhere,
     DatabaseError,
     DbWriteResult,
     DbWriter,
@@ -21,6 +22,7 @@ from batch.infrastructure.db.writer import (
 )
 
 __all__ = [
+    "ConflictWhere",
     "DatabaseError",
     "DbReadResult",
     "DbReader",
