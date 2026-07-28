@@ -168,10 +168,46 @@ def test_happy_path_upserts_three_metric_tables_and_single_phase_log() -> None:
     assert result.meaning_metric_upsert_count > 0
     assert result.normalization_metric_upsert_count > 0
 
-    tables = {c["table"] for c in db.write_calls}
+    tables = {c["table"] for c in db.upsert_calls}
     assert "feature_distribution_metric" in tables
     assert "meaning_distribution_metric" in tables
     assert "normalization_distribution_metric" in tables
+    assert db.write_calls == []
+
+    feature_call = next(c for c in db.upsert_calls if c["table"] == "feature_distribution_metric")
+    assert feature_call["conflict_columns"] == (
+        "batch_run_id",
+        "semantic_config_version_id",
+        "feature_code",
+        "value_layer",
+        "aggregation_scope",
+        "aggregation_key",
+    )
+    meaning_call = next(c for c in db.upsert_calls if c["table"] == "meaning_distribution_metric")
+    assert meaning_call["conflict_columns"] == (
+        "batch_run_id",
+        "semantic_config_version_id",
+        "entity_type",
+        "value_layer",
+        "feature_normalization_version_id",
+        "aggregation_scope",
+        "aggregation_key",
+    )
+    norm_call = next(
+        c for c in db.upsert_calls if c["table"] == "normalization_distribution_metric"
+    )
+    assert norm_call["conflict_columns"] == (
+        "batch_run_id",
+        "semantic_config_version_id",
+        "feature_code",
+        "value_layer",
+        "feature_normalization_version_id",
+        "aggregation_scope",
+        "aggregation_key",
+    )
+    assert "sigma_zero_count" in norm_call["update_columns"]
+    assert "sigma_zero_count" not in feature_call["update_columns"]
+    assert "sigma_zero_count" not in meaning_call["update_columns"]
 
     phase_names = [p["phase"] for p in repos.phase_logs]
     assert phase_names == [PHASE_FEATURE_DISTRIBUTION_RECORDED]
@@ -203,12 +239,23 @@ def test_adjacent_if_non_write_counters_stay_zero() -> None:
         "item_embedding",
         "embedding_input_hash",
     }
-    written = {c["table"] for c in db.write_calls}
+    written = {c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}
     assert written.isdisjoint(forbidden)
 
-    for call in db.write_calls:
+    for call in db.upsert_calls:
         for row in call["rows"]:
-            assert row.get("op") == "if_db_batch_016_upsert"
+            assert "op" not in row
+            assert "table" not in row
+            assert "calculated_at" in row
+            if call["table"] == "feature_distribution_metric":
+                assert "entity_type" not in row
+                assert "sigma_zero_count" not in row
+            if call["table"] == "meaning_distribution_metric":
+                assert "feature_code" not in row
+                assert "sigma_zero_count" not in row
+            if call["table"] == "normalization_distribution_metric":
+                assert "entity_type" not in row
+                assert "sigma_zero_count" in row
 
 
 def test_embedding_and_user_meaning_skipped_when_flags_off() -> None:
@@ -415,6 +462,7 @@ def test_missing_item_feature_fails_without_phase_log() -> None:
     assert "GRS-VAL-001" in result.error_codes
     assert repos.phase_logs == []
     assert db.write_calls == []
+    assert db.upsert_calls == []
 
 
 def test_partial_success_phase_log_matches_job_status() -> None:
@@ -454,6 +502,7 @@ def test_already_running_grs_bat_003() -> None:
     assert result.status == "failed"
     assert result.feature_metric_upsert_count == 0
     assert db.write_calls == []
+    assert db.upsert_calls == []
 
 
 def test_fixture_and_printed_output_have_no_secret_like_values(capsys) -> None:
@@ -522,7 +571,8 @@ def test_include_item_embedding_reads_but_does_not_write() -> None:
     result = _run(repos, include_item_embedding=True)
     assert result.item_embedding_read_count == 1
     assert result.item_embedding_write_count == 0
-    assert "item_embedding" not in {c["table"] for c in db.write_calls}
+    written = {c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}
+    assert "item_embedding" not in written
 
 
 def test_env_keys_registered() -> None:

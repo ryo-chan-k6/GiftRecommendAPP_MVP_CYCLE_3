@@ -135,8 +135,17 @@ def test_happy_path_inserts_item_import_summary_and_summary_created_phase() -> N
     assert row.feature_generated_count == 0
     assert row.embedding_generated_count == 0
 
-    tables = {c["table"] for c in db.write_calls}
-    assert tables == {"item_import_summary"}
+    assert db.write_calls == []
+    assert len(db.upsert_calls) == 1
+    call = db.upsert_calls[0]
+    assert call["table"] == "item_import_summary"
+    assert call["conflict_columns"] == ("batch_run_id", "source_api")
+    assert call["update_columns"] == ()
+    payload = call["rows"][0]
+    assert "op" not in payload
+    assert "conflict_skipped" not in payload
+    assert payload["summarized_at"] == _NOW
+    assert isinstance(payload["summarized_at"], datetime)
     assert repos.phase_logs == [{"phase": PHASE_SUMMARY_CREATED, "status": "succeeded"}]
 
     idx = [result.completed_phases.index(p) for p in IMPORT_SUMMARY_PHASES]
@@ -144,7 +153,7 @@ def test_happy_path_inserts_item_import_summary_and_summary_created_phase() -> N
 
 
 def test_on_conflict_do_nothing_second_insert() -> None:
-    repos, _ = _repos()
+    repos, db = _repos()
     first = _run(repos)
     second = _run(repos)
 
@@ -155,6 +164,12 @@ def test_on_conflict_do_nothing_second_insert() -> None:
     assert repos.insert_attempt_count == 2
     assert repos.conflict_skip_count == 1
     assert repos.summary_update_count == 0
+    assert len(db.upsert_calls) == 2
+    assert all(c["update_columns"] == () for c in db.upsert_calls)
+    for call in db.upsert_calls:
+        for row in call["rows"]:
+            assert "op" not in row
+            assert "conflict_skipped" not in row
 
 
 def test_no_update_path_on_repositories() -> None:
@@ -186,12 +201,15 @@ def test_adjacent_if_and_business_tables_not_written() -> None:
         "item_feature",
         "item_embedding",
     }
-    written = {c["table"] for c in db.write_calls}
+    written = {c["table"] for c in db.write_calls} | {c["table"] for c in db.upsert_calls}
     assert written.isdisjoint(forbidden)
+    assert {c["table"] for c in db.upsert_calls} == {"item_import_summary"}
 
-    for call in db.write_calls:
+    for call in db.upsert_calls:
+        assert call["update_columns"] == ()
         for row in call["rows"]:
-            assert row.get("op") == "if_db_batch_017_insert"
+            assert "op" not in row
+            assert "conflict_skipped" not in row
 
 
 def test_item_ranking_diff_counts_are_zero_fixed() -> None:
@@ -301,6 +319,7 @@ def test_invalid_source_api_fails() -> None:
     assert "GRS-CFG-001" in result.error_codes
     assert repos.phase_logs == []
     assert db.write_calls == []
+    assert db.upsert_calls == []
 
 
 def test_missing_batch_run_fails() -> None:
@@ -310,6 +329,7 @@ def test_missing_batch_run_fails() -> None:
     assert "GRS-VAL-001" in result.error_codes
     assert repos.phase_logs == []
     assert db.write_calls == []
+    assert db.upsert_calls == []
 
 
 def test_already_running_grs_bat_003() -> None:
@@ -320,6 +340,7 @@ def test_already_running_grs_bat_003() -> None:
     assert "GRS-BAT-003" in result.error_codes
     assert result.status == "failed"
     assert db.write_calls == []
+    assert db.upsert_calls == []
 
 
 def test_cli_scaffold_demo_returns_zero(capsys) -> None:
