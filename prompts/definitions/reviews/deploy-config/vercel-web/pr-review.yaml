@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1725
   issue:
     number: 1724
   task_definition: "prompts/definitions/tasks/deploy-config/vercel-web.yaml"
