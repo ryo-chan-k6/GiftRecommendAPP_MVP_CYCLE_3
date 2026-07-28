@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-simple-stg-setup-pr"
+  title: "簡易stg構築手順 PRレビュー"
+  summary: "simple-stg-setup 簡易stg構築手順作成 Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr:
+    number: 1687
+  issue:
+    number: 1686
+  task_definition: "prompts/definitions/tasks/simple-stg-setup/simple-stg-setup.yaml"
+  source_branch: "docs/task-1686-simple-stg-setup"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]: リリース準備"
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "簡易stg構築手順.md が正本として存在するか"
+  - "secret 実値・.env 実値がないか"
+  - "Human 実施と docs 範囲の分離が明示されているか"
+  - "受入環境方針・環境変数運用手順との整合"
+  - "#146 との過度な重複がないか"
+  - "Related to #1686、PR target が develop か"
+
+notes:
+  - "PR 番号確定後に target.pr を更新してよい"
+  - "本 Task 完了 ≠ 簡易 stg 実稼働完了"
