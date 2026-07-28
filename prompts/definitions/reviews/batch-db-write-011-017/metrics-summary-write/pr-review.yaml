@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1693
   issue:
     number: 1692
   task_definition: "prompts/definitions/tasks/batch-db-write-011-017/metrics-summary-write.yaml"
