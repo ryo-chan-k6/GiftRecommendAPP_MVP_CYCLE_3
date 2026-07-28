@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1714
   issue:
     number: 1713
   task_definition: "prompts/definitions/tasks/batch-parent-schedule/inventory.yaml"
