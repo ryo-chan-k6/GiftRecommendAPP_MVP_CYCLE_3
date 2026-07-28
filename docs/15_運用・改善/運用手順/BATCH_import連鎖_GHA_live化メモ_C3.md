@@ -35,18 +35,32 @@ Epic `#1637` / Task `#1717` で確定した案 C3 に従い、BATCH import 連�
 ## 4. 疎通手順（Human）
 
 1. Environment `stg` の Secrets / Variables / 承認設定を確認する
-2. `Batch Rakuten Item Import` または `Batch Daily Orchestrator` を `workflow_dispatch`（`max_items` は低め推奨）
+2. **検証の正本は `Batch Rakuten Item Import`（または Daily 内の `item_import`）** とする
 3. 各葉 job の conclusion と `pipeline_batch_run_id` を記録する（secret なし）
 4. Storage SigV4 失敗時は Dashboard の Region と実装既定（`us-east-1`）の不一致を疑う
 
-## 5. 残リスク
+> **Daily Orchestrator 全体 conclusion は見ない。**  
+> Daily は meaning-generation 等（本 Task out of scope）を後続実行するため、親全体が failure でも **`item_import` が緑なら本 Task の GHA live 検証は成功**と扱う（Human 確定: 案1 / 2026-07-29）。
+
+## 5. 検証結果（#1717）
+
+| 項目 | 内容 |
+| --- | --- |
+| Run | [30389689202](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30389689202) |
+| SHA | `3ce3f2ee` |
+| `item_import`（003→…→017） | **成功**（017 `insert_applied=True`） |
+| `item_meaning_generation` / 017 | 失敗（非 UUID `gha-meaning-…`）。**本 Task 対象外** → 別 Task |
+| 判定 | **import 連鎖 GHA live 検証 = 成功**（案1） |
+
+## 6. 残リスク
 
 - schedule は無効のまま（別 Wave）
 - ranking_snapshot / meaning-generation / existing-item-pipeline は本 Task 対象外
+- Daily 親全体は meaning 017 等で failure になりうる（§4・§5）
 - Environment `stg` の required reviewers により、各葉 job 実行前に Human 承認が必要
 - **GHA 上の楽天 live は禁止**（登録 egress IP 外）。実楽天疎通は local/WSL のみ。固定 egress は Backlog
 
-## 6. 変更履歴
+## 7. 変更履歴
 
 | 日付 | 内容 |
 | ---- | ---- |
@@ -55,3 +69,4 @@ Epic `#1637` / Task `#1717` で確定した案 C3 に従い、BATCH import 連�
 | 2026-07-29 | 案 A: GHA の 003 楽天を Scaffold に戻す（HTTP 403 / CI live 禁止方針） |
 | 2026-07-29 | 案 A scaffold Raw に itemUrl/itemPrice 等を付与（005 GRS-VAL-001 回避） |
 | 2026-07-29 | 案 A: BATCH-003 で pipeline `batch_run_log` ensure（017 `require_batch_run` 不足解消） |
+| 2026-07-29 | 案1: import 連鎖検証成功を記録。meaning 017 は別 Task。Daily 全体 conclusion は判定に使わない |
