@@ -90,6 +90,13 @@ class FeatureInputHashJob:
         self._logger = logger or ScaffoldBatchLogger()
         self._force_hash_fail = force_hash_fail
 
+
+    @property
+    def repositories(self):
+        """Expose repositories for CLI bind_run / observability wiring."""
+
+        return self._repos
+
     def run(
         self,
         *,

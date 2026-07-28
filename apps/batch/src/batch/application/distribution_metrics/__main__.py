@@ -24,6 +24,13 @@ from batch.application.distribution_metrics.models import (
 from batch.application.distribution_metrics.repositories import (
     DistributionMetricsRepositories,
 )
+from batch.application.job_run import JobRunTracker, create_job_run_tracker
+from batch.application.observability import (
+    ErrorLogWriter,
+    PhaseLogWriter,
+    create_batch_observability_writers,
+)
+
 from batch.config import load_batch_settings
 from batch.infrastructure.db import (
     ScaffoldDbWriter,
@@ -81,7 +88,12 @@ def _parse_bool(raw: str | None, *, default: bool = False) -> bool:
     raise SystemExit(f"invalid boolean value: {raw!r}")
 
 
-def build_scaffold_demo_job() -> DistributionMetricsJob:
+def build_scaffold_demo_job(
+    *,
+    job_run_tracker: JobRunTracker | None = None,
+    phase_log_writer: PhaseLogWriter | None = None,
+    error_log_writer: ErrorLogWriter | None = None,
+) -> DistributionMetricsJob:
     """Build an in-memory job for local / CI smoke without real secrets / DB."""
 
     version = DEFAULT_SEMANTIC_CONFIG_VERSION
@@ -137,13 +149,21 @@ def build_scaffold_demo_job() -> DistributionMetricsJob:
         seed_item_meanings=meanings,
         seed_user_meanings=user_meanings,
         seed_item_embeddings=embeddings,
+        phase_log_writer=phase_log_writer,
+        error_log_writer=error_log_writer,
     )
-    return DistributionMetricsJob(repositories=repos)
+    return DistributionMetricsJob(repositories=repos,
+job_run_tracker=job_run_tracker,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="BATCH-016 Distribution metrics aggregation")
-    parser.add_argument("--job-run-id", default="local-run")
+    parser.add_argument(
+        "--job-run-id",
+        default="local-run",
+        help="Job run id. Non --scaffold-demo Postgres tracker requires a UUID.",
+    )
     parser.add_argument("--trigger-mode", default="dispatch")
     parser.add_argument("--semantic-config-version-id", default="")
     parser.add_argument("--aggregation-scope", default="")
@@ -176,7 +196,16 @@ def main(argv: list[str] | None = None) -> int:
             or settings.batch_distribution_metrics_semantic_config_version_id
             or DEFAULT_SEMANTIC_CONFIG_VERSION
         )
-        job = build_scaffold_demo_job()
+        tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
+        obs = create_batch_observability_writers(
+            scaffold_demo=True, database_url=None
+        )
+        job = build_scaffold_demo_job(
+            job_run_tracker=tracker,
+            phase_log_writer=obs.phase_log_writer,
+            error_log_writer=obs.error_log_writer,
+        )
+        job.repositories.bind_run(batch_run_id=args.job_run_id)
         result = job.run(
             job_run_id=args.job_run_id,
             trigger_mode=args.trigger_mode,
@@ -198,6 +227,16 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    tracker = create_job_run_tracker(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
+    obs = create_batch_observability_writers(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
     db_reader = resolve_job_db_reader(
         scaffold_demo=False,
         database_url=settings.database_url,
@@ -228,8 +267,14 @@ def main(argv: list[str] | None = None) -> int:
         or settings.batch_distribution_metrics_semantic_config_version_id
         or DEFAULT_SEMANTIC_CONFIG_VERSION
     )
-    repos = DistributionMetricsRepositories(db_writer=db_writer, db_reader=db_reader)
-    job = DistributionMetricsJob(repositories=repos)
+    repos = DistributionMetricsRepositories(db_writer=db_writer, db_reader=db_reader,
+phase_log_writer=obs.phase_log_writer,
+error_log_writer=obs.error_log_writer,
+    )
+    job = DistributionMetricsJob(repositories=repos,
+job_run_tracker=tracker,
+    )
+    job.repositories.bind_run(batch_run_id=args.job_run_id)
     result = job.run(
         job_run_id=args.job_run_id,
         trigger_mode=args.trigger_mode,

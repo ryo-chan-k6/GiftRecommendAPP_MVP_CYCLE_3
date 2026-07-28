@@ -1,0 +1,192 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-observability-e4"
+  title: "batch-observability-e4:観測横断本実装"
+  summary: "E4。batch_run_log / phase_log / error_log / item_import_summary（必要なら api_call_log）の観測横断を本配線する。043/044・SELECT・018/019・親 schedule は除外。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  E0〜E3・SELECT（#1623）・書込 Epic 群（#1632〜#1635）完了後、観測横断が未本配線。
+  JobRunTracker / phase_logs / error_logs は in-memory stub、batch_run_log 書込は未配線。
+  item_import_summary のみ IF-017 で本配線済み。機能・領域単位 Epic（例外）。#1623 には混ぜない。
+
+objective: |
+  観測ギャップを docs 正し、Run/Phase/Error/Summary の横断本配線により
+  代表経路で実環境観測確認できる状態にする。develop 統合は本 Epic PR のみ。
+
+scope:
+  - "Wave 0: 観測横断ギャップ棚卸し docs 正本"
+  - "Wave 1+: batch_run_log / phase_log / error_log 本配線（正本に従う）"
+  - "必要なら api_call_log（MOD-BATCH-046）本配線"
+  - "item_import_summary との連携整合（IF-017 再実装はしない）"
+  - "代表 Batch への適用 + UT"
+  - "実装 Wave ごとの実環境観測確認（secret なし。CI 既定 live 禁止）"
+  - "043/044 本格は除外（横串ギャップ §10）"
+
+out_of_scope:
+  - "DB SELECT 本配線（#1623）"
+  - "IF フル UPSERT 本格化（書込 Epic 群の再実装）"
+  - "親 schedule 有効化（#1637）"
+  - "018 / 019 本格化"
+  - "MOD-BATCH-043 / 044 本格"
+  - "OpenAPI / web / api / reco 破壊変更"
+  - "Semantic LLM / #1607 egress"
+  - "CI 既定 live / production 無承認"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/**"
+      required: false
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/epics/batch-observability-e4/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-observability-e4/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-observability-e4/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "観測横断ギャップ正本 docs（第1 Task）"
+  - "後続 Task（run / phase / error / 代表 Batch 適用）の分割"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "ギャップ一覧 docs が存在する（第1 Task）"
+  - "E4 範囲が docs と実装で一致している（Epic 完了時）"
+  - "代表経路で観測が実環境確認できる（Epic 完了時）"
+  - "043/044 / SELECT / schedule / 018・019 を out of scope と明記"
+  - "secret 実値なし"
+  - "Epic PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "batch-observability-e4"
+  name: "feature/epic-1636-batch-observability-e4"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-11"
+
+issue:
+  number: 1636
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+    - "docs/06_実装設計/database/**"
+    - "docs/06_実装設計/batch/BATCH-015_Item Embedding生成バッチ仕様書.md"
+    - "apps/batch/src/batch/**"
+    - "apps/batch/tests/**"
+    - "apps/batch/pyproject.toml"
+    - "apps/batch/uv.lock"
+    - "supabase/migrations/**"
+    - "packages/code-definitions/batch/**"
+    - "prompts/definitions/epics/batch-observability-e4/**"
+    - "prompts/definitions/tasks/batch-observability-e4/**"
+    - "prompts/definitions/reviews/batch-observability-e4/**"
+    - "ai-logs/human-decisions/**"
+    - ".env.example"
+  forbidden_paths:
+    - ".github/workflows/batch-*-orchestrator.yml"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "inventory"
+    - "run-log-write"
+    - "phase-error-write"
+    - "api-call-log-write"
+    - "batch-apply-001-017"
+    - "embedding-api-call-log"
+
+dependencies:
+  epics:
+    - issue: 1623
+      purpose: "SELECT 本配線（分離維持。厳密ブロックではない）"
+    - issue: 1635
+      purpose: "011〜017 書込本格化（import_summary IF-017 含む）"
+  issues: []
+
+parallel_control:
+  max_parallel_child_tasks: 1
+  notes: "第1 Task は inventory。実装 Wave は棚卸し後に分割。"
+
+human_decision_points:
+  - "E4 必須最小セット（どの Batch まで揃えるか）→ §8.1 案 C 確定"
+  - "api_call_log を E4 必須に含めるか → §8.2 Must 確定"
+  - "#1623 / 書込 Epic との着手順 → §8.3 案 B 確定・解除済み"
+  - "BATCH-015 api_call DB → §8.4 案 B（Wave 5 Must）確定。source/source_api 追加値名は Wave 5 HR"
+
+stop_conditions:
+  - "正本 docs 間で観測 IF / モジュール境界が矛盾する"
+  - "043/044 本格化が必要に見える"
+  - "production 無承認の live が必要に見える"
+
+notes:
+  - "機能・領域単位 Epic（例外）。成果物識別子単位ではない。"
+  - "Wave 0=inventory、以降はギャップ一覧の推奨 Wave に従う。"
+  - "Issue §11 Human 判断は inventory docs に選択肢・推奨を明示する。"

@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-observability-e4-run-log-write"
+  title: "batch-observability-e4:batch_run_log本配線"
+  summary: "Wave 1。IF-DB-BATCH-001 / MOD-BATCH-045 として JobRunTracker → batch_run_log の Postgres 本配線を行い、代表 CLI 1 本に factory を配線する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-observability-e4:観測横断本実装"
+  epic_issue_number: 1636
+  epic_branch: "feature/epic-1636-batch-observability-e4"
+  related_issues:
+    - 1623
+    - 1632
+    - 1633
+    - 1634
+    - 1635
+    - 1697
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Wave 0（#1697）で観測横断ギャップを正本化。§8.3 案 B の厳密ブロックは
+  #1623 / #1632〜#1635 の CLOSED（develop 統合）により解除済み。
+  JobRunTracker は Scaffold（in-memory）のみで batch_run_log 書込が未配線。
+
+objective: |
+  PostgresJobRunTracker + create_job_run_tracker により IF-DB-BATCH-001 を本配線し、
+  代表 Batch CLI（genre_sync）1 本で非 --scaffold-demo 時に Postgres Tracker を使える状態にする。
+  001〜017 全配線は Wave 4。
+
+scope:
+  - "PostgresJobRunTracker（DbWriter.write_rows / update_rows）"
+  - "start: UUID job_run_id → batch_run_id、INSERT run_status=running、counts=0"
+  - "complete: terminal status のみ（succeeded / partially_succeeded / failed）"
+  - "create_job_run_tracker（scaffold_demo / DATABASE_URL 切替。resolve_job_db_writer 同型）"
+  - "ScaffoldJobRunTracker 回帰維持"
+  - "代表 CLI 1 本配線（genre_sync __main__）"
+  - "UT（Scaffold / Postgres+ScaffoldDbWriter / UUID 拒否 / factory 切替）"
+  - "実 DB 疎通（INSERT→SELECT→complete→SELECT→DELETE cleanup。secret 非出力）"
+  - "バッチ観測横断・本実装ギャップ一覧.md に Wave 1 進捗（#1699）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "phase_log / error_log / api_call_log（Wave 2/3）"
+  - "BATCH-001〜017 全 CLI 一括配線（Wave 4）"
+  - "MOD-BATCH-043 / 044"
+  - "親 schedule（#1637）"
+  - "CI 既定 live / production 無承認"
+  - "commit / push / PR（親 Orchestrator が行う）"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/ログ・Observability設計書.md"
+      required: false
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ設計方針書.md"
+      required: false
+  files:
+    - path: "apps/batch/src/batch/application/job_run/**"
+      required: true
+    - path: "apps/batch/src/batch/infrastructure/db/writer.py"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/__main__.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/job_run/tracker.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/job_run/__init__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/genre_sync/__main__.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_job_run_tracker.py"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-observability-e4/run-log-write.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-observability-e4/run-log-write/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "PostgresJobRunTracker + create_job_run_tracker"
+  - "genre_sync CLI 代表配線"
+  - "UT"
+  - "実 DB 疎通結果（または skip 理由）"
+  - "ギャップ一覧 Wave 1 進捗"
+
+acceptance_criteria:
+  - "PostgresJobRunTracker が batch_run_log へ INSERT / UPDATE できる"
+  - "非 UUID job_run_id を明確な例外で拒否する"
+  - "complete が pending 等の非 terminal を拒否する"
+  - "ScaffoldJobRunTracker 回帰が緑"
+  - "create_job_run_tracker が scaffold / postgres を切り替える"
+  - "genre_sync 非 demo で create_job_run_tracker が使われる"
+  - "001〜017 全配線を含まない"
+  - "実 DB 疎通結果が報告される（secret なし）または skip 理由明示"
+  - "ギャップ一覧に Wave 1 / §8.3 解除が記載されている"
+  - "Related to（Closes 禁止）/ PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  name: "feature/task-1699-batch-observability-e4-run-log-write"
+  summary: "batch-observability-e4-run-log-write"
+  base: "feature/epic-1636-batch-observability-e4"
+  target: "feature/epic-1636-batch-observability-e4"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-28"
+    due_date: "2026-08-08"
+
+issue:
+  number: 1699
+  unit: "task"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1636
+      purpose: "親 Epic"
+  issues:
+    - issue: 1697
+      purpose: "Wave 0 inventory"
+  blocking: false
+
+contract_gate:
+  required: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/batch/src/batch/application/job_run/**"
+    - "apps/batch/src/batch/application/genre_sync/__main__.py"
+    - "apps/batch/tests/unit/application/test_job_run_tracker.py"
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ観測横断・本実装ギャップ一覧.md"
+  conflict_risk: "medium"
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+    - "real DB connectivity verify"
+  not_required:
+    - "CI default live"
+    - "production unapproved live"
+  skip_reason:
+    "CI default live": "security 方針により禁止"
+    "production unapproved live": "禁止"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "IF-001 / MOD-045 の write_rows / update_rows 境界が正しいか"
+    - "UUID 必須・terminal complete 制約"
+    - "factory 切替が resolve_job_db_writer 同型か"
+    - "代表 CLI 1 本のみで Wave 4 全配線が混入していないか"
+    - "secret / URL 実値がログ・UT・docs に出ないか"
+    - "ギャップ一覧の Wave 1 進捗が事実か"
+  specialist_reviews:
+    docs: true
+    test: true
+
+notes:
+  - "Issue #1699 / Branch feature/task-1699-batch-observability-e4-run-log-write"
+  - "代表 CLI は genre_sync（import_summary は既存 batch_run_log 前提のため PK 衝突しやすい）"
+  - "commit / push / PR は親指示に従う"

@@ -398,6 +398,12 @@ def test_cli_scaffold_demo_passes_filters(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     class _FakeJob:
+        class _Repos:
+            def bind_run(self, **_kwargs) -> None:
+                return None
+
+        repositories = _Repos()
+
         def run(self, **kwargs):  # type: ignore[no-untyped-def]
             captured.update(kwargs)
 
@@ -413,7 +419,7 @@ def test_cli_scaffold_demo_passes_filters(monkeypatch) -> None:
 
             return _Result()
 
-    monkeypatch.setattr(cli, "build_scaffold_demo_job", lambda: _FakeJob())
+    monkeypatch.setattr(cli, "build_scaffold_demo_job", lambda **_kwargs: _FakeJob())
     code = cli.main(
         [
             "--scaffold-demo",

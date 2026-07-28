@@ -6,6 +6,7 @@ fixture/mock のみ。実 DB / 実 OpenAI / secret に依存しない。
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 from batch.application.item_embedding import (
     BATCH_ID,
@@ -194,12 +195,16 @@ def test_generate_upsert_and_queue_succeeded() -> None:
         and c["set_values"].get("queue_status") == "succeeded"
     ]
     assert len(terminal_updates) == 1
-    # api_call_log にベクトル全文・secret なし
+    # api_call_log にベクトル全文・secret なし。UUID・status/latency/model メタのみ
     for log in repos.api_call_logs:
         assert "embedding_vector" not in log
         assert "OPENAI" not in str(log)
         assert "api_key" not in str(log).lower()
-
+        UUID(str(log["api_call_log_id"]))
+        assert "model" in log
+        assert "latency_ms" in log
+        assert log.get("status") == "generated"
+        assert log.get("call_status") == "succeeded"
 
 def test_handoff_missing_fails_queue() -> None:
     repos, _ = _repos(handoffs=[])
@@ -487,6 +492,20 @@ def test_cli_non_demo_runs_job_with_live_reader(monkeypatch) -> None:
     )
     monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
     monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
+    monkeypatch.setattr(
+        cli,
+        "create_job_run_tracker",
+        lambda **_kwargs: __import__(
+            "batch.application.job_run", fromlist=["ScaffoldJobRunTracker"]
+        ).ScaffoldJobRunTracker(),
+    )
+    monkeypatch.setattr(
+        cli,
+        "create_batch_observability_writers",
+        lambda **_kwargs: __import__(
+            "batch.application.observability", fromlist=["create_batch_observability_writers"]
+        ).create_batch_observability_writers(scaffold_demo=True, database_url=None),
+    )
 
     code = cli.main(["--job-run-id", "wave-f", "--max-items", "1"])
     # empty SELECT → plan failed (exit 1). Important: Job started (not config/exit-2/old exit-3).
@@ -524,6 +543,20 @@ def test_cli_non_demo_live_embedding_wires_client(monkeypatch) -> None:
     monkeypatch.setattr(cli, "create_db_writer", lambda _url: ScaffoldDbWriter())
     monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
     monkeypatch.setattr(cli, "create_embedding_client", _fake_create)
+    monkeypatch.setattr(
+        cli,
+        "create_job_run_tracker",
+        lambda **_kwargs: __import__(
+            "batch.application.job_run", fromlist=["ScaffoldJobRunTracker"]
+        ).ScaffoldJobRunTracker(),
+    )
+    monkeypatch.setattr(
+        cli,
+        "create_batch_observability_writers",
+        lambda **_kwargs: __import__(
+            "batch.application.observability", fromlist=["create_batch_observability_writers"]
+        ).create_batch_observability_writers(scaffold_demo=True, database_url=None),
+    )
 
     code = cli.main(["--job-run-id", "wave-f-live", "--live-embedding", "--max-items", "1"])
     assert code == 1

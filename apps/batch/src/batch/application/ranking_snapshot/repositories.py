@@ -21,6 +21,13 @@ from batch.infrastructure.db import DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient
 
 
+from batch.application.observability import (
+    ApiCallLogWriter,
+    ErrorLogWriter,
+    PhaseLogWriter,
+)
+from batch.application.observability.binding import emit_api_call, emit_error, emit_phase
+
 @dataclass
 class RankingSnapshotRepositories:
     """Facade that persists Raw / Staging / Snapshot / signal / unknown via infrastructure."""
@@ -42,6 +49,18 @@ class RankingSnapshotRepositories:
     api_call_logs: list[dict[str, object]] = field(default_factory=list)
     error_logs: list[dict[str, object]] = field(default_factory=list)
     phase_logs: list[dict[str, object]] = field(default_factory=list)
+    phase_log_writer: PhaseLogWriter | None = None
+    error_log_writer: ErrorLogWriter | None = None
+    api_call_log_writer: ApiCallLogWriter | None = None
+    _batch_run_id: str | None = field(default=None, repr=False)
+    _trace_id: str | None = field(default=None, repr=False)
+
+
+    def bind_run(self, *, batch_run_id: str, trace_id: str | None = None) -> None:
+        """Bind ``batch_run_id`` (= job_run_id UUID) for observability DB writes."""
+
+        self._batch_run_id = batch_run_id
+        self._trace_id = trace_id
 
     def resolve_item_id(self, external_item_code: str) -> str | None:
         """Resolve item_id from known_item_codes. Does not create Item 正本."""
@@ -181,32 +200,52 @@ class RankingSnapshotRepositories:
         page: int | None = None,
         error_code: str | None = None,
     ) -> None:
-        self.api_call_logs.append(
-            {
+        params: dict[str, object] = {"genre_id": genre_id}
+        if period is not None:
+            params["period"] = period
+        if page is not None:
+            params["page"] = page
+        emit_api_call(
+            api_call_logs=self.api_call_logs,
+            api_call_log_writer=self.api_call_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            api_call_log_id=api_call_log_id,
+            source_api="item_ranking",
+            call_status=status,
+            memory_entry={
                 "api_call_log_id": api_call_log_id,
                 "genre_id": genre_id,
                 "period": period,
                 "page": page,
                 "status": status,
                 "error_code": error_code,
-                # Never log Authorization / access keys
-            }
+            },
+            request_params_json=params,
+            error_code=error_code,
         )
 
-    def record_error(
-        self,
-        *,
-        code: str,
-        summary: str,
-        genre_id: str | None = None,
-    ) -> None:
-        self.error_logs.append(
-            {
-                "code": code,
-                "summary": summary,
-                "genre_id": genre_id,
-            }
+    def record_error(self, *, code: str, summary: str, genre_id: str | None = None) -> None:
+        detail: dict[str, object] = {}
+        if genre_id is not None:
+            detail["genre_id"] = genre_id
+        emit_error(
+            error_logs=self.error_logs,
+            error_log_writer=self.error_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            code=code,
+            summary=summary,
+            memory_extra={"genre_id": genre_id},
+            detail=detail or None,
         )
 
     def record_phase(self, *, phase: str, status: str) -> None:
-        self.phase_logs.append({"phase": phase, "status": status})
+        emit_phase(
+            phase_logs=self.phase_logs,
+            phase_log_writer=self.phase_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            phase=phase,
+            status=status,
+        )

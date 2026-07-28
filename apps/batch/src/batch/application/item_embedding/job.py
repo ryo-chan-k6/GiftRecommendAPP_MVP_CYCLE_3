@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from batch.application.item_embedding.adapter import (
     ItemEmbeddingGeneratorPort,
@@ -101,6 +102,13 @@ class ItemEmbeddingJob:
         self._generator = generator or build_scaffold_adapter()
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
+
+
+    @property
+    def repositories(self):
+        """Expose repositories for CLI bind_run / observability wiring."""
+
+        return self._repos
 
     def run(
         self,
@@ -325,10 +333,13 @@ class ItemEmbeddingJob:
         gen = self._generator.generate_item_embedding(context)
         self._mark_phase(result, "generate_embedding")
         self._repos.record_phase(phase="item_embedding_generated", status=gen.status)
+        # DDL api_call_log PK は uuid。status/latency/model メタのみ（secret・ベクトル禁止）
         self._repos.record_api_call(
+            api_call_log_id=str(uuid4()),
             status=gen.status,
             model=gen.model_name or config.model_name,
             latency_ms=gen.latency_ms,
+            error_code=gen.error_code,
         )
 
         if gen.status == "failed":
@@ -416,8 +427,11 @@ class ItemEmbeddingJob:
 
 def build_default_scaffold_job(
     repositories: ItemEmbeddingRepositories,
+    *,
+    job_run_tracker: JobRunTracker | None = None,
 ) -> ItemEmbeddingJob:
     return ItemEmbeddingJob(
         repositories=repositories,
         generator=build_scaffold_adapter(),
+        job_run_tracker=job_run_tracker,
     )

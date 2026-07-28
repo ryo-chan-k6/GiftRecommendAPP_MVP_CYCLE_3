@@ -16,6 +16,14 @@ from batch.application.ranking_snapshot.job import (
     RankingSnapshotJob,
 )
 from batch.application.ranking_snapshot.repositories import RankingSnapshotRepositories
+from batch.application.job_run import JobRunTracker, create_job_run_tracker
+from batch.application.observability import (
+    ApiCallLogWriter,
+    ErrorLogWriter,
+    PhaseLogWriter,
+    create_batch_observability_writers,
+)
+
 from batch.config import load_batch_settings
 from batch.infrastructure.db import ScaffoldDbWriter, create_db_writer
 from batch.infrastructure.object_storage import (
@@ -38,7 +46,13 @@ def _parse_genre_ids(raw: str | None) -> tuple[str, ...] | None:
     return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
-def build_scaffold_demo_job() -> RankingSnapshotJob:
+def build_scaffold_demo_job(
+    *,
+    job_run_tracker: JobRunTracker | None = None,
+    phase_log_writer: PhaseLogWriter | None = None,
+    error_log_writer: ErrorLogWriter | None = None,
+    api_call_log_writer: ApiCallLogWriter | None = None,
+) -> RankingSnapshotJob:
     """Build an in-memory job for local / CI smoke without real secrets."""
 
     client = ScaffoldRakutenApiClient(
@@ -62,13 +76,22 @@ def build_scaffold_demo_job() -> RankingSnapshotJob:
         db_writer=ScaffoldDbWriter(),
         bucket="scaffold-raw",
         known_item_codes={"shop:known-1"},
+        phase_log_writer=phase_log_writer,
+        error_log_writer=error_log_writer,
+        api_call_log_writer=api_call_log_writer,
     )
-    return RankingSnapshotJob(rakuten_client=client, repositories=repos)
+    return RankingSnapshotJob(rakuten_client=client, repositories=repos,
+        job_run_tracker=job_run_tracker,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="BATCH-002 Rakuten ranking snapshot")
-    parser.add_argument("--job-run-id", default="local-run")
+    parser.add_argument(
+        "--job-run-id",
+        default="local-run",
+        help="Job run id. Non --scaffold-demo Postgres tracker requires a UUID.",
+    )
     parser.add_argument(
         "--genre-ids",
         default="",
@@ -100,7 +123,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.scaffold_demo:
-        job = build_scaffold_demo_job()
+        tracker = create_job_run_tracker(scaffold_demo=True, database_url=None)
+        obs = create_batch_observability_writers(
+            scaffold_demo=True, database_url=None
+        )
+        job = build_scaffold_demo_job(
+            job_run_tracker=tracker,
+            phase_log_writer=obs.phase_log_writer,
+            error_log_writer=obs.error_log_writer,
+            api_call_log_writer=obs.api_call_log_writer,
+        )
+        job.repositories.bind_run(batch_run_id=args.job_run_id)
         genre_ids = _parse_genre_ids(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
         period = args.period.strip() or DEFAULT_PERIOD
         result = job.run(
@@ -122,6 +155,16 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = load_batch_settings()
     db_writer = create_db_writer(settings.database_url)
+    tracker = create_job_run_tracker(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
+    obs = create_batch_observability_writers(
+        scaffold_demo=False,
+        database_url=settings.database_url,
+        db_writer=db_writer,
+    )
     live = resolve_live_rakuten_flag(
         cli_live=args.live_rakuten,
         env_value=os.environ.get("BATCH_RAKUTEN_LIVE"),
@@ -171,8 +214,14 @@ def main(argv: list[str] | None = None) -> int:
         object_storage=object_storage,
         db_writer=db_writer,
         bucket=settings.object_storage_bucket or "scaffold-raw",
+        phase_log_writer=obs.phase_log_writer,
+        error_log_writer=obs.error_log_writer,
+        api_call_log_writer=obs.api_call_log_writer,
     )
-    job = RankingSnapshotJob(rakuten_client=rakuten, repositories=repos)
+    job = RankingSnapshotJob(rakuten_client=rakuten, repositories=repos,
+        job_run_tracker=tracker,
+    )
+    job.repositories.bind_run(batch_run_id=args.job_run_id)
     genre_ids = _parse_genre_ids(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
     period = args.period.strip() or DEFAULT_PERIOD
     result = job.run(

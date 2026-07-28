@@ -81,6 +81,12 @@ def _as_diff_status(value: object | None) -> DiffStatus:
     return "unavailable"
 
 
+from batch.application.observability import (
+    ErrorLogWriter,
+    PhaseLogWriter,
+)
+from batch.application.observability.binding import emit_error, emit_phase
+
 @dataclass
 class ImportSummaryRepositories:
     """Facade: 入力読取 / IF-DB-BATCH-017 INSERT / phase・error logs."""
@@ -123,6 +129,17 @@ class ImportSummaryRepositories:
 
     phase_logs: list[dict[str, object]] = field(default_factory=list)
     error_logs: list[dict[str, object]] = field(default_factory=list)
+    phase_log_writer: PhaseLogWriter | None = None
+    error_log_writer: ErrorLogWriter | None = None
+    _batch_run_id: str | None = field(default=None, repr=False)
+    _trace_id: str | None = field(default=None, repr=False)
+
+
+    def bind_run(self, *, batch_run_id: str, trace_id: str | None = None) -> None:
+        """Bind ``batch_run_id`` (= job_run_id UUID) for observability DB writes."""
+
+        self._batch_run_id = batch_run_id
+        self._trace_id = trace_id
 
     def __post_init__(self) -> None:
         self.batch_runs = list(self.seed_batch_runs)
@@ -247,12 +264,24 @@ class ImportSummaryRepositories:
         return False
 
     def record_phase(self, *, phase: str, status: str) -> None:
-        """物理 phase_log。Import Summary 完了は summary_created。"""
-
-        self.phase_logs.append({"phase": phase, "status": status})
+        emit_phase(
+            phase_logs=self.phase_logs,
+            phase_log_writer=self.phase_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            phase=phase,
+            status=status,
+        )
 
     def record_error(self, *, code: str, summary: str) -> None:
-        self.error_logs.append({"code": code, "summary": summary})
+        emit_error(
+            error_logs=self.error_logs,
+            error_log_writer=self.error_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            code=code,
+            summary=summary,
+        )
 
     def _load_staging_items_from_db(self, *, batch_run_id: str) -> tuple[StagingItemRow, ...]:
         """staging_item に batch_run_id / source_api 列は無いため equals 連鎖で辿る.

@@ -357,12 +357,15 @@ Human Review（Issue #505）にて走査戦略 5 値を確定した。`fetch_cur
 
 Human Review（Issue #506）にて外部商品データ連携設計書 §8.4 の 4 値を正本化した。Observability §15.2 の短縮表記（`ranking` / `genre`）は **本 enum を正**とし、物理 DDL では採用しない。
 
+Wave 5（Issue #1710 / §8.4 案 B）にて **`item_embedding`** を追加。本値は **`api_call_log` のみ**で使用する。`raw_product_metadata` / `item_import_summary` / `fetch_cursor` の CHECK は楽天系のまま維持する。
+
 | 値 | 表示名 | 意味 | 利用条件 | 有効 / 無効 | 備考 |
 | -- | ------ | ---- | -------- | ----------- | ---- |
 | `item_search` | Item Search | 楽天商品検索API | BATCH-003 / BATCH-004 等 | `yes` | fetch_cursor MVP は本値のみ（テーブル CHECK） |
 | `item_ranking` | Item Ranking | 楽天ランキングAPI | BATCH-002 | `yes` | |
 | `genre_search` | Genre Search | 楽天ジャンル検索API | BATCH-001 | `yes` | |
 | `attribute_search` | Attribute Search | 楽天属性検索API | 将来拡張 | `yes` | MVP では Raw 保存対象外の場合あり |
+| `item_embedding` | Item Embedding | Item Embedding 生成 API（IF-EXT-005） | BATCH-015 | `yes` | **api_call_log のみ**。`source=openai` と併用。`item.source` とは別概念 |
 
 ### 6.25 Batch Type (`batch_type`)
 

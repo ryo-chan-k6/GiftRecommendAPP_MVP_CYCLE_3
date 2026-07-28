@@ -67,6 +67,12 @@ def _as_datetime(value: object) -> datetime | None:
     return None
 
 
+from batch.application.observability import (
+    ErrorLogWriter,
+    PhaseLogWriter,
+)
+from batch.application.observability.binding import emit_error, emit_phase
+
 @dataclass
 class ItemActiveStatusRepositories:
     """Facade for Item / candidate / Diff / logs used by BATCH-008 Applier."""
@@ -78,7 +84,18 @@ class ItemActiveStatusRepositories:
     diffs: dict[str, DiffSuggestion] = field(default_factory=dict)
     error_logs: list[dict[str, object]] = field(default_factory=list)
     phase_logs: list[dict[str, object]] = field(default_factory=list)
+    phase_log_writer: PhaseLogWriter | None = None
+    error_log_writer: ErrorLogWriter | None = None
+    _batch_run_id: str | None = field(default=None, repr=False)
+    _trace_id: str | None = field(default=None, repr=False)
     deleted_candidate_ids: list[str] = field(default_factory=list)
+
+
+    def bind_run(self, *, batch_run_id: str, trace_id: str | None = None) -> None:
+        """Bind ``batch_run_id`` (= job_run_id UUID) for observability DB writes."""
+
+        self._batch_run_id = batch_run_id
+        self._trace_id = trace_id
 
     def seed_item(self, row: ItemRow) -> None:
         self.items[row.idempotency_key] = ItemRow(
@@ -404,10 +421,29 @@ class ItemActiveStatusRepositories:
         return list(self.candidates.values())
 
     def record_phase(self, *, phase: str, status: str) -> None:
-        self.phase_logs.append({"phase": phase, "status": status})
+        emit_phase(
+            phase_logs=self.phase_logs,
+            phase_log_writer=self.phase_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            phase=phase,
+            status=status,
+        )
 
     def record_error(self, *, code: str, summary: str, item_code: str | None = None) -> None:
-        self.error_logs.append({"code": code, "summary": summary, "item_code": item_code})
+        detail: dict[str, object] = {}
+        if item_code is not None:
+            detail["item_code"] = item_code
+        emit_error(
+            error_logs=self.error_logs,
+            error_log_writer=self.error_log_writer,
+            batch_run_id=self._batch_run_id,
+            trace_id=self._trace_id,
+            code=code,
+            summary=summary,
+            memory_extra={"item_code": item_code},
+            detail=detail or None,
+        )
 
     def _cache_item_row(self, row: dict[str, object]) -> ItemRow:
         status = str(row.get("active_status") or "active")

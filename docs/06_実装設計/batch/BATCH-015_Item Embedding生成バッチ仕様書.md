@@ -415,7 +415,7 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | 種別 | 内容 |
 | ---- | ---- |
 | `batch_run_log` / `phase_log` | Run・Phase。Phase 例: `item_embedding_generated` |
-| `api_call_log` | IF-EXT-005 呼出の status / latency / model。**secret・ベクトル全文禁止** |
+| `api_call_log` | IF-EXT-005 呼出の status / latency / model。**secret・ベクトル全文禁止**。Wave 5（#1710）: `source=openai` / `source_api=item_embedding` で Postgres 本配線（`item.source` とは別概念） |
 | `error_log` | code / queue_id / item_id |
 | メトリクス | planned / generated / skipped / failed / api_call_count |
 
