@@ -129,7 +129,9 @@ job_run_tracker=job_run_tracker,
     )
 
 
-def _print_run_summary(result: object) -> None:
+def _print_run_summary(result: object, *, error_logs: list[dict[str, object]] | None = None) -> None:
+    codes = getattr(result, "error_codes", None) or ()
+    error_codes = ",".join(str(c) for c in codes) if codes else "-"
     print(
         f"BATCH-005 status={getattr(result, 'status', '?')} "
         f"succeeded={len(getattr(result, 'succeeded_raw_ids', ()))} "
@@ -137,8 +139,14 @@ def _print_run_summary(result: object) -> None:
         f"skipped={len(getattr(result, 'skipped_raw_ids', ()))} "
         f"staging_items={getattr(result, 'staging_item_upsert_count', 0)} "
         f"staging_images={getattr(result, 'staging_item_image_upsert_count', 0)} "
-        f"phases={','.join(getattr(result, 'completed_phases', ()))}"
+        f"phases={','.join(getattr(result, 'completed_phases', ()))} "
+        f"error_codes={error_codes}"
     )
+    for entry in error_logs or []:
+        print(
+            f"BATCH-005 error code={entry.get('code', '')} summary={entry.get('summary', '')}",
+            file=sys.stderr,
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -300,7 +308,7 @@ job_run_tracker=tracker,
         raw_metadata_ids=ids,
         force=args.force,
     )
-    _print_run_summary(result)
+    _print_run_summary(result, error_logs=repos.error_logs)
     print(
         f"db_reader={db_reader.backend} db_writer={db_writer.backend} "
         f"storage_backend={getattr(object_storage, 'backend', 'unknown')}"

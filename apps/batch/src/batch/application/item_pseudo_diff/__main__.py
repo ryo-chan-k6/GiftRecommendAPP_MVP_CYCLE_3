@@ -55,7 +55,34 @@ def _resolve_business_run_id(*, job_run_id: str, batch_run_id: str) -> str:
 
 
 def _build_scaffold_rakuten_client() -> ScaffoldRakutenApiClient:
-    """In-memory Rakuten responses for CI / GHA（登録 egress IP 外での live 禁止に合わせる）。"""
+    """In-memory Rakuten responses for CI / GHA（登録 egress IP 外での live 禁止に合わせる）。
+
+    Raw は BATCH-005 staging 検証（itemUrl / itemPrice 等）を通る最小形にする。
+    """
+
+    def _item(
+        *,
+        code: str,
+        name: str,
+        price: int = 1980,
+    ) -> dict[str, object]:
+        return {
+            "Item": {
+                "itemCode": code,
+                "itemName": name,
+                "itemCaption": f"Caption for {name}",
+                "catchcopy": "Demo catch",
+                "itemPrice": price,
+                "itemUrl": f"https://item.example/{code}",
+                "genreId": 100,
+                "shopCode": code.split(":", 1)[0],
+                "availability": 1,
+                "reviewAverage": 4.0,
+                "reviewCount": 1,
+                "mediumImageUrls": [{"imageUrl": f"https://img.example/medium/{code}.jpg"}],
+                "smallImageUrls": [{"imageUrl": f"https://img.example/small/{code}.jpg"}],
+            }
+        }
 
     return ScaffoldRakutenApiClient(
         items=(
@@ -65,23 +92,22 @@ def _build_scaffold_rakuten_client() -> ScaffoldRakutenApiClient:
         item_search_raw_responses={
             ("genre", "100", 1): {
                 "Items": [
-                    {"Item": {"itemCode": "shop:demo-1", "itemName": "Demo Item 1"}},
-                    {"Item": {"itemCode": "shop:demo-2", "itemName": "Demo Item 2"}},
+                    _item(code="shop:demo-1", name="Demo Item 1", price=1980),
+                    _item(code="shop:demo-2", name="Demo Item 2", price=2980),
                 ]
             },
             ("update_sort", "*", 1): {
                 "Items": [
-                    {"Item": {"itemCode": "shop:demo-1", "itemName": "Demo Item 1"}},
+                    _item(code="shop:demo-1", name="Demo Item 1", price=1980),
                 ]
             },
             ("ranking_supplement", "shop:unknown-rank", 1): {
                 "Items": [
-                    {
-                        "Item": {
-                            "itemCode": "shop:unknown-rank",
-                            "itemName": "From Ranking Supplement",
-                        }
-                    }
+                    _item(
+                        code="shop:unknown-rank",
+                        name="From Ranking Supplement",
+                        price=1500,
+                    ),
                 ]
             },
         },

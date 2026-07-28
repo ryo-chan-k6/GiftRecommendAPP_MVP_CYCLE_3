@@ -6,6 +6,7 @@ plan → read → transform → validate → persist → status → finalize
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
@@ -151,6 +152,11 @@ class RawStagingJob:
                         summary=exc.message,
                         raw_metadata_id=meta.raw_metadata_id,
                     )
+                    print(
+                        f"raw_staging.raw_failed raw_metadata_id={meta.raw_metadata_id} "
+                        f"error_code={exc.code} summary={exc.message}",
+                        file=sys.stderr,
+                    )
                     bound_logger.error(
                         "raw_staging.raw_failed",
                         raw_metadata_id=meta.raw_metadata_id,
@@ -165,6 +171,11 @@ class RawStagingJob:
                         summary=exc.message,
                         raw_metadata_id=meta.raw_metadata_id,
                     )
+                    print(
+                        f"raw_staging.raw_failed raw_metadata_id={meta.raw_metadata_id} "
+                        f"error_code={exc.code} summary={exc.message}",
+                        file=sys.stderr,
+                    )
                 except StagingValidationError as exc:
                     result.failed_raw_ids.append(meta.raw_metadata_id)
                     result.error_codes.append(exc.code)
@@ -174,6 +185,11 @@ class RawStagingJob:
                         code=exc.code,
                         summary=exc.message,
                         raw_metadata_id=meta.raw_metadata_id,
+                    )
+                    print(
+                        f"raw_staging.raw_failed raw_metadata_id={meta.raw_metadata_id} "
+                        f"error_code={exc.code} summary={exc.message}",
+                        file=sys.stderr,
                     )
                 except Exception as exc:  # noqa: BLE001 — finalize partial failure
                     result.failed_raw_ids.append(meta.raw_metadata_id)
@@ -186,6 +202,11 @@ class RawStagingJob:
                         code="GRS-BAT-001",
                         summary=str(exc),
                         raw_metadata_id=meta.raw_metadata_id,
+                    )
+                    print(
+                        f"raw_staging.unexpected_failure raw_metadata_id={meta.raw_metadata_id} "
+                        f"error_type={type(exc).__name__} summary={exc}",
+                        file=sys.stderr,
                     )
                     bound_logger.error(
                         "raw_staging.unexpected_failure",

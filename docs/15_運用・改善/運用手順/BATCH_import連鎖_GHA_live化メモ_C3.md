@@ -51,3 +51,4 @@ Epic `#1637` / Task `#1717` で確定した案 C3 に従い、BATCH import 連�
 | 2026-07-28 | 初版（Object Storage 未配線） |
 | 2026-07-29 | Object Storage Secrets/Variables 登録後、003/005 に live 配線 |
 | 2026-07-29 | 案 A: GHA の 003 楽天を Scaffold に戻す（HTTP 403 / CI live 禁止方針） |
+| 2026-07-29 | 案 A scaffold Raw に itemUrl/itemPrice 等を付与（005 GRS-VAL-001 回避） |
