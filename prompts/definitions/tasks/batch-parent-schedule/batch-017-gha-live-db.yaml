@@ -36,8 +36,8 @@ agent:
     - "test-ai"
 
 background: |
-  Human 確定: 案 C3。Environment stg Secrets（STG_DATABASE_URL / RAKUTEN_*）を用い、
-  Object Storage は未登録のため --live-object-storage は付けない（scaffold storage）。
+  Human 確定: 案 C3 + 案 A。Environment stg Secrets（STG_DATABASE_URL / OBJECT_STORAGE_*）を用い、
+  GHA の 003 楽天は Scaffold（登録 egress IP 外の live 禁止）。DB / Object Storage / 017 は live。
   prod 禁止。secret 実値を docs/コード/ログに出さない。
 
 objective: |
