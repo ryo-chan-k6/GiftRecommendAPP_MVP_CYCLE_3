@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1727
   issue:
     number: 1717
   task_definition: "prompts/definitions/tasks/batch-parent-schedule/batch-017-gha-live-db.yaml"
