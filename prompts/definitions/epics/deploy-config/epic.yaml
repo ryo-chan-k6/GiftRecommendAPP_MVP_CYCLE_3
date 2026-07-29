@@ -50,5 +50,5 @@ issue:
   area: "infra"
 
 notes:
-  - "子: #1708 Upstash、#1718 pnpm allowBuilds、#1720 Fly Reco デプロイ定義"
+  - "子: #1708 Upstash、#1718 pnpm allowBuilds、#1720 Fly Reco、#1724 Vercel Web"
   - "上位親: #144 リリース準備"
