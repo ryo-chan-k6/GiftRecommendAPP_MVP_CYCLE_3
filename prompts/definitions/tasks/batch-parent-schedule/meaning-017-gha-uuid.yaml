@@ -1,0 +1,99 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-parent-schedule-meaning-017-gha-uuid"
+  title: "batch-parent-schedule:meaning-generation 017 GHA live/UUID化"
+  summary: "meaning 複合子の pipeline ID を UUID 化し、017 live が batch_run_log を require/ensure できる状態にする。葉 009–015 は当面 scaffold。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-parent-schedule:親workflow schedule・dry-run有効化"
+  epic_issue_number: 1637
+  epic_branch: "feature/epic-1637-batch-parent-schedule"
+  related_issues:
+    - 1717
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1717 で import 連鎖 GHA live は成功。Daily 後続の meaning 017 が非 UUID
+  `gha-meaning-…` で Postgres UUID エラーになるため分離（#1726）。
+
+objective: |
+  meaning-generation の共有 Run ID を UUID 化し、017 live が
+  require_batch_run / 必要時 ensure で通るようにする。
+
+scope:
+  - "batch-item-meaning-generation.yml の resolve-run-id UUID 化と pipeline 出力"
+  - "017 import_summary: pipeline 欠落時の batch_run_log ensure"
+  - "Task Definition / 最小メモ更新"
+  - "関連 UT"
+
+out_of_scope:
+  - "009–015 葉の live 化（別途 Human 確認）"
+  - "import 連鎖（#1717）の再設計"
+  - "schedule 有効化 / production"
+
+input:
+  files:
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      required: true
+    - path: ".github/workflows/batch-import-summary.yml"
+      required: true
+    - path: "apps/batch/src/batch/application/import_summary/job.py"
+      required: true
+
+output:
+  files:
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/import_summary/job.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-parent-schedule/meaning-017-gha-uuid.yaml"
+      action: "create"
+      required: true
+  docs:
+    - path: "docs/15_運用・改善/運用手順/BATCH_import連鎖_GHA_live化メモ_C3.md"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "meaning resolve-run-id が UUID の pipeline_batch_run_id を出力する"
+  - "017 に渡す batch_run_id が UUID であり、葉 job_run_id と分離される"
+  - "pipeline batch_run_log 未作成時に 017 が ensure して継続できる"
+  - "secret 実値が含まれない"
+  - "Related to #1726 / PR target = 親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-meaning-017-gha-uuid"
+  base: "feature/epic-1637-batch-parent-schedule"
+  target: "feature/epic-1637-batch-parent-schedule"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+  number: 1726

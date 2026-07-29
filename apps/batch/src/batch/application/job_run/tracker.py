@@ -15,8 +15,9 @@ _TERMINAL_COMPLETE_STATUSES: frozenset[str] = frozenset(
     {"succeeded", "partially_succeeded", "failed"}
 )
 _BATCH_RUN_LOG_TABLE = "batch_run_log"
-# 複合子（item import 連鎖）共有 pipeline UUID 用の batch_name
+# 複合子共有 pipeline UUID 用の batch_name
 PIPELINE_ITEM_IMPORT_BATCH_NAME = "item_import_pipeline"
+PIPELINE_ITEM_MEANING_BATCH_NAME = "item_meaning_pipeline"
 
 
 @dataclass(frozen=True)
