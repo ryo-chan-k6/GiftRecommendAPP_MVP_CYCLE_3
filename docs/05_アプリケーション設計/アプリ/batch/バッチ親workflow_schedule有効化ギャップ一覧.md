@@ -56,8 +56,8 @@ E1 残（schedule 無効・親／複合の手動検証未実施）を docs 正�
 
 | ファイル | 種別 | schedule | cron（コメント内） | workflow_dispatch | concurrency |
 | -------- | ---- | -------- | ------------------ | ----------------- | ----------- |
-| `batch-daily-orchestrator.yml` | 親 | **無効** | `"10 16 * * 0-5"`（JST 月〜土 01:10） | あり（`max_items`, `run_retry_after`） | `batch-mainline` |
-| `batch-weekly-orchestrator.yml` | 親 | **無効** | `"10 16 * * 6"`（JST 日 01:10） | あり（`max_items`, `run_offline_evaluation`） | `batch-mainline` |
+| `batch-daily-orchestrator.yml` | 親 | **無効** | `"30 15 * * 0-5"`（JST 月〜土 00:30） | あり（`max_items`, `run_retry_after`） | `batch-mainline` |
+| `batch-weekly-orchestrator.yml` | 親 | **無効** | `"30 15 * * 6"`（JST 日 00:30） | あり（`max_items`, `run_offline_evaluation`） | `batch-mainline` |
 | `batch-manual-orchestrator.yml` | 親 | なし | — | あり（`scenario` 必須等） | `batch-manual-${{ inputs.scenario }}` |
 | `batch-rakuten-item-import.yml` 等 複合4本 | 複合 | なし | — | あり | 専用 group |
 
@@ -98,7 +98,7 @@ E1 残（schedule 無効・親／複合の手動検証未実施）を docs 正�
 | high | **0** | 本正本（inventory） | 不要（docs のみ） |
 | high | **gate** | §8 確定（案 A / D1 / cron 00:30 / Slack 失敗通知） | **完了（2026-07-28）** |
 | high | **1** | 手動検証（D1: 低 `max_items` の `workflow_dispatch`）+ 結果記録 | **実施済み（2026-07-28）**。判定 **PARTIAL**（017 scaffold demo 失敗）。手順・結果: [親workflow手動検証手順_D1](../../../15_運用・改善/運用手順/親workflow手動検証手順_D1.md) / [結果](../../../15_運用・改善/運用手順/親workflow手動検証結果_D1.md) |
-| medium | **notify / cron-docs** | Slack 失敗通知の配線。cron を JST 00:30 相当へ設計書・YAML コメント同期（schedule は無効のまま可） | 実装 PR レビュー |
+| medium | **notify / cron-docs** | Slack 失敗通知の配線。cron を JST 00:30 相当へ設計書・YAML コメント同期（schedule は無効のまま） | **#1729 で実施** |
 | medium | **2** | 案 B 以降を採用する場合: daily schedule コメント解除 | 有効化承認（現状は未採用・PARTIAL 後の再判断） |
 | medium | **3** | 案 C 時: weekly schedule 有効化 | 有効化承認（現状は未採用） |
 | low | **docs** | 横串ギャップ / §19.4 を Phase 進行に合わせて更新 | レビュー |
@@ -139,8 +139,8 @@ E1 残（schedule 無効・親／複合の手動検証未実施）を docs 正�
 
 | 項目 | 現状（事実） | Human 確定 |
 | ---- | ------------ | ---------- |
-| cron TZ | UTC cron で JST **01:10** 相当（設計 §6 / YAML コメント `10 16 …`） | **JST 00:30 相当へ変更**。UTC cron は `30 15 * * 0-5`（daily）/ `30 15 * * 6`（weekly）。設計書 §6・YAML コメントは後続 Wave（`notify / cron-docs`）で同期。案 A のため schedule 有効化は行わない |
-| 失敗通知 | YAML 上の専用 notify job は未確認（Actions 標準 UI / 別運用） | **Slack へ失敗通知する**。**GitHub 通知は不要**。実装は後続 Wave（`notify / cron-docs`） |
+| cron TZ | UTC cron で JST **00:30** 相当。UTC cron は `30 15 * * 0-5`（daily）/ `30 15 * * 6`（weekly）へ #1729 で同期 | **JST 00:30 相当へ変更済み**。案 A のため schedule 有効化は行わない |
+| 失敗通知 | daily / weekly 親に `notify_failure` job を #1729 で配線 | **Slack へ失敗通知する**。**GitHub 通知は不要** |
 
 ### 8.4 production 定期開始 — **記載どおり確定**
 
@@ -167,3 +167,4 @@ Epic out_of_scope: **無承認の production 定期開始は禁止**。
 | 2026-07-28 | 初版（#1637 Wave 0 inventory） |
 | 2026-07-28 | §8 Human 確定: 案 A / D1 / cron JST 00:30 / Slack 失敗通知（GitHub 通知不要）/ §8.4 記載どおり |
 | 2026-07-28 | Wave 1（#1715）: daily D1 手動検証実施。判定 PARTIAL。手順・結果 docs 追加 |
+| 2026-07-29 | Wave notify / cron-docs（#1729）: daily / weekly 親の Slack 失敗通知配線、cron docs / YAML コメントを JST 00:30 へ同期（schedule 無効維持） |
