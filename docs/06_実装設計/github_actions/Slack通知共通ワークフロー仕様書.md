@@ -108,4 +108,10 @@ token実値、Authorization header、Slack API request body中のsecretは出力
 | `.github/workflows/pr-review-status-sync.yml` | AI Review完了通知、Human Review依頼、修正必要通知 |
 | `.github/workflows/pr-merged-done-and-slack.yml` | PR merge / Done通知 |
 | `.github/workflows/slack-notify-manual.yml` | 人間判断、incident、横断影響、レビュー指摘対応完了 |
+| `.github/workflows/batch-daily-orchestrator.yml` | 日次親workflow失敗通知（`error` / incidentメンション） |
+| `.github/workflows/batch-weekly-orchestrator.yml` | 週次親workflow失敗通知（`error` / incidentメンション） |
+
+親 Batch workflow の通知は、`needs.*.result` に `failure` がある場合のみ実行する。
+通知本文には失敗 job 名、workflow、run番号、ref、Actions Run URLを含める。
+Slack通知stepは `continue-on-error: true` とし、通知自体の失敗で本線の結果を上書きしない。
 

@@ -1,0 +1,121 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-parent-schedule-notify-cron-docs"
+  title: "batch-parent-schedule:Slack失敗通知配線とcron 00:30 docs同期"
+  summary: "親 daily / weekly workflow に Slack 失敗通知を配線し、cron docs / YAML コメントを JST 00:30 に同期する。schedule は案Aどおり無効のまま。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-parent-schedule:親workflow schedule・dry-run有効化"
+  epic_issue_number: 1637
+  epic_branch: "feature/epic-1637-batch-parent-schedule"
+  related_issues:
+    - 1715
+    - 1717
+    - 1726
+  related_prs:
+    - 1716
+    - 1727
+    - 1728
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #1637 §8 で、案A（schedule 無効維持）、cron JST 00:30、
+  Slack失敗通知、GitHub通知不要が Human 確定済み。
+
+objective: |
+  daily / weekly 親workflowの失敗をSlackへ通知し、将来有効化するcronの
+  docs / YAMLコメントをJST 00:30へ同期する。定期実行は開始しない。
+
+scope:
+  - "batch-daily-orchestrator.yml / batch-weekly-orchestrator.yml の失敗通知"
+  - "既存 slack-notify.cjs の再利用"
+  - "cron YAMLコメントを UTC 30 15 へ同期"
+  - "バッチ実行スケジュール設計書 / ギャップ一覧 / Slack共通仕様書の更新"
+  - "workflow構文・secret非含有の確認"
+
+out_of_scope:
+  - "on.schedule のコメント解除"
+  - "production 定期開始"
+  - "D2 dry_run"
+  - "子 / 複合 workflowへの個別schedule・重複通知"
+  - "成功通知 / GitHub通知"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      required: true
+    - path: ".github/scripts/slack-notify.cjs"
+      required: true
+
+output:
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-parent-schedule/notify-cron-docs.yaml"
+      action: "create"
+      required: true
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "daily / weekly 親の失敗時のみ Slack 通知経路が実行される"
+  - "通知失敗が本線結果を上書きしない"
+  - "cron が docs / YAMLコメントで JST 00:30 / UTC 30 15 と一致する"
+  - "on.schedule はコメントアウトのまま"
+  - "secret実値を含まない"
+  - "Related to #1729 / PR target = 親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-parent-notify-cron-docs"
+  base: "feature/epic-1637-batch-parent-schedule"
+  target: "feature/epic-1637-batch-parent-schedule"
+  worktree_required: true
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+  number: 1729
