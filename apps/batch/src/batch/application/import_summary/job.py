@@ -21,14 +21,20 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import sys
+
 from batch.application.import_summary.aggregator import (
     build_aggregated_counts,
     build_insert_row,
     resolve_source_api,
 )
-from batch.application.import_summary.models import ImportSummaryJobResult
+from batch.application.import_summary.models import BatchRunLogRow, ImportSummaryJobResult
 from batch.application.import_summary.repositories import ImportSummaryRepositories
-from batch.application.job_run import JobRunTracker, ScaffoldJobRunTracker
+from batch.application.job_run import (
+    PIPELINE_ITEM_MEANING_BATCH_NAME,
+    JobRunTracker,
+    ScaffoldJobRunTracker,
+)
 from batch.infrastructure.logger import BatchLogger, ScaffoldBatchLogger
 
 BATCH_ID = "BATCH-017"
@@ -118,10 +124,34 @@ class ImportSummaryJob:
         result.completed_phases.append("open_run")
 
         try:
+            # 複合子で上流が scaffold 等で pipeline 行未作成のとき ensure（#1726）。
+            # 既に 003 等が作済みなら require のみ（ensure しない）。
             try:
                 self._repos.require_batch_run(aggregate_run_id)
-            except LookupError as exc:
-                raise ImportSummaryError("GRS-VAL-001", str(exc)) from exc
+            except LookupError as missing_exc:
+                if aggregate_run_id == job_run_id:
+                    raise ImportSummaryError("GRS-VAL-001", str(missing_exc)) from missing_exc
+                self._tracker.ensure_batch_run(
+                    batch_id=PIPELINE_ITEM_MEANING_BATCH_NAME,
+                    batch_run_id=aggregate_run_id,
+                )
+                print(
+                    "pipeline batch_run_log ensure: "
+                    f"batch_run_id={aggregate_run_id} "
+                    f"batch_name={PIPELINE_ITEM_MEANING_BATCH_NAME}",
+                    file=sys.stderr,
+                )
+                # scaffold（db_reader なし）では tracker ensure が repos に反映されないため追記
+                if self._repos.db_reader is None and not any(
+                    row.batch_run_id == aggregate_run_id for row in self._repos.batch_runs
+                ):
+                    self._repos.batch_runs.append(
+                        BatchRunLogRow(batch_run_id=aggregate_run_id, status="running")
+                    )
+                try:
+                    self._repos.require_batch_run(aggregate_run_id)
+                except LookupError as exc:
+                    raise ImportSummaryError("GRS-VAL-001", str(exc)) from exc
 
             raw_source = (source_api or "").strip() or None
             if raw_source is None:

@@ -2,12 +2,19 @@ name: Batch Item Meaning Generation
 
 # 複合子（案A）: BATCH-009 → 010 → 011 → 012 → 013 → 014 → 015 → 017
 # 正本: バッチ実行スケジュール設計書 §3.2 / ギャップ一覧 §5 案A
+# Run ID: 共有 pipeline_batch_run_id（UUID）+ 017 葉 job_run_id（葉側で新規 UUID）
+# 葉 009–015 は当面 scaffold。017 は live（#1726: UUID + pipeline batch_run_log ensure）
 
 on:
   workflow_call:
     inputs:
+      batch_run_id:
+        description: "Shared pipeline batch_run_id (UUID). Empty = generate new UUID"
+        required: false
+        type: string
+        default: ""
       job_run_id:
-        description: "Optional shared batch_run_id override"
+        description: "Deprecated alias for batch_run_id (pipeline). Prefer batch_run_id"
         required: false
         type: string
         default: ""
@@ -23,8 +30,13 @@ on:
         default: "rakuten"
   workflow_dispatch:
     inputs:
+      batch_run_id:
+        description: "Shared pipeline batch_run_id (UUID). Empty = generate new UUID"
+        required: false
+        type: string
+        default: ""
       job_run_id:
-        description: "Optional shared batch_run_id override"
+        description: "Deprecated alias for batch_run_id (pipeline). Prefer batch_run_id"
         required: false
         type: string
         default: ""
@@ -50,22 +62,25 @@ jobs:
   resolve-run-id:
     runs-on: ubuntu-latest
     outputs:
-      job_run_id: ${{ steps.run_id.outputs.value }}
+      pipeline_batch_run_id: ${{ steps.run_id.outputs.value }}
     steps:
       - id: run_id
         run: |
-          INPUT_ID="${{ inputs.job_run_id }}"
+          INPUT_ID="${{ inputs.batch_run_id }}"
+          LEGACY_ID="${{ inputs.job_run_id }}"
           if [ -n "$INPUT_ID" ]; then
             echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          elif [ -n "$LEGACY_ID" ]; then
+            echo "value=$LEGACY_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-meaning-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
   item_generation_queue:
     needs: resolve-run-id
     uses: ./.github/workflows/batch-item-generation-queue.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      job_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_items: ${{ inputs.max_items }}
       source: ${{ inputs.source }}
     secrets: inherit
@@ -74,7 +89,7 @@ jobs:
     needs: [resolve-run-id, item_generation_queue]
     uses: ./.github/workflows/batch-item-semantic.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      job_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_items: ${{ inputs.max_items }}
       source: ${{ inputs.source }}
     secrets: inherit
@@ -83,7 +98,7 @@ jobs:
     needs: [resolve-run-id, item_semantic]
     uses: ./.github/workflows/batch-feature-input-hash.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      job_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_items: ${{ inputs.max_items }}
       source: ${{ inputs.source }}
     secrets: inherit
@@ -92,7 +107,7 @@ jobs:
     needs: [resolve-run-id, feature_input_hash]
     uses: ./.github/workflows/batch-item-feature.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      job_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_items: ${{ inputs.max_items }}
       source: ${{ inputs.source }}
     secrets: inherit
@@ -101,7 +116,7 @@ jobs:
     needs: [resolve-run-id, item_feature]
     uses: ./.github/workflows/batch-feature-normalization.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      job_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_items: ${{ inputs.max_items }}
       source: ${{ inputs.source }}
     secrets: inherit
@@ -110,7 +125,7 @@ jobs:
     needs: [resolve-run-id, feature_normalization]
     uses: ./.github/workflows/batch-embedding-input-hash.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      job_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_items: ${{ inputs.max_items }}
       source: ${{ inputs.source }}
     secrets: inherit
@@ -119,7 +134,7 @@ jobs:
     needs: [resolve-run-id, embedding_input_hash]
     uses: ./.github/workflows/batch-item-embedding.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      job_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_items: ${{ inputs.max_items }}
       source: ${{ inputs.source }}
     secrets: inherit
@@ -128,6 +143,6 @@ jobs:
     needs: [resolve-run-id, item_embedding]
     uses: ./.github/workflows/batch-import-summary.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
-      batch_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      # 葉 job_run_id は import-summary 側で新規 UUID。ここは集計対象 pipeline のみ渡す。
+      batch_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
     secrets: inherit
