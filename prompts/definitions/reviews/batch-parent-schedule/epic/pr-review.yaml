@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-parent-schedule-epic-pr"
+  title: "batch-parent-schedule Epic PRレビュー"
+  summary: "Epic #1637（親workflow schedule・dry-run有効化）を develop へ統合する Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1731
+  issue:
+    number: 1637
+  task_definition: "prompts/definitions/epics/batch-parent-schedule/epic.yaml"
+  parent_epic_issue: "[Epic]batch-parent-schedule:親workflow schedule・dry-run有効化"
+  parent_epic_branch: "feature/epic-1637-batch-parent-schedule"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "Epic acceptance_criteria を満たしているか（案A確定・手動検証記録・PR target=develop）"
+  - "案A どおり schedule 有効化（on.schedule のコメント解除）が混入していないか"
+  - "production 無承認の定期実行開始が含まれていないか（out_of_scope 遵守）"
+  - "子Task #1714 / #1716 / #1727 / #1728 / #1730 の成果が漏れなく統合されているか"
+  - "docs（gap一覧・スケジュール設計書・Slack通知仕様書）と YAML の cron JST 00:30 同期が整合しているか"
+  - "apps/batch の import 連鎖変更（run_id 分離・ensure_batch_run・診断出力）と unit test が整合しているか"
+  - "secret / token が docs・PR・コードに含まれていないか"
+  - "PR target = develop"
+
+notes:
+  - "各子Task PR は個別に AI Review 済み・merge 済み。本レビューは統合観点を中心に確認する"
+  - "Rakuten API は GHA egress 制約のため live では Scaffold client を使用（本番 egress は #1607 別 Issue）"
