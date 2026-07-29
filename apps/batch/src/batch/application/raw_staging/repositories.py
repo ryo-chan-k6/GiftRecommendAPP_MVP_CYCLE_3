@@ -77,7 +77,7 @@ class RawStagingRepositories:
 
 
     def bind_run(self, *, batch_run_id: str, trace_id: str | None = None) -> None:
-        """Bind ``batch_run_id`` (= job_run_id UUID) for observability DB writes."""
+        """Bind shared pipeline ``batch_run_id`` for observability DB writes."""
 
         self._batch_run_id = batch_run_id
         self._trace_id = trace_id
@@ -105,7 +105,12 @@ class RawStagingRepositories:
         raw_metadata_ids: tuple[str, ...] | None = None,
         force: bool = False,
     ) -> list[RawMetadataSeed]:
-        """§18.1 No.2: default import_status=raw_saved, item_search preferred."""
+        """§18.1 No.2: default import_status=raw_saved, item_search preferred.
+
+        ``bind_run`` 済みの pipeline ``batch_run_id`` がある場合は、
+        ``object_key`` に ``batch_run_id=<uuid>`` を含む Raw のみ対象にする
+        （他 Run の残骸 raw_saved を誤って拾わない）。
+        """
 
         if self.db_reader is not None:
             return self._list_eligible_raws_from_db(
@@ -127,6 +132,8 @@ class RawStagingRepositories:
                 seed = self._meta_to_seed(meta)
                 if not force and seed.import_status in SKIP_STATUSES:
                     continue
+                if not self._matches_bound_pipeline(seed):
+                    continue
                 selected.append(seed)
                 if len(selected) >= max_raw:
                     break
@@ -143,10 +150,20 @@ class RawStagingRepositories:
             else:
                 if seed.import_status != "raw_saved":
                     continue
+            if not self._matches_bound_pipeline(seed):
+                continue
             eligible.append(seed)
 
         eligible.sort(key=self._prefer_sort_key)
         return eligible[: max(0, max_raw)]
+
+    def _matches_bound_pipeline(self, seed: RawMetadataSeed) -> bool:
+        """True when no pipeline bind, or object_key embeds the bound batch_run_id."""
+
+        if not self._batch_run_id:
+            return True
+        needle = f"batch_run_id={self._batch_run_id}"
+        return needle in (seed.object_key or "")
 
     def _list_eligible_raws_from_db(
         self,
@@ -176,6 +193,8 @@ class RawStagingRepositories:
                 seed = self._row_to_seed(result.rows[0])
                 if not force and seed.import_status in SKIP_STATUSES:
                     continue
+                if not self._matches_bound_pipeline(seed):
+                    continue
                 self._cache_seed(seed)
                 selected.append(seed)
                 if len(selected) >= max_raw:
@@ -188,6 +207,10 @@ class RawStagingRepositories:
         fetch_limit = max(0, max_raw)
         if fetch_limit == 0:
             return []
+        # equals-only のため pipeline 絞り込みはアプリ側。上位数件だけだと他 Run 残骸を誤選択しうる。
+        over_fetch = fetch_limit
+        if self._batch_run_id:
+            over_fetch = max(fetch_limit * 50, 100)
 
         for status in statuses:
             for api in preferred:
@@ -196,11 +219,13 @@ class RawStagingRepositories:
                     columns=_READ_COLUMNS,
                     equals=(("import_status", status), ("source_api", api)),
                     order_by=("raw_metadata_id",),
-                    limit=fetch_limit,
+                    limit=over_fetch,
                 )
                 for row in result.rows:
                     seed = self._row_to_seed(row)
                     if seed.raw_metadata_id in collected:
+                        continue
+                    if not self._matches_bound_pipeline(seed):
                         continue
                     self._cache_seed(seed)
                     collected[seed.raw_metadata_id] = seed

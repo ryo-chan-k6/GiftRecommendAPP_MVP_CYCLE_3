@@ -137,6 +137,33 @@ def test_postgres_write_rows_executes_parameterized_insert() -> None:
     assert result == DbWriteResult(rows_affected=2, table="staging_item")
 
 
+def test_postgres_write_rows_adapts_dict_to_json() -> None:
+    """fetch_cursor.scope 等の dict を jsonb 向け Json に変換する（live INSERT 失敗回避）。"""
+
+    from psycopg.types.json import Json
+
+    writer = PostgresDbWriter(database_url="postgresql://localhost:5432/gift")
+    rows = ({"fetch_cursor_id": "fc_1", "scope": {"genre_id": "100"}},)
+
+    mock_cursor = MagicMock()
+    mock_cursor.rowcount = 1
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = False
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = False
+
+    with patch("psycopg.connect", return_value=mock_conn):
+        writer.write_rows("fetch_cursor", rows)
+
+    _statement, params = mock_cursor.execute.call_args.args
+    assert params[0] == "fc_1"
+    assert isinstance(params[1], Json)
+    assert params[1].obj == {"genre_id": "100"}
+
+
 def test_postgres_write_rows_masks_credentials_in_database_error() -> None:
     writer = PostgresDbWriter(
         database_url="postgresql://user:secret@localhost:5432/gift"

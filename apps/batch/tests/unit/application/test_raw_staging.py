@@ -440,6 +440,30 @@ def test_validation_missing_required_rejects_without_staging_write() -> None:
     assert "staging_item" not in _writer_tables(db)
 
 
+def test_validation_failure_stderr_includes_object_key_and_payload_keys(
+    capsys,
+) -> None:
+    """失敗時 stderr に object_key と payload keys（secret なし）を出す。"""
+
+    payload = _item_search_payload()
+    item = payload["Items"][0]["Item"]  # type: ignore[index]
+    assert isinstance(item, dict)
+    item["itemUrl"] = ""
+    repos, _, _ = _seed_repos(payloads={"rm_diag": payload})
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-diag", max_raw=1)
+
+    assert result.status == "failed"
+    assert "GRS-VAL-001" in result.error_codes
+    err = capsys.readouterr().err
+    assert "raw_staging.raw_failed" in err
+    assert "object_key=" in err
+    assert "rm_diag" in err or "raw_metadata_id=rm_diag" in err
+    assert "first_item_keys=" in err
+    assert "itemUrl" in err
+
+
 def test_ranking_and_genre_upsert_without_polluting_staging_item() -> None:
     """§16 No.8: ranking/genre は Staging 書込成功。staging_item / external_genre 非書込。"""
 
@@ -673,6 +697,53 @@ def test_list_eligible_raws_uses_db_reader_when_injected() -> None:
     assert ("import_status", "raw_saved") in reader.fetch_calls[0]["equals"]
 
 
+def test_list_eligible_raws_filters_by_bound_pipeline_batch_run_id() -> None:
+    """他 Run の raw_saved 残骸を拾わず、object_key の batch_run_id で絞る。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    pipeline = "870575bf-d720-455a-a256-c74951400a50"
+    other = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "raw_product_metadata",
+        (
+            {
+                "raw_metadata_id": "rm_old_bad",
+                "object_key": (
+                    f"raw/rakuten/item_search/dt=2026-07-28/"
+                    f"batch_run_id={other}/old.json"
+                ),
+                "content_hash": "a" * 64,
+                "source": "rakuten",
+                "source_api": "item_search",
+                "import_status": "raw_saved",
+            },
+            {
+                "raw_metadata_id": "rm_new_good",
+                "object_key": (
+                    f"raw/rakuten/item_search/dt=2026-07-28/"
+                    f"batch_run_id={pipeline}/new.json"
+                ),
+                "content_hash": "b" * 64,
+                "source": "rakuten",
+                "source_api": "item_search",
+                "import_status": "raw_saved",
+            },
+        ),
+    )
+    repos = RawStagingRepositories(
+        object_storage=ScaffoldObjectStorageClient(),
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        bucket="test-raw",
+    )
+    repos.bind_run(batch_run_id=pipeline)
+
+    selected = repos.list_eligible_raws(max_raw=1)
+    assert [s.raw_metadata_id for s in selected] == ["rm_new_good"]
+
+
 def test_list_eligible_raws_db_reader_force_and_explicit_ids() -> None:
     from batch.infrastructure.db import ScaffoldDbReader
 
@@ -775,3 +846,12 @@ def test_cli_non_demo_runs_job_with_live_reader(monkeypatch: Any) -> None:
     # empty SELECT → plan failed (exit 1). Important: Job started (not config/exit-2/old exit-3).
     assert code == 1
     assert reader.fetch_calls
+
+
+def test_cli_batch_run_id_fallback_to_job_run_id() -> None:
+    from batch.application.raw_staging.__main__ import _resolve_business_run_id
+
+    assert _resolve_business_run_id(job_run_id="leaf", batch_run_id="") == "leaf"
+    assert (
+        _resolve_business_run_id(job_run_id="leaf", batch_run_id="pipeline") == "pipeline"
+    )

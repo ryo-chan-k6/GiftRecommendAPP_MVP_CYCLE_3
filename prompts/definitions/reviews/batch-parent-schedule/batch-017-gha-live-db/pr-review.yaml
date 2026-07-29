@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-parent-schedule-batch-017-gha-live-db-pr"
+  title: "batch-parent-schedule BATCH import GHA live（案C3）PRレビュー"
+  summary: "Epic #1637 Task #1717（案 C3: import 連鎖 GHA live 化 + Run ID 分離）の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1727
+  issue:
+    number: 1717
+  task_definition: "prompts/definitions/tasks/batch-parent-schedule/batch-017-gha-live-db.yaml"
+  parent_epic_issue: "[Epic]batch-parent-schedule:親workflow schedule・dry-run有効化"
+  parent_epic_branch: "feature/epic-1637-batch-parent-schedule"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "親 resolve-run-id が gha-import-… ではなく UUID の pipeline_batch_run_id か"
+  - "葉が environment: stg と STG_DATABASE_URL を使い --scaffold-demo を外しているか（003 楽天は GHA Scaffold＝案 A）"
+  - "003/005 の Object Storage が live（--live-object-storage / OBJECT_STORAGE_*）か。楽天 HTTP live は GHA に無いこと"
+  - "003/005/006 の --job-run-id（葉 UUID）と --batch-run-id（共有 pipeline）分離が正しいか"
+  - "003 が pipeline batch_run_log を ensure しているか（017 require_batch_run）"
+  - "017 live で job_run_id ≠ batch_run_id となるか"
+  - "secret 実値・prod 環境が混入していないか"
+  - "schedule 有効化や ranking/meaning/existing-item 全体改修が混入していないか"
+  - "Related to #1717 / PR target = 親 Epic Branch"
+
+notes:
+  - "pr.number は PR 作成後に埋める"
+  - "検証正本は item_import 緑（Daily 全体 conclusion は見ない・案1）。meaning 017 は #1726"

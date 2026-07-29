@@ -1,3 +1,9 @@
+import json
+from datetime import UTC, datetime
+
+from batch.application.raw_staging.models import RawMetadataSeed
+from batch.application.raw_staging.transform import transform_raw
+from batch.application.raw_staging.validate import validate_transform_result
 from batch.infrastructure import (
     DbWriteResult,
     LogContext,
@@ -41,6 +47,61 @@ def test_scaffold_rakuten_client_records_api_calls() -> None:
     assert client.search_calls == [{"keyword": "gift", "page": 2}]
     assert client.ranking_calls == [{"genre_id": "100", "page": 1}]
     assert client.genre_calls == [{"genre_id": "100"}]
+
+
+def test_scaffold_item_search_fallback_includes_staging_required_fields(
+    capsys,
+) -> None:
+    """map 外 page でも itemUrl 等を含め、stderr に fallback 警告を出す。"""
+
+    client = ScaffoldRakutenApiClient(
+        items=(RakutenItem(item_code="shop:gift-1", item_name="Gift One"),),
+    )
+
+    raw = client.fetch_item_search_raw(
+        cursor_type="genre",
+        genre_id="100",
+        page=2,
+    )
+
+    item = raw["Items"][0]["Item"]  # type: ignore[index]
+    assert isinstance(item, dict)
+    assert item["itemCode"] == "shop:gift-1"
+    assert item["itemUrl"] == "https://item.example/shop:gift-1"
+    assert item["itemPrice"] == 1000
+    assert item["genreId"] == 100
+    assert item["shopCode"] == "shop"
+    assert item["mediumImageUrls"]
+    err = capsys.readouterr().err
+    assert "scaffold item_search fallback" in err
+    assert "page=2" in err
+
+
+def test_scaffold_item_search_fallback_passes_raw_staging(capsys) -> None:
+    """page>=2 fallback Raw が BATCH-005 validate / staging まで通る。"""
+
+    client = ScaffoldRakutenApiClient(
+        items=(RakutenItem(item_code="shop:gift-2", item_name="Gift Two"),),
+    )
+    raw = client.fetch_item_search_raw(
+        cursor_type="genre",
+        genre_id="100",
+        page=2,
+    )
+    body = json.dumps(raw, ensure_ascii=False).encode("utf-8")
+    meta = RawMetadataSeed(
+        raw_metadata_id="rm_fb",
+        object_key="raw/rakuten/item_search/rm_fb.json",
+        content_hash="deadbeef",
+        source="rakuten",
+        source_api="item_search",
+        import_status="raw_saved",
+    )
+    transformed = transform_raw(meta=meta, body=body, staged_at=datetime.now(UTC))
+    validated = validate_transform_result(transformed)
+    assert validated.items
+    assert validated.items[0].item.item_url.startswith("https://")
+    assert "scaffold item_search fallback" in capsys.readouterr().err
 
 
 def test_scaffold_object_storage_put_and_get() -> None:

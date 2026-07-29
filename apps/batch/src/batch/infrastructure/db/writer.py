@@ -17,6 +17,19 @@ ConflictOp = Literal["=", "<>"]
 ConflictWhere = tuple[tuple[str, ConflictOp, object], ...]
 
 
+def _adapt_pg_param(value: object) -> object:
+    """Adapt Python dict/list for PostgreSQL jsonb/json placeholders.
+
+    Scaffold では dict のまま保持し、Postgres 経路のみ Json 化する。
+    """
+
+    if isinstance(value, (dict, list)):
+        from psycopg.types.json import Json
+
+        return Json(value)
+    return value
+
+
 @dataclass(frozen=True)
 class DbWriteResult:
     """Result of a batch write operation."""
@@ -424,12 +437,13 @@ class PostgresDbWriter:
     ) -> DbWriteResult:
         import psycopg
 
+        adapted_params = [_adapt_pg_param(value) for value in params]
         try:
             if self._active_conn is not None:
                 return self._execute_on_conn(
                     self._active_conn,
                     statement,
-                    params,
+                    adapted_params,
                     table=table,
                     fallback_affected=fallback_affected,
                     commit=False,
@@ -439,7 +453,7 @@ class PostgresDbWriter:
                 return self._execute_on_conn(
                     conn,
                     statement,
-                    params,
+                    adapted_params,
                     table=table,
                     fallback_affected=fallback_affected,
                     commit=True,

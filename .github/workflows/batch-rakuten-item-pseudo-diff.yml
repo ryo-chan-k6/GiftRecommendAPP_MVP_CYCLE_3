@@ -2,7 +2,8 @@ name: Batch Rakuten Item Pseudo Diff
 
 # BATCH-003 楽天商品疑似差分取得（独立子 workflow）
 # 正本: BATCH-003 バッチ仕様書 §18.1 — workflow_call / workflow_dispatch
-# 親 batch-rakuten-item-import.yml 全体改修は本 Epic では行わない
+# C3 案 A: environment stg + live DB / live Object Storage。
+# 楽天 HTTP は GHA では Scaffold（登録 egress IP 外の live 禁止）。
 
 on:
   workflow_call:
@@ -17,8 +18,13 @@ on:
         required: false
         type: string
         default: ""
+      batch_run_id:
+        description: "Shared pipeline batch_run_id (UUID)"
+        required: false
+        type: string
+        default: ""
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -34,8 +40,13 @@ on:
         required: false
         type: string
         default: ""
+      batch_run_id:
+        description: "Shared pipeline batch_run_id (UUID)"
+        required: false
+        type: string
+        default: ""
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -51,6 +62,14 @@ jobs:
   item-pseudo-diff:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    environment: stg
+    env:
+      DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
+      OBJECT_STORAGE_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY }}
+      OBJECT_STORAGE_SECRET_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_KEY }}
+      OBJECT_STORAGE_BUCKET: ${{ vars.OBJECT_STORAGE_BUCKET }}
+      OBJECT_STORAGE_ENDPOINT: ${{ vars.OBJECT_STORAGE_ENDPOINT }}
+      BATCH_OBJECT_STORAGE_LIVE: ${{ vars.BATCH_OBJECT_STORAGE_LIVE }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -66,19 +85,33 @@ jobs:
       - name: Setup batch Python env
         run: bash ./scripts/dev/setup-python-batch.sh
 
-      - name: Resolve job_run_id
-        id: run_id
+      - name: Resolve run ids
+        id: run_ids
         run: |
-          INPUT_ID="${{ inputs.job_run_id }}"
-          if [ -n "$INPUT_ID" ]; then
-            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          PIPELINE_INPUT="${{ inputs.batch_run_id }}"
+          JOB_INPUT="${{ inputs.job_run_id }}"
+          if [ -n "$PIPELINE_INPUT" ]; then
+            echo "batch_run_id=$PIPELINE_INPUT" >> "$GITHUB_OUTPUT"
+          elif [ -n "$JOB_INPUT" ]; then
+            echo "batch_run_id=$JOB_INPUT" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "batch_run_id=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$PIPELINE_INPUT" ]; then
+            if [ -n "$JOB_INPUT" ] && [ "$JOB_INPUT" != "$PIPELINE_INPUT" ]; then
+              echo "job_run_id=$JOB_INPUT" >> "$GITHUB_OUTPUT"
+            else
+              echo "job_run_id=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
+            fi
+          elif [ -n "$JOB_INPUT" ]; then
+            echo "job_run_id=$JOB_INPUT" >> "$GITHUB_OUTPUT"
+          else
+            echo "job_run_id=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-003 scaffold demo
-        # Real Rakuten HTTP client is not enabled in this Task.
-        # Secrets (RAKUTEN_*) must never be printed. Use --scaffold-demo for CI smoke.
+      - name: Run BATCH-003 (scaffold Rakuten + live DB/Storage)
+        # Secrets must never be printed.
+        # 楽天 live（--live-rakuten）は GHA 禁止。登録 IP の local のみ。
         working-directory: apps/batch
         run: |
           GENRE_ARGS=()
@@ -90,7 +123,8 @@ jobs:
             KEYWORD_ARGS+=(--keywords "${{ inputs.keywords }}")
           fi
           uv run python -m batch.application.item_pseudo_diff \
-            --scaffold-demo \
-            --job-run-id "${{ steps.run_id.outputs.value }}" \
+            --live-object-storage \
+            --job-run-id "${{ steps.run_ids.outputs.job_run_id }}" \
+            --batch-run-id "${{ steps.run_ids.outputs.batch_run_id }}" \
             "${GENRE_ARGS[@]}" \
             "${KEYWORD_ARGS[@]}"

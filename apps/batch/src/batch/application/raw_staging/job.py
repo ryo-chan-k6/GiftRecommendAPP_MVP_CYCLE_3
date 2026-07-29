@@ -6,6 +6,8 @@ plan → read → transform → validate → persist → status → finalize
 
 from __future__ import annotations
 
+import json
+import sys
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
@@ -34,6 +36,45 @@ RAW_STAGING_PHASES: tuple[str, ...] = (
 
 DEFAULT_MAX_RAW = 1000
 DEFAULT_SOURCE_API = "item_search"
+
+
+def _payload_diag(body: bytes) -> str:
+    """Secret なしの Raw 診断文字列（top-level / 先頭 Item のキー）。"""
+
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return "body=unparseable"
+    if not isinstance(payload, dict):
+        return f"body_type={type(payload).__name__}"
+    top_keys = sorted(str(k) for k in payload.keys())
+    items = payload.get("Items")
+    item_keys = "-"
+    if isinstance(items, list) and items:
+        first = items[0]
+        if isinstance(first, dict):
+            nested = first.get("Item") if isinstance(first.get("Item"), dict) else first
+            if isinstance(nested, dict):
+                item_keys = ",".join(sorted(str(k) for k in nested.keys()))
+    return f"top_keys={top_keys}; first_item_keys={item_keys}"
+
+
+def _print_raw_failure(
+    *,
+    meta: RawMetadataSeed,
+    error_code: str,
+    summary: str,
+    body: bytes | None = None,
+    unexpected: bool = False,
+) -> None:
+    prefix = "raw_staging.unexpected_failure" if unexpected else "raw_staging.raw_failed"
+    diag = _payload_diag(body) if body is not None else "body=n/a"
+    print(
+        f"{prefix} raw_metadata_id={meta.raw_metadata_id} "
+        f"object_key={meta.object_key} "
+        f"error_code={error_code} summary={summary} {diag}",
+        file=sys.stderr,
+    )
 
 
 def _is_batch_already_running(tracker: JobRunTracker) -> bool:
@@ -132,10 +173,20 @@ class RawStagingJob:
                 return result
 
             phases_seen: set[str] = {"plan"}
+            print(
+                "raw_staging.plan "
+                f"count={len(plan.items)} "
+                f"object_keys={[m.object_key for m in plan.items]}",
+                file=sys.stderr,
+            )
             for meta in plan.items:
+                body_holder: list[bytes] = []
                 try:
                     outcome = self._process_one_raw(
-                        meta=meta, result=result, phases_seen=phases_seen
+                        meta=meta,
+                        result=result,
+                        phases_seen=phases_seen,
+                        body_holder=body_holder,
                     )
                     if outcome == "skipped":
                         # already recorded on result.skipped_raw_ids
@@ -151,6 +202,9 @@ class RawStagingJob:
                         summary=exc.message,
                         raw_metadata_id=meta.raw_metadata_id,
                     )
+                    _print_raw_failure(
+                        meta=meta, error_code=exc.code, summary=exc.message
+                    )
                     bound_logger.error(
                         "raw_staging.raw_failed",
                         raw_metadata_id=meta.raw_metadata_id,
@@ -165,6 +219,12 @@ class RawStagingJob:
                         summary=exc.message,
                         raw_metadata_id=meta.raw_metadata_id,
                     )
+                    _print_raw_failure(
+                        meta=meta,
+                        error_code=exc.code,
+                        summary=exc.message,
+                        body=body_holder[0] if body_holder else None,
+                    )
                 except StagingValidationError as exc:
                     result.failed_raw_ids.append(meta.raw_metadata_id)
                     result.error_codes.append(exc.code)
@@ -174,6 +234,12 @@ class RawStagingJob:
                         code=exc.code,
                         summary=exc.message,
                         raw_metadata_id=meta.raw_metadata_id,
+                    )
+                    _print_raw_failure(
+                        meta=meta,
+                        error_code=exc.code,
+                        summary=exc.message,
+                        body=body_holder[0] if body_holder else None,
                     )
                 except Exception as exc:  # noqa: BLE001 — finalize partial failure
                     result.failed_raw_ids.append(meta.raw_metadata_id)
@@ -186,6 +252,13 @@ class RawStagingJob:
                         code="GRS-BAT-001",
                         summary=str(exc),
                         raw_metadata_id=meta.raw_metadata_id,
+                    )
+                    _print_raw_failure(
+                        meta=meta,
+                        error_code="GRS-BAT-001",
+                        summary=str(exc),
+                        body=body_holder[0] if body_holder else None,
+                        unexpected=True,
                     )
                     bound_logger.error(
                         "raw_staging.unexpected_failure",
@@ -265,11 +338,15 @@ class RawStagingJob:
         meta: RawMetadataSeed,
         result: RawStagingSyncResult,
         phases_seen: set[str],
+        body_holder: list[bytes] | None = None,
     ) -> str:
         """Process one Raw. Returns ``succeeded`` or ``skipped``."""
 
         # read
         body = self._repos.read_raw_body(meta=meta)
+        if body_holder is not None:
+            body_holder.clear()
+            body_holder.append(body)
         phases_seen.add("read")
         if "read" not in result.completed_phases:
             result.completed_phases.append("read")

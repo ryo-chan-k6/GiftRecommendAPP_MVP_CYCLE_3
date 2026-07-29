@@ -15,6 +15,8 @@ _TERMINAL_COMPLETE_STATUSES: frozenset[str] = frozenset(
     {"succeeded", "partially_succeeded", "failed"}
 )
 _BATCH_RUN_LOG_TABLE = "batch_run_log"
+# 複合子（item import 連鎖）共有 pipeline UUID 用の batch_name
+PIPELINE_ITEM_IMPORT_BATCH_NAME = "item_import_pipeline"
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,8 @@ class JobRunTracker(Protocol):
     def start(self, *, batch_id: str, job_run_id: str) -> JobRunRecord: ...
 
     def complete(self, *, batch_id: str, job_run_id: str, status: JobRunStatus) -> JobRunRecord: ...
+
+    def ensure_batch_run(self, *, batch_id: str, batch_run_id: str) -> JobRunRecord: ...
 
 
 def _require_uuid_job_run_id(job_run_id: str) -> str:
@@ -62,6 +66,14 @@ class ScaffoldJobRunTracker:
         self.records.append(record)
         return record
 
+    def ensure_batch_run(self, *, batch_id: str, batch_run_id: str) -> JobRunRecord:
+        """Idempotent in-memory ensure（既に同 ID があれば先頭一致を返す）."""
+
+        for record in self.records:
+            if record.job_run_id == batch_run_id:
+                return record
+        return self.start(batch_id=batch_id, job_run_id=batch_run_id)
+
 
 @dataclass
 class PostgresJobRunTracker:
@@ -90,6 +102,32 @@ class PostgresJobRunTracker:
         )
         self._started_at[batch_run_id] = started_at
         record = JobRunRecord(batch_id=batch_id, job_run_id=batch_run_id, status="running")
+        self.records.append(record)
+        return record
+
+    def ensure_batch_run(self, *, batch_id: str, batch_run_id: str) -> JobRunRecord:
+        """Ensure ``batch_run_log`` row for pipeline UUID（INSERT ON CONFLICT DO NOTHING）."""
+
+        run_id = _require_uuid_job_run_id(batch_run_id)
+        started_at = datetime.now(UTC)
+        self.db_writer.upsert_rows(
+            _BATCH_RUN_LOG_TABLE,
+            (
+                {
+                    "batch_run_id": run_id,
+                    "batch_name": batch_id,
+                    "run_status": "running",
+                    "started_at": started_at,
+                    "success_count": 0,
+                    "failed_count": 0,
+                    "skipped_count": 0,
+                },
+            ),
+            conflict_columns=("batch_run_id",),
+            update_columns=(),
+        )
+        self._started_at.setdefault(run_id, started_at)
+        record = JobRunRecord(batch_id=batch_id, job_run_id=run_id, status="running")
         self.records.append(record)
         return record
 
