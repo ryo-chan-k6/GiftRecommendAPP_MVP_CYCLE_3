@@ -128,9 +128,9 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "rakuten-fetch-ops-decisions"
-  name: null
-  base: null
-  target: null
+  name: "docs/task-1764-rakuten-fetch-ops-decisions"
+  base: "feature/epic-1763-batch-live-rakuten-fetch"
+  target: "feature/epic-1763-batch-live-rakuten-fetch"
   worktree_required: true
 
 project:
@@ -204,5 +204,6 @@ stop_conditions:
 
 notes:
   - "Task Issue: #1764 / Branch docs/task-1764-rakuten-fetch-ops-decisions"
-  - "推奨初期値（pages_per_run=60等）は運用方針§5.3.4/§5.3.5。採択はHuman"
+  - "2026-07-30: §10推奨案をHuman採択。No.1は具体的fetch_planを本Decisionでは保留"
+  - "採択正本: ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md"
   - "本Task完了前に local live Task を実装開始してはならない"
