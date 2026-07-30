@@ -60,6 +60,11 @@ background: |
   semantic_config_version_id も一致している。scaffold 未収録 code（例: spouse）を
   選ぶと get_relationship_features() が None を返し ExternalFeatureEstimateError となる。
 
+  feature_integration_rule 48 行の stg 投入後（2026-07-31）も、
+  ケースA（spouse）は GRS-REC-005、ケースB（lover）は成功した。
+  成否が scaffold の収録有無と一致し、seed 不足ではなく production composition の
+  InMemoryFeatureRuleRepository が原因であることを stg 実測で確認済みである。
+
   RunValidation は既に PostgresRunValidation へ置換済み。本 Task は
   feature_rules（FeatureRuleRepositoryPort）の置換のみを対象とする。
 
@@ -100,7 +105,7 @@ input:
       purpose: "読み取り対象の列制約"
     - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
       required: true
-      purpose: "統合 weight の正本（現状 0 行。フォールバック方針の根拠）"
+      purpose: "統合 weight の正本（stg 48 行投入済み。写像・フォールバック方針の根拠）"
     - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
       required: true
       purpose: "Feature 値・Pair delta・統合重みの論理正本"
@@ -254,14 +259,14 @@ review:
     security: true
 
 human_decision_points:
-  - "（確定 2026-07-30）feature_integration_rule seed をEpic #1756 / Task #1757で先行する。本 Taskは#1756 Done後に着手する"
+  - "（完了 2026-07-31）feature_integration_rule seed をEpic #1756 / Task #1757で先行し、stgへ48行投入済み"
   - "（確定 2026-07-30）Port の 2 スカラー写像は input_source=relationship_feature / occasion_feature の weight（軸共通）を採用する"
 
 stop_conditions:
   - "relationship_rule / occasion_rule / pair_rule の列定義が実 DB と テーブル定義書で矛盾する場合"
   - "8 Feature を満たさない master 行が存在し、値の補完方針に業務判断が必要な場合"
   - "migration または seed の変更が必要になった場合"
-  - "前提となる feature_integration_rule seed Issue が未完了のまま本 Task を実装しようとする場合"
+  - "前提となる feature_integration_rule 48 行が検証できない場合"
 
 operation_logging:
   level: "standard"
@@ -275,7 +280,7 @@ operation_logging:
 notes:
   - "Issue タイトル: [Task]MOD-RECO-005:Feature Rule Postgres読み取り実装"
   - "PR 本文は Related to（Closes 禁止）。PR target は親 Epic Branch"
-  - "Human 確定（2026-07-30）: feature_integration_rule seed は別 Issue で先行。本 Task は seed 完了後に着手"
+  - "前提完了（2026-07-31）: feature_integration_rule seed はEpic #1756 / Task #1757で整備し、stgへ48行投入済み"
   - "Human 確定（2026-07-30）: get_integration_weights の写像は input_source=relationship_feature / occasion_feature の weight（軸共通）→ relationship_weight / occasion_weight。Featureルール定義書 §12.3 / テーブル定義書 §11.1 と一致"
   - "防御的フォールバック: seed 後も行欠損時は DEFAULT_RELATIONSHIP_WEIGHT / DEFAULT_OCCASION_WEIGHT（0.50）へフォールバックしてよい（実装詳細）"
   - "物理テーブルは 8 feature × 6 input_source = 48 行 / version（テーブル定義書 §11.1 Human Review 決定）"
