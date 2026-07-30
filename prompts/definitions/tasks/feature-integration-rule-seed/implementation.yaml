@@ -1,0 +1,241 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-feature-integration-rule-seed-implementation"
+  title: "Feature Integration Rule Seed実装"
+  summary: "feature_integration_rule のMVP初期値48行を冪等なmaster seedとして追加し、初期データ定義書を更新する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-feature-integration-rule-seed"
+  epic_issue: "[Epic]Feature Integration Rule Seed整備"
+  epic_issue_number: 1756
+  epic_branch: "feature/epic-1756-feature-integration-rule-seed"
+  related_issues:
+    - 1756
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  feature_integration_rule_テーブル定義書 §11.1 / §12 では、
+  MVP初期値を8 Feature軸 × 6 input_source = 48行 / versionとしてseedし、
+  seed未投入を許容しない方針が確定している。
+
+  現行master seedと初期データ定義書には当該seedがなく、stgも0行である。
+  Human判断（2026-07-30）により、Epic #1753のPostgres読み取り実装より先に
+  本Taskでseedを整備する。
+
+objective: |
+  固定semantic_config_version_idに対する48行の冪等seedを追加し、
+  初期データ定義書へ投入順・期待行数・再投入方針を反映する。
+  localで初回投入・再投入を検証し、stg手動投入手順を提示する。
+
+scope:
+  - "supabase/seeds/masters/10_feature_integration_rule.sql の追加"
+  - "8 Feature軸 × 6 input_source = 48行のMVP初期値"
+  - "semantic_config_version_id / feature_code / input_sourceをキーとする冪等UPSERT"
+  - "初期データ定義書の投入順・期待行数・検証クエリ更新"
+  - "local初回投入 / 再投入検証"
+  - "東京リージョンstgへのHuman向け手動投入コマンド整理"
+
+out_of_scope:
+  - "supabase/migrations変更"
+  - "テーブル定義書 / Featureルール定義書のweight変更"
+  - "semantic_config_version新規追加"
+  - "MOD-RECO-005 Postgres repository実装"
+  - "application / OpenAPI / generated変更"
+  - "production DB投入"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+      purpose: "48行・列・制約・初期weightの物理正本"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "MVP初期weightの論理正本"
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: true
+      purpose: "更新対象"
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+      purpose: "seed運用・冪等性方針"
+  templates: []
+  files:
+    - path: "supabase/seeds/masters/04_feature_definition.sql"
+      required: true
+      purpose: "8 Feature codeの正本seed"
+    - path: "supabase/seeds/masters/09_config_versions.sql"
+      required: true
+      purpose: "固定semantic_config_version_idの先行seed"
+    - path: "scripts/db/seed-masters.sh"
+      required: true
+      purpose: "local再投入スクリプト"
+  issues:
+    - number: 1756
+      purpose: "親Epic"
+    - number: 1753
+      purpose: "後続Postgres読み取りEpic"
+  prs: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      action: "update"
+      required: true
+      template: null
+  files:
+    - path: "supabase/seeds/masters/10_feature_integration_rule.sql"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "feature_integration_rule master seed 48行"
+  - "更新した初期データ定義書"
+  - "local初回 / 再投入検証結果"
+  - "stg手動投入手順"
+
+acceptance_criteria:
+  - "8 Feature軸 × 6 input_source = 48行が固定semantic_config_versionへ投入される"
+  - "weightがFeatureルール定義書 §12.3 / テーブル定義書 §11.1と一致する"
+  - "semantic_config_version_id / feature_code / input_sourceで冪等UPSERTされる"
+  - "同じseedを2回投入しても48行のままで値が正本へ収束する"
+  - "初期データ定義書に投入順・48行・検証クエリが反映される"
+  - "local seed検証が成功する"
+  - "migration / application / OpenAPI / generated変更がない"
+  - "secret実値を含まない"
+  - "Related to #<Task Issue番号>、PR targetが親Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "feature-integration-rule-seed-implementation"
+  base: "feature/epic-1756-feature-integration-rule-seed"
+  target: "feature/epic-1756-feature-integration-rule-seed"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "db"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "Epic #1753配下 MOD-RECO-005 Feature Rule Postgres読み取り実装Task"
+  exclusive_files:
+    - "supabase/seeds/masters/10_feature_integration_rule.sql"
+    - "docs/06_実装設計/database/初期データ定義書.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "local master seed初回投入"
+    - "同seed再投入（冪等性）"
+    - "feature_integration_rule行数・weight検証"
+    - "secret check"
+  commands:
+    - "./scripts/db/seed-masters.sh"
+  manual_checks:
+    - "stgへの投入はHumanが実施し、48行を確認する"
+  not_required:
+    - "apps/reco unit test"
+    - "e2e"
+  skip_reason:
+    "apps/reco unit test": "アプリケーションコード変更なし"
+    "e2e": "seed単体Task"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "48行の組み合わせが漏れ・重複なしか"
+    - "各input_sourceのweightが正本どおりか"
+    - "固定semantic_config_version_id / feature_codeが先行seedと一致するか"
+    - "UPSERTの競合キー・更新列が正しいか"
+    - "初期データ定義書とSQLが一致するか"
+    - "migration / scope外変更がないか"
+    - "secret実値がないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+human_decision_points:
+  - "（確定 2026-07-30）8軸同一weight、48行 / version"
+  - "（確定 2026-07-30）Epic #1753とは分離して先行実施"
+
+stop_conditions:
+  - "テーブル定義書とFeatureルール定義書のweightが矛盾する場合"
+  - "固定semantic_config_version_idが先行seed間で一致しない場合"
+  - "migration変更が必要な場合"
+  - "production DB投入が必要な場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "seedと正本docsの通常変更。Issue / PRで管理する"
+
+notes:
+  - "Issueタイトル: [Task]Feature Integration Rule Seed実装"
+  - "PR targetはfeature/epic-1756-feature-integration-rule-seed"
+  - "PR本文はRelated to（Closes禁止）"
+  - "stg投入時は接続文字列・passwordをIssue / PR / logsへ記載しない"
+  - "Task Issue / PR作成後にReview Definitionへ実番号を同期する"
