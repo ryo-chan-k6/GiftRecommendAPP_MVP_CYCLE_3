@@ -15,7 +15,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1771
   issue: 1753
   epic_definition: "prompts/definitions/epics/mod-reco-005-feature-rule-postgres/epic.yaml"
   source_branch: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
@@ -66,7 +66,7 @@ input:
     number: 1753
     required: true
   pr:
-    number: null
+    number: 1771
     required: true
   diff:
     required: true
