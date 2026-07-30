@@ -588,3 +588,138 @@ def test_no_item_embedding_dml_across_all_paths() -> None:
     assert result.hashed_count == 1
     assert result.skipped_count == 1
     _ = digest
+
+
+# --- live DB 経路（#1762 current version 解決） ---
+
+_EMBEDDING_MODEL_VERSION_ID = "c3333333-3333-4333-8333-333333333301"
+
+
+def _live_reader():
+    """master seed の current embedding model_version を持つ reader。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "model_version",
+        (
+            {
+                "model_version_id": _EMBEDDING_MODEL_VERSION_ID,
+                "model_type": "embedding",
+                "is_current": True,
+            },
+            # llm / ranking の current 行が並存しても embedding だけを解決する
+            {
+                "model_version_id": "c3333333-3333-4333-8333-333333333302",
+                "model_type": "llm",
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_live",
+                "item_id": "it_live",
+                "generation_type": "embedding",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": _NOW,
+                "started_at": None,
+                "completed_at": None,
+                "error_message": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_live",
+                "source": "rakuten",
+                "external_item_code": "shop:live",
+                "item_name": "Live Gift",
+                "item_caption": "caption",
+                "catchcopy": "catch",
+                "active_status": "active",
+                "is_active": True,
+                "price": 1500,
+            },
+        ),
+    )
+    return reader
+
+
+def test_live_db_reader_handoff_uses_current_model_version_uuid() -> None:
+    """handoff / item_embedding_input に current embedding model UUID が伝播する。"""
+
+    reader = _live_reader()
+    db = ScaffoldDbWriter()
+    repos = EmbeddingInputHashRepositories(db_writer=db, db_reader=reader)
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="run-live")
+
+    assert result.status == "succeeded"
+    assert result.hashed_count == 1
+    assert result.handoff_records[0]["model_version_id"] == _EMBEDDING_MODEL_VERSION_ID
+    assert result.handoff_records[0]["model_version_id"] != DEFAULT_EMBEDDING_MODEL_VERSION
+    input_upserts = [c for c in db.upsert_calls if c["table"] == "item_embedding_input"]
+    assert len(input_upserts) == 1
+    assert input_upserts[0]["rows"][0]["model_version_id"] == _EMBEDDING_MODEL_VERSION_ID
+    assert repos.queues["igq_live"]["queue_status"] == "processing"
+    assert repos.item_embedding_write_count == 0
+
+
+def test_live_db_reader_skip_uses_current_model_version_uuid() -> None:
+    """skip 判定も resolver が解決した model_version_id で行う。"""
+
+    reader = _live_reader()
+    probe = EmbeddingInputHashRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    digest = compute_embedding_input_hash(
+        build_item_text_context(
+            item=probe.load_item(item_id="it_live"),
+            embedding_source_type=_SOURCE_TYPE,
+            embedding_source_version=DEFAULT_EMBEDDING_SOURCE_VERSION,
+        )
+    )
+    reader.seed(
+        "item_embedding",
+        (
+            {
+                "item_id": "it_live",
+                "model_version_id": _EMBEDDING_MODEL_VERSION_ID,
+                "embedding_input_hash": digest,
+                "embedding_vector": [0.1, 0.2],
+            },
+        ),
+    )
+    repos = EmbeddingInputHashRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="run-live-skip")
+
+    assert result.skipped_count == 1
+    assert result.hashed_count == 0
+    assert result.handoff_records == []
+
+
+def test_live_db_reader_resolver_failure_marks_queue_failed() -> None:
+    """current embedding model version 欠落は既存の per-row failed 処理へ合流する。"""
+
+    reader = _live_reader()
+    reader.seed("model_version", ())
+    db = ScaffoldDbWriter()
+    repos = EmbeddingInputHashRepositories(db_writer=db, db_reader=reader)
+    result = EmbeddingInputHashJob(repositories=repos).run(job_run_id="run-live-fail")
+
+    assert result.status == "failed"
+    assert result.failed_count == 1
+    assert "GRS-CFG-003" in result.error_codes
+    assert result.handoff_records == []
+    assert repos.queues["igq_live"]["queue_status"] == "failed"
+    failed_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "failed"
+    ]
+    assert len(failed_updates) == 1

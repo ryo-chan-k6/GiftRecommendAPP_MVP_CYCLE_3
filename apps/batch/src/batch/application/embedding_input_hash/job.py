@@ -10,6 +10,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from batch.application.current_versions import (
+    CurrentVersionResolveError,
+    CurrentVersionResolver,
+)
 from batch.application.embedding_input_hash.hashing import (
     build_item_text_context,
     compute_embedding_input_hash,
@@ -87,11 +91,17 @@ class EmbeddingInputHashJob:
         self,
         *,
         repositories: EmbeddingInputHashRepositories,
+        version_resolver: CurrentVersionResolver | None = None,
         job_run_tracker: JobRunTracker | None = None,
         logger: BatchLogger | None = None,
         force_hash_fail: bool = False,
     ) -> None:
         self._repos = repositories
+        self._version_resolver = version_resolver or (
+            CurrentVersionResolver(repositories.db_reader)
+            if repositories.db_reader is not None
+            else None
+        )
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
         self._force_hash_fail = force_hash_fail
@@ -262,7 +272,17 @@ class EmbeddingInputHashJob:
             result.skipped_queue_ids.append(qid)
             return
 
-        config = resolve_config_version(item_id=seed.item_id)
+        try:
+            config = (
+                ConfigResolveHint(
+                    model_version_id=self._version_resolver.resolve_embedding_model(),
+                    embedding_source_version=DEFAULT_EMBEDDING_SOURCE_VERSION,
+                )
+                if self._version_resolver is not None
+                else resolve_config_version(item_id=seed.item_id)
+            )
+        except CurrentVersionResolveError as exc:
+            raise EmbeddingInputHashError(exc.code, exc.message) from exc
         if "resolve_config" not in result.completed_phases:
             result.completed_phases.append("resolve_config")
             self._repos.record_phase(phase="resolve_config", status="succeeded")

@@ -1,0 +1,299 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-live-db-lane"
+  title: "batch-live-db-lane:DB系live切替"
+  summary: "楽天HTTP/AI HTTPを触らず、DB中心BATCHのGHA葉をscaffoldからstg liveへ切り替える。主対象は009/011〜014/016。005〜008/017は維持・回帰。機能・領域単位Epic（例外）。統括は#1745。"
+  workstream_key: "batch-live-db-lane"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_form: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  import連鎖（003※楽天scaffold / 005〜008 / 017）は #1717/#1726 系で GHA stg live 済み。
+  meaning側の葉（009 / 011〜014 / 016）および関連複合子は --scaffold-demo 固定が残る。
+  010の実LLM / 015 EmbeddingはAI系、001〜004は楽天Fetch系として本Epic外。
+  ただし#1762のHuman判断により、010は実LLMを呼ばないRule-first DB liveに限り例外scopeとする。
+  統括ロードマップは #1745（formal parentなし。#1楽天Fetch運用方針と並列可）。
+
+objective: |
+  DB系BATCHのGHA実行経路を stg live で安定させ、意味生成〜メトリクスまでの
+  DB書込連鎖を手動検証できる状態にする（010は実LLMなしRule-first DB live、
+  015はscaffold維持）。
+
+scope:
+  - "GHA葉 009 / 011 / 012 / 013 / 014 / 016 の scaffold解除と stg live化（environment: stg + STG_DATABASE_URL、UUID job_run_id）"
+  - "BATCH-010の実LLMなしRule-first DB live（#1762 Human承認済み例外）"
+  - "current version解決に必要なmaster seedのnormalization_rule binding追加（DDL変更なし・冪等・#1762 Human承認済み例外）"
+  - "複合 batch-item-meaning-generation.yml（および必要なら retry）のDB葉経路整合（015はscaffold維持）"
+  - "既liveの005〜008 / 017の維持・回帰確認・docs更新"
+  - "005のObject Storage liveはDBレーンに含めてよい（楽天ではない）"
+  - "ギャップdocsのscaffold陳腐化箇所の更新"
+  - "stg手動検証（低max_items）とsecretなし結果記録"
+  - "統括#1745からの本線追跡更新"
+
+out_of_scope:
+  - "BATCH-001〜004の楽天live切替（batch-live-rakuten-fetch / #1607）"
+  - "BATCH-010の実LLM live / BATCH-015のEmbedding live切替（batch-live-ai-lane / #1768）"
+  - "親 on.schedule 有効化（batch-daily-schedule-enable / #1732）"
+  - "BATCH-018 / 019"
+  - "production定期・prod Secrets・secret実値の表示/変更"
+  - "OpenAPI / Orval / generated / apps/web|api|reco 変更"
+  - "DDL / migration変更・IF再本格化（master seedのnormalization_rule binding追加のみ#1762例外）"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/batch-live-db-lane/**"
+    - "prompts/definitions/tasks/batch-live-db-lane/**"
+    - "prompts/definitions/reviews/batch-live-db-lane/**"
+    - ".github/workflows/batch-item-generation-queue.yml"
+    - ".github/workflows/batch-item-semantic.yml"
+    - ".github/workflows/batch-feature-input-hash.yml"
+    - ".github/workflows/batch-item-feature.yml"
+    - ".github/workflows/batch-feature-normalization.yml"
+    - ".github/workflows/batch-embedding-input-hash.yml"
+    - ".github/workflows/batch-distribution-metrics.yml"
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - ".github/workflows/batch-retry-failed-items.yml"
+    - ".github/workflows/batch-import-summary.yml"
+    - ".github/workflows/batch-rakuten-raw-staging.yml"
+    - ".github/workflows/batch-rakuten-product-diff.yml"
+    - ".github/workflows/batch-rakuten-item-apply.yml"
+    - ".github/workflows/batch-rakuten-item-active-status.yml"
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/15_運用・改善/運用手順/**"
+    - "apps/batch/**"
+    - "supabase/seeds/masters/09_config_versions.sql"
+  forbidden_paths:
+    - "supabase/migrations/**"
+    - "db/ddl/**"
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - ".github/workflows/batch-rakuten-genre-sync.yml"
+    - ".github/workflows/batch-rakuten-ranking-snapshot.yml"
+    - ".github/workflows/batch-rakuten-existing-item-recheck.yml"
+    - ".github/workflows/batch-item-embedding.yml"
+  child_task_areas:
+    - "github-actions"
+    - "batch"
+    - "docs"
+    - "verification"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/BATCH_import連鎖_GHA_live化メモ_C3.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチIF-DB・DDL本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      required: true
+    - path: ".github/workflows/batch-item-generation-queue.yml"
+      required: true
+    - path: ".github/workflows/batch-distribution-metrics.yml"
+      required: true
+  issues:
+    - number: 1745
+      purpose: "統括ロードマップ（本線候補#2）"
+    - number: 1717
+      purpose: "import連鎖GHA live（完了・参照）"
+    - number: 1726
+      purpose: "meaning 017 UUID/live（完了・参照）"
+    - number: 1732
+      purpose: "schedule Phase2。meaning葉liveはout of scopeのため本Epicと分離"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/epics/batch-live-db-lane/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-live-db-lane/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-live-db-lane/**"
+      action: "create"
+      required: false
+    - path: ".github/workflows/batch-item-generation-queue.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-feature-input-hash.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-item-feature.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-feature-normalization.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-embedding-input-hash.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-distribution-metrics.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue #1750 / Branch feature/epic-1750-batch-live-db-lane"
+  - "DB系GHA葉のstg live化（009/011〜014/016）"
+  - "複合meaning経路の整合と手動検証結果"
+  - "ギャップdocsの陳腐化更新"
+
+acceptance_criteria:
+  - "Epic Issueタイトルが [Epic]batch-live-db-lane:DB系live切替 形式"
+  - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
+  - "主対象BATCHが009/011〜014/016であり、010は実LLMなしRule-first DB liveのみ例外、001〜004と015 liveはout of scopeであること"
+  - "GHA葉がstg Environment + STG_DATABASE_URL経路でscaffold解除されている（該当葉）"
+  - "job_run_idがUUID方針と整合している"
+  - "stg手動検証結果または未実施理由が記録されている"
+  - "secret実値を成果物・ログに含めない"
+  - "Epic PR targetがdevelop"
+  - "schedule有効化を含まない"
+
+branch:
+  no_branch: false
+  summary: "batch-live-db-lane"
+  name: "feature/epic-1750-batch-live-db-lane"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1745
+    - 1717
+    - 1726
+  issues:
+    - 1732
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - ".github/workflows/batch-item-generation-queue.yml"
+    - ".github/workflows/batch-feature-input-hash.yml"
+    - ".github/workflows/batch-item-feature.yml"
+    - ".github/workflows/batch-feature-normalization.yml"
+    - ".github/workflows/batch-embedding-input-hash.yml"
+    - ".github/workflows/batch-distribution-metrics.yml"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "stg手動検証（低max_items）"
+  commands: []
+  manual_checks:
+    - "該当葉がscaffold-demoなしで成功すること"
+    - "010 Rule-first DB live / 015 scaffold維持で複合が014まで破綻しないこと"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "主変更がGHA YAMLの場合は手動検証優先。アプリ変更時は別途追加"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "楽天/AI liveが混入していないか"
+    - "Environment/Secrets方針が正本と一致するか"
+    - "UUID / Run ID分離が崩れていないか"
+    - "schedule有効化を含まないか"
+
+human_decision_points:
+  - "stg Environmentのrequired reviewers運用負荷の許容"
+  - "STG_DATABASE_URL流用で足りるか"
+  - "meaning連鎖の一括liveか段階liveか（010はRule-first DB live、015はscaffold維持）"
+  - "current version binding用のmaster seed追加を本Epicへ含める（2026-07-31承認済み。DDL変更なし・fallbackなし）"
+  - "stg実データ量・max_items・破壊的書込の許容"
+  - "distribution-metrics末尾017をlive 017に揃えるか"
+
+stop_conditions:
+  - "001〜004のlive、010の実LLM live、または015 live実装が必要に見えた場合（別Epicへ）"
+  - "schedule有効化が必要に見えた場合"
+  - "production Secretsやsecret実値が必要に見える場合"
+  - "DDL破壊的変更が必要に見える場合"
+
+notes:
+  - "Epic Issue: #1750"
+  - "統括#1745の本線候補#2。#1楽天Fetch運用方針と並列"
+  - "003は楽天ScaffoldのままDB liveの特例（#1717）。本Epicで楽天live化しない"
+  - "010 Rule-first DB liveは#1762のHuman承認済み例外。実LLMは呼ばない"
+  - "master seedのnormalization_rule binding追加は#1762のHuman承認済み例外。DDL / migrationは変更しない"

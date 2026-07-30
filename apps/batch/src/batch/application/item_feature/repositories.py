@@ -384,10 +384,18 @@ class ItemFeatureRepositories:
             genre_name=str(row["genre_name"]) if row.get("genre_name") is not None else None,
         )
 
-    def load_item_semantic(self, *, item_id: str) -> ItemSemanticRow:
+    def load_item_semantic(
+        self,
+        *,
+        item_id: str,
+        semantic_config_version_id: str | None = None,
+    ) -> ItemSemanticRow:
         row = self.semantics.get(item_id)
+        if row is not None and semantic_config_version_id is not None:
+            if str(row.get("semantic_config_version_id")) != semantic_config_version_id:
+                row = None
         if row is None and self.db_reader is not None:
-            row = self._fetch_and_cache_semantic(item_id)
+            row = self._fetch_and_cache_semantic(item_id, semantic_config_version_id)
         if row is None:
             raise KeyError(f"item_semantic not found: {item_id}")
         raw = row.get("semantic_json") or {}
@@ -622,14 +630,21 @@ class ItemFeatureRepositories:
             return None
         return self._cache_item_row(result.rows[0])
 
-    def _fetch_and_cache_semantic(self, item_id: str) -> dict[str, object] | None:
+    def _fetch_and_cache_semantic(
+        self,
+        item_id: str,
+        semantic_config_version_id: str | None = None,
+    ) -> dict[str, object] | None:
         reader = self.db_reader
         if reader is None:
             return None
+        equals: list[tuple[str, object]] = [("item_id", item_id)]
+        if semantic_config_version_id is not None:
+            equals.append(("semantic_config_version_id", semantic_config_version_id))
         result = reader.fetch_rows(
             "item_semantic",
             columns=_SEMANTIC_COLUMNS,
-            equals=(("item_id", item_id),),
+            equals=tuple(equals),
             order_by=("item_semantic_id",),
             limit=1,
         )

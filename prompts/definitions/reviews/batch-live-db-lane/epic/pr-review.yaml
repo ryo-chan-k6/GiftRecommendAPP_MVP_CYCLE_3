@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-live-db-lane-epic-pr"
+  title: "batch-live-db-lane Epic PRレビュー"
+  summary: "Epic #1750（DB系live切替）をdevelopへ統合するEpic PRをAI Reviewする。子Task #1751 / #1761 / #1762の統合結果とstg live検証を確認する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1778
+  issue:
+    number: 1750
+  task_definition: "prompts/definitions/epics/batch-live-db-lane/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-live-db-lane:DB系live切替"
+  parent_epic_branch: "feature/epic-1750-batch-live-db-lane"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "子Task #1751 / #1761 / #1762と各Task PR #1755 / #1767 / #1772が完了・merge済みで、成果がEpic Branchへ統合されているか"
+  - "GHA葉009〜014 / 016と関連複合経路がstg DB liveで成立し、005〜008 / 017の既存live経路を壊していないか"
+  - "BATCH-010はHuman承認済みのRule-first DB liveに限定され、実LLM呼出が混入していないか"
+  - "BATCH-015 live / 実Embedding APIが混入せず、#1768へ分離されているか"
+  - "current semantic / normalization / embedding versionの一意性・UUID・binding検証と各Batchへの伝播が安全か"
+  - "BATCH-016 normalized層のfeature_normalization_version_id伝播がDB制約・集計仕様と整合するか"
+  - "normalization_rule master seed追加が非破壊で、DDL / migration変更を含まないか"
+  - "stg低件数検証結果、unit test結果、未実施事項が結果docsとPR本文で正確に記録されているか"
+  - "production / schedule有効化 / OpenAPI / generated / web / api / reco変更が混入していないか"
+  - "secret実値がworkflow・docs・ログ・PR差分に含まれていないか"
+  - "Epic PR targetがdevelopで、PR本文がCloses #1750と整合するか"
+
+notes:
+  - "各子Task PRは個別AI ReviewとHuman Reviewを経てEpic Branchへmerge済み。本レビューは統合・回帰・scope境界を中心に確認する"
+  - "BATCH-015 liveはEpic #1768 / Task #1776で実施し、#1750のdevelop merge後まで実装を開始しない"
+  - "pr.numberはEpic PR作成後に実番号へ更新する"

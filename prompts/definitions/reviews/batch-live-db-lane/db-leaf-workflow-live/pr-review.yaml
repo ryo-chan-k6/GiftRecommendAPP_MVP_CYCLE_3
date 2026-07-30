@@ -1,0 +1,62 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-live-db-lane-db-leaf-workflow-live-pr"
+  title: "batch-live-db-lane DB系葉workflow live化 PRレビュー"
+  summary: "Epic #1750 Task #1751（DB系葉009/011〜014/016 scaffold解除・stg live・meaning複合整合・手動検証）のPRをAI Reviewする。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1751
+  task_definition: "prompts/definitions/tasks/batch-live-db-lane/db-leaf-workflow-live.yaml"
+  parent_epic_issue: "[Epic]batch-live-db-lane:DB系live切替"
+  parent_epic_branch: "feature/epic-1750-batch-live-db-lane"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "葉009/011/012/013/014/016がenvironment: stg + STG_DATABASE_URLでscaffold-demoを外しているか"
+  - "job_run_idがUUID方針と整合し、複合pipeline IDと分離されているか"
+  - "meaning複合が010/015 scaffold維持でも破綻しないか"
+  - "001〜004楽天live / 010/015 AI live / schedule / 018/019 が混入していないか"
+  - "production Secrets変更・secret実値露出が無いか"
+  - "DDL破壊的変更・OpenAPI/generated差分が無いか"
+  - "既live 005〜008/017への意図しない破壊が無いか（回帰確認）"
+  - "stg手動検証結果docs（または未実施理由）があるか"
+  - "CI/CD（workflow）差分がTask scope内か"
+  - "Related to / PR target = 親Epic Branch feature/epic-1750-batch-live-db-lane"
+  - "Review DefinitionがPR headに含まれているか"
+
+notes:
+  - "Issue: #1751。pr.number は PR 作成後に埋める"
+  - "contract_gate不要（generated想定なし）"
+  - "Test + security + CI/CD 観点を必須とする"
+  - "Human Review / merge判断は ryo-chan-k6"

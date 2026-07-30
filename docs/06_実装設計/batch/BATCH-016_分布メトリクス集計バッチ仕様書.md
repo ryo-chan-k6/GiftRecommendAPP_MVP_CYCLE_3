@@ -157,6 +157,10 @@ BATCH-016（分布メトリクス集計Batch）は、先行 Batch が確定し�
 | `normalized` | `item_feature.normalized_feature_value` | 同一 version + `feature_code` で normalized が非 NULL。`feature_normalization_version_id` 必須 |
 
 - `entity_type` は MVP **`item` 固定**。
+- raw 層の `feature_normalization_version_id` は **NULL** とし、正規化 version に依存せず集計する。
+- normalized 層は `feature_code` ごとに単一の `feature_normalization_version_id` を出力行へ保持する。
+- 同一 `semantic_config_version_id` / `feature_code` の normalized 対象で正規化 version が混在した場合、または正規化 version が欠落した場合は、`GRS-VAL-001` で失敗する（混在集約・暗黙上書き禁止）。
+- 異なる `feature_code` 間では、正規化 version が異なっていてもよい。
 - 入力行の世代選定（最新 `generated_at` の冪等キー組等）は `item_feature` 定義と実装 Task の責務。
 
 #### 6.2.2 `meaning_distribution_metric`（`meaning_distribution_metric_テーブル定義書` §5.2 / §5.8）
@@ -303,6 +307,7 @@ Observability の `skewness` / `kurtosis` / `inf_count` 等は MVP 物理列に�
 | UNIQUE（batch_run） | `(batch_run_id, semantic_config_version_id, feature_code, value_layer, aggregation_scope, aggregation_key)` |
 | 部分 UNIQUE（非 batch_run） | `(aggregation_scope, aggregation_key, semantic_config_version_id, feature_code, value_layer)` |
 | `batch_run` 時 | `aggregation_key` は **NULL 固定** |
+| normalized version 混在 | 同一 `semantic_config_version_id` / `feature_code` 内の混在は `GRS-VAL-001`。UNIQUE に version を含めないため行分割しない |
 | 再実行 | 同一キーは UPSERT 上書き。新 Run は新 `batch_run_id` で INSERT |
 
 ### 11.2 `meaning_distribution_metric`

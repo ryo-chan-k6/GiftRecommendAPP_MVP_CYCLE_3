@@ -708,6 +708,186 @@ def test_no_secret_like_values_in_db_writes() -> None:
                 assert needle not in text
 
 
+# --- live DB 経路（#1762 current version 解決） ---
+
+_SEMANTIC_CONFIG_ID = "a1111111-1111-4111-8111-111111111101"
+_SEMANTIC_VERSION_ID = "a1111111-1111-4111-8111-111111111102"
+_NORMALIZATION_VERSION_ID = "b2222222-2222-4222-8222-222222222201"
+_NORMALIZATION_RULE_ID = "b2222222-2222-4222-8222-222222222202"
+_STALE_NORMALIZATION_VERSION_ID = "b2222222-2222-4222-8222-222222222299"
+
+
+def _live_reader(*, raw_normalization_version_id: str = _NORMALIZATION_VERSION_ID):
+    """012 の live 出力（current UUID の raw item_feature 8 軸）を再現する。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "semantic_config",
+        (
+            {
+                "semantic_config_id": _SEMANTIC_CONFIG_ID,
+                "config_name": "mvp_semantic_config",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "semantic_config_version",
+        (
+            {
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "semantic_config_id": _SEMANTIC_CONFIG_ID,
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "feature_normalization_version",
+        (
+            {
+                "feature_normalization_version_id": _NORMALIZATION_VERSION_ID,
+                "normalization_method": "sigmoid",
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "normalization_rule",
+        (
+            {
+                "normalization_rule_id": _NORMALIZATION_RULE_ID,
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "normalization_method": "sigmoid",
+                "feature_normalization_version_id": _NORMALIZATION_VERSION_ID,
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_live",
+                "item_id": "it_live",
+                "generation_type": "semantic",
+                "queue_status": "processing",
+                "retry_count": 0,
+                "queued_at": None,
+                "started_at": None,
+                "completed_at": None,
+                "error_message": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_live",
+                "source": "rakuten",
+                "external_item_code": "shop:live",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_feature",
+        tuple(
+            {
+                "item_id": "it_live",
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "feature_code": code,
+                "feature_input_hash": _HASH,
+                "feature_normalization_version_id": raw_normalization_version_id,
+                "raw_feature_value": _RAW[code],
+                "normalized_feature_value": None,
+            }
+            for code in MVP_FEATURE_CODES
+        ),
+    )
+    return reader
+
+
+def _live_repos(reader) -> tuple[FeatureNormalizationRepositories, ScaffoldDbWriter]:
+    db = ScaffoldDbWriter()
+    repos = FeatureNormalizationRepositories(db_writer=db, db_reader=reader)
+    return repos, db
+
+
+def test_live_db_reader_normalizes_with_resolved_version_uuids() -> None:
+    """normalized 更新の equals に resolver が解決した UUID が伝播する。"""
+
+    reader = _live_reader()
+    repos, db = _live_repos(reader)
+    result = _job(repos).run(job_run_id="run-live")
+
+    assert result.status == "succeeded"
+    assert result.normalized_count == 1
+    assert repos.item_feature_normalized_update_count == len(MVP_FEATURE_CODES)
+    assert {r.semantic_config_version_id for r in repos.normalized_update_rows} == {
+        _SEMANTIC_VERSION_ID
+    }
+    assert {
+        r.feature_normalization_version_id for r in repos.normalized_update_rows
+    } == {_NORMALIZATION_VERSION_ID}
+    normalized_updates = [c for c in db.update_calls if c["table"] == "item_feature"]
+    assert len(normalized_updates) == len(MVP_FEATURE_CODES)
+    for call in normalized_updates:
+        equals = dict(call["equals"])
+        assert equals["semantic_config_version_id"] == _SEMANTIC_VERSION_ID
+        assert equals["feature_normalization_version_id"] == _NORMALIZATION_VERSION_ID
+    meaning_upserts = [c for c in db.upsert_calls if c["table"] == "item_meaning"]
+    assert len(meaning_upserts) == 1
+    assert meaning_upserts[0]["rows"][0]["feature_normalization_version_id"] == (
+        _NORMALIZATION_VERSION_ID
+    )
+    raw_fetches = [c for c in reader.fetch_calls if c["table"] == "item_feature"]
+    assert raw_fetches[0]["equals"] == (
+        ("item_id", "it_live"),
+        ("semantic_config_version_id", _SEMANTIC_VERSION_ID),
+    )
+
+
+def test_live_db_reader_stale_raw_normalization_version_fails_row() -> None:
+    """raw 軸が current binding 以外の normalization version なら per-row failed。"""
+
+    reader = _live_reader(raw_normalization_version_id=_STALE_NORMALIZATION_VERSION_ID)
+    repos, db = _live_repos(reader)
+    result = _job(repos).run(job_run_id="run-live-stale")
+
+    assert result.status == "failed"
+    assert result.failed_count == 1
+    assert "GRS-CFG-001" in result.error_codes
+    assert repos.item_feature_normalized_update_count == 0
+    assert repos.queues["igq_live"]["queue_status"] == "failed"
+    assert not any(c["table"] == "item_meaning" for c in db.upsert_calls)
+
+
+def test_live_db_reader_resolver_failure_marks_queue_failed() -> None:
+    """normalization binding 欠落は既存の per-row failed 処理へ合流する。"""
+
+    reader = _live_reader()
+    reader.seed("normalization_rule", ())
+    repos, db = _live_repos(reader)
+    result = _job(repos).run(job_run_id="run-live-fail")
+
+    assert result.status == "failed"
+    assert result.failed_count == 1
+    assert "GRS-CFG-001" in result.error_codes
+    assert repos.item_feature_normalized_update_count == 0
+    assert repos.queues["igq_live"]["queue_status"] == "failed"
+    failed_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "failed"
+    ]
+    assert len(failed_updates) == 1
+
+
 def test_claim_conflict_returns_none_when_rows_affected_zero() -> None:
     """feature claim で rows_affected==0 なら None（競合 skip）。"""
     from batch.infrastructure.db.writer import DbWriteResult
