@@ -3,6 +3,8 @@
 from reco.infrastructure.db.session import (
     DEFAULT_POOL_MAX_SIZE,
     DEFAULT_POOL_MIN_SIZE,
+    DEFAULT_POOL_OPEN_TIMEOUT_SECONDS,
+    DEFAULT_POOL_TIMEOUT_SECONDS,
     DatabaseError,
     DatabaseHealth,
     DatabaseSession,
@@ -15,6 +17,8 @@ from reco.infrastructure.db.session import (
 __all__ = [
     "DEFAULT_POOL_MAX_SIZE",
     "DEFAULT_POOL_MIN_SIZE",
+    "DEFAULT_POOL_OPEN_TIMEOUT_SECONDS",
+    "DEFAULT_POOL_TIMEOUT_SECONDS",
     "DatabaseError",
     "DatabaseHealth",
     "DatabaseSession",

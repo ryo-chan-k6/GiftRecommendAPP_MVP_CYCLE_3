@@ -262,6 +262,12 @@ notes:
     - health: app.state.database_session 共有
     - プールサイズ: min_size=1, max_size=2（コード定数）
     - PIPELINE_*_TIMEOUT_MS は変更しない
+  - |
+    Human 決定（2026-07-30 / PR #1741 AI Review 指摘対応・案A）:
+    - タイムアウトも設定値化する
+    - timeout（接続取得待ち）既定 2.0 秒。PIPELINE_HARD_TIMEOUT_MS = 4,000ms 内に収めるため psycopg_pool 既定の 30 秒から短縮
+    - open_timeout（起動時ウォームアップ上限）既定 5.0 秒。DB 到達不能時に lifespan を止めない（open 失敗は握りつぶし、以降の query が DatabaseError になる）
+    - いずれも PostgresDatabaseSession / create_database_session の引数で上書き可能。環境変数化は本 Task では行わない
 
 stop_conditions:
   - "PIPELINE_HARD_TIMEOUT_MS の変更が必要と判断された場合"

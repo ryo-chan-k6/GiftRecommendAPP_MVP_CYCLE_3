@@ -17,6 +17,10 @@ _SENSITIVE_URL_PATTERN = re.compile(
 # Fly stg: 512MB / shared CPU 1。推薦は同期直列想定（#1737 Human 決定）。
 DEFAULT_POOL_MIN_SIZE = 1
 DEFAULT_POOL_MAX_SIZE = 2
+# 接続取得待ち。PIPELINE_HARD_TIMEOUT_MS（4,000ms）内に収めるため既定より短くする。
+DEFAULT_POOL_TIMEOUT_SECONDS = 2.0
+# 起動時ウォームアップの上限。DB 到達不能時に lifespan を止めないため有限にする。
+DEFAULT_POOL_OPEN_TIMEOUT_SECONDS = 5.0
 
 
 class DatabaseError(RuntimeError):
@@ -120,6 +124,8 @@ class PostgresDatabaseSession:
         pool: Any | None = None,
         min_size: int = DEFAULT_POOL_MIN_SIZE,
         max_size: int = DEFAULT_POOL_MAX_SIZE,
+        timeout: float = DEFAULT_POOL_TIMEOUT_SECONDS,
+        open_timeout: float = DEFAULT_POOL_OPEN_TIMEOUT_SECONDS,
     ) -> None:
         if database_url.strip() == "":
             raise DatabaseError("DATABASE_URL is empty")
@@ -127,10 +133,16 @@ class PostgresDatabaseSession:
             raise DatabaseError(
                 f"invalid pool size: min_size={min_size}, max_size={max_size}"
             )
+        if timeout <= 0 or open_timeout <= 0:
+            raise DatabaseError(
+                f"invalid pool timeout: timeout={timeout}, open_timeout={open_timeout}"
+            )
 
         self.database_url = database_url
         self.min_size = min_size
         self.max_size = max_size
+        self.timeout = timeout
+        self.open_timeout = open_timeout
         self._owns_pool = pool is None
         self._opened = pool is not None
         if pool is not None:
@@ -143,6 +155,7 @@ class PostgresDatabaseSession:
                 conninfo=database_url,
                 min_size=min_size,
                 max_size=max_size,
+                timeout=timeout,
                 open=False,
                 name="reco-postgres",
             )
@@ -152,7 +165,12 @@ class PostgresDatabaseSession:
 
         if self._opened:
             return
-        self._pool.open(wait=True)
+        # ウォームアップ失敗でも起動は継続する（pool が background で再接続を続け、
+        # 到達不能なら各 query が DatabaseError として失敗する）。
+        try:
+            self._pool.open(wait=True, timeout=self.open_timeout)
+        except Exception:  # noqa: BLE001 — startup best-effort
+            pass
         self._opened = True
 
     def close(self) -> None:
@@ -219,6 +237,8 @@ def create_database_session(
     fallback: DatabaseSession | None = None,
     min_size: int = DEFAULT_POOL_MIN_SIZE,
     max_size: int = DEFAULT_POOL_MAX_SIZE,
+    timeout: float = DEFAULT_POOL_TIMEOUT_SECONDS,
+    open_timeout: float = DEFAULT_POOL_OPEN_TIMEOUT_SECONDS,
 ) -> DatabaseSession:
     """Build a database session from ``DATABASE_URL`` when a real URL is provided."""
 
@@ -227,5 +247,7 @@ def create_database_session(
             database_url=database_url,
             min_size=min_size,
             max_size=max_size,
+            timeout=timeout,
+            open_timeout=open_timeout,
         )
     return fallback or ScaffoldDatabaseSession()

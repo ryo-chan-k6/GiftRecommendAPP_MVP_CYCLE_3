@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import psycopg_pool
 import pytest
 
 from reco.infrastructure.db.session import (
     DEFAULT_POOL_MAX_SIZE,
     DEFAULT_POOL_MIN_SIZE,
+    DEFAULT_POOL_OPEN_TIMEOUT_SECONDS,
+    DEFAULT_POOL_TIMEOUT_SECONDS,
     DatabaseError,
     PostgresDatabaseSession,
     ScaffoldDatabaseSession,
@@ -40,9 +43,58 @@ def test_create_database_session_uses_postgres_for_real_url() -> None:
     assert isinstance(session, PostgresDatabaseSession)
     assert session.min_size == DEFAULT_POOL_MIN_SIZE
     assert session.max_size == DEFAULT_POOL_MAX_SIZE
+    assert session.timeout == DEFAULT_POOL_TIMEOUT_SECONDS
+    assert session.open_timeout == DEFAULT_POOL_OPEN_TIMEOUT_SECONDS
     # コンストラクタでは接続しない（open=False）
     assert session._opened is False
     session.close()
+
+
+def test_create_database_session_forwards_pool_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class FakePool:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(psycopg_pool, "ConnectionPool", FakePool)
+
+    session = create_database_session(
+        "postgresql://localhost:5432/gift_reco_dev",
+        min_size=2,
+        max_size=4,
+        timeout=1.5,
+        open_timeout=3.0,
+    )
+    assert isinstance(session, PostgresDatabaseSession)
+    assert session.timeout == 1.5
+    assert session.open_timeout == 3.0
+    assert captured["min_size"] == 2
+    assert captured["max_size"] == 4
+    assert captured["timeout"] == 1.5
+    session.close()
+
+
+def test_postgres_session_open_tolerates_warmup_failure() -> None:
+    pool = MagicMock()
+    pool.open.side_effect = RuntimeError("pool timeout")
+    session = PostgresDatabaseSession(
+        database_url="postgresql://localhost:5432/gift_reco_dev",
+        pool=pool,
+        open_timeout=3.0,
+    )
+    # 注入 pool は open 済み扱いのため、明示的に未 open 状態へ戻して open() を検証する
+    session._opened = False
+
+    session.open()
+
+    assert session._opened is True
+    pool.open.assert_called_once_with(wait=True, timeout=3.0)
 
 
 def test_postgres_session_rejects_empty_url() -> None:
@@ -56,6 +108,14 @@ def test_postgres_session_rejects_invalid_pool_size() -> None:
             database_url="postgresql://localhost:5432/gift_reco_dev",
             min_size=3,
             max_size=2,
+        )
+
+
+def test_postgres_session_rejects_invalid_pool_timeout() -> None:
+    with pytest.raises(DatabaseError, match="invalid pool timeout"):
+        PostgresDatabaseSession(
+            database_url="postgresql://localhost:5432/gift_reco_dev",
+            timeout=0,
         )
 
 
