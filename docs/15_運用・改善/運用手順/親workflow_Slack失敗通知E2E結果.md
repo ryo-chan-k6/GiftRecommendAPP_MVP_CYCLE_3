@@ -5,9 +5,9 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 関連 Epic | [#1732](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1732) |
-| 関連 Task | [#1735](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1735) |
+| 関連 Task | [#1735](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1735) / [#1739](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1739) |
 | 先行配線 | [#1730](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1730) / [#1729](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1729) |
-| 対象 | `batch-daily-orchestrator.yml` の `notify_failure` → Slack 実送信 |
+| 対象 | `batch-daily-orchestrator.yml` の `notify_failure` → Slack 実送信、およびシステムエラー通知チャンネルへの分離 |
 | 実施日 | 2026-07-30 |
 | 実施者 | `okuri-ai-bot`（machine account） |
 
@@ -52,18 +52,34 @@ secret / token / channel ID 実値は本結果に含めない。
 | `Slack notification failed` warning | **ログ上なし**（`postSlackMessage` の `!result.ok` 分岐は未発火と解釈） |
 | Job summary | `Batch failure notification` 見出しを書く実装（本文に Run URL / 失敗 job 名を含む） |
 
+### 3.2 システムエラー通知チャンネル分離後の E2E（#1739、事実）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| ref | `chore/task-1739-batch-slack-channel-separation` |
+| SHA（実行時） | `c9e102a2` |
+| Run URL | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30508264881 |
+| 親 conclusion | `failure`（意図的） |
+| `e2e_force_fail` | `failure`（意図的） |
+| 後段葉 job | skipped（stg / DB を起動しない） |
+| `notify_failure` | **success** |
+| Slack step | **success** |
+| 通知先変数 | `SLACK_CHANNEL_ID_SYSTEM_ALERTS`（実値は記録しない） |
+| 一時変更の扱い | 検証後に `e2e_force_fail` を除去。最終差分には残さない |
+
 ---
 
 ## 4. 判定
 
 | 項目 | 内容 | 区分 |
 | ---- | ---- | ---- |
-| `notify_failure` 発火 | **PASS**（意図的失敗で発火） | 事実 |
-| GHA 上の Slack API 呼び出し | **PASS**（step success、失敗 warning なし） | 事実 |
-| Slack channel UI での到達・メンション表示 | **Human 確認待ち** | 未確認 / Human判断 |
+| #1735 `notify_failure` 発火 | **PASS**（意図的失敗で発火） | 事実 |
+| #1735 開発運用チャンネル UI 到達 | **Human 確認済み**（2026-07-30） | Human確認 |
+| #1739 新通知先での Slack API 呼び出し | **PASS**（`notify_failure` / Slack step success） | 事実 |
+| #1739 システムエラー通知チャンネル UI 到達 | **Human 確認待ち** | 未確認 / Human判断 |
 | 最終差分から意図的失敗除去 | 本 Task の完了条件（PR で確認） | 事実（手順） |
 
-**総合（推論）:** GHA 経路上の Slack 失敗通知は動作している。案B判断用の「配線 + 実送信経路」は満たす。channel UI 到達は Human 確認を推奨。
+**総合（推論）:** GHA 経路上の通知先分離は動作している。新チャンネル UI 到達の Human 確認後、通知先分離を完了扱いにできる。
 
 ---
 
@@ -71,7 +87,7 @@ secret / token / channel ID 実値は本結果に含めない。
 
 | 項目 | 内容 |
 | ---- | ---- |
-| UI 到達 | GHA の `result.ok` と channel 実表示は一致する想定だが、本 Task では Slack UI を直接確認していない |
+| UI 到達 | 開発運用チャンネルは Human 確認済み。システムエラー通知チャンネルは Human 確認待ち |
 | incident メンション | `SLACK_MENTION_INCIDENT` が設定されている場合、実運用でもメンションが付く。運用可否は Human |
 | weekly | weekly 親の `notify_failure` は配線済みだが本 E2E 未実施（別 Task 可） |
 | 本線失敗時 | 葉 job 失敗（stg 承認・DB 等）でも同経路。本 E2E は意図的早期失敗のみ |
@@ -91,3 +107,4 @@ secret / token / channel ID 実値は本結果に含めない。
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-30 | 初版。Run 30506470095。notify_failure success / Slack warning なし |
+| 2026-07-30 | #1739 通知先分離 E2E（Run 30508264881）を追記。GHA PASS / 新チャンネル UI は Human 確認待ち |
