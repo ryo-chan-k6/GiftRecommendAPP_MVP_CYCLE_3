@@ -13,6 +13,9 @@ import argparse
 import sys
 
 from batch.application.item_pseudo_diff.job import (
+    DEFAULT_CURSORS_PER_RUN,
+    DEFAULT_HITS,
+    DEFAULT_PAGES_PER_RUN,
     DEFAULT_TARGET_GENRE_IDS,
     ItemPseudoDiffJob,
 )
@@ -52,6 +55,14 @@ def _resolve_business_run_id(*, job_run_id: str, batch_run_id: str) -> str:
     """Shared pipeline UUID for obs / raw object key. Falls back to job_run_id."""
 
     return batch_run_id.strip() or job_run_id
+
+
+def _resolve_pages_per_run(args: argparse.Namespace) -> int:
+    """Prefer --pages-per-run; --max-pages is a compatibility alias."""
+
+    if args.max_pages is not None and args.pages_per_run == DEFAULT_PAGES_PER_RUN:
+        return max(1, int(args.max_pages))
+    return max(1, int(args.pages_per_run))
 
 
 def _build_scaffold_rakuten_client() -> ScaffoldRakutenApiClient:
@@ -174,6 +185,48 @@ def main(argv: list[str] | None = None) -> int:
         help="Comma-separated keywords (optional MVP route).",
     )
     parser.add_argument(
+        "--pages-per-run",
+        type=int,
+        default=DEFAULT_PAGES_PER_RUN,
+        help=(
+            "Run予算: 1 Run で進める最大ページ数（カタログ深さ打ち切りではない）。"
+            f" 既定={DEFAULT_PAGES_PER_RUN}（smoke）。通常継続は 60。"
+        ),
+    )
+    parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=None,
+        help="互換 alias（--pages-per-run と同義）。両方指定時は --pages-per-run 優先。",
+    )
+    parser.add_argument(
+        "--cursors-per-run",
+        type=int,
+        default=DEFAULT_CURSORS_PER_RUN,
+        help=f"Run予算: 1 Run で着手する最大 cursor 数。既定={DEFAULT_CURSORS_PER_RUN}。",
+    )
+    parser.add_argument(
+        "--wall-clock-seconds",
+        type=int,
+        default=0,
+        help="Run予算: wall-clock 上限秒（0=無効）。通常継続の目安は 2700（45分）。",
+    )
+    parser.add_argument(
+        "--hits",
+        type=int,
+        default=DEFAULT_HITS,
+        help=f"ItemSearch hits（1〜30）。既定={DEFAULT_HITS}。",
+    )
+    parser.add_argument(
+        "--max-qps",
+        type=float,
+        default=1.0,
+        help=(
+            "楽天 live 時の安全側 QPS（BATCH-003 既定=1）。"
+            "常用 QPS=2 の Decision は変更しない。scaffold 時は無視。"
+        ),
+    )
+    parser.add_argument(
         "--scaffold-demo",
         action="store_true",
         help="Run in-memory scaffold demo (no real Rakuten/DB/Object Storage).",
@@ -210,16 +263,23 @@ def main(argv: list[str] | None = None) -> int:
         job.repositories.bind_run(batch_run_id=business_run_id)
         genre_ids = _parse_csv(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
         keywords = _parse_csv(args.keywords)
+        pages_per_run = _resolve_pages_per_run(args)
         result = job.run(
             job_run_id=args.job_run_id,
             batch_run_id=business_run_id,
             target_genre_ids=genre_ids,
             keywords=keywords,
+            pages_per_run=pages_per_run,
+            cursors_per_run=args.cursors_per_run,
+            wall_clock_seconds=args.wall_clock_seconds or None,
+            hits=args.hits,
         )
         print(
             f"BATCH-003 scaffold demo status={result.status} "
             f"succeeded={len(result.succeeded_cursor_ids)} "
             f"failed={len(result.failed_cursor_ids)} "
+            f"pages={result.pages_fetched} "
+            f"budget_stopped={result.run_budget_stopped} "
             f"raw_saves={result.raw_save_success_count} "
             f"candidates={result.candidate_item_code_count} "
             f"supplement={result.ranking_supplement_consumed_count}"
@@ -259,6 +319,7 @@ def main(argv: list[str] | None = None) -> int:
             settings.rakuten_application_id,
             settings.rakuten_access_key,
             live=True,
+            max_qps=args.max_qps,
         )
     else:
         rakuten = _build_scaffold_rakuten_client()
@@ -300,11 +361,16 @@ def main(argv: list[str] | None = None) -> int:
     job.repositories.bind_run(batch_run_id=business_run_id)
     genre_ids = _parse_csv(args.genre_ids) or DEFAULT_TARGET_GENRE_IDS
     keywords = _parse_csv(args.keywords)
+    pages_per_run = _resolve_pages_per_run(args)
     result = job.run(
         job_run_id=args.job_run_id,
         batch_run_id=business_run_id,
         target_genre_ids=genre_ids,
         keywords=keywords,
+        pages_per_run=pages_per_run,
+        cursors_per_run=args.cursors_per_run,
+        wall_clock_seconds=args.wall_clock_seconds or None,
+        hits=args.hits,
     )
     error_codes = ",".join(result.error_codes) if result.error_codes else "-"
     print(
@@ -312,6 +378,8 @@ def main(argv: list[str] | None = None) -> int:
         f"db_backend={db_writer.backend} "
         f"rakuten_backend={getattr(rakuten, 'backend', 'http')} "
         f"storage_backend={getattr(object_storage, 'backend', 'scaffold')} "
+        f"pages={result.pages_fetched} "
+        f"budget_stopped={result.run_budget_stopped} "
         f"succeeded={len(result.succeeded_cursor_ids)} "
         f"failed={len(result.failed_cursor_ids)} "
         f"error_codes={error_codes}"

@@ -136,10 +136,18 @@ BATCH-003の「運用予算」と監視閾値は§5.3.4 / §5.3.5の**Human採�
 | 楽天APIのページング上限 | 同一クエリで最大100ページ、1ページ最大30件（`hits`） | API契約上の天井。超える場合はジャンル細分化等の別クエリ戦略が必要 |
 | QPS | 常用2 | リクエスト頻度の安全制約。総量打ち切りではない |
 
-`pages_per_run` / `cursors_per_run` / `routes_per_run` は本書上の**運用概念名**であり、CLIフラグ名・workflow入力名の正本ではない。実装パラメータ名は後続 live Task で確定する。
+`pages_per_run` / `cursors_per_run` / `routes_per_run` は本書上の運用概念名である。BATCH-003 CLI 実装名（#1765）は次のとおり。
+
+| 運用概念 | CLI（BATCH-003） | 備考 |
+| -------- | ---------------- | ---- |
+| `pages_per_run` | `--pages-per-run` | 互換 alias `--max-pages`。カタログ深さ打ち切りではない |
+| `cursors_per_run` | `--cursors-per-run` | CLI 既定 1（採択値）。job API で未指定時は計画上の全 active |
+| wall-clock | `--wall-clock-seconds` | 通常継続の目安 2700（45分）。0 で無効 |
+| `hits` | `--hits` | 既定 30 |
+| 安全側 QPS | `--max-qps` | BATCH-003/004 live 既定 1。常用 QPS=2 は変更しない |
 
 旧来の「BATCH-003初期live = `max_pages=1` で深さ固定」は、本方針では **採用しない**。
-`max_pages` 相当の設定がある場合は、**1 Runの進行量**として解釈し、cursorを `exhausted` 扱いにして深いページを捨ててはならない。
+`max_pages` / `--max-pages` 相当の設定がある場合は、**1 Runの進行量（`pages_per_run`）**として解釈し、cursorを `exhausted` 扱いにして深いページを捨ててはならない。
 
 #### 5.3.3 運用で監視・調整する指標（Human採択）
 
@@ -418,6 +426,7 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | [Fetch Cursorテーブル定義書](../../06_実装設計/database/fetch_cursor_テーブル定義書.md) | cursor状態・再開 |
 | [親workflow手動検証結果 D1](./親workflow手動検証結果_D1.md) | 親dispatchの既知結果 |
 | [BATCH import連鎖 GHA live化メモ C3](./BATCH_import連鎖_GHA_live化メモ_C3.md) | GHAで楽天Scaffold・DB/Storage liveの分離実績 |
+| [BATCH-001〜004 local live 検証結果（#1765）](./楽天Fetch_local_live検証結果_1765.md) | Run予算実装・UT結果・実HTTPゲート |
 
 ---
 
@@ -430,3 +439,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-07-30 | BATCH-003のRun予算初期値（§5.3.4）と監視閾値初期値（§5.3.5）を推奨案として整理。Human判断待ち |
 | 2026-07-30 | AI Review指摘対応: Epic scope外README差分を除去。「Human採択」表記を推奨案/判断待ちへ戻し、ギャップ一覧と同期 |
 | 2026-07-30 | #1764: §10推奨案をHuman採択。対象ジャンルは本Decisionでは保留し、local live実行前承認をゲート化 |
+| 2026-07-31 | #1765: BATCH-003 CLI（`--pages-per-run` 等）を運用概念と対応付け。local live検証結果を追加 |

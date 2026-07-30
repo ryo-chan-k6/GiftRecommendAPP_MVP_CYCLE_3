@@ -13,10 +13,10 @@ on:
         type: string
         default: ""
       max_items:
-        description: "Max items to recheck (default 1000)"
+        description: "Max items to recheck (default 100; Human採択の開始件数)"
         required: false
         type: string
-        default: "1000"
+        default: "100"
       external_item_codes:
         description: "Comma-separated external_item_code list (overrides priority)"
         required: false
@@ -30,10 +30,10 @@ on:
         type: string
         default: ""
       max_items:
-        description: "Max items to recheck (default 1000)"
+        description: "Max items to recheck (default 100; Human採択の開始件数)"
         required: false
         type: string
-        default: "1000"
+        default: "100"
       external_item_codes:
         description: "Comma-separated external_item_code list (overrides priority)"
         required: false

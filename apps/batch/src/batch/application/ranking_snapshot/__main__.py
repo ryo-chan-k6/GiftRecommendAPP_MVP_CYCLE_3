@@ -103,6 +103,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Ranking period (empty = default placeholder).",
     )
     parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=1,
+        help="Max ranking pages per genre (default 1; Decision 維持。必要時のみ 2).",
+    )
+    parser.add_argument(
         "--scaffold-demo",
         action="store_true",
         help="Run in-memory scaffold demo (no real Rakuten/DB/Object Storage).",
@@ -140,6 +146,7 @@ def main(argv: list[str] | None = None) -> int:
             job_run_id=args.job_run_id,
             target_genre_ids=genre_ids,
             period=period,
+            max_pages=args.max_pages,
         )
         print(
             f"BATCH-002 scaffold demo status={result.status} "
@@ -228,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         job_run_id=args.job_run_id,
         target_genre_ids=genre_ids,
         period=period,
+        max_pages=args.max_pages,
     )
     print(
         f"BATCH-002 status={result.status} "

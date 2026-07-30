@@ -264,7 +264,14 @@ class ItemPseudoDiffRepositories:
         cursor_id: str,
         page: int,
         cursor_status: str = "active",
+        mark_fetched: bool = True,
     ) -> None:
+        """Update cursor position/status.
+
+        ``mark_fetched=False`` は rate_limited → paused 用。page は呼び出し側で
+        現在値を渡し、``last_fetched_at`` を成功扱いで進めない。
+        """
+
         existing = self.fetch_cursors.get(cursor_id)
         if existing is None:
             return
@@ -279,14 +286,16 @@ class ItemPseudoDiffRepositories:
         )
         self.fetch_cursors[cursor_id] = updated
         now = datetime.now(UTC)
+        set_values: dict[str, object] = {
+            "cursor_value": _cursor_value_json(scope=updated.scope, page=page),
+            "cursor_status": _db_cursor_status(cursor_status),
+            "updated_at": now,
+        }
+        if mark_fetched:
+            set_values["last_fetched_at"] = now
         self.db_writer.update_rows(
             "fetch_cursor",
-            set_values={
-                "cursor_value": _cursor_value_json(scope=updated.scope, page=page),
-                "cursor_status": _db_cursor_status(cursor_status),
-                "last_fetched_at": now,
-                "updated_at": now,
-            },
+            set_values=set_values,
             equals=(("fetch_cursor_id", cursor_id),),
         )
 

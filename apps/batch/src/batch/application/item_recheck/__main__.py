@@ -126,13 +126,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--max-items",
         type=int,
-        default=1000,
-        help="Max items to recheck in this run (default 1000).",
+        default=100,
+        help="Max items to recheck in this run (default 100; Human採択の開始件数).",
     )
     parser.add_argument(
         "--external-item-codes",
         default="",
         help="Comma-separated external_item_code list (overrides priority).",
+    )
+    parser.add_argument(
+        "--max-qps",
+        type=float,
+        default=1.0,
+        help="楽天 live 時の安全側 QPS（BATCH-004 既定=1）。常用 QPS=2 は変更しない。",
     )
     parser.add_argument(
         "--scaffold-demo",
@@ -252,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
         settings.rakuten_application_id,
         settings.rakuten_access_key,
         live=True,
+        max_qps=args.max_qps,
     )
     repos = ItemRecheckRepositories(
         object_storage=object_storage,
