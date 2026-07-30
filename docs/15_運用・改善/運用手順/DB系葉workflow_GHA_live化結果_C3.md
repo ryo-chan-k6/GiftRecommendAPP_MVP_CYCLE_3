@@ -84,42 +84,66 @@ Human判断（2026-07-30）:
 
 | 項目 | 内容 |
 | ---- | ---- |
-| ref | `feature/task-1751-db-leaf-workflow-live` (`30b79967`) |
-| 実施時刻 | 2026-07-30（UTC） |
-| 判定 | **FAIL**（workflow配線は到達、stg DB接続で失敗） |
+| ref | `feature/task-1751-db-leaf-workflow-live`（検証時点 HEAD `39341b46`） |
+| 判定 | **PARTIAL**（DB接続は復旧。業務前提不足で葉実行は未成功） |
 
-| Workflow | inputs | Run URL | status | conclusion |
-| -------- | ------ | ------- | ------ | ---------- |
-| Batch Item Meaning Generation | `max_items=1`, `source=rakuten` | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30545806388 | completed | failure |
-| Batch Distribution Metrics | `trigger_mode=dispatch`, embedding/user_meaning=false | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30545808936 | completed | failure |
+#### Attempt 1（Secret更新前）
 
-### 6.2 Job結果（事実）
+| Workflow | Run URL | conclusion | 失敗種別 |
+| -------- | ------- | ---------- | -------- |
+| meaning複合 `max_items=1` | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30545806388 | failure | DB接続（tenant ENOTFOUND） |
+| distribution-metrics | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30545808936 | failure | DB接続（tenant ENOTFOUND） |
 
-#### meaning複合（30545806388）
+#### Attempt 2（`STG_DATABASE_URL` 更新後・再dispatch）
+
+| Workflow | inputs | Run URL | conclusion | 失敗種別 |
+| -------- | ------ | ------- | ---------- | -------- |
+| meaning複合 | `max_items=1`, `source=rakuten` | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30547134883 | failure | 009 empty plan（DB接続は成功） |
+| distribution-metrics | `trigger_mode=dispatch` | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30547137306 | failure | scaffold semantic_config を UUID 列へ書込 |
+| 009単独 | `max_items=1` + 既存 import の `diff_batch_run_id` | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30547356166 | failure | empty plan（eligible diff 0件） |
+
+### 6.2 Attempt 2 Job結果（事実）
+
+#### meaning複合（30547134883）
 
 | Job | conclusion |
 | --- | ---------- |
 | `resolve-run-id` | success |
-| `item_generation_queue / item-generation-queue` | **failure**（step: `Run BATCH-009 live`） |
-| `item_semantic` 以降 | skipped（上流 failure） |
+| `item_generation_queue / item-generation-queue` | **failure**（`Run BATCH-009 live`） |
+| 後続（010〜017） | skipped |
 
-#### distribution-metrics（30545808936）
+ログ要約（secretなし）:
+
+- `db_reader=postgres` / `db_writer=postgres`（**接続成功**）
+- `BATCH-009 status=failed ... succeeded=0 failed=0 skipped=0 inserted=0`
+- 実装上、処理対象0件かつ skipもない場合は `GRS-BAT-001`（empty registration plan）で failed
+
+#### distribution-metrics（30547137306）
 
 | Job / step | conclusion |
 | ---------- | ---------- |
-| Setup〜`Resolve job_run_id` | success（葉 `job_run_id` は UUID を生成） |
+| Setup〜`Resolve job_run_id` | success（葉 `job_run_id` は UUID） |
 | `Run BATCH-016 live` | **failure** |
 | `Run BATCH-017 Import Summary live` | skipped |
 
-### 6.3 失敗内容（secretなし）
+ログ要約（secretなし）:
 
-- **事実:** Environment `stg` と `DATABASE_URL`（`STG_DATABASE_URL`）は job に渡っている
-- **事実:** live step（`--scaffold-demo` なし）まで到達している
-- **事実:** DB接続で `psycopg.OperationalError` / `DatabaseError`。Supabase pooler への接続時に tenant/user が見つからない（`ENOTFOUND`）
-- **推論:** workflow YAML の live化差分そのものより、Environment `stg` の `STG_DATABASE_URL`（または参照先DBテナント）が無効・陳腐化している可能性が高い
-- **補足:** required reviewers 解除後のため、dispatch直後に job が開始された（承認待ちなし）
+- DB接続後に `InvalidTextRepresentation: invalid input syntax for type uuid: "scaffold-semantic-config-v1"`
+- アプリ既定値 `DEFAULT_SEMANTIC_CONFIG_VERSION = "scaffold-semantic-config-v1"` が live UUID 列に入らない
+- Environment Variable `BATCH_DISTRIBUTION_METRICS_SEMANTIC_CONFIG_VERSION_ID` は未設定
 
-secret / 接続文字列 / プロジェクト参照の実値は本docsに記載しない。
+### 6.3 解釈（事実 / 推論）
+
+| 区分 | 内容 |
+| ---- | ---- |
+| 事実 | Attempt 1 の接続障害は、Human による `STG_DATABASE_URL` 更新後に解消 |
+| 事実 | live step（`--scaffold-demo` なし）・UUID `job_run_id`・Environment `stg` は動作している |
+| 事実 | 009 は接続成功後も eligible な `product_diff_result` が0件で failed |
+| 事実 | 016 は scaffold 文字列の semantic_config 既定値が UUID 型と非互換で failed |
+| 推論 | 更新後DBに import 連鎖の差分データが無い、または別DBへ切り替わった可能性 |
+| 推論 | 016 成功には実在する `semantic_config_version_id`（UUID）の入力または Env Variable が必要 |
+
+secret / 接続文字列の実値は記載しない。
 
 ### 6.4 代替確認（成功）
 
@@ -128,17 +152,19 @@ secret / 接続文字列 / プロジェクト参照の実値は本docsに記載�
 - 対象6葉に `--scaffold-demo` が残っていないことの確認
 - meaning複合とretry複合がlive葉へ共有pipeline IDを渡さないことの確認
 - 既live BATCH-005〜008 / 017に差分がないことの確認
+- Attempt 2 で postgres backend までの到達を確認
 
 ### 6.5 残リスク / 次アクション
 
 | 優先 | 内容 | 担当 |
 | ---- | ---- | ---- |
-| high | Environment `stg` の `STG_DATABASE_URL` 妥当性確認・更新（secret実値はチャットに出さない） | Human |
-| medium | Secret修正後、同一 ref で meaning複合（`max_items=1`）と distribution-metrics を再dispatch | AI / Human |
-| low | 再dispatch成功後、本節の判定を FAIL→SUCCESS へ更新 | AI |
+| high | stg に import 連鎖差分（`product_diff_result`）を用意する、または検証用 `diff_batch_run_id` を指定して 009 を再実行 | Human / AI |
+| high | 016 用に実 UUID の `semantic_config_version_id` を用意（workflow input または `BATCH_DISTRIBUTION_METRICS_SEMANTIC_CONFIG_VERSION_ID`） | Human |
+| medium | 上記準備後に meaning複合 / distribution-metrics を再dispatchし、本節を SUCCESS 更新 | AI |
+| note | apps/batch の scaffold 既定値撤廃は別判断（本Taskは GHA live 配線が主。必要なら scope確認） | Human |
 
-本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）は静的確認と「live step到達」まで確認済み。
-実DB書込成功の最終確認は、Secret修正後の再検証に委ねる。
+本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）と DB 接続復旧は確認済み。
+実データ前提つきの書込成功は上記 high 対応後に再検証する。
 
 ## 7. 段階完了状況
 
@@ -148,11 +174,12 @@ secret / 接続文字列 / プロジェクト参照の実値は本docsに記載�
 | B | 完了 | 対象6葉をstg live化 |
 | C | 完了 | meaning / retry複合のRun IDを整合 |
 | D | 完了 | 005〜008 / 017に意図しない差分なし |
-| E | 実施済・FAIL | dispatch実施。run URL/conclusion記録。DB接続で失敗 |
+| E | 実施済・PARTIAL | Secret更新後に再dispatch。接続OK。009 empty plan / 016 scaffold UUID で未成功 |
 
 ## 8. 変更履歴
 
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-30 | 初版。Phase A〜D完了、Phase EはHuman判断待ち |
-| 2026-07-30 | Phase E実施。Human承認後にdispatch。DB接続失敗を記録 |
+| 2026-07-30 | Phase E Attempt 1。DB接続失敗を記録 |
+| 2026-07-30 | `STG_DATABASE_URL` 更新後 Attempt 2 を記録（PARTIAL） |
