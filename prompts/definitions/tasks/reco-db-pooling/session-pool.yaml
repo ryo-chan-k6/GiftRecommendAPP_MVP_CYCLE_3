@@ -114,7 +114,22 @@ output:
     - path: "apps/reco/src/reco/infrastructure/db/session.py"
       action: "update"
       required: true
+    - path: "apps/reco/src/reco/infrastructure/db/__init__.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/api/dependencies.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/api/main.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/api/routes/health.py"
+      action: "update"
+      required: true
     - path: "apps/reco/pyproject.toml"
+      action: "update"
+      required: true
+    - path: "apps/reco/uv.lock"
       action: "update"
       required: true
     - path: "prompts/definitions/epics/reco-db-pooling/epic.yaml"
@@ -131,6 +146,15 @@ output:
       required: true
   tests:
     - path: "apps/reco/tests/unit/infrastructure/db/test_session.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/api/test_health.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/infrastructure/db/conftest.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/integration/conftest.py"
       action: "update"
       required: true
   generated:
@@ -248,5 +272,5 @@ stop_conditions:
 operation_logging:
   level: "standard"
   ai_logs:
-    cross_cutting: true
-  reason: "DB 接続方式は Reco / API 双方に影響するため横断影響として記録する"
+    cross_cutting: false
+  reason: "Reco 内部のDB接続ライフサイクル変更であり、通常のIssue / PRで管理する"

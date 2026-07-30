@@ -82,6 +82,18 @@ def test_postgres_session_query_uses_injected_pool() -> None:
     pool.close.assert_not_called()
 
 
+def test_postgres_session_query_wraps_pool_error() -> None:
+    pool = MagicMock()
+    pool.connection.side_effect = RuntimeError("connection failed")
+    session = PostgresDatabaseSession(
+        database_url="postgresql://localhost:5432/gift_reco_dev",
+        pool=pool,
+    )
+
+    with pytest.raises(DatabaseError, match="connection failed"):
+        session.query("SELECT 1")
+
+
 def test_postgres_session_execute_commits_via_injected_pool() -> None:
     pool = MagicMock()
     conn = MagicMock()

@@ -65,8 +65,10 @@ epic_scope:
   artifact_id: ""
   allowed_paths:
     - "apps/reco/src/reco/infrastructure/db/**"
+    - "apps/reco/src/reco/api/**"
     - "apps/reco/tests/**"
     - "apps/reco/pyproject.toml"
+    - "apps/reco/uv.lock"
     - "prompts/definitions/epics/reco-db-pooling/**"
     - "prompts/definitions/tasks/reco-db-pooling/**"
     - "prompts/definitions/reviews/reco-db-pooling/**"
@@ -158,8 +160,8 @@ stop_conditions:
 operation_logging:
   level: "standard"
   ai_logs:
-    cross_cutting: true
-  reason: "Reco / API 双方に影響する DB 接続方式の課題であり、横断影響として記録する"
+    cross_cutting: false
+  reason: "Reco 内部のDB接続ライフサイクル変更であり、通常のIssue / PRで管理する"
 
 notes:
   - "Reco 性能関連の既存 Epic #1512 / #1532 / #1535 / #1544 / #1552 はいずれも CLOSED"

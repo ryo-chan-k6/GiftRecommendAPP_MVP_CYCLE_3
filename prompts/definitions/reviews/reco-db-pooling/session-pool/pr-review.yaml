@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1741
   issue:
     number: 1738
   task_definition: "prompts/definitions/tasks/reco-db-pooling/session-pool.yaml"
