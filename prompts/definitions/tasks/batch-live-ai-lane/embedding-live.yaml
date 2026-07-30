@@ -4,7 +4,7 @@ definition_type: "task"
 task:
   id: "task-batch-live-ai-lane-embedding-live"
   title: "batch-live-ai-lane:BATCH-015 Embedding live切替実装"
-  summary: "BATCH-015 GHA stg live化（明示liveのみ）、安全ガード、CurrentVersionResolver配線、api_call_log、unit test、stg 1件手動検証・結果docsを単一Task/1PRで実施。#1750 develop merge前は/work-issue禁止。"
+  summary: "BATCH-015 GHA stg live化（明示liveのみ）、安全ガード、CurrentVersionResolver配線、api_call_log、unit test、stg 1件手動検証・結果docsを単一Task/1PRで実施。#1750依存ゲートは2026-07-31解除済み。"
 
 work_mode: "ai-agent"
 
@@ -46,8 +46,8 @@ agent:
 
 background: |
   親Epic #1768（batch-live-ai-lane）。#1750（DB liveレーン）は BATCH-015 AI live を out of scope とし、
-  本レーンへ分離した。#1772 の CurrentVersionResolver と BATCH-015 配線は #1750 Branch へ merge 済みだが
-  develop 未反映。本 Task Branch は #1768 Epic Branch 起点（develop起点のEpicを維持）。
+  本レーンへ分離した。#1772 の CurrentVersionResolver と BATCH-015 配線は #1750 Branch 経由で develop へ merge 済み。
+  develop→#1768 Epic Branch→本 Task Branch の取り込みも2026-07-31に完了した。
   既存完了: #1610 Embedding HTTP client、#1710 api_call_log、#1566 TV-005疎通。
   Human確定（2026-07-31）: Issue化・Branch作成は #1750 未mergeでも可。実装（/work-issue）は
   #1750 develop merge後、develop→Epic→Task 取り込み完了まで禁止。
@@ -78,7 +78,7 @@ out_of_scope:
 staged_execution: |
   単一Task/1PR。#1750 develop merge前は実装フェーズに入らない。
   Phase 0（本セットアップで完了可）: Issue化・Task Branch作成・Definition反映。/work-issue禁止をIssue本文に明記。
-  Phase A（#1750 develop merge + develop→Epic→Task取り込み後のみ）: 現状調査（葉workflow・CLI live flag・resolver・api_call_log）
+  Phase A（依存ゲート解除済み）: 現状調査（葉workflow・CLI live flag・resolver・api_call_log）
   Phase B: GHA live配線・安全ガード（明示live / 既定off）
   Phase C: resolver / api_call_log 整合・unit test / YAML検証 / secret check
   Phase D: 複合 meaning/retry への明示live伝播（必要時・既定false）
@@ -125,12 +125,12 @@ input:
     - number: 1768
       purpose: "親Epic"
     - number: 1750
-      purpose: "依存Epic。develop merge必須ゲート"
+      purpose: "依存Epic。2026-07-31にdevelop merge・Task Branch取り込み済み"
     - number: 1745
       purpose: "統括umbrella（formal parentではない）"
   prs:
     - number: 1772
-      purpose: "CurrentVersionResolver前提（#1750 Branch上）"
+      purpose: "CurrentVersionResolver前提（#1750経由でdevelop・Task Branchへ取り込み済み）"
 
 output:
   docs:
@@ -228,7 +228,7 @@ dependencies:
     - issue: 1768
       purpose: "親Epic（formal parent）"
     - issue: 1750
-      purpose: "依存Epic。develop merge必須。未mergeでもIssue化・Branch作成はHuman承認済み例外。実装はmerge後まで禁止"
+      purpose: "依存Epic。2026-07-31にdevelop merge・Task Branch取り込み済み"
     - issue: 1745
       purpose: "統括umbrella（formal parentではない）"
   issues:
@@ -240,7 +240,7 @@ dependencies:
       purpose: "TV-005疎通（完了）"
   prs:
     - number: 1772
-      purpose: "CurrentVersionResolver前提。#1750 Branchへmerge済み・develop未反映"
+      purpose: "CurrentVersionResolver前提。#1750経由でdevelop・Task Branchへ取り込み済み"
   tasks: []
   blocking: true
 
@@ -253,7 +253,7 @@ contract_gate:
 
 parallel_control:
   depends_on:
-    - "epic-batch-live-db-lane (#1750 develop merge必須。未mergeでもIssue化・Task Branch作成はHuman承認済み例外。/work-issue禁止)"
+    - "epic-batch-live-db-lane (#1750。2026-07-31依存ゲート解除済み)"
   blocks: []
   exclusive_files:
     - ".github/workflows/batch-item-embedding.yml"
@@ -305,7 +305,7 @@ review:
     - "environment: stg / secret参照のみか"
     - "UUID job_run_id / resolver / api_call_log が整合するか"
     - "production / schedule / Secret変更が混入していないか"
-    - "#1750 依存ゲートと /work-issue 禁止が守られているか"
+    - "#1750 依存ゲート解除後に /work-issue を開始した履歴になっているか"
     - "stg検証結果または未実施理由があるか"
     - "secret実値が含まれていないか"
     - "Related to / PR target = 親Epic Branch"
@@ -345,4 +345,4 @@ notes:
   - "worktree: /home/ryo-c/GitHub/GiftRecommendAPP_MVP_CYCLE_3_worktrees/feature-task-1776-embedding-live"
   - "AI Review 3点セット: Review Definition を /create-pr 前に PR head へ含める"
   - "Umbrella #1745 は formal parent ではない"
-  - "/work-issue は依存ゲート解除まで開始不可（本セットアップでは実装しない）"
+  - "/work-issue 依存ゲートは2026-07-31に解除済み"
