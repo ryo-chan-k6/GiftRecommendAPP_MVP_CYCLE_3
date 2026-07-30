@@ -1,0 +1,292 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-live-rakuten-fetch"
+  title: "batch-live-rakuten-fetch:楽天Fetch live切替"
+  summary: "運用方針§10のHuman採択をゲートに、BATCH-001〜004をQPS=2前提でlocal live運用できる状態にする。Run予算と深さ打ち切りを混同しない。GHA楽天live・#1607・scheduleは本Epic外。機能・領域単位Epic（例外）。統括は#1745。"
+  workstream_key: "batch-live-rakuten-fetch"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  統括ロードマップ #1745 の本線候補#4。本線候補#1（#1749 楽天Fetch運用方針）は MERGED/CLOSED。
+  運用方針正本（docs/15_運用・改善/運用手順/楽天Fetch運用方針.md）は決定済み制約（QPS=2等）と
+  §10 Human判断待ち（推奨案）を分離済み。§11.1 の着手ゲートは「§10 Human判断完了」を含む。
+  GHA葉の楽天経路は現状 --scaffold-demo 固定。楽天liveは登録IPのlocalが前提（CI禁止）。
+  DB系live（#1750）/ AI系live / schedule有効化は別本線Epic。#1607（本番egress）は吸収しない。
+
+objective: |
+  §10 を Human Decision Log で採択し、BATCH-001〜004 が Run予算・paused再開・QPS制約を守って
+  local live 実行できる状態にする。後続 schedule / GHA楽天live 判断の材料を残す。
+
+scope:
+  - "運用方針§10（深さ方針・Run予算・監視閾値・004件数・Run分割・paused/failed再開・GHA楽天live可否・QPS=1・クールダウン）のHuman Decision Log化と正本docs同期"
+  - "BATCH-003 Run予算（pages_per_run等の運用概念）とカタログ深さ打ち切りの分離実装"
+  - "rate_limited → fetch_cursor.paused（page非進行）と Run予算到達後のcursor継続"
+  - "BATCH-001〜004 の local live 経路（明示 --live-rakuten / 環境変数）と低値smoke〜通常継続の段階検証"
+  - "安全側QPS=1の適用範囲を採択値どおり実装（常用QPS=2は変更しない）"
+  - "max_items（親orchestrator入力）と楽天Fetch Run予算が別物であることの維持"
+  - "ギャップdocs / 運用結果docsの必要最小更新と統括#1745本線追跡更新"
+
+out_of_scope:
+  - "本番egress IP / NAT / self-hosted 設計・構築（#1607。吸収しない）"
+  - "Human採択前のGHA楽天HTTP live化（§10 No.7がlocalのみの場合は本Epic全程で禁止）"
+  - "条件付きGHA楽天liveを採択した場合でも、#1607未充足のまま本番相当egressなしで進めること"
+  - "親 on.schedule 有効化（batch-daily-schedule-enable / #1732）"
+  - "DB系live（#1750）/ AI系live（batch-live-ai-lane）の実装"
+  - "常用QPSの再改訂（新実験＋新Human決定なし）"
+  - "OpenAPI / Orval / generated / apps/web|api|reco 変更"
+  - "GitHub Secrets / Variables の値の表示・変更"
+  - "production定期・prod Secrets・破壊的全件取得"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/batch-live-rakuten-fetch/**"
+    - "prompts/definitions/tasks/batch-live-rakuten-fetch/**"
+    - "prompts/definitions/reviews/batch-live-rakuten-fetch/**"
+    - "ai-logs/human-decisions/**"
+    - "docs/15_運用・改善/運用手順/**"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/BATCH-001_*"
+    - "docs/06_実装設計/batch/BATCH-002_*"
+    - "docs/06_実装設計/batch/BATCH-003_*"
+    - "docs/06_実装設計/batch/BATCH-004_*"
+    - "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+    - "docs/90_PoC/外部API疎通検証/**"
+    - "apps/batch/**"
+    - ".github/workflows/batch-rakuten-genre-sync.yml"
+    - ".github/workflows/batch-rakuten-ranking-snapshot.yml"
+    - ".github/workflows/batch-rakuten-item-pseudo-diff.yml"
+    - ".github/workflows/batch-rakuten-existing-item-recheck.yml"
+    - ".github/workflows/batch-rakuten-item-import.yml"
+    - ".github/workflows/batch-rakuten-existing-item-pipeline.yml"
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - ".github/workflows/batch-item-semantic.yml"
+    - ".github/workflows/batch-item-embedding.yml"
+  child_task_areas:
+    - "docs"
+    - "ops-policy"
+    - "batch"
+    - "github-actions"
+    - "verification"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+    - path: "docs/90_PoC/外部API疎通検証/楽天API疎通検証結果.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-24-rakuten-api-qps-ip-verify-policy.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-25-rakuten-operational-qps-revise-to-2.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/BATCH_import連鎖_GHA_live化メモ_C3.md"
+      required: false
+  files:
+    - path: ".github/workflows/batch-rakuten-genre-sync.yml"
+      required: true
+    - path: ".github/workflows/batch-rakuten-ranking-snapshot.yml"
+      required: true
+    - path: ".github/workflows/batch-rakuten-item-pseudo-diff.yml"
+      required: true
+    - path: ".github/workflows/batch-rakuten-existing-item-recheck.yml"
+      required: true
+  issues:
+    - number: 1745
+      purpose: "統括ロードマップ（本線候補#4）"
+    - number: 1749
+      purpose: "運用方針正本化Epic（完了・ゲート）"
+    - number: 1607
+      purpose: "本番egress Backlog。本Epicでは吸収しない"
+    - number: 1750
+      purpose: "DB系live。並列可・楽天HTTP非混入"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/epics/batch-live-rakuten-fetch/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-live-rakuten-fetch/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-live-rakuten-fetch/**"
+      action: "create"
+      required: false
+    - path: "apps/batch/**"
+      action: "update"
+      required: true
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/"
+
+deliverables:
+  - "Epic Issue #1763 / Branch feature/epic-1763-batch-live-rakuten-fetch"
+  - "§10 Human Decision Log と運用方針正本の採択反映"
+  - "BATCH-001〜004 local live（Run予算・paused再開・QPS）"
+  - "local検証結果（secretなし）とギャップdocs更新"
+
+acceptance_criteria:
+  - "Epic Issueタイトルが [Epic]batch-live-rakuten-fetch:楽天Fetch live切替 形式"
+  - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
+  - "§10 Human Decision Log が作成され、運用方針の該当行が採択/判断待ちと矛盾しない"
+  - "BATCH-003でRun予算到達が深さ打ち切り（exhausted誤用）になっていない"
+  - "rate_limited → paused と page非進行、Run予算後のcursor継続がテストまたは手動検証で確認できる"
+  - "常用QPS=2を維持し、QPS=1は採択範囲のみ"
+  - "CI / GitHub-hosted からの楽天liveを入れていない"
+  - "#1607・schedule有効化・DB/AI live・secret実値を含まない"
+  - "Epic PR targetがdevelop"
+  - "統括#1745の本線候補#4追跡が更新されている"
+
+branch:
+  no_branch: false
+  summary: "batch-live-rakuten-fetch"
+  name: "feature/epic-1763-batch-live-rakuten-fetch"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-05"
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1745
+    - 1749
+  issues:
+    - 1607
+    - 1750
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - 1749
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - ".github/workflows/batch-rakuten-genre-sync.yml"
+    - ".github/workflows/batch-rakuten-ranking-snapshot.yml"
+    - ".github/workflows/batch-rakuten-item-pseudo-diff.yml"
+    - ".github/workflows/batch-rakuten-existing-item-recheck.yml"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "local live smoke（低値）"
+    - "unit test（Run予算・paused/cursor変更がある場合）"
+  commands: []
+  manual_checks:
+    - "egress IP照合失敗時に楽天HTTPしない"
+    - "429時にcursor pageが進まない"
+    - "Run予算到達後に次回Runで継続できる"
+  not_required:
+    - "GHA楽天live E2E"
+  skip_reason:
+    "GHA楽天live E2E": "§10 No.7がlocalのみ推奨。GHA楽天HTTPは本Epic既定で禁止"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "§10未採択のままlive実装に進んでいないか"
+    - "Run予算と深さ打ち切りを混同していないか"
+    - "CI楽天live・secret実値・#1607吸収・schedule有効化が混入していないか"
+    - "常用QPS=2を勝手に変更していないか"
+
+human_decision_points:
+  - "§10全項目の採択（Decision Log）。チャット同意のみでは正本化しない"
+  - "MVP対象ジャンル（fetch_plan）の最小集合"
+  - "GHA楽天liveを本Epicに含めずlocalのみとするか（推奨: localのみ）"
+  - "local検証で使う実secretの扱い（値はcommitしない。実行はHuman環境）"
+
+stop_conditions:
+  - "§10 Decision Log未整備のまま実装Taskへ進もうとした場合"
+  - "#1607の本番egress実装が必要に見えた場合"
+  - "Human明示承認なしにGHA楽天HTTP liveやschedule有効化へ進もうとした場合"
+  - "secret実値の表示・commitが必要に見える場合"
+  - "常用QPS再改訂が必要に見える場合"
+
+notes:
+  - "Epic Issue: #1763"
+  - "統括#1745の本線候補#4。Epic formal parentは持たない（Relationships追跡）"
+  - "子Task: (1) §10 Decision Log (2) 001〜004 local live実装・検証"
+  - "work_mode=ai-agent / feature Branch。運用採択値はHuman Decision Logが正"

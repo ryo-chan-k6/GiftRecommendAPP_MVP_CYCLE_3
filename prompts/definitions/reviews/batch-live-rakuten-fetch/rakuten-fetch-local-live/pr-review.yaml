@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-live-rakuten-fetch-local-live-pr"
+  title: "BATCH-001〜004 local live実装 PRレビュー"
+  summary: "楽天Fetch 001〜004 local live実装Task PRをAI Reviewする。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  parent_epic_issue: 1763
+  parent_epic_branch: "feature/epic-1763-batch-live-rakuten-fetch"
+  task_definition: "prompts/definitions/tasks/batch-live-rakuten-fetch/rakuten-fetch-local-live.yaml"
+  source_branch: null
+  target_branch: "feature/epic-1763-batch-live-rakuten-fetch"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "§10 Decision Log採択値が実装に反映されているか"
+  - "Run予算と深さ打ち切りを混同していないか"
+  - "CI楽天live・#1607・schedule・secret実値・QPS再改訂が混入していないか"
+  - "paused時page非進行とRun予算後cursor継続が検証されているか"
+  - "PR targetが親Epic Branch、Related to（Closes禁止）か"
+
+notes:
+  - "Issue番号 / Branch / PR は起票・PR作成後に反映する"
+  - "Human Reviewは省略しない"
