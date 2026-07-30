@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-live-ai-lane-epic-pr"
+  title: "batch-live-ai-lane Epic PRレビュー"
+  summary: "Epic #1768（BATCH-015 Embedding live切替）を develop へ統合する Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1768
+  task_definition: "prompts/definitions/epics/batch-live-ai-lane/epic.yaml"
+  parent_epic_issue: "[Epic]batch-live-ai-lane:BATCH-015 Embedding live切替"
+  parent_epic_branch: "feature/epic-1768-batch-live-ai-lane"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "Epic acceptance_criteria を満たしているか（明示liveのみ・stg・1件検証・依存ゲート）"
+  - "BATCH-015 live化が単一子Task成果として統合されているか"
+  - "production / schedule / Secret値作成変更表示が混入していないか"
+  - "BATCH-010 実LLM / DDL / OpenAPI / generated / apps/web|api|reco が混入していないか"
+  - "既定off / scaffold安全性が維持されているか"
+  - "secret実値が docs・PR・コードに含まれていないか"
+  - "#1750 依存（CurrentVersionResolver）が develop 取り込み済み前提で破綻していないか"
+  - "Epic PR target = develop"
+  - "Review Definition（Epic/Task）が PR head に含まれているか"
+
+notes:
+  - "pr.number は Epic PR 作成後に埋める"
+  - "子Task PR は個別 AI Review 済み・親Epic Branchへ merge 済みであることを前提に統合観点を確認する"
+  - "Human Review / merge判断は ryo-chan-k6"
+  - "機能・領域単位Epic（例外）。artifact_id 空"
