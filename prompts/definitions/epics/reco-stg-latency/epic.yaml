@@ -17,8 +17,12 @@ parent:
     - 144
     - 1686
     - 1737
+    - 1773
+    - 1753
+    - 1748
   related_prs:
     - 1744
+    - 1774
 
 agent:
   primary: "orchestrator-ai"
@@ -100,9 +104,9 @@ dependencies:
   blocking: false
 
 child_tasks:
-  - "reco-stg-latency-region-migration: Supabase stg 東京リージョン移行と手順書更新（Human-Led）"
-  - "reco-stg-latency-session-commit: PostgresDatabaseSession の読み取りクエリ COMMIT 往復削減"
-  - "reco-stg-latency-config-cache: MOD-RECO-003 config resolver マスタ参照キャッシュ化"
+  - "reco-stg-latency-region-migration: Supabase stg 東京リージョン移行と手順書更新（Human-Led、#1773 / PR #1774 完了）"
+  - "reco-stg-latency-session-commit: PostgresDatabaseSession の読み取りクエリ COMMIT 往復削減（Backlog。リージョン移行で目標達成のため本 Cycle 未着手）"
+  - "reco-stg-latency-config-cache: MOD-RECO-003 config resolver マスタ参照キャッシュ化（Backlog。同上）"
 
 input:
   files:
@@ -130,7 +134,8 @@ input:
       purpose: "性能目標（soft/hard timeout）の正本"
 
 acceptance_criteria:
-  - "子 Task がすべて完了している"
+  - "region-migration Task（#1773 / PR #1774）が完了している"
+  - "session-commit / config-cache Task は Backlog とし、Backlog 判断理由が各 Definition に記録されている（リージョン移行で目標達成のため本 Cycle 未着手）"
   - "Supabase stg が Fly と同一リージョン（東京 / ap-northeast-1）で稼働している"
   - "stg で POST /api/v1/recommendations が 504 にならず結果が返る"
   - "phase_log（owner_type = recommendation_run）が response_built まで記録される"
@@ -192,6 +197,8 @@ operation_logging:
 notes:
   - "接続プール導入 Epic #1737 / PR #1744 は merge 済み。本 Epic はその後続"
   - "1 クエリ約 214ms は config_resolved duration_ms 2,786ms ÷ 13 SELECT の実測に基づく"
-  - "B（session COMMIT 削減）と C（config キャッシュ）は Human 決定により別 Task とする"
-  - "Task A（リージョン移行）は Human-Led。手順書更新を含む"
-  - "hard timeout 値の正本不整合（コード 4,000ms / docs 8,000ms）は本 Epic の out of scope。別 Issue で扱う"
+  - "Task A（リージョン移行）は Human-Led。手順書更新を含む。#1773 / PR #1774 で完了"
+  - "リージョン移行後の実測: config_resolved 2,786ms → 約 253ms、推薦実行は 504 解消・パイプライン約 1.0s（hard timeout 4,000ms に約 3s の余裕）"
+  - "B（session COMMIT 削減）と C（config キャッシュ）は Human 決定により別 Task とし、上記実測により Backlog へ後回し。カタログ大規模化や config_resolved 再悪化時に再評価する"
+  - "リージョン移行により MOD-RECO-005 の scaffold 起因の GRS-REC-005 が露出したが、Epic #1753 / PR #1770・#1771 で解消済み（本 Epic の scope 外）"
+  - "hard timeout 値の正本不整合（コード 4,000ms / docs 8,000ms）は本 Epic の out of scope。Issue #1748 で Human 判断待ち"
