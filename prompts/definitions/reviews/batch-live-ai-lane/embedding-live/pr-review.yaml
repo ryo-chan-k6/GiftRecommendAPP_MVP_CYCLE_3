@@ -4,7 +4,7 @@ definition_type: "review"
 review:
   id: "review-batch-live-ai-lane-embedding-live-pr"
   title: "batch-live-ai-lane BATCH-015 Embedding live PRレビュー"
-  summary: "Epic #1768 子Task（BATCH-015 Embedding live切替実装）の PR を AI Review する。Issue番号は起票後に反映。"
+  summary: "Epic #1768 Task #1776（BATCH-015 Embedding live切替実装）の PR を AI Review する。"
   type: "task_pr_review"
   status: "ready"
 
@@ -17,11 +17,11 @@ target:
   pr:
     number: null
   issue:
-    number: null
+    number: 1776
   task_definition: "prompts/definitions/tasks/batch-live-ai-lane/embedding-live.yaml"
   parent_epic_issue: "[Epic]batch-live-ai-lane:BATCH-015 Embedding live切替"
   parent_epic_branch: "feature/epic-1768-batch-live-ai-lane"
-  source_branch: null
+  source_branch: "feature/task-1776-embedding-live"
   target_branch: "feature/epic-1768-batch-live-ai-lane"
 
 commands:
@@ -58,7 +58,8 @@ review_points:
   - "Review Definition が PR head に含まれているか"
 
 notes:
-  - "Issue番号・source_branch は Task 起票・Branch作成後に埋める。pr.number は PR 作成後に埋める"
+  - "Issue: #1776。pr.number は PR 作成後に埋める"
+  - "Branch: feature/task-1776-embedding-live → feature/epic-1768-batch-live-ai-lane"
   - "contract_gate不要（generated想定なし）"
   - "Test + security + CI/CD 観点を必須とする"
   - "Human Review / merge判断は ryo-chan-k6"

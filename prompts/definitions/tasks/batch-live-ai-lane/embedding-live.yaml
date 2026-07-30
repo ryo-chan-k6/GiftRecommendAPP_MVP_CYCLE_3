@@ -202,7 +202,7 @@ acceptance_criteria:
 
 branch:
   no_branch: false
-  name: "feature/task-PENDING-embedding-live"
+  name: "feature/task-1776-embedding-live"
   summary: "embedding-live"
   base: "feature/epic-1768-batch-live-ai-lane"
   target: "feature/epic-1768-batch-live-ai-lane"
@@ -221,7 +221,7 @@ issue:
   unit: "task"
   type: "feature"
   area: "batch"
-  number: null
+  number: 1776
 
 dependencies:
   epics:
@@ -340,7 +340,9 @@ operation_logging:
   reason: "通常はIssue/PR管理。依存ゲート・security・横断影響時のみai-logs。secret実値は記録しない"
 
 notes:
-  - "Issue番号 / Branch名は起票後に本ファイルへ反映する"
+  - "Issue: #1776"
+  - "Branch: feature/task-1776-embedding-live"
+  - "worktree: /home/ryo-c/GitHub/GiftRecommendAPP_MVP_CYCLE_3_worktrees/feature-task-1776-embedding-live"
   - "AI Review 3点セット: Review Definition を /create-pr 前に PR head へ含める"
   - "Umbrella #1745 は formal parent ではない"
   - "/work-issue は依存ゲート解除まで開始不可（本セットアップでは実装しない）"

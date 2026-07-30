@@ -188,7 +188,7 @@ output:
 
 deliverables:
   - "Epic Issue #1768 / Branch feature/epic-1768-batch-live-ai-lane"
-  - "単一子Task（embedding-live）Issue / Branch / Review Definition"
+  - "単一子Task #1776（embedding-live）Issue / Branch feature/task-1776-embedding-live / Review Definition"
   - "BATCH-015 GHA stg live化（明示liveのみ）"
   - "unit test / YAML検証 / secret check"
   - "stg 1件 manual live検証結果docs（secretなし）"
@@ -332,6 +332,7 @@ operation_logging:
 notes:
   - "Epic Issue: #1768"
   - "Epic Branch: feature/epic-1768-batch-live-ai-lane（develop起点）"
+  - "子Task Issue: #1776 / Branch: feature/task-1776-embedding-live"
   - "機能・領域単位Epic（例外）。識別子単位の BATCH-015 Epic（#1479）とは別レーン"
   - "統括#1745はformal parentではない"
   - "子Task起票後も /work-issue は #1750 develop merge + develop取り込み完了まで禁止"
