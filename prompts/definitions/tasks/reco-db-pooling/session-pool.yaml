@@ -1,0 +1,282 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-db-pooling-session"
+  title: "reco-db-pooling-session:PostgresDatabaseSession接続プール実装"
+  summary: "PostgresDatabaseSession の query / execute が毎回 psycopg.connect() している構造をコネクションプール経由に変更し、推薦パイプラインを hard timeout 内に収める。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-db-pooling"
+  epic_issue: "[Epic]reco-db-pooling:Reco DB接続プール導入"
+  epic_issue_number: 1737
+  epic_branch: "refactor/epic-1737-reco-db-pooling"
+  related_issues:
+    - 1738
+    - 1737
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  apps/reco/src/reco/infrastructure/db/session.py の PostgresDatabaseSession は、
+  query() / execute() の内部で毎回 psycopg.connect() している。
+  コネクションプールがないため、DB アクセス 1 回ごとに TCP 接続・TLS ハンドシェイク・
+  Postgres 認証が発生する。
+
+  stg 実測:
+  - Reco 401（DB probe に到達しない）: 約 0.07s
+  - Reco health（SELECT 1）: 約 0.76s
+  - API health（DB なし）: 約 0.17s
+  - API masters/relationships（1 クエリ）: 約 1.10s
+  - API masters/occasions（1 クエリ）: 約 1.26s
+
+  DB アクセス 1 回あたり約 0.7〜1.1 秒。Orchestrator は 21 モジュールを順に実行し、
+  その多くが DB を参照するため PIPELINE_HARD_TIMEOUT_MS = 4_000 を超過する。
+  結果としてレコメンド実行が GRS-REC-101 / HTTP 504 で失敗し、
+  phase_log（owner_type = recommendation_run）にも 1 行も記録されない。
+
+  build_production_ports() では単一の session インスタンスを全リポジトリで共有しているため、
+  PostgresDatabaseSession 内でプール化すれば全モジュールに効く。
+
+objective: |
+  PostgresDatabaseSession の DB アクセスをコネクションプール経由にし、
+  2 回目以降の DB アクセスから接続確立コストを排除する。
+
+scope:
+  - "apps/reco/src/reco/infrastructure/db/session.py のプール導入"
+  - "プールサイズ・タイムアウトの設定値化"
+  - "プールのライフサイクル管理（生成・クローズ）"
+  - "psycopg-pool の依存追加"
+  - "DatabaseSession Protocol 互換の維持"
+  - "unit test の追加・修正"
+  - "Task Definition / Review Definition の配置"
+
+out_of_scope:
+  - "PIPELINE_SOFT_TIMEOUT_MS / PIPELINE_HARD_TIMEOUT_MS の値変更"
+  - "apps/api 側の同種問題（masters で 1 クエリ約 1 秒）"
+  - "Fly コールドスタート対策（min_machines_running / RECO_REQUEST_TIMEOUT_MS）"
+  - "Supabase / Render / Fly のリージョン再配置"
+  - "推薦ロジック・スコアリングの変更"
+  - "個別リポジトリ実装（Postgres*Repository）の SQL 変更"
+  - "DB スキーマ・migration の変更"
+  - "secret 実値の取り扱い"
+
+input:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+      purpose: "変更対象"
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+      purpose: "session の共有範囲"
+    - path: "apps/reco/src/reco/api/routes/health.py"
+      required: true
+      purpose: "health が独自に PostgresDatabaseSession を生成している"
+    - path: "apps/reco/src/reco/api/main.py"
+      required: true
+      purpose: "lifespan とプールのライフサイクル整合"
+    - path: "apps/reco/tests/unit/infrastructure/db/test_session.py"
+      required: true
+      purpose: "既存 unit test"
+    - path: "apps/reco/pyproject.toml"
+      required: true
+      purpose: "依存追加"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+      purpose: "設定値を環境変数化する場合の正本"
+
+output:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/__init__.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/api/dependencies.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/api/main.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/api/routes/health.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/pyproject.toml"
+      action: "update"
+      required: true
+    - path: "apps/reco/uv.lock"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/reco-db-pooling/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/reco-db-pooling/session-pool.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/reco-db-pooling/session-pool/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/reco-db-pooling/epic/pr-review.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "apps/reco/tests/unit/infrastructure/db/test_session.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/api/test_health.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/unit/infrastructure/db/conftest.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/tests/integration/conftest.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "プール経由の PostgresDatabaseSession"
+  - "プール設定値（サイズ・タイムアウト）"
+  - "unit test"
+
+acceptance_criteria:
+  - "PostgresDatabaseSession がプール経由でクエリを実行する"
+  - "DatabaseSession Protocol のシグネチャが変わっていない"
+  - "ScaffoldDatabaseSession / create_database_session の既存挙動が変わっていない"
+  - "プールサイズ・タイムアウトが設定値として外から与えられる"
+  - "apps/reco unit test が通る"
+  - "PIPELINE_HARD_TIMEOUT_MS を変更していない"
+  - "secret 実値を含まない"
+  - "Related to #1738、PR target が refactor/epic-1737-reco-db-pooling"
+
+branch:
+  no_branch: false
+  summary: "reco-db-pooling-session"
+  base: "refactor/epic-1737-reco-db-pooling"
+  target: "refactor/epic-1737-reco-db-pooling"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "refactor"
+  area: "reco"
+
+dependencies:
+  epics:
+    - id: "epic-reco-db-pooling"
+      purpose: "親 Epic #1737"
+  issues:
+    - number: 1737
+      purpose: "親 Epic"
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/reco/src/reco/infrastructure/db/session.py"
+    - "apps/reco/pyproject.toml"
+    - "apps/reco/tests/unit/infrastructure/db/test_session.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco unit test"
+    - "lint / type check"
+    - "secret check"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit -q"
+  not_required:
+    - "stg 実測での hard timeout 内完走"
+    - "integration test（実 DB 接続）"
+  skip_reason:
+    "stg 実測での hard timeout 内完走": "Human によるデプロイ後の確認が必要。確認手順を PR 本文に記載する"
+    "integration test（実 DB 接続）": "stg / local DB の準備が前提のため別途"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "プールのライフサイクルが FastAPI の起動・終了と整合しているか"
+    - "プールサイズが Fly の 512MB / shared CPU 1 に対して過大でないか"
+    - "DatabaseSession Protocol の互換が保たれているか"
+    - "例外時に接続がプールへ返却されるか"
+    - "DatabaseError へのラップが維持されているか"
+    - "mask_database_url によるログのマスクが維持されているか"
+    - "secret 実値がないか"
+    - "Related to #1738、PR target が親 Epic Branch か"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+human_decision_points:
+  - "本番運用に向けた性能要件の再確認を別途行うか（本 Task では未確定）"
+
+notes:
+  - "health.py が独自に PostgresDatabaseSession を生成している点に注意 → 本 Task で app.state.database_session 共有に変更"
+  - "apps/reco の依存は psycopg[binary]>=3.2.0。psycopg-pool は別パッケージとして追加する"
+  - |
+    Human 決定（2026-07-30 / #1737・#1738）:
+    - ライブラリ: psycopg_pool.ConnectionPool
+    - ライフサイクル: PostgresDatabaseSession がプール所有。open()/close()。lifespan で open/close
+    - health: app.state.database_session 共有
+    - プールサイズ: min_size=1, max_size=2（コード定数）
+    - PIPELINE_*_TIMEOUT_MS は変更しない
+  - |
+    Human 決定（2026-07-30 / PR #1741 AI Review 指摘対応・案A）:
+    - タイムアウトも設定値化する
+    - timeout（接続取得待ち）既定 2.0 秒。PIPELINE_HARD_TIMEOUT_MS = 4,000ms 内に収めるため psycopg_pool 既定の 30 秒から短縮
+    - open_timeout（起動時ウォームアップ上限）既定 5.0 秒。DB 到達不能時に lifespan を止めない（open 失敗は握りつぶし、以降の query が DatabaseError になる）
+    - いずれも PostgresDatabaseSession / create_database_session の引数で上書き可能。環境変数化は本 Task では行わない
+
+stop_conditions:
+  - "PIPELINE_HARD_TIMEOUT_MS の変更が必要と判断された場合"
+  - "プール導入だけでは 4,000ms 以内に収まらないと判明した場合"
+  - "DB スキーマ変更が必要になった場合"
+  - "DatabaseSession Protocol の破壊的変更が必要になった場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "Reco 内部のDB接続ライフサイクル変更であり、通常のIssue / PRで管理する"

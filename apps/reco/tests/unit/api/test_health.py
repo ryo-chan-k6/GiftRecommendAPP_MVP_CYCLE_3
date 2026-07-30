@@ -82,6 +82,18 @@ def test_health_ok(client: TestClient) -> None:
     assert get_health_metric_count("ok") == 1
 
 
+def test_health_probes_shared_lifespan_session(client: TestClient) -> None:
+    with patch(
+        "reco.api.routes.health._probe_database",
+        return_value=True,
+    ) as probe:
+        response = client.get(_HEALTH_PATH, headers=_health_headers())
+
+    assert response.status_code == 200
+    shared_session = probe.call_args.args[0]
+    assert shared_session.backend == "scaffold"
+
+
 def test_health_missing_api_key(client: TestClient) -> None:
     response = client.get(_HEALTH_PATH, headers=_health_headers(include_api_key=False))
     assert response.status_code == 401

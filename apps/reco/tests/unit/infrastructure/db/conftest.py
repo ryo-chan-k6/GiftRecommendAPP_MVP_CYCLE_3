@@ -34,7 +34,12 @@ def postgres_session(database_url: str | None):
     from reco.infrastructure.db.session import PostgresDatabaseSession
 
     session = PostgresDatabaseSession(database_url=database_url)
+    session.open()
     health = session.health_check()
     if not health.is_available:
+        session.close()
         pytest.skip("DATABASE_URL is set but PostgreSQL is unreachable")
-    return session
+    try:
+        yield session
+    finally:
+        session.close()
