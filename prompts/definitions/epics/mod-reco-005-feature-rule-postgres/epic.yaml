@@ -1,0 +1,266 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-mod-reco-005-feature-rule-postgres"
+  title: "MOD-RECO-005:Feature Rule Postgres読み取り"
+  summary: "MOD-RECO-005 の FeatureRuleRepositoryPort を InMemory scaffold から Postgres へ配線し、relationship_rule / occasion_rule / pair_rule の全 master を production composition で参照できるようにする。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  stg 実測（2026-07-30）で推薦実行が GRS-REC-005 で失敗した。
+  error_log の実レコードは以下である。
+
+    error_code        : GRS-REC-005
+    error_message     : relationship_rule not found: spouse
+    error_detail_json : {"phase_name": "user_feature_generated",
+                         "source_module_id": "MOD-RECO-005"}
+
+  apps/reco/src/reco/composition/builder.py の build_production_ports は
+  build_default_stub_ports() を起点に一部のポートのみ Postgres 実装へ置換しており、
+  MOD-RECO-005 の FeatureRuleRepositoryPort は InMemoryFeatureRuleRepository のまま残っている。
+
+  scaffold が保持する code は以下に限られる（Featureルール定義書の代表値のみ）。
+
+    relationship : lover / boss / friend_casual / other（4 種）
+    occasion     : birthday / thanks / other（3 種）
+
+  一方 stg DB には master が正しく seed 済みである（初期データ定義書 §7 の期待値と一致）。
+
+    relationship_master 12 / occasion_master 15 / pair_master 180
+    relationship_rule 96 / occasion_rule 120 / pair_rule 112
+    semantic_config_version_id = a1111111-1111-4111-8111-111111111102
+
+  semantic_config_version_id は DB 値と scaffold 既定値が一致しており、version 不整合ではない。
+  scaffold に存在しない code（例: spouse）が選択されると
+  get_relationship_features() が None を返し ExternalFeatureEstimateError となる。
+
+  本件は Epic #1747（Supabase stg 東京リージョン移行）で config_resolved が
+  2,786ms から 203ms へ改善し、パイプラインが MOD-RECO-005 まで到達したことで露出した。
+  リージョン移行の副作用ではなく、Postgres repository 未実装が原因である。
+
+objective: |
+  FeatureRuleRepositoryPort の Postgres 実装を追加し、build_production_ports へ注入する。
+  DEFAULT composition の InMemory 実装は維持し、production では DB の全 master を参照できる状態にする。
+
+scope:
+  - "Epic Issue / Branch（develop 起点）"
+  - "子 Task（implementation）"
+  - "PostgresFeatureRuleRepository（relationship_rule / occasion_rule / pair_rule / feature_integration_rule 読み取り）"
+  - "build_production_ports への注入"
+  - "unit test 追加・更新"
+
+out_of_scope:
+  - "OpenAPI / Orval / generated 変更"
+  - "supabase/migrations / supabase/seeds の変更"
+  - "MOD-RECO-006 / 008 / 009 の Postgres 化（scaffold 残存の是正は別途判断）"
+  - "DEFAULT composition の InMemory 実装廃止"
+  - "apps/api / apps/web / apps/batch の変更"
+  - "Featureルール定義書の値そのものの見直し"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-005_External Condition Feature Estimatorモジュール仕様書.md"
+      required: true
+      purpose: "モジュール責務・I/F の正本"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "読み取り対象の列制約"
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      required: true
+      purpose: "読み取り対象の列制約"
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+      purpose: "読み取り対象の列制約"
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+      purpose: "統合 weight の正本（現状 0 行）"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "Feature 値・Pair delta の論理正本"
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: false
+      purpose: "seed 済み master の期待行数"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+      purpose: "production 注入箇所"
+    - path: "apps/reco/src/reco/application/external-condition-feature-estimator/ports.py"
+      required: true
+      purpose: "実装対象 Port 定義"
+    - path: "apps/reco/src/reco/application/external-condition-feature-estimator/in_memory_repository.py"
+      required: true
+      purpose: "DEFAULT 実装（維持対象）"
+  issues:
+    - number: 805
+      purpose: "MOD-RECO-005 本体 Epic（モジュール実装元）"
+    - number: 1747
+      purpose: "本件が露出した契機（Supabase stg 東京リージョン移行）"
+  prs: []
+
+output:
+  docs: []
+  files: []
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue / Branch"
+  - "子 Task（implementation）"
+  - "epic_scope.allowed_paths"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が作成されている"
+  - "Branch base / PR target が develop である"
+  - "子 Task PR target が親 Epic Branch である"
+  - "allowed_paths が reco composition / infrastructure repositories / MOD-RECO-005 に整合している"
+  - "DEFAULT composition の InMemory 実装を廃止しない方針が明記されている"
+
+branch:
+  no_branch: false
+  summary: "mod-reco-005-feature-rule-postgres"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "feature"
+  area: "reco"
+
+epic_scope:
+  artifact_id: "MOD-RECO-005"
+  allowed_paths:
+    - "apps/reco/src/reco/composition/**"
+    - "apps/reco/src/reco/infrastructure/db/repositories/**"
+    - "apps/reco/src/reco/application/external-condition-feature-estimator/**"
+    - "apps/reco/tests/unit/composition/**"
+    - "apps/reco/tests/unit/infrastructure/**"
+    - "apps/reco/tests/unit/application/external-condition-feature-estimator/**"
+    - "prompts/definitions/epics/mod-reco-005-feature-rule-postgres/**"
+    - "prompts/definitions/tasks/mod-reco-005-feature-rule-postgres/**"
+    - "prompts/definitions/reviews/mod-reco-005-feature-rule-postgres/**"
+  forbidden_paths:
+    - "packages/contracts/openapi/**"
+    - "supabase/migrations/**"
+    - "supabase/seeds/**"
+    - "apps/api/**"
+    - "apps/web/**"
+    - "apps/batch/**"
+  child_task_areas:
+    - "implementation"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 805
+      purpose: "MOD-RECO-005 モジュール本体（develop merge 済み）"
+    - number: 1747
+      purpose: "リージョン移行により本件が露出"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/composition/builder.py"
+    - "apps/reco/src/reco/application/external-condition-feature-estimator/ports.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+  commands:
+    - "pnpm --filter @gift-recommendation/reco test"
+  manual_checks:
+    - "stg で scaffold 未収録の code（例: spouse × wedding_gift）を指定しても MOD-RECO-005 を通過すること"
+  not_required:
+    - "e2e"
+  skip_reason:
+    "e2e": "本 Epic は reco composition / repository 配線範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "DEFAULT composition の InMemory 実装が維持されているか"
+    - "semantic_config_version_id / is_active による絞り込みが正しいか"
+    - "8 Feature 欠損時の扱いが ensure_complete_feature_vector と整合しているか"
+    - "pair_rule 未定義時に全ゼロ delta となる既存仕様が維持されているか"
+    - "feature_integration_rule が 0 行のときのフォールバックが明示されているか"
+    - "migration / seed / OpenAPI 変更が混入していないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "reco composition の Postgres 配線。通常の Issue / PR で管理する"
+
+risk_points:
+  - "feature_integration_rule が 0 行のため get_integration_weights のフォールバックが必要"
+  - "1 リクエストあたりの DB 往復増加（relationship / occasion / pair / weights）。Epic #1747 実測では 1 クエリ約 15ms"
+  - "MOD-RECO-006 / 008 / 009 も scaffold 残存の可能性があり、本 Epic 完了後に別の失敗が露出しうる"
+
+human_decision_points:
+  - "feature_integration_rule 0 行時の weight 方針（既定値フォールバック継続 / seed 追加のいずれか）"
+  - "MOD-RECO-006 / 008 / 009 の scaffold 残存是正を本 Epic に含めるか別 Epic にするか"
+
+stop_conditions:
+  - "relationship_rule / occasion_rule / pair_rule の列定義が実 DB と テーブル定義書で矛盾する場合"
+  - "8 Feature を満たさない master 行が存在し、値の補完方針に業務判断が必要な場合"
+  - "migration または seed の変更が必要になった場合"
+
+notes:
+  - "Issue タイトル: [Epic]MOD-RECO-005:Feature Rule Postgres読み取り"
+  - "MOD-RECO-023 の Postgres 永続 Epic（#1412）と同型の配線 Epic"
+  - "Epic は作業管理単位。成果物正本は子 Task で作成する"
+  - "回避策: scaffold 収録 code（relationship: lover / boss / friend_casual / other、occasion: birthday / thanks / other）でのみ stg 疎通可能"

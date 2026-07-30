@@ -1,0 +1,122 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-mod-reco-005-feature-rule-postgres-implementation-pr"
+  title: "MOD-RECO-005 Feature Rule Postgres読み取り実装 PRレビュー"
+  summary: "Feature Rule Postgres 読み取り実装 Task PR を AI Review する"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: 1770
+  issue: 1769
+  task_definition: "prompts/definitions/tasks/mod-reco-005-feature-rule-postgres/implementation.yaml"
+  source_branch: "feature/task-1769-mod-reco-005-feature-rule-postgres-implementation"
+  target_branch: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
+  parent_epic_issue: "[Epic]MOD-RECO-005:Feature Rule Postgres読み取り"
+  parent_epic_branch: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: null
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/mod-reco-005-feature-rule-postgres/implementation.yaml"
+    required: true
+  issue:
+    number: 1769
+    required: true
+  pr:
+    number: 1770
+    required: true
+  diff:
+    required: true
+    compare_with: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
+  docs:
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch（feature/epic-1753-mod-reco-005-feature-rule-postgres）か"
+    - "Related to（Closes 禁止）か"
+  source:
+    - "PostgresFeatureRuleRepository が FeatureRuleRepositoryPort を満たすか"
+    - "production のみ Postgres、DEFAULT は InMemory か"
+    - "semantic_config_version_id / is_active 絞り込みが正しいか"
+    - "pair_rule 未定義時に None、integration 0 行時に DEFAULT フォールバックか"
+    - "migration / seed / OpenAPI 変更がないか"
+  tests:
+    - "repository / composition UT があるか"
+  security:
+    - "secret / .env 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "Task Issue / PR 作成後に target.pr / target.issue / input.*.number / source_branch / status を更新する"
+  - "status は起票・PR 作成後に ready へ更新する"
