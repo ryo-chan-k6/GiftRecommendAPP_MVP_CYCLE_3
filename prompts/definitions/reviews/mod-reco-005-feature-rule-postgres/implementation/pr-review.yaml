@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1770
   issue: 1769
   task_definition: "prompts/definitions/tasks/mod-reco-005-feature-rule-postgres/implementation.yaml"
   source_branch: "feature/task-1769-mod-reco-005-feature-rule-postgres-implementation"
@@ -69,7 +69,7 @@ input:
     number: 1769
     required: true
   pr:
-    number: null
+    number: 1770
     required: true
   diff:
     required: true
