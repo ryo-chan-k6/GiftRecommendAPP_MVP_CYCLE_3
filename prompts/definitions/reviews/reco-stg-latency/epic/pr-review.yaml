@@ -1,0 +1,116 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-stg-latency-epic-pr"
+  title: "reco-stg-latency:Reco stgレイテンシ改善 Epic PRレビュー"
+  summary: "Reco stg レイテンシ改善 Epic の develop 向け PR を AI Review する。差分は Definition と簡易stg構築手順の更新（P9）が中心。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1747
+  epic_definition: "prompts/definitions/epics/reco-stg-latency/epic.yaml"
+  source_branch: "fix/epic-1747-reco-stg-latency"
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/reco-stg-latency/epic.yaml"
+    required: true
+  issue:
+    number: 1747
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      required: true
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  - "子 Task #1773 / PR #1774 の成果が Epic Branch に統合されているか"
+  - "epic_scope.allowed_paths 外の変更が含まれていないか"
+  - "forbidden_paths（recommendation-orchestrator/constants.py / apps/api / packages/contracts）の変更がないか"
+  - "簡易stg構築手順に東京リージョン前提（§4.1）と移行手順（§6.10）が反映されているか"
+  - "acceptance_criteria が B/C Backlog 決定と整合しているか"
+  - "session-commit / config-cache が Backlog（未着手）であり、Backlog 理由が各 Definition に記録されているか"
+  - "PIPELINE_HARD_TIMEOUT_MS など timeout 値の変更が含まれていないか"
+  - "apps ソース / migration / seed / OpenAPI / generated 変更が混入していないか"
+  - "PR target が develop か、Closes #1747 か"
+  - "secret / .env 実値・接続文字列・project-ref がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消、または Human 判断待ちとして明示される"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR 番号確定後に target.pr / input.pr.number を更新する"
+  - "インフラ移行（P1〜P8）と stg 実測は Human 実施済み。本 Epic の差分は Definition と手順書更新が中心"
+  - "session-commit / config-cache は Backlog。本 Cycle では未着手であり Epic 完了を妨げない"
