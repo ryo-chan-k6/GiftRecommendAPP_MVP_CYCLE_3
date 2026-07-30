@@ -15,7 +15,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1760
   issue: 1756
   epic_definition: "prompts/definitions/epics/feature-integration-rule-seed/epic.yaml"
   source_branch: "feature/epic-1756-feature-integration-rule-seed"
@@ -66,7 +66,7 @@ input:
     number: 1756
     required: true
   pr:
-    number: null
+    number: 1760
     required: true
   diff:
     required: true
