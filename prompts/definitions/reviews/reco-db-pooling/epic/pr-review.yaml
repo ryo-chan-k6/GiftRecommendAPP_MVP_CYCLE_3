@@ -16,7 +16,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1744
   issue:
     number: 1737
   epic_definition: "prompts/definitions/epics/reco-db-pooling/epic.yaml"
