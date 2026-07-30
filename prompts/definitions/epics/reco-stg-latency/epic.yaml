@@ -1,0 +1,197 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-stg-latency"
+  title: "reco-stg-latency:Reco stgレイテンシ改善"
+  summary: "接続プール導入後も推薦実行が GRS-REC-101 / HTTP 504 になる。主因は Supabase stg（ap-southeast-1）と Fly（NRT）のリージョン差によるクエリ往復レイテンシ。リージョン移行とコード側のDB往復削減で恒久対応する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - 144
+    - 1686
+    - 1737
+  related_prs:
+    - 1744
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  接続プール導入 Epic #1737 / PR #1744 は develop に merge 済み。
+  プール化により Reco health は 0.76〜0.82s → 約 0.27s に短縮し、
+  接続確立コストは排除された。
+
+  しかし stg 実測で推薦実行は依然 GRS-REC-101 / HTTP 504 になる。
+
+  切り分け結果（事実）:
+  - phase_log（owner_type = recommendation_run）に request_received/started と
+    config_resolved/succeeded の 2 行のみ記録される
+  - MOD-RECO-003（config resolver）と MOD-RECO-002（run recorder）完了後、
+    MOD-RECO-004 開始時の hard timeout チェックで GRS-REC-101 を送出している
+  - config_resolved の duration_ms は 2,786ms。MOD-RECO-003 の 13 SELECT で
+    1 クエリあたり約 214ms
+  - Supabase stg は ap-southeast-1（シンガポール）、Fly は NRT（東京）
+  - health（SELECT 1 相当）が約 0.27s であることと整合し、
+    1 クエリ約 214ms はリージョン差によるネットワーク往復が主因（推論）
+
+  推薦 1 回のパイプライン全体では 50〜80 回の DB 往復が必要なため、
+  1 往復 200ms 級では 4,000ms 内完走は不可能。
+  リージョンを揃えれば 1 往復が数十 ms 級となり、4,000ms 内完走が見込める。
+
+objective: |
+  Supabase stg を Fly と同一リージョン（東京 / ap-northeast-1）へ移行し、
+  あわせてコード側の DB 往復を削減することで、
+  stg で推薦実行が hard timeout 内に完走し 504 にならない状態にする。
+
+scope:
+  - "Supabase stg を東京リージョンへ再作成し migration / master seed を再投入する（Human-Led Task）"
+  - "移行手順を簡易stg構築手順へ反映する"
+  - "PostgresDatabaseSession の読み取りクエリにおける COMMIT 往復削減（AI Task）"
+  - "MOD-RECO-003 config resolver のマスタ参照キャッシュ化（AI Task）"
+  - "子 Task の起票・完了追跡"
+
+out_of_scope:
+  - "PIPELINE_SOFT_TIMEOUT_MS / PIPELINE_HARD_TIMEOUT_MS の値変更（別 Issue）"
+  - "apps/api 側の同種問題（masters で 1 クエリ約 1 秒）"
+  - "推薦ロジック・スコアリングの変更"
+  - "DB スキーマ・migration 内容の変更（seed 再投入は移行手順の一部として実施）"
+  - "本番（prod）環境のリージョン設計"
+  - "secret 実値の取り扱い"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "apps/reco/src/reco/infrastructure/db/**"
+    - "apps/reco/src/reco/application/config-version-resolver/**"
+    - "apps/reco/tests/**"
+    - "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+    - "infra/**"
+    - "prompts/definitions/epics/reco-stg-latency/**"
+    - "prompts/definitions/tasks/reco-stg-latency/**"
+    - "prompts/definitions/reviews/reco-stg-latency/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+    - "apps/api/**"
+    - "packages/contracts/**"
+  child_task_areas:
+    - "reco-stg-latency-region-migration"
+    - "reco-stg-latency-session-commit"
+    - "reco-stg-latency-config-cache"
+
+dependencies:
+  epics:
+    - id: "epic-reco-db-pooling"
+      purpose: "接続プール導入（#1737 / PR #1744、merge 済み）を前提とする"
+  issues:
+    - number: 144
+      purpose: "上位親（リリース準備）"
+  blocking: false
+
+child_tasks:
+  - "reco-stg-latency-region-migration: Supabase stg 東京リージョン移行と手順書更新（Human-Led）"
+  - "reco-stg-latency-session-commit: PostgresDatabaseSession の読み取りクエリ COMMIT 往復削減"
+  - "reco-stg-latency-config-cache: MOD-RECO-003 config resolver マスタ参照キャッシュ化"
+
+input:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+      purpose: "接続・トランザクション方式の現状"
+    - path: "apps/reco/src/reco/application/config-version-resolver/resolver.py"
+      required: true
+      purpose: "マスタ参照 13 SELECT の発行元"
+    - path: "apps/reco/src/reco/application/config-version-resolver/postgres_repository.py"
+      required: true
+      purpose: "config 参照 SQL"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+      required: true
+      purpose: "hard timeout の値（変更しない）"
+  docs:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+      purpose: "stg 構築・DB 準備手順の正本"
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      required: true
+      purpose: "プロバイダ・リージョン方針の正本"
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/性能要件（バックエンド）.md"
+      required: true
+      purpose: "性能目標（soft/hard timeout）の正本"
+
+acceptance_criteria:
+  - "子 Task がすべて完了している"
+  - "Supabase stg が Fly と同一リージョン（東京 / ap-northeast-1）で稼働している"
+  - "stg で POST /api/v1/recommendations が 504 にならず結果が返る"
+  - "phase_log（owner_type = recommendation_run）が response_built まで記録される"
+  - "PIPELINE_HARD_TIMEOUT_MS を変更していない"
+  - "移行手順が簡易stg構築手順へ反映されている"
+
+branch:
+  no_branch: false
+  summary: "reco-stg-latency"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "epic"
+  type: "fix"
+  area: "reco"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "リージョン移行とコード改善で 504 が解消したか（stg 実測）"
+    - "DatabaseSession の読み取り COMMIT 削減が正常系・異常系で安全か"
+    - "config キャッシュの無効化・鮮度が config version 切替と整合するか"
+    - "out_of_scope（timeout 値・api 側・prod）が混入していないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+human_decision_points:
+  - "Supabase stg 東京リージョンへの再作成（既存 stg プロジェクト廃止）を実施してよいか"
+  - "DATABASE_URL 差し替え（Render / Fly / 必要なら GitHub Secrets）のタイミング"
+  - "config キャッシュの TTL / 無効化方式（プロセス内固定 vs TTL）"
+
+stop_conditions:
+  - "リージョン移行とコード改善を行っても 4,000ms 以内に収まらないと判明した場合"
+  - "DB スキーマ変更が必要になった場合"
+  - "PIPELINE_HARD_TIMEOUT_MS の変更が必要と判断された場合（別 Issue へ）"
+  - "prod 環境への影響が避けられないと判明した場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "Reco stg のレイテンシ改善であり、通常の Issue / PR で管理する。リージョン移行の実測メモが必要な場合のみ experiments を検討"
+
+notes:
+  - "接続プール導入 Epic #1737 / PR #1744 は merge 済み。本 Epic はその後続"
+  - "1 クエリ約 214ms は config_resolved duration_ms 2,786ms ÷ 13 SELECT の実測に基づく"
+  - "B（session COMMIT 削減）と C（config キャッシュ）は Human 決定により別 Task とする"
+  - "Task A（リージョン移行）は Human-Led。手順書更新を含む"
+  - "hard timeout 値の正本不整合（コード 4,000ms / docs 8,000ms）は本 Epic の out of scope。別 Issue で扱う"

@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-stg-latency-config-cache"
+  title: "reco-stg-latency-config-cache:MOD-RECO-003マスタ参照キャッシュ化"
+  summary: "MOD-RECO-003 Config Version Resolver が推薦 1 回ごとに約 13 SELECT（semantic_config / model_version / matching_config / ranking_config / reason_template 等のマスタ）を発行している。プロセス内キャッシュで往復数を削減する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-stg-latency"
+  epic_issue: "[Epic]reco-stg-latency:Reco stgレイテンシ改善"
+  epic_issue_number: 1747
+  epic_branch: "fix/epic-1747-reco-stg-latency"
+  related_issues:
+    - 1747
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  MOD-RECO-003 Config Version Resolver は default online 経路で約 13 SELECT を
+  発行する（semantic_config / semantic_config_version / feature_definition /
+  model_version ×3 / ranking_config / matching_config /
+  reason_template ×4 の count）。キャッシュは無く毎回 DB へ問い合わせる。
+
+  stg 実測では config_resolved の duration_ms が 2,786ms（1 SELECT 約 214ms）。
+  これらのマスタは推薦実行のたびに変わるものではないため、プロセス内キャッシュで
+  2 回目以降の往復を排除できる。config version 切替時の鮮度確保が論点。
+
+objective: |
+  MOD-RECO-003 のマスタ参照をプロセス内キャッシュ化し、
+  推薦 2 回目以降の config 解決に伴う DB 往復を削減する。
+
+scope:
+  - "config-version-resolver のマスタ参照キャッシュ導入"
+  - "キャッシュの無効化・鮮度方針（TTL または明示無効化）の実装"
+  - "キャッシュ有無を切り替え可能にする（テスト容易性）"
+  - "unit test の追加・修正"
+
+out_of_scope:
+  - "PostgresDatabaseSession のトランザクション方式変更（別 Task）"
+  - "Redis 等の外部キャッシュ基盤導入"
+  - "config スキーマ・マスタ内容の変更"
+  - "PIPELINE_*_TIMEOUT_MS の変更"
+  - "他モジュール（004 以降）のキャッシュ化"
+  - "DB スキーマ・migration 変更"
+
+input:
+  files:
+    - path: "apps/reco/src/reco/application/config-version-resolver/resolver.py"
+      required: true
+      purpose: "マスタ参照の発行元"
+    - path: "apps/reco/src/reco/application/config-version-resolver/postgres_repository.py"
+      required: true
+      purpose: "config 参照 SQL"
+    - path: "apps/reco/src/reco/application/config-version-resolver/constants.py"
+      required: true
+      purpose: "参照対象マスタの定義"
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+      purpose: "resolver の配線"
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-003_Config Version Resolverモジュール仕様書.md"
+      required: false
+      purpose: "モジュール仕様の正本（存在する場合）"
+
+output:
+  files:
+    - path: "apps/reco/src/reco/application/config-version-resolver/resolver.py"
+      action: "update"
+      required: true
+  docs: []
+  tests:
+    - path: "apps/reco/tests/unit/application/config-version-resolver/test_resolver.py"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "マスタ参照キャッシュ付き config resolver"
+  - "キャッシュ無効化・鮮度方針"
+  - "unit test"
+
+acceptance_criteria:
+  - "2 回目以降の config 解決でマスタ参照の DB 往復が削減される"
+  - "config version 切替時にキャッシュが正しく更新/無効化される"
+  - "キャッシュ導入前と同一の config 解決結果になる"
+  - "apps/reco unit test が通る"
+  - "PIPELINE_HARD_TIMEOUT_MS を変更していない"
+  - "Related to #<Task Issue番号>、PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "reco-stg-latency-config-cache"
+  base: "fix/epic-1747-reco-stg-latency"
+  target: "fix/epic-1747-reco-stg-latency"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "reco"
+
+dependencies:
+  epics:
+    - id: "epic-reco-stg-latency"
+      purpose: "親 Epic"
+  issues: []
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/reco/src/reco/application/config-version-resolver/resolver.py"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco unit test"
+    - "secret check"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit -q"
+  not_required:
+    - "stg 実測での hard timeout 内完走"
+    - "integration test（実 DB 接続）"
+  skip_reason:
+    "stg 実測での hard timeout 内完走": "リージョン移行 Task 完了後に Epic として確認する"
+    "integration test（実 DB 接続）": "stg / local DB の準備が前提のため別途"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "キャッシュの鮮度・無効化が config version 切替と整合するか"
+    - "キャッシュ有無で config 解決結果が変わらないか"
+    - "プロセス内キャッシュがマルチワーカー時に問題を起こさないか"
+    - "キャッシュ導入がテスト容易性を損なわないか"
+    - "secret 実値がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+human_decision_points:
+  - "キャッシュの TTL / 明示無効化のどちらを採るか"
+  - "config version 切替の運用頻度と鮮度要件"
+
+notes:
+  - "B（session COMMIT 削減）と C（本 Task）は Human 決定により別 Task"
+  - "test 出力パスは実配置に合わせて調整（required: false）"
+  - "リージョン差が 504 の主因のため、本 Task 単独では 504 を解消しない補助改善"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "Reco config resolver のキャッシュ導入。通常の Issue / PR で管理する"
+
+stop_conditions:
+  - "キャッシュ鮮度が config version 運用と両立しないと判明した場合"
+  - "config 解決結果がキャッシュ有無で変わる場合"

@@ -1,0 +1,196 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-stg-latency-region-migration"
+  title: "reco-stg-latency-region-migration:Supabase stg東京リージョン移行と手順書更新"
+  summary: "Supabase stg を Fly（NRT）と同一リージョンの東京（ap-northeast-1）へ再作成し、migration / master seed を再投入する。移行手順を簡易stg構築手順へ反映する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "human-led"
+
+parent:
+  epic_id: "epic-reco-stg-latency"
+  epic_issue: "[Epic]reco-stg-latency:Reco stgレイテンシ改善"
+  epic_issue_number: 1747
+  epic_branch: "fix/epic-1747-reco-stg-latency"
+  related_issues:
+    - 1747
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Reco 推薦実行が GRS-REC-101 / HTTP 504 になる主因は、Supabase stg
+  （ap-southeast-1 / シンガポール）と Fly（NRT / 東京）のリージョン差による
+  クエリ往復レイテンシ。config_resolved duration_ms 2,786ms ÷ 13 SELECT で
+  1 クエリ約 214ms。health（SELECT 1 相当）約 0.27s とも整合する。
+
+  Supabase はプロジェクト作成後のリージョン変更ができないため、
+  東京リージョンで新規プロジェクトを作り直し、migration / master seed を
+  再投入する。DATABASE_URL を Render / Fly（必要なら GitHub Secrets）で差し替える。
+
+objective: |
+  Supabase stg を東京（ap-northeast-1）へ移行し、Reco / API から同一リージョンの
+  DB へ接続できる状態にする。移行手順を簡易stg構築手順へ反映する。
+
+scope:
+  - "Supabase stg プロジェクトを東京リージョンで新規作成する"
+  - "既存の migration を新プロジェクトへ適用する"
+  - "master seed を再投入する"
+  - "DATABASE_URL を Render / Fly（必要なら GitHub Secrets）へ差し替える"
+  - "旧 stg プロジェクトの扱い（廃止/停止）を決めて実施する"
+  - "移行手順を簡易stg構築手順へ反映する"
+
+out_of_scope:
+  - "prod 環境のリージョン設計・移行"
+  - "DB スキーマ・migration 内容の変更"
+  - "推薦ロジック・コード変更"
+  - "apps/api / apps/reco のソース変更"
+  - "secret 実値の docs / Issue / PR への記載"
+
+input:
+  files:
+    - path: "infra/render/README.md"
+      required: true
+      purpose: "API（Render）env の DATABASE_URL 差し替え先"
+    - path: "infra/fly/README.md"
+      required: true
+      purpose: "Reco（Fly）secret の DATABASE_URL 差し替え先"
+  docs:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+      purpose: "更新対象の正本"
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      required: true
+      purpose: "プロバイダ・リージョン方針"
+
+output:
+  files:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      action: "update"
+      required: true
+  docs:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      action: "update"
+      required: true
+      template: null
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "東京リージョンの Supabase stg（migration / seed 済み）"
+  - "差し替え済み DATABASE_URL（Render / Fly）"
+  - "更新した簡易stg構築手順"
+
+acceptance_criteria:
+  - "Supabase stg が東京（ap-northeast-1）で稼働している"
+  - "Reco health が 200 を返し、応答が従来より短縮している"
+  - "簡易stg構築手順に東京リージョン前提と移行手順が反映されている"
+  - "secret 実値が docs / Issue / PR に含まれない"
+  - "Related to #<Task Issue番号>、PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "reco-stg-latency-region-migration"
+  base: "fix/epic-1747-reco-stg-latency"
+  target: "fix/epic-1747-reco-stg-latency"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "reco"
+
+dependencies:
+  epics:
+    - id: "epic-reco-stg-latency"
+      purpose: "親 Epic"
+  issues: []
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "Reco health 疎通（stg）"
+    - "推薦実行の stg 実測（Task B/C 完了後に Epic として確認）"
+    - "secret check"
+  commands: []
+  not_required:
+    - "apps/reco unit test"
+  skip_reason:
+    "apps/reco unit test": "本 Task はインフラ移行と docs 更新のみでコード変更を含まない"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "東京リージョンで作成されているか"
+    - "migration / seed が漏れなく再投入されているか"
+    - "DATABASE_URL 差し替え先（Render / Fly）が正しいか"
+    - "手順書に移行手順・東京前提が反映されているか"
+    - "secret 実値が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "旧 stg Supabase プロジェクトの廃止可否"
+  - "移行に伴う stg ダウンタイムの許容"
+  - "DATABASE_URL ローテーションの実施主体"
+
+notes:
+  - "Human-Led Task。Supabase プロジェクト作成・secret 差し替えは AI が実行できない"
+  - "blocking: true。本 Task 完了が Epic の stg 実測 AC の前提となる"
+  - "Supabase はリージョン後変更不可のため新規作成が必須"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "stg インフラ移行と手順書更新。通常の Issue / PR で管理する"
+
+stop_conditions:
+  - "移行により prod へ影響が及ぶと判明した場合"
+  - "migration / seed の再投入が既存手順で完結しない場合"
+  - "secret 差し替えに追加権限が必要な場合"
