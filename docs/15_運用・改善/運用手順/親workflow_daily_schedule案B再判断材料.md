@@ -8,7 +8,7 @@
 | 対象 | `batch-daily-orchestrator.yml` の `on.schedule` 有効化（案B）可否判断 |
 | 作成日 | 2026-07-30 |
 | 関連 Epic | [#1732](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1732)（batch-parent-schedule-phase2） |
-| 関連 Task | [#1733](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1733) |
+| 関連 Task | [#1733](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1733) / [#1735](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1735) |
 | 先行 Epic | [#1637](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1637)（案A完了。schedule 無効維持） |
 
 ### 1.1 目的
@@ -35,13 +35,14 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | 案A（schedule 無効維持） | #1637 で完了・merge 済み（PR #1731） | 事実 |
 | daily D1 手動検証 | **PARTIAL**（親 conclusion=failure、失敗は BATCH-017 step） | 事実 |
 | import 連鎖 GHA live（003→…→017） | #1717 で **成功**（Run 30389689202、`item_import` 緑） | 事実 |
-| Slack 失敗通知配線 | #1730 で daily/weekly に配線済み。**実送信は未確認** | 事実 / 未確認 |
+| Slack 失敗通知配線 | #1730 で daily/weekly に配線済み | 事実 |
+| Slack 失敗通知 E2E | #1735 で daily `notify_failure` 発火・GHA 上送信 **PASS**（Run 30506470095）。**channel UI 到達は Human 確認待ち** | 事実 / 未確認 |
 | cron JST 00:30 同期 | docs・YAMLコメントを `30 15`（UTC）へ同期済み。schedule は無効 | 事実 |
 | weekly / manual 親の実ランタイム検証 | **未実施** | 事実 |
 | 楽天API本番 egress（#1607） | GHA では live 楽天禁止。Scaffold 経路のみ | 事実 |
 | meaning 葉（009–015）live | 未実施（#1726 は 017 UUID/ensure まで） | 事実 |
 
-**推奨（推論）:** 案B（daily schedule 有効化）は現時点で**採用せず**、まず §6 の追加検証（Slack E2E・BATCH-017 の PARTIAL 解消確認・weekly/manual D1）を実施してから再判断するのが安全。
+**推奨（推論）:** 案B（daily schedule 有効化）は現時点で**採用せず**、残る high（daily 親 D1 再実行）と Human による Slack UI 確認の後に再判断するのが安全。Slack 失敗通知の GHA 経路は #1735 で確認済み。
 
 ---
 
@@ -101,7 +102,7 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | ---- | ---- | ---- |
 | 楽天API本番 egress | GHA 登録 egress IP 外のため **GHA 上の楽天 live は禁止**。003 は Scaffold。実楽天疎通は local/WSL のみ。固定 egress は [#1607](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1607)（Backlog） | 事実 |
 | Environment `stg` | 各葉 job 実行前に required reviewers による Human 承認が必要 | 事実 |
-| Slack 失敗通知 | #1730 で配線済み。token/channel は Secrets/Variables 参照。**実送信・メンションの動作は未確認** | 事実 / 未確認 |
+| Slack 失敗通知 | #1730 で配線済み。#1735 で daily E2E（GHA 上送信 PASS）。**channel UI 到達・メンション表示は Human 確認待ち** | 事実 / 未確認 |
 | cron 時刻 | JST 00:30 = UTC `30 15`（daily `* * 0-5` / weekly `* * 6`）。docs・YAMLコメント同期済み | 事実 |
 
 ### 5.1 案Bで schedule を有効化した場合の含意（推論）
@@ -118,7 +119,7 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | GitHub Actions 実行時間 | daily cron（月〜土）による親＋葉 workflow の定期起動。承認待ちで停止する場合は実行時間は増えないが、起動試行自体は発生しうる | 推論 |
 | 外部 API 課金 | GHA 上の楽天 live は禁止（#1607 未完了）。現状は Scaffold のため **本番相当の楽天 API 課金は発生しない** | 事実 / 推論 |
 | ストレージ・DB 書込 | Scaffold データの定期取込により DB 行数・ログが増えうる。上限・保持方針の定量評価は未実施 | 推論 / 未確認 |
-| Slack / 通知 | 失敗通知の送信回数は失敗頻度に依存。実送信未確認のためコスト影響も未計測 | 未確認 |
+| Slack / 通知 | 失敗通知の送信回数は失敗頻度に依存。#1735 で経路確認済み。運用コストの定量は未計測 | 事実 / 未確認 |
 | #1607 完了後 | 本番 egress 後に live 取込へ切り替えると外部 API 課金・実行時間が変わりうる。案B採否とは別ゲート | 推論 |
 
 **含意（推論）:** 現状（Scaffold 前提）では外部 API 課金リスクは低い一方、GHA 定期実行と Scaffold データの蓄積コストは残る。金額閾値や許容上限は Human 判断事項とする。
@@ -129,7 +130,7 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 
 | 優先 | 検証 | 目的 | 現状 |
 | ---- | ---- | ---- | ---- |
-| high | Slack 失敗通知 E2E | 失敗時に想定 channel へ通知が届くか | 未実施（#1732 別 Task 候補） |
+| high | Slack 失敗通知 E2E | 失敗時に想定 channel へ通知が届くか | **#1735 実施**（GHA PASS / UI は Human 確認）。詳細: [親workflow_Slack失敗通知E2E結果](./親workflow_Slack失敗通知E2E結果.md) |
 | high | daily 親 D1 再実行 | BATCH-017 PARTIAL の解消を daily 親全体で確認 | 未実施 |
 | medium | weekly / manual 親 D1 相当 | weekly 固有 job（offline_evaluation 等）の実ランタイム確認 | 未実施 |
 | medium | Environment 承認 × schedule 整合 | 無人 cron 時の承認待ち挙動確認 | 未確認 |
@@ -141,11 +142,11 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 
 | 案 | 内容 | メリット | デメリット / リスク |
 | -- | ---- | -------- | ------------------- |
-| **B-0（推奨）** | 当面 schedule 無効のまま。§6 の high 項目（Slack E2E・daily 親 D1 再実行）を先に実施し、結果を見て再判断 | 無人失敗・空集計・承認待ちの露出を避けられる。安全 | daily 定期運用の開始が先送り |
+| **B-0（推奨）** | 当面 schedule 無効のまま。残る high（daily 親 D1 再実行）と Slack UI 確認を先に実施し、結果を見て再判断 | 無人失敗・空集計・承認待ちの露出を避けられる。安全 | daily 定期運用の開始が先送り |
 | **B-1** | §6 完了後に daily schedule のみ有効化（weekly は無効維持） | 設計 §16.2 どおり段階的 | Scaffold 定期取込の意味・監視体制の準備が必要 |
-| **B-2** | 即 daily schedule 有効化 | 早期に定期運用 | D1 PARTIAL 再確認前・Slack 未検証・承認待ち未確認のまま無人化。**非推奨** |
+| **B-2** | 即 daily schedule 有効化 | 早期に定期運用 | D1 PARTIAL 再確認前・承認待ち未確認のまま無人化。**非推奨** |
 
-**推奨（推論）:** **B-0**。案B本採用（B-1）は §6 の high 検証が揃い、Human が「Scaffold データの定期取込を許容」「監視・rollback 準備済み」と判断した後が安全。
+**推奨（推論）:** **B-0**。案B本採用（B-1）は残る high 検証と Human の Slack UI / 監視準備判断の後が安全。
 
 ---
 
@@ -166,7 +167,7 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 
 | 候補 | 種別 | 内容 |
 | ---- | ---- | ---- |
-| Slack 失敗通知 E2E | test / chore | 失敗を意図的に発生させ、通知到達を secret なしで記録 |
+| Slack 失敗通知 E2E | test | **#1735**（本結果反映済み。channel UI は Human 確認） |
 | daily 親 D1 再実行 | test | BATCH-017 PARTIAL 解消を daily 親全体で確認・記録 |
 | weekly / manual D1 相当 | test | weekly 固有 job の実ランタイム検証・記録 |
 | （Human 承認後のみ）daily schedule 有効化 | chore | `on.schedule` コメント解除。別 PR・Human 明示承認必須 |
@@ -189,3 +190,4 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | ---- | ---- |
 | 2026-07-30 | 初版（#1732 / #1733 案B再判断材料） |
 | 2026-07-30 | AI Review対応: §5.2 コスト観点（推論/未確認）を追記 |
+| 2026-07-30 | #1735 Slack失敗通知E2E結果を反映（GHA PASS / UIはHuman確認） |
