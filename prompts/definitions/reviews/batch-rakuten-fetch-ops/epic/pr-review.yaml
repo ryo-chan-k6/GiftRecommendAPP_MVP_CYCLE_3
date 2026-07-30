@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1758
   issue:
     number: 1749
   task_definition: "prompts/definitions/epics/batch-rakuten-fetch-ops/epic.yaml"
@@ -52,5 +52,5 @@ review_points:
 notes:
   - "Epic Issue #1749 / Branch docs/epic-1749-batch-rakuten-fetch-ops"
   - "子Taskは #1752（PR #1754 merged）のみ"
-  - "PR 番号は Epic PR 作成後に target.pr へ反映する"
+  - "Epic PR #1758（base: develop）"
   - "Human Reviewは省略しない"
