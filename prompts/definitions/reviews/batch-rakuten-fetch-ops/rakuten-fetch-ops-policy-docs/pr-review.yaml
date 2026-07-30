@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1754
   issue:
     number: 1752
   parent_epic_issue: 1749
@@ -49,6 +49,8 @@ input:
     required: true
   issue:
     number: 1752
+  pr:
+    number: 1754
 
 review_points:
   - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md が正本として存在するか"
@@ -62,5 +64,5 @@ review_points:
 
 notes:
   - "Issue #1752 / Branch docs/task-1752-rakuten-fetch-ops-policy-docs"
-  - "PR 番号は /create-pr 後に target.pr へ反映する"
+  - "PR #1754（base: docs/epic-1749-batch-rakuten-fetch-ops）"
   - "Human Reviewは省略しない"
