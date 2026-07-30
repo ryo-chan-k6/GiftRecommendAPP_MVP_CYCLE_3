@@ -148,9 +148,7 @@ review:
     security: true
 
 human_decision_points:
-  - "コネクションプールの実装方式（psycopg_pool 採用可否、プールサイズ）"
-  - "Fly の 512MB / shared CPU 1 という VM 制約下で妥当なプールサイズか"
-  - "本番運用に向けた性能要件の再確認を別 Epic とするか"
+  - "本番運用に向けた性能要件の再確認を別 Epic とするか（本 Epic では未確定）"
 
 stop_conditions:
   - "PIPELINE_HARD_TIMEOUT_MS の変更が必要と判断された場合"
@@ -166,3 +164,10 @@ operation_logging:
 notes:
   - "Reco 性能関連の既存 Epic #1512 / #1532 / #1535 / #1544 / #1552 はいずれも CLOSED"
   - "apps/api 側の同種問題は別 Issue 化を検討する"
+  - |
+    Human 決定（2026-07-30）:
+    - ライブラリ: psycopg_pool.ConnectionPool
+    - ライフサイクル: PostgresDatabaseSession がプール所有。open()/close()。lifespan で open/close
+    - health: app.state.database_session 共有
+    - プールサイズ: min_size=1, max_size=2（コード定数）
+    - PIPELINE_*_TIMEOUT_MS は変更しない
