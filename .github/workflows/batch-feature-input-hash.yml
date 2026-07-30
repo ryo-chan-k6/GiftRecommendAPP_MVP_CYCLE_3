@@ -2,12 +2,13 @@ name: Batch Feature Input Hash
 
 # BATCH-011 Feature入力hash算出（独立子 workflow）
 # 正本: BATCH-011 バッチ仕様書 §18.1 No.1 — workflow_call / workflow_dispatch
+# stg live: DB接続は Environment `stg` の STG_DATABASE_URL を使用する
 
 on:
   workflow_call:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -39,7 +40,7 @@ on:
   workflow_dispatch:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -80,6 +81,9 @@ jobs:
   feature-input-hash:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    environment: stg
+    env:
+      DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -102,11 +106,11 @@ jobs:
           if [ -n "$INPUT_ID" ]; then
             echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-011 scaffold demo
-        # Real DB not enabled. Secrets must never be printed.
+      - name: Run BATCH-011 live
+        # Secrets must never be printed.
         # Must NOT write item / item_semantic / item_feature (IF-DB-BATCH-011/013).
         # IF-DB-BATCH-012 is in-memory handoff only in this Task.
         working-directory: apps/batch
@@ -132,7 +136,6 @@ jobs:
             QUEUE_ARGS+=(--queue-ids "${{ inputs.queue_ids }}")
           fi
           uv run python -m batch.application.feature_input_hash \
-            --scaffold-demo \
             --job-run-id "${{ steps.run_id.outputs.value }}" \
             "${MAX_ARGS[@]}" \
             "${SOURCE_ARGS[@]}" \
