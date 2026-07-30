@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from reco.application.config_version_resolver import ProductionConfigRepository
 from reco.application.error_log_writer import ErrorLogWriter
+from reco.application.external_condition_feature_estimator import (
+    InMemoryFeatureRuleRepository,
+)
 from reco.application.metric_logger import MetricLogger
 from reco.application.phase_log_writer import PhaseLogWriter
 from reco.application.reco_error_handler import RecoErrorHandler
@@ -17,13 +21,15 @@ from reco.composition import (
     build_production_ports,
 )
 from reco.composition.observability import build_production_observability_modules
-from reco.application.config_version_resolver import ProductionConfigRepository
 from reco.infrastructure.db.repositories.pair_master_reader import (
     InMemoryPairMasterReader,
     PostgresPairMasterReader,
 )
 from reco.infrastructure.db.repositories.postgres_error_log_repository import (
     PostgresErrorLogRepository,
+)
+from reco.infrastructure.db.repositories.postgres_feature_rule_repository import (
+    PostgresFeatureRuleRepository,
 )
 from reco.infrastructure.db.repositories.postgres_metric_log_repository import (
     PostgresMetricLogRepository,
@@ -99,6 +105,10 @@ def test_build_composition_ports_default_delegates_to_stub_builder() -> None:
         InMemoryUserSemanticRepository,
     )
     assert isinstance(
+        ports.external_feature_estimator.feature_rules,
+        InMemoryFeatureRuleRepository,
+    )
+    assert isinstance(
         ports.user_feature_generator.user_features,
         InMemoryUserFeatureRepository,
     )
@@ -153,6 +163,22 @@ def test_build_production_ports_replaces_observability_and_config_resolver() -> 
     assert (
         ports.external_feature_estimator.run_validation
         is helpers["run_validation"]
+    )
+    assert isinstance(
+        helpers["feature_rule_repository"],
+        PostgresFeatureRuleRepository,
+    )
+    assert isinstance(
+        ports.external_feature_estimator.feature_rules,
+        PostgresFeatureRuleRepository,
+    )
+    assert (
+        ports.external_feature_estimator.feature_rules
+        is helpers["feature_rule_repository"]
+    )
+    assert not isinstance(
+        default_ports.external_feature_estimator.feature_rules,
+        PostgresFeatureRuleRepository,
     )
     assert (
         ports.query_embedding_generator.run_validation is helpers["run_validation"]
