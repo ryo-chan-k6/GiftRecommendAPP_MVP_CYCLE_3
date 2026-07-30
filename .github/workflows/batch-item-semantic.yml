@@ -37,6 +37,11 @@ on:
         required: false
         type: string
         default: ""
+      apply_config_master_seed:
+        description: "Apply 09_config_versions.sql before BATCH-010 (manual recovery only)"
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       job_run_id:
@@ -69,6 +74,11 @@ on:
         required: false
         type: string
         default: ""
+      apply_config_master_seed:
+        description: "Apply 09_config_versions.sql before BATCH-010 (manual recovery only)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: batch-item-semantic
@@ -108,6 +118,12 @@ jobs:
           else
             echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Apply config master seed
+        if: ${{ inputs.apply_config_master_seed }}
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -f supabase/seeds/masters/09_config_versions.sql
 
       - name: Run BATCH-010 stg live
         # Rule-first generatorのみを使用し、実LLMは呼び出さない。
