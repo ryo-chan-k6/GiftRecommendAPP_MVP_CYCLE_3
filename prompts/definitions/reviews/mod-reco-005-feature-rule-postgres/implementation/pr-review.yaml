@@ -6,7 +6,7 @@ review:
   title: "MOD-RECO-005 Feature Rule Postgres読み取り実装 PRレビュー"
   summary: "Feature Rule Postgres 読み取り実装 Task PR を AI Review する"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -19,9 +19,9 @@ branch:
 
 target:
   pr: null
-  issue: null
+  issue: 1769
   task_definition: "prompts/definitions/tasks/mod-reco-005-feature-rule-postgres/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-1769-mod-reco-005-feature-rule-postgres-implementation"
   target_branch: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
   parent_epic_issue: "[Epic]MOD-RECO-005:Feature Rule Postgres読み取り"
   parent_epic_branch: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
@@ -66,7 +66,7 @@ input:
     path: "prompts/definitions/tasks/mod-reco-005-feature-rule-postgres/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1769
     required: true
   pr:
     number: null
