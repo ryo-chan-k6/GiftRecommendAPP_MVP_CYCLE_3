@@ -77,7 +77,7 @@ scope:
 out_of_scope:
   - "OpenAPI / Orval / generated 変更"
   - "supabase/migrations / supabase/seeds の変更"
-  - "feature_integration_rule の seed 追加（Human 判断が必要。本 Task は 0 行時フォールバックで完結させる）"
+  - "feature_integration_rule の seed 追加（別 Issue で先行。本 Task の前提）"
   - "DEFAULT composition の InMemory 実装廃止"
   - "MOD-RECO-006 / 008 / 009 の Postgres 化"
   - "apps/api / apps/web / apps/batch の変更"
@@ -170,7 +170,7 @@ acceptance_criteria:
   - "get_relationship_features / get_occasion_features が semantic_config_version_id + code + is_active で絞り込み、8 Feature を FeatureVector として返す"
   - "該当行が無い場合は None を返し、既存の ExternalFeatureEstimateError 経路を維持する"
   - "get_pair_delta は未定義時に None を返し、呼び出し側の全ゼロ delta 仕様を壊さない"
-  - "get_integration_weights は feature_integration_rule 0 行時に DEFAULT_RELATIONSHIP_WEIGHT / DEFAULT_OCCASION_WEIGHT へフォールバックする"
+  - "get_integration_weights は feature_integration_rule から relationship_feature / occasion_feature の weight を読み取り FeatureIntegrationWeights に写像する。行欠損時は DEFAULT_RELATIONSHIP_WEIGHT / DEFAULT_OCCASION_WEIGHT へフォールバックする"
   - "apps/reco unit test（対象 repository / composition）が通る"
   - "migration / seed / OpenAPI 変更がない"
   - "secret / .env 実値を含まない"
@@ -251,14 +251,14 @@ review:
     security: true
 
 human_decision_points:
-  - "feature_integration_rule 0 行時は DEFAULT フォールバック継続でよいか（推奨）。seed 追加は別 Task"
-  - "feature_integration_rule に行がある場合、Port の 2 スカラー（relationship_weight / occasion_weight）へどう写像するか。MVP では input_source=relationship_feature / occasion_feature の weight（軸共通 0.500）を採用してよいか"
+  - "（確定 2026-07-30）feature_integration_rule seed を先に別 Issue で追加する。本 Task はその完了後に着手する"
+  - "（確定 2026-07-30）Port の 2 スカラー写像は input_source=relationship_feature / occasion_feature の weight（軸共通）を採用する"
 
 stop_conditions:
   - "relationship_rule / occasion_rule / pair_rule の列定義が実 DB と テーブル定義書で矛盾する場合"
   - "8 Feature を満たさない master 行が存在し、値の補完方針に業務判断が必要な場合"
   - "migration または seed の変更が必要になった場合"
-  - "FeatureIntegrationWeights（2 スカラー）と feature_integration_rule（軸×input_source 行モデル）の写像方針が Human 未確定のまま実装に進めない場合"
+  - "前提となる feature_integration_rule seed Issue が未完了のまま本 Task を実装しようとする場合"
 
 operation_logging:
   level: "standard"
@@ -272,8 +272,11 @@ operation_logging:
 notes:
   - "Issue タイトル: [Task]MOD-RECO-005:Feature Rule Postgres読み取り実装"
   - "PR 本文は Related to（Closes 禁止）。PR target は親 Epic Branch"
-  - "推奨実装方針: feature_integration_rule 0 行時は DEFAULT_RELATIONSHIP_WEIGHT / DEFAULT_OCCASION_WEIGHT（いずれも 0.50）へフォールバック。これは InMemory 既定および Featureルール定義書 §12.3 の初期値と一致する"
-  - "物理テーブル feature_integration_rule は feature_code × input_source 行モデル。Port は 2 スカラー。写像は Human 判断（human_decision_points）。0 行フォールバックのみで AC を満たせる"
+  - "Human 確定（2026-07-30）: feature_integration_rule seed は別 Issue で先行。本 Task は seed 完了後に着手"
+  - "Human 確定（2026-07-30）: get_integration_weights の写像は input_source=relationship_feature / occasion_feature の weight（軸共通）→ relationship_weight / occasion_weight。Featureルール定義書 §12.3 / テーブル定義書 §11.1 と一致"
+  - "防御的フォールバック: seed 後も行欠損時は DEFAULT_RELATIONSHIP_WEIGHT / DEFAULT_OCCASION_WEIGHT（0.50）へフォールバックしてよい（実装詳細）"
+  - "物理テーブルは 8 feature × 6 input_source = 48 行 / version（テーブル定義書 §11.1 Human Review 決定）"
+  - "Epic #1753 の forbidden_paths に supabase/seeds/** があるため、seed は本 Epic 配下 Task に含めない"
   - "SQL は is_active = true かつ semantic_config_version_id 一致で絞る。pivot は feature_code → FeatureVector"
   - "起票後に parent.related_issues / Review Definition の target.issue / target.pr を実番号へ同期する"
   - "AI Review 用 Review Definition: prompts/definitions/reviews/mod-reco-005-feature-rule-postgres/implementation/pr-review.yaml"
