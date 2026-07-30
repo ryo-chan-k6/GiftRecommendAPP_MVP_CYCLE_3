@@ -1,0 +1,168 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-db-pooling"
+  title: "reco-db-pooling:Reco DB接続プール導入"
+  summary: "Reco の DB アクセスがクエリ単位で新規接続を張っており推薦パイプラインが hard timeout を超過するため、コネクションプール導入で恒久対応する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue_number: 1737
+  epic_branch: "refactor/epic-1737-reco-db-pooling"
+  related_issues:
+    - 144
+    - 1686
+  related_prs: []
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  簡易 stg 構築で Web（Vercel）→ API（Render）→ Reco（Fly.io）の疎通に到達し、
+  master seed 投入後に /recommendations 画面は表示できるようになった。
+  しかしレコメンド実行が GRS-REC-101 / HTTP 504 で失敗する。
+
+  切り分け結果（事実）:
+  - API → Reco 接続は正常（Fly アクセスログに POST /internal/reco/v1/recommendations/run）
+  - Reco → DB 到達性は正常（/internal/reco/v1/health が 200・DB probe 成功）
+  - 504 の発生源は Reco 自身（GRS-REC-101 は PIPELINE_HARD_TIMEOUT_MS = 4_000 超過時のみ）
+  - phase_log（owner_type = recommendation_run）は 0 件
+
+  PostgresDatabaseSession は query() / execute() の内部で毎回 psycopg.connect() しており、
+  コネクションプールが存在しない。stg 実測で DB アクセス 1 回あたり約 0.7〜1.1 秒。
+  Orchestrator は 21 モジュールを順に実行するため、4,000ms を DB アクセス 5〜6 回で使い切る。
+
+objective: |
+  apps/reco の DB アクセスをコネクションプール経由にし、
+  推薦パイプラインが PIPELINE_HARD_TIMEOUT_MS（4,000ms）内に完走できる状態にする。
+
+scope:
+  - "apps/reco の DB 接続方式（プール導入）"
+  - "プールのライフサイクル管理"
+  - "DatabaseSession Protocol 互換の維持"
+  - "関連 unit test"
+  - "子 Task の起票・完了追跡"
+
+out_of_scope:
+  - "PIPELINE_SOFT_TIMEOUT_MS / PIPELINE_HARD_TIMEOUT_MS の値変更"
+  - "apps/api 側の同種問題（masters で 1 クエリ約 1 秒）"
+  - "Fly コールドスタート対策（min_machines_running / RECO_REQUEST_TIMEOUT_MS）"
+  - "Supabase / Render / Fly のリージョン再配置"
+  - "推薦ロジック・スコアリングの変更"
+  - "DB スキーマ・migration の変更"
+  - "secret 実値の取り扱い"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "apps/reco/src/reco/infrastructure/db/**"
+    - "apps/reco/tests/**"
+    - "apps/reco/pyproject.toml"
+    - "prompts/definitions/epics/reco-db-pooling/**"
+    - "prompts/definitions/tasks/reco-db-pooling/**"
+    - "prompts/definitions/reviews/reco-db-pooling/**"
+  forbidden_paths:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+    - "apps/api/**"
+    - "infra/**"
+    - "supabase/**"
+  child_task_areas:
+    - "reco-db-pooling-session"
+
+dependencies:
+  epics: []
+  issues:
+    - number: 144
+      purpose: "上位親（リリース準備）"
+  blocking: false
+
+child_tasks:
+  - "reco-db-pooling-session: PostgresDatabaseSession へのコネクションプール導入"
+
+input:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+      purpose: "接続方式の現状"
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+      purpose: "session インスタンスの共有範囲"
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+      required: true
+      purpose: "hard timeout の値（変更しない）"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+      purpose: "設定値の追加要否"
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+      purpose: "S5 の通し条件"
+
+acceptance_criteria:
+  - "子 Task が完了し、DB アクセスがプール経由になっている"
+  - "stg で POST /api/v1/recommendations が 504 にならず結果が返る"
+  - "phase_log（owner_type = recommendation_run）に行が記録される"
+  - "PIPELINE_HARD_TIMEOUT_MS を変更していない"
+
+branch:
+  no_branch: false
+  summary: "reco-db-pooling"
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "epic"
+  type: "refactor"
+  area: "reco"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "プール導入が hard timeout 内完走に寄与しているか"
+    - "DatabaseSession Protocol の互換が保たれているか"
+    - "out_of_scope（timeout 値・api 側・infra）が混入していないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+human_decision_points:
+  - "コネクションプールの実装方式（psycopg_pool 採用可否、プールサイズ）"
+  - "Fly の 512MB / shared CPU 1 という VM 制約下で妥当なプールサイズか"
+  - "本番運用に向けた性能要件の再確認を別 Epic とするか"
+
+stop_conditions:
+  - "PIPELINE_HARD_TIMEOUT_MS の変更が必要と判断された場合"
+  - "プール導入だけでは 4,000ms 以内に収まらないと判明した場合"
+  - "DB スキーマ変更が必要になった場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: true
+  reason: "Reco / API 双方に影響する DB 接続方式の課題であり、横断影響として記録する"
+
+notes:
+  - "Reco 性能関連の既存 Epic #1512 / #1532 / #1535 / #1544 / #1552 はいずれも CLOSED"
+  - "apps/api 側の同種問題は別 Issue 化を検討する"

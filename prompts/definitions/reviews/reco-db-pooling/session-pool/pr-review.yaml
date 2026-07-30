@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-db-pooling-session-pr"
+  title: "PostgresDatabaseSession接続プール実装 PRレビュー"
+  summary: "reco-db-pooling-session Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1738
+  task_definition: "prompts/definitions/tasks/reco-db-pooling/session-pool.yaml"
+  source_branch: "refactor/task-1738-reco-db-pooling-session"
+  target_branch: "refactor/epic-1737-reco-db-pooling"
+  parent_epic_issue: "[Epic]reco-db-pooling:Reco DB接続プール導入"
+  parent_epic_branch: "refactor/epic-1737-reco-db-pooling"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "PostgresDatabaseSession がプール経由でクエリを実行しているか"
+  - "プールのライフサイクルが FastAPI の起動・終了と整合しているか"
+  - "プールサイズが Fly の 512MB / shared CPU 1 に対して過大でないか"
+  - "DatabaseSession Protocol のシグネチャが変わっていないか"
+  - "ScaffoldDatabaseSession / create_database_session の既存挙動が変わっていないか"
+  - "例外時に接続がプールへ返却されるか"
+  - "DatabaseError へのラップが維持されているか"
+  - "mask_database_url によるログのマスクが維持されているか"
+  - "health.py が独自生成する PostgresDatabaseSession の扱いが整理されているか"
+  - "PIPELINE_HARD_TIMEOUT_MS を変更していないか"
+  - "out_of_scope（apps/api / infra / supabase）の変更が混入していないか"
+  - "unit test が追加・更新されているか"
+  - "secret 実値・.env 実値がないか"
+  - "Related to #1738、PR target が refactor/epic-1737-reco-db-pooling か"
+
+notes:
+  - "PR 番号確定後に target.pr を更新してよい"
+  - "本 Task 完了 ≠ stg での推薦成功。stg 実測は Human によるデプロイ後の確認"
