@@ -267,13 +267,41 @@ Object Storage の署名リージョンはコード上 `us-east-1` 固定だが�
 | 完了 | stg に import 連鎖差分（`product_diff_result`）を用意 | Human / AI |
 | 完了 | Object Storage 設定を新 Supabase プロジェクトへ追随 | Human |
 | 完了 | 016 用の実 UUID `semantic_config_version_id` を特定（master seed 固定値） | Human / AI |
-| high | 016 の `aggregate_feature_metrics` に `feature_normalization_version_id` を伝播する修正の要否・実施単位を判断 | Human |
-| high | 011〜014 の scaffold 固定 version 撤廃の要否・実施単位を判断（010 scaffold 維持との整合を含む） | Human |
-| note | 上記2件はいずれも apps/batch のアプリ実装変更であり、本Task（GHA live 配線）の scope 外 | Human |
+| 完了 | 016 の `feature_normalization_version_id` 未伝播の扱いを判断 → 別Issue化（Human判断 2026-07-30） | Human |
+| 完了 | 011〜014 の scaffold 固定 version 撤廃の扱いを判断 → 別Issue化（Human判断 2026-07-30） | Human |
+| note | 上記2件はいずれも apps/batch のアプリ実装変更であり、本Task（GHA live 配線）の scope 外 | — |
+
+### 6.8 Human判断結果と後続Issue
+
+2026-07-30、Human により以下を決定した。
+
+| 論点 | 決定 | 後続Issue |
+| ---- | ---- | --------- |
+| 016 の `aggregate_feature_metrics` 不具合 | 別Issue化する。本Taskは配線検証完了として Human Review へ進む | `#1761` |
+| 011〜014 の scaffold 固定 version / 010 scaffold 依存 | 別Issue化する。本Taskでは「GHA配線は live、実行成功は後続」と文書化する | `#1762` |
+
+| Issue | title |
+| ----- | ----- |
+| `#1761` | `[Task]batch-live-db-lane:BATCH-016 normalized層のfeature_normalization_version_id未伝播修正` |
+| `#1762` | `[Task]batch-live-db-lane:BATCH-011〜014 scaffold固定versionの撤廃とlive経路成立` |
+
+いずれも Parent Epic は `#1750`、初期状態は `no-branch` とし、着手時期は Human が判断する。
+
+### 6.9 本Taskの到達点
+
+| 対象 | 状態 |
+| ---- | ---- |
+| 対象6葉の `--scaffold-demo` 除去 | 完了 |
+| 対象6葉の `environment: stg` / `STG_DATABASE_URL` 配線 | 完了 |
+| 葉 `job_run_id` の UUID 化（複合IDとの分離） | 完了 |
+| BATCH-009 の stg live 実行 | **成功** |
+| 既live BATCH-005〜008 / 017 の回帰 | 影響なし（import連鎖で live 成功を再確認） |
+| BATCH-011〜014 の stg live 実行 | 未成立（`#1762`） |
+| BATCH-016 の stg live 実行 | 未成立（`#1761`） |
 
 本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）は、009 の live 成功および import連鎖6本の
 live 成功によって配線として妥当であることを確認した。
-011〜014 / 016 の live 書込成功は、上記 high 2件の判断後に再検証する。
+011〜014 / 016 の live 書込成功は、`#1761` / `#1762` で扱う。
 
 ## 7. 段階完了状況
 
@@ -283,7 +311,7 @@ live 成功によって配線として妥当であることを確認した。
 | B | 完了 | 対象6葉をstg live化 |
 | C | 完了 | meaning / retry複合のRun IDを整合 |
 | D | 完了 | 005〜008 / 017に意図しない差分なし |
-| E | 実施済・PARTIAL | Attempt 3 で 009 live 成功 / import連鎖6本 live 成功。011・016 はアプリ実装起因で未成功 |
+| E | 実施済・PARTIAL | Attempt 3 で 009 live 成功 / import連鎖6本 live 成功。011・016 はアプリ実装起因で未成功のため `#1761` / `#1762` へ分離 |
 
 ## 8. 変更履歴
 
@@ -293,3 +321,4 @@ live 成功によって配線として妥当であることを確認した。
 | 2026-07-30 | Phase E Attempt 1。DB接続失敗を記録 |
 | 2026-07-30 | `STG_DATABASE_URL` 更新後 Attempt 2 を記録（PARTIAL） |
 | 2026-07-30 | Object Storage設定修復後 Attempt 3 を記録。009 live 成功、011・016 の構造的課題を特定 |
+| 2026-07-30 | Human判断により 011・016 の課題を `#1761` / `#1762` へ分離し、本Taskの到達点を確定 |
