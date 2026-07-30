@@ -73,23 +73,55 @@ BATCH-005 / 006 / 007 / 008 / 017 のworkflowに差分がないことを確認�
 
 ## 6. Phase E: stg手動検証
 
-| 項目 | 結果 |
+Human判断（2026-07-30）:
+
+1. `max_items=1` でのstg書込を許可
+2. 低件数・葉/複合単位の手動のみ許容
+3. Environment `stg` required reviewers は解除済み（承認待ちなし）
+4. BATCH-016末尾→017接続は維持
+
+### 6.1 実施サマリ
+
+| 項目 | 内容 |
 | ---- | ---- |
-| Run URL | 未実施のためなし |
-| status | `not_run` |
-| conclusion | `not_run` |
-| 予定入力 | meaning複合 `max_items=1` |
+| ref | `feature/task-1751-db-leaf-workflow-live` (`30b79967`) |
+| 実施時刻 | 2026-07-30（UTC） |
+| 判定 | **FAIL**（workflow配線は到達、stg DB接続で失敗） |
 
-### 6.1 未実施理由
+| Workflow | inputs | Run URL | status | conclusion |
+| -------- | ------ | ------- | ------ | ---------- |
+| Batch Item Meaning Generation | `max_items=1`, `source=rakuten` | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30545806388 | completed | failure |
+| Batch Distribution Metrics | `trigger_mode=dispatch`, embedding/user_meaning=false | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30545808936 | completed | failure |
 
-Task DefinitionがPhase E前のHuman判断として、次を要求しているため停止した。
+### 6.2 Job結果（事実）
 
-1. stg実データへの破壊的書込を許容するか
-2. 低件数検証の `max_items` を `1` としてよいか
-3. GitHub Environment `stg` のrequired reviewersによる承認負荷を許容するか
-4. BATCH-016末尾でBATCH-017を続行する既存接続方針を維持してよいか
+#### meaning複合（30545806388）
 
-### 6.2 代替確認
+| Job | conclusion |
+| --- | ---------- |
+| `resolve-run-id` | success |
+| `item_generation_queue / item-generation-queue` | **failure**（step: `Run BATCH-009 live`） |
+| `item_semantic` 以降 | skipped（上流 failure） |
+
+#### distribution-metrics（30545808936）
+
+| Job / step | conclusion |
+| ---------- | ---------- |
+| Setup〜`Resolve job_run_id` | success（葉 `job_run_id` は UUID を生成） |
+| `Run BATCH-016 live` | **failure** |
+| `Run BATCH-017 Import Summary live` | skipped |
+
+### 6.3 失敗内容（secretなし）
+
+- **事実:** Environment `stg` と `DATABASE_URL`（`STG_DATABASE_URL`）は job に渡っている
+- **事実:** live step（`--scaffold-demo` なし）まで到達している
+- **事実:** DB接続で `psycopg.OperationalError` / `DatabaseError`。Supabase pooler への接続時に tenant/user が見つからない（`ENOTFOUND`）
+- **推論:** workflow YAML の live化差分そのものより、Environment `stg` の `STG_DATABASE_URL`（または参照先DBテナント）が無効・陳腐化している可能性が高い
+- **補足:** required reviewers 解除後のため、dispatch直後に job が開始された（承認待ちなし）
+
+secret / 接続文字列 / プロジェクト参照の実値は本docsに記載しない。
+
+### 6.4 代替確認（成功）
 
 - 対象workflowのYAML構文確認
 - 対象6葉の `environment: stg` / `STG_DATABASE_URL` / UUID生成の静的確認
@@ -97,10 +129,16 @@ Task DefinitionがPhase E前のHuman判断として、次を要求している�
 - meaning複合とretry複合がlive葉へ共有pipeline IDを渡さないことの確認
 - 既live BATCH-005〜008 / 017に差分がないことの確認
 
-### 6.3 残リスク
+### 6.5 残リスク / 次アクション
 
-stg手動検証を実施するまで、実DB上の対象選定、書込結果、各jobのconclusion、
-Environment承認フローは未確認である。
+| 優先 | 内容 | 担当 |
+| ---- | ---- | ---- |
+| high | Environment `stg` の `STG_DATABASE_URL` 妥当性確認・更新（secret実値はチャットに出さない） | Human |
+| medium | Secret修正後、同一 ref で meaning複合（`max_items=1`）と distribution-metrics を再dispatch | AI / Human |
+| low | 再dispatch成功後、本節の判定を FAIL→SUCCESS へ更新 | AI |
+
+本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）は静的確認と「live step到達」まで確認済み。
+実DB書込成功の最終確認は、Secret修正後の再検証に委ねる。
 
 ## 7. 段階完了状況
 
@@ -110,4 +148,11 @@ Environment承認フローは未確認である。
 | B | 完了 | 対象6葉をstg live化 |
 | C | 完了 | meaning / retry複合のRun IDを整合 |
 | D | 完了 | 005〜008 / 017に意図しない差分なし |
-| E | Human判断待ち | stg dispatch未実施 |
+| E | 実施済・FAIL | dispatch実施。run URL/conclusion記録。DB接続で失敗 |
+
+## 8. 変更履歴
+
+| 日付 | 内容 |
+| ---- | ---- |
+| 2026-07-30 | 初版。Phase A〜D完了、Phase EはHuman判断待ち |
+| 2026-07-30 | Phase E実施。Human承認後にdispatch。DB接続失敗を記録 |
