@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1779
   issue:
     number: 1776
   task_definition: "prompts/definitions/tasks/batch-live-ai-lane/embedding-live.yaml"
