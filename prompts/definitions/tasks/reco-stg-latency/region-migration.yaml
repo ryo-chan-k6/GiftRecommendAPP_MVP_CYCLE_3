@@ -157,14 +157,15 @@ procedure:
       name: "master seed を投入（filename 昇順）"
       detail: |
         db push は seed を実行しないため、master seed を手動投入する。
-        Direct 接続（port 5432）の接続文字列を環境変数へ一時設定し（履歴に残さない）、
+        接続文字列（Direct、または Direct が IPv6 のみで到達できない環境では Session pooler）を
+        環境変数 STG_SEED_DB_URL へ一時設定し（履歴に残さない）、
         supabase/seeds/masters/*.sql を 01→09 の昇順で適用する。
         例:
           for f in $(ls supabase/seeds/masters/*.sql | sort); do
-            psql "$STG_DIRECT_URL" -v ON_ERROR_STOP=1 -f "$f";
+            psql "$STG_SEED_DB_URL" -v ON_ERROR_STOP=1 -f "$f";
           done
         - 08b_lambda_ctx_rule.sql は未作成（後続 Task）。存在しなければスキップ（lambda_ctx_rule は 0 行が期待値）
-        - scripts/db/seed-masters.sh は local 用のため stg には使わない（STG_DIRECT_URL で直接 psql する）
+        - scripts/db/seed-masters.sh は local 用のため stg には使わない（STG_SEED_DB_URL で直接 psql する）
       check: "全 seed が ON_ERROR_STOP=1 でエラーなく完了"
 
     - id: P5
