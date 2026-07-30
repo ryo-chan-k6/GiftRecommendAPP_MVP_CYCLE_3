@@ -76,10 +76,10 @@ secret / token / channel ID 実値は本結果に含めない。
 | #1735 `notify_failure` 発火 | **PASS**（意図的失敗で発火） | 事実 |
 | #1735 開発運用チャンネル UI 到達 | **Human 確認済み**（2026-07-30） | Human確認 |
 | #1739 新通知先での Slack API 呼び出し | **PASS**（`notify_failure` / Slack step success） | 事実 |
-| #1739 システムエラー通知チャンネル UI 到達 | **Human 確認待ち** | 未確認 / Human判断 |
+| #1739 システムエラー通知チャンネル UI 到達 | **Human 確認済み**（2026-07-30） | Human確認 |
 | 最終差分から意図的失敗除去 | 本 Task の完了条件（PR で確認） | 事実（手順） |
 
-**総合（推論）:** GHA 経路上の通知先分離は動作している。新チャンネル UI 到達の Human 確認後、通知先分離を完了扱いにできる。
+**総合（事実 + 推論）:** GHA 経路とシステムエラー通知チャンネル UI の両方で通知先分離を確認済み。通知先分離は完了扱いにできる。
 
 ---
 
@@ -87,7 +87,7 @@ secret / token / channel ID 実値は本結果に含めない。
 
 | 項目 | 内容 |
 | ---- | ---- |
-| UI 到達 | 開発運用チャンネルは Human 確認済み。システムエラー通知チャンネルは Human 確認待ち |
+| UI 到達 | 開発運用チャンネル・システムエラー通知チャンネルともに Human 確認済み |
 | incident メンション | `SLACK_MENTION_INCIDENT` が設定されている場合、実運用でもメンションが付く。運用可否は Human |
 | weekly | weekly 親の `notify_failure` は配線済みだが本 E2E 未実施（別 Task 可） |
 | 本線失敗時 | 葉 job 失敗（stg 承認・DB 等）でも同経路。本 E2E は意図的早期失敗のみ |
@@ -96,8 +96,8 @@ secret / token / channel ID 実値は本結果に含めない。
 
 ## 6. 案B再判断への影響（推論）
 
-- §9 high「Slack 失敗通知 E2E」は **GHA 根拠で完了**（UI 確認は Human）
-- 次の high 候補は **daily 親 D1 再実行**（BATCH-017 PARTIAL の親全体確認）
+- §9 high「Slack 失敗通知 E2E」は **GHA / UI ともに完了**
+- daily 親 D1 再実行は #1742 で **PASS**（Run 30509052971）
 - 本結果をもって schedule 有効化を自動承認しない（#1732 gate 継承）
 
 ---
@@ -108,3 +108,4 @@ secret / token / channel ID 実値は本結果に含めない。
 | ---- | ---- |
 | 2026-07-30 | 初版。Run 30506470095。notify_failure success / Slack warning なし |
 | 2026-07-30 | #1739 通知先分離 E2E（Run 30508264881）を追記。GHA PASS / 新チャンネル UI は Human 確認待ち |
+| 2026-07-30 | Human確認: システムエラー通知チャンネル UI 到達済み。#1742 daily親D1 PASSを反映 |
