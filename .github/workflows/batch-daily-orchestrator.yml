@@ -34,17 +34,7 @@ permissions:
   actions: write
 
 jobs:
-  # TEMP (#1735 Slack E2E): intentional cheap failure. Remove after verification.
-  e2e_force_fail:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Intentional fail for Slack notify_failure E2E (#1735)
-        run: |
-          echo "Intentional failure for Slack notify_failure E2E (Task #1735). No secrets / no stg."
-          exit 1
-
   ranking_snapshot:
-    needs: e2e_force_fail
     uses: ./.github/workflows/batch-rakuten-ranking-snapshot.yml
     secrets: inherit
 
@@ -80,7 +70,6 @@ jobs:
   notify_failure:
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     needs:
-      - e2e_force_fail
       - ranking_snapshot
       - item_import
       - item_meaning_generation

@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-parent-schedule-phase2-slack-failure-notify-e2e-pr"
+  title: "batch-parent-schedule-phase2 Slack失敗通知E2E PRレビュー"
+  summary: "daily親notify_failureのSlack実送信E2E結果を正本化したTask PRをAI Reviewする。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1735
+  task_definition: "prompts/definitions/tasks/batch-parent-schedule-phase2/slack-failure-notify-e2e.yaml"
+  parent_epic_issue: "[Epic]batch-parent-schedule-phase2:daily schedule有効化再判断 (#1732)"
+  parent_epic_branch: "chore/epic-1732-batch-parent-schedule-phase2"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "E2E結果が事実・推論・未確認・Human確認事項に分離されているか"
+  - "secret / token / channel ID 実値が含まれていないか"
+  - "最終差分に意図的失敗 job や on.schedule 有効化が残っていないか"
+  - "notify_failure 発火 Run と送信成否の根拠が記載されているか"
+  - "PR targetが親Epic Branchか"
+  - "Related to Task Issue が使われ、Closes が使われていないか"
+
+notes:
+  - "本TaskはE2E検証と結果docs化。scheduleコメント解除はout of scope"
+  - "一時的な意図的失敗変更は最終差分に残さない"
