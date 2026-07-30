@@ -7,9 +7,9 @@
 | 文書種別 | E3 棚卸し正本（docs） |
 | 対象 | 楽天 / Embedding / Object Storage / Semantic（LLM）× BATCH-001〜017 |
 | 作成日 | 2026-07-24 |
-| 更新日 | 2026-07-25（T4 + #1614 / #1617。DB SELECT 後続は #1623） |
-| 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) / [#1614](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1614) / 読取後続 [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) |
-| 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） / [#1612](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1612)（T4） / [#1617](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1617)（Storage live・リリース準備） |
+| 更新日 | 2026-07-30（楽天Fetch運用方針 #1752 を追記） |
+| 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) / [#1614](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1614) / 読取後続 [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) / 運用方針 [#1749](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1749) |
+| 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） / [#1612](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1612)（T4） / [#1617](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1617)（Storage live・リリース準備） / [#1752](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1752)（楽天Fetch運用方針） |
 | 先行 | E0 横串ギャップ / E1 親 workflow / E2 IF-DB・DDL（#1595 MERGED） |
 
 ### 1.1 目的
@@ -48,6 +48,7 @@
 | Semantic 生成 | `ScaffoldItemSemanticAdapter`（Rule-first / LLM 非呼出） |
 | CLI 非 `--scaffold-demo` | 001〜004: `--live-rakuten` 必須。`--live-object-storage` で Storage HTTP（未指定時 Scaffold）。015 Embedding / 005 Storage live 可だが DB 読取は未配線 → exit 3 |
 | E2 との関係 | DbWriter / 代表 UPSERT は利用可能。外部 I/O は楽天 + Embedding + Object Storage（各明示 live） |
+| 楽天Fetch運用 | 決定済みQPS=2・IP照合・CI live禁止と、取得量・Run分割・cursor再開・GHA live条件のHuman判断材料を[楽天Fetch運用方針](../../../15_運用・改善/運用手順/楽天Fetch運用方針.md)へ分離 |
 
 ---
 
@@ -158,6 +159,7 @@
 | 4 | Object Storage 実装先 | **確定**（#1614）: 製品=**Supabase Storage** / 接続=**案 A（S3 互換 + `OBJECT_STORAGE_*`）**。#1612 `S3CompatibleObjectStorageClient` 維持。live 疎通は [#1617](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1617)（リリース準備）local で **Go**（[PoC結果](../../../90_PoC/外部API疎通検証/Supabase_Storage_S3互換疎通検証結果.md)） |
 | 5 | 楽天常用 QPS / IP 照合 / Rate Limiter Task 切り | **決定済**（常用 QPS=**2** / IP 必須 / T2c 別 Task） |
 | 6 | 本番 egress IP 設計 | **Backlog / #1607**（§7.1）。未検討 |
+| 7 | 楽天Fetchの取得量・Run分割・`paused` 再開・GHA live条件・安全側QPS=1 | [楽天Fetch運用方針](../../../15_運用・改善/運用手順/楽天Fetch運用方針.md)。BATCH-003深さ打ち切りなしは方針採択済。Run予算・監視閾値・その他は §10で **Human判断待ち**。#1607・schedule有効化・live実装は含めない |
 
 ---
 
@@ -189,3 +191,4 @@
 | 2026-07-25 | Object Storage S3 互換 live 疎通ハーネス・結果記録（#1617・リリース準備） |
 | 2026-07-25 | #1617 再検証: local Supabase で put/get/missing **Go**（案 B 不要） |
 | 2026-07-25 | DB SELECT 後続を Epic #1623 / [SELECTギャップ一覧](./バッチDB読取・SELECT本実装ギャップ一覧.md) へ分離（#1624） |
+| 2026-07-30 | #1752: 楽天Fetch運用方針を正本化し、未確定の運用値・再開・GHA live判断を分離 |
