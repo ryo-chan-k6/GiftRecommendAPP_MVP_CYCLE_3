@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1740
   issue:
     number: 1739
   task_definition: "prompts/definitions/tasks/batch-parent-schedule-phase2/slack-channel-separation.yaml"
