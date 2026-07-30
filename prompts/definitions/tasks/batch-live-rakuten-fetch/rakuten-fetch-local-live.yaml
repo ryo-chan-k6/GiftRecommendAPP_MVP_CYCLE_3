@@ -84,9 +84,9 @@ input:
   docs:
     - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
       required: true
-    - path: "ai-logs/human-decisions/"
+    - path: "ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md"
       required: true
-      purpose: "§10採択Log（本Task着手前に存在必須）"
+      purpose: "§10採択Log（本Task着手前に親Epic Branchへmerge済みであること）"
     - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
       required: true
     - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
@@ -163,9 +163,9 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "rakuten-fetch-local-live"
-  name: null
-  base: null
-  target: null
+  name: "feature/task-1765-rakuten-fetch-local-live"
+  base: "feature/epic-1763-batch-live-rakuten-fetch"
+  target: "feature/epic-1763-batch-live-rakuten-fetch"
   worktree_required: true
 
 project:
@@ -184,7 +184,8 @@ issue:
 
 dependencies:
   epics: []
-  issues: []
+  issues:
+    - 1764
   prs: []
   tasks:
     - "task-batch-live-rakuten-fetch-ops-decisions"
@@ -232,6 +233,7 @@ review:
     - "CI楽天live / secret / schedule / #1607混入がないか"
 
 human_decision_points:
+  - "MVP対象ジャンルの具体的fetch_plan承認（実楽天HTTP前の必須ゲート）"
   - "local検証の実実行タイミング（Human環境・secret）"
   - "検証中に監視閾値へ抵触した場合の打ち切り判断"
 
@@ -243,5 +245,7 @@ stop_conditions:
 
 notes:
   - "Task Issue: #1765 / Branch feature/task-1765-rakuten-fetch-local-live"
-  - "先行Task（Decision Log）完了が必須ゲート"
+  - "先行Task #1764（Decision Log）の親Epic Branch mergeが必須ゲート"
+  - "採択値: 深さ打ち切りなし / pages_per_run=60等 / 004は100件開始 / route・cursor分割 / paused・failed手動再開 / 当面localのみ / 限定QPS=1 / 15分・再発60分以上"
+  - "具体的fetch_planは本Decisionでは保留。実楽天HTTP前にHuman承認する"
   - "max_items と Run予算を混同しない"

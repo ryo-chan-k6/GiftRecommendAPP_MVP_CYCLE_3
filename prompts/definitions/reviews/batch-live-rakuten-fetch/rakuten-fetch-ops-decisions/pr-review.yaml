@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1766
   issue:
     number: 1764
   parent_epic_issue: 1763
@@ -51,5 +51,6 @@ review_points:
   - "PR targetが親Epic Branch、Related to（Closes禁止）か"
 
 notes:
-  - "Issue番号 / Branch / PR は起票・PR作成後に反映する"
+  - "Issue #1764 / Branch docs/task-1764-rakuten-fetch-ops-decisions"
+  - "PR #1766（base: feature/epic-1763-batch-live-rakuten-fetch）"
   - "Human Reviewは省略しない"
