@@ -15,6 +15,9 @@ from reco.application.recommendation_orchestrator import (
 from reco.infrastructure.db.repositories.postgres_aware_user_feature_repository import (
     PostgresAwareUserFeatureRepository,
 )
+from reco.infrastructure.db.repositories.postgres_feature_rule_repository import (
+    PostgresFeatureRuleRepository,
+)
 from reco.infrastructure.db.repositories.postgres_item_feature_repository import (
     PostgresFeatureNormalizationRepository,
     PostgresItemFeatureRepository,
@@ -87,6 +90,21 @@ def _inject_run_validation(
         query_embedding_generator=replace(
             ports.query_embedding_generator,
             run_validation=run_validation,
+        ),
+    )
+
+
+def _inject_external_feature_rules(
+    ports: OrchestratorPorts,
+    feature_rules: PostgresFeatureRuleRepository,
+) -> OrchestratorPorts:
+    """Replace only the production Feature Rule repository for MOD-RECO-005."""
+
+    return replace(
+        ports,
+        external_feature_estimator=replace(
+            ports.external_feature_estimator,
+            feature_rules=feature_rules,
         ),
     )
 
@@ -210,6 +228,7 @@ def build_production_ports(
     repositories = observability["observability_repositories"]
     assert isinstance(repositories, ObservabilityRepositories)
     run_validation = PostgresRunValidation(run_repository=repositories.run_repository)
+    feature_rule_repository = PostgresFeatureRuleRepository(session=session)
     user_semantic_repository = PostgresUserSemanticRepository(session=session)
     user_feature_repository = PostgresAwareUserFeatureRepository(session=session)
     normalization_rules = PostgresNormalizationRuleRepository(session=session)
@@ -229,7 +248,10 @@ def build_production_ports(
             _inject_result_persistence_ports(
                 _inject_item_catalog_ports(
                     _inject_user_semantic_ports(
-                        _inject_run_validation(base_ports, run_validation),
+                        _inject_external_feature_rules(
+                            _inject_run_validation(base_ports, run_validation),
+                            feature_rule_repository,
+                        ),
                         user_semantic_repository=user_semantic_repository,
                         user_feature_repository=user_feature_repository,
                         normalization_rules=normalization_rules,
@@ -256,6 +278,7 @@ def build_production_ports(
         **observability,
         "config_repository": config_resolver.repository,
         "run_validation": run_validation,
+        "feature_rule_repository": feature_rule_repository,
         "user_semantic_repository": user_semantic_repository,
         "user_feature_repository": user_feature_repository,
         "normalization_rule_repository": normalization_rules,
