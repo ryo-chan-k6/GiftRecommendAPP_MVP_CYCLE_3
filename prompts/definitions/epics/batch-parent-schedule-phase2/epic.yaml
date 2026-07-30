@@ -42,6 +42,7 @@ scope:
   - "案B再判断材料の正本 docs 作成"
   - "D1 PARTIAL、Slack通知、cron、コスト、egress依存の整理"
   - "Slack失敗通知 E2E の安全な実施・記録"
+  - "バッチ失敗通知を開発運用チャンネルからシステムエラー通知チャンネルへ分離"
   - "weekly / manual 親workflowのD1相当手動検証・記録"
   - "Human判断後に必要となる後続Taskの整理"
 
@@ -56,7 +57,9 @@ out_of_scope:
 epic_scope:
   artifact_id: ""
   allowed_paths:
+    - "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
     - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
     - "docs/15_運用・改善/運用手順/**"
     - "prompts/definitions/epics/batch-parent-schedule-phase2/**"
     - "prompts/definitions/tasks/batch-parent-schedule-phase2/**"
@@ -76,6 +79,8 @@ epic_scope:
 
 input:
   docs:
+    - path: "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+      required: true
     - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
       required: true
     - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
@@ -83,6 +88,8 @@ input:
     - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
       required: true
     - path: "docs/15_運用・改善/運用手順/BATCH_import連鎖_GHA_live化メモ_C3.md"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
       required: true
   files:
     - path: ".github/workflows/batch-daily-orchestrator.yml"
@@ -94,6 +101,12 @@ input:
 
 output:
   docs:
+    - path: "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+      action: "update"
+      required: false
     - path: "docs/15_運用・改善/運用手順/**"
       action: "create_or_update"
       required: true
@@ -115,11 +128,13 @@ deliverables:
   - "Epic Issue / Branch（#1732）"
   - "案B再判断材料 docs"
   - "Slack失敗通知 E2E 結果"
+  - "バッチ失敗通知先チャンネル分離"
   - "weekly / manual D1相当検証結果"
 
 acceptance_criteria:
   - "案B再判断材料が事実・推論・未確認・Human判断点を分けて正本化されている"
   - "Slack失敗通知 E2E の結果または安全上の未実施理由が記録されている"
+  - "バッチ失敗通知がシステムエラー通知チャンネルへ分離され、正本docsと整合している"
   - "weekly / manual D1相当検証の結果または未実施理由が記録されている"
   - "daily schedule有効化可否をHumanが判断している"
   - "Human明示承認なしのproduction定期開始を含まない"
