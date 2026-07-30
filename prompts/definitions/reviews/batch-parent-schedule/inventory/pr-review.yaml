@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-parent-schedule-inventory-pr"
+  title: "batch-parent-schedule inventory PRレビュー"
+  summary: "Epic #1637 Wave 0（schedule 有効化ギャップ棚卸し）Task の PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1714
+  issue:
+    number: 1713
+  task_definition: "prompts/definitions/tasks/batch-parent-schedule/inventory.yaml"
+  parent_epic_issue: "[Epic]batch-parent-schedule:親workflow schedule・dry-run有効化"
+  parent_epic_branch: "feature/epic-1637-batch-parent-schedule"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "親/複合 YAML の schedule 無効状態が事実として記載されているか"
+  - "§16 Phase1/2/3 と突合されているか"
+  - "Human 判断点（案 A/B/C・dry-run）が未確定のまま明示されているか"
+  - "schedule コメント解除・実ランタイム実行・secret が混入していないか"
+  - "横串ギャップ §10 が #1637 / E4 完了と整合しているか"
+  - "Related to #1713 / PR target = 親 Epic Branch"
+
+notes:
+  - "pr.number は PR 作成後に埋める"
+  - "Wave 0 は docs のみ。YAML 有効化は Human gate 後"

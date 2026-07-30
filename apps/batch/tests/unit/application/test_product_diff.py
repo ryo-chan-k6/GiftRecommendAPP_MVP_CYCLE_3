@@ -701,3 +701,52 @@ def test_cli_non_demo_requires_database_url(monkeypatch: pytest.MonkeyPatch) -> 
     )
     assert cli.main(["--job-run-id", "no-db"]) == 2
 
+
+def test_batch_run_id_separates_product_diff_write_from_job_run_id() -> None:
+    """product_diff_result の batch_run_id は共有 pipeline、tracker は葉 job_run_id。"""
+
+    staging = [
+        StagingItemSeed(
+            staging_item_id="si_sep",
+            source="rakuten",
+            external_item_code="shop:sep",
+            normalized_hash=_HASH_A,
+            item_name="Sep",
+            item_url="https://item.example/shop/sep",
+            price=1000,
+            availability=1,
+            diff_status=None,
+        )
+    ]
+    repos = ProductDiffRepositories(
+        db_writer=ScaffoldDbWriter(),
+        seed_staging=staging,
+        seed_items=[],
+    )
+    tracker = ScaffoldJobRunTracker()
+    job = ProductDiffJob(repositories=repos, job_run_tracker=tracker)
+    pipeline = "pipeline-006"
+    leaf = "leaf-006"
+    repos.bind_run(batch_run_id=pipeline)
+
+    result = job.run(job_run_id=leaf, batch_run_id=pipeline)
+
+    assert result.status == "succeeded"
+    assert result.job_run_id == leaf
+    key = (pipeline, "shop:sep")
+    assert key in repos.product_diff_results
+    assert repos.product_diff_results[key]["batch_run_id"] == pipeline
+    assert (leaf, "shop:sep") not in repos.product_diff_results
+    assert any(
+        getattr(r, "job_run_id", None) == leaf for r in tracker.records
+    )
+
+
+def test_cli_batch_run_id_fallback_to_job_run_id() -> None:
+    from batch.application.product_diff.__main__ import _resolve_business_run_id
+
+    assert _resolve_business_run_id(job_run_id="leaf", batch_run_id="") == "leaf"
+    assert (
+        _resolve_business_run_id(job_run_id="leaf", batch_run_id="pipeline") == "pipeline"
+    )
+

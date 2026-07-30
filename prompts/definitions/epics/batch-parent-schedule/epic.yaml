@@ -1,0 +1,150 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-parent-schedule"
+  title: "batch-parent-schedule:親workflow schedule・dry-run有効化"
+  summary: "E1 残。親 / 複合 workflow の schedule 有効化方針確定、workflow_dispatch 手動検証（dry-run 相当）、必要 docs 整備。production 無承認の定期開始は禁止。"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  E1（#1554）で親3本・複合子4本 YAML は揃ったが、スケジュール設計書 §16.1 どおり
+  Phase1 は schedule 無効のまま。横串ギャップの残は schedule 有効化と
+  workflow_dispatch dry-run（手動検証）未実施。機能・領域単位 Epic（例外）。
+
+objective: |
+  親 workflow を安全に運用開始できる状態にする。
+  Human が schedule 方針を確定し、必要な YAML / docs に反映し、
+  手動検証結果を secret なしで記録する。
+
+scope:
+  - "Wave 0: schedule 有効化ギャップ棚卸し docs 正本 + Human 判断材料"
+  - "Human 確定後: 対象親 workflow の schedule / concurrency / 権限見直し"
+  - "workflow_dispatch 手動検証（低 max_items）と結果記録"
+  - "dry_run input 追加の要否（Human 確定に従う）"
+  - "運用 docs / 横串ギャップ一覧の更新"
+
+out_of_scope:
+  - "各 Batch の SELECT / 書込本格化（#1623 / 書込 Epic 群の再実装）"
+  - "E4 観測本実装の再実施（#1636 完了）"
+  - "#1607 本番 egress"
+  - "production 無承認の定期実行開始"
+  - "BATCH-018 / 019 を本線 schedule に載せる（§16.4）"
+  - "OpenAPI / web / api / reco 破壊変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-manual-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-*.yml"
+      required: false
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: true
+  files:
+    - path: ".github/workflows/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/epics/batch-parent-schedule/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-parent-schedule/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-parent-schedule/**"
+      action: "create"
+      required: false
+  generated:
+    expected: false
+    paths: []
+
+deliverables:
+  - "Epic Issue / Branch（#1637）"
+  - "schedule 有効化ギャップ正本 docs（Wave 0）"
+  - "Human 確定後の YAML / 検証記録 / docs 更新"
+
+acceptance_criteria:
+  - "Epic Issue / Branch が存在する"
+  - "ギャップ一覧 docs が存在する（Wave 0）"
+  - "schedule 方針が Human 確定し、必要な workflow に反映されている（Epic 完了時）"
+  - "dry-run / 手動検証結果が secret なしで記録されている（Epic 完了時）"
+  - "production 無承認の定期開始を含まない"
+  - "Epic PR target が develop"
+
+branch:
+  no_branch: false
+  summary: "batch-parent-schedule"
+  name: "feature/epic-1637-batch-parent-schedule"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "07_開発・単体テスト"
+    priority: "medium"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "batch"
+  number: 1637
+
+dependencies:
+  epics:
+    - 1554
+    - 1636
+  notes: "E1 YAML 前提。観測 E4 完了後の運用有効化が自然。"
+
+human_decision_points:
+  - "どの親 workflow から schedule を有効化するか（案 A/B/C）"
+  - "dry-run の定義（低 max_items 手動検証 vs dry_run input 追加）"
+  - "タイムゾーン / 失敗時通知の方針"
+  - "production 定期開始の最終承認（本 Epic では無承認実行禁止）"
+
+stop_conditions:
+  - "Human 未確定のまま schedule コメントを外そうとする"
+  - "production 無承認の定期実行開始が必要に見える"
+  - "secret / token を docs・Issue・PR に書こうとする"
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+  notes: "親 YAML は本 Epic 内の Task で直列編集する"

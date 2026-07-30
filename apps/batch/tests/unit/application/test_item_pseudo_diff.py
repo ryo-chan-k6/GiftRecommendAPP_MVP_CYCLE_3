@@ -458,6 +458,52 @@ def test_boundary_no_item_staging_or_ranking_writes() -> None:
     assert "fetch_cursor" in tables
 
 
+def test_fetch_cursor_and_raw_metadata_db_rows_match_ddl_columns() -> None:
+    """live DDL: page/scope 列は無く cursor_value jsonb。raw は fetched_at 必須。"""
+
+    repos = _repos()
+    job = ItemPseudoDiffJob(rakuten_client=_client_genre(), repositories=repos)
+    result = job.run(
+        job_run_id="job-ddl-map",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+    assert result.status == "succeeded"
+
+    inserts = [c for c in repos.db_writer.write_calls if c["table"] == "fetch_cursor"]
+    assert inserts
+    row = inserts[0]["rows"][0]
+    assert "page" not in row
+    assert "scope" not in row
+    assert "scope_fingerprint" not in row
+    assert "cursor_scope_fingerprint" not in row
+    assert isinstance(row["cursor_value"], dict)
+    assert "scope" in row["cursor_value"]
+    assert row["cursor_value"]["position"]["page"] == 1
+    assert row["target_external_genre_id"] == 100
+    # UUID 文字列であること（api_call_log.fetch_cursor_id と整合）
+    assert len(str(row["fetch_cursor_id"]).replace("-", "")) == 32
+
+    updates = [c for c in repos.db_writer.update_calls if c["table"] == "fetch_cursor"]
+    assert updates
+    set_values = updates[0]["set_values"]
+    assert set_values["cursor_value"]["position"]["page"] == 2
+    assert set_values["cursor_status"] == "active"
+    assert "last_fetched_at" in set_values
+
+    raw_inserts = [
+        c for c in repos.db_writer.write_calls if c["table"] == "raw_product_metadata"
+    ]
+    assert raw_inserts
+    raw_row = raw_inserts[0]["rows"][0]
+    assert "cursor_id" not in raw_row
+    assert "cursor_type" not in raw_row
+    assert "page" not in raw_row
+    assert "fetched_at" in raw_row
+    assert raw_row["import_status"] == "raw_saved"
+    assert raw_row["item_count"] == 2
+
+
 def test_invalid_payload_records_ext_103() -> None:
     from batch.infrastructure.rakuten import RakutenItemSearchApiError, adapt_item_search_raw_payload
 
@@ -466,4 +512,51 @@ def test_invalid_payload_records_ext_103() -> None:
         raise AssertionError("expected GRS-EXT-103")
     except RakutenItemSearchApiError as exc:
         assert exc.code == "GRS-EXT-103"
+
+
+def test_batch_run_id_separates_object_key_from_job_run_id() -> None:
+    """共有 pipeline batch_run_id が raw object key に使われ、job_run_id とは分離できる。"""
+
+    from batch.application.job_run import ScaffoldJobRunTracker
+
+    repos = _repos()
+    tracker = ScaffoldJobRunTracker()
+    job = ItemPseudoDiffJob(
+        rakuten_client=_client_genre(),
+        repositories=repos,
+        job_run_tracker=tracker,
+    )
+    pipeline = "pipeline-shared-uuid"
+    leaf = "leaf-003-uuid"
+    repos.bind_run(batch_run_id=pipeline)
+
+    result = job.run(
+        job_run_id=leaf,
+        batch_run_id=pipeline,
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "succeeded"
+    assert result.job_run_id == leaf
+    assert all(pipeline in key for key in repos.raw_metadata)
+    assert all(leaf not in key for key in repos.raw_metadata)
+    assert any(
+        getattr(r, "job_run_id", None) == pipeline
+        and getattr(r, "batch_id", None) == "item_import_pipeline"
+        for r in tracker.records
+    )
+    assert any(
+        getattr(r, "job_run_id", None) == leaf and getattr(r, "status", None) == "running"
+        for r in tracker.records
+    )
+
+
+def test_cli_batch_run_id_fallback_to_job_run_id() -> None:
+    from batch.application.item_pseudo_diff.__main__ import _resolve_business_run_id
+
+    assert _resolve_business_run_id(job_run_id="leaf", batch_run_id="") == "leaf"
+    assert (
+        _resolve_business_run_id(job_run_id="leaf", batch_run_id="pipeline") == "pipeline"
+    )
 

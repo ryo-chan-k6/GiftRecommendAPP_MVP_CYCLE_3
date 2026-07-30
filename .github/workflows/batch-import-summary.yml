@@ -2,14 +2,14 @@ name: Batch Import Summary
 
 # BATCH-017 Import Summary 作成（独立子 workflow）
 # 正本: BATCH-017 バッチ仕様書 §18.1 No.16 — C 併用
+# C3: environment stg + live DB。job_run_id（葉）≠ batch_run_id（集計対象 pipeline）必須
 # workflow_call / workflow_dispatch（独立 cron なし）
-# 親 import / meaning-generation 末尾追加は Epic 外（§18.1 No.17）
 
 on:
   workflow_call:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -19,14 +19,14 @@ on:
         type: string
         default: ""
       batch_run_id:
-        description: "Aggregation target batch_run_id override"
+        description: "Aggregation target pipeline batch_run_id (UUID). Required for live"
         required: false
         type: string
         default: ""
   workflow_dispatch:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -36,7 +36,7 @@ on:
         type: string
         default: ""
       batch_run_id:
-        description: "Aggregation target batch_run_id override"
+        description: "Aggregation target pipeline batch_run_id (UUID). Required for live"
         required: false
         type: string
         default: ""
@@ -52,6 +52,9 @@ jobs:
   import-summary:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: stg
+    env:
+      DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -67,33 +70,33 @@ jobs:
       - name: Setup batch Python env
         run: bash ./scripts/dev/setup-python-batch.sh
 
-      - name: Resolve job_run_id
-        id: run_id
+      - name: Resolve run ids
+        id: run_ids
         run: |
-          INPUT_ID="${{ inputs.job_run_id }}"
-          if [ -n "$INPUT_ID" ]; then
-            echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          PIPELINE_INPUT="${{ inputs.batch_run_id }}"
+          JOB_INPUT="${{ inputs.job_run_id }}"
+          if [ -z "$PIPELINE_INPUT" ]; then
+            echo "batch_run_id is required for BATCH-017 live (aggregation target)." >&2
+            exit 1
+          fi
+          echo "batch_run_id=$PIPELINE_INPUT" >> "$GITHUB_OUTPUT"
+          if [ -n "$JOB_INPUT" ] && [ "$JOB_INPUT" != "$PIPELINE_INPUT" ]; then
+            echo "job_run_id=$JOB_INPUT" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "job_run_id=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-017 scaffold demo
-        # Real DB not enabled. Secrets must never be printed.
+      - name: Run BATCH-017 live
+        # Secrets must never be printed.
         # IF-DB-BATCH-017: item_import_summary INSERT + ON CONFLICT DO NOTHING.
-        # IF-DB-BATCH-016 / IF-OBS-006 are not physical write IFs for this Batch.
-        # MOD-BATCH-047（Import Summary Builder 同義・追加採番なし）。
+        # job_run_id = BATCH-017 自身の新規 UUID。batch_run_id = 集計対象の既存 pipeline UUID。
         working-directory: apps/batch
         run: |
           SOURCE_ARGS=()
           if [ -n "${{ inputs.source_api }}" ]; then
             SOURCE_ARGS+=(--source-api "${{ inputs.source_api }}")
           fi
-          BATCH_RUN_ARGS=()
-          if [ -n "${{ inputs.batch_run_id }}" ]; then
-            BATCH_RUN_ARGS+=(--batch-run-id "${{ inputs.batch_run_id }}")
-          fi
           uv run python -m batch.application.import_summary \
-            --scaffold-demo \
-            --job-run-id "${{ steps.run_id.outputs.value }}" \
-            "${SOURCE_ARGS[@]}" \
-            "${BATCH_RUN_ARGS[@]}"
+            --job-run-id "${{ steps.run_ids.outputs.job_run_id }}" \
+            --batch-run-id "${{ steps.run_ids.outputs.batch_run_id }}" \
+            "${SOURCE_ARGS[@]}"

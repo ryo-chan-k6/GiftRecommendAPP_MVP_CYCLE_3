@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -200,12 +201,53 @@ class ScaffoldRakutenApiClient:
             return dict(self.item_search_raw_responses[key])
 
         if self.items:
+            # map 外（例: page>=2）でも BATCH-005 検証を通る最小形を返す。
+            # サイレント劣化を避けるため stderr に警告を出す。
+            print(
+                "scaffold item_search fallback: "
+                f"cursor_type={cursor_type!r} scope_key={scope_key!r} page={page} "
+                "(no mapped response; using staging-complete items)",
+                file=sys.stderr,
+            )
+            genre_value: int | str = 100
+            if genre_id is not None and str(genre_id).strip() != "":
+                try:
+                    genre_value = int(str(genre_id))
+                except ValueError:
+                    genre_value = str(genre_id)
             return {
                 "Items": [
                     {
                         "Item": {
                             "itemCode": item.item_code,
-                            "itemName": item.item_name,
+                            "itemName": item.item_name or item.item_code,
+                            "itemCaption": f"Scaffold caption for {item.item_code}",
+                            "catchcopy": "Scaffold catch",
+                            "itemPrice": 1000,
+                            "itemUrl": f"https://item.example/{item.item_code}",
+                            "genreId": genre_value,
+                            "shopCode": (
+                                item.item_code.split(":", 1)[0]
+                                if ":" in item.item_code
+                                else "shop"
+                            ),
+                            "availability": 1,
+                            "reviewAverage": 4.0,
+                            "reviewCount": 0,
+                            "mediumImageUrls": [
+                                {
+                                    "imageUrl": (
+                                        f"https://img.example/medium/{item.item_code}.jpg"
+                                    )
+                                }
+                            ],
+                            "smallImageUrls": [
+                                {
+                                    "imageUrl": (
+                                        f"https://img.example/small/{item.item_code}.jpg"
+                                    )
+                                }
+                            ],
                         }
                     }
                     for item in self.items

@@ -6,8 +6,11 @@ keeping the same Raw / fetch_cursor semantics. Item / Staging は更新しない
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 
 from batch.application.item_pseudo_diff.idempotency import (
     SOURCE_API_ITEM_SEARCH,
@@ -15,7 +18,7 @@ from batch.application.item_pseudo_diff.idempotency import (
     cursor_scope_fingerprint,
 )
 from batch.application.item_pseudo_diff.models import FetchCursorRow, RawItemSearchArtifact
-from batch.infrastructure.db import DbWriter
+from batch.infrastructure.db import DatabaseError, DbReader, DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient
 
 
@@ -26,6 +29,85 @@ from batch.application.observability import (
 )
 from batch.application.observability.binding import emit_api_call, emit_error, emit_phase
 
+# fetch_cursor.cursor_value.position.hits_per_page 既定（job.DEFAULT_HITS と揃える）
+_DEFAULT_HITS_PER_PAGE = 30
+
+
+def _cursor_value_json(
+    *,
+    scope: dict[str, Any],
+    page: int,
+    hits_per_page: int = _DEFAULT_HITS_PER_PAGE,
+) -> dict[str, object]:
+    """DDL ``fetch_cursor.cursor_value``（scope + position）を組み立てる。"""
+
+    return {
+        "scope": dict(scope),
+        "position": {"page": int(page), "hits_per_page": int(hits_per_page)},
+    }
+
+
+def _genre_id_for_db(value: str | int | None) -> int | None:
+    if value is None or value == "":
+        return None
+    return int(value)
+
+
+def _db_cursor_status(status: str) -> str:
+    """アプリ内 ``completed`` を DDL の ``exhausted`` に写像する。"""
+
+    if status == "completed":
+        return "exhausted"
+    return status
+
+
+def _item_count_from_raw_body(body: bytes) -> int:
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+        return 0
+    if not isinstance(payload, dict):
+        return 0
+    items = payload.get("Items")
+    if isinstance(items, list):
+        return len(items)
+    return 0
+
+
+def _is_unique_violation(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "uq_fetch_cursor_scope" in text or "duplicate key" in text or "unique constraint" in text
+
+
+def _scope_from_cursor_value(cursor_value: object) -> dict[str, Any]:
+    if isinstance(cursor_value, str):
+        try:
+            cursor_value = json.loads(cursor_value)
+        except json.JSONDecodeError:
+            return {}
+    if not isinstance(cursor_value, dict):
+        return {}
+    scope = cursor_value.get("scope")
+    return dict(scope) if isinstance(scope, dict) else {}
+
+
+def _page_from_cursor_value(cursor_value: object) -> int:
+    if isinstance(cursor_value, str):
+        try:
+            cursor_value = json.loads(cursor_value)
+        except json.JSONDecodeError:
+            return 1
+    if not isinstance(cursor_value, dict):
+        return 1
+    position = cursor_value.get("position")
+    if not isinstance(position, dict):
+        return 1
+    try:
+        return max(1, int(position.get("page") or 1))
+    except (TypeError, ValueError):
+        return 1
+
+
 @dataclass
 class ItemPseudoDiffRepositories:
     """Facade that persists Raw / fetch_cursor / logs via infrastructure."""
@@ -33,6 +115,7 @@ class ItemPseudoDiffRepositories:
     object_storage: ObjectStorageClient
     db_writer: DbWriter
     bucket: str
+    db_reader: DbReader | None = None
     # 事前投入された active カーソル（BATCH-002 ranking_supplement 等）
     seed_cursors: list[FetchCursorRow] = field(default_factory=list)
     fetch_cursors: dict[str, FetchCursorRow] = field(default_factory=dict)
@@ -51,7 +134,7 @@ class ItemPseudoDiffRepositories:
 
 
     def bind_run(self, *, batch_run_id: str, trace_id: str | None = None) -> None:
-        """Bind ``batch_run_id`` (= job_run_id UUID) for observability DB writes."""
+        """Bind shared pipeline ``batch_run_id`` for observability DB writes."""
 
         self._batch_run_id = batch_run_id
         self._trace_id = trace_id
@@ -79,7 +162,13 @@ class ItemPseudoDiffRepositories:
             if existing.scope_fingerprint == fingerprint and existing.cursor_type == row.cursor_type:
                 return existing
 
-        cursor_id = row.cursor_id or f"fc_{uuid.uuid4().hex[:12]}"
+        loaded = self._load_existing_cursor(row)
+        if loaded is not None:
+            self.fetch_cursors[str(loaded.cursor_id)] = loaded
+            return loaded
+
+        # live DDL: fetch_cursor_id / api_call_log.fetch_cursor_id は uuid
+        cursor_id = row.cursor_id or str(uuid.uuid4())
         created = FetchCursorRow(
             cursor_type=row.cursor_type,
             cursor_id=cursor_id,
@@ -89,24 +178,85 @@ class ItemPseudoDiffRepositories:
             cursor_status=row.cursor_status,
             scope_fingerprint=fingerprint,
         )
+        # DDL 列のみ INSERT。cursor_scope_fingerprint は GENERATED のため書かない。
+        insert_row = {
+            "fetch_cursor_id": cursor_id,
+            "source": SOURCE_RAKUTEN,
+            "source_api": SOURCE_API_ITEM_SEARCH,
+            "cursor_type": created.cursor_type,
+            "target_external_genre_id": _genre_id_for_db(created.target_external_genre_id),
+            "cursor_status": _db_cursor_status(created.cursor_status),
+            "cursor_value": _cursor_value_json(scope=created.scope, page=created.page),
+        }
+        try:
+            self.db_writer.write_rows("fetch_cursor", (insert_row,))
+        except DatabaseError as exc:
+            if not _is_unique_violation(exc):
+                raise
+            loaded = self._load_existing_cursor(row)
+            if loaded is None:
+                raise
+            self.fetch_cursors[str(loaded.cursor_id)] = loaded
+            return loaded
+
         self.fetch_cursors[cursor_id] = created
-        self.db_writer.write_rows(
-            "fetch_cursor",
-            (
-                {
-                    "fetch_cursor_id": cursor_id,
-                    "source": SOURCE_RAKUTEN,
-                    "source_api": SOURCE_API_ITEM_SEARCH,
-                    "cursor_type": created.cursor_type,
-                    "target_external_genre_id": created.target_external_genre_id,
-                    "cursor_status": created.cursor_status,
-                    "page": created.page,
-                    "scope": created.scope,
-                    "scope_fingerprint": fingerprint,
-                },
-            ),
-        )
         return created
+
+    def _load_existing_cursor(self, row: FetchCursorRow) -> FetchCursorRow | None:
+        """Load matching fetch_cursor from live DB when reader is available."""
+
+        if self.db_reader is None:
+            return None
+
+        genre_id = _genre_id_for_db(row.target_external_genre_id)
+        equals: list[tuple[str, object]] = [
+            ("source", SOURCE_RAKUTEN),
+            ("source_api", SOURCE_API_ITEM_SEARCH),
+            ("cursor_type", row.cursor_type),
+        ]
+        if genre_id is not None:
+            equals.append(("target_external_genre_id", genre_id))
+
+        try:
+            result = self.db_reader.fetch_rows(
+                "fetch_cursor",
+                columns=(
+                    "fetch_cursor_id",
+                    "cursor_type",
+                    "target_external_genre_id",
+                    "cursor_value",
+                    "cursor_status",
+                ),
+                equals=tuple(equals),
+                limit=50,
+            )
+        except DatabaseError:
+            return None
+
+        wanted_scope = dict(row.scope)
+        for db_row in result.rows:
+            if genre_id is None and db_row.get("target_external_genre_id") is not None:
+                continue
+            cursor_value = db_row.get("cursor_value")
+            if _scope_from_cursor_value(cursor_value) != wanted_scope:
+                continue
+            cursor_id = str(db_row["fetch_cursor_id"])
+            target = db_row.get("target_external_genre_id")
+            return FetchCursorRow(
+                cursor_type=row.cursor_type,  # type: ignore[arg-type]
+                cursor_id=cursor_id,
+                target_external_genre_id=None if target is None else str(target),
+                scope=wanted_scope,
+                page=_page_from_cursor_value(cursor_value),
+                cursor_status=str(db_row.get("cursor_status") or "active"),
+                scope_fingerprint=row.scope_fingerprint
+                or cursor_scope_fingerprint(
+                    cursor_type=row.cursor_type,
+                    target_external_genre_id=None if target is None else str(target),
+                    scope=wanted_scope,
+                ),
+            )
+        return None
 
     def update_cursor_progress(
         self,
@@ -128,15 +278,16 @@ class ItemPseudoDiffRepositories:
             scope_fingerprint=existing.scope_fingerprint,
         )
         self.fetch_cursors[cursor_id] = updated
-        self.db_writer.write_rows(
+        now = datetime.now(UTC)
+        self.db_writer.update_rows(
             "fetch_cursor",
-            (
-                {
-                    "fetch_cursor_id": cursor_id,
-                    "page": page,
-                    "cursor_status": cursor_status,
-                },
-            ),
+            set_values={
+                "cursor_value": _cursor_value_json(scope=updated.scope, page=page),
+                "cursor_status": _db_cursor_status(cursor_status),
+                "last_fetched_at": now,
+                "updated_at": now,
+            },
+            equals=(("fetch_cursor_id", cursor_id),),
         )
 
     def save_raw(self, artifact: RawItemSearchArtifact) -> bool:
@@ -177,9 +328,22 @@ class ItemPseudoDiffRepositories:
             "source_api": SOURCE_API_ITEM_SEARCH,
             "import_status": "raw_saved",
         }
+        # DDL 列のみ INSERT（cursor_* / page はアプリ内メタ。DB には持たない）
+        fetched_at = datetime.now(UTC)
         self.db_writer.write_rows(
             "raw_product_metadata",
-            (dict(self.raw_metadata[artifact.object_key]),),
+            (
+                {
+                    "api_call_log_id": artifact.api_call_log_id,
+                    "object_key": artifact.object_key,
+                    "source": SOURCE_RAKUTEN,
+                    "source_api": SOURCE_API_ITEM_SEARCH,
+                    "content_hash": artifact.content_hash,
+                    "item_count": _item_count_from_raw_body(artifact.body),
+                    "import_status": "raw_saved",
+                    "fetched_at": fetched_at,
+                },
+            ),
         )
         return True
 

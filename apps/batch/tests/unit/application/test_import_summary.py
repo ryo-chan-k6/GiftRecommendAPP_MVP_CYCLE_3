@@ -102,6 +102,7 @@ def _run(
     repos: ImportSummaryRepositories,
     *,
     job_run_id: str = _RUN,
+    batch_run_id: str | None = None,
     source_api: str | None = "item_search",
     tracker: ScaffoldJobRunTracker | None = None,
 ):
@@ -109,7 +110,7 @@ def _run(
     return job.run(
         job_run_id=job_run_id,
         source_api=source_api,
-        batch_run_id=job_run_id,
+        batch_run_id=job_run_id if batch_run_id is None else batch_run_id,
         now=_NOW,
     )
 
@@ -330,6 +331,24 @@ def test_missing_batch_run_fails() -> None:
     assert repos.phase_logs == []
     assert db.write_calls == []
     assert db.upsert_calls == []
+
+
+def test_ensures_pipeline_batch_run_when_missing_and_ids_differ(capsys) -> None:
+    """#1726: job_run_id ≠ batch_run_id かつ pipeline 未作成なら ensure して継続."""
+
+    pipeline = "pipeline-meaning-1"
+    leaf = "leaf-017-1"
+    repos, _ = _repos(batch_run_id=pipeline, include_run=False)
+    tracker = ScaffoldJobRunTracker()
+    result = _run(repos, job_run_id=leaf, batch_run_id=pipeline, tracker=tracker)
+
+    assert result.status == "succeeded"
+    assert result.insert_applied is True
+    assert any(
+        r.job_run_id == pipeline and r.batch_id == "item_meaning_pipeline"
+        for r in tracker.records
+    )
+    assert "pipeline batch_run_log ensure" in capsys.readouterr().err
 
 
 def test_already_running_grs_bat_003() -> None:

@@ -79,6 +79,7 @@ class ProductDiffJob:
         self,
         *,
         job_run_id: str,
+        batch_run_id: str | None = None,
         max_items: int | None = None,
         source: str | None = None,
         staging_item_ids: Sequence[str] | None = None,
@@ -87,6 +88,8 @@ class ProductDiffJob:
         sync_staging_diff_status: bool | None = None,
         trace_id: str | None = None,
     ) -> ProductDiffSyncResult:
+        # tracker は葉 job_run_id。product_diff_result 書込は共有 batch_run_id。
+        business_run_id = (batch_run_id or "").strip() or job_run_id
         bound_logger = self._logger.bind(job_run_id=job_run_id, trace_id=trace_id or job_run_id)
         result = ProductDiffSyncResult(batch_id=BATCH_ID, job_run_id=job_run_id, status="failed")
 
@@ -138,7 +141,7 @@ class ProductDiffJob:
                 try:
                     self._process_one_staging(
                         seed=seed,
-                        batch_run_id=job_run_id,
+                        batch_run_id=business_run_id,
                         sync_staging=plan.sync_staging_diff_status,
                         result=result,
                         phases_seen=phases_seen,

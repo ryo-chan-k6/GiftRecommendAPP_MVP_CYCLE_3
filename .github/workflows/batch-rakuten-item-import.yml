@@ -1,14 +1,20 @@
 name: Batch Rakuten Item Import
 
-# 複合子（案A）: BATCH-003 → 005 → 006 → 007 → 008 → 017
+# 複合子（案A / C3）: BATCH-003 → 005 → 006 → 007 → 008 → 017
 # 正本: バッチ実行スケジュール設計書 §3.2 / ギャップ一覧 §5 案A
-# 独立子の業務ロジックは変更しない
+# Run ID: 共有 pipeline_batch_run_id（UUID）+ 各葉 job_run_id（葉側で新規 UUID）
+# Object Storage live は Secrets 未登録のため葉では --live-object-storage を付けない
 
 on:
   workflow_call:
     inputs:
+      batch_run_id:
+        description: "Shared pipeline batch_run_id (UUID). Empty = generate new UUID"
+        required: false
+        type: string
+        default: ""
       job_run_id:
-        description: "Optional shared batch_run_id override"
+        description: "Deprecated alias for batch_run_id (pipeline). Prefer batch_run_id"
         required: false
         type: string
         default: ""
@@ -29,8 +35,13 @@ on:
         default: "1000"
   workflow_dispatch:
     inputs:
+      batch_run_id:
+        description: "Shared pipeline batch_run_id (UUID). Empty = generate new UUID"
+        required: false
+        type: string
+        default: ""
       job_run_id:
-        description: "Optional shared batch_run_id override"
+        description: "Deprecated alias for batch_run_id (pipeline). Prefer batch_run_id"
         required: false
         type: string
         default: ""
@@ -61,22 +72,25 @@ jobs:
   resolve-run-id:
     runs-on: ubuntu-latest
     outputs:
-      job_run_id: ${{ steps.run_id.outputs.value }}
+      pipeline_batch_run_id: ${{ steps.run_id.outputs.value }}
     steps:
       - id: run_id
         run: |
-          INPUT_ID="${{ inputs.job_run_id }}"
+          INPUT_ID="${{ inputs.batch_run_id }}"
+          LEGACY_ID="${{ inputs.job_run_id }}"
           if [ -n "$INPUT_ID" ]; then
             echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
+          elif [ -n "$LEGACY_ID" ]; then
+            echo "value=$LEGACY_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-import-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
   item_pseudo_diff:
     needs: resolve-run-id
     uses: ./.github/workflows/batch-rakuten-item-pseudo-diff.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      batch_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       target_genre_ids: ${{ inputs.target_genre_ids }}
       keywords: ${{ inputs.keywords }}
     secrets: inherit
@@ -85,7 +99,7 @@ jobs:
     needs: [resolve-run-id, item_pseudo_diff]
     uses: ./.github/workflows/batch-rakuten-raw-staging.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      batch_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_raw: ${{ inputs.max_items }}
     secrets: inherit
 
@@ -93,7 +107,7 @@ jobs:
     needs: [resolve-run-id, raw_staging]
     uses: ./.github/workflows/batch-rakuten-product-diff.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      batch_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
       max_items: ${{ inputs.max_items }}
     secrets: inherit
 
@@ -101,24 +115,21 @@ jobs:
     needs: [resolve-run-id, product_diff]
     uses: ./.github/workflows/batch-rakuten-item-apply.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
       max_items: ${{ inputs.max_items }}
-      diff_batch_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      diff_batch_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
     secrets: inherit
 
   item_active_status:
     needs: [resolve-run-id, item_apply]
     uses: ./.github/workflows/batch-rakuten-item-active-status.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
       max_items: ${{ inputs.max_items }}
-      batch_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      batch_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
     secrets: inherit
 
   import_summary:
     needs: [resolve-run-id, item_active_status]
     uses: ./.github/workflows/batch-import-summary.yml
     with:
-      job_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
-      batch_run_id: ${{ needs.resolve-run-id.outputs.job_run_id }}
+      batch_run_id: ${{ needs.resolve-run-id.outputs.pipeline_batch_run_id }}
     secrets: inherit
