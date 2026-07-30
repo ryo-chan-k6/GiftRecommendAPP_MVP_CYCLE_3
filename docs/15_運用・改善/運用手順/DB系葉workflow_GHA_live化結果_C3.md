@@ -392,8 +392,11 @@ PR #1772（`fix/task-1762-batch-011-014-live-version`）上で、stgへ
 
 seed適用はBATCH-010葉の opt-in 入力 `apply_config_master_seed=true` でのみ行い、
 通常の複合呼出や既定実行では無効のままとした。secret実値は記録していない。
+`apply_config_master_seed` step は `postgresql-client` を明示インストールしてから `psql` を実行する
+（AI Review should指摘対応）。
 
 meaning複合（009→014一括）の再実行は未実施だが、010〜014の葉liveはすべて成功した。
+複合一括の追加実行要否は Human Review で確認する。
 
 ### 6.9 本Taskの到達点
 
@@ -436,3 +439,4 @@ live 成功によって配線として妥当であることを確認した。
 | 2026-07-31 | `#1762` のcurrent version resolver、010 Rule-first DB live配線、local unit test結果を追記。stg実行は未実施 |
 | 2026-07-31 | `#1762` のAI / Test Review指摘対応。`normalization_rule` master seed追加のHuman判断、local DB検証、unit test件数更新を追記。stg実行は未実施 |
 | 2026-07-31 | `#1762` / PR #1772 のstg検証。config seed適用後にBATCH-010〜014が各1件success |
+| 2026-07-31 | AI Review指摘対応。`apply_config_master_seed` に `postgresql-client` 導入を追加。meaning複合は葉successを必須証跡とし追加確認は任意と明記 |

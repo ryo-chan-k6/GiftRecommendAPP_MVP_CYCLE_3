@@ -119,6 +119,10 @@ jobs:
             echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Install PostgreSQL client
+        if: ${{ inputs.apply_config_master_seed }}
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
       - name: Apply config master seed
         if: ${{ inputs.apply_config_master_seed }}
         run: |
