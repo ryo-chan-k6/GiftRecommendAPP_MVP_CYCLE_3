@@ -120,10 +120,10 @@ project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
     phase: "07_開発・単体テスト"
-    status: "In Progress"
-    priority: "high"
-    planned_start: "2026-07-30"
-    due_date: "2026-08-01"
+    status: "Backlog"
+    priority: "low"
+    planned_start: null
+    due_date: null
 
 issue:
   unit: "task"
@@ -180,6 +180,7 @@ human_decision_points:
 notes:
   - "B（本 Task）と C（config キャッシュ）は Human 決定により別 Task"
   - "リージョン差が 504 の主因のため、本 Task 単独では 504 を解消しない補助改善"
+  - "2026-07-30 実測判定により Backlog へ後回し。東京リージョン移行後、config_resolved は 2,786ms → 約 253ms、パイプライン完走 wall clock 約 1.0s（hard timeout 4,000ms に約 3s の余裕）。読み取り COMMIT 往復削減の費用対効果が小さいため未着手。カタログ大規模化や config_resolved 再悪化時に再評価する"
 
 operation_logging:
   level: "standard"
