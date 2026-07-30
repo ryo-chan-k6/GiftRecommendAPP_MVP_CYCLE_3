@@ -287,7 +287,7 @@ Object Storage の署名リージョンはコード上 `us-east-1` 固定だが�
 
 いずれも Parent Epic は `#1750`、初期状態は `no-branch` とし、着手時期は Human が判断する。
 
-### 6.8.1 `#1761` ローカル修正結果
+### 6.8.1 `#1761` 修正・stg live再検証結果
 
 2026-07-30、`#1761` で BATCH-016 の `aggregate_feature_metrics` を修正した。
 
@@ -296,8 +296,16 @@ Object Storage の署名リージョンはコード上 `us-east-1` 固定だが�
 - 同一 `semantic_config_version_id` / `feature_code` の normalized 対象で複数 version が混在した場合、または normalized 値に version がない場合は、DB 書込前に `FeatureMetricAggregationError` で停止する
 - Job 層は同例外を既存の入力検証と同じ `GRS-VAL-001` として扱い、`error_log` 記録・`status=failed` で終了する（DB CHECK 違反まで遅延させない）
 - 対象 unit test は `31 passed`
+- batch unit test 全体は `742 passed`
 
-stg live の再実行は未実施であり、BATCH-016 の live 書込成功は未確認である。
+| 項目 | 内容 |
+| ---- | ---- |
+| Run URL | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30554021305 |
+| ref | `fix/task-1761-batch-016-fdm-norm-version` |
+| input | master seed の `semantic_config_version_id`（実 UUID） |
+| conclusion | **success** |
+| BATCH-016 | **success**（CHECK 制約違反を解消し、live DB 書込成功） |
+| BATCH-017 | **success** |
 
 ### 6.9 本Taskの到達点
 
@@ -309,11 +317,11 @@ stg live の再実行は未実施であり、BATCH-016 の live 書込成功は�
 | BATCH-009 の stg live 実行 | **成功** |
 | 既live BATCH-005〜008 / 017 の回帰 | 影響なし（import連鎖で live 成功を再確認） |
 | BATCH-011〜014 の stg live 実行 | 未成立（`#1762`） |
-| BATCH-016 の stg live 実行 | アプリ修正・unit test 完了、stg再実行未実施（`#1761`） |
+| BATCH-016 の stg live 実行 | **成功**（`#1761`、run `30554021305`） |
 
 本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）は、009 の live 成功および import連鎖6本の
 live 成功によって配線として妥当であることを確認した。
-011〜014 / 016 の live 書込成功は、`#1761` / `#1762` で扱う。
+011〜014 の live 書込成功は、`#1762` で扱う。
 
 ## 7. 段階完了状況
 
@@ -323,7 +331,7 @@ live 成功によって配線として妥当であることを確認した。
 | B | 完了 | 対象6葉をstg live化 |
 | C | 完了 | meaning / retry複合のRun IDを整合 |
 | D | 完了 | 005〜008 / 017に意図しない差分なし |
-| E | 実施済・PARTIAL | Attempt 3 で 009 live 成功 / import連鎖6本 live 成功。011・016 はアプリ実装起因で未成功のため `#1761` / `#1762` へ分離 |
+| E | 実施済・PARTIAL | 009 / 016 live 成功、import連鎖6本 live 成功。011〜014 は `#1762` へ分離 |
 
 ## 8. 変更履歴
 
@@ -334,4 +342,4 @@ live 成功によって配線として妥当であることを確認した。
 | 2026-07-30 | `STG_DATABASE_URL` 更新後 Attempt 2 を記録（PARTIAL） |
 | 2026-07-30 | Object Storage設定修復後 Attempt 3 を記録。009 live 成功、011・016 の構造的課題を特定 |
 | 2026-07-30 | Human判断により 011・016 の課題を `#1761` / `#1762` へ分離し、本Taskの到達点を確定 |
-| 2026-07-30 | `#1761` のローカル修正・unit test 成功を追記。stg live 再実行は未確認 |
+| 2026-07-30 | `#1761` の修正・unit test・stg live 再実行成功を追記 |
