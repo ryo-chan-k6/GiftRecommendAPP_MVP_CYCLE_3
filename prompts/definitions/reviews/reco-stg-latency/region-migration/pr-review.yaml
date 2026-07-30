@@ -18,7 +18,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1774
   issue: 1773
   task_definition: "prompts/definitions/tasks/reco-stg-latency/region-migration.yaml"
   source_branch: "fix/task-1773-reco-stg-latency-region-migration"
@@ -69,7 +69,7 @@ input:
     number: 1773
     required: true
   pr:
-    number: null
+    number: 1774
     required: true
   diff:
     required: true
