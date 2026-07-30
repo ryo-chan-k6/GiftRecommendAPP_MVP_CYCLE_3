@@ -1,0 +1,279 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-mod-reco-005-feature-rule-postgres-implementation"
+  title: "MOD-RECO-005:Feature Rule Postgres読み取り実装"
+  summary: "PostgresFeatureRuleRepository を実装し production composition に注入する。DEFAULT InMemory は維持する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-mod-reco-005-feature-rule-postgres"
+  epic_issue: "[Epic]MOD-RECO-005:Feature Rule Postgres読み取り"
+  epic_issue_number: 1753
+  epic_branch: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
+  related_issues:
+    - 1753
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/review-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  stg 実測（2026-07-30）で推薦実行が GRS-REC-005 で失敗した。
+  error_log の実レコードは以下である。
+
+    error_code        : GRS-REC-005
+    error_message     : relationship_rule not found: spouse
+    error_detail_json : {"phase_name": "user_feature_generated",
+                         "source_module_id": "MOD-RECO-005"}
+
+  build_production_ports は build_default_stub_ports() を起点に一部ポートのみ
+  Postgres へ置換しており、MOD-RECO-005 の FeatureRuleRepositoryPort は
+  InMemoryFeatureRuleRepository のまま残っている。
+
+  scaffold が保持する code は relationship 4 種（lover / boss / friend_casual / other）
+  と occasion 3 種（birthday / thanks / other）に限られる。stg DB には
+  relationship_rule 96 / occasion_rule 120 / pair_rule 112 が正しく seed 済みで、
+  semantic_config_version_id も一致している。scaffold 未収録 code（例: spouse）を
+  選ぶと get_relationship_features() が None を返し ExternalFeatureEstimateError となる。
+
+  RunValidation は既に PostgresRunValidation へ置換済み。本 Task は
+  feature_rules（FeatureRuleRepositoryPort）の置換のみを対象とする。
+
+objective: |
+  IF-DB-RECO-001 相当の Feature Rule 読み取りを Postgres 実装し、
+  production composition の external_feature_estimator.feature_rules へ注入する。
+  DEFAULT composition の InMemory 実装は維持する。
+
+scope:
+  - "PostgresFeatureRuleRepository の新規作成（relationship_rule / occasion_rule / pair_rule / feature_integration_rule 読み取り）"
+  - "build_production_ports で external_feature_estimator.feature_rules を Postgres 実装へ置換"
+  - "unit test（repository / composition）"
+  - "Task / Review Definition の起票後番号同期"
+
+out_of_scope:
+  - "OpenAPI / Orval / generated 変更"
+  - "supabase/migrations / supabase/seeds の変更"
+  - "feature_integration_rule の seed 追加（Human 判断が必要。本 Task は 0 行時フォールバックで完結させる）"
+  - "DEFAULT composition の InMemory 実装廃止"
+  - "MOD-RECO-006 / 008 / 009 の Postgres 化"
+  - "apps/api / apps/web / apps/batch の変更"
+  - "Featureルール定義書の値そのものの見直し"
+  - "estimator.py / rule_engine.py の計算ロジック変更（Port 契約を満たす読み取りのみ）"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/reco/MOD-RECO-005_External Condition Feature Estimatorモジュール仕様書.md"
+      required: true
+      purpose: "モジュール責務・I/F の正本"
+    - path: "docs/06_実装設計/database/relationship_rule_テーブル定義書.md"
+      required: true
+      purpose: "読み取り対象の列制約"
+    - path: "docs/06_実装設計/database/occasion_rule_テーブル定義書.md"
+      required: true
+      purpose: "読み取り対象の列制約"
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+      purpose: "読み取り対象の列制約"
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+      purpose: "統合 weight の正本（現状 0 行。フォールバック方針の根拠）"
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+      purpose: "Feature 値・Pair delta・統合重みの論理正本"
+  templates: []
+  files:
+    - path: "apps/reco/src/reco/composition/builder.py"
+      required: true
+      purpose: "production 注入箇所"
+    - path: "apps/reco/src/reco/application/external-condition-feature-estimator/ports.py"
+      required: true
+      purpose: "FeatureRuleRepositoryPort 定義"
+    - path: "apps/reco/src/reco/application/external-condition-feature-estimator/in_memory_repository.py"
+      required: true
+      purpose: "DEFAULT 実装（維持対象）と戻り値形状の参照"
+    - path: "apps/reco/src/reco/application/external-condition-feature-estimator/constants.py"
+      required: true
+      purpose: "DEFAULT_RELATIONSHIP_WEIGHT / DEFAULT_OCCASION_WEIGHT"
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/postgres_normalization_rule_repository.py"
+      required: true
+      purpose: "Postgres 読み取り repository の実装パターン参照"
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+      purpose: "DatabaseSession.query / query_one"
+  issues:
+    - number: 1753
+      purpose: "親 Epic"
+    - number: 805
+      purpose: "MOD-RECO-005 モジュール本体（develop merge 済み）"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/postgres_feature_rule_repository.py"
+      action: "create"
+      required: true
+    - path: "apps/reco/src/reco/composition/builder.py"
+      action: "update"
+      required: true
+    - path: "apps/reco/src/reco/infrastructure/db/repositories/__init__.py"
+      action: "update"
+      required: false
+      purpose: "export が既存方針で必要な場合のみ"
+  tests:
+    - path: "apps/reco/tests/unit/infrastructure/db/repositories/test_postgres_feature_rule_repository.py"
+      action: "create"
+      required: true
+    - path: "apps/reco/tests/unit/composition/test_builder.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "PostgresFeatureRuleRepository"
+  - "production composition への注入"
+  - "unit test（repository / composition）"
+
+acceptance_criteria:
+  - "production の external_feature_estimator.feature_rules が Postgres 実装である"
+  - "DEFAULT composition は InMemoryFeatureRuleRepository のままである"
+  - "get_relationship_features / get_occasion_features が semantic_config_version_id + code + is_active で絞り込み、8 Feature を FeatureVector として返す"
+  - "該当行が無い場合は None を返し、既存の ExternalFeatureEstimateError 経路を維持する"
+  - "get_pair_delta は未定義時に None を返し、呼び出し側の全ゼロ delta 仕様を壊さない"
+  - "get_integration_weights は feature_integration_rule 0 行時に DEFAULT_RELATIONSHIP_WEIGHT / DEFAULT_OCCASION_WEIGHT へフォールバックする"
+  - "apps/reco unit test（対象 repository / composition）が通る"
+  - "migration / seed / OpenAPI 変更がない"
+  - "secret / .env 実値を含まない"
+  - "Related to #<Task Issue番号>、PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "mod-reco-005-feature-rule-postgres-implementation"
+  base: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
+  target: "feature/epic-1753-mod-reco-005-feature-rule-postgres"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "reco"
+
+dependencies:
+  epics:
+    - issue: 1753
+      title: "[Epic]MOD-RECO-005:Feature Rule Postgres読み取り"
+      purpose: "親 Epic"
+  issues: []
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/reco/src/reco/composition/builder.py"
+    - "apps/reco/src/reco/infrastructure/db/repositories/postgres_feature_rule_repository.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit test"
+    - "secret check"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/infrastructure/db/repositories/test_postgres_feature_rule_repository.py tests/unit/composition/test_builder.py -q"
+  manual_checks:
+    - "stg で scaffold 未収録の code（例: spouse × wedding_gift）を指定しても MOD-RECO-005 を通過すること（Epic 完了後の手動確認可）"
+  not_required:
+    - "e2e"
+    - "stg 実測（本 Task PR 内必須）"
+  skip_reason:
+    "e2e": "本 Task は repository / composition 配線範囲"
+    "stg 実測（本 Task PR 内必須）": "Epic 完了後の手動確認。unit test で配線を担保する"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "DEFAULT composition の InMemory 実装が維持されているか"
+    - "semantic_config_version_id / is_active による絞り込みが正しいか"
+    - "8 Feature 欠損時に Incomplete を握りつぶさず、既存の ensure_complete_feature_vector 経路と整合するか"
+    - "pair_rule 未定義時に None を返し、全ゼロ delta 仕様が維持されているか"
+    - "feature_integration_rule 0 行時のフォールバックが DEFAULT 定数と一致するか"
+    - "migration / seed / OpenAPI 変更が混入していないか"
+    - "secret / .env 実値がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+human_decision_points:
+  - "feature_integration_rule 0 行時は DEFAULT フォールバック継続でよいか（推奨）。seed 追加は別 Task"
+  - "feature_integration_rule に行がある場合、Port の 2 スカラー（relationship_weight / occasion_weight）へどう写像するか。MVP では input_source=relationship_feature / occasion_feature の weight（軸共通 0.500）を採用してよいか"
+
+stop_conditions:
+  - "relationship_rule / occasion_rule / pair_rule の列定義が実 DB と テーブル定義書で矛盾する場合"
+  - "8 Feature を満たさない master 行が存在し、値の補完方針に業務判断が必要な場合"
+  - "migration または seed の変更が必要になった場合"
+  - "FeatureIntegrationWeights（2 スカラー）と feature_integration_rule（軸×input_source 行モデル）の写像方針が Human 未確定のまま実装に進めない場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "reco composition の Postgres 配線。通常の Issue / PR で管理する"
+
+notes:
+  - "Issue タイトル: [Task]MOD-RECO-005:Feature Rule Postgres読み取り実装"
+  - "PR 本文は Related to（Closes 禁止）。PR target は親 Epic Branch"
+  - "推奨実装方針: feature_integration_rule 0 行時は DEFAULT_RELATIONSHIP_WEIGHT / DEFAULT_OCCASION_WEIGHT（いずれも 0.50）へフォールバック。これは InMemory 既定および Featureルール定義書 §12.3 の初期値と一致する"
+  - "物理テーブル feature_integration_rule は feature_code × input_source 行モデル。Port は 2 スカラー。写像は Human 判断（human_decision_points）。0 行フォールバックのみで AC を満たせる"
+  - "SQL は is_active = true かつ semantic_config_version_id 一致で絞る。pivot は feature_code → FeatureVector"
+  - "起票後に parent.related_issues / Review Definition の target.issue / target.pr を実番号へ同期する"
+  - "AI Review 用 Review Definition: prompts/definitions/reviews/mod-reco-005-feature-rule-postgres/implementation/pr-review.yaml"
