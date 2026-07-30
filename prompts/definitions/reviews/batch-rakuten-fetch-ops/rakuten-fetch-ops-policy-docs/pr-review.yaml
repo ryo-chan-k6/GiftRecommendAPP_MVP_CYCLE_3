@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-rakuten-fetch-ops-policy-docs-pr"
+  title: "楽天Fetch運用方針docs Task PRレビュー"
+  summary: "Epic #1749 配下の楽天Fetch運用方針docs正本化 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1752
+  parent_epic_issue: 1749
+  parent_epic_branch: "docs/epic-1749-batch-rakuten-fetch-ops"
+  task_definition: "prompts/definitions/tasks/batch-rakuten-fetch-ops/rakuten-fetch-ops-policy-docs.yaml"
+  source_branch: "docs/task-1752-rakuten-fetch-ops-policy-docs"
+  target_branch: "docs/epic-1749-batch-rakuten-fetch-ops"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/batch-rakuten-fetch-ops/rakuten-fetch-ops-policy-docs.yaml"
+    required: true
+  issue:
+    number: 1752
+
+review_points:
+  - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md が正本として存在するか"
+  - "決定済み前提（QPS=2等）と未確定運用項目が区別されているか"
+  - "取得量・Run分割・paused再開・GHA live条件・QPS=1採否がHuman判断材料として整理されているか"
+  - "BATCH-001〜004 live実装・#1607・schedule・secret変更・QPS再改訂が混入していないか"
+  - "secret / token / key 実値がないか"
+  - "PR target が親 Epic Branch docs/epic-1749-batch-rakuten-fetch-ops か"
+  - "Related to #1752（Closes禁止）か"
+  - "Docs Review / Security 観点が充足しているか"
+
+notes:
+  - "Issue #1752 / Branch docs/task-1752-rakuten-fetch-ops-policy-docs"
+  - "PR 番号は /create-pr 後に target.pr へ反映する"
+  - "Human Reviewは省略しない"

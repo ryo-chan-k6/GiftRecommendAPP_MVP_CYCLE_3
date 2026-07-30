@@ -1,0 +1,282 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-rakuten-fetch-ops-policy-docs"
+  title: "batch-rakuten-fetch-ops:楽天Fetch運用方針docs正本化"
+  summary: "決定済みQPS=2等と未確定事項を区別し、取得量・Run分割・paused再開・GHA live条件・QPS=1採否のHuman判断材料を運用手順docsへ正本化する。"
+  phase: "15_運用・改善"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-batch-rakuten-fetch-ops"
+  epic_issue: "[Epic]batch-rakuten-fetch-ops:楽天Fetch運用方針確定"
+  epic_issue_number: 1749
+  epic_branch: "docs/epic-1749-batch-rakuten-fetch-ops"
+  related_issues:
+    - 1752
+    - 1745
+    - 1607
+    - 1637
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  楽天APIは常用QPS=2・ハードキャップ10・live時egress IP照合必須・CI live禁止が決定済み。
+  Rate Limiter本実装・正式契約反映は完了済み。未確定なのは運用側（取得量上限、Run分割、
+  rate_limited→paused後の再開、GHA葉をscaffoldからliveにする条件、安全側QPS=1の採否）である。
+  親Epic #1749 は方針正本化が本体。本Taskはその最初の子Taskとして運用方針docsを正本化する。
+  統括ロードマップは #1745（formal parentではない。Relationships追跡）。
+
+objective: |
+  docs/15_運用・改善/運用手順/ に楽天Fetch運用方針の正本を作成し、
+  決定済み前提とHuman判断待ちを区別して後続 batch-live-rakuten-fetch / schedule 判断のゲートを満たす。
+  必要最小限の関連ギャップdocs更新を含めてよい。secret実値は一切書かない。
+
+scope:
+  - "決定済み前提（QPS=2 / キャップ10 / IP照合 / CI live禁止）の運用docsへの収束"
+  - "取得量上限（max_items / max_pages / 対象ジャンル / 004再確認件数）の推奨値と検証用低値の整理"
+  - "QPS=2前提の長時間Run分割・同時多発回避の方針"
+  - "rate_limited → fetch_cursor.paused と paused/failed 再開の運用手順"
+  - "GHA葉ジョブを --scaffold-demo から live にする条件（固定egress設計自体は含めない）"
+  - "安全側常用QPS=1の採否をHuman判断材料として明文化"
+  - "必要最小限の関連ギャップdocs（例: バッチ外部API本実装ギャップ一覧）更新"
+  - "本 Task / Review Definition の維持"
+
+out_of_scope:
+  - "BATCH-001〜004のlive切替実装本体（後続 batch-live-rakuten-fetch）"
+  - "#1607 本番egress IP / NAT / self-hosted設計・構築"
+  - "daily/weekly on.schedule有効化"
+  - "GitHub Secrets / Variablesの値の表示・変更"
+  - "常用QPSの再改訂（新実験＋新Human決定なし）"
+  - "Rate Limiter / HttpRakuten clientの再実装"
+  - "OpenAPI / Orval / generated変更"
+  - "apps/** / .github/workflows/** の実装変更"
+
+input:
+  docs:
+    - path: "docs/90_PoC/外部API疎通検証/楽天API疎通検証結果.md"
+      required: true
+      purpose: "疎通結果・制限の根拠"
+    - path: "docs/90_PoC/外部API疎通検証/楽天API_設計反映メモ.md"
+      required: true
+      purpose: "設計反映済み事項の追跡"
+    - path: "docs/90_PoC/外部API疎通検証/楽天API疎通検証計画.md"
+      required: true
+      purpose: "検証計画の前提"
+    - path: "ai-logs/human-decisions/2026-07-24-rakuten-api-qps-ip-verify-policy.md"
+      required: true
+      purpose: "QPS・IP照合のHuman決定"
+    - path: "ai-logs/human-decisions/2026-07-25-rakuten-operational-qps-revise-to-2.md"
+      required: true
+      purpose: "常用QPS=2への改訂決定"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+      purpose: "ギャップ正本・必要最小更新先"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "Run/schedule前提の参照"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "001〜004の位置づけ"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+      purpose: "scheduleはout of scopeの境界確認"
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+      purpose: "001運用パラメータ参照"
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      required: true
+      purpose: "002運用パラメータ参照"
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      required: true
+      purpose: "003運用パラメータ参照"
+    - path: "docs/06_実装設計/batch/BATCH-004_楽天既存商品再確認バッチ仕様書.md"
+      required: true
+      purpose: "004再確認件数参照"
+    - path: "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+      required: true
+      purpose: "paused/failed再開の正本"
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      required: true
+      purpose: "親dispatch運用の参照"
+  templates:
+    - path: "prompts/templates/issue/task-issue.md"
+      required: true
+      purpose: "Issue本文テンプレート"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "create"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
+      required: false
+    - path: "docs/15_運用・改善/README.md"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/tasks/batch-rakuten-fetch-ops/rakuten-fetch-ops-policy-docs.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-rakuten-fetch-ops/rakuten-fetch-ops-policy-docs/pr-review.yaml"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "楽天Fetch運用方針.md（決定済みと未確定の区別、Human判断材料）"
+  - "必要最小限の関連ギャップdocs更新"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md が存在する"
+  - "決定済み前提（QPS=2等）と未確定運用項目が区別して記載されている"
+  - "取得量上限・Run分割・paused再開・GHA live条件・QPS=1採否がHuman判断材料として整理されている"
+  - "BATCH-001〜004 live実装・#1607・schedule有効化・secret変更・QPS再改訂を含まない"
+  - "secret実値が含まれていない"
+  - "Related to #1752（Closes禁止）"
+  - "PR target が親Epic Branch docs/epic-1749-batch-rakuten-fetch-ops"
+
+branch:
+  no_branch: false
+  name: "docs/task-1752-rakuten-fetch-ops-policy-docs"
+  summary: "rakuten-fetch-ops-policy-docs"
+  base: "docs/epic-1749-batch-rakuten-fetch-ops"
+  target: "docs/epic-1749-batch-rakuten-fetch-ops"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+  number: 1752
+  milestone: "運用・改善サイクル"
+
+dependencies:
+  epics:
+    - 1745
+  issues:
+    - number: 1749
+      purpose: "親Epic（本Taskのformal parent）"
+    - number: 1745
+      purpose: "統括ロードマップ（formal parentではない。Relationships追跡）"
+    - number: 1607
+      purpose: "本番egress Backlog。本Taskでは吸収しない"
+    - number: 1637
+      purpose: "案A完了Epic（参照）"
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+    - "prompts/definitions/tasks/batch-rakuten-fetch-ops/rakuten-fetch-ops-policy-docs.yaml"
+    - "prompts/definitions/reviews/batch-rakuten-fetch-ops/rakuten-fetch-ops-policy-docs/pr-review.yaml"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+contract_gate:
+  required: false
+
+test_policy:
+  required:
+    - "secret check"
+  commands: []
+  manual_checks:
+    - "方針docsが事実・推論・Human判断を分けているか"
+    - "live実装・#1607・schedule・secret変更・QPS再改訂が混入していないか"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "運用方針docs正本化Taskのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "決定済みと未確定が混同されていないか"
+    - "QPS再改訂を勝手に含めていないか"
+    - "#1607を吸収していないか"
+    - "paused再開が未確定のまま実装前提になっていないか"
+    - "secret実値がないか"
+    - "Related to / PR target が親Epic Branchか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常のdocs正本化。blocked / 人間判断 / 横断影響時のみai-logsを検討"
+
+human_decision_points:
+  - "親Epic #1749 が open のまま本Taskを開始してよい（本Taskは親配下の子Taskであり、親Epic openは想定どおり）。統括#1745もopenだがformal parentではないため、Done待ちを開始条件にしない"
+  - "日次/週次・手動の取得量上限の採用値"
+  - "Run分割（1 Run上限・再実行粒度）"
+  - "paused再開（自動次回 vs 手動、クールダウン）"
+  - "GHA live許可条件（当面localのみか条件付きGHAか）"
+  - "安全側QPS=1を運用既定にするか"
+  - "#1607着手タイミングは本Taskでは触らない（推奨）"
+
+stop_conditions:
+  - "BATCH-001〜004のworkflow live実装に着手しようとした場合"
+  - "#1607の本番egress実装が必要に見えた場合"
+  - "Human明示承認なしにschedule有効化しようとした場合"
+  - "secret実値の表示・commitが必要に見える場合"
+  - "常用QPSの再改訂を本Taskで確定しようとした場合"
+
+notes:
+  - "Issue #1752 / Branch docs/task-1752-rakuten-fetch-ops-policy-docs"
+  - "統括#1745の本線候補#1配下。Epic formal parentは#1749"
+  - "PRは Related to #1752 運用（Closes禁止）"
+  - "AI Review 3点セットのため Review Definition を PR head に含める"
