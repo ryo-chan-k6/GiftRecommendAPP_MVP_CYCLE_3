@@ -34,17 +34,7 @@ permissions:
   actions: write
 
 jobs:
-  # TEMP (#1739 Slack channel separation E2E): remove after verification.
-  e2e_force_fail:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Intentional fail for system alerts channel E2E (#1739)
-        run: |
-          echo "Intentional failure for system alerts channel E2E (Task #1739). No secrets / no stg."
-          exit 1
-
   ranking_snapshot:
-    needs: e2e_force_fail
     uses: ./.github/workflows/batch-rakuten-ranking-snapshot.yml
     secrets: inherit
 
@@ -80,7 +70,6 @@ jobs:
   notify_failure:
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     needs:
-      - e2e_force_fail
       - ranking_snapshot
       - item_import
       - item_meaning_generation
