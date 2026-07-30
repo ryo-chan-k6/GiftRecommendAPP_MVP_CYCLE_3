@@ -202,6 +202,9 @@ dependencies:
     - issue: 1753
       title: "[Epic]MOD-RECO-005:Feature Rule Postgres読み取り"
       purpose: "親 Epic"
+    - issue: 1756
+      title: "[Epic]Feature Integration Rule Seed整備"
+      purpose: "feature_integration_rule 48行seedの先行整備。本Task着手前にDone必須"
   issues: []
   prs: []
   tasks: []
@@ -251,7 +254,7 @@ review:
     security: true
 
 human_decision_points:
-  - "（確定 2026-07-30）feature_integration_rule seed を先に別 Issue で追加する。本 Task はその完了後に着手する"
+  - "（確定 2026-07-30）feature_integration_rule seed をEpic #1756 / Task #1757で先行する。本 Taskは#1756 Done後に着手する"
   - "（確定 2026-07-30）Port の 2 スカラー写像は input_source=relationship_feature / occasion_feature の weight（軸共通）を採用する"
 
 stop_conditions:
