@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1734
   issue:
     number: 1733
   task_definition: "prompts/definitions/tasks/batch-parent-schedule-phase2/decision-material.yaml"
