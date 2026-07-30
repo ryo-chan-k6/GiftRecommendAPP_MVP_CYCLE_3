@@ -52,7 +52,7 @@ uv run pytest \
 | ---- | ---- |
 | Run予算到達後も cursor は `active` のまま次 page を保持 | UT で確認 |
 | `rate_limited`（GRS-EXT-102）→ `paused`、page 非進行、`api_call_log.status=rate_limited` | BATCH-003/004 UT で確認 |
-| 空 Items / `pageCount` 到達 → `completed`（DDL `exhausted`）。Run予算停止とは区別 | UT で確認 |
+| 空 Items / `pageCount` 到達 → `exhausted`（実装内部名 `completed`）。Run予算停止とは区別 | UT で確認 |
 | `cursors_per_run` で着手 cursor 数を制限 | UT で確認 |
 
 ---
@@ -108,3 +108,4 @@ GHA 葉 workflow から楽天HTTPは呼ばない（当面 local のみ）。
 | ---- | ---- |
 | 2026-07-31 | 初版。実装ノブ・UT結果・実HTTP未実施理由を記録（#1765） |
 | 2026-07-31 | fetch_plan承認（4ジャンル・children展開・keyword無し）を反映。smoke手順を具体化 |
+| 2026-07-31 | #1775 AI Review対応: §3 の `exhausted` / `completed` 表記を整理 |

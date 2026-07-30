@@ -111,11 +111,11 @@ BATCH-002のジャンル数・ページ数やBATCH-003の楽天API呼出回数�
 | ----- | -------------------- | --------------------------- | -------------------- | --------- |
 | BATCH-001 | 承認済みfetch_planの起点ジャンルのみ | 1 Runで最大5起点ジャンル（推奨案） | 承認済み候補から1ジャンル | 実ID一覧と階層展開範囲 |
 | BATCH-002 | **`max_pages=1` 決定済み**。必要時のみ2まで拡張可 | 対象ジャンル数 | 1ジャンル × 1ページ | 対象ジャンル数。2ページ拡張条件 |
-| BATCH-003 | **事業上の取得打ち切り上限は設けない**（§5.3・Human採択）。承認済みスコープを cursor で継続走査し、`exhausted` まで進める | **Run単位**の `pages_per_run` / 消費cursor数 / 実行時間（運用概念名。CLI/workflow名は後続live Taskで確定）。恒久の深さ打ち切りではない | 1ルート × 1カーソル × 1ページ。疎通確認時は `hits=3` | 対象ジャンルの具体的 `fetch_plan`（実行前Human承認） |
+| BATCH-003 | **事業上の取得打ち切り上限は設けない**（§5.3・Human採択）。承認済みスコープを cursor で継続走査し、`exhausted` まで進める | **Run単位**の `pages_per_run` / 消費cursor数 / 実行時間（運用概念名。BATCH-003 CLI名は§5.3.2で確定。GHA workflow input名は楽天live時に別途） | 1ルート × 1カーソル × 1ページ。疎通確認時は `hits=3` | 対象ジャンルの具体的 `fetch_plan`（[2026-07-31 Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md)で承認済み。実HTTPは未実施） |
 | BATCH-004 | 優先度付き部分集合（全activeは週次既定にしない） | 100件から開始し、3回連続正常後に最大1000件/週 | `max_items=1` | 採択済み |
 
 BATCH-002の `max_pages=1`（〜2）は現行設計のまま維持する。
-BATCH-003の「運用予算」と監視閾値は§5.3.4 / §5.3.5の**Human採択値**である。現行workflowをlive化する承認ではなく、値の実装反映・workflow変更は後続live実装Task（§11.1）で行う。
+BATCH-003の「運用予算」と監視閾値は§5.3.4 / §5.3.5の**Human採択値**である。#1765 で CLI / job への実装反映は完了。GHA葉は楽天 scaffold 維持のまま（当面 local のみ。workflow live化は別判断）。
 
 ### 5.3 BATCH-003: 継続取得と運用予算の分離
 
@@ -174,7 +174,7 @@ BATCH-003の「運用予算」と監視閾値は§5.3.4 / §5.3.5の**Human採�
 | `hits` | 3 | 30 | 30 | 30 | 30 |
 | wall-clock上限 | 10分 | 20分 | **45分** | 60分 | 20分 |
 
-上記ノブ名は運用概念名である（§5.3.2）。CLI/workflowの実装パラメータ名は後続live Taskで確定する。
+上記ノブ名は運用概念名である。BATCH-003 CLI 実装名は §5.3.2 で確定（`--pages-per-run` / `--cursors-per-run` / `--wall-clock-seconds` 等）。GHA workflow input 名は楽天HTTP live化時に別途（当面 scaffold 維持）。
 
 - 通常継続は `pages_per_run=60` / `cursors_per_run=1` / route 1本 / `hits=30` / 45分。
 - 立ち上げは smoke → 初期live(10) を数回で実測し、429・容量増分に問題がなければ通常(60)へ上げる。
@@ -370,7 +370,7 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 
 | No | 論点 | 選択肢 | 状態 / 案 |
 | --: | ---- | ------ | --------- |
-| 1 | MVP対象ジャンル | 具体的なfetch_planを承認する / 保留 | **Human採択: 本Decisionでは保留**。local live実行前に最小 `fetch_plan` を別途Human承認する |
+| 1 | MVP対象ジャンル | 具体的なfetch_planを承認する / 保留 | **2026-07-30: 本Decisionでは保留**。具体値は [2026-07-31-rakuten-fetch-mvp-fetch-plan](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) で承認（4ジャンル・直下children・keywordなし）。実楽天HTTPは Human 環境で未実施 |
 | 2 | BATCH-003カタログ深さ | 深さ打ち切りあり / **なしで継続取得** | **Human採択**。事業上の取得打ち切り上限を設けず、QPS遵守で継続し範囲完了時のみ `exhausted` とする |
 | 2b | BATCH-003のRun予算 | pages/cursor/時間の初期値 | **Human採択**。§5.3.4（通常継続 `pages_per_run=60` / `cursors_per_run=1` / route 1本 / `hits=30` / 45分。立ち上げは10から段階拡張） |
 | 2c | 監視閾値 | DB / Storage / GHA / 429 | **Human採択**。§5.3.5の比率・増分・エラー率ベース初期値。運用1週間後に実測で見直す |
@@ -382,7 +382,7 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 8 | 安全側QPS=1 | 全Runの既定 / 長時間・再開時のみ / 不採用 | **Human採択**。長時間Run、BATCH-003/004、429後の再開時のみ適用。常用QPS=2は変更しない |
 | 9 | クールダウン | 15分 / 30分 / 60分 / 別値 | **Human採択**。初回15分、再発時60分以上 |
 
-採択の正本は[楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md)とする。No.1は「保留すること」を決定済みであり、具体的 `fetch_plan` の承認まではlocal liveの実呼出を開始しない。live実装・workflow変更は別Taskで行う。
+採択の正本は[楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md)とする。No.1の具体的 `fetch_plan` は [2026-07-31 Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) で承認済み。実楽天HTTPの実行タイミング・secret投入は引き続き Human 環境での判断とする。GHA楽天HTTP live化は当面禁止のまま（No.7）。
 
 ---
 
@@ -390,12 +390,12 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 
 ### 11.1 batch-live-rakuten-fetch
 
-- §10のHuman判断が完了している（2026-07-30採択済み）。ただし、具体的 `fetch_plan` はlocal live実行前にHuman承認する
-- BATCH-003について、Run予算とカタログ深さ打ち切りを混同しない実装になっている
+- §10のHuman判断が完了している（2026-07-30採択済み）。具体的 `fetch_plan` は 2026-07-31 Log で承認済み。実HTTPは Human 環境で段階実施
+- BATCH-003について、Run予算とカタログ深さ打ち切りを混同しない実装になっている（#1765）
 - Human採択後のRun予算・再開方式・監視指標がTask Definitionへ反映されている
 - `max_items` と楽天FetchのRun予算が別物であることを実装・workflowで維持している
 - `rate_limited` → `paused` とpage非進行、Run予算到達後のcursor継続をテストできる
-- GHA liveの場合は§8.2をすべて満たす
+- GHA liveの場合は§8.2をすべて満たす（当面 local のみのため未適用）
 
 ### 11.2 schedule判断
 
@@ -416,6 +416,7 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | [楽天API QPS / IP確認 Human Decision Log](../../../ai-logs/human-decisions/2026-07-24-rakuten-api-qps-ip-verify-policy.md) | QPSキャップ・IP照合・CI live禁止 |
 | [楽天市場API 常用QPS=2 Human Decision Log](../../../ai-logs/human-decisions/2026-07-25-rakuten-operational-qps-revise-to-2.md) | 常用QPS改訂 |
 | [楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md) | §10の取得量・Run分割・再開・実行場所の採択 |
+| [楽天Fetch MVP fetch_plan Human Decision Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) | §10 No.1 の具体的ジャンル・階層・route 承認 |
 | [バッチ外部API本実装ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md) | 外部API実装状態 |
 | [バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) | 親子workflow・concurrency |
 | [バッチ親workflow schedule有効化ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md) | schedule無効・Human決定 |
@@ -440,3 +441,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-07-30 | AI Review指摘対応: Epic scope外README差分を除去。「Human採択」表記を推奨案/判断待ちへ戻し、ギャップ一覧と同期 |
 | 2026-07-30 | #1764: §10推奨案をHuman採択。対象ジャンルは本Decisionでは保留し、local live実行前承認をゲート化 |
 | 2026-07-31 | #1765: BATCH-003 CLI（`--pages-per-run` 等）を運用概念と対応付け。local live検証結果を追加 |
+| 2026-07-31 | #1775 AI Review対応: §5.2 / §5.3.4 の CLI TBD 残存を解消。§10 No.1 / §12 に fetch_plan Log を接続 |
