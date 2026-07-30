@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1772
   issue:
     number: 1762
   task_definition: "prompts/definitions/tasks/batch-live-db-lane/live-version-resolve.yaml"

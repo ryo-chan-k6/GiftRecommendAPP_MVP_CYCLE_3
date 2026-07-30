@@ -366,7 +366,6 @@ local確認結果:
 | 3回適用後の `normalization_rule` | 1行・`is_active=true`・current sigmoid version を binding |
 | 同 DB での resolver 相当 SELECT 5種 | いずれも 1 行を返す |
 | 同 DB に対する `PostgresDbReader` + `CurrentVersionResolver` 実行 | semantic / normalization / embedding の 3 UUID を解決できることを確認 |
-| stg手動実行 | **未実施** |
 
 local DB 検証で、既存 seed の副作用を1件検出した（本Task差分に起因しない）。
 
@@ -378,8 +377,23 @@ local DB 検証で、既存 seed の副作用を1件検出した（本Task差分
 | 推論 | seed 再実行を繰り返すと未参照の旧 normalization version 行が蓄積する。current 解決と binding には影響しないが、seed の行冪等性としては課題が残る |
 | 判断 | 本Taskの out of scope（`normalization_rule` binding 以外の seed 変更）のため、別Issue候補として記録するに留める |
 
-本節の結果はlocal実装・unit test・使い捨てlocal DBでのseed検証までであり、
-BATCH-010〜014のstg DB書込成功、009→010→011〜014の複合実行成功は確認していない。
+#### `#1762` stg live再検証結果
+
+PR #1772（`fix/task-1762-batch-011-014-live-version`）上で、stgへ
+`09_config_versions.sql` を明示適用した後、010〜014を `max_items=1` で順次実行した。
+
+| Batch | Run URL | conclusion | 要約 |
+| ----- | ------- | ---------- | ---- |
+| 010 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560538588 | **success** | seed適用成功。`claimed=1 generated=1`（Rule-first、実LLMなし） |
+| 011 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560607388 | **success** | `hashed=1`（empty plan解消） |
+| 012 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560696028 | **success** | `generated=1 item_feature_writes=8` |
+| 013 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560767398 | **success** | `normalized=1 normalized_updates=8 item_meaning_upserts=1` |
+| 014 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560829983 | **success** | `hashed=1` |
+
+seed適用はBATCH-010葉の opt-in 入力 `apply_config_master_seed=true` でのみ行い、
+通常の複合呼出や既定実行では無効のままとした。secret実値は記録していない。
+
+meaning複合（009→014一括）の再実行は未実施だが、010〜014の葉liveはすべて成功した。
 
 ### 6.9 本Taskの到達点
 
@@ -391,13 +405,13 @@ BATCH-010〜014のstg DB書込成功、009→010→011〜014の複合実行成�
 | BATCH-009 の stg live 実行 | **成功** |
 | 既live BATCH-005〜008 / 017 の回帰 | 影響なし（import連鎖で live 成功を再確認） |
 | BATCH-010〜014 の current UUID解決・local unit test | 完了（`#1762`、782 passed） |
-| `normalization_rule` binding の master seed 追加 | 完了（`#1762`、local DBで冪等・追随を確認） |
-| BATCH-010〜014 の stg live 実行 | **未実施**（`#1762`差分では未検証） |
+| `normalization_rule` binding の master seed 追加 | 完了（`#1762`、local/stgで適用確認） |
+| BATCH-010〜014 の stg live 実行 | **成功**（`#1762`、010〜014各1件） |
 | BATCH-016 の stg live 実行 | **成功**（`#1761`、run `30554021305`） |
 
 本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）は、009 の live 成功および import連鎖6本の
 live 成功によって配線として妥当であることを確認した。
-010〜014 の live 書込成功は、`#1762` 差分を反映したstg手動実行で確認する。
+010〜014 の live 書込成功は `#1762` / PR #1772 で確認した。
 
 ## 7. 段階完了状況
 
@@ -407,7 +421,7 @@ live 成功によって配線として妥当であることを確認した。
 | B | 完了 | 対象6葉をstg live化 |
 | C | 完了 | meaning / retry複合のRun IDを整合 |
 | D | 完了 | 005〜008 / 017に意図しない差分なし |
-| E | 実施済・PARTIAL | 009 / 016 live 成功、import連鎖6本 live 成功。011〜014 は `#1762` へ分離 |
+| E | 実施済 | 009 / 010〜014 / 016 live 成功。015 liveは `#1768` へ分離 |
 
 ## 8. 変更履歴
 
@@ -421,3 +435,4 @@ live 成功によって配線として妥当であることを確認した。
 | 2026-07-30 | `#1761` の修正・unit test・stg live 再実行成功を追記 |
 | 2026-07-31 | `#1762` のcurrent version resolver、010 Rule-first DB live配線、local unit test結果を追記。stg実行は未実施 |
 | 2026-07-31 | `#1762` のAI / Test Review指摘対応。`normalization_rule` master seed追加のHuman判断、local DB検証、unit test件数更新を追記。stg実行は未実施 |
+| 2026-07-31 | `#1762` / PR #1772 のstg検証。config seed適用後にBATCH-010〜014が各1件success |
