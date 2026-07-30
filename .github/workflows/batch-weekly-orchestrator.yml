@@ -97,7 +97,7 @@ jobs:
         uses: actions/github-script@v8
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL_ID_DEVOPS: ${{ vars.SLACK_CHANNEL_ID_DEVOPS }}
+          SLACK_CHANNEL_ID_SYSTEM_ALERTS: ${{ vars.SLACK_CHANNEL_ID_SYSTEM_ALERTS }}
           SLACK_MENTION_INCIDENT: ${{ vars.SLACK_MENTION_INCIDENT }}
           NEEDS_JSON: ${{ toJSON(needs) }}
         with:
@@ -126,7 +126,7 @@ jobs:
             });
             const result = await slack.postSlackMessage({
               token: process.env.SLACK_BOT_TOKEN,
-              channel: process.env.SLACK_CHANNEL_ID_DEVOPS,
+              channel: process.env.SLACK_CHANNEL_ID_SYSTEM_ALERTS,
               text,
             });
             if (!result.ok) {

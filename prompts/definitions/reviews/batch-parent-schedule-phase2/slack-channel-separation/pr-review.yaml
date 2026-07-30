@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-parent-schedule-phase2-slack-channel-separation-pr"
+  title: "batch-parent-schedule-phase2 Slack通知先チャンネル分離 PRレビュー"
+  summary: "バッチ失敗通知先をシステムエラー通知チャンネルへ分離するTask PRをAI Reviewする。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: null
+  issue:
+    number: 1739
+  task_definition: "prompts/definitions/tasks/batch-parent-schedule-phase2/slack-channel-separation.yaml"
+  parent_epic_issue: "[Epic]batch-parent-schedule-phase2:daily schedule有効化再判断 (#1732)"
+  parent_epic_branch: "chore/epic-1732-batch-parent-schedule-phase2"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "daily / weekly親の失敗通知だけがSLACK_CHANNEL_ID_SYSTEM_ALERTSを参照するか"
+  - "Issue / PR / AI Review通知のSLACK_CHANNEL_ID_DEVOPSを変更していないか"
+  - "新変数未設定時に旧チャンネルへfallbackしないか"
+  - "正本docsとworkflowが整合しているか"
+  - "新チャンネル向けE2E結果が事実とHuman確認事項を分離しているか"
+  - "secret / token / channel ID実値を含まないか"
+  - "最終差分に意図的失敗job / schedule有効化がないか"
+  - "PR targetが親Epic Branchか"
+  - "Related to Task Issueを使いClosesを使っていないか"
+
+notes:
+  - "Humanが新チャンネル作成・Bot招待・Repository Variable登録を完了済み"
+  - "GitHub Variables / Secretsの値変更は本Taskのout of scope"

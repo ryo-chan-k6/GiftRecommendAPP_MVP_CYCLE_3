@@ -28,6 +28,7 @@ Slack通知の通知対象、通知レベル、文面方針の正本は [Slack�
 | ---- | ---- | ---- |
 | Repository Secret | `SLACK_BOT_TOKEN` | Slack `chat.postMessage` の認証に使用する Bot User OAuth Token |
 | Repository Variable | `SLACK_CHANNEL_ID_DEVOPS` | 開発運用チャンネルの channel ID |
+| Repository Variable | `SLACK_CHANNEL_ID_SYSTEM_ALERTS` | daily / weekly 親バッチ失敗通知用のシステムエラー通知チャンネル ID |
 | Repository Variable | `SLACK_MENTION_HUMAN_REVIEW` | Human Review依頼時の個人メンション |
 | Repository Variable | `SLACK_MENTION_INCIDENT` | incident / 作業停止時の個人メンション |
 | Repository Variable | `SLACK_CHANNEL_ID_AI_OPS` | 必要になった場合のAI運用チャンネル |
@@ -82,6 +83,7 @@ Slack通知に失敗しても、Issue / PR / Projects / docs の正本更新を�
 | Slack APIが `ok: false` を返した | workflow summaryに `error` のみ記録する |
 | `SLACK_BOT_TOKEN` 未設定 | 通知をスキップし、summaryに設定不足を記録する |
 | `SLACK_CHANNEL_ID_DEVOPS` 未設定 | 通知をスキップし、summaryに設定不足を記録する |
+| `SLACK_CHANNEL_ID_SYSTEM_ALERTS` 未設定 | バッチ失敗通知をスキップし、旧開発運用チャンネルへ fallback しない |
 | Human Review / incident通知失敗 | Issue / PRコメントまたはActionsログで補完する |
 
 token実値、Authorization header、Slack API request body中のsecretは出力しない。
@@ -108,10 +110,12 @@ token実値、Authorization header、Slack API request body中のsecretは出力
 | `.github/workflows/pr-review-status-sync.yml` | AI Review完了通知、Human Review依頼、修正必要通知 |
 | `.github/workflows/pr-merged-done-and-slack.yml` | PR merge / Done通知 |
 | `.github/workflows/slack-notify-manual.yml` | 人間判断、incident、横断影響、レビュー指摘対応完了 |
-| `.github/workflows/batch-daily-orchestrator.yml` | 日次親workflow失敗通知（`error` / incidentメンション） |
-| `.github/workflows/batch-weekly-orchestrator.yml` | 週次親workflow失敗通知（`error` / incidentメンション） |
+| `.github/workflows/batch-daily-orchestrator.yml` | システムエラー通知チャンネルへの日次親workflow失敗通知（`error` / incidentメンション） |
+| `.github/workflows/batch-weekly-orchestrator.yml` | システムエラー通知チャンネルへの週次親workflow失敗通知（`error` / incidentメンション） |
 
 親 Batch workflow の通知は、`needs.*.result` に `failure` がある場合のみ実行する。
+通知先は `SLACK_CHANNEL_ID_SYSTEM_ALERTS` のみとし、未設定時に `SLACK_CHANNEL_ID_DEVOPS` へ fallback しない。
+Issue / PR / AI Review等の作業通知は、従来どおり `SLACK_CHANNEL_ID_DEVOPS` を使用する。
 通知本文には失敗 job 名、workflow、run番号、ref、Actions Run URLを含める。
 Slack通知stepは `continue-on-error: true` とし、通知自体の失敗で本線の結果を上書きしない。
 
