@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
 from batch.application.distribution_metrics import (
     BATCH_ID,
     DEFAULT_SEMANTIC_CONFIG_VERSION,
@@ -613,10 +615,97 @@ def test_feature_metrics_emit_raw_and_normalized_for_all_mvp_eight_codes() -> No
         assert row.table == "feature_distribution_metric"
         assert row.feature_code is not None
         by_layer[row.value_layer].add(row.feature_code)
+        if row.value_layer == "normalized":
+            assert row.feature_normalization_version_id == _NORM_VERSION
+        else:
+            assert row.feature_normalization_version_id is None
 
     assert by_layer["raw"] == set(MVP_FEATURE_CODES)
     assert by_layer["normalized"] == set(MVP_FEATURE_CODES)
     assert len(repos.feature_metric_rows) == len(MVP_FEATURE_CODES) * 2
+
+
+def test_feature_raw_metrics_aggregate_across_normalization_versions() -> None:
+    features = [
+        ItemFeatureRow(
+            item_id="it_1",
+            semantic_config_version_id=_VERSION,
+            feature_code="formality",
+            raw_feature_value=0.4,
+            feature_normalization_version_id="norm-v1",
+        ),
+        ItemFeatureRow(
+            item_id="it_2",
+            semantic_config_version_id=_VERSION,
+            feature_code="formality",
+            raw_feature_value=0.8,
+            feature_normalization_version_id="norm-v2",
+        ),
+    ]
+    repos, _ = _repos(features=features)
+
+    result = _run(repos)
+
+    assert result.status == "succeeded"
+    assert len(repos.feature_metric_rows) == 1
+    raw_row = repos.feature_metric_rows[0]
+    assert raw_row.value_layer == "raw"
+    assert raw_row.sample_count == 2
+    assert raw_row.mean == pytest.approx(0.6)
+    assert raw_row.feature_normalization_version_id is None
+
+
+def test_feature_normalized_metrics_fail_when_normalization_versions_mixed() -> None:
+    features = [
+        ItemFeatureRow(
+            item_id="it_1",
+            semantic_config_version_id=_VERSION,
+            feature_code="formality",
+            normalized_feature_value=0.4,
+            feature_normalization_version_id="norm-v1",
+        ),
+        ItemFeatureRow(
+            item_id="it_2",
+            semantic_config_version_id=_VERSION,
+            feature_code="formality",
+            normalized_feature_value=0.8,
+            feature_normalization_version_id="norm-v2",
+        ),
+    ]
+    repos, db = _repos(features=features)
+
+    result = _run(repos)
+
+    assert result.status == "failed"
+    assert "GRS-VAL-001" in result.error_codes
+    assert db.upsert_calls == []
+    assert db.write_calls == []
+    assert repos.phase_logs == []
+    summaries = [str(log.get("summary", "")) for log in repos.error_logs]
+    assert any("multiple feature_normalization_version_id values" in s for s in summaries)
+
+
+def test_feature_normalized_metrics_fail_when_normalization_version_missing() -> None:
+    features = [
+        ItemFeatureRow(
+            item_id="it_1",
+            semantic_config_version_id=_VERSION,
+            feature_code="formality",
+            normalized_feature_value=0.4,
+            feature_normalization_version_id=None,
+        )
+    ]
+    repos, db = _repos(features=features)
+
+    result = _run(repos)
+
+    assert result.status == "failed"
+    assert "GRS-VAL-001" in result.error_codes
+    assert db.upsert_calls == []
+    assert db.write_calls == []
+    assert repos.phase_logs == []
+    summaries = [str(log.get("summary", "")) for log in repos.error_logs]
+    assert any("feature_normalization_version_id is required" in s for s in summaries)
 
 
 def test_meaning_metrics_item_social_and_symbolic_layers() -> None:

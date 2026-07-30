@@ -287,6 +287,18 @@ Object Storage の署名リージョンはコード上 `us-east-1` 固定だが�
 
 いずれも Parent Epic は `#1750`、初期状態は `no-branch` とし、着手時期は Human が判断する。
 
+### 6.8.1 `#1761` ローカル修正結果
+
+2026-07-30、`#1761` で BATCH-016 の `aggregate_feature_metrics` を修正した。
+
+- `feature_distribution_metric` の raw 層は `feature_normalization_version_id=NULL` のまま、`feature_code` 単位で集計する
+- normalized 層は入力 `ItemFeatureRow.feature_normalization_version_id` を出力行へ伝播する
+- 同一 `semantic_config_version_id` / `feature_code` の normalized 対象で複数 version が混在した場合、または normalized 値に version がない場合は、DB 書込前に `FeatureMetricAggregationError` で停止する
+- Job 層は同例外を既存の入力検証と同じ `GRS-VAL-001` として扱い、`error_log` 記録・`status=failed` で終了する（DB CHECK 違反まで遅延させない）
+- 対象 unit test は `31 passed`
+
+stg live の再実行は未実施であり、BATCH-016 の live 書込成功は未確認である。
+
 ### 6.9 本Taskの到達点
 
 | 対象 | 状態 |
@@ -297,7 +309,7 @@ Object Storage の署名リージョンはコード上 `us-east-1` 固定だが�
 | BATCH-009 の stg live 実行 | **成功** |
 | 既live BATCH-005〜008 / 017 の回帰 | 影響なし（import連鎖で live 成功を再確認） |
 | BATCH-011〜014 の stg live 実行 | 未成立（`#1762`） |
-| BATCH-016 の stg live 実行 | 未成立（`#1761`） |
+| BATCH-016 の stg live 実行 | アプリ修正・unit test 完了、stg再実行未実施（`#1761`） |
 
 本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）は、009 の live 成功および import連鎖6本の
 live 成功によって配線として妥当であることを確認した。
@@ -322,3 +334,4 @@ live 成功によって配線として妥当であることを確認した。
 | 2026-07-30 | `STG_DATABASE_URL` 更新後 Attempt 2 を記録（PARTIAL） |
 | 2026-07-30 | Object Storage設定修復後 Attempt 3 を記録。009 live 成功、011・016 の構造的課題を特定 |
 | 2026-07-30 | Human判断により 011・016 の課題を `#1761` / `#1762` へ分離し、本Taskの到達点を確定 |
+| 2026-07-30 | `#1761` のローカル修正・unit test 成功を追記。stg live 再実行は未確認 |
