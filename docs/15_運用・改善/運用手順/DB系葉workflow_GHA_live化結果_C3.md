@@ -5,8 +5,8 @@
 | 項目 | 内容 |
 | ---- | ---- |
 | 関連 Epic | [#1750](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1750) |
-| 関連 Task | [#1751](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1751) |
-| 対象 | BATCH-009 / 011 / 012 / 013 / 014 / 016 |
+| 関連 Task | [#1751](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1751) / [#1762](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1762) |
+| 対象 | BATCH-009 / 010 / 011 / 012 / 013 / 014 / 016 |
 | 環境 | GitHub Environment `stg` |
 | DB Secret | `STG_DATABASE_URL` を job env `DATABASE_URL` へ割り当て |
 | 記録日 | 2026-07-30 |
@@ -43,6 +43,9 @@ meaning複合 `batch-item-meaning-generation.yml` は、共有
 BATCH-016末尾のBATCH-017もlive経路へ揃え、017の新規 `job_run_id` と
 集計対象である016の `job_run_id` を分離した。010 / 015のAI経路は変更していない。
 
+> 本節は `#1751` 実施時点の記録である。後続 `#1762` では、010を実LLMなしの
+> Rule-first DB liveへ変更し、015のみscaffold維持とした。詳細は §6.8.2 を参照する。
+
 ## 4. Phase C: meaning複合整合
 
 `batch-item-meaning-generation.yml` では、共有 `pipeline_batch_run_id` を
@@ -52,6 +55,9 @@ BATCH-016末尾のBATCH-017もlive経路へ揃え、017の新規 `job_run_id` �
 - 010 / 015: scaffoldを維持し、各葉の既定Run IDを使用
 - 017: 集計対象として共有 `pipeline_batch_run_id` のみ受け取り、
   自身の `job_run_id` は新規UUIDを生成
+
+上記も `#1751` 実施時点の構成であり、`#1762` 後は010がRule-first DB live、
+015がscaffold維持となる。
 
 `batch-retry-failed-items.yml` でも、live化した011〜014へ共有Run IDを渡さず、
 各葉で新規UUIDを生成するよう整合した。
@@ -307,6 +313,91 @@ Object Storage の署名リージョンはコード上 `us-east-1` 固定だが�
 | BATCH-016 | **success**（CHECK 制約違反を解消し、live DB 書込成功） |
 | BATCH-017 | **success** |
 
+### 6.8.2 `#1762` local実装・unit test結果
+
+2026-07-31、BATCH-010〜014 の live 経路で使用する version を
+`DbReader` 経由で current master から解決する実装へ変更した。
+
+- Semantic は `semantic_config.config_name=mvp_semantic_config` かつ active な系列を一意に特定し、
+  同系列の `semantic_config_version.is_current=true` を解決する
+- Feature Normalization は `normalization_method=sigmoid` かつ
+  `feature_normalization_version.is_current=true` を解決し、対象 Semantic version に対する
+  active `normalization_rule` binding も検証する
+- Embedding は `model_version.model_type=embedding` かつ `is_current=true` を解決する
+- current の欠落、複数、非UUID、Normalization binding 欠落は、DB書込前に
+  `GRS-CFG-001` / `GRS-CFG-002` / `GRS-CFG-003` へ変換して失敗させる
+- scaffold固定versionは `--scaffold-demo` 経路に限定し、live Job は解決済みUUIDを使用する
+- BATCH-010 workflow は `environment: stg`、`STG_DATABASE_URL`、UUID `job_run_id` を使用し、
+  `--scaffold-demo` を付けずにRule-first generatorを実行する。実LLMは呼び出さない
+- BATCH-015 は `#1768` まで scaffold を維持する
+
+#### Human判断（2026-07-31）と master seed 追加
+
+AI Review / Test Review で、`normalization_rule` が master seed に存在せず
+`resolve_normalization` が stg で必ず失敗する点を Blocker として検出した。
+これに対し Human が以下を決定した（[Issue #1762 コメント](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1762#issuecomment-5133050157)）。
+
+| 論点 | 決定 |
+| ---- | ---- |
+| seed 追加の扱い | DDL 変更なしの最小・冪等 master seed 追加を `#1762` に含める |
+| binding 対象 | current semantic config version と current sigmoid feature normalization version を `normalization_rule` で結ぶ |
+| fallback | 採用しない。current が解決できない場合は DB 書込前に失敗させる |
+
+これに従い、`supabase/seeds/masters/09_config_versions.sql` へ
+`normalization_rule` の binding 登録を追加した。
+
+| 観点 | 内容 |
+| ---- | ---- |
+| ID 解決 | 固定 UUID をハードコードせず、`semantic_config` / `semantic_config_version` / `feature_normalization_version` の current 行を SELECT で解決する |
+| 冪等性 | `ON CONFLICT ON CONSTRAINT uq_normalization_rule_version DO UPDATE` により version あたり 1 行を維持する |
+| 非破壊 | 既存 `normalization_rule` 行を DELETE しない。既存行は再 binding のみ行う |
+| 追随性 | current `feature_normalization_version` が更新された後の再実行で binding が新 current へ追随する |
+| DDL | `supabase/migrations/**` / `db/ddl/**` に差分なし |
+
+local確認結果:
+
+| 確認 | 結果 |
+| ---- | ---- |
+| BATCH-010〜014 + current resolver + DbReader unit test | `198 passed` |
+| `apps/batch/tests/unit` 全体 | `782 passed` |
+| 変更workflow 2件のYAML parse | 成功 |
+| 使い捨て PostgreSQL 17 + pgvector への migration 適用 | 成功（Supabase Storage 依存の bucket migration のみ local 非適用） |
+| 同 DB への master seed 3回適用 | 全ファイル成功 |
+| 3回適用後の `normalization_rule` | 1行・`is_active=true`・current sigmoid version を binding |
+| 同 DB での resolver 相当 SELECT 5種 | いずれも 1 行を返す |
+| 同 DB に対する `PostgresDbReader` + `CurrentVersionResolver` 実行 | semantic / normalization / embedding の 3 UUID を解決できることを確認 |
+
+local DB 検証で、既存 seed の副作用を1件検出した（本Task差分に起因しない）。
+
+| 区分 | 内容 |
+| ---- | ---- |
+| 事実 | `09_config_versions.sql` の sigmoid `feature_normalization_version` は、`is_current=false` へ落としてから `is_current=true` 行が無い場合に INSERT する構造のため、再実行のたびに新しい version 行が1行増える |
+| 事実 | 3回適用後、`feature_normalization_version` は3行、うち current は1行だった |
+| 事実 | 追加した `normalization_rule` binding は 3回適用後も1行のまま、最新の current version を指していた |
+| 推論 | seed 再実行を繰り返すと未参照の旧 normalization version 行が蓄積する。current 解決と binding には影響しないが、seed の行冪等性としては課題が残る |
+| 判断 | 本Taskの out of scope（`normalization_rule` binding 以外の seed 変更）のため、別Issue候補として記録するに留める |
+
+#### `#1762` stg live再検証結果
+
+PR #1772（`fix/task-1762-batch-011-014-live-version`）上で、stgへ
+`09_config_versions.sql` を明示適用した後、010〜014を `max_items=1` で順次実行した。
+
+| Batch | Run URL | conclusion | 要約 |
+| ----- | ------- | ---------- | ---- |
+| 010 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560538588 | **success** | seed適用成功。`claimed=1 generated=1`（Rule-first、実LLMなし） |
+| 011 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560607388 | **success** | `hashed=1`（empty plan解消） |
+| 012 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560696028 | **success** | `generated=1 item_feature_writes=8` |
+| 013 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560767398 | **success** | `normalized=1 normalized_updates=8 item_meaning_upserts=1` |
+| 014 | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30560829983 | **success** | `hashed=1` |
+
+seed適用はBATCH-010葉の opt-in 入力 `apply_config_master_seed=true` でのみ行い、
+通常の複合呼出や既定実行では無効のままとした。secret実値は記録していない。
+`apply_config_master_seed` step は `postgresql-client` を明示インストールしてから `psql` を実行する
+（AI Review should指摘対応）。
+
+meaning複合（009→014一括）の再実行は未実施だが、010〜014の葉liveはすべて成功した。
+複合一括の追加実行要否は Human Review で確認する。
+
 ### 6.9 本Taskの到達点
 
 | 対象 | 状態 |
@@ -316,12 +407,14 @@ Object Storage の署名リージョンはコード上 `us-east-1` 固定だが�
 | 葉 `job_run_id` の UUID 化（複合IDとの分離） | 完了 |
 | BATCH-009 の stg live 実行 | **成功** |
 | 既live BATCH-005〜008 / 017 の回帰 | 影響なし（import連鎖で live 成功を再確認） |
-| BATCH-011〜014 の stg live 実行 | 未成立（`#1762`） |
+| BATCH-010〜014 の current UUID解決・local unit test | 完了（`#1762`、782 passed） |
+| `normalization_rule` binding の master seed 追加 | 完了（`#1762`、local/stgで適用確認） |
+| BATCH-010〜014 の stg live 実行 | **成功**（`#1762`、010〜014各1件） |
 | BATCH-016 の stg live 実行 | **成功**（`#1761`、run `30554021305`） |
 
 本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）は、009 の live 成功および import連鎖6本の
 live 成功によって配線として妥当であることを確認した。
-011〜014 の live 書込成功は、`#1762` で扱う。
+010〜014 の live 書込成功は `#1762` / PR #1772 で確認した。
 
 ## 7. 段階完了状況
 
@@ -331,7 +424,7 @@ live 成功によって配線として妥当であることを確認した。
 | B | 完了 | 対象6葉をstg live化 |
 | C | 完了 | meaning / retry複合のRun IDを整合 |
 | D | 完了 | 005〜008 / 017に意図しない差分なし |
-| E | 実施済・PARTIAL | 009 / 016 live 成功、import連鎖6本 live 成功。011〜014 は `#1762` へ分離 |
+| E | 実施済 | 009 / 010〜014 / 016 live 成功。015 liveは `#1768` へ分離 |
 
 ## 8. 変更履歴
 
@@ -343,3 +436,7 @@ live 成功によって配線として妥当であることを確認した。
 | 2026-07-30 | Object Storage設定修復後 Attempt 3 を記録。009 live 成功、011・016 の構造的課題を特定 |
 | 2026-07-30 | Human判断により 011・016 の課題を `#1761` / `#1762` へ分離し、本Taskの到達点を確定 |
 | 2026-07-30 | `#1761` の修正・unit test・stg live 再実行成功を追記 |
+| 2026-07-31 | `#1762` のcurrent version resolver、010 Rule-first DB live配線、local unit test結果を追記。stg実行は未実施 |
+| 2026-07-31 | `#1762` のAI / Test Review指摘対応。`normalization_rule` master seed追加のHuman判断、local DB検証、unit test件数更新を追記。stg実行は未実施 |
+| 2026-07-31 | `#1762` / PR #1772 のstg検証。config seed適用後にBATCH-010〜014が各1件success |
+| 2026-07-31 | AI Review指摘対応。`apply_config_master_seed` に `postgresql-client` 導入を追加。meaning複合は葉successを必須証跡とし追加確認は任意と明記 |

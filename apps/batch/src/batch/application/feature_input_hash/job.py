@@ -10,6 +10,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from batch.application.current_versions import (
+    CurrentVersionResolveError,
+    CurrentVersionResolver,
+)
 from batch.application.feature_input_hash.hashing import (
     build_feature_input_payload,
     compute_feature_input_hash,
@@ -21,10 +25,7 @@ from batch.application.feature_input_hash.models import (
     HashHandoffRecord,
     QueueRow,
 )
-from batch.application.feature_input_hash.repositories import (
-    DEFAULT_NORMALIZATION_VERSION,
-    FeatureInputHashRepositories,
-)
+from batch.application.feature_input_hash.repositories import FeatureInputHashRepositories
 from batch.application.job_run import JobRunTracker, ScaffoldJobRunTracker
 from batch.infrastructure.logger import BatchLogger, ScaffoldBatchLogger
 
@@ -81,11 +82,17 @@ class FeatureInputHashJob:
         self,
         *,
         repositories: FeatureInputHashRepositories,
+        version_resolver: CurrentVersionResolver | None = None,
         job_run_tracker: JobRunTracker | None = None,
         logger: BatchLogger | None = None,
         force_hash_fail: bool = False,
     ) -> None:
         self._repos = repositories
+        self._version_resolver = version_resolver or (
+            CurrentVersionResolver(repositories.db_reader)
+            if repositories.db_reader is not None
+            else None
+        )
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
         self._force_hash_fail = force_hash_fail
@@ -274,13 +281,33 @@ class FeatureInputHashJob:
             result.skipped_queue_ids.append(qid)
             return
 
-        config = resolve_config_version(item_id=seed.item_id)
+        try:
+            semantic_version_id = (
+                self._version_resolver.resolve_semantic()
+                if self._version_resolver is not None
+                else resolve_config_version(item_id=seed.item_id).semantic_config_version_id
+            )
+            normalization_version_id = (
+                self._version_resolver.resolve_normalization(
+                    semantic_config_version_id=semantic_version_id
+                )
+                if self._version_resolver is not None
+                else self._repos.current_normalization_version_id
+            )
+            config = ConfigResolveHint(
+                semantic_config_version_id=semantic_version_id,
+            )
+        except CurrentVersionResolveError as exc:
+            raise FeatureInputHashError(exc.code, exc.message) from exc
         if "resolve_config" not in result.completed_phases:
             result.completed_phases.append("resolve_config")
             self._repos.record_phase(phase="resolve_config", status="succeeded")
 
         item = self._repos.load_item(item_id=seed.item_id)
-        semantic = self._repos.load_item_semantic(item_id=seed.item_id)
+        semantic = self._repos.load_item_semantic(
+            item_id=seed.item_id,
+            semantic_config_version_id=config.semantic_config_version_id,
+        )
         if "load_inputs" not in result.completed_phases:
             result.completed_phases.append("load_inputs")
             self._repos.record_phase(phase="load_inputs", status="succeeded")
@@ -309,6 +336,7 @@ class FeatureInputHashJob:
             item_id=item.item_id,
             semantic_config_version_id=version_id,
             feature_input_hash=digest,
+            feature_normalization_version_id=normalization_version_id,
         )
         if "evaluate_skip" not in result.completed_phases:
             result.completed_phases.append("evaluate_skip")
@@ -352,7 +380,6 @@ class FeatureInputHashJob:
 
         result.hashed_count += 1
         result.succeeded_queue_ids.append(qid)
-        _ = DEFAULT_NORMALIZATION_VERSION
 
     def _phase_finalize(self, result: FeatureInputHashJobResult) -> FeatureInputHashJobResult:
         if result.failed_queue_ids and result.succeeded_queue_ids:

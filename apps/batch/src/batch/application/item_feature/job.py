@@ -10,6 +10,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from batch.application.current_versions import (
+    CurrentVersionResolveError,
+    CurrentVersionResolver,
+)
 from batch.application.item_feature.adapter import (
     DEFAULT_NORMALIZATION_VERSION,
     ItemFeatureGeneratorPort,
@@ -88,11 +92,17 @@ class ItemFeatureJob:
         *,
         repositories: ItemFeatureRepositories,
         generator: ItemFeatureGeneratorPort,
+        version_resolver: CurrentVersionResolver | None = None,
         job_run_tracker: JobRunTracker | None = None,
         logger: BatchLogger | None = None,
     ) -> None:
         self._repos = repositories
         self._generator = generator
+        self._version_resolver = version_resolver or (
+            CurrentVersionResolver(repositories.db_reader)
+            if repositories.db_reader is not None
+            else None
+        )
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
 
@@ -260,12 +270,30 @@ class ItemFeatureJob:
             result.skipped_queue_ids.append(qid)
             return
 
-        semantic = self._repos.load_item_semantic(item_id=seed.item_id)
-        config = resolve_config_version(
-            item_id=seed.item_id,
-            semantic_config_version_id=semantic.semantic_config_version_id,
-            normalization_version_id=self._repos.current_normalization_version_id,
-        )
+        try:
+            current_semantic_version_id = (
+                self._version_resolver.resolve_semantic()
+                if self._version_resolver is not None
+                else None
+            )
+            semantic = self._repos.load_item_semantic(
+                item_id=seed.item_id,
+                semantic_config_version_id=current_semantic_version_id,
+            )
+            normalization_version_id = (
+                self._version_resolver.resolve_normalization(
+                    semantic_config_version_id=semantic.semantic_config_version_id
+                )
+                if self._version_resolver is not None
+                else self._repos.current_normalization_version_id
+            )
+            config = resolve_config_version(
+                item_id=seed.item_id,
+                semantic_config_version_id=semantic.semantic_config_version_id,
+                normalization_version_id=normalization_version_id,
+            )
+        except CurrentVersionResolveError as exc:
+            raise ItemFeatureError(exc.code, exc.message) from exc
         self._mark_phase(result, "resolve_config")
 
         _ = self._repos.load_item(item_id=seed.item_id)

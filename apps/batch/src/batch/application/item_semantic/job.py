@@ -10,6 +10,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from batch.application.current_versions import (
+    CurrentVersionResolveError,
+    CurrentVersionResolver,
+)
 from batch.application.item_semantic.adapter import (
     ItemSemanticGeneratorPort,
     ScaffoldItemSemanticAdapter,
@@ -84,10 +88,16 @@ class ItemSemanticJob:
         *,
         repositories: ItemSemanticRepositories,
         generator: ItemSemanticGeneratorPort | None = None,
+        version_resolver: CurrentVersionResolver | None = None,
         job_run_tracker: JobRunTracker | None = None,
         logger: BatchLogger | None = None,
     ) -> None:
         self._repos = repositories
+        self._version_resolver = version_resolver or (
+            CurrentVersionResolver(repositories.db_reader)
+            if repositories.db_reader is not None
+            else None
+        )
         self._generator = generator or build_scaffold_adapter(
             find_existing=lambda item_id, version_id: repositories.find_item_semantic(
                 item_id=item_id,
@@ -317,7 +327,16 @@ class ItemSemanticJob:
         result.claimed_count += 1
 
         # resolve_config
-        config = resolve_config_version(item_id=seed.item_id)
+        try:
+            config = (
+                ConfigResolveHint(
+                    semantic_config_version_id=self._version_resolver.resolve_semantic()
+                )
+                if self._version_resolver is not None
+                else resolve_config_version(item_id=seed.item_id)
+            )
+        except CurrentVersionResolveError as exc:
+            raise ItemSemanticError(exc.code, exc.message) from exc
         if "resolve_config" not in result.completed_phases:
             result.completed_phases.append("resolve_config")
             self._repos.record_phase(phase="resolve_config", status="succeeded")

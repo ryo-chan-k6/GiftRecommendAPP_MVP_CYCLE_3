@@ -130,6 +130,74 @@ def test_postgres_fetch_rows_executes_parameterized_select() -> None:
     assert result == DbReadResult(rows=({"id": 1, "path": "a"},), table="raw_product_metadata")
 
 
+def test_scaffold_db_reader_filters_bool_and_uuid_equals() -> None:
+    """current version 解決で使う bool / UUID equals が値一致で絞り込まれる。"""
+
+    version_id = "a1111111-1111-4111-8111-111111111102"
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "normalization_rule",
+        (
+            {
+                "normalization_rule_id": "b2222222-2222-4222-8222-222222222202",
+                "semantic_config_version_id": version_id,
+                "is_active": True,
+            },
+            {
+                "normalization_rule_id": "b2222222-2222-4222-8222-222222222203",
+                "semantic_config_version_id": version_id,
+                "is_active": False,
+            },
+            {
+                "normalization_rule_id": "b2222222-2222-4222-8222-222222222204",
+                "semantic_config_version_id": "a1111111-1111-4111-8111-111111111199",
+                "is_active": True,
+            },
+        ),
+    )
+
+    result = reader.fetch_rows(
+        "normalization_rule",
+        columns=("normalization_rule_id",),
+        equals=(("semantic_config_version_id", version_id), ("is_active", True)),
+        limit=2,
+    )
+
+    assert result.rows == ({"normalization_rule_id": "b2222222-2222-4222-8222-222222222202"},)
+
+
+def test_postgres_fetch_rows_binds_bool_and_uuid_equals_as_parameters() -> None:
+    """bool / UUID の equals は SQL 文へ埋め込まず parameter binding する。"""
+
+    version_id = "a1111111-1111-4111-8111-111111111102"
+    reader = PostgresDbReader(database_url="postgresql://localhost:5432/gift")
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = [{"normalization_rule_id": "rule-1"}]
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = False
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = False
+
+    with patch("psycopg.connect", return_value=mock_conn):
+        reader.fetch_rows(
+            "normalization_rule",
+            columns=("normalization_rule_id",),
+            equals=(("semantic_config_version_id", version_id), ("is_active", True)),
+            limit=2,
+        )
+
+    statement, params = mock_cursor.execute.call_args.args
+    assert params == [version_id, True]
+    rendered = statement.as_string(None)
+    assert rendered.count("%s") == 2
+    assert version_id not in rendered
+    assert "true" not in rendered.lower()
+
+
 def test_postgres_fetch_rows_masks_credentials_in_database_error() -> None:
     reader = PostgresDbReader(
         database_url="postgresql://user:secret@localhost:5432/gift"
