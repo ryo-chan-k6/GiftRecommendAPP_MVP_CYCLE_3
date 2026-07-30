@@ -3,7 +3,7 @@ name: Batch Item Meaning Generation
 # 複合子（案A）: BATCH-009 → 010 → 011 → 012 → 013 → 014 → 015 → 017
 # 正本: バッチ実行スケジュール設計書 §3.2 / ギャップ一覧 §5 案A
 # Run ID: 共有 pipeline_batch_run_id（UUID）と各葉の job_run_id（葉側で新規 UUID）を分離
-# 009 / 011–014 / 017 は stg live。010 / 015 は scaffold を維持する
+# 009–014 / 017 は stg live。015 は #1768 まで scaffold を維持する
 
 on:
   workflow_call:

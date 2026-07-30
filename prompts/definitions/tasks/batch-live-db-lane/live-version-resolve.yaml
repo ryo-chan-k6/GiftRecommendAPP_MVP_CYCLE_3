@@ -1,0 +1,330 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-live-db-lane-live-version-resolve"
+  title: "batch-live-db-lane:BATCH-010〜014 live経路とcurrent version解決"
+  summary: "BATCH-010をRule-firstのままDB live化し、010〜014のscaffold固定versionをDB current UUID解決へ置換して、meaning複合経路を014まで成立させる。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-live-db-lane:DB系live切替"
+  epic_issue_number: 1750
+  epic_branch: "feature/epic-1750-batch-live-db-lane"
+  related_issues:
+    - 1745
+    - 1751
+    - 1761
+    - 1768
+  related_prs:
+    - 1755
+    - 1767
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+    - "test-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1751のstg live検証で、009がsemantic+queuedを登録した後も010がscaffoldのため
+  item_semantic保存とprocessing遷移が行われず、011がempty planになることを確認した。
+  010〜014にはUUID/FK列と非互換なscaffold固定versionも残る。
+  2026-07-31のHuman判断により、010は実LLMを使わないRule-first DB liveに限り
+  #1750の例外scopeとし、015 liveは#1768へ分離する。
+
+objective: |
+  apps/batch内の薄い共通resolverでDBのcurrent version UUIDを解決し、
+  010 Rule-first DB liveから011〜014までのDB書込経路をstgで成立させる。
+
+scope:
+  - "BATCH-010のRule-first DB live化（実LLM・外部AI API呼出なし）"
+  - "BATCH-010〜014のscaffold固定version撤廃"
+  - "semantic_config_version / feature_normalization_version / embedding用model_versionのcurrent UUID解決"
+  - "apps/batch内の薄い共通version resolverと既存DbReaderによる実装"
+  - "current semantic_config_versionとcurrent sigmoid feature_normalization_versionを結ぶnormalization_rule binding のmaster seed冪等追加（DDL変更なし）"
+  - "meaning複合workflowの009→010→011→012→013→014経路整合"
+  - "関連unit test、workflow静的確認、stg低件数live検証"
+  - "親Epic DefinitionのRule-first 010例外・master seed例外scope反映"
+  - "DB系葉workflow_GHA_live化結果_C3.mdの結果更新"
+
+out_of_scope:
+  - "BATCH-015 live / 実Embedding API接続（#1768）"
+  - "BATCH-016再修正（#1761 / PR #1767で完了）"
+  - "BATCH-001〜004楽天live"
+  - "DDL / migration変更"
+  - "master seedのnormalization_rule binding以外のseed変更"
+  - "current version欠落時のfallback実装（2026-07-31 Human判断で不採用）"
+  - "schedule有効化"
+  - "production / secret実値"
+  - "OpenAPI / Orval / generated / apps/web|api|reco変更"
+  - "PR merge判断"
+
+staged_execution: |
+  Phase A: current version resolverと010〜014の注入境界を実装しunit test
+  Phase A': normalization_rule bindingのmaster seedを追加し、適用・再実行の冪等性を確認
+  Phase B: 010 Rule-first GHA live配線とmeaning複合経路整合
+  Phase C: 010→011→012→013→014の順で低件数stg live検証
+  Phase D: 結果docs更新、PR、AI Review
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-010_Item Semantic生成バッチ仕様書.md"
+      required: true
+      purpose: "010 Rule-first・queue遷移・version解決"
+    - path: "docs/06_実装設計/batch/BATCH-011_Feature入力hash算出バッチ仕様書.md"
+      required: true
+      purpose: "011主経路とversion解決"
+    - path: "docs/06_実装設計/batch/BATCH-012_Item Feature算出バッチ仕様書.md"
+      required: true
+      purpose: "012 version伝播"
+    - path: "docs/06_実装設計/batch/BATCH-013_Feature正規化バッチ仕様書.md"
+      required: true
+      purpose: "013 normalization version"
+    - path: "docs/06_実装設計/batch/BATCH-014_Embedding入力hash算出バッチ仕様書.md"
+      required: true
+      purpose: "014 embedding model version"
+    - path: "docs/15_運用・改善/運用手順/DB系葉workflow_GHA_live化結果_C3.md"
+      required: true
+      purpose: "検出事実とstg検証結果"
+  files:
+    - path: "apps/batch/src/batch/application/item_semantic/**"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_input_hash/**"
+      required: true
+    - path: "apps/batch/src/batch/application/item_feature/**"
+      required: true
+    - path: "apps/batch/src/batch/application/feature_normalization/**"
+      required: true
+    - path: "apps/batch/src/batch/application/embedding_input_hash/**"
+      required: true
+    - path: ".github/workflows/batch-item-semantic.yml"
+      required: true
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      required: true
+    - path: "supabase/seeds/masters/09_config_versions.sql"
+      required: true
+    - path: "supabase/migrations/20260617120000_initial_schema.sql"
+      required: true
+  issues:
+    - number: 1762
+      purpose: "対象TaskとHuman判断"
+    - number: 1750
+      purpose: "親Epic"
+    - number: 1768
+      purpose: "015 live分離先"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/DB系葉workflow_GHA_live化結果_C3.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/batch/tests/unit/application/**"
+      action: "create_or_update"
+      required: true
+    - path: ".github/workflows/batch-item-semantic.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      action: "update"
+      required: true
+    - path: "supabase/seeds/masters/09_config_versions.sql"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/batch-live-db-lane/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-live-db-lane/live-version-resolve.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-live-db-lane/live-version-resolve/pr-review.yaml"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "010 Rule-first DB liveと011〜014 current UUID解決"
+  - "meaning複合の009→014経路"
+  - "unit testとstg低件数live検証結果"
+  - "更新済み結果docsとTask / Review Definition"
+
+acceptance_criteria:
+  - "010が実LLMなしでitem_semanticをlive DBへ保存し、対象queueを後続処理可能な状態へ遷移する"
+  - "010〜014がscaffold固定versionではなく実在するcurrent UUIDを利用する"
+  - "011〜014が実UUID/FK整合を保ってlive書込できる"
+  - "meaning複合で009→010→011→012→013→014が低件数stg実行に成功する"
+  - "015 live / 実Embedding API呼出が混入していない"
+  - "master seedがcurrent semantic_config_versionとcurrent sigmoid feature_normalization_versionのnormalization_rule bindingを冪等に登録する"
+  - "関連unit testが成功する"
+  - "結果docsにRun URL・conclusion・secretなしの検証結果または未実施理由がある"
+  - "DDL / migration / generated / OpenAPI差分がない"
+  - "PR targetが親Epic Branchで、Review DefinitionがPR headに含まれる"
+
+branch:
+  no_branch: false
+  name: "fix/task-1762-batch-011-014-live-version"
+  summary: "batch-011-014-live-version"
+  base: "feature/epic-1750-batch-live-db-lane"
+  target: "feature/epic-1750-batch-live-db-lane"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-07-31"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+  number: 1762
+
+dependencies:
+  epics:
+    - issue: 1750
+      purpose: "親Epic"
+  issues:
+    - issue: 1761
+      purpose: "BATCH-016修正済み"
+  prs:
+    - 1767
+  tasks: []
+  blocking: false
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at: []
+  blocked_message: "OpenAPI / generated変更を含まない。"
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/current_versions.py"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/application/feature_input_hash/**"
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/src/batch/application/embedding_input_hash/**"
+    - "apps/batch/tests/unit/application/test_current_versions.py"
+    - "apps/batch/tests/unit/application/test_item_semantic.py"
+    - "apps/batch/tests/unit/application/test_feature_input_hash.py"
+    - "apps/batch/tests/unit/application/test_item_feature.py"
+    - "apps/batch/tests/unit/application/test_feature_normalization.py"
+    - "apps/batch/tests/unit/application/test_embedding_input_hash.py"
+    - "apps/batch/tests/unit/infrastructure/test_db_reader.py"
+    - "supabase/seeds/masters/09_config_versions.sql"
+    - ".github/workflows/batch-item-semantic.yml"
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - "prompts/definitions/epics/batch-live-db-lane/epic.yaml"
+    - "prompts/definitions/tasks/batch-live-db-lane/**"
+    - "prompts/definitions/reviews/batch-live-db-lane/**"
+    - "docs/15_運用・改善/運用手順/DB系葉workflow_GHA_live化結果_C3.md"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "対象unit test"
+    - "apps/batch unit test全体"
+    - "workflow静的確認"
+    - "master seed適用・再実行の冪等確認（migration適用済みDBへの09_config_versions.sql適用）"
+    - "stg低件数live検証（010〜014）"
+    - "secret実値なし確認"
+  commands:
+    - "cd apps/batch && uv run pytest tests/unit/application/test_current_versions.py tests/unit/application/test_item_semantic.py tests/unit/application/test_feature_input_hash.py tests/unit/application/test_item_feature.py tests/unit/application/test_feature_normalization.py tests/unit/application/test_embedding_input_hash.py tests/unit/infrastructure/test_db_reader.py"
+    - "cd apps/batch && uv run pytest tests/unit"
+  manual_checks:
+    - "010がRule-firstでitem_semantic保存とqueue遷移を行う"
+    - "010〜014がcurrent UUIDを使用する"
+    - "master seed再実行後もnormalization_ruleがversionあたり1行で、current feature_normalization_versionへ追随する"
+    - "015はscaffoldのままで外部AI APIを呼ばない"
+  not_required:
+    - "OpenAPI / Orval / generated検証"
+  skip_reason:
+    "OpenAPI / Orval / generated検証": "contract_gate.required=false、変更想定なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+    cicd: true
+  review_points:
+    - "010がRule-first DB liveに限定され、実LLMを呼ばないか"
+    - "current versionの一意性・欠落・型検証とエラー処理が妥当か"
+    - "master seedのnormalization_rule追加が非破壊・冪等で、current更新時にbindingが追随するか"
+    - "各Batchのversion伝播とDB FKが正しいか"
+    - "011の主経路条件を不必要に緩和していないか"
+    - "015 live / OPENAI_API_KEY参照が混入していないか"
+    - "stg / STG_DATABASE_URL / UUID job_run_id / secret方針が正しいか"
+    - "scope外DB schema・generated・OpenAPI差分がないか"
+
+human_decision_points:
+  - "010は実LLMなしのRule-first DB liveを#1762に含める（2026-07-31承認済み）"
+  - "version resolverはapps/batch内の薄い共通helperとする（2026-07-31承認済み）"
+  - "015 liveは#1768へ分離する（2026-07-31承認済み）"
+  - "DDL変更なしの最小・冪等master seed追加を#1762に含める（2026-07-31承認済み）"
+  - "current semantic config versionとcurrent sigmoid normalization versionをnormalization_ruleでbindingする（2026-07-31承認済み）"
+  - "current version欠落時のfallbackは採用しない（2026-07-31承認済み）"
+
+stop_conditions:
+  - "実LLM / 実Embedding APIまたは新しいsecret参照が必要に見える場合"
+  - "DDL / migration変更が必要に見える場合"
+  - "master seedのnormalization_rule binding以外のseed変更が必要に見える場合"
+  - "既存normalization_rule行の削除や破壊的なseed再構築が必要に見える場合"
+  - "apps/reco等のscope外app変更が必要に見える場合"
+  - "current行が複数存在する仕様判断が必要な場合"
+  - "production影響または破壊的DB操作が必要に見える場合"
+  - "親Epic Branch以外をbase/targetにする必要が見える場合"
+
+operation_logging:
+  level: "standard"
+  enabled: true
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常はIssue/PR管理。blocked・security・横断影響時のみai-logsを使用し、secret実値は記録しない。"
+
+notes:
+  - "Issue: #1762"
+  - "master seed例外の根拠: #1762 Issueコメント（2026-07-31 Human判断）"
+  - "normalization_ruleは uq_normalization_rule_version により semantic_config_version あたり1行"
+  - "BATCH-015 live分離先: #1768"
+  - "PR target: feature/epic-1750-batch-live-db-lane"

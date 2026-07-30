@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from batch.application.item_feature import (
     BATCH_ID,
     DEFAULT_NORMALIZATION_VERSION,
@@ -465,3 +467,220 @@ def test_rule_based_generation_without_llm() -> None:
     assert 0.0 <= formality_row.raw_feature_value <= 1.0
     assert 0.0 <= emotion_row.raw_feature_value <= 1.0
 
+
+# --- live DB 経路（#1762 current version 解決） ---
+
+_SEMANTIC_CONFIG_ID = "a1111111-1111-4111-8111-111111111101"
+_SEMANTIC_VERSION_ID = "a1111111-1111-4111-8111-111111111102"
+_NORMALIZATION_VERSION_ID = "b2222222-2222-4222-8222-222222222201"
+_NORMALIZATION_RULE_ID = "b2222222-2222-4222-8222-222222222202"
+_STALE_SEMANTIC_VERSION_ID = "a1111111-1111-4111-8111-111111111199"
+
+
+def _live_reader(*, semantic_version_id: str = _SEMANTIC_VERSION_ID):
+    """011 の live 出力（item_feature_input handoff）まで進んだ状態を再現する。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "semantic_config",
+        (
+            {
+                "semantic_config_id": _SEMANTIC_CONFIG_ID,
+                "config_name": "mvp_semantic_config",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "semantic_config_version",
+        (
+            {
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "semantic_config_id": _SEMANTIC_CONFIG_ID,
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "feature_normalization_version",
+        (
+            {
+                "feature_normalization_version_id": _NORMALIZATION_VERSION_ID,
+                "normalization_method": "sigmoid",
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "normalization_rule",
+        (
+            {
+                "normalization_rule_id": _NORMALIZATION_RULE_ID,
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "normalization_method": "sigmoid",
+                "feature_normalization_version_id": _NORMALIZATION_VERSION_ID,
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_live",
+                "item_id": "it_live",
+                "generation_type": "semantic",
+                "queue_status": "processing",
+                "retry_count": 0,
+                "queued_at": None,
+                "started_at": None,
+                "completed_at": None,
+                "error_message": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_live",
+                "source": "rakuten",
+                "external_item_code": "shop:live",
+                "item_name": "Live Gift",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_semantic",
+        (
+            {
+                "item_semantic_id": "is_live",
+                "item_id": "it_live",
+                "semantic_config_version_id": semantic_version_id,
+                "semantic_json": {
+                    "concepts": [{"concept_code": "formal_refined", "confidence": 0.9}]
+                },
+                "generated_at": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item_feature_input",
+        (
+            {
+                "item_id": "it_live",
+                "semantic_config_version_id": semantic_version_id,
+                "feature_input_hash": _HASH,
+            },
+        ),
+    )
+    return reader
+
+
+def _live_repos(reader) -> tuple[ItemFeatureRepositories, ScaffoldDbWriter]:
+    db = ScaffoldDbWriter()
+    repos = ItemFeatureRepositories(
+        db_writer=db,
+        db_reader=reader,
+        concept_feature_rules=_RULES,
+    )
+    return repos, db
+
+
+def test_live_db_reader_upserts_with_resolved_version_uuids() -> None:
+    """item_feature の 8 軸に resolver が解決した semantic / normalization UUID を載せる。"""
+
+    reader = _live_reader()
+    repos, db = _live_repos(reader)
+    result = _job(repos).run(job_run_id="run-live")
+
+    assert result.status == "succeeded"
+    assert result.generated_count == 1
+    assert repos.item_feature_write_count == len(MVP_FEATURE_CODES)
+    assert {r.semantic_config_version_id for r in repos.upsert_rows} == {
+        _SEMANTIC_VERSION_ID
+    }
+    assert {r.feature_normalization_version_id for r in repos.upsert_rows} == {
+        _NORMALIZATION_VERSION_ID
+    }
+    feature_upserts = [c for c in db.upsert_calls if c["table"] == "item_feature"]
+    assert len(feature_upserts) == 1
+    assert all(
+        row["feature_normalization_version_id"] == _NORMALIZATION_VERSION_ID
+        for row in feature_upserts[0]["rows"]
+    )
+    # BATCH-013 主経路条件を維持
+    assert repos.queues["igq_live"]["queue_status"] == "processing"
+    handoff_fetches = [c for c in reader.fetch_calls if c["table"] == "item_feature_input"]
+    assert handoff_fetches[0]["equals"] == (
+        ("item_id", "it_live"),
+        ("semantic_config_version_id", _SEMANTIC_VERSION_ID),
+    )
+
+
+def test_live_db_reader_stale_item_semantic_version_fails_row() -> None:
+    """current でない semantic version の item_semantic は採用せず per-row failed にする。"""
+
+    reader = _live_reader(semantic_version_id=_STALE_SEMANTIC_VERSION_ID)
+    repos, _ = _live_repos(reader)
+    result = _job(repos).run(job_run_id="run-live-mismatch")
+
+    assert result.status == "failed"
+    assert result.failed_count == 1
+    assert repos.item_feature_write_count == 0
+    assert repos.queues["igq_live"]["queue_status"] == "failed"
+
+
+def test_live_db_reader_resolver_failure_marks_queue_failed() -> None:
+    """normalization binding 欠落は既存の per-row failed 処理へ合流する。"""
+
+    reader = _live_reader()
+    reader.seed("normalization_rule", ())
+    repos, db = _live_repos(reader)
+    result = _job(repos).run(job_run_id="run-live-fail")
+
+    assert result.status == "failed"
+    assert result.failed_count == 1
+    assert "GRS-CFG-001" in result.error_codes
+    assert repos.item_feature_write_count == 0
+    assert not any(c["table"] == "item_feature" for c in db.upsert_calls)
+    assert repos.queues["igq_live"]["queue_status"] == "failed"
+    failed_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "failed"
+    ]
+    assert len(failed_updates) == 1
+
+
+def test_load_item_semantic_version_filter_matches_and_rejects() -> None:
+    """repository: version 一致は採用、不一致は KeyError。DB equals にも version を渡す。"""
+
+    reader = _live_reader()
+    repos, _ = _live_repos(reader)
+
+    matched = repos.load_item_semantic(
+        item_id="it_live", semantic_config_version_id=_SEMANTIC_VERSION_ID
+    )
+    assert matched.semantic_config_version_id == _SEMANTIC_VERSION_ID
+
+    with pytest.raises(KeyError):
+        repos.load_item_semantic(
+            item_id="it_live", semantic_config_version_id=_STALE_SEMANTIC_VERSION_ID
+        )
+
+    semantic_equals = [
+        c["equals"] for c in reader.fetch_calls if c["table"] == "item_semantic"
+    ]
+    assert semantic_equals == [
+        (("item_id", "it_live"), ("semantic_config_version_id", _SEMANTIC_VERSION_ID)),
+        (
+            ("item_id", "it_live"),
+            ("semantic_config_version_id", _STALE_SEMANTIC_VERSION_ID),
+        ),
+    ]

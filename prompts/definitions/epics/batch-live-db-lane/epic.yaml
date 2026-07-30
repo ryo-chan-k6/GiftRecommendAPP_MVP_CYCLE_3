@@ -32,16 +32,20 @@ agent:
 background: |
   import連鎖（003※楽天scaffold / 005〜008 / 017）は #1717/#1726 系で GHA stg live 済み。
   meaning側の葉（009 / 011〜014 / 016）および関連複合子は --scaffold-demo 固定が残る。
-  010 Semantic / 015 Embedding は AI系、001〜004 は楽天Fetch系として本Epic外。
+  010の実LLM / 015 EmbeddingはAI系、001〜004は楽天Fetch系として本Epic外。
+  ただし#1762のHuman判断により、010は実LLMを呼ばないRule-first DB liveに限り例外scopeとする。
   統括ロードマップは #1745（formal parentなし。#1楽天Fetch運用方針と並列可）。
 
 objective: |
   DB系BATCHのGHA実行経路を stg live で安定させ、意味生成〜メトリクスまでの
-  DB書込連鎖を手動検証できる状態にする（010/015はscaffold維持可）。
+  DB書込連鎖を手動検証できる状態にする（010は実LLMなしRule-first DB live、
+  015はscaffold維持）。
 
 scope:
   - "GHA葉 009 / 011 / 012 / 013 / 014 / 016 の scaffold解除と stg live化（environment: stg + STG_DATABASE_URL、UUID job_run_id）"
-  - "複合 batch-item-meaning-generation.yml（および必要なら retry）のDB葉経路整合（010/015はscaffold維持可）"
+  - "BATCH-010の実LLMなしRule-first DB live（#1762 Human承認済み例外）"
+  - "current version解決に必要なmaster seedのnormalization_rule binding追加（DDL変更なし・冪等・#1762 Human承認済み例外）"
+  - "複合 batch-item-meaning-generation.yml（および必要なら retry）のDB葉経路整合（015はscaffold維持）"
   - "既liveの005〜008 / 017の維持・回帰確認・docs更新"
   - "005のObject Storage liveはDBレーンに含めてよい（楽天ではない）"
   - "ギャップdocsのscaffold陳腐化箇所の更新"
@@ -50,12 +54,12 @@ scope:
 
 out_of_scope:
   - "BATCH-001〜004の楽天live切替（batch-live-rakuten-fetch / #1607）"
-  - "BATCH-010 / 015のAI live切替（batch-live-ai-lane）"
+  - "BATCH-010の実LLM live / BATCH-015のEmbedding live切替（batch-live-ai-lane / #1768）"
   - "親 on.schedule 有効化（batch-daily-schedule-enable / #1732）"
   - "BATCH-018 / 019"
   - "production定期・prod Secrets・secret実値の表示/変更"
   - "OpenAPI / Orval / generated / apps/web|api|reco 変更"
-  - "DDL大規模変更・IF再本格化"
+  - "DDL / migration変更・IF再本格化（master seedのnormalization_rule binding追加のみ#1762例外）"
 
 epic_scope:
   artifact_id: ""
@@ -64,6 +68,7 @@ epic_scope:
     - "prompts/definitions/tasks/batch-live-db-lane/**"
     - "prompts/definitions/reviews/batch-live-db-lane/**"
     - ".github/workflows/batch-item-generation-queue.yml"
+    - ".github/workflows/batch-item-semantic.yml"
     - ".github/workflows/batch-feature-input-hash.yml"
     - ".github/workflows/batch-item-feature.yml"
     - ".github/workflows/batch-feature-normalization.yml"
@@ -82,7 +87,10 @@ epic_scope:
     - "docs/05_アプリケーション設計/アプリ/batch/**"
     - "docs/15_運用・改善/運用手順/**"
     - "apps/batch/**"
+    - "supabase/seeds/masters/09_config_versions.sql"
   forbidden_paths:
+    - "supabase/migrations/**"
+    - "db/ddl/**"
     - "packages/contracts/**"
     - "apps/web/**"
     - "apps/api/**"
@@ -90,7 +98,6 @@ epic_scope:
     - ".github/workflows/batch-rakuten-genre-sync.yml"
     - ".github/workflows/batch-rakuten-ranking-snapshot.yml"
     - ".github/workflows/batch-rakuten-existing-item-recheck.yml"
-    - ".github/workflows/batch-item-semantic.yml"
     - ".github/workflows/batch-item-embedding.yml"
   child_task_areas:
     - "github-actions"
@@ -187,7 +194,7 @@ deliverables:
 acceptance_criteria:
   - "Epic Issueタイトルが [Epic]batch-live-db-lane:DB系live切替 形式"
   - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
-  - "主対象BATCHが009/011〜014/016であること、001〜004と010/015がout of scopeであること"
+  - "主対象BATCHが009/011〜014/016であり、010は実LLMなしRule-first DB liveのみ例外、001〜004と015 liveはout of scopeであること"
   - "GHA葉がstg Environment + STG_DATABASE_URL経路でscaffold解除されている（該当葉）"
   - "job_run_idがUUID方針と整合している"
   - "stg手動検証結果または未実施理由が記録されている"
@@ -250,7 +257,7 @@ test_policy:
   commands: []
   manual_checks:
     - "該当葉がscaffold-demoなしで成功すること"
-    - "010/015 scaffold維持でも複合が破綻しないこと"
+    - "010 Rule-first DB live / 015 scaffold維持で複合が014まで破綻しないこと"
   not_required:
     - "unit test"
   skip_reason:
@@ -273,12 +280,13 @@ review:
 human_decision_points:
   - "stg Environmentのrequired reviewers運用負荷の許容"
   - "STG_DATABASE_URL流用で足りるか"
-  - "meaning連鎖の一括liveか段階liveか（010/015 scaffold維持）"
+  - "meaning連鎖の一括liveか段階liveか（010はRule-first DB live、015はscaffold維持）"
+  - "current version binding用のmaster seed追加を本Epicへ含める（2026-07-31承認済み。DDL変更なし・fallbackなし）"
   - "stg実データ量・max_items・破壊的書込の許容"
   - "distribution-metrics末尾017をlive 017に揃えるか"
 
 stop_conditions:
-  - "001〜004または010/015のlive実装が必要に見えた場合（別Epicへ）"
+  - "001〜004のlive、010の実LLM live、または015 live実装が必要に見えた場合（別Epicへ）"
   - "schedule有効化が必要に見えた場合"
   - "production Secretsやsecret実値が必要に見える場合"
   - "DDL破壊的変更が必要に見える場合"
@@ -287,3 +295,5 @@ notes:
   - "Epic Issue: #1750"
   - "統括#1745の本線候補#2。#1楽天Fetch運用方針と並列"
   - "003は楽天ScaffoldのままDB liveの特例（#1717）。本Epicで楽天live化しない"
+  - "010 Rule-first DB liveは#1762のHuman承認済み例外。実LLMは呼ばない"
+  - "master seedのnormalization_rule binding追加は#1762のHuman承認済み例外。DDL / migrationは変更しない"

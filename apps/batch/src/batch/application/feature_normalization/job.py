@@ -10,6 +10,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from batch.application.current_versions import (
+    CurrentVersionResolveError,
+    CurrentVersionResolver,
+)
 from batch.application.feature_normalization.adapter import (
     DEFAULT_CENTER_FEATURE,
     DEFAULT_K_FEATURE,
@@ -111,11 +115,17 @@ class FeatureNormalizationJob:
         *,
         repositories: FeatureNormalizationRepositories,
         normalizer: FeatureNormalizerPort,
+        version_resolver: CurrentVersionResolver | None = None,
         job_run_tracker: JobRunTracker | None = None,
         logger: BatchLogger | None = None,
     ) -> None:
         self._repos = repositories
         self._normalizer = normalizer
+        self._version_resolver = version_resolver or (
+            CurrentVersionResolver(repositories.db_reader)
+            if repositories.db_reader is not None
+            else None
+        )
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
 
@@ -285,9 +295,14 @@ class FeatureNormalizationJob:
             result.skipped_queue_ids.append(qid)
             return
 
-        semantic_config_version_id = self._repos.resolve_semantic_config_version(
-            item_id=seed.item_id
-        )
+        try:
+            semantic_config_version_id = (
+                self._version_resolver.resolve_semantic()
+                if self._version_resolver is not None
+                else self._repos.resolve_semantic_config_version(item_id=seed.item_id)
+            )
+        except CurrentVersionResolveError as exc:
+            raise FeatureNormalizationError(exc.code, exc.message) from exc
         if not semantic_config_version_id:
             raise FeatureNormalizationError(
                 "GRS-CFG-001", "semantic_config_version_id not resolved"
@@ -302,10 +317,25 @@ class FeatureNormalizationJob:
         feature_input_hash, raw_version = self._validate_raw_axes(raw_axes)
         self._mark_phase(result, "load_features")
 
+        try:
+            current_normalization_version_id = (
+                self._version_resolver.resolve_normalization(
+                    semantic_config_version_id=semantic_config_version_id
+                )
+                if self._version_resolver is not None
+                else raw_version
+            )
+        except CurrentVersionResolveError as exc:
+            raise FeatureNormalizationError(exc.code, exc.message) from exc
+        if raw_version != current_normalization_version_id:
+            raise FeatureNormalizationError(
+                "GRS-CFG-001",
+                "raw features do not use the current bound normalization version",
+            )
         config = resolve_config_version(
             item_id=seed.item_id,
             semantic_config_version_id=semantic_config_version_id,
-            normalization_version_id=raw_version,
+            normalization_version_id=current_normalization_version_id,
         )
 
         skip = self._repos.should_skip_normalization(
