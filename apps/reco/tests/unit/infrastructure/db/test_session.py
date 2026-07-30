@@ -80,21 +80,26 @@ def test_create_database_session_forwards_pool_settings(
     session.close()
 
 
-def test_postgres_session_open_tolerates_warmup_failure() -> None:
+def test_postgres_session_open_tolerates_warmup_failure(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     pool = MagicMock()
     pool.open.side_effect = RuntimeError("pool timeout")
     session = PostgresDatabaseSession(
-        database_url="postgresql://localhost:5432/gift_reco_dev",
+        database_url="postgresql://user:secret@localhost:5432/gift_reco_dev",
         pool=pool,
         open_timeout=3.0,
     )
     # 注入 pool は open 済み扱いのため、明示的に未 open 状態へ戻して open() を検証する
     session._opened = False
 
-    session.open()
+    with caplog.at_level("WARNING", logger="reco.infrastructure.db.session"):
+        session.open()
 
     assert session._opened is True
     pool.open.assert_called_once_with(wait=True, timeout=3.0)
+    assert "database pool warmup failed" in caplog.text
+    assert "secret" not in caplog.text
 
 
 def test_postgres_session_rejects_empty_url() -> None:

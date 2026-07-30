@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+
+logger = logging.getLogger("reco.infrastructure.db.session")
 
 DbParams = tuple[Any, ...] | list[Any]
 DbRow = dict[str, Any]
@@ -169,8 +172,13 @@ class PostgresDatabaseSession:
         # 到達不能なら各 query が DatabaseError として失敗する）。
         try:
             self._pool.open(wait=True, timeout=self.open_timeout)
-        except Exception:  # noqa: BLE001 — startup best-effort
-            pass
+        except Exception as exc:  # noqa: BLE001 — startup best-effort
+            logger.warning(
+                "database pool warmup failed: url=%s open_timeout=%s error=%s",
+                mask_database_url(self.database_url),
+                self.open_timeout,
+                exc,
+            )
         self._opened = True
 
     def close(self) -> None:
