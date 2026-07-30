@@ -1,0 +1,329 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-live-db-lane-db-leaf-workflow-live"
+  title: "batch-live-db-lane:DB系葉workflow live化"
+  summary: "DB系GHA葉009/011〜014/016のscaffold解除とstg live化、meaning複合経路整合、stg手動検証・結果docs。既live 005〜008/017は回帰確認のみ。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-live-db-lane:DB系live切替"
+  epic_issue_number: 1750
+  epic_branch: "feature/epic-1750-batch-live-db-lane"
+  related_issues:
+    - 1745
+    - 1717
+    - 1726
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "test-ai"
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  親Epic #1750（batch-live-db-lane）。import連鎖（005〜008 / 017）は #1717/#1726 系で
+  GHA stg live 済み。meaning側の葉（009 / 011〜014 / 016）と複合子に --scaffold-demo 固定が残る。
+  統括ロードマップは #1745（formal parentではない）。本Taskは親Epic配下の最初の子Task。
+
+objective: |
+  DB系BATCHのGHA葉（009 / 011 / 012 / 013 / 014 / 016）を scaffold から
+  environment: stg + STG_DATABASE_URL の live 経路へ切り替え、UUID job_run_id と
+  meaning複合経路を整合させ、stg手動検証結果をsecretなしで記録する。
+
+scope:
+  - "GHA葉 009 / 011 / 012 / 013 / 014 / 016 の scaffold解除と stg live化（environment: stg + STG_DATABASE_URL、UUID job_run_id）"
+  - "複合 batch-item-meaning-generation.yml（必要なら retry）のDB葉経路整合（010/015はscaffold維持可）"
+  - "既liveの005〜008 / 017の回帰確認（変更は最小・意図した差分のみ）"
+  - "stg手動検証（低max_items）とsecretなし結果docs"
+  - "ギャップdocs / 運用メモのscaffold陳腐化箇所の必要最小更新"
+  - "Task / Review Definition の維持"
+
+out_of_scope:
+  - "BATCH-001〜004の楽天live切替"
+  - "BATCH-010 / 015のAI live切替"
+  - "親 on.schedule 有効化"
+  - "BATCH-018 / 019"
+  - "production定期・prod Secrets・secret実値の表示/変更"
+  - "OpenAPI / Orval / generated / apps/web|api|reco 変更"
+  - "DDL大規模変更・破壊的変更"
+  - "親Epic→develop PR / merge判断"
+  - "本Command範囲外の別Issue勝手起票"
+
+staged_execution: |
+  一Taskで葉6本＋複合経路＋検証を扱う。調査で明確に過大と判断した場合は別Issueを増やさず、
+  本Definition内で以下の段階実行を遵守する（各段階完了をPR/結果docsに明示）。
+  Phase A: 現状調査（葉6本・複合のscaffold/Environment/Run ID差分）
+  Phase B: 葉live化（009 → 011 → 012 → 013 → 014 → 016 の順を推奨。途中で停止条件に該当したら停止）
+  Phase C: meaning複合経路整合（010/015 scaffold維持のまま破綻しないこと）
+  Phase D: 既live 005〜008/017 回帰確認
+  Phase E: stg手動検証（低max_items）＋結果docs
+  段階途中でPR分割が必要に見えた場合は Human 確認へ回し、勝手に別Task Issueは作成しない。
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/BATCH_import連鎖_GHA_live化メモ_C3.md"
+      required: true
+      purpose: "既live import連鎖の方針・UUID/Environment参照"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH番号と処理対応"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "親/葉の実行関係（schedule有効化はしない）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+      purpose: "scaffold残ギャップ"
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      required: false
+      purpose: "手動検証結果の記載粒度参照"
+  files:
+    - path: ".github/workflows/batch-item-generation-queue.yml"
+      required: true
+      purpose: "BATCH-009 葉"
+    - path: ".github/workflows/batch-feature-input-hash.yml"
+      required: true
+      purpose: "BATCH-011 葉"
+    - path: ".github/workflows/batch-item-feature.yml"
+      required: true
+      purpose: "BATCH-012 葉"
+    - path: ".github/workflows/batch-feature-normalization.yml"
+      required: true
+      purpose: "BATCH-013 葉"
+    - path: ".github/workflows/batch-embedding-input-hash.yml"
+      required: true
+      purpose: "BATCH-014 葉"
+    - path: ".github/workflows/batch-distribution-metrics.yml"
+      required: true
+      purpose: "BATCH-016 葉"
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      required: true
+      purpose: "meaning複合経路"
+  issues:
+    - number: 1750
+      purpose: "親Epic"
+    - number: 1745
+      purpose: "統括ロードマップ（umbrella・formal parentではない）"
+    - number: 1717
+      purpose: "import連鎖GHA live参照"
+    - number: 1726
+      purpose: "meaning 017 UUID/live参照"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: false
+  files:
+    - path: ".github/workflows/batch-item-generation-queue.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-feature-input-hash.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-item-feature.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-feature-normalization.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-embedding-input-hash.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-distribution-metrics.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-retry-failed-items.yml"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/tasks/batch-live-db-lane/db-leaf-workflow-live.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-live-db-lane/db-leaf-workflow-live/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "apps/batch/**"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "葉009/011〜014/016のstg live化（scaffold解除）"
+  - "meaning複合経路のDB葉整合（010/015 scaffold維持可）"
+  - "既live 005〜008/017の回帰確認記録"
+  - "stg手動検証結果docs（secretなし）"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "葉009/011/012/013/014/016がenvironment: stg + STG_DATABASE_URL経路でscaffold-demoなし"
+  - "job_run_idがUUID方針と整合し、複合経路のpipeline IDと分離されている"
+  - "meaning複合が010/015 scaffold維持でも破綻しない"
+  - "005〜008/017の意図しない破壊変更が無い（回帰確認記録あり）"
+  - "stg手動検証結果docsがあり、run URL・conclusion・secretなしを満たす（または未実施理由が明示）"
+  - "001〜004楽天live / 010/015 AI live / schedule / 018/019 / production Secrets変更 / DDL破壊が混入していない"
+  - "generated / OpenAPI差分が無い"
+  - "Related to（Closes禁止）/ PR target = 親Epic Branch"
+  - "Review DefinitionがPR headに含まれる"
+
+branch:
+  no_branch: false
+  name: "feature/task-1751-db-leaf-workflow-live"
+  summary: "db-leaf-workflow-live"
+  base: "feature/epic-1750-batch-live-db-lane"
+  target: "feature/epic-1750-batch-live-db-lane"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "feature"
+  area: "batch"
+  number: 1751
+
+dependencies:
+  epics:
+    - issue: 1750
+      purpose: "親Epic（formal parent）。StatusがDoneでなくても本線子Taskとして開始可（human_decision_points参照）"
+    - issue: 1745
+      purpose: "統括umbrella（formal parentではない）"
+  issues:
+    - issue: 1717
+      purpose: "import連鎖GHA live参照（CLOSED）"
+    - issue: 1726
+      purpose: "meaning 017 UUID/live参照（CLOSED）"
+  prs: []
+  tasks: []
+  blocking: false
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at: []
+  blocked_message: "本TaskはOpenAPI/generated変更を含まない。contract_gate不要。"
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/batch-item-generation-queue.yml"
+    - ".github/workflows/batch-feature-input-hash.yml"
+    - ".github/workflows/batch-item-feature.yml"
+    - ".github/workflows/batch-feature-normalization.yml"
+    - ".github/workflows/batch-embedding-input-hash.yml"
+    - ".github/workflows/batch-distribution-metrics.yml"
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - ".github/workflows/batch-retry-failed-items.yml"
+    - "prompts/definitions/tasks/batch-live-db-lane/**"
+    - "prompts/definitions/reviews/batch-live-db-lane/**"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "stg手動検証（低max_items）"
+    - "secret check（成果物・ログに実値なし）"
+    - "既live 005〜008/017 回帰確認"
+  commands: []
+  manual_checks:
+    - "対象葉がscaffold-demoなしで成功すること"
+    - "010/015 scaffold維持でも複合が破綻しないこと"
+    - "environmentがstgであること（productionに向いていないこと）"
+  not_required:
+    - "unit test（アプリ変更が無い場合）"
+    - "OpenAPI / Orval / generated検証"
+  skip_reason:
+    "unit test（アプリ変更が無い場合）": "主変更がGHA YAMLの場合は手動検証優先。apps/batch変更時は関連UTを追加実行"
+    "OpenAPI / Orval / generated検証": "contract_gate.required=false。generated想定なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+    cicd: true
+  review_points:
+    - "楽天/AI liveが混入していないか"
+    - "Environment/Secrets方針が正本と一致するか（stg + STG_DATABASE_URL）"
+    - "UUID / Run ID分離が崩れていないか"
+    - "schedule有効化・production Secrets変更を含まないか"
+    - "stg手動検証結果または未実施理由があるか"
+    - "secret実値が含まれていないか"
+    - "CI/CD（workflow）差分がscope内か"
+    - "Related to / PR target = 親Epic Branch"
+
+human_decision_points:
+  - "親Epic #1750 が open（Doneでない）でも本Taskを開始してよい理由: 本Taskは親Epicの中核子作業そのものであり、親の完了を待たず子Taskを進めるのが正式フローである。dependencies.blocking=false。統括#1745はformal parentではなく追跡のみ。"
+  - "meaning連鎖を一括liveするか段階liveか（010/015 scaffold維持前提）。段階が必要なら staged_execution に従い別Issueは増やさない"
+  - "stg実データ量・max_items・破壊的書込の許容範囲"
+  - "stg Environment の required reviewers 運用負荷の許容"
+  - "distribution-metrics（016）末尾と既live 017の接続方針"
+
+stop_conditions:
+  - "001〜004または010/015のlive実装が必要に見えた場合（別Epicへ）"
+  - "schedule有効化が必要に見えた場合"
+  - "production Secretsやsecret実値が必要に見える場合"
+  - "DDL破壊的変更が必要に見える場合"
+  - "generated / OpenAPI変更が必要に見える場合"
+  - "親Epic Branch以外をbase/targetにする必要が見えた場合"
+
+operation_logging:
+  level: "standard"
+  enabled: true
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常はIssue/PR管理。blocked・security・横断影響時のみai-logs。secret実値は記録しない"
+
+notes:
+  - "Issue: #1751"
+  - "Branch: feature/task-1751-db-leaf-workflow-live"
+  - "AI Review 3点セット: Review Definition を /create-pr 前に PR head へ含める"
+  - "Umbrella #1745 は formal parent ではない"
