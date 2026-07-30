@@ -2,13 +2,13 @@ name: Batch Distribution Metrics
 
 # BATCH-016 分布メトリクス集計（独立子 workflow）
 # 正本: BATCH-016 バッチ仕様書 §18.1 — workflow_call / workflow_dispatch（cron なし）
-# 親 meaning-generation / daily 親 workflow 全体改修は本 Epic 外
+# stg live: DB接続は Environment `stg` の STG_DATABASE_URL を使用する
 
 on:
   workflow_call:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -35,7 +35,7 @@ on:
   workflow_dispatch:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -71,6 +71,9 @@ jobs:
   distribution-metrics:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    environment: stg
+    env:
+      DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -93,11 +96,11 @@ jobs:
           if [ -n "$INPUT_ID" ]; then
             echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-016 scaffold demo
-        # Real DB not enabled. Secrets must never be printed.
+      - name: Run BATCH-016 live
+        # Secrets must never be printed.
         # IF-DB-BATCH-016: feature / meaning / normalization_distribution_metric UPSERT only.
         # IF-DB-BATCH-014 / 015 / IF-VEC-BATCH-001 are not written.
         # item_embedding / user_meaning are optional (flags OFF by default).
@@ -121,19 +124,20 @@ jobs:
             USER_ARGS+=(--include-user-meaning "${{ inputs.include_user_meaning }}")
           fi
           uv run python -m batch.application.distribution_metrics \
-            --scaffold-demo \
             --job-run-id "${{ steps.run_id.outputs.value }}" \
             "${TRIGGER_ARGS[@]}" \
             "${VERSION_ARGS[@]}" \
             "${EMBED_ARGS[@]}" \
             "${USER_ARGS[@]}"
 
-      - name: Run BATCH-017 Import Summary scaffold demo
+      - name: Run BATCH-017 Import Summary live
         # §18.1 No.16 C 併用: distribution-metrics 末尾に 017 step を追加。
         # IF-DB-BATCH-017 only（item_import_summary INSERT）。016 本体は再実装しない。
-        # Real DB not enabled. Secrets must never be printed.
+        # 017 の job_run_id は新規 UUID、集計対象は 016 の job_run_id として分離する。
+        # Secrets must never be printed.
         working-directory: apps/batch
         run: |
+          SUMMARY_JOB_RUN_ID="$(python3 -c 'import uuid; print(uuid.uuid4())')"
           uv run python -m batch.application.import_summary \
-            --scaffold-demo \
-            --job-run-id "${{ steps.run_id.outputs.value }}"
+            --job-run-id "$SUMMARY_JOB_RUN_ID" \
+            --batch-run-id "${{ steps.run_id.outputs.value }}"

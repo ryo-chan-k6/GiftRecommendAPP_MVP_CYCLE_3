@@ -18,6 +18,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from batch.application.distribution_metrics.aggregator import (
+    FeatureMetricAggregationError,
     aggregate_feature_metrics,
     aggregate_meaning_metrics,
     aggregate_normalization_metrics,
@@ -214,11 +215,15 @@ class DistributionMetricsJob:
             else:
                 result.item_embedding_read_count = 0
 
-            feature_rows = aggregate_feature_metrics(
-                features=features,
-                scope=scope,
-                batch_run_id=job_run_id,
-            )
+            try:
+                feature_rows = aggregate_feature_metrics(
+                    features=features,
+                    scope=scope,
+                    batch_run_id=job_run_id,
+                )
+            except FeatureMetricAggregationError as exc:
+                # 入力不整合は他の検証と同じ GRS-VAL-001 経路（error_log / failed）へ寄せる。
+                raise DistributionMetricsError("GRS-VAL-001", str(exc)) from exc
             result.completed_phases.append("aggregate_feature")
 
             user_meanings = (
