@@ -295,8 +295,8 @@ Object Storage の署名リージョンはコード上 `us-east-1` 固定だが�
 - normalized 層は入力 `ItemFeatureRow.feature_normalization_version_id` を出力行へ伝播する
 - 同一 `semantic_config_version_id` / `feature_code` の normalized 対象で複数 version が混在した場合、または normalized 値に version がない場合は、DB 書込前に `FeatureMetricAggregationError` で停止する
 - Job 層は同例外を既存の入力検証と同じ `GRS-VAL-001` として扱い、`error_log` 記録・`status=failed` で終了する（DB CHECK 違反まで遅延させない）
-- 対象 unit test は `31 passed`
-- batch unit test 全体は `742 passed`
+- 対象 unit test は `32 passed`
+- batch unit test 全体は `743 passed`
 
 | 項目 | 内容 |
 | ---- | ---- |

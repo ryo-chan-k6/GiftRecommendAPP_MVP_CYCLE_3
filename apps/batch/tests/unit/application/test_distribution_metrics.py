@@ -655,6 +655,37 @@ def test_feature_raw_metrics_aggregate_across_normalization_versions() -> None:
     assert raw_row.feature_normalization_version_id is None
 
 
+def test_feature_normalized_metrics_allow_different_versions_across_feature_codes() -> None:
+    features = [
+        ItemFeatureRow(
+            item_id="it_1",
+            semantic_config_version_id=_VERSION,
+            feature_code="formality",
+            normalized_feature_value=0.4,
+            feature_normalization_version_id="norm-v1",
+        ),
+        ItemFeatureRow(
+            item_id="it_1",
+            semantic_config_version_id=_VERSION,
+            feature_code="safety",
+            normalized_feature_value=0.8,
+            feature_normalization_version_id="norm-v2",
+        ),
+    ]
+    repos, _ = _repos(features=features)
+
+    result = _run(repos)
+
+    assert result.status == "succeeded"
+    normalized_rows = {
+        row.feature_code: row
+        for row in repos.feature_metric_rows
+        if row.value_layer == "normalized"
+    }
+    assert normalized_rows["formality"].feature_normalization_version_id == "norm-v1"
+    assert normalized_rows["safety"].feature_normalization_version_id == "norm-v2"
+
+
 def test_feature_normalized_metrics_fail_when_normalization_versions_mixed() -> None:
     features = [
         ItemFeatureRow(
