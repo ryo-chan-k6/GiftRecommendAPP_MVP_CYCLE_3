@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-rakuten-fetch-ops-epic-pr"
+  title: "batch-rakuten-fetch-ops Epic PRレビュー"
+  summary: "楽天Fetch運用方針確定 Epic #1749 の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1758
+  issue:
+    number: 1749
+  task_definition: "prompts/definitions/epics/batch-rakuten-fetch-ops/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-rakuten-fetch-ops:楽天Fetch運用方針確定"
+  parent_epic_branch: "docs/epic-1749-batch-rakuten-fetch-ops"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "楽天Fetch運用方針が正本化され、決定済み前提（QPS=2等）と未確定運用項目が区別されているか"
+  - "BATCH-001〜004 live実装・#1607・schedule有効化・secret変更・QPS再改訂が混入していないか"
+  - "後続 batch-live-rakuten-fetch の着手ゲートとして不足がないか"
+  - "secret / token / key 実値がないか"
+  - "Epic PR target が develop、Closes #1749 か"
+
+notes:
+  - "Epic Issue #1749 / Branch docs/epic-1749-batch-rakuten-fetch-ops"
+  - "子Taskは #1752（PR #1754 merged）のみ"
+  - "Epic PR #1758（base: develop）"
+  - "Human Reviewは省略しない"
