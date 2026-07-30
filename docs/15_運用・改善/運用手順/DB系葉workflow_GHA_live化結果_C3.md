@@ -154,17 +154,126 @@ secret / 接続文字列の実値は記載しない。
 - 既live BATCH-005〜008 / 017に差分がないことの確認
 - Attempt 2 で postgres backend までの到達を確認
 
-### 6.5 残リスク / 次アクション
+### 6.5 Attempt 3（Object Storage設定修復後）
+
+Attempt 2 の準備不足に対し、Human が以下を実施した。
+
+| 対象 | 内容 |
+| ---- | ---- |
+| Supabase stg | プロジェクト再作成に伴い Storage バケット `raw-products` を新規作成 |
+| Environment `stg` Secret | `OBJECT_STORAGE_ACCESS_KEY` / `OBJECT_STORAGE_SECRET_KEY` を再発行・更新 |
+| Environment `stg` Variable | `OBJECT_STORAGE_ENDPOINT` を新プロジェクトへ更新 |
+
+`OBJECT_STORAGE_ENDPOINT` が旧（削除済み）プロジェクトを指していたため、import連鎖の BATCH-003 が
+`GRS-RAW-001 object storage put failed (HTTP 410)` で失敗していた。旧エンドポイントは `Project removed.` を返す。
+
+#### import連鎖（データ準備・#1751 scope外の運用行為）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| Run URL | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30550557260 |
+| inputs | `max_items=1` |
+| conclusion | **success**（全7 job） |
+| pipeline `batch_run_id` | `4822002d-ffb5-44a8-af84-f5ecf9535460` |
+
+| Batch | 結果 |
+| ----- | ---- |
+| BATCH-003 | `status=succeeded storage_backend=http succeeded=2 failed=0` |
+| BATCH-005 | `status=succeeded staging_items=1 staging_images=2` |
+| BATCH-006 | `status=succeeded upserts=1`（009 が使う `product_diff_result` を生成） |
+| BATCH-007 | `status=succeeded upserts=1` |
+| BATCH-008 | `status=succeeded`（更新対象なし） |
+| BATCH-017 | `status=succeeded insert_applied=True` |
+
+Object Storage の署名リージョンはコード上 `us-east-1` 固定だが、Supabase（`ap-northeast-1`）で
+`SignatureDoesNotMatch` は発生せず、live PUT に成功した。region 対応のコード変更は不要と確認できた。
+
+#### meaning複合（009 live 成功 / 011 で停止）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| Run URL | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30550920741 |
+| inputs | `max_items=1` |
+| conclusion | failure（011 で停止） |
+
+| Job | conclusion | ログ要約 |
+| --- | ---------- | -------- |
+| `item_generation_queue`（009） | **success** | `BATCH-009 status=succeeded db_reader=postgres db_writer=postgres inserted=1 semantic=1` |
+| `item_semantic`（010） | success | `BATCH-010 scaffold demo status=succeeded`（scaffold維持のため live書込なし） |
+| `feature_input_hash`（011） | **failure** | `BATCH-011 status=failed hashed=0 skipped=0 failed=0 phases=plan,finalize` |
+| 012〜017 | skipped | — |
+
+#### distribution-metrics（016 / UUID問題は解消・別要因で失敗）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| Run URL | https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/actions/runs/30551184593 |
+| inputs | `semantic_config_version_id=a1111111-1111-4111-8111-111111111102`（master seed の固定UUID） |
+| conclusion | failure |
+
+ログ要約（secretなし）:
+
+- `InvalidTextRepresentation`（scaffold文字列のUUID非互換）は**解消**
+- FK も通過したため、stg DB に master seed / test-data seed が適用済みであることを確認
+- 新たに `CheckViolation: new row for relation "feature_distribution_metric" violates check constraint "chk_fdm_normalized_version_when_layer"`
+
+### 6.6 Attempt 3 で判明した構造的課題（事実 / 推論）
+
+| 区分 | 内容 |
+| ---- | ---- |
+| 事実 | 009 は live で成功し、`item_generation_queue` に `generation_type=semantic` / `queue_status=queued` を1件登録した |
+| 事実 | 011 の対象条件は `semantic`+`processing`（主）または `feature`+`queued`（副）である |
+| 事実 | 010 は本Task方針により scaffold 維持のため、live DB の queue 状態を `processing` へ進めない |
+| 推論 | 010 が scaffold である限り、複合経路で 011 は常に empty plan となる（構造的制約） |
+| 事実 | 011 の `resolve_config_version` は `semantic_config_version_id="scaffold-semantic-config-v1"` を固定で返す |
+| 事実 | 書込先 `item_feature_input.semantic_config_version_id` は `uuid NOT NULL` + FK である |
+| 推論 | 011 は仮にデータがあっても、scaffold 固定値のため live 書込に失敗する |
+| 事実 | 同種の scaffold 固定値は 012 / 013（`__main__.py` の `version`）、014（`DEFAULT_EMBEDDING_MODEL_VERSION`）にも存在する |
+| 事実 | 016 の `aggregate_feature_metrics` は `value_layer="normalized"` の行を生成する際に `feature_normalization_version_id` を設定していない |
+| 事実 | 同ファイルの `aggregate_meaning_metrics` / `aggregate_normalization_metrics` は同項目を伝播している |
+| 推論 | 016 の失敗はアプリケーション側の不具合であり、GHA配線とは独立している |
+
+該当箇所:
+
+```105:126:apps/batch/src/batch/application/distribution_metrics/aggregator.py
+    for code in MVP_FEATURE_CODES:
+        for layer, buckets in (("raw", raw_by_code), ("normalized", norm_by_code)):
+            values = buckets.get(code, [])
+            if not values:
+                continue
+            stats = compute_distribution_stats(values)
+            rows.append(
+                MetricUpsertRow(
+                    table="feature_distribution_metric",
+                    batch_run_id=batch_run_id,
+                    semantic_config_version_id=version,
+                    aggregation_scope=agg_scope,
+                    aggregation_key=agg_key,
+                    value_layer=layer,
+                    feature_code=code,
+                    sample_count=stats.sample_count,
+                    mean=stats.mean,
+                    stddev=stats.stddev,
+                    min_value=stats.min_value,
+                    max_value=stats.max_value,
+                )
+            )
+```
+
+### 6.7 残リスク / 次アクション
 
 | 優先 | 内容 | 担当 |
 | ---- | ---- | ---- |
-| high | stg に import 連鎖差分（`product_diff_result`）を用意する、または検証用 `diff_batch_run_id` を指定して 009 を再実行 | Human / AI |
-| high | 016 用に実 UUID の `semantic_config_version_id` を用意（workflow input または `BATCH_DISTRIBUTION_METRICS_SEMANTIC_CONFIG_VERSION_ID`） | Human |
-| medium | 上記準備後に meaning複合 / distribution-metrics を再dispatchし、本節を SUCCESS 更新 | AI |
-| note | apps/batch の scaffold 既定値撤廃は別判断（本Taskは GHA live 配線が主。必要なら scope確認） | Human |
+| 完了 | stg に import 連鎖差分（`product_diff_result`）を用意 | Human / AI |
+| 完了 | Object Storage 設定を新 Supabase プロジェクトへ追随 | Human |
+| 完了 | 016 用の実 UUID `semantic_config_version_id` を特定（master seed 固定値） | Human / AI |
+| high | 016 の `aggregate_feature_metrics` に `feature_normalization_version_id` を伝播する修正の要否・実施単位を判断 | Human |
+| high | 011〜014 の scaffold 固定 version 撤廃の要否・実施単位を判断（010 scaffold 維持との整合を含む） | Human |
+| note | 上記2件はいずれも apps/batch のアプリ実装変更であり、本Task（GHA live 配線）の scope 外 | Human |
 
-本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）と DB 接続復旧は確認済み。
-実データ前提つきの書込成功は上記 high 対応後に再検証する。
+本Taskのworkflow差分（scaffold解除・stg配線・UUID分離）は、009 の live 成功および import連鎖6本の
+live 成功によって配線として妥当であることを確認した。
+011〜014 / 016 の live 書込成功は、上記 high 2件の判断後に再検証する。
 
 ## 7. 段階完了状況
 
@@ -174,7 +283,7 @@ secret / 接続文字列の実値は記載しない。
 | B | 完了 | 対象6葉をstg live化 |
 | C | 完了 | meaning / retry複合のRun IDを整合 |
 | D | 完了 | 005〜008 / 017に意図しない差分なし |
-| E | 実施済・PARTIAL | Secret更新後に再dispatch。接続OK。009 empty plan / 016 scaffold UUID で未成功 |
+| E | 実施済・PARTIAL | Attempt 3 で 009 live 成功 / import連鎖6本 live 成功。011・016 はアプリ実装起因で未成功 |
 
 ## 8. 変更履歴
 
@@ -183,3 +292,4 @@ secret / 接続文字列の実値は記載しない。
 | 2026-07-30 | 初版。Phase A〜D完了、Phase EはHuman判断待ち |
 | 2026-07-30 | Phase E Attempt 1。DB接続失敗を記録 |
 | 2026-07-30 | `STG_DATABASE_URL` 更新後 Attempt 2 を記録（PARTIAL） |
+| 2026-07-30 | Object Storage設定修復後 Attempt 3 を記録。009 live 成功、011・016 の構造的課題を特定 |
