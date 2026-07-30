@@ -15,7 +15,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1777
   issue: 1747
   epic_definition: "prompts/definitions/epics/reco-stg-latency/epic.yaml"
   source_branch: "fix/epic-1747-reco-stg-latency"
@@ -66,7 +66,7 @@ input:
     number: 1747
     required: true
   pr:
-    number: null
+    number: 1777
     required: true
   diff:
     required: true
