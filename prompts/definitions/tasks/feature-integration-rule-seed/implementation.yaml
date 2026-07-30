@@ -16,6 +16,7 @@ parent:
   epic_branch: "feature/epic-1756-feature-integration-rule-seed"
   related_issues:
     - 1756
+    - 1757
   related_prs: []
 
 commands:

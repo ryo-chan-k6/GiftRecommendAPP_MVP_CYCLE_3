@@ -6,7 +6,7 @@ review:
   title: "Feature Integration Rule Seed実装 PRレビュー"
   summary: "feature_integration_rule master seed実装Task PRをAI Reviewする"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -19,9 +19,9 @@ branch:
 
 target:
   pr: null
-  issue: null
+  issue: 1757
   task_definition: "prompts/definitions/tasks/feature-integration-rule-seed/implementation.yaml"
-  source_branch: null
+  source_branch: "feature/task-1757-feature-integration-rule-seed-implementation"
   target_branch: "feature/epic-1756-feature-integration-rule-seed"
   parent_epic_issue: "[Epic]Feature Integration Rule Seed整備"
   parent_epic_branch: "feature/epic-1756-feature-integration-rule-seed"
@@ -66,7 +66,7 @@ input:
     path: "prompts/definitions/tasks/feature-integration-rule-seed/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1757
     required: true
   pr:
     number: null
