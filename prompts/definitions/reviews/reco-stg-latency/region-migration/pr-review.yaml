@@ -1,0 +1,125 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-stg-latency-region-migration-pr"
+  title: "reco-stg-latency-region-migration:Supabase stg東京リージョン移行と手順書更新 PRレビュー"
+  summary: "Supabase stg 東京リージョン移行の手順書反映 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  name: null
+  base: null
+  target: null
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1773
+  task_definition: "prompts/definitions/tasks/reco-stg-latency/region-migration.yaml"
+  source_branch: "fix/task-1773-reco-stg-latency-region-migration"
+  target_branch: "fix/epic-1747-reco-stg-latency"
+  parent_epic_issue: "[Epic]reco-stg-latency:Reco stgレイテンシ改善"
+  parent_epic_branch: "fix/epic-1747-reco-stg-latency"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-stg-latency/region-migration.yaml"
+    required: true
+  issue:
+    number: 1773
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "fix/epic-1747-reco-stg-latency"
+  docs:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      required: true
+    - path: "docs/06_実装設計/database/マイグレーション方針書.md"
+      required: true
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  common:
+    - "Task Definition scope / acceptance_criteria を満たしているか"
+    - "PR target が親 Epic Branch（fix/epic-1747-reco-stg-latency）か"
+    - "Related to（Closes 禁止）か"
+    - "親 Epic の epic_scope.allowed_paths 内の変更か"
+  docs:
+    - "§6.1 に東京 / ap-northeast-1 前提と Fly nrt との同一リージョン要件が明記されているか"
+    - "§6.8 に Supabase CLI の migration 適用（db push は seed を流さない）が明記されているか"
+    - "§6.9 に master seed の手動投入（filename 昇順）と期待行数検証が明記されているか"
+    - "Direct 接続（migration / seed）と Pooler 接続（アプリ）の区別が明記されているか"
+    - "既存章構成・表形式・チェックリスト体裁と整合しているか"
+    - "マイグレーション方針書 / 初期データ定義書 / デプロイ設定書と矛盾しないか"
+    - "改訂履歴が更新されているか"
+    - "リンクパスが破綻していないか"
+  security:
+    - "secret 実値・接続文字列・project-ref が記載されていないか"
+    - "手順が secret を履歴へ残さない前提で書かれているか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消されている、または Human 判断待ちとして明示されている"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれかである"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR 作成後に target.pr / input.pr.number を実番号へ同期する"
+  - "インフラ移行（P1〜P8）は Human 実施済み。本 PR の差分は手順書反映（P9）が対象"

@@ -51,7 +51,7 @@
 | API | あり | Render 等（Environment: stg） |
 | Reco | あり | Fly.io 等（Environment: stg） |
 | Batch | あり（手動＋必要なら一部定期） | GitHub Actions |
-| PostgreSQL | **stg 専用 1 本**。prod/local/Layer2 と共有しない | Supabase なら **stg 用プロジェクト 1** |
+| PostgreSQL | **stg 専用 1 本**。prod/local/Layer2 と共有しない。**Region は Reco / API と同一**（MVP は東京 / `ap-northeast-1`） | Supabase なら **stg 用プロジェクト 1** |
 | Redis | 環境ごと分離 | **Upstash Redis**（stg 専用 DB。[デプロイ設定書](../../14_リリース/デプロイ設定/デプロイ設定書.md) H-DEP-01） |
 | Object Storage | 環境ごと分離。`raw-products` 等は private | Supabase Storage（stg プロジェクト内） |
 | 監視 | 最小〜中 | プラットフォーム標準ログで可 |
@@ -63,6 +63,25 @@
 - 同一 DB 内に master / 縮小カタログ / 評価セット / 実行ログ
 - api / reco /（必要なら）batch は **同一の stg `DATABASE_URL`**
 - 外部 API live は既定 off。限定 live は明示時のみ
+
+### 4.1 リージョン整合（必須）
+
+DB と アプリ（API / Reco）は **同一リージョン**に置く。
+
+| 項目 | MVP の値 |
+| --- | --- |
+| PostgreSQL（Supabase stg） | 東京 / `ap-northeast-1` |
+| Reco（Fly.io stg） | `nrt`（東京。`infra/fly/fly.toml`） |
+| API（Render stg） | Reco / DB と同一リージョン相当 |
+
+**理由（実測）**: リージョンが異なると 1 クエリあたりのネットワーク往復が大きくなる。推薦 1 回のパイプラインは DB 往復を多数必要とするため、往復遅延が hard timeout に直結する。
+
+| 構成 | 1 クエリ | `config_resolved`（13 SELECT） | 推薦実行 |
+| --- | --- | --- | --- |
+| DB シンガポール × Reco 東京 | 約 214ms | 2,786ms | HTTP 504（`GRS-REC-101`） |
+| DB 東京 × Reco 東京 | 数十 ms 級 | 約 253ms | 完走（約 1.0s） |
+
+Supabase は **プロジェクト作成後にリージョンを変更できない**。リージョンを誤って作成した場合は、§6.10 の移行手順で作り直す。
 
 ---
 
@@ -84,10 +103,19 @@
 
 | # | 手順 | 確認 |
 | --- | --- | --- |
-| D1 | stg 専用の PostgreSQL（または Supabase stg プロジェクト）を新規作成する | [ ] |
+| D1 | stg 専用の PostgreSQL（または Supabase stg プロジェクト）を新規作成する。**Region は東京 / `ap-northeast-1`**（§4.1） | [ ] |
 | D2 | プロジェクト名 / インスタンス名に `stg` を含め、prod と見誤らないようにする | [ ] |
 | D3 | prod / local / Layer2 ephemeral と **共有していない**ことを確認する | [ ] |
 | D4 | 接続情報をホスティング Secret 用に控える（実値は Secret 管理のみ） | [ ] |
+| D5 | Reco（Fly `nrt`）と **同一リージョン**であることを確認する。異なる場合は §6.10 で作り直す | [ ] |
+
+接続情報は用途で使い分ける。
+
+| 用途 | 接続 | 備考 |
+| --- | --- | --- |
+| migration 適用 | **Direct** | マイグレーション方針書に従い pooler URL を使わない |
+| master seed 投入（`psql`） | Direct または Session pooler | Direct が IPv6 のみで到達できない環境では Session pooler（port 5432）を用いる |
+| アプリ（API / Reco） | **Session pooler** | Fly / Render は IPv4 経路のため |
 
 ### 6.2 Redis（stg）
 
@@ -143,18 +171,71 @@
 
 | # | 手順 | 確認 |
 | --- | --- | --- |
-| M1 | prod と同一の migration を stg DB に適用する（[マイグレーション方針書](../../06_実装設計/database/マイグレーション方針書.md)） | [ ] |
-| M2 | 適用結果をローカルメモまたは運用メモに残す（接続文字列は残さない） | [ ] |
+| M1 | Supabase CLI のバージョンを `supabase/.cli-version` と一致させる（`./scripts/db/check-cli-version.sh`） | [ ] |
+| M2 | 対象 stg プロジェクトへ link する（`supabase link --project-ref <ref>`。パスワードは対話入力し履歴に残さない） | [ ] |
+| M3 | prod と同一の migration を stg DB に適用する（`supabase db push`。**Direct 接続**を用いる。[マイグレーション方針書](../../06_実装設計/database/マイグレーション方針書.md)） | [ ] |
+| M4 | 全 migration が Applied であることを確認する（`supabase migration list`） | [ ] |
+| M5 | 初期 migration で `pgvector` が有効化され、Storage bucket が作成されていることを確認する | [ ] |
+| M6 | 適用結果をローカルメモまたは運用メモに残す（接続文字列は残さない） | [ ] |
+
+`supabase db push` は **seed を実行しない**。master seed は §6.9 で別途投入する。
 
 ローカル向け手順は [DB構築手順書](../../06_実装設計/database/DB構築手順書.md) を参照。クラウド適用の詳細コマンドは環境に依存するため、Human が採用ツール（Supabase CLI / CI job 等）に合わせて実施する。
 
-### 6.9 データ投入（縮小カタログ・評価）
+### 6.9 master seed 投入
+
+`supabase db push` は seed を実行しないため、master seed は手動で投入する。
+
+| # | 手順 | 確認 |
+| --- | --- | --- |
+| S-1 | `supabase/seeds/masters/*.sql` を **ファイル名の昇順**で適用する（投入順序の正本は [初期データ定義書](../../06_実装設計/database/初期データ定義書.md) §7） | [ ] |
+| S-2 | `psql` は `ON_ERROR_STOP=1` で実行し、エラー時に途中停止させる | [ ] |
+| S-3 | 未作成の seed ファイル（後続 Task 予定分）は存在しなければスキップする | [ ] |
+| S-4 | 投入後に行数を検証する（一括検証クエリと期待値は [初期データ定義書](../../06_実装設計/database/初期データ定義書.md) §9） | [ ] |
+
+投入例（接続文字列は環境変数経由。コマンド履歴・docs に実値を残さない）:
+
+```bash
+for f in $(ls supabase/seeds/masters/*.sql | sort); do
+  psql "$STG_DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+done
+```
+
+`scripts/db/seed-masters.sh` は **local 専用**（接続先を local から導出する）。stg には使わず、上記のように接続先を明示して `psql` を実行する。
+
+期待行数を本手順書に転記しない。正本は [初期データ定義書](../../06_実装設計/database/初期データ定義書.md) §7・§9 とする。
+
+### 6.10 リージョン移行（既存 stg を別リージョンへ作り直す場合）
+
+Supabase はプロジェクト作成後のリージョン変更ができないため、**新規プロジェクトを作成して切り替える**。
+
+| # | 手順 | 確認 |
+| --- | --- | --- |
+| G1 | 移行先リージョン（東京 / `ap-northeast-1`）で新規プロジェクトを作成する（§6.1 D1〜D5） | [ ] |
+| G2 | 新プロジェクトへ link し、migration を適用する（§6.8 M1〜M6） | [ ] |
+| G3 | master seed を投入し行数を検証する（§6.9） | [ ] |
+| G4 | 必要なテストデータを投入する（§6.11） | [ ] |
+| G5 | `DATABASE_URL` を Render（API）と Fly（Reco）で新プロジェクトへ差し替える。API / Reco は同一値（§6.4 A3 / §6.5 C2） | [ ] |
+| G6 | Render / Fly を再デプロイして新 env を反映する | [ ] |
+| G7 | 疎通確認を実施する（§8） | [ ] |
+| G8 | 旧プロジェクトを停止 / 廃止する。切り戻し猶予を置く場合はダウンタイム許容とあわせて判断する | [ ] |
+
+注意点:
+
+- 旧プロジェクトの認証情報が漏えいした場合は、切り替えではなく **パスワードローテーションを先に**実施する
+- 差し替え時はホスト名の一致のみを目視で確認し、接続文字列全体をコピー・貼り付けしない
+- 移行はダウンタイムを伴う。実施タイミングは Human が判断する
+
+### 6.11 データ投入（縮小カタログ・評価）
 
 | # | 手順 | 確認 |
 | --- | --- | --- |
 | T1 | 本番準拠の **匿名化・縮小カタログ** を投入する（prod 生ダンプ禁止） | [ ] |
 | T2 | 必要なら evaluation dataset / case を投入し version を控える | [ ] |
 | T3 | カタログ件数の最終目安は Human 確定（未確定なら暫定セットで疎通可） | [ ] |
+| T4 | 疎通確認用の最小データが無い場合、`supabase/seeds/test-data/` を投入して推薦が 0 件にならない状態にする | [ ] |
+
+`supabase/seeds/test-data/` は `supabase db reset` では適用されない。stg では明示的に投入する。
 
 ---
 
@@ -182,6 +263,10 @@
 | S4 | api / reco が同一 stg DB を見ている（ホスト名の一致を目視。接続文字列全体はコピーしない） | [ ] |
 | S5 | 推薦の最小通し（入力→結果表示）が stg 上で動く | [ ] |
 | S6 | local の結果を受入証跡に使っていない | [ ] |
+| S7 | 推薦実行が hard timeout に達せず完走する（504 / `GRS-REC-101` が出ない） | [ ] |
+| S8 | DB と Reco が同一リージョンである（§4.1） | [ ] |
+
+S7 が 504 になる場合は、まず §4.1 のリージョン整合を確認する。リージョン差はクエリ往復遅延として現れ、`phase_log` の `config_resolved` の `duration_ms` に最も分かりやすく出る。
 
 ---
 
@@ -232,7 +317,8 @@
 | [環境変数定義書](../../06_実装設計/cross_cutting/環境変数定義書.md) | 変数名 |
 | [環境変数運用手順](./環境変数運用手順.md) | 登録・分離・受入前 |
 | [基盤構成設計書](../../06_実装設計/cross_cutting/基盤構成設計書.md) | コンポーネント |
-| [マイグレーション方針書](../../06_実装設計/database/マイグレーション方針書.md) | schema 適用 |
+| [マイグレーション方針書](../../06_実装設計/database/マイグレーション方針書.md) | schema 適用・接続種別 |
+| [初期データ定義書](../../06_実装設計/database/初期データ定義書.md) | master seed の投入順序・期待行数・検証クエリ |
 | `infra/*/README` | 設定配置の置き場（プレースホルダ） |
 | [デプロイ設定書](../../14_リリース/デプロイ設定/デプロイ設定書.md) | プロバイダ確定（Upstash 等） |
 
@@ -244,3 +330,4 @@
 | --- | --- |
 | 2026-07-27 | 初版。#1686 として簡易 stg 構築手順を正本化。Related to #1686 |
 | 2026-07-28 | Redis を Upstash に更新（#1708 / H-DEP-01、親 #146） |
+| 2026-07-31 | リージョン整合（§4.1）、DB 作成のリージョン要件（§6.1）、migration 適用手順（§6.8）、master seed 手動投入（§6.9）、リージョン移行手順（§6.10）、疎通確認 S7/S8 を追加。Related to #1773（親 #1747） |
