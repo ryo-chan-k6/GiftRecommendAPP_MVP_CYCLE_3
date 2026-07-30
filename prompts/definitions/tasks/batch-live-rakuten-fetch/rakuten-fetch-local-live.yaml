@@ -242,6 +242,6 @@ stop_conditions:
   - "schedule有効化が必要に見える場合"
 
 notes:
-  - "親Epic Issue番号 / Branch は /start-epic 後に反映する"
+  - "Task Issue: #1765 / Branch feature/task-1765-rakuten-fetch-local-live"
   - "先行Task（Decision Log）完了が必須ゲート"
   - "max_items と Run予算を混同しない"

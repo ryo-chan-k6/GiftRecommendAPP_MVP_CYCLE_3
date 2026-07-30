@@ -203,6 +203,6 @@ stop_conditions:
   - "secret実値が必要に見える場合"
 
 notes:
-  - "親Epic Issue番号 / Branch は /start-epic 後に反映する"
+  - "Task Issue: #1764 / Branch docs/task-1764-rakuten-fetch-ops-decisions"
   - "推奨初期値（pages_per_run=60等）は運用方針§5.3.4/§5.3.5。採択はHuman"
   - "本Task完了前に local live Task を実装開始してはならない"

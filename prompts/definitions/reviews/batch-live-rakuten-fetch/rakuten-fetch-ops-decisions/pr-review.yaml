@@ -16,11 +16,11 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1764
   parent_epic_issue: 1763
   parent_epic_branch: "feature/epic-1763-batch-live-rakuten-fetch"
   task_definition: "prompts/definitions/tasks/batch-live-rakuten-fetch/rakuten-fetch-ops-decisions.yaml"
-  source_branch: null
+  source_branch: "docs/task-1764-rakuten-fetch-ops-decisions"
   target_branch: "feature/epic-1763-batch-live-rakuten-fetch"
 
 commands:
