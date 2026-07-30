@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import JSONResponse
 
 from reco.api.auth.internal_api_key import require_internal_api_key
@@ -14,7 +14,11 @@ from reco.api.errors import default_message
 from reco.api.metrics.health_metrics import record_reco_health_check
 from reco.api.middleware.trace_context import HEADER_REQUEST_ID, HEADER_TRACE_ID
 from reco.config.loader import load_reco_settings
-from reco.infrastructure.db.session import PostgresDatabaseSession, ScaffoldDatabaseSession
+from reco.infrastructure.db.session import (
+    DatabaseSession,
+    PostgresDatabaseSession,
+    ScaffoldDatabaseSession,
+)
 
 router = APIRouter(prefix="/internal/reco/v1", tags=["RecoHealth"])
 
@@ -34,13 +38,27 @@ def _resolve_trace_meta(
     return {"traceId": trace_id, "requestId": request_id}
 
 
-def _probe_database() -> bool:
+def _probe_database(session: DatabaseSession | None = None) -> bool:
+    """Probe DB via the shared lifespan session when available.
+
+    Fallback: construct a short-lived session when app.state is not initialized
+    (e.g. isolated unit calls). Prefer the shared pool in normal runtime.
+    """
+    if session is not None:
+        return session.health_check().is_available
+
     settings = load_reco_settings()
     if settings.database_url is None or settings.database_url.strip() == "":
         # ローカル最小: DATABASE_URL 未設定時は scaffold でプロセス稼働のみ確認
         # （実装仕様書 §11 No.1 推奨。本番/staging では DATABASE_URL 必須想定）
         return ScaffoldDatabaseSession().health_check().is_available
-    return PostgresDatabaseSession(database_url=settings.database_url).health_check().is_available
+
+    fallback = PostgresDatabaseSession(database_url=settings.database_url)
+    try:
+        fallback.open()
+        return fallback.health_check().is_available
+    finally:
+        fallback.close()
 
 
 def _error_response(
@@ -67,14 +85,16 @@ def _error_response(
     summary="Recoヘルスチェック（API-INT-001）",
 )
 async def get_reco_health(
+    request: Request,
     _auth: None = Depends(require_internal_api_key),
     x_trace_id: Annotated[str | None, Header(alias=HEADER_TRACE_ID)] = None,
     x_request_id: Annotated[str | None, Header(alias=HEADER_REQUEST_ID)] = None,
 ) -> JSONResponse:
     meta = _resolve_trace_meta(x_trace_id=x_trace_id, x_request_id=x_request_id)
     checked_at = datetime.now(tz=UTC).isoformat()
+    shared_session = getattr(request.app.state, "database_session", None)
 
-    if not _probe_database():
+    if not _probe_database(shared_session):
         # OpenAPI: 503 + ErrorResponse（data なし）
         record_reco_health_check(
             result="unavailable",

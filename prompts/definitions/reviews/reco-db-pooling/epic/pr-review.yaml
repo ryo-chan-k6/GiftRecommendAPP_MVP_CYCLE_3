@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-db-pooling-epic-pr"
+  title: "Reco DB接続プール導入 Epic PRレビュー"
+  summary: "reco-db-pooling Epic の develop 向け PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr:
+    number: 1744
+  issue:
+    number: 1737
+  epic_definition: "prompts/definitions/epics/reco-db-pooling/epic.yaml"
+  source_branch: "refactor/epic-1737-reco-db-pooling"
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    test: "test-ai"
+    security: "reviewer-ai"
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "子 Task の成果が Epic Branch に統合されているか"
+  - "epic_scope.allowed_paths 外の変更が含まれていないか"
+  - "forbidden_paths（constants.py / apps/api / infra / supabase）の変更がないか"
+  - "DatabaseSession Protocol の互換が保たれているか"
+  - "unit test が通る状態か"
+  - "stg での hard timeout 内完走が未確認である旨が PR 本文に明示されているか"
+  - "secret 実値・.env 実値がないか"
+  - "PR target が develop か"
+
+notes:
+  - "PR 番号確定後に target.pr を更新してよい"
+  - "Epic 完了条件のうち stg 実測は Human によるデプロイ後の確認"
