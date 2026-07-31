@@ -1,0 +1,163 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-data-collect-ops-ops-plan-decision"
+  title: "batch-data-collect-ops:本格収集運用枠Human Decision Log化"
+  summary: "B-0下のlocal本格収集について、対象ジャンル段階・期間/Run数・予算ノブ・停止条件・監視見直し計画を Human Decision Log 化し正本docsへ同期する。収集実行・schedule有効化は含まない。"
+  workstream_key: "batch-data-collect-ops"
+  phase: "decision"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  本線#6の着手ゲート。#1763でlocal live経路は用意済み。#1789はB-0完了。
+  本Taskは「何を・どこまで・いつ止めるか」を Decision Log で確定し、後続の継続収集Taskへ渡す。
+  AIは運用枠を独断確定しない。
+
+objective: |
+  本格収集の運用枠を Human Decision Log で decided にし、楽天Fetch運用方針・#1745追跡と矛盾なく同期する。
+
+scope:
+  - "運用枠（ジャンル段階・期間またはRun数・Run予算ノブ・停止/エスカレーション条件）の Decision Log 作成"
+  - "監視閾値見直し計画（§5.3.5実測後）の Decision への記載"
+  - "楽天Fetch運用方針・必要最小のギャップdocs同期"
+  - "後続 local-collect Task の着手ゲートを採択結果へ反映"
+
+out_of_scope:
+  - "local継続収集の実行本体"
+  - "監視閾値の実測そのもの（後続Task）"
+  - "#1792 schedule有効化"
+  - "#1607 / GHA楽天live"
+  - "secret実値の表示・変更"
+  - "apps/web|api|reco / OpenAPI / generated"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-batch-daily-schedule-enable-b0.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-data-collect-ops/**"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "Decision Log が運用枠を明示し状態が decided"
+  - "正本docsと矛盾しない"
+  - "schedule有効化・GHA楽天live・#1607・secret実値を含まない"
+  - "後続収集Taskの着手条件が採択結果と整合する"
+
+branch:
+  no_branch: false
+  summary: "ops-plan-decision"
+  name: null
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-07-31"
+    due_date: "2026-08-04"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1745
+    - 1789
+    - 1763
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "ai-logs/human-decisions/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "Decision Log に secret 実値がない"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Decision Log / docs同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "運用枠が曖昧なまま decided になっていないか"
+    - "schedule有効化や#1607が混入していないか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "ジャンル段階・期間/Run数・停止条件"
+  - "§5.3.5見直し計画の十分性"
+
+stop_conditions:
+  - "Humanが運用枠を明示していない"
+  - "secret実値が必要に見える"
+
+notes:
+  - "親Epic: batch-data-collect-ops。Issue/Branchは /start-epic・/start-task 後に確定"
+  - "本Task完了後、local-collect-and-monitor へ"

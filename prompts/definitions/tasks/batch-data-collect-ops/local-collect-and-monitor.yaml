@@ -1,0 +1,169 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-data-collect-ops-local-collect-and-monitor"
+  title: "batch-data-collect-ops:local継続収集と監視閾値見直し"
+  summary: "運用枠Decision採択後、local楽天liveで継続収集を実施し、§5.3.5監視閾値を実測に基づき見直してdocsへ反映する。schedule有効化・GHA楽天liveは含まない。"
+  workstream_key: "batch-data-collect-ops"
+  phase: "ops-execution"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  前Task（ops-plan-decision）で運用枠が decided であることが着手ゲート。
+  local live の実secretは Human 環境。値は commit / docs / PR に出さない。
+  #1791のschedule最小手順の再作成ではなく、本格収集の実行と閾値実測が成果。
+
+objective: |
+  Decisionどおりにlocal継続収集を行い、結果と§5.3.5見直し（維持含む）を正本docsへ残す。
+
+scope:
+  - "運用枠に従った BATCH-001〜004 local live 継続収集の実施"
+  - "fetch_cursor進捗・paused/failed再開の記録（secretなし）"
+  - "§5.3.3指標の観測と§5.3.5閾値の見直し提案→Human採択反映"
+  - "運用結果docs / 運用方針 / 必要最小ギャップdocs更新"
+  - "実装バグが収集を阻む場合のみ apps/batch の最小修正（本旨は運用）"
+
+out_of_scope:
+  - "運用枠Decisionの再定義（前Task）"
+  - "#1792 schedule有効化"
+  - "#1607 / GHA楽天live"
+  - "常用QPS=2の再改訂"
+  - "本線#7品質評価本体"
+  - "secret実値の表示・変更"
+  - "親orchestrator workflowのscheduleコメント解除"
+  - "OpenAPI / generated / apps/web|api|reco"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/**"
+      action: "update"
+      required: false
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+
+acceptance_criteria:
+  - "着手前に運用枠 Decision Log が decided"
+  - "local継続収集の結果docsがあり secret 実値を含まない"
+  - "§5.3.5見直し（維持含む）が運用方針に反映されている"
+  - "GHA楽天live・schedule有効化・#1607・secret実値を含まない"
+
+branch:
+  no_branch: false
+  summary: "local-collect-and-monitor"
+  name: null
+  base: null
+  target: null
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-04"
+    due_date: "2026-08-14"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1745
+    - 1763
+  prs: []
+  tasks:
+    - "task-batch-data-collect-ops-ops-plan-decision"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "local収集結果の記録"
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "egress照合失敗時に楽天HTTPしない"
+    - "429時にcursor pageが進まない"
+  not_required:
+    - "GHA楽天live E2E"
+  skip_reason:
+    "GHA楽天live E2E": "本Task out of scope"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "運用枠Decisionゲートを満たしているか"
+    - "secret実値・schedule有効化・GHA楽天liveが混入していないか"
+    - "閾値見直しの根拠が実測に基づくか"
+
+human_decision_points:
+  - "§5.3.5見直し値の最終採択"
+  - "途中停止・ジャンル縮小が必要になった場合の判断"
+
+stop_conditions:
+  - "運用枠Decisionが無い、または decided でない"
+  - "GHA楽天liveやschedule有効化が必要に見える"
+  - "secret実値が必要に見える"
+
+notes:
+  - "依存: ops-plan-decision 完了かつ decided"
+  - "local実行はHuman環境。AIは手順・記録・docs同期を担当"

@@ -1,0 +1,280 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-data-collect-ops"
+  title: "batch-data-collect-ops:本格収集と運用監視改善"
+  summary: "統括#1745本線#6。B-0下でlocal楽天liveによる本格・継続収集と、運用方針§5.3系の監視改善（閾値実測見直し・再開運用定着）を行う。#1792（schedule有効化）・#1607・GHA楽天HTTP liveは本Epic外。機能・領域単位Epic（例外）。"
+  workstream_key: "batch-data-collect-ops"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  統括ロードマップ #1745 の本線候補#6。依存の本線#5（#1789）は B-0（daily schedule無効継続）で CLOSED。
+  本線#1〜#4（運用方針・DB live・AI live・楽天Fetch local live）は完了済み。
+  #1791 で schedule 用の監視・rollback最小手順は整備済みだが、それは B-1 前提の最低ラインであり、
+  本Epicの「本格収集」と「監視改善（閾値実測見直し）」とは別物として扱う。
+  Human確認（2026-07-31）: #6本旨は B-0下の local 本格収集＋監視改善。#1792 / #1607 は out_of_scope。
+  Definition先作成 → `/start-epic` の順（即起票しない）。
+
+objective: |
+  承認済み fetch_plan / Run予算に沿い、local 楽天 live で本格・継続収集を回し、
+  運用方針§5.3.3〜§5.3.5 の監視指標を実測して見直す。統括#1745 本線#6を追跡更新する。
+  daily on.schedule 有効化（#1792 / B-1）や GHA 楽天 live（#1607）は含めない。
+
+scope:
+  - "本格収集の運用枠（対象ジャンル段階・Run回数/期間・予算ノブ・停止条件）の Human Decision Log 化と正本docs同期"
+  - "BATCH-001〜004 local live による継続収集の実施と運用結果docs（secretなし）"
+  - "fetch_cursor 進捗（active/paused/exhausted/failed）と paused/failed 再開運用の定着・記録"
+  - "運用方針§5.3.5 監視閾値の実測に基づく見直し（警告/ハード）と docs 反映"
+  - "DB / Object Storage / 楽天API呼出 / Actionsコスト観点の観測結果整理（金額推定はHuman）"
+  - "統括#1745 本線候補#6 の追跡更新"
+  - "必要最小のギャップ一覧・運用方針・収集結果docs更新"
+
+out_of_scope:
+  - "daily / weekly / manual 親 on.schedule のコメント解除・有効化（#1792 / B-1。吸収しない）"
+  - "B-1 Scaffold定期試行そのもの（別Decision・#1792）"
+  - "本番egress IP / NAT / self-hosted 設計・構築（#1607。吸収しない）"
+  - "GHA / GitHub-hosted からの楽天HTTP live化"
+  - "常用QPS=2の再改訂（新実験＋新Human決定なし）"
+  - "DB系 / AI系 live の再実装（本線#2/#3で完了済みの再実施）"
+  - "stgレコメンド品質評価本体（本線#7）"
+  - "本番リリース準備本体（本線#8）"
+  - "OpenAPI / Orval / generated / apps/web|api|reco 変更"
+  - "GitHub Secrets / Variables の値の表示・変更"
+  - "production定期開始・prod Secrets・破壊的全件取得"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/batch-data-collect-ops/**"
+    - "prompts/definitions/tasks/batch-data-collect-ops/**"
+    - "prompts/definitions/reviews/batch-data-collect-ops/**"
+    - "ai-logs/human-decisions/**"
+    - "ai-logs/experiments/**"
+    - "docs/15_運用・改善/運用手順/**"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/BATCH-001_*"
+    - "docs/06_実装設計/batch/BATCH-002_*"
+    - "docs/06_実装設計/batch/BATCH-003_*"
+    - "docs/06_実装設計/batch/BATCH-004_*"
+    - "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
+    - "apps/batch/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+    - ".github/workflows/batch-rakuten-*.yml"
+    - ".github/workflows/batch-item-semantic.yml"
+    - ".github/workflows/batch-item-embedding.yml"
+  child_task_areas:
+    - "docs"
+    - "ops-policy"
+    - "batch"
+    - "verification"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow_daily_schedule監視・rollback最小手順.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-batch-daily-schedule-enable-b0.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+  files: []
+  issues:
+    - number: 1745
+      purpose: "統括ロードマップ（本線候補#6）"
+    - number: 1789
+      purpose: "本線#5 B-0完了（依存）"
+    - number: 1792
+      purpose: "daily schedule有効化。本Epicでは吸収しない"
+    - number: 1607
+      purpose: "本番egress Backlog。本Epicでは吸収しない"
+    - number: 1763
+      purpose: "楽天Fetch local live切替完了"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/epics/batch-data-collect-ops/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-data-collect-ops/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-data-collect-ops/**"
+      action: "create"
+      required: true
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "apps/batch/**"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/"
+
+deliverables:
+  - "Epic Issue / Branch（`/start-epic` 後に番号確定）"
+  - "本格収集の運用枠 Human Decision Log"
+  - "local継続収集の運用結果docs（secretなし）"
+  - "監視閾値の実測見直し結果（運用方針§5.3.5同期）"
+  - "統括#1745本線#6追跡更新"
+
+acceptance_criteria:
+  - "Epic Issueタイトルが [Epic]batch-data-collect-ops:本格収集と運用監視改善 形式"
+  - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
+  - "本格収集の運用枠 Human Decision Log が created/decided で正本docsと矛盾しない"
+  - "local楽天liveによる継続収集が実施され、結果docsに secret / token / 接続文字列実値がない"
+  - "§5.3.5 監視閾値について実測に基づく見直し（維持含む）がdocsに記録されている"
+  - "#1792 schedule有効化・#1607・GHA楽天HTTP live・secret実値を含まない"
+  - "親 on.schedule コメント解除を含まない"
+  - "Epic PR targetがdevelop"
+  - "統括#1745の本線候補#6追跡が更新されている"
+
+branch:
+  no_branch: false
+  summary: "batch-data-collect-ops"
+  name: null
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-07-31"
+    due_date: "2026-08-14"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1745
+    - 1789
+    - 1763
+    - 1749
+  issues:
+    - 1792
+    - 1607
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - 1789
+    - 1763
+    - 1749
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "local live 継続収集の結果記録（secretなし）"
+    - "docs整合確認（Decision Log・運用方針・収集結果）"
+  commands: []
+  manual_checks:
+    - "GHAから楽天HTTP liveしていない"
+    - "on.schedule を有効化していない"
+    - "429/paused時にcursor pageが進まない運用を守っている"
+  not_required:
+    - "GHA楽天live E2E"
+    - "daily schedule cron E2E"
+  skip_reason:
+    "GHA楽天live E2E": "本Epic out of scope。GHA楽天HTTPは禁止維持"
+    "daily schedule cron E2E": "#1792 / B-1 の対象。本Epicに含めない"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "B-0下のlocal本格収集に寄っており、schedule有効化や#1607を混入していないか"
+    - "#1791最小手順の再作成に終始せず、本格収集・閾値実測の成果があるか"
+    - "secret実値・channel ID実値がdocs/PRに含まれていないか"
+    - "常用QPS=2を勝手に変更していないか"
+    - "#1745本線#6追跡が更新されているか"
+
+human_decision_points:
+  - "本格収集の運用枠（ジャンル段階・期間/Run数・停止条件）。チャット同意のみでは正本化しない"
+  - "§5.3.5閾値の見直し採択（維持含む）"
+  - "収集中のコスト/容量エスカレーション時の停止判断"
+  - "本線#7（品質評価）との並列・順序"
+  - "B-1/#1792 を本Epic完了後に着手するか（本Epicでは実施しない）"
+
+stop_conditions:
+  - "Human Decision Log未整備のまま本格収集を大規模化しようとした場合"
+  - "#1792 schedule有効化や#1607実装が本Epic差分に必要に見えた場合"
+  - "GHA楽天HTTP liveが必要に見えた場合"
+  - "secret実値の表示・commitが必要に見える場合"
+  - "常用QPSの勝手な変更が必要に見える場合"
+
+notes:
+  - "統括#1745の本線候補#6。Epic formal parentは持たない（Relationships追跡）"
+  - "子Task候補: (1) 運用枠 Human Decision Log (2) local継続収集＋監視実測/見直し"
+  - "#1792 / #1607 は吸収しない。B-1は別Decision"
+  - "work_mode=ai-agent。local live実行の実secretはHuman環境。値はcommitしない"
+  - "Branch名は /start-epic 後に chore/epic-<n>-batch-data-collect-ops へ確定"
