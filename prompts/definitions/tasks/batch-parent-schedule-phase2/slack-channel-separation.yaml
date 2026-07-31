@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-parent-schedule-phase2-slack-channel-separation"
+  title: "batch-parent-schedule-phase2:Slack通知先チャンネル分離"
+  summary: "バッチ失敗通知を開発運用チャンネルからシステムエラー通知チャンネルへ分離し、E2Eで確認する。"
+  type: "chore"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-parent-schedule-phase2:daily schedule有効化再判断"
+  epic_issue_number: 1732
+  epic_branch: "chore/epic-1732-batch-parent-schedule-phase2"
+  related_issues:
+    - 1730
+    - 1735
+  related_prs:
+    - 1736
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Issue / PR 等のAIエージェント作業通知と、バッチジョブのシステムエラー通知が
+  同じ開発運用チャンネルへ投稿されている。Human は通知先を分離し、
+  Repository Variable SLACK_CHANNEL_ID_SYSTEM_ALERTS を登録済みである。
+
+objective: |
+  AIエージェント作業通知は従来の開発運用チャンネルに維持し、
+  daily / weekly 親バッチの失敗通知だけをシステムエラー通知チャンネルへ切り替える。
+
+scope:
+  - "daily / weekly 親workflowの失敗通知先をSLACK_CHANNEL_ID_SYSTEM_ALERTSへ変更"
+  - "SLACK_CHANNEL_ID_DEVOPSを使うIssue / PR / AI Review通知は変更しない"
+  - "Slack通知運用設計書・Slack通知共通ワークフロー仕様書の正本更新"
+  - "daily親の意図的失敗による新チャンネル向けE2E"
+  - "E2E結果docsへの追記"
+
+out_of_scope:
+  - "on.scheduleコメント解除"
+  - "production定期実行"
+  - "GitHub Variables / Secretsの値の表示・変更"
+  - "Slack Bot token変更"
+  - "成功通知の新設"
+  - "Issue / PR / AI Review通知先の変更"
+  - "API / DB / OpenAPI / generated変更"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow_Slack失敗通知E2E結果.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      required: true
+    - path: ".github/scripts/slack-notify.cjs"
+      required: true
+
+output:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow_Slack失敗通知E2E結果.md"
+      action: "update"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-parent-schedule-phase2/slack-channel-separation.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-parent-schedule-phase2/slack-channel-separation/pr-review.yaml"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "generated差分なし"
+
+deliverables:
+  - "通知先を分離したdaily / weekly親workflow"
+  - "正本docsの通知先方針"
+  - "新チャンネル向けSlack失敗通知E2E結果"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "daily / weekly親の失敗通知だけがSLACK_CHANNEL_ID_SYSTEM_ALERTSを参照する"
+  - "Issue / PR / AI Review通知はSLACK_CHANNEL_ID_DEVOPSを参照し続ける"
+  - "SLACK_CHANNEL_ID_SYSTEM_ALERTS未設定時に旧チャンネルへfallbackしない"
+  - "新チャンネル向けE2Eでnotify_failureとSlack stepがsuccess"
+  - "最終差分に意図的失敗job / schedule有効化を含まない"
+  - "secret / token / channel ID実値を含まない"
+  - "Related to Task Issue / PR target = 親Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-slack-channel-separation"
+  base: "chore/epic-1732-batch-parent-schedule-phase2"
+  target: "chore/epic-1732-batch-parent-schedule-phase2"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+  number: 1739
+
+dependencies:
+  epics:
+    - 1732
+  notes: "#1736 merge済み。Humanが新チャンネル作成・Bot招待・SLACK_CHANNEL_ID_SYSTEM_ALERTS登録を完了済み。"
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+    - "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+    - "docs/15_運用・改善/運用手順/親workflow_Slack失敗通知E2E結果.md"
+    - "prompts/definitions/tasks/batch-parent-schedule-phase2/slack-channel-separation.yaml"
+    - "prompts/definitions/reviews/batch-parent-schedule-phase2/slack-channel-separation/pr-review.yaml"
+  notes: "E2E用の一時的失敗jobは検証後に除去する"
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at: []
+  blocked_message: null
+
+test_policy:
+  required:
+    - "YAML構文確認"
+    - "daily親の意図的失敗による新チャンネル向けSlack E2E"
+    - "最終差分から意図的失敗jobが除去されていることの確認"
+  commands: []
+  not_required:
+    - "アプリunit test"
+  skip_reason:
+    app_tests: "workflow通知先とdocsのみの変更"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "バッチ失敗通知だけが新チャンネル変数へ分離されているか"
+    - "未設定時に旧チャンネルへfallbackしていないか"
+    - "正本docsとworkflowが整合しているか"
+    - "secret / channel ID実値を含まないか"
+    - "一時的失敗job / schedule有効化が最終差分にないか"
+
+human_decision_points:
+  - "新システムエラー通知チャンネルへの実メッセージ到達確認"
+  - "incidentメンションの継続利用可否"
+
+stop_conditions:
+  - "Variables / Secrets実値の閲覧・変更が必要になった"
+  - "新チャンネルへのBot招待またはVariable登録が未完了"
+  - "schedule有効化が必要に見える"
+
+operation_logging:
+  issue: true
+  pr: true
+  slack: true
+  ai_logs: false

@@ -1,0 +1,217 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-parent-schedule-phase2"
+  title: "batch-parent-schedule-phase2:daily schedule有効化再判断"
+  summary: "Epic #1637 の案A完了後、案B（daily schedule有効化）の再判断材料と追加検証を揃える。Human承認前の定期開始は禁止。"
+  workstream_key: "batch-parent-schedule-phase2"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Epic #1637 は案A（schedule無効維持）で完了した。daily D1 は PARTIAL、
+  Slack失敗通知は配線済みだが実送信未確認、weekly / manual の実ランタイム検証は未実施。
+  案Bは未採用のため、production定期開始前に再判断材料と追加検証を揃える。
+
+objective: |
+  daily schedule有効化の可否をHumanが安全に判断できる状態にする。
+  判断前にscheduleコメント解除やproduction定期開始は行わない。
+
+scope:
+  - "案B再判断材料の正本 docs 作成"
+  - "D1 PARTIAL、Slack通知、cron、コスト、egress依存の整理"
+  - "Slack失敗通知 E2E の安全な実施・記録"
+  - "バッチ失敗通知を開発運用チャンネルからシステムエラー通知チャンネルへ分離"
+  - "weekly / manual 親workflowのD1相当手動検証・記録"
+  - "Human判断後に必要となる後続Taskの整理"
+
+out_of_scope:
+  - "Human明示承認前の on.schedule コメント解除"
+  - "production 無承認の定期実行開始"
+  - "#1607 楽天API本番egressの実装"
+  - "meaning葉（009–015）のGHA live化"
+  - "GitHub Secrets / Variables の値の表示・変更"
+  - "API / DB schema / OpenAPI / generated変更"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+    - "docs/15_運用・改善/運用手順/**"
+    - "prompts/definitions/epics/batch-parent-schedule-phase2/**"
+    - "prompts/definitions/tasks/batch-parent-schedule-phase2/**"
+    - "prompts/definitions/reviews/batch-parent-schedule-phase2/**"
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+  child_task_areas:
+    - "docs"
+    - "batch"
+    - "github-actions"
+
+input:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/BATCH_import連鎖_GHA_live化メモ_C3.md"
+      required: true
+    - path: "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-manual-orchestrator.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+      action: "update"
+      required: false
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "prompts/definitions/epics/batch-parent-schedule-phase2/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-parent-schedule-phase2/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/reviews/batch-parent-schedule-phase2/**"
+      action: "create"
+      required: false
+  generated:
+    expected: false
+    paths: []
+
+deliverables:
+  - "Epic Issue / Branch（#1732）"
+  - "案B再判断材料 docs"
+  - "Slack失敗通知 E2E 結果"
+  - "バッチ失敗通知先チャンネル分離"
+  - "weekly / manual D1相当検証結果"
+
+acceptance_criteria:
+  - "案B再判断材料が事実・推論・未確認・Human判断点を分けて正本化されている"
+  - "Slack失敗通知 E2E の結果または安全上の未実施理由が記録されている"
+  - "バッチ失敗通知がシステムエラー通知チャンネルへ分離され、正本docsと整合している"
+  - "weekly / manual D1相当検証の結果または未実施理由が記録されている"
+  - "daily schedule有効化可否をHumanが判断している"
+  - "Human明示承認なしのproduction定期開始を含まない"
+  - "Epic PR targetがdevelop"
+
+branch:
+  no_branch: false
+  summary: "batch-parent-schedule-phase2"
+  name: "chore/epic-1732-batch-parent-schedule-phase2"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "07_開発・単体テスト"
+    priority: "medium"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "batch"
+  number: 1732
+
+dependencies:
+  epics:
+    - 1637
+  notes: "Epic #1637（案A）完了が前提。#1607 は別Issueとして依存判断材料に含める。"
+
+human_decision_points:
+  - "D1 PARTIALと追加検証結果を踏まえて案Bへ進めるか"
+  - "#1607完了前にScaffold前提で定期運用することを許容するか"
+  - "外部APIコスト・運用監視・失敗通知の準備が十分か"
+
+stop_conditions:
+  - "scheduleコメント解除が必要になったがHuman明示承認がない"
+  - "production相当の外部API / DB操作が必要になった"
+  - "secret / token / 接続文字列実値を扱う必要が生じた"
+  - "#1607との依存関係について仕様判断が必要になった"
+
+parallel_control:
+  exclusive_files:
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+  notes: "親workflowと判断正本は本Epic内で直列編集する"
+
+test_policy:
+  required:
+    - "Taskごとにdocs整合性または対象workflow実行結果を確認する"
+  commands: []
+  not_required:
+    - "Epic Definition作成のみではアプリunit test不要"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "#1637の案A完了状態と矛盾していないか"
+    - "未確認事項を有効化済み・検証済みとして扱っていないか"
+    - "secret実値や接続情報を記録していないか"
+    - "production定期開始がHuman承認でgateされているか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: "on_error"
+    cross_cutting: "when_needed"
+    experiments: false
+  reason: "production定期開始のHuman gateを含む運用判断Task群のため"
