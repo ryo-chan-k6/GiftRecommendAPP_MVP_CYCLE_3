@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-data-collect-ops-epic-pr"
+  title: "batch-data-collect-ops Epic PRレビュー"
+  summary: "本格収集と運用監視改善 Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/epics/batch-data-collect-ops/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "B-0下のlocal本格収集に寄っており、on.schedule有効化や#1607・GHA楽天liveが混入していないか"
+  - "secret実値・接続文字列実値がdocs/PRに含まれていないか"
+  - "§5.3.5閾値見直しまたは維持の根拠が記録されているか"
+  - "Epic PR target が develop、Closes が親Epic Issue か"
+  - "#1745本線#6追跡が更新されているか"
+
+notes:
+  - "Issue番号 / Branch / PR は /start-epic・本線Epic PR作成後に反映する（本Definition先作成PRでは null 許容）"
+  - "Human Reviewは省略しない"
