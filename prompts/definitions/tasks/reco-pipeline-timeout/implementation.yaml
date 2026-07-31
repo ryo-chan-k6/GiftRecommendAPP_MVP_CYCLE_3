@@ -17,6 +17,7 @@ parent:
   related_issues:
     - 1748
     - 1781
+    - 1782
   related_prs: []
 
 commands:

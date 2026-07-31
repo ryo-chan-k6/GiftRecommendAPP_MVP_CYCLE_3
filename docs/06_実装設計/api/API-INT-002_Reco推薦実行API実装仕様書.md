@@ -250,7 +250,7 @@ flowchart TD
 
 - Internal Response から Public 非表面化: `scoreBreakdown`, `contextScore`, `finalScore`, `reasonData`, `metadata.debugPayload`, `warnings`, `metricSummary` 等（API設計方針書 §21.3）
 - reco からの `GRS-AUTH-*` → Public **500 + `GRS-REC-002`**（契約仕様書 §8.2.1）
-- api 側 timeout は reco hard timeout（4,000ms）以上を確保
+- api 側 timeout は reco hard timeout（8,000ms）以上を確保
 
 ### 7.3 エラーマップ・trace 伝播
 
@@ -263,7 +263,7 @@ flowchart TD
 | Validation | 契約 §9 違反 | 400 | `GRS-REQ-001` | 同上 |
 | Validation | 未対応条件 | 422 | `GRS-REQ-002` / `GRS-REQ-006` | 同上 |
 | Orchestrator | `RecoError`（パイプライン失敗） | 500 / 502 / 504 / 409 / 503 | `GRS-REC-*` / `GRS-DB-*` / `GRS-LLM-*` / `GRS-COM-003` | エラーコード定義書に従い HTTP を決定 |
-| Orchestrator | hard timeout | 504 | `GRS-REC-101` | MOD-RECO-001 §13（4,000ms） |
+| Orchestrator | hard timeout | 504 | `GRS-REC-101` | MOD-RECO-001 §13.2（8,000ms） |
 | 想定外 | 捕捉不能例外 | 500 | `GRS-REC-999` | stack trace は Response に含めない |
 | **正常 0件** | 候補 0 | **200** | —（`meta.resultCode: GRS-REC-001`） | **error ではない** |
 
@@ -331,8 +331,8 @@ Phase 名一覧の正本: ログ・Observability設計書 §10.3。
 
 | 項目 | 方針 |
 | ---- | ---- |
-| reco パイプライン hard timeout | **4,000ms**（MOD-RECO-001 §13 → `GRS-REC-101` / HTTP 504） |
-| api → reco HTTP timeout | reco hard timeout **以上**（API設計方針書。具体値は apps/api 実装 Task） |
+| reco パイプライン hard timeout | **8,000ms**（MOD-RECO-001 §13.2 本番主経路 / #1748 → `GRS-REC-101` / HTTP 504） |
+| api → reco HTTP timeout | reco hard timeout **以上**（既定 9,000ms。`DEFAULT_RECO_REQUEST_TIMEOUT_MS`） |
 | reco エンドポイント retry | **行わない**（同一 Request の再 POST は新規 Run） |
 | api 側 retry | 安易な自動再実行禁止。冪等でないためユーザー操作または明示ポリシーのみ |
 | 同時実行 | MVP では Run 単位独立。`GRS-REC-201` は状態競合時のみ |

@@ -696,7 +696,7 @@ def test_failure_run_does_not_record_metrics() -> None:
     assert in_memory_metric_log_records(metric_logger) == []
 
 
-# §14 No.11 タイムアウト（integration: MOD-RECO-001 §14 No.11 — hard 4,000ms → GRS-REC-101）
+# §14 No.11 タイムアウト（integration: MOD-RECO-001 §14 No.11 — hard 8,000ms → GRS-REC-101）
 def test_pipeline_hard_timeout_returns_grs_rec_101() -> None:
     ports, helpers = build_default_stub_ports()
     trace_id = "trace-pipeline-timeout"
