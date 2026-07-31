@@ -7,6 +7,7 @@ Item / Staging / item.active_status は更新しない（004 境界）。
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -32,6 +33,33 @@ _SEED_COLUMNS = (
     "active_status",
     "last_checked_at",
 )
+
+
+def _cursor_value_json(*, scope: dict[str, object], page: int) -> dict[str, object]:
+    return {
+        "scope": dict(scope),
+        "position": {"page": int(page), "hits_per_page": 1},
+    }
+
+
+def _item_count_from_raw_body(body: bytes) -> int:
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+        return 0
+    if not isinstance(payload, dict):
+        return 0
+    items = payload.get("Items")
+    return len(items) if isinstance(items, list) else 0
+
+
+def _looks_like_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return True
+
 
 
 from batch.application.observability import (
@@ -235,7 +263,8 @@ class ItemRecheckRepositories:
             if existing.scope_fingerprint == fingerprint and existing.cursor_type == row.cursor_type:
                 return existing
 
-        cursor_id = row.cursor_id or f"fc_{uuid.uuid4().hex[:12]}"
+        # live DDL: fetch_cursor_id は uuid
+        cursor_id = row.cursor_id if row.cursor_id and _looks_like_uuid(row.cursor_id) else str(uuid.uuid4())
         created = FetchCursorRow(
             cursor_type=row.cursor_type,
             cursor_id=cursor_id,
@@ -246,6 +275,7 @@ class ItemRecheckRepositories:
             scope_fingerprint=fingerprint,
         )
         self.fetch_cursors[cursor_id] = created
+        # DDL 列のみ。cursor_scope_fingerprint は GENERATED。
         self.db_writer.write_rows(
             "fetch_cursor",
             (
@@ -256,9 +286,7 @@ class ItemRecheckRepositories:
                     "cursor_type": created.cursor_type,
                     "target_external_genre_id": None,
                     "cursor_status": created.cursor_status,
-                    "page": created.page,
-                    "scope": created.scope,
-                    "scope_fingerprint": fingerprint,
+                    "cursor_value": _cursor_value_json(scope=created.scope, page=created.page),
                 },
             ),
         )
@@ -284,15 +312,16 @@ class ItemRecheckRepositories:
             scope_fingerprint=existing.scope_fingerprint,
         )
         self.fetch_cursors[cursor_id] = updated
-        self.db_writer.write_rows(
+        now = datetime.now(UTC)
+        self.db_writer.update_rows(
             "fetch_cursor",
-            (
-                {
-                    "fetch_cursor_id": cursor_id,
-                    "page": page,
-                    "cursor_status": cursor_status,
-                },
-            ),
+            set_values={
+                "cursor_value": _cursor_value_json(scope=updated.scope, page=page),
+                "cursor_status": cursor_status,
+                "last_fetched_at": now,
+                "updated_at": now,
+            },
+            equals=(("fetch_cursor_id", cursor_id),),
         )
 
     def save_raw(self, artifact: RawItemSearchArtifact) -> bool:
@@ -322,9 +351,11 @@ class ItemRecheckRepositories:
             body=artifact.body,
             content_type="application/json",
         )
+        raw_metadata_id = str(uuid.uuid4())
+        fetched_at = datetime.now(UTC)
         meta = {
+            "raw_metadata_id": raw_metadata_id,
             "object_key": artifact.object_key,
-            "raw_metadata_id": f"rm_{uuid.uuid4().hex[:12]}",
             "content_hash": artifact.content_hash,
             "api_call_log_id": artifact.api_call_log_id,
             "cursor_id": artifact.cursor_id,
@@ -335,7 +366,22 @@ class ItemRecheckRepositories:
             "import_status": "raw_saved",
         }
         self.raw_metadata[artifact.object_key] = meta
-        self.db_writer.write_rows("raw_product_metadata", (dict(meta),))
+        self.db_writer.write_rows(
+            "raw_product_metadata",
+            (
+                {
+                    "raw_metadata_id": raw_metadata_id,
+                    "api_call_log_id": artifact.api_call_log_id,
+                    "object_key": artifact.object_key,
+                    "source": SOURCE_RAKUTEN,
+                    "source_api": SOURCE_API_ITEM_SEARCH,
+                    "content_hash": artifact.content_hash,
+                    "item_count": _item_count_from_raw_body(artifact.body),
+                    "import_status": "raw_saved",
+                    "fetched_at": fetched_at,
+                },
+            ),
+        )
         return True
 
     def upsert_candidate(self, candidate: ResolvedCandidate) -> dict[str, object]:

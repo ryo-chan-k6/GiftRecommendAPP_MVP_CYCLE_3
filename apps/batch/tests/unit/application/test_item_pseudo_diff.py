@@ -41,9 +41,10 @@ def _client_genre(
     ]
     return ScaffoldRakutenApiClient(
         item_search_raw_responses={
-            ("genre", genre_id, 1): {"Items": payload_items},
+            ("genre", genre_id, 1): {"Items": payload_items, "pageCount": 1},
             ("update_sort", "*", 1): {
-                "Items": [{"Item": {"itemCode": "shop:a", "itemName": "A"}}]
+                "Items": [{"Item": {"itemCode": "shop:a", "itemName": "A"}}],
+                "pageCount": 1,
             },
         }
     )
@@ -158,7 +159,8 @@ def test_api_failure_partial() -> None:
     client = ScaffoldRakutenApiClient(
         item_search_raw_responses={
             ("genre", "100", 1): {
-                "Items": [{"Item": {"itemCode": "shop:ok", "itemName": "OK"}}]
+                "Items": [{"Item": {"itemCode": "shop:ok", "itemName": "OK"}}],
+                "pageCount": 1,
             }
         },
         fail_item_search_keys={("genre", "200", 1)},
@@ -169,6 +171,7 @@ def test_api_failure_partial() -> None:
         job_run_id="job-partial",
         target_genre_ids=("100", "200"),
         include_update_sort=False,
+        pages_per_run=2,
     )
 
     assert result.status == "partially_succeeded"
@@ -245,13 +248,15 @@ def test_dedupe_unique_candidate_count_across_routes() -> None:
                 "Items": [
                     {"Item": {"itemCode": "shop:a", "itemName": "A"}},
                     {"Item": {"itemCode": "shop:b", "itemName": "B"}},
-                ]
+                ],
+                "pageCount": 1,
             },
             ("update_sort", "*", 1): {
                 "Items": [
                     {"Item": {"itemCode": "shop:a", "itemName": "A again"}},
                     {"Item": {"itemCode": "shop:c", "itemName": "C"}},
-                ]
+                ],
+                "pageCount": 1,
             },
         }
     )
@@ -262,6 +267,7 @@ def test_dedupe_unique_candidate_count_across_routes() -> None:
         job_run_id="job-dedupe",
         target_genre_ids=("100",),
         include_update_sort=True,
+        pages_per_run=2,
     )
 
     assert result.status == "succeeded"
@@ -277,7 +283,8 @@ def test_rate_limit_records_ext_102_in_logs() -> None:
     client = ScaffoldRakutenApiClient(
         item_search_raw_responses={
             ("genre", "100", 1): {
-                "Items": [{"Item": {"itemCode": "shop:ok", "itemName": "OK"}}]
+                "Items": [{"Item": {"itemCode": "shop:ok", "itemName": "OK"}}],
+                "pageCount": 1,
             }
         },
         rate_limited_item_search_keys={("genre", "200", 1)},
@@ -288,13 +295,127 @@ def test_rate_limit_records_ext_102_in_logs() -> None:
         job_run_id="job-rl-partial",
         target_genre_ids=("100", "200"),
         include_update_sort=False,
+        pages_per_run=2,
     )
 
     assert result.status == "partially_succeeded"
     assert "GRS-EXT-102" in result.error_codes
     assert any(e["code"] == "GRS-EXT-102" for e in repos.error_logs)
     failed = [log for log in repos.api_call_logs if log.get("error_code") == "GRS-EXT-102"]
-    assert failed and failed[0]["status"] == "failed"
+    assert failed and failed[0]["status"] == "rate_limited"
+    paused = [
+        c
+        for c in repos.fetch_cursors.values()
+        if c.cursor_type == "genre" and c.target_external_genre_id == "200"
+    ]
+    assert paused and all(c.cursor_status == "paused" and c.page == 1 for c in paused)
+
+
+def test_rate_limit_does_not_advance_page() -> None:
+    """rate_limited → paused 時は page を成功扱いで進めない。"""
+
+    repos = _repos()
+    client = ScaffoldRakutenApiClient(
+        rate_limited_item_search_keys={("genre", "100", 1)},
+    )
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-rl-pause",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "failed"
+    assert "GRS-EXT-102" in result.error_codes
+    genre = [c for c in repos.fetch_cursors.values() if c.cursor_type == "genre"]
+    assert genre and all(c.cursor_status == "paused" and c.page == 1 for c in genre)
+
+
+def test_run_budget_stops_without_exhausting_cursor() -> None:
+    """pages_per_run 到達は深さ打ち切り（exhausted）ではない。"""
+
+    repos = _repos()
+    client = ScaffoldRakutenApiClient(
+        item_search_raw_responses={
+            ("genre", "100", 1): {
+                "Items": [{"Item": {"itemCode": "shop:p1", "itemName": "P1"}}],
+                "pageCount": 10,
+            },
+            ("genre", "100", 2): {
+                "Items": [{"Item": {"itemCode": "shop:p2", "itemName": "P2"}}],
+                "pageCount": 10,
+            },
+            ("genre", "100", 3): {
+                "Items": [{"Item": {"itemCode": "shop:p3", "itemName": "P3"}}],
+                "pageCount": 10,
+            },
+        }
+    )
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-budget",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+        pages_per_run=2,
+        cursors_per_run=1,
+    )
+
+    assert result.status == "succeeded"
+    assert result.pages_fetched == 2
+    assert result.run_budget_stopped is True
+    genre = [c for c in repos.fetch_cursors.values() if c.cursor_type == "genre"]
+    assert len(genre) == 1
+    assert genre[0].cursor_status == "active"
+    assert genre[0].page == 3  # 次回は page 3 から継続
+
+
+def test_cursors_per_run_limits_started_cursors() -> None:
+    repos = _repos()
+    client = ScaffoldRakutenApiClient(
+        item_search_raw_responses={
+            ("genre", "100", 1): {
+                "Items": [{"Item": {"itemCode": "shop:a", "itemName": "A"}}]
+            },
+            ("genre", "200", 1): {
+                "Items": [{"Item": {"itemCode": "shop:b", "itemName": "B"}}]
+            },
+        }
+    )
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-cursor-budget",
+        target_genre_ids=("100", "200"),
+        include_update_sort=False,
+        cursors_per_run=1,
+    )
+
+    assert result.status == "succeeded"
+    assert result.cursors_started == 1
+    assert result.run_budget_stopped is True
+    assert len(result.succeeded_cursor_ids) == 1
+
+
+def test_empty_items_marks_cursor_exhausted_not_error() -> None:
+    repos = _repos()
+    client = ScaffoldRakutenApiClient(
+        item_search_raw_responses={
+            ("genre", "100", 1): {"Items": [], "pageCount": 1},
+        }
+    )
+    job = ItemPseudoDiffJob(rakuten_client=client, repositories=repos)
+
+    result = job.run(
+        job_run_id="job-exhausted",
+        target_genre_ids=("100",),
+        include_update_sort=False,
+    )
+
+    assert result.status == "succeeded"
+    genre = [c for c in repos.fetch_cursors.values() if c.cursor_type == "genre"]
+    assert genre and all(c.cursor_status == "completed" for c in genre)
 
 
 # --- §16 No.7 cursor は API 成功後のみ ---
@@ -331,7 +452,8 @@ def test_cursor_advances_only_after_success() -> None:
     assert result.status == "succeeded"
     genre_cursors = [c for c in repos.fetch_cursors.values() if c.cursor_type == "genre"]
     assert genre_cursors
-    assert all(c.page == 2 for c in genre_cursors)
+    # pageCount=1 で範囲完了 → completed（page は最終成功 page）
+    assert all(c.cursor_status == "completed" and c.page == 1 for c in genre_cursors)
 
 
 # --- GRS-RAW-001 ---
@@ -371,13 +493,16 @@ def test_keyword_route_and_supplement_priority() -> None:
     client = OrderTrackingClient(
         item_search_raw_responses={
             ("ranking_supplement", "shop:u", 1): {
-                "Items": [{"Item": {"itemCode": "shop:u", "itemName": "U"}}]
+                "Items": [{"Item": {"itemCode": "shop:u", "itemName": "U"}}],
+                "pageCount": 1,
             },
             ("genre", "100", 1): {
-                "Items": [{"Item": {"itemCode": "shop:g", "itemName": "G"}}]
+                "Items": [{"Item": {"itemCode": "shop:g", "itemName": "G"}}],
+                "pageCount": 1,
             },
             ("keyword", "gift", 1): {
-                "Items": [{"Item": {"itemCode": "shop:k", "itemName": "K"}}]
+                "Items": [{"Item": {"itemCode": "shop:k", "itemName": "K"}}],
+                "pageCount": 1,
             },
         }
     )
@@ -397,6 +522,7 @@ def test_keyword_route_and_supplement_priority() -> None:
         target_genre_ids=("100",),
         keywords=("gift",),
         include_update_sort=False,
+        pages_per_run=5,
     )
 
     assert result.status == "succeeded"
@@ -418,6 +544,7 @@ def test_api_call_logs_do_not_contain_secret_fields() -> None:
         job_run_id="job-sec",
         target_genre_ids=("100", "101"),
         include_update_sort=False,
+        pages_per_run=2,
     )
 
     forbidden = (
@@ -487,8 +614,8 @@ def test_fetch_cursor_and_raw_metadata_db_rows_match_ddl_columns() -> None:
     updates = [c for c in repos.db_writer.update_calls if c["table"] == "fetch_cursor"]
     assert updates
     set_values = updates[0]["set_values"]
-    assert set_values["cursor_value"]["position"]["page"] == 2
-    assert set_values["cursor_status"] == "active"
+    assert set_values["cursor_value"]["position"]["page"] == 1
+    assert set_values["cursor_status"] == "exhausted"  # completed → DDL exhausted
     assert "last_fetched_at" in set_values
 
     raw_inserts = [

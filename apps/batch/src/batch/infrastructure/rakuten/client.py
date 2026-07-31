@@ -628,12 +628,16 @@ def create_rakuten_client(
     fallback: RakutenApiClient | None = None,
     rate_limiter: object | None = None,
     enable_rate_limiter: bool = True,
+    max_qps: float | None = None,
 ) -> RakutenApiClient:
     """Build a RakutenApiClient.
 
     - ``live=False``（既定）→ Scaffold（CI / 通常 local）
     - ``live=True`` かつ credentials あり → HttpRakutenApiClient（MOD-BATCH-008 付き）
     - ``live=True`` だが credentials 不足 → Scaffold（呼び出し側で exit 2 を推奨）
+
+    ``max_qps`` は Rate Limiter 生成時のみ有効（BATCH-003/004 の安全側 QPS=1 等）。
+    未指定時は常用 QPS=2（env / 既定）を使う。
     """
 
     if live and application_id and access_key:
@@ -641,7 +645,7 @@ def create_rakuten_client(
 
         limiter = rate_limiter
         if limiter is None and enable_rate_limiter:
-            limiter = create_external_api_rate_limiter()
+            limiter = create_external_api_rate_limiter(max_qps=max_qps)
         return HttpRakutenApiClient(
             application_id=application_id,
             access_key=access_key,

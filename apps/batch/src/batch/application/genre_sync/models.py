@@ -28,6 +28,7 @@ class GenreRow:
     genre_name: str
     parent_external_genre_id: str | None
     genre_level: int | None
+    is_leaf: bool = False
 
     @property
     def idempotency_key(self) -> tuple[str, str]:

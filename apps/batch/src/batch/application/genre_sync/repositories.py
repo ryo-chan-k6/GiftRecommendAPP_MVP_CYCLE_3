@@ -11,7 +11,9 @@ Wave 3: optional ``api_call_log_writer`` writes ``api_call_log`` (source_api=gen
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from batch.application.genre_sync.idempotency import SOURCE_API_GENRE, SOURCE_RAKUTEN
 from batch.application.genre_sync.models import GenreRow, RawGenreArtifact
@@ -26,8 +28,17 @@ from batch.application.observability.mapping import warn_unmapped_app_phase
 from batch.infrastructure.db import DbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageClient
 
-# DDL api_call_log.source_api（object_key 用 SOURCE_API_GENRE="genre" とは別）
+# DDL api_call_log / raw_product_metadata.source_api（object_key 用 SOURCE_API_GENRE="genre" とは別）
 _DDL_SOURCE_API_GENRE_SEARCH = "genre_search"
+
+
+def _as_bigint(value: str | None) -> int | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if text.lstrip("-").isdigit():
+        return int(text)
+    return None
 
 
 @dataclass
@@ -55,7 +66,9 @@ class GenreSyncRepositories:
         self._batch_run_id = batch_run_id
         self._trace_id = trace_id
 
-    def save_raw(self, artifact: RawGenreArtifact) -> None:
+    def save_raw(self, artifact: RawGenreArtifact) -> str:
+        """Persist Raw. Returns ``raw_metadata_id`` for staging linkage."""
+
         ref = ObjectRef(bucket=self.bucket, key=artifact.object_key)
         existing_meta = self.raw_metadata.get(artifact.object_key)
         if (
@@ -64,22 +77,27 @@ class GenreSyncRepositories:
             and existing_meta.get("import_status") in {"raw_saved", "staged", "imported"}
         ):
             # Same content_hash: skip Object Storage rewrite (仕様書 §11)
+            raw_metadata_id = str(existing_meta.get("raw_metadata_id") or uuid.uuid4())
             self.raw_metadata[artifact.object_key] = {
                 **existing_meta,
+                "raw_metadata_id": raw_metadata_id,
                 "import_status": existing_meta.get("import_status", "raw_saved"),
                 "api_call_log_id": artifact.api_call_log_id,
                 "genre_id": artifact.genre_id,
                 "source": SOURCE_RAKUTEN,
                 "source_api": SOURCE_API_GENRE,
             }
-            return
+            return raw_metadata_id
 
         self.object_storage.put_object(
             ref,
             body=artifact.body,
             content_type="application/json",
         )
+        raw_metadata_id = str(uuid.uuid4())
+        fetched_at = datetime.now(UTC)
         self.raw_metadata[artifact.object_key] = {
+            "raw_metadata_id": raw_metadata_id,
             "object_key": artifact.object_key,
             "content_hash": artifact.content_hash,
             "api_call_log_id": artifact.api_call_log_id,
@@ -88,23 +106,41 @@ class GenreSyncRepositories:
             "source_api": SOURCE_API_GENRE,
             "import_status": "raw_saved",
         }
+        # DDL 列のみ INSERT（genre_id はアプリ内メタ。DB には持たない）
         self.db_writer.write_rows(
             "raw_product_metadata",
-            (dict(self.raw_metadata[artifact.object_key]),),
+            (
+                {
+                    "raw_metadata_id": raw_metadata_id,
+                    "api_call_log_id": artifact.api_call_log_id,
+                    "object_key": artifact.object_key,
+                    "source": SOURCE_RAKUTEN,
+                    "source_api": _DDL_SOURCE_API_GENRE_SEARCH,
+                    "content_hash": artifact.content_hash,
+                    "item_count": 0,
+                    "import_status": "raw_saved",
+                    "fetched_at": fetched_at,
+                },
+            ),
         )
+        return raw_metadata_id
 
-    def upsert_staging(self, row: GenreRow) -> None:
+    def upsert_staging(self, row: GenreRow, *, raw_metadata_id: str) -> None:
         key = row.idempotency_key
         self.staging_genres[key] = row
+        now = datetime.now(UTC)
         self.db_writer.write_rows(
             "staging_genre",
             (
                 {
+                    "raw_metadata_id": raw_metadata_id,
                     "source": row.source,
-                    "external_genre_id": row.external_genre_id,
+                    "external_genre_id": _as_bigint(row.external_genre_id),
                     "genre_name": row.genre_name,
-                    "parent_external_genre_id": row.parent_external_genre_id,
-                    "genre_level": row.genre_level,
+                    "parent_external_genre_id": _as_bigint(row.parent_external_genre_id),
+                    "genre_level": row.genre_level if row.genre_level is not None else 0,
+                    "is_leaf": row.is_leaf,
+                    "staged_at": now,
                 },
             ),
         )
@@ -113,16 +149,28 @@ class GenreSyncRepositories:
         # Idempotency: source + external_genre_id (仕様書 §11)
         key = row.idempotency_key
         self.external_genres[key] = row
-        self.db_writer.write_rows(
+        now = datetime.now(UTC)
+        self.db_writer.upsert_rows(
             "external_genre",
             (
                 {
                     "source": row.source,
-                    "external_genre_id": row.external_genre_id,
+                    "external_genre_id": _as_bigint(row.external_genre_id),
                     "genre_name": row.genre_name,
-                    "parent_external_genre_id": row.parent_external_genre_id,
-                    "genre_level": row.genre_level,
+                    "parent_external_genre_id": _as_bigint(row.parent_external_genre_id),
+                    "genre_level": row.genre_level if row.genre_level is not None else 0,
+                    "is_leaf": row.is_leaf,
+                    "fetched_at": now,
                 },
+            ),
+            conflict_columns=("external_genre_id",),
+            update_columns=(
+                "source",
+                "genre_name",
+                "parent_external_genre_id",
+                "genre_level",
+                "is_leaf",
+                "fetched_at",
             ),
         )
 
