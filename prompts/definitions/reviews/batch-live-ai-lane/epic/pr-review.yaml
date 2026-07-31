@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1780
   issue:
     number: 1768
   task_definition: "prompts/definitions/epics/batch-live-ai-lane/epic.yaml"
