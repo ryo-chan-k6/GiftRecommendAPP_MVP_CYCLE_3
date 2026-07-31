@@ -1,0 +1,51 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-daily-schedule-enable-schedule-decision-pr"
+  title: "案B採否 Decision Log Task PRレビュー"
+  summary: "B-0/B-1 Human Decision Log化 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1789
+  parent_epic_issue: 1789
+  parent_epic_branch: "chore/epic-1789-batch-daily-schedule-enable"
+  task_definition: "prompts/definitions/tasks/batch-daily-schedule-enable/schedule-decision.yaml"
+  target_branch: "chore/epic-1789-batch-daily-schedule-enable"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Decision LogがB-0またはB-1を明示しているか"
+  - "on.schedule有効化差分が混入していないか"
+  - "secret実値がないか"
+
+notes:
+  - "PR番号は作成後に反映"

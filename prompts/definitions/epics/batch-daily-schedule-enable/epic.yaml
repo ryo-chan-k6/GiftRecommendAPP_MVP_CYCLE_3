@@ -1,0 +1,259 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-daily-schedule-enable"
+  title: "batch-daily-schedule-enable:daily schedule有効化"
+  summary: "統括#1745本線#5。#1732 Phase2成果を吸収し、案B（B-0/B-1）をHuman Decision Logで確定する。B-1採択かつHuman明示承認後のみ daily 親 on.schedule を有効化する。weekly同時有効化・GHA楽天live・#1607は本Epic外。機能・領域単位Epic（例外）。"
+  workstream_key: "batch-daily-schedule-enable"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  統括ロードマップ #1745 の本線候補#5。依存の最低ライン（#1+#2+#4）は CLOSED
+  （#1749 / #1750 / #1763）。#3 AIレーン（#1768）も完了済みだが必須依存ではない。
+  #1732（batch-parent-schedule-phase2）は Human確認済み方針Aにより本Epic起票時に吸収して close する。
+  Phase2成果（案B再判断材料・Slack失敗通知E2E・通知先SYSTEM_ALERTS分離・daily D1再検証PASS）は
+  本Epic Branchへ取り込み済み前提。親 on.schedule はコメントアウト維持が現状。
+  案B材料の推奨は「high技術検証完了後の Humanゲート」。AIは B-0/B-1 を確定しない。
+
+objective: |
+  #1732 成果を develop 反映可能な本線として引き継ぎ、B-0（無効継続）または B-1（dailyのみ有効化）を
+  Human Decision Log で確定する。B-1 の場合のみ、Human明示承認後の別PRで daily on.schedule を有効化し、
+  ギャップ一覧・スケジュール設計書・統括#1745追跡を更新する。
+
+scope:
+  - "#1732 Phase2成果（案B材料・Slack E2E・通知先分離・daily D1再検証）の本Epicへの吸収と develop 反映"
+  - "案B採否（B-0 / B-1。B-2は非推奨）の Human Decision Log 化と正本docs同期"
+  - "B-1採択かつHuman明示承認後のみ batch-daily-orchestrator.yml の on.schedule コメント解除"
+  - "ギャップ一覧・バッチ実行スケジュール設計書・運用結果docsの必要最小更新"
+  - "統括#1745の本線候補#5追跡更新と #1732 close（吸収完了）"
+
+out_of_scope:
+  - "Human明示承認前の on.schedule コメント解除・production無承認の定期開始"
+  - "weekly schedule 有効化（案C / B-2）"
+  - "BATCH-018/019 を本線 schedule に載せる変更"
+  - "子 workflow への schedule 付与"
+  - "GHA楽天HTTP live化・#1607 本番egress実装"
+  - "DB系 / AI系 live の再実施・meaning葉の追加live実装"
+  - "GitHub Secrets / Variables の値の表示・変更"
+  - "OpenAPI / Orval / generated / apps/web|api|reco 変更"
+  - "成功通知の新設・破壊的全件取得"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/batch-daily-schedule-enable/**"
+    - "prompts/definitions/tasks/batch-daily-schedule-enable/**"
+    - "prompts/definitions/reviews/batch-daily-schedule-enable/**"
+    - "prompts/definitions/epics/batch-parent-schedule-phase2/**"
+    - "prompts/definitions/tasks/batch-parent-schedule-phase2/**"
+    - "prompts/definitions/reviews/batch-parent-schedule-phase2/**"
+    - "ai-logs/human-decisions/**"
+    - "docs/00_共通/AIエージェント運用/Slack通知運用設計書.md"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/github_actions/Slack通知共通ワークフロー仕様書.md"
+    - "docs/15_運用・改善/運用手順/**"
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - ".github/workflows/batch-rakuten-*.yml"
+    - ".github/workflows/batch-item-semantic.yml"
+    - ".github/workflows/batch-item-embedding.yml"
+  child_task_areas:
+    - "docs"
+    - "ops-policy"
+    - "github-actions"
+    - "verification"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow_daily_schedule案B再判断材料.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow_daily再検証結果_D1.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow_Slack失敗通知E2E結果.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-manual-orchestrator.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/batch-daily-schedule-enable/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-daily-schedule-enable/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-daily-schedule-enable/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      action: "update"
+      required: false
+
+deliverables:
+  - "Epic Issue #1789 / Branch chore/epic-1789-batch-daily-schedule-enable"
+  - "#1732 吸収 close と Phase2成果の本Epic引き継ぎ"
+  - "案B採否 Human Decision Log"
+  - "B-1時のみ daily on.schedule 有効化とdocs同期"
+
+acceptance_criteria:
+  - "Epic Issueタイトルが [Epic]batch-daily-schedule-enable:daily schedule有効化 形式"
+  - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
+  - "#1732 が吸収方針どおり CLOSED になっている"
+  - "案B採否（B-0またはB-1）の Human Decision Log が作成され、正本docsと矛盾しない"
+  - "B-0の場合、on.schedule コメント解除を含まない"
+  - "B-1の場合、Human明示承認後の別PRでのみ daily on.schedule が有効化されている"
+  - "weekly schedule 有効化・GHA楽天live・#1607実装・secret実値を含まない"
+  - "Epic PR targetがdevelop"
+  - "統括#1745の本線候補#5追跡が更新されている"
+
+branch:
+  no_branch: false
+  summary: "batch-daily-schedule-enable"
+  name: "chore/epic-1789-batch-daily-schedule-enable"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-07-31"
+    due_date: "2026-08-02"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1745
+    - 1749
+    - 1750
+    - 1763
+  issues:
+    - 1732
+    - 1607
+    - 1637
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - 1749
+    - 1750
+    - 1763
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認（Decision Logと運用方針・ギャップ一覧）"
+  commands: []
+  manual_checks:
+    - "Human明示承認なしに on.schedule が有効化されていない"
+    - "weekly schedule が同時に有効化されていない"
+  not_required:
+    - "GHA楽天live E2E"
+    - "weekly/manual D1（本Epic必須にしない）"
+  skip_reason:
+    "GHA楽天live E2E": "楽天HTTP liveは本Epic out of scope。GHA葉はScaffold維持"
+    "weekly/manual D1（本Epic必須にしない）": "案B材料でmedium。B-1前提にHumanが要求した場合のみ別Task化"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "Human明示承認前に on.schedule が有効化されていないか"
+    - "B-2（weekly同時）や#1607吸収が混入していないか"
+    - "secret実値・channel ID実値がdocs/PRに含まれていないか"
+    - "#1732吸収と#1745追跡が矛盾していないか"
+
+human_decision_points:
+  - "B-0（無効継続）vs B-1（dailyのみ有効化）。チャット同意のみでは正本化しない"
+  - "#1607未完了・Scaffold前提のまま定期運用を許容するか"
+  - "監視・rollback手順の十分性"
+  - "on.scheduleコメント解除の最終明示承認（B-1時・別PR）"
+  - "weekly/manual D1をB-1前提にするか（任意）"
+
+stop_conditions:
+  - "Human Decision Log未整備のまま schedule 有効化へ進もうとした場合"
+  - "Human明示承認なしに on.schedule コメント解除が必要に見えた場合"
+  - "weekly同時有効化や#1607実装が必要に見えた場合"
+  - "secret実値の表示・commitが必要に見える場合"
+
+notes:
+  - "統括#1745の本線候補#5。Epic formal parentは持たない（Relationships追跡）"
+  - "子Task: (1) 案B採否 Decision Log (2) B-1時のみ daily schedule有効化"
+  - "work_mode=ai-agent / chore Branch。schedule有効化はHuman明示承認が正"
+  - "#1732吸収方針A（Human確認済み）"
