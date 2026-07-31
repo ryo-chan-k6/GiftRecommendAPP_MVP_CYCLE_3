@@ -1,0 +1,110 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-pipeline-timeout-implementation-pr"
+  title: "reco-pipeline-timeout-implementation PRレビュー"
+  summary: "本番主経路 soft6s/hard8s をコード・API実装仕様・api client既定へ反映する Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr: 1783
+  issue: 1782
+  task_definition: "prompts/definitions/tasks/reco-pipeline-timeout/implementation.yaml"
+  source_branch: "fix/task-1782-reco-pipeline-timeout-implementation"
+  target_branch: "fix/epic-1781-reco-pipeline-timeout"
+  parent_epic_issue: "[Epic]reco-pipeline-timeout:本番主経路 soft6s/hard8s 整合"
+  parent_epic_branch: "fix/epic-1781-reco-pipeline-timeout"
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  task_definition:
+    path: "prompts/definitions/tasks/reco-pipeline-timeout/implementation.yaml"
+    required: true
+  issue:
+    number: 1782
+    required: true
+  pr:
+    number: 1783
+    required: true
+  diff:
+    required: true
+    compare_with: "fix/epic-1781-reco-pipeline-timeout"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  - "PIPELINE_SOFT=6_000 / PIPELINE_HARD=8_000 か"
+  - "DEFAULT_RECO_REQUEST_TIMEOUT_MS=9_000 かつ hard より大きいか"
+  - "API 実装仕様の 4,000ms 記載が残っていないか"
+  - "性能要件 / MOD-RECO-001 数値を変更していないか"
+  - "OpenAPI / generated / forbidden_paths 外の変更がないか"
+  - "unit test が新定数と整合するか"
+  - "PR target が親 Epic Branch、Related to（Closes 禁止）か"
+  - "secret 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消、または Human 判断待ちとして明示される"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "Issue / PR / Branch 確定後に target.* / input.* を実番号へ同期する"

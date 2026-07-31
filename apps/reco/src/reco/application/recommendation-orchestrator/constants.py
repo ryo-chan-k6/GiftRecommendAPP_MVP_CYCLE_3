@@ -32,9 +32,11 @@ GENERIC_REASON_SUMMARY = (
     "今回の条件に対して、候補商品の中でも比較的バランスの良い商品です。"
 )
 
-# 性能要件（バックエンド）§5 / モジュール仕様書 §13.2 暫定値（PoC 後更新）
-PIPELINE_SOFT_TIMEOUT_MS = 2_000
-PIPELINE_HARD_TIMEOUT_MS = 4_000
+# 性能要件（バックエンド）§5 / MOD-RECO-001 §13.2 / #1748 確定値（案A1）
+# 同期外部 AI 込み・本番主経路 soft 6,000ms / hard 8,000ms
+# Reco 内部監視用 soft 1,500 / hard 2,000 は docs 上の監視用 SLO（本定数とは役割分離）
+PIPELINE_SOFT_TIMEOUT_MS = 6_000
+PIPELINE_HARD_TIMEOUT_MS = 8_000
 # MOD-RECO-024 SURFACE_ERROR_CODE_TIMEOUT（GRS-REC-101）と整合
 PIPELINE_TIMEOUT_ERROR_CODE = "GRS-REC-101"
 

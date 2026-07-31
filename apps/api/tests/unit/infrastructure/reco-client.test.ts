@@ -4,6 +4,7 @@ import { createRecoClient } from "../../../src/lib/reco-client/index.js";
 import {
   buildRecoFetchInit,
   buildRecoRequestUrl,
+  DEFAULT_RECO_REQUEST_TIMEOUT_MS,
   GeneratedRecoClient,
   isRecoError,
   maskRecoApiKey,
@@ -117,6 +118,16 @@ test("resolveRecoClientConfig reads environment variable names", () => {
     apiKey: "test-key",
     timeoutMs: 6000,
   });
+});
+
+test("resolveRecoClientConfig defaults timeout to 9000ms (above hard 8000ms)", () => {
+  const config = resolveRecoClientConfig({
+    RECO_BASE_URL: "http://reco.local:8000",
+    RECO_INTERNAL_API_KEY: "test-key",
+  });
+
+  assert.equal(config.timeoutMs, DEFAULT_RECO_REQUEST_TIMEOUT_MS);
+  assert.equal(config.timeoutMs, 9000);
 });
 
 test("buildRecoRequestUrl joins base URL and internal path", () => {

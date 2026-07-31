@@ -1,0 +1,222 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-pipeline-timeout-implementation"
+  title: "reco-pipeline-timeout-implementation:soft6s/hard8sをコード・API実装仕様・api client既定へ反映"
+  summary: "#1748 確定（案A1）に従い PIPELINE_SOFT/HARD を 6_000/8_000 へ更新し、API 実装仕様書と DEFAULT_RECO_REQUEST_TIMEOUT_MS（9_000）を追随させる。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-pipeline-timeout"
+  epic_issue: "[Epic]reco-pipeline-timeout:本番主経路 soft6s/hard8s 整合"
+  epic_issue_number: 1781
+  epic_branch: "fix/epic-1781-reco-pipeline-timeout"
+  related_issues:
+    - 1748
+    - 1781
+    - 1782
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  #1748 Human 決定（2026-07-31）:
+  - PIPELINE_SOFT_TIMEOUT_MS = 6_000（本番主経路 soft）
+  - PIPELINE_HARD_TIMEOUT_MS = 8_000（本番主経路 hard → GRS-REC-101）
+  - Reco 内部 1,500/2,000 は docs 監視用として維持
+
+  現状コードは 2_000/4_000、API 実装仕様は 4,000、api 既定 timeout は 5_000。
+
+objective: |
+  確定値をコード・API 実装仕様・api→reco HTTP timeout 既定へ反映し、
+  hard timeout 境界値テストを新定数で通す。
+
+scope:
+  - "constants.py の PIPELINE_SOFT/HARD を 6_000/8_000 へ更新しコメントを確定値へ"
+  - "hard timeout 境界値 unit test の更新（定数参照を維持）"
+  - "API-PUB-002 / API-INT-002 実装仕様書の 4,000ms 記載を 8,000ms へ"
+  - "DEFAULT_RECO_REQUEST_TIMEOUT_MS を 9_000 へ（hard 8_000 より大きく、Reco が GRS-REC-101 を返せる余地）"
+  - "関連 unit test（api reco-client config）の更新"
+
+out_of_scope:
+  - "性能要件 / MOD-RECO-001 §13.2 の数値変更"
+  - "OpenAPI / packages/contracts / generated"
+  - "Reco 内部監視用定数の新設"
+  - "stg/prod Environment の RECO_REQUEST_TIMEOUT_MS 実値変更（Human）"
+  - "推薦ロジック・DB・web・batch の変更"
+
+input:
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+      required: true
+      purpose: "定数更新"
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      required: true
+      purpose: "hard timeout 境界値テスト"
+    - path: "apps/api/src/infrastructure/reco-client/config.ts"
+      required: true
+      purpose: "DEFAULT_RECO_REQUEST_TIMEOUT_MS"
+    - path: "apps/api/tests/unit/infrastructure/reco-client.test.ts"
+      required: true
+      purpose: "api timeout 関連テスト"
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      required: true
+      purpose: "4,000 → 8,000 更新"
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      required: true
+      purpose: "4,000 → 8,000 更新"
+    - path: "docs/06_実装設計/reco/MOD-RECO-001_Recommendation Orchestratorモジュール仕様書.md"
+      required: true
+      purpose: "正本参照（変更しない）"
+
+output:
+  files:
+    - path: "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+      action: "update"
+      required: true
+    - path: "apps/api/src/infrastructure/reco-client/config.ts"
+      action: "update"
+      required: true
+  docs:
+    - path: "docs/06_実装設計/api/API-PUB-002_レコメンド実行API実装仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/api/API-INT-002_Reco推薦実行API実装仕様書.md"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/reco/tests/unit/application/test_recommendation_orchestrator.py"
+      action: "update"
+      required: true
+    - path: "apps/api/tests/unit/infrastructure/reco-client.test.ts"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "PIPELINE_SOFT=6_000 / PIPELINE_HARD=8_000"
+  - "API 実装仕様書の hard 8,000ms 記載"
+  - "DEFAULT_RECO_REQUEST_TIMEOUT_MS=9_000"
+  - "更新済み unit test"
+
+acceptance_criteria:
+  - "PIPELINE_SOFT_TIMEOUT_MS = 6_000 / PIPELINE_HARD_TIMEOUT_MS = 8_000"
+  - "API-PUB-002 / API-INT-002 実装仕様の reco hard が 8,000ms"
+  - "DEFAULT_RECO_REQUEST_TIMEOUT_MS = 9_000"
+  - "reco hard timeout unit test が通る"
+  - "api reco-client 関連 unit test が通る（変更した場合）"
+  - "Related to #<Task Issue番号>、PR target が親 Epic Branch"
+  - "OpenAPI / generated / 性能要件 / MOD-RECO-001 数値を変更していない"
+
+branch:
+  no_branch: false
+  summary: "reco-pipeline-timeout-implementation"
+  base: "fix/epic-1781-reco-pipeline-timeout"
+  target: "fix/epic-1781-reco-pipeline-timeout"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-31"
+    due_date: "2026-08-02"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "reco"
+
+dependencies:
+  epics:
+    - id: "epic-reco-pipeline-timeout"
+      purpose: "親 Epic"
+  issues:
+    - number: 1748
+      purpose: "正本値 Human 決定"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/reco/src/reco/application/recommendation-orchestrator/constants.py"
+    - "apps/api/src/infrastructure/reco-client/config.ts"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco hard timeout unit test"
+    - "apps/api reco-client unit test（timeout 既定に触れた場合）"
+    - "secret check"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit/application/test_recommendation_orchestrator.py -q"
+    - "cd apps/api && pnpm exec vitest run tests/unit/infrastructure/reco-client.test.ts"
+  not_required:
+    - "stg 実測"
+  skip_reason:
+    "stg 実測": "定数・docs・既定値の整合。stg Environment 実値は Human。既に推薦は約 1.0s で完走"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "確定値 6_000 / 8_000 / api 9_000 が反映されているか"
+    - "api timeout > hard timeout か"
+    - "API 実装仕様の 4,000 が残っていないか"
+    - "性能要件 / MOD-RECO-001 を誤変更していないか"
+    - "OpenAPI / generated 混入がないか"
+    - "secret 実値がないか"
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+
+human_decision_points:
+  - "stg の RECO_REQUEST_TIMEOUT_MS Environment 実値を 9_000 以上へ合わせるか（Human）"
+
+notes:
+  - "PR 本文は Related to（Closes 禁止）。PR target は親 Epic Branch"
+  - "AI Review: prompts/definitions/reviews/reco-pipeline-timeout/implementation/pr-review.yaml"
+  - "DEFAULT_RECO_REQUEST_TIMEOUT_MS=9_000 は Epic human_decision_points の採用値"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "通常の Issue / PR で管理する"
+
+stop_conditions:
+  - "OpenAPI 変更が必要になった場合"
+  - "性能要件や MOD-RECO-001 の数値変更が必要になった場合"

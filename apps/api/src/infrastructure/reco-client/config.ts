@@ -4,8 +4,8 @@ const RECO_BASE_URL_ENV = "RECO_BASE_URL";
 const RECO_INTERNAL_API_KEY_ENV = "RECO_INTERNAL_API_KEY";
 const RECO_REQUEST_TIMEOUT_MS_ENV = "RECO_REQUEST_TIMEOUT_MS";
 
-/** reco hard timeout (4,000ms) 以上を確保する api→reco HTTP timeout のデフォルト。 */
-export const DEFAULT_RECO_REQUEST_TIMEOUT_MS = 5_000;
+/** reco hard timeout (8,000ms) 以上を確保する api→reco HTTP timeout のデフォルト。 */
+export const DEFAULT_RECO_REQUEST_TIMEOUT_MS = 9_000;
 
 export const RECO_INTERNAL_API_KEY_HEADER = "X-Internal-Api-Key";
 export const RECO_TRACE_ID_HEADER = "X-Trace-Id";
