@@ -1,0 +1,150 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-reco-timeout-followup"
+  title: "reco-timeout-followup:hard8s追随コメントとRECO_REQUEST_TIMEOUT文書化"
+  summary: "Epic #1781 後続。session.py の旧 hard 4,000ms コメントを 8,000ms 前提へ更新し、API の RECO_REQUEST_TIMEOUT_MS（既定 9,000・hard 以上）を環境変数定義書と infra/render README へ追記する。stg Render Environment の実値設定は Human。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: null
+  epic_issue_number: 1786
+  epic_branch: "chore/epic-1786-reco-timeout-followup"
+  related_issues:
+    - 1781
+    - 1748
+    - 1786
+  related_prs:
+    - 1784
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #1781 / PR #1784 で PIPELINE_* を soft 6s / hard 8s、DEFAULT_RECO_REQUEST_TIMEOUT_MS を 9_000 へ整合した。
+  AI Review nit として session.py に旧 hard 4,000ms コメントが残存。
+  また RECO_REQUEST_TIMEOUT_MS が環境変数定義書・infra/render README に未記載。
+
+objective: |
+  旧 4,000ms コメントを現行 hard 8,000ms 前提へ更新し、
+  RECO_REQUEST_TIMEOUT_MS を docs / infra README に文書化する。
+  stg Render の実値設定手順は Human 実施とする。
+
+scope:
+  - "session.py の PIPELINE_HARD_TIMEOUT_MS（4,000ms）コメントを 8,000ms 前提へ更新"
+  - "環境変数定義書 §7 へ RECO_REQUEST_TIMEOUT_MS を追記"
+  - "infra/render/README の Environment Variables 表へ RECO_REQUEST_TIMEOUT_MS を追記"
+  - "子 Task 1 本"
+
+out_of_scope:
+  - "PIPELINE_* / DEFAULT_RECO_REQUEST_TIMEOUT_MS の再変更"
+  - "Render / Fly Dashboard での Environment 実値操作（Human）"
+  - "OpenAPI / generated / 推薦ロジック変更"
+  - "secret 実値の記載"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "apps/reco/src/reco/infrastructure/db/session.py"
+    - "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+    - "infra/render/README.md"
+    - "prompts/definitions/epics/reco-timeout-followup/**"
+    - "prompts/definitions/tasks/reco-timeout-followup/**"
+    - "prompts/definitions/reviews/reco-timeout-followup/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/api/src/**"
+    - "supabase/**"
+  child_task_areas:
+    - "reco-timeout-followup-implementation"
+
+dependencies:
+  epics:
+    - id: "epic-reco-pipeline-timeout"
+      purpose: "timeout 整合（#1781 / PR #1784 merge 済み）"
+  issues:
+    - number: 1781
+      purpose: "soft6s/hard8s 整合完了"
+  blocking: false
+
+child_tasks:
+  - "reco-timeout-followup-implementation: sessionコメント修正とRECO_REQUEST_TIMEOUT文書化（1 Task）"
+
+input:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+    - path: "apps/api/src/infrastructure/reco-client/config.ts"
+      required: true
+      purpose: "DEFAULT_RECO_REQUEST_TIMEOUT_MS=9_000 の参照元（変更しない）"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+    - path: "infra/render/README.md"
+      required: true
+
+acceptance_criteria:
+  - "session.py コメントが hard 8,000ms 前提になっている"
+  - "環境変数定義書に RECO_REQUEST_TIMEOUT_MS がある"
+  - "infra/render/README に RECO_REQUEST_TIMEOUT_MS がある"
+  - "PIPELINE_* / DEFAULT_RECO_* の値を変更していない"
+  - "stg Render の実値設定手順が Epic Issue に明記されている（実施は Human）"
+
+branch:
+  no_branch: false
+  summary: "reco-timeout-followup"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-31"
+    due_date: "2026-08-02"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "reco"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "コメントが 8,000ms 前提か"
+    - "RECO_REQUEST_TIMEOUT_MS の記載が既定 9,000 / hard 以上と整合するか"
+    - "secret 実値がないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "stg Render の RECO_REQUEST_TIMEOUT_MS を 9000 に揃えるか、既存の 9000 超を維持するか"
+
+stop_conditions:
+  - "Environment 実値の取得・更新が AI 権限でできない場合は Human 手順を残して docs 側のみ完了とする"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "通常の Issue / PR で管理する"
+
+notes:
+  - "機能・領域単位 Epic（例外）。artifact_id 空"
+  - "Render API / CLI が本環境に無いため stg 実値は Human"
+  - "過去に stg で RECO_REQUEST_TIMEOUT_MS=20000 を設定した記録あり。20000 は既に hard 以上を満たす"

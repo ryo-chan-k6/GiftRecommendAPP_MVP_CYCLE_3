@@ -1,0 +1,173 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-timeout-followup-implementation"
+  title: "reco-timeout-followup-implementation:sessionコメント修正とRECO_REQUEST_TIMEOUT文書化"
+  summary: "session.py の旧 hard 4,000ms コメントを 8,000ms 前提へ更新し、RECO_REQUEST_TIMEOUT_MS を環境変数定義書と infra/render README へ追記する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-timeout-followup"
+  epic_issue: "[Epic]reco-timeout-followup:hard8s追随コメントとRECO_REQUEST_TIMEOUT文書化"
+  epic_issue_number: 1786
+  epic_branch: "chore/epic-1786-reco-timeout-followup"
+  related_issues:
+    - 1781
+    - 1786
+  related_prs:
+    - 1784
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  #1781 merge 後の残作業。session.py コメントが旧 4,000ms。
+  RECO_REQUEST_TIMEOUT_MS が環境変数定義書に未記載。
+
+objective: |
+  コメント修正と RECO_REQUEST_TIMEOUT_MS 文書化を完了する。
+
+scope:
+  - "session.py コメント更新（4,000 → 8,000 前提）"
+  - "環境変数定義書 §7 に RECO_REQUEST_TIMEOUT_MS 追記"
+  - "infra/render/README Environment Variables 表へ追記"
+
+out_of_scope:
+  - "定数値の変更"
+  - "Render Environment 実値の操作（Human）"
+  - "OpenAPI / apps/api ソース変更"
+  - "unit test 追加（コメントと docs のみ）"
+
+input:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+    - path: "apps/api/src/infrastructure/reco-client/config.ts"
+      required: true
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+    - path: "infra/render/README.md"
+      required: true
+
+output:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      action: "update"
+      required: true
+    - path: "infra/render/README.md"
+      action: "update"
+      required: true
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      action: "update"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "更新済み session.py コメント"
+  - "RECO_REQUEST_TIMEOUT_MS 記載の環境変数定義書・render README"
+
+acceptance_criteria:
+  - "session.py に 4,000ms 旧 hard 表記が残っていない"
+  - "環境変数定義書・infra/render/README に RECO_REQUEST_TIMEOUT_MS がある（既定 9,000 / hard 以上）"
+  - "Related to #<Task Issue>、PR target が親 Epic Branch"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "reco-timeout-followup-implementation"
+  base: "chore/epic-1786-reco-timeout-followup"
+  target: "chore/epic-1786-reco-timeout-followup"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "medium"
+    planned_start: "2026-07-31"
+    due_date: "2026-08-02"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "reco"
+
+dependencies:
+  epics:
+    - id: "epic-reco-timeout-followup"
+      purpose: "親 Epic"
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "apps/reco/src/reco/infrastructure/db/session.py"
+    - "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+    - "infra/render/README.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "secret check"
+    - "差分に 4,000ms 旧 hard 表記が session.py に残っていないこと"
+  commands: []
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "コメントと docs のみの変更"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "コメントが 8,000ms 前提か"
+    - "RECO_REQUEST_TIMEOUT_MS 記載が既定 9,000 / hard 以上と整合するか"
+    - "secret 実値がないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+notes:
+  - "PR は Related to。Closes 禁止"
+  - "stg Render 実値は Human（Epic Issue 本文の手順）"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "通常の Issue / PR で管理する"
+
+stop_conditions:
+  - "環境変数定義書の他章と矛盾する記載が必要になった場合"
