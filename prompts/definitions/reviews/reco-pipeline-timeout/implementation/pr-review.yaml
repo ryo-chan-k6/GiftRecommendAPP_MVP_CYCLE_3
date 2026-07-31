@@ -15,11 +15,11 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null
+  pr: 1783
+  issue: 1782
   task_definition: "prompts/definitions/tasks/reco-pipeline-timeout/implementation.yaml"
-  source_branch: null
-  target_branch: null
+  source_branch: "fix/task-1782-reco-pipeline-timeout-implementation"
+  target_branch: "fix/epic-1781-reco-pipeline-timeout"
   parent_epic_issue: "[Epic]reco-pipeline-timeout:本番主経路 soft6s/hard8s 整合"
   parent_epic_branch: "fix/epic-1781-reco-pipeline-timeout"
 
@@ -63,10 +63,10 @@ input:
     path: "prompts/definitions/tasks/reco-pipeline-timeout/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1782
     required: true
   pr:
-    number: null
+    number: 1783
     required: true
   diff:
     required: true

@@ -119,7 +119,7 @@ API一覧の連携フロー（ステップ 1〜4・10〜11）のうち、**ス�
 3. **trace 発行:** `X-Trace-Id` / `X-Request-Id` を Header から引き継ぎ、未指定時は api 側で UUID 生成。以降のログ・reco 呼び出し・Response `meta` で一貫。
 4. **永続化:** Validator 通過後の Request を `recommendation_request` として保存。`recommendation_request_id` を発行。
 5. **Internal Body 組立:** Public camelCase → API-INT-002 Request（§5.1）。ルート `recommendationRequestId` に永続化 ID を設定。
-6. **reco 呼び出し:** `createRecoClient().runRecommendation({ body, traceId, requestId })`。timeout は reco hard timeout（4,000ms）**以上**（API設計方針書）。
+6. **reco 呼び出し:** `createRecoClient().runRecommendation({ body, traceId, requestId })`。timeout は reco hard timeout（8,000ms）**以上**（API設計方針書）。
 7. **Response 整形:** Internal `data.resultItems` → Public `data.items[]`。内部スコア・`scoreBreakdown`・`warnings`・`metricSummary`・`reasonData`・`debugPayload` は Public に載せない（契約仕様書 §7.3.2）。
 8. **0 件:** HTTP **200**。`data.resultStatus: "empty"`、`data.resultItemCount: 0`、`meta.resultCode: GRS-REC-001`（契約仕様書 §7.4.2）。
 9. **Reason:** `includeReason=true` 時、Item ごとに `reasonSummary`（非空）と `isFallback` をマッピング（API-INT-002 §7.3.2.1 / MOD-RECO-001 §10.3）。
@@ -220,7 +220,7 @@ API一覧の連携フロー（ステップ 1〜4・10〜11）のうち、**ス�
 | `GRS-AUTH-*` | reco 401（Key 不正等） | **500** | **`GRS-REC-002`** | Public へ認証詳細を漏らさない（API-INT-002 実装仕様書 §7.2） |
 | `GRS-REQ-*` | reco 400/422（防御的 Validation） | 400/422 | 同一コード引継ぎ可 | 通常は api 側で事前検証 |
 | `GRS-REC-*` / `GRS-DB-*` / `GRS-LLM-*` | パイプライン失敗 | 契約 §8.2 に準拠 | 同一系列 | `RecoError` / `error-mapper.ts` 経由 |
-| `GRS-REC-101` | reco タイムアウト | **504** | `GRS-REC-101` | api timeout ≥ 4,000ms |
+| `GRS-REC-101` | reco タイムアウト | **504** | `GRS-REC-101` | api timeout ≥ 8,000ms |
 | transport / network | reco 到達不可 | **502** または **500** | `GRS-REC-002` | 実装 Task で `RecoError` 分類を確定 |
 | **正常 0 件** | `resultItemCount: 0` | **200** | —（`meta.resultCode: GRS-REC-001`） | エラーではない |
 
@@ -253,8 +253,8 @@ web（任意 Header）→ api 発行/引継ぎ
 
 | 項目 | 方針 |
 | ---- | ---- |
-| reco hard timeout | 4,000ms（MOD-RECO-001 §13 → `GRS-REC-101`） |
-| api → reco HTTP timeout | **≥ 4,000ms**（推奨 4,500〜5,000ms。Implementation Task で確定） |
+| reco hard timeout | 8,000ms（MOD-RECO-001 §13.2 本番主経路 / #1748 → `GRS-REC-101`） |
+| api → reco HTTP timeout | **≥ 8,000ms**（既定 9,000ms。`DEFAULT_RECO_REQUEST_TIMEOUT_MS`） |
 | api 側 retry | **自動 retry 禁止**（非冪等）。ユーザー再実行のみ |
 | 同時実行 | Run 単位独立 |
 
@@ -292,4 +292,5 @@ web（任意 Header）→ api 発行/引継ぎ
 
 | 日付 | 版 | 変更概要 |
 | ---- | -- | -------- |
+| 2026-07-31 | 1.1 | reco hard timeout を 8,000ms、api→reco 既定 timeout を 9,000ms へ更新（#1748 案A1 / #1782） |
 | 2026-07-09 | 1.0 | 初版（#364 作業やり直し。API-INT-002 実装仕様書・reco-client Phase1 前提を反映） |
