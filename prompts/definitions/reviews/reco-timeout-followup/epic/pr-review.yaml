@@ -1,0 +1,105 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-reco-timeout-followup-epic-pr"
+  title: "reco-timeout-followup Epic PRレビュー"
+  summary: "hard8s追随コメントとRECO_REQUEST_TIMEOUT文書化 Epic の develop 向け PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr: null
+  issue: 1786
+  epic_definition: "prompts/definitions/epics/reco-timeout-followup/epic.yaml"
+  source_branch: "chore/epic-1786-reco-timeout-followup"
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: null
+    contract: null
+    security: "reviewer-ai"
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/reco-timeout-followup/epic.yaml"
+    required: true
+  issue:
+    number: 1786
+    required: true
+  pr:
+    number: null
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: true
+    - path: "infra/render/README.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  - "子 Task 成果が統合されているか"
+  - "allowed_paths 内か"
+  - "session コメント / RECO_REQUEST_TIMEOUT 文書化が完了しているか"
+  - "Closes Epic Issue、target develop か"
+  - "secret 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Must が解消、または Human 判断待ちとして明示される"
+  - "結論が Human Reviewへ進行可 / 修正後に再AI Review / Human判断待ち のいずれか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常の AI Review は PR コメントを正とする"
+
+notes:
+  - "PR 番号確定後に同期する"
