@@ -1,0 +1,196 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-parent-schedule-phase2-decision-material"
+  title: "batch-parent-schedule-phase2:案B再判断材料の正本化"
+  summary: "Epic #1637の結果と残課題を整理し、daily schedule有効化をHumanが判断するための1ページ資料を作成する。"
+  type: "docs"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-parent-schedule-phase2:daily schedule有効化再判断"
+  epic_issue_number: 1732
+  epic_branch: "chore/epic-1732-batch-parent-schedule-phase2"
+  related_issues:
+    - 1607
+    - 1637
+  related_prs:
+    - 1731
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Epic #1637 は案Aで完了したが、daily D1はPARTIAL、Slack実送信と
+  weekly / manual実ランタイムは未確認である。案Bを採用する前に、
+  既知の事実・残リスク・選択肢・gateを正本docsで一箇所にまとめる。
+
+objective: |
+  daily schedule有効化について、Humanが「現時点で採用」「追加検証後に再判断」
+  「当面見送り」を根拠付きで選べる判断材料を作成する。
+
+scope:
+  - "Epic #1637 / D1 / C3 / #1730 / #1607 の事実整理"
+  - "D1 PARTIALの残課題と現在の解消状況の整理"
+  - "Slack通知・cron JST 00:30・egress・コスト・監視・rollback観点の整理"
+  - "案Bの選択肢・推奨案・Human decision gateの明示"
+  - "Slack E2E / weekly-manual D1 の後続Task条件整理"
+
+out_of_scope:
+  - "on.scheduleコメント解除"
+  - "production定期実行"
+  - "Slack実送信"
+  - "weekly / manual workflowの実行"
+  - "#1607の設計・実装"
+  - "workflow / source code / DB / API contract変更"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/BATCH_import連鎖_GHA_live化メモ_C3.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-manual-orchestrator.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/親workflow_daily_schedule案B再判断材料.md"
+      action: "create"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-parent-schedule-phase2/decision-material.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-parent-schedule-phase2/decision-material/pr-review.yaml"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "generated差分なし"
+
+deliverables:
+  - "案B再判断材料 docs"
+  - "後続Task条件"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "事実・推論・未確認・Human判断点が明確に分離されている"
+  - "D1 PARTIAL、Slack実送信、weekly/manual、#1607、コスト、監視、rollbackを扱っている"
+  - "案Bの採否選択肢と推奨案が記載されている"
+  - "Human明示承認前にschedule有効化しないgateが明記されている"
+  - "secret / token / 接続文字列実値を含まない"
+  - "Related to Task Issue / PR target = 親Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-schedule-phase2-decision"
+  base: "chore/epic-1732-batch-parent-schedule-phase2"
+  target: "chore/epic-1732-batch-parent-schedule-phase2"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "07_開発・単体テスト"
+    priority: "medium"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+  number: 1733
+
+dependencies:
+  epics:
+    - 1637
+  notes: "Epic #1637は完了済み。#1607は未完了だが、本Taskは依存状況の整理のみで実装しない。"
+
+parallel_control:
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/親workflow_daily_schedule案B再判断材料.md"
+    - "prompts/definitions/tasks/batch-parent-schedule-phase2/decision-material.yaml"
+    - "prompts/definitions/reviews/batch-parent-schedule-phase2/decision-material/pr-review.yaml"
+  notes: "親workflow YAMLは変更しない"
+
+contract_gate:
+  required: false
+  gate_id: null
+  prerequisite_contract_tasks: []
+  verify_at: []
+  blocked_message: null
+
+test_policy:
+  required:
+    - "関連docs・workflow・Issue/PRとの事実整合確認"
+    - "Markdown表・リンク・secret非含有確認"
+  commands: []
+  not_required:
+    - "docs-onlyのためアプリunit test不要"
+  skip_reason:
+    app_tests: "source code / workflow変更なし"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "判断材料が未確認事項を決定済みとして扱っていないか"
+    - "案B採用をAIが確定していないか"
+    - "schedule有効化・production実行が差分に含まれていないか"
+    - "関連正本docsと用語・時刻・状態が一致しているか"
+    - "secret実値を含まないか"
+
+human_decision_points:
+  - "案Bを現時点で採用するか"
+  - "Slack E2E / weekly-manual D1 / #1607のどこまでを有効化前提とするか"
+
+stop_conditions:
+  - "正本docs間で案A/Bまたはcron時刻に矛盾がある"
+  - "schedule有効化を本Taskへ含める必要が生じた"
+  - "secret実値やproduction接続が必要になった"
+  - "未確認事項を推測で埋める必要が生じた"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: "on_error"
+    cross_cutting: false
+    experiments: false
+  reason: "Human decision資料を正本docsとして作成する通常Task"

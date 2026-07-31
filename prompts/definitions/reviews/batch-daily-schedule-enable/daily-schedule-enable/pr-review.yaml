@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-daily-schedule-enable-daily-enable-pr"
+  title: "daily on.schedule有効化 Task PRレビュー"
+  summary: "daily親workflowのon.schedule有効化 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1792
+  parent_epic_issue: 1789
+  parent_epic_branch: "chore/epic-1789-batch-daily-schedule-enable"
+  task_definition: "prompts/definitions/tasks/batch-daily-schedule-enable/daily-schedule-enable.yaml"
+  target_branch: "chore/epic-1789-batch-daily-schedule-enable"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "B-1 Decision Logゲートを満たしているか"
+  - "dailyのみ有効でweeklyが無効維持か"
+  - "secret実値がないか"
+
+notes:
+  - "PR番号は作成後に反映"

@@ -1,0 +1,146 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-daily-schedule-enable-schedule-decision"
+  title: "batch-daily-schedule-enable:案B採否Human Decision Log化"
+  summary: "案B再判断材料を前提に、B-0/B-1のHuman採択をDecision Log化し正本docsを同期する。on.schedule有効化は含まない。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-daily-schedule-enable:daily schedule有効化"
+  epic_issue_number: 1789
+  epic_branch: "chore/epic-1789-batch-daily-schedule-enable"
+  related_issues:
+    - 1745
+    - 1732
+    - 1637
+    - 1607
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  親Epic batch-daily-schedule-enable。#1732 Phase2で案B材料・Slack E2E・通知先分離・daily D1再検証PASSまで完了。
+  次は Human が B-0（無効継続）または B-1（dailyのみ有効化）を Decision Log で確定する。
+  scheduleコメント解除は後続Task（B-1時のみ）かつHuman明示承認が必須。
+
+objective: |
+  案B採否と関連ゲート（Scaffold許容・監視rollback十分性等）を Human Decision Log に記録し、
+  案B材料・ギャップ一覧・必要に応じてスケジュール設計書の表記を同期する。
+
+scope:
+  - "ai-logs/human-decisions/ に案B採否 Decision Log を作成（decided）"
+  - "親workflow_daily_schedule案B再判断材料.md の Human判断状態を同期"
+  - "バッチ親workflow_schedule有効化ギャップ一覧.md の必要最小更新"
+  - "後続 daily-schedule-enable Task Definition の着手ゲートを採択結果へ反映"
+  - "Task / Review Definition の維持"
+
+out_of_scope:
+  - "on.schedule コメント解除"
+  - "weekly schedule 有効化"
+  - "#1607 実装"
+  - "GHA楽天HTTP live"
+  - "secret実値の表示・変更"
+  - "親Epic→develop PR / merge判断"
+  - "後続有効化Taskの実装本体"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/親workflow_daily_schedule案B再判断材料.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow_daily再検証結果_D1.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/親workflow_Slack失敗通知E2E結果.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+  files: []
+  issues:
+    - number: 1745
+      purpose: "統括ロードマップ"
+    - number: 1732
+      purpose: "吸収元 Phase2"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/親workflow_daily_schedule案B再判断材料.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-daily-schedule-enable/**"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "Decision Log が B-0 または B-1 を明示し、状態が decided"
+  - "B-2（weekly同時）を採択済みとして書いていない"
+  - "on.schedule 有効化差分を含まない"
+  - "secret / channel ID 実値を含まない"
+  - "PR target が親Epic Branch、Related to のみ（Closes禁止）"
+
+branch:
+  no_branch: false
+  summary: "schedule-decision"
+  name: "docs/task-1791-schedule-decision"
+  base: "chore/epic-1789-batch-daily-schedule-enable"
+  target: "chore/epic-1789-batch-daily-schedule-enable"
+
+test_policy:
+  required:
+    - "Markdown相対リンク存在確認"
+    - "git diff --check"
+    - "secret実値スキャン"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Decision Log / docs同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Human採択内容が案B材料のゲートと矛盾していないか"
+    - "未採択を採択済みと誤記していないか"
+    - "schedule有効化差分が混入していないか"
+
+human_decision_points:
+  - "B-0 vs B-1"
+  - "Scaffold前提定期運用の許容"
+  - "監視・rollback十分性"
+
+stop_conditions:
+  - "HumanがB-0/B-1を明示していない"
+  - "schedule有効化が必要に見えた場合"
+
+notes:
+  - "本Task完了後、B-1なら後続 daily-schedule-enable へ。B-0なら有効化Taskはスキップまたは延期"
+  - "2026-07-31 Human採択: B-0慎重案（Decision Log 2026-07-31-batch-daily-schedule-enable-b0）。#1792は延期"

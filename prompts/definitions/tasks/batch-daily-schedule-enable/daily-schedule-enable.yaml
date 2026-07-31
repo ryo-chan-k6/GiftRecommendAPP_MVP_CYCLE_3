@@ -1,0 +1,141 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-daily-schedule-enable-daily-schedule-enable"
+  title: "batch-daily-schedule-enable:daily on.schedule有効化"
+  summary: "B-1 Human Decision Log採択かつHuman明示承認後に限り、daily親workflowのon.scheduleを有効化しdocsを同期する。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-daily-schedule-enable:daily schedule有効化"
+  epic_issue_number: 1789
+  epic_branch: "chore/epic-1789-batch-daily-schedule-enable"
+  related_issues:
+    - 1745
+    - 1732
+    - 1607
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  前Task（schedule-decision）で B-1 が Decision Log 採択されていることが着手ゲート。
+  B-0 の場合は本Taskを実施しない。weekly は無効維持。設計書 §16.2 Phase2 に従う。
+
+objective: |
+  Human明示承認のもと batch-daily-orchestrator.yml の on.schedule を有効化し、
+  ギャップ一覧・スケジュール設計書・統括追跡に Phase2 進行を反映する。
+
+scope:
+  - ".github/workflows/batch-daily-orchestrator.yml の on.schedule コメント解除（dailyのみ）"
+  - "バッチ実行スケジュール設計書 / ギャップ一覧の Phase 進行反映"
+  - "rollback（再コメントアウト）手順の必要最小記載"
+  - "Task / Review Definition の維持"
+
+out_of_scope:
+  - "weekly / manual の schedule 有効化"
+  - "B-0採択時の強行実施"
+  - "#1607 実装・GHA楽天HTTP live"
+  - "secret実値の表示・変更"
+  - "子workflowへのschedule付与"
+  - "親Epic merge判断"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/**"
+      required: true
+      purpose: "B-1採択の Decision Log"
+    - path: "docs/15_運用・改善/運用手順/親workflow_daily_schedule案B再判断材料.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+  issues:
+    - number: 1745
+      purpose: "統括追跡"
+
+output:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      action: "update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "update"
+      required: false
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "着手前に B-1 Decision Log が存在し decided"
+  - "daily on.schedule のみ有効。weekly はコメントアウト維持"
+  - "Human明示承認がPR/Issueに記録されている"
+  - "secret実値を含まない"
+  - "PR target が親Epic Branch、Related to のみ"
+
+branch:
+  no_branch: false
+  summary: "daily-schedule-enable"
+  name: "chore/task-1792-daily-schedule-enable"
+  base: "chore/epic-1789-batch-daily-schedule-enable"
+  target: "chore/epic-1789-batch-daily-schedule-enable"
+
+test_policy:
+  required:
+    - "workflow YAML parse"
+    - "git diff --check"
+    - "secret実値スキャン"
+  not_required:
+    - "unit test"
+    - "実際のcron発火待ちE2E"
+  skip_reason:
+    "実際のcron発火待ちE2E": "有効化後の初回cronはHuman監視。本Taskは設定反映とdocs同期が本体"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "B-1ゲートを満たしているか"
+    - "weeklyが同時有効化されていないか"
+    - "rollback手順が最低限記載されているか"
+
+human_decision_points:
+  - "本PRの merge = schedule有効化の最終承認としてよいか"
+
+stop_conditions:
+  - "B-1 Decision Log が無い、または B-0"
+  - "Human明示承認が得られない"
+  - "weekly有効化が必要に見える"
+
+notes:
+  - "依存: task-batch-daily-schedule-enable-schedule-decision 完了かつ B-1"
