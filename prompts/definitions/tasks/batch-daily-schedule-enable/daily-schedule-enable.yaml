@@ -106,7 +106,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "daily-schedule-enable"
-  name: "chore/task-PLACEHOLDER-daily-schedule-enable"
+  name: "chore/task-1792-daily-schedule-enable"
   base: "chore/epic-1789-batch-daily-schedule-enable"
   target: "chore/epic-1789-batch-daily-schedule-enable"
 

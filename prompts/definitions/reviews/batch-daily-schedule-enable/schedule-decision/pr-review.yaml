@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: 1789
+    number: 1791
   parent_epic_issue: 1789
   parent_epic_branch: "chore/epic-1789-batch-daily-schedule-enable"
   task_definition: "prompts/definitions/tasks/batch-daily-schedule-enable/schedule-decision.yaml"

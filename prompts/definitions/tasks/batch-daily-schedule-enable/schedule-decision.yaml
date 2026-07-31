@@ -110,7 +110,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "schedule-decision"
-  name: "docs/task-PLACEHOLDER-schedule-decision"
+  name: "docs/task-1791-schedule-decision"
   base: "chore/epic-1789-batch-daily-schedule-enable"
   target: "chore/epic-1789-batch-daily-schedule-enable"
 
