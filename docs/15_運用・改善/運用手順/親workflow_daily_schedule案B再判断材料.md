@@ -151,20 +151,22 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | **B-1** | Human明示承認後、daily scheduleのみ有効化（weeklyは無効維持） | high技術検証を満たした状態で設計 §16.2 へ進める | Scaffold定期取込・監視・rollbackの受容判断が必要 |
 | **B-2** | weeklyも同時に有効化 | 早期に全定期運用 | weekly D1未実施のため **非推奨** |
 
-**推奨（推論）:** high技術検証は完了したため、次は Human 判断ゲート。Scaffold定期取込・監視・rollbackを許容できる場合は B-1、未整備なら B-0を継続する。AIは採否を確定しない。
+**推奨（推論・当時）:** high技術検証は完了したため、次は Human 判断ゲート。Scaffold定期取込・監視・rollbackを許容できる場合は B-1、未整備なら B-0を継続する。
+
+**Human採択（2026-07-31）:** **B-0（慎重案）**。[Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-daily-schedule-enable-b0.md) を正とする。監視/rollback最小手順整備後に B-1 を再判断する。B-2は不採用維持。
 
 ---
 
 ## 8. Human判断ゲート
 
-以下は Human が確定する（AI は確定しない）。
+| No | 論点 | 状態（2026-07-31） |
+| --: | ---- | ---- |
+| 1 | B-0 vs B-1 | **Human採択: B-0**。B-1は最小手順整備後に再判断 |
+| 2 | #1607未完了・Scaffold前提の定期運用 | **無期限許容しない**。B-0のため定期開始しない。将来の期限付き試行は別Decision |
+| 3 | 監視・rollback・通知準備 | **現状不十分 → 最小手順を追加**（[監視・rollback最小手順](./親workflow_daily_schedule監視・rollback最小手順.md)） |
+| 4 | `on.schedule` コメント解除 | **未実施**。B-1再採択後も別PR・Human明示承認必須 |
 
-1. high 技術検証完了を踏まえ、B-1（daily schedule 有効化）へ進むか、B-0（無効継続）とするか。
-2. #1607（本番 egress）未完了・**Scaffold 前提のまま定期運用**を許容するか。
-3. Slack 失敗通知の実送信・メンション運用、監視・rollback 手順の準備で十分か。
-4. **`on.schedule` のコメント解除（= 定期開始）は、本ゲート通過後に別 PR で Human 明示承認のもと実施する。**
-
-> production / 定期実行の最終承認は Human 専任。本書および #1732 は無承認の定期開始を含まない（#1637 out_of_scope を継承）。
+> production / 定期実行の最終承認は Human 専任。無承認の定期開始を含まない（#1637 out_of_scope を継承）。
 
 ---
 
@@ -175,7 +177,8 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | Slack 失敗通知 E2E / 通知先分離 | test / chore | **#1735 / #1739 完了**（GHA / UI確認済み） |
 | daily 親 D1 再実行 | test | **#1742 完了**（親全体 PASS、BATCH-017 success） |
 | weekly / manual D1 相当 | test | weekly 固有 job の実ランタイム検証・記録 |
-| （Human 承認後のみ）daily schedule 有効化 | chore | `on.schedule` コメント解除。別 PR・Human 明示承認必須 |
+| （Human 承認後のみ）daily schedule 有効化 | chore | #1792。**B-0採択のため延期**。B-1再採択＋Human明示承認後のみ |
+| 監視・rollback最小手順 | docs | **#1791 で追加**（B-1再判断の前提） |
 
 ---
 
@@ -197,3 +200,4 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | 2026-07-30 | AI Review対応: §5.2 コスト観点（推論/未確認）を追記 |
 | 2026-07-30 | #1735 Slack失敗通知E2E結果を反映（GHA PASS / UIはHuman確認） |
 | 2026-07-30 | #1739 通知先分離UI確認・#1742 daily親D1再検証PASSを反映。high技術検証完了 |
+| 2026-07-31 | #1791: Human慎重案で **B-0採択**。Decision Log・監視/rollback最小手順へ接続。#1792は延期 |

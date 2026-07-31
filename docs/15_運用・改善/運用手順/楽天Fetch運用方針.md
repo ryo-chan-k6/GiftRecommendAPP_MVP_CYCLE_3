@@ -399,10 +399,11 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 
 ### 11.2 schedule判断
 
-- 楽天live葉の低値手動検証が完了している
+- 楽天live葉の低値手動検証が完了している（local。GHA楽天HTTPは当面禁止）
 - 429、cursor、Raw保存、ログの運用確認が完了している
 - 親workflowの既知のPARTIAL要因が解消またはHumanにより許容されている
 - schedule有効化について別途Human明示承認がある
+- **2026-07-31:** daily scheduleは [B-0 Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-daily-schedule-enable-b0.md) により**無効継続**。B-1再判断前に[監視・rollback最小手順](./親workflow_daily_schedule監視・rollback最小手順.md)を前提とする
 
 ---
 
@@ -428,6 +429,8 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | [親workflow手動検証結果 D1](./親workflow手動検証結果_D1.md) | 親dispatchの既知結果 |
 | [BATCH import連鎖 GHA live化メモ C3](./BATCH_import連鎖_GHA_live化メモ_C3.md) | GHAで楽天Scaffold・DB/Storage liveの分離実績 |
 | [BATCH-001〜004 local live 検証結果（#1765）](./楽天Fetch_local_live検証結果_1765.md) | Run予算実装・UT結果・local パターンB（実楽天HTTP）実施結果。GHA楽天HTTPは対象外 |
+| [親workflow daily schedule 案B再判断材料](./親workflow_daily_schedule案B再判断材料.md) | schedule有効化判断材料。**2026-07-31: B-0採択** |
+| [親workflow daily schedule 監視・rollback最小手順](./親workflow_daily_schedule監視・rollback最小手順.md) | B-1再判断前の停止・復旧最低ライン |
 
 ---
 
@@ -443,3 +446,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-07-31 | #1765: BATCH-003 CLI（`--pages-per-run` 等）を運用概念と対応付け。local live検証結果を追加 |
 | 2026-07-31 | #1775 AI Review対応: §5.2 / §5.3.4 の CLI TBD 残存を解消。§10 No.1 / §12 に fetch_plan Log を接続 |
 | 2026-07-31 | #1785 AI Review対応: §5.2 / §10 No.1 / §11.1 の「実HTTP未実施」表記を検証結果（local パターンB実施済み）と同期。GHA楽天HTTP禁止は維持 |
+| 2026-07-31 | #1791: §11.2 / §12 に daily schedule B-0採択と監視・rollback最小手順を接続 |
