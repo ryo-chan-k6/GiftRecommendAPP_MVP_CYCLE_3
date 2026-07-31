@@ -20,7 +20,7 @@ target:
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/ops-plan-decision.yaml"
   target_branch: null
   parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
-  parent_epic_branch: null
+  parent_epic_branch: "chore/epic-1798-batch-data-collect-ops"
 
 commands:
   primary: "/review-pr"
@@ -49,5 +49,5 @@ review_points:
   - "正本docsと矛盾していないか"
 
 notes:
-  - "Issue / Branch / PR / parent.epic_* 実番号は /start-epic・/start-task 後に反映する（現状 null 許容）"
+  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue/PRは /start-task・/create-pr 後に反映"
   - "Human Reviewは省略しない"

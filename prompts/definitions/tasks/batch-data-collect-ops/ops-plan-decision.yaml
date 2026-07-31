@@ -12,8 +12,8 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 1798
+  epic_branch: "chore/epic-1798-batch-data-collect-ops"
   related_issues:
     - 1745
     - 1789

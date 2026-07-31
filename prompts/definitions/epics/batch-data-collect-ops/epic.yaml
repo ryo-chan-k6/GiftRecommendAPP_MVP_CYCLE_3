@@ -161,7 +161,7 @@ output:
     path: "ai-logs/human-decisions/"
 
 deliverables:
-  - "Epic Issue / Branch（`/start-epic` 後に番号確定）"
+  - "Epic Issue #1798 / Branch chore/epic-1798-batch-data-collect-ops"
   - "本格収集の運用枠 Human Decision Log"
   - "local継続収集の運用結果docs（secretなし）"
   - "監視閾値の実測見直し結果（運用方針§5.3.5同期）"
@@ -181,7 +181,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "batch-data-collect-ops"
-  name: null
+  name: "chore/epic-1798-batch-data-collect-ops"
   base: "develop"
   target: "develop"
   worktree_required: true
@@ -277,4 +277,4 @@ notes:
   - "子Task候補: (1) 運用枠 Human Decision Log (2) local継続収集＋監視実測/見直し"
   - "#1792 / #1607 は吸収しない。B-1は別Decision"
   - "work_mode=ai-agent。local live実行の実secretはHuman環境。値はcommitしない"
-  - "Branch名は /start-epic 後に chore/epic-<n>-batch-data-collect-ops へ確定"
+  - "Epic Issue #1798 / Branch chore/epic-1798-batch-data-collect-ops"
