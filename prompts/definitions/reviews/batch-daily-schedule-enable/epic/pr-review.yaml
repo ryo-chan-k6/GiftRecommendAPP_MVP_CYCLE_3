@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1796
   issue:
     number: 1789
   task_definition: "prompts/definitions/epics/batch-daily-schedule-enable/epic.yaml"
@@ -50,5 +50,5 @@ review_points:
   - "Epic PR target が develop、Closes が親Epic Issue か"
 
 notes:
-  - "Issue番号 / Branch / PR は起票・PR作成後に反映する"
+  - "Epic PR #1796（base: develop / head: chore/epic-1789-batch-daily-schedule-enable）"
   - "Human Reviewは省略しない"
