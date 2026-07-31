@@ -15,7 +15,7 @@ branch:
 
 target:
   pr:
-    number: null
+    number: 1779
   issue:
     number: 1776
   task_definition: "prompts/definitions/tasks/batch-live-ai-lane/embedding-live.yaml"
@@ -53,7 +53,7 @@ review_points:
   - "stg検証が max_items=1 / queue_batch_size=1 / manual dispatch / 目安 $0.01/run（または未実施理由）か"
   - "meaning/retry へのlive伝播がある場合、既定falseが維持されているか"
   - "production / schedule / Secret変更 / BATCH-010実LLM / DDL / OpenAPI / generated が混入していないか"
-  - "#1750 develop merge前に実装・stg実API呼出をしていないか（依存ゲート）"
+  - "#1750 develop merge・Task Branch取り込み後に実装・stg実API呼出を開始した履歴か（依存ゲート）"
   - "Related to / PR target = 親Epic Branch feature/epic-1768-batch-live-ai-lane"
   - "Review Definition が PR head に含まれているか"
 
@@ -63,4 +63,4 @@ notes:
   - "contract_gate不要（generated想定なし）"
   - "Test + security + CI/CD 観点を必須とする"
   - "Human Review / merge判断は ryo-chan-k6"
-  - "/work-issue は #1750 develop merge + develop取り込み完了まで開始不可"
+  - "/work-issue 依存ゲートは2026-07-31に解除済み"
