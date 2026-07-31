@@ -19,6 +19,10 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from batch.application.current_versions import (
+    CurrentVersionResolveError,
+    CurrentVersionResolver,
+)
 from batch.application.item_embedding.adapter import (
     ItemEmbeddingGeneratorPort,
     build_scaffold_adapter,
@@ -82,11 +86,15 @@ def _is_batch_already_running(tracker: JobRunTracker) -> bool:
     return starts > completes
 
 
-def resolve_config_version(*, item_id: str) -> ConfigResolveHint:
-    """MOD-RECO-003 相当: model_type=embedding / is_current（scaffold 固定）."""
+def resolve_config_version(
+    *,
+    item_id: str,
+    model_version_id: str = DEFAULT_EMBEDDING_MODEL_VERSION,
+) -> ConfigResolveHint:
+    """MOD-RECO-003 相当の解決結果を BATCH-015 設定へ変換する."""
 
     _ = item_id
-    return ConfigResolveHint(model_version_id=DEFAULT_EMBEDDING_MODEL_VERSION)
+    return ConfigResolveHint(model_version_id=model_version_id)
 
 
 class ItemEmbeddingJob:
@@ -95,11 +103,17 @@ class ItemEmbeddingJob:
         *,
         repositories: ItemEmbeddingRepositories,
         generator: ItemEmbeddingGeneratorPort | None = None,
+        version_resolver: CurrentVersionResolver | None = None,
         job_run_tracker: JobRunTracker | None = None,
         logger: BatchLogger | None = None,
     ) -> None:
         self._repos = repositories
         self._generator = generator or build_scaffold_adapter()
+        self._version_resolver = version_resolver or (
+            CurrentVersionResolver(repositories.db_reader)
+            if repositories.db_reader is not None
+            else None
+        )
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
 
@@ -123,6 +137,22 @@ class ItemEmbeddingJob:
     ) -> ItemEmbeddingJobResult:
         bound_logger = self._logger.bind(job_run_id=job_run_id, trace_id=trace_id or job_run_id)
         result = ItemEmbeddingJobResult(batch_id=BATCH_ID, job_run_id=job_run_id, status="failed")
+
+        # current model は tracker / Queue / item_embedding の書込より前に解決する。
+        # 欠落・複数・非 UUID は GRS-CFG-003 で安全に停止し、部分書込を残さない。
+        try:
+            model_version_id = (
+                self._version_resolver.resolve_embedding_model()
+                if self._version_resolver is not None
+                else DEFAULT_EMBEDDING_MODEL_VERSION
+            )
+        except CurrentVersionResolveError as exc:
+            result.error_codes.append(exc.code)
+            return result
+        config = resolve_config_version(
+            item_id="",
+            model_version_id=model_version_id,
+        )
 
         if _is_batch_already_running(self._tracker):
             result.error_codes.append("GRS-BAT-003")
@@ -174,6 +204,7 @@ class ItemEmbeddingJob:
                         run_at=run_at,
                         result=result,
                         trace_id=trace_id or job_run_id,
+                        config=config,
                     )
                 except ItemEmbeddingError as exc:
                     self._fail_one(seed=seed, code=exc.code, summary=exc.message, result=result)
@@ -264,6 +295,7 @@ class ItemEmbeddingJob:
         run_at: datetime,
         result: ItemEmbeddingJobResult,
         trace_id: str,
+        config: ConfigResolveHint,
     ) -> None:
         qid = seed.item_generation_queue_id
 
@@ -279,12 +311,14 @@ class ItemEmbeddingJob:
 
         result.claimed_count += 1
 
-        config = resolve_config_version(item_id=seed.item_id)
         self._mark_phase(result, "resolve_config")
 
         _ = self._repos.load_item(item_id=seed.item_id)
 
-        handoff = self._repos.load_hash_handoff(item_id=seed.item_id)
+        handoff = self._repos.load_hash_handoff(
+            item_id=seed.item_id,
+            model_version_id=config.model_version_id,
+        )
         if handoff is None:
             raise ItemEmbeddingError("GRS-BAT-008", "embedding hash handoff missing")
         if not is_valid_embedding_input_hash(handoff.embedding_input_hash):

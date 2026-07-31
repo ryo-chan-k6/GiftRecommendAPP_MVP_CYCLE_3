@@ -1,4 +1,4 @@
--- Master seed: model_version / ranking_config / matching_config / feature_normalization_version
+-- Master seed: model_version / ranking_config / matching_config / feature_normalization_version / normalization_rule
 
 BEGIN;
 
@@ -46,5 +46,33 @@ WHERE NOT EXISTS (
     AND is_current = true
     AND parameter_json = '{"center_feature": 0.5, "k_feature": 4.0}'::jsonb
 );
+
+-- normalization_rule: current semantic_config_version と current sigmoid feature_normalization_version の binding
+-- ID はハードコードせず SELECT で current 行を解決するため、current が更新された再実行でも binding が追随する。
+-- uq_normalization_rule_version (semantic_config_version_id) により version あたり 1 行。既存行は DELETE せず再 binding する。
+INSERT INTO normalization_rule (
+  semantic_config_version_id,
+  normalization_method,
+  feature_normalization_version_id,
+  is_active
+)
+SELECT
+  scv.semantic_config_version_id,
+  'sigmoid',
+  fnv.feature_normalization_version_id,
+  true
+FROM semantic_config_version scv
+JOIN semantic_config sc
+  ON sc.semantic_config_id = scv.semantic_config_id
+JOIN feature_normalization_version fnv
+  ON fnv.normalization_method = 'sigmoid'
+ AND fnv.is_current = true
+WHERE sc.config_name = 'mvp_semantic_config'
+  AND sc.is_active = true
+  AND scv.is_current = true
+ON CONFLICT ON CONSTRAINT uq_normalization_rule_version DO UPDATE
+SET normalization_method = EXCLUDED.normalization_method,
+    feature_normalization_version_id = EXCLUDED.feature_normalization_version_id,
+    is_active = EXCLUDED.is_active;
 
 COMMIT;

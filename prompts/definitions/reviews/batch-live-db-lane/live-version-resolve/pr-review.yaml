@@ -1,0 +1,64 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-live-db-lane-live-version-resolve-pr"
+  title: "batch-live-db-lane BATCH-010〜014 live経路 PRレビュー"
+  summary: "Task #1762のRule-first 010 DB live、010〜014 current UUID解決、meaning複合014到達、unit・stg検証をレビューする。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr:
+    number: 1772
+  issue:
+    number: 1762
+  task_definition: "prompts/definitions/tasks/batch-live-db-lane/live-version-resolve.yaml"
+  parent_epic_issue: "[Epic]batch-live-db-lane:DB系live切替"
+  parent_epic_branch: "feature/epic-1750-batch-live-db-lane"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "010が実LLMなしのRule-first DB liveに限定され、item_semantic保存とqueue遷移を行うか"
+  - "current version resolverがsemantic / normalization / embedding modelの実UUIDを一意に解決するか"
+  - "current行の欠落・複数・非UUIDをDB書込前に安全に失敗させるか"
+  - "010〜014のversion伝播とDB FK整合が仕様・DDLと一致するか"
+  - "011の主経路条件を不必要に緩和せず、009→010→011の責務を守るか"
+  - "015 live・実Embedding API・OPENAI_API_KEY参照が混入していないか"
+  - "workflowがstg + STG_DATABASE_URL、UUID job_run_id、最小permissionsであるか"
+  - "master seedのnormalization_rule追加が非破壊・冪等で、current更新時にbindingが追随するか"
+  - "master seedがuq_normalization_rule_versionと既存FK制約に反しないか"
+  - "unit testが正常・current欠落/複数/非UUID・binding欠落・live DbReader経路・経路条件を検証するか"
+  - "stg低件数検証結果または未実施理由が結果docsにsecretなしで記録されているか"
+  - "DDL / migration / OpenAPI / generated差分がないか"
+  - "seed差分がsupabase/seeds/masters/09_config_versions.sqlのnormalization_rule追加に限定されているか"
+  - "Related to #1762、PR targetが親Epic Branch、Review DefinitionがPR headに含まれるか"
+
+notes:
+  - "BATCH-015 liveは#1768のscopeであり本PRに含めない"
+  - "master seedのnormalization_rule binding追加は#1762のHuman承認済み例外（2026-07-31）"
+  - "Human Review / merge判断はryo-chan-k6"

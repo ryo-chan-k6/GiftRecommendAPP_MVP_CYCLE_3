@@ -1,0 +1,112 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-feature-integration-rule-seed-epic-pr"
+  title: "Feature Integration Rule Seed整備 Epic PRレビュー"
+  summary: "feature_integration_rule master seed整備 Epic の develop 向け PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  no_branch: true
+  worktree_required: false
+
+target:
+  pr: 1760
+  issue: 1756
+  epic_definition: "prompts/definitions/epics/feature-integration-rule-seed/epic.yaml"
+  source_branch: "feature/epic-1756-feature-integration-rule-seed"
+  target_branch: "develop"
+  parent_epic_issue: null
+  parent_epic_branch: null
+
+commands:
+  primary: "/review-pr"
+  allowed:
+    - "/review-pr"
+    - "/summarize-work"
+  next:
+    approve_for_human_review: "Human Review"
+    request_changes: "/fix-review-comments"
+    needs_human_decision: "Human Decision"
+    blocked: null
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "support-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    contract: null
+    security: null
+  next:
+    fixer: "fixer-ai"
+    human: "human-reviewer"
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+input:
+  epic_definition:
+    path: "prompts/definitions/epics/feature-integration-rule-seed/epic.yaml"
+    required: true
+  issue:
+    number: 1756
+    required: true
+  pr:
+    number: 1760
+    required: true
+  diff:
+    required: true
+    compare_with: "develop"
+  docs:
+    - path: "docs/06_実装設計/database/feature_integration_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: true
+  templates:
+    review_outputs:
+      pr_comment: "prompts/templates/review/ai-review-comment.md"
+      slack: "prompts/templates/slack/ai-review-result.md"
+
+review_points:
+  - "子 Task #1757 / PR #1759 の成果が Epic Branch に統合されているか"
+  - "epic_scope.allowed_paths 外の変更が含まれていないか"
+  - "forbidden_paths（migrations / apps 実装 / contracts）の変更がないか"
+  - "feature_integration_rule 48行 seed が正本 weight / 冪等UPSERTと一致するか"
+  - "初期データ定義書の投入順・期待行数・検証クエリが整合するか"
+  - "local seed検証結果がPR本文に記載されているか"
+  - "stg手動投入が未実施である旨が明示されているか"
+  - "PR target が develop か、Closes #1756 か"
+  - "secret 実値・.env 実値がないか"
+
+acceptance_criteria:
+  - "Blocker / Mustが解消、またはHuman判断待ちとして明示される"
+  - "結論がHuman Reviewへ進行可 / 修正後に再AI Review / Human判断待ちのいずれか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "通常のAI ReviewはPRコメントを正とする"
+
+notes:
+  - "PR番号確定後に target.pr / input.pr.number を更新する"
+  - "stg投入はHumanが実施する。本Epic PRのmerge判断とは分離してよい"

@@ -2,13 +2,13 @@ name: Batch Item Generation Queue
 
 # BATCH-009 商品意味生成キュー登録（独立子 workflow）
 # 正本: BATCH-009 バッチ仕様書 §18.1 No.1 — workflow_call / workflow_dispatch
-# 親 item-import / existing-item-recheck チェーン全体改修は本 Epic では行わない
+# stg live: DB接続は Environment `stg` の STG_DATABASE_URL を使用する
 
 on:
   workflow_call:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -23,7 +23,7 @@ on:
         type: string
         default: "rakuten"
       diff_batch_run_id:
-        description: "Consume product_diff_result for this BATCH-006 batch_run_id"
+        description: "Consume product_diff_result for this BATCH-006 batch_run_id (pipeline UUID)"
         required: false
         type: string
         default: ""
@@ -35,7 +35,7 @@ on:
   workflow_dispatch:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -50,7 +50,7 @@ on:
         type: string
         default: "rakuten"
       diff_batch_run_id:
-        description: "Consume product_diff_result for this BATCH-006 batch_run_id"
+        description: "Consume product_diff_result for this BATCH-006 batch_run_id (pipeline UUID)"
         required: false
         type: string
         default: ""
@@ -71,6 +71,9 @@ jobs:
   item-generation-queue:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    environment: stg
+    env:
+      DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -90,16 +93,16 @@ jobs:
         id: run_id
         run: |
           INPUT_ID="${{ inputs.job_run_id }}"
-          if [ -n "$INPUT_ID" ]; then
+          DIFF_ID="${{ inputs.diff_batch_run_id }}"
+          if [ -n "$INPUT_ID" ] && [ "$INPUT_ID" != "$DIFF_ID" ]; then
             echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-009 scaffold demo
-        # Real DB client is not enabled in this Task.
-        # Secrets must never be printed. Use --scaffold-demo for CI smoke.
-        # Must NOT write item / product_diff_result / call LLM / Embedding API.
+      - name: Run BATCH-009 live
+        # Secrets must never be printed.
+        # Must NOT write item / product_diff_result or call LLM / Embedding API.
         working-directory: apps/batch
         run: |
           MAX_ARGS=()
@@ -119,7 +122,6 @@ jobs:
             CODE_ARGS+=(--external-item-codes "${{ inputs.external_item_codes }}")
           fi
           uv run python -m batch.application.item_generation_queue \
-            --scaffold-demo \
             --job-run-id "${{ steps.run_id.outputs.value }}" \
             "${MAX_ARGS[@]}" \
             "${SOURCE_ARGS[@]}" \

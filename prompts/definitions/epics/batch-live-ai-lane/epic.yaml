@@ -1,0 +1,338 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-live-ai-lane"
+  title: "batch-live-ai-lane:BATCH-015 Embedding live切替"
+  summary: "BATCH-015 Item Embedding の GHA stg live化（明示live時のみ実Embedding API）。DBレーン(#1750)と分離したAI liveレーン。機能・領域単位Epic（例外）。統括は#1745。"
+  workstream_key: "batch-live-ai-lane"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_form: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  #1762 の方針確認で BATCH-015 も live 化する意向が示された。
+  親Epic #1750（batch-live-db-lane）は BATCH-015 AI live を明示的に out of scope としているため、
+  DB liveレーンへ混在させず本 Epic（AI liveレーン）へ分離する。
+  既存完了: #1610 Embedding HTTP client、#1710 api_call_log DB配線、#1566 TV-005疎通。
+  #1772（CurrentVersionResolver + BATCH-015 resolver配線）は #1750 Epic Branch へ merge 済みだが、
+  #1750 は develop 未反映。本 Epic Branch は develop 起点を維持し、#1750 Branch を base にしない。
+  実装開始は #1750 が develop へ merge された後まで停止する（Human確定 2026-07-31）。
+
+objective: |
+  BATCH-015 の GHA 実行経路を、明示 live（`--live-embedding` / 既定 off）時のみ
+  stg 実 Embedding API を呼ぶ安全な live 化へ切り替え、低件数手動検証と結果docsを残す。
+  production / schedule / Secret値の作成・変更・表示は行わない。
+
+scope:
+  - "BATCH-015 `.github/workflows/batch-item-embedding.yml` の stg live化"
+  - "明示live時だけ `--live-embedding`。既定off / scaffold安全性維持"
+  - "environment: stg、STG_DATABASE_URL、OPENAI_API_KEY secret参照、UUID job_run_id"
+  - "current embedding model_version_id resolver（#1772 / #1750 develop merge 依存）"
+  - "api_call_log DB記録（既存 #1710 経路を利用）"
+  - "unit test / YAML検証 / secret check"
+  - "stg 1件 manual live検証（max_items=1, queue_batch_size=1、目安コスト上限 $0.01/run）と結果docs"
+  - "必要なら meaning/retry 複合側へ明示live入力を安全に伝播（既定false維持）"
+  - "単一子Task（embedding-live）/ 1PR へのまとめ"
+  - "Epic / Task / Review Definition 整備"
+
+out_of_scope:
+  - "BATCH-010 実LLM live"
+  - "production、schedule、Secret値の作成・変更・表示"
+  - "DDL / migration、OpenAPI / generated、apps/web|api|reco"
+  - "大量実行、rate-limit試験"
+  - "#1750 merge操作そのもの"
+  - "BATCH-001〜004 楽天live、親 on.schedule 有効化"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/batch-live-ai-lane/**"
+    - "prompts/definitions/tasks/batch-live-ai-lane/**"
+    - "prompts/definitions/reviews/batch-live-ai-lane/**"
+    - ".github/workflows/batch-item-embedding.yml"
+    - ".github/workflows/batch-item-meaning-generation.yml"
+    - ".github/workflows/batch-retry-failed-items.yml"
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - "apps/batch/src/batch/application/current_versions.py"
+    - "apps/batch/src/batch/infrastructure/external_ai/**"
+    - "apps/batch/tests/**"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/BATCH-015_*"
+    - "docs/15_運用・改善/運用手順/**"
+  forbidden_paths:
+    - "supabase/migrations/**"
+    - "db/ddl/**"
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - ".github/workflows/batch-item-semantic.yml"
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+  child_task_areas:
+    - "github-actions"
+    - "batch"
+    - "docs"
+    - "verification"
+    - "unit-test"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-015 の位置づけ・入出力"
+    - path: "docs/06_実装設計/batch/BATCH-015_Item Embedding生成バッチ仕様書.md"
+      required: true
+      purpose: "BATCH-015 仕様・live/scaffold・api_call_log"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "workflow_dispatch / schedule方針（schedule有効化はしない）"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ横串整合・本実装ギャップ一覧.md"
+      required: true
+      purpose: "scaffold残ギャップ・AI live分離"
+    - path: "docs/15_運用・改善/運用手順/BATCH_import連鎖_GHA_live化メモ_C3.md"
+      required: true
+      purpose: "stg Environment / STG_DATABASE_URL / UUID 方針参照"
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      required: false
+      purpose: "手動検証結果の記載粒度参照"
+  files:
+    - path: ".github/workflows/batch-item-embedding.yml"
+      required: true
+      purpose: "BATCH-015 葉 workflow（live化対象）"
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      required: false
+      purpose: "複合経路への明示live伝播（必要時）"
+    - path: "apps/batch/src/batch/application/item_embedding/**"
+      required: true
+      purpose: "BATCH-015 CLI / live flag"
+  issues:
+    - number: 1745
+      purpose: "統括ロードマップ（formal parentではない）"
+    - number: 1750
+      purpose: "DB liveレーン。develop merge後に本Epic実装開始可"
+    - number: 1610
+      purpose: "Embedding HTTP client（完了・参照）"
+    - number: 1710
+      purpose: "api_call_log DB配線（完了・参照）"
+    - number: 1566
+      purpose: "TV-005 疎通（完了・参照）"
+  prs:
+    - number: 1772
+      purpose: "CurrentVersionResolver + BATCH-015配線。#1750 Branchへmerge済み・develop未反映"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/batch/BATCH-015_*"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/epics/batch-live-ai-lane/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-live-ai-lane/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-live-ai-lane/**"
+      action: "create"
+      required: true
+    - path: ".github/workflows/batch-item-embedding.yml"
+      action: "update"
+      required: true
+    - path: ".github/workflows/batch-item-meaning-generation.yml"
+      action: "update"
+      required: false
+    - path: ".github/workflows/batch-retry-failed-items.yml"
+      action: "update"
+      required: false
+    - path: "apps/batch/**"
+      action: "update"
+      required: true
+  tests:
+    - path: "apps/batch/tests/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue #1768 / Branch feature/epic-1768-batch-live-ai-lane"
+  - "単一子Task #1776（embedding-live）Issue / Branch feature/task-1776-embedding-live / Review Definition"
+  - "BATCH-015 GHA stg live化（明示liveのみ）"
+  - "unit test / YAML検証 / secret check"
+  - "stg 1件 manual live検証結果docs（secretなし）"
+
+acceptance_criteria:
+  - "Epic Issueタイトルが [Epic]batch-live-ai-lane:BATCH-015 Embedding live切替 形式"
+  - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
+  - "Epic Branch が develop 起点・PR target が develop"
+  - "単一子Taskが起票され、GHA live配線・安全ガード・unit test・stg低件数検証を1PRにまとめる方針が明記されている"
+  - "明示live時のみ実Embedding APIを呼び、既定off/scaffold安全性が維持される"
+  - "environment: stg / STG_DATABASE_URL / OPENAI_API_KEY secret参照 / UUID job_run_id が満たされる"
+  - "current embedding model_version_id resolver（#1772依存）と api_call_log（#1710経路）が利用される"
+  - "stg検証が max_items=1 / queue_batch_size=1 / 目安コスト上限 $0.01/run / manual dispatch限定"
+  - "production / schedule / Secret値作成変更表示 / BATCH-010実LLM / DDL / OpenAPI が混入していない"
+  - "#1750 develop merge前は実装（/work-issue）を開始していない"
+  - "secret実値を成果物・ログに含めない"
+
+branch:
+  no_branch: false
+  summary: "batch-live-ai-lane"
+  name: "feature/epic-1768-batch-live-ai-lane"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-07-31"
+    due_date: "2026-08-02"
+
+issue:
+  number: 1768
+  unit: "epic"
+  type: "feature"
+  area: "batch"
+
+dependencies:
+  epics:
+    - issue: 1750
+      purpose: "DB liveレーン。CurrentVersionResolver（#1772）を含む。develop merge後に本Epic実装開始可。本Epic Branchはdevelop起点を維持し#1750 Branchをbaseにしない"
+    - issue: 1745
+      purpose: "統括umbrella（formal parentではない）"
+  issues:
+    - issue: 1610
+      purpose: "Embedding HTTP client（完了）"
+    - issue: 1710
+      purpose: "api_call_log DB配線（完了）"
+    - issue: 1566
+      purpose: "TV-005疎通（完了）"
+  prs:
+    - number: 1772
+      purpose: "CurrentVersionResolver + BATCH-015配線。#1750 Branchへmerge済み・develop未反映"
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "epic-batch-live-db-lane (#1750 develop merge必須。未mergeでもIssue化・Task Branch作成はHuman承認済み例外)"
+  blocks: []
+  exclusive_files:
+    - ".github/workflows/batch-item-embedding.yml"
+    - "apps/batch/src/batch/application/item_embedding/**"
+    - "prompts/definitions/epics/batch-live-ai-lane/**"
+    - "prompts/definitions/tasks/batch-live-ai-lane/**"
+    - "prompts/definitions/reviews/batch-live-ai-lane/**"
+  conflict_risk: "high"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "unit test（apps/batch関連）"
+    - "workflow YAML検証"
+    - "secret check"
+    - "stg 1件 manual live検証"
+  commands: []
+  manual_checks:
+    - "workflow_dispatch 限定で max_items=1 / queue_batch_size=1"
+    - "明示live時のみ OpenAI Embedding が呼ばれること"
+    - "既定（live off）で scaffold 安全性が維持されること"
+    - "目安コストが $0.01/run を超えないこと"
+  not_required:
+    - "production live"
+    - "schedule実行"
+    - "rate-limit試験"
+  skip_reason:
+    "production live": "out_of_scope"
+    "schedule実行": "manual dispatch限定"
+    "rate-limit試験": "out_of_scope"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "明示liveのみ・既定offが守られているか"
+    - "environment: stg / secret参照のみ（実値なし）か"
+    - "production / schedule / Secret変更が混入していないか"
+    - "#1750 develop merge依存ゲートが守られているか"
+    - "Epic PR target が develop か"
+    - "secret実値が含まれていないか"
+
+human_decision_points:
+  - "（確定済 2026-07-31）Epic Definition・Review Definition・単一子Taskを今準備する"
+  - "（確定済 2026-07-31）実装開始は #1750 Epic Branch が develop へ merge された後まで停止"
+  - "（確定済 2026-07-31）stg実Embedding検証は既存 OPENAI_API_KEY の secret参照のみ（実値を表示・変更しない）"
+  - "（確定済 2026-07-31）manual dispatch限定、max_items=1、queue_batch_size=1、目安コスト上限 $0.01/run"
+  - "（確定済 2026-07-31）GHA live配線・安全ガード・unit test・stg低件数検証を単一子Task/1PRにまとめる"
+  - "（確定済 2026-07-31）production / schedule / secret変更は禁止"
+  - "（確定済 2026-07-31）#1750未mergeでも Task Issue化・Task Branch作成は承認済み例外。/work-issue は開始不可"
+  - "（確定済 2026-07-31）#1750 merge後、develop を #1768 Epic Branch へ取り込み、その後 Task Branch へ取り込むまで /work-issue 禁止"
+
+stop_conditions:
+  - "#1750 が develop 未mergeのまま /work-issue または実装・stg実API呼出を開始しようとした場合"
+  - "#1750 merge後でも develop を Epic Branch / Task Branch へ取り込む前に実装を開始しようとした場合"
+  - "production / schedule / Secret値の作成・変更・表示が必要に見える場合"
+  - "BATCH-010 実LLM / DDL / OpenAPI / generated / apps/web|api|reco 変更が必要に見える場合"
+  - "大量実行や rate-limit 試験が必要に見える場合"
+  - "secret実値を成果物・ログに書こうとする場合"
+  - "Epic Branch を #1750 Branch 起点に切り替えようとする場合（develop起点維持）"
+
+operation_logging:
+  level: "standard"
+  enabled: true
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "通常はIssue/PR管理。依存ゲート・security・横断影響時のみai-logs。secret実値は記録しない"
+
+notes:
+  - "Epic Issue: #1768"
+  - "Epic Branch: feature/epic-1768-batch-live-ai-lane（develop起点）"
+  - "子Task Issue: #1776 / Branch: feature/task-1776-embedding-live"
+  - "機能・領域単位Epic（例外）。識別子単位の BATCH-015 Epic（#1479）とは別レーン"
+  - "統括#1745はformal parentではない"
+  - "子Task起票後も /work-issue は #1750 develop merge + develop取り込み完了まで禁止"

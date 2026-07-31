@@ -37,6 +37,11 @@ on:
         required: false
         type: string
         default: ""
+      live_embedding:
+        description: "Enable real OpenAI Embeddings HTTP"
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       job_run_id:
@@ -69,6 +74,11 @@ on:
         required: false
         type: string
         default: ""
+      live_embedding:
+        description: "Enable real OpenAI Embeddings HTTP"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: batch-item-embedding
@@ -81,6 +91,10 @@ jobs:
   item-embedding:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    environment: stg
+    env:
+      DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -101,14 +115,15 @@ jobs:
         run: |
           INPUT_ID="${{ inputs.job_run_id }}"
           if [ -n "$INPUT_ID" ]; then
+            python3 -c 'import sys, uuid; uuid.UUID(sys.argv[1])' "$INPUT_ID"
             echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-015 scaffold demo
-        # Real DB / OpenAI not enabled (scaffold-first). Secrets must never be printed.
-        # IF-VEC-BATCH-001 = item_embedding Upsert。IF-EXT-005 = Embedding API（スタブ）。
+      - name: Run BATCH-015 on stg DB
+        # Embedding は明示 live のみ実 API。既定 false は scaffold client + live DB。
+        # IF-VEC-BATCH-001 = item_embedding Upsert。IF-EXT-005 = Embedding API（scaffold / 明示 live）。
         # IF-DB-BATCH-015 = BATCH-014 handoff 消費のみ（hash 再算出禁止）。
         # IF-DB-BATCH-016 / BATCH-016 は触らない。Queue 終端 succeeded は本 Batch。
         working-directory: apps/batch
@@ -133,11 +148,15 @@ jobs:
           if [ -n "${{ inputs.queue_ids }}" ]; then
             QUEUE_ARGS+=(--queue-ids "${{ inputs.queue_ids }}")
           fi
+          LIVE_ARGS=()
+          if [ "${{ inputs.live_embedding }}" = "true" ]; then
+            LIVE_ARGS+=(--live-embedding)
+          fi
           uv run python -m batch.application.item_embedding \
-            --scaffold-demo \
             --job-run-id "${{ steps.run_id.outputs.value }}" \
             "${MAX_ARGS[@]}" \
             "${SOURCE_ARGS[@]}" \
             "${BATCH_ARGS[@]}" \
             "${ITEM_ARGS[@]}" \
-            "${QUEUE_ARGS[@]}"
+            "${QUEUE_ARGS[@]}" \
+            "${LIVE_ARGS[@]}"

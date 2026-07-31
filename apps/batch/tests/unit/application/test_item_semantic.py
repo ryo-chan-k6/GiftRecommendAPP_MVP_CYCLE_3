@@ -684,6 +684,126 @@ def test_explicit_queue_ids_subset() -> None:
     assert repos.queues["igq_skip"]["queue_status"] == "queued"
 
 
+# --- live DB 経路（#1762 current version 解決） ---
+
+_SEMANTIC_CONFIG_ID = "a1111111-1111-4111-8111-111111111101"
+_SEMANTIC_VERSION_ID = "a1111111-1111-4111-8111-111111111102"
+
+
+def _live_reader():
+    """master seed（supabase/seeds/masters）と同じ列・binding を再現した reader。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "semantic_config",
+        (
+            {
+                "semantic_config_id": _SEMANTIC_CONFIG_ID,
+                "config_name": "mvp_semantic_config",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "semantic_config_version",
+        (
+            {
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "semantic_config_id": _SEMANTIC_CONFIG_ID,
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_live",
+                "item_id": "it_live",
+                "generation_type": "semantic",
+                "queue_status": "queued",
+                "retry_count": 0,
+                "queued_at": _NOW,
+                "started_at": None,
+                "completed_at": None,
+                "error_message": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_live",
+                "source": "rakuten",
+                "external_item_code": "shop:live",
+                "item_name": "Live Gift",
+                "item_caption": "caption",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    return reader
+
+
+def test_live_db_reader_upserts_with_current_semantic_uuid() -> None:
+    """live 経路では scaffold 固定 version ではなく DB current UUID で upsert する。"""
+
+    reader = _live_reader()
+    db = ScaffoldDbWriter()
+    repos = ItemSemanticRepositories(db_writer=db, db_reader=reader)
+    result = ItemSemanticJob(repositories=repos).run(job_run_id="run-live")
+
+    assert result.status == "succeeded"
+    assert result.semantic_generated_count == 1
+    semantic_upserts = [c for c in db.upsert_calls if c["table"] == "item_semantic"]
+    assert len(semantic_upserts) == 1
+    upserted = semantic_upserts[0]["rows"][0]
+    assert upserted["semantic_config_version_id"] == _SEMANTIC_VERSION_ID
+    assert upserted["item_id"] == "it_live"
+    assert repos.written_item_semantic_rows[0]["semantic_config_version_id"] == (
+        _SEMANTIC_VERSION_ID
+    )
+    # BATCH-011 主経路条件（semantic + processing）を満たしたまま引き渡す
+    assert repos.queues["igq_live"]["queue_status"] == "processing"
+    terminal_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") != "processing"
+    ]
+    assert terminal_updates == []
+    assert any(c["table"] == "semantic_config_version" for c in reader.fetch_calls)
+
+
+def test_live_db_reader_resolver_failure_marks_queue_failed() -> None:
+    """current semantic version 欠落は既存の per-row failed 処理へ合流する。"""
+
+    reader = _live_reader()
+    reader.seed("semantic_config_version", ())
+    db = ScaffoldDbWriter()
+    repos = ItemSemanticRepositories(db_writer=db, db_reader=reader)
+    result = ItemSemanticJob(repositories=repos).run(job_run_id="run-live-fail")
+
+    assert result.status == "failed"
+    assert result.semantic_failed_count == 1
+    assert "GRS-CFG-002" in result.error_codes
+    assert repos.queues["igq_live"]["queue_status"] == "failed"
+    assert repos.written_item_semantic_rows == []
+    assert not any(c["table"] == "item_semantic" for c in db.upsert_calls)
+    failed_updates = [
+        c
+        for c in db.update_calls
+        if c["table"] == "item_generation_queue"
+        and c["set_values"].get("queue_status") == "failed"
+    ]
+    assert len(failed_updates) == 1
+    assert [log["code"] for log in repos.error_logs] == ["GRS-CFG-002"]
+
+
 def test_fixture_and_logs_have_no_secret_like_values() -> None:
     """§16 No.11: fixture / 結果に secret らしき文字列がない。"""
 

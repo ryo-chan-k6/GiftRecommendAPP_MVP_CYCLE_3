@@ -47,6 +47,14 @@ SYMBOLIC_FEATURE_CODES: tuple[str, ...] = (
 )
 
 
+class FeatureMetricAggregationError(ValueError):
+    """feature_distribution_metric の集計前提が崩れている入力不整合.
+
+    Job 層で ``GRS-VAL-001`` へ変換する。error code を Aggregator 側に持たせないため、
+    ここでは例外型のみを定義する（job.py への逆依存を作らない）。
+    """
+
+
 def compute_distribution_stats(values: Sequence[float]) -> DistributionStats:
     """value list から共通統計列を算出する。"""
 
@@ -90,6 +98,7 @@ def aggregate_feature_metrics(
     version = scope.semantic_config_version_id
     raw_by_code: dict[str, list[float]] = defaultdict(list)
     norm_by_code: dict[str, list[float]] = defaultdict(list)
+    norm_version_by_code: dict[str, str] = {}
 
     for row in features:
         if row.semantic_config_version_id != version:
@@ -99,6 +108,23 @@ def aggregate_feature_metrics(
         if row.raw_feature_value is not None:
             raw_by_code[row.feature_code].append(float(row.raw_feature_value))
         if row.normalized_feature_value is not None:
+            norm_version = row.feature_normalization_version_id
+            if norm_version is None:
+                # DDL chk_fdm_normalized_version_when_layer に到達させず、集計前に失敗させる。
+                raise FeatureMetricAggregationError(
+                    "feature_normalization_version_id is required for normalized "
+                    f"feature metric: semantic_config_version_id={version!r}, "
+                    f"feature_code={row.feature_code!r}, item_id={row.item_id!r}"
+                )
+            current_version = norm_version_by_code.setdefault(row.feature_code, norm_version)
+            if current_version != norm_version:
+                # DDL UNIQUE に normalization version は含まれないため、行分割ではなく明示失敗させる。
+                raise FeatureMetricAggregationError(
+                    "multiple feature_normalization_version_id values for normalized "
+                    f"feature metric: semantic_config_version_id={version!r}, "
+                    f"feature_code={row.feature_code!r}, "
+                    f"versions={sorted((current_version, norm_version))!r}"
+                )
             norm_by_code[row.feature_code].append(float(row.normalized_feature_value))
 
     rows: list[MetricUpsertRow] = []
@@ -117,6 +143,9 @@ def aggregate_feature_metrics(
                     aggregation_key=agg_key,
                     value_layer=layer,
                     feature_code=code,
+                    feature_normalization_version_id=(
+                        norm_version_by_code[code] if layer == "normalized" else None
+                    ),
                     sample_count=stats.sample_count,
                     mean=stats.mean,
                     stddev=stats.stddev,

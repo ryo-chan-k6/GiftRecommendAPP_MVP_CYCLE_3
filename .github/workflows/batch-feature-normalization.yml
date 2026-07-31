@@ -2,12 +2,13 @@ name: Batch Feature Normalization
 
 # BATCH-013 Feature正規化（独立子 workflow）
 # 正本: BATCH-013 バッチ仕様書 §18.1 No.10（Human 承認済み）— workflow_call / workflow_dispatch（親接続は本 Epic 外）
+# stg live: DB接続は Environment `stg` の STG_DATABASE_URL を使用する
 
 on:
   workflow_call:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -39,7 +40,7 @@ on:
   workflow_dispatch:
     inputs:
       job_run_id:
-        description: "Optional batch_run_id override"
+        description: "Optional leaf job_run_id override (UUID). Empty = generate new UUID"
         required: false
         type: string
         default: ""
@@ -80,6 +81,9 @@ jobs:
   feature-normalization:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    environment: stg
+    env:
+      DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -102,11 +106,11 @@ jobs:
           if [ -n "$INPUT_ID" ]; then
             echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-013 scaffold demo
-        # Real DB not enabled. Secrets must never be printed.
+      - name: Run BATCH-013 live
+        # Secrets must never be printed.
         # IF-SHARED-003 は in-process import（Reco Hosting HTTP ではない）。
         # item_feature.raw_feature_value は READ ONLY（BATCH-012 責務）。
         # normalized_feature_value UPDATE + item_meaning UPSERT のみ（IF-DB-BATCH-014）。
@@ -134,7 +138,6 @@ jobs:
             QUEUE_ARGS+=(--queue-ids "${{ inputs.queue_ids }}")
           fi
           uv run python -m batch.application.feature_normalization \
-            --scaffold-demo \
             --job-run-id "${{ steps.run_id.outputs.value }}" \
             "${MAX_ARGS[@]}" \
             "${SOURCE_ARGS[@]}" \

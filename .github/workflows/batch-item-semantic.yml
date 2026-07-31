@@ -2,7 +2,7 @@ name: Batch Item Semantic
 
 # BATCH-010 Item Semantic 生成（独立子 workflow）
 # 正本: BATCH-010 バッチ仕様書 §18.1 No.1 — workflow_call / workflow_dispatch
-# 親 meaning-generation チェーン全体改修は本 Epic では行わない
+# stg live: DB接続は Environment `stg` の STG_DATABASE_URL を使用する
 
 on:
   workflow_call:
@@ -37,6 +37,11 @@ on:
         required: false
         type: string
         default: ""
+      apply_config_master_seed:
+        description: "Apply 09_config_versions.sql before BATCH-010 (manual recovery only)"
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       job_run_id:
@@ -69,6 +74,11 @@ on:
         required: false
         type: string
         default: ""
+      apply_config_master_seed:
+        description: "Apply 09_config_versions.sql before BATCH-010 (manual recovery only)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: batch-item-semantic
@@ -81,6 +91,9 @@ jobs:
   item-semantic:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    environment: stg
+    env:
+      DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -103,12 +116,21 @@ jobs:
           if [ -n "$INPUT_ID" ]; then
             echo "value=$INPUT_ID" >> "$GITHUB_OUTPUT"
           else
-            echo "value=gha-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+            echo "value=$(python3 -c 'import uuid; print(uuid.uuid4())')" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run BATCH-010 scaffold demo
-        # Real DB client is not enabled in this Task.
-        # Secrets must never be printed. Use --scaffold-demo for CI smoke.
+      - name: Install PostgreSQL client
+        if: ${{ inputs.apply_config_master_seed }}
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply config master seed
+        if: ${{ inputs.apply_config_master_seed }}
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+            -f supabase/seeds/masters/09_config_versions.sql
+
+      - name: Run BATCH-010 stg live
+        # Rule-first generatorのみを使用し、実LLMは呼び出さない。
         # Must NOT INSERT item_generation_queue (IF-DB-BATCH-010) / update item /
         # call real LLM. Upsert target is item_semantic only (IF-DB-BATCH-011).
         working-directory: apps/batch
@@ -134,7 +156,6 @@ jobs:
             QUEUE_ARGS+=(--queue-ids "${{ inputs.queue_ids }}")
           fi
           uv run python -m batch.application.item_semantic \
-            --scaffold-demo \
             --job-run-id "${{ steps.run_id.outputs.value }}" \
             "${MAX_ARGS[@]}" \
             "${SOURCE_ARGS[@]}" \

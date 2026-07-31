@@ -9,7 +9,7 @@
 | 対象システム   | Gift Recommendation Service / batch      |
 | MVP対象        | `○`                                      |
 | 作成日         | 2026-07-20                               |
-| 更新日         | 2026-07-20                               |
+| 更新日         | 2026-07-31                               |
 
 ---
 
@@ -127,7 +127,7 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 - `item_embedding` / `item_generation_queue` / `model_version` の DDL が利用可能であること（#516 等整備済み）。本 Epic での新規 migration 追加は out of scope
 - Database へ接続可能であること
 - 同時多重起動は `GRS-BAT-003` で拒否する
-- MVP 初版 scaffold 時は `OPENAI_API_KEY` 実設定は不要（§18.1）。実 API 接続タイミング・本番設定値はフィジビリティ検証後に本仕様を更新（§18.2 No.2）
+- 既定は scaffold client とし、stg の明示 `live_embedding=true` / `--live-embedding` 時だけ既存 `OPENAI_API_KEY` Secret を参照して実 API を呼ぶ（§18.1）。production / schedule / Secret変更は対象外
 
 ---
 
@@ -157,7 +157,7 @@ BATCH-015（Item Embedding生成Batch）は、先行 **BATCH-014** が確定し�
 
 | API | 利用有無 | 用途 | 備考 |
 | --- | -------- | ---- | ---- |
-| Embedding API（OpenAI 等） | **条件付き** | `item_text_context` → embedding vector | **IF-EXT-005**。MVP 初版は **scaffold-first**（スタブベクトル）。実呼出タイミング・本番設定値はフィジビリティ検証後に本仕様更新（§18.1 No.8 / §18.2 No.2） |
+| Embedding API（OpenAI 等） | **条件付き** | `item_text_context` → embedding vector | **IF-EXT-005**。既定は **scaffold-first**（スタブベクトル）。stg の明示 live 時のみ実 API。production / schedule は対象外（§18.1 No.8 / §18.2 No.2） |
 
 MVP 現行モデル（`item_embedding_テーブル定義書` §17.1 No.3 **確定**）:
 
@@ -258,8 +258,8 @@ flowchart TD
 | I/F | **IF-EXT-005** |
 | 実装 | OpenAI Embedding Client（batch infrastructure）。Rate Limiter 経由 |
 | HTTP | Embedding Provider への HTTPS（実 API 時）。Reco Hosting HTTP ではない |
-| MVP 初版 | **scaffold-first**: 決定論的スタブベクトル（次元 1536）を返し、契約・ログ・Upsert 経路を検証する |
-| 実 API | フィジビリティ検証後の切替 Task（§18.2 No.2）。`OPENAI_API_KEY` は Secrets のみ |
+| 既定 | **scaffold-first**: 決定論的スタブベクトル（次元 1536）を返し、live DBでも実 APIを呼ばない |
+| 実 API | stg の手動実行で明示 `live_embedding=true` / `--live-embedding` の場合のみ。`OPENAI_API_KEY` は既存 Secret 参照のみ |
 | ログ | ベクトル全文・入力全文・API key を記録しない。`api_call_log` は status / latency / model 名等のメタのみ |
 
 ### 8.4 IF-VEC-BATCH-001 書込境界（確定）
@@ -433,8 +433,8 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | 観点 | 方針 |
 | ---- | ---- |
 | secret | DB / Embedding API 認証情報は GitHub Secrets / local `.env` のみ。値を docs・ログ・fixture に書かない |
-| Scaffold | 初版は `OPENAI_API_KEY` **不要** |
-| 実 API | フィジビリティ検証後に Secrets / 本番設定値を確定（§18.2 No.2）。client 側へ key を渡さない |
+| Scaffold | 既定経路は `OPENAI_API_KEY` **不要**。live DB + scaffold client を許容 |
+| 実 API | stg の明示 live 時のみ既存 Secret を参照。production / schedule / Secret変更は禁止。client 側へ key を渡さない |
 | ベクトル | Public API 非公開。ログ全文禁止 |
 | 権限 | `apps/batch` のみが `item_embedding` を書き込む |
 | HTTP 公開 | Batch は HTTP API 化しない（Contract Gate 不要） |
@@ -468,6 +468,7 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | ---- | -------- | ---- |
 | 2026-07-20 | 初版作成 | Epic #1479 / Task #1480 |
 | 2026-07-20 | §18.2 推奨案を Human 採用。実 OpenAI 接続タイミング・本番設定値はフィジビリティ検証後に本仕様を更新 | Task #1480 |
+| 2026-07-31 | stg manual dispatchの明示 live経路と既定 scaffold安全性を確定 | Task #1776 |
 
 ---
 
@@ -484,7 +485,7 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | 5 | 冪等キー | 物理 UNIQUE 3 列: `item_id` + `model_version_id` + `embedding_input_hash` | **確定**（`item_embedding` §7 / HR #516） |
 | 6 | MVP モデル | `text-embedding-3-small` / `vector(1536)` / `embedding_source_type = item_text_context` | **確定**（`item_embedding` §17.1） |
 | 7 | `embedding_source_version` | **DB 物理列なし**。Queue トリガー / hash 内包 | **確定**（`item_embedding` §17.1 No.2） |
-| 8 | scaffold-first | MVP 初版は Embedding API **スタブ**をデフォルトとする。実 OpenAI 呼出タイミング・本番設定値（Secrets / コスト / Rate Limit 等）は **別途フィジビリティ検証後に本仕様を更新** | **確定**（Epic #1479 human_decision_points。BATCH-010 同型。2026-07-20 Human） |
+| 8 | scaffold-first / stg live | Embedding API **スタブ**をデフォルトとする。stg manual dispatchで明示 live の場合のみ既存 Secret を参照し、`max_items=1` / `queue_batch_size=1` / 目安 `$0.01/run` 以内で実呼出する。production / schedule / Secret変更は禁止 | **確定**（Task #1776。2026-07-31 Human） |
 | 9 | Queue 終端 | semantic 一連 / embedding 経路の **`succeeded` は本 Batch** | **確定**（Queue §5.5 / BATCH-010 §18.1 No.9） |
 | 10 | 子 workflow | 独立 YAML **`batch-item-embedding.yml`（`batch-item-embedding*.yml`）**。cron なし。親全体改修は外 | **確定**（BATCH-011/013/014 前例） |
 | 11 | Contract Gate | **不要** | **確定** |
@@ -500,7 +501,7 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 | No | 事項 | 扱い | 状態 |
 | -: | ---- | ---- | ---- |
 | 1 | 親 `batch-item-meaning-generation.yml` からの `workflow_call` タイミング | §18.1 No.15。接続確定は meaning-generation チェーン統合 Task | **方針確定**（接続時期は統合 Task） |
-| 2 | 実 OpenAI Embedding API 接続タイミング、および本番の具体設定値（環境変数 / Secrets / コスト / Rate Limit 等） | scaffold-first（§18.1 No.8）を維持。切替 Task 前提は変えない。**接続タイミングと本番設定値は別途進めるフィジビリティ検証の結果を踏まえ、本仕様を更新して確定する** | **方針確定**（数値・切替時期は検証後に本仕様更新） |
+| 2 | 実 OpenAI Embedding API 接続 | scaffold-first（§18.1 No.8）を維持し、stg manual dispatchの明示 liveのみ有効化。productionの具体設定値・schedule有効化は本Taskで確定しない | **stg方針確定 / production未確定**（Task #1776） |
 | 3 | `BATCH_ITEM_EMBEDDING_MAX_ITEMS` 等の件数上限既定値 | 実装 / workflow Task で確定 | **方針確定**（数値は実装 Task） |
 | 4 | scaffold スタブベクトルの具体アルゴリズム（固定ゼロ近似 / hash 由来決定論 等） | 実装 Task で確定（次元 1536・型契約は §18.1） | **方針確定**（アルゴリズムは実装 Task） |
 | 5 | `item_text_context` → Embedding API 入力文字列への最終シリアライズ詳細 | BATCH-014 §9.2.1 と整合する範囲で実装 Task が確定 | **方針確定**（詳細は実装 Task） |
@@ -535,7 +536,7 @@ Client 内の無制限自動リトライは行わない。上限超過後は Que
 - `MOD-BATCH-015`（Recheck）と Batch ID `BATCH-015` を混同していない
 - 独立子 workflow `batch-item-embedding.yml` / Contract Gate 不要が明記されている
 - §18 で確定方針 / 後続確定事項（推奨案採用済み）が区別されている
-- 実 OpenAI 接続タイミング・本番設定値がフィジビリティ検証後更新である旨が明記されている
+- 実 OpenAI 接続がstgの明示 liveに限定され、production / schedule / Secret変更が対象外である
 - secret / ベクトル全文ログ禁止が明記されている
 - PR target が親 Epic Branch（`feature/epic-1479-batch-015-item-embedding`）である
 

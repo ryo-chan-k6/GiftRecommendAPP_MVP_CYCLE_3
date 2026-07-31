@@ -394,10 +394,18 @@ class FeatureInputHashRepositories:
             review_count=int(row["review_count"]) if row.get("review_count") is not None else None,
         )
 
-    def load_item_semantic(self, *, item_id: str) -> ItemSemanticRow:
+    def load_item_semantic(
+        self,
+        *,
+        item_id: str,
+        semantic_config_version_id: str | None = None,
+    ) -> ItemSemanticRow:
         row = self.semantics.get(item_id)
+        if row is not None and semantic_config_version_id is not None:
+            if str(row.get("semantic_config_version_id")) != semantic_config_version_id:
+                row = None
         if row is None and self.db_reader is not None:
-            row = self._fetch_and_cache_semantic(item_id)
+            row = self._fetch_and_cache_semantic(item_id, semantic_config_version_id)
         if row is None:
             raise KeyError(f"item_semantic not found: {item_id}")
         raw = row.get("semantic_json") or {}
@@ -413,6 +421,7 @@ class FeatureInputHashRepositories:
         item_id: str,
         semantic_config_version_id: str,
         feature_input_hash: str,
+        feature_normalization_version_id: str | None = None,
     ) -> bool:
         """§9.4 案A: 8 軸すべて同一 hash + 現行 normalization version + normalized あり."""
 
@@ -429,7 +438,10 @@ class FeatureInputHashRepositories:
                 return False
             if axis.feature_input_hash != feature_input_hash:
                 return False
-            if axis.feature_normalization_version_id != self.current_normalization_version_id:
+            expected_version = (
+                feature_normalization_version_id or self.current_normalization_version_id
+            )
+            if axis.feature_normalization_version_id != expected_version:
                 return False
             if not axis.has_normalized_value:
                 return False
@@ -572,14 +584,21 @@ class FeatureInputHashRepositories:
             return None
         return self._cache_item_row(result.rows[0])
 
-    def _fetch_and_cache_semantic(self, item_id: str) -> dict[str, object] | None:
+    def _fetch_and_cache_semantic(
+        self,
+        item_id: str,
+        semantic_config_version_id: str | None = None,
+    ) -> dict[str, object] | None:
         reader = self.db_reader
         if reader is None:
             return None
+        equals: list[tuple[str, object]] = [("item_id", item_id)]
+        if semantic_config_version_id is not None:
+            equals.append(("semantic_config_version_id", semantic_config_version_id))
         result = reader.fetch_rows(
             "item_semantic",
             columns=_SEMANTIC_COLUMNS,
-            equals=(("item_id", item_id),),
+            equals=tuple(equals),
             order_by=("item_semantic_id",),
             limit=1,
         )
