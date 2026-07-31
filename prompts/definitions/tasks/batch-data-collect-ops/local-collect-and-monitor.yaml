@@ -10,6 +10,18 @@ task:
 
 work_mode: "ai-agent"
 
+parent:
+  epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - 1745
+    - 1789
+    - 1763
+    - 1792
+    - 1607
+  related_prs: []
+
 commands:
   primary: "/start-task"
   allowed:

@@ -49,5 +49,5 @@ review_points:
   - "§5.3.5見直し（維持含む）が記録されているか"
 
 notes:
-  - "Issue / Branch / PR は起票・PR作成後に反映する"
+  - "Issue / Branch / PR / parent.epic_* 実番号は /start-epic・/start-task 後に反映する（現状 null 許容）"
   - "Human Reviewは省略しない"

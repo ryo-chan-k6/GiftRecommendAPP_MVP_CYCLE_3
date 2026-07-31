@@ -49,5 +49,5 @@ review_points:
   - "正本docsと矛盾していないか"
 
 notes:
-  - "Issue / Branch / PR は起票・PR作成後に反映する"
+  - "Issue / Branch / PR / parent.epic_* 実番号は /start-epic・/start-task 後に反映する（現状 null 許容）"
   - "Human Reviewは省略しない"

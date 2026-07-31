@@ -51,5 +51,5 @@ review_points:
   - "#1745本線#6追跡が更新されているか"
 
 notes:
-  - "Issue番号 / Branch / PR は /start-epic・PR作成後に反映する"
+  - "Issue番号 / Branch / PR は /start-epic・本線Epic PR作成後に反映する（本Definition先作成PRでは null 許容）"
   - "Human Reviewは省略しない"

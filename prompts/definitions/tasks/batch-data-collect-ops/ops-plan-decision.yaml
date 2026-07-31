@@ -10,6 +10,16 @@ task:
 
 work_mode: "ai-agent"
 
+parent:
+  epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  epic_issue_number: null
+  epic_branch: null
+  related_issues:
+    - 1745
+    - 1789
+    - 1763
+  related_prs: []
+
 commands:
   primary: "/start-task"
   allowed:
@@ -159,5 +169,5 @@ stop_conditions:
   - "secret実値が必要に見える"
 
 notes:
-  - "親Epic: batch-data-collect-ops。Issue/Branchは /start-epic・/start-task 後に確定"
+  - "親Epic: batch-data-collect-ops。parent.epic_issue_number / epic_branch は /start-epic 後に実値へ更新"
   - "本Task完了後、local-collect-and-monitor へ"
