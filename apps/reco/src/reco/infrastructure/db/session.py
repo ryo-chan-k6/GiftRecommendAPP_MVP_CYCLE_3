@@ -20,7 +20,7 @@ _SENSITIVE_URL_PATTERN = re.compile(
 # Fly stg: 512MB / shared CPU 1。推薦は同期直列想定（#1737 Human 決定）。
 DEFAULT_POOL_MIN_SIZE = 1
 DEFAULT_POOL_MAX_SIZE = 2
-# 接続取得待ち。PIPELINE_HARD_TIMEOUT_MS（4,000ms）内に収めるため既定より短くする。
+# 接続取得待ち。PIPELINE_HARD_TIMEOUT_MS（8,000ms）内に収めるため既定より短くする。
 DEFAULT_POOL_TIMEOUT_SECONDS = 2.0
 # 起動時ウォームアップの上限。DB 到達不能時に lifespan を止めないため有限にする。
 DEFAULT_POOL_OPEN_TIMEOUT_SECONDS = 5.0

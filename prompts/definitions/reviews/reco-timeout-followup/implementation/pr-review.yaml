@@ -15,10 +15,10 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
-  issue: null
+  pr: 1788
+  issue: 1787
   task_definition: "prompts/definitions/tasks/reco-timeout-followup/implementation.yaml"
-  source_branch: null
+  source_branch: "chore/task-1787-reco-timeout-followup-implementation"
   target_branch: "chore/epic-1786-reco-timeout-followup"
   parent_epic_issue: "[Epic]reco-timeout-followup:hard8s追随コメントとRECO_REQUEST_TIMEOUT文書化"
   parent_epic_branch: "chore/epic-1786-reco-timeout-followup"
@@ -63,10 +63,10 @@ input:
     path: "prompts/definitions/tasks/reco-timeout-followup/implementation.yaml"
     required: true
   issue:
-    number: null
+    number: 1787
     required: true
   pr:
-    number: null
+    number: 1788
     required: true
   diff:
     required: true

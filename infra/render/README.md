@@ -49,6 +49,7 @@ pnpm --filter @gift-recommendation/api exec node dist/src/index.js
 | `DATABASE_URL` | Secret |
 | `REDIS_URL` | Secret（Upstash。TLS 推奨） |
 | `RECO_BASE_URL` | Reco の Base URL |
+| `RECO_REQUEST_TIMEOUT_MS` | config。api → reco HTTP timeout（ms）。未設定時はコード既定 9000。`PIPELINE_HARD_TIMEOUT_MS`（8000）以上であること |
 | `RECO_INTERNAL_API_KEY` | Secret（reco と同一値） |
 | `CORS_ALLOWED_ORIGINS` | Web origin |
 | `PORT` | Render が注入する場合は未設定可 |
