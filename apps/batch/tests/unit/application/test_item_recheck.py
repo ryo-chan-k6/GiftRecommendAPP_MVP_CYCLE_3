@@ -562,7 +562,7 @@ def test_rate_limit_records_ext_102() -> None:
     assert "GRS-EXT-102" in result.error_codes
     assert any(e["code"] == "GRS-EXT-102" for e in repos.error_logs)
     failed = [log for log in repos.api_call_logs if log.get("error_code") == "GRS-EXT-102"]
-    assert failed and failed[0]["status"] == "failed"
+    assert failed and failed[0]["status"] == "rate_limited"
     assert failed[0].get("fetch_cursor_id")
     cursors = list(repos.fetch_cursors.values())
     assert cursors

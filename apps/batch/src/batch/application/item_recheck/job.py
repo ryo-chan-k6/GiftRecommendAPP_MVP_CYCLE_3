@@ -45,7 +45,7 @@ ITEM_RECHECK_PHASES: tuple[str, ...] = (
     "finalize",
 )
 
-DEFAULT_MAX_ITEMS = 1000
+DEFAULT_MAX_ITEMS = 100
 DEFAULT_HITS = 1
 
 
@@ -213,15 +213,17 @@ class ItemRecheckJob:
                 hits=hits,
             )
         except RakutenItemSearchApiError as exc:
+            call_status = "rate_limited" if exc.code == "GRS-EXT-102" else "failed"
             self._repos.record_api_call(
                 api_call_log_id=api_call_log_id,
                 fetch_cursor_id=cursor_id,
                 cursor_type="recheck",
-                status="failed",
+                status=call_status,
                 page=page,
                 error_code=exc.code,
             )
             # fetch_cursor §5.3 / §17.1 No.3: rate_limited（GRS-EXT-102）→ 同一処理内で paused
+            # page は進めない（成功扱いにしない）
             if exc.code == "GRS-EXT-102" and cursor_id is not None:
                 self._repos.update_cursor_progress(
                     cursor_id=cursor_id,

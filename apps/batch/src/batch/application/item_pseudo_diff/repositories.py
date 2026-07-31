@@ -140,17 +140,83 @@ class ItemPseudoDiffRepositories:
         self._trace_id = trace_id
 
     def list_active_cursors(self) -> list[FetchCursorRow]:
-        """Return active seed + stored cursors (recheck は含めない)."""
+        """Return active seed + stored + live-DB cursors (recheck は含めない)."""
 
         rows: list[FetchCursorRow] = []
+        seen: set[str] = set()
+
+        def _add(row: FetchCursorRow) -> None:
+            if row.cursor_status != "active":
+                return
+            if row.cursor_type == "recheck":
+                return
+            cid = row.cursor_id
+            if cid is not None:
+                if cid in seen:
+                    return
+                seen.add(cid)
+            rows.append(row)
+
         for row in self.seed_cursors:
-            # recheck は BATCH-004。本 Batch の seed には載せない前提。
-            if row.cursor_status == "active":
-                rows.append(row)
+            _add(row)
         for row in self.fetch_cursors.values():
-            if row.cursor_status == "active":
-                rows.append(row)
+            _add(row)
+        for row in self._load_active_cursors_from_db():
+            _add(row)
+            if row.cursor_id is not None:
+                self.fetch_cursors[str(row.cursor_id)] = row
         return rows
+
+    def _load_active_cursors_from_db(self) -> list[FetchCursorRow]:
+        """Load active item_search cursors from live DB (ranking_supplement / genre 等)."""
+
+        if self.db_reader is None:
+            return []
+        try:
+            result = self.db_reader.fetch_rows(
+                "fetch_cursor",
+                columns=(
+                    "fetch_cursor_id",
+                    "cursor_type",
+                    "target_external_genre_id",
+                    "cursor_value",
+                    "cursor_status",
+                ),
+                equals=(
+                    ("source", SOURCE_RAKUTEN),
+                    ("source_api", SOURCE_API_ITEM_SEARCH),
+                    ("cursor_status", "active"),
+                ),
+                limit=200,
+            )
+        except DatabaseError:
+            return []
+
+        loaded: list[FetchCursorRow] = []
+        for db_row in result.rows:
+            cursor_type = str(db_row.get("cursor_type") or "")
+            if cursor_type in {"", "recheck"}:
+                continue
+            cursor_value = db_row.get("cursor_value")
+            scope = _scope_from_cursor_value(cursor_value)
+            target = db_row.get("target_external_genre_id")
+            target_str = None if target is None else str(target)
+            loaded.append(
+                FetchCursorRow(
+                    cursor_type=cursor_type,  # type: ignore[arg-type]
+                    cursor_id=str(db_row["fetch_cursor_id"]),
+                    target_external_genre_id=target_str,
+                    scope=scope,
+                    page=_page_from_cursor_value(cursor_value),
+                    cursor_status="active",
+                    scope_fingerprint=cursor_scope_fingerprint(
+                        cursor_type=cursor_type,
+                        target_external_genre_id=target_str,
+                        scope=scope,
+                    ),
+                )
+            )
+        return loaded
 
     def get_or_create_cursor(self, row: FetchCursorRow) -> FetchCursorRow:
         fingerprint = row.scope_fingerprint or cursor_scope_fingerprint(
@@ -264,7 +330,14 @@ class ItemPseudoDiffRepositories:
         cursor_id: str,
         page: int,
         cursor_status: str = "active",
+        mark_fetched: bool = True,
     ) -> None:
+        """Update cursor position/status.
+
+        ``mark_fetched=False`` は rate_limited → paused 用。page は呼び出し側で
+        現在値を渡し、``last_fetched_at`` を成功扱いで進めない。
+        """
+
         existing = self.fetch_cursors.get(cursor_id)
         if existing is None:
             return
@@ -279,14 +352,16 @@ class ItemPseudoDiffRepositories:
         )
         self.fetch_cursors[cursor_id] = updated
         now = datetime.now(UTC)
+        set_values: dict[str, object] = {
+            "cursor_value": _cursor_value_json(scope=updated.scope, page=page),
+            "cursor_status": _db_cursor_status(cursor_status),
+            "updated_at": now,
+        }
+        if mark_fetched:
+            set_values["last_fetched_at"] = now
         self.db_writer.update_rows(
             "fetch_cursor",
-            set_values={
-                "cursor_value": _cursor_value_json(scope=updated.scope, page=page),
-                "cursor_status": _db_cursor_status(cursor_status),
-                "last_fetched_at": now,
-                "updated_at": now,
-            },
+            set_values=set_values,
             equals=(("fetch_cursor_id", cursor_id),),
         )
 

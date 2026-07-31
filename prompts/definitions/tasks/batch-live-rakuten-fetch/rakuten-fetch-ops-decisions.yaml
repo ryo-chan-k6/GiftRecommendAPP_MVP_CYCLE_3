@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-live-rakuten-fetch-ops-decisions"
+  title: "batch-live-rakuten-fetch:§10運用値Human Decision Log化"
+  summary: "楽天Fetch運用方針§10の推奨案をHuman Decision Logとして採択記録し、正本docsの判断待ち表記を同期する。live実装は後続Task。"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-live-rakuten-fetch:楽天Fetch live切替"
+  epic_issue_number: 1763
+  epic_branch: "feature/epic-1763-batch-live-rakuten-fetch"
+  related_issues:
+    - 1745
+    - 1749
+    - 1607
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  親Epic batch-live-rakuten-fetch。運用方針§11.1は「§10 Human判断完了」をlive着手ゲートとする。
+  チャット上の推奨値同意はあるが、正本は ai-logs/human-decisions/ への Decision Log である。
+  本Taskは実装を含まず、採択記録とdocs同期のみ行う。
+
+objective: |
+  §10（No.1〜9 / 2b / 2c）を Human Decision Log に記録し、楽天Fetch運用方針・ギャップ一覧の
+  該当表記を採択結果と矛盾なく更新する。未採択項目は明示的に判断待ちのまま残す。
+
+scope:
+  - "ai-logs/human-decisions/ に楽天Fetch運用方針§10向け Decision Log を作成"
+  - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md の§5.3 / §10 / 変更履歴を採択結果へ同期"
+  - "バッチ外部API本実装ギャップ一覧 §8 No.7 の状態表記を必要最小限で同期"
+  - "採択内容を後続 local live Task Definition の前提として notes / human_decision_points に反映"
+  - "Task / Review Definition の維持"
+
+out_of_scope:
+  - "BATCH-001〜004 の live 実装・workflow変更"
+  - "GHA楽天HTTP live化"
+  - "#1607 本番egress設計・構築"
+  - "schedule有効化"
+  - "常用QPS再改訂"
+  - "secret実値の表示・変更"
+  - "親Epic→develop PR / merge判断"
+  - "後続実装Taskの実装作業本体"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+      purpose: "§10 推奨案と着手ゲート"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      required: true
+      purpose: "§8 No.7 同期"
+    - path: "ai-logs/human-decisions/2026-07-24-rakuten-api-qps-ip-verify-policy.md"
+      required: true
+      purpose: "Decision Log書式・決定済み制約"
+    - path: "ai-logs/human-decisions/2026-07-25-rakuten-operational-qps-revise-to-2.md"
+      required: true
+      purpose: "Decision Log書式・QPS=2"
+  files: []
+  issues:
+    - number: 1749
+      purpose: "運用方針Epic（完了）"
+    - number: 1745
+      purpose: "統括ロードマップ"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md"
+      action: "update"
+      required: false
+  files:
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-live-rakuten-fetch/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/batch-live-rakuten-fetch/rakuten-fetch-ops-decisions/**"
+      action: "create_or_update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/"
+
+deliverables:
+  - "§10 Human Decision Log"
+  - "運用方針docsの採択同期"
+  - "後続local live Taskの前提が読める状態"
+
+acceptance_criteria:
+  - "Decision Log が decided 状態で §10 各Noの採否を明記している"
+  - "未採択項目がある場合は判断待ちとして正本に残し、live実装Taskをブロックする旨が分かる"
+  - "運用方針の「Human採択」表記が Decision Log と一致する"
+  - "実装・workflow・secret実値を含まない"
+  - "PR target が親Epic Branch"
+  - "Related to #<本Task>（Closes禁止）"
+
+branch:
+  no_branch: false
+  summary: "rakuten-fetch-ops-decisions"
+  name: "docs/task-1764-rakuten-fetch-ops-decisions"
+  base: "feature/epic-1763-batch-live-rakuten-fetch"
+  target: "feature/epic-1763-batch-live-rakuten-fetch"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1749
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-batch-live-rakuten-fetch-local-live"
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "ai-logs/human-decisions/"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Decision Logと運用方針§10の状態が一致するか"
+    - "チャット同意のみを決定済みと書いていないか"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Decision Log / docs同期のみのため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "§10採択がHuman Decision Logとして記録されているか"
+    - "未採択を採択済みと誤記していないか"
+    - "実装差分が混入していないか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "§10全項目の最終採否（本Taskの本体）"
+  - "MVP対象ジャンルを本Decisionで保留するか"
+  - "GHA楽天liveを当面localのみとするか"
+
+stop_conditions:
+  - "Humanが§10の採否を示さないまま「採択済み」と書こうとした場合"
+  - "実装・workflow変更が必要に見えた場合（後続Taskへ）"
+  - "secret実値が必要に見える場合"
+
+notes:
+  - "Task Issue: #1764 / Branch docs/task-1764-rakuten-fetch-ops-decisions"
+  - "2026-07-30: §10推奨案をHuman採択。No.1は具体的fetch_planを本Decisionでは保留"
+  - "採択正本: ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md"
+  - "本Task完了前に local live Task を実装開始してはならない"

@@ -49,6 +49,7 @@ class PopularitySignalRow:
     item_id: str | None
     external_genre_id: str
     period: str
+    last_build_date: str = ""
 
     @property
     def idempotency_key(self) -> tuple[str, int]:

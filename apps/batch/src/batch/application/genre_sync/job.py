@@ -194,19 +194,53 @@ class GenreSyncJob:
             genre_id=genre.genre_id,
             body=body,
         )
-        self._repos.save_raw(artifact)
+        raw_metadata_id = self._repos.save_raw(artifact)
 
         # stage + upsert（本 Batch 内完結: 仕様書 §18 No.2 基本案）
+        # 起点ジャンル本体
         row = GenreRow(
             source=SOURCE_RAKUTEN,
             external_genre_id=genre.genre_id,
             genre_name=genre.genre_name,
             parent_external_genre_id=genre.parent_genre_id,
             genre_level=genre.genre_level,
+            is_leaf=len(genre.children) == 0,
         )
-        self._repos.upsert_staging(row)
+        self._repos.upsert_staging(row, raw_metadata_id=raw_metadata_id)
         self._repos.upsert_external(row)
         result.upserted_external_genre_count += 1
+
+        # 直下 children まで（fetch_plan 承認: 同一 Raw から Staging/external へ展開）
+        children_raw = raw_payload.get("children")
+        if isinstance(children_raw, list):
+            for child in children_raw:
+                if not isinstance(child, dict):
+                    continue
+                child_id = str(child.get("genreId") or "").strip()
+                child_name = (
+                    str(child.get("nameJa") or child.get("jaName") or child.get("genreName") or "").strip()
+                )
+                if not child_id or not child_name:
+                    continue
+                level_raw = child.get("level")
+                child_level: int | None
+                if isinstance(level_raw, int):
+                    child_level = level_raw
+                elif isinstance(level_raw, str) and level_raw.isdigit():
+                    child_level = int(level_raw)
+                else:
+                    child_level = None
+                child_row = GenreRow(
+                    source=SOURCE_RAKUTEN,
+                    external_genre_id=child_id,
+                    genre_name=child_name,
+                    parent_external_genre_id=genre.genre_id,
+                    genre_level=child_level,
+                    is_leaf=True,  # 直下展開のみ。孫は別 sync 対象
+                )
+                self._repos.upsert_staging(child_row, raw_metadata_id=raw_metadata_id)
+                self._repos.upsert_external(child_row)
+                result.upserted_external_genre_count += 1
 
         meta = self._repos.raw_metadata.get(object_key)
         if meta is not None:

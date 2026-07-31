@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-live-rakuten-fetch-epic-pr"
+  title: "batch-live-rakuten-fetch Epic PRレビュー"
+  summary: "楽天Fetch live切替 Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1785
+  issue:
+    number: 1763
+  task_definition: "prompts/definitions/epics/batch-live-rakuten-fetch/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-live-rakuten-fetch:楽天Fetch live切替"
+  parent_epic_branch: "feature/epic-1763-batch-live-rakuten-fetch"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: true
+  security: true
+  project_operation: true
+
+review_points:
+  - "§10 Decision Log採択後にlive実装が進んでいるか"
+  - "Run予算とカタログ深さ打ち切りを混同していないか"
+  - "CI楽天live・#1607・schedule・secret実値・常用QPS再改訂が混入していないか"
+  - "Epic PR target が develop、Closes が親Epic Issue か"
+
+notes:
+  - "Issue番号 / Branch / PR は起票・PR作成後に反映する"
+  - "Human Reviewは省略しない"

@@ -279,7 +279,7 @@ class RankingSnapshotJob:
             page=page,
             body=body,
         )
-        self._repos.save_raw(artifact)
+        raw_metadata_id = self._repos.save_raw(artifact)
 
         # stage
         for entry in adapted.entries:
@@ -291,7 +291,7 @@ class RankingSnapshotJob:
                 rank=entry.rank,
                 external_item_code=entry.item_code,
             )
-            self._repos.upsert_staging(staging)
+            self._repos.upsert_staging(staging, raw_metadata_id=raw_metadata_id)
 
         meta = self._repos.raw_metadata.get(object_key)
         if meta is not None:
@@ -319,6 +319,7 @@ class RankingSnapshotJob:
                 item_id=item_id,
                 external_genre_id=genre_id,
                 period=period,
+                last_build_date=adapted.last_build_date,
             )
             self._repos.upsert_popularity_signal(signal)
             result.popularity_signal_upsert_count = len(self._repos.popularity_signals)

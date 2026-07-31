@@ -9,8 +9,10 @@ from batch.application.item_pseudo_diff.idempotency import (
 )
 from batch.application.item_pseudo_diff.job import (
     BATCH_ID,
+    DEFAULT_CURSORS_PER_RUN,
     DEFAULT_HITS,
     DEFAULT_MAX_PAGES,
+    DEFAULT_PAGES_PER_RUN,
     DEFAULT_TARGET_GENRE_IDS,
     ITEM_PSEUDO_DIFF_PHASES,
     ItemPseudoDiffJob,
@@ -27,8 +29,10 @@ from batch.application.item_pseudo_diff.repositories import ItemPseudoDiffReposi
 
 __all__ = [
     "BATCH_ID",
+    "DEFAULT_CURSORS_PER_RUN",
     "DEFAULT_HITS",
     "DEFAULT_MAX_PAGES",
+    "DEFAULT_PAGES_PER_RUN",
     "DEFAULT_TARGET_GENRE_IDS",
     "ITEM_PSEUDO_DIFF_PHASES",
     "SOURCE_API_ITEM_SEARCH",
