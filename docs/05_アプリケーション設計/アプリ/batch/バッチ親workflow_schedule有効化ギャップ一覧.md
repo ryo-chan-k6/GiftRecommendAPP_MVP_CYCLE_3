@@ -157,8 +157,9 @@ Epic out_of_scope: **無承認の production 定期開始は禁止**。
 | 項目 | 決定 |
 | ---- | ---- |
 | 採択 | **B-0**（schedule無効継続） |
-| Scaffold定期 | 無期限許容しない。定期開始自体をいまは行わない |
+| Scaffold定期 | 無期限許容しない。定期開始自体をいまは行わない。B-1試行期間の事前案: 最大1週間 / 連続成功3回 |
 | 監視/rollback | 最小手順を整備し、その後に B-1 再判断 |
+| Environment×cron | **E-1**。`stg` に required reviewers を付けない。B-1初回cronで確認。cron事前実測は不可（やるなら B-1/#1792） |
 | Wave 2（daily有効化） | **延期**（#1792） |
 
 ---
@@ -182,3 +183,5 @@ Epic out_of_scope: **無承認の production 定期開始は禁止**。
 | 2026-07-28 | Wave 1（#1715）: daily D1 手動検証実施。判定 PARTIAL。手順・結果 docs 追加 |
 | 2026-07-29 | Wave notify / cron-docs（#1729）: daily / weekly 親の Slack 失敗通知配線、cron docs / YAML コメントを JST 00:30 へ同期（schedule 無効維持） |
 | 2026-07-31 | #1791: 案B再判断で B-0慎重案採択。Wave2延期。監視/rollback最小手順を追加参照 |
+| 2026-07-31 | #1793 Human確認: B-1試行期間の事前案（最大1週間 / 連続成功3回）を追記 |
+| 2026-07-31 | #1793 Human確認: Environment×cron を E-1、`stg` required reviewers 非付与を追記 |

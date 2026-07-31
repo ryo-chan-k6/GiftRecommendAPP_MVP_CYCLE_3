@@ -106,14 +106,15 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | 前提 | 内容 | 区分 |
 | ---- | ---- | ---- |
 | 楽天API本番 egress | GHA 登録 egress IP 外のため **GHA 上の楽天 live は禁止**。003 は Scaffold。実楽天疎通は local/WSL のみ。固定 egress は [#1607](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1607)（Backlog） | 事実 |
-| Environment `stg` | Run 30509052971 は Human 承認操作なしに全 job が進行。cron 起動時の挙動は未確認 | 事実 / 未確認 |
+| Environment `stg` | Run 30509052971 は Human 承認操作なしに全 job が進行。2026-07-31 時点で `stg` protection rules は空。cron専用実測は未実施（**E-1**: B-1初回cronで確認） | 事実 / Human方針 |
 | Slack 失敗通知 | #1735 / #1739 で GHA PASS。開発運用・システムエラー通知両チャンネルの UI 到達を Human 確認済み | 事実 / Human確認 |
 | cron 時刻 | JST 00:30 = UTC `30 15`（daily `* * 0-5` / weekly `* * 6`）。docs・YAMLコメント同期済み | 事実 |
 
 ### 5.1 案Bで schedule を有効化した場合の含意（推論）
 
 - schedule 有効化は `stg` Environment 上でも「無人での定期起動」を意味する。楽天は Scaffold のため、定期実行しても**本番相当のデータ取込にはならない**（Scaffold データが定期で入る）。
-- Environment required reviewers があると、**無人 cron 起動でも各葉 job が承認待ちで停止**する可能性がある（自動運転にならない）。→ 承認設定と schedule 有効化の整合は Human 確認が必要（未確認）。
+- Environment required reviewers があると、**無人 cron 起動でも各葉 job が承認待ちで停止**する可能性がある（自動運転にならない）。
+- Human確認（2026-07-31 / #1793）: **E-1**（B-1初回cronで確認）。**`stg` に required reviewers を付けない**。cron専用事前実測は **認めない**（やるなら B-1/#1792）。
 
 ### 5.2 コスト観点（推論 / 未確認）
 
@@ -138,8 +139,8 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | high | Slack 失敗通知 E2E | 失敗時に想定 channel へ通知が届くか | **#1735 / #1739 完了**（GHA / UI PASS）。詳細: [親workflow_Slack失敗通知E2E結果](./親workflow_Slack失敗通知E2E結果.md) |
 | high | daily 親 D1 再実行 | BATCH-017 PARTIAL の解消を daily 親全体で確認 | **#1742 完了**（親全体 PASS）。詳細: [親workflow_daily再検証結果_D1](./親workflow_daily再検証結果_D1.md) |
 | medium | weekly / manual 親 D1 相当 | weekly 固有 job（offline_evaluation 等）の実ランタイム確認 | 未実施 |
-| medium | Environment 承認 × schedule 整合 | 無人 cron 時の承認待ち挙動確認 | 未確認 |
-| low | 監視・rollback 手順 | 定期失敗時の検知・停止（schedule 再コメントアウト）手順の明文化 | 未整備 |
+| medium | Environment 承認 × schedule 整合 | 無人 cron 時の承認待ち挙動確認 | **E-1採択**（B-1初回cronで確認。事前cron実測は必須としない） |
+| low | 監視・rollback 手順 | 定期失敗時の検知・停止（schedule 再コメントアウト）手順の明文化 | **#1791 で最小手順追加済** |
 
 ---
 
@@ -162,7 +163,7 @@ Epic #1637（案A）完了後に残る「daily schedule 有効化（案B）」�
 | No | 論点 | 状態（2026-07-31） |
 | --: | ---- | ---- |
 | 1 | B-0 vs B-1 | **Human採択: B-0**。B-1は最小手順整備後に再判断 |
-| 2 | #1607未完了・Scaffold前提の定期運用 | **無期限許容しない**。B-0のため定期開始しない。将来の期限付き試行は別Decision |
+| 2 | #1607未完了・Scaffold前提の定期運用 | **無期限許容しない**。B-0のため定期開始しない。将来の期限付き試行は別Decision。期間事前案（#1793 Human確認）: **最大1週間 / 連続成功3回**（どちらか先） |
 | 3 | 監視・rollback・通知準備 | **現状不十分 → 最小手順を追加**（[監視・rollback最小手順](./親workflow_daily_schedule監視・rollback最小手順.md)） |
 | 4 | `on.schedule` コメント解除 | **未実施**。B-1再採択後も別PR・Human明示承認必須 |
 
