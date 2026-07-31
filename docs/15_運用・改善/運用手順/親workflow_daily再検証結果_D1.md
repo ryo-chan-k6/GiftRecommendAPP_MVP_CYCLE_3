@@ -115,7 +115,7 @@ secret / token / 接続文字列 / channel ID 実値は本結果に含めない�
 - 案 B 再判断前の high 技術検証「daily 親 D1 再実行」は充足した。
 - 本 Run は Task Branch の `workflow_dispatch` であり、cron 定期運用の無人性・長期安定性を保証するものではない。
 - 現行 GHA の楽天取得は Scaffold 前提であり、#1607 完了後の live 取込を保証しない。
-- 案 B の採否は、Scaffold 定期取込・監視・rollback・コストを含め Human が判断する。
+- 案 B の採否は、本 D1 時点では未決だったが、後続の Human Decision（2026-07-31）で **B-0** が採択された（§8）。
 
 ---
 
@@ -123,24 +123,27 @@ secret / token / 接続文字列 / channel ID 実値は本結果に含めない�
 
 | 項目 | 状態 |
 | ---- | ---- |
-| weekly / manual 親 D1 | 未実施 |
-| cron schedule 起動 | 未実施（Human 承認前の有効化禁止） |
+| weekly / manual 親 D1 | 未実施（任意・本Epic必須外） |
+| cron schedule 起動 | 未実施。**B-0**のため有効化しない。B-1時は E-1（初回cron確認）。事前cron実測は不可 |
 | 長期連続運転 | 未実施 |
-| #1607 楽天 API 本番 egress | 未完了 |
-| Scaffold データの定期蓄積上限 | 未評価 |
-| 監視・rollback 手順 | 明文化未完了 |
+| #1607 楽天 API 本番 egress | 未完了（本Epic外） |
+| Scaffold データの定期蓄積上限 | 未評価。B-0のため定期開始しない。B-1試行時は期限付き（最大1週間/連続成功3回） |
+| 監視・rollback 手順 | **最小手順を整備済み**（[監視・rollback最小手順](./親workflow_daily_schedule監視・rollback最小手順.md) / #1791） |
 
 ---
 
 ## 8. Human 判断ゲート
 
 本結果により high 技術検証は完了したが、案 B（daily schedule 有効化）を自動採用しない。
-以下を Human が判断する。
 
-1. Scaffold 前提の daily 定期実行を許容するか
-2. システムエラー通知チャンネルと incident メンション運用で監視要件を満たすか
-3. rollback（`on.schedule` 再無効化）と障害対応体制が十分か
-4. daily schedule 有効化 Task を開始するか、B-0 を継続するか
+**Human採択（2026-07-31）:** **B-0（schedule無効継続）**。正本: [Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-daily-schedule-enable-b0.md) / Epic PR #1796。
+
+| No | 論点（D1当時） | 状態（2026-07-31） |
+| --: | ---- | ---- |
+| 1 | Scaffold 前提の daily 定期実行を許容するか | **無期限許容しない**。B-0のため定期開始しない。B-1は期限付き試行として別Decision |
+| 2 | システムエラー通知と監視要件 | 失敗通知経路は確認済み。監視・rollback最小手順を追加済み（E-1） |
+| 3 | rollback・障害対応体制 | 最小手順を整備。B-1再判断の前提とする |
+| 4 | daily schedule 有効化 vs B-0 | **B-0採択**。#1792は B-1再採択まで延期 |
 
 ---
 
@@ -149,3 +152,4 @@ secret / token / 接続文字列 / channel ID 実値は本結果に含めない�
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-07-30 | 初版。Run 30509052971。daily 親全体 success、BATCH-017 PARTIAL 解消確認 |
+| 2026-07-31 | #1796 AI Review対応: §7/§8 を B-0 Decision Log・監視最小手順と同期 |
