@@ -7,7 +7,7 @@
 | 文書種別 | E3 棚卸し正本（docs） |
 | 対象 | 楽天 / Embedding / Object Storage / Semantic（LLM）× BATCH-001〜017 |
 | 作成日 | 2026-07-24 |
-| 更新日 | 2026-07-31（#1765: fetch_plan承認済み・実HTTP未実施を分離記載） |
+| 更新日 | 2026-07-31（#1785 AI Review: local パターンB実施済みへ同期。GHA楽天HTTPは禁止のまま） |
 | 関連 Epic | [#1598](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1598) / [#1614](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1614) / 読取後続 [#1623](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1623) / 運用方針 [#1749](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1749) |
 | 関連 Task | [#1599](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1599)（T1） / [#1610](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1610)（T3） / [#1612](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1612)（T4） / [#1617](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1617)（Storage live・リリース準備） / [#1752](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1752)（楽天Fetch運用方針） |
 | 先行 | E0 横串ギャップ / E1 親 workflow / E2 IF-DB・DDL（#1595 MERGED） |
@@ -159,7 +159,7 @@
 | 4 | Object Storage 実装先 | **確定**（#1614）: 製品=**Supabase Storage** / 接続=**案 A（S3 互換 + `OBJECT_STORAGE_*`）**。#1612 `S3CompatibleObjectStorageClient` 維持。live 疎通は [#1617](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1617)（リリース準備）local で **Go**（[PoC結果](../../../90_PoC/外部API疎通検証/Supabase_Storage_S3互換疎通検証結果.md)） |
 | 5 | 楽天常用 QPS / IP 照合 / Rate Limiter Task 切り | **決定済**（常用 QPS=**2** / IP 必須 / T2c 別 Task） |
 | 6 | 本番 egress IP 設計 | **Backlog / #1607**（§7.1）。未検討 |
-| 7 | 楽天Fetchの取得量・Run分割・`paused` 再開・GHA live条件・安全側QPS=1 | [楽天Fetch運用方針](../../../15_運用・改善/運用手順/楽天Fetch運用方針.md) §10 / [運用値 Decision Log](../../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md)で **Human採択済み**。#1765 で Run予算・paused・QPS=1・004=100件を実装。具体的 `fetch_plan` は [2026-07-31 Log](../../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) で **承認済み**。実楽天HTTPは Human 環境で **未実施**。GHA楽天HTTP・#1607・scheduleは含めない |
+| 7 | 楽天Fetchの取得量・Run分割・`paused` 再開・GHA live条件・安全側QPS=1 | [楽天Fetch運用方針](../../../15_運用・改善/運用手順/楽天Fetch運用方針.md) §10 / [運用値 Decision Log](../../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md)で **Human採択済み**。#1765 で Run予算・paused・QPS=1・004=100件を実装。具体的 `fetch_plan` は [2026-07-31 Log](../../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) で **承認済み**。local 実楽天HTTP（パターンB）は [検証結果](../../../15_運用・改善/運用手順/楽天Fetch_local_live検証結果_1765.md) で **実施済み**（BATCH-001〜004 succeeded）。GHA楽天HTTP・#1607・scheduleは含めない |
 
 ---
 
@@ -194,4 +194,5 @@
 | 2026-07-30 | #1752: 楽天Fetch運用方針を正本化し、未確定の運用値・再開・GHA live判断を分離 |
 | 2026-07-30 | #1752 / #1754 AI Review対応: §8 No.7 を主成果物の推奨案/Human判断待ち区分へ同期 |
 | 2026-07-30 | #1764: §8 No.7 の推奨案をHuman Decision Logで採択。具体的fetch_planは実行前承認 |
-| 2026-07-31 | #1765: BATCH-003 Run予算 CLI / paused・page非進行 / 004既定100件 / 安全側QPS=1 を実装。`fetch_plan` は `2026-07-31-rakuten-fetch-mvp-fetch-plan` で承認済み。実楽天HTTPは Human 環境で未実施 |
+| 2026-07-31 | #1765: BATCH-003 Run予算 CLI / paused・page非進行 / 004既定100件 / 安全側QPS=1 を実装。`fetch_plan` は `2026-07-31-rakuten-fetch-mvp-fetch-plan` で承認済み。local パターンB（実楽天HTTP）は検証結果 docs で実施済み。GHA楽天HTTPは禁止のまま |
+| 2026-07-31 | #1785 AI Review対応: §8 No.7 の「実HTTP未実施」表記を検証結果と同期 |
