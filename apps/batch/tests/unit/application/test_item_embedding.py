@@ -6,8 +6,10 @@ fixture/mock のみ。実 DB / 実 OpenAI / secret に依存しない。
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID
 
+from batch.application.current_versions import CurrentVersionResolver
 from batch.application.item_embedding import (
     BATCH_ID,
     DEFAULT_EMBEDDING_MODEL_VERSION,
@@ -29,7 +31,7 @@ from batch.application.item_embedding import (
 from batch.application.item_embedding.__main__ import build_scaffold_demo_job, main
 from batch.application.job_run import ScaffoldJobRunTracker
 from batch.config import scaffold_batch_settings
-from batch.infrastructure.db import ScaffoldDbWriter
+from batch.infrastructure.db import ScaffoldDbReader, ScaffoldDbWriter
 
 _NOW = datetime(2026, 7, 20, 12, 0, 0, tzinfo=UTC)
 _HASH = "a" * 64
@@ -205,6 +207,59 @@ def test_generate_upsert_and_queue_succeeded() -> None:
         assert "latency_ms" in log
         assert log.get("status") == "generated"
         assert log.get("call_status") == "succeeded"
+
+
+def test_current_embedding_model_uuid_is_propagated_to_upsert() -> None:
+    model_version_id = "46c6f4eb-2a80-4ee8-a384-4c2e411dd868"
+    resolver_reader = ScaffoldDbReader(
+        seed_rows={
+            "model_version": (
+                {
+                    "model_version_id": model_version_id,
+                    "model_type": "embedding",
+                    "is_current": True,
+                },
+            )
+        }
+    )
+    repos, _ = _repos(
+        handoffs=[_handoff(model_version_id=model_version_id)],
+    )
+    job = ItemEmbeddingJob(
+        repositories=repos,
+        generator=build_scaffold_adapter(),
+        version_resolver=CurrentVersionResolver(resolver_reader),
+        job_run_tracker=ScaffoldJobRunTracker(),
+    )
+
+    result = job.run(job_run_id="ut-current-model")
+
+    assert result.status == "succeeded"
+    assert repos.upsert_rows[0].model_version_id == model_version_id
+    UUID(repos.upsert_rows[0].model_version_id)
+    assert any(call["table"] == "model_version" for call in resolver_reader.fetch_calls)
+
+
+def test_current_embedding_model_resolution_fails_before_any_db_write() -> None:
+    resolver_reader = ScaffoldDbReader(seed_rows={"model_version": ()})
+    repos, db = _repos()
+    tracker = ScaffoldJobRunTracker()
+    job = ItemEmbeddingJob(
+        repositories=repos,
+        generator=build_scaffold_adapter(),
+        version_resolver=CurrentVersionResolver(resolver_reader),
+        job_run_tracker=tracker,
+    )
+
+    result = job.run(job_run_id="ut-current-model-missing")
+
+    assert result.status == "failed"
+    assert result.error_codes == ["GRS-CFG-003"]
+    assert db.write_calls == []
+    assert db.update_calls == []
+    assert db.upsert_calls == []
+    assert tracker.records == []
+
 
 def test_handoff_missing_fails_queue() -> None:
     repos, _ = _repos(handoffs=[])
@@ -586,6 +641,24 @@ def test_cli_non_demo_live_embedding_without_key_exits_2(monkeypatch) -> None:
     monkeypatch.setattr(cli, "resolve_job_db_reader", lambda **_kwargs: reader)
 
     assert cli.main(["--job-run-id", "no-key", "--live-embedding"]) == 2
+
+
+def test_workflow_wires_stg_db_and_explicit_live_embedding() -> None:
+    repo_root = Path(__file__).resolve().parents[5]
+    workflow = repo_root / ".github" / "workflows" / "batch-item-embedding.yml"
+    text = workflow.read_text(encoding="utf-8")
+
+    assert "schedule:" not in text
+    assert text.count("live_embedding:") == 2
+    assert text.count("default: false") >= 2
+    assert "environment: stg" in text
+    assert "DATABASE_URL: ${{ secrets.STG_DATABASE_URL }}" in text
+    assert "OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}" in text
+    assert "--scaffold-demo" not in text
+    assert 'if [ "${{ inputs.live_embedding }}" = "true" ]; then' in text
+    assert "LIVE_ARGS+=(--live-embedding)" in text
+    assert "import uuid; print(uuid.uuid4())" in text
+    assert "permissions:\n  contents: read" in text
 
 
 def test_config_keys_present() -> None:
