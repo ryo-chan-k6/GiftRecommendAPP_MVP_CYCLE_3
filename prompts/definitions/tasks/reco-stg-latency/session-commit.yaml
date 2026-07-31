@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-stg-latency-session-commit"
+  title: "reco-stg-latency-session-commit:読み取りクエリのCOMMIT往復削減"
+  summary: "PostgresDatabaseSession の query / query_one が psycopg_pool の connection context を使うことで読み取りにも COMMIT 往復が発生している。読み取り経路の往復を削減し、DB round-trip あたりのレイテンシを下げる。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_id: "epic-reco-stg-latency"
+  epic_issue: "[Epic]reco-stg-latency:Reco stgレイテンシ改善"
+  epic_issue_number: 1747
+  epic_branch: "fix/epic-1747-reco-stg-latency"
+  related_issues:
+    - 1747
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  接続プール導入後、PostgresDatabaseSession.query() / query_one() は
+  `with self._pool.connection() as conn:` を使う。psycopg_pool の
+  connection context はブロック終了時に暗黙 COMMIT/rollback を行うため、
+  読み取りでも BEGIN+SELECT で 1 往復、COMMIT で 1 往復の計 2 往復になり得る。
+
+  stg 実測では 1 クエリ約 214ms。この一部は上記の COMMIT 往復に起因すると
+  推定される（リージョン差が主因のため、本 Task 単独では 504 は解消しない）。
+  リージョン移行（別 Task）と合わせて 4,000ms 内完走を確実にするための改善。
+
+objective: |
+  読み取り系（query / query_one）の DB 往復を削減する。
+  autocommit 接続の利用、あるいは読み取り専用トランザクション設定により、
+  読み取り 1 回あたりの往復を最小化する。
+
+scope:
+  - "PostgresDatabaseSession の読み取り経路（query / query_one）の往復削減"
+  - "書き込み経路（execute）のトランザクション整合維持"
+  - "DatabaseSession Protocol 互換の維持"
+  - "unit test の追加・修正"
+
+out_of_scope:
+  - "接続プール自体の再設計（#1737 で導入済み）"
+  - "MOD-RECO-003 のマスタ参照キャッシュ化（別 Task）"
+  - "PIPELINE_*_TIMEOUT_MS の変更"
+  - "個別リポジトリの SQL 変更"
+  - "DB スキーマ・migration 変更"
+  - "apps/api 側の変更"
+
+input:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      required: true
+      purpose: "変更対象"
+    - path: "apps/reco/tests/unit/infrastructure/db/test_session.py"
+      required: true
+      purpose: "既存 unit test"
+  docs:
+    - path: "docs/06_実装設計/cross_cutting/環境変数定義書.md"
+      required: false
+      purpose: "設定値化する場合の正本"
+
+output:
+  files:
+    - path: "apps/reco/src/reco/infrastructure/db/session.py"
+      action: "update"
+      required: true
+  docs: []
+  tests:
+    - path: "apps/reco/tests/unit/infrastructure/db/test_session.py"
+      action: "update"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "読み取り往復を削減した PostgresDatabaseSession"
+  - "unit test"
+
+acceptance_criteria:
+  - "query / query_one が読み取りで不要な COMMIT 往復を発生させない"
+  - "execute の書き込みトランザクション整合が維持されている"
+  - "DatabaseSession Protocol のシグネチャが変わっていない"
+  - "例外時に接続がプールへ返却され DatabaseError にラップされる"
+  - "apps/reco unit test が通る"
+  - "PIPELINE_HARD_TIMEOUT_MS を変更していない"
+  - "Related to #<Task Issue番号>、PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "reco-stg-latency-session-commit"
+  base: "fix/epic-1747-reco-stg-latency"
+  target: "fix/epic-1747-reco-stg-latency"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "Backlog"
+    priority: "low"
+    planned_start: null
+    due_date: null
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "reco"
+
+dependencies:
+  epics:
+    - id: "epic-reco-stg-latency"
+      purpose: "親 Epic"
+  issues: []
+  blocking: false
+
+parallel_control:
+  exclusive_files:
+    - "apps/reco/src/reco/infrastructure/db/session.py"
+    - "apps/reco/tests/unit/infrastructure/db/test_session.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "apps/reco unit test"
+    - "secret check"
+  commands:
+    - "cd apps/reco && uv run pytest tests/unit -q"
+  not_required:
+    - "stg 実測での hard timeout 内完走"
+    - "integration test（実 DB 接続）"
+  skip_reason:
+    "stg 実測での hard timeout 内完走": "リージョン移行 Task 完了後に Epic として確認する"
+    "integration test（実 DB 接続）": "stg / local DB の準備が前提のため別途"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "読み取り経路の往復削減が正しく行われているか"
+    - "autocommit / read-only 設定が書き込み経路に影響していないか"
+    - "例外時の接続返却と DatabaseError ラップが維持されているか"
+    - "DatabaseSession Protocol の互換が保たれているか"
+    - "secret 実値がないか"
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+
+human_decision_points:
+  - "autocommit 化 と read-only トランザクションのどちらを採るか"
+
+notes:
+  - "B（本 Task）と C（config キャッシュ）は Human 決定により別 Task"
+  - "リージョン差が 504 の主因のため、本 Task 単独では 504 を解消しない補助改善"
+  - "2026-07-30 実測判定により Backlog へ後回し。東京リージョン移行後、config_resolved は 2,786ms → 約 253ms、パイプライン完走 wall clock 約 1.0s（hard timeout 4,000ms に約 3s の余裕）。読み取り COMMIT 往復削減の費用対効果が小さいため未着手。カタログ大規模化や config_resolved 再悪化時に再評価する"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "Reco 内部の DB トランザクション方式変更。通常の Issue / PR で管理する"
+
+stop_conditions:
+  - "読み取り往復削減が既存の書き込みトランザクション整合を壊す場合"
+  - "DatabaseSession Protocol の破壊的変更が必要になった場合"

@@ -1,0 +1,316 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-reco-stg-latency-region-migration"
+  title: "reco-stg-latency-region-migration:Supabase stg東京リージョン移行と手順書更新"
+  summary: "Supabase stg を Fly（NRT）と同一リージョンの東京（ap-northeast-1）へ再作成し、migration / master seed を再投入する。移行手順を簡易stg構築手順へ反映する。"
+  phase: "07_開発・単体テスト"
+
+work_mode: "human-led"
+
+parent:
+  epic_id: "epic-reco-stg-latency"
+  epic_issue: "[Epic]reco-stg-latency:Reco stgレイテンシ改善"
+  epic_issue_number: 1747
+  epic_branch: "fix/epic-1747-reco-stg-latency"
+  related_issues:
+    - 1747
+    - 1773
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/fix-review-comments"
+    - "/summarize-work"
+  next:
+    success: "/work-issue"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Reco 推薦実行が GRS-REC-101 / HTTP 504 になる主因は、Supabase stg
+  （ap-southeast-1 / シンガポール）と Fly（NRT / 東京）のリージョン差による
+  クエリ往復レイテンシ。config_resolved duration_ms 2,786ms ÷ 13 SELECT で
+  1 クエリ約 214ms。health（SELECT 1 相当）約 0.27s とも整合する。
+
+  Supabase はプロジェクト作成後のリージョン変更ができないため、
+  東京リージョンで新規プロジェクトを作り直し、migration / master seed を
+  再投入する。DATABASE_URL を Render / Fly（必要なら GitHub Secrets）で差し替える。
+
+  進捗（2026-07-31 時点の事実）:
+  インフラ移行 P1〜P8 は Human により実施済み。残作業は P9（手順書反映）のみ。
+
+  移行後の stg 実測:
+  - config_resolved duration_ms: 2,786ms → 約 253ms
+  - 推薦実行: HTTP 504 / GRS-REC-101 → 完走（パイプライン約 1.0s）
+
+  なお移行により MOD-RECO-005 の scaffold 起因の GRS-REC-005 が露出したが、
+  これは Epic #1753 で解消済みであり本 Task の scope 外である。
+
+objective: |
+  Supabase stg を東京（ap-northeast-1）へ移行し、Reco / API から同一リージョンの
+  DB へ接続できる状態にする。移行手順を簡易stg構築手順へ反映する。
+
+scope:
+  - "Supabase stg プロジェクトを東京リージョンで新規作成する"
+  - "既存の migration を新プロジェクトへ適用する"
+  - "master seed を再投入する"
+  - "DATABASE_URL を Render / Fly（必要なら GitHub Secrets）へ差し替える"
+  - "旧 stg プロジェクトの扱い（廃止/停止）を決めて実施する"
+  - "移行手順を簡易stg構築手順へ反映する"
+
+out_of_scope:
+  - "prod 環境のリージョン設計・移行"
+  - "DB スキーマ・migration 内容の変更"
+  - "推薦ロジック・コード変更"
+  - "apps/api / apps/reco のソース変更"
+  - "secret 実値の docs / Issue / PR への記載"
+
+input:
+  files:
+    - path: "infra/render/README.md"
+      required: true
+      purpose: "API（Render）env の DATABASE_URL 差し替え先"
+    - path: "infra/fly/README.md"
+      required: true
+      purpose: "Reco（Fly）secret の DATABASE_URL 差し替え先"
+  docs:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      required: true
+      purpose: "更新対象の正本"
+    - path: "docs/14_リリース/デプロイ設定/デプロイ設定書.md"
+      required: true
+      purpose: "プロバイダ・リージョン方針"
+
+output:
+  files:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      action: "update"
+      required: true
+  docs:
+    - path: "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+      action: "update"
+      required: true
+      template: null
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+
+deliverables:
+  - "東京リージョンの Supabase stg（migration / seed 済み）"
+  - "差し替え済み DATABASE_URL（Render / Fly）"
+  - "更新した簡易stg構築手順"
+
+# 具体手順（Human 実施）。secret 実値はチャット / docs / Issue / PR / ログに残さない。
+# 接続文字列は「Direct（migration / seed 用）」「Pooler（アプリ用）」を区別する。
+procedure:
+  prerequisites:
+    - "Supabase CLI が supabase/.cli-version（2.105.0）と一致する（./scripts/db/check-cli-version.sh）"
+    - "psql が PATH にある"
+    - "flyctl / Render Dashboard へアクセスできる"
+    - "作業ディレクトリはリポジトリルート（本 Task の worktree）"
+    - "現行 stg（ap-southeast-1）の migration / seed 状態を把握している"
+
+  steps:
+    - id: P1
+      name: "東京リージョンで新規 Supabase プロジェクトを作成"
+      detail: |
+        Supabase Dashboard で New project を作成する。
+        - Region: Northeast Asia (Tokyo) / ap-northeast-1 を選択
+        - プロジェクト名に stg を含める（例: gift-reco-stg-nrt）。prod と誤認しない名前にする
+        - DB パスワードを生成し、パスワードマネージャ等の Secret 管理のみに保存する
+        - 作成後、project-ref と接続情報（Direct / Pooler）を控える（実値は Git / チャットに残さない）
+      check: "東京リージョンでプロジェクトが Active になっている"
+
+    - id: P2
+      name: "CLI からプロジェクトへ link"
+      detail: |
+        リポジトリルートで実行する（DB パスワードは対話入力。コマンド履歴に残さない）。
+        supabase link --project-ref <new-project-ref>
+      check: "supabase projects list / link 済みプロジェクトが新プロジェクトを指す"
+
+    - id: P3
+      name: "migration を新プロジェクトへ適用"
+      detail: |
+        supabase/migrations/ の全 migration を適用する。db push は Direct 接続を用いる。
+        supabase db push
+        - 初期 migration で CREATE EXTENSION vector が実行され pgvector が有効化される
+        - Storage bucket raw-products も migration で作成される
+      check: "supabase migration list で全 migration が Applied。pgvector が有効"
+
+    - id: P4
+      name: "master seed を投入（filename 昇順）"
+      detail: |
+        db push は seed を実行しないため、master seed を手動投入する。
+        接続文字列（Direct、または Direct が IPv6 のみで到達できない環境では Session pooler）を
+        環境変数 STG_SEED_DB_URL へ一時設定し（履歴に残さない）、
+        supabase/seeds/masters/*.sql を 01→09 の昇順で適用する。
+        例:
+          for f in $(ls supabase/seeds/masters/*.sql | sort); do
+            psql "$STG_SEED_DB_URL" -v ON_ERROR_STOP=1 -f "$f";
+          done
+        - 08b_lambda_ctx_rule.sql は未作成（後続 Task）。存在しなければスキップ（lambda_ctx_rule は 0 行が期待値）
+        - scripts/db/seed-masters.sh は local 用のため stg には使わない（STG_SEED_DB_URL で直接 psql する）
+      check: "全 seed が ON_ERROR_STOP=1 でエラーなく完了"
+
+    - id: P5
+      name: "投入結果（行数）を検証"
+      detail: |
+        初期データ定義書 §9 の一括検証クエリを Direct 接続で実行する。
+        期待行数: relationship_master=12, occasion_master=15, pair_master=180,
+        relationship_rule=96, occasion_rule=120, pair_rule=112, lambda_ctx_rule=0
+      check: "行数が初期データ定義書の期待値と一致する"
+
+    - id: P6
+      name: "DATABASE_URL を差し替え（Render / Fly）"
+      detail: |
+        新プロジェクトの接続文字列（アプリ用は Pooler 推奨。Fly/Render は IPv4 経路のため
+        Session pooler を基本とする）へ差し替える。実値は Dashboard / CLI のみ。
+        - Render（API stg）: Environment Variables の DATABASE_URL を更新（infra/render/README §主な Environment Variables）
+        - Fly（Reco stg）: fly secrets set DATABASE_URL=... -a okuri-reco-stg（infra/fly/README §Secrets）
+        - API と Reco は同一 stg DATABASE_URL（簡易stg構築手順 §4 / §6.5 C2）
+      check: "Render / Fly の DATABASE_URL が新プロジェクトを指す（ホスト名の一致を目視。全文はコピーしない）"
+
+    - id: P7
+      name: "再デプロイと疎通確認"
+      detail: |
+        - Render API stg を再デプロイ（新 env 反映）
+        - Fly Reco stg を再デプロイ: fly deploy --config infra/fly/fly.toml
+        - Reco health: GET /internal/reco/v1/health（X-Internal-Api-Key）→ 200 / data.status=ok
+        - Web stg から推薦最小通し（入力→結果表示）を確認
+      check: "Reco health 200。推薦実行が 504 にならず、応答が従来より短縮"
+
+    - id: P8
+      name: "旧 stg プロジェクトの扱いを実施"
+      detail: |
+        Human 判断（human_decision_points）に従い、旧 ap-southeast-1 プロジェクトを
+        停止 / 廃止する。切り戻し猶予を置く場合はダウンタイム許容とあわせて判断する。
+      check: "旧プロジェクトの扱いが確定・記録されている"
+
+    - id: P9
+      name: "簡易stg構築手順へ反映"
+      detail: |
+        docs/15_運用・改善/運用手順/簡易stg構築手順.md を更新する。
+        - §4.1（リージョン整合）を新設し、実測比較とリージョン後変更不可を明記
+        - §6.1（stg 用 PostgreSQL）へ「Region は東京 / ap-northeast-1。Reco（Fly nrt）と同一リージョン」を追記（D1 / D5）
+        - §6.1 に Direct（migration / seed）と Session pooler（アプリ）の使い分けを追記
+        - §6.8 に Supabase CLI での migration 適用（db push は seed を流さない）を明記
+        - §6.9 を master seed 手動投入（psql / filename 昇順）として新設。期待行数は初期データ定義書 §7・§9 を参照し転記しない
+        - §6.10 にリージョン移行手順（G1〜G8）を新設
+        - §6.11 をデータ投入（旧 §6.9）とし、test-data 投入を追記
+        - §8 に S7（504 にならない）/ S8（リージョン整合）を追加
+        - secret 実値は記載しない
+      check: "手順書に東京リージョン前提と移行手順が反映されている"
+
+  notes:
+    - "migration / seed は Direct 接続、アプリは Pooler（Session）接続を基本とする（マイグレーション方針書 §環境ごとの適用）"
+    - "Supabase はリージョン後変更不可のため新規作成が必須。db push は seed を流さないため seed は手動投入"
+
+acceptance_criteria:
+  - "Supabase stg が東京（ap-northeast-1）で稼働している"
+  - "Reco health が 200 を返し、応答が従来より短縮している"
+  - "簡易stg構築手順に東京リージョン前提と移行手順が反映されている"
+  - "secret 実値が docs / Issue / PR に含まれない"
+  - "Related to #<Task Issue番号>、PR target が親 Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "reco-stg-latency-region-migration"
+  base: "fix/epic-1747-reco-stg-latency"
+  target: "fix/epic-1747-reco-stg-latency"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "07_開発・単体テスト"
+    status: "In Progress"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: "2026-08-01"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "reco"
+
+dependencies:
+  epics:
+    - id: "epic-reco-stg-latency"
+      purpose: "親 Epic"
+  issues: []
+  blocking: true
+
+parallel_control:
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/簡易stg構築手順.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "Reco health 疎通（stg）"
+    - "推薦実行の stg 実測（Task B/C 完了後に Epic として確認）"
+    - "secret check"
+  commands: []
+  not_required:
+    - "apps/reco unit test"
+  skip_reason:
+    "apps/reco unit test": "本 Task はインフラ移行と docs 更新のみでコード変更を含まない"
+
+review:
+  ai_review_required: true
+  human_review_required: true
+  review_points:
+    - "東京リージョンで作成されているか"
+    - "migration / seed が漏れなく再投入されているか"
+    - "DATABASE_URL 差し替え先（Render / Fly）が正しいか"
+    - "手順書に移行手順・東京前提が反映されているか"
+    - "secret 実値が含まれていないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+
+human_decision_points:
+  - "旧 stg Supabase プロジェクトの廃止可否"
+  - "移行に伴う stg ダウンタイムの許容"
+  - "DATABASE_URL ローテーションの実施主体"
+
+notes:
+  - "Human-Led Task。Supabase プロジェクト作成・secret 差し替えは AI が実行できない"
+  - "blocking: true。本 Task 完了が Epic の stg 実測 AC の前提となる"
+  - "Supabase はリージョン後変更不可のため新規作成が必須"
+  - "PR 本文は Related to（Closes 禁止）。PR target は親 Epic Branch"
+  - "AI Review 用 Review Definition: prompts/definitions/reviews/reco-stg-latency/region-migration/pr-review.yaml"
+  - "P1〜P8 は Human 実施済み（2026-07-30〜31）。本 PR の差分は P9（手順書反映）と Definition 同期のみ"
+  - "期待行数は初期データ定義書を正本とし、手順書へ転記しない（二重管理回避）"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    cross_cutting: false
+  reason: "stg インフラ移行と手順書更新。通常の Issue / PR で管理する"
+
+stop_conditions:
+  - "移行により prod へ影響が及ぶと判明した場合"
+  - "migration / seed の再投入が既存手順で完結しない場合"
+  - "secret 差し替えに追加権限が必要な場合"
