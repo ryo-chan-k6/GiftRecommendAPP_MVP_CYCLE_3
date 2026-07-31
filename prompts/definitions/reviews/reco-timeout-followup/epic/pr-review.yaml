@@ -15,7 +15,7 @@ branch:
   worktree_required: false
 
 target:
-  pr: null
+  pr: 1790
   issue: 1786
   epic_definition: "prompts/definitions/epics/reco-timeout-followup/epic.yaml"
   source_branch: "chore/epic-1786-reco-timeout-followup"
@@ -66,7 +66,7 @@ input:
     number: 1786
     required: true
   pr:
-    number: null
+    number: 1790
     required: true
   diff:
     required: true
