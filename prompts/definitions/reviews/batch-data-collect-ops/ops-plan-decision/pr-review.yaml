@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1799
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/ops-plan-decision.yaml"
-  target_branch: null
+  target_branch: "chore/epic-1798-batch-data-collect-ops"
   parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
   parent_epic_branch: "chore/epic-1798-batch-data-collect-ops"
 

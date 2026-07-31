@@ -96,9 +96,9 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "ops-plan-decision"
-  name: null
-  base: null
-  target: null
+  name: "chore/task-1799-ops-plan-decision"
+  base: "chore/epic-1798-batch-data-collect-ops"
+  target: "chore/epic-1798-batch-data-collect-ops"
   worktree_required: true
 
 project:
