@@ -7,7 +7,8 @@
 | 文書種別 | #1637 Wave 0 棚卸し正本（docs） |
 | 対象 | 親 / 複合 batch orchestrator の `on.schedule` / `workflow_dispatch` 検証 |
 | 作成日 | 2026-07-28 |
-| 関連 Epic | [#1637](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1637)（batch-parent-schedule） |
+| 更新日 | 2026-07-31（#1791: 案B再判断で B-0 慎重案採択。Wave2有効化は延期） |
+| 関連 Epic | [#1637](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1637)（batch-parent-schedule） / [#1789](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1789)（本線#5） |
 | 先行 | E1 [#1554](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1554)（親 YAML 実装。Phase1 schedule 無効） |
 | 関連完了 | E4 [#1636](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1636)（観測横断。schedule は E4 out of scope） |
 
@@ -99,9 +100,10 @@ E1 残（schedule 無効・親／複合の手動検証未実施）を docs 正�
 | high | **gate** | §8 確定（案 A / D1 / cron 00:30 / Slack 失敗通知） | **完了（2026-07-28）** |
 | high | **1** | 手動検証（D1: 低 `max_items` の `workflow_dispatch`）+ 結果記録 | **実施済み（2026-07-28）**。判定 **PARTIAL**（017 scaffold demo 失敗）。手順・結果: [親workflow手動検証手順_D1](../../../15_運用・改善/運用手順/親workflow手動検証手順_D1.md) / [結果](../../../15_運用・改善/運用手順/親workflow手動検証結果_D1.md) |
 | medium | **notify / cron-docs** | Slack 失敗通知の配線。cron を JST 00:30 相当へ設計書・YAML コメント同期（schedule は無効のまま） | **#1729 で実施** |
-| medium | **2** | 案 B 以降を採用する場合: daily schedule コメント解除 | 有効化承認（現状は未採用・PARTIAL 後の再判断） |
-| medium | **3** | 案 C 時: weekly schedule 有効化 | 有効化承認（現状は未採用） |
+| medium | **2** | 案 B 以降を採用する場合: daily schedule コメント解除 | **#1789/#1791: B-0採択のため延期**。B-1再採択＋Human明示承認後（#1792） |
+| medium | **3** | 案 C 時: weekly schedule 有効化 | 有効化承認（**B-2不採用維持**） |
 | low | **docs** | 横串ギャップ / §19.4 を Phase 進行に合わせて更新 | レビュー |
+| high | **監視/rollback最小** | B-1再判断前の停止手順 | **#1791 で追加**（[監視・rollback最小手順](../../../15_運用・改善/運用手順/親workflow_daily_schedule監視・rollback最小手順.md)） |
 
 ---
 
@@ -148,6 +150,18 @@ Epic out_of_scope: **無承認の production 定期開始は禁止**。
 案 B/C で schedule を有効化する PR でも、**対象環境・Secret・リポジトリ設定**が本番定期を意味する場合は別途 Human 明示承認が必要。  
 **Human 確認:** 本節の方針で問題なし（変更なし）。
 
+### 8.5 案B再判断（2026-07-31）— **B-0 慎重案採択**
+
+正本: [Decision Log](../../../../ai-logs/human-decisions/2026-07-31-batch-daily-schedule-enable-b0.md) / [案B再判断材料](../../../15_運用・改善/運用手順/親workflow_daily_schedule案B再判断材料.md)
+
+| 項目 | 決定 |
+| ---- | ---- |
+| 採択 | **B-0**（schedule無効継続） |
+| Scaffold定期 | 無期限許容しない。定期開始自体をいまは行わない。B-1試行期間の事前案: 最大1週間 / 連続成功3回 |
+| 監視/rollback | 最小手順を整備し、その後に B-1 再判断 |
+| Environment×cron | **E-1**。`stg` に required reviewers を付けない。B-1初回cronで確認。cron事前実測は不可（やるなら B-1/#1792） |
+| Wave 2（daily有効化） | **延期**（#1792） |
+
 ---
 
 ## 9. 完了条件（Wave 0）
@@ -168,3 +182,6 @@ Epic out_of_scope: **無承認の production 定期開始は禁止**。
 | 2026-07-28 | §8 Human 確定: 案 A / D1 / cron JST 00:30 / Slack 失敗通知（GitHub 通知不要）/ §8.4 記載どおり |
 | 2026-07-28 | Wave 1（#1715）: daily D1 手動検証実施。判定 PARTIAL。手順・結果 docs 追加 |
 | 2026-07-29 | Wave notify / cron-docs（#1729）: daily / weekly 親の Slack 失敗通知配線、cron docs / YAML コメントを JST 00:30 へ同期（schedule 無効維持） |
+| 2026-07-31 | #1791: 案B再判断で B-0慎重案採択。Wave2延期。監視/rollback最小手順を追加参照 |
+| 2026-07-31 | #1793 Human確認: B-1試行期間の事前案（最大1週間 / 連続成功3回）を追記 |
+| 2026-07-31 | #1793 Human確認: Environment×cron を E-1、`stg` required reviewers 非付与を追記 |

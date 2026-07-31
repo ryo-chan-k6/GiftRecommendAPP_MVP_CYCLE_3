@@ -142,4 +142,5 @@ stop_conditions:
   - "schedule有効化が必要に見えた場合"
 
 notes:
-  - "本Task完了後、B-1なら後続 daily-schedule-enable へ。B-0なら有効化Taskはスキップまたはキャンセル"
+  - "本Task完了後、B-1なら後続 daily-schedule-enable へ。B-0なら有効化Taskはスキップまたは延期"
+  - "2026-07-31 Human採択: B-0慎重案（Decision Log 2026-07-31-batch-daily-schedule-enable-b0）。#1792は延期"
