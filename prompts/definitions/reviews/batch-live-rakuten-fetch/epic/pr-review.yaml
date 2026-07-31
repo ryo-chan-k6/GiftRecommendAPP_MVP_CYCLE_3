@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1785
   issue:
     number: 1763
   task_definition: "prompts/definitions/epics/batch-live-rakuten-fetch/epic.yaml"
