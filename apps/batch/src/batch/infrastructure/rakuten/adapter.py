@@ -41,12 +41,17 @@ def adapt_genre_raw_payload(payload: dict[str, object], *, requested_genre_id: s
         )
 
     genre_id = _as_str(genre_obj.get("genreId")) or requested_genre_id
-    genre_name = _as_str(genre_obj.get("jaName")) or _as_str(genre_obj.get("genreName"))
+    # openapi IchibaGenre/Search/20260701 は nameJa。旧形 jaName / genreName も許容する。
+    genre_name = (
+        _as_str(genre_obj.get("nameJa"))
+        or _as_str(genre_obj.get("jaName"))
+        or _as_str(genre_obj.get("genreName"))
+    )
     if not genre_name:
         raise RakutenGenreApiError(
             genre_id=genre_id,
             code="GRS-EXT-103",
-            message="invalid genre payload: missing jaName/genreName",
+            message="invalid genre payload: missing nameJa/jaName/genreName",
         )
 
     parent_genre_id = _as_str(genre_obj.get("parentGenreId"))

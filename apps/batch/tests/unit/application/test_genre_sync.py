@@ -102,6 +102,20 @@ def test_genre_sync_default_plan_uses_root_genre() -> None:
 # --- §16 No.2 階層展開 ---
 
 
+def test_adapt_genre_raw_payload_maps_name_ja_openapi_field() -> None:
+    """IchibaGenre/Search/20260701 live payload uses nameJa (not jaName)."""
+
+    payload = {
+        "genre": {"genreId": 100000, "nameJa": "ファッション・ブランド", "level": 1},
+        "children": [{"genreId": 100001, "nameJa": "百貨店", "level": 2}],
+        "ancestors": [],
+    }
+    genre = adapt_genre_raw_payload(payload, requested_genre_id="100000")
+    assert genre.genre_id == "100000"
+    assert genre.genre_name == "ファッション・ブランド"
+    assert genre.children == ("100001",)
+
+
 def test_adapt_genre_raw_payload_maps_ja_name_and_children() -> None:
     payload = {
         "genre": {"genreId": "200", "jaName": "Flowers", "level": 1},

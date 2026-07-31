@@ -227,6 +227,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--no-update-sort",
+        action="store_true",
+        help=(
+            "update_sort ルートを本 Run の計画から除外する。"
+            "MVP 初回 smoke / fetch_plan 承認（初期は update_sort=off）向け。"
+        ),
+    )
+    parser.add_argument(
         "--scaffold-demo",
         action="store_true",
         help="Run in-memory scaffold demo (no real Rakuten/DB/Object Storage).",
@@ -273,6 +281,7 @@ def main(argv: list[str] | None = None) -> int:
             cursors_per_run=args.cursors_per_run,
             wall_clock_seconds=args.wall_clock_seconds or None,
             hits=args.hits,
+            include_update_sort=not args.no_update_sort,
         )
         print(
             f"BATCH-003 scaffold demo status={result.status} "
@@ -371,6 +380,7 @@ def main(argv: list[str] | None = None) -> int:
         cursors_per_run=args.cursors_per_run,
         wall_clock_seconds=args.wall_clock_seconds or None,
         hits=args.hits,
+        include_update_sort=not args.no_update_sort,
     )
     error_codes = ",".join(result.error_codes) if result.error_codes else "-"
     print(
