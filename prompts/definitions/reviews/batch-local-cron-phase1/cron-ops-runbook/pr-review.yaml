@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1814
   issue:
     number: 1813
   task_definition: "prompts/definitions/tasks/batch-local-cron-phase1/cron-ops-runbook.yaml"
