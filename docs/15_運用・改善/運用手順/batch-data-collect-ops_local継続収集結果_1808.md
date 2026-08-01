@@ -8,7 +8,7 @@
 | 前提 | [本格収集運用枠](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) / [段階1結果](./batch-data-collect-ops_local継続収集結果_1801.md) |
 | 記録日 | 2026-08-01 |
 | 実行主体 | **Human**（`--live-rakuten`）。AI は手順・記録同期・阻害時最小修正・PR/Review |
-| 段階 | 段階2 **充足** → 段階3準備（Ranking/取得ジャンル分離） |
+| 段階 | 段階2 **充足** → 段階3着手（`100003` weekly 途中失敗 → existing 連鎖 ID 修正） |
 
 secret・token・APIキー・egress IP・接続文字列実値は記載しない。
 
@@ -65,7 +65,52 @@ set -a && source .env && set +a
 
 ---
 
-## 5. §5.3.5 本見直し
+## 5. 段階3 Run 記録
+
+### 5.1 `100003` weekly（失敗・既存連鎖）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| コマンド | `local_weekly_orchestrator.sh --live-rakuten --genre-ids 100003 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1` |
+| `pipeline_batch_run_id`（シナリオ） | `acb725c7-87ac-4890-871f-2bfdcafef370` |
+| BATCH-001 / 002 | succeeded |
+| BATCH-003 | succeeded（`pages=1` `budget_stopped=True`） |
+| import 連鎖（003後 005〜017） | succeeded |
+| BATCH-004 | partially_succeeded（succeeded=15 failed=3）。429なし |
+| 004後 raw_staging（BATCH-005） | **failed** `GRS-BAT-001` / `empty staging_plan` |
+| シナリオ結果 | FAILED（subsequent steps not started） |
+
+#### 原因（事実）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| BATCH-004 | Raw `object_key` に葉の `job_run_id` を埋める（`--batch-run-id` なし） |
+| 当時の親シェル | 004 に葉 UUID、続く 005 にシナリオ `pipeline_batch_run_id` を渡していた |
+| 結果 | 005 が 004 の Raw を選定できず empty plan |
+
+#### 対応
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 修正 | `lor_run_existing_item_chain` で GHA existing-item の `resolve-run-id` 相当を別発行し、004〜017 で同一 business ID を使う（シナリオ pipeline とは分離） |
+| 段階3の収集本体 | 001〜003〜import は本 Run で成功済み。ジャンル拡大の主線は継続可 |
+
+#### 再開手順（Human）
+
+修正取り込み後、次のいずれか:
+
+1. **weekly 再実行**（001〜004連鎖を通しで確認したいとき）— 同上コマンド
+2. **daily 継続**（`100003` の BATCH-003 収集を進めるとき）— 004連鎖は weekly のみ
+
+```bash
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100003 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+```
+
+---
+
+## 6. §5.3.5 本見直し
 
 | 項目 | 内容 |
 | ---- | ---- |
@@ -75,8 +120,9 @@ set -a && source .env && set +a
 
 ---
 
-## 6. 変更履歴
+## 7. 変更履歴
 
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-08-01 | 初版。段階2充足（Human: 10回以上成功・429なし）。Ranking/取得ジャンル分離と段階3手順 |
+| 2026-08-01 | 段階3 `100003` weekly 失敗を記録。existing 連鎖の business run ID 分離を親シェルへ反映 |
