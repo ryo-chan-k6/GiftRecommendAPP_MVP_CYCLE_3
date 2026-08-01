@@ -1,0 +1,272 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-local-cron-phase1"
+  title: "batch-local-cron-phase1:local cron Phase1無人運用（001〜008）"
+  summary: "統括#1745次本線。#1798完了後、local cron で BATCH-001〜008（+017任意）の crontab 無人運用を定着させる。009〜016配線・018/019・GHA schedule・#1607・GHA楽天liveは本Epic外。機能・領域単位Epic（例外）。"
+  workstream_key: "batch-local-cron-phase1"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Human Decision 正本: ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md（#1798 / PR #1810 で develop 反映済み）。
+  本線#6（#1798）は案A一旦終了。次の自動運用目標は GHA ではなく local cron。
+  自動運用対象の最終形は BATCH-001〜016（017任意）だが、本Epicは Phase1 = 001〜008（+017任意）の crontab 無人運用定着のみ。
+  Phase2（009〜016の親シェル配線）は別Epic。018/019・GHA schedule（#1792）・#1607・GHA楽天liveは先送り。
+  起動は local 親シナリオ（daily / weekly）のみ。子 Batch の個別 cron は禁止。
+  実 crontab 登録・PC/WSL 常時起動は Human。AI は手順正本化・Decision同期・観測結果docs同期を担当し、--live-rakuten 実行はしない。
+
+objective: |
+  local cron Phase1（BATCH-001〜008、+017任意）について、crontab運用手順を正本化し、
+  Humanによるcron登録後の数日無人観測結果をdocsへ残し、親シェル経由のみの無人運用を定着させる。
+
+scope:
+  - "crontab運用手順の正本化（local薄いオーケストレータ設計・運用手順 §7 および関連運用手順の同期）"
+  - "定常ノブ（ジャンル・予算・停止条件等）の Human Decision 同期（secretなし）"
+  - "Humanによる実crontab登録の手順記載と登録済み記録（実行はHuman。AIは登録しない）"
+  - "数日無人観測結果のdocs化（secret / token / 接続文字列実値なし）"
+  - "起動は親シェル（local_daily / local_weekly）経由のみであることの確認・記録"
+  - "統括#1745 の次本線（local cron Phase1）追跡更新"
+  - "scripts/batch の手順整合のための最小修正（必要時のみ）"
+
+out_of_scope:
+  - "BATCH-009〜016 の親シェル配線・定期化（Phase2別Epic）"
+  - "BATCH-018 / BATCH-019（Offline Eval / Feedback）"
+  - "daily / weekly / manual 親 on.schedule のコメント解除・有効化（#1792 / B-1）"
+  - "本番egress IP / NAT / self-hosted（#1607）"
+  - "GHA / GitHub-hosted からの楽天HTTP live化"
+  - "AIによる --live-rakuten 実行（観測期間中のliveはHuman。AIは記録同期のみ）"
+  - "secret実値・GitHub Secrets / Variables の表示・変更"
+  - "OpenAPI / Orval / generated / apps/web|api|reco 変更"
+  - "production定期開始・破壊的全件取得"
+  - "Airflow等の本格ジョブ基盤導入"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/batch-local-cron-phase1/**"
+    - "prompts/definitions/tasks/batch-local-cron-phase1/**"
+    - "prompts/definitions/reviews/batch-local-cron-phase1/**"
+    - "docs/15_運用・改善/運用手順/**"
+    - "ai-logs/human-decisions/**"
+    - "ai-logs/experiments/**"
+    - "scripts/batch/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+    - ".github/workflows/batch-rakuten-*.yml"
+    - ".github/workflows/batch-item-semantic.yml"
+    - ".github/workflows/batch-item-embedding.yml"
+  child_task_areas:
+    - "docs"
+    - "ops-policy"
+    - "batch"
+    - "verification"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/batch-data-collect-ops_local継続収集結果_1808.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+  files: []
+  issues:
+    - number: 1745
+      purpose: "統括ロードマップ（次本線: local cron）"
+    - number: 1798
+      purpose: "本線#6完了（前提Epic。CLOSED / PR #1810 MERGED）"
+    - number: 1792
+      purpose: "daily schedule有効化。本Epicでは吸収しない（先送り）"
+    - number: 1607
+      purpose: "本番egress Backlog。本Epicでは吸収しない（先送り）"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "prompts/definitions/epics/batch-local-cron-phase1/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-local-cron-phase1/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-local-cron-phase1/**"
+      action: "create"
+      required: true
+    - path: "ai-logs/human-decisions/**"
+      action: "create_or_update"
+      required: false
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+    - path: "scripts/batch/**"
+      action: "update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/"
+
+deliverables:
+  - "Epic Issue / Branch chore/epic-<n>-batch-local-cron-phase1"
+  - "crontab運用手順正本（docs）と定常ノブ Decision 同期"
+  - "Human crontab登録済み記録（secretなし）"
+  - "数日無人観測結果docs（secretなし）"
+  - "統括#1745次本線追跡更新"
+
+acceptance_criteria:
+  - "Epic Issueタイトルが [Epic]batch-local-cron-phase1:local cron Phase1無人運用（001〜008） 形式（[Epic]直後スペースなし）"
+  - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
+  - "crontab運用手順docsがあり、親シェル経由のみ・個別cron禁止が明記されている"
+  - "Humanによるcrontab登録済み記録がある（AIは登録実行していない）"
+  - "数日無人観測結果docsがあり secret / token / 接続文字列実値がない"
+  - "BATCH-009〜016配線・018/019・GHA schedule・#1607・GHA楽天liveを含まない"
+  - "親 on.schedule コメント解除を含まない"
+  - "Epic PR targetがdevelop"
+  - "統括#1745の次本線（local cron Phase1）追跡が更新されている"
+
+branch:
+  no_branch: false
+  summary: "batch-local-cron-phase1"
+  name: "chore/epic-1811-batch-local-cron-phase1"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-01"
+    due_date: "2026-08-03"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1798
+    - 1745
+  issues:
+    - 1792
+    - 1607
+  prs:
+    - 1810
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - 1798
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+    - "scripts/batch/local_daily_orchestrator.sh"
+    - "scripts/batch/local_weekly_orchestrator.sh"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "crontab手順・観測結果docsの整合確認（secretなし）"
+    - "個別cron禁止・親シェル経由のみの記載確認"
+  commands: []
+  manual_checks:
+    - "GHA on.schedule を有効化していない"
+    - "GHAから楽天HTTP liveしていない"
+    - "子Batchの個別crontab行が無い"
+    - "観測docsにsecret実値がない"
+  not_required:
+    - "GHA楽天live E2E"
+    - "daily schedule cron E2E"
+    - "AIによる --live-rakuten 実行"
+  skip_reason:
+    "GHA楽天live E2E": "本Epic out of scope。GHA楽天HTTPは禁止維持"
+    "daily schedule cron E2E": "#1792 / B-1 の対象。本Epicに含めない"
+    "AIによる --live-rakuten 実行": "観測期間のliveはHuman。AIは記録同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "Phase1（001〜008）に閉じており、009〜016や018/019を混入していないか"
+    - "GHA schedule有効化・#1607・GHA楽天liveが混入していないか"
+    - "親シェル経由のみ・個別cron禁止が守られているか"
+    - "secret実値がdocs/PRに含まれていないか"
+    - "AIが --live-rakuten を実行した痕跡がないか（手順記載とHuman実行の区別）"
+    - "#1745次本線追跡が更新されているか"
+
+human_decision_points:
+  - "実crontab登録内容（時刻・パス・フラグ・常時起動可否）の最終採択"
+  - "定常ノブ（ジャンル段階・予算・停止条件）の継続採択"
+  - "無人観測中の異常時停止・再開判断"
+  - "Phase2（009〜016）Epic着手タイミング"
+  - "機能・領域単位Epic（例外）として識別子Epicに分割しない方針の維持"
+
+stop_conditions:
+  - "GHA schedule有効化や#1607実装が本Epic差分に必要に見えた場合"
+  - "GHA楽天HTTP liveが必要に見えた場合"
+  - "BATCH-009〜016配線を本Epicに含める必要が生じた場合"
+  - "secret実値の表示・commitが必要に見える場合"
+  - "AIによる --live-rakuten 実行が必須に見える場合（Human実行へ戻す）"
+  - "子Batch個別cron登録が必要に見える場合"
+
+notes:
+  - "機能・領域単位Epic（例外）。artifact_id 空。Issue本文§2.1に例外理由を明記"
+  - "統括#1745の次本線。Epic formal parentは持たない（Relationships追跡）"
+  - "前提: #1798 CLOSED / PR #1810 MERGED → develop。Decision 2026-08-01-batch-local-cron-ops-next decided"
+  - "子Task: (1) cron-ops-runbook (2) cron-ops-verify"
+  - "#1792 / #1607 / GHA楽天live / 018/019 / Phase2(009〜016) は吸収しない"
+  - "work_mode=ai-agent。実crontab登録と観測期間のliveはHuman。値はcommitしない"
+  - "Epic Issue番号 / Branch名は /start-epic 後に本ファイルへ反映"
+  - "Epic Issue #1811 / Branch chore/epic-1811-batch-local-cron-phase1"
