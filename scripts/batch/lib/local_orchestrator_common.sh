@@ -13,8 +13,9 @@ lor_repo_root() {
 
 REPO_ROOT="$(lor_repo_root)"
 SCRIPTS_BATCH_DIR="${REPO_ROOT}/scripts/batch"
-LOCK_DIR="${SCRIPTS_BATCH_DIR}/locks"
+# locks は output-local-orchestrator 配下（scripts/batch/output-*/ が gitignore 済み）
 OUTPUT_DIR="${SCRIPTS_BATCH_DIR}/output-local-orchestrator"
+LOCK_DIR="${OUTPUT_DIR}/locks"
 MAINLINE_LOCK="${LOCK_DIR}/local-batch-mainline.lock"
 RAKUTEN_LIVE_LOCK="${LOCK_DIR}/local-rakuten-live.lock"
 

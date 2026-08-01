@@ -146,8 +146,8 @@ BATCH-004 → 005 → 006 → 007 → 008（→ 017 任意）
 
 | ロック | 目的 | 推奨 lock 名（実装は #1804） |
 | ------ | ---- | --------------------------- |
-| 本線 flock | GHA `batch-mainline` 相当。daily / weekly / 手動親の衝突防止 | `scripts/batch/locks/local-batch-mainline.lock` |
-| 楽天 live 横断 1 本 | BATCH-001〜004 live の同時実行禁止（[楽天Fetch運用方針](./楽天Fetch運用方針.md) §6.2） | `scripts/batch/locks/local-rakuten-live.lock` |
+| 本線 flock | GHA `batch-mainline` 相当。daily / weekly / 手動親の衝突防止 | `scripts/batch/output-local-orchestrator/locks/local-batch-mainline.lock` |
+| 楽天 live 横断 1 本 | BATCH-001〜004 live の同時実行禁止（[楽天Fetch運用方針](./楽天Fetch運用方針.md) §6.2） | `scripts/batch/output-local-orchestrator/locks/local-rakuten-live.lock` |
 
 要件:
 
@@ -305,8 +305,7 @@ scripts/batch/
 ├─ local_weekly_orchestrator.sh       # 新規（#1804）
 ├─ lib/
 │  └─ local_orchestrator_common.sh    # 新規（#1804）推奨
-├─ locks/                             # flock 用（gitignored 推奨）
-├─ output-local-orchestrator/         # ログ（gitignored 推奨）
+├─ output-local-orchestrator/         # ログ＋locks（gitignored: scripts/batch/output-*/）
 ├─ rakuten_live_verify.py             # 既存疎通ハーネス
 └─ object_storage_live_verify.py      # 既存
 ```

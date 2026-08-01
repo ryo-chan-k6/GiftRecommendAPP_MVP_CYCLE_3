@@ -20,8 +20,7 @@ Batch 手動実行・dry-run・再実行補助、および local 薄いオーケ
 
 | ディレクトリ | 用途 |
 | ------------ | ---- |
-| `locks/` | flock 用（中身は gitignored。`.gitkeep` のみ管理） |
-| `output-local-orchestrator/` | 親シェルログ（gitignored） |
+| `output-local-orchestrator/` | 親シェルログ＋flock（`locks/` 配下。`scripts/batch/output-*/` で gitignored） |
 
 ### 起動例
 
