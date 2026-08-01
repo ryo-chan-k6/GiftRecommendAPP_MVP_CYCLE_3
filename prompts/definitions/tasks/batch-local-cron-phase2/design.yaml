@@ -115,7 +115,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "phase2-design"
-  name: null
+  name: "docs/task-1820-phase2-design"
   base: "chore/epic-1818-batch-local-cron-phase2"
   target: "chore/epic-1818-batch-local-cron-phase2"
   worktree_required: true
@@ -130,6 +130,7 @@ project:
     due_date: "2026-08-03"
 
 issue:
+  number: 1820
   unit: "task"
   type: "docs"
   area: "batch"
@@ -208,3 +209,4 @@ stop_conditions:
 notes:
   - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
   - "後続: impl → dry-run-verify → cron-cutover（Humanゲート）"
+  - "Task Issue #1820 / Branch docs/task-1820-phase2-design / 親Epic #1818"
